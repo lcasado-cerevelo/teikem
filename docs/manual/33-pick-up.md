@@ -14,7 +14,7 @@ En **Listas → Tipo de servicio → Ajustar** un valor tiene dos interruptores 
 La compañía recibe sembrado el tipo **Pick up** (código `PICK_UP`, pick up y facturable). Las marcas se guardan en el `ExtraJson` del valor: `{"pickUp":true,"billable":true}`; sin marcas, un tipo de servicio no es pick up y sí es facturable.
 
 ## 2. El camino de la orden
-**Sometida → Recogida → En almacén** (final). En la estación de escaneo:
+**Sometido → Recogido → En almacén** (final). En la estación de escaneo:
 - **Recoger** la lleva a Recogida (como siempre).
 - **Llegó** la lleva a **En almacén** (en lugar de «Sin asignar»); si estaba Sometida, Recogida queda registrada «brincada». Las **piezas siguientes** con «Llegó» se **cuentan** («2 de 3 piezas») aunque la orden ya esté En almacén.
 - **Enrutar** y **Salir** responden «No»: *La orden {n} es de pick up: se queda en el almacén. Para sacarla cree otra orden.* (Si se quiere sacarla, es otra orden o el cliente viene a buscarla.)

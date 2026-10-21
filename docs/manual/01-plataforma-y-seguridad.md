@@ -268,7 +268,7 @@ ni de compras (`purchasing.*`: no ve órdenes de compra ni recibe contra ellas; 
 Logistics y así queda para toda compañía nueva o recreada.
 Las compañías existentes no cambian solas (la propagación de permisos solo agrega códigos nuevos de la plataforma).
 
-Desde 2026-10-12 (Lote 39) existe el permiso **`orders.view_price`** («Ver precios de las órdenes», categoría Órdenes; el
+Desde 2026-10-12 (Lote 39) existe el permiso **`orders.view_price`** («Ver precios de los envíos», categoría Órdenes; el
 lista pasa a 74 permisos). Lo traen las plantillas **TenantAdmin** y **Billing**; la actualización de la base
 (`Diseño/logistica-db-update.sql`, sección «2026-10-12 (a)») también se lo agrega a los roles ya clonados de cada compañía
 con esos dos nombres (solo agrega). Sin él, el usuario ve las órdenes pero no sus precios: ver el

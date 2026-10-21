@@ -8,7 +8,7 @@ nuevos en `GET /api/v1/orders`. La pantalla es otro trabajo; aquí se regeneró 
 
 | Pieza | Resultado | Dónde |
 |---|---|---|
-| Permiso nuevo | `orders.view_price` «Ver precios de las órdenes» / «View order prices», categoría `ORDERS`. Catálogo: 73 → **74** códigos. Plantillas **TenantAdmin** (todos) y **Billing** | `PermissionCatalog` |
+| Permiso nuevo | `orders.view_price` «Ver precios de los envíos» / «View shipment prices», categoría `ORDERS`. Catálogo: 73 → **74** códigos. Plantillas **TenantAdmin** (todos) y **Billing** | `PermissionCatalog` |
 | Base de datos | Sección **«2026-10-12 (a)»** al final de `Diseño/logistica-db-update.sql`: el permiso (`IF NOT EXISTS`) y su asignación a las plantillas **y** a los roles ya clonados de cada compañía llamados `TenantAdmin` o `Billing` (`INSERT … WHERE NOT EXISTS`, sin filtrar por `TenantId`). Solo agrega | `logistica-db-update.sql` |
 | Una sola decisión | `OrderPriceVisibility` (scoped, recibe el principal vía `PermissionService`): `CanViewAsync` / `EnsureAsync`; sin el servicio (null) se oculta (falla cerrado). Las reglas puras de qué se oculta, en `OrderPriceRules` | `Infrastructure/Orders/OrderPriceVisibility.cs` |
 | Ficha, lista y lookup | `quotedAmount: null` sin el permiso (lista, `lookup`, ficha y, por salir de la ficha, las respuestas de crear, editar, confirmar, reprecio, cancelar, estatus y entrega especial). El COD (`codAmount`) sigue visible | `OrderReadService` |

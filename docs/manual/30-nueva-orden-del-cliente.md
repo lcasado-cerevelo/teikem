@@ -3,7 +3,7 @@
 Lote 105 (portal de clientes, 2026-10-17). Las personas del cliente crean órdenes desde la app del cliente (pestaña **Órdenes → Nueva orden**). Decidido con Luis: la orden **entra directo al flujo normal** (nace igual que una creada en la web de la compañía), y el cliente solo escribe **lo básico**.
 
 ## 1. Quién puede
-| Rol de portal | Crear órdenes |
+| Rol de portal | Crear envíos |
 |---|---|
 | `CLIENT_ADMIN` (administrador) | Sí |
 | `CLIENT_OPERATOR` (operador) | Sí |

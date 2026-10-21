@@ -116,7 +116,7 @@ public sealed class ClientNotificationTests
 
         var saved = await x.Svc.SaveSettingsAsync(x.Client.PublicId, On("delivered", extraEmails: "ana@x.co; luis@x.co", sms: true, extraPhones: "787-555-0100"), default);
         var d = saved.Settings.Single(s => s.Kind == "DELIVERED");
-        Assert.Equal((true, true, true, "ana@x.co, luis@x.co", "787-555-0100"), (d.EmailEnabled, d.AppEnabled, d.SmsEnabled, d.ExtraEmails, d.ExtraPhones));
+        Assert.Equal((true, true, true, "ana@x.co, luis@x.co", "+17875550100"), (d.EmailEnabled, d.AppEnabled, d.SmsEnabled, d.ExtraEmails, d.ExtraPhones));   // los teléfonos extra se guardan con prefijo (E.164)
         Assert.False(saved.Settings.Single(s => s.Kind == "PICKED_UP").EmailEnabled);
         // apagarlo todo deja la configuración en blanco; otro cliente no cambia
         var off = await x.Svc.SaveSettingsAsync(x.Client.PublicId, On("DELIVERED", false, false, false), default);
@@ -323,7 +323,7 @@ public sealed class ClientNotificationTests
         Assert.Equal(("FAILED", 4, "rechazado"), (last.Status, last.Attempts, last.Message));
         // el SMS se guardó como preferencia pero no sale
         var sms = await x.F.Db.Set<ClientNotificationDelivery>().AsNoTracking().SingleAsync(d => d.Channel == "SMS");
-        Assert.Equal(("SKIPPED", "787-555-0100", "El envío de SMS todavía no está configurado."), (sms.Status, sms.Recipient, sms.Message));
+        Assert.Equal(("SKIPPED", "+17875550100", "El envío de SMS todavía no está configurado."), (sms.Status, sms.Recipient, sms.Message));
 
         // correo no configurado
         var x2 = await NewWorldAsync();

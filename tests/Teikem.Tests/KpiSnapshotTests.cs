@@ -163,7 +163,7 @@ public sealed class KpiSnapshotTests
         var rows = await source.LoadAsync(new DataQuery { FromUtc = from, ToUtc = to }, default);
         Assert.Equal(3, rows.Count);   // lo de hace 10 días queda fuera
         var latest = rows.First(r => (string?)r["KpiKey"] == KpiKeys.OrdersInWarehouse && (decimal)r["Value"]! == 3m);
-        Assert.Equal(("Órdenes en almacén", "count"), ((string?)latest["KpiLabel"], (string?)latest["Kind"]));
+        Assert.Equal(("Envíos en almacén", "count"), ((string?)latest["KpiLabel"], (string?)latest["Kind"]));
         Assert.Equal(TenantClock.Default.StartOfDayUtc(today), (DateTime)latest["SnapshotDate"]!);
         Assert.Equal("money", (string?)rows.Single(r => (string?)r["KpiKey"] == KpiKeys.CodCollected)["Kind"]);
         Assert.Equal(4, (await source.LoadAsync(new DataQuery(), default)).Count);   // sin rango: todo

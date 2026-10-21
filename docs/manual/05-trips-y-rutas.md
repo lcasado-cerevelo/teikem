@@ -158,7 +158,7 @@ una parada `DELIVERY` pendiente. En orden de precedencia:
 |---|---|
 | Inactiva, o ya en una etapa terminal | `El envío ya salió a ruta o terminó; no se puede asignar a otra ruta.` |
 | Es una entrega especial | `Las entregas especiales se asignan al chofer desde el envío; no pasan por Sala de despacho.` |
-| Está en la etapa inicial (Sometida) | `El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.` |
+| Está en la etapa inicial (Sometida) | `El envío está en «Sometido»; márquelo como recogido antes de asignarlo a una ruta.` |
 | Está en un estatus lateral (`FAILED`, Intento fallido) | `La orden está en '{estatus}'; regrésela al pipeline antes de asignarla a una ruta.` |
 | Ya está en `IN_TRANSIT` o después | `El envío ya salió a ruta o terminó; no se puede asignar a otra ruta.` |
 | Su estatus no tiene la capacidad `ASSIGN_TRIP` | `El estatus actual no permite la acción 'ASSIGN_TRIP'.` |
@@ -643,7 +643,7 @@ Fuente nueva **`TRIP`** ("Rutas", con `PlanDate` como campo de fecha), sin `Amou
 El tenant nuevo (y el demo) reciben de fábrica: la vista **"Rutas"** (fecha, número, zona, chofer, vehículo,
 estatus, paradas, sobre el máximo, distancia total; orden por fecha descendente); los indicadores **"Órdenes sin
 chofer asignado"** (activas en `SUBMITTED`..`ASSIGNED` sin ruta vigente con chofer y sin viaje pagado propio) y
-**"Órdenes en excepción"** (`FAILED`); el indicador **"Rutas sobre el máximo de paradas"**; y
+**"Envíos en excepción"** (`FAILED`); el indicador **"Rutas sobre el máximo de paradas"**; y
 el gráfico de donut **"Rutas por estatus"** (últimos 7 días). Cada alta o cambio de una ruta, sus órdenes, la
 versión de la ruta y los miembros de zona queda en `AuditLog` (`GET /api/v1/audit/changes?entityType=TRIP|ROUTE|
 DISPATCH_ZONE|TRANSPORT_ORDER`); las corridas de optimización no generan `AuditLog` (ya son su propia bitácora).

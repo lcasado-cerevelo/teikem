@@ -6,6 +6,7 @@ using Teikem.Domain.Billing;
 using Teikem.Domain.Clients;
 using Teikem.Domain.Cod;
 using Teikem.Domain.Constants;
+using Teikem.Domain.Contacts;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
@@ -39,6 +40,14 @@ public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext
         return new ClientNotificationSettingsDto(client.PublicId, client.Name, (await PortalEmailsAsync(client.ClientId, null, ct)).Count, email.IsConfigured, false, list);
     }
 
+    /// <summary>Prefijo internacional por omisión de la compañía en dígitos («1»).</summary>
+    private async Task<string> DefaultCountryAsync(CancellationToken ct)
+    {
+        var tenantId = T.RequireTenantId();
+        var cc = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.TenantId == tenantId).Select(t => t.PhoneCountryCode).FirstOrDefaultAsync(ct) ?? "+1";
+        return PhoneRules.NormalizeCountry(cc) ?? "1";
+    }
+
     public async Task<ClientNotificationSettingsDto> SaveSettingsAsync(Guid clientPublicId, ClientNotificationSettingsRequest? req, CancellationToken ct)
     {
         if (req?.Settings is null) throw new ValidationException("settings", "El cuerpo de la solicitud es obligatorio.");
@@ -48,6 +57,7 @@ public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext
         if (kinds.Distinct().Count() != kinds.Count) throw new ValidationException("settings", ClientNotificationRules.DuplicateKind);
         // validación de todos antes de guardar nada
         var cleaned = new List<(string Kind, ClientNotificationSettingDto S, string? Emails, string? Phones)>();
+        var defaultCc = await DefaultCountryAsync(ct);
         foreach (var s in req.Settings)
         {
             var kind = s.Kind!.Trim().ToUpperInvariant();
@@ -56,6 +66,8 @@ public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext
             IReadOnlyList<string> emails, phones;
             try { emails = ClientNotificationRules.ParseEmails(s.ExtraEmails); } catch (FormatException ex) { throw new ValidationException("extraEmails", ex.Message); }
             try { phones = ClientNotificationRules.ParsePhones(s.ExtraPhones); } catch (FormatException ex) { throw new ValidationException("extraPhones", ex.Message); }
+            // los teléfonos extra se guardan con su prefijo internacional (E.164, «+17875550100»): el de la compañía si no traen otro
+            phones = phones.Select(p => PhoneRules.ToE164Text(p, defaultCc)).Distinct().ToList();
             cleaned.Add((kind, s, emails.Count == 0 ? null : string.Join(", ", emails), phones.Count == 0 ? null : string.Join(", ", phones)));
         }
         var tenantId = T.RequireTenantId();

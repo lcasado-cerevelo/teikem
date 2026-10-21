@@ -16,7 +16,7 @@ Fecha: 2026-10-20. Pedido de Luis: donde diga orden en la parte de transporte (t
 
 ## Lo que NO se cambió (decisiones para Luis)
 1. **Estatus** (Sometida, Recogida, Asignada, Entregada, Devuelta…): son etiquetas del catálogo, concuerdan con «orden» (femenino). Con «envío» deberían ser Sometido, Recogido, Asignado, Entregado, Devuelto. Es un cambio de datos (`StatusCode`) que se haría en `logistica-db-update.sql`.
-2. **Permisos** (`PermissionCatalog`: «Ver órdenes», «Crear órdenes»…), **indicadores, gráficos y reportes sembrados** (`SystemAnalyticsSeeder`: «Órdenes en curso»…), **documento legal** y **resúmenes del Pulso diario** (`KpiSnapshots`): son datos sembrados en la base (se buscan por nombre); cambiarlos pide una sección del SQL de actualización.
+2. **Permisos** (`PermissionCatalog`: «Ver órdenes», «Crear envíos»…), **indicadores, gráficos y reportes sembrados** (`SystemAnalyticsSeeder`: «Envíos en curso»…), **documento legal** y **resúmenes del Pulso diario** (`KpiSnapshots`): son datos sembrados en la base (se buscan por nombre); cambiarlos pide una sección del SQL de actualización.
 3. **Órdenes de compra, de venta, de trabajo y de recibo** no cambian (a propósito).
 4. **Prosa del manual**: los textos exactos se actualizaron, pero hay párrafos del manual que siguen diciendo «orden».
 5. **Código y rutas técnicas** (`orders`, `orderNumber`, `/api/v1/orders`, `$.orders[*]`) no cambian.

@@ -18,7 +18,7 @@ using TripOrder = Teikem.Domain.Trips.TripOrder;
 namespace Teikem.Tests;
 
 /// <summary>
-/// Lote 5 / P7: el contenido de sistema del lote (vista 'Rutas', indicadores 'Órdenes sin chofer asignado', 'Órdenes en
+/// Lote 5 / P7: el contenido de sistema del lote (vista 'Rutas', indicadores 'Envíos sin chofer asignado', 'Órdenes en
 /// excepción' y 'Rutas sobre el máximo de paradas', gráfico 'Rutas por estatus') solo usa campos que existen en
 /// TripDataSource o en TransportOrderDataSource. El seeder no valida campos al sembrar: un nombre mal escrito dejaría un
 /// indicador en cero sin error, por eso se corre el seeder real sobre InMemory y se revisa cada campo que referencia
@@ -245,8 +245,8 @@ public class AnalyticsSeedFieldsTests
     {
         var (_, reports, indicators, charts) = await SeedAsync();
         Assert.Contains("Rutas", reports);
-        Assert.Contains(("Órdenes sin chofer asignado", EntityTypes.TransportOrder), indicators);
-        Assert.Contains(("Órdenes en excepción", EntityTypes.TransportOrder), indicators);
+        Assert.Contains(("Envíos sin chofer asignado", EntityTypes.TransportOrder), indicators);
+        Assert.Contains(("Envíos en excepción", EntityTypes.TransportOrder), indicators);
         Assert.Contains(("Rutas sobre el máximo de paradas", EntityTypes.Trip), indicators);
         Assert.Contains(("Rutas por estatus", EntityTypes.Trip), charts);
     }
@@ -313,8 +313,8 @@ public class AnalyticsSeedFieldsTests
     [Fact]
     public async Task Order_data_source_resolves_current_trip_assigned_driver_and_exception_by_value()
     {
-        // Definición V5 del indicador 'Órdenes sin chofer asignado': sin ruta vigente con chofer y sin DriverTrip activo.
-        // 'Órdenes en excepción' = ON_HOLD, PARTIAL o FAILED.
+        // Definición V5 del indicador 'Envíos sin chofer asignado': sin ruta vigente con chofer y sin DriverTrip activo.
+        // 'Envíos en excepción' = ON_HOLD, PARTIAL o FAILED.
         var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
         using var db = InMemoryDb(tenant);
         db.StatusCodes.AddRange(

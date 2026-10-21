@@ -210,7 +210,7 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         await Report(EntityTypes.Client, "Clientes", "Directorio de clientes con estatus y modelo de facturación vigente", "Client directory with status and current billing model",
             new[] { "Code", "Name", "Status", "BillingSummary", "CreditLimit", "IsActive" }, null, null, "[{\"field\":\"Name\",\"dir\":\"asc\"}]");
         // Lote 3 — Órdenes de transporte (los nombres de campo son los de TransportOrderDataSource; no cambiarlos sin cambiar ambos)
-        await Report(EntityTypes.TransportOrder, "Órdenes", "Órdenes de transporte con empaque, consignatario, estatus y COD", "Transport orders with pack batch, consignee, status and COD",
+        await Report(EntityTypes.TransportOrder, "Envíos", "Envíos de transporte con empaque, consignatario, estatus y COD", "Transport shipments with pack batch, consignee, status and COD",
             new[] { "PackBatchNumber", "OrderNumber", "ClientInvoiceNumber", "ClientName", "ConsigneeName", "Status", "TotalPieces", "CodAmount", "CreatedAtUtc" }, null, null, "[{\"field\":\"CreatedAtUtc\",\"dir\":\"desc\"}]");
         // Lote 4 — Flota (los nombres de campo son los de VehicleDataSource y FleetDocumentDataSource; no cambiarlos sin cambiar ambos)
         await Report(EntityTypes.Vehicle, "Vehículos", "Flota con tipo, propiedad, combustible, odómetro y estatus", "Fleet with type, ownership, fuel, odometer and status",
@@ -292,9 +292,9 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
             "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"StatusCode\",\"op\":\"eq\",\"value\":\"ACTIVE\"}]}", null, true, 60);
         // Lote 3 — Órdenes de transporte (estado actual: rango ALL, porque la fuente TRANSPORT_ORDER tiene DateField y con
         // rango null el motor aplicaría LAST7 por defecto). 'COD por cobrar' es de Contabilidad (L155/L159: el ciclo COD vive ahí).
-        Indicator("Órdenes en curso", "Órdenes activas confirmadas y aún no entregadas", "Active orders confirmed and not yet delivered", EntityTypes.TransportOrder, null, count,
+        Indicator("Envíos en curso", "Envíos activos confirmados y aún no entregados", "Active shipments confirmed and not yet delivered", EntityTypes.TransportOrder, null, count,
             "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"StatusCode\",\"op\":\"in\",\"value\":[\"SUBMITTED\",\"PICKUP\",\"UNASSIGNED\",\"ASSIGNED\",\"IN_TRANSIT\",\"FAILED\"]}]}", all, true, 70);
-        Indicator("COD por cobrar", "Suma del COD pendiente de cobro de las órdenes activas no canceladas", "Sum of pending COD of active, non-cancelled orders", EntityTypes.TransportOrder, "CodAmount", sum,
+        Indicator("COD por cobrar", "Suma del COD pendiente de cobro de los envíos activos no cancelados", "Sum of pending COD of active, non-cancelled shipments", EntityTypes.TransportOrder, "CodAmount", sum,
             CodPendingFilter, all, true, 71, isMoney: true, module: acct);
         // Lote 4 — Flota. FLEET_DOCUMENT es un estado actual sin DateField (sin rango); WORK_ORDER tiene DateField, así que
         // su estado actual va con rango ALL (con null el motor aplicaría LAST7).
@@ -303,14 +303,14 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         Indicator("Órdenes de trabajo abiertas", "Órdenes de trabajo de mantenimiento abiertas o en proceso", "Maintenance work orders open or in progress",
             EntityTypes.WorkOrder, null, count, OpenWorkOrdersFilter, all, true, 81, module: ops);
         // Lote 5 — Despacho (estado actual: rango ALL; los campos son los de TransportOrderDataSource y TripDataSource).
-        Indicator("Órdenes sin chofer asignado", "Órdenes activas pendientes de despacho sin ruta con chofer ni entrega especial asignada", "Active orders pending dispatch without a driver",
+        Indicator("Envíos sin chofer asignado", "Envíos activos pendientes de despacho sin ruta con chofer ni entrega especial asignada", "Active shipments pending dispatch without a driver",
             EntityTypes.TransportOrder, null, count, OrdersWithoutDriverFilter, all, true, 72, module: ops);
-        Indicator("Órdenes en excepción", "Órdenes activas en espera, entrega parcial o fallida", "Active orders on hold, partial or failed",
+        Indicator("Envíos en excepción", "Envíos activos en espera, entrega parcial o fallida", "Active shipments on hold, partial or failed",
             EntityTypes.TransportOrder, null, count, OrdersInExceptionFilter, all, true, 73, module: ops);
         // Lote 125 (P12) — SLA de las órdenes (nivel de servicio del contrato; reloj desde que se recoge hasta que se entrega)
-        Indicator("Órdenes con SLA en riesgo", "Órdenes abiertas a punto de pasar el SLA de su contrato o que ya lo pasaron", "Open orders about to miss their contract SLA or already past it",
+        Indicator("Envíos con SLA en riesgo", "Envíos abiertos a punto de pasar el SLA de su contrato o que ya lo pasaron", "Open shipments about to miss their contract SLA or already past it",
             EntityTypes.TransportOrder, null, count, OrdersSlaRiskFilter, all, true, 74, module: ops);
-        Indicator("Entregas dentro del SLA", "Porcentaje de las órdenes entregadas en los últimos 30 días (con SLA) que se entregaron dentro del plazo de su contrato", "Share of orders delivered in the last 30 days (with an SLA) delivered within their contract deadline",
+        Indicator("Entregas dentro del SLA", "Porcentaje de los envíos entregados en los últimos 30 días (con SLA) que se entregaron dentro del plazo de su contrato", "Share of shipments delivered in the last 30 days (with an SLA) delivered within their contract deadline",
             EntityTypes.TransportOrder, "SlaMetPct", avg, OrdersSlaDeliveredFilter, last30, false, 75, module: ops);
         Indicator("Rutas sobre el máximo de paradas", "Rutas abiertas o en curso con más paradas que el máximo del chofer", "Open or running trips over the driver's stop limit",
             EntityTypes.Trip, null, count, TripsOverStopLimitFilter, all, true, 82, module: ops);
@@ -382,7 +382,7 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
 
         // Corrección idempotente de tenants ya sembrados con la versión anterior (rango null / COD en Operación).
         var orderIndicators = await db.IndicatorDefinitions
-            .Where(i => i.TenantId == tenantId && i.IsSystem && (i.Name == "Órdenes en curso" || i.Name == "COD por cobrar"))
+            .Where(i => i.TenantId == tenantId && i.IsSystem && (i.Name == "Envíos en curso" || i.Name == "COD por cobrar"))
             .ToListAsync(ct);
         foreach (var ind in orderIndicators)
         {
@@ -469,8 +469,8 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         // Lote 2 — Clientes y contratos
         Chart("Contratos por estatus", "Distribución de contratos por estatus", "Contracts by status", EntityTypes.Contract, "Status", donut, null, all, false, 60);
         // Lote 3 — Órdenes de transporte
-        Chart("Órdenes por estatus", "Distribución de las órdenes de los últimos 30 días por estatus", "Orders of the last 30 days by status", EntityTypes.TransportOrder, "Status", donut, null, last30, true, 70);
-        Chart("Órdenes por estado del SLA", "Órdenes de los últimos 30 días con SLA, por estado (a tiempo, en riesgo, vencida, cumplida, fuera de SLA)", "Orders of the last 30 days with an SLA, by state (on track, at risk, past due, met, missed)",
+        Chart("Envíos por estatus", "Distribución de los envíos de los últimos 30 días por estatus", "Shipments of the last 30 days by status", EntityTypes.TransportOrder, "Status", donut, null, last30, true, 70);
+        Chart("Envíos por estado del SLA", "Envíos de los últimos 30 días con SLA, por estado (a tiempo, en riesgo, vencido, cumplido, fuera de SLA)", "Shipments of the last 30 days with an SLA, by state (on track, at risk, past due, met, missed)",
             EntityTypes.TransportOrder, "SlaState", donut, OrdersWithSlaFilter, last30, false, 71);
         // Lote 5 — Rutas (por fecha de la ruta, PlanDate)
         Chart("Rutas por estatus", "Distribución de las rutas de los últimos 7 días por estatus", "Trips of the last 7 days by status", EntityTypes.Trip, "Status", donut, null, last7, true, 80);

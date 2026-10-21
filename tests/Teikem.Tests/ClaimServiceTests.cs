@@ -10,7 +10,7 @@ using Xunit;
 namespace Teikem.Tests;
 
 /// <summary>
-/// Lote 111 — faltantes y reclamaciones: Por verificar → Perdido → Reclamada → Resuelta, la reclamación REC-##### (orden, piezas, descripción, valor), lo que pasa cuando una pieza aparece (se quita de su reclamación; si esta se queda sin piezas se da de baja;
+/// Lote 111 — faltantes y reclamaciones: Por verificar → Perdido → Reclamada → Resuelta, la reclamación RCL-##### (orden, piezas, descripción, valor), lo que pasa cuando una pieza aparece (se quita de su reclamación; si esta se queda sin piezas se da de baja;
 /// de una reclamación cerrada no se acepta) y las validaciones.
 /// </summary>
 public class ClaimServiceTests
@@ -109,8 +109,8 @@ public class ClaimServiceTests
 
         var claim = await Svc(f).CreateAsync(new ClaimCreateRequest(o.PublicId, null, 250.50m, "  Llamar al cliente  "), default);
 
-        Assert.StartsWith("REC-", claim.Number);
-        Assert.Matches("^REC-[0-9]{5}$", claim.Number);
+        Assert.StartsWith("RCL-", claim.Number);
+        Assert.Matches("^RCL-[0-9]{5}$", claim.Number);
         Assert.Equal((ClaimStatuses.Claimed, 250.50m, "Llamar al cliente"), (claim.Status, claim.DeclaredValue, claim.Notes));
         Assert.Equal(new[] { "CLAIMED", "CLAIMED" }, claim.Pieces.Select(p => p.Status).ToArray());
         Assert.All(claim.Pieces, p => Assert.Equal(claim.Number, p.ClaimNumber));
@@ -340,7 +340,7 @@ public class ClaimServiceTests
     [Fact]
     public void The_claim_number_is_the_id_with_zeros_and_the_resolutions_normalize()
     {
-        Assert.Equal("REC-00012", ClaimRules.NumberOf(12));
+        Assert.Equal("RCL-00012", ClaimRules.NumberOf(12));
         Assert.Equal("PAID", ClaimResolutions.Normalize(" paid "));
         Assert.Null(ClaimResolutions.Normalize("otra"));
     }

@@ -159,7 +159,7 @@
     "proof": {
       "title": "Comprobante de entrega",
       "recipient": "Recibió",
-      "at": "Entregada",
+      "at": "Entregado",
       "byStaff": "La entrega la registró el personal de la compañía; el consignatario no firmó.",
       "signedByRecipient": "Firmada por quien recibió.",
       "map": "Ver en el mapa"

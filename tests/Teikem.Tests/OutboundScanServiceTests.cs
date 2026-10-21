@@ -37,7 +37,7 @@ public class OutboundScanServiceTests
         Assert.Equal("found", r.Voice);
         Assert.Equal(OrderReadService.MatchedByPackBatch, r.MatchedBy);
         Assert.Equal(first.PublicId, r.TripPublicId);
-        Assert.Equal("Asignada a la ruta 2026-0001.", r.Message);
+        Assert.Equal("Asignado a la ruta 2026-0001.", r.Message);
         Assert.Equal("Z1", r.ZoneCode);
         var link = await f.Db.TripOrders.AsNoTracking().SingleAsync(t => t.TransportOrderId == order.Id && t.IsCurrent);
         Assert.Equal(first.TripId, link.TripId);
@@ -184,7 +184,7 @@ public class OutboundScanServiceTests
         var ne = await ScanAsync(f, draft.PackBatchNumber);
         Assert.Equal("NOT_ELIGIBLE", ne.Outcome);
         Assert.Equal("notfound", ne.Voice);
-        Assert.Equal("El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.", ne.Message);
+        Assert.Equal("El envío está en «Sometido»; márquelo como recogido antes de asignarlo a una ruta.", ne.Message);
 
         var empty = await Assert.ThrowsAsync<ValidationException>(() => ScanAsync(f, "  "));
         Assert.Equal("Escanee o escriba un código.", empty.Message);

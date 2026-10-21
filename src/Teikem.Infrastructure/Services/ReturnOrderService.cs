@@ -23,13 +23,13 @@ public sealed class ReturnOrderService(TeikemDbContext db, ITenantContext tenant
 {
     private readonly ITenantClock _clock = clock ?? TenantClock.Default;
 
-    public const string SubmittedMessage = "Un envío en «Sometida» no se devuelve: todavía no se recoge. Cancélelo.";
+    public const string SubmittedMessage = "Un envío en «Sometido» no se devuelve: todavía no se recoge. Cancélelo.";
     public const string FinalMessageFormat = "El envío {0} está en un estatus final ({1}): no se devuelve.";
     public const string NoPiecesMessage = "Indique al menos una pieza que se devuelve.";
     public const string PieceNotOfOrderMessage = "La pieza {0} no es de ese envío.";
     public const string PieceMissingMessage = "La pieza {0} figura como faltante: no se puede devolver.";
     public const string NoPickupMessage = "El cliente no tiene ninguna dirección registrada (de recogido, corporativa o de facturación) a la que regresar el envío: regístrela en su ficha.";
-    public const string CreatedMessageFormat = "El envío {0} quedó «Devuelta»: se creó el envío de vuelta {1} (conduce {2}) con {3} pieza(s).";
+    public const string CreatedMessageFormat = "El envío {0} quedó «Devuelto»: se creó el envío de vuelta {1} (conduce {2}) con {3} pieza(s).";
     public const string AddedMessageFormat = "La pieza {0} viaja en el envío de vuelta {1}.";
 
     private TenantContext Ctx => (TenantContext)tenant;
@@ -239,7 +239,7 @@ public sealed class ReturnOrderService(TeikemDbContext db, ITenantContext tenant
         if (!isReturned)
         {
             var to = await statuses.TransitionAsync(StatusDomains.OrderStatus, EntityTypes.TransportOrder, original.TransportOrderId, original.StatusCodeId, OrderStatuses.Returned,
-                $"Devuelta: envío de vuelta {target.OrderNumber}.", ct);
+                $"Devuelto: envío de vuelta {target.OrderNumber}.", ct);
             original.StatusCodeId = to.StatusCodeId;
             await db.SaveChangesAsync(ct);
         }

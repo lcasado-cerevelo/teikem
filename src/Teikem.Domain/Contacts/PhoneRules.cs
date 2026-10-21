@@ -94,6 +94,21 @@ public static class PhoneRules
         return "+" + cc + n;
     }
 
+    /// <summary>
+    /// Para guardar teléfonos en campos de texto sin columna de prefijo (teléfonos extra de aviso, destinatarios de reglas): E.164 («+17875550100»).
+    /// Con «+» se respeta el prefijo que trae; sin él, el de la compañía. Si no se puede separar, se devuelve igual que vino (recortado).
+    /// </summary>
+    public static string ToE164Text(string? raw, string defaultCountry)
+    {
+        var text = (raw ?? string.Empty).Trim();
+        try
+        {
+            var p = Parse(text, null, defaultCountry);
+            return "+" + p.CountryCallingCode + p.National;
+        }
+        catch (FormatException) { return text; }
+    }
+
     /// <summary>Prefijo al inicio de unos dígitos que empiezan con «+» (ITU: los prefijos no se contienen unos a otros): 1 dígito si es 1 o 7, 2 si está en la lista, si no 3.</summary>
     private static string? Detect(string digits)
     {

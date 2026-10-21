@@ -1,4 +1,4 @@
-// Datos de «Reclamaciones» (Lote 111, módulo LTL_GROUND): faltantes por verificar, piezas perdidas y reclamaciones REC-#####.
+// Datos de «Reclamaciones» (Lote 111, módulo LTL_GROUND): faltantes por verificar, piezas perdidas y reclamaciones RCL-#####.
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../../kernel/api/client'
 import type { components } from '../../kernel/api/schema'

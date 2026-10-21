@@ -380,7 +380,7 @@ Cómo se usa: `POST /api/v1/orders/{publicId}/reprice`.
 ### 3.5 Quién ve los precios (permiso `orders.view_price`, Lote 39)
 
 Qué hace: separa **ver órdenes** de **ver lo que cuestan**. Una persona puede trabajar con las órdenes (verlas, capturarlas,
-confirmarlas) sin ver ningún precio. Sin el permiso `orders.view_price` («Ver precios de las órdenes», categoría Órdenes), el
+confirmarlas) sin ver ningún precio. Sin el permiso `orders.view_price` («Ver precios de los envíos», categoría Órdenes), el
 sistema deja el precio en blanco (`null`) o sin cifras; nada se rompe y los campos siguen existiendo. El **monto COD**
 (`codAmount`, lo que se cobra al entregar) **no** es un precio y siempre se ve.
 
@@ -433,7 +433,7 @@ Dominio `OrderStatus` (flujo dictado por Luis, Lote 106, 2026-10-17; el del seed
 | Entregada | `DELIVERED` | terminal | Entregada. |
 | Intento fallido | `FAILED` | lateral | No se pudo entregar. Se documenta con un intento de entrega (`DeliveryAttempt`). En la barra de progreso de las apps se queda en el nivel de la última etapa normal (por ejemplo En tránsito), en color de alerta. Queda en el historial. |
 | Cancelada | `CANCELLED` | terminal | Cancelada, con razón obligatoria. |
-| En almacén | `IN_WAREHOUSE` | terminal | Para los tipos de servicio de **solo recogida**. El tipo de servicio «pick up» y su flujo Sometida → Recogida → En almacén **llegan en un lote posterior**; hoy ningún tipo de servicio lleva a este estatus. |
+| En almacén | `IN_WAREHOUSE` | terminal | Para los tipos de servicio de **solo recogida**. El tipo de servicio «pick up» y su flujo Sometido → Recogido → En almacén **llegan en un lote posterior**; hoy ningún tipo de servicio lleva a este estatus. |
 
 **Ya no existen** `DRAFT` (Borrador), `CONFIRMED` (Confirmada), `INBOUND`, `PLANNED`, `ARRIVED`, `ON_HOLD` ni `PARTIAL`.
 Al actualizar una base de desarrollo, lo que estaba en `DRAFT` pasó a `SUBMITTED`, `INBOUND` a `UNASSIGNED`, `PLANNED` a
@@ -446,7 +446,7 @@ solo se avanza a la siguiente); el escaneo por acción con saltos llega en un lo
 | De → a | Quién / cómo | Qué valida | Efectos |
 |---|---|---|---|
 | (nace) → Sometida | `orders.create`; automático al crear (`POST /orders`) | datos obligatorios, cliente ni suspendido ni dado de baja, crédito (sección 3.3) | Historial de nacimiento; cotiza si hay contrato y tarifa; mide el crédito (422 si se excede, salvo `overrideCredit`); paradas y COD nacen con su propio historial (ver nota) |
-| Sometida → Recogida | **Marcar como recogido**: `orders.edit` (o `orders.credit_override` cuando el crédito se excede), `POST /confirm` | tarifa vigente, servicio especial vigente, cliente no suspendido, crédito | Cotiza en modo estricto y congela `quotedAmount`/`quotedAtUtc`/contrato; la carga deja de poder editarse |
+| Sometido → Recogido | **Marcar como recogido**: `orders.edit` (o `orders.credit_override` cuando el crédito se excede), `POST /confirm` | tarifa vigente, servicio especial vigente, cliente no suspendido, crédito | Cotiza en modo estricto y congela `quotedAmount`/`quotedAtUtc`/contrato; la carga deja de poder editarse |
 | Recogida → Sin asignar | sin botón en el expediente | Desde `POST /status` responde 422 «avance reservado» (ver abajo) | Lo mueve el módulo que corresponda; no se agregó una acción nueva en este lote |
 | Recogida / Sin asignar → Asignada | **despachar la ruta** (`trips.dispatch`) | la orden debe ser elegible (capítulo 05, sección 3.1); una orden Sometida **no** es elegible | El despacho lleva la orden etapa por etapa hasta Asignada, un historial por paso con «Despachada en la ruta {código}» |
 | Asignada → En tránsito | **iniciar la ruta** (salida) | — | El historial dice «Salió en la ruta {código}» |
@@ -696,7 +696,7 @@ La fuente de datos `TRANSPORT_ORDER` ("Órdenes") queda disponible para vistas, 
 `Client` y `Consignee` (Location). El tenant nuevo (y el demo) recibe de fábrica: la vista **"Órdenes"** (columnas
 Empaque, número de envío, factura, cliente, consignatario, estatus, piezas, COD, fecha), el indicador **"Órdenes en
 curso"** (cuenta las activas en Sometida, Recogida, Sin asignar, Asignada, En tránsito o Intento fallido, sin contar las terminales), el indicador **"COD por cobrar"** (suma
-el COD `PENDING` de las órdenes activas, excluyendo las canceladas) y el gráfico **"Órdenes por estatus"** (dona, últimos
+el COD `PENDING` de las órdenes activas, excluyendo las canceladas) y el gráfico **"Envíos por estatus"** (dona, últimos
 30 días). Cada alta o cambio de una orden, sus paradas, líneas y referencias queda en `AuditLog` (`GET /api/v1/audit/changes?entityType=TRANSPORT_ORDER`);
 las acciones sobre plantillas y lotes de importación quedan bajo `IMPORT_TEMPLATE` e `IMPORT_BATCH`.
 
@@ -720,3 +720,5 @@ Cada orden de entrega tiene un **número de conduce** (`waybillNumber`, «Waybil
 - **Cómo se busca:** el buscador libre de Órdenes, el filtro `waybill` del API (`GET /api/v1/orders?waybill=`, parcial) y **buscar o escanear** (`GET /api/v1/orders/lookup?code=`, exacto): el conduce es la primera coincidencia (`matchedBy = WAYBILL`) y no es ambiguo.
 - **Órdenes que ya existían:** al actualizar la base (`update.sql` (af)) cada una recibió su conduce en orden de creación y el contador quedó en el siguiente número libre.
 - Las órdenes dadas de baja conservan su conduce y no se reutiliza.
+
+**Estatus en masculino (2026-10-20, Lote 165):** como la orden de transporte ahora se llama *envío*, sus estatus se escriben en masculino: Sometido, Recogido, Sin asignar, Asignado, En tránsito, Entregado, Intento fallido, Cancelado, En almacén y Devuelto. Los códigos (`SUBMITTED`, `PICKUP`, …) no cambian. Las etiquetas se actualizaron con un script idempotente de `Diseño/logistica-db-update.sql`; si una compañía personalizó la etiqueta de algún estatus, esa se conserva.

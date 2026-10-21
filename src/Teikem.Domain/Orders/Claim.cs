@@ -3,7 +3,7 @@ using Teikem.Domain.Common;
 namespace Teikem.Domain.Orders;
 
 /// <summary>
-/// Lote 111 — reclamación REC-#####: junta las piezas PERDIDAS de una orden (dictado por Luis, 2026-10-18). El camino de una pieza faltante: «Por verificar» (Lote 110) → «Perdido» → «Reclamada» (entra a una reclamación) → «Resuelta».
+/// Lote 111 — reclamación RCL-#####: junta las piezas PERDIDAS de una orden (dictado por Luis, 2026-10-18). El camino de una pieza faltante: «Por verificar» (Lote 110) → «Perdido» → «Reclamada» (entra a una reclamación) → «Resuelta».
 /// La reclamación lleva orden, línea(s), piezas, descripción, valor declarado y notas; se resuelve (pagada, rechazada o cerrada) y queda Resuelta. Una reclamación sin cerrar que pierde todas sus piezas (porque aparecieron) se da de baja.
 /// Una vez Resuelta, una pieza suya que se escanea responde «No».
 /// </summary>
@@ -13,7 +13,7 @@ public class Claim : ITenantScoped
     public int ClaimId { get; set; }
     [NotAudited] public Guid PublicId { get; set; }
     public int TenantId { get; set; }
-    /// <summary>REC-00001 (el id con ceros): único por compañía.</summary>
+    /// <summary>RCL-00001 (el id con ceros): único por compañía.</summary>
     public string Number { get; set; } = string.Empty;
     public int TransportOrderId { get; set; }
     public int ClientId { get; set; }
@@ -74,6 +74,6 @@ public static class ClaimRules
     public const string AlreadyResolvedMessage = "La reclamación ya está resuelta.";
     public const string ClosedClaimPieceMessage = "La pieza pertenece a una reclamación cerrada.";
 
-    /// <summary>REC-00012 a partir del id.</summary>
-    public static string NumberOf(int claimId) => "REC-" + claimId.ToString("00000", System.Globalization.CultureInfo.InvariantCulture);
+    /// <summary>RCL-00012 a partir del id.</summary>
+    public static string NumberOf(int claimId) => "RCL-" + claimId.ToString("00000", System.Globalization.CultureInfo.InvariantCulture);
 }

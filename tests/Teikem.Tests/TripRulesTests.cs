@@ -61,7 +61,7 @@ public class TripRulesTests
     [Fact]
     public void Eligibility_messages_are_exact()
     {
-        Assert.Equal("El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.",
+        Assert.Equal("El envío está en «Sometido»; márquelo como recogido antes de asignarlo a una ruta.",
             TripRules.CheckEligibility(Order("DRAFT", "Entrada", initial: true, sort: 1, allowed: false)));
         Assert.Equal("Las entregas especiales se asignan al chofer desde el envío; no pasan por Sala de despacho.",
             TripRules.CheckEligibility(Order(special: true)));

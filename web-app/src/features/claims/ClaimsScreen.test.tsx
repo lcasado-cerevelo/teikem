@@ -62,12 +62,12 @@ const ORDER = () => ({
   pieces: [{ ...PIECE, status: mock.pieceStatus, statusLabel: mock.pieceStatus === 'LOST' ? 'Perdido' : 'Por verificar', missingAtUtc: '2026-10-18T10:00:00Z', claimNumber: null }],
 })
 const LIST_ITEM = () => ({
-  publicId: CLAIM_ID, number: 'REC-00001', status: mock.claimStatus, statusLabel: mock.claimStatus === 'RESOLVED' ? 'Resuelta' : 'Reclamada', orderPublicId: ORD, orderNumber: 'ORD-00001',
+  publicId: CLAIM_ID, number: 'RCL-00001', status: mock.claimStatus, statusLabel: mock.claimStatus === 'RESOLVED' ? 'Resuelta' : 'Reclamada', orderPublicId: ORD, orderNumber: 'ORD-00001',
   waybillNumber: 'ACME001251018001', clientName: 'Farmacia Central', description: '1 × Cajas', pieces: 1, declaredValue: 250, createdAtUtc: '2026-10-18T11:00:00Z',
 })
 const CLAIM = () => ({
   ...LIST_ITEM(), notes: 'Llamar al cliente', resolution: mock.claimStatus === 'RESOLVED' ? 'PAID' : null, amountPaid: mock.claimStatus === 'RESOLVED' ? 80 : null, rowVersion: 'AAAA',
-  pieces: [{ ...PIECE, status: 'CLAIMED', statusLabel: 'Reclamada', missingAtUtc: '2026-10-18T10:00:00Z', claimNumber: 'REC-00001' }],
+  pieces: [{ ...PIECE, status: 'CLAIMED', statusLabel: 'Reclamada', missingAtUtc: '2026-10-18T10:00:00Z', claimNumber: 'RCL-00001' }],
 })
 
 const ALL = ['claims.view', 'claims.manage']
@@ -127,7 +127,7 @@ describe('Reclamaciones', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Crear reclamación (1)' }))
     await waitFor(() => expect(sent('POST', '/api/v1/claims')).toHaveLength(1))
     expect(sent('POST', '/api/v1/claims')[0].body).toEqual({ orderPublicId: ORD, declaredValue: 250, notes: 'Llamar al cliente' })
-    expect(await screen.findByRole('dialog', { name: /Reclamación REC-00001/ })).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: /Reclamación RCL-00001/ })).toBeInTheDocument()
   })
 
   it('un valor declarado negativo se rechaza en la pantalla sin llamar al API', async () => {
@@ -146,8 +146,8 @@ describe('Reclamaciones', () => {
     const user = userEvent.setup()
     wrap()
     await user.click(await screen.findByRole('tab', { name: 'Reclamaciones' }))
-    await user.click(await screen.findByText('REC-00001'))
-    const dialog = await screen.findByRole('dialog', { name: /Reclamación REC-00001/ })
+    await user.click(await screen.findByText('RCL-00001'))
+    const dialog = await screen.findByRole('dialog', { name: /Reclamación RCL-00001/ })
     await user.click(await within(dialog).findByRole('button', { name: 'Resolver' }))
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('Indique la resolución: pagada, rechazada o cerrada.')
     await user.selectOptions(within(dialog).getByLabelText('Resolución'), 'PAID')

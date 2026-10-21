@@ -76,7 +76,7 @@ Si alguna orden no se puede asignar, no se añade ninguna y verá cada número c
 
 | Mensaje | Qué significa y qué hacer |
 |---|---|
-| `Hay envíos que no se pueden asignar a la ruta.` y, debajo, `{orden}: {motivo}` | Una o más órdenes no son elegibles. El motivo dice por qué (por ejemplo `El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.` o `El estatus actual no permite la acción 'ASSIGN_TRIP'.`). Corrija la orden o quítela de la selección. |
+| `Hay envíos que no se pueden asignar a la ruta.` y, debajo, `{orden}: {motivo}` | Una o más órdenes no son elegibles. El motivo dice por qué (por ejemplo `El envío está en «Sometido»; márquelo como recogido antes de asignarlo a una ruta.` o `El estatus actual no permite la acción 'ASSIGN_TRIP'.`). Corrija la orden o quítela de la selección. |
 | `El envío ya está en esta ruta.` | Esa orden ya estaba en la ruta. |
 | `La orden ya está asignada a la ruta {código}.` | Otra persona la asignó antes que usted. Se actualiza la lista. |
 | `Una ruta admite como máximo 300 paradas.` | La ruta está llena. Use otra ruta. |

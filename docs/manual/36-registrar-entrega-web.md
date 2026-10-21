@@ -69,7 +69,7 @@ El comprobante trae: `recipientName`, `notes`, `deliveredAtUtc`, `source` (`STAF
 | La orden {n} ya tiene registrada su entrega. | 409 | Ya hay un comprobante vigente. |
 | La orden {n} está en un estatus final ({estatus}): no se registra su entrega. | 422 | Entregada, Devuelta, En almacén o Cancelada. |
 | La orden {n} es Pick up: termina «En almacén» y no se entrega. | 422 | Tipo de servicio Pick up. |
-| El estatus «Entregada» no está habilitado para esta compañía. | 422 | La compañía lo desactivó en su modelo de estatus. |
+| El estatus «Entregado» no está habilitado para esta compañía. | 422 | La compañía lo desactivó en su modelo de estatus. |
 | (sin permiso) | 403 | Falta `orders.deliver`. |
 
 ## Casos frecuentes

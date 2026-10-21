@@ -41,7 +41,7 @@ Cada compañía define con cuántos **intentos fallidos** se **sugiere** devolve
 ## 6. Mensajes de error
 | Mensaje | HTTP | Cuándo |
 |---|---|---|
-| Un envío en «Sometida» no se devuelve: todavía no se recoge. Cancélelo. | 422 | Devolver una orden en Sometida. |
+| Un envío en «Sometido» no se devuelve: todavía no se recoge. Cancélelo. | 422 | Devolver una orden en Sometida. |
 | La orden {n} está en un estatus final ({estatus}): no se devuelve. | 422 | Devolver una orden Entregada, Cancelada, En almacén… (por escaneo el resultado es «final»). |
 | Indique al menos una pieza que se devuelve. | 400 | No quedó ninguna pieza que devolver. |
 | La pieza {n} no es de esa orden. | 400 | Un número de pieza ajeno a la orden. |

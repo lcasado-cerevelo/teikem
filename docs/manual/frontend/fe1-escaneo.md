@@ -48,7 +48,7 @@ Motivos de **No elegible** (mensaje exacto del servidor):
 
 - `El envío ya salió a ruta o terminó; no se puede asignar a otra ruta.` — la orden ya va en camino, terminó o está inactiva.
 - `Las entregas especiales se asignan al chofer desde el envío; no pasan por Sala de despacho.` — asígnele el chofer desde la orden.
-- `El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.` — márquela como recogida desde el expediente de la orden.
+- `El envío está en «Sometido»; márquelo como recogido antes de asignarlo a una ruta.` — márquela como recogida desde el expediente de la orden.
 - `La orden está en '{estatus}'; regrésela al pipeline antes de asignarla a una ruta.` — la orden está en un estatus lateral (hoy, Intento fallido); devuélvala a su flujo normal.
 - `El estatus actual no permite la acción 'ASSIGN_TRIP'.` — el estatus de la orden no admite asignarla a una ruta.
 - `El envío no tiene una parada de entrega pendiente.` — la orden no tiene entrega por hacer.

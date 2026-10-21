@@ -189,9 +189,9 @@ public class PulseLayoutTests
     public async Task Case2_indicator_over_transport_orders_is_not_shown_without_orders_view_even_in_the_company_pulse()
     {
         await using var x = await Fx.CreateAsync();
-        var orders = await x.IndicatorAsync("Órdenes en curso", EntityTypes.TransportOrder, BusinessModules.Operations, showInPulse: true, sort: 10);
+        var orders = await x.IndicatorAsync("Envíos en curso", EntityTypes.TransportOrder, BusinessModules.Operations, showInPulse: true, sort: 10);
         var stock = await x.IndicatorAsync("Inventario disponible", EntityTypes.StockBalance, BusinessModules.Warehouse, showInPulse: true, sort: 20);
-        var ordersChart = await x.ChartAsync("Órdenes por estatus", EntityTypes.TransportOrder, BusinessModules.Operations);
+        var ordersChart = await x.ChartAsync("Envíos por estatus", EntityTypes.TransportOrder, BusinessModules.Operations);
 
         x.As(Me, PermissionCatalog.PulseIndicators, PermissionCatalog.PulseCharts, PermissionCatalog.InventoryView);
         var pulse = await x.PulseAsync();
@@ -349,7 +349,7 @@ public class PulseLayoutTests
     public async Task Case6_unknown_key_is_400_with_the_exact_message()
     {
         await using var x = await Fx.CreateAsync();
-        var ind = await x.IndicatorAsync("Órdenes en curso", EntityTypes.TransportOrder, BusinessModules.Operations);
+        var ind = await x.IndicatorAsync("Envíos en curso", EntityTypes.TransportOrder, BusinessModules.Operations);
         x.As(Me, PermissionCatalog.PulseIndicators, PermissionCatalog.InventoryView);
 
         var v = await Assert.ThrowsAsync<ValidationException>(() => x.SaveAsync(AnalyticsService.ScopeMine,

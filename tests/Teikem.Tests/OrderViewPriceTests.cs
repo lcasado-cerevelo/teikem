@@ -37,7 +37,7 @@ public sealed class OrderViewPriceTests
     {
         Assert.Equal("orders.view_price", ViewPrice);
         var p = Assert.Single(PermissionCatalog.All, x => x.Code == ViewPrice);
-        Assert.Equal(("ORDERS", "Ver precios de las órdenes", "View order prices"), (p.Category, p.LabelEs, p.LabelEn));
+        Assert.Equal(("ORDERS", "Ver precios de los envíos", "View shipment prices"), (p.Category, p.LabelEs, p.LabelEn));
     }
 
     [Fact]

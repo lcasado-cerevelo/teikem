@@ -210,7 +210,7 @@ public sealed class OrderSubmissionLifecycleTests
         Assert.Equal("orders.reopen", PermissionCatalog.OrdersReopen);
         Assert.Equal(PermissionCatalog.OrdersReopen, OrderStatusService.ReopenPermission);
         var p = Assert.Single(PermissionCatalog.All, x => x.Code == PermissionCatalog.OrdersReopen);
-        Assert.Equal(("ORDERS", "Reabrir órdenes en estatus final", "Reopen orders in a final status"), (p.Category, p.LabelEs, p.LabelEn));
+        Assert.Equal(("ORDERS", "Reabrir envíos en estatus final", "Reopen shipments in a final status"), (p.Category, p.LabelEs, p.LabelEn));
         Assert.Equal(new[] { "TenantAdmin" }, PermissionCatalog.RoleTemplates.Where(t => t.Value.Contains(PermissionCatalog.OrdersReopen)).Select(t => t.Key).ToArray());
     }
 

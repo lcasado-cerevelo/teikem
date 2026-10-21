@@ -39,12 +39,12 @@ public static class KpiKeys
 
     public static readonly IReadOnlyList<KpiDefinition> All = new[]
     {
-        new KpiDefinition(OrdersCreated, KindCount, "Órdenes nuevas del día", "New orders of the day", ModuleOrders),
-        new KpiDefinition(OrdersInWarehouse, KindCount, "Órdenes en almacén", "Orders in warehouse", ModuleOrders),
-        new KpiDefinition(OrdersUnassigned, KindCount, "Órdenes sin chofer", "Orders without a driver", ModuleOrders),
-        new KpiDefinition(OrdersOnRoute, KindCount, "Órdenes en ruta", "Orders on route", ModuleOrders),
-        new KpiDefinition(OrdersDelivered, KindCount, "Órdenes entregadas del día", "Orders delivered in the day", ModuleOrders),
-        new KpiDefinition(OrdersOpen, KindCount, "Órdenes abiertas", "Open orders", ModuleOrders),
+        new KpiDefinition(OrdersCreated, KindCount, "Envíos nuevos del día", "New shipments of the day", ModuleOrders),
+        new KpiDefinition(OrdersInWarehouse, KindCount, "Envíos en almacén", "Shipments in warehouse", ModuleOrders),
+        new KpiDefinition(OrdersUnassigned, KindCount, "Envíos sin chofer", "Shipments without a driver", ModuleOrders),
+        new KpiDefinition(OrdersOnRoute, KindCount, "Envíos en ruta", "Shipments on route", ModuleOrders),
+        new KpiDefinition(OrdersDelivered, KindCount, "Envíos entregados del día", "Shipments delivered in the day", ModuleOrders),
+        new KpiDefinition(OrdersOpen, KindCount, "Envíos abiertos", "Open shipments", ModuleOrders),
         new KpiDefinition(CodToCollect, KindMoney, "COD por cobrar", "COD to collect", ModuleCod),
         new KpiDefinition(CodCollected, KindMoney, "COD cobrado sin cuadrar", "COD collected, not reconciled", ModuleCod),
         new KpiDefinition(CodReconciled, KindMoney, "COD cuadrado sin remesa", "COD reconciled, no remittance", ModuleCod),

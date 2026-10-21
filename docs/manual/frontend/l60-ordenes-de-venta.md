@@ -29,7 +29,7 @@ Lista paginada (la más reciente primero) con **número**, **cliente**, **estatu
 
 - **Alcanza todo**: dice que hay inventario para todo y el crédito del cliente alcanza; **Solicitar y reservar** reserva en el acto (el inventario queda para esa orden y el almacén la ve).
 - **Falta inventario**: la tabla muestra por producto **Pedido / Disponible / Faltante** («disponible» es lo vendible: sin cuarentena, cruce de muelle ni renta, ni lo ya reservado). **Nada se ha reservado todavía.** Puede **Reservar lo disponible y dejar el resto en backorder**, o **Volver a editar** la orden para pedir solo lo disponible o quitar la línea.
-- **Crédito excedido**: el diálogo avisa con las cifras (límite, en curso, esta orden). Quien tiene el permiso **Autorizar órdenes sobre el límite de crédito** puede activar **Autorizar el crédito excedido** y solicitarla; queda anotado quién lo autorizó. Sin ese permiso no se puede solicitar.
+- **Crédito excedido**: el diálogo avisa con las cifras (límite, en curso, esta orden). Quien tiene el permiso **Autorizar envíos sobre el límite de crédito** puede activar **Autorizar el crédito excedido** y solicitarla; queda anotado quién lo autorizó. Sin ese permiso no se puede solicitar.
 
 ![Diálogo de faltante](img/l60-faltante.png)
 

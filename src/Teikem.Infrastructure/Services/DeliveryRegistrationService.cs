@@ -56,7 +56,7 @@ public sealed class DeliveryRegistrationService(TeikemDbContext db, ITenantConte
             var stages = pipeline.Select(s => new PipelineStage(s.Code, s.SortOrder, s.StageKind, s.IsInitial, s.IsEnabled)).ToList();
             var fromCode = string.Equals(current.StageKind, StageKinds.Lateral, StringComparison.OrdinalIgnoreCase) ? OrderStatuses.Pickup : current.Code;
             var steps = PipelinePath.StepsTo(stages, fromCode, OrderStatuses.Delivered);
-            if (steps.Count == 0 || steps[^1] != OrderStatuses.Delivered) throw new StatusRuleException("El estatus «Entregada» no está habilitado para esta compañía.");
+            if (steps.Count == 0 || steps[^1] != OrderStatuses.Delivered) throw new StatusRuleException("El estatus «Entregado» no está habilitado para esta compañía.");
 
             var to = await statuses.AdvanceSkippingAsync(StatusDomains.OrderStatus, EntityTypes.TransportOrder, orderId, order.StatusCodeId, steps, string.Format(DeliveryProofRules.CommentFormat, userName), ct2);
             order.StatusCodeId = to.StatusCodeId;

@@ -39,8 +39,8 @@ public class OrderCatalogTests
         Assert.Equal(138, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
         var credit = Assert.Single(PermissionCatalog.All, p => p.Code == "orders.credit_override");
         Assert.Equal("ORDERS", credit.Category);
-        Assert.Equal("Autorizar órdenes sobre el límite de crédito", credit.LabelEs);
-        Assert.Equal("Authorize orders over credit limit", credit.LabelEn);
+        Assert.Equal("Autorizar envíos sobre el límite de crédito", credit.LabelEs);
+        Assert.Equal("Authorize shipments over credit limit", credit.LabelEn);
     }
 
     [Fact]

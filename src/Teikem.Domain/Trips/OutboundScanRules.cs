@@ -124,7 +124,7 @@ public static class OutboundScanRules
 
     /// <summary>'Asignada a la ruta {código}.'</summary>
     public static string AssignedMessage(string tripCode)
-        => string.Format(CultureInfo.InvariantCulture, "Asignada a la ruta {0}.", tripCode);
+        => string.Format(CultureInfo.InvariantCulture, "Asignado a la ruta {0}.", tripCode);
 
     /// <summary>Recorta espacios y valida el código escaneado. Devuelve el código normalizado o el mensaje de error (400).</summary>
     public static (string? Code, string? Error) NormalizeCode(string? raw)

@@ -67,7 +67,7 @@ public sealed class ClaimService(TeikemDbContext db, ITenantContext tenant, Stat
 
     // ================================================================ reclamar
 
-    /// <summary>«Perdido» → «Reclamada»: crea la reclamación REC-##### con las piezas perdidas de la orden. Sin números usa todas las «Perdido» de la orden.</summary>
+    /// <summary>«Perdido» → «Reclamada»: crea la reclamación RCL-##### con las piezas perdidas de la orden. Sin números usa todas las «Perdido» de la orden.</summary>
     public async Task<ClaimDto> CreateAsync(ClaimCreateRequest? req, CancellationToken ct)
     {
         var orderId = await OrderIdAsync(req?.OrderPublicId, ct);
@@ -88,7 +88,7 @@ public sealed class ClaimService(TeikemDbContext db, ITenantContext tenant, Stat
             var initial = await statuses.GetInitialAsync(ClaimStatuses.Domain, ct2);
             var claim = new Claim
             {
-                PublicId = Guid.NewGuid(), TenantId = tenantId, Number = "REC-" + Guid.NewGuid().ToString("N")[..20], TransportOrderId = orderId, ClientId = order.ClientId, StatusCodeId = initial.StatusCodeId,
+                PublicId = Guid.NewGuid(), TenantId = tenantId, Number = "RCL-" + Guid.NewGuid().ToString("N")[..20], TransportOrderId = orderId, ClientId = order.ClientId, StatusCodeId = initial.StatusCodeId,
                 Description = description, DeclaredValue = req?.DeclaredValue, Notes = notes, IsActive = true, CreatedBy = tenant.UserId,
             };
             db.Claims.Add(claim);

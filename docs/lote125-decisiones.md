@@ -2,7 +2,7 @@
 
 ## Qué se construyó
 - **Cuatro avisos** de «Necesita tu atención» (`OperationalAlertProviders.cs`), todos filas agregadas y con su permiso/módulo: `ORDERS_FAILED` (intento fallido; fecha desde el último paso a ese estatus; rojo > 2 días), `CLAIMS_OPEN` (sin resolver; cuenta, la más antigua y valor declarado; rojo > 7 días), `FLEET_DOCS_DUE` (los mismos documentos del panel «Documentos por vencer», 30 días; rojo si hay vencidos) e `INVOICES_OVERDUE` (estatus Vencida; rojo). Texto es/en en la web.
-- **SLA como indicador:** campo nuevo `SlaMetPct` en la fuente de órdenes (100 cumplida, 0 fuera de SLA, vacío si no aplica), indicadores «Órdenes con SLA en riesgo» (en el Pulso) y «Entregas dentro del SLA» (promedio a 30 días), gráfico «Órdenes por estado del SLA». Se siembran con el contenido de fábrica (no requiere SQL).
+- **SLA como indicador:** campo nuevo `SlaMetPct` en la fuente de órdenes (100 cumplida, 0 fuera de SLA, vacío si no aplica), indicadores «Envíos con SLA en riesgo» (en el Pulso) y «Entregas dentro del SLA» (promedio a 30 días), gráfico «Envíos por estado del SLA». Se siembran con el contenido de fábrica (no requiere SQL).
 - **Kemi:** el contexto de la pantalla donde está la persona sube lo documentado de ella (×1,35, como Yudi) y las palabras comunes en inglés se acompañan de su equivalente en español (glosario de ~100 palabras) con aviso de que las respuestas salen en español.
 - **P12 queda cerrado** en el plan único.
 

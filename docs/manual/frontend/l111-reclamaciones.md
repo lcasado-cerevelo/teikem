@@ -16,7 +16,7 @@ Al abrir una orden se ven sus piezas faltantes con su estatus.
 ![Nueva reclamación](img/l111-nueva-reclamacion.png)
 
 ## La reclamación
-Al crearla (REC-#####) se abre su ficha: orden, conduce, cliente, valor declarado, las piezas y su historial. Se **resuelve** como Pagada (con el monto), Rechazada o Cerrada.
+Al crearla (RCL-#####) se abre su ficha: orden, conduce, cliente, valor declarado, las piezas y su historial. Se **resuelve** como Pagada (con el monto), Rechazada o Cerrada.
 
 ![Reclamación](img/l111-reclamacion.png)
 ![Resolver](img/l111-resolver.png)

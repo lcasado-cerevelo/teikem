@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Common;
+using Teikem.Domain.Contacts;
 using Teikem.Domain.Notifications;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
@@ -190,6 +191,14 @@ public sealed class NotificationRuleService(
         return d.Count == 0 ? null : MultilingualText.Serialize(d);
     }
 
+    /// <summary>Prefijo internacional por omisión de la compañía de la regla, en dígitos («1»).</summary>
+    private async Task<string> DefaultCountryAsync(CancellationToken ct)
+    {
+        var tenantId = ((TenantContext)tenant).RequireTenantId();
+        var cc = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.TenantId == tenantId).Select(t => t.PhoneCountryCode).FirstOrDefaultAsync(ct) ?? "+1";
+        return PhoneRules.NormalizeCountry(cc) ?? "1";
+    }
+
     private async Task ReplaceRecipientsAsync(NotificationRule rule, IReadOnlyList<NotificationRecipientRequest> requests, CancellationToken ct)
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -218,7 +227,7 @@ public sealed class NotificationRuleService(
                     break;
                 default:
                     if (!NotificationRules.IsValidPhone(req.Value)) throw new ValidationException("recipients", NotificationRules.InvalidPhoneMessage(req.Value?.Trim()));
-                    row.Value = req.Value!.Trim();
+                    row.Value = PhoneRules.ToE164Text(req.Value, await DefaultCountryAsync(ct));   // con su prefijo internacional (E.164)
                     key = "P" + row.Value;
                     break;
             }

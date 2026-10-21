@@ -40,7 +40,7 @@ public static class OrderProgress
         var en = English(lang);
         return new[]
         {
-            new ProgressStatus(StageSubmitted, en ? "Submitted" : "Sometida", "PIPELINE", 1, true),
+            new ProgressStatus(StageSubmitted, en ? "Submitted" : "Sometido", "PIPELINE", 1, true),
             new ProgressStatus(StageReceived, en ? "Received" : "Recibida", "PIPELINE", 2, true),
             new ProgressStatus(StageOnRoute, en ? "On route" : "En ruta", "PIPELINE", 3, true),
             new ProgressStatus(StageDone, en ? "Completed" : "Completada", "PIPELINE", 4, true),
@@ -60,7 +60,7 @@ public static class OrderProgress
         if (string.Equals(currentKind, TerminalKind, StringComparison.OrdinalIgnoreCase))
             return R(4, Same(code, "CANCELLED") ? Cancelled : Completed, currentLabel);
 
-        if (Same(code, "SUBMITTED")) return R(1, InProgress, en ? "Submitted" : "Sometida");
+        if (Same(code, "SUBMITTED")) return R(1, InProgress, en ? "Submitted" : "Sometido");
         if (Same(code, "IN_TRANSIT")) return R(3, InProgress, en ? "On route" : "En ruta");
         if (Same(code, "FAILED")) return R(3, Alert, en ? "Attempted" : "Intentada");
         if (hasFailedAttempt && (Same(code, "UNASSIGNED") || Same(code, "ASSIGNED"))) return R(3, InProgress, en ? "Rescheduled" : "Reprogramada");

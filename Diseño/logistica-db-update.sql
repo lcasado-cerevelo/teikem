@@ -5568,3 +5568,34 @@ FROM dbo.Supplier s
 JOIN R ON R.SupplierId = s.SupplierId
 WHERE R.Cc IS NOT NULL;
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-20 (Lote 164) — Reclamaciones: el número pasa de REC-##### a RCL-##### (el recibo se queda con REC-#####; antes los dos compartían prefijo).
+   Solo renombra las reclamaciones que todavía traen REC-. Idempotente (la segunda corrida no encuentra ninguna).
+   ---------------------------------------------------------------------------- */
+UPDATE dbo.Claim SET Number = 'RCL-' + SUBSTRING(Number, 5, 40) WHERE Number LIKE 'REC-%';
+GO
+/* ----------------------------------------------------------------------------
+   2026-10-20 (Lote 165) — Estatus del envío en masculino (dictado de Luis: «orden» pasa a «envío»): Sometido, Recogido, Asignado, Entregado, Cancelado, Devuelto.
+   Solo cambia la etiqueta en español (LabelJson); los códigos y las demás columnas no se tocan. Idempotente. «Sin asignar», «En tránsito», «Intento fallido» y «En almacén» no cambian.
+   ---------------------------------------------------------------------------- */
+UPDATE dbo.StatusCode SET LabelJson = N'{"es":"Sometido","en":"Submitted"}'  WHERE Entity = 'OrderStatus' AND InternalCode = 'SUBMITTED' AND LabelJson <> N'{"es":"Sometido","en":"Submitted"}';
+UPDATE dbo.StatusCode SET LabelJson = N'{"es":"Recogido","en":"Picked up"}'    WHERE Entity = 'OrderStatus' AND InternalCode = 'PICKUP' AND LabelJson <> N'{"es":"Recogido","en":"Picked up"}';
+UPDATE dbo.StatusCode SET LabelJson = N'{"es":"Asignado","en":"Assigned"}'     WHERE Entity = 'OrderStatus' AND InternalCode = 'ASSIGNED' AND LabelJson <> N'{"es":"Asignado","en":"Assigned"}';
+UPDATE dbo.StatusCode SET LabelJson = N'{"es":"Entregado","en":"Delivered"}'   WHERE Entity = 'OrderStatus' AND InternalCode = 'DELIVERED' AND LabelJson <> N'{"es":"Entregado","en":"Delivered"}';
+UPDATE dbo.StatusCode SET LabelJson = N'{"es":"Cancelado","en":"Cancelled"}'   WHERE Entity = 'OrderStatus' AND InternalCode = 'CANCELLED' AND LabelJson <> N'{"es":"Cancelado","en":"Cancelled"}';
+UPDATE dbo.StatusCode SET LabelJson = N'{"es":"Devuelto","en":"Returned"}'     WHERE Entity = 'OrderStatus' AND InternalCode = 'RETURNED' AND LabelJson <> N'{"es":"Devuelto","en":"Returned"}';
+GO
+/* ----------------------------------------------------------------------------
+   2026-10-20 (Lote 166) — Nombres sembrados del sistema en «envío» (dictado de Luis): el reporte «Órdenes» y los indicadores y gráficos de sistema de transporte cambian de nombre y descripción.
+   Solo toca filas de sistema (IsSystem = 1) y no pisa un nombre que la compañía ya tenga. Idempotente: la segunda corrida no encuentra los nombres viejos.
+   ---------------------------------------------------------------------------- */
+UPDATE d SET d.Name = N'Envíos', d.DescriptionJson = N'{"es":"Envíos de transporte con empaque, consignatario, estatus y COD","en":"Transport shipments with pack batch, consignee, status and COD"}' FROM dbo.ReportDefinition d WHERE d.IsSystem = 1 AND d.Name = N'Órdenes' AND NOT EXISTS (SELECT 1 FROM dbo.ReportDefinition x WHERE x.TenantId = d.TenantId AND x.Name = N'Envíos');
+UPDATE d SET d.Name = N'Envíos en curso', d.DescriptionJson = N'{"es":"Envíos activos confirmados y aún no entregados","en":"Active shipments confirmed and not yet delivered"}' FROM dbo.IndicatorDefinition d WHERE d.IsSystem = 1 AND d.Name = N'Órdenes en curso' AND NOT EXISTS (SELECT 1 FROM dbo.IndicatorDefinition x WHERE x.TenantId = d.TenantId AND x.Name = N'Envíos en curso');
+UPDATE d SET d.Name = N'Envíos sin chofer asignado', d.DescriptionJson = N'{"es":"Envíos activos pendientes de despacho sin ruta con chofer ni entrega especial asignada","en":"Active shipments pending dispatch without a driver"}' FROM dbo.IndicatorDefinition d WHERE d.IsSystem = 1 AND d.Name = N'Órdenes sin chofer asignado' AND NOT EXISTS (SELECT 1 FROM dbo.IndicatorDefinition x WHERE x.TenantId = d.TenantId AND x.Name = N'Envíos sin chofer asignado');
+UPDATE d SET d.Name = N'Envíos en excepción', d.DescriptionJson = N'{"es":"Envíos activos en espera, entrega parcial o fallida","en":"Active shipments on hold, partial or failed"}' FROM dbo.IndicatorDefinition d WHERE d.IsSystem = 1 AND d.Name = N'Órdenes en excepción' AND NOT EXISTS (SELECT 1 FROM dbo.IndicatorDefinition x WHERE x.TenantId = d.TenantId AND x.Name = N'Envíos en excepción');
+UPDATE d SET d.Name = N'Envíos con SLA en riesgo', d.DescriptionJson = N'{"es":"Envíos abiertos a punto de pasar el SLA de su contrato o que ya lo pasaron","en":"Open shipments about to miss their contract SLA or already past it"}' FROM dbo.IndicatorDefinition d WHERE d.IsSystem = 1 AND d.Name = N'Órdenes con SLA en riesgo' AND NOT EXISTS (SELECT 1 FROM dbo.IndicatorDefinition x WHERE x.TenantId = d.TenantId AND x.Name = N'Envíos con SLA en riesgo');
+UPDATE d SET d.Name = N'Envíos por estatus', d.DescriptionJson = N'{"es":"Distribución de los envíos de los últimos 30 días por estatus","en":"Shipments of the last 30 days by status"}' FROM dbo.ChartDefinition d WHERE d.IsSystem = 1 AND d.Name = N'Órdenes por estatus' AND NOT EXISTS (SELECT 1 FROM dbo.ChartDefinition x WHERE x.TenantId = d.TenantId AND x.Name = N'Envíos por estatus');
+UPDATE d SET d.Name = N'Envíos por estado del SLA', d.DescriptionJson = N'{"es":"Envíos de los últimos 30 días con SLA, por estado (a tiempo, en riesgo, vencido, cumplido, fuera de SLA)","en":"Shipments of the last 30 days with an SLA, by state (on track, at risk, past due, met, missed)"}' FROM dbo.ChartDefinition d WHERE d.IsSystem = 1 AND d.Name = N'Órdenes por estado del SLA' AND NOT EXISTS (SELECT 1 FROM dbo.ChartDefinition x WHERE x.TenantId = d.TenantId AND x.Name = N'Envíos por estado del SLA');
+UPDATE dbo.IndicatorDefinition SET DescriptionJson = N'{"es":"Suma del COD pendiente de cobro de los envíos activos no cancelados","en":"Sum of pending COD of active, non-cancelled shipments"}' WHERE IsSystem = 1 AND Name = N'COD por cobrar' AND DescriptionJson <> N'{"es":"Suma del COD pendiente de cobro de los envíos activos no cancelados","en":"Sum of pending COD of active, non-cancelled shipments"}';
+UPDATE dbo.IndicatorDefinition SET DescriptionJson = N'{"es":"Porcentaje de los envíos entregados en los últimos 30 días (con SLA) que se entregaron dentro del plazo de su contrato","en":"Share of shipments delivered in the last 30 days (with an SLA) delivered within their contract deadline"}' WHERE IsSystem = 1 AND Name = N'Entregas dentro del SLA' AND DescriptionJson <> N'{"es":"Porcentaje de los envíos entregados en los últimos 30 días (con SLA) que se entregaron dentro del plazo de su contrato","en":"Share of shipments delivered in the last 30 days (with an SLA) delivered within their contract deadline"}';
+GO

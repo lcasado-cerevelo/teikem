@@ -42,7 +42,7 @@ test('Reclamaciones: por verificar → perdidas → reclamación → resolver', 
   await dialog.getByLabel('Notas').fill('Faltan dos cajas en la entrega')
   await shot(page, isMobile, 'l111-nueva-reclamacion')
   await dialog.getByRole('button', { name: /Crear reclamación \(2\)/ }).click()
-  await expect(page.getByText(/Reclamación REC-\d+ creada\./)).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText(/Reclamación RCL-\d+ creada\./)).toBeVisible({ timeout: 30_000 })
 
   // al crearla se abre la reclamación: resolverla pagada con monto
   const claim = page.getByRole('dialog')
@@ -52,7 +52,7 @@ test('Reclamaciones: por verificar → perdidas → reclamación → resolver', 
   await claim.getByLabel('Monto pagado').fill('200')
   await shot(page, isMobile, 'l111-resolver')
   await claim.getByRole('button', { name: 'Resolver', exact: true }).click()
-  await expect(page.getByText(/Reclamación REC-\d+ resuelta\./)).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText(/Reclamación RCL-\d+ resuelta\./)).toBeVisible({ timeout: 30_000 })
 
   // la pestaña Reclamaciones la lista como Resuelta
   await page.getByRole('tab', { name: 'Reclamaciones' }).click()

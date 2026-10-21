@@ -1,6 +1,6 @@
 namespace Teikem.Infrastructure.Contracts;
 
-// Lote 111 — faltantes y reclamaciones (REC-#####). Ver docs/p11-piezas-y-reclamaciones-diseno.md.
+// Lote 111 — faltantes y reclamaciones (RCL-#####). Ver docs/p11-piezas-y-reclamaciones-diseno.md.
 
 /// <summary>Una pieza faltante: «Por verificar» (TO_VERIFY), «Perdido» (LOST), «Reclamada» (CLAIMED, con su reclamación) o «Resuelta» (RESOLVED).</summary>
 public sealed record MissingPieceDto(string PackageNumber, string Status, string StatusLabel, DateTime? MissingAtUtc, string? ClaimNumber, string LineDescription);

@@ -1,6 +1,6 @@
 # Lote 114 — Tipo de servicio «Pick up» (2026-10-18)
 
-Luis dictó: los tipos de servicio «pick up» (recojo y traigo) se distinguen de los de recogido y entrega y se tratan distinto: **Sometida → Recogida → En almacén** (final); si se quiere sacar, es otra orden o el cliente viene a buscarlo; **facturable o no según el tipo de servicio (interruptor configurable)**.
+Luis dictó: los tipos de servicio «pick up» (recojo y traigo) se distinguen de los de recogido y entrega y se tratan distinto: **Sometido → Recogido → En almacén** (final); si se quiere sacar, es otra orden o el cliente viene a buscarlo; **facturable o no según el tipo de servicio (interruptor configurable)**.
 
 ## Qué se construyó
 - **Marcas del tipo de servicio** (`ServiceTypeMarks`, dominio): `{"pickUp":true,"billable":true}` en el `ExtraJson` del tipo de servicio, con el ajuste de la compañía (`CustomExtraJson`) encima (`ServiceTypeMarkReader`). Sin marcas: no es pick up y sí es facturable. SQL (update.sql, sección (av)): se siembra el tipo `PICK_UP` «Pick up».

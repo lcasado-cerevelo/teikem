@@ -83,4 +83,12 @@ public class PhoneRulesTests
     [InlineData("+1 (787) 555-1234", "+17875551234")]
     public void Clean_quita_el_formato_y_conserva_el_mas(string raw, string expected)
         => Assert.Equal(expected, PhoneRules.Clean(raw, "1"));
+
+    [Theory]
+    [InlineData("787-555-0100", "1", "+17875550100")]
+    [InlineData("+593 99 123 4567", "1", "+593991234567")]
+    [InlineData("17875550100", "1", "+17875550100")]
+    [InlineData("abc", "1", "abc")]
+    public void ToE164Text_guarda_con_prefijo_y_deja_igual_lo_que_no_se_puede_separar(string raw, string def, string expected)
+        => Assert.Equal(expected, PhoneRules.ToE164Text(raw, def));
 }

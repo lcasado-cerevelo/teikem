@@ -672,7 +672,7 @@
           "PACKAGE_TYPE": "Por tipo de paquete",
           "PIECE": "Por pieza devuelta"
         },
-        "help": "Opcional. Se le cobra al envío devuelto al quedar «Devuelta» y se factura aparte del flete.",
+        "help": "Opcional. Se le cobra al envío devuelto al quedar «Devuelto» y se factura aparte del flete.",
         "amountOrder": "Monto por envío devuelto",
         "amountPiece": "Monto por cada pieza devuelta",
         "byType": "Monto por cada tipo de paquete devuelto",
@@ -2028,7 +2028,7 @@
       "PIECE": "número de pieza"
     },
     "outcome": {
-      "FOUND_ASSIGNED": "Asignada",
+      "FOUND_ASSIGNED": "Asignado",
       "FOUND_UNASSIGNED": "Sin asignar",
       "ALREADY_ASSIGNED": "Ya estaba",
       "NOT_ELIGIBLE": "No elegible",
@@ -2103,11 +2103,11 @@
       "RETURN": "Devolver"
     },
     "actionHelp": {
-      "PICKUP": "Recogida: lo que escanee pasa a Recogida.",
+      "PICKUP": "Recogido: lo que escanee pasa a Recogido.",
       "ARRIVE": "Llegó al almacén: lo que escanee pasa a Sin asignar (un intento fallido que vuelve también).",
-      "ROUTE": "Enrutar: lo que escanee pasa a Asignada y entra a la ruta abierta de su zona; sin ruta que la reciba, no cambia.",
+      "ROUTE": "Enrutar: lo que escanee pasa a Asignado y entra a la ruta abierta de su zona; sin ruta que lo reciba, no cambia.",
       "DEPART": "Salir: lo que escanee pasa a En tránsito.",
-      "RETURN": "Devolver: la pieza que escanee viaja en el envío de vuelta (nace Recogida) y su envío queda Devuelta. Requiere permiso de devolver."
+      "RETURN": "Devolver: la pieza que escanee viaja en el envío de vuelta (nace Recogido) y su envío queda Devuelto. Requiere permiso de devolver."
     },
     "closeCount": {
       "button": "Cerrar conteo"
@@ -3732,7 +3732,7 @@
       "editableHint": "Este envío está en {status}: puede corregir sus datos y sus paquetes.",
       "lockedHint": "Este envío ya avanzó de {status}: sus datos se muestran como referencia, ya no se editan aquí.",
       "lockedPermissionHint": "Su usuario no tiene permiso para editar envíos: los datos se muestran como referencia.",
-      "initialFallback": "Sometida",
+      "initialFallback": "Sometido",
       "consigneeHelp": "El pueblo y el ZIP salen de la dirección del consignatario elegido.",
       "priority": "Prioridad",
       "zone": "Zona de entrega",
@@ -3805,7 +3805,7 @@
       "proof": {
         "title": "Comprobante de entrega",
         "recipient": "Recibió",
-        "at": "Entregada",
+        "at": "Entregado",
         "notes": "Nota",
         "registeredBy": "Registrada por",
         "signature": "Firma",
@@ -3846,7 +3846,7 @@
       "confirm": {
         "button": "Marcar como recogido",
         "title": "Marcar como recogido el envío {number}",
-        "body": "El envío pasa de Sometida a Recogida y su precio queda congelado (la cotización y el crédito se revisaron al someterla). Después ya no se podrán editar sus datos aquí.",
+        "body": "El envío pasa de Sometido a Recogido y su precio queda congelado (la cotización y el crédito se revisaron al someterlo). Después ya no se podrán editar sus datos aquí.",
         "bodyOverrideOnly": "Este envío se marca como recogido cotizando con las tarifas del contrato. Su usuario solo puede hacerlo autorizando el exceso del crédito del cliente.",
         "authorize": "Autorizar y marcar como recogido",
         "creditNote": "Si autoriza, el envío se marca como recogido de todos modos y queda registrado quién lo autorizó.",
@@ -3861,7 +3861,7 @@
       "cancel": {
         "button": "Cancelar el envío",
         "title": "Cancelar el envío {number}",
-        "body": "El envío pasa a Cancelada y su viaje de entrega especial, si lo tiene, también se cancela. Esto no se puede deshacer.",
+        "body": "El envío pasa a Cancelado y su viaje de entrega especial, si lo tiene, también se cancela. Esto no se puede deshacer.",
         "confirm": "Cancelar el envío",
         "reason": "Razón de la cancelación",
         "reasonPlaceholder": "¿Por qué se cancela el envío?",
@@ -3890,7 +3890,7 @@
         "reassign": "Reasignar chofer",
         "title": "Asignar chofer al envío {number}",
         "reassignTitle": "Reasignar chofer del envío {number}",
-        "hint": "Si el envío sigue Sometida se marca como recogido (cotiza con precio final y revisa el crédito), avanza hasta En tránsito y se crea el viaje del chofer. Reasignar cancela el viaje del chofer anterior.",
+        "hint": "Si el envío sigue Sometido se marca como recogido (cotiza con precio final y revisa el crédito), avanza hasta En tránsito y se crea el viaje del chofer. Reasignar cancela el viaje del chofer anterior.",
         "driver": "Chofer",
         "chooseDriver": "Elija el chofer…",
         "noDrivers": "No hay choferes activos",
@@ -3905,17 +3905,17 @@
       "return": {
         "button": "Devolver",
         "title": "Devolver {number}",
-        "body": "El envío quedará «Devuelta» y se creará el envío de vuelta (recogido y entrega al revés) con las piezas que marque. Las piezas faltantes no se pueden devolver.",
+        "body": "El envío quedará «Devuelto» y se creará el envío de vuelta (recogido y entrega al revés) con las piezas que marque. Las piezas faltantes no se pueden devolver.",
         "pieces": "Piezas que se devuelven",
         "notes": "Nota (opcional)",
         "confirm": "Devolver el envío",
         "noPieces": "Marque al menos una pieza que se devuelve.",
-        "done": "El envío {number} quedó Devuelta."
+        "done": "El envío {number} quedó Devuelto."
       },
       "deliver": {
         "button": "Registrar entrega",
         "title": "Registrar la entrega de {number}",
-        "body": "El envío quedará «Entregada». El comprobante se firma automáticamente a su nombre (usted registra la entrega); el consignatario no firma.",
+        "body": "El envío quedará «Entregado». El comprobante se firma automáticamente a su nombre (usted registra la entrega); el consignatario no firma.",
         "recipient": "Quién recibió",
         "recipientRequired": "Indique quién recibió la entrega.",
         "at": "Fecha y hora de la entrega (opcional)",
@@ -3979,7 +3979,7 @@
       "ticketSpecial": "Servicio especial",
       "save": "Guardar",
       "saving": "Guardando…",
-      "ticketNote": "El envío queda Sometida: se cotiza y se revisa el crédito del cliente al guardar.",
+      "ticketNote": "El envío queda Sometido: se cotiza y se revisa el crédito del cliente al guardar.",
       "created": "Envío {number} guardado.",
       "errors": {
         "clientRequired": "El cliente es obligatorio.",
@@ -4041,7 +4041,7 @@
       "saveRow": "Guardar fila",
       "saved": "Guardada",
       "captured": "{count} entradas guardadas",
-      "help": "Cada fila crea un envío de 1 paquete y 1 pieza Sometida; para varios paquetes use la entrada Detallada.",
+      "help": "Cada fila crea un envío Sometido de 1 paquete y 1 pieza; para varios paquetes use la entrada Detallada.",
       "errors": {
         "codInvalid": "El monto COD debe ser un número."
       }
@@ -9979,16 +9979,16 @@
       "sectionHelp": "Los envíos del cliente de esta integración que llegan a los estatus elegidos. Cada envío se arma con las columnas de abajo y se manda por el conector; si falla, se reintenta (1 min, 5, 30, 2 h y 12 h) y, agotados los intentos, queda en la pestaña «Salidas».",
       "statuses": "Estatus que disparan la salida",
       "status": {
-        "SUBMITTED": "Sometida",
-        "PICKUP": "Recogida",
+        "SUBMITTED": "Sometido",
+        "PICKUP": "Recogido",
         "UNASSIGNED": "Sin asignar",
-        "ASSIGNED": "Asignada",
+        "ASSIGNED": "Asignado",
         "IN_TRANSIT": "En tránsito",
-        "DELIVERED": "Entregada",
+        "DELIVERED": "Entregado",
         "FAILED": "Fallida",
-        "CANCELLED": "Cancelada",
+        "CANCELLED": "Cancelado",
         "IN_WAREHOUSE": "En almacén",
-        "RETURNED": "Devuelta"
+        "RETURNED": "Devuelto"
       },
       "trigger": "Cuándo sale",
       "triggers": {

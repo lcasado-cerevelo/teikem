@@ -25,7 +25,7 @@ public sealed class ClaimsController(ClaimService claims) : ControllerBase
     [HttpPost("lost"), RequirePermission(PermissionCatalog.ClaimsManage)]
     public Task<MissingOrderDto> MarkLost([FromBody] MarkLostRequest req, CancellationToken ct) => claims.MarkLostAsync(req, ct);
 
-    /// <summary>Crea la reclamación REC-##### con las piezas perdidas de la orden («Perdido» → «Reclamada»).</summary>
+    /// <summary>Crea la reclamación RCL-##### con las piezas perdidas de la orden («Perdido» → «Reclamada»).</summary>
     [HttpPost, RequirePermission(PermissionCatalog.ClaimsManage)]
     public Task<ClaimDto> Create([FromBody] ClaimCreateRequest req, CancellationToken ct) => claims.CreateAsync(req, ct);
 

@@ -1,6 +1,6 @@
 # 31 — Piezas faltantes y reclamaciones
 
-Lote 111 (2026-10-18, dictado por Luis). Qué pasa con una pieza que no llegó: sigue un camino de cuatro pasos y, cuando se pierde de verdad, se reclama en un documento propio, la **reclamación `REC-#####`**.
+Lote 111 (2026-10-18, dictado por Luis). Qué pasa con una pieza que no llegó: sigue un camino de cuatro pasos y, cuando se pierde de verdad, se reclama en un documento propio, la **reclamación `RCL-#####`**.
 
 **Quién puede:** ver, `claims.view`; marcar perdidas, crear y resolver reclamaciones, `claims.manage` (los administradores de la compañía ya los traen). Módulo **LTL_GROUND**. **Dónde:** menú Operación → **Reclamaciones** (`/ops/claims`).
 
@@ -9,14 +9,14 @@ Lote 111 (2026-10-18, dictado por Luis). Qué pasa con una pieza que no llegó: 
 |---|---|---|
 | **Por verificar** | Lo marca la estación de escaneo (la orden pasó a la acción siguiente sin la pieza, o se pulsó «Cerrar conteo») — ver capítulo 05 | Falta, pero puede que aparezca |
 | **Perdido** | Alguien con `claims.manage` la marca perdida | Se da por perdida; todavía no hay reclamación |
-| **Reclamada** | Se crea la reclamación con ella | Está dentro de `REC-#####`; ya no pasa nada con la pieza fuera de la reclamación |
+| **Reclamada** | Se crea la reclamación con ella | Está dentro de `RCL-#####`; ya no pasa nada con la pieza fuera de la reclamación |
 | **Resuelta** | Se resuelve la reclamación | Cerrada: una pieza que se escanee responde «No» |
 
 ## 2. Pestaña «Por verificar»
 - Lista las **órdenes con piezas faltantes** (Por verificar o Perdido, sin reclamación): orden, conduce, cliente, estatus de la orden y «N de M» (faltantes de total). Buscador libre por **número de envío, conduce o número de pieza**; ordenar columnas y exportar todo el filtro.
 - Al abrir una orden: la tabla de sus piezas faltantes y, con `claims.manage`:
   - **Marcar N como perdidas:** pasa **todas** las «Por verificar» de la orden a «Perdido» (por el API se pueden indicar piezas sueltas).
-  - **Nueva reclamación:** *valor declarado* (opcional, no negativo) y *notas* (hasta 1000 caracteres); **Crear reclamación (N)** junta las piezas «Perdido» de esa orden en una reclamación `REC-#####` y la abre.
+  - **Nueva reclamación:** *valor declarado* (opcional, no negativo) y *notas* (hasta 1000 caracteres); **Crear reclamación (N)** junta las piezas «Perdido» de esa orden en una reclamación `RCL-#####` y la abre.
 - La reclamación lleva: orden, línea(s), piezas, descripción (por ejemplo «2 × Cajas; 1 × Sobre»), valor declarado y notas.
 
 ## 3. Pestaña «Reclamaciones»
@@ -61,3 +61,5 @@ Si el contrato cobra **por entrega** (o mixto), al marcar piezas como **Perdido*
 - *Marqué perdida una pieza por error:* no hay paso atrás manual; si aparece y se escanea, deja de ser faltante (y se quita de su reclamación si la tenía y no está cerrada).
 - *La reclamación desapareció de la lista:* todas sus piezas aparecieron; se eliminó (queda en el historial de auditoría).
 - *Quiero reclamar solo algunas piezas:* por el API se mandan los números en `pieceNumbers`; en pantalla se reclaman todas las «Perdido» de la orden.
+
+**Cambio de prefijo (2026-10-20, Lote 164):** el número de la reclamación pasó de `REC-#####` a `RCL-#####` para no confundirlo con el del recibo (`REC-#####`). Las reclamaciones que ya existían se renombraron con el script de `Diseño/logistica-db-update.sql`.

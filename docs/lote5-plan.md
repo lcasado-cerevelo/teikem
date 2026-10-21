@@ -203,7 +203,7 @@ El Lote 5 entrega el módulo de Trips y rutas.
 - La fuente Órdenes gana ruta, chofer asignado, zona y excepción.
 - Contenido de sistema:
   - vista 'Rutas';
-  - indicadores 'Envíos sin chofer asignado', 'Órdenes en excepción' y 'Rutas sobre el máximo de paradas';
+  - indicadores 'Envíos sin chofer asignado', 'Envíos en excepción' y 'Rutas sobre el máximo de paradas';
   - gráfico 'Rutas por estatus'.
 
 **Fuera del lote**
@@ -512,7 +512,7 @@ Services/TripOwnedEntityResolvers.cs, completos:
 - Vista 'Rutas' (TRIP): PlanDate, Code, ZoneCode, DriverName, VehicleCode, Status, StopCount, OverStopLimit, TotalDistanceKm; orden PlanDate desc.
 - Indicadores:
   - 'Envíos sin chofer asignado' (orden 72)
-  - 'Órdenes en excepción' (orden 73)
+  - 'Envíos en excepción' (orden 73)
   - 'Rutas sobre el máximo de paradas' (orden 82)
 - Gráfico 'Rutas por estatus' (donut, LAST7, orden 80).
 - Los campos de la fuente Órdenes que usan los indicadores los implementa P7. El seeder no valida campos al sembrar; AnalyticsSeedFieldsTests (P7) lo cubre.
@@ -1462,7 +1462,7 @@ Así VROOM/OR-Tools no retendrán bloqueos de fila.
 - Ningún DTO de trips ni la fuente TRIP expone Amount ni Rate (lo prueban las pruebas de contratos).
    - Alternativa: Un DriverTrip de tipo 'ruta' por despacho.
 38. DECISIÓN (V5): definiciones de los indicadores.
-- 'Órdenes en excepción' = ON_HOLD, PARTIAL y FAILED; CANCELLED no cuenta.
+- 'Envíos en excepción' = ON_HOLD, PARTIAL y FAILED; CANCELLED no cuenta.
 - 'Sin chofer asignado' = activas en CONFIRMED..PLANNED sin ruta vigente con chofer y sin DriverTrip.
    - Alternativa: Incluir CANCELLED en excepción, o contar también las que ya están en tránsito.
 39. DECISIÓN: OptimizationRunId pasa a INT en el SQL.
@@ -1847,7 +1847,7 @@ Así VROOM/OR-Tools no retendrán bloqueos de fila.
 - /analytics/data-sources: TRIP con dateField PlanDate; TRANSPORT_ORDER con TripCode, HasAssignedDriver, IsException y DispatchZoneCode.
 - La vista 'Rutas' devuelve TR1.
 - 'Envíos sin chofer asignado' ≥ 1 (ON1).
-- 'Órdenes en excepción' ≥ 0.
+- 'Envíos en excepción' ≥ 0.
 - El gráfico 'Rutas por estatus' devuelve datos.
 - AuditLog tiene TRIP (alta, cambio de chofer, DELETE de TripOrder), ROUTE (archivo), DISPATCH_ZONE (miembros) y TRANSPORT_ORDER (precisión MANUAL).
 
@@ -1910,7 +1910,7 @@ Así VROOM/OR-Tools no retendrán bloqueos de fila.
 - **id**: R18; **regla**: Disponibilidad para despacho: el planificador de trips solo ofrece vehículos/choferes activos, con documentos vigentes y sin mantenimiento abierto que los inhabilite.; **fuente**: L286 (módulo 4, Flota) — aplica como precondición de este lote al construir el planificador de Trips; **esRequisitoReal**: True
 - **id**: R19; **regla**: TransportOrder avanza DRAFT→CONFIRMED→PICKUP→INBOUND→PLANNED→IN_TRANSIT→ARRIVED→DELIVERED; los avances desde PLANNED en adelante (PLANNED, IN_TRANSIT, ARRIVED, DELIVERED) quedan reservados a Trips/POD (este lote y el 6/7).; **fuente**: Instrucción de la tarea ('Lo que dejaron preparado los lotes anteriores'), verificado contra CatalogDomains.cs OrderStatuses y seed L295-306; **esRequisitoReal**: True
 - **id**: R20; **regla**: Cross-docking (DockAppointment/CrossDockAllocation) está apagado para el tenant Advance y queda diseñado pero no construido; el único acoplamiento con Trips es conceptual (agenda de citas de muelle) — no hay nada que Trips deba escribir ni leer de Cross-dock en este lote.; **fuente**: L311-321 (nota de alcance L313); **notaBitacora**: confirmar explícitamente que ningún endpoint de Trips depende de DockAppointment; si aparece dependencia, es error de alcance.
-- **id**: R21; **regla**: Indicadores 'Envíos sin chofer asignado' y 'Órdenes en excepción' se calculan filtrando la fuente de datos Órdenes por su campo de estatus/chofer (st/dr) del pipeline entrada→almacén→despacho→ruta→entregada/excepción, sin necesitar una fuente nueva — mecanismo del mock (IndicatorDefinition, módulo H).; **fuente**: L157; **esRequisitoReal**: True; **notaAlcance**: el requisito real para Lote 5 es que TransportOrderDataSource EXPONGA los campos necesarios (chofer asignado, marca de excepción); el propio mecanismo IndicatorDefinition es de otro módulo/lote.
+- **id**: R21; **regla**: Indicadores 'Envíos sin chofer asignado' y 'Envíos en excepción' se calculan filtrando la fuente de datos Órdenes por su campo de estatus/chofer (st/dr) del pipeline entrada→almacén→despacho→ruta→entregada/excepción, sin necesitar una fuente nueva — mecanismo del mock (IndicatorDefinition, módulo H).; **fuente**: L157; **esRequisitoReal**: True; **notaAlcance**: el requisito real para Lote 5 es que TransportOrderDataSource EXPONGA los campos necesarios (chofer asignado, marca de excepción); el propio mecanismo IndicatorDefinition es de otro módulo/lote.
 - **id**: R22; **regla**: Nace DeliveryAttempt del evento físico (chofer marca entrega o fallo en la app / Sala de despacho).; **fuente**: L432; **esRequisitoRealNota**: DeliveryAttempt es entidad del módulo 11A (liquidación), fuera de este lote; se cita solo porque menciona 'Sala de despacho' como el lugar donde también se puede registrar el evento manualmente (backoffice) además de la app del chofer — confirma que Despacho necesita poder registrar entrega/fallo manualmente, no solo la app.
 - **id**: R1; **regla**: Trip.Code es único por tenant (UQ_Trip_Code (TenantId, Code)); no se especifica si el código se libera al desactivar (a diferencia de Vehicle.Code y Driver.EmployeeCode, cuyos comentarios dicen explícitamente 'no se libera tras la baja'; Trip no tiene ese comentario ni índice filtrado por IsActive en la constraint única).; **fuente**: Diseño/logistica-db-estructura.sql:1380-1394; **esRequisitoReal**: True
 - **id**: R2; **regla**: Una orden de transporte (TransportOrderId) no puede repetirse dentro del mismo Trip (UQ_TripOrder (TripId, TransportOrderId)), pero SÍ podría estar asignada simultáneamente a Trips distintos porque no existe un índice único filtrado por TransportOrderId solo (a diferencia de DriverTrip que sí tiene UX_DriverTrip_Order). Esto es una regla estructural del SQL, no una decisión de negocio documentada.; **fuente**: Diseño/logistica-db-estructura.sql:1398-1404
@@ -1987,7 +1987,7 @@ Así VROOM/OR-Tools no retendrán bloqueos de fila.
 - V2 — No se especifica a qué OrderStatus regresa una orden cuando se libera de una ruta editada/eliminada (R15): ¿vuelve a CONFIRMED, a INBOUND, o a un estatus intermedio nuevo tipo 'sin asignar' explícito? El documento solo dice que 'vuelve a sin asignar' a nivel de TripOrder/RouteStop, no de OrderStatus.
 - V3 — 'FleetAvailability' citada en el enunciado de la tarea como algo que dejó preparado el Lote 4 no es una tabla ni una interfaz con ese nombre exacto en el código: existe FleetAvailabilityService (clase de servicio, sin persistencia) y la tabla FleetAssignment (que es otra cosa: propiedad chofer↔vehículo por fecha, no disponibilidad para despachar hoy). Falta aclarar si el planificador de Trips debe usar exclusivamente FleetAvailabilityService o si además necesita bloquear un chofer/vehículo ya asignado a OTRO trip abierto el mismo día (ese cruce no lo resuelve hoy ningún servicio).
 - V4 — No existe ModuleKeys.Trips ni ModuleKeys.Dispatch: el módulo de Trips y rutas no tiene una clave de módulo propia en CatalogDomains.ModuleKeys (solo existe LtlGround, que no aparece nombrado en el documento maestro ni se explica qué agrupa). Falta decidir si los endpoints de este lote llevan [RequireModule(ModuleKeys.LtlGround)] o si Trips es un núcleo sin gating por módulo.
-- V5 — 'Órdenes en excepción' no corresponde a ningún único InternalCode de OrderStatus: el seed tiene ON_HOLD, PARTIAL, FAILED y CANCELLED como estatus laterales/terminales fuera del pipeline feliz — el documento (L157) no dice cuáles de estos cuentan como 'excepción' para el indicador ni para el dashboard de despacho. Ambigüedad de término sin resolver.
+- V5 — 'Envíos en excepción' no corresponde a ningún único InternalCode de OrderStatus: el seed tiene ON_HOLD, PARTIAL, FAILED y CANCELLED como estatus laterales/terminales fuera del pipeline feliz — el documento (L157) no dice cuáles de estos cuentan como 'excepción' para el indicador ni para el dashboard de despacho. Ambigüedad de término sin resolver.
 - V6 — El motor de resolución DispatchZone por ZIP/municipio (DispatchZoneMember.MatchTypeLookupId/MatchValue) no tiene ninguna implementación en src/: falta decidir el algoritmo de match (exacto por ZIP, prefijo, lista de municipios) y qué pasa si un ZIP cae en dos zonas (el esquema no impide solapamiento).
 - V7 — No hay endpoint ni permiso identificado en PermissionCatalog.cs para 'Estación de escaneo' (modo Outbound) fuera de este lote; falta confirmar si ese permiso ya se sembró en otro lote (Almacén) o si Trips debe crearlo/reusarlo — no se encontró 'scan' ni 'escaneo' en PermissionCatalog.cs.
 - V8 — El documento pide ETA recalculada al reordenar (Principios, según la tarea) pero no especifica la fórmula (¿usa distancia/duración ya guardadas en RouteStop.DistanceFromPrevKm/DurationFromPrevMin recalculadas con el optimizador determinista, o una heurística simple tipo velocidad promedio?) — sin decisión de diseño en el documento.
@@ -2016,7 +2016,7 @@ Así VROOM/OR-Tools no retendrán bloqueos de fila.
 - FleetAvailabilityService (src/Teikem.Infrastructure/Services/FleetAvailabilityService.cs) para decidir qué choferes/vehículos ofrecer al planificar un Trip — ya resuelve documentos vigentes, OT abiertas y estatus terminal/activo (R18).
 - DispatchZoneService + DispatchZonesController (Lote 4) para el CRUD de zonas; solo falta el motor de RESOLUCIÓN (ZIP/pueblo → DispatchZoneId) que el escaneo Outbound necesita (R16) — no existe todavía, hay que construirlo sobre DispatchZoneMember.
 - DriverZone + FleetAvailabilityService.PrimaryZoneCodesAsync para la reasignación en bloque por zona (ya lee la zona primaria del chofer).
-- TransportOrderDataSource (src/Teikem.Infrastructure/Analytics/OrderDataSources.cs) como base de la fuente 'Órdenes' — hay que EXTENDERLA (no reemplazarla) con el/los campos que necesitan los indicadores 'Envíos sin chofer asignado' y 'Órdenes en excepción' (R21).
+- TransportOrderDataSource (src/Teikem.Infrastructure/Analytics/OrderDataSources.cs) como base de la fuente 'Órdenes' — hay que EXTENDERLA (no reemplazarla) con el/los campos que necesitan los indicadores 'Envíos sin chofer asignado' y 'Envíos en excepción' (R21).
 - ILookupCache para resolver OptimizerEngine, GeocodeAccuracy, ZoneMatchType (LookupDomains ya declarados en CatalogDomains.cs).
 - Permisos ya reservados en PermissionCatalog.cs: TripsPlan='trips.plan', TripsDispatch='trips.dispatch', TripsOptimize='trips.optimize' — sembrados pero sin ningún endpoint que los use todavía; este lote es quien primero los consume.
 - Patrón IStatusTransitionEffect para reglas laterales al despachar (ej. 'congelar' la ruta, notificar app móvil) en vez de lógica ad hoc en el controlador.

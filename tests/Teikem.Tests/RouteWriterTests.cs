@@ -113,7 +113,7 @@ public class RouteWriterTests
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => f.Writer.AddOrdersAsync(trip, new[] { ok, draft, special }, default));
         Assert.Equal(422, ex.StatusCode);
         Assert.Equal("Hay envíos que no se pueden asignar a la ruta.", ex.Message);
-        Assert.Equal(new[] { "El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta." }, ex.Errors![Fx.OrderNumber(draft)]);
+        Assert.Equal(new[] { "El envío está en «Sometido»; márquelo como recogido antes de asignarlo a una ruta." }, ex.Errors![Fx.OrderNumber(draft)]);
         Assert.Equal(new[] { "Las entregas especiales se asignan al chofer desde el envío; no pasan por Sala de despacho." }, ex.Errors[Fx.OrderNumber(special)]);
         Assert.False(ex.Errors.ContainsKey(Fx.OrderNumber(ok)));
 
@@ -154,7 +154,7 @@ public class RouteWriterTests
         Assert.Equal(new[] { "R-00001" }, ex.Errors!.Keys);
         Assert.Equal(new[]
         {
-            "El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.",
+            "El envío está en «Sometido»; márquelo como recogido antes de asignarlo a una ruta.",
             "El envío está en 'FAILED'; regréselo al pipeline antes de asignarlo a una ruta.",
         }, ex.Errors["R-00001"]);
         Assert.False(await f.Db.TripOrders.AnyAsync());

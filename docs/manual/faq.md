@@ -1230,7 +1230,7 @@ elegibilidad más abajo). Quita esas órdenes de la solicitud, o resuelve su cau
 lateral, etc.) y vuelve a intentar.
 
 **¿Cuáles son los motivos exactos por los que una orden no es elegible para una ruta?**
-- `El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.` — todavía está en `SUBMITTED` (Sometida, etapa inicial).
+- `El envío está en «Sometido»; márquelo como recogido antes de asignarlo a una ruta.` — todavía está en `SUBMITTED` (Sometida, etapa inicial).
 - `Las entregas especiales se asignan al chofer desde el envío; no pasan por Sala de despacho.` — usa
   `POST /api/v1/orders/{publicId}/driver` (capítulo 04).
 - `La orden está en '{estatus}'; regrésela al pipeline antes de asignarla a una ruta.` — está en un lateral
@@ -6502,7 +6502,7 @@ No se eliminan: **Desactivar esta plantilla** la saca del selector (los lotes ya
 Preguntas sobre quién ve los precios de las órdenes y sobre los filtros de la lista de órdenes. Los capítulos relacionados son «03 — Órdenes de transporte» (secciones «Listado y búsqueda» y «Quién ve los precios») y «Órdenes: buscar órdenes y crear una nueva» (manual de pantallas).
 
 **¿Por qué no veo el precio de las órdenes?**
-Su rol no tiene el permiso `orders.view_price` («Ver precios de las órdenes»). Sin él, el precio sale vacío o no aparece: la columna **Cotizado** de la lista no se muestra y en la ficha de la orden el monto cotizado aparece como «—». La orden sí está cotizada; usted solo no tiene permiso para ver cuánto. El monto **COD** (lo que se cobra al entregar) se ve siempre. Si su trabajo exige ver precios, pídale al administrador que agregue el permiso a su rol (Sistema → Roles).
+Su rol no tiene el permiso `orders.view_price` («Ver precios de los envíos»). Sin él, el precio sale vacío o no aparece: la columna **Cotizado** de la lista no se muestra y en la ficha de la orden el monto cotizado aparece como «—». La orden sí está cotizada; usted solo no tiene permiso para ver cuánto. El monto **COD** (lo que se cobra al entregar) se ve siempre. Si su trabajo exige ver precios, pídale al administrador que agregue el permiso a su rol (Sistema → Roles).
 
 **¿Quién ve los precios sin tener que pedir nada?**
 De fábrica, el rol Admin de compañía (TenantAdmin) y el de Facturación (Billing), y los roles con esos mismos nombres que su compañía ya tenía. Despachador, Operador de almacén, Chofer y Solo lectura no lo traen. El administrador puede agregar el permiso a cualquier rol propio.
@@ -6542,7 +6542,7 @@ Preguntas de la pantalla **Operación → Órdenes**. Los mensajes aparecen tal 
 Falta el permiso `orders.create`. Pídalo al administrador de su compañía (Sistema → Roles). Sin ese permiso tampoco aparece **Guardar**.
 
 **¿Por qué no veo la columna «Cotizado» (el precio)?**
-Falta el permiso `orders.view_price` («Ver precios de las órdenes»). El COD se ve igual, con o sin el permiso, porque no es un precio. Lo traen de fábrica los roles Admin de compañía y Facturación.
+Falta el permiso `orders.view_price` («Ver precios de los envíos»). El COD se ve igual, con o sin el permiso, porque no es un precio. Lo traen de fábrica los roles Admin de compañía y Facturación.
 
 **¿Por qué una orden ocupa varias filas en la lista?**
 Se muestra una fila por cada tipo de paquete. La primera fila lleva los datos de la orden y las siguientes solo «↳», el otro tipo de paquete y sus piezas. Es una sola orden: el contador y las páginas cuentan órdenes, y las acciones (abrir y eliminar) están en la primera fila.
@@ -6665,7 +6665,7 @@ Su rol tiene `orders.credit_override` pero no `orders.edit`. Ese permiso solo si
 El contrato del cliente no tiene tarifa para ese servicio y tipo de paquete (X/Y). Configúrela en Clientes → Contrato → Tarifas y vuelva a marcar la orden como recogida.
 
 **¿Por qué no veo el panel «Cotización»?**
-Falta el permiso `orders.view_price` («Ver precios de las órdenes»). Sin él tampoco se ve el monto cotizado. Lo traen de fábrica los roles Admin de compañía y Facturación.
+Falta el permiso `orders.view_price` («Ver precios de los envíos»). Sin él tampoco se ve el monto cotizado. Lo traen de fábrica los roles Admin de compañía y Facturación.
 
 **¿Para qué sirve el botón «Cotizar»? ¿Cambia la orden?**
 Muestra una vista previa de cuánto costaría la orden con las tarifas vigentes y cómo queda el crédito del cliente. **No guarda nada.** Para guardar el monto nuevo use **Re-cotizar** (en una orden Sometida y cotizada).
@@ -7068,7 +7068,7 @@ La dirección de entrega no está en ninguna zona. Agregue su código postal o p
 La dirección cae en más de una zona. Déjela en una sola o asigne la orden a mano.
 
 **Sale «No elegible» con un motivo.**
-La orden no puede ir en una ruta todavía. Los motivos y qué hacer están en el manual de la pantalla (por ejemplo, «El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.»: confirme la orden en **Órdenes**).
+La orden no puede ir en una ruta todavía. Los motivos y qué hacer están en el manual de la pantalla (por ejemplo, «El envío está en «Sometido»; márquelo como recogido antes de asignarlo a una ruta.»: confirme la orden en **Órdenes**).
 
 **«Escanee o escriba un código.» / «El código no puede exceder 40 caracteres.»**
 La casilla estaba vacía o el código es demasiado largo. No se registró nada.
@@ -7109,7 +7109,7 @@ Le falta `trips.view`. Sin él la pantalla no puede mostrar rutas ni órdenes si
 Le falta `fleet.view` (o el módulo Listas está apagado). Pida el acceso; mientras tanto, otra persona puede asignarlos.
 
 **«Hay envíos que no se pueden asignar a la ruta.»**
-Al menos una orden marcada no es elegible; debajo aparece cada número con su motivo (por ejemplo `El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.` o `El estatus actual no permite la acción 'ASSIGN_TRIP'.`). No se añadió ninguna. Corrija la orden o desmárquela y pulse otra vez.
+Al menos una orden marcada no es elegible; debajo aparece cada número con su motivo (por ejemplo `El envío está en «Sometido»; márquelo como recogido antes de asignarlo a una ruta.` o `El estatus actual no permite la acción 'ASSIGN_TRIP'.`). No se añadió ninguna. Corrija la orden o desmárquela y pulse otra vez.
 
 **«La orden ya está asignada a la ruta {código}.»**
 Otra persona la puso en esa ruta antes. La lista se actualiza sola; elija otra orden.
@@ -8253,7 +8253,7 @@ Porque no cuenta lo que está en **cuarentena**, en cruce de muelle ni en renta,
 Lo que se pidió y todavía no hay. La orden queda solicitada con las cantidades que sí se reservaron y el resto pendiente; la orden se marca «con backorder» hasta que se surta o se cancele.
 
 **«El cliente excede su límite de crédito…»**
-El cliente ya tiene en curso más de lo que su límite permite (órdenes de transporte pendientes más lo solicitado y sin despachar de sus otras órdenes de venta). Quien tenga el permiso **Autorizar órdenes sobre el límite de crédito** puede solicitarla igual, y queda anotado quién lo autorizó.
+El cliente ya tiene en curso más de lo que su límite permite (órdenes de transporte pendientes más lo solicitado y sin despachar de sus otras órdenes de venta). Quien tenga el permiso **Autorizar envíos sobre el límite de crédito** puede solicitarla igual, y queda anotado quién lo autorizó.
 
 **Cancelé una orden solicitada: ¿qué pasa con el inventario?**
 Se libera **exactamente lo que esa orden tenía reservado** y se borra su backorder; vuelve a estar disponible para otras ventas. Una orden a la que ya se le despachó algo no se cancela.
@@ -9052,7 +9052,7 @@ Está en Automático y el teléfono o el navegador está en modo oscuro. Escoja 
 
 ## Estatus del envío (Lote 106)
 
-Preguntas sobre el nuevo flujo de la orden de transporte: **Sometida → Recogida → Sin asignar → Asignada → En tránsito → Entregada**, con **Intento fallido** (lateral), **Cancelada** y **En almacén** (finales). El detalle está en el [capítulo 03, sección 4](03-ordenes-de-transporte.md#4-estatus-y-transiciones).
+Preguntas sobre el nuevo flujo de la orden de transporte: **Sometido → Recogido → Sin asignar → Asignado → En tránsito → Entregado**, con **Intento fallido** (lateral), **Cancelada** y **En almacén** (finales). El detalle está en el [capítulo 03, sección 4](03-ordenes-de-transporte.md#4-estatus-y-transiciones).
 
 **¿Qué pasó con Borrador, Confirmada, En espera, Parcial, Inbound, Planificada y En sitio?**
 Ya no existen. La orden nace **Sometida** (lo que antes era Borrador); «Confirmar» ahora es **Marcar como recogido** (pasa a Recogida); Inbound es **Sin asignar**; Planificada es **Asignada**; En espera, Parcial y En sitio desaparecieron (lo que estaba así en bases de desarrollo quedó como Intento fallido o En tránsito). En producción no había órdenes que cambiar.
@@ -9073,12 +9073,12 @@ En **Estatus destino** (o en `toCode`) se escogió un estatus final (Entregada, 
 Se reabrió sin escoger destino y la orden no tiene en su historial un estatus en curso al que volver. Escoja el **Estatus destino**.
 
 **¿Qué significa «Falta el permiso 'orders.reopen'.»? (403)**
-Su usuario no puede reabrir órdenes. El permiso `orders.reopen` («Reabrir órdenes en estatus final») lo trae el rol Admin de compañía; para otro rol, el administrador lo agrega en Sistema → Roles. Queda un evento `PERMISSION_DENIED` en la bitácora de seguridad.
+Su usuario no puede reabrir órdenes. El permiso `orders.reopen` («Reabrir envíos en estatus final») lo trae el rol Admin de compañía; para otro rol, el administrador lo agrega en Sistema → Roles. Queda un evento `PERMISSION_DENIED` en la bitácora de seguridad.
 
 **¿Quién puede reabrir una orden y qué pasa al reabrirla?**
 Quien tenga `orders.reopen`. La orden vuelve a una etapa en curso (por omisión, la última en que estuvo), la razón queda en el historial y se registra el evento de seguridad `order_reopen`. **No** se vuelve a cotizar ni a medir el crédito.
 
-**¿Qué significa «El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.»? (422 al agregar a una ruta o despachar)**
+**¿Qué significa «El envío está en «Sometido»; márquelo como recogido antes de asignarlo a una ruta.»? (422 al agregar a una ruta o despachar)**
 La orden sigue Sometida y una orden Sometida no se asigna a una ruta. Ábrala en Órdenes y pulse **Marcar como recogido**; luego agréguela a la ruta.
 
 **¿Por qué mi orden ya tiene precio al crearla?**
@@ -9115,13 +9115,13 @@ Desde el expediente solo se registra el Intento fallido y su regreso. Pasar a Si
 Planificar no es un estatus: es la **fecha pedida** de una orden Sometida (el campo de fecha lista del formulario).
 
 **¿Qué es «En almacén» y por qué no lo veo en ninguna orden?**
-Es un estatus final para los tipos de servicio de **solo recogida**. El tipo de servicio «pick up» y su flujo (Sometida → Recogida → En almacén) llegan en un lote posterior; por ahora ninguna orden llega ahí. Bloquea todas las acciones salvo **Reabrir**.
+Es un estatus final para los tipos de servicio de **solo recogida**. El tipo de servicio «pick up» y su flujo (Sometido → Recogido → En almacén) llegan en un lote posterior; por ahora ninguna orden llega ahí. Bloquea todas las acciones salvo **Reabrir**.
 
 **Un Intento fallido, ¿cómo se ve en la barra de progreso de mi cliente?**
 La barra se queda en el nivel de la última etapa normal (por ejemplo En tránsito), con color de alerta, y avisa «Intento fallido». Queda en el historial.
 
 **Mis indicadores, gráficos o informes de órdenes cambiaron de números. ¿Por qué?**
-La actualización de la base reescribió los filtros guardados de órdenes que nombraban estatus viejos: `CONFIRMED` y `DRAFT` pasaron a `SUBMITTED`, `INBOUND` a `UNASSIGNED`, `PLANNED` a `ASSIGNED`, y `ARRIVED` y `ON_HOLD` a `FAILED`. Si un filtro suyo ya no dice lo que usted quería, edítelo en Análisis. «Órdenes en curso» ahora cuenta Sometida, Recogida, Sin asignar, Asignada, En tránsito e Intento fallido.
+La actualización de la base reescribió los filtros guardados de órdenes que nombraban estatus viejos: `CONFIRMED` y `DRAFT` pasaron a `SUBMITTED`, `INBOUND` a `UNASSIGNED`, `PLANNED` a `ASSIGNED`, y `ARRIVED` y `ON_HOLD` a `FAILED`. Si un filtro suyo ya no dice lo que usted quería, edítelo en Análisis. «Envíos en curso» ahora cuenta Sometida, Recogida, Sin asignar, Asignada, En tránsito e Intento fallido.
 
 
 ## Escaneo con acción escogida (Lote 107)
@@ -9198,7 +9198,7 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 **¿Qué pasa cuando devuelvo una orden?** Queda «Devuelta» (final) y se crea la orden de vuelta con las piezas que se devuelven: mismo cliente, recogido en el consignatario y entrega en el recogido del cliente, sin cobrar flete. Ver capítulo 32.
 
-**«Un envío en «Sometida» no se devuelve: todavía no se recoge. Cancélelo.»** (422) La orden aún no se recoge; se cancela en vez de devolverse.
+**«Un envío en «Sometido» no se devuelve: todavía no se recoge. Cancélelo.»** (422) La orden aún no se recoge; se cancela en vez de devolverse.
 
 **«La orden … está en un estatus final (…): no se devuelve.»** (422) Ya está Entregada, Cancelada, En almacén o Devuelta sin piezas por devolver.
 
@@ -9218,7 +9218,7 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 ## Tipo de servicio «Pick up» (Lote 114)
 
-**¿Qué es un pick up?** Un tipo de servicio de recojo y traigo: la orden va Sometida → Recogida → **En almacén** (final) y no sale a ruta. Ver capítulo 33.
+**¿Qué es un pick up?** Un tipo de servicio de recojo y traigo: el envío va Sometido → Recogido → **En almacén** (final) y no sale a ruta. Ver capítulo 33.
 
 **Escaneé «Enrutar» o «Salir» y dice «La orden … es de pick up: se queda en el almacén.»** Una orden de pick up no sale del almacén; para sacar lo recogido se crea otra orden (o el cliente viene a buscarlo).
 
@@ -9388,7 +9388,7 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 **Las facturas vencidas no coinciden con las que veo en Facturación.** El aviso cuenta las facturas en estatus «Vencida» (las que el trabajo programado marcó al pasar su plazo con saldo); una factura recién pasada de plazo se marca en la siguiente corrida del trabajo.
 
-**¿Dónde veo el porcentaje de entregas dentro del SLA?** En el indicador «Entregas dentro del SLA» (se enciende desde «Organizar» en el Pulso) y en el gráfico «Órdenes por estado del SLA». Solo cuenta órdenes con SLA en su contrato.
+**¿Dónde veo el porcentaje de entregas dentro del SLA?** En el indicador «Entregas dentro del SLA» (se enciende desde «Organizar» en el Pulso) y en el gráfico «Envíos por estado del SLA». Solo cuenta órdenes con SLA en su contrato.
 
 ## Procesar la factura del cliente (Lote 126)
 
@@ -9749,3 +9749,6 @@ El número empieza con «+» pero no se pudo reconocer el país. Escriba el pref
 
 **Después del cambio, un teléfono antiguo se ve sin formato o sin prefijo. ¿Qué hago?**
 Los que traían texto (por ejemplo «787-555-1234 ext. 5») o un «+» de un país distinto al de la compañía no se tocaron al limpiar los datos. Ábralos con **Editar**, ponga el número y el prefijo correctos y guarde.
+
+**¿Por qué las reclamaciones ahora empiezan con RCL- y no con REC-? (Lote 164)**
+El recibo ya usaba `REC-#####` y un `REC-00012` podía ser un recibo o una reclamación. Desde el Lote 164 las reclamaciones son `RCL-#####` (las existentes se renombraron solas); el recibo conserva `REC-#####`.

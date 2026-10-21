@@ -52,7 +52,7 @@ describe('resultado → chip, tono, voz y qué hacer', () => {
     expect(outcomeInfo(Outcomes.AlreadyAssigned)).toMatchObject({ tone: 'dup' })
     expect(outcomeInfo(Outcomes.NotEligible)).toMatchObject({ tone: 'ineligible' })
     expect(outcomeInfo(Outcomes.NotFound)).toMatchObject({ tone: 'notfound', chip: 'fail' })
-    expect(es(outcomeInfo(Outcomes.FoundAssigned).labelKey)).toBe('Asignada')
+    expect(es(outcomeInfo(Outcomes.FoundAssigned).labelKey)).toBe('Asignado')
     expect(es(outcomeInfo(Outcomes.AlreadyAssigned).labelKey)).toBe('Ya estaba')
     // un valor que el servidor agregue mañana no rompe la pantalla
     expect(outcomeInfo('NUEVO')).toMatchObject({ tone: 'notfound', labelKey: 'scan.outcome.UNKNOWN' })
@@ -120,15 +120,15 @@ describe('sesión y medidor', () => {
   it('el buscador libre mira referencia, empaque, cliente, pueblo, ruta, resultado y mensaje, sin acentos ni mayúsculas', () => {
     const e = entry(
       1,
-      { outcome: Outcomes.FoundAssigned, orderNumber: 'OT-7', packBatchNumber: 'PKG-9', tripCode: 'R-12', message: 'Asignada a la ruta R-12.' },
+      { outcome: Outcomes.FoundAssigned, orderNumber: 'OT-7', packBatchNumber: 'PKG-9', tripCode: 'R-12', message: 'Asignado a la ruta R-12.' },
       { clientName: 'Advance Solutions', city: 'Bayamón' },
     )
-    expect(entryMatchesQuery(e, 'bayamon', 'Asignada')).toBe(true)
-    expect(entryMatchesQuery(e, 'pkg-9 advance', 'Asignada')).toBe(true)
-    expect(entryMatchesQuery(e, 'r-12', 'Asignada')).toBe(true)
-    expect(entryMatchesQuery(e, 'asignada', 'Asignada')).toBe(true)
-    expect(entryMatchesQuery(e, 'caguas', 'Asignada')).toBe(false)
-    expect(entryMatchesQuery(e, '', 'Asignada')).toBe(true)
+    expect(entryMatchesQuery(e, 'bayamon', 'Asignado')).toBe(true)
+    expect(entryMatchesQuery(e, 'pkg-9 advance', 'Asignado')).toBe(true)
+    expect(entryMatchesQuery(e, 'r-12', 'Asignado')).toBe(true)
+    expect(entryMatchesQuery(e, 'asignado', 'Asignado')).toBe(true)
+    expect(entryMatchesQuery(e, 'caguas', 'Asignado')).toBe(false)
+    expect(entryMatchesQuery(e, '', 'Asignado')).toBe(true)
     expect(pendingMatchesQuery({ orderNumber: 'OT-7', clientName: 'Advance', city: 'Bayamón' }, 'bayamon ot-7')).toBe(true)
     expect(pendingMatchesQuery({ orderNumber: 'OT-7' }, 'otro')).toBe(false)
   })

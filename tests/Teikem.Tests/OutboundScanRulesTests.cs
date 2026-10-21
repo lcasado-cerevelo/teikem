@@ -123,7 +123,7 @@ public class OutboundScanRulesTests
     [Fact]
     public void Not_eligible_without_trip_uses_the_trip_rules_reason()
     {
-        const string reason = "El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.";
+        const string reason = "El envío está en «Sometido»; márquelo como recogido antes de asignarlo a una ruta.";
         var d = OutboundScanRules.Decide(Ok() with { IneligibleReason = reason, Zone = null, OpenTripCode = null });
         Assert.Equal(ScanOutcomes.NotEligible, d.Outcome);
         Assert.Equal(ScanReasonCodes.NotEligible, d.ReasonCode);
@@ -171,7 +171,7 @@ public class OutboundScanRulesTests
         var d = OutboundScanRules.Decide(Ok());
         Assert.Equal(ScanOutcomes.FoundAssigned, d.Outcome);
         Assert.Null(d.ReasonCode);
-        Assert.Equal("Asignada a la ruta 2026-0001.", d.Message);
+        Assert.Equal("Asignado a la ruta 2026-0001.", d.Message);
         Assert.Equal("found", d.Voice);
     }
 
