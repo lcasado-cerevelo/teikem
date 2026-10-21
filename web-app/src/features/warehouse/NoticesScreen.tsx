@@ -1,7 +1,8 @@
 // «Llegadas y salidas» — `/warehouse/notices` (2026-10-20, Luis): los avisos de llegada y los avisos de salida en su propio ítem del menú (antes eran pestañas de Recibo).
 // Pestañas en la URL: Avisos de llegada (`?tab=asns`, la primera) y Avisos de salida (`?tab=exit-notices`; `?notice=` abre uno). «Recibir» de un aviso de llegada lleva a Recibo con el aviso precargado.
 // Lectura: inventory.view + WMS_LOTSERIAL (por la ruta); crear y operar tienen sus permisos dentro de cada pestaña.
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Can } from '../../kernel/access'
 import { useT } from '../../kernel/i18n'
 import { Tabs } from '../../kernel/ui'
 import type { AsnDto } from './api'
@@ -26,6 +27,11 @@ export default function NoticesScreen() {
           <h1>{t('warehouse.notices.title')}</h1>
           <p>{t('warehouse.notices.subtitle')}</p>
         </div>
+        <Can perm="receipts.view">
+          <Link className="btn sm" to="/warehouse/receipts?tab=groups">
+            {t('warehouse.notices.masterLink')}
+          </Link>
+        </Can>
       </div>
       <div className="rcp-tabs">
         <Tabs<TabKey>

@@ -86,6 +86,7 @@ const H2 = head({
   statusCode: 'RECEIVING',
   status: 'Recibiendo',
   lineCount: 1,
+  groupNumber: 'RCM-00001',
 })
 const H3 = head({ id: 3, publicId: R3, number: 'REC-0003', statusCode: 'RECEIVED', status: 'Completado', isOpen: false, lineCount: 1, pendingPutawayCount: 1 })
 const HNEW = head({ id: 9, publicId: NEW, number: 'REC-0009', carrier: 'Camión 1' })
@@ -271,6 +272,7 @@ describe('Recibo: maestro-detalle', () => {
     wrap(`/warehouse/receipts?receipt=${R2}`)
     expect(await rowButton('REC-0002')).toHaveAttribute('aria-current', 'true')
     expect(await screen.findByText('Origen · Orden de compra: OC-0007')).toBeInTheDocument()
+    expect((await screen.findAllByText('Maestra RCM-00001')).length).toBeGreaterThan(0)
     expect(await screen.findByRole('textbox', { name: 'Recibido de la línea 1' })).toHaveValue('10')
     expect(screen.queryByRole('textbox', { name: 'Esperado de la línea 1' })).toBeNull()
     expect(screen.queryByRole('combobox', { name: 'Producto de la línea 1' })).toBeNull()

@@ -40026,6 +40026,7 @@ export interface components {
             lines?: components["schemas"]["ReceiptLineDto"][] | null;
             receivingModeCode?: string | null;
             receivingMode?: string | null;
+            groupNumber?: string | null;
         };
         ReceiptPageDto: {
             /** Format: int32 */

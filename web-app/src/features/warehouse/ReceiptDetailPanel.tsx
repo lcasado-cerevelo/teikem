@@ -111,6 +111,7 @@ function ReceiptDetailBody({ receipt, onEditHeader }: { receipt: ReceiptDetailDt
             <span className="rcp-title-chips">
               <StatusChip domain={RECEIPT_STATUS_DOMAIN} code={header.statusCode} label={header.status} />
               {direct && <Chip tone="route">{t('warehouse.receipts.chip.direct')}</Chip>}
+              {header.groupNumber && <Chip tone="cap">{t('warehouse.receipts.chip.master', { number: header.groupNumber })}</Chip>}
             </span>
           </>
         }

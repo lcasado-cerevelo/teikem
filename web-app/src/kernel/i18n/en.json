@@ -4321,7 +4321,8 @@
     },
     "notices": {
       "title": "Arrivals & departures",
-      "subtitle": "Arrival notices and exit notices: what the goods owner announces is coming in and asks to go out."
+      "subtitle": "Arrival notices and exit notices: what the goods owner announces is coming in and asks to go out.",
+      "masterLink": "Master receipts"
     },
     "valuation": {
       "tab": "Inventory value",
@@ -6078,7 +6079,8 @@
         "directInfo": "{code} receives direct to bin: only receipts from before the change or with cross-docking appear here."
       },
       "chip": {
-        "direct": "Direct to bin"
+        "direct": "Direct to bin",
+        "master": "Master {number}"
       },
       "damage": {
         "title": "Damaged units of {product}",

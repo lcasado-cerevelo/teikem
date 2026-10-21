@@ -94,7 +94,7 @@ public sealed record ReceiptListItemDto(int Id, Guid PublicId, string Number, st
     decimal ExpectedQty, decimal ReceivedQty, decimal VarianceQty, bool HasVariance, DateTime CreatedAtUtc, DateTime? ReceivedAtUtc,
     string? Carrier, string? Reference, DateOnly? ExpectedDate, int? DefaultStagingBinId, string? DefaultStagingBinCode, int? DockId,
     bool IsOpen, int PendingPutawayCount, IReadOnlyList<ReceiptLineDto>? Lines = null, string ReceivingModeCode = "PUTAWAY",
-    string? ReceivingMode = null);
+    string? ReceivingMode = null, string? GroupNumber = null);
 
 /// <summary>
 /// Lote 16: posición destino de la línea (id, código y tipo de zona). TargetFreeQty = espacio libre del destino en unidades

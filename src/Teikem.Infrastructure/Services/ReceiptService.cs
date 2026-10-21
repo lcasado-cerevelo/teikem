@@ -1860,6 +1860,12 @@ public sealed class ReceiptService(
             : await db.Set<WarehouseBin>().AsNoTracking().Where(b => stagingIds.Contains(b.WarehouseBinId) && whIds.Contains(b.WarehouseId))
                 .ToDictionaryAsync(b => b.WarehouseBinId, b => b.Code, ct);
         var pendingPutaway = await PendingPutawayCountsAsync(ids, ct);
+        // Lote 186: número de la recepción maestra a la que pertenece cada recibo (si alguna).
+        var groupIds = rows.Where(r => r.ReceiptGroupId != null).Select(r => r.ReceiptGroupId!.Value).Distinct().ToList();
+        var groupNumbers = groupIds.Count == 0
+            ? new Dictionary<int, string>()
+            : await db.Set<ReceiptGroup>().AsNoTracking().Where(g => groupIds.Contains(g.ReceiptGroupId))
+                .ToDictionaryAsync(g => g.ReceiptGroupId, g => g.Number, ct);
         // Lote 16: etiqueta del modo por código (dos a lo sumo), resuelta una vez para la página.
         var modeLabels = new Dictionary<string, string>();
 
@@ -1888,7 +1894,8 @@ public sealed class ReceiptService(
                 r.CreatedAtUtc, r.ReceivedAtUtc,
                 r.Carrier, r.Reference, a?.ExpectedDate, r.DefaultStagingBinId,
                 r.DefaultStagingBinId is int sb ? stagingBins.GetValueOrDefault(sb) : null, r.DockId,
-                ReceiptStatusRules.IsOpen(s?.Code), pendingPutaway.GetValueOrDefault(r.ReceiptHeaderId), null, mode, modeLabel);
+                ReceiptStatusRules.IsOpen(s?.Code), pendingPutaway.GetValueOrDefault(r.ReceiptHeaderId), null, mode, modeLabel,
+                r.ReceiptGroupId is int gid ? groupNumbers.GetValueOrDefault(gid) : null);
         }
         return result;
     }

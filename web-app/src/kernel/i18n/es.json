@@ -4321,7 +4321,8 @@
     },
     "notices": {
       "title": "Llegadas y salidas",
-      "subtitle": "Avisos de llegada y avisos de salida: lo que el dueño de la mercancía anuncia que entra y lo que pide que salga."
+      "subtitle": "Avisos de llegada y avisos de salida: lo que el dueño de la mercancía anuncia que entra y lo que pide que salga.",
+      "masterLink": "Recepciones maestras"
     },
     "valuation": {
       "tab": "Valor del inventario",
@@ -6078,7 +6079,8 @@
         "directInfo": "{code} recibe directo a posición: aquí solo aparecen recibos anteriores al cambio o con cruce de plataforma."
       },
       "chip": {
-        "direct": "Directo a posición"
+        "direct": "Directo a posición",
+        "master": "Maestra {number}"
       },
       "damage": {
         "title": "Unidades dañadas de {product}",

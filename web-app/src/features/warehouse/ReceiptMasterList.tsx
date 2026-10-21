@@ -11,7 +11,7 @@ import { useMemo } from 'react'
 import type { FetchAllResult } from '../../kernel/api/fetchAllPages'
 import { StatusChip } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
-import { IconCheckin, ListPager, Panel, QBox, Spinner } from '../../kernel/ui'
+import { Chip, IconCheckin, ListPager, Panel, QBox, Spinner } from '../../kernel/ui'
 import type { ReceiptListItemDto } from './api'
 import { formatDate } from './lineRules'
 import { receiptExportChildren, receiptExportColumns } from './receiptExport'
@@ -82,6 +82,7 @@ export function ReceiptMasterList(props: ReceiptMasterListProps) {
             <span className="rcp-top">
               <span className="ref">{r.number}</span>
               <StatusChip domain={RECEIPT_STATUS_DOMAIN} code={r.statusCode} label={r.status} />
+              {r.groupNumber && <Chip tone="cap">{t('warehouse.receipts.chip.master', { number: r.groupNumber })}</Chip>}
             </span>
             <span className="rcp-from">{receiptSender(r)}</span>
             <span className="meta rcp-line">

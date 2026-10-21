@@ -67,3 +67,8 @@ En **Recibir**, antes de elegir el documento, **Recibir juntos (abrir camión)**
 - Lo ya descrito para la web (avance de todos, «Abrir recibo», «Confirmar todo» de los que queden abiertos) se ve en la pestaña **Maestros**. Un recibo a ciegas no se puede meter a un camión (solo documentos).
 
 Mensajes nuevos de la API (`groupKey` en `POST /receipts` y `POST /receipts/part`): «Este documento es de otro dueño que los de la recepción maestra RCM-#####: reciba por separado lo de dueños distintos.» y «Este documento es de otro almacén que los de la recepción maestra RCM-#####.» (400, campo `groupKey`); «Recibir juntos es solo de documentos: indique un aviso de llegada o una orden de compra.» (400); «La recepción maestra ya se eliminó; abra una nueva.» (409).
+
+## Cómo se ve la maestra desde el recibo y desde «Llegadas y salidas» (Lote 186)
+
+- Cada recibo que pertenece a una recepción maestra muestra una etiqueta **«Maestra RCM-…»** junto a su estatus, tanto en la lista de recibos como en su ficha.
+- En **Llegadas y salidas** (encabezado de la pantalla) hay un botón **«Recepciones maestras»** (permiso `receipts.view`) que lleva directo a la pestaña de maestras de Recibo.

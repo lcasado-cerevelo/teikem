@@ -62395,6 +62395,10 @@
           "receivingMode": {
             "type": "string",
             "nullable": true
+          },
+          "groupNumber": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
