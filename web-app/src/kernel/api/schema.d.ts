@@ -38738,6 +38738,7 @@ export interface components {
             defaultSubjectEn?: string | null;
             defaultBody?: string | null;
             defaultBodyEn?: string | null;
+            category?: string | null;
         };
         NotificationLogDto: {
             /** Format: int64 */

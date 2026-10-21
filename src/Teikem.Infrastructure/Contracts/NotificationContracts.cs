@@ -21,7 +21,8 @@ public sealed record NotificationEventDto(
     string DefaultSubject,
     string DefaultSubjectEn,
     string DefaultBody,
-    string DefaultBodyEn);
+    string DefaultBodyEn,
+    string Category = "OTHER");
 
 /// <summary>Los canales y si están configurados en Teikem (los no configurados no se pueden encender en una regla).</summary>
 public sealed record NotificationChannelStatusDto(string Channel, bool IsConfigured);

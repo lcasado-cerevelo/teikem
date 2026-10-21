@@ -300,5 +300,5 @@ public sealed class NotificationRuleService(
 
     private static NotificationEventDto ToDto(NotificationEventDef e)
         => new(e.Code, e.ModuleKey, e.NameEs, e.NameEn, e.IsOptional, e.Variables.Select(v => new NotificationVariableDto(v.Name, v.LabelEs, v.LabelEn, v.Sample)).ToList(),
-            e.DefaultSubjectEs, e.DefaultSubjectEn, e.DefaultBodyEs, e.DefaultBodyEn);
+            e.DefaultSubjectEs, e.DefaultSubjectEn, e.DefaultBodyEs, e.DefaultBodyEn, NotificationEventCategories.Of(e.Code));
 }

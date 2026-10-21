@@ -58142,6 +58142,10 @@
           "defaultBodyEn": {
             "type": "string",
             "nullable": true
+          },
+          "category": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

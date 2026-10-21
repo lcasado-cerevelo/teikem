@@ -10119,6 +10119,15 @@
       "more": "…y {n} más (afine lo escrito)"
     },
     "rules": {
+      "categories": {
+        "WAREHOUSE": "Almacén",
+        "SALES": "Ventas",
+        "TRANSPORT": "Transporte",
+        "MAINTENANCE": "Mantenimiento",
+        "BILLING": "Facturación",
+        "INTEGRATIONS": "Integraciones",
+        "OTHER": "Otros"
+      },
       "title": "Reglas de aviso",
       "subtitle": "quién se entera de qué, por cuál canal y con qué texto",
       "tabRules": "Reglas",

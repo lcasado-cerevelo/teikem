@@ -23,6 +23,36 @@ public sealed record NotificationEventDef(
     string DefaultBodyEs,
     string DefaultBodyEn);
 
+/// <summary>
+/// Lote 197 — la categoría con que la pantalla de reglas agrupa los eventos (la lista desplegable): WAREHOUSE (almacén), SALES (ventas), TRANSPORT (transporte: flota, choferes), MAINTENANCE (mantenimiento de
+/// vehículos), BILLING (facturación), INTEGRATIONS y OTHER. Se deduce del código del evento en un solo lugar; un evento nuevo cae en OTHER hasta que se le dé su prefijo aquí.
+/// </summary>
+public static class NotificationEventCategories
+{
+    public const string Warehouse = "WAREHOUSE";
+    public const string Sales = "SALES";
+    public const string Transport = "TRANSPORT";
+    public const string Maintenance = "MAINTENANCE";
+    public const string Billing = "BILLING";
+    public const string Integrations = "INTEGRATIONS";
+    public const string Other = "OTHER";
+
+    /// <summary>Orden en que se muestran los grupos.</summary>
+    public static readonly string[] Order = { Warehouse, Sales, Transport, Maintenance, Billing, Integrations, Other };
+
+    public static string Of(string? code)
+    {
+        var c = (code ?? string.Empty).ToUpperInvariant();
+        if (c.StartsWith("FLEET_MAINTENANCE_") || c.StartsWith("FLEET_WORKORDER_")) return Maintenance;
+        if (c.StartsWith("FLEET_")) return Transport;
+        if (c.StartsWith("ASN_") || c.StartsWith("EXIT_NOTICE_") || c.StartsWith("INVENTORY_")) return Warehouse;
+        if (c.StartsWith("SALES_")) return Sales;
+        if (c.StartsWith("BILLING_") || c.StartsWith("INVOICE_")) return Billing;
+        if (c.StartsWith("INTEGRATION_")) return Integrations;
+        return Other;
+    }
+}
+
 public interface INotificationEventProvider
 {
     IEnumerable<NotificationEventDef> Events { get; }

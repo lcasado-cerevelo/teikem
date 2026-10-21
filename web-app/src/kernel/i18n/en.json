@@ -10116,6 +10116,15 @@
       "more": "…and {n} more (refine what you typed)"
     },
     "rules": {
+      "categories": {
+        "WAREHOUSE": "Warehouse",
+        "SALES": "Sales",
+        "TRANSPORT": "Transport",
+        "MAINTENANCE": "Maintenance",
+        "BILLING": "Billing",
+        "INTEGRATIONS": "Integrations",
+        "OTHER": "Other"
+      },
       "title": "Notification rules",
       "subtitle": "who finds out about what, through which channel and with what text",
       "tabRules": "Rules",

@@ -10161,3 +10161,9 @@ Tres lugares: (1) en Llegadas y salidas → Avisos de salida, la etiqueta «Con 
 
 **¿Cómo asigno una orden de compra o una orden de venta a alguien?** (Lote 195)
 En la lista de órdenes de compra (Compras) o de órdenes de venta (Operación), el icono **Asignar** de la fila (permiso `warehouse.manage`) elige a la persona; el icono **Tomar** (`purchasing.receive` en compras, `warehouse.pick` en ventas) la toma quien la va a trabajar. Solo se asigna una orden de compra enviada o recibida en parte, o una orden de venta solicitada o despachada en parte (400: «Solo se puede asignar una orden de compra enviada o recibida en parte.» / «Solo se puede asignar una orden de venta solicitada o despachada en parte.»). Una orden asignada a otra persona no se toma (409: «Ese documento ya está asignado a otra persona; pídale a un supervisor que lo reasigne.»). El interruptor **«Solo los asignados a mí»** filtra la lista, y la columna «Asignado a» dice quién la tiene.
+
+**En «Nueva regla», ¿cómo se agrupan los eventos de la lista?** (Lote 197)
+La lista desplegable de eventos sale agrupada por categoría: **Almacén** (avisos de llegada y de salida, inventario), **Ventas**, **Transporte** (documentos de la flota, combustible, vehículos y choferes sin viaje), **Mantenimiento** (mantenimiento próximo y vencido de los vehículos, órdenes de trabajo abiertas demasiado tiempo), **Facturación** (cuando haya eventos de facturación), **Integraciones** y **Otros**. Un grupo sin eventos no aparece.
+
+**¿Cómo aviso del mantenimiento de los vehículos por vencer?** (Lote 197)
+Cree una regla con el evento **«Mantenimiento próximo»** (y otra con **«Mantenimiento vencido»**), grupo Mantenimiento: el asunto y el texto ya vienen escritos por omisión (con el vehículo, el programa y lo que falta); solo elija a quién se le avisa (rol, persona o correo) y por qué canal. El trabajo diario de la flota los publica; no se repiten mientras el conjunto sea el mismo en la misma semana.

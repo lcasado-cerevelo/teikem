@@ -4,6 +4,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useLang, useT } from '../../kernel/i18n'
+import { groupEventsByCategory } from './eventCategories'
 import { Modal, Spinner, toast } from '../../kernel/ui'
 import { useRoles, useUsers } from '../system/api'
 import {
@@ -181,10 +182,15 @@ export function RuleModal({ rule, onClose }: { rule: NotificationRuleDto | null;
                 {creating ? (
                   <select id="nr-event" value={form.eventCode} onChange={(e) => pickEvent(e.target.value)} aria-invalid={!!errors.eventCode}>
                     <option value="">—</option>
-                    {(events.data ?? []).map((e) => (
-                      <option key={e.code} value={e.code}>
-                        {lang === 'en' ? e.nameEn : e.name}
-                      </option>
+                    {/* Lote 197: los eventos agrupados por categoría (almacén, ventas, transporte, mantenimiento…) */}
+                    {groupEventsByCategory(events.data ?? []).map((g) => (
+                      <optgroup key={g.category} label={t(`notifications.rules.categories.${g.category}`)}>
+                        {g.events.map((e) => (
+                          <option key={e.code} value={e.code}>
+                            {lang === 'en' ? e.nameEn : e.name}
+                          </option>
+                        ))}
+                      </optgroup>
                     ))}
                   </select>
                 ) : (
