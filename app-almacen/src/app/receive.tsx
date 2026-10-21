@@ -36,6 +36,7 @@ import { parseReceiptRequirement, receiveOptions } from '../features/receive/rec
 import { ReceiveDocumentList } from '../features/receive/ReceiveDocumentList'
 import type { LocalDoc } from '../features/receive/localLookup'
 import { countTruckDoc, endTruck, getTruck, startTruck, truckBlockForDoc } from '../features/receive/receiveTruck'
+import { getQueue, popQueue, setQueue, sharesOwner, takeDocIfFree } from '../features/receive/receiveQueue'
 import { chunkAt, distSummary, exceedsCapacity, isRestBin, parsePerBin } from '../features/putaway/putawayLogic'
 import { findBinByCode } from '../kernel/warehouse/binLookup'
 import { StickyAlert } from '../kernel/ui/StickyAlert'
@@ -89,7 +90,8 @@ export default function ReceiveScreen() {
   // Lote 172: «Mis tareas» abre el aviso asignado con ?doc=LLE-##### (una sola vez; se retoma como si se hubiera escaneado)
   const { doc: docParam } = useLocalSearchParams<{ doc?: string }>()
   const docOpened = useRef(false)
-  const { device } = useSession()
+  const { device, session } = useSession()
+  const userId = session?.userId ?? null
   const activeWarehouse = useActiveWarehouse()
   const warehousePublicId = activeWarehouse.publicId
   const deviceMode = parseReceivingMode(activeWarehouse.receivingMode)
@@ -189,9 +191,36 @@ export default function ReceiveScreen() {
       return
     }
     startLocalReceipt(warehousePublicId!, doc, sentMode)
+    void takeDocIfFree(doc, userId)
     setDocError(null)
     vibrateOk()
     refresh()
+  }
+
+  /** Lote 198: recibir varios seguidos. Del mismo dueño (2 o más): se abre una carga y el servidor los reúne en una recepción maestra; si no, recibos separados. */
+  function pickMany(docs: LocalDoc[]) {
+    if (docs.length === 0) return
+    if (sharesOwner(docs)) startTruck(warehousePublicId!, newClientKey())
+    else endTruck()
+    const [first, ...rest] = docs
+    setQueue(rest)
+    startLocalReceipt(warehousePublicId!, first, sentMode)
+    void takeDocIfFree(first, userId)
+    setDocError(null)
+    vibrateOk()
+    refresh()
+  }
+
+  /** Terminado un recibo, sigue el próximo de la cola (true) o, si no queda ninguno, se cierra la carga (false). */
+  function advanceQueue(): boolean {
+    const next = popQueue()
+    if (!next) {
+      if (getTruck()) endTruck()
+      return false
+    }
+    startLocalReceipt(warehousePublicId!, next, sentMode)
+    void takeDocIfFree(next, userId)
+    return true
   }
 
   function scanDoc(code: string) {
@@ -212,6 +241,7 @@ export default function ReceiveScreen() {
       return
     }
     startLocalReceipt(warehousePublicId!, doc, sentMode)
+    void takeDocIfFree(doc, userId)
     setDocError(null)
     vibrateOk()
     refresh()
@@ -408,6 +438,8 @@ export default function ReceiveScreen() {
         style: 'destructive',
         onPress: () => {
           discardLocalReceipt()
+          setQueue([])
+          if (getTruck()) endTruck()
           closeDraft()
           setProductError(null)
           refresh()
@@ -432,8 +464,9 @@ export default function ReceiveScreen() {
     if (openReceipt.groupKey) countTruckDoc()
     discardLocalReceipt()
     void runSync()
+    const more = advanceQueue()
     refresh()
-    router.replace('/home')
+    if (!more) router.replace('/home')
   }
 
   // Lote 175: «Recibir una parte» — confirma una tanda de lo capturado (entra al staging y ya se puede acomodar) y deja el recibo abierto en el servidor.
@@ -442,8 +475,9 @@ export default function ReceiveScreen() {
     enqueue({ kind: 'receiptPart', body: buildReceiptPartBody(openReceipt.warehousePublicId, openReceipt.doc, openReceipt.lines, newClientKey(), openReceipt.groupKey) })
     discardLocalReceipt()
     void runSync()
+    const more = advanceQueue()
     refresh()
-    router.replace('/home')
+    if (!more) router.replace('/home')
   }
 
   // Paso 1: sin recibo abierto todavía. Nada que perder aquí, así que "Volver" sale directo a Inicio (a diferencia
@@ -469,35 +503,9 @@ export default function ReceiveScreen() {
           ))}
         </View>
         <Text style={styles.help}>{t(startMode === 'DIRECT' ? 'receive.modeDirectHelp' : 'receive.modePutawayHelp')}</Text>
-        {truck ? (
-          <View style={styles.truckBox} testID="receive-truck">
-            <Text style={styles.label}>{t('receive.truckOn', { n: truck.docs })}</Text>
-            <Text style={styles.help}>{t(truck.ownerKey ? 'receive.truckOwnerSet' : 'receive.truckOwnerPending')}</Text>
-            <BigButton
-              label={t('receive.truckEnd')}
-              variant="secondary"
-              onPress={() => {
-                endTruck()
-                refresh()
-              }}
-            />
-          </View>
-        ) : (
-          <>
-            <BigButton
-              label={t('receive.truckStart')}
-              variant="secondary"
-              testID="receive-truck-start"
-              onPress={() => {
-                startTruck(warehousePublicId!, newClientKey())
-                refresh()
-              }}
-            />
-            <Text style={styles.help}>{t('receive.truckHelp')}</Text>
-          </>
-        )}
+        {truck || getQueue().length > 0 ? <Text style={styles.help}>{t('receive.queueNote', { count: getQueue().length })}</Text> : null}
         <ScanField label={t('receive.scanDocLabel')} help={t('receive.scanDocHelp')} error={docError} onSubmit={scanDoc} />
-        <ReceiveDocumentList warehousePublicId={warehousePublicId} options={options} onPick={pickDoc} />
+        <ReceiveDocumentList warehousePublicId={warehousePublicId} options={options} userId={userId} onPick={pickDoc} onPickMany={pickMany} />
         {options.blind ? (
           <>
             <BigButton label={t('receive.startBlind')} variant="secondary" onPress={startBlind} />
@@ -507,7 +515,7 @@ export default function ReceiveScreen() {
           <Text style={styles.help}>{t('receive.documentRequired')}</Text>
         )}
         <View style={styles.bottom}>
-          <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} />
+          <BigButton label={t('common.back')} variant="secondary" onPress={() => router.replace('/home')} />
         </View>
       </KeyboardScreen>
     )
@@ -853,6 +861,7 @@ export default function ReceiveScreen() {
             })
           : t('receive.startBlind')}
       </Text>
+      {getQueue().length > 0 ? <Text style={styles.help} testID="receive-queue-left">{t('receive.queueLeft', { count: getQueue().length })}</Text> : null}
       {docProgress ? (
         <View testID="receive-doc-progress">
           <Text style={styles.label}>{t('receive.docProgressTitle')}</Text>

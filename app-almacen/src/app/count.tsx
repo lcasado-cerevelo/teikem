@@ -558,7 +558,7 @@ export default function CountScreen() {
         )}
         {busy ? <ActivityIndicator color={colors.brand} /> : null}
         {/* 2026-10-01 (Luis): al final de todo lo que hay en pantalla */}
-        <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} disabled={busy} />
+        <BigButton label={t('common.back')} variant="secondary" onPress={() => router.replace('/home')} disabled={busy} />
       </KeyboardScreen>
     )
   }

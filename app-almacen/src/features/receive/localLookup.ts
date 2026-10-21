@@ -39,42 +39,46 @@ export interface PendingDoc {
   doc: LocalDoc
   title: string
   subtitle: string | null
+  /** Lote 198: a quién está asignado (null = nadie): lo mío va primero, lo de otra persona se ve atenuado y no se toma. */
+  assignedToUserId: number | null
 }
 
 /**
  * Avisos de llegada (de cliente; los nacidos de una orden de compra se ven como orden) u órdenes de compra pendientes del almacén, de la base local, con búsqueda PARCIAL
  * (referencia o número, cliente o proveedor, fecha). Sin tope: quien llama pide `limit` y sube de a poco al deslizar.
  */
-export function listPendingDocs(warehousePublicId: string, kind: 'asn' | 'po', search: string, limit: number): PendingDoc[] {
+export function listPendingDocs(warehousePublicId: string, kind: 'asn' | 'po', search: string, limit: number, userId: number | null = null): PendingDoc[] {
   const term = likeTerm(search)
   const db = getDb()
   if (kind === 'po') {
     return db
-      .getAllSync<{ public_id: string; number: string; supplier_name: string | null; expected_date: string | null }>(
-        `SELECT public_id, number, supplier_name, expected_date FROM purchase_order
+      .getAllSync<{ public_id: string; number: string; supplier_name: string | null; expected_date: string | null; assigned_to_user_id: number | null }>(
+        `SELECT public_id, number, supplier_name, expected_date, assigned_to_user_id FROM purchase_order
          WHERE is_active = 1 AND warehouse_public_id = ?
            AND (number LIKE ? ESCAPE '\\' OR supplier_name LIKE ? ESCAPE '\\' OR expected_date LIKE ? ESCAPE '\\')
-         ORDER BY expected_date IS NULL, expected_date, number LIMIT ?`,
-        [warehousePublicId, term, term, term, limit],
+         ORDER BY (assigned_to_user_id = ?) DESC, assigned_to_user_id IS NOT NULL, expected_date IS NULL, expected_date, number LIMIT ?`,
+        [warehousePublicId, term, term, term, userId, limit],
       )
       .map((o) => ({
         doc: { kind: 'po' as const, purchaseOrderPublicId: o.public_id, asnId: null, label: o.number },
         title: o.number,
         subtitle: [o.supplier_name, o.expected_date].filter(Boolean).join(' · ') || null,
+        assignedToUserId: o.assigned_to_user_id,
       }))
   }
   return db
-    .getAllSync<{ id: number; number: string | null; reference: string | null; client_name: string | null; expected_date: string | null }>(
-      `SELECT id, number, reference, client_name, expected_date FROM asn
+    .getAllSync<{ id: number; number: string | null; reference: string | null; client_name: string | null; expected_date: string | null; assigned_to_user_id: number | null }>(
+      `SELECT id, number, reference, client_name, expected_date, assigned_to_user_id FROM asn
        WHERE is_active = 1 AND warehouse_public_id = ? AND purchase_order_public_id IS NULL
          AND (number LIKE ? ESCAPE '\\' OR reference LIKE ? ESCAPE '\\' OR client_name LIKE ? ESCAPE '\\' OR expected_date LIKE ? ESCAPE '\\' OR CAST(id AS TEXT) LIKE ? ESCAPE '\\')
-       ORDER BY expected_date IS NULL, expected_date, id LIMIT ?`,
-      [warehousePublicId, term, term, term, term, term, limit],
+       ORDER BY (assigned_to_user_id = ?) DESC, assigned_to_user_id IS NOT NULL, expected_date IS NULL, expected_date, id LIMIT ?`,
+      [warehousePublicId, term, term, term, term, term, userId, limit],
     )
     .map((a) => ({
       doc: { kind: 'asn' as const, purchaseOrderPublicId: null, asnId: a.id, label: a.number ?? a.reference ?? `#${a.id}` },
       title: [a.number ?? `#${a.id}`, a.reference].filter(Boolean).join(' · '),
       subtitle: [a.client_name, a.expected_date].filter(Boolean).join(' · ') || null,
+      assignedToUserId: a.assigned_to_user_id,
     }))
 }
 

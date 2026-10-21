@@ -264,7 +264,7 @@ export default function PutawayScreen() {
           )}
         />
       )}
-      <BigButton label={t('common.back')} variant="danger" onPress={() => router.back()} />
+      <BigButton label={t('common.back')} variant="secondary" onPress={() => router.back()} />
     </View>
   )
 }

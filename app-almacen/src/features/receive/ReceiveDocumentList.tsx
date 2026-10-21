@@ -12,15 +12,33 @@ import type { ReceiveOptions } from './receiptRequirement'
 
 const PAGE = 30
 
-export function ReceiveDocumentList({ warehousePublicId, options, onPick }: { warehousePublicId: string; options: ReceiveOptions; onPick: (doc: LocalDoc) => void }) {
+const keyOf = (d: LocalDoc) => `${d.kind}:${d.asnId ?? d.purchaseOrderPublicId}`
+
+export function ReceiveDocumentList({
+  warehousePublicId,
+  options,
+  userId,
+  onPick,
+  onPickMany,
+}: {
+  warehousePublicId: string
+  options: ReceiveOptions
+  userId: number | null
+  onPick: (doc: LocalDoc) => void
+  /** Lote 198: recibir varios seguidos (los marcados, en el orden de la lista). */
+  onPickMany: (docs: LocalDoc[]) => void
+}) {
   const { t } = useT()
   const kinds = [...(options.asn ? (['asn'] as const) : []), ...(options.purchaseOrder ? (['po'] as const) : [])]
   const [kind, setKind] = useState<'asn' | 'po'>(kinds[0] ?? 'asn')
   const [search, setSearch] = useState('')
   const [pages, setPages] = useState(1)
+  const [selecting, setSelecting] = useState(false)
+  const [selected, setSelected] = useState<Record<string, LocalDoc>>({})
   const shownKind = kinds.includes(kind) ? kind : kinds[0]
   const limit = pages * PAGE
-  const rows = useMemo(() => (shownKind ? listPendingDocs(warehousePublicId, shownKind, search, limit) : []), [warehousePublicId, shownKind, search, limit])
+  const rows = useMemo(() => (shownKind ? listPendingDocs(warehousePublicId, shownKind, search, limit, userId) : []), [warehousePublicId, shownKind, search, limit, userId])
+  const chosen = Object.values(selected)
   if (!shownKind) return null
   return (
     <View style={styles.wrap} testID="receive-doc-list">
@@ -58,12 +76,52 @@ export function ReceiveDocumentList({ warehousePublicId, options, onPick }: { wa
         accessibilityLabel={t('receive.searchDocs')}
       />
       {rows.length === 0 ? <Text style={styles.help}>{t(search.trim() ? 'receive.noDocMatches' : 'receive.noPendingDocs')}</Text> : null}
-      {rows.map((r) => (
-        <Pressable key={`${r.doc.kind}:${r.doc.asnId ?? r.doc.purchaseOrderPublicId}`} accessibilityRole="button" accessibilityLabel={r.title} onPress={() => onPick(r.doc)} style={styles.row}>
-          <Text style={styles.rowTitle}>{r.title}</Text>
-          {r.subtitle ? <Text style={styles.help}>{r.subtitle}</Text> : null}
-        </Pressable>
-      ))}
+      <BigButton
+        label={selecting ? t('receive.selectCancel') : t('receive.selectMany')}
+        variant="secondary"
+        testID="receive-select-many"
+        onPress={() => {
+          setSelecting((v) => !v)
+          setSelected({})
+        }}
+      />
+      {rows.map((r) => {
+        const k = keyOf(r.doc)
+        const otherOwner = r.assignedToUserId != null && r.assignedToUserId !== userId
+        const mine = r.assignedToUserId != null && r.assignedToUserId === userId
+        const on = selected[k] !== undefined
+        return (
+          <Pressable
+            key={k}
+            accessibilityRole="button"
+            accessibilityLabel={r.title}
+            accessibilityState={{ selected: on, disabled: otherOwner }}
+            disabled={otherOwner}
+            testID={`receive-doc-${k}`}
+            onPress={() => {
+              if (!selecting) return onPick(r.doc)
+              setSelected((cur) => {
+                const next = { ...cur }
+                if (next[k]) delete next[k]
+                else next[k] = r.doc
+                return next
+              })
+            }}
+            style={[styles.row, on && styles.rowOn, otherOwner && styles.rowDim]}
+          >
+            <Text style={styles.rowTitle}>{selecting ? `${on ? '☑' : '☐'} ` : ''}{r.title}</Text>
+            {r.subtitle ? <Text style={styles.help}>{r.subtitle}</Text> : null}
+            <Text style={mine ? styles.mine : styles.help}>{t(mine ? 'receive.assignedToYou' : otherOwner ? 'receive.assignedOther' : 'receive.unassigned')}</Text>
+          </Pressable>
+        )
+      })}
+      {selecting && chosen.length > 0 ? (
+        <BigButton
+          label={t('receive.receiveSelected', { count: chosen.length })}
+          testID="receive-selected-go"
+          onPress={() => onPickMany(rows.map((r) => r.doc).filter((d) => selected[keyOf(d)] !== undefined))}
+        />
+      ) : null}
       {rows.length >= limit ? <BigButton label={t('receive.moreDocs')} variant="secondary" onPress={() => setPages((n) => n + 1)} /> : null}
     </View>
   )
@@ -79,5 +137,8 @@ const styles = StyleSheet.create({
   tabText: { color: colors.text, fontSize: fontSize.message, fontWeight: '700' },
   input: { minHeight: 56, borderWidth: 2, borderColor: colors.line, borderRadius: radius.md, paddingHorizontal: spacing.md, fontSize: 20, color: colors.text, backgroundColor: colors.panelAlt },
   row: { minHeight: 64, justifyContent: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.panelAlt, borderRadius: radius.md },
+  rowOn: { borderWidth: 2, borderColor: colors.brand },
+  rowDim: { opacity: 0.45 },
+  mine: { color: colors.brand, fontSize: fontSize.message, fontWeight: '600' },
   rowTitle: { color: colors.text, fontSize: fontSize.listTitle, fontWeight: '600' },
 })

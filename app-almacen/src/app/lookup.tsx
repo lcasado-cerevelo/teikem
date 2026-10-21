@@ -132,7 +132,7 @@ export default function LookupScreen() {
         </>
       ) : null}
       {/* 2026-10-01 (Luis): al final de todo lo que hay en pantalla, también debajo del resultado */}
-      <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} />
+      <BigButton label={t('common.back')} variant="secondary" onPress={() => router.replace('/home')} />
     </KeyboardScreen>
   )
 }
