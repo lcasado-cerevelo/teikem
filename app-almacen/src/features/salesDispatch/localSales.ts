@@ -127,7 +127,7 @@ interface Consumption {
  * Lo que sale de las reservas de una línea de KIT al despachar `kits`: de cada componente (cantidad por kit × kits), las filas de reserva en el orden en que las dejó el servidor
  * (el mismo orden con el que el servidor consume). No modifica nada.
  */
-function kitConsumption(db: SQLiteDatabase, lineId: number, kits: number): Consumption[] {
+export function kitConsumption(db: SQLiteDatabase, lineId: number, kits: number): Consumption[] {
   const out: Consumption[] = []
   const comps = db.getAllSync<{ product_public_id: string; qty_per_kit: number }>('SELECT product_public_id, qty_per_kit FROM sales_order_component WHERE sales_order_line_id = ? ORDER BY id', [lineId])
   for (const c of comps) {
@@ -204,6 +204,20 @@ export function reapplyPendingSalesDispatches(db: SQLiteDatabase): void {
     try {
       const body = JSON.parse(row.body) as { lines?: DispatchLine[] }
       applyDispatchLocally(db, order.id, body.lines ?? [])
+    } catch {
+      // un cuerpo ilegible no detiene la bajada
+    }
+  }
+  // Lote 186: lo mismo para las órdenes que van dentro de una recolección maestra pendiente
+  const groups = db.getAllSync<{ body: string }>("SELECT body FROM outbox WHERE kind = 'pickGroup' AND status = 'pending' ORDER BY id")
+  for (const row of groups) {
+    try {
+      const body = JSON.parse(row.body) as { documents?: Array<{ kind?: string; publicId: string; lines?: DispatchLine[] }> }
+      for (const d of body.documents ?? []) {
+        if (d.kind !== 'SALES_ORDER') continue
+        const order = db.getFirstSync<{ id: number }>('SELECT id FROM sales_order WHERE public_id = ?', [d.publicId])
+        if (order) applyDispatchLocally(db, order.id, d.lines ?? [])
+      }
     } catch {
       // un cuerpo ilegible no detiene la bajada
     }

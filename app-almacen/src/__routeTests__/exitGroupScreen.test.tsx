@@ -6,7 +6,7 @@ import { cleanup, fireEvent, renderRouter, screen, waitFor } from 'expo-router/t
 
 import { __resetSessionForTests } from '../kernel/auth/session'
 import { __resetDbForTests, getDb } from '../kernel/db/database'
-import { applyExitNotices } from '../kernel/sync/download'
+import { applyExitNotices, applySalesOrders } from '../kernel/sync/download'
 import { __resetSyncEngineForTests } from '../kernel/sync/engine'
 import { listOutbox } from '../kernel/sync/outbox'
 import { json, mockFetch, setupDevice } from './countKit'
@@ -106,5 +106,41 @@ describe('Recolectar juntos (aviso de salida)', () => {
     await waitFor(() => expect(screen.getByText('No hay existencia suficiente en A-01.')).toBeTruthy())
     expect(listOutbox()).toEqual([])
     expect(onHand()).toBe(20)
+  })
+
+  it('Lote 186: elige un aviso y una orden de venta del mismo cliente y manda UNA maestra con los dos tipos', async () => {
+    await seed()
+    const n = notice(5, 'ASICS', 2)
+    applySalesOrders(getDb(), 'wh-1', [{
+      id: 9, publicId: 'so-9', number: 'OV-00009', warehousePublicId: 'wh-1', clientName: 'ASICS', consigneeName: 'Sucursal Norte', statusCode: 'REQUESTED', requiredDate: null, requestedAtUtc: null, isActive: true,
+      lines: [{ id: 50, productPublicId: 'p1', sku: 'MED', productName: 'Medicina', qtyOrdered: 3, qtyReserved: 3, qtyShipped: 0, qtyBackordered: 0, reservations: [{ binId: 55, binCode: 'A-01', lotId: null, lotNumber: null, quantity: 3 }] }],
+    }])
+    applyExitNotices(getDb(), 'wh-1', [n])
+    const calls = mockFetch([
+      ME,
+      (c) => (c.method === 'POST' && c.path === '/api/v1/pick-batches/groups' ? json(200, { publicId: 'g2', number: 'EMP-00021', documents: [], movements: [] }) : null),
+    ])
+    await renderRouter('src/app', { initialUrl: '/exit-dispatch' })
+    await fireEvent.press(await screen.findByTestId('exit-group-toggle'))
+    await fireEvent.press(await screen.findByTestId('exit-notice-SAL-00005'))
+    await fireEvent.press(await screen.findByTestId('exit-order-OV-00009'))
+    await fireEvent.press(await screen.findByTestId('exit-group-go'))
+
+    await waitFor(() => expect(screen.getByText('Ve a A-01')).toBeTruthy())
+    await fireEvent.changeText(screen.getByLabelText('Posición de donde sacas'), 'A-01')
+    await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
+    await waitFor(() => expect(screen.getByText(/✓ 2 × MED · A-01/)).toBeTruthy())
+    await fireEvent.changeText(screen.getByLabelText('Posición de donde sacas'), 'a-01')
+    await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
+    await waitFor(() => expect(screen.getByText(/✓ 3 × MED · A-01/)).toBeTruthy())
+    await fireEvent.press(screen.getByTestId('exit-finish'))
+    await fireEvent.press(await screen.findByTestId('exit-send'))
+    await waitFor(() => expect(screen.getByText('Recolección maestra EMP-00021 enviada.')).toBeTruthy())
+    expect(calls.find((c) => c.method === 'POST' && c.path === '/api/v1/pick-batches/groups')?.body).toMatchObject({
+      documents: [
+        { kind: 'EXIT_NOTICE', publicId: 'sn-5', lines: [{ lineId: 50, quantity: 2, binId: 55 }] },
+        { kind: 'SALES_ORDER', publicId: 'so-9', lines: [{ lineId: 50, quantity: 3, binId: 55 }] },
+      ],
+    })
   })
 })

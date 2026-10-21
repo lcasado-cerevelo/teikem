@@ -6,7 +6,8 @@ import { getDb, type SQLiteDatabase } from '../../kernel/db/database'
 import { enqueue } from '../../kernel/sync/outbox'
 import { applyDeltasIn, issueDeltas } from '../../kernel/warehouse/balanceProjection'
 import { buildDispatchLines, buildTasks, type LocalSalesLine, type SalesPick, type SalesTask } from '../salesDispatch/salesDispatchLogic'
-import { buildGroupBody, type GroupableNotice } from './exitGroupLogic'
+import { applyDispatchLocally, getSalesOrderLines, kitConsumption, listSalesOrders } from '../salesDispatch/localSales'
+import { buildGroupBody, docKey, realLineId, type GroupableNotice, type GroupKind } from './exitGroupLogic'
 
 export interface LocalExitNotice {
   id: number
@@ -20,6 +21,8 @@ export interface LocalExitNotice {
   requiredDate: string | null
   /** Lo reservado que se puede despachar ya. */
   reserved: number
+  /** Lote 186: en «Recolectar juntos» también entran órdenes de venta (con la forma de un aviso); ausente = aviso de salida. */
+  kind?: GroupKind
 }
 
 interface NoticeRow {
@@ -157,8 +160,9 @@ export function reapplyPendingExitDispatches(db: SQLiteDatabase): void {
   const groups = db.getAllSync<{ body: string }>("SELECT body FROM outbox WHERE kind = 'pickGroup' AND status = 'pending' ORDER BY id")
   for (const row of groups) {
     try {
-      const body = JSON.parse(row.body) as { documents?: Array<{ publicId: string; lines?: DispatchLine[] }> }
+      const body = JSON.parse(row.body) as { documents?: Array<{ kind?: string; publicId: string; lines?: DispatchLine[] }> }
       for (const d of body.documents ?? []) {
+        if (d.kind === 'SALES_ORDER') continue   // Lote 186: las órdenes de la maestra se reaplican al bajar las órdenes (reapplyPendingSalesDispatches)
         const notice = db.getFirstSync<{ id: number }>('SELECT id FROM exit_notice WHERE public_id = ?', [d.publicId])
         if (notice) applyExitDispatchLocally(db, notice.id, d.lines ?? [])
       }
@@ -189,21 +193,48 @@ export function queueExitDispatch(notice: LocalExitNotice, tasks: readonly Sales
   return id
 }
 
-/** Las tareas guiadas de varios avisos juntas (en el orden elegido) y a qué aviso pertenece cada línea. */
+/** Lote 186: las órdenes de venta del almacén con algo reservado, con la forma de un aviso para elegirlas junto a los avisos en «Recolectar juntos». */
+export function listGroupableOrders(warehousePublicId: string): LocalExitNotice[] {
+  return listSalesOrders(warehousePublicId).map((o) => ({
+    id: o.id,
+    publicId: o.publicId,
+    number: o.number,
+    warehousePublicId: o.warehousePublicId,
+    clientName: o.clientName,
+    reference: null,
+    destination: o.consigneeName,
+    statusCode: o.statusCode,
+    requiredDate: o.requiredDate,
+    reserved: o.reserved,
+    kind: 'SALES_ORDER' as const,
+  }))
+}
+
+/**
+ * Las tareas guiadas de varios documentos juntas (en el orden elegido) y a qué documento pertenece cada línea (por `docKey`). Las líneas y las tareas de una orden de venta van con su id de línea en
+ * negativo para no chocar con las de un aviso (`realLineId` lo devuelve al del servidor).
+ */
 export function getGroupTasks(notices: readonly LocalExitNotice[]): { tasks: SalesTask[]; lineNotice: Map<number, number> } {
   const tasks: SalesTask[] = []
   const lineNotice = new Map<number, number>()
   for (const n of notices) {
+    if (n.kind === 'SALES_ORDER') {
+      const lines = getSalesOrderLines(n.id)
+      for (const l of lines) lineNotice.set(-l.id, docKey(n))
+      tasks.push(...buildTasks(lines).map((t) => ({ ...t, lineId: -t.lineId, key: `S${t.key}` })))
+      continue
+    }
     const lines = getExitNoticeLines(n.id)
-    for (const l of lines) lineNotice.set(l.id, n.id)
+    for (const l of lines) lineNotice.set(l.id, docKey(n))
     tasks.push(...buildTasks(lines))
   }
   return { tasks, lineNotice }
 }
 
 /**
- * Lote 178 — encola la recolección maestra de varios avisos (POST /pick-batches/groups) y la refleja de inmediato en cada aviso y en los saldos locales, todo en una transacción. Devuelve el id
- * de la cola (para `flushNow`) o null si no alcanzan dos avisos con algo recogido. Si el servidor la rechaza, los saldos se deshacen solos (runOutbox).
+ * Lote 178 — encola la recolección maestra de varios documentos (POST /pick-batches/groups) y la refleja de inmediato en cada uno y en los saldos locales, todo en una transacción. Devuelve el id
+ * de la cola (para `flushNow`) o null si no alcanzan dos documentos con algo recogido. Si el servidor la rechaza, los saldos se deshacen solos (runOutbox).
+ * Lote 186: los documentos pueden ser avisos de salida u órdenes de venta (una línea de kit sale de lo reservado de sus componentes).
  */
 export function queueExitGroup(notices: readonly LocalExitNotice[], tasks: readonly SalesTask[], picks: readonly SalesPick[], lineNotice: ReadonlyMap<number, number>, note?: string | null): number | null {
   if (notices.length === 0) return null
@@ -213,15 +244,23 @@ export function queueExitGroup(notices: readonly LocalExitNotice[], tasks: reado
   const db = getDb()
   let id = 0
   db.withTransactionSync(() => {
-    const issue = body.documents.flatMap((d) =>
-      d.lines.map((l) => ({ productPublicId: tasks.find((t) => t.lineId === l.lineId)?.productPublicId ?? '', quantity: l.quantity, binId: l.binId ?? 0, lotId: l.lotId ?? null })),
-    )
+    const issue: Array<{ productPublicId: string; quantity: number; binId: number; lotId: number | null }> = []
+    for (const l of buildDispatchLines(tasks, picks)) {
+      if (l.binId === undefined) {
+        // línea de kit: sale de lo reservado de sus componentes
+        for (const c of kitConsumption(db, realLineId(l.lineId), l.quantity)) issue.push({ productPublicId: c.productPublicId, quantity: c.quantity, binId: c.binId, lotId: c.lotId })
+        continue
+      }
+      issue.push({ productPublicId: tasks.find((t) => t.lineId === l.lineId)?.productPublicId ?? '', quantity: l.quantity, binId: l.binId, lotId: l.lotId ?? null })
+    }
     const projection = issueDeltas({ warehousePublicId, lines: issue }, db)
     id = enqueue({ kind: 'pickGroup', body: { documents: body.documents, note: note?.trim() || null }, projection })
     applyDeltasIn(db, projection, 1)
     for (const d of body.documents) {
-      const notice = notices.find((n) => n.publicId === d.publicId)
-      if (notice) applyExitDispatchLocally(db, notice.id, d.lines)
+      const doc = notices.find((n) => n.publicId === d.publicId)
+      if (!doc) continue
+      if (d.kind === 'SALES_ORDER') applyDispatchLocally(db, doc.id, d.lines)
+      else applyExitDispatchLocally(db, doc.id, d.lines)
     }
   })
   return id

@@ -7,16 +7,33 @@ import { buildDispatchLines } from '../salesDispatch/salesDispatchLogic'
 export const MIN_GROUP = 2
 export const MAX_GROUP = 20
 
+/** Lote 186: una recolección maestra reúne avisos de salida y órdenes de venta del mismo cliente. */
+export type GroupKind = 'EXIT_NOTICE' | 'SALES_ORDER'
+
 export interface GroupableNotice {
   id: number
   publicId: string
   number: string
   clientName: string
+  /** Ausente = aviso de salida. */
+  kind?: GroupKind
+}
+
+/**
+ * Clave numérica del documento dentro del grupo: el id del aviso, o el id de la orden en negativo (los ids de avisos y de órdenes pueden coincidir). Las líneas de las órdenes también viajan con
+ * su id en negativo dentro de la ruta guiada (`realLineId` lo devuelve al del servidor).
+ */
+export function docKey(d: Pick<GroupableNotice, 'id' | 'kind'>): number {
+  return d.kind === 'SALES_ORDER' ? -d.id : d.id
+}
+
+export function realLineId(lineId: number): number {
+  return Math.abs(lineId)
 }
 
 /** Por qué un aviso no se puede elegir ahora (null = se puede): otro cliente que el ya elegido (una maestra es de un solo cliente y destino) o el máximo. */
 export function groupBlock(notice: GroupableNotice, chosen: readonly GroupableNotice[]): 'otherClient' | 'max' | null {
-  if (chosen.some((c) => c.id === notice.id)) return null
+  if (chosen.some((c) => docKey(c) === docKey(notice))) return null
   if (chosen.length >= MAX_GROUP) return 'max'
   if (chosen.length > 0 && chosen[0].clientName !== notice.clientName) return 'otherClient'
   return null
@@ -27,15 +44,15 @@ export function buildGroupBody(
   notices: readonly GroupableNotice[],
   tasks: readonly SalesTask[],
   picks: readonly SalesPick[],
-  lineNotice: ReadonlyMap<number, number>,
+  lineNotice: ReadonlyMap<number, number>, // línea (en la ruta) → docKey de su documento
   warehousePublicId: string,
 ) {
   const lines = buildDispatchLines(tasks, picks)
   const documents = notices
     .map((n) => ({
-      kind: 'EXIT_NOTICE' as const,
+      kind: (n.kind ?? 'EXIT_NOTICE') as GroupKind,
       publicId: n.publicId,
-      lines: lines.filter((l) => lineNotice.get(l.lineId) === n.id).map((l) => ({ lineId: l.lineId, quantity: l.quantity, binId: l.binId, lotId: l.lotId })),
+      lines: lines.filter((l) => lineNotice.get(l.lineId) === docKey(n)).map((l) => ({ lineId: realLineId(l.lineId), quantity: l.quantity, binId: l.binId, lotId: l.lotId })),
     }))
     .filter((d) => d.lines.length > 0)
   return { warehousePublicId, documents }

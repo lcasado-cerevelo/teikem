@@ -1,11 +1,12 @@
 import { __resetAllForTests } from 'expo-sqlite'
 
 import { __resetDbForTests, getDb } from '../../kernel/db/database'
-import { applyExitNotices } from '../../kernel/sync/download'
+import { applyExitNotices, applySalesOrders } from '../../kernel/sync/download'
 import { listOutbox } from '../../kernel/sync/outbox'
+import { reapplyPendingSalesDispatches, getSalesOrderLines, listSalesOrders } from '../salesDispatch/localSales'
 import { buildTasks } from '../salesDispatch/salesDispatchLogic'
 import { readDispatchRequirement, saveDispatchRequirement } from '../dispatch/stockExit'
-import { findExitNoticeByNumber, getExitNoticeLines, getGroupTasks, listExitNotices, queueExitDispatch, queueExitGroup, reapplyPendingExitDispatches } from './localExit'
+import { findExitNoticeByNumber, getExitNoticeLines, getGroupTasks, listExitNotices, listGroupableOrders, queueExitDispatch, queueExitGroup, reapplyPendingExitDispatches } from './localExit'
 
 beforeEach(() => {
   __resetAllForTests()
@@ -146,5 +147,44 @@ describe('recolectar juntos (Lote 178)', () => {
     reapplyPendingExitDispatches(getDb())
     expect(getExitNoticeLines(7)[0].qtyReserved).toBe(2)
     expect(findExitNoticeByNumber(WH, 'SAL-00008')).toBeNull()
+  })
+
+  // Lote 186: una orden de venta (con el MISMO id de línea que un aviso) viaja en la misma maestra
+  const ORDER = {
+    id: 5, publicId: 'so-5', number: 'OV-00005', warehousePublicId: WH, clientName: 'ASICS', consigneeName: 'Sucursal Norte', statusCode: 'REQUESTED', requiredDate: '2026-10-20', requestedAtUtc: null, isActive: true,
+    lines: [{ id: 70, productPublicId: 'p1', sku: 'MED', productName: 'Medicina', qtyOrdered: 5, qtyReserved: 5, qtyShipped: 0, qtyBackordered: 0, reservations: [{ binId: 1, binCode: 'P-01', lotId: 3, lotNumber: 'L1', quantity: 5 }] }],
+  }
+
+  it('Lote 186: junta un aviso y una orden de venta aunque sus líneas tengan el mismo id, y manda la orden con su tipo', () => {
+    seed()
+    applySalesOrders(getDb(), WH, [ORDER])
+    const notice = findExitNoticeByNumber(WH, 'SAL-00007')!
+    const order = listGroupableOrders(WH)[0]
+    expect([order.kind, order.number, order.destination]).toEqual(['SALES_ORDER', 'OV-00005', 'Sucursal Norte'])
+    const { tasks, lineNotice } = getGroupTasks([notice, order])
+    expect(tasks.map((t) => t.lineId)).toEqual([70, 70, -70])   // las de la orden van en negativo
+    const picks = [
+      { taskKey: tasks[0].key, binId: 1, binCode: 'P-01', qty: 4 },
+      { taskKey: tasks[2].key, binId: 1, binCode: 'P-01', qty: 5 },
+    ]
+    const id = queueExitGroup([notice, order], tasks, picks, lineNotice)!
+    const body = JSON.parse(listOutbox().find((r) => r.id === id)!.body)
+    expect(body.documents.map((d: { kind: string; publicId: string; lines: Array<{ lineId: number }> }) => [d.kind, d.publicId, d.lines[0].lineId])).toEqual([['EXIT_NOTICE', 'sn-7', 70], ['SALES_ORDER', 'so-5', 70]])
+    expect(getExitNoticeLines(7)[0].qtyReserved).toBe(2)
+    expect(listSalesOrders(WH)).toEqual([])   // la orden se despachó completa
+    expect(getDb().getFirstSync<{ q: number }>('SELECT qty_on_hand AS q FROM stock_balance WHERE id = 1')?.q).toBe(1)
+  })
+
+  it('Lote 186: al bajar las órdenes se reaplica la parte de la orden de la maestra pendiente', () => {
+    seed()
+    applySalesOrders(getDb(), WH, [ORDER])
+    const notice = findExitNoticeByNumber(WH, 'SAL-00007')!
+    const order = listGroupableOrders(WH)[0]
+    const { tasks, lineNotice } = getGroupTasks([notice, order])
+    queueExitGroup([notice, order], tasks, [{ taskKey: tasks[0].key, binId: 1, binCode: 'P-01', qty: 4 }, { taskKey: tasks[2].key, binId: 1, binCode: 'P-01', qty: 3 }], lineNotice)
+    applySalesOrders(getDb(), WH, [ORDER])   // llega la copia del servidor, que todavía no sabe de la cola
+    expect(getSalesOrderLines(5)[0].qtyReserved).toBe(5)
+    reapplyPendingSalesDispatches(getDb())
+    expect(getSalesOrderLines(5)[0].qtyReserved).toBe(2)
   })
 })

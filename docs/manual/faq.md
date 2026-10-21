@@ -10117,3 +10117,6 @@ En Llegadas y salidas → Avisos de llegada, el aviso que ya tiene partes recibi
 
 **¿A qué recepción maestra pertenece un recibo?**
 Los recibos de una recepción maestra llevan la etiqueta **«Maestra RCM-…»** en la lista y en su ficha. Desde Llegadas y salidas, el botón **«Recepciones maestras»** lleva a la pestaña de maestras.
+
+**¿Puedo recolectar juntos desde el aparato una orden de venta y un aviso de salida?** (Lote 186)
+Sí, si son del mismo cliente: en Despachar aviso de salida, «Recolectar juntos» muestra los avisos y las órdenes de venta con algo reservado. Elige dos o más, recorre la ruta única y envía; queda una sola recolección maestra. El envío (empaque) de la maestra se sigue creando desde la web.

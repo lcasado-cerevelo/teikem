@@ -1393,4 +1393,6 @@ Asignar se hace en la web: Recibo → Avisos de llegada / Avisos de salida, bot�
 4. **Terminar → Despachar.** Hace falta haber recogido algo de **al menos dos** avisos (si no, el aparato lo indica). Se encola **un solo envío** (`POST /api/v1/pick-batches/groups`) que sirve sin señal; el saldo local y cada aviso se actualizan al instante. Si el servidor lo rechaza (por ejemplo, inventario insuficiente) se muestra su mensaje exacto, no queda nada en la cola y los saldos vuelven; el aviso se baja otra vez como está.
 5. Con señal, el aparato avisa: «Recolección maestra EMP-##### enviada.»
 
-**Qué no hace todavía.** Solo avisos de salida (las órdenes de venta se juntan desde la web). Sumar documentos después no se puede (se decide al recolectar). El envío se crea al **empacar la maestra en la web**.
+**Órdenes de venta (Lote 186).** Al elegir, además de los avisos aparecen las **órdenes de venta** con algo reservado (etiquetadas «Orden de venta»); se mezclan con los avisos del mismo cliente en la misma ruta y viajan en la misma maestra. Las líneas de kit salen de lo reservado de sus componentes, igual que al despachar una orden sola.
+
+**Qué no hace todavía.** Sumar documentos después no se puede (se decide al recolectar). El envío se crea al **empacar la maestra en la web**.

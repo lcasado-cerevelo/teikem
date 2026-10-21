@@ -18,8 +18,8 @@ import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
 import { ScanField } from '../kernel/ui/ScanField'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
 import { colors, fontSize, radius, spacing } from '../kernel/ui/theme'
-import { findExitNoticeByNumber, getExitNoticeLines, getGroupTasks, listExitNotices, queueExitDispatch, queueExitGroup, type LocalExitNotice } from '../features/exitDispatch/localExit'
-import { buildGroupBody, groupBlock, groupNumber, groupReady, MIN_GROUP } from '../features/exitDispatch/exitGroupLogic'
+import { findExitNoticeByNumber, getExitNoticeLines, getGroupTasks, listExitNotices, listGroupableOrders, queueExitDispatch, queueExitGroup, type LocalExitNotice } from '../features/exitDispatch/localExit'
+import { buildGroupBody, docKey, groupBlock, groupNumber, groupReady, MIN_GROUP } from '../features/exitDispatch/exitGroupLogic'
 import {
   buildTasks,
   checkPickQty,
@@ -59,6 +59,9 @@ export default function ExitDispatchScreen() {
   // tick fuerza releer la copia local tras volver de enviar.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const notices = useMemo(() => (warehousePublicId ? listExitNotices(warehousePublicId) : []), [warehousePublicId, tick])
+  // Lote 186: en «Recolectar juntos» también se eligen órdenes de venta (se ven solo al elegir)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const orders = useMemo(() => (warehousePublicId ? listGroupableOrders(warehousePublicId) : []), [warehousePublicId, tick])
   const lines = useMemo(() => (notice ? getExitNoticeLines(notice.id) : []), [notice])
   const groupData = useMemo(() => (group ? getGroupTasks(group) : null), [group])
   const tasks = useMemo(() => (groupData ? groupData.tasks : buildTasks(lines)), [lines, groupData])
@@ -96,7 +99,7 @@ export default function ExitDispatchScreen() {
 
   function toggleChosen(o: LocalExitNotice) {
     setScanError(null)
-    setChosen((cur) => (cur.some((c) => c.id === o.id) ? cur.filter((c) => c.id !== o.id) : groupBlock(o, cur) ? cur : [...cur, o]))
+    setChosen((cur) => (cur.some((c) => docKey(c) === docKey(o)) ? cur.filter((c) => docKey(c) !== docKey(o)) : groupBlock(o, cur) ? cur : [...cur, o]))
   }
 
   /** Empieza la ruta guiada de todos los avisos elegidos juntos. */
@@ -231,7 +234,7 @@ export default function ExitDispatchScreen() {
         <Text style={styles.title}>{t('exitDispatch.title')}</Text>
         <ScanField label={t('exitDispatch.scanNotice')} help={t('exitDispatch.scanNoticeHelp')} error={scanError} notice={info} onSubmit={scanNotice} testID="exit-scan-notice" />
         {notices.length === 0 ? <Text style={styles.help}>{t('exitDispatch.noNotices')}</Text> : null}
-        {notices.length >= MIN_GROUP ? (
+        {notices.length + orders.length >= MIN_GROUP ? (
           <BigButton
             label={choosing ? t('exitDispatch.groupCancel') : t('exitDispatch.groupStart')}
             variant="secondary"
@@ -243,20 +246,21 @@ export default function ExitDispatchScreen() {
           />
         ) : null}
         {choosing ? <Text style={styles.help}>{t('exitDispatch.groupHelp')}</Text> : null}
-        {notices.map((o) => {
-          const on = chosen.some((c) => c.id === o.id)
+        {(choosing ? [...notices, ...orders] : notices).map((o) => {
+          const on = chosen.some((c) => docKey(c) === docKey(o))
           const blocked = choosing && !on && groupBlock(o, chosen) !== null
+          const isOrder = o.kind === 'SALES_ORDER'
           return (
           <Pressable
-            key={o.id}
+            key={docKey(o)}
             accessibilityRole={choosing ? 'checkbox' : 'button'}
             accessibilityState={choosing ? { checked: on, disabled: blocked } : undefined}
-            accessibilityLabel={t(choosing ? 'exitDispatch.groupPick' : 'exitDispatch.openNotice', { number: o.number })}
+            accessibilityLabel={t(choosing ? (isOrder ? 'exitDispatch.groupPickOrder' : 'exitDispatch.groupPick') : 'exitDispatch.openNotice', { number: o.number })}
             onPress={() => (choosing ? (blocked ? setScanError(t('exitDispatch.groupOtherClient')) : toggleChosen(o)) : open(o))}
             style={({ pressed }) => [styles.card, pressed && styles.cardPressed, on && styles.cardOn, blocked && styles.cardDim]}
-            testID={`exit-notice-${o.number}`}
+            testID={isOrder ? `exit-order-${o.number}` : `exit-notice-${o.number}`}
           >
-            <Text style={styles.cardTitle}>{choosing ? (on ? '☑ ' : '☐ ') : ''}{o.number}</Text>
+            <Text style={styles.cardTitle}>{choosing ? (on ? '☑ ' : '☐ ') : ''}{o.number}{isOrder ? ' · ' + t('exitDispatch.orderTag') : ''}</Text>
             <Text style={styles.help}>{[o.clientName, o.destination ?? o.reference].filter(Boolean).join(' · ')}</Text>
             <Text style={styles.help}>
               {t('exitDispatch.toDispatch', { qty: f.qty(o.reserved) })}

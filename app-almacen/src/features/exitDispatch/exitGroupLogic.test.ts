@@ -1,4 +1,4 @@
-import { buildGroupBody, groupBlock, groupNumber, groupReady, MAX_GROUP } from './exitGroupLogic'
+import { buildGroupBody, docKey, groupBlock, groupNumber, groupReady, MAX_GROUP } from './exitGroupLogic'
 import type { SalesTask } from '../salesDispatch/salesDispatchLogic'
 
 const n = (id: number, client = 'ASICS') => ({ id, publicId: `sn-${id}`, number: `SAL-0000${id}`, clientName: client })
@@ -34,5 +34,17 @@ describe('recolectar juntos (aparato)', () => {
     expect(groupNumber({ number: 'EMP-00009' })).toBe('EMP-00009')
     expect(groupNumber({})).toBeNull()
     expect(groupNumber(null)).toBeNull()
+  })
+
+  it('Lote 186: un aviso y una orden con el mismo id son documentos distintos y la orden viaja con su tipo y el id de línea real', () => {
+    const order = { ...n(1), publicId: 'so-1', number: 'OV-00001', kind: 'SALES_ORDER' as const }
+    expect(docKey(n(1))).toBe(1)
+    expect(docKey(order)).toBe(-1)
+    expect(groupBlock(order, [n(1)])).toBeNull()   // no es "el mismo" documento
+    expect(groupBlock({ ...order, clientName: 'NIKE' }, [n(1)])).toBe('otherClient')
+    const tasks = [task(10, 1, 4), task(-10, 2, 3)]
+    const picks = tasks.map((t) => ({ taskKey: t.key, binId: t.binId, binCode: 'P', qty: t.qty }))
+    const body = buildGroupBody([n(1), order], tasks, picks, new Map([[10, 1], [-10, -1]]), 'wh')
+    expect(body.documents.map((d) => [d.kind, d.publicId, d.lines[0].lineId])).toEqual([['EXIT_NOTICE', 'sn-1', 10], ['SALES_ORDER', 'so-1', 10]])
   })
 })
