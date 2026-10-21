@@ -81,14 +81,67 @@ export function listExitTasks(warehousePublicId: string, userId: number, owner: 
     }))
 }
 
+export interface MyPoTask {
+  id: number
+  publicId: string
+  number: string
+  supplierName: string | null
+  expectedDate: string | null
+  assignedToUserId: number | null
+}
+
+/** Lote 195: órdenes de compra abiertas (enviadas o recibidas en parte) del almacén que se pueden recibir, de este usuario o sin asignar. */
+export function listPoTasks(warehousePublicId: string, userId: number, owner: Owner): MyPoTask[] {
+  const where = owner === 'mine' ? 'o.assigned_to_user_id = ?' : 'o.assigned_to_user_id IS NULL AND ? IS NOT NULL'
+  return getDb()
+    .getAllSync<{ id: number; public_id: string; number: string; supplier_name: string | null; expected_date: string | null; assigned_to_user_id: number | null }>(
+      `SELECT o.id, o.public_id, o.number, o.supplier_name, o.expected_date, o.assigned_to_user_id FROM purchase_order o
+       WHERE o.is_active = 1 AND o.warehouse_public_id = ? AND ${where}
+         AND (SELECT COALESCE(SUM(l.qty_pending), 0) FROM purchase_order_line l WHERE l.purchase_order_id = o.id) > 0
+       ORDER BY (o.expected_date IS NULL), o.expected_date, o.id`,
+      [warehousePublicId, userId],
+    )
+    .map((r) => ({ id: r.id, publicId: r.public_id, number: r.number, supplierName: r.supplier_name, expectedDate: r.expected_date, assignedToUserId: r.assigned_to_user_id }))
+}
+
+export interface MySalesTask {
+  id: number
+  publicId: string
+  number: string
+  clientName: string | null
+  consigneeName: string | null
+  requiredDate: string | null
+  assignedToUserId: number | null
+}
+
+/** Lote 195: órdenes de venta con algo reservado que se puede despachar ya, de este usuario o sin asignar; la fecha requerida manda. */
+export function listSalesTasks(warehousePublicId: string, userId: number, owner: Owner): MySalesTask[] {
+  const where = owner === 'mine' ? 'o.assigned_to_user_id = ?' : 'o.assigned_to_user_id IS NULL AND ? IS NOT NULL'
+  return getDb()
+    .getAllSync<{ id: number; public_id: string; number: string; client_name: string | null; consignee_name: string | null; required_date: string | null; assigned_to_user_id: number | null }>(
+      `SELECT o.id, o.public_id, o.number, o.client_name, o.consignee_name, o.required_date, o.assigned_to_user_id FROM sales_order o
+       WHERE o.warehouse_public_id = ? AND ${where}
+         AND (SELECT COALESCE(SUM(l.qty_reserved), 0) FROM sales_order_line l WHERE l.sales_order_id = o.id) > 0
+       ORDER BY (o.required_date IS NULL), o.required_date, o.id`,
+      [warehousePublicId, userId],
+    )
+    .map((r) => ({ id: r.id, publicId: r.public_id, number: r.number, clientName: r.client_name, consigneeName: r.consignee_name, requiredDate: r.required_date, assignedToUserId: r.assigned_to_user_id }))
+}
+
 /** Cuántas tareas de documento tiene asignadas este usuario en el almacén (la insignia de Inicio). Los acomodos asignados se suman aparte (se leen en línea). */
 export function countMyDocuments(warehousePublicId: string, userId: number): number {
-  return listAsnTasks(warehousePublicId, userId, 'mine').length + listExitTasks(warehousePublicId, userId, 'mine').length
+  return (
+    listAsnTasks(warehousePublicId, userId, 'mine').length +
+    listExitTasks(warehousePublicId, userId, 'mine').length +
+    listPoTasks(warehousePublicId, userId, 'mine').length +
+    listSalesTasks(warehousePublicId, userId, 'mine').length
+  )
 }
 
 /** Tras «Tomar» con señal, la copia local queda de una vez a nombre de este usuario (la próxima sincronización lo confirma). */
-export function markTakenLocally(kind: 'asn' | 'exit', id: number, userId: number): void {
-  getDb().runSync(`UPDATE ${kind === 'asn' ? 'asn' : 'exit_notice'} SET assigned_to_user_id = ? WHERE id = ?`, [userId, id])
+export function markTakenLocally(kind: 'asn' | 'exit' | 'po' | 'sales', id: number, userId: number): void {
+  const table = kind === 'asn' ? 'asn' : kind === 'exit' ? 'exit_notice' : kind === 'po' ? 'purchase_order' : 'sales_order'
+  getDb().runSync(`UPDATE ${table} SET assigned_to_user_id = ? WHERE id = ?`, [userId, id])
 }
 
 /** El texto con el que se encuentra el documento al abrirlo en Recibir o Despacho (se escanea o se teclea igual): el número del aviso, o su referencia. */

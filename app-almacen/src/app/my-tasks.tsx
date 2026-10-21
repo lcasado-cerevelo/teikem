@@ -15,14 +15,18 @@ import { colors, fontSize, radius, spacing } from '../kernel/ui/theme'
 import { getOpenCount } from '../features/count/localCount'
 import { getOpenPick } from '../features/dispatch/localPick'
 import { getOpenReceipt } from '../features/receive/localLookup'
-import { fetchMyPutaway, getCachedMyPutaway, takeAsn, takeExitNotice, type MyPutawayTask } from '../features/myTasks/myTasksApi'
+import { fetchMyPutaway, getCachedMyPutaway, takeAsn, takeExitNotice, takePurchaseOrder, takeSalesOrder, type MyPutawayTask } from '../features/myTasks/myTasksApi'
 import {
   asnOpenCode,
   listAsnTasks,
   listExitTasks,
+  listPoTasks,
+  listSalesTasks,
   markTakenLocally,
   type MyAsnTask,
   type MyExitTask,
+  type MyPoTask,
+  type MySalesTask,
 } from '../features/myTasks/myTasksLogic'
 
 interface Lists {
@@ -30,9 +34,13 @@ interface Lists {
   exitMine: MyExitTask[]
   asnFree: MyAsnTask[]
   exitFree: MyExitTask[]
+  poMine: MyPoTask[]
+  salesMine: MySalesTask[]
+  poFree: MyPoTask[]
+  salesFree: MySalesTask[]
 }
 
-const EMPTY: Lists = { asnMine: [], exitMine: [], asnFree: [], exitFree: [] }
+const EMPTY: Lists = { asnMine: [], exitMine: [], asnFree: [], exitFree: [], poMine: [], salesMine: [], poFree: [], salesFree: [] }
 
 export default function MyTasksScreen() {
   const { t } = useT()
@@ -56,6 +64,10 @@ export default function MyTasksScreen() {
       exitMine: listExitTasks(warehousePublicId, userId, 'mine'),
       asnFree: canAny ? listAsnTasks(warehousePublicId, userId, 'unassigned') : [],
       exitFree: canAny ? listExitTasks(warehousePublicId, userId, 'unassigned') : [],
+      poMine: listPoTasks(warehousePublicId, userId, 'mine'),
+      salesMine: listSalesTasks(warehousePublicId, userId, 'mine'),
+      poFree: canAny ? listPoTasks(warehousePublicId, userId, 'unassigned') : [],
+      salesFree: canAny ? listSalesTasks(warehousePublicId, userId, 'unassigned') : [],
     })
   }, [warehousePublicId, userId, canAny])
 
@@ -101,6 +113,18 @@ export default function MyTasksScreen() {
     router.push({ pathname: '/exit-dispatch', params: { notice: o.number } })
   }
 
+  function openPo(o: MyPoTask) {
+    const blocked = blockedBy('receive')
+    if (blocked) return Alert.alert(t(blocked))
+    router.push({ pathname: '/receive', params: { doc: o.number } })
+  }
+
+  function openSales(o: MySalesTask) {
+    const blocked = blockedBy()
+    if (blocked) return Alert.alert(t(blocked))
+    router.push({ pathname: '/sales-dispatch', params: { order: o.number } })
+  }
+
   async function take(key: string, run: () => Promise<void>, done: () => void) {
     setBusy(key)
     try {
@@ -114,8 +138,8 @@ export default function MyTasksScreen() {
     }
   }
 
-  const total = lists.asnMine.length + lists.exitMine.length + putaway.length
-  const free = lists.asnFree.length + lists.exitFree.length
+  const total = lists.asnMine.length + lists.exitMine.length + lists.poMine.length + lists.salesMine.length + putaway.length
+  const free = lists.asnFree.length + lists.exitFree.length + lists.poFree.length + lists.salesFree.length
 
   return (
     <ScrollView contentContainerStyle={styles.fill} testID="my-tasks">
@@ -137,6 +161,24 @@ export default function MyTasksScreen() {
           <Text style={styles.cardTitle}>{o.number}</Text>
           <Text style={styles.help}>
             {[o.clientName, o.destination ?? o.reference, o.requiredDate ? t('myTasks.required', { date: f.date(o.requiredDate) }) : null].filter(Boolean).join(' · ')}
+          </Text>
+        </Pressable>
+      ))}
+
+      {lists.poMine.length > 0 ? <Text style={styles.section}>{t('myTasks.receivePo', { count: lists.poMine.length })}</Text> : null}
+      {lists.poMine.map((o) => (
+        <Pressable key={`po${o.id}`} accessibilityRole="button" onPress={() => openPo(o)} style={({ pressed }) => [styles.card, pressed && styles.cardPressed]} testID={`my-po-${o.number}`}>
+          <Text style={styles.cardTitle}>{o.number}</Text>
+          <Text style={styles.help}>{[o.supplierName, o.expectedDate ? t('myTasks.expected', { date: f.date(o.expectedDate) }) : null].filter(Boolean).join(' · ')}</Text>
+        </Pressable>
+      ))}
+
+      {lists.salesMine.length > 0 ? <Text style={styles.section}>{t('myTasks.dispatchSales', { count: lists.salesMine.length })}</Text> : null}
+      {lists.salesMine.map((o) => (
+        <Pressable key={`so${o.id}`} accessibilityRole="button" onPress={() => openSales(o)} style={({ pressed }) => [styles.card, pressed && styles.cardPressed]} testID={`my-sales-${o.number}`}>
+          <Text style={styles.cardTitle}>{o.number}</Text>
+          <Text style={styles.help}>
+            {[o.clientName, o.consigneeName, o.requiredDate ? t('myTasks.required', { date: f.date(o.requiredDate) }) : null].filter(Boolean).join(' · ')}
           </Text>
         </Pressable>
       ))}
@@ -182,6 +224,34 @@ export default function MyTasksScreen() {
                 loading={busy === `fo${o.id}`}
                 onPress={() => void take(`fo${o.id}`, () => takeExitNotice(o.publicId), () => userId != null && markTakenLocally('exit', o.id, userId))}
                 testID={`take-exit-${o.number}`}
+              />
+            </View>
+          ))
+        : null}
+      {showFree
+        ? lists.poFree.map((o) => (
+            <View key={`fp${o.id}`} style={styles.card}>
+              <Text style={styles.cardTitle}>{o.number}</Text>
+              <Text style={styles.help}>{[t('myTasks.kindReceive'), o.supplierName].filter(Boolean).join(' · ')}</Text>
+              <BigButton
+                label={t('myTasks.take')}
+                loading={busy === `fp${o.id}`}
+                onPress={() => void take(`fp${o.id}`, () => takePurchaseOrder(o.publicId), () => userId != null && markTakenLocally('po', o.id, userId))}
+                testID={`take-po-${o.number}`}
+              />
+            </View>
+          ))
+        : null}
+      {showFree
+        ? lists.salesFree.map((o) => (
+            <View key={`fs${o.id}`} style={styles.card}>
+              <Text style={styles.cardTitle}>{o.number}</Text>
+              <Text style={styles.help}>{[t('myTasks.kindDispatch'), o.clientName].filter(Boolean).join(' · ')}</Text>
+              <BigButton
+                label={t('myTasks.take')}
+                loading={busy === `fs${o.id}`}
+                onPress={() => void take(`fs${o.id}`, () => takeSalesOrder(o.publicId), () => userId != null && markTakenLocally('sales', o.id, userId))}
+                testID={`take-sales-${o.number}`}
               />
             </View>
           ))

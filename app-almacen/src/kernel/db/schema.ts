@@ -1,6 +1,6 @@
 // Lote 8A-app — esquema de la base local (expo-sqlite). Ver docs/mobile/app-almacen-plan.md §1 "Base local".
 // Migraciones por PRAGMA user_version: cada versión agrega su bloque de SQL; nunca se reescribe uno ya publicado.
-export const SCHEMA_VERSION = 21
+export const SCHEMA_VERSION = 22
 
 export const MIGRATIONS: readonly string[] = [
   // v1: kv, catálogos sincronizados, documentos abiertos, cola de salida y marcas de agua.
@@ -564,5 +564,11 @@ export const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE asn_line ADD COLUMN posted_qty REAL NOT NULL DEFAULT 0;
   DELETE FROM sync_watermark WHERE resource = 'asns' OR resource LIKE 'asns:%';
+  `,
+  // v22 (2026-10-21, Lote 195): la orden de compra y la orden de venta también se asignan a una persona (assigned_to_user_id; NULL = sin asignar). Se vuelve a pedir el catálogo de órdenes de compra para traerlo.
+  `
+  ALTER TABLE purchase_order ADD COLUMN assigned_to_user_id INTEGER;
+  ALTER TABLE sales_order ADD COLUMN assigned_to_user_id INTEGER;
+  DELETE FROM sync_watermark WHERE resource = 'purchaseOrders';
   `,
 ]

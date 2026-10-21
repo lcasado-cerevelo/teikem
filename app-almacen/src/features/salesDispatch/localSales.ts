@@ -5,7 +5,7 @@
 import { getDb, type SQLiteDatabase } from '../../kernel/db/database'
 import { enqueue } from '../../kernel/sync/outbox'
 import { applyDeltasIn, issueDeltas } from '../../kernel/warehouse/balanceProjection'
-import type { DispatchScope } from '../dispatch/dispatchScope'
+import { noticeInScope, type DispatchScope } from '../dispatch/dispatchScope'
 import { buildDispatchBody, buildDispatchLines, type LocalSalesLine, type SalesPick, type SalesTask } from './salesDispatchLogic'
 
 export interface LocalSalesOrder {
@@ -19,6 +19,8 @@ export interface LocalSalesOrder {
   requiredDate: string | null
   /** Lo reservado que se puede despachar ya. */
   reserved: number
+  /** Lote 195: a quién se asignó (NULL = sin asignar). */
+  assignedToUserId?: number | null
 }
 
 interface OrderRow {
@@ -31,6 +33,7 @@ interface OrderRow {
   status_code: string | null
   required_date: string | null
   reserved: number | null
+  assigned_to_user_id?: number | null
 }
 
 function mapOrder(r: OrderRow): LocalSalesOrder {
@@ -44,6 +47,7 @@ function mapOrder(r: OrderRow): LocalSalesOrder {
     statusCode: r.status_code,
     requiredDate: r.required_date,
     reserved: r.reserved ?? 0,
+    assignedToUserId: r.assigned_to_user_id ?? null,
   }
 }
 
@@ -51,16 +55,19 @@ const SELECT_ORDER = `SELECT o.*, (SELECT SUM(l.qty_reserved) FROM sales_order_l
 
 /** Órdenes del almacén con algo reservado que se pueda despachar, las más antiguas primero (la fecha requerida manda). */
 export function listSalesOrders(warehousePublicId: string, scope?: DispatchScope): LocalSalesOrder[] {
-  if (scope && !scope.any) return []   // Lote 193: las órdenes de venta no se asignan; sin warehouse.pick.any no se ofrecen
   return getDb()
     .getAllSync<OrderRow>(`${SELECT_ORDER} WHERE o.warehouse_public_id = ? ORDER BY (o.required_date IS NULL), o.required_date, o.id`, [warehousePublicId])
     .map(mapOrder)
-    .filter((o) => o.reserved > 0)
+    .filter((o) => o.reserved > 0 && (!scope || noticeInScope(scope, o.assignedToUserId)))   // Lote 193/195: sin warehouse.pick.any solo las asignadas a la persona
 }
 
 /** Busca la orden por su número (el escaneado o escrito, sin distinguir mayúsculas); también acepta solo los dígitos finales si es una sola coincidencia. */
 export function findSalesOrderByNumber(warehousePublicId: string, code: string, scope?: DispatchScope): LocalSalesOrder | null {
-  if (scope && !scope.any) return null
+  const found = findSalesOrderByNumberAny(warehousePublicId, code)
+  return found && (!scope || noticeInScope(scope, found.assignedToUserId)) ? found : null
+}
+
+function findSalesOrderByNumberAny(warehousePublicId: string, code: string): LocalSalesOrder | null {
   const wanted = code.trim()
   if (!wanted) return null
   const db = getDb()

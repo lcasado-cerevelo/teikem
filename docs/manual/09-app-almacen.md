@@ -1405,3 +1405,8 @@ Asignar se hace en la web: Recibo → Avisos de llegada / Avisos de salida, bot�
 **Elegir el producto.** Al despachar contra una orden de venta o un aviso de salida (también en «Recolectar juntos»), debajo del producto actual aparece **«Productos por sacar»**: un renglón por producto con su posición y cantidad. **Toque uno** para sacarlo ahora (se marca con ▶); al confirmarlo sigue la ruta. Los omitidos se pueden retomar desde ahí.
 
 **Qué documentos ve cada persona.** Lo controla el permiso `warehouse.pick.any` («Despachar cualquier documento en el aparato (no solo los asignados)»), que se da por rol. Con el permiso, el aparato muestra todo lo del almacén. Sin él, solo los avisos de salida asignados a la persona (y «Mis tareas» no ofrece lo sin asignar); las órdenes de venta no se asignan, así que no se ofrecen. La migración lo dio a todos los roles que ya tenían `warehouse.pick`.
+
+
+## Órdenes de compra y de venta asignadas (Lote 195, 2026-10-21)
+
+La orden de compra (a quien la va a **recibir**) y la orden de venta (a quien la va a **despachar**) también se asignan a una persona, igual que los avisos. En **Mis tareas** salen «Órdenes de compra por recibir» y «Órdenes de venta por despachar»: tocar una abre Recibir o Despacho con ese documento. Lo sin asignar sale aparte con **Tomar** (solo con el permiso `warehouse.pick.any`). Sin ese permiso, **Despacho → Órdenes de venta** muestra solo las asignadas a la persona (las órdenes de compra siguen visibles en Recibir, como los avisos de llegada: la asignación ordena la recepción, no la bloquea).

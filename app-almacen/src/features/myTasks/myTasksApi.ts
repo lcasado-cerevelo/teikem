@@ -10,6 +10,14 @@ export async function takeExitNotice(publicId: string): Promise<void> {
   await unwrap(api.POST('/api/v1/exit-notices/{publicId}/take', { params: { path: { publicId } } }))
 }
 
+export async function takePurchaseOrder(publicId: string): Promise<void> {
+  await unwrap(api.POST('/api/v1/purchase-orders/{publicId}/take', { params: { path: { publicId } } }))
+}
+
+export async function takeSalesOrder(publicId: string): Promise<void> {
+  await unwrap(api.POST('/api/v1/sales-orders/{publicId}/take', { params: { path: { publicId } } }))
+}
+
 export interface MyPutawayTask {
   id: number
   sku: string

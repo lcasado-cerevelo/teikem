@@ -68,6 +68,8 @@
     "swipeHint": "Swipe left to remove a company."
   },
   "myTasks": {
+    "receivePo": "Purchase orders to receive ({count})",
+    "dispatchSales": "Sales orders to dispatch ({count})",
     "title": "My tasks",
     "empty": "You have no assigned tasks. What you are assigned shows up here.",
     "offline": "No signal: showing the putaway tasks from the last time.",

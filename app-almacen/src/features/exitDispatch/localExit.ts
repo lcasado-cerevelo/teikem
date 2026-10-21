@@ -205,8 +205,7 @@ export function queueExitDispatch(notice: LocalExitNotice, tasks: readonly Sales
 
 /** Lote 186: las órdenes de venta del almacén con algo reservado, con la forma de un aviso para elegirlas junto a los avisos en «Recolectar juntos». */
 export function listGroupableOrders(warehousePublicId: string, scope?: DispatchScope): LocalExitNotice[] {
-  if (scope && !scope.any) return []   // las órdenes de venta no se asignan: sin el permiso no se ofrecen
-  return listSalesOrders(warehousePublicId).map((o) => ({
+  return listSalesOrders(warehousePublicId, scope).map((o) => ({
     id: o.id,
     publicId: o.publicId,
     number: o.number,
@@ -217,6 +216,7 @@ export function listGroupableOrders(warehousePublicId: string, scope?: DispatchS
     statusCode: o.statusCode,
     requiredDate: o.requiredDate,
     reserved: o.reserved,
+    assignedToUserId: o.assignedToUserId,
     kind: 'SALES_ORDER' as const,
   }))
 }

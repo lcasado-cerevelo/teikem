@@ -68,6 +68,8 @@
     "swipeHint": "Desliza a la izquierda para quitar una compañía."
   },
   "myTasks": {
+    "receivePo": "Órdenes de compra por recibir ({count})",
+    "dispatchSales": "Órdenes de venta por despachar ({count})",
     "title": "Mis tareas",
     "empty": "No tienes tareas asignadas. Lo que te asignen aparece aquí.",
     "offline": "Sin señal: se muestran los acomodos de la última vez.",

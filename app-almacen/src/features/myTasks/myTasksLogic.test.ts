@@ -1,7 +1,7 @@
 import { __resetAllForTests } from 'expo-sqlite'
 
 import { __resetDbForTests, getDb } from '../../kernel/db/database'
-import { asnOpenCode, countMyDocuments, listAsnTasks, listExitTasks, markTakenLocally } from './myTasksLogic'
+import { asnOpenCode, countMyDocuments, listAsnTasks, listExitTasks, listPoTasks, listSalesTasks, markTakenLocally } from './myTasksLogic'
 
 const ME = 7
 const ANA = 9
@@ -66,5 +66,32 @@ describe('Mis tareas — lógica local', () => {
     expect(asnOpenCode({ ...base, number: 'LLE-00005' })).toBe('LLE-00005')
     expect(asnOpenCode({ ...base, number: '' })).toBe('AX-9')
     expect(asnOpenCode({ ...base, number: '', reference: null })).toBe('#5')
+  })
+})
+
+describe('órdenes de compra y de venta asignadas (Lote 195)', () => {
+  beforeEach(() => {
+    const db = getDb()
+    db.runSync("INSERT INTO purchase_order (id, public_id, number, warehouse_public_id, supplier_name, status_code, expected_date, is_active, assigned_to_user_id) VALUES (1, 'po-1', 'PO-00001', 'wh-1', 'Proveedor Sur', 'SENT', '2026-10-25', 1, 7)")
+    db.runSync("INSERT INTO purchase_order (id, public_id, number, warehouse_public_id, supplier_name, status_code, is_active, assigned_to_user_id) VALUES (2, 'po-2', 'PO-00002', 'wh-1', 'Otro', 'SENT', 1, NULL)")
+    db.runSync("INSERT INTO purchase_order (id, public_id, number, warehouse_public_id, supplier_name, status_code, is_active, assigned_to_user_id) VALUES (3, 'po-3', 'PO-00003', 'wh-1', 'Ya recibida', 'SENT', 1, 7)")
+    for (const [id, po, pending] of [[1, 1, 5], [2, 2, 3], [3, 3, 0]] as const)
+      db.runSync("INSERT INTO purchase_order_line (id, purchase_order_id, product_public_id, sku, product_name, qty_ordered, qty_received, qty_pending) VALUES (?, ?, 'p1', 'MED', 'Medicina', 5, ?, ?)", [id, po, 5 - pending, pending])
+    db.runSync("INSERT INTO sales_order (id, public_id, number, warehouse_public_id, client_name, status_code, assigned_to_user_id) VALUES (1, 'so-1', 'OV-00001', 'wh-1', 'ASICS', 'REQUESTED', 7)")
+    db.runSync("INSERT INTO sales_order (id, public_id, number, warehouse_public_id, client_name, status_code, assigned_to_user_id) VALUES (2, 'so-2', 'OV-00002', 'wh-1', 'NIKE', 'REQUESTED', NULL)")
+    for (const [id, so] of [[1, 1], [2, 2]] as const)
+      db.runSync("INSERT INTO sales_order_line (id, sales_order_id, product_public_id, sku, product_name, qty_ordered, qty_reserved, qty_shipped, qty_backordered, is_kit) VALUES (?, ?, 'p1', 'MED', 'Medicina', 4, 4, 0, 0, 0)", [id, so])
+  })
+
+  it('las mías y las sin asignar, solo con algo por recibir o por despachar; cuentan para la insignia y se pueden tomar', () => {
+    expect(listPoTasks('wh-1', ME, 'mine').map((o) => o.number)).toEqual(['PO-00001'])   // PO-00003 no tiene nada pendiente
+    expect(listPoTasks('wh-1', ME, 'unassigned').map((o) => o.number)).toEqual(['PO-00002'])
+    expect(listSalesTasks('wh-1', ME, 'mine').map((o) => o.number)).toEqual(['OV-00001'])
+    expect(listSalesTasks('wh-1', ME, 'unassigned').map((o) => o.number)).toEqual(['OV-00002'])
+    markTakenLocally('po', 2, ME)
+    markTakenLocally('sales', 2, ME)
+    expect(listPoTasks('wh-1', ME, 'mine').map((o) => o.number)).toEqual(['PO-00001', 'PO-00002'])
+    expect(listSalesTasks('wh-1', ME, 'mine').map((o) => o.number)).toEqual(['OV-00001', 'OV-00002'])
+    expect(countMyDocuments('wh-1', ME)).toBeGreaterThanOrEqual(4)
   })
 })

@@ -166,6 +166,7 @@ function applyPurchaseOrders(db: SQLiteDatabase, items: Array<{
   statusCode?: string | null
   expectedDate?: string | null
   isActive?: boolean
+  assignedToUserId?: number | null
   lines?: Array<{ id?: number; productPublicId?: string; sku?: string | null; productName?: string | null; qtyOrdered?: number; qtyReceived?: number; qtyPending?: number }> | null
 }>): void {
   for (const po of items) {
@@ -176,12 +177,12 @@ function applyPurchaseOrders(db: SQLiteDatabase, items: Array<{
       continue
     }
     db.runSync(
-      `INSERT INTO purchase_order (id, public_id, number, warehouse_public_id, supplier_name, status_code, expected_date, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+      `INSERT INTO purchase_order (id, public_id, number, warehouse_public_id, supplier_name, status_code, expected_date, is_active, assigned_to_user_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
        ON CONFLICT(id) DO UPDATE SET public_id = excluded.public_id, number = excluded.number,
          warehouse_public_id = excluded.warehouse_public_id, supplier_name = excluded.supplier_name,
-         status_code = excluded.status_code, expected_date = excluded.expected_date, is_active = 1`,
-      [po.id, po.publicId ?? '', po.number ?? '', po.warehousePublicId ?? '', po.supplierName ?? null, po.statusCode ?? null, po.expectedDate ?? null],
+         status_code = excluded.status_code, expected_date = excluded.expected_date, is_active = 1, assigned_to_user_id = excluded.assigned_to_user_id`,
+      [po.id, po.publicId ?? '', po.number ?? '', po.warehousePublicId ?? '', po.supplierName ?? null, po.statusCode ?? null, po.expectedDate ?? null, po.assignedToUserId ?? null],
     )
     applyPurchaseOrderLines(db, po.id, po.lines)
   }
@@ -531,6 +532,7 @@ type SyncSalesOrder = {
   requiredDate?: string | null
   requestedAtUtc?: string | null
   isActive?: boolean
+  assignedToUserId?: number | null
   lines?: Array<{
     id?: number
     productPublicId?: string
@@ -555,9 +557,9 @@ export function applySalesOrders(db: SQLiteDatabase, warehousePublicId: string, 
     if (o.isActive === false) continue
     keep.add(o.id)
     db.runSync(
-      `INSERT INTO sales_order (id, public_id, number, warehouse_public_id, client_name, consignee_name, status_code, required_date, requested_at_utc)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [o.id, o.publicId ?? '', o.number ?? '', o.warehousePublicId ?? warehousePublicId, o.clientName ?? null, o.consigneeName ?? null, o.statusCode ?? null, o.requiredDate ?? null, o.requestedAtUtc ?? null],
+      `INSERT INTO sales_order (id, public_id, number, warehouse_public_id, client_name, consignee_name, status_code, required_date, requested_at_utc, assigned_to_user_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [o.id, o.publicId ?? '', o.number ?? '', o.warehousePublicId ?? warehousePublicId, o.clientName ?? null, o.consigneeName ?? null, o.statusCode ?? null, o.requiredDate ?? null, o.requestedAtUtc ?? null, o.assignedToUserId ?? null],
     )
     for (const l of o.lines ?? []) {
       db.runSync(

@@ -1,6 +1,6 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 
 import { useFormat } from '../kernel/format/useFormat'
 import { useActiveWarehouse } from '../kernel/warehouse/activeWarehouse'
@@ -43,6 +43,9 @@ export default function SalesDispatchScreen() {
   const f = useFormat()
   const router = useRouter()
   const warehousePublicId = useActiveWarehouse().publicId
+  // Lote 195: «Mis tareas» abre la orden asignada con ?order=OV-##### (una sola vez; como si se hubiera escaneado)
+  const { order: orderParam } = useLocalSearchParams<{ order?: string }>()
+  const orderOpened = useRef(false)
   // Lote 193: las órdenes de venta no se asignan; sin warehouse.pick.any no se ofrecen
   const permissions = useMyPermissions()
   const { session } = useSession()
@@ -88,6 +91,13 @@ export default function SalesDispatchScreen() {
     setQtyText(first ? String(first.qty) : '')
     vibrateOk()
   }
+
+  useEffect(() => {
+    if (orderOpened.current || !orderParam || !warehousePublicId) return
+    orderOpened.current = true
+    scanOrder(orderParam)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderParam, warehousePublicId])
 
   function scanOrder(code: string) {
     const found = findSalesOrderByNumber(warehousePublicId!, code, scope)

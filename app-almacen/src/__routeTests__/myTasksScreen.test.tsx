@@ -76,6 +76,22 @@ describe('Mis tareas', () => {
     expect(screen.queryByTestId('my-tasks-free-toggle')).toBeNull()
   })
 
+  it('Lote 195: una orden de compra asignada aparece y tocarla abre Recibir con esa orden', async () => {
+    await setupDevice()
+    const db = getDb()
+    db.runSync("INSERT INTO purchase_order (id, public_id, number, warehouse_public_id, supplier_name, status_code, is_active, assigned_to_user_id) VALUES (1, 'po-1', 'PO-00001', 'wh-1', 'Proveedor Sur', 'SENT', 1, 7)")
+    db.runSync("INSERT INTO purchase_order_line (id, purchase_order_id, product_public_id, sku, product_name, qty_ordered, qty_received, qty_pending) VALUES (1, 1, 'p1', 'MED', 'Medicina', 5, 0, 5)")
+    db.runSync("INSERT INTO sales_order (id, public_id, number, warehouse_public_id, client_name, status_code, assigned_to_user_id) VALUES (1, 'so-1', 'OV-00001', 'wh-1', 'ASICS', 'REQUESTED', 7)")
+    db.runSync("INSERT INTO sales_order_line (id, sales_order_id, product_public_id, sku, product_name, qty_ordered, qty_reserved, qty_shipped, qty_backordered, is_kit) VALUES (1, 1, 'p1', 'MED', 'Medicina', 4, 4, 0, 0, 0)")
+    mockFetch([])
+    await renderRouter('src/app', { initialUrl: '/my-tasks' })
+    await waitFor(() => expect(screen.getByTestId('my-po-PO-00001')).toBeTruthy())
+    expect(screen.getByTestId('my-sales-OV-00001')).toBeTruthy()
+    await fireEvent.press(screen.getByTestId('my-po-PO-00001'))
+    await waitFor(() => expect(getOpenReceipt()).not.toBeNull())
+    expect(getOpenReceipt()).toMatchObject({ doc: { kind: 'po', label: 'PO-00001' } })
+  })
+
   it('sin nada asignado lo dice', async () => {
     await setupDevice()
     mockFetch([])

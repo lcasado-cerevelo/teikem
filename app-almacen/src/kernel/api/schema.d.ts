@@ -1222,6 +1222,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/purchase-orders/{publicId}/take": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/take": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analytics/attention": {
         parameters: {
             query?: never;
@@ -35826,6 +35896,8 @@ export interface components {
             requestedAtUtc?: string | null;
             isActive?: boolean;
             lines?: components["schemas"]["SyncSalesOrderLineDto"][] | null;
+            /** Format: int32 */
+            assignedToUserId?: number | null;
         };
         SyncSalesOrderDtoSyncPage: {
             items?: components["schemas"]["SyncSalesOrderDto"][] | null;
@@ -35880,6 +35952,8 @@ export interface components {
             expectedDate?: string | null;
             isActive?: boolean;
             lines?: components["schemas"]["SyncPurchaseOrderLineDto"][] | null;
+            /** Format: int32 */
+            assignedToUserId?: number | null;
         };
         SyncPurchaseOrderDtoSyncPage: {
             items?: components["schemas"]["SyncPurchaseOrderDto"][] | null;
