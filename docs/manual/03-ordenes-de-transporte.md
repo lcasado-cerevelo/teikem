@@ -7,7 +7,7 @@ comportamiento de módulos ya documentados en el [capítulo 02](02-clientes-y-co
 un cliente está dado de baja y el portal multi-cliente. Cada sección indica **qué hace**, **quién puede**, **cómo se
 usa**, las **validaciones** con el mensaje exacto y el código HTTP, y los **estatus** con sus transiciones y efectos.
 > **Lote 106 (2026-10-17): nuevo flujo de estatus.** La orden nace **Sometida** (ya no hay Borrador ni Confirmada), se cotiza
-> y se mide el crédito **al crear**, la acción «Confirmar» pasó a llamarse **Marcar como recogida**, cancelar exige una razón y
+> y se mide el crédito **al crear**, la acción «Confirmar» pasó a llamarse **Marcar como recogido**, cancelar exige una razón y
 > hay una acción nueva, **Reabrir** (permiso `orders.reopen`). Los estatus `DRAFT`, `CONFIRMED`, `INBOUND`, `PLANNED`, `ARRIVED`,
 > `ON_HOLD` y `PARTIAL` ya no existen. Este capítulo ya está al día; el detalle completo está en la sección 4.
 
@@ -38,7 +38,7 @@ Qué hace: crea una orden de transporte. Nace en el estatus inicial (**SUBMITTED
 (opcional: la que se indique, o si no se indica el punto de recogido por defecto del cliente, o si tampoco hay la
 localización CORPORATE activa del cliente; si nada de eso existe, la orden nace solo con la parada de entrega) y
 **entrega** (obligatoria) — y una o más líneas de paquete, salvo que sea una entrega especial. Cada orden recibe cuatro
-identificadores siempre poblados: número de orden, número de factura del cliente, número de empaque y, por línea, número
+identificadores siempre poblados: número de envío, número de factura del cliente, número de empaque y, por línea, número
 de paquete (ver sección 2). **Se cotiza al crear** (Lote 106) si el cliente tiene contrato y tarifa vigente; si no, la orden
 queda **sin cotizar y sin error**, y la cotización estricta se exige al marcarla como recogida (sección 3.2). Al crear también
 se mide el crédito del cliente (sección 3.3): si se excede, la orden **no se crea** (422 `credit_exceeded`), salvo que se
@@ -91,7 +91,7 @@ el front arme el modal "Crear de todos modos" sin parsear el título). El cheque
 | `clientPublicId` ausente (sin alcance de cliente fijado) | `El cliente es obligatorio.` | 400 |
 | Cliente de otra compañía | `Cliente no encontrado.` | 404 |
 | Cliente **dado de baja** | `El cliente está dado de baja; solo se consulta su historial.` | 409 |
-| Cliente **suspendido** | `El cliente está suspendido; no se pueden crear ni confirmar órdenes.` | 422 |
+| Cliente **suspendido** | `El cliente está suspendido; no se pueden crear ni confirmar envíos.` | 422 |
 | Ni `consigneeLocationPublicId` ni `newConsignee` | `El consignatario es obligatorio: elija uno del directorio o capture uno nuevo.` (campo `consignee`) | 400 |
 | Los dos a la vez | `Indique un consignatario del directorio o uno nuevo, no ambos.` (campo `consignee`) | 400 |
 | Consignatario de otro cliente o inexistente | `Consignatario no encontrado.` | 404 |
@@ -107,9 +107,9 @@ el front arme el modal "Crear de todos modos" sin parsear el título). El cheque
 | `codAmount` negativo | `El monto COD no puede ser negativo.` | 400 |
 | `isSpecialDelivery` sin `specialServiceId` | `El servicio especial es obligatorio en una entrega especial.` (campo `specialServiceId`) | 400 |
 | Servicio especial no vigente / de otro cliente | `El servicio especial no está vigente para este cliente.` | 400 |
-| Componente "Servicios especiales" apagado en el contrato del cliente | `El componente 'Servicios especiales' está apagado en el contrato vigente del cliente; enciéndalo en el modelo de facturación o capture una orden normal.` | 409 |
+| Componente "Servicios especiales" apagado en el contrato del cliente | `El componente 'Servicios especiales' está apagado en el contrato vigente del cliente; enciéndalo en el modelo de facturación o capture un envío normal.` | 409 |
 | Se envía `codType` o `packBatchNumber` | `El tipo de COD se registra al entregar, no en la captura.` / `El número de empaque siempre lo genera Teikem.` | 400 |
-| Choque de número de orden / empaque tras agotar reintentos | `Ya existe una orden con ese número para este cliente.` / `Ya existe una orden con ese número de empaque.` / `No se pudo asignar un número de orden libre; intente de nuevo.` | 409 |
+| Choque de número de envío / empaque tras agotar reintentos | `Ya existe un envío con ese número para este cliente.` / `Ya existe un envío con ese número de empaque.` / `No se pudo asignar un número de envío libre; intente de nuevo.` | 409 |
 
 `overrideCredit: true` autoriza crear la orden aunque el cliente exceda su límite de crédito; exige el permiso
 `orders.credit_override` (403 `Falta el permiso 'orders.credit_override'.` si falta; ver sección 3.3). Desde el Lote 106 ya no
@@ -163,7 +163,7 @@ Cómo se usa:
   | `cities` | Pueblo del consignatario (la parada de entrega). Debe ser igual al pueblo pedido; no importan las mayúsculas, las tildes ni los espacios de más. | `cities=bayamon` encuentra «Bayamón» |
   | `postalCodePrefix` | El código postal (ZIP) del consignatario **empieza con** este texto. | `postalCodePrefix=009` trae `00901`, `00961`… |
   | `clientIds` | Clientes (por su `publicId`). Se **suma** a `clientId` si también viene. | `clientIds=…&clientIds=…` |
-  | `statuses` | Estatus de la orden (códigos `OrderStatus`). Se **suma** a `status` si también viene. | `statuses=PICKUP&statuses=FAILED` |
+  | `statuses` | Estatus del envío (códigos `OrderStatus`). Se **suma** a `status` si también viene. | `statuses=PICKUP&statuses=FAILED` |
 
   **Ejemplo.** Quiero las órdenes de Bayamón con ZIP que empiece con `009` y que estén en estatus `PICKUP` (Recogida):
   `GET /api/v1/orders?cities=Bayamón&postalCodePrefix=009&statuses=PICKUP`.
@@ -172,7 +172,7 @@ Cómo se usa:
   ver ciertos clientes no ve órdenes de otros con ningún filtro, y pedir un cliente fuera de su alcance responde 404.
 - `GET /api/v1/orders/lookup?code=T$TS-00001` — coincidencia **exacta** (sin distinguir mayúsculas), primero por número de
   orden, si no hay por número de empaque, si no hay por factura; devuelve todas las coincidencias de ese grupo
-  (`matchedBy`: `ORDER_NUMBER` | `PACK_BATCH` | `INVOICE`, o `null` sin coincidencias) — el número de orden puede
+  (`matchedBy`: `ORDER_NUMBER` | `PACK_BATCH` | `INVOICE`, o `null` sin coincidencias) — el número de envío puede
   repetirse entre clientes y la factura entre órdenes, el empaque es único.
   Lote 44 (F-G2, 2026-10-12): si ninguno de los tres coincide, busca el **número de paquete** de las líneas activas
   (`matchedBy`: `PACKAGE`; es el código de barras del label de cada pieza). El contador de paquetes es por cliente y un número
@@ -203,7 +203,7 @@ Qué hace: edita la orden mientras está en un estatus que lo permita (por defec
 puede cambiar el consignatario (con la misma resolución de la sección 1.1 y re-chequeo de R36 si la orden **fue creada
 con factura tecleada**), el recogido, el tipo de servicio, la prioridad, las líneas de paquete (reemplazo completo: las
 anteriores quedan inactivas como rastro), el COD (agregar, aumentar o quitar con `clearCod: true`), fechas, notas y
-referencias. El **cliente, el número de orden, el número de factura y el número de empaque se fijan al crear** y no se
+referencias. El **cliente, el número de envío, el número de factura y el número de empaque se fijan al crear** y no se
 editan. Si la orden ya estaba cotizada, editarla la **re-cotiza** (exige además la capacidad `REPRICE`, que por defecto también es solo de
 Sometida) para no dejar un monto viejo. Mientras siga Sometida y cotizada, cada edición recotiza.
 
@@ -228,7 +228,7 @@ para detectar edición concurrente.
 ### 1.5 Eliminar (solo en la etapa inicial)
 
 Qué hace: **baja lógica** (`isActive = false`), nunca `DELETE`. Solo se permite mientras la orden sigue en su **estatus
-inicial** (Sometida); libera de inmediato su número de orden y su número de empaque (ambos son índices únicos filtrados por
+inicial** (Sometida); libera de inmediato su número de envío y su número de empaque (ambos son índices únicos filtrados por
 `isActive = 1`), así que se pueden volver a capturar. Después de eliminada, ninguna acción vuelve a funcionar sobre ella
 (editar, marcar como recogida, repreciar, cancelar, estatus): la ficha y el listado (`includeInactive=true`) la siguen mostrando,
 pero como registro histórico.
@@ -239,7 +239,7 @@ Cómo se usa: `DELETE /api/v1/orders/{publicId}` → `204`.
 
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|
-| La orden ya no está en su etapa inicial | `Solo se puede eliminar una orden en su estatus inicial; use la cancelación.` | 422 |
+| La orden ya no está en su etapa inicial | `Solo se puede eliminar un envío en su estatus inicial; use la cancelación.` | 422 |
 
 ---
 
@@ -258,29 +258,29 @@ Qué hace: toda orden recibe cuatro identificadores, cada uno con su propio cont
 
 | Identificador | Ámbito del contador | ¿Quién lo asigna? | Patrón por defecto |
 |---|---|---|---|
-| Número de orden (`orderNumber`) | por cliente | Teikem, o el cliente si `clientAssignsOrderNumber: true` (capítulo 02, 1.4) | `ORD-#####` |
+| Número de envío (`orderNumber`) | por cliente | Teikem, o el cliente si `clientAssignsOrderNumber: true` (capítulo 02, 1.4) | `ORD-#####` |
 | Número de factura (`clientInvoiceNumber`) | por cliente | Teikem, o el cliente si `clientAssignsInvoiceNumber: true` | `FAC-#####` |
 | Número de empaque (`packBatchNumber`) | por tenant | **siempre Teikem**, nunca configurable | `EMP-#####` (fijo) |
 | Número de paquete (`packages[i].packageNumber`) | por cliente | siempre se puede teclear por línea | `PQT-#####` |
 
-El número de orden es único **por cliente** (dos clientes pueden compartir "PO-1001"); el número de empaque es único
+El número de envío es único **por cliente** (dos clientes pueden compartir "PO-1001"); el número de empaque es único
 **por tenant** y es el identificador inequívoco para escanear. Un número que el cliente "asigna" pero se deja en blanco
 lo genera Teikem igual.
 
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|
-| Se teclea `orderNumber` y el cliente no lo asigna | `El número de orden lo asigna Teikem para este cliente; déjelo en blanco.` (campo `orderNumber`) | 400 |
+| Se teclea `orderNumber` y el cliente no lo asigna | `El número de envío lo asigna Teikem para este cliente; déjelo en blanco.` (campo `orderNumber`) | 400 |
 | Se teclea `clientInvoiceNumber` y el cliente no lo asigna | `El número de factura lo asigna Teikem para este cliente; déjelo en blanco.` (campo `clientInvoiceNumber`) | 400 |
 | Se teclea `packBatchNumber` | `El número de empaque siempre lo genera Teikem.` | 400 |
 | Un número tecleado excede 40 caracteres | `El número no puede exceder 40 caracteres.` | 400 |
 | Un número automático, con el patrón del cliente, excede 40 caracteres | `El número {de orden\|de factura\|de paquete\|de empaque} generado con el patrón del cliente excede 40 caracteres; acorte el patrón en la ficha del cliente.` | 409 |
-| Choque de un número automático con uno tecleado por otro usuario | se reintenta solo (hasta 5 veces), sin que el usuario lo note; agotados los reintentos: `No se pudo asignar un número de orden libre; intente de nuevo.` | 409 |
+| Choque de un número automático con uno tecleado por otro usuario | se reintenta solo (hasta 5 veces), sin que el usuario lo note; agotados los reintentos: `No se pudo asignar un número de envío libre; intente de nuevo.` | 409 |
 
 ---
 
 ## 3. Cotización y crédito
 
-> **Lote 107 (2026-10-17) — el cernidor es AL SOMETER.** Contrato y tarifa vigentes, cliente no suspendido y crédito se revisan **al crear la orden**; si no pasa, no se crea (409/422 con los mismos mensajes de siempre, sin «orden sin cotizar»). Quien pasó el cernidor no se vuelve a revisar: **«Marcar como recogida»** y el escaneo solo **congelan** el precio que ya tenía (ya no cotizan ni miden el crédito). Un cliente sin contrato o sin tarifa no puede someter órdenes, ni en la web ni en el portal. Re-cotizar solo mientras la orden está Sometida.
+> **Lote 107 (2026-10-17) — el cernidor es AL SOMETER.** Contrato y tarifa vigentes, cliente no suspendido y crédito se revisan **al crear la orden**; si no pasa, no se crea (409/422 con los mismos mensajes de siempre, sin «orden sin cotizar»). Quien pasó el cernidor no se vuelve a revisar: **«Marcar como recogido»** y el escaneo solo **congelan** el precio que ya tenía (ya no cotizan ni miden el crédito). Un cliente sin contrato o sin tarifa no puede someter órdenes, ni en la web ni en el portal. Re-cotizar solo mientras la orden está Sometida.
 
 Desde el Lote 106 la orden **se cotiza y se mide el crédito al crearla** (nace Sometida). Marcarla como recogida (antes
 «Confirmar») repite la cotización en modo estricto, congela el precio y vuelve a medir el crédito.
@@ -304,16 +304,16 @@ Cómo se usa: `GET /api/v1/orders/{publicId}/quote`.
 | Falta el permiso `orders.view_price` (queda registrado un evento de seguridad `PERMISSION_DENIED`); pida el permiso al administrador o a Facturación | `Falta el permiso 'orders.view_price'.` | 403 |
 | Falta tarifa vigente para alguna línea (servicio/tipo de paquete) | `No hay tarifa vigente para X/Y; configure la tarifa en el contrato del cliente antes de confirmar.` | 422 |
 | Servicio especial ya no vigente (se cerró) | `El servicio especial ya no está vigente; elija otro antes de confirmar.` | 409 |
-| Componente "Servicios especiales" apagado en el contrato vigente | `El componente 'Servicios especiales' está apagado en el contrato vigente del cliente; enciéndalo en el modelo de facturación o capture una orden normal.` | 409 |
+| Componente "Servicios especiales" apagado en el contrato vigente | `El componente 'Servicios especiales' está apagado en el contrato vigente del cliente; enciéndalo en el modelo de facturación o capture un envío normal.` | 409 |
 
-### 3.2 Cotizar al crear y «Marcar como recogida»
+### 3.2 Cotizar al crear y «Marcar como recogido»
 
 **Al crear (Lote 106).** Qué hace: si el cliente tiene contrato y tarifa vigente para las líneas de la orden, la orden nace
 Sometida **con** su `quotedAmount`, `quotedAtUtc` y el contrato usado, y se mide el crédito (sección 3.3). Si no hay contrato o
 falta una tarifa, la orden nace Sometida **sin cotizar y no da error**: ese error aparece al marcarla como recogida. Mientras la
 orden siga Sometida y cotizada, **editarla la recotiza**. Una orden sin cotizar no cuenta en el saldo pendiente del cliente.
 
-**Marcar como recogida (antes «Confirmar»).** Qué hace: saca la orden de su etapa inicial (Sometida) hacia la primera
+**Marcar como recogido (antes «Confirmar»).** Qué hace: saca la orden de su etapa inicial (Sometida) hacia la primera
 etapa del **pipeline** habilitada después de ella (normalmente **PICKUP**, «Recogida»; si la compañía la deshabilita, la que
 siga). Al marcarla: (1) cotiza la orden con el motor de tarifas del cliente (o la tarifa vigente del servicio especial) en modo
 estricto y **congela** `quotedAmount`, `quotedAtUtc` y el contrato usado; (2) verifica que el cliente no esté suspendido; (3)
@@ -323,13 +323,13 @@ edición de carga queda apagada por defecto (ver sección 4) y no se puede re-co
 Quién puede: `orders.edit` (o `orders.credit_override` cuando el crédito de verdad se excede; ver 3.3).
 
 Cómo se usa: `POST /api/v1/orders/{publicId}/confirm` `{ "rowVersion"?, "overrideCredit"?: false }`. Es el mismo endpoint de siempre;
-solo cambió el nombre del botón en la pantalla: **Marcar como recogida**.
+solo cambió el nombre del botón en la pantalla: **Marcar como recogido**.
 
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|
-| La orden ya no está en su etapa inicial | `Solo se confirma una orden en su estatus inicial.` | 422 |
-| El pipeline no tiene una etapa siguiente a la inicial (la compañía deshabilitó todo el resto) | `El pipeline de órdenes no tiene una etapa siguiente a la inicial.` | 422 |
-| Cliente suspendido | `El cliente está suspendido; no se pueden crear ni confirmar órdenes.` | 422 |
+| La orden ya no está en su etapa inicial | `Solo se confirma un envío en su estatus inicial.` | 422 |
+| El pipeline no tiene una etapa siguiente a la inicial (la compañía deshabilitó todo el resto) | `El pipeline de envíos no tiene una etapa siguiente a la inicial.` | 422 |
+| Cliente suspendido | `El cliente está suspendido; no se pueden crear ni confirmar envíos.` | 422 |
 | Falta tarifa / servicio especial cerrado | igual que 3.1 | 422 / 409 |
 | Crédito excedido, sin `overrideCredit` | ver 3.3 | 422 |
 | `rowVersion` desactualizado | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
@@ -343,7 +343,7 @@ Al crear, un exceso sin autorizar **revierte la creación** (la orden no existe)
 evento de seguridad (`ROLE_CHANGE`/`SUCCESS`, `action: "credit_override"`) y, si fue al marcarla como recogida, un comentario en su historial de estatus
 (`Crédito excedido autorizado por {usuario} (límite X, en curso Y, esta orden Z)`).
 
-Quién puede: crear con `overrideCredit: true` exige `orders.create` y `orders.credit_override`. Marcar como recogida sin `overrideCredit` exige `orders.edit`; con `overrideCredit: true` exige
+Quién puede: crear con `overrideCredit: true` exige `orders.create` y `orders.credit_override`. Marcar como recogido sin `overrideCredit` exige `orders.edit`; con `overrideCredit: true` exige
 `orders.credit_override` y, si el crédito **no** se excedía de verdad, exige además `orders.edit` (el permiso de
 autorización no sirve para mover órdenes normales). Esto permite que la plantilla **Billing** (que tiene
 `orders.credit_override` pero no `orders.edit`) autorice justo los casos de exceso al marcar como recogida.
@@ -356,7 +356,7 @@ autorización no sirve para mover órdenes normales). Esto permite que la planti
 | `overrideCredit: true` al marcar como recogida, con el permiso, pero el crédito no se excedía (o sin `orders.edit`) | `Falta el permiso 'orders.edit'.` | 403 |
 
 Qué hacer ante un 422 de crédito: si usted tiene `orders.credit_override`, repita la acción con `overrideCredit: true` (en la
-pantalla, **Autorizar y guardar** al crear y **Autorizar y marcar como recogida** en el expediente); si
+pantalla, **Autorizar y guardar** al crear y **Autorizar y marcar como recogido** en el expediente); si
 no, pida a Facturación o a un administrador que autorice el exceso, o que suban el límite de crédito del cliente.
 
 El comentario del historial (`Crédito excedido autorizado por {usuario} (límite X, en curso Y, esta orden Z)`) se guarda
@@ -446,7 +446,7 @@ solo se avanza a la siguiente); el escaneo por acción con saltos llega en un lo
 | De → a | Quién / cómo | Qué valida | Efectos |
 |---|---|---|---|
 | (nace) → Sometida | `orders.create`; automático al crear (`POST /orders`) | datos obligatorios, cliente ni suspendido ni dado de baja, crédito (sección 3.3) | Historial de nacimiento; cotiza si hay contrato y tarifa; mide el crédito (422 si se excede, salvo `overrideCredit`); paradas y COD nacen con su propio historial (ver nota) |
-| Sometida → Recogida | **Marcar como recogida**: `orders.edit` (o `orders.credit_override` cuando el crédito se excede), `POST /confirm` | tarifa vigente, servicio especial vigente, cliente no suspendido, crédito | Cotiza en modo estricto y congela `quotedAmount`/`quotedAtUtc`/contrato; la carga deja de poder editarse |
+| Sometida → Recogida | **Marcar como recogido**: `orders.edit` (o `orders.credit_override` cuando el crédito se excede), `POST /confirm` | tarifa vigente, servicio especial vigente, cliente no suspendido, crédito | Cotiza en modo estricto y congela `quotedAmount`/`quotedAtUtc`/contrato; la carga deja de poder editarse |
 | Recogida → Sin asignar | sin botón en el expediente | Desde `POST /status` responde 422 «avance reservado» (ver abajo) | Lo mueve el módulo que corresponda; no se agregó una acción nueva en este lote |
 | Recogida / Sin asignar → Asignada | **despachar la ruta** (`trips.dispatch`) | la orden debe ser elegible (capítulo 05, sección 3.1); una orden Sometida **no** es elegible | El despacho lleva la orden etapa por etapa hasta Asignada, un historial por paso con «Despachada en la ruta {código}» |
 | Asignada → En tránsito | **iniciar la ruta** (salida) | — | El historial dice «Salió en la ruta {código}» |
@@ -490,15 +490,15 @@ confunde con el estatus del COD o de una parada.
 | Estatus destino inexistente o deshabilitado | `El estatus 'X' no existe o no está habilitado para esta compañía.` | 422 |
 | `toCode` que no existe en el catálogo (por ejemplo, un código viejo como `CONFIRMED`) en `POST /status` | `Estatus OrderStatus 'X' no encontrado.` | 404 |
 | `toCode: "CANCELLED"` por `/status` | `Para cancelar use la acción de cancelación.` | 422 |
-| `toCode` es la etapa de «Marcar como recogida», estando Sometida | `Para confirmar use la acción de confirmación.` | 422 |
+| `toCode` es la etapa de «Marcar como recogido», estando Sometida | `Para confirmar use la acción de confirmación.` | 422 |
 | Avance de pipeline no reservado a laterales/regreso | `El avance a 'X' lo realiza el módulo correspondiente (trips/entregas); desde aquí solo se registran estatus laterales.` | 422 |
 | Comentario de más de 500 caracteres (`cancel`/`status`/`reopen`) | `El comentario admite como máximo 500 caracteres.` (campo `comment`) | 400 |
 | Cancelar sin razón | `Indique la razón de la cancelación.` (campo `comment`) | 400 |
 | Reabrir sin el permiso `orders.reopen` | `Falta el permiso 'orders.reopen'.` | 403 |
-| Reabrir sin razón | `Indique la razón para reabrir la orden.` (campo `comment`) | 400 |
-| Reabrir una orden que no está en un estatus final | `Solo se reabre una orden en estatus final.` | 422 |
-| Reabrir indicando un `toCode` que también es final (Entregada, Cancelada, En almacén) | `Una orden reabierta debe quedar en una etapa en curso.` | 422 |
-| Reabrir sin `toCode` cuando la orden nunca tuvo un estatus anterior no final al que volver | `La orden no tiene un estatus anterior al que volver; indique el estatus destino.` | 422 |
+| Reabrir sin razón | `Indique la razón para reabrir el envío.` (campo `comment`) | 400 |
+| Reabrir una orden que no está en un estatus final | `Solo se reabre un envío en estatus final.` | 422 |
+| Reabrir indicando un `toCode` que también es final (Entregada, Cancelada, En almacén) | `Un envío reabierto debe quedar en una etapa en curso.` | 422 |
+| Reabrir sin `toCode` cuando la orden nunca tuvo un estatus anterior no final al que volver | `El envío no tiene un estatus anterior al que volver; indique el estatus destino.` | 422 |
 
 ---
 
@@ -620,7 +620,7 @@ Cómo se usa: `POST /api/v1/orders/import/{batchPublicId}/confirm` `{ "rows"?: [
 
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|
-| El lote ya fue confirmado | `El lote ya fue confirmado; valide un archivo nuevo para importar más órdenes.` | 409 |
+| El lote ya fue confirmado | `El lote ya fue confirmado; valide un archivo nuevo para importar más envíos.` | 409 |
 | El lote fue descartado | `El lote fue descartado; valide el archivo de nuevo.` | 409 |
 | Dos confirmaciones (o confirmar y descartar) a la vez | `El lote ya se está confirmando o fue confirmado; consulte su resultado.` | 409 |
 | `rows` con un ordinal que no existe en el lote | `La fila N no existe en el lote.` | 400 |
@@ -650,7 +650,7 @@ Cómo se usa: `POST /api/v1/orders/import/{batchPublicId}/discard`.
 
 > Dictado de Luis (2026-10-19). Hay clientes (AxisCare es el primero) cuyo archivo trae **varias líneas por orden** y **no todas son piezas**: unas son el bulto físico con su label pegado, otras describen lo que se envía (p. ej. «dron», «equipo») y otra es la **factura**. El mapeo de la plantilla dice **qué NO es pieza**; **todo lo demás es pieza** (puede haber varias por orden).
 
-**Cómo se configura (sin programar):** en la plantilla de órdenes (Órdenes → Importar → Nueva plantilla o Editar) se enciende **«El archivo trae varias líneas por orden»** y se agregan **reglas de línea**: *si la columna N [está vacía / trae algo / es igual a / contiene / es una de (separe con |)] «valor», la línea es una **Descripción** o una **Factura***. Cualquiera de las reglas basta y la primera que se cumple manda; si ninguna aplica, la línea es **pieza**. Los textos se comparan sin acentos ni mayúsculas. API: `multiLine` y `lineRules: [{kind: DESCRIPTION|INVOICE, position, operator: EMPTY|NOT_EMPTY|EQUALS|CONTAINS|IN, value}]` en `POST/PATCH /api/v1/import-templates` (`orders.edit`).
+**Cómo se configura (sin programar):** en la plantilla de órdenes (Órdenes → Importar → Nueva plantilla o Editar) se enciende **«El archivo trae varias líneas por envío»** y se agregan **reglas de línea**: *si la columna N [está vacía / trae algo / es igual a / contiene / es una de (separe con |)] «valor», la línea es una **Descripción** o una **Factura***. Cualquiera de las reglas basta y la primera que se cumple manda; si ninguna aplica, la línea es **pieza**. Los textos se comparan sin acentos ni mayúsculas. API: `multiLine` y `lineRules: [{kind: DESCRIPTION|INVOICE, position, operator: EMPTY|NOT_EMPTY|EQUALS|CONTAINS|IN, value}]` en `POST/PATCH /api/v1/import-templates` (`orders.edit`).
 
 **Qué se hace con cada clase de línea:**
 | Clase | Qué es | Dónde queda |
@@ -659,15 +659,15 @@ Cómo se usa: `POST /api/v1/orders/import/{batchPublicId}/discard`.
 | Descripción | lo que se envía (no es un bulto) | la **descripción de las líneas de carga** de la orden (si la pieza no trae la suya); sin pieza, sin label, sin tocar el índice único |
 | Factura | la factura del cliente | `ClientInvoiceNumber` de la orden (su número sale de la columna de factura mapeada o, si no, del label de esa línea) |
 
-**Cómo se arma la orden:** las filas con el **mismo número de orden** son UNA orden (el número lo trae el archivo: el cliente debe numerar sus órdenes, `clientAssignsOrderNumber`; la factura, `clientAssignsInvoiceNumber`). Los datos de la orden (consignatario, dirección, servicio, COD…) salen de la primera celda con contenido de cada columna entre sus líneas, así que el domicilio puede venir en cualquiera. La vista previa muestra **una fila por orden** con su resumen («2 pieza(s) · 1 descripción(es) · factura INV-1») y los errores de cada línea («Fila 7 · N.º de pieza (label): …»).
+**Cómo se arma la orden:** las filas con el **mismo número de envío** son UNA orden (el número lo trae el archivo: el cliente debe numerar sus órdenes, `clientAssignsOrderNumber`; la factura, `clientAssignsInvoiceNumber`). Los datos de la orden (consignatario, dirección, servicio, COD…) salen de la primera celda con contenido de cada columna entre sus líneas, así que el domicilio puede venir en cualquiera. La vista previa muestra **una fila por orden** con su resumen («2 pieza(s) · 1 descripción(es) · factura INV-1») y los errores de cada línea («Fila 7 · N.º de pieza (label): …»).
 
 **Validaciones (mensaje exacto; la orden queda con error y no se crea, el resto del archivo sí):**
-- «La orden no trae ninguna pieza (todas sus líneas son descripción o factura).» (al menos una pieza por orden).
-- «La línea no trae número de orden; en un archivo con varias líneas por orden todas lo necesitan.»
+- «El envío no trae ninguna pieza (todas sus líneas son descripción o factura).» (al menos una pieza por orden).
+- «La línea no trae número de envío; en un archivo con varias líneas por orden todas lo necesitan.»
 - «El número de pieza X se repite en la fila N del archivo.» · «El número de pieza X ya existe en otra orden.» (la pieza no se duplica) · «Una línea con número de pieza propio lleva una sola pieza.»
 - «La línea de factura no trae número.» Una orden con más de una factura usa la primera y avisa.
 - Las descripciones y las facturas repetidas **no** cuentan como duplicado; solo el número de cada pieza es único.
-- Al guardar la plantilla (400): «Un archivo con varias líneas por orden necesita la columna orderNumber en la plantilla.» · «Las reglas de línea solo se usan en una plantilla con varias líneas por orden.» · «Clase de línea desconocida: X. Use DESCRIPTION o INVOICE.» · «Condición desconocida: X. Use EMPTY, NOT_EMPTY, EQUALS, CONTAINS o IN.» · «La condición X necesita un valor.» · «Máximo 20 reglas.»
+- Al guardar la plantilla (400): «Un archivo con varias líneas por envío necesita la columna orderNumber en la plantilla.» · «Las reglas de línea solo se usan en una plantilla con varias líneas por envío.» · «Clase de línea desconocida: X. Use DESCRIPTION o INVOICE.» · «Condición desconocida: X. Use EMPTY, NOT_EMPTY, EQUALS, CONTAINS o IN.» · «La condición X necesita un valor.» · «Máximo 20 reglas.»
 
 **Decidido:** no existe un campo `ClientLabelNumber` en la pieza (el label del bulto es su `PackageNumber`). Una línea que es pieza es una línea de carga de 1 pieza con su label; sin label, la fila con `pieces` N crea N piezas numeradas por Teikem.
 
@@ -694,7 +694,7 @@ ni editarlas); **TenantAdmin** trae todos (incluido `orders.reopen`, que ninguna
 
 La fuente de datos `TRANSPORT_ORDER` ("Órdenes") queda disponible para vistas, indicadores y gráficos con relaciones a
 `Client` y `Consignee` (Location). El tenant nuevo (y el demo) recibe de fábrica: la vista **"Órdenes"** (columnas
-Empaque, número de orden, factura, cliente, consignatario, estatus, piezas, COD, fecha), el indicador **"Órdenes en
+Empaque, número de envío, factura, cliente, consignatario, estatus, piezas, COD, fecha), el indicador **"Órdenes en
 curso"** (cuenta las activas en Sometida, Recogida, Sin asignar, Asignada, En tránsito o Intento fallido, sin contar las terminales), el indicador **"COD por cobrar"** (suma
 el COD `PENDING` de las órdenes activas, excluyendo las canceladas) y el gráfico **"Órdenes por estatus"** (dona, últimos
 30 días). Cada alta o cambio de una orden, sus paradas, líneas y referencias queda en `AuditLog` (`GET /api/v1/audit/changes?entityType=TRANSPORT_ORDER`);
@@ -714,9 +714,9 @@ su causa y qué hacer.
 
 ## Número de conduce (Lote 97, P10)
 
-Cada orden de entrega tiene un **número de conduce** (`waybillNumber`, «Waybill» en Advance): el identificador **único** de la orden en toda la compañía, que usan el cliente y el consignatario para referirse a ella (y el que busca el consignatario en «¿Cómo va mi orden?» del portal). Lo **genera Teikem** al crear la orden —contador `WAYBILL` por compañía, formato `CND-#######`— y no se teclea ni se cambia. El **número de orden** del cliente (que puede repetirse entre clientes) y el **número de empaque** (`EMP-#####`, el del escaneo) siguen existiendo.
+Cada orden de entrega tiene un **número de conduce** (`waybillNumber`, «Waybill» en Advance): el identificador **único** de la orden en toda la compañía, que usan el cliente y el consignatario para referirse a ella (y el que busca el consignatario en «¿Cómo va mi orden?» del portal). Lo **genera Teikem** al crear la orden —contador `WAYBILL` por compañía, formato `CND-#######`— y no se teclea ni se cambia. El **número de envío** del cliente (que puede repetirse entre clientes) y el **número de empaque** (`EMP-#####`, el del escaneo) siguen existiendo.
 
-- **Dónde se ve:** columna **Conduce** de la lista de Órdenes (se ordena y se exporta), campo **Conduce (waybill)** de la ficha y el campo **Número de waybill** del **label** (antes el label mostraba el número de orden; ahora el conduce).
+- **Dónde se ve:** columna **Conduce** de la lista de Órdenes (se ordena y se exporta), campo **Conduce (waybill)** de la ficha y el campo **Número de waybill** del **label** (antes el label mostraba el número de envío; ahora el conduce).
 - **Cómo se busca:** el buscador libre de Órdenes, el filtro `waybill` del API (`GET /api/v1/orders?waybill=`, parcial) y **buscar o escanear** (`GET /api/v1/orders/lookup?code=`, exacto): el conduce es la primera coincidencia (`matchedBy = WAYBILL`) y no es ambiguo.
 - **Órdenes que ya existían:** al actualizar la base (`update.sql` (af)) cada una recibió su conduce en orden de creación y el contador quedó en el siguiente número libre.
 - Las órdenes dadas de baja conservan su conduce y no se reutiliza.

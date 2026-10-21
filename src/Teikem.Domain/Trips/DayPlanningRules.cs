@@ -63,13 +63,13 @@ public static class DayPlanningRules
 
     /// <summary>Código del motivo de omisión por el tope técnico de paradas de una ruta.</summary>
     public const string CapacityHardCapCode = "CAPACITY_HARD_CAP";
-    public const string CapacityHardCapMessage = "La ruta llegó al máximo de 300 paradas; la orden queda sin asignar.";
+    public const string CapacityHardCapMessage = "La ruta llegó al máximo de 300 paradas; el envío queda sin asignar.";
 
     /// <summary>Código del motivo de omisión cuando la orden no es elegible (el texto es el motivo de TripRules.CheckEligibility).</summary>
     public const string NotEligibleCode = "NOT_ELIGIBLE";
 
     /// <summary>Texto del aviso por orden omitida en el resultado de una zona: 'Orden {número}: {motivo}'.</summary>
-    public static string SkippedIssueMessage(string orderNumber, string reason) => $"Orden {orderNumber}: {reason}";
+    public static string SkippedIssueMessage(string orderNumber, string reason) => $"Envío {orderNumber}: {reason}";
 
     // ---------------------------------------------------------------- validación
 

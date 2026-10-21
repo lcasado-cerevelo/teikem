@@ -79,8 +79,8 @@ describe('PackModal: predeterminados de la compañía', () => {
     await waitFor(() => expect(optionTexts(pkg)[0]).toBe('Predeterminado de la compañía (Caja)'))
     expect(within(dialog).getByText('Tipo de servicio').closest('label')).not.toHaveTextContent('*')
 
-    await user.click(within(dialog).getByRole('button', { name: 'Empacar y crear orden' }))
-    expect(await within(dialog).findByText('Indique el cliente de la orden.')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Empacar y crear envío' }))
+    expect(await within(dialog).findByText('Indique el cliente del envío.')).toBeInTheDocument()
     expect(within(dialog).queryByText('Elija el tipo de servicio.')).toBeNull()
     expect(within(dialog).queryByText('Elija el tipo de paquete.')).toBeNull()
   })
@@ -96,7 +96,7 @@ describe('PackModal: predeterminados de la compañía', () => {
     expect(within(dialog).queryByText(/Predeterminado de la compañía/)).toBeNull()
     expect(within(dialog).getByText('Tipo de servicio').closest('label')).toHaveTextContent('*')
 
-    await user.click(within(dialog).getByRole('button', { name: 'Empacar y crear orden' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Empacar y crear envío' }))
     expect(await within(dialog).findByText('Elija el tipo de servicio.')).toBeInTheDocument()
     expect(within(dialog).getByText('Elija el tipo de paquete.')).toBeInTheDocument()
     expect(mock.calls.some((c) => c.method === 'POST')).toBe(false)
@@ -104,7 +104,7 @@ describe('PackModal: predeterminados de la compañía', () => {
     // elegir ambos quita los errores
     await user.selectOptions(service, 'STANDARD')
     await user.selectOptions(within(dialog).getByLabelText(/^Tipo de paquete/), 'BOX')
-    await user.click(within(dialog).getByRole('button', { name: 'Empacar y crear orden' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Empacar y crear envío' }))
     await waitFor(() => expect(within(dialog).queryByText('Elija el tipo de servicio.')).toBeNull())
     expect(within(dialog).queryByText('Elija el tipo de paquete.')).toBeNull()
   })

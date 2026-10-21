@@ -45,4 +45,4 @@
 4. **Reintentos sin aviso del sistema**: el contador de la pestaña Salidas es la señal; no hay aviso por correo/APP cuando un envío queda no entregado (sí lo hay para webhooks suspendidos).
 5. **El cuerpo se arma al pasar la cola a envío** (en menos de un minuto) y no se rearma al reintentar (si la orden cambió después, el reintento manda lo armado entonces).
 6. **Una vuelta por minuto**: «al instante» es en menos de un minuto; un destino lento puede retrasar a los demás hasta la siguiente vuelta (corta a los 3 fallos seguidos por integración).
-7. Una orden que vuelve a llegar al mismo estatus (reabierta y entregada otra vez) **sí** vuelve a salir (cola nueva); el receptor puede deduplicar por número de orden.
+7. Una orden que vuelve a llegar al mismo estatus (reabierta y entregada otra vez) **sí** vuelve a salir (cola nueva); el receptor puede deduplicar por número de envío.

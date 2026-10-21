@@ -80,7 +80,7 @@ public sealed class TripOrderService(
                               .Where(o => o.PublicId == orderPublicId)
                               .Select(o => (int?)o.TransportOrderId)
                               .FirstOrDefaultAsync(ct2)
-                          ?? throw new NotFoundException(OrderQueries.OrderLabel);   // 404 'Orden no encontrado.'
+                          ?? throw new NotFoundException(OrderQueries.OrderLabel);   // 404 'Envío no encontrado.'
 
             await writer.ReleaseOrderAsync(trip, orderId, ct2);           // 404 'La orden no está en esta ruta.'
             await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
@@ -191,7 +191,7 @@ public sealed class TripOrderService(
         // Etapas asignables según el pipeline del tenant (con deshabilitadas: una etapa apagada puede tener órdenes).
         var pipeline = await statuses.GetPipelineAsync(StatusDomains.OrderStatus, includeDisabled: true, ct);
         var inTransit = pipeline.FirstOrDefault(s => string.Equals(s.Code, OrderStatuses.InTransit, StringComparison.OrdinalIgnoreCase))
-                        ?? throw new InvalidOperationException("El pipeline de órdenes no tiene la etapa IN_TRANSIT.");
+                        ?? throw new InvalidOperationException("El pipeline de envíos no tiene la etapa IN_TRANSIT.");
         var initialSort = pipeline.Where(s => s.IsInitial).Select(s => (int?)s.SortOrder).Min() ?? int.MinValue;
         var assignable = pipeline
             .Where(s => string.Equals(s.StageKind, StageKinds.Pipeline, StringComparison.OrdinalIgnoreCase)

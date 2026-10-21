@@ -12,7 +12,7 @@ namespace Teikem.Tests;
 
 /// <summary>
 /// Lote 44 (F-G2) — el label de cada paquete lleva en el código de barras el NÚMERO DEL PAQUETE: GET /orders/lookup y la estación de
-/// escaneo lo buscan como cuarta precedencia (después de número de orden, empaque y factura), solo en líneas activas y dentro de la
+/// escaneo lo buscan como cuarta precedencia (después de número de envío, empaque y factura), solo en líneas activas y dentro de la
 /// compañía; un número repetido entre órdenes (de clientes distintos) es ambiguo con su mensaje propio. Índice IX_CargoLine_PackageNumber
 /// en la sección «2026-10-12 (e)» y espejo en EF. La lista de órdenes trae la dirección de entrega para los labels.
 /// </summary>
@@ -35,7 +35,7 @@ public sealed class PackageLookupTests
         Assert.Equal(OrderReadService.MatchedByPackage, r.MatchedBy);
         Assert.Equal(f.O1.PublicId, Assert.Single(r.Matches).PublicId);
 
-        // Un número de orden, empaque o factura gana al número de paquete.
+        // Un número de envío, empaque o factura gana al número de paquete.
         await SetPackageAsync(f, 3, "2026-1");
         var byOrder = await f.Reader.LookupAsync("2026-1", OrderScope.Any, default);
         Assert.Equal(OrderReadService.MatchedByOrderNumber, byOrder.MatchedBy);
@@ -69,7 +69,7 @@ public sealed class PackageLookupTests
         var d = OutboundScanRules.Decide(new ScanFacts(2, r.MatchedBy, null, null, null, null, null, new DateOnly(2026, 10, 12)));
         Assert.Equal(ScanOutcomes.NotFound, d.Outcome);
         Assert.Equal(ScanReasonCodes.MultipleMatches, d.ReasonCode);
-        Assert.Equal("El número de paquete está en 2 órdenes (de clientes distintos o repetido); escanee el empaque o el número de orden.", d.Message);
+        Assert.Equal("El número de paquete está en 2 envíos (de clientes distintos o repetido); escanee el empaque o el número de envío.", d.Message);
         // con los demás códigos el mensaje de siempre
         Assert.Equal(OutboundScanRules.MultipleMatchesMessage,
             OutboundScanRules.Decide(new ScanFacts(2, OrderReadService.MatchedByInvoice, null, null, null, null, null, new DateOnly(2026, 10, 12))).Message);

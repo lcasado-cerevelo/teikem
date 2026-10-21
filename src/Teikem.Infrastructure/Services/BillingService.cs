@@ -309,7 +309,7 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
     }
 
     /// <summary>Lote 126: descripción de la línea del cotejo de factura.</summary>
-    public const string InvoiceCheckDescriptionFormat = "Cotejo de factura de la orden {0}";
+    public const string InvoiceCheckDescriptionFormat = "Cotejo de factura del envío {0}";
 
     /// <summary>
     /// Lote 126: órdenes con la factura procesada cuyo contrato cobra el cotejo (monto mayor que cero), sin la línea INVOICE_CHECK facturada todavía, y cuyo hecho —el día que se procesó— cae hasta la fecha final

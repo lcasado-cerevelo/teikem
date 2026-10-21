@@ -127,7 +127,7 @@ public sealed class IntegrationInboxService(TeikemDbContext db, ITenantContext t
             run.FinishedUtc = DateTime.UtcNow;
             var created = outcome.Created.Count > 0 && outcome.Rejected.Count == 0;
             run.Status = created ? IntegrationRunStatuses.Ok : IntegrationRunStatuses.Partial;
-            run.Message = created ? "Orden de la bandeja reprocesada." : "La orden de la bandeja sigue con problemas.";
+            run.Message = created ? "Envío de la bandeja reprocesado." : "El envío de la bandeja sigue con problemas.";
 
             var tracked = await db.IntegrationInboxItems.FirstAsync(i => i.IntegrationInboxItemId == id, ct);
             if (created)
@@ -140,7 +140,7 @@ public sealed class IntegrationInboxService(TeikemDbContext db, ITenantContext t
             }
             else
             {
-                tracked.Reason = (outcome.Rejected.FirstOrDefault()?.Reason ?? "La orden no se pudo procesar.") is { Length: > 1000 } r ? r[..1000] : outcome.Rejected.FirstOrDefault()?.Reason ?? "La orden no se pudo procesar.";
+                tracked.Reason = (outcome.Rejected.FirstOrDefault()?.Reason ?? "El envío no se pudo procesar.") is { Length: > 1000 } r ? r[..1000] : outcome.Rejected.FirstOrDefault()?.Reason ?? "El envío no se pudo procesar.";
                 still++;
             }
             await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct);

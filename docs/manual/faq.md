@@ -667,7 +667,7 @@ revelar la causa; revise el estado de la compañía y del módulo y reenvíe la 
 
 ## Lote 3 — Órdenes de transporte
 
-**¿Qué significa "El número de orden generado con el patrón del cliente excede 40 caracteres; acorte el patrón en la ficha del cliente."? (HTTP 409)**
+**¿Qué significa "El número de envío generado con el patrón del cliente excede 40 caracteres; acorte el patrón en la ficha del cliente."? (HTTP 409)**
 También aparece como "número de factura" o "número de paquete". Teikem genera esos números con el patrón de la ficha del
 cliente (`PATCH /api/v1/clients/{id}/number-settings`) y **nunca recorta** el consecutivo: si el consecutivo tiene más dígitos
 que los `#` del patrón, los antepone. Con un patrón muy largo, el número resultante ya no cabe en los 40 caracteres del campo.
@@ -677,7 +677,7 @@ consecutivo. Acorta el patrón (o déjalo en blanco para usar el patrón por def
 **Eliminé una orden en captura y ahora marcarla como recogida, cancelar, repreciar o cambiar su estatus responde "Orden no encontrado." (HTTP 404). ¿Por qué?**
 Eliminar una orden (solo en su estatus inicial) es una baja lógica: la orden sigue visible en su ficha y en el listado con
 `includeInactive=true`, pero ya no admite ninguna acción (editar, eliminar, marcar como recogida, repreciar, cancelar ni estatus). Si la
-necesitas, captúrala de nuevo: su número de orden y de empaque quedaron libres.
+necesitas, captúrala de nuevo: su número de envío y de empaque quedaron libres.
 
 **Cambié el consignatario de una orden y no me avisó de factura repetida. ¿Es correcto?**
 Sí, si el número de factura de esa orden lo generó Teikem. El chequeo de factura repetida por consignatario solo aplica a
@@ -748,7 +748,7 @@ factura). Si tiene `allowDupInvoice: true`, repite la petición agregando `confi
 todos modos"). El error trae `errors.existingOrderNumber` y `errors.existingOrderPublicId` con la orden que ya la usa.
 Solo aplica a facturas **tecleadas**; si Teikem genera el número de factura, nunca se dispara.
 
-**¿Qué significa "El cliente está suspendido; no se pueden crear ni confirmar órdenes."? (HTTP 422)**
+**¿Qué significa "El cliente está suspendido; no se pueden crear ni confirmar envíos."? (HTTP 422)**
 El cliente está en estatus `SUSPENDED` (capítulo 02, sección 1.6). No se pueden crear órdenes nuevas para él, ni
 marcar como recogida una que ya estaba Sometida. Reactívalo (`ACTIVE`) para seguir.
 
@@ -1093,7 +1093,7 @@ Enviaste `driverPublicId` al crear una orden que **no** es una entrega especial 
 chofer solo se indica en entregas especiales; las demás órdenes se despachan desde Sala de despacho (módulo
 posterior).
 
-**¿Qué significa "Solo las entregas especiales se asignan a un chofer desde aquí; las demás órdenes pasan por Sala de despacho."?**
+**¿Qué significa "Solo las entregas especiales se asignan a un chofer desde aquí; las demás envíos pasan por Sala de despacho."?**
 Llamaste a `POST /orders/{publicId}/driver` sobre una orden normal (no entrega especial). Ese endpoint es
 exclusivo de entregas especiales.
 
@@ -1101,10 +1101,10 @@ exclusivo de entregas especiales.
 La orden ya pasó de `IN_TRANSIT`, o está en un estatus lateral o terminal (cancelada, en espera, etc.). El chofer ya
 no se puede asignar ni reasignar en ese punto.
 
-**¿Qué significa "La orden ya está asignada a ese chofer."?**
+**¿Qué significa "El envío ya está asignado a ese chofer."?**
 Intentaste asignar el mismo chofer que ya tiene el viaje vigente de esa orden. No hay nada que cambiar.
 
-**¿Qué significa "La orden ya tiene un viaje vigente; recargue e intente de nuevo."?**
+**¿Qué significa "El envío ya tiene un viaje vigente; recargue e intente de nuevo."?**
 Dos asignaciones (o reasignaciones) simultáneas a la misma orden chocaron. Recarga la ficha de la orden y repite.
 
 **Reasigné la entrega a otro chofer, ¿qué pasa con el viaje del chofer anterior?**
@@ -1215,7 +1215,7 @@ tenant. Por seguridad, ambos casos dan el mismo `404` (nunca se revela si la rut
 
 ### Órdenes en la ruta y lista "Sin asignar"
 
-**¿Qué significa "Indique al menos una orden." y "Agregue como máximo 200 órdenes por solicitud."? (400)**
+**¿Qué significa "Indique al menos un envío." y "Agregue como máximo 200 envíos por solicitud."? (400)**
 `POST /api/v1/trips/{publicId}/orders` exige al menos un `orderPublicIds` y admite como máximo 200 distintos por
 solicitud (los duplicados se colapsan solos). Si necesitas agregar más, hazlo en varias llamadas.
 
@@ -1223,39 +1223,39 @@ solicitud (los duplicados se colapsan solos). Si necesitas agregar más, hazlo e
 El `orderPublicId` no es de tu compañía, no existe, está inactivo, o (al quitar) esa orden no está registrada en
 absoluto. Verifica el id; si la orden existe pero no está en ESA ruta, el mensaje es otro (ver abajo).
 
-**¿Qué significa "Hay órdenes que no se pueden asignar a la ruta."? (422)**
+**¿Qué significa "Hay envíos que no se pueden asignar a la ruta."? (422)**
 Al agregar varias órdenes de una vez, **una sola** que no sea elegible rechaza la solicitud **completa** (nada se
 agrega): revisa `errors`, que trae el número de cada orden problemática y su motivo exacto (ver la tabla de
 elegibilidad más abajo). Quita esas órdenes de la solicitud, o resuelve su causa (confírmalas, sácalas de un
 lateral, etc.) y vuelve a intentar.
 
 **¿Cuáles son los motivos exactos por los que una orden no es elegible para una ruta?**
-- `La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.` — todavía está en `SUBMITTED` (Sometida, etapa inicial).
-- `Las entregas especiales se asignan al chofer desde la orden; no pasan por Sala de despacho.` — usa
+- `El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.` — todavía está en `SUBMITTED` (Sometida, etapa inicial).
+- `Las entregas especiales se asignan al chofer desde el envío; no pasan por Sala de despacho.` — usa
   `POST /api/v1/orders/{publicId}/driver` (capítulo 04).
 - `La orden está en '{estatus}'; regrésela al pipeline antes de asignarla a una ruta.` — está en un lateral
   (`ON_HOLD`, `PARTIAL`, `FAILED`, …); primero regrésala al pipeline normal.
-- `La orden ya salió a ruta o terminó; no se puede asignar a otra ruta.` — está inactiva, en una etapa terminal, o
+- `El envío ya salió a ruta o terminó; no se puede asignar a otra ruta.` — está inactiva, en una etapa terminal, o
   ya llegó a `IN_TRANSIT` o después.
 - `El estatus actual no permite la acción 'ASSIGN_TRIP'.` — tu compañía apagó esa capacidad para ese estatus
   (`PUT /api/v1/status/capabilities/TRANSPORT_ORDER`).
-- `La orden no tiene una parada de entrega pendiente.` — no le queda ninguna parada `DELIVERY` sin terminar.
+- `El envío no tiene una parada de entrega pendiente.` — no le queda ninguna parada `DELIVERY` sin terminar.
 
-**¿Qué significa "La orden ya está en esta ruta."? (409)**
+**¿Qué significa "El envío ya está en esta ruta."? (409)**
 Intentaste agregar una orden que ya tiene una parada vigente en la misma ruta. No hay nada que hacer; ya está.
 
 **¿Qué significa "La orden ya está asignada a la ruta {código}."? (409)**
 La orden ya tiene una ruta vigente **distinta** de la que estás editando. Quítala de esa ruta primero
 (`DELETE .../orders/{orderPublicId}`) si quieres moverla a otra.
 
-**¿Qué significa "La orden ya está asignada a otra ruta." al agregar una orden? (409)**
+**¿Qué significa "El envío ya está asignado a otra ruta." al agregar una orden? (409)**
 Dos altas simultáneas a la misma orden (en rutas distintas, o desde el escaneo Outbound y Sala de despacho a la
 vez) chocaron; la que llegó primero ganó. Recarga la lista "Sin asignar" y repite si aún la necesitas en tu ruta.
 
 **¿Qué significa "Una ruta admite como máximo 300 paradas."? (400)**
 Es el tope técnico duro de este lote. Divide la carga en dos rutas si necesitas más de 300 paradas.
 
-**¿Qué significa "La orden no está en esta ruta."? (404)**
+**¿Qué significa "El envío no está en esta ruta."? (404)**
 Intentaste quitar (`DELETE .../orders/{orderPublicId}`) una orden que no tiene una parada vigente en ESA ruta
 (puede estar en otra ruta, o en ninguna). Verifica en qué ruta está realmente antes de quitarla.
 
@@ -1405,11 +1405,11 @@ reasigna esas rutas a otra zona primero.
 `POST /api/v1/scan/outbound` exige `code` no vacío y de hasta 40 caracteres. Vuelve a escanear o escribe el código
 a mano.
 
-**¿Qué significa que el escaneo responda `NOT_FOUND` con "No se encontró la orden."?**
-El código escaneado (número de orden, empaque o factura) no coincide con ninguna orden de tu compañía. Revisa que
+**¿Qué significa que el escaneo responda `NOT_FOUND` con "No se encontró el envío."?**
+El código escaneado (número de envío, empaque o factura) no coincide con ninguna orden de tu compañía. Revisa que
 sea el código correcto; el escaneo nunca da `404`, siempre `200` con este resultado tipado.
 
-**¿Qué significa `NOT_FOUND` "Hay varias órdenes con ese código; escanee el empaque."?**
+**¿Qué significa `NOT_FOUND` "Hay varias envíos con ese código; escanee el empaque."?**
 El código escaneado (por ejemplo, un número de factura del cliente) coincide con **más de una** orden. Escanea en
 su lugar el número de empaque, que sí identifica una sola orden.
 
@@ -2443,7 +2443,7 @@ distintos. Crea recolecciones separadas por dueño.
 cantidad debe ser igual al número de series escaneadas."?**
 Un producto que se rastrea por serie exige capturar tantas series como la cantidad que se recolecta.
 
-**¿Qué significa "Indique el cliente de la orden." / "El consignatario es obligatorio: elija uno del directorio o
+**¿Qué significa "Indique el cliente del envío." / "El consignatario es obligatorio: elija uno del directorio o
 capture uno nuevo."?**
 Al **Empacar** una recolección, hace falta elegir el cliente que será dueño de la orden y un consignatario (del
 directorio o uno nuevo).
@@ -2504,17 +2504,17 @@ una cita de salida.
 **¿Qué significa "Una cita se enlaza a un aviso de llegada o a un viaje, no a ambos."?**
 El campo "Se enlaza a" de una cita admite ninguno, un aviso de llegada o un viaje, pero no los dos a la vez.
 
-**¿Qué significa "Elija una orden." / "Sin coincidencias exactas."?**
+**¿Qué significa "Elija un envío." / "Sin coincidencias exactas."?**
 Al **Asignar** una línea de recibo a una orden en un plan de cruce de plataforma, hay que escribir el número completo
 de la orden, factura o lote de empaque (la búsqueda es por coincidencia exacta) y elegirla de la lista.
 
-**¿Qué significa "Para buscar órdenes necesita el permiso orders.view y el módulo LTL_GROUND."?**
+**¿Qué significa "Para buscar envíos necesita el permiso orders.view y el módulo LTL_GROUND."?**
 Sin ese permiso y ese módulo activos, la pantalla no puede buscar órdenes para asignarlas en el plan de cruce de
 plataforma; pida a un administrador que se lo asigne o que encienda el módulo, si corresponde a su función.
 
 ### Consulta de órdenes
 
-**¿Qué significa "La orden no existe o no pertenece a su compañía."?**
+**¿Qué significa "El envío no existe o no pertenece a su compañía."?**
 El enlace a la ficha de la orden es incorrecto, la orden se eliminó o pertenece a otra compañía (tenant). Vuelva a
 la lista de "Órdenes" y búsquela de nuevo.
 
@@ -3170,9 +3170,9 @@ La rejilla llegó al tope de 100 líneas y **Añadir línea** se apagó. Recolec
 **¿Qué significa "Elija primero el almacén." en Recolección?**
 El buscador de producto depende del almacén de la recolección. Elija el almacén en el panel Recolección y después los productos.
 
-**¿Qué significa "Escriba para ver las órdenes" / "Ninguna orden con ese número." / "No se pudieron consultar las órdenes."?**
-Es el filtro **No. de orden** de la lista: al escribir ofrece números de orden existentes. "Ninguna orden con ese número." es que no hay
-coincidencias; "No se pudieron consultar las órdenes." es que no se pudo pedir la lista de sugerencias (por ejemplo, por falta de
+**¿Qué significa "Escriba para ver los envíos" / "Ningún envío con ese número." / "No se pudieron consultar los envíos."?**
+Es el filtro **No. de envío** de la lista: al escribir ofrece números de orden existentes. "Ningún envío con ese número." es que no hay
+coincidencias; "No se pudieron consultar los envíos." es que no se pudo pedir la lista de sugerencias (por ejemplo, por falta de
 permiso o de conexión). Puede escribir el número y aplicar el filtro de todos modos.
 
 **¿Qué significa "Recolección no encontrada."?**
@@ -6550,7 +6550,7 @@ Se muestra una fila por cada tipo de paquete. La primera fila lleva los datos de
 **¿Por qué no veo la papelera en una orden?**
 La papelera solo aparece si la orden sigue en su estatus inicial (Sometida) y usted tiene el permiso `orders.cancel`. Una orden ya recogida no se elimina: se cancela.
 
-**¿Qué significa «Solo se puede eliminar una orden en su estatus inicial; use la cancelación.» (422)?**
+**¿Qué significa «Solo se puede eliminar un envío en su estatus inicial; use la cancelación.» (422)?**
 Alguien confirmó la orden mientras usted tenía la lista abierta, y ya no se puede eliminar. Recargue la lista. Si la orden debe anularse, hay que cancelarla.
 
 **¿Qué significa «El cliente es obligatorio.»?**
@@ -6593,7 +6593,7 @@ El número de factura (o de orden, en una entrega especial) admite como máximo 
 En el formulario, **Límite** no puede ser una fecha anterior a **Lista**. Corrija una de las dos.
 
 **¿Qué significa «Factura repetida para este consignatario»?**
-Escribió un número de factura que otra orden activa de ese consignatario ya usa, y la ficha del consignatario admite repetirlo (409). Elija **No crear la orden** para revisar el número (el enlace **Ver la orden …** abre la que ya lo usa) o **Crear de todos modos** para crearla con el número repetido.
+Escribió un número de factura que otra orden activa de ese consignatario ya usa, y la ficha del consignatario admite repetirlo (409). Elija **No crear el envío** para revisar el número (el enlace **Ver la orden …** abre la que ya lo usa) o **Crear de todos modos** para crearla con el número repetido.
 
 **¿Qué significa «El consignatario 'X' no permite facturas repetidas: la orden N ya usa el número F.» (409)?**
 Ese consignatario no admite facturas repetidas y el número ya está en la orden N. El mensaje sale bajo **N.º de factura** y la orden no se crea. Cambie el número de factura o elija otro consignatario.
@@ -6601,12 +6601,12 @@ Ese consignatario no admite facturas repetidas y el número ya está en la orden
 **¿Qué hago si dice que el cliente excede su límite de crédito?**
 El crédito del cliente no alcanza para esta orden (422); se mide al guardar. El mensaje es «El cliente excede su límite de crédito: límite X, en curso Y, esta orden Z.»; si usted no tiene `orders.view_price`, dice solo «El cliente excede su límite de crédito.», sin cifras.
 - Si tiene el permiso `orders.credit_override`: se abre una ventana con el aviso y el botón **Autorizar y guardar**. Al pulsarlo, la orden se crea de todos modos, y queda registrado quién la autorizó.
-- Si no lo tiene: la orden no se crea y la pantalla dice «La orden no se creó. Pida a alguien con el permiso de autorizar crédito excedido (orders.credit_override) que la capture.» Pídaselo a Facturación o a un administrador, o pida que suban el límite del cliente.
+- Si no lo tiene: la orden no se crea y la pantalla dice «El envío no se creó. Pida a alguien con el permiso de autorizar crédito excedido (orders.credit_override) que lo capture.» Pídaselo a Facturación o a un administrador, o pida que suban el límite del cliente.
 
 **¿Qué significa «No hay tarifa vigente para X/Y; configure la tarifa en el contrato del cliente antes de confirmar.» (422)?**
 El contrato del cliente no tiene tarifa para ese servicio y tipo de paquete. Al **guardar** una orden este error ya no sale (Lote 106): la orden se guarda Sometida y sin cotizar. Sale al marcarla como recogida: configure la tarifa (Clientes → Contrato → Tarifas) y vuelva a intentarlo.
 
-**¿Qué significa «El cliente está suspendido; no se pueden crear ni confirmar órdenes.» (422) o «El cliente está dado de baja; solo se consulta su historial.» (409)?**
+**¿Qué significa «El cliente está suspendido; no se pueden crear ni confirmar envíos.» (422) o «El cliente está dado de baja; solo se consulta su historial.» (409)?**
 El estatus del cliente impide crear órdenes nuevas. Reactive al cliente desde su ficha o elija otro.
 
 **¿Qué significa «Este cliente no tiene servicios especiales configurados»?**
@@ -6629,9 +6629,9 @@ No. Cuando el servidor devuelve un error al crear, la orden no se crea. Corrija 
 Preguntas de la pantalla que se abre al pulsar una orden en **Operación → Órdenes**. Los mensajes aparecen tal cual los muestra la pantalla. El capítulo completo es «Órdenes: el expediente de la orden» (manual de pantallas).
 
 **¿Por qué no puedo editar los datos de una orden?**
-Solo se editan mientras la orden está Sometida (el estatus inicial) y con el permiso `orders.edit`. Después de marcarla como recogida, el panel **Detalle** dice «Esta orden ya avanzó de Sometida: sus datos se muestran como referencia, ya no se editan aquí.» y no hay botón **Guardar cambios**. Si su usuario no tiene `orders.edit`, dice «Su usuario no tiene permiso para editar órdenes: los datos se muestran como referencia.»
+Solo se editan mientras la orden está Sometida (el estatus inicial) y con el permiso `orders.edit`. Después de marcarla como recogida, el panel **Detalle** dice «Esta orden ya avanzó de Sometida: sus datos se muestran como referencia, ya no se editan aquí.» y no hay botón **Guardar cambios**. Si su usuario no tiene `orders.edit`, dice «Su usuario no tiene permiso para editar envíos: los datos se muestran como referencia.»
 
-**¿Por qué no puedo cambiar el cliente, el número de orden, la factura o el empaque?**
+**¿Por qué no puedo cambiar el cliente, el número de envío, la factura o el empaque?**
 Esos datos se fijan al crear la orden y no se editan. Si la orden está mal creada, cancélela (o elimínela si todavía está Sometida) y cree otra.
 
 **El botón «Guardar cambios» está apagado. ¿Qué pasa?**
@@ -6652,13 +6652,13 @@ La orden ya salió del estatus en que se edita (alguien la confirmó mientras us
 **Cambié de consignatario y salió «Factura repetida para este consignatario». ¿Qué hago?**
 La orden tiene un número de factura que usted tecleó y el nuevo consignatario ya tiene otra orden con el mismo número. Si ese consignatario admite facturas repetidas, pulse **Guardar de todos modos**; si no, elija otro consignatario.
 
-**¿Por qué no veo el botón «Marcar como recogida»?** (antes «Confirmar»)
+**¿Por qué no veo el botón «Marcar como recogido»?** (antes «Confirmar»)
 La orden ya no está Sometida, o su usuario no tiene `orders.edit` (ni `orders.credit_override`). Una orden se marca como recogida una sola vez.
 
 **Al marcar como recogida sale «El cliente excede su límite de crédito». ¿Qué hago?**
-El crédito del cliente no alcanza para esta orden. Si usted tiene `orders.credit_override`, pulse **Autorizar y marcar como recogida**: la orden pasa a Recogida y queda registrado quién lo autorizó. Si no lo tiene, avise a Facturación o a un administrador, o pida que suban el límite del cliente. Sin `orders.view_price` el mensaje no trae las cifras.
+El crédito del cliente no alcanza para esta orden. Si usted tiene `orders.credit_override`, pulse **Autorizar y marcar como recogido**: la orden pasa a Recogida y queda registrado quién lo autorizó. Si no lo tiene, avise a Facturación o a un administrador, o pida que suban el límite del cliente. Sin `orders.view_price` el mensaje no trae las cifras.
 
-**Soy de Facturación y el botón me dice «Autorizar y marcar como recogida». ¿Por qué?**
+**Soy de Facturación y el botón me dice «Autorizar y marcar como recogido». ¿Por qué?**
 Su rol tiene `orders.credit_override` pero no `orders.edit`. Ese permiso solo sirve para autorizar un exceso de crédito; si el crédito no se excede, el servidor responde «Falta el permiso 'orders.edit'.»
 
 **¿Qué significa «No hay tarifa vigente para X/Y; configure la tarifa en el contrato del cliente antes de confirmar.»?**
@@ -6674,13 +6674,13 @@ Muestra una vista previa de cuánto costaría la orden con las tarifas vigentes 
 En una orden ya cotizada y en un estatus que lo permite (de fábrica, solo **Sometida**; antes del Lote 106 era Confirmada), con `orders.edit`. Si sale «El estatus actual no permite la acción 'REPRICE'.», la orden ya no está en un estatus que permita re-cotizar.
 
 **¿Cómo cancelo una orden? ¿Se puede deshacer?**
-Pulse **Cancelar la orden**, escriba la **razón** (obligatoria, máximo 500 caracteres) y confirme. Para deshacerlo hace falta **Reabrir** (permiso `orders.reopen`). Si era una entrega especial con chofer, su viaje también se cancela. Necesita `orders.cancel`. Una orden Entregada, Cancelada o En almacén ya no se cancela.
+Pulse **Cancelar el envío**, escriba la **razón** (obligatoria, máximo 500 caracteres) y confirme. Para deshacerlo hace falta **Reabrir** (permiso `orders.reopen`). Si era una entrega especial con chofer, su viaje también se cancela. Necesita `orders.cancel`. Una orden Entregada, Cancelada o En almacén ya no se cancela.
 
 **¿Por qué el comentario no me deja guardar? Dice «El comentario admite como máximo 500 caracteres.»**
 El comentario de cancelar, de cambiar de estatus o de asignar chofer admite hasta 500 caracteres. Acórtelo.
 
 **¿Cuál es la diferencia entre cancelar y eliminar?**
-**Eliminar la orden** solo se puede en una orden Sometida: libera el número de orden y de empaque. Una orden ya recogida solo se cancela. Si intenta eliminar una ya recogida sale «Solo se puede eliminar una orden en su estatus inicial; use la cancelación.»
+**Eliminar el envío** solo se puede en una orden Sometida: libera el número de envío y de empaque. Una orden ya recogida solo se cancela. Si intenta eliminar una ya recogida sale «Solo se puede eliminar un envío en su estatus inicial; use la cancelación.»
 
 **¿Para qué sirve Intento fallido? ¿Por qué no hay botón para avanzar la orden?**
 Es un desvío que se registra a mano (En espera y Parcial ya no existen desde el Lote 106). El avance normal de la orden (en tránsito, entregada…) lo hacen las pantallas de despacho, rutas y entregas, no el expediente. Para marcarla como recogida, cancelar o reabrir use los botones de arriba.
@@ -6697,7 +6697,7 @@ Su usuario no tiene el permiso `fleet.view`. Pídalo al administrador. Si la lis
 **¿Qué significa «El chofer no está disponible para despacho: …»?**
 Después de los dos puntos el mensaje dice el motivo (licencia vencida, chofer inactivo, certificación vencida…). Elija otro chofer o resuelva el motivo en Flota → Choferes.
 
-**¿Qué significa «La orden ya está asignada a ese chofer.»?**
+**¿Qué significa «El envío ya está asignado a ese chofer.»?**
 Eligió el mismo chofer que ya tiene la orden. Elija otro, o pulse **Volver**.
 
 **¿Qué significa «La entrega especial ya llegó a destino o terminó; no se puede asignar ni reasignar el chofer.»?**
@@ -6721,9 +6721,9 @@ Todavía no están en la web; llegarán en otra entrega.
 La **Rápida** es una rejilla donde cada fila es una orden de 1 paquete y 1 pieza, para capturar muchas seguidas con Tab y Enter. La **Detallada** es un formulario para una orden con varios paquetes, fechas, factura o entrega especial. La pantalla recuerda la última que usó.
 
 **Guardé una orden en la Rápida y quedó Sometida. ¿Cómo la marco como recogida?**
-La Rápida guarda la orden Sometida (cotizada si el cliente tiene contrato y tarifa). Ábrala desde la lista (flecha **Abrir la orden**) y pulse **Marcar como recogida** cuando se recoja.
+La Rápida guarda la orden Sometida (cotizada si el cliente tiene contrato y tarifa). Ábrala desde la lista (flecha **Abrir el envío**) y pulse **Marcar como recogido** cuando se recoja.
 
-**¿Por qué el N.º de orden dice «(automático)» y no puedo escribir?**
+**¿Por qué el N.º de envío dice «(automático)» y no puedo escribir?**
 Porque Teikem asigna ese número para ese cliente. Solo se puede escribir si en la ficha del cliente se activó que el cliente asigna sus propios números de orden.
 
 **Pulsé Enter y no se guardó la fila.**
@@ -6732,7 +6732,7 @@ Si la lista de consignatarios estaba abierta, ese Enter eligió el consignatario
 **«El tipo de paquete es obligatorio.» / «El tipo de servicio es obligatorio.» en la entrada rápida.**
 La compañía no tiene un paquete o un servicio predeterminado. Elíjalos en la fila; el servicio se conserva en las filas siguientes.
 
-**«El cliente está suspendido; no se pueden crear ni confirmar órdenes.»**
+**«El cliente está suspendido; no se pueden crear ni confirmar envíos.»**
 Ese cliente no puede recibir órdenes por ahora. Lo capturado queda en la fila; elija otro cliente o espere a que lo reactiven.
 
 **Se cortó la conexión mientras guardaba. ¿Se duplicó la orden?**
@@ -6766,7 +6766,7 @@ Que ese consignatario no está en el directorio del cliente ni entre los compart
 No. Las filas con errores se omiten y las demás sí se importan. Corrija el archivo y vuelva a importar solo esas filas.
 
 **¿Qué pasó con «Confirmar las órdenes al importar»?**
-Ya no existe (Lote 106). Cada orden importada nace Sometida, cotizada si el cliente tiene contrato y tarifa y con el crédito medido. Para pasarla a Recogida, use **Marcar como recogida** en su expediente.
+Ya no existe (Lote 106). Cada orden importada nace Sometida, cotizada si el cliente tiene contrato y tarifa y con el crédito medido. Para pasarla a Recogida, use **Marcar como recogido** en su expediente.
 
 **No veo «Autorizar crédito excedido».**
 Necesita el permiso `orders.credit_override`.
@@ -6774,7 +6774,7 @@ Necesita el permiso `orders.credit_override`.
 **En el resultado una fila dice «El cliente excede su límite de crédito.»**
 Esa orden no se creó; las demás sí. Pida a quien tenga `orders.credit_override` que importe con **Autorizar crédito excedido**, o corrija el límite de crédito del cliente.
 
-**«El lote ya fue confirmado; valide un archivo nuevo para importar más órdenes.»**
+**«El lote ya fue confirmado; valide un archivo nuevo para importar más envíos.»**
 Ese archivo ya se importó (por ejemplo, desde otra ventana). Vea la lista de Órdenes antes de volver a importarlo.
 
 **¿Qué hace «Descartar archivo»?**
@@ -7052,11 +7052,11 @@ Solo quedó dentro de esa ruta. El escaneo no cambia el estatus de la orden, ni 
 **«Ya estaba en la ruta …».**
 La orden ya tenía ruta (la escaneó antes o la asignó otra persona). No hace falta hacer nada.
 
-**«No se encontró la orden.»**
-Ningún número de orden, de empaque ni de factura del cliente coincide con lo escaneado. Revise el código o escanee el número del empaque.
+**«No se encontró el envío.»**
+Ningún número de envío, de empaque ni de factura del cliente coincide con lo escaneado. Revise el código o escanee el número del empaque.
 
-**«Hay varias órdenes con ese código; escanee el empaque.»**
-Dos clientes pueden tener el mismo número de orden. Escanee el número del empaque, que es único.
+**«Hay varias envíos con ese código; escanee el empaque.»**
+Dos clientes pueden tener el mismo número de envío. Escanee el número del empaque, que es único.
 
 **«No hay ruta abierta para la zona … en la fecha …; queda sin asignar.»**
 Ese día no hay una ruta abierta (borrador o planificada) para la zona de la orden. Planifique el día o cree la ruta en **Sala de despacho** y escanee otra vez. Si trabaja las rutas de otro día, cambie **Ruta del día**. El escaneo nunca crea rutas.
@@ -7068,7 +7068,7 @@ La dirección de entrega no está en ninguna zona. Agregue su código postal o p
 La dirección cae en más de una zona. Déjela en una sola o asigne la orden a mano.
 
 **Sale «No elegible» con un motivo.**
-La orden no puede ir en una ruta todavía. Los motivos y qué hacer están en el manual de la pantalla (por ejemplo, «La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.»: confirme la orden en **Órdenes**).
+La orden no puede ir en una ruta todavía. Los motivos y qué hacer están en el manual de la pantalla (por ejemplo, «El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.»: confirme la orden en **Órdenes**).
 
 **«Escanee o escriba un código.» / «El código no puede exceder 40 caracteres.»**
 La casilla estaba vacía o el código es demasiado largo. No se registró nada.
@@ -7108,13 +7108,13 @@ Le falta `trips.view`. Sin él la pantalla no puede mostrar rutas ni órdenes si
 **El chofer y el vehículo se ven como texto y dice que no puedo cambiarlos.**
 Le falta `fleet.view` (o el módulo Listas está apagado). Pida el acceso; mientras tanto, otra persona puede asignarlos.
 
-**«Hay órdenes que no se pueden asignar a la ruta.»**
-Al menos una orden marcada no es elegible; debajo aparece cada número con su motivo (por ejemplo `La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.` o `El estatus actual no permite la acción 'ASSIGN_TRIP'.`). No se añadió ninguna. Corrija la orden o desmárquela y pulse otra vez.
+**«Hay envíos que no se pueden asignar a la ruta.»**
+Al menos una orden marcada no es elegible; debajo aparece cada número con su motivo (por ejemplo `El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.` o `El estatus actual no permite la acción 'ASSIGN_TRIP'.`). No se añadió ninguna. Corrija la orden o desmárquela y pulse otra vez.
 
 **«La orden ya está asignada a la ruta {código}.»**
 Otra persona la puso en esa ruta antes. La lista se actualiza sola; elija otra orden.
 
-**«Agregue como máximo 200 órdenes por solicitud.» / «Una ruta admite como máximo 300 paradas.»**
+**«Agregue como máximo 200 envíos por solicitud.» / «Una ruta admite como máximo 300 paradas.»**
 Añada en tandas de hasta 200 y use otra ruta si la actual llegó a 300.
 
 **El botón «Añadir a la ruta» está apagado.**
@@ -7148,7 +7148,7 @@ Quedan órdenes en camino, retenidas o sin resultado. Registre su entrega o su i
 «Iniciar ruta» solo funciona con la ruta en Despachado.
 
 **Optimicé y salió «No cupieron (N)».**
-Esas órdenes no cupieron por paradas, peso o volumen del vehículo y volvieron a **Órdenes sin asignar**. Cambie de vehículo o asígnelas a otra ruta.
+Esas órdenes no cupieron por paradas, peso o volumen del vehículo y volvieron a **Envíos sin asignar**. Cambie de vehículo o asígnelas a otra ruta.
 
 **La optimización no muestra «-12 %» de distancia.**
 Solo se compara con una optimización anterior de la misma ruta, y la distancia solo existe si las direcciones tienen coordenadas; si no, solo se compara la duración. La primera vez dice que no hay con qué comparar.
@@ -7157,7 +7157,7 @@ Solo se compara con una optimización anterior de la misma ruta, y la distancia 
 No había rutas abiertas (Borrador o Planificado) en esas zonas y fecha. No es un error; las rutas despachadas no se tocan.
 
 **«Planificar el día» dejó órdenes sin asignar.**
-Las órdenes sin zona o con zona ambigua no se tocan (**Órdenes sin zona**), y las que no son elegibles quedan en **Órdenes omitidas** con su motivo en el aviso de la zona. Arregle la zona o la orden y repita: no duplica nada.
+Las órdenes sin zona o con zona ambigua no se tocan (**Envíos sin zona**), y las que no son elegibles quedan en **Envíos omitidos** con su motivo en el aviso de la zona. Arregle la zona o la orden y repita: no duplica nada.
 
 **¿Dónde está el COD de cada orden?**
 No aparece en esta pantalla: el sistema de rutas no maneja montos. El plano de la ruta, el arrastre de paradas y el pin manual se explican en la sección «Lote F-E2b» de más abajo.
@@ -7170,10 +7170,10 @@ Manual de la pantalla: [fe2a-despacho.md](frontend/fe2a-despacho.md) (secciones 
 No. Es un plano esquemático: muestra dónde queda cada parada con respecto a las demás (con su escala y el norte), sin calles, sin nombres de lugares y sin imagen de satélite, y no tiene el conmutador 2D / Satélite. La línea punteada une las paradas en orden en línea recta; no es el camino por las calles. Para ver calles reales haría falta un servicio de mapas externo, que esta pantalla no usa.
 
 **El plano dice «Ninguna parada tiene coordenadas todavía».**
-Ninguna parada de la ruta tiene ubicación (las direcciones no se pudieron ubicar). Ponga un pin manual a cada parada con **Poner pin** (botón del pin en cada orden de **Órdenes en esta ruta**). Si no ve el botón, a su usuario le falta el permiso `trips.plan` o la ruta ya no está en Borrador ni Planificado: pídaselo a quien planifica la ruta.
+Ninguna parada de la ruta tiene ubicación (las direcciones no se pudieron ubicar). Ponga un pin manual a cada parada con **Poner pin** (botón del pin en cada orden de **Envíos en esta ruta**). Si no ve el botón, a su usuario le falta el permiso `trips.plan` o la ruta ya no está en Borrador ni Planificado: pídaselo a quien planifica la ruta.
 
 **Una parada no aparece en el plano.**
-No tiene ubicación. Está en la línea **Sin ubicación: N** debajo del plano y también en **Órdenes en esta ruta** con la marca **Sin pin**. Pulse su número de orden para elegirla y use **Poner pin**.
+No tiene ubicación. Está en la línea **Sin ubicación: N** debajo del plano y también en **Envíos en esta ruta** con la marca **Sin pin**. Pulse su número de envío para elegirla y use **Poner pin**.
 
 **¿Qué diferencia hay entre pin exacto, aproximado y manual?**
 **Exacto** (círculo lleno): la dirección se ubicó con precisión. **Aproximado** (círculo punteado con halo): solo se conoce el centro del código postal o del pueblo, así que la parada puede estar en otro lugar de ese pueblo. **Manual** (rombo): alguien puso la ubicación a mano con **Poner pin**. Si le importa la hora de llegada o el orden de una parada aproximada, póngale un pin manual.
@@ -7445,7 +7445,7 @@ No: mismas filas, mismo orden y mismos totales. Cambió la velocidad (lista de �
 Falta aplicar `db-update` en esa base (crea el índice `IX_Order_Tenant_Created` de la sección «2026-10-12 (c)»). Verifique con la simulación (`db-update --dry-run`): si lista «+ Crear índice IX_Order_Tenant_Created», aplíquelo (en una base grande tarda unos segundos y bloquea la tabla de órdenes mientras se crea: hágalo fuera del horario de mayor uso).
 
 **La búsqueda libre de órdenes tarda en la compañía con más órdenes.**
-Es esperado: busca el texto dentro del número de orden, la factura, el empaque y el nombre del consignatario de todas sus órdenes. Para una orden concreta use la búsqueda exacta por código (escanear el empaque o escribir el número completo: `GET /api/v1/orders/lookup`, inmediata) o acote la lista por fechas.
+Es esperado: busca el texto dentro del número de envío, la factura, el empaque y el nombre del consignatario de todas sus órdenes. Para una orden concreta use la búsqueda exacta por código (escanear el empaque o escribir el número completo: `GET /api/v1/orders/lookup`, inmediata) o acote la lista por fechas.
 
 ## Lote 43 / F-G1 — Impresoras y labels (2026-10-12)
 
@@ -7560,8 +7560,8 @@ Viene encendido si la compañía tiene «Imprimir labels directo a la impresora�
 **¿Qué órdenes entran en el Waybill summary y la Packing list?**
 Las marcadas; sin marcas, todas las de la búsqueda y filtros actuales (todas las páginas). Las canceladas no entran (el documento lo avisa). Nunca muestran el precio.
 
-**«El número de paquete está en {n} órdenes (de clientes distintos o repetido); escanee el empaque o el número de orden.»**
-El número de paquete escaneado lo tienen varias órdenes (cada cliente numera sus paquetes desde PQT-00001, y un número tecleado puede repetirse). La estación no adivina cuál es: escanee el empaque (EMP-…) o el número de orden.
+**«El número de paquete está en {n} órdenes (de clientes distintos o repetido); escanee el empaque o el número de envío.»**
+El número de paquete escaneado lo tienen varias órdenes (cada cliente numera sus paquetes desde PQT-00001, y un número tecleado puede repetirse). La estación no adivina cuál es: escanee el empaque (EMP-…) o el número de envío.
 
 **¿Qué trae el Informe de faltantes?**
 Las órdenes que siguen pendientes por escanear con los filtros de «Pendientes» (todas, sin tope), agrupadas por zona, y cuántas lleva escaneadas esta sesión. Sale por la impresora de documentos de la estación.
@@ -8477,7 +8477,7 @@ Sí: anular libera exactamente lo que esa factura había reclamado.
 ## Lote 74 — Flete en la facturación
 
 **Una orden entregada no aparece para facturar.**
-Debe estar **activa**, con **monto cotizado** (se cotiza al crearla; se congela al marcarla como recogida) mayor que cero y sin facturar. Con el contrato **Por recogido** cuenta desde que se recoge; con **Por entrega**, **Mixto** o sin contrato, solo cuando está **Entregada**. Las Sometidas, con Intento fallido y Canceladas no se facturan. Y la corrida debe incluir el **flete** (casilla «Flete de las órdenes de transporte»).
+Debe estar **activa**, con **monto cotizado** (se cotiza al crearla; se congela al marcarla como recogida) mayor que cero y sin facturar. Con el contrato **Por recogido** cuenta desde que se recoge; con **Por entrega**, **Mixto** o sin contrato, solo cuando está **Entregada**. Las Sometidas, con Intento fallido y Canceladas no se facturan. Y la corrida debe incluir el **flete** (casilla «Flete de los envíos de transporte»).
 
 **`Elija qué facturar: la venta de producto, el flete o las dos cosas.` (400)**
 Desmarcó las dos casillas de la nueva corrida. Deje marcada al menos una.
@@ -8608,7 +8608,7 @@ La recepción entra por el modo de recepción del almacén (zona de recepción c
 **`El cobro pasa de lo que falta por cobrar de {orden}: {monto}.` (422)**
 La suma de los cobros no puede pasar del COD de la orden. Revise cuánto se ha cobrado ya en el detalle de la orden (`GET /cod/orders/{id}`); un cobro parcial deja el COD en «Parcial».
 
-**`No se registra un cobro en una orden en borrador o cancelada.` (422)**
+**`No se registra un cobro en un envío en borrador o cancelado.` (422)**
 El cobro se hace en la entrega. El mensaje dice «borrador», pero desde el Lote 106 se refiere a una orden **Sometida**: márquela como recogida (o reabra la cancelada, con `orders.reopen`) antes de cobrar.
 
 **Leí la hoja y dice `NOTHING_COLLECTED`.**
@@ -8706,13 +8706,13 @@ El Radar solo cuenta lo **abierto** (Sometida, Recogida, Sin asignar, Asignada, 
 Es lo esperado: el enlace trae el pueblo (o el cliente) y los estatus abiertos. «Limpiar filtros» de Órdenes los quita.
 
 **La búsqueda del Radar no responde con una letra.**
-Busca desde 2 letras (factura, número de orden, empaque o consignatario).
+Busca desde 2 letras (factura, número de envío, empaque o consignatario).
 
-**«Órdenes sin chofer» no coincide con «Por despachar» del río.**
+**«Envíos sin chofer» no coincide con «Por despachar» del río.**
 Es la misma cuenta (en almacén o planificadas sin una ruta con chofer); el aviso solo aparece si tiene `trips.dispatch`.
 
 **El aviso de COD sin cuadrar dice un monto pero Reconciliar no lo muestra por orden.**
-El aviso suma **todo lo cobrado sin cuadrar**; en COD → Órdenes con COD (filtro «Cobrado») se ven las órdenes y en Reconciliar se suben las hojas.
+El aviso suma **todo lo cobrado sin cuadrar**; en COD → Envíos con COD (filtro «Cobrado») se ven las órdenes y en Reconciliar se suben las hojas.
 
 **¿Por qué los avisos nuevos salen arriba y no por antigüedad?**
 Son resúmenes («83 órdenes…», «$2,230…»): van antes que las filas por registro para que no los tape una lista larga de rentas o descuadres.
@@ -8830,7 +8830,7 @@ Hace falta `driverpay.view` y el módulo de órdenes de transporte (`LTL_GROUND`
 Listar los choferes pide `fleet.view`. Sin él se liquida a «Todos los choferes» (un chofer concreto se elige con un usuario que vea la flota).
 
 **Busco una orden para registrar un intento y salen varias con el mismo número.**
-El número de orden se repite entre clientes. Cada opción trae factura y consignatario; elija la del cliente correcto (la lista de intentos muestra después el cliente de cada orden).
+El número de envío se repite entre clientes. Cada opción trae factura y consignatario; elija la del cliente correcto (la lista de intentos muestra después el cliente de cada orden).
 
 **Al exportar no puedo elegir plantilla.**
 Elegir plantilla pide ver facturación o el pago a choferes y el módulo de Facturación encendido; sin eso se descarga con el formato estándar.
@@ -8841,14 +8841,14 @@ Es la reautenticación (AAL2): se pide para aprobar igual que en Facturación y 
 
 ## Lote 97 — Número de conduce
 
-**¿Qué es el número de conduce y en qué se diferencia del número de orden y del de empaque?**
-El **conduce** (`CND-#######`) es único por orden en toda la compañía y lo genera Teikem: es el que se le da al cliente y al consignatario. El **número de orden** lo escribe el cliente o lo genera Teikem por cliente y puede repetirse entre clientes. El **empaque** (`EMP-#####`) es el del escaneo en el almacén.
+**¿Qué es el número de conduce y en qué se diferencia del número de envío y del de empaque?**
+El **conduce** (`CND-#######`) es único por orden en toda la compañía y lo genera Teikem: es el que se le da al cliente y al consignatario. El **número de envío** lo escribe el cliente o lo genera Teikem por cliente y puede repetirse entre clientes. El **empaque** (`EMP-#####`) es el del escaneo en el almacén.
 
 **¿Se puede cambiar o teclear el conduce?**
 No: siempre lo genera Teikem, para que sea único.
 
 **El label de una orden vieja no muestra el conduce.**
-Todas las órdenes existentes lo recibieron al actualizar la base. Si un label sigue mostrando el número de orden, la lista no se ha recargado con el API nuevo (la ficha trae `waybillNumber`).
+Todas las órdenes existentes lo recibieron al actualizar la base. Si un label sigue mostrando el número de envío, la lista no se ha recargado con el API nuevo (la ficha trae `waybillNumber`).
 
 **Busco un conduce y no sale.**
 Búsquelo completo o parte (`CND-0000042`) en el buscador de Órdenes; el conduce de una orden dada de baja solo aparece con «incluir inactivas».
@@ -9039,7 +9039,7 @@ Está en Automático y el teléfono o el navegador está en modo oscuro. Escoja 
 
 **«Escoja un consignatario o escriba uno nuevo, no las dos cosas.» (400)** — Se mandaron los dos; quite uno.
 
-**«Agregue al menos un paquete.» (400)** / **«Una orden puede llevar hasta 50 paquetes.» (400)** — La orden lleva de 1 a 50 paquetes.
+**«Agregue al menos un paquete.» (400)** / **«Un envío puede llevar hasta 50 paquetes.» (400)** — La orden lleva de 1 a 50 paquetes.
 
 **«Las notas no pueden pasar de 500 caracteres.» (400)** — Acorte las notas.
 
@@ -9050,26 +9050,26 @@ Está en Automático y el teléfono o el navegador está en modo oscuro. Escoja 
 **¿Puedo ponerle precio o prioridad?** No; solo lo básico. La compañía completa el resto.
 
 
-## Estatus de la orden (Lote 106)
+## Estatus del envío (Lote 106)
 
 Preguntas sobre el nuevo flujo de la orden de transporte: **Sometida → Recogida → Sin asignar → Asignada → En tránsito → Entregada**, con **Intento fallido** (lateral), **Cancelada** y **En almacén** (finales). El detalle está en el [capítulo 03, sección 4](03-ordenes-de-transporte.md#4-estatus-y-transiciones).
 
 **¿Qué pasó con Borrador, Confirmada, En espera, Parcial, Inbound, Planificada y En sitio?**
-Ya no existen. La orden nace **Sometida** (lo que antes era Borrador); «Confirmar» ahora es **Marcar como recogida** (pasa a Recogida); Inbound es **Sin asignar**; Planificada es **Asignada**; En espera, Parcial y En sitio desaparecieron (lo que estaba así en bases de desarrollo quedó como Intento fallido o En tránsito). En producción no había órdenes que cambiar.
+Ya no existen. La orden nace **Sometida** (lo que antes era Borrador); «Confirmar» ahora es **Marcar como recogido** (pasa a Recogida); Inbound es **Sin asignar**; Planificada es **Asignada**; En espera, Parcial y En sitio desaparecieron (lo que estaba así en bases de desarrollo quedó como Intento fallido o En tránsito). En producción no había órdenes que cambiar.
 
 **¿Qué significa «Indique la razón de la cancelación.»? (400, campo `comment`)**
 Se intentó cancelar sin escribir la razón. Desde el Lote 106 cancelar una orden exige una razón (hasta 500 caracteres); queda en el historial. En la pantalla, escríbala en **Razón de la cancelación**. Si usted llama al API, mande `comment` en `POST /api/v1/orders/{id}/cancel`.
 
-**¿Qué significa «Indique la razón para reabrir la orden.»? (400, campo `comment`)**
+**¿Qué significa «Indique la razón para reabrir el envío.»? (400, campo `comment`)**
 Se intentó reabrir sin razón. Escriba por qué se reabre (hasta 500 caracteres) y repita.
 
-**¿Qué significa «Solo se reabre una orden en estatus final.»? (422)**
+**¿Qué significa «Solo se reabre un envío en estatus final.»? (422)**
 La orden no está Entregada, Cancelada ni En almacén (por ejemplo, alguien ya la reabrió). Recargue la pantalla. Una orden en curso no se reabre: se cambia con sus acciones normales.
 
-**¿Qué significa «Una orden reabierta debe quedar en una etapa en curso.»? (422)**
+**¿Qué significa «Un envío reabierto debe quedar en una etapa en curso.»? (422)**
 En **Estatus destino** (o en `toCode`) se escogió un estatus final (Entregada, Cancelada o En almacén). Escoja uno en curso (Sometida, Recogida, Sin asignar, Asignada, En tránsito o Intento fallido), o deje «El último en que estuvo».
 
-**¿Qué significa «La orden no tiene un estatus anterior al que volver; indique el estatus destino.»? (422)**
+**¿Qué significa «El envío no tiene un estatus anterior al que volver; indique el estatus destino.»? (422)**
 Se reabrió sin escoger destino y la orden no tiene en su historial un estatus en curso al que volver. Escoja el **Estatus destino**.
 
 **¿Qué significa «Falta el permiso 'orders.reopen'.»? (403)**
@@ -9078,8 +9078,8 @@ Su usuario no puede reabrir órdenes. El permiso `orders.reopen` («Reabrir órd
 **¿Quién puede reabrir una orden y qué pasa al reabrirla?**
 Quien tenga `orders.reopen`. La orden vuelve a una etapa en curso (por omisión, la última en que estuvo), la razón queda en el historial y se registra el evento de seguridad `order_reopen`. **No** se vuelve a cotizar ni a medir el crédito.
 
-**¿Qué significa «La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.»? (422 al agregar a una ruta o despachar)**
-La orden sigue Sometida y una orden Sometida no se asigna a una ruta. Ábrala en Órdenes y pulse **Marcar como recogida**; luego agréguela a la ruta.
+**¿Qué significa «El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.»? (422 al agregar a una ruta o despachar)**
+La orden sigue Sometida y una orden Sometida no se asigna a una ruta. Ábrala en Órdenes y pulse **Marcar como recogido**; luego agréguela a la ruta.
 
 **¿Por qué mi orden ya tiene precio al crearla?**
 Desde el Lote 106 la orden se cotiza al crear si el cliente tiene contrato y tarifa. El precio se congela al marcarla como recogida. Mientras siga Sometida y cotizada, editarla la recotiza.
@@ -9103,9 +9103,9 @@ Se intentó pasar la orden a una etapa que no es la siguiente (por ejemplo, de R
 Se pidió un estatus que no existe (404 en `POST /orders/{id}/status`; 422 al reabrir con un `toCode` que no existe o que la compañía apagó). Si `X` es `DRAFT`, `CONFIRMED`, `INBOUND`, `PLANNED`, `ARRIVED`, `ON_HOLD` o `PARTIAL`, es un código viejo que el Lote 106 eliminó: use `SUBMITTED`, `PICKUP`, `UNASSIGNED`, `ASSIGNED`, `IN_TRANSIT`, `FAILED` o `IN_WAREHOUSE`. Revise integraciones y filtros guardados.
 
 **¿Qué significa «Para confirmar use la acción de confirmación.»? (422)**
-Se intentó pasar la orden de Sometida a Recogida con `POST /orders/{id}/status`. Use **Marcar como recogida** (`POST /orders/{id}/confirm`).
+Se intentó pasar la orden de Sometida a Recogida con `POST /orders/{id}/status`. Use **Marcar como recogido** (`POST /orders/{id}/confirm`).
 
-**¿Qué significa «Solo se confirma una orden en su estatus inicial.»? (422)**
+**¿Qué significa «Solo se confirma un envío en su estatus inicial.»? (422)**
 Se intentó marcar como recogida una orden que ya no está Sometida. Recargue: probablemente otra persona la marcó antes.
 
 **¿Qué significa «El avance a 'X' lo realiza el módulo correspondiente (trips/entregas); desde aquí solo se registran estatus laterales.»? (422)**
@@ -9164,7 +9164,7 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 **¿Cuándo uso «Cerrar conteo»?** Al terminar de escanear una orden en una acción (por ejemplo, al terminar de recibirla) para dejar anotadas las piezas que no llegaron, sin esperar a la siguiente acción.
 
-**¿Cómo se arma ahora el número de la orden?** Code del cliente + Code del consignatario (o su ID) + fecha (aammdd) + el número de orden del día de ese consignatario, sin separadores.
+**¿Cómo se arma ahora el número de la orden?** Code del cliente + Code del consignatario (o su ID) + fecha (aammdd) + el número de envío del día de ese consignatario, sin separadores.
 
 ## Reclamaciones y piezas faltantes (Lote 111)
 
@@ -9176,7 +9176,7 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 **«La pieza … no es de esa orden.»** (400) El número de pieza pertenece a otra orden.
 
-**«La orden no tiene piezas perdidas por reclamar.»** (422) Todas las piezas «Perdido» de esa orden ya están en una reclamación (o no hay ninguna perdida).
+**«El envío no tiene piezas perdidas por reclamar.»** (422) Todas las piezas «Perdido» de esa orden ya están en una reclamación (o no hay ninguna perdida).
 
 **«El valor declarado no puede ser negativo.» / «Las notas no pueden pasar de 1000 caracteres.»** (400) Corrija el campo.
 
@@ -9198,7 +9198,7 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 **¿Qué pasa cuando devuelvo una orden?** Queda «Devuelta» (final) y se crea la orden de vuelta con las piezas que se devuelven: mismo cliente, recogido en el consignatario y entrega en el recogido del cliente, sin cobrar flete. Ver capítulo 32.
 
-**«Una orden Sometida no se devuelve: todavía no se recoge. Cancélela.»** (422) La orden aún no se recoge; se cancela en vez de devolverse.
+**«Un envío en «Sometida» no se devuelve: todavía no se recoge. Cancélelo.»** (422) La orden aún no se recoge; se cancela en vez de devolverse.
 
 **«La orden … está en un estatus final (…): no se devuelve.»** (422) Ya está Entregada, Cancelada, En almacén o Devuelta sin piezas por devolver.
 
@@ -9382,7 +9382,7 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 ## Alertas operacionales y SLA (Lote 125)
 
-**¿Qué avisos nuevos hay en «Necesita tu atención»?** Órdenes en intento fallido, reclamaciones abiertas, documentos de flota vencidos o por vencer y facturas vencidas. Cada uno lo ve quien tiene el permiso (`orders.view`, `claims.view`, `fleet.view`, `billing.view`) y el módulo encendido; si no hay nada que avisar, no aparece.
+**¿Qué avisos nuevos hay en «Necesita tu atención»?** Envíos en intento fallido, reclamaciones abiertas, documentos de flota vencidos o por vencer y facturas vencidas. Cada uno lo ve quien tiene el permiso (`orders.view`, `claims.view`, `fleet.view`, `billing.view`) y el módulo encendido; si no hay nada que avisar, no aparece.
 
 **El aviso de intento fallido sigue después de reprogramar la orden.** El aviso cuenta las órdenes que están en «Intento fallido»; en cuanto la orden cambia de estatus, desaparece en la siguiente lectura.
 
@@ -9432,9 +9432,9 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 ## Niveles de zona: Isla y Metro (Lote 129)
 
-**¿Cómo pongo Isla y Metro?** Flota → Zonas de despacho → panel «Niveles de zona»: cree ISLA y METRO (a Isla póngale su chofer por omisión) y en cada zona elija su nivel. Las órdenes nuevas heredan el nivel de su zona de entrega; para las que ya existían, pulse «Asignar zona a las órdenes».
+**¿Cómo pongo Isla y Metro?** Flota → Zonas de despacho → panel «Niveles de zona»: cree ISLA y METRO (a Isla póngale su chofer por omisión) y en cada zona elija su nivel. Las órdenes nuevas heredan el nivel de su zona de entrega; para las que ya existían, pulse «Asignar zona a los envíos».
 
-**Una orden no tiene zona.** Su ZIP o pueblo no está en ninguna zona activa, o cae en dos (ambigua). Revise los miembros de las zonas y pulse «Asignar zona a las órdenes» (o edite el consignatario de la orden).
+**Una orden no tiene zona.** Su ZIP o pueblo no está en ninguna zona activa, o cae en dos (ambigua). Revise los miembros de las zonas y pulse «Asignar zona a los envíos» (o edite el consignatario de la orden).
 
 **¿Las tarifas tienen que cambiar por nivel?** No. El nivel en la tarifa es opcional: sin nivel, la tarifa es la general. Si agrega una tarifa con nivel (Isla), esa gana para las entregas de Isla y la general sigue para el resto.
 
@@ -9460,19 +9460,19 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 ## Archivos con varias líneas por orden (Lote 131)
 
-**Mi cliente manda varias líneas por orden y algunas no son piezas (descripción, factura).** En la plantilla de órdenes encienda «El archivo trae varias líneas por orden» y agregue reglas: por ejemplo, si la columna «tipo» es igual a `Invoice` la línea es Factura, y si es una de `Drum | Item` es Descripción. Lo que no marque es pieza.
+**Mi cliente manda varias líneas por orden y algunas no son piezas (descripción, factura).** En la plantilla de órdenes encienda «El archivo trae varias líneas por envío» y agregue reglas: por ejemplo, si la columna «tipo» es igual a `Invoice` la línea es Factura, y si es una de `Drum | Item` es Descripción. Lo que no marque es pieza.
 
-**«La orden no trae ninguna pieza (todas sus líneas son descripción o factura).»** Todas las líneas de esa orden cayeron en una regla de descripción o factura. Revise las reglas o el archivo: cada orden necesita al menos una pieza.
+**«El envío no trae ninguna pieza (todas sus líneas son descripción o factura).»** Todas las líneas de esa orden cayeron en una regla de descripción o factura. Revise las reglas o el archivo: cada orden necesita al menos una pieza.
 
 **«El número de pieza X se repite en la fila N del archivo.» / «El número de pieza X ya existe en otra orden.»** El label de cada pieza es único en la compañía. Corrija el archivo (o, si el archivo ya se importó, no lo suba de nuevo). Las descripciones y facturas repetidas no dan este error.
 
-**«La línea no trae número de orden; en un archivo con varias líneas por orden todas lo necesitan.»** Una fila sin número de orden no se puede agrupar; complete la columna.
+**«La línea no trae número de envío; en un archivo con varias líneas por orden todas lo necesitan.»** Una fila sin número de envío no se puede agrupar; complete la columna.
 
-**«Un archivo con varias líneas por orden necesita la columna orderNumber en la plantilla.» (400)** Asigne una columna al campo «N.º de orden» en la plantilla; es lo que agrupa las filas.
+**«Un archivo con varias líneas por envío necesita la columna orderNumber en la plantilla.» (400)** Asigne una columna al campo «N.º de envío» en la plantilla; es lo que agrupa las filas.
 
 **¿Dónde queda la descripción («dron»)?** En la descripción de las líneas de carga de la orden, no como pieza. **¿Y la factura?** En el número de factura de la orden.
 
-**El número de orden o de factura «lo asigna Teikem».** Con varias líneas por orden el archivo trae el número de orden: en el cliente, marque que el cliente numera sus órdenes (y sus facturas, si el archivo las trae).
+**El número de envío o de factura «lo asigna Teikem».** Con varias líneas por orden el archivo trae el número de envío: en el cliente, marque que el cliente numera sus órdenes (y sus facturas, si el archivo las trae).
 
 ## Integraciones y su bandeja (Lote 132)
 
@@ -9586,7 +9586,7 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 **Salida — «El nombre de la columna «X» debe empezar con una letra o guion bajo…» (400).** En JSON y XML el nombre de la columna es el nombre del campo: use letras, números, guion y guion bajo (sin espacios).
 
-**Salida — «Una integración de salida solo admite el alcance de salida de órdenes.» (400).** Las integraciones de salida usan solo «Salida de órdenes por archivo o API».
+**Salida — «Una integración de salida solo admite el alcance de salida de envíos.» (400).** Las integraciones de salida usan solo «Salida de envíos por archivo o API».
 
 **Salida — «La salida por horario necesita un intervalo (minutos).» (400).** Indique cada cuántos minutos sale el envío (1 a 10080).
 

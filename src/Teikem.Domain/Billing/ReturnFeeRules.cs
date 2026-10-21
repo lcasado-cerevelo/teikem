@@ -20,7 +20,7 @@ public static class ReturnFeeModes
 
 public static class ReturnFeeRules
 {
-    public const string InvalidModeMessage = "Indique el cargo por devolución: por orden, por tipo de paquete o por pieza.";
+    public const string InvalidModeMessage = "Indique el cargo por devolución: por envío, por tipo de paquete o por pieza.";
     public const string NegativeMessage = "El cargo por devolución no puede ser negativo.";
     public const string AmountRequiredMessage = "Indique el monto del cargo por devolución.";
     public const string ByTypeRequiredMessage = "Indique el monto de al menos un tipo de paquete.";

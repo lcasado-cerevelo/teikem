@@ -3,7 +3,7 @@
 Capturas del recorrido `web-app/e2e/lote131-lineas-por-orden.spec.ts` contra el API real (escritorio y móvil a 360 px sin scroll horizontal). Reglas y errores: [capítulo 03, §7.5](../03-ordenes-de-transporte.md).
 
 ## Plantilla de órdenes
-**«El archivo trae varias líneas por orden»** abre las reglas de línea: qué NO es pieza (descripción o factura) por una columna del archivo; todo lo demás es pieza. El campo nuevo **N.º de pieza (label)** se mapea como cualquier otro.
+**«El archivo trae varias líneas por envío»** abre las reglas de línea: qué NO es pieza (descripción o factura) por una columna del archivo; todo lo demás es pieza. El campo nuevo **N.º de pieza (label)** se mapea como cualquier otro.
 
 ![Plantilla](img/l131-plantilla.png)
 

@@ -156,29 +156,29 @@ una parada `DELIVERY` pendiente. En orden de precedencia:
 
 | Motivo | Mensaje exacto |
 |---|---|
-| Inactiva, o ya en una etapa terminal | `La orden ya salió a ruta o terminó; no se puede asignar a otra ruta.` |
-| Es una entrega especial | `Las entregas especiales se asignan al chofer desde la orden; no pasan por Sala de despacho.` |
-| Está en la etapa inicial (Sometida) | `La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.` |
+| Inactiva, o ya en una etapa terminal | `El envío ya salió a ruta o terminó; no se puede asignar a otra ruta.` |
+| Es una entrega especial | `Las entregas especiales se asignan al chofer desde el envío; no pasan por Sala de despacho.` |
+| Está en la etapa inicial (Sometida) | `El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.` |
 | Está en un estatus lateral (`FAILED`, Intento fallido) | `La orden está en '{estatus}'; regrésela al pipeline antes de asignarla a una ruta.` |
-| Ya está en `IN_TRANSIT` o después | `La orden ya salió a ruta o terminó; no se puede asignar a otra ruta.` |
+| Ya está en `IN_TRANSIT` o después | `El envío ya salió a ruta o terminó; no se puede asignar a otra ruta.` |
 | Su estatus no tiene la capacidad `ASSIGN_TRIP` | `El estatus actual no permite la acción 'ASSIGN_TRIP'.` |
-| No tiene una parada `DELIVERY` pendiente | `La orden no tiene una parada de entrega pendiente.` |
+| No tiene una parada `DELIVERY` pendiente | `El envío no tiene una parada de entrega pendiente.` |
 
 ### 3.2 Agregar y quitar
 
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|
-| `orderPublicIds` vacío | `Indique al menos una orden.` (campo `orderPublicIds`) | 400 |
-| Más de 200 órdenes distintas | `Agregue como máximo 200 órdenes por solicitud.` (campo `orderPublicIds`) | 400 |
+| `orderPublicIds` vacío | `Indique al menos un envío.` (campo `orderPublicIds`) | 400 |
+| Más de 200 órdenes distintas | `Agregue como máximo 200 envíos por solicitud.` (campo `orderPublicIds`) | 400 |
 | Algún id ajeno, inexistente o inactivo | `Orden no encontrado.` | 404 |
 | Ruta no editable (despachada o cerrada) | mismos mensajes de la sección 2 (`NotEditableMessage`) | 422 |
-| Una o más órdenes no elegibles | `Hay órdenes que no se pueden asignar a la ruta.` con `errors: { "{número}": ["{motivo}"] }` (rechaza la solicitud completa) | 422 |
-| La orden ya está en ESTA ruta | `La orden ya está en esta ruta.` | 409 |
+| Una o más órdenes no elegibles | `Hay envíos que no se pueden asignar a la ruta.` con `errors: { "{número}": ["{motivo}"] }` (rechaza la solicitud completa) | 422 |
+| La orden ya está en ESTA ruta | `El envío ya está en esta ruta.` | 409 |
 | La orden ya está en OTRA ruta vigente | `La orden ya está asignada a la ruta {código}.` | 409 |
 | Excede el tope técnico de la ruta | `Una ruta admite como máximo 300 paradas.` (campo `orderPublicIds`) | 400 |
-| Carrera (dos altas simultáneas a la misma orden en rutas distintas) | `La orden ya está asignada a otra ruta.` | 409 |
+| Carrera (dos altas simultáneas a la misma orden en rutas distintas) | `El envío ya está asignado a otra ruta.` | 409 |
 | `orderPublicId` de `DELETE`, ajeno o inexistente | `Orden no encontrado.` | 404 |
-| La orden no está en ESA ruta | `La orden no está en esta ruta.` | 404 |
+| La orden no está en ESA ruta | `El envío no está en esta ruta.` | 404 |
 
 ### 3.3 Lista "Sin asignar"
 
@@ -427,8 +427,8 @@ app del chofer (por ahora el cierre es manual).
 
 > **Lote 107 (2026-10-17): la estación ahora tiene ACCIÓN escogida.** El usuario escoge qué va a hacer —**Recoger, Llegó, Enrutar o Salir**— y cada escaneo lleva la orden al estatus de esa acción (`POST /api/v1/scan/action`, descrito en la sección 7b). **Enrutar** (la acción por omisión) hace lo de siempre —poner la orden en la ruta abierta de su zona— y además la deja **Asignada**; el texto de abajo (`/scan/outbound`) sigue describiendo ese asignador, que Enrutar reutiliza. Una Sometida ya no se rechaza al enrutarla: se lleva hasta Asignada brincando Recogida y Sin asignar.
 
-Qué hace: escanea el número de orden, el número de empaque o el número de factura del cliente (mismo criterio y
-precedencia que `/orders/lookup`: número de orden primero, luego empaque, luego factura y, desde el Lote 44, el número de paquete
+Qué hace: escanea el número de envío, el número de empaque o el número de factura del cliente (mismo criterio y
+precedencia que `/orders/lookup`: número de envío primero, luego empaque, luego factura y, desde el Lote 44, el número de paquete
 del label de cada pieza) y asigna la orden a la
 ruta abierta del día de su zona. Responde siempre `200` con un resultado tipado y la palabra que debe pronunciar
 la estación (`found`/`dup`/`notfound`). Nunca crea rutas, ni cambia chofer, vehículo o el estatus de la orden.
@@ -446,9 +446,9 @@ Resultados (`outcome` / `voice` / mensaje), en orden de precedencia:
 
 | `outcome` | `reasonCode` | `voice` | Mensaje |
 |---|---|---|---|
-| `NOT_FOUND` | `NO_MATCH` | `notfound` | `No se encontró la orden.` |
-| `NOT_FOUND` | `MULTIPLE_MATCHES` | `notfound` | `Hay varias órdenes con ese código; escanee el empaque.` |
-| `NOT_FOUND` | `MULTIPLE_MATCHES` (por número de paquete, Lote 44) | `notfound` | `El número de paquete está en {n} órdenes (de clientes distintos o repetido); escanee el empaque o el número de orden.` |
+| `NOT_FOUND` | `NO_MATCH` | `notfound` | `No se encontró el envío.` |
+| `NOT_FOUND` | `MULTIPLE_MATCHES` | `notfound` | `Hay varias envíos con ese código; escanee el empaque.` |
+| `NOT_FOUND` | `MULTIPLE_MATCHES` (por número de paquete, Lote 44) | `notfound` | `El número de paquete está en {n} órdenes (de clientes distintos o repetido); escanee el empaque o el número de envío.` |
 | `ALREADY_ASSIGNED` | `IN_TRIP` | `dup` | `Ya estaba en la ruta {código}.` (gana a "no elegible": una orden ya despachada dice "ya") |
 | `NOT_ELIGIBLE` | `NOT_ELIGIBLE` | `notfound` | el motivo de la sección 3.1 (p. ej. "El estatus actual no permite la acción 'ASSIGN_TRIP'.") |
 | `FOUND_UNASSIGNED` | `NO_ZONE` | `found` | `No se pudo resolver la zona de despacho por código postal ni pueblo; queda sin asignar.` |
@@ -473,7 +473,7 @@ el resultado es `NO_OPEN_ROUTE`. Ocho escaneos simultáneos de órdenes distinta
 
 Qué hace: el usuario escoge la **acción** y escanea; cada escaneo lleva la orden al estatus de esa acción **brincando los estatus de en medio** (no hay que escanear varias veces). Los estatus brincados quedan en el historial con la marca **«(brincado)»** y **la misma fecha y hora** que el estatus al que llegó; los avisos al cliente de los estatus brincados **no** se mandan. No revisa tarifa, crédito ni cliente: eso se revisó al someter la orden.
 
-Quién puede: `trips.scan` (módulo LTL_GROUND). Cómo se usa: pantalla **Operación → Estación de escaneo** (selector de acción arriba) o `POST /api/v1/scan/action` — `{ "action": "ARRIVE", "code": "CND-0000123", "planDate": null }`. El código es el mismo de siempre (número de orden, empaque, factura o número de paquete).
+Quién puede: `trips.scan` (módulo LTL_GROUND). Cómo se usa: pantalla **Operación → Estación de escaneo** (selector de acción arriba) o `POST /api/v1/scan/action` — `{ "action": "ARRIVE", "code": "CND-0000123", "planDate": null }`. El código es el mismo de siempre (número de envío, empaque, factura o número de paquete).
 
 | Acción | `action` | Lleva la orden a | Quién la usa |
 |---|---|---|---|
@@ -490,7 +490,7 @@ Resultados (`outcome` / `voice`), siempre `200`:
 | `ALREADY_BEYOND` | `dup` | la orden ya está en ese estatus o más adelante: no se toca (con Enrutar, si ya está en una ruta: `Ya estaba en la ruta 2026-0001.`) | `La orden CND-0000123 ya está en Asignada o más adelante: no se cambia.` |
 | `FINAL` | `dup` | la orden está en un estatus final (Entregada, Cancelada, En almacén): se ignora; reabrirla exige el permiso `orders.reopen` | `La orden CND-0000123 está en un estatus final (Entregada): no se cambia.` |
 | `NO_ROUTE` | `notfound` | **Enrutar** y no hay ruta abierta que reciba la orden (sin zona, zona ambigua o sin ruta ese día): no cambia nada, ni el estatus | el motivo de siempre (sección 7), p. ej. `No hay ruta abierta para la zona R-01 en la fecha 2026-10-17; queda sin asignar.` |
-| `NOT_FOUND` / `AMBIGUOUS` | `notfound` | código que no existe o está en varias órdenes | `No se encontró la orden.` / `Hay varias órdenes con ese código; escanee el empaque.` |
+| `NOT_FOUND` / `AMBIGUOUS` | `notfound` | código que no existe o está en varias órdenes | `No se encontró el envío.` / `Hay varias envíos con ese código; escanee el empaque.` |
 
 Reglas:
 - **Desde Intento fallido** (lateral): **Llegó** la devuelve a Sin asignar (el intento fallido queda en el historial); Enrutar y Salir la llevan a Asignada / En tránsito pasando por Sin asignar (brincado); Recoger ya está más adelante.
@@ -521,7 +521,7 @@ zona aunque no tenga órdenes, para que el escaneo Outbound tenga destino desde 
 | Alguna zona inactiva | `La zona de despacho está inactiva.` (campo `dispatchZoneIds`) | 400 |
 
 Por zona, cada orden omitida deja un aviso `NOT_ELIGIBLE` (`Orden {número}: {motivo}`, sección 3.1) o
-`CAPACITY_HARD_CAP` (`La ruta llegó al máximo de 300 paradas; la orden queda sin asignar.`) en el resultado; no son
+`CAPACITY_HARD_CAP` (`La ruta llegó al máximo de 300 paradas; el envío queda sin asignar.`) en el resultado; no son
 errores HTTP, son parte de la respuesta `200` (`zones[].issues`). Las órdenes sin zona resuelta o con zona ambigua
 no se tocan: solo se cuentan en `ordersWithoutZone`.
 

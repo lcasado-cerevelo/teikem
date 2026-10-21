@@ -96,9 +96,9 @@ public class RouteWriterTests
         await f.Db.SaveChangesAsync();
 
         var dup = await Assert.ThrowsAsync<ConflictException>(() => f.Writer.AddOrdersAsync(a, new[] { o1 }, default));
-        Assert.Equal("La orden ya está en esta ruta.", dup.Message);
+        Assert.Equal("El envío ya está en esta ruta.", dup.Message);
         var other = await Assert.ThrowsAsync<ConflictException>(() => f.Writer.AddOrdersAsync(b, new[] { o1 }, default));
-        Assert.Equal("La orden ya está asignada a la ruta 2026-0001.", other.Message);
+        Assert.Equal("El envío ya está asignado a la ruta 2026-0001.", other.Message);
     }
 
     [Fact]
@@ -112,9 +112,9 @@ public class RouteWriterTests
 
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => f.Writer.AddOrdersAsync(trip, new[] { ok, draft, special }, default));
         Assert.Equal(422, ex.StatusCode);
-        Assert.Equal("Hay órdenes que no se pueden asignar a la ruta.", ex.Message);
-        Assert.Equal(new[] { "La orden está en Sometida; márquela como recogida antes de asignarla a una ruta." }, ex.Errors![Fx.OrderNumber(draft)]);
-        Assert.Equal(new[] { "Las entregas especiales se asignan al chofer desde la orden; no pasan por Sala de despacho." }, ex.Errors[Fx.OrderNumber(special)]);
+        Assert.Equal("Hay envíos que no se pueden asignar a la ruta.", ex.Message);
+        Assert.Equal(new[] { "El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta." }, ex.Errors![Fx.OrderNumber(draft)]);
+        Assert.Equal(new[] { "Las entregas especiales se asignan al chofer desde el envío; no pasan por Sala de despacho." }, ex.Errors[Fx.OrderNumber(special)]);
         Assert.False(ex.Errors.ContainsKey(Fx.OrderNumber(ok)));
 
         Assert.False(await f.Db.TripOrders.AnyAsync());
@@ -154,8 +154,8 @@ public class RouteWriterTests
         Assert.Equal(new[] { "R-00001" }, ex.Errors!.Keys);
         Assert.Equal(new[]
         {
-            "La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.",
-            "La orden está en 'FAILED'; regrésela al pipeline antes de asignarla a una ruta.",
+            "El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.",
+            "El envío está en 'FAILED'; regréselo al pipeline antes de asignarlo a una ruta.",
         }, ex.Errors["R-00001"]);
         Assert.False(await f.Db.TripOrders.AnyAsync());
         Assert.False(await f.Db.RouteStops.AnyAsync());
@@ -180,7 +180,7 @@ public class RouteWriterTests
         var trip = await f.SeedTripAsync("2026-0001", TripStatuses.Draft);
         var foreign = await f.SeedOrderAsync(OrderStatuses.Pickup, tenantId: 2);
         var ex = await Assert.ThrowsAsync<NotFoundException>(() => f.Writer.AddOrdersAsync(trip, new[] { foreign }, default));
-        Assert.Equal("Orden no encontrado.", ex.Message);
+        Assert.Equal("Envío no encontrado.", ex.Message);
     }
 
     // ================================================================ liberar
@@ -219,7 +219,7 @@ public class RouteWriterTests
 
         var ex = await Assert.ThrowsAsync<TripMemberNotFoundException>(() => f.Writer.ReleaseOrderAsync(a, inB, default));
         Assert.Equal(404, ex.StatusCode);
-        Assert.Equal("La orden no está en esta ruta.", ex.Message);
+        Assert.Equal("El envío no está en esta ruta.", ex.Message);
         Assert.True(await f.Db.TripOrders.AnyAsync(x => x.TripId == b.TripId && x.TransportOrderId == inB && x.IsCurrent));
     }
 
@@ -480,9 +480,9 @@ public class RouteWriterTests
 
         var reasons = await f.Writer.CheckEligibilityAsync(orders, default);
         Assert.False(reasons.ContainsKey(ok));
-        Assert.Equal("La orden está en 'FAILED'; regrésela al pipeline antes de asignarla a una ruta.", reasons[lateral]);
-        Assert.Equal("La orden ya salió a ruta o terminó; no se puede asignar a otra ruta.", reasons[gone]);
-        Assert.Equal("La orden no tiene una parada de entrega pendiente.", reasons[noStop]);
+        Assert.Equal("El envío está en 'FAILED'; regréselo al pipeline antes de asignarlo a una ruta.", reasons[lateral]);
+        Assert.Equal("El envío ya salió a ruta o terminó; no se puede asignar a otra ruta.", reasons[gone]);
+        Assert.Equal("El envío no tiene una parada de entrega pendiente.", reasons[noStop]);
     }
 
     // ================================================================ fixture

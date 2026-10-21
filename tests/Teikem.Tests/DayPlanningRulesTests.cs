@@ -144,7 +144,7 @@ public class DayPlanningRulesTests
         Assert.All(z.Skipped, s =>
         {
             Assert.Equal("CAPACITY_HARD_CAP", s.ReasonCode);
-            Assert.Equal("La ruta llegó al máximo de 300 paradas; la orden queda sin asignar.", s.Reason);
+            Assert.Equal("La ruta llegó al máximo de 300 paradas; el envío queda sin asignar.", s.Reason);
         });
     }
 
@@ -256,6 +256,6 @@ public class DayPlanningRulesTests
 
     [Fact]
     public void Skipped_issue_message_names_the_order()
-        => Assert.Equal("Orden 2026-0007: La ruta llegó al máximo de 300 paradas; la orden queda sin asignar.",
+        => Assert.Equal("Envío 2026-0007: La ruta llegó al máximo de 300 paradas; el envío queda sin asignar.",
             DayPlanningRules.SkippedIssueMessage("2026-0007", DayPlanningRules.CapacityHardCapMessage));
 }

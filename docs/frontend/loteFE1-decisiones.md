@@ -44,7 +44,7 @@ Del servidor (precedencia de resultados, mensajes, búsqueda por orden/empaque/f
 5. **Feed con todos los resultados** (no solo los exitosos), con chip por tipo, mensaje y ruta; solo se filtra lo que se sabe de la orden.
 6. **«Ruta del día»** (fecha del escaneo) y **buscador de la lista** con texto propio.
 7. **Subtítulo de la pantalla** (`scan.sub`) habla solo de la salida; el del menú (`nav.scan.subtitle`, «inbound / outbound / COD») se dejó como en la maqueta.
-8. Medidor con leyenda «órdenes asignadas en esta sesión» y «N» = órdenes distintas ASIGNADAS (la maqueta contaba toda la lista).
+8. Medidor con leyenda «envíos asignados en esta sesión» y «N» = órdenes distintas ASIGNADAS (la maqueta contaba toda la lista).
 9. «Ver orden» muestra la ficha real (estatus del servidor, COD, ruta actual); «Abrir» solo con `orders.view`.
 
 ## Decisiones tomadas por default para presentar al dueño al final de P1

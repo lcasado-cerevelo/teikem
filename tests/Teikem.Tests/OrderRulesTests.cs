@@ -102,7 +102,7 @@ public class OrderRulesTests
         var hit = OrderRules.RejectExtraFields(new[] { "notes", "orderNumber" }, OrderRules.ForbiddenOnPatch);
         Assert.NotNull(hit);
         Assert.Equal("orderNumber", hit!.Value.Field);
-        Assert.Equal("El campo 'orderNumber' se fija al crear la orden y no se edita.", hit.Value.Message);
+        Assert.Equal("El campo 'orderNumber' se fija al crear el envío y no se edita.", hit.Value.Message);
     }
 
     [Fact]

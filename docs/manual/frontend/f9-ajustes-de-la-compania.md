@@ -133,7 +133,7 @@ repite sola. Al terminar, el menú y el buscador muestran u ocultan las pantalla
 - **Valores por defecto.** *Tipo de servicio por defecto* y *Tipo de paquete por defecto* (de la lista; "Sin valor por
   defecto" lo quita) y *Máximo de paradas por ruta (default)* (entero ≥ 1; "Debe ser 1 o más." en pantalla, "Debe ser ≥ 1."
   del servidor). Guardar → `PUT /tenant/settings`.
-- **Pipeline de estatus de órdenes** (solo con el módulo de órdenes, `LTL_GROUND`). Matriz estatus × acción (Editar carga,
+- **Pipeline de estatus de envíos** (solo con el módulo de órdenes, `LTL_GROUND`). Matriz estatus × acción (Editar carga,
   Asignar a ruta, Re-cotizar, Cancelar) leída de `GET /api/v1/status/capabilities/TRANSPORT_ORDER`: marcado = el estatus
   permite la acción (sin regla, se permite). Cada casilla se guarda al hacer clic (`PUT …/capabilities/TRANSPORT_ORDER?statusDomain=OrderStatus`;
   "Acción del estatus guardada") y exige el permiso **`admin.statusconfig`** (sin él, de solo lectura). El servidor aplica la

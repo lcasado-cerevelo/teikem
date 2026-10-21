@@ -45,7 +45,7 @@ Muestra su nombre, el cliente que lo atiende y, por **correo** y por **texto**, 
 Los avisos que **se le enviaron** (más nuevos primero, hasta 100 por página): «Su paquete va en camino», «fue entregado», «tuvo un intento de entrega fallido»…, el conduce, el estado del envío del aviso (enviado, omitido, fallido) y el enlace de seguimiento de la orden. Solo ve los suyos.
 
 ### 3.2b Sus envíos (Lote 117d) — solo ve, no crea órdenes
-El consignatario **ve las órdenes de su cliente que se entregan en su consignatario** (lista con barra de progreso, búsqueda por **conduce**, más reciente primero; y la ficha con su dirección de entrega, los paquetes —sin pesos—, el avance y la línea de tiempo). **No crea órdenes** (dictado por Luis, 2026-10-18): las crean el cliente (portal) y el personal de la compañía (intake); si lo intenta, la ruta del cliente le responde 403. Tampoco ve precios, factura, COD ni el número de orden del cliente.
+El consignatario **ve las órdenes de su cliente que se entregan en su consignatario** (lista con barra de progreso, búsqueda por **conduce**, más reciente primero; y la ficha con su dirección de entrega, los paquetes —sin pesos—, el avance y la línea de tiempo). **No crea órdenes** (dictado por Luis, 2026-10-18): las crean el cliente (portal) y el personal de la compañía (intake); si lo intenta, la ruta del cliente le responde 403. Tampoco ve precios, factura, COD ni el número de envío del cliente.
 
 | Situación | Respuesta |
 |---|---|

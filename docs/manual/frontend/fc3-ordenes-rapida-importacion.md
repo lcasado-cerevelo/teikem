@@ -24,17 +24,17 @@ Si falta un permiso, pídaselo al administrador de su compañía (Sistema → Ro
 
 ![Entrada rápida con dos órdenes ya guardadas y la fila nueva lista](img/fc3-rapida.png)
 
-Cada **fila** de la rejilla es **una orden de 1 paquete y 1 pieza**. Se guarda como **Sometida** (Lote 106), ya cotizada si el cliente tiene contrato y tarifa: para marcarla como recogida, ábrala desde la lista (botón **Marcar como recogida** del expediente). Si necesita varios paquetes en una orden, use **Detallada**.
+Cada **fila** de la rejilla es **una orden de 1 paquete y 1 pieza**. Se guarda como **Sometida** (Lote 106), ya cotizada si el cliente tiene contrato y tarifa: para marcarla como recogida, ábrala desde la lista (botón **Marcar como recogido** del expediente). Si necesita varios paquetes en una orden, use **Detallada**.
 
 ### Cómo se usa
 
 1. Pulse **Nueva orden**. Si no abre en **Rápida**, pulse **Rápida**.
 2. En **Cliente** elija el cliente de las órdenes (es obligatorio y vale para todas las filas).
 3. En la fila vacía:
-   - **N.º de orden**: solo se puede escribir si el cliente asigna sus propios números; si no, dice **(automático)** y Teikem lo asigna.
+   - **N.º de envío**: solo se puede escribir si el cliente asigna sus propios números; si no, dice **(automático)** y Teikem lo asigna.
    - **Consignatario**: busque por nombre, número, dirección o pueblo. Aparecen los del cliente y los compartidos. Debajo, **Dirección · Pueblo** muestra a dónde irá. Con el botón **+** puede crear un consignatario nuevo sin salir de la pantalla.
    - **Paquete**, **COD ($)** (opcional), **Servicio** y **Comentario** (opcional).
-4. Pulse **Enter** en cualquier campo (o el botón **Guardar fila**). La orden se crea y la fila queda guardada, con su número de orden, en gris y sin poder editarse.
+4. Pulse **Enter** en cualquier campo (o el botón **Guardar fila**). La orden se crea y la fila queda guardada, con su número de envío, en gris y sin poder editarse.
 5. Arriba aparece una **fila nueva**: el cliente y el servicio se quedan como estaban, y el cursor queda en el consignatario. Repita.
 
 **Tab** pasa de un campo al siguiente. Arriba, **Líneas** cuenta las órdenes guardadas y **COD acumulado** suma su COD.
@@ -53,18 +53,18 @@ Los mensajes salen debajo del campo o debajo de la fila, y **lo que usted escrib
 | El tipo de servicio es obligatorio. | Elija el **Servicio**. La compañía no tiene un servicio predeterminado. |
 | El monto COD debe ser un número. | Escriba solo cifras (por ejemplo 25 o 25.50). |
 | El monto COD no puede ser negativo. | Escriba un monto de 0 en adelante. |
-| El número no puede exceder 40 caracteres. | Acorte el N.º de orden. |
-| El cliente está suspendido; no se pueden crear ni confirmar órdenes. | El cliente no puede recibir órdenes nuevas. Consulte con quien lo administra. |
+| El número no puede exceder 40 caracteres. | Acorte el N.º de envío. |
+| El cliente está suspendido; no se pueden crear ni confirmar envíos. | El cliente no puede recibir órdenes nuevas. Consulte con quien lo administra. |
 | El cliente está dado de baja; solo se consulta su historial. | Elija otro cliente. |
 | Consignatario está inactivo; reactívelo o elija otro. | Elija otro o reactívelo en Listas → Consignatarios. |
 | Tipo de paquete desconocido: X. / Tipo de servicio desconocido: X. | Ese valor ya no existe en la lista; elija otro de la lista. |
-| Ya existe una orden con ese número para este cliente. | El N.º de orden que escribió ya se usó; escriba otro o déjelo vacío si es automático. |
+| Ya existe un envío con ese número para este cliente. | El N.º de envío que escribió ya se usó; escriba otro o déjelo vacío si es automático. |
 
 Si se corta la conexión mientras guarda, aparece un error en la fila; al pulsar **Enter** de nuevo se reintenta **sin duplicar** la orden.
 
 ![Mensajes de validación en la fila](img/fc3-rapida-validacion.png)
 
-## Importar órdenes desde CSV
+## Importar envíos desde CSV
 
 Sirve para crear muchas órdenes a la vez desde un archivo de Excel guardado como CSV. El proceso tiene dos pasos y **no crea nada** hasta que usted lo confirma.
 
@@ -84,12 +84,12 @@ Una **plantilla** le dice a Teikem qué hay en cada columna de su archivo. Se ha
 2. Si no hay plantillas, pulse **Crear «Formato estándar»**: trae consignatario, dirección, pueblo, servicio, tipo de paquete, piezas y monto COD, en ese orden. O pulse **Nueva plantilla** para armar la suya.
 3. En la ventana de la plantilla escriba el **Nombre de la plantilla**, elija el **Delimitador** (coma, punto y coma, tabulador o barra vertical) y si la primera fila es el encabezado.
 4. Para cada **Columna** elija el **Campo destino** («— no importar —» ignora esa columna). Use **Agregar columna** para más columnas.
-5. Opcional: **Agregar valor por defecto** para un valor que se usa cuando la celda viene vacía o el campo no tiene columna (por ejemplo, el servicio de todas las filas). El número de orden, el de factura y el nombre del consignatario no admiten valor por defecto.
+5. Opcional: **Agregar valor por defecto** para un valor que se usa cuando la celda viene vacía o el campo no tiene columna (por ejemplo, el servicio de todas las filas). El número de envío, el de factura y el nombre del consignatario no admiten valor por defecto.
 6. Pulse **Guardar plantilla**.
 
 ![Editor de plantilla de órdenes](img/fc3-plantilla.png)
 
-**Campos que puede usar:** N.º de orden, N.º de factura, Servicio, Consignatario (nombre), Consignatario (número), Dirección, Dirección (línea 2), Pueblo, Estado o región, ZIP, País, Teléfono de contacto, Tipo de paquete, Piezas, Peso (kg), Volumen (m³), Descripción, Monto COD, Fecha solicitada, Notas y Referencia.
+**Campos que puede usar:** N.º de envío, N.º de factura, Servicio, Consignatario (nombre), Consignatario (número), Dirección, Dirección (línea 2), Pueblo, Estado o región, ZIP, País, Teléfono de contacto, Tipo de paquete, Piezas, Peso (kg), Volumen (m³), Descripción, Monto COD, Fecha solicitada, Notas y Referencia.
 
 | Mensaje al guardar la plantilla | Qué significa y qué hacer |
 |---|---|
@@ -124,7 +124,7 @@ Si cambia el cliente o la plantilla, el archivo se revisa de nuevo.
 | El monto COD debe ser un número. / El monto COD no puede ser negativo. | Corrija el COD. |
 | La fecha solicitada no es válida; use yyyy-MM-dd. | Escriba la fecha como 2026-10-15. |
 | No existe un consignatario con el código 'X' para este cliente. | Corrija el número o use el nombre y la dirección. |
-| El cliente está suspendido; no se pueden crear ni confirmar órdenes. | Ese cliente no puede recibir órdenes ahora. |
+| El cliente está suspendido; no se pueden crear ni confirmar envíos. | Ese cliente no puede recibir órdenes ahora. |
 
 ### Paso 2: importar o descartar
 
@@ -132,8 +132,8 @@ Antes de importar, la sección **Al importar** tiene hasta dos casillas (desde e
 
 | Casilla | Qué hace |
 |---|---|
-| **Autorizar crédito excedido** | Solo aparece con `orders.credit_override`. Crea también las órdenes que pasen el límite de crédito del cliente (al crear se cotiza y se mide el crédito); queda registrado quién lo autorizó. |
-| **Aceptar facturas repetidas** | Crea también las filas cuyo número de factura ya usa otra orden del mismo consignatario, cuando ese consignatario admite repetirlo. |
+| **Autorizar crédito excedido** | Solo aparece con `orders.credit_override`. Crea también los envíos que pasen el límite de crédito del cliente (al crear se cotiza y se mide el crédito); queda registrado quién lo autorizó. |
+| **Aceptar facturas repetidas** | Crea también las filas cuyo número de factura ya usa otro envío del mismo consignatario, cuando ese consignatario admite repetirlo. |
 
 - **Importar** crea una orden por cada fila válida. Si una falla, las demás se crean igual.
 - **Descartar archivo** borra la revisión sin crear nada y le deja escoger otro archivo.
@@ -141,13 +141,13 @@ Antes de importar, la sección **Al importar** tiene hasta dos casillas (desde e
 
 ![Casillas de la importación](img/fc3-importar-opciones.png)
 
-Al terminar verá el **Resultado de la importación**: cuántas quedaron **creadas**, **fallidas** y **omitidas** (las filas con errores), y por fila el **número de orden** (con enlace a la orden) o el motivo del fallo.
+Al terminar verá el **Resultado de la importación**: cuántas quedaron **creadas**, **fallidas** y **omitidas** (las filas con errores), y por fila el **número de envío** (con enlace a la orden) o el motivo del fallo.
 
 ![Resultado de la importación](img/fc3-importar-resultado.png)
 
 | Mensaje al importar | Qué significa y qué hacer |
 |---|---|
-| El lote ya fue confirmado; valide un archivo nuevo para importar más órdenes. | Ese archivo ya se importó. Escoja el archivo otra vez si necesita otro lote. |
+| El lote ya fue confirmado; valide un archivo nuevo para importar más envíos. | Ese archivo ya se importó. Escoja el archivo otra vez si necesita otro lote. |
 | El lote fue descartado; valide el archivo de nuevo. | Vuelva a escoger el archivo. |
 | El cliente excede su límite de crédito. | Esa fila no se creó. Pida a quien tenga `orders.credit_override` que importe con **Autorizar crédito excedido**, o corrija el límite de crédito del cliente. |
 | Falta el permiso 'orders.credit_override'. | No puede autorizar crédito; desmarque esa casilla. |

@@ -104,7 +104,7 @@ describe('Cargo por devolución (contrato)', () => {
   it('muestra lo configurado y sin permiso de escritura es solo lectura', async () => {
     wrap({ ...CONTRACT, returnFee: { mode: 'ORDER', amount: 12, byType: [] } } as unknown as ContractDetail, false)
     expect(screen.getByLabelText('Cargo por devolución')).toHaveValue('ORDER')
-    expect(screen.getByLabelText('Monto por orden devuelta')).toHaveValue('12')
+    expect(screen.getByLabelText('Monto por envío devuelto')).toHaveValue('12')
     expect(screen.getByLabelText('Cargo por devolución')).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'Guardar' })).toBeNull()
   })

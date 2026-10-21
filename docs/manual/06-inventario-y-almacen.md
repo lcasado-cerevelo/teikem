@@ -1973,7 +1973,7 @@ Cómo se usa:
 - Lote 13 (pantalla): la lista y la captura comparten pantalla en dos paneles (ver
   [F6 — Recolección y empaque](frontend/f6-almacen-e-inventario.md#recolección-y-empaque)). La captura manda **una sola** llamada
   `POST /api/v1/pick-batches` con todas las líneas (hasta 100). En la lista, `orderNumber` y `invoiceNumber` buscan por contenido, sin
-  distinguir mayúsculas (el filtro "No. de orden" sugiere números con `GET /api/v1/pick-batches?orderNumber=<texto>&take=20`). Cada
+  distinguir mayúsculas (el filtro "No. de envío" sugiere números con `GET /api/v1/pick-batches?orderNumber=<texto>&take=20`). Cada
   fila trae `canPack` y `canDelete`; la pantalla ofrece Empacar y Eliminar solo cuando son verdaderos (y con `orders.cancel`, para
   eliminar una empacada).
 - Lote 16 (selector de Posición de la captura): con un producto elegido, la lista ofrece **solo las posiciones donde ese producto tiene existencia disponible** (y, si se eligió lote, solo
@@ -2016,10 +2016,10 @@ Cómo se usa:
 | Eliminar una recolección cuya orden ya avanzó | `La orden de la recolección {n} ya avanzó a '{estatus}'; la recolección ya no se puede eliminar.` | 422 |
 | Eliminar una recolección ya eliminada | `La recolección {n} fue eliminada; solo se consulta.` | 422 |
 | Posición de reversa inactiva (eliminar) | `La posición {bin} de la recolección está inactiva; reactívela para eliminar la recolección y restaurar el inventario.` | 422 |
-| Empacar sin datos de la orden (o `collect-and-pack` sin `pack`) | `Indique los datos de la orden que se crea al empacar.` | 400 |
+| Empacar sin datos de la orden (o `collect-and-pack` sin `pack`) | `Indique los datos del envío que se crea al empacar.` | 400 |
 | Empacar sin tipo de servicio, en una compañía sin predeterminado | `El tipo de servicio es obligatorio.` (`errors.serviceType`) | 400 |
 | Empacar un paquete sin tipo, en una compañía sin predeterminado | `El tipo de paquete es obligatorio.` (`errors["packages[i].packageType"]`) | 400 |
-| Número de recolección o de orden ya tomado (concurrencia) | `Ya existe una recolección con ese número; intente de nuevo.` / `La orden ya está ligada a otra recolección.` | 409 |
+| Número de recolección o de orden ya tomado (concurrencia) | `Ya existe una recolección con ese número; intente de nuevo.` / `El envío ya está ligado a otra recolección.` | 409 |
 | Empacar o eliminar con un `rowVersion` viejo | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
 | Empacar o eliminar con un `rowVersion` que no es base64 | `rowVersion inválido: se espera el valor base64 devuelto por la ficha.` | 400 |
 | Empacar/eliminar sin `orders.create`/`orders.cancel` | `Falta el permiso 'orders.create'.` / `Falta el permiso 'orders.cancel'.` | 403 |
@@ -2031,7 +2031,7 @@ Cómo se usa:
 factura final al lote) → **CANCELLED** (terminal, al eliminar: revierte cada línea con `ADJUSTMENT
 PICK_BATCH_REVERSAL` a su posición original y la serie vuelve a `AVAILABLE`). Se elimina siempre desde `COLLECTED`;
 desde `PACKED` solo si su orden sigue **activa** y en la **etapa inicial** (si no, `422` con el mensaje de arriba).
-Cancelar la orden nacida de un empaque **no** restaura el inventario por sí sola (la mercancía regresa con un
+Cancelar el envío nacida de un empaque **no** restaura el inventario por sí sola (la mercancía regresa con un
 recibo `RETURN` aparte).
 
 Lote 13 — el mismo ciclo, por transición (Empacar y Eliminar son íconos en la fila de la lista, y también botones del detalle):

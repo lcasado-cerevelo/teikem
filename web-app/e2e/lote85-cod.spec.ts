@@ -167,7 +167,7 @@ test('COD: cobrar y reconciliar con hojas escaneadas (PDF e imagen) leídas en e
   // el COD de la orden quedó Cuadrado y la corrida está en Corridas
   await page.getByRole('tab', { name: 'Corridas' }).click()
   await expect(page.locator('tr, .dt-cards > li').filter({ hasText: 'hojas.pdf' }).first()).toBeVisible({ timeout: 20_000 })
-  await page.getByRole('tab', { name: 'Órdenes con COD' }).click()
+  await page.getByRole('tab', { name: 'Envíos con COD' }).click()
   await page.getByPlaceholder(/Buscar/).first().fill(clientName)
   await expect(row()).toContainText('Cuadrado', { timeout: 20_000 })
   expect(await noHScroll(page)).toBe(true)

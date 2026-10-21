@@ -34,7 +34,7 @@ public sealed class DriverTripOrderEffect(TeikemDbContext db, IServiceProvider s
 
         var statuses = services.GetRequiredService<StatusService>();
         var to = await statuses.TransitionAsync(StatusDomains.DriverTripStatus, EntityTypes.DriverTrip, trip.DriverTripId,
-            trip.StatusCodeId, DriverTripStatuses.Cancelled, $"Orden {orderNumber} cancelada", ct);
+            trip.StatusCodeId, DriverTripStatuses.Cancelled, $"Envío {orderNumber} cancelado", ct);
         trip.StatusCodeId = to.StatusCodeId;
     }
 }

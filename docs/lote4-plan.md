@@ -889,15 +889,15 @@ StepsTo(enabledStages[(Code, SortOrder, Kind, IsInitial)], fromCode, targetCode)
 - resolución de la tarifa por viaje.
 
 (b) AssignTrackedAsync(order tracked, PreparedSpecialDelivery p, bool overrideCredit, string? comment), paso a paso:
-1. La orden debe ser entrega especial: 422 'Solo las entregas especiales se asignan a un chofer desde aquí; las demás órdenes pasan por Sala de despacho.'
+1. La orden debe ser entrega especial: 422 'Solo las entregas especiales se asignan a un chofer desde aquí; las demás envíos pasan por Sala de despacho.'
 2. En la etapa inicial llama a orderStatuses.ConfirmTrackedAsync(order, overrideCredit): 422 credit_exceeded igual que el Lote 3.
 3. EnsureAllowedAsync(TRANSPORT_ORDER, estatus, ASSIGN_TRIP).
 4. Lateral, terminal o posterior a IN_TRANSIT: 422 'La entrega especial ya llegó a destino o terminó; no se puede asignar ni reasignar el chofer.'
-5. Mismo chofer con viaje vigente: 409 'La orden ya está asignada a ese chofer.'
+5. Mismo chofer con viaje vigente: 409 'El envío ya está asignado a ese chofer.'
 6. Otro chofer: CancelTrackedAsync del anterior ('Reasignada a {código} {nombre}').
 7. Avanza con PipelinePath.StepsTo(…, IN_TRANSIT), una TransitionAsync por paso ('Entrega especial asignada a {código} {nombre}').
 8. CreateTrackedAsync(tipo = SpecialService.SpecialServiceTypeId de la orden, TripDate = hoy, TransportOrderId, preResolved = p.TripRate).
-9. SaveGuardedAsync('La orden ya tiene un viaje vigente; recargue e intente de nuevo.'): dos asignaciones concurrentes chocan en UX_DriverTrip_Order.
+9. SaveGuardedAsync('El envío ya tiene un viaje vigente; recargue e intente de nuevo.'): dos asignaciones concurrentes chocan en UX_DriverTrip_Order.
 
 (c) AssignAsync(orderPublicId, SpecialDeliveryAssignRequest, OrderScope)
 - Antes de la transacción: resolución de la orden y su tipo, más PrepareAsync.
@@ -1286,7 +1286,7 @@ Así falla rápido sin consumir NumberSequence. La asignación se repite dentro 
    - Alternativa: Bloquear el alta o la asignación con 409 hasta que se configure la tarifa.
 34. DECISIÓN: DriverTrip tiene estatus propio, DriverTripStatus (OPEN → SETTLED | CANCELLED), vía StatusService.
 - El Lote 9 lo pasará a SETTLED y lo referenciará desde su línea de liquidación, sin FK desde DriverTrip.
-- Cancelar la orden cancela su viaje OPEN.
+- Cancelar el envío cancela su viaje OPEN.
 - El viaje de una orden no se cancela directo (409).
    - Alternativa: Usar solo IsActive y que el Lote 9 agregue una columna de liquidación en DriverTrip.
 35. DECISIÓN: No se crean DeliveryAttempt ni DriverSettlementRun/Line.
@@ -1600,18 +1600,18 @@ Alta con chofer:
 Rechazos:
 - driverPublicId en una orden normal → 400 'El chofer solo se asigna en una entrega especial.'
 - overrideCredit=true sin confirmNow ni chofer → 400, como el Lote 3.
-- Con D2 → 409 'El chofer no está disponible para despacho: …'. La orden no se crea y el siguiente número de orden no tiene hueco.
+- Con D2 → 409 'El chofer no está disponible para despacho: …'. La orden no se crea y el siguiente número de envío no tiene hueco.
 
 Reasignación:
 - POST /orders/{id}/driver con D1 → el viaje de D3 queda CANCELLED con isActive=false y hay un único viaje vigente, de D1.
-- Con el mismo D1 → 409 'La orden ya está asignada a ese chofer.'
+- Con el mismo D1 → 409 'El envío ya está asignado a ese chofer.'
 - Sobre una orden normal → 422.
 - Usuario sin trips.dispatch → 403.
 - Con CATALOG apagado → 403 module_disabled (luego se enciende).
 
 Cancelaciones:
 - Cancelar directo el viaje de la orden → 409.
-- Cancelar la orden → su viaje OPEN pasa a CANCELLED.
+- Cancelar el envío → su viaje OPEN pasa a CANCELLED.
 - **Eliminar chofer: baja definitiva sin borrar historial.**
 - DELETE /drivers/{D3} → 204.
 - Antes del DELETE (hallazgo de revisión) D3 tiene una tarifa por entrega cerrada a futuro (effectiveTo = hoy+10): después, rates?asOf=hoy+1 no la trae y con includeHistory su effectiveTo es hoy.
@@ -1671,7 +1671,7 @@ Mismo tenant, otro padre: PATCH /vehicles/{V2}/documents/{doc de V1} → 404.
 - **tabla**: DriverDeliveryRate; **notas**: Tarifa por Servicio+Paquete+monto por chofer (línea 430, 665-667). Debe seguir el mismo patrón efectivo-fechado que RateComponent (líneas 892-919 del SQL): Servicio/Paquete fijos al crear, UNIQUE por (DriverId, ServiceTypeLookupId, PackageTypeLookupId) acotado a fila vigente, EffectiveFrom/EffectiveTo por principio #8 (línea 518, 695).
 - **tabla**: DriverAttemptRate; **notas**: Tarifa por número de intento (línea 430, 595, 704). Lista abierta de niveles ('+Agregar intento' añade un nivel a TODOS los choferes a la vez, línea 595) — esto implica que además de la fila (DriverId, AttemptNumber, Rate) el esquema real necesita algún registro de qué niveles existen en el tenant, para poder provisionar la fila $0 a todos los choferes al agregar un nivel nuevo; no está modelado en el SQL. Fallback: intento > nivel máximo usa la tarifa del nivel más alto (línea 430) — regla de servicio, no de esquema.
 - **tabla**: DriverTripRate; **notas**: Tarifa por tipo de viaje (etiqueta+monto) por chofer (línea 438-439, 596). La etiqueta debe salir de SpecialServiceType/SpecialService (unión allServiceLabels), no texto libre (línea 439, 607) — necesita FK a SpecialServiceType (o a la etiqueta compartida), no un campo string.
-- **tabla**: DriverTrip; **notas**: Viaje real de un chofer que congela el monto al crearse (línea 439, 609) — 'freeze at generation'. Debe poder nacer (a) manual y (b) automáticamente desde la entrega especial de Entrada de órdenes al asignar chofer (línea 608-609): ese caso crea la orden en estatus 'route' sin pasar por Sala de despacho, con el chofer ya asignado, y un DriverTrip cuyo monto = driverTripRateFor(chofer, servicio) vigente en ese momento. Este es justamente lo que este lote (4) debe dejar preparado, pendiente de la decisión 2 del Lote 3.
+- **tabla**: DriverTrip; **notas**: Viaje real de un chofer que congela el monto al crearse (línea 439, 609) — 'freeze at generation'. Debe poder nacer (a) manual y (b) automáticamente desde la entrega especial de Entrada de envíos al asignar chofer (línea 608-609): ese caso crea la orden en estatus 'route' sin pasar por Sala de despacho, con el chofer ya asignado, y un DriverTrip cuyo monto = driverTripRateFor(chofer, servicio) vigente en ese momento. Este es justamente lo que este lote (4) debe dejar preparado, pendiente de la decisión 2 del Lote 3.
 - **tabla**: DeliveryAttempt; **notas**: Ledger fuente de verdad de intentos de entrega (orden, número, chofer, fecha, resultado, razón de fallo) — línea 432, 597. Nace del evento físico (chofer marca entrega/fallo en la app o Sala de despacho). Es insumo tanto para Liquidación (Lote 9/11A) como, a futuro, para el cargo opcional por intento en Facturación (línea 422, 597) — este lote solo necesita dejar claro que el ledger no existe todavía en SQL, aunque el consumo real (DriverSettlementRun) es Lote 9.
 - **tabla**: DriverSettlementRun / DriverSettlementLine; **notas**: El doc nombra estas entidades (módulo 11A, líneas 426, 437, 440-441) pero el SQL solo tiene dbo.CarrierSettlement/dbo.SettlementLine (líneas 1993-2013), con nombres distintos y con StatusCode 'SettlementStatus' seedeado como DRAFT→APPROVED→PAID (seed:334) — no coincide con el flujo Generada→Revisada→Aprobada→Exportada que el doc exige para DriverSettlementRun (línea 420, 437, 598) y que sí tiene BillingRunStatus (seed:333). Esto es contradicción de esquema a resolver en el Lote 9 (la corrida en sí), pero Lote 4 debe tenerlo presente porque el DriverTrip que congela aquí es el insumo directo de esa corrida futura.
 - **tabla**: Vehicle; **existeEnSql**: True; **notas**: Línea 1091. PK VehicleId. UQ_Vehicle_Code (TenantId, Code). Code/PlateNumber, capacidades (MaxWeightKg, MaxVolumeM3, MaxStops), FKs a LookupCode VehicleType/Ownership/FuelType, HomeWarehouseId->Warehouse, StatusCodeId->StatusCode (Entity='VehicleStatus'), IsActive. No tiene PublicId ni RowVersion ni CreatedAtUtc (a diferencia de otras entidades del módulo de flota como TransportOrder/Trip).
@@ -1716,8 +1716,8 @@ Mismo tenant, otro padre: PATCH /vehicles/{V2}/documents/{doc de V1} → 404.
 - **id**: R20; **regla**: DriverTrip: pago por viaje (no por paquete/intento), monto plano vía DriverTripRate (lista abierta por chofer: etiqueta+monto). Cada viaje real referencia una de esas tarifas y entra a la liquidación del período igual que las entregas.; **fuente**: logistica-funcionalidades-maestro.md:438,596; **esRequisitoReal**: True
 - **id**: R21; **regla**: La etiqueta de DriverTripRate ya no es texto libre: sale del catálogo SpecialService (unión de etiquetas de servicios especiales de todos los clientes, allServiceLabels()); si el tenant no tiene ningún servicio especial configurado, el selector lo dice explícitamente en vez de dejar escribir libre.; **fuente**: logistica-funcionalidades-maestro.md:439,607; **esRequisitoReal**: True
 - **id**: R22; **regla**: El tipo de viaje de una fila ya creada de DriverTripRate no es editable (mismo principio que las demás tarifas 'ya creadas'): se muestra como texto fijo; para cambiar el tipo hay que quitar la fila y agregar una con el tipo correcto.; **fuente**: logistica-funcionalidades-maestro.md:607,669; **esRequisitoReal**: True
-- **id**: R23; **regla**: Un DriverTrip creado directamente desde Entrada de órdenes ('entrega especial') congela el monto del chofer al momento de crearse, tomando la tarifa vigente de DriverTripRate para ese chofer y esa etiqueta — mismo principio de 'freeze at generation'.; **fuente**: logistica-funcionalidades-maestro.md:439,609; **esRequisitoReal**: True
-- **id**: R24; **regla**: Checkbox 'Es una entrega especial' en Entrada de órdenes (después de Consignatario, antes de la sección de paquete): pide Servicio especial (filtrado por el cliente de la sección 01) y Chofer (de los ya existentes), en vez de tipo de paquete/piezas/COD.; **fuente**: logistica-funcionalidades-maestro.md:608; **esRequisitoReal**: True
+- **id**: R23; **regla**: Un DriverTrip creado directamente desde Entrada de envíos ('entrega especial') congela el monto del chofer al momento de crearse, tomando la tarifa vigente de DriverTripRate para ese chofer y esa etiqueta — mismo principio de 'freeze at generation'.; **fuente**: logistica-funcionalidades-maestro.md:439,609; **esRequisitoReal**: True
+- **id**: R24; **regla**: Checkbox 'Es una entrega especial' en Entrada de envíos (después de Consignatario, antes de la sección de paquete): pide Servicio especial (filtrado por el cliente de la sección 01) y Chofer (de los ya existentes), en vez de tipo de paquete/piezas/COD.; **fuente**: logistica-funcionalidades-maestro.md:608; **esRequisitoReal**: True
 - **id**: R25; **regla**: Al guardar una entrega especial se crean dos registros: la orden en estatus 'route' de una vez con el chofer ya asignado (no pasa por Sala de despacho) y un DriverTrip nuevo con el monto congelado con driverTripRateFor(chofer, servicio). Este DriverTrip entra a la próxima liquidación de ese chofer igual que uno creado a mano.; **fuente**: logistica-funcionalidades-maestro.md:609; **esRequisitoReal**: True
 - **id**: R26; **regla**: Pendiente explícito del Lote 3 (decisión 2): la orden con IsSpecialDelivery/SpecialServiceId ya existe desde Lote 3, pero la asignación de chofer y la creación de DriverTrip quedaron fuera de ese lote y son responsabilidad del Lote 4 (según el encargo de esta tarea) — el propio doc maestro las asigna al módulo 11A/Lote 9 para la corrida, pero la creación del DriverTrip congelado en el momento de guardar la orden es lo que este lote debe dejar preparado.; **fuente**: docs/lote3-decisiones.md:88-89,204 y logistica-funcionalidades-maestro.md:609; **esRequisitoReal**: True
 - **id**: R27; **regla**: Toda tarifa de pago a chofer (DriverDeliveryRate/DriverAttemptRate/DriverTripRate) debe ser efectivo-fechada (EffectiveFrom/EffectiveTo) en el sistema real — editar cierra la fila vieja y abre una nueva, no se sobrescribe el monto en el sitio. El mock actual no lo implementa (simplificación de maqueta) — el esquema real sí debe.; **fuente**: logistica-funcionalidades-maestro.md:518,695; **esRequisitoReal**: True

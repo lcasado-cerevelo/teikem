@@ -45,10 +45,10 @@ public sealed class OrderService(
     private readonly ITenantClock _clock = clock ?? TenantClock.Default;
 
     public const string ClientInactiveMessage = "El cliente está dado de baja; solo se consulta su historial.";
-    public const string ClientSuspendedMessage = "El cliente está suspendido; no se pueden crear ni confirmar órdenes.";
-    public const string OrderNumberTakenMessage = "Ya existe una orden con ese número para este cliente.";
-    public const string PackBatchTakenMessage = "Ya existe una orden con ese número de empaque.";
-    public const string NoFreeNumberMessage = "No se pudo asignar un número de orden libre; intente de nuevo.";
+    public const string ClientSuspendedMessage = "El cliente está suspendido; no se pueden crear ni confirmar envíos.";
+    public const string OrderNumberTakenMessage = "Ya existe un envío con ese número para este cliente.";
+    public const string PackBatchTakenMessage = "Ya existe un envío con ese número de empaque.";
+    public const string NoFreeNumberMessage = "No se pudo asignar un número de envío libre; intente de nuevo.";
     public const string ConsigneeRequiredMessage = "El consignatario es obligatorio: elija uno del directorio o capture uno nuevo.";
     public const string ConsigneeBothMessage = "Indique un consignatario del directorio o uno nuevo, no ambos.";
     public const string SpecialServiceRequiredMessage = "El servicio especial es obligatorio en una entrega especial.";
@@ -390,8 +390,8 @@ public sealed class OrderService(
         var head = await db.ScopedOrders(scope).AsNoTracking()
             .Where(o => o.PublicId == publicId)
             .Select(o => new { o.ClientId, o.IsSpecialDelivery, o.IsActive })
-            .FirstOrDefaultAsync(ct) ?? throw new NotFoundException("Orden");
-        if (!head.IsActive) throw new NotFoundException("Orden");
+            .FirstOrDefaultAsync(ct) ?? throw new NotFoundException("Envío");
+        if (!head.IsActive) throw new NotFoundException("Envío");
 
         var client = await db.Clients.AsNoTracking().FirstOrDefaultAsync(c => c.ClientId == head.ClientId, ct) ?? throw new NotFoundException("Cliente");
         var tenantRow = await LoadTenantAsync(tenantId, ct);
@@ -424,13 +424,13 @@ public sealed class OrderService(
         await db.RunInTransactionAsync(async ct2 =>
         {
             var order = await db.ResolveOrderForWriteAsync(publicId, scope, ct2);
-            if (!order.IsActive) throw new NotFoundException("Orden");
+            if (!order.IsActive) throw new NotFoundException("Envío");
             db.ApplyRowVersion(order, req.RowVersion);
             await statuses.EnsureAllowedAsync(EntityTypes.TransportOrder, order.StatusCodeId, Capabilities.EditCargo, ct2);
 
             var requestedDate = req.RequestedDate ?? order.RequestedDate;
             var deliveryStop = order.Stops.FirstOrDefault(s => s.StopTypeLookupId == deliveryTypeId)
-                               ?? throw new InvalidOperationException("La orden no tiene parada de entrega.");
+                               ?? throw new InvalidOperationException("El envío no tiene parada de entrega.");
             var pickupStop = order.Stops.FirstOrDefault(s => s.StopTypeLookupId == pickupTypeId);
 
             // Consignatario: existente, coincidente o nuevo → re-snapshot de la parada DELIVERY
@@ -585,7 +585,7 @@ public sealed class OrderService(
         await db.RunInTransactionAsync(async ct2 =>
         {
             var order = await db.ResolveOrderForWriteAsync(publicId, scope, ct2);
-            if (!order.IsActive) throw new NotFoundException("Orden");
+            if (!order.IsActive) throw new NotFoundException("Envío");
             var sourceType = order.SourceEntityTypeLookupId is int sourceTypeId ? (await lookups.GetAsync(sourceTypeId, ct2))?.InternalCode : null;
             if (!OrderRules.CanDeleteFromOrders(sourceType, options?.AllowedSourceEntityType))
                 throw new ConflictException(OrderRules.PickBatchOrderDeleteMessage(order.PackBatchNumber));
@@ -804,13 +804,13 @@ public sealed class OrderService(
                 throw new DuplicateInvoiceException(
                     foreign
                         ? DuplicateInvoiceBlockedForeignMessage(consignee.Name, invoice)
-                        : $"El consignatario '{consignee.Name}' no permite facturas repetidas: la orden {existingNumber} ya usa el número {invoice}.",
+                        : $"El consignatario '{consignee.Name}' no permite facturas repetidas: el envío {existingNumber} ya usa el número {invoice}.",
                     confirmable: false, existingNumber, existingPublicId);
             case DuplicateInvoiceDecision.NeedsConfirmation:
                 throw new DuplicateInvoiceException(
                     foreign
                         ? DuplicateInvoiceConfirmableForeignMessage(consignee.Name, invoice)
-                        : $"El consignatario '{consignee.Name}' ya tiene la factura {invoice} en la orden {existingNumber}; confirme si desea crear la orden de todos modos.",
+                        : $"El consignatario '{consignee.Name}' ya tiene la factura {invoice} en el envío {existingNumber}; confirme si desea crear el envío de todos modos.",
                     confirmable: true, existingNumber, existingPublicId);
         }
     }
@@ -821,7 +821,7 @@ public sealed class OrderService(
 
     /// <summary>R36 confirmable contra una orden de otro cliente con el scope fijado (portal): mensaje sin nombrar la orden existente.</summary>
     public static string DuplicateInvoiceConfirmableForeignMessage(string consigneeName, string invoice)
-        => $"El consignatario '{consigneeName}' ya tiene la factura {invoice}; confirme si desea crear la orden de todos modos.";
+        => $"El consignatario '{consigneeName}' ya tiene la factura {invoice}; confirme si desea crear el envío de todos modos.";
 
     private async Task BornStopAsync(OrderStop stop, string initialCode, CancellationToken ct)
     {

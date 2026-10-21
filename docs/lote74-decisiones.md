@@ -1,4 +1,4 @@
-# Lote 74 — Flete de las órdenes de transporte en la facturación (P5, 3 de 4) (2026-10-16)
+# Lote 74 — Flete de los envíos de transporte en la facturación (P5, 3 de 4) (2026-10-16)
 
 Tercer lote de la facturación. Siguen: **75** pagos, estado de cuenta y plantillas de exportación (`ACCT_TEMPLATES`, QuickBooks genérico); después la contabilización de compras y de despachos y el cargo por intento de entrega (depende de P7).
 

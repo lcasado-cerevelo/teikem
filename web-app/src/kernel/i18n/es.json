@@ -177,7 +177,7 @@
     },
     "orders": {
       "title": "Envíos",
-      "subtitle": "lista maestra con filtros — incluye la entrada de nuevas órdenes"
+      "subtitle": "lista maestra con filtros — incluye la entrada de nuevos envíos"
     },
     "scan": {
       "title": "Estación de escaneo",
@@ -341,11 +341,11 @@
     },
     "portalHome": {
       "title": "Página principal",
-      "subtitle": "resumen de tus órdenes y tu cuenta"
+      "subtitle": "resumen de tus envíos y tu cuenta"
     },
     "portalOrders": {
-      "title": "Entrada de órdenes",
-      "subtitle": "crea órdenes de tu cuenta"
+      "title": "Entrada de envíos",
+      "subtitle": "crea envíos de tu cuenta"
     },
     "portalConsignees": {
       "title": "Consignatarios",
@@ -398,10 +398,10 @@
     "deactivated": "Cliente dado de baja.",
     "reactivated": "Cliente reactivado.",
     "deactivateTitle": "Dar de baja el cliente",
-    "deactivateBody": "{name} quedará inactivo: no se podrá elegir en órdenes nuevas. Su historial se conserva y puede reactivarlo después.",
+    "deactivateBody": "{name} quedará inactivo: no se podrá elegir en envíos nuevos. Su historial se conserva y puede reactivarlo después.",
     "reactivateTitle": "Reactivar el cliente",
-    "reactivateBody": "{name} volverá a estar disponible para órdenes nuevas.",
-    "inactiveNote": "Este cliente está dado de baja: no se puede elegir en órdenes nuevas. Puede reactivarlo.",
+    "reactivateBody": "{name} volverá a estar disponible para envíos nuevos.",
+    "inactiveNote": "Este cliente está dado de baja: no se puede elegir en envíos nuevos. Puede reactivarlo.",
     "statusChanged": "Estatus actualizado.",
     "fields": {
       "name": "Nombre",
@@ -438,7 +438,7 @@
       "portalCreateArrivalsText": "Puede crear avisos de llegada (órdenes de recibo)",
       "portalCreateExits": "Avisos de salida",
       "portalCreateExitsText": "Puede crear avisos de salida",
-      "autoPrintLabelsHelp": "Se guarda por cliente (el que manda). Al guardar una orden de este cliente, sus labels (uno por paquete) salen solos, aunque «Label al guardar» esté apagado en la estación. Necesita una impresora de labels configurada.",
+      "autoPrintLabelsHelp": "Se guarda por cliente (el que manda). Al guardar un envío de este cliente, sus labels (uno por paquete) salen solos, aunque «Label al guardar» esté apagado en la estación. Necesita una impresora de labels configurada.",
       "autoPrintInvoice": "Factura",
       "autoPrintInvoiceText": "Imprimir la factura automáticamente",
       "autoPrintInvoiceHelp": "Se guarda por cliente (el que manda). Todavía no imprime la factura: eso llega con facturación."
@@ -474,13 +474,13 @@
       "remove": "Quitar",
       "removeAria": "Quitar {what}",
       "removeTitle": "Quitar el punto de recogida",
-      "removeBody": "{name} deja de ser un punto de recogida de este cliente. Las órdenes ya creadas no cambian. Si era el punto por defecto, se vuelve a recoger en la dirección física.",
+      "removeBody": "{name} deja de ser un punto de recogida de este cliente. Los envíos ya creados no cambian. Si era el punto por defecto, se vuelve a recoger en la dirección física.",
       "removed": "Punto de recogida quitado.",
       "removePostalTitle": "Quitar la dirección postal",
       "removePostalBody": "La dirección postal propia se quita y la postal vuelve a ser la misma que la física. Si era el punto de recogida, se vuelve a recoger en la física.",
       "postalNowPhysical": "La dirección postal es ahora la física.",
       "pickup": "Se recoge en",
-      "pickupHelp": "Dónde el chofer recoge las órdenes de este cliente: la dirección física, la postal o cualquiera de los puntos de recogida.",
+      "pickupHelp": "Dónde el chofer recoge los envíos de este cliente: la dirección física, la postal o cualquiera de los puntos de recogida.",
       "pickupPhysical": "La dirección física",
       "pickupPostal": "La dirección postal",
       "pickupSame": "la dirección física",
@@ -540,12 +540,12 @@
       "pointsNone": "Sin teléfonos ni correos",
       "more": "+{n}",
       "mainTag": "principal",
-      "numberingExamples": "Orden: {order} · Factura: {invoice} · Paquete: {pkg}",
+      "numberingExamples": "Envío: {order} · Factura: {invoice} · Paquete: {pkg}",
       "customNone": "{n} campos sin valor",
       "points": "Teléfonos: {phones} · Correos: {emails}",
       "people": "Personas de contacto: {n}",
       "peopleMain": "Personas de contacto: {n} · principal: {name}",
-      "numbering": "Número de orden: {order} · Número de factura: {invoice}",
+      "numbering": "Número de envío: {order} · Número de factura: {invoice}",
       "custom": "Campos personalizados: {n}",
       "contracts": "Contratos: {n}",
       "contractsCurrent": "Contratos: {n} · vigente: {name}",
@@ -573,12 +573,12 @@
     },
     "numbering": {
       "title": "Numeración",
-      "orderBy": "¿Quién asigna el número de orden?",
+      "orderBy": "¿Quién asigna el número de envío?",
       "invoiceBy": "¿Quién asigna el número de factura?",
       "byClient": "El cliente",
       "byTeikem": "Teikem (automático)",
       "hint": "Define cómo se ve cada número cuando Teikem lo genera: @ = letras, # = números. Escriba el texto tal cual debe aparecer y use # donde va cada dígito del consecutivo (ej. AX-##### genera AX-00001, AX-00002…).",
-      "order": "Número de orden",
+      "order": "Número de envío",
       "invoice": "Número de factura",
       "package": "Número de paquete",
       "example": "Ejemplo",
@@ -638,7 +638,7 @@
         "codPercent": "Porciento (%)",
         "codValueFixed": "Valor ($)",
         "codValuePct": "Valor (%)",
-        "codHelp": "El por ciento se calcula sobre el monto COD cobrado, no sobre el total de la orden."
+        "codHelp": "El por ciento se calcula sobre el monto COD cobrado, no sobre el total del envío."
       },
       "errors": {
         "titleRequired": "El título del contrato es obligatorio.",
@@ -656,7 +656,7 @@
       "invoiceCheck": {
         "title": "Cotejo de factura",
         "enabled": "Cobrar el cotejo de la factura del cliente",
-        "help": "Cuando se procesa la factura del cliente contra su orden entregada (hoja subida o número tecleado en Procesar entregas), la corrida de facturación agrega una línea «Cotejo de factura» con este monto. Apagado, el cotejo no cuesta.",
+        "help": "Cuando se procesa la factura del cliente contra su envío entregado (hoja subida o número tecleado en Procesar entregas), la corrida de facturación agrega una línea «Cotejo de factura» con este monto. Apagado, el cotejo no cuesta.",
         "amount": "Monto por factura cotejada",
         "errors": {
           "amount": "Indique el monto por factura cotejada.",
@@ -668,12 +668,12 @@
         "mode": "Cargo por devolución",
         "none": "Sin cargo por devolución",
         "modes": {
-          "ORDER": "Por orden (un monto a todos los tipos de paquete)",
+          "ORDER": "Por envío (un monto a todos los tipos de paquete)",
           "PACKAGE_TYPE": "Por tipo de paquete",
           "PIECE": "Por pieza devuelta"
         },
-        "help": "Opcional. Se le cobra a la orden devuelta al quedar «Devuelta» y se factura aparte del flete.",
-        "amountOrder": "Monto por orden devuelta",
+        "help": "Opcional. Se le cobra al envío devuelto al quedar «Devuelta» y se factura aparte del flete.",
+        "amountOrder": "Monto por envío devuelto",
         "amountPiece": "Monto por cada pieza devuelta",
         "byType": "Monto por cada tipo de paquete devuelto",
         "packageType": "Tipo de paquete",
@@ -815,7 +815,7 @@
     "notif": {
       "title": "Avisos al cliente",
       "summary": "{n} aviso(s) encendido(s)",
-      "intro": "Lo decide la compañía, cliente por cliente: qué avisos recibe este cliente y por qué canal. Son resúmenes (no el detalle de cada orden) y se mandan al cliente, nunca al consignatario. Mientras no se encienda uno, el cliente no recibe nada.",
+      "intro": "Lo decide la compañía, cliente por cliente: qué avisos recibe este cliente y por qué canal. Son resúmenes (no el detalle de cada envío) y se mandan al cliente, nunca al consignatario. Mientras no se encienda uno, el cliente no recibe nada.",
       "recipients": "El correo llega a los usuarios activos del portal de este cliente ({n}) y a los correos extra que ponga abajo. La bandeja es la del portal del cliente.",
       "emailOff": "El envío de correo no está configurado en la plataforma: los avisos por correo quedan registrados como omitidos.",
       "save": "Guardar avisos",
@@ -834,15 +834,15 @@
       "kinds": {
         "PICKED_UP": {
           "title": "Recogido",
-          "help": "Resumen cuando se recogen sus paquetes: cuántas cajas y de cuántas órdenes."
+          "help": "Resumen cuando se recogen sus paquetes: cuántas cajas y de cuántos envíos."
         },
         "OUT_FOR_DELIVERY": {
           "title": "Salió a entrega",
-          "help": "Resumen cuando una ruta sale a entregar sus órdenes."
+          "help": "Resumen cuando una ruta sale a entregar sus envíos."
         },
         "DELIVERED": {
           "title": "Entregado",
-          "help": "Resumen de lo entregado (cajas, órdenes y el COD cobrado)."
+          "help": "Resumen de lo entregado (cajas, envíos y el COD cobrado)."
         },
         "COD_PROCESSED": {
           "title": "COD procesado",
@@ -919,7 +919,7 @@
       }
     },
     "quote": {
-      "help": "Calcula cuánto costaría una orden de este cliente con las tarifas de su contrato vigente. No crea ninguna orden.",
+      "help": "Calcula cuánto costaría un envío de este cliente con las tarifas de su contrato vigente. No crea ningún envío.",
       "lineN": "Línea {n}",
       "pieces": "Piezas",
       "remove": "Quitar",
@@ -974,7 +974,7 @@
     "dupInvAllow": "Permitir repetir el número de factura",
     "dupInvOn": "Permitido (avisa antes de crear)",
     "dupInvOff": "No permitido (bloquea)",
-    "dupInvHint": "Si se permite, al capturar una orden con un número de factura que este consignatario ya tiene, el sistema avisa y deja decidir si continuar. Si no se permite, la orden no se crea.",
+    "dupInvHint": "Si se permite, al capturar un envío con un número de factura que este consignatario ya tiene, el sistema avisa y deja decidir si continuar. Si no se permite, el envío no se crea.",
     "new": "Nuevo consignatario",
     "editTitle": "Editar consignatario",
     "noneYet": "Sin consignatarios todavía",
@@ -1013,9 +1013,9 @@
     "deactivate": "Dar de baja",
     "reactivate": "Reactivar",
     "deactivateTitle": "Dar de baja al consignatario",
-    "deactivateBody": "«{name}» dejará de aparecer en los combos de captura de órdenes. Se conserva su historial y puede reactivarlo cuando quiera.",
+    "deactivateBody": "«{name}» dejará de aparecer en los combos de captura de envíos. Se conserva su historial y puede reactivarlo cuando quiera.",
     "reactivateTitle": "Reactivar al consignatario",
-    "reactivateBody": "«{name}» volverá a aparecer en los combos de captura de órdenes.",
+    "reactivateBody": "«{name}» volverá a aparecer en los combos de captura de envíos.",
     "deactivated": "Consignatario dado de baja.",
     "reactivated": "Consignatario reactivado.",
     "delivery": {
@@ -1405,7 +1405,7 @@
       "date": "Fecha",
       "dates": "Fechas",
       "amount": "Monto",
-      "order": "Orden",
+      "order": "Envío",
       "status": "Estatus",
       "notes": "Notas",
       "openOnes": "Vigentes",
@@ -1614,7 +1614,7 @@
       "reactivated": "Zona reactivada.",
       "empty": "No hay zonas de despacho.",
       "level": "Nivel",
-      "levelHelp": "Opcional: el nivel de zona (Isla, Metro…). Las órdenes de esta zona lo heredan.",
+      "levelHelp": "Opcional: el nivel de zona (Isla, Metro…). Los envíos de esta zona lo heredan.",
       "noLevel": "— Sin nivel —"
     },
     "levels": {
@@ -1637,8 +1637,8 @@
       "deactivated": "Nivel inactivado.",
       "reactivated": "Nivel reactivado.",
       "empty": "No hay niveles de zona.",
-      "assignOrders": "Asignar zona a las órdenes",
-      "assignResult": "Órdenes revisadas: {examined}; con zona: {assigned}; sin zona: {unresolved}."
+      "assignOrders": "Asignar zona a los envíos",
+      "assignResult": "Envíos revisados: {examined}; con zona: {assigned}; sin zona: {unresolved}."
     },
     "avail": {
       "title": "Disponibilidad para despacho",
@@ -1965,14 +1965,14 @@
       "file": "informe-de-faltantes",
       "noZone": "Sin zona",
       "ambiguous": "Zona ambigua",
-      "subtotal": "Subtotal ({n} órdenes)",
-      "total": "Total ({n} órdenes)",
+      "subtotal": "Subtotal ({n} envíos)",
+      "total": "Total ({n} envíos)",
       "sumPending": "Pendientes",
       "sumScanned": "Escaneadas en esta sesión",
       "empty": "No queda nada pendiente con este filtro.",
       "cols": {
         "pack": "Empaque",
-        "order": "Orden",
+        "order": "Envío",
         "invoice": "Factura",
         "client": "Cliente",
         "consignee": "Consignatario",
@@ -1983,7 +1983,7 @@
       }
     },
     "title": "Estación de escaneo",
-    "sub": "Un solo carril: escanee, confirme y siga. Cada orden queda asignada a la ruta abierta de su zona.",
+    "sub": "Un solo carril: escanee, confirme y siga. Cada envío queda asignado a la ruta abierta de su zona.",
     "voice": {
       "on": "Voz activada",
       "off": "Voz silenciada",
@@ -2001,13 +2001,13 @@
       "label": "Código a escanear",
       "placeholder": "Escanea o teclea el número de la pieza…",
       "go": "Registrar",
-      "hint": "El lector escribe aquí y dispara Enter solo. Escanee el número de cada pieza (el del label); el número de la orden no se escanea."
+      "hint": "El lector escribe aquí y dispara Enter solo. Escanee el número de cada pieza (el del label); el número del envío no se escanea."
     },
     "planDate": {
       "label": "Ruta del día",
       "today": "Hoy",
-      "helpToday": "Las órdenes se asignan a la ruta abierta de su zona para hoy.",
-      "helpOther": "Las órdenes se asignan a la ruta abierta de su zona para el {date}."
+      "helpToday": "Los envíos se asignan a la ruta abierta de su zona para hoy.",
+      "helpOther": "Los envíos se asignan a la ruta abierta de su zona para el {date}."
     },
     "result": {
       "label": "Resultado del último escaneo",
@@ -2022,7 +2022,7 @@
     },
     "matchedBy": {
       "PACKAGE": "número de paquete",
-      "ORDER_NUMBER": "número de orden",
+      "ORDER_NUMBER": "número de envío",
       "PACK_BATCH": "número de empaque",
       "INVOICE": "factura del cliente",
       "PIECE": "número de pieza"
@@ -2037,12 +2037,12 @@
     },
     "hint": {
       "NO_MATCH": "Revise el código, escanee el número del empaque o escriba la factura del cliente.",
-      "MULTIPLE_MATCHES": "Escanee el número del empaque, que es único por orden.",
-      "IN_TRIP": "No hace falta hacer nada: la orden ya está en esa ruta.",
-      "NOT_ELIGIBLE": "Arregle el estatus de la orden en Órdenes (por ejemplo, confírmela) y vuelva a escanearla.",
-      "NO_ZONE": "Agregue el código postal o el pueblo a una zona (Listas → Flota y mantenimiento → Zonas) o asigne la orden a mano en Sala de despacho.",
-      "AMBIGUOUS_ZONE": "El código postal o el pueblo está en más de una zona. Déjelo en una sola zona (Listas → Flota y mantenimiento → Zonas) o asigne la orden a mano en Sala de despacho.",
-      "NO_OPEN_ROUTE": "Planifique el día o cree la ruta de esa zona en Sala de despacho y vuelva a escanear. La orden sigue en «Pendientes por escanear»."
+      "MULTIPLE_MATCHES": "Escanee el número del empaque, que es único por envío.",
+      "IN_TRIP": "No hace falta hacer nada: el envío ya está en esa ruta.",
+      "NOT_ELIGIBLE": "Arregle el estatus del envío en Envíos (por ejemplo, confírmelo) y vuelva a escanearlo.",
+      "NO_ZONE": "Agregue el código postal o el pueblo a una zona (Listas → Flota y mantenimiento → Zonas) o asigne el envío a mano en Sala de despacho.",
+      "AMBIGUOUS_ZONE": "El código postal o el pueblo está en más de una zona. Déjelo en una sola zona (Listas → Flota y mantenimiento → Zonas) o asigne el envío a mano en Sala de despacho.",
+      "NO_OPEN_ROUTE": "Planifique el día o cree la ruta de esa zona en Sala de despacho y vuelva a escanear. El envío sigue en «Pendientes por escanear»."
     },
     "errors": {
       "empty": "Escanee o escriba un código.",
@@ -2060,21 +2060,21 @@
     "meter": {
       "label": "Avance de la sesión",
       "of": "de {total}",
-      "caption": "órdenes asignadas en esta sesión"
+      "caption": "envíos asignados en esta sesión"
     },
     "feed": {
       "title": "Escaneados en esta sesión",
       "search": "Buscar en lo escaneado…",
       "note": "Esta lista vive solo en este navegador: se pierde al recargar la página.",
       "empty": "Todavía nada bajo este filtro — escanee el primero",
-      "open": "Ver la orden {ref}"
+      "open": "Ver el envío {ref}"
     },
     "pending": {
       "title": "Pendientes por escanear",
       "search": "Buscar en los pendientes…",
-      "empty": "No hay órdenes pendientes de asignar",
-      "emptyFiltered": "Ninguna orden pendiente con esa búsqueda o esos filtros",
-      "error": "No se pudieron cargar las órdenes pendientes.",
+      "empty": "No hay envíos pendientes de asignar",
+      "emptyFiltered": "Ningún envío pendiente con esa búsqueda o esos filtros",
+      "error": "No se pudieron cargar los envíos pendientes.",
       "more": "Se muestran las primeras {shown} de {total}; use los filtros para ver las demás.",
       "noZone": "Sin zona",
       "zoneAmbiguous": "Zona ambigua"
@@ -2082,8 +2082,8 @@
     "order": {
       "open": "Abrir",
       "close": "Cerrar",
-      "loading": "Cargando la orden…",
-      "unavailable": "No se pudo leer la ficha de la orden; se muestra lo que ya se sabía.",
+      "loading": "Cargando el envío…",
+      "unavailable": "No se pudo leer la ficha del envío; se muestra lo que ya se sabía.",
       "client": "Cliente",
       "consignee": "Consignatario",
       "town": "Pueblo · CP",
@@ -2107,17 +2107,17 @@
       "ARRIVE": "Llegó al almacén: lo que escanee pasa a Sin asignar (un intento fallido que vuelve también).",
       "ROUTE": "Enrutar: lo que escanee pasa a Asignada y entra a la ruta abierta de su zona; sin ruta que la reciba, no cambia.",
       "DEPART": "Salir: lo que escanee pasa a En tránsito.",
-      "RETURN": "Devolver: la pieza que escanee viaja en la orden de vuelta (nace Recogida) y su orden queda Devuelta. Requiere permiso de devolver."
+      "RETURN": "Devolver: la pieza que escanee viaja en el envío de vuelta (nace Recogida) y su envío queda Devuelta. Requiere permiso de devolver."
     },
     "closeCount": {
       "button": "Cerrar conteo"
     },
     "reappeared": {
       "title": "Cerrar el conteo de {order}",
-      "body": "Al cerrar el conteo se creará una orden nueva con {count} pieza(s) que aparecieron de la orden {order}.",
+      "body": "Al cerrar el conteo se creará un envío nuevo con {count} pieza(s) que aparecieron del envío {order}.",
       "client": "Cliente",
       "consignee": "Consignatario",
-      "status": "Estatus de la orden nueva",
+      "status": "Estatus del envío nuevo",
       "confirm": "Confirmar y cerrar el conteo",
       "cancel": "Cancelar",
       "missing": "No se escanearon {count} pieza(s); quedarán «Por verificar»:"
@@ -2241,7 +2241,7 @@
   },
   "dispatch": {
     "title": "Sala de despacho",
-    "sub": "Arma rutas: selecciona órdenes, asígnalas a un chofer, optimiza y despacha",
+    "sub": "Arma rutas: selecciona envíos, asígnalos a un chofer, optimiza y despacha",
     "date": "Fecha de las rutas",
     "todayButton": "Hoy",
     "closeButton": "Listo",
@@ -2260,7 +2260,7 @@
       "unavailable": "no disponible"
     },
     "filters": {
-      "label": "Filtros de las órdenes sin asignar",
+      "label": "Filtros de los envíos sin asignar",
       "postal": "Código postal",
       "city": "Pueblo",
       "client": "Cliente",
@@ -2269,17 +2269,17 @@
       "noZone": "Sin zona"
     },
     "unassigned": {
-      "title": "Órdenes sin asignar",
+      "title": "Envíos sin asignar",
       "markAll": "Marcar todas",
       "search": "Buscar en lo cargado…",
       "add": "Añadir a la ruta",
       "addN": "Añadir a la ruta ({count})",
-      "added": "{count} órdenes añadidas a la ruta {code}.",
+      "added": "{count} envíos añadidos a la ruta {code}.",
       "target": "Se añadirán a la ruta {code}.",
-      "noTarget": "Elija una ruta abierta (borrador o planificada) para añadir órdenes.",
-      "empty": "No hay órdenes confirmadas sin ruta.",
-      "emptyFiltered": "Ninguna orden coincide con el filtro.",
-      "error": "No se pudieron cargar las órdenes sin asignar.",
+      "noTarget": "Elija una ruta abierta (borrador o planificada) para añadir envíos.",
+      "empty": "No hay envíos confirmados sin ruta.",
+      "emptyFiltered": "Ningún envío coincide con el filtro.",
+      "error": "No se pudieron cargar los envíos sin asignar.",
       "more": "Se muestran las primeras {shown} de {total}. Afine los filtros para ver el resto.",
       "noZone": "Sin zona",
       "zoneAmbiguous": "Zona ambigua"
@@ -2287,7 +2287,7 @@
     "active": {
       "title": "Ruta activa",
       "noZone": "Sin zona",
-      "noneSelected": "Elija una ruta de la lista «Rutas de hoy» para ver sus órdenes.",
+      "noneSelected": "Elija una ruta de la lista «Rutas de hoy» para ver sus envíos.",
       "noRoutes": "No hay rutas para esta fecha. Use «Planificar el día» o «Nueva ruta».",
       "loadFailed": "No se pudo cargar la ruta.",
       "assign": "Asignación",
@@ -2315,19 +2315,19 @@
       "warns": "Aviso"
     },
     "stops": {
-      "title": "Órdenes en esta ruta",
-      "empty": "Todavía no tiene órdenes asignadas.",
+      "title": "Envíos en esta ruta",
+      "empty": "Todavía no tiene envíos asignados.",
       "late": "Llega tarde",
       "approx": "Ubicación aproximada",
       "eta": "Llegada estimada",
-      "moveUp": "Subir la orden {number}",
-      "moveDown": "Bajar la orden {number}",
-      "remove": "Quitar la orden {number} de la ruta",
-      "removed": "La orden {number} salió de la ruta.",
-      "handle": "Arrastrar la orden {number} para reordenar (o use las flechas ↑ ↓)",
-      "select": "Elegir la orden {number}",
-      "setPin": "Poner pin a la orden {number}",
-      "movePin": "Mover el pin de la orden {number}",
+      "moveUp": "Subir el envío {number}",
+      "moveDown": "Bajar el envío {number}",
+      "remove": "Quitar el envío {number} de la ruta",
+      "removed": "El envío {number} salió de la ruta.",
+      "handle": "Arrastrar el envío {number} para reordenar (o use las flechas ↑ ↓)",
+      "select": "Elegir el envío {number}",
+      "setPin": "Poner pin al envío {number}",
+      "movePin": "Mover el pin del envío {number}",
       "noPin": "Sin pin",
       "manual": "Pin manual"
     },
@@ -2357,7 +2357,7 @@
       "pickMap": "Plano de referencia para tomar una posición",
       "pickedApprox": "Posición aproximada tomada del plano: revise la latitud y la longitud antes de guardar.",
       "after": "Al guardar, la parada queda con precisión «manual» y se recalculan las llegadas. Si la ruta ya estaba optimizada, vuelva a optimizarla.",
-      "done": "Pin de la orden {number} guardado.",
+      "done": "Pin del envío {number} guardado.",
       "fromIssue": "Poner pin manual"
     },
     "optimize": {
@@ -2373,26 +2373,26 @@
       "firstRun": "Es la primera optimización de esta ruta: aún no hay con qué compararla.",
       "noMetrics": "No hay con qué comparar: la corrida anterior no trae distancia ni duración.",
       "unfitTitle": "No cupieron ({count})",
-      "unfitHint": "Volvieron a «Órdenes sin asignar». Cambie de vehículo o de chofer, o asígnelas a otra ruta."
+      "unfitHint": "Volvieron a «Envíos sin asignar». Cambie de vehículo o de chofer, o asígnelos a otra ruta."
     },
     "delete": {
       "action": "Eliminar ruta",
       "title": "Eliminar la ruta {code}",
-      "body": "La ruta pasa a Cancelada y sus órdenes quedan sin asignar, con el mismo estatus que tenían. Solo se puede eliminar una ruta que todavía no se despacha.",
+      "body": "La ruta pasa a Cancelada y sus envíos quedan sin asignar, con el mismo estatus que tenían. Solo se puede eliminar una ruta que todavía no se despacha.",
       "confirm": "Eliminar ruta",
       "done": "Ruta {code} eliminada."
     },
     "start": {
       "action": "Iniciar ruta",
       "title": "Iniciar la ruta {code}",
-      "body": "Registra la salida del chofer: la ruta pasa a En curso y sus órdenes salen a ruta.",
+      "body": "Registra la salida del chofer: la ruta pasa a En curso y sus envíos salen a ruta.",
       "confirm": "Iniciar ruta",
       "done": "Ruta {code} iniciada."
     },
     "close": {
       "action": "Cerrar ruta",
       "title": "Cerrar la ruta {code}",
-      "body": "Cierra la ruta en curso. Solo se puede cerrar cuando todas sus órdenes terminaron: entregadas, canceladas, fallidas o parciales.",
+      "body": "Cierra la ruta en curso. Solo se puede cerrar cuando todas sus envíos terminaron: entregados, cancelados, fallidos o parciales.",
       "confirm": "Cerrar ruta",
       "done": "Ruta {code} cerrada."
     },
@@ -2418,26 +2418,26 @@
     "planDay": {
       "action": "Planificar el día",
       "title": "Planificar el día",
-      "hint": "Reparte por zona las órdenes confirmadas que no tienen ruta. Usa la ruta abierta de la zona o crea una con su chofer estándar. No optimiza, no despacha ni asigna vehículo, y repetirlo no duplica nada.",
+      "hint": "Reparte por zona los envíos confirmados que no tienen ruta. Usa la ruta abierta de la zona o crea una con su chofer estándar. No optimiza, no despacha ni asigna vehículo, y repetirlo no duplica nada.",
       "date": "Fecha",
       "zones": "Zonas",
       "zonesHelp": "Si no elige ninguna, se planifican todas las zonas activas.",
       "allZones": "Todas las zonas",
       "empty": "Rutas vacías",
       "emptyText": "Crear rutas vacías",
-      "emptyHelp": "Crea la ruta de cada zona aunque no tenga órdenes, para que la estación de escaneo tenga destino desde temprano.",
+      "emptyHelp": "Crea la ruta de cada zona aunque no tenga envíos, para que la estación de escaneo tenga destino desde temprano.",
       "noFleetAccess": "Su usuario no puede consultar las zonas: se planifican todas las zonas activas.",
       "run": "Planificar",
       "resultTitle": "Día planificado: {date}",
       "summary": "Resumen de la planificación",
       "tripsCreated": "Rutas creadas",
-      "ordersAssigned": "Órdenes asignadas",
-      "ordersSkipped": "Órdenes omitidas",
-      "ordersWithoutZone": "Órdenes sin zona",
+      "ordersAssigned": "Envíos asignados",
+      "ordersSkipped": "Envíos omitidos",
+      "ordersWithoutZone": "Envíos sin zona",
       "noZones": "No había zonas que planificar.",
       "tripNew": "ruta {code} creada",
       "tripExisting": "ruta {code}",
-      "zoneCounts": "{assigned} asignadas, {skipped} omitidas"
+      "zoneCounts": "{assigned} asignadas, {skipped} omitidos"
     },
     "reassign": {
       "action": "Reasignar por zona",
@@ -2492,7 +2492,7 @@
       "driverRequired": "Indique el chofer.",
       "planDayMaxZones": "Máximo 50 zonas por planificación.",
       "reassignMaxZones": "Máximo 50 zonas por reasignación.",
-      "addMax": "Agregue como máximo 200 órdenes por solicitud.",
+      "addMax": "Agregue como máximo 200 envíos por solicitud.",
       "batchMax": "Máximo 50 rutas por despacho."
     }
   },
@@ -2542,7 +2542,7 @@
     "entities": "Entidades",
     "entityNames": {
       "CLIENT": "Cliente",
-      "TRANSPORT_ORDER": "Orden",
+      "TRANSPORT_ORDER": "Envío",
       "DRIVER": "Chofer",
       "VEHICLE": "Vehículo",
       "PRODUCT": "Producto",
@@ -2882,9 +2882,9 @@
       "deactivate": "Dar de baja",
       "reactivate": "Reactivar",
       "deactivateTitle": "Dar de baja el cliente",
-      "deactivateBody": "{name} quedará inactivo: no se podrá elegir en órdenes nuevas. Su historial se conserva y puede reactivarlo después.",
+      "deactivateBody": "{name} quedará inactivo: no se podrá elegir en envíos nuevos. Su historial se conserva y puede reactivarlo después.",
       "reactivateTitle": "Reactivar el cliente",
-      "reactivateBody": "{name} volverá a estar disponible para órdenes nuevas.",
+      "reactivateBody": "{name} volverá a estar disponible para envíos nuevos.",
       "created": "Cliente creado.",
       "saved": "Cambios guardados.",
       "deactivated": "Cliente dado de baja.",
@@ -3048,16 +3048,16 @@
       "showInPulseMine": "Mostrar en Pulso del día",
       "showInPulseCompany": "…en el de la compañía",
       "radar": {
-        "title": "Radar de órdenes abiertas",
+        "title": "Radar de envíos abiertos",
         "by": "Agrupar por",
         "town": "Pueblo",
         "client": "Cliente",
         "open": "{n} abiertas",
-        "placeholder": "Busca por factura, orden o consignatario…",
-        "results": "Órdenes encontradas",
+        "placeholder": "Busca por factura, envío o consignatario…",
+        "results": "Envíos encontrados",
         "noResults": "Sin resultados en abiertas",
-        "none": "No hay órdenes abiertas.",
-        "all": "Ver todas en Órdenes",
+        "none": "No hay envíos abiertos.",
+        "all": "Ver todos en Envíos",
         "hint": "Solo lo abierto — lo entregado no estorba aquí"
       },
       "rivers": {
@@ -3068,9 +3068,9 @@
           "TO_DISPATCH": "Por despachar",
           "ON_ROUTE": "En ruta",
           "DELIVERED": "Entregado",
-          "unit": "órdenes",
+          "unit": "envíos",
           "sub": {
-            "ENTRY": "órdenes nuevas hoy · {waiting} esperan",
+            "ENTRY": "envíos nuevos hoy · {waiting} esperan",
             "IN_WAREHOUSE": "recibidas en el almacén",
             "TO_DISPATCH": "sin chofer",
             "ON_ROUTE": "{drivers} choferes",
@@ -3084,7 +3084,7 @@
           "RECONCILED": "Cuadrado",
           "REMITTANCE": "Remesa lista",
           "sub": {
-            "TO_COLLECT": "órdenes · faltan {amount}",
+            "TO_COLLECT": "envíos · faltan {amount}",
             "COLLECTED": "efectivo {cash} · cheques {checks}",
             "other": "otros {other}",
             "RECONCILED": "sin remesa · {clients} clientes",
@@ -3099,7 +3099,7 @@
         "WAREHOUSE_DAY": "Almacén hoy",
         "ORDERS_RIVER": "Paquetes en la calle",
         "COD_RIVER": "Dinero COD",
-        "RADAR": "Radar de órdenes abiertas"
+        "RADAR": "Radar de envíos abiertos"
       },
       "day": {
         "received": "Unidades recibidas",
@@ -3230,22 +3230,22 @@
           "reviewLabel": "Revisar la orden {number} ({client})"
         },
         "ORDERS_NO_DRIVER": {
-          "titleOne": "1 orden sin chofer",
-          "title": "{count} órdenes sin chofer",
+          "titleOne": "1 envío sin chofer",
+          "title": "{count} envíos sin chofer",
           "detail": "Listas en el almacén o planificadas, esperando una ruta con chofer",
           "oldest": "La más antigua",
           "days": "{n} días",
-          "group": "Órdenes sin chofer",
-          "reviewLabel": "Asignar chofer a {count} órdenes"
+          "group": "Envíos sin chofer",
+          "reviewLabel": "Asignar chofer a {count} envíos"
         },
         "ORDERS_FAILED": {
-          "titleOne": "1 orden en intento fallido",
-          "title": "{count} órdenes en intento fallido",
+          "titleOne": "1 envío en intento fallido",
+          "title": "{count} envíos en intento fallido",
           "detail": "La entrega no se pudo: hay que reprogramarla, devolverla o contactar al consignatario",
           "oldest": "La más antigua",
           "days": "{n} días",
-          "group": "Órdenes en intento fallido",
-          "reviewLabel": "Revisar {count} órdenes en intento fallido"
+          "group": "Envíos en intento fallido",
+          "reviewLabel": "Revisar {count} envíos en intento fallido"
         },
         "CLAIMS_OPEN": {
           "titleOne": "1 reclamación abierta",
@@ -3279,22 +3279,22 @@
           "reviewLabel": "Revisar {count} facturas vencidas"
         },
         "SLA_AT_RISK": {
-          "titleOne": "1 orden en riesgo de pasar su SLA",
-          "title": "{count} órdenes en riesgo de pasar su SLA",
+          "titleOne": "1 envío en riesgo de pasar su SLA",
+          "title": "{count} envíos en riesgo de pasar su SLA",
           "detail": "Recogidas y todavía sin entregar, cerca del plazo del contrato o ya vencidas",
           "atRisk": "En riesgo",
           "breached": "Vencidas",
           "tightest": "La más apretada",
           "left": "Quedan {n} h",
           "late": "Vencida hace {n} h",
-          "group": "Órdenes en riesgo de pasar su SLA",
-          "reviewLabel": "Revisar {count} órdenes con el SLA en riesgo"
+          "group": "Envíos en riesgo de pasar su SLA",
+          "reviewLabel": "Revisar {count} envíos con el SLA en riesgo"
         },
         "COD_UNRECONCILED": {
           "title": "{amount} de COD sin cuadrar",
           "detail": "Cobrado en la calle, pendiente de cuadrar con las hojas",
           "collections": "Cobros",
-          "orders": "Órdenes",
+          "orders": "Envíos",
           "oldest": "El más antiguo",
           "days": "{n} días",
           "group": "COD sin cuadrar",
@@ -3358,7 +3358,7 @@
       "newTitle": "Nuevo indicador",
       "editTitle": "Editar indicador",
       "nameLabel": "Nombre del indicador",
-      "namePh": "ej. Órdenes entregadas hoy",
+      "namePh": "ej. Envíos entregados hoy",
       "datasetLabel": "Fuente de datos",
       "fnLabel": "Cálculo",
       "fieldLabel": "Campo",
@@ -3393,7 +3393,7 @@
       "newTitle": "Nuevo gráfico",
       "editTitle": "Editar gráfico",
       "nameLabel": "Nombre del gráfico",
-      "namePh": "ej. Órdenes por estado",
+      "namePh": "ej. Envíos por estado",
       "datasetLabel": "Fuente de datos",
       "groupByLabel": "Agrupar por",
       "groupByHint": "Cada barra o porción es un valor distinto de este campo.",
@@ -3476,7 +3476,7 @@
       "search": "Buscar vista o fuente de datos",
       "noSources": "No hay fuentes de datos disponibles para su usuario.",
       "noMatches": "Ninguna vista ni fuente coincide con la búsqueda.",
-      "note": "Cada vista toma los datos de una fuente (Órdenes, Clientes, Inventario…), puede combinarse con otras fuentes relacionadas y se guarda para volver a usarla cuando quiera.",
+      "note": "Cada vista toma los datos de una fuente (Envíos, Clientes, Inventario…), puede combinarse con otras fuentes relacionadas y se guarda para volver a usarla cuando quiera.",
       "newView": "Nueva vista",
       "newViewIn": "Nueva vista de {source}",
       "noViewsForSource": "Todavía no hay informes para esta fuente — crea el primero con \"Nueva vista\".",
@@ -3627,19 +3627,19 @@
       "waybillFile": "waybill-summary",
       "packingFile": "packing-list",
       "selection": "Selección",
-      "markedCount": "{n} órdenes marcadas",
-      "subtotal": "Subtotal ({n} órdenes)",
-      "total": "Total ({n} órdenes)",
+      "markedCount": "{n} envíos marcados",
+      "subtotal": "Subtotal ({n} envíos)",
+      "total": "Total ({n} envíos)",
       "packageCount": "{n} paquetes",
-      "sumOrders": "Órdenes",
+      "sumOrders": "Envíos",
       "sumPieces": "Piezas",
       "sumPackages": "Paquetes",
       "sumWeight": "Peso",
-      "cancelledSkipped": "{n} órdenes canceladas no se incluyeron.",
-      "empty": "No hay órdenes que incluir.",
+      "cancelledSkipped": "{n} envíos cancelados no se incluyeron.",
+      "empty": "No hay envíos que incluir.",
       "cols": {
         "pack": "Empaque",
-        "order": "N.º de orden",
+        "order": "N.º de envío",
         "invoice": "Factura",
         "client": "Cliente",
         "consignee": "Consignatario",
@@ -3657,7 +3657,7 @@
     },
     "list": {
       "pick": "Elegir",
-      "pickRow": "Elegir la orden {number}",
+      "pickRow": "Elegir el envío {number}",
       "marked": "{n} marcadas",
       "clearMarks": "Quitar marcas",
       "printLabel": "Imprimir label",
@@ -3665,17 +3665,17 @@
       "allLabels": "Todos los labels",
       "waybill": "Waybill summary",
       "packing": "Packing list",
-      "title": "Órdenes",
+      "title": "Envíos",
       "subtitle": "La lista maestra: todo lo que se mueve, con filtros y orden por columna",
-      "count": "{count} órdenes",
-      "newOrder": "Nueva orden",
+      "count": "{count} envíos",
+      "newOrder": "Nuevo envío",
       "hideForm": "Ocultar formulario",
       "columns": {
         "waybill": "Conduce",
         "zone": "Zona",
         "processed": "Factura procesada",
         "packBatch": "Empaque",
-        "orderNumber": "N.º orden",
+        "orderNumber": "N.º envío",
         "client": "Cliente",
         "date": "Fecha",
         "consignee": "Consignatario",
@@ -3692,7 +3692,7 @@
       },
       "filters": {
         "range": "Fecha",
-        "orderNumber": "N.º de orden",
+        "orderNumber": "N.º de envío",
         "consignee": "Consignatario",
         "client": "Cliente",
         "service": "Servicio",
@@ -3713,25 +3713,25 @@
         "status": "Estatus",
         "all": "Todos"
       },
-      "open": "Abrir la orden",
-      "delete": "Eliminar la orden",
-      "deleteTitle": "Eliminar la orden {number}",
-      "deleteMessage": "La orden {number} se da de baja y libera su número. Solo se pueden eliminar órdenes en su estatus inicial; después se cancelan.",
+      "open": "Abrir el envío",
+      "delete": "Eliminar el envío",
+      "deleteTitle": "Eliminar el envío {number}",
+      "deleteMessage": "El envío {number} se da de baja y libera su número. Solo se pueden eliminar envíos en su estatus inicial; después se cancelan.",
       "deleteConfirm": "Eliminar",
-      "deleted": "Orden {number} eliminada.",
-      "created": "Orden {number} guardada.",
+      "deleted": "Envío {number} eliminado.",
+      "created": "Envío {number} guardado.",
       "dismiss": "Cerrar aviso",
       "import": "Importar"
     },
     "detail": {
-      "notFound": "La orden no existe o no pertenece a su compañía.",
-      "back": "Volver a órdenes",
+      "notFound": "El envío no existe o no pertenece a su compañía.",
+      "back": "Volver a envíos",
       "panel": "Detalle",
       "saveChanges": "Guardar cambios",
       "saved": "Cambios guardados.",
-      "editableHint": "Esta orden está en {status}: puede corregir sus datos y sus paquetes.",
-      "lockedHint": "Esta orden ya avanzó de {status}: sus datos se muestran como referencia, ya no se editan aquí.",
-      "lockedPermissionHint": "Su usuario no tiene permiso para editar órdenes: los datos se muestran como referencia.",
+      "editableHint": "Este envío está en {status}: puede corregir sus datos y sus paquetes.",
+      "lockedHint": "Este envío ya avanzó de {status}: sus datos se muestran como referencia, ya no se editan aquí.",
+      "lockedPermissionHint": "Su usuario no tiene permiso para editar envíos: los datos se muestran como referencia.",
       "initialFallback": "Sometida",
       "consigneeHelp": "El pueblo y el ZIP salen de la dirección del consignatario elegido.",
       "priority": "Prioridad",
@@ -3744,7 +3744,7 @@
       "references": "Referencias",
       "packagesTitle": "Paquetes",
       "piecesCount": "{count} piezas",
-      "noPackages": "Esta orden no tiene paquetes registrados.",
+      "noPackages": "Este envío no tiene paquetes registrados.",
       "comment": "Comentario",
       "window": "Ventana",
       "stops": "Paradas",
@@ -3752,7 +3752,7 @@
       "deliveryStop": "Entrega",
       "history": "Historial",
       "dupSave": "Guardar de todos modos",
-      "pipelineNote": "Aquí solo se registra el desvío «Intento fallido» y el regreso a la etapa de la que salió la orden. Marcar como recogida, cancelar, reabrir y asignar chofer son los botones de arriba.",
+      "pipelineNote": "Aquí solo se registra el desvío «Intento fallido» y el regreso a la etapa de la que salió el envío. Marcar como recogido, cancelar, reabrir y asignar chofer son los botones de arriba.",
       "errors": {
         "dateRequired": "La fecha no se puede quitar; elija otra."
       },
@@ -3762,7 +3762,7 @@
         "type": "Tipo",
         "typePending": "Se registra al entregar",
         "state": "Estado",
-        "note": "El tipo de cobro (efectivo, cheque…) se registra al momento de entregar, no al capturar la orden.",
+        "note": "El tipo de cobro (efectivo, cheque…) se registra al momento de entregar, no al capturar el envío.",
         "invoiceProcessed": "Factura procesada",
         "invoiceNotProcessed": "Todavía no"
       },
@@ -3771,7 +3771,7 @@
         "run": "Cotizar",
         "quoted": "Monto cotizado",
         "quotedAt": "Cotizada el {date}",
-        "notQuoted": "Esta orden no tiene cotización (es anterior al cambio de flujo): se cotiza al crearla.",
+        "notQuoted": "Este envío no tiene cotización (es anterior al cambio de flujo): se cotiza al crearlo.",
         "preview": "Vista previa con las tarifas vigentes",
         "dispatch": "Despacho",
         "codFee": "Cargo por COD",
@@ -3780,7 +3780,7 @@
         "creditLimit": "Límite",
         "noLimit": "Sin límite",
         "pending": "En curso",
-        "thisOrder": "Esta orden",
+        "thisOrder": "Este envío",
         "available": "Disponible",
         "exceeds": "Excede el crédito",
         "withinLimit": "Dentro del límite",
@@ -3797,8 +3797,8 @@
         "saved": "Campos personalizados guardados."
       },
       "contacts": {
-        "empty": "Esta orden no tiene contactos (quién recibe, teléfono, correo).",
-        "removeBody": "Se quitará {value} de los contactos de esta orden."
+        "empty": "Este envío no tiene contactos (quién recibe, teléfono, correo).",
+        "removeBody": "Se quitará {value} de los contactos de este envío."
       },
       "returnOf": "Vuelta de {number}",
       "suggestReturn": "Se sugiere devolverla: {count} intento(s) fallido(s)",
@@ -3842,55 +3842,55 @@
     "actions": {
       "printLabel": "Imprimir label",
       "back": "Volver",
-      "statusChanged": "La orden {number} pasó a {status}.",
+      "statusChanged": "El envío {number} pasó a {status}.",
       "confirm": {
-        "button": "Marcar como recogida",
-        "title": "Marcar como recogida la orden {number}",
-        "body": "La orden pasa de Sometida a Recogida y su precio queda congelado (la cotización y el crédito se revisaron al someterla). Después ya no se podrán editar sus datos aquí.",
-        "bodyOverrideOnly": "Esta orden se marca como recogida cotizando con las tarifas del contrato. Su usuario solo puede hacerlo autorizando el exceso del crédito del cliente.",
-        "authorize": "Autorizar y marcar como recogida",
-        "creditNote": "Si autoriza, la orden se marca como recogida de todos modos y queda registrado quién lo autorizó.",
-        "done": "Orden {number} marcada como recogida."
+        "button": "Marcar como recogido",
+        "title": "Marcar como recogido el envío {number}",
+        "body": "El envío pasa de Sometida a Recogida y su precio queda congelado (la cotización y el crédito se revisaron al someterla). Después ya no se podrán editar sus datos aquí.",
+        "bodyOverrideOnly": "Este envío se marca como recogido cotizando con las tarifas del contrato. Su usuario solo puede hacerlo autorizando el exceso del crédito del cliente.",
+        "authorize": "Autorizar y marcar como recogido",
+        "creditNote": "Si autoriza, el envío se marca como recogido de todos modos y queda registrado quién lo autorizó.",
+        "done": "Envío {number} marcado como recogido."
       },
       "reprice": {
         "button": "Re-cotizar",
-        "title": "Re-cotizar la orden {number}",
-        "body": "Se vuelve a calcular el monto con las tarifas vigentes del contrato. El estatus de la orden no cambia.",
-        "done": "Orden {number} re-cotizada."
+        "title": "Re-cotizar el envío {number}",
+        "body": "Se vuelve a calcular el monto con las tarifas vigentes del contrato. El estatus del envío no cambia.",
+        "done": "Envío {number} re-cotizado."
       },
       "cancel": {
-        "button": "Cancelar la orden",
-        "title": "Cancelar la orden {number}",
-        "body": "La orden pasa a Cancelada y su viaje de entrega especial, si lo tiene, también se cancela. Esto no se puede deshacer.",
-        "confirm": "Cancelar la orden",
+        "button": "Cancelar el envío",
+        "title": "Cancelar el envío {number}",
+        "body": "El envío pasa a Cancelada y su viaje de entrega especial, si lo tiene, también se cancela. Esto no se puede deshacer.",
+        "confirm": "Cancelar el envío",
         "reason": "Razón de la cancelación",
-        "reasonPlaceholder": "¿Por qué se cancela la orden?",
+        "reasonPlaceholder": "¿Por qué se cancela el envío?",
         "reasonRequired": "Indique la razón de la cancelación.",
         "reasonMax": "La razón no puede pasar de 500 caracteres.",
-        "done": "Orden {number} cancelada."
+        "done": "Envío {number} cancelado."
       },
       "reopen": {
         "button": "Reabrir",
-        "title": "Reabrir la orden {number}",
-        "body": "La orden sale de su estatus final y vuelve al flujo. Queda registrada la razón.",
+        "title": "Reabrir el envío {number}",
+        "body": "El envío sale de su estatus final y vuelve al flujo. Queda registrada la razón.",
         "reason": "Razón para reabrir",
-        "reasonPlaceholder": "¿Por qué se reabre la orden?",
-        "reasonRequired": "Indique la razón para reabrir la orden.",
+        "reasonPlaceholder": "¿Por qué se reabre el envío?",
+        "reasonRequired": "Indique la razón para reabrir el envío.",
         "reasonMax": "La razón no puede pasar de 500 caracteres.",
         "toStatus": "Estatus destino",
         "lastStatus": "El último en que estuvo",
-        "confirm": "Reabrir la orden",
-        "done": "Orden {number} reabierta."
+        "confirm": "Reabrir el envío",
+        "done": "Envío {number} reabierto."
       },
       "delete": {
-        "button": "Eliminar la orden"
+        "button": "Eliminar el envío"
       },
       "assign": {
         "button": "Asignar chofer",
         "reassign": "Reasignar chofer",
-        "title": "Asignar chofer a la orden {number}",
-        "reassignTitle": "Reasignar chofer de la orden {number}",
-        "hint": "Si la orden sigue Sometida se marca como recogida (cotiza con precio final y revisa el crédito), avanza hasta En tránsito y se crea el viaje del chofer. Reasignar cancela el viaje del chofer anterior.",
+        "title": "Asignar chofer al envío {number}",
+        "reassignTitle": "Reasignar chofer del envío {number}",
+        "hint": "Si el envío sigue Sometida se marca como recogido (cotiza con precio final y revisa el crédito), avanza hasta En tránsito y se crea el viaje del chofer. Reasignar cancela el viaje del chofer anterior.",
         "driver": "Chofer",
         "chooseDriver": "Elija el chofer…",
         "noDrivers": "No hay choferes activos",
@@ -3900,38 +3900,38 @@
         "confirm": "Asignar chofer",
         "authorize": "Autorizar y asignar",
         "creditNote": "Si autoriza, la asignación se hace de todos modos y queda registrado quién lo autorizó.",
-        "done": "Chofer asignado a la orden {number}."
+        "done": "Chofer asignado al envío {number}."
       },
       "return": {
         "button": "Devolver",
         "title": "Devolver {number}",
-        "body": "La orden quedará «Devuelta» y se creará la orden de vuelta (recogido y entrega al revés) con las piezas que marque. Las piezas faltantes no se pueden devolver.",
+        "body": "El envío quedará «Devuelta» y se creará el envío de vuelta (recogido y entrega al revés) con las piezas que marque. Las piezas faltantes no se pueden devolver.",
         "pieces": "Piezas que se devuelven",
         "notes": "Nota (opcional)",
-        "confirm": "Devolver la orden",
+        "confirm": "Devolver el envío",
         "noPieces": "Marque al menos una pieza que se devuelve.",
-        "done": "La orden {number} quedó Devuelta."
+        "done": "El envío {number} quedó Devuelta."
       },
       "deliver": {
         "button": "Registrar entrega",
         "title": "Registrar la entrega de {number}",
-        "body": "La orden quedará «Entregada». El comprobante se firma automáticamente a su nombre (usted registra la entrega); el consignatario no firma.",
+        "body": "El envío quedará «Entregada». El comprobante se firma automáticamente a su nombre (usted registra la entrega); el consignatario no firma.",
         "recipient": "Quién recibió",
         "recipientRequired": "Indique quién recibió la entrega.",
         "at": "Fecha y hora de la entrega (opcional)",
         "atHint": "Si lo deja vacío se usa este momento. No puede ser futura.",
         "notes": "Nota (opcional)",
         "confirm": "Registrar la entrega",
-        "done": "Entrega de la orden {number} registrada."
+        "done": "Entrega del envío {number} registrada."
       }
     },
     "entry": {
       "labelOnSave": "Label al guardar",
       "labelOnSaveNote": "El label sale automático en la impresora de esta estación al guardar (uno por pieza). Configúrelo en Sistema → Impresoras y labels.",
-      "title": "Entrada de órdenes",
-      "steps": "Pasos de la orden",
+      "title": "Entrada de envíos",
+      "steps": "Pasos del envío",
       "s1": "Cliente y servicio",
-      "s1d": "Para quién es la orden y con qué nivel de servicio",
+      "s1d": "Para quién es el envío y con qué nivel de servicio",
       "s2": "Consignatario",
       "s2d": "A quién y a dónde se entrega",
       "s3": "Paquetes y COD",
@@ -3944,7 +3944,7 @@
       "invoice": "N.º de factura",
       "auto": "(automático)",
       "autoPlaceholder": "Lo asigna Teikem",
-      "orderNumber": "N.º de orden",
+      "orderNumber": "N.º de envío",
       "consigneeName": "Nombre",
       "consigneeNumber": "Número de consignatario",
       "address": "Dirección",
@@ -3962,9 +3962,9 @@
       "addPackage": "Añadir paquete",
       "removePackage": "Quitar paquete {n}",
       "codAmount": "Monto COD",
-      "codNote": "El tipo de cobro (efectivo, cheque…) se registra al momento de entregar, no al capturar la orden.",
+      "codNote": "El tipo de cobro (efectivo, cheque…) se registra al momento de entregar, no al capturar el envío.",
       "special": "Es una entrega especial",
-      "specialHint": "Un servicio de la lista del cliente (ej. traer un vagón del muelle) en vez de un paquete. El chofer se asigna después, en el expediente de la orden.",
+      "specialHint": "Un servicio de la lista del cliente (ej. traer un vagón del muelle) en vez de un paquete. El chofer se asigna después, en el expediente del envío.",
       "specialTitle": "Servicio especial",
       "specialDesc": "Escoja el servicio de la lista del cliente",
       "specialNone": "Este cliente no tiene servicios especiales configurados",
@@ -3972,15 +3972,15 @@
       "specialComponentOff": "El componente «Servicios especiales» está apagado en el contrato vigente del cliente.",
       "specialNoPermission": "Para capturar una entrega especial necesita poder consultar los contratos de los clientes (permiso contracts.read).",
       "specialNeedClient": "Elija primero el cliente.",
-      "ticket": "Ticket de la orden",
+      "ticket": "Ticket del envío",
       "ticketConsignee": "Consignatario",
       "ticketPackages": "Paquetes",
       "ticketCod": "COD",
       "ticketSpecial": "Servicio especial",
       "save": "Guardar",
       "saving": "Guardando…",
-      "ticketNote": "La orden queda Sometida: se cotiza y se revisa el crédito del cliente al guardar.",
-      "created": "Orden {number} guardada.",
+      "ticketNote": "El envío queda Sometida: se cotiza y se revisa el crédito del cliente al guardar.",
+      "created": "Envío {number} guardado.",
       "errors": {
         "clientRequired": "El cliente es obligatorio.",
         "serviceRequired": "El tipo de servicio es obligatorio.",
@@ -3996,18 +3996,18 @@
       },
       "dup": {
         "title": "Factura repetida para este consignatario",
-        "body": "{consignee} ya tiene la orden {order} con el número de factura {invoice}. Este consignatario permite repetirlo. ¿Crea la orden de todos modos?",
-        "bodyNoOrder": "{consignee} ya tiene una orden con el número de factura {invoice}. Este consignatario permite repetirlo. ¿Crea la orden de todos modos?",
-        "view": "Ver la orden {order}",
-        "dont": "No crear la orden",
+        "body": "{consignee} ya tiene el envío {order} con el número de factura {invoice}. Este consignatario permite repetirlo. ¿Crea el envío de todos modos?",
+        "bodyNoOrder": "{consignee} ya tiene un envío con el número de factura {invoice}. Este consignatario permite repetirlo. ¿Crea el envío de todos modos?",
+        "view": "Ver el envío {order}",
+        "dont": "No crear el envío",
         "create": "Crear de todos modos",
-        "cancelled": "Orden no creada."
+        "cancelled": "Envío no creada."
       },
       "credit": {
         "title": "El cliente excede su límite de crédito",
         "authorize": "Autorizar y guardar",
-        "note": "Si autoriza, la orden se guarda de todos modos y queda registrado quién lo autorizó.",
-        "denied": "La orden no se creó. Pida a alguien con el permiso de autorizar crédito excedido (orders.credit_override) que la capture."
+        "note": "Si autoriza, el envío se guarda de todos modos y queda registrado quién lo autorizó.",
+        "denied": "El envío no se creó. Pida a alguien con el permiso de autorizar crédito excedido (orders.credit_override) que lo capture."
       },
       "mode": "Modo de captura",
       "quick": "Rápida",
@@ -4027,7 +4027,7 @@
       "keyField": "campo",
       "keySave": "guardar",
       "cols": {
-        "orderNumber": "N.º de orden",
+        "orderNumber": "N.º de envío",
         "consignee": "Consignatario",
         "address": "Dirección · Pueblo",
         "package": "Paquete",
@@ -4041,14 +4041,14 @@
       "saveRow": "Guardar fila",
       "saved": "Guardada",
       "captured": "{count} entradas guardadas",
-      "help": "Cada fila crea una orden de 1 paquete y 1 pieza Sometida; para varios paquetes use la entrada Detallada.",
+      "help": "Cada fila crea un envío de 1 paquete y 1 pieza Sometida; para varios paquetes use la entrada Detallada.",
       "errors": {
         "codInvalid": "El monto COD debe ser un número."
       }
     },
     "import": {
-      "title": "Importar órdenes desde CSV",
-      "sub": "Sube un archivo CSV y revisa cómo se lee antes de importar: el servidor valida cada fila y no crea ninguna orden hasta que confirmes.",
+      "title": "Importar envíos desde CSV",
+      "sub": "Sube un archivo CSV y revisa cómo se lee antes de importar: el servidor valida cada fila y no crea ningún envío hasta que confirmes.",
       "tplLabel": "Plantilla",
       "tplNone": "— ninguna —",
       "tplInactive": "inactiva",
@@ -4070,7 +4070,7 @@
       "noTemplatePermission": "Para elegir o crear plantillas de importación necesita el permiso orders.edit.",
       "clientLabel": "Cliente",
       "clientPlaceholder": "— Elija el cliente —",
-      "clientHint": "Todas las órdenes del archivo se crean para este cliente. Los consignatarios se buscan en su directorio (y en los compartidos); los que no existan se crean.",
+      "clientHint": "Todos los envíos del archivo se crean para este cliente. Los consignatarios se buscan en su directorio (y en los compartidos); los que no existan se crean.",
       "needClient": "Elija primero el cliente para poder escoger el archivo.",
       "file": "Archivo CSV",
       "choose": "Escoger archivo…",
@@ -4088,7 +4088,7 @@
       "line": "Fila",
       "rowState": "Estado",
       "consignee": "Consignatario",
-      "orderNumber": "Orden",
+      "orderNumber": "Envío",
       "remarks": "Observaciones",
       "consigneeExisting": "Existente: {name}",
       "consigneeNew": "Se creará: {name}",
@@ -4102,21 +4102,21 @@
       },
       "optionsTitle": "Al importar",
       "optOverride": "Autorizar crédito excedido",
-      "optOverrideHelp": "Crea también las órdenes que pasen el límite de crédito del cliente (al crear se cotiza y se mide el crédito); queda registrado quién lo autorizó.",
+      "optOverrideHelp": "Crea también los envíos que pasen el límite de crédito del cliente (al crear se cotiza y se mide el crédito); queda registrado quién lo autorizó.",
       "optDuplicate": "Aceptar facturas repetidas",
-      "optDuplicateHelp": "Crea también las filas cuyo número de factura ya usa otra orden del mismo consignatario, cuando ese consignatario admite repetirlo.",
+      "optDuplicateHelp": "Crea también las filas cuyo número de factura ya usa otro envío del mismo consignatario, cuando ese consignatario admite repetirlo.",
       "do": "Importar",
       "cancel": "Cancelar",
       "discard": "Descartar archivo",
-      "discarded": "Archivo descartado: no se creó ninguna orden.",
+      "discarded": "Archivo descartado: no se creó ningún envío.",
       "close": "Cerrar",
-      "done": "{count} órdenes importadas",
+      "done": "{count} envíos importados",
       "resultTitle": "Resultado de la importación",
       "created": "creadas",
       "failed": "fallidas",
-      "skipped": "omitidas",
-      "tplNewTitle": "Nueva plantilla de importación de órdenes",
-      "tplEditTitle": "Editar plantilla de importación de órdenes",
+      "skipped": "omitidos",
+      "tplNewTitle": "Nueva plantilla de importación de envíos",
+      "tplEditTitle": "Editar plantilla de importación de envíos",
       "tplName": "Nombre de la plantilla",
       "tplNamePlaceholder": "Nombre de la plantilla",
       "tplSave": "Guardar plantilla",
@@ -4141,7 +4141,7 @@
       "removeColumn": "Quitar esta columna",
       "removeColumnN": "Quitar la columna {n}",
       "defaultsTitle": "Valores por defecto",
-      "defaultsHelp": "Se usan cuando la celda del archivo viene vacía o el campo no tiene columna (por ejemplo, el servicio de todas las filas). El número de orden, el de factura y el nombre del consignatario no admiten valor por defecto.",
+      "defaultsHelp": "Se usan cuando la celda del archivo viene vacía o el campo no tiene columna (por ejemplo, el servicio de todas las filas). El número de envío, el de factura y el nombre del consignatario no admiten valor por defecto.",
       "addDefault": "Agregar valor por defecto",
       "removeDefault": "Quitar este valor",
       "removeDefaultN": "Quitar el valor por defecto {n}",
@@ -4157,12 +4157,12 @@
         "repeated": "El campo {field} está repetido.",
         "noDefault": "El campo {field} no admite valor por defecto.",
         "defaultValueRequired": "Escriba el valor por defecto de {field}.",
-        "multiLineOrder": "Con varias líneas por orden la plantilla necesita la columna orderNumber.",
+        "multiLineOrder": "Con varias líneas por envío la plantilla necesita la columna orderNumber.",
         "ruleColumn": "La columna de la regla {n} debe ser un número entre 1 y 500.",
         "ruleValue": "Escriba el valor de la regla {n}."
       },
-        "multiLine": "El archivo trae varias líneas por orden",
-        "multiLineHelp": "Las filas con el mismo número de orden son UNA orden. Lo que no marques abajo como descripción o factura es una pieza (puede haber varias piezas por orden).",
+        "multiLine": "El archivo trae varias líneas por envío",
+        "multiLineHelp": "Las filas con el mismo número de envío son UN envío. Lo que no marques abajo como descripción o factura es una pieza (puede haber varias piezas por envío).",
         "rulesTitle": "¿Qué líneas NO son pieza?",
         "rulesHelp": "Si la celda de la columna indicada cumple la condición, la línea es una descripción de lo que se envía o la factura. Cualquiera de las reglas basta; la primera que se cumple manda.",
         "addRule": "Agregar regla",
@@ -4183,12 +4183,12 @@
           "CONTAINS": "contiene",
           "IN": "es una de (separe con |)"
         },
-        "lines": "Líneas de la orden",
+        "lines": "Líneas del envío",
       "rowN": "Fila {n}",
         "linesSummary": "{pieces} pieza(s) · {descriptions} descripción(es){invoice}",
         "linesInvoice": " · factura {number}",
       "fields": {
-        "orderNumber": "N.º de orden",
+        "orderNumber": "N.º de envío",
         "clientInvoiceNumber": "N.º de factura",
         "serviceType": "Servicio",
         "consigneeName": "Consignatario (nombre)",
@@ -5544,7 +5544,7 @@
     },
     "crossDockPlans": {
       "title": "Cruce de plataforma",
-      "subtitle": "Planes de cruce de plataforma: asignan líneas de recibo a órdenes sin pasar por posiciones de reserva.",
+      "subtitle": "Planes de cruce de plataforma: asignan líneas de recibo a envíos sin pasar por posiciones de reserva.",
       "tabs": {
         "plans": "Planes",
         "appointments": "Citas de plataforma",
@@ -5594,7 +5594,7 @@
         "title": "Asignaciones",
         "receipt": "Recibo",
         "sku": "SKU",
-        "order": "Orden",
+        "order": "Envío",
         "quantity": "Cantidad",
         "confirmed": "Confirmado",
         "short": "Faltante",
@@ -5605,17 +5605,17 @@
         "cancelled": "Asignación cancelada."
       },
       "allocate": {
-        "title": "Asignar a una orden",
+        "title": "Asignar a un envío",
         "available": "Disponible: {qty}",
-        "order": "Orden",
-        "orderPlaceholder": "Número de orden, factura o lote de empaque",
+        "order": "Envío",
+        "orderPlaceholder": "Número de envío, factura o lote de empaque",
         "noMatches": "Sin coincidencias exactas.",
-        "selected": "Orden elegida:",
-        "orderRequired": "Elija una orden.",
+        "selected": "Envío elegido:",
+        "orderRequired": "Elija un envío.",
         "quantity": "Cantidad",
         "saved": "Asignación creada.",
         "orderHelp": "Escriba el número completo: la búsqueda es por coincidencia exacta.",
-        "lookupDenied": "Para buscar órdenes necesita el permiso orders.view y el módulo LTL_GROUND."
+        "lookupDenied": "Para buscar envíos necesita el permiso orders.view y el módulo LTL_GROUND."
       },
       "move": {
         "title": "Mover",
@@ -6096,14 +6096,14 @@
     },
     "pickBatches": {
       "title": "Recolección y empaque",
-      "subtitle": "Recolecte inventario por FEFO o con posición, lote o serie, y empáquelo como una orden de transporte.",
+      "subtitle": "Recolecte inventario por FEFO o con posición, lote o serie, y empáquelo como un envío de transporte.",
       "tabBatches": "Recolecciones",
       "tabReplenish": "Reabasto",
       "replenishTitle": "Tareas de reabasto",
       "collected": "Recolección {number} creada.",
       "own": "Propio",
       "deletedChip": "Eliminada",
-      "searchPlaceholder": "Número, empaque, orden, factura, cliente o SKU",
+      "searchPlaceholder": "Número, empaque, envío, factura, cliente o SKU",
       "linesHelp": "Una recolección admite productos de un solo dueño. Sin posición ni lote, el sistema elige por FEFO.",
       "pickWarehouseFirst": "Elija primero el almacén.",
       "fefo": "Automático (FEFO)",
@@ -6111,7 +6111,7 @@
       "back": "Volver a Recolección y empaque",
       "columns": {
         "number": "Número",
-        "numbers": "Orden y factura",
+        "numbers": "Envío y factura",
         "client": "Cliente",
         "totalQty": "Cantidad",
         "collectedAt": "Recolectada",
@@ -6122,7 +6122,7 @@
         "collected": "Recolectada",
         "status": "Estatus",
         "product": "Producto",
-        "orderNumber": "No. de orden",
+        "orderNumber": "No. de envío",
         "invoiceNumber": "No. de factura",
         "includeDeleted": "Incluir eliminadas",
         "kind": "Tipo",
@@ -6140,7 +6140,7 @@
       "detail": {
         "summary": "Resumen",
         "packedAt": "Empacada",
-        "order": "Orden",
+        "order": "Envío",
         "invoice": "Factura",
         "totalCost": "Costo total",
         "lines": "Líneas",
@@ -6156,15 +6156,15 @@
         "delete": "Eliminar",
         "deleteTitle": "Eliminar recolección",
         "deleteBody": "¿Eliminar la recolección {number}? El inventario vuelve a su posición original.",
-        "deletePackedBody": "¿Eliminar la recolección {number}? Se borra también su orden {order} y el inventario vuelve a su posición original.",
+        "deletePackedBody": "¿Eliminar la recolección {number}? Se borra también su envío {order} y el inventario vuelve a su posición original.",
         "deleted": "Recolección {number} eliminada.",
         "close": "Cerrar"
       },
       "pack": {
         "title": "Empacar {number}",
-        "submit": "Empacar y crear orden",
-        "done": "Empacada: se creó la orden {order}.",
-        "client": "Cliente de la orden",
+        "submit": "Empacar y crear envío",
+        "done": "Empacada: se creó el envío {order}.",
+        "client": "Cliente del envío",
         "ownerHelp": "Debe ser el cliente dueño del inventario: {client}.",
         "serviceType": "Tipo de servicio",
         "defaultServiceType": "Predeterminado de la compañía ({label})",
@@ -6185,7 +6185,7 @@
         "postalCode": "Código postal",
         "country": "País",
         "countryHelp": "Código ISO de 2 letras. Vacío: el país predeterminado.",
-        "orderNumber": "Número de orden",
+        "orderNumber": "Número de envío",
         "invoice": "Factura del cliente",
         "autoHelp": "Vacío: se genera automáticamente.",
         "packages": "Paquetes",
@@ -6196,7 +6196,7 @@
         "addPackage": "Agregar paquete",
         "notes": "Notas",
         "errors": {
-          "clientRequired": "Indique el cliente de la orden.",
+          "clientRequired": "Indique el cliente del envío.",
           "consigneeRequired": "El consignatario es obligatorio: elija uno del directorio o capture uno nuevo.",
           "nameRequired": "El nombre del consignatario es obligatorio.",
           "line1Required": "La dirección (línea 1) del consignatario es obligatoria.",
@@ -6213,10 +6213,10 @@
       "detailTitle": "Recolección",
       "splitLabel": "Cambiar el ancho de los paneles Recolección y Recolecciones",
       "orderFilter": {
-        "placeholder": "Escriba para ver las órdenes",
-        "none": "Ninguna orden con ese número.",
-        "noAccess": "No se pudieron consultar las órdenes.",
-        "clear": "Quitar el número de orden"
+        "placeholder": "Escriba para ver los envíos",
+        "none": "Ningún envío con ese número.",
+        "noAccess": "No se pudieron consultar los envíos.",
+        "clear": "Quitar el número de envío"
       },
       "collectPanel": {
         "title": "Recolección",
@@ -7311,7 +7311,7 @@
       "marks": {
         "pickUp": "Pick up (recojo y traigo)",
         "billable": "Facturable",
-        "help": "Un pick up recoge y trae al almacén: la orden termina «En almacén» y no sale a ruta. «Facturable» apagado = no se cotiza ni se cobra."
+        "help": "Un pick up recoge y trae al almacén: el envío termina «En almacén» y no sale a ruta. «Facturable» apagado = no se cotiza ni se cobra."
       }
     },
     "settings": {
@@ -7484,11 +7484,11 @@
         "svcDefaultLabel": "Tipo de servicio por defecto",
         "pkgDefaultLabel": "Tipo de paquete por defecto",
         "noDefault": "Sin valor por defecto",
-        "defaultsHint": "Preseleccionan estos campos en Entrada rápida y detallada — el operador los puede cambiar por orden, pero no arrancan en blanco.",
+        "defaultsHint": "Preseleccionan estos campos en Entrada rápida y detallada — el operador los puede cambiar por envío, pero no arrancan en blanco.",
         "maxStopsLabel": "Máximo de paradas por ruta (default)",
         "maxStopsHint": "Se usa para cualquier chofer sin un máximo propio configurado en Choferes y tarifas — ahí se puede definir una excepción por chofer.",
         "maxStopsMin": "Debe ser 1 o más.",
-        "pipelineTitle": "Pipeline de estatus de órdenes",
+        "pipelineTitle": "Pipeline de estatus de envíos",
         "colStage": "Estatus",
         "caps": {
           "EDIT_CARGO": "Editar carga",
@@ -7497,7 +7497,7 @@
           "CANCEL": "Cancelar"
         },
         "capToggle": "{cap} en {stage}",
-        "pipelineHint": "Qué acciones permite cada estatus de una orden (StatusCapability). El servidor las aplica en cada operación; sin regla propia vale la de la plataforma (permitido si no hay ninguna).",
+        "pipelineHint": "Qué acciones permite cada estatus de un envío (StatusCapability). El servidor las aplica en cada operación; sin regla propia vale la de la plataforma (permitido si no hay ninguna).",
         "pipelineReadOnly": "Solo lectura: cambiar la matriz exige el permiso admin.statusconfig.",
         "pipelineNoAccess": "Su usuario no puede consultar el pipeline de estatus.",
         "capSaved": "Acción del estatus guardada",
@@ -7598,7 +7598,7 @@
         "presetsTitle": "Temas predefinidos",
         "customTitle": "Usar colores propios",
         "flowLabel": "Color primario",
-        "flowHint": "Pestañas, indicadores y lo que sale a la calle: órdenes, rutas, entregas.",
+        "flowHint": "Pestañas, indicadores y lo que sale a la calle: envíos, rutas, entregas.",
         "actionLabel": "Color de acción",
         "actionHint": "Botones principales, enlaces y el foco. Vacío = el mismo que el primario.",
         "actionSameAsPrimary": "Usar el mismo que el primario",
@@ -7660,9 +7660,9 @@
       },
       "returns": {
         "title": "Devolución",
-        "subtitle": "cuándo se sugiere devolver una orden",
+        "subtitle": "cuándo se sugiere devolver un envío",
         "label": "Sugerir devolver con este número de intentos fallidos",
-        "help": "Por omisión 2; 0 = nunca sugerir. Es solo una sugerencia y una marca: la orden se puede seguir reintentando.",
+        "help": "Por omisión 2; 0 = nunca sugerir. Es solo una sugerencia y una marca: el envío se puede seguir reintentando.",
         "invalid": "Escriba un número de 0 a 20 (0 = sin sugerencia).",
         "saved": "Ajuste de devolución guardado."
       }
@@ -8553,10 +8553,10 @@
     "new": {
       "title": "Nueva corrida",
       "generate": "Generar",
-      "help": "Junta lo despachado y no facturado de las órdenes de venta y el flete de las órdenes de transporte (según el modelo de cobro del contrato) y arma una factura en borrador por cliente. Nada se emite hasta aprobar la corrida.",
+      "help": "Junta lo despachado y no facturado de las órdenes de venta y el flete de los envíos de transporte (según el modelo de cobro del contrato) y arma una factura en borrador por cliente. Nada se emite hasta aprobar la corrida.",
       "client": "Cliente",
       "includeProducts": "Venta de producto despachado",
-      "includeFreight": "Flete de las órdenes de transporte",
+      "includeFreight": "Flete de los envíos de transporte",
       "clientHelp": "Sin cliente: todos los que tengan algo por facturar.",
       "from": "Desde",
       "to": "Hasta",
@@ -8749,13 +8749,13 @@
     },
     "att": {
       "panel": "Intentos de entrega",
-      "help": "Cada intento de entrega de una orden. Es la fuente de verdad del pago: nacen solos al marcar una orden como entregada o fallida, o se registran aquí a mano.",
+      "help": "Cada intento de entrega de un envío. Es la fuente de verdad del pago: nacen solos al marcar un envío como entregada o fallida, o se registran aquí a mano.",
       "new": "Registrar intento",
       "newTitle": "Registrar un intento de entrega",
-      "newHelp": "Busque la orden (por número, factura o consignatario), elija el chofer y el resultado. El número del intento es el siguiente de la orden.",
-      "order": "Orden",
+      "newHelp": "Busque el envío (por número, factura o consignatario), elija el chofer y el resultado. El número del intento es el siguiente del envío.",
+      "order": "Envío",
       "orderPh": "Escriba al menos 3 caracteres…",
-      "hits": "Órdenes encontradas",
+      "hits": "Envíos encontrados",
       "change": "Cambiar",
       "pickDriver": "Elija el chofer",
       "reason": "Razón del fallo",
@@ -8768,7 +8768,7 @@
       "failed": "No entregó",
       "source": "Origen",
       "sources": {
-        "STATUS": "Estatus de la orden",
+        "STATUS": "Estatus del envío",
         "MANUAL": "A mano",
         "APP": "App del chofer"
       },
@@ -8789,7 +8789,7 @@
       "created": "Intento registrado en {order}.",
       "empty": "No hay intentos con estos filtros.",
       "errors": {
-        "order": "Busque y elija la orden.",
+        "order": "Busque y elija el envío.",
         "driver": "Elija el chofer.",
         "reason": "Indique el motivo de la anulación."
       }
@@ -8810,17 +8810,17 @@
     "notes": "Nota",
     "tabs": {
       "label": "Secciones de COD",
-      "orders": "Órdenes con COD",
+      "orders": "Envíos con COD",
       "reconcile": "Reconciliar",
       "remittances": "Remesas",
       "runs": "Corridas"
     },
     "orders": {
-      "panel": "Órdenes con COD",
-      "search": "Buscar por orden, factura o cliente",
+      "panel": "Envíos con COD",
+      "search": "Buscar por envío, factura o cliente",
       "filterStatus": "Filtrar por estatus del COD",
       "allStatuses": "Todos los estatus",
-      "empty": "No hay órdenes con COD con este filtro."
+      "empty": "No hay envíos con COD con este filtro."
     },
     "statuses": {
       "PENDING": "Por cobrar",
@@ -8837,10 +8837,10 @@
       "CARD": "Tarjeta"
     },
     "col": {
-      "order": "Orden",
+      "order": "Envío",
       "invoice": "Factura",
       "client": "Cliente",
-      "orderStatus": "Estatus de la orden",
+      "orderStatus": "Estatus del envío",
       "cod": "COD",
       "collected": "Cobrado",
       "pending": "Por cobrar",
@@ -8897,17 +8897,17 @@
       "INVOICE": "Facturas",
       "BOTH": "Ambas",
       "help": {
-        "AUTO": "El sistema clasifica cada hoja: si la orden tiene COD, cuadra el cobro; si no, procesa la factura.",
-        "COD": "Se procesa todo igual, pero te aviso si alguna hoja es de una orden sin COD.",
-        "INVOICE": "Se procesa todo igual, pero te aviso si alguna hoja es de una orden con COD.",
+        "AUTO": "El sistema clasifica cada hoja: si el envío tiene COD, cuadra el cobro; si no, procesa la factura.",
+        "COD": "Se procesa todo igual, pero te aviso si alguna hoja es de un envío sin COD.",
+        "INVOICE": "Se procesa todo igual, pero te aviso si alguna hoja es de un envío con COD.",
         "BOTH": "Se procesa todo igual y te aviso si no vino de alguno de los dos tipos."
       }
     },
     "warnings": {
       "title": "Advertencias",
-      "NOT_COD_SHEETS": "Dijiste hojas de COD, pero algunas son de órdenes sin COD: las procesé como facturas.",
-      "COD_SHEETS": "Dijiste facturas, pero algunas son hojas de órdenes con COD: las cuadré como COD.",
-      "NO_INVOICE_SHEETS": "Dijiste ambas, pero no subiste facturas de órdenes sin COD.",
+      "NOT_COD_SHEETS": "Dijiste hojas de COD, pero algunas son de envíos sin COD: las procesé como facturas.",
+      "COD_SHEETS": "Dijiste facturas, pero algunas son hojas de envíos con COD: las cuadré como COD.",
+      "NO_INVOICE_SHEETS": "Dijiste ambas, pero no subiste facturas de envíos sin COD.",
       "NO_COD_SHEETS": "Dijiste ambas, pero no subiste hojas de COD."
     },
     "reconcile": {
@@ -9929,7 +9929,7 @@
     },
     "format": {
       "section": "Formato del archivo",
-      "sectionHelp": "Cómo viene el archivo. «Automático» decide por la extensión (.xlsx Excel, .json, .xml; lo demás CSV). En JSON y XML se declara con rutas dónde están las órdenes y de dónde sale cada columna de la plantilla de importación.",
+      "sectionHelp": "Cómo viene el archivo. «Automático» decide por la extensión (.xlsx Excel, .json, .xml; lo demás CSV). En JSON y XML se declara con rutas dónde están los envíos y de dónde sale cada columna de la plantilla de importación.",
       "kind": "Formato",
       "sheet": "Hoja de Excel",
       "sheetHelp": "Vacío = la primera hoja del libro.",
@@ -9941,15 +9941,15 @@
         "XML": "XML"
       },
       "pathHelp": {
-        "JSON": "Rutas: $ = el documento, .campo, [*] = todos los elementos de una lista, [0] = uno. Con líneas: @ = la línea, ^ = la orden. Ejemplo: $.orders[*] y @.lines[*].",
-        "XML": "Rutas: $ = el documento (empieza con el nombre del elemento raíz), .Elemento, [*] = todos, @atributo para un atributo y #text para el texto de un elemento con atributos. Con líneas: @ = la línea, ^ = la orden."
+        "JSON": "Rutas: $ = el documento, .campo, [*] = todos los elementos de una lista, [0] = uno. Con líneas: @ = la línea, ^ = el envío. Ejemplo: $.orders[*] y @.lines[*].",
+        "XML": "Rutas: $ = el documento (empieza con el nombre del elemento raíz), .Elemento, [*] = todos, @atributo para un atributo y #text para el texto de un elemento con atributos. Con líneas: @ = la línea, ^ = el envío."
       },
-      "recordsPath": "Ruta de las órdenes",
-      "recordsPathHelp": "Dónde está cada orden. Una orden = una fila (o varias, si hay líneas).",
+      "recordsPath": "Ruta de los envíos",
+      "recordsPathHelp": "Dónde está cada envío. Un envío = una fila (o varias, si hay líneas).",
       "linesPath": "Ruta de las líneas (opcional)",
-      "linesPathHelp": "Relativa a la orden (empieza con @). Cada línea es una fila; una orden sin líneas da una fila.",
+      "linesPathHelp": "Relativa al envío (empieza con @). Cada línea es una fila; un envío sin líneas da una fila.",
       "columns": "Columnas",
-      "columnsHelp": "En el orden que espera la plantilla de importación (la primera es la columna 1).",
+      "columnsHelp": "En el envío que espera la plantilla de importación (la primera es la columna 1).",
       "header": "Nombre de la columna",
       "path": "Ruta del valor",
       "addColumn": "Agregar columna",
@@ -9962,21 +9962,21 @@
       "sheets": "Hojas del libro: {sheets}.",
       "errors": {
         "sheet": "El nombre de la hoja no puede pasar de 31 caracteres.",
-        "recordsRequired": "Indique la ruta de las órdenes (por ejemplo $.orders[*]).",
-        "recordsRoot": "La ruta de las órdenes debe empezar con $ (por ejemplo $.orders[*]).",
-        "linesRoot": "La ruta de las líneas debe ser relativa a la orden: empiece con @ (por ejemplo @.lines[*]).",
+        "recordsRequired": "Indique la ruta de los envíos (por ejemplo $.orders[*]).",
+        "recordsRoot": "La ruta de los envíos debe empezar con $ (por ejemplo $.orders[*]).",
+        "linesRoot": "La ruta de las líneas debe ser relativa al envío: empiece con @ (por ejemplo @.lines[*]).",
         "columnsRequired": "Agregue al menos una columna al mapeo.",
         "columnsMax": "El mapeo admite hasta 60 columnas.",
         "headerRequired": "Cada columna necesita un nombre.",
         "headerMax": "El nombre de una columna no puede pasar de 80 caracteres.",
         "headerRepeated": "Hay dos columnas llamadas «{h}».",
         "pathInvalid": "La ruta «{p}» no es válida. Use el formato $.campo.otro[*] (también @.campo o ^.campo).",
-        "orderRoot": "La ruta «{p}» usa ^ (la orden), que solo se puede cuando hay una ruta de líneas."
+        "orderRoot": "La ruta «{p}» usa ^ (el envío), que solo se puede cuando hay una ruta de líneas."
       }
     },
     "out": {
       "section": "Qué se manda",
-      "sectionHelp": "Las órdenes del cliente de esta integración que llegan a los estatus elegidos. Cada envío se arma con las columnas de abajo y se manda por el conector; si falla, se reintenta (1 min, 5, 30, 2 h y 12 h) y, agotados los intentos, queda en la pestaña «Salidas».",
+      "sectionHelp": "Los envíos del cliente de esta integración que llegan a los estatus elegidos. Cada envío se arma con las columnas de abajo y se manda por el conector; si falla, se reintenta (1 min, 5, 30, 2 h y 12 h) y, agotados los intentos, queda en la pestaña «Salidas».",
       "statuses": "Estatus que disparan la salida",
       "status": {
         "SUBMITTED": "Sometida",
@@ -9996,8 +9996,8 @@
         "SCHEDULE": "Por horario"
       },
       "triggerHelp": {
-        "EVENT": "Cada orden sale en su propio envío en cuanto llega al estatus (en menos de un minuto).",
-        "SCHEDULE": "Cada cierto tiempo sale un solo envío con todas las órdenes que llegaron desde el anterior."
+        "EVENT": "Cada envío sale por separado en cuanto llega al estatus (en menos de un minuto).",
+        "SCHEDULE": "Cada cierto tiempo sale un solo archivo con todos los envíos que llegaron desde el anterior."
       },
       "everyHelp": "Cada cuántos minutos sale el envío (entre 1 y 10080).",
       "format": "Formato",
@@ -10010,16 +10010,16 @@
       "fileName": "Nombre del archivo",
       "fileNameHelp": "Admite {date} (aaaammdd), {time} (hhmmss), {id} (número del envío) y {ext}. Vacío = ordenes-{date}-{time}.{ext}.",
       "columns": "Columnas",
-      "columnsHelpCsv": "Nombre de la columna del archivo y qué campo de la orden lleva.",
-      "columnsHelp": "Nombre del campo en JSON/XML (letras, números, guion y guion bajo) y qué campo de la orden lleva.",
+      "columnsHelpCsv": "Nombre de la columna del archivo y qué campo del envío lleva.",
+      "columnsHelp": "Nombre del campo en JSON/XML (letras, números, guion y guion bajo) y qué campo del envío lleva.",
       "header": "Nombre",
-      "field": "Campo de la orden",
+      "field": "Campo del envío",
       "preview": "Vista previa",
-      "previewHelp": "Arma un ejemplo con órdenes recientes del cliente; no manda nada.",
+      "previewHelp": "Arma un ejemplo con envíos recientes del cliente; no manda nada.",
       "previewAfterSave": "Disponible después de crear la integración.",
       "previewTitle": "Vista previa de «{name}»",
-      "previewSample": "Ejemplo con {orders} orden(es) recientes de los estatus elegidos. Archivo: {file} ({format}).",
-      "previewNoSample": "Todavía no hay órdenes de esos estatus: ejemplo con {orders} orden(es) recientes del cliente. Archivo: {file} ({format}).",
+      "previewSample": "Ejemplo con {orders} envío(es) recientes de los estatus elegidos. Archivo: {file} ({format}).",
+      "previewNoSample": "Todavía no hay envíos de esos estatus: ejemplo con {orders} envío(es) recientes del cliente. Archivo: {file} ({format}).",
       "sendNow": "Enviar ahora",
       "remoteDir": "Carpeta de destino",
       "remoteDirHelp": "Carpeta del servidor donde se deja cada archivo (se sube con nombre provisional «.part» y luego con el final; nunca se pisa uno que ya exista).",
@@ -10058,7 +10058,7 @@
         "headerMax": "El nombre de una columna no puede pasar de 60 caracteres.",
         "headerRepeated": "Hay dos columnas llamadas «{h}».",
         "headerName": "El nombre de la columna «{h}» debe empezar con una letra o guion bajo y llevar solo letras, números, guion y guion bajo (para JSON y XML).",
-        "fieldRequired": "Escoja el campo de la orden.",
+        "fieldRequired": "Escoja el campo del envío.",
         "url": "Indique la URL a la que se enviarán los avisos.",
         "authName": "Indique el usuario (BASIC) o el nombre del encabezado (HEADER) de la autenticación.",
         "secret": "Indique el token, la contraseña o el valor del encabezado de la autenticación.",
@@ -10073,7 +10073,7 @@
       "emptyUndelivered": "No hay envíos sin entregar.",
       "view": "Ver contenido",
       "viewTitle": "Envío «{file}»",
-      "viewInfo": "{format} · {orders} orden(es) · {bytes} bytes. Se muestran los primeros 4.000 caracteres.",
+      "viewInfo": "{format} · {orders} envío(es) · {bytes} bytes. Se muestran los primeros 4.000 caracteres.",
       "retried": "Envío puesto a reintento.",
       "discarded": "Envío descartado.",
       "status": {
@@ -10087,7 +10087,7 @@
         "integration": "Integración",
         "dest": "Destino",
         "file": "Archivo",
-        "orders": "Órdenes",
+        "orders": "Envíos",
         "attempts": "Intentos",
         "reason": "Motivo",
         "date": "Creado"
@@ -10104,8 +10104,8 @@
       "url": "URL del cliente (https)",
       "events": "Eventos",
       "event": {
-        "order_status_changed": "Cambió el estatus de una orden",
-        "order_delivered": "Una orden se entregó",
+        "order_status_changed": "Cambió el estatus de un envío",
+        "order_delivered": "Un envío se entregó",
         "invoice_issued": "Se emitió una factura"
       },
       "create": "Crear webhook",
@@ -10171,7 +10171,7 @@
       "open": "Llaves de API",
       "title": "Llaves de API de «{name}»",
       "help": "Cada llave es un usuario y una contraseña para que el sistema del cliente llame al API. Solo ve lo que los alcances de esta integración permiten y, si hay cliente, solo lo de ese cliente.",
-      "clientHelp": "Obligatorio solo si algún alcance es de órdenes de transporte: la llave solo verá lo de este cliente.",
+      "clientHelp": "Obligatorio solo si algún alcance es de envíos de transporte: la llave solo verá lo de este cliente.",
       "secretOnce": "Copie el secreto ahora: no se vuelve a mostrar.",
       "keyIs": "Llave:",
       "secretIs": "Secreto:",
@@ -10215,21 +10215,21 @@
       "errors": {
         "label": "Escriba el nombre de la llave.",
         "limit": "El límite debe ser un número entero entre 1 y 6000.",
-        "clientForScopes": "Escoja el cliente: algún alcance elegido es de órdenes de transporte."
+        "clientForScopes": "Escoja el cliente: algún alcance elegido es de envíos de transporte."
       }
     },
     "form": {
       "direction": "Dirección",
-      "directionHelp": {"INBOUND": "Teikem recibe órdenes (carpeta, correo, SFTP, FTP, subida manual o API del cliente).", "OUTBOUND": "Teikem manda órdenes del cliente (SFTP, FTP o la API de su sistema) cuando llegan a un estatus."},
+      "directionHelp": {"INBOUND": "Teikem recibe envíos (carpeta, correo, SFTP, FTP, subida manual o API del cliente).", "OUTBOUND": "Teikem manda envíos del cliente (SFTP, FTP o la API de su sistema) cuando llegan a un estatus."},
       "newTitle": "Nueva integración",
       "editTitle": "Editar «{name}»",
       "name": "Nombre",
-      "namePlaceholder": "Órdenes de AxisCare",
+      "namePlaceholder": "Envíos de AxisCare",
       "description": "Descripción",
       "client": "Cliente",
-      "clientHelp": "Las órdenes que entren por esta integración se crean para este cliente.",
+      "clientHelp": "Los envíos que entren por esta integración se crean para este cliente.",
       "template": "Plantilla de importación",
-      "templateHelp": "Dice cómo se lee el archivo (columnas, varias líneas por orden, qué no es pieza). Se arma en Órdenes → Importar.",
+      "templateHelp": "Dice cómo se lee el archivo (columnas, varias líneas por envío, qué no es pieza). Se arma en Envíos → Importar.",
       "pick": "Escoja…",
       "pickClientFirst": "Escoja primero el cliente",
       "connector": "Conector",
@@ -10242,7 +10242,7 @@
       "scopes": "Qué puede hacer",
       "scopesHelp": "Solo se ofrece lo que usted puede dar y lo que la compañía tiene contratado: la cuenta de servicio de la integración recibe exactamente esos permisos.",
       "notify": "A quién avisar",
-      "notifyHelp": "Cada corrida con algo que reportar (órdenes creadas, filas a la bandeja o una falla) avisa a estas personas con un aviso del sistema.",
+      "notifyHelp": "Cada corrida con algo que reportar (envíos creados, filas a la bandeja o una falla) avisa a estas personas con un aviso del sistema.",
       "includeMe": "Incluirme",
       "retention": "Días que se guardan los datos de la bandeja",
       "retentionHelp": "Pasado ese plazo se borra el detalle de lo que no se pudo procesar; el motivo queda.",
@@ -10253,7 +10253,7 @@
       "errors": {
         "nameRequired": "El nombre de la integración es obligatorio.",
         "nameMax": "Máximo 120 caracteres.",
-        "clientRequired": "Indique el cliente de las órdenes de esta integración.",
+        "clientRequired": "Indique el cliente de los envíos de esta integración.",
         "templateRequired": "Escoja la plantilla de importación con la que se leen los archivos.",
         "folderRequired": "Indique el nombre de la carpeta de entrada.",
         "folderInvalid": "El nombre de la carpeta solo admite letras, números, guion y guion bajo (sin rutas).",
@@ -10401,7 +10401,7 @@
       "reprocessAll": "Reprocesar todo",
       "emptyPending": "No hay nada pendiente: todo lo que entró se procesó.",
       "empty": "No hay ítems con ese filtro.",
-      "help": "Una orden con problemas nunca se crea a medias: queda aquí con su motivo. Corrija los datos y reprocese; los datos crudos se purgan pasados los días de retención de la integración.",
+      "help": "Un envío con problemas nunca se crea a medias: queda aquí con su motivo. Corrija los datos y reprocese; los datos crudos se purgan pasados los días de retención de la integración.",
       "fix": "Corregir",
       "reprocess": "Reprocesar",
       "discard": "Descartar",
@@ -10419,13 +10419,13 @@
       "row": "Fila",
       "rowN": "fila {n}",
       "cell": "Fila {row}, columna {col}",
-      "reprocessed": "Listo: se creó la orden.",
+      "reprocessed": "Listo: se creó el envío.",
       "reprocessedN": "Se reprocesaron {n} ítem(s).",
       "reprocessedSome": "Se reprocesaron {done}; {still} siguen pendientes.",
       "stillPending": "Sigue con problemas; revise el motivo.",
       "col": {
         "status": "Estatus",
-        "ref": "Orden",
+        "ref": "Envío",
         "integration": "Integración",
         "file": "Archivo",
         "reason": "Motivo",
@@ -10519,15 +10519,15 @@
     "jobs": {
       "labelsTitle": "Labels",
       "previewLabels": "Imprimir {n} labels",
-      "summary": "Labels: {labels} · órdenes: {orders} (uno por pieza).",
+      "summary": "Labels: {labels} · envíos: {orders} (uno por pieza).",
       "previewLabel": "Imprimir 1 label",
       "docReady": "El documento está listo para imprimir.",
-      "cancelled": "{n} órdenes canceladas no se imprimieron.",
+      "cancelled": "{n} envíos cancelados no se imprimieron.",
       "withoutNumber": "{n} piezas sin número de paquete no se imprimieron.",
       "none": "No hay labels que imprimir.",
       "large": "Son {n} labels: el PDF será grande y puede tardar un poco. Se imprimen todos; no hay límite.",
       "failed": "No se pudo imprimir: {reason}",
-      "afterSaveFailed": "La orden se guardó, pero no se pudo imprimir el label: {reason}. Use «Imprimir label» en la ficha."
+      "afterSaveFailed": "El envío se guardó, pero no se pudo imprimir el label: {reason}. Use «Imprimir label» en la ficha."
     },
     "title": "Impresoras y labels",
     "subtitle": "Impresora y template por estación",
@@ -10620,8 +10620,8 @@
       "templateInactive": "La plantilla elegida en esta estación ya no está activa: se usa la predeterminada de la compañía.",
       "onSave": "Imprimir al guardar",
       "confirm": "Confirmar antes",
-      "onSaveOn": "La compañía imprime los labels directo al guardar una orden: con «Imprimir al guardar» apagado, esta estación no los imprime.",
-      "onSaveOff": "La compañía tiene apagado «Imprimir labels directo a la impresora»: al guardar una orden no sale el label solo.",
+      "onSaveOn": "La compañía imprime los labels directo al guardar un envío: con «Imprimir al guardar» apagado, esta estación no los imprime.",
+      "onSaveOff": "La compañía tiene apagado «Imprimir labels directo a la impresora»: al guardar un envío no sale el label solo.",
       "viaQz": "Imprime directo con QZ Tray en «{name}».",
       "viaBrowserPrinter": "Imprime con el diálogo del navegador ({name}).",
       "viaBrowser": "Imprime con el PDF del navegador (sin impresora configurada).",
@@ -10688,9 +10688,9 @@
     "company": {
       "title": "Ajustes de la compañía",
       "direct": "Imprimir labels directo a la impresora",
-      "directHelp": "Encendido, al guardar una orden (entrada rápida o detallada) sale un label por cada paquete a la impresora de labels de la estación, sin diálogo si la estación tiene QZ Tray. Apagado, los labels se imprimen a mano.",
-      "on": "Los labels se imprimirán directo al guardar las órdenes.",
-      "off": "Los labels ya no se imprimen solos al guardar las órdenes."
+      "directHelp": "Encendido, al guardar un envío (entrada rápida o detallada) sale un label por cada paquete a la impresora de labels de la estación, sin diálogo si la estación tiene QZ Tray. Apagado, los labels se imprimen a mano.",
+      "on": "Los labels se imprimirán directo al guardar los envíos.",
+      "off": "Los labels ya no se imprimen solos al guardar los envíos."
     },
     "printer": {
       "title": "Impresoras de la compañía",
@@ -10747,10 +10747,10 @@
       "claims": "Reclamaciones"
     },
     "col": {
-      "order": "Orden",
+      "order": "Envío",
       "waybill": "Conduce",
       "client": "Cliente",
-      "orderStatus": "Estatus de la orden",
+      "orderStatus": "Estatus del envío",
       "missing": "Faltantes",
       "piece": "Pieza",
       "line": "Línea",
@@ -10765,13 +10765,13 @@
     },
     "missingOf": "{missing} de {total}",
     "toVerify": {
-      "panel": "Órdenes con piezas faltantes",
-      "search": "Buscar por orden, conduce o pieza",
+      "panel": "Envíos con piezas faltantes",
+      "search": "Buscar por envío, conduce o pieza",
       "empty": "No hay piezas faltantes por atender."
     },
     "list": {
       "panel": "Reclamaciones",
-      "search": "Buscar por reclamación, orden, conduce o pieza",
+      "search": "Buscar por reclamación, envío, conduce o pieza",
       "filterStatus": "Filtrar por estatus",
       "allStatuses": "Todos los estatus",
       "empty": "No hay reclamaciones."
@@ -10789,7 +10789,7 @@
     "noPieces": "Sin piezas.",
     "order": {
       "title": "Faltantes de {number}",
-      "gone": "Esta orden ya no tiene piezas por atender."
+      "gone": "Este envío ya no tiene piezas por atender."
     },
     "claim": {
       "title": "Reclamación {number}"

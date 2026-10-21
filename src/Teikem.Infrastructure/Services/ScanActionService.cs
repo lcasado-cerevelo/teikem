@@ -257,8 +257,8 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
     public async Task<ScanCloseCountResultDto> CloseCountAsync(ScanCloseCountRequest? req, CancellationToken ct)
     {
         if (tenant.TenantId is null) throw new ForbiddenException("No hay tenant activo en la sesión.");
-        if (req?.OrderPublicId is not Guid publicId) throw new ValidationException("orderPublicId", "Indique la orden cuyo conteo se cierra.");
-        var order = await db.TransportOrders.AsNoTracking().Include(o => o.Status).Where(o => o.PublicId == publicId && o.IsActive).FirstOrDefaultAsync(ct) ?? throw new NotFoundException("Orden", feminine: true);
+        if (req?.OrderPublicId is not Guid publicId) throw new ValidationException("orderPublicId", "Indique el envío cuyo conteo se cierra.");
+        var order = await db.TransportOrders.AsNoTracking().Include(o => o.Status).Where(o => o.PublicId == publicId && o.IsActive).FirstOrDefaultAsync(ct) ?? throw new NotFoundException("Envío");
         // Lote 111b: antes de cerrar se le dice a quien escanea qué va a pasar: las piezas que no se escanearon (quedarán «Por verificar») y la orden nueva de las que aparecieron. Sin confirmar no se hace nada.
         var preview = await reappeared.PreviewAsync(order.TransportOrderId, ct);
         var wouldMark = await MarkMissingAsync(order.TransportOrderId, 0, order.Status!.InternalCode, ct, dryRun: true);
@@ -269,9 +269,9 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
             if (req.Confirm != true)
             {
                 var clientName = preview?.ClientName ?? await db.Clients.AsNoTracking().Where(c => c.ClientId == order.ClientId).Select(c => c.Name).FirstOrDefaultAsync(ct) ?? string.Empty;
-                var text = $"Va a cerrar el conteo de la orden {order.OrderNumber}.";
+                var text = $"Va a cerrar el conteo del envío {order.OrderNumber}.";
                 if (notScanned.Count > 0) text += $" No se escanearon {notScanned.Count} pieza(s) y quedarán «Por verificar»: {string.Join(", ", notScanned)}.";
-                if (preview is not null) text += $" Aparecieron {preview.Numbers.Count} pieza(s) y se creará una orden nueva con ellas (mismo cliente y consignatario, estatus «{preview.StatusLabel}»).";
+                if (preview is not null) text += $" Aparecieron {preview.Numbers.Count} pieza(s) y se creará un envío nuevo con ellas (mismo cliente y consignatario, estatus «{preview.StatusLabel}»).";
                 return new ScanCloseCountResultDto(text, order.PublicId, order.OrderNumber, 0, 0, notScanned.Count, notScanned, true,
                     new ScanClosePreviewDto(order.OrderNumber, clientName, preview?.ConsigneeName, preview?.StatusLabel, preview?.Numbers ?? Array.Empty<string>(), notScanned));
             }
@@ -287,7 +287,7 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
             var action = ScanActions.ForStatus(order.Status.InternalCode);
             var ids = pieces.Select(p => p.OrderPieceId).ToList();
             var scanned = action is null ? 0 : await db.OrderPieceScans.AsNoTracking().CountAsync(s => ids.Contains(s.OrderPieceId) && s.Action == action, ct2);
-            var message = missing.Count == 0 ? $"Conteo cerrado: la orden {order.OrderNumber} está completa." : $"Conteo cerrado: a la orden {order.OrderNumber} le faltan {missing.Count} de {pieces.Count} piezas («Por verificar»).";
+            var message = missing.Count == 0 ? $"Conteo cerrado: el envío {order.OrderNumber} está completo." : $"Conteo cerrado: al envío {order.OrderNumber} le faltan {missing.Count} de {pieces.Count} piezas («Por verificar»).";
             if (created is not null) message += " " + string.Format(ReappearedOrderService.CreatedMessageFormat, created.OrderNumber, created.WaybillNumber, created.Pieces, created.OriginalOrderNumber);
             done = new ScanCloseCountResultDto(message, order.PublicId, order.OrderNumber, scanned, pieces.Count, missing.Count, missing, false, null, created?.PublicId, created?.OrderNumber, created?.WaybillNumber);
         }, ct);
@@ -321,12 +321,12 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
 
     private string LabelOf(string statusCode) => labels.TryGetValue(statusCode, out var l) ? l : statusCode;
 
-    public const string FinalMessageFormat = "La orden {0} está en un estatus final ({1}): no se cambia.";
+    public const string FinalMessageFormat = "El envío {0} está en un estatus final ({1}): no se cambia.";
     public static string FinalMessage(string orderNumber, string label) => string.Format(FinalMessageFormat, orderNumber, label);
     public static string ReappearedMessage(string pieceNumber, string? claimNumber)
-        => claimNumber is null ? $"La pieza {pieceNumber} apareció: su orden nueva se crea al cerrar el conteo." : $"La pieza {pieceNumber} apareció: se quitó de la reclamación {claimNumber} y su orden nueva se crea al cerrar el conteo.";
+        => claimNumber is null ? $"La pieza {pieceNumber} apareció: su envío nuevo se crea al cerrar el conteo." : $"La pieza {pieceNumber} apareció: se quitó de la reclamación {claimNumber} y su envío nuevo se crea al cerrar el conteo.";
     public static string DuplicateMessage(string pieceNumber) => $"La pieza {pieceNumber} ya se había escaneado con esta acción.";
     public static string CountedMessage(string pieceNumber, string statusLabel) => $"La pieza {pieceNumber} se contó ({statusLabel}).";
     public static string AppliedMessage(string orderNumber, string toLabel, int skipped)
-        => skipped > 0 ? $"La orden {orderNumber} pasó a {toLabel} (brincó {skipped} estatus)." : $"La orden {orderNumber} pasó a {toLabel}.";
+        => skipped > 0 ? $"El envío {orderNumber} pasó a {toLabel} (brincó {skipped} estatus)." : $"El envío {orderNumber} pasó a {toLabel}.";
 }

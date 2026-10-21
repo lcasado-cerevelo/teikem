@@ -85,19 +85,19 @@ public static class OutboundScanRules
     public const string EmptyCodeMessage = "Escanee o escriba un código.";
     public const string CodeTooLongMessage = "El código no puede exceder 40 caracteres.";
 
-    public const string NotFoundMessage = "No se encontró la orden.";
-    public const string MultipleMatchesMessage = "Hay varias órdenes con ese código; escanee el empaque.";
+    public const string NotFoundMessage = "No se encontró el envío.";
+    public const string MultipleMatchesMessage = "Hay varias envíos con ese código; escanee el empaque.";
 
     /// <summary>Lote 44: el código coincidió con el NÚMERO DE PAQUETE (cuarta precedencia del lookup, después de orden, empaque y factura).</summary>
     public const string MatchedByPackage = "PACKAGE";
 
     /// <summary>
-    /// Lote 44: 'El número de paquete está en {n} órdenes (de clientes distintos o repetido); escanee el empaque o el número de orden.'
+    /// Lote 44: 'El número de paquete está en {n} órdenes (de clientes distintos o repetido); escanee el empaque o el número de envío.'
     /// El contador de paquetes es por cliente y un número tecleado puede repetirse: el escaneo no adivina cuál es.
     /// </summary>
     public static string MultiplePackageMatchesMessage(int count)
         => string.Format(CultureInfo.InvariantCulture,
-            "El número de paquete está en {0} órdenes (de clientes distintos o repetido); escanee el empaque o el número de orden.", count);
+            "El número de paquete está en {0} envíos (de clientes distintos o repetido); escanee el empaque o el número de envío.", count);
     public const string NoZoneMessage = "No se pudo resolver la zona de despacho por código postal ni pueblo; queda sin asignar.";
 
     /// <summary>'Ya estaba en la ruta {código}.'</summary>

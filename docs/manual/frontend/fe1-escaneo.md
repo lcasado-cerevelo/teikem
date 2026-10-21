@@ -23,7 +23,7 @@ Sin `trips.view` la pantalla sigue escaneando: solo desaparecen los pendientes y
 3. Mira el resultado grande que aparece debajo de la casilla. Si el sonido está activo, la estación dice «Sí», «No» o «Ya».
 4. El cursor vuelve solo a la casilla: escanea el siguiente.
 
-Puedes escanear el **número de orden**, el **número de empaque** o el **número de factura del cliente** (se busca en ese orden). Si varios lectores llegan juntos, cada lectura se registra en el orden en que llegó.
+Puedes escanear el **número de envío**, el **número de empaque** o el **número de factura del cliente** (se busca en ese orden). Si varios lectores llegan juntos, cada lectura se registra en el orden en que llegó.
 
 ![Pantalla al empezar: casilla, filtros, medidor, lista de la sesión y pendientes](img/fe1-estacion-inicio.png)
 
@@ -37,8 +37,8 @@ Bajo la casilla está **Ruta del día**: por omisión es hoy. Las órdenes se as
 |---|---|---|
 | **Asignada** (verde) | `Asignada a la ruta {código}.` | La orden quedó en la ruta de su zona. Siga con la siguiente. |
 | **Ya estaba** (azul) | `Ya estaba en la ruta {código}.` | La orden ya tenía ruta. No hace falta hacer nada. |
-| **No encontrada** (rojo) | `No se encontró la orden.` | Ningún número de orden, empaque ni factura coincide. Revise el código o escanee el empaque. |
-| **No encontrada** (rojo) | `Hay varias órdenes con ese código; escanee el empaque.` | El número lo comparten órdenes de distintos clientes. Escanee el número del empaque, que es único. |
+| **No encontrada** (rojo) | `No se encontró el envío.` | Ningún número de envío, empaque ni factura coincide. Revise el código o escanee el empaque. |
+| **No encontrada** (rojo) | `Hay varias envíos con ese código; escanee el empaque.` | El número lo comparten órdenes de distintos clientes. Escanee el número del empaque, que es único. |
 | **No elegible** (morado) | El motivo (ver abajo) | La orden no puede ir en una ruta todavía. Arregle su estatus en **Órdenes** y escanee de nuevo. |
 | **Sin asignar** (ámbar) | `No se pudo resolver la zona de despacho por código postal ni pueblo; queda sin asignar.` | La dirección no pertenece a ninguna zona. Agregue su código postal o pueblo a una zona (Listas → Flota y mantenimiento → Zonas) o asigne la orden a mano en **Sala de despacho**. |
 | **Sin asignar** (ámbar) | `El código postal o pueblo pertenece a varias zonas ({códigos}); queda sin asignar.` | Deje esa dirección en una sola zona o asigne la orden a mano en **Sala de despacho**. |
@@ -46,12 +46,12 @@ Bajo la casilla está **Ruta del día**: por omisión es hoy. Las órdenes se as
 
 Motivos de **No elegible** (mensaje exacto del servidor):
 
-- `La orden ya salió a ruta o terminó; no se puede asignar a otra ruta.` — la orden ya va en camino, terminó o está inactiva.
-- `Las entregas especiales se asignan al chofer desde la orden; no pasan por Sala de despacho.` — asígnele el chofer desde la orden.
-- `La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.` — márquela como recogida desde el expediente de la orden.
+- `El envío ya salió a ruta o terminó; no se puede asignar a otra ruta.` — la orden ya va en camino, terminó o está inactiva.
+- `Las entregas especiales se asignan al chofer desde el envío; no pasan por Sala de despacho.` — asígnele el chofer desde la orden.
+- `El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.` — márquela como recogida desde el expediente de la orden.
 - `La orden está en '{estatus}'; regrésela al pipeline antes de asignarla a una ruta.` — la orden está en un estatus lateral (hoy, Intento fallido); devuélvala a su flujo normal.
 - `El estatus actual no permite la acción 'ASSIGN_TRIP'.` — el estatus de la orden no admite asignarla a una ruta.
-- `La orden no tiene una parada de entrega pendiente.` — la orden no tiene entrega por hacer.
+- `El envío no tiene una parada de entrega pendiente.` — la orden no tiene entrega por hacer.
 
 ![Resultado «Sin asignar» por no haber ruta abierta, con qué hacer](img/fe1-resultado-sin-ruta.png)
 

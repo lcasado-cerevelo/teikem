@@ -16,5 +16,5 @@ Sigue a los Lotes 61 y 62 (servidor). Diseño: [p4-s2-despacho-diseno.md](p4-s2-
 
 ## Decisiones por omisión (a revisar con Luis)
 1. **En la web no se escoge la posición**: se despacha de lo reservado. Tomar de otra posición (con el movimiento de la reserva) queda para el aparato, donde se escanea la posición.
-2. La entrega reutiliza el **formulario del empaque** tal cual (incluido el número de orden y la factura del cliente opcionales).
+2. La entrega reutiliza el **formulario del empaque** tal cual (incluido el número de envío y la factura del cliente opcionales).
 3. «Deshacer un despacho» se hace con la pantalla de Recolecciones de siempre (eliminar la recolección); no hay botón propio en la orden.

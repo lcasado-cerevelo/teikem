@@ -41,13 +41,13 @@ public sealed class OrderStatusService(
     public const string CreditOverridePermission = "orders.credit_override";
     public const string CreditOverrideCommentPrefix = "Crédito excedido autorizado por ";
 
-    public const string NoNextStageMessage = "El pipeline de órdenes no tiene una etapa siguiente a la inicial.";
-    public const string NotInitialMessage = "Solo se confirma una orden en su estatus inicial.";
+    public const string NoNextStageMessage = "El pipeline de envíos no tiene una etapa siguiente a la inicial.";
+    public const string NotInitialMessage = "Solo se confirma un envío en su estatus inicial.";
     public const string UseCancelMessage = "Para cancelar use la acción de cancelación.";
     public const string CancelReasonRequiredMessage = "Indique la razón de la cancelación.";
-    public const string ReopenReasonRequiredMessage = "Indique la razón para reabrir la orden.";
-    public const string NotFinalMessage = "Solo se reabre una orden en estatus final.";
-    public const string NoReopenTargetMessage = "La orden no tiene un estatus anterior al que volver; indique el estatus destino.";
+    public const string ReopenReasonRequiredMessage = "Indique la razón para reabrir el envío.";
+    public const string NotFinalMessage = "Solo se reabre un envío en estatus final.";
+    public const string NoReopenTargetMessage = "El envío no tiene un estatus anterior al que volver; indique el estatus destino.";
     public const string ReopenPermission = "orders.reopen";
     public const string UseConfirmMessage = "Para confirmar use la acción de confirmación.";
 
@@ -198,7 +198,7 @@ public sealed class OrderStatusService(
     /// <summary>
     /// Reabre una orden en estatus final (Entregada, Cancelada, En almacén…): exige el permiso orders.reopen y la razón; sin ToCode vuelve al último estatus no final que tuvo. Queda en el historial; no recotiza ni revalida el crédito.
     /// </summary>
-    public const string ReturnOpenMessageFormat = "La orden ya salió a devolución: cancele primero la orden de vuelta {0} para poder reabrirla.";
+    public const string ReturnOpenMessageFormat = "El envío ya salió a devolución: cancele primero el envío de vuelta {0} para poder reabrirla.";
 
     public async Task<OrderDetailDto> ReopenAsync(Guid publicId, OrderReopenRequest req, OrderScope scope, CancellationToken ct)
     {

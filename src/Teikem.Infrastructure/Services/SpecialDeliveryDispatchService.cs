@@ -44,9 +44,9 @@ public sealed class SpecialDeliveryDispatchService(
 {
     private readonly ITenantClock _clock = clock ?? TenantClock.Default;
 
-    public const string NotSpecialMessage = "Solo las entregas especiales se asignan a un chofer desde aquí; las demás órdenes pasan por Sala de despacho.";
+    public const string NotSpecialMessage = "Solo las entregas especiales se asignan a un chofer desde aquí; las demás envíos pasan por Sala de despacho.";
     public const string PastTransitMessage = "La entrega especial ya llegó a destino o terminó; no se puede asignar ni reasignar el chofer.";
-    public const string AlreadyAssignedMessage = "La orden ya está asignada a ese chofer.";
+    public const string AlreadyAssignedMessage = "El envío ya está asignado a ese chofer.";
     public const string DriverNotAvailablePrefix = "El chofer no está disponible para despacho: ";
 
     public static string DriverNotAvailableMessage(IEnumerable<string> blockingMessages)
@@ -93,7 +93,7 @@ public sealed class SpecialDeliveryDispatchService(
         var pipeline = await statuses.GetPipelineAsync(StatusDomains.OrderStatus, includeDisabled: true, ct);
         var current = pipeline.FirstOrDefault(s => s.Id == order.StatusCodeId);
         var target = pipeline.FirstOrDefault(s => string.Equals(s.Code, OrderStatuses.InTransit, StringComparison.OrdinalIgnoreCase))
-                     ?? throw new InvalidOperationException("El pipeline de órdenes no tiene la etapa IN_TRANSIT.");
+                     ?? throw new InvalidOperationException("El pipeline de envíos no tiene la etapa IN_TRANSIT.");
         if (current is null
             || !string.Equals(current.StageKind, StageKinds.Pipeline, StringComparison.OrdinalIgnoreCase)
             || current.SortOrder > target.SortOrder)
@@ -123,7 +123,7 @@ public sealed class SpecialDeliveryDispatchService(
                          .Where(s => s.SpecialServiceId == specialServiceId)
                          .Select(s => (int?)s.SpecialServiceTypeId)
                          .FirstOrDefaultAsync(ct)
-                     ?? throw new InvalidOperationException($"La orden {order.OrderNumber} apunta a un servicio especial inexistente.");
+                     ?? throw new InvalidOperationException($"El envío {order.OrderNumber} apunta a un servicio especial inexistente.");
         await trips.CreateTrackedAsync(p.DriverId, typeId, Today(), orderId, comment, p.TripRate, ct);
 
         // 9. Historial y orden; dos asignaciones concurrentes chocan en UX_DriverTrip_Order

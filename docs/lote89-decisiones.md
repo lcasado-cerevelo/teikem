@@ -1,4 +1,4 @@
-# Lote 89 — Radar de órdenes abiertas y avisos de operación (P12, 2) (2026-10-17)
+# Lote 89 — Radar de envíos abiertos y avisos de operación (P12, 2) (2026-10-17)
 
 Segundo lote de P12: el **Radar** de la maqueta y los avisos «órdenes sin chofer» y «COD sin cuadrar» en «Necesita tu atención». Sigue el plan del [Lote 88](lote88-decisiones.md) (90: fotos diarias; 91: indicadores y Actividad; 92: informes por correo).
 

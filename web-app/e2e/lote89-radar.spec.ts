@@ -93,7 +93,7 @@ test('Pulso: el Radar de órdenes abiertas y el aviso de órdenes sin chofer', a
 
   // 1) el Radar
   const radar = page.locator('[data-panel-body="RADAR"]')
-  await expect(radar.getByRole('heading', { name: 'Radar de órdenes abiertas' })).toBeVisible({ timeout: 30_000 })
+  await expect(radar.getByRole('heading', { name: 'Radar de envíos abiertos' })).toBeVisible({ timeout: 30_000 })
   await expect(radar).toContainText(/\d+ abiertas/)
   const firstTown = radar.locator('.gchip').first()
   await expect(firstTown).toBeVisible()
@@ -106,11 +106,11 @@ test('Pulso: el Radar de órdenes abiertas y el aviso de órdenes sin chofer', a
   // la búsqueda encuentra la orden abierta por su factura (solo si quedó abierta: con SQL)
   if (SQL_DB) {
     // la factura se repite entre clientes (FAC-00001 existe en cada uno): se busca por el consignatario, que es propio de esta corrida
-    await radar.getByLabel('Busca por factura, orden o consignatario…').fill(`Sucursal ${suffix}`)
+    await radar.getByLabel('Busca por factura, envío o consignatario…').fill(`Sucursal ${suffix}`)
     const hit = radar.getByRole('link', { name: new RegExp(invoice) })
     await expect(hit).toBeVisible({ timeout: 20_000 })
     await shot(page, isMobile, 'l89-busqueda', radar)
-    await radar.getByLabel('Busca por factura, orden o consignatario…').fill('')
+    await radar.getByLabel('Busca por factura, envío o consignatario…').fill('')
   }
 
   // un grupo abre Órdenes ya filtrado
@@ -119,7 +119,7 @@ test('Pulso: el Radar de órdenes abiertas y el aviso de órdenes sin chofer', a
   await expect(chip).toBeVisible()
   await chip.click()
   await expect(page).toHaveURL(/\/orders\?(city|client)=.*statuses=/)
-  await expect(page.getByRole('heading', { level: 1, name: 'Órdenes' })).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('heading', { level: 1, name: 'Envíos' })).toBeVisible({ timeout: 20_000 })
 
   // 2) «órdenes sin chofer» en «Necesita tu atención» (con la orden En almacén que dejó SQL)
   if (SQL_DB) {

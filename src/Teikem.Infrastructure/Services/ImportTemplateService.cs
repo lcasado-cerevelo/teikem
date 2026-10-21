@@ -250,7 +250,7 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
             if (rules.Count > 0) errors["lineRules"] = ImportLineRules.RulesNeedMultiLineMessage;
             return errors;
         }
-        if (kind != ImportKinds.Order) { errors["multiLine"] = "Solo las plantillas de órdenes pueden traer varias líneas por orden."; return errors; }
+        if (kind != ImportKinds.Order) { errors["multiLine"] = "Solo las plantillas de envíos pueden traer varias líneas por envío."; return errors; }
         if (!columns.Any(c => string.Equals(c.Field, ImportFields.OrderNumber, StringComparison.OrdinalIgnoreCase))) errors["columns"] = ImportLineRules.NeedsOrderNumberMessage;
         foreach (var (key, message) in ImportLineRules.Validate(rules)) errors[key.Replace("rules", "lineRules", StringComparison.Ordinal)] = message;
         return errors;

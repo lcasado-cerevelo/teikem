@@ -193,7 +193,7 @@ public sealed class IntegrationOutputService(TeikemDbContext db, ITenantContext 
             run.Rejected = undelivered;
             status = undelivered > 0 && sent == 0 && retrying == 0 ? IntegrationRunStatuses.Failed : undelivered > 0 || retrying > 0 ? IntegrationRunStatuses.Partial : IntegrationRunStatuses.Ok;
             message = created == 0 && sent + retrying + undelivered == 0 ? OutputRules.NothingToSendMessage
-                : $"{created} envío(s) armado(s) con {orders} orden(es): {sent} enviado(s), {retrying} por reintentar, {undelivered} no entregado(s).";
+                : $"{created} envío(s) armado(s) con {orders} envío(s): {sent} enviado(s), {retrying} por reintentar, {undelivered} no entregado(s).";
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)

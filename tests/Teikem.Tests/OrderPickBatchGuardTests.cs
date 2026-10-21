@@ -47,7 +47,7 @@ public class OrderPickBatchGuardTests
     [Fact]
     public void Delete_message_names_the_pick_batch_number()
     {
-        Assert.Equal("Esta orden nació de la recolección EMP-00042; elimínela desde Recolección y empaque para restaurar el inventario.",
+        Assert.Equal("Este envío nació de la recolección EMP-00042; elimínela desde Recolección y empaque para restaurar el inventario.",
             OrderRules.PickBatchOrderDeleteMessage("EMP-00042"));
         Assert.Equal("PICK_BATCH", EntityTypes.PickBatch);
     }

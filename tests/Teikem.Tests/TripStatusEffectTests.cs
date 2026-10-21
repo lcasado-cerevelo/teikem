@@ -147,7 +147,7 @@ public class TripStatusEffectTests
         await f.DenyAssignTripAsync(OrderStatuses.Pickup);
 
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => f.TransitionTripAsync(trip, TripStatuses.Dispatched));
-        Assert.Equal($"Orden {Fixture.OrderNumber(orders[0])}: El estatus actual no permite la acción 'ASSIGN_TRIP'.", ex.Message);
+        Assert.Equal($"Envío {Fixture.OrderNumber(orders[0])}: El estatus actual no permite la acción 'ASSIGN_TRIP'.", ex.Message);
         Assert.NotNull(ex.Errors);
         Assert.True(ex.Errors!.ContainsKey(Fixture.OrderNumber(orders[0])));
     }
@@ -277,7 +277,7 @@ public class TripStatusEffectTests
         await f.SetOrderStatusAsync(orders[1], pending);
 
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => f.Lifecycle.CompleteTrackedAsync(trip, null, default));
-        Assert.Equal($"La ruta {TripCode} no se puede cerrar: hay órdenes sin terminar ({Fixture.OrderNumber(orders[1])}).", ex.Message);
+        Assert.Equal($"La ruta {TripCode} no se puede cerrar: hay envíos sin terminar ({Fixture.OrderNumber(orders[1])}).", ex.Message);
         Assert.Equal(f.Id(StatusDomains.TripStatus, TripStatuses.InProgress), trip.StatusCodeId);
     }
 
@@ -286,7 +286,7 @@ public class TripStatusEffectTests
     {
         var numbers = Enumerable.Range(1, 12).Select(i => $"O-{i:00}").ToList();
         var msg = DispatchBatchRules.OpenOrdersBlockClose(TripCode, numbers);
-        Assert.Equal($"La ruta {TripCode} no se puede cerrar: hay órdenes sin terminar (O-01, O-02, O-03, O-04, O-05, O-06, O-07, O-08, O-09, O-10 y 2 más).", msg);
+        Assert.Equal($"La ruta {TripCode} no se puede cerrar: hay envíos sin terminar (O-01, O-02, O-03, O-04, O-05, O-06, O-07, O-08, O-09, O-10 y 2 más).", msg);
         await Task.CompletedTask;
     }
 
@@ -423,7 +423,7 @@ public class TripStatusEffectTests
         var (_, orders) = await f.SeedTripAsync(tripStatus, RouteStatuses.Active, orderStatus, 1);
 
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => f.TransitionOrderAsync(orders[0], OrderStatuses.Cancelled));
-        Assert.Equal($"La orden va en la ruta {TripCode} ya despachada; no se puede cancelar mientras la ruta esté en curso.", ex.Message);
+        Assert.Equal($"El envío va en la ruta {TripCode} ya despachada; no se puede cancelar mientras la ruta esté en curso.", ex.Message);
     }
 
     [Fact]

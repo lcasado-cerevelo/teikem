@@ -132,7 +132,7 @@ public static class KardexRules
             EntityTypes.PickBatch => "Recolección",
             EntityTypes.CycleCount => "Conteo",
             EntityTypes.PurchaseOrder => "Orden de compra",
-            EntityTypes.TransportOrder => "Orden",
+            EntityTypes.TransportOrder => "Envío",
             EntityTypes.CrossDockAllocation => "Cruce de plataforma",
             EntityTypes.CrossDockPlan => "Cruce de plataforma",
             EntityTypes.Rental => "Renta",

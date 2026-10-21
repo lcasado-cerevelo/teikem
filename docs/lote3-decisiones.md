@@ -97,7 +97,7 @@ las que siguen (29 en adelante) salieron de la ronda de verificación sobre el c
    (`confirmDuplicateInvoice=true`, código `duplicate_invoice_confirmable`), con `errors.existingOrderNumber`/
    `existingOrderPublicId` sobre `TeikemException.Errors`.
 6. **"Eliminar" una orden** (solo en la etapa inicial) es baja lógica `IsActive=0` sin transición de estatus: libera el
-   número de orden y de empaque (índices únicos filtrados por `IsActive=1`).
+   número de envío y de empaque (índices únicos filtrados por `IsActive=1`).
 7. **El ciclo COD nace bajo `EntityType` propio `ORDER_COD`** y las paradas bajo `ORDER_STOP` (no bajo `TRANSPORT_ORDER`)
    porque `StatusService` resuelve el regreso desde un lateral por `(EntityType, EntityId)` sin filtrar dominio; riesgo
    documentado y **no corregido en este lote** (queda para un lote futuro filtrar por dominio).
@@ -122,13 +122,13 @@ las que siguen (29 en adelante) salieron de la ronda de verificación sobre el c
     `RequestedDate`, sin conversión de zona horaria — decisión 27).
 14. **El paquete es una línea de la orden** (`CargoLine`, `PackageNumber` por línea); varias líneas del mismo tipo se
     permiten y se consolidan solo para mostrar/cotizar; PATCH reemplaza dando de baja las anteriores (`IsActive=0`).
-15. **Cliente, número de orden, número de factura y número de empaque se fijan al crear**; el PATCH los rechaza con 400
+15. **Cliente, número de envío, número de factura y número de empaque se fijan al crear**; el PATCH los rechaza con 400
     (`[JsonExtensionData]`), verificado por reflexión en `OrderContractsTests`.
 16. **No se crean órdenes para un cliente dado de baja (409) ni suspendido (422)**, tampoco se confirma con el cliente
     suspendido. Extendido por el ajuste A a contratos, tarifas, servicios especiales e invitaciones de portal.
 17. **Moneda de la orden y del COD**: la del cliente, si no la del contrato vigente, si no `NULL`.
 18. **Listado paginado** (`skip`/`take`, 1..500, default 100) y `GET /orders/lookup` exacto (CI, sin parciales) sobre los
-    tres identificadores (el número de orden puede repetirse entre clientes; `PackBatchNumber` es único por tenant).
+    tres identificadores (el número de envío puede repetirse entre clientes; `PackBatchNumber` es único por tenant).
 19. **`OrderScope(int? ClientId)` en toda lectura/escritura** para dejar preparado el portal (Lote 8) sin reescribir
     consultas; el controlador interno pasa `OrderScope.Any`.
 20. **`OrderReference` se administra por reemplazo completo**; `OrderDocument` no se mapea (sin proveedor de blob);
@@ -137,7 +137,7 @@ las que siguen (29 en adelante) salieron de la ronda de verificación sobre el c
     importación CSV"): dos pasos validar→confirmar, reutiliza `OrderRules`/numeración/consignatario de `OrderService`.
 22. **Fuente de datos `TRANSPORT_ORDER`** con relaciones `Client`/`Consignee` y contenido de sistema (vista "Órdenes",
     indicadores "Órdenes en curso"/"COD por cobrar", gráfico "Órdenes por estatus").
-23. **Número de orden único por cliente** (`UX_Order_Number (TenantId, ClientId, OrderNumber)`), no por tenant; el
+23. **Número de envío único por cliente** (`UX_Order_Number (TenantId, ClientId, OrderNumber)`), no por tenant; el
     identificador inequívoco de escaneo es `PackBatchNumber` (único por tenant).
 24. **El efecto de cotización+crédito se dispara al salir de la etapa inicial hacia PIPELINE**, no atado al código
     `CONFIRMED`: sigue funcionando si el tenant deshabilita `CONFIRMED` (avanza a la siguiente etapa PIPELINE habilitada,

@@ -222,7 +222,7 @@ estación (secciones 1 y 3) y nunca lleva el precio de la orden.
 - **Un fallo de impresión nunca deshace la orden**: «La orden se guardó, pero no se pudo imprimir el label: {motivo}. Use «Imprimir label» en la ficha.».
 
 ### 10.2 Documentos (impresora de documentos de la estación, papel carta)
-- **Waybill summary**: una fila por orden (Empaque, N.º de orden, Factura, Cliente, Consignatario, Pueblo, ZIP, Servicio, Paquetes, Piezas,
+- **Waybill summary**: una fila por orden (Empaque, N.º de envío, Factura, Cliente, Consignatario, Pueblo, ZIP, Servicio, Paquetes, Piezas,
   COD), agrupado por cliente con subtotal de órdenes, piezas y COD, y total general. Carta apaisada.
 - **Packing list**: una sección por orden (empaque, orden, factura, consignatario y dirección) con sus paquetes (tipo, n.º de paquete,
   descripción, piezas y peso) y subtotal; total general de piezas y peso. Carta vertical.
@@ -232,8 +232,8 @@ estación (secciones 1 y 3) y nunca lleva el precio de la orden.
   Consignatario, Pueblo, ZIP, Piezas y Fecha pedida, y el resumen de pendientes y escaneadas en esta sesión. Carta apaisada.
 
 ### 10.3 Escanear el número de paquete
-- El escaneo de salida y `GET /api/v1/orders/lookup` buscan el **número de paquete** como cuarta precedencia (después de número de orden,
+- El escaneo de salida y `GET /api/v1/orders/lookup` buscan el **número de paquete** como cuarta precedencia (después de número de envío,
   empaque y factura): el resultado dice «Encontrada por número de paquete.».
 - El número de paquete es por cliente (PQT-##### de cada cliente) o tecleado, así que puede repetirse: con dos o más órdenes el escaneo
-  responde «El número de paquete está en {n} órdenes (de clientes distintos o repetido); escanee el empaque o el número de orden.» y no asigna.
+  responde «El número de paquete está en {n} órdenes (de clientes distintos o repetido); escanee el empaque o el número de envío.» y no asigna.
 - La búsqueda usa el índice `IX_CargoLine_PackageNumber` (sección «2026-10-12 (e)» de `logistica-db-update.sql`; se crea con `db-update`).

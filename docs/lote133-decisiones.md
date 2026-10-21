@@ -17,5 +17,5 @@
 1. **Solo IMAP con contraseña** (contraseña de aplicación o buzón compartido con IMAP). Microsoft 365 con OAuth/Graph (sin contraseña) queda como mejora si Microsoft apaga el IMAP básico.
 2. **Acuse al remitente** (responder «Orden confirmada»): no se hizo; el acuse es el aviso del sistema, como se decidió. Se agrega como paso de salida en el lote de salida.
 3. **PDF y .eml adjuntos** no se leen (solo CSV/texto); un PDF adjunto se ignora por tipo.
-4. **Idempotencia** por hash del contenido (adjunto o cuerpo leído) y por el número de orden del importador; no se usa el `Reference #` como clave aparte.
+4. **Idempotencia** por hash del contenido (adjunto o cuerpo leído) y por el número de envío del importador; no se usa el `Reference #` como clave aparte.
 5. Los correos que no cumplen el asunto se **ignoran sin rastro** (no son de la integración).

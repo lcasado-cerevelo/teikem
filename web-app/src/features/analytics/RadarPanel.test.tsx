@@ -1,4 +1,4 @@
-// Pruebas del Radar de órdenes abiertas (Lote 89) sobre un fetch simulado: los grupos por pueblo y por cliente, sus enlaces, la búsqueda entre lo abierto y el error.
+// Pruebas del Radar de envíos abiertos (Lote 89) sobre un fetch simulado: los grupos por pueblo y por cliente, sus enlaces, la búsqueda entre lo abierto y el error.
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -48,14 +48,14 @@ function wrap() {
   )
 }
 
-describe('Radar de órdenes abiertas', () => {
+describe('Radar de envíos abiertos', () => {
   beforeAll(() => setLang('es'))
   beforeEach(() => {
     mock.requests.length = 0
     mock.fail = false
   })
 
-  it('muestra cuántas hay abiertas y los grupos por pueblo, cada uno con su enlace a Órdenes filtrado', async () => {
+  it('muestra cuántas hay abiertas y los grupos por pueblo, cada uno con su enlace a Envíos filtrado', async () => {
     wrap()
     expect(await screen.findByText('214 abiertas')).toBeInTheDocument()
     const ponce = await screen.findByRole('link', { name: /Ponce/ })
@@ -63,7 +63,7 @@ describe('Radar de órdenes abiertas', () => {
     expect(within(ponce).getByText('52')).toBeInTheDocument()
     expect(within(ponce).getByText('$1,200.00')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /San Germán/ })).toHaveAttribute('href', '/orders?city=San+Germ%C3%A1n&statuses=CONFIRMED%2CIN_TRANSIT')
-    expect(screen.getByRole('link', { name: 'Ver todas en Órdenes' })).toHaveAttribute('href', '/orders?statuses=CONFIRMED%2CIN_TRANSIT')
+    expect(screen.getByRole('link', { name: 'Ver todos en Envíos' })).toHaveAttribute('href', '/orders?statuses=CONFIRMED%2CIN_TRANSIT')
     expect(screen.getByText('Solo lo abierto — lo entregado no estorba aquí')).toBeInTheDocument()
   })
 
@@ -77,19 +77,19 @@ describe('Radar de órdenes abiertas', () => {
     expect(mock.requests.some((r) => r.path === '/api/v1/pulse/radar' && r.search.includes('groupBy=CLIENT'))).toBe(true)
   })
 
-  it('buscar muestra las órdenes abiertas que coinciden, con su enlace, y sin resultados lo dice', async () => {
+  it('buscar muestra los envíos abiertos que coinciden, con su enlace, y sin resultados lo dice', async () => {
     const user = userEvent.setup()
     wrap()
     await screen.findByText('214 abiertas')
-    await user.type(screen.getByLabelText('Busca por factura, orden o consignatario…'), 'FAC-12')
+    await user.type(screen.getByLabelText('Busca por factura, envío o consignatario…'), 'FAC-12')
     const hit = await screen.findByRole('link', { name: /FAC-00012/ })
     expect(hit).toHaveAttribute('href', '/orders/o-1')
     expect(within(hit).getByText('Hospital Norte')).toBeInTheDocument()
     const call = mock.requests.find((r) => r.path === '/api/v1/orders')!
     expect(call.search).toContain('search=FAC-12')
     expect(call.search).toContain('statuses=CONFIRMED')   // solo lo abierto
-    await user.clear(screen.getByLabelText('Busca por factura, orden o consignatario…'))
-    await user.type(screen.getByLabelText('Busca por factura, orden o consignatario…'), 'zzz')
+    await user.clear(screen.getByLabelText('Busca por factura, envío o consignatario…'))
+    await user.type(screen.getByLabelText('Busca por factura, envío o consignatario…'), 'zzz')
     expect(await screen.findByText('Sin resultados en abiertas')).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByRole('link', { name: /FAC-00012/ })).toBeNull())
   })
@@ -98,7 +98,7 @@ describe('Radar de órdenes abiertas', () => {
     const user = userEvent.setup()
     wrap()
     await screen.findByRole('link', { name: /Ponce/ })
-    await user.type(screen.getByLabelText('Busca por factura, orden o consignatario…'), 'F')
+    await user.type(screen.getByLabelText('Busca por factura, envío o consignatario…'), 'F')
     expect(screen.getByRole('link', { name: /Ponce/ })).toBeInTheDocument()
     expect(mock.requests.some((r) => r.path === '/api/v1/orders')).toBe(false)
   })

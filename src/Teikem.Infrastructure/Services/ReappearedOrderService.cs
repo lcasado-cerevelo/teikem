@@ -23,7 +23,7 @@ public sealed class ReappearedOrderService(TeikemDbContext db, ITenantContext te
 {
     private readonly ITenantClock _clock = clock ?? TenantClock.Default;
 
-    public const string CreatedMessageFormat = "Se creó la orden {0} (conduce {1}) con {2} pieza(s) que aparecieron de la orden {3}.";
+    public const string CreatedMessageFormat = "Se creó el envío {0} (conduce {1}) con {2} pieza(s) que aparecieron del envío {3}.";
 
     /// <summary>Lo que va a pasar al cerrar el conteo de la orden, o null si no hay piezas que hayan aparecido.</summary>
     public async Task<ReappearedPreview?> PreviewAsync(int orderId, CancellationToken ct)
@@ -100,7 +100,7 @@ public sealed class ReappearedOrderService(TeikemDbContext db, ITenantContext te
             TotalPieces = pieces.Count,
             CurrencyLookupId = original.CurrencyLookupId,
             IsSpecialDelivery = false,
-            Notes = $"Orden nueva de las piezas que aparecieron de la orden {original.OrderNumber}.",
+            Notes = $"Envío nuevo de las piezas que aparecieron del envío {original.OrderNumber}.",
             IsActive = true,
         };
         db.TransportOrders.Add(order);

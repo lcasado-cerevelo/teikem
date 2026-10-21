@@ -95,7 +95,7 @@ se imprime ninguna factura** (llega con facturación). Ver el capítulo [12 — 
 
 ### 1.4 Numeración por cliente
 
-Qué hace: dos preguntas independientes — **¿quién asigna el número de orden?** y **¿quién asigna el número de factura?**
+Qué hace: dos preguntas independientes — **¿quién asigna el número de envío?** y **¿quién asigna el número de factura?**
 (`clientAssignsOrderNumber`, `clientAssignsInvoiceNumber`; `false` = Teikem) — y tres patrones (orden, factura, paquete)
 donde `#` es un dígito del consecutivo y `@` la letra de serie. Cadena vacía en un patrón = volver al patrón por defecto
 del sistema: `ORD-#####`, `FAC-#####`, `PQT-#####` (vista previa `ORD-00001`, `FAC-00001`, `PQT-00001`). Si el consecutivo
@@ -592,7 +592,7 @@ Quién puede: `contracts.update`. Cómo se usa:
 | Campo / caso | Regla | Mensaje exacto | HTTP |
 |---|---|---|---|
 | `amount` negativo | ≥ 0 | `El cargo por despacho no puede ser negativo.` | 400 |
-| `type` vacío | FIXED o PERCENT | `Indique el tipo del cargo por COD: FIXED (monto fijo por orden) o PERCENT (por ciento del monto COD).` | 400 |
+| `type` vacío | FIXED o PERCENT | `Indique el tipo del cargo por COD: FIXED (monto fijo por envío) o PERCENT (por ciento del monto COD).` | 400 |
 | `type` desconocido | — | `Tipo de cargo por COD desconocido: 'X'. Use FIXED o PERCENT.` | 400 |
 | `value` ausente | — | `Indique el valor del cargo por COD.` | 400 |
 | FIXED negativo | ≥ 0 | `El cargo fijo por COD no puede ser negativo.` | 400 |

@@ -775,10 +775,10 @@ Cómo se usa:
 | Chofer no disponible para despacho | `El chofer no está disponible para despacho: {motivos bloqueantes separados por '; '}.` | 409 |
 | `driverPublicId` en una orden que **no** es entrega especial | `El chofer solo se asigna en una entrega especial.` (campo `driverPublicId`) | 400 |
 | Exceso de crédito al marcar como recogida, sin `orders.credit_override` | (igual que capítulo 03, sección 3.3) `code: "credit_exceeded"` | 422 |
-| Reasignar/asignar sobre una orden que **no** es entrega especial | `Solo las entregas especiales se asignan a un chofer desde aquí; las demás órdenes pasan por Sala de despacho.` | 422 |
+| Reasignar/asignar sobre una orden que **no** es entrega especial | `Solo las entregas especiales se asignan a un chofer desde aquí; las demás envíos pasan por Sala de despacho.` | 422 |
 | La orden ya pasó de `IN_TRANSIT` (ya está Entregada), o está en un lateral/terminal (en `IN_TRANSIT` todavía se reasigna) | `La entrega especial ya llegó a destino o terminó; no se puede asignar ni reasignar el chofer.` | 422 |
-| Asignar el mismo chofer que ya la tiene | `La orden ya está asignada a ese chofer.` | 409 |
-| Dos asignaciones concurrentes a la misma orden | `La orden ya tiene un viaje vigente; recargue e intente de nuevo.` | 409 |
+| Asignar el mismo chofer que ya la tiene | `El envío ya está asignado a ese chofer.` | 409 |
+| Dos asignaciones concurrentes a la misma orden | `El envío ya tiene un viaje vigente; recargue e intente de nuevo.` | 409 |
 
 Reasignar a otro chofer cancela automáticamente el viaje del chofer anterior (queda `CANCELLED`/`isActive: false`)
 antes de crear el nuevo. Cancelar la **orden** cancela automáticamente su `DriverTrip` vigente (sección 10.4).
@@ -840,10 +840,10 @@ capítulo con su causa y qué hacer.
 
 **Qué es un nivel:** un grupo de zonas de despacho (`ZoneGroup`): código, nombre, orden y, opcional, **chofer por omisión**. Es un dato de la zona, no una tarifa.
 
-**Dónde:** Flota → **Zonas de despacho**: arriba el panel **Niveles de zona** (crear, editar, inactivar, reactivar; «Asignar zona a las órdenes») y en cada zona el campo **Nivel**. Lectura con `fleet.view`, escritura con `fleet.manage`, módulo Catálogos.
+**Dónde:** Flota → **Zonas de despacho**: arriba el panel **Niveles de zona** (crear, editar, inactivar, reactivar; «Asignar zona a los envíos») y en cada zona el campo **Nivel**. Lectura con `fleet.view`, escritura con `fleet.manage`, módulo Catálogos.
 
 **Qué hace el nivel:**
-- **La orden hereda la zona y el nivel de su parada de entrega** (`DeliveryZoneId`, resuelta por ZIP y pueblo contra los miembros de las zonas activas al crear la orden o al cambiar su consignatario; ambigua o sin coincidencia = sin zona). Se ven en la ficha (Zona de entrega), en la lista (columna Zona = zona · nivel; filtros **Zona de entrega** y **Nivel de zona**) y en las Vistas (campos «Zona de entrega» y «Nivel de zona»). Las órdenes que ya existían se completan con **Asignar zona a las órdenes** (solo las que no tienen; `POST /dispatch-zones/assign-orders?all=true` las recalcula todas después de cambiar miembros).
+- **La orden hereda la zona y el nivel de su parada de entrega** (`DeliveryZoneId`, resuelta por ZIP y pueblo contra los miembros de las zonas activas al crear la orden o al cambiar su consignatario; ambigua o sin coincidencia = sin zona). Se ven en la ficha (Zona de entrega), en la lista (columna Zona = zona · nivel; filtros **Zona de entrega** y **Nivel de zona**) y en las Vistas (campos «Zona de entrega» y «Nivel de zona»). Las órdenes que ya existían se completan con **Asignar zona a los envíos** (solo las que no tienen; `POST /dispatch-zones/assign-orders?all=true` las recalcula todas después de cambiar miembros).
 - **Chofer por omisión del nivel:** al crear una ruta de una zona que **no tiene chofer propio** (sin `DriverZone` primaria), el chofer por omisión es el del nivel de esa zona (Advance: toda Isla a un solo chofer, la compañía externa registrada como chofer). Si la zona tiene chofer propio, manda el de la zona.
 - **Tarifa del chofer por nivel (opcional):** en Choferes → Tarifas por entrega, campo **Nivel de zona**. Una tarifa con nivel aplica solo a las entregas de ese nivel y **gana** sobre la general (sin nivel); si la orden es de un nivel sin tarifa propia, rige la general. Una sola tarifa abierta por (servicio, paquete, nivel). La liquidación la aplica por pieza.
 - **Tarifa del contrato por nivel (opcional):** en el contrato → Tarifas, campo **Nivel de zona** al agregar. Misma regla: la del nivel de la orden gana; sin ella, la general. La cotización y la facturación del flete la aplican solas (`RateQuoteRequest.zoneGroupId`).

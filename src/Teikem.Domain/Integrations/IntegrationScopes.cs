@@ -35,16 +35,16 @@ public static class IntegrationScopes
 
     public static readonly IReadOnlyList<IntegrationScope> All =
     [
-        new(FilesOrdersImport, IntegrationFamilies.Files, ModuleKeys.LtlGround, "Entrada de órdenes por archivo", "Order intake by file",
+        new(FilesOrdersImport, IntegrationFamilies.Files, ModuleKeys.LtlGround, "Entrada de envíos por archivo", "Order intake by file",
             [PermissionCatalog.OrdersView, PermissionCatalog.OrdersCreate, PermissionCatalog.LocationsRead, PermissionCatalog.LocationsCreate, PermissionCatalog.ClientsRead], NeedsClient: true),
 
-        new(FilesOrdersExport, IntegrationFamilies.Files, ModuleKeys.LtlGround, "Salida de órdenes por archivo o API", "Order output by file or API",
+        new(FilesOrdersExport, IntegrationFamilies.Files, ModuleKeys.LtlGround, "Salida de envíos por archivo o API", "Order output by file or API",
             [PermissionCatalog.OrdersView, PermissionCatalog.ClientsRead, PermissionCatalog.LocationsRead], NeedsClient: true),
 
         // ---- API del cliente (Lote 135): cada alcance abre un grupo de rutas (ApiAccessRules) y da a la cuenta de servicio solo los permisos que esas rutas piden
-        new(ApiScopes.OrdersRead, IntegrationFamilies.Transport, ModuleKeys.LtlGround, "API: leer órdenes, su seguimiento y el comprobante de entrega", "API: read orders, tracking and proof of delivery",
+        new(ApiScopes.OrdersRead, IntegrationFamilies.Transport, ModuleKeys.LtlGround, "API: leer envíos, su seguimiento y el comprobante de entrega", "API: read orders, tracking and proof of delivery",
             [PermissionCatalog.OrdersView, PermissionCatalog.ClientsRead, PermissionCatalog.LocationsRead], NeedsClient: true),
-        new(ApiScopes.OrdersCreate, IntegrationFamilies.Transport, ModuleKeys.LtlGround, "API: crear órdenes", "API: create orders",
+        new(ApiScopes.OrdersCreate, IntegrationFamilies.Transport, ModuleKeys.LtlGround, "API: crear envíos", "API: create orders",
             [PermissionCatalog.OrdersView, PermissionCatalog.OrdersCreate, PermissionCatalog.ClientsRead, PermissionCatalog.LocationsRead, PermissionCatalog.LocationsCreate], NeedsClient: true),
         new(ApiScopes.InvoicesRead, IntegrationFamilies.Transport, ModuleKeys.Billing, "API: leer facturas", "API: read invoices", [PermissionCatalog.BillingView, PermissionCatalog.ClientsRead], NeedsClient: true),
         new(ApiScopes.ConsigneesRead, IntegrationFamilies.Transport, ModuleKeys.LtlGround, "API: leer consignatarios propios", "API: read own consignees", [PermissionCatalog.LocationsRead, PermissionCatalog.ClientsRead], NeedsClient: true),
@@ -59,7 +59,7 @@ public static class IntegrationScopes
         new(ApiScopes.SalesWrite, IntegrationFamilies.Warehouse, ModuleKeys.SalesOrders, "API: crear y solicitar órdenes de venta", "API: create and request sales orders", [PermissionCatalog.SalesView, PermissionCatalog.SalesCreate]),
         new(ApiScopes.PurchasingRead, IntegrationFamilies.Warehouse, ModuleKeys.Purchasing, "API: leer órdenes de compra", "API: read purchase orders", [PermissionCatalog.PurchasingView]),
         new(ApiScopes.PurchasingWrite, IntegrationFamilies.Warehouse, ModuleKeys.Purchasing, "API: crear y enviar órdenes de compra", "API: create and send purchase orders", [PermissionCatalog.PurchasingView, PermissionCatalog.PurchasingManage]),
-        new(ApiScopes.WebhooksManage, IntegrationFamilies.Transport, ModuleKeys.LtlGround, "API: avisos por webhook de las órdenes y facturas del cliente", "API: webhook notices for the client's orders and invoices", [PermissionCatalog.ClientsRead], NeedsClient: true),
+        new(ApiScopes.WebhooksManage, IntegrationFamilies.Transport, ModuleKeys.LtlGround, "API: avisos por webhook de los envíos y facturas del cliente", "API: webhook notices for the client's orders and invoices", [PermissionCatalog.ClientsRead], NeedsClient: true),
     ];
 
     /// <summary>¿Alguno de los alcances necesita un cliente? (los de transporte: la llave solo ve lo de ese cliente.)</summary>
@@ -98,10 +98,10 @@ public static class IntegrationScopes
 
     public const string NoScopesMessage = "Escoja al menos un alcance para la integración.";
     public const string ApiNeedsClientMessage = "Los alcances de transporte de la API necesitan el cliente: la llave solo ve lo de ese cliente.";
-    public const string OutboundScopeOnlyMessage = "Una integración de salida solo admite el alcance de salida de órdenes.";
-    public const string InboundScopeOnlyMessage = "Una integración de entrada no admite el alcance de salida de órdenes.";
+    public const string OutboundScopeOnlyMessage = "Una integración de salida solo admite el alcance de salida de envíos.";
+    public const string InboundScopeOnlyMessage = "Una integración de entrada no admite el alcance de salida de envíos.";
     public const string ApiScopesOnlyMessage = "Una integración de tipo API solo admite alcances de la API.";
-    public const string FileScopeOnlyMessage = "Esta integración recibe archivos: solo admite el alcance de entrada de órdenes por archivo.";
+    public const string FileScopeOnlyMessage = "Esta integración recibe archivos: solo admite el alcance de entrada de envíos por archivo.";
     public static string UnknownScopeMessage(string code) => $"El alcance '{code}' no existe.";
     public static string ModuleOffMessage(string label) => $"La compañía no tiene el módulo que necesita «{label}».";
     public static string FamilyForbiddenMessage(string label, string permission) => $"No puede dar el alcance «{label}»: le falta el permiso '{permission}'.";
@@ -119,7 +119,7 @@ public static class IntegrationRules
 
     public const string NameRequiredMessage = "El nombre de la integración es obligatorio.";
     public static string NameMaxMessage => $"Máximo {NameMax} caracteres.";
-    public const string ClientRequiredMessage = "Indique el cliente de las órdenes de esta integración.";
+    public const string ClientRequiredMessage = "Indique el cliente de los envíos de esta integración.";
     public const string TemplateRequiredMessage = "Escoja la plantilla de importación con la que se leen los archivos.";
     public const string ConnectorNotAvailableMessage = "Ese tipo de conector todavía no está disponible.";
     public const string FolderRequiredMessage = "Indique el nombre de la carpeta de entrada.";

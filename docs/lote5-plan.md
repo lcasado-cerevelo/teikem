@@ -203,7 +203,7 @@ El Lote 5 entrega el módulo de Trips y rutas.
 - La fuente Órdenes gana ruta, chofer asignado, zona y excepción.
 - Contenido de sistema:
   - vista 'Rutas';
-  - indicadores 'Órdenes sin chofer asignado', 'Órdenes en excepción' y 'Rutas sobre el máximo de paradas';
+  - indicadores 'Envíos sin chofer asignado', 'Órdenes en excepción' y 'Rutas sobre el máximo de paradas';
   - gráfico 'Rutas por estatus'.
 
 **Fuera del lote**
@@ -377,22 +377,22 @@ TripRules:
   - DISPATCHED/IN_PROGRESS → 'La ruta {código} ya fue despachada; no se puede editar ni eliminar.'
   - COMPLETED/CANCELLED → 'La ruta {código} está cerrada; solo se consulta.'
 - Mensajes de órdenes:
-  - NotInTripMessage = 'La orden no está en esta ruta.'
-  - AlreadyInTripMessage = 'La orden ya está en esta ruta.'
+  - NotInTripMessage = 'El envío no está en esta ruta.'
+  - AlreadyInTripMessage = 'El envío ya está en esta ruta.'
   - OrderInOtherTripMessage(code) = 'La orden ya está asignada a la ruta {código}.'
-  - OrderTakenMessage = 'La orden ya está asignada a otra ruta.'
-  - EligibilityHeader = 'Hay órdenes que no se pueden asignar a la ruta.'
+  - OrderTakenMessage = 'El envío ya está asignado a otra ruta.'
+  - EligibilityHeader = 'Hay envíos que no se pueden asignar a la ruta.'
 - Límites y secuencia:
   - MaxStopsHardCap = 300, con 'Una ruta admite como máximo 300 paradas.'
   - SequenceMessage = 'La secuencia debe incluir exactamente las paradas de la ruta vigente, sin repetir.'
   - StopNotInTripMessage = 'Parada no encontrada en esta ruta.'
 - CheckEligibility(OrderEligibilityInput(string OrderNumber, bool IsActive, bool IsSpecialDelivery, string StatusCode, string StatusLabel, string StageKind, bool IsInitial, int SortOrder, int InTransitSortOrder, bool AssignTripAllowed, bool HasPendingDelivery)) → null o uno de:
   - 'La orden está en Entrada; confírmela antes de asignarla a una ruta.'
-  - 'Las entregas especiales se asignan al chofer desde la orden; no pasan por Sala de despacho.'
+  - 'Las entregas especiales se asignan al chofer desde el envío; no pasan por Sala de despacho.'
   - 'La orden está en '{estatus}'; regrésela al pipeline antes de asignarla a una ruta.'
-  - 'La orden ya salió a ruta o terminó; no se puede asignar a otra ruta.'
+  - 'El envío ya salió a ruta o terminó; no se puede asignar a otra ruta.'
   - 'El estatus actual no permite la acción 'ASSIGN_TRIP'.'
-  - 'La orden no tiene una parada de entrega pendiente.'
+  - 'El envío no tiene una parada de entrega pendiente.'
 - ValidateSequence(current, requested): permutación exacta.
 - OverStopLimit(stopCount, effective): estrictamente mayor.
 - PickOpenTrip(candidatos) → menor TripId. La comparten P6 y P9.
@@ -511,7 +511,7 @@ Services/TripOwnedEntityResolvers.cs, completos:
 **(12) SystemAnalyticsSeeder, bloque '// Lote 5'.** Los filtros son constantes public const.
 - Vista 'Rutas' (TRIP): PlanDate, Code, ZoneCode, DriverName, VehicleCode, Status, StopCount, OverStopLimit, TotalDistanceKm; orden PlanDate desc.
 - Indicadores:
-  - 'Órdenes sin chofer asignado' (orden 72)
+  - 'Envíos sin chofer asignado' (orden 72)
   - 'Órdenes en excepción' (orden 73)
   - 'Rutas sobre el máximo de paradas' (orden 82)
 - Gráfico 'Rutas por estatus' (donut, LAST7, orden 80).
@@ -703,8 +703,8 @@ Archivos:
 
 **TripOrderRequestRules (puro)**
 - ValidateAdd(ids): colapsa duplicados.
-  - 'Indique al menos una orden.'
-  - 'Agregue como máximo 200 órdenes por solicitud.'
+  - 'Indique al menos un envío.'
+  - 'Agregue como máximo 200 envíos por solicitud.'
 - NormalizeUnassignedQuery(q):
   - Take 1..500 (default 100); Skip ≥ 0.
   - 'Use dispatchZoneId o noZone, no ambos.'
@@ -720,17 +720,17 @@ Archivos:
   2. ApplyRowVersion y EnsureEditable → 422.
   3. RouteWriter.AddOrdersAsync(trip, ids): bloquea las órdenes por id ascendente, re-verifica bajo bloqueo y es atómico.
 - Respuestas:
-  - 422 status_rule 'Hay órdenes que no se pueden asignar a la ruta.' con errors {número: [motivo]}.
-  - 409 'La orden ya está en esta ruta.'
+  - 422 status_rule 'Hay envíos que no se pueden asignar a la ruta.' con errors {número: [motivo]}.
+  - 409 'El envío ya está en esta ruta.'
   - 409 'La orden ya está asignada a la ruta {código}.'
-  - Carrera → 409 'La orden ya está asignada a otra ruta.'
+  - Carrera → 409 'El envío ya está asignado a otra ruta.'
   - 400 'Una ruta admite como máximo 300 paradas.'
 - NO cambia el OrderStatus. Devuelve la ficha.
 
 (b) RemoveOrderAsync(Guid tripPublicId, Guid orderPublicId, TripOrderRemoveRequest?)
 - Dentro de RunInTransactionAsync: LockTripAsync, ApplyRowVersion y EnsureEditable.
 - Orden del tenant → 404 'Orden no encontrado.'
-- ReleaseOrderAsync → 404 'La orden no está en esta ruta.' (BOLA por id hijo).
+- ReleaseOrderAsync → 404 'El envío no está en esta ruta.' (BOLA por id hijo).
 - Resecuencia 1..N y recalcula. Devuelve la ficha.
 
 (c) PoolAsync(UnassignedPoolFilter, ct) → IReadOnlyList<UnassignedCandidate>. Es el núcleo compartido con P9.
@@ -768,7 +768,7 @@ Archivos:
 - Toca archivos compartidos: no. Depende de: P0.
 
 **HeuristicRoutePlanner (puro, determinista)** — igual que en el plan ganador.
-- Orden total: zona, fin de ventana, inicio de ventana, CP, pueblo normalizado, número de orden, OrderStopId. Los nulos van al final.
+- Orden total: zona, fin de ventana, inicio de ventana, CP, pueblo normalizado, número de envío, OrderStopId. Los nulos van al final.
 - Asignación greedy por paradas, peso y volumen:
   - una capacidad NULL no tiene límite;
   - el peso o volumen NULL de una orden cuenta 0;
@@ -1014,8 +1014,8 @@ NormalizeCode:
 - Más de 40 caracteres → 'El código no puede exceder 40 caracteres.'
 
 Decide(ScanFacts(int MatchCount, string? MatchedBy, string? OrderNumber, string? CurrentTripCode, string? IneligibleReason, ZoneResolution? Zone, string? OpenTripCode, DateOnly PlanDate)) → ScanDecision(Outcome, ReasonCode, Message, Voice). Precedencia fija, probada:
-1. MatchCount 0 → NOT_FOUND 'No se encontró la orden.'
-2. MatchCount > 1 → NOT_FOUND 'Hay varias órdenes con ese código; escanee el empaque.'
+1. MatchCount 0 → NOT_FOUND 'No se encontró el envío.'
+2. MatchCount > 1 → NOT_FOUND 'Hay varias envíos con ese código; escanee el empaque.'
 3. CurrentTripCode → ALREADY_ASSIGNED 'Ya estaba en la ruta {código}.' Gana a no elegible: una orden ya despachada dice 'Ya'.
 4. IneligibleReason → NOT_ELIGIBLE con el motivo de TripRules.
 5. Sin zona → FOUND_UNASSIGNED NO_ZONE 'No se pudo resolver la zona de despacho por código postal ni pueblo; queda sin asignar.'
@@ -1127,7 +1127,7 @@ Cubre literalmente L262: 'agrupar órdenes confirmadas por fecha/zona en trips, 
   - DispatchZoneIds distintos, como máximo 50: 'Máximo 50 zonas por planificación.'
 - Allocate(IReadOnlyList<UnassignedCandidate> candidates, IReadOnlyDictionary<int zoneId, int currentStops> openTrips, IReadOnlyCollection<int> targetZones, bool createEmptyTrips) → por zona:
   - Assigned: ids en orden RequestedDate, número;
-  - Skipped (id, reason): IneligibleReason, o 'CAPACITY_HARD_CAP' si pasaría de 300 paradas, con el texto 'La ruta llegó al máximo de 300 paradas; la orden queda sin asignar.';
+  - Skipped (id, reason): IneligibleReason, o 'CAPACITY_HARD_CAP' si pasaría de 300 paradas, con el texto 'La ruta llegó al máximo de 300 paradas; el envío queda sin asignar.';
   - CreateTrip: true si no hay ruta abierta y hay órdenes asignables, o si createEmptyTrips.
 - Las órdenes sin zona o ambiguas se cuentan en OrdersWithoutZone y no se tocan.
 
@@ -1715,14 +1715,14 @@ Así VROOM/OR-Tools no retendrán bloqueos de fila.
 - Errores:
   - [OA3, OD] → 422 atómico con 'La orden está en Entrada; confírmela antes de asignarla a una ruta.'
   - Entrega especial → 422.
-  - [OA1] otra vez → 409 'La orden ya está en esta ruta.'
+  - [OA1] otra vez → 409 'El envío ya está en esta ruta.'
 - GET /orders/{OA1}: sigue CONFIRMED, con assignedTripCode TR1 y assignedDriverCode D1.
 - concurrencia de asignación (Lote 5). OA3 a TR1 y OA3 a TR3 en paralelo:
 - un 200 y un 409 'ya está asignada a';
 - OA3 aparece en una sola ruta.
 - quitar y liberar (Lote 5).
 - DELETE /trips/{TR1}/orders/{OA1} → 200: secuencias contiguas; OA1 vuelve a sin asignar con su estatus.
-- OB1, que no está en TR1 → 404 'La orden no está en esta ruta.'
+- OB1, que no está en TR1 → 404 'El envío no está en esta ruta.'
 - AuditLog tiene el DELETE del TripOrder.
 - pin manual y ETAs (Lote 5).
 - PUT /trips/{TR1}/stops/{stop1}/location {lat:18.4655,lng:-66.1057} y stop2 {18.3985,-66.1553} → 200:
@@ -1767,7 +1767,7 @@ Así VROOM/OR-Tools no retendrán bloqueos de fila.
 - OD → NOT_ELIGIBLE (notfound).
 - OB2 → FOUND_ASSIGNED a TR2.
 - ON1 → FOUND_UNASSIGNED NO_ZONE.
-- Número de orden de OB1 → FOUND_ASSIGNED, matchedBy ORDER_NUMBER.
+- Número de envío de OB1 → FOUND_ASSIGNED, matchedBy ORDER_NUMBER.
 - Orden nueva de Z4 → FOUND_ASSIGNED a la ruta vacía creada por plan-day.
 - '' → 400 'Escanee o escriba un código.'
 - Operador de almacén → 200; 'lectura$TS' → 403.
@@ -1846,7 +1846,7 @@ Así VROOM/OR-Tools no retendrán bloqueos de fila.
 - fuentes, contenido de sistema y auditoría (Lote 5).
 - /analytics/data-sources: TRIP con dateField PlanDate; TRANSPORT_ORDER con TripCode, HasAssignedDriver, IsException y DispatchZoneCode.
 - La vista 'Rutas' devuelve TR1.
-- 'Órdenes sin chofer asignado' ≥ 1 (ON1).
+- 'Envíos sin chofer asignado' ≥ 1 (ON1).
 - 'Órdenes en excepción' ≥ 0.
 - El gráfico 'Rutas por estatus' devuelve datos.
 - AuditLog tiene TRIP (alta, cambio de chofer, DELETE de TripOrder), ROUTE (archivo), DISPATCH_ZONE (miembros) y TRANSPORT_ORDER (precisión MANUAL).
@@ -1910,7 +1910,7 @@ Así VROOM/OR-Tools no retendrán bloqueos de fila.
 - **id**: R18; **regla**: Disponibilidad para despacho: el planificador de trips solo ofrece vehículos/choferes activos, con documentos vigentes y sin mantenimiento abierto que los inhabilite.; **fuente**: L286 (módulo 4, Flota) — aplica como precondición de este lote al construir el planificador de Trips; **esRequisitoReal**: True
 - **id**: R19; **regla**: TransportOrder avanza DRAFT→CONFIRMED→PICKUP→INBOUND→PLANNED→IN_TRANSIT→ARRIVED→DELIVERED; los avances desde PLANNED en adelante (PLANNED, IN_TRANSIT, ARRIVED, DELIVERED) quedan reservados a Trips/POD (este lote y el 6/7).; **fuente**: Instrucción de la tarea ('Lo que dejaron preparado los lotes anteriores'), verificado contra CatalogDomains.cs OrderStatuses y seed L295-306; **esRequisitoReal**: True
 - **id**: R20; **regla**: Cross-docking (DockAppointment/CrossDockAllocation) está apagado para el tenant Advance y queda diseñado pero no construido; el único acoplamiento con Trips es conceptual (agenda de citas de muelle) — no hay nada que Trips deba escribir ni leer de Cross-dock en este lote.; **fuente**: L311-321 (nota de alcance L313); **notaBitacora**: confirmar explícitamente que ningún endpoint de Trips depende de DockAppointment; si aparece dependencia, es error de alcance.
-- **id**: R21; **regla**: Indicadores 'Órdenes sin chofer asignado' y 'Órdenes en excepción' se calculan filtrando la fuente de datos Órdenes por su campo de estatus/chofer (st/dr) del pipeline entrada→almacén→despacho→ruta→entregada/excepción, sin necesitar una fuente nueva — mecanismo del mock (IndicatorDefinition, módulo H).; **fuente**: L157; **esRequisitoReal**: True; **notaAlcance**: el requisito real para Lote 5 es que TransportOrderDataSource EXPONGA los campos necesarios (chofer asignado, marca de excepción); el propio mecanismo IndicatorDefinition es de otro módulo/lote.
+- **id**: R21; **regla**: Indicadores 'Envíos sin chofer asignado' y 'Órdenes en excepción' se calculan filtrando la fuente de datos Órdenes por su campo de estatus/chofer (st/dr) del pipeline entrada→almacén→despacho→ruta→entregada/excepción, sin necesitar una fuente nueva — mecanismo del mock (IndicatorDefinition, módulo H).; **fuente**: L157; **esRequisitoReal**: True; **notaAlcance**: el requisito real para Lote 5 es que TransportOrderDataSource EXPONGA los campos necesarios (chofer asignado, marca de excepción); el propio mecanismo IndicatorDefinition es de otro módulo/lote.
 - **id**: R22; **regla**: Nace DeliveryAttempt del evento físico (chofer marca entrega o fallo en la app / Sala de despacho).; **fuente**: L432; **esRequisitoRealNota**: DeliveryAttempt es entidad del módulo 11A (liquidación), fuera de este lote; se cita solo porque menciona 'Sala de despacho' como el lugar donde también se puede registrar el evento manualmente (backoffice) además de la app del chofer — confirma que Despacho necesita poder registrar entrega/fallo manualmente, no solo la app.
 - **id**: R1; **regla**: Trip.Code es único por tenant (UQ_Trip_Code (TenantId, Code)); no se especifica si el código se libera al desactivar (a diferencia de Vehicle.Code y Driver.EmployeeCode, cuyos comentarios dicen explícitamente 'no se libera tras la baja'; Trip no tiene ese comentario ni índice filtrado por IsActive en la constraint única).; **fuente**: Diseño/logistica-db-estructura.sql:1380-1394; **esRequisitoReal**: True
 - **id**: R2; **regla**: Una orden de transporte (TransportOrderId) no puede repetirse dentro del mismo Trip (UQ_TripOrder (TripId, TransportOrderId)), pero SÍ podría estar asignada simultáneamente a Trips distintos porque no existe un índice único filtrado por TransportOrderId solo (a diferencia de DriverTrip que sí tiene UX_DriverTrip_Order). Esto es una regla estructural del SQL, no una decisión de negocio documentada.; **fuente**: Diseño/logistica-db-estructura.sql:1398-1404
@@ -2016,7 +2016,7 @@ Así VROOM/OR-Tools no retendrán bloqueos de fila.
 - FleetAvailabilityService (src/Teikem.Infrastructure/Services/FleetAvailabilityService.cs) para decidir qué choferes/vehículos ofrecer al planificar un Trip — ya resuelve documentos vigentes, OT abiertas y estatus terminal/activo (R18).
 - DispatchZoneService + DispatchZonesController (Lote 4) para el CRUD de zonas; solo falta el motor de RESOLUCIÓN (ZIP/pueblo → DispatchZoneId) que el escaneo Outbound necesita (R16) — no existe todavía, hay que construirlo sobre DispatchZoneMember.
 - DriverZone + FleetAvailabilityService.PrimaryZoneCodesAsync para la reasignación en bloque por zona (ya lee la zona primaria del chofer).
-- TransportOrderDataSource (src/Teikem.Infrastructure/Analytics/OrderDataSources.cs) como base de la fuente 'Órdenes' — hay que EXTENDERLA (no reemplazarla) con el/los campos que necesitan los indicadores 'Órdenes sin chofer asignado' y 'Órdenes en excepción' (R21).
+- TransportOrderDataSource (src/Teikem.Infrastructure/Analytics/OrderDataSources.cs) como base de la fuente 'Órdenes' — hay que EXTENDERLA (no reemplazarla) con el/los campos que necesitan los indicadores 'Envíos sin chofer asignado' y 'Órdenes en excepción' (R21).
 - ILookupCache para resolver OptimizerEngine, GeocodeAccuracy, ZoneMatchType (LookupDomains ya declarados en CatalogDomains.cs).
 - Permisos ya reservados en PermissionCatalog.cs: TripsPlan='trips.plan', TripsDispatch='trips.dispatch', TripsOptimize='trips.optimize' — sembrados pero sin ningún endpoint que los use todavía; este lote es quien primero los consume.
 - Patrón IStatusTransitionEffect para reglas laterales al despachar (ej. 'congelar' la ruta, notificar app móvil) en vez de lógica ad hoc en el controlador.

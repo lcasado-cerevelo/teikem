@@ -105,12 +105,12 @@ describe('Reclamaciones', () => {
     mock.claimed = false
   })
 
-  it('la cola muestra las órdenes con faltantes y la búsqueda llega al API', async () => {
+  it('la cola muestra los envíos con faltantes y la búsqueda llega al API', async () => {
     const user = userEvent.setup()
     wrap()
     expect(await screen.findByText('ORD-00001')).toBeInTheDocument()
     expect(screen.getByText('1 de 4')).toBeInTheDocument()
-    await user.type(screen.getByPlaceholderText('Buscar por orden, conduce o pieza'), 'ACME0011')
+    await user.type(screen.getByPlaceholderText('Buscar por envío, conduce o pieza'), 'ACME0011')
     await waitFor(() => expect(sent('GET', '/api/v1/claims/to-verify').some((r) => r.search.includes('search=ACME0011'))).toBe(true))
   })
 

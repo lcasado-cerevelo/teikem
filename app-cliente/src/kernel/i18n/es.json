@@ -11,7 +11,7 @@
   },
   "tabs": {
     "home": "Inicio",
-    "orders": "Órdenes",
+    "orders": "Envíos",
     "warehouse": "Almacén",
     "shipments": "Envíos",
     "notices": "Avisos",
@@ -124,27 +124,27 @@
     "greeting": "Hola, {name}",
     "greetingPlain": "Hola",
     "client": "Cliente: {client}",
-    "totalOrders": "órdenes en total",
+    "totalOrders": "envíos en total",
     "byStatus": "Por estatus",
-    "recent": "Órdenes recientes",
-    "noOrders": "Todavía no hay órdenes.",
-    "seeAll": "Ver todas las órdenes",
+    "recent": "Envíos recientes",
+    "noOrders": "Todavía no hay envíos.",
+    "seeAll": "Ver todos los envíos",
     "invoices": "Mis facturas"
   },
   "orders": {
-    "title": "Mis órdenes",
+    "title": "Mis envíos",
     "search": "Buscar",
-    "searchPlaceholder": "Conduce, orden, factura o consignatario",
-    "empty": "Todavía no hay órdenes.",
-    "noMatches": "Ninguna orden coincide con la búsqueda.",
-    "orderNumber": "Orden {number}",
+    "searchPlaceholder": "Conduce, envío, factura o consignatario",
+    "empty": "Todavía no hay envíos.",
+    "noMatches": "Ningún envío coincide con la búsqueda.",
+    "orderNumber": "Envío {number}",
     "loadMore": "Cargar más ({shown} de {total})",
-    "new": "Nueva orden"
+    "new": "Nuevo envío"
   },
   "order": {
-    "title": "Orden",
+    "title": "Envío",
     "waybill": "Conduce",
-    "orderNumber": "N.º de orden",
+    "orderNumber": "N.º de envío",
     "invoice": "Factura",
     "service": "Servicio",
     "created": "Creada",
@@ -238,9 +238,9 @@
     "tooMany": "Demasiados mensajes seguidos; espere un rato para volver a escribir."
   },
   "newOrder": {
-    "title": "Nueva orden",
-    "help": "Escriba solo lo básico; la orden entra directo al flujo normal y usted la sigue desde «Órdenes».",
-    "readOnly": "Su usuario solo puede consultar. Pídale a un administrador de su empresa que le dé permiso para crear órdenes.",
+    "title": "Nuevo envío",
+    "help": "Escriba solo lo básico; el envío entra directo al flujo normal y usted lo sigue desde «Envíos».",
+    "readOnly": "Su usuario solo puede consultar. Pídale a un administrador de su empresa que le dé permiso para crear envíos.",
     "consignee": "Consignatario",
     "filter": "Buscar consignatario",
     "newConsignee": "Escribir un consignatario nuevo",
@@ -262,7 +262,7 @@
     "invoice": "Su número de factura",
     "requestedDate": "Fecha pedida",
     "notes": "Notas",
-    "submit": "Crear orden",
+    "submit": "Crear envío",
     "errors": {
       "consignee": "Escoja el consignatario o escriba uno nuevo (nombre, dirección y ciudad).",
       "packages": "Agregue de 1 a {max} paquetes.",
@@ -374,7 +374,7 @@
   },
   "consigneeOrders": {
     "title": "Mis envíos",
-    "help": "Las órdenes de su cliente que se entregan a usted. Solo se consultan.",
+    "help": "Los envíos de su cliente que se entregan a usted. Solo se consultan.",
     "search": "Buscar por conduce",
     "searchPlaceholder": "Número de conduce",
     "empty": "Todavía no hay envíos para usted.",
@@ -404,7 +404,7 @@
     "credited": "Acreditado",
     "balanceLabel": "Saldo",
     "lines": "Detalle",
-    "order": "orden {number}",
+    "order": "envío {number}",
     "payments": "Pagos recibidos"
   },
   "noticePrefs": {
@@ -457,7 +457,7 @@
   "indicators": {
     "title": "Indicadores",
     "days": "{n} días",
-    "created": "Órdenes creadas",
+    "created": "Envíos creados",
     "delivered": "Entregadas",
     "onTime": "Entregas a tiempo",
     "avgHours": "Tiempo promedio de entrega",

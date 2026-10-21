@@ -164,7 +164,7 @@ El panel **Viajes pagados** lista los viajes del chofer: fecha, tipo, monto, ord
 
 ![Panel Viajes pagados](img/fd1-viajes.png)
 
-**Cancelar viaje:** pulse la **X** de la fila, escriba un comentario si quiere y pulse **Cancelar viaje**. Un viaje que nació de una **entrega especial** no se cancela aquí: aparece «El viaje nace de una entrega especial; cancele la orden o reasigne el chofer.» Su número de orden es un enlace a la orden.
+**Cancelar viaje:** pulse la **X** de la fila, escriba un comentario si quiere y pulse **Cancelar viaje**. Un viaje que nació de una **entrega especial** no se cancela aquí: aparece «El viaje nace de una entrega especial; cancele la orden o reasigne el chofer.» Su número de envío es un enlace a la orden.
 
 ## 9. Dispositivos, contactos, campos personalizados e historial
 

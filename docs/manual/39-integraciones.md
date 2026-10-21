@@ -21,7 +21,7 @@ Pantalla: **Nueva integración** (nombre, descripción, cliente, plantilla de im
 | «Ya existe una integración con ese nombre.» (409) | nombre repetido |
 | «Escoja al menos un alcance para la integración.» · «El alcance 'X' no existe.» | alcances |
 | «No puede dar el alcance «X»: le falta el permiso 'integrations.create.files'.» (400) · «…usted no tiene los permisos …» · «La compañía no tiene el módulo que necesita «X».» | sin escalada de privilegios |
-| «Indique el cliente de las órdenes de esta integración.» · «Escoja la plantilla de importación con la que se leen los archivos.» | cliente / plantilla |
+| «Indique el cliente de los envíos de esta integración.» · «Escoja la plantilla de importación con la que se leen los archivos.» | cliente / plantilla |
 | «Ese tipo de conector todavía no está disponible.» · «Tipo de conector desconocido: X.» | conector |
 | «Indique el nombre de la carpeta de entrada.» · «El nombre de la carpeta solo admite letras, números, guion y guion bajo (sin rutas).» | carpeta |
 | «El intervalo debe estar entre 60 y 604800 segundos.» · «Una integración de subida manual no se programa por horario.» | horario |
@@ -59,7 +59,7 @@ Lo que entró y no se pudo procesar solo. **Una orden con problemas nunca se cre
   - **Expresión regular:** el primer grupo entre paréntesis (o todo lo que coincida).
   - **Bloque de renglones** (una tabla, p. ej. «Order Summary»): texto de inicio, texto de fin, separador de columnas y qué columna del renglón va a qué columna de la plantilla (`6=1, 7=2`); cada renglón es una línea del archivo y los valores sueltos se repiten en todos.
   - **Transformación** opcional: mayúsculas, solo dígitos (teléfonos) o monto (quita `$` y comas). **Obligatorio:** si no se encuentra, el correo va a la bandeja con «No se encontró el campo obligatorio de la columna N (…).»
-- **Repetidos:** el mismo contenido (hash del adjunto o del cuerpo leído) no se procesa dos veces; el número de orden repetido ya lo rechaza el importador.
+- **Repetidos:** el mismo contenido (hash del adjunto o del cuerpo leído) no se procesa dos veces; el número de envío repetido ya lo rechaza el importador.
 
 **Probar sin buzón:** en la lista, **Probar conexión** (`POST /{id}/email/test`) comprueba servidor, usuario, contraseña y carpeta y dice cuántos correos sin leer hay (sin tocarlos; el mensaje nunca trae la contraseña). Y **Subir archivo** acepta un **`.eml`**: se procesa EXACTAMENTE igual que uno recibido por IMAP (mismas reglas de remitente, asunto, adjuntos y cuerpo), así que se puede probar la configuración antes de apuntar el buzón.
 
@@ -231,7 +231,7 @@ Responda **2xx** en menos de **10 segundos**; cualquier otra cosa (o no responde
 **El mapeo por ruta (JSON y XML).** Una ruta es `$.a.b[0].c`:
 - `$` = el documento; `.campo` entra a un campo; `[*]` = todos los elementos de una lista; `[0]` = uno. Un solo elemento se trata como una lista de uno (`[*]` sirve con uno o con varios).
 - **XML:** la ruta empieza con el nombre del elemento raíz (`$.Pedidos.Orden[*]`); un **atributo** se escribe `@atributo` y el **texto** de un elemento que también tiene atributos, `#text`; los elementos que se repiten forman una lista.
-- **Ruta de las órdenes** (obligatoria, empieza con `$`): dónde está cada orden. **Ruta de las líneas** (opcional, empieza con `@`, relativa a la orden): cada línea es una fila; una orden sin líneas da una fila con lo de la línea vacío.
+- **Ruta de los envíos** (obligatoria, empieza con `$`): dónde está cada orden. **Ruta de las líneas** (opcional, empieza con `@`, relativa a la orden): cada línea es una fila; una orden sin líneas da una fila con lo de la línea vacío.
 - **Columnas:** el **nombre** de la columna y la **ruta del valor**, en el **orden que espera la plantilla** (la primera es la columna 1). Con líneas, `@.x` lee de la línea, `^.x` de su orden y `$.x` del documento; sin líneas, `@.x` lee de la orden. Un valor es texto, número (`12.5`) o `true`/`false`; un objeto, una lista o un valor ausente dan vacío.
 
 Ejemplo JSON (órdenes con líneas): `{"orders":[{"ref":"A-1","to":{"name":"Colmado Uno"},"items":[{"type":"Box","label":"PCS-1"},{"type":"Invoice","label":"INV-1"}]}]}` con ruta de órdenes `$.orders[*]`, de líneas `@.items[*]` y columnas `Orden ← ^.ref`, `Tipo ← @.type`, `Label ← @.label`, `Consignatario ← ^.to.name`. Ejemplo XML: `<Pedidos><Orden ref="A-1"><Item tipo="Box"/></Orden></Pedidos>` con `$.Pedidos.Orden[*]`, `@.Item[*]` y columnas `^.@ref`, `@.@tipo`.
@@ -244,8 +244,8 @@ Ejemplo JSON (órdenes con líneas): `{"orders":[{"ref":"A-1","to":{"name":"Colm
 |---|---|---|
 | «Formato desconocido: X. Use AUTO, CSV, EXCEL, JSON, XML.» | 400 | formato |
 | «El nombre de la hoja no puede pasar de 31 caracteres.» | 400 | hoja |
-| «Indique la ruta de las órdenes (por ejemplo $.orders[*]).» · «La ruta de las órdenes debe empezar con $ (por ejemplo $.orders[*]).» | 400 | ruta de órdenes |
-| «La ruta de las líneas debe ser relativa a la orden: empiece con @ (por ejemplo @.lines[*]).» | 400 | ruta de líneas |
+| «Indique la ruta de los envíos (por ejemplo $.orders[*]).» · «La ruta de los envíos debe empezar con $ (por ejemplo $.orders[*]).» | 400 | ruta de órdenes |
+| «La ruta de las líneas debe ser relativa al envío: empiece con @ (por ejemplo @.lines[*]).» | 400 | ruta de líneas |
 | «La ruta «X» no es válida. Use el formato $.campo.otro[*] (también @.campo o ^.campo).» | 400 | cualquier ruta mal formada |
 | «La ruta «^.x» usa ^ (la orden), que solo se puede cuando hay una ruta de líneas.» | 400 | `^` sin líneas |
 | «Agregue al menos una columna al mapeo.» · «El mapeo admite hasta 60 columnas.» · «Cada columna necesita un nombre.» · «Hay dos columnas llamadas «X».» | 400 | columnas |
@@ -269,13 +269,13 @@ Errores al **procesar un archivo** (el archivo queda anotado como «Con error» 
 
 > Dictado de Luis (2026-10-19): Teikem también **manda** datos, por configuración: las órdenes del cliente que llegan a un estatus (p. ej. «Entregada») salen en un archivo (CSV, JSON o XML) por **SFTP o FTP**, o por la **API del sistema del cliente** (HTTP genérico). Es la salida de archivos por evento u horario que faltaba (los webhooks, §9, cubren el aviso mínimo por evento).
 
-**Cómo se crea** (Sistema → Integraciones / API → Nueva integración → **Dirección: Salida**; `integrations.create` + `integrations.create.files`, alcance **«Salida de órdenes por archivo o API»**, módulo de transporte y un **cliente**: solo salen órdenes de ese cliente). Conectores de salida: **API saliente (HTTP)**, **SFTP** y **FTP** (el correo no es de salida).
+**Cómo se crea** (Sistema → Integraciones / API → Nueva integración → **Dirección: Salida**; `integrations.create` + `integrations.create.files`, alcance **«Salida de envíos por archivo o API»**, módulo de transporte y un **cliente**: solo salen órdenes de ese cliente). Conectores de salida: **API saliente (HTTP)**, **SFTP** y **FTP** (el correo no es de salida).
 
 **Qué se manda** (sección «Qué se manda»):
 - **Estatus que disparan la salida** (uno o varios): Sometida, Recogida, Sin asignar, Asignada, En tránsito, Entregada, Fallida, Cancelada, En almacén, Devuelta. Cada orden que **llega** a uno de ellos entra en la cola (una orden no entra dos veces mientras espera).
 - **Cuándo sale:** **Al instante** (cada orden en su propio envío, en menos de un minuto por el trabajo «Salida de integraciones») o **Por horario** (cada N minutos, 1 a 10080, un solo envío con todas las que llegaron desde el anterior; hasta 1.000 órdenes por envío).
 - **Formato:** **CSV** (delimitador coma, punto y coma o tabulador; encabezado y fin de línea `\r\n`), **JSON** (`{"orders":[{…}]}`; los números salen como números, las fechas en ISO 8601 UTC y lo que falta como `null`) o **XML** (`<orders><order><campo>…</campo></order></orders>`, UTF-8 sin BOM).
-- **Columnas:** el **nombre** (en JSON/XML debe empezar con letra o guion bajo y llevar letras, números, guion o guion bajo) y el **campo de la orden**: número de orden, conduce, factura del cliente, estatus (código y nombre), fecha de creación, fecha prometida, piezas, peso, monto COD, flete cotizado, notas, consignatario, dirección, pueblo y código postal de entrega, fecha y hora de entrega, quién recibió y notas de la entrega. Por omisión: orden, estatus, fecha de entrega y quién recibió. Hasta 40 columnas.
+- **Columnas:** el **nombre** (en JSON/XML debe empezar con letra o guion bajo y llevar letras, números, guion o guion bajo) y el **campo de la orden**: número de envío, conduce, factura del cliente, estatus (código y nombre), fecha de creación, fecha prometida, piezas, peso, monto COD, flete cotizado, notas, consignatario, dirección, pueblo y código postal de entrega, fecha y hora de entrega, quién recibió y notas de la entrega. Por omisión: orden, estatus, fecha de entrega y quién recibió. Hasta 40 columnas.
 - **Nombre del archivo** (SFTP/FTP): admite `{date}` (aaaammdd), `{time}` (hhmmss), `{id}` (número del envío) y `{ext}`; por omisión `ordenes-{date}-{time}.{ext}`. El archivo se sube con nombre provisional `.part` y se renombra al terminar (quien lo recoge nunca lo ve a medias) y **nunca pisa** uno existente (le pone la fecha por delante). La carpeta de destino es la «carpeta remota» del conector (se crea si falta); SFTP exige la huella del servidor fijada, como en la entrada (§7).
 - **API saliente (HTTP):** URL (**https y pública**, como los webhooks), método **POST** o **PUT**, autenticación **Ninguna**, **Token (Bearer)**, **Usuario y contraseña (Basic)** o **Encabezado con una llave**, y hasta **10 encabezados** adicionales (no Authorization, Host ni Content-Type). El token, la contraseña o el valor del encabezado se guardan **cifrados** y no se vuelven a mostrar. Cada llamada lleva `Idempotency-Key: teikem-output-{id}` y `X-Teikem-Output`; responda **2xx en menos de 10 s**; no se siguen redirecciones.
 
@@ -296,11 +296,11 @@ Errores al **procesar un archivo** (el archivo queda anotado como «Con error» 
 | «Indique el usuario (BASIC) o el nombre del encabezado (HEADER) de la autenticación.» · «Indique el token, la contraseña o el valor del encabezado de la autenticación.» | 400 | autenticación |
 | «El encabezado «X» no es válido (nombre no permitido o valor con saltos de línea o de más de 500 caracteres).» · «Se admiten hasta 10 encabezados adicionales.» | 400 | encabezados |
 | «La URL debe usar https.» · «La URL apunta a una dirección interna o local, que no se permite.» | 400 | URL (igual que los webhooks) |
-| «Una integración de salida solo admite el alcance de salida de órdenes.» · «Una integración de entrada no admite el alcance de salida de órdenes.» | 400 | alcances |
+| «Una integración de salida solo admite el alcance de salida de envíos.» · «Una integración de entrada no admite el alcance de salida de envíos.» | 400 | alcances |
 | «Una integración de salida usa SFTP, FTP o HTTP.» · «El conector HTTP es solo para integraciones de salida.» | 400 | conector |
-| «Indique el cliente de las órdenes de esta integración.» | 400 | sin cliente |
+| «Indique el cliente de los envíos de esta integración.» | 400 | sin cliente |
 | «Esta integración es de salida: no recibe archivos.» | 400 | subir un archivo |
-| «No hay órdenes pendientes de enviar.» | — (mensaje de la corrida) | «Enviar ahora» sin cola |
+| «No hay envíos pendientes de enviar.» | — (mensaje de la corrida) | «Enviar ahora» sin cola |
 | «Solo se puede reintentar un envío no entregado.» · «El envío ya fue descartado.» · «El envío ya se entregó.» | 409 | bandeja de salidas |
 | «La salida supera el tamaño permitido (2 MB); use una salida más frecuente o menos columnas.» | (envío no entregado) | contenido demasiado grande |
 

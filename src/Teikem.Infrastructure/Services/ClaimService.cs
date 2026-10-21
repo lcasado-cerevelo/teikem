@@ -195,8 +195,8 @@ public sealed class ClaimService(TeikemDbContext db, ITenantContext tenant, Stat
 
     private async Task<int> OrderIdAsync(Guid? publicId, CancellationToken ct)
     {
-        if (publicId is null) throw new ValidationException("orderPublicId", "Indique la orden.");
-        return await db.TransportOrders.AsNoTracking().Where(o => o.PublicId == publicId && o.IsActive).Select(o => (int?)o.TransportOrderId).FirstOrDefaultAsync(ct) ?? throw new NotFoundException("Orden", feminine: true);
+        if (publicId is null) throw new ValidationException("orderPublicId", "Indique el envío.");
+        return await db.TransportOrders.AsNoTracking().Where(o => o.PublicId == publicId && o.IsActive).Select(o => (int?)o.TransportOrderId).FirstOrDefaultAsync(ct) ?? throw new NotFoundException("Envío");
     }
 
     private async Task<MissingOrderDto?> MissingOrderAsync(int orderId, CancellationToken ct)

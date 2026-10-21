@@ -141,15 +141,15 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
 
     await login(page)
     await page.goto('/orders')
-    await expect(page.getByRole('heading', { level: 1, name: 'Órdenes' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Envíos' })).toBeVisible()
     await shot(page, isMobile, 'fc1-lista')
 
     // ---- Formulario desplegable ----
-    await page.getByRole('button', { name: /Nueva orden/ }).click()
+    await page.getByRole('button', { name: /Nuevo envío/ }).click()
     // desde F-C3 la entrada abre en Rápida (segmentado Rápida/Detallada); este recorrido es el de la Detallada
     await expect(page.getByRole('button', { name: /Rápida/ })).toHaveCount(1)
     await page.getByRole('button', { name: /Detallada/ }).click()
-    await expect(page.getByText('Ticket de la orden')).toBeVisible()
+    await expect(page.getByText('Ticket del envío')).toBeVisible()
     // F-G2: «Label al guardar» junto a los botones de guardar, y los labels en el pie de la lista
     await expect(page.getByRole('switch', { name: 'Label al guardar' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Todos los labels' })).toBeVisible()
@@ -170,7 +170,7 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
     const types = page.getByRole('combobox', { name: /^Tipo de paquete/ })
     if ((await types.first().inputValue()) === '') await types.first().selectOption({ index: 1 })
     // captura del arranque del formulario (cliente, servicio y consignatario), con la página arriba
-    await page.getByRole('heading', { level: 1, name: 'Órdenes' }).scrollIntoViewIfNeeded()
+    await page.getByRole('heading', { level: 1, name: 'Envíos' }).scrollIntoViewIfNeeded()
     await shot(page, isMobile, 'fc1-alta-inicio')
     await page.getByLabel(/^Piezas/).first().fill('2')
     await page.getByLabel('Descripción').first().fill('Ropa')
@@ -179,7 +179,7 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
     await page.getByLabel(/^Piezas/).nth(1).fill('1')
     await page.getByLabel('Monto COD').fill('50')
     // el ticket no muestra precio: solo el COD capturado
-    const ticket = page.getByRole('complementary', { name: 'Ticket de la orden' })
+    const ticket = page.getByRole('complementary', { name: 'Ticket del envío' })
     await expect(ticket).toContainText(clientName)
     await expect(ticket).toContainText('$50.00')
     await shot(page, isMobile, 'fc1-alta')
@@ -188,7 +188,7 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
     // ---- Guardar ----
     await page.getByRole('button', { name: 'Guardar', exact: true }).click()
     await expect(toast(page, /^Orden .+ guardada\.$/)).toBeVisible()
-    await expect(page.getByText('Ticket de la orden')).toHaveCount(0)
+    await expect(page.getByText('Ticket del envío')).toHaveCount(0)
     const banner = page.locator('.oe-created')
     await expect(banner).toContainText('guardada')
     const page1 = await ok<OrderPageDto>(request.get(`${API_URL}/api/v1/orders?clientId=${client.publicId}`, { headers }), 'órdenes del cliente')
@@ -210,7 +210,7 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
       await expect(cards).toHaveCount(1)
       await expect(cards.first()).toContainText(orderNumber)
     } else {
-      const rows = page.getByRole('table', { name: 'Órdenes' }).getByRole('row').filter({ hasText: /\S/ })
+      const rows = page.getByRole('table', { name: 'Envíos' }).getByRole('row').filter({ hasText: /\S/ })
       await expect(rows).toHaveCount(3) // encabezado + 2 filas de la misma orden
       await expect(rows.nth(1)).toContainText(orderNumber)
       await expect(rows.nth(2)).toContainText('↳')
@@ -225,7 +225,7 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
     await expect(page.getByLabel('ZIP', { exact: true })).toHaveValue('')
 
     // ---- Segundo formulario lleno y sin guardar: sigue abierto con lo capturado ----
-    await page.getByRole('button', { name: /Nueva orden/ }).click()
+    await page.getByRole('button', { name: /Nuevo envío/ }).click()
     await page.getByRole('button', { name: /Detallada/ }).click()
     await pickClient(page, clientName)
     await pickConsignee(page, consigneeName)
@@ -233,7 +233,7 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
     if ((await service2.inputValue()) === '') await service2.selectOption({ index: 1 })
     const types2 = page.getByRole('combobox', { name: /^Tipo de paquete/ })
     if ((await types2.first().inputValue()) === '') await types2.first().selectOption({ index: 1 })
-    await expect(page.getByText('Ticket de la orden')).toBeVisible()
+    await expect(page.getByText('Ticket del envío')).toBeVisible()
     await expect(page.getByLabel(/^Piezas/).first()).toHaveValue('1')
     const after = await ok<OrderPageDto>(request.get(`${API_URL}/api/v1/orders?clientId=${client.publicId}`, { headers }), 'órdenes sin guardar')
     expect(after.total).toBe(1)
@@ -241,19 +241,19 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
     // ---- Entrega especial: el cliente no tiene servicios especiales ----
     await page.getByRole('switch', { name: 'Es una entrega especial' }).check()
     await expect(page.getByLabel('Monto COD')).toHaveCount(0)
-    await expect(page.getByRole('textbox', { name: /N\.º de orden/ })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: /N\.º de envío/ })).toBeVisible()
     // el aviso es la única opción del selector «Servicio especial»
     await expect(page.getByRole('combobox', { name: /^Servicio especial/ })).toContainText('Este cliente no tiene servicios especiales configurados')
     await shot(page, isMobile, 'fc1-alta-especial')
     await page.getByRole('button', { name: 'Ocultar formulario' }).click()
-    await expect(page.getByText('Ticket de la orden')).toHaveCount(0)
+    await expect(page.getByText('Ticket del envío')).toHaveCount(0)
 
     // ---- Papelera (la lista vuelve a filtrarse por el cliente: «Limpiar» la dejó con todas las órdenes) ----
     await clientFilter.click()
     await page.getByLabel(new RegExp(clientName)).check()
     await page.keyboard.press('Escape')
     await expect(page.getByText('1–1 de 1', { exact: true })).toBeVisible()
-    await page.getByRole('button', { name: 'Eliminar la orden' }).click()
+    await page.getByRole('button', { name: 'Eliminar el envío' }).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toContainText(orderNumber)
     await shot(page, isMobile, 'fc1-eliminar')
@@ -289,7 +289,7 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
     const invoice = `FAC-${suffix}`
 
     async function fillOrder() {
-      await page.getByRole('button', { name: /Nueva orden/ }).click()
+      await page.getByRole('button', { name: /Nuevo envío/ }).click()
       await page.getByRole('button', { name: /Detallada/ }).click()
       await pickClient(page, clientName)
       await pickConsignee(page, consigneeName)
@@ -300,7 +300,7 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
 
     await login(page)
     await page.goto('/orders')
-    await expect(page.getByRole('heading', { level: 1, name: 'Órdenes' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Envíos' })).toBeVisible()
 
     // primera orden con la factura: ya al guardar se cotiza y se mide el crédito (límite 10, tarifa 100) → autorizar
     await fillOrder()
@@ -309,7 +309,7 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
     await expect(credit1).toBeVisible()
     await credit1.getByRole('button', { name: 'Autorizar y guardar' }).click()
     await expect(toast(page, /^Orden .+ guardada\.$/)).toBeVisible()
-    await expect(page.getByText('Ticket de la orden')).toHaveCount(0)
+    await expect(page.getByText('Ticket del envío')).toHaveCount(0)
 
     // segunda con la misma factura: el consignatario la admite repetida, avisa y deja decidir
     await fillOrder()

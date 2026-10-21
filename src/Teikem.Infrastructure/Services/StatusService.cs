@@ -212,7 +212,7 @@ public sealed class StatusService(TeikemDbContext db, ITenantContext tenant, ILo
         if (reopen)
         {
             if (from is null || from.StageKind!.InternalCode != StageKinds.Terminal) throw new StatusRuleException("Solo se reabre un registro en estatus final.");
-            if (to.StageKind!.InternalCode == StageKinds.Terminal) throw new StatusRuleException("Una orden reabierta debe quedar en una etapa en curso.");
+            if (to.StageKind!.InternalCode == StageKinds.Terminal) throw new StatusRuleException("Un envío reabierto debe quedar en una etapa en curso.");
         }
         else await EnsureTransitionAllowedAsync(enabled, from, to, entityTypeId, entityId, ct);
 

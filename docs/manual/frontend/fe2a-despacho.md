@@ -24,7 +24,7 @@ Un botón que no es suyo simplemente no aparece. Si le falta `fleet.view`, la pa
 
 Arriba están la **Fecha de las rutas** (hoy por omisión; **Hoy** vuelve a hoy) y los botones. Debajo, los filtros de las órdenes sin asignar y tres columnas:
 
-- **Órdenes sin asignar** (izquierda): las órdenes ya recogidas (no las Sometidas) que todavía no tienen ruta.
+- **Envíos sin asignar** (izquierda): las órdenes ya recogidas (no las Sometidas) que todavía no tienen ruta.
 - **Ruta activa** (centro): la ruta que está trabajando, con su chofer, vehículo, avisos y órdenes. Debajo, el panel **Choferes**.
 - **Rutas de hoy** (derecha): una tarjeta por ruta de la fecha. Toque una para hacerla la ruta activa.
 
@@ -43,7 +43,7 @@ La ruta que está viendo y la fecha quedan en la dirección de la página: puede
 
 El sistema reparte por zona las órdenes ya recogidas que no tienen ruta. Usa la ruta abierta de la zona o crea una con el **chofer estándar** de la zona. **No** optimiza, **no** despacha y **no** asigna vehículo, y repetirlo no duplica nada.
 
-Al terminar verá el resumen: **Rutas creadas**, **Órdenes asignadas**, **Órdenes omitidas** y **Órdenes sin zona**, y por cada zona sus avisos (por ejemplo, una orden que no se pudo asignar y por qué). Las órdenes sin zona o con zona ambigua no se tocan: arregle la zona en la lista.
+Al terminar verá el resumen: **Rutas creadas**, **Envíos asignados**, **Envíos omitidos** y **Envíos sin zona**, y por cada zona sus avisos (por ejemplo, una orden que no se pudo asignar y por qué). Las órdenes sin zona o con zona ambigua no se tocan: arregle la zona en la lista.
 
 ![Resultado de planificar el día](img/fe2a-planificar-resultado.png)
 
@@ -61,7 +61,7 @@ En la lista de choferes y vehículos, los que no están disponibles en esa fecha
 ## Añadir órdenes a la ruta
 
 1. Elija la ruta activa en **Rutas de hoy**. Debe estar en **Borrador** o **Planificado**.
-2. En **Órdenes sin asignar** marque las órdenes (o **Marcar todas**). Puede reducir la lista con los filtros **Código postal**, **Pueblo**, **Cliente** y **Zona**, y con el buscador.
+2. En **Envíos sin asignar** marque las órdenes (o **Marcar todas**). Puede reducir la lista con los filtros **Código postal**, **Pueblo**, **Cliente** y **Zona**, y con el buscador.
 3. Pulse **Añadir a la ruta (N)**. Se añaden todas o ninguna.
 
 Cada fila muestra el número de la orden, el consignatario y «pueblo · código postal · zona». Una orden sin zona dice **Sin zona**.
@@ -76,11 +76,11 @@ Si alguna orden no se puede asignar, no se añade ninguna y verá cada número c
 
 | Mensaje | Qué significa y qué hacer |
 |---|---|
-| `Hay órdenes que no se pueden asignar a la ruta.` y, debajo, `{orden}: {motivo}` | Una o más órdenes no son elegibles. El motivo dice por qué (por ejemplo `La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.` o `El estatus actual no permite la acción 'ASSIGN_TRIP'.`). Corrija la orden o quítela de la selección. |
-| `La orden ya está en esta ruta.` | Esa orden ya estaba en la ruta. |
+| `Hay envíos que no se pueden asignar a la ruta.` y, debajo, `{orden}: {motivo}` | Una o más órdenes no son elegibles. El motivo dice por qué (por ejemplo `El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.` o `El estatus actual no permite la acción 'ASSIGN_TRIP'.`). Corrija la orden o quítela de la selección. |
+| `El envío ya está en esta ruta.` | Esa orden ya estaba en la ruta. |
 | `La orden ya está asignada a la ruta {código}.` | Otra persona la asignó antes que usted. Se actualiza la lista. |
 | `Una ruta admite como máximo 300 paradas.` | La ruta está llena. Use otra ruta. |
-| `Agregue como máximo 200 órdenes por solicitud.` | Marcó más de 200. Añada en dos tandas. |
+| `Agregue como máximo 200 envíos por solicitud.` | Marcó más de 200. Añada en dos tandas. |
 | `La ruta {código} ya fue despachada; no se puede editar ni eliminar.` | La ruta ya salió del borrador: su contenido está congelado. |
 
 ## El plano de la ruta
@@ -109,18 +109,18 @@ Si usted no puede poner pines (le falta el permiso `trips.plan`), el mensaje le 
 
 ### Elegir una parada
 
-Pulse un pin (o pulse **Tab** hasta llegar a él y **Enter** o la barra espaciadora) para elegir esa parada: el pin se rodea con un aro, su orden se resalta en **Órdenes en esta ruta** y debajo del plano aparece un resumen («Parada 4 · número de orden · consignatario · pueblo · tipo de pin»). También funciona al revés: al pulsar una orden de la lista se resalta su pin. Las paradas de **Sin ubicación** también se pueden elegir pulsando su número de orden.
+Pulse un pin (o pulse **Tab** hasta llegar a él y **Enter** o la barra espaciadora) para elegir esa parada: el pin se rodea con un aro, su orden se resalta en **Envíos en esta ruta** y debajo del plano aparece un resumen («Parada 4 · número de envío · consignatario · pueblo · tipo de pin»). También funciona al revés: al pulsar una orden de la lista se resalta su pin. Las paradas de **Sin ubicación** también se pueden elegir pulsando su número de envío.
 
 Si varias órdenes van a la misma dirección, sus pines se abren en abanico para que todos se vean.
 
 ## Ordenar y quitar órdenes
 
-En **Órdenes en esta ruta** cada orden tiene un **asa** (seis puntos) a la izquierda y, a la derecha, un pin, ▲, ▼ y una papelera:
+En **Envíos en esta ruta** cada orden tiene un **asa** (seis puntos) a la izquierda y, a la derecha, un pin, ▲, ▼ y una papelera:
 
 - **Arrastrar**: sostenga el asa, mueva la orden hasta la posición que quiere y suéltela. Mientras arrastra, la orden de origen se atenúa y una línea azul marca dónde caerá. Funciona con el ratón y con el dedo.
 - **Con el teclado**: lleve el foco al asa con **Tab** y pulse **↑** o **↓**.
 - **▲ Subir** y **▼ Bajar** mueven la orden una posición.
-- La papelera **Quitar la orden … de la ruta** la saca de la ruta y vuelve a **Órdenes sin asignar** (su estatus no cambia).
+- La papelera **Quitar la orden … de la ruta** la saca de la ruta y vuelve a **Envíos sin asignar** (su estatus no cambia).
 
 ![Ruta con las órdenes reordenadas: el plano sigue la nueva secuencia](img/fe2b-arrastrar.png)
 
@@ -204,7 +204,7 @@ Con la ruta activa en **Borrador** o **Planificado** y con paradas, pulse **Opti
 
 ![Ruta optimizada](img/fe2a-optimizada.png)
 
-El resultado queda en **Última optimización**: cuántas paradas quedaron ordenadas y cuántas **no cupieron**. Lo que no cupo vuelve a **Órdenes sin asignar** y se ve en **No cupieron** con su motivo: cambie de vehículo o asígnelas a otra ruta. Si ya había una optimización anterior, se compara la distancia y la duración («Distancia -12 % contra la corrida anterior»); la primera vez no hay con qué comparar y lo dice. Sin coordenadas en las direcciones no hay distancia y solo se compara la duración.
+El resultado queda en **Última optimización**: cuántas paradas quedaron ordenadas y cuántas **no cupieron**. Lo que no cupo vuelve a **Envíos sin asignar** y se ve en **No cupieron** con su motivo: cambie de vehículo o asígnelas a otra ruta. Si ya había una optimización anterior, se compara la distancia y la duración («Distancia -12 % contra la corrida anterior»); la primera vez no hay con qué comparar y lo dice. Sin coordenadas en las direcciones no hay distancia y solo se compara la duración.
 
 Mensajes: `La ruta no tiene paradas que optimizar.` (el botón está deshabilitado sin paradas); `La ruta cambió mientras se optimizaba; vuelva a optimizar.`; `El optimizador no pudo calcular la ruta; la corrida quedó registrada con error.`
 
@@ -257,7 +257,7 @@ Verá el resultado de cada ruta: **despachada** o el mensaje exacto de por qué 
 
 ## Eliminar una ruta
 
-La papelera junto al nombre de la ruta (**Eliminar ruta**) solo aparece en rutas **Borrador** o **Planificado**. Pide un comentario opcional (hasta 500 caracteres). La ruta pasa a **Cancelado** y sus órdenes vuelven a **Órdenes sin asignar** con el mismo estatus.
+La papelera junto al nombre de la ruta (**Eliminar ruta**) solo aparece en rutas **Borrador** o **Planificado**. Pide un comentario opcional (hasta 500 caracteres). La ruta pasa a **Cancelado** y sus órdenes vuelven a **Envíos sin asignar** con el mismo estatus.
 
 ![Eliminar una ruta](img/fe2a-eliminar.png)
 

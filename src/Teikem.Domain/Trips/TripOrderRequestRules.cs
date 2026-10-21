@@ -19,8 +19,8 @@ public static class TripOrderRequestRules
     /// <summary>Tope técnico de órdenes por solicitud de alta (DECISIÓN: límites técnicos duros).</summary>
     public const int MaxOrdersPerRequest = 200;
 
-    public const string NoOrdersMessage = "Indique al menos una orden.";
-    public const string TooManyOrdersMessage = "Agregue como máximo 200 órdenes por solicitud.";
+    public const string NoOrdersMessage = "Indique al menos un envío.";
+    public const string TooManyOrdersMessage = "Agregue como máximo 200 envíos por solicitud.";
     public const string ZoneFilterConflictMessage = "Use dispatchZoneId o noZone, no ambos.";
     public const string DateRangeMessage = "El rango de fechas es inválido.";
 

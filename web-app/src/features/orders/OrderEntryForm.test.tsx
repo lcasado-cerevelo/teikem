@@ -1,4 +1,4 @@
-// Lote F-C1 — Alta detallada de una orden: predeterminados, validaciones (mensajes del servidor), consignatario existente y nuevo
+// Lote F-C1 — Alta detallada de un envío: predeterminados, validaciones (mensajes del servidor), consignatario existente y nuevo
 // (modal del catálogo), un solo «Guardar», factura repetida (R36), crédito excedido con y sin override, errores
 // del servidor sin cerrar el formulario, entrega especial y permisos. Sobre un fetch simulado; el precio nunca se muestra.
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -121,7 +121,7 @@ describe('Alta detallada — captura', () => {
     const invoice = screen.getByLabelText(/N\.º de factura/)
     expect(invoice).toBeDisabled()
     expect(screen.getByText('(automático)')).toBeInTheDocument()
-    expect(screen.getByText('Ticket de la orden')).toBeInTheDocument()
+    expect(screen.getByText('Ticket del envío')).toBeInTheDocument()
     // el segmentado Rápida/Detallada y los botones de labels no están (F-C3 / F-G)
     expect(screen.queryByRole('button', { name: /Rápida/ })).toBeNull()
     expect(screen.queryByRole('button', { name: /label/i })).toBeNull()
@@ -170,7 +170,7 @@ describe('Alta detallada — captura', () => {
     wrap()
     await fillValid(user)
     await user.type(screen.getByLabelText('Monto COD'), '50')
-    const ticket = screen.getByRole('complementary', { name: 'Ticket de la orden' })
+    const ticket = screen.getByRole('complementary', { name: 'Ticket del envío' })
     await waitFor(() => expect(within(ticket).getByText('Acme Corp')).toBeInTheDocument())
     expect(within(ticket).getByText('Estándar')).toBeInTheDocument()
     expect(within(ticket).getByText('Farmacia Central')).toBeInTheDocument()
@@ -215,7 +215,7 @@ describe('Alta detallada — guardar', () => {
     expect(posts()).toHaveLength(0)
   })
 
-  it('«Guardar» crea la orden con el consignatario del directorio, paquetes, COD, Lista/Límite e Idempotency-Key', async () => {
+  it('«Guardar» crea el envío con el consignatario del directorio, paquetes, COD, Lista/Límite e Idempotency-Key', async () => {
     const user = userEvent.setup()
     wrap()
     await fillValid(user)
@@ -326,10 +326,10 @@ describe('Alta detallada — factura repetida (R36)', () => {
 
   it('confirmable: abre «Factura repetida…»; «Crear de todos modos» reenvía con confirmDuplicateInvoice=true', async () => {
     const user = userEvent.setup()
-    await startDuplicate(user, 'duplicate_invoice_confirmable', 'Colmado Boricua ya usa la factura. Confirme si desea crear la orden de todos modos.')
+    await startDuplicate(user, 'duplicate_invoice_confirmable', 'Colmado Boricua ya usa la factura. Confirme si desea crear el envío de todos modos.')
     const dialog = await screen.findByRole('dialog', { name: 'Factura repetida para este consignatario' })
-    expect(within(dialog).getByText(/Colmado Boricua ya tiene la orden ORD-00007 con el número de factura FAC-100/)).toBeInTheDocument()
-    expect(within(dialog).getByRole('link', { name: 'Ver la orden ORD-00007' })).toHaveAttribute('href', '/orders/o-7')
+    expect(within(dialog).getByText(/Colmado Boricua ya tiene el envío ORD-00007 con el número de factura FAC-100/)).toBeInTheDocument()
+    expect(within(dialog).getByRole('link', { name: 'Ver el envío ORD-00007' })).toHaveAttribute('href', '/orders/o-7')
     expect(posts()).toHaveLength(1)
     await user.click(within(dialog).getByRole('button', { name: 'Crear de todos modos' }))
     await waitFor(() => expect(posts()).toHaveLength(2))
@@ -338,19 +338,19 @@ describe('Alta detallada — factura repetida (R36)', () => {
     await waitFor(() => expect(onCreated).toHaveBeenCalled())
   })
 
-  it('confirmable: «No crear la orden» cierra sin crear', async () => {
+  it('confirmable: «No crear el envío» cierra sin crear', async () => {
     const user = userEvent.setup()
     await startDuplicate(user, 'duplicate_invoice_confirmable', 'x')
     const dialog = await screen.findByRole('dialog', { name: 'Factura repetida para este consignatario' })
-    await user.click(within(dialog).getByRole('button', { name: 'No crear la orden' }))
+    await user.click(within(dialog).getByRole('button', { name: 'No crear el envío' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(posts()).toHaveLength(1)
     expect(onCreated).not.toHaveBeenCalled()
   })
 
-  it('bloqueada (no admite repetidas): el mensaje del servidor bajo la factura, sin modal ni orden', async () => {
+  it('bloqueada (no admite repetidas): el mensaje del servidor bajo la factura, sin modal ni envío', async () => {
     const user = userEvent.setup()
-    const msg = "El consignatario 'Colmado Boricua' no permite facturas repetidas: la orden ORD-00007 ya usa el número FAC-100."
+    const msg = "El consignatario 'Colmado Boricua' no permite facturas repetidas: el envío ORD-00007 ya usa el número FAC-100."
     mock.override = (c) =>
       c.method === 'POST' && c.url.pathname === '/api/v1/orders' ? problem(409, msg, 'duplicate_invoice', { ...dupErrors, clientInvoiceNumber: [msg] }) : undefined
     wrap()
@@ -372,7 +372,7 @@ describe('Alta detallada — factura repetida (R36)', () => {
 })
 
 describe('Alta detallada — crédito excedido', () => {
-  const MSG = 'El cliente excede su límite de crédito: límite 1000.00, en curso 900.00, esta orden 200.00.'
+  const MSG = 'El cliente excede su límite de crédito: límite 1000.00, en curso 900.00, este envío 200.00.'
   const credit = (c: Call) =>
     c.method === 'POST' && c.url.pathname === '/api/v1/orders' && c.body?.overrideCredit !== true
       ? problem(422, MSG, 'credit_exceeded', { limit: ['1000.00'], exposure: ['900.00'], newAmount: ['200.00'], available: ['100.00'] })
@@ -394,7 +394,7 @@ describe('Alta detallada — crédito excedido', () => {
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith(expect.anything()))
   })
 
-  it('sin orders.credit_override: solo el mensaje, sin diálogo ni segundo envío, y la orden NO se crea', async () => {
+  it('sin orders.credit_override: solo el mensaje, sin diálogo ni segundo envío, y el envío NO se crea', async () => {
     const user = userEvent.setup()
     mock.override = credit
     wrap(ALL)
@@ -402,7 +402,7 @@ describe('Alta detallada — crédito excedido', () => {
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
     expect((await screen.findAllByText(MSG)).length).toBeGreaterThan(0)
     expect(screen.queryByRole('dialog')).toBeNull()
-    expect(screen.getByText(/La orden no se creó/)).toBeInTheDocument()
+    expect(screen.getByText(/El envío no se creó/)).toBeInTheDocument()
     expect(posts()).toHaveLength(1)
     expect(onCreated).not.toHaveBeenCalled()
   })
@@ -418,7 +418,7 @@ describe('Alta detallada — crédito excedido', () => {
 })
 
 describe('Alta detallada — entrega especial', () => {
-  it('el interruptor cambia la sección 03 a N.º de orden y Servicio especial («label · tarifa») y envía sin paquetes, COD ni chofer', async () => {
+  it('el interruptor cambia la sección 03 a N.º de envío y Servicio especial («label · tarifa») y envía sin paquetes, COD ni chofer', async () => {
     const user = userEvent.setup()
     wrap(ALL)
     await pickClient(user)
@@ -426,7 +426,7 @@ describe('Alta detallada — entrega especial', () => {
     await user.click(screen.getByRole('switch', { name: 'Es una entrega especial' }))
     expect(screen.queryByLabelText('Monto COD')).toBeNull()
     expect(screen.queryByLabelText(/Chofer/)).toBeNull()
-    expect(screen.getByLabelText(/N\.º de orden/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/N\.º de envío/)).toBeInTheDocument()
     const select = await screen.findByRole('combobox', { name: /^Servicio especial/ })
     await waitFor(() => expect(within(select).getByRole('option', { name: 'Traer vagón · $75.00' })).toBeInTheDocument())
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
@@ -434,7 +434,7 @@ describe('Alta detallada — entrega especial', () => {
     expect(posts()).toHaveLength(0)
     await user.selectOptions(select, 'Traer vagón · $75.00')
     // el ticket cambia de «Paquetes/COD» a «Servicio especial»
-    const ticket = screen.getByRole('complementary', { name: 'Ticket de la orden' })
+    const ticket = screen.getByRole('complementary', { name: 'Ticket del envío' })
     expect(within(ticket).getByText('Traer vagón')).toBeInTheDocument()
     expect(within(ticket).queryByText('COD')).toBeNull()
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
@@ -477,7 +477,7 @@ describe('Alta detallada — entrega especial', () => {
 })
 
 describe('Alta detallada — consignatario nuevo y permisos', () => {
-  it('«+» abre el modal de alta de la lista (con teléfono) y deja elegido el recién creado, sin guardar la orden', async () => {
+  it('«+» abre el modal de alta de la lista (con teléfono) y deja elegido el recién creado, sin guardar el envío', async () => {
     const user = userEvent.setup()
     wrap(ALL)
     await pickClient(user)
@@ -490,14 +490,14 @@ describe('Alta detallada — consignatario nuevo y permisos', () => {
     await user.click(await within(dialog).findByRole('option', { name: /PONCE/ }))
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(mock.calls.filter((c) => c.method === 'POST' && c.url.pathname === '/api/v1/locations')).toHaveLength(1))
-    // el consignatario nace con el cliente de la orden como dueño
+    // el consignatario nace con el cliente del envío como dueño
     expect(mock.calls.find((c) => c.method === 'POST' && c.url.pathname === '/api/v1/locations')!.body?.clientPublicId).toBe('c-1')
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Nuevo consignatario' })).toBeNull())
     await waitFor(() => expect(screen.getByLabelText('Dirección')).toHaveValue('Calle 9'))
-    expect(screen.getByRole('complementary', { name: 'Ticket de la orden' })).toHaveTextContent('Tienda Nueva')
-    // guardar el consignatario NO guarda la orden
+    expect(screen.getByRole('complementary', { name: 'Ticket del envío' })).toHaveTextContent('Tienda Nueva')
+    // guardar el consignatario NO guarda el envío
     expect(posts()).toHaveLength(0)
-    // y la orden se manda con el consignatario recién creado
+    // y el envío se manda con el consignatario recién creado
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(posts()).toHaveLength(1))
     expect(posts()[0].body).toMatchObject({ consigneeLocationPublicId: 'l-new' })
@@ -513,7 +513,7 @@ describe('Alta detallada — consignatario nuevo y permisos', () => {
 
   it('sin orders.create no hay botones de guardar', async () => {
     wrap(['locations.read', 'clients.read'])
-    await screen.findByText('Ticket de la orden')
+    await screen.findByText('Ticket del envío')
     expect(screen.queryByRole('button', { name: 'Guardar' })).toBeNull()
   })
 

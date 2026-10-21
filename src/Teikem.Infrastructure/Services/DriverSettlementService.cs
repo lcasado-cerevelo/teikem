@@ -103,7 +103,7 @@ public sealed class DriverSettlementService(TeikemDbContext db, ITenantContext t
                     amount = 0m;
                     missing = true;
                 }
-                lines.Add(new BuiltLine(g.Key.Driver, SettlementCodes.LineDelivery, date, g.Key.Order, null, order is null ? $"Orden {g.Key.Order}" : $"Orden {order.OrderNumber} · {clientNames.GetValueOrDefault(order.ClientId)}", ordered.Count, breakdown, missing, amount,
+                lines.Add(new BuiltLine(g.Key.Driver, SettlementCodes.LineDelivery, date, g.Key.Order, null, order is null ? $"Envío {g.Key.Order}" : $"Envío {order.OrderNumber} · {clientNames.GetValueOrDefault(order.ClientId)}", ordered.Count, breakdown, missing, amount,
                     ordered.Select(a => a.DeliveryAttemptId).ToList()));
             }
         }
@@ -117,7 +117,7 @@ public sealed class DriverSettlementService(TeikemDbContext db, ITenantContext t
         {
             var name = t.TripType?.Name ?? "Viaje";
             var breakdown = new[] { new PayoutLine(SettlementCodes.LineTrip, null, t.Amount, t.RateMissing ? DriverPayoutRules.NoRateNote : null) };
-            lines.Add(new BuiltLine(t.DriverId, SettlementCodes.LineTrip, t.TripDate, t.TransportOrderId, t.DriverTripId, t.Order is null ? $"Viaje: {name}" : $"Viaje: {name} · orden {t.Order.OrderNumber}", 0, breakdown,
+            lines.Add(new BuiltLine(t.DriverId, SettlementCodes.LineTrip, t.TripDate, t.TransportOrderId, t.DriverTripId, t.Order is null ? $"Viaje: {name}" : $"Viaje: {name} · envío {t.Order.OrderNumber}", 0, breakdown,
                 t.RateMissing, t.Amount, Array.Empty<int>()));
         }
         return new Built(formula, lines.OrderBy(l => l.Date).ThenBy(l => l.DriverId).ThenBy(l => l.Description, StringComparer.Ordinal).ToList(), skipped);

@@ -60,12 +60,12 @@ public static class DeliveryProofRules
     public const string RecipientTooLong = "El nombre de quien recibió no puede pasar de 150 caracteres.";
     public const string NotesTooLong = "La nota no puede pasar de 500 caracteres.";
     public const string FutureDelivery = "La fecha y hora de la entrega no pueden ser futuras.";
-    public const string AlreadyRegisteredFormat = "La orden {0} ya tiene registrada su entrega.";
-    public const string FinalFormat = "La orden {0} está en un estatus final ({1}): no se registra su entrega.";
-    public const string PickUpFormat = "La orden {0} es Pick up: termina «En almacén» y no se entrega.";
+    public const string AlreadyRegisteredFormat = "El envío {0} ya tiene registrada su entrega.";
+    public const string FinalFormat = "El envío {0} está en un estatus final ({1}): no se registra su entrega.";
+    public const string PickUpFormat = "El envío {0} es Pick up: termina «En almacén» y no se entrega.";
     public const string CommentFormat = "Entrega registrada desde la web por {0}.";
     /// <summary>Lote 127: adjuntar firma o fotos exige que la entrega ya esté registrada.</summary>
-    public const string NoProofFormat = "La orden {0} no tiene registrada su entrega; registre la entrega antes de adjuntar archivos.";
+    public const string NoProofFormat = "El envío {0} no tiene registrada su entrega; registre la entrega antes de adjuntar archivos.";
 
     /// <summary>Tolerancia con el reloj del navegador: una entrega "de hace un instante" que llega unos minutos adelantada se acepta.</summary>
     public static readonly TimeSpan FutureTolerance = TimeSpan.FromMinutes(5);

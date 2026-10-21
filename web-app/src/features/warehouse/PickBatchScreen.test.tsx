@@ -1,6 +1,6 @@
 // Lote 13 — pantalla Recolección y empaque (`PickBatchListScreen`) sobre un fetch simulado: dos paneles (Recolección y
 // Recolecciones) con warehouse.pick, varias líneas en un solo POST (fila vacía automática, pista FEFO, errores del servidor
-// en su fila), filtro "No. de orden" que sugiere números existentes, Empacar y Eliminar desde la fila, ficha en un modal,
+// en su fila), filtro "No. de envío" que sugiere números existentes, Empacar y Eliminar desde la fila, ficha en un modal,
 // sin warehouse.pick solo la lista, y la pestaña Reabasto sin cambios.
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
@@ -78,7 +78,7 @@ const BATCHES = [
   }),
 ]
 
-// saldos disponibles (orden del API a propósito distinto del FEFO: RESERVE antes que PICKING)
+// saldos disponibles (envío del API a propósito distinto del FEFO: RESERVE antes que PICKING)
 const BALANCES = [
   { binId: 12, binCode: 'B-03', zoneCode: 'R', zoneTypeCode: 'RESERVE', productPublicId: P1, qtyAvailable: 2, lotId: null, expiryDate: null },
   { binId: 10, binCode: 'A-01', zoneCode: 'A', zoneTypeCode: 'PICKING', productPublicId: P1, qtyAvailable: 8, lotId: null, expiryDate: null },
@@ -278,13 +278,13 @@ describe('Panel "Recolección" · selector de posición', () => {
 })
 
 describe('Panel "Recolecciones"', () => {
-  it('"No. de orden" sugiere números existentes y al elegir uno filtra la lista por ese número', async () => {
+  it('"No. de envío" sugiere números existentes y al elegir uno filtra la lista por ese número', async () => {
     const user = userEvent.setup()
     wrap(['inventory.view'])
     await screen.findByText('PB-00001')
-    await user.type(screen.getByRole('combobox', { name: 'No. de orden' }), 'or-')
+    await user.type(screen.getByRole('combobox', { name: 'No. de envío' }), 'or-')
     await user.click(await screen.findByRole('option', { name: 'OR-0001' }))
-    expect(screen.getByRole('combobox', { name: 'No. de orden' })).toHaveValue('OR-0001')
+    expect(screen.getByRole('combobox', { name: 'No. de envío' })).toHaveValue('OR-0001')
     expect(listCalls().some((c) => c.url.searchParams.get('orderNumber') === 'or-' && c.url.searchParams.get('take') === '20')).toBe(true)
     await waitFor(() => expect(listCalls().at(-1)?.url.searchParams.get('orderNumber')).toBe('OR-0001'))
     expect(listCalls().at(-1)?.url.searchParams.get('skip')).toBe('0')
@@ -298,7 +298,7 @@ describe('Panel "Recolecciones"', () => {
     await screen.findByText('PB-00001')
     const table = screen.getByRole('table', { name: 'Recolecciones' })
     const headers = within(table).getAllByRole('columnheader').map((h) => h.textContent?.trim())
-    expect(headers.slice(0, 6)).toEqual(['Número', 'Tipo', 'Productos', 'Orden y factura', 'Cliente', 'Recolectada'])
+    expect(headers.slice(0, 6)).toEqual(['Número', 'Tipo', 'Productos', 'Envío y factura', 'Cliente', 'Recolectada'])
     expect(within(table).getAllByText('A-1 ×2, B-2 ×1').length).toBeGreaterThan(0)
     // Empacar solo en la que se puede empacar (la empacada no lo ofrece)
     const packs = within(table).getAllByRole('button', { name: 'Empacar' })
@@ -307,7 +307,7 @@ describe('Panel "Recolecciones"', () => {
     expect(await screen.findByRole('dialog', { name: 'Empacar PB-00001' })).toBeInTheDocument()
   })
 
-  it('Eliminar: la empacada exige orders.cancel; el diálogo avisa que se borra la orden', async () => {
+  it('Eliminar: la empacada exige orders.cancel; el diálogo avisa que se borra el envío', async () => {
     const user = userEvent.setup()
     const first = wrap(['inventory.view', 'warehouse.pick'])
     await screen.findByText('PB-00002')
@@ -320,7 +320,7 @@ describe('Panel "Recolecciones"', () => {
     expect(dels).toHaveLength(2)
     await user.click(dels[1])
     const dialog = await screen.findByRole('dialog', { name: 'Eliminar recolección' })
-    expect(dialog).toHaveTextContent('Se borra también su orden OR-0001')
+    expect(dialog).toHaveTextContent('Se borra también su envío OR-0001')
   })
 
   it('clic en la fila abre la ficha en un modal con sus líneas y acciones', async () => {

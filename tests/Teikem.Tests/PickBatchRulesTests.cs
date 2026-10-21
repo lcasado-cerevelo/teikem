@@ -29,7 +29,7 @@ public class PickBatchRulesTests
         Assert.True(PickBatchRules.OrderClientAllowed(7, 7));
         Assert.False(PickBatchRules.OrderClientAllowed(7, 5));
         Assert.False(PickBatchRules.OrderClientAllowed(7, null));
-        Assert.Equal("La orden debe ser del cliente dueño del inventario (Farmacia Central).",
+        Assert.Equal("El envío debe ser del cliente dueño del inventario (Farmacia Central).",
             PickBatchRules.OrderClientMustBeOwner("Farmacia Central"));
     }
 
@@ -60,16 +60,16 @@ public class PickBatchRulesTests
         Assert.False(PickBatchRules.CanDelete("PACKED", true, false));
         Assert.False(PickBatchRules.CanDelete("PACKED", false, true));
         Assert.False(PickBatchRules.CanDelete("CANCELLED", true, true));
-        Assert.Equal("La orden de la recolección EMP-00012 ya avanzó a 'Confirmada'; la recolección ya no se puede eliminar.",
+        Assert.Equal("El envío de la recolección EMP-00012 ya avanzó a 'Confirmada'; la recolección ya no se puede eliminar.",
             PickBatchRules.DeleteBlocked("EMP-00012", "Confirmada"));
     }
 
     [Fact]
     public void DisplayNumbers_uses_dash_without_invoice()
     {
-        Assert.Equal("Orden: 2026-000123 · Factura: FAC-9", PickBatchRules.DisplayNumbers("2026-000123", "FAC-9"));
-        Assert.Equal("Orden: 2026-000123 · Factura: —", PickBatchRules.DisplayNumbers("2026-000123", null));
-        Assert.Equal("Orden: 2026-000123 · Factura: —", PickBatchRules.DisplayNumbers("2026-000123", "  "));
+        Assert.Equal("Envío: 2026-000123 · Factura: FAC-9", PickBatchRules.DisplayNumbers("2026-000123", "FAC-9"));
+        Assert.Equal("Envío: 2026-000123 · Factura: —", PickBatchRules.DisplayNumbers("2026-000123", null));
+        Assert.Equal("Envío: 2026-000123 · Factura: —", PickBatchRules.DisplayNumbers("2026-000123", "  "));
     }
 
     // ---------------------------------------------------------------- captura

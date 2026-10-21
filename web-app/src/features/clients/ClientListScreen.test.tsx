@@ -329,7 +329,7 @@ describe('Clientes — ficha', () => {
     expect(screen.getByText('Acme LLC · 66-123 · USD · NET30')).toBeInTheDocument()
     expect(screen.getByText('Teléfono: (787) 555-0000 · Correo: info@acme.com')).toBeInTheDocument()
     expect(screen.getByText('Ana Pérez (principal)')).toBeInTheDocument()
-    expect(screen.getByText('Orden: AX-00001 · Factura: FAC-00001 · Paquete: PQT-00001')).toBeInTheDocument()
+    expect(screen.getByText('Envío: AX-00001 · Factura: FAC-00001 · Paquete: PQT-00001')).toBeInTheDocument()
     expect(screen.getByText('Contratos: 1 · vigente: ACME-001 · Contrato marco')).toBeInTheDocument()
   })
 
@@ -468,7 +468,7 @@ describe('Clientes — ficha', () => {
   it('numeración: el ejemplo sale del servidor, un 400 del ejemplo se muestra y guarda con «Teikem asigna»', async () => {
     const user = userEvent.setup()
     wrap(ALL)
-    const orderPattern = await screen.findByLabelText('Número de orden')
+    const orderPattern = await screen.findByLabelText('Número de envío')
     expect(orderPattern).toHaveValue('AX-#####')
     // ejemplo guardado mientras no se edita
     expect(await screen.findByText('AX-00001')).toBeInTheDocument()
@@ -488,7 +488,7 @@ describe('Clientes — ficha', () => {
     expect(await screen.findByText('ORD-00001')).toBeInTheDocument()
 
     await user.type(orderPattern, 'XY-####')
-    await user.selectOptions(screen.getByLabelText('¿Quién asigna el número de orden?'), 'teikem')
+    await user.selectOptions(screen.getByLabelText('¿Quién asigna el número de envío?'), 'teikem')
     const panel = screen.getByRole('heading', { name: 'Numeración' }).closest('section') as HTMLElement
     await user.click(within(panel).getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(callsTo('PATCH', '/api/v1/clients/c-1/number-settings')).toHaveLength(1))
@@ -555,12 +555,12 @@ describe('Clientes — ficha', () => {
 
   it('la baja rechazada por el servidor deja el diálogo abierto con su mensaje', async () => {
     const user = userEvent.setup()
-    mock.override = ({ method, url }) => (method === 'POST' && url.pathname.endsWith('/deactivate') ? problem(422, 'El cliente tiene órdenes abiertas.', 'status_rule') : undefined)
+    mock.override = ({ method, url }) => (method === 'POST' && url.pathname.endsWith('/deactivate') ? problem(422, 'El cliente tiene envíos abiertos.', 'status_rule') : undefined)
     wrap(ALL)
     await user.click(await screen.findByRole('button', { name: /Dar de baja/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Dar de baja el cliente' })
     await user.click(within(dialog).getByRole('button', { name: 'Dar de baja' }))
-    expect(await within(dialog).findByText('El cliente tiene órdenes abiertas.')).toBeInTheDocument()
+    expect(await within(dialog).findByText('El cliente tiene envíos abiertos.')).toBeInTheDocument()
   })
 
   it('transición de estatus por el pipeline: POST /status con el código destino y el comentario', async () => {
@@ -586,7 +586,7 @@ describe('Clientes — ficha', () => {
     expect(screen.queryByRole('button', { name: /Editar/ })).toBeNull()
     expect(screen.queryByRole('button', { name: /Avanzar a/ })).toBeNull()
     expect(screen.getByLabelText('Razón social')).toBeDisabled()
-    expect(screen.getByLabelText('Número de orden')).toBeDisabled()
+    expect(screen.getByLabelText('Número de envío')).toBeDisabled()
   })
 
   it('con clients.update pero sin contacts.manage no se escriben teléfonos ni correos', async () => {

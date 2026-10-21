@@ -992,8 +992,8 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
     try { await create.mutateAsync(body) } catch (err) { throw remapCollectErrors(err, indexMap) }
     ```
   - `PickBatchesPanel` (`highlight?` = publicId recién creado: fondo de flujo y página 1): filtros dentro del panel (Recolectada,
-    Estatus, Producto, No. de orden, No. de factura, Incluir eliminadas) + `QBox`; tabla de servidor Número (con chip), Productos
-    ("SKU ×cant"), Orden y factura, Cliente, Recolectada (tarjetas con el panel < 640 px); acciones de fila con ícono Empacar
+    Estatus, Producto, No. de envío, No. de factura, Incluir eliminadas) + `QBox`; tabla de servidor Número (con chip), Productos
+    ("SKU ×cant"), Envío y factura, Cliente, Recolectada (tarjetas con el panel < 640 px); acciones de fila con ícono Empacar
     (`IconBox`) y Eliminar (`IconTrash`); clic en la fila = `PickBatchDetailModal`.
   - `OrderNumberFilter` (`label`, `value`, `onChange`): texto libre con sugerencias de números de orden existentes
     (`GET /pick-batches?orderNumber=&take=20`, 250 ms). `<OrderNumberFilter label={t('…orderNumber')} value={v} onChange={setV} />`
@@ -1321,7 +1321,7 @@ Operación → Órdenes (`/orders`, `orders.view`, módulo `LTL_GROUND`). Decisi
 (este); F-C2 expediente (edición y acciones); F-C3 entrada rápida e importación CSV.
 - `api.ts`: `useOrders(query)`, `useOrder(publicId)`, `exportOrders(query)` (todo lo filtrado, de a 200, para `DataTable.exportRows`), `useCreateOrder()` (`POST /orders` con `Idempotency-Key`; `mutateAsync({ body, idempotencyKey })`),
   `useDeleteOrder()` (`DELETE /orders/{id}`, 204). `orderKeys` comparte prefijo con `warehouseKeys.orders`.
-- `OrderListScreen` (filtros de la maqueta + Estatus; `DataTable` con `continuationRows`: una fila por tipo de paquete, la paginación cuenta órdenes), `OrderEntryForm` (alta detallada desplegable con «Ticket de la orden», sin precio),
+- `OrderListScreen` (filtros de la maqueta + Estatus; `DataTable` con `continuationRows`: una fila por tipo de paquete, la paginación cuenta órdenes), `OrderEntryForm` (alta detallada desplegable con «Ticket del envío», sin precio),
   `orderRules.ts` (puro: `buildOrderQuery`, `packageGroups`, `orderSchema` con los mensajes del servidor, `buildOrderRequest`, `remapOrderProblem`, `isCreditExceeded`, `duplicateInvoiceOf`).
 - `ConsigneePicker` / `ConsigneePickerInput` (`features/consignees`): combobox sobre los consignatarios del cliente + compartidos con «dirección · pueblo» y «admite factura repetida»; el «+» abre `ConsigneeFormModal`
   (exige `locations.create`) y deja elegido el nuevo. `useSelectedConsignee(clientId, value)` da el elegido. OJO: un modal con `<form>` propio montado DENTRO de otro formulario hace subir su `submit` por el árbol de React

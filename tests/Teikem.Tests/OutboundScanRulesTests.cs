@@ -79,7 +79,7 @@ public class OutboundScanRulesTests
         var d = OutboundScanRules.Decide(new ScanFacts(0, null, null, null, null, null, null, PlanDate));
         Assert.Equal(ScanOutcomes.NotFound, d.Outcome);
         Assert.Equal(ScanReasonCodes.NoMatch, d.ReasonCode);
-        Assert.Equal("No se encontró la orden.", d.Message);
+        Assert.Equal("No se encontró el envío.", d.Message);
         Assert.Equal("notfound", d.Voice);
     }
 
@@ -89,7 +89,7 @@ public class OutboundScanRulesTests
         var d = OutboundScanRules.Decide(Ok() with { MatchCount = 2, MatchedBy = "INVOICE" });
         Assert.Equal(ScanOutcomes.NotFound, d.Outcome);
         Assert.Equal(ScanReasonCodes.MultipleMatches, d.ReasonCode);
-        Assert.Equal("Hay varias órdenes con ese código; escanee el empaque.", d.Message);
+        Assert.Equal("Hay varias envíos con ese código; escanee el empaque.", d.Message);
         Assert.Equal("notfound", d.Voice);
     }
 
@@ -101,7 +101,7 @@ public class OutboundScanRulesTests
         var d = OutboundScanRules.Decide(Ok() with { MatchCount = 2, MatchedBy = "ORDER_NUMBER", CurrentTripCode = "2026-0001" });
         Assert.Equal(ScanOutcomes.NotFound, d.Outcome);
         Assert.Equal(ScanReasonCodes.MultipleMatches, d.ReasonCode);
-        Assert.Equal("Hay varias órdenes con ese código; escanee el empaque.", d.Message);
+        Assert.Equal("Hay varias envíos con ese código; escanee el empaque.", d.Message);
         Assert.Equal("notfound", d.Voice);
     }
 
@@ -112,7 +112,7 @@ public class OutboundScanRulesTests
         var d = OutboundScanRules.Decide(Ok() with
         {
             CurrentTripCode = "2026-0007",
-            IneligibleReason = "La orden ya salió a ruta o terminó; no se puede asignar a otra ruta.",
+            IneligibleReason = "El envío ya salió a ruta o terminó; no se puede asignar a otra ruta.",
         });
         Assert.Equal(ScanOutcomes.AlreadyAssigned, d.Outcome);
         Assert.Equal(ScanReasonCodes.InTrip, d.ReasonCode);
@@ -123,7 +123,7 @@ public class OutboundScanRulesTests
     [Fact]
     public void Not_eligible_without_trip_uses_the_trip_rules_reason()
     {
-        const string reason = "La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.";
+        const string reason = "El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.";
         var d = OutboundScanRules.Decide(Ok() with { IneligibleReason = reason, Zone = null, OpenTripCode = null });
         Assert.Equal(ScanOutcomes.NotEligible, d.Outcome);
         Assert.Equal(ScanReasonCodes.NotEligible, d.ReasonCode);

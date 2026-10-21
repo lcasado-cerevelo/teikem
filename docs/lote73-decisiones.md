@@ -19,4 +19,4 @@ Frontend del Lote 72. Sin cambios de servidor ni de SQL.
 3. Los ajustes los edita solo quien tiene `billing.approve`.
 
 ## Fuera de este lote
-Flete de las órdenes de transporte (74), pagos, estado de cuenta y plantillas de exportación (75).
+Flete de los envíos de transporte (74), pagos, estado de cuenta y plantillas de exportación (75).

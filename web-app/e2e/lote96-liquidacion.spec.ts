@@ -120,7 +120,7 @@ test('Liquidación a choferes: intentos, generar, ajustar, revisar, aprobar y ex
   await expect(page.locator('tr, .dt-cards > li').filter({ hasText: `Liq ${suffix}` }).first()).toContainText('No entregó', { timeout: 20_000 })
   await page.getByRole('button', { name: 'Registrar intento' }).click()
   const nuevo = page.getByRole('dialog', { name: 'Registrar un intento de entrega' })
-  await nuevo.getByLabel('Orden').fill(orderDto.orderNumber)
+  await nuevo.getByLabel('Envío').fill(orderDto.orderNumber)
   await nuevo.getByRole('button', { name: new RegExp(`${orderDto.orderNumber} .* Sucursal ${suffix}`) }).click()
   await pickDriver(nuevo, driverName)
   await shot(page, isMobile, 'l96-intento', nuevo)

@@ -68,7 +68,7 @@ public sealed class DeliveryAttemptService(TeikemDbContext db, ITenantContext te
             reasonId = await lookups.TryGetIdAsync(DeliveryAttemptCodes.FailureReasonDomain, reasonCode, ct) ?? throw new ValidationException("failureReason", DeliveryAttemptRules.UnknownReason(reasonCode));
         var at = req.AttemptedAtUtc ?? clock.UtcNow;
         if (at > clock.UtcNow.AddMinutes(5)) throw new ValidationException("attemptedAtUtc", DeliveryAttemptRules.FutureAttempt);
-        var order = await db.TransportOrders.AsNoTracking().FirstOrDefaultAsync(o => o.PublicId == orderPublicId, ct) ?? throw new NotFoundException("Orden", orderPublicId);
+        var order = await db.TransportOrders.AsNoTracking().FirstOrDefaultAsync(o => o.PublicId == orderPublicId, ct) ?? throw new NotFoundException("Envío", orderPublicId);
         var driver = await db.Set<Driver>().AsNoTracking().FirstOrDefaultAsync(d => d.PublicId == driverPublicId, ct) ?? throw new NotFoundException("Chofer", driverPublicId);
         if (await IsSpecialDeliveryAsync(order.TransportOrderId, ct)) throw new StatusRuleException(DeliveryAttemptRules.SpecialDelivery);
 

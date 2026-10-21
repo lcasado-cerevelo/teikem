@@ -132,7 +132,7 @@ public sealed class WmsDeactivationGuardTests
 
         var ex = await Assert.ThrowsAsync<ConflictException>(() => x.F.Get<WarehouseService>().DeactivateAsync(x.W.PublicId, null, default));
         Assert.Equal(WarehouseRules.WarehouseNotEmpty("W2"), ex.Message);
-        Assert.Equal("Recolecciones sin empacar o con orden en etapa inicial: 1.", Assert.Single(ex.Errors!["pickBatches"]));
+        Assert.Equal("Recolecciones sin empacar o con envío en etapa inicial: 1.", Assert.Single(ex.Errors!["pickBatches"]));
 
         // Con la orden avanzada, la recolección ya no se puede eliminar: la baja procede.
         (await x.F.Db.TransportOrders.SingleAsync(o => o.TransportOrderId == order.TransportOrderId)).StatusCodeId =

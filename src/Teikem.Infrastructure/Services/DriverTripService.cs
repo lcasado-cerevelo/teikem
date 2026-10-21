@@ -25,7 +25,7 @@ public sealed class DriverTripService(TeikemDbContext db, ITenantContext tenant,
     private readonly ITenantClock _clock = clock ?? TenantClock.Default;
 
     /// <summary>Choque en UX_DriverTrip_Order: otra asignación dejó un viaje vigente para la misma orden.</summary>
-    public const string OrderTripTakenMessage = "La orden ya tiene un viaje vigente; recargue e intente de nuevo.";
+    public const string OrderTripTakenMessage = "El envío ya tiene un viaje vigente; recargue e intente de nuevo.";
     public const string DateRangeMessage = "La fecha inicial no puede ser posterior a la final.";
 
     // ================================================================ uso interno (dentro de la transacción del llamador)

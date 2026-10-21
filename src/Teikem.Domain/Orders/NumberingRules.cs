@@ -46,7 +46,7 @@ public static class NumberingRules
     /// <summary>Reintentos ante colisión de un número automático con uno tecleado por alguien más.</summary>
     public const int MaxAutoRetries = 5;
 
-    public const string OrderAssignedByTeikemMessage = "El número de orden lo asigna Teikem para este cliente; déjelo en blanco.";
+    public const string OrderAssignedByTeikemMessage = "El número de envío lo asigna Teikem para este cliente; déjelo en blanco.";
     public const string InvoiceAssignedByTeikemMessage = "El número de factura lo asigna Teikem para este cliente; déjelo en blanco.";
     public const string PackBatchAlwaysTeikemMessage = "El número de empaque siempre lo genera Teikem.";
 
@@ -160,7 +160,7 @@ public static class NumberingRules
 
     private static string KindLabel(string kind) => kind switch
     {
-        NumberKinds.Order => "de orden",
+        NumberKinds.Order => "de envío",
         NumberKinds.Invoice => "de factura",
         NumberKinds.Package => "de paquete",
         NumberKinds.PackBatch => "de empaque",

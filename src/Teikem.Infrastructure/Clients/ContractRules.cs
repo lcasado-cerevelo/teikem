@@ -24,7 +24,7 @@ public static class ContractRules
     {
         var t = type?.Trim().ToUpperInvariant();
         if (string.IsNullOrEmpty(t))
-            throw new ValidationException("type", "Indique el tipo del cargo por COD: FIXED (monto fijo por orden) o PERCENT (por ciento del monto COD).");
+            throw new ValidationException("type", "Indique el tipo del cargo por COD: FIXED (monto fijo por envío) o PERCENT (por ciento del monto COD).");
         if (value is null)
             throw new ValidationException("value", "Indique el valor del cargo por COD.");
         switch (t)

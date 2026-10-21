@@ -6,7 +6,7 @@ Una **corrida** junta lo despachado y no facturado de las órdenes de venta, arm
 
 ## 1. Nueva corrida
 
-**Nueva corrida** (permiso `billing.generate`) pide el **cliente** (opcional: sin cliente entran todos los que tengan algo por facturar), el período **Desde / Hasta**, **qué facturar** (casillas *Venta de producto despachado* y *Flete de las órdenes de transporte*, ambas marcadas por omisión; al menos una, Lote 74), si cuenta **solo lo despachado dentro del período** y una **nota**. Valida antes de enviar: las dos fechas, la final no anterior a la inicial y la nota de hasta 500 caracteres. **Generar** abre la corrida.
+**Nueva corrida** (permiso `billing.generate`) pide el **cliente** (opcional: sin cliente entran todos los que tengan algo por facturar), el período **Desde / Hasta**, **qué facturar** (casillas *Venta de producto despachado* y *Flete de los envíos de transporte*, ambas marcadas por omisión; al menos una, Lote 74), si cuenta **solo lo despachado dentro del período** y una **nota**. Valida antes de enviar: las dos fechas, la final no anterior a la inicial y la nota de hasta 500 caracteres. **Generar** abre la corrida.
 
 ![Nueva corrida](img/l73-nueva.png)
 

@@ -18,7 +18,7 @@ public static class ScanActions
 
     public static readonly string[] All = { Pickup, Arrive, Route, Depart };
 
-    public const string PieceNotFoundMessage = "No se encontró la pieza.";   // el número de la orden no se escanea: lo que se escanea son las piezas
+    public const string PieceNotFoundMessage = "No se encontró la pieza.";   // el número del envío no se escanea: lo que se escanea son las piezas
     public const string InvalidActionMessage = "Escoja la acción: recoger, llegó, enrutar, salir o devolver.";
 
     /// <summary>Acción normalizada (sin distinguir mayúsculas) o null si no es una de las cuatro.</summary>

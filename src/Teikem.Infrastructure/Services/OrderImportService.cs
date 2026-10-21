@@ -49,14 +49,14 @@ public sealed class OrderImportService(
     public const string BatchNotFoundLabel = "Lote de importación";
     public const string ContentRequiredMessage = "Indique el contenido del archivo CSV.";
     public const string NoRowsMessage = "El archivo no tiene filas de datos.";
-    public const string AlreadyConfirmedMessage = "El lote ya fue confirmado; valide un archivo nuevo para importar más órdenes.";
+    public const string AlreadyConfirmedMessage = "El lote ya fue confirmado; valide un archivo nuevo para importar más envíos.";
     public const string DiscardedMessage = "El lote fue descartado; valide el archivo de nuevo.";
     public const string DiscardOnlyValidatedMessage = "Solo se descarta un lote pendiente de confirmar.";
     public const string OverrideNeedsConfirmNowMessage = "overrideCredit requiere confirmNow=true.";
     public const string ConsigneeRequiredMessage = ImportMapping.ConsigneeRequiredMessage;
     public const string ConfirmInProgressMessage = "El lote ya se está confirmando o fue confirmado; consulte su resultado.";
     public const string ContactPhoneLabel = "Contacto de entrega";
-    public const string UnexpectedRowErrorMessage = "Error inesperado al crear la orden; revise la fila e intente de nuevo.";
+    public const string UnexpectedRowErrorMessage = "Error inesperado al crear el envío; revise la fila e intente de nuevo.";
 
     /// <summary>Tipo de referencia (OrderRefType) con que se guarda la columna 'reference' del archivo.</summary>
     public const string ReferenceType = "OTHER";
@@ -240,7 +240,7 @@ public sealed class OrderImportService(
             tracked.ConfirmedAtUtc = DateTime.UtcNow;
             tracked.ConfirmedBy = userId;
             var to = await statuses.TransitionAsync(ImportBatchStatuses.Domain, ImportEntityTypes.ImportBatch, tracked.ImportBatchId,
-                tracked.StatusCodeId, ImportBatchStatuses.Confirmed, $"Órdenes creadas: {created}; fallidas: {failed}; omitidas: {skipped}.", ct2);
+                tracked.StatusCodeId, ImportBatchStatuses.Confirmed, $"Envíos creados: {created}; fallidas: {failed}; omitidos: {skipped}.", ct2);
             tracked.StatusCodeId = to.StatusCodeId;
             await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
         }, ct);
@@ -388,11 +388,11 @@ public sealed class OrderImportService(
     // ================================================================ varias líneas por orden (Lote 131)
 
     public static string PieceNumberRepeatedMessage(string number, int firstRow) => $"El número de pieza {number} se repite en la fila {firstRow} del archivo.";
-    public static string PieceNumberTakenMessage(string number) => $"El número de pieza {number} ya existe en otra orden.";
+    public static string PieceNumberTakenMessage(string number) => $"El número de pieza {number} ya existe en otro envío.";
     public const string PieceNumberOnePieceMessage = "Una línea con número de pieza propio lleva una sola pieza.";
     public const string InvoiceLineNumberMessage = "La línea de factura no trae número.";
-    public const string LinesWithErrorsMessage = "Hay líneas con errores; revise el detalle de la orden.";
-    public static string MoreThanOneInvoiceWarning(string used) => $"La orden trae más de una factura; se usa la primera ({used}).";
+    public const string LinesWithErrorsMessage = "Hay líneas con errores; revise el detalle del envío.";
+    public static string MoreThanOneInvoiceWarning(string used) => $"El envío trae más de una factura; se usa la primera ({used}).";
 
     /// <summary>
     /// Archivo con varias líneas por orden: agrupa las filas por número de orden (en el orden en que aparecen) y arma UN registro por orden.
@@ -562,7 +562,7 @@ public sealed class OrderImportService(
             if (r.Values.TryGetValue(ImportFields.OrderNumber, out var number) && !r.Errors.ContainsKey(ImportFields.OrderNumber))
             {
                 if (orderNumbers.TryGetValue(number, out var firstRow))
-                    r.Errors[ImportFields.OrderNumber] = $"El número de orden {number} se repite en la fila {firstRow} del archivo.";
+                    r.Errors[ImportFields.OrderNumber] = $"El número de envío {number} se repite en la fila {firstRow} del archivo.";
                 else orderNumbers[number] = r.Row;
             }
             if (r.Values.TryGetValue(ImportFields.ClientInvoiceNumber, out var invoice) && r.Consignee?.LocationPublicId is Guid loc)
@@ -625,12 +625,12 @@ public sealed class OrderImportService(
                 case DuplicateInvoiceDecision.Blocked:
                     r.Errors.TryAdd(ImportFields.ClientInvoiceNumber, foreign
                         ? OrderService.DuplicateInvoiceBlockedForeignMessage(loc.Name, invoice)
-                        : $"El consignatario '{loc.Name}' no permite facturas repetidas: la orden {existing!.OrderNumber} ya usa el número {invoice}.");
+                        : $"El consignatario '{loc.Name}' no permite facturas repetidas: el envío {existing!.OrderNumber} ya usa el número {invoice}.");
                     break;
                 case DuplicateInvoiceDecision.NeedsConfirmation:
                     r.Warnings.Add(foreign
                         ? DuplicateInvoiceForeignWarning(loc.Name, invoice)
-                        : $"El consignatario '{loc.Name}' ya tiene la factura {invoice} en la orden {existing!.OrderNumber}; la fila se creará solo si confirma facturas repetidas (confirmDuplicateInvoice).");
+                        : $"El consignatario '{loc.Name}' ya tiene la factura {invoice} en el envío {existing!.OrderNumber}; la fila se creará solo si confirma facturas repetidas (confirmDuplicateInvoice).");
                     break;
             }
         }

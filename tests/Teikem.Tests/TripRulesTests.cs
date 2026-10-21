@@ -38,11 +38,11 @@ public class TripRulesTests
     [Fact]
     public void Order_messages_are_exact()
     {
-        Assert.Equal("La orden no está en esta ruta.", TripRules.NotInTripMessage);
-        Assert.Equal("La orden ya está en esta ruta.", TripRules.AlreadyInTripMessage);
-        Assert.Equal("La orden ya está asignada a la ruta 2026-0007.", TripRules.OrderInOtherTripMessage("2026-0007"));
-        Assert.Equal("La orden ya está asignada a otra ruta.", TripRules.OrderTakenMessage);
-        Assert.Equal("Hay órdenes que no se pueden asignar a la ruta.", TripRules.EligibilityHeader);
+        Assert.Equal("El envío no está en esta ruta.", TripRules.NotInTripMessage);
+        Assert.Equal("El envío ya está en esta ruta.", TripRules.AlreadyInTripMessage);
+        Assert.Equal("El envío ya está asignado a la ruta 2026-0007.", TripRules.OrderInOtherTripMessage("2026-0007"));
+        Assert.Equal("El envío ya está asignado a otra ruta.", TripRules.OrderTakenMessage);
+        Assert.Equal("Hay envíos que no se pueden asignar a la ruta.", TripRules.EligibilityHeader);
         Assert.Equal(300, TripRules.MaxStopsHardCap);
         Assert.Equal("Una ruta admite como máximo 300 paradas.", TripRules.MaxStopsHardCapMessage);
         Assert.Equal("La secuencia debe incluir exactamente las paradas de la ruta vigente, sin repetir.", TripRules.SequenceMessage);
@@ -61,20 +61,20 @@ public class TripRulesTests
     [Fact]
     public void Eligibility_messages_are_exact()
     {
-        Assert.Equal("La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.",
+        Assert.Equal("El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.",
             TripRules.CheckEligibility(Order("DRAFT", "Entrada", initial: true, sort: 1, allowed: false)));
-        Assert.Equal("Las entregas especiales se asignan al chofer desde la orden; no pasan por Sala de despacho.",
+        Assert.Equal("Las entregas especiales se asignan al chofer desde el envío; no pasan por Sala de despacho.",
             TripRules.CheckEligibility(Order(special: true)));
-        Assert.Equal("La orden está en 'En espera'; regrésela al pipeline antes de asignarla a una ruta.",
+        Assert.Equal("El envío está en 'En espera'; regréselo al pipeline antes de asignarlo a una ruta.",
             TripRules.CheckEligibility(Order("ON_HOLD", "En espera", StageKinds.Lateral, sort: 20)));
-        Assert.Equal("La orden ya salió a ruta o terminó; no se puede asignar a otra ruta.",
+        Assert.Equal("El envío ya salió a ruta o terminó; no se puede asignar a otra ruta.",
             TripRules.CheckEligibility(Order("IN_TRANSIT", "En tránsito", sort: 6)));
-        Assert.Equal("La orden ya salió a ruta o terminó; no se puede asignar a otra ruta.",
+        Assert.Equal("El envío ya salió a ruta o terminó; no se puede asignar a otra ruta.",
             TripRules.CheckEligibility(Order("DELIVERED", "Entregada", StageKinds.Terminal, sort: 8)));
-        Assert.Equal("La orden ya salió a ruta o terminó; no se puede asignar a otra ruta.",
+        Assert.Equal("El envío ya salió a ruta o terminó; no se puede asignar a otra ruta.",
             TripRules.CheckEligibility(Order(active: false)));
         Assert.Equal("El estatus actual no permite la acción 'ASSIGN_TRIP'.", TripRules.CheckEligibility(Order(allowed: false)));
-        Assert.Equal("La orden no tiene una parada de entrega pendiente.", TripRules.CheckEligibility(Order(pending: false)));
+        Assert.Equal("El envío no tiene una parada de entrega pendiente.", TripRules.CheckEligibility(Order(pending: false)));
     }
 
     [Fact]
@@ -144,7 +144,7 @@ public class TripRulesTests
         Assert.Equal("El chofer no está disponible para despacho: Chofer en estatus 'No disponible'.", issues[0].Message);
         Assert.Equal("La ruta no tiene vehículo asignado.", issues[1].Message);
         Assert.Equal("La ruta no tiene paradas.", issues[2].Message);
-        Assert.Equal("Orden 2026-000123: El estatus actual no permite la acción 'ASSIGN_TRIP'.", issues[3].Message);
+        Assert.Equal("Envío 2026-000123: El estatus actual no permite la acción 'ASSIGN_TRIP'.", issues[3].Message);
         Assert.Equal("Licencia B vence el 2026-10-01.", issues[4].Message);
     }
 

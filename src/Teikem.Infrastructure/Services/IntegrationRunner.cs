@@ -128,7 +128,7 @@ public sealed class IntegrationRunner(
             status = outcomes.Count > 0 && failedFiles == outcomes.Count && run.OrdersCreated == 0 ? IntegrationRunStatuses.Failed
                 : run.Rejected > 0 || failedFiles > 0 ? IntegrationRunStatuses.Partial : IntegrationRunStatuses.Ok;
             message = outcomes.Count == 0 ? NoFilesMessage
-                : $"{outcomes.Count} archivo(s): {run.OrdersCreated} orden(es) creada(s), {run.Rejected} a la bandeja" + (failedFiles > 0 ? $", {failedFiles} archivo(s) con error." : ".");
+                : $"{outcomes.Count} archivo(s): {run.OrdersCreated} envío(s) creado(s), {run.Rejected} a la bandeja" + (failedFiles > 0 ? $", {failedFiles} archivo(s) con error." : ".");
             foreach (var o in outcomes) await StoreInboxAsync(integration, run, o, ct);
         }
         catch (OperationCanceledException) { throw; }
@@ -377,7 +377,7 @@ public sealed class IntegrationRunner(
         var parts = r.Errors.Select(e => e.Key == "lines" ? e.Value : $"{e.Key}: {e.Value}").ToList();
         foreach (var l in r.Lines ?? Array.Empty<ImportLineDto>()) parts.AddRange(l.Errors.Select(e => $"Fila {l.Row} · {e.Key}: {e.Value}"));
         if (!string.IsNullOrWhiteSpace(r.Error)) parts.Add(r.Error!);
-        return parts.Count == 0 ? "La orden no se pudo procesar." : string.Join(" | ", parts);
+        return parts.Count == 0 ? "El envío no se pudo procesar." : string.Join(" | ", parts);
     }
 
     private sealed record RawData(List<string>? Header, Dictionary<int, List<string>> Rows);

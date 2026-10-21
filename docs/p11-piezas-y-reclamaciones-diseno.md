@@ -14,7 +14,7 @@ Dictado por Luis (2026-10-17/18). **Todavía no hay código**: este documento ju
 | Lote | Qué |
 |---|---|
 | **109 — Piezas (hecho)** | Entidad pieza (`OrderPiece`): una fila por pieza con su número único, generada al someter la orden; labels por pieza con su número; búsqueda por número de pieza (la de la línea deja de ser el código del label) |
-| **110 — Escaneo por pieza** | Cada escaneo de una pieza con la acción escogida se registra; conteo «4 de 5»; incompleta; «Cerrar conteo»; el número de orden ya no se escanea; audio Sí/No/Ok |
+| **110 — Escaneo por pieza** | Cada escaneo de una pieza con la acción escogida se registra; conteo «4 de 5»; incompleta; «Cerrar conteo»; el número de envío ya no se escanea; audio Sí/No/Ok |
 | **111 — Reclamaciones** | Faltantes «Por verificar» → «Perdido» → reclamación (Reclamada → Resuelta), con su pantalla y permisos |
 | 112+ | Devolución (Devuelta + orden de vuelta), reubicar piezas, tipo «pick up», cargo por devolución, acceso del consignatario |
 

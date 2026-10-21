@@ -124,7 +124,7 @@ test.describe('Campos personalizados (Lote F-F1)', () => {
       // ================= 1) La pantalla =================
       const nav = page.getByRole('navigation', { name: 'Entidades' })
       await expect(nav.getByRole('button')).toHaveCount(6)
-      for (const name of ['Cliente', 'Orden', 'Chofer', 'Vehículo', 'Producto', 'Ubicación (consignatario)']) await expect(nav.getByRole('button', { name: new RegExp(`^${name.replace(/[()]/g, '\\$&')}`) })).toBeVisible()
+      for (const name of ['Cliente', 'Envío', 'Chofer', 'Vehículo', 'Producto', 'Ubicación (consignatario)']) await expect(nav.getByRole('button', { name: new RegExp(`^${name.replace(/[()]/g, '\\$&')}`) })).toBeVisible()
       await expect(page.getByText(/Cada campo se define una vez por entidad/)).toBeVisible()
       await expect(page.getByRole('table', { name: 'Cliente' }).or(page.getByRole('list', { name: 'Cliente' })).or(page.getByText('Todavía no hay campos personalizados para esta entidad.'))).toBeVisible()
       if (isMobile) await expectNoHorizontalScroll(page)

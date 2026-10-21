@@ -43,7 +43,7 @@ public sealed class PickBatchDataSource(TeikemDbContext db, ITenantContext tenan
         new DataField("TotalQty", "Cantidad total", "Total quantity", DataFieldType.Number),
         new DataField("TotalCost", "Costo total", "Total cost", DataFieldType.Number, IsMoney: true),
         new DataField("PackBatchNumber", "Número de empaque", "Pack batch number", DataFieldType.Text),
-        new DataField("OrderNumber", "Número de orden", "Order number", DataFieldType.Text),
+        new DataField("OrderNumber", "Número de envío", "Shipment number", DataFieldType.Text),
         new DataField("ClientInvoiceNumber", "Factura del cliente", "Client invoice", DataFieldType.Text),
         new DataField("ClientName", "Cliente", "Client", DataFieldType.Text),
         new DataField("PackedAtUtc", "Empacada el", "Packed at", DataFieldType.Date),

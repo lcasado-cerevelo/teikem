@@ -31,8 +31,8 @@ namespace Teikem.Infrastructure.Analytics;
 public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lookups, ITenantContext tenant, OrderPriceVisibility? prices = null, SlaService? sla = null) : IDataSource
 {
     public string Key => EntityTypes.TransportOrder;
-    public string LabelEs => "Órdenes";
-    public string LabelEn => "Orders";
+    public string LabelEs => "Envíos";
+    public string LabelEn => "Shipments";
     /// <summary>Habilita los campos personalizados de la orden como columnas (módulo F).</summary>
     public string? EntityTypeCode => EntityTypes.TransportOrder;
     /// <summary>Actividad de período por fecha de captura (decisión 22 del Lote 3).</summary>
@@ -45,7 +45,7 @@ public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lo
         new DataField("Id", "Id", "Id", DataFieldType.Number),
         new DataField("PublicId", "Id público", "Public id", DataFieldType.Text),
         new DataField("PackBatchNumber", "Empaque", "Pack batch", DataFieldType.Text),
-        new DataField("OrderNumber", "Número de orden", "Order number", DataFieldType.Text),
+        new DataField("OrderNumber", "Número de envío", "Shipment number", DataFieldType.Text),
         new DataField("ClientInvoiceNumber", "Factura del cliente", "Client invoice", DataFieldType.Text),
         new DataField("ClientId", "Id de cliente", "Client id", DataFieldType.Number),
         new DataField("ClientName", "Cliente", "Client", DataFieldType.Text),

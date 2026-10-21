@@ -33,5 +33,5 @@ public sealed record ServiceTypeMarks(bool PickUp, bool Billable)
         catch (JsonException) { return this; }
     }
 
-    public const string PickUpOnlyMessageFormat = "La orden {0} es de pick up: se queda en el almacén. Para sacarla cree otra orden.";
+    public const string PickUpOnlyMessageFormat = "El envío {0} es de pick up: se queda en el almacén. Para sacarlo cree otro envío.";
 }

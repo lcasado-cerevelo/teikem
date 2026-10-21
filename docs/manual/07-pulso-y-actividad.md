@@ -552,7 +552,7 @@ Son **fotos de ahora** (las barritas de 7 días salen del historial diario, ver 
 
 | Tarjeta | Qué cuenta | Texto pequeño | Al hacer clic |
 |---|---|---|---|
-| **Por cobrar** | órdenes con COD **Entregadas** que no se han cobrado del todo | «órdenes · faltan $X» | COD (Órdenes con COD) |
+| **Por cobrar** | órdenes con COD **Entregadas** que no se han cobrado del todo | «órdenes · faltan $X» | COD (Envíos con COD) |
 | **Cobrado** | dinero cobrado en la calle **sin cuadrar** | «efectivo $X · cheques $Y» (y «otros $Z» si hay ATH Móvil o tarjeta) | COD → Reconciliar |
 | **Cuadrado** | dinero cuadrado que todavía **no está en una remesa** | «sin remesa · N clientes» | COD → Remesas |
 | **Remesa lista** | el **neto** de las remesas abiertas, cuadradas o aprobadas (todavía no remitidas) | «N remesas · N clientes» | COD → Remesas |
@@ -565,14 +565,14 @@ Las sumas de dinero suponen **una sola moneda** (la de la compañía). Una orden
 - **«Por despachar» no baja aunque asigné chofer:** la orden deja de contarse cuando está en una ruta **con chofer** y la ruta no está cancelada ni completada.
 - **«Entregado» no coincide con Órdenes:** cuenta las entregas que ocurrieron **hoy** (hora de la compañía), no todas las entregadas.
 
-## 7. Radar de órdenes abiertas y avisos de operación (Lote 89, P12)
+## 7. Radar de envíos abiertos y avisos de operación (Lote 89, P12)
 
 ### El Radar
 
 Panel `RADAR` del Pulso (orden 60) con los mismos permisos que el río de órdenes: `pulse.orders`, `orders.view` y el módulo `LTL_GROUND`. Cuenta las órdenes **abiertas** —Sometidas, Recogidas, Sin asignar, Asignadas, En tránsito o con Intento fallido (desde el Lote 106 las Sometidas cuentan; antes el borrador no)— y **no** las entregadas, canceladas, En almacén ni dadas de baja («lo entregado no estorba aquí»).
 
-- **Cuántas hay abiertas** y, sin búsqueda, los **grupos con más órdenes** (hasta 6) con el COD que llevan: **por pueblo** del consignatario (la parada de entrega) o **por cliente** (el selector «Agrupar por»). Un grupo abre **Órdenes ya filtrado** (el pueblo o el cliente y solo los estatus abiertos); **Ver todas en Órdenes** abre la lista con solo lo abierto.
-- **Buscador:** desde 2 letras busca entre lo abierto por **factura, número de orden, empaque o consignatario** (el mismo buscador libre de Órdenes) y muestra hasta 6 con su estatus y COD; un clic abre la orden.
+- **Cuántas hay abiertas** y, sin búsqueda, los **grupos con más órdenes** (hasta 6) con el COD que llevan: **por pueblo** del consignatario (la parada de entrega) o **por cliente** (el selector «Agrupar por»). Un grupo abre **Órdenes ya filtrado** (el pueblo o el cliente y solo los estatus abiertos); **Ver todos en Envíos** abre la lista con solo lo abierto.
+- **Buscador:** desde 2 letras busca entre lo abierto por **factura, número de envío, empaque o consignatario** (el mismo buscador libre de Órdenes) y muestra hasta 6 con su estatus y COD; un clic abre la orden.
 - Endpoint: `GET /api/v1/pulse/radar?groupBy=TOWN|CLIENT&take=6` (`orders.view`, módulo `LTL_GROUND`; `groupBy` inválido → 400 «Agrupe por pueblo (TOWN) o por cliente (CLIENT).»; `take` de 1 a 20).
 - **Órdenes** acepta los filtros del enlace: `/orders?city=…`, `/orders?client=<publicId>` y `/orders?statuses=PICKUP,IN_TRANSIT…`.
 
@@ -582,7 +582,7 @@ Son filas **agregadas** (una sola fila con la cuenta, como en la maqueta) y van 
 
 | Aviso | Qué dice | Quién lo ve | «Revisar» |
 |---|---|---|---|
-| **Órdenes sin chofer** (`ORDERS_NO_DRIVER`) | «N órdenes sin chofer»: Sin asignar o Asignadas **sin una ruta con chofer**; la cifra «La más antigua» (días); rojo desde 2 días | `trips.dispatch` y módulo `LTL_GROUND` | Sala de despacho |
+| **Envíos sin chofer** (`ORDERS_NO_DRIVER`) | «N órdenes sin chofer»: Sin asignar o Asignadas **sin una ruta con chofer**; la cifra «La más antigua» (días); rojo desde 2 días | `trips.dispatch` y módulo `LTL_GROUND` | Sala de despacho |
 | **COD sin cuadrar** (`COD_UNRECONCILED`) | «$X de COD sin cuadrar»: lo cobrado en la calle que todavía no se cuadra, con los cobros, las órdenes y «El más antiguo»; rojo desde 3 días | `cod.reconcile` y módulo `COD` | COD → Reconciliar |
 
 ### SLA en riesgo (Lote 122, P12)

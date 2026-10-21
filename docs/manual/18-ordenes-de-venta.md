@@ -114,12 +114,12 @@ Las órdenes **nunca se borran**: se cancelan. Quedan en la bitácora (altas, ca
 
 Un **backorder** es lo que se pidió y todavía no hay: la línea queda con su cantidad pendiente (`QtyBackordered`) mientras la orden sigue solicitada.
 
-- **Ver los backorders** (`GET /api/v1/sales-orders/backorders`, permiso `sales.view`): todas las líneas con pendiente, **la más antigua primero** (el primero que pidió, primero). Por línea: orden, cliente, almacén, producto, **pedido / reservado / pendiente**, lo **disponible hoy** para vender y lo que se podría **surtir ahora** (el menor entre lo pendiente y lo disponible), y cuántos días lleva esperando. Buscador por número de orden, cliente o producto.
+- **Ver los backorders** (`GET /api/v1/sales-orders/backorders`, permiso `sales.view`): todas las líneas con pendiente, **la más antigua primero** (el primero que pidió, primero). Por línea: orden, cliente, almacén, producto, **pedido / reservado / pendiente**, lo **disponible hoy** para vender y lo que se podría **surtir ahora** (el menor entre lo pendiente y lo disponible), y cuántos días lleva esperando. Buscador por número de envío, cliente o producto.
 - **Surtir una línea** (`POST /api/v1/sales-orders/{publicId}/lines/{lineId}/fulfill`, permiso `sales.backorder`): reserva para la línea **lo que haya** (todo su pendiente o una parte). Usa el mismo candado del inventario que solicitar: nunca reserva más de lo que existe ni le quita a otra orden. Si no hay nada nuevo, responde 409.
 - **Surtir todo** (`POST /api/v1/sales-orders/backorders/fulfill`, permiso `sales.backorder`): recorre los backorders **de la más antigua a la más reciente** y surte lo que se pueda; lo que una línea toma, la siguiente ya no lo ve. Devuelve qué se reservó por línea y cuánto sigue pendiente.
 - **Cuándo se puede surtir**: cuando entra inventario (recibo, ajuste de entrada, transferencia, liberar cuarentena) o se cancela otra orden que lo tenía reservado. Hoy el aviso automático «ya hay para este backorder» no existe todavía (llega con los avisos de ventas); la vista muestra siempre lo surtible.
 - **Cerrar con faltante** (`POST /api/v1/sales-orders/{publicId}/lines/{lineId}/close`, permiso `sales.backorder`): da la línea por **terminada sin esperar más**: su backorder se borra y la línea queda cerrada. **Lo ya reservado sigue reservado** para despacharse y la **cantidad pedida se conserva** (sirve para medir el cumplimiento). Una línea cerrada no se surte ni se modifica.
-- **Cancelar la orden** borra su backorder y libera lo reservado (sección 7).
+- **Cancelar el envío** borra su backorder y libera lo reservado (sección 7).
 
 | Situación | Mensaje exacto | HTTP |
 |---|---|---|

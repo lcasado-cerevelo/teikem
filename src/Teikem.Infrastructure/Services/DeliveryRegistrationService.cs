@@ -36,7 +36,7 @@ public sealed class DeliveryRegistrationService(TeikemDbContext db, ITenantConte
         if (at > now + DeliveryProofRules.FutureTolerance) throw new ValidationException("deliveredAtUtc", DeliveryProofRules.FutureDelivery);
         var userId = tenant.UserId ?? throw new ForbiddenException("Hace falta una sesión de usuario para registrar la entrega.");
         var orderId = await db.TransportOrders.AsNoTracking().Where(o => o.PublicId == orderPublicId && o.IsActive).Select(o => (int?)o.TransportOrderId).FirstOrDefaultAsync(ct)
-                      ?? throw new NotFoundException("Orden", feminine: true);
+                      ?? throw new NotFoundException("Envío");
         var userName = await UserNameAsync(userId, ct);
 
         int proofId = 0;
@@ -116,7 +116,7 @@ public sealed class DeliveryRegistrationService(TeikemDbContext db, ITenantConte
     public async Task<int> RequireProofIdAsync(Guid orderPublicId, CancellationToken ct)
     {
         var order = await db.TransportOrders.AsNoTracking().Where(o => o.PublicId == orderPublicId).Select(o => new { o.TransportOrderId, o.OrderNumber }).FirstOrDefaultAsync(ct)
-                    ?? throw new NotFoundException("Orden", orderPublicId);
+                    ?? throw new NotFoundException("Envío", orderPublicId);
         var proofId = await db.Set<DeliveryProof>().AsNoTracking().Where(p => p.TransportOrderId == order.TransportOrderId && p.IsActive).Select(p => (int?)p.DeliveryProofId).FirstOrDefaultAsync(ct);
         return proofId ?? throw new StatusRuleException(string.Format(DeliveryProofRules.NoProofFormat, order.OrderNumber));
     }

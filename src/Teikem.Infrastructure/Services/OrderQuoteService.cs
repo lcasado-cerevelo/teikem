@@ -25,8 +25,8 @@ namespace Teikem.Infrastructure.Services;
 public sealed class OrderQuoteService(TeikemDbContext db, ILookupCache lookups, RateService rates)
 {
     public const string SpecialServiceClosedMessage = "El servicio especial ya no está vigente; elija otro antes de confirmar.";
-    public const string SpecialServiceComponentOffMessage = "El componente 'Servicios especiales' está apagado en el contrato vigente del cliente; enciéndalo en el modelo de facturación o capture una orden normal.";
-    public const string NoLinesMessage = "La orden no tiene líneas de paquete activas que cotizar.";
+    public const string SpecialServiceComponentOffMessage = "El componente 'Servicios especiales' está apagado en el contrato vigente del cliente; enciéndalo en el modelo de facturación o capture un envío normal.";
+    public const string NoLinesMessage = "El envío no tiene líneas de paquete activas que cotizar.";
 
     public static string MissingRateMessage(string serviceType, string packageType)
         => $"No hay tarifa vigente para {serviceType}/{packageType}; configure la tarifa en el contrato del cliente antes de confirmar.";
@@ -56,7 +56,7 @@ public sealed class OrderQuoteService(TeikemDbContext db, ILookupCache lookups, 
         }
 
         var serviceType = await lookups.GetAsync(order.ServiceTypeLookupId, ct)
-                          ?? throw new StatusRuleException("El tipo de servicio de la orden no existe en la lista.");
+                          ?? throw new StatusRuleException("El tipo de servicio del envío no existe en la lista.");
 
         var raw = new List<(string PackageType, int Pieces)>();
         foreach (var line in order.CargoLines.Where(l => l.IsActive))
@@ -94,7 +94,7 @@ public sealed class OrderQuoteService(TeikemDbContext db, ILookupCache lookups, 
             return new FreightBreakdown(new[] { new FreightPiece(FreightComponents.SpecialService, null, null, c.Total, null) }, c.Total, c.ContractId);
         }
         var serviceType = await lookups.GetAsync(order.ServiceTypeLookupId, ct)
-                          ?? throw new StatusRuleException("El tipo de servicio de la orden no existe en la lista.");
+                          ?? throw new StatusRuleException("El tipo de servicio del envío no existe en la lista.");
         var raw = new List<(string PackageType, int Pieces)>();
         foreach (var line in order.CargoLines.Where(l => l.IsActive))
         {

@@ -162,7 +162,7 @@ test.describe('Labels y documentos (Lote F-G2)', () => {
       await shot(page, isMobile, 'fg2-lista', 1100)
       await print.click()
       const preview = page.getByRole('dialog', { name: 'Imprimir 4 labels' })
-      await expect(preview.getByTestId('print-count')).toHaveText('Labels: 4 · órdenes: 2 (uno por pieza).')
+      await expect(preview.getByTestId('print-count')).toHaveText('Labels: 4 · envíos: 2 (uno por pieza).')
       await expect(preview.getByTestId('label-preview')).toContainText(`PKG-${s}1 · Paquete 1 de 3`)   // Lote 109: cada pieza con su número (la línea tecleada PKG-x numera sus 2 piezas PKG-x1 y PKG-x2)
       if (isMobile) await expectNoHorizontalScroll(page)
       await shot(page, isMobile, 'fg2-labels-vista', 1000, preview)
@@ -188,7 +188,7 @@ test.describe('Labels y documentos (Lote F-G2)', () => {
 
       // 6) entrada rápida con «Label al guardar»: al guardar sale la vista del label de la orden nueva
       await page.goto('/orders')
-      await page.getByRole('button', { name: /Nueva orden/ }).click()
+      await page.getByRole('button', { name: /Nuevo envío/ }).click()
       if ((await page.getByRole('button', { name: /Rápida/ }).getAttribute('aria-pressed')) !== 'true') await page.getByRole('button', { name: /Rápida/ }).click()
       const qk = page.locator('.qk')
       const sw = qk.getByRole('switch', { name: 'Label al guardar' })

@@ -69,12 +69,12 @@ public static class PickBatchRules
     public const string SerialQuantityMismatch = "En productos con serie la cantidad debe ser igual al número de series escaneadas.";
     public const string SerialTooLong = "Cada número de serie admite como máximo 80 caracteres.";
     public const string TooManySerials = "Una línea admite como máximo 500 series.";
-    public const string OrderRequired = "Indique los datos de la orden que se crea al empacar.";
+    public const string OrderRequired = "Indique los datos del envío que se crea al empacar.";
     public const string WarehouseRequired = "Indique el almacén: la compañía tiene más de uno.";
     public const string NoActiveWarehouse = "La compañía no tiene almacenes activos.";
     public const string WarehouseInactive = "El almacén está inactivo; no se puede recolectar.";
     public const string NumberTaken = "Ya existe una recolección con ese número; intente de nuevo.";
-    public const string OrderTaken = "La orden ya está ligada a otra recolección.";
+    public const string OrderTaken = "El envío ya está ligado a otra recolección.";
 
     // ---------------------------------------------------------------- 2026-10-11 — Despacho manual (DMA-#####)
 
@@ -153,10 +153,10 @@ public static class PickBatchRules
     }
 
     public static string OrderClientMustBeOwner(string clientName)
-        => $"La orden debe ser del cliente dueño del inventario ({clientName}).";
+        => $"El envío debe ser del cliente dueño del inventario ({clientName}).";
 
     public static string DeleteBlocked(string number, string status)
-        => $"La orden de la recolección {number} ya avanzó a '{status}'; la recolección ya no se puede eliminar.";
+        => $"El envío de la recolección {number} ya avanzó a '{status}'; la recolección ya no se puede eliminar.";
 
     public static string NotCollected(string number) => $"La recolección {number} ya fue empacada.";
 
@@ -189,7 +189,7 @@ public static class PickBatchRules
 
     /// <summary>'Orden: {x} · Factura: {y|—}' (R40: el número de orden y la factura final quedan a la vista en el lote).</summary>
     public static string DisplayNumbers(string? orderNumber, string? invoiceNumber)
-        => $"Orden: {Dash(orderNumber)} · Factura: {Dash(invoiceNumber)}";
+        => $"Envío: {Dash(orderNumber)} · Factura: {Dash(invoiceNumber)}";
 
     // ---------------------------------------------------------------- validaciones de captura
 

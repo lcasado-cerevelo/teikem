@@ -48,7 +48,7 @@ Todos los filtros se combinan: la lista muestra solo las órdenes que cumplen **
 | Filtro | Qué hace |
 |---|---|
 | **Fecha** (**Desde** / **Hasta**) | Órdenes creadas entre esas fechas. El día de **Hasta** sí se incluye. |
-| **N.º de orden** | Busca por el número de orden (o parte de él). |
+| **N.º de envío** | Busca por el número de envío (o parte de él). |
 | **Consignatario** | Busca por el nombre del consignatario (o parte de él). |
 | **Cliente** | Uno o varios clientes. |
 | **Servicio** | Uno o varios tipos de servicio. |
@@ -60,7 +60,7 @@ Todos los filtros se combinan: la lista muestra solo las órdenes que cumplen **
 | **Estatus** | Uno o varios estatus. |
 | **Limpiar** | Quita todos los filtros. |
 
-Los filtros de texto (N.º de orden, Consignatario, ZIP, Factura y Empaque) se aplican un instante después de que usted deja de teclear. El buscador de la tabla (**Buscar…**) busca a la vez en el número de orden, la factura, el empaque y el consignatario.
+Los filtros de texto (N.º de envío, Consignatario, ZIP, Factura y Empaque) se aplican un instante después de que usted deja de teclear. El buscador de la tabla (**Buscar…**) busca a la vez en el número de envío, la factura, el empaque y el consignatario.
 
 ### Qué muestra la tabla
 
@@ -75,7 +75,7 @@ Columnas: **Empaque**, **N.º orden**, **Fecha**, **Consignatario**, **Pueblo**,
 
 ### Abrir una orden
 
-Pulse la flecha de la primera fila de la orden (**Abrir la orden**), o pulse la fila.
+Pulse la flecha de la primera fila de la orden (**Abrir el envío**), o pulse la fila.
 
 ### Eliminar una orden
 
@@ -84,9 +84,9 @@ Pulse la flecha de la primera fila de la orden (**Abrir la orden**), o pulse la 
 **Ejemplo.** Capturé una orden por error y todavía no la confirmé.
 
 1. Busque la orden en la lista.
-2. Pulse la papelera de su primera fila (**Eliminar la orden**).
-3. En la ventana «Eliminar la orden …» pulse **Eliminar** (o **Cancelar** para dejarla).
-4. Sale el aviso «Orden … eliminada.» y el número de orden queda libre para volver a usarse.
+2. Pulse la papelera de su primera fila (**Eliminar el envío**).
+3. En la ventana «Eliminar el envío …» pulse **Eliminar** (o **Cancelar** para dejarla).
+4. Sale el aviso «Orden … eliminada.» y el número de envío queda libre para volver a usarse.
 
 La papelera solo aparece si la orden está en su **estatus inicial** y usted tiene `orders.cancel`. Una orden eliminada no se borra: se da de baja y queda en el historial. Si el servidor no la deja eliminar, el motivo aparece en la misma ventana (ver «Mensajes» más abajo).
 
@@ -100,10 +100,10 @@ La papelera solo aparece si la orden está en su **estatus inicial** y usted tie
 2. **01 Cliente y servicio.** En **Cliente** escriba «Farmacia» y elija el cliente. Revise **Servicio** (viene con el servicio predeterminado de la compañía, si hay uno).
 3. **02 Consignatario.** En **Nombre** escriba parte del nombre del consignatario y elíjalo de la lista. Se llenan solos (solo para leer) el número, la dirección, el pueblo, el ZIP y el teléfono.
 4. **03 Paquetes y COD.** En la primera línea elija el **Tipo de paquete** «Caja», escriba **Piezas** = 2. Pulse **Añadir paquete**, elija «Sobre», **Descripción** = «Documentos», **Piezas** = 1. En **Monto COD** escriba 50.
-5. Revise el **Ticket de la orden** (a la derecha): debe decir, por ejemplo, «Caja ×2 + Sobre ×1» y el COD.
+5. Revise el **Ticket del envío** (a la derecha): debe decir, por ejemplo, «Caja ×2 + Sobre ×1» y el COD.
 6. Pulse **Guardar** (ver «Guardar» más abajo).
 
-Los pasos 01, 02 y 03 aparecen a la izquierda; el **Ticket de la orden** a la derecha (en pantallas angostas, debajo). El ticket resume lo capturado: cliente, servicio, consignatario, pueblo, paquetes y COD. **No muestra precio.** El precio se ve después, en la lista y en la ficha de la orden, y solo con `orders.view_price`.
+Los pasos 01, 02 y 03 aparecen a la izquierda; el **Ticket del envío** a la derecha (en pantallas angostas, debajo). El ticket resume lo capturado: cliente, servicio, consignatario, pueblo, paquetes y COD. **No muestra precio.** El precio se ve después, en la lista y en la ficha de la orden, y solo con `orders.view_price`.
 
 ### 01 Cliente y servicio
 
@@ -150,7 +150,7 @@ Los pasos 01, 02 y 03 aparecen a la izquierda; el **Ticket de la orden** a la de
 Cuando se guarda bien:
 
 - El formulario se cierra y se limpia.
-- Sale el aviso «Orden … guardada.» y, sobre los filtros, «Orden … guardada.», con el botón **Abrir la orden**. Pulse **Cerrar aviso** para quitarlo.
+- Sale el aviso «Orden … guardada.» y, sobre los filtros, «Orden … guardada.», con el botón **Abrir el envío**. Pulse **Cerrar aviso** para quitarlo.
 
 Cuando algo falla, el formulario **sigue abierto con todo lo que usted había capturado**; lea el mensaje, corríjalo y vuelva a guardar. Si el formulario sigue abierto con un error, la orden **no** se creó; puede reintentar sin miedo a duplicarla.
 
@@ -165,7 +165,7 @@ Una entrega especial es un servicio de la lista del cliente (por ejemplo, traer 
 1. Pulse **Nueva orden** y elija el **Cliente**.
 2. Active el interruptor **Es una entrega especial**.
 3. La sección 03 cambia a «Servicio especial». En **Servicio especial** elija el servicio (se muestra «nombre · tarifa»).
-4. Si el cliente asigna sus propios números de orden, el campo **N.º de orden** estará habilitado; si no, dice «(automático)».
+4. Si el cliente asigna sus propios números de orden, el campo **N.º de envío** estará habilitado; si no, dice «(automático)».
 5. Pulse **Guardar**.
 
 La orden se crea **sin paquetes, sin COD y sin chofer**; el chofer se asigna después. El ticket muestra «Servicio especial» en lugar de «Paquetes» y no muestra COD.
@@ -174,23 +174,23 @@ Si el interruptor está deshabilitado, falta el permiso `contracts.read` (la pan
 
 ---
 
-## 3. Estatus de la orden
+## 3. Estatus del envío
 
 El estatus inicial de una orden se llama **Sometida** (su compañía puede haberlo renombrado en Sistema → Listas). Esta pantalla hace dos cosas con el estatus:
 
 | De → a | Cómo | Quién puede | Qué se valida | Qué pasa |
 |---|---|---|---|---|
 | (orden nueva) → **Sometida** | **Guardar** | `orders.create`; si el crédito se excede, también `orders.credit_override` (**Autorizar y guardar**) | Datos obligatorios; el cliente no puede estar suspendido ni dado de baja; que su crédito alcance. | La orden se crea, se cotiza (si hay contrato y tarifa) y se puede seguir editando. Si el crédito se excede y no se autoriza, no se crea. Si se autoriza, queda registrado quién lo autorizó. |
-| **Sometida** → eliminada | Papelera | `orders.cancel` | Que la orden siga en su estatus inicial. | Se da de baja y su número de orden queda libre. |
+| **Sometida** → eliminada | Papelera | `orders.cancel` | Que la orden siga en su estatus inicial. | Se da de baja y su número de envío queda libre. |
 
-Pasar de Sometida a **Recogida** («Marcar como recogida»), cancelar y reabrir se hacen en el expediente (ver [el expediente](fc2-ordenes-expediente.md)).
+Pasar de Sometida a **Recogida** («Marcar como recogido»), cancelar y reabrir se hacen en el expediente (ver [el expediente](fc2-ordenes-expediente.md)).
 
 Qué se puede hacer según el estatus:
 
 | Estatus | Eliminar con la papelera | Qué más |
 |---|---|---|
 | **Sometida** | Sí (con `orders.cancel`) | Todavía se puede editar y marcar como recogida, desde el expediente de la orden (ver [el expediente](fc2-ordenes-expediente.md)). |
-| **Recogida** y siguientes | No. Aparece «Solo se puede eliminar una orden en su estatus inicial; use la cancelación.» | Una orden recogida no se elimina: se cancela (con razón) desde el expediente. |
+| **Recogida** y siguientes | No. Aparece «Solo se puede eliminar un envío en su estatus inicial; use la cancelación.» | Una orden recogida no se elimina: se cancela (con razón) desde el expediente. |
 
 ---
 
@@ -209,7 +209,7 @@ La pantalla revisa estos datos antes de enviar y los marca bajo el campo. Si el 
 | Tipo de paquete | Obligatorio en cada línea. | `El tipo de paquete es obligatorio.` | 400 |
 | Piezas | Entero de 1 en adelante. | `La cantidad de piezas debe ser al menos 1.` | 400 |
 | Monto COD | No negativo. | `El monto COD no puede ser negativo.` | 400 |
-| N.º de factura / N.º de orden | Máximo 40 caracteres. | `El número no puede exceder 40 caracteres.` | 400 |
+| N.º de factura / N.º de envío | Máximo 40 caracteres. | `El número no puede exceder 40 caracteres.` | 400 |
 | Descripción | Máximo 200 caracteres. | `Máximo 200 caracteres.` | Solo pantalla |
 | Lista y Límite | El límite no puede ir antes que la fecha lista. | `La fecha límite no puede ser anterior a la fecha lista.` | Solo pantalla |
 | Servicio especial | Obligatorio en una entrega especial. | `El servicio especial es obligatorio en una entrega especial.` | 400 |
@@ -218,31 +218,31 @@ La pantalla revisa estos datos antes de enviar y los marca bajo el campo. Si el 
 
 El texto aparece tal cual sobre el formulario (o bajo el campo, cuando se indica). Qué hacer en cada caso:
 
-![Aviso de factura repetida para este consignatario, con las opciones «No crear la orden» y «Crear de todos modos»](img/fc1-factura-repetida.png)
+![Aviso de factura repetida para este consignatario, con las opciones «No crear el envío» y «Crear de todos modos»](img/fc1-factura-repetida.png)
 
 ![Aviso de que el cliente excede su límite de crédito, con la opción de autorizar («Autorizar y guardar»)](img/fc1-credito.png)
 
 | Mensaje | Código | Qué significa | Qué hacer |
 |---|---|---|---|
-| Ventana **Factura repetida para este consignatario** | 409 | Usted escribió un número de factura que otra orden activa de ese consignatario ya usa, y ese consignatario sí admite repetirlo. | Pulse **No crear la orden** para revisar el número (**Ver la orden …** abre la que ya lo usa) o **Crear de todos modos** para crearla con el número repetido. |
+| Ventana **Factura repetida para este consignatario** | 409 | Usted escribió un número de factura que otra orden activa de ese consignatario ya usa, y ese consignatario sí admite repetirlo. | Pulse **No crear el envío** para revisar el número (**Ver la orden …** abre la que ya lo usa) o **Crear de todos modos** para crearla con el número repetido. |
 | `El consignatario 'X' no permite facturas repetidas: la orden N ya usa el número F.` (sale bajo **N.º de factura**) | 409 | Ese consignatario no admite facturas repetidas y el número ya está en otra orden. | Cambie el número de factura o elija otro consignatario. La orden no se crea. |
-| `El cliente excede su límite de crédito: límite X, en curso Y, esta orden Z.` | 422 | El crédito del cliente no alcanza para esta orden (se mide al guardar). | Si tiene `orders.credit_override`, pulse **Autorizar y guardar** (la orden se crea y queda registrado quién autorizó). Si no, la pantalla dice «La orden no se creó. Pida a alguien con el permiso de autorizar crédito excedido (orders.credit_override) que la capture.»: pida ese favor o pida que suban el límite del cliente. |
+| `El cliente excede su límite de crédito: límite X, en curso Y, esta orden Z.` | 422 | El crédito del cliente no alcanza para esta orden (se mide al guardar). | Si tiene `orders.credit_override`, pulse **Autorizar y guardar** (la orden se crea y queda registrado quién autorizó). Si no, la pantalla dice «El envío no se creó. Pida a alguien con el permiso de autorizar crédito excedido (orders.credit_override) que lo capture.»: pida ese favor o pida que suban el límite del cliente. |
 | `El cliente excede su límite de crédito.` | 422 | Es el mismo caso; usted no tiene `orders.view_price`, por eso no se muestran las cifras. | Igual que el anterior. |
 | `No hay tarifa vigente para X/Y; configure la tarifa en el contrato del cliente antes de confirmar.` | 422 | El contrato del cliente no tiene tarifa para ese servicio y tipo de paquete. Al guardar **no** sale: la orden se guarda sin cotizar; el error sale al marcarla como recogida. | Configure la tarifa (Clientes → Contrato → Tarifas) y marque la orden como recogida de nuevo. |
-| `El cliente está suspendido; no se pueden crear ni confirmar órdenes.` | 422 | El cliente está suspendido. | Reactive al cliente desde su ficha o elija otro. |
+| `El cliente está suspendido; no se pueden crear ni confirmar envíos.` | 422 | El cliente está suspendido. | Reactive al cliente desde su ficha o elija otro. |
 | `El cliente está dado de baja; solo se consulta su historial.` | 409 | El cliente está dado de baja. | Reactive al cliente desde su ficha o elija otro. |
 | `Consignatario está inactivo; reactívelo o elija otro.` | 400 | El consignatario fue dado de baja. | Reactívelo en Listas → Consignatarios o elija otro. |
 | `El número de factura lo asigna Teikem para este cliente; déjelo en blanco.` | 400 | Se envió un número de factura, pero este cliente usa la numeración automática. | Deje la factura en «(automático)». |
-| `El número de orden lo asigna Teikem para este cliente; déjelo en blanco.` | 400 | Igual, con el número de orden. | Deje el número de orden vacío. |
+| `El número de envío lo asigna Teikem para este cliente; déjelo en blanco.` | 400 | Igual, con el número de envío. | Deje el número de envío vacío. |
 | `El servicio especial no está vigente para este cliente.` | 400 | El servicio elegido ya se cerró. | Elija otro servicio especial. |
-| `El componente 'Servicios especiales' está apagado en el contrato vigente del cliente; enciéndalo en el modelo de facturación o capture una orden normal.` | 409 | El contrato del cliente no admite servicios especiales. | Encienda el componente en el contrato del cliente o capture una orden normal. |
+| `El componente 'Servicios especiales' está apagado en el contrato vigente del cliente; enciéndalo en el modelo de facturación o capture un envío normal.` | 409 | El contrato del cliente no admite servicios especiales. | Encienda el componente en el contrato del cliente o capture una orden normal. |
 | `Cliente no encontrado.` / `Consignatario no encontrado.` | 404 | El cliente o el consignatario ya no existe en su compañía. | Recargue la pantalla y elíjalo de nuevo. |
 
 ### Al eliminar una orden
 
 | Mensaje | Código | Qué significa | Qué hacer |
 |---|---|---|---|
-| `Solo se puede eliminar una orden en su estatus inicial; use la cancelación.` | 422 | Alguien la marcó como recogida mientras usted tenía la lista abierta; ya no se puede eliminar. | Recargue la lista. Si la orden debe anularse, cancélela. |
+| `Solo se puede eliminar un envío en su estatus inicial; use la cancelación.` | 422 | Alguien la marcó como recogida mientras usted tenía la lista abierta; ya no se puede eliminar. | Recargue la lista. Si la orden debe anularse, cancélela. |
 
 ---
 

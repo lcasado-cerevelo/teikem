@@ -1,4 +1,4 @@
-// Lote F-E2a — Sala de despacho sobre un fetch simulado: las tres columnas, la ruta activa con su estatus real, agregar órdenes (con el 422 y el
+// Lote F-E2a — Sala de despacho sobre un fetch simulado: las tres columnas, la ruta activa con su estatus real, agregar envíos (con el 422 y el
 // 409 del servidor), ▲ ▼ y quitar, chofer y vehículo con disponibilidad y 409, optimizar (con y sin corrida anterior), «Rutas por despachar» con
 // bloqueantes y avisos y lote con resultados mixtos, iniciar, cerrar (422), eliminar, nueva ruta, planificar el día, reasignar por zona, fecha,
 // filtros al servidor y los permisos (con y sin trips.plan / optimize / dispatch / close / view y sin fleet.view).
@@ -46,7 +46,7 @@ function wrap(permissions: string[] = ALL, modules: string[] = MODULES, initial 
 const T1 = () => tripDetail({ stops: [stop(1, 1, 'OT-0101'), stop(2, 2, 'OT-0102')] })
 const btn = (name: string | RegExp) => screen.getByRole('button', { name })
 const where = () => screen.getByTestId('where').textContent
-const stopsList = () => screen.getByRole('list', { name: 'Órdenes en esta ruta' })
+const stopsList = () => screen.getByRole('list', { name: 'Envíos en esta ruta' })
 
 beforeAll(() => setLang('es'))
 beforeEach(() => resetMock([T1()]))
@@ -55,8 +55,8 @@ describe('Sala de despacho — pantalla', () => {
   it('título, las tres columnas de la maqueta, la ruta activa con su estatus y su plano, sin botones falsos', async () => {
     wrap()
     expect(screen.getByRole('heading', { level: 1, name: 'Sala de despacho' })).toBeInTheDocument()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
-    for (const title of ['Órdenes sin asignar', 'Choferes', 'Rutas de hoy']) expect(screen.getByRole('heading', { name: title })).toBeInTheDocument()
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
+    for (const title of ['Envíos sin asignar', 'Choferes', 'Rutas de hoy']) expect(screen.getByRole('heading', { name: title })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /Ruta activa/ })).toHaveTextContent('2026-0001')
     expect(screen.getByRole('heading', { name: /Ruta activa/ })).toHaveTextContent('Borrador')
     expect(screen.getByRole('heading', { name: /Ruta activa/ }).closest('.panel')).toHaveTextContent('R-01 · 2 paradas')
@@ -66,9 +66,9 @@ describe('Sala de despacho — pantalla', () => {
     for (const name of ['Planificar el día', 'Nueva ruta', 'Reasignar por zona', 'Optimizar', 'Despachar ruta']) expect(btn(name)).toBeInTheDocument()
   })
 
-  it('las órdenes de la ruta, con ETA, y las órdenes sin asignar con consignatario, pueblo · CP y zona (sin COD: el servidor no manda montos)', async () => {
+  it('los envíos de la ruta, con ETA, y los envíos sin asignar con consignatario, pueblo · CP y zona (sin COD: el servidor no manda montos)', async () => {
     wrap()
-    const list = await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    const list = await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     expect(within(list).getAllByRole('listitem')).toHaveLength(2)
     expect(list).toHaveTextContent('OT-0101')
     expect(list).toHaveTextContent('Consignatario OT-0101')
@@ -158,13 +158,13 @@ describe('aviso de máximo de paradas', () => {
 
   it('no hay banner si la ruta no lo sobrepasa', async () => {
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     expect(screen.queryByRole('alert')).toBeNull()
   })
 })
 
-describe('agregar órdenes a la ruta', () => {
-  it('«Añadir a la ruta (N)» manda las marcadas con rowVersion e Idempotency-Key; las órdenes pasan a la ruta y salen de la lista', async () => {
+describe('agregar envíos a la ruta', () => {
+  it('«Añadir a la ruta (N)» manda las marcadas con rowVersion e Idempotency-Key; los envíos pasan a la ruta y salen de la lista', async () => {
     const user = userEvent.setup()
     wrap()
     const add = () => btn(/^Añadir a la ruta/)
@@ -199,32 +199,32 @@ describe('agregar órdenes a la ruta', () => {
     expect(btn(/^Añadir a la ruta/)).toHaveTextContent('Añadir a la ruta (1)')
   })
 
-  it('422: «Hay órdenes que no se pueden asignar» con cada número y su motivo; la selección se conserva', async () => {
+  it('422: «Hay envíos que no se pueden asignar» con cada número y su motivo; la selección se conserva', async () => {
     const user = userEvent.setup()
     wrap()
     mock.override = (c: Call) =>
       c.method === 'POST' && c.url.pathname.endsWith('/orders')
-        ? problem(422, 'Hay órdenes que no se pueden asignar a la ruta.', 'status_rule', { 'OT-0001': ['La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.'] })
+        ? problem(422, 'Hay envíos que no se pueden asignar a la ruta.', 'status_rule', { 'OT-0001': ['El envío está en Sometida; márquela como recogido antes de asignarla a una ruta.'] })
         : undefined
     await user.click(await screen.findByLabelText('OT-0001'))
     await user.click(screen.getByLabelText('OT-0002'))
     await user.click(btn(/^Añadir a la ruta/))
     const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent('Hay órdenes que no se pueden asignar a la ruta.')
-    expect(alert).toHaveTextContent('OT-0001: La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.')
+    expect(alert).toHaveTextContent('Hay envíos que no se pueden asignar a la ruta.')
+    expect(alert).toHaveTextContent('OT-0001: El envío está en Sometida; márquela como recogido antes de asignarla a una ruta.')
     expect(btn(/^Añadir a la ruta/)).toHaveTextContent('Añadir a la ruta (2)')
     expect(screen.getByLabelText('OT-0001').closest('label')).toHaveClass('err')
     await user.click(btn('Entendido'))
-    expect(screen.queryByText(/Hay órdenes que no se pueden/)).toBeNull()
+    expect(screen.queryByText(/Hay envíos que no se pueden/)).toBeNull()
   })
 
-  it('409: «La orden ya está asignada a la ruta …» tal cual', async () => {
+  it('409: «El envío ya está asignada a la ruta …» tal cual', async () => {
     const user = userEvent.setup()
     wrap()
-    mock.override = (c: Call) => (c.method === 'POST' && c.url.pathname.endsWith('/orders') ? problem(409, 'La orden ya está asignada a la ruta 2026-0009.', 'conflict') : undefined)
+    mock.override = (c: Call) => (c.method === 'POST' && c.url.pathname.endsWith('/orders') ? problem(409, 'El envío ya está asignada a la ruta 2026-0009.', 'conflict') : undefined)
     await user.click(await screen.findByLabelText('OT-0001'))
     await user.click(btn(/^Añadir a la ruta/))
-    expect(await screen.findByRole('alert')).toHaveTextContent('La orden ya está asignada a la ruta 2026-0009.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('El envío ya está asignada a la ruta 2026-0009.')
   })
 
   it('más de 200 marcadas: el botón se bloquea con el mensaje del servidor y no llama', async () => {
@@ -234,17 +234,17 @@ describe('agregar órdenes a la ruta', () => {
     await screen.findByLabelText('X-0')
     await user.click(screen.getByLabelText('Marcar todas'))
     expect(btn(/^Añadir a la ruta/)).toBeDisabled()
-    expect(screen.getByRole('alert')).toHaveTextContent('Agregue como máximo 200 órdenes por solicitud.')
+    expect(screen.getByRole('alert')).toHaveTextContent('Agregue como máximo 200 envíos por solicitud.')
     expect(callsTo('POST', '/api/v1/trips/t-1/orders')).toHaveLength(0)
   })
 
-  it('una ruta despachada no recibe órdenes: el botón queda deshabilitado y lo explica', async () => {
+  it('una ruta despachada no recibe envíos: el botón queda deshabilitado y lo explica', async () => {
     resetMock([tripDetail({ statusCode: 'DISPATCHED', status: 'Despachada', isEditable: false, stops: [stop(1, 1, 'OT-1')] })])
     const user = userEvent.setup()
     wrap()
     await user.click(await screen.findByLabelText('OT-0001'))
     expect(btn(/^Añadir a la ruta/)).toBeDisabled()
-    expect(screen.getByText('Elija una ruta abierta (borrador o planificada) para añadir órdenes.')).toBeInTheDocument()
+    expect(screen.getByText('Elija una ruta abierta (borrador o planificada) para añadir envíos.')).toBeInTheDocument()
   })
 
   it('los filtros van al servidor (CP, pueblo y «sin zona») y el contador sigue al total', async () => {
@@ -273,11 +273,11 @@ describe('agregar órdenes a la ruta', () => {
 })
 
 describe('secuencia: ▲ ▼ y quitar', () => {
-  it('bajar la primera manda la secuencia exacta de ids con rowVersion y la lista cambia de orden', async () => {
+  it('bajar la primera manda la secuencia exacta de ids con rowVersion y la lista cambia de envío', async () => {
     const user = userEvent.setup()
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
-    await user.click(screen.getByRole('button', { name: 'Bajar la orden OT-0101' }))
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
+    await user.click(screen.getByRole('button', { name: 'Bajar el envío OT-0101' }))
     await waitFor(() => expect(callsTo('PUT', '/api/v1/trips/t-1/route/sequence')).toHaveLength(1))
     expect(callsTo('PUT', '/api/v1/trips/t-1/route/sequence')[0].body).toEqual({ routeStopIds: [2, 1], rowVersion: 'rv-1' })
     await waitFor(() => expect(within(stopsList()).getAllByRole('listitem')[0]).toHaveTextContent('OT-0102'))
@@ -285,18 +285,18 @@ describe('secuencia: ▲ ▼ y quitar', () => {
 
   it('la primera no sube y la última no baja', async () => {
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
-    expect(screen.getByRole('button', { name: 'Subir la orden OT-0101' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Bajar la orden OT-0102' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Subir la orden OT-0102' })).toBeEnabled()
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
+    expect(screen.getByRole('button', { name: 'Subir el envío OT-0101' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Bajar el envío OT-0102' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Subir el envío OT-0102' })).toBeEnabled()
   })
 
-  it('quitar manda DELETE con rowVersion y la orden vuelve a «sin asignar» (se recarga la lista)', async () => {
+  it('quitar manda DELETE con rowVersion y el envío vuelve a «sin asignar» (se recarga la lista)', async () => {
     const user = userEvent.setup()
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     const before = callsTo('GET', '/api/v1/trips/unassigned-orders').length
-    await user.click(screen.getByRole('button', { name: 'Quitar la orden OT-0101 de la ruta' }))
+    await user.click(screen.getByRole('button', { name: 'Quitar el envío OT-0101 de la ruta' }))
     await waitFor(() => expect(callsMatching('DELETE', /\/orders\//)).toHaveLength(1))
     expect(callsMatching('DELETE', /\/orders\//)[0].url.pathname).toBe('/api/v1/trips/t-1/orders/o-OT-0101')
     expect(callsMatching('DELETE', /\/orders\//)[0].body).toEqual({ rowVersion: 'rv-1' })
@@ -307,21 +307,21 @@ describe('secuencia: ▲ ▼ y quitar', () => {
   it('un error del servidor al reordenar o quitar se muestra tal cual', async () => {
     const user = userEvent.setup()
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     mock.override = (c: Call) => (c.method === 'PUT' ? problem(400, 'La secuencia debe incluir exactamente las paradas de la ruta vigente, sin repetir.', 'validation', { routeStopIds: ['La secuencia debe incluir exactamente las paradas de la ruta vigente, sin repetir.'] }) : undefined)
-    await user.click(screen.getByRole('button', { name: 'Bajar la orden OT-0101' }))
+    await user.click(screen.getByRole('button', { name: 'Bajar el envío OT-0101' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('La secuencia debe incluir exactamente las paradas de la ruta vigente, sin repetir.')
-    mock.override = (c: Call) => (c.method === 'DELETE' ? problem(404, 'La orden no está en esta ruta.', 'not_found') : undefined)
-    await user.click(screen.getByRole('button', { name: 'Quitar la orden OT-0102 de la ruta' }))
-    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('La orden no está en esta ruta.'))
+    mock.override = (c: Call) => (c.method === 'DELETE' ? problem(404, 'El envío no está en esta ruta.', 'not_found') : undefined)
+    await user.click(screen.getByRole('button', { name: 'Quitar el envío OT-0102 de la ruta' }))
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('El envío no está en esta ruta.'))
   })
 
   it('en una ruta despachada no hay ▲ ▼ ni quitar', async () => {
     resetMock([tripDetail({ statusCode: 'DISPATCHED', status: 'Despachada', isEditable: false, stops: [stop(1, 1, 'OT-1'), stop(2, 2, 'OT-2')] })])
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
-    expect(screen.queryByRole('button', { name: /Bajar la orden/ })).toBeNull()
-    expect(screen.queryByRole('button', { name: /Quitar la orden/ })).toBeNull()
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
+    expect(screen.queryByRole('button', { name: /Bajar el envío/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Quitar el envío/ })).toBeNull()
   })
 })
 
@@ -379,7 +379,7 @@ describe('chofer y vehículo de la ruta', () => {
   it('una ruta despachada sin EDIT_TRIP muestra el chofer y el vehículo como texto y lo explica', async () => {
     resetMock([tripDetail({ statusCode: 'DISPATCHED', status: 'Despachada', isEditable: false, canEditHeader: false, stops: [stop(1, 1, 'OT-1')] })])
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     expect(screen.queryByRole('combobox', { name: 'Chofer' })).toBeNull()
     expect(screen.getByText('D-01 · Ana Pérez')).toBeInTheDocument()
     expect(screen.getByText('El chofer y el vehículo de esta ruta no se pueden cambiar en su estatus actual.')).toBeInTheDocument()
@@ -395,7 +395,7 @@ describe('chofer y vehículo de la ruta', () => {
 
   it('sin fleet.view: texto en lugar de selects, con la explicación, y el panel de choferes lo dice', async () => {
     wrap(['trips.view', 'trips.plan', 'trips.dispatch'])
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     expect(screen.queryByRole('combobox', { name: 'Chofer' })).toBeNull()
     expect(screen.getByText('Su usuario no puede consultar choferes ni vehículos, así que no puede cambiarlos desde aquí.')).toBeInTheDocument()
     expect(screen.getByText('Su usuario no tiene acceso para consultar los choferes. Pídalo a su administrador.')).toBeInTheDocument()
@@ -410,7 +410,7 @@ describe('optimizar', () => {
   it('manda rowVersion y muestra el resultado; sin corrida anterior lo dice y no inventa un porcentaje', async () => {
     const user = userEvent.setup()
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     await user.click(btn('Optimizar'))
     await waitFor(() => expect(callsTo('POST', '/api/v1/trips/t-1/optimize')).toHaveLength(1))
     expect(callsTo('POST', '/api/v1/trips/t-1/optimize')[0].body).toEqual({ rowVersion: 'rv-1' })
@@ -428,7 +428,7 @@ describe('optimizar', () => {
       { id: 2, statusCode: 'OK', totalDistanceKm: 44, totalDurationMin: 82 },
       { id: 1, statusCode: 'OK', totalDistanceKm: 50, totalDurationMin: 90 },
     ]
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     await user.click(btn('Optimizar'))
     const note = await screen.findByText(/ordenadas y 0 que no cupieron/)
     expect(note).toHaveTextContent('Distancia -12 % contra la corrida anterior.')
@@ -442,7 +442,7 @@ describe('optimizar', () => {
       { id: 2, statusCode: 'OK', totalDurationMin: 25 },
       { id: 1, statusCode: 'OK', totalDurationMin: 30 },
     ]
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     await user.click(btn('Optimizar'))
     const note = await screen.findByText(/ordenadas y 0 que no cupieron/)
     expect(note).toHaveTextContent('Duración -5 min.')
@@ -463,7 +463,7 @@ describe('optimizar', () => {
   it('el 422 del servidor se muestra en la ruta', async () => {
     const user = userEvent.setup()
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     mock.override = (c: Call) => (c.url.pathname.endsWith('/optimize') ? problem(422, 'La ruta no tiene paradas que optimizar.', 'status_rule') : undefined)
     await user.click(btn('Optimizar'))
     expect(await screen.findByRole('alert')).toHaveTextContent('La ruta no tiene paradas que optimizar.')
@@ -472,7 +472,7 @@ describe('optimizar', () => {
   it('sin paradas o con la ruta despachada el botón está deshabilitado y dice por qué', async () => {
     resetMock([tripDetail({ stops: [] })])
     wrap()
-    await screen.findByText('Todavía no tiene órdenes asignadas.')
+    await screen.findByText('Todavía no tiene envíos asignados.')
     expect(btn('Optimizar')).toBeDisabled()
     expect(btn('Optimizar')).toHaveAttribute('title', 'La ruta no tiene paradas que optimizar.')
   })
@@ -480,7 +480,7 @@ describe('optimizar', () => {
   it('una ruta despachada no se optimiza', async () => {
     resetMock([tripDetail({ statusCode: 'DISPATCHED', status: 'Despachada', isEditable: false, stops: [stop(1, 1, 'OT-1')] })])
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     expect(btn('Optimizar')).toBeDisabled()
     expect(btn('Optimizar')).toHaveAttribute('title', 'Solo se optimiza una ruta en borrador o planificada.')
   })
@@ -522,7 +522,7 @@ describe('Rutas por despachar', () => {
       planned('2026-0002', 't-2', [{ code: 'NO_DRIVER', message: 'La ruta no tiene chofer asignado.', blocking: true }], false),
       planned('2026-0003', 't-3', [{ code: 'OVER_WEIGHT', message: 'La carga (900 kg) excede la capacidad de peso del vehículo (800 kg).', blocking: false }]),
     ]
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     await user.click(btn('Despachar ruta'))
     const dialog = await screen.findByRole('dialog', { name: 'Rutas por despachar' })
     expect(await within(dialog).findByText('2026-0002')).toBeInTheDocument()
@@ -541,7 +541,7 @@ describe('Rutas por despachar', () => {
     const user = userEvent.setup()
     wrap()
     mock.dispatchable = [planned('2026-0001', 't-1'), planned('2026-0002', 't-2', [{ code: 'NO_DRIVER', message: 'La ruta no tiene chofer asignado.', blocking: true }], false), planned('2026-0004', 't-4')]
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     await user.click(btn('Despachar ruta'))
     const dialog = await screen.findByRole('dialog', { name: 'Rutas por despachar' })
     await within(dialog).findByText('2026-0004')
@@ -569,7 +569,7 @@ describe('Rutas por despachar', () => {
             ],
           }
         : undefined
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     await user.click(btn('Despachar ruta'))
     const dialog = await screen.findByRole('dialog', { name: 'Rutas por despachar' })
     await within(dialog).findByText('2026-0004')
@@ -592,7 +592,7 @@ describe('Rutas por despachar', () => {
     const user = userEvent.setup()
     wrap()
     mock.dispatchable = [planned('2026-0003', 't-3', [{ code: 'OVER_WEIGHT', message: 'La carga (900 kg) excede la capacidad de peso del vehículo (800 kg).', blocking: false }])]
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     await user.click(btn('Despachar ruta'))
     const dialog = await screen.findByRole('dialog', { name: 'Rutas por despachar' })
     await user.click(await within(dialog).findByLabelText('2026-0003'))
@@ -607,7 +607,7 @@ describe('Rutas por despachar', () => {
   it('sin rutas pendientes lo dice', async () => {
     const user = userEvent.setup()
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     await user.click(btn('Despachar ruta'))
     expect(await screen.findByText('No hay rutas pendientes por despachar')).toBeInTheDocument()
     expect(callsTo('GET', '/api/v1/trips/dispatchable')[0].url.searchParams.get('date')).toBe(tenantToday())
@@ -619,7 +619,7 @@ describe('iniciar, cerrar y eliminar la ruta', () => {
     resetMock([tripDetail({ statusCode: 'DISPATCHED', status: 'Despachada', isEditable: false, canEditHeader: false, stops: [stop(1, 1, 'OT-1')] })])
     const user = userEvent.setup()
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     expect(screen.queryByRole('button', { name: 'Cerrar ruta' })).toBeNull()
     await user.click(btn('Iniciar ruta'))
     const dialog = await screen.findByRole('dialog', { name: 'Iniciar la ruta 2026-0001' })
@@ -633,16 +633,16 @@ describe('iniciar, cerrar y eliminar la ruta', () => {
     expect(screen.queryByRole('button', { name: 'Iniciar ruta' })).toBeNull()
   })
 
-  it('«Cerrar ruta»: el 422 con las órdenes sin terminar se muestra dentro de la ventana y no la cierra', async () => {
+  it('«Cerrar ruta»: el 422 con los envíos sin terminar se muestra dentro de la ventana y no la cierra', async () => {
     resetMock([tripDetail({ statusCode: 'IN_PROGRESS', status: 'En curso', isEditable: false, canEditHeader: false, stops: [stop(1, 1, 'OT-1')] })])
     const user = userEvent.setup()
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
-    mock.override = (c: Call) => (c.url.pathname.endsWith('/complete') ? problem(422, 'La ruta 2026-0001 no se puede cerrar: hay órdenes sin terminar (OT-0101, OT-0102).', 'status_rule') : undefined)
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
+    mock.override = (c: Call) => (c.url.pathname.endsWith('/complete') ? problem(422, 'La ruta 2026-0001 no se puede cerrar: hay envíos sin terminar (OT-0101, OT-0102).', 'status_rule') : undefined)
     await user.click(btn('Cerrar ruta'))
     const dialog = await screen.findByRole('dialog', { name: 'Cerrar la ruta 2026-0001' })
     await user.click(within(dialog).getByRole('button', { name: 'Cerrar ruta' }))
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('La ruta 2026-0001 no se puede cerrar: hay órdenes sin terminar (OT-0101, OT-0102).')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('La ruta 2026-0001 no se puede cerrar: hay envíos sin terminar (OT-0101, OT-0102).')
     expect(screen.getByRole('dialog', { name: 'Cerrar la ruta 2026-0001' })).toBeInTheDocument()
     // sin el bloqueo, cierra y la ruta queda Completada
     mock.override = null
@@ -655,7 +655,7 @@ describe('iniciar, cerrar y eliminar la ruta', () => {
   it('«Eliminar ruta» (papelera) con comentario de hasta 500: manda DELETE con comentario y rowVersion y quita la ruta de la lista', async () => {
     const user = userEvent.setup()
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     await user.click(screen.getByRole('button', { name: 'Eliminar ruta' }))
     const dialog = await screen.findByRole('dialog', { name: 'Eliminar la ruta 2026-0001' })
     const comment = within(dialog).getByLabelText('Comentario (opcional)')
@@ -674,7 +674,7 @@ describe('iniciar, cerrar y eliminar la ruta', () => {
   it('«Eliminar ruta» no aparece con la ruta despachada y el 422 del servidor se muestra tal cual', async () => {
     const user = userEvent.setup()
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     mock.override = (c: Call) => (c.method === 'DELETE' ? problem(422, 'La ruta 2026-0001 ya fue despachada; no se puede editar ni eliminar.', 'status_rule') : undefined)
     await user.click(screen.getByRole('button', { name: 'Eliminar ruta' }))
     const dialog = await screen.findByRole('dialog')
@@ -685,7 +685,7 @@ describe('iniciar, cerrar y eliminar la ruta', () => {
   it('despachada no se elimina', async () => {
     resetMock([tripDetail({ statusCode: 'DISPATCHED', status: 'Despachada', isEditable: false, stops: [stop(1, 1, 'OT-1')] })])
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     expect(screen.queryByRole('button', { name: 'Eliminar ruta' })).toBeNull()
   })
 })
@@ -694,7 +694,7 @@ describe('nueva ruta', () => {
   it('valida la fecha con el mensaje del servidor y crea con lo elegido; la ruta nueva queda activa en su fecha', async () => {
     const user = userEvent.setup()
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     await user.click(btn('Nueva ruta'))
     const dialog = await screen.findByRole('dialog', { name: 'Nueva ruta' })
     const date = within(dialog).getByLabelText(/Fecha de la ruta/)
@@ -726,7 +726,7 @@ describe('nueva ruta', () => {
   it('el error del servidor sale tal cual (409 de disponibilidad)', async () => {
     const user = userEvent.setup()
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     mock.override = (c: Call) => (c.method === 'POST' && c.url.pathname === '/api/v1/trips' ? problem(409, 'El vehículo no está disponible para despacho: Mantenimiento vencido.', 'conflict') : undefined)
     await user.click(btn('Nueva ruta'))
     const dialog = await screen.findByRole('dialog', { name: 'Nueva ruta' })
@@ -737,7 +737,7 @@ describe('nueva ruta', () => {
   it('sin fleet.view se crea sin zona, chofer ni vehículo y lo explica', async () => {
     const user = userEvent.setup()
     wrap(['trips.view', 'trips.plan', 'trips.dispatch'])
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     await user.click(btn('Nueva ruta'))
     const dialog = await screen.findByRole('dialog', { name: 'Nueva ruta' })
     expect(within(dialog).getByText(/Su usuario no puede consultar zonas, choferes ni vehículos/)).toBeInTheDocument()
@@ -752,7 +752,7 @@ describe('planificar el día', () => {
   it('sin zonas manda todas (null), muestra el resumen y los avisos por zona', async () => {
     const user = userEvent.setup()
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     mock.override = (c: Call) =>
       c.url.pathname === '/api/v1/trips/plan-day'
         ? {
@@ -762,7 +762,7 @@ describe('planificar el día', () => {
             ordersSkipped: 2,
             ordersWithoutZone: 3,
             zones: [
-              { dispatchZoneId: 1, zoneCode: 'R-01', tripPublicId: 't-1', tripCode: '2026-0001', tripCreated: false, ordersAssigned: 5, ordersSkipped: 2, issues: [{ code: 'NOT_ELIGIBLE', message: 'Orden OT-0007: La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.', blocking: false }] },
+              { dispatchZoneId: 1, zoneCode: 'R-01', tripPublicId: 't-1', tripCode: '2026-0001', tripCreated: false, ordersAssigned: 5, ordersSkipped: 2, issues: [{ code: 'NOT_ELIGIBLE', message: 'Envío OT-0007: El envío está en Sometida; márquela como recogido antes de asignarla a una ruta.', blocking: false }] },
               { dispatchZoneId: 2, zoneCode: 'R-02', tripPublicId: 't-9', tripCode: '2026-0009', tripCreated: true, ordersAssigned: 0, ordersSkipped: 0, issues: [] },
             ],
           }
@@ -775,12 +775,12 @@ describe('planificar el día', () => {
     expect(callsTo('POST', '/api/v1/trips/plan-day')[0].body).toEqual({ planDate: tenantToday(), dispatchZoneIds: null, createEmptyTrips: true })
     const summary = within(result).getByRole('group', { name: 'Resumen de la planificación' })
     expect(summary).toHaveTextContent('1Rutas creadas')
-    expect(summary).toHaveTextContent('5Órdenes asignadas')
-    expect(summary).toHaveTextContent('2Órdenes omitidas')
-    expect(summary).toHaveTextContent('3Órdenes sin zona')
-    expect(result).toHaveTextContent('R-01 · ruta 2026-0001 · 5 asignadas, 2 omitidas')
+    expect(summary).toHaveTextContent('5Envíos asignados')
+    expect(summary).toHaveTextContent('2Envíos omitidos')
+    expect(summary).toHaveTextContent('3Envíos sin zona')
+    expect(result).toHaveTextContent('R-01 · ruta 2026-0001 · 5 asignadas, 2 omitidos')
     expect(result).toHaveTextContent('R-02 · ruta 2026-0009 creada')
-    expect(result).toHaveTextContent('Orden OT-0007: La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.')
+    expect(result).toHaveTextContent('Envío OT-0007: El envío está en Sometida; márquela como recogido antes de asignarla a una ruta.')
     await user.click(within(result).getByRole('button', { name: 'Listo' }))
     expect(screen.queryByRole('dialog')).toBeNull()
   })
@@ -788,7 +788,7 @@ describe('planificar el día', () => {
   it('con zonas elegidas manda sus ids; el error del servidor sale tal cual', async () => {
     const user = userEvent.setup()
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     await user.click(btn('Planificar el día'))
     const dialog = await screen.findByRole('dialog', { name: 'Planificar el día' })
     await user.click(await within(dialog).findByLabelText(/^Zonas/))
@@ -805,7 +805,7 @@ describe('reasignar por zona', () => {
   it('pide zonas y chofer, informa las rutas actualizadas y los avisos', async () => {
     const user = userEvent.setup()
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     mock.override = (c: Call) =>
       c.url.pathname === '/api/v1/trips/reassign-zone'
         ? { driverPublicId: 'd-3', driverCode: 'D-03', driverName: 'Rosa Vega', tripsUpdated: 2, trips: [{ publicId: 't-1', code: '2026-0001', zoneCode: 'R-01' }, { publicId: 't-2', code: '2026-0002', zoneCode: 'R-01' }], issues: [{ code: 'DRIVER_DOUBLE_BOOKED', message: 'El chofer también está en la ruta 2026-0005 ese mismo día.', blocking: false }] }
@@ -832,7 +832,7 @@ describe('reasignar por zona', () => {
   it('cero rutas no es un error: se informa que no se cambió nada', async () => {
     const user = userEvent.setup()
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     mock.override = (c: Call) => (c.url.pathname === '/api/v1/trips/reassign-zone' ? { driverPublicId: 'd-3', tripsUpdated: 0, trips: [], issues: [] } : undefined)
     await user.click(btn('Reasignar por zona'))
     const dialog = await screen.findByRole('dialog', { name: 'Reasignar por zona' })
@@ -848,7 +848,7 @@ describe('reasignar por zona', () => {
   it('el 409 de disponibilidad del chofer sale tal cual', async () => {
     const user = userEvent.setup()
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     mock.override = (c: Call) => (c.url.pathname === '/api/v1/trips/reassign-zone' ? problem(409, 'El chofer no está disponible para despacho: La licencia está vencida.', 'conflict') : undefined)
     await user.click(btn('Reasignar por zona'))
     const dialog = await screen.findByRole('dialog', { name: 'Reasignar por zona' })
@@ -865,7 +865,7 @@ describe('fecha de las rutas', () => {
   it('cambiar la fecha la pone en ?date=, vuelve a pedir las rutas de ese día y «Hoy» regresa', async () => {
     const user = userEvent.setup()
     wrap()
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     expect(callsTo('GET', '/api/v1/trips')[0].url.searchParams.get('date')).toBe(tenantToday())
     const date = screen.getByLabelText('Fecha de las rutas')
     expect(date).toHaveValue(tenantToday())
@@ -881,9 +881,9 @@ describe('fecha de las rutas', () => {
 describe('permisos', () => {
   it('solo trips.view + trips.dispatch: ve todo y puede despachar, pero no hay Planificar, Nueva ruta, Reasignar, Optimizar, Añadir, ▲ ▼, quitar ni papelera', async () => {
     wrap(['trips.view', 'trips.dispatch', 'fleet.view'])
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     expect(btn('Despachar ruta')).toBeInTheDocument()
-    for (const name of ['Planificar el día', 'Nueva ruta', 'Reasignar por zona', 'Optimizar', /^Añadir a la ruta/, /Bajar la orden/, /Quitar la orden/, 'Eliminar ruta']) {
+    for (const name of ['Planificar el día', 'Nueva ruta', 'Reasignar por zona', 'Optimizar', /^Añadir a la ruta/, /Bajar el envío/, /Quitar el envío/, 'Eliminar ruta']) {
       expect(screen.queryByRole('button', { name })).toBeNull()
     }
     // el chofer y el vehículo se ven como texto: cambiarlos exige trips.plan
@@ -893,7 +893,7 @@ describe('permisos', () => {
 
   it('trips.optimize sin trips.plan: solo Optimizar', async () => {
     wrap(['trips.view', 'trips.dispatch', 'trips.optimize'])
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     expect(btn('Optimizar')).toBeEnabled()
     expect(screen.queryByRole('button', { name: 'Nueva ruta' })).toBeNull()
   })
@@ -901,14 +901,14 @@ describe('permisos', () => {
   it('«Iniciar ruta» sin trips.dispatch no existe (la pantalla pide ese permiso en la ruta, pero la acción también lo exige)', async () => {
     resetMock([tripDetail({ statusCode: 'DISPATCHED', status: 'Despachada', isEditable: false, stops: [stop(1, 1, 'OT-1')] })])
     wrap(['trips.view', 'trips.plan'])
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     expect(screen.queryByRole('button', { name: 'Iniciar ruta' })).toBeNull()
   })
 
   it('«Cerrar ruta» exige trips.close', async () => {
     resetMock([tripDetail({ statusCode: 'IN_PROGRESS', status: 'En curso', isEditable: false, stops: [stop(1, 1, 'OT-1')] })])
     const first = wrap(['trips.view', 'trips.dispatch'])
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     expect(screen.queryByRole('button', { name: 'Cerrar ruta' })).toBeNull()
     first.unmount()
     wrap(['trips.view', 'trips.dispatch', 'trips.close'])
@@ -924,7 +924,7 @@ describe('permisos', () => {
 
   it('sin el módulo CATALOG no se piden choferes, vehículos ni zonas', async () => {
     wrap(ALL, ['LTL_GROUND'])
-    await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+    await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     expect(callsTo('GET', '/api/v1/drivers')).toHaveLength(0)
     expect(callsTo('GET', '/api/v1/fleet/availability')).toHaveLength(0)
     expect(screen.getByText('Su usuario no tiene acceso para consultar los choferes. Pídalo a su administrador.')).toBeInTheDocument()
@@ -938,7 +938,7 @@ describe('inglés', () => {
       wrap()
       expect(await screen.findByRole('heading', { level: 1, name: 'Dispatch room' })).toBeInTheDocument()
       for (const name of ['Plan the day', 'New route', 'Reassign by zone', 'Optimize', 'Dispatch route']) expect(btn(name)).toBeInTheDocument()
-      expect(screen.getByRole('heading', { name: 'Unassigned orders' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Unassigned shipments' })).toBeInTheDocument()
     } finally {
       setLang('es')
     }

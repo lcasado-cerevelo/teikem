@@ -184,7 +184,7 @@ public class OutboundScanServiceTests
         var ne = await ScanAsync(f, draft.PackBatchNumber);
         Assert.Equal("NOT_ELIGIBLE", ne.Outcome);
         Assert.Equal("notfound", ne.Voice);
-        Assert.Equal("La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.", ne.Message);
+        Assert.Equal("El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.", ne.Message);
 
         var empty = await Assert.ThrowsAsync<ValidationException>(() => ScanAsync(f, "  "));
         Assert.Equal("Escanee o escriba un código.", empty.Message);

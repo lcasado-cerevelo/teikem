@@ -8,7 +8,7 @@ Pantalla **Operación → Órdenes → (abrir una orden)** (`/orders/:publicId`)
 |---|---|---|
 | Expediente | Cabecera + `StatusPipeline` a ancho completo; columna principal (Detalle, Historial real) y columna de 320 px (COD, Cotización, Chofer asignado, Campos personalizados, Contactos); bajo 720 px la derecha cae debajo. Sin pestañas. | `features/orders/OrderDetailScreen.tsx`, `orders.css` |
 | Detalle | Lectura o edición según `capabilities.canEditCargo` + `orders.edit`; un solo «Guardar cambios» (PATCH con lo cambiado + `rowVersion`); 409 con aviso, recarga y lo escrito conservado; factura repetida confirmable; paradas de solo lectura. | `OrderDetailPanel.tsx` |
-| Acciones | Confirmar (con crédito excedido → «Autorizar y confirmar»), Re-cotizar, Cancelar la orden (comentario ≤ 500), Eliminar la orden, Asignar/Reasignar chofer. Cada una con permiso Y capacidad. | `OrderDetailScreen.tsx`, `OrderActionDialogs.tsx`, `CreditOverrideDialog.tsx` |
+| Acciones | Confirmar (con crédito excedido → «Autorizar y confirmar»), Re-cotizar, Cancelar el envío (comentario ≤ 500), Eliminar el envío, Asignar/Reasignar chofer. Cada una con permiso Y capacidad. | `OrderDetailScreen.tsx`, `OrderActionDialogs.tsx`, `CreditOverrideDialog.tsx` |
 | Paneles | COD (solo lectura), Cotización (solo `orders.view_price`; «Cotizar» = `GET /quote`), Chofer asignado, Campos personalizados (`TRANSPORT_ORDER`), Contactos. | `OrderSidePanels.tsx` |
 | Reglas | `orderActionVisibility`, `isAssignableOrder`, `orderEditValues`/`orderEditSchema`/`orderPatchChanges`/`buildOrderPatch`, `isConcurrencyConflict`. | `orderRules.ts` |
 | Hooks | `useUpdateOrder`, `useOrderQuote`, `useConfirmOrder`, `useRepriceOrder`, `useCancelOrder`, `useOrderStatusChange`, `useAssignOrderDriver`, `useDrivers`; los POST llevan `Idempotency-Key` propia por intento; cada mutación invalida ficha, listas, búsqueda, cotización e historial. | `features/orders/api.ts` |
@@ -46,7 +46,7 @@ Decididas por el dueño:
 
 Del implementador:
 
-6. Además de la maqueta se pintan **Prioridad**, **Lista**, **Límite**, **Recogido**, N.º de orden/factura/empaque, referencias y las **Paradas** (solo lectura), porque el pedido incluía «paradas» y fechas en el Detalle.
+6. Además de la maqueta se pintan **Prioridad**, **Lista**, **Límite**, **Recogido**, N.º de envío/factura/empaque, referencias y las **Paradas** (solo lectura), porque el pedido incluía «paradas» y fechas en el Detalle.
 7. **Acciones del servidor** que la maqueta no tiene: Confirmar, Re-cotizar, Cancelar, Eliminar, Asignar chofer, laterales, Cotizar; los botones «Asignar» de la maqueta (`r.assign`) sí está, pero ahora es real y solo para entregas especiales.
 8. **Barra de estatus** del kit (etapas, desvíos y cierres) en lugar de nada en la maqueta, con una nota de que avanzar/confirmar/cancelar son botones propios.
 9. **Cotización** como panel propio (la maqueta no mostraba precio en el expediente).
@@ -62,7 +62,7 @@ Del implementador:
 - «Viaje» del panel Chofer solo si existe código de ruta (una entrega especial no tiene `assignedTripCode`).
 - Regreso desde un lateral: solo a la etapa exacta (el kit antes ofrecía también la siguiente).
 - Cada POST lleva `Idempotency-Key` nueva por intento (el reintento con `overrideCredit` es otra operación).
-- Textos de los diálogos de cancelar usan «Volver» como botón secundario para no confundirlo con «Cancelar la orden».
+- Textos de los diálogos de cancelar usan «Volver» como botón secundario para no confundirlo con «Cancelar el envío».
 
 ## Qué no se pudo verificar
 

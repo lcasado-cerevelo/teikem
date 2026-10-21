@@ -23,7 +23,7 @@ La remesa al cliente (`cod.remit`) llega en el siguiente lote.
 **`POST /cod/reconcile`** recibe una lista de **códigos** y, por cada uno, cuadra lo cobrado de su orden: los cobros pasan a **Cuadrado** y, si la orden ya estaba cobrada del todo, su COD pasa a **Cuadrado**. Si la orden está cobrada solo en parte, lo cobrado se cuadra pero el COD de la orden sigue en Parcial; lo que se cobre después queda por cuadrar.
 
 - **De dónde salen los códigos:** del **código de barras de la hoja escaneada** (el número de la factura del cliente, o el de la orden) o escritos a mano. La lectura del código de barras de los archivos (PDF o imagen) la hace la pantalla en el navegador (lote siguiente); el API solo recibe los códigos, cada uno con su `source` (archivo y página).
-- **Cómo se encuentra la orden:** primero por **número de orden**, y si no, por **número de factura del cliente**. La factura se cuenta **por cliente** (`FAC-00001` existe en cada cliente), así que:
+- **Cómo se encuentra la orden:** primero por **número de envío**, y si no, por **número de factura del cliente**. La factura se cuenta **por cliente** (`FAC-00001` existe en cada cliente), así que:
   1. con `clientPublicId` en la solicitud (las hojas son de ese cliente) solo se busca entre sus órdenes;
   2. sin él, si el código coincide con varias órdenes se queda con las que tienen COD y, si todavía hay varias, con las que tienen cobros por cuadrar; si aun así no es una sola, el resultado es **ambiguo**.
 - **`dryRun: true`** solo dice qué pasaría (vista previa): no cuadra nada ni guarda la corrida.
@@ -35,10 +35,10 @@ La remesa al cliente (`cod.remit`) llega en el siguiente lote.
 |---|---|---|
 | `RECONCILED` | Se cuadraron los cobros de la orden (`Cuadrado: N cobro(s) por X.`) | — |
 | `ALREADY_RECONCILED` | `Ya estaba cuadrado.` | Nada: la hoja ya se había procesado |
-| `NOT_FOUND` | `No hay ninguna orden con ese número de factura ni de orden.` | Revisar el código leído; probar a mano |
-| `AMBIGUOUS` | `El código coincide con más de una orden: cuádrela a mano desde la orden.` | Indicar el cliente de las hojas o cuadrar a mano |
-| `NO_COD` | `La orden no tiene COD.` | Revisar la hoja |
-| `NOTHING_COLLECTED` | `La orden tiene COD, pero todavía no se registró ningún cobro.` | Registrar el cobro primero |
+| `NOT_FOUND` | `No hay ningún envío con ese número de factura ni de envío.` | Revisar el código leído; probar a mano |
+| `AMBIGUOUS` | `El código coincide con más de un envío: cuádrela a mano desde el envío.` | Indicar el cliente de las hojas o cuadrar a mano |
+| `NO_COD` | `El envío no tiene COD.` | Revisar la hoja |
+| `NOTHING_COLLECTED` | `El envío tiene COD, pero todavía no se registró ningún cobro.` | Registrar el cobro primero |
 | `DUPLICATE` | `El código ya venía antes en esta corrida.` | La misma hoja dos veces: se ignora |
 
 ## 3b. Validaciones y mensajes
@@ -49,8 +49,8 @@ La remesa al cliente (`cod.remit`) llega en el siguiente lote.
 | Monto inválido | `El monto debe ser mayor que cero (hasta 2 decimales).` | 400 |
 | Cheque sin número / número largo | `Indique el número del cheque.` / `El número del cheque no puede pasar de 40 caracteres.` | 400 |
 | Referencia o nota largas | `La referencia no puede pasar de 80 caracteres.` / `La nota no puede pasar de 300 caracteres.` | 400 |
-| Orden sin COD | `La orden no tiene COD.` | 422 |
-| Orden en borrador o cancelada | `No se registra un cobro en una orden en borrador o cancelada.` | 422 |
+| Orden sin COD | `El envío no tiene COD.` | 422 |
+| Orden en borrador o cancelada | `No se registra un cobro en un envío en borrador o cancelado.` | 422 |
 | Cobro mayor que lo pendiente | `El cobro pasa de lo que falta por cobrar de {orden}: {monto}.` | 422 |
 | Reconciliar sin códigos / código vacío | `Indique al menos un código.` | 400 |
 | Código largo / más de 2000 códigos | `Un código no puede pasar de 80 caracteres.` / `Una corrida no puede tener más de 2000 códigos.` | 400 |

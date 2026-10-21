@@ -11,8 +11,8 @@ public class TripOrderRequestRulesTests
     [Fact]
     public void ValidateAdd_null_or_empty_asks_for_an_order()
     {
-        Assert.Equal("Indique al menos una orden.", TripOrderRequestRules.ValidateAdd(null).Error);
-        Assert.Equal("Indique al menos una orden.", TripOrderRequestRules.ValidateAdd(Array.Empty<Guid>()).Error);
+        Assert.Equal("Indique al menos un envío.", TripOrderRequestRules.ValidateAdd(null).Error);
+        Assert.Equal("Indique al menos un envío.", TripOrderRequestRules.ValidateAdd(Array.Empty<Guid>()).Error);
     }
 
     [Fact]
@@ -32,7 +32,7 @@ public class TripOrderRequestRulesTests
         Assert.Null(TripOrderRequestRules.ValidateAdd(ok).Error);
 
         var tooMany = Enumerable.Range(0, 201).Select(_ => Guid.NewGuid()).ToList();
-        Assert.Equal("Agregue como máximo 200 órdenes por solicitud.", TripOrderRequestRules.ValidateAdd(tooMany).Error);
+        Assert.Equal("Agregue como máximo 200 envíos por solicitud.", TripOrderRequestRules.ValidateAdd(tooMany).Error);
     }
 
     [Fact]

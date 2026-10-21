@@ -66,7 +66,7 @@ Pulse el nombre de un informe para abrirlo.
 
 ![Constructor de una vista combinada con un campo personalizado](img/ff2-constructor-combinada.png)
 
-Ejemplo de una vista combinada: «Órdenes con cliente» (fuente **Órdenes**, combinada con **Cliente**) con las columnas Número de orden, Referencia (campo personalizado), Cliente · Nombre y Cliente · Código.
+Ejemplo de una vista combinada: «Órdenes con cliente» (fuente **Órdenes**, combinada con **Cliente**) con las columnas Número de envío, Referencia (campo personalizado), Cliente · Nombre y Cliente · Código.
 
 ![Resultado de la vista combinada](img/ff2-resultado-combinada.png)
 

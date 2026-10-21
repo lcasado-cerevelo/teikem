@@ -49,7 +49,7 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
         var order = await db.ResolveOrderForReadAsync(publicId, scope, ct);
 
         var client = await db.Clients.AsNoTracking().FirstOrDefaultAsync(c => c.ClientId == order.ClientId, ct)
-                     ?? throw new NotFoundException("Orden");
+                     ?? throw new NotFoundException("Envío");
 
         Guid? contractPublicId = null;
         if (order.ContractId is int contractId)
@@ -83,7 +83,7 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
             if (typeCode.Equals(StopTypes.Pickup, StringComparison.OrdinalIgnoreCase)) pickup ??= dto;
             else if (typeCode.Equals(StopTypes.Delivery, StringComparison.OrdinalIgnoreCase)) delivery ??= dto;
         }
-        if (delivery is null) throw new InvalidOperationException($"La orden {order.OrderNumber} no tiene parada de entrega.");
+        if (delivery is null) throw new InvalidOperationException($"El envío {order.OrderNumber} no tiene parada de entrega.");
 
         var packages = await ToPackageDtosAsync(order.CargoLines, ct);
         var references = new List<OrderReferenceDto>();

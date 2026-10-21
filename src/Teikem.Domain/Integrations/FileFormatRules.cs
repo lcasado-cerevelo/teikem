@@ -54,21 +54,21 @@ public static class FileFormatRules
 
     public static string KindMessage(string kind) => $"Formato desconocido: {kind}. Use {string.Join(", ", FileFormatKinds.All)}.";
     public static string SheetMessage => $"El nombre de la hoja no puede pasar de {SheetMax} caracteres.";
-    public const string RecordsRequiredMessage = "Indique la ruta de las órdenes (por ejemplo $.orders[*]).";
+    public const string RecordsRequiredMessage = "Indique la ruta de los envíos (por ejemplo $.orders[*]).";
     public const string ColumnsRequiredMessage = "Agregue al menos una columna al mapeo.";
     public static string ColumnsMaxMessage => $"El mapeo admite hasta {MaxColumns} columnas.";
     public const string HeaderRequiredMessage = "Cada columna necesita un nombre.";
     public static string HeaderMaxMessage => $"El nombre de una columna no puede pasar de {HeaderMax} caracteres.";
     public static string HeaderRepeatedMessage(string h) => $"Hay dos columnas llamadas «{h}».";
     public static string PathInvalidMessage(string p) => $"La ruta «{p}» no es válida. Use el formato $.campo.otro[*] (también @.campo o ^.campo).";
-    public const string RecordsRootMessage = "La ruta de las órdenes debe empezar con $ (por ejemplo $.orders[*]).";
-    public const string LinesRootMessage = "La ruta de las líneas debe ser relativa a la orden: empiece con @ (por ejemplo @.lines[*]).";
-    public static string OrderRootMessage(string p) => $"La ruta «{p}» usa ^ (la orden), que solo se puede cuando hay una ruta de líneas.";
+    public const string RecordsRootMessage = "La ruta de los envíos debe empezar con $ (por ejemplo $.orders[*]).";
+    public const string LinesRootMessage = "La ruta de las líneas debe ser relativa al envío: empiece con @ (por ejemplo @.lines[*]).";
+    public static string OrderRootMessage(string p) => $"La ruta «{p}» usa ^ (el envío), que solo se puede cuando hay una ruta de líneas.";
     public const string NotStructuredMessage = "Esta integración no tiene un formato JSON o XML con mapeo: configure «Formato del archivo».";
     public static string StructuredWithoutMappingMessage(string kind) => $"El archivo es {kind}, pero la integración no tiene el mapeo de rutas: configure «Formato del archivo».";
     public static string UnreadableMessage(string kind, string detail) => $"No se pudo leer el archivo {kind}: {detail}";
     public const string DtdMessage = "El archivo XML trae una declaración DTD, que no se admite.";
-    public static string NoRecordsMessage(string path) => $"La ruta de las órdenes «{path}» no encontró ningún registro en el archivo.";
+    public static string NoRecordsMessage(string path) => $"La ruta de los envíos «{path}» no encontró ningún registro en el archivo.";
     public const string TooManyRowsMessage = CsvParser.LimitMessage;
     public const string FormatNotForApiMessage = "Una integración de tipo API no tiene formato de archivo.";
 

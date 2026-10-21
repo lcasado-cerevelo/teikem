@@ -92,7 +92,7 @@ public sealed class CodService(TeikemDbContext db, ITenantContext tenant, Status
 
     public async Task<CodOrderDto> GetOrderAsync(Guid orderPublicId, CancellationToken ct)
     {
-        var order = await db.TransportOrders.AsNoTracking().FirstOrDefaultAsync(o => o.PublicId == orderPublicId, ct) ?? throw new NotFoundException("Orden", feminine: true);
+        var order = await db.TransportOrders.AsNoTracking().FirstOrDefaultAsync(o => o.PublicId == orderPublicId, ct) ?? throw new NotFoundException("Envío");
         return await ToOrderDtoAsync(order, ct);
     }
 
@@ -152,7 +152,7 @@ public sealed class CodService(TeikemDbContext db, ITenantContext tenant, Status
 
         await db.RunInTransactionAsync(async ct2 =>
         {
-            var order = await db.TransportOrders.AsTracking().FirstOrDefaultAsync(o => o.PublicId == orderPublicId, ct2) ?? throw new NotFoundException("Orden", feminine: true);
+            var order = await db.TransportOrders.AsTracking().FirstOrDefaultAsync(o => o.PublicId == orderPublicId, ct2) ?? throw new NotFoundException("Envío");
             if (order.CodStatusCodeId is null) throw new StatusRuleException(CodRules.OrderHasNoCod);
             var orderStatus = (await StatusMapAsync(StatusDomains.OrderStatus, ct2))[order.StatusCodeId].Code;
             if (orderStatus is OrderStatuses.Submitted or OrderStatuses.Cancelled) throw new StatusRuleException(CodRules.OrderNotCollectable);
@@ -183,14 +183,14 @@ public sealed class CodService(TeikemDbContext db, ITenantContext tenant, Status
     {
         CodReconcileResults.Reconciled => $"Cuadrado: {collections} cobro(s) por {amount:0.00}.",
         CodReconcileResults.AlreadyReconciled => "Ya estaba cuadrado.",
-        CodReconcileResults.NotFound => "No hay ninguna orden con ese número de factura ni de orden.",
-        CodReconcileResults.Ambiguous => "El código coincide con más de una orden: cuádrela a mano desde la orden.",
+        CodReconcileResults.NotFound => "No hay ningún envío con ese número de factura ni de envío.",
+        CodReconcileResults.Ambiguous => "El código coincide con más de un envío: cuádrela a mano desde el envío.",
         CodReconcileResults.NoCod => CodRules.OrderHasNoCod,
-        CodReconcileResults.NothingCollected => "La orden tiene COD, pero todavía no se registró ningún cobro.",
+        CodReconcileResults.NothingCollected => "El envío tiene COD, pero todavía no se registró ningún cobro.",
         CodReconcileResults.Duplicate => "El código ya venía antes en esta corrida.",
-        CodReconcileResults.InvoiceChecked => "Factura procesada: la orden está entregada.",
-        CodReconcileResults.NotDelivered => "La orden todavía no se entregó; la factura se procesa cuando se entregue.",
-        CodReconcileResults.AlreadyProcessed => "La factura de esta orden ya se había procesado.",
+        CodReconcileResults.InvoiceChecked => "Factura procesada: el envío está entregado.",
+        CodReconcileResults.NotDelivered => "El envío todavía no se entregó; la factura se procesa cuando se entregue.",
+        CodReconcileResults.AlreadyProcessed => "La factura de este envío ya se había procesado.",
         _ => string.Empty,
     };
 

@@ -13,7 +13,7 @@ Luis dictó que la barra que le sirve al cliente y al consignatario tenga **solo
 - Para correr esos recorridos hubo que darles contrato y tarifa a sus clientes: ver la nota de abajo.
 
 ## Nota importante (cernidor al someter, Lote 107)
-Como contrato y tarifa se exigen **al crear** la orden, **ocho recorridos Playwright** que creaban órdenes por API para clientes sin contrato fallaban. Se les agregó el ayudante `web-app/e2e/rates.ts` (`contractData()` y `withRates()`: contrato vigente con tarifa STANDARD/BOX y ENVELOPE) y el de expediente (FC2) ya no espera el aviso de crédito al «Marcar como recogida» (ahora el crédito se mide al crear).
+Como contrato y tarifa se exigen **al crear** la orden, **ocho recorridos Playwright** que creaban órdenes por API para clientes sin contrato fallaban. Se les agregó el ayudante `web-app/e2e/rates.ts` (`contractData()` y `withRates()`: contrato vigente con tarifa STANDARD/BOX y ENVELOPE) y el de expediente (FC2) ya no espera el aviso de crédito al «Marcar como recogido» (ahora el crédito se mide al crear).
 
 ## Decisiones a revisar con Luis
 1. **Cancelada** muestra la barra apagada con la etapa «Completada» como actual en el servidor (paso 4); en la app se ve toda apagada y dice «Cancelada». Si prefieres que una cancelada antes de recogerse no llegue a la etapa 4, se cambia en una línea.

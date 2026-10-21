@@ -1,11 +1,11 @@
 # Órdenes: el expediente de la orden
 
-> **Lote 106 (2026-10-17): nuevo flujo de estatus.** Ya no hay Borrador ni Confirmada: la orden nace **Sometida**, **Confirmar** pasó a llamarse **Marcar como recogida**, cancelar pide una **razón** y hay un botón nuevo, **Reabrir**. Ya no existen En espera ni Parcial: queda **Intento fallido**. Detalle en el [capítulo 03, sección 4](../03-ordenes-de-transporte.md#4-estatus-y-transiciones).
+> **Lote 106 (2026-10-17): nuevo flujo de estatus.** Ya no hay Borrador ni Confirmada: la orden nace **Sometida**, **Confirmar** pasó a llamarse **Marcar como recogido**, cancelar pide una **razón** y hay un botón nuevo, **Reabrir**. Ya no existen En espera ni Parcial: queda **Intento fallido**. Detalle en el [capítulo 03, sección 4](../03-ordenes-de-transporte.md#4-estatus-y-transiciones).
 
-El **expediente** es la pantalla que se abre al pulsar una orden en **Operación → Órdenes** (la flecha **Abrir la orden**, o la fila). Desde ahí usted puede:
+El **expediente** es la pantalla que se abre al pulsar una orden en **Operación → Órdenes** (la flecha **Abrir el envío**, o la fila). Desde ahí usted puede:
 
 - **Corregir los datos** de una orden que todavía está Sometida (consignatario, paquetes, COD, comentario, prioridad y fechas) con un solo botón **Guardar cambios**.
-- **Marcar como recogida** la orden, **re-cotizarla**, **cancelarla** (con razón), **reabrirla** o **eliminarla**.
+- **Marcar como recogido** la orden, **re-cotizarla**, **cancelarla** (con razón), **reabrirla** o **eliminarla**.
 - Registrar que la orden tuvo un **Intento fallido**, y devolverla a la etapa de la que salió.
 - **Asignar o reasignar el chofer** de una entrega especial.
 - Ver la **cotización**, el **COD**, el **historial**, el chofer asignado, y llenar los **campos personalizados** y los **contactos** de la orden.
@@ -21,8 +21,8 @@ Cada botón aparece solo si usted tiene su permiso y, además, si la orden está
 | Permiso | Qué permite |
 |---|---|
 | `orders.view` | Abrir el expediente (verlo todo). |
-| `orders.edit` | **Guardar cambios**, **Marcar como recogida**, **Re-cotizar** y los botones de estatus (Intento fallido y volver). También llenar los campos personalizados y los contactos (los contactos piden además `contacts.manage`). |
-| `orders.cancel` | **Cancelar la orden** y **Eliminar la orden**. |
+| `orders.edit` | **Guardar cambios**, **Marcar como recogido**, **Re-cotizar** y los botones de estatus (Intento fallido y volver). También llenar los campos personalizados y los contactos (los contactos piden además `contacts.manage`). |
+| `orders.cancel` | **Cancelar el envío** y **Eliminar el envío**. |
 | `orders.reopen` | **Reabrir** una orden Entregada, Cancelada o En almacén. Lo trae el rol Admin de compañía; otro rol necesita que se lo agreguen. |
 | `orders.credit_override` | Autorizar una orden cuyo cliente excede su límite de crédito. |
 | `orders.view_price` | Ver el panel **Cotización** y el botón **Cotizar**. Sin este permiso el panel no aparece. |
@@ -32,19 +32,19 @@ Cada botón aparece solo si usted tiene su permiso y, además, si la orden está
 
 ## Qué botones salen según el estatus
 
-| Estatus de la orden | Botones de arriba |
+| Estatus del envío | Botones de arriba |
 |---|---|
-| **Sometida** (el estatus inicial) | **Marcar como recogida**, **Cancelar la orden**, **Eliminar la orden**, y **Re-cotizar** si ya está cotizada; el **Detalle** se puede editar. En una entrega especial, también **Asignar chofer**. |
-| **Recogida**, **Sin asignar**, **Asignada**, **En tránsito** | **Cancelar la orden** (mientras la compañía lo permita). El Detalle queda como referencia. |
-| **En tránsito** (entrega especial) | **Reasignar chofer** y **Cancelar la orden**. |
-| **Intento fallido** | **Cancelar la orden** y, en la barra de estatus, **Volver a** la etapa de la que salió. |
+| **Sometida** (el estatus inicial) | **Marcar como recogido**, **Cancelar el envío**, **Eliminar el envío**, y **Re-cotizar** si ya está cotizada; el **Detalle** se puede editar. En una entrega especial, también **Asignar chofer**. |
+| **Recogida**, **Sin asignar**, **Asignada**, **En tránsito** | **Cancelar el envío** (mientras la compañía lo permita). El Detalle queda como referencia. |
+| **En tránsito** (entrega especial) | **Reasignar chofer** y **Cancelar el envío**. |
+| **Intento fallido** | **Cancelar el envío** y, en la barra de estatus, **Volver a** la etapa de la que salió. |
 | **Entregada**, **Cancelada** o **En almacén** | **Reabrir** (solo con `orders.reopen`). Nada más: la orden se consulta. |
 
 Debajo de los botones está la barra de estatus de la orden. Los botones pequeños de esa barra son solo para el **desvío** «Intento fallido» y para el **regreso**; marcar como recogida, cancelar, reabrir y asignar chofer son los botones de arriba.
 
 ## 1. Corregir los datos de una orden
 
-Mientras la orden está Sometida, el panel **Detalle** muestra campos que se pueden cambiar. Lo que no se puede cambiar se ve como texto: el **cliente**, el **N.º de orden**, el **N.º de factura** y el **Empaque**.
+Mientras la orden está Sometida, el panel **Detalle** muestra campos que se pueden cambiar. Lo que no se puede cambiar se ve como texto: el **cliente**, el **N.º de envío**, el **N.º de factura** y el **Empaque**.
 
 1. Abra la orden.
 2. Cambie lo que necesite: **Servicio**, **Consignatario**, **Prioridad**, **Lista** y **Límite** (las fechas), los **Paquetes** (tipo, descripción y piezas), el **Monto COD** y el **Comentario**.
@@ -57,7 +57,7 @@ Mientras la orden está Sometida, el panel **Detalle** muestra campos que se pue
 
 Teikem guarda únicamente lo que usted cambió. Una **entrega especial** no tiene paquetes ni COD, así que esos campos no aparecen.
 
-Si la orden ya no está Sometida, el panel dice «Esta orden ya avanzó de Sometida: sus datos se muestran como referencia, ya no se editan aquí.» y no hay botón **Guardar cambios**. Si su usuario no tiene `orders.edit`, dice «Su usuario no tiene permiso para editar órdenes: los datos se muestran como referencia.»
+Si la orden ya no está Sometida, el panel dice «Esta orden ya avanzó de Sometida: sus datos se muestran como referencia, ya no se editan aquí.» y no hay botón **Guardar cambios**. Si su usuario no tiene `orders.edit`, dice «Su usuario no tiene permiso para editar envíos: los datos se muestran como referencia.»
 
 ### Si otra persona cambió la orden mientras usted la editaba
 
@@ -67,8 +67,8 @@ Aparece el aviso «El registro fue modificado por otro usuario; recargue e inten
 
 ## 2. Marcar la orden como recogida
 
-1. Pulse **Marcar como recogida** (arriba a la derecha).
-2. Lea el aviso y pulse **Marcar como recogida**. Teikem cotiza la orden de nuevo con las tarifas del contrato (si falta la tarifa, avisa y la orden no cambia), revisa el crédito del cliente y la pasa de Sometida a Recogida.
+1. Pulse **Marcar como recogido** (arriba a la derecha).
+2. Lea el aviso y pulse **Marcar como recogido**. Teikem cotiza la orden de nuevo con las tarifas del contrato (si falta la tarifa, avisa y la orden no cambia), revisa el crédito del cliente y la pasa de Sometida a Recogida.
 
 ![Ventana para marcar la orden como recogida](img/fc2-confirmar.png)
 
@@ -78,12 +78,12 @@ Después de marcarla como recogida, los datos del Detalle ya no se editan aquí.
 
 Si el cliente pasa su límite de crédito, aparece la ventana **El cliente excede su límite de crédito** con el mensaje del servidor. Con el permiso `orders.view_price` el mensaje trae las cifras (límite, en curso y esta orden); sin él dice solo «El cliente excede su límite de crédito.».
 
-![Ventana de crédito excedido con el botón Autorizar y marcar como recogida](img/fc2-credito.png)
+![Ventana de crédito excedido con el botón Autorizar y marcar como recogido](img/fc2-credito.png)
 
-- Si usted tiene `orders.credit_override`, pulse **Autorizar y marcar como recogida**: la orden pasa a Recogida de todos modos y en el historial queda quién lo autorizó.
+- Si usted tiene `orders.credit_override`, pulse **Autorizar y marcar como recogido**: la orden pasa a Recogida de todos modos y en el historial queda quién lo autorizó.
 - Si no lo tiene, la orden sigue Sometida. Avise a Facturación o a quien pueda autorizar, o pida que suban el límite del cliente.
 
-Si su usuario solo tiene `orders.credit_override` (sin `orders.edit`), el botón **Marcar como recogida** abre una ventana que ofrece **Autorizar y marcar como recogida** directamente: ese permiso solo sirve para autorizar el exceso de crédito.
+Si su usuario solo tiene `orders.credit_override` (sin `orders.edit`), el botón **Marcar como recogido** abre una ventana que ofrece **Autorizar y marcar como recogido** directamente: ese permiso solo sirve para autorizar el exceso de crédito.
 
 ## 3. Ver la cotización
 
@@ -107,11 +107,11 @@ Estando en Intento fallido, el único regreso es **Volver a** la etapa exacta de
 
 ![Orden con Intento fallido: se ofrece «Volver a Recogida» y el historial muestra el motivo](img/fc2-lateral.png)
 
-## 6. Cancelar la orden
+## 6. Cancelar el envío
 
-1. Pulse **Cancelar la orden**.
+1. Pulse **Cancelar el envío**.
 2. Escriba la **Razón de la cancelación** (obligatoria, máximo 500 caracteres). Si la deja vacía, la ventana dice «Indique la razón de la cancelación.» y no cancela.
-3. Pulse **Cancelar la orden** en la ventana. El botón **Volver** cierra la ventana sin cancelar.
+3. Pulse **Cancelar el envío** en la ventana. El botón **Volver** cierra la ventana sin cancelar.
 
 ![Ventana para cancelar la orden con la razón](img/fc2-cancelar.png)
 
@@ -125,14 +125,14 @@ Una orden **Entregada**, **Cancelada** o **En almacén** se puede reabrir si ust
 
 1. Pulse **Reabrir**.
 2. En **Estatus destino** deje «El último en que estuvo» (vuelve al último estatus en curso que tuvo la orden) o elija otro estatus en curso.
-3. Escriba la **Razón para reabrir** (obligatoria, máximo 500 caracteres). Vacía, la ventana dice «Indique la razón para reabrir la orden.»
-4. Pulse **Reabrir la orden**. Sale «Orden … reabierta.»
+3. Escriba la **Razón para reabrir** (obligatoria, máximo 500 caracteres). Vacía, la ventana dice «Indique la razón para reabrir el envío.»
+4. Pulse **Reabrir el envío**. Sale «Orden … reabierta.»
 
 La orden vuelve al flujo, la razón queda en el **Historial** y en la bitácora de seguridad. Reabrir **no** vuelve a cotizar ni a medir el crédito.
 
-## 7. Eliminar la orden
+## 7. Eliminar el envío
 
-Solo una orden **Sometida** se elimina (con `orders.cancel`). Pulse **Eliminar la orden**, confirme con **Eliminar** y la pantalla vuelve a la lista. Una orden ya recogida no se elimina: se cancela.
+Solo una orden **Sometida** se elimina (con `orders.cancel`). Pulse **Eliminar el envío**, confirme con **Eliminar** y la pantalla vuelve a la lista. Una orden ya recogida no se elimina: se cancela.
 
 ## 8. Asignar el chofer de una entrega especial
 
@@ -148,7 +148,7 @@ Si la orden todavía estaba Sometida, Teikem la marca como recogida (cotiza y re
 
 ![Entrega especial En tránsito con su chofer asignado](img/fc2-chofer-asignado.png)
 
-Mientras la orden esté **En tránsito** el botón pasa a **Reasignar chofer**: al elegir otro chofer, el viaje del anterior se cancela. Si elige el mismo, el sistema avisa «La orden ya está asignada a ese chofer.»
+Mientras la orden esté **En tránsito** el botón pasa a **Reasignar chofer**: al elegir otro chofer, el viaje del anterior se cancela. Si elige el mismo, el sistema avisa «El envío ya está asignado a ese chofer.»
 
 ![Aviso de que la orden ya está asignada a ese chofer](img/fc2-chofer-error.png)
 
@@ -178,23 +178,23 @@ Si al asignar el cliente excede su crédito, el aviso lo explica; quien tiene `o
 | `Una entrega especial no lleva líneas de paquete ni COD.` (400) | Se intentó poner paquetes o COD a una entrega especial. | No se pueden: cambie solo los demás datos. |
 | `El estatus actual no permite la acción 'EDIT_CARGO'.` (422) | La orden ya salió del estatus en que se edita. | Recargue; ya no se edita aquí. |
 | `El estatus actual no permite la acción 'REPRICE'.` (422) | La orden no está en un estatus que permita re-cotizar. | Solo se re-cotiza una orden Sometida y cotizada. |
-| `El cliente excede su límite de crédito: límite X, en curso Y, esta orden Z.` (422) | El crédito no alcanza. Sin `orders.view_price` el mensaje no trae cifras. | Con `orders.credit_override`: **Autorizar y marcar como recogida**. Si no, avise a Facturación. |
-| `El cliente está suspendido; no se pueden crear ni confirmar órdenes.` (422) | El cliente está suspendido. | Reactive al cliente o avise a quien lo administra. |
+| `El cliente excede su límite de crédito: límite X, en curso Y, esta orden Z.` (422) | El crédito no alcanza. Sin `orders.view_price` el mensaje no trae cifras. | Con `orders.credit_override`: **Autorizar y marcar como recogido**. Si no, avise a Facturación. |
+| `El cliente está suspendido; no se pueden crear ni confirmar envíos.` (422) | El cliente está suspendido. | Reactive al cliente o avise a quien lo administra. |
 | `No hay tarifa vigente para X/Y; configure la tarifa en el contrato del cliente antes de confirmar.` (422) | El contrato no tiene tarifa para ese servicio y paquete. La orden se guardó sin cotizar y ahora no se puede marcar como recogida. | Configure la tarifa en Clientes → Contrato → Tarifas y vuelva a intentarlo. |
-| `Solo se confirma una orden en su estatus inicial.` (422) | La orden ya no está Sometida (alguien la marcó como recogida antes). | Recargue la pantalla. |
-| `Solo se puede eliminar una orden en su estatus inicial; use la cancelación.` (422) | La orden ya no está Sometida. | Use **Cancelar la orden**. |
+| `Solo se confirma un envío en su estatus inicial.` (422) | La orden ya no está Sometida (alguien la marcó como recogida antes). | Recargue la pantalla. |
+| `Solo se puede eliminar un envío en su estatus inicial; use la cancelación.` (422) | La orden ya no está Sometida. | Use **Cancelar el envío**. |
 | `Indique la razón de la cancelación.` (400) | Se intentó cancelar sin escribir la razón. | Escriba por qué se cancela y pulse de nuevo. |
-| `Indique la razón para reabrir la orden.` (400) | Se intentó reabrir sin razón. | Escriba por qué se reabre. |
-| `Solo se reabre una orden en estatus final.` (422) | La orden ya no está en un estatus final (alguien la reabrió antes). | Recargue la pantalla. |
-| `Una orden reabierta debe quedar en una etapa en curso.` (422) | Se escogió como destino un estatus final. | Escoja un estatus en curso o deje «El último en que estuvo». |
-| `La orden no tiene un estatus anterior al que volver; indique el estatus destino.` (422) | La orden nunca estuvo en un estatus en curso al que volver. | Escoja el **Estatus destino**. |
+| `Indique la razón para reabrir el envío.` (400) | Se intentó reabrir sin razón. | Escriba por qué se reabre. |
+| `Solo se reabre un envío en estatus final.` (422) | La orden ya no está en un estatus final (alguien la reabrió antes). | Recargue la pantalla. |
+| `Un envío reabierto debe quedar en una etapa en curso.` (422) | Se escogió como destino un estatus final. | Escoja un estatus en curso o deje «El último en que estuvo». |
+| `El envío no tiene un estatus anterior al que volver; indique el estatus destino.` (422) | La orden nunca estuvo en un estatus en curso al que volver. | Escoja el **Estatus destino**. |
 | `Falta el permiso 'orders.reopen'.` (403) | Su usuario no puede reabrir. | Pida el permiso al administrador (Sistema → Roles). |
 | `El comentario admite como máximo 500 caracteres.` | El comentario es demasiado largo. | Acórtelo. |
 | `Factura repetida para este consignatario` | El nuevo consignatario ya tiene otra orden con ese número de factura y admite repetirlas. | Pulse **Guardar de todos modos** o cancele. Si no las admite, el servidor lo rechaza y debe elegir otro consignatario. |
 | `Chofer no encontrado.` (404) | El chofer ya no existe. | Elija otro. |
 | `El chofer no está disponible para despacho: …` (409) | El chofer tiene una licencia vencida, está inactivo u otro motivo (se lista en el mensaje). | Elija otro chofer o corrija el motivo en Flota → Choferes. |
-| `La orden ya está asignada a ese chofer.` (409) | Eligió el mismo chofer que ya tiene. | Elija otro o pulse **Volver**. |
-| `La orden ya tiene un viaje vigente; recargue e intente de nuevo.` (409) | Dos personas asignaron a la vez. | Recargue y vuelva a intentar. |
-| `Solo las entregas especiales se asignan a un chofer desde aquí; las demás órdenes pasan por Sala de despacho.` (422) | La orden no es entrega especial. | Use Sala de despacho. |
+| `El envío ya está asignado a ese chofer.` (409) | Eligió el mismo chofer que ya tiene. | Elija otro o pulse **Volver**. |
+| `El envío ya tiene un viaje vigente; recargue e intente de nuevo.` (409) | Dos personas asignaron a la vez. | Recargue y vuelva a intentar. |
+| `Solo las entregas especiales se asignan a un chofer desde aquí; las demás envíos pasan por Sala de despacho.` (422) | La orden no es entrega especial. | Use Sala de despacho. |
 | `La entrega especial ya llegó a destino o terminó; no se puede asignar ni reasignar el chofer.` (422) | La orden ya pasó de En tránsito, o está en un desvío o terminada. | Ya no se puede cambiar el chofer. |
 | `Falta el permiso '…'.` (403) | Su usuario no tiene ese permiso. | Pídaselo al administrador. |

@@ -235,7 +235,7 @@ ya existen**:
 | | Integraciones / API | `/system/integrations` | pendiente (sin backend) | `admin.tenant` | `SYSTEM` |
 | | Seguridad y auditoría | `/system/audit` | pendiente (F8b) | `admin.audit` | `SYSTEM` |
 | | Ajustes de la compañía | `/system/settings` | pendiente (F8b) | `admin.tenant` | `SYSTEM` |
-| Portal de clientes | Página principal · Entrada de órdenes · Consignatarios · Configuración · Perfil | `/portal/home` `/portal/orders` `/portal/consignees` `/portal/settings` `/portal/profile` | pendientes (sin backend) | `portalusers.manage` | `CLIENT_PORTAL` |
+| Portal de clientes | Página principal · Entrada de envíos · Consignatarios · Configuración · Perfil | `/portal/home` `/portal/orders` `/portal/consignees` `/portal/settings` `/portal/profile` | pendientes (sin backend) | `portalusers.manage` | `CLIENT_PORTAL` |
 
 `AppRoute.perm` admite `"a|b"` (cualquiera de los dos), igual que `[RequirePermission("a|b")]` del API: `RouteGate` y `visibleNav`
 lo dividen por `|`. `useCan(...perms)` ya es "todos"; se agrega `useCanAny(...perms)`.

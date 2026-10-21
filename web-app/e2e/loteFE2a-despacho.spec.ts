@@ -201,7 +201,7 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
     const unassigned = page.locator('.disp-un-list label.unrow')
     const todayList = page.getByRole('list', { name: 'Rutas de hoy' })
     const activeHeading = page.getByRole('heading', { name: /Ruta activa/ })
-    const stopsList = page.getByRole('list', { name: 'Órdenes en esta ruta' })
+    const stopsList = page.getByRole('list', { name: 'Envíos en esta ruta' })
     const header = page.locator('.head')
     const dialog = () => page.getByRole('dialog')
     const tripsOfDay = async () => (await ok<TripListItemDto[]>(request.get(`${API_URL}/api/v1/trips?date=${day}`, { headers }), 'rutas del día')).filter((t) => t.zoneCode?.endsWith(suffix))
@@ -214,10 +214,10 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
     // ---- 0. La pantalla: tres columnas, filtros, sin rutas en la fecha ----
     await expect(page.getByLabel('Fecha de las rutas')).toHaveValue(day)
     for (const name of ['Planificar el día', 'Nueva ruta', 'Reasignar por zona', 'Optimizar', 'Despachar ruta']) await expect(header.getByRole('button', { name })).toBeVisible()
-    for (const title of ['Órdenes sin asignar', 'Ruta activa', 'Choferes', 'Rutas de hoy']) await expect(page.getByRole('heading', { name: title })).toBeVisible()
+    for (const title of ['Envíos sin asignar', 'Ruta activa', 'Choferes', 'Rutas de hoy']) await expect(page.getByRole('heading', { name: title })).toBeVisible()
     await expect(page.getByText('No hay rutas para esta fecha. Use «Planificar el día» o «Nueva ruta».')).toBeVisible()
     const filterByClient = async () => {
-      await page.getByRole('group', { name: 'Filtros de las órdenes sin asignar' }).getByRole('combobox', { name: 'Cliente' }).fill(clientName)
+      await page.getByRole('group', { name: 'Filtros de los envíos sin asignar' }).getByRole('combobox', { name: 'Cliente' }).fill(clientName)
       await page.getByRole('option', { name: new RegExp(clientName) }).click()
     }
     await filterByClient()
@@ -230,7 +230,7 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
 
     // ---- 1. Planificar el día (solo la zona A): crea la ruta con el chofer estándar y le asigna las 4 órdenes ----
     await header.getByRole('button', { name: 'Planificar el día' }).click()
-    await expect(dialog()).toContainText('Reparte por zona las órdenes confirmadas que no tienen ruta')
+    await expect(dialog()).toContainText('Reparte por zona los envíos confirmados que no tienen ruta')
     await expect(dialog().getByLabel(/^Fecha/)).toHaveValue(day)
     await dialog().getByLabel(/^Zonas/).click()
     await dialog().getByLabel(new RegExp(`EA${suffix}`)).check()
@@ -278,7 +278,7 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
     const routeB = (await tripsOfDay()).find((t) => t.zoneCode === `EB${suffix}`)!
     const codeB = routeB.code ?? ''
     await expect(activeHeading).toContainText(codeB)
-    await expect(page.getByText('Todavía no tiene órdenes asignadas.')).toBeVisible()
+    await expect(page.getByText('Todavía no tiene envíos asignados.')).toBeVisible()
     await expect(page.getByLabel('Chofer', { exact: true })).toHaveValue(driverB.publicId ?? '')
     await expect(page.getByLabel('Vehículo', { exact: true })).toHaveValue(v1.publicId ?? '')
 
@@ -291,7 +291,7 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
       await row(b3).getByRole('checkbox').check()
       await page.getByRole('button', { name: /^Añadir a la ruta/ }).click()
       const problems = page.locator('.disp-problems')
-      await expect(problems).toContainText('Hay órdenes que no se pueden asignar a la ruta.')
+      await expect(problems).toContainText('Hay envíos que no se pueden asignar a la ruta.')
       await expect(problems).toContainText(`${b3.orderNumber}: El estatus actual no permite la acción 'ASSIGN_TRIP'.`)
       await expect(page.getByRole('button', { name: /^Añadir a la ruta \(1\)/ })).toBeVisible() // la selección se conserva
       if (isMobile) await expectNoHorizontalScroll(page)
@@ -312,12 +312,12 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
     // ---- 4. Reordenar con ▲ ▼ y quitar ----
     const first = () => stopsList.getByRole('listitem').first()
     await expect(first()).toContainText(b1.orderNumber ?? '')
-    await expect(page.getByRole('button', { name: `Subir la orden ${b1.orderNumber}` })).toBeDisabled()
-    await page.getByRole('button', { name: `Subir la orden ${b2.orderNumber}` }).click()
+    await expect(page.getByRole('button', { name: `Subir el envío ${b1.orderNumber}` })).toBeDisabled()
+    await page.getByRole('button', { name: `Subir el envío ${b2.orderNumber}` }).click()
     await expect(first()).toContainText(b2.orderNumber ?? '')
     // el orden se ve en pantalla al instante (optimista, F-E2b) y el servidor termina de guardar un momento después: se espera, no se lee de inmediato
     await expect.poll(async () => (await detailOf(routeB.publicId ?? '')).stops?.map((s) => s.orderNumber)).toEqual([b2.orderNumber, b1.orderNumber])
-    await page.getByRole('button', { name: `Quitar la orden ${b1.orderNumber} de la ruta` }).click()
+    await page.getByRole('button', { name: `Quitar el envío ${b1.orderNumber} de la ruta` }).click()
     await expect(stopsList.getByRole('listitem')).toHaveCount(1)
     await expect(row(b1)).toHaveCount(1) // vuelve a «sin asignar»
     await row(b1).getByRole('checkbox').check()
@@ -328,7 +328,7 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
     const other = await ok<TripDetailDto>(request.post(`${API_URL}/api/v1/trips`, { headers, data: { planDate: day, dispatchZoneId: zoneB.id, vehiclePublicId: v3.publicId } }), 'ruta auxiliar')
     await ok(request.post(`${API_URL}/api/v1/trips/${other.publicId}/orders`, { headers, data: { orderPublicIds: [b3.publicId] } }), 'b3 en otra ruta')
     await page.getByRole('button', { name: /^Añadir a la ruta/ }).click()
-    await expect(page.locator('.disp-problems')).toContainText(`La orden ya está asignada a la ruta ${other.code}.`)
+    await expect(page.locator('.disp-problems')).toContainText(`El envío ya está asignada a la ruta ${other.code}.`)
     await page.getByRole('button', { name: 'Entendido' }).click()
     expect((await request.delete(`${API_URL}/api/v1/trips/${other.publicId}`, { headers, data: {} })).ok(), 'eliminar la ruta auxiliar por API').toBeTruthy()
     // la ruta activa y la fecha viven en la dirección: al recargar sigue la misma ruta (el filtro y la selección empiezan de cero)
@@ -423,7 +423,7 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
     // ---- 9. Iniciar la ruta A y cerrarla: el 422 por órdenes sin terminar ----
     await pick(codeA)
     await expect(page.getByRole('button', { name: 'Eliminar ruta' })).toHaveCount(0) // despachada: ya no se elimina
-    await expect(page.getByRole('button', { name: /Bajar la orden/ })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /Bajar el envío/ })).toHaveCount(0)
     await page.getByRole('button', { name: 'Iniciar ruta' }).click()
     const startDialog = page.getByRole('dialog', { name: `Iniciar la ruta ${codeA}` })
     await startDialog.getByLabel('Comentario (opcional)').fill('Sale a las 8:00')
@@ -433,7 +433,7 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
     await page.getByRole('button', { name: 'Cerrar ruta' }).click()
     const closeDialog = page.getByRole('dialog', { name: `Cerrar la ruta ${codeA}` })
     await closeDialog.getByRole('button', { name: 'Cerrar ruta' }).click()
-    await expect(closeDialog.getByRole('alert')).toContainText(`La ruta ${codeA} no se puede cerrar: hay órdenes sin terminar (`)
+    await expect(closeDialog.getByRole('alert')).toContainText(`La ruta ${codeA} no se puede cerrar: hay envíos sin terminar (`)
     await expect(closeDialog.getByRole('alert')).toContainText(aOrders[0].orderNumber ?? '')
     if (isMobile) await expectNoHorizontalScroll(page)
     await shot(page, isMobile, 'fe2a-cerrar-422', 800, closeDialog)

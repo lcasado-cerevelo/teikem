@@ -425,7 +425,7 @@ public sealed class OrderSubmissionLifecycleTests
         x.F.SetPermissions(PermissionCatalog.OrdersReopen);
 
         var ex = await Assert.ThrowsAsync<ValidationException>(() => x.Statuses.ReopenAsync(o.PublicId, new OrderReopenRequest(OrderStatuses.InTransit, comment, null), OrderScope.Any, default));
-        Assert.Equal((400, "Indique la razón para reabrir la orden."), (ex.StatusCode, ex.Message));
+        Assert.Equal((400, "Indique la razón para reabrir el envío."), (ex.StatusCode, ex.Message));
         Assert.Equal(OrderStatusService.ReopenReasonRequiredMessage, ex.Message);
         Assert.Equal(new[] { "comment" }, ex.Errors!.Keys.ToArray());
     }
@@ -441,7 +441,7 @@ public sealed class OrderSubmissionLifecycleTests
         var o = await QuotedOrderAsync(x, "T-1", status, 10m);
 
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => x.Statuses.ReopenAsync(o.PublicId, new OrderReopenRequest(null, "Razón", null), OrderScope.Any, default));
-        Assert.Equal((422, "Solo se reabre una orden en estatus final."), (ex.StatusCode, ex.Message));
+        Assert.Equal((422, "Solo se reabre un envío en estatus final."), (ex.StatusCode, ex.Message));
         Assert.Equal(OrderStatusService.NotFinalMessage, ex.Message);
         Assert.Equal(status, (await OrderAsync(x, o.PublicId)).Status!.InternalCode);
     }
@@ -520,7 +520,7 @@ public sealed class OrderSubmissionLifecycleTests
         var o = await QuotedOrderAsync(x, "T-1", OrderStatuses.Delivered, 10m);   // sin historial
 
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => x.Statuses.ReopenAsync(o.PublicId, new OrderReopenRequest(null, "Razón", null), OrderScope.Any, default));
-        Assert.Equal((422, "La orden no tiene un estatus anterior al que volver; indique el estatus destino."), (ex.StatusCode, ex.Message));
+        Assert.Equal((422, "El envío no tiene un estatus anterior al que volver; indique el estatus destino."), (ex.StatusCode, ex.Message));
         Assert.Equal(OrderStatusService.NoReopenTargetMessage, ex.Message);
     }
 
@@ -535,7 +535,7 @@ public sealed class OrderSubmissionLifecycleTests
         var o = await QuotedOrderAsync(x, "T-1", OrderStatuses.Delivered, 10m);
 
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => x.Statuses.ReopenAsync(o.PublicId, new OrderReopenRequest(target, "Razón", null), OrderScope.Any, default));
-        Assert.Equal((422, "Una orden reabierta debe quedar en una etapa en curso."), (ex.StatusCode, ex.Message));
+        Assert.Equal((422, "Un envío reabierto debe quedar en una etapa en curso."), (ex.StatusCode, ex.Message));
         Assert.Equal(OrderStatuses.Delivered, (await OrderAsync(x, o.PublicId)).Status!.InternalCode);
         Assert.Empty(await HistoryAsync(x, o.TransportOrderId));
         Assert.Empty(x.Security.Actions("order_reopen"));

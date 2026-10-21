@@ -190,7 +190,7 @@ function seed() {
   mock.domains = [
     { id: 1, domainKey: 'T1_PRIORIDAD', scope: 1, label: 'Prioridad', labels: {}, description: null, isSystem: false, isActive: true, tenantId: 1 },
     { id: 2, domainKey: 'Region', scope: 1, label: 'Región', labels: {}, description: null, isSystem: true, isActive: true, tenantId: null },
-    { id: 3, domainKey: 'OrderStatus', scope: 2, label: 'Estatus de orden', labels: {}, description: null, isSystem: true, isActive: true, tenantId: null },
+    { id: 3, domainKey: 'OrderStatus', scope: 2, label: 'Estatus de envío', labels: {}, description: null, isSystem: true, isActive: true, tenantId: null },
   ]
 }
 
@@ -230,7 +230,7 @@ describe('Campos personalizados — lista por entidad', () => {
     wrap()
     const nav = await screen.findByRole('navigation', { name: 'Entidades' })
     await waitFor(() =>
-      expect(within(nav).getAllByRole('button').map((b) => b.textContent)).toEqual(['Cliente2', 'Orden0', 'Chofer1', 'Vehículo1', 'Producto0', 'Ubicación (consignatario)0']),
+      expect(within(nav).getAllByRole('button').map((b) => b.textContent)).toEqual(['Cliente2', 'Envío0', 'Chofer1', 'Vehículo1', 'Producto0', 'Ubicación (consignatario)0']),
     )
     expect(within(nav).queryByText(/Factura|Contrato|Almacén/)).toBeNull()
     const table = await screen.findByRole('table', { name: 'Cliente' })
@@ -250,7 +250,7 @@ describe('Campos personalizados — lista por entidad', () => {
     const user = userEvent.setup()
     wrap()
     await screen.findByText('Centro de costo')
-    await user.click(screen.getByRole('button', { name: /^Orden/ }))
+    await user.click(screen.getByRole('button', { name: /^Envío/ }))
     expect(await screen.findByText('Todavía no hay campos personalizados para esta entidad.')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /^Vehículo/ }))
     const row = (await screen.findByText('Color')).closest('tr') as HTMLElement

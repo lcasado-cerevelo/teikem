@@ -68,12 +68,12 @@ public sealed class IntegrationRulesTests
     [Fact]
     public void Inbox_data_round_trips_to_csv_with_quotes_delimiters_and_the_header()
     {
-        var data = new IntegrationRunner.InboxData(new List<string> { "orden", "nota" }, new List<InboxRowDto> { new(2, new[] { "A-1", "dice \"hola\", adiós" }), new(3, new[] { "A-2", "línea\nnueva" }) });
+        var data = new IntegrationRunner.InboxData(new List<string> { "envío", "nota" }, new List<InboxRowDto> { new(2, new[] { "A-1", "dice \"hola\", adiós" }), new(3, new[] { "A-2", "línea\nnueva" }) });
         var json = System.Text.Json.JsonSerializer.Serialize(data, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
         var back = IntegrationRunner.ParseData(json)!;
         Assert.Equal(2, back.Rows.Count);
         var csv = IntegrationRunner.ToCsv(back, ',');
-        Assert.StartsWith("orden,nota", csv);
+        Assert.StartsWith("envío,nota", csv);
         Assert.Contains("A-1,\"dice \"\"hola\"\", adiós\"", csv);
         Assert.Contains("A-2,\"línea\nnueva\"", csv.Replace("\r\n", "\n"));
         Assert.Null(IntegrationRunner.ParseData(null));
@@ -92,10 +92,10 @@ public sealed class IntegrationRulesTests
     public void The_inbox_reason_lists_order_line_and_creation_errors_without_the_lines_prefix()
     {
         var row = new ImportRowDto(2, 2, new Dictionary<string, string>(), null,
-            new Dictionary<string, string> { ["lines"] = "La orden no trae ninguna pieza.", ["consigneeName"] = "Falta el consignatario." }, Array.Empty<string>(), false, null, null, null, null, false,
+            new Dictionary<string, string> { ["lines"] = "El envío no trae ninguna pieza.", ["consigneeName"] = "Falta el consignatario." }, Array.Empty<string>(), false, null, null, null, null, false,
             new[] { new ImportLineDto(4, "PIECE", new Dictionary<string, string>(), new Dictionary<string, string> { ["pieceNumber"] = "repetido" }) });
-        Assert.Equal("La orden no trae ninguna pieza. | consigneeName: Falta el consignatario. | Fila 4 · pieceNumber: repetido", IntegrationRunner.ReasonOf(row));
-        Assert.Equal("La orden no se pudo procesar.", IntegrationRunner.ReasonOf(row with { Errors = new Dictionary<string, string>(), Lines = null }));
+        Assert.Equal("El envío no trae ninguna pieza. | consigneeName: Falta el consignatario. | Fila 4 · pieceNumber: repetido", IntegrationRunner.ReasonOf(row));
+        Assert.Equal("El envío no se pudo procesar.", IntegrationRunner.ReasonOf(row with { Errors = new Dictionary<string, string>(), Lines = null }));
         Assert.Equal("Cliente suspendido.", IntegrationRunner.ReasonOf(row with { Errors = new Dictionary<string, string>(), Lines = null, Error = "Cliente suspendido." }));
     }
 

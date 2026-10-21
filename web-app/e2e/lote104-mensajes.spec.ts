@@ -100,7 +100,7 @@ test('mensajes del portal: equipo, escribir primero, bandeja y responder', async
   await expect(w).toBeVisible()
   const opt = await w.getByLabel('Persona').locator('option', { hasText: `Ana ${suffix}` }).first().getAttribute('value')
   await w.getByLabel('Persona').selectOption(opt ?? '')
-  await w.getByLabel('Mensaje').fill('Hola Ana, hay un problema con tu orden; ¿puedes confirmarnos la dirección?')
+  await w.getByLabel('Mensaje').fill('Hola Ana, hay un problema con tu envío; ¿puedes confirmarnos la dirección?')
   await shot(page, isMobile, 'l104-escribir-primero')
   await w.getByRole('button', { name: 'Enviar' }).click()
 

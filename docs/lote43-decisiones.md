@@ -37,7 +37,7 @@ Durante el lote Luis cambió dos cosas del plan aprobado y se aplicaron:
 - Cada línea de carga (`dbo.CargoLine`) es un paquete con su **`PackageNumber NVARCHAR(40)`** (PQT-##### del patrón del cliente si se deja en
   blanco, o tecleado) y su `Quantity` (piezas). El contador PACKAGE es **por cliente** (`NumberingRules.ScopeClientId`): dos clientes de la misma
   compañía pueden tener el mismo PQT-00012, y un número tecleado no se valida como único. No hay índice por `PackageNumber`.
-- La estación de escaneo (`OutboundScanService` → `OrderReadService.LookupAsync`) busca **número de orden > empaque > factura**; **no** busca por
+- La estación de escaneo (`OutboundScanService` → `OrderReadService.LookupAsync`) busca **número de envío > empaque > factura**; **no** busca por
   número de paquete. Escanear el label de un paquete hoy daría «no encontrada».
 - **Cambio mínimo propuesto para F-G2** (no se hizo aquí porque toca el flujo de escaneo ya cerrado y los labels de órdenes son de F-G2):
   agregar en `LookupAsync` una cuarta precedencia `PACKAGE` (orden con una `CargoLine` activa con ese `PackageNumber`), con su `MatchedBy` y la

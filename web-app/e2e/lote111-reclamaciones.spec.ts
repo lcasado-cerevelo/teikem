@@ -88,7 +88,7 @@ test('Cerrar conteo: una pieza perdida que aparece crea una orden nueva y se con
   await shot(page, isMobile, 'l111-aparecio')
   await closeBtn.click()
   const dialog = page.getByRole('dialog')
-  await expect(dialog.getByText(/Al cerrar el conteo se creará una orden nueva con 1 pieza\(s\) que aparecieron/)).toBeVisible({ timeout: 30_000 })
+  await expect(dialog.getByText(/Al cerrar el conteo se creará un envío nuevo con 1 pieza\(s\) que aparecieron/)).toBeVisible({ timeout: 30_000 })
   await shot(page, isMobile, 'l111-cerrar-conteo')
   await dialog.getByRole('button', { name: 'Confirmar y cerrar el conteo' }).click()
   await expect(dialog).toHaveCount(0, { timeout: 30_000 })

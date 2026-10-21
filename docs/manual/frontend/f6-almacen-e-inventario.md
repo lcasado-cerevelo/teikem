@@ -1277,14 +1277,14 @@ Con `warehouse.pick` la pantalla tiene **dos paneles lado a lado**: **Recolecci�
 ### Panel Recolecciones (lista)
 
 - **Filtros** (dentro del panel; todos van al servidor y regresan a la página 1; **Limpiar** los quita): **Recolectada** (rango de
-  fechas), **Estatus**, **Producto** (varios; incluye productos dados de baja), **No. de orden**, **No. de factura** e **Incluir
-  eliminadas** (interruptor). Más un buscador libre ("Número, empaque, orden, factura, cliente o SKU", se aplica después de los
+  fechas), **Estatus**, **Producto** (varios; incluye productos dados de baja), **No. de envío**, **No. de factura** e **Incluir
+  eliminadas** (interruptor). Más un buscador libre ("Número, empaque, envío, factura, cliente o SKU", se aplica después de los
   filtros).
-  - **No. de orden** es un campo con sugerencias: al escribir, ofrece números de orden existentes ("Escriba para ver las órdenes";
-    si no hay, "Ninguna orden con ese número."; si no se pueden consultar, "No se pudieron consultar las órdenes."). Puede elegir una
-    sugerencia (↑ ↓ Enter) o dejar lo escrito: busca por contenido. La equis ("Quitar el número de orden") lo vacía.
+  - **No. de envío** es un campo con sugerencias: al escribir, ofrece números de orden existentes ("Escriba para ver los envíos";
+    si no hay, "Ningún envío con ese número."; si no se pueden consultar, "No se pudieron consultar los envíos."). Puede elegir una
+    sugerencia (↑ ↓ Enter) o dejar lo escrito: busca por contenido. La equis ("Quitar el número de envío") lo vacía.
 - **Tabla** (25 por página, con el pie común y **Exportar**): **Número** (con su estatus y, si aplica, el chip "Eliminada"),
-  **Productos** ("SKU ×cantidad"), **Orden y factura**, **Cliente** ("Propio" si el inventario es propio) y **Recolectada**. Si el
+  **Productos** ("SKU ×cantidad"), **Envío y factura**, **Cliente** ("Propio" si el inventario es propio) y **Recolectada**. Si el
   panel queda angosto (menos de 640 px) las filas se ven como tarjetas, como en la captura de arriba.
 - **Acciones de la fila** (íconos con tooltip):
   - **Empacar** (caja; `warehouse.pick` + `orders.create`; solo en recolecciones que se pueden empacar): abre "Empacar EMP-…".
@@ -1306,18 +1306,18 @@ está abierto, el detalle no se cierra con Esc ni con un clic fuera; al eliminar
 
 **Empacar** (desde la fila o desde el detalle) abre un formulario con los datos de la orden que nace del empaque.
 
-![Empacar EMP-00004: cliente de la orden, tipo de servicio Estándar, consignatario nuevo con nombre, dirección y ciudad, número de orden y factura vacíos (se generan solos) y el primer paquete con tipo Caja](img/f6-empacar.png)
+![Empacar EMP-00004: cliente de la orden, tipo de servicio Estándar, consignatario nuevo con nombre, dirección y ciudad, número de envío y factura vacíos (se generan solos) y el primer paquete con tipo Caja](img/f6-empacar.png)
 
 | Campo | Regla |
 |---|---|
-| **Cliente de la orden** (obligatorio) | Debe ser el cliente dueño del inventario recolectado; si la recolección es de un cliente, el campo lo recuerda: "Debe ser el cliente dueño del inventario: {cliente}.". |
+| **Cliente del envío** (obligatorio) | Debe ser el cliente dueño del inventario recolectado; si la recolección es de un cliente, el campo lo recuerda: "Debe ser el cliente dueño del inventario: {cliente}.". |
 | **Tipo de servicio** | Ofrece **"Predeterminado de la compañía ({etiqueta})"** solo si la compañía tiene uno. **Si no lo tiene, esa opción no aparece y el campo es obligatorio.** |
 | **Consignatario** (obligatorio) | "Del directorio" (elija uno del cliente) o "Nuevo" (nombre, dirección, ciudad obligatorios; estado, código postal y país opcionales; el país es el código ISO de 2 letras). |
-| **Número de orden** y **Factura del cliente** | Opcionales: vacío, se generan automáticamente. |
+| **Número de envío** y **Factura del cliente** | Opcionales: vacío, se generan automáticamente. |
 | **Paquetes** (al menos uno) | **Tipo de paquete** (con el mismo "Predeterminado de la compañía" solo si existe; si no, obligatorio), Descripción, **Piezas** (entero, al menos 1) y **Peso (kg)** (no negativo). **Agregar paquete** suma otro. |
 | **Notas** | Opcional. |
 
-**Empacar y crear orden** avisa "Empacada: se creó la orden {orden}." y la recolección pasa a Empacada.
+**Empacar y crear envío** avisa "Empacada: se creó la orden {orden}." y la recolección pasa a Empacada.
 
 **Permiso.** `inventory.view` (listar y ver el detalle); **`warehouse.pick`** para recolectar, empacar y eliminar; **Empacar**
 exige además `orders.create`; eliminar una recolección **empacada** exige además `orders.cancel`. Módulo `WMS_LOTSERIAL`.
@@ -1344,7 +1344,7 @@ exige además `orders.create`; eliminar una recolección **empacada** exige adem
 | Series (producto por serie) | tantas como la cantidad, sin repetir entre líneas | "El producto {sku} tiene serie: escanee las series a recolectar." / "En productos con serie la cantidad debe ser igual al número de series escaneadas." / "La serie {serial} está repetida en la recolección." |
 | Series (línea) | máx. 500 | "Una línea admite como máximo 500 series." |
 | Lote / serie en un producto que no lo maneja | — | "El producto {sku} no maneja lote." / "El producto {sku} no maneja serie." |
-| Cliente (empacar) | obligatorio | "Indique el cliente de la orden." |
+| Cliente (empacar) | obligatorio | "Indique el cliente del envío." |
 | Tipo de servicio (empacar, compañía sin predeterminado) | obligatorio | "Elija el tipo de servicio." |
 | Tipo de paquete (empacar, compañía sin predeterminado) | obligatorio | "Elija el tipo de paquete." |
 | Consignatario (empacar) | obligatorio (directorio o nuevo) | "El consignatario es obligatorio: elija uno del directorio o capture uno nuevo." |
@@ -1528,7 +1528,7 @@ estatus (Planeada → Movida/Cancelada).
 **Qué hace cada botón (ficha).**
 - **Completar plan** (cabecera, mientras no esté Completado): si quedan asignaciones sin mover, el servidor la
   rechaza.
-- **Asignar a una orden** (por línea candidata, si tiene disponible): busca la orden por número exacto, factura o
+- **Asignar a un envío** (por línea candidata, si tiene disponible): busca la orden por número exacto, factura o
   lote de empaque, y la cantidad.
 - **Mover** (por asignación Planeada): registra el movimiento físico, con comentario opcional.
 - **Cancelar asignación** (por asignación Planeada).
@@ -1540,9 +1540,9 @@ cancelar, mover y completar. Módulo `CROSSDOCK`.
 
 | Mensaje | Cuándo aparece |
 |---|---|
-| "Elija una orden." | Al asignar sin elegir la orden destino |
+| "Elija un envío." | Al asignar sin elegir la orden destino |
 | "Sin coincidencias exactas." | La búsqueda de orden (número/factura/lote de empaque) no encontró nada exacto |
-| "Para buscar órdenes necesita el permiso orders.view y el módulo LTL_GROUND." | Sin ese permiso/módulo, al intentar buscar una orden para asignar |
+| "Para buscar envíos necesita el permiso orders.view y el módulo LTL_GROUND." | Sin ese permiso/módulo, al intentar buscar una orden para asignar |
 | "Si quedan asignaciones pendientes de mover, el servidor rechazará la acción." | Ayuda antes de confirmar **Completar plan** |
 
 ## Consulta de órdenes (solo lectura)
@@ -1570,7 +1570,7 @@ se puede cambiar el estatus desde aquí.
 
 **Permiso.** `orders.view`. Módulo **Transporte terrestre** (`LTL_GROUND`).
 
-**Mensajes que puede ver.** "La orden no existe o no pertenece a su compañía." si el enlace es incorrecto o la orden
+**Mensajes que puede ver.** "El envío no existe o no pertenece a su compañía." si el enlace es incorrecto o la orden
 es de otra compañía.
 
 ## Preguntas frecuentes de este capítulo

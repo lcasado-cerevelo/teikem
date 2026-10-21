@@ -53,7 +53,7 @@ test('Cargo por devolución: los tres modos en el contrato y el cargo en la orde
   // devolver la orden desde la ficha (con el contrato ya con cargo por pieza)
   await page.goto(`/orders/${order.publicId}`)
   await page.getByRole('button', { name: 'Devolver', exact: true }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Devolver la orden' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Devolver el envío' }).click()
   await expect(page.locator('.chip', { hasText: 'Devuelta' }).first()).toBeVisible({ timeout: 30_000 })
   await shot(page, isMobile, 'l115-orden-devuelta')
 

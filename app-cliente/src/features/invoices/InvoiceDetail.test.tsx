@@ -28,7 +28,7 @@ describe('InvoiceDetailScreen', () => {
     expect(await screen.findByText('Entregas de octubre', {}, { timeout: 3000 })).toBeTruthy()
     expect(screen.getByText('Pagos recibidos')).toBeTruthy()
     expect(screen.getByText(/Efectivo/)).toBeTruthy()
-    expect(screen.getByText(/orden ORD-00007/)).toBeTruthy()
+    expect(screen.getByText(/envío ORD-00007/)).toBeTruthy()
     expect(screen.queryByText(/Pagar|Marcar/i)).toBeNull()                // ninguna acción: solo lectura
     expect(get).toHaveBeenCalledWith('f1')
   })

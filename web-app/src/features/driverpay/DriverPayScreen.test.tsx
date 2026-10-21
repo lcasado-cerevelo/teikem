@@ -67,7 +67,7 @@ const ORDER = '77777777-0000-0000-0000-000000000007'
 const LABEL: Record<string, string> = { GENERATED: 'Generada', REVIEWED: 'Revisada', APPROVED: 'Aprobada', EXPORTED: 'Exportada', CANCELLED: 'Cancelada' }
 const LINES = [
   {
-    id: 1, driverPublicId: DRIVER, driverCode: 'D1', driverName: 'Ana Chofer', kind: 'DELIVERY', serviceDate: '2026-10-16', orderPublicId: ORDER, orderNumber: 'ORD-00001', description: 'Orden ORD-00001', attemptCount: 2,
+    id: 1, driverPublicId: DRIVER, driverCode: 'D1', driverName: 'Ana Chofer', kind: 'DELIVERY', serviceDate: '2026-10-16', orderPublicId: ORDER, orderNumber: 'ORD-00001', description: 'Envío ORD-00001', attemptCount: 2,
     breakdown: [{ kind: 'DELIVERY', attemptNumber: 2, amount: 10 }, { kind: 'ATTEMPT', attemptNumber: 1, amount: 5 }, { kind: 'ATTEMPT', attemptNumber: 2, amount: 3 }], rateMissing: false, calculatedAmount: 18, amount: 18, adjusted: false, adjustmentNote: null,
   },
   {
@@ -136,7 +136,7 @@ describe('Liquidación a choferes', () => {
     const user = userEvent.setup()
     wrap()
     const dialog = await openSettlement(user)
-    expect(await within(dialog).findByText('Orden ORD-00001')).toBeInTheDocument()
+    expect(await within(dialog).findByText('Envío ORD-00001')).toBeInTheDocument()
     expect(within(dialog).getByText(/entrega \$10\.00 · intento 1 \$5\.00 · intento 2 \$3\.00/)).toBeInTheDocument()
     expect(within(dialog).getByText('Subtotal $18.00')).toBeInTheDocument()
     expect(within(dialog).getByText('Subtotal $40.00')).toBeInTheDocument()
@@ -160,7 +160,7 @@ describe('Liquidación a choferes', () => {
     const user = userEvent.setup()
     wrap(['driverpay.view'])
     const dialog = await openSettlement(user)
-    await within(dialog).findByText('Orden ORD-00001')
+    await within(dialog).findByText('Envío ORD-00001')
     expect(within(dialog).queryByRole('button', { name: 'Aprobar' })).not.toBeInTheDocument()
     expect(within(dialog).queryByRole('button', { name: 'Ajustar' })).not.toBeInTheDocument()
     expect(within(dialog).queryByRole('button', { name: 'Cancelar liquidación' })).not.toBeInTheDocument()
@@ -243,7 +243,7 @@ describe('Liquidación a choferes', () => {
 
     await user.click(screen.getByRole('button', { name: 'Registrar intento' }))
     const dialog = await screen.findByRole('dialog', { name: 'Registrar un intento de entrega' })
-    await user.type(within(dialog).getByLabelText('Orden'), 'ORD-0000')
+    await user.type(within(dialog).getByLabelText('Envío'), 'ORD-0000')
     await user.click(await within(dialog).findByRole('button', { name: /ORD-00001 · FAC-1 · Hospital Norte/ }))
     await user.selectOptions(within(dialog).getByLabelText('Chofer'), DRIVER)
     await user.click(within(dialog).getByRole('button', { name: 'Registrar' }))

@@ -9,8 +9,8 @@ lote 39 (`orders.view_price`, filtros nuevos de `GET /orders`) y **no se editaro
 
 | Pieza | Qué hace | Dónde (`web-app/src/`) |
 |---|---|---|
-| Lista | Filtros de la maqueta (Desde/Hasta, N.º de orden, Consignatario, Cliente, Servicio, Tipo de paquete, Pueblo, ZIP, Factura, Empaque, Limpiar) **más Estatus**; los cinco de selección son múltiples (`SearchSelect`) y viajan como arreglos repetidos (`?serviceTypes=A&serviceTypes=B`). Tabla paginada por el servidor con columnas ordenables Empaque, N.º orden, Fecha, Consignatario, Pueblo, ZIP, Servicio, Paquete, Piezas, COD, [Cotizado], Estatus; **una fila por tipo de paquete** con «↳», papelera y flecha «abrir» solo en la primera fila de la orden. Orden sobre TODO lo filtrado (`exportRows`). | `features/orders/OrderListScreen.tsx` |
-| Alta detallada | Formulario desplegable arriba de la lista («Nueva orden» / «Ocultar formulario»): pasos 01 Cliente y servicio, 02 Consignatario, 03 Paquetes y COD (o Servicio especial) y «Ticket de la orden». Dos botones: **Guardar borrador** (`confirmNow=false`) y **Guardar y confirmar** (`confirmNow=true`). | `features/orders/OrderEntryForm.tsx`, `orders.css` |
+| Lista | Filtros de la maqueta (Desde/Hasta, N.º de envío, Consignatario, Cliente, Servicio, Tipo de paquete, Pueblo, ZIP, Factura, Empaque, Limpiar) **más Estatus**; los cinco de selección son múltiples (`SearchSelect`) y viajan como arreglos repetidos (`?serviceTypes=A&serviceTypes=B`). Tabla paginada por el servidor con columnas ordenables Empaque, N.º orden, Fecha, Consignatario, Pueblo, ZIP, Servicio, Paquete, Piezas, COD, [Cotizado], Estatus; **una fila por tipo de paquete** con «↳», papelera y flecha «abrir» solo en la primera fila de la orden. Orden sobre TODO lo filtrado (`exportRows`). | `features/orders/OrderListScreen.tsx` |
+| Alta detallada | Formulario desplegable arriba de la lista («Nueva orden» / «Ocultar formulario»): pasos 01 Cliente y servicio, 02 Consignatario, 03 Paquetes y COD (o Servicio especial) y «Ticket del envío». Dos botones: **Guardar borrador** (`confirmNow=false`) y **Guardar y confirmar** (`confirmNow=true`). | `features/orders/OrderEntryForm.tsx`, `orders.css` |
 | Reglas | Filtros → consulta, agrupación por tipo de paquete, esquema zod con los mensajes exactos del servidor, request, renombre de errores, detección de `credit_exceeded` y de factura repetida. | `features/orders/orderRules.ts` |
 | Hooks | `useOrders`, `useOrder`, `exportOrders`, `useCreateOrder` (con `Idempotency-Key`), `useDeleteOrder`. Se movieron desde `features/warehouse/api.ts` (`useOrdersReadonly`, `useOrderReadonly`, `exportOrders`); `useOrderLookup` se queda (lo usa Cruce de muelle). `OrderDetailScreen` solo cambió su import. | `features/orders/api.ts` |
 | Selector de consignatario | Combobox con buscador sobre los consignatarios del cliente **más los compartidos** (`GET /locations?clientId&includeShared=true&locationType=DELIVERY`), con «dirección · pueblo» y «admite factura repetida»; el «+» abre el MISMO `ConsigneeFormModal` de F-B (con teléfono; exige `locations.create`) y deja elegido el recién creado. | `features/consignees/ConsigneePicker.tsx` (+ `useClientConsignees`, `useSelectedConsignee` en `api.ts`; `consigneeOptionLabel`/`consigneeAddress` en `consigneeRules.ts`) |
@@ -28,7 +28,7 @@ lote 39 (`orders.view_price`, filtros nuevos de `GET /orders`) y **no se editaro
 | `OrderEntryForm.test.tsx` (27) | predeterminados, factura «(automático)»/habilitada, consignatario existente (solo lectura y `allowDupInvoice`), ticket sin precio, líneas de paquete, validaciones sin llamar al API, borrador vs confirmar (cuerpo e `Idempotency-Key`), 400 por línea, 422 sin tarifa, cliente de baja, factura repetida (confirmable, «No crear», bloqueada), crédito excedido con y sin `orders.credit_override`, entrega especial (servicio, sin servicios, componente apagado, sin `contracts.read`), consignatario nuevo por el modal (no guarda la orden y queda elegido), permisos |
 | `ConsigneePicker.test.tsx` (4) | etiquetas, búsqueda por nombre/dirección/pueblo, compartidos, inactivos fuera, elegido que no está en la lista, sin cliente, «+» según `locations.create` |
 | `DataTable.test.tsx` (+1) | filas de continuación: cuenta de filas, contenido por columna, clic en una continuación abre el registro, paginación por registros |
-| `e2e/loteFC1-ordenes.spec.ts` y `e2e/f6.spec.ts` | **escritos, NO ejecutados** (el dueño no quiere Playwright en esta sesión). `f6.spec.ts` (~L470) ya no exige que falte el botón «Nuev…» y ubica la fila por el número de orden (la tabla ya no lleva columna de cliente). Las capturas `docs/manual/frontend/img/fc1-*.png` no existen todavía |
+| `e2e/loteFC1-ordenes.spec.ts` y `e2e/f6.spec.ts` | **escritos, NO ejecutados** (el dueño no quiere Playwright en esta sesión). `f6.spec.ts` (~L470) ya no exige que falte el botón «Nuev…» y ubica la fila por el número de envío (la tabla ya no lleva columna de cliente). Las capturas `docs/manual/frontend/img/fc1-*.png` no existen todavía |
 
 ## Diferencias con la maqueta (todas con su razón)
 
@@ -45,7 +45,7 @@ Decididas por el dueño (2026-10-12):
    alta de F-B. Al elegir uno existente, nombre/número/dirección/pueblo/ZIP/teléfono quedan de solo lectura (la maqueta los dejaba editables y, si se tocaban, no se guardaba nada). La orden se manda con
    `consigneeLocationPublicId` (nunca `newConsignee`).
 5. **Entrega especial sin chofer.** La maqueta pide el chofer y arma el viaje al guardar; aquí el POST lleva `isSpecialDelivery` y `specialServiceId`, sin paquetes ni COD, y el chofer se asigna después (F-C2).
-   En la sección 03 aparece «N.º de orden» (habilitado solo si el cliente asigna sus números) y «Servicio especial» (`etiqueta · tarifa`, de `GET /clients/{id}/special-services`). El ticket cambia «Paquetes» por
+   En la sección 03 aparece «N.º de envío» (habilitado solo si el cliente asigna sus números) y «Servicio especial» (`etiqueta · tarifa`, de `GET /clients/{id}/special-services`). El ticket cambia «Paquetes» por
    «Servicio especial» y no muestra COD.
 6. **Formulario desplegable** dentro de `/orders` (como la maqueta), no en una ruta aparte.
 
@@ -55,7 +55,7 @@ Del implementador:
 8. **Fecha completa** (`10/12/2026`, formato de la compañía) en lugar de `fmtDayMonth`: una lista que cruza años sería ambigua.
 9. **Lista/Límite = requestedDate/promisedDate** del servidor (se mandan como `YYYY-MM-DDT00:00:00`, ambos con «hoy» por omisión como la maqueta). El servidor no valida el orden entre ambas; el formulario sí
    («La fecha límite no puede ser anterior a la fecha lista.»), una validación solo de pantalla.
-10. **N.º de orden solo en la entrega especial**, como la maqueta (en el alta normal siempre lo genera Teikem). Si el cliente asigna su número de orden y se necesita teclear el suyo, es una orden especial
+10. **N.º de envío solo en la entrega especial**, como la maqueta (en el alta normal siempre lo genera Teikem). Si el cliente asigna su número de envío y se necesita teclear el suyo, es una orden especial
     o F-C3 (importación). El N.º de factura sí está en el paso 01 y se habilita cuando `clientAssignsInvoiceNumber`.
 11. **Pueblo del filtro**: las opciones son los pueblos de los consignatarios activos del directorio (`GET /locations`), porque no hay un endpoint de «pueblos con órdenes» y una orden siempre entrega a un
     consignatario. Es un filtro múltiple con buscador (`SearchSelect`) en lugar del `<select>` de la maqueta. Sin `locations.read` queda vacío.
@@ -64,7 +64,7 @@ Del implementador:
 13. **Tabla**: `DataTable` del kit (orden, paginación del servidor, exportación a Excel/CSV/PDF, tarjetas bajo 720 px) en lugar de la tabla con `overflow:auto; max-height:380px`. En tarjetas todos los tipos de
     paquete van juntos en la tarjeta de la orden (con «×piezas»). Se conserva el `QBox` de búsqueda libre (convención del documento maestro).
 14. **Papelera con confirmación** (`ConfirmDialog`); la maqueta borraba al instante. La papelera sale solo si `isInitialStatus` y con `orders.cancel`; si el servidor rechaza (422) muestra su mensaje en el diálogo.
-15. **Aviso de «orden guardada»**: al crear, el formulario se cierra y se limpia, sale un toast con el número y un aviso sobre la lista con «Abrir la orden» (la maqueta imprimía el label y repintaba).
+15. **Aviso de «orden guardada»**: al crear, el formulario se cierra y se limpia, sale un toast con el número y un aviso sobre la lista con «Abrir el envío» (la maqueta imprimía el label y repintaba).
 16. **Ancho del modal de factura repetida**: `size="sm"` del kit (la maqueta usa 520 px). Agrega un enlace «Ver la orden {número}» a la orden existente.
 17. **Paso 1-2-3 estático**, igual que la maqueta (solo decora); se oculta bajo 980 px, donde el ticket pasa debajo de las secciones.
 

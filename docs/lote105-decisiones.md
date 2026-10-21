@@ -1,4 +1,4 @@
-# Lote 105 — Entrada de órdenes del cliente en el portal (portal de clientes, 9) (2026-10-17)
+# Lote 105 — Entrada de envíos del cliente en el portal (portal de clientes, 9) (2026-10-17)
 
 El 105 original juntaba tres cosas; Luis eligió partirlo: **105 = entrada de órdenes del cliente**; **el acceso del consignatario pasó al lote 111** (invitación, primer ingreso y avisos con su aceptación; **corrección de Luis (2026-10-18): el consignatario no crea órdenes, solo las ve**). Decisiones suyas (preguntadas): la orden **entra directo al flujo normal** y el cliente escribe **solo lo básico**.
 

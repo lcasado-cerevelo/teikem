@@ -14,6 +14,6 @@
 ## Decisiones a revisar
 1. **El nivel no es obligatorio en nada:** zonas sin nivel, tarifas sin nivel y compañías sin niveles siguen igual.
 2. **Chofer por omisión del nivel** solo cuando la zona no tiene chofer propio (la zona manda).
-3. **La zona de la orden se guarda al crear/editar** (no se recalcula sola al cambiar miembros de zona): para eso está «Asignar zona a las órdenes» (`all=true` recalcula todas).
+3. **La zona de la orden se guarda al crear/editar** (no se recalcula sola al cambiar miembros de zona): para eso está «Asignar zona a los envíos» (`all=true` recalcula todas).
 4. **Tarifa por zona (no solo por nivel):** no se hizo; se agrega `DispatchZoneId` a la tarifa con la misma regla de preferencia si alguna compañía lo pide.
 5. **Migración de Colavora (para esa sesión):** `Zip.Zone` (METRO/ISLA) → crear los dos niveles y poner a cada zona de ruta el nivel mayoritario de sus ZIP; los servicios ISLAND se migran tal cual (los contratos históricos quedan fieles); después Advance puede pasar a «un servicio + tarifa por nivel» desde la pantalla. El chofer por omisión de ISLA lo elige Luis.

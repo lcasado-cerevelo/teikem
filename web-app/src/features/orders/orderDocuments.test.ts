@@ -1,4 +1,4 @@
-// Lote F-G2 — Waybill summary (por cliente con subtotales y total, sin precio) y Packing list (una sección por orden con sus paquetes),
+// Lote F-G2 — Waybill summary (por cliente con subtotales y total, sin precio) y Packing list (una sección por envío con sus paquetes),
 // en carta; las canceladas no entran y se avisa.
 import { beforeAll, describe, expect, it } from 'vitest'
 import { setLang, t } from '../../kernel/i18n/i18n'
@@ -19,27 +19,27 @@ const ctx = () => ({ t, locale: 'es', company: 'Advance Logistics', user: 'Ana',
 beforeAll(() => setLang('es'))
 
 describe('waybillSummarySpec', () => {
-  it('por cliente (orden alfabético) con subtotal de órdenes, piezas y COD; total general; sin precio; canceladas fuera con aviso', () => {
+  it('por cliente (envío alfabético) con subtotal de envíos, piezas y COD; total general; sin precio; canceladas fuera con aviso', () => {
     const s = waybillSummarySpec(ORDERS, ctx())
     expect(s.paper).toBe('letter')
     expect(s.orientation).toBe('landscape')
-    expect(s.columns.map((c) => c.header)).toEqual(['Empaque', 'N.º de orden', 'Factura', 'Cliente', 'Consignatario', 'Pueblo', 'ZIP', 'Servicio', 'Paquetes', 'Piezas', 'COD'])
+    expect(s.columns.map((c) => c.header)).toEqual(['Empaque', 'N.º de envío', 'Factura', 'Cliente', 'Consignatario', 'Pueblo', 'ZIP', 'Servicio', 'Paquetes', 'Piezas', 'COD'])
     expect(s.sections.map((x) => x.title)).toEqual(['Acme', 'Beta'])
     expect(s.sections[0].rows).toEqual([['EMP-1', 'ORD-1', 'F-1', 'Acme', 'Farmacia', 'San Juan', '00901', 'Estándar', 'Caja ×2', 2, 50]])
-    expect(s.sections[0].subtotal).toEqual(['Subtotal (1 órdenes)', '', '', '', '', '', '', '', '', 2, 50])
-    expect(s.totals).toEqual([['Total (2 órdenes)', '', '', '', '', '', '', '', '', 3, 50]])
+    expect(s.sections[0].subtotal).toEqual(['Subtotal (1 envíos)', '', '', '', '', '', '', '', '', 2, 50])
+    expect(s.totals).toEqual([['Total (2 envíos)', '', '', '', '', '', '', '', '', 3, 50]])
     expect(JSON.stringify(s)).not.toContain('120') // el precio nunca sale
-    expect(s.notices).toEqual(['1 órdenes canceladas no se incluyeron.'])
+    expect(s.notices).toEqual(['1 envíos cancelados no se incluyeron.'])
   })
 })
 
 describe('packingListSpec', () => {
-  it('una sección por orden con sus paquetes y subtotal; total de piezas y peso', () => {
+  it('una sección por envío con sus paquetes y subtotal; total de piezas y peso', () => {
     const s = packingListSpec(ORDERS, ctx(), (kg) => `${kg} kg`)
     expect(s.sections.map((x) => x.title)).toEqual(['EMP-2 · ORD-2 · Factura F-2 · Colmado · San Juan 00901', 'EMP-1 · ORD-1 · Factura F-1 · Farmacia · Calle 1, San Juan 00901'])
     expect(s.sections[1].rows).toEqual([['Caja', 'PQT-1', 'Ropa', 2, 4]])
     expect(s.sections[1].subtotal).toEqual(['1 paquetes', '', '', 2, 4])
-    expect(s.totals).toEqual([['Total (2 órdenes)', '', '', 3, 6.5]])
+    expect(s.totals).toEqual([['Total (2 envíos)', '', '', 3, 6.5]])
     expect(s.summary?.find((x) => x.label === 'Peso')?.value).toBe('6.5 kg')
   })
 

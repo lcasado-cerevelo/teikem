@@ -15,7 +15,7 @@ namespace Teikem.Infrastructure.Orders;
 /// </summary>
 public static class OrderQueries
 {
-    public const string OrderLabel = "Orden";
+    public const string OrderLabel = "Envío";
     public const string ConsigneeLabel = "Consignatario";
     public const string PickupLabel = "Localización de recogido";
 

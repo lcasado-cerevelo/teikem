@@ -38,7 +38,7 @@ test('Pick up: las marcas del tipo de servicio y una orden que termina En almac�
     const dialog = page.getByRole('dialog')
     await expect(dialog.getByText('Pick up (recojo y traigo)')).toBeVisible()
     await expect(dialog.getByText('Facturable', { exact: true }).first()).toBeVisible()
-    await expect(dialog.getByText(/la orden termina «En almacén» y no sale a ruta/)).toBeVisible()
+    await expect(dialog.getByText(/el envío termina «En almacén» y no sale a ruta/)).toBeVisible()
     await shot(page, isMobile, 'l114-marcas')
     await dialog.getByRole('button', { name: /Cancelar|Cerrar/ }).first().click()
   }

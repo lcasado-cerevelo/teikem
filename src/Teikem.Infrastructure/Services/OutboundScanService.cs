@@ -189,7 +189,7 @@ public sealed class OutboundScanService(
         {
             var pipeline = await statuses.GetPipelineAsync(StatusDomains.OrderStatus, includeDisabled: true, ct);
             var inTransit = pipeline.FirstOrDefault(s => string.Equals(s.Code, OrderStatuses.InTransit, StringComparison.OrdinalIgnoreCase))
-                            ?? throw new InvalidOperationException("El pipeline de órdenes no tiene la etapa IN_TRANSIT.");
+                            ?? throw new InvalidOperationException("El pipeline de envíos no tiene la etapa IN_TRANSIT.");
             var status = pipeline.FirstOrDefault(s => s.Id == order.StatusCodeId);
             var allowed = await statuses.IsAllowedAsync(EntityTypes.TransportOrder, order.StatusCodeId, Capabilities.AssignTrip, ct);
             ineligible = TripRules.CheckEligibility(new OrderEligibilityInput(

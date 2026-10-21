@@ -133,7 +133,7 @@ test('Exportar: plantilla nueva, vista previa y descarga que marca la corrida co
   await editor.getByLabel('Delimitador').selectOption('\t')
   await editor.getByLabel('Formato de fecha').selectOption('MM/DD/YYYY')
   // dejar solo tres columnas: número de factura, fecha de emisión y total de la línea (en ese orden)
-  for (const name of ['Fecha de vencimiento', 'Código del cliente', 'Cliente', 'Moneda', 'Número de línea', 'Tipo de cargo', 'Descripción', 'Número de orden', 'Código del producto', 'Cantidad', 'Monto unitario',
+  for (const name of ['Fecha de vencimiento', 'Código del cliente', 'Cliente', 'Moneda', 'Número de línea', 'Tipo de cargo', 'Descripción', 'Número de envío', 'Código del producto', 'Cantidad', 'Monto unitario',
     'Subtotal de la línea', 'Tasa de impuesto (%)', 'Impuesto de la línea', 'Subtotal de la factura', 'Impuesto de la factura', 'Total de la factura', 'Número de la corrida', 'Inicio del período', 'Fin del período']) {
     await editor.getByRole('button', { name: `Quitar ${name}`, exact: true }).click()
   }

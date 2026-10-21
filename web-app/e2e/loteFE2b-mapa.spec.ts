@@ -170,7 +170,7 @@ test.describe('Plano de ruta, arrastrar y pin manual (Lote F-E2b)', () => {
     await expect(activeHeading).toContainText(trip.code ?? '')
     const panel = page.locator('.panel', { has: activeHeading })
     const plane = page.getByRole('group', { name: `Plano de la ruta ${trip.code}` })
-    const stopsList = page.getByRole('list', { name: 'Órdenes en esta ruta' })
+    const stopsList = page.getByRole('list', { name: 'Envíos en esta ruta' })
     const rowOf = (n: string) => stopsList.getByRole('listitem').filter({ hasText: n })
     const pins = plane.getByRole('button', { name: /^Parada \d/ })
     // el orden del DOM es el de la secuencia mostrada; se busca por número de parada (la secuencia cambia al reordenar)
@@ -216,7 +216,7 @@ test.describe('Plano de ruta, arrastrar y pin manual (Lote F-E2b)', () => {
     await expect(pin(2)).toHaveAttribute('aria-pressed', 'true')
     await expect(rowOf(numberOf(1))).toHaveClass(/\bon\b/)
     await expect(panel.locator('.disp-map-sel')).toContainText(`Parada 2 · ${numberOf(1)}`)
-    await rowOf(numberOf(2)).getByRole('button', { name: `Elegir la orden ${numberOf(2)}` }).click()
+    await rowOf(numberOf(2)).getByRole('button', { name: `Elegir el envío ${numberOf(2)}` }).click()
     await expect(pin(3)).toHaveAttribute('aria-pressed', 'true')
     await expect(pin(2)).toHaveAttribute('aria-pressed', 'false')
     // por teclado: Tab hasta un pin y Enter
@@ -227,7 +227,7 @@ test.describe('Plano de ruta, arrastrar y pin manual (Lote F-E2b)', () => {
     if (isMobile) await expectNoHorizontalScroll(page)
 
     // ---- 3. Pin manual por pantalla: error de rango, plano de referencia y guardar ----
-    await rowOf(numberOf(3)).getByRole('button', { name: `Poner pin a la orden ${numberOf(3)}` }).click()
+    await rowOf(numberOf(3)).getByRole('button', { name: `Poner pin al envío ${numberOf(3)}` }).click()
     const dialog = page.getByRole('dialog', { name: `Pin manual · ${numberOf(3)}` })
     await expect(dialog).toBeVisible()
     await dialog.getByRole('button', { name: 'Guardar pin' }).click()
@@ -272,7 +272,7 @@ test.describe('Plano de ruta, arrastrar y pin manual (Lote F-E2b)', () => {
     // ---- 4. Reordenar ARRASTRANDO el asa (ratón) y con ▲ ▼ ----
     const before = await sequenceNow()
     expect(before).toEqual([numberOf(0), numberOf(1), numberOf(2), numberOf(3)])
-    const grip = (n: string) => stopsList.getByRole('button', { name: `Arrastrar la orden ${n} para reordenar (o use las flechas ↑ ↓)` })
+    const grip = (n: string) => stopsList.getByRole('button', { name: `Arrastrar el envío ${n} para reordenar (o use las flechas ↑ ↓)` })
     const dragTo = async (from: string, to: string) => {
       // el ratón de Playwright solo alcanza lo que está en la ventana (y dentro del área visible de la lista)
       await stopsList.scrollIntoViewIfNeeded()
@@ -295,9 +295,9 @@ test.describe('Plano de ruta, arrastrar y pin manual (Lote F-E2b)', () => {
     await dragTo(numberOf(0), numberOf(2)) // la segunda a la última
     await expect.poll(sequenceNow).toEqual([numberOf(3), numberOf(1), numberOf(2), numberOf(0)])
     // ▲ ▼
-    await page.getByRole('button', { name: `Subir la orden ${numberOf(0)}` }).click()
+    await page.getByRole('button', { name: `Subir el envío ${numberOf(0)}` }).click()
     await expect.poll(sequenceNow).toEqual([numberOf(3), numberOf(1), numberOf(0), numberOf(2)])
-    await page.getByRole('button', { name: `Bajar la orden ${numberOf(3)}` }).click()
+    await page.getByRole('button', { name: `Bajar el envío ${numberOf(3)}` }).click()
     await expect.poll(sequenceNow).toEqual([numberOf(1), numberOf(3), numberOf(0), numberOf(2)])
     // teclado en el asa
     await grip(numberOf(2)).focus()
@@ -319,9 +319,9 @@ test.describe('Plano de ruta, arrastrar y pin manual (Lote F-E2b)', () => {
     await page.reload()
     await expect(activeHeading).toContainText('Despachado')
     await expect(pins).toHaveCount(4)
-    await expect(stopsList.getByRole('button', { name: /Arrastrar la orden/ })).toHaveCount(0)
+    await expect(stopsList.getByRole('button', { name: /Arrastrar el envío/ })).toHaveCount(0)
     await expect(stopsList.getByRole('button', { name: /Poner pin|Mover el pin/ })).toHaveCount(0)
-    await expect(stopsList.getByRole('button', { name: /Subir la orden|Bajar la orden|Quitar la orden/ })).toHaveCount(0)
+    await expect(stopsList.getByRole('button', { name: /Subir el envío|Bajar el envío|Quitar el envío/ })).toHaveCount(0)
     await pin(1).click()
     await expect(panel.locator('.disp-map-sel')).toBeVisible()
     await expect(panel.locator('.disp-map-sel').getByRole('button')).toHaveCount(0)

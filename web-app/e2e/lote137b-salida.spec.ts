@@ -106,7 +106,7 @@ test('Salida: API saliente HTTP (al instante y por horario), reintentos, bandeja
     await bad({ output: undefined }, 'Indique qué se manda (estatus, formato y columnas).')
     await bad({ output: { statuses: [], trigger: 'EVENT', format: 'JSON', columns: COLUMNS, http: { url: `${receiver.url}/ok`, method: 'POST', authKind: 'NONE' } } }, 'Escoja al menos un estatus que dispare la salida.')
     await bad({ output: { statuses: ['DELIVERED'], trigger: 'EVENT', format: 'JSON', columns: [], http: { url: `${receiver.url}/ok`, method: 'POST', authKind: 'NONE' } } }, 'Agregue al menos una columna a la salida.')
-    await bad({ output: { statuses: ['DELIVERED'], trigger: 'EVENT', format: 'JSON', columns: [{ header: 'Número de orden', field: 'orderNumber' }], http: { url: `${receiver.url}/ok`, method: 'POST', authKind: 'NONE' } } }, 'debe empezar con una letra o guion bajo')
+    await bad({ output: { statuses: ['DELIVERED'], trigger: 'EVENT', format: 'JSON', columns: [{ header: 'Número de envío', field: 'orderNumber' }], http: { url: `${receiver.url}/ok`, method: 'POST', authKind: 'NONE' } } }, 'debe empezar con una letra o guion bajo')
     await bad({ output: { statuses: ['DELIVERED'], trigger: 'EVENT', format: 'JSON', columns: COLUMNS, http: { url: 'ftp://x', method: 'POST', authKind: 'NONE' } } }, 'La URL no es válida')
     await bad({ output: { statuses: ['DELIVERED'], trigger: 'EVENT', format: 'JSON', columns: COLUMNS, http: { url: `${receiver.url}/ok`, method: 'DELETE', authKind: 'NONE' } } }, 'Método desconocido: DELETE. Use POST o PUT.')
     await bad({ httpSecret: undefined }, 'Indique el token, la contraseña o el valor del encabezado de la autenticación.')
@@ -132,9 +132,9 @@ test('Salida: API saliente HTTP (al instante y por horario), reintentos, bandeja
     expect(body.orders[0]).toMatchObject({ orderNumber: orderA.orderNumber, status: 'DELIVERED', recipientName: `Ana ${s}`, consignee: `Colmado A ${s}` })
     expect(typeof body.orders[0].pieces).toBe('number')
     expect(String(body.orders[0].deliveredAt)).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/)
-    expect(sent[0].body).not.toContain(`Beto ${s}`)   // el número de orden es consecutivo por cliente: se distingue por quien recibió
+    expect(sent[0].body).not.toContain(`Beto ${s}`)   // el número de envío es consecutivo por cliente: se distingue por quien recibió
     const nothing = await ok<Run>(request.post(`${API_URL}/api/v1/integrations/${intEvent.publicId}/run`, { headers }), 'enviar otra vez')
-    expect(nothing.message).toBe('No hay órdenes pendientes de enviar.')
+    expect(nothing.message).toBe('No hay envíos pendientes de enviar.')
 
     // ---- vista previa y probar la API
     const preview = await ok<Preview>(request.post(`${API_URL}/api/v1/integrations/${intEvent.publicId}/output/preview`, { headers }), 'vista previa')
@@ -293,8 +293,8 @@ test('pantalla: crear una integración de salida (API saliente), probar, enviar 
     await expect(form.getByLabel(/^Conector/)).toHaveValue('HTTP')
     await expect(form.getByLabel(/^Plantilla de importación/)).toHaveCount(0)                  // una salida no usa plantilla
     await expect(form.locator('fieldset', { hasText: 'Formato del archivo' })).toHaveCount(0)
-    await expect(form.getByRole('switch', { name: 'Salida de órdenes por archivo o API' })).toBeChecked()
-    await expect(form.getByRole('switch', { name: 'Entrada de órdenes por archivo' })).toHaveCount(0)
+    await expect(form.getByRole('switch', { name: 'Salida de envíos por archivo o API' })).toBeChecked()
+    await expect(form.getByRole('switch', { name: 'Entrada de envíos por archivo' })).toHaveCount(0)
     await form.getByLabel(/^Nombre/).first().fill(name)
     await form.getByLabel(/^Cliente/).selectOption(client.publicId)
     await form.getByLabel(/^Autenticación/).selectOption('BEARER')
@@ -328,7 +328,7 @@ test('pantalla: crear una integración de salida (API saliente), probar, enviar 
     await ok(request.post(`${API_URL}/api/v1/orders/${order.publicId}/delivery`, { headers, data: { recipientName: `Recibe ${s}` } }), 'entrega')
     await row.getByRole('button', { name: 'Enviar ahora' }).click()
     await expect.poll(() => receiver.received.filter((r) => r.body.includes(`Recibe ${s}`)).length, { timeout: 20_000 }).toBe(1)
-    await expect(row).toContainText('1 envío(s) armado(s) con 1 orden(es): 1 enviado(s)', { timeout: 20_000 })
+    await expect(row).toContainText('1 envío(s) armado(s) con 1 envío(es): 1 enviado(s)', { timeout: 20_000 })
 
     // vista previa
     await row.getByRole('button', { name: 'Vista previa' }).click()

@@ -264,9 +264,9 @@ public static class InventoryQueries
             RequireTransaction(db, nameof(LockTransportOrderAsync));
             var tenantId = db.CurrentTenantId;
             await RequireLockedAsync(db.Database.SqlQuery<int>($"SELECT TransportOrderId AS Value FROM dbo.TransportOrder WITH (UPDLOCK, ROWLOCK) WHERE TransportOrderId = {transportOrderId} AND TenantId = {tenantId}"),
-                () => new NotFoundException("Orden", null, true), ct);
+                () => new NotFoundException("Envío", null, false), ct);
         }
-        return await LoadTrackedAsync(db, db.Set<Teikem.Domain.Orders.TransportOrder>().Where(x => x.TransportOrderId == transportOrderId), () => new NotFoundException("Orden", null, true), ct);
+        return await LoadTrackedAsync(db, db.Set<Teikem.Domain.Orders.TransportOrder>().Where(x => x.TransportOrderId == transportOrderId), () => new NotFoundException("Envío", null, false), ct);
     }
 
     /// <summary>(22, Lote 75) Factura con UPDLOCK, tracked: registrar o anular un pago la bloquea para que dos pagos a la vez no pasen del saldo. 404 'Factura no encontrada.'</summary>

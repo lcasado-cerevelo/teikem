@@ -165,7 +165,7 @@ test.describe('Clientes y contratos (F-A1 + F-A2)', () => {
 
     // ---- Numeración con ejemplo en vivo ----
     const numbering = panel(page, 'Numeración')
-    await numbering.getByLabel('Número de orden', { exact: true }).fill('AX-#####')
+    await numbering.getByLabel('Número de envío', { exact: true }).fill('AX-#####')
     await expect(numbering.getByText('AX-00001', { exact: true })).toBeVisible()
     await numbering.getByRole('button', { name: 'Guardar' }).click()
     await expect(toast(page, 'Cambios guardados.')).toBeVisible()

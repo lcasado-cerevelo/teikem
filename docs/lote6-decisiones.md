@@ -194,7 +194,7 @@ repiten aquí; el texto completo de cada una vive en `docs/lote6-plan.md`.
   insumos `ReceiptHeader.ReceivedAtUtc`, los costos congelados en `PurchaseOrderLine`/`PickBatchLine`,
   `IOrderInventoryLines` y las fuentes `RECEIPT`/`PICK_BATCH`.
 - Conversión de unidades (`ProductUom`): sin modelar; las cantidades son siempre en la unidad base.
-- Búsqueda COD por número de orden (13B, punto 11B del maestro): no tocada en este lote.
+- Búsqueda COD por número de envío (13B, punto 11B del maestro): no tocada en este lote.
 - `Vehicle`/`Driver.HomeWarehouseId` y `Trip.OriginWarehouseId`: siguen sin escribirse, aunque `Warehouse` ya está
   mapeado desde este lote (hallazgo heredado, D33 del plan).
 - Filtro por almacén de `UserDataScope` (D42, arriba): un usuario con alcance de almacén sigue viendo todos los

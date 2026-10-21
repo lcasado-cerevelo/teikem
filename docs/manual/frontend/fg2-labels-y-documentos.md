@@ -29,7 +29,7 @@ Con **«Confirmar antes»** encendido en la estación, primero aparece la vista:
 - En el pie de la tabla, como en la maqueta:
   - **Waybill summary** y **Packing list**: de las órdenes **marcadas** o, sin marcas, de **todo lo que dicen los filtros y la búsqueda**
     (todas las páginas). Salen en papel carta por la impresora de documentos de la estación.
-    - *Waybill summary*: una fila por orden (Empaque, N.º de orden, Factura, Cliente, Consignatario, Pueblo, ZIP, Servicio, Paquetes, Piezas,
+    - *Waybill summary*: una fila por orden (Empaque, N.º de envío, Factura, Cliente, Consignatario, Pueblo, ZIP, Servicio, Paquetes, Piezas,
       COD), agrupado por cliente con subtotales y total general.
     - *Packing list*: una sección por orden (empaque, orden, factura, consignatario y dirección) con sus paquetes (tipo, n.º de paquete,
       descripción, piezas, peso) y totales.
@@ -62,7 +62,7 @@ Con **«Confirmar antes»** encendido en la estación, primero aparece la vista:
   escanearon en esta sesión. Sale en carta por la impresora de documentos de la estación.
 - **Escanear el label**: el número de paquete del label encuentra su orden («Encontrada por número de paquete.»). Si ese número lo tienen
   varias órdenes (cada cliente numera sus paquetes desde PQT-00001): «El número de paquete está en {n} órdenes (de clientes distintos o
-  repetido); escanee el empaque o el número de orden.».
+  repetido); escanee el empaque o el número de envío.».
 
 ## 6. Casos frecuentes
 

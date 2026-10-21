@@ -16,7 +16,7 @@ La paleta de arriba («Buscar o ejecutar…») hoy solo filtra el menú. Debe bu
 
 | Se busca por | Lleva a |
 |---|---|
-| Envío: número de orden, número de empaque (EMP), número de conduce, número de factura del cliente, número de paquete/pieza, referencia del cliente, **número de parte (= SKU del producto, interpretación)** | Ficha del envío |
+| Envío: número de envío, número de empaque (EMP), número de conduce, número de factura del cliente, número de paquete/pieza, referencia del cliente, **número de parte (= SKU del producto, interpretación)** | Ficha del envío |
 | Número de ruta (el que Luis llama número de ruta; ver §4) | La ruta (monitor / sala de despacho) |
 | Número de reclamación | Reclamaciones, filtrada (ver §5). También por **nombre del cliente** (interpretación) |
 | Cliente: número (código) y nombre | Ficha del cliente |
@@ -31,10 +31,10 @@ La paleta de arriba («Buscar o ejecutar…») hoy solo filtra el menú. Debe bu
 
 ## 2. Nombre «Envíos» en lugar de «Órdenes»
 
-- **Donde diga «orden/órdenes» y sea de transporte, debe decir «envío/envíos»**: pantalla de Envíos (título y textos), Sala de despacho («Órdenes sin asignar» → «Envíos sin asignar»), escaneo, reclamaciones, y **también el portal del cliente** (`app-cliente`).
+- **Donde diga «orden/órdenes» y sea de transporte, debe decir «envío/envíos»**: pantalla de Envíos (título y textos), Sala de despacho («Envíos sin asignar» → «Envíos sin asignar»), escaneo, reclamaciones, y **también el portal del cliente** (`app-cliente`).
 - **No cambian** las órdenes de compra, de venta ni de trabajo (mantenimiento): se siguen buscando y mostrando como órdenes (interpretación; falta confirmar).
 - Alcance conocido (mapa del 2026-10-20): el título del menú ya dice «Envíos» (`nav.orders.title`). Quedan unas **236 cadenas** en `es.json` con «orden/órdenes» sin ser de compra/venta/trabajo, en su mayoría `orders.*`, `dispatch.*`, `scan.*`, `claims.*`, `cod.*`, `integrations.*`; algunas están mezcladas (`warehouse.pickBatches.*`, `analytics.attention.*`, `system.settings.*`) y se revisan una por una. Hay que hacerlo en **es y en** (inglés: «Shipments»), y en `app-cliente`.
-- «Órdenes sin asignar» está en `dispatch.unassigned.title` (y `added`, `empty`, `emptyFiltered`, `error`).
+- «Envíos sin asignar» está en `dispatch.unassigned.title` (y `added`, `empty`, `emptyFiltered`, `error`).
 
 ## 3. Avisos de llegada con código
 
@@ -87,7 +87,7 @@ Reclamaciones, proveedores, facturas (y avisos de llegada cuando tengan código)
 
 ## 8. Arreglo suelto: códigos largos en la tabla de Envíos
 
-En la tabla de Envíos, empaque, conduce y número de orden (p. ej. `0079372102937839AXH`) se parten en tres renglones y no se leen ni se copian bien. Corregir: que el código no se parta (ancho fijo, sin envolver). Es independiente de la búsqueda.
+En la tabla de Envíos, empaque, conduce y número de envío (p. ej. `0079372102937839AXH`) se parten en tres renglones y no se leen ni se copian bien. Corregir: que el código no se parta (ancho fijo, sin envolver). Es independiente de la búsqueda.
 
 ## 9. Lo que ya existe (mapa del código, 2026-10-20)
 

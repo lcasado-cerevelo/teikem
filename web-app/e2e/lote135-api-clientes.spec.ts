@@ -186,9 +186,9 @@ test('pantalla: conector API, llaves con el secreto una sola vez, bitácora y re
   await expect(form.getByLabel(/^Plantilla de importación/)).toHaveCount(0)
   await expect(form.getByLabel(/^Horario/)).toHaveCount(0)
   await form.getByLabel(/^Nombre/).fill(`1 API ${s}`)
-  await form.getByRole('switch', { name: 'API: leer órdenes, su seguimiento y el comprobante de entrega' }).check()
+  await form.getByRole('switch', { name: 'API: leer envíos, su seguimiento y el comprobante de entrega' }).check()
   await form.getByRole('button', { name: 'Crear integración' }).click()
-  await expect(form.getByText('Escoja el cliente: algún alcance elegido es de órdenes de transporte.')).toBeVisible()
+  await expect(form.getByText('Escoja el cliente: algún alcance elegido es de envíos de transporte.')).toBeVisible()
   await shot(page, isMobile, 'l135-formulario', 1500)
   await form.getByRole('button', { name: 'Cancelar' }).click()
 

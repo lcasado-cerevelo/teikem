@@ -173,10 +173,10 @@ describe('BillingScreen', () => {
 
     // Lote 74: hay que dejar marcado al menos uno (producto o flete) y solo se manda lo que se apagó
     await user.click(within(dialog).getByLabelText('Venta de producto despachado'))
-    await user.click(within(dialog).getByLabelText('Flete de las órdenes de transporte'))
+    await user.click(within(dialog).getByLabelText('Flete de los envíos de transporte'))
     await user.click(within(dialog).getByRole('button', { name: 'Generar' }))
     expect(await within(dialog).findByText('Elija qué facturar: la venta de producto, el flete o las dos cosas.')).toBeInTheDocument()
-    await user.click(within(dialog).getByLabelText('Flete de las órdenes de transporte'))
+    await user.click(within(dialog).getByLabelText('Flete de los envíos de transporte'))
     await user.click(within(dialog).getByRole('button', { name: 'Generar' }))
     await within(dialog).findByText('No hay nada por facturar con esos datos.')
     expect(sent('POST', '/api/v1/billing/runs')[1].body).toMatchObject({ includeProducts: false })

@@ -1,5 +1,5 @@
-// Lote F-C1 — Órdenes: lista (filas por tipo de paquete, paginación por órdenes, filtros de la maqueta con arreglos repetidos,
-// Limpiar, ordenar sobre todo lo filtrado), papelera y abrir, columna Cotizado según orders.view_price y el botón «Nueva orden».
+// Lote F-C1 — Envíos: lista (filas por tipo de paquete, paginación por envíos, filtros de la maqueta con arreglos repetidos,
+// Limpiar, ordenar sobre todo lo filtrado), papelera y abrir, columna Cotizado según orders.view_price y el botón «Nuevo envío».
 // Sobre un fetch simulado.
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
@@ -102,8 +102,8 @@ beforeEach(() => {
   window.localStorage.clear()
 })
 
-describe('Órdenes — lista', () => {
-  it('una fila por tipo de paquete: «↳» en las continuaciones, el resto de celdas solo en la primera, y el contador cuenta órdenes', async () => {
+describe('Envíos — lista', () => {
+  it('una fila por tipo de paquete: «↳» en las continuaciones, el resto de celdas solo en la primera, y el contador cuenta envíos', async () => {
     wrap(VIEW)
     await screen.findByText('Farmacia Central')
     const rows = bodyRows()
@@ -123,16 +123,16 @@ describe('Órdenes — lista', () => {
     expect(within(cont).queryByText('Entrada')).toBeNull()
     expect(within(second).getByText('ORD-00002')).toBeInTheDocument()
     expect(within(second).getByText('—')).toBeInTheDocument() // sin COD
-    // la paginación cuenta órdenes (2), no filas (3)
+    // la paginación cuenta envíos (2), no filas (3)
     expect(screen.getByText('1–2 de 2')).toBeInTheDocument()
   })
 
-  it('muestra las columnas de la maqueta en su orden', async () => {
+  it('muestra las columnas de la maqueta en su envío', async () => {
     wrap(VIEW)
     await screen.findByText('Farmacia Central')
     const heads = within(screen.getAllByRole('rowgroup')[0]).getAllByRole('columnheader').map((h) => h.textContent?.trim())
     // Lote F-G2: la casilla «Elegir» primero (para Imprimir label)
-    expect(heads.slice(0, 15)).toEqual(['Elegir', 'Empaque', 'Conduce', 'N.º orden', 'Fecha', 'Zona', 'Factura procesada', 'Consignatario', 'Pueblo', 'ZIP', 'Servicio', 'Paquete', 'Piezas', 'COD', 'Estatus'])   // Lote 128: cuándo se procesó la factura
+    expect(heads.slice(0, 15)).toEqual(['Elegir', 'Empaque', 'Conduce', 'N.º envío', 'Fecha', 'Zona', 'Factura procesada', 'Consignatario', 'Pueblo', 'ZIP', 'Servicio', 'Paquete', 'Piezas', 'COD', 'Estatus'])   // Lote 128: cuándo se procesó la factura
   })
 
   it('pide la primera página con skip/take', async () => {
@@ -160,11 +160,11 @@ describe('Órdenes — lista', () => {
     await user.click(screen.getByLabelText('Estatus'))
     await user.click(await screen.findByLabelText('Entrada'))
     await waitFor(() => expect(lastOrdersQuery().getAll('statuses')).toEqual(['DRAFT']))
-    // Texto: ZIP (prefijo), factura, empaque, N.º de orden y consignatario
+    // Texto: ZIP (prefijo), factura, empaque, N.º de envío y consignatario
     await user.type(screen.getByLabelText('ZIP'), '009')
     await user.type(screen.getByLabelText('Factura'), 'FAC-1')
     await user.type(screen.getByLabelText('Empaque'), 'EMP-1')
-    await user.type(screen.getByLabelText('N.º de orden'), 'ORD-1')
+    await user.type(screen.getByLabelText('N.º de envío'), 'ORD-1')
     await user.type(screen.getByLabelText('Consignatario'), 'Farm')
     // Lote 128: factura procesada (sí/no) y fecha de procesamiento (rangos sugeridos)
     await user.selectOptions(screen.getByLabelText('Factura procesada'), 'yes')
@@ -242,15 +242,15 @@ describe('Órdenes — lista', () => {
   })
 })
 
-describe('Órdenes — papelera, abrir y precio', () => {
-  it('la papelera solo sale en el estatus inicial y con orders.cancel; la flecha abre la orden (una vez por orden)', async () => {
+describe('Envíos — papelera, abrir y precio', () => {
+  it('la papelera solo sale en el estatus inicial y con orders.cancel; la flecha abre el envío (una vez por envío)', async () => {
     const user = userEvent.setup()
     wrap([...VIEW, 'orders.cancel'])
     await screen.findByText('Farmacia Central')
-    expect(screen.getAllByRole('button', { name: 'Eliminar la orden' })).toHaveLength(1)
-    const opens = screen.getAllByRole('button', { name: 'Abrir la orden' })
+    expect(screen.getAllByRole('button', { name: 'Eliminar el envío' })).toHaveLength(1)
+    const opens = screen.getAllByRole('button', { name: 'Abrir el envío' })
     expect(opens).toHaveLength(2)
-    // la primera fila de la orden con dos tipos de paquete tiene los botones; la continuación no
+    // la primera fila del envío con dos tipos de paquete tiene los botones; la continuación no
     expect(within(bodyRows()[1]).queryByRole('button')).toBeNull()
     await user.click(opens[1])
     expect(await screen.findByText('Ficha abierta')).toBeInTheDocument()
@@ -259,16 +259,16 @@ describe('Órdenes — papelera, abrir y precio', () => {
   it('sin orders.cancel no hay papelera', async () => {
     wrap(VIEW)
     await screen.findByText('Farmacia Central')
-    expect(screen.queryByRole('button', { name: 'Eliminar la orden' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Eliminar el envío' })).toBeNull()
   })
 
   it('eliminar pide confirmación, llama DELETE y refresca la lista', async () => {
     const user = userEvent.setup()
     wrap([...VIEW, 'orders.cancel'])
     await screen.findByText('Farmacia Central')
-    await user.click(screen.getByRole('button', { name: 'Eliminar la orden' }))
+    await user.click(screen.getByRole('button', { name: 'Eliminar el envío' }))
     const dialog = await screen.findByRole('dialog')
-    expect(within(dialog).getByText('Eliminar la orden ORD-00001')).toBeInTheDocument()
+    expect(within(dialog).getByText('Eliminar el envío ORD-00001')).toBeInTheDocument()
     const before = callsTo('GET', '/api/v1/orders').length
     await user.click(within(dialog).getByRole('button', { name: 'Eliminar' }))
     await waitFor(() => expect(callsTo('DELETE', '/api/v1/orders/o-1')).toHaveLength(1))
@@ -279,13 +279,13 @@ describe('Órdenes — papelera, abrir y precio', () => {
   it('si el servidor rechaza la eliminación (422), muestra su mensaje y no cierra', async () => {
     const user = userEvent.setup()
     mock.override = (c) =>
-      c.method === 'DELETE' ? problem(422, 'Solo se puede eliminar una orden en su estatus inicial; use la cancelación.', 'status_rule') : undefined
+      c.method === 'DELETE' ? problem(422, 'Solo se puede eliminar un envío en su estatus inicial; use la cancelación.', 'status_rule') : undefined
     wrap([...VIEW, 'orders.cancel'])
     await screen.findByText('Farmacia Central')
-    await user.click(screen.getByRole('button', { name: 'Eliminar la orden' }))
+    await user.click(screen.getByRole('button', { name: 'Eliminar el envío' }))
     const dialog = await screen.findByRole('dialog')
     await user.click(within(dialog).getByRole('button', { name: 'Eliminar' }))
-    expect(await within(dialog).findByText('Solo se puede eliminar una orden en su estatus inicial; use la cancelación.')).toBeInTheDocument()
+    expect(await within(dialog).findByText('Solo se puede eliminar un envío en su estatus inicial; use la cancelación.')).toBeInTheDocument()
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
@@ -302,37 +302,37 @@ describe('Órdenes — papelera, abrir y precio', () => {
   })
 })
 
-describe('Órdenes — Nueva orden', () => {
+describe('Envíos — Nuevo envío', () => {
   it('el botón solo existe con orders.create; abre el formulario y «Ocultar formulario» lo cierra', async () => {
     const user = userEvent.setup()
     window.localStorage.setItem('teikem.orders.entryMode', 'detail') // la Rápida es la predeterminada (F-C3); aquí se prueba el desplegable
     const { unmount } = wrap(VIEW)
     await screen.findByText('Farmacia Central')
-    expect(screen.queryByRole('button', { name: /Nueva orden/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Nuevo envío/ })).toBeNull()
     unmount()
     wrap([...VIEW, 'orders.create'])
     await screen.findByText('Farmacia Central')
-    await user.click(screen.getByRole('button', { name: /Nueva orden/ }))
-    expect(await screen.findByText('Ticket de la orden')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Nueva orden/ })).toBeNull()
+    await user.click(screen.getByRole('button', { name: /Nuevo envío/ }))
+    expect(await screen.findByText('Ticket del envío')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Nuevo envío/ })).toBeNull()
     await user.click(screen.getByRole('button', { name: 'Ocultar formulario' }))
-    expect(screen.queryByText('Ticket de la orden')).toBeNull()
-    expect(screen.getByRole('button', { name: /Nueva orden/ })).toBeInTheDocument()
+    expect(screen.queryByText('Ticket del envío')).toBeNull()
+    expect(screen.getByRole('button', { name: /Nuevo envío/ })).toBeInTheDocument()
   })
 })
 
-describe('Órdenes — Rápida / Detallada e Importar (F-C3)', () => {
-  it('«Nueva orden» abre la entrada Rápida por omisión y el segmentado cambia a Detallada', async () => {
+describe('Envíos — Rápida / Detallada e Importar (F-C3)', () => {
+  it('«Nuevo envío» abre la entrada Rápida por omisión y el segmentado cambia a Detallada', async () => {
     const user = userEvent.setup()
     wrap([...VIEW, 'orders.create'])
     await screen.findByText('Farmacia Central')
-    await user.click(screen.getByRole('button', { name: /Nueva orden/ }))
+    await user.click(screen.getByRole('button', { name: /Nuevo envío/ }))
     const rapida = screen.getByRole('button', { name: /Rápida/ })
     expect(rapida).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: /Guardar fila/ })).toBeInTheDocument()
-    expect(screen.queryByText('Ticket de la orden')).toBeNull()
+    expect(screen.queryByText('Ticket del envío')).toBeNull()
     await user.click(screen.getByRole('button', { name: /Detallada/ }))
-    expect(await screen.findByText('Ticket de la orden')).toBeInTheDocument()
+    expect(await screen.findByText('Ticket del envío')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Guardar fila/ })).toBeNull()
     expect(screen.getByRole('button', { name: /Detallada/ })).toHaveAttribute('aria-pressed', 'true')
   })
@@ -341,14 +341,14 @@ describe('Órdenes — Rápida / Detallada e Importar (F-C3)', () => {
     const user = userEvent.setup()
     const first = wrap([...VIEW, 'orders.create'])
     await screen.findByText('Farmacia Central')
-    await user.click(screen.getByRole('button', { name: /Nueva orden/ }))
+    await user.click(screen.getByRole('button', { name: /Nuevo envío/ }))
     await user.click(screen.getByRole('button', { name: /Detallada/ }))
     expect(window.localStorage.getItem('teikem.orders.entryMode')).toBe('detail')
     first.unmount()
     wrap([...VIEW, 'orders.create'])
     await screen.findByText('Farmacia Central')
-    await user.click(screen.getByRole('button', { name: /Nueva orden/ }))
-    expect(await screen.findByText('Ticket de la orden')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Nuevo envío/ }))
+    expect(await screen.findByText('Ticket del envío')).toBeInTheDocument()
   })
 
   it('un localStorage que falla no rompe la pantalla (queda en Rápida)', async () => {
@@ -362,10 +362,10 @@ describe('Órdenes — Rápida / Detallada e Importar (F-C3)', () => {
     try {
       wrap([...VIEW, 'orders.create'])
       await screen.findByText('Farmacia Central')
-      await user.click(screen.getByRole('button', { name: /Nueva orden/ }))
+      await user.click(screen.getByRole('button', { name: /Nuevo envío/ }))
       expect(screen.getByRole('button', { name: /Guardar fila/ })).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: /Detallada/ }))
-      expect(await screen.findByText('Ticket de la orden')).toBeInTheDocument()
+      expect(await screen.findByText('Ticket del envío')).toBeInTheDocument()
     } finally {
       get.mockRestore()
       set.mockRestore()
@@ -381,11 +381,11 @@ describe('Órdenes — Rápida / Detallada e Importar (F-C3)', () => {
     wrap([...VIEW, 'orders.create'])
     await screen.findByText('Farmacia Central')
     await user.click(screen.getByRole('button', { name: 'Importar' }))
-    expect(await screen.findByText('Importar órdenes desde CSV')).toBeInTheDocument()
+    expect(await screen.findByText('Importar envíos desde CSV')).toBeInTheDocument()
   })
 })
 
-describe('Órdenes — labels y documentos (Lote F-G2)', () => {
+describe('Envíos — labels y documentos (Lote F-G2)', () => {
   const withNumbers = () => [
     { ...O1, packages: [{ ...O1.packages[0], packageNumber: 'PQT-00001' }, { ...O1.packages[1], packageNumber: 'PQT-00002' }] },
     { ...O2, packages: [{ ...O2.packages[0], packageNumber: 'PQT-00003' }] },
@@ -402,18 +402,18 @@ describe('Órdenes — labels y documentos (Lote F-G2)', () => {
     const print = screen.getByRole('button', { name: 'Imprimir label' })
     expect(print).toBeDisabled()
     expect(print).toHaveAttribute('title', 'Para imprimir solo algunas, márquelas en la lista con sus casillas.')
-    await user.click(screen.getByRole('checkbox', { name: 'Elegir la orden ORD-00001' }))
-    await user.click(screen.getByRole('checkbox', { name: 'Elegir la orden ORD-00002' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Elegir el envío ORD-00001' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Elegir el envío ORD-00002' }))
     expect(screen.getByText('2 marcadas')).toBeInTheDocument()
-    expect(screen.queryByText('Ficha abierta')).toBeNull() // marcar no abre la orden
+    expect(screen.queryByText('Ficha abierta')).toBeNull() // marcar no abre el envío
     await user.click(print)
     const dialog = await screen.findByRole('dialog', { name: 'Imprimir 4 labels' })
-    expect(within(dialog).getByTestId('print-count')).toHaveTextContent('Labels: 4 · órdenes: 2 (uno por pieza).')
+    expect(within(dialog).getByTestId('print-count')).toHaveTextContent('Labels: 4 · envíos: 2 (uno por pieza).')
     expect(within(dialog).getByTestId('label-preview')).toHaveTextContent('PQT-00001 · Paquete 1 de 3')
     expect(within(dialog).getByRole('button', { name: 'Descargar PDF' })).toBeInTheDocument()
   })
 
-  it('«Todos los labels» lee todo lo filtrado; avisa las piezas sin número de paquete y las órdenes canceladas', async () => {
+  it('«Todos los labels» lee todo lo filtrado; avisa las piezas sin número de paquete y los envíos cancelados', async () => {
     const [a, b] = withNumbers()
     orders = [{ ...a, packages: [a.packages[0], { ...a.packages[1], packageNumber: null }] }, { ...b, status: 'CANCELLED' }]
     confirmStation()
@@ -423,7 +423,7 @@ describe('Órdenes — labels y documentos (Lote F-G2)', () => {
     const before = callsTo('GET', '/api/v1/orders').length
     await user.click(screen.getByRole('button', { name: 'Todos los labels' }))
     const dialog = await screen.findByRole('dialog', { name: 'Imprimir 2 labels' })
-    expect(within(dialog).getByTestId('print-count')).toHaveTextContent('Labels: 2 · órdenes: 1')
+    expect(within(dialog).getByTestId('print-count')).toHaveTextContent('Labels: 2 · envíos: 1')
     const all = callsTo('GET', '/api/v1/orders').slice(before)
     expect(all.at(-1)!.url.searchParams.get('take')).toBe('200')
     expect(await screen.findByTestId('toast')).toHaveTextContent(/no se imprimieron/)

@@ -157,9 +157,9 @@ public static class CodRules
     public const int MaxReferenceLength = 80;
     public const int MaxCheckNumberLength = 40;
 
-    public const string OrderRequired = "Indique la orden.";
-    public const string OrderHasNoCod = "La orden no tiene COD.";
-    public const string OrderNotCollectable = "No se registra un cobro en una orden en borrador o cancelada.";
+    public const string OrderRequired = "Indique el envío.";
+    public const string OrderHasNoCod = "El envío no tiene COD.";
+    public const string OrderNotCollectable = "No se registra un cobro en un envío en borrador o cancelado.";
     public const string MethodRequired = "Indique el método de cobro.";
     public const string MethodInvalid = "El método de cobro no existe.";
     public const string AmountInvalid = "El monto debe ser mayor que cero (hasta 2 decimales).";

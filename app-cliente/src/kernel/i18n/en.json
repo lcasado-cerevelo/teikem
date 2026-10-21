@@ -11,7 +11,7 @@
   },
   "tabs": {
     "home": "Home",
-    "orders": "Orders",
+    "orders": "Shipments",
     "warehouse": "Warehouse",
     "shipments": "Shipments",
     "notices": "Notices",
@@ -124,27 +124,27 @@
     "greeting": "Hello, {name}",
     "greetingPlain": "Hello",
     "client": "Client: {client}",
-    "totalOrders": "orders in total",
+    "totalOrders": "shipments in total",
     "byStatus": "By status",
-    "recent": "Recent orders",
-    "noOrders": "There are no orders yet.",
-    "seeAll": "See all orders",
+    "recent": "Recent shipments",
+    "noOrders": "There are no shipments yet.",
+    "seeAll": "See all shipments",
     "invoices": "My invoices"
   },
   "orders": {
-    "title": "My orders",
+    "title": "My shipments",
     "search": "Search",
-    "searchPlaceholder": "Waybill, order, invoice or consignee",
-    "empty": "There are no orders yet.",
-    "noMatches": "No order matches the search.",
-    "orderNumber": "Order {number}",
+    "searchPlaceholder": "Waybill, shipment, invoice or consignee",
+    "empty": "There are no shipments yet.",
+    "noMatches": "No shipment matches the search.",
+    "orderNumber": "Shipment {number}",
     "loadMore": "Load more ({shown} of {total})",
-    "new": "New order"
+    "new": "New shipment"
   },
   "order": {
-    "title": "Order",
+    "title": "Shipment",
     "waybill": "Waybill",
-    "orderNumber": "Order no.",
+    "orderNumber": "Shipment no.",
     "invoice": "Invoice",
     "service": "Service",
     "created": "Created",
@@ -238,9 +238,9 @@
     "tooMany": "Too many messages in a row; please wait a while before writing again."
   },
   "newOrder": {
-    "title": "New order",
-    "help": "Fill in the basics only; the order goes straight into the normal flow and you follow it from “Orders”.",
-    "readOnly": "Your user can only view. Ask an administrator at your company to let you create orders.",
+    "title": "New shipment",
+    "help": "Fill in the basics only; the shipment goes straight into the normal flow and you follow it from “Shipments”.",
+    "readOnly": "Your user can only view. Ask an administrator at your company to let you create shipments.",
     "consignee": "Consignee",
     "filter": "Search consignee",
     "newConsignee": "Enter a new consignee",
@@ -262,7 +262,7 @@
     "invoice": "Your invoice number",
     "requestedDate": "Requested date",
     "notes": "Notes",
-    "submit": "Create order",
+    "submit": "Create shipment",
     "errors": {
       "consignee": "Choose the consignee or enter a new one (name, address and city).",
       "packages": "Add 1 to {max} packages.",
@@ -374,7 +374,7 @@
   },
   "consigneeOrders": {
     "title": "My shipments",
-    "help": "Your client's orders that are delivered to you. View only.",
+    "help": "Your client's shipments that are delivered to you. View only.",
     "search": "Search by waybill",
     "searchPlaceholder": "Waybill number",
     "empty": "There are no shipments for you yet.",
@@ -404,7 +404,7 @@
     "credited": "Credited",
     "balanceLabel": "Balance",
     "lines": "Details",
-    "order": "order {number}",
+    "order": "shipment {number}",
     "payments": "Payments received"
   },
   "noticePrefs": {
@@ -457,7 +457,7 @@
   "indicators": {
     "title": "Indicators",
     "days": "{n} days",
-    "created": "Orders created",
+    "created": "Shipments created",
     "delivered": "Delivered",
     "onTime": "On-time deliveries",
     "avgHours": "Average delivery time",

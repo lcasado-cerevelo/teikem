@@ -10,7 +10,7 @@ La pantalla tiene dos pestañas: **Liquidaciones** e **Intentos de entrega**.
 
 La lista de todos los intentos (orden con su cliente, número de intento, chofer, fecha, resultado, origen y estado: por liquidar, liquidado o anulado). Filtros: chofer, resultado, liquidado o no, rango de fechas, «solo sin chofer» e «incluir anulados». Se exporta como las demás tablas.
 
-- **Registrar intento** (`driverpay.manage`): se busca la orden escribiendo su número, factura o consignatario (3 caracteres o más) y se elige de la lista —el número de orden se repite entre clientes, por eso cada opción trae el consignatario—; se elige el chofer y el resultado (entregó o no entregó, con la razón del fallo y una nota). El número del intento es el siguiente de la orden.
+- **Registrar intento** (`driverpay.manage`): se busca la orden escribiendo su número, factura o consignatario (3 caracteres o más) y se elige de la lista —el número de envío se repite entre clientes, por eso cada opción trae el consignatario—; se elige el chofer y el resultado (entregó o no entregó, con la razón del fallo y una nota). El número del intento es el siguiente de la orden.
 - **Anular**: pide el motivo; no está disponible para un intento ya liquidado ni anulado.
 
 ![Intentos](img/l96-intentos.png)

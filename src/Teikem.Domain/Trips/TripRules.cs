@@ -112,13 +112,13 @@ public static class TripRules
 
     // ---------------- Mensajes de órdenes en la ruta ----------------
 
-    public const string NotInTripMessage = "La orden no está en esta ruta.";
-    public const string AlreadyInTripMessage = "La orden ya está en esta ruta.";
-    public const string OrderTakenMessage = "La orden ya está asignada a otra ruta.";
-    public const string EligibilityHeader = "Hay órdenes que no se pueden asignar a la ruta.";
+    public const string NotInTripMessage = "El envío no está en esta ruta.";
+    public const string AlreadyInTripMessage = "El envío ya está en esta ruta.";
+    public const string OrderTakenMessage = "El envío ya está asignado a otra ruta.";
+    public const string EligibilityHeader = "Hay envíos que no se pueden asignar a la ruta.";
 
     /// <summary>409 'La orden ya está asignada a la ruta {código}.'</summary>
-    public static string OrderInOtherTripMessage(string tripCode) => $"La orden ya está asignada a la ruta {tripCode}.";
+    public static string OrderInOtherTripMessage(string tripCode) => $"El envío ya está asignado a la ruta {tripCode}.";
 
     // ---------------- Límites y secuencia ----------------
 
@@ -130,14 +130,14 @@ public static class TripRules
 
     // ---------------- Elegibilidad ----------------
 
-    public const string DraftOrderMessage = "La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.";
-    public const string SpecialDeliveryMessage = "Las entregas especiales se asignan al chofer desde la orden; no pasan por Sala de despacho.";
-    public const string AlreadyOutMessage = "La orden ya salió a ruta o terminó; no se puede asignar a otra ruta.";
+    public const string DraftOrderMessage = "El envío está en Sometida; márquelo como recogido antes de asignarlo a una ruta.";
+    public const string SpecialDeliveryMessage = "Las entregas especiales se asignan al chofer desde el envío; no pasan por Sala de despacho.";
+    public const string AlreadyOutMessage = "El envío ya salió a ruta o terminó; no se puede asignar a otra ruta.";
     public const string AssignTripNotAllowedMessage = "El estatus actual no permite la acción 'ASSIGN_TRIP'.";
-    public const string NoPendingDeliveryMessage = "La orden no tiene una parada de entrega pendiente.";
+    public const string NoPendingDeliveryMessage = "El envío no tiene una parada de entrega pendiente.";
 
     /// <summary>'La orden está en '{estatus}'; regrésela al pipeline antes de asignarla a una ruta.' (laterales)</summary>
-    public static string LateralOrderMessage(string statusLabel) => $"La orden está en '{statusLabel}'; regrésela al pipeline antes de asignarla a una ruta.";
+    public static string LateralOrderMessage(string statusLabel) => $"El envío está en '{statusLabel}'; regréselo al pipeline antes de asignarlo a una ruta.";
 
     /// <summary>
     /// ¿La orden se puede asignar a una ruta? null si sí; si no, el motivo exacto. Precedencia:
@@ -202,7 +202,7 @@ public static class TripRules
     public static string VehicleUnavailableMessage(IEnumerable<string> reasons) => JoinReasons(VehicleNotAvailablePrefix, reasons);
 
     /// <summary>'Orden {número}: {motivo}'</summary>
-    public static string OrderNotEligibleMessage(string orderNumber, string reason) => $"Orden {orderNumber}: {reason}";
+    public static string OrderNotEligibleMessage(string orderNumber, string reason) => $"Envío {orderNumber}: {reason}";
 
     /// <summary>'La ruta tiene {n} paradas y el máximo del chofer es {m}.'</summary>
     public static string OverStopLimitMessage(int stops, int max)

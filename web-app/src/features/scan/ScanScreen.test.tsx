@@ -1,6 +1,6 @@
 // Lote F-E1 — Estación de escaneo (salida) sobre un fetch simulado: cada resultado del servidor con su mensaje exacto y su texto de «qué hacer»,
 // Enter y botón «Registrar», código vacío o largo (sin llamar), 400 del servidor, ráfagas en orden, duplicados, lista de la sesión, medidor,
-// «Pendientes» con sus filtros, la ventana de la orden, voz y permisos (con y sin trips.view / fleet.view / clients.read / orders.view).
+// «Pendientes» con sus filtros, la ventana del envío, voz y permisos (con y sin trips.view / fleet.view / clients.read / orders.view).
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -104,18 +104,18 @@ describe('Estación de escaneo — pantalla', () => {
     expect(posts()[0].body).toEqual({ action: 'ROUTE', code: 'OT-0001', planDate: tenantToday() })
     expect(posts()[0].headers.get('Idempotency-Key')).toMatch(/[0-9a-f-]{36}/)
     expect(result()).toHaveTextContent('Asignada')
-    expect(result()).toHaveTextContent('Encontrada por número de orden.')
+    expect(result()).toHaveTextContent('Encontrada por número de envío.')
     expect(result()).toHaveTextContent('Zona R-01')
     expect(input()).toHaveValue('')
     expect(input()).toHaveFocus()
-    // la fila de la sesión trae el cliente y el pueblo que se sabían de «Pendientes» (la orden ya salió de la lista)
-    const row = within(feed()).getByRole('button', { name: 'Ver la orden OT-0001' })
+    // la fila de la sesión trae el cliente y el pueblo que se sabían de «Pendientes» (el envío ya salió de la lista)
+    const row = within(feed()).getByRole('button', { name: 'Ver el envío OT-0001' })
     expect(row).toHaveTextContent('Asignada')
     expect(row).toHaveTextContent('Advance Solutions')
     expect(row).toHaveTextContent('Bayamón')
     expect(row).toHaveTextContent('R-0001')
     // la lista de pendientes se refresca y el medidor dice «1 de 3»
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Ver la orden OT-0001', hidden: false })?.closest('.chipsgrid')).toBeNull())
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Ver el envío OT-0001', hidden: false })?.closest('.chipsgrid')).toBeNull())
     await waitFor(() => expect(callsTo('GET', '/api/v1/trips/unassigned-orders').length).toBeGreaterThan(1))
     await waitFor(() => expect(screen.getByText('de 3')).toBeInTheDocument())
     expect(screen.getByRole('progressbar', { name: 'Avance de la sesión' })).toHaveAttribute('aria-valuenow', '33')
@@ -149,7 +149,7 @@ describe('Estación de escaneo — pantalla', () => {
     expect(callsTo('POST', '/api/v1/scan/close-count')[0].body).toEqual({ orderPublicId: 'o-1' })
   })
 
-  it('Lote 111b: «Cerrar conteo» muestra las piezas sin escanear y la orden nueva de las que aparecieron, y solo se hace al confirmar', async () => {
+  it('Lote 111b: «Cerrar conteo» muestra las piezas sin escanear y el envío nuevo de las que aparecieron, y solo se hace al confirmar', async () => {
     const user = userEvent.setup()
     wrap(SCAN)
     mock.reappeared = true
@@ -157,7 +157,7 @@ describe('Estación de escaneo — pantalla', () => {
     await scanCode(user, 'PZ-1')
     await user.click(await screen.findByRole('button', { name: 'Cerrar conteo' }))
     const dialog = await screen.findByRole('dialog', { name: 'Cerrar el conteo de OT-0001' })
-    expect(within(dialog).getByText(/orden nueva con 1 pieza\(s\) que aparecieron de la orden OT-0001/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/envío nuevo con 1 pieza\(s\) que aparecieron del envío OT-0001/)).toBeInTheDocument()
     expect(within(dialog).getByTestId('reappeared-pieces')).toHaveTextContent('PZ-9')
     expect(within(dialog).getByTestId('missing-pieces')).toHaveTextContent('PZ-5')
     expect(callsTo('POST', '/api/v1/scan/close-count')[0].body).toEqual({ orderPublicId: 'o-1' })
@@ -192,15 +192,15 @@ describe('Estación de escaneo — pantalla', () => {
     await scanCode(user, 'OT-0001')
     await waitFor(() => expect(result()).toHaveTextContent('Ya estaba en la ruta R-0001.'))
     expect(result()).toHaveTextContent('No hace falta hacer nada')
-    expect(within(feed()).getAllByRole('button', { name: 'Ver la orden OT-0001' })).toHaveLength(2)
+    expect(within(feed()).getAllByRole('button', { name: 'Ver el envío OT-0001' })).toHaveLength(2)
     expect(speak.map((u) => u.text)).toEqual(['Sí', 'Ok'])
     expect(screen.getByRole('progressbar', { name: 'Avance de la sesión' }).closest('.scanmeter')?.querySelector('b')).toHaveTextContent('1')
   })
 
   it.each([
-    ['NOT_FOUND', 'NO_MATCH', 'No se encontró la orden.', 'Revise el código'],
-    ['NOT_FOUND', 'MULTIPLE_MATCHES', 'Hay varias órdenes con ese código; escanee el empaque.', 'Escanee el número del empaque'],
-    ['NOT_ELIGIBLE', 'NOT_ELIGIBLE', "El estatus actual no permite la acción 'ASSIGN_TRIP'.", 'Arregle el estatus de la orden'],
+    ['NOT_FOUND', 'NO_MATCH', 'No se encontró el envío.', 'Revise el código'],
+    ['NOT_FOUND', 'MULTIPLE_MATCHES', 'Hay varias envíos con ese código; escanee el empaque.', 'Escanee el número del empaque'],
+    ['NOT_ELIGIBLE', 'NOT_ELIGIBLE', "El estatus actual no permite la acción 'ASSIGN_TRIP'.", 'Arregle el estatus del envío'],
     ['FOUND_UNASSIGNED', 'NO_ZONE', 'No se pudo resolver la zona de despacho por código postal ni pueblo; queda sin asignar.', 'Agregue el código postal o el pueblo a una zona'],
     ['FOUND_UNASSIGNED', 'AMBIGUOUS_ZONE', 'El código postal o pueblo pertenece a varias zonas (R-01, R-02); queda sin asignar.', 'está en más de una zona'],
     ['FOUND_UNASSIGNED', 'NO_OPEN_ROUTE', 'No hay ruta abierta para la zona R-01 en la fecha 2026-10-12; queda sin asignar.', 'cree la ruta de esa zona en Sala de despacho'],
@@ -265,7 +265,7 @@ describe('Estación de escaneo — pantalla', () => {
     await waitFor(() => expect(posts()).toHaveLength(3))
     expect(posts().map((c) => c.body?.code)).toEqual(['A', 'B', 'C'])
     await waitFor(() => expect(within(feed()).getAllByRole('button')).toHaveLength(3))
-    expect(within(feed()).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Ver la orden OT-0003', 'Ver la orden OT-0002', 'Ver la orden OT-0001'])
+    expect(within(feed()).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Ver el envío OT-0003', 'Ver el envío OT-0002', 'Ver el envío OT-0001'])
   })
 
   it('la sesión sobrevive a abrir otra pantalla y volver (se pierde solo al recargar o al cambiar de usuario o compañía)', async () => {
@@ -273,10 +273,10 @@ describe('Estación de escaneo — pantalla', () => {
     const first = wrap(SCAN)
     mock.scans['OT-0001'] = assigned('o-1', 'OT-0001')
     await scanCode(user, 'OT-0001')
-    await within(feed()).findByRole('button', { name: 'Ver la orden OT-0001' })
+    await within(feed()).findByRole('button', { name: 'Ver el envío OT-0001' })
     first.unmount()
     wrap(SCAN)
-    expect(within(feed()).getByRole('button', { name: 'Ver la orden OT-0001' })).toBeInTheDocument()
+    expect(within(feed()).getByRole('button', { name: 'Ver el envío OT-0001' })).toBeInTheDocument()
     expect(input()).toHaveFocus()
     expect(screen.getByText('1', { selector: '.scanmeter b' })).toBeInTheDocument()
     resetScanSession() // recargar la página
@@ -302,7 +302,7 @@ describe('Estación de escaneo — pantalla', () => {
   })
 })
 
-describe('Estación de escaneo — lista de la sesión y ventana de la orden', () => {
+describe('Estación de escaneo — lista de la sesión y ventana del envío', () => {
   it('el buscador filtra lo escaneado por referencia, resultado o mensaje; una fila abre la ventana con la ficha y «Abrir» lleva al expediente', async () => {
     const user = userEvent.setup()
     wrap(ALL)
@@ -315,7 +315,7 @@ describe('Estación de escaneo — lista de la sesión y ventana de la orden', (
     expect(within(feed()).queryByText('OT-0001')).toBeNull()
     expect(within(feed()).getByText('NOEXISTE')).toBeInTheDocument()
     await user.clear(screen.getByRole('searchbox', { name: 'Buscar en lo escaneado…' }))
-    await user.click(within(feed()).getByRole('button', { name: 'Ver la orden OT-0001' }))
+    await user.click(within(feed()).getByRole('button', { name: 'Ver el envío OT-0001' }))
     const dialog = await screen.findByRole('dialog')
     expect(await within(dialog).findByText('Taller Díaz')).toBeInTheDocument()
     expect(within(dialog).getByText('Estándar')).toBeInTheDocument()
@@ -332,7 +332,7 @@ describe('Estación de escaneo — lista de la sesión y ventana de la orden', (
     await screen.findByText('OT-0001')
     mock.scans['OT-0001'] = assigned('o-1', 'OT-0001')
     await scanCode(user, 'OT-0001')
-    await user.click(await within(feed()).findByRole('button', { name: 'Ver la orden OT-0001' }))
+    await user.click(await within(feed()).findByRole('button', { name: 'Ver el envío OT-0001' }))
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('Advance Solutions')).toBeInTheDocument()
     expect(within(dialog).getByText('Taller Díaz')).toBeInTheDocument()
@@ -343,12 +343,12 @@ describe('Estación de escaneo — lista de la sesión y ventana de la orden', (
     await waitFor(() => expect(input()).toHaveFocus())
   })
 
-  it('con orders.view y la orden fuera de «Pendientes», la ficha completa cliente y pueblo de la fila', async () => {
+  it('con orders.view y el envío fuera de «Pendientes», la ficha completa cliente y pueblo de la fila', async () => {
     const user = userEvent.setup()
     wrap(['trips.scan', 'orders.view'])
     mock.scans['OT-0001'] = assigned('o-1', 'OT-0001')
     await scanCode(user, 'OT-0001')
-    const row = await within(feed()).findByRole('button', { name: 'Ver la orden OT-0001' })
+    const row = await within(feed()).findByRole('button', { name: 'Ver el envío OT-0001' })
     await waitFor(() => expect(row).toHaveTextContent('Advance Solutions'))
     expect(row).toHaveTextContent('Taller Díaz')
   })
@@ -358,9 +358,9 @@ describe('Estación de escaneo — lista de la sesión y ventana de la orden', (
     wrap(['trips.scan', 'trips.view', 'orders.view'])
     await screen.findByText('OT-0002')
     mock.orders = {}
-    await user.click(screen.getByRole('button', { name: 'Ver la orden OT-0002' }))
+    await user.click(screen.getByRole('button', { name: 'Ver el envío OT-0002' }))
     const dialog = await screen.findByRole('dialog')
-    expect(await within(dialog).findByText(/No se pudo leer la ficha de la orden/)).toBeInTheDocument()
+    expect(await within(dialog).findByText(/No se pudo leer la ficha del envío/)).toBeInTheDocument()
     expect(within(dialog).getByText('Ferretería Sol')).toBeInTheDocument()
   })
 })
@@ -371,8 +371,8 @@ describe('Estación de escaneo — pendientes y filtros', () => {
     wrap(ALL)
     const grid = await screen.findByRole('list', { name: 'Pendientes por escanear' })
     expect(within(grid).getAllByRole('button')).toHaveLength(3)
-    expect(within(grid).getByRole('button', { name: 'Ver la orden OT-0001' })).toHaveTextContent('Advance Solutions · Bayamón 00959 · R-01')
-    expect(within(grid).getByRole('button', { name: 'Ver la orden OT-0003' })).toHaveTextContent('Sin zona')
+    expect(within(grid).getByRole('button', { name: 'Ver el envío OT-0001' })).toHaveTextContent('Advance Solutions · Bayamón 00959 · R-01')
+    expect(within(grid).getByRole('button', { name: 'Ver el envío OT-0003' })).toHaveTextContent('Sin zona')
     const first = callsTo('GET', '/api/v1/trips/unassigned-orders')[0].url.searchParams
     expect(first.get('Take')).toBe('500')
     expect(first.get('Skip')).toBe('0')
@@ -380,13 +380,13 @@ describe('Estación de escaneo — pendientes y filtros', () => {
     expect(within(grid).getAllByRole('button')).toHaveLength(1)
     await user.clear(screen.getByRole('searchbox', { name: 'Buscar en los pendientes…' }))
     await user.type(screen.getByRole('searchbox', { name: 'Buscar en los pendientes…' }), 'zzz')
-    expect(await screen.findByText('Ninguna orden pendiente con esa búsqueda o esos filtros')).toBeInTheDocument()
+    expect(await screen.findByText('Ningún envío pendiente con esa búsqueda o esos filtros')).toBeInTheDocument()
   })
 
-  it('un pendiente abre la ventana de la orden', async () => {
+  it('un pendiente abre la ventana del envío', async () => {
     const user = userEvent.setup()
     wrap(ALL)
-    await user.click(await screen.findByRole('button', { name: 'Ver la orden OT-0001' }))
+    await user.click(await screen.findByRole('button', { name: 'Ver el envío OT-0001' }))
     const dialog = await screen.findByRole('dialog')
     expect(await within(dialog).findByText('$125.50')).toBeInTheDocument()
   })
@@ -438,19 +438,19 @@ describe('Estación de escaneo — pendientes y filtros', () => {
     }
     mock.scans['OT-0001'] = assigned('o-1', 'OT-0001')
     await scanCode(user, 'OT-0001')
-    await within(feed()).findByRole('button', { name: 'Ver la orden OT-0001' })
+    await within(feed()).findByRole('button', { name: 'Ver el envío OT-0001' })
     await user.selectOptions(screen.getByLabelText('Zona'), 'R-02 · Caguas · Aguas Buenas')
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Ver la orden OT-0001' })).toBeNull())
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Ver el envío OT-0001' })).toBeNull())
     const meter = screen.getByRole('progressbar', { name: 'Avance de la sesión' })
     await waitFor(() => expect(meter).toHaveAttribute('aria-valuenow', '0'))
     expect(screen.getByText('de 1')).toBeInTheDocument() // solo OT-0002 en R-02, nada asignado ahí
     await user.selectOptions(screen.getByLabelText('Zona'), 'R-01 · Toa Baja · Bayamón')
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Ver la orden OT-0001' })).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Ver el envío OT-0001' })).toBeInTheDocument())
     await waitFor(() => expect(screen.getByText('de 1')).toBeInTheDocument()) // 1 asignada + 0 pendientes en R-01
     expect(meter).toHaveAttribute('aria-valuenow', '100')
   })
 
-  it('un código que no es de ninguna orden no desaparece de la sesión por un filtro', async () => {
+  it('un código que no es de ningún envío no desaparece de la sesión por un filtro', async () => {
     const user = userEvent.setup()
     wrap(ALL)
     await screen.findByText('OT-0002')
@@ -466,7 +466,7 @@ describe('Estación de escaneo — pendientes y filtros', () => {
     let fail = true
     mock.override = (c) => (fail && c.url.pathname === '/api/v1/trips/unassigned-orders' ? problem(500, 'Ocurrió un error. Intente de nuevo.', 'internal') : undefined)
     wrap(ALL)
-    expect(await screen.findByText('No se pudieron cargar las órdenes pendientes.')).toBeInTheDocument()
+    expect(await screen.findByText('No se pudieron cargar los envíos pendientes.')).toBeInTheDocument()
     mock.scans['OT-0001'] = assigned('o-1', 'OT-0001')
     await scanCode(user, 'OT-0001')
     await waitFor(() => expect(result()).toHaveTextContent('Asignada a la ruta R-0001.'))

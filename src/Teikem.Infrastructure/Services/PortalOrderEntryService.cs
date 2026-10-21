@@ -16,11 +16,11 @@ public sealed class PortalOrderEntryService(TeikemDbContext db, ITenantContext t
 {
     public const int MaxPackages = 50;
     public const int MaxNotes = 500;
-    public const string ReadOnlyMessage = "Su usuario solo puede consultar; pídale a un administrador de su empresa que le dé permiso para crear órdenes.";
+    public const string ReadOnlyMessage = "Su usuario solo puede consultar; pídale a un administrador de su empresa que le dé permiso para crear envíos.";
     public const string ConsigneeRequiredMessage = "Escoja el consignatario o escriba uno nuevo (nombre, dirección y ciudad).";
     public const string ConsigneeBothMessage = "Escoja un consignatario o escriba uno nuevo, no las dos cosas.";
     public const string PackagesRequiredMessage = "Agregue al menos un paquete.";
-    public const string TooManyPackagesMessage = "Una orden puede llevar hasta 50 paquetes.";
+    public const string TooManyPackagesMessage = "Un envío puede llevar hasta 50 paquetes.";
     public const string NotesTooLongMessage = "Las notas no pueden pasar de 500 caracteres.";
 
     private TenantContext Ctx => (TenantContext)tenant;

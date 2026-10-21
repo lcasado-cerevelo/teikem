@@ -76,8 +76,8 @@ public class NumberingRulesTests
     public void EnsureTypedAllowed_order_typed_but_teikem_assigns_gives_exact_message()
     {
         var ex = Assert.Throws<ArgumentException>(() => NumberingRules.EnsureTypedAllowed(NumberKinds.Order, NoPatterns, "PO-1"));
-        Assert.Equal("El número de orden lo asigna Teikem para este cliente; déjelo en blanco.", ex.Message.Split(" (Parameter")[0]);
-        Assert.StartsWith("El número de orden lo asigna Teikem para este cliente; déjelo en blanco.", ex.Message);
+        Assert.Equal("El número de envío lo asigna Teikem para este cliente; déjelo en blanco.", ex.Message.Split(" (Parameter")[0]);
+        Assert.StartsWith("El número de envío lo asigna Teikem para este cliente; déjelo en blanco.", ex.Message);
     }
 
     [Fact]
@@ -179,7 +179,7 @@ public class NumberingRulesTests
     }
 
     [Theory]
-    [InlineData(NumberKinds.Order, "El número de orden generado con el patrón del cliente excede 40 caracteres; acorte el patrón en la ficha del cliente.")]
+    [InlineData(NumberKinds.Order, "El número de envío generado con el patrón del cliente excede 40 caracteres; acorte el patrón en la ficha del cliente.")]
     [InlineData(NumberKinds.Invoice, "El número de factura generado con el patrón del cliente excede 40 caracteres; acorte el patrón en la ficha del cliente.")]
     [InlineData(NumberKinds.Package, "El número de paquete generado con el patrón del cliente excede 40 caracteres; acorte el patrón en la ficha del cliente.")]
     public void ResolveChecked_rejects_a_generated_number_longer_than_40_characters_with_the_exact_message(string kind, string message)
@@ -194,7 +194,7 @@ public class NumberingRulesTests
     public void Typed_number_messages_have_no_parameter_suffix()
     {
         var ex = Assert.Throws<ArgumentException>(() => NumberingRules.EnsureTypedAllowed(NumberKinds.Order, NoPatterns, "X-1"));
-        Assert.Equal("El número de orden lo asigna Teikem para este cliente; déjelo en blanco.", ex.Message);
+        Assert.Equal("El número de envío lo asigna Teikem para este cliente; déjelo en blanco.", ex.Message);
         var tooLong = Assert.Throws<ArgumentException>(() => NumberingRules.NormalizeTyped(new string('A', 41)));
         Assert.Equal("El número no puede exceder 40 caracteres.", tooLong.Message);
     }

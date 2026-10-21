@@ -63,7 +63,7 @@ public sealed class OrderStatusEffect(TeikemDbContext db, IServiceProvider servi
 {
     private readonly ITenantClock _clock = clock ?? TenantClock.Default;
 
-    public const string ClientSuspendedMessage = "El cliente está suspendido; no se pueden crear ni confirmar órdenes.";
+    public const string ClientSuspendedMessage = "El cliente está suspendido; no se pueden crear ni confirmar envíos.";
 
     private readonly HashSet<int> _creditOverrides = new();
 

@@ -125,4 +125,4 @@ Teikem **no emite el pago**: el archivo se lleva a nómina o contabilidad.
 
 Todo lo anterior se usa desde **Contabilidad → Liquidación a choferes** (dos pestañas: Liquidaciones e Intentos de entrega). Cómo se ve y qué botón sale con cada estatus y permiso: [manual de pantallas, L96](frontend/l96-liquidacion-choferes.md).
 
-El API de intentos devuelve también el **nombre del cliente** de la orden (`clientName`), porque el número de orden se repite entre clientes; la descripción de una línea de entrega dice «Orden {número} · {cliente}».
+El API de intentos devuelve también el **nombre del cliente** de la orden (`clientName`), porque el número de envío se repite entre clientes; la descripción de una línea de entrega dice «Orden {número} · {cliente}».

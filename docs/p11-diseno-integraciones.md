@@ -77,7 +77,7 @@ Hoy, una orden con error queda solo en la vista previa y desaparece al cerrarla.
 - **Qué guarda:** integración, corrida, archivo y fila de origen, **los datos tal como llegaron** (cifrados si traen datos personales; se purgan a los N días configurables), el **motivo exacto** (mismo mensaje que da la vista previa) y el estatus: `PENDIENTE` → `CORREGIDA` / `DESCARTADA` / `REPROCESADA`.
 - **Qué se puede hacer:** ver el motivo y los datos; **corregir en pantalla** los campos (el mismo editor de la vista previa) y **reprocesar** solo esa orden; **reprocesar todo** al cambiar la plantilla o el catálogo (ej. un consignatario que ya se creó); **descartar** con nota; **descargar** las pendientes como CSV para devolverlas al cliente.
 - **Quién se entera:** contador en el menú y aviso del sistema a **quienes se definieron en la integración** (con «incluirme») cuando entran ítems nuevos (resumen por corrida, no uno por fila) y alerta operacional si un ítem lleva más de N horas pendiente (se enchufa a las alertas ya construidas en P12).
-- **Reglas que no se rompen:** una orden de la bandeja **nunca crea una orden a medias**; reprocesar es idempotente (por número de orden y hash de archivo); el acuse al cliente lista lo aceptado y lo rechazado con su motivo.
+- **Reglas que no se rompen:** una orden de la bandeja **nunca crea una orden a medias**; reprocesar es idempotente (por número de envío y hash de archivo); el acuse al cliente lista lo aceptado y lo rechazado con su motivo.
 - La **vista previa manual de hoy sigue igual**; es la misma lógica de validación, solo que en la integración el resultado se guarda.
 
 ## 5. API de Teikem (entrada por HTTP) y webhooks

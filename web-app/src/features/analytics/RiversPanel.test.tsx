@@ -66,7 +66,7 @@ describe('ríos del Pulso', () => {
     const card = (key: string) => document.querySelector(`[data-node="${key}"]`) as HTMLElement
     expect(entry).toBeInTheDocument()
     expect(within(card('ENTRY')).getByText('14')).toBeInTheDocument()
-    expect(within(card('ENTRY')).getByText('órdenes nuevas hoy · 6 esperan')).toBeInTheDocument()
+    expect(within(card('ENTRY')).getByText('envíos nuevos hoy · 6 esperan')).toBeInTheDocument()
     expect(within(card('IN_WAREHOUSE')).getByText('9')).toBeInTheDocument()
     expect(within(card('TO_DISPATCH')).getByText('sin chofer')).toBeInTheDocument()
     expect(within(card('ON_ROUTE')).getByText('4 choferes')).toBeInTheDocument()

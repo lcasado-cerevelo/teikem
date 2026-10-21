@@ -6,7 +6,7 @@ Lote 112 (2026-10-18, dictado por Luis). Una orden que no se pudo entregar vuelv
 
 ## 1. Qué pasa al devolver
 - La orden queda **Devuelta** (final: ya no se edita, ni se cancela, ni se asigna). Reabrirla exige `orders.reopen` **y que su orden de vuelta esté cancelada**: una orden que ya salió a devolución no se reabre mientras la vuelta siga viva (primero se cancela la vuelta).
-- Se crea la **orden de vuelta**: una orden de entrega nueva del **mismo cliente** y el mismo tipo de servicio; su **recogido es el consignatario** (la entrega de la original) y su **entrega es la dirección del cliente que puso la orden**: el recogido de la original o, si no tenía, el recogido del cliente y, si tampoco, la dirección que el cliente tenga registrada (recogido, corporativa o facturación). Conduce y número de orden nuevos.
+- Se crea la **orden de vuelta**: una orden de entrega nueva del **mismo cliente** y el mismo tipo de servicio; su **recogido es el consignatario** (la entrega de la original) y su **entrega es la dirección del cliente que puso la orden**: el recogido de la original o, si no tenía, el recogido del cliente y, si tampoco, la dirección que el cliente tenga registrada (recogido, corporativa o facturación). Conduce y número de envío nuevos.
 - Viajan **solo las piezas que se devuelven**: las mismas piezas con **sus mismos números** (los labels siguen valiendo); salen de la original y entran a la orden de vuelta. Las que no se devuelven siguen su flujo (si son faltantes, en Reclamaciones; ver capítulo 31).
 - **Sin facturación de flete:** la orden de vuelta no se cotiza ni se cobra. Si el contrato cobra **por entrega**, a la original se le quitan las piezas devueltas (lo que no se entregó no se cobra); si cobra **por recogido**, se cobra todo (capítulo 31, §4.2).
 - Se puede devolver una orden **Recogida, Sin asignar, Asignada, En tránsito o con Intento fallido**. Una **Sometida** no se devuelve (todavía no se recoge: se cancela). Una orden ya final (Entregada, Cancelada, En almacén…) tampoco.
@@ -41,16 +41,16 @@ Cada compañía define con cuántos **intentos fallidos** se **sugiere** devolve
 ## 6. Mensajes de error
 | Mensaje | HTTP | Cuándo |
 |---|---|---|
-| Una orden Sometida no se devuelve: todavía no se recoge. Cancélela. | 422 | Devolver una orden en Sometida. |
+| Un envío en «Sometida» no se devuelve: todavía no se recoge. Cancélelo. | 422 | Devolver una orden en Sometida. |
 | La orden {n} está en un estatus final ({estatus}): no se devuelve. | 422 | Devolver una orden Entregada, Cancelada, En almacén… (por escaneo el resultado es «final»). |
 | Indique al menos una pieza que se devuelve. | 400 | No quedó ninguna pieza que devolver. |
 | La pieza {n} no es de esa orden. | 400 | Un número de pieza ajeno a la orden. |
 | La pieza {n} figura como faltante: no se puede devolver. | 422 (ficha) / «No» (escaneo) | La pieza está Por verificar, Perdido o Reclamada. |
-| El cliente no tiene ninguna dirección registrada (de recogido, corporativa o de facturación) a la que regresar la orden: regístrela en su ficha. | 422 | La orden no tiene recogido y el cliente no tiene ninguna dirección registrada. |
+| El cliente no tiene ninguna dirección registrada (de recogido, corporativa o de facturación) a la que regresar el envío: regístrela en su ficha. | 422 | La orden no tiene recogido y el cliente no tiene ninguna dirección registrada. |
 | La orden ya salió a devolución: cancele primero la orden de vuelta {n} para poder reabrirla. | 422 | Reabrir una orden Devuelta cuya vuelta sigue viva. |
 | No tiene permiso para esta acción. | 403 | Falta `orders.return`. |
 | Orden no encontrada. | 404 | Identificador inexistente (o de otra compañía). |
-| Indique el cargo por devolución: por orden, por tipo de paquete o por pieza. | 400 | Modo desconocido en el contrato. |
+| Indique el cargo por devolución: por envío, por tipo de paquete o por pieza. | 400 | Modo desconocido en el contrato. |
 | Indique el monto del cargo por devolución. | 400 | Modo por orden o por pieza sin monto. |
 | El cargo por devolución no puede ser negativo. | 400 | Monto negativo. |
 | Indique el monto de al menos un tipo de paquete. | 400 | Modo por tipo de paquete sin ningún monto. |

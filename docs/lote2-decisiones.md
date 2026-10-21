@@ -136,7 +136,7 @@ Decisiones nuevas de la ronda de revisión (hallazgos confirmados y corregidos):
     consolidarlas: Facturación deberá agrupar `packages[]` por (servicio, tipo de paquete) antes de llamar (documento L1096). *Alternativa*:
     sumar piezas en el motor; descartada para que el llamador no oculte errores de agrupación.
 34. **Patrones por defecto con 5 dígitos** (`ORD-#####`, `FAC-#####`, `PQT-#####`), como fijó el plan aprobado, en vez de `FAC-####`/`PQT-####`
-    del mock (documento L833): uniformidad con el número de orden y menos riesgo de desbordar. Anotado en la bitácora del documento maestro y
+    del mock (documento L833): uniformidad con el número de envío y menos riesgo de desbordar. Anotado en la bitácora del documento maestro y
     en el manual (vista previa `FAC-00001`, `PQT-00001`). *Alternativa*: 4 dígitos como el mock.
 35. **Propagación de permisos nuevos a roles clonados**: el criterio de "nuevo" ya no es "código que no existía en `dbo.Permission`" (siempre
     vacío, porque el seed SQL espeja el catálogo y corre antes) sino "código que entra a una plantilla de sistema en esta corrida". Solo agrega

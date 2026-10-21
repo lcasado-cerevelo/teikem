@@ -233,7 +233,7 @@ public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext
                 subject = en ? (picked ? $"We picked up your packages — {client.Name}" : $"Your packages are out for delivery — {client.Name}") : (picked ? $"Recogimos sus paquetes — {client.Name}" : $"Sus paquetes salieron a entrega — {client.Name}");
                 body = en
                     ? $"{(picked ? "Picked up" : "Out for delivery")}: {pieces} package(s) from {orderIds.Count} order(s){(tripCode is null ? "" : $" on route {tripCode}")}."
-                    : $"{(picked ? "Recogido" : "Salió a entrega")}: {pieces} caja(s) de {orderIds.Count} orden(es){(tripCode is null ? "" : $" en la ruta {tripCode}")}.";
+                    : $"{(picked ? "Recogido" : "Salió a entrega")}: {pieces} caja(s) de {orderIds.Count} envío(s){(tripCode is null ? "" : $" en la ruta {tripCode}")}.";
                 summary["orders"] = orderIds.Count; summary["pieces"] = pieces; summary["trip"] = tripCode;
                 break;
             }
@@ -244,7 +244,7 @@ public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext
                 subject = en ? $"Your packages were delivered — {client.Name}" : $"Se entregaron sus paquetes — {client.Name}";
                 var codText = cod > 0 ? (en ? $" COD collected: {Money(cod)}." : $" COD cobrado: {Money(cod)}.") : string.Empty;
                 body = en ? $"Delivered: {pieces} package(s) from {orderIds.Count} order(s){(tripCode is null ? "" : $" on route {tripCode}")}.{codText}"
-                          : $"Entregado: {pieces} caja(s) de {orderIds.Count} orden(es){(tripCode is null ? "" : $" en la ruta {tripCode}")}.{codText}";
+                          : $"Entregado: {pieces} caja(s) de {orderIds.Count} envío(s){(tripCode is null ? "" : $" en la ruta {tripCode}")}.{codText}";
                 summary["orders"] = orderIds.Count; summary["pieces"] = pieces; summary["trip"] = tripCode; summary["cod"] = cod;
                 break;
             }
@@ -255,7 +255,7 @@ public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext
                 subject = en ? $"Your COD was processed — {client.Name}" : $"Se procesó su COD — {client.Name}";
                 body = b is null ? (en ? "Your COD was processed." : "Se procesó su COD.")
                     : en ? $"COD remittance {b.Number}: collected {Money(b.GrossCollected)}, commission {Money(b.CommissionAmount)}, net {Money(net)} ({b.Lines.Select(l => l.TransportOrderId).Distinct().Count()} order(s))."
-                         : $"Remesa de COD {b.Number}: cobrado {Money(b.GrossCollected)}, comisión {Money(b.CommissionAmount)}, neto {Money(net)} ({b.Lines.Select(l => l.TransportOrderId).Distinct().Count()} orden(es)).";
+                         : $"Remesa de COD {b.Number}: cobrado {Money(b.GrossCollected)}, comisión {Money(b.CommissionAmount)}, neto {Money(net)} ({b.Lines.Select(l => l.TransportOrderId).Distinct().Count()} envío(s)).";
                 summary["remittance"] = b?.Number; summary["gross"] = b?.GrossCollected; summary["commission"] = b?.CommissionAmount; summary["net"] = net;
                 break;
             }

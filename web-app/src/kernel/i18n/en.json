@@ -177,7 +177,7 @@
     },
     "orders": {
       "title": "Shipments",
-      "subtitle": "master list with filters — includes new order entry"
+      "subtitle": "master list with filters — includes new shipment entry"
     },
     "scan": {
       "title": "Scan station",
@@ -341,11 +341,11 @@
     },
     "portalHome": {
       "title": "Home",
-      "subtitle": "overview of your orders and account"
+      "subtitle": "overview of your shipments and account"
     },
     "portalOrders": {
-      "title": "Order entry",
-      "subtitle": "create orders for your account"
+      "title": "Shipment entry",
+      "subtitle": "create shipments for your account"
     },
     "portalConsignees": {
       "title": "Consignees",
@@ -398,10 +398,10 @@
     "deactivated": "Client deactivated.",
     "reactivated": "Client reactivated.",
     "deactivateTitle": "Deactivate the client",
-    "deactivateBody": "{name} will become inactive and can no longer be picked on new orders. Its history is kept and you can reactivate it later.",
+    "deactivateBody": "{name} will become inactive and can no longer be picked on new shipments. Its history is kept and you can reactivate it later.",
     "reactivateTitle": "Reactivate the client",
-    "reactivateBody": "{name} will be available for new orders again.",
-    "inactiveNote": "This client is deactivated: it cannot be picked on new orders. You can reactivate it.",
+    "reactivateBody": "{name} will be available for new shipments again.",
+    "inactiveNote": "This client is deactivated: it cannot be picked on new shipments. You can reactivate it.",
     "statusChanged": "Status updated.",
     "fields": {
       "name": "Name",
@@ -438,7 +438,7 @@
       "portalCreateArrivalsText": "Can create arrival notices (receiving orders)",
       "portalCreateExits": "Exit notices",
       "portalCreateExitsText": "Can create exit notices",
-      "autoPrintLabelsHelp": "Saved per client (the sender). When an order of this client is saved, its labels (one per package) print by themselves, even if «Label on save» is off at the station. Needs a label printer set up.",
+      "autoPrintLabelsHelp": "Saved per client (the sender). When a shipment of this client is saved, its labels (one per package) print by themselves, even if «Label on save» is off at the station. Needs a label printer set up.",
       "autoPrintInvoice": "Invoice",
       "autoPrintInvoiceText": "Print the invoice automatically",
       "autoPrintInvoiceHelp": "Saved per client (the sender). It does not print the invoice yet: that arrives with billing."
@@ -474,13 +474,13 @@
       "remove": "Remove",
       "removeAria": "Remove {what}",
       "removeTitle": "Remove the pickup point",
-      "removeBody": "{name} stops being a pickup point of this client. Orders already created do not change. If it was the default point, pickup goes back to the physical address.",
+      "removeBody": "{name} stops being a pickup point of this client. Shipments already created do not change. If it was the default point, pickup goes back to the physical address.",
       "removed": "Pickup point removed.",
       "removePostalTitle": "Remove the postal address",
       "removePostalBody": "The own postal address is removed and the postal address goes back to being the same as the physical one. If it was the pickup point, pickup goes back to the physical address.",
       "postalNowPhysical": "The postal address is now the physical one.",
       "pickup": "Picked up at",
-      "pickupHelp": "Where the driver picks up this client's orders: the physical address, the postal address or any of the pickup points.",
+      "pickupHelp": "Where the driver picks up this client's shipments: the physical address, the postal address or any of the pickup points.",
       "pickupPhysical": "The physical address",
       "pickupPostal": "The postal address",
       "pickupSame": "the physical address",
@@ -540,12 +540,12 @@
       "pointsNone": "No phones or emails",
       "more": "+{n}",
       "mainTag": "main",
-      "numberingExamples": "Order: {order} · Invoice: {invoice} · Package: {pkg}",
+      "numberingExamples": "Shipment: {order} · Invoice: {invoice} · Package: {pkg}",
       "customNone": "{n} fields without a value",
       "points": "Phones: {phones} · Emails: {emails}",
       "people": "Contact people: {n}",
       "peopleMain": "Contact people: {n} · main: {name}",
-      "numbering": "Order number: {order} · Invoice number: {invoice}",
+      "numbering": "Shipment number: {order} · Invoice number: {invoice}",
       "custom": "Custom fields: {n}",
       "contracts": "Contracts: {n}",
       "contractsCurrent": "Contracts: {n} · current: {name}",
@@ -573,12 +573,12 @@
     },
     "numbering": {
       "title": "Numbering",
-      "orderBy": "Who assigns the order number?",
+      "orderBy": "Who assigns the shipment number?",
       "invoiceBy": "Who assigns the invoice number?",
       "byClient": "The client",
       "byTeikem": "Teikem (automatic)",
       "hint": "Defines what each number looks like when Teikem generates it: @ = letters, # = numbers. Type the text exactly as it should appear and use # where each digit of the sequence goes (e.g. AX-##### produces AX-00001, AX-00002…).",
-      "order": "Order number",
+      "order": "Shipment number",
       "invoice": "Invoice number",
       "package": "Package number",
       "example": "Example",
@@ -638,7 +638,7 @@
         "codPercent": "Percent (%)",
         "codValueFixed": "Value ($)",
         "codValuePct": "Value (%)",
-        "codHelp": "The percentage is taken on the COD amount collected, not on the order total."
+        "codHelp": "The percentage is taken on the COD amount collected, not on the shipment total."
       },
       "errors": {
         "titleRequired": "The contract title is required.",
@@ -656,7 +656,7 @@
       "invoiceCheck": {
         "title": "Invoice check",
         "enabled": "Charge for checking the client's invoice",
-        "help": "When the client's invoice is processed against its delivered order (sheet uploaded or number typed in Process deliveries), the billing run adds an \"Invoice check\" line with this amount. Off, the check is free.",
+        "help": "When the client's invoice is processed against its delivered shipment (sheet uploaded or number typed in Process deliveries), the billing run adds an \"Invoice check\" line with this amount. Off, the check is free.",
         "amount": "Amount per checked invoice",
         "errors": {
           "amount": "Enter the amount per checked invoice.",
@@ -668,12 +668,12 @@
         "mode": "Return fee",
         "none": "No return fee",
         "modes": {
-          "ORDER": "Per order (one amount for all package types)",
+          "ORDER": "Per shipment (one amount for all package types)",
           "PACKAGE_TYPE": "Per package type",
           "PIECE": "Per returned piece"
         },
-        "help": "Optional. Charged to the returned order when it becomes «Returned» and billed apart from the freight.",
-        "amountOrder": "Amount per returned order",
+        "help": "Optional. Charged to the returned shipment when it becomes «Returned» and billed apart from the freight.",
+        "amountOrder": "Amount per returned shipment",
         "amountPiece": "Amount per returned piece",
         "byType": "Amount per returned package type",
         "packageType": "Package type",
@@ -815,7 +815,7 @@
     "notif": {
       "title": "Client notifications",
       "summary": "{n} notice(s) on",
-      "intro": "The company decides, client by client: which notices this client receives and through which channel. They are summaries (not the detail of each order) and go to the client, never to the consignee. Until one is turned on, the client receives nothing.",
+      "intro": "The company decides, client by client: which notices this client receives and through which channel. They are summaries (not the detail of each shipment) and go to the client, never to the consignee. Until one is turned on, the client receives nothing.",
       "recipients": "The email goes to this client's active portal users ({n}) and to the extra emails you add below. The inbox is the client's portal inbox.",
       "emailOff": "Email sending is not configured on the platform: email notices are logged as skipped.",
       "save": "Save notices",
@@ -834,15 +834,15 @@
       "kinds": {
         "PICKED_UP": {
           "title": "Picked up",
-          "help": "Summary when their packages are picked up: how many boxes from how many orders."
+          "help": "Summary when their packages are picked up: how many boxes from how many shipments."
         },
         "OUT_FOR_DELIVERY": {
           "title": "Out for delivery",
-          "help": "Summary when a route leaves to deliver their orders."
+          "help": "Summary when a route leaves to deliver their shipments."
         },
         "DELIVERED": {
           "title": "Delivered",
-          "help": "Summary of what was delivered (boxes, orders and the COD collected)."
+          "help": "Summary of what was delivered (boxes, shipments and the COD collected)."
         },
         "COD_PROCESSED": {
           "title": "COD processed",
@@ -919,7 +919,7 @@
       }
     },
     "quote": {
-      "help": "Works out what an order for this client would cost with the rates of its current contract. It does not create any order.",
+      "help": "Works out what a shipment for this client would cost with the rates of its current contract. It does not create any shipment.",
       "lineN": "Line {n}",
       "pieces": "Pieces",
       "remove": "Remove",
@@ -974,7 +974,7 @@
     "dupInvAllow": "Allow repeating the invoice number",
     "dupInvOn": "Allowed (warns before creating)",
     "dupInvOff": "Not allowed (blocks)",
-    "dupInvHint": "If allowed, when an order is entered with an invoice number this consignee already has, the system warns and lets you decide whether to continue. If not allowed, the order is not created.",
+    "dupInvHint": "If allowed, when a shipment is entered with an invoice number this consignee already has, the system warns and lets you decide whether to continue. If not allowed, the shipment is not created.",
     "new": "New consignee",
     "editTitle": "Edit consignee",
     "noneYet": "No consignees yet",
@@ -1013,9 +1013,9 @@
     "deactivate": "Deactivate",
     "reactivate": "Reactivate",
     "deactivateTitle": "Deactivate the consignee",
-    "deactivateBody": "“{name}” will stop appearing in the order entry combos. Its history is kept and you can reactivate it at any time.",
+    "deactivateBody": "“{name}” will stop appearing in the shipment entry combos. Its history is kept and you can reactivate it at any time.",
     "reactivateTitle": "Reactivate the consignee",
-    "reactivateBody": "“{name}” will appear again in the order entry combos.",
+    "reactivateBody": "“{name}” will appear again in the shipment entry combos.",
     "deactivated": "Consignee deactivated.",
     "reactivated": "Consignee reactivated.",
     "delivery": {
@@ -1134,7 +1134,7 @@
         "tab": "Tab",
         "pipe": "Vertical bar (|)"
       },
-      "tplEditorHint": "Define which field corresponds to each column, in the same order they appear in your file — e.g. the first is the name, the second the number, the third the address… Choose a file before opening the editor to see its headers.",
+      "tplEditorHint": "Define which field corresponds to each column, in the same shipment they appear in your file — e.g. the first is the name, the second the number, the third the address… Choose a file before opening the editor to see its headers.",
       "tplEditorFileHint": "Columns of “{file}” {sheet}: pick the field of each one or “(Do not use)”. A column can feed more than one field and a field can join several columns.",
       "inFile": "In the file",
       "columnNamed": "Column {n} “{header}”",
@@ -1174,7 +1174,7 @@
       "defaultValuePlaceholder": "Value",
       "variantsTitle": "Mapping variants",
       "variantsHelp": "Each row of the file uses the FIRST variant whose conditions (all of them) hold. A variant without a condition applies to every row and can only go last. If none applies, the row is rejected.",
-      "variantsSingleHelp": "Does the file mix rows with columns in a different order? Create one variant per layout, with its condition and its own mapping.",
+      "variantsSingleHelp": "Does the file mix rows with columns in a different shipment? Create one variant per layout, with its condition and its own mapping.",
       "addVariant": "Add variant",
       "variantN": "Variant {n}",
       "variantNamed": "Variant {n}: {name}",
@@ -1405,7 +1405,7 @@
       "date": "Date",
       "dates": "Dates",
       "amount": "Amount",
-      "order": "Order",
+      "order": "Shipment",
       "status": "Status",
       "notes": "Notes",
       "openOnes": "Current",
@@ -1614,7 +1614,7 @@
       "reactivated": "Zone reactivated.",
       "empty": "There are no dispatch zones.",
       "level": "Level",
-      "levelHelp": "Optional: the zone level (Island, Metro…). Orders in this zone inherit it.",
+      "levelHelp": "Optional: the zone level (Island, Metro…). Shipments in this zone inherit it.",
       "noLevel": "— No level —"
     },
     "levels": {
@@ -1637,8 +1637,8 @@
       "deactivated": "Level deactivated.",
       "reactivated": "Level reactivated.",
       "empty": "No zone levels.",
-      "assignOrders": "Assign zone to orders",
-      "assignResult": "Orders checked: {examined}; with zone: {assigned}; without zone: {unresolved}."
+      "assignOrders": "Assign zone to shipments",
+      "assignResult": "Shipments checked: {examined}; with zone: {assigned}; without zone: {unresolved}."
     },
     "avail": {
       "title": "Dispatch availability",
@@ -1965,14 +1965,14 @@
       "file": "missing-report",
       "noZone": "No zone",
       "ambiguous": "Ambiguous zone",
-      "subtotal": "Subtotal ({n} orders)",
-      "total": "Total ({n} orders)",
+      "subtotal": "Subtotal ({n} shipments)",
+      "total": "Total ({n} shipments)",
       "sumPending": "Pending",
       "sumScanned": "Scanned this session",
       "empty": "Nothing pending under this filter.",
       "cols": {
         "pack": "Pack",
-        "order": "Order",
+        "order": "Shipment",
         "invoice": "Invoice",
         "client": "Client",
         "consignee": "Consignee",
@@ -1983,7 +1983,7 @@
       }
     },
     "title": "Scan station",
-    "sub": "One lane: scan, confirm, next. Each order is assigned to the open route of its zone.",
+    "sub": "One lane: scan, confirm, next. Each shipment is assigned to the open route of its zone.",
     "voice": {
       "on": "Voice on",
       "off": "Voice muted",
@@ -2001,13 +2001,13 @@
       "label": "Code to scan",
       "placeholder": "Scan or type the piece number…",
       "go": "Register",
-      "hint": "The scanner types here and presses Enter by itself. Scan each piece's number (the one on the label); the order number is not scanned."
+      "hint": "The scanner types here and presses Enter by itself. Scan each piece's number (the one on the label); the shipment number is not scanned."
     },
     "planDate": {
       "label": "Route day",
       "today": "Today",
-      "helpToday": "Orders are assigned to the open route of their zone for today.",
-      "helpOther": "Orders are assigned to the open route of their zone for {date}."
+      "helpToday": "Shipments are assigned to the open route of their zone for today.",
+      "helpOther": "Shipments are assigned to the open route of their zone for {date}."
     },
     "result": {
       "label": "Result of the last scan",
@@ -2022,7 +2022,7 @@
     },
     "matchedBy": {
       "PACKAGE": "package number",
-      "ORDER_NUMBER": "order number",
+      "ORDER_NUMBER": "shipment number",
       "PACK_BATCH": "pack number",
       "INVOICE": "client invoice",
       "PIECE": "piece number"
@@ -2037,12 +2037,12 @@
     },
     "hint": {
       "NO_MATCH": "Check the code, scan the pack number or type the client's invoice number.",
-      "MULTIPLE_MATCHES": "Scan the pack number, which is unique per order.",
-      "IN_TRIP": "Nothing to do: the order is already on that route.",
-      "NOT_ELIGIBLE": "Fix the order's status in Orders (for example, confirm it) and scan it again.",
-      "NO_ZONE": "Add the postal code or town to a zone (Lists → Fleet and maintenance → Zones) or assign the order by hand in Dispatch room.",
-      "AMBIGUOUS_ZONE": "The postal code or town is in more than one zone. Leave it in a single zone (Lists → Fleet and maintenance → Zones) or assign the order by hand in Dispatch room.",
-      "NO_OPEN_ROUTE": "Plan the day or create that zone's route in Dispatch room and scan again. The order stays in \"Pending to scan\"."
+      "MULTIPLE_MATCHES": "Scan the pack number, which is unique per shipment.",
+      "IN_TRIP": "Nothing to do: the shipment is already on that route.",
+      "NOT_ELIGIBLE": "Fix the shipment's status in Shipments (for example, confirm it) and scan it again.",
+      "NO_ZONE": "Add the postal code or town to a zone (Lists → Fleet and maintenance → Zones) or assign the shipment by hand in Dispatch room.",
+      "AMBIGUOUS_ZONE": "The postal code or town is in more than one zone. Leave it in a single zone (Lists → Fleet and maintenance → Zones) or assign the shipment by hand in Dispatch room.",
+      "NO_OPEN_ROUTE": "Plan the day or create that zone's route in Dispatch room and scan again. The shipment stays in \"Pending to scan\"."
     },
     "errors": {
       "empty": "Scan or type a code.",
@@ -2060,21 +2060,21 @@
     "meter": {
       "label": "Session progress",
       "of": "of {total}",
-      "caption": "orders assigned in this session"
+      "caption": "shipments assigned in this session"
     },
     "feed": {
       "title": "Scanned in this session",
       "search": "Search what was scanned…",
       "note": "This list lives only in this browser: it is lost when the page reloads.",
       "empty": "Nothing under this filter yet — scan the first one",
-      "open": "View order {ref}"
+      "open": "View shipment {ref}"
     },
     "pending": {
       "title": "Pending to scan",
-      "search": "Search the pending orders…",
-      "empty": "There are no orders waiting to be assigned",
-      "emptyFiltered": "No pending order matches that search or those filters",
-      "error": "The pending orders could not be loaded.",
+      "search": "Search the pending shipments…",
+      "empty": "There are no shipments waiting to be assigned",
+      "emptyFiltered": "No pending shipment matches that search or those filters",
+      "error": "The pending shipments could not be loaded.",
       "more": "Showing the first {shown} of {total}; use the filters to see the rest.",
       "noZone": "No zone",
       "zoneAmbiguous": "Ambiguous zone"
@@ -2082,8 +2082,8 @@
     "order": {
       "open": "Open",
       "close": "Close",
-      "loading": "Loading the order…",
-      "unavailable": "The order record could not be read; showing what was already known.",
+      "loading": "Loading the shipment…",
+      "unavailable": "The shipment record could not be read; showing what was already known.",
       "client": "Client",
       "consignee": "Consignee",
       "town": "Town · ZIP",
@@ -2107,17 +2107,17 @@
       "ARRIVE": "Arrived at the warehouse: whatever you scan becomes Unassigned (a failed attempt coming back too).",
       "ROUTE": "Route: whatever you scan becomes Assigned and joins the open route of its zone; with no route to take it, nothing changes.",
       "DEPART": "Depart: whatever you scan becomes In transit.",
-      "RETURN": "Return: the piece you scan travels in the return order (born Picked up) and its order becomes Returned. Requires the return permission."
+      "RETURN": "Return: the piece you scan travels in the return shipment (born Picked up) and its shipment becomes Returned. Requires the return permission."
     },
     "closeCount": {
       "button": "Close count"
     },
     "reappeared": {
       "title": "Close the count of {order}",
-      "body": "Closing the count will create a new order with {count} piece(s) that showed up from order {order}.",
+      "body": "Closing the count will create a new shipment with {count} piece(s) that showed up from shipment {order}.",
       "client": "Client",
       "consignee": "Consignee",
-      "status": "Status of the new order",
+      "status": "Status of the new shipment",
       "confirm": "Confirm and close the count",
       "cancel": "Cancel",
       "missing": "{count} piece(s) were not scanned; they will be «To verify»:"
@@ -2241,7 +2241,7 @@
   },
   "dispatch": {
     "title": "Dispatch room",
-    "sub": "Build routes: pick orders, assign them to a driver, optimize and dispatch",
+    "sub": "Build routes: pick shipments, assign them to a driver, optimize and dispatch",
     "date": "Route date",
     "todayButton": "Today",
     "closeButton": "Done",
@@ -2260,7 +2260,7 @@
       "unavailable": "unavailable"
     },
     "filters": {
-      "label": "Filters for unassigned orders",
+      "label": "Filters for unassigned shipments",
       "postal": "Postal code",
       "city": "Town",
       "client": "Client",
@@ -2269,17 +2269,17 @@
       "noZone": "No zone"
     },
     "unassigned": {
-      "title": "Unassigned orders",
+      "title": "Unassigned shipments",
       "markAll": "Select all",
       "search": "Search what is loaded…",
       "add": "Add to route",
       "addN": "Add to route ({count})",
-      "added": "{count} orders added to route {code}.",
+      "added": "{count} shipments added to route {code}.",
       "target": "They will be added to route {code}.",
-      "noTarget": "Pick an open route (draft or planned) to add orders.",
-      "empty": "There are no confirmed orders without a route.",
-      "emptyFiltered": "No order matches the filter.",
-      "error": "The unassigned orders could not be loaded.",
+      "noTarget": "Pick an open route (draft or planned) to add shipments.",
+      "empty": "There are no confirmed shipments without a route.",
+      "emptyFiltered": "No shipment matches the filter.",
+      "error": "The unassigned shipments could not be loaded.",
       "more": "Showing the first {shown} of {total}. Narrow the filters to see the rest.",
       "noZone": "No zone",
       "zoneAmbiguous": "Ambiguous zone"
@@ -2287,7 +2287,7 @@
     "active": {
       "title": "Active route",
       "noZone": "No zone",
-      "noneSelected": "Pick a route from “Today’s routes” to see its orders.",
+      "noneSelected": "Pick a route from “Today’s routes” to see its shipments.",
       "noRoutes": "There are no routes for this date. Use “Plan the day” or “New route”.",
       "loadFailed": "The route could not be loaded.",
       "assign": "Assignment",
@@ -2315,19 +2315,19 @@
       "warns": "Notice"
     },
     "stops": {
-      "title": "Orders on this route",
-      "empty": "It has no orders yet.",
+      "title": "Shipments on this route",
+      "empty": "It has no shipments yet.",
       "late": "Arrives late",
       "approx": "Approximate location",
       "eta": "Estimated arrival",
-      "moveUp": "Move order {number} up",
-      "moveDown": "Move order {number} down",
-      "remove": "Remove order {number} from the route",
-      "removed": "Order {number} left the route.",
-      "handle": "Drag order {number} to reorder (or use the ↑ ↓ keys)",
-      "select": "Select order {number}",
-      "setPin": "Set a pin for order {number}",
-      "movePin": "Move the pin of order {number}",
+      "moveUp": "Move shipment {number} up",
+      "moveDown": "Move shipment {number} down",
+      "remove": "Remove shipment {number} from the route",
+      "removed": "Shipment {number} left the route.",
+      "handle": "Drag shipment {number} to reorder (or use the ↑ ↓ keys)",
+      "select": "Select shipment {number}",
+      "setPin": "Set a pin for shipment {number}",
+      "movePin": "Move the pin of shipment {number}",
       "noPin": "No pin",
       "manual": "Manual pin"
     },
@@ -2357,7 +2357,7 @@
       "pickMap": "Reference plan to take a position",
       "pickedApprox": "Approximate position taken from the plan: check the latitude and longitude before saving.",
       "after": "When saved, the stop gets “manual” precision and arrivals are recalculated. If the route was already optimized, optimize it again.",
-      "done": "Pin of order {number} saved.",
+      "done": "Pin of shipment {number} saved.",
       "fromIssue": "Set manual pin"
     },
     "optimize": {
@@ -2373,26 +2373,26 @@
       "firstRun": "This is the first optimization of the route: there is nothing to compare it with yet.",
       "noMetrics": "There is nothing to compare: the previous run has no distance or duration.",
       "unfitTitle": "Did not fit ({count})",
-      "unfitHint": "They went back to “Unassigned orders”. Change the vehicle or driver, or assign them to another route."
+      "unfitHint": "They went back to “Unassigned shipments”. Change the vehicle or driver, or assign them to another route."
     },
     "delete": {
       "action": "Delete route",
       "title": "Delete route {code}",
-      "body": "The route becomes Cancelled and its orders go back to unassigned, keeping their status. Only a route that has not been dispatched can be deleted.",
+      "body": "The route becomes Cancelled and its shipments go back to unassigned, keeping their status. Only a route that has not been dispatched can be deleted.",
       "confirm": "Delete route",
       "done": "Route {code} deleted."
     },
     "start": {
       "action": "Start route",
       "title": "Start route {code}",
-      "body": "Records the driver’s departure: the route becomes In progress and its orders go out.",
+      "body": "Records the driver’s departure: the route becomes In progress and its shipments go out.",
       "confirm": "Start route",
       "done": "Route {code} started."
     },
     "close": {
       "action": "Close route",
       "title": "Close route {code}",
-      "body": "Closes the route in progress. It can only be closed when all its orders are finished: delivered, cancelled, failed or partial.",
+      "body": "Closes the route in progress. It can only be closed when all its shipments are finished: delivered, cancelled, failed or partial.",
       "confirm": "Close route",
       "done": "Route {code} closed."
     },
@@ -2418,22 +2418,22 @@
     "planDay": {
       "action": "Plan the day",
       "title": "Plan the day",
-      "hint": "Splits the confirmed orders that have no route by zone. It uses the zone’s open route or creates one with its standard driver. It does not optimize, dispatch or assign a vehicle, and running it again duplicates nothing.",
+      "hint": "Splits the confirmed shipments that have no route by zone. It uses the zone’s open route or creates one with its standard driver. It does not optimize, dispatch or assign a vehicle, and running it again duplicates nothing.",
       "date": "Date",
       "zones": "Zones",
       "zonesHelp": "If you pick none, every active zone is planned.",
       "allZones": "All zones",
       "empty": "Empty routes",
       "emptyText": "Create empty routes",
-      "emptyHelp": "Creates each zone’s route even if it has no orders, so the scan station has a destination early.",
+      "emptyHelp": "Creates each zone’s route even if it has no shipments, so the scan station has a destination early.",
       "noFleetAccess": "Your user cannot view zones: every active zone is planned.",
       "run": "Plan",
       "resultTitle": "Day planned: {date}",
       "summary": "Planning summary",
       "tripsCreated": "Routes created",
-      "ordersAssigned": "Orders assigned",
-      "ordersSkipped": "Orders skipped",
-      "ordersWithoutZone": "Orders without a zone",
+      "ordersAssigned": "Shipments assigned",
+      "ordersSkipped": "Shipments skipped",
+      "ordersWithoutZone": "Shipments without a zone",
       "noZones": "There were no zones to plan.",
       "tripNew": "route {code} created",
       "tripExisting": "route {code}",
@@ -2492,7 +2492,7 @@
       "driverRequired": "Choose the driver.",
       "planDayMaxZones": "At most 50 zones per planning run.",
       "reassignMaxZones": "At most 50 zones per reassignment.",
-      "addMax": "Add at most 200 orders per request.",
+      "addMax": "Add at most 200 shipments per request.",
       "batchMax": "At most 50 routes per dispatch."
     }
   },
@@ -2542,7 +2542,7 @@
     "entities": "Entities",
     "entityNames": {
       "CLIENT": "Client",
-      "TRANSPORT_ORDER": "Order",
+      "TRANSPORT_ORDER": "Shipment",
       "DRIVER": "Driver",
       "VEHICLE": "Vehicle",
       "PRODUCT": "Product",
@@ -2882,9 +2882,9 @@
       "deactivate": "Deactivate",
       "reactivate": "Reactivate",
       "deactivateTitle": "Deactivate client",
-      "deactivateBody": "{name} will become inactive and cannot be chosen on new orders. Its history is kept and you can reactivate it later.",
+      "deactivateBody": "{name} will become inactive and cannot be chosen on new shipments. Its history is kept and you can reactivate it later.",
       "reactivateTitle": "Reactivate client",
-      "reactivateBody": "{name} will be available again for new orders.",
+      "reactivateBody": "{name} will be available again for new shipments.",
       "created": "Client created.",
       "saved": "Changes saved.",
       "deactivated": "Client deactivated.",
@@ -3048,16 +3048,16 @@
       "showInPulseMine": "Show in the day's Pulse",
       "showInPulseCompany": "…in the company's",
       "radar": {
-        "title": "Open orders radar",
+        "title": "Open shipments radar",
         "by": "Group by",
         "town": "Town",
         "client": "Client",
         "open": "{n} open",
-        "placeholder": "Search by invoice, order or consignee…",
-        "results": "Orders found",
-        "noResults": "No results among open orders",
-        "none": "There are no open orders.",
-        "all": "See all in Orders",
+        "placeholder": "Search by invoice, shipment or consignee…",
+        "results": "Shipments found",
+        "noResults": "No results among open shipments",
+        "none": "There are no open shipments.",
+        "all": "See all in Shipments",
         "hint": "Only what is open — what was delivered stays out of the way"
       },
       "rivers": {
@@ -3068,9 +3068,9 @@
           "TO_DISPATCH": "To dispatch",
           "ON_ROUTE": "On route",
           "DELIVERED": "Delivered",
-          "unit": "orders",
+          "unit": "shipments",
           "sub": {
-            "ENTRY": "new orders today · {waiting} waiting",
+            "ENTRY": "new shipments today · {waiting} waiting",
             "IN_WAREHOUSE": "received in the warehouse",
             "TO_DISPATCH": "no driver",
             "ON_ROUTE": "{drivers} drivers",
@@ -3084,7 +3084,7 @@
           "RECONCILED": "Reconciled",
           "REMITTANCE": "Remittance ready",
           "sub": {
-            "TO_COLLECT": "orders · {amount} left",
+            "TO_COLLECT": "shipments · {amount} left",
             "COLLECTED": "cash {cash} · checks {checks}",
             "other": "other {other}",
             "RECONCILED": "no remittance · {clients} clients",
@@ -3099,7 +3099,7 @@
         "WAREHOUSE_DAY": "Warehouse today",
         "ORDERS_RIVER": "Packages on the street",
         "COD_RIVER": "COD money",
-        "RADAR": "Open orders radar"
+        "RADAR": "Open shipments radar"
       },
       "day": {
         "received": "Units received",
@@ -3230,22 +3230,22 @@
           "reviewLabel": "Review order {number} ({client})"
         },
         "ORDERS_NO_DRIVER": {
-          "titleOne": "1 order without a driver",
-          "title": "{count} orders without a driver",
+          "titleOne": "1 shipment without a driver",
+          "title": "{count} shipments without a driver",
           "detail": "Ready in the warehouse or planned, waiting for a route with a driver",
           "oldest": "The oldest",
           "days": "{n} days",
-          "group": "Orders without a driver",
-          "reviewLabel": "Assign a driver to {count} orders"
+          "group": "Shipments without a driver",
+          "reviewLabel": "Assign a driver to {count} shipments"
         },
         "ORDERS_FAILED": {
-          "titleOne": "1 order with a failed attempt",
-          "title": "{count} orders with a failed attempt",
+          "titleOne": "1 shipment with a failed attempt",
+          "title": "{count} shipments with a failed attempt",
           "detail": "The delivery could not be made: reschedule it, return it or contact the consignee",
           "oldest": "The oldest",
           "days": "{n} days",
-          "group": "Orders with a failed attempt",
-          "reviewLabel": "Review {count} orders with a failed attempt"
+          "group": "Shipments with a failed attempt",
+          "reviewLabel": "Review {count} shipments with a failed attempt"
         },
         "CLAIMS_OPEN": {
           "titleOne": "1 open claim",
@@ -3279,22 +3279,22 @@
           "reviewLabel": "Review {count} overdue invoices"
         },
         "SLA_AT_RISK": {
-          "titleOne": "1 order at risk of missing its SLA",
-          "title": "{count} orders at risk of missing their SLA",
+          "titleOne": "1 shipment at risk of missing its SLA",
+          "title": "{count} shipments at risk of missing their SLA",
           "detail": "Picked up and not yet delivered, close to the contract deadline or already past it",
           "atRisk": "At risk",
           "breached": "Past due",
           "tightest": "The tightest",
           "left": "{n} h left",
           "late": "Past due by {n} h",
-          "group": "Orders at risk of missing their SLA",
-          "reviewLabel": "Review {count} orders with the SLA at risk"
+          "group": "Shipments at risk of missing their SLA",
+          "reviewLabel": "Review {count} shipments with the SLA at risk"
         },
         "COD_UNRECONCILED": {
           "title": "{amount} of COD not reconciled",
           "detail": "Collected on the street, waiting to be reconciled against the sheets",
           "collections": "Collections",
-          "orders": "Orders",
+          "orders": "Shipments",
           "oldest": "The oldest",
           "days": "{n} days",
           "group": "COD not reconciled",
@@ -3358,7 +3358,7 @@
       "newTitle": "New indicator",
       "editTitle": "Edit indicator",
       "nameLabel": "Indicator name",
-      "namePh": "e.g. Orders delivered today",
+      "namePh": "e.g. Shipments delivered today",
       "datasetLabel": "Data source",
       "fnLabel": "Calculation",
       "fieldLabel": "Field",
@@ -3393,7 +3393,7 @@
       "newTitle": "New chart",
       "editTitle": "Edit chart",
       "nameLabel": "Chart name",
-      "namePh": "e.g. Orders by status",
+      "namePh": "e.g. Shipments by status",
       "datasetLabel": "Data source",
       "groupByLabel": "Group by",
       "groupByHint": "Each bar or slice is a distinct value of this field.",
@@ -3476,7 +3476,7 @@
       "search": "Search a view or data source",
       "noSources": "There are no data sources available for your user.",
       "noMatches": "No view or data source matches the search.",
-      "note": "Each view takes its data from one source (Orders, Clients, Inventory…), can be combined with related sources and is saved so you can reuse it whenever you want.",
+      "note": "Each view takes its data from one source (Shipments, Clients, Inventory…), can be combined with related sources and is saved so you can reuse it whenever you want.",
       "newView": "New view",
       "newViewIn": "New view for {source}",
       "noViewsForSource": "There are no reports for this source yet — create the first one with \"New view\".",
@@ -3627,19 +3627,19 @@
       "waybillFile": "waybill-summary",
       "packingFile": "packing-list",
       "selection": "Selection",
-      "markedCount": "{n} marked orders",
-      "subtotal": "Subtotal ({n} orders)",
-      "total": "Total ({n} orders)",
+      "markedCount": "{n} marked shipments",
+      "subtotal": "Subtotal ({n} shipments)",
+      "total": "Total ({n} shipments)",
       "packageCount": "{n} packages",
-      "sumOrders": "Orders",
+      "sumOrders": "Shipments",
       "sumPieces": "Pieces",
       "sumPackages": "Packages",
       "sumWeight": "Weight",
-      "cancelledSkipped": "{n} cancelled orders were not included.",
-      "empty": "No orders to include.",
+      "cancelledSkipped": "{n} cancelled shipments were not included.",
+      "empty": "No shipments to include.",
       "cols": {
         "pack": "Pack",
-        "order": "Order no.",
+        "order": "Shipment no.",
         "invoice": "Invoice",
         "client": "Client",
         "consignee": "Consignee",
@@ -3657,7 +3657,7 @@
     },
     "list": {
       "pick": "Pick",
-      "pickRow": "Pick order {number}",
+      "pickRow": "Pick shipment {number}",
       "marked": "{n} marked",
       "clearMarks": "Clear marks",
       "printLabel": "Print label",
@@ -3665,17 +3665,17 @@
       "allLabels": "All labels",
       "waybill": "Waybill summary",
       "packing": "Packing list",
-      "title": "Orders",
+      "title": "Shipments",
       "subtitle": "The master list: everything moving, with filters and column sorting",
-      "count": "{count} orders",
-      "newOrder": "New order",
+      "count": "{count} shipments",
+      "newOrder": "New shipment",
       "hideForm": "Hide form",
       "columns": {
         "waybill": "Waybill",
         "zone": "Zone",
         "processed": "Invoice processed",
         "packBatch": "Pack",
-        "orderNumber": "Order no.",
+        "orderNumber": "Shipment no.",
         "client": "Client",
         "date": "Date",
         "consignee": "Consignee",
@@ -3692,7 +3692,7 @@
       },
       "filters": {
         "range": "Date",
-        "orderNumber": "Order no.",
+        "orderNumber": "Shipment no.",
         "consignee": "Consignee",
         "client": "Client",
         "service": "Service",
@@ -3713,25 +3713,25 @@
         "status": "Status",
         "all": "All"
       },
-      "open": "Open the order",
-      "delete": "Delete the order",
-      "deleteTitle": "Delete order {number}",
-      "deleteMessage": "Order {number} is removed and its number is released. Only orders in their initial status can be deleted; after that they are cancelled.",
+      "open": "Open the shipment",
+      "delete": "Delete the shipment",
+      "deleteTitle": "Delete shipment {number}",
+      "deleteMessage": "Shipment {number} is removed and its number is released. Only shipments in their initial status can be deleted; after that they are cancelled.",
       "deleteConfirm": "Delete",
-      "deleted": "Order {number} deleted.",
-      "created": "Order {number} saved.",
+      "deleted": "Shipment {number} deleted.",
+      "created": "Shipment {number} saved.",
       "dismiss": "Dismiss notice",
       "import": "Import"
     },
     "detail": {
-      "notFound": "The order does not exist or does not belong to your company.",
-      "back": "Back to orders",
+      "notFound": "The shipment does not exist or does not belong to your company.",
+      "back": "Back to shipments",
       "panel": "Details",
       "saveChanges": "Save changes",
       "saved": "Changes saved.",
-      "editableHint": "This order is in {status}: you can correct its data and its packages.",
-      "lockedHint": "This order has moved past {status}: its data is shown for reference and is no longer edited here.",
-      "lockedPermissionHint": "Your user cannot edit orders: the data is shown for reference.",
+      "editableHint": "This shipment is in {status}: you can correct its data and its packages.",
+      "lockedHint": "This shipment has moved past {status}: its data is shown for reference and is no longer edited here.",
+      "lockedPermissionHint": "Your user cannot edit shipments: the data is shown for reference.",
       "initialFallback": "Submitted",
       "consigneeHelp": "The town and ZIP come from the address of the chosen consignee.",
       "priority": "Priority",
@@ -3744,7 +3744,7 @@
       "references": "References",
       "packagesTitle": "Packages",
       "piecesCount": "{count} pieces",
-      "noPackages": "This order has no packages registered.",
+      "noPackages": "This shipment has no packages registered.",
       "comment": "Comment",
       "window": "Window",
       "stops": "Stops",
@@ -3752,7 +3752,7 @@
       "deliveryStop": "Delivery",
       "history": "History",
       "dupSave": "Save anyway",
-      "pipelineNote": "Only the “Failed attempt” detour and the return to the stage the order left are recorded here. Mark as picked up, cancel, reopen and assign driver are the buttons above.",
+      "pipelineNote": "Only the “Failed attempt” detour and the return to the stage the shipment left are recorded here. Mark as picked up, cancel, reopen and assign driver are the buttons above.",
       "errors": {
         "dateRequired": "The date cannot be removed; choose another one."
       },
@@ -3762,7 +3762,7 @@
         "type": "Type",
         "typePending": "Recorded on delivery",
         "state": "Status",
-        "note": "The payment type (cash, check…) is recorded at delivery, not when the order is entered.",
+        "note": "The payment type (cash, check…) is recorded at delivery, not when the shipment is entered.",
         "invoiceProcessed": "Invoice processed",
         "invoiceNotProcessed": "Not yet"
       },
@@ -3771,7 +3771,7 @@
         "run": "Quote",
         "quoted": "Quoted amount",
         "quotedAt": "Quoted on {date}",
-        "notQuoted": "This order has no quote (it predates the flow change): orders are quoted when they are created.",
+        "notQuoted": "This shipment has no quote (it predates the flow change): shipments are quoted when they are created.",
         "preview": "Preview with current rates",
         "dispatch": "Dispatch",
         "codFee": "COD fee",
@@ -3780,7 +3780,7 @@
         "creditLimit": "Limit",
         "noLimit": "No limit",
         "pending": "In progress",
-        "thisOrder": "This order",
+        "thisOrder": "This shipment",
         "available": "Available",
         "exceeds": "Exceeds credit",
         "withinLimit": "Within the limit",
@@ -3797,8 +3797,8 @@
         "saved": "Custom fields saved."
       },
       "contacts": {
-        "empty": "This order has no contacts (who receives it, phone, email).",
-        "removeBody": "{value} will be removed from the contacts of this order."
+        "empty": "This shipment has no contacts (who receives it, phone, email).",
+        "removeBody": "{value} will be removed from the contacts of this shipment."
       },
       "returnOf": "Return of {number}",
       "suggestReturn": "Returning it is suggested: {count} failed attempt(s)",
@@ -3842,55 +3842,55 @@
     "actions": {
       "printLabel": "Print label",
       "back": "Back",
-      "statusChanged": "Order {number} moved to {status}.",
+      "statusChanged": "Shipment {number} moved to {status}.",
       "confirm": {
         "button": "Mark as picked up",
-        "title": "Mark order {number} as picked up",
-        "body": "The order moves from Submitted to Picked up and its price is frozen (the quote and the credit were checked when it was submitted). Afterwards its data can no longer be edited here.",
-        "bodyOverrideOnly": "This order is marked as picked up by quoting it with the contract rates. Your user can only do it by authorizing the client credit excess.",
+        "title": "Mark shipment {number} as picked up",
+        "body": "The shipment moves from Submitted to Picked up and its price is frozen (the quote and the credit were checked when it was submitted). Afterwards its data can no longer be edited here.",
+        "bodyOverrideOnly": "This shipment is marked as picked up by quoting it with the contract rates. Your user can only do it by authorizing the client credit excess.",
         "authorize": "Authorize and mark as picked up",
-        "creditNote": "If you authorize, the order is marked as picked up anyway and who authorized it is recorded.",
-        "done": "Order {number} marked as picked up."
+        "creditNote": "If you authorize, the shipment is marked as picked up anyway and who authorized it is recorded.",
+        "done": "Shipment {number} marked as picked up."
       },
       "reprice": {
         "button": "Re-quote",
-        "title": "Re-quote order {number}",
-        "body": "The amount is calculated again with the current contract rates. The order status does not change.",
-        "done": "Order {number} re-quoted."
+        "title": "Re-quote shipment {number}",
+        "body": "The amount is calculated again with the current contract rates. The shipment status does not change.",
+        "done": "Shipment {number} re-quoted."
       },
       "cancel": {
-        "button": "Cancel the order",
-        "title": "Cancel order {number}",
-        "body": "The order becomes Cancelled and its special-delivery trip, if any, is cancelled too. This cannot be undone.",
-        "confirm": "Cancel the order",
+        "button": "Cancel the shipment",
+        "title": "Cancel shipment {number}",
+        "body": "The shipment becomes Cancelled and its special-delivery trip, if any, is cancelled too. This cannot be undone.",
+        "confirm": "Cancel the shipment",
         "reason": "Reason for cancelling",
-        "reasonPlaceholder": "Why is the order being cancelled?",
+        "reasonPlaceholder": "Why is the shipment being cancelled?",
         "reasonRequired": "Enter the reason for the cancellation.",
         "reasonMax": "The reason cannot exceed 500 characters.",
-        "done": "Order {number} cancelled."
+        "done": "Shipment {number} cancelled."
       },
       "reopen": {
         "button": "Reopen",
-        "title": "Reopen order {number}",
-        "body": "The order leaves its final status and returns to the flow. The reason is recorded.",
+        "title": "Reopen shipment {number}",
+        "body": "The shipment leaves its final status and returns to the flow. The reason is recorded.",
         "reason": "Reason for reopening",
-        "reasonPlaceholder": "Why is the order being reopened?",
-        "reasonRequired": "Enter the reason for reopening the order.",
+        "reasonPlaceholder": "Why is the shipment being reopened?",
+        "reasonRequired": "Enter the reason for reopening the shipment.",
         "reasonMax": "The reason cannot exceed 500 characters.",
         "toStatus": "Target status",
         "lastStatus": "The last one it was in",
-        "confirm": "Reopen the order",
-        "done": "Order {number} reopened."
+        "confirm": "Reopen the shipment",
+        "done": "Shipment {number} reopened."
       },
       "delete": {
-        "button": "Delete the order"
+        "button": "Delete the shipment"
       },
       "assign": {
         "button": "Assign driver",
         "reassign": "Reassign driver",
-        "title": "Assign a driver to order {number}",
-        "reassignTitle": "Reassign the driver of order {number}",
-        "hint": "If the order is still Submitted it is marked as picked up (final quote and credit check), advances to In transit and the driver trip is created. Reassigning cancels the previous driver trip.",
+        "title": "Assign a driver to shipment {number}",
+        "reassignTitle": "Reassign the driver of shipment {number}",
+        "hint": "If the shipment is still Submitted it is marked as picked up (final quote and credit check), advances to In transit and the driver trip is created. Reassigning cancels the previous driver trip.",
         "driver": "Driver",
         "chooseDriver": "Choose the driver…",
         "noDrivers": "There are no active drivers",
@@ -3900,38 +3900,38 @@
         "confirm": "Assign driver",
         "authorize": "Authorize and assign",
         "creditNote": "If you authorize, the assignment is made anyway and who authorized it is recorded.",
-        "done": "Driver assigned to order {number}."
+        "done": "Driver assigned to shipment {number}."
       },
       "return": {
         "button": "Return",
         "title": "Return {number}",
-        "body": "The order will become «Returned» and the return order (pickup and delivery swapped) will be created with the pieces you tick. Missing pieces cannot be returned.",
+        "body": "The shipment will become «Returned» and the return shipment (pickup and delivery swapped) will be created with the pieces you tick. Missing pieces cannot be returned.",
         "pieces": "Pieces being returned",
         "notes": "Note (optional)",
-        "confirm": "Return the order",
+        "confirm": "Return the shipment",
         "noPieces": "Tick at least one piece to return.",
-        "done": "Order {number} was returned."
+        "done": "Shipment {number} was returned."
       },
       "deliver": {
         "button": "Register delivery",
         "title": "Register the delivery of {number}",
-        "body": "The order will be marked Delivered. The proof is signed automatically in your name (you are registering the delivery); the consignee does not sign.",
+        "body": "The shipment will be marked Delivered. The proof is signed automatically in your name (you are registering the delivery); the consignee does not sign.",
         "recipient": "Who received it",
         "recipientRequired": "Enter who received the delivery.",
         "at": "Delivery date and time (optional)",
         "atHint": "If left empty, the current time is used. It cannot be in the future.",
         "notes": "Note (optional)",
         "confirm": "Register the delivery",
-        "done": "Delivery of order {number} registered."
+        "done": "Delivery of shipment {number} registered."
       }
     },
     "entry": {
       "labelOnSave": "Print label on save",
       "labelOnSaveNote": "The label prints automatically on this station’s printer when saving (one per piece). Set it up in System → Printers & labels.",
-      "title": "Order entry",
-      "steps": "Order steps",
+      "title": "Shipment entry",
+      "steps": "Shipment steps",
       "s1": "Client and service",
-      "s1d": "Who the order is for and the service level",
+      "s1d": "Who the shipment is for and the service level",
       "s2": "Consignee",
       "s2d": "Who and where it is delivered to",
       "s3": "Packages and COD",
@@ -3944,7 +3944,7 @@
       "invoice": "Invoice no.",
       "auto": "(automatic)",
       "autoPlaceholder": "Assigned by Teikem",
-      "orderNumber": "Order no.",
+      "orderNumber": "Shipment no.",
       "consigneeName": "Name",
       "consigneeNumber": "Consignee number",
       "address": "Address",
@@ -3962,9 +3962,9 @@
       "addPackage": "Add package",
       "removePackage": "Remove package {n}",
       "codAmount": "COD amount",
-      "codNote": "The collection type (cash, check…) is recorded at delivery time, not when the order is captured.",
+      "codNote": "The collection type (cash, check…) is recorded at delivery time, not when the shipment is captured.",
       "special": "It is a special delivery",
-      "specialHint": "A service from the client's list (e.g. bring a wagon from the dock) instead of a package. The driver is assigned later, in the order file.",
+      "specialHint": "A service from the client's list (e.g. bring a wagon from the dock) instead of a package. The driver is assigned later, in the shipment file.",
       "specialTitle": "Special service",
       "specialDesc": "Choose the service from the client's list",
       "specialNone": "This client has no special services configured",
@@ -3972,15 +3972,15 @@
       "specialComponentOff": "The “Special services” component is off in the client's current contract.",
       "specialNoPermission": "To capture a special delivery you need to be able to read client contracts (permission contracts.read).",
       "specialNeedClient": "Choose the client first.",
-      "ticket": "Order ticket",
+      "ticket": "Shipment ticket",
       "ticketConsignee": "Consignee",
       "ticketPackages": "Packages",
       "ticketCod": "COD",
       "ticketSpecial": "Special service",
       "save": "Save",
       "saving": "Saving…",
-      "ticketNote": "The order is saved as Submitted: it is quoted and the client's credit is checked when saving.",
-      "created": "Order {number} saved.",
+      "ticketNote": "The shipment is saved as Submitted: it is quoted and the client's credit is checked when saving.",
+      "created": "Shipment {number} saved.",
       "errors": {
         "clientRequired": "The client is required.",
         "serviceRequired": "The service type is required.",
@@ -3996,18 +3996,18 @@
       },
       "dup": {
         "title": "Repeated invoice for this consignee",
-        "body": "{consignee} already has order {order} with invoice number {invoice}. This consignee allows repeating it. Create the order anyway?",
-        "bodyNoOrder": "{consignee} already has an order with invoice number {invoice}. This consignee allows repeating it. Create the order anyway?",
-        "view": "View order {order}",
-        "dont": "Do not create the order",
+        "body": "{consignee} already has shipment {order} with invoice number {invoice}. This consignee allows repeating it. Create the shipment anyway?",
+        "bodyNoOrder": "{consignee} already has a shipment with invoice number {invoice}. This consignee allows repeating it. Create the shipment anyway?",
+        "view": "View shipment {order}",
+        "dont": "Do not create the shipment",
         "create": "Create anyway",
-        "cancelled": "Order not created."
+        "cancelled": "Shipment not created."
       },
       "credit": {
         "title": "The client exceeds its credit limit",
         "authorize": "Authorize and save",
-        "note": "If you authorize, the order is saved anyway and who authorized it is recorded.",
-        "denied": "The order was not created. Ask someone with the permission to authorize exceeded credit (orders.credit_override) to capture it."
+        "note": "If you authorize, the shipment is saved anyway and who authorized it is recorded.",
+        "denied": "The shipment was not created. Ask someone with the permission to authorize exceeded credit (orders.credit_override) to capture it."
       },
       "mode": "Entry mode",
       "quick": "Quick",
@@ -4027,7 +4027,7 @@
       "keyField": "field",
       "keySave": "save",
       "cols": {
-        "orderNumber": "Order no.",
+        "orderNumber": "Shipment no.",
         "consignee": "Consignee",
         "address": "Address · Town",
         "package": "Package",
@@ -4041,14 +4041,14 @@
       "saveRow": "Save row",
       "saved": "Saved",
       "captured": "{count} entries saved",
-      "help": "Each row creates a 1-package, 1-piece Submitted order; for several packages use Detailed entry.",
+      "help": "Each row creates a 1-package, 1-piece Submitted shipment; for several packages use Detailed entry.",
       "errors": {
         "codInvalid": "The COD amount must be a number."
       }
     },
     "import": {
-      "title": "Import orders from CSV",
-      "sub": "Upload a CSV file and check how it reads before importing: the server validates every row and creates no order until you confirm.",
+      "title": "Import shipments from CSV",
+      "sub": "Upload a CSV file and check how it reads before importing: the server validates every row and creates no shipment until you confirm.",
       "tplLabel": "Template",
       "tplNone": "— none —",
       "tplInactive": "inactive",
@@ -4070,7 +4070,7 @@
       "noTemplatePermission": "To choose or create import templates you need the orders.edit permission.",
       "clientLabel": "Client",
       "clientPlaceholder": "— Choose the client —",
-      "clientHint": "Every order in the file is created for this client. Consignees are looked up in its directory (and the shared ones); missing ones are created.",
+      "clientHint": "Every shipment in the file is created for this client. Consignees are looked up in its directory (and the shared ones); missing ones are created.",
       "needClient": "Choose the client first to pick the file.",
       "file": "CSV file",
       "choose": "Choose file…",
@@ -4088,7 +4088,7 @@
       "line": "Row",
       "rowState": "Status",
       "consignee": "Consignee",
-      "orderNumber": "Order",
+      "orderNumber": "Shipment",
       "remarks": "Remarks",
       "consigneeExisting": "Existing: {name}",
       "consigneeNew": "Will be created: {name}",
@@ -4102,21 +4102,21 @@
       },
       "optionsTitle": "When importing",
       "optOverride": "Authorize exceeded credit",
-      "optOverrideHelp": "Also creates orders that exceed the client’s credit limit (orders are quoted and credit is checked on creation); who authorized it is recorded.",
+      "optOverrideHelp": "Also creates shipments that exceed the client’s credit limit (shipments are quoted and credit is checked on creation); who authorized it is recorded.",
       "optDuplicate": "Accept repeated invoices",
-      "optDuplicateHelp": "Also creates rows whose invoice number is already used by another order of the same consignee, when that consignee allows repeating it.",
+      "optDuplicateHelp": "Also creates rows whose invoice number is already used by another shipment of the same consignee, when that consignee allows repeating it.",
       "do": "Import",
       "cancel": "Cancel",
       "discard": "Discard file",
-      "discarded": "File discarded: no order was created.",
+      "discarded": "File discarded: no shipment was created.",
       "close": "Close",
-      "done": "{count} orders imported",
+      "done": "{count} shipments imported",
       "resultTitle": "Import result",
       "created": "created",
       "failed": "failed",
       "skipped": "skipped",
-      "tplNewTitle": "New order import template",
-      "tplEditTitle": "Edit order import template",
+      "tplNewTitle": "New shipment import template",
+      "tplEditTitle": "Edit shipment import template",
       "tplName": "Template name",
       "tplNamePlaceholder": "Template name",
       "tplSave": "Save template",
@@ -4131,7 +4131,7 @@
         "tab": "Tab",
         "pipe": "Vertical bar (|)"
       },
-      "tplEditorHint": "Define which field each column holds, in the same order as your file — for example, the first one is the consignee name, the second its address…",
+      "tplEditorHint": "Define which field each column holds, in the same shipment as your file — for example, the first one is the consignee name, the second its address…",
       "colHeader": "Column",
       "fieldHeader": "Target field",
       "columnN": "Column {n}",
@@ -4141,7 +4141,7 @@
       "removeColumn": "Remove this column",
       "removeColumnN": "Remove column {n}",
       "defaultsTitle": "Default values",
-      "defaultsHelp": "Used when the file cell is empty or the field has no column (for example, the service of every row). Order number, invoice number and consignee name do not accept a default.",
+      "defaultsHelp": "Used when the file cell is empty or the field has no column (for example, the service of every row). Shipment number, invoice number and consignee name do not accept a default.",
       "addDefault": "Add default value",
       "removeDefault": "Remove this value",
       "removeDefaultN": "Remove default value {n}",
@@ -4157,12 +4157,12 @@
         "repeated": "The field {field} is repeated.",
         "noDefault": "The field {field} does not accept a default value.",
         "defaultValueRequired": "Enter the default value of {field}.",
-        "multiLineOrder": "With several lines per order the template needs the orderNumber column.",
+        "multiLineOrder": "With several lines per shipment the template needs the orderNumber column.",
         "ruleColumn": "The column of rule {n} must be a number between 1 and 500.",
         "ruleValue": "Enter the value of rule {n}."
       },
-        "multiLine": "The file has several lines per order",
-        "multiLineHelp": "Rows with the same order number are ONE order. Anything you do not mark below as a description or an invoice is a piece (an order can have several pieces).",
+        "multiLine": "The file has several lines per shipment",
+        "multiLineHelp": "Rows with the same shipment number are ONE shipment. Anything you do not mark below as a description or an invoice is a piece (a shipment can have several pieces).",
         "rulesTitle": "Which lines are NOT a piece?",
         "rulesHelp": "If the cell of the given column meets the condition, the line is a description of what is shipped or the invoice. Any rule is enough; the first that matches wins.",
         "addRule": "Add rule",
@@ -4183,12 +4183,12 @@
           "CONTAINS": "contains",
           "IN": "is one of (separate with |)"
         },
-        "lines": "Order lines",
+        "lines": "Shipment lines",
       "rowN": "Row {n}",
         "linesSummary": "{pieces} piece(s) · {descriptions} description(s){invoice}",
         "linesInvoice": " · invoice {number}",
       "fields": {
-        "orderNumber": "Order no.",
+        "orderNumber": "Shipment no.",
         "clientInvoiceNumber": "Invoice no.",
         "serviceType": "Service",
         "consigneeName": "Consignee (name)",
@@ -5544,7 +5544,7 @@
     },
     "crossDockPlans": {
       "title": "Cross-dock",
-      "subtitle": "Cross-dock plans: allocate receipt lines to orders without going through reserve bins.",
+      "subtitle": "Cross-dock plans: allocate receipt lines to shipments without going through reserve bins.",
       "tabs": {
         "plans": "Plans",
         "appointments": "Dock appointments",
@@ -5594,7 +5594,7 @@
         "title": "Allocations",
         "receipt": "Receipt",
         "sku": "SKU",
-        "order": "Order",
+        "order": "Shipment",
         "quantity": "Quantity",
         "confirmed": "Confirmed",
         "short": "Short",
@@ -5605,17 +5605,17 @@
         "cancelled": "Allocation cancelled."
       },
       "allocate": {
-        "title": "Allocate to an order",
+        "title": "Allocate to a shipment",
         "available": "Available: {qty}",
-        "order": "Order",
-        "orderPlaceholder": "Order number, invoice or pack batch",
+        "order": "Shipment",
+        "orderPlaceholder": "Shipment number, invoice or pack batch",
         "noMatches": "No exact matches.",
-        "selected": "Chosen order:",
-        "orderRequired": "Choose an order.",
+        "selected": "Chosen shipment:",
+        "orderRequired": "Choose a shipment.",
         "quantity": "Quantity",
         "saved": "Allocation created.",
         "orderHelp": "Type the full number: the search is an exact match.",
-        "lookupDenied": "Searching orders requires the orders.view permission and the LTL_GROUND module."
+        "lookupDenied": "Searching shipments requires the orders.view permission and the LTL_GROUND module."
       },
       "move": {
         "title": "Move",
@@ -6096,14 +6096,14 @@
     },
     "pickBatches": {
       "title": "Pick & pack",
-      "subtitle": "Pick inventory by FEFO or by bin, lot or serial, and pack it as a transport order.",
+      "subtitle": "Pick inventory by FEFO or by bin, lot or serial, and pack it as a transport shipment.",
       "tabBatches": "Picks",
       "tabReplenish": "Replenishment",
       "replenishTitle": "Replenishment tasks",
       "collected": "Pick batch {number} created.",
       "own": "Own",
       "deletedChip": "Deleted",
-      "searchPlaceholder": "Number, pack, order, invoice, client or SKU",
+      "searchPlaceholder": "Number, pack, shipment, invoice, client or SKU",
       "linesHelp": "A pick batch holds products of a single owner. Without bin or lot the system picks by FEFO.",
       "pickWarehouseFirst": "Choose the warehouse first.",
       "fefo": "Automatic (FEFO)",
@@ -6111,7 +6111,7 @@
       "back": "Back to Pick & pack",
       "columns": {
         "number": "Number",
-        "numbers": "Order and invoice",
+        "numbers": "Shipment and invoice",
         "client": "Client",
         "totalQty": "Quantity",
         "collectedAt": "Picked",
@@ -6122,7 +6122,7 @@
         "collected": "Picked",
         "status": "Status",
         "product": "Product",
-        "orderNumber": "Order no.",
+        "orderNumber": "Shipment no.",
         "invoiceNumber": "Invoice no.",
         "includeDeleted": "Include deleted",
         "kind": "Type",
@@ -6140,7 +6140,7 @@
       "detail": {
         "summary": "Summary",
         "packedAt": "Packed",
-        "order": "Order",
+        "order": "Shipment",
         "invoice": "Invoice",
         "totalCost": "Total cost",
         "lines": "Lines",
@@ -6156,15 +6156,15 @@
         "delete": "Delete",
         "deleteTitle": "Delete pick batch",
         "deleteBody": "Delete pick batch {number}? Inventory goes back to its original bin.",
-        "deletePackedBody": "Delete pick batch {number}? Its order {order} is deleted too and inventory goes back to its original bin.",
+        "deletePackedBody": "Delete pick batch {number}? Its shipment {order} is deleted too and inventory goes back to its original bin.",
         "deleted": "Pick batch {number} deleted.",
         "close": "Close"
       },
       "pack": {
         "title": "Pack {number}",
-        "submit": "Pack and create order",
-        "done": "Packed: order {order} was created.",
-        "client": "Order client",
+        "submit": "Pack and create shipment",
+        "done": "Packed: shipment {order} was created.",
+        "client": "Shipment client",
         "ownerHelp": "Must be the client that owns the inventory: {client}.",
         "serviceType": "Service type",
         "defaultServiceType": "Company default ({label})",
@@ -6185,7 +6185,7 @@
         "postalCode": "Postal code",
         "country": "Country",
         "countryHelp": "2-letter ISO code. Empty: the default country.",
-        "orderNumber": "Order number",
+        "orderNumber": "Shipment number",
         "invoice": "Client invoice",
         "autoHelp": "Empty: generated automatically.",
         "packages": "Packages",
@@ -6196,7 +6196,7 @@
         "addPackage": "Add package",
         "notes": "Notes",
         "errors": {
-          "clientRequired": "Enter the order client.",
+          "clientRequired": "Enter the shipment client.",
           "consigneeRequired": "The consignee is required: choose one from the directory or enter a new one.",
           "nameRequired": "The consignee name is required.",
           "line1Required": "The consignee address (line 1) is required.",
@@ -6213,10 +6213,10 @@
       "detailTitle": "Pick batch",
       "splitLabel": "Resize the Picking and Pick batches panels",
       "orderFilter": {
-        "placeholder": "Type to see orders",
-        "none": "No order with that number.",
-        "noAccess": "Orders could not be loaded.",
-        "clear": "Clear the order number"
+        "placeholder": "Type to see shipments",
+        "none": "No shipment with that number.",
+        "noAccess": "Shipments could not be loaded.",
+        "clear": "Clear the shipment number"
       },
       "collectPanel": {
         "title": "Picking",
@@ -7311,7 +7311,7 @@
       "marks": {
         "pickUp": "Pick up (collect and bring)",
         "billable": "Billable",
-        "help": "A pick up collects and brings to the warehouse: the order ends «In warehouse» and does not go on a route. «Billable» off = not quoted nor charged."
+        "help": "A pick up collects and brings to the warehouse: the shipment ends «In warehouse» and does not go on a route. «Billable» off = not quoted nor charged."
       }
     },
     "settings": {
@@ -7484,11 +7484,11 @@
         "svcDefaultLabel": "Default service type",
         "pkgDefaultLabel": "Default package type",
         "noDefault": "No default",
-        "defaultsHint": "These pre-select the fields in Quick and Detailed entry — operators can change them per order, but they don't start blank.",
+        "defaultsHint": "These pre-select the fields in Quick and Detailed entry — operators can change them per shipment, but they don't start blank.",
         "maxStopsLabel": "Max stops per route (default)",
         "maxStopsHint": "Used for any driver without their own max set in Drivers & rates — you can set a per-driver exception there.",
         "maxStopsMin": "Must be 1 or more.",
-        "pipelineTitle": "Order status pipeline",
+        "pipelineTitle": "Shipment status pipeline",
         "colStage": "Status",
         "caps": {
           "EDIT_CARGO": "Edit cargo",
@@ -7497,7 +7497,7 @@
           "CANCEL": "Cancel"
         },
         "capToggle": "{cap} in {stage}",
-        "pipelineHint": "Which actions each order status allows (StatusCapability). The server enforces them on every operation; without a company rule the platform rule applies (allowed if there is none).",
+        "pipelineHint": "Which actions each shipment status allows (StatusCapability). The server enforces them on every operation; without a company rule the platform rule applies (allowed if there is none).",
         "pipelineReadOnly": "Read-only: changing the matrix requires the admin.statusconfig permission.",
         "pipelineNoAccess": "Your user cannot read the status pipeline.",
         "capSaved": "Status action saved",
@@ -7598,7 +7598,7 @@
         "presetsTitle": "Preset themes",
         "customTitle": "Use my own colors",
         "flowLabel": "Primary color",
-        "flowHint": "Tabs, indicators and what goes out to the street: orders, routes, deliveries.",
+        "flowHint": "Tabs, indicators and what goes out to the street: shipments, routes, deliveries.",
         "actionLabel": "Action color",
         "actionHint": "Primary buttons, links and focus. Empty = same as primary.",
         "actionSameAsPrimary": "Same as primary",
@@ -7660,9 +7660,9 @@
       },
       "returns": {
         "title": "Returns",
-        "subtitle": "when returning an order is suggested",
+        "subtitle": "when returning a shipment is suggested",
         "label": "Suggest returning after this many failed attempts",
-        "help": "Defaults to 2; 0 = never suggest. It is only a suggestion and a flag: the order can keep being retried.",
+        "help": "Defaults to 2; 0 = never suggest. It is only a suggestion and a flag: the shipment can keep being retried.",
         "invalid": "Enter a number from 0 to 20 (0 = no suggestion).",
         "saved": "Return setting saved."
       }
@@ -8553,10 +8553,10 @@
     "new": {
       "title": "New run",
       "generate": "Generate",
-      "help": "Gathers what was dispatched and not billed from the sales orders and the freight of the transport orders (per the contract billing model) and builds one draft invoice per customer. Nothing is issued until the run is approved.",
+      "help": "Gathers what was dispatched and not billed from the sales orders and the freight of the transport shipments (per the contract billing model) and builds one draft invoice per customer. Nothing is issued until the run is approved.",
       "client": "Customer",
       "includeProducts": "Dispatched product sales",
-      "includeFreight": "Freight of the transport orders",
+      "includeFreight": "Freight of the transport shipments",
       "clientHelp": "No customer: everyone with something to bill.",
       "from": "From",
       "to": "To",
@@ -8749,13 +8749,13 @@
     },
     "att": {
       "panel": "Delivery attempts",
-      "help": "Every delivery attempt of an order. It is the source of truth for pay: they are created automatically when an order is marked delivered or failed, or you can record them here by hand.",
+      "help": "Every delivery attempt of a shipment. It is the source of truth for pay: they are created automatically when a shipment is marked delivered or failed, or you can record them here by hand.",
       "new": "Record attempt",
       "newTitle": "Record a delivery attempt",
-      "newHelp": "Find the order (by number, invoice or consignee), pick the driver and the result. The attempt number is the next one for the order.",
-      "order": "Order",
+      "newHelp": "Find the shipment (by number, invoice or consignee), pick the driver and the result. The attempt number is the next one for the shipment.",
+      "order": "Shipment",
       "orderPh": "Type at least 3 characters…",
-      "hits": "Orders found",
+      "hits": "Shipments found",
       "change": "Change",
       "pickDriver": "Pick the driver",
       "reason": "Failure reason",
@@ -8768,7 +8768,7 @@
       "failed": "Not delivered",
       "source": "Source",
       "sources": {
-        "STATUS": "Order status",
+        "STATUS": "Shipment status",
         "MANUAL": "By hand",
         "APP": "Driver app"
       },
@@ -8789,7 +8789,7 @@
       "created": "Attempt recorded on {order}.",
       "empty": "There are no attempts with these filters.",
       "errors": {
-        "order": "Find and pick the order.",
+        "order": "Find and pick the shipment.",
         "driver": "Pick the driver.",
         "reason": "Enter the reason for voiding."
       }
@@ -8810,17 +8810,17 @@
     "notes": "Note",
     "tabs": {
       "label": "COD sections",
-      "orders": "Orders with COD",
+      "orders": "Shipments with COD",
       "reconcile": "Reconcile",
       "remittances": "Remittances",
       "runs": "Runs"
     },
     "orders": {
-      "panel": "Orders with COD",
-      "search": "Search by order, invoice or client",
+      "panel": "Shipments with COD",
+      "search": "Search by shipment, invoice or client",
       "filterStatus": "Filter by COD status",
       "allStatuses": "All statuses",
-      "empty": "No orders with COD match this filter."
+      "empty": "No shipments with COD match this filter."
     },
     "statuses": {
       "PENDING": "To collect",
@@ -8837,10 +8837,10 @@
       "CARD": "Card"
     },
     "col": {
-      "order": "Order",
+      "order": "Shipment",
       "invoice": "Invoice",
       "client": "Client",
-      "orderStatus": "Order status",
+      "orderStatus": "Shipment status",
       "cod": "COD",
       "collected": "Collected",
       "pending": "To collect",
@@ -8894,17 +8894,17 @@
       "INVOICE": "Invoices",
       "BOTH": "Both",
       "help": {
-        "AUTO": "The system sorts each sheet: if the order has COD, it squares the collection; if not, it processes the invoice.",
-        "COD": "Everything is processed anyway, but I will warn you if a sheet belongs to an order without COD.",
-        "INVOICE": "Everything is processed anyway, but I will warn you if a sheet belongs to an order with COD.",
+        "AUTO": "The system sorts each sheet: if the shipment has COD, it squares the collection; if not, it processes the invoice.",
+        "COD": "Everything is processed anyway, but I will warn you if a sheet belongs to a shipment without COD.",
+        "INVOICE": "Everything is processed anyway, but I will warn you if a sheet belongs to a shipment with COD.",
         "BOTH": "Everything is processed anyway and I will warn you if one of the two kinds is missing."
       }
     },
     "warnings": {
       "title": "Warnings",
-      "NOT_COD_SHEETS": "You said COD sheets, but some belong to orders without COD: I processed them as invoices.",
-      "COD_SHEETS": "You said invoices, but some are sheets of orders with COD: I squared them as COD.",
-      "NO_INVOICE_SHEETS": "You said both, but no invoices of orders without COD came in.",
+      "NOT_COD_SHEETS": "You said COD sheets, but some belong to shipments without COD: I processed them as invoices.",
+      "COD_SHEETS": "You said invoices, but some are sheets of shipments with COD: I squared them as COD.",
+      "NO_INVOICE_SHEETS": "You said both, but no invoices of shipments without COD came in.",
       "NO_COD_SHEETS": "You said both, but no COD sheets came in."
     },
     "reconcile": {
@@ -9926,7 +9926,7 @@
     },
     "format": {
       "section": "File format",
-      "sectionHelp": "How the file comes. «Automatic» decides by extension (.xlsx Excel, .json, .xml; anything else CSV). For JSON and XML, paths say where the orders are and where each import-template column comes from.",
+      "sectionHelp": "How the file comes. «Automatic» decides by extension (.xlsx Excel, .json, .xml; anything else CSV). For JSON and XML, paths say where the shipments are and where each import-template column comes from.",
       "kind": "Format",
       "sheet": "Excel sheet",
       "sheetHelp": "Empty = the first sheet of the workbook.",
@@ -9938,15 +9938,15 @@
         "XML": "XML"
       },
       "pathHelp": {
-        "JSON": "Paths: $ = the document, .field, [*] = every item of a list, [0] = one. With lines: @ = the line, ^ = the order. Example: $.orders[*] and @.lines[*].",
-        "XML": "Paths: $ = the document (starts with the root element name), .Element, [*] = all, @attribute for an attribute and #text for the text of an element with attributes. With lines: @ = the line, ^ = the order."
+        "JSON": "Paths: $ = the document, .field, [*] = every item of a list, [0] = one. With lines: @ = the line, ^ = the shipment. Example: $.orders[*] and @.lines[*].",
+        "XML": "Paths: $ = the document (starts with the root element name), .Element, [*] = all, @attribute for an attribute and #text for the text of an element with attributes. With lines: @ = the line, ^ = the shipment."
       },
-      "recordsPath": "Orders path",
-      "recordsPathHelp": "Where each order is. One order = one row (or several, if there are lines).",
+      "recordsPath": "Shipments path",
+      "recordsPathHelp": "Where each shipment is. One shipment = one row (or several, if there are lines).",
       "linesPath": "Lines path (optional)",
-      "linesPathHelp": "Relative to the order (starts with @). Each line is a row; an order without lines gives one row.",
+      "linesPathHelp": "Relative to the shipment (starts with @). Each line is a row; a shipment without lines gives one row.",
       "columns": "Columns",
-      "columnsHelp": "In the order the import template expects (the first one is column 1).",
+      "columnsHelp": "In the shipment the import template expects (the first one is column 1).",
       "header": "Column name",
       "path": "Value path",
       "addColumn": "Add column",
@@ -9959,21 +9959,21 @@
       "sheets": "Workbook sheets: {sheets}.",
       "errors": {
         "sheet": "The sheet name cannot exceed 31 characters.",
-        "recordsRequired": "Enter the orders path (for example $.orders[*]).",
-        "recordsRoot": "The orders path must start with $ (for example $.orders[*]).",
-        "linesRoot": "The lines path must be relative to the order: start with @ (for example @.lines[*]).",
+        "recordsRequired": "Enter the shipments path (for example $.orders[*]).",
+        "recordsRoot": "The shipments path must start with $ (for example $.orders[*]).",
+        "linesRoot": "The lines path must be relative to the shipment: start with @ (for example @.lines[*]).",
         "columnsRequired": "Add at least one column to the mapping.",
         "columnsMax": "The mapping allows up to 60 columns.",
         "headerRequired": "Every column needs a name.",
         "headerMax": "A column name cannot exceed 80 characters.",
         "headerRepeated": "Two columns are named «{h}».",
         "pathInvalid": "The path «{p}» is not valid. Use the format $.field.other[*] (also @.field or ^.field).",
-        "orderRoot": "The path «{p}» uses ^ (the order), which is only allowed when there is a lines path."
+        "orderRoot": "The path «{p}» uses ^ (the shipment), which is only allowed when there is a lines path."
       }
     },
     "out": {
       "section": "What is sent",
-      "sectionHelp": "This integration's client orders that reach the chosen statuses. Each send is built with the columns below and sent through the connector; if it fails it is retried (1 min, 5, 30, 2 h and 12 h) and, once exhausted, lands in the «Outbox» tab.",
+      "sectionHelp": "This integration's client shipments that reach the chosen statuses. Each send is built with the columns below and sent through the connector; if it fails it is retried (1 min, 5, 30, 2 h and 12 h) and, once exhausted, lands in the «Outbox» tab.",
       "statuses": "Statuses that trigger the output",
       "status": {
         "SUBMITTED": "Submitted",
@@ -9993,8 +9993,8 @@
         "SCHEDULE": "On a schedule"
       },
       "triggerHelp": {
-        "EVENT": "Each order goes in its own send as soon as it reaches the status (within a minute).",
-        "SCHEDULE": "Every so often a single send goes out with all the orders that arrived since the previous one."
+        "EVENT": "Each shipment goes in its own send as soon as it reaches the status (within a minute).",
+        "SCHEDULE": "Every so often a single send goes out with all the shipments that arrived since the previous one."
       },
       "everyHelp": "How many minutes between sends (1 to 10080).",
       "format": "Format",
@@ -10007,16 +10007,16 @@
       "fileName": "File name",
       "fileNameHelp": "Supports {date} (yyyymmdd), {time} (hhmmss), {id} (send number) and {ext}. Empty = ordenes-{date}-{time}.{ext}.",
       "columns": "Columns",
-      "columnsHelpCsv": "File column name and which order field it carries.",
-      "columnsHelp": "Field name in JSON/XML (letters, numbers, hyphen and underscore) and which order field it carries.",
+      "columnsHelpCsv": "File column name and which shipment field it carries.",
+      "columnsHelp": "Field name in JSON/XML (letters, numbers, hyphen and underscore) and which shipment field it carries.",
       "header": "Name",
-      "field": "Order field",
+      "field": "Shipment field",
       "preview": "Preview",
-      "previewHelp": "Builds a sample with the client's recent orders; nothing is sent.",
+      "previewHelp": "Builds a sample with the client's recent shipments; nothing is sent.",
       "previewAfterSave": "Available after the integration is created.",
       "previewTitle": "Preview of «{name}»",
-      "previewSample": "Sample with {orders} recent order(s) in the chosen statuses. File: {file} ({format}).",
-      "previewNoSample": "No orders in those statuses yet: sample with {orders} recent order(s) of the client. File: {file} ({format}).",
+      "previewSample": "Sample with {orders} recent shipment(s) in the chosen statuses. File: {file} ({format}).",
+      "previewNoSample": "No shipments in those statuses yet: sample with {orders} recent shipment(s) of the client. File: {file} ({format}).",
       "sendNow": "Send now",
       "remoteDir": "Destination folder",
       "remoteDirHelp": "Server folder where each file is left (uploaded with a temporary «.part» name and then the final one; an existing file is never overwritten).",
@@ -10055,7 +10055,7 @@
         "headerMax": "A column name cannot exceed 60 characters.",
         "headerRepeated": "Two columns are named «{h}».",
         "headerName": "The column name «{h}» must start with a letter or underscore and contain only letters, numbers, hyphen and underscore (for JSON and XML).",
-        "fieldRequired": "Choose the order field.",
+        "fieldRequired": "Choose the shipment field.",
         "url": "Enter the URL the notices will be sent to.",
         "authName": "Enter the user (BASIC) or the header name (HEADER) of the authentication.",
         "secret": "Enter the token, password or header value of the authentication.",
@@ -10070,7 +10070,7 @@
       "emptyUndelivered": "Nothing undelivered.",
       "view": "View content",
       "viewTitle": "Send «{file}»",
-      "viewInfo": "{format} · {orders} order(s) · {bytes} bytes. The first 4,000 characters are shown.",
+      "viewInfo": "{format} · {orders} shipment(s) · {bytes} bytes. The first 4,000 characters are shown.",
       "retried": "Send queued for retry.",
       "discarded": "Send discarded.",
       "status": {
@@ -10084,7 +10084,7 @@
         "integration": "Integration",
         "dest": "Destination",
         "file": "File",
-        "orders": "Orders",
+        "orders": "Shipments",
         "attempts": "Attempts",
         "reason": "Reason",
         "date": "Created"
@@ -10101,8 +10101,8 @@
       "url": "Client URL (https)",
       "events": "Events",
       "event": {
-        "order_status_changed": "An order changed status",
-        "order_delivered": "An order was delivered",
+        "order_status_changed": "A shipment changed status",
+        "order_delivered": "A shipment was delivered",
         "invoice_issued": "An invoice was issued"
       },
       "create": "Create webhook",
@@ -10168,7 +10168,7 @@
       "open": "API keys",
       "title": "API keys of «{name}»",
       "help": "Each key is a user and password for the client's system to call the API. It only sees what this integration's scopes allow and, if a client is set, only that client's data.",
-      "clientHelp": "Required only if a scope covers transport orders: the key will only see this client's data.",
+      "clientHelp": "Required only if a scope covers transport shipments: the key will only see this client's data.",
       "secretOnce": "Copy the secret now: it is never shown again.",
       "keyIs": "Key:",
       "secretIs": "Secret:",
@@ -10212,21 +10212,21 @@
       "errors": {
         "label": "Enter the key name.",
         "limit": "The limit must be a whole number between 1 and 6000.",
-        "clientForScopes": "Pick the client: a chosen scope covers transport orders."
+        "clientForScopes": "Pick the client: a chosen scope covers transport shipments."
       }
     },
     "form": {
       "direction": "Direction",
-      "directionHelp": {"INBOUND": "Teikem receives orders (folder, email, SFTP, FTP, manual upload or the client API).", "OUTBOUND": "Teikem sends the client's orders (SFTP, FTP or their system's API) when they reach a status."},
+      "directionHelp": {"INBOUND": "Teikem receives shipments (folder, email, SFTP, FTP, manual upload or the client API).", "OUTBOUND": "Teikem sends the client's shipments (SFTP, FTP or their system's API) when they reach a status."},
       "newTitle": "New integration",
       "editTitle": "Edit \"{name}\"",
       "name": "Name",
-      "namePlaceholder": "AxisCare orders",
+      "namePlaceholder": "AxisCare shipments",
       "description": "Description",
       "client": "Client",
-      "clientHelp": "Orders that come in through this integration are created for this client.",
+      "clientHelp": "Shipments that come in through this integration are created for this client.",
       "template": "Import template",
-      "templateHelp": "Says how the file is read (columns, several lines per order, what is not a piece). Built in Orders → Import.",
+      "templateHelp": "Says how the file is read (columns, several lines per shipment, what is not a piece). Built in Shipments → Import.",
       "pick": "Choose…",
       "pickClientFirst": "Choose the client first",
       "connector": "Connector",
@@ -10239,7 +10239,7 @@
       "scopes": "What it can do",
       "scopesHelp": "Only what you can give and what the company has is offered: the integration's service account gets exactly those permissions.",
       "notify": "Who to notify",
-      "notifyHelp": "Every run with something to report (orders created, rows sent to the inbox or a failure) notifies these people with a system notice.",
+      "notifyHelp": "Every run with something to report (shipments created, rows sent to the inbox or a failure) notifies these people with a system notice.",
       "includeMe": "Include me",
       "retention": "Days inbox data is kept",
       "retentionHelp": "After that the detail of what could not be processed is deleted; the reason stays.",
@@ -10250,7 +10250,7 @@
       "errors": {
         "nameRequired": "The integration name is required.",
         "nameMax": "Maximum 120 characters.",
-        "clientRequired": "Enter the client for this integration's orders.",
+        "clientRequired": "Enter the client for this integration's shipments.",
         "templateRequired": "Choose the import template used to read the files.",
         "folderRequired": "Enter the input folder name.",
         "folderInvalid": "The folder name only allows letters, numbers, hyphen and underscore (no paths).",
@@ -10398,7 +10398,7 @@
       "reprocessAll": "Reprocess all",
       "emptyPending": "Nothing is pending: everything that came in was processed.",
       "empty": "No items with that filter.",
-      "help": "An order with problems is never created halfway: it stays here with its reason. Fix the data and reprocess; raw data is purged after the integration's retention days.",
+      "help": "A shipment with problems is never created halfway: it stays here with its reason. Fix the data and reprocess; raw data is purged after the integration's retention days.",
       "fix": "Fix",
       "reprocess": "Reprocess",
       "discard": "Discard",
@@ -10416,13 +10416,13 @@
       "row": "Row",
       "rowN": "row {n}",
       "cell": "Row {row}, column {col}",
-      "reprocessed": "Done: the order was created.",
+      "reprocessed": "Done: the shipment was created.",
       "reprocessedN": "{n} item(s) reprocessed.",
       "reprocessedSome": "{done} reprocessed; {still} still pending.",
       "stillPending": "It still has problems; check the reason.",
       "col": {
         "status": "Status",
-        "ref": "Order",
+        "ref": "Shipment",
         "integration": "Integration",
         "file": "File",
         "reason": "Reason",
@@ -10516,15 +10516,15 @@
     "jobs": {
       "labelsTitle": "Labels",
       "previewLabels": "Print {n} labels",
-      "summary": "Labels: {labels} · orders: {orders} (one per piece).",
+      "summary": "Labels: {labels} · shipments: {orders} (one per piece).",
       "previewLabel": "Print 1 label",
       "docReady": "The document is ready to print.",
-      "cancelled": "{n} cancelled orders were not printed.",
+      "cancelled": "{n} cancelled shipments were not printed.",
       "withoutNumber": "{n} pieces without a package number were not printed.",
       "none": "There are no labels to print.",
       "large": "That is {n} labels: the PDF will be large and may take a moment. All are printed; there is no limit.",
       "failed": "Could not print: {reason}",
-      "afterSaveFailed": "The order was saved, but its label could not be printed: {reason}. Use “Print label” on the order."
+      "afterSaveFailed": "The shipment was saved, but its label could not be printed: {reason}. Use “Print label” on the shipment."
     },
     "title": "Printers & labels",
     "subtitle": "Printer and template per station",
@@ -10617,8 +10617,8 @@
       "templateInactive": "The template chosen on this station is no longer active: the company default is used.",
       "onSave": "Print on save",
       "confirm": "Confirm first",
-      "onSaveOn": "The company prints labels directly when an order is saved: with “Print on save” off, this station does not print them.",
-      "onSaveOff": "The company has “Print labels directly to the printer” off: saving an order does not print its label.",
+      "onSaveOn": "The company prints labels directly when a shipment is saved: with “Print on save” off, this station does not print them.",
+      "onSaveOff": "The company has “Print labels directly to the printer” off: saving a shipment does not print its label.",
       "viaQz": "Prints directly with QZ Tray on “{name}”.",
       "viaBrowserPrinter": "Prints with the browser dialog ({name}).",
       "viaBrowser": "Prints with the browser PDF (no printer configured).",
@@ -10685,9 +10685,9 @@
     "company": {
       "title": "Company settings",
       "direct": "Print labels directly to the printer",
-      "directHelp": "On: saving an order (quick or detailed entry) prints one label per package on the label printer of the station, without a dialog if the station has QZ Tray. Off: labels are printed by hand.",
-      "on": "Labels will print directly when orders are saved.",
-      "off": "Labels no longer print by themselves when orders are saved."
+      "directHelp": "On: saving a shipment (quick or detailed entry) prints one label per package on the label printer of the station, without a dialog if the station has QZ Tray. Off: labels are printed by hand.",
+      "on": "Labels will print directly when shipments are saved.",
+      "off": "Labels no longer print by themselves when shipments are saved."
     },
     "printer": {
       "title": "Company printers",
@@ -10744,10 +10744,10 @@
       "claims": "Claims"
     },
     "col": {
-      "order": "Order",
+      "order": "Shipment",
       "waybill": "Waybill",
       "client": "Client",
-      "orderStatus": "Order status",
+      "orderStatus": "Shipment status",
       "missing": "Missing",
       "piece": "Piece",
       "line": "Line",
@@ -10762,13 +10762,13 @@
     },
     "missingOf": "{missing} of {total}",
     "toVerify": {
-      "panel": "Orders with missing pieces",
-      "search": "Search by order, waybill or piece",
+      "panel": "Shipments with missing pieces",
+      "search": "Search by shipment, waybill or piece",
       "empty": "No missing pieces to handle."
     },
     "list": {
       "panel": "Claims",
-      "search": "Search by claim, order, waybill or piece",
+      "search": "Search by claim, shipment, waybill or piece",
       "filterStatus": "Filter by status",
       "allStatuses": "All statuses",
       "empty": "No claims."
@@ -10786,7 +10786,7 @@
     "noPieces": "No pieces.",
     "order": {
       "title": "Missing pieces of {number}",
-      "gone": "This order has no pieces left to handle."
+      "gone": "This shipment has no pieces left to handle."
     },
     "claim": {
       "title": "Claim {number}"

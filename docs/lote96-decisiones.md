@@ -5,7 +5,7 @@
 ## Qué se construyó
 - **Pantalla** `Contabilidad → Liquidación a choferes` (`features/driverpay/`): pestaña **Liquidaciones** (lista con búsqueda y filtros, «Nueva liquidación» con vista previa de lo que entraría, ficha con las líneas por día, ajuste por línea, revisar, aprobar con reautenticación, cancelar y exportar con plantilla) y pestaña **Intentos de entrega** (lista con filtros, registrar a mano buscando la orden, anular con motivo).
 - La ruta `/money/driver-pay` (antes pendiente) ya apunta a la pantalla; permisos y módulo como en el menú.
-- API: `DeliveryAttemptDto.ClientName` y la descripción de la línea de entrega con el cliente (el número de orden se repite entre clientes); openapi y cliente generado (web y `app-almacen`).
+- API: `DeliveryAttemptDto.ClientName` y la descripción de la línea de entrega con el cliente (el número de envío se repite entre clientes); openapi y cliente generado (web y `app-almacen`).
 - Textos es/en (`pay.*`), reglas puras (`settlementRules.ts`), manual de pantallas L96 con capturas, capítulo 22 §4, FAQ y este documento.
 
 ## Cómo se probó

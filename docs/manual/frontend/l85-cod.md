@@ -2,9 +2,9 @@
 
 **Contabilidad → Procesar entregas (COD)** (`/money/cod`). La ven quienes tienen `cod.view` (módulo COD). **Registrar cobros** pide `cod.collect` y la pestaña **Reconciliar** pide `cod.reconcile`. Las reglas y los mensajes del servidor están en el [capítulo 21](../21-cod.md).
 
-## 1. Órdenes con COD
+## 1. Envíos con COD
 
-La pestaña **Órdenes con COD** lista cada orden con COD: orden, **factura**, cliente, estatus de la orden, **COD**, **cobrado**, **por cobrar** y el estatus del COD (Por cobrar, Parcial, Cobrado, Cuadrado, Remitido). Tiene buscador (orden, factura o cliente), filtro por estatus, orden por columna y exportación como las demás tablas. Un clic abre la ficha.
+La pestaña **Envíos con COD** lista cada orden con COD: orden, **factura**, cliente, estatus de la orden, **COD**, **cobrado**, **por cobrar** y el estatus del COD (Por cobrar, Parcial, Cobrado, Cuadrado, Remitido). Tiene buscador (orden, factura o cliente), filtro por estatus, orden por columna y exportación como las demás tablas. Un clic abre la ficha.
 
 La **ficha** muestra lo pedido, lo cobrado y lo que falta, y cada cobro (fecha, método, monto, referencia y estatus). **Registrar cobro** (solo con algo por cobrar y la orden ya fuera de borrador) pide el **método** (efectivo, cheque, company check, ATH Móvil o tarjeta), el **monto** (por omisión lo que falta; se puede cobrar en partes), el **número del cheque** (solo en cheque y company check), una referencia y una nota. La pantalla avisa antes de enviar si el monto no vale o pasa de lo que falta.
 

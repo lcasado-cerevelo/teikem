@@ -197,8 +197,8 @@ public sealed class ClientNotificationTests
         var log = await x.Svc.ListAsync(x.Client.PublicId, 0, 50, default);
         Assert.Equal(2, log.Total);
         var r1 = log.Items.Single(n => n.BodyText.Contains("RUT-1"));
-        Assert.Contains("8 caja(s) de 2 orden(es)", r1.BodyText);
-        Assert.Contains("RUT-2", log.Items.Single(n => n.BodyText.Contains("2 caja(s) de 1 orden(es)")).BodyText);
+        Assert.Contains("8 caja(s) de 2 envío(s)", r1.BodyText);
+        Assert.Contains("RUT-2", log.Items.Single(n => n.BodyText.Contains("2 caja(s) de 1 envío(s)")).BodyText);
         Assert.True(r1.InPortal);
         Assert.Equal(new[] { "extra@x.co", "portal@cliente.co" }, r1.Deliveries.Select(d => d.Recipient).OrderBy(d => d).ToArray());
         Assert.All(r1.Deliveries, d => Assert.Equal(("EMAIL", "SENT"), (d.Channel, d.Status)));
@@ -254,7 +254,7 @@ public sealed class ClientNotificationTests
         x.Clock.Now = x.Clock.Now.AddMinutes(10);
         await x.Svc.DigestAsync(default);
         var n = (await x.Svc.ListAsync(x.Client.PublicId, 0, 10, default)).Items.Single();
-        Assert.Contains("Entregado: 4 caja(s) de 1 orden(es)", n.BodyText);
+        Assert.Contains("Entregado: 4 caja(s) de 1 envío(s)", n.BodyText);
         Assert.Contains("COD cobrado: $75.50", n.BodyText);
 
         // lo apagan antes de que se resuma: los hechos se descartan
@@ -293,7 +293,7 @@ public sealed class ClientNotificationTests
         x.Clock.Now = x.Clock.Now.AddMinutes(10);
         Assert.Equal((2, 2, 0), await x.Svc.DigestAsync(default));
         var items = (await x.Svc.ListAsync(x.Client.PublicId, 0, 10, default)).Items;
-        Assert.Contains("Remesa de COD REM-00001: cobrado $100.00, comisión $8.00, neto $92.00 (1 orden(es))", items.Single(i => i.Kind == "COD_PROCESSED").BodyText);
+        Assert.Contains("Remesa de COD REM-00001: cobrado $100.00, comisión $8.00, neto $92.00 (1 envío(s))", items.Single(i => i.Kind == "COD_PROCESSED").BodyText);
         Assert.Contains("Factura FAC-00009 por $220.00, vence el 2026-11-16", items.Single(i => i.Kind == "INVOICE_ISSUED").BodyText);
         Assert.True(items.Single(i => i.Kind == "COD_PROCESSED").InPortal);
         Assert.False(items.Single(i => i.Kind == "INVOICE_ISSUED").InPortal);

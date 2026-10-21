@@ -40,9 +40,9 @@ function json(body: unknown) {
 
 const INTEGRATIONS = [
   {
-    id: 1, publicId: 'i1', name: 'Órdenes de AxisCare', description: 'SFTP de AxisCare', direction: 'INBOUND', clientPublicId: 'c1', clientName: 'AxisCare', connectorKind: 'FOLDER', folder: 'axiscare',
-    templatePublicId: 't1', templateName: 'Plantilla AxisCare', scheduleKind: 'INTERVAL', intervalSeconds: 300, nextRunUtc: null, scopes: ['files.orders_import'], serviceUserName: 'Integración Órdenes de AxisCare',
-    notifyUsers: [], retentionDays: 30, isActive: true, lastStartedUtc: null, lastFinishedUtc: '2026-10-19T12:00:00Z', lastStatus: 'PARTIAL', lastMessage: '1 archivo(s): 14 orden(es) creada(s), 3 a la bandeja.', pendingInbox: 3, createdAtUtc: '2026-10-19T10:00:00Z',
+    id: 1, publicId: 'i1', name: 'Envíos de AxisCare', description: 'SFTP de AxisCare', direction: 'INBOUND', clientPublicId: 'c1', clientName: 'AxisCare', connectorKind: 'FOLDER', folder: 'axiscare',
+    templatePublicId: 't1', templateName: 'Plantilla AxisCare', scheduleKind: 'INTERVAL', intervalSeconds: 300, nextRunUtc: null, scopes: ['files.orders_import'], serviceUserName: 'Integración Envíos de AxisCare',
+    notifyUsers: [], retentionDays: 30, isActive: true, lastStartedUtc: null, lastFinishedUtc: '2026-10-19T12:00:00Z', lastStatus: 'PARTIAL', lastMessage: '1 archivo(s): 14 envío(es) creada(s), 3 a la bandeja.', pendingInbox: 3, createdAtUtc: '2026-10-19T10:00:00Z',
   },
   {
     id: 2, publicId: 'i2', name: 'Subidas de Truss', direction: 'INBOUND', clientPublicId: 'c2', clientName: 'Truss', connectorKind: 'MANUAL', scheduleKind: 'MANUAL', scopes: ['files.orders_import'],
@@ -50,12 +50,12 @@ const INTEGRATIONS = [
   },
 ]
 const OPTIONS = {
-  scopes: [{ code: 'files.orders_import', family: 'FILES', label: 'Entrada de órdenes por archivo', moduleKey: 'LTL_GROUND', available: true }],
+  scopes: [{ code: 'files.orders_import', family: 'FILES', label: 'Entrada de envíos por archivo', moduleKey: 'LTL_GROUND', available: true }],
   connectors: ['FOLDER', 'MANUAL'],
   users: [{ id: 3, name: 'Dalyshamel', email: 'd@x.com' }],
 }
-const INBOX = [{ id: 5, integrationPublicId: 'i1', integrationName: 'Órdenes de AxisCare', runId: 9, fileName: 'ordenes.csv', sourceRow: 6, referenceKey: 'C-100', reason: 'La orden no trae ninguna pieza (todas sus líneas son descripción o factura).', status: 'PENDING', createdAtUtc: '2026-10-19T12:00:00Z', hasData: true }]
-const INBOX_ITEM = { ...INBOX[0], header: ['orden', 'tipo'], rows: [{ row: 6, cells: ['C-100', 'Drum'] }] }
+const INBOX = [{ id: 5, integrationPublicId: 'i1', integrationName: 'Envíos de AxisCare', runId: 9, fileName: 'ordenes.csv', sourceRow: 6, referenceKey: 'C-100', reason: 'El envío no trae ninguna pieza (todas sus líneas son descripción o factura).', status: 'PENDING', createdAtUtc: '2026-10-19T12:00:00Z', hasData: true }]
+const INBOX_ITEM = { ...INBOX[0], header: ['envío', 'tipo'], rows: [{ row: 6, cells: ['C-100', 'Drum'] }] }
 
 function sessionOf(perms: string[]) {
   return {
@@ -87,7 +87,7 @@ describe('IntegrationsScreen', () => {
 
   it('lista las integraciones con conector, horario, último resultado y los pendientes de la bandeja', async () => {
     wrap()
-    const row = (await screen.findByText('Órdenes de AxisCare')).closest('tr') as HTMLElement
+    const row = (await screen.findByText('Envíos de AxisCare')).closest('tr') as HTMLElement
     expect(within(row).getByText('Carpeta de entrada')).toBeInTheDocument()
     expect(within(row).getByText('axiscare')).toBeInTheDocument()
     expect(within(row).getByText('Cada 5 min')).toBeInTheDocument()
@@ -102,7 +102,7 @@ describe('IntegrationsScreen', () => {
 
   it('«Correr ahora» solo en las de carpeta; subir archivo en todas', async () => {
     wrap()
-    const folder = (await screen.findByText('Órdenes de AxisCare')).closest('tr') as HTMLElement
+    const folder = (await screen.findByText('Envíos de AxisCare')).closest('tr') as HTMLElement
     const manual = (await screen.findByText('Subidas de Truss')).closest('tr') as HTMLElement
     expect(within(folder).getByRole('button', { name: 'Correr ahora' })).toBeInTheDocument()
     expect(within(manual).queryByRole('button', { name: 'Correr ahora' })).toBeNull()
@@ -111,7 +111,7 @@ describe('IntegrationsScreen', () => {
 
   it('sin permisos de crear, administrar ni bandeja no hay alta, acciones ni pestaña de bandeja', async () => {
     wrap(['integrations.view'])
-    const row = (await screen.findByText('Órdenes de AxisCare')).closest('tr') as HTMLElement
+    const row = (await screen.findByText('Envíos de AxisCare')).closest('tr') as HTMLElement
     expect(screen.queryByRole('button', { name: 'Nueva integración' })).toBeNull()
     expect(screen.queryByRole('tab', { name: /Bandeja/ })).toBeNull()
     expect(within(row).queryByRole('button', { name: 'Correr ahora' })).toBeNull()
@@ -127,7 +127,7 @@ describe('IntegrationsScreen', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Crear integración' }))
     expect(await within(dialog).findByText('El nombre de la integración es obligatorio.')).toBeInTheDocument()
     expect(within(dialog).getByText('Escoja al menos un alcance para la integración.')).toBeInTheDocument()
-    expect(within(dialog).getByText('Indique el cliente de las órdenes de esta integración.')).toBeInTheDocument()
+    expect(within(dialog).getByText('Indique el cliente de los envíos de esta integración.')).toBeInTheDocument()
     expect(within(dialog).getByText('Indique el nombre de la carpeta de entrada.')).toBeInTheDocument()
 
     await user.type(within(dialog).getByLabelText(/^Nombre/), 'Nueva de prueba')
@@ -139,7 +139,7 @@ describe('IntegrationsScreen', () => {
     expect(await within(dialog).findByText('El nombre de la carpeta solo admite letras, números, guion y guion bajo (sin rutas).')).toBeInTheDocument()
     await user.clear(within(dialog).getByLabelText(/^Carpeta de entrada/))
     await user.type(within(dialog).getByLabelText(/^Carpeta de entrada/), 'nueva')
-    await user.click(await within(dialog).findByRole('switch', { name: 'Entrada de órdenes por archivo' }))
+    await user.click(await within(dialog).findByRole('switch', { name: 'Entrada de envíos por archivo' }))
     await user.click(within(dialog).getByRole('button', { name: 'Crear integración' }))
     await waitFor(() => expect(mock.requests.some((r) => r.method === 'POST' && r.path === '/api/v1/integrations')).toBe(true))
     const post = mock.requests.find((r) => r.method === 'POST' && r.path === '/api/v1/integrations')!.body

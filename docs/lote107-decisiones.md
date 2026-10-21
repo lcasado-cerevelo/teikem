@@ -17,4 +17,4 @@ Luis dictó: el usuario escoge la acción (recoger, llegó, enrutar, salir) y ca
 2. **Enrutar escoge la ruta por zona** (la de menor id abierta del día), como el escaneo de salida de siempre; «contra un chofer» o escoger la ruta a mano queda para otro lote.
 3. **El mensaje de voz y los textos del resultado** son los del servidor (español).
 4. **Pendiente de lotes siguientes:** tipos de servicio «pick up» (Sometida→Recogida→En almacén), Reclamaciones, Devuelta + orden de vuelta, cargo por devolución, sugerencia «devolver tras N intentos», app móvil de entregas; la app de choferes aún no marca Recoger/En tránsito.
-5. Quedó código del Lote 106 que ya no se usa: el diálogo «Autorizar y marcar como recogida» de la web (el servidor ya no mide crédito al marcar recogida).
+5. Quedó código del Lote 106 que ya no se usa: el diálogo «Autorizar y marcar como recogido» de la web (el servidor ya no mide crédito al marcar recogida).

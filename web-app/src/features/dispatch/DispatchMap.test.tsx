@@ -44,12 +44,12 @@ const three = () => [
 ]
 const T = (over: Record<string, unknown> = {}) => tripDetail({ stops: three(), ...over })
 
-const stopsList = () => screen.getByRole('list', { name: 'Órdenes en esta ruta' })
+const stopsList = () => screen.getByRole('list', { name: 'Envíos en esta ruta' })
 const rows = () => within(stopsList()).getAllByRole('listitem')
 const order = () => rows().map((r) => (r.querySelector('.ref') as HTMLElement).textContent)
 const plane = () => screen.getByRole('group', { name: 'Plano de la ruta 2026-0001' })
-const grip = (n: string) => screen.getByRole('button', { name: `Arrastrar la orden ${n} para reordenar (o use las flechas ↑ ↓)` })
-const ready = () => screen.findByRole('list', { name: 'Órdenes en esta ruta' })
+const grip = (n: string) => screen.getByRole('button', { name: `Arrastrar el envío ${n} para reordenar (o use las flechas ↑ ↓)` })
+const ready = () => screen.findByRole('list', { name: 'Envíos en esta ruta' })
 
 beforeAll(() => setLang('es'))
 beforeEach(() => resetMock([T()]))
@@ -73,7 +73,7 @@ function drag(handle: HTMLElement, fromY: number, toY: number, end = true) {
 }
 
 describe('plano de la ruta activa', () => {
-  it('va dentro de «Ruta activa», arriba de «Órdenes en esta ruta», con un pin por parada con punto y sin ubicación listadas aparte', async () => {
+  it('va dentro de «Ruta activa», arriba de «Envíos en esta ruta», con un pin por parada con punto y sin ubicación listadas aparte', async () => {
     wrap()
     await ready()
     const panel = screen.getByRole('heading', { name: /Ruta activa/ }).closest('.panel')!
@@ -118,12 +118,12 @@ describe('plano de la ruta activa', () => {
     await user.click(pin2)
     expect(within(plane()).getByRole('button', { name: /Parada 2/ })).toHaveAttribute('aria-pressed', 'true')
     expect(rows()[1]).toHaveClass('on')
-    expect(within(rows()[1]).getByRole('button', { name: 'Elegir la orden OT-0102' })).toHaveAttribute('aria-pressed', 'true')
+    expect(within(rows()[1]).getByRole('button', { name: 'Elegir el envío OT-0102' })).toHaveAttribute('aria-pressed', 'true')
     const strip = screen.getByText(/Parada 2 · OT-0102/).closest('.disp-map-sel') as HTMLElement
     expect(strip).toHaveTextContent('Pin aproximado')
     expect(within(strip).getByRole('button', { name: 'Mover pin' })).toBeInTheDocument()
     // desde la lista
-    await user.click(within(rows()[0]).getByRole('button', { name: 'Elegir la orden OT-0101' }))
+    await user.click(within(rows()[0]).getByRole('button', { name: 'Elegir el envío OT-0101' }))
     expect(rows()[0]).toHaveClass('on')
     expect(rows()[1]).not.toHaveClass('on')
     expect(within(plane()).getByRole('button', { name: /Parada 1/ })).toHaveAttribute('aria-pressed', 'true')
@@ -146,7 +146,7 @@ describe('reordenar arrastrando', () => {
     drag(grip('OT-0101'), 20, 100)
     await waitFor(() => expect(callsTo('PUT', '/api/v1/trips/t-1/route/sequence')).toHaveLength(1))
     expect(callsTo('PUT', '/api/v1/trips/t-1/route/sequence')[0].body).toEqual({ routeStopIds: [2, 3, 1], rowVersion: 'rv-1' })
-    // mientras viaja la petición ya se ve el orden nuevo, también en el plano (los pines siguen la secuencia mostrada)
+    // mientras viaja la petición ya se ve el envío nuevo, también en el plano (los pines siguen la secuencia mostrada)
     expect(order()).toEqual(['OT-0102', 'OT-0103', 'OT-0101'])
     expect(within(plane()).getByRole('button', { name: 'Parada 3 · Consignatario OT-0101 · Bayamón' })).toBeInTheDocument()
     release(undefined) // responde el simulador
@@ -165,9 +165,9 @@ describe('reordenar arrastrando', () => {
       first = false
       return new Promise((resolve) => { release = resolve as (r: undefined) => void })
     }
-    await user.click(screen.getByRole('button', { name: 'Bajar la orden OT-0101' })) // [2,1,3]
+    await user.click(screen.getByRole('button', { name: 'Bajar el envío OT-0101' })) // [2,1,3]
     await waitFor(() => expect(callsTo('PUT', '/api/v1/trips/t-1/route/sequence')).toHaveLength(1))
-    await user.click(screen.getByRole('button', { name: 'Bajar la orden OT-0101' })) // [2,3,1]
+    await user.click(screen.getByRole('button', { name: 'Bajar el envío OT-0101' })) // [2,3,1]
     grip('OT-0102').focus()
     await user.keyboard('{ArrowDown}') // [3,2,1]
     // todo se ve al instante y todavía no salió ninguna otra petición
@@ -184,14 +184,14 @@ describe('reordenar arrastrando', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
-  it('un error real en la cola vuelve al orden del servidor y no deja una petición colgada', async () => {
+  it('un error real en la cola vuelve al envío del servidor y no deja una petición colgada', async () => {
     const user = userEvent.setup()
     wrap()
     await ready()
     let release: (r: Response | undefined) => void = () => undefined
     mock.override = (c: Call) => (c.method === 'PUT' ? new Promise((resolve) => { release = resolve as (r: Response | undefined) => void }) : undefined)
-    await user.click(screen.getByRole('button', { name: 'Bajar la orden OT-0101' }))
-    await user.click(screen.getByRole('button', { name: 'Bajar la orden OT-0101' }))
+    await user.click(screen.getByRole('button', { name: 'Bajar el envío OT-0101' }))
+    await user.click(screen.getByRole('button', { name: 'Bajar el envío OT-0101' }))
     release(problem(409, 'El registro fue modificado por otro usuario; recargue e intente de nuevo.', 'conflict'))
     expect(await screen.findByRole('alert')).toHaveTextContent('El registro fue modificado por otro usuario')
     expect(callsTo('PUT', '/api/v1/trips/t-1/route/sequence')).toHaveLength(1)
@@ -233,7 +233,7 @@ describe('reordenar arrastrando', () => {
     expect(callsTo('PUT', '/api/v1/trips/t-1/route/sequence')).toHaveLength(0)
   })
 
-  it('si el servidor lo niega, la lista vuelve al orden anterior y se muestra su texto exacto', async () => {
+  it('si el servidor lo niega, la lista vuelve al envío anterior y se muestra su texto exacto', async () => {
     fakeRowRects()
     wrap()
     await ready()
@@ -245,7 +245,7 @@ describe('reordenar arrastrando', () => {
     expect(within(plane()).getByRole('button', { name: 'Parada 1 · Consignatario OT-0101 · Bayamón' })).toBeInTheDocument()
   })
 
-  it('409 (otra persona cambió la ruta): el aviso del servidor, el orden anterior y la ruta se vuelve a pedir', async () => {
+  it('409 (otra persona cambió la ruta): el aviso del servidor, el envío anterior y la ruta se vuelve a pedir', async () => {
     fakeRowRects()
     wrap()
     await ready()
@@ -257,7 +257,7 @@ describe('reordenar arrastrando', () => {
     await waitFor(() => expect(callsTo('GET', '/api/v1/trips/t-1').length).toBeGreaterThan(before))
   })
 
-  it('con el teclado: ↓ en el asa baja la orden y ↑ la sube; en los extremos no hace nada', async () => {
+  it('con el teclado: ↓ en el asa baja el envío y ↑ la sube; en los extremos no hace nada', async () => {
     const user = userEvent.setup()
     wrap()
     await ready()
@@ -274,7 +274,7 @@ describe('reordenar arrastrando', () => {
     const user = userEvent.setup()
     wrap()
     await ready()
-    await user.click(screen.getByRole('button', { name: 'Subir la orden OT-0102' }))
+    await user.click(screen.getByRole('button', { name: 'Subir el envío OT-0102' }))
     await waitFor(() => expect(order()).toEqual(['OT-0102', 'OT-0101', 'OT-0103']))
     expect(callsTo('PUT', '/api/v1/trips/t-1/route/sequence')[0].body).toEqual({ routeStopIds: [2, 1, 3], rowVersion: 'rv-1' })
     expect(within(plane()).getByRole('button', { name: 'Parada 1 · Consignatario OT-0102 · Bayamón' })).toBeInTheDocument()
@@ -283,7 +283,7 @@ describe('reordenar arrastrando', () => {
 
 describe('pin manual', () => {
   const open = async (user: ReturnType<typeof userEvent.setup>, number = 'OT-0103') => {
-    await user.click(screen.getByRole('button', { name: `Poner pin a la orden ${number}` }))
+    await user.click(screen.getByRole('button', { name: `Poner pin al envío ${number}` }))
     return screen.getByRole('dialog', { name: `Pin manual · ${number}` })
   }
 
@@ -319,7 +319,7 @@ describe('pin manual', () => {
     await waitFor(() => expect(within(plane()).getByRole('button', { name: 'Parada 3 · Consignatario OT-0103 · Bayamón' })).toBeInTheDocument())
     expect(rows()[2]).toHaveTextContent('Pin manual')
     expect(screen.queryByText(/Sin ubicación/)).toBeNull()
-    expect(screen.getByRole('button', { name: 'Mover el pin de la orden OT-0103' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Mover el pin del envío OT-0103' })).toBeInTheDocument()
   })
 
   it('un error del servidor sale dentro del diálogo (ruta no editable 422) y el diálogo no se cierra', async () => {
@@ -354,7 +354,7 @@ describe('pin manual', () => {
     const user = userEvent.setup()
     wrap()
     await ready()
-    await user.click(screen.getByRole('button', { name: 'Mover el pin de la orden OT-0101' }))
+    await user.click(screen.getByRole('button', { name: 'Mover el pin del envío OT-0101' }))
     const dlg = screen.getByRole('dialog', { name: 'Pin manual · OT-0101' })
     expect(within(dlg).getByLabelText(/^Latitud/)).toHaveValue('18.4')
     expect(within(dlg).getByLabelText(/^Longitud/)).toHaveValue('-66.1')
@@ -417,9 +417,9 @@ describe('permisos y ruta no editable', () => {
     wrap(['trips.view'])
     await ready()
     expect(plane()).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Arrastrar la orden/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Arrastrar el envío/ })).toBeNull()
     expect(screen.queryByRole('button', { name: /Poner pin|Mover/ })).toBeNull()
-    expect(screen.queryByRole('button', { name: /Subir la orden|Bajar la orden|Quitar la orden/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Subir el envío|Bajar el envío|Quitar el envío/ })).toBeNull()
     // elegir una parada sigue funcionando y el resumen no ofrece pin
     await userEvent.setup().click(screen.getByRole('button', { name: /Parada 3/ }))
     expect(screen.queryByRole('button', { name: 'Poner pin' })).toBeNull()
@@ -437,9 +437,9 @@ describe('permisos y ruta no editable', () => {
     wrap()
     await ready()
     expect(plane()).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Arrastrar la orden/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Arrastrar el envío/ })).toBeNull()
     expect(screen.queryByRole('button', { name: /Poner pin|Mover/ })).toBeNull()
-    expect(screen.queryByRole('button', { name: /Subir la orden|Bajar la orden|Quitar la orden/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Subir el envío|Bajar el envío|Quitar el envío/ })).toBeNull()
     await userEvent.setup().click(within(plane()).getByRole('button', { name: /Parada 1/ }))
     expect(rows()[0]).toHaveClass('on')
     expect(screen.queryByRole('button', { name: 'Mover pin' })).toBeNull()

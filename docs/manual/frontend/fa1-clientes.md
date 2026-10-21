@@ -79,7 +79,7 @@ Mensajes: `El nombre del contacto es obligatorio.` (400) · `No puede exceder 15
 Sin `contacts.manage` el modal guarda nombre, puesto y principal, y avisa que no se pueden cambiar teléfonos ni correos.
 
 ### Numeración
-- **¿Quién asigna el número de orden / de factura?**: *El cliente* (lo escribe al capturar) o *Teikem (automático)*.
+- **¿Quién asigna el número de envío / de factura?**: *El cliente* (lo escribe al capturar) o *Teikem (automático)*.
 - Los tres patrones (**orden, factura, paquete**) definen cómo se ve el número que Teikem genera: `#` = un dígito del consecutivo, `@` = letra, el resto se copia tal cual
   (`AX-#####` genera `AX-00001`, `AX-00002`…). Bajo cada patrón se ve el **Ejemplo** con el consecutivo 1, calculado por el servidor mientras escribe. **Vacío = el patrón por
   defecto del sistema** (`ORD-#####`, `FAC-#####`, `PQT-#####`). El número de paquete siempre lo genera Teikem.

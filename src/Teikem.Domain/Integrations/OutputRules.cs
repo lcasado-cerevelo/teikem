@@ -83,7 +83,7 @@ public static class OutputRules
 
     public static readonly IReadOnlyList<OutputField> Fields =
     [
-        new("orderNumber", "Número de orden", "Order number", OutputFieldKind.Text),
+        new("orderNumber", "Número de envío", "Shipment number", OutputFieldKind.Text),
         new("waybillNumber", "Conduce", "Waybill", OutputFieldKind.Text),
         new("clientInvoiceNumber", "Factura del cliente", "Client invoice", OutputFieldKind.Text),
         new("status", "Estatus (código)", "Status (code)", OutputFieldKind.Text),
@@ -135,12 +135,12 @@ public static class OutputRules
     public static string HeadersMaxMessage => $"Se admiten hasta {MaxHeaders} encabezados adicionales.";
     public static string HeaderInvalidMessage(string h) => $"El encabezado «{h}» no es válido (nombre no permitido o valor con saltos de línea o de más de {HeaderValueMax} caracteres).";
     public const string ScheduleNeedsIntervalMessage = "La salida por horario necesita un intervalo (minutos).";
-    public const string OutboundNeedsClientMessage = "Una integración de salida necesita el cliente cuyas órdenes se mandan.";
+    public const string OutboundNeedsClientMessage = "Una integración de salida necesita el cliente cuyas envíos se mandan.";
     public const string OutboundConnectorMessage = "Una integración de salida usa SFTP, FTP o HTTP.";
     public const string OutputRequiredMessage = "Indique qué se manda (estatus, formato y columnas).";
     public const string NotOutboundMessage = "Esta integración no es de salida.";
     public const string SizeMessage = "La salida supera el tamaño permitido (2 MB); use una salida más frecuente o menos columnas.";
-    public const string NothingToSendMessage = "No hay órdenes pendientes de enviar.";
+    public const string NothingToSendMessage = "No hay envíos pendientes de enviar.";
     public const string NotUndeliveredMessage = "Solo se puede reintentar un envío no entregado.";
     public const string AlreadyDiscardedMessage = "El envío ya fue descartado.";
     public const string NotDiscardableMessage = "El envío ya se entregó.";

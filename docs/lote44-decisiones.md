@@ -10,10 +10,10 @@ Servidor mínimo del bloque F-G2 (labels y documentos de las órdenes). La panta
   summary y la packing list salen de `GET /orders` (todas las páginas, sin tope) sin un endpoint nuevo ni pedir la ficha de cada orden.
   También los trae `GET /orders/lookup` (misma proyección).
 - **Escaneo por número de paquete** (cambio mínimo aceptado por Luis): `OrderReadService.LookupAsync` busca, como **cuarta precedencia**
-  y solo si número de orden, empaque y factura no coinciden, las órdenes con una línea de carga ACTIVA cuyo `PackageNumber` es el código
+  y solo si número de envío, empaque y factura no coinciden, las órdenes con una línea de carga ACTIVA cuyo `PackageNumber` es el código
   (`MatchedBy = "PACKAGE"`). Lo usan `GET /orders/lookup` y la estación de escaneo (sin otro cambio en su flujo). Dos o más órdenes con el
   mismo número = ambiguo (`MULTIPLE_MATCHES`) con su mensaje propio: «El número de paquete está en {n} órdenes (de clientes distintos o
-  repetido); escanee el empaque o el número de orden.» (`OutboundScanRules.MultiplePackageMatchesMessage`).
+  repetido); escanee el empaque o el número de envío.» (`OutboundScanRules.MultiplePackageMatchesMessage`).
 - **Índice** `IX_CargoLine_PackageNumber (PackageNumber) INCLUDE (TransportOrderId) WHERE IsActive = 1 AND PackageNumber IS NOT NULL` en la
   sección nueva e idempotente «2026-10-12 (e)» al final de `Diseño/logistica-db-update.sql`, con su espejo en el modelo EF. No es único a
   propósito (el contador PACKAGE es por cliente y un número tecleado puede repetirse).

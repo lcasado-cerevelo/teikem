@@ -144,7 +144,7 @@ export default function OrderListScreen() {
       {
         id: 'packBatch',
         header: t('orders.list.columns.packBatch'),
-        cell: (o) => <span className="ref oe-small">{o.packBatchNumber || '—'}</span>,
+        cell: (o) => <span className="ref oe-small ref-nowrap">{o.packBatchNumber || '—'}</span>,
         sortValue: (o) => o.packBatchNumber,
         exportValue: (o) => o.packBatchNumber,
         card: 'hidden',
@@ -152,7 +152,7 @@ export default function OrderListScreen() {
       {
         id: 'waybill',
         header: t('orders.list.columns.waybill'),
-        cell: (o) => <span className="ref oe-small">{o.waybillNumber || '—'}</span>,
+        cell: (o) => <span className="ref oe-small ref-nowrap">{o.waybillNumber || '—'}</span>,
         sortValue: (o) => o.waybillNumber ?? '',
         exportValue: (o) => o.waybillNumber ?? '',
         card: 'hidden',
@@ -160,7 +160,7 @@ export default function OrderListScreen() {
       {
         id: 'orderNumber',
         header: t('orders.list.columns.orderNumber'),
-        cell: (o) => <span className="ref">{o.orderNumber}</span>,
+        cell: (o) => <span className="ref ref-nowrap">{o.orderNumber}</span>,
         continuation: () => (
           <span className="oe-cont" title={t('orders.list.columns.continued')}>
             ↳

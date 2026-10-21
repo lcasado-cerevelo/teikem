@@ -16,10 +16,10 @@ describe('missingReportSpec', () => {
     const orders = [o(1, null), o(2, 'R-02', false, 3), o(3, 'R-01'), o(4, null, true), o(5, 'R-01', false, 2)]
     const s = missingReportSpec(orders, { t, locale: 'es', filters: [], scanned: 7, date: (iso) => iso ?? '' })
     expect(s.sections.map((x) => x.title)).toEqual(['R-01 (2)', 'R-02 (1)', 'Sin zona (1)', 'Zona ambigua (1)'])
-    expect(s.columns.map((c) => c.header)).toEqual(['Empaque', 'Orden', 'Factura', 'Cliente', 'Consignatario', 'Pueblo', 'ZIP', 'Piezas', 'Fecha pedida'])
+    expect(s.columns.map((c) => c.header)).toEqual(['Empaque', 'Envío', 'Factura', 'Cliente', 'Consignatario', 'Pueblo', 'ZIP', 'Piezas', 'Fecha pedida'])
     expect(s.sections[0].rows[0]).toEqual(['EMP-3', 'ORD-3', 'F-3', 'Acme', 'Cons 3', 'Bayamón', '00961', 1, '2026-10-13'])
-    expect(s.sections[0].subtotal).toEqual(['Subtotal (2 órdenes)', '', '', '', '', '', '', 3, ''])
-    expect(s.totals).toEqual([['Total (5 órdenes)', '', '', '', '', '', '', 8, '']])
+    expect(s.sections[0].subtotal).toEqual(['Subtotal (2 envíos)', '', '', '', '', '', '', 3, ''])
+    expect(s.totals).toEqual([['Total (5 envíos)', '', '', '', '', '', '', 8, '']])
     expect(s.summary).toEqual([
       { label: 'Pendientes', value: '5', tone: 'money' },
       { label: 'Escaneadas en esta sesión', value: '7', tone: 'flow' },

@@ -99,7 +99,7 @@ public static class DispatchBatchRules
     {
         var shown = string.Join(", ", orderNumbers.Take(OpenOrdersListed));
         var more = orderNumbers.Count > OpenOrdersListed ? $" y {orderNumbers.Count - OpenOrdersListed} más" : string.Empty;
-        return $"La ruta {tripCode} no se puede cerrar: hay órdenes sin terminar ({shown}{more}).";
+        return $"La ruta {tripCode} no se puede cerrar: hay envíos sin terminar ({shown}{more}).";
     }
 
     /// <summary>'El pipeline de rutas de esta compañía no tiene habilitada la etapa {stage}.'</summary>
@@ -117,7 +117,7 @@ public static class DispatchBatchRules
     }
 
     /// <summary>'Orden {número}: {motivo}' (orden no elegible al despachar).</summary>
-    public static string OrderNotEligible(string orderNumber, string reason) => $"Orden {orderNumber}: {reason}";
+    public static string OrderNotEligible(string orderNumber, string reason) => $"Envío {orderNumber}: {reason}";
 
     /// <summary>Comentario del historial de cada orden al despacharse la ruta.</summary>
     public static string OrderDispatchedComment(string tripCode) => $"Despachada en la ruta {tripCode}";
@@ -130,5 +130,5 @@ public static class DispatchBatchRules
 
     /// <summary>Cancelar una orden que va en una ruta despachada o en curso.</summary>
     public static string CannotCancelOrderInDispatchedTrip(string tripCode)
-        => $"La orden va en la ruta {tripCode} ya despachada; no se puede cancelar mientras la ruta esté en curso.";
+        => $"El envío va en la ruta {tripCode} ya despachada; no se puede cancelar mientras la ruta esté en curso.";
 }

@@ -151,7 +151,7 @@ test('Remesas COD: crear, cuadrar, aprobar, exportar y remitir', async ({ page, 
   await ficha.getByRole('button', { name: 'Cerrar' }).first().click()
 
   // las órdenes quedaron con el COD Remitido
-  await page.getByRole('tab', { name: 'Órdenes con COD' }).click()
+  await page.getByRole('tab', { name: 'Envíos con COD' }).click()
   await page.getByPlaceholder(/Buscar/).first().fill(clientName)
   await expect(page.locator('tr, .dt-cards > li').filter({ hasText: clientName }).first()).toContainText('Remitido', { timeout: 20_000 })
 

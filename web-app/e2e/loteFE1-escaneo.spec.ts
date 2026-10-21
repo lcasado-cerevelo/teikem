@@ -5,7 +5,7 @@
 // consignatarios por pueblo (uno sin zona), órdenes recogidas y una orden Sometida. El panel «Pendientes» se filtra por ese cliente
 // para dejar a la vista solo lo de la corrida (la base trae datos de otras).
 //
-// 1) Escaneo con ruta abierta (FOUND_ASSIGNED) por número de orden y por número de empaque; repetir (ALREADY_ASSIGNED).
+// 1) Escaneo con ruta abierta (FOUND_ASSIGNED) por número de envío y por número de empaque; repetir (ALREADY_ASSIGNED).
 // 2) Código inexistente, código vacío, orden Sometida (se enruta brincando estatus), zona sin ruta abierta (NO_OPEN_ROUTE), pueblo sin zona (NO_ZONE).
 // 3) Medidor «N de M», lista de la sesión con buscador, ventana de la orden con «Abrir», «Pendientes» con filtros y voz.
 //
@@ -182,12 +182,12 @@ test.describe('Estación de escaneo (Lote F-E1)', () => {
     await filters.getByRole('combobox', { name: 'Cliente' }).fill(clientName)
     await page.getByRole('option', { name: new RegExp(clientName) }).click()
     await expect(pendingList.getByRole('button')).toHaveCount(4) // a1, a2, b1, c1 (la Sometida no está recogida: no es pendiente)
-    await expect(pendingList.getByRole('button', { name: `Ver la orden ${a1.orderNumber}` })).toContainText(`${clientName} · ${townA} 00959 · FA${suffix}`)
-    await expect(pendingList.getByRole('button', { name: `Ver la orden ${c1.orderNumber}` })).toContainText('Sin zona')
+    await expect(pendingList.getByRole('button', { name: `Ver el envío ${a1.orderNumber}` })).toContainText(`${clientName} · ${townA} 00959 · FA${suffix}`)
+    await expect(pendingList.getByRole('button', { name: `Ver el envío ${c1.orderNumber}` })).toContainText('Sin zona')
     if (isMobile) await expectNoHorizontalScroll(page)
     await shot(page, isMobile, 'fe1-estacion-inicio', 1300)
 
-    // ---- 1. Asignar por número de orden (FOUND_ASSIGNED) y por número de empaque ----
+    // ---- 1. Asignar por número de envío (FOUND_ASSIGNED) y por número de empaque ----
     await scan(pc(a1))
     await expect(result).toContainText(`Asignada a la ruta ${tripCode}.`)
     await expect(result).toContainText('Asignada')
@@ -196,7 +196,7 @@ test.describe('Estación de escaneo (Lote F-E1)', () => {
     await expect(result).toContainText(`Zona FA${suffix}`)
     await expect(input).toHaveValue('')
     await expect(input).toBeFocused()
-    await expect(pendingList.getByRole('button', { name: `Ver la orden ${a1.orderNumber}` })).toHaveCount(0)
+    await expect(pendingList.getByRole('button', { name: `Ver el envío ${a1.orderNumber}` })).toHaveCount(0)
     await shot(page, isMobile, 'fe1-resultado-asignada', 1000)
     await scan(pc(a2))
     await expect(result).toContainText(`Asignada a la ruta ${tripCode}.`)
@@ -231,8 +231,8 @@ test.describe('Estación de escaneo (Lote F-E1)', () => {
     await expect(page.locator('.scanmeter .nums .of')).toHaveText(/de [4-6]/)
     await expect(feedList.getByRole('button')).toHaveCount(7) // a1, a2, a1 otra vez, a1 pieza 2, Sometida, b1 y c1 (el inexistente no abre ventana)
     await expect(feedList).toContainText(`NOEXISTE-${suffix}`)
-    await expect(pendingList.getByRole('button', { name: `Ver la orden ${b1.orderNumber}` })).toBeVisible()
-    await expect(pendingList.getByRole('button', { name: `Ver la orden ${c1.orderNumber}` })).toBeVisible()
+    await expect(pendingList.getByRole('button', { name: `Ver el envío ${b1.orderNumber}` })).toBeVisible()
+    await expect(pendingList.getByRole('button', { name: `Ver el envío ${c1.orderNumber}` })).toBeVisible()
     await page.getByRole('searchbox', { name: 'Buscar en lo escaneado…' }).fill('no encontrada')
     await expect(feedList.getByRole('button')).toHaveCount(0)
     await expect(feedList).toContainText(`NOEXISTE-${suffix}`)
@@ -241,7 +241,7 @@ test.describe('Estación de escaneo (Lote F-E1)', () => {
     await shot(page, isMobile, 'fe1-sesion', 1500)
 
     // ---- 4. Ventana de la orden desde la sesión y desde los pendientes ----
-    await feedList.getByRole('button', { name: `Ver la orden ${a1.orderNumber}` }).first().click()
+    await feedList.getByRole('button', { name: `Ver el envío ${a1.orderNumber}` }).first().click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toContainText(clientName)
     await expect(dialog).toContainText(`Farmacia Sol ${suffix}`)
@@ -255,15 +255,15 @@ test.describe('Estación de escaneo (Lote F-E1)', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Estación de escaneo' })).toBeVisible()
     await expect(input).toBeFocused()
     // la sesión sobrevive a abrir una orden y volver (se pierde solo al recargar)
-    await expect(feedList.getByRole('button', { name: `Ver la orden ${a1.orderNumber}` }).first()).toBeVisible()
+    await expect(feedList.getByRole('button', { name: `Ver el envío ${a1.orderNumber}` }).first()).toBeVisible()
     await expect(page.locator('.scanmeter .nums b')).toHaveText('3')   // a1, a2 y la Sometida que se enrutó
 
     // ---- 5. Filtros de «Pendientes»: Zona, Sin zona, Código postal y Pueblo (al servidor) ----
     await page.getByRole('group', { name: 'Filtros del escaneo' }).getByLabel('Zona').selectOption({ label: `FB${suffix} · Zona B FE1 ${suffix}` })
     await expect(pendingList.getByRole('button')).toHaveCount(1)
-    await expect(pendingList.getByRole('button', { name: `Ver la orden ${b1.orderNumber}` })).toBeVisible()
+    await expect(pendingList.getByRole('button', { name: `Ver el envío ${b1.orderNumber}` })).toBeVisible()
     await page.getByRole('group', { name: 'Filtros del escaneo' }).getByLabel('Zona').selectOption({ label: 'Sin zona' })
-    await expect(pendingList.getByRole('button', { name: `Ver la orden ${c1.orderNumber}` })).toBeVisible()
+    await expect(pendingList.getByRole('button', { name: `Ver el envío ${c1.orderNumber}` })).toBeVisible()
     await page.getByRole('group', { name: 'Filtros del escaneo' }).getByLabel('Zona').selectOption({ label: 'Todos' })
     await page.getByRole('group', { name: 'Filtros del escaneo' }).getByLabel('Pueblo').fill(townC)
     await expect(pendingList.getByRole('button')).toHaveCount(1)

@@ -12,7 +12,7 @@ Cinco tarjetas unidas por una tubería punteada: **Entrada** (órdenes nuevas ho
 
 ## Dinero COD
 
-Cuatro tarjetas con la tubería naranja: **Por cobrar** (órdenes y lo que falta), **Cobrado** (con el desglose en efectivo y cheques), **Cuadrado** (sin remesa, con cuántos clientes) y **Remesa lista** (el neto por remitir). Un clic abre COD en la pestaña que corresponde (Órdenes con COD, Reconciliar o Remesas).
+Cuatro tarjetas con la tubería naranja: **Por cobrar** (órdenes y lo que falta), **Cobrado** (con el desglose en efectivo y cheques), **Cuadrado** (sin remesa, con cuántos clientes) y **Remesa lista** (el neto por remitir). Un clic abre COD en la pestaña que corresponde (Envíos con COD, Reconciliar o Remesas).
 
 ![Dinero COD](img/l88-rio-cod.png)
 

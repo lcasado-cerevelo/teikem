@@ -47,12 +47,12 @@ public static class OrderRules
 
     public const string LineWeightTooLargeMessage = "El peso de la línea no puede superar 999999999.999 kg.";
     public const string LineVolumeTooLargeMessage = "El volumen de la línea no puede superar 99999999.9999 m³.";
-    public const string TotalWeightTooLargeMessage = "El peso total de la orden no puede superar 99999999999.999 kg.";
-    public const string TotalVolumeTooLargeMessage = "El volumen total de la orden no puede superar 9999999999.9999 m³.";
-    public const string TotalPiecesTooLargeMessage = "El total de piezas de la orden es demasiado grande.";
+    public const string TotalWeightTooLargeMessage = "El peso total del envío no puede superar 99999999999.999 kg.";
+    public const string TotalVolumeTooLargeMessage = "El volumen total del envío no puede superar 9999999999.9999 m³.";
+    public const string TotalPiecesTooLargeMessage = "El total de piezas del envío es demasiado grande.";
     public const string CodTooLargeMessage = "El monto COD no puede superar 99999999999999.9999.";
 
-    public const string DeleteOnlyInitialMessage = "Solo se puede eliminar una orden en su estatus inicial; use la cancelación.";
+    public const string DeleteOnlyInitialMessage = "Solo se puede eliminar un envío en su estatus inicial; use la cancelación.";
 
     /// <summary>Campos que se fijan al crear la orden y el PATCH rechaza con 400 (L1065; DECISIÓN 15).</summary>
     public static readonly IReadOnlyList<string> FixedFieldsOnPatch = new[] { "clientPublicId", "orderNumber", "clientInvoiceNumber", "packBatchNumber" };
@@ -179,7 +179,7 @@ public static class OrderRules
     {
         if (string.Equals(field, "codType", StringComparison.OrdinalIgnoreCase)) return CodTypeOnCaptureMessage;
         if (string.Equals(field, "packBatchNumber", StringComparison.OrdinalIgnoreCase)) return PackBatchAlwaysTeikemMessage;
-        return $"El campo '{field}' se fija al crear la orden y no se edita.";
+        return $"El campo '{field}' se fija al crear el envío y no se edita.";
     }
 
     // ---------------------------------------------------------------- eliminación / COD
@@ -193,7 +193,7 @@ public static class OrderRules
     /// número de la recolección (D10).
     /// </summary>
     public static string PickBatchOrderDeleteMessage(string packBatchNumber)
-        => $"Esta orden nació de la recolección {packBatchNumber}; elimínela desde Recolección y empaque para restaurar el inventario.";
+        => $"Este envío nació de la recolección {packBatchNumber}; elimínela desde Recolección y empaque para restaurar el inventario.";
 
     /// <summary>
     /// Lote 6 (P7, D12): ¿se puede borrar desde Órdenes una orden con este origen? Un origen PICK_BATCH solo lo borra quien

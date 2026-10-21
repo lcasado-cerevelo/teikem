@@ -98,7 +98,7 @@ public sealed class TripStatusEffect(TeikemDbContext db, IServiceProvider servic
 
         var orderPipeline = await statuses.GetPipelineAsync(StatusDomains.OrderStatus, includeDisabled: true, ct);
         var inTransit = orderPipeline.FirstOrDefault(s => Same(s.Code, OrderStatuses.InTransit))
-                        ?? throw new InvalidOperationException("El pipeline de órdenes no tiene la etapa IN_TRANSIT.");
+                        ?? throw new InvalidOperationException("El pipeline de envíos no tiene la etapa IN_TRANSIT.");
         var pending = await PendingDeliveryOrderIdsAsync(orders.Select(o => o.TransportOrderId).ToList(), ct);
         var allowedByStatus = new Dictionary<int, bool>();
         var errors = new Dictionary<string, string[]>();

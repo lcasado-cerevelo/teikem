@@ -7,7 +7,7 @@ Segundo sub-lote de F-E (F-E1 escaneo, **F-E2a** este, F-E2b mapa esquemático +
 | Pieza | Qué hace | Dónde (`web-app/src/features/dispatch/`) |
 |---|---|---|
 | Pantalla | Cabecera (fecha, Planificar el día, Nueva ruta, Reasignar por zona, Optimizar, Despachar ruta), barra de filtros y tres columnas con `SplitPane` anidado (se apilan bajo 900 px) | `DispatchScreen.tsx`, `dispatch.css` |
-| Órdenes sin asignar | Contador, «Marcar todas», buscador, «Añadir a la ruta (N)», filas con casilla, 422 con cada número y motivo | `UnassignedPanel.tsx` |
+| Envíos sin asignar | Contador, «Marcar todas», buscador, «Añadir a la ruta (N)», filas con casilla, 422 con cada número y motivo | `UnassignedPanel.tsx` |
 | Ruta activa | Estatus real, zona · paradas, banner de máximo, chofer y vehículo, avance, avisos, última optimización, «No cupieron», órdenes con ▲ ▼ y quitar, Iniciar / Cerrar / Eliminar | `ActiveRoutePanel.tsx`, `RouteStopsList.tsx`, `TripIssues.tsx` |
 | Choferes y Rutas de hoy | Panel con «≤máx» y marca «No disponible»; tarjetas con barra (avance del monitor) y ⚠ | `DispatchSidePanels.tsx` |
 | Ventanas | Nueva ruta, Planificar el día (con resultado), Reasignar por zona (con resultado), Rutas por despachar (lote) | `TripCreateModal.tsx`, `PlanDayModal.tsx`, `ReassignZoneModal.tsx`, `DispatchModal.tsx` |

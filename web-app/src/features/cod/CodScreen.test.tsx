@@ -44,11 +44,11 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
     if (m === 'POST' && p === '/api/v1/cod/reconcile') {
       const b = body as { dryRun?: boolean; mode?: string; codes: { code: string; source?: string }[] }
       mock.lastMode = b.mode ?? null
-      // Lote 126: un código que empieza por «FAC-S» es la factura de una orden SIN COD (se procesa, Kind INVOICE)
+      // Lote 126: un código que empieza por «FAC-S» es la factura de un envío SIN COD (se procesa, Kind INVOICE)
       const inv = (code: string) => code.startsWith('FAC-S')
       const items = b.codes.map((c) => ({
         code: c.code, source: c.source ?? null, result: c.code === 'NADA' ? 'NOT_FOUND' : inv(c.code) ? 'INVOICE_CHECKED' : 'RECONCILED',
-        message: c.code === 'NADA' ? 'No hay ninguna orden con ese número de factura ni de orden.' : inv(c.code) ? 'Factura procesada: la orden está entregada.' : 'Cuadrado: 1 cobro(s) por 60.00.',
+        message: c.code === 'NADA' ? 'No hay ningún envío con ese número de factura ni de envío.' : inv(c.code) ? 'Factura procesada: el envío está entregada.' : 'Cuadrado: 1 cobro(s) por 60.00.',
         orderPublicId: c.code === 'NADA' ? null : ORD, orderNumber: c.code === 'NADA' ? null : 'ORD-00001', invoiceNumber: c.code === 'NADA' ? null : c.code, clientName: c.code === 'NADA' ? null : 'Farmacia Central',
         codAmount: inv(c.code) ? 0 : 100, reconciled: c.code === 'NADA' || inv(c.code) ? 0 : 60, collections: c.code === 'NADA' || inv(c.code) ? 0 : 1,
         kind: inv(c.code) ? 'INVOICE' : 'COD',
@@ -64,7 +64,7 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
     if (m === 'GET' && p === `/api/v1/cod/runs/${RUN}`) {
       return json({ publicId: RUN, source: 'hojas.pdf', total: 2, reconciled: 1, issues: 1, createdAtUtc: '2026-10-17T12:00:00Z', createdByName: 'Admin', items: [
         { code: 'FAC-00001', source: 'hojas.pdf p1', result: 'RECONCILED', message: 'Cuadrado', orderNumber: 'ORD-00001', invoiceNumber: 'FAC-00001', clientName: 'Farmacia Central', codAmount: 100, reconciled: 60, collections: 1 },
-        { code: 'NADA', source: 'hojas.pdf p2', result: 'NOT_FOUND', message: 'No hay ninguna orden', codAmount: 0, reconciled: 0, collections: 0 },
+        { code: 'NADA', source: 'hojas.pdf p2', result: 'NOT_FOUND', message: 'No hay ningún envío', codAmount: 0, reconciled: 0, collections: 0 },
       ] })
     }
     if (p === '/api/v1/clients') return json([{ id: 1, publicId: CLIENT, code: 'FARM', name: 'Farmacia Central', isActive: true }])
@@ -201,7 +201,7 @@ describe('COD', () => {
     expect(await screen.findByText('Códigos por procesar (0)')).toBeInTheDocument()
   })
 
-  it('Lote 126: «¿Qué vas a subir?» viaja como modo; la factura de una orden sin COD se procesa (tipo Factura) y la advertencia del modo se muestra', async () => {
+  it('Lote 126: «¿Qué vas a subir?» viaja como modo; la factura de un envío sin COD se procesa (tipo Factura) y la advertencia del modo se muestra', async () => {
     const user = userEvent.setup()
     wrap()
     await user.click(await screen.findByRole('tab', { name: 'Reconciliar' }))
@@ -216,10 +216,10 @@ describe('COD', () => {
     expect(screen.getAllByText('Factura').length).toBeGreaterThan(0)                               // la columna Tipo
     expect(screen.getByText(/1 factura\(s\) procesada\(s\)/)).toBeInTheDocument()
 
-    // dice «Hojas de COD» pero una es de una orden sin COD: se procesa igual y avisa
+    // dice «Hojas de COD» pero una es de un envío sin COD: se procesa igual y avisa
     await user.click(screen.getByRole('radio', { name: 'Hojas de COD' }))
     await user.click(screen.getByRole('button', { name: 'Vista previa' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Dijiste hojas de COD, pero algunas son de órdenes sin COD')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Dijiste hojas de COD, pero algunas son de envíos sin COD')
     expect(mock.lastMode).toBe('COD')
     expect(screen.getByRole('button', { name: 'Cuadrar' })).toBeEnabled()
     // hay una factura y no se eligió cliente: Cuadrar pide el cliente en vez de abrir la confirmación

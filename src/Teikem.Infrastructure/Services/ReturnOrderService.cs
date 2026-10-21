@@ -23,14 +23,14 @@ public sealed class ReturnOrderService(TeikemDbContext db, ITenantContext tenant
 {
     private readonly ITenantClock _clock = clock ?? TenantClock.Default;
 
-    public const string SubmittedMessage = "Una orden Sometida no se devuelve: todavía no se recoge. Cancélela.";
-    public const string FinalMessageFormat = "La orden {0} está en un estatus final ({1}): no se devuelve.";
+    public const string SubmittedMessage = "Un envío en «Sometida» no se devuelve: todavía no se recoge. Cancélelo.";
+    public const string FinalMessageFormat = "El envío {0} está en un estatus final ({1}): no se devuelve.";
     public const string NoPiecesMessage = "Indique al menos una pieza que se devuelve.";
-    public const string PieceNotOfOrderMessage = "La pieza {0} no es de esa orden.";
+    public const string PieceNotOfOrderMessage = "La pieza {0} no es de ese envío.";
     public const string PieceMissingMessage = "La pieza {0} figura como faltante: no se puede devolver.";
-    public const string NoPickupMessage = "El cliente no tiene ninguna dirección registrada (de recogido, corporativa o de facturación) a la que regresar la orden: regístrela en su ficha.";
-    public const string CreatedMessageFormat = "La orden {0} quedó «Devuelta»: se creó la orden de vuelta {1} (conduce {2}) con {3} pieza(s).";
-    public const string AddedMessageFormat = "La pieza {0} viaja en la orden de vuelta {1}.";
+    public const string NoPickupMessage = "El cliente no tiene ninguna dirección registrada (de recogido, corporativa o de facturación) a la que regresar el envío: regístrela en su ficha.";
+    public const string CreatedMessageFormat = "El envío {0} quedó «Devuelta»: se creó el envío de vuelta {1} (conduce {2}) con {3} pieza(s).";
+    public const string AddedMessageFormat = "La pieza {0} viaja en el envío de vuelta {1}.";
 
     private TenantContext Ctx => (TenantContext)tenant;
 
@@ -39,7 +39,7 @@ public sealed class ReturnOrderService(TeikemDbContext db, ITenantContext tenant
     /// <summary>El botón «Devolver» de la ficha: las piezas indicadas (sin números, todas las que no son faltantes) viajan en la orden de vuelta, que nace «Sometida».</summary>
     public async Task<ReturnOrderResultDto> ReturnAsync(Guid orderPublicId, ReturnOrderRequest? req, CancellationToken ct)
     {
-        var orderId = await db.TransportOrders.AsNoTracking().Where(o => o.PublicId == orderPublicId && o.IsActive).Select(o => (int?)o.TransportOrderId).FirstOrDefaultAsync(ct) ?? throw new NotFoundException("Orden", feminine: true);
+        var orderId = await db.TransportOrders.AsNoTracking().Where(o => o.PublicId == orderPublicId && o.IsActive).Select(o => (int?)o.TransportOrderId).FirstOrDefaultAsync(ct) ?? throw new NotFoundException("Envío");
         ReturnOrderResultDto? done = null;
         await db.RunInTransactionAsync(async ct2 =>
         {
@@ -132,7 +132,7 @@ public sealed class ReturnOrderService(TeikemDbContext db, ITenantContext tenant
                 TenantId = tenantId, ClientId = clientId, ContractId = original.ContractId, OrderNumber = orderNumber, ClientInvoiceNumber = invoiceNumber, ClientInvoiceNumberTyped = false, PackBatchNumber = packBatch,
                 WaybillNumber = WaybillCodes.Next(prefix, sameDay), ServiceTypeLookupId = original.ServiceTypeLookupId, StatusCodeId = initial.StatusCodeId, PriorityLookupId = original.PriorityLookupId,
                 RequestedDate = null, CurrencyLookupId = original.CurrencyLookupId, IsSpecialDelivery = false, ReturnOfOrderId = original.TransportOrderId, TotalPieces = 0,
-                Notes = notes ?? $"Vuelta de la orden {original.OrderNumber}.", IsActive = true,   // sin cotizar: la vuelta no lleva flete
+                Notes = notes ?? $"Vuelta del envío {original.OrderNumber}.", IsActive = true,   // sin cotizar: la vuelta no lleva flete
             };
             db.TransportOrders.Add(target);
             await db.SaveChangesAsync(ct);
@@ -239,7 +239,7 @@ public sealed class ReturnOrderService(TeikemDbContext db, ITenantContext tenant
         if (!isReturned)
         {
             var to = await statuses.TransitionAsync(StatusDomains.OrderStatus, EntityTypes.TransportOrder, original.TransportOrderId, original.StatusCodeId, OrderStatuses.Returned,
-                $"Devuelta: orden de vuelta {target.OrderNumber}.", ct);
+                $"Devuelta: envío de vuelta {target.OrderNumber}.", ct);
             original.StatusCodeId = to.StatusCodeId;
             await db.SaveChangesAsync(ct);
         }

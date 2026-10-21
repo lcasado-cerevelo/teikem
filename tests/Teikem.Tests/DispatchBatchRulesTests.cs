@@ -71,21 +71,21 @@ public class DispatchBatchRulesTests
         var msg = DispatchBatchRules.DispatchBlocked("2026-0003", new[]
         {
             "La ruta no tiene vehículo asignado.",
-            "Orden 2026-000123: El estatus actual no permite la acción 'ASSIGN_TRIP'.",
+            "Envío 2026-000123: El estatus actual no permite la acción 'ASSIGN_TRIP'.",
         });
         Assert.Equal("La ruta 2026-0003 no se puede despachar: La ruta no tiene vehículo asignado; "
-                     + "Orden 2026-000123: El estatus actual no permite la acción 'ASSIGN_TRIP'.", msg);
+                     + "Envío 2026-000123: El estatus actual no permite la acción 'ASSIGN_TRIP'.", msg);
     }
 
     [Fact]
     public void Effect_messages_are_exact()
     {
-        Assert.Equal("Orden 2026-000001: La orden no tiene una parada de entrega pendiente.",
-            DispatchBatchRules.OrderNotEligible("2026-000001", "La orden no tiene una parada de entrega pendiente."));
+        Assert.Equal("Envío 2026-000001: El envío no tiene una parada de entrega pendiente.",
+            DispatchBatchRules.OrderNotEligible("2026-000001", "El envío no tiene una parada de entrega pendiente."));
         Assert.Equal("Despachada en la ruta 2026-0001", DispatchBatchRules.OrderDispatchedComment("2026-0001"));
         Assert.Equal("Salió en la ruta 2026-0001", DispatchBatchRules.OrderStartedComment("2026-0001"));
         Assert.Equal("La ruta 2026-0001 ya fue despachada; no se puede eliminar.", DispatchBatchRules.CannotDeleteDispatched("2026-0001"));
-        Assert.Equal("La orden va en la ruta 2026-0001 ya despachada; no se puede cancelar mientras la ruta esté en curso.",
+        Assert.Equal("El envío va en la ruta 2026-0001 ya despachada; no se puede cancelar mientras la ruta esté en curso.",
             DispatchBatchRules.CannotCancelOrderInDispatchedTrip("2026-0001"));
         Assert.Equal("Salida registrada", DispatchBatchRules.DefaultStartComment);
         Assert.Equal("Secuencia manual confirmada al despachar", DispatchBatchRules.ManualSequenceComment);

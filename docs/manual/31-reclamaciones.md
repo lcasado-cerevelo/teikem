@@ -13,7 +13,7 @@ Lote 111 (2026-10-18, dictado por Luis). Qué pasa con una pieza que no llegó: 
 | **Resuelta** | Se resuelve la reclamación | Cerrada: una pieza que se escanee responde «No» |
 
 ## 2. Pestaña «Por verificar»
-- Lista las **órdenes con piezas faltantes** (Por verificar o Perdido, sin reclamación): orden, conduce, cliente, estatus de la orden y «N de M» (faltantes de total). Buscador libre por **número de orden, conduce o número de pieza**; ordenar columnas y exportar todo el filtro.
+- Lista las **órdenes con piezas faltantes** (Por verificar o Perdido, sin reclamación): orden, conduce, cliente, estatus de la orden y «N de M» (faltantes de total). Buscador libre por **número de envío, conduce o número de pieza**; ordenar columnas y exportar todo el filtro.
 - Al abrir una orden: la tabla de sus piezas faltantes y, con `claims.manage`:
   - **Marcar N como perdidas:** pasa **todas** las «Por verificar» de la orden a «Perdido» (por el API se pueden indicar piezas sueltas).
   - **Nueva reclamación:** *valor declarado* (opcional, no negativo) y *notas* (hasta 1000 caracteres); **Crear reclamación (N)** junta las piezas «Perdido» de esa orden en una reclamación `REC-#####` y la abre.
@@ -39,12 +39,12 @@ Si el contrato cobra **por entrega** (o mixto), al marcar piezas como **Perdido*
 ## 5. Mensajes de error
 | Mensaje | HTTP | Cuándo |
 |---|---|---|
-| Indique la orden. | 400 | Falta la orden al marcar perdidas o reclamar. |
+| Indique el envío. | 400 | Falta la orden al marcar perdidas o reclamar. |
 | Indique al menos una pieza. | 400 / 422 | 400: se mandó una lista de piezas vacía; 422: la orden no tiene piezas «Por verificar» que marcar. |
 | La pieza {n} no es de esa orden. | 400 | Un número de pieza ajeno a la orden. |
 | La pieza {n} no está «Por verificar». | 422 | Marcar perdida una pieza que no está en ese paso. |
 | La pieza {n} no está «Perdido»: márquela como perdida antes de reclamarla. | 422 | Reclamar una pieza que no está perdida. |
-| La orden no tiene piezas perdidas por reclamar. | 422 | No hay piezas «Perdido» sin reclamación en esa orden. |
+| El envío no tiene piezas perdidas por reclamar. | 422 | No hay piezas «Perdido» sin reclamación en esa orden. |
 | El valor declarado no puede ser negativo. | 400 | Valor declarado (o monto pagado) negativo. |
 | Las notas no pueden pasar de 1000 caracteres. | 400 | Notas muy largas. |
 | Indique la resolución: pagada, rechazada o cerrada. | 400 | Resolver sin elegir resolución válida. |

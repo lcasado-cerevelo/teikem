@@ -3,7 +3,7 @@
 Primer lote de P12 (dashboards y Pulso completos): las **dos corrientes** de la maqueta —«Paquetes en la calle» y «Dinero COD»— como paneles del Pulso.
 
 ## Plan de P12 (lo que sigue)
-- **Lote 89:** Radar de órdenes abiertas (búsqueda y agrupar por pueblo o cliente) y avisos de «Necesita tu atención» para órdenes sin chofer, COD sin cuadrar y SLA en riesgo (este último espera al POD).
+- **Lote 89:** Radar de envíos abiertos (búsqueda y agrupar por pueblo o cliente) y avisos de «Necesita tu atención» para órdenes sin chofer, COD sin cuadrar y SLA en riesgo (este último espera al POD).
 - **Lote 90:** `KpiDailySnapshot` y el trabajo nocturno (fotos diarias) para dar histórico a los ríos y a los indicadores.
 - **Lote 91:** indicadores y gráficos de COD, facturación y ventas; Actividad para Operación y Contabilidad.
 - **Lote 92:** programación de informes por correo. Kemi AI sigue «no verificado»: decidir si queda en alcance.

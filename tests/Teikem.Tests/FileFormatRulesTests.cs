@@ -146,7 +146,7 @@ public sealed class FileFormatRulesTests
     public void A_mapping_that_finds_no_orders_a_missing_mapping_and_too_many_rows_give_their_exact_messages()
     {
         Assert.Null(FileFormatRules.ToTable(Utf8("{\"x\":1}"), "JSON", Cfg("JSON", "$.orders[*]", null, ("A", "@.x")), out var none));
-        Assert.Equal("La ruta de las órdenes «$.orders[*]» no encontró ningún registro en el archivo.", none);
+        Assert.Equal("La ruta de los envíos «$.orders[*]» no encontró ningún registro en el archivo.", none);
         Assert.Null(FileFormatRules.ToTable(Utf8("{\"x\":1}"), "JSON", new FileFormatConfig(), out var unmapped));
         Assert.Equal("El archivo es JSON, pero la integración no tiene el mapeo de rutas: configure «Formato del archivo».", unmapped);
         var many = "[" + string.Join(",", Enumerable.Range(0, 6)) + "]";

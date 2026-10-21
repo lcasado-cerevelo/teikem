@@ -1,6 +1,6 @@
 // Lote F-C3 — Entrada rápida de órdenes: Enter (o «Guardar fila») crea UNA orden de 1 paquete y 1 pieza en Borrador, la fila guardada queda
 // de solo lectura con su número y aparece una fila nueva con el servicio conservado; validaciones con los mensajes del servidor; errores
-// del servidor por fila sin perder lo capturado; cliente que asigna el número de orden; Idempotency-Key por intento. Sobre un fetch simulado.
+// del servidor por fila sin perder lo capturado; cliente que asigna el número de envío; Idempotency-Key por intento. Sobre un fetch simulado.
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -110,11 +110,11 @@ beforeEach(() => {
 })
 
 describe('Entrada rápida — rejilla', () => {
-  it('arranca con servicio y paquete predeterminados, el N.º de orden «(automático)» y el consignatario esperando al cliente', async () => {
+  it('arranca con servicio y paquete predeterminados, el N.º de envío «(automático)» y el consignatario esperando al cliente', async () => {
     wrap()
     await waitFor(() => expect(screen.getByLabelText('Servicio')).toHaveValue('STANDARD'))
     await waitFor(() => expect(screen.getByLabelText('Paquete')).toHaveValue('BOX'))
-    const order = screen.getByLabelText('N.º de orden')
+    const order = screen.getByLabelText('N.º de envío')
     expect(order).toBeDisabled()
     expect(order).toHaveAttribute('placeholder', '(automático)')
     expect(screen.getByRole('combobox', { name: 'Consignatario' })).toBeDisabled()
@@ -329,37 +329,37 @@ describe('Entrada rápida — errores del servidor por fila', () => {
   })
 })
 
-describe('Entrada rápida — cliente que asigna el número de orden', () => {
-  it('habilita el N.º de orden y lo manda; con un cliente que no lo asigna no lo manda', async () => {
+describe('Entrada rápida — cliente que asigna el número de envío', () => {
+  it('habilita el N.º de envío y lo manda; con un cliente que no lo asigna no lo manda', async () => {
     const user = userEvent.setup()
     wrap()
     await pickClient(user, 'Beta')
-    await waitFor(() => expect(screen.getByLabelText('N.º de orden')).toBeEnabled())
+    await waitFor(() => expect(screen.getByLabelText('N.º de envío')).toBeEnabled())
     await pickConsignee(user, 'Colmado')
     await waitFor(() => expect(screen.getByLabelText('Paquete')).toHaveValue('BOX'))
-    await user.type(screen.getByLabelText('N.º de orden'), 'PO-778')
+    await user.type(screen.getByLabelText('N.º de envío'), 'PO-778')
     await user.keyboard('{Enter}')
     await screen.findByRole('link', { name: 'ORD-00001' })
     expect(posts()[0].body).toMatchObject({ clientPublicId: 'c-2', orderNumber: 'PO-778' })
-    // N.º de orden vacío = lo asigna Teikem: no se manda
+    // N.º de envío vacío = lo asigna Teikem: no se manda
     await pickConsignee(user, 'Colmado')
     await user.keyboard('{Enter}')
     await screen.findByRole('link', { name: 'ORD-00002' })
     expect(posts()[1].body).not.toHaveProperty('orderNumber')
     // cambiar a un cliente que no asigna: el campo vuelve a «(automático)» y se limpia
     await pickClient(user, 'Acme')
-    await waitFor(() => expect(screen.getByLabelText('N.º de orden')).toBeDisabled())
-    expect(screen.getByLabelText('N.º de orden')).toHaveValue('')
+    await waitFor(() => expect(screen.getByLabelText('N.º de envío')).toBeDisabled())
+    expect(screen.getByLabelText('N.º de envío')).toHaveValue('')
   })
 
-  it('un número de orden de más de 40 caracteres no se acepta', async () => {
+  it('un número de envío de más de 40 caracteres no se acepta', async () => {
     const user = userEvent.setup()
     wrap()
     await pickClient(user, 'Beta')
-    await waitFor(() => expect(screen.getByLabelText('N.º de orden')).toBeEnabled())
+    await waitFor(() => expect(screen.getByLabelText('N.º de envío')).toBeEnabled())
     await pickConsignee(user, 'Colmado')
     // el input corta a 40; el esquema lo repite por si llega por pegado programático
-    expect(screen.getByLabelText('N.º de orden')).toHaveAttribute('maxlength', '40')
+    expect(screen.getByLabelText('N.º de envío')).toHaveAttribute('maxlength', '40')
   })
 })
 

@@ -86,7 +86,7 @@ public sealed class ClientDataSource(TeikemDbContext db, ILookupCache lookups, I
         new DataField("Currency", "Moneda", "Currency", DataFieldType.Text),
         new DataField("CreditLimit", "Límite de crédito", "Credit limit", DataFieldType.Number, IsMoney: true),
         new DataField("IsActive", "Activo", "Active", DataFieldType.Bool),
-        new DataField("ClientAssignsOrderNumber", "Cliente asigna número de orden", "Client assigns order number", DataFieldType.Bool),
+        new DataField("ClientAssignsOrderNumber", "Cliente asigna número de envío", "Client assigns shipment number", DataFieldType.Bool),
         new DataField("ClientAssignsInvoiceNumber", "Cliente asigna número de factura", "Client assigns invoice number", DataFieldType.Bool),
         new DataField("BillingSummary", "Modelo de facturación", "Billing model", DataFieldType.Text),
         new DataField("ContractsCount", "Contratos", "Contracts", DataFieldType.Number),

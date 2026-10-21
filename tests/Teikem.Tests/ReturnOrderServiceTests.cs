@@ -94,7 +94,7 @@ public class ReturnOrderServiceTests
 
         var delivered = await OrderAsync(f, OrderStatuses.Delivered, 1);
         var fin = await Assert.ThrowsAsync<StatusRuleException>(() => Svc(f).ReturnAsync(delivered.PublicId, null, default));
-        Assert.StartsWith($"La orden {delivered.OrderNumber} está en un estatus final", fin.Message);
+        Assert.StartsWith($"El envío {delivered.OrderNumber} está en un estatus final", fin.Message);
 
         await Assert.ThrowsAsync<NotFoundException>(() => Svc(f).ReturnAsync(Guid.NewGuid(), null, default));
 

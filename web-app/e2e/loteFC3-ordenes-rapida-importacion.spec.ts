@@ -2,7 +2,7 @@
 // http://localhost:5000; compañía demo, admin con todos los permisos, módulo LTL_GROUND y CATALOG encendidos).
 //
 // 1) Entrada rápida: «Nueva orden» abre la rejilla Rápida; Tab recorre los campos; Enter y «Guardar fila» crean UNA orden de 1 paquete y 1 pieza
-//    Sometida; validaciones sin llamar al servidor; un cliente que asigna su número de orden habilita la columna; el segmentado recuerda
+//    Sometida; validaciones sin llamar al servidor; un cliente que asigna su número de envío habilita la columna; el segmentado recuerda
 //    la última elección (Detallada) aunque se recargue la página.
 // 2) Importación CSV: plantilla nueva (editor de órdenes), cliente, archivo UTF-8 con filas válidas e inválidas, vista previa del servidor
 //    (errores, avisos y consignatario existente / por crear), «Descartar archivo», importar (las órdenes nacen Sometidas, ya cotizadas y con el crédito medido), importar otra vez con otra plantilla y
@@ -132,7 +132,7 @@ test.describe('Órdenes — entrada rápida e importación (Lote F-C3)', () => {
     await withRates(request, headers, clientNum)
     await ok(
       request.patch(`${API_URL}/api/v1/clients/${clientNum.publicId}/number-settings`, { headers, data: { clientAssignsOrderNumber: true } }),
-      'el cliente asigna su número de orden',
+      'el cliente asigna su número de envío',
     )
     const cons1 = await place(client.publicId, `Farmacia Sol FC3 ${suffix}`, 'Calle Sol 123', 'Ponce', '00716')
     const cons2 = await place(client.publicId, `Colmado Luna FC3 ${suffix}`, 'Calle Luna 45', 'Bayamón', '00959')
@@ -140,16 +140,16 @@ test.describe('Órdenes — entrada rápida e importación (Lote F-C3)', () => {
 
     await login(page)
     await page.goto('/orders')
-    await expect(page.getByRole('heading', { level: 1, name: 'Órdenes' })).toBeVisible()
-    await page.getByRole('button', { name: /Nueva orden/ }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Envíos' })).toBeVisible()
+    await page.getByRole('button', { name: /Nuevo envío/ }).click()
 
     // ---- La Rápida es la predeterminada ----
     const qk = page.locator('.qk')
     await expect(page.getByRole('button', { name: /Rápida/ })).toHaveAttribute('aria-pressed', 'true')
     await expect(qk.getByRole('button', { name: 'Guardar fila' })).toBeVisible()
     await expect(qk.getByRole('switch', { name: 'Label al guardar' })).toBeVisible() // F-G2
-    await expect(qk.getByLabel('N.º de orden')).toBeDisabled()
-    await expect(qk.getByLabel('N.º de orden')).toHaveAttribute('placeholder', '(automático)')
+    await expect(qk.getByLabel('N.º de envío')).toBeDisabled()
+    await expect(qk.getByLabel('N.º de envío')).toHaveAttribute('placeholder', '(automático)')
     await expect(qk.getByRole('combobox', { name: 'Consignatario' })).toBeDisabled()
 
     // ---- Validaciones: sin cliente ni consignatario no se llama al servidor ----
@@ -216,11 +216,11 @@ test.describe('Órdenes — entrada rápida e importación (Lote F-C3)', () => {
     }
     expect(mine.map((o) => o.codAmount).sort()).toEqual([10, 25])
 
-    // ---- Cliente que asigna su número de orden: la columna se habilita y el número tecleado queda ----
+    // ---- Cliente que asigna su número de envío: la columna se habilita y el número tecleado queda ----
     await clientBox.click()
     await clientBox.fill(clientNumName)
     await page.getByRole('option', { name: new RegExp(clientNumName) }).first().click()
-    const orderNo = qk.getByLabel('N.º de orden')
+    const orderNo = qk.getByLabel('N.º de envío')
     await expect(orderNo).toBeEnabled()
     await qk.getByRole('combobox', { name: 'Consignatario' }).click()
     await page.getByRole('option', { name: new RegExp(consNum.name ?? '') }).click()
@@ -231,10 +231,10 @@ test.describe('Órdenes — entrada rápida e importación (Lote F-C3)', () => {
 
     // ---- El segmentado recuerda la última elección, aunque se recargue la página ----
     await page.getByRole('button', { name: /Detallada/ }).click()
-    await expect(page.getByText('Ticket de la orden')).toBeVisible()
+    await expect(page.getByText('Ticket del envío')).toBeVisible()
     await page.reload()
-    await page.getByRole('button', { name: /Nueva orden/ }).click()
-    await expect(page.getByText('Ticket de la orden')).toBeVisible()
+    await page.getByRole('button', { name: /Nuevo envío/ }).click()
+    await expect(page.getByText('Ticket del envío')).toBeVisible()
     await expect(page.getByRole('button', { name: /Detallada/ })).toHaveAttribute('aria-pressed', 'true')
     await page.getByRole('button', { name: /Rápida/ }).click()
     await expect(page.locator('.qk').getByRole('button', { name: 'Guardar fila' })).toBeVisible()
@@ -289,14 +289,14 @@ test.describe('Órdenes — entrada rápida e importación (Lote F-C3)', () => {
     await login(page)
     await page.goto('/orders')
     await page.getByRole('button', { name: 'Importar', exact: true }).click()
-    const dialog = page.getByRole('dialog', { name: 'Importar órdenes desde CSV' })
+    const dialog = page.getByRole('dialog', { name: 'Importar envíos desde CSV' })
     await expect(dialog.getByText(/Máximo .* filas y 2 MB por archivo/)).toBeVisible()
     await expect(dialog.getByText(/Guarda el CSV en UTF-8/)).toBeVisible()
     await expect(dialog.getByLabel('Archivo CSV', { exact: true })).toBeDisabled()
 
     // ---- Plantilla nueva: columna → campo destino ----
     await dialog.getByRole('button', { name: 'Nueva plantilla' }).click()
-    const editor = page.getByRole('dialog', { name: 'Nueva plantilla de importación de órdenes' })
+    const editor = page.getByRole('dialog', { name: 'Nueva plantilla de importación de envíos' })
     await editor.getByRole('button', { name: 'Guardar plantilla' }).click()
     await expect(editor.getByText('El nombre de la plantilla es obligatorio.')).toBeVisible()
     await editor.getByLabel(/Nombre de la plantilla/).fill(template)
@@ -325,7 +325,7 @@ test.describe('Órdenes — entrada rápida e importación (Lote F-C3)', () => {
     await expect(dialog.getByText(`Se creará: ${newName}`)).toBeVisible()
     await expect(dialog.locator('.cs-stat.ok').first()).toContainText('2 válidas')
     await expect(dialog.locator('.cs-stat.bad').first()).toContainText('2 con errores')
-    await expect(dialog.getByRole('switch', { name: 'Confirmar las órdenes al importar' })).toHaveCount(0) // Lote 106: ya no existe
+    await expect(dialog.getByRole('switch', { name: 'Confirmar los envíos al importar' })).toHaveCount(0) // Lote 106: ya no existe
     await shot(page, isMobile, 'fc3-importar-previa', 1500)
     if (isMobile) await expectNoHorizontalScroll(page)
 
@@ -360,7 +360,7 @@ test.describe('Órdenes — entrada rápida e importación (Lote F-C3)', () => {
 
     // ---- Importar otra vez: cada orden nace Sometida y cotizada ----
     await page.getByRole('button', { name: 'Importar', exact: true }).click()
-    const again = page.getByRole('dialog', { name: 'Importar órdenes desde CSV' })
+    const again = page.getByRole('dialog', { name: 'Importar envíos desde CSV' })
     await again.getByLabel('Plantilla', { exact: true }).selectOption({ label: template })
     await pickImportClient(again, clientName)
     await expect(again.getByLabel('Archivo CSV', { exact: true })).toBeEnabled()

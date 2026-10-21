@@ -1,4 +1,4 @@
-// Lote F-C2 — Expediente de la orden: acciones de la cabecera (cada una con su permiso Y su capacidad), edición dentro del Detalle
+// Lote F-C2 — Expediente del envío: acciones de la cabecera (cada una con su permiso Y su capacidad), edición dentro del Detalle
 // (PATCH solo con lo cambiado, 400 por campo, 409 de edición concurrente), confirmar con crédito excedido y autorización, re-cotizar,
 // cancelar, eliminar, asignar chofer a una entrega especial, laterales con regreso exacto, Cotización solo con orders.view_price,
 // COD, campos personalizados y contactos. Sobre un fetch simulado.
@@ -118,7 +118,7 @@ function route({ method, url, body }: Call): unknown {
   if (p === '/api/v1/orders/o-7' && method === 'DELETE') return null
   if (p === '/api/v1/orders/o-7/quote') return { total: 130, lines: [{ serviceType: 'STANDARD', packageType: 'BOX', pieces: 2, baseRate: 60, lineTotal: 120 }], dispatchFee: 10, codFee: 0, credit: { creditLimit: 1000, pendingBalance: 200, orderTotal: 130, available: 800, exceeds: false } }
   if (/^\/api\/v1\/orders\/o-7\/(confirm|reprice|cancel|reopen|status|driver)$/.test(p)) return { ...current, rowVersion: 'CCC=' }
-  if (p === '/api/v1/orders/o-7/return' && method === 'POST') return { returnOrderPublicId: 'o-8', returnOrderNumber: 'ORD-00008', returnWaybillNumber: 'W8', originalOrderNumber: 'ORD-00007', pieces: (body?.pieceNumbers as string[] | null)?.length ?? 3, message: 'La orden ORD-00007 quedó «Devuelta»: se creó la orden de vuelta ORD-00008.' }
+  if (p === '/api/v1/orders/o-7/return' && method === 'POST') return { returnOrderPublicId: 'o-8', returnOrderNumber: 'ORD-00008', returnWaybillNumber: 'W8', originalOrderNumber: 'ORD-00007', pieces: (body?.pieceNumbers as string[] | null)?.length ?? 3, message: 'El envío ORD-00007 quedó «Devuelta»: se creó el envío de vuelta ORD-00008.' }
   if (p === '/api/v1/orders/o-7/delivery' && method === 'GET') return proof
   if (p === '/api/v1/orders/o-7/delivery' && method === 'POST') return { publicId: 'pf-1', orderPublicId: 'o-7', orderNumber: 'ORD-00007', deliveredAtUtc: '2026-10-18T20:00:00Z', recipientName: body?.recipientName, notes: body?.notes ?? null, source: 'STAFF_WEB', signatureKind: 'USER', registeredByName: 'Dalys', signedByName: 'Dalys', geoStatus: 'NONE', geoAccuracy: null, latitude: null, longitude: null, orderStatusCode: 'DELIVERED', orderStatusLabel: 'Entregada', message: 'Entrega registrada.' }
   if (p === '/api/v1/status/OrderStatus') return STATUSES
@@ -182,12 +182,12 @@ beforeEach(() => {
 })
 
 describe('Expediente — cabecera, paneles y capacidades', () => {
-  it('en Sometida con todos los permisos: Marcar como recogida, Cancelar la orden y Eliminar la orden; sin Re-cotizar ni Asignar chofer', async () => {
+  it('en Sometida con todos los permisos: Marcar como recogido, Cancelar el envío y Eliminar el envío; sin Re-cotizar ni Asignar chofer', async () => {
     wrap()
     await loaded()
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('ORD-00007 · Farmacia Central')
     expect(header()).toHaveTextContent('San Juan · Acme Corp')
-    for (const name of ['Marcar como recogida', 'Cancelar la orden', 'Eliminar la orden']) expect(headerBtn(name)).toBeInTheDocument()
+    for (const name of ['Marcar como recogido', 'Cancelar el envío', 'Eliminar el envío']) expect(headerBtn(name)).toBeInTheDocument()
     expect(headerBtn('Re-cotizar')).toBeNull()
     expect(headerBtn(/chofer/i)).toBeNull()
     // Lote F-G2: «Imprimir label» ya existe; POD (sin endpoint) no
@@ -201,16 +201,16 @@ describe('Expediente — cabecera, paneles y capacidades', () => {
     expect(await screen.findByText('Recibe: Carmen Ortiz', { exact: false })).toBeInTheDocument()
   })
 
-  it('recogida: Re-cotizar y Cancelar; sin Marcar como recogida, Eliminar ni edición (datos como referencia)', async () => {
+  it('recogida: Re-cotizar y Cancelar; sin Marcar como recogido, Eliminar ni edición (datos como referencia)', async () => {
     current = { ...BASE_ORDER, status: 'PICKUP', statusLabel: 'Recogida', isInitialStatus: false, quotedAmount: 120, quotedAtUtc: '2026-10-12T12:00:00', capabilities: CONFIRMED_CAPS }
     wrap()
     await loaded()
     expect(headerBtn('Re-cotizar')).toBeInTheDocument()
-    expect(headerBtn('Cancelar la orden')).toBeInTheDocument()
-    expect(headerBtn('Marcar como recogida')).toBeNull()
-    expect(headerBtn('Eliminar la orden')).toBeNull()
+    expect(headerBtn('Cancelar el envío')).toBeInTheDocument()
+    expect(headerBtn('Marcar como recogido')).toBeNull()
+    expect(headerBtn('Eliminar el envío')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Guardar cambios' })).toBeNull()
-    expect(screen.getByText(/Esta orden ya avanzó de Sometida/)).toBeInTheDocument()
+    expect(screen.getByText(/Este envío ya avanzó de Sometida/)).toBeInTheDocument()
     // paquetes en tabla de solo lectura
     expect(screen.getByRole('cell', { name: 'Caja' })).toBeInTheDocument()
     expect(screen.queryByLabelText('Monto COD')).toBeNull()
@@ -219,12 +219,12 @@ describe('Expediente — cabecera, paneles y capacidades', () => {
   it('sin permisos de escritura la ficha es de lectura: ninguna acción ni edición', async () => {
     wrap(['orders.view'])
     await loaded()
-    for (const name of ['Marcar como recogida', 'Cancelar la orden', 'Eliminar la orden', 'Re-cotizar']) expect(headerBtn(name)).toBeNull()
+    for (const name of ['Marcar como recogido', 'Cancelar el envío', 'Eliminar el envío', 'Re-cotizar']) expect(headerBtn(name)).toBeNull()
     expect(screen.queryByRole('button', { name: 'Guardar cambios' })).toBeNull()
-    expect(screen.getByText('Su usuario no tiene permiso para editar órdenes: los datos se muestran como referencia.')).toBeInTheDocument()
+    expect(screen.getByText('Su usuario no tiene permiso para editar envíos: los datos se muestran como referencia.')).toBeInTheDocument()
   })
 
-  it('una orden dada de baja no ofrece acciones', async () => {
+  it('un envío dada de baja no ofrece acciones', async () => {
     current = { ...BASE_ORDER, isActive: false }
     wrap()
     await loaded()
@@ -244,7 +244,7 @@ describe('Expediente — cabecera, paneles y capacidades', () => {
 })
 
 describe('Expediente — COD sin monto y chofer sin viaje', () => {
-  it('una orden sin COD muestra solo «Monto» (sin tipo ni estado ni la nota)', async () => {
+  it('un envío sin COD muestra solo «Monto» (sin tipo ni estado ni la nota)', async () => {
     current = { ...BASE_ORDER, codAmount: null, codStatus: null, codStatusLabel: null }
     wrap()
     await loaded()
@@ -322,7 +322,7 @@ describe('Expediente — edición dentro del Detalle', () => {
     const user = userEvent.setup()
     wrap()
     await loaded()
-    expect(screen.getByText('Esta orden está en Sometida: puede corregir sus datos y sus paquetes.')).toBeInTheDocument()
+    expect(screen.getByText('Este envío está en Sometida: puede corregir sus datos y sus paquetes.')).toBeInTheDocument()
     const save = screen.getByRole('button', { name: 'Guardar cambios' })
     expect(save).toBeDisabled()
     // el cliente, el N.º de orden, la factura y el empaque son de solo lectura
@@ -435,7 +435,7 @@ describe('Expediente — edición dentro del Detalle', () => {
       if (method !== 'PATCH' || url.pathname !== '/api/v1/orders/o-7') return undefined
       if (first && !body?.confirmDuplicateInvoice) {
         first = false
-        return problem(409, "El consignatario 'Colmado Boricua' admite facturas repetidas; la orden ORD-00001 ya usa el número FAC-1: confirme si desea guardar de todos modos.", 'duplicate_invoice_confirmable', {
+        return problem(409, "El consignatario 'Colmado Boricua' admite facturas repetidas; el envío ORD-00001 ya usa el número FAC-1: confirme si desea guardar de todos modos.", 'duplicate_invoice_confirmable', {
           existingOrderNumber: ['ORD-00001'],
           existingOrderPublicId: ['o-1'],
         })
@@ -466,31 +466,31 @@ describe('Expediente — edición dentro del Detalle', () => {
 })
 
 describe('Expediente — Confirmar y crédito', () => {
-  it('«Marcar como recogida» pide confirmación y manda rowVersion con su Idempotency-Key, sin overrideCredit', async () => {
+  it('«Marcar como recogido» pide confirmación y manda rowVersion con su Idempotency-Key, sin overrideCredit', async () => {
     wrap()
     await loaded()
-    const { user, dialog } = await openDialog('Marcar como recogida')
-    await user.click(within(dialog).getByRole('button', { name: 'Marcar como recogida' }))
+    const { user, dialog } = await openDialog('Marcar como recogido')
+    await user.click(within(dialog).getByRole('button', { name: 'Marcar como recogido' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/orders/o-7/confirm')).toHaveLength(1))
     const call = callsTo('POST', '/api/v1/orders/o-7/confirm')[0]
     expect(call.body).toEqual({ rowVersion: 'AAA=' })
     expect(call.headers.get('Idempotency-Key')).toBeTruthy()
-    expect(await screen.findByText('Orden ORD-00007 marcada como recogida.')).toBeInTheDocument()
+    expect(await screen.findByText('Envío ORD-00007 marcado como recogido.')).toBeInTheDocument()
   })
 
-  it('crédito excedido con orders.credit_override: «Autorizar y marcar como recogida» reenvía con overrideCredit y otra clave', async () => {
+  it('crédito excedido con orders.credit_override: «Autorizar y marcar como recogido» reenvía con overrideCredit y otra clave', async () => {
     let n = 0
     mock.override = ({ method, url }) =>
       method === 'POST' && url.pathname === '/api/v1/orders/o-7/confirm' && n++ === 0
-        ? problem(422, 'El cliente excede su límite de crédito: límite 100.00, en curso 90.00, esta orden 130.00.', 'credit_exceeded')
+        ? problem(422, 'El cliente excede su límite de crédito: límite 100.00, en curso 90.00, este envío 130.00.', 'credit_exceeded')
         : undefined
     wrap()
     await loaded()
-    const { user, dialog } = await openDialog('Marcar como recogida')
-    await user.click(within(dialog).getByRole('button', { name: 'Marcar como recogida' }))
+    const { user, dialog } = await openDialog('Marcar como recogido')
+    await user.click(within(dialog).getByRole('button', { name: 'Marcar como recogido' }))
     const credit = await screen.findByRole('dialog', { name: 'El cliente excede su límite de crédito' })
     expect(credit).toHaveTextContent('límite 100.00, en curso 90.00')
-    await user.click(within(credit).getByRole('button', { name: 'Autorizar y marcar como recogida' }))
+    await user.click(within(credit).getByRole('button', { name: 'Autorizar y marcar como recogido' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/orders/o-7/confirm')).toHaveLength(2))
     const [a, b] = callsTo('POST', '/api/v1/orders/o-7/confirm')
     expect(a.body).toEqual({ rowVersion: 'AAA=' })
@@ -503,29 +503,29 @@ describe('Expediente — Confirmar y crédito', () => {
       method === 'POST' && url.pathname === '/api/v1/orders/o-7/confirm' ? problem(422, 'El cliente excede su límite de crédito.', 'credit_exceeded') : undefined
     wrap(EDITOR)
     await loaded()
-    const { user, dialog } = await openDialog('Marcar como recogida')
-    await user.click(within(dialog).getByRole('button', { name: 'Marcar como recogida' }))
+    const { user, dialog } = await openDialog('Marcar como recogido')
+    await user.click(within(dialog).getByRole('button', { name: 'Marcar como recogido' }))
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('El cliente excede su límite de crédito.')
-    expect(screen.queryByRole('button', { name: 'Autorizar y marcar como recogida' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Autorizar y marcar como recogido' })).toBeNull()
   })
 
   it('Facturación (solo orders.credit_override): el botón autoriza directamente con overrideCredit', async () => {
     wrap(['orders.view', 'orders.credit_override', 'orders.view_price'])
     await loaded()
-    const { user, dialog } = await openDialog('Marcar como recogida')
-    await user.click(within(dialog).getByRole('button', { name: 'Autorizar y marcar como recogida' }))
+    const { user, dialog } = await openDialog('Marcar como recogido')
+    await user.click(within(dialog).getByRole('button', { name: 'Autorizar y marcar como recogido' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/orders/o-7/confirm')).toHaveLength(1))
     expect(callsTo('POST', '/api/v1/orders/o-7/confirm')[0].body).toEqual({ rowVersion: 'AAA=', overrideCredit: true })
   })
 
   it('otros errores del servidor (tarifa faltante, cliente suspendido) se muestran en el diálogo', async () => {
     mock.override = ({ method, url }) =>
-      method === 'POST' && url.pathname === '/api/v1/orders/o-7/confirm' ? problem(422, 'El cliente está suspendido; no se pueden crear ni confirmar órdenes.', 'status_rule') : undefined
+      method === 'POST' && url.pathname === '/api/v1/orders/o-7/confirm' ? problem(422, 'El cliente está suspendido; no se pueden crear ni confirmar envíos.', 'status_rule') : undefined
     wrap()
     await loaded()
-    const { user, dialog } = await openDialog('Marcar como recogida')
-    await user.click(within(dialog).getByRole('button', { name: 'Marcar como recogida' }))
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('El cliente está suspendido; no se pueden crear ni confirmar órdenes.')
+    const { user, dialog } = await openDialog('Marcar como recogido')
+    await user.click(within(dialog).getByRole('button', { name: 'Marcar como recogido' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('El cliente está suspendido; no se pueden crear ni confirmar envíos.')
   })
 })
 
@@ -541,7 +541,7 @@ describe('Expediente — Re-cotizar, cancelar y eliminar', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Re-cotizar' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/orders/o-7/reprice')).toHaveLength(1))
     expect(callsTo('POST', '/api/v1/orders/o-7/reprice')[0].body).toBeUndefined()
-    expect(await screen.findByText('Orden ORD-00007 re-cotizada.')).toBeInTheDocument()
+    expect(await screen.findByText('Envío ORD-00007 re-cotizado.')).toBeInTheDocument()
   })
 
   it('el error del servidor al re-cotizar se ve en el diálogo', async () => {
@@ -554,27 +554,27 @@ describe('Expediente — Re-cotizar, cancelar y eliminar', () => {
     expect(await within(dialog).findByRole('alert')).toHaveTextContent("El estatus actual no permite la acción 'REPRICE'.")
   })
 
-  it('Cancelar la orden manda la razón en comment y avisa', async () => {
+  it('Cancelar el envío manda la razón en comment y avisa', async () => {
     wrap()
     await loaded()
-    const { user, dialog } = await openDialog('Cancelar la orden')
+    const { user, dialog } = await openDialog('Cancelar el envío')
     await user.type(within(dialog).getByLabelText('Razón de la cancelación'), 'El cliente la anuló')
-    await user.click(within(dialog).getByRole('button', { name: 'Cancelar la orden' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar el envío' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/orders/o-7/cancel')).toHaveLength(1))
     expect(callsTo('POST', '/api/v1/orders/o-7/cancel')[0].body).toEqual({ comment: 'El cliente la anuló', rowVersion: 'AAA=' })
-    expect(await screen.findByText('Orden ORD-00007 cancelada.')).toBeInTheDocument()
+    expect(await screen.findByText('Envío ORD-00007 cancelado.')).toBeInTheDocument()
   })
 
   it('cancelar sin razón no envía y muestra «Indique la razón de la cancelación.»; más de 500 caracteres lo avisa', async () => {
     wrap()
     await loaded()
-    const { user, dialog } = await openDialog('Cancelar la orden')
-    await user.click(within(dialog).getByRole('button', { name: 'Cancelar la orden' }))
+    const { user, dialog } = await openDialog('Cancelar el envío')
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar el envío' }))
     expect(await within(dialog).findByText('Indique la razón de la cancelación.')).toBeInTheDocument()
     expect(callsTo('POST', '/api/v1/orders/o-7/cancel')).toHaveLength(0)
     fireLong(within(dialog).getByLabelText('Razón de la cancelación'), 501)
     expect(await within(dialog).findByText('El comentario admite como máximo 500 caracteres.')).toBeInTheDocument()
-    expect(within(dialog).getByRole('button', { name: 'Cancelar la orden' })).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'Cancelar el envío' })).toBeDisabled()
     expect(callsTo('POST', '/api/v1/orders/o-7/cancel')).toHaveLength(0)
   })
 
@@ -583,9 +583,9 @@ describe('Expediente — Re-cotizar, cancelar y eliminar', () => {
       method === 'POST' && url.pathname.endsWith('/cancel') ? problem(400, 'Solicitud inválida', 'validation', { comment: ['Indique la razón de la cancelación.'] }) : undefined
     wrap()
     await loaded()
-    const { user, dialog } = await openDialog('Cancelar la orden')
+    const { user, dialog } = await openDialog('Cancelar el envío')
     await user.type(within(dialog).getByLabelText('Razón de la cancelación'), 'x')
-    await user.click(within(dialog).getByRole('button', { name: 'Cancelar la orden' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar el envío' }))
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('Indique la razón de la cancelación.')
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
@@ -594,7 +594,7 @@ describe('Expediente — Re-cotizar, cancelar y eliminar', () => {
     current = { ...BASE_ORDER }
     wrap()
     await loaded()
-    const { user, dialog } = await openDialog('Eliminar la orden')
+    const { user, dialog } = await openDialog('Eliminar el envío')
     expect(dialog).toHaveTextContent('ORD-00007')
     await user.click(within(dialog).getByRole('button', { name: 'Eliminar' }))
     await waitFor(() => expect(callsTo('DELETE', '/api/v1/orders/o-7')).toHaveLength(1))
@@ -603,12 +603,12 @@ describe('Expediente — Re-cotizar, cancelar y eliminar', () => {
 
   it('el 422 de eliminar se muestra en el diálogo', async () => {
     current = { ...BASE_ORDER }
-    mock.override = ({ method }) => (method === 'DELETE' ? problem(422, 'Solo se puede eliminar una orden en su estatus inicial; use la cancelación.', 'status_rule') : undefined)
+    mock.override = ({ method }) => (method === 'DELETE' ? problem(422, 'Solo se puede eliminar un envío en su estatus inicial; use la cancelación.', 'status_rule') : undefined)
     wrap()
     await loaded()
-    const { user, dialog } = await openDialog('Eliminar la orden')
+    const { user, dialog } = await openDialog('Eliminar el envío')
     await user.click(within(dialog).getByRole('button', { name: 'Eliminar' }))
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Solo se puede eliminar una orden en su estatus inicial; use la cancelación.')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Solo se puede eliminar un envío en su estatus inicial; use la cancelación.')
   })
 })
 
@@ -679,7 +679,7 @@ describe('Expediente — Asignar chofer (entrega especial)', () => {
     expect(headerBtn('Asignar chofer')).toBeInTheDocument()
   })
 
-  it('no se ofrece en una orden normal, después de IN_TRANSIT, en un lateral, sin trips.dispatch ni con CATALOG apagado', async () => {
+  it('no se ofrece en un envío normal, después de IN_TRANSIT, en un lateral, sin trips.dispatch ni con CATALOG apagado', async () => {
     const check = async (order: Order, permissions: string[] = ALL, modules = ['LTL_GROUND', 'CATALOG']) => {
       current = order
       const { unmount } = wrap(permissions, modules)
@@ -707,7 +707,7 @@ describe('Expediente — Asignar chofer (entrega especial)', () => {
     const call = callsTo('POST', '/api/v1/orders/o-7/driver')[0]
     expect(call.body).toEqual({ driverPublicId: 'd-1', comment: 'Urgente', rowVersion: 'AAA=' })
     expect(call.headers.get('Idempotency-Key')).toBeTruthy()
-    expect(await screen.findByText('Chofer asignado a la orden ORD-00007.')).toBeInTheDocument()
+    expect(await screen.findByText('Chofer asignado al envío ORD-00007.')).toBeInTheDocument()
     expect(callsTo('GET', '/api/v1/drivers')[0].url.searchParams.get('includeInactive')).toBe('false')
   })
 
@@ -723,7 +723,7 @@ describe('Expediente — Asignar chofer (entrega especial)', () => {
   it.each([
     [409, 'El chofer no está disponible para despacho: Licencia vencida.', 'conflict'],
     [422, 'La entrega especial ya llegó a destino o terminó; no se puede asignar ni reasignar el chofer.', 'status_rule'],
-    [409, 'La orden ya está asignada a ese chofer.', 'conflict'],
+    [409, 'El envío ya está asignada a ese chofer.', 'conflict'],
     [404, 'Chofer no encontrado.', 'not_found'],
   ])('error %i del servidor, tal cual: %s', async (status, title, code) => {
     mock.override = ({ method, url }) => (method === 'POST' && url.pathname.endsWith('/driver') ? problem(status, title, code) : undefined)
@@ -784,7 +784,7 @@ describe('Expediente — Asignar chofer (entrega especial)', () => {
     expect(headerBtn('Reasignar chofer')).toBeInTheDocument()
   })
 
-  it('una orden normal sin viaje no muestra el panel «Chofer asignado»', async () => {
+  it('un envío normal sin viaje no muestra el panel «Chofer asignado»', async () => {
     current = { ...BASE_ORDER }
     wrap()
     await loaded()
@@ -840,10 +840,10 @@ describe('Expediente — contactos y campos personalizados', () => {
 
 describe('Expediente — no encontrada', () => {
   it('404: aviso y enlace a la lista', async () => {
-    mock.override = ({ url }) => (url.pathname === '/api/v1/orders/o-7' ? problem(404, 'Orden no encontrado.', 'not_found') : undefined)
+    mock.override = ({ url }) => (url.pathname === '/api/v1/orders/o-7' ? problem(404, 'Envío no encontrado.', 'not_found') : undefined)
     wrap()
-    expect(await screen.findByText('La orden no existe o no pertenece a su compañía.')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Volver a órdenes' })).toBeInTheDocument()
+    expect(await screen.findByText('El envío no existe o no pertenece a su compañía.')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Volver a envíos' })).toBeInTheDocument()
   })
 })
 
@@ -864,7 +864,7 @@ describe('Expediente — Reabrir', () => {
     expect(headerBtn('Reabrir')).toBeNull()
   })
 
-  it('sin canReopen (orden activa) no se pinta aunque tenga el permiso', async () => {
+  it('sin canReopen (envío activa) no se pinta aunque tenga el permiso', async () => {
     current = { ...BASE_ORDER }
     wrap([...ALL, 'orders.reopen'])
     await loaded()
@@ -876,8 +876,8 @@ describe('Expediente — Reabrir', () => {
     wrap([...ALL, 'orders.reopen'])
     await loaded()
     const { user, dialog } = await openDialog('Reabrir')
-    await user.click(within(dialog).getByRole('button', { name: 'Reabrir la orden' }))
-    expect(await within(dialog).findByText('Indique la razón para reabrir la orden.')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Reabrir el envío' }))
+    expect(await within(dialog).findByText('Indique la razón para reabrir el envío.')).toBeInTheDocument()
     expect(callsTo('POST', '/api/v1/orders/o-7/reopen')).toHaveLength(0)
   })
 
@@ -888,12 +888,12 @@ describe('Expediente — Reabrir', () => {
     const { user, dialog } = await openDialog('Reabrir')
     await user.selectOptions(within(dialog).getByLabelText('Estatus destino'), 'IN_TRANSIT')
     await user.type(within(dialog).getByLabelText('Razón para reabrir'), 'Se entregó por error')
-    await user.click(within(dialog).getByRole('button', { name: 'Reabrir la orden' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Reabrir el envío' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/orders/o-7/reopen')).toHaveLength(1))
     const call = callsTo('POST', '/api/v1/orders/o-7/reopen')[0]
     expect(call.body).toEqual({ toCode: 'IN_TRANSIT', comment: 'Se entregó por error', rowVersion: 'AAA=' })
     expect(call.headers.get('Idempotency-Key')).toBeTruthy()
-    expect(await screen.findByText('Orden ORD-00007 reabierta.')).toBeInTheDocument()
+    expect(await screen.findByText('Envío ORD-00007 reabierto.')).toBeInTheDocument()
   })
 
   it('por omisión no manda toCode (el último en que estuvo)', async () => {
@@ -902,7 +902,7 @@ describe('Expediente — Reabrir', () => {
     await loaded()
     const { user, dialog } = await openDialog('Reabrir')
     await user.type(within(dialog).getByLabelText('Razón para reabrir'), 'Error de captura')
-    await user.click(within(dialog).getByRole('button', { name: 'Reabrir la orden' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Reabrir el envío' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/orders/o-7/reopen')).toHaveLength(1))
     expect(callsTo('POST', '/api/v1/orders/o-7/reopen')[0].body).toEqual({ toCode: null, comment: 'Error de captura', rowVersion: 'AAA=' })
   })
@@ -914,14 +914,14 @@ describe('Expediente — Devolver (Lote 112)', () => {
     packages: [{ id: 1, packageType: 'BOX', packageTypeLabel: 'Caja', description: 'Ropa', pieces: 3, pieceNumbers: ['P-1', 'P-2', 'P-3'] }],
   }
 
-  it('solo se ve con el permiso orders.return y en una orden recogida que sigue en curso', async () => {
+  it('solo se ve con el permiso orders.return y en un envío recogido que sigue en curso', async () => {
     current = { ...RETURNABLE }
     wrap([...ALL, 'orders.return'])
     await loaded()
     expect(headerBtn('Devolver')).toBeInTheDocument()
   })
 
-  it('sin el permiso, en una orden Sometida o en una final no se pinta', async () => {
+  it('sin el permiso, en un envío Sometida o en una final no se pinta', async () => {
     current = { ...RETURNABLE }
     wrap(ALL)
     await loaded()
@@ -935,13 +935,13 @@ describe('Expediente — Devolver (Lote 112)', () => {
     const { user, dialog } = await openDialog('Devolver')
     await user.click(within(dialog).getByLabelText('P-3'))
     await user.type(within(dialog).getByLabelText('Nota (opcional)'), 'Cerrado')
-    await user.click(within(dialog).getByRole('button', { name: 'Devolver la orden' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Devolver el envío' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/orders/o-7/return')).toHaveLength(1))
     expect(callsTo('POST', '/api/v1/orders/o-7/return')[0].body).toEqual({ pieceNumbers: ['P-1', 'P-2'], notes: 'Cerrado' })
-    expect(await screen.findByText(/se creó la orden de vuelta ORD-00008/)).toBeInTheDocument()
+    expect(await screen.findByText(/se creó el envío de vuelta ORD-00008/)).toBeInTheDocument()
   })
 
-  it('Lote 113: la ficha avisa que se sugiere devolverla y, en una orden de vuelta, de qué orden es', async () => {
+  it('Lote 113: la ficha avisa que se sugiere devolverla y, en un envío de vuelta, de qué envío es', async () => {
     current = { ...RETURNABLE, suggestReturn: true, failedAttempts: 2, returnOfOrderNumber: 'ORD-00003' }
     wrap([...ALL, 'orders.return'])
     await loaded()
@@ -962,7 +962,7 @@ describe('Expediente — Devolver (Lote 112)', () => {
     await loaded()
     const { user, dialog } = await openDialog('Devolver')
     for (const n of ['P-1', 'P-2', 'P-3']) await user.click(within(dialog).getByLabelText(n))
-    await user.click(within(dialog).getByRole('button', { name: 'Devolver la orden' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Devolver el envío' }))
     expect(await within(dialog).findByText('Marque al menos una pieza que se devuelve.')).toBeInTheDocument()
     expect(callsTo('POST', '/api/v1/orders/o-7/return')).toHaveLength(0)
   })
@@ -971,7 +971,7 @@ describe('Expediente — Devolver (Lote 112)', () => {
 describe('Expediente — Registrar entrega (Lote 118)', () => {
   const IN_TRANSIT = { ...BASE_ORDER, status: 'IN_TRANSIT', statusLabel: 'En tránsito', isInitialStatus: false }
 
-  it('solo se ve con el permiso orders.deliver y en una orden que sigue en curso', async () => {
+  it('solo se ve con el permiso orders.deliver y en un envío que sigue en curso', async () => {
     current = { ...IN_TRANSIT }
     wrap([...ALL, 'orders.deliver'])
     await loaded()
@@ -985,7 +985,7 @@ describe('Expediente — Registrar entrega (Lote 118)', () => {
     expect(headerBtn('Registrar entrega')).toBeNull()
   })
 
-  it('en una orden en estatus final no se pinta', async () => {
+  it('en un envío en estatus final no se pinta', async () => {
     current = { ...BASE_ORDER, status: 'CANCELLED', statusLabel: 'Cancelada', isInitialStatus: false }
     wrap([...ALL, 'orders.deliver'])
     await loaded()
@@ -1011,7 +1011,7 @@ describe('Expediente — Registrar entrega (Lote 118)', () => {
     expect(await screen.findByText('Entrega registrada.')).toBeInTheDocument()
   })
 
-  it('una orden entregada con comprobante lo muestra: quién recibió, quién lo registró y que el consignatario no firmó', async () => {
+  it('un envío entregado con comprobante lo muestra: quién recibió, quién lo registró y que el consignatario no firmó', async () => {
     current = { ...BASE_ORDER, status: 'DELIVERED', statusLabel: 'Entregada', isInitialStatus: false }
     proof = { publicId: 'pf-1', orderPublicId: 'o-7', orderNumber: 'ORD-00007', deliveredAtUtc: '2026-10-18T20:00:00Z', recipientName: 'Ana Rivera', notes: 'Con la vecina', source: 'STAFF_WEB', signatureKind: 'USER', registeredByName: 'Dalys', signedByName: 'Dalys', geoStatus: 'PENDING', latitude: null, longitude: null }
     wrap(ALL)
@@ -1024,7 +1024,7 @@ describe('Expediente — Registrar entrega (Lote 118)', () => {
     proof = null
   })
 
-  it('una orden entregada sin comprobante no pinta el panel', async () => {
+  it('un envío entregado sin comprobante no pinta el panel', async () => {
     current = { ...BASE_ORDER, status: 'DELIVERED', statusLabel: 'Entregada', isInitialStatus: false }
     proof = null
     wrap(ALL)

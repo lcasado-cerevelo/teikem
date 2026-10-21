@@ -1,6 +1,6 @@
-// Lote F-C3 — Importación de órdenes desde CSV: plantilla → cliente → archivo → vista previa del servidor (errores, avisos y consignatario por
+// Lote F-C3 — Importación de envíos desde CSV: plantilla → cliente → archivo → vista previa del servidor (errores, avisos y consignatario por
 // fila) → Importar con las casillas de la confirmación (Idempotency-Key) o Descartar → resultado con número de orden o error por fila;
-// editor de plantillas de órdenes (reglas de consignatario y paquete, valores por defecto, desactivar/reactivar) y permisos. Sobre un fetch
+// editor de plantillas de envíos (reglas de consignatario y paquete, valores por defecto, desactivar/reactivar) y permisos. Sobre un fetch
 // simulado; el FormData se sustituye por un registro (jsdom + el Request de Node no se entienden con archivos).
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
@@ -91,7 +91,7 @@ const PREVIEW = {
   rows: [
     { row: 1, line: 2, isValid: true, values: { consigneeName: 'Farmacia Central', line1: 'Calle Sol 1', packageType: 'BOX', pieces: '2' }, consignee: { action: 'EXISTING', name: 'Farmacia Central', locationPublicId: 'l-1' }, errors: {}, warnings: [] },
     { row: 2, line: 3, isValid: false, values: { consigneeName: 'Tienda Nueva', line1: 'Calle 9', packageType: 'XYZ', pieces: '1' }, consignee: { action: 'CREATE', name: 'Tienda Nueva' }, errors: { packageType: 'Tipo de paquete desconocido: XYZ.' }, warnings: [] },
-    { row: 3, line: 4, isValid: true, values: { consigneeName: 'Colmado Dos', line1: 'Calle 3', packageType: 'ENV', pieces: '1' }, consignee: { action: 'CREATE', name: 'Colmado Dos' }, errors: {}, warnings: ["La factura F-9 ya la usa la orden ORD-00007 de este consignatario."] },
+    { row: 3, line: 4, isValid: true, values: { consigneeName: 'Colmado Dos', line1: 'Calle 3', packageType: 'ENV', pieces: '1' }, consignee: { action: 'CREATE', name: 'Colmado Dos' }, errors: {}, warnings: ["La factura F-9 ya la usa el envío ORD-00007 de este consignatario."] },
   ],
 }
 const RESULT = {
@@ -178,7 +178,7 @@ beforeEach(() => {
   templates = [{ ...T1 }]
 })
 
-describe('Importar órdenes — plantilla, cliente y archivo', () => {
+describe('Importar envíos — plantilla, cliente y archivo', () => {
   it('sin plantilla el archivo queda deshabilitado y se ofrece crear el «Formato estándar» (consignatario + paquete)', async () => {
     templates = []
     const user = userEvent.setup()
@@ -204,7 +204,7 @@ describe('Importar órdenes — plantilla, cliente y archivo', () => {
     })
   })
 
-  it('pide plantillas de órdenes (kind=ORDER) y no deja escoger archivo hasta elegir el cliente', async () => {
+  it('pide plantillas de envíos (kind=ORDER) y no deja escoger archivo hasta elegir el cliente', async () => {
     const user = userEvent.setup()
     renderModal()
     expect(await screen.findByText(/1\. Consignatario \(nombre\) · 2\. Dirección · 3\. Tipo de paquete · 4\. Piezas/)).toBeInTheDocument()
@@ -239,7 +239,7 @@ describe('Importar órdenes — plantilla, cliente y archivo', () => {
     expect(await screen.findByText(/ordenes\.csv · 3 filas detectadas/)).toBeInTheDocument()
     const table = screen.getByRole('table')
     expect(within(table).getByText('Tipo de paquete: Tipo de paquete desconocido: XYZ.')).toBeInTheDocument()
-    expect(within(table).getByText(/La factura F-9 ya la usa la orden ORD-00007/)).toBeInTheDocument()
+    expect(within(table).getByText(/La factura F-9 ya la usa el envío ORD-00007/)).toBeInTheDocument()
     expect(within(table).getByText('Existente: Farmacia Central')).toBeInTheDocument()
     expect(within(table).getByText('Se creará: Tienda Nueva')).toBeInTheDocument()
     expect(screen.getByText('válidas').closest('.cs-stat')).toHaveTextContent('2 válidas')
@@ -285,17 +285,17 @@ describe('Importar órdenes — plantilla, cliente y archivo', () => {
   it('un cliente suspendido (422) al validar se muestra y no deja importar', async () => {
     const user = userEvent.setup()
     mock.override = ({ method, url }) =>
-      method === 'POST' && url.pathname === '/api/v1/orders/import/validate-file' ? problem(422, 'El cliente está suspendido; no se pueden crear ni confirmar órdenes.', 'status_rule') : undefined
+      method === 'POST' && url.pathname === '/api/v1/orders/import/validate-file' ? problem(422, 'El cliente está suspendido; no se pueden crear ni confirmar envíos.', 'status_rule') : undefined
     renderModal(ALL, 'c-1')
     await screen.findByText(/1\. Consignatario/)
     await user.upload(fileInput(), csv())
-    expect(await screen.findByText('El cliente está suspendido; no se pueden crear ni confirmar órdenes.')).toBeInTheDocument()
+    expect(await screen.findByText('El cliente está suspendido; no se pueden crear ni confirmar envíos.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Importar' })).toBeDisabled()
   })
 })
 
-describe('Importar órdenes — confirmar, descartar y resultado', () => {
-  it('Importar sin casillas confirma las válidas Sometidas, con Idempotency-Key, y muestra creadas, fallidas y omitidas con su número o error', async () => {
+describe('Importar envíos — confirmar, descartar y resultado', () => {
+  it('Importar sin casillas confirma las válidas Sometidas, con Idempotency-Key, y muestra creadas, fallidas y omitidos con su número o error', async () => {
     const user = userEvent.setup()
     renderModal()
     await previewed(user)
@@ -306,18 +306,18 @@ describe('Importar órdenes — confirmar, descartar y resultado', () => {
     const result = (await screen.findByText('Resultado de la importación')).closest('.cs-result') as HTMLElement
     expect(result).toHaveTextContent('1 creadas')
     expect(result).toHaveTextContent('1 fallidas')
-    expect(result).toHaveTextContent('1 omitidas')
+    expect(result).toHaveTextContent('1 omitidos')
     const link = within(result).getByRole('link', { name: 'ORD-00009' })
     expect(link).toHaveAttribute('href', '/orders/o-9')
     expect(within(result).getByText('El cliente excede su límite de crédito.')).toBeInTheDocument()
-    expect(within(screen.getByRole('dialog', { name: 'Importar órdenes desde CSV' })).getAllByRole('button', { name: 'Cerrar' })).toHaveLength(2)
+    expect(within(screen.getByRole('dialog', { name: 'Importar envíos desde CSV' })).getAllByRole('button', { name: 'Cerrar' })).toHaveLength(2)
   })
 
   it('las casillas viajan en el cuerpo: autorizar crédito y aceptar facturas repetidas; nunca confirmNow', async () => {
     const user = userEvent.setup()
     renderModal()
     await previewed(user)
-    expect(screen.queryByRole('switch', { name: 'Confirmar las órdenes al importar' })).toBeNull()
+    expect(screen.queryByRole('switch', { name: 'Confirmar los envíos al importar' })).toBeNull()
     const override = screen.getByRole('switch', { name: 'Autorizar crédito excedido' })
     const dup = screen.getByRole('switch', { name: 'Aceptar facturas repetidas' })
     expect(override).toBeEnabled()
@@ -403,11 +403,11 @@ describe('Importar órdenes — confirmar, descartar y resultado', () => {
   it('un 409 del confirm (lote ya confirmado) y un 403 de crédito se muestran y no marcan resultado', async () => {
     const user = userEvent.setup()
     mock.override = ({ method, url }) =>
-      method === 'POST' && url.pathname === '/api/v1/orders/import/b-1/confirm' ? problem(409, 'El lote ya fue confirmado; valide un archivo nuevo para importar más órdenes.', 'conflict') : undefined
+      method === 'POST' && url.pathname === '/api/v1/orders/import/b-1/confirm' ? problem(409, 'El lote ya fue confirmado; valide un archivo nuevo para importar más envíos.', 'conflict') : undefined
     renderModal()
     await previewed(user)
     await user.click(screen.getByRole('button', { name: 'Importar' }))
-    expect(await screen.findByText('El lote ya fue confirmado; valide un archivo nuevo para importar más órdenes.')).toBeInTheDocument()
+    expect(await screen.findByText('El lote ya fue confirmado; valide un archivo nuevo para importar más envíos.')).toBeInTheDocument()
     expect(screen.queryByText('Resultado de la importación')).toBeNull()
   })
 
@@ -423,11 +423,11 @@ describe('Importar órdenes — confirmar, descartar y resultado', () => {
   })
 })
 
-describe('Importar órdenes — editor de plantillas de órdenes', () => {
+describe('Importar envíos — editor de plantillas de envíos', () => {
   async function openEditor(user: User, edit = false) {
     await screen.findByText(/1\. Consignatario/)
     await user.click(screen.getByRole('button', { name: edit ? 'Editar' : 'Nueva plantilla' }))
-    return screen.findByRole('dialog', { name: edit ? 'Editar plantilla de importación de órdenes' : 'Nueva plantilla de importación de órdenes' })
+    return screen.findByRole('dialog', { name: edit ? 'Editar plantilla de importación de envíos' : 'Nueva plantilla de importación de envíos' })
   }
 
   it('Nueva plantilla: valida nombre, columnas, consignatario y paquete con los mensajes del servidor', async () => {
@@ -488,7 +488,7 @@ describe('Importar órdenes — editor de plantillas de órdenes', () => {
       ],
       defaults: { packageType: 'BOX' },
     })
-    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Nueva plantilla de importación de órdenes' })).toBeNull())
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Nueva plantilla de importación de envíos' })).toBeNull())
     expect(await screen.findByText(/1\. Consignatario \(nombre\) · 2\. Dirección/)).toBeInTheDocument()
   })
 

@@ -17,7 +17,7 @@ namespace Teikem.Infrastructure.Services;
 public sealed class ConsigneeOrdersService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, OrderProgressService progress)
 {
     public const int MaxTake = 100;
-    public const string OrderNotFound = "Orden";
+    public const string OrderNotFound = "Envío";
 
     private TenantContext T => (TenantContext)tenant;
     private int ClientId => T.PortalClientId ?? throw new ForbiddenException(ConsigneeSelfService.NotConsigneeMessage);

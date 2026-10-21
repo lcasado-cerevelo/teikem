@@ -65,8 +65,8 @@ public static class ClaimRules
     public const string NoPiecesMessage = "Indique al menos una pieza.";
     public const string PieceNotToVerifyMessage = "La pieza {0} no está «Por verificar».";
     public const string PieceNotLostMessage = "La pieza {0} no está «Perdido»: márquela como perdida antes de reclamarla.";
-    public const string NoLostPiecesMessage = "La orden no tiene piezas perdidas por reclamar.";
-    public const string PieceNotOfOrderMessage = "La pieza {0} no es de esa orden.";
+    public const string NoLostPiecesMessage = "El envío no tiene piezas perdidas por reclamar.";
+    public const string PieceNotOfOrderMessage = "La pieza {0} no es de ese envío.";
     public const string NegativeValueMessage = "El valor declarado no puede ser negativo.";
     public const string NotesTooLongMessage = "Las notas no pueden pasar de 1000 caracteres.";
     public const string InvalidResolutionMessage = "Indique la resolución: pagada, rechazada o cerrada.";
