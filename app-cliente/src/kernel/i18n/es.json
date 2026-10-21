@@ -110,6 +110,14 @@
     "accept": "Acepto la política de privacidad y los términos de uso",
     "decline": "No acepto, salir"
   },
+  "legalFooter": {
+    "label": "Información legal",
+    "privacy": "Privacidad",
+    "terms": "Términos de uso",
+    "rights": "© {year} {owner}. Todos los derechos reservados.",
+    "powered": "Powered by {product}",
+    "back": "Volver"
+  },
   "lock": {
     "title": "App bloqueada",
     "help": "Use su huella (o el PIN de su teléfono) para abrir el portal.",

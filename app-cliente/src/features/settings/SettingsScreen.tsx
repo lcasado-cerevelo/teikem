@@ -12,6 +12,7 @@ import { logout, switchClient } from '../../kernel/auth/portalAuth'
 import { useIsConsignee } from '../../kernel/auth/role'
 import { getNoTrust, setNoTrust } from '../../kernel/auth/preferences'
 import { useT } from '../../kernel/i18n/useT'
+import { LegalFooter } from '../../kernel/ui/LegalFooter'
 import { LanguageSwitch, ThemeSwitch } from '../../kernel/ui/PreferencesBar'
 import { Button, Card, Check, Chip, Muted, Notice, Screen, Spinner, Title, useColors } from '../../kernel/ui/ui'
 import { useAsync } from '../../kernel/ui/useAsync'
@@ -152,6 +153,7 @@ export function SettingsScreen() {
       </Card>
 
       <Button title={t('settings.logout')} variant="danger" onPress={() => void logout().then(() => router.replace('/login'))} testID="settings-logout" />
+      <LegalFooter />
     </Screen>
   )
 }

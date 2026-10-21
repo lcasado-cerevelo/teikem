@@ -48,3 +48,5 @@ Los mensajes de los servicios son los del servidor (capítulos 24 a 26): `Creden
 - **«No me aparece Abrir con huella»:** el teléfono no tiene lector o no tiene huellas registradas; regístrelas en los ajustes del teléfono.
 - **«No veo una orden que sé que existe»:** la app solo muestra los envíos del cliente con el que entró; si tiene acceso a varios, cámbielo en Ajustes.
 - **«Los avisos están vacíos»:** la compañía decide, cliente por cliente, qué avisos manda y por qué canal (capítulo 23); si el canal «bandeja del portal» está apagado no llega nada aquí.
+
+**Información legal (2026-10-21):** al pie de Ajustes están los enlaces **Privacidad** y **Términos de uso** (lectura del documento vigente, ruta `/legal-view`), los derechos reservados y «Powered by Teikem». Ver capítulo 24.

@@ -9758,3 +9758,6 @@ Además de las pantallas del menú, busca registros por número o nombre: envío
 
 **¿Dónde veo la política de privacidad y los términos de uso estando dentro de la aplicación?**
 Al pie del menú lateral, en letra chica: **Privacidad** y **Términos de uso** (abren el documento en una pestaña nueva). Con el menú contraído el pie no se ve: expándalo. En el celular, abra el menú.
+
+**¿Dónde veo la política de privacidad y los términos de uso en el portal del cliente?**
+Al final de **Ajustes**, en letra chica: toque **Privacidad** o **Términos de uso**. Se abre el documento para leer (sin botón de aceptar) y **Volver** regresa a Ajustes.
