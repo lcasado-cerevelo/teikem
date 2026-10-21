@@ -40,6 +40,8 @@ public sealed record ChartUpsertRequest(
     string Name, IDictionary<string, string>? Descriptions, string DataSource, string GroupByField, string? Field, string AggregateFn, string? ChartType, string? FilterJson,
     string? BusinessModule, bool? IsMoney, string? Visibility, string? DateRangeMode, DateOnly? DateFrom, DateOnly? DateTo, bool? ShowInPulse, IList<ShareDto>? Shares, int? SortOrder);
 
+/// <summary>Lote 169: quién ve un elemento (PRIVATE / TENANT / SHARED); Shares solo cuenta con SHARED.</summary>
+public sealed record VisibilityRequest(string Visibility, IList<ShareDto>? Shares);
 public sealed record DateRangeRequest(string DateRangeMode, DateOnly? DateFrom, DateOnly? DateTo);
 public sealed record PulseRequest(bool ShowInPulse);
 /// <summary>

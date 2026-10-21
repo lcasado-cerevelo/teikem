@@ -97,6 +97,11 @@ const LOOKUPS: Record<string, unknown> = {
     { code: 'ACCOUNTING', label: 'Contabilidad', sortOrder: 3, isEnabled: true },
   ],
   DateRangeMode: [{ code: 'LAST7', label: 'Últimos 7 días', sortOrder: 1, isEnabled: true }],
+  ReportVisibility: [
+    { code: 'PRIVATE', label: 'Privado', sortOrder: 1, isEnabled: true },
+    { code: 'TENANT', label: 'Todo el tenant', sortOrder: 2, isEnabled: true },
+    { code: 'SHARED', label: 'Compartido', sortOrder: 3, isEnabled: true },
+  ],
 }
 
 beforeEach(() => {
@@ -114,6 +119,8 @@ function baseHandler(indicators: AnalyticsDefinition[]): Handler {
     if (valueMatch) return { id: Number(valueMatch[1]), name: 'x', value: 42, isMoney: false }
     const pulseMatch = /^\/api\/v1\/analytics\/indicators\/(\d+)\/my-pulse$/.exec(path)
     if (pulseMatch && method === 'PUT') return indicators.find((i) => i.id === Number(pulseMatch[1])) ?? {}
+    const visMatch = /^\/api\/v1\/analytics\/indicators\/(\d+)\/visibility$/.exec(path)
+    if (visMatch && method === 'PUT') return indicators.find((i) => i.id === Number(visMatch[1])) ?? {}
     return []
   }
 }
@@ -179,6 +186,32 @@ describe('IndicatorsPage', () => {
     await waitFor(() =>
       expect(invalidateSpy.mock.calls.some((c) => JSON.stringify(c[0]?.queryKey) === JSON.stringify(['/api/v1/analytics/pulse']))).toBe(true),
     )
+  })
+
+  it('Lote 169: un «Por defecto» muestra «Quién lo ve» solo con analytics.manage', async () => {
+    mock.handler = baseHandler([ind({ id: 1, isSystem: true, canEdit: false })])
+    const view = renderPage(VIEW_ONLY)
+    await screen.findByText('Órdenes entregadas hoy')
+    expect(screen.queryByRole('button', { name: 'Quién lo ve' })).not.toBeInTheDocument()
+    view.unmount()
+    renderPage(FULL)
+    await screen.findByText('Órdenes entregadas hoy')
+    expect(screen.getByRole('button', { name: 'Quién lo ve' })).toBeInTheDocument()
+    expect(screen.queryByText('Editar')).not.toBeInTheDocument()   // el «Por defecto» no se edita: solo se le cambia quién lo ve
+  })
+
+  it('Lote 169: «Quién lo ve» de un «Por defecto» manda solo la visibilidad a PUT …/visibility', async () => {
+    mock.handler = baseHandler([ind({ id: 1, isSystem: true, canEdit: false })])
+    renderPage(FULL)
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Quién lo ve' }))
+    const select = await screen.findByLabelText('Quién puede verlo')
+    await user.selectOptions(select, 'PRIVATE')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(mock.writes.some((w) => w.path === '/api/v1/analytics/indicators/1/visibility')).toBe(true))
+    const write = mock.writes.find((w) => w.path === '/api/v1/analytics/indicators/1/visibility')
+    expect(write).toMatchObject({ method: 'PUT', body: { visibility: 'PRIVATE', shares: [] } })
+    expect(mock.writes.some((w) => w.method === 'PUT' && w.path === '/api/v1/analytics/indicators/1')).toBe(false)
   })
 
   it('vacío: "Todavía no hay indicadores."', async () => {

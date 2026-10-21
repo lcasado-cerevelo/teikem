@@ -9772,3 +9772,17 @@ Revisa que (1) el documento tenga **fecha de vencimiento** y sea el **vigente** 
 
 ### Cambiar con cuántos días de anticipación avisa
 Ajustes de la compañía → Operación → «Avisos de flota» → «Avisar documentos por vencer con (días)» (1 a 365). Si pone otro valor: `Los días de aviso de documentos de la flota deben estar entre 1 y 365.` (400). Vale para todos los documentos de la flota; el mantenimiento usa su propio criterio («Por vencer» = queda el 10 % del intervalo).
+
+## Quién ve los indicadores y gráficos «Por defecto» (Lote 169, 2026-10-21)
+
+**¿Puedo ocultarle un indicador «Por defecto» a ciertos usuarios?**
+Sí. En Indicadores o Gráficos, tarjeta del «Por defecto» → **«Quién lo ve»** → Privado, Todo el tenant o Compartido (personas y roles). Hace falta `analytics.manage`. Quien administra Análisis lo sigue viendo siempre para poder devolverlo.
+
+**Un usuario dice que ya no ve un indicador o gráfico que antes veía.**
+Probablemente alguien lo restringió con «Quién lo ve». Entra con un usuario con `analytics.manage`, abre la tarjeta y revisa: si está en Compartido, que su persona o su rol estén en la lista; o vuelve a ponerlo en «Todo el tenant». Si la visibilidad está bien, revisa que pueda leer la fuente de datos y que el módulo esté encendido.
+
+**¿Puedo cambiarle el nombre o los filtros a un «Por defecto»?**
+No (`Los elementos por default de la plataforma no se editan ni se eliminan.`, 403): son las métricas oficiales. Crea uno propio con el nombre y los filtros que necesites.
+
+**`La visibilidad debe ser PRIVATE, TENANT o SHARED.` (400)**
+El valor enviado a `…/visibility` no es uno de los tres. Corrígelo y vuelve a guardar.

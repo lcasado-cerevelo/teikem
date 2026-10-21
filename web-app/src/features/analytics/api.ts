@@ -199,6 +199,21 @@ export function useSaveChart() {
   })
 }
 
+/**
+ * Lote 169 — `PUT /api/v1/analytics/{indicators|charts}/{id}/visibility` (`analytics.manage`): cambia SOLO quién lo ve (privado / toda la compañía / compartido con
+ * personas y roles). Es lo único que se le puede cambiar a un «Por defecto» (el sistema lo creó, pero la compañía decide quién lo ve).
+ */
+export function useSetVisibility() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ kind, id, body }: { kind: PulseItemKind; id: number; body: components['schemas']['VisibilityRequest'] }) =>
+      kind === 'indicator'
+        ? unwrap(api.PUT('/api/v1/analytics/indicators/{id}/visibility', { params: { path: { id } }, body }))
+        : unwrap(api.PUT('/api/v1/analytics/charts/{id}/visibility', { params: { path: { id } }, body })),
+    onSuccess: (_data, vars) => invalidateDefinitions(qc, vars.kind, vars.id),
+  })
+}
+
 export function useDeleteIndicator() {
   const qc = useQueryClient()
   return useMutation({

@@ -47,11 +47,11 @@ Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Esta
 - Aparte de la visibilidad hay una regla de datos: para ver un indicador el usuario necesita permiso de **leer la fuente** y el módulo encendido; eso se mantiene.
 
 **Diseño:**
-- ☐ **F1.** Quitar el atajo de `IsSystem` en la regla de visibilidad: los «Por defecto» nacen **TENANT** (todos, como hoy) pero respetan lo que se les ponga.
-- ☐ **F2.** Quien tenga `analytics.manage` puede cambiar de un «Por defecto» **solo** la visibilidad (privado / compañía / compartido con personas y roles), el rango por omisión y si aparece en Pulso por omisión; **no** el nombre, la fuente, el campo ni los filtros (son las métricas oficiales). Quien lo desee, lo **duplica** para cambiarlo (la copia es de la compañía y editable).
-- ☐ **F3.** Pantalla: en cada tarjeta, «Quién lo ve» (editor de visibilidad, el mismo de los creados por usuarios) también para los «Por defecto»; marca «Por defecto» = «lo creó el sistema».
-- ☐ **F4.** Permisos: crear, editar y compartir exigen `analytics.manage`; ver, `analytics.view`. Revisar que el admin de la compañía los tenga y que la plantilla de roles no se los dé a todos.
-- ☐ Pruebas: un rol sin acceso no ve el «Por defecto» restringido ni en Indicadores, ni en Gráficos, ni en Pulso; el administrador de plataforma sigue viéndolo todo; un cambio queda auditado.
+- ☑ **F1 (Lote 169).** Quitar el atajo de `IsSystem` en la regla de visibilidad: los «Por defecto» nacen **TENANT** (todos, como hoy) pero respetan lo que se les ponga.
+- ☑ **F2 (Lote 169, solo visibilidad; endpoint nuevo).** Quien tenga `analytics.manage` puede cambiar de un «Por defecto» **solo** la visibilidad (privado / compañía / compartido con personas y roles), el rango por omisión y si aparece en Pulso por omisión; **no** el nombre, la fuente, el campo ni los filtros (son las métricas oficiales). Quien lo desee, lo **duplica** para cambiarlo (la copia es de la compañía y editable).
+- ☑ **F3 (Lote 169; Indicadores y Gráficos; falta Vistas).** Pantalla: en cada tarjeta, «Quién lo ve» (editor de visibilidad, el mismo de los creados por usuarios) también para los «Por defecto»; marca «Por defecto» = «lo creó el sistema».
+- ☑ **F4 (Lote 169; sin cambios).** Permisos: crear, editar y compartir exigen `analytics.manage`; ver, `analytics.view`. Revisar que el admin de la compañía los tenga y que la plantilla de roles no se los dé a todos.
+- ☑ Pruebas (Lote 169: lista, lectura y evaluación; Pulso usa la misma regla; la auditoría sale del interceptor, sin prueba propia): un rol sin acceso no ve el «Por defecto» restringido ni en Indicadores, ni en Gráficos, ni en Pulso; el administrador de plataforma sigue viéndolo todo; un cambio queda auditado.
 - Lo mismo aplica a **Vistas e informes** (`ReportDefinition`).
 
 ## G. Avisos de flota (idea del dueño, 2026-10-21; recomendación: empezar corto)

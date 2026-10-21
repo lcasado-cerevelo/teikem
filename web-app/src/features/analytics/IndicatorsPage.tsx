@@ -2,7 +2,7 @@
 // tarjeta, agrupadas por módulo de negocio. El API ya filtra lo que el usuario puede leer (§2.2 del plan: permiso
 // `analytics.view`, visibilidad y fuente de datos legible); esta pantalla no vuelve a filtrar.
 import { useMemo, useState } from 'react'
-import { Can } from '../../kernel/access'
+import { Can, useCan } from '../../kernel/access'
 import { ApiError, applyProblemDetails } from '../../kernel/api/problem'
 import { useLookups } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n/useT'
@@ -15,6 +15,7 @@ import { toast } from '../../kernel/ui/toast'
 import { useDeleteIndicator, useIndicatorValue, useIndicators, useSaveIndicator, useSetMyPulse, type AnalyticsDefinition } from './api'
 import { DefinitionEditor } from './DefinitionEditor'
 import { DefinitionRangeModal } from './DefinitionRangeModal'
+import { VisibilityModal } from './VisibilityModal'
 import { effectiveRangeCaption, groupDefinitions, visibilityBadgeKey, withShowInPulse } from './definitions'
 import { formatValue, formatYmd } from './format'
 import { MODULE_GROUP_ICON } from './moduleIcons'
@@ -97,6 +98,8 @@ function IndicatorCard({ indicator, onEdit, onDelete }: { indicator: AnalyticsDe
   const setMyPulse = useSetMyPulse()
   const saveIndicator = useSaveIndicator()
   const [rangeOpen, setRangeOpen] = useState(false)
+  const [visOpen, setVisOpen] = useState(false)
+  const canManage = useCan('analytics.manage')
   const { data: modes = [] } = useLookups('DateRangeMode', { includeDisabled: true })
 
   const caption = effectiveRangeCaption(
@@ -172,6 +175,13 @@ function IndicatorCard({ indicator, onEdit, onDelete }: { indicator: AnalyticsDe
         <div style={{ marginTop: 8 }}>
           <Chip>{visLabel}</Chip>
         </div>
+        {indicator.isSystem && canManage && indicator.id != null && (
+          <div className="nact" style={{ justifyContent: 'center', marginTop: 8 }}>
+            <button type="button" className="btn sm" onClick={() => setVisOpen(true)}>
+              {t('analytics.visibility.btn')}
+            </button>
+          </div>
+        )}
         {!indicator.isSystem && indicator.ownerName && <p className="help">{t('analytics.indicators.createdBy', { name: indicator.ownerName })}</p>}
 
         {indicator.canEdit && (
@@ -185,6 +195,9 @@ function IndicatorCard({ indicator, onEdit, onDelete }: { indicator: AnalyticsDe
           </div>
         )}
       </div>
+      {visOpen && indicator.id != null && (
+        <VisibilityModal kind="indicator" id={indicator.id} name={indicator.name ?? ''} visibility={indicator.visibility} shares={indicator.shares} onClose={() => setVisOpen(false)} />
+      )}
       {rangeOpen && indicator.id != null && (
         <DefinitionRangeModal
           kind="indicator"

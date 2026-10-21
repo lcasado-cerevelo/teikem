@@ -255,6 +255,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analytics/reports/{id}/visibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["VisibilityRequest"];
+                    "text/json": components["schemas"]["VisibilityRequest"];
+                    "application/*+json": components["schemas"]["VisibilityRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReportDto"];
+                        "application/json": components["schemas"]["ReportDto"];
+                        "text/json": components["schemas"]["ReportDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analytics/reports/{id}/run": {
         parameters: {
             query?: never;
@@ -583,6 +628,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analytics/indicators/{id}/visibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["VisibilityRequest"];
+                    "text/json": components["schemas"]["VisibilityRequest"];
+                    "application/*+json": components["schemas"]["VisibilityRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AnalyticsDefinitionDto"];
+                        "application/json": components["schemas"]["AnalyticsDefinitionDto"];
+                        "text/json": components["schemas"]["AnalyticsDefinitionDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analytics/indicators/{id}/default-date-range": {
         parameters: {
             query?: never;
@@ -885,6 +975,51 @@ export interface paths {
                     "application/json": components["schemas"]["DateRangeRequest"];
                     "text/json": components["schemas"]["DateRangeRequest"];
                     "application/*+json": components["schemas"]["DateRangeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AnalyticsDefinitionDto"];
+                        "application/json": components["schemas"]["AnalyticsDefinitionDto"];
+                        "text/json": components["schemas"]["AnalyticsDefinitionDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/charts/{id}/visibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["VisibilityRequest"];
+                    "text/json": components["schemas"]["VisibilityRequest"];
+                    "application/*+json": components["schemas"]["VisibilityRequest"];
                 };
             };
             responses: {
@@ -38829,6 +38964,10 @@ export interface components {
             receiptRequirement?: string | null;
             /** Format: int32 */
             fleetDocWarnDays?: number | null;
+        };
+        VisibilityRequest: {
+            visibility?: string | null;
+            shares?: components["schemas"]["ShareDto"][] | null;
         };
         ValuationReportDto: {
             /** Format: int32 */

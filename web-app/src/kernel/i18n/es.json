@@ -3095,6 +3095,12 @@
     }
   },
   "analytics": {
+    "visibility": {
+      "btn": "Quién lo ve",
+      "title": "Quién ve «{name}»",
+      "help": "Lo creó el sistema para toda la compañía; usted decide quién lo ve. El nombre, la fuente y los filtros no se cambian: para eso, créelo de nuevo como suyo. Quien administra Análisis siempre lo ve para poder devolverlo.",
+      "saved": "Listo: cambió quién lo ve."
+    },
     "pulse": {
       "title": "Pulso del día",
       "subtitle": "Bienvenido, {name}. Así viene el día en su compañía.",
@@ -3441,7 +3447,7 @@
       "visAllBadge": "Todos",
       "visPrivateBadge": "Privado",
       "visSharedBadge": "Compartido ({n})",
-      "visibilityHint": "Los indicadores por defecto son visibles para todos. Los que usted crea son privados a menos que decida compartirlos.",
+      "visibilityHint": "Los indicadores por defecto nacen visibles para todos; con «Quién lo ve» la compañía puede restringirlos. Los que usted crea son privados a menos que decida compartirlos.",
       "deleteTitle": "Eliminar indicador",
       "deleteBody": "¿Eliminar el indicador {name}?"
     },

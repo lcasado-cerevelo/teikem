@@ -69,6 +69,10 @@ public sealed class AnalyticsController(AnalyticsService analytics) : Controller
     [HttpPut("reports/{id:int}"), RequirePermission(PermissionCatalog.AnalyticsManage)]
     public Task<ReportDto> UpdateReport(int id, [FromBody] ReportUpsertRequest req, CancellationToken ct) => analytics.UpdateReportAsync(id, req, ct);
 
+    /// <summary>Solo quién la ve (también para las «Por defecto»). Lote 169.</summary>
+    [HttpPut("reports/{id:int}/visibility"), RequirePermission(PermissionCatalog.AnalyticsManage)]
+    public Task<ReportDto> ReportVisibility(int id, [FromBody] VisibilityRequest req, CancellationToken ct) => analytics.SetReportVisibilityAsync(id, req, ct);
+
     [HttpDelete("reports/{id:int}"), RequirePermission(PermissionCatalog.AnalyticsManage)]
     public async Task<IActionResult> DeleteReport(int id, CancellationToken ct) { await analytics.DeleteReportAsync(id, ct); return NoContent(); }
 
@@ -100,6 +104,10 @@ public sealed class AnalyticsController(AnalyticsService analytics) : Controller
     [HttpPut("indicators/{id:int}"), RequirePermission(PermissionCatalog.AnalyticsManage)]
     public Task<AnalyticsDefinitionDto> UpdateIndicator(int id, [FromBody] IndicatorUpsertRequest req, CancellationToken ct) => analytics.UpdateIndicatorAsync(id, req, ct);
 
+    /// <summary>Solo quién lo ve (también para los «Por defecto»). Lote 169.</summary>
+    [HttpPut("indicators/{id:int}/visibility"), RequirePermission(PermissionCatalog.AnalyticsManage)]
+    public Task<AnalyticsDefinitionDto> IndicatorVisibility(int id, [FromBody] VisibilityRequest req, CancellationToken ct) => analytics.SetIndicatorVisibilityAsync(id, req, ct);
+
     [HttpDelete("indicators/{id:int}"), RequirePermission(PermissionCatalog.AnalyticsManage)]
     public async Task<IActionResult> DeleteIndicator(int id, CancellationToken ct) { await analytics.DeleteIndicatorAsync(id, ct); return NoContent(); }
 
@@ -130,6 +138,10 @@ public sealed class AnalyticsController(AnalyticsService analytics) : Controller
 
     [HttpPut("charts/{id:int}"), RequirePermission(PermissionCatalog.AnalyticsManage)]
     public Task<AnalyticsDefinitionDto> UpdateChart(int id, [FromBody] ChartUpsertRequest req, CancellationToken ct) => analytics.UpdateChartAsync(id, req, ct);
+
+    /// <summary>Solo quién lo ve (también para los «Por defecto»). Lote 169.</summary>
+    [HttpPut("charts/{id:int}/visibility"), RequirePermission(PermissionCatalog.AnalyticsManage)]
+    public Task<AnalyticsDefinitionDto> ChartVisibility(int id, [FromBody] VisibilityRequest req, CancellationToken ct) => analytics.SetChartVisibilityAsync(id, req, ct);
 
     [HttpDelete("charts/{id:int}"), RequirePermission(PermissionCatalog.AnalyticsManage)]
     public async Task<IActionResult> DeleteChart(int id, CancellationToken ct) { await analytics.DeleteChartAsync(id, ct); return NoContent(); }

@@ -3095,6 +3095,12 @@
     }
   },
   "analytics": {
+    "visibility": {
+      "btn": "Who sees it",
+      "title": "Who sees \"{name}\"",
+      "help": "The system created it for the whole company; you decide who sees it. The name, source and filters are not changed: to change those, create it again as your own. Whoever manages Analytics always sees it so it can be put back.",
+      "saved": "Done: who sees it has changed."
+    },
     "pulse": {
       "title": "Day pulse",
       "subtitle": "Welcome, {name}. Here's how today looks for your company.",
@@ -3441,7 +3447,7 @@
       "visAllBadge": "Everyone",
       "visPrivateBadge": "Private",
       "visSharedBadge": "Shared ({n})",
-      "visibilityHint": "Default indicators are visible to everyone. The ones you create are private unless you choose to share them.",
+      "visibilityHint": "Default indicators start visible to everyone; with \"Who sees it\" the company can restrict them. The ones you create are private unless you choose to share them.",
       "deleteTitle": "Delete indicator",
       "deleteBody": "Delete indicator {name}?"
     },

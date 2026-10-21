@@ -16,7 +16,7 @@ namespace Teikem.Infrastructure.Services;
 ///  - IsSystem: nadie edita ni elimina. Usuario: solo el dueño (OwnerUserId) edita/elimina. Lote 15: de la compañía (no de
 ///    sistema y sin dueño, p. ej. los 2 gráficos de almacén sembrados) lo edita/elimina quien tenga analytics.manage.
 ///  - Lote 15 (D11): barras y donas con SUM/COUNT juntan el resto en "Otras"/"Others" (idioma del usuario) pasado el 8.º grupo.
-///  - Visibilidad: TENANT / PRIVATE / SHARED (ReportShare/IndicatorShare/ChartShare por rol o usuario). De sistema = todos.
+///  - Visibilidad: TENANT / PRIVATE / SHARED (ReportShare/IndicatorShare/ChartShare por rol o usuario), también para los de sistema (Lote 169: nacen TENANT y la compañía los puede restringir).
 ///  - Rango de fecha y "mostrar en Pulso" son preferencias POR USUARIO (UserAnalyticsPreference) con el valor de la
 ///    definición como default; cambiar el default de una definición ajena/de sistema exige `analytics.dates`. Lote 15: los días
 ///    del rango son LOCALES de la compañía (ITenantClock, hora de Puerto Rico), convertidos a instantes UTC para la consulta.
@@ -96,17 +96,32 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
            || (IsCompanyOwned(isSystem, ownerUserId) && await permissions.HasPermissionAsync(PermissionCatalog.AnalyticsManage, ct))
            || await permissions.HasPermissionAsync(PermissionCatalog.AnalyticsDates, ct);
 
-    private async Task<HashSet<int>> MyRoleIdsAsync(CancellationToken ct)
-        => (await db.AppUserRoles.AsNoTracking().Where(ur => ur.UserId == tenant.UserId).Select(ur => ur.RoleId).ToListAsync(ct)).ToHashSet();
-
-    private bool IsVisible(bool isSystem, int? ownerUserId, string visibility, IEnumerable<(int? UserId, int? RoleId)> shares, HashSet<int> myRoles)
+    /// <summary>Quién mira: sus roles y si puede administrar el análisis (analytics.manage). Quien administra siempre ve lo del sistema y lo de la compañía, para poder devolverle la visibilidad.</summary>
+    private sealed record Viewer(HashSet<int> Roles, bool CanManage)
     {
-        if (isSystem || tenant.IsPlatformAdmin) return true;
+        public bool Contains(int roleId) => Roles.Contains(roleId);
+    }
+
+    private async Task<Viewer> MyRoleIdsAsync(CancellationToken ct)
+    {
+        var roles = (await db.AppUserRoles.AsNoTracking().Where(ur => ur.UserId == tenant.UserId).Select(ur => ur.RoleId).ToListAsync(ct)).ToHashSet();
+        return new Viewer(roles, await permissions.HasPermissionAsync(PermissionCatalog.AnalyticsManage, ct));
+    }
+
+    /// <summary>
+    /// Lote 169 (F1, 2026-10-21) — quién ve un elemento. Los «Por defecto» (IsSystem) ya NO se ven siempre: nacen para toda la compañía (TENANT) pero respetan la visibilidad que la
+    /// compañía les ponga (privado / compartido con personas y roles). Quien tiene analytics.manage siempre ve los del sistema y los de la compañía (sin dueño), para poder cambiarles
+    /// la visibilidad; el dueño ve lo suyo; el administrador de plataforma ve todo.
+    /// </summary>
+    private bool IsVisible(bool isSystem, int? ownerUserId, string visibility, IEnumerable<(int? UserId, int? RoleId)> shares, Viewer viewer)
+    {
+        if (tenant.IsPlatformAdmin) return true;
         if (ownerUserId == tenant.UserId) return true;
+        if (viewer.CanManage && (isSystem || ownerUserId is null)) return true;
         return visibility.ToUpperInvariant() switch
         {
             ReportVisibilities.Tenant => true,
-            ReportVisibilities.Shared => shares.Any(s => (s.UserId.HasValue && s.UserId == tenant.UserId) || (s.RoleId.HasValue && myRoles.Contains(s.RoleId.Value))),
+            ReportVisibilities.Shared => shares.Any(s => (s.UserId.HasValue && s.UserId == tenant.UserId) || (s.RoleId.HasValue && viewer.Contains(s.RoleId.Value))),
             _ => false,
         };
     }
@@ -245,6 +260,31 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
             r.Shares.Clear();
             await ApplySharesAsync(r.Shares, req.Shares, (u, ro, e) => new ReportShare { UserId = u, RoleId = ro, CanEdit = e }, ct);
         }
+        await db.SaveChangesAsync(ct);
+        return await GetReportAsync(id, ct);
+    }
+
+    /// <summary>
+    /// Lote 169 (F2) — cambia SOLO quién ve un elemento (privado / toda la compañía / compartido con personas y roles). Es lo único que se le puede cambiar a un «Por defecto»; en los demás
+    /// vale el dueño (o, si es de la compañía, quien tenga analytics.manage, que ya exige el controlador). Nombre, fuente, campo y filtros no se tocan: se duplica para cambiarlos.
+    /// </summary>
+    private async Task<(int VisibilityId, IList<ShareDto> Shares)> ValidateVisibilityAsync(VisibilityRequest req, CancellationToken ct)
+    {
+        var code = (req.Visibility ?? string.Empty).Trim().ToUpperInvariant();
+        if (code is not (ReportVisibilities.Private or ReportVisibilities.Tenant or ReportVisibilities.Shared))
+            throw new ValidationException("visibility", "La visibilidad debe ser PRIVATE, TENANT o SHARED.");
+        return (await lookups.GetIdAsync(LookupDomains.ReportVisibility, code, ct), code == ReportVisibilities.Shared ? req.Shares ?? new List<ShareDto>() : new List<ShareDto>());
+    }
+
+    public async Task<ReportDto> SetReportVisibilityAsync(int id, VisibilityRequest req, CancellationToken ct)
+    {
+        var r = await LoadReportAsync(id, ct, track: true, requireReadable: false);
+        if (!r.IsSystem) EnsureEditable(r.IsSystem, r.OwnerUserId, false);
+        var (visId, shares) = await ValidateVisibilityAsync(req, ct);
+        r.VisibilityLookupId = visId;
+        db.ReportShares.RemoveRange(r.Shares);
+        r.Shares.Clear();
+        await ApplySharesAsync(r.Shares, shares, (u, ro, e) => new ReportShare { UserId = u, RoleId = ro, CanEdit = e }, ct);
         await db.SaveChangesAsync(ct);
         return await GetReportAsync(id, ct);
     }
@@ -479,6 +519,20 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
         return await IndicatorDtoAsync(await LoadIndicatorAsync(id, ct, requireReadable: false), ct);
     }
 
+    /// <summary>Lote 169 (F2): solo quién lo ve; vale también para un «Por defecto». Ver <see cref="SetReportVisibilityAsync"/>.</summary>
+    public async Task<AnalyticsDefinitionDto> SetIndicatorVisibilityAsync(int id, VisibilityRequest req, CancellationToken ct)
+    {
+        var i = await LoadIndicatorAsync(id, ct, track: true, requireReadable: false);
+        if (!i.IsSystem) EnsureEditable(i.IsSystem, i.OwnerUserId, false);
+        var (visId, shares) = await ValidateVisibilityAsync(req, ct);
+        i.VisibilityLookupId = visId;
+        db.IndicatorShares.RemoveRange(i.Shares);
+        i.Shares.Clear();
+        await ApplySharesAsync(i.Shares, shares, (u, ro, _) => new IndicatorShare { UserId = u, RoleId = ro }, ct);
+        await db.SaveChangesAsync(ct);
+        return await IndicatorDtoAsync(await LoadIndicatorAsync(id, ct, requireReadable: false), ct);
+    }
+
     public async Task DeleteIndicatorAsync(int id, CancellationToken ct)
     {
         var i = await LoadIndicatorAsync(id, ct, track: true, requireReadable: false);
@@ -620,6 +674,20 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
         await ApplyChartAsync(c, source, req, ct);
         await ApplyAsync(c, source, req.Descriptions, req.Field, req.AggregateFn, req.FilterJson, req.BusinessModule, req.IsMoney, req.Visibility, req.DateRangeMode, req.DateFrom, req.DateTo, req.ShowInPulse, req.SortOrder, ct);
         if (req.Shares is not null) { db.ChartShares.RemoveRange(c.Shares); c.Shares.Clear(); await ApplySharesAsync(c.Shares, req.Shares, (u, ro, _) => new ChartShare { UserId = u, RoleId = ro }, ct); }
+        await db.SaveChangesAsync(ct);
+        return await ChartDtoAsync(await LoadChartAsync(id, ct, requireReadable: false), ct);
+    }
+
+    /// <summary>Lote 169 (F2): solo quién lo ve; vale también para un «Por defecto». Ver <see cref="SetReportVisibilityAsync"/>.</summary>
+    public async Task<AnalyticsDefinitionDto> SetChartVisibilityAsync(int id, VisibilityRequest req, CancellationToken ct)
+    {
+        var c = await LoadChartAsync(id, ct, track: true, requireReadable: false);
+        if (!c.IsSystem) EnsureEditable(c.IsSystem, c.OwnerUserId, false);
+        var (visId, shares) = await ValidateVisibilityAsync(req, ct);
+        c.VisibilityLookupId = visId;
+        db.ChartShares.RemoveRange(c.Shares);
+        c.Shares.Clear();
+        await ApplySharesAsync(c.Shares, shares, (u, ro, _) => new ChartShare { UserId = u, RoleId = ro }, ct);
         await db.SaveChangesAsync(ct);
         return await ChartDtoAsync(await LoadChartAsync(id, ct, requireReadable: false), ct);
     }

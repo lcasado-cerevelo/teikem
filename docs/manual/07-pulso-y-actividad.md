@@ -187,7 +187,7 @@ Pulso solo puede mostrar los paneles de Almacén (la franja y el panel Almacén)
 Un indicador o gráfico aparece en el Pulso (y en las listas de Indicadores y Gráficos) solo si, **todas a la vez**:
 
 1. el usuario tiene `pulse.indicators` (o `pulse.charts`) — solo para el Pulso;
-2. puede verlo por su visibilidad (privado suyo, compartido con él o su rol, o de toda la compañía);
+2. puede verlo por su visibilidad (privado suyo, compartido con él o su rol, o de toda la compañía) — también vale para los «Por defecto» desde el Lote 169;
 3. **puede leer su fuente de datos**: `STOCK_BALANCE`, `INVENTORY_TRANSACTION`, `PRODUCT`, `RECEIPT`, `WAREHOUSE`,
    `WAREHOUSE_TASK`, `PICK_BATCH`, `CYCLE_COUNT` → `inventory.view`; `TRANSPORT_ORDER` → `orders.view`; `TRIP` →
    `trips.view`; `VEHICLE`, `DRIVER`, `WORK_ORDER`, `FUEL_LOG`, `FLEET_DOCUMENT` → `fleet.view`; `CLIENT` → `clients.read`;
@@ -700,6 +700,24 @@ La referencia es el número de la orden, el código de la ruta, el número de la
 - **No veo la pestaña Contabilidad:** hace falta `billing.view` con Facturación encendida, o `cod.view` con COD encendido.
 - **No veo un indicador o gráfico de COD o facturas:** el módulo de su fuente está apagado, o el usuario lo ocultó en «Organizar».
 - **«Facturado por día» no cuenta el borrador:** solo suma facturas emitidas, pagadas o vencidas (con fecha de emisión).
+
+### Quién ve los «Por defecto» y cómo cambiarlo (Lote 169, 2026-10-21)
+
+Los indicadores y gráficos son **de cada compañía**. Los «Por defecto» (los que el sistema crea en cada compañía) solo quieren decir **que los creó el sistema**: nacen visibles para **toda la compañía**, pero la compañía decide quién los ve, igual que con los suyos.
+
+- **Dónde:** Indicadores y Gráficos → en la tarjeta de un «Por defecto», botón **«Quién lo ve»** (solo con `analytics.manage`). Elige **Privado**, **Todo el tenant** o **Compartido** (con personas y/o roles) y guarda. API: `PUT /api/v1/analytics/indicators/{id}/visibility`, `…/charts/{id}/visibility` y `…/reports/{id}/visibility` (cuerpo `{ "visibility": "PRIVATE|TENANT|SHARED", "shares": [{ "userId": 5 }, { "roleId": 3 }] }`; `shares` solo cuenta con `SHARED`).
+- **Qué NO se cambia:** nombre, fuente, campo, función y filtros de un «Por defecto» (son las métricas oficiales); ni se elimina (`403` «Los elementos por default de la plataforma no se editan ni se eliminan.»). Para una versión distinta, se crea uno propio.
+- **Quien administra Análisis (`analytics.manage`) siempre ve** los «Por defecto» y los de la compañía sin dueño, aunque estén privados o compartidos con otros, para poder devolverlos a «Todo el tenant». El administrador de la plataforma ve todo. Un usuario sin acceso recibe `404` al abrirlo y no le sale en Indicadores, Gráficos ni Pulso.
+- **Se mantiene** la regla de lectura: además de la visibilidad, hace falta poder leer la fuente y tener encendido el módulo.
+- El rango por defecto y «Mostrar en Pulso» siguen siendo preferencia de cada usuario (con el valor de la definición como punto de partida).
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| Visibilidad que no es PRIVATE, TENANT ni SHARED | `La visibilidad debe ser PRIVATE, TENANT o SHARED.` (campo `visibility`) | 400 |
+| Persona que no es de la compañía | `El usuario {id} no pertenece a esta compañía.` (campo `shares`) | 400 |
+| Rol que no es de la compañía | `El rol {id} no pertenece a esta compañía.` (campo `shares`) | 400 |
+| Sin `analytics.manage` | (lo rechaza la política del controlador) | 403 |
+| Elemento de otro usuario (no «Por defecto») | `Solo el dueño puede editar o eliminar este elemento.` | 403 |
 
 ## Preguntas frecuentes de este capítulo
 

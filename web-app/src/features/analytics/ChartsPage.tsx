@@ -4,7 +4,7 @@
 // Lote 15: chip "De la compañía" en los gráficos sin dueño que no son de sistema (Editar/Eliminar según `canEdit`, es decir
 // `analytics.manage`); al eliminar uno se avisa que no vuelve.
 import { useMemo, useState } from 'react'
-import { Can } from '../../kernel/access'
+import { Can, useCan } from '../../kernel/access'
 import { ApiError, applyProblemDetails } from '../../kernel/api/problem'
 import { useLookups } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n/useT'
@@ -18,6 +18,7 @@ import { toast } from '../../kernel/ui/toast'
 import { useChartData, useCharts, useDeleteChart, useSetMyDateRange, useSetMyPulse, type AnalyticsDefinition } from './api'
 import { ChartVisual } from './ChartVisual'
 import { DefinitionEditor } from './DefinitionEditor'
+import { VisibilityModal } from './VisibilityModal'
 import { CUSTOM_RANGE, effectiveRangeCaption, groupDefinitions, isCompanyChart, visibilityBadgeKey } from './definitions'
 import { formatYmd } from './format'
 import { MODULE_GROUP_ICON } from './moduleIcons'
@@ -98,6 +99,8 @@ function ChartCard({ chart, onEdit, onDelete }: { chart: AnalyticsDefinition; on
   const lang = useLang()
   const data = useChartData(chart.id ?? null)
   const setMyPulse = useSetMyPulse()
+  const [visOpen, setVisOpen] = useState(false)
+  const canManage = useCan('analytics.manage')
   const { data: modes = [] } = useLookups('DateRangeMode', { includeDisabled: true })
 
   const caption = effectiveRangeCaption(
@@ -154,6 +157,13 @@ function ChartCard({ chart, onEdit, onDelete }: { chart: AnalyticsDefinition; on
         </label>
         <Chip>{visLabel}</Chip>
       </div>
+        {chart.isSystem && canManage && chart.id != null && (
+          <div className="nact" style={{ marginTop: 8 }}>
+            <button type="button" className="btn sm" onClick={() => setVisOpen(true)}>
+              {t('analytics.visibility.btn')}
+            </button>
+          </div>
+        )}
       {!chart.isSystem && chart.ownerName && <p className="help">{t('analytics.charts.createdBy', { name: chart.ownerName })}</p>}
       {chart.canEdit && (
         <div className="nact" style={{ marginTop: 8 }}>
@@ -164,6 +174,9 @@ function ChartCard({ chart, onEdit, onDelete }: { chart: AnalyticsDefinition; on
             {t('analytics.editor.deleteBtn')}
           </button>
         </div>
+      )}
+      {visOpen && chart.id != null && (
+        <VisibilityModal kind="chart" id={chart.id} name={chart.name ?? ''} visibility={chart.visibility} shares={chart.shares} onClose={() => setVisOpen(false)} />
       )}
     </Panel>
   )
