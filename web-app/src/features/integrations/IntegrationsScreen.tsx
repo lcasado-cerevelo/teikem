@@ -81,7 +81,7 @@ export default function IntegrationsScreen() {
   const canInbox = useCan('integrations.inbox')
   const [showInactive, setShowInactive] = useState(false)
   const list = useIntegrations(showInactive)
-  const { run, setActive, upload, testConnection } = useIntegrationMutations()
+  const { run, sendAll, setActive, upload, testConnection } = useIntegrationMutations()
   const [editing, setEditing] = useState<IntegrationDto | 'new' | null>(null)
   const [history, setHistory] = useState<IntegrationDto | null>(null)
   const [keysFor, setKeysFor] = useState<IntegrationDto | null>(null)
@@ -280,6 +280,14 @@ export default function IntegrationsScreen() {
                     icon: <IconPlay />,
                     onClick: (i) => void act(run.mutateAsync(i.publicId!), t('integrations.ran', { name: i.name ?? '' })),
                     visible: (i) => canManage && !!i.isActive && i.direction === 'OUTBOUND' && i.lastStatus !== 'RUNNING',
+                  },
+                  {
+                    // 2026-10-21: salida de un catálogo (productos): manda TODO el catálogo ahora (lo que cambia sale solo)
+                    key: 'sendall',
+                    label: t('integrations.out.sendAll'),
+                    icon: <IconPlay />,
+                    onClick: (i) => void act(sendAll.mutateAsync(i.publicId!), t('integrations.ran', { name: i.name ?? '' })),
+                    visible: (i) => canManage && !!i.isActive && !!i.entityKind && i.lastStatus !== 'RUNNING',
                   },
                   {
                     key: 'upload',

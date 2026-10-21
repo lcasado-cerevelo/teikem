@@ -7,7 +7,7 @@ import type { IntegrationValues } from './integrationRules'
 import type { IntegrationOptionsDto } from './integrationsApi'
 import { HTTP_AUTH_KINDS, HTTP_METHODS, MAX_COLUMNS, MAX_HEADERS, OUTPUT_FORMATS, OUTPUT_TRIGGERS } from './outputRules'
 
-export function OutputSection({ form, connector, options, hasSavedSecret, onPreview }: { form: UseFormReturn<IntegrationValues>; connector: string; options: IntegrationOptionsDto | undefined; hasSavedSecret: boolean; onPreview?: () => void }) {
+export function OutputSection({ form, connector, options, hasSavedSecret, onPreview, entity = false }: { form: UseFormReturn<IntegrationValues>; connector: string; options: IntegrationOptionsDto | undefined; hasSavedSecret: boolean; onPreview?: () => void ; entity?: boolean}) {
   const t = useT()
   const output = useWatch({ control: form.control, name: 'output' })
   const columns = output?.columns ?? []
@@ -24,20 +24,24 @@ export function OutputSection({ form, connector, options, hasSavedSecret, onPrev
       <fieldset className="int-scopes">
         <legend>{t('integrations.out.section')}</legend>
         <p className="help">{t('integrations.out.sectionHelp')}</p>
-        <p className="help">{t('integrations.out.statuses')}</p>
-        <div className="int-users">
-          {(options?.orderStatuses ?? []).map((s) => (
-            <label key={s} className="sw">
-              <input type="checkbox" role="switch" aria-label={t(`integrations.out.status.${s}`)} checked={statuses.includes(s)} onChange={(e) => set('statuses', e.target.checked ? [...statuses.filter((x) => x !== s), s] : statuses.filter((x) => x !== s))} />
-              <span className="tk" aria-hidden="true" />
-              <span>{t(`integrations.out.status.${s}`)}</span>
-            </label>
-          ))}
-        </div>
-        {typeof errors?.statuses?.message === 'string' && (
-          <p className="ferr" role="alert">
-            {errors.statuses.message}
-          </p>
+        {!entity && (
+          <>
+            <p className="help">{t('integrations.out.statuses')}</p>
+            <div className="int-users">
+              {(options?.orderStatuses ?? []).map((s) => (
+                <label key={s} className="sw">
+                  <input type="checkbox" role="switch" aria-label={t(`integrations.out.status.${s}`)} checked={statuses.includes(s)} onChange={(e) => set('statuses', e.target.checked ? [...statuses.filter((x) => x !== s), s] : statuses.filter((x) => x !== s))} />
+                  <span className="tk" aria-hidden="true" />
+                  <span>{t(`integrations.out.status.${s}`)}</span>
+                </label>
+              ))}
+            </div>
+            {typeof errors?.statuses?.message === 'string' && (
+              <p className="ferr" role="alert">
+                {errors.statuses.message}
+              </p>
+            )}
+          </>
         )}
         <div className="r2">
           <Field name="output.trigger" label={t('integrations.out.trigger')} help={t(`integrations.out.triggerHelp.${output?.trigger ?? 'EVENT'}`)}>
@@ -61,37 +65,41 @@ export function OutputSection({ form, connector, options, hasSavedSecret, onPrev
         </div>
         {connector !== 'HTTP' && (
           <Field name="output.fileName" label={t('integrations.out.fileName')} help={t('integrations.out.fileNameHelp')}>
-            <TextInput maxLength={120} placeholder="ordenes-{date}-{time}.{ext}" autoComplete="off" />
+            <TextInput maxLength={120} placeholder={entity ? 'productos-{date}-{time}.{ext}' : 'ordenes-{date}-{time}.{ext}'} autoComplete="off" />
           </Field>
         )}
-        <div className="int-cols">
-          <div className="int-cols-head">
-            <b>{t('integrations.out.columns')}</b>
-            <span className="help">{t(output?.format === 'CSV' ? 'integrations.out.columnsHelpCsv' : 'integrations.out.columnsHelp')}</span>
-          </div>
-          {columns.map((_, i) => (
-            <div className="int-col" key={i}>
-              <span className="help int-col-n">{i + 1}</span>
-              <Field name={`output.columns.${i}.header`} label={t('integrations.out.header')}>
-                <TextInput maxLength={60} autoComplete="off" />
-              </Field>
-              <Field name={`output.columns.${i}.field`} label={t('integrations.out.field')}>
-                <Select options={fields.map((f) => ({ value: f.code ?? '', label: f.label ?? f.code ?? '' }))} placeholder={t('integrations.form.pick')} />
-              </Field>
-              <button type="button" className="btn sm" aria-label={t('integrations.format.removeColumn', { n: i + 1 })} onClick={() => set('columns', columns.filter((__, j) => j !== i))}>
-                {t('integrations.format.remove')}
-              </button>
+        {entity ? (
+          <p className="help">{t('integrations.out.entityColumnsHelp')}</p>
+        ) : (
+          <div className="int-cols">
+            <div className="int-cols-head">
+              <b>{t('integrations.out.columns')}</b>
+              <span className="help">{t(output?.format === 'CSV' ? 'integrations.out.columnsHelpCsv' : 'integrations.out.columnsHelp')}</span>
             </div>
-          ))}
-          <button type="button" className="btn sm" disabled={columns.length >= MAX_COLUMNS} onClick={() => set('columns', [...columns, { header: '', field: '' }])}>
-            {t('integrations.format.addColumn')}
-          </button>
-          {typeof errors?.columns?.message === 'string' && (
-            <p className="ferr" role="alert">
-              {errors.columns.message}
-            </p>
-          )}
-        </div>
+            {columns.map((_, i) => (
+              <div className="int-col" key={i}>
+                <span className="help int-col-n">{i + 1}</span>
+                <Field name={`output.columns.${i}.header`} label={t('integrations.out.header')}>
+                  <TextInput maxLength={60} autoComplete="off" />
+                </Field>
+                <Field name={`output.columns.${i}.field`} label={t('integrations.out.field')}>
+                  <Select options={fields.map((f) => ({ value: f.code ?? '', label: f.label ?? f.code ?? '' }))} placeholder={t('integrations.form.pick')} />
+                </Field>
+                <button type="button" className="btn sm" aria-label={t('integrations.format.removeColumn', { n: i + 1 })} onClick={() => set('columns', columns.filter((__, j) => j !== i))}>
+                  {t('integrations.format.remove')}
+                </button>
+              </div>
+            ))}
+            <button type="button" className="btn sm" disabled={columns.length >= MAX_COLUMNS} onClick={() => set('columns', [...columns, { header: '', field: '' }])}>
+              {t('integrations.format.addColumn')}
+            </button>
+            {typeof errors?.columns?.message === 'string' && (
+              <p className="ferr" role="alert">
+                {errors.columns.message}
+              </p>
+            )}
+          </div>
+        )}
         <div className="int-previewbar">
           <button type="button" className="btn sm" disabled={!onPreview} onClick={onPreview}>
             {t('integrations.out.preview')}

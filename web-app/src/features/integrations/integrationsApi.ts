@@ -89,6 +89,11 @@ export function useIntegrationMutations() {
       mutationFn: (publicId: string) => unwrap(api.POST('/api/v1/integrations/{publicId}/run', { params: { path: { publicId } } })),
       onSettled: invalidate,
     }),
+    /** 2026-10-21: salida de un catálogo: anota TODOS los registros y corre la integración ahora. */
+    sendAll: useMutation({
+      mutationFn: (publicId: string) => unwrap(api.POST('/api/v1/integrations/{publicId}/send-all', { params: { path: { publicId } } })),
+      onSettled: invalidate,
+    }),
     testConnection: useMutation({
       mutationFn: (publicId: string) => unwrap(api.POST('/api/v1/integrations/{publicId}/test-connection', { params: { path: { publicId } } })),
     }),

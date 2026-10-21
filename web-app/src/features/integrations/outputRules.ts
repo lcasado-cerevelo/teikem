@@ -14,6 +14,8 @@ export const MAX_COLUMNS = 40
 export const MAX_HEADERS = 10
 export const NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*$/
 export const DEFAULT_COLUMNS = ['orderNumber', 'status', 'deliveredAt', 'recipientName'] as const
+/** Alcance de la salida de un catálogo (productos): ver inventario. */
+export const CATALOG_EXPORT_SCOPE = 'files.catalog_export'
 export const EXPORT_SCOPE = 'files.orders_export'
 
 export interface OutputColumnValues {
@@ -116,10 +118,12 @@ export function buildOutputConfig(v: OutputValues, connector: string): OutputCon
 export const buildHttpSecret = (v: OutputValues, connector: string): HttpOutSecret | undefined => (connector === 'HTTP' && v.http.authKind !== 'NONE' && v.http.secret ? { value: v.http.secret } : undefined)
 
 /** Problemas de la salida (ruta del formulario → mensaje): los obligatorios y los más comunes; el servidor agrega el resto con su texto exacto. */
-export function outputIssues(v: OutputValues, connector: string, hasSavedSecret: boolean, m: OutputMessages): { path: string; message: string }[] {
+export function outputIssues(v: OutputValues, connector: string, hasSavedSecret: boolean, m: OutputMessages, entity = false): { path: string; message: string }[] {
   const issues: { path: string; message: string }[] = []
-  if (v.statuses.length === 0) issues.push({ path: 'statuses', message: m.statuses })
-  if (v.columns.length === 0) issues.push({ path: 'columns', message: m.columnsRequired })
+  // la salida de un catálogo (entity) no tiene estatus ni columnas propias: las columnas son las de la plantilla de la entidad
+  if (!entity && v.statuses.length === 0) issues.push({ path: 'statuses', message: m.statuses })
+  if (entity) { /* sin columnas propias */ }
+  else if (v.columns.length === 0) issues.push({ path: 'columns', message: m.columnsRequired })
   else if (v.columns.length > MAX_COLUMNS) issues.push({ path: 'columns', message: m.columnsMax })
   else {
     const seen = new Set<string>()

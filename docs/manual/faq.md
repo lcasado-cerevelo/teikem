@@ -10120,3 +10120,12 @@ Los recibos de una recepción maestra llevan la etiqueta **«Maestra RCM-…»**
 
 **¿Puedo recolectar juntos desde el aparato una orden de venta y un aviso de salida?** (Lote 186)
 Sí, si son del mismo cliente: en Despachar aviso de salida, «Recolectar juntos» muestra los avisos y las órdenes de venta con algo reservado. Elige dos o más, recorre la ruta única y envía; queda una sola recolección maestra. El envío (empaque) de la maestra se sigue creando desde la web.
+
+**¿Cómo mando mis productos a otro sistema (ERP) por SFTP o API?**
+Integraciones → Nueva integración → Dirección «Salida» → «¿Qué se manda?» Productos → eliges la plantilla de productos (la misma de importar), el destino (SFTP, FTP o API), el formato y si sale al instante o por horario. Lo que crees o cambies sale solo; para la primera carga usa «Enviar todo el catálogo» en la fila de la integración.
+
+**Cambié un producto y no salió en la integración de productos.**
+Revisa que la integración esté encendida y haya sido creada antes del cambio. Con disparador «Por horario» sale cuando toca la hora; con «Al instante», en menos de un minuto. Si no sale, mira la pestaña «Salidas» (reintentos y errores).
+
+**¿Qué columnas lleva el archivo de productos?**
+Las de la plantilla de productos, en su orden; el encabezado es el nombre del campo. Si falta una, agrégala a la plantilla (Integraciones → Plantillas → Productos).

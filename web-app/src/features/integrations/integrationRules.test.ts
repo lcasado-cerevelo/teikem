@@ -128,3 +128,37 @@ describe('webhooks (Lote 136)', () => {
     expect(OUTBOX_TONE.UNDELIVERED).toBe('fail')
   })
 })
+
+describe('salida de un catálogo (2026-10-21)', () => {
+  const entity: IntegrationValues = { ...base, direction: 'OUTBOUND', connectorKind: 'SFTP', clientPublicId: '', templatePublicId: 'tp1', scopes: ['files.catalog_export'], entityKind: 'PRODUCT', scheduleKind: 'MANUAL' }
+  const issues = (v: Partial<IntegrationValues>) => {
+    const r = integrationSchema({ ...M, entityTemplateRequired: 'plantilla de productos' }, false).safeParse({ ...entity, ...v })
+    return r.success ? [] : r.error.issues.map((i) => `${i.path.join('.')}:${i.message}`)
+  }
+
+  it('no pide cliente y sí la plantilla de la entidad', () => {
+    expect(issues({})).toEqual([])
+    expect(issues({ templatePublicId: '' })).toEqual(['templatePublicId:plantilla de productos'])
+  })
+
+  it('la salida de envíos sigue pidiendo el cliente', () => {
+    expect(issues({ entityKind: '' })).toEqual(['clientPublicId:cliente'])
+  })
+
+  it('el alta manda la entidad y la plantilla, sin cliente, estatus ni columnas propias', () => {
+    const req = buildCreateRequest(entity)
+    expect(req).toMatchObject({ direction: 'OUTBOUND', entityKind: 'PRODUCT', templatePublicId: 'tp1', clientPublicId: null, scopes: ['files.catalog_export'] })
+    expect(req.output).toMatchObject({ statuses: [], columns: [] })
+  })
+
+  it('el alta de envíos no lleva entidad ni plantilla', () => {
+    const req = buildCreateRequest({ ...entity, entityKind: '', clientPublicId: 'c1', scopes: ['files.orders_export'] })
+    expect(req).not.toHaveProperty('entityKind')
+    expect(req.templatePublicId).toBeNull()
+  })
+
+  it('la edición de una salida de catálogo manda la plantilla; la de envíos no', () => {
+    expect(buildPatchRequest(entity, { connectorKind: 'SFTP', direction: 'OUTBOUND', entityKind: 'PRODUCT' })).toMatchObject({ templatePublicId: 'tp1' })
+    expect(buildPatchRequest(entity, { connectorKind: 'SFTP', direction: 'OUTBOUND', entityKind: null })).not.toHaveProperty('templatePublicId')
+  })
+})

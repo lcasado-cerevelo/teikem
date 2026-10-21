@@ -316,4 +316,27 @@ Dictado de Luis: ver, crear, editar, desactivar y reactivar las plantillas de im
 - **Lista:** nombre, cliente (o «Todos los clientes»), el resumen «columna → campo», cuántas columnas y estado (Activa/Inactiva). Las activas salen primero y luego por nombre; las inactivas se muestran siempre.
 - **Acciones:** *Nueva plantilla* y *Editar* abren el mismo editor que ya usa cada asistente de Importar (para consignatarios con variantes, uniones de columnas y cliente por defecto); *Desactivar* y *Reactivar* no borran nada. Los mensajes de error son los del servidor de cada editor (ver manual 03 §7 y el de consignatarios).
 - **Desde la integración:** al crear o editar una integración de entrada (carpeta, correo, SFTP/FTP o subida manual) hay un botón **«Nueva plantilla»** bajo el selector de plantilla (necesita `orders.edit`): abre el mismo editor, y al guardar la plantilla queda elegida en la integración, sin salir de ella.
-- **Todavía no:** plantillas de las demás entidades (órdenes de venta, clientes, choferes, recibos, despachos, ajustes) y la plantilla como **salida** por Integración. Siguen en el plan P11 (productos, proveedores, almacenes y posiciones ya están, ver manual 06 §1b, §2b y §8b).
+- **Todavía no:** plantillas de las demás entidades (órdenes de venta, clientes, choferes, recibos, despachos, ajustes). Siguen en el plan P11 (productos, proveedores, almacenes y posiciones ya están, ver manual 06 §1b, §2b y §8b).
+
+## 15. Salida de productos por Integración con la plantilla (2026-10-21)
+
+Dictado de Luis: la plantilla de la entidad (columna → campo) sirve también para **sacar** los productos por SFTP, FTP o API saliente, **por horario y al cambiar**. Es una integración de **salida** más, con «¿Qué se manda?» = **Productos (catálogo)**.
+
+- **Cómo se crea:** Integraciones → Nueva integración → Dirección **Salida** → «¿Qué se manda?» **Productos (catálogo)** → plantilla de productos (la misma con la que se importan; «Nueva plantilla» la crea ahí mismo) → conector (SFTP, FTP o HTTP), cuándo sale, formato (CSV, JSON o XML), nombre del archivo y destino. **No lleva cliente ni estatus.** Alcance: `files.catalog_export` («Salida de productos por archivo o API», pide `inventory.view` y el módulo de Inventario con lotes y series; la familia Archivos como las demás integraciones de archivos).
+- **Qué sale:** las **columnas de la plantilla, en su orden** (el encabezado es el nombre del campo: `sku`, `name`, `salePrice`…). Todos los campos de la importación de productos están disponibles (incluidos código del cliente dueño, unidad base, seguimiento, empaque y rotación). JSON: `{"products":[…]}`; XML: `<products><product>…`.
+- **Al cambiar:** al **crear, editar, desactivar o reactivar** un producto, queda anotado para cada integración de salida de productos encendida y sale en su siguiente envío. Un producto que cambia varias veces antes de salir va **una sola vez**. Con disparador **Al instante** sale un envío por producto (en menos de un minuto); con **Por horario** sale una tanda de hasta 1.000 productos cuando toca el horario.
+- **Enviar todo el catálogo:** acción **«Enviar todo el catálogo»** (`POST /api/v1/integrations/{publicId}/send-all`, `integrations.manage`) en la fila de la integración: anota **todos** los productos y corre la integración ahora (carga inicial o para volver a sincronizar). Una corrida manda hasta 5.000 productos; lo que sobre sale en la vuelta siguiente.
+- **Vista previa y prueba:** «Vista previa» (al editar) arma el archivo con los primeros 3 productos; «Probar» de la API saliente funciona igual que en las de envíos. Reintentos, bitácora y bandeja de «Salidas» son los de siempre (§11).
+- **Solo salen cambios hechos después de crear la integración** (como en las de envíos); para lo que ya existe, «Enviar todo el catálogo».
+- **Límite:** un envío no pasa de 2 MB (error «La salida supera el tamaño permitido (2 MB); use una salida más frecuente o menos columnas.»).
+
+| Mensaje | HTTP | Qué hacer |
+|---|---|---|
+| «Escoja la plantilla de la entidad: dice qué columna lleva cada campo.» | 400 | Falta la plantilla de productos (o no tiene columnas conocidas). |
+| «Entidad desconocida para la salida: X. Use PRODUCT.» | 400 | `entityKind` inválido (por ahora solo PRODUCT). |
+| «Esta integración no manda un catálogo.» | 400 | «Enviar todo» solo existe en las integraciones de productos. |
+| «Una integración de salida solo admite el alcance de salida de envíos (o el de salida de productos si manda un catálogo).» | 400 | Cada salida admite su alcance. |
+| «Una integración de entrada no admite el alcance de salida de envíos ni de productos.» | 400 | |
+| «La integración está apagada; enciéndala para correrla.» | 422 | Encienda la integración. |
+
+**Casos frecuentes:** *«Cambié un producto y no salió»* → la integración debe estar encendida, ser de Productos y haberse creado antes del cambio; con horario, sale cuando toca. *«Quiero todo otra vez»* → «Enviar todo el catálogo». *«Faltan columnas»* → agréguelas a la plantilla de productos (Integraciones → Plantillas): la salida usa la plantilla tal como está en cada envío.

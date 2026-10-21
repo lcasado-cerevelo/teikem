@@ -34611,6 +34611,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/{publicId}/send-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["IntegrationRunDto"];
+                        "application/json": components["schemas"]["IntegrationRunDto"];
+                        "text/json": components["schemas"]["IntegrationRunDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -45247,6 +45286,7 @@ export interface components {
             format?: components["schemas"]["FileFormatConfig"];
             output?: components["schemas"]["OutputConfig"];
             hasHttpSecret?: boolean;
+            entityKind?: string | null;
         };
         InboxPageDto: {
             items?: components["schemas"]["InboxItemDto"][] | null;
@@ -45343,6 +45383,7 @@ export interface components {
             direction?: string | null;
             output?: components["schemas"]["OutputConfig"];
             httpSecret?: components["schemas"]["HttpOutSecret"];
+            entityKind?: string | null;
         };
         IntegrationNotifyUserDto: {
             /** Format: int32 */

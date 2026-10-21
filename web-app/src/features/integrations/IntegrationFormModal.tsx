@@ -9,13 +9,14 @@ import { Field, Select, TextInput, Toggle, toast } from '../../kernel/ui'
 import { FormModal } from '../clients/contractUi'
 import { useClientOptions } from '../consignees/api'
 import { ImportTemplateEditorModal } from '../consignees/ImportTemplateEditorModal'
+import { useEntityImportFields, useEntityImportTemplates } from '../imports/entityImportApi'
 import { useOrderImportFields, useOrderImportTemplates } from '../orders/importApi'
 import { EmailSection } from './EmailSection'
 import { FormatSection } from './FormatSection'
 import { OutputPreviewModal } from './OutputPreviewModal'
 import { OutputSection } from './OutputSection'
 import { RemoteSection } from './RemoteSection'
-import { EXPORT_SCOPE } from './outputRules'
+import { CATALOG_EXPORT_SCOPE, EXPORT_SCOPE } from './outputRules'
 import { buildCreateRequest, buildPatchRequest, integrationSchema, integrationValuesOf, type IntegrationValues } from './integrationRules'
 import { useIntegrationMutations, useIntegrationOptions, type IntegrationDto } from './integrationsApi'
 
@@ -115,6 +116,13 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
   const templates = useOrderImportTemplates(clientId, false, clientId !== '')
   const connector = values.connectorKind ?? 'FOLDER'
   const outbound = (values.direction ?? 'INBOUND') === 'OUTBOUND'
+  // 2026-10-21: salida de un catálogo (productos): sin cliente ni estatus; las columnas salen de la plantilla de la entidad
+  const entityKind = outbound ? (values.entityKind ?? '') : ''
+  const isEntity = entityKind !== ''
+  const entityTemplates = useEntityImportTemplates('PRODUCT', false, isEntity)
+  const canEntityTemplates = useCan('inventory.manage')
+  const entityFields = useEntityImportFields('PRODUCT', isEntity && canEntityTemplates)
+  const [creatingEntityTemplate, setCreatingEntityTemplate] = useState(false)
   const [previewing, setPreviewing] = useState(false)
   // «Nueva plantilla» sin salir de la integración (dictado de Luis, 2026-10-19): el mismo editor del asistente de Importar; al guardar queda elegida
   const canTemplates = useCan('orders.edit')
@@ -133,15 +141,25 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
     lastDirection.current = values.direction
     form.setValue('connectorKind', values.direction === 'OUTBOUND' ? 'HTTP' : 'FOLDER')
     form.setValue('scopes', values.direction === 'OUTBOUND' ? [EXPORT_SCOPE] : [], { shouldDirty: true })
+    form.setValue('entityKind', '')
+    form.setValue('templatePublicId', '')
   }, [editing, form, values.direction])
+  // al escoger qué se manda (solo al crear) el alcance es el de esa salida
+  const lastEntity = useRef(values.entityKind ?? '')
+  useEffect(() => {
+    if (editing || lastEntity.current === (values.entityKind ?? '')) return
+    lastEntity.current = values.entityKind ?? ''
+    form.setValue('scopes', [values.entityKind ? CATALOG_EXPORT_SCOPE : EXPORT_SCOPE], { shouldDirty: true })
+    form.setValue('templatePublicId', '')
+  }, [editing, form, values.entityKind])
 
   const clientOptions = (clients.data ?? []).map((c) => ({ value: c.publicId ?? '', label: [c.code, c.name].filter(Boolean).join(' · ') }))
-  const templateOptions = (templates.data ?? []).map((x) => ({ value: x.publicId ?? '', label: x.name ?? '' }))
+  const templateOptions = (isEntity ? (entityTemplates.data ?? []) : (templates.data ?? [])).map((x) => ({ value: x.publicId ?? '', label: x.name ?? '' }))
   if (justCreated && !templateOptions.some((o) => o.value === justCreated.value)) templateOptions.push(justCreated)
   // al editar, la plantilla actual siempre es una opción (si la lista aún no llegó, el control no se queda en blanco)
   if (integration?.templatePublicId && !templateOptions.some((o) => o.value === integration.templatePublicId)) templateOptions.unshift({ value: integration.templatePublicId, label: integration.templateName ?? '' })
   // la API solo ofrece sus alcances; las demás integraciones, solo los de archivos
-  const scopeList = (options.data?.scopes ?? []).filter((s) => (outbound ? s.code === EXPORT_SCOPE : connector === 'API' ? !!s.isApi : !s.isApi && s.code !== EXPORT_SCOPE))
+  const scopeList = (options.data?.scopes ?? []).filter((s) => (outbound ? s.code === (isEntity ? CATALOG_EXPORT_SCOPE : EXPORT_SCOPE) : connector === 'API' ? !!s.isApi : !s.isApi && s.code !== EXPORT_SCOPE))
   needsClientRef.current = (options.data?.scopes ?? []).filter((s) => s.needsClient).map((s) => s.code ?? '')
   const clientNeeded = connector !== 'API' || (values.scopes ?? []).some((c) => needsClientRef.current.includes(c))
   const users = options.data?.users ?? []
@@ -177,7 +195,7 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
       <Field name="description" label={t('integrations.form.description')}>
         <TextInput maxLength={400} />
       </Field>
-      {!editing && (
+      {!editing && !isEntity && (
         <Field name="clientPublicId" label={t('integrations.form.client')} required={clientNeeded} help={t(connector === 'API' ? 'integrations.api.clientHelp' : 'integrations.form.clientHelp')}>
           <Select options={clientOptions} placeholder={t('integrations.form.pick')} />
         </Field>
@@ -186,6 +204,25 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
         <Field name="direction" label={t('integrations.form.direction')} help={t(`integrations.form.directionHelp.${values.direction ?? 'INBOUND'}`)}>
           <Select options={[{ value: 'INBOUND', label: t('integrations.direction.INBOUND') }, { value: 'OUTBOUND', label: t('integrations.direction.OUTBOUND') }]} />
         </Field>
+      )}
+      {!editing && outbound && (
+        <Field name="entityKind" label={t('integrations.form.entityKind')} help={t(isEntity ? 'integrations.form.entityKindHelp.PRODUCT' : 'integrations.form.entityKindHelp.ORDERS')}>
+          <Select options={[{ value: '', label: t('integrations.form.entityKinds.ORDERS') }, { value: 'PRODUCT', label: t('integrations.form.entityKinds.PRODUCT') }]} />
+        </Field>
+      )}
+      {isEntity && (
+        <>
+          <Field name="templatePublicId" label={t('integrations.form.entityTemplate')} required help={t('integrations.form.entityTemplateHelp')}>
+            <Select options={templateOptions} placeholder={t('integrations.form.pick')} />
+          </Field>
+          {canTemplates && (
+            <p>
+              <button type="button" className="btn sm" onClick={() => setCreatingEntityTemplate(true)} disabled={(entityFields.data ?? []).length === 0}>
+                {t('integrations.form.newTemplate')}
+              </button>
+            </p>
+          )}
+        </>
       )}
       {connector !== 'API' && !outbound && (
         <Field name="templatePublicId" label={t('integrations.form.template')} required help={t('integrations.form.templateHelp')}>
@@ -236,7 +273,7 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
       {connector === 'EMAIL' && <EmailSection form={form} hasSavedPassword={integration?.hasMailPassword === true} />}
       {connector !== 'API' && !outbound && <FormatSection form={form} />}
       {(connector === 'SFTP' || connector === 'FTP') && <RemoteSection form={form} kind={connector} hasSavedSecret={integration?.hasRemoteSecret === true} outbound={outbound} />}
-      {outbound && <OutputSection form={form} connector={connector} options={options.data} hasSavedSecret={integration?.hasHttpSecret === true} onPreview={editing ? () => setPreviewing(true) : undefined} />}
+      {outbound && <OutputSection form={form} connector={connector} options={options.data} hasSavedSecret={integration?.hasHttpSecret === true} onPreview={editing ? () => setPreviewing(true) : undefined} entity={isEntity} />}
 
       <fieldset className="int-scopes">
         <legend>{t('integrations.form.scopes')}</legend>
@@ -293,6 +330,23 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
         onSaved={(saved) => {
           setCreatingTemplate(false)
           setJustCreated({ value: saved.publicId ?? '', label: saved.name ?? '' })
+          form.setValue('templatePublicId', saved.publicId ?? '', { shouldDirty: true, shouldValidate: true })
+        }}
+      />
+    )}
+    {creatingEntityTemplate && (
+      <ImportTemplateEditorModal
+        kind="PRODUCT"
+        template={null}
+        fields={entityFields.data ?? []}
+        fieldLabel={(field) => {
+          const key = `entityImport.fields.PRODUCT.${field}`
+          const text = t(key)
+          return text === key ? field : text
+        }}
+        onClose={() => setCreatingEntityTemplate(false)}
+        onSaved={(saved) => {
+          setCreatingEntityTemplate(false)
           form.setValue('templatePublicId', saved.publicId ?? '', { shouldDirty: true, shouldValidate: true })
         }}
       />

@@ -36,6 +36,8 @@ export interface IntegrationMessages {
   interval: string
   retention: string
   scopes: string
+  /** 2026-10-21: salida de un catálogo: falta la plantilla de la entidad. */
+  entityTemplateRequired?: string
 }
 
 export interface IntegrationValues {
@@ -62,6 +64,8 @@ export interface IntegrationValues {
   direction: string
   /** Qué manda una integración de salida (Lote 137b). */
   output: OutputValues
+  /** 2026-10-21: en una salida, la entidad de catálogo que manda ('PRODUCT'); '' = envíos del cliente. */
+  entityKind?: string
 }
 
 /** Esquema del formulario. En la edición (`editing`) el cliente y el conector no se cambian, así que no se exigen. */
@@ -85,19 +89,21 @@ export function integrationSchema(m: IntegrationMessages, editing: boolean, emai
       format: z.custom<FormatValues>(),
       direction: z.string(),
       output: z.custom<OutputValues>(),
+      entityKind: z.string().optional(),
     })
     .superRefine((v, ctx) => {
       if ((v.connectorKind === 'SFTP' || v.connectorKind === 'FTP') && remote)
         for (const issue of remoteIssues(v.remote, v.connectorKind, remote.hasSavedSecret, remote.messages)) ctx.addIssue({ code: 'custom', path: ['remote', issue.path], message: issue.message })
       if (v.direction === 'OUTBOUND' && output)
-        for (const issue of outputIssues(v.output, v.connectorKind, output.hasSavedSecret, output.messages)) ctx.addIssue({ code: 'custom', path: ['output', ...issue.path.split('.').map((p) => (/^\d+$/.test(p) ? Number(p) : p))], message: issue.message })
+        for (const issue of outputIssues(v.output, v.connectorKind, output.hasSavedSecret, output.messages, !!v.entityKind)) ctx.addIssue({ code: 'custom', path: ['output', ...issue.path.split('.').map((p) => (/^\d+$/.test(p) ? Number(p) : p))], message: issue.message })
       if (v.connectorKind !== 'API' && v.direction !== 'OUTBOUND' && format)
         for (const issue of formatIssues(v.format, format)) ctx.addIssue({ code: 'custom', path: ['format', ...issue.path.split('.').map((p) => (/^\d+$/.test(p) ? Number(p) : p))], message: issue.message })
       if (v.connectorKind === 'EMAIL' && email)
         for (const issue of emailIssues(v.email, email.hasSavedPassword, email.messages)) ctx.addIssue({ code: 'custom', path: ['email', ...issue.path.split('.').map((p) => (/^\d+$/.test(p) ? Number(p) : p))], message: issue.message })
       if (v.connectorKind !== 'API' && v.direction !== 'OUTBOUND' && !v.templatePublicId) ctx.addIssue({ code: 'custom', path: ['templatePublicId'], message: m.templateRequired })
+      if (v.direction === 'OUTBOUND' && v.entityKind && !v.templatePublicId) ctx.addIssue({ code: 'custom', path: ['templatePublicId'], message: m.entityTemplateRequired ?? m.templateRequired })
       // la API pide el cliente solo si algún alcance es de transporte (la llave solo ve lo de ese cliente); las demás integraciones siempre
-      if (!editing && !v.clientPublicId && (v.connectorKind !== 'API' || api?.needsClient(v.scopes))) ctx.addIssue({ code: 'custom', path: ['clientPublicId'], message: v.connectorKind === 'API' && api ? api.message : m.clientRequired })
+      if (!editing && !v.clientPublicId && !v.entityKind && (v.connectorKind !== 'API' || api?.needsClient(v.scopes))) ctx.addIssue({ code: 'custom', path: ['clientPublicId'], message: v.connectorKind === 'API' && api ? api.message : m.clientRequired })
       if (v.connectorKind === 'FOLDER') {
         if (!v.folder.trim()) ctx.addIssue({ code: 'custom', path: ['folder'], message: m.folderRequired })
         else if (!FOLDER_PATTERN.test(v.folder.trim())) ctx.addIssue({ code: 'custom', path: ['folder'], message: m.folderInvalid })
@@ -131,6 +137,7 @@ export function integrationValuesOf(i: IntegrationDto | null): IntegrationValues
       format: emptyFormat(),
       direction: 'INBOUND',
       output: emptyOutput(),
+      entityKind: '',
     }
   }
   return {
@@ -151,6 +158,7 @@ export function integrationValuesOf(i: IntegrationDto | null): IntegrationValues
     format: formatValuesOf(i.format),
     direction: i.direction ?? 'INBOUND',
     output: outputValuesOf(i.output),
+    entityKind: i.entityKind ?? '',
   }
 }
 
@@ -168,8 +176,10 @@ export function buildCreateRequest(v: IntegrationValues): IntegrationCreateReque
     clientPublicId: v.clientPublicId || null,
     connectorKind: v.connectorKind,
     folder: v.connectorKind === 'FOLDER' ? v.folder.trim() : null,
-    templatePublicId: v.connectorKind === 'API' || v.direction === 'OUTBOUND' ? null : v.templatePublicId,
-    ...(v.direction === 'OUTBOUND' ? { direction: 'OUTBOUND', output: buildOutputConfig(v.output, v.connectorKind), httpSecret: buildHttpSecret(v.output, v.connectorKind) } : {}),
+    templatePublicId: v.connectorKind === 'API' || (v.direction === 'OUTBOUND' && !v.entityKind) ? null : v.templatePublicId,
+    ...(v.direction === 'OUTBOUND'
+      ? { direction: 'OUTBOUND', output: buildOutputConfig(v.entityKind ? { ...v.output, statuses: [], columns: [] } : v.output, v.connectorKind), httpSecret: buildHttpSecret(v.output, v.connectorKind), ...(v.entityKind ? { entityKind: v.entityKind } : {}) }
+      : {}),
     ...scheduleOf(v),
     scopes: v.scopes,
     notifyUserIds: v.notifyUserIds,
@@ -181,12 +191,12 @@ export function buildCreateRequest(v: IntegrationValues): IntegrationCreateReque
   }
 }
 
-export function buildPatchRequest(v: IntegrationValues, current: Pick<IntegrationDto, 'connectorKind' | 'direction'>): IntegrationPatchRequest {
+export function buildPatchRequest(v: IntegrationValues, current: Pick<IntegrationDto, 'connectorKind' | 'direction' | 'entityKind'>): IntegrationPatchRequest {
   return {
     name: v.name.trim(),
     description: v.description.trim(),
-    ...(current.connectorKind === 'API' || current.direction === 'OUTBOUND' ? {} : { templatePublicId: v.templatePublicId }),
-    ...(current.direction === 'OUTBOUND' ? { output: buildOutputConfig(v.output, current.connectorKind), httpSecret: buildHttpSecret(v.output, current.connectorKind) } : {}),
+    ...(current.connectorKind === 'API' || (current.direction === 'OUTBOUND' && !current.entityKind) ? {} : { templatePublicId: v.templatePublicId }),
+    ...(current.direction === 'OUTBOUND' ? { output: buildOutputConfig(current.entityKind ? { ...v.output, statuses: [], columns: [] } : v.output, current.connectorKind), httpSecret: buildHttpSecret(v.output, current.connectorKind) } : {}),
     ...(current.connectorKind === 'FOLDER' ? { folder: v.folder.trim() } : {}),
     ...scheduleOf(v),
     scopes: v.scopes,
