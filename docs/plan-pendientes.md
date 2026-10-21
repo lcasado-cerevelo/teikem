@@ -85,3 +85,5 @@ Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Esta
 
 ---
 Quedan pendientes los menores de siempre (mensajes de clientes sin ítem de menú, opciones de recibo a ciegas cuando se exige documento, endurecer endpoints con permisos de menú) y revisar el smoke.sh.
+
+- ☑ `scripts/smoke.sh` retirado del CI (decisión de Luis, 2026-10-21); el archivo queda como referencia histórica.
