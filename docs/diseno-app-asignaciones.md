@@ -3,12 +3,21 @@
 Estado: **propuesta para aprobación de Luis. Nada de esto está construido todavía.** Cada pantalla se diseña por separado; no se asume que una sea como otra.
 
 ## 1. Recibir
-1. Al tocar **Recibir**, arriba: el campo del **número del aviso/orden** (escanear o escribir), el botón del teclado y **Aceptar**. Los botones «Con acomodo / Directo a posición» **no** aparecen aquí.
+**Pantalla de entrada**
+1. Al tocar **Recibir**, arriba: el campo del **número del aviso/orden** (escanear o escribir), el botón del teclado y **Aceptar**. Los botones de modo **no** aparecen aquí.
 2. Debajo, la lista de **avisos de llegada y órdenes de compra asignados a mí**.
-3. Debajo, **«Ver lo que nadie tiene asignado (N)»**: al tocarlo se despliega lo que no tiene dueño. Ahí se escoge **uno o varios** («Seleccionar varios»).
-4. Al escanear o escoger uno o varios, la **misma pantalla** pasa al paso de modo: aparecen **Con acomodo / Directo a posición**. Al escoger uno, esos botones desaparecen y salen ahí mismo las opciones de acomodo, o la pantalla propia de directo a posición.
-5. Varios documentos del mismo dueño y almacén: carga automática y recepción maestra; de dueños distintos: recibos separados. «Recibo ciego» al final si la compañía lo permite.
-6. Empezar a recibir algo sin dueño lo asigna a quien recibe (la bitácora dice por qué).
+3. Debajo, **«Ver lo que nadie tiene asignado (N)»**: despliega lo que no tiene dueño. Ahí se escoge **uno o varios** («Seleccionar varios»).
+
+**Pantalla de recibo (una sola; lo de abajo cambia, sin pantallas nuevas)**
+1. Tras escoger uno o varios (o escanear), arriba quedan **Con acomodo / Directo a posición**. Lo de abajo cambia según lo que se escoja.
+2. Debajo: **producto** — campo para escanear o escribir, botón del teclado y **Aceptar**. Solo se pueden escanear, y solo salen en «Buscar en lista», los **productos del documento (o de los documentos) que se trabajan**.
+3. Al aceptar el producto se abre el paso de **posición** en la misma pantalla: campo para escanear o escribir la posición, teclado, **Aceptar** y **«Buscar en lista»**.
+   - **Con acomodo:** la lista ofrece solo las posiciones de **staging** (recepción).
+   - **Directo a posición:** la lista ofrece **todas las posiciones menos las de staging**, y se escogen **una o varias**.
+4. Cada posición escogida se agrega a un **listado** con un campo de **cantidad** (lo que llegó ahí). Si se escribe la cantidad en el **primer** campo y los demás están en blanco, **los demás se llenan solos con ese mismo número**; cada uno se puede cambiar a mano.
+5. Abajo, siempre, un **resumen: esperado vs. recibido vs. fallado** (dañado).
+6. Varios documentos del mismo dueño y almacén: carga automática y recepción maestra; de dueños distintos: recibos separados. «Recibo ciego» al final si la compañía lo permite.
+7. Empezar a recibir algo sin dueño lo asigna a quien recibe (la bitácora dice por qué).
 
 ## 2. Acomodar
 1. Empieza como hoy: la lista de **acomodos asignados a mí**.
@@ -37,5 +46,7 @@ Luis pidió dos permisos: **«ver todo»** (lo asignado a otras personas además
 
 ## 6. Preguntas
 - **D1.** Si el almacén tiene un modo fijo (Con acomodo o Directo), ¿se salta la pregunta de modo en Recibir?
+- **D4.** Recibir con acomodo: ¿también se pueden escoger varias posiciones de staging con su cantidad, o una sola (la de staging por omisión de la compañía, ya rellena)?
+- **D5.** El número que se copia a los campos en blanco es la **cantidad por posición** (no se reparte el total entre ellas). ¿Correcto?
 - **D2.** En Despacho, ¿«Buscar en lista» abre una lista de las posiciones con existencia de ese producto (y lote), igual que hoy?
 - **D3.** En Despacho con varios documentos, ¿el campo de producto sirve para cualquiera de los documentos marcados (la app asigna la línea que toca por orden de selección)?
