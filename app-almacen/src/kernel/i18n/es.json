@@ -84,7 +84,8 @@
     "freeHelp": "Cualquiera puede tomarlos. Al tomar uno, queda asignado a ti.",
     "kindReceive": "Por recibir",
     "kindDispatch": "Por despachar",
-    "take": "Tomar"
+    "take": "Tomar",
+    "assignedToYou": "Asignado a ti"
   },
   "home": {
     "myTasks": "Mis tareas",

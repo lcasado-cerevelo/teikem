@@ -15,6 +15,7 @@ import { colors, fontSize, radius, spacing } from '../kernel/ui/theme'
 import { getOpenCount } from '../features/count/localCount'
 import { getOpenPick } from '../features/dispatch/localPick'
 import { getOpenReceipt } from '../features/receive/localLookup'
+import { downloadAsns, downloadExitNoticesIfAllowed, downloadPurchaseOrdersIfAllowed, downloadSalesOrdersIfAllowed } from '../kernel/sync/download'
 import { fetchMyPutaway, getCachedMyPutaway, takeAsn, takeExitNotice, takePurchaseOrder, takeSalesOrder, type MyPutawayTask } from '../features/myTasks/myTasksApi'
 import {
   asnOpenCode,
@@ -77,6 +78,10 @@ export default function MyTasksScreen() {
       if (!warehousePublicId || userId == null) return undefined
       setPutaway(getCachedMyPutaway(warehousePublicId, userId))
       let alive = true
+      // Con señal se refrescan los documentos desde el servidor antes de listar: una asignación hecha en la web aparece de una vez
+      void Promise.allSettled([downloadAsns(), downloadPurchaseOrdersIfAllowed(), downloadSalesOrdersIfAllowed(warehousePublicId), downloadExitNoticesIfAllowed(warehousePublicId)]).then(() => {
+        if (alive) reload()
+      })
       void fetchMyPutaway(warehousePublicId, userId).then(
         (list) => {
           if (!alive) return
@@ -143,7 +148,7 @@ export default function MyTasksScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.fill} testID="my-tasks">
-      <Text style={styles.title}>{t('myTasks.title')}</Text>
+      <Text style={styles.title}>{total > 0 ? `${t('myTasks.title')} (${total})` : t('myTasks.title')}</Text>
       {!online ? <Text style={styles.help}>{t('myTasks.offline')}</Text> : null}
       {total === 0 ? <Text style={styles.help} testID="my-tasks-empty">{t('myTasks.empty')}</Text> : null}
 
@@ -152,6 +157,7 @@ export default function MyTasksScreen() {
         <Pressable key={`a${a.id}`} accessibilityRole="button" onPress={() => openAsn(a)} style={({ pressed }) => [styles.card, pressed && styles.cardPressed]} testID={`my-asn-${a.id}`}>
           <Text style={styles.cardTitle}>{[a.number || `#${a.id}`, a.reference].filter(Boolean).join(' · ')}</Text>
           <Text style={styles.help}>{[a.clientName, a.expectedDate ? t('myTasks.expected', { date: f.date(a.expectedDate) }) : null].filter(Boolean).join(' · ')}</Text>
+          <Text style={styles.assignee}>{t('myTasks.assignedToYou')}</Text>
         </Pressable>
       ))}
 
@@ -162,6 +168,7 @@ export default function MyTasksScreen() {
           <Text style={styles.help}>
             {[o.clientName, o.destination ?? o.reference, o.requiredDate ? t('myTasks.required', { date: f.date(o.requiredDate) }) : null].filter(Boolean).join(' · ')}
           </Text>
+          <Text style={styles.assignee}>{t('myTasks.assignedToYou')}</Text>
         </Pressable>
       ))}
 
@@ -170,6 +177,7 @@ export default function MyTasksScreen() {
         <Pressable key={`po${o.id}`} accessibilityRole="button" onPress={() => openPo(o)} style={({ pressed }) => [styles.card, pressed && styles.cardPressed]} testID={`my-po-${o.number}`}>
           <Text style={styles.cardTitle}>{o.number}</Text>
           <Text style={styles.help}>{[o.supplierName, o.expectedDate ? t('myTasks.expected', { date: f.date(o.expectedDate) }) : null].filter(Boolean).join(' · ')}</Text>
+          <Text style={styles.assignee}>{t('myTasks.assignedToYou')}</Text>
         </Pressable>
       ))}
 
@@ -180,6 +188,7 @@ export default function MyTasksScreen() {
           <Text style={styles.help}>
             {[o.clientName, o.consigneeName, o.requiredDate ? t('myTasks.required', { date: f.date(o.requiredDate) }) : null].filter(Boolean).join(' · ')}
           </Text>
+          <Text style={styles.assignee}>{t('myTasks.assignedToYou')}</Text>
         </Pressable>
       ))}
 
@@ -271,6 +280,7 @@ const styles = StyleSheet.create({
   help: { color: colors.muted, fontSize: fontSize.message },
   card: { gap: spacing.xs, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panelAlt },
   cardPressed: { backgroundColor: colors.panel },
+  assignee: { color: colors.brand, fontSize: fontSize.message, fontWeight: '600' },
   cardTitle: { color: colors.text, fontSize: fontSize.label, fontWeight: '700' },
   bottom: { marginTop: 'auto' },
 })

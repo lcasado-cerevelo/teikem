@@ -11,6 +11,7 @@ import { getOpenCount } from '../features/count/localCount'
 import { listExitNotices } from '../features/exitDispatch/localExit'
 import { dispatchScope } from '../features/dispatch/dispatchScope'
 import { countMyDocuments } from '../features/myTasks/myTasksLogic'
+import { getCachedMyPutaway } from '../features/myTasks/myTasksApi'
 import { listSalesOrders } from '../features/salesDispatch/localSales'
 import { listSalesReturns } from '../features/salesReturn/localReturns'
 import { getOpenCountHints, refreshOpenCountHints } from '../features/count/openCountHints'
@@ -79,7 +80,7 @@ export default function HomeScreen() {
       setHasSalesOrders(warehouseId ? listSalesOrders(warehouseId, scope).length > 0 : false)
       setHasSalesReturns(warehouseId ? listSalesReturns(warehouseId).length > 0 : false)
       setHasExitNotices(warehouseId ? listExitNotices(warehouseId, scope).length > 0 : false)
-      setMyDocs(warehouseId && userId != null ? countMyDocuments(warehouseId, userId) : 0)
+      setMyDocs(warehouseId && userId != null ? countMyDocuments(warehouseId, userId) + getCachedMyPutaway(warehouseId, userId).length : 0)
       let alive = true
       if (warehouseId && userId != null) {
         void refreshOpenCountHints(warehouseId, userId).then(() => {
