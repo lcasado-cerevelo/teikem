@@ -207,6 +207,10 @@ public sealed partial class ColavoraImportService
         var createdUtc = ColavoraRules.ToUtc(sh.CreatedDate) ?? s.MigrationUtc;
         var createdBy = UserOf(s, sh.CreatedUserId);
         var serviceType = sh.ServiceType is int sti && s.ServiceTypes.TryGetValue(sti, out var st) ? st : (s.DefaultServiceTypeId, "—", false);
+        // cliente «Recogido/Devolución» unido a su cliente real: la orden se trabaja como recogido (servicio Pick up) o como devolución (referencia y nota)
+        ColavoraRules.SubClientLink? subLink = null;
+        if (sh.Sender is not null) s.SubClients.TryGetValue(sh.Sender, out subLink);
+        if (subLink?.Kind == ColavoraRules.SubClientKind.Pickup && s.PickupServiceTypeId > 0 && !serviceType.Item3) serviceType = (s.PickupServiceTypeId, "PICK UP", true);
         var codCode = ColavoraRules.MapCodType(sh.CodType, sh.CodAmount);
         var codAmount = sh.CodAmount is > 0 ? sh.CodAmount : null;
 
@@ -220,7 +224,7 @@ public sealed partial class ColavoraImportService
             ServiceTypeLookupId = serviceType.Item1, StatusCodeId = s.OrderStatus[OrderStatuses.Submitted],
             RequestedDate = ColavoraRules.ToUtc(sh.ReadyDate), PromisedDate = ColavoraRules.ToUtc(sh.DueDate),
             CodTypeLookupId = codAmount is null ? null : s.CodTypes.GetValueOrDefault(codCode, s.CodTypes["CASH"]), CodAmount = codAmount,
-            Notes = ColavoraRules.Trim(sh.OrderNotes, 2000), IsActive = true, CreatedAtUtc = createdUtc, CreatedBy = createdBy,
+            Notes = ColavoraRules.Trim(subLink?.Kind == ColavoraRules.SubClientKind.Return ? ("Devolución. " + sh.OrderNotes).TrimEnd() : sh.OrderNotes, 2000), IsActive = true, CreatedAtUtc = createdUtc, CreatedBy = createdBy,
         };
         var b = new OrderBuild { Src = sh, Order = order, Pickup = BuildPickupStop(s, sh, client, order), Delivery = BuildDeliveryStop(s, sh, client, order) };
         order.Stops.Add(b.Pickup!);

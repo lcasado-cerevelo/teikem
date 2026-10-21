@@ -84,6 +84,10 @@ public sealed partial class ColavoraImportService(
         public Dictionary<string, (int LookupId, string Description)> Reasons { get; } = new(StringComparer.Ordinal);
         /// <summary>Usuarios de Colavora que aparecen asignados en las órdenes (AssignDL/AssignPK): son los choferes. Se carga una vez.</summary>
         public HashSet<int>? AssignedUserIds { get; set; }
+        /// <summary>Clientes «Recogido/Devolución» de Colavora → el cliente real al que se unen (código de cliente de Colavora).</summary>
+        public IReadOnlyDictionary<string, ColavoraRules.SubClientLink> SubClients { get; set; } = new Dictionary<string, ColavoraRules.SubClientLink>();
+        /// <summary>El tipo de servicio «Pick up» (PK) de la compañía, para las órdenes de los clientes «Recogido».</summary>
+        public int PickupServiceTypeId { get; set; }
         public int DefaultServiceTypeId { get; set; }
         public int DefaultPackageTypeId { get; set; }
         /// <summary>Los globales con que arranca el estado (solo para saber si ya se cambió al tipo de la compañía).</summary>

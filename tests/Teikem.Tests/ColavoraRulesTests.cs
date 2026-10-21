@@ -329,4 +329,45 @@ public sealed class ColavoraRulesTests
         Assert.Single(p.Numbers);
         Assert.Single(p.Warnings);
     }
+
+    [Theory]
+    [InlineData("AXISCARE RECOGIDO TIRILLAS", "AXISCARE", ColavoraRules.SubClientKind.Pickup)]
+    [InlineData("AXISCARE DEVOLUCION RX", "AXISCARE", ColavoraRules.SubClientKind.Return)]
+    [InlineData("axiscare devolución nutricion", "AXISCARE", ColavoraRules.SubClientKind.Return)]
+    [InlineData("BEAUTY PROF RECOGIDO", "BEAUTY PROF", ColavoraRules.SubClientKind.Pickup)]
+    public void Pickup_and_return_client_names_are_recognized(string name, string baseName, ColavoraRules.SubClientKind kind)
+    {
+        var p = ColavoraRules.ParseSubClientName(name);
+        Assert.NotNull(p);
+        Assert.Equal(baseName, p!.Value.Base);
+        Assert.Equal(kind, p.Value.Kind);
+    }
+
+    [Theory]
+    [InlineData("AXISCARE HEALTH LOGISTIC")]
+    [InlineData("AXIS MED VET")]
+    [InlineData("MASCARO - PORTER (NEXT DAY)")]
+    [InlineData("RECOGIDO")]
+    [InlineData(null)]
+    public void Normal_client_names_are_not_pickup_or_return(string? name)
+        => Assert.Null(ColavoraRules.ParseSubClientName(name));
+
+    [Fact]
+    public void Pickup_and_return_clients_join_the_client_with_most_orders_of_the_same_first_name()
+    {
+        var clients = new (string, string?)[]
+        {
+            ("10200", "AXISCARE HEALTH LOGISTIC"), ("10532", "AXISCARE HEALTH LOGISTIC NEW"), ("10202", "AXIS MED"),
+            ("10280", "AXISCARE RECOGIDO TIRILLAS"), ("10291", "AXISCARE DEVOLUCION RX"), ("10999", "OTRO RECOGIDO X"),
+        };
+        var counts = new Dictionary<string, int> { ["10200"] = 5, ["10532"] = 410108, ["10280"] = 0, ["10291"] = 1 };
+        var links = ColavoraRules.ResolveSubClients(clients, counts);
+
+        Assert.Equal("10532", links["10280"].MainSender);
+        Assert.Equal(ColavoraRules.SubClientKind.Pickup, links["10280"].Kind);
+        Assert.Equal("10532", links["10291"].MainSender);
+        Assert.Equal(ColavoraRules.SubClientKind.Return, links["10291"].Kind);
+        Assert.False(links.ContainsKey("10999"));   // no hay cliente «OTRO» al que unirse: queda como cliente
+        Assert.False(links.ContainsKey("10532"));
+    }
 }

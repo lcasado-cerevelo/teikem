@@ -52,6 +52,11 @@ public sealed class ColavoraReader(string courierConnectionString, string loginC
             "SELECT AssignDL FROM dbo.Shipments WHERE RTRIM(CompanyID) = @c AND AssignDL IS NOT NULL UNION SELECT AssignPK FROM dbo.Shipments WHERE RTRIM(CompanyID) = @c AND AssignPK IS NOT NULL",
             r => r.GetInt32(0), ct, ("@c", companyId))).ToHashSet();
 
+    /// <summary>Órdenes por cliente (código del cliente de Colavora): para saber a cuál cliente se unen los «Recogido/Devolución».</summary>
+    public async Task<Dictionary<string, int>> ReadOrderCountsBySenderAsync(string companyId, CancellationToken ct)
+        => (await ListAsync(courierConnectionString, "SELECT RTRIM(Sender), COUNT(*) FROM dbo.Shipments WHERE RTRIM(CompanyID) = @c AND Sender IS NOT NULL GROUP BY RTRIM(Sender)",
+            r => (Sender: r.GetString(0), Count: r.GetInt32(1)), ct, ("@c", companyId))).ToDictionary(x => x.Sender, x => x.Count, StringComparer.OrdinalIgnoreCase);
+
     public Task<List<CvUser>> ReadUsersAsync(string companyId, CancellationToken ct)
         => ListAsync(loginConnectionString,
             "SELECT UserID, RTRIM(CompanyID), Username, FirstName, LastName, SecAdmin, Active, SecGroup, TypeID, CreatedDate FROM dbo.Users WHERE RTRIM(CompanyID) = @c ORDER BY UserID",

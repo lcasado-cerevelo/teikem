@@ -433,6 +433,43 @@ public static class ColavoraRules
         return new ColavoraPhones(numbers, extension, warnings);
     }
 
+    /// <summary>Qué es un cliente «hijo» de Colavora: «AXISCARE RECOGIDO RX» es el recogido de AxisCare, «AXISCARE DEVOLUCION RX» su devolución.</summary>
+    public enum SubClientKind { Pickup, Return }
+
+    /// <summary>Un cliente «Recogido/Devolución» y el cliente real al que se une.</summary>
+    public sealed record SubClientLink(string MainSender, SubClientKind Kind);
+
+    private static readonly Regex SubClientName = new(@"^(?<base>.+?)\s+(?<kind>RECOGIDOS?|RECOGIDAS?|DEVOLUCI[OÓ]N(?:ES)?)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    /// <summary>«AXISCARE RECOGIDO TIRILLAS» → («AXISCARE», Pickup); «AXISCARE DEVOLUCION RX» → («AXISCARE», Return); un nombre normal → null.</summary>
+    public static (string Base, SubClientKind Kind)? ParseSubClientName(string? name)
+    {
+        var m = SubClientName.Match((name ?? string.Empty).Trim());
+        if (!m.Success) return null;
+        var kind = m.Groups["kind"].Value.StartsWith("DEV", StringComparison.OrdinalIgnoreCase) ? SubClientKind.Return : SubClientKind.Pickup;
+        return (RemoveDiacritics(m.Groups["base"].Value.Trim().ToUpperInvariant()), kind);
+    }
+
+    /// <summary>
+    /// Decisión de Luis (2026-10-20): los clientes que terminan en «Recogido…» o «Devolución…» son un solo cliente: el primer nombre dice cuál.
+    /// Cada «hijo» se une al cliente (que no sea hijo) cuyo nombre empieza con ese primer nombre; si hay varios, el que más órdenes tiene
+    /// (<paramref name="orderCounts"/> por código de cliente de Colavora; empate: el código menor). Sin cliente al que unirse, el hijo queda como cliente.
+    /// </summary>
+    public static IReadOnlyDictionary<string, SubClientLink> ResolveSubClients(IEnumerable<(string Sender, string? Name)> clients, IReadOnlyDictionary<string, int> orderCounts)
+    {
+        var all = clients.Select(c => (c.Sender, Name: RemoveDiacritics((c.Name ?? string.Empty).Trim().ToUpperInvariant()), Sub: ParseSubClientName(c.Name))).ToList();
+        var mains = all.Where(c => c.Sub is null).ToList();
+        var result = new Dictionary<string, SubClientLink>(StringComparer.OrdinalIgnoreCase);
+        foreach (var c in all.Where(c => c.Sub is not null))
+        {
+            var (baseName, kind) = c.Sub!.Value;
+            var main = mains.Where(m => m.Name == baseName || m.Name.StartsWith(baseName + " ", StringComparison.Ordinal))
+                .OrderByDescending(m => orderCounts.GetValueOrDefault(m.Sender)).ThenBy(m => m.Sender, StringComparer.Ordinal).FirstOrDefault();
+            if (main.Sender is not null) result[c.Sender] = new SubClientLink(main.Sender, kind);
+        }
+        return result;
+    }
+
     /// <summary>
     /// Código del chofer sin ceros a la izquierda: Colavora lo escribe «003» en el usuario y a veces «3» en los eventos y manifiestos;
     /// los dos son el mismo chofer. «000» queda «0».

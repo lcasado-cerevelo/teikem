@@ -45,6 +45,7 @@ public sealed partial class ColavoraImportService
             if (id is int sid)
             {
                 s.ServiceTypes[st.Id] = (sid, st.Name, pickUp);
+                if (pickUp && string.Equals(st.Type?.Trim(), "PK", StringComparison.OrdinalIgnoreCase)) s.PickupServiceTypeId = sid;
                 if (string.Equals(st.Type?.Trim(), "ND", StringComparison.OrdinalIgnoreCase) || s.DefaultServiceTypeId == s.GlobalServiceTypeId) s.DefaultServiceTypeId = sid;
             }
         }
@@ -329,6 +330,7 @@ public sealed partial class ColavoraImportService
         var customers = await s.Reader.ReadCustomersAsync(s.CompanyId, ct);
         var configs = (await s.Reader.ReadCustomerConfigsAsync(ct)).GroupBy(c => c.SenderId).ToDictionary(g => g.Key, g => g.First());
         var excluded = new HashSet<string>(s.Config.Options.ExcludeSenders, StringComparer.OrdinalIgnoreCase);
+        await ResolveSubClientsAsync(s, customers, ct);
         var existing = s.TenantId is null ? new Dictionary<string, Client>(StringComparer.OrdinalIgnoreCase)
             : await db.Clients.AsNoTracking().ToDictionaryAsync(c => c.Code, c => c, StringComparer.OrdinalIgnoreCase, ct);
         var usedCodes = new HashSet<string>(existing.Keys, StringComparer.OrdinalIgnoreCase);
@@ -343,6 +345,7 @@ public sealed partial class ColavoraImportService
                 s.Report.Warn(C, cu.Sender, "Cliente de prueba o excluido por la configuración; no se migra.");
                 continue;
             }
+            if (s.SubClients.ContainsKey(cu.Sender)) { s.Report.CountSkipped(C); continue; }   // «Recogido/Devolución»: se une a su cliente real (LinkSubClients)
             var code = ColavoraRules.ClientCode(cu.Sender);
             var name = ColavoraRules.Trim(cu.SenderName, 200) ?? cu.Sender;
             if (existing.TryGetValue(code, out var found))
@@ -405,19 +408,49 @@ public sealed partial class ColavoraImportService
             }
             s.Clients[cu.Sender] = new ClientRef(dto.Id, dto.PublicId, code, name, pickupId, null);
         }
+        LinkSubClients(s);
+    }
+
+    /// <summary>
+    /// Decisión de Luis (2026-10-20): los clientes «… RECOGIDO …» / «… DEVOLUCION …» son un solo cliente (el que dice el primer nombre). Aquí se decide a cuál
+    /// se une cada uno (el que más órdenes tiene); no se crean como clientes, y sus órdenes (y consignatarios) cuelgan del cliente real.
+    /// </summary>
+    private async Task ResolveSubClientsAsync(RunState s, List<CvCustomer> customers, CancellationToken ct)
+    {
+        var counts = await s.Reader.ReadOrderCountsBySenderAsync(s.CompanyId, ct);
+        s.SubClients = ColavoraRules.ResolveSubClients(customers.Select(c => (c.Sender, c.SenderName)), counts);
+        foreach (var (sub, link) in s.SubClients.OrderBy(kv => kv.Key, StringComparer.Ordinal))
+        {
+            var subName = customers.First(c => string.Equals(c.Sender, sub, StringComparison.OrdinalIgnoreCase)).SenderName;
+            var mainName = customers.First(c => string.Equals(c.Sender, link.MainSender, StringComparison.OrdinalIgnoreCase)).SenderName;
+            s.Report.AddInfo($"Cliente unido {sub}", $"«{subName}» ({counts.GetValueOrDefault(sub)} órdenes) se une a «{mainName}» ({link.MainSender}, {counts.GetValueOrDefault(link.MainSender)} órdenes); sus órdenes se trabajan como {(link.Kind == ColavoraRules.SubClientKind.Pickup ? "recogido" : "devolución")}.");
+        }
+    }
+
+    /// <summary>Cada cliente «hijo» usa la misma ficha del cliente real; si el real no está migrado, el hijo se descarta con aviso.</summary>
+    private void LinkSubClients(RunState s)
+    {
+        foreach (var (sub, link) in s.SubClients.ToList())
+        {
+            if (s.Clients.TryGetValue(link.MainSender, out var main)) s.Clients[sub] = main;
+            else s.Report.Warn(ColavoraEntities.Clients, sub, $"Se une al cliente {link.MainSender}, que no está migrado; sus órdenes se omiten.");
+        }
     }
 
     private async Task LoadExistingClientsAsync(RunState s, CancellationToken ct)
     {
         var customers = await s.Reader.ReadCustomersAsync(s.CompanyId, ct);
+        await ResolveSubClientsAsync(s, customers, ct);
         var existing = s.TenantId is null ? new Dictionary<string, Client>(StringComparer.OrdinalIgnoreCase)
             : await db.Clients.AsNoTracking().ToDictionaryAsync(c => c.Code, c => c, StringComparer.OrdinalIgnoreCase, ct);
         foreach (var cu in customers)
         {
             s.SenderCodeById[cu.SenderId] = cu.Sender;
+            if (s.SubClients.ContainsKey(cu.Sender)) continue;
             if (existing.TryGetValue(ColavoraRules.ClientCode(cu.Sender), out var c))
                 s.Clients[cu.Sender] = new ClientRef(c.ClientId, c.PublicId, c.Code, c.Name, c.DefaultPickupLocationId, null);
         }
+        LinkSubClients(s);
     }
 
     // ================================================================ consignatarios (D7: todos tal cual, directo por EF en lotes)
@@ -546,6 +579,16 @@ public sealed partial class ColavoraImportService
 
         foreach (var (sender, client) in s.Clients.ToList())
         {
+            if (s.SubClients.TryGetValue(sender, out var subLink))
+            {
+                // «Recogido/Devolución»: comparten el contrato del cliente real; sus tarifas NO se migran solas (precios distintos y de prueba: 1.00, 5.75, 100.00) — se avisa para decidir
+                var subId = s.SenderCodeById.FirstOrDefault(kv => string.Equals(kv.Value, sender, StringComparison.OrdinalIgnoreCase)).Key;
+                var subRows = prices.GetValueOrDefault(subId) ?? new List<CvServicePrice>();
+                s.Report.CountSkipped(K);
+                if (subRows.Count > 0)
+                    s.Report.Warn(K, sender, $"Se unió al cliente {subLink.MainSender}: sus {subRows.Count} tarifas no se migran (" + string.Join("; ", subRows.Take(6).Select(r => $"servicio {r.ServiceType}/paquete {r.PackageType} = {r.Price:0.00}")) + "). Decidir si pasan a las tarifas de pick up / cargo por devolución del cliente.");
+                continue;
+            }
             s.Report.CountRead(K);
             if (existingContracts.TryGetValue(client.ClientId, out var found))
             {
@@ -603,6 +646,7 @@ public sealed partial class ColavoraImportService
             db.ChangeTracker.Clear();
             if (rows.Count > 0) s.Report.AddInfo($"Tarifas {client.Code}", $"{rows.Count} filas → {rows.GroupBy(r => (r.ServiceType, r.PackageType)).Count()} tarifas{(codFee > 0 ? $", cargo COD {codFee:0.00}" : "")}{(dispatchFee > 0 ? $", despacho {dispatchFee:0.00}" : "")}");
         }
+        LinkSubClients(s);   // los «Recogido/Devolución» comparten el contrato del cliente real
     }
 
     private async Task LoadExistingContractsAsync(RunState s, CancellationToken ct)
@@ -611,6 +655,7 @@ public sealed partial class ColavoraImportService
         var byClient = (await db.Contracts.AsNoTracking().Where(c => c.IsActive).ToListAsync(ct)).GroupBy(c => c.ClientId).ToDictionary(g => g.Key, g => g.OrderBy(c => c.ContractId).First().ContractId);
         foreach (var (sender, client) in s.Clients.ToList())
             if (byClient.TryGetValue(client.ClientId, out var cid)) s.Clients[sender] = client with { ContractId = cid };
+        LinkSubClients(s);
     }
 
     // ================================================================ campos personalizados (D6 división; id de Colavora para rastrear)
