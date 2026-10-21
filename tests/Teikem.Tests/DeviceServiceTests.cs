@@ -5,6 +5,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Teikem.Domain.Catalogs;
 using Teikem.Domain.Constants;
+using Teikem.Domain.Wms;
 using Teikem.Domain.Entities;
 using Teikem.Domain.Identity;
 using Teikem.Domain.Security;
@@ -116,6 +117,24 @@ public class DeviceServiceTests
         f.Db.ChangeTracker.Clear();
         var (_, noWarehouse) = await EnrolledDeviceAsync(f, "AP-17");
         Assert.Null(noWarehouse.DefaultWarehouseReceivingMode);
+    }
+
+    [Fact]
+    public async Task Enroll_carries_the_receipt_requirement_of_the_company()
+    {
+        // Lote 161: la app de almacén deja de ofrecer el recibo a ciegas cuando la compañía exige documento (el latido usa la misma costura; su ExecuteUpdate no corre en SQLite de pruebas).
+        await using var f = await FixtureAsync();
+        f.Db.ChangeTracker.Clear();
+        var (_, free) = await EnrolledDeviceAsync(f, "AP-161");
+        Assert.Equal("FREE", free.ReceiptRequirement);   // por omisión: libre
+
+        var tenant = await f.Db.Tenants.IgnoreQueryFilters().SingleAsync(t => t.TenantId == WmsFixture.TenantId);
+        tenant.ReceiptRequirement = ReceiptRequirements.Asn;
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+
+        var (_, strict) = await EnrolledDeviceAsync(f, "AP-162");
+        Assert.Equal(ReceiptRequirements.Asn, strict.ReceiptRequirement);
     }
 
     /// <summary>SecurityEvent escritos por el servicio (tipo, resultado, compañía y detalle serializado).</summary>

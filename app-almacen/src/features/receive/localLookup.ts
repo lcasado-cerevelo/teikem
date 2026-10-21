@@ -2,6 +2,7 @@
 // (sobrevive a cerrar la app: local_receipt/local_receipt_line, schema.ts). El producto por código es compartido
 // (Recibir, Despacho, Conteo): kernel/warehouse/productLookup.ts.
 import { getDb } from '../../kernel/db/database'
+import { likeTerm } from '../../kernel/warehouse/pickerSearch'
 import { findProductByCode, type LocalProduct, type TrackingType } from '../../kernel/warehouse/productLookup'
 import { parseReceivingMode, type DocLine, type DraftLine, type LocalBin, type ReceivingMode } from './receiveLogic'
 
@@ -30,6 +31,50 @@ export function findDocByCode(warehousePublicId: string, code: string): LocalDoc
   )
   if (asn) return { kind: 'asn', purchaseOrderPublicId: null, asnId: asn.id, label: asn.reference ?? asn.purchase_order_number ?? code }
   return null
+}
+
+/** Un aviso u orden pendiente de recibir, para el listado (Lote 161). */
+export interface PendingDoc {
+  doc: LocalDoc
+  title: string
+  subtitle: string | null
+}
+
+/**
+ * Avisos de llegada (de cliente; los nacidos de una orden de compra se ven como orden) u órdenes de compra pendientes del almacén, de la base local, con búsqueda PARCIAL
+ * (referencia o número, cliente o proveedor, fecha). Sin tope: quien llama pide `limit` y sube de a poco al deslizar.
+ */
+export function listPendingDocs(warehousePublicId: string, kind: 'asn' | 'po', search: string, limit: number): PendingDoc[] {
+  const term = likeTerm(search)
+  const db = getDb()
+  if (kind === 'po') {
+    return db
+      .getAllSync<{ public_id: string; number: string; supplier_name: string | null; expected_date: string | null }>(
+        `SELECT public_id, number, supplier_name, expected_date FROM purchase_order
+         WHERE is_active = 1 AND warehouse_public_id = ?
+           AND (number LIKE ? ESCAPE '\\' OR supplier_name LIKE ? ESCAPE '\\' OR expected_date LIKE ? ESCAPE '\\')
+         ORDER BY expected_date IS NULL, expected_date, number LIMIT ?`,
+        [warehousePublicId, term, term, term, limit],
+      )
+      .map((o) => ({
+        doc: { kind: 'po' as const, purchaseOrderPublicId: o.public_id, asnId: null, label: o.number },
+        title: o.number,
+        subtitle: [o.supplier_name, o.expected_date].filter(Boolean).join(' · ') || null,
+      }))
+  }
+  return db
+    .getAllSync<{ id: number; reference: string | null; client_name: string | null; expected_date: string | null }>(
+      `SELECT id, reference, client_name, expected_date FROM asn
+       WHERE is_active = 1 AND warehouse_public_id = ? AND purchase_order_public_id IS NULL
+         AND (reference LIKE ? ESCAPE '\\' OR client_name LIKE ? ESCAPE '\\' OR expected_date LIKE ? ESCAPE '\\' OR CAST(id AS TEXT) LIKE ? ESCAPE '\\')
+       ORDER BY expected_date IS NULL, expected_date, id LIMIT ?`,
+      [warehousePublicId, term, term, term, term, limit],
+    )
+    .map((a) => ({
+      doc: { kind: 'asn' as const, purchaseOrderPublicId: null, asnId: a.id, label: a.reference ?? `#${a.id}` },
+      title: a.reference ? `${a.reference} · #${a.id}` : `#${a.id}`,
+      subtitle: [a.client_name, a.expected_date].filter(Boolean).join(' · ') || null,
+    }))
 }
 
 export interface OpenReceipt {

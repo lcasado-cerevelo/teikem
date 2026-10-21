@@ -30841,6 +30841,7 @@ export interface components {
             defaultWarehousePublicId?: string | null;
             theme?: string | null;
             defaultWarehouseReceivingMode?: string | null;
+            receiptRequirement?: string | null;
         };
         DeviceHeartbeatDto: {
             isActive?: boolean;
@@ -30850,6 +30851,7 @@ export interface components {
             /** Format: date-time */
             serverTimeUtc?: string;
             defaultWarehouseReceivingMode?: string | null;
+            receiptRequirement?: string | null;
         };
         DeviceLoginRequest: {
             /** Format: uuid */

@@ -1336,3 +1336,15 @@ Ruta `/sales-return`; botón **Devoluciones** de Inicio (solo si el aparato tien
 - **Mensajes de la pantalla:** `Esa devolución no está por recibir en este almacén. Si es nueva, toca Sincronizar ahora.` · `Anota lo que llegó en al menos una línea.` · `{SKU}: escribe una cantidad válida (hasta 3 decimales).` · `{SKU}: no puedes recibir más de lo pendiente ({n}).` · `{SKU}: describe qué le pasó a lo dañado.` · `{SKU}: escribe el lote.` · `Devolución recibida.` · `Recepción guardada: se envía cuando haya señal.` Los rechazos del servidor se muestran con su texto exacto (ver [20 §3](20-devoluciones-de-venta.md#3-validaciones-y-mensajes)) y la fila no queda en Sincronización.
 - **Un solo envío por pantalla:** no hay borrador (la recepción se captura y se manda de una vez), así que no bloquea los demás botones de Inicio.
 
+
+
+## Recibo en la app: documento obligatorio, lista de pendientes y búsqueda parcial (Lote 161, 2026-10-21)
+
+**Si la compañía exige documento** (Ajustes de la compañía → Operación → «El recibo exige documento»), la pantalla Recibo ya no ofrece el **recibo a ciegas** y solo ofrece lo que se permite: aviso de llegada, orden de compra, o ambos. El ajuste llega al aparato con el registro y con cada latido (sin señal se usa el último que llegó). Si se escanea un documento de otro tipo del exigido: «La compañía exige recibir contra un aviso de llegada, no contra una orden de compra.» / «…contra una orden de compra, no contra un aviso de llegada.» El servidor sigue validando igual (409 al sincronizar).
+
+**Lista de pendientes.** Bajo el campo de escanear sale «Avisos y órdenes pendientes» (pestañas Avisos de llegada / Órdenes de compra según lo permitido) con un buscador **parcial** (pedazo de la referencia, número, cliente, proveedor o fecha). Se toca una fila para empezar el recibo contra ese documento; «Ver más» trae otros 30. Funciona sin señal con lo último sincronizado (si falta alguno: «Sincroniza si falta alguno.»).
+
+**Buscar producto o posición.**
+- La lista «Buscar en la lista» ya **no tiene tope de 50**: sigue cargando al deslizar y dice cuántas coincidencias hay.
+- Al **escribir a mano** (⌨) en un campo de producto o posición salen hasta 5 sugerencias parciales (SKU, nombre o código de barras; código, zona, pasillo, rack o nivel); tocar una equivale a escanearla y «Ver todas» abre la lista ya filtrada. No hace falta escribir el código completo.
+- En Consultar, las existencias traen todas las coincidencias (páginas de 200).

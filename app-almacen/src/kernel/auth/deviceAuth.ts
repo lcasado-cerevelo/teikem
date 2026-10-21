@@ -33,6 +33,7 @@ export async function enrollDevice(enrollCode: string): Promise<void> {
     defaultWarehousePublicId: enrolled.defaultWarehousePublicId ?? null,
     theme: enrolled.theme ?? null,
     defaultWarehouseReceivingMode: enrolled.defaultWarehouseReceivingMode ?? null,
+    receiptRequirement: enrolled.receiptRequirement ?? null,
   })
 }
 
@@ -114,11 +115,13 @@ export async function sendHeartbeat(): Promise<{ isActive: boolean }> {
       defaultWarehousePublicId: beat.defaultWarehousePublicId ?? device.defaultWarehousePublicId,
       theme: beat.theme ?? device.theme,
       defaultWarehouseReceivingMode: beat.defaultWarehouseReceivingMode ?? device.defaultWarehouseReceivingMode ?? null,
+      receiptRequirement: beat.receiptRequirement ?? device.receiptRequirement ?? null,
     }
     if (
       next.defaultWarehousePublicId !== device.defaultWarehousePublicId ||
       next.theme !== device.theme ||
-      next.defaultWarehouseReceivingMode !== (device.defaultWarehouseReceivingMode ?? null)
+      next.defaultWarehouseReceivingMode !== (device.defaultWarehouseReceivingMode ?? null) ||
+      next.receiptRequirement !== (device.receiptRequirement ?? null)
     ) {
       // Si la web cambió el almacén por defecto, manda la web: se descarta el almacén que se había elegido en el aparato.
       const defaultChanged = next.defaultWarehousePublicId !== device.defaultWarehousePublicId

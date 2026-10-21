@@ -11,6 +11,7 @@ import {
   findProductByCode,
   getDocLines,
   getOpenReceipt,
+  listPendingDocs,
   removeLocalReceiptLine,
   startLocalReceipt,
 } from './localLookup'
@@ -183,5 +184,39 @@ describe('getDocLines', () => {
     db.runSync("INSERT INTO purchase_order_line (id, purchase_order_id, product_public_id, qty_ordered, qty_received, qty_pending) VALUES (2, 10, 'p2', 5, 5, 0)")
     expect(getDocLines(findDocByCode('wh-1', 'PO-100'))).toEqual([{ productPublicId: 'p1', lotNumber: null }])
     expect(getDocLines(null)).toEqual([])
+  })
+})
+
+describe('listPendingDocs (Lote 161)', () => {
+  beforeEach(() => {
+    const db = getDb()
+    db.runSync("INSERT INTO asn (id, warehouse_public_id, client_name, reference, expected_date, is_active) VALUES (21, 'wh-1', 'AxisCare', 'AX-4012', '2026-10-21', 1)")
+    db.runSync("INSERT INTO asn (id, warehouse_public_id, client_name, reference, expected_date, is_active) VALUES (22, 'wh-1', 'Otro', 'OT-1', '2026-10-22', 1)")
+    // un aviso nacido de una orden de compra se ve como orden, no como aviso
+    db.runSync("INSERT INTO asn (id, warehouse_public_id, purchase_order_public_id, reference, is_active) VALUES (23, 'wh-1', 'po-1', 'PO-100', 1)")
+    db.runSync("INSERT INTO purchase_order (id, public_id, number, warehouse_public_id, supplier_name, is_active) VALUES (11, 'po-2', 'PO-200', 'wh-1', 'Proveedor Sur', 1)")
+    db.runSync("INSERT INTO purchase_order (id, public_id, number, warehouse_public_id, is_active) VALUES (12, 'po-3', 'PO-300', 'wh-2', 1)")
+  })
+
+  it('lista los avisos de cliente del almacén sin los nacidos de una orden', () => {
+    const rows = listPendingDocs('wh-1', 'asn', '', 30)
+    expect(rows.map((r) => r.doc.asnId)).toEqual([21, 22, 20])
+    expect(rows[0]).toMatchObject({ title: 'AX-4012 · #21', subtitle: 'AxisCare · 2026-10-21', doc: { kind: 'asn', label: 'AX-4012' } })
+  })
+
+  it('busca por un pedazo, sin distinguir donde cae (referencia, cliente o fecha)', () => {
+    expect(listPendingDocs('wh-1', 'asn', '401', 30).map((r) => r.doc.asnId)).toEqual([21])
+    expect(listPendingDocs('wh-1', 'asn', 'axis', 30).map((r) => r.doc.asnId)).toEqual([21])
+    expect(listPendingDocs('wh-1', 'asn', '10-22', 30).map((r) => r.doc.asnId)).toEqual([22])
+    expect(listPendingDocs('wh-1', 'asn', 'zzz', 30)).toEqual([])
+  })
+
+  it('lista las órdenes del almacén y busca por número o proveedor', () => {
+    expect(listPendingDocs('wh-1', 'po', '', 30).map((r) => r.title)).toEqual(['PO-100', 'PO-200'])
+    expect(listPendingDocs('wh-1', 'po', 'sur', 30).map((r) => r.title)).toEqual(['PO-200'])
+  })
+
+  it('respeta el límite pedido (la pantalla sube de a poco, sin tope total)', () => {
+    expect(listPendingDocs('wh-1', 'asn', '', 2)).toHaveLength(2)
   })
 })

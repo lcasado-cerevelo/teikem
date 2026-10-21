@@ -202,6 +202,18 @@
     "changed": "Ahora trabajas en {name}."
   },
   "receive": {
+    "pendingDocs": "Avisos y órdenes pendientes",
+    "tabAsn": "Avisos de llegada",
+    "tabPo": "Órdenes de compra",
+    "searchAsn": "Buscar aviso: referencia, cliente o fecha",
+    "searchPo": "Buscar orden: número, proveedor o fecha",
+    "searchDocs": "Buscar documento",
+    "noPendingDocs": "No hay documentos pendientes en este aparato. Sincroniza si falta alguno.",
+    "noDocMatches": "Ningún documento coincide con lo escrito.",
+    "moreDocs": "Ver más",
+    "documentRequired": "La compañía exige recibir contra un documento: escoja un aviso u orden de la lista o escanee su código.",
+    "docNotAllowedPo": "La compañía exige recibir contra un aviso de llegada, no contra una orden de compra.",
+    "docNotAllowedAsn": "La compañía exige recibir contra una orden de compra, no contra un aviso de llegada.",
     "title": "Recibir",
     "modeLabel": "Modo de este recibo",
     "modePutaway": "Con acomodo",

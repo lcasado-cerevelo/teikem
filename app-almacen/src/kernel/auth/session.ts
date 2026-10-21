@@ -17,6 +17,8 @@ export interface DeviceIdentity {
   /** Lote 16: modo de recepción del almacén por defecto ('PUTAWAY' | 'DIRECT'), del registro y de cada heartbeat.
    *  Opcional: un aparato registrado antes del lote no lo tiene guardado hasta su siguiente heartbeat. */
   defaultWarehouseReceivingMode?: string | null
+  /** Lote 161: «el recibo exige documento» de la compañía ('FREE' | 'ANY_DOCUMENT' | 'ASN' | 'PURCHASE_ORDER'), del registro y de cada latido. Sin valor = libre. */
+  receiptRequirement?: string | null
   /** Archivo SQLite de esta compañía. Sin valor = la base única de antes de 2026-09-30 (`teikem_almacen.db`). */
   dbName?: string
   /** 2026-10-07 (varios almacenes): almacén elegido en el aparato para trabajar, distinto del «por defecto» que fija la web.

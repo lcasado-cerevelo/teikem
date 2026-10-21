@@ -51,6 +51,7 @@ describe('auth del aparato', () => {
       defaultWarehousePublicId: 'wh-1',
       theme: 'light',
       defaultWarehouseReceivingMode: null,
+      receiptRequirement: null,
       dbName: 'teikem_almacen_dev1.db',
     })
   })

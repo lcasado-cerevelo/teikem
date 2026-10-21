@@ -30,6 +30,9 @@ import {
   startLocalReceipt,
 } from '../features/receive/localLookup'
 import { fetchTargetSuggestions, type TargetSuggestion } from '../features/receive/receiveApi'
+import { parseReceiptRequirement, receiveOptions } from '../features/receive/receiptRequirement'
+import { ReceiveDocumentList } from '../features/receive/ReceiveDocumentList'
+import type { LocalDoc } from '../features/receive/localLookup'
 import { chunkAt, distSummary, exceedsCapacity, isRestBin, parsePerBin } from '../features/putaway/putawayLogic'
 import { findBinByCode } from '../kernel/warehouse/binLookup'
 import { StickyAlert } from '../kernel/ui/StickyAlert'
@@ -79,6 +82,8 @@ export default function ReceiveScreen() {
   const activeWarehouse = useActiveWarehouse()
   const warehousePublicId = activeWarehouse.publicId
   const deviceMode = parseReceivingMode(activeWarehouse.receivingMode)
+  // Lote 161: «el recibo exige documento» — con documento obligatorio no se ofrece el recibo a ciegas y solo se ofrece lo que la compañía permite
+  const options = receiveOptions(parseReceiptRequirement(device?.receiptRequirement))
   // Modo de este recibo: por defecto el del almacén; se puede cambiar antes de abrirlo (solo vale para ese recibo).
   const [modeChoice, setModeChoice] = useState<ReceivingMode | null>(null)
   // Sin elección y sin modo conocido del almacén se manda null, como antes (el servidor usa el del almacén).
@@ -146,8 +151,20 @@ export default function ReceiveScreen() {
     refresh()
   }
 
+  function pickDoc(doc: LocalDoc) {
+    startLocalReceipt(warehousePublicId!, doc, sentMode)
+    setDocError(null)
+    vibrateOk()
+    refresh()
+  }
+
   function scanDoc(code: string) {
     const doc = findDocByCode(warehousePublicId!, code)
+    if (doc && ((doc.kind === 'po' && !options.purchaseOrder) || (doc.kind === 'asn' && !options.asn))) {
+      setDocError(t(doc.kind === 'po' ? 'receive.docNotAllowedPo' : 'receive.docNotAllowedAsn'))
+      vibrateError()
+      return
+    }
     if (!doc) {
       setDocError(t('receive.docNotFound'))
       vibrateError()
@@ -395,8 +412,15 @@ export default function ReceiveScreen() {
         </View>
         <Text style={styles.help}>{t(startMode === 'DIRECT' ? 'receive.modeDirectHelp' : 'receive.modePutawayHelp')}</Text>
         <ScanField label={t('receive.scanDocLabel')} help={t('receive.scanDocHelp')} error={docError} onSubmit={scanDoc} />
-        <BigButton label={t('receive.startBlind')} variant="secondary" onPress={startBlind} />
-        <Text style={styles.help}>{t('receive.startBlindHelp')}</Text>
+        <ReceiveDocumentList warehousePublicId={warehousePublicId} options={options} onPick={pickDoc} />
+        {options.blind ? (
+          <>
+            <BigButton label={t('receive.startBlind')} variant="secondary" onPress={startBlind} />
+            <Text style={styles.help}>{t('receive.startBlindHelp')}</Text>
+          </>
+        ) : (
+          <Text style={styles.help}>{t('receive.documentRequired')}</Text>
+        )}
         <View style={styles.bottom}>
           <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} />
         </View>

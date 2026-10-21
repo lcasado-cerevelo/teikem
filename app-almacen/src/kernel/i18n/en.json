@@ -202,6 +202,18 @@
     "changed": "You are now working in {name}."
   },
   "receive": {
+    "pendingDocs": "Pending notices and orders",
+    "tabAsn": "Arrival notices",
+    "tabPo": "Purchase orders",
+    "searchAsn": "Search notice: reference, client or date",
+    "searchPo": "Search order: number, supplier or date",
+    "searchDocs": "Search document",
+    "noPendingDocs": "There are no pending documents on this device. Sync if one is missing.",
+    "noDocMatches": "No document matches what you typed.",
+    "moreDocs": "See more",
+    "documentRequired": "The company requires receiving against a document: pick a notice or order from the list or scan its code.",
+    "docNotAllowedPo": "The company requires receiving against an arrival notice, not a purchase order.",
+    "docNotAllowedAsn": "The company requires receiving against a purchase order, not an arrival notice.",
     "title": "Receive",
     "modeLabel": "This receipt's mode",
     "modePutaway": "With putaway",
