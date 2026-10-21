@@ -7,6 +7,7 @@ import { enqueue } from '../../kernel/sync/outbox'
 import { applyDeltasIn, issueDeltas } from '../../kernel/warehouse/balanceProjection'
 import { buildDispatchLines, buildTasks, type LocalSalesLine, type SalesPick, type SalesTask } from '../salesDispatch/salesDispatchLogic'
 import { applyDispatchLocally, getSalesOrderLines, kitConsumption, listSalesOrders } from '../salesDispatch/localSales'
+import { noticeInScope, type DispatchScope } from '../dispatch/dispatchScope'
 import { buildGroupBody, docKey, realLineId, type GroupableNotice, type GroupKind } from './exitGroupLogic'
 
 export interface LocalExitNotice {
@@ -21,6 +22,8 @@ export interface LocalExitNotice {
   requiredDate: string | null
   /** Lo reservado que se puede despachar ya. */
   reserved: number
+  /** Lote 193: a quién se asignó (NULL = sin asignar). */
+  assignedToUserId?: number | null
   /** Lote 186: en «Recolectar juntos» también entran órdenes de venta (con la forma de un aviso); ausente = aviso de salida. */
   kind?: GroupKind
 }
@@ -36,6 +39,7 @@ interface NoticeRow {
   status_code: string | null
   required_date: string | null
   reserved: number | null
+  assigned_to_user_id?: number | null
 }
 
 function mapNotice(r: NoticeRow): LocalExitNotice {
@@ -50,21 +54,27 @@ function mapNotice(r: NoticeRow): LocalExitNotice {
     statusCode: r.status_code,
     requiredDate: r.required_date,
     reserved: r.reserved ?? 0,
+    assignedToUserId: r.assigned_to_user_id ?? null,
   }
 }
 
 const SELECT_NOTICE = `SELECT o.*, (SELECT SUM(l.qty_reserved) FROM exit_notice_line l WHERE l.exit_notice_id = o.id) AS reserved FROM exit_notice o`
 
 /** Avisos del almacén con algo reservado que se pueda despachar, los más antiguos primero (la fecha requerida manda). */
-export function listExitNotices(warehousePublicId: string): LocalExitNotice[] {
+export function listExitNotices(warehousePublicId: string, scope?: DispatchScope): LocalExitNotice[] {
   return getDb()
     .getAllSync<NoticeRow>(`${SELECT_NOTICE} WHERE o.warehouse_public_id = ? ORDER BY (o.required_date IS NULL), o.required_date, o.id`, [warehousePublicId])
     .map(mapNotice)
-    .filter((o) => o.reserved > 0)
+    .filter((o) => o.reserved > 0 && (!scope || noticeInScope(scope, o.assignedToUserId)))
 }
 
 /** Busca el aviso por su número (el escaneado o escrito, sin distinguir mayúsculas); también acepta solo los dígitos finales si es una sola coincidencia. */
-export function findExitNoticeByNumber(warehousePublicId: string, code: string): LocalExitNotice | null {
+export function findExitNoticeByNumber(warehousePublicId: string, code: string, scope?: DispatchScope): LocalExitNotice | null {
+  const found = findExitNoticeByNumberAny(warehousePublicId, code)
+  return found && (!scope || noticeInScope(scope, found.assignedToUserId)) ? found : null
+}
+
+function findExitNoticeByNumberAny(warehousePublicId: string, code: string): LocalExitNotice | null {
   const wanted = code.trim()
   if (!wanted) return null
   const db = getDb()
@@ -194,7 +204,8 @@ export function queueExitDispatch(notice: LocalExitNotice, tasks: readonly Sales
 }
 
 /** Lote 186: las órdenes de venta del almacén con algo reservado, con la forma de un aviso para elegirlas junto a los avisos en «Recolectar juntos». */
-export function listGroupableOrders(warehousePublicId: string): LocalExitNotice[] {
+export function listGroupableOrders(warehousePublicId: string, scope?: DispatchScope): LocalExitNotice[] {
+  if (scope && !scope.any) return []   // las órdenes de venta no se asignan: sin el permiso no se ofrecen
   return listSalesOrders(warehousePublicId).map((o) => ({
     id: o.id,
     publicId: o.publicId,

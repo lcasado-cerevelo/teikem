@@ -31,7 +31,7 @@ const notice = (id: number, client: string, qty: number) => ({
   ],
 })
 
-const ME = (c: { path: string }) => (c.path === '/api/v1/me' ? json(200, { userId: 7, permissions: ['warehouse.pick', 'inventory.view'] }) : null)
+const ME = (c: { path: string }) => (c.path === '/api/v1/me' ? json(200, { userId: 7, permissions: ['warehouse.pick', 'warehouse.pick.any', 'inventory.view'] }) : null)
 
 async function seed() {
   await setupDevice()

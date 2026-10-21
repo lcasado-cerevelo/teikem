@@ -35,7 +35,7 @@ const ORDER = {
   ],
 }
 
-const ME = (c: { path: string }) => (c.path === '/api/v1/me' ? json(200, { userId: 7, permissions: ['sales.view', 'warehouse.pick'] }) : null)
+const ME = (c: { path: string }) => (c.path === '/api/v1/me' ? json(200, { userId: 7, permissions: ['sales.view', 'warehouse.pick', 'warehouse.pick.any'] }) : null)
 
 async function seed() {
   await setupDevice()

@@ -1398,3 +1398,10 @@ Asignar se hace en la web: Recibo → Avisos de llegada / Avisos de salida, bot�
 **Órdenes de venta (Lote 186).** Al elegir, además de los avisos aparecen las **órdenes de venta** con algo reservado (etiquetadas «Orden de venta»); se mezclan con los avisos del mismo cliente en la misma ruta y viajan en la misma maestra. Las líneas de kit salen de lo reservado de sus componentes, igual que al despachar una orden sola.
 
 **Qué no hace todavía.** Sumar documentos después no se puede (se decide al recolectar). El envío se crea al **empacar la maestra en la web**.
+
+
+## Despachar: elegir el producto y quién ve qué (Lotes 192 y 193, 2026-10-21)
+
+**Elegir el producto.** Al despachar contra una orden de venta o un aviso de salida (también en «Recolectar juntos»), debajo del producto actual aparece **«Productos por sacar»**: un renglón por producto con su posición y cantidad. **Toque uno** para sacarlo ahora (se marca con ▶); al confirmarlo sigue la ruta. Los omitidos se pueden retomar desde ahí.
+
+**Qué documentos ve cada persona.** Lo controla el permiso `warehouse.pick.any` («Despachar cualquier documento en el aparato (no solo los asignados)»), que se da por rol. Con el permiso, el aparato muestra todo lo del almacén. Sin él, solo los avisos de salida asignados a la persona (y «Mis tareas» no ofrece lo sin asignar); las órdenes de venta no se asignan, así que no se ofrecen. La migración lo dio a todos los roles que ya tenían `warehouse.pick`.

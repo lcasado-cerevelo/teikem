@@ -16,6 +16,9 @@ import { ScanField } from '../kernel/ui/ScanField'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
 import { colors, fontSize, radius, spacing } from '../kernel/ui/theme'
 import { findSalesOrderByNumber, getSalesOrderLines, listSalesOrders, queueSalesDispatch, type LocalSalesOrder } from '../features/salesDispatch/localSales'
+import { dispatchScope } from '../features/dispatch/dispatchScope'
+import { useMyPermissions } from '../kernel/auth/permissions'
+import { useSession } from '../kernel/auth/useSession'
 import { TaskChooser } from '../features/salesDispatch/TaskChooser'
 import {
   buildTasks,
@@ -40,6 +43,10 @@ export default function SalesDispatchScreen() {
   const f = useFormat()
   const router = useRouter()
   const warehousePublicId = useActiveWarehouse().publicId
+  // Lote 193: las órdenes de venta no se asignan; sin warehouse.pick.any no se ofrecen
+  const permissions = useMyPermissions()
+  const { session } = useSession()
+  const scope = useMemo(() => dispatchScope(permissions, session?.userId), [permissions, session?.userId])
   const [step, setStep] = useState<Step>('list')
   const [tick, setTick] = useState(0)
   const [order, setOrder] = useState<LocalSalesOrder | null>(null)
@@ -55,7 +62,7 @@ export default function SalesDispatchScreen() {
 
   // tick fuerza releer la copia local tras volver de enviar.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const orders = useMemo(() => (warehousePublicId ? listSalesOrders(warehousePublicId) : []), [warehousePublicId, tick])
+  const orders = useMemo(() => (warehousePublicId ? listSalesOrders(warehousePublicId, scope) : []), [warehousePublicId, tick, scope])
   const lines = useMemo(() => (order ? getSalesOrderLines(order.id) : []), [order])
   const tasks = useMemo(() => buildTasks(lines), [lines])
   const current = order && step === 'pick' ? currentTask(tasks, picks, skipped, focusKey) : null
@@ -83,7 +90,7 @@ export default function SalesDispatchScreen() {
   }
 
   function scanOrder(code: string) {
-    const found = findSalesOrderByNumber(warehousePublicId!, code)
+    const found = findSalesOrderByNumber(warehousePublicId!, code, scope)
     if (!found || found.reserved <= 0) {
       setScanError(t('salesDispatch.orderNotFound'))
       vibrateError()

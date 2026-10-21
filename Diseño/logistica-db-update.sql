@@ -5993,3 +5993,26 @@ IF COL_LENGTH('dbo.ReceiptLine', 'DamageReportedQty') IS NULL
 GO
 UPDATE dbo.ReceiptLine SET DamageReportedQty = DamagedQty WHERE DamageReportId IS NOT NULL AND DamageReportedQty = 0 AND DamagedQty > 0;
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-21 (Lote 193) — Permiso warehouse.pick.any: ver y despachar en el aparato CUALQUIER documento (también los que no están asignados);
+   sin él, el aparato solo muestra lo asignado a la persona. Para no cambiarle el trabajo a nadie, lo reciben todos los roles (plantillas y los ya clonados
+   de cada compañía) que ya tienen warehouse.pick; el administrador lo quita de los roles que no deban. Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'warehouse.pick.any')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('warehouse.pick.any',
+            (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'WAREHOUSE'),
+            N'{"es":"Despachar cualquier documento en el aparato (no solo los asignados)","en":"Dispatch any document on the device (not only assigned ones)"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L193_PICK_ANY')
+BEGIN
+    INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+    SELECT rp.RoleId, any1.PermissionId
+    FROM dbo.RolePermission rp
+    JOIN dbo.Permission pick ON pick.PermissionId = rp.PermissionId AND pick.Code = 'warehouse.pick'
+    JOIN dbo.Permission any1 ON any1.Code = 'warehouse.pick.any'
+    WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = rp.RoleId AND x.PermissionId = any1.PermissionId);
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L193_PICK_ANY');
+END
+GO

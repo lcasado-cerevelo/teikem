@@ -109,6 +109,8 @@ public static class PermissionCatalog
     public const string WarehouseReceive = "warehouse.receive";
 
     public const string WarehousePick = "warehouse.pick";
+    /// <summary>Lote 193: ver y despachar en el aparato CUALQUIER documento (también los que no están asignados a la persona); sin él, solo los asignados.</summary>
+    public const string WarehousePickAny = "warehouse.pick.any";
 
     public const string WarehouseCount = "warehouse.count";
 
@@ -593,6 +595,8 @@ public static class PermissionCatalog
         new(WarehouseAdjust, "WAREHOUSE", "Ajustar la cantidad de una posición (aparato)", "Adjust a bin's quantity (device)"),
 
         new(WarehouseIssue, "WAREHOUSE", "Despacho manual (salida sin entrega)", "Manual issue (stock out without delivery)"),
+
+        new(WarehousePickAny, "WAREHOUSE", "Despachar cualquier documento en el aparato (no solo los asignados)", "Dispatch any document on the device (not only assigned ones)"),
 
         // Lote F8a — Pulso del día (categoría PULSE)
 
@@ -1088,7 +1092,7 @@ public static class PermissionCatalog
 
         // no recibe contra órdenes de compra) y con ajustar/administrar inventario y administrar almacenes.
 
-        ["WarehouseOperator"] = new[] { WarehouseReceive, WarehousePick, WarehouseCount, WarehouseCountCapture, WarehouseDamage, WarehouseTransfer, WarehouseIssue, WarehouseCrossdock, RentalView, RentalManage, RentalMaintenance, InventoryView,
+        ["WarehouseOperator"] = new[] { WarehouseReceive, WarehousePick, WarehousePickAny, WarehouseCount, WarehouseCountCapture, WarehouseDamage, WarehouseTransfer, WarehouseIssue, WarehouseCrossdock, RentalView, RentalManage, RentalMaintenance, InventoryView,
 
             InventoryAdjust, InventoryManage, WarehouseManage,
 

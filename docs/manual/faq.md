@@ -10146,3 +10146,9 @@ En Almacenes → el almacén → sección «Recepción» → «Posición de rece
 
 **En el aparato, al recibir contra un aviso, ¿tengo que escanear cada producto?** (Lote 191)
 No necesariamente: debajo del campo de escaneo sale «Lo que dice el documento» con cada producto, lo esperado, lo recibido y lo que falta. Toque el producto para capturarlo; escanear sigue funcionando. Con una orden de compra la lista muestra lo que falta por recibir. En un recibo ciego no hay documento, así que no hay lista.
+
+**¿Cómo controlo qué despachos ve cada persona en el aparato?** (Lote 193)
+Con el permiso **«Despachar cualquier documento en el aparato (no solo los asignados)»** (`warehouse.pick.any`, categoría Almacén), que se da por rol en Sistema → Roles. Con él, Despacho, Avisos de salida y Órdenes de venta muestran todo lo del almacén, y «Mis tareas» ofrece también lo que nadie tiene asignado. Sin él, la persona solo ve los avisos de salida **asignados a ella** (las órdenes de venta no se asignan, así que no se le ofrecen). El permiso se otorgó a todos los roles que ya podían pickear, para no cambiar el trabajo de nadie; quítelo de los roles que deban ver solo lo asignado.
+
+**En el aparato, al despachar contra una orden o un aviso, ¿tengo que seguir el orden de la ruta?** (Lote 192)
+No: debajo del producto actual sale «Productos por sacar» con cada producto, su posición y la cantidad. Toque uno para sacarlo ahora; al terminar sigue la ruta. Los que omitió siguen en la lista con la marca «omitido».

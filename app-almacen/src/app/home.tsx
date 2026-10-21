@@ -9,6 +9,7 @@ import { getOpenReceipt } from '../features/receive/localLookup'
 import { getOpenPick } from '../features/dispatch/localPick'
 import { getOpenCount } from '../features/count/localCount'
 import { listExitNotices } from '../features/exitDispatch/localExit'
+import { dispatchScope } from '../features/dispatch/dispatchScope'
 import { countMyDocuments } from '../features/myTasks/myTasksLogic'
 import { listSalesOrders } from '../features/salesDispatch/localSales'
 import { listSalesReturns } from '../features/salesReturn/localReturns'
@@ -73,9 +74,11 @@ export default function HomeScreen() {
         else setOpenKind(null)
       }
       compute()
-      setHasSalesOrders(warehouseId ? listSalesOrders(warehouseId).length > 0 : false)
+      // Lote 193: sin warehouse.pick.any solo se ofrece lo asignado a esta persona
+      const scope = dispatchScope(permissions, userId)
+      setHasSalesOrders(warehouseId ? listSalesOrders(warehouseId, scope).length > 0 : false)
       setHasSalesReturns(warehouseId ? listSalesReturns(warehouseId).length > 0 : false)
-      setHasExitNotices(warehouseId ? listExitNotices(warehouseId).length > 0 : false)
+      setHasExitNotices(warehouseId ? listExitNotices(warehouseId, scope).length > 0 : false)
       setMyDocs(warehouseId && userId != null ? countMyDocuments(warehouseId, userId) : 0)
       let alive = true
       if (warehouseId && userId != null) {
@@ -86,7 +89,7 @@ export default function HomeScreen() {
       return () => {
         alive = false
       }
-    }, [warehouseId, userId]),
+    }, [warehouseId, userId, permissions]),
   )
 
   // 2026-10-07 (varios almacenes): la lista de almacenes de la compañía se baja al entrar (queda guardada para elegir sin señal).

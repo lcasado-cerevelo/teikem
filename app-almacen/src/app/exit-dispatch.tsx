@@ -19,6 +19,9 @@ import { ScanField } from '../kernel/ui/ScanField'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
 import { colors, fontSize, radius, spacing } from '../kernel/ui/theme'
 import { findExitNoticeByNumber, getExitNoticeLines, getGroupTasks, listExitNotices, listGroupableOrders, queueExitDispatch, queueExitGroup, type LocalExitNotice } from '../features/exitDispatch/localExit'
+import { dispatchScope } from '../features/dispatch/dispatchScope'
+import { useMyPermissions } from '../kernel/auth/permissions'
+import { useSession } from '../kernel/auth/useSession'
 import { buildGroupBody, docKey, groupBlock, groupNumber, groupReady, MIN_GROUP } from '../features/exitDispatch/exitGroupLogic'
 import { TaskChooser } from '../features/salesDispatch/TaskChooser'
 import {
@@ -43,6 +46,10 @@ export default function ExitDispatchScreen() {
   const { notice: noticeParam } = useLocalSearchParams<{ notice?: string }>()
   const noticeOpened = useRef(false)
   const warehousePublicId = useActiveWarehouse().publicId
+  // Lote 193: sin warehouse.pick.any solo se ven los avisos asignados a esta persona (y no hay órdenes de venta)
+  const permissions = useMyPermissions()
+  const { session } = useSession()
+  const scope = useMemo(() => dispatchScope(permissions, session?.userId), [permissions, session?.userId])
   const [step, setStep] = useState<Step>('list')
   const [tick, setTick] = useState(0)
   const [notice, setNotice] = useState<LocalExitNotice | null>(null)
@@ -61,10 +68,10 @@ export default function ExitDispatchScreen() {
 
   // tick fuerza releer la copia local tras volver de enviar.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const notices = useMemo(() => (warehousePublicId ? listExitNotices(warehousePublicId) : []), [warehousePublicId, tick])
+  const notices = useMemo(() => (warehousePublicId ? listExitNotices(warehousePublicId, scope) : []), [warehousePublicId, tick, scope])
   // Lote 186: en «Recolectar juntos» también se eligen órdenes de venta (se ven solo al elegir)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const orders = useMemo(() => (warehousePublicId ? listGroupableOrders(warehousePublicId) : []), [warehousePublicId, tick])
+  const orders = useMemo(() => (warehousePublicId ? listGroupableOrders(warehousePublicId, scope) : []), [warehousePublicId, tick, scope])
   const lines = useMemo(() => (notice ? getExitNoticeLines(notice.id) : []), [notice])
   const groupData = useMemo(() => (group ? getGroupTasks(group) : null), [group])
   const tasks = useMemo(() => (groupData ? groupData.tasks : buildTasks(lines)), [lines, groupData])
@@ -124,7 +131,7 @@ export default function ExitDispatchScreen() {
   }
 
   function scanNotice(code: string) {
-    const found = findExitNoticeByNumber(warehousePublicId!, code)
+    const found = findExitNoticeByNumber(warehousePublicId!, code, scope)
     if (!found || found.reserved <= 0) {
       setScanError(t('exitDispatch.noticeNotFound'))
       vibrateError()

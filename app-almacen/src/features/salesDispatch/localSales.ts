@@ -5,6 +5,7 @@
 import { getDb, type SQLiteDatabase } from '../../kernel/db/database'
 import { enqueue } from '../../kernel/sync/outbox'
 import { applyDeltasIn, issueDeltas } from '../../kernel/warehouse/balanceProjection'
+import type { DispatchScope } from '../dispatch/dispatchScope'
 import { buildDispatchBody, buildDispatchLines, type LocalSalesLine, type SalesPick, type SalesTask } from './salesDispatchLogic'
 
 export interface LocalSalesOrder {
@@ -49,7 +50,8 @@ function mapOrder(r: OrderRow): LocalSalesOrder {
 const SELECT_ORDER = `SELECT o.*, (SELECT SUM(l.qty_reserved) FROM sales_order_line l WHERE l.sales_order_id = o.id) AS reserved FROM sales_order o`
 
 /** Órdenes del almacén con algo reservado que se pueda despachar, las más antiguas primero (la fecha requerida manda). */
-export function listSalesOrders(warehousePublicId: string): LocalSalesOrder[] {
+export function listSalesOrders(warehousePublicId: string, scope?: DispatchScope): LocalSalesOrder[] {
+  if (scope && !scope.any) return []   // Lote 193: las órdenes de venta no se asignan; sin warehouse.pick.any no se ofrecen
   return getDb()
     .getAllSync<OrderRow>(`${SELECT_ORDER} WHERE o.warehouse_public_id = ? ORDER BY (o.required_date IS NULL), o.required_date, o.id`, [warehousePublicId])
     .map(mapOrder)
@@ -57,7 +59,8 @@ export function listSalesOrders(warehousePublicId: string): LocalSalesOrder[] {
 }
 
 /** Busca la orden por su número (el escaneado o escrito, sin distinguir mayúsculas); también acepta solo los dígitos finales si es una sola coincidencia. */
-export function findSalesOrderByNumber(warehousePublicId: string, code: string): LocalSalesOrder | null {
+export function findSalesOrderByNumber(warehousePublicId: string, code: string, scope?: DispatchScope): LocalSalesOrder | null {
+  if (scope && !scope.any) return null
   const wanted = code.trim()
   if (!wanted) return null
   const db = getDb()

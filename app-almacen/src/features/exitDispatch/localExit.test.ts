@@ -5,6 +5,7 @@ import { applyExitNotices, applySalesOrders } from '../../kernel/sync/download'
 import { listOutbox } from '../../kernel/sync/outbox'
 import { reapplyPendingSalesDispatches, getSalesOrderLines, listSalesOrders } from '../salesDispatch/localSales'
 import { buildTasks } from '../salesDispatch/salesDispatchLogic'
+import { dispatchScope } from '../dispatch/dispatchScope'
 import { readDispatchRequirement, saveDispatchRequirement } from '../dispatch/stockExit'
 import { findExitNoticeByNumber, getExitNoticeLines, getGroupTasks, listExitNotices, listGroupableOrders, queueExitDispatch, queueExitGroup, reapplyPendingExitDispatches } from './localExit'
 
@@ -186,5 +187,15 @@ describe('recolectar juntos (Lote 178)', () => {
     expect(getSalesOrderLines(5)[0].qtyReserved).toBe(5)
     reapplyPendingSalesDispatches(getDb())
     expect(getSalesOrderLines(5)[0].qtyReserved).toBe(2)
+  })
+
+  it('Lote 193: sin warehouse.pick.any solo se ven los avisos asignados a la persona y no hay órdenes de venta', () => {
+    applyExitNotices(getDb(), WH, [{ ...NOTICE, assignedToUserId: 7 }, { ...NOTICE, id: 8, publicId: 'sn-8', number: 'SAL-00008', assignedToUserId: null, lines: [{ ...NOTICE.lines[0], id: 80 }] }])
+    expect(listExitNotices(WH).map((o) => o.number)).toEqual(['SAL-00007', 'SAL-00008'])   // sin alcance (compatibilidad): todo
+    expect(listExitNotices(WH, dispatchScope(['warehouse.pick'], 7)).map((o) => o.number)).toEqual(['SAL-00007'])
+    expect(listExitNotices(WH, dispatchScope(['warehouse.pick'], 9))).toEqual([])
+    expect(listExitNotices(WH, dispatchScope(['warehouse.pick', 'warehouse.pick.any'], 9)).map((o) => o.number)).toEqual(['SAL-00007', 'SAL-00008'])
+    expect(findExitNoticeByNumber(WH, 'SAL-00008', dispatchScope(['warehouse.pick'], 7))).toBeNull()
+    expect(findExitNoticeByNumber(WH, 'SAL-00007', dispatchScope(['warehouse.pick'], 7))?.number).toBe('SAL-00007')
   })
 })

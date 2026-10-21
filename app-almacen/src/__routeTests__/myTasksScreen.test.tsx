@@ -55,13 +55,25 @@ describe('Mis tareas', () => {
   it('«Tomar» un aviso sin asignar lo llama al servidor y lo deja asignado a mí', async () => {
     await setupDevice()
     seed()
-    const calls = mockFetch([(c) => (c.method === 'POST' && c.path === '/api/v1/asns/2/take' ? json(200, { id: 2 }) : null)])
+    const calls = mockFetch([
+      (c) => (c.path === '/api/v1/me' ? json(200, { userId: 7, permissions: ['warehouse.pick', 'warehouse.pick.any'] }) : null),
+      (c) => (c.method === 'POST' && c.path === '/api/v1/asns/2/take' ? json(200, { id: 2 }) : null),
+    ])
     await renderRouter('src/app', { initialUrl: '/my-tasks' })
     await waitFor(() => expect(screen.getByTestId('my-tasks-free-toggle')).toBeTruthy())
     await fireEvent.press(screen.getByTestId('my-tasks-free-toggle'))
     await fireEvent.press(await screen.findByTestId('take-asn-2'))
     await waitFor(() => expect(calls.some((c) => c.method === 'POST' && c.path === '/api/v1/asns/2/take')).toBe(true))
     await waitFor(() => expect(screen.getByTestId('my-asn-2')).toBeTruthy())
+  })
+
+  it('Lote 193: sin warehouse.pick.any no se ofrece lo que nadie tiene asignado', async () => {
+    await setupDevice()
+    seed()
+    mockFetch([(c) => (c.path === '/api/v1/me' ? json(200, { userId: 7, permissions: ['warehouse.pick'] }) : null)])
+    await renderRouter('src/app', { initialUrl: '/my-tasks' })
+    await waitFor(() => expect(screen.getByTestId('my-asn-1')).toBeTruthy())
+    expect(screen.queryByTestId('my-tasks-free-toggle')).toBeNull()
   })
 
   it('sin nada asignado lo dice', async () => {

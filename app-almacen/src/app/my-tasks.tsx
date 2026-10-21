@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react'
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
 
+import { useMyPermissions } from '../kernel/auth/permissions'
 import { useSession } from '../kernel/auth/useSession'
 import { apiErrorMessage, toApiError } from '../kernel/api/client'
 import { useFormat } from '../kernel/format/useFormat'
@@ -40,6 +41,8 @@ export default function MyTasksScreen() {
   const { session } = useSession()
   const warehousePublicId = useActiveWarehouse().publicId
   const userId = session?.userId ?? null
+  // Lote 193: lo sin asignar solo se ofrece con warehouse.pick.any
+  const canAny = (useMyPermissions() ?? []).includes('warehouse.pick.any')
   const [lists, setLists] = useState<Lists>(EMPTY)
   const [putaway, setPutaway] = useState<MyPutawayTask[]>([])
   const [online, setOnline] = useState(true)
@@ -51,10 +54,10 @@ export default function MyTasksScreen() {
     setLists({
       asnMine: listAsnTasks(warehousePublicId, userId, 'mine'),
       exitMine: listExitTasks(warehousePublicId, userId, 'mine'),
-      asnFree: listAsnTasks(warehousePublicId, userId, 'unassigned'),
-      exitFree: listExitTasks(warehousePublicId, userId, 'unassigned'),
+      asnFree: canAny ? listAsnTasks(warehousePublicId, userId, 'unassigned') : [],
+      exitFree: canAny ? listExitTasks(warehousePublicId, userId, 'unassigned') : [],
     })
-  }, [warehousePublicId, userId])
+  }, [warehousePublicId, userId, canAny])
 
   useFocusEffect(
     useCallback(() => {
