@@ -26,9 +26,13 @@ export default defineConfig({
     env: { VITE_API_URL: process.env.VITE_API_URL ?? process.env.API_URL ?? 'http://localhost:5000' },
   },
   projects: [
-    { name: 'escritorio', testIgnore: /(f8a|lote56-impuestos|lote60-ordenes-de-venta|lote16|loteF9-region|loteF11-marca|loteF12-conteo|loteF13-conteo-web|loteF14-codigos|productosPorPosicion|loteF16|loteF17|loteF18|loteF19-despacho-manual|loteFE2a-despacho)\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
+    { name: 'escritorio', testIgnore: /(f8a|lote181-contabilidad|lote56-impuestos|lote60-ordenes-de-venta|lote16|loteF9-region|loteF11-marca|loteF12-conteo|loteF13-conteo-web|loteF14-codigos|productosPorPosicion|loteF16|loteF17|loteF18|loteF19-despacho-manual|loteFE2a-despacho)\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
     // Móvil al ancho mínimo que exige el kit (360 px), con el resto del perfil de Pixel 7 (táctil, isMobile).
-    { name: 'movil', testIgnore: /(lote56-impuestos|lote60-ordenes-de-venta|lote16|loteF9-region|loteF11-marca|loteF12-conteo|loteF13-conteo-web|loteF14-codigos|productosPorPosicion|loteF16|loteF17|loteF18|loteF19-despacho-manual|loteFE2a-despacho)\.spec\.ts/, use: { ...devices['Pixel 7'], viewport: { width: 360, height: 780 } } },
+    { name: 'movil', testIgnore: /(lote181-contabilidad|lote56-impuestos|lote60-ordenes-de-venta|lote16|loteF9-region|loteF11-marca|loteF12-conteo|loteF13-conteo-web|loteF14-codigos|productosPorPosicion|loteF16|loteF17|loteF18|loteF19-despacho-manual|loteFE2a-despacho)\.spec\.ts/, use: { ...devices['Pixel 7'], viewport: { width: 360, height: 780 } } },
+    // Lote 181 (contabilización de compras y de despachos): una corrida junta TODO lo propio por contabilizar del período, así que dos recorridos a la vez (escritorio y móvil) se quitarían las líneas:
+    // corren en fila (escritorio y luego móvil), después de los demás. Siembran todo en un almacén nuevo.
+    { name: 'escritorio-conta', testMatch: /lote181-contabilidad\.spec\.ts/, dependencies: ['escritorio', 'movil'], use: { ...devices['Desktop Chrome'] } },
+    { name: 'movil-conta', testMatch: /lote181-contabilidad\.spec\.ts/, dependencies: ['escritorio', 'movil', 'escritorio-conta'], use: { ...devices['Pixel 7'], viewport: { width: 360, height: 780 } } },
     // Lote 56 y 60: encienden el módulo de impuestos y dejan tasas para toda la compañía; los recorridos de facturación, cobros y notas de crédito
     // (73, 76, 78, 80, 96) esperan montos SIN impuesto, así que estos dos corren después de todos ellos.
     { name: 'escritorio-impuestos', testMatch: /(lote56-impuestos|lote60-ordenes-de-venta)\.spec\.ts/, dependencies: ['escritorio', 'movil'], use: { ...devices['Desktop Chrome'] } },

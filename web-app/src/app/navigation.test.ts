@@ -122,7 +122,10 @@ describe('menú completo (routes.tsx)', () => {
     expect(byPath('/catalog/drivers').pending).toBeUndefined()
     expect(byPath('/catalog/consignees').pending).toBeUndefined()
     expect(byPath('/catalog/clients').pending).toBeUndefined()
-    expect(byPath('/money/purchases').pending).toBe(true)
+    expect(byPath('/money/purchases').pending).toBeUndefined() // Lote 181
+    expect(byPath('/money/purchases')).toMatchObject({ perm: 'purchaseaccounting.view', module: 'PURCHASING', nav: { group: 'money', key: 'purchaseAccounting', order: 20 } })
+    expect(byPath('/money/dispatch').pending).toBeUndefined() // Lote 181
+    expect(byPath('/money/dispatch')).toMatchObject({ perm: 'dispatchaccounting.view', module: 'WMS_LOTSERIAL', nav: { group: 'money', key: 'dispatchAccounting', order: 40 } })
     // 2026-10-20: el portal del cliente tiene su propia aplicación; el menú del personal ya no lo trae (la bandeja de mensajes sigue en su dirección, sin ítem)
     expect(byPath('/portal/messages').nav).toBeUndefined()
     expect(appRoutes.some((r) => r.path.startsWith('/portal/') && r.path !== '/portal/messages')).toBe(false)

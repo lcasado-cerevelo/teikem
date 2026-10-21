@@ -389,9 +389,9 @@ export const appRoutes: readonly AppRoute[] = [
   { path: '/warehouse/inventory', element: redirectKeepingQuery('/warehouse/kardex', legacyInventorySearch) },
 
   // ===== Contabilidad (7C) =====
-  pending({ path: '/money/purchases', perm: 'purchaseaccounting.view', module: ModuleKeys.Purchasing, nav: { group: 'money', key: 'purchaseAccounting', order: 20 } }),
+  { path: '/money/purchases', element: lazy(() => import('../features/accounting/PurchaseAccountingScreen')), perm: 'purchaseaccounting.view', module: ModuleKeys.Purchasing, nav: { group: 'money', key: 'purchaseAccounting', order: 20 } },   // Lote 181
   { path: '/sales-orders', element: lazy(() => import('../features/sales/SalesOrdersScreen')), perm: 'sales.view', module: ModuleKeys.SalesOrders, nav: { group: 'money', key: 'salesOrders', order: 30 } },
-  pending({ path: '/money/dispatch', perm: 'dispatchaccounting.view', module: ModuleKeys.LtlGround, nav: { group: 'money', key: 'dispatchAccounting', order: 40 } }),
+  { path: '/money/dispatch', element: lazy(() => import('../features/accounting/DispatchAccountingScreen')), perm: 'dispatchaccounting.view', module: ModuleKeys.WmsLotSerial, nav: { group: 'money', key: 'dispatchAccounting', order: 40 } },   // Lote 181 (el costo de lo que sale del almacén: módulo de almacén)
   { path: '/money/billing', element: lazy(() => import('../features/billing/BillingScreen')), perm: 'billing.view', module: ModuleKeys.Billing, nav: { group: 'money', key: 'billing', order: 50 } },   // Lote 73
   { path: '/money/cod', element: lazy(() => import('../features/cod/CodScreen')), perm: 'cod.view', module: ModuleKeys.Cod, nav: { group: 'money', key: 'cod', order: 60 } },   // Lote 85
   { path: '/money/driver-pay', element: lazy(() => import('../features/driverpay/DriverPayScreen')), perm: 'driverpay.view', module: ModuleKeys.LtlGround, nav: { group: 'money', key: 'driverPay', order: 70 } },   // Lote 96

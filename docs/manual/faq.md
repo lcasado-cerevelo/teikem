@@ -10015,3 +10015,35 @@ Sí, si su compañía le permite crear productos: en la pestaña «Productos» t
 
 **Al editar un producto sale «No hay ningún cambio que guardar.»**
 Se envió la edición sin ningún dato. Cambie al menos un campo y guarde de nuevo.
+
+## Contabilización de compras y de despachos (Lote 181)
+
+**¿Qué se contabiliza y qué no?**
+Solo lo **propio** de la compañía (productos sin cliente dueño), sin importar si llegó por orden de compra, aviso de llegada o recibo a ciegas. Lo de un cliente no se contabiliza. Compras: líneas de recibos **confirmados** (no las devoluciones de una venta). Despachos: líneas de recolecciones y despachos vigentes (no las eliminadas ni las revertidas).
+
+**¿Con qué costo sale cada línea?**
+Con el que la línea ya traía **congelado**: el de la capa del recibo (orden de compra, si no precio del aviso, si no costo del producto) o el de la salida. Cambiar después el costo del producto no cambia una corrida ni una capa.
+
+**«No hay nada por contabilizar en el período.»**
+No hay líneas propias libres entre esas fechas: o ya están en otra corrida (generada, aceptada o exportada), o no hubo movimientos propios, o el recibo todavía no se confirmó. Cambie el período o cancele la corrida que las tiene.
+
+**«Indique el período (desde y hasta).» / «El período no es válido: la fecha final no puede ser anterior a la inicial.»**
+Falta una fecha o «hasta» es anterior a «desde». Corríjalas y vuelva a generar.
+
+**«Solo se acepta una corrida generada.» / «Solo se cancela una corrida generada o aceptada.» / «Solo se exporta una corrida aceptada o exportada.»**
+Cada paso tiene su estatus: generar → aceptar → exportar. Una exportada ya no se cancela ni se acepta; una generada primero se acepta. Recargue la ficha: otra persona pudo haberla cambiado.
+
+**«Corrida no encontrada.»**
+La corrida no existe o es del otro tipo: una corrida de compras no se abre desde Contabilización de despachos ni al revés.
+
+**«La corrida cambió mientras se guardaba. Revise y vuelva a intentar.»**
+Otra persona la cambió al mismo tiempo. Abra la ficha de nuevo y repita la acción.
+
+**Hay líneas «sin costo» en la corrida.**
+La capa del recibo (o la salida) no tenía costo cuando se congeló. Se contabilizan igual, con el costo en blanco, para que contabilidad las complete en su sistema. Poner el costo después en el producto no cambia lo ya congelado.
+
+**Eliminé una recolección que ya estaba en una corrida.**
+La corrida no se corrige sola. Si no está exportada, cancélela y genérela de nuevo; si ya se exportó, el ajuste se hace en el sistema contable.
+
+**¿Dónde cambio las columnas del archivo?**
+En la ventana «Exportar» de la corrida, con **Configurar…**: formato CSV o TXT, delimitador, formato de fecha, encabezado, columnas y su orden. Cada pantalla (compras y despachos) tiene sus plantillas.

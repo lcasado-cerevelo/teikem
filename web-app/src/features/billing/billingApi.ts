@@ -152,19 +152,27 @@ export function useStatement(clientId: string | null, from: string, to: string) 
 
 // ---------------------------------------------------------------- plantillas de exportación y archivo de una corrida (Lote 78)
 
-export function useExportTemplates() {
-  return useQuery({ queryKey: billingKeys.templates, queryFn: () => unwrap(api.GET('/api/v1/export-templates', { params: { query: { scope: 'BILLING' } } })) })
+/** Plantillas de exportación del alcance (Lote 181: también las de contabilización de compras y de despachos, PURCHASE_ACCOUNTING / DISPATCH_ACCOUNTING). Sin alcance, las de facturación. */
+export function useExportTemplates(scope = 'BILLING', enabled = true) {
+  return useQuery({
+    queryKey: scope === 'BILLING' ? billingKeys.templates : [...billingKeys.templates, scope],
+    queryFn: () => unwrap(api.GET('/api/v1/export-templates', { params: { query: { scope } } })),
+    enabled,
+  })
 }
 
-export function useExportFields() {
-  return useQuery({ queryKey: billingKeys.fields, queryFn: () => unwrap(api.GET('/api/v1/export-templates/fields', { params: { query: { scope: 'BILLING' } } })) })
+export function useExportFields(scope = 'BILLING') {
+  return useQuery({
+    queryKey: scope === 'BILLING' ? billingKeys.fields : [...billingKeys.fields, scope],
+    queryFn: () => unwrap(api.GET('/api/v1/export-templates/fields', { params: { query: { scope } } })),
+  })
 }
 
-export function useTemplateMutations() {
+export function useTemplateMutations(scope = 'BILLING') {
   const qc = useQueryClient()
   const refresh = () => qc.invalidateQueries({ queryKey: billingKeys.templates })
   return {
-    create: useMutation({ mutationFn: (body: ExportTemplateRequest) => unwrap(api.POST('/api/v1/export-templates', { body: { ...body, scope: 'BILLING' } })), onSettled: refresh }),
+    create: useMutation({ mutationFn: (body: ExportTemplateRequest) => unwrap(api.POST('/api/v1/export-templates', { body: { ...body, scope } })), onSettled: refresh }),
     update: useMutation({
       mutationFn: (v: { id: string; body: ExportTemplateRequest }) => unwrap(api.PUT('/api/v1/export-templates/{publicId}', { params: { path: { publicId: v.id } }, body: v.body })),
       onSettled: refresh,

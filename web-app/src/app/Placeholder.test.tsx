@@ -46,16 +46,9 @@ describe('Placeholder (pantalla pendiente)', () => {
     expect(screen.queryByTestId('brand-mark')).toBeNull()
   })
 
-  it('la ruta pendiente de routes.tsx pinta el Placeholder de su ítem', () => {
-    setLang('es')
-    expect(appRoutes.find((r) => r.path === '/ops/dispatch')!.pending).toBeUndefined() // Lote F-E2a: ya es pantalla
-    expect(appRoutes.find((r) => r.path === '/ops/monitor')!.pending).toBeUndefined() // Lote F-E3: ya es pantalla
-    const route = appRoutes.find((r) => r.path === '/money/purchases')!
-    expect(route.pending).toBe(true)
-    const Screen = route.element
-    render(<Screen />)
-    expect(screen.getByTestId('placeholder-screen')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 1, name: 'Contabilización de compras' })).toBeInTheDocument()
-    expect(screen.getByText('ver, aceptar y exportar a tu sistema contable')).toBeInTheDocument()
+  it('ya no queda ninguna ruta pendiente en routes.tsx: toda pantalla del menú existe (Lote 181 cerró las dos de Contabilidad)', () => {
+    expect(appRoutes.filter((r) => r.pending)).toEqual([])
+    expect(appRoutes.find((r) => r.path === '/money/purchases')!.pending).toBeUndefined()
+    expect(appRoutes.find((r) => r.path === '/money/dispatch')!.pending).toBeUndefined()
   })
 })

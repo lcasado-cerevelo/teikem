@@ -58,7 +58,7 @@ Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Esta
 - ☑ **G2 (Lote 179, autónomo):** orden de trabajo abierta demasiado tiempo, combustible fuera de rango, vehículo o chofer sin viaje N días. Umbrales fijos (14 días, 30 %); ajustarlos por compañía queda pendiente.
 
 ## H. Contabilización de compras y despachos (aún sin construir en el servidor)
-- ☐ **H1.** Regla acordada por el análisis del 2026-10-21 (**por confirmar con el dueño**): se contabiliza por **dueño del inventario** (lo propio sí, lo de un cliente no), sin importar el tipo de documento (orden de compra o aviso de llegada), con el **costo congelado de cada línea** (capas, Lotes 147-148). Corridas Generada → Aceptada → Exportada con plantilla de exportación.
+- ☑ **H1 (Lote 181, autónomo; la regla sigue por confirmar con el dueño; ver `docs/lote181-decisiones.md`).** Regla acordada por el análisis del 2026-10-21 (**por confirmar con el dueño**): se contabiliza por **dueño del inventario** (lo propio sí, lo de un cliente no), sin importar el tipo de documento (orden de compra o aviso de llegada), con el **costo congelado de cada línea** (capas, Lotes 147-148). Corridas Generada → Aceptada → Exportada con plantilla de exportación.
 
 ## I. Defectos conocidos por arreglar
 - ☑ **I1.** «Avisos que puedo silenciar» (campana → lista) sale con los interruptores **sin texto**; sospecha de color tras el cambio de marca o nombre vacío del servidor; por revisar.
@@ -69,7 +69,7 @@ Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Esta
 - ☑ «Mensajes de clientes» sin ítem de menú: **decidido por Luis el 2026-10-20, sin menú** (la pantalla sigue en `/portal/messages`).
 - ☑ Ocultar opciones de recibo a ciegas en la web cuando la compañía exige documento (Lote 180).
 - ☑ **Encabezado de las tarjetas y paneles (decidido por el dueño, 2026-10-21; hecho, autónomo):** fondo = el tercer color de la marca (el gris `--money`) al 8 % mezclado con el fondo del panel; lo atenuado con 25 % del texto; contraste AA verificado en los 14 temas y los dos modos; recorrido Playwright con capturas.
-- ☐ Endurecer los endpoints con los permisos de acceso por ítem de menú.
+- ☐ Endurecer los endpoints con los permisos de acceso por ítem de menú. **No se hizo (autónomo): exigirlos en el servidor puede dejar sin acceso a roles y aparatos que hoy leen con el permiso de datos; ver el informe. Decide Luis.**
 - ☑ Prueba de `db-update` contra SQL Server (simulación y real; se corrigió el orden update.sql → diff).
 - ◐ Capturas / Playwright de las pantallas nuevas: hechos los de la recolección maestra y el encabezado (`e2e/lote180-encabezado-maestra.spec.ts`, capturas `l180-*`); faltan los del portal del cliente, avisos y filtros.
 - ☑ EXIT_NOTICE como fuente de datos para Vistas (menores, autónomo).

@@ -479,7 +479,7 @@ export default function PurchaseOrderDetailScreen() {
  */
 function StoredCostLoader({ productPublicId, onLoaded }: { productPublicId: string; onLoaded: (cost: number | null) => void }) {
   const { data } = useProduct(productPublicId, { handleAccessDenied: false })
-  const cost = data?.purchaseCost ?? null
+  const cost = data?.product?.purchaseCost ?? null
   useEffect(() => {
     if (data) onLoaded(cost)
     // eslint-disable-next-line react-hooks/exhaustive-deps

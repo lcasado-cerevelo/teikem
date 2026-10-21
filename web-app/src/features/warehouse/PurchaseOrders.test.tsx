@@ -52,7 +52,7 @@ function route({ method, url }: Call): unknown {
   const p = url.pathname
   if (method === 'GET' && p === '/api/v1/purchase-orders') return { total: 1, skip: 0, take: 25, items: [ORDER] }
   if (method === 'GET' && p === '/api/v1/products') return { total: 1, skip: 0, take: 50, items: [{ id: 1, publicId: P1, sku: 'TORN-01', name: 'Tornillo', isActive: true }] }
-  if (method === 'GET' && p === `/api/v1/products/${P1}`) return { id: 1, publicId: P1, sku: 'TORN-01', name: 'Tornillo', isActive: true, purchaseCost: 5 }
+  if (method === 'GET' && p === `/api/v1/products/${P1}`) return { product: { id: 1, publicId: P1, sku: 'TORN-01', name: 'Tornillo', isActive: true, purchaseCost: 5 }, hasMovements: false }
   if (method === 'GET' && p === `/api/v1/purchase-orders/${PO}`) return mock.order ?? ORDER
   if (method === 'PATCH' && mock.patch) return mock.patch()
   if (method === 'GET' && p === '/api/v1/suppliers')

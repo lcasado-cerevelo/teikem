@@ -151,10 +151,11 @@ function PreviewModal({ run, template, onClose }: { run: BillingRunDto; template
 
 // ---------------------------------------------------------------- configurar una plantilla
 
-function TemplateEditor({ current, canDeactivate, onClose, onSaved }: { current: ExportTemplateDto; canDeactivate: boolean; onClose: () => void; onSaved: (id: string) => void }) {
+/** Configura una plantilla de exportación (Lote 181: `scope` elige el catálogo de campos; por omisión facturación). */
+export function TemplateEditor({ current, canDeactivate, onClose, onSaved, scope = 'BILLING' }: { current: ExportTemplateDto; canDeactivate: boolean; onClose: () => void; onSaved: (id: string) => void; scope?: string }) {
   const t = useT()
-  const fields = useExportFields()
-  const { create, update, deactivate } = useTemplateMutations()
+  const fields = useExportFields(scope)
+  const { create, update, deactivate } = useTemplateMutations(scope)
   const [form, setForm] = useState<TemplateForm>(() => toForm(current))
   const [error, setError] = useState<string | null>(null)
   const [removing, setRemoving] = useState(false)

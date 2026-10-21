@@ -91,7 +91,7 @@ public static class MenuPermissions
         [PermissionCatalog.WarehouseCrossdock] = new[] { "crossdock.view" },
         [PermissionCatalog.RentalManage] = new[] { PermissionCatalog.RentalView },
         [PermissionCatalog.SalesCreate] = new[] { PermissionCatalog.SalesView },
-        [PermissionCatalog.BillingGenerate] = new[] { PermissionCatalog.BillingView },
+        [PermissionCatalog.BillingGenerate] = new[] { PermissionCatalog.BillingView, "dispatchaccounting.view" },   // Lote 181: quien genera corridas de despachos entra a su pantalla
         [PermissionCatalog.BillingApprove] = new[] { PermissionCatalog.BillingView },
         [PermissionCatalog.BillingExport] = new[] { PermissionCatalog.BillingView, "dispatchaccounting.view" },
         [PermissionCatalog.BillingCredit] = new[] { PermissionCatalog.BillingView },
@@ -136,6 +136,7 @@ public static class MenuPermissions
         ["crossdock.view"] = new[] { PermissionCatalog.InventoryView },
         ["kardex.view"] = new[] { PermissionCatalog.InventoryView },
         ["purchaseaccounting.view"] = new[] { PermissionCatalog.PurchasingView },
+        ["dispatchaccounting.view"] = new[] { PermissionCatalog.BillingView },   // Lote 181: las corridas de despachos se leen con billing.view
         ["drivers.view"] = new[] { PermissionCatalog.FleetView },
         ["reports.view"] = new[] { PermissionCatalog.AnalyticsView },
         ["indicators.view"] = new[] { PermissionCatalog.AnalyticsView },
