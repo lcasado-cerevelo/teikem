@@ -1,6 +1,6 @@
 # Plan y pendientes (actualizado 2026-10-21)
 
-Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Estado: ☐ pendiente · ◐ en curso · ☑ hecho · ⏸ por decidir.
+Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Estado: ☐ pendiente · ◐ en curso · ☑ hecho.
 
 ## Principios acordados (2026-10-21)
 - **La app móvil es la herramienta principal de trabajo del almacén:** fácil de entrar y de maniobrar (user friendly) por encima de la web; pocas pantallas, botones grandes, un solo paso para lo común, funciona sin señal.
@@ -21,10 +21,10 @@ Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Esta
 
 ## C. Un documento, varias ejecuciones (modelo: documento ≠ trabajo ≠ ejecutado)
 - ☐ **C1. Agrupar en pantalla sin tocar datos:** «Recolección y empaque» una fila por orden o aviso con su avance (pedido, reservado, sacado) y las recolecciones como movimientos al abrirla; la lista de recibos igual por aviso.
-- ⏸ **C2. Recibo con tandas dentro.** Un solo recibo por aviso que se **confirma por partes** (cada confirmación mueve lo capturado a la posición de recepción y saca sus tareas de acomodo; el recibo sigue abierto); cada línea muestra recibido / en staging / acomodado; la app avisa cuando el staging (capacidad máxima de la posición) se llena. Estructura nueva por secciones del script de actualización (tabla de tandas); recibos existentes = una tanda. Decidir después de C1.
-- ⏸ **C3. Despacho igual:** una orden con un despacho de varios movimientos. Cambia el modelo de recolecciones; solo si C1 no basta.
-- ⏸ **C4. Recibo y despacho con varios documentos.** Hoy un recibo apunta a UN aviso u orden de compra (y un aviso solo tiene un recibo activo) y una recolección a UNA orden de venta o UN aviso de salida (no se mezclan). Permitir varios (cada línea ya guarda de qué línea de documento viene; la recolección por olas es una recolección para varias órdenes). Decidir junto con C2 y C3.
-- ⏸ **Decisión abierta:** «Recibido parcial» ¿avisa al cliente en el portal? (el aviso de llegada ya publica eventos).
+- ☐ **C2. Recibo con tandas dentro (acordado).** Un solo recibo por aviso que se **confirma por partes** (cada confirmación mueve lo capturado a la posición de recepción y saca sus tareas de acomodo; el recibo sigue abierto); cada línea muestra recibido / en staging / acomodado; la app avisa cuando el staging (capacidad máxima de la posición) se llena. Estructura nueva por secciones del script de actualización (tabla de tandas); recibos existentes = una tanda.
+- ☐ **C3. Despacho igual (acordado):** una orden con un despacho de varios movimientos (de aquí, de allá…). Cambia el modelo de recolecciones; se hace después de C2.
+- ☐ **C4. Recibo y despacho con varios documentos (acordado).** Hoy un recibo apunta a UN aviso u orden de compra (y un aviso solo tiene un recibo activo) y una recolección a UNA orden de venta o UN aviso de salida (no se mezclan). Permitir varios (cada línea ya guarda de qué línea de documento viene; la recolección por olas es una recolección para varias órdenes).
+- **Detalle menor por confirmar al llegar a C2 (no bloquea nada):** si «Recibido parcial» avisa al cliente en el portal (el aviso de llegada ya publica eventos).
 
 ## D. Pendientes menores
 - ☐ Líneas existentes de una orden de compra: mostrar el aviso de diferencia de precio al editar.
