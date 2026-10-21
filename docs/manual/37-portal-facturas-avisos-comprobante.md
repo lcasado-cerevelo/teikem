@@ -2,8 +2,8 @@
 
 > Lote 119 (P10, 2026-10-18). Es lo que la persona del cliente ve en su app (portal). Módulo **CLIENT_PORTAL** (y **BILLING** para las facturas). Todo es **del cliente de la sesión**: una cosa de otro cliente responde 404 igual que una que no existe.
 
-## 1. El comprobante de entrega en la ficha de la orden
-Cuando una orden tiene su entrega registrada (ver [capítulo 36](36-registrar-entrega-web.md)), la ficha de la orden en el portal muestra la tarjeta **Comprobante de entrega**:
+## 1. El comprobante de entrega en la ficha del envío
+Cuando un envío tiene su entrega registrada (ver [capítulo 36](36-registrar-entrega-web.md)), la ficha del envío en el portal muestra la tarjeta **Comprobante de entrega**:
 
 - **Recibió** (nombre) y **Entregada** (fecha y hora).
 - «**La entrega la registró el personal de la compañía; el consignatario no firmó.**» (si la firma fuera del que recibió diría «Firmada por quien recibió.»).
@@ -12,7 +12,7 @@ Cuando una orden tiene su entrega registrada (ver [capítulo 36](36-registrar-en
 **Lo que el cliente NO ve:** el nombre del usuario que registró la entrega, las notas internas y el estado de la búsqueda de ubicación. `GET /api/v1/portal/orders/{publicId}` trae `deliveryProof` (`deliveredAtUtc`, `recipientName`, `registeredByStaff`, `signedByRecipient`, `latitude`, `longitude`) o nada.
 
 ## 2. Mis facturas (solo lectura)
-Inicio → **Mis facturas**. Lista con número, estatus, total, saldo y fechas; filtro **Todas / Emitidas / Vencidas / Pagadas**; **Cargar más**. Al tocar una factura se ve el **Detalle** (líneas con la orden de cada una), el subtotal, el impuesto, el total, lo pagado, lo acreditado, el **saldo** y los **pagos recibidos**.
+Inicio → **Mis facturas**. Lista con número, estatus, total, saldo y fechas; filtro **Todas / Emitidas / Vencidas / Pagadas**; **Cargar más**. Al tocar una factura se ve el **Detalle** (líneas con el envío de cada una), el subtotal, el impuesto, el total, lo pagado, lo acreditado, el **saldo** y los **pagos recibidos**.
 
 - **Solo consulta:** no hay ningún botón de pagar ni de marcar como pagada; los pagos los registra la compañía.
 - **No se ven** los borradores (una corrida sin aprobar), las notas internas, el detalle de un ajuste de la oficina ni los pagos anulados.
@@ -62,7 +62,7 @@ Ajustes → **Mi perfil y mi contraseña**.
 ## 6. Indicadores del cliente (Lote 120)
 En el **Inicio**, de los últimos **7, 30 o 90 días**:
 
-- **Órdenes creadas** y **Entregadas** (las que pasaron a Entregada en el período).
+- **Envíos creados** y **Entregadas** (las que pasaron a Entregada en el período).
 - **Entregas a tiempo:** de las entregadas que tenían fecha prometida, cuántas se entregaron hasta ese día (día de la compañía), con su porcentaje; si ninguna tenía fecha, no se muestra.
 - **Tiempo promedio de entrega** (horas desde la creación hasta la entrega).
 - **Intentos fallidos** del período.
@@ -73,4 +73,4 @@ En el **Inicio**, de los últimos **7, 30 o 90 días**:
 
 ## 7. Factura procesada (Lote 126)
 
-La ficha de la orden en el portal muestra **Factura procesada: fecha** cuando la compañía ya procesó la factura del cliente contra esa orden (hoja de COD cuadrada o cotejo desde Procesar entregas). Si no aparece la fila, todavía no se ha procesado. Solo lectura; sin el nombre de quien la procesó. Campo `invoiceProcessedAtUtc` de `GET /api/v1/portal/orders/{publicId}`.
+La ficha del envío en el portal muestra **Factura procesada: fecha** cuando la compañía ya procesó la factura del cliente contra ese envío (hoja de COD cuadrada o cotejo desde Procesar entregas). Si no aparece la fila, todavía no se ha procesado. Solo lectura; sin el nombre de quien la procesó. Campo `invoiceProcessedAtUtc` de `GET /api/v1/portal/orders/{publicId}`.

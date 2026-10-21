@@ -6,7 +6,7 @@ Lote 84 (P8, 1 de 3, 2026-10-17). El courier cobra el COD al consignatario en la
 
 | Acción | Permiso |
 |---|---|
-| Ver órdenes con COD, su detalle y las corridas de reconciliación | `cod.view` |
+| Ver envíos con COD, su detalle y las corridas de reconciliación | `cod.view` |
 | Registrar un cobro (también lo hará el chofer desde la app, P7) | `cod.collect` |
 | Reconciliar (cuadrar) lo cobrado por códigos | `cod.reconcile` |
 
@@ -14,18 +14,18 @@ La remesa al cliente (`cod.remit`) llega en el siguiente lote.
 
 ## 2. El cobro
 
-- Una orden con COD nace con el estatus **Por cobrar** (`PENDING`) y el monto en `CodAmount`. **`POST /cod/orders/{publicId}/collections`** registra un cobro: `method` (`CASH`, `CHECK`, `COMPANY_CHECK`, `ATH_MOVIL`, `CARD`), `amount` (mayor que cero, 2 decimales), `checkNumber` (obligatorio en cheque y company check), `reference` (ATH Móvil, depósito…), `notes` y, si se omite, la fecha es ahora.
-- Se pueden registrar **varios cobros parciales**; la suma no puede pasar de lo que falta por cobrar. El COD de la orden pasa a **Parcial** y, al completarse, a **Cobrado** (cobrar todo de una vez pasa por Parcial en el historial). No se cobra en una orden en borrador o cancelada.
+- Un envío con COD nace con el estatus **Por cobrar** (`PENDING`) y el monto en `CodAmount`. **`POST /cod/orders/{publicId}/collections`** registra un cobro: `method` (`CASH`, `CHECK`, `COMPANY_CHECK`, `ATH_MOVIL`, `CARD`), `amount` (mayor que cero, 2 decimales), `checkNumber` (obligatorio en cheque y company check), `reference` (ATH Móvil, depósito…), `notes` y, si se omite, la fecha es ahora.
+- Se pueden registrar **varios cobros parciales**; la suma no puede pasar de lo que falta por cobrar. El COD del envío pasa a **Parcial** y, al completarse, a **Cobrado** (cobrar todo de una vez pasa por Parcial en el historial). No se cobra en un envío en borrador o cancelada.
 - Cada cobro queda en **Cobrado** hasta que se cuadra. La bitácora registra quién lo cobró.
 
 ## 3. La reconciliación (PWBack)
 
-**`POST /cod/reconcile`** recibe una lista de **códigos** y, por cada uno, cuadra lo cobrado de su orden: los cobros pasan a **Cuadrado** y, si la orden ya estaba cobrada del todo, su COD pasa a **Cuadrado**. Si la orden está cobrada solo en parte, lo cobrado se cuadra pero el COD de la orden sigue en Parcial; lo que se cobre después queda por cuadrar.
+**`POST /cod/reconcile`** recibe una lista de **códigos** y, por cada uno, cuadra lo cobrado de su orden: los cobros pasan a **Cuadrado** y, si el envío ya estaba cobrada del todo, su COD pasa a **Cuadrado**. Si el envío está cobrada solo en parte, lo cobrado se cuadra pero el COD del envío sigue en Parcial; lo que se cobre después queda por cuadrar.
 
-- **De dónde salen los códigos:** del **código de barras de la hoja escaneada** (el número de la factura del cliente, o el de la orden) o escritos a mano. La lectura del código de barras de los archivos (PDF o imagen) la hace la pantalla en el navegador (lote siguiente); el API solo recibe los códigos, cada uno con su `source` (archivo y página).
-- **Cómo se encuentra la orden:** primero por **número de envío**, y si no, por **número de factura del cliente**. La factura se cuenta **por cliente** (`FAC-00001` existe en cada cliente), así que:
-  1. con `clientPublicId` en la solicitud (las hojas son de ese cliente) solo se busca entre sus órdenes;
-  2. sin él, si el código coincide con varias órdenes se queda con las que tienen COD y, si todavía hay varias, con las que tienen cobros por cuadrar; si aun así no es una sola, el resultado es **ambiguo**.
+- **De dónde salen los códigos:** del **código de barras de la hoja escaneada** (el número de la factura del cliente, o el del envío) o escritos a mano. La lectura del código de barras de los archivos (PDF o imagen) la hace la pantalla en el navegador (lote siguiente); el API solo recibe los códigos, cada uno con su `source` (archivo y página).
+- **Cómo se encuentra el envío:** primero por **número de envío**, y si no, por **número de factura del cliente**. La factura se cuenta **por cliente** (`FAC-00001` existe en cada cliente), así que:
+  1. con `clientPublicId` en la solicitud (las hojas son de ese cliente) solo se busca entre sus envíos;
+  2. sin él, si el código coincide con varias envíos se queda con las que tienen COD y, si todavía hay varias, con las que tienen cobros por cuadrar; si aun así no es una sola, el resultado es **ambiguo**.
 - **`dryRun: true`** solo dice qué pasaría (vista previa): no cuadra nada ni guarda la corrida.
 - Cada corrida queda guardada con sus códigos y resultados (`GET /cod/runs`, `GET /cod/runs/{id}`): quién, cuándo, el origen y cuántos se cuadraron. Un código que da un problema **no detiene** los demás.
 
@@ -33,7 +33,7 @@ La remesa al cliente (`cod.remit`) llega en el siguiente lote.
 
 | Resultado | Qué significa | Qué hacer |
 |---|---|---|
-| `RECONCILED` | Se cuadraron los cobros de la orden (`Cuadrado: N cobro(s) por X.`) | — |
+| `RECONCILED` | Se cuadraron los cobros del envío (`Cuadrado: N cobro(s) por X.`) | — |
 | `ALREADY_RECONCILED` | `Ya estaba cuadrado.` | Nada: la hoja ya se había procesado |
 | `NOT_FOUND` | `No hay ningún envío con ese número de factura ni de envío.` | Revisar el código leído; probar a mano |
 | `AMBIGUOUS` | `El código coincide con más de un envío: cuádrela a mano desde el envío.` | Indicar el cliente de las hojas o cuadrar a mano |
@@ -49,24 +49,24 @@ La remesa al cliente (`cod.remit`) llega en el siguiente lote.
 | Monto inválido | `El monto debe ser mayor que cero (hasta 2 decimales).` | 400 |
 | Cheque sin número / número largo | `Indique el número del cheque.` / `El número del cheque no puede pasar de 40 caracteres.` | 400 |
 | Referencia o nota largas | `La referencia no puede pasar de 80 caracteres.` / `La nota no puede pasar de 300 caracteres.` | 400 |
-| Orden sin COD | `El envío no tiene COD.` | 422 |
-| Orden en borrador o cancelada | `No se registra un cobro en un envío en borrador o cancelado.` | 422 |
+| Envío sin COD | `El envío no tiene COD.` | 422 |
+| Envío en borrador o cancelado | `No se registra un cobro en un envío en borrador o cancelado.` | 422 |
 | Cobro mayor que lo pendiente | `El cobro pasa de lo que falta por cobrar de {orden}: {monto}.` | 422 |
 | Reconciliar sin códigos / código vacío | `Indique al menos un código.` | 400 |
 | Código largo / más de 2000 códigos | `Un código no puede pasar de 80 caracteres.` / `Una corrida no puede tener más de 2000 códigos.` | 400 |
 | Origen largo | `El origen no puede pasar de 300 caracteres.` | 400 |
 | Cliente inexistente | `El cliente no existe.` | 400 |
-| Orden o corrida inexistente | `Orden no encontrada.` / `Corrida no encontrada.` | 404 |
+| Envío o corrida inexistente | `Envío no encontrado.` / `Corrida no encontrada.` | 404 |
 
 ## 4. Para soporte
 
 - Tabla `CodCollection` (ya estaba en el esquema original) con las columnas `CollectedBy`, `ReconciledBy` y `ReconcileRunId`; tablas `CodReconcileRun` y `CodReconcileItem`; EntityType `COD_COLLECTION`: sección **2026-10-17 (x)** de `Diseño/logistica-db-update.sql`.
-- El ciclo formal con historial es el del **COD de la orden** (`EntityType ORDER_COD`: Por cobrar → Parcial → Cobrado → Cuadrado → Remitido). El estatus de cada cobro (`CodCollectionStatus`) cambia sin historial propio.
+- El ciclo formal con historial es el del **COD del envío** (`EntityType ORDER_COD`: Por cobrar → Parcial → Cobrado → Cuadrado → Remitido). El estatus de cada cobro (`CodCollectionStatus`) cambia sin historial propio.
 - La **anulación de un cobro** y el **registro desde la app del chofer con el POD** (P7) quedan fuera de este lote.
 
 ## 5. En la pantalla (Lote 85)
 
-**Contabilidad → Procesar entregas** ([L85](frontend/l85-cod.md)): órdenes con COD y registro de cobros; **Reconciliar** subiendo las hojas escaneadas (PDF o imágenes). El **navegador** lee el código de barras de cada hoja (pdf.js y zxing-wasm, servidos con la propia aplicación; los archivos **no se suben**) y al API solo llegan los códigos con su origen (archivo y página); vista previa (`dryRun`), cuadrar con confirmación y corridas anteriores. Las páginas donde no se encontró ningún código se avisan para revisarlas a mano. Si se elige el cliente de las hojas, se manda `clientPublicId` (ver §3).
+**Contabilidad → Procesar entregas** ([L85](frontend/l85-cod.md)): envíos con COD y registro de cobros; **Reconciliar** subiendo las hojas escaneadas (PDF o imágenes). El **navegador** lee el código de barras de cada hoja (pdf.js y zxing-wasm, servidos con la propia aplicación; los archivos **no se suben**) y al API solo llegan los códigos con su origen (archivo y página); vista previa (`dryRun`), cuadrar con confirmación y corridas anteriores. Las páginas donde no se encontró ningún código se avisan para revisarlas a mano. Si se elige el cliente de las hojas, se manda `clientPublicId` (ver §3).
 
 ## 6. La remesa al cliente (Lote 86)
 
@@ -77,8 +77,8 @@ La **remesa** (`REM-#####`) le devuelve al cliente el dinero que se cobró por �
 **Abierta → Cuadrada → Aprobada → Remitida.** Una abierta o cuadrada se puede **cancelar**.
 
 1. **Candidatos** (`GET /cod/remittances/candidates?clientPublicId=&periodStart=&periodEnd=&commissionPct=`): lo que entraría (sin crear nada) y la comisión que se aplicaría.
-2. **Crear** (`POST /cod/remittances`: cliente y período): agrupa los cobros **cuadrados** (reconciliados) de las órdenes de ese cliente cuya **fecha de cobro** cae en el período (en la zona horaria de la compañía) y que todavía no están en otra remesa. **Cada cobro entra en una sola remesa a la vez.** Lo cobrado que no se ha cuadrado no entra.
-3. **Cuadrar** (`POST .../review`): se revisó el cuadre. **Aprobar** (`POST .../approve`): exige **reautenticación (AAL2)** como aprobar una corrida de facturación; queda quién y cuándo. **Remitir** (`POST .../remit`, con una referencia opcional del pago, p. ej. el número de cheque): los cobros pasan a **Remitido** y, cuando todos los cobros de una orden ya se remitieron, el **COD de la orden pasa a Remitido** (terminal).
+2. **Crear** (`POST /cod/remittances`: cliente y período): agrupa los cobros **cuadrados** (reconciliados) de los envíos de ese cliente cuya **fecha de cobro** cae en el período (en la zona horaria de la compañía) y que todavía no están en otra remesa. **Cada cobro entra en una sola remesa a la vez.** Lo cobrado que no se ha cuadrado no entra.
+3. **Cuadrar** (`POST .../review`): se revisó el cuadre. **Aprobar** (`POST .../approve`): exige **reautenticación (AAL2)** como aprobar una corrida de facturación; queda quién y cuándo. **Remitir** (`POST .../remit`, con una referencia opcional del pago, p. ej. el número de cheque): los cobros pasan a **Remitido** y, cuando todos los cobros de un envío ya se remitieron, el **COD del envío pasa a Remitido** (terminal).
 4. **Cancelar** (`POST .../cancel`): solo abierta o cuadrada; la remesa se desactiva (sale de la lista) y sus cobros quedan libres para otra remesa.
 
 ### La comisión
@@ -87,7 +87,7 @@ Por cada cobro: **monto × % ÷ 100**, redondeado a 2 decimales (el medio hacia 
 
 ### Exportar
 
-`GET /cod/remittances/{id}/export?templatePublicId=` arma el archivo de una remesa **aprobada o remitida**: **una fila por cobro**, con los datos de la remesa repetidos, con una plantilla del alcance `COD_REMITTANCE` (el mismo motor de plantillas de la facturación: CSV o TXT, delimitador, formato de fecha, columnas y encabezados). Sin plantilla se usa la primera activa (**Formato estándar**, todas las columnas, que se crea sola). Las plantillas se administran en `/export-templates?scope=COD_REMITTANCE` (con los permisos de facturación). Campos: número de la remesa, período, cliente, moneda, orden, factura, fecha, método, cheque, referencia, monto cobrado, comisión (% y monto), neto y los totales de la remesa.
+`GET /cod/remittances/{id}/export?templatePublicId=` arma el archivo de una remesa **aprobada o remitida**: **una fila por cobro**, con los datos de la remesa repetidos, con una plantilla del alcance `COD_REMITTANCE` (el mismo motor de plantillas de la facturación: CSV o TXT, delimitador, formato de fecha, columnas y encabezados). Sin plantilla se usa la primera activa (**Formato estándar**, todas las columnas, que se crea sola). Las plantillas se administran en `/export-templates?scope=COD_REMITTANCE` (con los permisos de facturación). Campos: número de la remesa, período, cliente, moneda, envío, factura, fecha, método, cheque, referencia, monto cobrado, comisión (% y monto), neto y los totales de la remesa.
 
 ### Validaciones y mensajes
 
@@ -117,23 +117,23 @@ La **pestaña Remesas** de la misma pantalla ([L87](frontend/l87-remesas.md)) cu
 
 ## 7. Procesar la factura del cliente («second check», Lote 126)
 
-> Dictado de Luis (2026-10-18). En el sistema viejo, para «procesar» la factura del cliente creaban una orden de entrega ficticia cuya pieza era la factura. **En Teikem no hay órdenes ficticias:** la factura del cliente viaja con la orden (`ClientInvoiceNumber`; si no viene, le pegan un label) y, cuando la orden ya se entregó, la factura se **procesa** contra ella como comprobación.
+> Dictado de Luis (2026-10-18). En el sistema viejo, para «procesar» la factura del cliente creaban un envío de entrega ficticia cuya pieza era la factura. **En Teikem no hay envíos ficticias:** la factura del cliente viaja con el envío (`ClientInvoiceNumber`; si no viene, le pegan un label) y, cuando el envío ya se entregó, la factura se **procesa** contra ella como comprobación.
 
 **Dónde:** la misma pantalla **Procesar entregas → Reconciliar** (COD). Se suben las hojas escaneadas (PDF o imágenes) o se teclean los números, igual que para COD. Permiso `cod.reconcile`, módulo `COD`.
 
 **¿Qué vas a subir?** Un selector al principio: **Detectar** (por omisión), **Hojas de COD**, **Facturas** o **Ambas**. El sistema **siempre procesa todo lo que leyó**: a cada hoja le busca su orden y la clasifica él:
-- la orden **tiene COD** → es una **hoja de COD**: cuadra el cobro (como siempre) **y** deja procesada la factura de la orden;
-- la orden **no tiene COD** → es una **factura**: la coteja contra la orden entregada y la deja procesada.
+- el envío **tiene COD** → es una **hoja de COD**: cuadra el cobro (como siempre) **y** deja procesada la factura del envío;
+- el envío **no tiene COD** → es una **factura**: la coteja contra el envío entregado y la deja procesada.
 
-El selector solo dice qué esperabas, y de ahí salen las **advertencias** (informativas, nada se descarta): «Dijiste hojas de COD, pero algunas son de órdenes sin COD: las procesé como facturas» · «Dijiste facturas, pero algunas son hojas de órdenes con COD: las cuadré como COD» · «Dijiste ambas, pero no subiste facturas de órdenes sin COD» · «Dijiste ambas, pero no subiste hojas de COD». Con **Detectar** no hay advertencias.
+El selector solo dice qué esperabas, y de ahí salen las **advertencias** (informativas, nada se descarta): «Dijiste hojas de COD, pero algunas son de envíos sin COD: las procesé como facturas» · «Dijiste facturas, pero algunas son hojas de envíos con COD: las cuadré como COD» · «Dijiste ambas, pero no subiste facturas de envíos sin COD» · «Dijiste ambas, pero no subiste hojas de COD». Con **Detectar** no hay advertencias.
 
-**Resultados nuevos por hoja** (además de los de COD): **Factura procesada** (`INVOICE_CHECKED`: la orden está entregada; en la vista previa, «se procesaría»), **No entregada** (`NOT_DELIVERED`: la orden existe pero no se ha entregado; se procesa cuando se entregue) y **Ya procesada** (`ALREADY_PROCESSED`: esa orden ya traía su factura procesada en otra corrida). La columna **Tipo** dice si la hoja fue de COD o factura. El resumen cuenta «N factura(s) procesada(s)» aparte de lo cuadrado, y **Cuadrar** se habilita si hay algo que cuadrar o alguna factura por procesar.
+**Resultados nuevos por hoja** (además de los de COD): **Factura procesada** (`INVOICE_CHECKED`: el envío está entregado; en la vista previa, «se procesaría»), **No entregada** (`NOT_DELIVERED`: el envío existe pero no se ha entregado; se procesa cuando se entregue) y **Ya procesada** (`ALREADY_PROCESSED`: ese envío ya traía su factura procesada en otra corrida). La columna **Tipo** dice si la hoja fue de COD o factura. El resumen cuenta «N factura(s) procesada(s)» aparte de lo cuadrado, y **Cuadrar** se habilita si hay algo que cuadrar o alguna factura por procesar.
 
 **El cliente de las hojas es obligatorio para procesar facturas:** el número de factura se repite entre clientes, así que si la vista previa trae facturas y no se eligió el cliente, «Cuadrar» pide elegirlo («Para procesar facturas elige el cliente de las hojas…»). Para hojas de COD sigue siendo opcional.
 
-**Qué queda en la orden:** `InvoiceProcessedAtUtc`, `InvoiceProcessedBy` e `InvoiceProcessRunId` (la corrida de lectura, con el archivo y la fila de cada hoja). **Una sola vez por orden**: la segunda hoja de la misma orden sale «Ya procesada» y no cambia nada. La ficha de la orden muestra **Factura procesada: fecha · quién** (o «Todavía no») en el panel COD.
+**Qué queda en el envío:** `InvoiceProcessedAtUtc`, `InvoiceProcessedBy` e `InvoiceProcessRunId` (la corrida de lectura, con el archivo y la fila de cada hoja). **Una sola vez por orden**: la segunda hoja de el mismo envío sale «Ya procesada» y no cambia nada. La ficha del envío muestra **Factura procesada: fecha · quién** (o «Todavía no») en el panel COD.
 
-**Cobro configurable (contrato → Cotejo de factura):** apagado por omisión. Encendido con un monto, cada factura procesada (cotejo o hoja de COD) genera en la **siguiente corrida de facturación** una línea **«Cotejo de factura de la orden X»** (tipo de cargo `INVOICE_CHECK`, con impuesto según el perfil fiscal del cliente), una sola vez por orden. Sin contrato o con el cobro apagado, procesar no cuesta.
+**Cobro configurable (contrato → Cotejo de factura):** apagado por omisión. Encendido con un monto, cada factura procesada (cotejo o hoja de COD) genera en la **siguiente corrida de facturación** una línea **«Cotejo de factura del envío X»** (tipo de cargo `INVOICE_CHECK`, con impuesto según el perfil fiscal del cliente), una sola vez por orden. Sin contrato o con el cobro apagado, procesar no cuesta.
 
 | Método y ruta | Permiso | Qué hace |
 |---|---|---|

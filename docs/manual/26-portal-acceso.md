@@ -14,7 +14,7 @@ Respuestas posibles del login (`status`): `ok`, `mfa_required`, `browser_confirm
 
 ## 2. Un cliente por sesión
 - La sesión (y su token de acceso) lleva el **cliente** con el que entró (`cid`) y sobrevive a la renovación. Si la cuenta tiene acceso a **varios clientes**, entra con el de `clientPublicId` (o el primero por nombre) y cambia con `POST /api/v1/portal/auth/switch-client` `{ refreshToken, clientPublicId }` (403 `No tiene acceso a ese cliente.` si no es suyo).
-- **Aislamiento (dos filtros):** cada consulta del portal queda limitada a **la compañía y al cliente de la sesión**. Es un filtro de datos del contexto (no solo una comprobación en el servicio): aunque una consulta olvidara filtrar por cliente, no vería lo de otros. Una orden de **otro cliente** (de la misma compañía o de otra) responde **404 igual que una que no existe**.
+- **Aislamiento (dos filtros):** cada consulta del portal queda limitada a **la compañía y al cliente de la sesión**. Es un filtro de datos del contexto (no solo una comprobación en el servicio): aunque una consulta olvidara filtrar por cliente, no vería lo de otros. Un envío de **otro cliente** (de la misma compañía o de otra) responde **404 igual que una que no existe**.
 - La sesión **muere** (401) al renovar si la cuenta se suspende, se da de baja o pierde el acceso a ese cliente, o si el cliente o la compañía se desactivan.
 - **Un usuario de portal nunca alcanza las rutas del staff** (403 `portal_scope`: `Esta ruta no está disponible para usuarios del portal.`) aunque su token sea válido; y una sesión del staff no entra a `/api/v1/portal/*` (403 `portal_scope`: `Esta ruta es solo para usuarios del portal.`). Siguen abiertos para el portal la sesión (`/auth/*`: renovar, salir, contraseña, MFA y computadoras de confianza), `/portal/*` y el documento legal.
 - El portal exige aceptar el **documento legal** (capítulo 24) como todos.
@@ -23,9 +23,9 @@ Respuestas posibles del login (`status`): `ok`, `mfa_required`, `browser_confirm
 | Endpoint | Qué devuelve |
 |---|---|
 | `GET /api/v1/portal/me` | La cuenta, el cliente actual y los demás clientes a los que tiene acceso |
-| `GET /api/v1/portal/orders?search&status&fromUtc&toUtc&skip&take` | Mis órdenes (solo las del cliente de la sesión): conduce, orden, factura del cliente, consignatario, pueblo, servicio, piezas, COD, estatus. Máximo 100 por página |
-| `GET /api/v1/portal/orders/{id}` | Una orden mía con la dirección de entrega, los paquetes y su **línea de tiempo** (estatus y cuándo) |
-| `GET /api/v1/portal/summary` | El inicio: total de mis órdenes, cuántas hay por estatus y las 5 más recientes (Lote 102) |
+| `GET /api/v1/portal/orders?search&status&fromUtc&toUtc&skip&take` | Mis envíos (solo las del cliente de la sesión): conduce, envío, factura del cliente, consignatario, pueblo, servicio, piezas, COD, estatus. Máximo 100 por página |
+| `GET /api/v1/portal/orders/{id}` | Un envío mía con la dirección de entrega, los paquetes y su **línea de tiempo** (estatus y cuándo) |
+| `GET /api/v1/portal/summary` | El inicio: total de mis envíos, cuántas hay por estatus y las 5 más recientes (Lote 102) |
 | `GET /api/v1/portal/notifications?skip&take` | La bandeja de avisos: los resúmenes de mi cliente marcados para el portal, los más nuevos primero; máximo 100 por página (Lote 102) |
 | `GET /api/v1/portal/auth/config` | Si el login pide reto anti-robot y con qué llave del sitio |
 
@@ -43,10 +43,10 @@ Los DTO del portal son **propios y mínimos**: no llevan precios cotizados, nota
 | Cuenta de portal sin acceso activo a ningún cliente | 403 `El usuario no tiene acceso activo al portal.` |
 | `clientPublicId` que no es de la cuenta | 403 `No tiene acceso a ese cliente.` |
 | Ruta del staff con una sesión de portal / ruta del portal con una del staff | 403 `portal_scope` |
-| Orden de otro cliente o inexistente | 404 (igual respuesta) |
+| Envío de otro cliente o inexistente | 404 (igual respuesta) |
 | Módulo CLIENT_PORTAL apagado para la compañía | 403 `module_disabled` |
 
 ## Casos frecuentes
 - **«El portal no me deja entrar» (cliente):** ¿aceptó la invitación (vence a las 48 h)? ¿su usuario está ACTIVO en el expediente del cliente? ¿es una computadora nueva (revise el correo)? ¿la cuenta está bloqueada por intentos fallidos?
 - **Un usuario del staff no entra por el portal** (ni al revés): es a propósito; cada uno tiene su login.
-- **El cliente dice que no ve una orden:** puede ser de otro cliente de la compañía (el portal solo muestra las del cliente con el que entró) o aún no estar creada; el portal responde igual en los dos casos.
+- **El cliente dice que no ve un envío:** puede ser de otro cliente de la compañía (el portal solo muestra las del cliente con el que entró) o aún no estar creada; el portal responde igual en los dos casos.

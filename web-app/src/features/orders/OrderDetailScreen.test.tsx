@@ -945,7 +945,7 @@ describe('Expediente — Devolver (Lote 112)', () => {
     current = { ...RETURNABLE, suggestReturn: true, failedAttempts: 2, returnOfOrderNumber: 'ORD-00003' }
     wrap([...ALL, 'orders.return'])
     await loaded()
-    expect(screen.getByTestId('suggest-return')).toHaveTextContent('Se sugiere devolverla: 2 intento(s) fallido(s)')
+    expect(screen.getByTestId('suggest-return')).toHaveTextContent('Se sugiere devolverlo: 2 intento(s) fallido(s)')
     expect(screen.getByTestId('return-of')).toHaveTextContent('Vuelta de ORD-00003')
   })
 

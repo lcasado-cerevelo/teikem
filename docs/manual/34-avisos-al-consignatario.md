@@ -8,18 +8,18 @@ Lote 116 (2026-10-18, dictado por Luis; diseño en `docs/p12-avisos-consignatari
 
 ## 1.1 Las pantallas (app del cliente)
 - **Ajustes → Avisos a mis consignatarios → Configurar avisos** (`/consignee-notices`): casilla **«Avisar a mis consignatarios»**, **Idioma de los avisos** (Español / English) y la lista de consignatarios con búsqueda por nombre o ciudad. Cada consignatario trae dos casillas: **Avisar por correo: <correo>** y **Avisar por texto: <teléfono>** (deshabilitadas si ese medio no está registrado o el aviso está apagado; el texto se guarda pero todavía no sale). Marcar muestra la **advertencia** de privacidad con **Continuar / Cancelar**; desmarcar no la pide. Quien solo consulta lo ve sin poder cambiarlo.
-- **Seguimiento por enlace** (`/track/<token>`): pública; la barra de progreso de la orden y el último movimiento. Ver capítulo 28.
+- **Seguimiento por enlace** (`/track/<token>`): pública; la barra de progreso del envío y el último movimiento. Ver capítulo 28.
 - **Darse de baja** (`/unsubscribe/<token>`): pública; abrir el enlace **no** da de baja: hay que pulsar **«Sí, darme de baja»** (así un filtro de correo no lo hace por usted).
 
 ## 2. Cuándo se avisa
-| Qué pasó con la orden | ¿Se avisa? |
+| Qué pasó con el envío | ¿Se avisa? |
 |---|---|
 | **Sale En ruta** (En tránsito) — sale el enlace de seguimiento | Sí |
 | **Intento fallido**, otra salida En ruta, otro intento… | Sí |
 | **Estatus final**: Entregada, Devuelta, Cancelada, En almacén | Sí |
 | Recogida, Sin asignar, Asignada (movimientos dentro del almacén) | **No** |
 | Un estatus **brincado** por el escaneo | **No** |
-Solo si el cliente tiene el aviso **prendido**, el consignatario está **marcado** para ese medio, tiene ese medio **registrado** (correo o teléfono en su ficha) y **no se dio de baja**. El correo lleva el **idioma del cliente**, el enlace de seguimiento de la orden y el de baja.
+Solo si el cliente tiene el aviso **prendido**, el consignatario está **marcado** para ese medio, tiene ese medio **registrado** (correo o teléfono en su ficha) y **no se dio de baja**. El correo lleva el **idioma del cliente**, el enlace de seguimiento del envío y el de baja.
 
 ## 3. Marcar a un consignatario
 Al marcarlo sale una **advertencia** (parte de la política de privacidad): *«Si desea continuar, confirma que el consignatario aceptó recibir avisos…»*; hay que aceptarla. Entonces:
@@ -28,7 +28,7 @@ Al marcarlo sale una **advertencia** (parte de la política de privacidad): *«S
 Desmarcar también queda en la bitácora y no avisa. Marcar o desmarcar lo mismo otra vez no hace nada.
 
 ## 4. Enlace de seguimiento y baja
-- **Seguimiento:** `…/track/<token>`. El token es propio de cada orden, largo y **imposible de adivinar**; la página solo muestra el avance (no recibe datos ni permite buscar por número). API: `GET /api/v1/public/track/link/{token}` (sin sesión; 404 *«No encontramos ese enlace de seguimiento.»* si no existe).
+- **Seguimiento:** `…/track/<token>`. El token es propio de cada envío, largo y **imposible de adivinar**; la página solo muestra el avance (no recibe datos ni permite buscar por número). API: `GET /api/v1/public/track/link/{token}` (sin sesión; 404 *«No encontramos ese enlace de seguimiento.»* si no existe).
 - **Baja:** `…/unsubscribe/<token>` (cada aviso trae el suyo). API: `POST /api/v1/public/consignee-unsubscribe/{token}` (sin sesión; idempotente; 404 *«El enlace de baja no es válido.»*). La baja es **definitiva** para ese correo o teléfono en la compañía: queda en la bitácora, el consignatario deja de estar marcado y **el cliente no puede volver a marcarlo** (409).
 - Toda comunicación al consignatario trae la opción de darse de baja (enlace en el correo; «STOP» en el texto cuando exista).
 

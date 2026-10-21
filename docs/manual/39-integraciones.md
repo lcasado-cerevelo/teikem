@@ -9,10 +9,10 @@
 
 ## 2. Crear y editar una integración
 Pantalla: **Nueva integración** (nombre, descripción, cliente, plantilla de importación, conector, horario, alcances, a quién avisar y retención) · API: `POST /api/v1/integrations` (`integrations.create`), `PATCH /{publicId}` (`integrations.manage`), `GET /options`, `GET`, `GET /{publicId}`, `POST /{publicId}/deactivate` y `/reactivate` (apagar y prender: la cuenta de servicio, su rol y la regla de avisos siguen a la integración; nunca se borra).
-- **Cliente y plantilla:** las órdenes que entran se crean para ese cliente con la plantilla de importación elegida (la misma de Órdenes → Importar; con **varias líneas por orden** y reglas de «no pieza» del capítulo 03 §7.5). Como la orden la numera el archivo, el cliente debe tener marcado que numera sus órdenes.
+- **Cliente y plantilla:** los envíos que entran se crean para ese cliente con la plantilla de importación elegida (la misma de Envíos → Importar; con **varias líneas por orden** y reglas de «no pieza» del capítulo 03 §7.5). Como el envío la numera el archivo, el cliente debe tener marcado que numera sus envíos.
 - **Conector:** **Carpeta de entrada** (el nombre de la carpeta, solo letras, números, guion y guion bajo; los `.csv` y `.txt` que se dejen ahí se procesan y pasan a `procesados/` o `errores/`; **nunca se borran**) o **Subida manual** (el archivo se sube desde la pantalla). La carpeta vive en `Integrations:FolderRoot/{compañía}/{carpeta}`.
 - **Horario:** solo a mano o cada N minutos (1 a 10080; la carpeta se revisa sola; una subida manual no se programa).
-- **A quién avisar:** usuarios de la compañía + **«Incluirme»**. Cada corrida con algo que reportar (órdenes creadas, filas a la bandeja o una falla) manda un **aviso del sistema** (campanita y correo) a esas personas; no se avisa a quien la creó si no lo marcó.
+- **A quién avisar:** usuarios de la compañía + **«Incluirme»**. Cada corrida con algo que reportar (envíos creados, filas a la bandeja o una falla) manda un **aviso del sistema** (campanita y correo) a esas personas; no se avisa a quien la creó si no lo marcó.
 - **Retención:** días que se guardan los datos crudos de la bandeja (30 por omisión, 1 a 365); pasado el plazo se purga el detalle y queda el motivo.
 
 | Mensaje (400 salvo que se diga) | Cuándo |
@@ -30,14 +30,14 @@ Pantalla: **Nueva integración** (nombre, descripción, cliente, plantilla de im
 ## 3. Correr una integración
 - **Carpeta:** por horario (el trabajo programado «Integraciones por horario», cada minuto) o con **Correr ahora** (`POST /{publicId}/run`, `integrations.manage`): lee los archivos nuevos de la carpeta. **409** «La integración ya se está ejecutando; espere a que termine.» · **422** «La integración está apagada; enciéndala para correrla.»
 - **Subida manual** (cualquier integración): **Subir archivo** (`POST /{publicId}/upload`, multipart, hasta 4 MB): se procesa igual.
-- **Cada archivo:** se calcula su **hash SHA-256**; si el mismo contenido ya se procesó, queda «Repetido» y no se vuelve a procesar. Se lee (UTF-8; si no, Latin-1 de Excel), pasa por el importador **en nombre de la cuenta de servicio**, las órdenes buenas se crean y las demás van a la **bandeja**. Un archivo vacío o más grande del límite (`Integrations:MaxFileMegabytes`, 2) queda «Con error».
-- **Resultado de la corrida:** *Bien*, *Con pendientes* (algo fue a la bandeja) o *Falló*; con archivos leídos, órdenes creadas y enviadas a la bandeja. **Historial:** `GET /{publicId}/runs` (hasta 100) con sus archivos.
+- **Cada archivo:** se calcula su **hash SHA-256**; si el mismo contenido ya se procesó, queda «Repetido» y no se vuelve a procesar. Se lee (UTF-8; si no, Latin-1 de Excel), pasa por el importador **en nombre de la cuenta de servicio**, los envíos buenas se crean y las demás van a la **bandeja**. Un archivo vacío o más grande del límite (`Integrations:MaxFileMegabytes`, 2) queda «Con error».
+- **Resultado de la corrida:** *Bien*, *Con pendientes* (algo fue a la bandeja) o *Falló*; con archivos leídos, envíos creados y enviadas a la bandeja. **Historial:** `GET /{publicId}/runs` (hasta 100) con sus archivos.
 
 ## 4. La bandeja (`integrations.inbox`)
-Lo que entró y no se pudo procesar solo. **Una orden con problemas nunca se crea a medias.** Cada ítem trae el **motivo exacto** (el mismo mensaje de la vista previa de importación: «La orden no trae ninguna pieza…», «El número de pieza X se repite…», «Fila 4 · …») y los **datos tal como llegaron**.
+Lo que entró y no se pudo procesar solo. **Un envío con problemas nunca se crea a medias.** Cada ítem trae el **motivo exacto** (el mismo mensaje de la vista previa de importación: «El envío no trae ninguna pieza…», «El número de pieza X se repite…», «Fila 4 · …») y los **datos tal como llegaron**.
 - **Pantalla:** pestaña **Bandeja** (con el contador de pendientes) con filtros por integración y estatus; **Corregir** (las mismas celdas del archivo, tal como llegaron), **Reprocesar**, **Descartar** (con nota), **Reprocesar todo** de una integración y **Descargar pendientes (CSV)**.
 - **API:** `GET /inbox` · `GET /inbox/{id}` · `PATCH /inbox/{id}` (corregir celdas: mismas filas y columnas) · `POST /inbox/{id}/reprocess` · `POST /inbox/{id}/discard` · `POST /{publicId}/inbox/reprocess-all` (hasta 200) · `GET /inbox/export` (CSV).
-- **Reprocesar** vuelve a pasar el ítem por el importador: si ya cuadra nace la orden y el ítem queda *Reprocesado* (con el enlace a la orden); si no, sigue *Pendiente* con el motivo nuevo. Errores: **409** «Este ítem ya se resolvió (reprocesado o descartado).» · **409** «Los datos de este ítem ya no se guardan (pasó la retención o el archivo no se pudo leer)…» · **400** «Las filas no coinciden con las del ítem…» · «Cada fila debe traer la misma cantidad de celdas que tenía.»
+- **Reprocesar** vuelve a pasar el ítem por el importador: si ya cuadra nace el envío y el ítem queda *Reprocesado* (con el enlace al envío); si no, sigue *Pendiente* con el motivo nuevo. Errores: **409** «Este ítem ya se resolvió (reprocesado o descartado).» · **409** «Los datos de este ítem ya no se guardan (pasó la retención o el archivo no se pudo leer)…» · **400** «Las filas no coinciden con las del ítem…» · «Cada fila debe traer la misma cantidad de celdas que tenía.»
 - **Un archivo que no se pudo leer** (columnas, cliente suspendido…) queda en la bandeja sin datos para reprocesar: se descarta y se pide el archivo de nuevo.
 
 ## 5. Casos frecuentes
@@ -88,7 +88,7 @@ Lo que entró y no se pudo procesar solo. **Una orden con problemas nunca se cre
 - **Qué archivos se toman:** por **tipo** (`csv`, `txt` por omisión) y **nombre** (igual, contiene, empieza, termina, comodín `ordenes-*.csv` o expresión regular), hasta 100 por corrida y en orden de nombre; se ignoran los ocultos (`.x`) y los que se **modificaron hace menos de 10 segundos** (puede estar subiéndose todavía): esperan a la próxima corrida.
 - **Horario:** a mano o cada N minutos (1 a 10080), como la carpeta y el correo. **Correr ahora** y **Probar conexión** (`POST /{id}/test-connection`, `integrations.manage`) en la lista; la prueba dice cuántos archivos hay y cuántos están listos para leer, y nunca muestra la contraseña.
 
-**Qué pasa con cada archivo:** se baja, se calcula su hash (el mismo contenido no se procesa dos veces: «Repetido»), pasa por el importador **en nombre de la cuenta de servicio** y las órdenes con problemas van a la **bandeja**; el archivo se mueve a «procesados» (o a «errores» si no se pudo procesar). Si no se puede mover, queda donde estaba y el hash lo protege. Si el servidor no responde, la corrida queda *Falló* con «No se pudo conectar con el servidor: …» y no pasa nada más.
+**Qué pasa con cada archivo:** se baja, se calcula su hash (el mismo contenido no se procesa dos veces: «Repetido»), pasa por el importador **en nombre de la cuenta de servicio** y los envíos con problemas van a la **bandeja**; el archivo se mueve a «procesados» (o a «errores» si no se pudo procesar). Si no se puede mover, queda donde estaba y el hash lo protege. Si el servidor no responde, la corrida queda *Falló* con «No se pudo conectar con el servidor: …» y no pasa nada más.
 
 | Mensaje (400) | Cuándo |
 |---|---|
@@ -99,15 +99,15 @@ Lo que entró y no se pudo procesar solo. **Una orden con problemas nunca se cre
 | «Condición desconocida: X. Use EQUALS, CONTAINS, STARTS, ENDS, WILDCARD o REGEX.» · «Indique el texto de la condición.» | filtro de nombre |
 | «No se pueden guardar contraseñas de conectores: falta la llave maestra del servidor (Files:MasterKey).» | el servidor no tiene la llave maestra |
 
-**Casos frecuentes:** *«Falta confirmar la huella del servidor SFTP»* → use Probar conexión, compare y pegue la huella. *«La huella del servidor no coincide»* → el proveedor la cambió o es otro servidor; confírmela con el proveedor antes de actualizarla. *«0 listos para leer» con archivos en la carpeta* → no cumplen el tipo o el nombre, o se modificaron hace menos de 10 s. *FTP que lista pero no baja* → modo pasivo bloqueado por un firewall; use SFTP o abra el rango pasivo. *El archivo sigue en la carpeta* → no se pudo mover (permisos de escritura); el hash evita duplicar las órdenes, pero conviene dar permiso de escritura.
+**Casos frecuentes:** *«Falta confirmar la huella del servidor SFTP»* → use Probar conexión, compare y pegue la huella. *«La huella del servidor no coincide»* → el proveedor la cambió o es otro servidor; confírmelo con el proveedor antes de actualizarla. *«0 listos para leer» con archivos en la carpeta* → no cumplen el tipo o el nombre, o se modificaron hace menos de 10 s. *FTP que lista pero no baja* → modo pasivo bloqueado por un firewall; use SFTP o abra el rango pasivo. *El archivo sigue en la carpeta* → no se pudo mover (permisos de escritura); el hash evita duplicar los envíos, pero conviene dar permiso de escritura.
 
 ## 8. API para los clientes (Lote 135)
 
-> Dictado de Luis (2026-10-19): el cliente (o su sistema) puede hablar con Teikem sin pantalla, **solo sobre lo suyo**: sus órdenes, consignatarios, perfil y —según los módulos de la compañía— su almacén y sus órdenes de compra y de venta. Se activa con un conector de tipo **API para el cliente** y una o más **llaves**.
+> Dictado de Luis (2026-10-19): el cliente (o su sistema) puede hablar con Teikem sin pantalla, **solo sobre lo suyo**: sus envíos, consignatarios, perfil y —según los módulos de la compañía— su almacén y sus órdenes de compra y de venta. Se activa con un conector de tipo **API para el cliente** y una o más **llaves**.
 
 **Cómo se configura** (permiso `integrations.create` + el de cada familia; mismo formulario que las demás integraciones, módulo `INTEGRATIONS`):
 - En **Sistema → Integraciones / API → Nueva integración** se elige el conector **API para el cliente**. No lleva plantilla, carpeta ni horario. Se escogen los **alcances** (solo se ofrece lo que quien crea puede dar y lo que la compañía tiene contratado). La cuenta de servicio de la integración recibe exactamente los permisos de esos alcances.
-- **Cliente:** obligatorio solo si se elige algún alcance de **transporte** (órdenes, facturas, consignatarios, perfil): la llave verá únicamente lo de ese cliente (otro cliente «no existe» para ella). Los alcances de almacén, ventas y compras no lo piden.
+- **Cliente:** obligatorio solo si se elige algún alcance de **transporte** (envíos, facturas, consignatarios, perfil): la llave verá únicamente lo de ese cliente (otro cliente «no existe» para ella). Los alcances de almacén, ventas y compras no lo piden.
 - En la lista, la acción **Llaves de API** (`integrations.manage`) abre la gestión: **crear** (nombre y límite por minuto opcional), **cambiar el límite**, **revocar** y ver la **bitácora** de cada llave. Hasta **10 llaves activas** por integración.
 - **El secreto se muestra una sola vez**, al crear la llave (con botones Copiar). En Teikem solo se guarda su hash SHA-256; después solo se ve la llave `tk_…` y los últimos 4 caracteres. Si se pierde, se revoca y se crea otra.
 
@@ -169,7 +169,7 @@ curl https://SERVIDOR/api/v1/orders -H "Authorization: Bearer ACCESS_TOKEN"
 - **El propio cliente**, con su llave: `GET/POST /api/v1/webhooks`, `GET/PATCH/DELETE /api/v1/webhooks/{id}`, `POST /api/v1/webhooks/{id}/test`, `POST /api/v1/webhooks/{id}/rotate-secret`, `GET /api/v1/webhooks/{id}/deliveries`. Solo ve y toca los webhooks de **su** integración. Una persona (no llave) recibe 403 «Esta ruta es para llaves de API; el personal administra los webhooks desde Integraciones.».
 - Hasta **10 webhooks** por integración. `DELETE` solo **quita** el webhook (se desactiva y deja de aparecer; el historial queda): es el único `DELETE` de la API.
 
-**Eventos** (`events`, al menos uno): `order.status_changed` (cada cambio de estatus de una orden del cliente; una entrega que salta estatus manda uno por cada estatus), `order.delivered` (la orden se entregó) e `invoice.issued` (se emitió una factura del cliente). Solo salen eventos de **lo del cliente** de la integración. Más `webhook.ping` (la prueba), que no se suscribe.
+**Eventos** (`events`, al menos uno): `order.status_changed` (cada cambio de estatus de un envío del cliente; una entrega que salta estatus manda uno por cada estatus), `order.delivered` (el envío se entregó) e `invoice.issued` (se emitió una factura del cliente). Solo salen eventos de **lo del cliente** de la integración. Más `webhook.ping` (la prueba), que no se suscribe.
 
 **Qué recibe el cliente** (POST, `Content-Type: application/json`; cuerpo mínimo: el detalle se consulta por la API con el id):
 ```json
@@ -209,7 +209,7 @@ Responda **2xx** en menos de **10 segundos**; cualquier otra cosa (o no responde
 | «No se pueden guardar secretos de webhooks: falta la llave maestra del servidor (Files:MasterKey).» | 400 | servidor sin llave maestra |
 | 404 «Webhook» / «Salida» | 404 | no existe (o es de otra integración, o ya se quitó) |
 
-**Casos frecuentes:** *«No me llegan avisos»* → el webhook está suspendido o apagado, la integración está apagada, el evento no está marcado o la orden es de otro cliente; revise la pestaña Salidas. *«La firma no coincide»* → use el cuerpo **crudo** (sin reformatear) y el secreto vigente (¿lo rotaron?). *«Recibo el mismo aviso dos veces»* → es un reintento (la primera respuesta no llegó a tiempo): descarte por `X-Teikem-Delivery`. *«Probar dice que no se pudo conectar»* → la URL debe ser pública y con https.
+**Casos frecuentes:** *«No me llegan avisos»* → el webhook está suspendido o apagado, la integración está apagada, el evento no está marcado o el envío es de otro cliente; revise la pestaña Salidas. *«La firma no coincide»* → use el cuerpo **crudo** (sin reformatear) y el secreto vigente (¿lo rotaron?). *«Recibo el mismo aviso dos veces»* → es un reintento (la primera respuesta no llegó a tiempo): descarte por `X-Teikem-Delivery`. *«Probar dice que no se pudo conectar»* → la URL debe ser pública y con https.
 
 **Fuera de este lote:** la salida de **archivos** por evento o por horario (SFTP, correo o API del cliente) necesita el mapeo de salida; llega con el Lote 137.
 
@@ -224,19 +224,19 @@ Responda **2xx** en menos de **10 segundos**; cualquier otra cosa (o no responde
 | **Automático** (por omisión) | Por la extensión: `.xlsx` → Excel, `.json` → JSON, `.xml` → XML, lo demás → CSV. (También reconoce un libro de Excel por su firma.) |
 | **CSV** | Como siempre (delimitador y codificación de la plantilla). |
 | **Excel (.xlsx)** | Una **hoja**: la que se escriba (sin distinguir mayúsculas) o, vacía, la primera. Cada celda se lee como la vería la persona (enteros sin decimales, ceros a la izquierda según el formato, fechas `aaaa-mm-dd`…). El `.xls` viejo no se admite. |
-| **JSON / XML** | Con **mapeo por ruta**: dónde están las órdenes, dónde están sus líneas (opcional) y de dónde sale cada columna de la plantilla. |
+| **JSON / XML** | Con **mapeo por ruta**: dónde están los envíos, dónde están sus líneas (opcional) y de dónde sale cada columna de la plantilla. |
 
 **Qué archivos toma cada conector:** la **carpeta de entrada** toma las extensiones del formato (Automático: `.csv`, `.txt`, `.xlsx`, `.json`, `.xml`; Excel solo `.xlsx`; JSON solo `.json`; XML solo `.xml`; CSV `.csv` y `.txt`) y deja los demás donde están. En **correo, SFTP y FTP** manda la lista de **tipos de archivo** del conector (por omisión `.csv` y `.txt`): agregue `.xlsx`, `.json` o `.xml` ahí. La **subida manual** acepta cualquiera (el formato lo decide la configuración o la extensión).
 
 **El mapeo por ruta (JSON y XML).** Una ruta es `$.a.b[0].c`:
 - `$` = el documento; `.campo` entra a un campo; `[*]` = todos los elementos de una lista; `[0]` = uno. Un solo elemento se trata como una lista de uno (`[*]` sirve con uno o con varios).
 - **XML:** la ruta empieza con el nombre del elemento raíz (`$.Pedidos.Orden[*]`); un **atributo** se escribe `@atributo` y el **texto** de un elemento que también tiene atributos, `#text`; los elementos que se repiten forman una lista.
-- **Ruta de los envíos** (obligatoria, empieza con `$`): dónde está cada orden. **Ruta de las líneas** (opcional, empieza con `@`, relativa a la orden): cada línea es una fila; una orden sin líneas da una fila con lo de la línea vacío.
-- **Columnas:** el **nombre** de la columna y la **ruta del valor**, en el **orden que espera la plantilla** (la primera es la columna 1). Con líneas, `@.x` lee de la línea, `^.x` de su orden y `$.x` del documento; sin líneas, `@.x` lee de la orden. Un valor es texto, número (`12.5`) o `true`/`false`; un objeto, una lista o un valor ausente dan vacío.
+- **Ruta de los envíos** (obligatoria, empieza con `$`): dónde está cada envío. **Ruta de las líneas** (opcional, empieza con `@`, relativa al envío): cada línea es una fila; un envío sin líneas da una fila con lo de la línea vacío.
+- **Columnas:** el **nombre** de la columna y la **ruta del valor**, en el **orden que espera la plantilla** (la primera es la columna 1). Con líneas, `@.x` lee de la línea, `^.x` de su orden y `$.x` del documento; sin líneas, `@.x` lee del envío. Un valor es texto, número (`12.5`) o `true`/`false`; un objeto, una lista o un valor ausente dan vacío.
 
-Ejemplo JSON (órdenes con líneas): `{"orders":[{"ref":"A-1","to":{"name":"Colmado Uno"},"items":[{"type":"Box","label":"PCS-1"},{"type":"Invoice","label":"INV-1"}]}]}` con ruta de órdenes `$.orders[*]`, de líneas `@.items[*]` y columnas `Orden ← ^.ref`, `Tipo ← @.type`, `Label ← @.label`, `Consignatario ← ^.to.name`. Ejemplo XML: `<Pedidos><Orden ref="A-1"><Item tipo="Box"/></Orden></Pedidos>` con `$.Pedidos.Orden[*]`, `@.Item[*]` y columnas `^.@ref`, `@.@tipo`.
+Ejemplo JSON (envíos con líneas): `{"orders":[{"ref":"A-1","to":{"name":"Colmado Uno"},"items":[{"type":"Box","label":"PCS-1"},{"type":"Invoice","label":"INV-1"}]}]}` con ruta de envíos `$.orders[*]`, de líneas `@.items[*]` y columnas `Orden ← ^.ref`, `Tipo ← @.type`, `Label ← @.label`, `Consignatario ← ^.to.name`. Ejemplo XML: `<Pedidos><Orden ref="A-1"><Item tipo="Box"/></Orden></Pedidos>` con `$.Pedidos.Orden[*]`, `@.Item[*]` y columnas `^.@ref`, `@.@tipo`.
 
-**Probar con un archivo** (en la sección): se sube un archivo de muestra y se ve **cómo lo leería la plantilla** (formato detectado, hojas del libro, encabezado y las primeras 20 filas) sin guardar nada ni crear órdenes (`POST /api/v1/integrations/format/preview`, multipart: `file`, `format` en JSON, `delimiter`, `hasHeader`).
+**Probar con un archivo** (en la sección): se sube un archivo de muestra y se ve **cómo lo leería la plantilla** (formato detectado, hojas del libro, encabezado y las primeras 20 filas) sin guardar nada ni crear envíos (`POST /api/v1/integrations/format/preview`, multipart: `file`, `format` en JSON, `delimiter`, `hasHeader`).
 
 **Seguridad y límites:** el archivo es entrada no confiable: el XML **no admite DTD ni entidades externas**, el JSON tiene profundidad máxima (64), no se ejecuta nada. Mismos límites que el CSV: **2 MB** y **5.000 filas**.
 
@@ -244,10 +244,10 @@ Ejemplo JSON (órdenes con líneas): `{"orders":[{"ref":"A-1","to":{"name":"Colm
 |---|---|---|
 | «Formato desconocido: X. Use AUTO, CSV, EXCEL, JSON, XML.» | 400 | formato |
 | «El nombre de la hoja no puede pasar de 31 caracteres.» | 400 | hoja |
-| «Indique la ruta de los envíos (por ejemplo $.orders[*]).» · «La ruta de los envíos debe empezar con $ (por ejemplo $.orders[*]).» | 400 | ruta de órdenes |
+| «Indique la ruta de los envíos (por ejemplo $.orders[*]).» · «La ruta de los envíos debe empezar con $ (por ejemplo $.orders[*]).» | 400 | ruta de envíos |
 | «La ruta de las líneas debe ser relativa al envío: empiece con @ (por ejemplo @.lines[*]).» | 400 | ruta de líneas |
 | «La ruta «X» no es válida. Use el formato $.campo.otro[*] (también @.campo o ^.campo).» | 400 | cualquier ruta mal formada |
-| «La ruta «^.x» usa ^ (la orden), que solo se puede cuando hay una ruta de líneas.» | 400 | `^` sin líneas |
+| «La ruta «^.x» usa ^ (el envío), que solo se puede cuando hay una ruta de líneas.» | 400 | `^` sin líneas |
 | «Agregue al menos una columna al mapeo.» · «El mapeo admite hasta 60 columnas.» · «Cada columna necesita un nombre.» · «Hay dos columnas llamadas «X».» | 400 | columnas |
 | «Una integración de tipo API no tiene formato de archivo.» | 400 | formato en una integración API |
 
@@ -258,28 +258,28 @@ Errores al **procesar un archivo** (el archivo queda anotado como «Con error» 
 | «El archivo es JSON, pero la integración no tiene el mapeo de rutas: configure «Formato del archivo».» (igual con XML) | llegó un .json/.xml a una integración sin mapeo |
 | «No se pudo leer el archivo JSON: …» / «No se pudo leer el archivo XML: …» | archivo roto o mal formado |
 | «El archivo XML trae una declaración DTD, que no se admite.» | XML con DTD |
-| «La ruta de las órdenes «$.orders[*]» no encontró ningún registro en el archivo.» | la ruta no encuentra órdenes (¿mapeo equivocado o archivo vacío?) |
+| «La ruta de los envíos «$.orders[*]» no encontró ningún registro en el archivo.» | la ruta no encuentra envíos (¿mapeo equivocado o archivo vacío?) |
 | «El libro no tiene la hoja 'X'.» | la hoja escrita no existe |
 | «El archivo no es un libro de Excel (.xlsx).» | formato Excel con un archivo que no lo es (o un .xls viejo) |
 | «El archivo supera el límite de 5.000 filas o 2 MB.» | límites |
 
-**Casos frecuentes:** *«No encontró ningún registro»* → pruebe el archivo de muestra: en XML la ruta empieza con el nombre del elemento raíz (`$.Pedidos…`). *«Una orden sale con la descripción vacía»* → revise que la columna esté en la posición que usa la plantilla. *«Mi integración de correo/SFTP ignora los .xlsx»* → agregue `.xlsx` a los tipos de archivo del conector.
+**Casos frecuentes:** *«No encontró ningún registro»* → pruebe el archivo de muestra: en XML la ruta empieza con el nombre del elemento raíz (`$.Pedidos…`). *«Un envío sale con la descripción vacía»* → revise que la columna esté en la posición que usa la plantilla. *«Mi integración de correo/SFTP ignora los .xlsx»* → agregue `.xlsx` a los tipos de archivo del conector.
 
 ## 11. Integraciones de salida: archivos por SFTP/FTP y API saliente (Lote 137b)
 
-> Dictado de Luis (2026-10-19): Teikem también **manda** datos, por configuración: las órdenes del cliente que llegan a un estatus (p. ej. «Entregada») salen en un archivo (CSV, JSON o XML) por **SFTP o FTP**, o por la **API del sistema del cliente** (HTTP genérico). Es la salida de archivos por evento u horario que faltaba (los webhooks, §9, cubren el aviso mínimo por evento).
+> Dictado de Luis (2026-10-19): Teikem también **manda** datos, por configuración: los envíos del cliente que llegan a un estatus (p. ej. «Entregada») salen en un archivo (CSV, JSON o XML) por **SFTP o FTP**, o por la **API del sistema del cliente** (HTTP genérico). Es la salida de archivos por evento u horario que faltaba (los webhooks, §9, cubren el aviso mínimo por evento).
 
-**Cómo se crea** (Sistema → Integraciones / API → Nueva integración → **Dirección: Salida**; `integrations.create` + `integrations.create.files`, alcance **«Salida de envíos por archivo o API»**, módulo de transporte y un **cliente**: solo salen órdenes de ese cliente). Conectores de salida: **API saliente (HTTP)**, **SFTP** y **FTP** (el correo no es de salida).
+**Cómo se crea** (Sistema → Integraciones / API → Nueva integración → **Dirección: Salida**; `integrations.create` + `integrations.create.files`, alcance **«Salida de envíos por archivo o API»**, módulo de transporte y un **cliente**: solo salen envíos de ese cliente). Conectores de salida: **API saliente (HTTP)**, **SFTP** y **FTP** (el correo no es de salida).
 
 **Qué se manda** (sección «Qué se manda»):
-- **Estatus que disparan la salida** (uno o varios): Sometida, Recogida, Sin asignar, Asignada, En tránsito, Entregada, Fallida, Cancelada, En almacén, Devuelta. Cada orden que **llega** a uno de ellos entra en la cola (una orden no entra dos veces mientras espera).
-- **Cuándo sale:** **Al instante** (cada orden en su propio envío, en menos de un minuto por el trabajo «Salida de integraciones») o **Por horario** (cada N minutos, 1 a 10080, un solo envío con todas las que llegaron desde el anterior; hasta 1.000 órdenes por envío).
+- **Estatus que disparan la salida** (uno o varios): Sometida, Recogida, Sin asignar, Asignada, En tránsito, Entregada, Fallida, Cancelada, En almacén, Devuelta. Cada orden que **llega** a uno de ellos entra en la cola (un envío no entra dos veces mientras espera).
+- **Cuándo sale:** **Al instante** (cada envío por separado, en menos de un minuto por el trabajo «Salida de integraciones») o **Por horario** (cada N minutos, 1 a 10080, un solo envío con todas las que llegaron desde el anterior; hasta 1.000 envíos por envío).
 - **Formato:** **CSV** (delimitador coma, punto y coma o tabulador; encabezado y fin de línea `\r\n`), **JSON** (`{"orders":[{…}]}`; los números salen como números, las fechas en ISO 8601 UTC y lo que falta como `null`) o **XML** (`<orders><order><campo>…</campo></order></orders>`, UTF-8 sin BOM).
-- **Columnas:** el **nombre** (en JSON/XML debe empezar con letra o guion bajo y llevar letras, números, guion o guion bajo) y el **campo de la orden**: número de envío, conduce, factura del cliente, estatus (código y nombre), fecha de creación, fecha prometida, piezas, peso, monto COD, flete cotizado, notas, consignatario, dirección, pueblo y código postal de entrega, fecha y hora de entrega, quién recibió y notas de la entrega. Por omisión: orden, estatus, fecha de entrega y quién recibió. Hasta 40 columnas.
+- **Columnas:** el **nombre** (en JSON/XML debe empezar con letra o guion bajo y llevar letras, números, guion o guion bajo) y el **campo del envío**: número de envío, conduce, factura del cliente, estatus (código y nombre), fecha de creación, fecha prometida, piezas, peso, monto COD, flete cotizado, notas, consignatario, dirección, pueblo y código postal de entrega, fecha y hora de entrega, quién recibió y notas de la entrega. Por omisión: envío, estatus, fecha de entrega y quién recibió. Hasta 40 columnas.
 - **Nombre del archivo** (SFTP/FTP): admite `{date}` (aaaammdd), `{time}` (hhmmss), `{id}` (número del envío) y `{ext}`; por omisión `ordenes-{date}-{time}.{ext}`. El archivo se sube con nombre provisional `.part` y se renombra al terminar (quien lo recoge nunca lo ve a medias) y **nunca pisa** uno existente (le pone la fecha por delante). La carpeta de destino es la «carpeta remota» del conector (se crea si falta); SFTP exige la huella del servidor fijada, como en la entrada (§7).
 - **API saliente (HTTP):** URL (**https y pública**, como los webhooks), método **POST** o **PUT**, autenticación **Ninguna**, **Token (Bearer)**, **Usuario y contraseña (Basic)** o **Encabezado con una llave**, y hasta **10 encabezados** adicionales (no Authorization, Host ni Content-Type). El token, la contraseña o el valor del encabezado se guardan **cifrados** y no se vuelven a mostrar. Cada llamada lleva `Idempotency-Key: teikem-output-{id}` y `X-Teikem-Output`; responda **2xx en menos de 10 s**; no se siguen redirecciones.
 
-**Acciones de la lista:** **Enviar ahora** (arma la cola y manda lo que toque), **Vista previa** (ejemplo con las últimas órdenes del cliente en esos estatus —si no hay, las últimas del cliente—; no manda nada), **Probar conexión** (SFTP/FTP: conecta y lista la carpeta; HTTP: manda un cuerpo de prueba sin órdenes y dice «La API respondió 200.»), **Historial** y **Editar**. Una integración de salida **no recibe archivos** y apagada no manda.
+**Acciones de la lista:** **Enviar ahora** (arma la cola y manda lo que toque), **Vista previa** (ejemplo con los últimos envíos del cliente en esos estatus —si no hay, las últimas del cliente—; no manda nada), **Probar conexión** (SFTP/FTP: conecta y lista la carpeta; HTTP: manda un cuerpo de prueba sin envíos y dice «La API respondió 200.»), **Historial** y **Editar**. Una integración de salida **no recibe archivos** y apagada no manda.
 
 **Reintentos y bandeja:** un envío que falla se reintenta a **1 minuto, 5, 30, 2 h y 12 h** (6 intentos); agotados queda **No entregado** en **Salidas → «Salidas de archivos y API»** con el motivo exacto («El servidor respondió 500.», «Tiempo de espera agotado (10 s).», «No se pudo conectar: …»), el contenido y **Reintentar** / **Descartar**. El contador de la pestaña suma webhooks y envíos. Se guardan 30 días. Si un destino falla 3 veces seguidas en una vuelta, el resto espera a la siguiente.
 
@@ -304,4 +304,4 @@ Errores al **procesar un archivo** (el archivo queda anotado como «Con error» 
 | «Solo se puede reintentar un envío no entregado.» · «El envío ya fue descartado.» · «El envío ya se entregó.» | 409 | bandeja de salidas |
 | «La salida supera el tamaño permitido (2 MB); use una salida más frecuente o menos columnas.» | (envío no entregado) | contenido demasiado grande |
 
-**Casos frecuentes:** *«No sale nada»* → la integración está apagada, el estatus no es el elegido, la orden es de otro cliente, o llegó al estatus **antes** de crear la integración (solo salen las que llegan después). *«Por horario no manda»* → el trabajo de integraciones por horario corre cada minuto; use «Enviar ahora» para probar. *«No entregado: No se pudo conectar»* → revise URL, firewall y, en SFTP, la huella. *«El archivo llegó dos veces»* → es un reintento tras no recibir la respuesta: use el `Idempotency-Key` (API) o el número del envío en el nombre del archivo.
+**Casos frecuentes:** *«No sale nada»* → la integración está apagada, el estatus no es el elegido, el envío es de otro cliente, o llegó al estatus **antes** de crear la integración (solo salen las que llegan después). *«Por horario no manda»* → el trabajo de integraciones por horario corre cada minuto; use «Enviar ahora» para probar. *«No entregado: No se pudo conectar»* → revise URL, firewall y, en SFTP, la huella. *«El archivo llegó dos veces»* → es un reintento tras no recibir la respuesta: use el `Idempotency-Key` (API) o el número del envío en el nombre del archivo.

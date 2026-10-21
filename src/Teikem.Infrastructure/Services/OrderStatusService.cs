@@ -198,7 +198,7 @@ public sealed class OrderStatusService(
     /// <summary>
     /// Reabre una orden en estatus final (Entregada, Cancelada, En almacén…): exige el permiso orders.reopen y la razón; sin ToCode vuelve al último estatus no final que tuvo. Queda en el historial; no recotiza ni revalida el crédito.
     /// </summary>
-    public const string ReturnOpenMessageFormat = "El envío ya salió a devolución: cancele primero el envío de vuelta {0} para poder reabrirla.";
+    public const string ReturnOpenMessageFormat = "El envío ya salió a devolución: cancele primero el envío de vuelta {0} para poder reabrirlo.";
 
     public async Task<OrderDetailDto> ReopenAsync(Guid publicId, OrderReopenRequest req, OrderScope scope, CancellationToken ct)
     {

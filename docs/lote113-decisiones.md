@@ -6,7 +6,7 @@ Luis dictó: «devolver tras N intentos» (por omisión 2) es solo una **sugeren
 - **SQL (update.sql, sección (au))**: `Tenant.ReturnSuggestAfterAttempts` (INT NOT NULL, por omisión 2, de 0 a 20; 0 = sin sugerencia).
 - **`ReturnSuggestionRules`** (dominio): `Suggest(umbral, intentos, estatus)` (no sugiere en Sometida ni en estatus finales) y `Message`. **`ReturnSuggestionService`**: ajuste por compañía (`GET/PUT /api/v1/tenant/return-settings`, cambiar con `admin.tenant`) y `EvaluateAsync` (intentos fallidos vigentes: `DeliveryAttempt` activos y no entregados).
 - **Escaneo**: el resultado de la acción trae `failedAttempts` y `suggestReturn`, y su mensaje termina con la sugerencia (el escaneo se hace igual). **Ficha de la orden** (solo interna): `failedAttempts`, `suggestReturn` y, en una orden de vuelta, `returnOfOrderNumber`.
-- **Web**: Ajustes → General → **Devolución** (campo numérico, solo lectura sin `admin.tenant`) y, en la ficha, el aviso «Se sugiere devolverla: N intento(s) fallido(s)» y «Vuelta de {orden}».
+- **Web**: Ajustes → General → **Devolución** (campo numérico, solo lectura sin `admin.tenant`) y, en la ficha, el aviso «Se sugiere devolverlo: N intento(s) fallido(s)» y «Vuelta de {orden}».
 
 ## Cómo se probó (solo el área)
 - xunit `ReturnSuggestionTests` (14: reglas, escaneo con 2 y con 1 intento, ajuste en 0, intento anulado, ajuste leído/escrito/validado, seguridad del controlador). vitest: `ReturnSuggestPanel` (3) y `OrderDetailScreen` (+2).

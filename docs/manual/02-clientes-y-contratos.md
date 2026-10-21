@@ -96,7 +96,7 @@ se imprime ninguna factura** (llega con facturación). Ver el capítulo [12 — 
 ### 1.4 Numeración por cliente
 
 Qué hace: dos preguntas independientes — **¿quién asigna el número de envío?** y **¿quién asigna el número de factura?**
-(`clientAssignsOrderNumber`, `clientAssignsInvoiceNumber`; `false` = Teikem) — y tres patrones (orden, factura, paquete)
+(`clientAssignsOrderNumber`, `clientAssignsInvoiceNumber`; `false` = Teikem) — y tres patrones (envío, factura, paquete)
 donde `#` es un dígito del consecutivo y `@` la letra de serie. Cadena vacía en un patrón = volver al patrón por defecto
 del sistema: `ORD-#####`, `FAC-#####`, `PQT-#####` (vista previa `ORD-00001`, `FAC-00001`, `PQT-00001`). Si el consecutivo
 tiene más dígitos que `#`, no se trunca (`AX-##` con 123 → `AX-123`). La ficha muestra el patrón efectivo y su vista previa.
@@ -163,7 +163,7 @@ su ficha sigue accesible y se puede reactivar. Es idempotente (204 aunque ya est
 
 Quién puede: `clients.update`. Cómo se usa: `POST /api/v1/clients/{publicId}/deactivate` / `.../reactivate` → 204.
 
-> **Actualizado por el Lote 3**: un cliente dado de baja bloquea la creación de lo nuevo (órdenes, contratos, tarifas,
+> **Actualizado por el Lote 3**: un cliente dado de baja bloquea la creación de lo nuevo (envíos, contratos, tarifas,
 > servicios especiales, invitaciones de portal) con `409` `El cliente está dado de baja; solo se consulta su historial.`; **desde 2026-10-11 (D39) también la
 > cotización** (`POST /api/v1/billing/contract-rate-quote`) responde ese mismo 409;
 > las lecturas y los cierres/cancelaciones siguen permitidos. Ver [capítulo 03, sección 5](03-ordenes-de-transporte.md#5-cliente-dado-de-baja-se-bloquea-solo-lo-nuevo).
@@ -189,7 +189,7 @@ Cómo se usa:
 
 Efectos automáticos: si la localización es el **almacén por defecto** de su cliente y deja de servir como tal (se desactiva,
 cambia de dueño o de tipo a algo que no sea PICKUP/BOTH), el recogido del cliente vuelve a "misma que la corporativa".
-`allowDupInvoice` (permitir facturas repetidas para ese consignatario) se guarda aquí y lo consume el módulo de Órdenes.
+`allowDupInvoice` (permitir facturas repetidas para ese consignatario) se guarda aquí y lo consume el módulo de Envíos.
 
 | Campo / caso | Regla | Mensaje exacto | HTTP |
 |---|---|---|---|
@@ -235,7 +235,7 @@ Cómo se usa:
 
 Una plantilla es **general** (sin cliente, sirve para cualquier lote) o **de un cliente** (solo sirve para lotes de ese
 cliente). Los `defaults` llenan un campo cuando la celda está vacía o la columna no existe; la celda con valor siempre gana.
-Las plantillas de consignatarios no se ven por `/api/v1/import-templates` (esa ruta es la de órdenes) ni al revés.
+Las plantillas de consignatarios no se ven por `/api/v1/import-templates` (esa ruta es la de envíos) ni al revés.
 
 | Campo | Obligatorio en la fila | Admite default | Va a |
 |---|---|---|---|
@@ -273,7 +273,7 @@ Las plantillas de consignatarios no se ven por `/api/v1/import-templates` (esa r
 | `clientPublicId` y `makeGeneral` a la vez (PATCH) | `Indique un cliente o marque la plantilla como general, no ambos.` | 400 |
 | `defaults` y `clearDefaults` a la vez (PATCH) | `Indique defaults nuevos o clearDefaults, no ambos.` | 400 |
 | Desactivar una inactiva / reactivar una activa | `La plantilla ya está inactiva.` / `La plantilla ya está activa.` | 409 |
-| Plantilla inexistente, de otra compañía o de órdenes | `Plantilla de importación no encontrado.` | 404 |
+| Plantilla inexistente, de otra compañía o de envíos | `Plantilla de importación no encontrado.` | 404 |
 | `kind` distinto de `CONSIGNEE` en el cuerpo | `Tipo de plantilla desconocido: X.` | 400 |
 
 #### Validar (paso 1 de 2)
@@ -301,7 +301,7 @@ se creará), `warnings` (avisos: la fila **sí** se creará) e `isValid`.
 | Más de 5.000 filas o 2 MB | `El archivo supera el límite de 5.000 filas o 2 MB.` (campo `content` o `file`) | 400 |
 | Petición multipart de más de 4 MB | (lo corta el servidor) | 413 |
 | Archivo sin filas de datos | `El archivo no tiene filas de datos.` | 400 |
-| Plantilla inexistente, de órdenes o de otro cliente | `Plantilla de importación no encontrado.` | 404 |
+| Plantilla inexistente, de envíos o de otro cliente | `Plantilla de importación no encontrado.` | 404 |
 | Plantilla inactiva | `La plantilla está inactiva; reactívela o elija otra.` (campo `templatePublicId`) | 400 |
 | Cliente del lote inexistente o de otra compañía | `Cliente no encontrado.` | 404 |
 | Cliente del lote dado de baja | `El cliente está dado de baja; solo se consulta su historial.` | 409 |
@@ -364,12 +364,12 @@ así que dos lotes con el mismo código nuevo nunca crean dos consignatarios. El
 | Dos confirmaciones a la vez, o descartar mientras se confirma | `El lote ya se está confirmando o fue confirmado; consulte su resultado.` | 409 |
 | Cliente del lote dado de baja después de validar | `El cliente está dado de baja; solo se consulta su historial.` | 409 |
 | Descartar un lote que no está pendiente | `Solo se descarta un lote pendiente de confirmar.` | 422 |
-| Lote inexistente, de otra compañía o de órdenes | `Lote de importación no encontrado.` | 404 |
+| Lote inexistente, de otra compañía o de envíos | `Lote de importación no encontrado.` | 404 |
 | Fila que choca al confirmar (alguien creó el código entretanto) | el mensaje de duplicado de la tabla anterior, en `rows[i].error` | 200 (fila fallida) |
 | Error inesperado en una fila | `Error inesperado al crear el consignatario; revise la fila e intente de nuevo.` en `rows[i].error` | 200 (fila fallida) |
 
 Estatus del lote (`ImportBatchStatus`): `VALIDATED` → `CONFIRMED` (confirmar) o → `DISCARDED` (descartar). El historial
-(`GET /api/v1/status/history/IMPORT_BATCH/{id}`) pide el permiso `orders.view` (el del importador de órdenes): un usuario que
+(`GET /api/v1/status/history/IMPORT_BATCH/{id}`) pide el permiso `orders.view` (el del importador de envíos): un usuario que
 solo tiene permisos de consignatarios recibe 403 ahí, aunque sí ve el lote por `GET /api/v1/locations/import/{id}`.
 
 ### 2.2 Importación de consignatarios: Excel, «(No usar)», columnas unidas, cliente por defecto y persona de contacto (Lote 45, F-B2)
@@ -394,7 +394,7 @@ Qué cambia (mismos permisos y módulo que §2.1; no hay permisos nuevos). Panta
   otro campo.
 - **Una columna a varios campos** (p. ej. el código va a `code` y también forma parte del nombre): la misma `position` en dos
   entradas con campos distintos.
-- **Un campo con varias columnas unidas**: el campo repetido en varias posiciones, con `part` (orden 1, 2…) y `separator` (texto
+- **Un campo con varias columnas unidas**: el campo repetido en varias posiciones, con `part` (envío 1, 2…) y `separator` (texto
   que va ANTES de esa parte; sin él, un espacio). Ejemplo «Nombre = Código + « - » + Nombre»:
   `[{"position":1,"field":"code"},{"position":1,"field":"name","part":1},{"position":2,"field":"name","part":2,"separator":" - "}]`.
   Una celda vacía no deja su separador; si todas las partes vienen vacías, el campo toma su valor por defecto. Pueden unirse los
@@ -505,7 +505,7 @@ primera). Las filas traen `variant` (1..n) y `variantName`; la que no encaja tra
 | Nombre de variante largo / valor largo | `Máximo 60 caracteres.` / `Máximo 100 caracteres.` | 400 |
 | Mapeo de una variante inválido | el mensaje de siempre con la llave de la variante (p. ej. `variants[1].columns`: `La plantilla debe incluir las columnas name y line1.`) | 400 |
 | `columns` y `variants` a la vez (o `columns` en el PATCH de una plantilla con variantes) | `Esta plantilla usa variantes: las columnas van dentro de cada variante (variants), no en columns.` (`columns`) | 400 |
-| Variantes en una plantilla de órdenes | `Las variantes de mapeo solo existen en las plantillas de consignatarios.` (`variants`) | 400 |
+| Variantes en una plantilla de envíos | `Las variantes de mapeo solo existen en las plantillas de consignatarios.` (`variants`) | 400 |
 | `zipClass` desconocido en `/postal-localities` | `Tipo de código postal desconocido: X. Use STANDARD, PO_BOX, UNIQUE, MILITARY o DELIVERY.` (`zipClass`) | 400 |
 
 Casos frecuentes:
@@ -581,7 +581,7 @@ Qué hace: los **5 checkboxes** del contrato — Por servicio, Pieza extra, Desp
 ("Por servicio, Pieza extra, Despacho, COD, Especiales"; "Sin componentes" si ninguno). **Desmarcar no borra nada**: el cargo
 por despacho, el cargo por COD, las tarifas y los servicios especiales se conservan y simplemente no se cobran (al volver a
 marcar, reaparecen). El **cargo por despacho** es un monto por orden. El **cargo por COD** es **FIXED** (monto fijo por orden)
-o **PERCENT** (por ciento **del monto COD cobrado**, nunca del total de la orden); "ninguno" = checkbox COD apagado, que es
+o **PERCENT** (por ciento **del monto COD cobrado**, nunca del total del envío); "ninguno" = checkbox COD apagado, que es
 el valor por defecto de todo contrato nuevo.
 
 Quién puede: `contracts.update`. Cómo se usa:
@@ -720,12 +720,12 @@ historial al configurar el contrato).
 
 ### 5.5 Cotización
 
-Qué hace: cotiza una orden contra el **contrato vigente** del cliente en `asOf` (hoy por defecto): tarifa base por
+Qué hace: cotiza un envío contra el **contrato vigente** del cliente en `asOf` (hoy por defecto): tarifa base por
 servicio+paquete, piezas extra marginales, cargo por despacho (una vez por orden) y cargo por COD, con las **tarifas genéricas**
 de la compañía como respaldo cuando el componente está apagado o no hay fila (`baseSource`/`extraSource`: CONTRACT | GENERIC |
 NONE). Despacho y COD se suman a la **primera línea**. Sin contrato vigente todo sale de las genéricas y despacho/COD son 0.
 Montos a 4 decimales. Ejemplo de la bitácora: base 7.00 + 8 piezas (2–5 a 1.00, 6+ a 0.75 = 6.25) + despacho 3 + COD 2.5 % de 200 (5.00) = **21.25**;
-si la orden trae además un sobre (STANDARD/ENVELOPE con tarifa de contrato 5.00), sale una segunda línea con su propia base
+si el envío trae además un sobre (STANDARD/ENVELOPE con tarifa de contrato 5.00), sale una segunda línea con su propia base
 (`baseSource: CONTRACT`) y el total es **26.25** (despacho y COD siguen solo en la primera línea).
 
 Quién puede: `contracts.read`. Cómo se usa: `POST /api/v1/billing/contract-rate-quote`
@@ -741,7 +741,7 @@ Quién puede: `contracts.read`. Cómo se usa: `POST /api/v1/billing/contract-rat
 | Cliente dado de baja | `El cliente está dado de baja; solo se consulta su historial.` | 409 |
 | Cliente inexistente | `Cliente no encontrado.` | 404 |
 
-Una línea sin tarifa base (ni de contrato ni genérica) **no es un error**: sale con `baseSource: NONE` y `lineTotal` 0; en la web el Cotizador la avisa con «No hay tarifa vigente para X / Y: esa línea se cotiza en 0.». El servidor no oculta estos precios por `orders.view_price`: son precios del **contrato**, no de una orden, y se ven con `contracts.read`. Pantallas: [capítulo del Cotizador y usuarios de portal](frontend/fa3-portal-cotizador.md).
+Una línea sin tarifa base (ni de contrato ni genérica) **no es un error**: sale con `baseSource: NONE` y `lineTotal` 0; en la web el Cotizador la avisa con «No hay tarifa vigente para X / Y: esa línea se cotiza en 0.». El servidor no oculta estos precios por `orders.view_price`: son precios del **contrato**, no de un envío, y se ven con `contracts.read`. Pantallas: [capítulo del Cotizador y usuarios de portal](frontend/fa3-portal-cotizador.md).
 | Servicio/paquete vacíos o desconocidos | `El tipo de servicio es obligatorio.` / `Código 'X' desconocido en la lista PackageType.` | 400 |
 
 ---

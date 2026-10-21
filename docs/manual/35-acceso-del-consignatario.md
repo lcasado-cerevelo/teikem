@@ -26,7 +26,7 @@ Lote 117 (117a acceso, perfil y bandeja; 117b mensajes con su cliente; 117c pant
 **Quitar el acceso** es la baja definitiva de esa persona: su sesión deja de renovarse y ya no entra. El consignatario sigue existiendo y puede seguir recibiendo avisos por enlace.
 
 ## 3. El espacio del consignatario
-Todo sale de su sesión; nunca de lo que escriba en la pantalla. De las rutas del portal solo alcanza las suyas (`/api/v1/portal/consignee/*`); las del cliente (órdenes, mensajes con el equipo, avisos a consignatarios, dar acceso) le responden **403 `Esta ruta no está disponible para usuarios del portal.`** Y una persona del cliente no entra a su espacio: **403 `Este espacio es solo para consignatarios con acceso.`**
+Todo sale de su sesión; nunca de lo que escriba en la pantalla. De las rutas del portal solo alcanza las suyas (`/api/v1/portal/consignee/*`); las del cliente (envíos, mensajes con el equipo, avisos a consignatarios, dar acceso) le responden **403 `Esta ruta no está disponible para usuarios del portal.`** Y una persona del cliente no entra a su espacio: **403 `Este espacio es solo para consignatarios con acceso.`**
 
 ### 3.1 Su perfil y cómo recibe los avisos
 Muestra su nombre, el cliente que lo atiende y, por **correo** y por **texto**, el contacto, si hoy lo recibe y si puede volver a prenderlo.
@@ -42,16 +42,16 @@ Muestra su nombre, el cliente que lo atiende y, por **correo** y por **texto**, 
 | No indicar si lo quiere o no | **400 `Indique si desea recibir o no los avisos por ese medio.`** |
 
 ### 3.2 Su bandeja
-Los avisos que **se le enviaron** (más nuevos primero, hasta 100 por página): «Su paquete va en camino», «fue entregado», «tuvo un intento de entrega fallido»…, el conduce, el estado del envío del aviso (enviado, omitido, fallido) y el enlace de seguimiento de la orden. Solo ve los suyos.
+Los avisos que **se le enviaron** (más nuevos primero, hasta 100 por página): «Su paquete va en camino», «fue entregado», «tuvo un intento de entrega fallido»…, el conduce, el estado del envío del aviso (enviado, omitido, fallido) y el enlace de seguimiento del envío. Solo ve los suyos.
 
-### 3.2b Sus envíos (Lote 117d) — solo ve, no crea órdenes
-El consignatario **ve las órdenes de su cliente que se entregan en su consignatario** (lista con barra de progreso, búsqueda por **conduce**, más reciente primero; y la ficha con su dirección de entrega, los paquetes —sin pesos—, el avance y la línea de tiempo). **No crea órdenes** (dictado por Luis, 2026-10-18): las crean el cliente (portal) y el personal de la compañía (intake); si lo intenta, la ruta del cliente le responde 403. Tampoco ve precios, factura, COD ni el número de envío del cliente.
+### 3.2b Sus envíos (Lote 117d) — solo ve, no crea envíos
+El consignatario **ve los envíos de su cliente que se entregan en su consignatario** (lista con barra de progreso, búsqueda por **conduce**, más reciente primero; y la ficha con su dirección de entrega, los paquetes —sin pesos—, el avance y la línea de tiempo). **No crea envíos** (dictado por Luis, 2026-10-18): las crean el cliente (portal) y el personal de la compañía (intake); si lo intenta, la ruta del cliente le responde 403. Tampoco ve precios, factura, COD ni el número de envío del cliente.
 
 | Situación | Respuesta |
 |---|---|
-| Orden de otro consignatario del mismo cliente, de otro cliente o inexistente | **404** (igual para todas) |
+| Envío de otro consignatario del mismo cliente, de otro cliente o inexistente | **404** (igual para todas) |
 | Una persona del cliente llama a sus rutas | **403 `Este espacio es solo para consignatarios con acceso.`** |
-| El consignatario llama a `POST /api/v1/portal/orders` o al formulario de órdenes | **403 `Esta ruta no está disponible para usuarios del portal.`** |
+| El consignatario llama a `POST /api/v1/portal/orders` o al formulario de envíos | **403 `Esta ruta no está disponible para usuarios del portal.`** |
 
 ### 3.3 Mensajes con su cliente (Lote 117b)
 El consignatario **le escribe a su cliente** y el cliente le contesta. Es aparte de los mensajes del cliente con el equipo de la compañía (capítulo 29).
@@ -97,7 +97,7 @@ La app del cliente (`app-cliente`, web y móvil) sirve a los dos: según el toke
 
 **Del lado del consignatario** (cuatro pestañas, sin Inicio; entra directo a Avisos):
 - **Envíos:** sus envíos con la barra de progreso, búsqueda por conduce y la ficha de cada uno; **solo lectura**.
-- **Avisos:** su bandeja (título, conduce, estado del envío, medio y fecha, y «Ver seguimiento» si la orden tiene enlace).
+- **Avisos:** su bandeja (título, conduce, estado del envío, medio y fecha, y «Ver seguimiento» si el envío tiene enlace).
 - **Mensajes:** su conversación con su cliente (la abre con su primer mensaje).
 - **Ajustes:** su cuenta (nombre, correo, consignatario y cliente), **«Cómo recibo los avisos»** con una casilla por correo y otra por texto (apagar siempre; volver a prender solo lo que apagó él, y se explica por qué no puede en cada caso: «Solo su cliente puede prenderlo.», «Se dio de baja con el enlace de un aviso.»), idioma, tema claro/oscuro, computadoras de confianza y cerrar sesión.
 - Todo en **español e inglés** y en tema **claro u oscuro** como el resto de la app.
@@ -105,5 +105,5 @@ La app del cliente (`app-cliente`, web y móvil) sirve a los dos: según el toke
 ## Casos frecuentes
 - **«El consignatario no recibe la invitación»:** revise el correo escrito y la carpeta de no deseados; **Reenviar** manda un enlace nuevo (el anterior deja de servir).
 - **«Mi enlace dice que es inválido o venció»:** el enlace dura 48 horas y sirve una sola vez; pida que el cliente lo reenvíe.
-- **«Entró pero no ve nada de las órdenes»:** correcto: el consignatario solo tiene sus envíos, su bandeja de avisos, los mensajes con su cliente y su perfil; no crea órdenes.
+- **«Entró pero no ve nada de los envíos»:** correcto: el consignatario solo tiene sus envíos, su bandeja de avisos, los mensajes con su cliente y su perfil; no crea envíos.
 - **«No puedo volver a prender los avisos por texto»:** solo el cliente puede prender un medio que el consignatario no apagó él mismo.

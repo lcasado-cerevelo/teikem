@@ -1,6 +1,6 @@
 # 23 — Avisos al cliente
 
-Lote 98 (P10, 2026-10-17). Teikem avisa al **cliente** (el sender, quien envía) lo que va pasando con sus órdenes, su COD y sus facturas, con **resúmenes** —no el detalle de cada orden—. **No se le avisa al consignatario** desde aquí (los avisos al consignatario, con su aceptación, los maneja el cliente desde el portal; llegan en un lote posterior).
+Lote 98 (P10, 2026-10-17). Teikem avisa al **cliente** (el sender, quien envía) lo que va pasando con sus envíos, su COD y sus facturas, con **resúmenes** —no el detalle de cada envío—. **No se le avisa al consignatario** desde aquí (los avisos al consignatario, con su aceptación, los maneja el cliente desde el portal; llegan en un lote posterior).
 
 ## 1. Quién decide qué
 
@@ -10,10 +10,10 @@ Lote 98 (P10, 2026-10-17). Teikem avisa al **cliente** (el sender, quien envía)
 
 | Aviso (`kind`) | Cuándo | Qué dice el resumen |
 |---|---|---|
-| **Recogido** (`PICKED_UP`) | Las órdenes del cliente pasan a Recogido | «Recogido: N caja(s) de M orden(es)» (con la ruta si la hay) |
-| **Salió a entrega** (`OUT_FOR_DELIVERY`) | La ruta sale a entregar (las órdenes pasan a En tránsito) | «Salió a entrega: N caja(s) de M orden(es) en la ruta X» |
-| **Entregado** (`DELIVERED`) | Las órdenes pasan a Entregado | «Entregado: N caja(s) de M orden(es) en la ruta X. COD cobrado: $Y» |
-| **COD procesado** (`COD_PROCESSED`) | Una remesa de COD del cliente se **remite** | «Remesa de COD REM-#####: cobrado, comisión, neto (N órdenes)» |
+| **Recogido** (`PICKED_UP`) | Los envíos del cliente pasan a Recogido | «Recogido: N caja(s) de M envío(es)» (con la ruta si la hay) |
+| **Salió a entrega** (`OUT_FOR_DELIVERY`) | La ruta sale a entregar (los envíos pasan a En tránsito) | «Salió a entrega: N caja(s) de M envío(es) en la ruta X» |
+| **Entregado** (`DELIVERED`) | Los envíos pasan a Entregado | «Entregado: N caja(s) de M envío(es) en la ruta X. COD cobrado: $Y» |
+| **COD procesado** (`COD_PROCESSED`) | Una remesa de COD del cliente se **remite** | «Remesa de COD REM-#####: cobrado, comisión, neto (N envíos)» |
 | **Factura emitida** (`INVOICE_ISSUED`) | Se **emite** una factura del cliente | «Factura FAC-##### por $T, vence el AAAA-MM-DD» |
 
 **Un resumen por cliente y ruta** (los tres primeros), por remesa y por factura. El resumen sale cuando el grupo lleva **3 minutos sin hechos nuevos**, así una ruta que va entregando manda un solo aviso. El texto va en el idioma de la compañía.

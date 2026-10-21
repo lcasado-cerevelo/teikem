@@ -1,27 +1,27 @@
-# 28 — «¿Cómo va mi orden?» y la barra de progreso
+# 28 — «¿Cómo va mi envío?» y la barra de progreso
 
-Lote 103 (portal de clientes, 2026-10-17). Dos cosas relacionadas: la **barra de progreso** de una orden y la **página pública** donde cualquiera con el número de conduce ve en qué etapa va su paquete. La respuesta pública es **solo el avance**: **nunca nombres, direcciones, teléfonos ni montos** (decidido con Luis).
+Lote 103 (portal de clientes, 2026-10-17). Dos cosas relacionadas: la **barra de progreso** de un envío y la **página pública** donde cualquiera con el número de conduce ve en qué etapa va su paquete. La respuesta pública es **solo el avance**: **nunca nombres, direcciones, teléfonos ni montos** (decidido con Luis).
 
 ## 1. La barra de progreso
 > **Cambio del Lote 108 (2026-10-17, dictado por Luis):** la barra ya **no** tiene tantas etapas como estatus. Tiene **cuatro etapas fijas** y todos los demás estatus se encajonan en una de ellas. (Reemplaza el criterio del Lote 103.)
 
 | Etapa | Qué estatus caen aquí | Lo que dice debajo de la barra |
 |---|---|---|
-| 1. **Sometida** | Sometida | «Sometida» |
-| 2. **Recibida** | Recogida, Sin asignar, Asignada (ya la tiene la compañía) | «Recibida» |
+| 1. **Sometido** | Sometido | «Sometido» |
+| 2. **Recibida** | Recogido, Sin asignar, Asignado (ya la tiene la compañía) | «Recibida» |
 | 3. **En ruta** | En tránsito (la tiene el chofer) | «En ruta» |
 | 3. **En ruta** (en alerta) | Intento fallido | «Intentada» |
-| 3. **En ruta** | Sin asignar o Asignada **después de un intento fallido** (volvió al almacén) | «Reprogramada» |
-| 4. **Completada** | **cualquier estatus final**: Entregada, Cancelada, En almacén, Devuelta… | el nombre del estatus final que sea (prevalece el suyo) |
+| 3. **En ruta** | Sin asignar o Asignado **después de un intento fallido** (volvió al almacén) | «Reprogramada» |
+| 4. **Completada** | **cualquier estatus final**: Entregado, Cancelado, En almacén, Devuelto… | el nombre del estatus final que sea (prevalece el suyo) |
 
 - **El camino de un intento fallido:** En ruta → **Intentada** (alerta, ámbar) → cuando llega al almacén y se escanea «Llegó», **Reprogramada** (sigue en la etapa 3) → cuando el chofer la vuelve a coger, **En ruta**. El intento fallido queda en el historial.
 - **Qué muestra:** las etapas que ya pasaron en azul, **la actual resaltada («va por aquí»)**, las que faltan apagadas, y debajo «Paso 2 de 4 · Recibida». En la ficha y en la página pública también la **lista de las cuatro etapas**.
-- **Completada:** toda la barra en verde con el nombre del estatus final («Entregada», «En almacén»…). **Cancelada:** la barra va **apagada** y dice «Cancelada».
+- **Completada:** toda la barra en verde con el nombre del estatus final («Entregado», «En almacén»…). **Cancelado:** la barra va **apagada** y dice «Cancelado».
 - **Los nombres de las etapas no dependen de los estatus de la compañía** (apagar, agregar o renombrar estatus no cambia la barra). Lo que sale en «Completada» sí es el nombre del estatus final.
-- **Dónde está:** en la **lista de órdenes** y el **inicio** del portal del cliente (barra baja), en la **ficha** de la orden (barra + lista de etapas) y en la **página pública**. El portal del consignatario (lote siguiente) usa el mismo componente.
+- **Dónde está:** en la **lista de envíos** y el **inicio** del portal del cliente (barra baja), en la **ficha** del envío (barra + lista de etapas) y en la **página pública**. El portal del consignatario (lote siguiente) usa el mismo componente.
 
 ## 2. La página pública «¿Cómo va mi paquete?» (Lote 116: solo por enlace)
-> **Cambio del Lote 116 (2026-10-18, dictado por Luis):** la búsqueda manual por número de conduce y el «identificador de seguimiento» de la compañía **se quitaron**. La página es **solo de consulta por enlace**: el aviso que recibe el consignatario trae un enlace con un **token propio de la orden, largo e imposible de adivinar**, y al abrirlo se ve el resultado. La página **no recibe datos**.
+> **Cambio del Lote 116 (2026-10-18, dictado por Luis):** la búsqueda manual por número de conduce y el «identificador de seguimiento» de la compañía **se quitaron**. La página es **solo de consulta por enlace**: el aviso que recibe el consignatario trae un enlace con un **token propio del envío, largo e imposible de adivinar**, y al abrirlo se ve el resultado. La página **no recibe datos**.
 - **Dirección:** `<app del cliente>/track/<token>`. Sin sesión; el idioma sale del enlace/navegador (o el que elija en la barra de preferencias).
 - **Qué contesta:** el nombre de la compañía (el de la marca), el conduce, las etapas con cuál es la actual, el estatus y **cuándo fue el último movimiento**. Nada más: **nunca nombres, direcciones, teléfonos ni montos**.
 - **Quién recibe el enlace:** el consignatario, en los avisos que el **cliente** prendió (capítulo 34).
@@ -39,7 +39,7 @@ Lote 103 (portal de clientes, 2026-10-17). Dos cosas relacionadas: la **barra de
 ## 5. Mensajes y errores
 | Situación | Respuesta |
 |---|---|
-| Enlace que no existe, mal escrito o de una orden dada de baja | **404 `No encontramos ese enlace de seguimiento.`** (el mismo en todos los casos: no se revela cuál fue) |
+| Enlace que no existe, mal escrito o de un envío dado de baja | **404 `No encontramos ese enlace de seguimiento.`** (el mismo en todos los casos: no se revela cuál fue) |
 | Más de 20 consultas por minuto desde una IP | 429 `Demasiados intentos; espere un minuto e intente de nuevo.` |
 
 ## Casos frecuentes

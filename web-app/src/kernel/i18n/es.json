@@ -3853,7 +3853,7 @@
         "removeBody": "Se quitará {value} de los contactos de este envío."
       },
       "returnOf": "Vuelta de {number}",
-      "suggestReturn": "Se sugiere devolverla: {count} intento(s) fallido(s)",
+      "suggestReturn": "Se sugiere devolverlo: {count} intento(s) fallido(s)",
       "proof": {
         "title": "Comprobante de entrega",
         "recipient": "Recibió",

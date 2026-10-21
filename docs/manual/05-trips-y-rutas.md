@@ -1,6 +1,6 @@
 # Capítulo 05 — Trips y rutas (Lote 5)
 
-Este capítulo describe la planificación diaria de rutas (Trip), la consolidación de órdenes en una ruta, la
+Este capítulo describe la planificación diaria de rutas (Trip), la consolidación de envíos en una ruta, la
 optimización automática, la edición manual (secuencia y pin por parada), el despacho y la salida, las zonas de
 despacho (extiende el [capítulo 04](04-flota-choferes-mantenimiento.md), sección 2.7), la estación de escaneo
 Outbound, "Planificar el día" y el monitor de rutas. Cada sección indica **qué hace**, **quién puede**, **cómo se
@@ -76,11 +76,11 @@ se asegura antes de abrir la transacción y se bloquea internamente hasta el com
 ## 2. Edición de la cabecera y "Eliminar ruta"
 
 Qué hace: edita fecha, zona, chofer, vehículo y hora de salida (`null` = sin cambio; `clearZone`/`clearDriver`/
-`clearVehicle`/`clearPlannedStart` quitan el dato). El **contenido** de la ruta (órdenes, paradas, secuencia) nunca
+`clearVehicle`/`clearPlannedStart` quitan el dato). El **contenido** de la ruta (envíos, paradas, secuencia) nunca
 se toca desde aquí. Una ruta ya despachada solo admite tocar la cabecera si el tenant habilitó la capacidad
 `EDIT_TRIP` para ese estatus (por defecto viene **denegada** en `DISPATCHED`, `IN_PROGRESS`, `COMPLETED` y
 `CANCELLED`); aun así, la fecha y la zona de una ruta despachada nunca cambian, y el chofer/vehículo/hora de salida
-se **cambian**, nunca se quitan. "Eliminar ruta" pasa la ruta a `CANCELLED`, libera sus órdenes (sin tocar su
+se **cambian**, nunca se quitan. "Eliminar ruta" pasa la ruta a `CANCELLED`, libera sus envíos (sin tocar su
 estatus) y solo es posible desde `DRAFT`/`PLANNED`.
 
 Quién puede: `trips.plan`.
@@ -135,11 +135,11 @@ avisos `DRIVER_DOUBLE_BOOKED` de las rutas actualizadas (el chofer queda en más
 
 ---
 
-## 3. Órdenes en la ruta (consolidación multi-cliente)
+## 3. Envíos en la ruta (consolidación multi-cliente)
 
-Qué hace: agrega y quita órdenes ya recogidas (Recogida o Sin asignar; una Sometida no entra) de la ruta, y lista las órdenes **sin ruta vigente** ("Sin asignar")
-con su zona resuelta. Agregar es **atómico** (todo o nada) y **no cambia el estatus de la orden**; quitar la
-libera sin tocarlo tampoco. Una orden solo puede estar en una ruta vigente a la vez.
+Qué hace: agrega y quita envíos ya recogidos (Recogida o Sin asignar; una Sometida no entra) de la ruta, y lista los envíos **sin ruta vigente** ("Sin asignar")
+con su zona resuelta. Agregar es **atómico** (todo o nada) y **no cambia el estatus del envío**; quitar la
+libera sin tocarlo tampoco. Un envío solo puede estar en una ruta vigente a la vez.
 
 Quién puede: `trips.view` (lista "Sin asignar"), `trips.plan` (agregar/quitar).
 
@@ -148,9 +148,9 @@ Cómo se usa:
 - `POST /api/v1/trips/{publicId}/orders` — `{ "orderPublicIds": ["…", "…"], "rowVersion": "…" }`
 - `DELETE /api/v1/trips/{publicId}/orders/{orderPublicId}` — cuerpo opcional `{ "rowVersion": "…" }`
 
-### 3.1 Elegibilidad de una orden para una ruta
+### 3.1 Elegibilidad de un envío para una ruta
 
-Una orden es elegible si está **activa**, **no** es una entrega especial, está en una etapa **PIPELINE** posterior
+Un envío es elegible si está **activa**, **no** es una entrega especial, está en una etapa **PIPELINE** posterior
 a la inicial y anterior a `IN_TRANSIT` del pipeline del tenant, su estatus tiene la capacidad `ASSIGN_TRIP` y tiene
 una parada `DELIVERY` pendiente. En orden de precedencia:
 
@@ -169,20 +169,20 @@ una parada `DELIVERY` pendiente. En orden de precedencia:
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|
 | `orderPublicIds` vacío | `Indique al menos un envío.` (campo `orderPublicIds`) | 400 |
-| Más de 200 órdenes distintas | `Agregue como máximo 200 envíos por solicitud.` (campo `orderPublicIds`) | 400 |
+| Más de 200 envíos distintas | `Agregue como máximo 200 envíos por solicitud.` (campo `orderPublicIds`) | 400 |
 | Algún id ajeno, inexistente o inactivo | `Orden no encontrado.` | 404 |
 | Ruta no editable (despachada o cerrada) | mismos mensajes de la sección 2 (`NotEditableMessage`) | 422 |
-| Una o más órdenes no elegibles | `Hay envíos que no se pueden asignar a la ruta.` con `errors: { "{número}": ["{motivo}"] }` (rechaza la solicitud completa) | 422 |
-| La orden ya está en ESTA ruta | `El envío ya está en esta ruta.` | 409 |
-| La orden ya está en OTRA ruta vigente | `La orden ya está asignada a la ruta {código}.` | 409 |
+| uno o más envíos no elegibles | `Hay envíos que no se pueden asignar a la ruta.` con `errors: { "{número}": ["{motivo}"] }` (rechaza la solicitud completa) | 422 |
+| El envío ya está en ESTA ruta | `El envío ya está en esta ruta.` | 409 |
+| El envío ya está en OTRA ruta vigente | `La orden ya está asignada a la ruta {código}.` | 409 |
 | Excede el tope técnico de la ruta | `Una ruta admite como máximo 300 paradas.` (campo `orderPublicIds`) | 400 |
-| Carrera (dos altas simultáneas a la misma orden en rutas distintas) | `El envío ya está asignado a otra ruta.` | 409 |
+| Carrera (dos altas simultáneas a el mismo envío en rutas distintas) | `El envío ya está asignado a otra ruta.` | 409 |
 | `orderPublicId` de `DELETE`, ajeno o inexistente | `Orden no encontrado.` | 404 |
-| La orden no está en ESA ruta | `El envío no está en esta ruta.` | 404 |
+| El envío no está en ESA ruta | `El envío no está en esta ruta.` | 404 |
 
 ### 3.3 Lista "Sin asignar"
 
-Órdenes activas, no especiales, sin ruta vigente y con una parada `DELIVERY` pendiente, con la zona resuelta por
+Envíos activas, no especiales, sin ruta vigente y con una parada `DELIVERY` pendiente, con la zona resuelta por
 código postal o pueblo (ver sección 5). `ASSIGN_TRIP` no esconde nada de la lista: se valida solo al agregar.
 
 | Caso | Mensaje exacto | HTTP |
@@ -192,7 +192,7 @@ código postal o pueblo (ver sección 5). `ASSIGN_TRIP` no esconde nada de la li
 | `dispatchZoneId` de otro tenant o inexistente | `Zona de despacho no encontrada.` | 404 |
 | `clientPublicId` de otro tenant o inexistente | `Cliente no encontrado.` | 404 |
 
-`skip`/`take` se normalizan igual que el listado de órdenes (`take` 1..500, 100 por defecto; `skip` ≥ 0, sin
+`skip`/`take` se normalizan igual que el listado de envíos (`take` 1..500, 100 por defecto; `skip` ≥ 0, sin
 error). La búsqueda libre (número, empaque, factura, consignatario) corre **después** de los demás filtros.
 
 ---
@@ -320,7 +320,7 @@ Cómo se usa:
 ### 6.1 Selector y despacho
 
 Qué hace: lista las rutas activas en `DRAFT`/`PLANNED` de un día con sus avisos y bloqueantes, y despacha una ruta
-(individual o en lote). Al despachar: la ruta se congela (`Route` pasa a `ACTIVE`) y las órdenes vigentes avanzan
+(individual o en lote). Al despachar: la ruta se congela (`Route` pasa a `ACTIVE`) y los envíos vigentes avanzan
 **etapa por etapa** hasta `ASSIGNED` (Asignada; o hasta la última etapa habilitada anterior, si el tenant deshabilitó
 `ASSIGNED`). Al salir la ruta (`IN_PROGRESS`) pasan a `IN_TRANSIT`. Despachar es **irreversible**.
 
@@ -358,7 +358,7 @@ Avisos y bloqueantes de una ruta (`code` → `message`; **bloquea** el despacho 
 | Uno o más bloqueantes | `La ruta {código} no se puede despachar: {m1}; {m2}.` con `errors: { "{código de aviso}": ["{mensaje}"] }` | 422 |
 | El tenant deshabilitó `DISPATCHED` en el pipeline de `TripStatus` | `El pipeline de rutas de esta compañía no tiene habilitada la etapa DISPATCHED.` | 422 |
 | El tenant deshabilitó `ACTIVE` en el pipeline de `RouteStatus` | `El pipeline de rutas de esta compañía no tiene habilitada la etapa ACTIVE.` | 422 |
-| Una orden dejó de ser elegible entre el selector y el despacho | `Orden {número}: {motivo}` (sección 3.1) | 422 |
+| Un envío dejó de ser elegible entre el selector y el despacho | `Orden {número}: {motivo}` (sección 3.1) | 422 |
 | `comment` de más de 500 caracteres | `El comentario admite como máximo 500 caracteres.` | 400 |
 | Módulo `CATALOG` apagado | `El módulo 'CATALOG' no está habilitado para esta compañía.` (`code: module_disabled`) | 403 |
 | `tripPublicIds` del lote, vacío | `Seleccione al menos una ruta.` (campo `tripPublicIds`) | 400 |
@@ -369,7 +369,7 @@ Avisos y bloqueantes de una ruta (`code` → `message`; **bloquea** el despacho 
 ### 6.2 Salida
 
 Qué hace: registra la salida de una ruta ya despachada (`DISPATCHED` → `IN_PROGRESS`): fija `actualStartUtc` y
-lleva las órdenes vigentes a `IN_TRANSIT`. Es la misma costura (`TripLifecycleService.StartTrackedAsync`) que
+lleva los envíos vigentes a `IN_TRANSIT`. Es la misma costura (`TripLifecycleService.StartTrackedAsync`) que
 reutilizará la app del chofer del Lote 7 ("el estado lo mueven eventos: salida, llegada, POD"); el cierre manual de la
 ruta está en 6.2b; los eventos por parada y el POD llegan con la app del chofer.
 
@@ -387,8 +387,8 @@ Cómo se usa: `POST /api/v1/trips/{publicId}/start` — cuerpo opcional `{ "comm
 
 ### 6.2b Cerrar una ruta (2026-10-11, Lote 33)
 
-Qué hace: cierra una ruta en curso (`IN_PROGRESS` → `COMPLETED`): fija `actualEndUtc` y las órdenes dejan de estar vigentes en la
-ruta. Solo se puede cerrar cuando **todas las órdenes vigentes de la ruta ya terminaron**: entregadas, canceladas u otra etapa
+Qué hace: cierra una ruta en curso (`IN_PROGRESS` → `COMPLETED`): fija `actualEndUtc` y los envíos dejan de estar vigentes en la
+ruta. Solo se puede cerrar cuando **todos los envíos vigentes de la ruta ya terminaron**: entregadas, canceladas u otra etapa
 terminal, o con el intento ya concluido sin entrega (**Intento fallido**: pasa a la bandeja para reprogramarse). No cuentan
 como terminadas las que siguen en camino ni las que llegaron sin resultado.
 
@@ -402,14 +402,14 @@ El comentario por defecto en el historial es `Ruta cerrada`.
 |---|---|---|
 | Ruta que no está `IN_PROGRESS` (`DRAFT`, `PLANNED`, `DISPATCHED`, `CANCELLED`) | `La ruta {código} no está en curso; solo se cierra una ruta que ya salió.` | 422 |
 | Ruta ya `COMPLETED` | `La ruta {código} ya está cerrada.` | 422 |
-| Alguna orden sin terminar | `La ruta {código} no se puede cerrar: hay órdenes sin terminar ({n1}, {n2}…).` (nombra hasta 10 y agrega `y N más`) | 422 |
+| algún envío sin terminar | `La ruta {código} no se puede cerrar: hay órdenes sin terminar ({n1}, {n2}…).` (nombra hasta 10 y agrega `y N más`) | 422 |
 | La ruta no existe o es de otra compañía | `Ruta no encontrada.` | 404 |
 | Sin el permiso `trips.close` | respuesta estándar de permiso denegado | 403 |
 | `comment` de más de 500 caracteres | `El comentario admite como máximo 500 caracteres.` | 400 |
 | `rowVersion` no coincide | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
 
-Casos frecuentes: una orden sigue `IN_TRANSIT` porque el chofer no registró la entrega → registrarla (o marcarla Intento fallido) y volver a
-cerrar. Un cierre automático al terminar la última orden lo traerá la
+Casos frecuentes: un envío sigue `IN_TRANSIT` porque el chofer no registró la entrega → registrarla (o marcarla Intento fallido) y volver a
+cerrar. Un cierre automático al terminar el último envío lo traerá la
 app del chofer (por ahora el cierre es manual).
 
 ### 6.3 Cancelar una orden que va en una ruta
@@ -418,20 +418,20 @@ app del chofer (por ahora el cierre es manual).
 |---|---|---|
 | Cancelar una orden que va en una ruta `DRAFT`/`PLANNED` | se libera de la ruta automáticamente (`204`, sin error) | — |
 | Cancelar una orden que va en una ruta `DISPATCHED`/`IN_PROGRESS` | `La orden va en la ruta {código} ya despachada; no se puede cancelar mientras la ruta esté en curso.` | 422 |
-| Mandar a Intento fallido (`FAILED`) una orden de una ruta abierta | se libera de la ruta automáticamente | — |
-| Mandar a un lateral una orden de una ruta ya despachada | no cambia nada (lo decide el Lote 7) | — |
+| Mandar a Intento fallido (`FAILED`) un envío de una ruta abierta | se libera de la ruta automáticamente | — |
+| Mandar a un lateral un envío de una ruta ya despachada | no cambia nada (lo decide el Lote 7) | — |
 
 ---
 
 ## 7. Estación de escaneo Outbound
 
-> **Lote 107 (2026-10-17): la estación ahora tiene ACCIÓN escogida.** El usuario escoge qué va a hacer —**Recoger, Llegó, Enrutar o Salir**— y cada escaneo lleva la orden al estatus de esa acción (`POST /api/v1/scan/action`, descrito en la sección 7b). **Enrutar** (la acción por omisión) hace lo de siempre —poner la orden en la ruta abierta de su zona— y además la deja **Asignada**; el texto de abajo (`/scan/outbound`) sigue describiendo ese asignador, que Enrutar reutiliza. Una Sometida ya no se rechaza al enrutarla: se lleva hasta Asignada brincando Recogida y Sin asignar.
+> **Lote 107 (2026-10-17): la estación ahora tiene ACCIÓN escogida.** El usuario escoge qué va a hacer —**Recoger, Llegó, Enrutar o Salir**— y cada escaneo lleva el envío al estatus de esa acción (`POST /api/v1/scan/action`, descrito en la sección 7b). **Enrutar** (la acción por omisión) hace lo de siempre —poner el envío en la ruta abierta de su zona— y además la deja **Asignada**; el texto de abajo (`/scan/outbound`) sigue describiendo ese asignador, que Enrutar reutiliza. Una Sometida ya no se rechaza al enrutarla: se lleva hasta Asignada brincando Recogida y Sin asignar.
 
 Qué hace: escanea el número de envío, el número de empaque o el número de factura del cliente (mismo criterio y
 precedencia que `/orders/lookup`: número de envío primero, luego empaque, luego factura y, desde el Lote 44, el número de paquete
-del label de cada pieza) y asigna la orden a la
+del label de cada pieza) y asigna el envío a la
 ruta abierta del día de su zona. Responde siempre `200` con un resultado tipado y la palabra que debe pronunciar
-la estación (`found`/`dup`/`notfound`). Nunca crea rutas, ni cambia chofer, vehículo o el estatus de la orden.
+la estación (`found`/`dup`/`notfound`). Nunca crea rutas, ni cambia chofer, vehículo o el estatus del envío.
 
 Quién puede: `trips.scan`.
 
@@ -449,7 +449,7 @@ Resultados (`outcome` / `voice` / mensaje), en orden de precedencia:
 | `NOT_FOUND` | `NO_MATCH` | `notfound` | `No se encontró el envío.` |
 | `NOT_FOUND` | `MULTIPLE_MATCHES` | `notfound` | `Hay varias envíos con ese código; escanee el empaque.` |
 | `NOT_FOUND` | `MULTIPLE_MATCHES` (por número de paquete, Lote 44) | `notfound` | `El número de paquete está en {n} órdenes (de clientes distintos o repetido); escanee el empaque o el número de envío.` |
-| `ALREADY_ASSIGNED` | `IN_TRIP` | `dup` | `Ya estaba en la ruta {código}.` (gana a "no elegible": una orden ya despachada dice "ya") |
+| `ALREADY_ASSIGNED` | `IN_TRIP` | `dup` | `Ya estaba en la ruta {código}.` (gana a "no elegible": un envío ya despachado dice "ya") |
 | `NOT_ELIGIBLE` | `NOT_ELIGIBLE` | `notfound` | el motivo de la sección 3.1 (p. ej. "El estatus actual no permite la acción 'ASSIGN_TRIP'.") |
 | `FOUND_UNASSIGNED` | `NO_ZONE` | `found` | `No se pudo resolver la zona de despacho por código postal ni pueblo; queda sin asignar.` |
 | `FOUND_UNASSIGNED` | `AMBIGUOUS_ZONE` | `found` | `El código postal o pueblo pertenece a varias zonas ({códigos}); queda sin asignar.` |
@@ -458,24 +458,24 @@ Resultados (`outcome` / `voice` / mensaje), en orden de precedencia:
 
 El escaneo nunca inventa rutas: si la única ruta abierta de la zona dejó de estarlo entre el escaneo y el bloqueo
 (por ejemplo, alguien la acaba de despachar), prueba la siguiente ruta abierta de menor id; si no queda ninguna,
-el resultado es `NO_OPEN_ROUTE`. Ocho escaneos simultáneos de órdenes distintas hacia la misma ruta quedan todos
+el resultado es `NO_OPEN_ROUTE`. Ocho escaneos simultáneos de envíos distintas hacia la misma ruta quedan todos
 `FOUND_ASSIGNED`, con secuencias 1..N sin huecos ni duplicados.
 
 ---
 
 ## 7b. Escaneo con acción escogida (Lote 107) y por pieza (Lote 110)
 
-> **Lote 110 (2026-10-18): lo que se escanea son las PIEZAS.** Se escanea el **número de cada pieza** (el del label); el **número de la orden, el de empaque y el de factura no se escanean**: la estación responde «No se encontró la pieza.» (audio **«No»**). El audio de la estación es **«Sí»** (encontrada), **«No»** (no encontrada) y **«Ok»** (duplicada). Cada pieza se registra **una vez por acción**: escanearla otra vez con la misma acción es un **duplicado** (`DUPLICATE`, «La pieza … ya se había escaneado con esta acción.», sin cambios y sin contarla dos veces).
-> - **El primer escaneo de una acción mueve la orden** a ese estatus (brincando los de en medio, como se describe abajo); los siguientes de la misma acción **solo cuentan** (`COUNTED`, «La pieza … se contó…», o con Enrutar «Ya estaba en la ruta …»). La respuesta trae `scanned`/`total` («4 de 5 piezas») y `missing` (faltantes «Por verificar»).
-> - **Faltantes:** una pieza que no se escaneó en la acción en que iba la orden —ni en una posterior— queda **«Por verificar»** (`TO_VERIFY`) **cuando la orden pasa a la siguiente acción sin ella**, o al **«Cerrar conteo»**. Solo hay faltante si en esa acción se escaneó al menos una pieza (si la orden brincó la acción no hay conteo que cerrar). La orden avanza igual y muestra «4 de 5». Si la pieza aparece después (se escanea con cualquier acción) **deja de ser faltante**. Las reclamaciones (lote siguiente) continúan desde «Por verificar».
-> - **«Cerrar conteo»** (botón en la caja del resultado, `POST /api/v1/scan/close-count` con `{ "orderPublicId": … }`, permiso `trips.scan`): marca como «Por verificar» lo que no se escaneó en la acción en que va la orden, sin cambiar su estatus. Responde `Conteo cerrado: la orden … está completa.` o `Conteo cerrado: a la orden … le faltan N de M piezas («Por verificar»).`
-> - Enrutar sin ruta que reciba la orden (`NO_ROUTE`) no cambia nada y **no registra la pieza**.
+> **Lote 110 (2026-10-18): lo que se escanea son las PIEZAS.** Se escanea el **número de cada pieza** (el del label); el **número del envío, el de empaque y el de factura no se escanean**: la estación responde «No se encontró la pieza.» (audio **«No»**). El audio de la estación es **«Sí»** (encontrada), **«No»** (no encontrada) y **«Ok»** (duplicada). Cada pieza se registra **una vez por acción**: escanearlo otra vez con la misma acción es un **duplicado** (`DUPLICATE`, «La pieza … ya se había escaneado con esta acción.», sin cambios y sin contarla dos veces).
+> - **El primer escaneo de una acción mueve el envío** a ese estatus (brincando los de en medio, como se describe abajo); los siguientes de la misma acción **solo cuentan** (`COUNTED`, «La pieza … se contó…», o con Enrutar «Ya estaba en la ruta …»). La respuesta trae `scanned`/`total` («4 de 5 piezas») y `missing` (faltantes «Por verificar»).
+> - **Faltantes:** una pieza que no se escaneó en la acción en que iba el envío —ni en una posterior— queda **«Por verificar»** (`TO_VERIFY`) **cuando el envío pasa a la siguiente acción sin ella**, o al **«Cerrar conteo»**. Solo hay faltante si en esa acción se escaneó al menos una pieza (si el envío brincó la acción no hay conteo que cerrar). El envío avanza igual y muestra «4 de 5». Si la pieza aparece después (se escanea con cualquier acción) **deja de ser faltante**. Las reclamaciones (lote siguiente) continúan desde «Por verificar».
+> - **«Cerrar conteo»** (botón en la caja del resultado, `POST /api/v1/scan/close-count` con `{ "orderPublicId": … }`, permiso `trips.scan`): marca como «Por verificar» lo que no se escaneó en la acción en que va el envío, sin cambiar su estatus. Responde `Conteo cerrado: la orden … está completa.` o `Conteo cerrado: a la orden … le faltan N de M piezas («Por verificar»).`
+> - Enrutar sin ruta que reciba el envío (`NO_ROUTE`) no cambia nada y **no registra la pieza**.
 
-Qué hace: el usuario escoge la **acción** y escanea; cada escaneo lleva la orden al estatus de esa acción **brincando los estatus de en medio** (no hay que escanear varias veces). Los estatus brincados quedan en el historial con la marca **«(brincado)»** y **la misma fecha y hora** que el estatus al que llegó; los avisos al cliente de los estatus brincados **no** se mandan. No revisa tarifa, crédito ni cliente: eso se revisó al someter la orden.
+Qué hace: el usuario escoge la **acción** y escanea; cada escaneo lleva el envío al estatus de esa acción **brincando los estatus de en medio** (no hay que escanear varias veces). Los estatus brincados quedan en el historial con la marca **«(brincado)»** y **la misma fecha y hora** que el estatus al que llegó; los avisos al cliente de los estatus brincados **no** se mandan. No revisa tarifa, crédito ni cliente: eso se revisó al someter el envío.
 
 Quién puede: `trips.scan` (módulo LTL_GROUND). Cómo se usa: pantalla **Operación → Estación de escaneo** (selector de acción arriba) o `POST /api/v1/scan/action` — `{ "action": "ARRIVE", "code": "CND-0000123", "planDate": null }`. El código es el mismo de siempre (número de envío, empaque, factura o número de paquete).
 
-| Acción | `action` | Lleva la orden a | Quién la usa |
+| Acción | `action` | Lleva el envío a | Quién la usa |
 |---|---|---|---|
 | Recoger | `PICKUP` | Recogida | quien recoge (chofer o guarda) |
 | Llegó | `ARRIVE` | Sin asignar | el guarda del almacén |
@@ -487,10 +487,10 @@ Resultados (`outcome` / `voice`), siempre `200`:
 | `outcome` | `voice` | Cuándo | Mensaje (ejemplo) |
 |---|---|---|---|
 | `APPLIED` | `found` | el estatus cambió | `La orden CND-0000123 pasó a Sin asignar.` / `… pasó a En tránsito (brincó 2 estatus).` / con Enrutar: `Asignada a la ruta 2026-0001. (brincó 2 estatus)` |
-| `ALREADY_BEYOND` | `dup` | la orden ya está en ese estatus o más adelante: no se toca (con Enrutar, si ya está en una ruta: `Ya estaba en la ruta 2026-0001.`) | `La orden CND-0000123 ya está en Asignada o más adelante: no se cambia.` |
-| `FINAL` | `dup` | la orden está en un estatus final (Entregada, Cancelada, En almacén): se ignora; reabrirla exige el permiso `orders.reopen` | `La orden CND-0000123 está en un estatus final (Entregada): no se cambia.` |
-| `NO_ROUTE` | `notfound` | **Enrutar** y no hay ruta abierta que reciba la orden (sin zona, zona ambigua o sin ruta ese día): no cambia nada, ni el estatus | el motivo de siempre (sección 7), p. ej. `No hay ruta abierta para la zona R-01 en la fecha 2026-10-17; queda sin asignar.` |
-| `NOT_FOUND` / `AMBIGUOUS` | `notfound` | código que no existe o está en varias órdenes | `No se encontró el envío.` / `Hay varias envíos con ese código; escanee el empaque.` |
+| `ALREADY_BEYOND` | `dup` | el envío ya está en ese estatus o más adelante: no se toca (con Enrutar, si ya está en una ruta: `Ya estaba en la ruta 2026-0001.`) | `La orden CND-0000123 ya está en Asignada o más adelante: no se cambia.` |
+| `FINAL` | `dup` | el envío está en un estatus final (Entregado, Cancelado, En almacén): se ignora; reabrirlo exige el permiso `orders.reopen` | `La orden CND-0000123 está en un estatus final (Entregada): no se cambia.` |
+| `NO_ROUTE` | `notfound` | **Enrutar** y no hay ruta abierta que reciba el envío (sin zona, zona ambigua o sin ruta ese día): no cambia nada, ni el estatus | el motivo de siempre (sección 7), p. ej. `No hay ruta abierta para la zona R-01 en la fecha 2026-10-17; queda sin asignar.` |
+| `NOT_FOUND` / `AMBIGUOUS` | `notfound` | código que no existe o está en varias envíos | `No se encontró el envío.` / `Hay varias envíos con ese código; escanee el empaque.` |
 
 Reglas:
 - **Desde Intento fallido** (lateral): **Llegó** la devuelve a Sin asignar (el intento fallido queda en el historial); Enrutar y Salir la llevan a Asignada / En tránsito pasando por Sin asignar (brincado); Recoger ya está más adelante.
@@ -502,16 +502,16 @@ Reglas:
 
 ## 8. Planificar el día
 
-Qué hace: agrupa por zona de despacho las órdenes elegibles (ya recogidas) **sin ruta vigente** de una fecha: usa la ruta
+Qué hace: agrupa por zona de despacho los envíos elegibles (ya recogidas) **sin ruta vigente** de una fecha: usa la ruta
 abierta de la zona (la de menor id si hay varias) o crea una con el chofer estándar (sección 1). Es **idempotente**
 (repetirla no crea rutas de más y solo agrega lo que sigue sin asignar), está serializada por compañía y **no**
-optimiza, no despacha, no asigna vehículo ni cambia el estatus de las órdenes.
+optimiza, no despacha, no asigna vehículo ni cambia el estatus de los envíos.
 
 Quién puede: `trips.plan`.
 
 Cómo se usa: `POST /api/v1/trips/plan-day` — `{ "planDate": "2026-09-28", "dispatchZoneIds": null, "createEmptyTrips": false }`
 (`dispatchZoneIds` nulo o vacío = todas las zonas activas del tenant; `createEmptyTrips: true` crea la ruta de una
-zona aunque no tenga órdenes, para que el escaneo Outbound tenga destino desde temprano)
+zona aunque no tenga envíos, para que el escaneo Outbound tenga destino desde temprano)
 
 | Campo / caso | Mensaje exacto | HTTP |
 |---|---|---|
@@ -520,9 +520,9 @@ zona aunque no tenga órdenes, para que el escaneo Outbound tenga destino desde 
 | Alguna zona de otro tenant o inexistente | `Zona de despacho no encontrada.` | 404 |
 | Alguna zona inactiva | `La zona de despacho está inactiva.` (campo `dispatchZoneIds`) | 400 |
 
-Por zona, cada orden omitida deja un aviso `NOT_ELIGIBLE` (`Orden {número}: {motivo}`, sección 3.1) o
+Por zona, cada envío omitido deja un aviso `NOT_ELIGIBLE` (`Orden {número}: {motivo}`, sección 3.1) o
 `CAPACITY_HARD_CAP` (`La ruta llegó al máximo de 300 paradas; el envío queda sin asignar.`) en el resultado; no son
-errores HTTP, son parte de la respuesta `200` (`zones[].issues`). Las órdenes sin zona resuelta o con zona ambigua
+errores HTTP, son parte de la respuesta `200` (`zones[].issues`). Los envíos sin zona resuelta o con zona ambigua
 no se tocan: solo se cuentan en `ordersWithoutZone`.
 
 ---
@@ -555,10 +555,10 @@ Sin validaciones propias más allá de las compartidas (permiso y módulo). La f
 |---|---|---|---|---|---|
 | — | `DRAFT` (inicial) | Sistema, al crear | Número único `AAAA-####` | Historial de nacimiento | — |
 | `DRAFT`/`PLANNED` | `PLANNED` (solo se llega optimizando, sección 4.1) | `trips.optimize`, automático al aplicar una optimización | — | Ninguno propio | — |
-| `DRAFT`/`PLANNED` | `DISPATCHED` | `trips.dispatch` (`POST .../dispatch`) | Sin bloqueantes (sección 6.1); pipeline con `DISPATCHED` habilitado | `TripStatusEffect`: congela la ruta (etapa por etapa hasta `Route.ACTIVE`) y avanza las órdenes vigentes hasta `PLANNED` | Contenido de la ruta congelado; cabecera solo editable con `EDIT_TRIP` |
-| `DISPATCHED` | `IN_PROGRESS` | `trips.dispatch` (`POST .../start`) | Debe estar `DISPATCHED` | `TripStatusEffect`: `actualStartUtc`, órdenes vigentes en pipeline avanzan hasta `IN_TRANSIT` | — |
-| `IN_PROGRESS` | `COMPLETED` | `trips.close` (`POST .../complete`, sección 6.2b) | Todas las órdenes vigentes terminadas (terminal o Intento fallido) | `TripStatusEffect`: `actualEndUtc`, `TripOrder.IsCurrent = 0` | Ruta cerrada, solo consulta |
-| `DRAFT`/`PLANNED` | `CANCELLED` ("Eliminar ruta", lateral) | `trips.plan` (`DELETE`) | Solo desde `DRAFT`/`PLANNED` | `TripStatusEffect`: libera todas las órdenes vigentes, archiva la versión vigente de la ruta, `Trip.IsActive = 0` | Reintentar `DELETE`, editar, agregar órdenes, optimizar, despachar (422 "cerrada") |
+| `DRAFT`/`PLANNED` | `DISPATCHED` | `trips.dispatch` (`POST .../dispatch`) | Sin bloqueantes (sección 6.1); pipeline con `DISPATCHED` habilitado | `TripStatusEffect`: congela la ruta (etapa por etapa hasta `Route.ACTIVE`) y avanza los envíos vigentes hasta `PLANNED` | Contenido de la ruta congelado; cabecera solo editable con `EDIT_TRIP` |
+| `DISPATCHED` | `IN_PROGRESS` | `trips.dispatch` (`POST .../start`) | Debe estar `DISPATCHED` | `TripStatusEffect`: `actualStartUtc`, envíos vigentes en pipeline avanzan hasta `IN_TRANSIT` | — |
+| `IN_PROGRESS` | `COMPLETED` | `trips.close` (`POST .../complete`, sección 6.2b) | Todos los envíos vigentes terminados (terminal o Intento fallido) | `TripStatusEffect`: `actualEndUtc`, `TripOrder.IsCurrent = 0` | Ruta cerrada, solo consulta |
+| `DRAFT`/`PLANNED` | `CANCELLED` ("Eliminar ruta", lateral) | `trips.plan` (`DELETE`) | Solo desde `DRAFT`/`PLANNED` | `TripStatusEffect`: libera todos los envíos vigentes, archiva la versión vigente de la ruta, `Trip.IsActive = 0` | Reintentar `DELETE`, editar, agregar envíos, optimizar, despachar (422 "cerrada") |
 
 Intentar `CANCELLED` desde `DISPATCHED`/`IN_PROGRESS` responde el 422 del motor de estatus ("No se permite pasar a
 'CANCELLED' desde '{estatus}' según el modelo de esta compañía.") antes de que `TripStatusEffect` la rechace de
@@ -570,7 +570,7 @@ Un `Trip` puede tener varias versiones de `Route` a lo largo del tiempo; solo un
 
 | De | A | Quién | Qué valida | Efectos |
 |---|---|---|---|---|
-| — | `DRAFT` (inicial) | Sistema, al crear la primera versión o al agregar la primera orden | — | Historial de nacimiento |
+| — | `DRAFT` (inicial) | Sistema, al crear la primera versión o al agregar el primero envío | — | Historial de nacimiento |
 | `DRAFT`/`PLANNED` | `OPTIMIZED` | `trips.optimize` | — | Nueva versión con la secuencia del motor |
 | `DRAFT`/`OPTIMIZED` | `ACTIVE` | Automático al despachar el `Trip` (sección 6.1) | — | Congela la versión (contenido inmutable) |
 | `DRAFT`/`OPTIMIZED` | `ARCHIVED` (lateral, terminal) | Automático al reemplazar la versión (nueva optimización) o al "Eliminar ruta" | — | La versión queda intacta, solo de consulta |
@@ -585,7 +585,7 @@ Un `Trip` puede tener varias versiones de `Route` a lo largo del tiempo; solo un
 
 ### 10.4 RouteStop (`RouteStopStatus`)
 
-Este lote solo crea paradas en **`PENDING`** (al agregar una orden o al optimizar/reordenar). El resto del ciclo
+Este lote solo crea paradas en **`PENDING`** (al agregar un envío o al optimizar/reordenar). El resto del ciclo
 (`ON_THE_WAY`, `ARRIVED`, `COMPLETED`, `FAILED`) lo mueve la app del chofer del **Lote 7** (eventos de salida,
 llegada y POD); el progreso que muestra el monitor (sección 9) ya está preparado para leerlos.
 
@@ -599,7 +599,7 @@ trae una capacidad propia en este lote, `EDIT_TRIP`, denegada por defecto en `DI
 
 ### 10.5 Dos personas editando rutas al mismo tiempo
 
-Varias personas de la misma compañía pueden trabajar rutas a la vez (poner pines, reordenar, agregar órdenes, optimizar, despachar). El sistema las atiende **una detrás de otra** para que ninguna pise el trabajo de la otra; casi siempre ni se nota. Hay dos avisos que conviene reconocer:
+Varias personas de la misma compañía pueden trabajar rutas a la vez (poner pines, reordenar, agregar envíos, optimizar, despachar). El sistema las atiende **una detrás de otra** para que ninguna pise el trabajo de la otra; casi siempre ni se nota. Hay dos avisos que conviene reconocer:
 
 | Situación | Mensaje | Código | Qué hacer |
 |---|---|---|---|
@@ -613,7 +613,7 @@ Este segundo aviso es raro: aparece solo cuando coinciden varias personas modifi
 | Permiso | Qué habilita |
 |---|---|
 | `trips.view` | ver rutas (listado, ficha, corridas de optimización), la lista "Sin asignar" y el monitor |
-| `trips.plan` | crear/editar/eliminar rutas, reasignar chofer en bloque, agregar/quitar órdenes, reordenar, pin manual y "Planificar el día" |
+| `trips.plan` | crear/editar/eliminar rutas, reasignar chofer en bloque, agregar/quitar envíos, reordenar, pin manual y "Planificar el día" |
 | `trips.optimize` | optimizar una ruta |
 | `trips.dispatch` | ver el selector de despacho, despachar (individual/lote) y registrar la salida; también asignar/reasignar el chofer de una entrega especial (capítulo 04, sección 11) |
 | `trips.scan` | usar la estación de escaneo Outbound |
@@ -636,15 +636,15 @@ que `DRIVER_RATE` y `FLEET_DOCUMENT`): es una bitácora de solo lectura, no un r
 
 ## 12. Fuentes de análisis y auditoría
 
-Fuente nueva **`TRIP`** ("Rutas", con `PlanDate` como campo de fecha), sin `Amount` ni `Rate`. La fuente de Órdenes
+Fuente nueva **`TRIP`** ("Rutas", con `PlanDate` como campo de fecha), sin `Amount` ni `Rate`. La fuente de Envíos
 (`TRANSPORT_ORDER`) gana `TripCode`/`TripStatusCode`, `AssignedDriverCode`/`AssignedDriverName`/
 `HasAssignedDriver`, `DispatchZoneCode` e `IsException` (`FAILED`, Intento fallido; `CANCELLED` no cuenta).
 
 El tenant nuevo (y el demo) reciben de fábrica: la vista **"Rutas"** (fecha, número, zona, chofer, vehículo,
-estatus, paradas, sobre el máximo, distancia total; orden por fecha descendente); los indicadores **"Órdenes sin
+estatus, paradas, sobre el máximo, distancia total; orden por fecha descendente); los indicadores **"Envíos sin
 chofer asignado"** (activas en `SUBMITTED`..`ASSIGNED` sin ruta vigente con chofer y sin viaje pagado propio) y
 **"Envíos en excepción"** (`FAILED`); el indicador **"Rutas sobre el máximo de paradas"**; y
-el gráfico de donut **"Rutas por estatus"** (últimos 7 días). Cada alta o cambio de una ruta, sus órdenes, la
+el gráfico de donut **"Rutas por estatus"** (últimos 7 días). Cada alta o cambio de una ruta, sus envíos, la
 versión de la ruta y los miembros de zona queda en `AuditLog` (`GET /api/v1/audit/changes?entityType=TRIP|ROUTE|
 DISPATCH_ZONE|TRANSPORT_ORDER`); las corridas de optimización no generan `AuditLog` (ya son su propia bitácora).
 

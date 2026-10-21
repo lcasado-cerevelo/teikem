@@ -22,5 +22,5 @@ public static class ReturnSuggestionRules
     public static bool Suggest(int afterAttempts, int failedAttempts, string? statusCode)
         => afterAttempts > 0 && failedAttempts >= afterAttempts && !NeverSuggest.Contains(statusCode ?? string.Empty, StringComparer.OrdinalIgnoreCase);
 
-    public static string Message(int failedAttempts) => $"Lleva {failedAttempts} intento(s) fallido(s): se sugiere devolverla.";
+    public static string Message(int failedAttempts) => $"Lleva {failedAttempts} intento(s) fallido(s): se sugiere devolverlo.";
 }

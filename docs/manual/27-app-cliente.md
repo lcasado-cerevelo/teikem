@@ -1,6 +1,6 @@
 # 27 — App del cliente (Teikem Clientes)
 
-Lote 102 (portal de clientes, 2026-10-17). La app **aparte** del cliente: **web** (instalable en el escritorio o la pantalla de inicio) y **móvil** (Android e iOS), hecha con Expo. El cliente entra con su correo; ve **sus** órdenes y **sus** avisos. Las reglas de acceso y de aislamiento son las del [capítulo 26](26-portal-acceso.md); las pantallas con sus capturas, en [el manual de pantallas L102](frontend/l102-app-cliente.md).
+Lote 102 (portal de clientes, 2026-10-17). La app **aparte** del cliente: **web** (instalable en el escritorio o la pantalla de inicio) y **móvil** (Android e iOS), hecha con Expo. El cliente entra con su correo; ve **sus** envíos y **sus** avisos. Las reglas de acceso y de aislamiento son las del [capítulo 26](26-portal-acceso.md); las pantallas con sus capturas, en [el manual de pantallas L102](frontend/l102-app-cliente.md).
 
 ## 1. Qué puede hacer el cliente
 | Pantalla | Qué hace |
@@ -9,15 +9,15 @@ Lote 102 (portal de clientes, 2026-10-17). La app **aparte** del cliente: **web*
 | **Confirmar la computadora** | La primera vez desde una computadora nueva: le llega un correo con un enlace (24 h, un solo uso); lo abre (también desde el teléfono) y vuelve a entrar |
 | **Segundo paso (MFA)** | La primera vez inscribe su app de autenticación (clave o enlace, código y **códigos de recuperación**); después escribe el código (se recuerda 30 días en la computadora de confianza) |
 | **Documento legal** | Política de privacidad y términos de uso: el botón «Acepto» se habilita solo al llegar al final del texto |
-| **Inicio** | Saludo, el cliente actual, cuántas órdenes tiene en total y por estatus, y las 5 más recientes |
-| **Órdenes** | Sus órdenes con búsqueda por conduce, orden, factura o consignatario y «Cargar más» (20 por página); cada una con su **barra de progreso** (capítulo 28) |
-| **Ficha de la orden** | La **barra de progreso** con la lista de etapas, conduce, estatus, servicio, entrega, paquetes, COD y el **seguimiento** (cada cambio de estatus con su fecha) |
+| **Inicio** | Saludo, el cliente actual, cuántas envíos tiene en total y por estatus, y las 5 más recientes |
+| **Envíos** | Sus envíos con búsqueda por conduce, envío, factura o consignatario y «Cargar más» (20 por página); cada una con su **barra de progreso** (capítulo 28) |
+| **Ficha del envío** | La **barra de progreso** con la lista de etapas, conduce, estatus, servicio, entrega, paquetes, COD y el **seguimiento** (cada cambio de estatus con su fecha) |
 | **Avisos** | Los resúmenes que su compañía configuró mandarle por la bandeja del portal (recogido, salió a entrega, entregado, COD procesado, factura emitida) |
 | **Ajustes** | La cuenta; **cambiar de cliente** (si tiene acceso a varios); idioma (es/en); **Abrir con huella** (solo teléfono); «No confiar en esta computadora»; **mis computadoras de confianza** (con «Quitar»); cerrar sesión |
 
 ## 1b. Idioma y tema (claro y oscuro)
 Decidido con Luis (2026-10-17): **toda pantalla tiene los dos temas y los dos idiomas, con su opción para cambiarlos**.
-- **Idioma:** español por omisión; **Español / English** en el login, en la página pública «¿Cómo va mi orden?», en el documento legal y en Ajustes. Cambia al instante, sin recargar, y se recuerda.
+- **Idioma:** español por omisión; **Español / English** en el login, en la página pública «¿Cómo va mi envío?», en el documento legal y en Ajustes. Cambia al instante, sin recargar, y se recuerda.
 - **Tema:** **Automático** (por omisión: sigue al teléfono o al navegador), **Claro** u **Oscuro**, en los mismos lugares. Cambia al instante y se recuerda; Claro y Oscuro mandan sobre el sistema. Todos los colores (incluidas las etiquetas, avisos y la barra de progreso) salen de una paleta por tema, con **contraste de accesibilidad AA** vigilado por pruebas.
 - Los textos que viene del servidor (estatus de la compañía, el documento legal, avisos) salen en el idioma elegido.
 
@@ -41,10 +41,10 @@ Los mensajes de los servicios son los del servidor (capítulos 24 a 26): `Creden
 | Sin conexión con el servidor | «No hay conexión con el servidor. Revise su internet e intente de nuevo.» |
 | El servidor pide el reto anti-robot | «Confirme que no es un robot para continuar.» (en la web aparece el widget de Cloudflare; **en el teléfono todavía no**: pide entrar desde el navegador) |
 | Falla la huella | «No se pudo verificar. Le quedan N intentos antes de pedirle la contraseña.» |
-| Orden de otro cliente o inexistente | El mismo mensaje de «no encontrada» del servidor |
+| Envío de otro cliente o inexistente | El mismo mensaje de «no encontrada» del servidor |
 
 ## Casos frecuentes
 - **«Me pide confirmar la computadora otra vez»:** es una computadora o navegador nuevo, pasaron 30 días sin usarla, cambió su contraseña, marcó «No confiar» o la quitó en Ajustes.
 - **«No me aparece Abrir con huella»:** el teléfono no tiene lector o no tiene huellas registradas; regístrelas en los ajustes del teléfono.
-- **«No veo una orden que sé que existe»:** la app solo muestra las órdenes del cliente con el que entró; si tiene acceso a varios, cámbielo en Ajustes.
+- **«No veo una orden que sé que existe»:** la app solo muestra los envíos del cliente con el que entró; si tiene acceso a varios, cámbielo en Ajustes.
 - **«Los avisos están vacíos»:** la compañía decide, cliente por cliente, qué avisos manda y por qué canal (capítulo 23); si el canal «bandeja del portal» está apagado no llega nada aquí.
