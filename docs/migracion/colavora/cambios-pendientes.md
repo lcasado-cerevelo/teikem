@@ -4,6 +4,8 @@
 
 ## 1. Teléfonos: solo dígitos y prefijo internacional (`CountryCallingCode`)
 
+> ✅ **HECHO (2026-10-21).** El modelo (Lote 162, `PhoneRules`) ya existía; la migración usa ahora `ColavoraRules.ParsePhones`: un número por cada teléfono del campo (separados por «/» o «;», el primero principal, los demás con etiqueta «Otro»), prefijo `1` si no trae otro, extensión («ext 12», «x45», «#12») aparte y solo dígitos. **Nada de texto suelto como teléfono**: lo que no se puede leer («PR», `9.99999E+11` de Excel, «(787», segundo tramo corto) va como **advertencia** en el reporte (con el valor original) y no se guarda. Aplica a teléfono y fax del cliente (servicio de contactos) y al teléfono del consignatario. Formatos reales de Colavora vistos (solo lectura): `(787) 555 - 1234` 20,935; `(787) 555-1234` 16,824; vacío 3,459; 7 dígitos sin código de área (`555-1234`) 1,316 — se guardan con prefijo `1` y 7 dígitos; ~60 con dos números; ~35 basura. Pruebas en `ColavoraRulesTests`.
+
 **Contexto.** Otra sesión cambia el modelo de teléfonos (diseño en `docs/busqueda-global-dictado-2026-10-20.md`, §6):
 - `ContactPoint.CountryCallingCode` `VARCHAR(4) NULL`: prefijo internacional sin «+», solo dígitos (`1` para EE. UU. y Puerto Rico). `NULL` = el de la compañía (`Tenant.DefaultPhoneCountryCode`).
 - `ContactPoint.Value`: pasa a guardar **solo los dígitos nacionales** (p. ej. `7875551234`), sin formato. `Extension` aparte, también solo dígitos.

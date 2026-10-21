@@ -279,4 +279,47 @@ public sealed class ColavoraRulesTests
     [Fact]
     public void Without_the_option_assigned_orders_stay_open()
         => Assert.Equal(OrderStatuses.Assigned, ColavoraRules.MapStatus("Assigned", Migration.AddDays(-90), Migration));
+
+    [Theory]
+    [InlineData("(787) 555 - 1234", "1", "7875551234", null, 0)]
+    [InlineData("(787)555-1234", "1", "7875551234", null, 0)]
+    [InlineData("787-555-1234 ext 12", "1", "7875551234", "12", 0)]
+    [InlineData("787.555.1234 x45", "1", "7875551234", "45", 0)]
+    [InlineData("1-787-555-1234", "1", "7875551234", null, 0)]
+    [InlineData("+593987654321", "593", "987654321", null, 0)]
+    [InlineData("555-1234", "1", "5551234", null, 0)]
+    [InlineData("7875551234", "1", "7875551234", null, 0)]
+    public void Single_phone_is_split_into_prefix_digits_and_extension(string raw, string cc, string national, string? ext, int warnings)
+    {
+        var p = ColavoraRules.ParsePhones(raw);
+        var n = Assert.Single(p.Numbers);
+        Assert.Equal(cc, n.CountryCallingCode);
+        Assert.Equal(national, n.National);
+        Assert.Equal(ext, p.Extension);
+        Assert.Equal(warnings, p.Warnings.Count);
+    }
+
+    [Fact]
+    public void Two_numbers_in_one_field_are_split_and_the_first_is_the_main_one()
+    {
+        var p = ColavoraRules.ParsePhones("787-555-1234 / 939-555-9876");
+        Assert.Equal(new[] { "7875551234", "9395559876" }, p.Numbers.Select(n => n.National));
+    }
+
+    [Theory]
+    [InlineData("PR")]
+    [InlineData("9.99999E+11")]
+    [InlineData("(787")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public void Junk_phones_are_never_stored_as_numbers(string? raw)
+        => Assert.Empty(ColavoraRules.ParsePhones(raw).Numbers);
+
+    [Fact]
+    public void A_short_second_segment_warns_but_keeps_the_first_number()
+    {
+        var p = ColavoraRules.ParsePhones("787-555-1234/5678");
+        Assert.Single(p.Numbers);
+        Assert.Single(p.Warnings);
+    }
 }

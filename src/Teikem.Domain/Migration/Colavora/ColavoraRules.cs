@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using Teikem.Domain.Constants;
+using Teikem.Domain.Contacts;
 
 namespace Teikem.Domain.Migration.Colavora;
 
@@ -397,6 +398,45 @@ public static class ColavoraRules
         if (at > 0) u = u[..at];
         u = u.ToUpperInvariant();
         return u.Length > 20 ? u[..20] : u;
+    }
+
+    /// <summary>Teléfonos leídos de un campo de Colavora: cada número separado (prefijo + solo dígitos), la extensión del primero y lo que no se pudo leer.</summary>
+    public sealed record ColavoraPhones(IReadOnlyList<PhoneParts> Numbers, string? Extension, IReadOnlyList<string> Warnings);
+
+    private static readonly Regex PhoneExtension = new(@"\s*(?:\bext(?:ension|ensión)?\.?|\bx|#)\s*(\d{1,6})\s*$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    /// <summary>
+    /// Teléfono(s) de Colavora → número(s) solo con dígitos y prefijo (dictado de Luis, 2026-10-20). El campo es texto libre: «(787) 555-1234»,
+    /// «787-555-1234 ext 12», varios números separados por «/» o «;», 7 dígitos sin código de área, y basura («PR», «9.99999E+11», «(787»).
+    /// Lo que se puede leer se devuelve; lo que no, va en <c>Warnings</c> (nunca se guarda texto suelto como teléfono). <paramref name="defaultCountry"/> = prefijo de la compañía.
+    /// </summary>
+    public static ColavoraPhones ParsePhones(string? raw, string defaultCountry = "1")
+    {
+        var numbers = new List<PhoneParts>();
+        var warnings = new List<string>();
+        var text = (raw ?? string.Empty).Trim();
+        if (text.Length == 0) return new ColavoraPhones(numbers, null, warnings);
+        if (Regex.IsMatch(text, @"\d[eE][+-]?\d"))
+        {
+            warnings.Add($"Teléfono dañado (notación científica de Excel): «{Trim(text, 60)}».");
+            return new ColavoraPhones(numbers, null, warnings);
+        }
+        string? extension = null;
+        var em = PhoneExtension.Match(text);
+        if (em.Success) { extension = em.Groups[1].Value; text = text[..em.Index]; }
+        foreach (var segment in Regex.Split(text, @"\s*[/;]\s*"))
+        {
+            var seg = segment.Trim().TrimEnd('-', '.', ',', ' ');
+            if (seg.Length == 0) continue;
+            try
+            {
+                var p = PhoneRules.Parse(seg, null, defaultCountry);
+                if (!numbers.Contains(p)) numbers.Add(p);
+            }
+            catch (FormatException) { warnings.Add($"No se pudo leer el teléfono «{Trim(seg, 60)}»."); }
+        }
+        if (numbers.Count == 0) extension = null;
+        return new ColavoraPhones(numbers, extension, warnings);
     }
 
     /// <summary>

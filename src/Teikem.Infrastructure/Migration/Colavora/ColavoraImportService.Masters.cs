@@ -199,13 +199,6 @@ public sealed partial class ColavoraImportService
     /// Colavora escribe el código del chofer con ceros a la izquierda en el usuario («003») y a veces sin ellos en los eventos («3»):
     /// cada código también se reconoce sin ceros. Un código real nunca se pisa con un alias.
     /// </summary>
-    /// <summary>Teléfono de Colavora: solo dígitos + prefijo (el de Puerto Rico, 1); si no se puede separar, queda tal cual y sin prefijo.</summary>
-    private static (string Value, string? Cc) SplitPhone(string raw)
-    {
-        try { var p = PhoneRules.Parse(raw, null, "1"); return (p.National, p.CountryCallingCode); }
-        catch (FormatException) { return (ColavoraRules.Trim(raw, 200)!, null); }
-    }
-
     private static void IndexDriverAliases(RunState s)
     {
         foreach (var (code, id) in s.Drivers.ToList())
@@ -374,7 +367,22 @@ public sealed partial class ColavoraImportService
             foreach (var (type, value, label) in new[] { ("PHONE", cu.Phone, (string?)null), ("FAX", cu.Fax, "Fax"), ("EMAIL", cu.NotifyEmail, "Avisos") })
             {
                 if (string.IsNullOrWhiteSpace(value)) continue;
-                await TryAsync(s, C, $"{cu.Sender}: {value}", () => contacts.AddAsync(EntityTypes.Client, dto.Id, new ContactPointUpsertRequest(type, value.Trim(), null, label, type == "PHONE"), ct, enforceOwnerWrite: false));
+                if (type == "EMAIL")
+                {
+                    await TryAsync(s, C, $"{cu.Sender}: {value}", () => contacts.AddAsync(EntityTypes.Client, dto.Id, new ContactPointUpsertRequest(type, value.Trim(), null, label, false), ct, enforceOwnerWrite: false));
+                    continue;
+                }
+                // teléfono / fax: solo dígitos + prefijo; varios números del mismo campo → uno por número (el primero principal)
+                var phones = ColavoraRules.ParsePhones(value);
+                foreach (var w in phones.Warnings) s.Report.Warn(C, cu.Sender, $"{label ?? "Teléfono"}: {w}");
+                for (var i = 0; i < phones.Numbers.Count; i++)
+                {
+                    var (cc, national) = (phones.Numbers[i].CountryCallingCode, phones.Numbers[i].National);
+                    var rowLabel = label ?? (i == 0 ? null : "Otro");
+                    var ext = i == 0 ? phones.Extension : null;
+                    var primary = type == "PHONE" && i == 0;
+                    await TryAsync(s, C, $"{cu.Sender}: {value}", () => contacts.AddAsync(EntityTypes.Client, dto.Id, new ContactPointUpsertRequest(type, national, ext, rowLabel, primary, cc), ct, enforceOwnerWrite: false));
+                }
             }
 
             // banderas de la configuración de Colavora que Teikem conoce
@@ -485,8 +493,15 @@ public sealed partial class ColavoraImportService
                 if (loc.Code is not null) s.ConsigneesByNumber[(loc.ClientId!.Value, loc.Code)] = loc.LocationId;
                 if (!string.IsNullOrWhiteSpace(src.Phone))
                 {
-                    var (phoneValue, phoneCc) = SplitPhone(src.Phone);
-                    db.ContactPoints.Add(new ContactPoint { TenantId = loc.TenantId, OwnerEntityLookupId = s.EntityTypeLocationId, OwnerId = loc.LocationId, ContactTypeLookupId = s.ContactPhoneId, Value = phoneValue, CountryCallingCode = phoneCc, IsPrimary = true, IsActive = true });
+                    var phones = ColavoraRules.ParsePhones(src.Phone);
+                    foreach (var w in phones.Warnings) s.Report.Warn(ColavoraEntities.Consignees, loc.Code ?? src.Id.ToString(CultureInfo.InvariantCulture), w);
+                    for (var i = 0; i < phones.Numbers.Count; i++)
+                        db.ContactPoints.Add(new ContactPoint
+                        {
+                            TenantId = loc.TenantId, OwnerEntityLookupId = s.EntityTypeLocationId, OwnerId = loc.LocationId, ContactTypeLookupId = s.ContactPhoneId,
+                            Value = phones.Numbers[i].National, CountryCallingCode = phones.Numbers[i].CountryCallingCode, Extension = i == 0 ? phones.Extension : null,
+                            Label = i == 0 ? null : "Otro", IsPrimary = i == 0, IsActive = true,
+                        });
                 }
                 if (!string.IsNullOrWhiteSpace(src.Email))
                     foreach (var email in src.Email.Split(new[] { ';', ',', ' ' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Take(3))
