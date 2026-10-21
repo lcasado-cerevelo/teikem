@@ -51,8 +51,15 @@ public sealed class ReceiptService(
     IPurchaseOrderReceiving purchaseOrders,
     IEnumerable<IReceiptConfirmationParticipant> participants,
     IEnumerable<IWarehouseTaskHandler> taskHandlers,
-    DamageService damages)
+    DamageService damages,
+    IEnumerable<IStockArrivalHook>? arrivalHooks = null)
 {
+    /// <summary>Lote 194: después de confirmar un recibo (o una tanda) entra mercancía: se avisa a quien deba reaccionar (reservar el pendiente de avisos de salida).</summary>
+    private async Task StockArrivedAsync(CancellationToken ct)
+    {
+        foreach (var hook in arrivalHooks ?? Array.Empty<IStockArrivalHook>()) await hook.OnStockArrivedAsync(ct);
+    }
+
     public const string NumberPattern = "REC-#####";
     public const string NumberTakenMessage = "Ya existe un recibo con ese número; intente de nuevo.";
 
@@ -244,6 +251,7 @@ public sealed class ReceiptService(
             await ConfirmCoreAsync(created, null, ct2);
             return created;
         }, ct);
+        await StockArrivedAsync(ct);
         return await GetAsync(publicId, ct);
     }
 
@@ -728,6 +736,7 @@ public sealed class ReceiptService(
     public async Task<ReceiptDetailDto> ConfirmAsync(Guid publicId, ReceiptConfirmRequest? req, CancellationToken ct)
     {
         await ConfirmCoreAsync(publicId, req, ct);
+        await StockArrivedAsync(ct);
         return await GetAsync(publicId, ct);
     }
 
@@ -991,6 +1000,7 @@ public sealed class ReceiptService(
     public async Task<ReceiptDetailDto> ConfirmBatchAsync(Guid publicId, ReceiptConfirmRequest? req, CancellationToken ct)
     {
         await ConfirmBatchCoreAsync(publicId, req, null, ct);
+        await StockArrivedAsync(ct);
         return await GetAsync(publicId, ct);
     }
 
@@ -1204,6 +1214,7 @@ public sealed class ReceiptService(
             await ConfirmBatchCoreAsync(id, new ReceiptConfirmRequest(req.Comment), req.ClientKey, ct2, strictSerials: true);
             return id;
         }, ct);
+        await StockArrivedAsync(ct);
         return await GetAsync(publicId, ct);
     }
 

@@ -3312,6 +3312,16 @@
           "difference": "Difference",
           "reviewLabel": "Review the discrepancy of {sku} ({where})"
         },
+        "EXIT_NOTICE_BACKORDER": {
+          "title": "Notice {number}: backorder waiting to be reserved",
+          "titleReady": "Notice {number}: stock is available for its backorder",
+          "group": "Exit notices with backorder",
+          "units": "Backordered units",
+          "lines": "Lines",
+          "fulfillable": "Reservable now",
+          "days": "Days waiting",
+          "reviewLabel": "Review notice {number} ({client})"
+        },
         "SALES_BACKORDER_READY": {
           "title": "Order {number}: stock is now available to fulfill",
           "group": "Sales orders with backorder ready to fulfill",

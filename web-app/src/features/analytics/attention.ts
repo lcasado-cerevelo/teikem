@@ -14,7 +14,7 @@ export type AttentionGroupDto = components['schemas']['AttentionGroupDto']
 type Translate = (key: string, params?: TParams) => string
 
 /** Tipos de aviso que esta web sabe describir (el resto se pinta con su código y su "Revisar"). */
-export const ATTENTION_CODES = ['INVENTORY_DISCREPANCY', 'RENTAL_DUE', 'SALES_BACKORDER_READY', 'ORDERS_NO_DRIVER', 'COD_UNRECONCILED', 'SLA_AT_RISK', 'ORDERS_FAILED', 'CLAIMS_OPEN', 'FLEET_DOCS_DUE', 'INVOICES_OVERDUE'] as const
+export const ATTENTION_CODES = ['INVENTORY_DISCREPANCY', 'RENTAL_DUE', 'SALES_BACKORDER_READY', 'EXIT_NOTICE_BACKORDER', 'ORDERS_NO_DRIVER', 'COD_UNRECONCILED', 'SLA_AT_RISK', 'ORDERS_FAILED', 'CLAIMS_OPEN', 'FLEET_DOCS_DUE', 'INVOICES_OVERDUE'] as const
 export type AttentionCode = (typeof ATTENTION_CODES)[number]
 
 export function isKnownAttention(code: string | null | undefined): code is AttentionCode {
@@ -107,6 +107,7 @@ export function attentionRowText(item: AttentionItemDto, t: Translate, lang: str
 
   if (item.code === 'RENTAL_DUE') return rentalDueText(p, t, lang, since)
   if (item.code === 'SALES_BACKORDER_READY') return salesBackorderText(p, t, lang, since)
+  if (item.code === 'EXIT_NOTICE_BACKORDER') return exitNoticeBackorderText(p, t, lang, since)
   if (item.code === 'ORDERS_NO_DRIVER') return noDriverText(p, t, since)
   if (item.code === 'COD_UNRECONCILED') return codUnreconciledText(p, t, since)
   if (item.code === 'SLA_AT_RISK') return slaAtRiskText(p, t, since)
@@ -154,6 +155,27 @@ function rentalDueText(p: Record<string, string>, t: Translate, lang: string, si
  * Lote 67 (P4 S4) — orden de venta con backorder que ya se puede surtir (SALES_BACKORDER_READY). Params del servidor: number, client, warehouse, lines (líneas
  * surtibles), units (unidades surtibles) y days (días de la línea que más espera). "Revisar" abre la orden (`/sales-orders?order=`).
  */
+/** Lote 194 — aviso de salida abierto con pendiente (EXIT_NOTICE_BACKORDER): lo que sigue sin reservarse. Params: number, client, warehouse, lines, units, fulfillable, days. */
+function exitNoticeBackorderText(p: Record<string, string>, t: Translate, lang: string, since: string): AttentionRowText {
+  const base = 'analytics.attention.items.EXIT_NOTICE_BACKORDER'
+  const number = p.number ?? ''
+  const fulfillable = Number(p.fulfillable ?? '0')
+  const figures: AttentionFigure[] = [
+    { label: t(`${base}.units`), value: formatQty(p.units, lang) },
+    { label: t(`${base}.lines`), value: formatQty(p.lines, lang) },
+  ]
+  if (Number.isFinite(fulfillable) && fulfillable > 0) figures.push({ label: t(`${base}.fulfillable`), value: formatQty(p.fulfillable, lang), emphasis: true })
+  const days = Number(p.days ?? '0')
+  if (Number.isFinite(days) && days > 0) figures.push({ label: t(`${base}.days`), value: formatNumber(days), emphasis: days > 7 })
+  return {
+    title: t(Number.isFinite(fulfillable) && fulfillable > 0 ? `${base}.titleReady` : `${base}.title`, { number }),
+    detail: [p.client, p.warehouse].filter(Boolean).join(' · '),
+    figures: figures.filter((f) => f.value !== ''),
+    since,
+    reviewLabel: t(`${base}.reviewLabel`, { number, client: p.client ?? '' }),
+  }
+}
+
 function salesBackorderText(p: Record<string, string>, t: Translate, lang: string, since: string): AttentionRowText {
   const base = 'analytics.attention.items.SALES_BACKORDER_READY'
   const number = p.number ?? ''

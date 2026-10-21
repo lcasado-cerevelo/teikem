@@ -284,6 +284,7 @@ public static class DependencyInjection
         services.AddScoped<FleetAlertService>();   // Lote 168: avisos de flota
         services.AddScoped<PortalCreateService>();   // Lote 156: lo que el cliente crea desde el portal   // Lote 141: avisos de inventario
         services.AddScoped<ExitNoticeService>();   // Lote 143: avisos de salida
+        services.AddScoped<IStockArrivalHook, ExitNoticeBackorderHook>();   // Lote 194: al entrar mercancía por un recibo se reserva el pendiente de los avisos de salida
         services.AddScoped<IExitNoticeDispatchReversal>(sp => sp.GetRequiredService<ExitNoticeService>());   // Lote 143: deshacer una recolección de un aviso de salida
         // Lote 15 — franja "Almacén hoy" del Pulso (días locales con el mismo ITenantClock).
         services.AddScoped<WarehousePulseService>();
@@ -538,6 +539,7 @@ public static class DependencyInjection
         services.AddScoped<IDataSource, RentalProcessDataSource>();
         services.AddScoped<IAttentionItemProvider, RentalDueAttentionProvider>();
         services.AddScoped<IAttentionItemProvider, SalesBackorderReadyAttentionProvider>();   // Lote 67
+        services.AddScoped<IAttentionItemProvider, ExitNoticeBackorderAttentionProvider>();   // Lote 194: avisos de salida con pendiente
 
         // Seeders e inicialización
         services.AddScoped<PermissionSeeder>();

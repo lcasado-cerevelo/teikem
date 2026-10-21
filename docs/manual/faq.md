@@ -10152,3 +10152,9 @@ Con el permiso **«Despachar cualquier documento en el aparato (no solo los asig
 
 **En el aparato, al despachar contra una orden o un aviso, ¿tengo que seguir el orden de la ruta?** (Lote 192)
 No: debajo del producto actual sale «Productos por sacar» con cada producto, su posición y la cantidad. Toque uno para sacarlo ahora; al terminar sigue la ruta. Los que omitió siguen en la lista con la marca «omitido».
+
+**¿Cuándo se reserva solo el pendiente (backorder) de un aviso de salida?** (Lote 194)
+En cuanto se confirma un recibo (completo, una tanda o una parte desde el aparato) el sistema revisa de inmediato si ya hay inventario para el pendiente de los avisos de salida y lo reserva, el aviso más antiguo primero. Además, un trabajo programado lo revisa cada 10 minutos por si entró mercancía por otra vía (ajuste, transferencia, cuarentena liberada, otro aviso cancelado). No hay botón para forzarlo.
+
+**¿Dónde veo qué sigue en backorder?** (Lote 194)
+Tres lugares: (1) en Llegadas y salidas → Avisos de salida, la etiqueta «Con pendiente» y el filtro «Solo con pendiente por sacar»; (2) en el Pulso del día, «Necesita tu atención» muestra una fila por cada aviso de salida abierto con pendiente (roja si ya hay inventario para reservarlo —la reserva automática no se dio— o si lleva más de 7 días; amarilla si solo espera mercancía), con permiso `exitnotice.create`; (3) los indicadores y gráficos pueden usar la fuente de datos «Avisos de salida» (campos «Con pendiente» y «Unidades pendientes»). Cuando el sistema sí reserva el pendiente, publica el aviso «Pendiente de un aviso de salida ya reservado» (se puede silenciar en notificaciones).
