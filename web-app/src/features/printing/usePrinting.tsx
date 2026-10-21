@@ -97,7 +97,8 @@ export function usePrinting() {
         printer: resolvePrinter('label', config, options.data),
         template: resolveTemplate(config, options.data),
       }
-      if (config.label.confirm) setPending(p)
+      // «al guardar» (label automático del cliente o «Label al guardar»): sale solo, sin vista previa ni pregunta aunque la estación esté en «confirmar»; el resto de las impresiones sí confirma
+      if (config.label.confirm && !opts.afterSave) setPending(p)
       else await runLabels(p, opts.afterSave)
       return job.labels.length
     } catch (e) {
