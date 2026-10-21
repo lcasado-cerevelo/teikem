@@ -84,6 +84,12 @@ Módulo **Catálogos** (donde viven vehículos, choferes y mantenimiento). Los p
 | **Documentos de la flota vencidos** (`FLEET_DOC_EXPIRED`) | Documentos cuyo vencimiento es **anterior a hoy**. | `V/C código · documento · vencimiento · días vencido` |
 | **Mantenimiento próximo** (`FLEET_MAINTENANCE_DUE_SOON`) | Programas de mantenimiento preventivo «Por vencer» (queda el 10 % o menos del intervalo). | `vehículo · programa · faltan N km · faltan N días` (solo lo que el programa usa) |
 | **Mantenimiento vencido** (`FLEET_MAINTENANCE_OVERDUE`) | Programas «Vencidos» (lo restante es 0 o negativo). | `vehículo · programa · pasado por N km · pasado por N días` |
+| **Órdenes de trabajo abiertas demasiado tiempo** (`FLEET_WORKORDER_STALE`, Lote 179) | Órdenes de mantenimiento en OPEN o IN_PROGRESS creadas hace **más de 14 días**. | `orden · vehículo · abierta hace N días` |
+| **Combustible fuera de rango** (`FLEET_FUEL_OUT_OF_RANGE`, Lote 179) | Vehículos cuya **última carga** (de los últimos 30 días) rinde un km/L que se aparta **más de 30 %** del promedio de las 5 cargas anteriores con rendimiento (se necesitan al menos 3). | `vehículo · km/L · promedio · diferencia %` |
+| **Vehículos sin viaje** (`FLEET_VEHICLE_IDLE`, Lote 179) | Vehículos **activos** sin ningún viaje (no cancelado) en **más de 14 días**; los que nunca han tenido viaje cuentan desde su alta. | `vehículo · sin viaje desde fecha (o nunca ha tenido viaje) · días` |
+| **Choferes sin viaje** (`FLEET_DRIVER_IDLE`, Lote 179) | Lo mismo para choferes activos. | `código nombre · sin viaje desde fecha · días` |
+
+**Umbrales de los avisos nuevos (Lote 179).** Son fijos por ahora —14 días de orden abierta, 14 días sin viaje, 30 % de desviación de combustible, historia de 3 a 5 cargas, ventana de 30 días—; no se ajustan por compañía todavía (los días de los documentos sí, arriba). Igual que los demás: un aviso por evento con el conjunto, que no se repite si el conjunto es el mismo en la semana, opcionales (se pueden silenciar) y sin reglas sembradas: el administrador arma a quién le llegan en Sistema → Reglas de aviso.
 
 **Qué cuenta:** solo vehículos y choferes **activos y no dados de baja**; de cada tipo de documento solo el **vigente** (si ya se renovó, el viejo no avisa); un documento **sin fecha de vencimiento no avisa**. El mantenimiento usa exactamente el mismo cálculo del panel «Mantenimiento preventivo» (Flota → Mantenimiento).
 

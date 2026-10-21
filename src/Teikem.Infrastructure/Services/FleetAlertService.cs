@@ -4,6 +4,7 @@ using Teikem.Domain.Constants;
 using Teikem.Domain.Fleet;
 using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
+using Teikem.Infrastructure.Clients;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Notifications;
 using Teikem.Infrastructure.Persistence;
@@ -11,9 +12,9 @@ using Teikem.Infrastructure.Persistence;
 namespace Teikem.Infrastructure.Services;
 
 /// <summary>Cuántos avisos nuevos salieron por evento en una revisión (0 = nada nuevo que avisar o ya se había avisado esta semana).</summary>
-public sealed record FleetAlertScanResult(int DocsExpiring, int DocsExpired, int MaintenanceDueSoon, int MaintenanceOverdue)
+public sealed record FleetAlertScanResult(int DocsExpiring, int DocsExpired, int MaintenanceDueSoon, int MaintenanceOverdue, int WorkOrdersStale = 0, int FuelOutOfRange = 0, int VehiclesIdle = 0, int DriversIdle = 0)
 {
-    public int Total => DocsExpiring + DocsExpired + MaintenanceDueSoon + MaintenanceOverdue;
+    public int Total => DocsExpiring + DocsExpired + MaintenanceDueSoon + MaintenanceOverdue + WorkOrdersStale + FuelOutOfRange + VehiclesIdle + DriversIdle;
 }
 
 /// <summary>
@@ -56,9 +57,77 @@ public sealed class FleetAlertService(TeikemDbContext db, ITenantClock clock, IN
             await PublishAsync(FleetEventCodes.DocExpiring, "FDX", expiring, new Dictionary<string, string?> { ["days"] = warnDays.ToString(CultureInfo.InvariantCulture) }, ct),
             await PublishAsync(FleetEventCodes.DocExpired, "FDXD", expired, null, ct),
             await PublishAsync(FleetEventCodes.MaintenanceDueSoon, "FMS", dueSoon, null, ct),
-            await PublishAsync(FleetEventCodes.MaintenanceOverdue, "FMO", overdue, null, ct));
+            await PublishAsync(FleetEventCodes.MaintenanceOverdue, "FMO", overdue, null, ct),
+            await PublishAsync(FleetEventCodes.WorkOrderStale, "FWO", await StaleWorkOrdersAsync(today, ct), null, ct),
+            await PublishAsync(FleetEventCodes.FuelOutOfRange, "FFU", await FuelOutOfRangeAsync(today, ct), null, ct),
+            await PublishAsync(FleetEventCodes.VehicleIdle, "FVI", await IdleVehiclesAsync(today, ct), null, ct),
+            await PublishAsync(FleetEventCodes.DriverIdle, "FDI", await IdleDriversAsync(today, ct), null, ct));
         if (result.Total > 0) await db.SaveChangesAsync(ct);
         return result;
+    }
+
+    // ---------------------------------------------------------------- Lote 179 (G2)
+
+    /// <summary>Órdenes de trabajo abiertas (OPEN / IN_PROGRESS) por más de <see cref="FleetAlertRules.WorkOrderStaleDays"/> días: «OT-00012 · V-01 · abierta hace 20 días».</summary>
+    private async Task<List<Detected>> StaleWorkOrdersAsync(DateOnly today, CancellationToken ct)
+    {
+        var open = await db.StatusIdsAsync(StatusDomains.WorkOrderStatus, new[] { WorkOrderStatuses.Open, WorkOrderStatuses.InProgress }, ct);
+        var rows = await (from w in db.MaintenanceWorkOrders.AsNoTracking()
+                          join v in db.Vehicles.AsNoTracking() on w.VehicleId equals v.VehicleId
+                          where w.IsActive && open.Contains(w.StatusCodeId)
+                          select new { w.WorkOrderId, w.Number, w.CreatedAtUtc, VehicleCode = v.Code }).ToListAsync(ct);
+        return rows.Select(r => (r, Created: clock.DayOf(r.CreatedAtUtc)))
+            .Where(x => FleetAlertRules.IsWorkOrderStale(x.Created, today))
+            .OrderBy(x => x.Created).ThenBy(x => x.r.Number, StringComparer.OrdinalIgnoreCase)
+            .Select(x => new Detected(x.r.WorkOrderId.ToString(CultureInfo.InvariantCulture), $"{x.r.Number} · {x.r.VehicleCode} · abierta hace {FleetAlertRules.DaysOpen(x.Created, today)} días")).ToList();
+    }
+
+    /// <summary>Vehículos cuya última carga (de los últimos días) rinde fuera de rango contra el promedio de las anteriores: «V-01 · 4.2 km/L · promedio 7.1 · -41 %».</summary>
+    private async Task<List<Detected>> FuelOutOfRangeAsync(DateOnly today, CancellationToken ct)
+    {
+        var since = clock.UtcNow.AddDays(-365);
+        var logs = await (from f in db.FuelLogs.AsNoTracking()
+                          join v in db.Vehicles.AsNoTracking() on f.VehicleId equals v.VehicleId
+                          where f.IsActive && v.IsActive && f.FillDateUtc >= since
+                          select new { f.FuelLogId, f.VehicleId, f.FillDateUtc, f.OdometerKm, f.Liters, f.TotalCost, VehicleCode = v.Code }).ToListAsync(ct);
+        var result = new List<Detected>();
+        foreach (var g in logs.GroupBy(l => l.VehicleId).OrderBy(g => g.First().VehicleCode, StringComparer.OrdinalIgnoreCase))
+        {
+            var rows = FuelEfficiency.Compute(g.Select(l => new FuelReading(l.FuelLogId, l.FillDateUtc, l.OdometerKm, l.Liters, l.TotalCost))).Rows
+                .Where(r => r.KmPerLiter is not null).ToList();
+            if (rows.Count == 0) continue;
+            var latest = rows[^1];
+            if (clock.DayOf(latest.FillDateUtc).DayNumber < today.DayNumber - FleetAlertRules.FuelWindowDays) continue;
+            var dev = FleetAlertRules.FuelDeviation(latest.KmPerLiter!.Value, rows.Take(rows.Count - 1).Select(r => r.KmPerLiter!.Value).ToList());
+            if (dev is not { Out: true } d) continue;
+            result.Add(new Detected($"{g.Key}/{latest.Id}", $"{g.First().VehicleCode} · {Num(latest.KmPerLiter!.Value)} km/L · promedio {Num(d.Mean)} · {(d.DeviationPct > 0 ? "+" : "-")}{Num(d.DeviationPct)} %"));
+        }
+        return result;
+    }
+
+    /// <summary>Vehículos activos sin viaje (no cancelado) en más de <see cref="FleetAlertRules.IdleDays"/> días: «V-03 · sin viaje desde 2026-09-30 · 21 días».</summary>
+    private async Task<List<Detected>> IdleVehiclesAsync(DateOnly today, CancellationToken ct)
+    {
+        var cancelled = await db.StatusIdsAsync(StatusDomains.TripStatus, new[] { TripStatuses.Cancelled }, ct);
+        var vehicles = await db.Vehicles.AsNoTracking().Where(v => v.IsActive).Select(v => new { v.VehicleId, v.Code, v.CreatedAtUtc }).ToListAsync(ct);
+        var last = (await db.Trips.AsNoTracking().Where(t => t.IsActive && t.VehicleId != null && !cancelled.Contains(t.StatusCodeId))
+            .GroupBy(t => t.VehicleId!.Value).Select(g => new { Id = g.Key, Day = g.Max(t => t.PlanDate) }).ToListAsync(ct)).ToDictionary(x => x.Id, x => x.Day);
+        return vehicles.OrderBy(v => v.Code, StringComparer.OrdinalIgnoreCase)
+            .Select(v => (v, Idle: FleetAlertRules.IdleDaysOf(last.TryGetValue(v.VehicleId, out var d) ? d : null, clock.DayOf(v.CreatedAtUtc), today), Last: last.TryGetValue(v.VehicleId, out var l) ? l : (DateOnly?)null))
+            .Where(x => x.Idle is not null)
+            .Select(x => new Detected(x.v.VehicleId.ToString(CultureInfo.InvariantCulture), $"{x.v.Code} · {(x.Last is DateOnly ld ? "sin viaje desde " + Day(ld) : "nunca ha tenido viaje")} · {x.Idle} días")).ToList();
+    }
+
+    private async Task<List<Detected>> IdleDriversAsync(DateOnly today, CancellationToken ct)
+    {
+        var cancelled = await db.StatusIdsAsync(StatusDomains.TripStatus, new[] { TripStatuses.Cancelled }, ct);
+        var drivers = await db.Drivers.AsNoTracking().Where(d => d.IsActive).Select(d => new { d.DriverId, d.EmployeeCode, d.FullName, d.CreatedAtUtc }).ToListAsync(ct);
+        var last = (await db.Trips.AsNoTracking().Where(t => t.IsActive && t.DriverId != null && !cancelled.Contains(t.StatusCodeId))
+            .GroupBy(t => t.DriverId!.Value).Select(g => new { Id = g.Key, Day = g.Max(t => t.PlanDate) }).ToListAsync(ct)).ToDictionary(x => x.Id, x => x.Day);
+        return drivers.OrderBy(d => d.EmployeeCode, StringComparer.OrdinalIgnoreCase)
+            .Select(d => (d, Idle: FleetAlertRules.IdleDaysOf(last.TryGetValue(d.DriverId, out var x) ? x : null, clock.DayOf(d.CreatedAtUtc), today), Last: last.TryGetValue(d.DriverId, out var l) ? l : (DateOnly?)null))
+            .Where(x => x.Idle is not null)
+            .Select(x => new Detected(x.d.DriverId.ToString(CultureInfo.InvariantCulture), $"{x.d.EmployeeCode} {x.d.FullName} · {(x.Last is DateOnly ld ? "sin viaje desde " + Day(ld) : "nunca ha tenido viaje")} · {x.Idle} días")).ToList();
     }
 
     /// <summary>«V-01 · Cambio de aceite · faltan 450 km · faltan 12 días» (o «pasado por …» si ya se pasó): solo las dimensiones que el programa usa.</summary>

@@ -10,7 +10,13 @@ public static class FleetEventCodes
     public const string MaintenanceDueSoon = "FLEET_MAINTENANCE_DUE_SOON";
     public const string MaintenanceOverdue = "FLEET_MAINTENANCE_OVERDUE";
 
-    public static readonly string[] All = { DocExpiring, DocExpired, MaintenanceDueSoon, MaintenanceOverdue };
+    // Lote 179 (G2)
+    public const string WorkOrderStale = "FLEET_WORKORDER_STALE";
+    public const string FuelOutOfRange = "FLEET_FUEL_OUT_OF_RANGE";
+    public const string VehicleIdle = "FLEET_VEHICLE_IDLE";
+    public const string DriverIdle = "FLEET_DRIVER_IDLE";
+
+    public static readonly string[] All = { DocExpiring, DocExpired, MaintenanceDueSoon, MaintenanceOverdue, WorkOrderStale, FuelOutOfRange, VehicleIdle, DriverIdle };
 }
 
 /// <summary>
@@ -53,5 +59,34 @@ public sealed class FleetEventProvider : INotificationEventProvider
             "{count} mantenimiento(s) vencido(s)", "{count} maintenance item(s) overdue",
             "Hay {count} mantenimiento(s) preventivo(s) vencido(s) (vehículo · programa · lo que se pasó):\n{items}",
             "{count} preventive maintenance item(s) are overdue (vehicle · schedule · how far past):\n{items}"),
+        // Lote 179 (G2, 2026-10-21)
+        new NotificationEventDef(
+            FleetEventCodes.WorkOrderStale, ModuleKeys.Catalog, "Órdenes de trabajo abiertas demasiado tiempo", "Work orders open for too long",
+            new[] { Count("2"), Items("OT-00012 · V-01 · abierta hace 20 días") },
+            IsOptional: true, LinkTemplate: "/catalog/fleet?tab=maintenance",
+            "{count} orden(es) de trabajo abierta(s) hace demasiado", "{count} work order(s) open for too long",
+            "Hay {count} orden(es) de trabajo de mantenimiento abiertas por más de 14 días (orden · vehículo · tiempo):\n{items}",
+            "{count} maintenance work order(s) have been open for more than 14 days (order · vehicle · time):\n{items}"),
+        new NotificationEventDef(
+            FleetEventCodes.FuelOutOfRange, ModuleKeys.Catalog, "Combustible fuera de rango", "Fuel out of range",
+            new[] { Count("1"), Items("V-01 · 4.2 km/L · promedio 7.1 · -41 %") },
+            IsOptional: true, LinkTemplate: "/catalog/fleet",
+            "{count} vehículo(s) con rendimiento de combustible fuera de rango", "{count} vehicle(s) with fuel economy out of range",
+            "El rendimiento de la última carga se aparta más de 30 % del promedio de las anteriores (vehículo · km/L · promedio · diferencia):\n{items}",
+            "The latest fill's economy is more than 30 % away from the average of the previous ones (vehicle · km/L · average · difference):\n{items}"),
+        new NotificationEventDef(
+            FleetEventCodes.VehicleIdle, ModuleKeys.Catalog, "Vehículos sin viaje", "Vehicles without trips",
+            new[] { Count("2"), Items("V-03 · sin viaje desde 2026-09-30 · 21 días") },
+            IsOptional: true, LinkTemplate: "/catalog/fleet",
+            "{count} vehículo(s) sin viaje en más de 14 días", "{count} vehicle(s) without a trip for over 14 days",
+            "Hay {count} vehículo(s) activo(s) sin ningún viaje en más de 14 días (vehículo · último viaje · días):\n{items}",
+            "{count} active vehicle(s) have had no trip for more than 14 days (vehicle · last trip · days):\n{items}"),
+        new NotificationEventDef(
+            FleetEventCodes.DriverIdle, ModuleKeys.Catalog, "Choferes sin viaje", "Drivers without trips",
+            new[] { Count("1"), Items("C-02 Ana Ruiz · sin viaje desde 2026-09-28 · 23 días") },
+            IsOptional: true, LinkTemplate: "/catalog/fleet",
+            "{count} chofer(es) sin viaje en más de 14 días", "{count} driver(s) without a trip for over 14 days",
+            "Hay {count} chofer(es) activo(s) sin ningún viaje en más de 14 días (chofer · último viaje · días):\n{items}",
+            "{count} active driver(s) have had no trip for more than 14 days (driver · last trip · days):\n{items}"),
     };
 }

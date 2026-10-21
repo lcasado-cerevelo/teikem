@@ -55,7 +55,7 @@ Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Esta
 
 ## G. Avisos de flota (idea del dueño, 2026-10-21; recomendación: empezar corto)
 - ☑ **G1 (Lote 168).** Con el mismo mecanismo que los avisos de inventario (trabajo diario + un aviso por conjunto + no se repite en la semana): **documentos por vencer / vencidos** (seguro, marbete, licencia, de vehículos y choferes; días de anticipación ajustables) y **mantenimiento próximo o vencido** (por fecha o millaje).
-- ☐ **G2 (después, con datos reales):** orden de trabajo abierta demasiado tiempo, combustible fuera de rango, vehículo o chofer sin ruta N días.
+- ☑ **G2 (Lote 179, autónomo):** orden de trabajo abierta demasiado tiempo, combustible fuera de rango, vehículo o chofer sin viaje N días. Umbrales fijos (14 días, 30 %); ajustarlos por compañía queda pendiente.
 
 ## H. Contabilización de compras y despachos (aún sin construir en el servidor)
 - ☐ **H1.** Regla acordada por el análisis del 2026-10-21 (**por confirmar con el dueño**): se contabiliza por **dueño del inventario** (lo propio sí, lo de un cliente no), sin importar el tipo de documento (orden de compra o aviso de llegada), con el **costo congelado de cada línea** (capas, Lotes 147-148). Corridas Generada → Aceptada → Exportada con plantilla de exportación.

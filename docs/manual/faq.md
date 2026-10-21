@@ -9996,3 +9996,16 @@ Revisa en Integraciones → Plantillas que esté **Activa** y que sea de «Todos
 
 **¿Cómo veo qué despacho salió de una orden de venta, y al revés?**
 En la orden de venta, la tabla «Despachos de la orden» tiene el número de cada despacho como enlace; en la ficha del despacho el campo «Orden de venta» lleva de vuelta a la venta. Necesitas `pickbatches.view` para abrir el despacho y `sales.view` para abrir la venta.
+## Avisos de flota: órdenes, combustible y viajes (Lote 179)
+
+**¿Por qué no me avisó de una orden de trabajo abierta?**
+Solo avisa si está en OPEN o IN_PROGRESS y se creó hace **más de 14 días** (exactamente 14 todavía no), y si el conjunto cambió desde el último aviso de la semana.
+
+**¿Por qué «combustible fuera de rango» no avisa de un vehículo con pocas cargas?**
+Necesita al menos 3 cargas anteriores con rendimiento (con odómetro) para sacar un promedio; evalúa solo la última carga y solo si es de los últimos 30 días. Se aparta del promedio cuando difiere más de 30 % (para peor o para mejor).
+
+**Un vehículo salió en «sin viaje» pero lo usamos.**
+Cuenta el último viaje **no cancelado** con ese vehículo (la fecha del plan). Si se usa sin viaje registrado (por ejemplo, solo entregas especiales) aparecerá como sin viaje. Un vehículo o chofer nuevo cuenta desde su alta, así que no avisa los primeros 14 días.
+
+**¿Dónde cambio los 14 días o el 30 %?**
+Todavía no se pueden cambiar (son fijos); se pueden silenciar los avisos desde la campana o no armar su regla en Sistema → Reglas de aviso.
