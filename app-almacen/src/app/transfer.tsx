@@ -289,7 +289,7 @@ export default function TransferScreen() {
       {busy ? <ActivityIndicator color={colors.brand} /> : null}
       {step !== 'from' ? <BigButton label={t('transfer.restart')} variant="secondary" onPress={reset} disabled={busy} /> : null}
       <View style={styles.bottom}>
-        <BigButton label={t('common.back')} variant="secondary" onPress={() => router.replace('/home')} disabled={busy} />
+        <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} disabled={busy} />
       </View>
     </KeyboardScreen>
   )

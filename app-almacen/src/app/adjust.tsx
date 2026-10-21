@@ -191,7 +191,7 @@ export default function AdjustScreen() {
     return (
       <View style={styles.fill}>
         <Text style={styles.error}>{t('errors.generic')}</Text>
-        <BigButton label={t('common.back')} variant="secondary" onPress={() => router.replace(fromLookup ? '/lookup' : '/home')} />
+        <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace(fromLookup ? '/lookup' : '/home')} />
       </View>
     )
   }
@@ -333,7 +333,7 @@ export default function AdjustScreen() {
 
       <View style={styles.bottom}>
         {bin && !fromLookup ? <BigButton label={t('adjust.restart')} variant="secondary" onPress={restart} disabled={busy} testID="adjust-restart" /> : null}
-        <BigButton label={t('common.back')} variant="secondary" onPress={() => router.replace(fromLookup ? '/lookup' : '/home')} disabled={busy} />
+        <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace(fromLookup ? '/lookup' : '/home')} disabled={busy} />
       </View>
     </KeyboardScreen>
   )

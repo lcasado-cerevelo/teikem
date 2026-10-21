@@ -84,8 +84,7 @@
     "freeHelp": "Anyone can take them. Taking one assigns it to you.",
     "kindReceive": "To receive",
     "kindDispatch": "To dispatch",
-    "take": "Take",
-    "assignedToYou": "Assigned to you"
+    "take": "Take"
   },
   "home": {
     "myTasks": "My tasks",

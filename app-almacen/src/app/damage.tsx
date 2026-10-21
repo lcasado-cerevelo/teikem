@@ -222,7 +222,7 @@ export default function DamageScreen() {
 
       {step !== 'origin' ? <BigButton label={t('damage.restart')} variant="secondary" onPress={restart} disabled={busy} /> : null}
       <View style={styles.bottom}>
-        <BigButton label={t('common.back')} variant="secondary" onPress={() => router.replace('/home')} disabled={busy} />
+        <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} disabled={busy} />
       </View>
       <DestinationModal visible={askDestination} onSelect={confirmDiscardTo} onClose={() => setAskDestination(false)} />
     </KeyboardScreen>

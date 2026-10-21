@@ -157,7 +157,6 @@ export default function MyTasksScreen() {
         <Pressable key={`a${a.id}`} accessibilityRole="button" onPress={() => openAsn(a)} style={({ pressed }) => [styles.card, pressed && styles.cardPressed]} testID={`my-asn-${a.id}`}>
           <Text style={styles.cardTitle}>{[a.number || `#${a.id}`, a.reference].filter(Boolean).join(' · ')}</Text>
           <Text style={styles.help}>{[a.clientName, a.expectedDate ? t('myTasks.expected', { date: f.date(a.expectedDate) }) : null].filter(Boolean).join(' · ')}</Text>
-          <Text style={styles.assignee}>{t('myTasks.assignedToYou')}</Text>
         </Pressable>
       ))}
 
@@ -168,7 +167,6 @@ export default function MyTasksScreen() {
           <Text style={styles.help}>
             {[o.clientName, o.destination ?? o.reference, o.requiredDate ? t('myTasks.required', { date: f.date(o.requiredDate) }) : null].filter(Boolean).join(' · ')}
           </Text>
-          <Text style={styles.assignee}>{t('myTasks.assignedToYou')}</Text>
         </Pressable>
       ))}
 
@@ -177,7 +175,6 @@ export default function MyTasksScreen() {
         <Pressable key={`po${o.id}`} accessibilityRole="button" onPress={() => openPo(o)} style={({ pressed }) => [styles.card, pressed && styles.cardPressed]} testID={`my-po-${o.number}`}>
           <Text style={styles.cardTitle}>{o.number}</Text>
           <Text style={styles.help}>{[o.supplierName, o.expectedDate ? t('myTasks.expected', { date: f.date(o.expectedDate) }) : null].filter(Boolean).join(' · ')}</Text>
-          <Text style={styles.assignee}>{t('myTasks.assignedToYou')}</Text>
         </Pressable>
       ))}
 
@@ -188,7 +185,6 @@ export default function MyTasksScreen() {
           <Text style={styles.help}>
             {[o.clientName, o.consigneeName, o.requiredDate ? t('myTasks.required', { date: f.date(o.requiredDate) }) : null].filter(Boolean).join(' · ')}
           </Text>
-          <Text style={styles.assignee}>{t('myTasks.assignedToYou')}</Text>
         </Pressable>
       ))}
 
@@ -267,7 +263,7 @@ export default function MyTasksScreen() {
         : null}
 
       <View style={styles.bottom}>
-        <BigButton label={t('common.back')} variant="secondary" onPress={() => router.replace('/home')} />
+        <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} />
       </View>
     </ScrollView>
   )
@@ -280,7 +276,6 @@ const styles = StyleSheet.create({
   help: { color: colors.muted, fontSize: fontSize.message },
   card: { gap: spacing.xs, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panelAlt },
   cardPressed: { backgroundColor: colors.panel },
-  assignee: { color: colors.brand, fontSize: fontSize.message, fontWeight: '600' },
   cardTitle: { color: colors.text, fontSize: fontSize.label, fontWeight: '700' },
   bottom: { marginTop: 'auto' },
 })
