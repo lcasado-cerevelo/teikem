@@ -10841,15 +10841,21 @@
     },
     "keyCol": {
       "PRODUCT": "SKU",
-      "SUPPLIER": "Proveedor"
+      "SUPPLIER": "Proveedor",
+      "WAREHOUSE": "Código",
+      "BIN": "Posición"
     },
     "labelCol": {
       "PRODUCT": "Nombre",
-      "SUPPLIER": "Correo"
+      "SUPPLIER": "Correo",
+      "WAREHOUSE": "Nombre",
+      "BIN": "Almacén / zona"
     },
     "entities": {
       "PRODUCT": "productos",
-      "SUPPLIER": "proveedores"
+      "SUPPLIER": "proveedores",
+      "WAREHOUSE": "almacenes",
+      "BIN": "posiciones"
     },
     "status": {
       "OK": "Lista",
@@ -10863,6 +10869,15 @@
       },
       "SUPPLIER": {
         "name": "La plantilla debe incluir la columna name."
+      },
+      "WAREHOUSE": {
+        "code": "La plantilla debe incluir la columna code.",
+        "name": "La plantilla debe incluir la columna name."
+      },
+      "BIN": {
+        "warehouse": "La plantilla debe incluir la columna warehouseCode o un valor por defecto para warehouseCode.",
+        "zone": "La plantilla debe incluir la columna zoneCode o un valor por defecto para zoneCode.",
+        "code": "La plantilla debe incluir la columna code o las columnas de la posición (aisle, rack, level, position)."
       }
     },
     "fields": {
@@ -10894,6 +10909,27 @@
         "email": "Correo",
         "paymentTerm": "Condición de pago",
         "notes": "Notas"
+      },
+      "WAREHOUSE": {
+        "code": "Código",
+        "name": "Nombre",
+        "line1": "Dirección",
+        "city": "Pueblo",
+        "state": "Estado",
+        "postalCode": "Código postal",
+        "country": "País",
+        "receivingMode": "Modo de recepción"
+      },
+      "BIN": {
+        "warehouseCode": "Código del almacén",
+        "zoneCode": "Código de la zona",
+        "code": "Código de la posición",
+        "aisle": "Pasillo",
+        "rack": "Rack",
+        "level": "Nivel",
+        "position": "Posición",
+        "maxWeightKg": "Peso máximo (kg)",
+        "maxCapacityQty": "Cupo máximo"
       }
     }
   },
@@ -10906,7 +10942,9 @@
       "ORDER": "Envíos",
       "CONSIGNEE": "Consignatarios",
       "PRODUCT": "Productos",
-      "SUPPLIER": "Proveedores"
+      "SUPPLIER": "Proveedores",
+      "WAREHOUSE": "Almacenes",
+      "BIN": "Posiciones"
     },
     "col": {
       "name": "Nombre",

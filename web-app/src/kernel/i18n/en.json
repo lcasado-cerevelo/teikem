@@ -10838,15 +10838,21 @@
     },
     "keyCol": {
       "PRODUCT": "SKU",
-      "SUPPLIER": "Supplier"
+      "SUPPLIER": "Supplier",
+      "WAREHOUSE": "Code",
+      "BIN": "Bin"
     },
     "labelCol": {
       "PRODUCT": "Name",
-      "SUPPLIER": "Email"
+      "SUPPLIER": "Email",
+      "WAREHOUSE": "Name",
+      "BIN": "Warehouse / zone"
     },
     "entities": {
       "PRODUCT": "products",
-      "SUPPLIER": "suppliers"
+      "SUPPLIER": "suppliers",
+      "WAREHOUSE": "warehouses",
+      "BIN": "bins"
     },
     "status": {
       "OK": "Ready",
@@ -10860,6 +10866,15 @@
       },
       "SUPPLIER": {
         "name": "The template must include the name column."
+      },
+      "WAREHOUSE": {
+        "code": "The template must include the code column.",
+        "name": "The template must include the name column."
+      },
+      "BIN": {
+        "warehouse": "The template must include the warehouseCode column or a default value for warehouseCode.",
+        "zone": "The template must include the zoneCode column or a default value for zoneCode.",
+        "code": "The template must include the code column or the bin part columns (aisle, rack, level, position)."
       }
     },
     "fields": {
@@ -10891,6 +10906,27 @@
         "email": "Email",
         "paymentTerm": "Payment term",
         "notes": "Notes"
+      },
+      "WAREHOUSE": {
+        "code": "Code",
+        "name": "Name",
+        "line1": "Address",
+        "city": "City",
+        "state": "State",
+        "postalCode": "Postal code",
+        "country": "Country",
+        "receivingMode": "Receiving mode"
+      },
+      "BIN": {
+        "warehouseCode": "Warehouse code",
+        "zoneCode": "Zone code",
+        "code": "Bin code",
+        "aisle": "Aisle",
+        "rack": "Rack",
+        "level": "Level",
+        "position": "Position",
+        "maxWeightKg": "Max weight (kg)",
+        "maxCapacityQty": "Max capacity"
       }
     }
   },
@@ -10903,7 +10939,9 @@
       "ORDER": "Shipments",
       "CONSIGNEE": "Consignees",
       "PRODUCT": "Products",
-      "SUPPLIER": "Suppliers"
+      "SUPPLIER": "Suppliers",
+      "WAREHOUSE": "Warehouses",
+      "BIN": "Bins"
     },
     "col": {
       "name": "Name",

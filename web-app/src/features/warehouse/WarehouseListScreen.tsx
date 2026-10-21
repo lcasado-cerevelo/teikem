@@ -42,6 +42,7 @@ import {
   useMediaQuery,
 } from '../../kernel/ui'
 import { IconWarehouse } from '../../kernel/ui/screenIcons'
+import { EntityImportModal } from '../imports/EntityImportModal'
 import { useCreateWarehouse, useSaveWarehouseZone, useWarehouseZones, useWarehouses, type WarehouseDto, type WarehouseZoneDto } from './api'
 import { TextFilter } from './filterControls'
 import { DerivedLocalityFields, PostalLocalityPickerInput } from './PostalLocalityPicker'
@@ -276,6 +277,7 @@ export default function WarehouseListScreen() {
   const [params, setParams] = useSearchParams()
   const [filters, setFilters] = useState<WarehouseListFilters>(EMPTY_WAREHOUSE_FILTERS)
   const [creating, setCreating] = useState(false)
+  const [importing, setImporting] = useState(false)   // 2026-10-21: importar almacenes con plantilla
   const cards = useMediaQuery(CARDS_QUERY)
   const sideRef = useRef<HTMLDivElement>(null)
 
@@ -361,6 +363,9 @@ export default function WarehouseListScreen() {
         </div>
         <div className="act">
           <Can perm="warehouse.manage">
+            <button type="button" className="btn" onClick={() => setImporting(true)}>
+              {t('entityImport.open')}
+            </button>
             <button type="button" className="btn flow" onClick={() => setCreating(true)}>
               {t('warehouse.list.new')}
             </button>
@@ -408,6 +413,7 @@ export default function WarehouseListScreen() {
       </div>
 
       <CreateWarehouseModal open={creating} onClose={() => setCreating(false)} />
+      {importing && <EntityImportModal entity="WAREHOUSE" onClose={() => setImporting(false)} />}
     </div>
   )
 }

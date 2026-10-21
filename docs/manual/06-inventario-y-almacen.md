@@ -375,6 +375,23 @@ que tenga inventario, no de su ocupación).
 
 ---
 
+### 1b. Importar almacenes y posiciones con una plantilla (2026-10-21)
+
+3.ª y 4.ª entidades del motor genérico de plantillas (ver §2b y §8b). **Quién puede:** `warehouse.manage` (módulo Inventario con lotes y series); ver las plantillas, `inventory.view`. Solo **crea**: lo que ya existe se rechaza por fila.
+
+- **Almacenes:** Almacenes → **Importar** (`POST /api/v1/warehouses/import`; plantillas en `/api/v1/warehouses/import-templates`, Kind `WAREHOUSE`). Campos: `code` y `name` (obligatorios, siempre en columna), `line1`, `city`, `state`, `postalCode`, `country`, `receivingMode` (país, modo de recepción, pueblo, estado y código postal admiten valor por defecto). Reglas de cada fila: las del alta manual de almacenes (§1).
+- **Posiciones:** Ubicaciones (con un almacén elegido) → **Importar** (`POST /api/v1/bins/import`; plantillas en `/api/v1/bins/import-templates`, Kind `BIN`). Campos: `warehouseCode` y `zoneCode` (en columna o como valor por defecto: un archivo de una sola zona), `code` o las partes `aisle`, `rack`, `level`, `position` (de las que sale el código), `maxWeightKg`, `maxCapacityQty`. El almacén y la zona se buscan por su código (activos). Reglas de cada fila: las del alta manual de posiciones (§1).
+
+| Mensaje | HTTP / dónde | Qué hacer |
+|---|---|---|
+| «La plantilla debe incluir la columna code.» · «…la columna name.» | 400, plantilla de almacenes | Agregue esas columnas (no admiten valor por defecto). |
+| «La plantilla debe incluir la columna warehouseCode o un valor por defecto para warehouseCode.» · «…zoneCode…» | 400, plantilla de posiciones | Agregue la columna o el valor por defecto. |
+| «La plantilla debe incluir la columna code o las columnas de la posición (aisle, rack, level, position).» | 400, plantilla de posiciones | Falta cómo se arma el código de la posición. |
+| «El código del almacén está repetido en el archivo.» · «La posición está repetida en el archivo.» | fila | El mismo código dos veces en el archivo. |
+| «Almacén no encontrado por ese código.» · «Zona no encontrada por ese código en ese almacén.» | fila (posiciones) | Revise el código del almacén o de la zona (deben estar activos). |
+| «Debe ser un número.» | fila (posiciones) | Peso o cupo máximo no numéricos. |
+| Las demás reglas del alta manual (código repetido, código inválido, zona inactiva…) | fila | Ver §1. |
+
 ## 2. Productos y categorías
 
 Qué hace: mantiene el maestro de SKU (propio del tenant o de un cliente 3PL), su tipo de seguimiento (sin lote/

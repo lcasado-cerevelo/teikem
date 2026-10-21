@@ -44,6 +44,7 @@ import {
   toast,
   type DataColumn,
 } from '../../kernel/ui'
+import { EntityImportModal } from '../imports/EntityImportModal'
 import { useDeleteWarehouseBins, useWarehouseBins, useWarehouseZones, useWarehouses, type WarehouseBinDto, type WarehouseZoneDto } from './api'
 import type { components } from '../../kernel/api/schema'
 import { BinBarcodeReportButton } from './BarcodeReportButtons'
@@ -657,6 +658,7 @@ export default function LocationsScreen() {
   const pickerId = useId()
   const [params, setParams] = useSearchParams()
   const [creatingBin, setCreatingBin] = useState(false)
+  const [importingBins, setImportingBins] = useState(false)   // 2026-10-21: importar posiciones con plantilla
   const [settingCapacity, setSettingCapacity] = useState(false)
 
   // Almacén: el de la URL o, sin él, el primero activo (como la maqueta).
@@ -716,6 +718,9 @@ export default function LocationsScreen() {
               <button type="button" className="btn" onClick={() => setSettingCapacity(true)}>
                 {t('warehouse.binCapacity.open')}
               </button>
+              <button type="button" className="btn" onClick={() => setImportingBins(true)}>
+                {t('entityImport.open')}
+              </button>
               <button type="button" className="btn flow" onClick={() => setCreatingBin(true)} disabled={zonesQ.isLoading}>
                 {t('warehouse.bins.new')}
               </button>
@@ -724,6 +729,7 @@ export default function LocationsScreen() {
         </div>
       </div>
       {body}
+      {importingBins && <EntityImportModal entity="BIN" onClose={() => setImportingBins(false)} />}
       {/* mismo modal que la pestaña Posiciones de la ficha del almacén, sobre el almacén elegido arriba */}
       {warehousePublicId && (
         <BinModal publicId={warehousePublicId} zones={zones} bin={null} open={creatingBin} onClose={() => setCreatingBin(false)} />

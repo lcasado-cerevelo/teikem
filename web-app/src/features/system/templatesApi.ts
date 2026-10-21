@@ -12,7 +12,7 @@ import { ENTITY_CONFIG, type ImportEntity } from '../imports/entityImportRules'
 export type TemplateEntity = 'ORDER' | 'CONSIGNEE' | ImportEntity
 
 /** Permiso para ver y para cambiar las plantillas de cada entidad (el mismo que ya exige su asistente de importación). */
-export const TEMPLATE_PERMISSION: Record<TemplateEntity, string> = { ORDER: 'orders.edit', CONSIGNEE: 'locations.create', PRODUCT: ENTITY_CONFIG.PRODUCT.manage, SUPPLIER: ENTITY_CONFIG.SUPPLIER.manage }
+export const TEMPLATE_PERMISSION: Record<TemplateEntity, string> = { ORDER: 'orders.edit', CONSIGNEE: 'locations.create', PRODUCT: ENTITY_CONFIG.PRODUCT.manage, SUPPLIER: ENTITY_CONFIG.SUPPLIER.manage, WAREHOUSE: ENTITY_CONFIG.WAREHOUSE.manage, BIN: ENTITY_CONFIG.BIN.manage }
 
 export function useAllTemplates(entity: TemplateEntity, enabled = true) {
   return useQuery({

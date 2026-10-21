@@ -13,9 +13,10 @@ import { templateSummary, type ImportTemplate } from '../consignees/consigneeRul
 import { ImportTemplateEditorModal } from '../consignees/ImportTemplateEditorModal'
 import { useOrderImportFields, useSetOrderTemplateActive } from '../orders/importApi'
 import { useEntityImportFields, useSetEntityTemplateActive } from '../imports/entityImportApi'
+import type { ImportEntity } from '../imports/entityImportRules'
 import { sortTemplates, TEMPLATE_PERMISSION, useAllTemplates, type TemplateEntity } from './templatesApi'
 
-const ENTITIES = ['ORDER', 'CONSIGNEE', 'PRODUCT', 'SUPPLIER'] as const
+const ENTITIES = ['ORDER', 'CONSIGNEE', 'PRODUCT', 'SUPPLIER', 'WAREHOUSE', 'BIN'] as const
 
 export default function TemplatesScreen() {
   const t = useT()
@@ -24,10 +25,10 @@ export default function TemplatesScreen() {
   const list = useAllTemplates(entity, canChange)
   const orderFields = useOrderImportFields(canChange && entity === 'ORDER')
   const consigneeFields = useImportFields(canChange && entity === 'CONSIGNEE')
-  const productFields = useEntityImportFields('PRODUCT', canChange && entity === 'PRODUCT')
-  const supplierFields = useEntityImportFields('SUPPLIER', canChange && entity === 'SUPPLIER')
-  const setProductActive = useSetEntityTemplateActive('PRODUCT')
-  const setSupplierActive = useSetEntityTemplateActive('SUPPLIER')
+  const generic = entity !== 'ORDER' && entity !== 'CONSIGNEE'   // productos, proveedores, almacenes, posiciones: el motor genérico
+  const genericEntity: ImportEntity = generic ? entity : 'PRODUCT'
+  const genericFields = useEntityImportFields(genericEntity, canChange && generic)
+  const setGenericActive = useSetEntityTemplateActive(genericEntity)
   const clients = useClientOptions(false)
   const setOrderActive = useSetOrderTemplateActive()
   const setConsigneeActive = useSetTemplateActive()
@@ -35,18 +36,18 @@ export default function TemplatesScreen() {
 
   const fieldLabel = useCallback(
     (field: string) => {
-      const key = entity === 'PRODUCT' || entity === 'SUPPLIER' ? `entityImport.fields.${entity}.${field}` : `${entity === 'ORDER' ? 'orders' : 'consignees'}.import.fields.${field}`
+      const key = generic ? `entityImport.fields.${entity}.${field}` : `${entity === 'ORDER' ? 'orders' : 'consignees'}.import.fields.${field}`
       const text = t(key)
       return text === key ? field : text
     },
-    [t, entity],
+    [t, entity, generic],
   )
   const rows = useMemo(() => sortTemplates(list.data ?? []), [list.data])
   const clientList = useMemo(() => (clients.data ?? []).map((c) => ({ value: c.publicId ?? '', label: c.name ?? c.code ?? '' })), [clients.data])
 
   const setActive = async (tpl: ImportTemplate, active: boolean) => {
     try {
-      await (entity === 'ORDER' ? setOrderActive : entity === 'PRODUCT' ? setProductActive : entity === 'SUPPLIER' ? setSupplierActive : setConsigneeActive).mutateAsync({ publicId: tpl.publicId!, active })
+      await (entity === 'ORDER' ? setOrderActive : generic ? setGenericActive : setConsigneeActive).mutateAsync({ publicId: tpl.publicId!, active })
       toast.success(t(active ? 'templates.reactivated' : 'templates.deactivated', { name: tpl.name ?? '' }))
     } catch (e) {
       toast.error(applyProblemDetails(e).title)
@@ -69,7 +70,7 @@ export default function TemplatesScreen() {
     [t, fieldLabel],
   )
 
-  const fields = entity === 'ORDER' ? (orderFields.data ?? []) : entity === 'PRODUCT' ? (productFields.data ?? []) : entity === 'SUPPLIER' ? (supplierFields.data ?? []) : (consigneeFields.data ?? [])
+  const fields = entity === 'ORDER' ? (orderFields.data ?? []) : generic ? (genericFields.data ?? []) : (consigneeFields.data ?? [])
 
   return (
     <div className="wrap">

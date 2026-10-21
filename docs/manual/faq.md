@@ -10103,3 +10103,9 @@ Compras → Proveedores → Importar. Igual que con productos: elige o crea una 
 
 **«La plantilla debe incluir la columna name.» (proveedores)**
 En una plantilla de proveedores el nombre siempre va en una columna: no admite valor por defecto, igual que contacto, teléfono y correo.
+
+**¿Cómo cargo muchos almacenes o posiciones de una vez?**
+Almacenes → Importar (código y nombre en columnas) o Ubicaciones → Importar (almacén y zona por código, y el código de la posición o sus partes). Eliges o creas la plantilla, el archivo CSV o Excel, «Revisar» y «Importar N». Solo crea: lo que ya existe se rechaza.
+
+**«Almacén no encontrado por ese código.» / «Zona no encontrada por ese código en ese almacén.»**
+En la importación de posiciones el almacén y la zona se buscan por su código y tienen que estar activos. Revisa las columnas warehouseCode y zoneCode (o sus valores por defecto en la plantilla).

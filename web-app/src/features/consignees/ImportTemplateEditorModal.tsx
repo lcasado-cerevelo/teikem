@@ -42,14 +42,14 @@ const DELIMITER_KEYS: Record<string, string> = { ',': 'comma', ';': 'semicolon',
 export function ImportTemplateEditorModal({ kind = 'CONSIGNEE', template, fields, fieldLabel, onClose, onSaved }: ImportTemplateEditorModalProps) {
   const tr = useT()
   const isOrder = kind === 'ORDER'
-  const isProduct = kind === 'PRODUCT' || kind === 'SUPPLIER'   // 2026-10-21: plantilla de una entidad del motor genérico (productos, proveedores); sus textos comunes son los de `orders.import.*`
+  const isProduct = kind !== 'CONSIGNEE' && kind !== 'ORDER'   // 2026-10-21: plantilla de una entidad del motor genérico (productos, proveedores, almacenes, posiciones); sus textos comunes son los de `orders.import.*`
   // los textos de las plantillas de órdenes viven en `orders.import.*`; los comunes (cancelar, cargando, tope de nombre) no cambian
   const ns = isOrder || isProduct ? 'orders.import' : 'consignees.import'
   // el editor se escribió con las claves `consignees.import.*`: con órdenes se leen de `orders.import.*` (mismas subclaves, mismos textos comunes)
   const t = (key: string, params?: Record<string, string | number>) => (key.startsWith('consignees.import.') ? tr(`${ns}.${key.slice('consignees.import.'.length)}`, params) : tr(key, params))
   const saveConsignee = useSaveImportTemplate()
   const saveOrder = useSaveOrderImportTemplate()
-  const entity: ImportEntity = kind === 'SUPPLIER' ? 'SUPPLIER' : 'PRODUCT'
+  const entity: ImportEntity = kind === 'CONSIGNEE' || kind === 'ORDER' ? 'PRODUCT' : kind
   const saveEntity = useSaveEntityImportTemplate(entity)
   const save = isProduct ? saveEntity : isOrder ? saveOrder : saveConsignee
   const formId = isProduct ? 'entity-template' : isOrder ? 'order-template' : 'consignee-template'

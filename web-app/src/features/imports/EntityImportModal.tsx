@@ -12,6 +12,8 @@ import { importCounts, rowErrorText, type ImportEntity } from './entityImportRul
 export const STANDARD_COLUMNS: Record<ImportEntity, readonly string[]> = {
   PRODUCT: ['sku', 'name', 'brand', 'model', 'barcode', 'baseUom', 'trackingType', 'purchaseCost', 'salePrice'],
   SUPPLIER: ['name', 'contactName', 'phone', 'email', 'paymentTerm', 'notes'],
+  WAREHOUSE: ['code', 'name', 'line1', 'city', 'state', 'postalCode'],
+  BIN: ['warehouseCode', 'zoneCode', 'code', 'maxCapacityQty'],
 }
 
 export function EntityImportModal({ entity, onClose }: { entity: ImportEntity; onClose: () => void }) {

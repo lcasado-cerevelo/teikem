@@ -49,3 +49,25 @@ describe('resultado de la importación', () => {
     expect(rowErrorText(null, (f) => f)).toBe('')
   })
 })
+
+describe('entityTemplateIssues — almacenes y posiciones', () => {
+  const f = [
+    { field: 'code', required: true, defaultAllowed: false },
+    { field: 'name', required: true, defaultAllowed: false },
+    { field: 'warehouseCode', required: true, defaultAllowed: true },
+    { field: 'zoneCode', required: true, defaultAllowed: true },
+    { field: 'aisle', required: false, defaultAllowed: false },
+  ]
+  it('almacén: code y name en columna', () => {
+    expect(entityTemplateIssues('WAREHOUSE', { columns: cols('name'), defaults: [] }, f, M)).toEqual([{ path: 'columns', message: 'falta entityImport.errors.WAREHOUSE.code' }])
+    expect(entityTemplateIssues('WAREHOUSE', { columns: cols('code'), defaults: [] }, f, M)).toEqual([{ path: 'columns', message: 'falta entityImport.errors.WAREHOUSE.name' }])
+    expect(entityTemplateIssues('WAREHOUSE', { columns: cols('code', 'name'), defaults: [] }, f, M)).toEqual([])
+  })
+  it('posición: almacén y zona en columna o por defecto, y código o sus partes', () => {
+    expect(entityTemplateIssues('BIN', { columns: cols('zoneCode', 'code'), defaults: [] }, f, M)).toEqual([{ path: 'columns', message: 'falta entityImport.errors.BIN.warehouse' }])
+    expect(entityTemplateIssues('BIN', { columns: cols('warehouseCode', 'code'), defaults: [] }, f, M)).toEqual([{ path: 'columns', message: 'falta entityImport.errors.BIN.zone' }])
+    expect(entityTemplateIssues('BIN', { columns: cols('warehouseCode', 'zoneCode'), defaults: [] }, f, M)).toEqual([{ path: 'columns', message: 'falta entityImport.errors.BIN.code' }])
+    expect(entityTemplateIssues('BIN', { columns: cols('code'), defaults: [{ field: 'warehouseCode', value: 'ALM' }, { field: 'zoneCode', value: 'PCK' }] }, f, M)).toEqual([])
+    expect(entityTemplateIssues('BIN', { columns: cols('warehouseCode', 'zoneCode', 'aisle'), defaults: [] }, f, M)).toEqual([])
+  })
+})
