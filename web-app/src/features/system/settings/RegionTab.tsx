@@ -20,7 +20,7 @@ import {
   type FormatSettings,
 } from '../../../kernel/format'
 import { useLang, useT } from '../../../kernel/i18n'
-import { Chip, Field, Form, IconCash, IconClip, IconClock, IconGrid, IconPhoneFormat, IconPin, Panel, Select, TextInput, toast } from '../../../kernel/ui'
+import { CallingCodeInput, Chip, Field, Form, IconCash, IconClip, IconClock, IconGrid, IconPhoneFormat, IconPin, Panel, Select, TextInput, toast } from '../../../kernel/ui'
 import { IconSearch } from '../../../kernel/ui/icons'
 import {
   allowedLists,
@@ -259,7 +259,7 @@ export function RegionTab({ settings, canEdit }: { settings: TenantSettingsDto; 
               <Panel icon={<IconPhoneFormat />} title={t('system.settings.region.phoneTitle')}>
                 <div className="r2">
                   <Field name="phoneCountryCode" label={t('system.settings.region.phoneCcLabel')}>
-                    <TextInput maxLength={5} className="mono" inputMode="tel" />
+                    <CallingCodeInput />
                   </Field>
                   <Field name="phoneMask" label={t('system.settings.region.phoneMaskLabel')}>
                     <Select options={withCurrent(PHONE_MASKS, values.phoneMask ?? '').map((m) => opt(m, String(m).replace(/#/g, '0')))} />

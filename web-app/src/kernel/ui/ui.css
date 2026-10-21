@@ -270,3 +270,8 @@ button.rmap-chip:focus-visible{outline:2px solid var(--action);outline-offset:1p
 
 /* Prefijo internacional + teléfono (2026-10-20): el prefijo angosto y el número ocupa el resto, también a 360 px */
 .phone-row{display:grid;grid-template-columns:96px minmax(0,1fr);gap:11px}
+.phone-list{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.phone-list .phone-row{width:100%}
+.phone-list-items{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+.phone-list-items .chip{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.phone-list-items .chip-x{border:0;background:transparent;color:inherit;font-size:16px;line-height:1;padding:0 2px;cursor:pointer}

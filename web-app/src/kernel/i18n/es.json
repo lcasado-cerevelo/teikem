@@ -2723,6 +2723,10 @@
       "countryCode": "Prefijo",
       "countryCodeHelp": "Prefijo internacional, por ejemplo +1.",
       "countryCodeInvalid": "Prefijo inválido: de 1 a 4 dígitos, por ejemplo +1.",
+      "number": "Número de teléfono",
+      "add": "Agregar teléfono",
+      "remove": "Quitar {value}",
+      "listLabel": "Teléfonos agregados",
       "foreignInvalid": "El teléfono debe tener entre 7 y {max} dígitos con ese prefijo."
     },
     "qbox": {

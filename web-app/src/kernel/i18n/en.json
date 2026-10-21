@@ -2723,6 +2723,10 @@
       "countryCode": "Country code",
       "countryCodeHelp": "International dialing prefix, for example +1.",
       "countryCodeInvalid": "Invalid country code: 1 to 4 digits, for example +1.",
+      "number": "Phone number",
+      "add": "Add phone",
+      "remove": "Remove {value}",
+      "listLabel": "Added phones",
       "foreignInvalid": "The phone must have between 7 and {max} digits with that prefix."
     },
     "qbox": {

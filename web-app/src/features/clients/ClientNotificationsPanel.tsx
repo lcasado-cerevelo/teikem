@@ -5,7 +5,7 @@ import { Can, useCan } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { Chip, DataTable, Panel, Spinner, toast, type DataColumn } from '../../kernel/ui'
+import { Chip, DataTable, Panel, PhoneListInput, Spinner, toast, type DataColumn } from '../../kernel/ui'
 import { IconBolt } from '../../kernel/ui/screenIcons'
 import { useClientNotificationLog, useClientNotificationSettings, useSaveClientNotificationSettings, type ClientNotificationDto } from './notificationsApi'
 import { enabledCount, isDirty, rowError, rowsFrom, type NotificationRow } from './notificationRules'
@@ -121,7 +121,7 @@ export function ClientNotificationsPanel({ client }: { client: ClientDetail }) {
                         {r.smsEnabled && (
                           <div className="f">
                             <label htmlFor={`np-${r.kind}`}>{t('clients.notif.extraPhones')}</label>
-                            <input id={`np-${r.kind}`} value={r.extraPhones} placeholder={t('clients.notif.extraPhonesPh')} autoComplete="off" onChange={(e) => patch(r.kind, { extraPhones: e.target.value })} />
+                            <PhoneListInput id={`np-${r.kind}`} value={r.extraPhones} onChange={(v) => patch(r.kind, { extraPhones: v })} />
                             <p className="help">{t('clients.notif.smsHelp')}</p>
                           </div>
                         )}
