@@ -128,8 +128,10 @@ h1,h2,h3{letter-spacing:-.01em}
 .btn.block{width:100%}
 .btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);min-width:0}
-.panel .ph2{display:flex;align-items:center;gap:9px;padding:14px 16px;border-bottom:1px solid var(--line-2);font-weight:600;font-size:14px;flex-wrap:wrap}
-.panel .ph2 .r{margin-left:auto;color:var(--muted);font-weight:500;font-size:12px;font-family:var(--mono)}
+/* Encabezado de tarjetas y paneles (decidido por Luis, 2026-10-21): el TERCER color de la marca (el gris, --money), aclarado casi del todo mezclándolo con el fondo del panel (PANEL_HEAD_MIX en brandTheme.ts: el mismo 8 %,
+   que la prueba de contraste usa); sale de la marca y del tema, igual que la barra lateral. No aplica a los encabezados de las tablas. Tres niveles: azul marino en lo que flota, este gris clarísimo en las tarjetas, naranja en las acciones. */
+.panel .ph2{display:flex;align-items:center;gap:9px;padding:14px 16px;border-bottom:1px solid var(--line-2);font-weight:600;font-size:14px;flex-wrap:wrap;background:color-mix(in srgb,var(--money) 8%,var(--panel));border-radius:calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0;--head-muted:color-mix(in srgb,var(--text) 25%,var(--muted))}
+.panel .ph2 .r{margin-left:auto;color:var(--head-muted);font-weight:500;font-size:12px;font-family:var(--mono)}
 .panel .ph2 svg{width:16px;height:16px;color:var(--flow-2)}
 .pb,.panel .pb{padding:16px}
 .cols{display:grid;gap:16px}

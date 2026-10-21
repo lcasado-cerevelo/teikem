@@ -7,7 +7,7 @@
 .panel .ph2.kit-ph2{gap:8px 9px}
 .panel .ph2 .kit-ic{display:inline-flex;flex:none}
 .panel .ph2 .kit-ph2-title{margin:0;font:inherit;min-width:0;overflow-wrap:anywhere;display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
-.panel .ph2 .kit-sub{flex-basis:100%;margin:-4px 0 0;color:var(--muted);font-size:12.5px;font-weight:400}
+.panel .ph2 .kit-sub{flex-basis:100%;margin:-4px 0 0;color:var(--head-muted,var(--muted));font-size:12.5px;font-weight:400}
 .panel .ph2 .kit-acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-left:auto;font-weight:400}
 /* con contador, este ya empuja a la derecha (.r lleva margin-left:auto); las acciones van pegadas a él */
 .panel .ph2 .r+.kit-acts{margin-left:0}
@@ -20,7 +20,7 @@
 .panel.kit-collapsed .ph2 .kit-fold svg{transform:rotate(-90deg)}
 .panel .ph2.kit-fold-head{cursor:pointer}
 .panel.kit-collapsed .ph2 .kit-acts{display:none}
-.panel.kit-collapsed .ph2{border-bottom:0}
+.panel.kit-collapsed .ph2{border-bottom:0;border-radius:calc(var(--radius) - 1px)}
 .panel .pb.kit-body-off{display:none}
 .panel .kit-summary{padding-top:0;color:var(--muted);font-size:13px;overflow-wrap:anywhere}
 @media (prefers-reduced-motion:reduce){.panel .ph2 .kit-fold svg{transition:none}}

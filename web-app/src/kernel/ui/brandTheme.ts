@@ -45,6 +45,24 @@ export const BRAND_PRESETS: readonly BrandPreset[] = [
 
 /** Lote 138: el tema por omisión es el de la página de Advance Logistics (azul marino, naranja y gris). */
 export const DEFAULT_PRESET = 'advance'
+/** Menores (2026-10-21): cuánto del tercer color de la marca (--money, el gris) se mezcla en el encabezado de tarjetas y paneles (base.css: `color-mix(… var(--money) 8%, var(--panel))`). Clarísimo a propósito. */
+export const PANEL_HEAD_MIX = 0.08
+
+/** Mezcla en sRGB: `share` (0-1) de `a` y el resto de `b` (lo mismo que `color-mix(in srgb, a share, b)` en CSS). */
+export function mixHex(a: string, b: string, share: number): string {
+  const x = hexToRgb(a)
+  const y = hexToRgb(b)
+  return rgbToHex(x.r * share + y.r * (1 - share), x.g * share + y.g * (1 - share), x.b * share + y.b * (1 - share))
+}
+
+/** Color del encabezado de una tarjeta/panel: el tercer color mezclado con el fondo del panel. */
+export function panelHeadColor(money: string, panel: string, mix: number = PANEL_HEAD_MIX): string {
+  return mixHex(money, panel, mix)
+}
+
+/** El texto atenuado dentro de ese encabezado se oscurece un poco (25 % del texto principal) para conservar el contraste AA sobre el fondo teñido (base.css: `--head-muted`). */
+export const HEAD_MUTED_TEXT_SHARE = 0.25
+export const headMutedColor = (muted: string, text: string) => mixHex(text, muted, HEAD_MUTED_TEXT_SHARE)
 /** Techo de la saturación del neutro propio (0.45, apenas por encima del 0.39 original). */
 export const NEUTRAL_SAT_MAX = 0.45
 export const MIN_HUE_DISTANCE = 40

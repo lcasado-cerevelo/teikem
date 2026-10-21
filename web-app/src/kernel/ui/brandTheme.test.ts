@@ -26,6 +26,10 @@ import {
   isValidHex,
   normalizeHex,
   ON_DARK,
+  headMutedColor,
+  HEAD_MUTED_TEXT_SHARE,
+  panelHeadColor,
+  PANEL_HEAD_MIX,
   onColor,
   parseBranding,
   rgbToHsl,
@@ -205,5 +209,33 @@ describe('BrandingJson', () => {
     const json = serializeBranding({ ...DEFAULT_BRAND, preset: 'acero' })
     expect(JSON.parse(json)).toEqual({ preset: 'acero', useCustom: false, custom: DEFAULT_BRAND.custom })
     expect(parseBranding(json).preset).toBe('acero')
+  })
+})
+
+describe('encabezado de tarjetas y paneles (menores, 2026-10-21)', () => {
+  it('es el tercer color de la marca casi del todo aclarado: 8 % del gris en el fondo del panel', () => {
+    expect([PANEL_HEAD_MIX, HEAD_MUTED_TEXT_SHARE]).toEqual([0.08, 0.25])
+    expect(panelHeadColor('#6C757D', '#FFFFFF')).toBe('#F3F4F5')   // claro: casi blanco con un asomo de gris
+    expect(panelHeadColor('#6C757D', '#000000')).toBe('#09090A')
+  })
+
+  it('el texto (principal y atenuado) conserva el contraste AA sobre el encabezado en TODOS los temas y en los dos modos', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      for (const p of BRAND_PRESETS) {
+        const c = brandColors({ preset: p.id, useCustom: false, custom: DEFAULT_BRAND.custom })
+        const surf = deriveSurfaces(c.nh, c.ns, mode)
+        const head = panelHeadColor(deriveAccent(c.money, mode).base, surf['--panel'])
+        expect(contrastRatio(surf['--text'], head), `${p.id} ${mode} texto`).toBeGreaterThanOrEqual(7)
+        expect(contrastRatio(headMutedColor(surf['--muted'], surf['--text']), head), `${p.id} ${mode} atenuado`).toBeGreaterThanOrEqual(4.5)
+      }
+    }
+  })
+})
+
+describe('base.css usa las mismas proporciones que las constantes del encabezado', () => {
+  it('8 % del tercer color en el fondo y 25 % del texto en lo atenuado', () => {
+    const css = readFileSync(resolve(__dirname, '../../styles/base.css'), 'utf8')
+    expect(css).toContain(`color-mix(in srgb,var(--money) ${PANEL_HEAD_MIX * 100}%,var(--panel))`)
+    expect(css).toContain(`--head-muted:color-mix(in srgb,var(--text) ${HEAD_MUTED_TEXT_SHARE * 100}%,var(--muted))`)
   })
 })
