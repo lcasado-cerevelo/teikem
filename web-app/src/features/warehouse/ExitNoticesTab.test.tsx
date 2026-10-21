@@ -122,6 +122,7 @@ describe('Avisos de salida: ficha', () => {
     wrap(['warehouse.pick'], NOTICE)
     await screen.findByText('Tornillo')
     await user.click(screen.getByRole('button', { name: 'Despachar' }))
+    await user.click(await screen.findByRole('button', { name: 'Ajustar cantidades' }))
     const qty = await screen.findByLabelText(/TORN-01/)
     expect(qty).toHaveValue(4)
     await user.clear(qty)
@@ -133,6 +134,19 @@ describe('Avisos de salida: ficha', () => {
     await waitFor(() => {
       const call = mock.calls.find((c) => c.method === 'POST' && c.url.pathname.endsWith('/dispatch'))
       expect(call?.body).toMatchObject({ lines: [{ lineId: 5, quantity: 3 }] })
+    })
+  })
+
+  it('Despachar todo lo reservado con un solo clic (sin tocar cantidades)', async () => {
+    const user = userEvent.setup()
+    wrap(['warehouse.pick'], NOTICE)
+    await screen.findByText('Tornillo')
+    await user.click(screen.getByRole('button', { name: 'Despachar' }))
+    expect(await screen.findByText(/Se despachará todo lo reservado: 4 unidades en 1 líneas\./)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Despachar todo lo reservado' }))
+    await waitFor(() => {
+      const call = mock.calls.find((c) => c.method === 'POST' && c.url.pathname.endsWith('/dispatch'))
+      expect(call?.body).toMatchObject({ lines: [{ lineId: 5, quantity: 4 }] })
     })
   })
 })

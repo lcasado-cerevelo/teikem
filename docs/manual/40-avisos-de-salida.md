@@ -125,3 +125,7 @@ Inicio muestra **Avisos de salida** cuando el aparato tiene avisos con algo rese
 ## Editar los datos de un aviso solicitado y disponible en el selector (Lote 158)
 
 `PATCH /exit-notices/{publicId}` (`exitnotice.create`) cambia referencia, destino, fecha requerida y notas de un aviso **solicitado** (texto vacío las quita; null no cambia). Las cantidades se siguen cambiando por línea. Otro estatus: 422 «Solo se pueden modificar las líneas de un aviso de salida solicitado.». Al elegir producto en «Nuevo aviso de salida» el selector muestra entre paréntesis lo **disponible** de cada producto, para saber si lo pedido se reserva o queda pendiente.
+
+### Despachar (Lote 160)
+
+«Despachar» abre una ventana que dice **«Se despachará todo lo reservado: N unidades en M líneas»**, con la lista de lo que sale; un solo clic en «Despachar todo lo reservado» lo despacha. Si el camión no se lleva todo, «Ajustar cantidades» muestra la tabla (producto, lote, reservado y cuánto sale; 0 = esa línea no sale) y el botón pasa a «Despachar». Lo pendiente (backorder) no aparece: no hay mercancía apartada para él.

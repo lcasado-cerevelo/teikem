@@ -2542,3 +2542,5 @@ La línea de la orden de compra (alta y edición, `POST/PATCH /purchase-orders`,
 ## Kárdex: filtro de zona y barra pareja (Lote 159)
 
 El Kárdex tiene un filtro **Zona** (entre Almacén y Posición; selección múltiple con buscador; ofrece las zonas de los almacenes elegidos o de todos). `GET /inventory/transactions` y `/transactions/summary` aceptan `zoneIds` y lo resuelven a las posiciones de esas zonas (junto con posiciones elegidas deben cumplirse las dos). La barra de filtros reparte los 14 filtros en columnas iguales (5 en pantalla ancha) para que las filas queden parejas. En Saldos y Conciliación el filtro de zona se atenúa (no se aplica).
+
+**Tareas de acomodo (Lote 160):** ya no se cancelan desde la pantalla. La mercancía de un recibo confirmado ya está recibida (el aviso o la orden quedan como recibidos): una tarea de acomodo solo se asigna, se inicia y se completa (o se reparte en varias posiciones); para moverla a otro lado después se hace una transferencia. Se pueden hacer a nivel del recibo («Asignar todas», «Iniciar todas», «Completar todas»). El reabasto sí se sigue pudiendo cancelar.

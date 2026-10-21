@@ -2,7 +2,7 @@
 // usan la cola de cada pantalla (`TaskQueue` en taskQueue.tsx) y la tabla de acomodo de la ficha del recibo.
 // Permisos: asignar/cancelar warehouse.manage; iniciar y completar el permiso del handler de cada tipo (PUTAWAY →
 // warehouse.receive, REPLENISH → warehouse.pick, COUNT → warehouse.count, CROSSDOCK → warehouse.crossdock); completar solo
-// cuando `completableFromQueue` (COUNT se completa desde la ficha del conteo); cancelar solo PUTAWAY y REPLENISH
+// cuando `completableFromQueue` (COUNT se completa desde la ficha del conteo); cancelar solo REPLENISH
 // (WarehouseTaskRules.CancelableFromQueue).
 import { useMutation } from '@tanstack/react-query'
 import { useMemo, useState, type ReactNode } from 'react'
@@ -22,7 +22,8 @@ const TASK_HANDLER_PERM: Record<WarehouseTaskType, string> = {
   COUNT: 'warehouse.count',
   CROSSDOCK: 'warehouse.crossdock',
 }
-const CANCELLABLE_TYPES = new Set(['PUTAWAY', 'REPLENISH'])
+// Lote 160: el acomodo (PUTAWAY) ya no se cancela desde la pantalla: la mercancía ya está recibida y se queda en la posición de recepción; para moverla se reasigna, se completa o se transfiere
+const CANCELLABLE_TYPES = new Set(['REPLENISH'])
 const isClosed = (r: WarehouseTaskDto) => r.statusCode === 'DONE' || r.statusCode === 'CANCELLED'
 
 // ---------------------------------------------------------------------------------------------------------------------

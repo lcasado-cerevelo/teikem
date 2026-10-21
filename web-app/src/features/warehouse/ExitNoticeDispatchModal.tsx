@@ -15,6 +15,9 @@ export function ExitNoticeDispatchModal({ notice, onClose }: { notice: ExitNotic
   const lines = (notice.lines ?? []).filter((l) => (l.qtyReserved ?? 0) > 0)
   const [qtys, setQtys] = useState<Record<number, number | null>>(() => Object.fromEntries(lines.map((l) => [l.id!, l.qtyReserved ?? 0])))
   const [note, setNote] = useState('')
+  // por omisión sale todo lo reservado con un solo clic; las cantidades por línea quedan detrás de «Ajustar cantidades»
+  const [adjust, setAdjust] = useState(false)
+  const totalReserved = lines.reduce((sum, l) => sum + (l.qtyReserved ?? 0), 0)
   const issues = Object.fromEntries(lines.map((l) => [l.id!, dispatchQuantityIssue(qtys[l.id!], l.qtyReserved ?? 0)]))
   const body = dispatchLines(qtys)
   const invalid = Object.values(issues).some(Boolean) || body.length === 0
@@ -41,13 +44,33 @@ export function ExitNoticeDispatchModal({ notice, onClose }: { notice: ExitNotic
             {t('common.cancel')}
           </button>
           <button type="button" className="btn flow" disabled={invalid || dispatch.isPending} onClick={() => void submit()}>
-            {dispatch.isPending ? t('common.loading') : t('warehouse.exitNotices.dispatchConfirm')}
+            {dispatch.isPending ? t('common.loading') : adjust ? t('warehouse.exitNotices.dispatchConfirm') : t('warehouse.exitNotices.dispatchAll')}
           </button>
         </>
       }
     >
-      <p className="help">{t('warehouse.exitNotices.dispatchHelp')}</p>
-      <div className="dt-scroll">
+      {!adjust ? (
+        <>
+          <p>{t('warehouse.exitNotices.dispatchAllBody', { units: f.number(totalReserved), lines: lines.length })}</p>
+          <ul className="split-list">
+            {lines.map((l) => (
+              <li key={l.id}>
+                <span>
+                  <b className="mono">{l.sku}</b> · {l.productName}
+                  {l.lotNumber ? ` · ${l.lotNumber}` : ''}
+                </span>
+                <span className="mono">{f.number(l.qtyReserved ?? 0)}</span>
+              </li>
+            ))}
+          </ul>
+          <button type="button" className="btn sm" onClick={() => setAdjust(true)}>
+            {t('warehouse.exitNotices.dispatchAdjust')}
+          </button>
+        </>
+      ) : (
+        <p className="help">{t('warehouse.exitNotices.dispatchHelp')}</p>
+      )}
+      <div className="dt-scroll" hidden={!adjust}>
         <table className="lst">
           <thead>
             <tr>
