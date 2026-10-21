@@ -121,6 +121,8 @@ public sealed class ColavoraOptionsConfig
     public int PendingCloseDays { get; set; } = ColavoraRules.DefaultPendingCloseDays;
     /// <summary>Opción de Luis: días que se dejan abiertas las órdenes; las abiertas (de cualquier estatus) con más días se migran como Entregada. Sin valor, solo se cierran las Pending (PendingCloseDays).</summary>
     public int? OpenOrderDays { get; set; }
+    /// <summary>Una división que traen las órdenes pero no está en la lista de la compañía: si se usó en los últimos N días se agrega a la lista; si no, es vieja y sus órdenes se reportan como error (decisión de Luis, 2026-10-21).</summary>
+    public int StaleDivisionDays { get; set; } = 90;
     /// <summary>Fecha de la migración (para el corte de Pending); sin ella, ahora.</summary>
     public DateTime? MigrationDateUtc { get; set; }
     public List<string> ExcludeSenders { get; set; } = new();

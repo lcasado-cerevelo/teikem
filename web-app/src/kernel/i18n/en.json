@@ -4257,6 +4257,7 @@
         "linesInvoice": " · invoice {number}",
       "fields": {
         "orderNumber": "Shipment no.",
+        "waybillNumber": "Waybill (shipment number)",
         "clientInvoiceNumber": "Invoice no.",
         "serviceType": "Service",
         "consigneeName": "Consignee (name)",

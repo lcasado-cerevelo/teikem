@@ -723,6 +723,7 @@ Cada envío de entrega tiene un **número de conduce** (`waybillNumber`, «Waybi
 
 **El conduce que trae el cliente (2026-10-21).** El conduce es el **número de envío**: el único que lleva el código de barras. Si el cliente trae el suyo (como el waybill de Colavora), puede mandarlo al crear el envío (`waybillNumber` en `POST /api/v1/orders`); si no lo manda, Teikem lo genera con la fórmula de arriba.
 - **Formato:** hasta 40 caracteres, solo letras, números, guion, guion bajo, punto y barra. Si no cumple: `El conduce solo admite letras, números, guion, guion bajo, punto y barra, hasta 40 caracteres.` (400).
+- **También por importación y por integraciones:** la plantilla de importación (CSV/Excel, carpeta, correo, API) tiene el campo **Conduce (número de envío)** (`waybillNumber`); se valida igual (formato, que no se repita dentro del archivo —`El conduce … se repite en la fila … del archivo.`— ni con un envío activo). El API de clientes usa los mismos endpoints que la aplicación, así que `POST /api/v1/orders` también lo acepta.
 - **No se puede repetir en la compañía** entre los envíos **activos** (uno dado de baja no cuenta). Si ya existe: `Ya existe un envío activo con ese conduce en la compañía.` (409): el cliente corrige el número; Teikem no le pone otro.
 - **El empaque de la orden ya no se muestra** (ni en la lista ni en la ficha ni como filtro): el número del lote de Recolección y empaque (`EMP-#####`) sigue siendo el de la recolección y no cambia.
 

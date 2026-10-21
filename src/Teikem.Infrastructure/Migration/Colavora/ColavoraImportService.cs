@@ -133,6 +133,9 @@ public sealed partial class ColavoraImportService(
         public int? DivisionFieldId { get; set; }
         public int? ColavoraIdFieldId { get; set; }
         public HashSet<string> DivisionOptions { get; } = new(StringComparer.OrdinalIgnoreCase);
+        /// <summary>Divisiones fuera de la lista de la compañía y sin uso reciente: sus órdenes se rechazan como error.</summary>
+        public HashSet<string> StaleDivisions { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public bool DivisionRulesLoaded { get; set; }
         /// <summary>Código de viaje (M-manifiesto) → TripId.</summary>
         public Dictionary<string, int> Trips { get; } = new(StringComparer.OrdinalIgnoreCase);
         /// <summary>Números de pieza ya usados en la compañía (índice único UX_OrderPiece).</summary>

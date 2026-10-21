@@ -33,6 +33,8 @@ public static class ImportEntityTypes
 public static class ImportFields
 {
     public const string OrderNumber = "orderNumber";
+    /// <summary>Conduce (número de envío, el del código de barras) que trae el cliente; sin él Teikem lo genera. Único entre los envíos activos de la compañía.</summary>
+    public const string Waybill = "waybillNumber";
     public const string ClientInvoiceNumber = "clientInvoiceNumber";
     public const string ServiceType = "serviceType";
     public const string ConsigneeName = "consigneeName";
@@ -58,7 +60,7 @@ public static class ImportFields
 
     public static readonly IReadOnlyList<string> All =
     [
-        OrderNumber, ClientInvoiceNumber, ServiceType, ConsigneeName, ConsigneeCode, Line1, Line2, City, State, PostalCode,
+        OrderNumber, Waybill, ClientInvoiceNumber, ServiceType, ConsigneeName, ConsigneeCode, Line1, Line2, City, State, PostalCode,
         Country, ContactPhone, PackageType, Pieces, WeightKg, VolumeM3, Description, CodAmount, RequestedDate, Notes, Reference, PieceNumber,
     ];
 
@@ -67,7 +69,7 @@ public static class ImportFields
     /// plantillas no los ofrece como valor por defecto, porque repetirían el mismo valor en todas las filas del archivo.
     /// Es una guía para la pantalla (GET /import-templates/fields); el servidor de plantillas no los rechaza.
     /// </summary>
-    public static readonly IReadOnlySet<string> NoDefault = new HashSet<string>(StringComparer.Ordinal) { OrderNumber, ClientInvoiceNumber, ConsigneeName, PieceNumber };
+    public static readonly IReadOnlySet<string> NoDefault = new HashSet<string>(StringComparer.Ordinal) { OrderNumber, Waybill, ClientInvoiceNumber, ConsigneeName, PieceNumber };
 
     /// <summary>Nombre canónico (camelCase del catálogo) o null si el campo no existe.</summary>
     public static string? Canonical(string? field)

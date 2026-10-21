@@ -12,6 +12,8 @@ public sealed record CvCustomer(string CompanyId, int SenderId, string Sender, s
     string? Contact, string? Phone, string? Fax, string? NotifyEmail, int? AssignPk, bool? Invoice, bool? PhotoOnDelivery, bool? SignatureOnDelivery, bool? ExcludeFromApp);
 public sealed record CvCustomerConfig(int SenderId, bool? PrintInvoiceLabel, bool? AutoGenInvoice, bool? AutomaticLabelPrinting, int DefaultPackageType, int DefaultServiceType, bool DuplicateInvoice, bool UseNumberInConsName);
 public sealed record CvDivision(string Code, string? Description);
+/// <summary>Una división tal como la usan las órdenes: cuántas y cuándo fue la última.</summary>
+public sealed record CvDivisionUsage(string Code, int Orders, DateTime? LastCreated);
 public sealed record CvServiceType(int Id, string Name, bool IsForPickup, string? Type);
 public sealed record CvPackageType(int Id, string Name, string? Type, bool HasItems);
 public sealed record CvCodType(int Id, string Name);
@@ -76,6 +78,12 @@ public sealed class ColavoraReader(string courierConnectionString, string loginC
         => ListAsync(courierConnectionString,
             "SELECT SenderID, PrintInvoiceLabel, AutoGenInvoice, AutomaticLabelPrinting, DefaultPackageType, DefaultServiceType, DuplicateInvoice, UseNumberInConsName FROM dbo.Customers_Configuration",
             r => new CvCustomerConfig(r.GetInt32(0), B(r, 1), B(r, 2), B(r, 3), r.GetInt32(4), r.GetInt32(5), r.GetBoolean(6), r.GetBoolean(7)), ct);
+
+    /// <summary>Las divisiones que traen las órdenes (no las definidas): para encontrar las que no están en la lista de la compañía.</summary>
+    public Task<List<CvDivisionUsage>> ReadDivisionUsageAsync(string companyId, CancellationToken ct)
+        => ListAsync(courierConnectionString,
+            "SELECT RTRIM(Division), COUNT(*), MAX(CreatedDate) FROM dbo.Shipments WHERE RTRIM(CompanyID) = @c AND Division IS NOT NULL AND LTRIM(RTRIM(Division)) <> '' GROUP BY RTRIM(Division)",
+            r => new CvDivisionUsage(r.GetString(0).Trim(), r.GetInt32(1), D(r, 2)), ct, ("@c", companyId));
 
     public Task<List<CvDivision>> ReadDivisionsAsync(string companyId, CancellationToken ct)
         => ListAsync(courierConnectionString, "SELECT Division, Description FROM dbo.Customers_Divisions WHERE RTRIM(CompanyID) = @c AND Division IS NOT NULL ORDER BY ID",

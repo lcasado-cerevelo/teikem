@@ -111,6 +111,7 @@ public sealed class OrderImportService(
         if (template.MultiLine) await CheckExistingPieceNumbersAsync(records, ct);
         CheckDuplicatesWithinFile(records);
         await CheckExistingOrderNumbersAsync(records, client.ClientId, ct);
+        await CheckExistingWaybillsAsync(records, ct);
         await CheckDuplicateInvoicesAsync(records, ctx, scope, ct);
 
         var validRows = records.Count(r => r.IsValid);
@@ -341,6 +342,17 @@ public sealed class OrderImportService(
         EnsureTyped(rec, NumberKinds.Order, ImportFields.OrderNumber, ctx.Settings);
         EnsureTyped(rec, NumberKinds.Invoice, ImportFields.ClientInvoiceNumber, ctx.Settings);
 
+        // Conduce que trae el cliente (su número de envío): formato válido; que no se repita en el archivo ni con un envío activo se revisa después
+        if (Get(ImportFields.Waybill) is string waybillText)
+        {
+            try
+            {
+                if (OrderRules.NormalizeWaybill(waybillText) is string w) rec.Values[ImportFields.Waybill] = w;
+                else rec.Values.Remove(ImportFields.Waybill);
+            }
+            catch (FormatException ex) { Error(ImportFields.Waybill, ex.Message); }
+        }
+
         // Consignatario: código del directorio → coincidencia nombre + línea 1 → se creará
         var consigneeCode = Get(ImportFields.ConsigneeCode);
         var name = Get(ImportFields.ConsigneeName);
@@ -557,6 +569,7 @@ public sealed class OrderImportService(
     {
         var orderNumbers = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var invoices = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var waybills = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         foreach (var r in records)
         {
             if (r.Values.TryGetValue(ImportFields.OrderNumber, out var number) && !r.Errors.ContainsKey(ImportFields.OrderNumber))
@@ -564,6 +577,12 @@ public sealed class OrderImportService(
                 if (orderNumbers.TryGetValue(number, out var firstRow))
                     r.Errors[ImportFields.OrderNumber] = $"El número de envío {number} se repite en la fila {firstRow} del archivo.";
                 else orderNumbers[number] = r.Row;
+            }
+            if (r.Values.TryGetValue(ImportFields.Waybill, out var waybill) && !r.Errors.ContainsKey(ImportFields.Waybill))
+            {
+                if (waybills.TryGetValue(waybill, out var firstWaybillRow))
+                    r.Errors[ImportFields.Waybill] = $"El conduce {waybill} se repite en la fila {firstWaybillRow} del archivo.";
+                else waybills[waybill] = r.Row;
             }
             if (r.Values.TryGetValue(ImportFields.ClientInvoiceNumber, out var invoice) && r.Consignee?.LocationPublicId is Guid loc)
             {
@@ -573,6 +592,19 @@ public sealed class OrderImportService(
                 else invoices[key] = r.Row;
             }
         }
+    }
+
+    /// <summary>Conduce del cliente que ya usa un envío activo de la compañía (el mismo 409 que daría la captura).</summary>
+    private async Task CheckExistingWaybillsAsync(List<ImportRowRecord> records, CancellationToken ct)
+    {
+        var typed = records.Where(r => !r.Errors.ContainsKey(ImportFields.Waybill) && r.Values.ContainsKey(ImportFields.Waybill))
+            .Select(r => r.Values[ImportFields.Waybill]).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (typed.Count == 0) return;
+        var existing = await db.TransportOrders.AsNoTracking().Where(o => o.IsActive && typed.Contains(o.WaybillNumber)).Select(o => o.WaybillNumber).ToListAsync(ct);
+        var taken = new HashSet<string>(existing, StringComparer.OrdinalIgnoreCase);
+        foreach (var r in records)
+            if (r.Values.TryGetValue(ImportFields.Waybill, out var w) && taken.Contains(w))
+                r.Errors.TryAdd(ImportFields.Waybill, OrderRules.WaybillTakenMessage);
     }
 
     /// <summary>Número de orden tecleado que ya usa una orden activa del cliente (mismo 409 que daría la captura).</summary>
@@ -806,6 +838,7 @@ public sealed class OrderImportService(
             },
             CodAmount: cod,
             OrderNumber: Get(ImportFields.OrderNumber),
+            WaybillNumber: Get(ImportFields.Waybill),
             ClientInvoiceNumber: Get(ImportFields.ClientInvoiceNumber),
             RequestedDate: requestedDate,
             PromisedDate: null,

@@ -597,8 +597,10 @@ public sealed partial class ColavoraImportService
                 var subId = s.SenderCodeById.FirstOrDefault(kv => string.Equals(kv.Value, sender, StringComparison.OrdinalIgnoreCase)).Key;
                 var subRows = prices.GetValueOrDefault(subId) ?? new List<CvServicePrice>();
                 s.Report.CountSkipped(K);
+                // decisión de Luis (2026-10-21): no se migran. Son marcadores (1.00 / 5.75 / 100.00) que nunca se cobraron: ningún «Recogido» tiene órdenes, y de las 4 órdenes de
+                // «Devolución» una sola trae un precio (5.75); el cliente real (10532) tiene todas sus tarifas en 0.00. Las devoluciones son reclamaciones y solo llevan una nota.
                 if (subRows.Count > 0)
-                    s.Report.Warn(K, sender, $"Se unió al cliente {subLink.MainSender}: sus {subRows.Count} tarifas no se migran (" + string.Join("; ", subRows.Take(6).Select(r => $"servicio {r.ServiceType}/paquete {r.PackageType} = {r.Price:0.00}")) + "). Decidir si pasan a las tarifas de pick up / cargo por devolución del cliente.");
+                    s.Report.AddInfo($"Tarifas {sender}", $"cliente unido a {subLink.MainSender}: sus {subRows.Count} tarifas no se migran (" + string.Join("; ", subRows.Take(6).Select(r => $"servicio {r.ServiceType}/paquete {r.PackageType} = {r.Price:0.00}")) + ") porque nunca se cobraron.");
                 continue;
             }
             s.Report.CountRead(K);
@@ -677,11 +679,40 @@ public sealed partial class ColavoraImportService
 
     // ================================================================ campos personalizados (D6 división; id de Colavora para rastrear)
 
+    /// <summary>
+    /// Las divisiones de la compañía: las que define Colavora más las que traen las órdenes y no están en esa lista. Decisión de Luis (2026-10-21): si la división
+    /// fuera de lista se usó hace poco (últimos <c>StaleDivisionDays</c> días) es una división real que faltaba y se agrega; si es vieja, sus órdenes son un error.
+    /// </summary>
+    private async Task<List<CvDivision>> LoadDivisionRulesAsync(RunState s, CancellationToken ct)
+    {
+        var divisions = await s.Reader.ReadDivisionsAsync(s.CompanyId, ct);
+        if (s.DivisionRulesLoaded) { return divisions.Concat(s.DivisionOptions.Where(o => divisions.All(d => !string.Equals(d.Code, o, StringComparison.OrdinalIgnoreCase))).Select(o => new CvDivision(o, null))).ToList(); }
+        s.DivisionRulesLoaded = true;
+        foreach (var d in divisions) s.DivisionOptions.Add(d.Code);
+        var limit = s.MigrationUtc.AddDays(-s.Config.Options.StaleDivisionDays);
+        var extras = new List<CvDivision>();
+        foreach (var u in (await s.Reader.ReadDivisionUsageAsync(s.CompanyId, ct)).OrderByDescending(u => u.Orders))
+        {
+            if (s.DivisionOptions.Contains(u.Code)) continue;
+            if (u.LastCreated is DateTime last && ColavoraRules.ToUtc(last) >= limit)
+            {
+                s.DivisionOptions.Add(u.Code);
+                extras.Add(new CvDivision(u.Code, u.Code));
+                s.Report.AddInfo($"División {u.Code}", $"no está en la lista de Colavora pero se usa ({u.Orders:N0} órdenes, la última {last:yyyy-MM-dd}); se agrega a las divisiones.");
+            }
+            else
+            {
+                s.StaleDivisions.Add(u.Code);
+                s.Report.Warn(ColavoraEntities.CustomFields, u.Code, $"División fuera de la lista de Colavora y sin uso reciente ({u.Orders:N0} órdenes, la última {u.LastCreated:yyyy-MM-dd}): esas órdenes se reportan como error y no se migran.");
+            }
+        }
+        return divisions.Concat(extras).ToList();
+    }
+
     private async Task ImportCustomFieldsAsync(RunState s, CancellationToken ct)
     {
         const string F = ColavoraEntities.CustomFields;
-        var divisions = await s.Reader.ReadDivisionsAsync(s.CompanyId, ct);
-        foreach (var d in divisions) s.DivisionOptions.Add(d.Code);
+        var divisions = await LoadDivisionRulesAsync(s, ct);
         var defs = s.TenantId is null ? new List<CustomFieldDefinitionDto>() : (await customFields.GetDefinitionsAsync(EntityTypes.TransportOrder, includeInactive: true, ct)).ToList();
 
         async Task<int?> Ensure(string key, string labelEs, string labelEn, string dataType, IList<CustomFieldOptionUpsert>? options, bool showInList)

@@ -4257,6 +4257,7 @@
         "linesInvoice": " · factura {number}",
       "fields": {
         "orderNumber": "N.º de envío",
+        "waybillNumber": "Conduce (número de envío)",
         "clientInvoiceNumber": "N.º de factura",
         "serviceType": "Servicio",
         "consigneeName": "Consignatario (nombre)",

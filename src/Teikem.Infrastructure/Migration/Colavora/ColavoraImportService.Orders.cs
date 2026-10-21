@@ -28,6 +28,7 @@ public sealed partial class ColavoraImportService
         var to = Math.Min(opt.ToShipmentId ?? maxId, maxId);
         s.Report.AddInfo("Órdenes en Colavora", $"{count:N0}{(opt.SinceDate is DateTime sd ? $" creadas desde {sd:yyyy-MM-dd}" : "")} (ShipmentID {minId}–{maxId}); se procesa {from}–{to} en lotes de {opt.BatchSize}");
         if (!s.DryRun && s.TenantId is null) return;
+        await LoadDivisionRulesAsync(s, ct);   // las divisiones viejas fuera de lista son error (aunque la fase de campos no haya corrido)
 
         if (s.TenantId is int tid0)
         {
@@ -99,6 +100,11 @@ public sealed partial class ColavoraImportService
             s.Report.CountRead(O);
             var key = $"{sh.ShipmentId} {sh.Waybill}";
             if (existing.Contains(sh.Waybill) || !seenWaybills.Add(sh.Waybill)) { s.Report.CountExisting(O); continue; }
+            if (!string.IsNullOrWhiteSpace(sh.Division) && s.StaleDivisions.Contains(sh.Division.Trim()))
+            {
+                s.Report.Reject(O, key, $"La división '{sh.Division.Trim()}' no está en la lista de la compañía y es vieja (sin uso reciente); la orden se reporta como error y no se migra.");
+                continue;
+            }
             if (string.IsNullOrWhiteSpace(sh.Sender) || !s.Clients.TryGetValue(sh.Sender, out var client))
             {
                 s.Report.Reject(O, key, $"El cliente '{sh.Sender}' no está migrado (huérfano o de prueba); la orden se omite.");
