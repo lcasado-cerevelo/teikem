@@ -5901,3 +5901,41 @@ BEGIN
     ALTER TABLE dbo.NumberSequence ADD CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP','RECEIPT','CYCLECOUNT','CROSSDOCK','PURCHASE','RENTAL','RENTALRETURN','MANUALISSUE','MULTIADJUST','SALESORDER','BILLINVOICE','CREDITNOTE','SALESRETURN','CODREMIT','DRIVERSETTLE','WAYBILL','EXITNOTICE','ASN','ACCTPURCH','ACCTDISP'));
 END
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-21 (Lote 182, C4) — Recepción maestra: varios documentos del mismo dueño que llegan juntos.
+   - dbo.ReceiptGroup (RCM-#####): la maestra; dbo.ReceiptHeader.ReceiptGroupId la liga a sus recibos (cada documento conserva su recibo de siempre).
+   - Contador RECEIPTGROUP (CK_NumberSequence_Kind se amplía).
+   Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID(N'dbo.ReceiptGroup', N'U') IS NULL CREATE TABLE dbo.ReceiptGroup (
+    ReceiptGroupId INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_ReceiptGroup_PublicId DEFAULT NEWID(),
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    WarehouseId INT NOT NULL,
+    ClientId INT NULL,
+    Number NVARCHAR(40) NOT NULL,
+    Note NVARCHAR(500) NULL,
+    CreatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_ReceiptGroup_Created DEFAULT SYSUTCDATETIME(),
+    CreatedBy INT NULL,
+    IsActive BIT NOT NULL CONSTRAINT DF_ReceiptGroup_IsActive DEFAULT 1,
+    RowVersion ROWVERSION NOT NULL,
+    CONSTRAINT UQ_ReceiptGroup_Number UNIQUE (TenantId, Number),
+    CONSTRAINT UQ_ReceiptGroup_IdTenant UNIQUE (ReceiptGroupId, TenantId),
+    CONSTRAINT FK_ReceiptGroup_Warehouse FOREIGN KEY (WarehouseId, TenantId) REFERENCES dbo.Warehouse(WarehouseId, TenantId)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ReceiptGroup_Tenant_Date' AND object_id = OBJECT_ID('dbo.ReceiptGroup')) CREATE INDEX IX_ReceiptGroup_Tenant_Date ON dbo.ReceiptGroup (TenantId, CreatedAtUtc);
+GO
+IF COL_LENGTH('dbo.ReceiptHeader', 'ReceiptGroupId') IS NULL
+    ALTER TABLE dbo.ReceiptHeader ADD ReceiptGroupId INT NULL CONSTRAINT FK_ReceiptHeader_Group REFERENCES dbo.ReceiptGroup(ReceiptGroupId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Receipt_Group' AND object_id = OBJECT_ID('dbo.ReceiptHeader'))
+    CREATE INDEX IX_Receipt_Group ON dbo.ReceiptHeader (ReceiptGroupId) WHERE ReceiptGroupId IS NOT NULL;
+GO
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NumberSequence_Kind' AND parent_object_id = OBJECT_ID('dbo.NumberSequence')
+           AND definition NOT LIKE '%''RECEIPTGROUP''%')
+BEGIN
+    ALTER TABLE dbo.NumberSequence DROP CONSTRAINT CK_NumberSequence_Kind;
+    ALTER TABLE dbo.NumberSequence ADD CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP','RECEIPT','CYCLECOUNT','CROSSDOCK','PURCHASE','RENTAL','RENTALRETURN','MANUALISSUE','MULTIADJUST','SALESORDER','BILLINVOICE','CREDITNOTE','SALESRETURN','CODREMIT','DRIVERSETTLE','WAYBILL','EXITNOTICE','ASN','ACCTPURCH','ACCTDISP','RECEIPTGROUP'));
+END
+GO

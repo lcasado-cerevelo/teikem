@@ -174,6 +174,11 @@ public class WmsControllerSecurityTests
         [(typeof(PickBatchesController), nameof(PickBatchesController.Documents))] = PermissionCatalog.InventoryView,   // Lote 173
         [(typeof(PickBatchesController), nameof(PickBatchesController.Groups))] = PermissionCatalog.InventoryView,   // Lote 176
         [(typeof(PickBatchesController), nameof(PickBatchesController.GetGroup))] = PermissionCatalog.InventoryView,   // Lote 176
+        [(typeof(ReceiptsController), nameof(ReceiptsController.Groups))] = PermissionCatalog.InventoryView,   // Lote 182
+        [(typeof(ReceiptsController), nameof(ReceiptsController.GetGroup))] = PermissionCatalog.InventoryView,
+        [(typeof(ReceiptsController), nameof(ReceiptsController.CreateGroup))] = PermissionCatalog.WarehouseReceive,
+        [(typeof(ReceiptsController), nameof(ReceiptsController.ConfirmGroup))] = PermissionCatalog.WarehouseReceive,
+        [(typeof(ReceiptsController), nameof(ReceiptsController.DeleteGroup))] = PermissionCatalog.WarehouseReceive,
         [(typeof(PickBatchesController), nameof(PickBatchesController.CollectGroup))] = PermissionCatalog.WarehousePick,   // Lote 176
         [(typeof(PickBatchesController), nameof(PickBatchesController.PackGroup))] = PermissionCatalog.WarehousePick,   // Lote 176
         [(typeof(PickBatchesController), nameof(PickBatchesController.DeleteGroup))] = PermissionCatalog.WarehousePick,   // Lote 176
@@ -355,7 +360,7 @@ public class WmsControllerSecurityTests
         Assert.Equal(PermissionCatalog.WarehouseIssue, Expected[(typeof(ManualIssuesController), nameof(ManualIssuesController.Create))]);
         Assert.Equal(PermissionCatalog.WarehouseIssue, Expected[(typeof(ManualIssuesController), nameof(ManualIssuesController.Delete))]);
         Assert.Equal(ModuleOf[typeof(PickBatchesController)], ModuleOf[typeof(ManualIssuesController)]);
-        Assert.Equal(179, Expected.Count); // Lote 176: + 5 (PickBatchesController.Groups/GetGroup/CollectGroup/PackGroup/DeleteGroup) = 179; Lote 174/175: + 2 (ReceiptsController.ConfirmBatch/ReceivePart) = 174; Lote 173: + 1 (PickBatchesController.Documents) = 172; Lote 171: + 2 (AsnsController.Assign/Take) = 171; Lote 157: + 1 (AsnsController.Update) = 169; Lote 148: + 1 (InventoryController.Valuation) = 168; 2026-10-16: + 2 (ProductsController.GetKit/SetKit, Lote 68) = 167; 2026-10-12: + 2 (WarehousesController.DeleteBin/DeleteBins, eliminar posiciones) = 165; + 1 (InventoryController.TransactionUsers, filtro Usuario del Kárdex) = 163; 2026-10-11: + 1 (CaptureOffline, conteo sin señal) = 161; + 1 (ReceiptsController.SummaryByWarehouse) = 162; // 132 de master + 1 de reparto por posición (Distribute) + 1 de verificación de línea (CheckLine) + 12 de RentalsController + 3 de RentalReturnsController + 4 de RentalProcessesController + 5 de ManualIssuesController
+        Assert.Equal(184, Expected.Count); // Lote 182: + 5 (ReceiptsController.Groups/GetGroup/CreateGroup/ConfirmGroup/DeleteGroup) = 184; Lote 176: + 5 (PickBatchesController.Groups/GetGroup/CollectGroup/PackGroup/DeleteGroup) = 179; Lote 174/175: + 2 (ReceiptsController.ConfirmBatch/ReceivePart) = 174; Lote 173: + 1 (PickBatchesController.Documents) = 172; Lote 171: + 2 (AsnsController.Assign/Take) = 171; Lote 157: + 1 (AsnsController.Update) = 169; Lote 148: + 1 (InventoryController.Valuation) = 168; 2026-10-16: + 2 (ProductsController.GetKit/SetKit, Lote 68) = 167; 2026-10-12: + 2 (WarehousesController.DeleteBin/DeleteBins, eliminar posiciones) = 165; + 1 (InventoryController.TransactionUsers, filtro Usuario del Kárdex) = 163; 2026-10-11: + 1 (CaptureOffline, conteo sin señal) = 161; + 1 (ReceiptsController.SummaryByWarehouse) = 162; // 132 de master + 1 de reparto por posición (Distribute) + 1 de verificación de línea (CheckLine) + 12 de RentalsController + 3 de RentalReturnsController + 4 de RentalProcessesController + 5 de ManualIssuesController
     }
 
     [Fact]

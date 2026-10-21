@@ -180,6 +180,7 @@ public static class DependencyInjection
         services.AddScoped<DeliveryAttemptService>();   // Lote 93 (P9)
         services.AddScoped<DriverSettlementService>();   // Lote 94 (P9)
         services.AddScoped<AccountingRunService>();   // Lote 181 (H1)
+        services.AddScoped<ReceiptGroupService>();   // Lote 182 (C4)
         services.AddScoped<IStatusTransitionEffect, DeliveryAttemptOrderEffect>();
         services.AddScoped<IStatusTransitionEffect, DriverTripStatusEffect>();
 

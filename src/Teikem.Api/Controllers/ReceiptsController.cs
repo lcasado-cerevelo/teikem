@@ -19,7 +19,7 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/receipts")]
 [Authorize]
 [RequireModule(ModuleKeys.WmsLotSerial)]
-public sealed class ReceiptsController(ReceiptService receipts) : ControllerBase
+public sealed class ReceiptsController(ReceiptService receipts, ReceiptGroupService groups) : ControllerBase
 {
     /// <summary>
     /// Lista paginada (take ≤ 200) con filtros: warehousePublicId, status (EXPECTED, RECEIVING, DISCREPANCY, RECEIVED,
@@ -44,6 +44,40 @@ public sealed class ReceiptsController(ReceiptService receipts) : ControllerBase
     /// </summary>
     [HttpGet("summary-by-warehouse"), RequirePermission(PermissionCatalog.InventoryView)]
     public Task<IReadOnlyList<ReceiptWarehouseSummaryDto>> SummaryByWarehouse(CancellationToken ct) => receipts.SummaryByWarehouseAsync(ct);
+
+    // ---------------------------------------------------------------- Lote 182: recepción maestra
+
+    /// <summary>
+    /// Lote 182 (C4) — lista de recepciones maestras (varios documentos del mismo dueño que llegan juntos), de la más reciente a la más antigua. Filtros: search (número, nota, recibo, aviso u orden de compra de uno de sus
+    /// documentos), status (OPEN, CONFIRMED, CANCELLED; otro valor → 400), skip y take (≤ 100).
+    /// </summary>
+    [HttpGet("groups"), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<ReceiptGroupPageDto> Groups([FromQuery] string? search, [FromQuery] string? status, [FromQuery] int skip = 0, [FromQuery] int take = 50, CancellationToken ct = default)
+        => groups.ListAsync(new ReceiptGroupQuery(search, status, skip, take), ct);
+
+    /// <summary>Ficha de la maestra: sus recibos (uno por documento) con su avance y lo que se puede hacer.</summary>
+    [HttpGet("groups/{publicId:guid}"), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<ReceiptGroupDto> GetGroup(Guid publicId, CancellationToken ct) => groups.GetAsync(publicId, ct);
+
+    /// <summary>
+    /// Lote 182 — abre un recibo por cada documento (de 2 a 20 avisos de llegada y/o órdenes de compra DEL MISMO dueño y almacén) bajo una recepción maestra RCM-##### en UNA transacción: cada recibo es el de
+    /// siempre (REC-#####); la maestra los reúne con el mismo transporte y referencia. Documentos de otro dueño o almacén → 400; un documento que no se puede recibir → el error de siempre de ese recibo, sin efecto parcial.
+    /// </summary>
+    [HttpPost("groups"), RequirePermission(PermissionCatalog.WarehouseReceive)]
+    public Task<ReceiptGroupDto> CreateGroup([FromBody] ReceiptGroupCreateRequest req, CancellationToken ct) => groups.CreateAsync(req, ct);
+
+    /// <summary>Confirma juntos todos los recibos de la maestra que aún no lo están, en una transacción (si uno falla, ninguno se confirma). Todos confirmados → 422.</summary>
+    [HttpPost("groups/{publicId:guid}/confirm"), RequirePermission(PermissionCatalog.WarehouseReceive)]
+    public Task<ReceiptGroupDto> ConfirmGroup(Guid publicId, [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] ReceiptGroupConfirmRequest? req, CancellationToken ct)
+        => groups.ConfirmAsync(publicId, req, ct);
+
+    /// <summary>Elimina la maestra (204) y sus recibos mientras ninguno esté confirmado (422 si alguno lo está).</summary>
+    [HttpDelete("groups/{publicId:guid}"), RequirePermission(PermissionCatalog.WarehouseReceive)]
+    public async Task<IActionResult> DeleteGroup(Guid publicId, CancellationToken ct)
+    {
+        await groups.DeleteAsync(publicId, ct);
+        return NoContent();
+    }
 
     /// <summary>Ficha del recibo: encabezado, líneas (esperado, recibido, diferencia, lote, series, costo de PO, cruce de muelle) y sus PUTAWAY.</summary>
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.InventoryView)]

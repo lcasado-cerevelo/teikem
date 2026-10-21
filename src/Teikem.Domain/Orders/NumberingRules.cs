@@ -195,6 +195,8 @@ public static class NumberingRules
         or Teikem.Domain.ExitNotices.ExitNoticeCodes.NumberKind
         // Lote 170 (A5): aviso de llegada LLE-##### (por tenant, ClientId NULL)
         or Teikem.Domain.Wms.AsnCodes.NumberKind
+        // Lote 182 (C4): recepción maestra RCM-##### (por tenant, ClientId NULL)
+        or Teikem.Domain.Wms.ReceiptGroupCodes.NumberKind
         // Lote 181 (H1): corridas de contabilización de compras CMP-##### y de despachos DSP-##### (por tenant, ClientId NULL)
         or Teikem.Domain.Accounting.AccountingCodes.NumberKindPurchases or Teikem.Domain.Accounting.AccountingCodes.NumberKindDispatches
         // Lote 57: orden de venta OV-##### (por tenant, ClientId NULL)

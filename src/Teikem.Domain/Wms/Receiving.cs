@@ -86,6 +86,8 @@ public class ReceiptHeader : ITenantScoped, ISoftDeletable, IHasStatus
     public int? ReceivingModeLookupId { get; set; }
     /// <summary>Lote 81: la devolución de venta que originó este recibo (tipo RETURN); NULL en los demás.</summary>
     public int? SalesReturnId { get; set; }
+    /// <summary>Lote 182 (C4): la recepción maestra (varios documentos del mismo dueño que llegan juntos) a la que pertenece este recibo; NULL = recibo suelto.</summary>
+    public int? ReceiptGroupId { get; set; }
 
     public StatusCode? Status { get; set; }
     public ICollection<ReceiptLine> Lines { get; set; } = new List<ReceiptLine>();

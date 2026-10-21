@@ -349,6 +349,7 @@ public class WmsContractsTests
         new object?[] { typeof(DamageReport), EntityTypes.DamageReport },   // 2026-10-08
         new object?[] { typeof(PickBatch), EntityTypes.PickBatch },
         new object?[] { typeof(PickBatchLine), EntityTypes.PickBatch },
+        new object?[] { typeof(ReceiptGroup), null },   // Lote 182: la maestra solo reúne; la bitácora es la de cada recibo (RECEIPT)
         new object?[] { typeof(PickGroup), null },   // Lote 176: la maestra solo reúne; la bitácora es la de cada recolección (PICK_BATCH)
         new object?[] { typeof(ReceiptBatch), null },   // Lote 174: la tanda deja su rastro en el recibo y en el inventario (kárdex)
         new object?[] { typeof(DockAppointment), EntityTypes.DockAppointment },

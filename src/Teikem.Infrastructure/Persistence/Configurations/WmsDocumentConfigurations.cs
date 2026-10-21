@@ -135,6 +135,9 @@ public sealed class ReceiptHeaderConfiguration : IEntityTypeConfiguration<Receip
         b.HasOne(r => r.Status).WithMany().HasForeignKey(r => r.StatusCodeId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<Warehouse>().WithMany().HasForeignKey(r => r.WarehouseId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<Asn>().WithMany().HasForeignKey(r => r.AsnId).OnDelete(DeleteBehavior.NoAction);
+        // Lote 182 (C4): la recepción maestra a la que pertenece (NULL = recibo suelto)
+        b.HasIndex(r => r.ReceiptGroupId).HasFilter("[ReceiptGroupId] IS NOT NULL").HasDatabaseName("IX_Receipt_Group");
+        b.HasOne<ReceiptGroup>().WithMany().HasForeignKey(r => r.ReceiptGroupId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<WarehouseDock>().WithMany().HasForeignKey(r => r.DockId).OnDelete(DeleteBehavior.NoAction);
         // Lote 13: FK_Receipt_StagingBin es compuesta en SQL (DefaultStagingBinId, WarehouseId) → UQ_WarehouseBin_IdWh; en EF
         // basta la simple (como FK_Receipt_Dock): el servicio valida que la posición sea del almacén del recibo.
@@ -281,6 +284,22 @@ public sealed class PickBatchConfiguration : IEntityTypeConfiguration<PickBatch>
 }
 
 /// <summary>Lote 176: recolección maestra (varios documentos del mismo cliente, un solo envío).</summary>
+public sealed class ReceiptGroupConfiguration : IEntityTypeConfiguration<ReceiptGroup>
+{
+    public void Configure(EntityTypeBuilder<ReceiptGroup> b)
+    {
+        b.ToTable("ReceiptGroup");
+        b.HasKey(p => p.ReceiptGroupId);
+        b.Property(p => p.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();
+        b.Property(p => p.Number).HasMaxLength(40).IsRequired();
+        b.Property(p => p.Note).HasMaxLength(ReceiptGroupRules.MaxNoteLength);
+        b.Property(p => p.RowVersion).IsRowVersion();
+        b.HasIndex(p => new { p.TenantId, p.Number }).IsUnique().HasDatabaseName("UQ_ReceiptGroup_Number");
+        b.HasIndex(p => new { p.TenantId, p.CreatedAtUtc }).HasDatabaseName("IX_ReceiptGroup_Tenant_Date");
+        b.HasOne<Warehouse>().WithMany().HasForeignKey(p => p.WarehouseId).OnDelete(DeleteBehavior.NoAction);
+    }
+}
+
 public sealed class PickGroupConfiguration : IEntityTypeConfiguration<PickGroup>
 {
     public void Configure(EntityTypeBuilder<PickGroup> b)
