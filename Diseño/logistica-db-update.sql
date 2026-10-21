@@ -5800,3 +5800,104 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PickBatch_Group' AND object_id = OBJECT_ID('dbo.PickBatch'))
     CREATE INDEX IX_PickBatch_Group ON dbo.PickBatch (PickGroupId) WHERE PickGroupId IS NOT NULL;
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-21 (Lote 181, H1) — Contabilización de compras y de despachos.
+   - dbo.AccountingRun / dbo.AccountingRunLine: la corrida (CMP-##### de compras, DSP-##### de despachos) y sus líneas, que copian el costo ya congelado
+     (capa del recibo; costo de la salida). El índice único filtrado UX_AccountingRunLine_Source impide que una línea esté en dos corridas vivas.
+   - Dominio de estatus AccountingRunStatus (GENERATED, ACCEPTED, EXPORTED, CANCELLED) y EntityType ACCOUNTING_RUN.
+   - Contadores ACCTPURCH y ACCTDISP (CK_NumberSequence_Kind se amplía).
+   Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID(N'dbo.AccountingRun', N'U') IS NULL CREATE TABLE dbo.AccountingRun (
+    AccountingRunId INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_AccountingRun_PublicId DEFAULT NEWID(),
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    Kind VARCHAR(10) NOT NULL CONSTRAINT CK_AccountingRun_Kind CHECK (Kind IN ('PURCHASES','DISPATCHES')),
+    Number NVARCHAR(40) NOT NULL,
+    PeriodStart DATE NOT NULL,
+    PeriodEnd DATE NOT NULL,
+    StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),
+    CurrencyLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),
+    LineCount INT NOT NULL CONSTRAINT DF_AccountingRun_LineCount DEFAULT 0,
+    TotalAmount DECIMAL(18,4) NOT NULL CONSTRAINT DF_AccountingRun_Total DEFAULT 0,
+    UnpricedLineCount INT NOT NULL CONSTRAINT DF_AccountingRun_Unpriced DEFAULT 0,
+    Note NVARCHAR(500) NULL,
+    GeneratedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_AccountingRun_Generated DEFAULT SYSUTCDATETIME(),
+    GeneratedBy INT NULL,
+    AcceptedAtUtc DATETIME2 NULL, AcceptedBy INT NULL,
+    ExportedAtUtc DATETIME2 NULL, ExportedBy INT NULL,
+    RowVersion ROWVERSION NOT NULL,
+    CONSTRAINT CK_AccountingRun_Period CHECK (PeriodEnd >= PeriodStart)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_AccountingRun_PublicId' AND object_id = OBJECT_ID('dbo.AccountingRun')) CREATE INDEX IX_AccountingRun_PublicId ON dbo.AccountingRun(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_AccountingRun_Number' AND object_id = OBJECT_ID('dbo.AccountingRun')) CREATE UNIQUE INDEX UQ_AccountingRun_Number ON dbo.AccountingRun(TenantId, Number);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_AccountingRun_Kind_Status' AND object_id = OBJECT_ID('dbo.AccountingRun')) CREATE INDEX IX_AccountingRun_Kind_Status ON dbo.AccountingRun(TenantId, Kind, StatusCodeId);
+GO
+IF OBJECT_ID(N'dbo.AccountingRunLine', N'U') IS NULL CREATE TABLE dbo.AccountingRunLine (
+    AccountingRunLineId INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    AccountingRunId INT NOT NULL REFERENCES dbo.AccountingRun(AccountingRunId),
+    SourceType VARCHAR(12) NOT NULL CONSTRAINT CK_AccountingRunLine_Source CHECK (SourceType IN ('RECEIPT_LINE','PICK_LINE')),
+    SourceId INT NOT NULL,
+    DocDate DATE NOT NULL,
+    DocumentNumber NVARCHAR(60) NOT NULL,
+    ReferenceNumber NVARCHAR(60) NULL,
+    PartyName NVARCHAR(200) NULL,
+    WarehouseCode NVARCHAR(20) NULL,
+    ProductId INT NOT NULL REFERENCES dbo.Product(ProductId),
+    Sku NVARCHAR(60) NOT NULL,
+    ProductName NVARCHAR(200) NOT NULL,
+    LotNumber NVARCHAR(60) NULL,
+    Quantity DECIMAL(16,3) NOT NULL,
+    UnitCost DECIMAL(18,4) NULL,
+    TotalCost DECIMAL(18,4) NULL,
+    CostSource NVARCHAR(10) NULL,
+    IsActive BIT NOT NULL CONSTRAINT DF_AccountingRunLine_IsActive DEFAULT 1
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_AccountingRunLine_Run' AND object_id = OBJECT_ID('dbo.AccountingRunLine')) CREATE INDEX IX_AccountingRunLine_Run ON dbo.AccountingRunLine(AccountingRunId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_AccountingRunLine_Source' AND object_id = OBJECT_ID('dbo.AccountingRunLine'))
+    CREATE UNIQUE INDEX UX_AccountingRunLine_Source ON dbo.AccountingRunLine (SourceType, SourceId) WHERE IsActive = 1;
+GO
+MERGE dbo.CatalogDomain AS t
+USING (SELECT N'AccountingRunStatus' AS DomainKey) AS s ON t.DomainKey = s.DomainKey
+WHEN NOT MATCHED THEN
+    INSERT (DomainKey, Scope, LabelJson, IsSystem, IsActive)
+    VALUES (N'AccountingRunStatus', 2, N'{"es":"Estatus de la corrida de contabilización","en":"Accounting run status"}', 1, 1);
+GO
+MERGE dbo.StatusCode AS t
+USING (
+    SELECT v.Code, v.LabelJson, v.Color, v.Srt, v.Init, k.LookupCodeId AS StageKindLookupId
+    FROM (VALUES
+        (N'GENERATED', N'{"es":"Generada","en":"Generated"}',  '#9CA3AF', 1, 1, 'PIPELINE'),
+        (N'ACCEPTED',  N'{"es":"Aceptada","en":"Accepted"}',   '#3B82F6', 2, 0, 'PIPELINE'),
+        (N'EXPORTED',  N'{"es":"Exportada","en":"Exported"}',  '#059669', 3, 0, 'TERMINAL'),
+        (N'CANCELLED', N'{"es":"Cancelada","en":"Cancelled"}', '#6B7280', 4, 0, 'TERMINAL')
+    ) AS v (Code, LabelJson, Color, Srt, Init, Kind)
+    JOIN dbo.LookupCode k ON k.Entity = N'StageKind' AND k.InternalCode = v.Kind
+) AS s
+ON t.Entity = N'AccountingRunStatus' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, ColorHex, SortOrder, StageKindLookupId, IsInitial, IsActive)
+    VALUES (N'AccountingRunStatus', s.Code, s.LabelJson, s.Color, s.Srt, s.StageKindLookupId, s.Init, 1);
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'ACCOUNTING_RUN', N'{"es":"Corrida de contabilización","en":"Accounting run"}', 175)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NumberSequence_Kind' AND parent_object_id = OBJECT_ID('dbo.NumberSequence')
+           AND definition NOT LIKE '%''ACCTDISP''%')
+BEGIN
+    ALTER TABLE dbo.NumberSequence DROP CONSTRAINT CK_NumberSequence_Kind;
+    ALTER TABLE dbo.NumberSequence ADD CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP','RECEIPT','CYCLECOUNT','CROSSDOCK','PURCHASE','RENTAL','RENTALRETURN','MANUALISSUE','MULTIADJUST','SALESORDER','BILLINVOICE','CREDITNOTE','SALESRETURN','CODREMIT','DRIVERSETTLE','WAYBILL','EXITNOTICE','ASN','ACCTPURCH','ACCTDISP'));
+END
+GO

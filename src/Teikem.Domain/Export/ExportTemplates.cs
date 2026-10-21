@@ -21,7 +21,10 @@ public static class ExportCodes
     public const string ScopeCodRemittance = "COD_REMITTANCE";
     /// <summary>Lote 95 (P9): la liquidación a choferes (una fila por línea: entrega con sus intentos o viaje).</summary>
     public const string ScopeDriverSettlement = "DRIVER_SETTLEMENT";
-    public static readonly string[] Scopes = { ScopeBilling, ScopeCodRemittance, ScopeDriverSettlement };
+    /// <summary>Lote 181 (H1): la contabilización de compras (una fila por línea de recibo) y la de despachos (una fila por línea despachada).</summary>
+    public const string ScopePurchaseAccounting = "PURCHASE_ACCOUNTING";
+    public const string ScopeDispatchAccounting = "DISPATCH_ACCOUNTING";
+    public static readonly string[] Scopes = { ScopeBilling, ScopeCodRemittance, ScopeDriverSettlement, ScopePurchaseAccounting, ScopeDispatchAccounting };
 
     public const string FormatCsv = "CSV";
     public const string FormatTxt = "TXT";
@@ -148,7 +151,59 @@ public static class ExportFields
         new ExportField("RUN_TOTAL", ExportKind.Money, "RunTotal", "Total de la liquidación", "Settlement total"),
     };
 
-    public static IReadOnlyList<ExportField> Of(string scope) => scope == ExportCodes.ScopeBilling ? Billing : scope == ExportCodes.ScopeCodRemittance ? CodRemittance : scope == ExportCodes.ScopeDriverSettlement ? DriverSettlement : Array.Empty<ExportField>();
+    // ---- Contabilización de compras y de despachos (Lote 181): una fila por línea, con los datos de la corrida repetidos en cada una
+    public static readonly IReadOnlyList<ExportField> PurchaseAccounting = new[]
+    {
+        new ExportField("RUN_NUMBER", ExportKind.Text, "RunNo", "Número de la corrida", "Run number"),
+        new ExportField("PERIOD_START", ExportKind.Date, "PeriodStart", "Inicio del período", "Period start"),
+        new ExportField("PERIOD_END", ExportKind.Date, "PeriodEnd", "Fin del período", "Period end"),
+        new ExportField("LINE_NO", ExportKind.Number, "LineNo", "Número de línea", "Line number"),
+        new ExportField("DOC_DATE", ExportKind.Date, "ReceiptDate", "Fecha del recibo", "Receipt date"),
+        new ExportField("DOCUMENT_NUMBER", ExportKind.Text, "ReceiptNo", "Número del recibo", "Receipt number"),
+        new ExportField("REFERENCE_NUMBER", ExportKind.Text, "PoNo", "Orden de compra o aviso de llegada", "Purchase order or arrival notice"),
+        new ExportField("PARTY_NAME", ExportKind.Text, "Supplier", "Proveedor", "Supplier"),
+        new ExportField("WAREHOUSE_CODE", ExportKind.Text, "Warehouse", "Almacén", "Warehouse"),
+        new ExportField("SKU", ExportKind.Text, "Item", "Código del producto", "Item code"),
+        new ExportField("PRODUCT_NAME", ExportKind.Text, "Description", "Producto", "Product"),
+        new ExportField("LOT_NUMBER", ExportKind.Text, "Lot", "Lote", "Lot"),
+        new ExportField("QUANTITY", ExportKind.Number, "Qty", "Cantidad recibida", "Received quantity"),
+        new ExportField("UNIT_COST", ExportKind.Number, "UnitCost", "Costo unitario", "Unit cost"),
+        new ExportField("TOTAL_COST", ExportKind.Money, "Amount", "Costo total", "Total cost"),
+        new ExportField("COST_SOURCE", ExportKind.Text, "CostSource", "Origen del costo", "Cost source"),
+        new ExportField("CURRENCY", ExportKind.Text, "Currency", "Moneda", "Currency"),
+        new ExportField("RUN_TOTAL", ExportKind.Money, "RunTotal", "Total de la corrida", "Run total"),
+    };
+
+    public static readonly IReadOnlyList<ExportField> DispatchAccounting = new[]
+    {
+        new ExportField("RUN_NUMBER", ExportKind.Text, "RunNo", "Número de la corrida", "Run number"),
+        new ExportField("PERIOD_START", ExportKind.Date, "PeriodStart", "Inicio del período", "Period start"),
+        new ExportField("PERIOD_END", ExportKind.Date, "PeriodEnd", "Fin del período", "Period end"),
+        new ExportField("LINE_NO", ExportKind.Number, "LineNo", "Número de línea", "Line number"),
+        new ExportField("DOC_DATE", ExportKind.Date, "DispatchDate", "Fecha del despacho", "Dispatch date"),
+        new ExportField("DOCUMENT_NUMBER", ExportKind.Text, "DispatchNo", "Número de la recolección o despacho", "Pick or dispatch number"),
+        new ExportField("REFERENCE_NUMBER", ExportKind.Text, "OrderNo", "Orden de venta o aviso de salida", "Sales order or exit notice"),
+        new ExportField("PARTY_NAME", ExportKind.Text, "Customer", "Cliente", "Customer"),
+        new ExportField("WAREHOUSE_CODE", ExportKind.Text, "Warehouse", "Almacén", "Warehouse"),
+        new ExportField("SKU", ExportKind.Text, "Item", "Código del producto", "Item code"),
+        new ExportField("PRODUCT_NAME", ExportKind.Text, "Description", "Producto", "Product"),
+        new ExportField("LOT_NUMBER", ExportKind.Text, "Lot", "Lote", "Lot"),
+        new ExportField("QUANTITY", ExportKind.Number, "Qty", "Cantidad despachada", "Dispatched quantity"),
+        new ExportField("UNIT_COST", ExportKind.Number, "UnitCost", "Costo unitario", "Unit cost"),
+        new ExportField("TOTAL_COST", ExportKind.Money, "Amount", "Costo total", "Total cost"),
+        new ExportField("CURRENCY", ExportKind.Text, "Currency", "Moneda", "Currency"),
+        new ExportField("RUN_TOTAL", ExportKind.Money, "RunTotal", "Total de la corrida", "Run total"),
+    };
+
+    public static IReadOnlyList<ExportField> Of(string scope) => scope switch
+    {
+        ExportCodes.ScopeBilling => Billing,
+        ExportCodes.ScopeCodRemittance => CodRemittance,
+        ExportCodes.ScopeDriverSettlement => DriverSettlement,
+        ExportCodes.ScopePurchaseAccounting => PurchaseAccounting,
+        ExportCodes.ScopeDispatchAccounting => DispatchAccounting,
+        _ => Array.Empty<ExportField>(),
+    };
 }
 
 /// <summary>Reglas puras de las plantillas (sin EF; ExportTemplateService las traduce a 400/404/409). Los mensajes son públicos: el manual y la FAQ los citan.</summary>

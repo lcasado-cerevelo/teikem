@@ -48,6 +48,8 @@ jobs:
           export SMOKE_MIGRATION_RUN="dotnet run --project src/Teikem.Api -c Release --no-build"
           # Lote 176-178: recolección maestra de punta a punta (recolectar, empacar un solo envío, eliminar) — el smoke general sigue el modelo viejo de estatus de órdenes
           scripts/smoke-maestra.sh http://localhost:5000
+          # Lote 181: contabilización de compras y de despachos de punta a punta (recibo ciego, recolección, corridas, exportación)
+          scripts/smoke-contabilidad.sh http://localhost:5000
           scripts/smoke.sh http://localhost:5000
       # Recorrido Playwright del frontend (Lote F1) contra el mismo API, que sigue arriba desde el paso anterior
       # (los procesos en segundo plano viven hasta el fin del job). Vite sirve la app en :5173 (CORS permitido en appsettings).

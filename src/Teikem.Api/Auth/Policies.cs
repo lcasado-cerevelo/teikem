@@ -92,6 +92,24 @@ public sealed class RequireModuleAttribute(string moduleKey) : Attribute, IAsync
     }
 }
 
+/// <summary>
+/// Lote 181: [RequireAnyModule(a, b, …)] basta con que UNO de los módulos esté encendido para la compañía (las plantillas de exportación las usan Facturación, COD, pago a choferes, compras y despachos).
+/// Si ninguno lo está, falla con el mensaje del primero.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
+public sealed class RequireAnyModuleAttribute(params string[] moduleKeys) : Attribute, IAsyncActionFilter
+{
+    public IReadOnlyList<string> ModuleKeys { get; } = moduleKeys;
+    public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
+    {
+        var modules = context.HttpContext.RequestServices.GetRequiredService<ModuleService>();
+        foreach (var key in ModuleKeys)
+            if (await modules.IsEnabledAsync(key, context.HttpContext.RequestAborted)) { await next(); return; }
+        await modules.EnsureEnabledAsync(ModuleKeys[0], context.HttpContext.RequestAborted);
+        await next();
+    }
+}
+
 /// <summary>[RequireAal2]: acción sensible; exige reauth reciente dentro de la ventana del tenant (Tenant.Aal2WindowMinutes).</summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 public sealed class RequireAal2Attribute : Attribute, IAsyncActionFilter

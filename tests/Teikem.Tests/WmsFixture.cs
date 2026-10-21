@@ -238,6 +238,7 @@ internal sealed class WmsFixture : IAsyncDisposable
         foreach (var c in new[] { "FREIGHT", "HANDLING", "SURCHARGE", Teikem.Domain.Billing.BillingCodes.InvoiceCheck }) L(Teikem.Domain.Billing.BillingCodes.ChargeTypeDomain, c);
         foreach (var m in new[] { Teikem.Domain.Billing.FreightRules.BillingModelPickup, Teikem.Domain.Billing.FreightRules.BillingModelDelivery, Teikem.Domain.Billing.FreightRules.BillingModelMixed })
             L(LookupDomains.BillingModel, m);
+        L(LookupDomains.EntityType, Teikem.Domain.Accounting.AccountingCodes.EntityType);   // Lote 181
         Db.LookupCodes.AddRange(all);
         Lookups.Load(all);
 
@@ -406,6 +407,11 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(StatusDomains.PortalUserStatus, PortalUserStatuses.Active, pipe, 2);
         S(StatusDomains.PortalUserStatus, PortalUserStatuses.Disabled, term, 3);   // Lote 117: quitar el acceso de un consignatario
         S(StatusDomains.PortalUserStatus, PortalUserStatuses.Suspended, lat, 4);   // Lote 121: la lista de personas de portal las muestra suspendidas
+        // Lote 181: corridas de contabilización
+        S(Teikem.Domain.Accounting.AccountingCodes.StatusDomain, Teikem.Domain.Accounting.AccountingRunStatuses.Generated, pipe, 1, true);
+        S(Teikem.Domain.Accounting.AccountingCodes.StatusDomain, Teikem.Domain.Accounting.AccountingRunStatuses.Accepted, pipe, 2);
+        S(Teikem.Domain.Accounting.AccountingCodes.StatusDomain, Teikem.Domain.Accounting.AccountingRunStatuses.Exported, term, 3);
+        S(Teikem.Domain.Accounting.AccountingCodes.StatusDomain, Teikem.Domain.Accounting.AccountingRunStatuses.Cancelled, term, 4);
         ReceiptStatusSeed.AddLateralEntries(Db, LookupId(LookupDomains.EntityType, EntityTypes.Receipt), StatusId);
 
         // 3G: WAREHOUSE_TASK CANCELLED solo desde PENDING e IN_PROGRESS.
