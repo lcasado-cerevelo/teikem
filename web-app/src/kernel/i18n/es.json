@@ -5767,8 +5767,8 @@
         "create": "Recibir juntos",
         "createTitle": "Recibir juntos",
         "createSubmit": "Recibir juntos ({n})",
-        "createHelp": "Elija dos o más avisos de llegada esperando, del mismo dueño y almacén: se abre un recibo por cada uno, con el mismo transporte y referencia, y se pueden confirmar juntos. Cada documento conserva su recibo. No se suman documentos después.",
-        "createEmpty": "No hay avisos de llegada esperando para recibir.",
+        "createHelp": "Elija dos o más documentos (avisos de llegada esperando u órdenes de compra por recibir), del mismo dueño y almacén: se abre un recibo por cada uno, con el mismo transporte y referencia, y se pueden confirmar juntos. Cada documento conserva su recibo. No se suman documentos después.",
+        "createEmpty": "No hay avisos de llegada ni órdenes de compra por recibir.",
         "needTwo": "Elija al menos dos documentos.",
         "createdToast": "Recepción maestra {number} abierta.",
         "block": {

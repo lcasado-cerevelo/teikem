@@ -811,10 +811,12 @@ internal sealed class ReceivingFixture : IAsyncDisposable
 internal sealed class ReceivingFakePurchaseOrders : IPurchaseOrderReceiving
 {
     public PurchaseOrderForReceipt? Pending { get; set; }
+    /// <summary>Lote 182: si se pone, entrega la orden pendiente propia de cada orden (por PublicId) en vez de siempre la misma.</summary>
+    public Dictionary<Guid, PurchaseOrderForReceipt> ByPublicId { get; } = new();
     public List<(int PurchaseOrderId, IReadOnlyList<PurchaseOrderReceiptQty> Quantities)> Applied { get; } = new();
 
     public Task<PurchaseOrderForReceipt> LockForReceiptAsync(Guid purchaseOrderPublicId, CancellationToken ct)
-        => Task.FromResult(Pending ?? throw new NotFoundException("Orden de compra", feminine: true));
+        => Task.FromResult(ByPublicId.TryGetValue(purchaseOrderPublicId, out var own) ? own : Pending ?? throw new NotFoundException("Orden de compra", feminine: true));
 
     public Task ApplyReceiptAsync(int purchaseOrderId, IReadOnlyList<PurchaseOrderReceiptQty> quantities, CancellationToken ct)
     {

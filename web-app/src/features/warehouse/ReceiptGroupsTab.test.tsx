@@ -42,6 +42,7 @@ function route(method: string, url: URL): [number, unknown] {
   if (method === 'GET' && p === '/api/v1/receipts/groups') return [200, { total: 1, skip: 0, take: 25, items: [group(mock.status)] }]
   if (method === 'GET' && p === `/api/v1/receipts/groups/${G}`) return [200, group(mock.status)]
   if (method === 'GET' && p === '/api/v1/asns') return [200, [asn(1, 'LLE-00001', 'c1', 'ASICS Care'), asn(2, 'LLE-00002', 'c1', 'ASICS Care'), asn(3, 'LLE-00003', 'c2', 'Otra Marca'), asn(4, 'LLE-00004', 'c1', 'ASICS Care', 'w2')]]
+  if (method === 'GET' && p === '/api/v1/purchase-orders') return [200, { total: 1, skip: 0, take: 50, items: [{ publicId: 'po1', number: 'PO-00001', supplierName: 'Proveedor Uno', warehousePublicId: 'w1', warehouseCode: 'ALM-01', statusCode: 'SENT' }, { publicId: 'po2', number: 'PO-00002', supplierName: 'Borrador', warehousePublicId: 'w1', warehouseCode: 'ALM-01', statusCode: 'DRAFT' }] }]
   if (method === 'POST' && p === '/api/v1/receipts/groups') return [200, group('OPEN')]
   if (method === 'POST' && p === `/api/v1/receipts/groups/${G}/confirm`) return [200, group('CONFIRMED')]
   if (method === 'DELETE' && p === `/api/v1/receipts/groups/${G}`) return [204, null]
@@ -97,6 +98,17 @@ describe('Recepciones maestras (pestaña Maestros)', () => {
     await waitFor(() => expect(sent('POST', '/receipts/groups')).toHaveLength(1))
     expect(sent('POST', '/receipts/groups')[0].body).toMatchObject({ documents: [{ asnId: 1 }, { asnId: 2 }], carrier: 'Transportes Uno' })
     expect(await screen.findByRole('dialog', { name: /RCM-00001/ })).toBeInTheDocument()
+  })
+
+  it('también se eligen órdenes de compra (lo propio): solo las enviadas y no se mezclan con lo de un cliente', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await user.click(await screen.findByRole('button', { name: 'Recibir juntos' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Recibir juntos' })
+    const order = await within(dialog).findByRole('checkbox', { name: /PO-00001/ })
+    expect(within(dialog).queryByRole('checkbox', { name: /PO-00002/ })).toBeNull()   // un borrador no se recibe
+    await user.click(order)
+    expect(within(dialog).getByRole('checkbox', { name: /LLE-00001/ })).toBeDisabled()   // lo de un cliente no se junta con lo propio
   })
 
   it('la ficha muestra los recibos, abre uno, confirma todo y elimina con confirmación', async () => {

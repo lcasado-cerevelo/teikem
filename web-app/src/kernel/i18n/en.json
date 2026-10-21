@@ -5767,8 +5767,8 @@
         "create": "Receive together",
         "createTitle": "Receive together",
         "createSubmit": "Receive together ({n})",
-        "createHelp": "Choose two or more arrival notices that are expected, from the same owner and warehouse: a receipt is opened for each, with the same carrier and reference, and they can be confirmed together. Each document keeps its own receipt. Documents cannot be added later.",
-        "createEmpty": "There are no expected arrival notices to receive.",
+        "createHelp": "Choose two or more documents (expected arrival notices or purchase orders to receive), from the same owner and warehouse: a receipt is opened for each, with the same carrier and reference, and they can be confirmed together. Each document keeps its own receipt. Documents cannot be added later.",
+        "createEmpty": "There are no arrival notices or purchase orders to receive.",
         "needTwo": "Choose at least two documents.",
         "createdToast": "Master receipt {number} opened.",
         "block": {

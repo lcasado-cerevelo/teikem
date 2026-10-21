@@ -3,6 +3,7 @@ using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
 using Teikem.Infrastructure.Services;
+using Teikem.Infrastructure.Wms;
 using Xunit;
 
 namespace Teikem.Tests;
@@ -101,6 +102,30 @@ public sealed class ReceiptGroupTests
         Assert.Equal(ReceiptGroupRules.NoteTooLong, noteTooLong.Message);
         Assert.Empty(await f.Db.Set<ReceiptHeader>().AsNoTracking().ToListAsync());
         Assert.Empty(await f.Db.Set<ReceiptGroup>().AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
+    public async Task Two_purchase_orders_are_received_together_as_the_companys_own_stock()
+    {
+        await using var f = await ReceivingFixture.CreateAsync();
+        // una segunda orden de compra (la costura falsa entrega el mismo pendiente para cualquiera)
+        var second = new PurchaseOrder
+        {
+            PurchaseOrderId = 502, PublicId = Guid.NewGuid(), TenantId = ReceivingFixture.TenantId, SupplierId = 401, WarehouseId = f.WarehouseId, Number = "PO-00002",
+            OrderDate = Teikem.Infrastructure.Abstractions.TenantClock.Default.Today, StatusCodeId = f.StatusId(Teikem.Domain.Constants.StatusDomains.PurchaseOrderStatus, Teikem.Domain.Constants.PurchaseOrderStatuses.Sent), IsActive = true, CreatedAtUtc = DateTime.UtcNow,
+        };
+        f.Db.Set<PurchaseOrder>().Add(second);
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        f.PurchaseOrders.ByPublicId[f.PoPublicId] = f.PurchaseOrders.Pending!;
+        f.PurchaseOrders.ByPublicId[second.PublicId] = new PurchaseOrderForReceipt(502, "PO-00002", f.WarehouseId, new[] { new PurchaseOrderPendingLine(602, f.ProductNoneId, 5m, 12.5m) });
+        var svc = f.Get<ReceiptGroupService>();
+        var req = new ReceiptGroupCreateRequest(new[] { new ReceiptGroupDocumentRequest(PurchaseOrderPublicId: f.PoPublicId), new ReceiptGroupDocumentRequest(PurchaseOrderPublicId: second.PublicId) });
+
+        var group = await svc.CreateAsync(req, default);
+        Assert.Equal((2, null, "OPEN"), (group.MemberCount, group.OwnerName, group.StatusCode));
+        Assert.All(group.Members, m => Assert.Equal("PO", m.OriginKind));
+        Assert.Equal(new[] { "PO-00001", "PO-00002" }.Order(), group.Members.Select(m => m.OriginRef).Order());
     }
 
     [Fact]
