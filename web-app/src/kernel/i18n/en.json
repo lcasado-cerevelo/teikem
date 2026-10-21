@@ -3150,15 +3150,16 @@
           "title": "Packages on the street",
           "ENTRY": "Entry",
           "IN_WAREHOUSE": "In warehouse",
-          "TO_DISPATCH": "To dispatch",
+          "ROUTES": "Routes",
           "ON_ROUTE": "On route",
           "DELIVERED": "Delivered",
           "unit": "shipments",
           "sub": {
             "ENTRY": "new shipments today · {waiting} waiting",
-            "IN_WAREHOUSE": "received in the warehouse",
-            "TO_DISPATCH": "no driver",
+            "IN_WAREHOUSE": "entered the warehouse today",
+            "ROUTES": "left today",
             "ON_ROUTE": "{drivers} drivers",
+            "COMPLETED": "{completed} routes completed today",
             "DELIVERED": "today"
           }
         },
@@ -3197,6 +3198,7 @@
         "belowMin": "Products below minimum",
         "totalSub": "{days} days: {total}",
         "nowSub": "right now",
+        "backorderSub": "{count} products on backorder",
         "unitUnits": "Units",
         "unitCounts": "Counts",
         "tooltipToday": "Today, {date}",

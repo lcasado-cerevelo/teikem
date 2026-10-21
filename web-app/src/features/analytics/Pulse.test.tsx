@@ -597,7 +597,7 @@ describe('Pulse — franja "Almacén hoy" (Lote 15)', () => {
     expect(within(card(container, 'outbound')).getByText('5', { selector: '.big' })).toBeInTheDocument()
     expect(within(card(container, 'countsVariance')).getByText('Conteos con diferencia')).toBeInTheDocument()
     expect(within(card(container, 'belowMin')).getByText('3', { selector: '.big' })).toBeInTheDocument()
-    expect(within(card(container, 'belowMin')).getByText('en este momento')).toBeInTheDocument()
+    expect(within(card(container, 'belowMin')).getByText('0 productos en backorder')).toBeInTheDocument()   // el hueco de abajo: cuántos productos están en backorder (el servidor no mandó el dato: 0)
     // 7 barritas por tarjeta (ChartVisual mini, con la fecha y la cantidad en su etiqueta accesible); bajo mínimo sin gráfico
     for (const key of ['received', 'outbound', 'countsVariance']) {
       const chart = within(card(container, key)).getByRole('img')

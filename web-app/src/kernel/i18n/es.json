@@ -3150,15 +3150,16 @@
           "title": "Paquetes en la calle",
           "ENTRY": "Entrada",
           "IN_WAREHOUSE": "En almacén",
-          "TO_DISPATCH": "Por despachar",
+          "ROUTES": "Rutas",
           "ON_ROUTE": "En ruta",
           "DELIVERED": "Entregado",
           "unit": "envíos",
           "sub": {
             "ENTRY": "envíos nuevos hoy · {waiting} esperan",
-            "IN_WAREHOUSE": "recibidas en el almacén",
-            "TO_DISPATCH": "sin chofer",
+            "IN_WAREHOUSE": "entraron hoy al almacén",
+            "ROUTES": "salieron hoy",
             "ON_ROUTE": "{drivers} choferes",
+            "COMPLETED": "{completed} rutas completadas hoy",
             "DELIVERED": "hoy"
           }
         },
@@ -3197,6 +3198,7 @@
         "belowMin": "Productos bajo mínimo",
         "totalSub": "{days} días: {total}",
         "nowSub": "en este momento",
+        "backorderSub": "{count} productos en backorder",
         "unitUnits": "Unidades",
         "unitCounts": "Conteos",
         "tooltipToday": "Hoy, {date}",

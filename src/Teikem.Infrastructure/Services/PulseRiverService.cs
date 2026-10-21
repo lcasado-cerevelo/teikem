@@ -67,6 +67,25 @@ public sealed class PulseRiverService(TeikemDbContext db, ITenantClock clock, IL
 
     // ================================================================ órdenes
 
+    /// <summary>
+    /// Las existencias de AHORA que guardan las fotos diarias (KPI): cuántas órdenes están en el almacén (sin asignar) y cuántas por despachar (en almacén o planificadas sin chofer).
+    /// Antes eran dos tarjetas del río; el río ya no las muestra (2026-10-21, dictado de Luis) pero las fotos siguen guardándolas.
+    /// </summary>
+    public async Task<(int InWarehouse, int ToDispatch)> StockAsync(CancellationToken ct)
+    {
+        var st = await StatusIdsAsync(StatusDomains.OrderStatus, ct);
+        var unassignedId = st.GetValueOrDefault(OrderStatuses.Unassigned, -1);
+        var inWarehouse = await db.TransportOrders.AsNoTracking().CountAsync(o => o.IsActive && o.StatusCodeId == unassignedId, ct);
+        var toDispatch = await (await UnassignedQueryAsync(ct)).CountAsync(ct);
+        return (inWarehouse, toDispatch);
+    }
+
+    /// <summary>
+    /// «Paquetes en la calle» (2026-10-21, dictado de Luis), cinco tarjetas en este orden:
+    /// ENTRY = las sometidas hoy (con las que esperan recogida); IN_WAREHOUSE = los envíos que ENTRARON al almacén (por recogido o por el escaneo del almacén), cada envío una sola vez, el
+    /// día de la primera vez, con las barras de 7 días (en un flujo sano coincide con ENTRY); ROUTES = las rutas que salieron ese día, con barras; DELIVERED = los entregados hoy, con las barras
+    /// de los 7 días; ON_ROUTE = los envíos en ruta ahora (con los choferes) y, más pequeño, las rutas COMPLETADAS hoy.
+    /// </summary>
     public async Task<PulseRiverDto> OrdersAsync(CancellationToken ct)
     {
         var today = clock.Today;
@@ -84,19 +103,41 @@ public sealed class PulseRiverService(TeikemDbContext db, ITenantClock clock, IL
         var entryToday = created.Count(c => c >= todayFrom && c < todayTo);
         var waiting = await orders.CountAsync(o => o.StatusCodeId == submittedId || o.StatusCodeId == pickupId, ct);
 
-        var inWarehouse = await orders.CountAsync(o => o.StatusCodeId == unassignedId, ct);
+        // En almacén: la PRIMERA vez que cada envío llegó al almacén (recogido o sin asignar). Se toman los cambios de estatus de la semana; los envíos que ya habían llegado antes
+        // (otro cambio anterior a la ventana) no se cuentan otra vez, y uno que pasa por recogido y luego por sin asignar cuenta una sola vez, el día en que llegó.
+        var entityType = await lookups.GetIdAsync(LookupDomains.EntityType, EntityTypes.TransportOrder, ct);
+        var intoWarehouse = new[] { pickupId, unassignedId };
+        var windowRows = await db.EntityStatusHistories.AsNoTracking()
+            .Where(h => h.EntityTypeLookupId == entityType && intoWarehouse.Contains(h.ToStatusCodeId) && h.ChangedAtUtc >= sparkFrom)
+            .Select(h => new { h.EntityId, h.ChangedAtUtc }).ToListAsync(ct);
+        var firstInWindow = windowRows.GroupBy(r => r.EntityId).ToDictionary(g => g.Key, g => g.Min(x => x.ChangedAtUtc));
+        var alreadyIn = new HashSet<int>();
+        foreach (var chunk in firstInWindow.Keys.Chunk(1000))
+            alreadyIn.UnionWith(await db.EntityStatusHistories.AsNoTracking()
+                .Where(h => h.EntityTypeLookupId == entityType && intoWarehouse.Contains(h.ToStatusCodeId) && h.ChangedAtUtc < sparkFrom && chunk.Contains(h.EntityId))
+                .Select(h => h.EntityId).Distinct().ToListAsync(ct));
+        var enteredWarehouse = firstInWindow.Where(kv => !alreadyIn.Contains(kv.Key)).Select(kv => kv.Value).ToList();
+        var enteredToday = enteredWarehouse.Count(c => c >= todayFrom && c < todayTo);
 
-        // Por despachar: en almacén o planificadas sin una ruta con chofer
-        var toDispatch = await (await UnassignedQueryAsync(ct)).CountAsync(ct);
+        // Rutas: las que salieron cada día (despachadas, en curso o completadas) por su fecha de plan, y las completadas hoy
+        var tripSt = await StatusIdsAsync(StatusDomains.TripStatus, ct);
+        var departed = new[] { TripStatuses.Dispatched, TripStatuses.InProgress, TripStatuses.Completed }.Select(c => tripSt.GetValueOrDefault(c, -1)).ToList();
+        var completedTripId = tripSt.GetValueOrDefault(TripStatuses.Completed, -1);
+        var weekFrom = today.AddDays(-(SparkDays - 1));
+        var trips = db.Set<Teikem.Domain.Trips.Trip>().AsNoTracking().Where(t => t.IsActive);
+        var tripDays = await trips.Where(t => departed.Contains(t.StatusCodeId) && t.PlanDate >= weekFrom && t.PlanDate <= today).Select(t => t.PlanDate).ToListAsync(ct);
+        var routesSpark = new decimal[SparkDays];
+        foreach (var d in tripDays) routesSpark[SparkDays - 1 - (today.DayNumber - d.DayNumber)]++;
+        var routesToday = tripDays.Count(d => d == today);
+        var completedRoutesToday = await trips.CountAsync(t => t.StatusCodeId == completedTripId
+            && ((t.ActualEndUtc != null && t.ActualEndUtc >= todayFrom && t.ActualEndUtc < todayTo) || (t.ActualEndUtc == null && t.PlanDate == today)), ct);
 
         // En ruta: en tránsito, y los choferes de las rutas en curso
         var onRoute = await orders.CountAsync(o => o.StatusCodeId == inTransitId, ct);
-        var tripStatuses = await StatusIdsAsync(StatusDomains.TripStatus, ct);
-        var live = new[] { tripStatuses.GetValueOrDefault(TripStatuses.Dispatched, -1), tripStatuses.GetValueOrDefault(TripStatuses.InProgress, -1) };
+        var live = new[] { tripSt.GetValueOrDefault(TripStatuses.Dispatched, -1), tripSt.GetValueOrDefault(TripStatuses.InProgress, -1) };
         var drivers = await db.Set<Teikem.Domain.Trips.Trip>().AsNoTracking().Where(t => t.IsActive && t.DriverId != null && live.Contains(t.StatusCodeId)).Select(t => t.DriverId).Distinct().CountAsync(ct);
 
         // Entregado hoy: por el historial de estatus de la orden
-        var entityType = await lookups.GetIdAsync(LookupDomains.EntityType, EntityTypes.TransportOrder, ct);
         var deliveredId = Id(OrderStatuses.Delivered);
         var delivered = await db.EntityStatusHistories.AsNoTracking().Where(h => h.EntityTypeLookupId == entityType && h.ToStatusCodeId == deliveredId && h.ChangedAtUtc >= sparkFrom)
             .Select(h => new { h.EntityId, h.ChangedAtUtc }).ToListAsync(ct);
@@ -105,10 +146,10 @@ public sealed class PulseRiverService(TeikemDbContext db, ITenantClock clock, IL
         return new PulseRiverDto("ORDERS", today, new[]
         {
             new PulseRiverNodeDto("ENTRY", entryToday, "count", new[] { Count("waiting", waiting) }, Spark(created, today)),
-            new PulseRiverNodeDto("IN_WAREHOUSE", inWarehouse, "count", Array.Empty<PulseRiverValueDto>(), await SparkFromHistoryAsync(KpiKeys.OrdersInWarehouse, inWarehouse, ct)),
-            new PulseRiverNodeDto("TO_DISPATCH", toDispatch, "count", Array.Empty<PulseRiverValueDto>(), await SparkFromHistoryAsync(KpiKeys.OrdersUnassigned, toDispatch, ct)),
-            new PulseRiverNodeDto("ON_ROUTE", onRoute, "count", new[] { Count("drivers", drivers) }, await SparkFromHistoryAsync(KpiKeys.OrdersOnRoute, onRoute, ct)),
+            new PulseRiverNodeDto("IN_WAREHOUSE", enteredToday, "count", Array.Empty<PulseRiverValueDto>(), Spark(enteredWarehouse, today)),
+            new PulseRiverNodeDto("ROUTES", routesToday, "count", Array.Empty<PulseRiverValueDto>(), routesSpark),
             new PulseRiverNodeDto("DELIVERED", deliveredToday, "count", Array.Empty<PulseRiverValueDto>(), Spark(delivered.GroupBy(d => d.EntityId).Select(g => g.Min(x => x.ChangedAtUtc)), today)),
+            new PulseRiverNodeDto("ON_ROUTE", onRoute, "count", new[] { Count("drivers", drivers), Count("completed", completedRoutesToday) }, null),
         });
     }
 

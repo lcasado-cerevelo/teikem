@@ -80,11 +80,24 @@ public sealed class PulseRiverTests
         x.F.Db.Set<Trip>().AddRange(
             new Trip { PublicId = Guid.NewGuid(), TenantId = WmsFixture.TenantId, Code = "T-1", PlanDate = TenantClock.Default.Today, StatusCodeId = dispatched, DriverId = 7, IsActive = true },
             new Trip { PublicId = Guid.NewGuid(), TenantId = WmsFixture.TenantId, Code = "T-2", PlanDate = TenantClock.Default.Today, StatusCodeId = dispatched, DriverId = null, IsActive = true });
+        // una ruta completada hoy (también salió hoy)
+        x.F.Db.Set<Trip>().Add(new Trip { PublicId = Guid.NewGuid(), TenantId = WmsFixture.TenantId, Code = "T-3", PlanDate = TenantClock.Default.Today, StatusCodeId = x.F.StatusId(StatusDomains.TripStatus, TripStatuses.Completed), DriverId = 8, ActualEndUtc = DateTime.UtcNow, IsActive = true });
         await x.F.Db.SaveChangesAsync();
         var tripWithDriver = await x.F.Db.Set<Trip>().AsNoTracking().SingleAsync(t => t.Code == "T-1");
         x.F.Db.Set<TripOrder>().Add(new TripOrder { TenantId = WmsFixture.TenantId, TripId = tripWithDriver.TripId, TransportOrderId = d.TransportOrderId, IsCurrent = true });
         var entityType = x.F.LookupId(LookupDomains.EntityType, EntityTypes.TransportOrder);
         var deliveredId = x.F.StatusId(StatusDomains.OrderStatus, OrderStatuses.Delivered);
+        // lo que ENTRÓ al almacén: B hoy (recogida); C y D hace 3 días, y D pasó por recogida y luego por sin asignar (cuenta UNA vez); L entró hace 10 días y volvió hoy (no cuenta)
+        var l = await OrderAsync(x, "L", OrderStatuses.Unassigned, createdDaysAgo: 10);
+        var pickupId = x.F.StatusId(StatusDomains.OrderStatus, OrderStatuses.Pickup);
+        var unassignedId = x.F.StatusId(StatusDomains.OrderStatus, OrderStatuses.Unassigned);
+        var b = await x.F.Db.TransportOrders.AsNoTracking().SingleAsync(o => o.OrderNumber == "B");
+        // horas fijas dentro de cada día de la compañía (para que la prueba no dependa de la hora a la que corre)
+        DateTime At(int daysAgo, int hour) => TenantClock.Default.StartOfDayUtc(TenantClock.Default.Today.AddDays(-daysAgo)).AddHours(hour);
+        EntityStatusHistory Into(int orderId, int toStatus, DateTime at) => new() { TenantId = WmsFixture.TenantId, EntityTypeLookupId = entityType, EntityId = orderId, ToStatusCodeId = toStatus, ChangedAtUtc = at };
+        x.F.Db.EntityStatusHistories.AddRange(
+            Into(b.TransportOrderId, pickupId, At(0, 0)), Into(c.TransportOrderId, unassignedId, At(3, 3)), Into(d.TransportOrderId, pickupId, At(3, 2)), Into(d.TransportOrderId, unassignedId, At(3, 5)),
+            Into(l.TransportOrderId, unassignedId, At(10, 3)), Into(l.TransportOrderId, unassignedId, At(0, 0)));
         x.F.Db.EntityStatusHistories.AddRange(
             new EntityStatusHistory { TenantId = WmsFixture.TenantId, EntityTypeLookupId = entityType, EntityId = h.TransportOrderId, ToStatusCodeId = deliveredId, ChangedAtUtc = DateTime.UtcNow },
             new EntityStatusHistory { TenantId = WmsFixture.TenantId, EntityTypeLookupId = entityType, EntityId = i.TransportOrderId, ToStatusCodeId = deliveredId, ChangedAtUtc = DateTime.UtcNow.AddDays(-2) });
@@ -94,16 +107,30 @@ public sealed class PulseRiverTests
 
         var river = await x.Rivers.OrdersAsync(default);
         Assert.Equal(("ORDERS", TenantClock.Default.Today), (river.River, river.Day));
-        Assert.Equal(new[] { "ENTRY", "IN_WAREHOUSE", "TO_DISPATCH", "ON_ROUTE", "DELIVERED" }, river.Nodes.Select(n => n.Key).ToArray());
+        // las cinco tarjetas, en el orden dictado por Luis (2026-10-21): Entrada, En almacén, Rutas, Entregado y lo de ahora mismo (En ruta + completadas)
+        Assert.Equal(new[] { "ENTRY", "IN_WAREHOUSE", "ROUTES", "DELIVERED", "ON_ROUTE" }, river.Nodes.Select(n => n.Key).ToArray());
         var entry = Node(river, "ENTRY");
         Assert.Equal((2m, 2m), (entry.Value, Detail(entry, "waiting")));   // A y B hoy; A y B esperan
         Assert.Equal(PulseRiverService.SparkDays, entry.Spark!.Count);
         Assert.Equal(2m, entry.Spark[^1]);   // hoy
         Assert.Equal(2m, entry.Spark[^4]);   // hace 3 días (C y D)
-        Assert.Equal(2m, Node(river, "IN_WAREHOUSE").Value);   // C y D
-        Assert.Equal(2m, Node(river, "TO_DISPATCH").Value);    // C y E (D ya tiene ruta con chofer)
+        // En almacén = lo que ENTRÓ (cada envío una sola vez, el día que llegó): hoy solo B; hace 3 días C y D (D no se cuenta dos veces); L ya había entrado hace 10 días: no cuenta
+        var inWarehouse = Node(river, "IN_WAREHOUSE");
+        Assert.Equal(1m, inWarehouse.Value);
+        Assert.Equal(1m, inWarehouse.Spark![^1]);
+        Assert.Equal(2m, inWarehouse.Spark[^4]);
+        Assert.Equal(3m, inWarehouse.Spark.Sum());
+        // Rutas = las que salieron ese día (despachadas, en curso o completadas): T-1, T-2 y T-3 hoy
+        var routes = Node(river, "ROUTES");
+        Assert.Equal(3m, routes.Value);
+        Assert.Equal(3m, routes.Spark![^1]);
+        // lo de ahora mismo: En ruta (F y G; los choferes de las rutas en curso) y, más pequeño, las rutas completadas hoy
         var route = Node(river, "ON_ROUTE");
-        Assert.Equal((2m, 1m), (route.Value, Detail(route, "drivers")));   // F y G; el único chofer con ruta en curso
+        Assert.Equal((2m, 1m, 1m), (route.Value, Detail(route, "drivers"), Detail(route, "completed")));
+        Assert.Null(route.Spark);
+        // las existencias de ahora (las que guardan las fotos): C y L sin asignar con o sin ruta... C, D y L están sin asignar (3); por despachar: C, E y L (D ya tiene ruta con chofer)
+        var stock = await x.Rivers.StockAsync(default);
+        Assert.Equal((3, 3), (stock.InWarehouse, stock.ToDispatch));
         var delivered = Node(river, "DELIVERED");
         Assert.Equal(1m, delivered.Value);       // H hoy
         Assert.Equal(1m, delivered.Spark![^1]);

@@ -101,6 +101,9 @@ public sealed class WarehousePulseService(TeikemDbContext db, ILookupCache looku
             ? 0
             : (await products.ListAsync(new ProductListQuery(BelowMin: true, Take: 1, WarehousePublicIds: warehousePublicIds), InventoryScope.Any, ct)).Total;
 
+        // Productos en backorder: los que tienen faltante pendiente en alguna línea abierta de una orden de venta (SalesRules.IsBackordered)
+        var backorderProducts = await db.Set<Teikem.Domain.Sales.SalesOrderLine>().AsNoTracking().Where(l => l.QtyBackordered > 0m && !l.IsClosed).Select(l => l.ProductId).Distinct().CountAsync(ct);
+
         var dayDtos = days.Select((d, i) => new WarehousePulseDayDto(d.Date, InventoryRules.Round4(received[i]), (int)receivedMoves[i],
             InventoryRules.Round4(outbound[i]), (int)outboundMoves[i], (int)variance[i], (int)transferMoves[i], (int)adjustMoves[i])).ToList();
         var today = dayDtos[^1];
@@ -109,7 +112,7 @@ public sealed class WarehousePulseService(TeikemDbContext db, ILookupCache looku
             today.OutboundUnits, InventoryRules.Round4(dayDtos.Sum(d => d.OutboundUnits)),
             today.CountsWithVariance, dayDtos.Sum(d => d.CountsWithVariance), belowMin,
             WarehousePulseRules.CountsAlert(today.CountsWithVariance), WarehousePulseRules.BelowMinAlert(belowMin),
-            today.TransferMovements, dayDtos.Sum(d => d.TransferMovements), today.AdjustmentMovements, dayDtos.Sum(d => d.AdjustmentMovements));
+            today.TransferMovements, dayDtos.Sum(d => d.TransferMovements), today.AdjustmentMovements, dayDtos.Sum(d => d.AdjustmentMovements), backorderProducts);
     }
 
     private async Task<int> LookupIdAsync(string domain, string code, CancellationToken ct)

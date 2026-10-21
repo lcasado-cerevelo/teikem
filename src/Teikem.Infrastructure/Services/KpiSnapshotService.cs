@@ -38,8 +38,9 @@ public sealed class KpiSnapshotService(TeikemDbContext db, ITenantContext tenant
         {
             var orders = (await rivers.OrdersAsync(ct)).Nodes.ToDictionary(n => n.Key, n => n.Value);
             values[KpiKeys.OrdersCreated] = orders["ENTRY"];
-            values[KpiKeys.OrdersInWarehouse] = orders["IN_WAREHOUSE"];
-            values[KpiKeys.OrdersUnassigned] = orders["TO_DISPATCH"];
+            var stock = await rivers.StockAsync(ct);   // las existencias de ahora; el río ya no las muestra (muestra lo que entró al almacén hoy)
+            values[KpiKeys.OrdersInWarehouse] = stock.InWarehouse;
+            values[KpiKeys.OrdersUnassigned] = stock.ToDispatch;
             values[KpiKeys.OrdersOnRoute] = orders["ON_ROUTE"];
             values[KpiKeys.OrdersDelivered] = orders["DELIVERED"];
             values[KpiKeys.OrdersOpen] = (await radar.RadarAsync(null, 1, ct)).OpenCount;

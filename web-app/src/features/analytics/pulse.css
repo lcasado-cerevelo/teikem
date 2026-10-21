@@ -242,3 +242,5 @@
 .pulse .radar .radar-empty{padding:6px 16px 12px;margin:0}
 .pulse .radar .rfoot{padding:4px 16px 8px}
 .pulse .radar .radar-hint{padding:0 16px 12px;margin:0;font-size:11.5px}
+
+.pulse .node .sub.sub-small{font-size:10.5px;margin-top:2px}

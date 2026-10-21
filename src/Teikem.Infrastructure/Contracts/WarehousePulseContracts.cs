@@ -26,4 +26,6 @@ public sealed record WarehousePulseDaysDto(string TimeZone, DateOnly Today, Date
     IReadOnlyList<WarehousePulseDayDto> Days,
     decimal ReceivedToday, decimal ReceivedTotal, decimal OutboundToday, decimal OutboundTotal,
     int CountsWithVarianceToday, int CountsWithVarianceTotal, int BelowMinProducts, bool CountsAlert, bool BelowMinAlert,
-    int TransferToday = 0, int TransferTotal = 0, int AdjustmentToday = 0, int AdjustmentTotal = 0);
+    int TransferToday = 0, int TransferTotal = 0, int AdjustmentToday = 0, int AdjustmentTotal = 0,
+    // productos con faltante pendiente en alguna orden de venta abierta (backorder): la tarjeta «Productos bajo mínimo» lo muestra abajo
+    int BackorderProducts = 0);

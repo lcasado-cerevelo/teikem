@@ -72,6 +72,9 @@ function River({ kind, title, icon }: { kind: RiverKind; title: string; icon: Re
                     </div>
                     <div className="big">{valueOf(n)}</div>
                     <div className="sub">{subOf(n)}</div>
+                    {kind === 'orders' && n.key === 'ON_ROUTE' && (
+                      <div className="sub sub-small">{t('analytics.pulse.rivers.orders.sub.COMPLETED', { completed: f.number((n.details ?? []).find((x) => x.key === 'completed')?.value ?? 0) })}</div>
+                    )}
                   </Link>
                   {spark && (
                     <div className="wh-mini">

@@ -66442,6 +66442,10 @@
           "adjustmentTotal": {
             "type": "integer",
             "format": "int32"
+          },
+          "backorderProducts": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false

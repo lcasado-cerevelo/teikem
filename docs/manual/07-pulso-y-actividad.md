@@ -371,7 +371,7 @@ Siempre vienen tantas filas como `days`: un día sin movimiento trae ceros.
 | Unidades de salida | Lo de hoy | "7 días: N" | 7 | Recolección (`ISSUE`) más cruce de plataforma (`CROSSDOCK`). **Eliminar una recolección resta** esas unidades el día en que se elimina. No cuenta daños, pérdidas, vencidos, conteos ni transferencias | Nunca |
 | Conteos con diferencia | Los conteos cíclicos cerrados hoy en estatus **Diferencia** | "7 días: N" | 7 | Conteos activos en `RECONCILED_VARIANCE`, por el día en que se cerraron | Si hoy hubo alguno |
 | Transferencias y ajustes | Movimientos de hoy: transferencias + ajustes | "Transferencias N · Ajustes N" (7 días) | 7 barras apiladas (un tramo por tipo) | Movimientos `TRANSFER` y `ADJUSTMENT` del Kárdex por día local, todos (también los del sistema), por el almacén del movimiento | Nunca |
-| Productos bajo mínimo | Los que están bajo su mínimo **ahora** | "en este momento" | Ninguna | La misma consulta que el panel Almacén (`GET /products?belowMin=true`): la cifra es idéntica | Si hay alguno |
+| Productos bajo mínimo | Los que están bajo su mínimo **ahora** | «N productos en backorder» (los productos con faltante pendiente en alguna línea abierta de una orden de venta) | Ninguna | La misma consulta que el panel Almacén (`GET /products?belowMin=true`): la cifra es idéntica | Si hay alguno |
 
 - El inventario baja al **recolectar**, no al despachar el camión: por eso "salida" cuenta recolecciones (capítulo 06, sección 7).
 - Las barritas son 7, una por día, la de la derecha es **hoy** y crece durante el día. Un día sin movimiento es una barrita vacía (una
@@ -540,13 +540,17 @@ Son **fotos de ahora** (las barritas de 7 días salen del historial diario, ver 
 
 ### Paquetes en la calle
 
+Cinco tarjetas, **en este orden** (dictado de Luis, 2026-10-21):
+
 | Tarjeta | Qué cuenta | Texto pequeño | Al hacer clic |
 |---|---|---|---|
-| **Entrada** | órdenes creadas hoy (sin canceladas ni dadas de baja), con las barritas de 7 días | «órdenes nuevas hoy · N esperan» (N = Sometidas y Recogidas, de cualquier fecha) | Órdenes |
-| **En almacén** | órdenes recibidas en el almacén y aún sin ruta (estatus Sin asignar) | «recibidas en el almacén» | Órdenes |
-| **Por despachar** | órdenes Sin asignar o Asignadas **sin una ruta con chofer** | «sin chofer» | Sala de despacho |
-| **En ruta** | órdenes En tránsito | «N choferes» (los de las rutas despachadas o en curso) | Monitoreo de ruta |
-| **Entregado** | órdenes entregadas **hoy** (por el historial de estatus), con barritas de 7 días | «hoy» | Órdenes |
+| **Entrada** | envíos creados hoy (sin cancelados ni dados de baja), con las barritas de 7 días | «envíos nuevos hoy · N esperan» (N = Sometidos y Recogidos, de cualquier fecha) | Envíos |
+| **En almacén** | los envíos que **entraron al almacén** (por recogido o por el escaneo del almacén): **cada envío una sola vez, el día en que llegó por primera vez**; con las barritas de 7 días. En un flujo sano coincide con Entrada | «entraron hoy al almacén» | Envíos |
+| **Rutas** | las **rutas que salieron** ese día (despachadas, en curso o completadas, por su fecha de plan), con las barritas de 7 días | «salieron hoy» | Sala de despacho |
+| **Entregado** | envíos entregados **ese día** (por el historial de estatus), con las barritas de **todos** los 7 días | «hoy» | Envíos |
+| **En ruta** (lo de ahora mismo) | envíos En tránsito, con los choferes de las rutas despachadas o en curso; **abajo y más pequeño**, las rutas **completadas** hoy | «N choferes» y «N rutas completadas hoy» | Monitoreo de ruta |
+
+La tarjeta «Por despachar» ya no está en el río (los envíos asignados sin chofer se siguen avisando en «Necesita tu atención» y en el Radar). Las fotos diarias de indicadores siguen guardando las existencias de ahora (en almacén y por despachar).
 
 ### Dinero COD
 
@@ -562,7 +566,8 @@ Las sumas de dinero suponen **una sola moneda** (la de la compañía). Una orden
 ### Casos frecuentes
 
 - **No veo los ríos:** hacen falta el permiso del panel (`pulse.orders` / `pulse.cod`), el permiso de los datos (`orders.view` / `cod.view`) y el módulo encendido; si el Pulso estaba ya organizado (personal o de la compañía), el panel nuevo aparece en su orden por omisión (10 y 11) hasta que se reorganice.
-- **«Por despachar» no baja aunque asigné chofer:** la orden deja de contarse cuando está en una ruta **con chofer** y la ruta no está cancelada ni completada.
+- **«En almacén» no coincide con «Entrada»:** cuenta los envíos que **llegaron** al almacén hoy (recogidos o escaneados en el almacén), no los que estaban de antes; un envío que pasa por recogido y luego por el almacén cuenta **una sola vez**. Si el flujo va bien deben parecerse; si Entrada es mucho mayor, hay envíos sometidos que todavía nadie ha recogido ni escaneado.
+- **«Entregado» no tiene barras o están casi vacías:** las barras salen del historial de estatus. En los envíos **migrados de Colavora** la fecha de entrega es la de su última actividad en Colavora (ya no el día de la migración); si un envío no trae esa fecha, no aparece en la barra del día que debería.
 - **«Entregado» no coincide con Órdenes:** cuenta las entregas que ocurrieron **hoy** (hora de la compañía), no todas las entregadas.
 
 ## 7. Radar de envíos abiertos y avisos de operación (Lote 89, P12)

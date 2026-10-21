@@ -6,7 +6,7 @@ describe('a dónde lleva cada tarjeta', () => {
   it('el río de órdenes', () => {
     expect(nodeHref('orders', 'ENTRY')).toBe('/orders')
     expect(nodeHref('orders', 'IN_WAREHOUSE')).toBe('/orders')
-    expect(nodeHref('orders', 'TO_DISPATCH')).toBe('/ops/dispatch')
+    expect(nodeHref('orders', 'ROUTES')).toBe('/ops/dispatch')
     expect(nodeHref('orders', 'ON_ROUTE')).toBe('/ops/monitor')
     expect(nodeHref('orders', 'DELIVERED')).toBe('/orders')
   })

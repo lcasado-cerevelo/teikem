@@ -18,10 +18,10 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
         river: 'ORDERS', day: '2026-10-17',
         nodes: [
           { key: 'ENTRY', value: 14, kind: 'count', details: [{ key: 'waiting', value: 6, kind: 'count' }], spark: [1, 2, 3, 4, 5, 6, 14] },
-          { key: 'IN_WAREHOUSE', value: 9, kind: 'count', details: [], spark: null },
-          { key: 'TO_DISPATCH', value: 3, kind: 'count', details: [], spark: null },
-          { key: 'ON_ROUTE', value: 22, kind: 'count', details: [{ key: 'drivers', value: 4, kind: 'count' }], spark: null },
-          { key: 'DELIVERED', value: 31, kind: 'count', details: [], spark: [0, 0, 0, 0, 0, 5, 31] },
+          { key: 'IN_WAREHOUSE', value: 9, kind: 'count', details: [], spark: [3, 5, 4, 7, 6, 8, 9] },
+          { key: 'ROUTES', value: 3, kind: 'count', details: [], spark: [2, 3, 3, 4, 2, 3, 3] },
+          { key: 'DELIVERED', value: 31, kind: 'count', details: [], spark: [20, 25, 18, 30, 22, 5, 31] },
+          { key: 'ON_ROUTE', value: 22, kind: 'count', details: [{ key: 'drivers', value: 4, kind: 'count' }, { key: 'completed', value: 2, kind: 'count' }], spark: null },
         ],
       })
     }
@@ -68,15 +68,21 @@ describe('ríos del Pulso', () => {
     expect(within(card('ENTRY')).getByText('14')).toBeInTheDocument()
     expect(within(card('ENTRY')).getByText('envíos nuevos hoy · 6 esperan')).toBeInTheDocument()
     expect(within(card('IN_WAREHOUSE')).getByText('9')).toBeInTheDocument()
-    expect(within(card('TO_DISPATCH')).getByText('sin chofer')).toBeInTheDocument()
-    expect(within(card('ON_ROUTE')).getByText('4 choferes')).toBeInTheDocument()
+    expect(within(card('IN_WAREHOUSE')).getByText('entraron hoy al almacén')).toBeInTheDocument()
+    expect(within(card('ROUTES')).getByText('3')).toBeInTheDocument()
+    expect(within(card('ROUTES')).getByText('salieron hoy')).toBeInTheDocument()
     expect(within(card('DELIVERED')).getByText('31')).toBeInTheDocument()
-    expect(card('TO_DISPATCH').querySelector('a')).toHaveAttribute('href', '/ops/dispatch')
+    // lo de ahora mismo: En ruta (grande) y, más pequeño, las rutas completadas
+    expect(within(card('ON_ROUTE')).getByText('22')).toBeInTheDocument()
+    expect(within(card('ON_ROUTE')).getByText('4 choferes')).toBeInTheDocument()
+    expect(within(card('ON_ROUTE')).getByText('2 rutas completadas hoy')).toBeInTheDocument()
+    expect(card('ROUTES').querySelector('a')).toHaveAttribute('href', '/ops/dispatch')
     expect(card('ON_ROUTE').querySelector('a')).toHaveAttribute('href', '/ops/monitor')
-    // Entrada y Entregado llevan barritas de 7 días; las demás no
-    expect(card('ENTRY').querySelector('.wh-mini')).not.toBeNull()
-    expect(card('DELIVERED').querySelector('.wh-mini')).not.toBeNull()
-    expect(card('IN_WAREHOUSE').querySelector('.wh-mini')).toBeNull()
+    // el orden de las tarjetas: Entrada, En almacén, Rutas, Entregado y lo de ahora mismo; ya no hay «Por despachar»
+    expect(Array.from(document.querySelectorAll('[data-node]')).map((n) => n.getAttribute('data-node'))).toEqual(['ENTRY', 'IN_WAREHOUSE', 'ROUTES', 'DELIVERED', 'ON_ROUTE'])
+    // Entrada, En almacén, Rutas y Entregado llevan barritas de 7 días; En ruta (ahora mismo) no
+    for (const k of ['ENTRY', 'IN_WAREHOUSE', 'ROUTES', 'DELIVERED']) expect(card(k).querySelector('.wh-mini')).not.toBeNull()
+    expect(card('ON_ROUTE').querySelector('.wh-mini')).toBeNull()
   })
 
   it('«Dinero COD»: montos en dinero, el desglose por método y a dónde lleva cada tarjeta', async () => {

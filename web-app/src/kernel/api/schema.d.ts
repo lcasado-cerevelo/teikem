@@ -40050,6 +40050,8 @@ export interface components {
             adjustmentToday?: number;
             /** Format: int32 */
             adjustmentTotal?: number;
+            /** Format: int32 */
+            backorderProducts?: number;
         };
         WarehouseTaskDto: {
             /** Format: int32 */

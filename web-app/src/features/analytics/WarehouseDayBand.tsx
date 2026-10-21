@@ -77,7 +77,9 @@ function DayNode({ card, value, loading }: { card: WarehouseDayCard; value: stri
   const label = t(`analytics.pulse.day.${card.key}`)
   const sub =
     card.key === 'belowMin'
-      ? t('analytics.pulse.day.nowSub')
+      ? card.backorder != null
+        ? t('analytics.pulse.day.backorderSub', { count: formatValue(card.backorder, false) })   // el hueco de abajo: cuántos productos están en backorder
+        : t('analytics.pulse.day.nowSub')
       : card.split
         ? null   // «Transferencias y ajustes» lleva su propia leyenda con los dos colores (abajo)
         : card.total != null

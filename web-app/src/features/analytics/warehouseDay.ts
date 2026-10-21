@@ -31,6 +31,8 @@ export interface WarehouseDayCard {
   /** Solo en «Transferencias y ajustes» (`moves`): las dos series por día y sus cifras (hoy y 7 días); en las demás, null. */
   pairs: WarehouseDayPair[] | null
   split: { transfersToday: number; adjustmentsToday: number; transfersTotal: number; adjustmentsTotal: number } | null
+  /** Solo en «Productos bajo mínimo»: cuántos productos están en backorder (texto de abajo, para que la tarjeta no quede vacía); en las demás, null. */
+  backorder?: number | null
   /** Número grande: lo de HOY (bajo mínimo: ahora). null = aún no hay datos. */
   today: number | null
   /** Total de los 7 días (texto pequeño); null en "Productos bajo mínimo". */
@@ -143,6 +145,7 @@ export function warehouseDayCards(dto: WarehousePulseDays | undefined, warehouse
     },
     {
       key: 'belowMin',
+      backorder: has ? (dto.backorderProducts ?? 0) : null,
       today: has ? (dto.belowMinProducts ?? 0) : null,
       total: null,
       points: null,

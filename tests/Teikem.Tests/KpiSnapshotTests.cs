@@ -131,10 +131,12 @@ public sealed class KpiSnapshotTests
 
         var series = await x.History.SeriesAsync(KpiKeys.OrdersInWarehouse, 7, default);
         Assert.Equal(new[] { 0m, 0m, 0m, 9m, 0m, 4m, 0m }, series.ToArray());   // el último (hoy) todavía no tiene foto
+        // 2026-10-21: «En almacén» del río ya no es la existencia sino lo que ENTRÓ al almacén (sus barras salen del historial de estatus, no de las fotos); las existencias de ahora
+        // siguen yendo a las fotos por StockAsync, y «En ruta» (lo de ahora mismo) no lleva barras
         var river = await x.Rivers.OrdersAsync(default);
-        var warehouse = river.Nodes.Single(n => n.Key == "IN_WAREHOUSE");
-        Assert.Equal(new[] { 0m, 0m, 0m, 9m, 0m, 4m, 1m }, warehouse.Spark!.ToArray());   // los 6 días anteriores de las fotos y hoy en vivo (1 en almacén)
-        Assert.Null(river.Nodes.Single(n => n.Key == "ON_ROUTE").Spark);                   // sin fotos y en cero hoy: no se dibujan siete ceros
+        Assert.All(river.Nodes.Single(n => n.Key == "IN_WAREHOUSE").Spark!, v => Assert.Equal(0m, v));   // la orden A no tiene cambios de estatus que la hagan «entrar» hoy
+        Assert.Null(river.Nodes.Single(n => n.Key == "ON_ROUTE").Spark);
+        Assert.Equal(1, (await x.Rivers.StockAsync(default)).InWarehouse);                              // las existencias de ahora (A sin asignar)
         var hist = await x.Snapshots.HistoryAsync(KpiKeys.OrdersInWarehouse, 4, default);
         Assert.Equal(new[] { 9m, 0m, 4m, 0m }, hist.Select(h => h.Value).ToArray());
         Assert.Equal(today.AddDays(-3), hist[0].Day);

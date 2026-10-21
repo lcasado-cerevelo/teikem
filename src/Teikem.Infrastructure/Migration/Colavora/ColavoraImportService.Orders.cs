@@ -380,6 +380,9 @@ public sealed partial class ColavoraImportService
         var bornAt = ordered.Count > 0 ? Min(order.CreatedAtUtc, ColavoraRules.ToUtc(ordered[0].CreatedDate!.Value)) : order.CreatedAtUtc;
         b.History.Add((bornAt, null, submitted, null, order.CreatedBy, false));
         current = submitted;
+        // el cierre de estatus de la migración (lo que Colavora dice que es hoy y los eventos no llevaron) se fecha con la ÚLTIMA ACTIVIDAD del envío, no con el día de la migración:
+        // si no, todo lo que se cierra aquí aparecería «entregado hoy» en el Pulso el día de la corrida (dictado de Luis, 2026-10-21)
+        var lastActivityAt = ordered.Count > 0 ? Max(bornAt, ColavoraRules.ToUtc(ordered[^1].CreatedDate!.Value)) : bornAt;
         int? currentDriverId = null;
         string? lastManifest = null;
         decimal price = 0;
@@ -469,7 +472,7 @@ public sealed partial class ColavoraImportService
             var closing = closedByAge
                 ? $"Cerrada por la migración: {b.Src.Status} en Colavora con más de {s.Config.Options.OpenOrderDays ?? s.Config.Options.PendingCloseDays} días sin cerrarse."
                 : $"Estatus de Colavora al migrar: {b.Src.Status}.";
-            b.History.Add((s.MigrationUtc, current, finalId, closing, null, false));
+            b.History.Add((lastActivityAt, current, finalId, closing, null, false));
             current = finalId;
         }
         order.StatusCodeId = current ?? submitted;
@@ -503,6 +506,7 @@ public sealed partial class ColavoraImportService
     }
 
     private static DateTime Min(DateTime a, DateTime b) => a <= b ? a : b;
+    private static DateTime Max(DateTime a, DateTime b) => a >= b ? a : b;
 
     /// <summary>Chofer por código de Colavora; si solo aparece en los eventos (no está en Users), se crea con el nombre del evento.</summary>
     private int? ResolveDriver(RunState s, string? code, string? name, Dictionary<string, Driver> newDrivers)

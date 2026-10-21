@@ -5,7 +5,7 @@ export type RiverKind = 'orders' | 'cod'
 export function nodeHref(kind: RiverKind, key: string): string {
   if (kind === 'orders') {
     switch (key) {
-      case 'TO_DISPATCH':
+      case 'ROUTES':
         return '/ops/dispatch'
       case 'ON_ROUTE':
         return '/ops/monitor'
