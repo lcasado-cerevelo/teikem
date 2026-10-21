@@ -6028,3 +6028,32 @@ GO
 IF COL_LENGTH('dbo.SalesOrder', 'AssignedToUserId') IS NULL
     ALTER TABLE dbo.SalesOrder ADD AssignedToUserId INT NULL CONSTRAINT FK_SalesOrder_AssignedTo REFERENCES dbo.AspNetUsers(Id);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-21 (Lote 199) — Permisos del aparato de almacén: warehouse.app.viewall («Ver todo en el aparato»: también lo asignado a otras personas) y warehouse.app.reassign
+   («Reasignar desde el aparato»; exige ver todo). Los administradores (TenantAdmin) los reciben: se propagan a los roles que ya tienen driverpay.approve (que solo trae TenantAdmin por
+   omisión), plantillas y clonados. Al supervisor del almacén se los da el administrador desde Sistema → Roles. Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'warehouse.app.viewall')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('warehouse.app.viewall',
+            (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'WAREHOUSE'),
+            N'{"es":"Ver todo en el aparato (también lo asignado a otras personas)","en":"See everything on the device (also what is assigned to others)"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'warehouse.app.reassign')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('warehouse.app.reassign',
+            (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'WAREHOUSE'),
+            N'{"es":"Reasignar desde el aparato (exige ver todo)","en":"Reassign from the device (requires see-everything)"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L199_APP_VIEWALL_REASSIGN')
+BEGIN
+    INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+    SELECT rp.RoleId, np.PermissionId
+    FROM dbo.RolePermission rp
+    JOIN dbo.Permission hallmark ON hallmark.PermissionId = rp.PermissionId AND hallmark.Code = 'driverpay.approve'
+    JOIN dbo.Permission np ON np.Code IN ('warehouse.app.viewall', 'warehouse.app.reassign')
+    WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = rp.RoleId AND x.PermissionId = np.PermissionId);
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L199_APP_VIEWALL_REASSIGN');
+END
+GO

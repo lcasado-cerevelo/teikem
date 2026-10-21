@@ -28,8 +28,12 @@ public sealed class SalesOrdersController(SalesOrderService sales) : ControllerB
         => sales.ListAsync(status, clientPublicId, q, backorderOnly, from, to, skip, take, ct, assignedToMe, assignedUserId);
 
     /// <summary>Lote 195: asigna (o desasigna con userId null) una orden de venta solicitada o despachada en parte a quien la va a despachar. Supervisión.</summary>
-    [HttpPost("{publicId:guid}/assign"), RequirePermission(PermissionCatalog.WarehouseManage)]
-    public Task<SalesOrderDto> Assign(Guid publicId, [FromBody] TaskAssignRequest req, CancellationToken ct) => sales.AssignAsync(publicId, req, ct);
+    [HttpPost("{publicId:guid}/assign"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehouseAppReassign)]
+    public async Task<SalesOrderDto> Assign(Guid publicId, [FromBody] TaskAssignRequest req, [FromServices] PermissionService perms, CancellationToken ct)
+    {
+        await ReassignGuard.EnsureAsync(perms, ct);
+        return await sales.AssignAsync(publicId, req, ct);
+    }
 
     /// <summary>Lote 195: «tomar» una orden de venta sin asignar. Quien puede recolectar.</summary>
     [HttpPost("{publicId:guid}/take"), RequirePermission(PermissionCatalog.WarehousePick)]

@@ -43,8 +43,12 @@ public sealed class AsnsController(AsnService asns) : ControllerBase
     public Task<AsnDto> Update(int id, [FromBody] AsnUpdateRequest req, CancellationToken ct) => asns.UpdateAsync(id, req, ct);
 
     /// <summary>Lote 171: asigna (o desasigna con userId null) un aviso de llegada esperado a quien lo va a recibir. Supervisión.</summary>
-    [HttpPost("{id:int}/assign"), RequirePermission(PermissionCatalog.WarehouseManage)]
-    public Task<AsnDto> Assign(int id, [FromBody] TaskAssignRequest req, CancellationToken ct) => asns.AssignAsync(id, req, ct);
+    [HttpPost("{id:int}/assign"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehouseAppReassign)]
+    public async Task<AsnDto> Assign(int id, [FromBody] TaskAssignRequest req, [FromServices] PermissionService perms, CancellationToken ct)
+    {
+        await ReassignGuard.EnsureAsync(perms, ct);
+        return await asns.AssignAsync(id, req, ct);
+    }
 
     /// <summary>Lote 171: «tomar» un aviso de llegada sin asignar. Quien puede recibir.</summary>
     [HttpPost("{id:int}/take"), RequirePermission(PermissionCatalog.WarehouseReceive)]

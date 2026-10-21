@@ -48,8 +48,16 @@ public sealed class WarehouseTasksController(WarehouseTaskService tasks, Repleni
     public Task<WarehouseTaskDto> Get(int id, CancellationToken ct) => tasks.GetAsync(id, ct);
 
     /// <summary>Asigna la tarea abierta a un miembro activo de la compañía (userId null la desasigna). 400 si no es miembro.</summary>
-    [HttpPost("{id:int}/assign"), RequirePermission(PermissionCatalog.WarehouseManage)]
-    public Task<WarehouseTaskDto> Assign(int id, [FromBody] TaskAssignRequest req, CancellationToken ct) => tasks.AssignAsync(id, req, ct);
+    [HttpPost("{id:int}/assign"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehouseAppReassign)]
+    public async Task<WarehouseTaskDto> Assign(int id, [FromBody] TaskAssignRequest req, [FromServices] PermissionService perms, CancellationToken ct)
+    {
+        await ReassignGuard.EnsureAsync(perms, ct);
+        return await tasks.AssignAsync(id, req, ct);
+    }
+
+    /// <summary>Lote 199: las personas a quienes se puede asignar (miembros activos de la compañía), para mostrar «Asignado a» y para reasignar desde el aparato. Con ver todo, reasignar o administrar.</summary>
+    [HttpGet("assignees"), RequirePermission(PermissionCatalog.WarehouseAppViewAll + "|" + PermissionCatalog.WarehouseAppReassign + "|" + PermissionCatalog.WarehouseManage)]
+    public Task<IReadOnlyList<AssigneeDto>> Assignees([FromServices] Teikem.Infrastructure.Persistence.TeikemDbContext db, CancellationToken ct) => ReassignGuard.ListAssigneesAsync(db, ct);
 
     /// <summary>Inicia la tarea (PENDING → IN_PROGRESS) con el permiso de su tipo; si no tenía asignado, queda asignada a quien la inicia.</summary>
     [HttpPost("{id:int}/start"), RequirePermission(PermissionCatalog.InventoryView)]

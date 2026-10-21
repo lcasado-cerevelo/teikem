@@ -47,8 +47,12 @@ public sealed class PurchaseOrdersController(PurchaseOrderService purchaseOrders
     public Task<IReadOnlyList<PoShortageSummaryDto>> Shortages(CancellationToken ct) => shortages.ListWithShortageAsync(ct);
 
     /// <summary>Lote 195: asigna (o desasigna con userId null) una orden de compra enviada o recibida en parte a quien la va a recibir. Supervisión.</summary>
-    [HttpPost("{publicId:guid}/assign"), RequirePermission(PermissionCatalog.WarehouseManage)]
-    public Task<PurchaseOrderDto> Assign(Guid publicId, [FromBody] TaskAssignRequest req, CancellationToken ct) => purchaseOrders.AssignAsync(publicId, req, ct);
+    [HttpPost("{publicId:guid}/assign"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehouseAppReassign)]
+    public async Task<PurchaseOrderDto> Assign(Guid publicId, [FromBody] TaskAssignRequest req, [FromServices] PermissionService perms, CancellationToken ct)
+    {
+        await ReassignGuard.EnsureAsync(perms, ct);
+        return await purchaseOrders.AssignAsync(publicId, req, ct);
+    }
 
     /// <summary>Lote 195: «tomar» una orden de compra sin asignar. Quien puede recibir contra órdenes de compra.</summary>
     [HttpPost("{publicId:guid}/take"), RequirePermission(PermissionCatalog.PurchasingReceive)]

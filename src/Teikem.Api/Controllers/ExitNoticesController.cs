@@ -61,8 +61,12 @@ public sealed class ExitNoticesController(ExitNoticeService notices) : Controlle
 
     /// <summary>Despacha contra el aviso: consume la reserva, saca el inventario y crea la recolección (por partes; nunca más de lo reservado).</summary>
     /// <summary>Lote 171: asigna (o desasigna con userId null) un aviso de salida abierto. Supervisión.</summary>
-    [HttpPost("{publicId:guid}/assign"), RequirePermission(PermissionCatalog.WarehouseManage)]
-    public Task<ExitNoticeDto> Assign(Guid publicId, [FromBody] TaskAssignRequest req, CancellationToken ct) => notices.AssignAsync(publicId, req, ct);
+    [HttpPost("{publicId:guid}/assign"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehouseAppReassign)]
+    public async Task<ExitNoticeDto> Assign(Guid publicId, [FromBody] TaskAssignRequest req, [FromServices] PermissionService perms, CancellationToken ct)
+    {
+        await ReassignGuard.EnsureAsync(perms, ct);
+        return await notices.AssignAsync(publicId, req, ct);
+    }
 
     /// <summary>Lote 171: «tomar» un aviso de salida sin asignar. Quien puede recolectar.</summary>
     [HttpPost("{publicId:guid}/take"), RequirePermission(PermissionCatalog.WarehousePick)]

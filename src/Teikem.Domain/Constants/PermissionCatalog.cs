@@ -111,6 +111,10 @@ public static class PermissionCatalog
     public const string WarehousePick = "warehouse.pick";
     /// <summary>Lote 193: ver y despachar en el aparato CUALQUIER documento (también los que no están asignados a la persona); sin él, solo los asignados.</summary>
     public const string WarehousePickAny = "warehouse.pick.any";
+    /// <summary>Lote 199: en el aparato, ver también lo asignado a OTRAS personas (además de lo mío y lo sin asignar) en Recibir, Acomodar, Despacho y Mis tareas. Para el supervisor del almacén.</summary>
+    public const string WarehouseAppViewAll = "warehouse.app.viewall";
+    /// <summary>Lote 199: en el aparato, reasignar un documento o acomodo a otra persona (o dejarlo sin asignar). Exige warehouse.app.viewall.</summary>
+    public const string WarehouseAppReassign = "warehouse.app.reassign";
 
     public const string WarehouseCount = "warehouse.count";
 
@@ -597,6 +601,10 @@ public static class PermissionCatalog
         new(WarehouseIssue, "WAREHOUSE", "Despacho manual (salida sin entrega)", "Manual issue (stock out without delivery)"),
 
         new(WarehousePickAny, "WAREHOUSE", "Despachar cualquier documento en el aparato (no solo los asignados)", "Dispatch any document on the device (not only assigned ones)"),
+
+        new(WarehouseAppViewAll, "WAREHOUSE", "Ver todo en el aparato (también lo asignado a otras personas)", "See everything on the device (also what is assigned to others)"),
+
+        new(WarehouseAppReassign, "WAREHOUSE", "Reasignar desde el aparato (exige ver todo)", "Reassign from the device (requires see-everything)"),
 
         // Lote F8a — Pulso del día (categoría PULSE)
 
