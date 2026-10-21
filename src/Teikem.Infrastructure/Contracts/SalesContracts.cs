@@ -24,12 +24,12 @@ public sealed record SalesOrderLineComponentDto(Guid ProductPublicId, string Sku
 
 public sealed record SalesOrderListItemDto(Guid PublicId, string Number, string Status, string StatusLabel, string StatusColor, Guid ClientPublicId, string ClientName,
     Guid WarehousePublicId, string WarehouseName, DateOnly RequestedDate, DateOnly? RequiredDate, decimal Subtotal, decimal TaxAmount, decimal Total,
-    int LineCount, bool HasBackorder, string? RequestedByName, DateTime CreatedAtUtc);
+    int LineCount, bool HasBackorder, string? RequestedByName, DateTime CreatedAtUtc, int? AssignedToUserId = null, string? AssignedToName = null);
 
 public sealed record SalesOrderDto(Guid PublicId, string Number, string Status, string StatusLabel, string StatusColor, Guid ClientPublicId, string ClientName,
     Guid? ConsigneePublicId, string? ConsigneeName, Guid WarehousePublicId, string WarehouseName, DateOnly RequestedDate, DateOnly? RequiredDate, string? Notes,
     decimal Subtotal, decimal TaxAmount, decimal Total, bool HasBackorder, string? RequestedByName, DateTime? RequestedAtUtc, DateTime CreatedAtUtc,
-    IReadOnlyList<SalesOrderLineDto> Lines, IReadOnlyList<SalesDispatchInfoDto>? Dispatches = null);
+    IReadOnlyList<SalesOrderLineDto> Lines, IReadOnlyList<SalesDispatchInfoDto>? Dispatches = null, int? AssignedToUserId = null, string? AssignedToName = null);
 
 // ---------------------------------------------------------------- Lote 58 — solicitar, disponibilidad, modificar línea
 

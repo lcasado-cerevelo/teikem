@@ -6016,3 +6016,15 @@ BEGIN
     INSERT INTO dbo.AppliedMigration (Code) VALUES ('L193_PICK_ANY');
 END
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-21 (Lote 195) — Asignar la orden de compra (a quien la va a recibir) y la orden de venta (a quien la va a despachar) a una persona, como ya se hace con el aviso de
+   llegada y el de salida (Lote 171): dbo.PurchaseOrder.AssignedToUserId y dbo.SalesOrder.AssignedToUserId INT NULL (NULL = sin asignar), con llave foránea a dbo.AspNetUsers.
+   Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.PurchaseOrder', 'AssignedToUserId') IS NULL
+    ALTER TABLE dbo.PurchaseOrder ADD AssignedToUserId INT NULL CONSTRAINT FK_PurchaseOrder_AssignedTo REFERENCES dbo.AspNetUsers(Id);
+GO
+IF COL_LENGTH('dbo.SalesOrder', 'AssignedToUserId') IS NULL
+    ALTER TABLE dbo.SalesOrder ADD AssignedToUserId INT NULL CONSTRAINT FK_SalesOrder_AssignedTo REFERENCES dbo.AspNetUsers(Id);
+GO

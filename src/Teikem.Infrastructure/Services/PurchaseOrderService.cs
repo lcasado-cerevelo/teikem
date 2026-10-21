@@ -80,6 +80,9 @@ public sealed class PurchaseOrderService(
                                       join pr in db.Set<Product>() on l.ProductId equals pr.ProductId
                                       where l.PurchaseOrderId == p.PurchaseOrderId && productIds.Contains(pr.PublicId)
                                       select l.PurchaseOrderLineId).Any());
+        // Lote 195: solo las asignadas a mí (o a una persona dada)
+        if (q.AssignedToMe && tenant.UserId is int me) query = query.Where(p => p.AssignedToUserId == me);
+        else if (q.AssignedUserId is int assignedUser) query = query.Where(p => p.AssignedToUserId == assignedUser);
         if (q.From is DateOnly from) query = query.Where(p => p.OrderDate >= from);
         if (q.To is DateOnly to) query = query.Where(p => p.OrderDate <= to);
         if (!string.IsNullOrWhiteSpace(q.Search))
@@ -398,6 +401,7 @@ public sealed class PurchaseOrderService(
         var resolved = await PurchasingSupport.ResolvedByLineAsync(db, poIds, ct);
         var flags = await PurchasingSupport.ReceiptFlagsAsync(db, poIds, ct);
         var statusMap = await PurchasingSupport.StatusMapAsync(db, tenant, StatusDomains.PurchaseOrderStatus, ct);
+        var assignees = await AssigneeCheck.NamesAsync(db, rows.Where(p => p.AssignedToUserId != null).Select(p => p.AssignedToUserId!.Value), ct);
 
         var currencyIds = rows.Where(p => p.CurrencyLookupId != null).Select(p => p.CurrencyLookupId!.Value).Distinct().ToList();
         var currencies = new Dictionary<int, string>();
@@ -430,8 +434,43 @@ public sealed class PurchaseOrderService(
                 po.IsActive && editable.GetValueOrDefault(po.StatusCodeId, true),
                 po.IsActive && PurchaseOrderRules.CanCancel(code) && !f.HasOpen,
                 po.IsActive && PurchaseOrderRules.IsDeletable(code, f.HasConfirmed || lineDtos.Any(l => l.QtyReceived > 0m), f.HasOpen),
-                po.IsActive, lineDtos, Convert.ToBase64String(po.RowVersion ?? Array.Empty<byte>()));
+                po.IsActive, lineDtos, Convert.ToBase64String(po.RowVersion ?? Array.Empty<byte>()),
+                po.AssignedToUserId, po.AssignedToUserId is int au ? assignees.GetValueOrDefault(au) : null);
         }).ToList();
+    }
+
+    // ================================================================ Lote 195: asignar la orden de compra a quien la va a recibir
+
+    /// <summary>Asigna (o desasigna con userId null) una orden enviada o recibida en parte. Supervisión (warehouse.manage); la persona debe ser miembro activo de la compañía.</summary>
+    public async Task<PurchaseOrderDto> AssignAsync(Guid publicId, TaskAssignRequest? req, CancellationToken ct)
+    {
+        var userId = req?.UserId;
+        if (userId is int uid) await AssigneeCheck.EnsureActiveMemberAsync(db, uid, ct);
+        var poId = await ResolveIdAsync(publicId, ct);
+        await SetAssigneeAsync(poId, userId, takeOnly: false, ct);
+        return await GetByIdAsync(poId, ct);
+    }
+
+    /// <summary>«Tomar» una orden sin asignar (o ya asignada a quien lo pide). Una de otra persona se rechaza (409).</summary>
+    public async Task<PurchaseOrderDto> TakeAsync(Guid publicId, CancellationToken ct)
+    {
+        var poId = await ResolveIdAsync(publicId, ct);
+        await SetAssigneeAsync(poId, tenant.UserId, takeOnly: true, ct);
+        return await GetByIdAsync(poId, ct);
+    }
+
+    private async Task SetAssigneeAsync(int poId, int? userId, bool takeOnly, CancellationToken ct)
+    {
+        await db.RunInTransactionAsync(async ct2 =>
+        {
+            var po = await PurchasingSupport.LockPurchaseOrderAsync(db, poId, ct2);
+            if (!po.IsActive) throw new NotFoundException(PurchaseOrderRules.NotFound, feminine: true);
+            var code = await PurchasingSupport.StatusCodeOfAsync(db, po.StatusCodeId, ct2);
+            if (code is not (PurchaseOrderStatuses.Sent or PurchaseOrderStatuses.Partial)) throw new StatusRuleException(DocumentAssignmentRules.PurchaseOrderNotOpen);
+            if (takeOnly && !DocumentAssignmentRules.CanTake(po.AssignedToUserId, tenant.UserId)) throw new ConflictException(DocumentAssignmentRules.AlreadyAssigned);
+            po.AssignedToUserId = userId;
+            await db.SaveGuardedAsync(ConcurrencyMessage, ct2);
+        }, ct);
     }
 
     // ================================================================ helpers

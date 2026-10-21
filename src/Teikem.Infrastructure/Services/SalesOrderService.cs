@@ -32,7 +32,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
     // ---------------------------------------------------------------- consulta
 
     public async Task<PagedResult<SalesOrderListItemDto>> ListAsync(string? status, Guid? clientPublicId, string? q, bool backorderOnly, DateOnly? from, DateOnly? to,
-        int skip, int take, CancellationToken ct)
+        int skip, int take, CancellationToken ct, bool assignedToMe = false, int? assignedUserId = null)
     {
         skip = Math.Max(0, skip);
         take = Math.Clamp(take <= 0 ? 50 : take, 1, MaxPageSize);
@@ -46,6 +46,9 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         }
         if (clientPublicId is Guid cp)
             query = query.Where(o => db.Set<Client>().Any(c => c.ClientId == o.ClientId && c.PublicId == cp));
+        // Lote 195: solo las asignadas a mí (o a una persona dada)
+        if (assignedToMe && tenant.UserId is int me) query = query.Where(o => o.AssignedToUserId == me);
+        else if (assignedUserId is int assignedUser) query = query.Where(o => o.AssignedToUserId == assignedUser);
         if (from is DateOnly f) query = query.Where(o => o.RequestedDate >= f);
         if (to is DateOnly t2) query = query.Where(o => o.RequestedDate <= t2);
         if (backorderOnly) query = query.Where(o => db.Set<SalesOrderLine>().Any(l => l.SalesOrderId == o.SalesOrderId && l.QtyBackordered > 0 && !l.IsClosed));
@@ -340,6 +343,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         var clients = await db.Set<Client>().Where(c => orders.Select(o => o.ClientId).Contains(c.ClientId)).ToDictionaryAsync(c => c.ClientId, ct);
         var warehouses = await db.Set<Warehouse>().Where(w => orders.Select(o => o.WarehouseId).Contains(w.WarehouseId)).ToDictionaryAsync(w => w.WarehouseId, ct);
         var users = await UserNamesAsync(orders.Where(o => o.RequestedBy is not null).Select(o => o.RequestedBy!.Value), ct);
+        var assignees = await UserNamesAsync(orders.Where(o => o.AssignedToUserId is not null).Select(o => o.AssignedToUserId!.Value), ct);
         return orders.Select(o =>
         {
             var s = map[o.StatusCodeId];
@@ -347,7 +351,8 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
             var w = warehouses[o.WarehouseId];
             var st = lineStats.GetValueOrDefault(o.SalesOrderId);
             return new SalesOrderListItemDto(o.PublicId, o.Number, s.Code, s.Label, s.Color, c.PublicId, c.Name, w.PublicId, w.Name, o.RequestedDate, o.RequiredDate,
-                o.Subtotal, o.TaxAmount, o.Subtotal + o.TaxAmount, st?.Count ?? 0, st?.Back ?? false, o.RequestedBy is int u ? users.GetValueOrDefault(u) : null, o.CreatedAtUtc);
+                o.Subtotal, o.TaxAmount, o.Subtotal + o.TaxAmount, st?.Count ?? 0, st?.Back ?? false, o.RequestedBy is int u ? users.GetValueOrDefault(u) : null, o.CreatedAtUtc,
+                o.AssignedToUserId, o.AssignedToUserId is int au ? assignees.GetValueOrDefault(au) : null);
         }).ToList();
     }
 
@@ -362,7 +367,8 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         var warehouses = await db.Set<Warehouse>().Where(w => whIds.Contains(w.WarehouseId)).ToDictionaryAsync(w => w.WarehouseId, ct);
         var consIds = orders.Where(o => o.ConsigneeId is not null).Select(o => o.ConsigneeId!.Value).ToList();
         var consignees = await db.Set<Location>().Where(l => consIds.Contains(l.LocationId)).ToDictionaryAsync(l => l.LocationId, ct);
-        var users = await UserNamesAsync(orders.Where(o => o.RequestedBy is not null).Select(o => o.RequestedBy!.Value), ct);
+        var users = await UserNamesAsync(orders.Where(o => o.RequestedBy is not null).Select(o => o.RequestedBy!.Value)
+            .Concat(orders.Where(o => o.AssignedToUserId is not null).Select(o => o.AssignedToUserId!.Value)), ct);
         var dispatchInfo = await DispatchesOfAsync(orders.Select(o => o.SalesOrderId).ToList(), ct);
         // Lote 69: kits — la foto de componentes de cada línea y lo reservado de cada componente
         var allLineIds = orders.SelectMany(o => o.Lines.Select(l => l.SalesOrderLineId)).ToList();
@@ -399,7 +405,8 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
             }).ToList();
             return new SalesOrderDto(o.PublicId, o.Number, s.Code, s.Label, s.Color, c.PublicId, c.Name, cons?.PublicId, cons?.Name, w.PublicId, w.Name, o.RequestedDate, o.RequiredDate,
                 o.Notes, o.Subtotal, o.TaxAmount, o.Subtotal + o.TaxAmount, o.Lines.Any(l => SalesRules.IsBackordered(l.QtyBackordered, l.IsClosed)),
-                o.RequestedBy is int u ? users.GetValueOrDefault(u) : null, o.RequestedAtUtc, o.CreatedAtUtc, lines, dispatchInfo.GetValueOrDefault(o.SalesOrderId) ?? new List<SalesDispatchInfoDto>());
+                o.RequestedBy is int u ? users.GetValueOrDefault(u) : null, o.RequestedAtUtc, o.CreatedAtUtc, lines, dispatchInfo.GetValueOrDefault(o.SalesOrderId) ?? new List<SalesDispatchInfoDto>(),
+                o.AssignedToUserId, o.AssignedToUserId is int au ? users.GetValueOrDefault(au) : null);
         }).ToList();
     }
 

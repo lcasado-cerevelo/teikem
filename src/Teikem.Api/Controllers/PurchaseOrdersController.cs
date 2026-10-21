@@ -33,10 +33,11 @@ public sealed class PurchaseOrdersController(PurchaseOrderService purchaseOrders
     public Task<PurchaseOrderPageDto> List([FromQuery] string[]? status, [FromQuery] int? supplierId, [FromQuery] Guid? warehousePublicId,
         [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] string? search, [FromQuery] int[]? supplierIds,
         [FromQuery] Guid[]? warehousePublicIds, [FromQuery] Guid[]? productPublicIds, [FromQuery] int skip = 0, [FromQuery] int take = 100,
-        CancellationToken ct = default)
+        CancellationToken ct = default, [FromQuery] bool assignedToMe = false, [FromQuery] int? assignedUserId = null)
         => purchaseOrders.ListAsync(new PurchaseOrderQuery(status is { Length: > 0 } ? status : null, supplierId, warehousePublicId, from, to,
             search, skip, take, supplierIds is { Length: > 0 } ? supplierIds : null,
-            warehousePublicIds is { Length: > 0 } ? warehousePublicIds : null, productPublicIds is { Length: > 0 } ? productPublicIds : null), ct);
+            warehousePublicIds is { Length: > 0 } ? warehousePublicIds : null, productPublicIds is { Length: > 0 } ? productPublicIds : null,
+            assignedToMe, assignedUserId), ct);
 
     /// <summary>
     /// Órdenes activas no canceladas con recibo confirmado y cantidades pendientes (faltante y su costo) y el almacén de la
@@ -44,6 +45,14 @@ public sealed class PurchaseOrdersController(PurchaseOrderService purchaseOrders
     /// </summary>
     [HttpGet("shortages"), RequirePermission(PermissionCatalog.PurchasingView)]
     public Task<IReadOnlyList<PoShortageSummaryDto>> Shortages(CancellationToken ct) => shortages.ListWithShortageAsync(ct);
+
+    /// <summary>Lote 195: asigna (o desasigna con userId null) una orden de compra enviada o recibida en parte a quien la va a recibir. Supervisión.</summary>
+    [HttpPost("{publicId:guid}/assign"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    public Task<PurchaseOrderDto> Assign(Guid publicId, [FromBody] TaskAssignRequest req, CancellationToken ct) => purchaseOrders.AssignAsync(publicId, req, ct);
+
+    /// <summary>Lote 195: «tomar» una orden de compra sin asignar. Quien puede recibir contra órdenes de compra.</summary>
+    [HttpPost("{publicId:guid}/take"), RequirePermission(PermissionCatalog.PurchasingReceive)]
+    public Task<PurchaseOrderDto> Take(Guid publicId, CancellationToken ct) => purchaseOrders.TakeAsync(publicId, ct);
 
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.PurchasingView)]
     public Task<PurchaseOrderDto> Get(Guid publicId, CancellationToken ct) => purchaseOrders.GetAsync(publicId, ct);

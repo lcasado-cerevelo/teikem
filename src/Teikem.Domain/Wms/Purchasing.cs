@@ -44,6 +44,8 @@ public class PurchaseOrder : ITenantScoped, ISoftDeletable, IHasStatus
     [NotAudited] public DateTime CreatedAtUtc { get; set; }
     public int? CreatedBy { get; set; }
     [NotAudited] public byte[]? RowVersion { get; set; }
+    /// <summary>Lote 195: a quién se le asignó recibirla (NULL = sin asignar; lo puede tomar cualquiera con permiso de recibir).</summary>
+    public int? AssignedToUserId { get; set; }
 
     public StatusCode? Status { get; set; }
     public ICollection<PurchaseOrderLine> Lines { get; set; } = new List<PurchaseOrderLine>();

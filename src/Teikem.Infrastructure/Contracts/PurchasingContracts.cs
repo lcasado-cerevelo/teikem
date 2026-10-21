@@ -40,7 +40,7 @@ public sealed record PurchaseOrderStatusRequest(string? Comment = null, string? 
 /// </summary>
 public sealed record PurchaseOrderQuery(string[]? Status = null, int? SupplierId = null, Guid? WarehousePublicId = null, DateOnly? From = null,
     DateOnly? To = null, string? Search = null, int Skip = 0, int Take = 100, int[]? SupplierIds = null, Guid[]? WarehousePublicIds = null,
-    Guid[]? ProductPublicIds = null);
+    Guid[]? ProductPublicIds = null, bool AssignedToMe = false, int? AssignedUserId = null);
 
 public sealed record PurchaseOrderLineDto(int Id, Guid ProductPublicId, string Sku, string ProductName, decimal QtyOrdered, decimal QtyReceived,
     decimal QtyResolved, decimal QtyPending, decimal UnitCost, decimal LineTotal);
@@ -48,7 +48,7 @@ public sealed record PurchaseOrderLineDto(int Id, Guid ProductPublicId, string S
 public sealed record PurchaseOrderDto(int Id, Guid PublicId, string Number, int SupplierId, string SupplierName, Guid WarehousePublicId,
     string WarehouseCode, DateOnly OrderDate, DateOnly? ExpectedDate, string StatusCode, string Status, string? CurrencyCode, string? Notes,
     decimal Total, bool HasShortage, bool CanEdit, bool CanCancel, bool CanDelete, bool IsActive, IReadOnlyList<PurchaseOrderLineDto> Lines,
-    string RowVersion);
+    string RowVersion, int? AssignedToUserId = null, string? AssignedToName = null);
 
 public sealed record PurchaseOrderPageDto(int Total, int Skip, int Take, IReadOnlyList<PurchaseOrderDto> Items);
 

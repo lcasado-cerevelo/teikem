@@ -9,6 +9,8 @@ public static class DocumentAssignmentRules
 {
     public const string AsnNotOpen = "Solo se puede asignar un aviso de llegada que siga esperado.";
     public const string ExitNoticeNotOpen = "Solo se puede asignar un aviso de salida abierto (solicitado o parcial).";
+    public const string PurchaseOrderNotOpen = "Solo se puede asignar una orden de compra enviada o recibida en parte.";
+    public const string SalesOrderNotOpen = "Solo se puede asignar una orden de venta solicitada o despachada en parte.";
     public const string AlreadyAssigned = "Ese documento ya está asignado a otra persona; pídale a un supervisor que lo reasigne.";
 
     /// <summary>¿Puede «tomarlo» quien lo pide? Sin asignar, o ya asignado a esa misma persona.</summary>

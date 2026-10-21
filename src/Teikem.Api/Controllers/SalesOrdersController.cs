@@ -23,8 +23,17 @@ public sealed class SalesOrdersController(SalesOrderService sales) : ControllerB
     /// <summary>Lista paginada (más reciente primero). Filtros: status (DRAFT, REQUESTED, PARTIAL, SHIPPED, CANCELLED), cliente, buscador q (número, cliente, producto), solo con backorder y fechas de solicitud.</summary>
     [HttpGet, RequirePermission(PermissionCatalog.SalesView)]
     public Task<PagedResult<SalesOrderListItemDto>> List([FromQuery] string? status, [FromQuery] Guid? clientPublicId, [FromQuery] string? q, [FromQuery] bool backorderOnly,
-        [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] int skip, [FromQuery] int take, CancellationToken ct)
-        => sales.ListAsync(status, clientPublicId, q, backorderOnly, from, to, skip, take, ct);
+        [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] int skip, [FromQuery] int take, CancellationToken ct,
+        [FromQuery] bool assignedToMe = false, [FromQuery] int? assignedUserId = null)
+        => sales.ListAsync(status, clientPublicId, q, backorderOnly, from, to, skip, take, ct, assignedToMe, assignedUserId);
+
+    /// <summary>Lote 195: asigna (o desasigna con userId null) una orden de venta solicitada o despachada en parte a quien la va a despachar. Supervisión.</summary>
+    [HttpPost("{publicId:guid}/assign"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    public Task<SalesOrderDto> Assign(Guid publicId, [FromBody] TaskAssignRequest req, CancellationToken ct) => sales.AssignAsync(publicId, req, ct);
+
+    /// <summary>Lote 195: «tomar» una orden de venta sin asignar. Quien puede recolectar.</summary>
+    [HttpPost("{publicId:guid}/take"), RequirePermission(PermissionCatalog.WarehousePick)]
+    public Task<SalesOrderDto> Take(Guid publicId, CancellationToken ct) => sales.TakeAsync(publicId, ct);
 
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.SalesView)]
     public Task<SalesOrderDto> Get(Guid publicId, CancellationToken ct) => sales.GetAsync(publicId, ct);

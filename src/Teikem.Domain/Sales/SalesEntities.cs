@@ -55,6 +55,8 @@ public class SalesOrder : ITenantScoped, IHasStatus, IAuditStamped
     [NotAudited] public DateTime? UpdatedAtUtc { get; set; }
     public int? UpdatedBy { get; set; }
     [NotAudited] public byte[]? RowVersion { get; set; }
+    /// <summary>Lote 195: a quién se le asignó despacharla (NULL = sin asignar; lo puede tomar cualquiera con permiso de recolectar).</summary>
+    public int? AssignedToUserId { get; set; }
     public List<SalesOrderLine> Lines { get; set; } = new();
 }
 
