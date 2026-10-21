@@ -20,14 +20,17 @@ export function likeTerm(text: string): string {
   return `%${text.trim().replace(/[\\%_]/g, (c) => `\\${c}`)}%`
 }
 
-export function searchProducts(query: string, limit = PICK_PAGE): PickItem[] {
+/** `onlyProductIds` (Lote 196): contra un documento solo se ofrecen los productos que el documento trae (ids públicos); null/ausente = todos. */
+export function searchProducts(query: string, limit = PICK_PAGE, onlyProductIds?: readonly string[] | null): PickItem[] {
   const term = likeTerm(query)
+  const only = onlyProductIds && onlyProductIds.length > 0 ? onlyProductIds : null
   return getDb()
     .getAllSync<{ sku: string; name: string; barcode: string | null }>(
       `SELECT sku, name, barcode FROM product
        WHERE is_active = 1 AND (sku LIKE ? ESCAPE '\\' OR name LIKE ? ESCAPE '\\' OR barcode LIKE ? ESCAPE '\\')
+         ${only ? `AND public_id IN (${only.map(() => '?').join(',')})` : ''}
        ORDER BY sku LIMIT ?`,
-      [term, term, term, limit],
+      [term, term, term, ...(only ?? []), limit],
     )
     .map((p) => ({ kind: 'product' as const, code: p.sku, title: p.sku, subtitle: [p.name, p.barcode].filter(Boolean).join(' · ') || null }))
 }
@@ -48,9 +51,9 @@ export function searchBins(warehousePublicId: string, query: string, limit = PIC
 
 /** Búsqueda del selector: producto, posición o las dos (productos primero). */
 /** `limit` = cuántas filas de CADA tipo (productos y posiciones); la lista pide más al llegar al final. */
-export function searchPicker(kind: PickKind, warehousePublicId: string | null, query: string, limit = PICK_PAGE): PickItem[] {
+export function searchPicker(kind: PickKind, warehousePublicId: string | null, query: string, limit = PICK_PAGE, onlyProductIds?: readonly string[] | null): PickItem[] {
   const out: PickItem[] = []
-  if (kind !== 'bin') out.push(...searchProducts(query, limit))
+  if (kind !== 'bin') out.push(...searchProducts(query, limit, onlyProductIds))
   if (kind !== 'product' && warehousePublicId) out.push(...searchBins(warehousePublicId, query, limit))
   return out
 }

@@ -40,3 +40,12 @@ describe('búsqueda del selector', () => {
     expect(searchPicker('bin', null, '').length).toBe(0)
   })
 })
+
+describe('contra un documento solo se ofrecen sus productos (Lote 196)', () => {
+  it('la lista y la búsqueda se limitan a los ids del documento; sin ids, todos', () => {
+    expect(searchProducts('', 100, ['p2']).map((p) => p.code)).toEqual(['TUE-05'])
+    expect(searchProducts('tornillo', 100, ['p2'])).toEqual([])
+    expect(searchProducts('', 100, null).map((p) => p.code)).toEqual(['TOR-10', 'TUE-05'])
+    expect(searchPicker('product', null, '', 100, ['p1']).map((p) => p.code)).toEqual(['TOR-10'])
+  })
+})

@@ -139,6 +139,7 @@ export default function ReceiveScreen() {
   // Lote 175: recibir por partes y aviso de staging lleno (con lo que ya hay según los saldos locales)
   // Lote 191: con aviso u orden de compra, lo que dice el documento se ve en una lista para elegir (escanear sigue funcionando)
   const expected = openReceipt ? getDocExpected(openReceipt.doc) : []
+  const docProductIds = expected.length > 0 ? expected.map((l) => l.productPublicId) : null
   const docProgress = openReceipt ? getDocProgress(openReceipt.doc) : null
   const partBlocked = openReceipt ? partBlock(openReceipt.doc, openReceipt.lines, openReceipt.receivingMode) : 'noDoc'
   const partOk = openReceipt !== null && partBlocked === null
@@ -220,6 +221,12 @@ export default function ReceiveScreen() {
     const product = findProductByCode(code)
     if (!product) {
       setProductError(t('receive.productNotFound'))
+      vibrateError()
+      return
+    }
+    // Lote 196: contra un aviso o una orden de compra solo entran los productos del documento
+    if (docProductIds && !docProductIds.includes(product.publicId)) {
+      setProductError(t('receive.productNotInDoc', { sku: product.sku, doc: openReceipt?.doc?.label ?? '' }))
       vibrateError()
       return
     }
@@ -856,7 +863,7 @@ export default function ReceiveScreen() {
           ))}
         </View>
       ) : null}
-      <ScanField label={t('receive.scanProductLabel')} help={t('receive.scanProductHelp')} error={productError} onSubmit={scanProduct} pick="product" />
+      <ScanField label={t('receive.scanProductLabel')} help={t('receive.scanProductHelp')} error={productError} onSubmit={scanProduct} pick="product" onlyProductIds={docProductIds} />
       {expected.length > 0 ? (
         <View style={styles.field} testID="receive-expected">
           <Text style={styles.label}>{t('receive.expectedTitle')}</Text>

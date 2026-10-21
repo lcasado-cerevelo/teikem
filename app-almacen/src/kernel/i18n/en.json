@@ -241,6 +241,7 @@
     "changed": "You are now working in {name}."
   },
   "receive": {
+    "productNotInDoc": "That product ({sku}) is not on {doc}: only what the document says can be received.",
     "expectedTitle": "What the document says",
     "expectedHelp": "Tap a product to capture it (you can also scan it).",
     "expectedLine": "Expected {expected} · Received {received} · Left {left}",

@@ -12,6 +12,8 @@ import { colors, fontSize, radius, spacing } from './theme'
 export interface PickerModalProps {
   visible: boolean
   kind: PickKind
+  /** Lote 196: solo los productos de un documento (ids públicos). */
+  onlyProductIds?: readonly string[] | null
   warehousePublicId: string | null
   onSelect: (code: string) => void
   onClose: () => void
@@ -19,7 +21,7 @@ export interface PickerModalProps {
   initialQuery?: string
 }
 
-export function PickerModal({ visible, kind, warehousePublicId, onSelect, onClose, initialQuery = '' }: PickerModalProps) {
+export function PickerModal({ visible, kind, onlyProductIds, warehousePublicId, onSelect, onClose, initialQuery = '' }: PickerModalProps) {
   const { t } = useT()
   const [query, setQuery] = useState(initialQuery)
   // sin tope: al llegar al final de la lista se trae otra página (la búsqueda es local, sin señal)
@@ -31,7 +33,7 @@ export function PickerModal({ visible, kind, warehousePublicId, onSelect, onClos
     }
   }, [visible, initialQuery])
   const limit = pages * PICK_PAGE
-  const items = useMemo<PickItem[]>(() => (visible ? searchPicker(kind, warehousePublicId, query, limit) : []), [visible, kind, warehousePublicId, query, limit])
+  const items = useMemo<PickItem[]>(() => (visible ? searchPicker(kind, warehousePublicId, query, limit, onlyProductIds) : []), [visible, kind, warehousePublicId, query, limit, onlyProductIds])
   const mayHaveMore = items.length >= limit
   const title = t(kind === 'product' ? 'picker.titleProduct' : kind === 'bin' ? 'picker.titleBin' : 'picker.titleAny')
 

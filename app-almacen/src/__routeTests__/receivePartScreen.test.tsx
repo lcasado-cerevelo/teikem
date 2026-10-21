@@ -86,4 +86,24 @@ describe('Recibir — una parte', () => {
     await fireEvent.press(screen.getByTestId('receive-expected-SKU-1'))
     await waitFor(() => expect(screen.getByText('Agregar')).toBeTruthy())
   })
+
+  it('Lote 196: contra un aviso no se acepta un producto que el aviso no trae', async () => {
+    await saveDeviceIdentity({
+      devicePublicId: 'dev-1', deviceSecret: 'secret-1', tenantName: 'Teikem Demo', defaultWarehousePublicId: 'wh-1', theme: null,
+      defaultWarehouseReceivingMode: 'PUTAWAY',
+    })
+    await saveUserSession({ accessToken: 'a', accessExpiresAtUtc: '', refreshToken: 'r', refreshExpiresAtUtc: '', tenantId: 1, userId: 7, fullName: 'Ana Ruiz' })
+    getDb().runSync("INSERT INTO product (id, public_id, sku, name, barcode, tracking_type_code, is_active) VALUES (1, 'p1', 'SKU-1', 'Tornillo', '7501', 'NONE', 1)")
+    getDb().runSync("INSERT INTO product (id, public_id, sku, name, barcode, tracking_type_code, is_active) VALUES (2, 'p2', 'SKU-2', 'Tuerca', '7502', 'NONE', 1)")
+    getDb().runSync("INSERT INTO asn_line (id, asn_id, product_public_id, sku, product_name, expected_qty, posted_qty) VALUES (1, 5, 'p1', 'SKU-1', 'Tornillo', 10, 0)")
+    startLocalReceipt('wh-1', { kind: 'asn', purchaseOrderPublicId: null, asnId: 5, label: 'LLE-00005' }, 'PUTAWAY')
+
+    await renderRouter('src/app', { initialUrl: '/receive' })
+    await waitFor(() => expect(screen.getByLabelText('Escanea el producto')).toBeTruthy())
+    await fireEvent(screen.getByLabelText('Escanea el producto'), 'submitEditing', { nativeEvent: { text: 'SKU-2' } })
+    await waitFor(() => expect(screen.getByText('Ese producto (SKU-2) no está en LLE-00005: solo se recibe lo que dice el documento.')).toBeTruthy())
+    expect(screen.queryByText('Agregar')).toBeNull()
+    await fireEvent(screen.getByLabelText('Escanea el producto'), 'submitEditing', { nativeEvent: { text: 'SKU-1' } })
+    await waitFor(() => expect(screen.getByText('Agregar')).toBeTruthy())
+  })
 })
