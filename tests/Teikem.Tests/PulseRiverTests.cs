@@ -126,7 +126,8 @@ public sealed class PulseRiverTests
         Assert.Equal(3m, routes.Spark![^1]);
         // lo de ahora mismo: En ruta (F y G; los choferes de las rutas en curso) y, más pequeño, las rutas completadas hoy
         var route = Node(river, "ON_ROUTE");
-        Assert.Equal((2m, 1m, 1m), (route.Value, Detail(route, "drivers"), Detail(route, "completed")));
+        Assert.Equal((2m, 1m), (route.Value, Detail(route, "drivers")));
+        Assert.Equal(Node(river, "DELIVERED").Value, Detail(route, "completed"));   // «completados» = envíos entregados hoy (decidido por Luis, 2026-10-21)
         Assert.Null(route.Spark);
         // las existencias de ahora (las que guardan las fotos): C y L sin asignar con o sin ruta... C, D y L están sin asignar (3); por despachar: C, E y L (D ya tiene ruta con chofer)
         var stock = await x.Rivers.StockAsync(default);

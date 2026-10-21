@@ -41,7 +41,8 @@ _(fin del registro del día)_
 _(se llena cuando aparece una que solo él puede tomar; mientras tanto se toma el valor por omisión que se anota aquí)_
 
 - Label de factura: uno por envío, sin importar los paquetes (**ya decidido por Luis**).
-- «Completada» en la última tarjeta de «Paquetes en la calle» = rutas completadas hoy (suposición, sin confirmar).
+- «Completada» en la última tarjeta de «Paquetes en la calle» = **envíos entregados hoy** (decidido por Luis; ya aplicado).
+- Respuestas de Luis a la parte D: motor genérico; Productos primero; importar solo crea y rechaza repetidos; la exportación de las listas ya existe y lo que falta es la salida por Integración. Texto de botones naranja: azul marino oscuro (como está).
 - Tercer valor por defecto del cliente («tipo»): solo se implementó servicio y paquete (sin confirmar).
 - Facturación por división de Colavora (sin confirmar).
 - **Plantillas de más entidades** (parte D): ¿motor genérico o entidad por entidad? ¿orden de entidades? ¿importar actualiza o solo crea? ¿botón Exportar en cada lista? Ver `docs/plantillas-mas-entidades-diseno.md`.

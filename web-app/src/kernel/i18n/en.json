@@ -3162,7 +3162,7 @@
             "IN_WAREHOUSE": "entered the warehouse today",
             "ROUTES": "left today",
             "ON_ROUTE": "{drivers} drivers",
-            "COMPLETED": "{completed} routes completed today",
+            "COMPLETED": "{completed} shipments completed today",
             "DELIVERED": "today"
           }
         },

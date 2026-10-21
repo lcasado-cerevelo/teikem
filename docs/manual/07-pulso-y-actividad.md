@@ -548,7 +548,7 @@ Cinco tarjetas, **en este orden** (dictado de Luis, 2026-10-21):
 | **En almacén** | los envíos que **entraron al almacén** (por recogido o por el escaneo del almacén): **cada envío una sola vez, el día en que llegó por primera vez**; con las barritas de 7 días. En un flujo sano coincide con Entrada | «entraron hoy al almacén» | Envíos |
 | **Rutas** | las **rutas que salieron** ese día (despachadas, en curso o completadas, por su fecha de plan), con las barritas de 7 días | «salieron hoy» | Sala de despacho |
 | **Entregado** | envíos entregados **ese día** (por el historial de estatus), con las barritas de **todos** los 7 días | «hoy» | Envíos |
-| **En ruta** (lo de ahora mismo) | envíos En tránsito, con los choferes de las rutas despachadas o en curso; **abajo y más pequeño**, las rutas **completadas** hoy | «N choferes» y «N rutas completadas hoy» | Monitoreo de ruta |
+| **En ruta** (lo de ahora mismo) | envíos En tránsito, con los choferes de las rutas despachadas o en curso; **abajo y más pequeño**, los envíos **completados** (entregados) hoy | «N choferes» y «N envíos completados hoy» | Monitoreo de ruta |
 
 La tarjeta «Por despachar» ya no está en el río (los envíos asignados sin chofer se siguen avisando en «Necesita tu atención» y en el Radar). Las fotos diarias de indicadores siguen guardando las existencias de ahora (en almacén y por despachar).
 

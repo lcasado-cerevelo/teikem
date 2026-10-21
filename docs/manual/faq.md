@@ -9886,7 +9886,7 @@ El valor de `kind` en `GET /pick-batches/documents` no es uno de los tres. Corr�
 Desde 2026-10-21 cuenta los envíos que **entraron** al almacén ese día (por recogido o por el escaneo de enrutamiento en el almacén), cada envío **una sola vez**. Ya no es cuántos hay ahora dentro. Su barra de 7 días muestra las entradas de cada día.
 
 **¿Qué pasó con «Por despachar» en el Pulso?**
-Se quitó de «Paquetes en la calle»: las tarjetas son Entrada, En almacén, Rutas, Entregado y En ruta (con las rutas completadas debajo). Los envíos asignados sin chofer siguen avisándose en «Necesita tu atención» y en el Radar.
+Se quitó de «Paquetes en la calle»: las tarjetas son Entrada, En almacén, Rutas, Entregado y En ruta (con los envíos completados hoy debajo). Los envíos asignados sin chofer siguen avisándose en «Necesita tu atención» y en el Radar.
 
 **¿Qué son los «productos en backorder» de la tarjeta «Productos bajo mínimo»?**
 Los productos que tienen un faltante pendiente en alguna línea abierta de una orden de venta. Es el texto de abajo de la tarjeta; el número grande sigue siendo los productos bajo su mínimo.
