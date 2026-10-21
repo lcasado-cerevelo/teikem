@@ -25,6 +25,8 @@ import {
   orderEditValues,
   packageGroups,
   packageSummaryText,
+  pieceNumbersText,
+  DESCRIPTION_MAX,
   remapOrderProblem,
   type DuplicateInvoice,
   type OrderEditValues,
@@ -195,7 +197,8 @@ export function OrderDetailPanel({ order, editable, lockReason = 'advanced' }: O
   }
 
   const groups = packageGroups(order)
-  const pieces = (order.packages ?? []).reduce((sum, p) => sum + (p.pieces ?? 0), 0)
+  // las piezas reales del envío (el total que guarda el servidor); sin él, la suma de las líneas
+  const pieces = order.totalPieces ?? (order.packages ?? []).reduce((sum, p) => sum + (p.pieces ?? 0), 0)
 
   return (
     <Panel
@@ -276,9 +279,6 @@ export function OrderDetailPanel({ order, editable, lockReason = 'advanced' }: O
           <ReadField label={t('orders.detail.waybill')} mono>
             {order.waybillNumber}
           </ReadField>
-          <ReadField label={t('orders.detail.packBatch')} mono>
-            {order.packBatchNumber}
-          </ReadField>
         </div>
         {(order.references?.length ?? 0) > 0 && (
           <ReadField label={t('orders.detail.references')}>
@@ -302,7 +302,7 @@ export function OrderDetailPanel({ order, editable, lockReason = 'advanced' }: O
                       <Select options={packageOptions} placeholder={t('orders.entry.choosePackageType')} />
                     </Field>
                     <Field name={`packages.${i}.description`} label={t('orders.entry.description')}>
-                      <TextInput maxLength={200} placeholder={t('orders.entry.descriptionPlaceholder')} />
+                      <TextInput maxLength={DESCRIPTION_MAX} placeholder={t('orders.entry.descriptionPlaceholder')} />
                     </Field>
                     <div className="oe-pcs">
                       <Field name={`packages.${i}.pieces`} label={t('orders.entry.pieces')} required>
@@ -339,6 +339,7 @@ export function OrderDetailPanel({ order, editable, lockReason = 'advanced' }: O
                     <tr>
                       <th>{t('orders.entry.packageType')}</th>
                       <th>{t('orders.entry.description')}</th>
+                      <th>{t('orders.detail.packageNumbers')}</th>
                       <th className="n">{t('orders.entry.pieces')}</th>
                     </tr>
                   </thead>
@@ -346,7 +347,8 @@ export function OrderDetailPanel({ order, editable, lockReason = 'advanced' }: O
                     {(order.packages ?? []).map((p) => (
                       <tr key={p.id}>
                         <td>{p.packageTypeLabel || p.packageType || '—'}</td>
-                        <td className="od-muted">{p.description || '—'}</td>
+                        <td className="od-muted od-longtext">{p.description || '—'}</td>
+                        <td className="mono od-small">{pieceNumbersText(p.pieceNumbers ?? (p.packageNumber ? [p.packageNumber] : []))}</td>
                         <td className="n mono">{p.pieces}</td>
                       </tr>
                     ))}

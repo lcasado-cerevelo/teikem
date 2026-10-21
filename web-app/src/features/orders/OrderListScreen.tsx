@@ -12,7 +12,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useContext, useMemo, useState } from 'react'
 import { SessionContext } from '../../app/session'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Can, useCan } from '../../kernel/access'
+import { Can } from '../../kernel/access'
 import { StatusChip, useLookups, useStatuses } from '../../kernel/catalogs'
 import { useFormat } from '../../kernel/format'
 import { useLang, useT } from '../../kernel/i18n'
@@ -54,7 +54,7 @@ import { OrderEntryForm } from './OrderEntryForm'
 import { OrderImportModal } from './OrderImportModal'
 import { OrderQuickEntry } from './OrderQuickEntry'
 import { readEntryMode, saveEntryMode, type EntryMode } from './orderQuickRules'
-import { buildOrderQuery, canDeleteOrder, EMPTY_ORDER_FILTERS, filtersFromParams, packageGroups, packageSummaryText, type OrderFilters } from './orderRules'
+import { buildOrderQuery, canDeleteOrder, EMPTY_ORDER_FILTERS, filtersFromParams, packageGroups, packageNumbersOf, packageSummaryText, type OrderFilters } from './orderRules'
 import './orders.css'
 
 const PAGE_SIZE = 25
@@ -70,7 +70,6 @@ export default function OrderListScreen() {
   const t = useT()
   const f = useFormat()
   const navigate = useNavigate()
-  const canViewPrice = useCan('orders.view_price')
   const cards = useMediaQuery(CARDS_QUERY)
   const [params] = useSearchParams()
   const [filters, setFilters] = useState<OrderFilters>(() => filtersFromParams(params))
@@ -142,31 +141,21 @@ export default function OrderListScreen() {
   const columns = useMemo<DataColumn<OrderListItemDto>[]>(() => {
     const cols: DataColumn<OrderListItemDto>[] = [
       {
-        id: 'packBatch',
-        header: t('orders.list.columns.packBatch'),
-        cell: (o) => <span className="ref oe-small ref-nowrap">{o.packBatchNumber || '—'}</span>,
-        sortValue: (o) => o.packBatchNumber,
-        exportValue: (o) => o.packBatchNumber,
-        card: 'hidden',
-      },
-      {
+        // el conduce es el número de envío (el más buscado); el número de orden solo se ve, chico y debajo, cuando es distinto
         id: 'waybill',
         header: t('orders.list.columns.waybill'),
-        cell: (o) => <span className="ref oe-small ref-nowrap">{o.waybillNumber || '—'}</span>,
-        sortValue: (o) => o.waybillNumber ?? '',
-        exportValue: (o) => o.waybillNumber ?? '',
-        card: 'hidden',
-      },
-      {
-        id: 'orderNumber',
-        header: t('orders.list.columns.orderNumber'),
-        cell: (o) => <span className="ref ref-nowrap">{o.orderNumber}</span>,
+        cell: (o) => (
+          <span className="ref ref-nowrap">
+            {o.waybillNumber || o.orderNumber}
+            {o.waybillNumber && o.orderNumber && o.orderNumber !== o.waybillNumber ? <span className="d oe-small"><br />{o.orderNumber}</span> : null}
+          </span>
+        ),
         continuation: () => (
           <span className="oe-cont" title={t('orders.list.columns.continued')}>
             ↳
           </span>
         ),
-        sortValue: (o) => o.orderNumber,
+        sortValue: (o) => o.waybillNumber || o.orderNumber,
         card: 'title',
       },
       { id: 'date', header: t('orders.list.columns.date'), cell: (o) => <span className="mono">{f.date(o.createdAtUtc)}</span>, sortValue: (o) => o.createdAtUtc, exportValue: (o) => f.date(o.createdAtUtc) },
@@ -196,6 +185,15 @@ export default function OrderListScreen() {
         },
       },
       {
+        // todos los números de paquete (los de cada pieza) del envío; en la tabla los primeros y «+N»
+        id: 'packageNumbers',
+        header: t('orders.list.columns.packageNumbers'),
+        cell: (o) => <PackageNumbersCell numbers={packageNumbersOf(o)} />,
+        sortValue: (o) => packageNumbersOf(o)[0] ?? '',
+        exportValue: (o) => packageNumbersOf(o).join(', '),
+        card: 'hidden',
+      },
+      {
         id: 'pieces',
         header: t('orders.list.columns.pieces'),
         cell: (o) => (cards ? o.totalPieces : packageGroups(o)[0].pieces),
@@ -213,15 +211,6 @@ export default function OrderListScreen() {
         align: 'end',
       },
     ]
-    if (canViewPrice)
-      cols.push({
-        id: 'quoted',
-        header: t('orders.list.columns.quoted'),
-        cell: (o) => (o.quotedAmount != null ? f.money(o.quotedAmount) : '—'),
-        sortValue: (o) => o.quotedAmount,
-        exportValue: (o) => o.quotedAmount,
-        align: 'end',
-      })
     cols.push({
       id: 'status',
       header: t('orders.list.columns.status'),
@@ -230,15 +219,16 @@ export default function OrderListScreen() {
       exportValue: (o) => o.statusLabel ?? o.status,
     })
     return cols
-  }, [t, f, canViewPrice, cards])
+  }, [t, f, cards])
 
   // la exportación lleva además el cliente y la factura, que la maqueta no muestra en la tabla
   const exportColumns = useMemo<DataColumn<OrderListItemDto>[]>(() => {
     const extra: DataColumn<OrderListItemDto>[] = [
       { id: 'client', header: t('orders.list.columns.client'), cell: (o) => o.clientName, sortValue: (o) => o.clientName },
       { id: 'invoice', header: t('orders.list.filters.invoice'), cell: (o) => o.clientInvoiceNumber, sortValue: (o) => o.clientInvoiceNumber },
+      { id: 'orderNumber', header: t('orders.list.columns.orderNumber'), cell: (o) => o.orderNumber, sortValue: (o) => o.orderNumber, exportValue: (o) => o.orderNumber },
     ]
-    return [columns[0], columns[1], extra[1], extra[0], ...columns.slice(2)]
+    return [{ ...columns[0], exportValue: (o: OrderListItemDto) => o.waybillNumber || o.orderNumber }, extra[2], extra[1], extra[0], ...columns.slice(1)]
   }, [columns, t])
 
   // la casilla «Elegir» va solo en pantalla (no se exporta ni ordena)
@@ -395,7 +385,7 @@ export default function OrderListScreen() {
         }}
       >
         <DateRangeFilter label={t('orders.list.filters.range')} value={range} onChange={(r) => patch({ from: r.from, to: r.to })} />
-        <TextFilter label={t('orders.list.filters.orderNumber')} value={filters.orderNumber} onChange={(v) => patch({ orderNumber: v })} />
+        <TextFilter label={t('orders.list.filters.waybill')} value={filters.waybill} onChange={(v) => patch({ waybill: v })} />
         <TextFilter label={t('orders.list.filters.consignee')} value={filters.consignee} onChange={(v) => patch({ consignee: v })} />
         <SearchSelect label={t('orders.list.filters.client')} options={clientOptions} value={filters.clientIds} onChange={(v) => patch({ clientIds: v })} placeholder={t('orders.list.filters.all')} />
         <SearchSelect label={t('orders.list.filters.service')} options={serviceOptions} value={filters.serviceTypes} onChange={(v) => patch({ serviceTypes: v })} placeholder={t('orders.list.filters.all')} />
@@ -403,7 +393,8 @@ export default function OrderListScreen() {
         <SearchSelect label={t('orders.list.filters.town')} options={townOptions} value={filters.cities} onChange={(v) => patch({ cities: v })} placeholder={t('orders.list.filters.all')} />
         <TextFilter label={t('orders.list.filters.zip')} value={filters.postalCodePrefix} onChange={(v) => patch({ postalCodePrefix: v })} placeholder={t('orders.list.filters.zipPlaceholder')} />
         <TextFilter label={t('orders.list.filters.invoice')} value={filters.invoice} onChange={(v) => patch({ invoice: v })} placeholder={t('orders.list.filters.invoicePlaceholder')} />
-        <TextFilter label={t('orders.list.filters.pack')} value={filters.packBatch} onChange={(v) => patch({ packBatch: v })} placeholder={t('orders.list.filters.packPlaceholder')} />
+        <TextFilter label={t('orders.list.filters.packageNumber')} value={filters.packageNumber} onChange={(v) => patch({ packageNumber: v })} />
+        <TextFilter label={t('orders.list.filters.orderNumber')} value={filters.orderNumber} onChange={(v) => patch({ orderNumber: v })} />
         <SearchSelect label={t('orders.list.filters.status')} options={statusOptions} value={filters.statuses} onChange={(v) => patch({ statuses: v })} placeholder={t('orders.list.filters.all')} />
         <SearchSelect label={t('orders.list.filters.zone')} options={zoneOptions} value={filters.zoneIds} onChange={(v) => patch({ zoneIds: v })} placeholder={t('orders.list.filters.all')} />
         <SearchSelect label={t('orders.list.filters.level')} options={levelOptions} value={filters.zoneGroupIds} onChange={(v) => patch({ zoneGroupIds: v })} placeholder={t('orders.list.filters.all')} />
@@ -507,12 +498,33 @@ export default function OrderListScreen() {
 }
 
 /** Un tipo de paquete con sus descripciones (y, en tarjeta, sus piezas). */
+/** Números de paquete del envío: los primeros y «+N» (el resto en el título y en la exportación). */
+function PackageNumbersCell({ numbers }: { numbers: string[] }) {
+  if (numbers.length === 0) return <>—</>
+  const shown = numbers.slice(0, 2)
+  return (
+    <span className="mono oe-small oe-pkgnums" title={numbers.join(', ')}>
+      {shown.join(', ')}
+      {numbers.length > shown.length ? ` +${numbers.length - shown.length}` : ''}
+    </span>
+  )
+}
+
+/** Texto corto para la lista (el contenido de un envío puede traer decenas de ítems); lo completo va en el título y en la ficha. */
+function shortText(s: string, max: number): string {
+  return s.length <= max ? s : `${s.slice(0, max).trimEnd()}…`
+}
+
 function PackageCell({ label, descriptions, pieces, showPieces = false }: { label: string; descriptions: string[]; pieces?: number; showPieces?: boolean }) {
   return (
     <div className="oe-pkgcell">
       {label}
       {showPieces && pieces != null ? ` ×${pieces}` : ''}
-      {descriptions.length > 0 && <div className="meta oe-desc">{descriptions.join(' · ')}</div>}
+      {descriptions.length > 0 && (
+        <div className="meta oe-desc" title={descriptions.join('\n')}>
+          {shortText(descriptions.join(' · '), 120)}
+        </div>
+      )}
     </div>
   )
 }

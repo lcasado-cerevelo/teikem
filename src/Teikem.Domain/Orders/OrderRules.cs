@@ -24,6 +24,19 @@ public sealed record PackageLineInput(string? Description, int Pieces = 1, decim
 /// </summary>
 public static class OrderRules
 {
+    public const int WaybillMaxLength = 40;
+    public const string WaybillInvalidMessage = "El conduce solo admite letras, números, guion, guion bajo, punto y barra, hasta 40 caracteres.";
+    public const string WaybillTakenMessage = "Ya existe un envío activo con ese conduce en la compañía.";
+
+    /// <summary>El conduce que trae el cliente, recortado; null si no trae. Lanza FormatException con el mensaje si no es válido.</summary>
+    public static string? NormalizeWaybill(string? raw)
+    {
+        var w = (raw ?? string.Empty).Trim();
+        if (w.Length == 0) return null;
+        if (w.Length > WaybillMaxLength || !w.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_' or '.' or '/')) throw new FormatException(WaybillInvalidMessage);
+        return w;
+    }
+
     public const int DescriptionMaxLength = 4000;   // la columna es MAX; el límite de captura evita pegar textos enormes por error
     public const int StopNotesMaxLength = 500;
     public const int ReferenceValueMaxLength = 120;

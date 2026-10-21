@@ -3743,7 +3743,6 @@
         "waybill": "Waybill",
         "zone": "Zone",
         "processed": "Invoice processed",
-        "packBatch": "Pack",
         "orderNumber": "Shipment no.",
         "client": "Client",
         "date": "Date",
@@ -3752,9 +3751,9 @@
         "zip": "ZIP",
         "serviceType": "Service",
         "package": "Package",
+        "packageNumbers": "Package no.",
         "pieces": "Pieces",
         "cod": "COD",
-        "quoted": "Quoted",
         "status": "Status",
         "continued": "continued",
         "actions": "Actions"
@@ -3777,8 +3776,8 @@
         "processedRange": "Processing date",
         "invoice": "Invoice",
         "invoicePlaceholder": "FAC-…",
-        "pack": "Pack",
-        "packPlaceholder": "EMP-…",
+        "waybill": "Waybill",
+        "packageNumber": "Package no.",
         "status": "Status",
         "all": "All"
       },
@@ -3809,7 +3808,7 @@
       "noPriority": "No priority",
       "pickup": "Pickup",
       "waybill": "Waybill number",
-      "packBatch": "Pack batch",
+      "packageNumbers": "Package no.",
       "references": "References",
       "packagesTitle": "Packages",
       "piecesCount": "{count} pieces",
@@ -4060,7 +4059,7 @@
         "codNegative": "The COD amount cannot be negative.",
         "specialRequired": "The special service is required for a special delivery.",
         "numberMax": "The number cannot exceed 40 characters.",
-        "descriptionMax": "Maximum 200 characters.",
+        "descriptionMax": "Maximum 4000 characters.",
         "dueBeforeReady": "The due date cannot be before the ready date."
       },
       "dup": {

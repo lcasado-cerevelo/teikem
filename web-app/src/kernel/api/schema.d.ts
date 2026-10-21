@@ -11814,6 +11814,7 @@ export interface paths {
                     invoice?: string;
                     packBatch?: string;
                     waybill?: string;
+                    packageNumber?: string;
                     consignee?: string;
                     search?: string;
                     from?: string;
@@ -35329,6 +35330,7 @@ export interface components {
             overrideCredit?: boolean;
             /** Format: uuid */
             driverPublicId?: string | null;
+            waybillNumber?: string | null;
         } & {
             [key: string]: unknown;
         };

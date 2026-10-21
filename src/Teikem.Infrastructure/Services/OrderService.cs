@@ -169,6 +169,12 @@ public sealed class OrderService(
         // (j) numeración tecleada según las dos preguntas independientes del cliente
         var settings = NumberingSettings.FromClient(client);
         var typedOrder = EnsureTyped(NumberKinds.Order, settings, req.OrderNumber, "orderNumber");
+        string? typedWaybill;
+        try { typedWaybill = OrderRules.NormalizeWaybill(req.WaybillNumber); }
+        catch (FormatException ex) { throw new ValidationException("waybillNumber", ex.Message); }
+        // único entre los envíos ACTIVOS de la compañía (uno inactivo no bloquea); si se repite, se rechaza y el cliente lo corrige
+        if (typedWaybill is not null && await db.TransportOrders.AsNoTracking().AnyAsync(o => o.IsActive && o.WaybillNumber == typedWaybill, ct))
+            throw new ConflictException(OrderRules.WaybillTakenMessage);
         var typedInvoice = EnsureTyped(NumberKinds.Invoice, settings, req.ClientInvoiceNumber, "clientInvoiceNumber");
         var packBatchOverride = NormalizeTyped(options?.PackBatchNumberOverride, "packBatchNumber");
         int? sourceTypeId = string.IsNullOrWhiteSpace(options?.SourceEntityType)
@@ -233,8 +239,12 @@ public sealed class OrderService(
                         await sequences.NextAsync(NumberKinds.PackBatch, packBatchSeqClient, ct2));
                     // Lote 110: el conduce = {Code cliente}{Code consignatario o su ID}{aammdd}{secuencial del día de ese consignatario}; el siguiente se toma de los que ya empiezan con ese prefijo (el índice único cubre la carrera)
                     var waybillDayPrefix = WaybillCodes.DayPrefix(PieceNumbering.Part(client.Code, client.ClientId), PieceNumbering.Part(consigneeLoc.Code, consigneeLoc.LocationId), TimeZoneInfo.ConvertTimeFromUtc(_clock.UtcNow, _clock.Zone));
-                    var sameDay = await db.TransportOrders.AsNoTracking().Where(o => o.WaybillNumber != null && o.WaybillNumber.StartsWith(waybillDayPrefix)).Select(o => o.WaybillNumber).ToListAsync(ct2);
-                    var waybillNumber = WaybillCodes.Next(waybillDayPrefix, sameDay);
+                    var waybillNumber = typedWaybill;
+                    if (waybillNumber is null)
+                    {
+                        var sameDay = await db.TransportOrders.AsNoTracking().Where(o => o.WaybillNumber != null && o.WaybillNumber.StartsWith(waybillDayPrefix)).Select(o => o.WaybillNumber).ToListAsync(ct2);
+                        waybillNumber = WaybillCodes.Next(waybillDayPrefix, sameDay);
+                    }
 
                     var initial = await statuses.GetInitialAsync(StatusDomains.OrderStatus, ct2);
                     var order = new TransportOrder
@@ -280,6 +290,7 @@ public sealed class OrderService(
                         var sqlMessage = SqlMessage(ex);
                         var collided = NumberingRules.CollidedKind(sqlMessage, orderAuto: typedOrder is null, packBatchAuto: packBatchOverride is null);
                         if (collided is not null) throw new OrderNumberCollision(collided);
+                        if (typedWaybill is not null && sqlMessage.Contains("UX_Order_Waybill", StringComparison.OrdinalIgnoreCase)) throw new ConflictException(OrderRules.WaybillTakenMessage);
                         throw new ConflictException(sqlMessage.Contains("UX_Order_PackBatch", StringComparison.OrdinalIgnoreCase) ? PackBatchTakenMessage : OrderNumberTakenMessage);
                     }
 

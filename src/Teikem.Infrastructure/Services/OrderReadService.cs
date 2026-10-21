@@ -293,6 +293,8 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
         if (!string.IsNullOrWhiteSpace(q.Invoice)) { var v = q.Invoice.Trim(); query = query.Where(o => o.ClientInvoiceNumber.Contains(v)); }
         if (!string.IsNullOrWhiteSpace(q.PackBatch)) { var v = q.PackBatch.Trim(); query = query.Where(o => o.PackBatchNumber.Contains(v)); }
         if (!string.IsNullOrWhiteSpace(q.Waybill)) { var v = q.Waybill.Trim(); query = query.Where(o => o.WaybillNumber.Contains(v)); }
+        // número de alguna pieza (el del label): el envío con una pieza activa cuyo número contiene el texto
+        if (!string.IsNullOrWhiteSpace(q.PackageNumber)) { var v = q.PackageNumber.Trim(); query = query.Where(o => db.OrderPieces.Any(p => p.TransportOrderId == o.TransportOrderId && p.IsActive && p.PackageNumber.Contains(v))); }
 
         var deliveryTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Delivery, ct);
         if (!string.IsNullOrWhiteSpace(q.Consignee))
@@ -327,6 +329,7 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
                                      || o.ClientInvoiceNumber.Contains(v)
                                      || o.PackBatchNumber.Contains(v)
                                      || o.WaybillNumber.Contains(v)
+                                     || db.OrderPieces.Any(p => p.TransportOrderId == o.TransportOrderId && p.IsActive && p.PackageNumber.StartsWith(v))
                                      || o.Stops.Any(s => s.StopTypeLookupId == deliveryTypeId && s.SnapName != null && s.SnapName.Contains(v)));
         }
 

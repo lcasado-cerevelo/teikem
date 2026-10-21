@@ -1684,20 +1684,20 @@
         "requestBody": {
           "content": {
             "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AsnUpdateRequest"
-                }
-              },
-            "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AsnUpdateRequest"
-                }
-              },
-            "application/*+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AsnUpdateRequest"
-                }
+              "schema": {
+                "$ref": "#/components/schemas/AsnUpdateRequest"
               }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AsnUpdateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AsnUpdateRequest"
+              }
+            }
           }
         },
         "responses": {
@@ -16061,6 +16061,13 @@
           },
           {
             "name": "waybill",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "packageNumber",
             "in": "query",
             "schema": {
               "type": "string"
@@ -52439,6 +52446,10 @@
           "driverPublicId": {
             "type": "string",
             "format": "uuid",
+            "nullable": true
+          },
+          "waybillNumber": {
+            "type": "string",
             "nullable": true
           }
         },

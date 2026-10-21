@@ -320,4 +320,27 @@ public class OrderRulesTests
     [InlineData(null, false)]
     public void CountryCode_accepts_only_iso_alpha2(string? code, bool expected)
         => Assert.Equal(expected, Teikem.Domain.Common.CountryCode.IsValid(code));
+
+    [Theory]
+    [InlineData("0079372073221100AXM", "0079372073221100AXM")]
+    [InlineData("  AX-2026/10_01.7  ", "AX-2026/10_01.7")]
+    [InlineData("", null)]
+    [InlineData("   ", null)]
+    [InlineData(null, null)]
+    public void NormalizeWaybill_accepts_the_clients_number_or_nothing(string? raw, string? expected)
+        => Assert.Equal(expected, OrderRules.NormalizeWaybill(raw));
+
+    [Theory]
+    [InlineData("AB 12")]
+    [InlineData("AB#12")]
+    [InlineData("ÑANDÚ-1")]
+    public void NormalizeWaybill_rejects_spaces_and_special_characters(string raw)
+        => Assert.Equal(OrderRules.WaybillInvalidMessage, Assert.Throws<FormatException>(() => OrderRules.NormalizeWaybill(raw)).Message);
+
+    [Fact]
+    public void NormalizeWaybill_rejects_more_than_40_characters()
+    {
+        Assert.Equal(new string('A', 40), OrderRules.NormalizeWaybill(new string('A', 40)));
+        Assert.Throws<FormatException>(() => OrderRules.NormalizeWaybill(new string('A', 41)));
+    }
 }

@@ -65,7 +65,9 @@ public sealed record OrderCreateRequest(
     bool OverrideCredit = false,
     // Lote 4: entrega especial con chofer (solo con IsSpecialDelivery). Va al final y con default: el importador usa
     // argumentos con nombre y no cambia.
-    Guid? DriverPublicId = null)
+    Guid? DriverPublicId = null,
+    // Conduce que trae el cliente (su número de envío, el del código de barras): único entre los envíos activos de la compañía; sin él, Teikem lo genera con su fórmula
+    string? WaybillNumber = null)
 {
     /// <summary>Llaves del JSON que no corresponden a ninguna propiedad (el servicio rechaza las prohibidas con 400).</summary>
     [JsonExtensionData]
@@ -305,7 +307,9 @@ public sealed record OrderListQuery(
     IReadOnlyList<int>? ZoneGroupIds = null,
     bool? NoZone = null,
     // Lote 130: filtros por campos personalizados con «Mostrar en la búsqueda» (cf.clave en la dirección)
-    IReadOnlyList<Teikem.Infrastructure.Services.CustomFieldFilter>? CustomFields = null);
+    IReadOnlyList<Teikem.Infrastructure.Services.CustomFieldFilter>? CustomFields = null,
+    // Búsqueda parcial por el número de alguna pieza (el del label); la búsqueda libre también lo encuentra por prefijo
+    string? PackageNumber = null);
 
 public sealed record OrderPageDto(int Total, IReadOnlyList<OrderListItemDto> Items);
 

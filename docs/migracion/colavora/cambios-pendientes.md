@@ -47,6 +47,9 @@
 
 ## 3. Piezas y contenido: una sola línea de paquete con el contenido en la descripción
 
+> ✅ **HECHO (2026-10-21).** *Esquema:* `CargoLine.Description` pasa a `NVARCHAR(MAX)` (sección nueva al final de `update.sql`, idempotente); el tope de captura sube de 250 a 4000 (`OrderRules.DescriptionMaxLength`, también en la web). *Migración:* los ítems de AxisCare ya no son líneas aparte: van como texto en la descripción de la línea del paquete real (un ítem por renglón, «cantidad × código · texto», los repetidos sumados; `ColavoraRules.ContentText`), y se descartan los comentarios vacíos (`0`, `-`, `N/A`; `CleanComment`). *Pantallas:* la ficha cuenta las **piezas reales**, la tabla de paquetes tiene la columna **N.º de paquete** y respeta los saltos de línea de la descripción; en la lista, la descripción se corta con «…» (completa al pasar el cursor).
+
+
 **Hallazgo (2026-10-20, orden `0079372073221100AXM`, AxisCare).** Colavora tiene 2 piezas físicas (`Qty = 2`) y 52 ítems de contenido. La migración guardó `TotalPieces = 2` y una línea con el número de paquete, pero los 52 ítems quedaron como **52 líneas de carga separadas** (tipo Caja, cantidad 1, sin número de paquete). En la pantalla de Envíos eso se ve como «cada cosa es un paquete», el encabezado dice «54 piezas» (suma las cantidades de todas las líneas) y la tabla de paquetes no tiene columna de número de paquete. La línea real además quedó con descripción `0` (comentario de la pieza en Colavora).
 
 **Decisión de Luis (2026-10-20):** NO listar los ítems. Una sola línea por tipo de paquete real, con el contenido dentro de su descripción; se puede ampliar el campo `Description` a un máximo (recomendado `NVARCHAR(MAX)`).
@@ -124,6 +127,9 @@ Luis tiene razón en que no tiene sentido (son órdenes viejas que ya se entrega
 **(Resuelto con la opción de arriba.)** ¿aplicar a las `Assigned` viejas la misma regla que a las `Pending` (D3: si pasaron N días sin movimiento se migran como Entregada)? Si sí, ¿cuántos días (¿5, 10, 30?) y se marca de alguna forma que se cerraron por la migración? Mientras tanto, el panel «Por despachar» (que cuenta las asignadas sin ruta) estará inflado por esas órdenes. Además, a futuro el panel debería **excluir lo que tenga más de X días sin movimiento** o mostrarlo aparte como «atascadas».
 
 ## 7. Números de la orden: Empaque, Conduce y Paquete (aclaración de Luis, 2026-10-20)
+
+> ✅ **HECHO en gran parte (2026-10-21).** *Lista de Envíos:* primera columna **Conduce** (con el número de orden en chico debajo solo si es distinto), columna **N.º de paquete** después de «Paquete», sin **Empaque** ni **Cotizado**; filtros **Conduce** y **N.º de paquete** (`packageNumber`, nuevo en el API) y el buscador libre también busca por número de paquete (por prefijo). *Ficha:* sin el campo Empaque. *Conduce del cliente:* `POST /orders` acepta `waybillNumber` (hasta 40 caracteres, `A-Z a-z 0-9 - _ . /`), único entre los envíos **activos** de la compañía (409 si se repite); sin él, la fórmula del Lote 110. *Migración:* el waybill de Colavora ya va como conduce, y como Luis dijo que el número es uno solo (el del cliente o el de Teikem), Orden y el número de empaque interno (oculto, ya no se muestra) siguen valiendo ese mismo número: no hace falta generar `EMP-` por cada uno de los ~480 mil envíos. *Falta:* que la **importación** (CSV/Excel y sus plantillas) y el **API de clientes** ofrezcan la columna/campo del conduce (hoy solo lo recibe `POST /orders`), y el filtro por número de paquete en las otras listas.
+
 
 **Lo que dijo Luis:** el «número de empaque» es el número de **cada pieza**; un envío puede tener varias piezas, así que puede tener varios números. Hoy el listado de Envíos tiene una columna «Empaque» con un solo número por orden, y la migración pone el waybill de Colavora en Orden, Empaque y Conduce (los tres iguales).
 

@@ -9786,3 +9786,12 @@ No (`Los elementos por default de la plataforma no se editan ni se eliminan.`, 4
 
 **`La visibilidad debe ser PRIVATE, TENANT o SHARED.` (400)**
 El valor enviado a `…/visibility` no es uno de los tres. Corrígelo y vuelve a guardar.
+
+**`El conduce solo admite letras, números, guion, guion bajo, punto y barra, hasta 40 caracteres.` (400)**
+El conduce que mandó el cliente trae espacios, símbolos u otros caracteres, o pasa de 40. Corrígelo y vuelve a crear el envío; si no manda conduce, Teikem lo genera solo.
+
+**`Ya existe un envío activo con ese conduce en la compañía.` (409)**
+El número ya lo tiene otro envío activo (uno dado de baja no cuenta). El cliente debe usar otro número; Teikem no le pone uno distinto cuando el cliente trae el suyo.
+
+**`Máximo 4000 caracteres.` (400) en la descripción de un paquete**
+La descripción de la línea pasó del máximo (antes 250). Acorta el texto: el contenido largo de un envío va un ítem por renglón.

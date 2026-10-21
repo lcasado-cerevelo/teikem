@@ -721,4 +721,13 @@ Cada envío de entrega tiene un **número de conduce** (`waybillNumber`, «Waybi
 - **Envíos que ya existían:** al actualizar la base (`update.sql` (af)) cada una recibió su conduce en orden de creación y el contador quedó en el siguiente número libre.
 - Los envíos dados de baja conservan su conduce y no se reutiliza.
 
+**El conduce que trae el cliente (2026-10-21).** El conduce es el **número de envío**: el único que lleva el código de barras. Si el cliente trae el suyo (como el waybill de Colavora), puede mandarlo al crear el envío (`waybillNumber` en `POST /api/v1/orders`); si no lo manda, Teikem lo genera con la fórmula de arriba.
+- **Formato:** hasta 40 caracteres, solo letras, números, guion, guion bajo, punto y barra. Si no cumple: `El conduce solo admite letras, números, guion, guion bajo, punto y barra, hasta 40 caracteres.` (400).
+- **No se puede repetir en la compañía** entre los envíos **activos** (uno dado de baja no cuenta). Si ya existe: `Ya existe un envío activo con ese conduce en la compañía.` (409): el cliente corrige el número; Teikem no le pone otro.
+- **El empaque de la orden ya no se muestra** (ni en la lista ni en la ficha ni como filtro): el número del lote de Recolección y empaque (`EMP-#####`) sigue siendo el de la recolección y no cambia.
+
+**Lista de Envíos (2026-10-21).** Primera columna: **Conduce** (con el número de orden en chico debajo, solo cuando es distinto). Después de **Paquete** va **N.º de paquete** con los números de cada pieza (los primeros y «+N»; todos al pasar el cursor y en la exportación). Ya no hay columnas **Empaque** ni **Cotizado**. Filtros: **Conduce** (el principal) y **N.º de paquete** (parcial, `packageNumber`); el buscador libre también encuentra por número de paquete (por prefijo).
+
+**Descripción larga de la línea (2026-10-21).** La descripción de cada línea de paquete admite hasta **4000 caracteres** (`Máximo 4000 caracteres.`, 400) y en la ficha respeta los saltos de línea: así el contenido de un envío (p. ej. los ítems de AxisCare, un ítem por renglón con su cantidad) va dentro de la línea del paquete, no como una línea por ítem. El encabezado de la ficha cuenta las **piezas reales** del envío.
+
 **Estatus en masculino (2026-10-20, Lote 165):** como el envío de transporte ahora se llama *envío*, sus estatus se escriben en masculino: Sometido, Recogido, Sin asignar, Asignado, En tránsito, Entregado, Intento fallido, Cancelado, En almacén y Devuelto. Los códigos (`SUBMITTED`, `PICKUP`, …) no cambian. Las etiquetas se actualizaron con un script idempotente de `Diseño/logistica-db-update.sql`; si una compañía personalizó la etiqueta de algún estatus, esa se conserva.

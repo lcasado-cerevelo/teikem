@@ -138,7 +138,7 @@ describe('esquema del alta (mensajes exactos del servidor)', () => {
     expect(issues(valid({ codAmount: -1 }))).toEqual({ codAmount: M.codNegative })
     expect(issues(valid({ codAmount: 0 }))).toEqual({})
     expect(issues(valid({ clientInvoiceNumber: 'x'.repeat(41) }))).toEqual({ clientInvoiceNumber: M.numberMax })
-    expect(issues(valid({ packages: [{ packageType: 'BOX', description: 'x'.repeat(201), pieces: 1 }] }))).toEqual({ 'packages.0.description': M.descriptionMax })
+    expect(issues(valid({ packages: [{ packageType: 'BOX', description: 'x'.repeat(4001), pieces: 1 }] }))).toEqual({ 'packages.0.description': M.descriptionMax })
   })
 
   it('el límite no puede ser anterior a la fecha lista', () => {

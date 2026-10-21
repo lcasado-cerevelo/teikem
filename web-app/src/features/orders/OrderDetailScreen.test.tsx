@@ -328,7 +328,7 @@ describe('Expediente — edición dentro del Detalle', () => {
     // el cliente, el N.º de orden, la factura y el empaque son de solo lectura
     expect(screen.queryByRole('combobox', { name: /^Cliente/ })).toBeNull()
     expect(screen.getByText('FAC-00007')).toBeInTheDocument()
-    expect(screen.getByText('EMP-00007')).toBeInTheDocument()
+    expect(screen.queryByText('EMP-00007')).toBeNull()   // el empaque de la orden ya no se muestra (el conduce es el número de envío)
 
     const notes = screen.getByLabelText('Comentario')
     await user.clear(notes)

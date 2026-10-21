@@ -32,6 +32,7 @@ import {
   orderSchema,
   packageGroups,
   packageSummaryText,
+  DESCRIPTION_MAX,
   remapOrderProblem,
   type DuplicateInvoice,
   type OrderFormValues,
@@ -366,7 +367,7 @@ export function OrderEntryForm({ onCreated, labelOnSave }: OrderEntryFormProps) 
                       <Select options={packageOptions} placeholder={t('orders.entry.choosePackageType')} />
                     </Field>
                     <Field name={`packages.${i}.description`} label={t('orders.entry.description')}>
-                      <TextInput maxLength={200} placeholder={t('orders.entry.descriptionPlaceholder')} />
+                      <TextInput maxLength={DESCRIPTION_MAX} placeholder={t('orders.entry.descriptionPlaceholder')} />
                     </Field>
                     <div className="oe-pcs">
                       <Field name={`packages.${i}.pieces`} label={t('orders.entry.pieces')} required>

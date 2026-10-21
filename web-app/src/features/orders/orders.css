@@ -83,6 +83,8 @@
 .od-hint{margin:0 0 12px;color:var(--faint);font-size:12px}
 .od-ro{margin:0;padding:7px 0;font-size:13.5px;overflow-wrap:anywhere}
 .od-muted{color:var(--muted);font-size:12.5px;overflow-wrap:anywhere}
+.od-longtext{white-space:pre-line}   /* el contenido del envío: un ítem por renglón */
+.od-small{font-size:12px;overflow-wrap:anywhere}
 .od-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;min-width:0}
 @media(max-width:480px){.od-facts{grid-template-columns:minmax(0,1fr)}}
 .od-sub{display:flex;align-items:center;gap:8px;margin:14px 0 8px}

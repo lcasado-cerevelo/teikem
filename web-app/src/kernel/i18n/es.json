@@ -3743,7 +3743,6 @@
         "waybill": "Conduce",
         "zone": "Zona",
         "processed": "Factura procesada",
-        "packBatch": "Empaque",
         "orderNumber": "N.º envío",
         "client": "Cliente",
         "date": "Fecha",
@@ -3752,9 +3751,9 @@
         "zip": "ZIP",
         "serviceType": "Servicio",
         "package": "Paquete",
+        "packageNumbers": "N.º de paquete",
         "pieces": "Piezas",
         "cod": "COD",
-        "quoted": "Cotizado",
         "status": "Estatus",
         "continued": "continúa",
         "actions": "Acciones"
@@ -3777,8 +3776,8 @@
         "processedRange": "Fecha de procesamiento",
         "invoice": "Factura",
         "invoicePlaceholder": "FAC-…",
-        "pack": "Empaque",
-        "packPlaceholder": "EMP-…",
+        "waybill": "Conduce",
+        "packageNumber": "N.º de paquete",
         "status": "Estatus",
         "all": "Todos"
       },
@@ -3809,7 +3808,7 @@
       "noPriority": "Sin prioridad",
       "pickup": "Recogido",
       "waybill": "Conduce (waybill)",
-      "packBatch": "Empaque",
+      "packageNumbers": "N.º de paquete",
       "references": "Referencias",
       "packagesTitle": "Paquetes",
       "piecesCount": "{count} piezas",
@@ -4060,7 +4059,7 @@
         "codNegative": "El monto COD no puede ser negativo.",
         "specialRequired": "El servicio especial es obligatorio en una entrega especial.",
         "numberMax": "El número no puede exceder 40 caracteres.",
-        "descriptionMax": "Máximo 200 caracteres.",
+        "descriptionMax": "Máximo 4000 caracteres.",
         "dueBeforeReady": "La fecha límite no puede ser anterior a la fecha lista."
       },
       "dup": {

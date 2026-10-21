@@ -24,9 +24,12 @@ export interface OrderFilters {
   cities: string[]
   postalCodePrefix: string
   invoice: string
-  packBatch: string
+  /** Conduce (el número de envío): el filtro principal de la lista. */
+  waybill: string
+  /** Número de alguna pieza (el del label). */
+  packageNumber: string
   statuses: string[]
-  /** Buscador libre (QBox): número, factura, empaque y consignatario. */
+  /** Buscador libre (QBox): conduce, número de orden, número de paquete, factura y consignatario. */
   search: string
   /** Lote 128: factura del cliente procesada ('' = todas, 'yes', 'no') y la fecha de procesamiento ('YYYY-MM-DD' o ''). */
   processed: '' | 'yes' | 'no'
@@ -58,7 +61,8 @@ export const EMPTY_ORDER_FILTERS: OrderFilters = {
   cities: [],
   postalCodePrefix: '',
   invoice: '',
-  packBatch: '',
+  waybill: '',
+  packageNumber: '',
   statuses: [],
   search: '',
   processed: '',
@@ -94,7 +98,8 @@ export function buildOrderQuery(f: OrderFilters, page: number, pageSize: number)
     cities: list(f.cities),
     postalCodePrefix: text(f.postalCodePrefix),
     invoice: text(f.invoice),
-    packBatch: text(f.packBatch),
+    waybill: text(f.waybill),
+    packageNumber: text(f.packageNumber),
     statuses: list(f.statuses),
     search: text(f.search),
     invoiceProcessed: f.processed === 'yes' ? true : f.processed === 'no' ? false : undefined,
@@ -138,6 +143,20 @@ export function packageGroups(o: Pick<OrderListItemDto, 'packages' | 'packagesSu
   return [...groups.values()]
 }
 
+/** Los números de paquete (los de cada pieza) de un envío, en orden y sin repetidos. */
+export function packageNumbersOf(o: Pick<OrderListItemDto, 'packages'>): string[] {
+  const seen = new Set<string>()
+  for (const l of o.packages ?? []) for (const n of l.pieceNumbers ?? (l.packageNumber ? [l.packageNumber] : [])) if (n) seen.add(n)
+  return [...seen]
+}
+
+/** Los números de paquete de una línea para la ficha: hasta 10 y «+N» (el resto no cabe en la tabla). */
+export function pieceNumbersText(numbers: readonly string[]): string {
+  if (numbers.length === 0) return '—'
+  const shown = numbers.slice(0, 10).join(', ')
+  return numbers.length > 10 ? `${shown} +${numbers.length - 10}` : shown
+}
+
 /** «Caja ×2 + Sobre ×1», como el ticket: tipos de paquete con sus piezas. */
 export function packageSummaryText(groups: readonly PackageGroup[]): string {
   return groups.map((g) => `${g.label} ×${g.pieces}`).join(' + ')
@@ -153,7 +172,7 @@ export function canDeleteOrder(o: Pick<OrderListItemDto, 'isInitialStatus' | 'is
 // ---------------------------------------------------------------------------------------------------------------------
 
 export const NUMBER_MAX = 40
-export const DESCRIPTION_MAX = 200
+export const DESCRIPTION_MAX = 4000   // la descripción de la línea es larga (el contenido del envío); igual que el servidor
 
 export interface PackageValues {
   packageType: string

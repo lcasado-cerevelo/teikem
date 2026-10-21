@@ -109,12 +109,13 @@ describe('Envíos — lista', () => {
     const rows = bodyRows()
     expect(rows).toHaveLength(3) // O1 = 2 filas (Caja, Sobre) + O2 = 1
     const [first, cont, second] = rows
-    expect(within(first).getByText('EMP-00001')).toBeInTheDocument()
-    expect(within(first).getByText('CND-0000001')).toBeInTheDocument()   // Lote 97: el conduce
+    expect(within(first).queryByText('EMP-00001')).toBeNull()   // el empaque de la orden ya no es una columna
+    expect(within(first).getByText('CND-0000001')).toBeInTheDocument()   // el conduce es el número de envío (primera columna)
     expect(within(first).getByText('ORD-00001')).toBeInTheDocument()
     expect(within(first).getByText('Caja')).toBeInTheDocument()
     expect(within(first).getByText('Ropa')).toBeInTheDocument()
     expect(within(first).getByText('$50.00')).toBeInTheDocument()
+    expect(within(first).queryByText('$120.00')).toBeNull()   // sin la columna Cotizado
     expect(within(first).getByText('Entrada')).toBeInTheDocument()
     expect(within(cont).getByText('↳')).toBeInTheDocument()
     expect(within(cont).getByText('Sobre')).toBeInTheDocument()
@@ -122,7 +123,7 @@ describe('Envíos — lista', () => {
     expect(within(cont).queryByText('Farmacia Central')).toBeNull()
     expect(within(cont).queryByText('Entrada')).toBeNull()
     expect(within(second).getByText('ORD-00002')).toBeInTheDocument()
-    expect(within(second).getByText('—')).toBeInTheDocument() // sin COD
+    expect(within(second).getAllByText('—').length).toBeGreaterThan(0) // sin COD (y sin números de paquete)
     // la paginación cuenta envíos (2), no filas (3)
     expect(screen.getByText('1–2 de 2')).toBeInTheDocument()
   })
@@ -132,7 +133,7 @@ describe('Envíos — lista', () => {
     await screen.findByText('Farmacia Central')
     const heads = within(screen.getAllByRole('rowgroup')[0]).getAllByRole('columnheader').map((h) => h.textContent?.trim())
     // Lote F-G2: la casilla «Elegir» primero (para Imprimir label)
-    expect(heads.slice(0, 15)).toEqual(['Elegir', 'Empaque', 'Conduce', 'N.º envío', 'Fecha', 'Zona', 'Factura procesada', 'Consignatario', 'Pueblo', 'ZIP', 'Servicio', 'Paquete', 'Piezas', 'COD', 'Estatus'])   // Lote 128: cuándo se procesó la factura
+    expect(heads.slice(0, 14)).toEqual(['Elegir', 'Conduce', 'Fecha', 'Zona', 'Factura procesada', 'Consignatario', 'Pueblo', 'ZIP', 'Servicio', 'Paquete', 'N.º de paquete', 'Piezas', 'COD', 'Estatus'])   // Lote 128: cuándo se procesó la factura
   })
 
   it('pide la primera página con skip/take', async () => {
@@ -163,7 +164,8 @@ describe('Envíos — lista', () => {
     // Texto: ZIP (prefijo), factura, empaque, N.º de envío y consignatario
     await user.type(screen.getByLabelText('ZIP'), '009')
     await user.type(screen.getByLabelText('Factura'), 'FAC-1')
-    await user.type(screen.getByLabelText('Empaque'), 'EMP-1')
+    await user.type(screen.getByLabelText('Conduce'), 'CND-1')
+    await user.type(screen.getByLabelText('N.º de paquete'), '0000401')
     await user.type(screen.getByLabelText('N.º de envío'), 'ORD-1')
     await user.type(screen.getByLabelText('Consignatario'), 'Farm')
     // Lote 128: factura procesada (sí/no) y fecha de procesamiento (rangos sugeridos)
@@ -182,7 +184,9 @@ describe('Envíos — lista', () => {
       const q = lastOrdersQuery()
       expect(q.get('postalCodePrefix')).toBe('009')
       expect(q.get('invoice')).toBe('FAC-1')
-      expect(q.get('packBatch')).toBe('EMP-1')
+      expect(q.get('waybill')).toBe('CND-1')
+      expect(q.get('packageNumber')).toBe('0000401')
+      expect(q.get('packBatch')).toBeNull()
       expect(q.get('orderNumber')).toBe('ORD-1')
       expect(q.get('consignee')).toBe('Farm')
       expect(q.getAll('serviceTypes')).toEqual(['STANDARD', 'EXPRESS'])
@@ -289,13 +293,8 @@ describe('Envíos — papelera, abrir y precio', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
-  it('la columna Cotizado solo con orders.view_price (sin él se omite)', async () => {
-    const { unmount } = wrap([...VIEW, 'orders.view_price'])
-    await screen.findByText('Farmacia Central')
-    expect(screen.getByRole('columnheader', { name: /Cotizado/ })).toBeInTheDocument()
-    expect(within(bodyRows()[0]).getByText('$120.00')).toBeInTheDocument()
-    unmount()
-    wrap(VIEW)
+  it('no hay columna Cotizado, ni siquiera con orders.view_price', async () => {
+    wrap([...VIEW, 'orders.view_price'])
     await screen.findByText('Farmacia Central')
     expect(screen.queryByRole('columnheader', { name: /Cotizado/ })).toBeNull()
     expect(screen.queryByText('$120.00')).toBeNull()
