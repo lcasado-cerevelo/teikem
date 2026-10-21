@@ -28,6 +28,33 @@ Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Esta
 - ☐ **C4. Recibo y despacho con varios documentos (acordado).** Hoy un recibo apunta a UN aviso u orden de compra (y un aviso solo tiene un recibo activo) y una recolección a UNA orden de venta o UN aviso de salida (no se mezclan). Permitir varios (cada línea ya guarda de qué línea de documento viene; la recolección por olas es una recolección para varias órdenes).
 - **Detalle menor por confirmar al llegar a C2 (no bloquea nada):** si «Recibido parcial» avisa al cliente en el portal (el aviso de llegada ya publica eventos).
 
+## F. Análisis: quién ve cada indicador y gráfico (decisión del 2026-10-21)
+**Lo que pide el dueño:** los indicadores y gráficos son **por compañía**. Se pueden crear nuevos con el permiso apropiado (`analytics.manage`; lo que crea el admin de la compañía queda para esa compañía). Y **la visibilidad se decide para todos, incluidos los «Por defecto»**: privado, toda la compañía, o compartido con personas y/o roles. «Por defecto» solo quiere decir **que el sistema lo creó**, no que sea intocable para la compañía.
+
+**Hallazgos del código (para no repetir el análisis):**
+- Ya son por compañía: `IndicatorDefinition`/`ChartDefinition` tienen `TenantId`; los «Por defecto» (`IsSystem`) son copias sembradas en cada compañía.
+- Ya existen visibilidad (`ReportVisibility`: PRIVATE / TENANT / SHARED), lista de personas y de roles (`IndicatorShare`/`ChartShare`) y su editor en «Nuevo indicador/gráfico» — pero la regla del servidor (`IsVisible`) devuelve **verdadero siempre** si `IsSystem`, y la edición de un «Por defecto» está bloqueada.
+- «Mostrar en Pulso del día» y el rango ya son **preferencia por usuario** (el valor de la definición es solo el predeterminado); la nota de la maqueta que decía «compartido» ya no aplica.
+- Aparte de la visibilidad hay una regla de datos: para ver un indicador el usuario necesita permiso de **leer la fuente** y el módulo encendido; eso se mantiene.
+
+**Diseño:**
+- ☐ **F1.** Quitar el atajo de `IsSystem` en la regla de visibilidad: los «Por defecto» nacen **TENANT** (todos, como hoy) pero respetan lo que se les ponga.
+- ☐ **F2.** Quien tenga `analytics.manage` puede cambiar de un «Por defecto» **solo** la visibilidad (privado / compañía / compartido con personas y roles), el rango por omisión y si aparece en Pulso por omisión; **no** el nombre, la fuente, el campo ni los filtros (son las métricas oficiales). Quien lo desee, lo **duplica** para cambiarlo (la copia es de la compañía y editable).
+- ☐ **F3.** Pantalla: en cada tarjeta, «Quién lo ve» (editor de visibilidad, el mismo de los creados por usuarios) también para los «Por defecto»; marca «Por defecto» = «lo creó el sistema».
+- ☐ **F4.** Permisos: crear, editar y compartir exigen `analytics.manage`; ver, `analytics.view`. Revisar que el admin de la compañía los tenga y que la plantilla de roles no se los dé a todos.
+- ☐ Pruebas: un rol sin acceso no ve el «Por defecto» restringido ni en Indicadores, ni en Gráficos, ni en Pulso; el administrador de plataforma sigue viéndolo todo; un cambio queda auditado.
+- Lo mismo aplica a **Vistas e informes** (`ReportDefinition`).
+
+## G. Avisos de flota (idea del dueño, 2026-10-21; recomendación: empezar corto)
+- ☐ **G1.** Con el mismo mecanismo que los avisos de inventario (trabajo diario + un aviso por conjunto + no se repite en la semana): **documentos por vencer / vencidos** (seguro, marbete, licencia, de vehículos y choferes; días de anticipación ajustables) y **mantenimiento próximo o vencido** (por fecha o millaje).
+- ☐ **G2 (después, con datos reales):** orden de trabajo abierta demasiado tiempo, combustible fuera de rango, vehículo o chofer sin ruta N días.
+
+## H. Contabilización de compras y despachos (aún sin construir en el servidor)
+- ☐ **H1.** Regla acordada por el análisis del 2026-10-21 (**por confirmar con el dueño**): se contabiliza por **dueño del inventario** (lo propio sí, lo de un cliente no), sin importar el tipo de documento (orden de compra o aviso de llegada), con el **costo congelado de cada línea** (capas, Lotes 147-148). Corridas Generada → Aceptada → Exportada con plantilla de exportación.
+
+## I. Defectos conocidos por arreglar
+- ☐ **I1.** «Avisos que puedo silenciar» (campana → lista) sale con los interruptores **sin texto**; sospecha de color tras el cambio de marca o nombre vacío del servidor; por revisar.
+
 ## D. Pendientes menores
 - ☐ Líneas existentes de una orden de compra: mostrar el aviso de diferencia de precio al editar.
 - ☐ Revisar `scripts/smoke.sh`: falla antes de llegar a lo nuevo, en el estatus de órdenes `INBOUND` (no se sabe si ya fallaba).
