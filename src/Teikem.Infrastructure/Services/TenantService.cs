@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Constants;
+using Teikem.Domain.Fleet;
 using Teikem.Domain.Tenancy;
 using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
@@ -101,6 +102,9 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         if (req.InventoryNoMovementDays.HasValue)
             t.InventoryNoMovementDays = InventoryAlertRules.ValidNoMovementDays(req.InventoryNoMovementDays.Value) ? req.InventoryNoMovementDays.Value
                 : throw new ValidationException("inventoryNoMovementDays", InventoryAlertRules.NoMovementDaysRange);
+        if (req.FleetDocWarnDays.HasValue)
+            t.FleetDocWarnDays = FleetAlertRules.ValidDocWarnDays(req.FleetDocWarnDays.Value) ? req.FleetDocWarnDays.Value
+                : throw new ValidationException("fleetDocWarnDays", FleetAlertRules.DocWarnDaysRange);
         if (req.DefaultProductCategoryId.HasValue) await ApplyDefaultProductCategoryAsync(t, req.DefaultProductCategoryId.Value, ct);
         var formatChanges = FormatChanges(req);
         if (!formatChanges.IsEmpty) ApplyFormat(t, TenantFormatRules.Read(t), formatChanges);
@@ -252,5 +256,6 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         RotationRules.Parse(t.RotationMethodNoLot) is string nl && RotationMethods.ForNoLot.Contains(nl) ? nl : RotationMethods.Fifo,   // 2026-10-20
         DispatchRequirementRules.Parse(t.DispatchRequirement) ?? DispatchRequirements.Free,   // 2026-10-20 Lote 145
         ValuationRules.Parse(t.ValuationMethod) ?? ValuationMethods.Average,   // 2026-10-20 Lote 148
-        ReceiptRequirementRules.Parse(t.ReceiptRequirement) ?? ReceiptRequirements.Free);   // 2026-10-20 Lote 149
+        ReceiptRequirementRules.Parse(t.ReceiptRequirement) ?? ReceiptRequirements.Free,   // 2026-10-20 Lote 149
+        t.FleetDocWarnDays);   // 2026-10-21 Lote 168
 }

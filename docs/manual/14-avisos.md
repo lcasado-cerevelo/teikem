@@ -74,6 +74,27 @@ Ajustes (web: **Ajustes de la compañía → Operación → «Avisos de inventar
 **Agregar otro aviso de inventario más adelante** (p. ej. exceso de inventario, conteo con diferencias): un código en `InventoryEventCodes`, su definición en `InventoryEventProvider` y su
 detección en `InventoryAlertService`; el motor de avisos, las reglas y la bandeja no cambian.
 
+### 3.2 bis Eventos de flota (Lote 168, 2026-10-21)
+
+Módulo **Catálogos** (donde viven vehículos, choferes y mantenimiento). Los publica el trabajo programado `FLEET_ALERT_SCAN` ([capítulo 13](13-trabajos-programados.md)), **todos los días a las 6:15** (hora de la compañía; «Ejecutar ahora» lo repite). Igual que los de inventario: **no viene ninguna regla armada** (el administrador las crea en Sistema → Reglas de aviso), todos se pueden silenciar en la bandeja, y cada evento sale como **un solo aviso con el conjunto completo** (`{count}` e `{items}`, hasta 10 renglones y «… +N»), sin repetirse en la misma semana mientras el conjunto no cambie (con recordatorio semanal si el problema sigue vivo).
+
+| Evento (código) | Qué avisa | Variables extra y formato de `{items}` |
+|---|---|---|
+| **Documentos de la flota por vencer** (`FLEET_DOC_EXPIRING`) | Documentos de **vehículos** (registro, seguro, inspección, permiso) y de **choferes** (licencias y certificaciones) que vencen hoy o dentro de los próximos N días (N = ajuste de la compañía, 30 por omisión). | `{days}`; `V código · documento · vencimiento · días que faltan` (vehículo) o `C código · …` (chofer) |
+| **Documentos de la flota vencidos** (`FLEET_DOC_EXPIRED`) | Documentos cuyo vencimiento es **anterior a hoy**. | `V/C código · documento · vencimiento · días vencido` |
+| **Mantenimiento próximo** (`FLEET_MAINTENANCE_DUE_SOON`) | Programas de mantenimiento preventivo «Por vencer» (queda el 10 % o menos del intervalo). | `vehículo · programa · faltan N km · faltan N días` (solo lo que el programa usa) |
+| **Mantenimiento vencido** (`FLEET_MAINTENANCE_OVERDUE`) | Programas «Vencidos» (lo restante es 0 o negativo). | `vehículo · programa · pasado por N km · pasado por N días` |
+
+**Qué cuenta:** solo vehículos y choferes **activos y no dados de baja**; de cada tipo de documento solo el **vigente** (si ya se renovó, el viejo no avisa); un documento **sin fecha de vencimiento no avisa**. El mantenimiento usa exactamente el mismo cálculo del panel «Mantenimiento preventivo» (Flota → Mantenimiento).
+
+Ajuste (web: **Ajustes de la compañía → Operación → «Avisos de flota»**, `admin.tenant`; API: `PUT /api/v1/tenant/settings`): `fleetDocWarnDays` (1 a 365, 30).
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| `fleetDocWarnDays` fuera de 1 a 365 | `Los días de aviso de documentos de la flota deben estar entre 1 y 365.` | 400 (campo `fleetDocWarnDays`) |
+
+Los avisos enlazan a Flota → **Documentos por vencer** o **Mantenimiento**. Más avisos de flota (orden de trabajo abierta demasiado tiempo, combustible fuera de rango, vehículo o chofer sin ruta N días) quedan para cuando haya datos reales (plan G2).
+
 ### 3.3 Eventos del aviso de salida (Lote 143)
 
 Módulo **Inventario por lote y serie**. Todos opcionales (se silencian en la bandeja); **no viene ninguna regla armada**. Variables comunes: `{number}` `{client}` `{warehouse}`.

@@ -55,7 +55,7 @@ Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Esta
 - Lo mismo aplica a **Vistas e informes** (`ReportDefinition`).
 
 ## G. Avisos de flota (idea del dueño, 2026-10-21; recomendación: empezar corto)
-- ☐ **G1.** Con el mismo mecanismo que los avisos de inventario (trabajo diario + un aviso por conjunto + no se repite en la semana): **documentos por vencer / vencidos** (seguro, marbete, licencia, de vehículos y choferes; días de anticipación ajustables) y **mantenimiento próximo o vencido** (por fecha o millaje).
+- ☑ **G1 (Lote 168).** Con el mismo mecanismo que los avisos de inventario (trabajo diario + un aviso por conjunto + no se repite en la semana): **documentos por vencer / vencidos** (seguro, marbete, licencia, de vehículos y choferes; días de anticipación ajustables) y **mantenimiento próximo o vencido** (por fecha o millaje).
 - ☐ **G2 (después, con datos reales):** orden de trabajo abierta demasiado tiempo, combustible fuera de rango, vehículo o chofer sin ruta N días.
 
 ## H. Contabilización de compras y despachos (aún sin construir en el servidor)

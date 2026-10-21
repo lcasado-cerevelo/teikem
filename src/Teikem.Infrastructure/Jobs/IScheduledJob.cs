@@ -52,4 +52,6 @@ public static class JobKeys
     public const string InventoryAlertScan = "INVENTORY_ALERT_SCAN";
     /// <summary>Lote 143: reserva el pendiente de los avisos de salida cuando entra mercancía y avisa.</summary>
     public const string ExitNoticeBackorderScan = "EXIT_NOTICE_BACKORDER_SCAN";
+    /// <summary>Lote 168: revisa la flota y avisa documentos de vehículos y choferes por vencer o vencidos, y mantenimiento próximo o vencido.</summary>
+    public const string FleetAlertScan = "FLEET_ALERT_SCAN";
 }

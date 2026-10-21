@@ -63103,6 +63103,10 @@
           "receiptRequirement": {
             "type": "string",
             "nullable": true
+          },
+          "fleetDocWarnDays": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -63294,6 +63298,11 @@
           },
           "receiptRequirement": {
             "type": "string",
+            "nullable": true
+          },
+          "fleetDocWarnDays": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           }
         },

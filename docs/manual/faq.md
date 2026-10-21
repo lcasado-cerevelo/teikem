@@ -9761,3 +9761,14 @@ Al pie del menú lateral, en letra chica: **Privacidad** y **Términos de uso** 
 
 **¿Dónde veo la política de privacidad y los términos de uso en el portal del cliente?**
 Al final de **Ajustes**, en letra chica: toque **Privacidad** o **Términos de uso**. Se abre el documento para leer (sin botón de aceptar) y **Volver** regresa a Ajustes.
+
+## Avisos de flota (Lote 168, 2026-10-21)
+
+### ¿Qué avisa la flota y a quién le llega?
+Documentos de vehículos y choferes por vencer o vencidos, y mantenimiento preventivo próximo o vencido. **No viene ninguna regla armada**: en Sistema → Reglas de aviso se crea una por evento («Documentos de la flota por vencer», «…vencidos», «Mantenimiento próximo», «Mantenimiento vencido») con sus destinatarios y canal. Cada usuario puede silenciarlos desde la campana.
+
+### No me llegó el aviso de un documento que vence
+Revisa que (1) el documento tenga **fecha de vencimiento** y sea el **vigente** de su tipo (si ya se cargó uno que vence después, el viejo no avisa); (2) el vehículo o chofer esté **activo** y no dado de baja; (3) caiga dentro de los días de anticipación (Ajustes de la compañía → Operación → «Avisos de flota», 30 por omisión); (4) el trabajo «Avisos de flota» esté activo (Sistema → Trabajos programados, «Ejecutar ahora»); (5) la regla tenga destinatario y canal; y (6) no sea el mismo conjunto ya avisado esta semana.
+
+### Cambiar con cuántos días de anticipación avisa
+Ajustes de la compañía → Operación → «Avisos de flota» → «Avisar documentos por vencer con (días)» (1 a 365). Si pone otro valor: `Los días de aviso de documentos de la flota deben estar entre 1 y 365.` (400). Vale para todos los documentos de la flota; el mantenimiento usa su propio criterio («Por vencer» = queda el 10 % del intervalo).

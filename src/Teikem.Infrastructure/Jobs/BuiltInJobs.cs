@@ -168,6 +168,35 @@ public sealed class InventoryAlertScanJob : IScheduledJob
 }
 
 /// <summary>
+/// Lote 168 (2026-10-21) — revisa la flota cada día y publica los avisos de flota: documentos de vehículos y choferes por vencer o vencidos, y mantenimiento preventivo próximo o
+/// vencido (<see cref="Services.FleetAlertService"/>). Un aviso por evento con el conjunto completo; no repite el mismo conjunto en la misma semana. Los vehículos y choferes viven
+/// en el módulo de catálogo; si está apagado no hace nada.
+/// </summary>
+public sealed class FleetAlertScanJob : IScheduledJob
+{
+    public string Key => JobKeys.FleetAlertScan;
+    public string NameEs => "Avisos de flota";
+    public string NameEn => "Fleet alerts";
+    public string DescriptionEs => "Revisa la flota y avisa (eventos «Documentos de la flota por vencer», «Documentos de la flota vencidos», «Mantenimiento próximo» y «Mantenimiento vencido») según las reglas de aviso de la compañía.";
+    public string DescriptionEn => "Checks the fleet and notifies (events \"Fleet documents about to expire\", \"Expired fleet documents\", \"Maintenance coming up\" and \"Overdue maintenance\") according to the company's notification rules.";
+    public string DefaultKind => JobScheduleKinds.Daily;
+    public int? DefaultIntervalSeconds => null;
+    public TimeSpan? DefaultDailyAt => new(6, 15, 0);
+    public bool DefaultEnabled => true;
+    public TimeSpan MaxRuntime => TimeSpan.FromMinutes(10);
+
+    public async Task<string?> RunAsync(JobRunContext context, CancellationToken ct)
+    {
+        var modules = context.Services.GetRequiredService<ModuleService>();
+        if (!await modules.IsEnabledAsync(ModuleKeys.Catalog, ct)) return "El módulo de catálogo está apagado; no se hizo nada.";
+        var r = await context.Services.GetRequiredService<FleetAlertService>().ScanAsync(ct);
+        return r.Total == 0
+            ? "Nada nuevo que avisar."
+            : $"Avisos nuevos: {r.DocsExpiring} documentos por vencer, {r.DocsExpired} vencidos, {r.MaintenanceDueSoon} mantenimientos próximos, {r.MaintenanceOverdue} vencidos.";
+    }
+}
+
+/// <summary>
 /// Lote 75 (P5) — pasa a Vencida (OVERDUE) lo facturado cuyo vencimiento ya pasó y todavía tiene saldo. Cada hora. Si el módulo de facturación está apagado no hace nada.
 /// </summary>
 public sealed class BillingOverdueScanJob : IScheduledJob

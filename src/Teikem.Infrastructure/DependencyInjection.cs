@@ -270,6 +270,7 @@ public static class DependencyInjection
         services.AddScoped<InventoryReconciler>();
         services.AddScoped<InventoryReconciliationService>();
         services.AddScoped<InventoryAlertService>();
+        services.AddScoped<FleetAlertService>();   // Lote 168: avisos de flota
         services.AddScoped<PortalCreateService>();   // Lote 156: lo que el cliente crea desde el portal   // Lote 141: avisos de inventario
         services.AddScoped<ExitNoticeService>();   // Lote 143: avisos de salida
         services.AddScoped<IExitNoticeDispatchReversal>(sp => sp.GetRequiredService<ExitNoticeService>());   // Lote 143: deshacer una recolección de un aviso de salida
@@ -288,6 +289,7 @@ public static class DependencyInjection
         services.AddSingleton<IScheduledJob, TestJob>();
         services.AddSingleton<IScheduledJob, SalesBackorderScanJob>();   // Lote 66
         services.AddSingleton<IScheduledJob, InventoryAlertScanJob>();   // Lote 141
+        services.AddSingleton<IScheduledJob, FleetAlertScanJob>();   // Lote 168
         services.AddSingleton<IScheduledJob, ExitNoticeBackorderScanJob>();   // Lote 143
         services.AddSingleton<IScheduledJob, BillingOverdueScanJob>();   // Lote 75
         services.AddSingleton<IScheduledJob, KpiSnapshotJob>();   // Lote 90
@@ -335,6 +337,7 @@ public static class DependencyInjection
         services.AddSingleton<INotificationEventProvider, SalesEventProvider>();   // Lote 66
         services.AddSingleton<INotificationEventProvider, IntegrationEventProvider>();   // Lote 132 (P11)
         services.AddSingleton<INotificationEventProvider, InventoryEventProvider>();   // Lote 141
+        services.AddSingleton<INotificationEventProvider, FleetEventProvider>();   // Lote 168
         services.AddSingleton<INotificationEventProvider, ExitNoticeEventProvider>();   // Lote 143
         services.AddSingleton<INotificationEventProvider, AsnEventProvider>();   // Lote 157: avisos de llegada
         services.AddSingleton<NotificationEventCatalog>();

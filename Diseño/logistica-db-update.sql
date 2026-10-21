@@ -5611,3 +5611,14 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_WarehouseBin_Code' AND object_id = OBJECT_ID('dbo.WarehouseBin'))
     CREATE INDEX IX_WarehouseBin_Code ON dbo.WarehouseBin (Code) WHERE IsRemoved = 0;
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-21 (Lote 168) — Avisos de flota (documentos de vehiculos y choferes por vencer o vencidos; mantenimiento proximo o vencido).
+   - dbo.Tenant.FleetDocWarnDays INT NOT NULL DEFAULT 30 (1 a 365): dias de anticipacion del aviso de documentos por vencer.
+   Solo AGREGA. Idempotente. Los eventos (FLEET_*) y el trabajo FLEET_ALERT_SCAN se registran desde codigo: no hay datos que sembrar.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Tenant', 'FleetDocWarnDays') IS NULL
+    ALTER TABLE dbo.Tenant ADD FleetDocWarnDays INT NOT NULL CONSTRAINT DF_Tenant_FleetDocWarnDays DEFAULT 30;
+GO
+IF OBJECT_ID('dbo.CK_Tenant_FleetDocWarnDays', 'C') IS NULL
+    ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_FleetDocWarnDays CHECK (FleetDocWarnDays BETWEEN 1 AND 365);
+GO

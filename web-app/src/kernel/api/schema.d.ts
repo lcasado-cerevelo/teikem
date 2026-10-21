@@ -38766,6 +38766,8 @@ export interface components {
             dispatchRequirement?: string | null;
             valuationMethod?: string | null;
             receiptRequirement?: string | null;
+            /** Format: int32 */
+            fleetDocWarnDays?: number;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -38825,6 +38827,8 @@ export interface components {
             dispatchRequirement?: string | null;
             valuationMethod?: string | null;
             receiptRequirement?: string | null;
+            /** Format: int32 */
+            fleetDocWarnDays?: number | null;
         };
         ValuationReportDto: {
             /** Format: int32 */

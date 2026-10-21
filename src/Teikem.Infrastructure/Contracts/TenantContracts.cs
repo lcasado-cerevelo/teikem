@@ -21,7 +21,8 @@ public sealed record TenantSettingsDto(
     bool CountAutoCloseMatching = false, string? DefaultManualIssueReason = null, int? DefaultProductCategoryId = null, string RotationMethod = "FEFO",
     int SessionMinutes = 43200, int DeviceSessionMinutes = 43200, string RotationEnforcement = "SUGGEST",
     int InventoryExpiryWarnDays = 30, int InventoryNoMovementDays = 90, string RotationMethodNoLot = "FIFO",
-    string DispatchRequirement = "FREE", string ValuationMethod = "AVERAGE", string ReceiptRequirement = "FREE");
+    string DispatchRequirement = "FREE", string ValuationMethod = "AVERAGE", string ReceiptRequirement = "FREE",
+    int FleetDocWarnDays = 30);
 
 /// <summary>
 /// Cambio parcial de los ajustes: null = sin cambio. Región y formatos: si RegionCode es distinto del actual se cargan los valores
@@ -47,7 +48,8 @@ public sealed record TenantSettingsUpdateRequest(
     bool? CountAutoCloseMatching = null, string? DefaultManualIssueReason = null, int? DefaultProductCategoryId = null, string? RotationMethod = null,
     int? SessionMinutes = null, int? DeviceSessionMinutes = null, string? RotationEnforcement = null,
     int? InventoryExpiryWarnDays = null, int? InventoryNoMovementDays = null, string? RotationMethodNoLot = null,
-    string? DispatchRequirement = null, string? ValuationMethod = null, string? ReceiptRequirement = null);
+    string? DispatchRequirement = null, string? ValuationMethod = null, string? ReceiptRequirement = null,
+    int? FleetDocWarnDays = null);
 
 /// <summary>Juego de valores de región y formatos (los de una región en <see cref="TenantFormatOptionsDto"/>).</summary>
 public sealed record TenantFormatDto(

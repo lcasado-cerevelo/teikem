@@ -246,49 +246,54 @@ public sealed class ManualIssueDefaultReasonTests
         // 2026-10-11 (Lote 34): y después de esa, el método de rotación (en el DTO siempre trae valor, FEFO por omisión; en el cambio parcial, null = sin cambio).
         // 2026-10-12: al final se agregaron SessionMinutes y DeviceSessionMinutes (duración de la sesión en minutos); lo anterior conserva su orden relativo.
         var dto = typeof(TenantSettingsDto).GetConstructors().Single().GetParameters();
-        Assert.Equal(("DefaultManualIssueReason", typeof(string)), (dto[^12].Name, dto[^12].ParameterType));
-        Assert.Equal(("DefaultProductCategoryId", typeof(int?)), (dto[^11].Name, dto[^11].ParameterType));
-        Assert.Equal(("RotationMethod", typeof(string)), (dto[^10].Name, dto[^10].ParameterType));
-        foreach (var p in new[] { dto[^12], dto[^11] }) { Assert.True(p.HasDefaultValue); Assert.Null(p.DefaultValue); }
-        Assert.True(dto[^10].HasDefaultValue);
-        Assert.Equal("FEFO", dto[^10].DefaultValue);
-        Assert.Equal(("SessionMinutes", typeof(int)), (dto[^9].Name, dto[^9].ParameterType));
-        Assert.Equal(("DeviceSessionMinutes", typeof(int)), (dto[^8].Name, dto[^8].ParameterType));
-        Assert.Equal(("RotationEnforcement", typeof(string)), (dto[^7].Name, dto[^7].ParameterType));   // 2026-10-20 (al final, SUGGEST por omisión)
-        Assert.Equal("SUGGEST", dto[^7].DefaultValue);
+        Assert.Equal(("DefaultManualIssueReason", typeof(string)), (dto[^13].Name, dto[^13].ParameterType));
+        Assert.Equal(("DefaultProductCategoryId", typeof(int?)), (dto[^12].Name, dto[^12].ParameterType));
+        Assert.Equal(("RotationMethod", typeof(string)), (dto[^11].Name, dto[^11].ParameterType));
+        foreach (var p in new[] { dto[^13], dto[^12] }) { Assert.True(p.HasDefaultValue); Assert.Null(p.DefaultValue); }
+        Assert.True(dto[^11].HasDefaultValue);
+        Assert.Equal("FEFO", dto[^11].DefaultValue);
+        Assert.Equal(("SessionMinutes", typeof(int)), (dto[^10].Name, dto[^10].ParameterType));
+        Assert.Equal(("DeviceSessionMinutes", typeof(int)), (dto[^9].Name, dto[^9].ParameterType));
+        Assert.Equal(("RotationEnforcement", typeof(string)), (dto[^8].Name, dto[^8].ParameterType));   // 2026-10-20 (al final, SUGGEST por omisión)
+        Assert.Equal("SUGGEST", dto[^8].DefaultValue);
         var req = typeof(TenantSettingsUpdateRequest).GetConstructors().Single().GetParameters();
-        Assert.Equal(("DefaultManualIssueReason", typeof(string)), (req[^12].Name, req[^12].ParameterType));
-        Assert.Equal(("DefaultProductCategoryId", typeof(int?)), (req[^11].Name, req[^11].ParameterType));
-        Assert.Equal(("RotationMethod", typeof(string)), (req[^10].Name, req[^10].ParameterType));
-        Assert.Equal(("SessionMinutes", typeof(int?)), (req[^9].Name, req[^9].ParameterType));
-        Assert.Equal(("DeviceSessionMinutes", typeof(int?)), (req[^8].Name, req[^8].ParameterType));
-        Assert.Equal(("RotationEnforcement", typeof(string)), (req[^7].Name, req[^7].ParameterType));   // 2026-10-20 (al final, opcional)
-        foreach (var p in new[] { req[^12], req[^11], req[^10], req[^9], req[^8] }) { Assert.True(p.HasDefaultValue); Assert.Null(p.DefaultValue); }
+        Assert.Equal(("DefaultManualIssueReason", typeof(string)), (req[^13].Name, req[^13].ParameterType));
+        Assert.Equal(("DefaultProductCategoryId", typeof(int?)), (req[^12].Name, req[^12].ParameterType));
+        Assert.Equal(("RotationMethod", typeof(string)), (req[^11].Name, req[^11].ParameterType));
+        Assert.Equal(("SessionMinutes", typeof(int?)), (req[^10].Name, req[^10].ParameterType));
+        Assert.Equal(("DeviceSessionMinutes", typeof(int?)), (req[^9].Name, req[^9].ParameterType));
+        Assert.Equal(("RotationEnforcement", typeof(string)), (req[^8].Name, req[^8].ParameterType));   // 2026-10-20 (al final, opcional)
+        foreach (var p in new[] { req[^13], req[^12], req[^11], req[^10], req[^9] }) { Assert.True(p.HasDefaultValue); Assert.Null(p.DefaultValue); }
         // 2026-10-20 (Lote 141): al final, los días de los avisos de inventario (en el DTO con valor por omisión; en el cambio parcial, null = sin cambio)
-        Assert.Equal(("InventoryExpiryWarnDays", typeof(int)), (dto[^6].Name, dto[^6].ParameterType));
-        Assert.Equal(("InventoryNoMovementDays", typeof(int)), (dto[^5].Name, dto[^5].ParameterType));
-        Assert.Equal((30, 90), (dto[^6].DefaultValue, dto[^5].DefaultValue));
-        Assert.Equal(("InventoryExpiryWarnDays", typeof(int?)), (req[^6].Name, req[^6].ParameterType));
-        Assert.Equal(("InventoryNoMovementDays", typeof(int?)), (req[^5].Name, req[^5].ParameterType));
+        Assert.Equal(("InventoryExpiryWarnDays", typeof(int)), (dto[^7].Name, dto[^7].ParameterType));
+        Assert.Equal(("InventoryNoMovementDays", typeof(int)), (dto[^6].Name, dto[^6].ParameterType));
+        Assert.Equal((30, 90), (dto[^7].DefaultValue, dto[^6].DefaultValue));
+        Assert.Equal(("InventoryExpiryWarnDays", typeof(int?)), (req[^7].Name, req[^7].ParameterType));
+        Assert.Equal(("InventoryNoMovementDays", typeof(int?)), (req[^6].Name, req[^6].ParameterType));
         // 2026-10-20: al final, el método de rotación de los productos sin lote (en el DTO con valor por omisión FIFO; en el cambio parcial, null = sin cambio)
-        Assert.Equal(("RotationMethodNoLot", typeof(string)), (dto[^4].Name, dto[^4].ParameterType));
-        Assert.Equal("FIFO", dto[^4].DefaultValue);
-        Assert.Equal(("RotationMethodNoLot", typeof(string)), (req[^4].Name, req[^4].ParameterType));
-        Assert.Null(req[^4].DefaultValue);
+        Assert.Equal(("RotationMethodNoLot", typeof(string)), (dto[^5].Name, dto[^5].ParameterType));
+        Assert.Equal("FIFO", dto[^5].DefaultValue);
+        Assert.Equal(("RotationMethodNoLot", typeof(string)), (req[^5].Name, req[^5].ParameterType));
+        Assert.Null(req[^5].DefaultValue);
         // 2026-10-20 (Lote 145): al final, «el despacho exige documento» (DTO: FREE por omisión; cambio parcial: null = sin cambio)
-        Assert.Equal(("DispatchRequirement", typeof(string)), (dto[^3].Name, dto[^3].ParameterType));
-        Assert.Equal("FREE", dto[^3].DefaultValue);
-        Assert.Equal(("DispatchRequirement", typeof(string)), (req[^3].Name, req[^3].ParameterType));
-        Assert.Null(req[^3].DefaultValue);
+        Assert.Equal(("DispatchRequirement", typeof(string)), (dto[^4].Name, dto[^4].ParameterType));
+        Assert.Equal("FREE", dto[^4].DefaultValue);
+        Assert.Equal(("DispatchRequirement", typeof(string)), (req[^4].Name, req[^4].ParameterType));
+        Assert.Null(req[^4].DefaultValue);
         // 2026-10-20 (Lote 148): al final, el método de valuación (DTO: AVERAGE por omisión; cambio parcial: null = sin cambio)
-        Assert.Equal(("ValuationMethod", typeof(string)), (dto[^2].Name, dto[^2].ParameterType));
-        Assert.Equal("AVERAGE", dto[^2].DefaultValue);
-        Assert.Equal(("ValuationMethod", typeof(string)), (req[^2].Name, req[^2].ParameterType));
-        Assert.Null(req[^2].DefaultValue);
+        Assert.Equal(("ValuationMethod", typeof(string)), (dto[^3].Name, dto[^3].ParameterType));
+        Assert.Equal("AVERAGE", dto[^3].DefaultValue);
+        Assert.Equal(("ValuationMethod", typeof(string)), (req[^3].Name, req[^3].ParameterType));
+        Assert.Null(req[^3].DefaultValue);
         // 2026-10-20 (Lote 149): al final, «el recibo exige documento» (DTO: FREE por omisión; cambio parcial: null = sin cambio)
-        Assert.Equal(("ReceiptRequirement", typeof(string)), (dto[^1].Name, dto[^1].ParameterType));
-        Assert.Equal("FREE", dto[^1].DefaultValue);
-        Assert.Equal(("ReceiptRequirement", typeof(string)), (req[^1].Name, req[^1].ParameterType));
+        Assert.Equal(("ReceiptRequirement", typeof(string)), (dto[^2].Name, dto[^2].ParameterType));
+        Assert.Equal("FREE", dto[^2].DefaultValue);
+        Assert.Equal(("ReceiptRequirement", typeof(string)), (req[^2].Name, req[^2].ParameterType));
+        Assert.Null(req[^2].DefaultValue);
+        // 2026-10-21 (Lote 168): al final, los días de anticipación de los avisos de documentos de la flota (DTO: 30 por omisión; cambio parcial: null = sin cambio)
+        Assert.Equal(("FleetDocWarnDays", typeof(int)), (dto[^1].Name, dto[^1].ParameterType));
+        Assert.Equal(30, dto[^1].DefaultValue);
+        Assert.Equal(("FleetDocWarnDays", typeof(int?)), (req[^1].Name, req[^1].ParameterType));
         Assert.Null(req[^1].DefaultValue);
     }
 

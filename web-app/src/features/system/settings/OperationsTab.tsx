@@ -280,6 +280,56 @@ function InventoryAlertsPanel({ settings, canEdit }: { settings: TenantSettingsD
   )
 }
 
+// ------------------------------------------------------------------ avisos de flota: días de anticipación (2026-10-21, Lote 168)
+
+interface FleetAlertValues {
+  fleetDocWarnDays: number | null
+}
+
+/**
+ * «Avisos de flota»: con cuántos días de anticipación avisa «Documentos de la flota por vencer» (1 a 365; 30 por omisión) para seguros, registros, licencias y certificaciones.
+ * A quién le llega cada aviso se arma en Sistema → Reglas de aviso (eventos de flota). Los 400 del servidor salen bajo su campo.
+ */
+function FleetAlertsPanel({ settings, canEdit }: { settings: TenantSettingsDto; canEdit: boolean }) {
+  const t = useT()
+  const save = useSaveTenantSettings()
+  const form = useForm<FleetAlertValues>({ values: { fleetDocWarnDays: settings.fleetDocWarnDays ?? 30 } })
+  const dirty = form.formState.isDirty
+  return (
+    <Panel className="set-gap" icon={<IconGear />} title={t('system.settings.ops.fleetAlertsTitle')}>
+      <Form
+        form={form}
+        onSubmit={async (v) => {
+          const days = v.fleetDocWarnDays
+          if (days == null || !Number.isInteger(days) || days < 1 || days > 365) {
+            form.setError('fleetDocWarnDays', { message: t('system.settings.ops.fleetDocRange') })
+            return
+          }
+          await save.mutateAsync({ fleetDocWarnDays: days })
+          toast.success(t('system.settings.saved'))
+        }}
+      >
+        <fieldset className="set-fs" disabled={!canEdit}>
+          <Field name="fleetDocWarnDays" label={t('system.settings.ops.fleetDocLabel')} help={t('system.settings.ops.fleetDocHelp')}>
+            <NumberInput min={1} max={365} step={1} className="mono" />
+          </Field>
+          <p className="set-d">{t('system.settings.ops.fleetAlertsHint')}</p>
+        </fieldset>
+        {canEdit && (
+          <div className="set-actions">
+            <button type="button" className="btn" disabled={!dirty || form.formState.isSubmitting} onClick={() => form.reset()}>
+              {t('system.settings.discard')}
+            </button>
+            <button type="submit" className="btn flow" disabled={!dirty || form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? t('system.settings.saving') : t('system.settings.save')}
+            </button>
+          </div>
+        )}
+      </Form>
+    </Panel>
+  )
+}
+
 // ------------------------------------------------------------------ conteo cíclico: lo esperado al contar (tarea 25)
 
 interface CountRevealValues {
@@ -540,6 +590,7 @@ export function OperationsTab({ settings, canEdit }: { settings: TenantSettingsD
       </div>
       {wms && <RotationPanel settings={settings} canEdit={canEdit} />}
       {wms && <InventoryAlertsPanel settings={settings} canEdit={canEdit} />}
+      <FleetAlertsPanel settings={settings} canEdit={canEdit} />
       {wms && <CountRevealPanel settings={settings} canEdit={canEdit} />}
       {wms && <RecvSummaryPanel />}
     </>

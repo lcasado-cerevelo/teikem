@@ -596,6 +596,26 @@ describe('Ajustes de la compañía', () => {
     expect(put()[0].body).toEqual({ inventoryExpiryWarnDays: 45, inventoryNoMovementDays: 120 })
   })
 
+  it('Operación → avisos de flota (2026-10-21): 30 días por omisión; guarda el cambio y valida el rango con su mensaje', async () => {
+    const user = userEvent.setup()
+    wrap('/system/settings?tab=ops')
+    const panel = (await screen.findByRole('heading', { name: 'Avisos de flota' })).closest('.panel') as HTMLElement
+    const days = within(panel).getByLabelText('Avisar documentos por vencer con (días)')
+    expect(days).toHaveValue(30)
+
+    await user.clear(days)
+    await user.type(days, '400')
+    await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
+    expect((await within(panel).findAllByText('Los días de aviso de documentos de la flota deben estar entre 1 y 365.')).length).toBeGreaterThan(0)
+    expect(put()).toHaveLength(0)
+
+    await user.clear(days)
+    await user.type(days, '45')
+    await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(put()).toHaveLength(1))
+    expect(put()[0].body).toEqual({ fleetDocWarnDays: 45 })
+  })
+
   it('Operación → rotación (2026-10-20): los productos sin lote ni series tienen su propio método (FIFO o por posición, sin FEFO)', async () => {
     const user = userEvent.setup()
     wrap('/system/settings?tab=ops')
