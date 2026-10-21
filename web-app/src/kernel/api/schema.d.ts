@@ -34862,6 +34862,9 @@ export interface components {
             /** Format: int32 */
             assignedToUserId?: number | null;
             assignedToName?: string | null;
+            /** Format: double */
+            postedQty?: number;
+            partiallyReceived?: boolean;
         };
         AsnUpdateRequest: {
             /** Format: uuid */
@@ -34888,6 +34891,8 @@ export interface components {
             trackingType?: string | null;
             /** Format: date */
             expiryDate?: string | null;
+            /** Format: double */
+            postedQty?: number;
         };
         AsnLineRequest: {
             /** Format: uuid */
@@ -41131,6 +41136,8 @@ export interface components {
             lotNumber?: string | null;
             /** Format: int32 */
             purchaseOrderLineId?: number | null;
+            /** Format: double */
+            postedQty?: number;
         };
         SyncBalanceDto: {
             /** Format: int32 */

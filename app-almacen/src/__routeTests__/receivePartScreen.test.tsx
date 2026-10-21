@@ -55,4 +55,18 @@ describe('Recibir — una parte', () => {
     expect(body.lines).toHaveLength(1)
     expect(getOpenReceipt()).toBeNull()
   })
+
+  it('Lote 186: con un aviso que ya lleva partes recibidas, el aparato muestra lo recibido de cada línea', async () => {
+    await saveDeviceIdentity({
+      devicePublicId: 'dev-1', deviceSecret: 'secret-1', tenantName: 'Teikem Demo', defaultWarehousePublicId: 'wh-1', theme: null,
+      defaultWarehouseReceivingMode: 'PUTAWAY',
+    })
+    await saveUserSession({ accessToken: 'a', accessExpiresAtUtc: '', refreshToken: 'r', refreshExpiresAtUtc: '', tenantId: 1, userId: 7, fullName: 'Ana Ruiz' })
+    getDb().runSync("INSERT INTO asn_line (id, asn_id, product_public_id, sku, expected_qty, posted_qty) VALUES (1, 5, 'p1', 'SKU-1', 10, 4)")
+    startLocalReceipt('wh-1', { kind: 'asn', purchaseOrderPublicId: null, asnId: 5, label: 'LLE-00005' }, 'PUTAWAY')
+
+    await renderRouter('src/app', { initialUrl: '/receive' })
+    await waitFor(() => expect(screen.getByTestId('receive-doc-progress')).toBeTruthy())
+    expect(screen.getByText('SKU-1: 4 de 10')).toBeTruthy()
+  })
 })

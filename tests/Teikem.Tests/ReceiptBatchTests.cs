@@ -149,6 +149,12 @@ public sealed class ReceiptBatchTests
         Assert.Equal(7m, two.Lines[0].ReceivedQty);
         Assert.Equal(7m, Stock());
 
+        // Lote 186: el aviso muestra lo ya recibido y queda «parcial» mientras no se cierre
+        var partial = await f.Get<AsnService>().GetAsync(asn.Id, InventoryScope.Any, default);
+        Assert.True(partial.PartiallyReceived);
+        Assert.Equal(7m, partial.PostedQty);
+        Assert.Equal(7m, partial.Lines[0].PostedQty);
+
         // sin series ni daño en una parte
         var serial = await Assert.ThrowsAsync<ValidationException>(() => receipts.ReceivePartAsync(
             new ReceiptPartRequest(AsnId: asn.Id, Lines: new[] { new ReceiptLineRequest(f.ProductClientPublicId, 1m, SerialNumbers: new[] { "S1" }) }), default));

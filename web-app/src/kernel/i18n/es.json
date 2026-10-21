@@ -6220,6 +6220,7 @@
     },
     "asns": {
       "title": "Avisos de llegada",
+      "partial": "Recibido parcial",
       "new": "Nuevo aviso",
       "created": "Aviso de llegada creado.",
       "edit": "Editar",
@@ -6237,6 +6238,7 @@
         "expectedDate": "Llegada esperada",
         "status": "Estatus",
         "lines": "Líneas",
+        "received": "Recibido",
         "receipt": "Recibo"
       },
       "fields": {

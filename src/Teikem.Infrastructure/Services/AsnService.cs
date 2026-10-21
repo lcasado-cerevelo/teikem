@@ -402,6 +402,13 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
         var receipts = await db.Set<ReceiptHeader>().AsNoTracking().Where(r => r.AsnId != null && asnIds.Contains(r.AsnId.Value) && r.IsActive)
             .Select(r => new { AsnId = r.AsnId!.Value, r.PublicId, r.Number }).ToListAsync(ct);
         var receiptByAsn = receipts.GroupBy(r => r.AsnId).ToDictionary(g => g.Key, g => g.First());
+        // Lote 186 (C2): lo ya asentado por tandas (recibo por partes) de cada aviso y de cada una de sus líneas.
+        var posted = await (from rl in db.Set<ReceiptLine>().AsNoTracking()
+                            join rh in db.Set<ReceiptHeader>().AsNoTracking() on rl.ReceiptHeaderId equals rh.ReceiptHeaderId
+                            where rh.AsnId != null && asnIds.Contains(rh.AsnId.Value) && rh.IsActive && rl.PostedQty > 0m
+                            select new { AsnId = rh.AsnId!.Value, rl.AsnLineId, rl.PostedQty }).ToListAsync(ct);
+        var postedByLine = posted.Where(x => x.AsnLineId != null).GroupBy(x => x.AsnLineId!.Value).ToDictionary(g => g.Key, g => g.Sum(x => x.PostedQty));
+        var postedByAsn = posted.GroupBy(x => x.AsnId).ToDictionary(g => g.Key, g => g.Sum(x => x.PostedQty));
         var statusMap = await ReceivingSupport.StatusMapAsync(db, tenant, StatusDomains.AsnStatus, ct);
         var assignees = await AssigneeCheck.NamesAsync(db, rows.Where(a => a.AssignedToUserId != null).Select(a => a.AssignedToUserId!.Value), ct);
 
@@ -413,10 +420,11 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
             var s = statusMap.GetValueOrDefault(a.StatusCodeId);
             var r = receiptByAsn.GetValueOrDefault(a.AsnId);
             var lineDtos = lines.Where(l => l.AsnId == a.AsnId)
-                .Select(l => new AsnLineDto(l.AsnLineId, l.PublicId, l.Sku, l.Name, l.ExpectedQty, l.LotNumber, l.PurchaseOrderLineId, l.UnitPrice, trackingCodes.GetValueOrDefault(l.TrackingTypeLookupId, TrackingTypes.None), l.ExpiryDate))
+                .Select(l => new AsnLineDto(l.AsnLineId, l.PublicId, l.Sku, l.Name, l.ExpectedQty, l.LotNumber, l.PurchaseOrderLineId, l.UnitPrice, trackingCodes.GetValueOrDefault(l.TrackingTypeLookupId, TrackingTypes.None), l.ExpiryDate, postedByLine.GetValueOrDefault(l.AsnLineId)))
                 .ToList();
             return new AsnDto(a.AsnId, w?.PublicId ?? Guid.Empty, w?.Code ?? "", c?.PublicId, c?.Name, p?.PublicId, p?.Number,
-                a.Reference, a.ExpectedDate, s?.Code ?? "", s?.Label ?? "", a.IsActive, lineDtos, r?.PublicId, r?.Number, a.Number, a.AssignedToUserId, a.AssignedToUserId is int au ? assignees.GetValueOrDefault(au) : null);
+                a.Reference, a.ExpectedDate, s?.Code ?? "", s?.Label ?? "", a.IsActive, lineDtos, r?.PublicId, r?.Number, a.Number, a.AssignedToUserId, a.AssignedToUserId is int au ? assignees.GetValueOrDefault(au) : null,
+                postedByAsn.GetValueOrDefault(a.AsnId), (s?.Code ?? "") == AsnStatuses.Expected && postedByAsn.GetValueOrDefault(a.AsnId) > 0m);
         }).ToList();
     }
 }

@@ -46656,6 +46656,13 @@
           "assignedToName": {
             "type": "string",
             "nullable": true
+          },
+          "postedQty": {
+            "type": "number",
+            "format": "double"
+          },
+          "partiallyReceived": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -46732,6 +46739,10 @@
             "type": "string",
             "format": "date",
             "nullable": true
+          },
+          "postedQty": {
+            "type": "number",
+            "format": "double"
           }
         },
         "additionalProperties": false
@@ -65681,6 +65692,10 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "postedQty": {
+            "type": "number",
+            "format": "double"
           }
         },
         "additionalProperties": false

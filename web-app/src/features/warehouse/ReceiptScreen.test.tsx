@@ -411,6 +411,15 @@ describe('Recibo: pestañas', () => {
     expect(screen.queryByText(/#12/)).toBeNull()
   })
 
+  it('Lote 186: un aviso con partes recibidas dice «Recibido parcial» y cuánto se lleva', async () => {
+    mock.asns = [
+      { id: 14, number: 'LLE-00014', warehousePublicId: 'w1', warehouseCode: 'ALM-01', clientName: 'ASICS Care', statusCode: 'EXPECTED', status: 'Esperado', isActive: true, partiallyReceived: true, postedQty: 4, lines: [{ id: 1, expectedQty: 10, postedQty: 4 }] },
+    ]
+    wrap('/warehouse/notices')
+    expect(await screen.findByText('Recibido parcial')).toBeInTheDocument()
+    expect(screen.getByText('4 / 10')).toBeInTheDocument()
+  })
+
   it('Lote 171: un aviso de llegada se asigna a una persona y se puede filtrar «Solo los asignados a mí»', async () => {
     mock.asns = [
       { id: 12, number: 'LLE-00012', warehousePublicId: 'w1', warehouseCode: 'ALM-01', clientName: 'ASICS Care', reference: 'OC-778', statusCode: 'EXPECTED', status: 'Esperado', isActive: true, lines: [], assignedToUserId: 7, assignedToName: 'Luis Pérez' },

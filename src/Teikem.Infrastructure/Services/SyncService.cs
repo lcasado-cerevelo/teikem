@@ -85,7 +85,7 @@ namespace Teikem.Infrastructure.Contracts
         DateTime RequestedAtUtc, bool IsActive, IReadOnlyList<SyncSalesReturnLineDto> Lines);
 
     public sealed record SyncAsnLineDto(int Id, Guid ProductPublicId, string Sku, string ProductName, decimal ExpectedQty, string? LotNumber,
-        int? PurchaseOrderLineId);
+        int? PurchaseOrderLineId, decimal PostedQty = 0m);
 
     /// <summary>Aviso de llegada. IsActive = activo y EXPECTED; recibido o cancelado → false.</summary>
     public sealed record SyncAsnDto(int Id, Guid WarehousePublicId, Guid? ClientPublicId, string? ClientName, Guid? PurchaseOrderPublicId,
@@ -614,7 +614,10 @@ namespace Teikem.Infrastructure.Services
             {
                 var c = await ChangedAsync(EntityTypes.Asn, since, ct);
                 query = query.Where(a => a.CreatedAtUtc >= since || c.Audit.Contains(a.AsnId) || c.History.Contains(a.AsnId)
-                    || db.Set<AsnLine>().Any(l => l.AsnId == a.AsnId && c.Audit.Contains(l.AsnLineId)));
+                    || db.Set<AsnLine>().Any(l => l.AsnId == a.AsnId && c.Audit.Contains(l.AsnLineId))
+                    // Lote 186: una tanda confirmada del recibo del aviso cambia lo ya recibido que ve el aparato.
+                    || db.Set<ReceiptBatch>().Any(b => b.ConfirmedAtUtc >= since
+                        && db.Set<ReceiptHeader>().Any(h => h.ReceiptHeaderId == b.ReceiptHeaderId && h.AsnId == a.AsnId)));
             }
             else query = query.Where(a => a.IsActive && a.StatusCodeId == expectedId);
             if (w.AfterId is int after) query = query.Where(a => a.AsnId > after);
@@ -634,7 +637,11 @@ namespace Teikem.Infrastructure.Services
                                where asnIds.Contains(l.AsnId)
                                orderby l.AsnLineId
                                select new SyncAsnLineRow(l.AsnId, new SyncAsnLineDto(l.AsnLineId, p.PublicId, p.Sku, p.Name, l.ExpectedQty, l.LotNumber,
-                                   l.PurchaseOrderLineId)))
+                                   l.PurchaseOrderLineId,
+                                   // Lote 186: lo ya asentado por tandas contra esta línea del aviso (recibos activos).
+                                   db.Set<ReceiptLine>().Where(rl => rl.AsnLineId == l.AsnLineId && rl.PostedQty > 0m
+                                       && db.Set<ReceiptHeader>().Any(h => h.ReceiptHeaderId == rl.ReceiptHeaderId && h.IsActive))
+                                       .Sum(rl => (decimal?)rl.PostedQty) ?? 0m)))
                 .ToListAsync(ct);
             var linesByAsn = lines.ToLookup(l => l.AsnId, l => l.Line);
 

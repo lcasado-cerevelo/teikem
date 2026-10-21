@@ -10109,3 +10109,11 @@ Almacenes → Importar (código y nombre en columnas) o Ubicaciones → Importar
 
 **«Almacén no encontrado por ese código.» / «Zona no encontrada por ese código en ese almacén.»**
 En la importación de posiciones el almacén y la zona se buscan por su código y tienen que estar activos. Revisa las columnas warehouseCode y zoneCode (o sus valores por defecto en la plantilla).
+
+## Recibo por partes: avance a la vista (Lote 186)
+
+**¿Cómo sé cuánto se lleva recibido de un aviso de llegada?**
+En Llegadas y salidas → Avisos de llegada, el aviso que ya tiene partes recibidas muestra la etiqueta **«Recibido parcial»** junto a su estatus y la columna **«Recibido»** (`4 / 10`: lo ya asentado entre lo esperado). Es lo mismo que ve el cliente en su portal web. En el aparato, al recibir contra ese aviso, aparece **«Ya recibido de este documento»** con cada producto. «Recibido parcial» desaparece al confirmar el recibo final (el aviso pasa a Recibido).
+
+**¿A qué recepción maestra pertenece un recibo?**
+Los recibos de una recepción maestra llevan la etiqueta **«Maestra RCM-…»** en la lista y en su ficha. Desde Llegadas y salidas, el botón **«Recepciones maestras»** lleva a la pestaña de maestras.

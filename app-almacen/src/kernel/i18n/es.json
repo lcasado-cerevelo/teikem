@@ -232,6 +232,8 @@
   "receive": {
     "truckStart": "Recibir juntos (abrir camión)",
     "truckHelp": "Para un camión con varios documentos del mismo dueño: reciba uno tras otro como siempre y el sistema los reúne en una recepción maestra.",
+    "docProgressTitle": "Ya recibido de este documento",
+    "docProgressLine": "{sku}: {posted} de {expected}",
     "truckOn": "Camión abierto · {n} documento(s) enviado(s)",
     "truckOwnerPending": "El dueño lo fija el primer documento que reciba.",
     "truckOwnerSet": "Solo entran documentos del mismo dueño.",

@@ -10,6 +10,7 @@ import {
   findLocalBinsByCode,
   findProductByCode,
   getDocLines,
+  getDocProgress,
   getOpenReceipt,
   listPendingDocs,
   removeLocalReceiptLine,
@@ -184,6 +185,17 @@ describe('getDocLines', () => {
     db.runSync("INSERT INTO purchase_order_line (id, purchase_order_id, product_public_id, qty_ordered, qty_received, qty_pending) VALUES (2, 10, 'p2', 5, 5, 0)")
     expect(getDocLines(findDocByCode('wh-1', 'PO-100'))).toEqual([{ productPublicId: 'p1', lotNumber: null }])
     expect(getDocLines(null)).toEqual([])
+  })
+})
+
+describe('getDocProgress (Lote 186)', () => {
+  it('aviso con algo recibido por partes: lo recibido de cada línea; sin nada recibido, null', () => {
+    const db = getDb()
+    db.runSync("INSERT INTO asn_line (id, asn_id, product_public_id, sku, expected_qty, posted_qty) VALUES (1, 20, 'p1', 'SKU-1', 10, 0)")
+    expect(getDocProgress(findDocByCode('wh-1', 'ASN-9'))).toBeNull()
+    db.runSync('UPDATE asn_line SET posted_qty = 4 WHERE id = 1')
+    expect(getDocProgress(findDocByCode('wh-1', 'ASN-9'))).toEqual([{ sku: 'SKU-1', expectedQty: 10, postedQty: 4 }])
+    expect(getDocProgress(null)).toBeNull()
   })
 })
 

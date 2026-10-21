@@ -35630,6 +35630,8 @@ export interface components {
             lotNumber?: string | null;
             /** Format: int32 */
             purchaseOrderLineId?: number | null;
+            /** Format: double */
+            postedQty?: number;
         };
         SyncBalanceDto: {
             /** Format: int32 */

@@ -25,6 +25,7 @@ import {
   findLocalBinsByCode,
   findProductByCode,
   getDocLines,
+  getDocProgress,
   getOpenReceipt,
   removeLocalReceiptLine,
   startLocalReceipt,
@@ -135,6 +136,7 @@ export default function ReceiveScreen() {
   const truck = useMemo(() => getTruck(), [tick])
   const direct = openReceipt?.receivingMode === 'DIRECT'
   // Lote 175: recibir por partes y aviso de staging lleno (con lo que ya hay según los saldos locales)
+  const docProgress = openReceipt ? getDocProgress(openReceipt.doc) : null
   const partBlocked = openReceipt ? partBlock(openReceipt.doc, openReceipt.lines, openReceipt.receivingMode) : 'noDoc'
   const partOk = openReceipt !== null && partBlocked === null
   const capturedQty = openReceipt?.lines.reduce((n, l) => n + l.receivedQty, 0) ?? 0
@@ -841,6 +843,16 @@ export default function ReceiveScreen() {
             })
           : t('receive.startBlind')}
       </Text>
+      {docProgress ? (
+        <View testID="receive-doc-progress">
+          <Text style={styles.label}>{t('receive.docProgressTitle')}</Text>
+          {docProgress.map((l, i) => (
+            <Text key={i} style={styles.help}>
+              {t('receive.docProgressLine', { sku: l.sku, posted: f.qty(l.postedQty), expected: f.qty(l.expectedQty) })}
+            </Text>
+          ))}
+        </View>
+      ) : null}
       <ScanField label={t('receive.scanProductLabel')} help={t('receive.scanProductHelp')} error={productError} onSubmit={scanProduct} pick="product" />
       <Text style={styles.label}>{t('receive.linesTitle')}</Text>
       <LineList

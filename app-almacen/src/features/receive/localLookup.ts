@@ -278,3 +278,20 @@ export function getDocLines(doc: LocalDoc | null): DocLine[] {
     )
     .map((l) => ({ productPublicId: l.product_public_id, lotNumber: null }))
 }
+
+export interface DocProgressLine {
+  sku: string
+  expectedQty: number
+  postedQty: number
+}
+
+/** Lote 186: lo que el aviso lleva recibido por partes (el servidor lo manda en las líneas); null si no hay aviso o aún no se recibió nada. */
+export function getDocProgress(doc: LocalDoc | null): DocProgressLine[] | null {
+  if (!doc || doc.asnId == null) return null
+  const rows = getDb().getAllSync<{ sku: string | null; expected_qty: number; posted_qty: number }>(
+    'SELECT sku, expected_qty, posted_qty FROM asn_line WHERE asn_id = ? ORDER BY id',
+    [doc.asnId],
+  )
+  if (!rows.some((r) => r.posted_qty > 0)) return null
+  return rows.map((r) => ({ sku: r.sku ?? '', expectedQty: r.expected_qty, postedQty: r.posted_qty }))
+}

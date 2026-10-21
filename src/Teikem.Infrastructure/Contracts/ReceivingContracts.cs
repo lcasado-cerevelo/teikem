@@ -9,11 +9,13 @@ public sealed record AsnCreateRequest(Guid? WarehousePublicId, Guid? ClientPubli
     IReadOnlyList<AsnLineRequest>? Lines = null);
 
 public sealed record AsnLineDto(int Id, Guid ProductPublicId, string Sku, string ProductName, decimal ExpectedQty, string? LotNumber,
-    int? PurchaseOrderLineId, decimal? UnitPrice = null, string? TrackingType = null, DateOnly? ExpiryDate = null);
+    int? PurchaseOrderLineId, decimal? UnitPrice = null, string? TrackingType = null, DateOnly? ExpiryDate = null,
+    decimal PostedQty = 0m);
 
 public sealed record AsnDto(int Id, Guid WarehousePublicId, string WarehouseCode, Guid? ClientPublicId, string? ClientName,
     Guid? PurchaseOrderPublicId, string? PurchaseOrderNumber, string? Reference, DateOnly? ExpectedDate, string StatusCode, string Status,
-    bool IsActive, IReadOnlyList<AsnLineDto> Lines, Guid? ReceiptPublicId, string? ReceiptNumber, string Number = "", int? AssignedToUserId = null, string? AssignedToName = null);
+    bool IsActive, IReadOnlyList<AsnLineDto> Lines, Guid? ReceiptPublicId, string? ReceiptNumber, string Number = "", int? AssignedToUserId = null, string? AssignedToName = null,
+    decimal PostedQty = 0m, bool PartiallyReceived = false);
 
 /// <summary>Lote 157: edita un aviso de llegada de cliente esperado. null = sin cambio; Reference "" la quita; Lines reemplaza todas las líneas.</summary>
 public sealed record AsnUpdateRequest(Guid? WarehousePublicId = null, string? Reference = null, DateOnly? ExpectedDate = null, IReadOnlyList<AsnLineRequest>? Lines = null);

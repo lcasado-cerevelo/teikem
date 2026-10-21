@@ -1374,6 +1374,8 @@ Asignar se hace en la web: Recibo → Avisos de llegada / Avisos de salida, bot�
 
 **Aviso de staging lleno.** Al capturar, si el staging de la zona de recepción tiene cupo configurado y lo capturado **no cabe** en su espacio libre (calculado en el aparato con los saldos sincronizados), la pantalla avisa: «Lo capturado (N) no cabe en el staging (libre: M). Reciba una parte y acomode antes de seguir.» Es solo un aviso: no bloquea.
 
+**Lo ya recibido del documento (Lote 186).** Con un aviso que ya lleva partes recibidas, la pantalla de Recibir muestra arriba **«Ya recibido de este documento»** con una línea por producto (`SKU-1: 4 de 10`). El dato viene del servidor al sincronizar (las tandas confirmadas por cualquier aparato o por la web); sin señal se ve lo de la última sincronización. Con una orden de compra no se muestra (su avance ya va en «pendiente»).
+
 **Qué no admite una parte.** No hay «Recibir una parte» sin documento (recibo ciego), en un almacén «directo a posición», ni si alguna línea lleva **series o daño declarado** (esas líneas se reciben al «Confirmar recibo»; la pantalla lo indica). Si el servidor las recibiera, responde 400: `Los productos con número de serie no se reciben por partes: se reciben en la confirmación final.` / `El daño no se declara en una parte: se declara en la confirmación final.`
 
 **Reintentos.** Cada parte lleva una clave propia: si el envío se repite (se cortó la señal al responder), el servidor reconoce la parte y **no la suma dos veces**.

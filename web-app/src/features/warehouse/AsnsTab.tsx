@@ -11,6 +11,7 @@ import { applyProblemDetails } from '../../kernel/api/problem'
 import { StatusChip, useStatuses } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
 import {
+  Chip,
   ClientPicker,
   ConfirmDialog,
   DataTable,
@@ -105,8 +106,21 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
       {
         id: 'status',
         header: t('warehouse.asns.columns.status'),
-        cell: (a) => <StatusChip domain={ASN_STATUS_DOMAIN} code={a.statusCode} label={a.status} />,
+        cell: (a) => (
+          <>
+            <StatusChip domain={ASN_STATUS_DOMAIN} code={a.statusCode} label={a.status} />
+            {a.partiallyReceived && <Chip tone="route">{t('warehouse.asns.partial')}</Chip>}
+          </>
+        ),
         sortValue: (a) => a.status ?? a.statusCode,
+        exportValue: (a) => (a.partiallyReceived ? `${a.status} · ${t('warehouse.asns.partial')}` : (a.status ?? '')),
+      },
+      {
+        id: 'received',
+        header: t('warehouse.asns.columns.received'),
+        cell: (a) => ((a.postedQty ?? 0) > 0 ? `${a.postedQty} / ${(a.lines ?? []).reduce((n, l) => n + (l.expectedQty ?? 0), 0)}` : '—'),
+        sortValue: (a) => a.postedQty ?? 0,
+        align: 'end',
       },
       { id: 'lines', header: t('warehouse.asns.columns.lines'), cell: (a) => a.lines?.length ?? 0, sortValue: (a) => a.lines?.length ?? 0, align: 'end' },
       {

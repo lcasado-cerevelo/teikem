@@ -206,13 +206,14 @@ function applyAsnLines(db: SQLiteDatabase, asnId: number, lines: Array<{
   expectedQty?: number
   lotNumber?: string | null
   purchaseOrderLineId?: number | null
+  postedQty?: number
 }> | null | undefined): void {
   db.runSync('DELETE FROM asn_line WHERE asn_id = ?', [asnId])
   for (const l of lines ?? []) {
     db.runSync(
-      `INSERT INTO asn_line (id, asn_id, product_public_id, sku, product_name, expected_qty, lot_number, purchase_order_line_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [l.id ?? 0, asnId, l.productPublicId ?? '', l.sku ?? null, l.productName ?? null, l.expectedQty ?? 0, l.lotNumber ?? null, l.purchaseOrderLineId ?? null],
+      `INSERT INTO asn_line (id, asn_id, product_public_id, sku, product_name, expected_qty, lot_number, purchase_order_line_id, posted_qty)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [l.id ?? 0, asnId, l.productPublicId ?? '', l.sku ?? null, l.productName ?? null, l.expectedQty ?? 0, l.lotNumber ?? null, l.purchaseOrderLineId ?? null, l.postedQty ?? 0],
     )
   }
 }
