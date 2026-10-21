@@ -131,7 +131,7 @@ public sealed partial class ColavoraImportService
         var users = await s.Reader.ReadUsersAsync(s.CompanyId, ct);
         var assigned = s.AssignedUserIds ??= await s.Reader.ReadAssignedUserIdsAsync(s.CompanyId, ct);
         var userIds = users.Select(x => x.UserId).ToHashSet();
-        s.Report.AddInfo("Choferes = usuarios asignados en las órdenes (AssignDL/AssignPK)",
+        s.Report.AddInfo("Choferes = usuarios asignados en los envíos (AssignDL/AssignPK)",
             $"{assigned.Count} IDs asignados; {assigned.Count(userIds.Contains)} son usuarios de la compañía ({users.Count(x => assigned.Contains(x.UserId) && !ColavoraRules.IsDriver(x.SecGroup))} de ellos NO están en el grupo de choferes de Colavora); {users.Count(x => ColavoraRules.IsDriver(x.SecGroup) && !assigned.Contains(x.UserId))} usuarios del grupo de choferes nunca aparecen asignados y no se crean como chofer; {assigned.Count(a => !userIds.Contains(a))} IDs asignados no son usuarios de la compañía");
         var existingDrivers = s.TenantId is null ? new Dictionary<string, Driver>(StringComparer.OrdinalIgnoreCase)
             : await db.Drivers.IgnoreQueryFilters().AsNoTracking().Where(d => d.TenantId == s.TenantId).ToDictionaryAsync(d => d.EmployeeCode, d => d, StringComparer.OrdinalIgnoreCase, ct);   // también los inactivos: el índice único los cuenta
@@ -182,7 +182,7 @@ public sealed partial class ColavoraImportService
             else if (!isDriver)
             {
                 s.Report.CountSkipped(U);
-                s.Report.Warn(U, u.Username, "El usuario no es chofer (no aparece asignado en ninguna orden) y no tiene correo como nombre de usuario; no se crea (no se le puede invitar).");
+                s.Report.Warn(U, u.Username, "El usuario no es chofer (no aparece asignado en ningún envío) y no tiene correo como nombre de usuario; no se crea (no se le puede invitar).");
             }
             if (userId is int uid) s.Users[u.UserId] = uid;
 
@@ -425,7 +425,7 @@ public sealed partial class ColavoraImportService
         {
             var subName = customers.First(c => string.Equals(c.Sender, sub, StringComparison.OrdinalIgnoreCase)).SenderName;
             var mainName = customers.First(c => string.Equals(c.Sender, link.MainSender, StringComparison.OrdinalIgnoreCase)).SenderName;
-            s.Report.AddInfo($"Cliente unido {sub}", $"«{subName}» ({counts.GetValueOrDefault(sub)} órdenes) se une a «{mainName}» ({link.MainSender}, {counts.GetValueOrDefault(link.MainSender)} órdenes); {(link.Kind switch { ColavoraRules.SubClientKind.Pickup => "sus órdenes se trabajan como recogido", ColavoraRules.SubClientKind.Return => "sus órdenes se trabajan como devolución", _ => "es el mismo cliente separado por servicio: sus tarifas pasan al contrato del cliente" })}.");
+            s.Report.AddInfo($"Cliente unido {sub}", $"«{subName}» ({counts.GetValueOrDefault(sub)} envíos) se une a «{mainName}» ({link.MainSender}, {counts.GetValueOrDefault(link.MainSender)} envíos); {(link.Kind switch { ColavoraRules.SubClientKind.Pickup => "sus órdenes se trabajan como recogido", ColavoraRules.SubClientKind.Return => "sus órdenes se trabajan como devolución", _ => "es el mismo cliente separado por servicio: sus tarifas pasan al contrato del cliente" })}.");
         }
     }
 
@@ -435,7 +435,7 @@ public sealed partial class ColavoraImportService
         foreach (var (sub, link) in s.SubClients.ToList())
         {
             if (s.Clients.TryGetValue(link.MainSender, out var main)) s.Clients[sub] = main;
-            else s.Report.Warn(ColavoraEntities.Clients, sub, $"Se une al cliente {link.MainSender}, que no está migrado; sus órdenes se omiten.");
+            else s.Report.Warn(ColavoraEntities.Clients, sub, $"Se une al cliente {link.MainSender}, que no está migrado; sus envíos se omiten.");
         }
     }
 
@@ -698,12 +698,12 @@ public sealed partial class ColavoraImportService
             {
                 s.DivisionOptions.Add(u.Code);
                 extras.Add(new CvDivision(u.Code, u.Code));
-                s.Report.AddInfo($"División {u.Code}", $"no está en la lista de Colavora pero se usa ({u.Orders:N0} órdenes, la última {last:yyyy-MM-dd}); se agrega a las divisiones.");
+                s.Report.AddInfo($"División {u.Code}", $"no está en la lista de Colavora pero se usa ({u.Orders:N0} envíos, el último {last:yyyy-MM-dd}); se agrega a las divisiones.");
             }
             else
             {
                 s.StaleDivisions.Add(u.Code);
-                s.Report.Warn(ColavoraEntities.CustomFields, u.Code, $"División fuera de la lista de Colavora y sin uso reciente ({u.Orders:N0} órdenes, la última {u.LastCreated:yyyy-MM-dd}): esas órdenes se reportan como error y no se migran.");
+                s.Report.Warn(ColavoraEntities.CustomFields, u.Code, $"División fuera de la lista de Colavora y sin uso reciente ({u.Orders:N0} envíos, el último {u.LastCreated:yyyy-MM-dd}): esos envíos se reportan como error y no se migran.");
             }
         }
         return divisions.Concat(extras).ToList();

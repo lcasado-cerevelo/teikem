@@ -25,8 +25,8 @@ public sealed class CreditExceededException : TeikemException
     /// mensaje <see cref="CreditRules.RedactedMessage"/> y errors vacío; el código credit_exceeded y el 422 no cambian. Check y
     /// Available quedan solo del lado del servidor (no se serializan).
     /// </summary>
-    public CreditExceededException(CreditCheck check, decimal? available, bool showAmounts)
-        : base(showAmounts ? CreditRules.Message(check) : CreditRules.RedactedMessage, 422, "credit_exceeded")
+    public CreditExceededException(CreditCheck check, decimal? available, bool showAmounts, string thisItem = CreditRules.ThisOrder)
+        : base(showAmounts ? CreditRules.Message(check, thisItem) : CreditRules.RedactedMessage, 422, "credit_exceeded")
     {
         Check = check;
         Available = available;

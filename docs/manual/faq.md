@@ -757,7 +757,7 @@ marcar como recogida una que ya estaba Sometida. Reactívalo (`ACTIVE`) para seg
 Toda orden necesita exactamente un consignatario: o el `publicId` de una localización del directorio
 (`consigneeLocationPublicId`), o los datos de uno nuevo (`newConsignee`), nunca los dos a la vez ni ninguno.
 
-**¿Qué significa "El cliente excede su límite de crédito: límite X.XX, en curso Y.YY, esta orden Z.ZZ." (HTTP 422, `code: "credit_exceeded"`)?**
+**¿Qué significa "El cliente excede su límite de crédito: límite X.XX, en curso Y.YY, este envío Z.ZZ." (HTTP 422, `code: "credit_exceeded"`)?**
 Al crear la orden o al marcarla como recogida, la suma de lo que el cliente tiene en curso (órdenes ya cotizadas que no son terminales; desde el Lote 106 las Sometidas cuentan) más
 el monto de esta orden pasa su límite de crédito. No es un bloqueo definitivo: la orden queda como estaba (al crear, no se crea; al marcarla como recogida, sigue Sometida) y quien tenga el permiso `orders.credit_override` puede repetir la acción con `overrideCredit: true`
 para autorizarla (ver capítulo 03, sección 3.3; en el Lote 4, `overrideCredit` también se acepta junto con
@@ -1078,7 +1078,7 @@ nota, en vez de omitirse, para que el vacío quede visible y se pueda corregir c
 **¿Qué significa "Viaje no encontrado."?**
 El `tripPublicId` no pertenece al chofer de la URL (es de otro chofer o de otro tenant).
 
-**¿Qué significa "El viaje nace de una entrega especial; cancele la orden o reasigne el chofer."?**
+**¿Qué significa "El viaje nace de una entrega especial; cancele el envío o reasigne el chofer."?**
 Un viaje ligado a una orden (entrega especial) vigente no se cancela directamente desde
 `/drivers/{id}/trips/{tripId}/cancel`. Cancela la orden de transporte, o asigna la entrega a otro chofer
 (`POST /orders/{id}/driver`): el viaje anterior se cancela automáticamente.
@@ -6622,7 +6622,7 @@ Escribió un número de factura que otra orden activa de ese consignatario ya us
 Ese consignatario no admite facturas repetidas y el número ya está en la orden N. El mensaje sale bajo **N.º de factura** y la orden no se crea. Cambie el número de factura o elija otro consignatario.
 
 **¿Qué hago si dice que el cliente excede su límite de crédito?**
-El crédito del cliente no alcanza para esta orden (422); se mide al guardar. El mensaje es «El cliente excede su límite de crédito: límite X, en curso Y, esta orden Z.»; si usted no tiene `orders.view_price`, dice solo «El cliente excede su límite de crédito.», sin cifras.
+El crédito del cliente no alcanza para esta orden (422); se mide al guardar. El mensaje es «El cliente excede su límite de crédito: límite X, en curso Y, este envío Z.»; si usted no tiene `orders.view_price`, dice solo «El cliente excede su límite de crédito.», sin cifras.
 - Si tiene el permiso `orders.credit_override`: se abre una ventana con el aviso y el botón **Autorizar y guardar**. Al pulsarlo, la orden se crea de todos modos, y queda registrado quién la autorizó.
 - Si no lo tiene: la orden no se crea y la pantalla dice «El envío no se creó. Pida a alguien con el permiso de autorizar crédito excedido (orders.credit_override) que lo capture.» Pídaselo a Facturación o a un administrador, o pida que suban el límite del cliente.
 
@@ -6892,7 +6892,7 @@ Un viaje se registra el día que ocurrió o después. Elija hoy o una fecha pasa
 **¿Por qué un viaje salió en $0.00 con «Sin tarifa»?**
 El chofer no tenía tarifa para ese tipo de viaje ese día. El monto se congela al registrar: si agrega la tarifa después, ese viaje no cambia. Cancélelo y regístrelo otra vez si hace falta.
 
-**«El viaje nace de una entrega especial; cancele la orden o reasigne el chofer.»**
+**«El viaje nace de una entrega especial; cancele el envío o reasigne el chofer.»**
 Ese viaje lo creó una orden. Cancélelo cancelando la orden, o reasignando el chofer desde la orden.
 
 **No veo los paneles de tarifas, viajes ni la fórmula.**
@@ -8789,7 +8789,7 @@ Todavía no: el correo lleva la tabla dentro del mensaje (hasta 200 filas). El a
 **Marqué una orden como entregada y no veo el intento.**
 El intento solo se anota si la orden no es una entrega especial (esas se pagan por viaje) y si aún no tiene un intento entregado vigente. Si la ruta no tenía chofer, el intento existe pero «sin chofer» (filtro `withoutDriver`).
 
-**`La orden ya tiene un intento número 1.`**
+**`El envío ya tiene un intento número 1.`**
 Ese número ya está en uso entre los intentos vigentes. Deje vacío el número (se usa el siguiente) o anule el intento repetido.
 
 **`La entrega debe ser el último intento.`**
@@ -9463,7 +9463,7 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 **«El número de pieza X se repite en la fila N del archivo.» / «El número de pieza X ya existe en otra orden.»** El label de cada pieza es único en la compañía. Corrija el archivo (o, si el archivo ya se importó, no lo suba de nuevo). Las descripciones y facturas repetidas no dan este error.
 
-**«La línea no trae número de envío; en un archivo con varias líneas por orden todas lo necesitan.»** Una fila sin número de envío no se puede agrupar; complete la columna.
+**«La línea no trae número de envío; en un archivo con varias líneas por envío todas lo necesitan.»** Una fila sin número de envío no se puede agrupar; complete la columna.
 
 **«Un archivo con varias líneas por envío necesita la columna orderNumber en la plantilla.» (400)** Asigne una columna al campo «N.º de envío» en la plantilla; es lo que agrupa las filas.
 

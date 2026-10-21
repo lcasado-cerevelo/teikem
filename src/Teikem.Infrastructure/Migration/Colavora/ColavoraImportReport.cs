@@ -29,7 +29,7 @@ public static class ColavoraEntities
     public const string Consignees = "Consignatarios";
     public const string Contracts = "Contratos y tarifas";
     public const string CustomFields = "Campos personalizados";
-    public const string Orders = "Órdenes";
+    public const string Orders = "Envíos";
     public const string Pieces = "Piezas";
     public const string History = "Historial";
     public const string Attempts = "Intentos de entrega";

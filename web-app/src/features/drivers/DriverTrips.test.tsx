@@ -166,13 +166,13 @@ describe('Cancelar viaje', () => {
   it('un viaje que nace de una entrega especial no se cancela directo: el 409 del servidor queda en el diálogo', async () => {
     const user = userEvent.setup()
     mock.override = ({ method, url }) =>
-      method === 'POST' && url.pathname === '/api/v1/drivers/d-1/trips/t-2/cancel' ? problem(409, 'El viaje nace de una entrega especial; cancele la orden o reasigne el chofer.', 'conflict') : undefined
+      method === 'POST' && url.pathname === '/api/v1/drivers/d-1/trips/t-2/cancel' ? problem(409, 'El viaje nace de una entrega especial; cancele el envío o reasigne el chofer.', 'conflict') : undefined
     wrap(ALL)
     const p = await panel()
     await user.click(within(await within(p).findByRole('row', { name: /Traslado especial/ })).getByRole('button', { name: 'Cancelar viaje' }))
     const dialog = await screen.findByRole('dialog', { name: 'Cancelar viaje' })
     await user.click(within(dialog).getByRole('button', { name: 'Cancelar viaje' }))
-    expect(await within(dialog).findByText('El viaje nace de una entrega especial; cancele la orden o reasigne el chofer.')).toBeInTheDocument()
+    expect(await within(dialog).findByText('El viaje nace de una entrega especial; cancele el envío o reasigne el chofer.')).toBeInTheDocument()
     expect(screen.getByRole('dialog', { name: 'Cancelar viaje' })).toBeInTheDocument()
   })
 

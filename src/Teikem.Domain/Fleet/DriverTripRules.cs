@@ -20,7 +20,7 @@ public static class DriverTripRules
     public const string TypeNotFoundLabel = "Tipo de servicio especial";
     public const string TypeInactiveMessage = "El tipo de servicio especial está inactivo; reactívelo o elija otro.";
     public const string TripNotFoundLabel = "Viaje";
-    public const string OrderLinkedMessage = "El viaje nace de una entrega especial; cancele la orden o reasigne el chofer.";
+    public const string OrderLinkedMessage = "El viaje nace de una entrega especial; cancele el envío o reasigne el chofer.";
 
     /// <summary>Congela el monto: con tarifa (monto e id) la usa tal cual; si falta cualquiera de los dos, $0 sin tarifa.</summary>
     public static FrozenTripAmount Freeze(decimal? rate, int? rateId)

@@ -30,7 +30,7 @@ public static class ImportLineRules
 
     public const string NeedsOrderNumberMessage = "Un archivo con varias líneas por envío necesita la columna orderNumber en la plantilla.";
     public const string RulesNeedMultiLineMessage = "Las reglas de línea solo se usan en una plantilla con varias líneas por envío.";
-    public const string MissingOrderNumberMessage = "La línea no trae número de envío; en un archivo con varias líneas por orden todas lo necesitan.";
+    public const string MissingOrderNumberMessage = "La línea no trae número de envío; en un archivo con varias líneas por envío todas lo necesitan.";
     public const string NoPieceMessage = "El envío no trae ninguna pieza (todas sus líneas son descripción o factura).";
     public static string UnknownKindMessage(string kind) => $"Clase de línea desconocida: {kind}. Use DESCRIPTION o INVOICE.";
     public static string UnknownOperatorMessage(string op) => $"Condición desconocida: {op}. Use EMPTY, NOT_EMPTY, EQUALS, CONTAINS o IN.";

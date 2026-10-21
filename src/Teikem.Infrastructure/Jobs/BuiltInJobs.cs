@@ -231,8 +231,8 @@ public sealed class KpiSnapshotJob : IScheduledJob
     public string Key => JobKeys.KpiSnapshot;
     public string NameEs => "Foto diaria de indicadores";
     public string NameEn => "Daily indicator snapshot";
-    public string DescriptionEs => "Guarda las cifras del día (órdenes por etapa y dinero COD) para ver su historial en el Pulso y en los gráficos.";
-    public string DescriptionEn => "Saves the day's figures (orders by stage and COD money) so their history shows on the Pulse and in the charts.";
+    public string DescriptionEs => "Guarda las cifras del día (envíos por etapa y dinero COD) para ver su historial en el Pulso y en los gráficos.";
+    public string DescriptionEn => "Saves the day's figures (shipments by stage and COD money) so their history shows on the Pulse and in the charts.";
     public string DefaultKind => JobScheduleKinds.Daily;
     public int? DefaultIntervalSeconds => null;
     public TimeSpan? DefaultDailyAt => new(23, 55, 0);
@@ -281,8 +281,8 @@ public sealed class ClientNotificationDigestJob : IScheduledJob
     public string Key => JobKeys.ClientNotificationDigest;
     public string NameEs => "Avisos a los clientes";
     public string NameEn => "Client notifications";
-    public string DescriptionEs => "Resume lo ocurrido con las órdenes, el COD y las facturas de cada cliente y se lo manda por los canales que la compañía encendió.";
-    public string DescriptionEn => "Summarizes what happened with each client's orders, COD and invoices and sends it through the channels the company turned on.";
+    public string DescriptionEs => "Resume lo ocurrido con los envíos, el COD y las facturas de cada cliente y se lo manda por los canales que la compañía encendió.";
+    public string DescriptionEn => "Summarizes what happened with each client's shipments, COD and invoices and sends it through the channels the company turned on.";
     public string DefaultKind => JobScheduleKinds.Interval;
     public int? DefaultIntervalSeconds => 120;
     public TimeSpan? DefaultDailyAt => null;
@@ -331,8 +331,8 @@ public sealed class IntegrationOutputJob : IScheduledJob
     public string Key => JobKeys.IntegrationOutput;
     public string NameEs => "Salida de integraciones";
     public string NameEn => "Integration output";
-    public string DescriptionEs => "Arma y manda las salidas de órdenes de las integraciones (SFTP, FTP y API saliente) y reintenta las fallidas.";
-    public string DescriptionEn => "Builds and sends the integrations' order outputs (SFTP, FTP and outbound API) and retries failed ones.";
+    public string DescriptionEs => "Arma y manda las salidas de envíos de las integraciones (SFTP, FTP y API saliente) y reintenta las fallidas.";
+    public string DescriptionEn => "Builds and sends the integrations' shipment outputs (SFTP, FTP and outbound API) and retries failed ones.";
     public string DefaultKind => JobScheduleKinds.Interval;
     public int? DefaultIntervalSeconds => 60;
     public TimeSpan? DefaultDailyAt => null;

@@ -362,7 +362,7 @@ autorización no sirve para mover envíos normales). Esto permite que la plantil
 
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|
-| Crédito excedido, sin `overrideCredit`; quien opera **tiene** `orders.view_price` | `El cliente excede su límite de crédito: límite X.XX, en curso Y.YY, esta orden Z.ZZ.` | 422 |
+| Crédito excedido, sin `overrideCredit`; quien opera **tiene** `orders.view_price` | `El cliente excede su límite de crédito: límite X.XX, en curso Y.YY, este envío Z.ZZ.` | 422 |
 | Crédito excedido, sin `overrideCredit`; quien opera **no** tiene `orders.view_price` (Lote 39) | `El cliente excede su límite de crédito.` (sin cifras; mismo `code: "credit_exceeded"` y `errors` vacío) | 422 |
 | `overrideCredit: true` sin el permiso `orders.credit_override` | `Falta el permiso 'orders.credit_override'.` | 403 |
 | `overrideCredit: true` al marcar como recogido, con el permiso, pero el crédito no se excedía (o sin `orders.edit`) | `Falta el permiso 'orders.edit'.` | 403 |
@@ -414,7 +414,7 @@ Qué cambia en cada lugar:
 | Ficha del envío (`GET /orders/{id}`) y las respuestas de crear, editar, marcar como recogido, reprecio, cancelar, reabrir y estatus | El campo `quotedAmount` trae el monto. | `quotedAmount` va vacío (`null`); en la pantalla se ve «—». |
 | Lista de envíos (`GET /orders`) y búsqueda por código (`GET /orders/lookup`, también la estación de escaneo) | Cada fila trae el precio (columna **Cotizado**). | Cada fila va sin precio; la columna **Cotizado** no se muestra. |
 | Cotización completa (`GET /orders/{id}/quote`) | Total, líneas, cargo de despacho, cargo de COD y crédito. | Error 403 `Falta el permiso 'orders.view_price'.` |
-| Crédito excedido al crear el envío o al marcarla como recogido (también en la entrega especial con chofer y en la importación) | Error 422 con cifras: `El cliente excede su límite de crédito: límite X, en curso Y, esta orden Z.` | Error 422 sin cifras: `El cliente excede su límite de crédito.` (mismo código `credit_exceeded`). |
+| Crédito excedido al crear el envío o al marcarla como recogido (también en la entrega especial con chofer y en la importación) | Error 422 con cifras: `El cliente excede su límite de crédito: límite X, en curso Y, este envío Z.` | Error 422 sin cifras: `El cliente excede su límite de crédito.` (mismo código `credit_exceeded`). |
 | Historial de estatus del envío (comentario de la autorización de crédito) | `Crédito excedido autorizado por {usuario} (límite X, en curso Y, esta orden Z)` | `Crédito excedido autorizado por {usuario}` |
 | Importación de envíos (fila que falló por crédito) | El error con cifras. | `El cliente excede su límite de crédito.` |
 | Análisis: campo **Monto cotizado** de la fuente «Envíos» (vistas, exportaciones, indicadores y gráficos) | Con el valor. | Vacío; un indicador que suma ese campo da 0. |
@@ -675,7 +675,7 @@ Cómo se usa: `POST /api/v1/orders/import/{batchPublicId}/discard`.
 
 **Validaciones (mensaje exacto; el envío queda con error y no se crea, el resto del archivo sí):**
 - «El envío no trae ninguna pieza (todas sus líneas son descripción o factura).» (al menos una pieza por orden).
-- «La línea no trae número de envío; en un archivo con varias líneas por orden todas lo necesitan.»
+- «La línea no trae número de envío; en un archivo con varias líneas por envío todas lo necesitan.»
 - «El número de pieza X se repite en la fila N del archivo.» · «El número de pieza X ya existe en otro envío.» (la pieza no se duplica) · «Una línea con número de pieza propio lleva una sola pieza.»
 - «La línea de factura no trae número.» Un envío con más de una factura usa la primera y avisa.
 - Las descripciones y las facturas repetidas **no** cuentan como duplicado; solo el número de cada pieza es único.

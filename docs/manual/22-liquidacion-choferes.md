@@ -32,13 +32,13 @@ Lectura con `driverpay.view`; registrar y anular con `driverpay.manage`. Módulo
 
 | Situación | Mensaje | Código |
 |---|---|---|
-| Sin orden | `Indique la orden del intento.` | 400 |
+| Sin orden | `Indique el envío del intento.` | 400 |
 | Sin chofer | `Indique el chofer del intento.` | 400 |
 | Entregado con razón de fallo | `Un intento entregado no lleva razón de fallo.` | 400 |
 | Razón que no existe | `La razón de fallo '{código}' no existe.` | 400 |
 | Nota muy larga | `La nota no puede pasar de 400 caracteres.` | 400 |
 | Fecha futura | `La fecha del intento no puede ser futura.` | 400 |
-| Número repetido | `La orden ya tiene un intento número {n}.` | 400 |
+| Número repetido | `El envío ya tiene un intento número {n}.` | 400 |
 | Dos entregados | `Solo un intento puede ser la entrega.` | 400 |
 | Entregado que no es el último | `La entrega debe ser el último intento.` | 400 |
 | Entrega especial | `Es una entrega especial: se paga por viaje, no por intentos.` | 422 |

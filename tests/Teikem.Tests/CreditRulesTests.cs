@@ -54,6 +54,15 @@ public class CreditRulesTests
             CreditRules.Message(new CreditCheck(100m, 60m, 40.01m)));
 
     [Fact]
+    public void Transport_message_says_este_envio_and_the_sales_one_keeps_esta_orden()
+    {
+        var check = new CreditCheck(100m, 60m, 40.01m);
+        Assert.Equal("El cliente excede su límite de crédito: límite 100.00, en curso 60.00, este envío 40.01.", CreditRules.Message(check, CreditRules.ThisShipment));
+        Assert.Equal(CreditRules.Message(check), CreditRules.Message(check, CreditRules.ThisOrder));
+        Assert.True(CreditRules.IsCreditMessage(CreditRules.Message(check, CreditRules.ThisShipment)));   // la importación sigue ocultando las cifras
+    }
+
+    [Fact]
     public void Message_uses_invariant_decimal_point_and_two_decimals()
         => Assert.Equal("El cliente excede su límite de crédito: límite 1000.50, en curso 0.00, esta orden 12.35.",
             CreditRules.Message(new CreditCheck(1000.5m, -3m, 12.345m)));

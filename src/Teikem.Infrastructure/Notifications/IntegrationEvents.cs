@@ -23,10 +23,10 @@ public sealed class IntegrationEventProvider : INotificationEventProvider
             IntegrationEventCodes.RunFinished, ModuleKeys.Integrations, "Corrida de integración", "Integration run",
             new[]
             {
-                new NotificationVariable("integration", "Integración", "Integration", "Órdenes de Truss"),
+                new NotificationVariable("integration", "Integración", "Integration", "Envíos de Truss"),
                 new NotificationVariable("status", "Resultado", "Result", "Con pendientes"),
                 new NotificationVariable("files", "Archivos leídos", "Files read", "2"),
-                new NotificationVariable("created", "Órdenes creadas", "Orders created", "14"),
+                new NotificationVariable("created", "Envíos creados", "Shipments created", "14"),
                 new NotificationVariable("rejected", "Enviadas a la bandeja", "Sent to the inbox", "3"),
                 new NotificationVariable("message", "Detalle", "Detail", "Archivo ordenes.csv: 14 creadas, 3 a la bandeja."),
                 new NotificationVariable("integrationId", "Número de la integración", "Integration id", "7"),

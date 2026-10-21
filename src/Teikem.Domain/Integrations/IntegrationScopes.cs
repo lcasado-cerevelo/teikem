@@ -37,18 +37,18 @@ public static class IntegrationScopes
 
     public static readonly IReadOnlyList<IntegrationScope> All =
     [
-        new(FilesOrdersImport, IntegrationFamilies.Files, ModuleKeys.LtlGround, "Entrada de envíos por archivo", "Order intake by file",
+        new(FilesOrdersImport, IntegrationFamilies.Files, ModuleKeys.LtlGround, "Entrada de envíos por archivo", "Shipment intake by file",
             [PermissionCatalog.OrdersView, PermissionCatalog.OrdersCreate, PermissionCatalog.LocationsRead, PermissionCatalog.LocationsCreate, PermissionCatalog.ClientsRead], NeedsClient: true),
 
-        new(FilesOrdersExport, IntegrationFamilies.Files, ModuleKeys.LtlGround, "Salida de envíos por archivo o API", "Order output by file or API",
+        new(FilesOrdersExport, IntegrationFamilies.Files, ModuleKeys.LtlGround, "Salida de envíos por archivo o API", "Shipment output by file or API",
             [PermissionCatalog.OrdersView, PermissionCatalog.ClientsRead, PermissionCatalog.LocationsRead], NeedsClient: true),
 
         new(FilesCatalogExport, IntegrationFamilies.Files, ModuleKeys.WmsLotSerial, "Salida de productos por archivo o API", "Product output by file or API", [PermissionCatalog.InventoryView]),
 
         // ---- API del cliente (Lote 135): cada alcance abre un grupo de rutas (ApiAccessRules) y da a la cuenta de servicio solo los permisos que esas rutas piden
-        new(ApiScopes.OrdersRead, IntegrationFamilies.Transport, ModuleKeys.LtlGround, "API: leer envíos, su seguimiento y el comprobante de entrega", "API: read orders, tracking and proof of delivery",
+        new(ApiScopes.OrdersRead, IntegrationFamilies.Transport, ModuleKeys.LtlGround, "API: leer envíos, su seguimiento y el comprobante de entrega", "API: read shipments, tracking and proof of delivery",
             [PermissionCatalog.OrdersView, PermissionCatalog.ClientsRead, PermissionCatalog.LocationsRead], NeedsClient: true),
-        new(ApiScopes.OrdersCreate, IntegrationFamilies.Transport, ModuleKeys.LtlGround, "API: crear envíos", "API: create orders",
+        new(ApiScopes.OrdersCreate, IntegrationFamilies.Transport, ModuleKeys.LtlGround, "API: crear envíos", "API: create shipments",
             [PermissionCatalog.OrdersView, PermissionCatalog.OrdersCreate, PermissionCatalog.ClientsRead, PermissionCatalog.LocationsRead, PermissionCatalog.LocationsCreate], NeedsClient: true),
         new(ApiScopes.InvoicesRead, IntegrationFamilies.Transport, ModuleKeys.Billing, "API: leer facturas", "API: read invoices", [PermissionCatalog.BillingView, PermissionCatalog.ClientsRead], NeedsClient: true),
         new(ApiScopes.ConsigneesRead, IntegrationFamilies.Transport, ModuleKeys.LtlGround, "API: leer consignatarios propios", "API: read own consignees", [PermissionCatalog.LocationsRead, PermissionCatalog.ClientsRead], NeedsClient: true),
@@ -63,7 +63,7 @@ public static class IntegrationScopes
         new(ApiScopes.SalesWrite, IntegrationFamilies.Warehouse, ModuleKeys.SalesOrders, "API: crear y solicitar órdenes de venta", "API: create and request sales orders", [PermissionCatalog.SalesView, PermissionCatalog.SalesCreate]),
         new(ApiScopes.PurchasingRead, IntegrationFamilies.Warehouse, ModuleKeys.Purchasing, "API: leer órdenes de compra", "API: read purchase orders", [PermissionCatalog.PurchasingView]),
         new(ApiScopes.PurchasingWrite, IntegrationFamilies.Warehouse, ModuleKeys.Purchasing, "API: crear y enviar órdenes de compra", "API: create and send purchase orders", [PermissionCatalog.PurchasingView, PermissionCatalog.PurchasingManage]),
-        new(ApiScopes.WebhooksManage, IntegrationFamilies.Transport, ModuleKeys.LtlGround, "API: avisos por webhook de los envíos y facturas del cliente", "API: webhook notices for the client's orders and invoices", [PermissionCatalog.ClientsRead], NeedsClient: true),
+        new(ApiScopes.WebhooksManage, IntegrationFamilies.Transport, ModuleKeys.LtlGround, "API: avisos por webhook de los envíos y facturas del cliente", "API: webhook notices for the client's shipments and invoices", [PermissionCatalog.ClientsRead], NeedsClient: true),
     ];
 
     /// <summary>¿Alguno de los alcances necesita un cliente? (los de transporte: la llave solo ve lo de ese cliente.)</summary>

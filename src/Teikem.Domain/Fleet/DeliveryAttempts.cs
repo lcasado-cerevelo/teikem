@@ -57,7 +57,7 @@ public static class DeliveryAttemptRules
     public const int MaxVoidReasonLength = 400;
 
     public const string DriverRequired = "Indique el chofer del intento.";
-    public const string OrderRequired = "Indique la orden del intento.";
+    public const string OrderRequired = "Indique el envío del intento.";
     public const string NotesTooLong = "La nota no puede pasar de 400 caracteres.";
     public const string ReasonRequired = "Indique el motivo de la anulación.";
     public const string ReasonTooLong = "El motivo no puede pasar de 400 caracteres.";
@@ -66,7 +66,7 @@ public static class DeliveryAttemptRules
     public const string SpecialDelivery = "Es una entrega especial: se paga por viaje, no por intentos.";
     public const string AlreadySettled = "El intento ya está en una liquidación y no se puede anular.";
     public const string AlreadyVoided = "El intento ya está anulado.";
-    public static string DuplicateNumber(int n) => $"La orden ya tiene un intento número {n}.";
+    public static string DuplicateNumber(int n) => $"El envío ya tiene un intento número {n}.";
     public static string UnknownReason(string code) => $"La razón de fallo '{code}' no existe.";
 
     /// <summary>El número del siguiente intento: el mayor vigente más uno (1 si no hay).</summary>

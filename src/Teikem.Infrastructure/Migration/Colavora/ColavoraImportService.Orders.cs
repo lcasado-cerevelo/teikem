@@ -26,7 +26,7 @@ public sealed partial class ColavoraImportService
         var (minId, maxId, count) = await s.Reader.ShipmentRangeAsync(s.CompanyId, opt.SinceDate, ct);
         var from = Math.Max(opt.FromShipmentId ?? minId, minId);
         var to = Math.Min(opt.ToShipmentId ?? maxId, maxId);
-        s.Report.AddInfo("Órdenes en Colavora", $"{count:N0}{(opt.SinceDate is DateTime sd ? $" creadas desde {sd:yyyy-MM-dd}" : "")} (ShipmentID {minId}–{maxId}); se procesa {from}–{to} en lotes de {opt.BatchSize}");
+        s.Report.AddInfo("Envíos en Colavora", $"{count:N0}{(opt.SinceDate is DateTime sd ? $" creadas desde {sd:yyyy-MM-dd}" : "")} (ShipmentID {minId}–{maxId}); se procesa {from}–{to} en lotes de {opt.BatchSize}");
         if (!s.DryRun && s.TenantId is null) return;
         await LoadDivisionRulesAsync(s, ct);   // las divisiones viejas fuera de lista son error (aunque la fase de campos no haya corrido)
 
@@ -57,10 +57,10 @@ public sealed partial class ColavoraImportService
             done += batch.Count;
             cursor = last + 1;
             var elapsed = DateTime.UtcNow - started;
-            logger.LogInformation("Órdenes: {Done:N0} procesadas (hasta ShipmentID {Last}); {Rate:N0} por minuto.", done, last, elapsed.TotalMinutes > 0 ? done / elapsed.TotalMinutes : 0);
+            logger.LogInformation("Envíos: {Done:N0} procesados (hasta ShipmentID {Last}); {Rate:N0} por minuto.", done, last, elapsed.TotalMinutes > 0 ? done / elapsed.TotalMinutes : 0);
             if (batch.Count < opt.BatchSize && last >= to) break;
         }
-        s.Report.AddInfo("Órdenes procesadas", $"{done:N0} en {(DateTime.UtcNow - started):hh\\:mm\\:ss}");
+        s.Report.AddInfo("Envíos procesados", $"{done:N0} en {(DateTime.UtcNow - started):hh\\:mm\\:ss}");
     }
 
     private sealed class OrderBuild
@@ -102,12 +102,12 @@ public sealed partial class ColavoraImportService
             if (existing.Contains(sh.Waybill) || !seenWaybills.Add(sh.Waybill)) { s.Report.CountExisting(O); continue; }
             if (!string.IsNullOrWhiteSpace(sh.Division) && s.StaleDivisions.Contains(sh.Division.Trim()))
             {
-                s.Report.Reject(O, key, $"La división '{sh.Division.Trim()}' no está en la lista de la compañía y es vieja (sin uso reciente); la orden se reporta como error y no se migra.");
+                s.Report.Reject(O, key, $"La división '{sh.Division.Trim()}' no está en la lista de la compañía y es vieja (sin uso reciente); el envío se reporta como error y no se migra.");
                 continue;
             }
             if (string.IsNullOrWhiteSpace(sh.Sender) || !s.Clients.TryGetValue(sh.Sender, out var client))
             {
-                s.Report.Reject(O, key, $"El cliente '{sh.Sender}' no está migrado (huérfano o de prueba); la orden se omite.");
+                s.Report.Reject(O, key, $"El cliente '{sh.Sender}' no está migrado (huérfano o de prueba); el envío se omite.");
                 continue;
             }
             try
@@ -323,7 +323,7 @@ public sealed partial class ColavoraImportService
         if (!s.PieceNumbers.Add(number))
         {
             var alt = ColavoraRules.PieceNumberAlternate(number, colavoraPieceId > 0 ? colavoraPieceId : sequence);
-            s.Report.Warn(P, number, "El código de barras ya existe como pieza de otra orden de la compañía; la pieza queda con sufijo ~id.");
+            s.Report.Warn(P, number, "El código de barras ya existe como pieza de otro envío de la compañía; la pieza queda con sufijo ~id.");
             number = alt;
             s.PieceNumbers.Add(number);
         }

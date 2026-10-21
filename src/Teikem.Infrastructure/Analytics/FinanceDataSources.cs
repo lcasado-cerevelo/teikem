@@ -27,8 +27,8 @@ public sealed class CodCollectionDataSource(TeikemDbContext db, ILookupCache loo
     public IReadOnlyList<DataField> Fields { get; } = new[]
     {
         new DataField("Id", "Id", "Id", DataFieldType.Number),
-        new DataField("OrderId", "Id de orden", "Order id", DataFieldType.Number),
-        new DataField("OrderNumber", "Orden", "Order", DataFieldType.Text),
+        new DataField("OrderId", "Id de envío", "Shipment id", DataFieldType.Number),
+        new DataField("OrderNumber", "Envío", "Shipment", DataFieldType.Text),
         new DataField("InvoiceNumber", "Factura del cliente", "Client invoice", DataFieldType.Text),
         new DataField("ClientId", "Id de cliente", "Client id", DataFieldType.Number),
         new DataField("ClientName", "Cliente", "Client", DataFieldType.Text),

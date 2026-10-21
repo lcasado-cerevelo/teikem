@@ -698,7 +698,7 @@ Cómo se usa:
 | `filtro from` posterior a `to` | `La fecha inicial no puede ser posterior a la final.` (campo `from`) | 400 |
 | Filtro `status` desconocido | `Estatus de viaje desconocido: 'X'.` (campo `status`) | 400 |
 | `tripPublicId` de otro chofer o de otro tenant | `Viaje no encontrado.` | 404 |
-| Cancelar un viaje que nace de una entrega especial vigente | `El viaje nace de una entrega especial; cancele la orden o reasigne el chofer.` | 409 |
+| Cancelar un viaje que nace de una entrega especial vigente | `El viaje nace de una entrega especial; cancele el envío o reasigne el chofer.` | 409 |
 | Cancelar un viaje ya `SETTLED`/`CANCELLED` (terminal) | `El registro ya está en ese estatus.` / regla de transición del motor de estatus (capítulo 01) | 422 |
 
 La BD garantiza en todo momento **un solo viaje vigente por orden**: un viaje cancelado queda además `isActive:

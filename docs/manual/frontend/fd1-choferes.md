@@ -164,7 +164,7 @@ El panel **Viajes pagados** lista los viajes del chofer: fecha, tipo, monto, ord
 
 ![Panel Viajes pagados](img/fd1-viajes.png)
 
-**Cancelar viaje:** pulse la **X** de la fila, escriba un comentario si quiere y pulse **Cancelar viaje**. Un viaje que nació de una **entrega especial** no se cancela aquí: aparece «El viaje nace de una entrega especial; cancele la orden o reasigne el chofer.» Su número de envío es un enlace a la orden.
+**Cancelar viaje:** pulse la **X** de la fila, escriba un comentario si quiere y pulse **Cancelar viaje**. Un viaje que nació de una **entrega especial** no se cancela aquí: aparece «El viaje nace de una entrega especial; cancele el envío o reasigne el chofer.» Su número de envío es un enlace a la orden.
 
 ## 9. Dispositivos, contactos, campos personalizados e historial
 
@@ -195,7 +195,7 @@ El panel **Viajes pagados** lista los viajes del chofer: fecha, tipo, monto, ord
 | Se alcanzó el máximo de 20 niveles de intento. | Ya no se pueden agregar más intentos. | Use los que hay. |
 | Sin servicios especiales — agréguelos en Clientes y contratos | La compañía no tiene tipos de viaje. | Cree un servicio especial en Clientes y contratos. |
 | La fecha del viaje no puede ser futura. | Eligió un día que no ha llegado. | Elija hoy o una fecha pasada. |
-| El viaje nace de una entrega especial; cancele la orden o reasigne el chofer. | Ese viaje pertenece a una orden. | Cancele la orden o reasigne el chofer desde la orden. |
+| El viaje nace de una entrega especial; cancele el envío o reasigne el chofer. | Ese viaje pertenece a una orden. | Cancele la orden o reasigne el chofer desde la orden. |
 | La fecha de vencimiento no puede ser anterior a la de emisión. | Fechas al revés en una licencia o certificación. | Corríjalas. |
 | El número de licencia es obligatorio. / La clase de licencia es obligatoria. | Falta un dato de la licencia. | Complételo. |
 | Falta el permiso '…'. | Su usuario no tiene ese permiso. | Pídalo al administrador. |

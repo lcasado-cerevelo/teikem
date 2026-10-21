@@ -28,8 +28,12 @@ public static class CreditRules
     }
 
     /// <summary>Mensaje exacto del aviso (montos con dos decimales y punto decimal, independientes de la cultura del servidor).</summary>
-    public static string Message(CreditCheck check)
-        => $"El cliente excede su límite de crédito: límite {Format(check.Limit ?? 0m)}, en curso {Format(Exposure(check))}, esta orden {Format(check.NewAmount)}.";
+    public static string Message(CreditCheck check, string thisItem = ThisOrder)
+        => $"El cliente excede su límite de crédito: límite {Format(check.Limit ?? 0m)}, en curso {Format(Exposure(check))}, {thisItem} {Format(check.NewAmount)}.";
+
+    /// <summary>«esta orden» (orden de venta) y «este envío» (transporte): el aviso dice de qué se trata lo que excede el crédito.</summary>
+    public const string ThisOrder = "esta orden";
+    public const string ThisShipment = "este envío";
 
     /// <summary>
     /// Lote 39 (2026-10-12): aviso SIN cifras para quien no tiene orders.view_price (el código credit_exceeded se conserva). Es el

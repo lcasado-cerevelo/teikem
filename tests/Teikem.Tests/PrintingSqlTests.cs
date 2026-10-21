@@ -106,8 +106,8 @@ public class PrintingSqlTests
     [InlineData(typeof(Printer), "UX_Printer_Name", new[] { "TenantId", "Name" }, "[IsActive] = 1")]
     [InlineData(typeof(Printer), "UX_Printer_Default", new[] { "TenantId", "Purpose" }, "[IsDefault] = 1 AND [IsActive] = 1")]
     [InlineData(typeof(Printer), "UQ_Printer_PublicId", new[] { "PublicId" }, null)]
-    [InlineData(typeof(LabelTemplate), "UX_LabelTemplate_Name", new[] { "TenantId", "Name" }, "[IsActive] = 1")]
-    [InlineData(typeof(LabelTemplate), "UX_LabelTemplate_Default", new[] { "TenantId" }, "[IsDefault] = 1 AND [IsActive] = 1")]
+    [InlineData(typeof(LabelTemplate), "UX_LabelTemplate_Name", new[] { "TenantId", "Kind", "Name" }, "[IsActive] = 1")]
+    [InlineData(typeof(LabelTemplate), "UX_LabelTemplate_Default", new[] { "TenantId", "Kind" }, "[IsDefault] = 1 AND [IsActive] = 1")]
     public void Ef_model_mirrors_the_unique_indexes(Type clr, string name, string[] columns, string? filter)
     {
         using var db = TenantIsolationModelTests.CreateSqlServerModelContext();

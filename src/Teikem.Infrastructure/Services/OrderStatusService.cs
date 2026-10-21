@@ -93,7 +93,7 @@ public sealed class OrderStatusService(
         var (ok, available) = CreditRules.Evaluate(check);
         // La cotización (QuotedAmount, QuotedAtUtc, ContractId, moneda) se guarda aquí, como en ConfirmTrackedAsync: el llamador ya guardó antes de cotizar.
         if (ok) { await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct); return; }
-        if (!overrideCredit) throw new CreditExceededException(check, available, await OrderPriceVisibility.CanViewAsync(priceVisibility, ct));
+        if (!overrideCredit) throw new CreditExceededException(check, available, await OrderPriceVisibility.CanViewAsync(priceVisibility, ct), CreditRules.ThisShipment);
         await permissions.EnsureAsync(CreditOverridePermission, ct);
         await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct);
         await security.WriteAsync(SecurityEventTypes.RoleChange, SecurityOutcomes.Success, tenant.UserId, tenant.TenantId,

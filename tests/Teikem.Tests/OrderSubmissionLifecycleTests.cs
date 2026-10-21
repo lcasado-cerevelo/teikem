@@ -267,7 +267,7 @@ public sealed class OrderSubmissionLifecycleTests
         await using var _ = x.F;
         var ex = await Assert.ThrowsAsync<CreditExceededException>(() => x.Orders.CreateAsync(Req(x), OrderScope.Any, null, default));
         Assert.Equal((422, "credit_exceeded"), (ex.StatusCode, ex.Code));
-        Assert.Equal(CreditRules.Message(new CreditCheck(40m, 0m, Rate)), ex.Message);
+        Assert.Equal(CreditRules.Message(new CreditCheck(40m, 0m, Rate), CreditRules.ThisShipment), ex.Message);
         Assert.Empty(x.Security.Actions("credit_override"));
         // El 422 sale de QuoteOnSubmissionAsync, dentro de RunInTransactionAsync de la creación: en SQL Server la orden no queda.
         // (InMemory no revierte; aquí solo se comprueba que el servicio no devolvió una orden creada.)
@@ -283,7 +283,7 @@ public sealed class OrderSubmissionLifecycleTests
 
         // 30 en curso + 50 de esta orden = 80 > 60: excede (sin contar la Sometida serían 50 ≤ 60).
         var ex = await Assert.ThrowsAsync<CreditExceededException>(() => x.Orders.CreateAsync(Req(x), OrderScope.Any, null, default));
-        Assert.Equal(CreditRules.Message(new CreditCheck(60m, 30m, Rate)), ex.Message);
+        Assert.Equal(CreditRules.Message(new CreditCheck(60m, 30m, Rate), CreditRules.ThisShipment), ex.Message);
     }
 
     [Fact]

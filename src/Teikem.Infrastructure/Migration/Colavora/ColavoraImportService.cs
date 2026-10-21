@@ -164,7 +164,7 @@ public sealed partial class ColavoraImportService(
             Config = cfg, Report = report, Reader = new ColavoraReader(courierCs, loginCs), CompanyId = cfg.Company.ColavoraCompanyId!,
             DryRun = dryRun, MigrationUtc = cfg.Options.MigrationDateUtc ?? DateTime.UtcNow, Phases = phases,
         };
-        report.AddInfo("Fecha de la migración (corte de órdenes abiertas)", cfg.Options.OpenOrderDays is int od ? $"{s.MigrationUtc:yyyy-MM-dd HH:mm} UTC, órdenes abiertas (cualquier estatus) de más de {od} días → Entregada" : $"{s.MigrationUtc:yyyy-MM-dd HH:mm} UTC, Pending de más de {cfg.Options.PendingCloseDays} días → Entregada");
+        report.AddInfo("Fecha de la migración (corte de envíos abiertos)", cfg.Options.OpenOrderDays is int od ? $"{s.MigrationUtc:yyyy-MM-dd HH:mm} UTC, envíos abiertos (cualquier estatus) de más de {od} días → Entregada" : $"{s.MigrationUtc:yyyy-MM-dd HH:mm} UTC, Pending de más de {cfg.Options.PendingCloseDays} días → Entregada");
         foreach (var t in cfg.Options.DescriptionPackageTypes) s.DescriptionPackageTypes.Add(t);
         report.AddInfo("Tipos de paquete que son descripción (no pieza)", s.DescriptionPackageTypes.Count == 0 ? "ninguno" : string.Join(", ", s.DescriptionPackageTypes.OrderBy(x => x)));
 
@@ -275,7 +275,7 @@ public sealed partial class ColavoraImportService(
         await Fill(StatusDomains.CodStatus, s.CodStatus);
         await Fill(StatusDomains.DriverStatus, s.DriverStatus);
         foreach (var code in new[] { OrderStatuses.Submitted, OrderStatuses.Pickup, OrderStatuses.Unassigned, OrderStatuses.Assigned, OrderStatuses.InTransit, OrderStatuses.Delivered, OrderStatuses.Failed, OrderStatuses.Cancelled, OrderStatuses.Returned })
-            if (!s.OrderStatus.ContainsKey(code)) throw new ValidationException($"El estatus de orden {code} no existe en Teikem; ejecute db-update antes de la migración.");
+            if (!s.OrderStatus.ContainsKey(code)) throw new ValidationException($"El estatus de envío {code} no existe en Teikem; ejecute db-update antes de la migración.");
 
         s.EntityTypeOrderId = await lookups.GetIdAsync(LookupDomains.EntityType, EntityTypes.TransportOrder, ct);
         s.EntityTypeLocationId = await lookups.GetIdAsync(LookupDomains.EntityType, EntityTypes.Location, ct);
