@@ -2,6 +2,15 @@
 
 Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Estado: ☐ pendiente · ◐ en curso · ☑ hecho.
 
+## Orden de ejecución acordado (2026-10-21) — todavía no se empieza (hay alguien más trabajando)
+1. **I1** — lista «Avisos que puedo silenciar» sin texto.
+2. **G1** — avisos de flota: documentos por vencer y mantenimiento.
+3. **F** — visibilidad de indicadores y gráficos por compañía (incluidos los «Por defecto»).
+4. **A5** — número del aviso de llegada (`Asn.Number`, patrón `LLE-#####`).
+5. **B** — «Mis tareas» en la app y asignar recibos y recolecciones.
+6. **C1** — agrupar por documento; luego C2, C3 y C4.
+7. **H** (contabilización por dueño, por confirmar) y los **menores** (sección D).
+
 ## Principios acordados (2026-10-21)
 - **La app móvil es la herramienta principal de trabajo del almacén:** fácil de entrar y de maniobrar (user friendly) por encima de la web; pocas pantallas, botones grandes, un solo paso para lo común, funciona sin señal.
 - **Tareas sin asignar** (acomodo, recibo, recolección): las puede tomar **cualquiera**; no se bloquea nada. **Una tarea asignada** le aparece a quien se le asignó (y sigue visible, atenuada, para los demás con permiso de supervisión).
