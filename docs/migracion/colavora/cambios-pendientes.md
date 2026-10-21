@@ -178,3 +178,10 @@ Luis tiene razón en que no tiene sentido (son órdenes viejas que ya se entrega
 - **Clientes por servicio (§4):** «MASCARO - PORTER (NEXT DAY)» y «(SAME DAY)» **se unen** en un solo cliente. ✅ **HECHO (2026-10-21):** `ColavoraRules.ResolveClientGroups` reconoce las variantes «(NEXT DAY)» / «(SAME DAY)»; si no existe un cliente con el nombre base, queda de principal la variante con más órdenes y se renombra al nombre base («MASCARO - PORTER»); las tarifas de las variantes se **suman** al contrato del principal (si el mismo servicio y paquete ya está, gana el del principal).
 - **Facturación por división (§4):** todavía por averiguar, pero por ahora se toma así: **una sola factura por compañía**, y las **divisiones son líneas de productos** que se facturan (como sub-facturas), desglosadas por concepto; el procesamiento de las órdenes es inmaterial. No hay facturación por división ni sub-clientes de facturación.
 - **Compañía nueva de transporte:** **parte de cero**, sin plantilla inicial de servicios ni paquetes.
+
+## 9. ⚠ Pendiente destacado: `src/Teikem.Api/App_Data/` quedó en el historial de `origin/master` (2026-10-21)
+
+Por un error mío (`git add src` incluyó la carpeta sin seguir), el commit `68c4b964` subió **5,052 archivos** de `src/Teikem.Api/App_Data/` (archivos subidos, entre ellos fotos y firmas de comprobantes de entrega). El commit siguiente los quitó del árbol, pero **siguen en el historial remoto**.
+- **Decisión de Luis (2026-10-21): NO reescribir el historial por ahora**; se espera a que la otra sesión termine de trabajar. Tampoco se agrega todavía `App_Data/` a `.gitignore`.
+- **Cuando se haga:** coordinar con todas las sesiones, quitar `68c4b964` del historial (push forzado de `master`), y agregar `src/Teikem.Api/App_Data/` al `.gitignore`.
+- Mientras tanto: no usar `git add src` (ni directorios enteros); agregar archivos por nombre o con `git add -u`.
