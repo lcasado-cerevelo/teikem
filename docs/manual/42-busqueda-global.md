@@ -18,6 +18,7 @@ Lote 167 (2026-10-21, dictado por Luis). El campo **Buscar o ejecutar…** de la
 | Código o nombre de almacén, zona, posición | Almacenes, zonas y posiciones (`inventory.view`, módulo Almacén) | El almacén / la lista de posiciones de su zona |
 | SKU (número de parte), código de barras, nombre o parte del nombre del producto | Productos | La ficha del producto |
 | Número de recibo (`REC-`), de recolección o empaque (`EMP-`, `DMA-`), de aviso de salida (`SAL-`) | Documentos de almacén | Su pantalla |
+| Número de aviso de llegada (`LLE-`, desde 2026-10-21) | Avisos de llegada | «Llegadas y salidas» con la lista filtrada por ese número |
 | Nombre del proveedor | Proveedores (`purchasing.view`) | La lista de proveedores filtrada por ese nombre |
 | Número de orden de compra (`PO-`) / de venta (`OV-`) / de factura (`FAC-`) / de renta (`REN-`) | Compras, ventas, facturación, rentas | Su ficha (la factura, la lista filtrada) |
 | **Teléfono** (cualquier formato: `(787) 555-0142`, `+1 787 555 0142`, `7875550142`) | El dueño del contacto: cliente, persona del cliente, consignatario, envío, o proveedor | Su pantalla (si el usuario puede verla) |

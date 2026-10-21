@@ -12,6 +12,7 @@ describe('hitHref', () => {
     expect(hitHref(hit({ type: 'WAREHOUSE', id: 'g-4' }))).toBe('/warehouse/warehouses?warehouse=g-4')
     expect(hitHref(hit({ type: 'RECEIPT', id: 'g-5' }))).toBe('/warehouse/receipts?receipt=g-5')
     expect(hitHref(hit({ type: 'PICK_BATCH', id: 'g-6' }))).toBe('/warehouse/pick-batches/g-6')
+    expect(hitHref(hit({ type: 'ARRIVAL_NOTICE', id: 'g-8', title: 'LLE-00012' }))).toBe('/warehouse/notices?q=LLE-00012')
     expect(hitHref(hit({ type: 'EXIT_NOTICE', id: 'g-7' }))).toBe('/warehouse/notices?notice=g-7')
     expect(hitHref(hit({ type: 'PURCHASE_ORDER', id: 'g-8' }))).toBe('/warehouse/purchase-orders/g-8')
     expect(hitHref(hit({ type: 'SALES_ORDER', id: 'g-9' }))).toBe('/sales-orders?order=g-9')

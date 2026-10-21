@@ -53,6 +53,20 @@ public sealed class GlobalSearchServiceTests
     }
 
     [Fact]
+    public async Task Arrival_notices_are_found_by_their_LLE_number()
+    {
+        await using var f = await CreateAsync();
+        Everything(f);
+        var w = await f.AddWarehouseAsync("ALM-300");
+        f.Db.Asns.Add(new Asn { AsnId = 900, TenantId = w.TenantId, Number = "LLE-00012", WarehouseId = w.WarehouseId, Reference = "OC-77",
+            StatusCodeId = f.StatusId(StatusDomains.AsnStatus, AsnStatuses.Expected), IsActive = true });
+        await f.Db.SaveChangesAsync();
+        var hit = Assert.Single((await f.Get<GlobalSearchService>().SearchAsync("LLE-00012", default)).Hits, h => h.Type == "ARRIVAL_NOTICE");
+        Assert.True(hit.Exact);
+        Assert.Equal("OC-77", hit.Subtitle);
+    }
+
+    [Fact]
     public async Task Each_type_needs_its_own_permission_and_module()
     {
         await using var f = await CreateAsync();

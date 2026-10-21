@@ -5,7 +5,7 @@
 // pendiente sin recibo) abre el modal del encabezado con el aviso precargado; "Cancelar aviso" (warehouse.receive) con
 // confirmación; "Nuevo aviso" abre `AsnCreateModal`.
 import { useId, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Can } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { StatusChip, useStatuses } from '../../kernel/catalogs'
@@ -42,7 +42,9 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
   const clientId = useId()
   const [warehousePublicId, setWarehousePublicId] = useState<string | null>(null)
   const [clientPublicId, setClientPublicId] = useState<string | null>(null)
-  const [reference, setReference] = useState('')
+  // `?q=` (desde «Buscar o ejecutar»): el número del aviso (LLE-…) va como filtro de referencia, que también busca por número
+  const [searchParams] = useSearchParams()
+  const [reference, setReference] = useState(() => searchParams.get('q') ?? '')
   const [status, setStatus] = useState<string[]>([])
   const statuses = useStatuses('AsnStatus')
   const statusOptions = useMemo(() => (statuses.data ?? []).map((s) => ({ value: s.code, label: s.label })), [statuses.data])

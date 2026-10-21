@@ -28,7 +28,7 @@ public sealed class GlobalSearchService(TeikemDbContext db, ITenantContext tenan
     public const string TypeOrder = "ORDER", TypeTrip = "TRIP", TypeClaim = "CLAIM", TypeClient = "CLIENT", TypeConsignee = "CONSIGNEE",
         TypeWarehouse = "WAREHOUSE", TypeZone = "ZONE", TypeBin = "BIN", TypeProduct = "PRODUCT", TypeSupplier = "SUPPLIER", TypeReceipt = "RECEIPT",
         TypePickBatch = "PICK_BATCH", TypeExitNotice = "EXIT_NOTICE", TypePurchaseOrder = "PURCHASE_ORDER", TypeSalesOrder = "SALES_ORDER",
-        TypeInvoice = "INVOICE", TypeRental = "RENTAL";
+        TypeInvoice = "INVOICE", TypeRental = "RENTAL", TypeArrivalNotice = "ARRIVAL_NOTICE";
 
     private sealed record Access(IReadOnlySet<string> Permissions, IReadOnlySet<string> Modules, bool IsPlatformAdmin)
     {
@@ -148,12 +148,14 @@ public sealed class GlobalSearchService(TeikemDbContext db, ITenantContext tenan
             p.Sku.StartsWith(q, StringComparison.OrdinalIgnoreCase) ? "SKU" : Eq(p.Barcode, q) ? "BARCODE" : "PRODUCT_NAME", Eq(p.Sku, q) || Eq(p.Barcode, q) || Eq(p.Name, q))).ToList();
     }
 
-    /// <summary>Recibos, recolecciones/empaques/despachos manuales y avisos de salida: su número por prefijo (REC-, EMP-, DMA-, SAL-).</summary>
+    /// <summary>Recibos, recolecciones/empaques/despachos manuales y avisos de salida: su número por prefijo (REC-, EMP-, DMA-, SAL-) y avisos de llegada (LLE-).</summary>
     private async Task<List<SearchHitDto>> DocumentsAsync(string q, CancellationToken ct)
     {
         var hits = new List<SearchHitDto>();
         hits.AddRange((await db.ReceiptHeaders.AsNoTracking().Where(r => r.IsActive && r.Number.StartsWith(q)).OrderBy(r => r.Number).Take(PerType).Select(r => new { r.PublicId, r.Number, r.Reference }).ToListAsync(ct))
             .Select(r => Hit(TypeReceipt, r.PublicId, r.Number, r.Reference, "RECEIPT_NUMBER", Eq(r.Number, q))));
+        hits.AddRange((await db.Asns.AsNoTracking().Where(a => a.IsActive && a.Number.StartsWith(q)).OrderBy(a => a.Number).Take(PerType).Select(a => new { a.AsnId, a.Number, a.Reference }).ToListAsync(ct))
+            .Select(a => Hit(TypeArrivalNotice, a.AsnId, a.Number, a.Reference, "ARRIVAL_NOTICE_NUMBER", Eq(a.Number, q))));
         hits.AddRange((await db.PickBatches.AsNoTracking().Where(p => p.IsActive && p.Number.StartsWith(q)).OrderBy(p => p.Number).Take(PerType).Select(p => new { p.PublicId, p.Number }).ToListAsync(ct))
             .Select(p => Hit(TypePickBatch, p.PublicId, p.Number, null, "PICK_BATCH_NUMBER", Eq(p.Number, q))));
         hits.AddRange((await db.Set<ExitNotice>().AsNoTracking().Where(n => n.Number.StartsWith(q)).OrderBy(n => n.Number).Take(PerType).Select(n => new { n.PublicId, n.Number, n.Reference }).ToListAsync(ct))

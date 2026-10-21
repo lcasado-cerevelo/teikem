@@ -38,6 +38,8 @@ La paleta de arriba («Buscar o ejecutar…») hoy solo filtra el menú. Debe bu
 
 > ✅ **Paso 1 hecho (2026-10-21).** Confirmado por Luis: «Envíos» solo en transporte; orden de compra, de venta y de trabajo se quedan como están. Al revisar, el web (`es.json`/`en.json`) y el portal del cliente (`app-cliente`) ya decían «Envío/Shipment» en transporte; solo faltaba «El envío hereda el nivel de su zona» (`fleet.levels.help`). Los mensajes de error del servidor que dicen «la orden» (unos 60) no se tocaron: llevan su texto exacto en el manual, el FAQ y las pruebas; se cambian en un paso aparte si Luis lo pide. §8 hecho: en la lista de Envíos los números de paquete salen cada uno en su renglón y sin partirse. Prefijo de reclamaciones confirmado por Luis: **`RCL-`** (paso 2).
 
+> ✅ **Estado al 2026-10-21:** hecho todo lo dictado — RCL- (Lote 164), teléfonos (166), búsqueda global (167), número `LLE-` del aviso de llegada (170) y, ahora, los avisos de llegada dentro de la búsqueda (abre «Llegadas y salidas» filtrado por el número). Fuera por decisión de Luis: serie global y lote.
+
 ## 3. Avisos de llegada con código
 
 Luis ya se lo pidió a **otra sesión**: los avisos de llegada (ASN) tendrán código. Esta sesión no lo toca; cuando exista, la búsqueda lo incluye con el formato que esa sesión defina. **El campo se llama `Number`** (decidido por Luis, 2026-10-20; igual que `Receipt.Number`, `ExitNotice.Number`, `PickBatch.Number`), y la búsqueda lo usará con ese nombre. Cuidar que el prefijo no choque con `REC-`, `SAL-`, `EMP-`, `DMA-` ni el nuevo de reclamación.

@@ -13,7 +13,7 @@ export const SEARCH_DEBOUNCE_MS = 250
 
 /** Tipos que el servidor puede devolver, en el orden en que se muestran sus grupos. */
 export const SEARCH_TYPES = [
-  'ORDER', 'TRIP', 'CLAIM', 'CLIENT', 'CONSIGNEE', 'WAREHOUSE', 'ZONE', 'BIN', 'PRODUCT', 'SUPPLIER', 'RECEIPT', 'PICK_BATCH', 'EXIT_NOTICE',
+  'ORDER', 'TRIP', 'CLAIM', 'CLIENT', 'CONSIGNEE', 'WAREHOUSE', 'ZONE', 'BIN', 'PRODUCT', 'SUPPLIER', 'RECEIPT', 'PICK_BATCH', 'EXIT_NOTICE', 'ARRIVAL_NOTICE',
   'PURCHASE_ORDER', 'SALES_ORDER', 'INVOICE', 'RENTAL',
 ] as const
 export type SearchType = (typeof SEARCH_TYPES)[number]
@@ -41,6 +41,7 @@ export function hitHref(hit: Pick<SearchHit, 'type' | 'id' | 'title' | 'keys'>):
     case 'SUPPLIER': return `/warehouse/suppliers?q=${enc(title)}`
     case 'RECEIPT': return `/warehouse/receipts?receipt=${enc(id)}`
     case 'PICK_BATCH': return `/warehouse/pick-batches/${enc(id)}`
+    case 'ARRIVAL_NOTICE': return `/warehouse/notices?q=${enc(title)}`
     case 'EXIT_NOTICE': return `/warehouse/notices?notice=${enc(id)}`
     case 'PURCHASE_ORDER': return `/warehouse/purchase-orders/${enc(id)}`
     case 'SALES_ORDER': return `/sales-orders?order=${enc(id)}`
