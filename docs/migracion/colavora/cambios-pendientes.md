@@ -148,3 +148,10 @@ Luis tiene razón en que no tiene sentido (son órdenes viejas que ya se entrega
 - **Filtros de Envíos a cambiar (por dictar el detalle):** el filtro principal pasa a ser **Conduce**; el de número de orden se mueve a un segundo plano; se quita el filtro de Empaque y entra **Nº de paquete**; la búsqueda libre busca en conduce, número de orden, números de paquete y factura.
 - **Recolección y empaque:** hoy usa el número del lote (`EMP-#####`, contador PACKBATCH), que además se copia a la orden como Empaque. Debe mostrar y usar el **conduce**; el conduce se crea ahí, cuando se empaca y nace la orden, con la misma fórmula (Lote 110). El número del lote queda solo como identificador interno del lote.
 - **Cuando el cliente trae su propio número de envío** (como el waybill de Colavora) hoy no se puede: el conduce «no se teclea» (Lote 110). Hay que permitir que lo traiga el cliente (importación, API de clientes, migración) y que Teikem lo genere con la fórmula solo si no viene.
+
+### 7.3 ¿Para qué sirve el número del lote (EMP) de Recolección y empaque? (pregunta de Luis, 2026-10-20)
+
+- Es el nombre del **documento de trabajo** de la recolección: nace al recolectar (sale el inventario) y la orden solo nace al **empacar**. En esa etapa intermedia no hay orden, y por tanto no hay conduce: el lote necesita *algún* nombre. Además los movimientos de inventario (kardex) y la lista de Recolección y empaque lo referencian.
+- Una vez empacado, el lote y la orden son 1 a 1: la orden ya lo identifica todo, y ese número solo se copia a la orden como «Empaque», que es el duplicado que Luis no quiere.
+- Los despachos manuales (`DMA-#####`) no generan orden: su número es su único identificador.
+- **Conclusión propuesta:** el usuario no necesita ver ni escanear el EMP. Se deja solo como identificador interno del lote (y para el despacho manual); al empacar, las pantallas, listas y movimientos muestran el **conduce** de la orden; el EMP deja de copiarse a la orden. Alternativa más grande (otro lote): crear la orden desde que se empieza a recolectar, con su conduce, y que el lote no tenga número propio.
