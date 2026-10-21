@@ -5957,3 +5957,28 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ReceiptGroup_ClientKey' AND object_id = OBJECT_ID('dbo.ReceiptGroup'))
     CREATE UNIQUE INDEX UX_ReceiptGroup_ClientKey ON dbo.ReceiptGroup (TenantId, ClientKey) WHERE ClientKey IS NOT NULL;
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-21 — Integraciones de SALIDA de un catálogo (productos…), dictado de Luis: la plantilla de la entidad (columna -> campo) sirve también para SACAR datos por SFTP/FTP/HTTP,
+   por horario y al cambiar.
+   - dbo.Integration.EntityKind VARCHAR(20) NULL: la entidad que manda (PRODUCT); NULL = envios del cliente (Lote 137b). La plantilla va en ImportTemplateId.
+   - dbo.IntegrationOutputEntity: los registros del catalogo que cambiaron y esperan ir en un envio (IntegrationOutputId NULL = aun sin envio); un registro pendiente por integracion.
+   Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Integration', 'EntityKind') IS NULL ALTER TABLE dbo.Integration ADD EntityKind VARCHAR(20) NULL;
+GO
+IF OBJECT_ID(N'dbo.IntegrationOutputEntity', N'U') IS NULL CREATE TABLE dbo.IntegrationOutputEntity (
+    IntegrationOutputEntityId BIGINT IDENTITY(1,1) CONSTRAINT PK_IntegrationOutputEntity PRIMARY KEY,
+    TenantId            INT NOT NULL CONSTRAINT FK_IntegrationOutputEntity_Tenant REFERENCES dbo.Tenant(TenantId),
+    IntegrationId       INT NOT NULL CONSTRAINT FK_IntegrationOutputEntity_Integration REFERENCES dbo.Integration(IntegrationId),
+    EntityId            INT NOT NULL,
+    QueuedAtUtc         DATETIME2 NOT NULL CONSTRAINT DF_IntegrationOutputEntity_Queued DEFAULT SYSUTCDATETIME(),
+    IntegrationOutputId BIGINT NULL CONSTRAINT FK_IntegrationOutputEntity_Output REFERENCES dbo.IntegrationOutput(IntegrationOutputId)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_IntegrationOutputEntity_Queue' AND object_id = OBJECT_ID('dbo.IntegrationOutputEntity'))
+    CREATE INDEX IX_IntegrationOutputEntity_Queue ON dbo.IntegrationOutputEntity(TenantId, IntegrationId, IntegrationOutputId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_IntegrationOutputEntity_Open' AND object_id = OBJECT_ID('dbo.IntegrationOutputEntity'))
+    CREATE UNIQUE INDEX UX_IntegrationOutputEntity_Open ON dbo.IntegrationOutputEntity(IntegrationId, EntityId) WHERE IntegrationOutputId IS NULL;
+GO

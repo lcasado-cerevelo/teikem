@@ -27,8 +27,16 @@ namespace Teikem.Infrastructure.Services;
 ///   escritura. Nunca DELETE.
 /// - QtyAvailable (columna computada) nunca se lee: el disponible se calcula en código (en mano − reservado).
 /// </summary>
-public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, ITenantClock? clock = null)
+public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, ITenantClock? clock = null, OutputEntityRecorder? outputs = null)
 {
+    /// <summary>2026-10-21: avisa a las integraciones de salida de productos que este cambió (sale en su siguiente envío).</summary>
+    private async Task RecordOutputAsync(Guid publicId, CancellationToken ct)
+    {
+        if (outputs is null) return;
+        var id = await db.Set<Product>().AsNoTracking().Where(p => p.PublicId == publicId).Select(p => (int?)p.ProductId).FirstOrDefaultAsync(ct);
+        if (id is int productId) await outputs.RecordAsync(Teikem.Domain.Orders.ImportKinds.Product, new[] { productId }, ct);
+    }
+
     private readonly ITenantClock _clock = clock ?? TenantClock.Default;
 
     /// <summary>Tope de series por consulta (use el buscador para acotar).</summary>
@@ -466,6 +474,7 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
         };
         db.Set<Product>().Add(product);
         await SaveProductAsync(ct);
+        await RecordOutputAsync(product.PublicId, ct);
         return await GetAsync(product.PublicId, InventoryScope.Any, ct);
     }
 
@@ -654,6 +663,7 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             await SaveProductAsync(ct2);
         }, ct);
 
+        await RecordOutputAsync(publicId, ct);
         return await GetAsync(publicId, InventoryScope.Any, ct);
     }
 
@@ -687,6 +697,7 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             await SaveProductAsync(ct2);
         }, ct);
 
+        await RecordOutputAsync(publicId, ct);
         return await GetAsync(publicId, InventoryScope.Any, ct);
     }
 
@@ -704,6 +715,7 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             product.IsActive = true;
             await SaveProductAsync(ct2);
         }, ct);
+        await RecordOutputAsync(publicId, ct);
         return await GetAsync(publicId, InventoryScope.Any, ct);
     }
 

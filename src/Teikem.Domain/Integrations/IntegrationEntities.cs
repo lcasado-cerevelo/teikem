@@ -101,6 +101,8 @@ public class Integration : ITenantScoped, IAuditStamped
     public string? FormatJson { get; set; }
     /// <summary>Lote 137b: qué manda una integración de SALIDA (estatus, disparador, formato, columnas y, en HTTP, la API); null en las de entrada.</summary>
     public string? OutputJson { get; set; }
+    /// <summary>2026-10-21: en una integración de SALIDA de un catálogo (productos…), qué entidad manda (ImportKinds); NULL = envíos del cliente (Lote 137b). La plantilla (ImportTemplateId) dice qué columna lleva qué campo.</summary>
+    public string? EntityKind { get; set; }
     /// <summary>Plantilla de importación con la que se leen los archivos.</summary>
     public int? ImportTemplateId { get; set; }
     public string ScheduleKind { get; set; } = IntegrationScheduleKinds.Manual;
@@ -300,6 +302,17 @@ public class IntegrationOutputOrder : ITenantScoped
     public int IntegrationId { get; set; }
     public int TransportOrderId { get; set; }
     public string StatusCode { get; set; } = string.Empty;
+    public DateTime QueuedAtUtc { get; set; } = DateTime.UtcNow;
+    public long? IntegrationOutputId { get; set; }
+}
+
+/// <summary>2026-10-21: un registro de un catálogo (producto…) que cambió y espera ir en un envío de una integración de salida de esa entidad (IntegrationOutputId NULL = aún no tiene envío).</summary>
+public class IntegrationOutputEntity : ITenantScoped
+{
+    public long IntegrationOutputEntityId { get; set; }
+    public int TenantId { get; set; }
+    public int IntegrationId { get; set; }
+    public int EntityId { get; set; }
     public DateTime QueuedAtUtc { get; set; } = DateTime.UtcNow;
     public long? IntegrationOutputId { get; set; }
 }

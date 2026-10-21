@@ -103,7 +103,7 @@ public sealed class IntegrationService(
                 r.RetentionDays, r.IsActive, r.LastStartedUtc, r.LastFinishedUtc, r.LastStatus, r.LastMessage, pending.GetValueOrDefault(r.IntegrationId), r.CreatedAtUtc,
                 r.ConnectorKind == IntegrationConnectorKinds.Email ? ParseEmail(r.ConnectorConfigJson) : null, r.ConnectorKind == IntegrationConnectorKinds.Email && r.SecretEnc is not null,
                 IntegrationConnectorKinds.IsRemote(r.ConnectorKind) ? ParseRemote(r.ConnectorConfigJson) : null, IntegrationConnectorKinds.IsRemote(r.ConnectorKind) && r.SecretEnc is not null, ParseFormat(r.FormatJson),
-                r.Direction == IntegrationDirections.Outbound ? ParseOutput(r) : null, r.ConnectorKind == IntegrationConnectorKinds.Http && r.SecretEnc is not null);
+                r.Direction == IntegrationDirections.Outbound ? ParseOutput(r) : null, r.ConnectorKind == IntegrationConnectorKinds.Http && r.SecretEnc is not null, r.EntityKind);
         }).ToList();
     }
 
@@ -323,7 +323,10 @@ public sealed class IntegrationService(
         var isApi = string.Equals(req.ConnectorKind?.Trim(), IntegrationConnectorKinds.Api, StringComparison.OrdinalIgnoreCase);
         var isOut = string.Equals(req.Direction?.Trim(), IntegrationDirections.Outbound, StringComparison.OrdinalIgnoreCase);
         if (isOut && isApi) throw new ValidationException("connectorKind", OutputRules.OutboundConnectorMessage);
-        ThrowIfErrors(ValidateScopeKinds(scopes, isApi, isOut));
+        // 2026-10-21: salida de un catálogo (productos…) con la plantilla de la entidad: sin cliente ni estatus
+        var entityKind = isOut && !string.IsNullOrWhiteSpace(req.EntityKind) ? req.EntityKind.Trim().ToUpperInvariant() : null;
+        if (entityKind is not null && !OutputRules.EntityKinds.Contains(entityKind)) throw new ValidationException("entityKind", OutputRules.EntityKindMessage(entityKind));
+        ThrowIfErrors(ValidateScopeKinds(scopes, isApi, isOut, entityKind is not null));
 
         Client? client = null;
         ImportTemplate? template = null;
@@ -334,11 +337,16 @@ public sealed class IntegrationService(
         }
         else
         {
-            if (client is null) throw new ValidationException("clientPublicId", IntegrationRules.ClientRequiredMessage);
-            if (!isOut)
+            if (client is null && entityKind is null) throw new ValidationException("clientPublicId", IntegrationRules.ClientRequiredMessage);
+            if (entityKind is not null)
+            {
+                if (req.TemplatePublicId is not Guid entityTemplate) throw new ValidationException("templatePublicId", OutputRules.EntityTemplateRequiredMessage);
+                template = await templates.ResolveForImportAsync(entityTemplate, null, entityKind, ct);
+            }
+            else if (!isOut)
             {
                 if (req.TemplatePublicId is not Guid templateGuid) throw new ValidationException("templatePublicId", IntegrationRules.TemplateRequiredMessage);
-                template = await templates.ResolveForImportAsync(templateGuid, client.ClientId, ImportKinds.Order, ct);
+                template = await templates.ResolveForImportAsync(templateGuid, client!.ClientId, ImportKinds.Order, ct);
             }
         }
         var (connector, folder, scheduleKind, interval) = ValidateConnectorAndSchedule(req.ConnectorKind, req.Folder, req.ScheduleKind, req.IntervalSeconds, isOut);
@@ -348,7 +356,7 @@ public sealed class IntegrationService(
         var httpSecretValue = req.HttpSecret?.Value;
         if (isOut)
         {
-            ThrowIfErrors(OutputRules.Validate(req.Output, IntegrationConnectorKinds.IsRemote(connector), connector == IntegrationConnectorKinds.Http, webhookOptions.Value.AllowInsecure, !string.IsNullOrEmpty(httpSecretValue)));
+            ThrowIfErrors(OutputRules.Validate(req.Output, IntegrationConnectorKinds.IsRemote(connector), connector == IntegrationConnectorKinds.Http, webhookOptions.Value.AllowInsecure, !string.IsNullOrEmpty(httpSecretValue), entity: entityKind is not null));
             outputCfg = NormalizeOutput(req.Output!);
             if (outputCfg.Trigger == OutputTriggers.Event) { scheduleKind = IntegrationScheduleKinds.Manual; interval = null; }
             else if (scheduleKind != IntegrationScheduleKinds.Interval) throw new ValidationException("output.trigger", OutputRules.ScheduleNeedsIntervalMessage);
@@ -382,7 +390,7 @@ public sealed class IntegrationService(
             var serviceUser = await CreateServiceUserAsync(tenantId, publicId, name, role.RoleId, ct2);
             var row = new Integration
             {
-                PublicId = publicId, TenantId = tenantId, Name = name, Description = NullIfEmpty(req.Description), Direction = isOut ? IntegrationDirections.Outbound : IntegrationDirections.Inbound, ClientId = client?.ClientId, OutputJson = outputCfg is null ? null : JsonSerializer.Serialize(outputCfg, Json),
+                PublicId = publicId, TenantId = tenantId, Name = name, Description = NullIfEmpty(req.Description), Direction = isOut ? IntegrationDirections.Outbound : IntegrationDirections.Inbound, ClientId = client?.ClientId, EntityKind = entityKind, OutputJson = outputCfg is null ? null : JsonSerializer.Serialize(outputCfg, Json),
                 ConnectorKind = connector, ConnectorConfigJson = email is not null ? JsonSerializer.Serialize(email, Json) : remoteCfg is not null ? JsonSerializer.Serialize(remoteCfg, Json) : httpCfg is not null ? JsonSerializer.Serialize(httpCfg, Json) : folder is null ? null : JsonSerializer.Serialize(new { folder }, Json),
                 SecretEnc = email is not null ? protector.Protect(tenantId, MailPurpose, req.MailPassword!) : remoteCfg is not null ? protector.Protect(tenantId, RemotePurpose, JsonSerializer.Serialize(req.Secret, Json)) : httpCfg is not null && !string.IsNullOrEmpty(httpSecretValue) ? protector.Protect(tenantId, OutputSender.HttpPurpose, JsonSerializer.Serialize(new HttpOutSecret(httpSecretValue), Json)) : null, ImportTemplateId = template?.ImportTemplateId,
                 ScheduleKind = scheduleKind, IntervalSeconds = interval, NextRunUtc = IntegrationRules.NextRun(scheduleKind, interval, now), ScopesJson = JsonSerializer.Serialize(scopes, Json),
@@ -419,7 +427,7 @@ public sealed class IntegrationService(
             }
             if (req.Description is not null) row.Description = NullIfEmpty(req.Description);
             if (req.TemplatePublicId is Guid tpl)
-                row.ImportTemplateId = (await templates.ResolveForImportAsync(tpl, row.ClientId ?? 0, ImportKinds.Order, ct2)).ImportTemplateId;
+                row.ImportTemplateId = (await templates.ResolveForImportAsync(tpl, row.EntityKind is null ? row.ClientId ?? 0 : null, row.EntityKind ?? ImportKinds.Order, ct2)).ImportTemplateId;
             if (row.ConnectorKind == IntegrationConnectorKinds.Email && (req.Email is not null || req.MailPassword is not null))
             {
                 var cfg = req.Email ?? ParseEmail(row.ConnectorConfigJson);
@@ -451,7 +459,7 @@ public sealed class IntegrationService(
                 var cfg = req.Output ?? current ?? throw new ValidationException("output", OutputRules.OutputRequiredMessage);
                 if (row.ConnectorKind == IntegrationConnectorKinds.Http) cfg = cfg with { Http = cfg.Http ?? current?.Http };
                 var newSecret = req.HttpSecret?.Value;
-                ThrowIfErrors(OutputRules.Validate(cfg, IntegrationConnectorKinds.IsRemote(row.ConnectorKind), row.ConnectorKind == IntegrationConnectorKinds.Http, webhookOptions.Value.AllowInsecure, row.SecretEnc is not null || !string.IsNullOrEmpty(newSecret)));
+                ThrowIfErrors(OutputRules.Validate(cfg, IntegrationConnectorKinds.IsRemote(row.ConnectorKind), row.ConnectorKind == IntegrationConnectorKinds.Http, webhookOptions.Value.AllowInsecure, row.SecretEnc is not null || !string.IsNullOrEmpty(newSecret), entity: row.EntityKind is not null));
                 var norm = NormalizeOutput(cfg);
                 var wantedKind = norm.Trigger == OutputTriggers.Event ? IntegrationScheduleKinds.Manual : IntegrationScheduleKinds.Interval;
                 var (_, _, scheduleKind, interval) = ValidateConnectorAndSchedule(row.ConnectorKind, null, wantedKind, wantedKind == IntegrationScheduleKinds.Manual ? null : req.IntervalSeconds ?? row.IntervalSeconds, true);
@@ -598,11 +606,12 @@ public sealed class IntegrationService(
     // ---------------------------------------------------------------- validaciones
 
     /// <summary>Una integración de tipo API solo admite alcances de la API; las demás, solo el de entrada de órdenes por archivo.</summary>
-    private static IReadOnlyDictionary<string, string> ValidateScopeKinds(IReadOnlyList<string> scopes, bool isApi, bool outbound = false)
+    private static IReadOnlyDictionary<string, string> ValidateScopeKinds(IReadOnlyList<string> scopes, bool isApi, bool outbound = false, bool entityOut = false)
     {
         var errors = new Dictionary<string, string>(StringComparer.Ordinal);
-        if (outbound) { if (scopes.Any(s => !string.Equals(s, IntegrationScopes.FilesOrdersExport, StringComparison.OrdinalIgnoreCase))) errors["scopes"] = IntegrationScopes.OutboundScopeOnlyMessage; }
-        else if (!isApi && scopes.Any(s => string.Equals(s, IntegrationScopes.FilesOrdersExport, StringComparison.OrdinalIgnoreCase))) errors["scopes"] = IntegrationScopes.InboundScopeOnlyMessage;
+        var allowedOut = entityOut ? IntegrationScopes.FilesCatalogExport : IntegrationScopes.FilesOrdersExport;
+        if (outbound) { if (scopes.Any(s => !string.Equals(s, allowedOut, StringComparison.OrdinalIgnoreCase))) errors["scopes"] = IntegrationScopes.OutboundScopeOnlyMessage; }
+        else if (!isApi && scopes.Any(s => string.Equals(s, IntegrationScopes.FilesOrdersExport, StringComparison.OrdinalIgnoreCase) || string.Equals(s, IntegrationScopes.FilesCatalogExport, StringComparison.OrdinalIgnoreCase))) errors["scopes"] = IntegrationScopes.InboundScopeOnlyMessage;
         else if (isApi && scopes.Any(s => !IntegrationScopes.IsApiScope(s))) errors["scopes"] = IntegrationScopes.ApiScopesOnlyMessage;
         else if (!isApi && scopes.Any(IntegrationScopes.IsApiScope)) errors["scopes"] = IntegrationScopes.FileScopeOnlyMessage;
         return errors;

@@ -49,6 +49,10 @@ public sealed class IntegrationsController(IntegrationService integrations, Inte
     public Task<IntegrationDto> Reactivate(Guid publicId, CancellationToken ct) => integrations.SetActiveAsync(publicId, true, ct);
 
     /// <summary>Corre ahora una integración de carpeta (lee los archivos nuevos). 409 si ya se está ejecutando; 422 si está apagada.</summary>
+    /// <summary>2026-10-21: salida de un catálogo (productos…): anota TODOS los registros y corre la integración ahora («Enviar todo»).</summary>
+    [HttpPost("{publicId:guid}/send-all"), RequirePermission(PermissionCatalog.IntegrationsManage)]
+    public Task<IntegrationRunDto> SendAll(Guid publicId, CancellationToken ct) => outputs.SendAllAsync(publicId, tenant.UserId, ct);
+
     [HttpPost("{publicId:guid}/run"), RequirePermission(PermissionCatalog.IntegrationsManage)]
     public Task<IntegrationRunDto> Run(Guid publicId, CancellationToken ct) => runner.RunAsync(publicId, IntegrationTriggers.Manual, tenant.UserId, ct);
 

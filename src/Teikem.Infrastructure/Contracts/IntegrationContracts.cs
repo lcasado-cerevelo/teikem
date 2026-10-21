@@ -45,7 +45,9 @@ public sealed record IntegrationDto(
     FileFormatConfig? Format = null,
     /// <summary>Lote 137b: qué manda una integración de SALIDA (estatus, disparador, formato, columnas y, en HTTP, la API); null en las de entrada.</summary>
     OutputConfig? Output = null,
-    bool HasHttpSecret = false);
+    bool HasHttpSecret = false,
+    /// <summary>2026-10-21: en una salida de un catálogo, la entidad que manda (PRODUCT); null = envíos del cliente.</summary>
+    string? EntityKind = null);
 
 /// <summary>
 /// Alta. Scopes: códigos de IntegrationScopes (solo los que quien crea puede dar). Folder: carpeta de entrada (conector CARPETA). IncludeMe: agrega a quien crea a los avisos.
@@ -75,7 +77,9 @@ public sealed record IntegrationCreateRequest(
     string? Direction = null,
     OutputConfig? Output = null,
     /// <summary>Token, contraseña o valor del encabezado de la API saliente: se guarda cifrado y no se vuelve a mostrar.</summary>
-    HttpOutSecret? HttpSecret = null);
+    HttpOutSecret? HttpSecret = null,
+    /// <summary>2026-10-21: solo con Direction = OUTBOUND: la entidad de catálogo que manda (PRODUCT) con la plantilla TemplatePublicId; sin ella, la integración manda envíos del cliente.</summary>
+    string? EntityKind = null);
 
 /// <summary>Edición parcial: null = sin cambio. NotifyUserIds reemplaza la lista; Scopes reemplaza los alcances (se revalidan contra quien edita).</summary>
 public sealed record IntegrationPatchRequest(

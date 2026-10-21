@@ -140,6 +140,13 @@ public static class OutputRules
     public const string OutputRequiredMessage = "Indique qué se manda (estatus, formato y columnas).";
     public const string NotOutboundMessage = "Esta integración no es de salida.";
     public const string SizeMessage = "La salida supera el tamaño permitido (2 MB); use una salida más frecuente o menos columnas.";
+    /// <summary>Entidades de catálogo que una integración de salida puede mandar (ImportKinds); la plantilla de importación de la entidad dice las columnas.</summary>
+    public static readonly IReadOnlyList<string> EntityKinds = ["PRODUCT"];
+    public const string NotEntityOutputMessage = "Esta integración no manda un catálogo.";
+    /// <summary>Nombres de la raíz y de cada elemento en JSON y XML según la entidad.</summary>
+    public static (string Root, string Item) EntityNames(string kind) => kind.ToUpperInvariant() switch { "PRODUCT" => ("products", "product"), _ => ("items", "item") };
+    public const string EntityTemplateRequiredMessage = "Escoja la plantilla de la entidad: dice qué columna lleva cada campo.";
+    public static string EntityKindMessage(string k) => $"Entidad desconocida para la salida: {k}. Use {string.Join(" o ", EntityKinds)}.";
     public const string NothingToSendMessage = "No hay envíos pendientes de enviar.";
     public const string NotUndeliveredMessage = "Solo se puede reintentar un envío no entregado.";
     public const string AlreadyDiscardedMessage = "El envío ya fue descartado.";
@@ -154,12 +161,14 @@ public static class OutputRules
     // ---------------------------------------------------------------- validación
 
     /// <summary>Valida la configuración de la salida: campo → mensaje exacto (vacío = bien). <paramref name="remote"/> = SFTP/FTP (nombre de archivo); <paramref name="http"/> = conector HTTP (API saliente).</summary>
-    public static Dictionary<string, string> Validate(OutputConfig? c, bool remote, bool http, bool allowInsecureUrls, bool hasSecret)
+    public static Dictionary<string, string> Validate(OutputConfig? c, bool remote, bool http, bool allowInsecureUrls, bool hasSecret, bool entity = false)
     {
         var errors = new Dictionary<string, string>();
         if (c is null) { errors["output"] = OutputRequiredMessage; return errors; }
+        // 2026-10-21: la salida de un catálogo (entity) no tiene estatus ni columnas propias: las columnas salen de la plantilla de la entidad
         var statuses = (c.Statuses ?? []).Select(s => (s ?? string.Empty).Trim().ToUpperInvariant()).Where(s => s.Length > 0).Distinct().ToList();
-        if (statuses.Count == 0) errors["output.statuses"] = StatusesRequiredMessage;
+        if (entity) { /* sin estatus */ }
+        else if (statuses.Count == 0) errors["output.statuses"] = StatusesRequiredMessage;
         else if (statuses.FirstOrDefault(s => !OrderStatusCodes.Contains(s)) is string unknown) errors["output.statuses"] = StatusUnknownMessage(unknown);
         var trigger = (c.Trigger ?? string.Empty).Trim().ToUpperInvariant();
         if (!OutputTriggers.All.Contains(trigger)) errors["output.trigger"] = TriggerMessage(c.Trigger ?? string.Empty);
@@ -175,8 +184,9 @@ public static class OutputRules
             else if (PlaceholderRegex.Matches(fileName).Select(m => m.Groups[1].Value).FirstOrDefault(p => !Placeholders.Contains(p)) is string bad) errors["output.fileName"] = PlaceholderMessage(bad);
         }
 
-        var columns = c.Columns ?? [];
-        if (columns.Count == 0) errors["output.columns"] = ColumnsRequiredMessage;
+        var columns = entity ? [] : c.Columns ?? [];
+        if (entity) { /* las columnas son las de la plantilla */ }
+        else if (columns.Count == 0) errors["output.columns"] = ColumnsRequiredMessage;
         else if (columns.Count > MaxColumns) errors["output.columns"] = ColumnsMaxMessage;
         else
         {
@@ -254,13 +264,19 @@ public static class OutputRules
 
     /// <summary>Arma el contenido de la salida con las columnas configuradas. Cada orden es un diccionario campo → valor (texto, número, fecha o nulo).</summary>
     public static string Render(OutputConfig c, IReadOnlyList<IReadOnlyDictionary<string, object?>> orders)
+        => RenderRows(c, (c.Columns ?? []).Select(col => new OutputColumn(col.Header.Trim(), FindField(col.Field)!.Code)).ToList(), orders, "orders", "order");
+
+    /// <summary>
+    /// 2026-10-21: arma el archivo de cualquier entidad: las columnas (encabezado y campo) las pone quien llama (la plantilla de la entidad) y los nombres de la raíz y de cada elemento, también (JSON: arreglo <paramref name="root"/>; XML: <paramref name="root"/>/<paramref name="item"/>).
+    /// </summary>
+    public static string RenderRows(OutputConfig c, IReadOnlyList<OutputColumn> outputColumns, IReadOnlyList<IReadOnlyDictionary<string, object?>> rows, string root, string item)
     {
-        var columns = (c.Columns ?? []).Select(col => (Header: col.Header.Trim(), Field: FindField(col.Field)!)).ToList();
+        var columns = outputColumns.Select(col => (Header: col.Header.Trim(), Code: col.Field)).ToList();
         return (c.Format ?? OutputFormats.Csv).Trim().ToUpperInvariant() switch
         {
-            OutputFormats.Json => RenderJson(columns, orders),
-            OutputFormats.Xml => RenderXml(columns, orders),
-            _ => RenderCsv(columns, orders, DelimiterOf(c.Delimiter) ?? ','),
+            OutputFormats.Json => RenderJson(columns, rows, root),
+            OutputFormats.Xml => RenderXml(columns, rows, root, item),
+            _ => RenderCsv(columns, rows, DelimiterOf(c.Delimiter) ?? ','),
         };
     }
 
@@ -276,31 +292,31 @@ public static class OutputRules
         _ => v.ToString() ?? string.Empty,
     };
 
-    private static string RenderCsv(List<(string Header, OutputField Field)> columns, IReadOnlyList<IReadOnlyDictionary<string, object?>> orders, char delimiter)
+    private static string RenderCsv(List<(string Header, string Code)> columns, IReadOnlyList<IReadOnlyDictionary<string, object?>> orders, char delimiter)
     {
         var sb = new StringBuilder();
         sb.Append(string.Join(delimiter, columns.Select(c => Quote(c.Header, delimiter)))).Append("\r\n");
         foreach (var o in orders)
-            sb.Append(string.Join(delimiter, columns.Select(c => Quote(TextOf(o.GetValueOrDefault(c.Field.Code)), delimiter)))).Append("\r\n");
+            sb.Append(string.Join(delimiter, columns.Select(c => Quote(TextOf(o.GetValueOrDefault(c.Code)), delimiter)))).Append("\r\n");
         return sb.ToString();
     }
 
     private static string Quote(string value, char delimiter)
         => value.IndexOfAny([delimiter, '"', '\r', '\n']) >= 0 ? "\"" + value.Replace("\"", "\"\"") + "\"" : value;
 
-    private static string RenderJson(List<(string Header, OutputField Field)> columns, IReadOnlyList<IReadOnlyDictionary<string, object?>> orders)
+    private static string RenderJson(List<(string Header, string Code)> columns, IReadOnlyList<IReadOnlyDictionary<string, object?>> orders, string root)
     {
         using var ms = new MemoryStream();
         using (var w = new Utf8JsonWriter(ms))
         {
             w.WriteStartObject();
-            w.WriteStartArray("orders");
+            w.WriteStartArray(root);
             foreach (var o in orders)
             {
                 w.WriteStartObject();
-                foreach (var (header, field) in columns)
+                foreach (var (header, code) in columns)
                 {
-                    var v = o.GetValueOrDefault(field.Code);
+                    var v = o.GetValueOrDefault(code);
                     switch (v)
                     {
                         case null: w.WriteNull(header); break;
@@ -318,17 +334,17 @@ public static class OutputRules
         return Encoding.UTF8.GetString(ms.ToArray());
     }
 
-    private static string RenderXml(List<(string Header, OutputField Field)> columns, IReadOnlyList<IReadOnlyDictionary<string, object?>> orders)
+    private static string RenderXml(List<(string Header, string Code)> columns, IReadOnlyList<IReadOnlyDictionary<string, object?>> orders, string root, string item)
     {
         using var ms = new MemoryStream();
         using (var w = XmlWriter.Create(ms, new XmlWriterSettings { Encoding = new UTF8Encoding(false), Indent = true, CloseOutput = false }))
         {
             w.WriteStartDocument();
-            w.WriteStartElement("orders");
+            w.WriteStartElement(root);
             foreach (var o in orders)
             {
-                w.WriteStartElement("order");
-                foreach (var (header, field) in columns) w.WriteElementString(header, XmlSafe(TextOf(o.GetValueOrDefault(field.Code))));
+                w.WriteStartElement(item);
+                foreach (var (header, code) in columns) w.WriteElementString(header, XmlSafe(TextOf(o.GetValueOrDefault(code))));
                 w.WriteEndElement();
             }
             w.WriteEndElement();

@@ -151,6 +151,8 @@ public static class DependencyInjection
         services.AddScoped<IImportEntityRows, ProductImportRows>();
         services.AddScoped<IImportEntityRows, SupplierImportRows>();
         services.AddScoped<IImportEntityRows, WarehouseImportRows>();
+        services.AddScoped<OutputEntityRecorder>();   // 2026-10-21: salida de catálogos por Integración (productos)
+        services.AddScoped<IExportEntityRows, ProductExportRows>();
         services.AddScoped<IImportEntityRows, BinImportRows>();
 
         // Lote 43 (F-G1) — impresoras y plantillas de label (sin IDataSource ni StatusService: solo IsActive, D-FG5)

@@ -150,6 +150,16 @@ public sealed class IntegrationOutputConfiguration : IEntityTypeConfiguration<In
     }
 }
 
+public sealed class IntegrationOutputEntityConfiguration : IEntityTypeConfiguration<IntegrationOutputEntity>
+{
+    public void Configure(EntityTypeBuilder<IntegrationOutputEntity> b)
+    {
+        b.ToTable("IntegrationOutputEntity");
+        b.HasKey(o => o.IntegrationOutputEntityId);
+        b.HasIndex(o => new { o.TenantId, o.IntegrationId, o.IntegrationOutputId }).HasDatabaseName("IX_IntegrationOutputEntity_Queue");
+    }
+}
+
 public sealed class IntegrationOutputOrderConfiguration : IEntityTypeConfiguration<IntegrationOutputOrder>
 {
     public void Configure(EntityTypeBuilder<IntegrationOutputOrder> b)

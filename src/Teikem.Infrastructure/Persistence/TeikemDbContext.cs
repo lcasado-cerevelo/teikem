@@ -241,6 +241,7 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<Teikem.Domain.Integrations.IntegrationApiLog> IntegrationApiLogs => Set<Teikem.Domain.Integrations.IntegrationApiLog>();
     public DbSet<Teikem.Domain.Integrations.IntegrationOutput> IntegrationOutputs => Set<Teikem.Domain.Integrations.IntegrationOutput>();
     public DbSet<Teikem.Domain.Integrations.IntegrationOutputOrder> IntegrationOutputOrders => Set<Teikem.Domain.Integrations.IntegrationOutputOrder>();
+    public DbSet<Teikem.Domain.Integrations.IntegrationOutputEntity> IntegrationOutputEntities => Set<Teikem.Domain.Integrations.IntegrationOutputEntity>();
     public DbSet<Teikem.Domain.Integrations.IntegrationWebhook> IntegrationWebhooks => Set<Teikem.Domain.Integrations.IntegrationWebhook>();
     public DbSet<Teikem.Domain.Integrations.IntegrationWebhookDelivery> IntegrationWebhookDeliveries => Set<Teikem.Domain.Integrations.IntegrationWebhookDelivery>();
     // Lote 51 — avisos (reglas, cola, registro y bandeja)

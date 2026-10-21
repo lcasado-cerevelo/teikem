@@ -157,7 +157,7 @@ public sealed class OutputSender(IHttpClientFactory http, ISecretProtector prote
 /// llegaron desde el anterior), lo manda por SFTP/FTP o por la API saliente HTTP y, si falla, lo reintenta con espera creciente (1 min, 5, 30, 2 h, 12 h); agotados, queda «no entregado» en la bandeja de
 /// salidas con «Reintentar» y «Descartar». También: vista previa, enviar ahora, probar la API y la lista de envíos.
 /// </summary>
-public sealed class IntegrationOutputService(TeikemDbContext db, ITenantContext tenant, OutputBuilder builder, OutputSender sender, IntegrationService integrations, ILogger<IntegrationOutputService> logger)
+public sealed class IntegrationOutputService(TeikemDbContext db, ITenantContext tenant, OutputBuilder builder, OutputSender sender, IntegrationService integrations, ILogger<IntegrationOutputService> logger, IEnumerable<IExportEntityRows>? exporters = null)
 {
     public const int ChunkSize = 1000;
     public const int MaxContentBytes = 2 * 1024 * 1024;
@@ -250,8 +250,70 @@ public sealed class IntegrationOutputService(TeikemDbContext db, ITenantContext 
     // ---------------------------------------------------------------- armar los envíos
 
     /// <summary>Pasa la cola de órdenes a envíos con su contenido ya armado: al instante, uno por orden; por horario, uno por tanda de hasta 1.000 órdenes. Devuelve (envíos armados, órdenes incluidas).</summary>
+    /// <summary>
+    /// 2026-10-21 — Pasa a envíos la cola de una integración de salida de un CATÁLOGO (productos…): igual que con envíos (al instante uno por registro; por horario uno por tanda), pero las columnas salen de la plantilla de la
+    /// entidad (posición → campo) y las filas, del exportador de la entidad. Devuelve (envíos armados, registros incluidos).
+    /// </summary>
+    private async Task<(int Created, int Orders)> PrepareEntityAsync(Integration integration, CancellationToken ct)
+    {
+        var cfg = IntegrationService.ParseOutput(integration) ?? throw new ValidationException("output", OutputRules.OutputRequiredMessage);
+        var exporter = (exporters ?? []).FirstOrDefault(e => string.Equals(e.Kind, integration.EntityKind, StringComparison.OrdinalIgnoreCase)) ?? throw new ValidationException("entityKind", OutputRules.EntityKindMessage(integration.EntityKind ?? string.Empty));
+        var columns = await EntityColumnsAsync(integration, ct);
+        var queue = await db.IntegrationOutputEntities.Where(q => q.IntegrationId == integration.IntegrationId && q.IntegrationOutputId == null).OrderBy(q => q.IntegrationOutputEntityId).Take(OutputRules.MaxOrdersPerSend).ToListAsync(ct);
+        if (queue.Count == 0) return (0, 0);
+        var (root, item) = OutputRules.EntityNames(integration.EntityKind!);
+        var perRecord = cfg.Trigger.Equals(OutputTriggers.Event, StringComparison.OrdinalIgnoreCase);
+        int created = 0, records = 0;
+        foreach (var chunk in perRecord ? queue.Select(q => new List<IntegrationOutputEntity> { q }) : queue.Chunk(ChunkSize).Select(c => c.ToList()))
+        {
+            var rows = await exporter.BuildAsync(chunk.Select(q => q.EntityId).Distinct().ToList(), ct);
+            var content = OutputRules.RenderRows(cfg, columns, rows, root, item);
+            var size = Encoding.UTF8.GetByteCount(content);
+            var output = new IntegrationOutput
+            {
+                TenantId = integration.TenantId, IntegrationId = integration.IntegrationId, Format = cfg.Format.ToUpperInvariant(), OrderCount = rows.Count, Content = content, SizeBytes = size, FileName = "pendiente",
+                Status = size > MaxContentBytes ? OutputStatuses.Undelivered : OutputStatuses.Pending, Error = size > MaxContentBytes ? OutputRules.SizeMessage : null,
+                AttemptCount = size > MaxContentBytes ? OutputRules.MaxAttempts : 0,
+            };
+            db.IntegrationOutputs.Add(output);
+            await db.SaveChangesAsync(ct);
+            output.FileName = OutputRules.ExpandFileName(cfg.FileName, cfg.Format, DateTime.UtcNow, output.IntegrationOutputId);
+            foreach (var q in chunk) q.IntegrationOutputId = output.IntegrationOutputId;
+            await db.SaveChangesAsync(ct);
+            created++;
+            records += rows.Count;
+        }
+        return (created, records);
+    }
+
+    /// <summary>Las columnas de la salida de un catálogo: las de la plantilla de la entidad, por posición (el encabezado es el nombre del campo).</summary>
+    private async Task<IReadOnlyList<OutputColumn>> EntityColumnsAsync(Integration integration, CancellationToken ct)
+    {
+        var json = await db.ImportTemplates.AsNoTracking().Where(t => t.ImportTemplateId == integration.ImportTemplateId).Select(t => t.ColumnsJson).FirstOrDefaultAsync(ct)
+            ?? throw new ValidationException("templatePublicId", OutputRules.EntityTemplateRequiredMessage);
+        var meta = ImportEntities.TryGet(integration.EntityKind);
+        var columns = ImportTemplateService.ParseColumns(json).OrderBy(c => c.Position).Select(c => meta?.Canonical(c.Field)).Where(f => f is not null).Select(f => new OutputColumn(f!, f!)).ToList();
+        if (columns.Count == 0) throw new ValidationException("templatePublicId", OutputRules.EntityTemplateRequiredMessage);
+        return columns;
+    }
+
+    /// <summary>«Enviar todo»: anota TODOS los registros de la entidad en la cola de la integración (los que ya esperan no se repiten) y corre la integración ahora.</summary>
+    public async Task<IntegrationRunDto> SendAllAsync(Guid publicId, int? byUserId, CancellationToken ct)
+    {
+        var integration = await db.Integrations.AsNoTracking().FirstOrDefaultAsync(i => i.PublicId == publicId, ct) ?? throw new NotFoundException(IntegrationService.NotFoundLabel);
+        if (integration.Direction != IntegrationDirections.Outbound || integration.EntityKind is null) throw new ValidationException("entityKind", OutputRules.NotEntityOutputMessage);
+        if (!integration.IsActive) throw new StatusRuleException(IntegrationRules.InactiveMessage);
+        var exporter = (exporters ?? []).FirstOrDefault(e => string.Equals(e.Kind, integration.EntityKind, StringComparison.OrdinalIgnoreCase)) ?? throw new ValidationException("entityKind", OutputRules.EntityKindMessage(integration.EntityKind));
+        var open = (await db.IntegrationOutputEntities.AsNoTracking().Where(q => q.IntegrationId == integration.IntegrationId && q.IntegrationOutputId == null).Select(q => q.EntityId).ToListAsync(ct)).ToHashSet();
+        foreach (var id in await exporter.AllIdsAsync(ct))
+            if (!open.Contains(id)) db.IntegrationOutputEntities.Add(new IntegrationOutputEntity { TenantId = integration.TenantId, IntegrationId = integration.IntegrationId, EntityId = id, QueuedAtUtc = DateTime.UtcNow });
+        await db.SaveChangesAsync(ct);
+        return await RunAsync(publicId, IntegrationTriggers.Manual, byUserId, ct);
+    }
+
     private async Task<(int Created, int Orders)> PrepareAsync(Integration integration, CancellationToken ct)
     {
+        if (integration.EntityKind is not null) return await PrepareEntityAsync(integration, ct);
         var cfg = IntegrationService.ParseOutput(integration) ?? throw new ValidationException("output", OutputRules.OutputRequiredMessage);
         var queue = await db.IntegrationOutputOrders.Where(q => q.IntegrationId == integration.IntegrationId && q.IntegrationOutputId == null).OrderBy(q => q.IntegrationOutputOrderId).Take(OutputRules.MaxOrdersPerSend).ToListAsync(ct);
         if (queue.Count == 0) return (0, 0);
@@ -323,6 +385,15 @@ public sealed class IntegrationOutputService(TeikemDbContext db, ITenantContext 
         var integration = await db.Integrations.AsNoTracking().FirstOrDefaultAsync(i => i.PublicId == publicId, ct) ?? throw new NotFoundException(IntegrationService.NotFoundLabel);
         if (integration.Direction != IntegrationDirections.Outbound) throw new ValidationException("direction", OutputRules.NotOutboundMessage);
         var cfg = IntegrationService.ParseOutput(integration) ?? throw new ValidationException("output", OutputRules.OutputRequiredMessage);
+        if (integration.EntityKind is not null)
+        {
+            // salida de un catálogo: los primeros registros de la entidad, con las columnas de la plantilla
+            var exporter = (exporters ?? []).FirstOrDefault(e => string.Equals(e.Kind, integration.EntityKind, StringComparison.OrdinalIgnoreCase)) ?? throw new ValidationException("entityKind", OutputRules.EntityKindMessage(integration.EntityKind));
+            var (root, item) = OutputRules.EntityNames(integration.EntityKind);
+            var sampleRows = await exporter.BuildAsync((await exporter.AllIdsAsync(ct)).Take(3).ToList(), ct);
+            var text = OutputRules.RenderRows(cfg, await EntityColumnsAsync(integration, ct), sampleRows, root, item);
+            return new OutputPreviewDto(OutputRules.ExpandFileName(cfg.FileName, cfg.Format, DateTime.UtcNow, 0), cfg.Format.ToUpperInvariant(), text, sampleRows.Count, true);
+        }
         var statuses = cfg.Statuses.Select(s => s.ToUpperInvariant()).ToList();
         var ids = await db.TransportOrders.AsNoTracking().Where(o => o.ClientId == integration.ClientId && o.Status != null && statuses.Contains(o.Status.InternalCode)).OrderByDescending(o => o.TransportOrderId).Take(3).Select(o => o.TransportOrderId).ToListAsync(ct);
         var sample = ids.Count > 0;
