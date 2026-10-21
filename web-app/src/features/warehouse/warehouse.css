@@ -226,6 +226,9 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 .rcp-cols>*{min-width:0}
 .rcp-side{display:flex;flex-direction:column;gap:16px;min-width:0}
 .rcp-list{max-height:560px;overflow:auto}
+/* aire entre el buscador y la primera fila de la lista maestra (antes quedaba pegada) */
+.rcp-master .qrow{padding-bottom:10px}
+.rcp-master .rcp-list{border-top:1px solid var(--line-2)}
 .rcp-list .unrow{align-items:flex-start}
 .rcp-item{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .rcp-top{display:flex;align-items:center;gap:8px;min-width:0}
