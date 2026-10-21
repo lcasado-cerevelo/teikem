@@ -508,8 +508,12 @@ function PackageNumbersCell({ numbers }: { numbers: string[] }) {
   const shown = numbers.slice(0, 2)
   return (
     <span className="mono oe-small oe-pkgnums" title={numbers.join(', ')}>
-      {shown.join(', ')}
-      {numbers.length > shown.length ? ` +${numbers.length - shown.length}` : ''}
+      {shown.map((n) => (
+        <span key={n} className="oe-code">
+          {n}
+        </span>
+      ))}
+      {numbers.length > shown.length ? <span className="oe-code">{`+${numbers.length - shown.length}`}</span> : null}
     </span>
   )
 }

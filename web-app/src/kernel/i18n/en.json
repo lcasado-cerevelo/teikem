@@ -1683,7 +1683,7 @@
     },
     "levels": {
       "title": "Zone levels",
-      "help": "A level groups zones (Island, Metro…). The order inherits the level of its delivery zone; driver and contract rates may differ by level, and trips of zones without their own driver go to the level’s default driver.",
+      "help": "A level groups zones (Island, Metro…). The shipment inherits the level of its delivery zone; driver and contract rates may differ by level, and trips of zones without their own driver go to the level’s default driver.",
       "new": "New level",
       "edit": "Edit level",
       "code": "Code",

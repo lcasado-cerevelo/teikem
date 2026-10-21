@@ -67,6 +67,9 @@
 
 /* lista: una fila por tipo de paquete */
 .oe-small{font-size:11px}
+/* un código (paquete, conduce, factura) nunca se parte: cada uno en su renglón, completo; la columna se ensancha si hace falta */
+.oe-pkgnums{display:block}
+.oe-pkgnums .oe-code{display:block;white-space:nowrap;overflow-wrap:normal;word-break:keep-all}
 .oe-cont{color:var(--faint);font-size:11px}
 .oe-pkgcell{min-width:0}
 .oe-desc{font-size:11px;color:var(--faint);overflow-wrap:anywhere}

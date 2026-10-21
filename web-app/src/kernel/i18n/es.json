@@ -1683,7 +1683,7 @@
     },
     "levels": {
       "title": "Niveles de zona",
-      "help": "Un nivel agrupa zonas (Isla, Metro…). La orden hereda el nivel de su zona de entrega; las tarifas del chofer y del contrato pueden ser distintas por nivel, y las rutas de las zonas sin chofer propio van al chofer por omisión del nivel.",
+      "help": "Un nivel agrupa zonas (Isla, Metro…). El envío hereda el nivel de su zona de entrega; las tarifas del chofer y del contrato pueden ser distintas por nivel, y las rutas de las zonas sin chofer propio van al chofer por omisión del nivel.",
       "new": "Nuevo nivel",
       "edit": "Editar nivel",
       "code": "Código",
