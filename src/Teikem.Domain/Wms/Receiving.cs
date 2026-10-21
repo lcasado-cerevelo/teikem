@@ -30,6 +30,8 @@ public class Asn : ITenantScoped, ISoftDeletable, IHasStatus
     public bool IsActive { get; set; } = true;
     [NotAudited] public DateTime CreatedAtUtc { get; set; }
     public int? CreatedBy { get; set; }
+    /// <summary>Lote 171 (B2): a quién se le asignó recibirlo (NULL = sin asignar; lo puede tomar cualquiera con permiso de recibir).</summary>
+    public int? AssignedToUserId { get; set; }
 
     public ICollection<AsnLine> Lines { get; set; } = new List<AsnLine>();
 }

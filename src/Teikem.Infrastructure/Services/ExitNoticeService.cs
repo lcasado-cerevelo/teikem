@@ -39,7 +39,7 @@ public sealed partial class ExitNoticeService(TeikemDbContext db, ITenantContext
     // ---------------------------------------------------------------- consulta
 
     public async Task<PagedResult<ExitNoticeListItemDto>> ListAsync(string? status, Guid? clientPublicId, string? q, bool backorderOnly, DateOnly? from, DateOnly? to,
-        int skip, int take, CancellationToken ct)
+        int skip, int take, CancellationToken ct, bool assignedToMe = false, int? assignedUserId = null)
     {
         skip = Math.Max(0, skip);
         take = Math.Clamp(take <= 0 ? 50 : take, 1, MaxPageSize);
@@ -53,6 +53,8 @@ public sealed partial class ExitNoticeService(TeikemDbContext db, ITenantContext
             query = query.Where(o => ids.Contains(o.StatusCodeId));
         }
         if (clientPublicId is Guid cp) query = query.Where(o => db.Set<Client>().Any(c => c.ClientId == o.ClientId && c.PublicId == cp));
+        if (assignedToMe) { var me = tenant.UserId; query = query.Where(o => o.AssignedToUserId == me); }
+        if (assignedUserId is int assignedUser) query = query.Where(o => o.AssignedToUserId == assignedUser);
         if (from is DateOnly f) query = query.Where(o => o.RequestedDate >= f);
         if (to is DateOnly t2) query = query.Where(o => o.RequestedDate <= t2);
         if (backorderOnly) query = query.Where(o => db.Set<ExitNoticeLine>().Any(l => l.ExitNoticeId == o.ExitNoticeId && l.QtyBackordered > 0 && !l.IsClosed));
@@ -220,7 +222,7 @@ public sealed partial class ExitNoticeService(TeikemDbContext db, ITenantContext
         var whIds = notices.Select(o => o.WarehouseId).Distinct().ToList();
         var clients = await db.Set<Client>().Where(c => clientIds.Contains(c.ClientId)).ToDictionaryAsync(c => c.ClientId, ct);
         var warehouses = await db.Set<Warehouse>().Where(w => whIds.Contains(w.WarehouseId)).ToDictionaryAsync(w => w.WarehouseId, ct);
-        var users = await UserNamesAsync(notices.Where(o => o.RequestedBy is not null).Select(o => o.RequestedBy!.Value), ct);
+        var users = await UserNamesAsync(notices.Where(o => o.RequestedBy is not null).Select(o => o.RequestedBy!.Value).Concat(notices.Where(o => o.AssignedToUserId is not null).Select(o => o.AssignedToUserId!.Value)), ct);
         return notices.Select(o =>
         {
             var s = map[o.StatusCodeId];
@@ -228,7 +230,8 @@ public sealed partial class ExitNoticeService(TeikemDbContext db, ITenantContext
             var w = warehouses[o.WarehouseId];
             var st = stats.GetValueOrDefault(o.ExitNoticeId);
             return new ExitNoticeListItemDto(o.PublicId, o.Number, s.Code, s.Label, s.Color, c.PublicId, c.Name, w.PublicId, w.Code, w.Name, o.Reference, o.Destination,
-                o.RequestedDate, o.RequiredDate, st?.Count ?? 0, st?.Ordered ?? 0m, st?.Shipped ?? 0m, st?.Back ?? false, o.RequestedBy is int u ? users.GetValueOrDefault(u) : null, o.CreatedAtUtc);
+                o.RequestedDate, o.RequiredDate, st?.Count ?? 0, st?.Ordered ?? 0m, st?.Shipped ?? 0m, st?.Back ?? false, o.RequestedBy is int u ? users.GetValueOrDefault(u) : null, o.CreatedAtUtc,
+                o.AssignedToUserId, o.AssignedToUserId is int au ? users.GetValueOrDefault(au) : null);
         }).ToList();
     }
 
@@ -246,7 +249,7 @@ public sealed partial class ExitNoticeService(TeikemDbContext db, ITenantContext
         var whIds = notices.Select(o => o.WarehouseId).Distinct().ToList();
         var clients = await db.Set<Client>().Where(c => clientIds.Contains(c.ClientId)).ToDictionaryAsync(c => c.ClientId, ct);
         var warehouses = await db.Set<Warehouse>().Where(w => whIds.Contains(w.WarehouseId)).ToDictionaryAsync(w => w.WarehouseId, ct);
-        var users = await UserNamesAsync(notices.Where(o => o.RequestedBy is not null).Select(o => o.RequestedBy!.Value), ct);
+        var users = await UserNamesAsync(notices.Where(o => o.RequestedBy is not null).Select(o => o.RequestedBy!.Value).Concat(notices.Where(o => o.AssignedToUserId is not null).Select(o => o.AssignedToUserId!.Value)), ct);
         var dispatchInfo = await DispatchesOfAsync(notices.Select(o => o.ExitNoticeId).ToList(), ct);
         return notices.Select(o =>
         {
@@ -265,7 +268,7 @@ public sealed partial class ExitNoticeService(TeikemDbContext db, ITenantContext
                 o.RequiredDate, o.Notes, o.Lines.Any(l => ExitNoticeRules.IsBackordered(l.QtyBackordered, l.IsClosed)), s.Code == ExitNoticeStatuses.Requested && !anyShipped,
                 s.Code == ExitNoticeStatuses.Requested && !anyShipped, open && o.Lines.Any(l => l.QtyReserved > 0m),
                 o.RequestedBy is int u ? users.GetValueOrDefault(u) : null, o.RequestedAtUtc, o.CreatedAtUtc, Convert.ToBase64String(o.RowVersion ?? Array.Empty<byte>()), lines,
-                dispatchInfo.GetValueOrDefault(o.ExitNoticeId) ?? new List<ExitNoticeDispatchInfoDto>());
+                dispatchInfo.GetValueOrDefault(o.ExitNoticeId) ?? new List<ExitNoticeDispatchInfoDto>(), o.AssignedToUserId, o.AssignedToUserId is int au ? users.GetValueOrDefault(au) : null);
         }).ToList();
     }
 

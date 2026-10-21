@@ -4284,6 +4284,14 @@
     }
   },
   "warehouse": {
+    "assign": {
+      "column": "Assigned to",
+      "action": "Assign",
+      "take": "Take",
+      "taken": "Done: it is now yours.",
+      "mineOnly": "Only mine",
+      "title": "Assign {number}"
+    },
     "notices": {
       "title": "Arrivals & departures",
       "subtitle": "Arrival notices and exit notices: what the goods owner announces is coming in and asks to go out."

@@ -44,6 +44,8 @@ public class ExitNotice : ITenantScoped, IHasStatus, IAuditStamped
     public string? Reference { get; set; }
     public string? Destination { get; set; }
     public int? RequestedBy { get; set; }
+    /// <summary>Lote 171 (B2): a quién se le asignó surtirlo (NULL = sin asignar; lo puede tomar cualquiera con permiso de recolectar).</summary>
+    public int? AssignedToUserId { get; set; }
     public DateOnly RequestedDate { get; set; }
     public DateOnly? RequiredDate { get; set; }
     public string? Notes { get; set; }

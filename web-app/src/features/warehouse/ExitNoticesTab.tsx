@@ -34,14 +34,15 @@ export function ExitNoticesTab({ initialOpen }: { initialOpen?: string | null })
   const statuses = useStatuses('ExitNoticeStatus')
   const statusOptions = useMemo(() => (statuses.data ?? []).map((s) => ({ value: s.code, label: s.label })), [statuses.data])
   const [pendingOnly, setPendingOnly] = useState(false)
+  const [mineOnly, setMineOnly] = useState(false)   // Lote 171: solo los asignados a mí
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
   const [creating, setCreating] = useState(false)
   const [open, setOpen] = useState<string | null>(initialOpen ?? null)
   const search = useDebounced(q.trim())
   const filter = useMemo(
-    () => ({ status: status.join(','), q: search, backorderOnly: pendingOnly, clientPublicId, from: dates.from || undefined, to: dates.to || undefined }),
-    [status, search, pendingOnly, clientPublicId, dates],
+    () => ({ status: status.join(','), q: search, backorderOnly: pendingOnly, clientPublicId, from: dates.from || undefined, to: dates.to || undefined, assignedToMe: mineOnly }),
+    [status, search, pendingOnly, clientPublicId, dates, mineOnly],
   )
   const list = useExitNotices(filter, (page - 1) * pageSize, pageSize)
   const { fulfillAll } = useExitNoticeMutations()
@@ -65,6 +66,7 @@ export function ExitNoticesTab({ initialOpen }: { initialOpen?: string | null })
       },
       { id: 'date', header: t('warehouse.exitNotices.col.date'), cell: (o) => f.date(o.requestedDate), exportValue: (o) => o.requestedDate ?? '', sortValue: (o) => o.requestedDate ?? '' },
       { id: 'required', header: t('warehouse.exitNotices.col.required'), cell: (o) => (o.requiredDate ? f.date(o.requiredDate) : '—'), exportValue: (o) => o.requiredDate ?? '', sortValue: (o) => o.requiredDate ?? '' },
+      { id: 'assignee', header: t('warehouse.assign.column'), cell: (o) => o.assignedToName ?? '—', exportValue: (o) => o.assignedToName ?? '', sortValue: (o) => o.assignedToName ?? '' },
       { id: 'lines', header: t('warehouse.exitNotices.col.lines'), cell: (o) => o.lineCount, sortValue: (o) => o.lineCount ?? 0, align: 'end' },
       { id: 'ordered', header: t('warehouse.exitNotices.col.ordered'), cell: (o) => f.number(o.qtyOrdered ?? 0), sortValue: (o) => o.qtyOrdered ?? 0, align: 'end' },
       { id: 'shipped', header: t('warehouse.exitNotices.col.shipped'), cell: (o) => f.number(o.qtyShipped ?? 0), sortValue: (o) => o.qtyShipped ?? 0, align: 'end' },
@@ -90,6 +92,7 @@ export function ExitNoticesTab({ initialOpen }: { initialOpen?: string | null })
           setDates(EMPTY_RANGE)
           setQ('')
           setPendingOnly(false)
+          setMineOnly(false)
           setPage(1)
         }}
       >
@@ -102,6 +105,9 @@ export function ExitNoticesTab({ initialOpen }: { initialOpen?: string | null })
         <DateRangeFilter label={t('warehouse.exitNotices.filterDates')} value={dates} onChange={(v) => (setDates(v), setPage(1))} />
         <label className="chk">
           <input type="checkbox" checked={pendingOnly} onChange={(e) => (setPendingOnly(e.target.checked), setPage(1))} /> {t('warehouse.exitNotices.pendingOnly')}
+        </label>
+        <label className="chk">
+          <input type="checkbox" checked={mineOnly} onChange={(e) => (setMineOnly(e.target.checked), setPage(1))} /> {t('warehouse.assign.mineOnly')}
         </label>
       </Filters>
       <Panel

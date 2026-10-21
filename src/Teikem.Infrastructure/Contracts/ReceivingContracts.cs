@@ -13,14 +13,14 @@ public sealed record AsnLineDto(int Id, Guid ProductPublicId, string Sku, string
 
 public sealed record AsnDto(int Id, Guid WarehousePublicId, string WarehouseCode, Guid? ClientPublicId, string? ClientName,
     Guid? PurchaseOrderPublicId, string? PurchaseOrderNumber, string? Reference, DateOnly? ExpectedDate, string StatusCode, string Status,
-    bool IsActive, IReadOnlyList<AsnLineDto> Lines, Guid? ReceiptPublicId, string? ReceiptNumber, string Number = "");
+    bool IsActive, IReadOnlyList<AsnLineDto> Lines, Guid? ReceiptPublicId, string? ReceiptNumber, string Number = "", int? AssignedToUserId = null, string? AssignedToName = null);
 
 /// <summary>Lote 157: edita un aviso de llegada de cliente esperado. null = sin cambio; Reference "" la quita; Lines reemplaza todas las líneas.</summary>
 public sealed record AsnUpdateRequest(Guid? WarehousePublicId = null, string? Reference = null, DateOnly? ExpectedDate = null, IReadOnlyList<AsnLineRequest>? Lines = null);
 
 /// <summary>Lote 13: Reference (contiene) y ExpectedFrom/ExpectedTo sobre la llegada esperada del aviso (inclusive).</summary>
 public sealed record AsnQuery(Guid? WarehousePublicId = null, string[]? Status = null, Guid? ClientPublicId = null, string? Search = null,
-    string? Reference = null, DateOnly? ExpectedFrom = null, DateOnly? ExpectedTo = null);
+    string? Reference = null, DateOnly? ExpectedFrom = null, DateOnly? ExpectedTo = null, bool AssignedToMe = false, int? AssignedUserId = null);
 
 /// <summary>
 /// Lote 13: ExpectedQty solo en recibos ciegos o de devolución (en uno con documento viene del aviso/OC → 400).

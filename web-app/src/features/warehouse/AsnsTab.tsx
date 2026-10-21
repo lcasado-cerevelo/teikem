@@ -7,6 +7,7 @@
 import { useId, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Can } from '../../kernel/access'
+import { applyProblemDetails } from '../../kernel/api/problem'
 import { StatusChip, useStatuses } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
 import {
@@ -26,6 +27,7 @@ import {
 } from '../../kernel/ui'
 import { useAsns, useSaveAsn, type AsnDto } from './api'
 import { AsnCreateModal } from './AsnCreateModal'
+import { AssignDocumentModal } from './AssignDocumentModal'
 import { TextFilter } from './filterControls'
 import { formatDate, useDebounced } from './lineRules'
 import { WarehousePicker } from './pickers'
@@ -48,7 +50,17 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
   const [creating, setCreating] = useState(false)
   const [toCancel, setToCancel] = useState<AsnDto | null>(null)
   const [toEdit, setToEdit] = useState<AsnDto | null>(null)
+  const [toAssign, setToAssign] = useState<AsnDto | null>(null)   // Lote 171
+  const [mineOnly, setMineOnly] = useState(false)   // Lote 171: solo los asignados a mí
   const save = useSaveAsn()
+  const run = async (p: Promise<unknown>, ok: string) => {
+    try {
+      await p
+      toast.success(ok)
+    } catch (e) {
+      toast.error(applyProblemDetails(e).title)
+    }
+  }
   const ref = useDebounced(reference.trim())
 
   const query = useMemo(
@@ -56,11 +68,12 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
       warehousePublicId: warehousePublicId ?? undefined,
       clientPublicId: clientPublicId ?? undefined,
       reference: ref || undefined,
+      assignedToMe: mineOnly || undefined,
       status: status.length ? status : undefined,
       expectedFrom: expected.from || undefined,
       expectedTo: expected.to || undefined,
     }),
-    [warehousePublicId, clientPublicId, ref, status, expected],
+    [warehousePublicId, clientPublicId, ref, status, expected, mineOnly],
   )
   const { data, isLoading, error } = useAsns(query)
   const rows = useMemo(() => data ?? [], [data])
@@ -95,6 +108,12 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
       },
       { id: 'lines', header: t('warehouse.asns.columns.lines'), cell: (a) => a.lines?.length ?? 0, sortValue: (a) => a.lines?.length ?? 0, align: 'end' },
       {
+        id: 'assignee',
+        header: t('warehouse.assign.column'),
+        cell: (a) => a.assignedToName ?? '—',
+        sortValue: (a) => a.assignedToName ?? '',
+      },
+      {
         id: 'receipt',
         header: t('warehouse.asns.columns.receipt'),
         cell: (a) =>
@@ -122,6 +141,20 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
         tone: 'flow',
       },
       {
+        key: 'take',
+        label: t('warehouse.assign.take'),
+        perm: 'warehouse.receive',
+        visible: (a) => a.statusCode === 'EXPECTED' && !a.receiptPublicId && a.assignedToUserId == null,
+        onClick: (a) => void run(save.mutateAsync({ action: 'take', id: a.id ?? 0 }), t('warehouse.assign.taken')),
+      },
+      {
+        key: 'assign',
+        label: t('warehouse.assign.action'),
+        perm: 'warehouse.manage',
+        visible: (a) => a.statusCode === 'EXPECTED' && !a.receiptPublicId,
+        onClick: (a) => setToAssign(a),
+      },
+      {
         key: 'edit',
         label: t('warehouse.asns.edit'),
         perm: 'warehouse.receive',
@@ -138,7 +171,7 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
         tone: 'danger',
       },
     ],
-    [t, onReceive],
+    [t, onReceive, save],
   )
 
   return (
@@ -150,6 +183,7 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
           setReference('')
           setStatus([])
           setExpected(EMPTY_RANGE)
+          setMineOnly(false)
         }}
       >
         <div className="f">
@@ -176,6 +210,9 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
         <SearchSelect label={t('warehouse.asns.filters.status')} options={statusOptions} value={status} onChange={setStatus} />
         <TextFilter label={t('warehouse.asns.filters.reference')} value={reference} onChange={setReference} />
         <DateRangeFilter label={t('warehouse.asns.filters.expected')} value={expected} onChange={setExpected} mode="future" />
+        <label className="chk">
+          <input type="checkbox" checked={mineOnly} onChange={(e) => setMineOnly(e.target.checked)} /> {t('warehouse.assign.mineOnly')}
+        </label>
       </Filters>
       <Panel
         flush
@@ -209,6 +246,14 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
       </Panel>
       {creating && <AsnCreateModal onClose={() => setCreating(false)} />}
       {toEdit && <AsnCreateModal key={toEdit.id} asn={toEdit} onClose={() => setToEdit(null)} />}
+      {toAssign && (
+        <AssignDocumentModal
+          title={t('warehouse.assign.title', { number: toAssign.number || `#${toAssign.id}` })}
+          currentUserId={toAssign.assignedToUserId}
+          onSave={(userId) => save.mutateAsync({ action: 'assign', id: toAssign.id ?? 0, userId })}
+          onClose={() => setToAssign(null)}
+        />
+      )}
       <ConfirmDialog
         open={toCancel !== null}
         tone="danger"

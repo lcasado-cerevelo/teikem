@@ -4284,6 +4284,14 @@
     }
   },
   "warehouse": {
+    "assign": {
+      "column": "Asignado a",
+      "action": "Asignar",
+      "take": "Tomar",
+      "taken": "Listo: ahora es suyo.",
+      "mineOnly": "Solo los asignados a mí",
+      "title": "Asignar {number}"
+    },
     "notices": {
       "title": "Llegadas y salidas",
       "subtitle": "Avisos de llegada y avisos de salida: lo que el dueño de la mercancía anuncia que entra y lo que pide que salga."

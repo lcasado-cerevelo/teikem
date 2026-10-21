@@ -200,6 +200,7 @@ function route(method: string, url: URL, body: unknown): [number, unknown] {
     return DETAILS[id] ? [200, DETAILS[id]] : [404, { title: 'Recibo no encontrado.', code: 'not_found', status: 404 }]
   }
   if (p === '/api/v1/asns') return [200, mock.asns]
+  if (p === '/api/v1/users') return [200, [{ id: 5, fullName: 'Ana Ruiz', email: 'ana@x.com', isActive: true }]]
   if (p === '/api/v1/warehouses')
     return [
       200,
@@ -405,6 +406,29 @@ describe('Recibo: pestañas', () => {
     wrap('/warehouse/notices')
     expect(await screen.findByText(/LLE-00012/)).toBeInTheDocument()
     expect(screen.queryByText(/#12/)).toBeNull()
+  })
+
+  it('Lote 171: un aviso de llegada se asigna a una persona y se puede filtrar «Solo los asignados a mí»', async () => {
+    mock.asns = [
+      { id: 12, number: 'LLE-00012', warehousePublicId: 'w1', warehouseCode: 'ALM-01', clientName: 'ASICS Care', reference: 'OC-778', statusCode: 'EXPECTED', status: 'Esperado', isActive: true, lines: [], assignedToUserId: 7, assignedToName: 'Luis Pérez' },
+      { id: 13, number: 'LLE-00013', warehousePublicId: 'w1', warehouseCode: 'ALM-01', clientName: 'ASICS Care', statusCode: 'EXPECTED', status: 'Esperado', isActive: true, lines: [] },
+    ]
+    const user = userEvent.setup()
+    wrap('/warehouse/notices')
+    expect(await screen.findByText('Luis Pérez')).toBeInTheDocument()   // columna «Asignado a»
+    // «Tomar» solo en el que nadie tiene asignado; «Asignar» en los dos
+    expect(screen.getAllByRole('button', { name: 'Tomar' })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'Asignar' })).toHaveLength(2)
+
+    await user.click(screen.getAllByRole('button', { name: 'Asignar' })[0])   // la lista va del más nuevo al más viejo: LLE-00013 primero
+    const dialog = await screen.findByRole('dialog')
+    await user.selectOptions(await within(dialog).findByRole('combobox'), '5')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(calls('POST', '/api/v1/asns/13/assign').length).toBe(1))
+    expect(calls('POST', '/api/v1/asns/13/assign')[0].body).toEqual({ userId: 5 })
+
+    await user.click(screen.getByRole('checkbox', { name: 'Solo los asignados a mí' }))
+    await waitFor(() => expect(calls('GET', '/api/v1/asns').some((c) => c.url.searchParams.get('assignedToMe') === 'true')).toBe(true))
   })
 
   it('Avisos de llegada: filtros al API (referencia, llegada esperada) y sin buscador libre', async () => {

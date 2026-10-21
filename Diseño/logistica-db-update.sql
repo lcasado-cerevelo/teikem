@@ -5667,3 +5667,14 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_Asn_Number' AND object_id = OBJECT_ID('dbo.Asn'))
     CREATE UNIQUE INDEX UX_Asn_Number ON dbo.Asn (TenantId, Number);
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-21 (Lote 171) — Asignar el aviso de llegada y el aviso de salida a una persona (B2): «Mis tareas» de la app.
+   - dbo.Asn.AssignedToUserId INT NULL y dbo.ExitNotice.AssignedToUserId INT NULL (quien lo va a recibir / surtir; NULL = sin asignar).
+   Solo AGREGA. Idempotente. Con llave foranea a dbo.AspNetUsers (igual que dbo.WarehouseTask.AssignedToUserId).
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Asn', 'AssignedToUserId') IS NULL
+    ALTER TABLE dbo.Asn ADD AssignedToUserId INT NULL CONSTRAINT FK_Asn_AssignedTo REFERENCES dbo.AspNetUsers(Id);
+GO
+IF COL_LENGTH('dbo.ExitNotice', 'AssignedToUserId') IS NULL
+    ALTER TABLE dbo.ExitNotice ADD AssignedToUserId INT NULL CONSTRAINT FK_ExitNotice_AssignedTo REFERENCES dbo.AspNetUsers(Id);
+GO

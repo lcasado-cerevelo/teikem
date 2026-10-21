@@ -952,6 +952,23 @@ confirmar). Al confirmar, se asienta el ledger (`RECEIPT` por lo esperado + `ADJ
 diferencia), la orden de compra avanza a `PARTIAL`/`RECEIVED`, el cruce de plataforma asignado se reparte y se crean
 las tareas `PUTAWAY` del remanente con una posición sugerida.
 
+### Asignar el aviso de llegada y el aviso de salida (Lote 171, 2026-10-21)
+
+Igual que las tareas, el **aviso de llegada** (a quien lo va a **recibir**) y el **aviso de salida** (a quien lo va a **surtir**) se pueden asignar a una persona de la compañía. Es la base de «Mis tareas» en la app de almacén (lote siguiente). Solo se asigna un documento **abierto**: aviso de llegada *esperado*; aviso de salida *solicitado* o *parcial*.
+
+- **Asignar / reasignar / quitar** (supervisión, `warehouse.manage`): web → Recibo → Avisos de llegada, botón **Asignar** de la fila; Avisos de salida, botón **Asignar** de la ficha. Elegir «Sin asignar» lo quita. La persona debe ser miembro activo de la compañía. API: `POST /api/v1/asns/{id}/assign` y `POST /api/v1/exit-notices/{publicId}/assign` con `{ "userId": 5 }` (`null` = quitar).
+- **Tomar** (`warehouse.receive` para el aviso de llegada, `warehouse.pick` para el de salida): botón **Tomar** cuando nadie lo tiene asignado; queda asignado a quien lo toma. API: `POST …/take`. Uno asignado a otra persona **no se toma**: lo reasigna un supervisor.
+- **Ver:** columna **Asignado a** en las dos listas, el dato en la ficha del aviso de salida, y el filtro **«Solo los asignados a mí»** (`assignedToMe=true`; también `assignedUserId=`).
+- Nada se bloquea: un documento asignado a otra persona **se puede seguir recibiendo o despachando** por quien tenga el permiso (la asignación ordena el trabajo, no lo cierra).
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| Persona que no es miembro activo | `El usuario no es miembro activo de la compañía.` (campo `userId`) | 400 |
+| Aviso de llegada que ya no está esperado | `Solo se puede asignar un aviso de llegada que siga esperado.` | 422 |
+| Aviso de salida cerrado o cancelado | `Solo se puede asignar un aviso de salida abierto (solicitado o parcial).` | 422 |
+| Tomar uno asignado a otra persona | `Ese documento ya está asignado a otra persona; pídale a un supervisor que lo reasigne.` | 409 |
+| Aviso inexistente (o de otro cliente) | `Aviso de llegada no encontrado.` / `Aviso de salida no encontrado.` | 404 |
+
 ### Número del aviso de llegada: LLE-##### (Lote 170, 2026-10-21)
 
 Todo aviso de llegada tiene un **número propio por compañía**, `LLE-00001`, `LLE-00002`… (contador `ASN`, igual que `SAL-#####` del aviso de salida). Lo asigna el sistema al crearlo —lo cree el personal, el portal del cliente o la recepción contra una orden de compra— y **no se teclea ni se cambia**. Es único por compañía.

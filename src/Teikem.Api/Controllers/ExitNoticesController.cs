@@ -20,8 +20,9 @@ public sealed class ExitNoticesController(ExitNoticeService notices) : Controlle
     /// <summary>Lista paginada (más reciente primero). Filtros: status (REQUESTED, PARTIAL, SHIPPED, CANCELLED), cliente, buscador q (número, referencia, destino, cliente, producto), solo con pendiente y fechas de solicitud.</summary>
     [HttpGet, RequirePermission(PermissionCatalog.InventoryView)]
     public Task<PagedResult<ExitNoticeListItemDto>> List([FromQuery] string? status, [FromQuery] Guid? clientPublicId, [FromQuery] string? q, [FromQuery] bool backorderOnly,
-        [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] int skip, [FromQuery] int take, CancellationToken ct)
-        => notices.ListAsync(status, clientPublicId, q, backorderOnly, from, to, skip, take, ct);
+        [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] int skip, [FromQuery] int take, CancellationToken ct,
+        [FromQuery] bool assignedToMe = false, [FromQuery] int? assignedUserId = null)
+        => notices.ListAsync(status, clientPublicId, q, backorderOnly, from, to, skip, take, ct, assignedToMe, assignedUserId);
 
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.InventoryView)]
     public Task<ExitNoticeDto> Get(Guid publicId, CancellationToken ct) => notices.GetAsync(publicId, ct);
@@ -59,6 +60,14 @@ public sealed class ExitNoticesController(ExitNoticeService notices) : Controlle
     public Task<ExitNoticeDto> CloseLine(Guid publicId, int lineId, [FromBody] ExitNoticeCommentRequest? req, CancellationToken ct) => notices.CloseLineAsync(publicId, lineId, req?.Comment, ct);
 
     /// <summary>Despacha contra el aviso: consume la reserva, saca el inventario y crea la recolección (por partes; nunca más de lo reservado).</summary>
+    /// <summary>Lote 171: asigna (o desasigna con userId null) un aviso de salida abierto. Supervisión.</summary>
+    [HttpPost("{publicId:guid}/assign"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    public Task<ExitNoticeDto> Assign(Guid publicId, [FromBody] TaskAssignRequest req, CancellationToken ct) => notices.AssignAsync(publicId, req, ct);
+
+    /// <summary>Lote 171: «tomar» un aviso de salida sin asignar. Quien puede recolectar.</summary>
+    [HttpPost("{publicId:guid}/take"), RequirePermission(PermissionCatalog.WarehousePick)]
+    public Task<ExitNoticeDto> Take(Guid publicId, CancellationToken ct) => notices.TakeAsync(publicId, ct);
+
     [HttpPost("{publicId:guid}/dispatch"), RequirePermission(PermissionCatalog.WarehousePick)]
     public Task<ExitNoticeDispatchResultDto> Dispatch(Guid publicId, [FromBody] ExitNoticeDispatchRequest? req, CancellationToken ct) => notices.DispatchAsync(publicId, req, ct);
 }

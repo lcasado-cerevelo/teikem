@@ -27,6 +27,8 @@ export interface ListQuery {
   clientPublicId?: string | null
   from?: string
   to?: string
+  /** Lote 171: solo los asignados a mí. */
+  assignedToMe?: boolean
 }
 
 const queryOf = (f: ListQuery, skip: number, take: number) => ({
@@ -36,6 +38,7 @@ const queryOf = (f: ListQuery, skip: number, take: number) => ({
   backorderOnly: f.backorderOnly || undefined,
   from: f.from || undefined,
   to: f.to || undefined,
+  assignedToMe: f.assignedToMe || undefined,
   skip,
   take,
 })
@@ -87,6 +90,14 @@ export function useExitNoticeMutations() {
     closeLine: useMutation({
       mutationFn: (v: { id: string; lineId: number; comment?: string }) =>
         unwrap(api.POST('/api/v1/exit-notices/{publicId}/lines/{lineId}/close', { params: { path: { publicId: v.id, lineId: v.lineId } }, body: { comment: v.comment } })),
+      onSettled: refresh,
+    }),
+    assign: useMutation({
+      mutationFn: (v: { id: string; userId: number | null }) => unwrap(api.POST('/api/v1/exit-notices/{publicId}/assign', { params: { path: { publicId: v.id } }, body: { userId: v.userId } })),
+      onSettled: refresh,
+    }),
+    take: useMutation({
+      mutationFn: (id: string) => unwrap(api.POST('/api/v1/exit-notices/{publicId}/take', { params: { path: { publicId: id } } })),
       onSettled: refresh,
     }),
     dispatch: useMutation({

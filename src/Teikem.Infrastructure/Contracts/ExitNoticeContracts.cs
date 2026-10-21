@@ -33,12 +33,14 @@ public sealed record ExitNoticeDispatchInfoDto(Guid PickBatchPublicId, string Nu
 
 public sealed record ExitNoticeListItemDto(Guid PublicId, string Number, string StatusCode, string Status, string StatusColor, Guid ClientPublicId, string ClientName,
     Guid WarehousePublicId, string WarehouseCode, string WarehouseName, string? Reference, string? Destination, DateOnly RequestedDate, DateOnly? RequiredDate,
-    int LineCount, decimal QtyOrdered, decimal QtyShipped, bool HasBackorder, string? RequestedByName, DateTime CreatedAtUtc);
+    int LineCount, decimal QtyOrdered, decimal QtyShipped, bool HasBackorder, string? RequestedByName, DateTime CreatedAtUtc,
+    int? AssignedToUserId = null, string? AssignedToName = null);
 
 public sealed record ExitNoticeDto(Guid PublicId, string Number, string StatusCode, string Status, string StatusColor, Guid ClientPublicId, string ClientName,
     Guid WarehousePublicId, string WarehouseCode, string WarehouseName, string? Reference, string? Destination, DateOnly RequestedDate, DateOnly? RequiredDate,
     string? Notes, bool HasBackorder, bool CanModify, bool CanCancel, bool CanDispatch, string? RequestedByName, DateTime? RequestedAtUtc, DateTime CreatedAtUtc,
-    string RowVersion, IReadOnlyList<ExitNoticeLineDto> Lines, IReadOnlyList<ExitNoticeDispatchInfoDto> Dispatches);
+    string RowVersion, IReadOnlyList<ExitNoticeLineDto> Lines, IReadOnlyList<ExitNoticeDispatchInfoDto> Dispatches,
+    int? AssignedToUserId = null, string? AssignedToName = null);
 
 public sealed record ExitNoticeDispatchResultDto(Guid PickBatchPublicId, string PickBatchNumber, ExitNoticeDto Notice);
 

@@ -89,6 +89,14 @@ describe('Avisos de salida: lista', () => {
     await waitFor(() => expect(listGets().at(-1)!.url.searchParams.get('backorderOnly')).toBe('true'))
   })
 
+  it('Lote 171: muestra a quién está asignado y «Solo los asignados a mí» viaja como assignedToMe', async () => {
+    const user = userEvent.setup()
+    wrap(['exitnotice.create'])
+    expect(await screen.findByText('SAL-00001')).toBeInTheDocument()
+    await user.click(screen.getByLabelText('Solo los asignados a mí'))
+    await waitFor(() => expect(listGets().at(-1)!.url.searchParams.get('assignedToMe')).toBe('true'))
+  })
+
   it('los botones de crear y reservar exigen exitnotice.create', async () => {
     wrap([])
     await screen.findByText('SAL-00001')
@@ -106,6 +114,21 @@ describe('Avisos de salida: lista', () => {
 })
 
 describe('Avisos de salida: ficha', () => {
+  it('Lote 171: Tomar (warehouse.pick) y Asignar (warehouse.manage) solo en un aviso abierto sin asignar', async () => {
+    const user = userEvent.setup()
+    const { unmount } = wrap(['exitnotice.create'], NOTICE)
+    await screen.findByText('Tornillo')
+    expect(screen.queryByRole('button', { name: 'Tomar' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Asignar' })).toBeNull()
+    unmount()
+
+    wrap(['warehouse.pick', 'warehouse.manage'], NOTICE)
+    await screen.findByText('Tornillo')
+    expect(screen.getByRole('button', { name: 'Asignar' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Tomar' }))
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'POST' && c.url.pathname === `/api/v1/exit-notices/${NOTICE}/take`)).toBe(true))
+  })
+
   it('abre la ficha con las líneas y la acción de reservar el pendiente', async () => {
     wrap(['exitnotice.create'], NOTICE)
     expect(await screen.findByText('Tornillo')).toBeInTheDocument()

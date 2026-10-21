@@ -28,7 +28,7 @@ Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Esta
 
 ## B. Tareas y asignación (decisión del 2026-10-21: la asignación solo vale si la app la usa)
 - ☐ **B1. «Mis tareas» en la app** (acomodo, recibo, recolección): lo asignado al usuario, sin señal, aviso al asignar, tomar una tarea sin asignar. Hoy solo ordena el acomodo con lo asignado primero.
-- ☐ **B2. Asignar el recibo y la recolección** (campo «Asignado a», como las tareas) y «Asignar todas» a nivel del documento.
+- ☑ **B2 (Lote 171; se asignan el aviso de llegada y el de salida, no el recibo ni la recolección: nacen al ejecutarse). Asignar el recibo y la recolección** (campo «Asignado a», como las tareas) y «Asignar todas» a nivel del documento.
 
 ## C. Un documento, varias ejecuciones (modelo: documento ≠ trabajo ≠ ejecutado)
 - ☐ **C1. Agrupar en pantalla sin tocar datos:** «Recolección y empaque» una fila por orden o aviso con su avance (pedido, reservado, sacado) y las recolecciones como movimientos al abrirla; la lista de recibos igual por aviso.

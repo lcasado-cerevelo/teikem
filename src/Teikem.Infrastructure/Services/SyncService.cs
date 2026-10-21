@@ -75,7 +75,7 @@ namespace Teikem.Infrastructure.Contracts
 
     /// <summary>Aviso de salida por despachar (Lote 146). IsActive = solicitado o parcial CON algo reservado; si no, el aparato lo borra.</summary>
     public sealed record SyncExitNoticeDto(int Id, Guid PublicId, string Number, Guid WarehousePublicId, string ClientName, string? Reference, string? Destination, string StatusCode,
-        DateOnly? RequiredDate, DateTime? RequestedAtUtc, bool IsActive, IReadOnlyList<SyncExitNoticeLineDto> Lines);
+        DateOnly? RequiredDate, DateTime? RequestedAtUtc, bool IsActive, IReadOnlyList<SyncExitNoticeLineDto> Lines, int? AssignedToUserId = null);
 
     /// <summary>Lote 83: una línea de devolución por recibir (lo que falta es Pending); TrackingTypeCode = NONE o LOT (la serie no se devuelve en esta versión).</summary>
     public sealed record SyncSalesReturnLineDto(int Id, Guid ProductPublicId, string Sku, string ProductName, string TrackingTypeCode, decimal QtyRequested, decimal QtyReceived, decimal QtyDamaged, decimal Pending);
@@ -90,7 +90,7 @@ namespace Teikem.Infrastructure.Contracts
     /// <summary>Aviso de llegada. IsActive = activo y EXPECTED; recibido o cancelado → false.</summary>
     public sealed record SyncAsnDto(int Id, Guid WarehousePublicId, Guid? ClientPublicId, string? ClientName, Guid? PurchaseOrderPublicId,
         string? PurchaseOrderNumber, string? Reference, DateOnly? ExpectedDate, string StatusCode, bool IsActive, IReadOnlyList<SyncAsnLineDto> Lines,
-        string Number = "");
+        string Number = "", int? AssignedToUserId = null);
 
     /// <summary>Tarea de la cola. IsActive = abierta (PENDING o IN_PROGRESS); DONE o CANCELLED → false.</summary>
     public sealed record SyncWarehouseTaskDto(int Id, string TypeCode, string StatusCode, Guid WarehousePublicId, Guid? ProductPublicId,
@@ -541,7 +541,7 @@ namespace Teikem.Infrastructure.Services
                     byLine[l.ExitNoticeLineId].Select(r => new SyncSalesReservationDto(r.WarehouseBinId, r.Code, r.LotId, r.LotNumber, r.Quantity)).ToList())).ToList();
                 var open = code is Teikem.Domain.ExitNotices.ExitNoticeStatuses.Requested or Teikem.Domain.ExitNotices.ExitNoticeStatuses.Partial && dto.Any(l => l.QtyReserved > 0m);
                 return new SyncExitNoticeDto(o.ExitNoticeId, o.PublicId, o.Number, warehouses.GetValueOrDefault(o.WarehouseId), clients.GetValueOrDefault(o.ClientId, string.Empty),
-                    o.Reference, o.Destination, code, o.RequiredDate, o.RequestedAtUtc, open, dto);
+                    o.Reference, o.Destination, code, o.RequiredDate, o.RequestedAtUtc, open, dto, o.AssignedToUserId);
             }).ToList();
             return new SyncPage<SyncExitNoticeDto>(items, next, w.Now);
         }
@@ -644,7 +644,7 @@ namespace Teikem.Infrastructure.Services
                 var po = a.PurchaseOrderId is int pid ? pos.GetValueOrDefault(pid) : null;
                 var code = statuses.GetValueOrDefault(a.StatusCodeId, string.Empty);
                 return new SyncAsnDto(a.AsnId, warehouses.GetValueOrDefault(a.WarehouseId), client?.PublicId, client?.Name, po?.PublicId, po?.Number,
-                    a.Reference, a.ExpectedDate, code, a.IsActive && code == AsnStatuses.Expected, linesByAsn[a.AsnId].ToList(), a.Number);
+                    a.Reference, a.ExpectedDate, code, a.IsActive && code == AsnStatuses.Expected, linesByAsn[a.AsnId].ToList(), a.Number, a.AssignedToUserId);
             }).ToList();
             return new SyncPage<SyncAsnDto>(items, next, w.Now);
         }

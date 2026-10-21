@@ -56,6 +56,9 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
                                      || db.Set<Client>().Any(c => c.ClientId == a.ClientId && c.Name.Contains(s))
                                      || db.Set<PurchaseOrder>().Any(p => p.PurchaseOrderId == a.PurchaseOrderId && p.Number.Contains(s)));
         }
+        // Lote 171: asignados a mí / a una persona
+        if (q.AssignedToMe) { var me = tenant.UserId; query = query.Where(a => a.AssignedToUserId == me); }
+        if (q.AssignedUserId is int assignedUser) query = query.Where(a => a.AssignedToUserId == assignedUser);
         // Lote 13: referencia (contiene) y llegada esperada (inclusive en ambos extremos; sin fecha no coincide).
         if (!string.IsNullOrWhiteSpace(q.Reference))
         {
@@ -215,6 +218,38 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
         return await GetAsync(id, InventoryScope.Any, ct);
     }
 
+    // ================================================================ asignar (Lote 171, B2)
+
+    /// <summary>Asigna (o desasigna con userId null) un aviso de llegada que sigue esperado. Supervisión (warehouse.manage); la persona debe ser miembro activo de la compañía.</summary>
+    public async Task<AsnDto> AssignAsync(int id, TaskAssignRequest? req, CancellationToken ct)
+    {
+        var userId = req?.UserId;
+        if (userId is int uid) await AssigneeCheck.EnsureActiveMemberAsync(db, uid, ct);
+        await SetAssigneeAsync(id, userId, takeOnly: false, ct);
+        return await GetAsync(id, InventoryScope.Any, ct);
+    }
+
+    /// <summary>«Tomar» un aviso sin asignar (o ya asignado a quien lo pide): queda asignado a quien lo toma. Uno de otra persona se rechaza (409).</summary>
+    public async Task<AsnDto> TakeAsync(int id, CancellationToken ct)
+    {
+        await SetAssigneeAsync(id, tenant.UserId, takeOnly: true, ct);
+        return await GetAsync(id, InventoryScope.Any, ct);
+    }
+
+    private async Task SetAssigneeAsync(int id, int? userId, bool takeOnly, CancellationToken ct)
+    {
+        var current = await db.Set<Asn>().AsNoTracking().FirstOrDefaultAsync(a => a.AsnId == id && a.IsActive, ct) ?? throw new NotFoundException(AsnWhat);
+        var expectedId = await db.StatusIdAsync(StatusDomains.AsnStatus, AsnStatuses.Expected, ct);
+        await db.RunInTransactionAsync(async ct2 =>
+        {
+            var asn = await ReceivingSupport.LockAsnAsync(db, current.AsnId, ct2);
+            if (asn.StatusCodeId != expectedId) throw new StatusRuleException(DocumentAssignmentRules.AsnNotOpen);
+            if (takeOnly && !DocumentAssignmentRules.CanTake(asn.AssignedToUserId, tenant.UserId)) throw new ConflictException(DocumentAssignmentRules.AlreadyAssigned);
+            asn.AssignedToUserId = userId;
+            await db.SaveChangesAsync(ct2);
+        }, ct);
+    }
+
     // ================================================================ edición antes de que llegue
 
     /// <summary>
@@ -368,6 +403,7 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
             .Select(r => new { AsnId = r.AsnId!.Value, r.PublicId, r.Number }).ToListAsync(ct);
         var receiptByAsn = receipts.GroupBy(r => r.AsnId).ToDictionary(g => g.Key, g => g.First());
         var statusMap = await ReceivingSupport.StatusMapAsync(db, tenant, StatusDomains.AsnStatus, ct);
+        var assignees = await AssigneeCheck.NamesAsync(db, rows.Where(a => a.AssignedToUserId != null).Select(a => a.AssignedToUserId!.Value), ct);
 
         return rows.Select(a =>
         {
@@ -380,7 +416,7 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
                 .Select(l => new AsnLineDto(l.AsnLineId, l.PublicId, l.Sku, l.Name, l.ExpectedQty, l.LotNumber, l.PurchaseOrderLineId, l.UnitPrice, trackingCodes.GetValueOrDefault(l.TrackingTypeLookupId, TrackingTypes.None), l.ExpiryDate))
                 .ToList();
             return new AsnDto(a.AsnId, w?.PublicId ?? Guid.Empty, w?.Code ?? "", c?.PublicId, c?.Name, p?.PublicId, p?.Number,
-                a.Reference, a.ExpectedDate, s?.Code ?? "", s?.Label ?? "", a.IsActive, lineDtos, r?.PublicId, r?.Number, a.Number);
+                a.Reference, a.ExpectedDate, s?.Code ?? "", s?.Label ?? "", a.IsActive, lineDtos, r?.PublicId, r?.Number, a.Number, a.AssignedToUserId, a.AssignedToUserId is int au ? assignees.GetValueOrDefault(au) : null);
         }).ToList();
     }
 }

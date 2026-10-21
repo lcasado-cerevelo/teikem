@@ -9808,3 +9808,17 @@ Al aplicar la actualización de la base se numeraron en orden de creación (el m
 **La app de almacén no muestra el número de los avisos.**
 Abre la app con señal y deja que sincronice: baja los avisos una vez completos para traer el número. Si sigue sin salir, revisa que la app esté en la versión más reciente.
 >>>>>>> 42f0de84 (Lote 170: número del aviso de llegada LLE-##### (contador ASN, numeración de los existentes, web, portal, app de almacén y avisos de notificación))
+
+## Asignar avisos de llegada y de salida (Lote 171, 2026-10-21)
+
+**¿Para qué sirve asignar un aviso?**
+Para decirle a una persona «este lo recibes tú» (aviso de llegada) o «este lo surtes tú» (aviso de salida). Les aparecerá en «Mis tareas» de la app de almacén. No bloquea a nadie: otro con permiso lo puede recibir o despachar igual.
+
+**¿Quién puede asignar y quién puede tomar?**
+Asigna quien tiene `warehouse.manage` (supervisión). Toma un aviso sin asignar quien puede recibir (`warehouse.receive`) o recolectar (`warehouse.pick`). Si ya está asignado a otra persona: `Ese documento ya está asignado a otra persona; pídale a un supervisor que lo reasigne.` (409).
+
+**`Solo se puede asignar un aviso de llegada que siga esperado.` / `Solo se puede asignar un aviso de salida abierto (solicitado o parcial).` (422)**
+El aviso ya se recibió, se despachó o se canceló. No hace falta asignarlo.
+
+**El selector de personas sale vacío o dice que no tengo acceso.**
+Listar las personas exige el permiso de administrar usuarios (`admin.users`). Pídele a un administrador que lo asigne, o que te dé ese permiso.

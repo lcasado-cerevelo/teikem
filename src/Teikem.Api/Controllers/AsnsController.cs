@@ -26,9 +26,9 @@ public sealed class AsnsController(AsnService asns) : ControllerBase
     [HttpGet, RequirePermission(PermissionCatalog.InventoryView)]
     public Task<IReadOnlyList<AsnDto>> List([FromQuery] Guid? warehousePublicId, [FromQuery] string[]? status, [FromQuery] Guid? clientPublicId,
         [FromQuery] string? search, [FromQuery] string? reference, [FromQuery] DateOnly? expectedFrom, [FromQuery] DateOnly? expectedTo,
-        CancellationToken ct)
+        CancellationToken ct, [FromQuery] bool assignedToMe = false, [FromQuery] int? assignedUserId = null)
         => asns.ListAsync(new AsnQuery(warehousePublicId, status is { Length: > 0 } ? status : null, clientPublicId, search,
-            reference, expectedFrom, expectedTo), InventoryScope.Any, ct);
+            reference, expectedFrom, expectedTo, assignedToMe, assignedUserId), InventoryScope.Any, ct);
 
     [HttpGet("{id:int}"), RequirePermission(PermissionCatalog.InventoryView)]
     public Task<AsnDto> Get(int id, CancellationToken ct) => asns.GetAsync(id, InventoryScope.Any, ct);
@@ -41,6 +41,14 @@ public sealed class AsnsController(AsnService asns) : ControllerBase
     /// <summary>Edita un aviso de llegada de cliente mientras siga esperado y sin recibo abierto: almacén, referencia, llegada esperada y/o líneas (reemplazo completo).</summary>
     [HttpPatch("{id:int}"), RequirePermission(PermissionCatalog.WarehouseReceive)]
     public Task<AsnDto> Update(int id, [FromBody] AsnUpdateRequest req, CancellationToken ct) => asns.UpdateAsync(id, req, ct);
+
+    /// <summary>Lote 171: asigna (o desasigna con userId null) un aviso de llegada esperado a quien lo va a recibir. Supervisión.</summary>
+    [HttpPost("{id:int}/assign"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    public Task<AsnDto> Assign(int id, [FromBody] TaskAssignRequest req, CancellationToken ct) => asns.AssignAsync(id, req, ct);
+
+    /// <summary>Lote 171: «tomar» un aviso de llegada sin asignar. Quien puede recibir.</summary>
+    [HttpPost("{id:int}/take"), RequirePermission(PermissionCatalog.WarehouseReceive)]
+    public Task<AsnDto> Take(int id, CancellationToken ct) => asns.TakeAsync(id, ct);
 
     [HttpPost("{id:int}/cancel"), RequirePermission(PermissionCatalog.WarehouseReceive)]
     public Task<AsnDto> Cancel(int id, CancellationToken ct) => asns.CancelAsync(id, ct);

@@ -845,16 +845,27 @@ export function useAsns(query: GetQuery<'/api/v1/asns'> = {}, options?: Warehous
   })
 }
 
-/** `POST /api/v1/asns`, `PATCH /api/v1/asns/{id}` y `POST /api/v1/asns/{id}/cancel` (`warehouse.receive`). */
+/** `POST /api/v1/asns`, `PATCH /api/v1/asns/{id}`, `POST /api/v1/asns/{id}/cancel` (`warehouse.receive`), `…/assign` (`warehouse.manage`) y `…/take` (`warehouse.receive`). */
 export function useSaveAsn() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (v: { action: 'create'; body: Schemas['AsnCreateRequest'] } | { action: 'update'; id: number; body: Schemas['AsnUpdateRequest'] } | { action: 'cancel'; id: number }) =>
+    mutationFn: (
+      v:
+        | { action: 'create'; body: Schemas['AsnCreateRequest'] }
+        | { action: 'update'; id: number; body: Schemas['AsnUpdateRequest'] }
+        | { action: 'cancel'; id: number }
+        | { action: 'assign'; id: number; userId: number | null }   // Lote 171: warehouse.manage
+        | { action: 'take'; id: number },   // Lote 171: warehouse.receive
+    ) =>
       v.action === 'create'
         ? unwrap(api.POST('/api/v1/asns', { body: v.body }))
         : v.action === 'update'
           ? unwrap(api.PATCH('/api/v1/asns/{id}', { params: { path: { id: v.id } }, body: v.body }))
-          : unwrap(api.POST('/api/v1/asns/{id}/cancel', { params: { path: { id: v.id } } })),
+          : v.action === 'assign'
+            ? unwrap(api.POST('/api/v1/asns/{id}/assign', { params: { path: { id: v.id } }, body: { userId: v.userId } }))
+            : v.action === 'take'
+              ? unwrap(api.POST('/api/v1/asns/{id}/take', { params: { path: { id: v.id } } }))
+              : unwrap(api.POST('/api/v1/asns/{id}/cancel', { params: { path: { id: v.id } } })),
     onSuccess: () => invalidate(qc, 'asns', 'dockAppointments'),
   })
 }

@@ -1150,6 +1150,8 @@ export interface paths {
                     reference?: string;
                     expectedFrom?: string;
                     expectedTo?: string;
+                    assignedToMe?: boolean;
+                    assignedUserId?: number;
                 };
                 header?: never;
                 path?: never;
@@ -1271,6 +1273,90 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/api/v1/asns/{id}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaskAssignRequest"];
+                    "text/json": components["schemas"]["TaskAssignRequest"];
+                    "application/*+json": components["schemas"]["TaskAssignRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AsnDto"];
+                        "application/json": components["schemas"]["AsnDto"];
+                        "text/json": components["schemas"]["AsnDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/asns/{id}/take": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AsnDto"];
+                        "application/json": components["schemas"]["AsnDto"];
+                        "text/json": components["schemas"]["AsnDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/asns/{id}/cancel": {
@@ -31744,6 +31830,8 @@ export interface paths {
                     to?: string;
                     skip?: number;
                     take?: number;
+                    assignedToMe?: boolean;
+                    assignedUserId?: number;
                 };
                 header?: never;
                 path?: never;
@@ -32091,6 +32179,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/exit-notices/{publicId}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaskAssignRequest"];
+                    "text/json": components["schemas"]["TaskAssignRequest"];
+                    "application/*+json": components["schemas"]["TaskAssignRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExitNoticeDto"];
+                        "application/json": components["schemas"]["ExitNoticeDto"];
+                        "text/json": components["schemas"]["ExitNoticeDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exit-notices/{publicId}/take": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExitNoticeDto"];
+                        "application/json": components["schemas"]["ExitNoticeDto"];
+                        "text/json": components["schemas"]["ExitNoticeDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/exit-notices/{publicId}/dispatch": {
         parameters: {
             query?: never;
@@ -32281,6 +32453,9 @@ export interface components {
             receiptPublicId?: string | null;
             receiptNumber?: string | null;
             number?: string;
+            /** Format: int32 */
+            assignedToUserId?: number | null;
+            assignedToName?: string | null;
         };
         AsnUpdateRequest: {
             /** Format: uuid */
@@ -43041,6 +43216,9 @@ export interface components {
             rowVersion?: string | null;
             lines?: components["schemas"]["ExitNoticeLineDto"][] | null;
             dispatches?: components["schemas"]["ExitNoticeDispatchInfoDto"][] | null;
+            /** Format: int32 */
+            assignedToUserId?: number | null;
+            assignedToName?: string | null;
         };
         ExitNoticeFulfillLineDto: {
             /** Format: uuid */
@@ -43126,6 +43304,9 @@ export interface components {
             requestedByName?: string | null;
             /** Format: date-time */
             createdAtUtc?: string;
+            /** Format: int32 */
+            assignedToUserId?: number | null;
+            assignedToName?: string | null;
         };
         ExitNoticeListItemDtoPagedResult: {
             items?: components["schemas"]["ExitNoticeListItemDto"][] | null;

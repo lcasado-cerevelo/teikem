@@ -12,6 +12,7 @@ import { useT } from '../../kernel/i18n'
 import { Chip, ConfirmDialog, DataTable, Field, Form, Modal, NumberInput, Spinner, toast, type DataColumn, type RowAction } from '../../kernel/ui'
 import { useExitNotice, useExitNoticeMutations, type ExitNoticeLineDto } from './exitNoticeApi'
 import { ExitNoticeDispatchModal } from './ExitNoticeDispatchModal'
+import { AssignDocumentModal } from './AssignDocumentModal'
 import { canDispatch, canHandlePending, canModifyLine, exitQuantityIssue } from './exitNoticeRules'
 
 function QuantityModal({ publicId, line, onClose }: { publicId: string; line: ExitNoticeLineDto; onClose: () => void }) {
@@ -66,10 +67,11 @@ export function ExitNoticeModal({ publicId, onClose }: { publicId: string; onClo
   const t = useT()
   const f = useFormat()
   const q = useExitNotice(publicId)
-  const { fulfillLine, closeLine, cancel } = useExitNoticeMutations()
+  const { fulfillLine, closeLine, cancel, assign, take } = useExitNoticeMutations()
   const [editing, setEditing] = useState<ExitNoticeLineDto | null>(null)
   const [cancelling, setCancelling] = useState(false)
   const [dispatching, setDispatching] = useState(false)
+  const [assigning, setAssigning] = useState(false)   // Lote 171
   const notice = q.data
 
   const run = async (p: Promise<unknown>, ok: string) => {
@@ -160,6 +162,22 @@ export function ExitNoticeModal({ publicId, onClose }: { publicId: string; onClo
                 </button>
               </Can>
             )}
+            {notice && (notice.statusCode === 'REQUESTED' || notice.statusCode === 'PARTIAL') && (
+              <>
+                {notice.assignedToUserId == null && (
+                  <Can perm="warehouse.pick">
+                    <button type="button" className="btn" onClick={() => void run(take.mutateAsync(publicId), t('warehouse.assign.taken'))}>
+                      {t('warehouse.assign.take')}
+                    </button>
+                  </Can>
+                )}
+                <Can perm="warehouse.manage">
+                  <button type="button" className="btn" onClick={() => setAssigning(true)}>
+                    {t('warehouse.assign.action')}
+                  </button>
+                </Can>
+              </>
+            )}
             {notice && canDispatch(notice) && (
               <Can perm="warehouse.pick">
                 <button type="button" className="btn flow" onClick={() => setDispatching(true)}>
@@ -195,6 +213,10 @@ export function ExitNoticeModal({ publicId, onClose }: { publicId: string; onClo
               <div>
                 <dt>{t('warehouse.exitNotices.col.warehouse')}</dt>
                 <dd>{notice.warehouseName}</dd>
+              </div>
+              <div>
+                <dt>{t('warehouse.assign.column')}</dt>
+                <dd>{notice.assignedToName ?? '—'}</dd>
               </div>
               <div>
                 <dt>{t('warehouse.exitNotices.col.reference')}</dt>
@@ -244,6 +266,14 @@ export function ExitNoticeModal({ publicId, onClose }: { publicId: string; onClo
         )}
       </Modal>
       {dispatching && notice && <ExitNoticeDispatchModal notice={notice} onClose={() => setDispatching(false)} />}
+      {assigning && notice && (
+        <AssignDocumentModal
+          title={t('warehouse.assign.title', { number: notice.number ?? '' })}
+          currentUserId={notice.assignedToUserId}
+          onSave={(userId) => assign.mutateAsync({ id: publicId, userId })}
+          onClose={() => setAssigning(false)}
+        />
+      )}
       {editing && <QuantityModal publicId={publicId} line={editing} onClose={() => setEditing(null)} />}
       <ConfirmDialog
         open={cancelling}
