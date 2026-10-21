@@ -13,6 +13,8 @@ export interface WarehouseOption {
   code: string
   name: string
   receivingMode: string | null
+  /** Lote 198: la posición de recepción (staging) por omisión del almacén; null = la primera de zona STAGING. */
+  receivingBinCode?: string | null
 }
 
 export interface ActiveWarehouse {
@@ -63,7 +65,7 @@ export async function refreshWarehouseOptions(): Promise<WarehouseOption[]> {
     const rows = await unwrap(api.GET('/api/v1/warehouses', { params: { query: { includeInactive: false } } }))
     const options = rows
       .filter((w) => w.isActive !== false && w.publicId)
-      .map<WarehouseOption>((w) => ({ publicId: w.publicId!, code: w.code ?? '', name: w.name ?? w.code ?? '', receivingMode: w.receivingModeCode ?? null }))
+      .map<WarehouseOption>((w) => ({ publicId: w.publicId!, code: w.code ?? '', name: w.name ?? w.code ?? '', receivingMode: w.receivingModeCode ?? null, receivingBinCode: w.defaultReceivingBinCode ?? null }))
       .sort((a, b) => a.name.localeCompare(b.name))
     setKv(KvKeys.warehouseOptions, JSON.stringify(options))
     const sel = getSessionState().device?.selectedWarehouse

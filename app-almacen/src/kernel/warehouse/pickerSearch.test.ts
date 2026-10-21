@@ -49,3 +49,11 @@ describe('contra un documento solo se ofrecen sus productos (Lote 196)', () => {
     expect(searchPicker('product', null, '', 100, ['p1']).map((p) => p.code)).toEqual(['TOR-10'])
   })
 })
+
+describe('posiciones sin ciertos tipos de zona (recibo directo)', () => {
+  it('excludeZoneTypes quita las de recepción y deja el resto', () => {
+    getDb().runSync("INSERT INTO bin (id, code, warehouse_public_id, zone_code, zone_name, zone_type_code, is_active) VALUES (9, 'STG-01', 'wh-1', 'REC', 'Recepción', 'STAGING', 1)")
+    expect(searchBins('wh-1', '').map((b) => b.code)).toContain('STG-01')
+    expect(searchBins('wh-1', '', 30, ['STAGING', 'CROSSDOCK']).map((b) => b.code)).toEqual(['A-01', 'B-02'])
+  })
+})

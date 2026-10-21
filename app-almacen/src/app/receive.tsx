@@ -6,7 +6,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 
 import { useSession } from '../kernel/auth/useSession'
-import { useActiveWarehouse } from '../kernel/warehouse/activeWarehouse'
+import { getCachedWarehouseOptions, useActiveWarehouse } from '../kernel/warehouse/activeWarehouse'
 import { useT } from '../kernel/i18n/useT'
 import { enqueue } from '../kernel/sync/outbox'
 import { runSync } from '../kernel/sync/engine'
@@ -84,6 +84,9 @@ import { localStagingFree } from '../kernel/warehouse/stagingRoom'
  *  Lote 16: si el recibo se abrió en modo "Directo a posición" (el del almacén del aparato al empezarlo), tras la cantidad
  *  viene el paso "Escanea la posición destino" (validada contra las posiciones locales, con la pista "Sugerida: …" si hay
  *  señal); la línea se agrega al escanear una posición válida y se muestra con "→ {posición}". Con acomodo, igual que antes. */
+/** Recibo directo: no se ofrecen las posiciones de recepción (STAGING), de cruce de muelle ni de renta (mismas zonas que el servidor rechaza). */
+const DIRECT_EXCLUDED_ZONES = ['STAGING', 'CROSSDOCK', 'RENTAL']
+
 export default function ReceiveScreen() {
   const { t } = useT()
   const f = useFormat()
@@ -140,6 +143,8 @@ export default function ReceiveScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const truck = useMemo(() => getTruck(), [tick])
   const direct = openReceipt?.receivingMode === 'DIRECT'
+  // Lote 198: con acomodo todo entra a UNA posición de recepción (staging): la del almacén por omisión, o la primera de zona STAGING
+  const stagingBinCode = openReceipt && warehousePublicId ? (getCachedWarehouseOptions().find((o) => o.publicId === warehousePublicId)?.receivingBinCode ?? findLocalBinCodeByZoneType(warehousePublicId, 'STAGING')) : null
   // Lote 175: recibir por partes y aviso de staging lleno (con lo que ya hay según los saldos locales)
   // Lote 191: con aviso u orden de compra, lo que dice el documento se ve en una lista para elegir (escanear sigue funcionando)
   const expected = openReceipt ? getDocExpected(openReceipt.doc) : []
@@ -699,6 +704,7 @@ export default function ReceiveScreen() {
           suggestedValue={perBin > 0 ? null : suggestion}
           prefill={prefill}
           pick="bin"
+          excludeZoneTypes={DIRECT_EXCLUDED_ZONES}
         />
         {perBin > 0 && splitCodes.length > 0 ? (
           <View style={styles.field}>
@@ -757,6 +763,7 @@ export default function ReceiveScreen() {
       <KeyboardScreen contentContainerStyle={styles.fill}>
         <Text style={styles.title}>{draft.productName}</Text>
         <Text style={styles.help}>{draft.sku}</Text>
+        {!direct && stagingBinCode ? <Text style={styles.hint} testID="receive-staging-bin">{t('receive.stagingBin', { bin: stagingBinCode })}</Text> : null}
 
         {requiresSerials(draft) ? (
           <View style={styles.field}>

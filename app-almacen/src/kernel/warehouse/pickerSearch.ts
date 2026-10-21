@@ -35,25 +35,28 @@ export function searchProducts(query: string, limit = PICK_PAGE, onlyProductIds?
     .map((p) => ({ kind: 'product' as const, code: p.sku, title: p.sku, subtitle: [p.name, p.barcode].filter(Boolean).join(' · ') || null }))
 }
 
-export function searchBins(warehousePublicId: string, query: string, limit = PICK_PAGE): PickItem[] {
+/** `excludeZoneTypes` (Lote 198): tipos de zona que no se ofrecen (p. ej. recibo directo no ofrece STAGING). */
+export function searchBins(warehousePublicId: string, query: string, limit = PICK_PAGE, excludeZoneTypes?: readonly string[] | null): PickItem[] {
   const term = likeTerm(query)
+  const exclude = excludeZoneTypes && excludeZoneTypes.length > 0 ? excludeZoneTypes : null
   return getDb()
     .getAllSync<{ code: string; zone_code: string | null; zone_name: string | null }>(
       `SELECT code, zone_code, zone_name FROM bin
        WHERE warehouse_public_id = ? AND is_active = 1
+         ${exclude ? `AND (zone_type_code IS NULL OR zone_type_code NOT IN (${exclude.map(() => '?').join(',')}))` : ''}
          AND (code LIKE ? ESCAPE '\\' OR zone_code LIKE ? ESCAPE '\\' OR zone_name LIKE ? ESCAPE '\\'
               OR aisle LIKE ? ESCAPE '\\' OR rack LIKE ? ESCAPE '\\' OR level LIKE ? ESCAPE '\\' OR position LIKE ? ESCAPE '\\')
        ORDER BY code COLLATE NOCASE LIMIT ?`,
-      [warehousePublicId, term, term, term, term, term, term, term, limit],
+      [warehousePublicId, ...(exclude ?? []), term, term, term, term, term, term, term, limit],
     )
     .map((b) => ({ kind: 'bin' as const, code: b.code, title: b.code, subtitle: [b.zone_code, b.zone_name].filter(Boolean).join(' · ') || null }))
 }
 
 /** Búsqueda del selector: producto, posición o las dos (productos primero). */
 /** `limit` = cuántas filas de CADA tipo (productos y posiciones); la lista pide más al llegar al final. */
-export function searchPicker(kind: PickKind, warehousePublicId: string | null, query: string, limit = PICK_PAGE, onlyProductIds?: readonly string[] | null): PickItem[] {
+export function searchPicker(kind: PickKind, warehousePublicId: string | null, query: string, limit = PICK_PAGE, onlyProductIds?: readonly string[] | null, excludeZoneTypes?: readonly string[] | null): PickItem[] {
   const out: PickItem[] = []
   if (kind !== 'bin') out.push(...searchProducts(query, limit, onlyProductIds))
-  if (kind !== 'product' && warehousePublicId) out.push(...searchBins(warehousePublicId, query, limit))
+  if (kind !== 'product' && warehousePublicId) out.push(...searchBins(warehousePublicId, query, limit, excludeZoneTypes))
   return out
 }

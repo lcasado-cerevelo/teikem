@@ -37,6 +37,7 @@ export interface ScanFieldProps {
   pick?: PickKind
   /** Lote 196: contra un documento, la lista y las sugerencias solo traen los productos del documento (ids públicos). */
   onlyProductIds?: readonly string[] | null
+  excludeZoneTypes?: readonly string[] | null
   /** Identificador del campo para los recorridos Maestro (`tapOn: id:`). */
   testID?: string
 }
@@ -66,6 +67,7 @@ export function ScanField({
   prefill,
   pick,
   onlyProductIds,
+  excludeZoneTypes,
   testID,
 }: ScanFieldProps) {
   const { t } = useT()
@@ -154,7 +156,7 @@ export function ScanField({
   // Autocompletado (Lote 161): al ESCRIBIR a mano (teclado en pantalla) se muestran las coincidencias parciales de la base local; tocar una equivale a escanearla.
   // «Ver todas» abre la lista completa ya filtrada con lo escrito. Un lector que escribe de golpe no pasa por aquí (se acepta solo).
   const typed = value.trim()
-  const suggestions = useMemo<PickItem[]>(() => (pick && keyboard && typed.length >= 2 ? searchPicker(pick, activeWarehouse.publicId, typed, SUGGESTIONS, onlyProductIds) : []), [pick, keyboard, typed, activeWarehouse.publicId, onlyProductIds])
+  const suggestions = useMemo<PickItem[]>(() => (pick && keyboard && typed.length >= 2 ? searchPicker(pick, activeWarehouse.publicId, typed, SUGGESTIONS, onlyProductIds, excludeZoneTypes) : []), [pick, keyboard, typed, activeWarehouse.publicId, onlyProductIds, excludeZoneTypes])
   const [listQuery, setListQuery] = useState('')
 
   return (
@@ -234,6 +236,7 @@ export function ScanField({
           visible={picking}
           kind={pick}
           onlyProductIds={onlyProductIds}
+          excludeZoneTypes={excludeZoneTypes}
           initialQuery={listQuery}
           warehousePublicId={activeWarehouse.publicId}
           onClose={() => setPicking(false)}
