@@ -4,7 +4,9 @@ import { useCallback, useState } from 'react'
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
 
-import { useMyPermissions } from '../kernel/auth/permissions'
+import { useAssignAccess, useAssignees } from '../features/assign/assignScope'
+import { assigneeName, reassign } from '../features/assign/assignApi'
+import { ReassignModal } from '../features/assign/ReassignModal'
 import { useSession } from '../kernel/auth/useSession'
 import { apiErrorMessage, toApiError } from '../kernel/api/client'
 import { useFormat } from '../kernel/format/useFormat'
@@ -30,6 +32,16 @@ import {
   type MySalesTask,
 } from '../features/myTasks/myTasksLogic'
 
+/** Lote 199: un documento asignado a otra persona (solo con warehouse.app.viewall). */
+interface OtherItem {
+  key: string
+  kind: 'asn' | 'po' | 'exit' | 'sales'
+  ref: number | string
+  title: string
+  subtitle: string | null
+  assignedTo: number | null
+}
+
 interface Lists {
   asnMine: MyAsnTask[]
   exitMine: MyExitTask[]
@@ -50,8 +62,12 @@ export default function MyTasksScreen() {
   const { session } = useSession()
   const warehousePublicId = useActiveWarehouse().publicId
   const userId = session?.userId ?? null
-  // Lote 193: lo sin asignar solo se ofrece con warehouse.pick.any
-  const canAny = (useMyPermissions() ?? []).includes('warehouse.pick.any')
+  // Lote 199: lo sin asignar lo ve cualquiera; lo asignado a otras personas, con warehouse.app.viewall; reasignar, con warehouse.app.reassign
+  const access = useAssignAccess()
+  const people = useAssignees(access.viewAll)
+  const [others, setOthers] = useState<OtherItem[]>([])
+  const [showOthers, setShowOthers] = useState(false)
+  const [toReassign, setToReassign] = useState<OtherItem | null>(null)
   const [lists, setLists] = useState<Lists>(EMPTY)
   const [putaway, setPutaway] = useState<MyPutawayTask[]>([])
   const [online, setOnline] = useState(true)
@@ -63,14 +79,22 @@ export default function MyTasksScreen() {
     setLists({
       asnMine: listAsnTasks(warehousePublicId, userId, 'mine'),
       exitMine: listExitTasks(warehousePublicId, userId, 'mine'),
-      asnFree: canAny ? listAsnTasks(warehousePublicId, userId, 'unassigned') : [],
-      exitFree: canAny ? listExitTasks(warehousePublicId, userId, 'unassigned') : [],
+      asnFree: listAsnTasks(warehousePublicId, userId, 'unassigned'),
+      exitFree: listExitTasks(warehousePublicId, userId, 'unassigned'),
       poMine: listPoTasks(warehousePublicId, userId, 'mine'),
       salesMine: listSalesTasks(warehousePublicId, userId, 'mine'),
-      poFree: canAny ? listPoTasks(warehousePublicId, userId, 'unassigned') : [],
-      salesFree: canAny ? listSalesTasks(warehousePublicId, userId, 'unassigned') : [],
+      poFree: listPoTasks(warehousePublicId, userId, 'unassigned'),
+      salesFree: listSalesTasks(warehousePublicId, userId, 'unassigned'),
     })
-  }, [warehousePublicId, userId, canAny])
+    if (access.viewAll) {
+      setOthers([
+        ...listAsnTasks(warehousePublicId, userId, 'other').map<OtherItem>((a) => ({ key: `a${a.id}`, kind: 'asn', ref: a.id, title: [a.number || `#${a.id}`, a.reference].filter(Boolean).join(' · '), subtitle: a.clientName, assignedTo: a.assignedToUserId })),
+        ...listPoTasks(warehousePublicId, userId, 'other').map<OtherItem>((o) => ({ key: `p${o.id}`, kind: 'po', ref: o.publicId, title: o.number, subtitle: o.supplierName, assignedTo: o.assignedToUserId })),
+        ...listExitTasks(warehousePublicId, userId, 'other').map<OtherItem>((o) => ({ key: `e${o.id}`, kind: 'exit', ref: o.publicId, title: o.number, subtitle: o.clientName, assignedTo: o.assignedToUserId })),
+        ...listSalesTasks(warehousePublicId, userId, 'other').map<OtherItem>((o) => ({ key: `s${o.id}`, kind: 'sales', ref: o.publicId, title: o.number, subtitle: o.clientName, assignedTo: o.assignedToUserId })),
+      ])
+    } else setOthers([])
+  }, [warehousePublicId, userId, access.viewAll])
 
   useFocusEffect(
     useCallback(() => {
@@ -261,6 +285,36 @@ export default function MyTasksScreen() {
             </View>
           ))
         : null}
+
+      {others.length > 0 ? (
+        <BigButton
+          label={showOthers ? t('reassign.hideOthers') : t('reassign.showOthers', { count: others.length })}
+          variant="secondary"
+          onPress={() => setShowOthers((v) => !v)}
+          testID="my-tasks-others-toggle"
+        />
+      ) : null}
+      {showOthers
+        ? others.map((o) => (
+            <View key={`other-${o.key}`} style={styles.card}>
+              <Text style={styles.cardTitle}>{o.title}</Text>
+              {o.subtitle ? <Text style={styles.help}>{o.subtitle}</Text> : null}
+              <Text style={styles.help}>{t('reassign.assignedTo', { name: assigneeName(o.assignedTo, people) })}</Text>
+              {access.reassign ? <BigButton label={t('reassign.button')} variant="secondary" testID={`my-reassign-${o.key}`} onPress={() => setToReassign(o)} /> : null}
+            </View>
+          ))
+        : null}
+      <ReassignModal
+        visible={toReassign !== null}
+        title={t('reassign.title', { what: toReassign?.title ?? '' })}
+        currentUserId={toReassign?.assignedTo ?? null}
+        onClose={() => setToReassign(null)}
+        onPick={async (uid) => {
+          if (!toReassign) return
+          await reassign(toReassign.kind, toReassign.ref, uid)
+          reload()
+        }}
+      />
 
       <View style={styles.bottom}>
         <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} />

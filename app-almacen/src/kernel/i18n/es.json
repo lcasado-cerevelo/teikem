@@ -67,6 +67,15 @@
     "removeCompanyPending": "Tiene {count} captura(s) sin sincronizar que se perderán.",
     "swipeHint": "Desliza a la izquierda para quitar una compañía."
   },
+  "reassign": {
+    "needSignal": "Para reasignar hace falta señal.",
+    "unassigned": "Sin asignar",
+    "title": "Reasignar {what}",
+    "button": "Reasignar",
+    "assignedTo": "Asignado a: {name}",
+    "showOthers": "Ver lo asignado a otras personas ({count})",
+    "hideOthers": "Ocultar lo asignado a otras personas"
+  },
   "myTasks": {
     "receivePo": "Órdenes de compra por recibir ({count})",
     "dispatchSales": "Órdenes de venta por despachar ({count})",

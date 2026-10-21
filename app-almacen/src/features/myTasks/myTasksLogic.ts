@@ -23,7 +23,14 @@ export interface MyExitTask {
   assignedToUserId: number | null
 }
 
-export type Owner = 'mine' | 'unassigned'
+export type Owner = 'mine' | 'unassigned' | 'other'
+
+/** Lote 199: la condición SQL (con un parámetro: el usuario) según de quién se pide: mío, sin asignar o de otra persona. */
+function ownerWhere(col: string, owner: Owner): string {
+  if (owner === 'mine') return `${col} = ?`
+  if (owner === 'other') return `${col} IS NOT NULL AND ${col} <> ?`
+  return `${col} IS NULL AND ? IS NOT NULL`
+}
 
 interface AsnRow {
   id: number
@@ -36,7 +43,7 @@ interface AsnRow {
 
 /** Avisos de llegada de cliente esperados del almacén (los nacidos de una orden de compra se reciben contra la orden), de este usuario o sin asignar. */
 export function listAsnTasks(warehousePublicId: string, userId: number, owner: Owner): MyAsnTask[] {
-  const where = owner === 'mine' ? 'assigned_to_user_id = ?' : 'assigned_to_user_id IS NULL AND ? IS NOT NULL'
+  const where = ownerWhere('assigned_to_user_id', owner)
   return getDb()
     .getAllSync<AsnRow>(
       `SELECT id, number, reference, client_name, expected_date, assigned_to_user_id FROM asn
@@ -60,7 +67,7 @@ interface ExitRow {
 
 /** Avisos de salida con algo reservado que se puede despachar ya (los demás no bajan al aparato), de este usuario o sin asignar; la fecha requerida manda. */
 export function listExitTasks(warehousePublicId: string, userId: number, owner: Owner): MyExitTask[] {
-  const where = owner === 'mine' ? 'o.assigned_to_user_id = ?' : 'o.assigned_to_user_id IS NULL AND ? IS NOT NULL'
+  const where = ownerWhere('o.assigned_to_user_id', owner)
   return getDb()
     .getAllSync<ExitRow>(
       `SELECT o.id, o.public_id, o.number, o.client_name, o.destination, o.reference, o.required_date, o.assigned_to_user_id FROM exit_notice o
@@ -92,7 +99,7 @@ export interface MyPoTask {
 
 /** Lote 195: órdenes de compra abiertas (enviadas o recibidas en parte) del almacén que se pueden recibir, de este usuario o sin asignar. */
 export function listPoTasks(warehousePublicId: string, userId: number, owner: Owner): MyPoTask[] {
-  const where = owner === 'mine' ? 'o.assigned_to_user_id = ?' : 'o.assigned_to_user_id IS NULL AND ? IS NOT NULL'
+  const where = ownerWhere('o.assigned_to_user_id', owner)
   return getDb()
     .getAllSync<{ id: number; public_id: string; number: string; supplier_name: string | null; expected_date: string | null; assigned_to_user_id: number | null }>(
       `SELECT o.id, o.public_id, o.number, o.supplier_name, o.expected_date, o.assigned_to_user_id FROM purchase_order o
@@ -116,7 +123,7 @@ export interface MySalesTask {
 
 /** Lote 195: órdenes de venta con algo reservado que se puede despachar ya, de este usuario o sin asignar; la fecha requerida manda. */
 export function listSalesTasks(warehousePublicId: string, userId: number, owner: Owner): MySalesTask[] {
-  const where = owner === 'mine' ? 'o.assigned_to_user_id = ?' : 'o.assigned_to_user_id IS NULL AND ? IS NOT NULL'
+  const where = ownerWhere('o.assigned_to_user_id', owner)
   return getDb()
     .getAllSync<{ id: number; public_id: string; number: string; client_name: string | null; consignee_name: string | null; required_date: string | null; assigned_to_user_id: number | null }>(
       `SELECT o.id, o.public_id, o.number, o.client_name, o.consignee_name, o.required_date, o.assigned_to_user_id FROM sales_order o

@@ -77,7 +77,7 @@ export default function HomeScreen() {
         else setOpenKind(null)
       }
       compute()
-      // Lote 193: sin warehouse.pick.any solo se ofrece lo asignado a esta persona
+      // Lote 199: se ofrece lo mío y lo sin asignar (y lo de otras personas con warehouse.app.viewall)
       const scope = dispatchScope(permissions, userId)
       setHasSalesOrders(warehouseId ? listSalesOrders(warehouseId, scope).length > 0 : false)
       setHasSalesReturns(warehouseId ? listSalesReturns(warehouseId).length > 0 : false)

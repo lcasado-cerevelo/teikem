@@ -7,6 +7,9 @@ import { useT } from '../../kernel/i18n/useT'
 import { BigButton } from '../../kernel/ui/BigButton'
 import { KeyboardInput } from '../../kernel/ui/KeyboardInput'
 import { colors, fontSize, radius, spacing } from '../../kernel/ui/theme'
+import { useAssignAccess, useAssignees } from '../assign/assignScope'
+import { assigneeName, reassign } from '../assign/assignApi'
+import { ReassignModal } from '../assign/ReassignModal'
 import { listPendingDocs, type LocalDoc } from './localLookup'
 import type { ReceiveOptions } from './receiptRequirement'
 
@@ -35,13 +38,21 @@ export function ReceiveDocumentList({
   const [pages, setPages] = useState(1)
   const [selecting, setSelecting] = useState(false)
   const [showFree, setShowFree] = useState(false)
+  const [showOthers, setShowOthers] = useState(false)
+  const [tick, setTick] = useState(0)
+  const [toReassign, setToReassign] = useState<{ doc: LocalDoc; title: string; current: number | null } | null>(null)
+  const access = useAssignAccess()
+  const people = useAssignees(access.viewAll)
   const [selected, setSelected] = useState<Record<string, LocalDoc>>({})
   const shownKind = kinds.includes(kind) ? kind : kinds[0]
   const limit = pages * PAGE
-  const rows = useMemo(() => (shownKind ? listPendingDocs(warehousePublicId, shownKind, search, limit, userId) : []), [warehousePublicId, shownKind, search, limit, userId])
+  const rows = useMemo(() => (shownKind ? listPendingDocs(warehousePublicId, shownKind, search, limit, userId) : []), [warehousePublicId, shownKind, search, limit, userId, tick])
   // Lote 198: primero lo asignado a esta persona; lo que nadie tiene asignado se ve con la opción de abajo (y lo de otras personas no se ofrece)
   const freeCount = rows.filter((r) => r.assignedToUserId == null).length
-  const shown = rows.filter((r) => (r.assignedToUserId != null && r.assignedToUserId === userId) || (showFree && r.assignedToUserId == null))
+  const othersCount = access.viewAll ? rows.filter((r) => r.assignedToUserId != null && r.assignedToUserId !== userId).length : 0
+  const shown = rows.filter(
+    (r) => (r.assignedToUserId != null && r.assignedToUserId === userId) || (showFree && r.assignedToUserId == null) || (access.viewAll && showOthers && r.assignedToUserId != null && r.assignedToUserId !== userId),
+  )
   const chosen = Object.values(selected)
   if (!shownKind) return null
   return (
@@ -99,8 +110,7 @@ export function ReceiveDocumentList({
             key={k}
             accessibilityRole="button"
             accessibilityLabel={r.title}
-            accessibilityState={{ selected: on, disabled: otherOwner }}
-            disabled={otherOwner}
+            accessibilityState={{ selected: on }}
             testID={`receive-doc-${k}`}
             onPress={() => {
               if (!selecting) return onPick(r.doc)
@@ -111,11 +121,21 @@ export function ReceiveDocumentList({
                 return next
               })
             }}
-            style={[styles.row, on && styles.rowOn, otherOwner && styles.rowDim]}
+            style={[styles.row, on && styles.rowOn]}
           >
             <Text style={styles.rowTitle}>{selecting ? `${on ? '☑' : '☐'} ` : ''}{r.title}</Text>
             {r.subtitle ? <Text style={styles.help}>{r.subtitle}</Text> : null}
-            <Text style={mine ? styles.mine : styles.help}>{t(mine ? 'receive.assignedToYou' : otherOwner ? 'receive.assignedOther' : 'receive.unassigned')}</Text>
+            <Text style={mine ? styles.mine : styles.help}>
+              {mine ? t('receive.assignedToYou') : otherOwner ? t('reassign.assignedTo', { name: assigneeName(r.assignedToUserId, people) }) : t('receive.unassigned')}
+            </Text>
+            {access.reassign ? (
+              <BigButton
+                label={t('reassign.button')}
+                variant="secondary"
+                testID={`receive-reassign-${k}`}
+                onPress={() => setToReassign({ doc: r.doc, title: r.title, current: r.assignedToUserId })}
+              />
+            ) : null}
           </Pressable>
         )
       })}
@@ -127,6 +147,26 @@ export function ReceiveDocumentList({
           onPress={() => setShowFree((v) => !v)}
         />
       ) : null}
+      {othersCount > 0 ? (
+        <BigButton
+          label={showOthers ? t('reassign.hideOthers') : t('reassign.showOthers', { count: othersCount })}
+          variant="secondary"
+          testID="receive-others-toggle"
+          onPress={() => setShowOthers((v) => !v)}
+        />
+      ) : null}
+      <ReassignModal
+        visible={toReassign !== null}
+        title={t('reassign.title', { what: toReassign?.title ?? '' })}
+        currentUserId={toReassign?.current ?? null}
+        onClose={() => setToReassign(null)}
+        onPick={async (uid) => {
+          if (!toReassign) return
+          const d = toReassign.doc
+          await reassign(d.kind, d.kind === 'asn' ? (d.asnId as number) : (d.purchaseOrderPublicId as string), uid)
+          setTick((n) => n + 1)
+        }}
+      />
       {selecting && chosen.length > 0 ? (
         <BigButton
           label={t('receive.receiveSelected', { count: chosen.length })}

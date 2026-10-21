@@ -19,6 +19,9 @@ import {
   startTask,
   type PutawaySuggestion,
 } from '../features/putaway/putawayApi'
+import { useAssignAccess, useAssignees } from '../features/assign/assignScope'
+import { assigneeName, reassign } from '../features/assign/assignApi'
+import { ReassignModal } from '../features/assign/ReassignModal'
 import { addDistBin, chunkAt, distSummary, exceedsCapacity, isRestBin, parsePerBin, sortTasksMineFirst, type DistBin, type PutawayTask } from '../features/putaway/putawayLogic'
 import { useFormat } from '../kernel/format/useFormat'
 import { ScanMessage } from '../kernel/ui/ScanMessage'
@@ -40,6 +43,10 @@ export default function PutawayScreen() {
   const [tasks, setTasks] = useState<PutawayTask[] | null>(null)
   // Lote 198: primero los acomodos asignados a esta persona; los que nadie tiene asignado salen con la opción de abajo (al escoger uno, el servidor lo asigna a quien lo inicia)
   const [showFree, setShowFree] = useState(false)
+  const [showOthers, setShowOthers] = useState(false)
+  const [toReassign, setToReassign] = useState<PutawayTask | null>(null)
+  const access = useAssignAccess()
+  const people = useAssignees(access.viewAll)
   const [listError, setListError] = useState<string | null>(null)
   const [selected, setSelected] = useState<PutawayTask | null>(null)
   const [suggestions, setSuggestions] = useState<PutawaySuggestion[] | null>(null)
@@ -238,6 +245,7 @@ export default function PutawayScreen() {
 
   const mine = (tasks ?? []).filter((x) => x.assignedToUserId != null && x.assignedToUserId === session?.userId)
   const free = (tasks ?? []).filter((x) => x.assignedToUserId == null)
+  const others = access.viewAll ? (tasks ?? []).filter((x) => x.assignedToUserId != null && x.assignedToUserId !== session?.userId) : []
 
   return (
     <View style={styles.fill}>
@@ -258,24 +266,41 @@ export default function PutawayScreen() {
         <>
           {mine.length === 0 ? <Text style={styles.help}>{t('putaway.noneMine')}</Text> : null}
           <FlatList
-            data={showFree ? [...mine, ...free] : mine}
+            data={[...mine, ...(showFree ? free : []), ...(showOthers ? others : [])]}
             keyExtractor={(item) => String(item.id)}
             ListFooterComponent={
-              free.length > 0 ? (
-                <BigButton
-                  label={showFree ? t('myTasks.hideFree') : t('myTasks.showFree', { count: free.length })}
-                  variant="secondary"
-                  testID="putaway-free-toggle"
-                  onPress={() => setShowFree((v) => !v)}
-                />
-              ) : null
+              <>
+                {free.length > 0 ? (
+                  <BigButton
+                    label={showFree ? t('myTasks.hideFree') : t('myTasks.showFree', { count: free.length })}
+                    variant="secondary"
+                    testID="putaway-free-toggle"
+                    onPress={() => setShowFree((v) => !v)}
+                  />
+                ) : null}
+                {others.length > 0 ? (
+                  <BigButton
+                    label={showOthers ? t('reassign.hideOthers') : t('reassign.showOthers', { count: others.length })}
+                    variant="secondary"
+                    testID="putaway-others-toggle"
+                    onPress={() => setShowOthers((v) => !v)}
+                  />
+                ) : null}
+              </>
             }
             renderItem={({ item }) => (
               <Pressable accessibilityRole="button" onPress={() => openTask(item)} style={styles.row} disabled={busy} testID={`putaway-task-${item.id}`}>
                 <View style={styles.rowTexts}>
                   <Text style={styles.rowTitle}>{item.sku}</Text>
                   <Text style={styles.help}>{item.productName}</Text>
-                  <Text style={item.assignedToUserId == null ? styles.help : styles.mine}>{t(item.assignedToUserId == null ? 'putaway.unassigned' : 'putaway.assignedToYou')}</Text>
+                  <Text style={item.assignedToUserId === session?.userId ? styles.mine : styles.help}>
+                    {item.assignedToUserId == null
+                      ? t('putaway.unassigned')
+                      : item.assignedToUserId === session?.userId
+                        ? t('putaway.assignedToYou')
+                        : t('reassign.assignedTo', { name: assigneeName(item.assignedToUserId, people) })}
+                  </Text>
+                  {access.reassign ? <BigButton label={t('reassign.button')} variant="secondary" testID={`putaway-reassign-${item.id}`} onPress={() => setToReassign(item)} /> : null}
                 </View>
                 <Text style={styles.rowQty}>{item.quantity != null ? f.qty(item.quantity) : ''}</Text>
               </Pressable>
@@ -283,6 +308,17 @@ export default function PutawayScreen() {
           />
         </>
       )}
+      <ReassignModal
+        visible={toReassign !== null}
+        title={t('reassign.title', { what: toReassign?.sku ?? '' })}
+        currentUserId={toReassign?.assignedToUserId ?? null}
+        onClose={() => setToReassign(null)}
+        onPick={async (uid) => {
+          if (!toReassign) return
+          await reassign('task', toReassign.id, uid)
+          load()
+        }}
+      />
       <BigButton label={t('common.back')} variant="danger" onPress={() => router.back()} />
     </View>
   )

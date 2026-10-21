@@ -67,13 +67,33 @@ describe('Mis tareas', () => {
     await waitFor(() => expect(screen.getByTestId('my-asn-2')).toBeTruthy())
   })
 
-  it('Lote 193: sin warehouse.pick.any no se ofrece lo que nadie tiene asignado', async () => {
+  it('Lote 199: lo sin asignar lo ve cualquiera; lo asignado a otras personas solo con ver todo', async () => {
     await setupDevice()
     seed()
+    getDb().runSync("INSERT INTO asn (id, number, reference, client_name, warehouse_public_id, is_active, assigned_to_user_id) VALUES (3, 'LLE-00003', 'R-3', 'ASICS', 'wh-1', 1, 9)")
     mockFetch([(c) => (c.path === '/api/v1/me' ? json(200, { userId: 7, permissions: ['warehouse.pick'] }) : null)])
     await renderRouter('src/app', { initialUrl: '/my-tasks' })
     await waitFor(() => expect(screen.getByTestId('my-asn-1')).toBeTruthy())
-    expect(screen.queryByTestId('my-tasks-free-toggle')).toBeNull()
+    expect(screen.getByTestId('my-tasks-free-toggle')).toBeTruthy()
+    expect(screen.queryByTestId('my-tasks-others-toggle')).toBeNull()
+  })
+
+  it('Lote 199: con ver todo sale «Ver lo asignado a otras personas» y, con reasignar, el botón Reasignar', async () => {
+    await setupDevice()
+    seed()
+    getDb().runSync("INSERT INTO asn (id, number, reference, client_name, warehouse_public_id, is_active, assigned_to_user_id) VALUES (3, 'LLE-00003', 'R-3', 'ASICS', 'wh-1', 1, 9)")
+    const calls = mockFetch([
+      (c) => (c.path === '/api/v1/me' ? json(200, { userId: 7, permissions: ['warehouse.pick', 'warehouse.app.viewall', 'warehouse.app.reassign'] }) : null),
+      (c) => (c.path === '/api/v1/warehouse-tasks/assignees' ? json(200, [{ id: 7, name: 'Ana Ruiz' }, { id: 9, name: 'Beto Díaz' }]) : null),
+      (c) => (c.method === 'POST' && c.path === '/api/v1/asns/3/assign' ? json(200, { id: 3 }) : null),
+    ])
+    await renderRouter('src/app', { initialUrl: '/my-tasks' })
+    await fireEvent.press(await screen.findByTestId('my-tasks-others-toggle'))
+    await waitFor(() => expect(screen.getByText('Asignado a: Beto Díaz')).toBeTruthy())
+    await fireEvent.press(screen.getByTestId('my-reassign-a3'))
+    await fireEvent.press(await screen.findByTestId('reassign-7'))
+    await waitFor(() => expect(calls.some((c) => c.method === 'POST' && c.path === '/api/v1/asns/3/assign')).toBe(true))
+    expect(calls.find((c) => c.path === '/api/v1/asns/3/assign')?.body).toEqual({ userId: 7 })
   })
 
   it('Lote 195: una orden de compra asignada aparece y tocarla abre Recibir con esa orden', async () => {

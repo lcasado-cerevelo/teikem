@@ -189,26 +189,27 @@ describe('recolectar juntos (Lote 178)', () => {
     expect(getSalesOrderLines(5)[0].qtyReserved).toBe(2)
   })
 
-  it('Lote 193: sin warehouse.pick.any solo se ven los avisos asignados a la persona y no hay órdenes de venta', () => {
+  it('Lote 199: sin warehouse.app.viewall se ve lo mío y lo sin asignar, no lo de otras personas', () => {
     applyExitNotices(getDb(), WH, [{ ...NOTICE, assignedToUserId: 7 }, { ...NOTICE, id: 8, publicId: 'sn-8', number: 'SAL-00008', assignedToUserId: null, lines: [{ ...NOTICE.lines[0], id: 80 }] }])
     expect(listExitNotices(WH).map((o) => o.number)).toEqual(['SAL-00007', 'SAL-00008'])   // sin alcance (compatibilidad): todo
-    expect(listExitNotices(WH, dispatchScope(['warehouse.pick'], 7)).map((o) => o.number)).toEqual(['SAL-00007'])
-    expect(listExitNotices(WH, dispatchScope(['warehouse.pick'], 9))).toEqual([])
-    expect(listExitNotices(WH, dispatchScope(['warehouse.pick', 'warehouse.pick.any'], 9)).map((o) => o.number)).toEqual(['SAL-00007', 'SAL-00008'])
-    expect(findExitNoticeByNumber(WH, 'SAL-00008', dispatchScope(['warehouse.pick'], 7))).toBeNull()
-    expect(findExitNoticeByNumber(WH, 'SAL-00007', dispatchScope(['warehouse.pick'], 7))?.number).toBe('SAL-00007')
+    expect(listExitNotices(WH, dispatchScope(['warehouse.pick'], 7)).map((o) => o.number)).toEqual(['SAL-00007', 'SAL-00008'])
+    expect(listExitNotices(WH, dispatchScope(['warehouse.pick'], 9)).map((o) => o.number)).toEqual(['SAL-00008'])   // el 7 es de otra persona
+    expect(listExitNotices(WH, dispatchScope(['warehouse.app.viewall'], 9)).map((o) => o.number)).toEqual(['SAL-00007', 'SAL-00008'])
+    expect(findExitNoticeByNumber(WH, 'SAL-00007', dispatchScope(['warehouse.pick'], 9))).toBeNull()
+    expect(findExitNoticeByNumber(WH, 'SAL-00008', dispatchScope(['warehouse.pick'], 9))?.number).toBe('SAL-00008')
   })
 
-  it('Lote 195: sin warehouse.pick.any las órdenes de venta se ven solo si están asignadas a la persona', () => {
+  it('Lote 199: las órdenes de venta siguen la misma regla (mías, sin asignar, y las de otras solo con ver todo)', () => {
     applySalesOrders(getDb(), WH, [
       { id: 5, publicId: 'so-5', number: 'OV-00005', warehousePublicId: WH, clientName: 'ASICS', consigneeName: null, statusCode: 'REQUESTED', requiredDate: null, requestedAtUtc: null, isActive: true, assignedToUserId: 7,
         lines: [{ id: 50, productPublicId: 'p1', sku: 'MED', productName: 'Medicina', qtyOrdered: 2, qtyReserved: 2, qtyShipped: 0, qtyBackordered: 0, reservations: [{ binId: 1, binCode: 'P-01', lotId: null, lotNumber: null, quantity: 2 }] }] },
       { id: 6, publicId: 'so-6', number: 'OV-00006', warehousePublicId: WH, clientName: 'ASICS', consigneeName: null, statusCode: 'REQUESTED', requiredDate: null, requestedAtUtc: null, isActive: true, assignedToUserId: null,
         lines: [{ id: 60, productPublicId: 'p1', sku: 'MED', productName: 'Medicina', qtyOrdered: 2, qtyReserved: 2, qtyShipped: 0, qtyBackordered: 0, reservations: [{ binId: 1, binCode: 'P-01', lotId: null, lotNumber: null, quantity: 2 }] }] },
     ])
-    expect(listSalesOrders(WH, dispatchScope(['warehouse.pick'], 7)).map((o) => o.number)).toEqual(['OV-00005'])
-    expect(listSalesOrders(WH, dispatchScope(['warehouse.pick', 'warehouse.pick.any'], 9)).map((o) => o.number)).toEqual(['OV-00005', 'OV-00006'])
-    expect(findSalesOrderByNumber(WH, 'OV-00006', dispatchScope(['warehouse.pick'], 7))).toBeNull()
-    expect(listGroupableOrders(WH, dispatchScope(['warehouse.pick'], 7)).map((o) => o.number)).toEqual(['OV-00005'])
+    expect(listSalesOrders(WH, dispatchScope(['warehouse.pick'], 7)).map((o) => o.number)).toEqual(['OV-00005', 'OV-00006'])
+    expect(listSalesOrders(WH, dispatchScope(['warehouse.pick'], 9)).map((o) => o.number)).toEqual(['OV-00006'])
+    expect(listSalesOrders(WH, dispatchScope(['warehouse.app.viewall'], 9)).map((o) => o.number)).toEqual(['OV-00005', 'OV-00006'])
+    expect(findSalesOrderByNumber(WH, 'OV-00005', dispatchScope(['warehouse.pick'], 9))).toBeNull()
+    expect(listGroupableOrders(WH, dispatchScope(['warehouse.pick'], 9)).map((o) => o.number)).toEqual(['OV-00006'])
   })
 })

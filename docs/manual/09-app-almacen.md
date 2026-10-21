@@ -1432,3 +1432,16 @@ La orden de compra (a quien la va a **recibir**) y la orden de venta (a quien la
 **Acomodar (2026-10-21).** La lista empieza con **los acomodos asignados a usted**. Debajo está **«Ver lo que nadie tiene asignado (N)»**: al tocarla salen todos los acomodos sin asignar y puede escoger el que quiera; al escogerlo y empezarlo **queda asignado a usted** (la bitácora anota que fue al iniciarlo desde la app). Los acomodos asignados a otras personas no se ofrecen.
 
 **Despacho (2026-10-21).** Pantalla 1: arriba el campo del número del aviso de salida u orden de venta (escanear o escribir, teclado, Aceptar); debajo los documentos **asignados a usted**; debajo «Ver lo que nadie tiene asignado» (con «Seleccionar varios» y «Despachar N seleccionados»). Empezar un documento sin dueño lo asigna a usted. Pantalla 2 (aviso, orden o varios juntos): solo el campo **Producto a sacar**; al aceptarlo se deshabilita y se pide la **posición** (la sugerida, o la que obliga el lote; «Buscar en lista», teclado y Aceptar); luego la **cantidad** (viene la reservada; Aceptar o Volver). Al aceptar la cantidad queda otra vez solo el campo del producto. Con varios documentos el producto sirve para cualquiera de ellos y se toman las líneas **en el orden en que se marcaron**. Si el producto no falta por sacar: «Ese producto no está entre lo que falta por sacar de estos documentos.» (o «…de esta orden.»). Ya no hay «Omitir» ni la lista para elegir la línea: se escanea el producto que se quiere sacar. Lo que no se saca queda pendiente y se manda lo recogido con **Terminar**.
+
+## Permisos «Ver todo» y «Reasignar» en el aparato (Lote 199, 2026-10-21)
+
+Dos permisos nuevos (categoría Almacén, Sistema → Roles; el administrador los tiene y se los da al supervisor del almacén):
+
+| Permiso | Qué hace |
+|---|---|
+| `warehouse.app.viewall` — «Ver todo en el aparato (también lo asignado a otras personas)» | En **Recibir, Acomodar, Despacho y Mis tareas** aparece **«Ver lo asignado a otras personas (N)»**; cada fila dice «Asignado a: {nombre}». Solo el almacén activo. |
+| `warehouse.app.reassign` — «Reasignar desde el aparato (exige ver todo)» | Botón **Reasignar** en cada fila (mía, sin asignar o de otra persona): abre la lista de personas de la compañía y **«Sin asignar»**. Pide señal: «Para reasignar hace falta señal.» |
+
+**Regla.** Todos ven lo suyo y lo que nadie tiene asignado; solo con `warehouse.app.viewall` se ve lo de otras personas, y `warehouse.app.reassign` no sirve sin ver todo (el aparato no ofrece el botón y el servidor responde 403: «Para reasignar hace falta poder ver todo en el aparato.»). **`warehouse.pick.any` ya no se consulta** (sigue en el catálogo y en los roles; no hace nada). Reasignar algo que otra persona ya empezó se permite y no interrumpe lo que está en curso. No se avisa a la persona.
+
+**Servidor.** Los endpoints `assign` (aviso de llegada, aviso de salida, orden de compra, orden de venta y tarea) aceptan `warehouse.manage` o `warehouse.app.reassign`; `GET /api/v1/warehouse-tasks/assignees` devuelve las personas asignables (con ver todo, reasignar o administrar). La bitácora del documento anota quién reasignó.

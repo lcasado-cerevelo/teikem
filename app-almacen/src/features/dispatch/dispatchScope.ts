@@ -1,19 +1,19 @@
-// Lote 193 — qué documentos de despacho ve el aparato: con el permiso warehouse.pick.any, cualquiera del almacén; sin él, solo los avisos de salida asignados a esta persona
-// (las órdenes de venta no se asignan, así que sin el permiso no se ofrecen). Lógica pura; el permiso lo da el administrador por rol (Sistema → Roles).
-export const PICK_ANY = 'warehouse.pick.any'
+// Lote 193/199 — qué documentos de despacho ve el aparato: lo asignado a esta persona y lo que nadie tiene asignado (Lote 199: lo ve cualquiera); con warehouse.app.viewall también lo asignado a otras
+// personas. Lógica pura; el permiso lo da el administrador por rol (Sistema → Roles). warehouse.pick.any ya no se consulta.
+import { VIEW_ALL } from '../assign/assignScope'
 
 export interface DispatchScope {
-  /** warehouse.pick.any: ve y despacha cualquier documento. */
+  /** warehouse.app.viewall: ve además lo asignado a otras personas. */
   any: boolean
   /** El usuario del aparato (para lo asignado a él). */
   userId: number | null
 }
 
 export function dispatchScope(permissions: readonly string[] | null | undefined, userId: number | null | undefined): DispatchScope {
-  return { any: permissions?.includes(PICK_ANY) ?? false, userId: userId ?? null }
+  return { any: permissions?.includes(VIEW_ALL) ?? false, userId: userId ?? null }
 }
 
-/** ¿Este aviso de salida entra en el alcance? (asignado a la persona, o cualquiera con el permiso). */
+/** ¿Este documento entra en el alcance? (mío, sin asignar, o cualquiera con ver todo). */
 export function noticeInScope(scope: DispatchScope, assignedToUserId: number | null | undefined): boolean {
-  return scope.any || (scope.userId != null && assignedToUserId === scope.userId)
+  return scope.any || assignedToUserId == null || (scope.userId != null && assignedToUserId === scope.userId)
 }

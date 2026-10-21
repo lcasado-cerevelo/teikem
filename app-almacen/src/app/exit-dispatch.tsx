@@ -24,6 +24,9 @@ import { dispatchScope } from '../features/dispatch/dispatchScope'
 import { useMyPermissions } from '../kernel/auth/permissions'
 import { useSession } from '../kernel/auth/useSession'
 import { buildGroupBody, docKey, groupBlock, groupNumber, groupReady, MIN_GROUP } from '../features/exitDispatch/exitGroupLogic'
+import { useAssignAccess, useAssignees } from '../features/assign/assignScope'
+import { assigneeName, reassign } from '../features/assign/assignApi'
+import { ReassignModal } from '../features/assign/ReassignModal'
 import { mineFirst, takeDispatchIfFree } from '../features/dispatch/dispatchTake'
 import {
   buildTasks,
@@ -48,7 +51,7 @@ export default function ExitDispatchScreen() {
   const { notice: noticeParam } = useLocalSearchParams<{ notice?: string }>()
   const noticeOpened = useRef(false)
   const warehousePublicId = useActiveWarehouse().publicId
-  // Lote 193: sin warehouse.pick.any solo se ven los avisos asignados a esta persona (y no hay órdenes de venta)
+  // Lote 199: lo mío, lo sin asignar y, con warehouse.app.viewall, lo de otras personas
   const permissions = useMyPermissions()
   const { session } = useSession()
   const scope = useMemo(() => dispatchScope(permissions, session?.userId), [permissions, session?.userId])
@@ -65,6 +68,10 @@ export default function ExitDispatchScreen() {
   const [binError, setBinError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
   const [showFree, setShowFree] = useState(false)
+  const [showOthers, setShowOthers] = useState(false)
+  const [toReassign, setToReassign] = useState<LocalExitNotice | null>(null)
+  const access = useAssignAccess()
+  const people = useAssignees(access.viewAll)
   // Lote 178: «Recolectar juntos» — avisos elegidos (modo selección) y, ya en la ruta, el grupo que se recolecta
   const [choosing, setChoosing] = useState(false)
   const [chosen, setChosen] = useState<LocalExitNotice[]>([])
@@ -84,7 +91,10 @@ export default function ExitDispatchScreen() {
   const everyDoc = useMemo(() => mineFirst([...noticesRaw, ...ordersRaw], myId), [noticesRaw, ordersRaw, myId])
   // Lote 198: primero lo asignado a esta persona; lo que nadie tiene asignado se ve con la opción de abajo
   const freeCount = everyDoc.filter((d) => d.assignedToUserId == null).length
-  const allDocs = everyDoc.filter((d) => (d.assignedToUserId != null && d.assignedToUserId === myId) || (showFree && d.assignedToUserId == null))
+  const othersCount = access.viewAll ? everyDoc.filter((d) => d.assignedToUserId != null && d.assignedToUserId !== myId).length : 0
+  const allDocs = everyDoc.filter(
+    (d) => (d.assignedToUserId != null && d.assignedToUserId === myId) || (showFree && d.assignedToUserId == null) || (access.viewAll && showOthers && d.assignedToUserId != null && d.assignedToUserId !== myId),
+  )
   const lines = useMemo(() => (notice ? getExitNoticeLines(notice.id) : []), [notice])
   const groupData = useMemo(() => (group ? getGroupTasks(group) : null), [group])
   const tasks = useMemo(() => (groupData ? groupData.tasks : buildTasks(lines)), [lines, groupData])
@@ -327,8 +337,13 @@ export default function ExitDispatchScreen() {
             <Text style={styles.cardTitle}>{choosing ? (on ? '☑ ' : '☐ ') : ''}{o.number}{isOrder ? ' · ' + t('exitDispatch.orderTag') : ''}</Text>
             <Text style={styles.help}>{[o.clientName, o.destination ?? o.reference].filter(Boolean).join(' · ')}</Text>
             <Text style={o.assignedToUserId != null && o.assignedToUserId === myId ? styles.mine : styles.help}>
-              {t(o.assignedToUserId == null ? 'exitDispatch.unassigned' : o.assignedToUserId === myId ? 'exitDispatch.assignedToYou' : 'exitDispatch.assignedOther')}
+              {o.assignedToUserId == null
+                ? t('exitDispatch.unassigned')
+                : o.assignedToUserId === myId
+                  ? t('exitDispatch.assignedToYou')
+                  : t('reassign.assignedTo', { name: assigneeName(o.assignedToUserId, people) })}
             </Text>
+            {access.reassign ? <BigButton label={t('reassign.button')} variant="secondary" testID={`exit-reassign-${o.number}`} onPress={() => setToReassign(o)} /> : null}
             <Text style={styles.help}>
               {t('exitDispatch.toDispatch', { qty: f.qty(o.reserved) })}
               {o.requiredDate ? ' · ' + t('exitDispatch.required', { date: f.date(o.requiredDate) }) : ''}
@@ -339,6 +354,20 @@ export default function ExitDispatchScreen() {
         {freeCount > 0 ? (
           <BigButton label={showFree ? t('myTasks.hideFree') : t('myTasks.showFree', { count: freeCount })} variant="secondary" onPress={() => setShowFree((v) => !v)} testID="exit-free-toggle" />
         ) : null}
+        {othersCount > 0 ? (
+          <BigButton label={showOthers ? t('reassign.hideOthers') : t('reassign.showOthers', { count: othersCount })} variant="secondary" onPress={() => setShowOthers((v) => !v)} testID="exit-others-toggle" />
+        ) : null}
+        <ReassignModal
+          visible={toReassign !== null}
+          title={t('reassign.title', { what: toReassign?.number ?? '' })}
+          currentUserId={toReassign?.assignedToUserId ?? null}
+          onClose={() => setToReassign(null)}
+          onPick={async (uid) => {
+            if (!toReassign) return
+            await reassign(toReassign.kind === 'SALES_ORDER' ? 'sales' : 'exit', toReassign.publicId, uid)
+            setTick((x) => x + 1)
+          }}
+        />
         {choosing ? (
           <BigButton label={t('exitDispatch.groupGo', { n: chosen.length })} onPress={startGroup} disabled={chosen.length < MIN_GROUP} testID="exit-group-go" />
         ) : null}

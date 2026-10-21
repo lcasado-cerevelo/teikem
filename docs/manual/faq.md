@@ -10182,3 +10182,9 @@ En Flota → Zonas de despacho, arriba, el panel «Envíos sin zona» agrupa eso
 
 **¿Por qué un envío sale «Sin zona»?**
 La zona se decide por el código postal o el pueblo de su dirección de entrega contra los criterios de las zonas activas. Sin coincidencia, o con empate entre dos zonas, queda sin zona.
+
+**¿Cómo hago que el supervisor del almacén vea lo asignado a otras personas y reasigne desde el aparato?** (Lote 199)
+Sistema → Roles → rol del supervisor → marque **«Ver todo en el aparato…»** (`warehouse.app.viewall`) y **«Reasignar desde el aparato…»** (`warehouse.app.reassign`; sin el primero no funciona). Con eso, en Recibir, Acomodar, Despacho y Mis tareas aparece «Ver lo asignado a otras personas» y el botón Reasignar. Si al reasignar sale «Para reasignar hace falta señal.», conecte el aparato; si sale «Para reasignar hace falta poder ver todo en el aparato.», falta el primer permiso.
+
+**¿Y `warehouse.pick.any`?** (Lote 199)
+Ya no hace nada: lo sin asignar lo ve cualquiera y lo de otras personas lo ve quien tenga «Ver todo en el aparato».

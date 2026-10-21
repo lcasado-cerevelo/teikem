@@ -67,6 +67,15 @@
     "removeCompanyPending": "It has {count} unsynced capture(s) that will be lost.",
     "swipeHint": "Swipe left to remove a company."
   },
+  "reassign": {
+    "needSignal": "You need a connection to reassign.",
+    "unassigned": "Unassigned",
+    "title": "Reassign {what}",
+    "button": "Reassign",
+    "assignedTo": "Assigned to: {name}",
+    "showOthers": "Show what is assigned to others ({count})",
+    "hideOthers": "Hide what is assigned to others"
+  },
   "myTasks": {
     "receivePo": "Purchase orders to receive ({count})",
     "dispatchSales": "Sales orders to dispatch ({count})",

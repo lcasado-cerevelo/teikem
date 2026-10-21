@@ -1191,6 +1191,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/asns/{id}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaskAssignRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AsnDto"];
+                        "application/json": components["schemas"]["AsnDto"];
+                        "text/json": components["schemas"]["AsnDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/exit-notices/{publicId}/take": {
         parameters: {
             query?: never;
@@ -1212,6 +1255,45 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": components["schemas"]["TaskTakeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exit-notices/{publicId}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaskAssignRequest"];
                 };
             };
             responses: {
@@ -1269,6 +1351,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/purchase-orders/{publicId}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaskAssignRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sales-orders/{publicId}/take": {
         parameters: {
             query?: never;
@@ -1290,6 +1411,45 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": components["schemas"]["TaskTakeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaskAssignRequest"];
                 };
             };
             responses: {
@@ -23012,6 +23172,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/warehouse-tasks/assignees": {
+        parameters: { query?: never; header?: never; path?: never; cookie?: never; };
+        get: {
+            parameters: { query?: never; header?: never; path?: never; cookie?: never; };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: { [name: string]: unknown; };
+                    content: {
+                        "application/json": components["schemas"]["AssigneeDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/warehouse-tasks/{id}/assign": {
         parameters: {
             query?: never;
@@ -36033,6 +36216,11 @@ export interface components {
         TaskAssignRequest: {
             /** Format: int32 */
             userId?: number | null;
+        };
+        AssigneeDto: {
+            /** Format: int32 */
+            id?: number;
+            name?: string | null;
         };
         TaskTakeRequest: {
             origin?: string | null;
