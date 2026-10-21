@@ -2108,7 +2108,7 @@ eliminada; solo se consulta.`) y solo aparece en la lista con `includeDeleted`. 
 
 La lista de la derecha de **Recolección y empaque** se ve de dos maneras (selector arriba de la lista; va en la URL, `?view=moves` para la segunda):
 
-- **Por documento** (por omisión): **una fila por aviso de salida, orden de venta o envío empacado**, con su avance y cuántas recolecciones tiene. Es la misma información de siempre, agrupada: no cambia ningún dato.
+- **Por documento** (por omisión): **una fila por aviso de salida, orden de venta o envío empacado**, con su avance y cuántas recolecciones tiene. Al abrir un documento, cada recolección que salió de una **recolección maestra** lleva una etiqueta **«Maestra RMA-…»**. Es la misma información de siempre, agrupada: no cambia ningún dato.
 - **Por movimiento:** la lista de recolecciones y despachos manuales de siempre, con todos sus filtros (rango, estatus, producto, número de envío, factura, eliminadas, Tipo).
 
 **Qué trae cada fila (por documento):** número y tipo (Aviso de salida / Orden de venta / Envío), cliente, estatus del documento, **avance** («Sacado 5 de 10», barra, «Por sacar 4» = reservado que falta recolectar, «Sin reservar 1» = pedido que espera inventario), número de **movimientos** y fecha de la **última recolección**. Un **envío** (el que nace al empacar) no tiene «pedido»: muestra solo lo recolectado. Filtros: **Tipo**, **«Solo con pendiente por sacar»** y el buscador (número o cliente). Ordenar y exportar usan todo el filtro.

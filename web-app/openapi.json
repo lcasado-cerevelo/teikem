@@ -66572,6 +66572,10 @@
           "totalQty": {
             "type": "number",
             "format": "double"
+          },
+          "groupNumber": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

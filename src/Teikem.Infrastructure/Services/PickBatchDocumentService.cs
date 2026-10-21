@@ -157,6 +157,8 @@ public sealed class PickBatchDocumentService(TeikemDbContext db, ITenantContext 
         var totals = await db.Set<PickBatchLine>().AsNoTracking().Where(l => batchIds.Contains(l.PickBatchId)).GroupBy(l => l.PickBatchId)
             .Select(g => new { Id = g.Key, Qty = g.Sum(l => l.Quantity) }).ToDictionaryAsync(x => x.Id, x => x.Qty, ct);
         var statusMap = await ReceivingSupport.StatusMapAsync(db, tenant, StatusDomains.PickBatchStatus, ct);
+        var groupIds = batches.Where(b => b.PickGroupId != null).Select(b => b.PickGroupId!.Value).Distinct().ToList();
+        var groupNumbers = groupIds.Count == 0 ? new Dictionary<int, string>() : await db.Set<PickGroup>().AsNoTracking().Where(g => groupIds.Contains(g.PickGroupId)).ToDictionaryAsync(g => g.PickGroupId, g => g.Number, ct);
         var userIds = batches.Where(b => b.CollectedBy != null).Select(b => b.CollectedBy!.Value).Distinct().ToList();
         var users = await db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id)).Select(u => new { u.Id, u.FullName, u.UserName }).ToDictionaryAsync(u => u.Id, ct);
 
@@ -167,7 +169,7 @@ public sealed class PickBatchDocumentService(TeikemDbContext db, ITenantContext 
             var st = statusMap.GetValueOrDefault(b.StatusCodeId);
             var by = b.CollectedBy is int uid && users.TryGetValue(uid, out var u) ? (u.FullName ?? u.UserName) : null;
             if (!result.TryGetValue(key, out var list)) result[key] = list = new List<PickBatchSummaryDto>();
-            list.Add(new PickBatchSummaryDto(b.PublicId, b.Number, st?.Code ?? string.Empty, st?.Label ?? string.Empty, b.CollectedAtUtc, by, totals.GetValueOrDefault(b.PickBatchId)));
+            list.Add(new PickBatchSummaryDto(b.PublicId, b.Number, st?.Code ?? string.Empty, st?.Label ?? string.Empty, b.CollectedAtUtc, by, totals.GetValueOrDefault(b.PickBatchId), b.PickGroupId is int gid ? groupNumbers.GetValueOrDefault(gid) : null));
         }
         return result;
     }

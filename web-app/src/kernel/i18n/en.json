@@ -6359,6 +6359,7 @@
         "reserved": "Reserved to collect",
         "unreservedLabel": "Not reserved",
         "movesTitle": "Collections ({count})",
+        "master": "Master {number}",
         "noMoves": "It has no collections yet.",
         "by": "By",
         "qty": "Quantity"

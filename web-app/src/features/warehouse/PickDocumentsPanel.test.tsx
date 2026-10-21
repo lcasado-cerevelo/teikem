@@ -40,7 +40,7 @@ const NOTICE = {
   batchCount: 2,
   lastCollectedAtUtc: '2026-10-20T15:00:00Z',
   batches: [
-    { publicId: B2, number: 'EMP-00002', statusCode: 'COLLECTED', status: 'Recolectada', collectedAtUtc: '2026-10-20T15:00:00Z', collectedBy: 'Ana Ruiz', totalQty: 3 },
+    { publicId: B2, number: 'EMP-00002', statusCode: 'COLLECTED', status: 'Recolectada', collectedAtUtc: '2026-10-20T15:00:00Z', collectedBy: 'Ana Ruiz', totalQty: 3, groupNumber: 'RMA-00001' },
     { publicId: B1, number: 'EMP-00001', statusCode: 'COLLECTED', status: 'Recolectada', collectedAtUtc: '2026-10-20T13:00:00Z', collectedBy: 'Luis Pérez', totalQty: 2 },
   ],
 }
@@ -117,6 +117,8 @@ describe('Recolección y empaque por documento', () => {
     const rows = within(dialog).getAllByRole('row').slice(1)
     expect(rows[0]).toHaveTextContent('EMP-00002')   // la más reciente primero
     expect(rows[0]).toHaveTextContent('Ana Ruiz')
+    expect(rows[0]).toHaveTextContent('Maestra RMA-00001')
+    expect(rows[1]).not.toHaveTextContent('Maestra')
     await user.click(rows[0])
     await waitFor(() => expect(mock.calls.some((c) => c.url.pathname === `/api/v1/pick-batches/${B2}`)).toBe(true))
   })

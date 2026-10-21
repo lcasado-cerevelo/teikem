@@ -6,8 +6,8 @@ namespace Teikem.Infrastructure.Contracts;
 /// </summary>
 public sealed record PickDocumentQuery(string? Kind = null, string[]? Status = null, string? Search = null, bool PendingOnly = false, int Skip = 0, int Take = 50);
 
-/// <summary>Un movimiento (una recolección) del documento. Se abre con GET /pick-batches/{publicId}.</summary>
-public sealed record PickBatchSummaryDto(Guid PublicId, string Number, string StatusCode, string Status, DateTime CollectedAtUtc, string? CollectedBy, decimal TotalQty);
+/// <summary>Un movimiento (una recolección) del documento; GroupNumber = el número de la recolección maestra a la que pertenece (Lote 186), null si es suelta. Se abre con GET /pick-batches/{publicId}.</summary>
+public sealed record PickBatchSummaryDto(Guid PublicId, string Number, string StatusCode, string Status, DateTime CollectedAtUtc, string? CollectedBy, decimal TotalQty, string? GroupNumber = null);
 
 /// <summary>
 /// Un documento con su avance: Ordered = pedido, Reserved = reservado todavía por sacar, Shipped = sacado; Pending = lo que falta por reservar o sacar (Ordered − Shipped − Reserved, solo si hay pedido).

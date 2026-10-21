@@ -6359,6 +6359,7 @@
         "reserved": "Reservado por sacar",
         "unreservedLabel": "Sin reservar",
         "movesTitle": "Recolecciones ({count})",
+        "master": "Maestra {number}",
         "noMoves": "Todavía no tiene recolecciones.",
         "by": "Por",
         "qty": "Cantidad"

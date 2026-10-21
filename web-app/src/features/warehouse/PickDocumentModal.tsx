@@ -83,6 +83,7 @@ export function PickDocumentModal({ document: d, onClose }: { document: PickDocu
                 <tr key={m.publicId} className="pdoc-move" tabIndex={0} onClick={() => setBatch(m.publicId ?? null)} onKeyDown={(e) => e.key === 'Enter' && setBatch(m.publicId ?? null)}>
                   <td>
                     <span className="ref">{m.number}</span> <Chip>{m.status}</Chip>
+                    {m.groupNumber && <> <Chip tone="cap">{t('warehouse.pickBatches.docs.master', { number: m.groupNumber })}</Chip></>}
                   </td>
                   <td>{formatDateTime(m.collectedAtUtc, lang)}</td>
                   <td>{m.collectedBy ?? '—'}</td>

@@ -41063,6 +41063,7 @@ export interface components {
             collectedBy?: string | null;
             /** Format: double */
             totalQty?: number;
+            groupNumber?: string | null;
         };
         PickDocumentDto: {
             kind?: string | null;
