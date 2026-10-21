@@ -8,7 +8,7 @@
 // no se puede crear). "Crear N conteos" → `POST /cycle-counts/from-changes`; `onCreated` recibe los conteos creados.
 import { useId, useMemo, useState } from 'react'
 import { useLang, useT } from '../../kernel/i18n'
-import { Modal, SearchMultiSelect, toast } from '../../kernel/ui'
+import { DateTimeField, Modal, SearchMultiSelect, toast } from '../../kernel/ui'
 import { useChangesPreview, useCreateCountsFromChanges, useWarehouseZones, useWarehouses, warehouseLabel, type CycleCountDto } from './api'
 import { ReadOnlyField } from './BinModal'
 import { tenantTimeZone, utcFromZonedInput, zonedInputFromUtc } from '../../kernel/api/tenantZone'
@@ -155,11 +155,11 @@ export function ChangedCountModal({ onClose, initialWarehousePublicId, onCreated
       <div className="r2">
         <div className="f">
           <label htmlFor={fromId}>{t('warehouse.cycleCounts.changes.from')}</label>
-          <input id={fromId} type="datetime-local" value={shownFrom} aria-describedby={helpId} disabled={!warehousePublicId} onChange={(e) => touch('from', e.target.value)} />
+          <DateTimeField id={fromId} value={shownFrom} aria-describedby={helpId} disabled={!warehousePublicId} onChange={(v) => touch('from', v)} />
         </div>
         <div className="f">
           <label htmlFor={toId}>{t('warehouse.cycleCounts.changes.to')}</label>
-          <input id={toId} type="datetime-local" value={shownTo} aria-describedby={helpId} disabled={!warehousePublicId} onChange={(e) => touch('to', e.target.value)} />
+          <DateTimeField id={toId} value={shownTo} aria-describedby={helpId} disabled={!warehousePublicId} onChange={(v) => touch('to', v)} />
         </div>
       </div>
       <p className="help cc-help" id={helpId}>

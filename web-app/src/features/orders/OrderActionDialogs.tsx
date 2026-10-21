@@ -6,7 +6,7 @@ import { useCan } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useStatuses } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
-import { ComboSelect, Modal, toast, type ComboOption } from '../../kernel/ui'
+import { type ComboOption, ComboSelect, DateTimeField, Modal, toast } from '../../kernel/ui'
 import { useDrivers } from '../drivers/api'
 import { useAssignOrderDriver, useCancelOrder, useRegisterDelivery, useReopenOrder, useReturnOrder, type OrderDetailDto } from './api'
 import { COMMENT_MAX, isCreditExceeded } from './orderRules'
@@ -337,7 +337,7 @@ export function RegisterDeliveryDialog({ order, open, onClose }: DialogProps) {
       </div>
       <div className="f">
         <label htmlFor={atId}>{t('orders.actions.deliver.at')}</label>
-        <input id={atId} type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} />
+        <DateTimeField id={atId} value={at} onChange={(v) => setAt(v)} />
         <p className="d">{t('orders.actions.deliver.atHint')}</p>
       </div>
       <div className="f">

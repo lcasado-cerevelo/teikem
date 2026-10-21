@@ -2719,6 +2719,18 @@
     }
   },
   "ui": {
+    "date": {
+      "calendar": "Calendar",
+      "openCalendar": "Open the calendar",
+      "prevMonth": "Previous month",
+      "nextMonth": "Next month",
+      "today": "Today",
+      "clear": "Clear",
+      "time": "Time",
+      "period": "AM or PM",
+      "invalid": "Invalid date: use {format}.",
+      "pasteRejected": "That date is not understood: use {format}."
+    },
     "phone": {
       "countryCode": "Country code",
       "countryCodeHelp": "International dialing prefix, for example +1.",

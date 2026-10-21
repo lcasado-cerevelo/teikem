@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { Chip, ClientPicker, DataTable, Modal, Panel, Spinner, toast, type ChipTone, type DataColumn } from '../../kernel/ui'
+import { Chip, type ChipTone, ClientPicker, type DataColumn, DataTable, DateField, Modal, Panel, Spinner, toast } from '../../kernel/ui'
 import { IconCheckCircle, IconEdit, IconPower } from '../../kernel/ui/actionIcons'
 import { IconDoc } from '../../kernel/ui/screenIcons'
 import { exemptionError, type ExemptionDraft } from './taxRules'
@@ -86,11 +86,11 @@ function ExemptionModal({ exemption, onClose }: { exemption: TaxExemptionDto | n
         <div className="r2">
           <div className="f">
             <label htmlFor="tx-efrom">{t('tax.exemptions.from')}</label>
-            <input id="tx-efrom" type="date" value={draft.from} onChange={(e) => set({ from: e.target.value })} />
+            <DateField id="tx-efrom" value={draft.from} onChange={(v) => set({ from: v })} />
           </div>
           <div className="f">
             <label htmlFor="tx-eto">{t('tax.exemptions.to')}</label>
-            <input id="tx-eto" type="date" value={draft.to} onChange={(e) => set({ to: e.target.value })} />
+            <DateField id="tx-eto" value={draft.to} onChange={(v) => set({ to: v })} />
             <p className="help">{t('tax.exemptions.toHelp')}</p>
           </div>
         </div>

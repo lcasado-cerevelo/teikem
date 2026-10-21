@@ -22,6 +22,7 @@ import { VisibilityModal } from './VisibilityModal'
 import { CUSTOM_RANGE, effectiveRangeCaption, groupDefinitions, isCompanyChart, visibilityBadgeKey } from './definitions'
 import { formatYmd } from './format'
 import { MODULE_GROUP_ICON } from './moduleIcons'
+import { DateField } from '../../kernel/ui'
 import './pulse.css'
 
 export default function ChartsPage() {
@@ -245,15 +246,14 @@ function ChartRangeInline({ chart, modes }: { chart: AnalyticsDefinition; modes:
       </select>
       {custom && (
         <div className="chart-range-days">
-          <input
-            type="date"
+          <DateField
             aria-label={t('analytics.range.from')}
             aria-invalid={fromAfterTo || undefined}
             aria-describedby={fromAfterTo ? `${baseId}-err` : undefined}
             value={current.from}
-            onChange={(e) => update({ from: e.target.value })}
+            onChange={(v) => update({ from: v })}
           />
-          <input type="date" aria-label={t('analytics.range.to')} value={current.to} onChange={(e) => update({ to: e.target.value })} />
+          <DateField aria-label={t('analytics.range.to')} value={current.to} onChange={(v) => update({ to: v })} />
         </div>
       )}
       {fromAfterTo && (

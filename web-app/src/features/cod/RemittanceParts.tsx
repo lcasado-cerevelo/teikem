@@ -6,7 +6,7 @@ import { applyProblemDetails } from '../../kernel/api/problem'
 import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { Chip, ClientPicker, ConfirmDialog, DataTable, Modal, Panel, QBox, Spinner, toast, type DataColumn } from '../../kernel/ui'
+import { Chip, ClientPicker, ConfirmDialog, type DataColumn, DataTable, DateField, Modal, Panel, QBox, Spinner, toast } from '../../kernel/ui'
 import { IconCart } from '../../kernel/ui/screenIcons'
 import { downloadExportFile } from '../billing/exportFile'
 import {
@@ -244,11 +244,11 @@ export function NewRemittanceModal({ onClose, onCreated }: { onClose: () => void
         <div className="cod-dates">
           <div className="f">
             <label htmlFor="rem-from">{t('cod.rem.from')}</label>
-            <input id="rem-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+            <DateField id="rem-from" value={from} onChange={(v) => setFrom(v)} />
           </div>
           <div className="f">
             <label htmlFor="rem-to">{t('cod.rem.to')}</label>
-            <input id="rem-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+            <DateField id="rem-to" value={to} onChange={(v) => setTo(v)} />
           </div>
           <div className="f">
             <label htmlFor="rem-pct">{t('cod.rem.pct')}</label>

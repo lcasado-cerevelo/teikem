@@ -7,6 +7,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setLang } from '../../kernel/i18n/i18n'
 import { ALL, callsTo, FLEET, mock, problem, resetKit, wrap } from './driversTestKit'
+import { typeDate } from '../../kernel/ui/typeDate'
 
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
@@ -116,7 +117,7 @@ describe('Choferes — alta', () => {
     await user.type(within(dialog).getByLabelText(/^Nombre/), '  Marta Ríos ')
     await user.selectOptions(within(dialog).getByLabelText('Zona'), 'R-02 · Caguas · Aguas Buenas')
     await user.type(within(dialog).getByLabelText('Tope de paradas'), '18')
-    await user.type(within(dialog).getByLabelText('Fecha de alta'), '2026-10-01')
+    await typeDate(user, within(dialog).getByLabelText('Fecha de alta'), '2026-10-01')
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/drivers')).toHaveLength(1))
     expect(callsTo('POST', '/api/v1/drivers')[0].body).toEqual({ code: 'D-900', fullName: 'Marta Ríos', dispatchZoneId: 2, maxStopsPerRoute: 18, hireDate: '2026-10-01', userId: undefined })
@@ -202,7 +203,7 @@ describe('Choferes — ficha', () => {
     expect(ficha.getByLabelText('Tope de paradas')).toHaveValue(null)
     expect(ficha.getByLabelText('Tope de paradas')).toHaveAttribute('placeholder', '25')
     expect(ficha.getByText('Sin tope propio: rige el de la compañía (25 paradas).')).toBeInTheDocument()
-    expect(ficha.getByLabelText('Fecha de alta')).toHaveValue('2024-03-01')
+    expect(ficha.getByLabelText('Fecha de alta')).toHaveValue('03/01/2024')
   })
 
   it('edita: manda en el PATCH solo lo cambiado, con rowVersion, y deja la ficha con el rowVersion nuevo', async () => {

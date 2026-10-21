@@ -1058,6 +1058,14 @@ Casos frecuentes:
 
 ---
 
+**Cómo se escribe una fecha o una hora (2026-10-21).** Todos los campos de fecha de la web son el mismo control y siguen este formato (**Región y formatos**):
+- **Al entrar al campo** (con el mouse, el dedo o el teclado) **se abre el calendario solo**, y se puede seguir escribiendo. El botón del calendario a la derecha lo abre y lo cierra; **Esc** lo cierra; con la flecha ↓ se entra al calendario y con las flechas, **AvPág** y **RePág** se mueven los días y los meses; los atajos **Hoy** y **Limpiar** están abajo. El calendario empieza la semana donde diga la compañía y los días fuera de los límites del campo (por ejemplo «no antes de hoy») no se pueden elegir.
+- **Solo números:** no hay que escribir barras ni guiones; el campo los pone solo con el **orden y el separador de la compañía** (Puerto Rico: `10212026` → `10/21/2026`). Un día que no existe (30 de febrero) se marca en rojo y no se acepta.
+- **Pegar una fecha:** si se entiende (el orden de la compañía con cualquier separador, o el formato `2026-10-21`), se cambia al formato de la compañía; si no se entiende (año de 2 dígitos, texto, un mes que no existe…), se **rechaza**: el campo queda como estaba y avisa `No se entiende esa fecha: use MM/DD/YYYY.`.
+- **Fecha y hora:** la fecha va con su calendario y, al completarla, el cursor pasa a la **hora**, que se escribe aparte solo con números (`0930` → `09:30`; un `9` se completa a `09`). Con hora de 12 hay un selector **AM/PM**. Una hora pegada (`9:30 pm`) se cambia al formato; si no se entiende, se rechaza.
+- Una fecha que existe pero cae fuera de los límites del campo se **marca en rojo** y la pantalla muestra su propio mensaje (por ejemplo «La fecha no puede ser futura»).
+- Las apps móviles usarán este mismo control (mismas reglas de formato) cuando tengan campos de fecha.
+
 ### 11.2 Marca por compañía: colores y logos (Lote 19)
 
 Qué hace: la compañía elige el **tema de color** de su interfaz (uno de 14 predefinidos —el de **Advance Logistics**, azul marino, naranja y gris, es el de por defecto— o colores propios) y sube sus **logos**.

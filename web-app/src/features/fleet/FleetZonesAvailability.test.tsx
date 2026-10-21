@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setLang } from '../../kernel/i18n/i18n'
 import { ALL, callsTo, mock, problem, resetKit, VIEW, wrap } from './fleetTestKit'
+import { typeDate } from '../../kernel/ui/typeDate'
 
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
@@ -225,7 +226,7 @@ describe('Flota — disponibilidad', () => {
     const date = screen.getByLabelText('Fecha')
     await user.clear(date)
     expect(callsTo('GET', '/api/v1/fleet/availability').every((c) => c.url.searchParams.get('date') !== '')).toBe(true)
-    await user.type(date, '2026-11-02')
+    await typeDate(user, date, '2026-11-02')
     await waitFor(() => expect(callsTo('GET', '/api/v1/fleet/availability').some((c) => c.url.searchParams.get('date') === '2026-11-02')).toBe(true))
   })
 

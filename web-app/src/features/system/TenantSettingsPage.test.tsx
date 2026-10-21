@@ -13,6 +13,7 @@ import { setLang } from '../../kernel/i18n/i18n'
 import { TenantBrand } from '../../kernel/ui'
 import { SessionContext, type Session } from '../../app/session'
 import TenantSettingsPage from './TenantSettingsPage'
+import { typeDate } from '../../kernel/ui/typeDate'
 
 type Req = { method: string; url: URL; body: unknown }
 const mock = vi.hoisted(() => ({
@@ -351,13 +352,13 @@ describe('Ajustes de la compañía', () => {
     expect(screen.getByText('10/12/2026')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Agregar feriado' }))
     expect(screen.getByText('Escribe la fecha y el nombre del feriado')).toBeInTheDocument()
-    await user.type(screen.getByLabelText('Fecha'), '2026-10-12')
+    await typeDate(user, screen.getByLabelText('Fecha'), '2026-10-12')
     await user.type(screen.getByLabelText('Nombre del feriado'), 'Otro')
     await user.click(screen.getByRole('button', { name: 'Agregar feriado' }))
     expect(await screen.findByText('Ya hay un feriado en esa fecha.')).toBeInTheDocument()
     expect(mock.requests.filter((r) => r.method === 'POST' && r.url.pathname === '/api/v1/tenant/holidays')).toHaveLength(1)
     await user.clear(screen.getByLabelText('Fecha'))
-    await user.type(screen.getByLabelText('Fecha'), '2026-11-19')
+    await typeDate(user, screen.getByLabelText('Fecha'), '2026-11-19')
     await user.click(screen.getByRole('switch', { name: 'Cada año' }))
     await user.click(screen.getByRole('button', { name: 'Agregar feriado' }))
     await waitFor(() => expect(mock.requests.filter((r) => r.method === 'POST' && r.url.pathname === '/api/v1/tenant/holidays')).toHaveLength(2))

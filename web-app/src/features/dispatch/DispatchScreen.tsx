@@ -9,7 +9,7 @@ import { applyProblemDetails } from '../../kernel/api/problem'
 import { tenantToday } from '../../kernel/api/tenantZone'
 import { useT } from '../../kernel/i18n'
 import { IconAlert } from '../../kernel/ui/icons'
-import { ClientPicker, EmptyState, Filters, IconPlus, IconRoute, IconTruck, IconUsers, SelectFilter, SplitPane, toast } from '../../kernel/ui'
+import { ClientPicker, DateField, EmptyState, Filters, IconPlus, IconRoute, IconTruck, IconUsers, SelectFilter, SplitPane, toast } from '../../kernel/ui'
 import { useDispatchZones } from '../drivers/api'
 import { useDrivers } from '../drivers/api'
 import { useDebounced } from '../warehouse/lineRules'
@@ -166,7 +166,7 @@ export default function DispatchScreen() {
         <div className="act">
           <div className="disp-date">
             <label htmlFor="dispatch-date">{t('dispatch.date')}</label>
-            <input id="dispatch-date" type="date" value={date} onChange={(e) => changeDate(e.target.value)} />
+            <DateField id="dispatch-date" value={date} onChange={(v) => changeDate(v)} />
             {date !== today && (
               <button type="button" className="btn sm" onClick={() => changeDate(today)}>
                 {t('dispatch.todayButton')}

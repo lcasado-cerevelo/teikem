@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setLang } from '../../kernel/i18n/i18n'
 import { ALL, callsTo, MANAGE, mock, problem, resetKit, VIEW, wrap } from './fleetTestKit'
+import { typeDate } from '../../kernel/ui/typeDate'
 
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
@@ -50,12 +51,12 @@ describe('Flota — documentos del vehículo', () => {
     expect(callsTo('POST', '/api/v1/vehicles/v-1/documents')).toHaveLength(0)
     await user.selectOptions(within(dialog).getByLabelText(/^Documento/), 'Permiso')
     await user.type(within(dialog).getByLabelText('Número'), ' P-1 ')
-    await user.type(within(dialog).getByLabelText('Emisión'), '2026-05-02')
-    await user.type(within(dialog).getByLabelText('Vencimiento'), '2026-05-01')
+    await typeDate(user, within(dialog).getByLabelText('Emisión'), '2026-05-02')
+    await typeDate(user, within(dialog).getByLabelText('Vencimiento'), '2026-05-01')
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     expect(await within(dialog).findByText('La fecha de vencimiento no puede ser anterior a la de emisión.')).toBeInTheDocument()
     await user.clear(within(dialog).getByLabelText('Vencimiento'))
-    await user.type(within(dialog).getByLabelText('Vencimiento'), '2027-05-01')
+    await typeDate(user, within(dialog).getByLabelText('Vencimiento'), '2027-05-01')
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/vehicles/v-1/documents')).toHaveLength(1))
     expect(callsTo('POST', '/api/v1/vehicles/v-1/documents')[0].body).toEqual({ docType: 'PERMIT', docNumber: 'P-1', issuedDate: '2026-05-02', expiryDate: '2027-05-01' })
@@ -89,14 +90,14 @@ describe('Flota — documentos del vehículo', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Editar documento' })
     expect(within(dialog).getByLabelText(/^Documento/)).toHaveValue('INSURANCE')
     expect(within(dialog).getByLabelText('Número')).toHaveValue('S-7')
-    expect(within(dialog).getByLabelText('Vencimiento')).toHaveValue('2026-10-20')
+    expect(within(dialog).getByLabelText('Vencimiento')).toHaveValue('10/20/2026')
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Editar documento' })).toBeNull())
     expect(callsTo('PATCH', '/api/v1/vehicles/v-1/documents/2')).toHaveLength(0)
     await user.click(within(rowOf(table, 'S-7')).getByRole('button', { name: 'Editar' }))
     const again = await screen.findByRole('dialog', { name: 'Editar documento' })
     await user.clear(within(again).getByLabelText('Vencimiento'))
-    await user.type(within(again).getByLabelText('Vencimiento'), '2027-10-20')
+    await typeDate(user, within(again).getByLabelText('Vencimiento'), '2027-10-20')
     await user.click(within(again).getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(callsTo('PATCH', '/api/v1/vehicles/v-1/documents/2')).toHaveLength(1))
     expect(callsTo('PATCH', '/api/v1/vehicles/v-1/documents/2')[0].body).toEqual({ expiryDate: '2027-10-20' })

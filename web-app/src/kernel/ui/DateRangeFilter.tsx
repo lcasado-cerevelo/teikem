@@ -11,6 +11,7 @@ import { EMPTY_RANGE, type DateRange } from './dateRange'
 import { dateRangeFilterText } from './filterRegistry'
 import { useRegisterFilter } from './filterScopeContext'
 import './dateRangeFilter.css'
+import { DateField } from './DateField'
 
 export interface DateRangeFilterProps {
   label: string
@@ -75,11 +76,11 @@ export function DateRangeFilter({ label, value, onChange, mode = 'past', startCu
           <>
             <div className="drf-col">
               <label htmlFor={`${id}-from`}>{t('ui.filters.from')}</label>
-              <input id={`${id}-from`} type="date" value={value.from} max={value.to || undefined} onChange={(e) => edit({ from: e.target.value })} />
+              <DateField id={`${id}-from`} value={value.from} max={value.to || undefined} onChange={(v) => edit({ from: v })} />
             </div>
             <div className="drf-col">
               <label htmlFor={`${id}-to`}>{t('ui.filters.to')}</label>
-              <input id={`${id}-to`} type="date" value={value.to} min={value.from || undefined} onChange={(e) => edit({ to: e.target.value })} />
+              <DateField id={`${id}-to`} value={value.to} min={value.from || undefined} onChange={(v) => edit({ to: v })} />
             </div>
           </>
         )}

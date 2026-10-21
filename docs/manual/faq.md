@@ -721,6 +721,7 @@ su COD no está por cobrar. Si tu compañía personalizó el filtro del indicado
 
 **¿Cómo armo el gráfico "Órdenes por tipo de paquete"?**
 La fuente Órdenes (`TRANSPORT_ORDER`) tiene los campos `PackageType` (etiqueta) y `PackageTypeCode` (código) con el
+
 **tipo de paquete principal** de cada orden: el tipo con más piezas entre sus líneas (si empatan, el de la primera línea).
 Una orden mixta cuenta una sola vez, bajo su tipo principal; una entrega especial queda sin tipo. Crea un gráfico de dona
 agrupado por `PackageType`.
@@ -1165,6 +1166,7 @@ bandera de "quitar" (`clearDriver`, `clearVehicle`, `clearZone`, `clearPlannedSt
 quitarlos."? (422)**
 Tu compañía habilitó la capacidad `EDIT_TRIP` en `DISPATCHED` o `IN_PROGRESS`, así que la cabecera de una ruta
 despachada se puede corregir (por ejemplo, cambiar el chofer si el camión se averió). Pero una ruta despachada
+
 **no se puede quedar sin chofer, sin vehículo ni sin hora de salida**: el chofer ya la ve en su app y las ETAs
 dependen de la salida. En el `PATCH /api/v1/trips/{publicId}` envía el chofer, el vehículo o la hora **nuevos**
 (`driverPublicId`, `vehiclePublicId`, `plannedStartUtc`) en lugar de `clearDriver`, `clearVehicle` o
@@ -1509,6 +1511,7 @@ dado de baja.
 **¿Qué significa "El código del almacén no se puede cambiar."? (400)**
 El código de un almacén (o de una plataforma: `El código de la plataforma no se puede cambiar.`) es inmutable una vez creado. Si lo
 escribiste mal, da de baja el almacén y crea uno nuevo con el código correcto (solo si sigue vacío). El código de una
+
 **zona** sí se puede editar desde el Lote 11 (ver la sección "Lote 11" al final).
 
 **¿Qué significa "El almacén {code} tiene inventario o documentos abiertos; no se puede dar de baja."? (409)**
@@ -1638,6 +1641,7 @@ series). Completa las que falten o elimínalas si no aplican.
 **¿Por qué una línea del conteo aparece marcada `systemQtyChanged`?**
 Significa que el saldo en mano se movió (por otro movimiento del ledger) entre el momento en que se tomó la foto
 del sistema y el momento en que se reconcilió. El ajuste que se asentó es correcto (se calculó contra el saldo
+
 **actual**, no contra la foto vieja), pero la marca sirve para que alguien revise si ese movimiento intermedio
 tiene sentido.
 
@@ -2542,6 +2546,7 @@ rangos de fecha propios se conservan.
 **Marqué un indicador para el Pulso y un usuario no lo ve.**
 "Mostrar en Pulso" (del indicador o del Pulso de la compañía) no basta: el usuario necesita además `pulse.indicators`
 (`pulse.charts` para gráficos), poder ver el indicador por su visibilidad (de toda la compañía, o compartido con él), poder
+
 **leer su fuente de datos** (p. ej. `orders.view` para `TRANSPORT_ORDER`, `inventory.view` para las de almacén,
 `admin.audit` para la bitácora) y que el módulo de negocio esté encendido (Almacén → `WMS_LOTSERIAL`, Operación →
 `LTL_GROUND`, Contabilidad → `COD` o `LTL_GROUND`). Revise también que ese usuario no lo haya ocultado en su Pulso personal.
@@ -2951,6 +2956,7 @@ carga anterior) lo conserva siempre y el CSV lo dice: "Se conserva el cupo actua
 
 **¿Por qué el reporte de inventario no lista productos con 0?** Porque es una foto de lo que hay: solo entran los productos
 con existencia en mano distinta de cero, y un aviso dice cuántos quedaron fuera. Si necesita también los de cero, use
+
 **Exportar** de la tabla.
 
 **¿Por qué el reporte de ajustes no trae los saldos iniciales de la migración?** Porque la migración los registró como
@@ -3181,6 +3187,7 @@ El detalle se pidió de una recolección que ya no existe o es de otra compañí
 ### Preguntas frecuentes
 
 **¿Qué pasó con el estatus `OPEN` del recibo?** Se retiró. Ahora un recibo abierto está en **Esperado** (solo encabezado),
+
 **Recibiendo** (todo cuadra) o **Discrepancia** (alguna línea difiere); confirmado, en **Completado** o **Completado con
 diferencia**; y al cerrar el acomodo, en **Acomodado**. Al actualizar la base, los recibos que estaban en `OPEN` pasaron a
 Recibiendo (con líneas) o Esperado (sin líneas) con la nota "Lote 13: nuevo ciclo de estatus del recibo." en su historial.
@@ -3289,6 +3296,7 @@ El filtro `reasons` trae un código que no está en la lista de motivos de ajust
 
 **¿Qué significa "La conciliación manual admite como máximo 200 productos a la vez."? (400)**
 `POST /api/v1/inventory/reconciliation/run` recibió más de 200 productos en `productPublicIds`. Mande menos, o no mande ninguno para revisar
+
 **todos** los productos de la compañía. El error viene en `errors.productPublicIds`.
 
 **¿Qué significa "Descuadre no encontrado."? (404)**
@@ -3305,6 +3313,7 @@ Kárdex o `DISMISS` para descartar. En la pantalla, los botones "Corregir el sal
 
 **¿Qué significa "Escriba una nota que explique por qué se descarta el descuadre."? (400, también en pantalla)**
 Descartar exige una nota: quien lo lea después debe saber por qué se dejó así. Escriba el motivo (hasta 500 caracteres) y vuelva a pulsar
+
 **Descartar**. Corregir el saldo no la exige. El error viene en `errors.notes`.
 
 **¿Qué significa "La nota admite como máximo 500 caracteres."? (400, también en pantalla)**
@@ -3437,6 +3446,7 @@ Con más de un almacén activo hay que elegir cuál antes de crear los conteos.
 
 **¿Qué significa "Revisión automática: al día" / "Revisión automática: {count} en cola" / "Revisión automática apagada"?**
 Está en Kárdex › Conciliación. **Al día**: no hay productos esperando revisión. **N en cola**: N productos se revisarán en unos segundos.
+
 **Apagada**: el servidor la tiene desactivada (`Inventory:Reconciliation:Enabled`); solo funciona el botón **Ejecutar conciliación**.
 
 **¿Qué significa "No aplican al Kárdex: …" / "No aplican a Saldos (solo cambian el resumen de movimientos): …" / "No aplican a Conciliación: …"?**
@@ -3466,6 +3476,7 @@ Solo si las cifras cambian: mientras el Kárdex y el saldo tengan los mismos nú
 uno nuevo. Un descuadre resuelto o "Se corrigió solo" que vuelve a ocurrir también abre uno nuevo.
 
 **¿Qué significan los cuatro estatus de un descuadre?**
+
 **Pendiente**: hay que revisarlo. **Resuelto**: alguien corrigió el saldo según el Kárdex. **Descartado**: alguien decidió dejarlo, con una
 nota. **Se corrigió solo**: una revisión lo encontró cuadrado (o al corregir ya cuadraba). Los tres últimos son finales.
 
@@ -3488,6 +3499,7 @@ por vez y todo o nada.
 No: la segunda vez la ventana arranca donde terminó la primera y, además, una posición con un conteo Pendiente o Contado se salta.
 
 **¿Por qué mi conteo dice "Diferencia"? ¿Y por qué "Concordancia"?**
+
 **Diferencia** significa que al confirmar el sistema **asentó al menos un movimiento** (un ajuste `COUNT_VARIANCE` en el Kárdex o, en productos
 con serie, una baja, un alta o una transferencia): lo contado no coincidía con el saldo actual. **Concordancia**: no hubo nada que ajustar. Ojo:
 se compara con el saldo **actual**, no con la foto: si el saldo cambió después de tomar la foto y usted contó lo que había, queda en
@@ -3499,6 +3511,7 @@ filtro del API con `status=RECONCILED` ya no incluye los conteos con Diferencia:
 
 **¿Qué pasó con el paso "Terminar conteo"?**
 En la web ya no existe: **Confirmar conteo y ajustar** lleva el conteo de Pendiente a Concordancia o Diferencia en un solo paso. El estatus
+
 **Contado** queda solo para el conteo a ciegas de la app de almacén (que termina de contar y deja la confirmación a la web).
 
 **¿Dónde quedó la pestaña "Tareas de conteo" y cómo asigno un conteo?**
@@ -3620,6 +3633,7 @@ dos cuentan los mismos días de Puerto Rico y las mismas unidades, y coinciden. 
 
 **¿Por qué cambió mi gráfico con muchas barras y ahora dice "Otras"?**
 Desde el Lote 15, en barras, dona y pastel que **suman o cuentan**, si hay **más de 8 grupos** se muestran los 7 mayores y un último punto
+
 **"Otras"** con la suma del resto, para que el total sea exacto y la dona no engañe sobre las proporciones. También cambió en barras
 que ya existían con más de 8 grupos (por ejemplo "Cambios por usuario": antes mostraba solo los 8 mayores). Con promedio, mínimo o máximo no
 se junta nada. Si necesita ver un grupo que quedó dentro de "Otras", abra el gráfico en Análisis → Gráficos y filtre.
@@ -3637,6 +3651,7 @@ Desde el 2026-10-05 (decisión del dueño) solo queda fijo el encabezado (fecha 
 del Pulso, esté donde esté. No hay nada que configurar.
 
 **Borré el gráfico de la compañía, ¿vuelve? ¿Cómo lo recupero?**
+
 **No vuelve**: es la regla del dueño. Ni renombrarlo ni borrarlo lo recrea una actualización posterior. Para tenerlo otra vez, cree uno a mano en
 Análisis → Gráficos → Nuevo gráfico: "Valor de inventario por categoría" = fuente Inventario (saldos), agrupar por Categoría, suma de
 "Valor a costo", tipo Dona, en dinero; "Movimientos de inventario por tipo" = fuente Movimientos de inventario, agrupar por Tipo, suma de
@@ -3758,6 +3773,7 @@ Alguien guardó el recibo mientras usted tenía la pantalla abierta. La pantalla
 
 **¿Qué significa "La cantidad excede lo disponible para cruce de plataforma (0)." (409) o "El recibo de la línea no admite asignaciones (eliminado o sin putaway pendiente)." (422) en un recibo directo ya confirmado?**
 Un recibo directo confirmado no tiene acomodo pendiente (la mercancía ya está en su posición destino), y el cruce de plataforma sobre un recibo confirmado se hace contra el acomodo pendiente. Asigne el cruce
+
 **mientras el recibo está abierto**. (Por el código; no se probó en un recibo real.)
 
 **¿Qué significa "warehouse.receivingMode debe ser PUTAWAY o DIRECT." (código de salida 1) o "La posición de recepción por defecto {code} no existe en el almacén." (rechazo del almacén en el reporte) en `import-legacy`?**
@@ -3807,6 +3823,7 @@ Con `warehouse.manage`: Almacenes → elija el almacén → **Datos** → secci�
 sin zona de recepción (como Advance Solutions) debe seguir siendo directo, o los recibos con acomodo darán "El almacén no tiene una posición de recepción (zona STAGING); indíquela.".
 
 **¿Qué pasa con los recibos abiertos cuando cambio el modo del almacén?**
+
 **Nada:** cada recibo conserva el modo con que se abrió, y las tareas de acomodo pendientes siguen su curso (hay que acomodarlas). Solo los recibos nuevos siguen el modo nuevo. Si quiere que **un** recibo abierto
 cambie, edite su encabezado (lápiz) y cambie su "Modo de recepción" antes de confirmarlo.
 
@@ -4287,6 +4304,7 @@ dice cuáles son.
 
 **¿Cómo cuento varios productos en un solo conteo?**
 En la app: Conteo → **Por producto** y vaya escaneando; al final **Terminar conteo**. En la web: **Nuevo conteo** → **Por producto** → déjelo sin producto →
+
 **Crear conteo**, y en el detalle escanee cada producto (el que no está en el conteo abre **Agregar lo encontrado** con el producto puesto).
 
 **¿Tengo que elegir la posición?**
@@ -5092,6 +5110,7 @@ La posición sale en varias páginas de 10 (11 productos = 10 + 1), cada una con
 No: se conservan al cambiar de página o de filtro mientras no cambie de almacén. **Quitar marcas** las borra.
 
 **¿Por qué la exportación de la tabla trae más filas que la página?**
+
 **Exportar** saca **todo lo filtrado** (sin tope de cantidad), no solo la página que se ve.
 
 ## Lote F16 — Web: etiquetas de posición en Posiciones
@@ -5142,6 +5161,7 @@ una etiqueta de ese tamaño. Configure el mismo tamaño en el driver e imprima a
 
 **La etiqueta sale de lado o cortada.**
 Revise que el tamaño de etiqueta del driver sea el mismo que eligió y que la escala sea 100 % ("Tamaño real"). Si sigue, genere el PDF con
+
 **Orientación → Girar 90°** (gira la página completa, para impresoras que alimentan la etiqueta de lado).
 
 **¿Por qué no salen todas las posiciones del almacén?**
@@ -5205,6 +5225,7 @@ ahora)". La primera vez necesita señal.
 ## Lote A9 — App de almacén: pantalla chica (PIN, teclado en pantalla y calculadora)
 
 Detalle en el [capítulo 9 §2.2 y §7.3](09-app-almacen.md#73-calculadora-de-cantidad-2026-10-05) y en `docs/mobile/loteA9-decisiones.md`. Este lote
+
 **no agrega ni cambia mensajes**: solo cambia cómo se ven y se mueven las pantallas. El único texto nuevo es el nombre del botón de volver de la
 calculadora para el lector de pantalla (**"Cantidad directa"**, el mismo texto que tenía el enlace).
 
@@ -5310,6 +5331,7 @@ Almacén → **Rentas** (antes del Kárdex), con el módulo Rentas encendido y `
 
 **¿Por qué no me deja elegir un equipo?**
 El selector ofrece solo productos **propios con serie** que tengan disponible en el **almacén de origen**, y de ellos las series
+
 **disponibles** en zonas que se rentan (no cuarentena ni cruce de plataforma) que no estén ya en la renta. Si el producto no tiene serie,
 conviértalo primero.
 
@@ -5819,8 +5841,8 @@ Use el filtro **Posición** (escriba parte del código, por ejemplo `A-01`): sal
 ## Aparato: no veo Transferir ni Ajustar (2026-10-10)
 
 **Instalé la APK y en el menú no sale Transferir (o en Consultar no sale Mover / Ajustar).**
-**Desde 2026-10-11 «Transferir» ya no está en el menú principal: se transfiere con «Mover» en Consultar** (es la misma pantalla y el mismo permiso). **«Ajustar» sí está en el menú** (y también en Consultar). Los botones dependen de permisos del usuario, no de la versión de la APK: **Mover** pide `warehouse.transfer` (lo traen «Operador de almacén» y «Admin de compañía»; `inventory.adjust` lo implica) y **Ajustar** pide `warehouse.adjust` (solo «Admin de compañía»; para un operario se crea un rol propio en Sistema → Roles con ese permiso). **Si el usuario ya tiene el permiso (p. ej. «Admin de compañía» con todos), lo más probable es que el APK instalado sea una compilación vieja:** desde 2026-10-10 Inicio muestra al pie «Versión 1.0.0 (código) · sello» (fecha y commit del APK; en el CI, `ci-<número> <commit>`). Si no sale esa línea, el APK es anterior: instale el nuevo. Revise (1) que el **API ya esté desplegado** con la base actualizada (`db-update`), (2) que el rol del usuario tenga el permiso y (3) abrir la app con señal una vez: el aparato lee los permisos del servidor al abrir la pantalla. La corrección del 2026-10-10 (b) en `Diseño/logistica-db-update.sql` agrega los dos permisos a los roles «Operador de almacén» y «Admin de compañía» que ya existían en cada compañía (antes quedaron fuera porque el sembrado solo propaga los códigos nuevos de su corrida).
 
+**Desde 2026-10-11 «Transferir» ya no está en el menú principal: se transfiere con «Mover» en Consultar** (es la misma pantalla y el mismo permiso). **«Ajustar» sí está en el menú** (y también en Consultar). Los botones dependen de permisos del usuario, no de la versión de la APK: **Mover** pide `warehouse.transfer` (lo traen «Operador de almacén» y «Admin de compañía»; `inventory.adjust` lo implica) y **Ajustar** pide `warehouse.adjust` (solo «Admin de compañía»; para un operario se crea un rol propio en Sistema → Roles con ese permiso). **Si el usuario ya tiene el permiso (p. ej. «Admin de compañía» con todos), lo más probable es que el APK instalado sea una compilación vieja:** desde 2026-10-10 Inicio muestra al pie «Versión 1.0.0 (código) · sello» (fecha y commit del APK; en el CI, `ci-<número> <commit>`). Si no sale esa línea, el APK es anterior: instale el nuevo. Revise (1) que el **API ya esté desplegado** con la base actualizada (`db-update`), (2) que el rol del usuario tenga el permiso y (3) abrir la app con señal una vez: el aparato lee los permisos del servidor al abrir la pantalla. La corrección del 2026-10-10 (b) en `Diseño/logistica-db-update.sql` agrega los dos permisos a los roles «Operador de almacén» y «Admin de compañía» que ya existían en cada compañía (antes quedaron fuera porque el sembrado solo propaga los códigos nuevos de su corrida).
 
 ## Conteo cíclico: cierre automático y seguir contando (2026-10-10)
 
@@ -5890,7 +5912,6 @@ Las direcciones se administran en el panel **Direcciones** de la ficha del clien
 
 **¿El estado «Activo/Inactivo» de la maqueta es el estatus?**
 Son dos cosas: el **estatus** (etapas configurables, p. ej. Activo → En revisión) y la **baja** (Inactivo). La lista muestra las dos.
-
 
 ## Lote F-A2 — Contratos del cliente (2026-10-10)
 
@@ -6101,6 +6122,7 @@ leía `Ocurrió un error. Intente de nuevo.`. Un 403 que trae su propio mensaje 
 
 **En Sincronización una operación pendiente dice `La operación con esta clave todavía se está procesando.`**
 No es un error suyo ni un rechazo: el servidor todavía está procesando ese mismo envío (el intento anterior se cortó sin respuesta). La operación sigue
+
 **pendiente**, el saldo del aparato no se toca y se vuelve a mandar sola en la siguiente pasada (o al tocar **Sincronizar ahora**) con la misma clave,
 así que no puede quedar dos veces. No la descarte ni la repita a mano. Si sigue así más de 10 minutos, avise a soporte.
 
@@ -6159,6 +6181,7 @@ Capítulo: [09 §6.y](09-app-almacen.md#6y-completar-despacho--despacho-manual-d
 **Toco «Completar despacho» y ya no me pregunta el motivo: dice `Se despacha por: Venta`.**
 Es lo esperado: la app abre directo la confirmación con el **último motivo que usted usó en este aparato** o, si no hay, con el **motivo por default de la
 compañía** (lo dice debajo: `Es el último motivo que usaste en este aparato.` o `Es el motivo por default de la compañía.`). Si es el correcto, toque
+
 **Despachar** y listo. Si no, toque **Cambiar** y escoja otro.
 
 **Cambié el motivo una vez y ahora siempre me sale ese.**
@@ -6680,6 +6703,7 @@ Pulse **Cancelar el envío**, escriba la **razón** (obligatoria, máximo 500 ca
 El comentario de cancelar, de cambiar de estatus o de asignar chofer admite hasta 500 caracteres. Acórtelo.
 
 **¿Cuál es la diferencia entre cancelar y eliminar?**
+
 **Eliminar el envío** solo se puede en una orden Sometida: libera el número de envío y de empaque. Una orden ya recogida solo se cancela. Si intenta eliminar una ya recogida sale «Solo se puede eliminar un envío en su estatus inicial; use la cancelación.»
 
 **¿Para qué sirve Intento fallido? ¿Por qué no hay botón para avanzar la orden?**
@@ -6785,6 +6809,7 @@ Borra la revisión sin crear ninguna orden y le deja escoger otro archivo.
 Preguntas de la pantalla **Listas → Choferes y tarifas**. Los mensajes aparecen tal cual los muestra la pantalla. El capítulo completo es «Choferes y tarifas» (manual de pantallas).
 
 **¿Cuál es la diferencia entre «Activo», «Disponibilidad» y «Eliminar chofer»?**
+
 **Activo** apagado saca al chofer de despacho sin perder nada y se puede volver a encender. **No disponible** lo saca de despacho por un tiempo (vacaciones, permiso) y se revierte con **Disponible**. **Eliminar chofer** es una baja definitiva que no se deshace.
 
 **Desactivé a un chofer y desapareció de la lista. ¿Se perdió?**
@@ -6815,12 +6840,14 @@ Un usuario solo puede ser de un chofer. Elija otro usuario o quite el vínculo d
 Otra persona guardó al chofer antes que usted. La pantalla conserva lo que escribió: revise los datos nuevos y pulse **Guardar cambios** otra vez.
 
 **¿Qué significa «Vence en N días» y «Reemplazada» en las licencias?**
+
 **Vence en N días** avisa que faltan 30 días o menos. **Reemplazada** quiere decir que hay otra licencia o certificación del mismo tipo que vence después: la vieja ya no cuenta.
 
 **«La fecha de vencimiento no puede ser anterior a la de emisión.»**
 Las fechas están al revés. Corríjalas, o deje el vencimiento vacío si no vence.
 
 **¿Qué diferencia hay entre «sin tarifa» y $0.00?**
+
 **Sin tarifa** quiere decir que todavía no se configuró nada para ese caso. **$0.00** es una tarifa que usted puso a propósito (por ejemplo, el primer intento no se paga aparte).
 
 **¿Cómo cambio una tarifa sin perder la anterior?**
@@ -6874,12 +6901,12 @@ Necesita el permiso `driverpay.view`. Para cambiarlos, `driverpay.manage`.
 **¿Por qué no veo ningún dispositivo?**
 Los registra la app del chofer cuando entra por primera vez. Desde aquí solo se pueden ver y desactivar.
 
-
 ## Lote F-D2 — Flota: vehículos, documentos y disponibilidad (2026-10-12)
 
 Preguntas de la pantalla **Listas → Flota y mantenimiento**. Los mensajes aparecen tal cual los muestra la pantalla. El capítulo completo es «Flota y mantenimiento» (manual de pantallas).
 
 **¿Cuál es la diferencia entre «Activo», «Disponibilidad» y «Dar de baja definitiva»?**
+
 **Activo** apagado saca al vehículo de despacho sin perder nada y se puede volver a encender. **En mantenimiento** lo saca de despacho por un tiempo y se revierte con **Disponible**. **Dar de baja definitiva** no se deshace.
 
 **Desactivé un vehículo y desapareció de la lista. ¿Se perdió?**
@@ -6934,6 +6961,7 @@ Hay rutas sin cerrar en esa zona. Ciérrelas o cámbielas de zona.
 En Despacho (lote posterior). Aquí solo se llevan el código, el nombre y si la zona está activa.
 
 **¿Qué significa «Bloquea» y «Aviso» en Disponibilidad?**
+
 **Bloquea** impide despachar al chofer o vehículo (queda «No disponible»). **Aviso** conviene revisarlo pero no impide despachar (por ejemplo, una licencia que vence en 12 días).
 
 **Mi chofer sale «No disponible» con «Sin licencia vigente.»**
@@ -7176,6 +7204,7 @@ Ninguna parada de la ruta tiene ubicación (las direcciones no se pudieron ubica
 No tiene ubicación. Está en la línea **Sin ubicación: N** debajo del plano y también en **Envíos en esta ruta** con la marca **Sin pin**. Pulse su número de envío para elegirla y use **Poner pin**.
 
 **¿Qué diferencia hay entre pin exacto, aproximado y manual?**
+
 **Exacto** (círculo lleno): la dirección se ubicó con precisión. **Aproximado** (círculo punteado con halo): solo se conoce el centro del código postal o del pueblo, así que la parada puede estar en otro lugar de ese pueblo. **Manual** (rombo): alguien puso la ubicación a mano con **Poner pin**. Si le importa la hora de llegada o el orden de una parada aproximada, póngale un pin manual.
 
 **Dos pines están uno encima del otro.**
@@ -7232,7 +7261,6 @@ Poner un pin no reordena la ruta. Si ya estaba optimizada, pulse **Optimizar** o
 **La parada con pin manual sigue diciendo «Ubicación aproximada».**
 No debería: al guardar el pin la marca pasa a **Pin manual**. Si la ve, actualice la pantalla; si sigue, avise a soporte.
 
-
 ## Lote F-E3 — Monitoreo de ruta (2026-10-12)
 
 Manual de la pantalla: [fe3-monitoreo.md](frontend/fe3-monitoreo.md). Los datos vienen del monitor del capítulo [05](05-trips-y-rutas.md) (sección 9).
@@ -7281,7 +7309,6 @@ No: la pantalla no muestra teléfonos ni datos de contacto del chofer.
 
 **¿El plano es un mapa con calles?**
 No, es esquemático (igual que el de la Sala de despacho): muestra la posición relativa de las paradas y el punto del chofer, sin calles ni satélite.
-
 
 ## Lote F-F1 — Campos personalizados (2026-10-12)
 
@@ -7392,7 +7419,6 @@ En la fecha elegida el cliente no tenía contrato vigente: se cotiza con las tar
 
 **¿Qué precios muestra el Cotizador y quién los ve?**
 Precios del **contrato** del cliente; los ve quien tiene `contracts.read`. El permiso de ver precios de las órdenes no cambia esto.
-
 
 ## Lote F-F2 — Vistas e informes (2026-10-12)
 
@@ -7565,6 +7591,7 @@ El número de paquete escaneado lo tienen varias órdenes (cada cliente numera s
 
 **¿Qué trae el Informe de faltantes?**
 Las órdenes que siguen pendientes por escanear con los filtros de «Pendientes» (todas, sin tope), agrupadas por zona, y cuántas lleva escaneadas esta sesión. Sale por la impresora de documentos de la estación.
+
 ## IP preferida: entrar sin código desde la red de la empresa (2026-10-12)
 
 **Estoy en la oficina y no me pide el código. ¿Es normal?**
@@ -7668,6 +7695,7 @@ Déjelas en **(No usar)**. La columna se ignora y la fila se importa igual. La p
 
 **Quiero que el nombre del consignatario sea «Número - Nombre».**
 En el editor, ponga la columna del número en **Número** y, con **Usar también en otro campo**, también en **Nombre**; ponga la columna del nombre en **Nombre**. En
+
 **Campos con varias columnas** suba la columna del número con **↑** y escriba « - » en **Separador**. **Resultado** muestra cómo queda.
 
 **¿Por qué una fila salió con un cliente distinto del que escogí?**
@@ -7726,7 +7754,6 @@ La persona de contacto admite hasta 150 caracteres, en el archivo y en la ficha.
 
 **¿Dónde veo la persona de contacto?**
 En la ficha del consignatario («Persona de contacto»), en la fila de la lista y en el buscador. Se cambia con **Editar**.
-
 
 ## Lote 46 / F-B3 — Importar consignatarios: pueblo, estado y ZIP con la lista de códigos postales, y variantes de mapeo (2026-10-14)
 
@@ -8355,7 +8382,6 @@ La entrega necesita que la orden tenga consignatario; si no lo tiene, solo ofrec
 **¿En qué se diferencian «Retiro» y «Dejar para después»?**
 El servidor hace lo mismo (recolecta y baja el inventario, sin entrega); «Retiro» es que el cliente recoge y ahí termina; «Dejar para después» significa que la entrega se creará más tarde desde la web.
 
-
 ## Lote 66 — Avisos de ventas
 
 **Creé una orden y nadie recibió aviso.**
@@ -8372,7 +8398,6 @@ El aviso usa lo disponible para vender en ese momento; otra orden más antigua p
 
 **Quiero dejar de recibir los avisos de órdenes despachadas.**
 Silencie el evento en su bandeja (los de ventas son opcionales, salvo el de crédito por autorizar).
-
 
 ## Lote 67 — Análisis de órdenes de venta
 
@@ -8391,7 +8416,6 @@ El aviso usa lo disponible para vender en ese momento; una orden más antigua pu
 **No me aparece la fila de backorder en «Necesita tu atención».**
 Se muestra solo con `sales.backorder` y el módulo Órdenes de venta; y solo si hay inventario disponible para surtir (una orden esperando sin inventario no aparece).
 
-
 ## Lote 68 — Kits
 
 **No me deja convertir un producto en kit: «tiene existencia».**
@@ -8408,7 +8432,6 @@ Si alguna orden de venta ya lo usó, no se puede (el historial de esas órdenes 
 
 **Quise recibir el kit en un recibo y falló.**
 Un kit no se recibe: se reciben sus componentes. El mensaje dice `… es un kit: no tiene existencia propia. Los movimientos se hacen sobre sus componentes.`
-
 
 ## Lote 69 — Kits en las órdenes de venta
 
@@ -8430,7 +8453,6 @@ Sí (desde el Lote 71): ver «Kits en el aparato» en esta misma sección de pre
 **Deshice un despacho de kits.**
 Los componentes vuelven a su posición, los kits despachados bajan y quedan reservados otra vez; la orden se reabre.
 
-
 ## Lote 70 — Recolectar kits
 
 **Recolecté un kit y en el Kárdex veo las piezas sueltas.**
@@ -8438,7 +8460,6 @@ Es lo normal: el kit no tiene existencia, así que sale cada componente (con la 
 
 **No puedo escoger la posición al recolectar un kit.**
 Un kit sale de sus componentes por la rotación (FEFO/FIFO) de cada uno; no admite posición, lote ni series. Para sacar de una posición concreta, recolecte los componentes como productos sueltos.
-
 
 ## Lote 71 — Kits en el aparato
 
@@ -8450,7 +8471,6 @@ Falta alguna pieza de algún componente (por ejemplo, 3 tornillos de un kit que 
 
 **Recogí piezas de más.**
 Lo que no completa otro kit se queda reservado en su posición; no sale ni se descuenta.
-
 
 ## Lote 72 — Facturación
 
@@ -8472,7 +8492,6 @@ Es lo correcto: la factura conserva la tasa con que se calculó la orden de vent
 
 **Anulé una factura y la orden vuelve a aparecer como por facturar.**
 Sí: anular libera exactamente lo que esa factura había reclamado.
-
 
 ## Lote 74 — Flete en la facturación
 
@@ -8717,8 +8736,6 @@ El aviso suma **todo lo cobrado sin cuadrar**; en COD → Envíos con COD (filtr
 **¿Por qué los avisos nuevos salen arriba y no por antigüedad?**
 Son resúmenes («83 órdenes…», «$2,230…»): van antes que las filas por registro para que no los tape una lista larga de rentas o descuadres.
 
-
-
 ## Lote 90 — Fotos diarias de indicadores
 
 **Las barritas de los ríos del Pulso salen vacías.**
@@ -8729,7 +8746,6 @@ Solo se guardan los indicadores de los módulos Órdenes LTL (`LTL_GROUND`) y CO
 
 **Corrí el trabajo dos veces, ¿se duplican las cifras?**
 No: hay una fila por día e indicador y la segunda corrida reemplaza la de hoy.
-
 
 ## Lote 91 — Indicadores y gráficos de COD, facturación y ventas; Actividad de Operación y Contabilidad
 
@@ -8744,7 +8760,6 @@ Suma el **saldo** (total menos pagos no anulados) de las facturas Emitidas y Ven
 
 **¿Se pueden crear gráficos propios con cobros o facturas?**
 Sí: en Análisis, elija la fuente «Cobros COD» o «Facturas» (requiere `cod.view` o `billing.view`).
-
 
 ## Lote 92 — Informes programados por correo
 
@@ -8769,7 +8784,6 @@ Las vistas de sistema no se editan: guarde una copia propia (400 «Los informes 
 **¿Se puede mandar el informe como archivo adjunto?**
 Todavía no: el correo lleva la tabla dentro del mensaje (hasta 200 filas). El adjunto (CSV) queda pendiente porque el envío de correo de la plataforma no soporta adjuntos.
 
-
 ## Lote 93 — Intentos de entrega
 
 **Marqué una orden como entregada y no veo el intento.**
@@ -8783,7 +8797,6 @@ No se puede registrar un fallo con un número mayor al del intento entregado. An
 
 **`El intento ya está en una liquidación y no se puede anular.`**
 Un intento pagado queda fijo. Para corregirlo hay que cancelar la liquidación que lo incluye (mientras esté abierta).
-
 
 ## Lote 94 — Liquidación a choferes
 
@@ -8805,7 +8818,6 @@ Cambiar el monto de una línea exige el motivo (hasta 250 caracteres). Si deja e
 **¿Por qué mi permiso no deja aprobar?**
 Aprobar y exportar usan `driverpay.approve` y `driverpay.export`, que por omisión solo trae el administrador de la compañía; quien genera (`driverpay.manage`) no aprueba.
 
-
 ## Lote 95 — Exportar la liquidación a choferes
 
 **`Solo se exporta una liquidación aprobada o exportada.`**
@@ -8819,7 +8831,6 @@ Sí: una liquidación exportada se puede exportar de nuevo (con otra plantilla s
 
 **¿Exportar paga al chofer?**
 No. Teikem calcula y exporta; el pago lo hace nómina o contabilidad con el archivo.
-
 
 ## Lote 96 — Pantalla de liquidación a choferes
 
@@ -8838,7 +8849,6 @@ Elegir plantilla pide ver facturación o el pago a choferes y el módulo de Fact
 **Aprobar pidió mi contraseña.**
 Es la reautenticación (AAL2): se pide para aprobar igual que en Facturación y en las remesas COD.
 
-
 ## Lote 97 — Número de conduce
 
 **¿Qué es el número de conduce y en qué se diferencia del número de envío y del de empaque?**
@@ -8852,7 +8862,6 @@ Todas las órdenes existentes lo recibieron al actualizar la base. Si un label s
 
 **Busco un conduce y no sale.**
 Búsquelo completo o parte (`CND-0000042`) en el buscador de Órdenes; el conduce de una orden dada de baja solo aparece con «incluir inactivas».
-
 
 ## Lote 98 — Avisos al cliente
 
@@ -8870,7 +8879,6 @@ Estos avisos son para el cliente. Avisar al consignatario (con su aceptación, q
 
 **En el registro dice «No hay destinatarios».**
 El cliente no tiene usuarios activos en el portal ni correos extra en ese aviso. El resumen igual queda en la bandeja del portal si esa casilla está encendida.
-
 
 ## Lote 99 — Documento legal
 
@@ -8891,7 +8899,6 @@ Faltan los datos del operador en la configuración (`Legal:OperatorName`, `Legal
 
 **¿Qué pasa con los usuarios que ya existen cuando se pase a producción?**
 No tienen aceptación guardada, así que la verán en su siguiente ingreso. Cuando el documento cambie, todos la verán otra vez.
-
 
 ## Lote 100 — Acceso seguro
 
@@ -8919,7 +8926,6 @@ Esa computadora ya se quitó o no es del usuario de la sesión.
 **¿Cómo quito una computadora compartida?**
 Mi cuenta → Sesiones → Mis computadoras de confianza → Quitar.
 
-
 ## Lote 101 — Portal del cliente (acceso)
 
 **`El usuario no tiene acceso activo al portal.` (403)**
@@ -8942,7 +8948,6 @@ El código se recuerda 30 días por computadora de confianza. Lo vuelve a pedir 
 
 **«La invitación venció».**
 Valen 48 horas y una sola vez; pida al administrador que la reenvíe (el enlace anterior deja de servir).
-
 
 ## Lote 102 — App del cliente
 
@@ -8970,7 +8975,6 @@ Su compañía decide qué avisos le manda y por qué canal (capítulo 23). Si el
 **«Poner en mi escritorio» no aparece.**
 Solo aparece en navegadores que dejan instalar la página (Chrome, Edge, Android) y cuando todavía no está instalada. En iPhone y iPad se usa Compartir → Añadir a pantalla de inicio.
 
-
 ## Lote 103 — «¿Cómo va mi orden?» y la barra de progreso
 
 **`No encontramos ese número de conduce.` (404)**
@@ -8997,7 +9001,6 @@ Un estatus lateral (hoy, Intento fallido) no avanza la barra: se queda donde iba
 **El seguimiento público de mi compañía no responde.**
 Viene apagado: el administrador lo enciende en Ajustes de la compañía → General → Seguimiento público.
 
-
 ## Idioma y tema (app del cliente y página pública)
 
 **¿Cómo cambio al modo oscuro?**
@@ -9008,7 +9011,6 @@ En los mismos lugares: **Español / English**. El español es el de omisión; la
 
 **La app abrió en oscuro y yo no lo pedí.**
 Está en Automático y el teléfono o el navegador está en modo oscuro. Escoja «Claro» para fijarlo.
-
 
 ## Mensajes con el equipo de servicio al cliente (Lote 104)
 
@@ -9030,7 +9032,6 @@ Está en Automático y el teléfono o el navegador está en modo oscuro. Escoja 
 
 **¿Se pueden adjuntar archivos?** No, por ahora solo texto.
 
-
 ## Nueva orden del cliente (Lote 105)
 
 **No veo «Nueva orden» en la app.** Su rol es de solo consulta (`CLIENT_READONLY`); por API da 403 «Su usuario solo puede consultar…». Pídale a la compañía que cambie su rol.
@@ -9048,7 +9049,6 @@ Está en Automático y el teléfono o el navegador está en modo oscuro. Escoja 
 **¿La orden que creo necesita aprobación de la compañía?** No: entra directo al flujo normal, como una creada por la compañía.
 
 **¿Puedo ponerle precio o prioridad?** No; solo lo básico. La compañía completa el resto.
-
 
 ## Estatus del envío (Lote 106)
 
@@ -9123,7 +9123,6 @@ La barra se queda en el nivel de la última etapa normal (por ejemplo En tránsi
 **Mis indicadores, gráficos o informes de órdenes cambiaron de números. ¿Por qué?**
 La actualización de la base reescribió los filtros guardados de órdenes que nombraban estatus viejos: `CONFIRMED` y `DRAFT` pasaron a `SUBMITTED`, `INBOUND` a `UNASSIGNED`, `PLANNED` a `ASSIGNED`, y `ARRIVED` y `ON_HOLD` a `FAILED`. Si un filtro suyo ya no dice lo que usted quería, edítelo en Análisis. «Envíos en curso» ahora cuenta Sometida, Recogida, Sin asignar, Asignada, En tránsito e Intento fallido.
 
-
 ## Escaneo con acción escogida (Lote 107)
 
 **¿Qué hago si escaneo y no pasa nada («ya está en Asignada o más adelante»)?** La orden ya estaba en ese estatus o más adelante: el escaneo no la mueve hacia atrás. Solo «Llegó» devuelve al almacén una orden en Intento fallido.
@@ -9138,7 +9137,6 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 **¿Puedo crear una orden para un cliente sin contrato o sin tarifa?** No (Lote 107): se revisa al someter. Cree el contrato y la tarifa primero.
 
-
 ## Piezas y su número (Lote 109)
 
 **¿Cada pieza tiene su propio número?** Sí: al someter la orden, una línea de 3 piezas crea 3 piezas, cada una con su número único (el del label y el que se escanea). El número de la orden es otro.
@@ -9150,7 +9148,6 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **«Ya existe una pieza con ese número de paquete.» (409)** Dos piezas activas de la compañía no pueden tener el mismo número (por ejemplo, dos líneas con el mismo número tecleado). Cambie el número tecleado o déjelo en blanco.
 
 **Edité los paquetes de la orden y los números de los labels cambiaron.** Es lo esperado: al reemplazar los paquetes se crean piezas nuevas con números nuevos; reimprima los labels.
-
 
 ## Escaneo por pieza y conduce nuevo (Lote 110)
 
@@ -9687,25 +9684,34 @@ La compañía tiene la rotación en «Obligar»: el despacho solo puede salir de
 **¿Se puede empacar el despacho de un aviso de salida?**
 No: es una salida de inventario sin entrega (`El despacho {número} es de un aviso de salida y no se empaca…`, 422). Para entregar con una orden de transporte se usa el flujo de la orden de venta o de la recolección normal.
 
-
 ## Despacho exige documento (Lote 145)
+
 **«La compañía exige despachar contra un aviso de salida / una orden de venta / un documento…» (409).** La compañía activó «El despacho exige documento». Cree el aviso de salida (o la orden de venta) y despache desde su ficha con **Despachar**. Un administrador puede volver a «Libre» en Ajustes → Operación.
 
 ## Capa de costo (Lote 147)
+
 **«El precio unitario debe ser cero o mayor y de 4 decimales como máximo.» / «El precio unitario excede el máximo permitido.» (400, `lines[i].unitPrice`).** Corrija el precio de esa línea del aviso de llegada (0 o más, hasta 4 decimales) o déjelo vacío.
+
 **¿Por qué el recibo muestra un costo distinto al del producto?** El recibo congeló el costo de la orden de compra o el precio del aviso, que mandan sobre el costo del producto. El cambio posterior del catálogo no lo modifica.
 
 ## Valuación (Lote 148)
+
 **«El método de valuación debe ser AVERAGE (costo promedio) o LAYERS (por capas).» (400, `valuationMethod`).** Escoja una de las dos opciones de la lista en Ajustes → Operación.
+
 **No veo la pestaña «Valor del inventario».** Requiere el permiso `inventory.value` (Administrador y Facturación lo traen); pídaselo a su administrador.
+
 **¿Por qué hay «Unidades sin costo»?** Esas unidades no tienen costo congelado en un recibo ni costo de compra en el producto. Capture el costo del producto; el reporte se actualiza solo.
 
 ## El recibo exige documento (Lote 149)
+
 **«La compañía exige recibir contra un documento / un aviso de llegada / una orden de compra…» (409).** Escoja un aviso de llegada o una orden de compra del tipo que pide la compañía; un administrador puede volver a «Libre» en Ajustes → Operación → Entradas.
+
 **«La compañía exige recibir contra un aviso de llegada de un cliente, no contra una orden de compra.» / «…contra una orden de compra, no contra el aviso de llegada de un cliente.» (409).** El documento escogido no es del tipo exigido; use el correcto o cambie la exigencia.
 
 ## Portal del cliente de almacén (Lote 153)
+
 **«Su acceso no incluye ver el valor del inventario.» (403).** Su acceso al portal es de solo lectura; el valor lo ven los accesos de administrador y de operador del cliente. Pídaselo al administrador de su empresa.
+
 **No veo Inventario en el portal.** La compañía de este acceso no tiene el módulo de almacén; si tiene otro acceso en una compañía con almacén, cámbiese a él con «Cambiar de acceso».
 
 **¿Qué significa "Actualizar el precio del producto requiere el permiso de administrar inventario." (403)**
@@ -9787,7 +9793,6 @@ No (`Los elementos por default de la plataforma no se editan ni se eliminan.`, 4
 **`La visibilidad debe ser PRIVATE, TENANT o SHARED.` (400)**
 El valor enviado a `…/visibility` no es uno de los tres. Corrígelo y vuelve a guardar.
 
-<<<<<<< HEAD
 **`El conduce solo admite letras, números, guion, guion bajo, punto y barra, hasta 40 caracteres.` (400)**
 El conduce que mandó el cliente trae espacios, símbolos u otros caracteres, o pasa de 40. Corrígelo y vuelve a crear el envío; si no manda conduce, Teikem lo genera solo.
 
@@ -9796,7 +9801,7 @@ El número ya lo tiene otro envío activo (uno dado de baja no cuenta). El clien
 
 **`Máximo 4000 caracteres.` (400) en la descripción de un paquete**
 La descripción de la línea pasó del máximo (antes 250). Acorta el texto: el contenido largo de un envío va un ítem por renglón.
-=======
+
 ## Número del aviso de llegada (Lote 170, 2026-10-21)
 
 **¿Qué es LLE-00012 y puedo cambiarlo?**
@@ -9807,7 +9812,6 @@ Al aplicar la actualización de la base se numeraron en orden de creación (el m
 
 **La app de almacén no muestra el número de los avisos.**
 Abre la app con señal y deja que sincronice: baja los avisos una vez completos para traer el número. Si sigue sin salir, revisa que la app esté en la versión más reciente.
->>>>>>> 42f0de84 (Lote 170: número del aviso de llegada LLE-##### (contador ASN, numeración de los existentes, web, portal, app de almacén y avisos de notificación))
 
 ## Asignar avisos de llegada y de salida (Lote 171, 2026-10-21)
 
@@ -9822,3 +9826,12 @@ El aviso ya se recibió, se despachó o se canceló. No hace falta asignarlo.
 
 **El selector de personas sale vacío o dice que no tengo acceso.**
 Listar las personas exige el permiso de administrar usuarios (`admin.users`). Pídele a un administrador que lo asigne, o que te dé ese permiso.
+
+**`No se entiende esa fecha: use MM/DD/YYYY.` (el formato cambia según la compañía)**
+La fecha que pegó en el campo no se entendió y se rechazó (el campo queda como estaba). Escríbala solo con números —el campo pone solo las barras— o péguela como `2026-10-21` o en el orden de la compañía. Las fechas de 2 dígitos de año, los textos («mañana», «Oct 21, 2026») y los días que no existen no se aceptan.
+
+**El campo de fecha se pone en rojo**
+La fecha no existe en el calendario (por ejemplo 02/30/2026) o cae fuera de los límites que pide esa pantalla (por ejemplo «no puede ser anterior a hoy»). Corríjala o elíjala en el calendario, donde los días no permitidos aparecen apagados.
+
+**¿Cómo escribo la hora?**
+Solo números: `0930` → `09:30`. Con hora de 12 (Puerto Rico) elija **AM** o **PM** en el selector de al lado; con hora de 24 no hay selector. Una hora fuera de rango (25:00, 09:75) se marca en rojo.

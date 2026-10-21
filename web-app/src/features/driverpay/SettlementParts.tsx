@@ -7,7 +7,7 @@ import { applyProblemDetails } from '../../kernel/api/problem'
 import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { Chip, ConfirmDialog, DataTable, Modal, Panel, QBox, Spinner, toast, type DataColumn } from '../../kernel/ui'
+import { Chip, ConfirmDialog, type DataColumn, DataTable, DateField, Modal, Panel, QBox, Spinner, toast } from '../../kernel/ui'
 import { IconCart } from '../../kernel/ui/screenIcons'
 import { downloadExportFile } from '../billing/exportFile'
 import { useDrivers } from '../drivers/api'
@@ -248,11 +248,11 @@ export function NewSettlementModal({ onClose, onCreated }: { onClose: () => void
           </div>
           <div className="f">
             <label htmlFor="pay-from">{t('pay.from')}</label>
-            <input id="pay-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+            <DateField id="pay-from" value={from} onChange={(v) => setFrom(v)} />
           </div>
           <div className="f">
             <label htmlFor="pay-to">{t('pay.to')}</label>
-            <input id="pay-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+            <DateField id="pay-to" value={to} onChange={(v) => setTo(v)} />
           </div>
         </div>
         <div className="f">

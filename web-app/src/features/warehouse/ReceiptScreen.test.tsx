@@ -15,6 +15,7 @@ import { AccessProvider } from '../../kernel/access'
 import { setLang } from '../../kernel/i18n/i18n'
 import NoticesScreen from './NoticesScreen'
 import ReceiptListScreen from './ReceiptListScreen'
+import { typeDate } from '../../kernel/ui/typeDate'
 
 interface Call {
   method: string
@@ -364,7 +365,7 @@ describe('Recibo: maestro-detalle', () => {
     expect(calls('POST', `/api/v1/receipts/${NEW}/lines`)).toHaveLength(0)
 
     await user.type(lot, 'L-77')
-    await user.type(screen.getByLabelText('Vencimiento del lote de la línea 1'), '2027-03-01')
+    await typeDate(user, screen.getByLabelText('Vencimiento del lote de la línea 1'), '2027-03-01')
     await user.tab()
     await waitFor(() => expect(calls('POST', `/api/v1/receipts/${NEW}/lines`)).toHaveLength(1))
     expect(calls('POST', `/api/v1/receipts/${NEW}/lines`)[0].body).toEqual({

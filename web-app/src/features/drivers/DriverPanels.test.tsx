@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setLang } from '../../kernel/i18n/i18n'
 import { ALL, callsTo, FLEET, mock, problem, resetKit, wrap } from './driversTestKit'
+import { typeDate } from '../../kernel/ui/typeDate'
 
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
@@ -41,8 +42,8 @@ describe('Licencias y certificaciones', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Agregar licencia' })
     await user.selectOptions(within(dialog).getByLabelText(/^Clase de licencia/), 'CDL-B')
     await user.type(within(dialog).getByLabelText(/^Número de licencia/), '  N-55 ')
-    await user.type(within(dialog).getByLabelText('Emisión'), '2026-01-01')
-    await user.type(within(dialog).getByLabelText('Vencimiento'), '2028-01-01')
+    await typeDate(user, within(dialog).getByLabelText('Emisión'), '2026-01-01')
+    await typeDate(user, within(dialog).getByLabelText('Vencimiento'), '2028-01-01')
     const before = callsTo('GET', '/api/v1/drivers/d-1').length
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/drivers/d-1/licenses')).toHaveLength(1))
@@ -63,8 +64,8 @@ describe('Licencias y certificaciones', () => {
     expect(within(dialog).getByText('El número de licencia es obligatorio.')).toBeInTheDocument()
     await user.selectOptions(within(dialog).getByLabelText(/^Clase de licencia/), 'Regular')
     await user.type(within(dialog).getByLabelText(/^Número de licencia/), 'X')
-    await user.type(within(dialog).getByLabelText('Emisión'), '2026-05-01')
-    await user.type(within(dialog).getByLabelText('Vencimiento'), '2026-04-30')
+    await typeDate(user, within(dialog).getByLabelText('Emisión'), '2026-05-01')
+    await typeDate(user, within(dialog).getByLabelText('Vencimiento'), '2026-04-30')
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     expect(await within(dialog).findByText('La fecha de vencimiento no puede ser anterior a la de emisión.')).toBeInTheDocument()
     expect(callsTo('POST', '/api/v1/drivers/d-1/licenses')).toHaveLength(0)
@@ -96,7 +97,7 @@ describe('Licencias y certificaciones', () => {
     let dialog = await screen.findByRole('dialog', { name: 'Editar licencia' })
     expect(within(dialog).getByLabelText(/^Número de licencia/)).toHaveValue('L-100')
     await user.clear(within(dialog).getByLabelText('Vencimiento'))
-    await user.type(within(dialog).getByLabelText('Vencimiento'), '2029-01-01')
+    await typeDate(user, within(dialog).getByLabelText('Vencimiento'), '2029-01-01')
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(callsTo('PATCH', '/api/v1/drivers/d-1/licenses/1')).toHaveLength(1))
     expect(callsTo('PATCH', '/api/v1/drivers/d-1/licenses/1')[0].body).toEqual({ expiryDate: '2029-01-01' })

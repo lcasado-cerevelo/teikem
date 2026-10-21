@@ -11,6 +11,7 @@ import { dismissToast, getToast } from '../../kernel/ui/toastStore'
 import { apiDateToYmd, chartKind, customRangeDays, formatValue, formatYmd, pulseDateTitle } from './format'
 import Pulse from './Pulse'
 import type { PulseDto, PulsePanelDto } from './pulseLayout'
+import { typeDate } from '../../kernel/ui/typeDate'
 
 // Cliente de la app sobre un fetch simulado (misma política que el real).
 type Handler = (path: string, method: string, url: URL) => Response | unknown
@@ -379,8 +380,8 @@ describe('Pulse — paneles del API', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     expect(await within(dialog).findByText('Indique la fecha Desde.')).toBeInTheDocument()
     expect(mock.writes).toEqual([])
-    await user.type(within(dialog).getByLabelText(/^Desde/), '2026-09-01')
-    await user.type(within(dialog).getByLabelText(/^Hasta/), '2026-09-15')
+    await typeDate(user, within(dialog).getByLabelText(/^Desde/), '2026-09-01')
+    await typeDate(user, within(dialog).getByLabelText(/^Hasta/), '2026-09-15')
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     await waitFor(() =>
       expect(mock.writes).toEqual([

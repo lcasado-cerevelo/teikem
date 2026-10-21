@@ -12,6 +12,7 @@ import { setLang } from '../../kernel/i18n/i18n'
 import { ClientContractsSection } from './ClientContractsSection'
 import type { ClientDetail } from './clientRules'
 import { defaultEffectiveDate } from './contractRules'
+import { shownDate } from '../../kernel/ui/typeDate'
 
 interface Call {
   method: string
@@ -223,7 +224,7 @@ describe('Contratos — nuevo contrato', () => {
     await screen.findByRole('tablist')
     await user.click(screen.getByRole('button', { name: 'Nuevo contrato' }))
     const dialog = await screen.findByRole('dialog', { name: 'Nuevo contrato' })
-    expect((within(dialog).getByLabelText(/Cliente desde/) as HTMLInputElement).value).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect((within(dialog).getByLabelText(/Cliente desde/) as HTMLInputElement).value).toMatch(/^\d{2}\/\d{2}\/\d{4}$/)
     await user.type(within(dialog).getByLabelText(/^Título/), 'Anexo 2')
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/contracts')).toHaveLength(1))
@@ -267,8 +268,8 @@ describe('Pestaña Contrato', () => {
     wrap(READ)
     await screen.findByDisplayValue('Contrato marco')
     expect(screen.getByLabelText('Número')).toHaveValue('ACME-C1')
-    expect(screen.getByLabelText(/Cliente desde/)).toHaveValue('2026-01-15')
-    expect(screen.getByLabelText('Fecha fin')).toHaveValue('2026-12-31')
+    expect(screen.getByLabelText(/Cliente desde/)).toHaveValue('01/15/2026')
+    expect(screen.getByLabelText('Fecha fin')).toHaveValue('12/31/2026')
     expect(screen.getByRole('switch', { name: /Renovación automática/ })).not.toBeChecked()
     expect(screen.getByLabelText('Moneda')).toHaveValue('USD')
     expect(screen.getByLabelText('Disparador de cobro')).toHaveValue('BY_PICKUP')
@@ -577,7 +578,7 @@ describe('Pestaña Tarifas', () => {
     await openTab(user, 'Tarifas')
     await user.click(await screen.findByRole('button', { name: 'Agregar tarifa' }))
     const dialog = await screen.findByRole('dialog', { name: 'Agregar tarifa por servicio' })
-    expect(within(dialog).getByLabelText(/Vigente desde/)).toHaveValue(today())
+    expect(within(dialog).getByLabelText(/Vigente desde/)).toHaveValue(shownDate(today()))
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     expect(await within(dialog).findByText('El tipo de servicio es obligatorio.')).toBeInTheDocument()
     expect(within(dialog).getByText('El tipo de paquete es obligatorio.')).toBeInTheDocument()

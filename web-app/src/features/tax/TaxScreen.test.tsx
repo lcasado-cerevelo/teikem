@@ -8,6 +8,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SessionContext, type Session } from '../../app/session'
 import { setLang } from '../../kernel/i18n/i18n'
 import TaxScreen from './TaxScreen'
+import { typeDate } from '../../kernel/ui/typeDate'
 
 const mock = vi.hoisted(() => ({
   requests: [] as { method: string; path: string; search: string; body: unknown }[],
@@ -112,7 +113,7 @@ describe('TaxScreen', () => {
     const dialog = await screen.findByRole('dialog')
     await user.click(within(dialog).getByRole('button', { name: 'Cerrar vigencia' }))
     expect(await within(dialog).findByText('Escriba el último día en que rige la tasa.')).toBeInTheDocument()
-    await user.type(within(dialog).getByLabelText('Último día de vigencia'), '2026-10-14')
+    await typeDate(user, within(dialog).getByLabelText('Último día de vigencia'), '2026-10-14')
     await user.click(within(dialog).getByRole('button', { name: 'Cerrar vigencia' }))
     await waitFor(() => expect(sent('POST', '/api/v1/tax/rates/1/close')[0]?.body).toEqual({ effectiveTo: '2026-10-14' }))
   })
@@ -128,7 +129,7 @@ describe('TaxScreen', () => {
 
     await user.type(within(dialog).getByLabelText('Código'), 'ivu')
     await user.type(within(dialog).getByLabelText('Nombre'), 'IVU nuevo')
-    await user.type(within(dialog).getByLabelText('Rige desde'), '2026-10-15')
+    await typeDate(user, within(dialog).getByLabelText('Rige desde'), '2026-10-15')
     await user.type(within(dialog).getByLabelText('Código del componente 1'), 'state')
     await user.type(within(dialog).getByLabelText('Nombre del componente 1'), 'Estatal')
     await user.type(within(dialog).getByLabelText('Porcentaje del componente 1'), '10,5')

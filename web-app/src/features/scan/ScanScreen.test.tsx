@@ -12,6 +12,7 @@ import { setLang } from '../../kernel/i18n/i18n'
 import { assigned, callsTo, mock, P1, P2, problem, resetMock } from './scanMock'
 import ScanScreen from './ScanScreen'
 import { resetScanSession } from './scanSession'
+import { shownDate } from '../../kernel/ui/typeDate'
 
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
@@ -287,15 +288,15 @@ describe('Estación de escaneo — pantalla', () => {
     const user = userEvent.setup()
     wrap(SCAN)
     const date = screen.getByLabelText('Ruta del día')
-    expect(date).toHaveValue(tenantToday())
+    expect(date).toHaveValue(shownDate(tenantToday()))
     fireEvent.change(date, { target: { value: '2030-01-15' } })
-    expect(date).toHaveValue('2030-01-15')
+    expect(date).toHaveValue('01/15/2030')
     expect(screen.getByText(/para el/)).toBeInTheDocument()
     await scanCode(user, 'Z1')
     await waitFor(() => expect(posts()).toHaveLength(1))
     expect(posts()[0].body?.planDate).toBe('2030-01-15')
     await user.click(screen.getByRole('button', { name: 'Hoy' }))
-    expect(date).toHaveValue(tenantToday())
+    expect(date).toHaveValue(shownDate(tenantToday()))
     await scanCode(user, 'Z2')
     await waitFor(() => expect(posts()).toHaveLength(2))
     expect(posts()[1].body?.planDate).toBe(tenantToday())

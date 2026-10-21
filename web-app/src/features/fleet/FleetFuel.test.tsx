@@ -8,6 +8,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setLang } from '../../kernel/i18n/i18n'
 import { ALL, callsTo, mock, problem, resetKit, VIEW, wrap } from './fleetTestKit'
 import { maintenanceState } from './maintenanceMock'
+import { typeDate } from '../../kernel/ui/typeDate'
 
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
@@ -128,8 +129,8 @@ describe('Combustible — bitácora', () => {
     await waitFor(() => expect(panelMain.getAllByRole('row')).toHaveLength(2))
     await user.click(panelMain.getByRole('button', { name: 'Limpiar' }))
     await user.selectOptions(panelMain.getByRole('group', { name: 'Fechas' }).querySelector('select[id$="-preset"]') as HTMLSelectElement, 'custom')   // el filtro de fecha es un desplegable de rangos: con «Personalizado» aparecen Desde / Hasta
-    await user.type(panelMain.getByLabelText('Desde'), '2026-10-01')
-    await user.type(panelMain.getByLabelText('Hasta'), '2026-10-05')
+    await typeDate(user, panelMain.getByLabelText('Desde'), '2026-10-01')
+    await typeDate(user, panelMain.getByLabelText('Hasta'), '2026-10-05')
     // «hasta» es exclusivo en el servidor: se manda la medianoche local del día SIGUIENTE (Puerto Rico = UTC-4)
     await waitFor(() => expect(callsTo('GET', '/api/v1/fuel-logs').some((c) => c.url.searchParams.get('fromUtc') === '2026-10-01T04:00:00.000Z' && c.url.searchParams.get('toUtc') === '2026-10-06T04:00:00.000Z')).toBe(true))
     await waitFor(() => expect(panelMain.getAllByRole('row')).toHaveLength(2))
@@ -174,7 +175,7 @@ describe('Combustible — registrar carga', () => {
     expect(await within(dialog).findByText('Los litros deben ser mayores que 0.')).toBeInTheDocument()
     expect(within(dialog).getByText('El costo total no puede ser negativo.')).toBeInTheDocument()
     await user.clear(within(dialog).getByLabelText(/^Fecha/))
-    await user.type(within(dialog).getByLabelText(/^Fecha/), '2099-01-01')
+    await typeDate(user, within(dialog).getByLabelText(/^Fecha/), '2099-01-01')
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     expect(await within(dialog).findByText('La fecha de la carga no puede ser futura.')).toBeInTheDocument()
     expect(callsTo('POST', '/api/v1/fuel-logs')).toHaveLength(0)
@@ -184,7 +185,7 @@ describe('Combustible — registrar carga', () => {
     const { user, dialog } = await openForm()
     await user.selectOptions(within(dialog).getByLabelText(/^Vehículo/), 'V-02 · HGP-118')
     await user.clear(within(dialog).getByLabelText(/^Fecha/))
-    await user.type(within(dialog).getByLabelText(/^Fecha/), '2026-10-11')
+    await typeDate(user, within(dialog).getByLabelText(/^Fecha/), '2026-10-11')
     fireEvent.change(within(dialog).getByLabelText(/^Hora/), { target: { value: '09:30' } })
     await user.type(within(dialog).getByLabelText(/^Litros/), '90')
     await user.type(within(dialog).getByLabelText(/^Costo total/), '400.5')
@@ -214,7 +215,7 @@ describe('Combustible — registrar carga', () => {
     const { user, dialog } = await openForm()
     await user.selectOptions(within(dialog).getByLabelText(/^Vehículo/), 'V-01 · HGR-204')
     await user.clear(within(dialog).getByLabelText(/^Fecha/))
-    await user.type(within(dialog).getByLabelText(/^Fecha/), '2026-10-11')
+    await typeDate(user, within(dialog).getByLabelText(/^Fecha/), '2026-10-11')
     fireEvent.change(within(dialog).getByLabelText(/^Hora/), { target: { value: '23:00' } })
     await user.type(within(dialog).getByLabelText(/^Litros/), '30')
     await user.type(within(dialog).getByLabelText(/^Costo total/), '120')
@@ -251,7 +252,7 @@ describe('Combustible — editar y quitar', () => {
     await waitFor(() => expect(within(dialog).getByLabelText(/^Vehículo/)).toHaveValue('v-1'))
     expect(within(dialog).getByLabelText(/^Vehículo/)).toBeDisabled()
     expect(within(dialog).getByText('El vehículo de una carga no se cambia; quítela y registre otra.')).toBeInTheDocument()
-    expect(within(dialog).getByLabelText(/^Fecha/)).toHaveValue('2026-09-27')
+    expect(within(dialog).getByLabelText(/^Fecha/)).toHaveValue('09/27/2026')
     expect(within(dialog).getByLabelText(/^Hora/)).toHaveValue('10:00')
     expect(within(dialog).getByLabelText(/^Litros/)).toHaveValue(37)
     expect(within(dialog).getByLabelText('Chofer')).toHaveValue('d-1')

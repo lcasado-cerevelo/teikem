@@ -2719,6 +2719,18 @@
     }
   },
   "ui": {
+    "date": {
+      "calendar": "Calendario",
+      "openCalendar": "Abrir el calendario",
+      "prevMonth": "Mes anterior",
+      "nextMonth": "Mes siguiente",
+      "today": "Hoy",
+      "clear": "Limpiar",
+      "time": "Hora",
+      "period": "a. m. o p. m.",
+      "invalid": "Fecha inválida: use {format}.",
+      "pasteRejected": "No se entiende esa fecha: use {format}."
+    },
     "phone": {
       "countryCode": "Prefijo",
       "countryCodeHelp": "Prefijo internacional, por ejemplo +1.",

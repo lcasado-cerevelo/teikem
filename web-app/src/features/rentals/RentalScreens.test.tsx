@@ -12,6 +12,7 @@ import { setLang } from '../../kernel/i18n/i18n'
 import RentalDetailScreen from './RentalDetailScreen'
 import RentalListScreen from './RentalListScreen'
 import type { RentalDto } from './rentalRules'
+import { typeDate } from '../../kernel/ui/typeDate'
 
 interface Call {
   method: string
@@ -269,14 +270,14 @@ describe('Rentas: ficha', () => {
     await user.click(await screen.findByRole('button', { name: 'Extender' }))
     const dialog = screen.getByRole('dialog', { name: 'Extender la renta REN-00007' })
     const date = within(dialog).getByLabelText(/Nueva fecha de recogido/)
-    await user.type(date, '2026-10-10')
+    await typeDate(user, date, '2026-10-10')
     await user.click(within(dialog).getByRole('button', { name: 'Extender' }))
     expect(await within(dialog).findByText('La nueva fecha de recogido debe ser posterior a la actual (2026-10-10).')).toBeInTheDocument()
     expect(within(dialog).getByText('Indique el motivo de la extensión.')).toBeInTheDocument()
     expect(posts('/extensions')).toHaveLength(0)
 
     await user.clear(date)
-    await user.type(date, '2026-10-20')
+    await typeDate(user, date, '2026-10-20')
     await user.type(within(dialog).getByLabelText(/^Motivo/), 'Dos semanas más')
     // el servidor manda su 400 (p. ej. otro usuario ya extendió): queda bajo el campo
     mock.post = () => problem(400, 'La nueva fecha de recogido debe ser posterior a la actual (2026-10-25).', 'validation', {

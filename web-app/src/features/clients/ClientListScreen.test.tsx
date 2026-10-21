@@ -194,7 +194,7 @@ describe('Clientes — alta', () => {
     // contrato inicial encendido y título por omisión
     expect(within(dialog).getByRole('switch', { name: /Crear contrato inicial/ })).toBeChecked()
     expect(within(dialog).getByLabelText(/Título del contrato/)).toHaveValue('Contrato marco')
-    expect((within(dialog).getByLabelText(/Cliente desde/) as HTMLInputElement).value).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect((within(dialog).getByLabelText(/Cliente desde/) as HTMLInputElement).value).toMatch(/^\d{2}\/\d{2}\/\d{4}$/)
     await user.type(within(dialog).getByLabelText(/^Nombre/), 'Nuevo SA')
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/clients')).toHaveLength(1))

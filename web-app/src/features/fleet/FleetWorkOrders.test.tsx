@@ -8,6 +8,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setLang } from '../../kernel/i18n/i18n'
 import { ALL, callsTo, mock, problem, resetKit, VIEW, wrap } from './fleetTestKit'
 import { maintenanceState } from './maintenanceMock'
+import { typeDate } from '../../kernel/ui/typeDate'
 
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
@@ -117,8 +118,8 @@ describe('Órdenes de trabajo — lista', () => {
     await waitFor(() => expect(panel.queryByText('OT-00001')).toBeNull())
     await user.click(panel.getByRole('button', { name: 'Limpiar' }))
     await user.selectOptions(panel.getByRole('group', { name: 'Fechas' }).querySelector('select[id$="-preset"]') as HTMLSelectElement, 'custom')   // el filtro de fecha es un desplegable de rangos: con «Personalizado» aparecen Desde / Hasta
-    await user.type(panel.getByLabelText('Desde'), '2026-10-01')
-    await user.type(panel.getByLabelText('Hasta'), '2026-10-31')
+    await typeDate(user, panel.getByLabelText('Desde'), '2026-10-01')
+    await typeDate(user, panel.getByLabelText('Hasta'), '2026-10-31')
     await waitFor(() => expect(callsTo('GET', '/api/v1/maintenance-work-orders').some((c) => c.url.searchParams.get('from') === '2026-10-01' && c.url.searchParams.get('to') === '2026-10-31')).toBe(true))
   })
 
@@ -221,7 +222,7 @@ describe('Órdenes de trabajo — ficha', () => {
     expect(ficha.getByText('HGR-204')).toBeInTheDocument()
     expect(ficha.getByText('Cambio de aceite')).toBeInTheDocument()
     expect(ficha.getByLabelText('Proveedor')).toHaveValue('AutoZone PR')
-    expect(ficha.getByLabelText('Fecha programada')).toHaveValue('2026-10-10')
+    expect(ficha.getByLabelText('Fecha programada')).toHaveValue('10/10/2026')
     expect(await screen.findByRole('heading', { level: 2, name: 'Tareas' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 2, name: 'Historial de estatus' })).toBeInTheDocument()
     await user.click(ficha.getByRole('button', { name: 'Cerrar ficha' }))
@@ -443,7 +444,7 @@ describe('Órdenes de trabajo — Iniciar, Cerrar y Cancelar', () => {
     const ficha = await detail('OT-00002')
     await user.click(await ficha.findByRole('button', { name: 'Cerrar orden' }))
     const dialog = await screen.findByRole('dialog', { name: 'Cerrar la orden OT-00002' })
-    expect(within(dialog).getByLabelText<HTMLInputElement>('Fecha de cierre').value).toMatch(/^\d{4}-\d{2}-\d{2}$/) // hoy de la compañía
+    expect(within(dialog).getByLabelText<HTMLInputElement>('Fecha de cierre').value).toMatch(/^\d{2}\/\d{2}\/\d{4}$/) // hoy de la compañía, con su formato
     await user.click(within(dialog).getByRole('button', { name: 'Cerrar orden' }))
     expect(await within(dialog).findByText('La orden tiene 1 tarea(s) sin completar; márquelas como completadas o quítelas antes de cerrarla.')).toBeInTheDocument()
     expect(screen.getByRole('dialog', { name: 'Cerrar la orden OT-00002' })).toBeInTheDocument()
@@ -477,7 +478,7 @@ describe('Órdenes de trabajo — Iniciar, Cerrar y Cancelar', () => {
     await user.click(await ficha.findByRole('button', { name: 'Cerrar orden' }))
     const dialog = await screen.findByRole('dialog', { name: 'Cerrar la orden OT-00003' })
     await user.clear(within(dialog).getByLabelText('Fecha de cierre'))
-    await user.type(within(dialog).getByLabelText('Fecha de cierre'), '2099-01-01')
+    await typeDate(user, within(dialog).getByLabelText('Fecha de cierre'), '2099-01-01')
     await user.type(within(dialog).getByLabelText(/^Odómetro al cerrar/), '48300')
     await user.click(within(dialog).getByRole('button', { name: 'Cerrar orden' }))
     expect(await within(dialog).findByText('La fecha de cierre no puede ser futura.')).toBeInTheDocument()

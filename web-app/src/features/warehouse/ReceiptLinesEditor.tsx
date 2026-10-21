@@ -18,7 +18,7 @@ import { createContext, useContext, useMemo, useRef, useState } from 'react'
 import type { components } from '../../kernel/api/schema'
 import { useLang, useT } from '../../kernel/i18n'
 import { formatQuantity } from '../../kernel/i18n/numberFormat'
-import { ConfirmDialog, DataTable, EmptyState, IconCopy, IconGrid, IconTag, IconTrash, toast, useElementWidth, type DataColumn, type RowAction } from '../../kernel/ui'
+import { ConfirmDialog, type DataColumn, DataTable, DateField, EmptyState, IconCopy, IconGrid, IconTag, IconTrash, type RowAction, toast, useElementWidth } from '../../kernel/ui'
 import { IconAlert } from '../../kernel/ui/icons'
 import { productLabel, useReceiptTargetSuggestions, type ReceiptDetailDto } from './api'
 import { formatNumber } from './lineRules'
@@ -177,21 +177,19 @@ function InlineCapture({ row }: { row: LineRow }) {
           disabled={row.saving}
           onChange={(e) => state.inputLot(row.key, 'lot', e.target.value)}
         />
-        <input
-          type="date"
+        <DateField
           aria-label={t('warehouse.receipts.lines.manufactureOf', { n })}
           title={t('warehouse.receipts.fields.manufactureDate')}
           value={row.lotMfg}
           disabled={row.saving}
-          onChange={(e) => state.inputLot(row.key, 'lotMfg', e.target.value)}
+          onChange={(v) => state.inputLot(row.key, 'lotMfg', v)}
         />
-        <input
-          type="date"
+        <DateField
           aria-label={t('warehouse.receipts.lines.expiryOf', { n })}
           title={t('warehouse.receipts.fields.expiryDate')}
           value={row.lotExp}
           disabled={row.saving}
-          onChange={(e) => state.inputLot(row.key, 'lotExp', e.target.value)}
+          onChange={(v) => state.inputLot(row.key, 'lotExp', v)}
         />
       </span>
       {row.errors.lot && (

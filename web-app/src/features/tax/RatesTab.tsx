@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { Chip, DataTable, Modal, Panel, Spinner, toast, type ChipTone, type DataColumn } from '../../kernel/ui'
+import { Chip, type ChipTone, type DataColumn, DataTable, DateField, Modal, Panel, Spinner, toast } from '../../kernel/ui'
 import { IconCash, IconClock } from '../../kernel/ui/screenIcons'
 import { componentsText, nextDay, parsePercent, rateError, sumPercent, type ComponentDraft, type RateDraft } from './taxRules'
 import { useTaxMutations, useTaxRates, type TaxRateDto } from './taxApi'
@@ -77,11 +77,11 @@ function RateModal({ base, onClose }: { base: TaxRateDto | null; onClose: () => 
         <div className="r2">
           <div className="f">
             <label htmlFor="tx-from">{t('tax.rates.from')}</label>
-            <input id="tx-from" type="date" value={draft.from} onChange={(e) => set({ from: e.target.value })} />
+            <DateField id="tx-from" value={draft.from} onChange={(v) => set({ from: v })} />
           </div>
           <div className="f">
             <label htmlFor="tx-to">{t('tax.rates.to')}</label>
-            <input id="tx-to" type="date" value={draft.to} onChange={(e) => set({ to: e.target.value })} />
+            <DateField id="tx-to" value={draft.to} onChange={(v) => set({ to: v })} />
             <p className="help">{t('tax.rates.toHelp')}</p>
           </div>
         </div>
@@ -150,7 +150,7 @@ function CloseModal({ rate, onClose }: { rate: TaxRateDto; onClose: () => void }
         <p>{t('tax.rates.closeHelp')}</p>
         <div className="f">
           <label htmlFor="tx-close">{t('tax.rates.closeDate')}</label>
-          <input id="tx-close" type="date" min={rate.effectiveFrom ?? undefined} value={date} onChange={(e) => setDate(e.target.value)} />
+          <DateField id="tx-close" min={rate.effectiveFrom ?? undefined} value={date} onChange={(v) => setDate(v)} />
         </div>
         {error && <p className="ferr" role="alert">{error}</p>}
       </div>

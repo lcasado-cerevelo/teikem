@@ -5,7 +5,7 @@ import { Can } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { Chip, ConfirmDialog, DataTable, Modal, Panel, Spinner, toast, type DataColumn } from '../../kernel/ui'
+import { Chip, ConfirmDialog, type DataColumn, DataTable, DateField, Modal, Panel, Spinner, toast } from '../../kernel/ui'
 import { IconCash } from '../../kernel/ui/screenIcons'
 import {
   useReceivables,
@@ -128,7 +128,7 @@ function PaymentDialog({ invoice, onClose }: { invoice: InvoiceDto; onClose: () 
         </div>
         <div className="f">
           <label htmlFor="pay-date">{t('billing.pay.date')}</label>
-          <input id="pay-date" type="date" max={today} min={invoice.issueDate ?? undefined} value={form.paidDate} onChange={(e) => set({ paidDate: e.target.value })} />
+          <DateField id="pay-date" max={today} min={invoice.issueDate ?? undefined} value={form.paidDate} onChange={(v) => set({ paidDate: v })} />
         </div>
         <div className="f">
           <label htmlFor="pay-ref">{t('billing.pay.reference')}</label>
@@ -279,11 +279,11 @@ export function StatementModal({ clientId, clientName, onClose, onOpenInvoice }:
         <div className="qrow tax-filters">
           <div className="f">
             <label htmlFor="st-from">{t('billing.new.from')}</label>
-            <input id="st-from" type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
+            <DateField id="st-from" value={from} max={to} onChange={(v) => setFrom(v)} />
           </div>
           <div className="f">
             <label htmlFor="st-to">{t('billing.new.to')}</label>
-            <input id="st-to" type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} />
+            <DateField id="st-to" value={to} min={from} onChange={(v) => setTo(v)} />
           </div>
         </div>
         {stmt.isError ? (

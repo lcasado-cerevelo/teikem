@@ -8,7 +8,7 @@ import { useCan, useModule } from '../../kernel/access'
 import { tenantToday } from '../../kernel/api/tenantZone'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { EmptyState, IconChart, IconClock, IconPin, IconRoute } from '../../kernel/ui'
+import { DateField, EmptyState, IconChart, IconClock, IconPin, IconRoute } from '../../kernel/ui'
 import { IconRefreshCw } from '../../kernel/ui/actionIcons'
 import { IconAlert } from '../../kernel/ui/icons'
 import { useDispatchZones } from '../drivers/api'
@@ -119,7 +119,7 @@ export default function MonitorScreen() {
           <div className="act">
             <div className="mon-date">
               <label htmlFor="monitor-date">{t('monitor.date')}</label>
-              <input id="monitor-date" type="date" value={date} onChange={(e) => changeDate(e.target.value)} />
+              <DateField id="monitor-date" value={date} onChange={(v) => changeDate(v)} />
               {date !== today && (
                 <button type="button" className="btn sm" onClick={() => changeDate(today)}>
                   {t('monitor.todayButton')}

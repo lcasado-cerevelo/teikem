@@ -10,24 +10,7 @@ import { Can, useCan } from '../../kernel/access'
 import { utcFromZonedInput, zonedInputFromUtc } from '../../kernel/api/tenantZone'
 import { StatusChip, StatusPipeline, useLookups, useStatuses } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
-import {
-  DataTable,
-  DateRangeFilter,
-  EMPTY_RANGE,
-  Field,
-  Filters,
-  Form,
-  Modal,
-  Panel,
-  Select,
-  SelectFilter,
-  SearchSelect,
-  TextInput,
-  toast,
-  type DataColumn,
-  type DateRange,
-  type RowAction,
-} from '../../kernel/ui'
+import { type DataColumn, DataTable, type DateRange, DateRangeFilter, DateTimeField, EMPTY_RANGE, Field, Filters, Form, Modal, Panel, type RowAction, SearchSelect, Select, SelectFilter, TextInput, toast } from '../../kernel/ui'
 import { useFieldInfo } from '../../kernel/ui/formContext'
 import { useAsns, useDockAppointments, useSaveDockAppointment, useWarehouseDocks, type DockAppointmentDto } from './api'
 import { WarehousePicker, WarehousePickerInput } from './pickers'
@@ -41,11 +24,10 @@ function DateTimeInput() {
   const { control } = useFormContext()
   const { field } = useController({ name: info.name, control })
   return (
-    <input
+    <DateTimeField
       id={info.id}
-      type="datetime-local"
       value={(field.value as string | undefined) ?? ''}
-      onChange={(e) => field.onChange(e.target.value)}
+      onChange={(v) => field.onChange(v)}
       onBlur={field.onBlur}
       aria-invalid={info.invalid || undefined}
       aria-required={info.required || undefined}

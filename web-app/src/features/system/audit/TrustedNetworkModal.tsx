@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react'
 import { utcFromZonedInput, zonedInputFromUtc } from '../../../kernel/api/tenantZone'
 import { applyProblemDetails } from '../../../kernel/api/client'
 import { useLang, useT } from '../../../kernel/i18n/useT'
-import { Modal } from '../../../kernel/ui'
+import { DateField, Modal } from '../../../kernel/ui'
 import {
   useCreateTrustedNetwork,
   useUpdateTrustedNetwork,
@@ -235,7 +235,7 @@ function ModalBody({ entry, initialCidr, currentIp, onClose }: TrustedNetworkMod
         <div className="r2">
           <div className="f">
             <label htmlFor="trn-exp">{t('system.audit.trusted.modal.expires')}</label>
-            <input id="trn-exp" type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
+            <DateField id="trn-exp" value={expires} onChange={(v) => setExpires(v)} />
             <p className="set-d">{t('system.audit.trusted.modal.expiresHelp')}</p>
             {errors.expires && <p className="ferr" role="alert">{errors.expires}</p>}
           </div>

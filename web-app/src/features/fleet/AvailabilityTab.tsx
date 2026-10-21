@@ -8,7 +8,7 @@ import { tenantToday } from '../../kernel/api/tenantZone'
 import { useLookups } from '../../kernel/catalogs'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { Chip, DataTable, FilterScope, IconTruck, IconUsers, matchesQ, Panel, QBox, Spinner, type DataColumn } from '../../kernel/ui'
+import { Chip, type DataColumn, DataTable, DateField, FilterScope, IconTruck, IconUsers, matchesQ, Panel, QBox, Spinner } from '../../kernel/ui'
 import { useFleetAvailability, type AvailabilityIssue, type DriverAvailability, type VehicleAvailability } from './api'
 import { issueText, sortedIssues } from './fleetRules'
 
@@ -106,13 +106,12 @@ export function AvailabilityTab() {
             <QBox value={q} onChange={setQ} placeholder={t('ui.qbox.placeholder')} />
             <div className="f flt-days">
               <label htmlFor="flt-av-date">{t('fleet.avail.date')}</label>
-              <input
+              <DateField
                 id="flt-av-date"
-                type="date"
                 value={date}
-                onChange={(e) => {
-                  setDate(e.target.value)
-                  if (e.target.value) setAsked(e.target.value)
+                onChange={(v) => {
+                  setDate(v)
+                  if (v) setAsked(v)
                 }}
               />
             </div>

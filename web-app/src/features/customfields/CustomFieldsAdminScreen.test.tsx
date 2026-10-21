@@ -370,7 +370,8 @@ describe('Campos personalizados — alta', () => {
     await user.selectOptions(within(dialog).getByLabelText(/^Tipo/), 'DATETIME')
     await user.type(within(dialog).getByLabelText(/^Clave/), 'cita')
     await user.type(labelEs(), 'Cita')
-    fireEvent.change(within(dialog).getByLabelText('Valor por defecto'), { target: { value: '2026-10-12T09:30' } })
+    fireEvent.change(within(dialog).getByLabelText('Valor por defecto'), { target: { value: '2026-10-12' } })   // la fecha; la hora va aparte
+    await user.type(within(dialog).getByLabelText('Hora'), '0930')
     await user.click(within(dialog).getByRole('button', { name: 'Guardar campo' }))
     await waitFor(() => expect(writes()).toHaveLength(1))
     expect(writes()[0].body).toMatchObject({ dataType: 'DATETIME', defaultValue: '2026-10-12T13:30:00.000Z' })

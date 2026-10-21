@@ -11,6 +11,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccessProvider } from '../../kernel/access'
 import { setLang } from '../../kernel/i18n/i18n'
 import CycleCountListScreen from './CycleCountListScreen'
+import { typeDate } from '../../kernel/ui/typeDate'
 
 interface Call {
   method: string
@@ -466,8 +467,14 @@ describe('Conteo de lo cambiado', () => {
     expect(within(dialog).getByText('1 posición(es) ya tienen un conteo pendiente (se saltan)')).toBeInTheDocument()
     expect(within(dialog).getByText('Primera vez en este almacén: desde el inicio del día.')).toBeInTheDocument()
     // fechas de la vista previa, en hora de Puerto Rico
-    expect(within(dialog).getByLabelText('Desde')).toHaveValue('2026-09-30T00:00')
-    expect(within(dialog).getByLabelText('Hasta')).toHaveValue('2026-09-30T12:00')
+    expect(within(dialog).getByLabelText('Desde')).toHaveValue('09/30/2026')
+    expect(within(dialog).getByLabelText('Hasta')).toHaveValue('09/30/2026')
+    const times = within(dialog).getAllByLabelText('Hora')   // la hora va aparte, en el formato de la compañía (12 horas)
+    expect(times[0]).toHaveValue('12:00')   // 00:00 = 12:00 a. m.
+    expect(times[1]).toHaveValue('12:00')   // 12:00 = 12:00 p. m.
+    const periods = within(dialog).getAllByLabelText('a. m. o p. m.')
+    expect(periods[0]).toHaveValue('AM')
+    expect(periods[1]).toHaveValue('PM')
     expect(within(dialog).getByRole('switch', { name: 'Incluir posiciones vacías' })).toBeChecked()
     const prev = calls('GET', '/api/v1/cycle-counts/changes-preview').at(-1)!
     expect(prev.url.searchParams.get('warehousePublicId')).toBe(WH)
@@ -491,8 +498,10 @@ describe('Conteo de lo cambiado', () => {
     expect(await within(dialog).findByText(mock.problem)).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Crear conteos' })).toBeDisabled()
     const from = within(dialog).getByLabelText('Desde')
-    await user.clear(from)
-    await user.type(from, '2026-09-30T10:00')
+    await typeDate(user, from, '2026-09-30')
+    const fromTime = within(dialog).getAllByLabelText('Hora')[0]
+    await user.clear(fromTime)
+    await user.type(fromTime, '1000')
     await waitFor(() => expect(calls('GET', '/api/v1/cycle-counts/changes-preview').at(-1)!.url.searchParams.get('fromUtc')).toBe('2026-09-30T14:00:00.000Z'))
     expect(calls('GET', '/api/v1/cycle-counts/changes-preview').at(-1)!.url.searchParams.get('toUtc')).toBe('2026-09-30T16:00:00.000Z')
     expect(calls('POST', '/api/v1/cycle-counts/from-changes')).toHaveLength(0)

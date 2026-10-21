@@ -12,7 +12,7 @@ import { applyProblemDetails } from '../../kernel/api/problem'
 import { tenantToday } from '../../kernel/api/tenantZone'
 import { useFormat } from '../../kernel/format'
 import { useLang, useT } from '../../kernel/i18n'
-import { ClientPicker, Filters, IconScan, IconVolume, IconVolumeOff, SelectFilter, toast, useAppliedFilters } from '../../kernel/ui'
+import { ClientPicker, DateField, Filters, IconScan, IconVolume, IconVolumeOff, SelectFilter, toast, useAppliedFilters } from '../../kernel/ui'
 import { IconDoc } from '../../kernel/ui/screenIcons'
 import { usePrinting } from '../printing/usePrinting'
 import { missingReportSpec } from './missingReport'
@@ -292,12 +292,11 @@ export default function ScanScreen() {
         {reappeared && <ScanReappearedConfirm preview={reappeared.preview} busy={closeCount.isPending} onConfirm={() => closeOrderCount(reappeared.orderPublicId, true)} onCancel={() => setReappeared(null)} />}
         <div className="scn-date">
           <label htmlFor="scan-plan-date">{t('scan.planDate.label')}</label>
-          <input
+          <DateField
             id="scan-plan-date"
-            type="date"
             value={shownDate}
-            onChange={(e) => {
-              setPlanDate(e.target.value === '' || e.target.value === today ? null : e.target.value)
+            onChange={(v) => {
+              setPlanDate(v === '' || v === today ? null : v)
               focusInput()
             }}
           />

@@ -7,6 +7,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { tenantToday } from '../../kernel/api/tenantZone'
 import { setLang } from '../../kernel/i18n/i18n'
 import { ALL, callsTo, mock, problem, resetKit, TRIPS, wrap } from './driversTestKit'
+import { shownDate } from '../../kernel/ui/typeDate'
 
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
@@ -82,7 +83,7 @@ describe('Registrar viaje', () => {
     await user.click(within(p).getByRole('button', { name: /Registrar viaje/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Registrar viaje pagado' })
     await within(dialog).findByRole('option', { name: 'Vagón del muelle' })
-    expect(within(dialog).getByLabelText(/^Fecha/)).toHaveValue(today())
+    expect(within(dialog).getByLabelText(/^Fecha/)).toHaveValue(shownDate(today()))
     await user.selectOptions(within(dialog).getByLabelText(/^Tipo de viaje/), 'Vagón del muelle')
     await user.type(within(dialog).getByLabelText('Notas'), '  Muelle 5 ')
     const before = callsTo('GET', '/api/v1/drivers/d-1/trips').length

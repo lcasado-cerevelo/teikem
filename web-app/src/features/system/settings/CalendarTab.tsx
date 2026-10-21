@@ -4,7 +4,7 @@
 import { useMemo, useState } from 'react'
 import { formatDate, formatDayMonth, todayIso, toFormatSettings } from '../../../kernel/format'
 import { useT } from '../../../kernel/i18n'
-import { Chip, ConfirmDialog, DataTable, IconClock, IconDoc, Panel, toast, type DataColumn, type RowAction } from '../../../kernel/ui'
+import { Chip, ConfirmDialog, type DataColumn, DataTable, DateField, IconClock, IconDoc, Panel, type RowAction, toast } from '../../../kernel/ui'
 import { IconTrash } from '../../../kernel/ui/actionIcons'
 import { problemText } from '../../warehouse/problemText'
 import { nextWorkDay, toggleWorkDay, weekOrder } from '../tenantCalendar'
@@ -139,7 +139,7 @@ export function CalendarTab({ settings, canEdit }: { settings: TenantSettingsDto
           <div className="set-hol-add">
             <div className="f">
               <label htmlFor="hol-date">{t('system.settings.calendar.colDate')}</label>
-              <input id="hol-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <DateField id="hol-date" value={date} onChange={(v) => setDate(v)} />
             </div>
             <div className="f grow">
               <label htmlFor="hol-name">{t('system.settings.calendar.holidayName')}</label>

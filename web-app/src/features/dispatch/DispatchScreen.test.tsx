@@ -12,6 +12,7 @@ import { tenantToday } from '../../kernel/api/tenantZone'
 import { setLang } from '../../kernel/i18n/i18n'
 import DispatchScreen from './DispatchScreen'
 import { callsMatching, callsTo, mock, problem, resetMock, stop, tripDetail, U1, U2, U3, type Call } from './dispatchMock'
+import { typeDate, shownDate } from '../../kernel/ui/typeDate'
 
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
@@ -702,11 +703,10 @@ describe('nueva ruta', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Crear ruta' }))
     expect(await within(dialog).findByText('Indique la fecha de la ruta.')).toBeInTheDocument()
     expect(callsTo('POST', '/api/v1/trips')).toHaveLength(0)
-    await user.type(date, '2020-01-01')
+    await typeDate(user, date, '2020-01-01')
     await user.click(within(dialog).getByRole('button', { name: 'Crear ruta' }))
     expect(await within(dialog).findByText('La fecha de la ruta no puede ser anterior a ayer ni posterior a 60 días.')).toBeInTheDocument()
-    await user.clear(date)
-    await user.type(date, tenantToday())
+    await typeDate(user, date, tenantToday())
     await waitFor(() => expect(within(dialog).getByLabelText('Zona de despacho')).toBeInTheDocument())
     await waitFor(() => expect(within(within(dialog).getByLabelText('Chofer')).getAllByRole('option').length).toBeGreaterThan(1))
     await user.selectOptions(within(dialog).getByLabelText('Zona de despacho'), '2')
@@ -868,7 +868,7 @@ describe('fecha de las rutas', () => {
     await screen.findByRole('list', { name: 'Envíos en esta ruta' })
     expect(callsTo('GET', '/api/v1/trips')[0].url.searchParams.get('date')).toBe(tenantToday())
     const date = screen.getByLabelText('Fecha de las rutas')
-    expect(date).toHaveValue(tenantToday())
+    expect(date).toHaveValue(shownDate(tenantToday()))
     expect(screen.queryByRole('button', { name: 'Hoy' })).toBeNull()
     fireEvent.change(date, { target: { value: '2026-11-02' } })
     expect(where()).toContain('date=2026-11-02')

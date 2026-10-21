@@ -9,6 +9,7 @@ import { AccessProvider } from '../../kernel/access'
 import { setLang } from '../../kernel/i18n/i18n'
 import { ClientContractsSection } from './ClientContractsSection'
 import type { ClientDetail } from './clientRules'
+import { typeDate } from '../../kernel/ui/typeDate'
 
 interface Call {
   method: string
@@ -121,7 +122,7 @@ describe('Cotizador — cotizar', () => {
     await user.click(screen.getByRole('button', { name: 'Agregar línea' }))
     await fillLine(user, await screen.findByRole('group', { name: 'Línea 2' }), 'STANDARD', 'ENVELOPE', '1')
     await user.type(screen.getByLabelText('Monto COD'), '200')
-    await user.type(screen.getByLabelText('Cotizar a la fecha'), '2026-10-12')
+    await typeDate(user, screen.getByLabelText('Cotizar a la fecha'), '2026-10-12')
     await user.click(screen.getByRole('button', { name: 'Cotizar' }))
 
     await waitFor(() => expect(quoteCalls()).toHaveLength(1))

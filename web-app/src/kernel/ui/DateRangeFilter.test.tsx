@@ -7,6 +7,7 @@ import { setLang } from '../i18n/i18n'
 import type { DatePresetMode } from './datePresets'
 import { EMPTY_RANGE, type DateRange } from './dateRange'
 import { DateRangeFilter } from './Filters'
+import { typeDate } from './typeDate'
 
 // «Hoy» fijo: lunes 2026-10-12, mediodía en Puerto Rico (zona de la compañía por omisión: UTC−4).
 const NOW = new Date('2026-10-12T16:00:00Z')
@@ -102,28 +103,32 @@ describe('DateRangeFilter compacto', () => {
     await user.selectOptions(preset(), 'custom')
     const from = screen.getByLabelText('Desde')
     const to = screen.getByLabelText('Hasta')
-    expect(from).toHaveValue('2026-10-12')
-    expect(to).toHaveValue('2026-10-12')
+    expect(from).toHaveValue('10/12/2026')
+    expect(to).toHaveValue('10/12/2026')
     expect(onValue).not.toHaveBeenCalled() // escoger «Personalizado» no cambia el filtro
 
     await user.clear(from)
-    await user.type(from, '2026-10-05')
+    await typeDate(user, from, '2026-10-05')
     expect(onValue).toHaveBeenLastCalledWith({ from: '2026-10-05', to: '2026-10-12' })
     // ahora coincide con ninguna opción; el desplegable sigue en «Personalizado» y los campos siguen a la vista
     expect(preset()).toHaveValue('custom')
     await user.clear(to)
-    await user.type(to, '2026-10-05')
+    await typeDate(user, to, '2026-10-05')
     expect(onValue).toHaveBeenLastCalledWith({ from: '2026-10-05', to: '2026-10-05' })
     expect(preset()).toHaveValue('custom')
     expect(screen.getByLabelText('Desde')).toBeInTheDocument()
   })
 
-  it('«Desde» no pasa de «Hasta» y «Hasta» no es anterior a «Desde» (min / max de los campos)', async () => {
+  it('«Desde» no pasa de «Hasta» y «Hasta» no es anterior a «Desde» (en el calendario esos días no se pueden elegir)', async () => {
     const user = userEvent.setup()
     render(<Host initial={{ from: '2026-10-05', to: '2026-10-20' }} />)
     await user.selectOptions(preset(), 'custom')
-    expect(screen.getByLabelText('Desde')).toHaveAttribute('max', '2026-10-20')
-    expect(screen.getByLabelText('Hasta')).toHaveAttribute('min', '2026-10-05')
+    await user.click(screen.getByLabelText('Desde'))
+    expect(document.querySelector('button[data-iso="2026-10-20"]')).toBeEnabled()
+    expect(document.querySelector('button[data-iso="2026-10-21"]')).toBeDisabled()
+    await user.click(screen.getByLabelText('Hasta'))
+    expect(document.querySelector('button[data-iso="2026-10-05"]')).toBeEnabled()
+    expect(document.querySelector('button[data-iso="2026-10-04"]')).toBeDisabled()
   })
 
   it('«Personalizado» sin fechas todavía no filtra; «Limpiar» desde afuera vuelve a «Todas las fechas» y cierra los campos', async () => {

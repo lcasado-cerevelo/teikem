@@ -9,6 +9,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccessProvider } from '../../kernel/access'
 import { setLang } from '../../kernel/i18n/i18n'
 import OrderListScreen from './OrderListScreen'
+import { typeDate } from '../../kernel/ui/typeDate'
 
 interface Call {
   method: string
@@ -210,9 +211,9 @@ describe('Envíos — lista', () => {
     await screen.findByText('Farmacia Central')
     // el filtro de fecha es un desplegable de rangos: con «Personalizado» aparecen los dos campos de fecha
     await user.selectOptions(document.querySelector('.filters select[id$="-preset"]') as HTMLSelectElement, 'custom')
-    const dates = document.querySelectorAll<HTMLInputElement>('.filters input[type="date"]')
-    await user.type(dates[0], '2026-10-01')
-    await user.type(dates[1], '2026-10-31')
+    const dates = document.querySelectorAll<HTMLInputElement>('.filters .datefield input')
+    await typeDate(user, dates[0], '2026-10-01')
+    await typeDate(user, dates[1], '2026-10-31')
     await waitFor(() => {
       const q = lastOrdersQuery()
       expect(q.get('from')).toBe('2026-10-01')

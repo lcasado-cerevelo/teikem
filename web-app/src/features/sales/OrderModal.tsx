@@ -7,7 +7,7 @@ import { Can, useCan } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { Chip, ClientPicker, ConfirmDialog, DataTable, Modal, Spinner, toast, type DataColumn } from '../../kernel/ui'
+import { Chip, ClientPicker, ConfirmDialog, type DataColumn, DataTable, DateField, Modal, Spinner, toast } from '../../kernel/ui'
 import { PackModal } from '../warehouse/PackModal'
 import { ProductPicker, WarehousePicker } from '../warehouse/pickers'
 import { draftError, draftSubtotal, effectivePrice, lineAmount, parseNumber, toRequest, type LineDraft, type OrderDraft } from './salesRules'
@@ -207,7 +207,7 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
         <div className="r2">
           <div className="f">
             <label htmlFor="so-req">{t('sales.requiredDate')}</label>
-            <input id="so-req" type="date" value={draft.requiredDate} onChange={(e) => set({ requiredDate: e.target.value })} />
+            <DateField id="so-req" value={draft.requiredDate} onChange={(v) => set({ requiredDate: v })} />
           </div>
           <div className="f">
             <label htmlFor="so-notes">{t('sales.notes')}</label>

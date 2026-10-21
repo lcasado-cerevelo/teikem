@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { Chip, ClientPicker, Panel, Spinner } from '../../kernel/ui'
+import { Chip, ClientPicker, DateField, Panel, Spinner } from '../../kernel/ui'
 import { IconCash } from '../../kernel/ui/screenIcons'
 import { useTaxMutations, useTaxSettings, type TaxCalcDto } from './taxApi'
 
@@ -61,7 +61,7 @@ export function SimulatorTab() {
               </div>
               <div className="f">
                 <label htmlFor="tx-sdate">{t('tax.sim.date')}</label>
-                <input id="tx-sdate" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                <DateField id="tx-sdate" value={date} onChange={(v) => setDate(v)} />
                 <p className="help">{t('tax.sim.dateHelp')}</p>
               </div>
             </div>

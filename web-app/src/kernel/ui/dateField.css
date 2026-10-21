@@ -1,0 +1,30 @@
+/* Campo de fecha único (DateField): texto con máscara + botón de calendario, y el calendario fijo en un portal (no lo recorta ningún panel). */
+.datefield{position:relative;display:inline-flex;align-items:center;width:100%;max-width:100%}
+.f .datefield{display:flex}
+.datefield input{width:100%;padding-right:34px}
+.datefield-btn{position:absolute;right:4px;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:0;border-radius:7px;background:transparent;color:var(--muted);cursor:pointer}
+.datefield-btn:hover:not(:disabled){background:var(--panel-2);color:var(--text)}
+.datefield-btn:disabled{opacity:.5;cursor:default}
+.datefield-err{position:absolute;left:0;top:calc(100% + 2px);font-size:11.5px;color:var(--danger);white-space:nowrap}
+
+.datepop{position:fixed;z-index:400;width:284px;max-width:calc(100vw - 16px);box-sizing:border-box;padding:10px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 48px -14px rgba(0,0,0,.55)}
+.datepop-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.datepop-title{font-size:13.5px;font-weight:600;text-transform:capitalize}
+.datepop-nav{width:30px;height:30px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2);color:var(--text);font-size:18px;line-height:1;cursor:pointer}
+.datepop-nav:hover{border-color:var(--action)}
+.datepop-week,.datepop-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.datepop-week span{padding:4px 0;text-align:center;font-size:11px;font-weight:600;color:var(--faint);text-transform:uppercase}
+.datepop-pad{height:34px}
+.datepop-day{height:34px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--text);font-size:13px;font-variant-numeric:tabular-nums;cursor:pointer}
+.datepop-day:hover:not(:disabled){background:var(--panel-2);border-color:var(--line)}
+.datepop-day.today{border-color:var(--action-line);color:var(--action-2)}
+.datepop-day.on{background:var(--action);color:var(--on-action);border-color:var(--action);font-weight:700}
+.datepop-day:disabled{opacity:.35;cursor:default}
+.datepop-day:focus-visible,.datepop-nav:focus-visible{outline:2px solid var(--action);outline-offset:1px}
+.datepop-foot{display:flex;justify-content:space-between;gap:8px;margin-top:8px}
+
+/* fecha y hora (DateTimeField): la fecha y la hora aparte, en la misma fila (en 360 px bajan una debajo de la otra) */
+.datetime-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.8fr);gap:10px;width:100%}
+.datetime-time{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center}
+.datetime-time select{width:auto}
+@media (max-width:420px){.datetime-row{grid-template-columns:minmax(0,1fr)}}

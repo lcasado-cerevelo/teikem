@@ -1,8 +1,10 @@
 // Formularios del kit: react-hook-form + zod. <Form> envuelve el submit: si el API responde con error, pone cada
 // error de campo bajo su <Field> (applyProblemDetails) y muestra arriba el título y los errores sin campo.
 import { useCallback, useContext, useEffect, useId, useMemo, useState, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
-import { FormProvider, get, useFormContext, type FieldValues, type UseFormReturn } from 'react-hook-form'
+import { FormProvider, get, useController, useFormContext, type FieldValues, type UseFormReturn } from 'react-hook-form'
 import { applyProblemDetails, type AppliedProblem } from '../api/problem'
+import { DateField } from './DateField'
+import { DateTimeField } from './DateTimeField'
 import { FieldContext, FieldRegistryContext, useFieldInfo, type FieldRegistry } from './formContext'
 import './ui.css'
 
@@ -192,11 +194,55 @@ export function NumberInput({ step = 'any', ...rest }: NativeInput) {
   return <input type="number" inputMode="decimal" step={step} {...rest} {...aria} {...register(info.name, { setValueAs })} />
 }
 
-/** Fecha 'YYYY-MM-DD' ('' = vacía). */
-export function DateInput(props: NativeInput) {
+/**
+ * Fecha 'YYYY-MM-DD' ('' = vacía). Es el `DateField` del kit: abre el calendario al entrar, deja escribir solo números con el formato de la compañía y
+ * acepta una fecha pegada (la cambia a ese formato o la rechaza). `min`/`max` en ISO.
+ */
+export function DateInput({ min, max, disabled, readOnly, placeholder, className }: Pick<NativeInput, 'min' | 'max' | 'disabled' | 'readOnly' | 'placeholder' | 'className'>) {
   const { info, aria } = useControlProps('DateInput')
-  const { register } = useFormContext()
-  return <input type="date" {...props} {...aria} {...register(info.name)} />
+  const { control } = useFormContext()
+  const { field } = useController({ name: info.name, control })
+  return (
+    <DateField
+      id={aria.id}
+      name={field.name}
+      value={typeof field.value === 'string' ? field.value : ''}
+      onChange={field.onChange}
+      onBlur={field.onBlur}
+      min={typeof min === 'string' ? min : null}
+      max={typeof max === 'string' ? max : null}
+      disabled={disabled}
+      readOnly={readOnly}
+      placeholder={placeholder}
+      className={className}
+      aria-invalid={aria['aria-invalid']}
+      aria-required={aria['aria-required']}
+      aria-describedby={aria['aria-describedby']}
+    />
+  )
+}
+
+/** Fecha y hora 'YYYY-MM-DDTHH:mm' ('' = vacío), la hora de la compañía: el `DateTimeField` del kit (calendario y, aparte, la hora). */
+export function DateTimeInput({ min, max, disabled, className }: Pick<NativeInput, 'min' | 'max' | 'disabled' | 'className'>) {
+  const { info, aria } = useControlProps('DateTimeInput')
+  const { control } = useFormContext()
+  const { field } = useController({ name: info.name, control })
+  return (
+    <DateTimeField
+      id={aria.id}
+      name={field.name}
+      value={typeof field.value === 'string' ? field.value : ''}
+      onChange={field.onChange}
+      onBlur={field.onBlur}
+      min={typeof min === 'string' ? min : null}
+      max={typeof max === 'string' ? max : null}
+      disabled={disabled}
+      className={className}
+      aria-invalid={aria['aria-invalid']}
+      aria-required={aria['aria-required']}
+      aria-describedby={aria['aria-describedby']}
+    />
+  )
 }
 
 export interface SelectOption {

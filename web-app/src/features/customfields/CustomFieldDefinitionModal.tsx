@@ -3,7 +3,7 @@
 // (nunca JSON a mano), requerido / único / mostrar en listados y orden. Los errores del servidor salen bajo el campo que los causa.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useMemo, useRef } from 'react'
-import { useForm, useFormContext, useWatch } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { ApiError, applyProblemDetails } from '../../kernel/api/problem'
 import { useLookups } from '../../kernel/catalogs'
 import {
@@ -23,8 +23,7 @@ import {
   type DefinitionFormValues,
 } from '../../kernel/custom-fields'
 import { useT } from '../../kernel/i18n'
-import { DateInput, Field, NumberInput, Select, TextArea, TextInput, Toggle, toast } from '../../kernel/ui'
-import { useFieldInfo } from '../../kernel/ui/formContext'
+import { DateInput, DateTimeInput, Field, NumberInput, Select, TextArea, TextInput, Toggle, toast } from '../../kernel/ui'
 import { SearchMultiSelectInput } from '../../kernel/ui/SearchMultiSelectInput'
 import { FormModal } from '../clients/contractUi'
 import { CustomListPicker } from './CustomListPicker'
@@ -36,21 +35,6 @@ interface Props {
   /** null = alta. */
   definition: CustomFieldDefinitionDto | null
   onClose: () => void
-}
-
-/** Fecha y hora en la hora de la compañía ('YYYY-MM-DDTHH:mm'); el kit no trae un control de fecha-hora. */
-function DateTimeInput() {
-  const info = useFieldInfo('DateTimeInput')
-  const { register } = useFormContext()
-  return (
-    <input
-      type="datetime-local"
-      id={info.id}
-      aria-invalid={info.invalid || undefined}
-      aria-describedby={info.describedBy}
-      {...register(info.name)}
-    />
-  )
 }
 
 /** Valor por defecto según el tipo: texto, número, fecha, casilla (BOOL) o las opciones de la lista (selección). */

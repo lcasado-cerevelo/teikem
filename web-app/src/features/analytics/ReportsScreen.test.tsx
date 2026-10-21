@@ -10,6 +10,7 @@ import { SessionContext, type Session } from '../../app/session'
 import { AccessProvider } from '../../kernel/access'
 import { setLang } from '../../kernel/i18n/i18n'
 import ReportsScreen from './ReportsScreen'
+import { typeDate } from '../../kernel/ui/typeDate'
 
 beforeAll(() => setLang('es'))
 
@@ -267,8 +268,8 @@ describe('resultado de una vista', () => {
     await user.selectOptions(screen.getByLabelText('Rango de fechas'), 'CUSTOM')
     expect(screen.getByText('Escoja las fechas Desde y Hasta para ver el resultado.')).toBeInTheDocument()
     expect(mock.calls.filter((c) => c.path.endsWith('/run')).length).toBe(before)
-    await user.type(screen.getByLabelText('Desde'), '2026-10-01')
-    await user.type(screen.getByLabelText('Hasta'), '2026-10-05')
+    await typeDate(user, screen.getByLabelText('Desde'), '2026-10-01')
+    await typeDate(user, screen.getByLabelText('Hasta'), '2026-10-05')
     await waitFor(() => expect(mock.calls.some((c) => (c.body as { dateFrom?: string })?.dateFrom === '2026-10-01')).toBe(true))
   })
 

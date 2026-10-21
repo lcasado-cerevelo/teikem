@@ -7,6 +7,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { tenantToday } from '../../kernel/api/tenantZone'
 import { setLang } from '../../kernel/i18n/i18n'
 import { ALL, callsTo, FLEET, mock, problem, RATES, resetKit, wrap } from './driversTestKit'
+import { typeDate, shownDate } from '../../kernel/ui/typeDate'
 
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
@@ -107,7 +108,7 @@ describe('Tarifas por entrega', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Editar tarifa' })
     expect(within(dialog).getByText('Next day · Box')).toBeInTheDocument()
     expect(within(dialog).getByLabelText(/^Tarifa/)).toHaveValue(6)
-    expect(within(dialog).getByLabelText(/^Vigente desde/)).toHaveValue(today())
+    expect(within(dialog).getByLabelText(/^Vigente desde/)).toHaveValue(shownDate(today()))
     await user.clear(within(dialog).getByLabelText(/^Tarifa/))
     await user.type(within(dialog).getByLabelText(/^Tarifa/), '7.25')
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
@@ -123,13 +124,12 @@ describe('Tarifas por entrega', () => {
     const region = await delivery()
     await user.click(within(rowOf(region, /Next day/)).getByRole('button', { name: 'Editar' }))
     const dialog = await screen.findByRole('dialog', { name: 'Editar tarifa' })
-    await user.clear(within(dialog).getByLabelText(/^Vigente desde/))
-    await user.type(within(dialog).getByLabelText(/^Vigente desde/), yesterday())
+    await typeDate(user, within(dialog).getByLabelText(/^Vigente desde/), yesterday())
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     expect(await within(dialog).findByText('La fecha no puede ser anterior a hoy: el historial de tarifas no se reescribe.')).toBeInTheDocument()
     expect(callsTo('PATCH', '/api/v1/drivers/d-1/delivery-rates/11')).toHaveLength(0)
     await user.clear(within(dialog).getByLabelText(/^Vigente desde/))
-    await user.type(within(dialog).getByLabelText(/^Vigente desde/), '2099-01-01')
+    await typeDate(user, within(dialog).getByLabelText(/^Vigente desde/), '2099-01-01')
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(callsTo('PATCH', '/api/v1/drivers/d-1/delivery-rates/11')).toHaveLength(1))
     expect(callsTo('PATCH', '/api/v1/drivers/d-1/delivery-rates/11')[0].body).toMatchObject({ effectiveFrom: '2099-01-01' })

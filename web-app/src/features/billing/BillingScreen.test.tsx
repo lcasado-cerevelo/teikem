@@ -8,6 +8,7 @@ import { SessionContext, type Session } from '../../app/session'
 import { AccessProvider } from '../../kernel/access'
 import { setLang } from '../../kernel/i18n/i18n'
 import BillingScreen from './BillingScreen'
+import { typeDate } from '../../kernel/ui/typeDate'
 
 const mock = vi.hoisted(() => ({
   requests: [] as { method: string; path: string; search: string; body: unknown }[],
@@ -165,7 +166,7 @@ describe('BillingScreen', () => {
     expect(await within(dialog).findByText('Indique la fecha inicial y la final.')).toBeInTheDocument()
     expect(sent('POST', '/api/v1/billing/runs')).toHaveLength(0)
 
-    await user.type(within(dialog).getByLabelText('Desde'), '2026-10-01')
+    await typeDate(user, within(dialog).getByLabelText('Desde'), '2026-10-01')
     await user.click(within(dialog).getByLabelText(/Solo lo despachado dentro del período/))
     await user.click(within(dialog).getByRole('button', { name: 'Generar' }))
     expect(await within(dialog).findByText('No hay nada por facturar con esos datos.')).toBeInTheDocument()

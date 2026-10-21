@@ -8,6 +8,7 @@ import { SessionContext, type Session } from '../../app/session'
 import { AccessProvider } from '../../kernel/access'
 import { setLang } from '../../kernel/i18n/i18n'
 import DriverPayScreen from './DriverPayScreen'
+import { typeDate } from '../../kernel/ui/typeDate'
 
 const mock = vi.hoisted(() => ({
   requests: [] as { method: string; path: string; search: string; body: unknown }[],
@@ -215,7 +216,7 @@ describe('Liquidación a choferes', () => {
     await user.click(await screen.findByRole('button', { name: 'Nueva liquidación' }))
     const dialog = await screen.findByRole('dialog', { name: 'Nueva liquidación' })
     await user.clear(within(dialog).getByLabelText('Hasta'))
-    await user.type(within(dialog).getByLabelText('Hasta'), '2000-01-01')
+    await typeDate(user, within(dialog).getByLabelText('Hasta'), '2000-01-01')
     expect(await within(dialog).findByText('La fecha final no puede ser anterior a la inicial.')).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Generar liquidación' })).toBeDisabled()
   })

@@ -6,7 +6,7 @@ import { applyProblemDetails } from '../../kernel/api/problem'
 import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { Chip, ClientPicker, ConfirmDialog, DataTable, Modal, Panel, QBox, Spinner, Tabs, toast, type DataColumn, RemountOnSearch } from '../../kernel/ui'
+import { Chip, ClientPicker, ConfirmDialog, type DataColumn, DataTable, DateField, Modal, Panel, QBox, RemountOnSearch, Spinner, Tabs, toast } from '../../kernel/ui'
 import { IconCash } from '../../kernel/ui/screenIcons'
 import {
   invoicePageReader,
@@ -127,11 +127,11 @@ function NewRunModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
         <div className="r2">
           <div className="f">
             <label htmlFor="br-from">{t('billing.new.from')}</label>
-            <input id="br-from" type="date" value={form.periodStart} onChange={(e) => set({ periodStart: e.target.value })} />
+            <DateField id="br-from" value={form.periodStart} onChange={(v) => set({ periodStart: v })} />
           </div>
           <div className="f">
             <label htmlFor="br-to">{t('billing.new.to')}</label>
-            <input id="br-to" type="date" value={form.periodEnd} onChange={(e) => set({ periodEnd: e.target.value })} />
+            <DateField id="br-to" value={form.periodEnd} onChange={(v) => set({ periodEnd: v })} />
           </div>
         </div>
         <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

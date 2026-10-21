@@ -8,7 +8,7 @@ import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
 import { useLookups } from '../../kernel/catalogs'
-import { Chip, DataTable, Modal, Panel, Spinner, toast, type DataColumn } from '../../kernel/ui'
+import { Chip, type DataColumn, DataTable, DateField, Modal, Panel, Spinner, toast } from '../../kernel/ui'
 import { IconCart } from '../../kernel/ui/screenIcons'
 import { useDrivers } from '../drivers/api'
 import { attemptPageReader, useAttemptMutations, useAttempts, type AttemptQuery, type DeliveryAttemptDto } from './settlementApi'
@@ -105,8 +105,8 @@ export function AttemptsTab() {
               <option value="no">{t('pay.att.open')}</option>
               <option value="yes">{t('pay.att.settled')}</option>
             </select>
-            <input type="date" aria-label={t('pay.from')} value={filters.from} onChange={(e) => set({ from: e.target.value })} />
-            <input type="date" aria-label={t('pay.to')} value={filters.to} onChange={(e) => set({ to: e.target.value })} />
+            <DateField aria-label={t('pay.from')} value={filters.from} onChange={(v) => set({ from: v })} />
+            <DateField aria-label={t('pay.to')} value={filters.to} onChange={(v) => set({ to: v })} />
             <label className="vw-check"><input type="checkbox" checked={filters.withoutDriver} onChange={(e) => set({ withoutDriver: e.target.checked })} /> {t('pay.att.onlyNoDriver')}</label>
             <label className="vw-check"><input type="checkbox" checked={filters.includeVoided} onChange={(e) => set({ includeVoided: e.target.checked })} /> {t('pay.att.includeVoided')}</label>
           </div>
