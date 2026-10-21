@@ -119,7 +119,7 @@ Luis tiene razón en que no tiene sentido (son órdenes viejas que ya se entrega
 
 **Lo que dijo Luis:** el «número de empaque» es el número de **cada pieza**; un envío puede tener varias piezas, así que puede tener varios números. Hoy el listado de Envíos tiene una columna «Empaque» con un solo número por orden, y la migración pone el waybill de Colavora en Orden, Empaque y Conduce (los tres iguales).
 
-**Lo que dice el diseño actual (maestro §2):** `OrderNumber` (orden), `ClientInvoiceNumber` (factura), `PackBatchNumber` (Empaque: **uno por orden**, identificador de escaneo del bulto/embarque, `EMP-#####` o el lote de Recolección y empaque), `WaybillNumber` (Conduce: **uno por orden**, `CND-#######`) y `CargoLine.PackageNumber` (Paquete: **uno por pieza**). Lo que Luis describe como «empaque» es, en el diseño, el **número de paquete** (por pieza).
+**Lo que dice el diseño actual (maestro §2):** `OrderNumber` (orden), `ClientInvoiceNumber` (factura), `PackBatchNumber` (Empaque: **uno por orden**, identificador de escaneo del bulto/embarque, `EMP-#####` o el lote de Recolección y empaque), `WaybillNumber` (Conduce: **uno por orden**, fórmula del Lote 110: `{código del cliente}{código del consignatario o su ID}{aammdd}{secuencial del día de ese consignatario}`; antes del Lote 110 era `CND-#######`) y `CargoLine.PackageNumber` (Paquete: **uno por pieza**). Lo que Luis describe como «empaque» es, en el diseño, el **número de paquete** (por pieza).
 
 **Cambios anotados (sin hacerlos todavía):**
 - **Listado de Envíos:** quitar la columna «Empaque» de orden; poner una columna con **todos los números de paquete de la orden** (lista separada por comas) **después de «Paquete»**; **quitar la columna «Cotizado»**. El filtro por número se queda y debe buscar en los números de paquete (y en el de empaque).
@@ -133,10 +133,18 @@ Luis tiene razón en que no tiene sentido (son órdenes viejas que ya se entrega
 **Hallazgo:** Empaque (`PackBatchNumber`, por orden) y Conduce (`WaybillNumber`) son, a nivel de orden, lo mismo: un número único por orden que genera Teikem. El Conduce nació en el Lote 97 (pedido de Luis) porque «el número de orden se repite entre clientes y el de empaque es del almacén». Empaque nació del almacén (lote de Recolección y empaque). El escaneo ya busca por orden, conduce y paquete, así que no hace falta un campo exclusivo de escaneo.
 
 **Propuesta:**
-- **Un identificador por orden** (la columna de Conduce): el del cliente si lo trae y es único en la compañía; si no, `CND-#######`.
+- **Un identificador por orden** (la columna de Conduce): el del cliente si lo trae y es único en la compañía; si no, el que arma la fórmula del Lote 110 (ya existe, no se inventa nada): `{código del cliente}{código del consignatario o su ID}{aammdd}{secuencial del día de ese consignatario}`.
 - **Número de orden aparte** solo cuando el cliente maneja dos números.
 - **Quitar Empaque de la orden.** El lote de Recolección y empaque conserva su propio `EMP-…` (es del lote, no de la orden). Se quedan factura y número de paquete por pieza.
 - **Migración:** el waybill de Colavora (lo trae el cliente, p. ej. AxisCare con sufijo `AXM` y su factura dentro) es el identificador; Orden y Empaque dejan de ser copias suyas.
 - **Costo:** Empaque se usa en escaneo de salida, cross-dock, viajes, trazabilidad y lote de empaque (~24 archivos): **lote aparte**. Versión barata mientras tanto: no mostrarlo en pantalla y llenarlo con el mismo identificador.
 
-**Decisión pendiente:** si el número del cliente se **repite** en la compañía, ¿se rechaza (el cliente lo corrige) o Teikem le pone el suyo (`CND-…`) y guarda el del cliente como número de orden?
+**Decisión pendiente:** si el número del cliente se **repite** en la compañía, ¿se rechaza (el cliente lo corrige) o Teikem le pone el suyo (el de la fórmula) y guarda el del cliente como número de orden?
+
+### 7.2 Pantalla de Envíos y Recolección y empaque (dictado de Luis, 2026-10-20)
+
+- **El conduce es el número de envío**: es uno solo y el más importante, por el que más se busca. Sale **una sola columna**: Conduce (la primera). El número de orden **no va junto**: solo aparece, de forma secundaria, cuando es distinto del conduce (caso excepcional) o como columna opcional.
+- **Quitar de la tabla** la columna Empaque y Cotizado (ver §7). Agregar la columna con los números de paquete, después de Paquete.
+- **Filtros de Envíos a cambiar (por dictar el detalle):** el filtro principal pasa a ser **Conduce**; el de número de orden se mueve a un segundo plano; se quita el filtro de Empaque y entra **Nº de paquete**; la búsqueda libre busca en conduce, número de orden, números de paquete y factura.
+- **Recolección y empaque:** hoy usa el número del lote (`EMP-#####`, contador PACKBATCH), que además se copia a la orden como Empaque. Debe mostrar y usar el **conduce**; el conduce se crea ahí, cuando se empaca y nace la orden, con la misma fórmula (Lote 110). El número del lote queda solo como identificador interno del lote.
+- **Cuando el cliente trae su propio número de envío** (como el waybill de Colavora) hoy no se puede: el conduce «no se teclea» (Lote 110). Hay que permitir que lo traiga el cliente (importación, API de clientes, migración) y que Teikem lo genere con la fórmula solo si no viene.
