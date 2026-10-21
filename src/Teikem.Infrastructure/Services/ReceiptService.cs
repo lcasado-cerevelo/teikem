@@ -230,6 +230,15 @@ public sealed class ReceiptService(
         await numbers.EnsureAsync(NumberKinds.Receipt, null, ct);
         var publicId = await db.RunInTransactionAsync(async ct2 =>
         {
+            // Lote 175: el documento ya tiene un recibo abierto con tandas confirmadas → esta confirmación es el CIERRE de ese recibo: lo capturado
+            // se suma a sus líneas (no es un recibo nuevo ni un 409) y se confirma el resto.
+            var open = await FindOpenReceiptAsync(req.AsnId, req.PurchaseOrderPublicId, ct2);
+            if (open is not null && await db.Set<ReceiptBatch>().AnyAsync(b => b.ReceiptHeaderId == open.ReceiptHeaderId, ct2))
+            {
+                if (req.Lines is { Count: > 0 }) await AddPartLinesAsync(open.PublicId, req.Lines, ct2);
+                await ConfirmCoreAsync(open.PublicId, null, ct2);
+                return open.PublicId;
+            }
             // Las transacciones internas de alta y confirmación se unen a ésta (RunInTransactionAsync anidado).
             var created = await CreateCoreAsync(req, ct2);
             await ConfirmCoreAsync(created, null, ct2);
@@ -957,6 +966,12 @@ public sealed class ReceiptService(
     /// </summary>
     public async Task<ReceiptDetailDto> ConfirmBatchAsync(Guid publicId, ReceiptConfirmRequest? req, CancellationToken ct)
     {
+        await ConfirmBatchCoreAsync(publicId, req, null, ct);
+        return await GetAsync(publicId, ct);
+    }
+
+    private async Task ConfirmBatchCoreAsync(Guid publicId, ReceiptConfirmRequest? req, Guid? clientKey, CancellationToken ct)
+    {
         var current = await ResolveAsync(publicId, ct);
         var comment = string.IsNullOrWhiteSpace(req?.Comment) ? null : req!.Comment!.Trim();
         await db.RunInTransactionAsync(async ct2 =>
@@ -1061,7 +1076,7 @@ public sealed class ReceiptService(
             db.Set<ReceiptBatch>().Add(new ReceiptBatch
             {
                 ReceiptHeaderId = r.ReceiptHeaderId, BatchNumber = number, ConfirmedAtUtc = DateTime.UtcNow, ConfirmedBy = tenant.UserId,
-                Comment = comment, LineCount = included.Count, UnitCount = included.Sum(x => x.Delta),
+                Comment = comment, LineCount = included.Count, UnitCount = included.Sum(x => x.Delta), ClientKey = clientKey,
             });
             foreach (var x in included) x.Line.PostedQty = x.Line.ReceivedQty;
             await SaveReceiptAsync(ct2);
@@ -1074,7 +1089,127 @@ public sealed class ReceiptService(
             }
             await SaveReceiptAsync(ct2);
         }, ct);
+    }
+
+    // ---------------------------------------------------------------- Lote 175: recibir por partes desde el aparato
+
+    /// <summary>
+    /// Recibo abierto de un aviso de llegada (o de la orden de compra, por su aviso): contra él se suman las partes. null = no hay.
+    /// </summary>
+    private async Task<ReceiptHeader?> FindOpenReceiptAsync(int? asnId, Guid? purchaseOrderPublicId, CancellationToken ct)
+    {
+        var openIds = await db.StatusIdsAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.OpenCodes, ct);
+        if (asnId is int a)
+            return await db.Set<ReceiptHeader>().AsNoTracking().FirstOrDefaultAsync(r => r.AsnId == a && r.IsActive && openIds.Contains(r.StatusCodeId), ct);
+        if (purchaseOrderPublicId is Guid po)
+            return await (from r in db.Set<ReceiptHeader>().AsNoTracking()
+                          join x in db.Set<Asn>().AsNoTracking() on r.AsnId equals x.AsnId
+                          join o in db.Set<PurchaseOrder>().AsNoTracking() on x.PurchaseOrderId equals (int?)o.PurchaseOrderId
+                          where o.PublicId == po && r.IsActive && openIds.Contains(r.StatusCodeId)
+                          select r).FirstOrDefaultAsync(ct);
+        return null;
+    }
+
+    /// <summary>
+    /// Lote 175 — «Recibir una parte» (cola del aparato): contra un aviso de llegada o una orden de compra, busca el recibo abierto del documento
+    /// (o lo crea), SUMA lo capturado a sus líneas (o lo agrega como línea extra) y confirma una tanda; el recibo sigue abierto para lo que falte
+    /// y la confirmación final (POST /receipts con confirm) lo cierra. Varios aparatos pueden aportar partes al mismo documento. ClientKey (el id
+    /// del envío en la cola) hace el reintento idempotente: repetido, no suma otra vez. En una parte no entran series ni daño (se reciben en la
+    /// confirmación final): 400.
+    /// </summary>
+    public async Task<ReceiptDetailDto> ReceivePartAsync(ReceiptPartRequest req, CancellationToken ct)
+    {
+        if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
+        if ((req.AsnId is null) == (req.PurchaseOrderPublicId is null)) throw new ValidationException("asnId", ReceiptBatchRules.PartNeedsDocument);
+        var requestLines = req.Lines ?? Array.Empty<ReceiptLineRequest>();
+        if (requestLines.Count == 0) throw new ValidationException("lines", ReceiptRules.LinesRequired);
+        if (requestLines.Count > ReceiptRules.MaxLines) throw new ValidationException("lines", ReceiptRules.TooManyLines);
+        for (var i = 0; i < requestLines.Count; i++)
+        {
+            var l = requestLines[i];
+            if (l is null) throw new ValidationException($"lines[{i}]", ReceiptRules.LinesRequired);
+            if (l.SerialNumbers is { Count: > 0 }) throw new ValidationException($"lines[{i}].serialNumbers", ReceiptBatchRules.PartNoSerials);
+            if ((l.DamagedQty ?? 0m) > 0m) throw new ValidationException($"lines[{i}].damagedQty", ReceiptBatchRules.PartNoDamage);
+        }
+        if (req.ClientKey is Guid key)
+        {
+            var done = await db.Set<ReceiptBatch>().AsNoTracking().Where(b => b.ClientKey == key)
+                .Join(db.Set<ReceiptHeader>().AsNoTracking(), b => b.ReceiptHeaderId, r => r.ReceiptHeaderId, (b, r) => r.PublicId).FirstOrDefaultAsync(ct);
+            if (done != Guid.Empty) return await GetAsync(done, ct);
+        }
+        if (req.PurchaseOrderPublicId is not null)
+        {
+            await permissions.EnsureAsync(PermissionCatalog.PurchasingReceive, ct);
+            await modules.EnsureEnabledAsync(ModuleKeys.Purchasing, ct);
+        }
+        await numbers.EnsureAsync(NumberKinds.Receipt, null, ct);
+        var publicId = await db.RunInTransactionAsync(async ct2 =>
+        {
+            var open = await FindOpenReceiptAsync(req.AsnId, req.PurchaseOrderPublicId, ct2);
+            Guid id;
+            if (open is null)
+                id = await CreateCoreAsync(new ReceiptCreateRequest(req.WarehousePublicId, null, req.AsnId, req.PurchaseOrderPublicId, Lines: requestLines), ct2);
+            else
+            {
+                id = open.PublicId;
+                await AddPartLinesAsync(id, requestLines, ct2);
+            }
+            await ConfirmBatchCoreAsync(id, new ReceiptConfirmRequest(req.Comment), req.ClientKey, ct2);
+            return id;
+        }, ct);
         return await GetAsync(publicId, ct);
+    }
+
+    /// <summary>
+    /// Suma lo capturado en una parte a las líneas del recibo abierto: la línea del mismo producto (y lote; primero la del mismo lote, luego la de
+    /// un aviso, luego la primera) recibe la cantidad adicional; si no hay (o la del producto ya tiene otro lote asentado) entra como línea extra.
+    /// Con series o daño (la confirmación final) se suman a los de la línea.
+    /// </summary>
+    private async Task AddPartLinesAsync(Guid publicId, IReadOnlyList<ReceiptLineRequest> requestLines, CancellationToken ct)
+    {
+        var current = await ResolveAsync(publicId, ct);
+        await db.RunInTransactionAsync(async ct2 =>
+        {
+            var r = await LockOpenAsync(current.ReceiptHeaderId, ct2);
+            var lines = await db.Set<ReceiptLine>().Where(l => l.ReceiptHeaderId == r.ReceiptHeaderId).OrderBy(l => l.ReceiptLineId).ToListAsync(ct2);
+            var (owner, ownerClientId) = await OwnerRuleOfAsync(r, ct2);
+            var errors = new Dictionary<string, string[]>();
+            var extras = new List<ReceiptLine>();
+            for (var i = 0; i < requestLines.Count; i++)
+            {
+                var key = $"lines[{i}]";
+                var built = await BuildLineAsync(r.WarehouseId, requestLines[i], key, owner, ownerClientId, false, errors, ct2);
+                if (built is null) continue;
+                var match = lines.Concat(extras).Where(l => l.ProductId == built.ProductId
+                        && (built.LotId is null || l.LotId == built.LotId || (l.LotId is null && l.PostedQty == 0m)))
+                    .OrderBy(l => built.LotId is not null && l.LotId == built.LotId ? 0 : 1).ThenBy(l => l.AsnLineId is null ? 1 : 0).FirstOrDefault();
+                if (match is null) { extras.Add(built); continue; }
+                match.ReceivedQty += built.ReceivedQty;
+                if (built.LotId is not null && match.LotId is null) match.LotId = built.LotId;
+                match.StagingBinId = built.StagingBinId ?? match.StagingBinId;
+                match.TargetBinId = built.TargetBinId ?? match.TargetBinId;
+                var (serials, se) = ReceiptRules.NormalizeSerials(ParseSerials(match.SerialNumbersJson).Concat(ParseSerials(built.SerialNumbersJson)));
+                if (se is not null) { errors[key + ".serialNumbers"] = new[] { se }; continue; }
+                match.SerialNumbersJson = serials.Count == 0 ? null : JsonSerializer.Serialize(serials, Json);
+                if (built.DamagedQty > 0m)
+                {
+                    var hadDamage = match.DamagedQty > 0m;
+                    match.DamagedQty += built.DamagedQty;
+                    if (!hadDamage) CopyDamage(built, match, qtyToo: false);
+                }
+            }
+            if (errors.Count > 0) throw new ValidationException(errors);
+            if (lines.Count + extras.Count > ReceiptRules.MaxLines) throw new ValidationException("lines", ReceiptRules.TooManyLines);
+            foreach (var x in extras)
+            {
+                x.ReceiptHeaderId = r.ReceiptHeaderId;
+                x.StagingBinId ??= r.DefaultStagingBinId ?? await DefaultLineStagingAsync(r, ct2);
+                db.Set<ReceiptLine>().Add(x);
+            }
+            await SaveReceiptAsync(ct2);
+            await SyncOpenStatusAsync(r, ct2);
+            await SaveReceiptAsync(ct2);
+        }, ct);
     }
 
     private async Task<IReadOnlyList<ReceiptBatchDto>> BatchesAsync(int receiptHeaderId, CancellationToken ct)

@@ -5713,3 +5713,13 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ReceiptBatch_Number' AND object_id = OBJECT_ID('dbo.ReceiptBatch'))
     CREATE UNIQUE INDEX UX_ReceiptBatch_Number ON dbo.ReceiptBatch (ReceiptHeaderId, BatchNumber);
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-21 (Lote 175) — Recibir por partes desde el aparato: dbo.ReceiptBatch.ClientKey UNIQUEIDENTIFIER NULL (id del envio de la cola; el reintento
+   del mismo envio no suma dos veces; unico donde no es NULL). Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.ReceiptBatch', 'ClientKey') IS NULL
+    ALTER TABLE dbo.ReceiptBatch ADD ClientKey UNIQUEIDENTIFIER NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ReceiptBatch_ClientKey' AND object_id = OBJECT_ID('dbo.ReceiptBatch'))
+    CREATE UNIQUE INDEX UX_ReceiptBatch_ClientKey ON dbo.ReceiptBatch (ClientKey) WHERE ClientKey IS NOT NULL;
+GO

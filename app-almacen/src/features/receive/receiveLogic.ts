@@ -326,6 +326,44 @@ export function findTargetConflict(docLines: readonly DocLine[], lines: readonly
   return null
 }
 
+// ------------------------------------------------------------------ Lote 175: recibir por partes
+
+/** Una parte (tanda) se recibe contra un aviso u orden de compra, con acomodo, y sin series ni daño (esas líneas esperan la confirmación final). */
+export function partBlock(doc: ReceiptDoc | null, lines: DraftLine[], receivingMode: ReceivingMode | null): 'noDoc' | 'direct' | 'serialOrDamage' | null {
+  if (!doc || (doc.asnId == null && !doc.purchaseOrderPublicId)) return 'noDoc'
+  if (receivingMode === 'DIRECT') return 'direct'
+  if (lines.some((l) => (l.serialNumbers?.length ?? 0) > 0 || l.damagedQty > 0)) return 'serialOrDamage'
+  return null
+}
+
+/** Cuerpo de POST /api/v1/receipts/part; `clientKey` hace el reintento idempotente (no suma dos veces). */
+export function buildReceiptPartBody(warehousePublicId: string, doc: ReceiptDoc, lines: DraftLine[], clientKey: string) {
+  return {
+    warehousePublicId,
+    purchaseOrderPublicId: doc.asnId == null ? (doc.purchaseOrderPublicId ?? null) : null,
+    asnId: doc.asnId ?? null,
+    clientKey,
+    lines: lines.map((l) => ({
+      productPublicId: l.productPublicId,
+      receivedQty: l.receivedQty,
+      lot: l.lotNumber ? { number: l.lotNumber, expiryDate: l.expiryDate || null } : null,
+    })),
+  }
+}
+
+/** Identificador aleatorio (v4) del envío. */
+export function newClientKey(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.floor(Math.random() * 16)
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
+  })
+}
+
+/** ¿Lo capturado no cabe en el espacio libre del staging? (null = el staging no tiene cupo configurado: sin aviso). */
+export function stagingOverflow(freeQty: number | null, captured: number): boolean {
+  return freeQty != null && captured > freeQty
+}
+
 // ------------------------------------------------------------------ cuerpo del envío
 
 export interface ReceiptDoc {

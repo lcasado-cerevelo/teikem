@@ -184,6 +184,7 @@ public sealed class ReceiptBatchConfiguration : IEntityTypeConfiguration<Receipt
         b.Property(x => x.Comment).HasMaxLength(300);
         b.Property(x => x.UnitCount).HasColumnType("decimal(16,3)");
         b.HasIndex(x => new { x.ReceiptHeaderId, x.BatchNumber }).IsUnique().HasDatabaseName("UX_ReceiptBatch_Number");
+        b.HasIndex(x => x.ClientKey).IsUnique().HasFilter("[ClientKey] IS NOT NULL").HasDatabaseName("UX_ReceiptBatch_ClientKey");   // Lote 175
         b.HasOne<ReceiptHeader>().WithMany().HasForeignKey(x => x.ReceiptHeaderId).OnDelete(DeleteBehavior.NoAction);
     }
 }

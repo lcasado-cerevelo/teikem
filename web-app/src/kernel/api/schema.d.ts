@@ -17413,6 +17413,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/receipts/part": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ReceiptPartRequest"];
+                    "text/json": components["schemas"]["ReceiptPartRequest"];
+                    "application/*+json": components["schemas"]["ReceiptPartRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReceiptDetailDto"];
+                        "application/json": components["schemas"]["ReceiptDetailDto"];
+                        "text/json": components["schemas"]["ReceiptDetailDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/receipts/{publicId}/lines/{lineId}/target-suggestions": {
         parameters: {
             query?: never;
@@ -37463,20 +37506,6 @@ export interface components {
             canDelete?: boolean;
             batches?: components["schemas"]["ReceiptBatchDto"][] | null;
         };
-        ReceiptBatchDto: {
-            /** Format: int32 */
-            id?: number;
-            /** Format: int32 */
-            number?: number;
-            /** Format: date-time */
-            confirmedAtUtc?: string;
-            confirmedByName?: string | null;
-            comment?: string | null;
-            /** Format: int32 */
-            lineCount?: number;
-            /** Format: double */
-            unitCount?: number;
-        };
         ReceiptHeaderUpdateRequest: {
             type?: string | null;
             /** Format: uuid */
@@ -43481,6 +43510,32 @@ export interface components {
             requiredDate?: string | null;
             notes?: string | null;
             lines?: components["schemas"]["ExitNoticeLineRequest"][] | null;
+        };
+        ReceiptBatchDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: int32 */
+            number?: number;
+            /** Format: date-time */
+            confirmedAtUtc?: string;
+            confirmedByName?: string | null;
+            comment?: string | null;
+            /** Format: int32 */
+            lineCount?: number;
+            /** Format: double */
+            unitCount?: number;
+        };
+        ReceiptPartRequest: {
+            /** Format: uuid */
+            warehousePublicId?: string | null;
+            /** Format: int32 */
+            asnId?: number | null;
+            /** Format: uuid */
+            purchaseOrderPublicId?: string | null;
+            lines?: components["schemas"]["ReceiptLineRequest"][] | null;
+            comment?: string | null;
+            /** Format: uuid */
+            clientKey?: string | null;
         };
     };
     responses: never;

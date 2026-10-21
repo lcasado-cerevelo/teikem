@@ -1361,3 +1361,21 @@ Tarjeta **«Mis tareas»** al comienzo de Inicio (con la cuenta entre paréntesi
 **Qué no hace:** la asignación **ordena** el trabajo, no lo bloquea. Recibir y Despacho siguen mostrando todos los documentos, y otro usuario con permiso puede atender uno asignado a usted. Con un recibo, despacho o conteo abierto, «Mis tareas» avisa cuál hay que terminar antes de abrir otro documento (igual que Inicio). Los datos salen de la copia local del aparato: lo que le asignen después de la última sincronización aparece al sincronizar. El aviso al asignar (notificación a la persona) queda para un lote aparte.
 
 Asignar se hace en la web: Recibo → Avisos de llegada / Avisos de salida, botón **Asignar** ([capítulo 06](06-inventario-y-almacen.md), «Asignar el aviso de llegada y el aviso de salida»).
+
+## Recibir una parte (Lote 175, 2026-10-21)
+
+**Para qué.** Cuando el camión llega por partes y el staging (la posición de recepción) se llena, el operador puede **recibir una parte**: lo capturado hasta ahora entra al staging y **ya se puede acomodar**, mientras el recibo sigue abierto para lo que falte. Son dos cosas separadas: recibir (entrar al staging) y acomodar (llevarlo a su posición).
+
+**Cómo se usa (Recibir, con un aviso de llegada o una orden de compra, almacén «con acomodo»).**
+1. Escanee el documento y capture las líneas de esa parte como siempre.
+2. Pulse **«Recibir una parte»** (debajo de «Confirmar recibo»). Se encola igual que un recibo (sin señal espera y se envía solo) y la pantalla vuelve a Inicio.
+3. En el servidor la parte se **suma** al recibo abierto de ese documento (lo crea si es la primera) y queda confirmada como una **tanda**: entra al inventario en el staging y se crean las tareas de acomodo, que aparecen en **Acomodar** de cualquier aparato.
+4. Cuando llegue el resto, **otro aparato (u otro operador) puede recibir otra parte** del mismo documento, o cerrarlo con **«Confirmar recibo»**: ese envío ya no crea un recibo nuevo, **cierra el recibo abierto** sumando lo capturado y asentando lo que falte (faltante o sobrante) como siempre.
+
+**Aviso de staging lleno.** Al capturar, si el staging de la zona de recepción tiene cupo configurado y lo capturado **no cabe** en su espacio libre (calculado en el aparato con los saldos sincronizados), la pantalla avisa: «Lo capturado (N) no cabe en el staging (libre: M). Reciba una parte y acomode antes de seguir.» Es solo un aviso: no bloquea.
+
+**Qué no admite una parte.** No hay «Recibir una parte» sin documento (recibo ciego), en un almacén «directo a posición», ni si alguna línea lleva **series o daño declarado** (esas líneas se reciben al «Confirmar recibo»; la pantalla lo indica). Si el servidor las recibiera, responde 400: `Los productos con número de serie no se reciben por partes: se reciben en la confirmación final.` / `El daño no se declara en una parte: se declara en la confirmación final.`
+
+**Reintentos.** Cada parte lleva una clave propia: si el envío se repite (se cortó la señal al responder), el servidor reconoce la parte y **no la suma dos veces**.
+
+**Servidor.** `POST /api/v1/receipts/part` (permiso `warehouse.receive`; con orden de compra, también `purchasing.receive`). Cuerpo: `asnId` **o** `purchaseOrderPublicId`, `lines` (producto, cantidad, lote), `clientKey`, `comment`. Más en el capítulo 06 («Recibo con tandas»).

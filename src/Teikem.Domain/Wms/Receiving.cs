@@ -151,4 +151,6 @@ public class ReceiptBatch
     /// <summary>Líneas distintas y unidades que entraron en la tanda.</summary>
     public int LineCount { get; set; }
     public decimal UnitCount { get; set; }
+    /// <summary>Lote 175: id del envío del aparato (cola) que originó la tanda; hace el reintento idempotente. NULL = tanda de la web.</summary>
+    public Guid? ClientKey { get; set; }
 }

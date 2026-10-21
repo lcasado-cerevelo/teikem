@@ -127,6 +127,15 @@ public sealed class ReceiptsController(ReceiptService receipts) : ControllerBase
         => receipts.ConfirmBatchAsync(publicId, req, ct);
 
     /// <summary>
+    /// Lote 175 — «Recibir una parte» (cola del aparato): contra un aviso o una orden de compra suma lo capturado al recibo abierto del documento (o lo
+    /// crea) y confirma una tanda; el recibo sigue abierto. ClientKey hace el reintento idempotente. Sin series ni daño (400). La confirmación final
+    /// es POST /receipts con confirm = true: si el documento ya tiene tandas, cierra ese recibo.
+    /// </summary>
+    [HttpPost("part"), RequirePermission(PermissionCatalog.WarehouseReceive)]
+    public Task<ReceiptDetailDto> ReceivePart([FromBody] ReceiptPartRequest req, CancellationToken ct)
+        => receipts.ReceivePartAsync(req, ct);
+
+    /// <summary>
     /// Lote 16 — posiciones destino sugeridas para una línea (take 1..10; por defecto 5): el acomodo dirigido (en devoluciones
     /// la cuarentena primero) con cupo, existencia, lo ya destinado por otras líneas del recibo, espacio libre y fits. Las que
     /// caben primero; las que exceden el cupo al final (fits = false). Línea de otro recibo → 404.

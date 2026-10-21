@@ -23,6 +23,9 @@ public static class ReceiptBatchRules
     public const string LineHasBatches = "La línea ya tiene unidades confirmadas en tandas: no se puede cambiar su producto ni su lote, ni quitarla del recibo.";
     public const string ReceiptHasBatches = "El recibo ya tiene tandas confirmadas: no se puede eliminar.";
     public const string DamageAfterBatches = "El daño no puede ser mayor que lo recibido y aún no confirmado en tandas.";
+    public const string PartNeedsDocument = "Indique el aviso de llegada o la orden de compra (uno solo): una parte se recibe contra un documento.";
+    public const string PartNoSerials = "Los productos con número de serie no se reciben por partes: se reciben en la confirmación final.";
+    public const string PartNoDamage = "El daño no se declara en una parte: se declara en la confirmación final.";
     public static string LineNotBatchable(string sku, string reason) => $"La línea de {sku} no entra en una tanda: {reason}.";
 
     public const string ReasonSerial = "los productos con número de serie se confirman en la confirmación final";

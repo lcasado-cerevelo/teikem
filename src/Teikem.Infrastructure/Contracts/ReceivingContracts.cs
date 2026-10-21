@@ -130,6 +130,13 @@ public sealed record ReceiptApplySuggestionsResultDto(ReceiptDetailDto Receipt, 
 public sealed record ReceiptDetailDto(ReceiptListItemDto Header, IReadOnlyList<ReceiptLineDto> Lines, IReadOnlyList<WarehouseTaskDto> PutawayTasks,
     string RowVersion, bool CanDelete, IReadOnlyList<ReceiptBatchDto>? Batches = null);
 
+/// <summary>
+/// Lote 175 — «Recibir una parte» (POST /receipts/part, cola del aparato): contra un aviso (AsnId) o una orden de compra (uno solo), suma Lines al recibo abierto del
+/// documento (o lo crea) y confirma una tanda. ClientKey = id del envío en la cola (idempotente). Sin series ni daño (van en la confirmación final).
+/// </summary>
+public sealed record ReceiptPartRequest(Guid? WarehousePublicId = null, int? AsnId = null, Guid? PurchaseOrderPublicId = null,
+    IReadOnlyList<ReceiptLineRequest>? Lines = null, string? Comment = null, Guid? ClientKey = null);
+
 /// <summary>Lote 174 (C2): una tanda del recibo (confirmación parcial): consecutivo, quién y cuándo, líneas y unidades.</summary>
 public sealed record ReceiptBatchDto(int Id, int Number, DateTime ConfirmedAtUtc, string? ConfirmedByName, string? Comment, int LineCount, decimal UnitCount);
 

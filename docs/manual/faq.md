@@ -9915,3 +9915,26 @@ Las líneas con número de serie, con daño declarado o con cruce de muelle entr
 
 **¿La orden de compra queda recibida con la primera tanda?**
 No: queda «Recibida parcial» y pasa a «Recibida» cuando lo recibido completa lo pedido.
+
+## Recibir una parte desde el aparato (Lote 175)
+
+**¿Cuándo uso «Recibir una parte» y cuándo «Confirmar recibo»?**
+«Recibir una parte» cuando llegó solo una parte del camión (o se llenó el staging): lo capturado entra y se puede acomodar, y el recibo sigue abierto. «Confirmar recibo» cuando ya no falta nada: cierra el recibo abierto del documento con lo que se capture en esa última vuelta.
+
+**No me aparece «Recibir una parte».**
+Solo aparece al recibir contra un aviso de llegada o una orden de compra, en un almacén con acomodo (no directo), con al menos una línea capturada. Si una línea lleva series o daño, la parte no se puede hacer (esas líneas se reciben al confirmar).
+
+**`Indique el aviso de llegada o la orden de compra (uno solo): una parte se recibe contra un documento.` (400)**
+El envío trajo ninguno o los dos. Reciba la parte escaneando el aviso o la orden.
+
+**`Los productos con número de serie no se reciben por partes: se reciben en la confirmación final.` (400) / `El daño no se declara en una parte: se declara en la confirmación final.` (400)**
+Quite esa línea de la parte y recíbala al «Confirmar recibo».
+
+**Dos aparatos recibieron partes del mismo aviso, ¿se duplica el recibo?**
+No: las dos partes se suman al mismo recibo abierto del aviso, cada una como su tanda.
+
+**Se cortó la señal y no sé si la parte se envió.**
+Revise Sincronización: si ya aparece enviada, está en el servidor. Reenviarla no la duplica (la parte lleva su clave).
+
+**Me avisa que no cabe en el staging.**
+Es solo un aviso con el cupo configurado de la posición de recepción: reciba una parte y acomode (Acomodar) para liberar espacio.

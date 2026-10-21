@@ -56,6 +56,10 @@ import {
   draftExpiry,
   draftQuantity,
   findTargetConflict,
+  buildReceiptPartBody,
+  newClientKey,
+  partBlock,
+  stagingOverflow,
   type LineDraft,
   linesMissingTarget,
   newLineDraft,
@@ -68,6 +72,7 @@ import {
   validateDamageBin,
   validateTargetBin,
 } from '../features/receive/receiveLogic'
+import { localStagingFree } from '../kernel/warehouse/stagingRoom'
 
 /** Pantalla 3 (docs/mobile/app-almacen-plan.md §2): escanea una orden/aviso o recibo ciego → escanea producto →
  *  cantidad/lote/series → siguiente; Confirmar cierra el recibo y lo manda a la cola de salida.
@@ -125,6 +130,12 @@ export default function ReceiveScreen() {
   const openReceipt = useMemo(() => getOpenReceipt(), [tick])
   const refresh = () => setTick((n) => n + 1)
   const direct = openReceipt?.receivingMode === 'DIRECT'
+  // Lote 175: recibir por partes y aviso de staging lleno (con lo que ya hay según los saldos locales)
+  const partBlocked = openReceipt ? partBlock(openReceipt.doc, openReceipt.lines, openReceipt.receivingMode) : 'noDoc'
+  const partOk = openReceipt !== null && partBlocked === null
+  const capturedQty = openReceipt?.lines.reduce((n, l) => n + l.receivedQty, 0) ?? 0
+  const stagingFree = openReceipt && !direct && warehousePublicId ? localStagingFree(warehousePublicId) : null
+  const stagingFull = stagingOverflow(stagingFree, capturedQty)
 
   // Pista "Sugerida: {bin}" al entrar al paso de destino (una sola, take=1). Sin señal no aparece; no se llena nada solo.
   const suggestProduct = draft && askTarget ? draft.productPublicId : null
@@ -392,6 +403,16 @@ export default function ReceiveScreen() {
     }
     const body = buildReceiptBody(openReceipt.warehousePublicId, openReceipt.doc, openReceipt.lines, openReceipt.receivingMode)
     enqueue({ kind: 'receipt', body })
+    discardLocalReceipt()
+    void runSync()
+    refresh()
+    router.replace('/home')
+  }
+
+  // Lote 175: «Recibir una parte» — confirma una tanda de lo capturado (entra al staging y ya se puede acomodar) y deja el recibo abierto en el servidor.
+  function receivePart() {
+    if (!openReceipt || !openReceipt.doc || openReceipt.lines.length === 0 || partBlock(openReceipt.doc, openReceipt.lines, openReceipt.receivingMode) !== null) return
+    enqueue({ kind: 'receiptPart', body: buildReceiptPartBody(openReceipt.warehousePublicId, openReceipt.doc, openReceipt.lines, newClientKey()) })
     discardLocalReceipt()
     void runSync()
     refresh()
@@ -818,6 +839,14 @@ export default function ReceiveScreen() {
         disabled={openReceipt.lines.length === 0 || (direct && linesMissingTarget(openReceipt.lines) > 0)}
       />
       <Text style={styles.help}>{t(direct ? 'receive.confirmHelpDirect' : 'receive.confirmHelp')}</Text>
+      {stagingFull && <Text style={styles.warnText}>{t('receive.stagingFull', { qty: f.qty(capturedQty), free: f.qty(stagingFree ?? 0) })}</Text>}
+      {partOk && openReceipt.lines.length > 0 && (
+        <>
+          <BigButton label={t('receive.receivePart')} variant="secondary" onPress={receivePart} />
+          <Text style={styles.help}>{t('receive.receivePartHelp')}</Text>
+        </>
+      )}
+      {partBlocked === 'serialOrDamage' && <Text style={styles.help}>{t('receive.receivePartBlocked')}</Text>}
       <BigButton label={t('receive.cancelReceipt')} variant="danger" onPress={cancelReceipt} />
     </KeyboardScreen>
   )

@@ -119,4 +119,51 @@ public sealed class ReceiptBatchTests
         Assert.Equal(6m, (await f.Db.Set<InventoryTransaction>().AsNoTracking().ToListAsync()).Sum(t => t.Quantity));
         Assert.Equal(new[] { 4m, 2m }, done.PutawayTasks.Select(t => t.Quantity!.Value).ToArray());
     }
+
+    [Fact]
+    public async Task Parts_from_devices_add_up_on_the_same_open_receipt_are_idempotent_and_the_final_confirmation_closes_it()
+    {
+        await using var f = await ReceivingFixture.CreateAsync();
+        var asn = await f.Get<AsnService>().CreateAsync(new AsnCreateRequest(null, f.ClientPublicId,
+            Lines: new[] { new AsnLineRequest(f.ProductClientPublicId, 10m) }), default);
+        var receipts = f.Get<ReceiptService>();
+        ReceiptPartRequest Part(decimal qty, Guid key) => new(AsnId: asn.Id, Lines: new[] { new ReceiptLineRequest(f.ProductClientPublicId, qty) }, ClientKey: key);
+        decimal Stock() => f.Db.Set<InventoryTransaction>().AsNoTracking().ToList().Sum(t => t.Quantity);
+
+        var k1 = Guid.NewGuid();
+        var one = await receipts.ReceivePartAsync(Part(4m, k1), default);
+        Assert.True(one.Header.IsOpen);
+        Assert.Equal((4m, 4m), (one.Lines[0].ReceivedQty, one.Lines[0].PostedQty));
+        Assert.Equal(4m, Stock());
+
+        // el mismo envío otra vez (reintento de la cola) no suma de nuevo
+        var again = await receipts.ReceivePartAsync(Part(4m, k1), default);
+        Assert.Equal(one.Header.PublicId, again.Header.PublicId);
+        Assert.Single(again.Batches!);
+        Assert.Equal(4m, Stock());
+
+        // otro aparato aporta otra parte al mismo recibo
+        var two = await receipts.ReceivePartAsync(Part(3m, Guid.NewGuid()), default);
+        Assert.Equal(one.Header.PublicId, two.Header.PublicId);
+        Assert.Equal(2, two.Batches!.Count);
+        Assert.Equal(7m, two.Lines[0].ReceivedQty);
+        Assert.Equal(7m, Stock());
+
+        // sin series ni daño en una parte
+        var serial = await Assert.ThrowsAsync<ValidationException>(() => receipts.ReceivePartAsync(
+            new ReceiptPartRequest(AsnId: asn.Id, Lines: new[] { new ReceiptLineRequest(f.ProductClientPublicId, 1m, SerialNumbers: new[] { "S1" }) }), default));
+        Assert.Contains(ReceiptBatchRules.PartNoSerials, serial.Errors!["lines[0].serialNumbers"]);
+        var damage = await Assert.ThrowsAsync<ValidationException>(() => receipts.ReceivePartAsync(
+            new ReceiptPartRequest(AsnId: asn.Id, Lines: new[] { new ReceiptLineRequest(f.ProductClientPublicId, 1m, DamagedQty: 1m) }), default));
+        Assert.True(damage.Errors!.ContainsKey("lines[0].damagedQty"));
+
+        // la confirmación final del aparato (POST /receipts con confirm) cierra ese recibo con lo que falta
+        var done = await receipts.CreateAsync(new ReceiptCreateRequest(AsnId: asn.Id,
+            Lines: new[] { new ReceiptLineRequest(f.ProductClientPublicId, 3m) }, Confirm: true), default);
+        Assert.Equal(one.Header.PublicId, done.Header.PublicId);
+        Assert.Equal(ReceiptStatuses.Received, done.Header.StatusCode);
+        Assert.Equal(10m, done.Lines[0].ReceivedQty);
+        Assert.Equal(10m, Stock());
+        Assert.Equal(new[] { 4m, 3m, 3m }, done.PutawayTasks.Select(t => t.Quantity!.Value).ToArray());
+    }
 }

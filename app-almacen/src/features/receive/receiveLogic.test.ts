@@ -3,6 +3,10 @@ import {
   attachDamage,
   buildLine,
   buildReceiptBody,
+  buildReceiptPartBody,
+  newClientKey,
+  partBlock,
+  stagingOverflow,
   canAddLine,
   DAMAGE_CAUSE_OTHER,
   damageBlock,
@@ -398,5 +402,36 @@ describe('daño declarado en la captura', () => {
     expect(validateDamageBin('stg-01', bins)).toEqual({ ok: true, code: 'STG-01' })
     expect(validateDamageBin('OLD', bins)).toEqual({ ok: false, reason: 'inactive' })
     expect(validateDamageBin('NOPE', bins)).toEqual({ ok: false, reason: 'notFound' })
+  })
+})
+
+// ------------------------------------------------------------------ Lote 175: recibir por partes
+describe('recibir por partes (Lote 175)', () => {
+  const line = (o: Partial<DraftLine> = {}): DraftLine => ({
+    productPublicId: 'p1', sku: 'A', productName: 'A', trackingTypeCode: 'NONE', receivedQty: 3, lotNumber: null, expiryDate: null, serialNumbers: null,
+    targetBinCode: null, damagedQty: 0, damageCause: null, damageNote: null, damageBinCode: null, damageDiscard: false, damageDestination: null, ...o,
+  })
+  it('una parte exige documento, acomodo, y sin series ni daño', () => {
+    expect(partBlock(null, [line()], null)).toBe('noDoc')
+    expect(partBlock({ asnId: 5 }, [line()], 'DIRECT')).toBe('direct')
+    expect(partBlock({ asnId: 5 }, [line({ serialNumbers: ['S1'] })], null)).toBe('serialOrDamage')
+    expect(partBlock({ purchaseOrderPublicId: 'po' }, [line({ damagedQty: 1 })], 'PUTAWAY')).toBe('serialOrDamage')
+    expect(partBlock({ asnId: 5 }, [line()], 'PUTAWAY')).toBeNull()
+  })
+  it('arma el cuerpo con la clave del envío y sin series ni daño', () => {
+    const body = buildReceiptPartBody('wh', { asnId: 5 }, [line({ lotNumber: 'L1', expiryDate: '2027-01-01' })], 'k-1')
+    expect(body).toMatchObject({ warehousePublicId: 'wh', asnId: 5, purchaseOrderPublicId: null, clientKey: 'k-1' })
+    expect(body.lines).toEqual([{ productPublicId: 'p1', receivedQty: 3, lot: { number: 'L1', expiryDate: '2027-01-01' } }])
+    expect(buildReceiptPartBody('wh', { purchaseOrderPublicId: 'po' }, [line()], 'k').purchaseOrderPublicId).toBe('po')
+  })
+  it('genera claves v4 distintas', () => {
+    const a = newClientKey()
+    expect(a).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
+    expect(newClientKey()).not.toBe(a)
+  })
+  it('avisa que el staging se llena solo si tiene cupo y lo capturado no cabe', () => {
+    expect(stagingOverflow(null, 100)).toBe(false)
+    expect(stagingOverflow(10, 10)).toBe(false)
+    expect(stagingOverflow(10, 11)).toBe(true)
   })
 })
