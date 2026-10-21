@@ -60,11 +60,11 @@
 
 **Decisiones de Luis (2026-10-20):**
 1. **Un solo cliente por empresa.** Los clientes cuyo nombre termina en «RECOGIDO …» o «DEVOLUCION …» no son clientes aparte: **se atan al cliente que dice el primer nombre** (p. ej. «AXISCARE …» → AxisCare), y sus órdenes se trabajan **como recogido (pick up) o como devolución**, según lo que diga el nombre del cliente. Hay que aplicar la regla en general (no solo a AxisCare) y probarla con todos los nombres de clientes de las dos compañías.
-2. **La división pasa a ser un catálogo** (por cliente), con las divisiones definidas en Colavora, y no un texto suelto. La migración las crea y asigna a cada orden.
+2. **La división se queda atada a la orden** (campo personalizado `division`, lista desplegable), como está. **No es un catálogo por cliente**: en Colavora las 11 divisiones son una lista de la compañía (`Customers_Divisions` no las ata a ningún cliente). Solo revisar que la migración traiga las 11 y que los valores de las órdenes coincidan con esa lista (códigos GLT/GLC/OXY… vs el nombre que se ve en pantalla). Si luego se factura por división, se agrupa por ese campo, sin sub-clientes.
 3. **Contratos y tarifas** se rehacen sobre esa base: un contrato por cliente real; las tarifas de los clientes «Recogido/Devolución» pasan al contrato del cliente como tarifas de pick up y de devolución (en vez de contratos propios de cada uno).
 4. **Pregunta abierta (Luis todavía no sabe):** ¿se factura una factura por división o todo junto? Eso decide si la división es solo etiqueta o parte de la facturación (agrupar la factura por división / sub-cliente de facturación). No se implementa la facturación por división hasta tener la respuesta.
 
-**Qué cambia en la migración (sin hacerlo todavía):** `ImportClientsAsync` y lo que cuelga de ella (contactos, ubicaciones, contrato, tarifas, `Customers_Service_Price` por `SenderID`), la resolución del cliente de cada orden en `ImportOrderBatchAsync` (tipo pick up / devolución por el nombre del cliente de origen) y el campo `division` (catálogo en vez de texto). Regla pura y probada en `ColavoraRules` (nombre → cliente principal + tipo).
+**Qué cambia en la migración (sin hacerlo todavía):** `ImportClientsAsync` y lo que cuelga de ella (contactos, ubicaciones, contrato, tarifas, `Customers_Service_Price` por `SenderID`), la resolución del cliente de cada orden en `ImportOrderBatchAsync` (tipo pick up / devolución por el nombre del cliente de origen) y el campo `division` (validar contra la lista de 11). Regla pura y probada en `ColavoraRules` (nombre → cliente principal + tipo).
 
 ## 5. Choferes: solo los que aparecen asignados en las órdenes
 
