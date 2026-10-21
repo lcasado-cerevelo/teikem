@@ -12,7 +12,10 @@ Ver en el sistema, después de despachar, de qué posiciones salió todo, desde 
 ## Cómo se probó
 - xunit `PickGroupTests` (reglas puras; recolectar dos avisos del mismo cliente: una maestra con sus 9 unidades y movimientos de dos posiciones, la recolección suelta ya no se empaca; otro cliente / menos de dos / documento inexistente se rechazan sin recolectar; eliminar la maestra devuelve el inventario y la reserva) más recolección, despacho manual, `WmsControllerSecurityTests` (179 acciones) y `FrozenSqlTests`. **Contra SQL Server real** (`PickGroupSqlTests`): lista, búsqueda por número de un documento y ficha se traducen y devuelven lo mismo que en memoria. La sección SQL se aplicó dos veces a SQL Server local.
 
-## Qué NO se probó (a verificar en el recorrido)
+## Verificado después contra el API real (2026-10-21, trabajo autónomo)
+`scripts/smoke-maestra.sh` (nuevo; también en el CI) levanta el flujo completo contra un API y una base reales: recolectar dos avisos del mismo cliente (9 unidades de dos posiciones), rechazo por cliente distinto y por un solo documento, ficha con movimientos, búsqueda, 422 al empacar suelta una recolección del grupo, **empacar la maestra (UN envío, número de empaque = el de la maestra, miembros PACKED, segundo empaque 422)** y **eliminar la maestra empacada** (inventario 10, avisos con su reserva, maestra CANCELLED, envío dado de baja). Pasa completo.
+
+## Qué NO se probó (a verificar en el recorrido) — resuelto arriba
 - **El empaque de la maestra con el envío real** (`PackAsync`, crea la orden con `OrderService`) y **eliminar una maestra empacada**: el código copia las reglas del empaque de una recolección suelta pero no se ejercitó de punta a punta (las pruebas del repo no montan `OrderService`). Es lo primero a revisar en el recorrido con Playwright/smoke.
 
 ## Decisiones a revisar
