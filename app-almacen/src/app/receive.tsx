@@ -25,6 +25,7 @@ import {
   findLocalBinsByCode,
   findProductByCode,
   getDocLines,
+  getDocExpected,
   getDocProgress,
   getOpenReceipt,
   removeLocalReceiptLine,
@@ -136,6 +137,8 @@ export default function ReceiveScreen() {
   const truck = useMemo(() => getTruck(), [tick])
   const direct = openReceipt?.receivingMode === 'DIRECT'
   // Lote 175: recibir por partes y aviso de staging lleno (con lo que ya hay según los saldos locales)
+  // Lote 191: con aviso u orden de compra, lo que dice el documento se ve en una lista para elegir (escanear sigue funcionando)
+  const expected = openReceipt ? getDocExpected(openReceipt.doc) : []
   const docProgress = openReceipt ? getDocProgress(openReceipt.doc) : null
   const partBlocked = openReceipt ? partBlock(openReceipt.doc, openReceipt.lines, openReceipt.receivingMode) : 'noDoc'
   const partOk = openReceipt !== null && partBlocked === null
@@ -854,6 +857,35 @@ export default function ReceiveScreen() {
         </View>
       ) : null}
       <ScanField label={t('receive.scanProductLabel')} help={t('receive.scanProductHelp')} error={productError} onSubmit={scanProduct} pick="product" />
+      {expected.length > 0 ? (
+        <View style={styles.field} testID="receive-expected">
+          <Text style={styles.label}>{t('receive.expectedTitle')}</Text>
+          <Text style={styles.help}>{t('receive.expectedHelp')}</Text>
+          {expected.map((l, i) => {
+            const captured = openReceipt.lines.filter((x) => x.productPublicId === l.productPublicId).reduce((n, x) => n + x.receivedQty, 0)
+            const left = Math.max(l.expectedQty - l.postedQty - captured, 0)
+            return (
+              <Pressable
+                key={`${l.productPublicId}-${i}`}
+                accessibilityRole="button"
+                accessibilityLabel={t('receive.expectedPick', { sku: l.sku })}
+                onPress={() => scanProduct(l.sku)}
+                style={[styles.suggestCard, captured > 0 && left <= 0 && styles.expectedDone]}
+                testID={`receive-expected-${l.sku}`}
+              >
+                <Text style={styles.label}>
+                  {captured > 0 && left <= 0 ? '✓ ' : ''}
+                  {l.sku} · {l.productName}
+                </Text>
+                <Text style={styles.help}>
+                  {t('receive.expectedLine', { expected: f.qty(l.expectedQty), received: f.qty(l.postedQty + captured), left: f.qty(left) })}
+                  {l.lotNumber ? ' · ' + l.lotNumber : ''}
+                </Text>
+              </Pressable>
+            )
+          })}
+        </View>
+      ) : null}
       <Text style={styles.label}>{t('receive.linesTitle')}</Text>
       <LineList
         items={openReceipt.lines.map((l, i) => ({
@@ -912,6 +944,7 @@ const styles = StyleSheet.create({
   help: { color: colors.muted, fontSize: fontSize.message },
   truckBox: { gap: spacing.sm, padding: spacing.md, borderRadius: 12, borderWidth: 2, borderColor: colors.brand, backgroundColor: colors.panelAlt },
   suggestCard: { gap: 2, padding: spacing.md, borderRadius: 12, borderWidth: 2, borderColor: colors.brand, backgroundColor: colors.panelAlt },
+  expectedDone: { borderColor: colors.line, opacity: 0.7 },
   warnText: { color: colors.warn, fontSize: fontSize.message, fontWeight: '700' },
   hint: { color: colors.warn, fontSize: 18, fontWeight: '700' },
   error: { color: colors.error, fontSize: fontSize.message },

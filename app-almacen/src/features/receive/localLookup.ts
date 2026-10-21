@@ -295,3 +295,36 @@ export function getDocProgress(doc: LocalDoc | null): DocProgressLine[] | null {
   if (!rows.some((r) => r.posted_qty > 0)) return null
   return rows.map((r) => ({ sku: r.sku ?? '', expectedQty: r.expected_qty, postedQty: r.posted_qty }))
 }
+
+export interface ExpectedLine {
+  productPublicId: string
+  sku: string
+  productName: string
+  /** Lo que dice el documento (aviso: lo esperado; orden de compra: lo que falta por recibir). */
+  expectedQty: number
+  /** Lo que el documento ya lleva recibido por partes (solo el aviso). */
+  postedQty: number
+  lotNumber: string | null
+}
+
+/** Lote 191: lo que dice el aviso o la orden de compra del recibo, producto por producto (la lista que se elige en vez de escanear). Un recibo ciego no tiene. */
+export function getDocExpected(doc: LocalDoc | null): ExpectedLine[] {
+  if (!doc) return []
+  const db = getDb()
+  if (doc.asnId != null) {
+    return db
+      .getAllSync<{ product_public_id: string; sku: string | null; product_name: string | null; expected_qty: number; posted_qty: number; lot_number: string | null }>(
+        'SELECT product_public_id, sku, product_name, expected_qty, posted_qty, lot_number FROM asn_line WHERE asn_id = ? ORDER BY id',
+        [doc.asnId],
+      )
+      .map((l) => ({ productPublicId: l.product_public_id, sku: l.sku ?? '', productName: l.product_name ?? '', expectedQty: l.expected_qty, postedQty: l.posted_qty, lotNumber: l.lot_number }))
+  }
+  if (!doc.purchaseOrderPublicId) return []
+  return db
+    .getAllSync<{ product_public_id: string; sku: string | null; product_name: string | null; qty_pending: number }>(
+      `SELECT l.product_public_id, l.sku, l.product_name, l.qty_pending FROM purchase_order_line l JOIN purchase_order po ON po.id = l.purchase_order_id
+       WHERE po.public_id = ? AND l.qty_pending > 0 ORDER BY l.id`,
+      [doc.purchaseOrderPublicId],
+    )
+    .map((l) => ({ productPublicId: l.product_public_id, sku: l.sku ?? '', productName: l.product_name ?? '', expectedQty: l.qty_pending, postedQty: 0, lotNumber: null }))
+}

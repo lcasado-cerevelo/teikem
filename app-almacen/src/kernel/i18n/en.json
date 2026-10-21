@@ -232,6 +232,10 @@
     "changed": "You are now working in {name}."
   },
   "receive": {
+    "expectedTitle": "What the document says",
+    "expectedHelp": "Tap a product to capture it (you can also scan it).",
+    "expectedLine": "Expected {expected} · Received {received} · Left {left}",
+    "expectedPick": "Capture {sku}",
     "truckStart": "Receive together (open load)",
     "truckHelp": "For an arrival (truck, rail car, container…) with several documents from the same owner: receive one after another as usual and the system gathers them in a master receipt.",
     "docProgressTitle": "Already received from this document",

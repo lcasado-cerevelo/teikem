@@ -69,4 +69,21 @@ describe('Recibir — una parte', () => {
     await waitFor(() => expect(screen.getByTestId('receive-doc-progress')).toBeTruthy())
     expect(screen.getByText('SKU-1: 4 de 10')).toBeTruthy()
   })
+
+  it('Lote 191: con un aviso se ve la lista de lo esperado y tocar un producto abre su captura', async () => {
+    await saveDeviceIdentity({
+      devicePublicId: 'dev-1', deviceSecret: 'secret-1', tenantName: 'Teikem Demo', defaultWarehousePublicId: 'wh-1', theme: null,
+      defaultWarehouseReceivingMode: 'PUTAWAY',
+    })
+    await saveUserSession({ accessToken: 'a', accessExpiresAtUtc: '', refreshToken: 'r', refreshExpiresAtUtc: '', tenantId: 1, userId: 7, fullName: 'Ana Ruiz' })
+    getDb().runSync("INSERT INTO product (id, public_id, sku, name, barcode, tracking_type_code, is_active) VALUES (1, 'p1', 'SKU-1', 'Tornillo', '7501', 'NONE', 1)")
+    getDb().runSync("INSERT INTO asn_line (id, asn_id, product_public_id, sku, product_name, expected_qty, posted_qty) VALUES (1, 5, 'p1', 'SKU-1', 'Tornillo', 10, 4)")
+    startLocalReceipt('wh-1', { kind: 'asn', purchaseOrderPublicId: null, asnId: 5, label: 'LLE-00005' }, 'PUTAWAY')
+
+    await renderRouter('src/app', { initialUrl: '/receive' })
+    await waitFor(() => expect(screen.getByTestId('receive-expected')).toBeTruthy())
+    expect(screen.getByText('Esperado 10 · Recibido 4 · Falta 6')).toBeTruthy()
+    await fireEvent.press(screen.getByTestId('receive-expected-SKU-1'))
+    await waitFor(() => expect(screen.getByText('Agregar')).toBeTruthy())
+  })
 })

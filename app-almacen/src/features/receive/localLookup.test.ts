@@ -10,6 +10,7 @@ import {
   findLocalBinsByCode,
   findProductByCode,
   getDocLines,
+  getDocExpected,
   getDocProgress,
   getOpenReceipt,
   listPendingDocs,
@@ -185,6 +186,18 @@ describe('getDocLines', () => {
     db.runSync("INSERT INTO purchase_order_line (id, purchase_order_id, product_public_id, qty_ordered, qty_received, qty_pending) VALUES (2, 10, 'p2', 5, 5, 0)")
     expect(getDocLines(findDocByCode('wh-1', 'PO-100'))).toEqual([{ productPublicId: 'p1', lotNumber: null }])
     expect(getDocLines(null)).toEqual([])
+  })
+})
+
+describe('getDocExpected (Lote 191)', () => {
+  it('aviso: sus líneas con lo ya recibido; orden de compra: solo lo que falta; ciego: nada', () => {
+    const db = getDb()
+    db.runSync("INSERT INTO asn_line (id, asn_id, product_public_id, sku, product_name, expected_qty, posted_qty, lot_number) VALUES (1, 20, 'p1', 'SKU-1', 'Uno', 10, 4, 'L-1')")
+    expect(getDocExpected(findDocByCode('wh-1', 'ASN-9'))).toEqual([{ productPublicId: 'p1', sku: 'SKU-1', productName: 'Uno', expectedQty: 10, postedQty: 4, lotNumber: 'L-1' }])
+    db.runSync("INSERT INTO purchase_order_line (id, purchase_order_id, product_public_id, sku, product_name, qty_ordered, qty_received, qty_pending) VALUES (1, 10, 'p1', 'SKU-1', 'Uno', 5, 0, 5)")
+    db.runSync("INSERT INTO purchase_order_line (id, purchase_order_id, product_public_id, sku, product_name, qty_ordered, qty_received, qty_pending) VALUES (2, 10, 'p2', 'SKU-2', 'Dos', 5, 5, 0)")
+    expect(getDocExpected(findDocByCode('wh-1', 'PO-100')).map((l) => [l.sku, l.expectedQty])).toEqual([['SKU-1', 5]])
+    expect(getDocExpected(null)).toEqual([])
   })
 })
 

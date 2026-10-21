@@ -10143,3 +10143,6 @@ Suba el logo en Ajustes → Marca (lockup y/o marca cuadrada). Si la compañía 
 
 **¿Cómo pongo la posición de recepción por omisión de un almacén?** (Lote 189)
 En Almacenes → el almacén → sección «Recepción» → «Posición de recepción por defecto» (una posición de una zona de recepción o de cruce de muelle). Al crear un recibo con ese almacén, la posición de recepción sale ya puesta con ese valor (se puede cambiar en el encabezado). Sin valor, el sistema usa la primera posición de recepción activa del almacén, como antes. En el aparato, los recibos con acomodo usan esa misma posición por omisión.
+
+**En el aparato, al recibir contra un aviso, ¿tengo que escanear cada producto?** (Lote 191)
+No necesariamente: debajo del campo de escaneo sale «Lo que dice el documento» con cada producto, lo esperado, lo recibido y lo que falta. Toque el producto para capturarlo; escanear sigue funcionando. Con una orden de compra la lista muestra lo que falta por recibir. En un recibo ciego no hay documento, así que no hay lista.

@@ -232,6 +232,10 @@
     "changed": "Ahora trabajas en {name}."
   },
   "receive": {
+    "expectedTitle": "Lo que dice el documento",
+    "expectedHelp": "Toque un producto para capturarlo (también puede escanearlo).",
+    "expectedLine": "Esperado {expected} · Recibido {received} · Falta {left}",
+    "expectedPick": "Capturar {sku}",
     "truckStart": "Recibir juntos (abrir carga)",
     "truckHelp": "Para una llegada (camión, vagón, contenedor…) con varios documentos del mismo dueño: reciba uno tras otro como siempre y el sistema los reúne en una recepción maestra.",
     "docProgressTitle": "Ya recibido de este documento",
