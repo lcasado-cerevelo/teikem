@@ -1,9 +1,11 @@
 // Llaves de API de una integración (Lote 135, P11): crear (el secreto se muestra UNA sola vez), cambiar el límite de uso, revocar y ver la bitácora de cada llave.
 import { useMemo, useState } from 'react'
 import { applyProblemDetails } from '../../kernel/api/problem'
+import { API_BASE_URL } from '../../kernel/api/client'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
 import { Chip, DataTable, Modal, Spinner, toast, type DataColumn } from '../../kernel/ui'
+import { apiBaseUrl, apiHandoffText } from './apiHandoff'
 import { useApiKeyLog, useApiKeyMutations, useApiKeys, type ApiKeyDto, type ApiLogDto, type IntegrationDto } from './integrationsApi'
 
 function KeyLog({ publicId, keyId }: { publicId: string; keyId: string }) {
@@ -37,6 +39,10 @@ export function ApiKeysModal({ integration, onClose }: { integration: Integratio
   const [logFor, setLogFor] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // lo que se le entrega al cliente: URL del API, llave, secreto y cómo pedir el token (con los alcances de la integración)
+  const handoff = shown
+    ? apiHandoffText({ baseUrl: apiBaseUrl(API_BASE_URL, window.location.origin), keyId: shown.keyId, secret: shown.secret, scopes: integration.scopes ?? [] }, t)
+    : ''
   const fail = (e: unknown) => setError(applyProblemDetails(e).title ?? '')
   const add = async () => {
     setError(null)
@@ -110,6 +116,9 @@ export function ApiKeysModal({ integration, onClose }: { integration: Integratio
               {t('integrations.api.secretIs')} <span className="mono" data-testid="api-secret">{shown.secret}</span>{' '}
               <button type="button" className="btn" onClick={() => void copy(shown.secret)}>{t('integrations.api.copy')}</button>
             </p>
+            <p className="help">{t('integrations.api.handoff.help')}</p>
+            <pre className="mono int-handoff" data-testid="api-handoff">{handoff}</pre>
+            <button type="button" className="btn flow" onClick={() => void copy(handoff)}>{t('integrations.api.handoff.copyAll')}</button>{' '}
             <button type="button" className="btn" onClick={() => setShown(null)}>{t('integrations.api.saved')}</button>
           </div>
         )}

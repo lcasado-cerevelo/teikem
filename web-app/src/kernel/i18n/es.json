@@ -10382,6 +10382,17 @@
       "secretOnce": "Copie el secreto ahora: no se vuelve a mostrar.",
       "keyIs": "Llave:",
       "secretIs": "Secreto:",
+      "handoff": {
+        "intro": "Datos para conectar su sistema con Teikem:",
+        "baseUrl": "URL base",
+        "key": "Llave (clientId)",
+        "secret": "Secreto (clientSecret)",
+        "scopes": "Alcances",
+        "how": "1) Pida un token (dura 15 minutos):",
+        "then": "2) Llame al API con el token (al vencer, pida otro con la misma llave):",
+        "help": "Bloque listo para copiar y pegarle al cliente. El secreto no se vuelve a mostrar.",
+        "copyAll": "Copiar todo"
+      },
       "copy": "Copiar",
       "copied": "Copiado.",
       "copyFailed": "No se pudo copiar; selecciónelo a mano.",

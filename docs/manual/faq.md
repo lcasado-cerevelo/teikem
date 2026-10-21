@@ -9967,3 +9967,6 @@ Empáquela o elimínela desde la maestra Y; el envío es uno solo para todas.
 
 **Eliminé la maestra, ¿qué pasó con los documentos?**
 El inventario volvió a su posición y cada documento recuperó su reserva y su estatus anterior.
+
+**¿Dónde creo la llave de API de un cliente y qué le mando?**
+Integraciones → en la integración de tipo «API para el cliente», botón «Llaves de API» (debajo del nombre) → ponle nombre → «Crear llave». Sale un bloque con la URL base, la llave, el secreto, los alcances y cómo pedir el token; «Copiar todo» y pégaselo al cliente. El secreto solo se ve en ese momento: si se pierde, revoca la llave y crea otra.

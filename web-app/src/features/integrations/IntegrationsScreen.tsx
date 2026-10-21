@@ -126,6 +126,13 @@ export default function IntegrationsScreen() {
           <>
             <b>{i.name}</b>
             {i.description && <div className="help">{i.description}</div>}
+            {canManage && i.connectorKind === 'API' && (
+              <div>
+                <button type="button" className="btn sm" onClick={() => setKeysFor(i)}>
+                  {t('integrations.api.open')}
+                </button>
+              </div>
+            )}
           </>
         ),
         exportValue: (i) => i.name ?? '',

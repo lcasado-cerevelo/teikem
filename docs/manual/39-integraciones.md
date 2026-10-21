@@ -109,7 +109,8 @@ Lo que entró y no se pudo procesar solo. **Un envío con problemas nunca se cre
 - En **Sistema → Integraciones / API → Nueva integración** se elige el conector **API para el cliente**. No lleva plantilla, carpeta ni horario. Se escogen los **alcances** (solo se ofrece lo que quien crea puede dar y lo que la compañía tiene contratado). La cuenta de servicio de la integración recibe exactamente los permisos de esos alcances.
 - **Cliente:** obligatorio solo si se elige algún alcance de **transporte** (envíos, facturas, consignatarios, perfil): la llave verá únicamente lo de ese cliente (otro cliente «no existe» para ella). Los alcances de almacén, ventas y compras no lo piden.
 - En la lista, la acción **Llaves de API** (`integrations.manage`) abre la gestión: **crear** (nombre y límite por minuto opcional), **cambiar el límite**, **revocar** y ver la **bitácora** de cada llave. Hasta **10 llaves activas** por integración.
-- **El secreto se muestra una sola vez**, al crear la llave (con botones Copiar). En Teikem solo se guarda su hash SHA-256; después solo se ve la llave `tk_…` y los últimos 4 caracteres. Si se pierde, se revoca y se crea otra.
+- **Dónde está:** en la lista de Integraciones, las de tipo «API para el cliente» traen debajo del nombre el botón **«Llaves de API»** (también en el menú de la fila). 
+- **El secreto se muestra una sola vez**, al crear la llave (con botones Copiar) y, desde 2026-10-21, junto a un **bloque listo para copiar y pegarle al cliente** con la URL base, la llave, el secreto, los alcances de la integración y los dos comandos de ejemplo (pedir el token y llamar al API); el botón «Copiar todo» lo copia completo. En Teikem solo se guarda su hash SHA-256; después solo se ve la llave `tk_…` y los últimos 4 caracteres. Si se pierde, se revoca y se crea otra.
 
 **Alcances y rutas** (lista cerrada; todo lo demás responde 403 aunque el token sea válido; el único `DELETE` es «quitar un webhook»):
 
