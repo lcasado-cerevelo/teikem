@@ -34,9 +34,9 @@ describe('navegación — Inicio y márgenes de la app', () => {
     // Grilla de dos columnas: fila que se parte, cada celda a la mitad (la quinta, sola, a todo el ancho).
     const grid = screen.getByTestId('home-grid')
     expect(StyleSheet.flatten(grid.props.style)).toMatchObject({ flexDirection: 'row', flexWrap: 'wrap' })
-    // (2026-10-08: «Daño» es un sexto tile condicionado al permiso warehouse.damage; sin saberlo, los hijos reales son 5)
-    expect(Children.toArray(grid.props.children)).toHaveLength(5)
-    for (const label of ['Recibir', 'Acomodar', 'Despacho', 'Conteo', 'Consultar']) {
+    // (2026-10-08: «Daño» es un tile condicionado al permiso warehouse.damage; Lote 172 agrega «Mis tareas»: sin saberlo, los hijos reales son 6)
+    expect(Children.toArray(grid.props.children)).toHaveLength(6)
+    for (const label of ['Mis tareas', 'Recibir', 'Acomodar', 'Despacho', 'Conteo', 'Consultar']) {
       const button = screen.getByRole('button', { name: new RegExp(label) })
       expect(StyleSheet.flatten(button.props.style).minHeight).toBe(88)
     }

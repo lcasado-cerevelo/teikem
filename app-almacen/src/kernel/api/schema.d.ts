@@ -1148,6 +1148,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/asns/{id}/take": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AsnDto"];
+                        "application/json": components["schemas"]["AsnDto"];
+                        "text/json": components["schemas"]["AsnDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exit-notices/{publicId}/take": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analytics/attention": {
         parameters: {
             query?: never;
@@ -35535,6 +35609,8 @@ export interface components {
             isActive?: boolean;
             lines?: components["schemas"]["SyncAsnLineDto"][] | null;
             number?: string;
+            /** Format: int32 */
+            assignedToUserId?: number | null;
         };
         SyncAsnDtoSyncPage: {
             items?: components["schemas"]["SyncAsnDto"][] | null;
@@ -35705,6 +35781,8 @@ export interface components {
             requestedAtUtc?: string | null;
             isActive?: boolean;
             lines?: components["schemas"]["SyncExitNoticeLineDto"][] | null;
+            /** Format: int32 */
+            assignedToUserId?: number | null;
         };
         SyncExitNoticeDtoSyncPage: {
             items?: components["schemas"]["SyncExitNoticeDto"][] | null;

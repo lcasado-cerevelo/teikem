@@ -67,7 +67,26 @@
     "removeCompanyPending": "Tiene {count} captura(s) sin sincronizar que se perderán.",
     "swipeHint": "Desliza a la izquierda para quitar una compañía."
   },
+  "myTasks": {
+    "title": "Mis tareas",
+    "empty": "No tienes tareas asignadas. Lo que te asignen aparece aquí.",
+    "offline": "Sin señal: se muestran los acomodos de la última vez.",
+    "receive": "Por recibir ({count})",
+    "dispatch": "Por despachar ({count})",
+    "putaway": "Por acomodar ({count})",
+    "expected": "Llega {date}",
+    "required": "Para {date}",
+    "toBin": "a {bin}",
+    "showFree": "Ver lo que nadie tiene asignado ({count})",
+    "hideFree": "Ocultar lo que nadie tiene asignado",
+    "freeHelp": "Cualquiera puede tomarlos. Al tomar uno, queda asignado a ti.",
+    "kindReceive": "Por recibir",
+    "kindDispatch": "Por despachar",
+    "take": "Tomar"
+  },
   "home": {
+    "myTasks": "Mis tareas",
+    "myTasksCount": "Mis tareas ({count})",
     "title": "Teikem Almacén",
     "receive": "Recibir",
     "putaway": "Acomodar",

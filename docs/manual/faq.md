@@ -9835,3 +9835,17 @@ La fecha no existe en el calendario (por ejemplo 02/30/2026) o cae fuera de los 
 
 **¿Cómo escribo la hora?**
 Solo números: `0930` → `09:30`. Con hora de 12 (Puerto Rico) elija **AM** o **PM** en el selector de al lado; con hora de 24 no hay selector. Una hora fuera de rango (25:00, 09:75) se marca en rojo.
+
+## Mis tareas en la app de almacén (Lote 172, 2026-10-21)
+
+**No me aparece nada en «Mis tareas».**
+Nadie le ha asignado documentos, o el aparato no se ha sincronizado desde que se los asignaron (toque «Sincronizar ahora»). También revise que esté en el almacén correcto (el de arriba en Inicio). Los avisos de salida solo aparecen si ya tienen algo reservado.
+
+**Un aviso asignado a otra persona, ¿lo puedo recibir o despachar igual?**
+Sí: la asignación ordena el trabajo, no lo bloquea. Aparece en Recibir o Despacho como cualquier otro.
+
+**«Tomar» dice que no pudo.**
+Necesita señal. Si dice `Ese documento ya está asignado a otra persona; pídale a un supervisor que lo reasigne.` (409), otra persona lo tomó antes; un supervisor puede reasignarlo desde la web (botón Asignar).
+
+**Sin señal solo veo los acomodos de la última vez.**
+Es lo esperado: los acomodos asignados se piden en línea y se guardan; los avisos de llegada y de salida salen de la copia del aparato.

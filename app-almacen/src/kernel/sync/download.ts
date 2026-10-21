@@ -225,6 +225,7 @@ function applyAsns(db: SQLiteDatabase, items: Array<{
   purchaseOrderPublicId?: string | null
   purchaseOrderNumber?: string | null
   number?: string | null
+  assignedToUserId?: number | null
   reference?: string | null
   expectedDate?: string | null
   statusCode?: string | null
@@ -240,12 +241,13 @@ function applyAsns(db: SQLiteDatabase, items: Array<{
     }
     db.runSync(
       `INSERT INTO asn (id, warehouse_public_id, client_public_id, client_name, purchase_order_public_id, purchase_order_number,
-                         reference, expected_date, status_code, number, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                         reference, expected_date, status_code, number, assigned_to_user_id, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
        ON CONFLICT(id) DO UPDATE SET warehouse_public_id = excluded.warehouse_public_id, client_public_id = excluded.client_public_id,
          client_name = excluded.client_name, purchase_order_public_id = excluded.purchase_order_public_id,
          purchase_order_number = excluded.purchase_order_number, reference = excluded.reference,
-         expected_date = excluded.expected_date, status_code = excluded.status_code, number = excluded.number, is_active = 1`,
+         expected_date = excluded.expected_date, status_code = excluded.status_code, number = excluded.number,
+         assigned_to_user_id = excluded.assigned_to_user_id, is_active = 1`,
       [
         asn.id,
         asn.warehousePublicId ?? '',
@@ -257,6 +259,7 @@ function applyAsns(db: SQLiteDatabase, items: Array<{
         asn.expectedDate ?? null,
         asn.statusCode ?? null,
         asn.number || null,
+        asn.assignedToUserId ?? null,
       ],
     )
     applyAsnLines(db, asn.id, asn.lines)
@@ -748,6 +751,7 @@ interface SyncExitNotice {
   statusCode?: string | null
   requiredDate?: string | null
   requestedAtUtc?: string | null
+  assignedToUserId?: number | null
   isActive?: boolean
   lines?: Array<{
     id?: number
@@ -769,9 +773,9 @@ export function applyExitNotices(db: SQLiteDatabase, warehousePublicId: string, 
     deleteLocalExitNotice(db, o.id)
     if (o.isActive === false) continue
     db.runSync(
-      `INSERT INTO exit_notice (id, public_id, number, warehouse_public_id, client_name, reference, destination, status_code, required_date, requested_at_utc)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [o.id, o.publicId ?? '', o.number ?? '', o.warehousePublicId ?? warehousePublicId, o.clientName ?? null, o.reference ?? null, o.destination ?? null, o.statusCode ?? null, o.requiredDate ?? null, o.requestedAtUtc ?? null],
+      `INSERT INTO exit_notice (id, public_id, number, warehouse_public_id, client_name, reference, destination, status_code, required_date, requested_at_utc, assigned_to_user_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [o.id, o.publicId ?? '', o.number ?? '', o.warehousePublicId ?? warehousePublicId, o.clientName ?? null, o.reference ?? null, o.destination ?? null, o.statusCode ?? null, o.requiredDate ?? null, o.requestedAtUtc ?? null, o.assignedToUserId ?? null],
     )
     for (const l of o.lines ?? []) {
       db.runSync(

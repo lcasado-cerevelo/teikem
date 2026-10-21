@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { QuantityField } from '../features/count/QuantityField'
 import { packLabel, splitByPack } from '../features/count/quantityCalc'
 import { findProductPack } from '../kernel/warehouse/productLookup'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 
 import { useSession } from '../kernel/auth/useSession'
 import { useActiveWarehouse } from '../kernel/warehouse/activeWarehouse'
@@ -78,6 +78,9 @@ export default function ReceiveScreen() {
   const { t } = useT()
   const f = useFormat()
   const router = useRouter()
+  // Lote 172: «Mis tareas» abre el aviso asignado con ?doc=LLE-##### (una sola vez; se retoma como si se hubiera escaneado)
+  const { doc: docParam } = useLocalSearchParams<{ doc?: string }>()
+  const docOpened = useRef(false)
   const { device } = useSession()
   const activeWarehouse = useActiveWarehouse()
   const warehousePublicId = activeWarehouse.publicId
@@ -136,6 +139,13 @@ export default function ReceiveScreen() {
       alive = false
     }
   }, [suggestProduct, suggestQty, warehousePublicId])
+
+  useEffect(() => {
+    if (docOpened.current || !docParam || !warehousePublicId || getOpenReceipt() !== null) return
+    docOpened.current = true
+    scanDoc(docParam)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docParam, warehousePublicId])
 
   if (!warehousePublicId) {
     return (

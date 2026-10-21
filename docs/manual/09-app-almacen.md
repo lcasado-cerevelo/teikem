@@ -1348,3 +1348,16 @@ Ruta `/sales-return`; botón **Devoluciones** de Inicio (solo si el aparato tien
 - La lista «Buscar en la lista» ya **no tiene tope de 50**: sigue cargando al deslizar y dice cuántas coincidencias hay.
 - Al **escribir a mano** (⌨) en un campo de producto o posición salen hasta 5 sugerencias parciales (SKU, nombre o código de barras; código, zona, pasillo, rack o nivel); tocar una equivale a escanearla y «Ver todas» abre la lista ya filtrada. No hace falta escribir el código completo.
 - En Consultar, las existencias traen todas las coincidencias (páginas de 200).
+
+## Mis tareas (Lote 172, 2026-10-21)
+
+Tarjeta **«Mis tareas»** al comienzo de Inicio (con la cuenta entre paréntesis, p. ej. «Mis tareas (3)», cuando hay documentos asignados). Reúne lo que el supervisor le **asignó a quien inició sesión** en el almacén activo:
+
+- **Por recibir:** avisos de llegada de cliente asignados a usted (`LLE-00012 · referencia`, cliente y fecha de llegada). Tocar uno abre **Recibir** con ese aviso ya elegido (como si lo hubiera escaneado).
+- **Por despachar:** avisos de salida asignados a usted que ya tienen algo reservado (los demás no bajan al aparato). Tocar uno abre **Despacho de avisos de salida** con ese aviso.
+- **Por acomodar:** tareas de acomodo asignadas a usted; tocar abre **Acomodar** (que ya muestra primero lo suyo). Se piden en línea y quedan guardadas: sin señal se ve la lista de la última vez.
+- **Lo que nadie tiene asignado:** botón «Ver lo que nadie tiene asignado (N)». Cualquiera con permiso puede **Tomar** uno (avisos de llegada: `warehouse.receive`; de salida: `warehouse.pick`); queda asignado a usted en el acto. Tomar necesita señal; si el aviso ya lo tomó otra persona sale `Ese documento ya está asignado a otra persona; pídale a un supervisor que lo reasigne.`
+
+**Qué no hace:** la asignación **ordena** el trabajo, no lo bloquea. Recibir y Despacho siguen mostrando todos los documentos, y otro usuario con permiso puede atender uno asignado a usted. Con un recibo, despacho o conteo abierto, «Mis tareas» avisa cuál hay que terminar antes de abrir otro documento (igual que Inicio). Los datos salen de la copia local del aparato: lo que le asignen después de la última sincronización aparece al sincronizar. El aviso al asignar (notificación a la persona) queda para un lote aparte.
+
+Asignar se hace en la web: Recibo → Avisos de llegada / Avisos de salida, botón **Asignar** ([capítulo 06](06-inventario-y-almacen.md), «Asignar el aviso de llegada y el aviso de salida»).

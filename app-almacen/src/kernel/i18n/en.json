@@ -67,7 +67,26 @@
     "removeCompanyPending": "It has {count} unsynced capture(s) that will be lost.",
     "swipeHint": "Swipe left to remove a company."
   },
+  "myTasks": {
+    "title": "My tasks",
+    "empty": "You have no assigned tasks. What you are assigned shows up here.",
+    "offline": "No signal: showing the putaway tasks from the last time.",
+    "receive": "To receive ({count})",
+    "dispatch": "To dispatch ({count})",
+    "putaway": "To put away ({count})",
+    "expected": "Arrives {date}",
+    "required": "For {date}",
+    "toBin": "to {bin}",
+    "showFree": "Show what nobody has been assigned ({count})",
+    "hideFree": "Hide what nobody has been assigned",
+    "freeHelp": "Anyone can take them. Taking one assigns it to you.",
+    "kindReceive": "To receive",
+    "kindDispatch": "To dispatch",
+    "take": "Take"
+  },
   "home": {
+    "myTasks": "My tasks",
+    "myTasksCount": "My tasks ({count})",
     "title": "Teikem Warehouse",
     "receive": "Receive",
     "putaway": "Putaway",

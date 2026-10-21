@@ -1,6 +1,6 @@
 // Lote 8A-app — esquema de la base local (expo-sqlite). Ver docs/mobile/app-almacen-plan.md §1 "Base local".
 // Migraciones por PRAGMA user_version: cada versión agrega su bloque de SQL; nunca se reescribe uno ya publicado.
-export const SCHEMA_VERSION = 18
+export const SCHEMA_VERSION = 19
 
 export const MIGRATIONS: readonly string[] = [
   // v1: kv, catálogos sincronizados, documentos abiertos, cola de salida y marcas de agua.
@@ -538,6 +538,13 @@ export const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE asn ADD COLUMN number TEXT;
   CREATE INDEX IF NOT EXISTS ix_asn_number ON asn(number);
+  DELETE FROM sync_watermark WHERE resource = 'asns' OR resource LIKE 'asns:%';
+  `,
+  // v19 (2026-10-21, Lote 172): «Mis tareas». El aviso de llegada y el aviso de salida traen a quién se asignaron (assigned_to_user_id; NULL = sin asignar). Como los avisos de llegada ya descargados no lo traen,
+  // se borra la marca de agua de avisos para bajarlos completos una vez (los avisos de salida se reemplazan completos en cada sincronización).
+  `
+  ALTER TABLE asn ADD COLUMN assigned_to_user_id INTEGER;
+  ALTER TABLE exit_notice ADD COLUMN assigned_to_user_id INTEGER;
   DELETE FROM sync_watermark WHERE resource = 'asns' OR resource LIKE 'asns:%';
   `,
 ]

@@ -27,7 +27,7 @@ Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Esta
 - ☑ **A5 (Lote 170). Número para los avisos de llegada** (hoy solo tienen un id interno `#12` y la referencia del cliente). Contador propio por compañía (patrón p. ej. `LLE-#####`, como `SAL-#####` del aviso de salida): columna `Asn.Number` + contador `ASN` (restricción `CK_NumberSequence_Kind` y `NumberingRules.IsKnownKind`), número a los avisos existentes (en orden de creación), y mostrarlo en la web, el portal, la app móvil (selector de documentos y buscador) y los avisos de notificación. Ojo con la lección: probar contra el contador real y SQL Server.
 
 ## B. Tareas y asignación (decisión del 2026-10-21: la asignación solo vale si la app la usa)
-- ☐ **B1. «Mis tareas» en la app** (acomodo, recibo, recolección): lo asignado al usuario, sin señal, aviso al asignar, tomar una tarea sin asignar. Hoy solo ordena el acomodo con lo asignado primero.
+- ☑ **B1 (Lote 172). «Mis tareas» en la app** (acomodo, recibo, recolección): lo asignado al usuario, sin señal, aviso al asignar, tomar una tarea sin asignar. Hoy solo ordena el acomodo con lo asignado primero.
 - ☑ **B2 (Lote 171; se asignan el aviso de llegada y el de salida, no el recibo ni la recolección: nacen al ejecutarse). Asignar el recibo y la recolección** (campo «Asignado a», como las tareas) y «Asignar todas» a nivel del documento.
 
 ## C. Un documento, varias ejecuciones (modelo: documento ≠ trabajo ≠ ejecutado)

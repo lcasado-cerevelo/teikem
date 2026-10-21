@@ -1,9 +1,9 @@
 // Lote 146 — despachar contra un aviso de salida en el aparato: la lista de avisos con algo reservado, el escaneo del número (SAL-…) y el despacho GUIADO por lo que el sistema reservó
 // (posición → cantidad), igual que el de órdenes de venta pero sin kits, consignatario ni entrega. Va por la cola de salida (sirve sin señal); el servidor valida la existencia
 // de la posición y que no se despache más de lo reservado al sincronizar.
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 
 import { useFormat } from '../kernel/format/useFormat'
 import { useActiveWarehouse } from '../kernel/warehouse/activeWarehouse'
@@ -36,6 +36,9 @@ export default function ExitDispatchScreen() {
   const { t } = useT()
   const f = useFormat()
   const router = useRouter()
+  // Lote 172: «Mis tareas» abre el aviso asignado con ?notice=SAL-##### (una sola vez; como si se hubiera escaneado)
+  const { notice: noticeParam } = useLocalSearchParams<{ notice?: string }>()
+  const noticeOpened = useRef(false)
   const warehousePublicId = useActiveWarehouse().publicId
   const [step, setStep] = useState<Step>('list')
   const [tick, setTick] = useState(0)
@@ -55,6 +58,13 @@ export default function ExitDispatchScreen() {
   const tasks = useMemo(() => buildTasks(lines), [lines])
   const current = notice && step === 'pick' ? nextTask(tasks, picks, skipped) : null
   const doneAll = step === 'pick' && notice !== null && current === null
+
+  useEffect(() => {
+    if (noticeOpened.current || !noticeParam || !warehousePublicId) return
+    noticeOpened.current = true
+    scanNotice(noticeParam)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noticeParam, warehousePublicId])
 
   if (!warehousePublicId) {
     return (
