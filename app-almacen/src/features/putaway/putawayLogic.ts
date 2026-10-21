@@ -12,8 +12,9 @@ export interface PutawayTask {
 /** Las tareas de quien tiene el aparato en mano van primero; el resto, más viejas primero (orden de llegada). */
 export function sortTasksMineFirst(tasks: PutawayTask[], myUserId: number): PutawayTask[] {
   const mine = tasks.filter((t) => t.assignedToUserId === myUserId)
-  const others = tasks.filter((t) => t.assignedToUserId !== myUserId)
-  return [...mine, ...others]
+  const free = tasks.filter((t) => t.assignedToUserId == null)
+  const others = tasks.filter((t) => t.assignedToUserId != null && t.assignedToUserId !== myUserId)
+  return [...mine, ...free, ...others]
 }
 
 // ---------------------------------------------------------------- reparto por posición (misma regla que el servidor)

@@ -7,7 +7,7 @@ function task(id: number, assignedToUserId: number | null): PutawayTask {
 describe('sortTasksMineFirst', () => {
   it('pone primero las tareas asignadas a mi usuario, en su orden original', () => {
     const tasks = [task(1, 5), task(2, 7), task(3, 7), task(4, null)]
-    expect(sortTasksMineFirst(tasks, 7).map((t) => t.id)).toEqual([2, 3, 1, 4])
+    expect(sortTasksMineFirst(tasks, 7).map((t) => t.id)).toEqual([2, 3, 4, 1])
   })
 
   it('sin ninguna mía, conserva el orden original', () => {

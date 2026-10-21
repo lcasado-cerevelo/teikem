@@ -302,7 +302,7 @@ export default function ExitDispatchScreen() {
         ) : null}
         <BigButton label={t('exitDispatch.noDocument')} variant="secondary" onPress={() => router.replace('/dispatch')} testID="exit-no-document" />
         <View style={styles.bottom}>
-          <BigButton label={t('common.back')} variant="secondary" onPress={() => router.replace('/home')} />
+          <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} />
         </View>
       </KeyboardScreen>
     )

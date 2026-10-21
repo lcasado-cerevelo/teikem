@@ -361,6 +361,9 @@
     "warehouseInProgress": "Finish or cancel the document in progress before changing warehouse."
   },
   "putaway": {
+    "unassigned": "Unassigned (putting it away assigns it to you)",
+    "assignedToYou": "Assigned to you",
+    "assignedOther": "Assigned to someone else",
     "empty": "No putaway tasks pending.",
     "suggestedBin": "Suggested bin",
     "scanDestLabel": "Scan the destination bin",

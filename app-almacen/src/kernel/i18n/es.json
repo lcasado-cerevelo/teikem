@@ -361,6 +361,9 @@
     "warehouseInProgress": "Termina o cancela el documento en curso antes de cambiar de almacén."
   },
   "putaway": {
+    "unassigned": "Sin asignar (al acomodarla queda a tu nombre)",
+    "assignedToYou": "Asignada a ti",
+    "assignedOther": "Asignada a otra persona",
     "empty": "No hay tareas de acomodo pendientes.",
     "suggestedBin": "Posición sugerida",
     "scanDestLabel": "Escanea la posición destino",

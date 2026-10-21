@@ -145,6 +145,7 @@ public sealed class WarehouseTaskService(
             var to = await statuses.TransitionAsync(StatusDomains.WarehouseTaskStatus, EntityTypes.WarehouseTask, task.WarehouseTaskId,
                 task.StatusCodeId, WarehouseTaskStatuses.InProgress, null, ct2);
             task.StatusCodeId = to.StatusCodeId;
+            if (task.AssignedToUserId is null) db.AuditNote = "Autoasignada al iniciarla (quedó a nombre de quien la inició, desde la app móvil de almacén).";
             task.AssignedToUserId ??= tenant.UserId;
             await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
         }, ct);

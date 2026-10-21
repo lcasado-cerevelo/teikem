@@ -258,13 +258,16 @@ export default function PutawayScreen() {
               <View style={styles.rowTexts}>
                 <Text style={styles.rowTitle}>{item.sku}</Text>
                 <Text style={styles.help}>{item.productName}</Text>
+                <Text style={item.assignedToUserId === session?.userId ? styles.mine : styles.help}>
+                  {t(item.assignedToUserId == null ? 'putaway.unassigned' : item.assignedToUserId === session?.userId ? 'putaway.assignedToYou' : 'putaway.assignedOther')}
+                </Text>
               </View>
               <Text style={styles.rowQty}>{item.quantity != null ? f.qty(item.quantity) : ''}</Text>
             </Pressable>
           )}
         />
       )}
-      <BigButton label={t('common.back')} variant="secondary" onPress={() => router.back()} />
+      <BigButton label={t('common.back')} variant="danger" onPress={() => router.back()} />
     </View>
   )
 }
@@ -287,6 +290,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   rowTexts: { gap: 2 },
+  mine: { color: colors.brand, fontSize: fontSize.message, fontWeight: '600' },
   rowTitle: { color: colors.text, fontSize: fontSize.listTitle, fontWeight: '600' },
   rowQty: { color: colors.brand, fontSize: 18, fontWeight: '700' },
   field: { gap: spacing.xs },
