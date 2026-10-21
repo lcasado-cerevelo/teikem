@@ -46,7 +46,27 @@ public sealed class SupplierService(TeikemDbContext db, ITenantContext tenant, I
 
     // ---------------------------------------------------------------- alta
 
-    public async Task<SupplierDto> CreateAsync(SupplierRequest req, CancellationToken ct)
+    /// <summary>
+    /// 2026-10-21 (importación de proveedores): revisa un alta con las MISMAS reglas de <see cref="CreateAsync"/> sin guardar nada. Devuelve los errores por campo (vacío = se puede crear), incluido el nombre repetido.
+    /// </summary>
+    public async Task<IReadOnlyDictionary<string, string>> CheckCreateAsync(SupplierRequest req, CancellationToken ct)
+    {
+        try
+        {
+            await ValidateCreateAsync(req, ct);
+            return new Dictionary<string, string>();
+        }
+        catch (ValidationException ex) when (ex.Errors is { Count: > 0 })
+        {
+            return ex.Errors.ToDictionary(e => e.Key, e => string.Join(" ", e.Value), StringComparer.Ordinal);
+        }
+        catch (ConflictException ex)
+        {
+            return new Dictionary<string, string> { ["name"] = ex.Message };
+        }
+    }
+
+    private async Task<(int TenantId, string? Name, string? Contact, string? Phone, string? PhoneCc, string? Email, string? Notes, int? PaymentTermId)> ValidateCreateAsync(SupplierRequest req, CancellationToken ct)
     {
         if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
         var tenantId = RequireTenant();
@@ -60,6 +80,12 @@ public sealed class SupplierService(TeikemDbContext db, ITenantContext tenant, I
         if (errors.Count > 0) throw new ValidationException(errors);
 
         if (await db.Set<Supplier>().AnyAsync(s => s.IsActive && s.Name == name, ct)) throw new ConflictException(NameTaken);
+        return (tenantId, name, contact, phone, phoneCc, email, notes, paymentTermId);
+    }
+
+    public async Task<SupplierDto> CreateAsync(SupplierRequest req, CancellationToken ct)
+    {
+        var (tenantId, name, contact, phone, phoneCc, email, notes, paymentTermId) = await ValidateCreateAsync(req, ct);
         var supplier = new Supplier
         {
             TenantId = tenantId, Name = name!, ContactName = contact, Phone = phone, PhoneCountryCallingCode = phoneCc, Email = email,

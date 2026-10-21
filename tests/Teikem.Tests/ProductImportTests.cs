@@ -19,7 +19,8 @@ public sealed class ProductImportTests
     {
         s.AddSingleton<ImportTemplateService>();
         s.AddSingleton<ProductService>();
-        s.AddSingleton<ProductImportService>();
+        s.AddSingleton<EntityImportService>();
+        s.AddSingleton<IImportEntityRows, ProductImportRows>();
     });
 
     private static Task<ImportTemplateDto> TemplateAsync(WmsFixture f, string name = "Productos", IList<ImportTemplateColumnDto>? columns = null, IDictionary<string, string>? defaults = null)
@@ -30,7 +31,7 @@ public sealed class ProductImportTests
     [Fact]
     public void The_field_catalog_marks_sku_required_and_sku_and_barcode_without_defaults()
     {
-        var fields = ImportTemplateService.GetProductFields();
+        var fields = ImportTemplateService.GetEntityFields(ImportKinds.Product);
         Assert.Contains(fields, f => f.Field == "sku" && f.Required && !f.DefaultAllowed);
         Assert.Contains(fields, f => f.Field == "barcode" && !f.DefaultAllowed);
         Assert.Contains(fields, f => f.Field == "baseUom" && f.DefaultAllowed);
@@ -67,18 +68,18 @@ public sealed class ProductImportTests
     {
         await using var f = await CreateAsync();
         var tpl = await TemplateAsync(f);
-        var imports = f.Get<ProductImportService>();
+        var imports = f.Get<EntityImportService>();
         var file = Csv("sku,name,price,barcode", "A-1,Producto uno,10.50,111", "A-2,Producto dos,abc,222", ",Sin sku,1,333", "A-3,Producto tres,1,444");
 
-        var preview = await imports.ImportAsync(tpl.PublicId, file, "p.csv", commit: false, default);
+        var preview = await imports.ImportAsync(ImportKinds.Product, tpl.PublicId, file, "p.csv", commit: false, default);
         Assert.False(preview.Committed);
         Assert.Equal((4, 2, 2, 0), (preview.Total, preview.Valid, preview.Rejected, preview.Created));
         Assert.Equal("ERROR", preview.Rows[1].Status);
-        Assert.Equal(ProductImportService.NotANumberMessage, preview.Rows[1].Errors["salePrice"]);
+        Assert.Equal(EntityImportService.NotANumberMessage, preview.Rows[1].Errors["salePrice"]);
         Assert.True(preview.Rows[2].Errors.ContainsKey("sku"));
         Assert.Empty(f.Db.Set<Product>().ToList());   // la vista previa no guarda nada
 
-        var done = await imports.ImportAsync(tpl.PublicId, file, "p.csv", commit: true, default);
+        var done = await imports.ImportAsync(ImportKinds.Product, tpl.PublicId, file, "p.csv", commit: true, default);
         Assert.Equal((2, 2), (done.Created, done.Rows.Count(r => r.Status == "CREATED")));
         Assert.Equal(new[] { "A-1", "A-3" }, f.Db.Set<Product>().Select(p => p.Sku).OrderBy(s => s).ToArray());
     }
@@ -88,14 +89,14 @@ public sealed class ProductImportTests
     {
         await using var f = await CreateAsync();
         var tpl = await TemplateAsync(f);
-        var imports = f.Get<ProductImportService>();
-        await imports.ImportAsync(tpl.PublicId, Csv("sku,name,price,barcode", "B-1,Original,5,900"), "p.csv", commit: true, default);
+        var imports = f.Get<EntityImportService>();
+        await imports.ImportAsync(ImportKinds.Product, tpl.PublicId, Csv("sku,name,price,barcode", "B-1,Original,5,900"), "p.csv", commit: true, default);
 
-        var second = await imports.ImportAsync(tpl.PublicId, Csv("sku,name,price,barcode", "b-1,Cambiado,9,901", "B-2,Otro,1,900", "B-3,Tres,1,902", "B-3,Tres otra vez,1,903"), "p.csv", commit: true, default);
+        var second = await imports.ImportAsync(ImportKinds.Product, tpl.PublicId, Csv("sku,name,price,barcode", "b-1,Cambiado,9,901", "B-2,Otro,1,900", "B-3,Tres,1,902", "B-3,Tres otra vez,1,903"), "p.csv", commit: true, default);
         Assert.Equal(ProductRules.SkuTaken, second.Rows[0].Errors["sku"]);
         Assert.Equal(ProductRules.BarcodeTaken, second.Rows[1].Errors["barcode"]);
         Assert.Equal("CREATED", second.Rows[2].Status);
-        Assert.Equal(ProductImportService.RepeatedInFileMessage, second.Rows[3].Errors["sku"]);
+        Assert.Equal(ProductImportRows.RepeatedInFileMessage, second.Rows[3].Errors["sku"]);
         Assert.Equal("Original", f.Db.Set<Product>().Single(p => p.Sku == "B-1").Name);   // lo existente no se tocó
     }
 
@@ -104,8 +105,8 @@ public sealed class ProductImportTests
     {
         await using var f = await CreateAsync();
         var tpl = await TemplateAsync(f, "Con defaults", [new(1, "sku"), new(2, "name"), new(3, "baseUom")], new Dictionary<string, string> { ["trackingType"] = "NONE", ["baseUom"] = "UN" });
-        var imports = f.Get<ProductImportService>();
-        var r = await imports.ImportAsync(tpl.PublicId, Csv("sku,name,uom", "C-1,Uno,", "C-2,Dos,XYZ"), "p.csv", commit: false, default);
+        var imports = f.Get<EntityImportService>();
+        var r = await imports.ImportAsync(ImportKinds.Product, tpl.PublicId, Csv("sku,name,uom", "C-1,Uno,", "C-2,Dos,XYZ"), "p.csv", commit: false, default);
         Assert.Equal("OK", r.Rows[0].Status);
         Assert.Contains("XYZ", r.Rows[1].Errors["baseUom"]);
     }
@@ -115,10 +116,10 @@ public sealed class ProductImportTests
     {
         await using var f = await CreateAsync();
         var tpl = await TemplateAsync(f);
-        var imports = f.Get<ProductImportService>();
-        var none = await Assert.ThrowsAsync<ValidationException>(() => imports.ImportAsync(tpl.PublicId, [], "p.csv", false, default));
-        Assert.Equal(ProductImportService.NoFileMessage, none.Message);
-        var header = await Assert.ThrowsAsync<ValidationException>(() => imports.ImportAsync(tpl.PublicId, Csv("sku,name,price,barcode"), "p.csv", false, default));
-        Assert.Equal(ProductImportService.NoRowsMessage, header.Message);
+        var imports = f.Get<EntityImportService>();
+        var none = await Assert.ThrowsAsync<ValidationException>(() => imports.ImportAsync(ImportKinds.Product, tpl.PublicId, [], "p.csv", false, default));
+        Assert.Equal(EntityImportService.NoFileMessage, none.Message);
+        var header = await Assert.ThrowsAsync<ValidationException>(() => imports.ImportAsync(ImportKinds.Product, tpl.PublicId, Csv("sku,name,price,barcode"), "p.csv", false, default));
+        Assert.Equal(EntityImportService.NoRowsMessage, header.Message);
     }
 }

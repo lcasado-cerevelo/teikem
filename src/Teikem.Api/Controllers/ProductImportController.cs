@@ -21,7 +21,7 @@ public sealed class ProductImportTemplatesController(ImportTemplateService templ
 {
     /// <summary>Campos que una plantilla de productos puede mapear (obligatorio: sku; name en columna o por defecto).</summary>
     [HttpGet("fields"), RequirePermission(PermissionCatalog.InventoryView)]
-    public IReadOnlyList<ImportFieldDto> Fields() => ImportTemplateService.GetProductFields();
+    public IReadOnlyList<ImportFieldDto> Fields() => ImportTemplateService.GetEntityFields(ImportKinds.Product);
 
     [HttpGet, RequirePermission(PermissionCatalog.InventoryView)]
     public Task<IReadOnlyList<ImportTemplateDto>> List([FromQuery] bool includeInactive, CancellationToken ct)
@@ -48,7 +48,7 @@ public sealed class ProductImportTemplatesController(ImportTemplateService templ
 [Route("api/v1/products/import")]
 [Authorize]
 [RequireModule(ModuleKeys.WmsLotSerial)]
-public sealed class ProductImportController(ProductImportService imports) : ControllerBase
+public sealed class ProductImportController(EntityImportService imports) : ControllerBase
 {
     /// <summary>
     /// Importar productos (multipart/form-data): <c>templatePublicId</c>, el archivo <c>file</c> (CSV o .xlsx) y <c>commit</c> (false = vista previa que no guarda; true = crea las filas válidas).
@@ -56,12 +56,12 @@ public sealed class ProductImportController(ProductImportService imports) : Cont
     /// </summary>
     [HttpPost, Consumes("multipart/form-data"), RequirePermission(PermissionCatalog.InventoryManage)]
     [RequestSizeLimit(4 * 1024 * 1024)]
-    public async Task<ProductImportResultDto> Import([FromForm] Guid templatePublicId, [FromForm] bool commit, IFormFile? file, CancellationToken ct)
+    public async Task<EntityImportResultDto> Import([FromForm] Guid templatePublicId, [FromForm] bool commit, IFormFile? file, CancellationToken ct)
     {
-        if (file is null || file.Length == 0) throw new ValidationException("file", ProductImportService.NoFileMessage);
+        if (file is null || file.Length == 0) throw new ValidationException("file", EntityImportService.NoFileMessage);
         if (file.Length > CsvParser.MaxBytes) throw new ValidationException("file", CsvParser.LimitMessage);
         using var ms = new MemoryStream();
         await file.CopyToAsync(ms, ct);
-        return await imports.ImportAsync(templatePublicId, ms.ToArray(), file.FileName, commit, ct);
+        return await imports.ImportAsync(ImportKinds.Product, templatePublicId, ms.ToArray(), file.FileName, commit, ct);
     }
 }
