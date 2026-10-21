@@ -33,6 +33,7 @@ import { fetchTargetSuggestions, type TargetSuggestion } from '../features/recei
 import { parseReceiptRequirement, receiveOptions } from '../features/receive/receiptRequirement'
 import { ReceiveDocumentList } from '../features/receive/ReceiveDocumentList'
 import type { LocalDoc } from '../features/receive/localLookup'
+import { countTruckDoc, endTruck, getTruck, startTruck, truckBlockForDoc } from '../features/receive/receiveTruck'
 import { chunkAt, distSummary, exceedsCapacity, isRestBin, parsePerBin } from '../features/putaway/putawayLogic'
 import { findBinByCode } from '../kernel/warehouse/binLookup'
 import { StickyAlert } from '../kernel/ui/StickyAlert'
@@ -129,6 +130,9 @@ export default function ReceiveScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const openReceipt = useMemo(() => getOpenReceipt(), [tick])
   const refresh = () => setTick((n) => n + 1)
+  // Lote 184: el camión en curso («Recibir juntos»): los recibos de este camión viajan con su llave y el servidor los reúne en una recepción maestra
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const truck = useMemo(() => getTruck(), [tick])
   const direct = openReceipt?.receivingMode === 'DIRECT'
   // Lote 175: recibir por partes y aviso de staging lleno (con lo que ya hay según los saldos locales)
   const partBlocked = openReceipt ? partBlock(openReceipt.doc, openReceipt.lines, openReceipt.receivingMode) : 'noDoc'
@@ -173,6 +177,11 @@ export default function ReceiveScreen() {
   }
 
   function pickDoc(doc: LocalDoc) {
+    if (truckBlockForDoc(truck, doc)) {
+      setDocError(t('receive.truckOtherOwner'))
+      vibrateError()
+      return
+    }
     startLocalReceipt(warehousePublicId!, doc, sentMode)
     setDocError(null)
     vibrateOk()
@@ -188,6 +197,11 @@ export default function ReceiveScreen() {
     }
     if (!doc) {
       setDocError(t('receive.docNotFound'))
+      vibrateError()
+      return
+    }
+    if (truckBlockForDoc(truck, doc)) {
+      setDocError(t('receive.truckOtherOwner'))
       vibrateError()
       return
     }
@@ -401,8 +415,9 @@ export default function ReceiveScreen() {
         return
       }
     }
-    const body = buildReceiptBody(openReceipt.warehousePublicId, openReceipt.doc, openReceipt.lines, openReceipt.receivingMode)
+    const body = buildReceiptBody(openReceipt.warehousePublicId, openReceipt.doc, openReceipt.lines, openReceipt.receivingMode, openReceipt.groupKey)
     enqueue({ kind: 'receipt', body })
+    if (openReceipt.groupKey) countTruckDoc()
     discardLocalReceipt()
     void runSync()
     refresh()
@@ -412,7 +427,7 @@ export default function ReceiveScreen() {
   // Lote 175: «Recibir una parte» — confirma una tanda de lo capturado (entra al staging y ya se puede acomodar) y deja el recibo abierto en el servidor.
   function receivePart() {
     if (!openReceipt || !openReceipt.doc || openReceipt.lines.length === 0 || partBlock(openReceipt.doc, openReceipt.lines, openReceipt.receivingMode) !== null) return
-    enqueue({ kind: 'receiptPart', body: buildReceiptPartBody(openReceipt.warehousePublicId, openReceipt.doc, openReceipt.lines, newClientKey()) })
+    enqueue({ kind: 'receiptPart', body: buildReceiptPartBody(openReceipt.warehousePublicId, openReceipt.doc, openReceipt.lines, newClientKey(), openReceipt.groupKey) })
     discardLocalReceipt()
     void runSync()
     refresh()
@@ -442,6 +457,33 @@ export default function ReceiveScreen() {
           ))}
         </View>
         <Text style={styles.help}>{t(startMode === 'DIRECT' ? 'receive.modeDirectHelp' : 'receive.modePutawayHelp')}</Text>
+        {truck ? (
+          <View style={styles.truckBox} testID="receive-truck">
+            <Text style={styles.label}>{t('receive.truckOn', { n: truck.docs })}</Text>
+            <Text style={styles.help}>{t(truck.ownerKey ? 'receive.truckOwnerSet' : 'receive.truckOwnerPending')}</Text>
+            <BigButton
+              label={t('receive.truckEnd')}
+              variant="secondary"
+              onPress={() => {
+                endTruck()
+                refresh()
+              }}
+            />
+          </View>
+        ) : (
+          <>
+            <BigButton
+              label={t('receive.truckStart')}
+              variant="secondary"
+              testID="receive-truck-start"
+              onPress={() => {
+                startTruck(warehousePublicId!, newClientKey())
+                refresh()
+              }}
+            />
+            <Text style={styles.help}>{t('receive.truckHelp')}</Text>
+          </>
+        )}
         <ScanField label={t('receive.scanDocLabel')} help={t('receive.scanDocHelp')} error={docError} onSubmit={scanDoc} />
         <ReceiveDocumentList warehousePublicId={warehousePublicId} options={options} onPick={pickDoc} />
         {options.blind ? (
@@ -857,6 +899,7 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontSize: fontSize.title, fontWeight: '700' },
   label: { color: colors.text, fontSize: fontSize.label, fontWeight: '600' },
   help: { color: colors.muted, fontSize: fontSize.message },
+  truckBox: { gap: spacing.sm, padding: spacing.md, borderRadius: 12, borderWidth: 2, borderColor: colors.brand, backgroundColor: colors.panelAlt },
   suggestCard: { gap: 2, padding: spacing.md, borderRadius: 12, borderWidth: 2, borderColor: colors.brand, backgroundColor: colors.panelAlt },
   warnText: { color: colors.warn, fontSize: fontSize.message, fontWeight: '700' },
   hint: { color: colors.warn, fontSize: 18, fontWeight: '700' },

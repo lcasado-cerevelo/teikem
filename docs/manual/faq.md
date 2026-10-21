@@ -10088,3 +10088,12 @@ Toda plantilla de productos necesita la columna sku y el nombre (en una columna 
 
 **«Cliente dueño no encontrado por ese código.»**
 La columna ownerClientCode debe traer el código de un cliente activo (el que ves en Clientes); déjala vacía si el producto es propio.
+
+**¿Cómo recibo varios documentos juntos desde el aparato?**
+En Recibir toque «Recibir juntos (abrir camión)», reciba un documento tras otro como siempre y, al terminar, «Terminar camión». Los recibos se reúnen solos en una recepción maestra. Todos los documentos del camión deben ser del mismo dueño.
+
+**En el aparato sale «Ese documento es de otro dueño que los de este camión».**
+El primer documento fija el dueño del camión. Termine el camión para recibir ese documento (o ábralo en otro camión).
+
+**«Este documento es de otro dueño que los de la recepción maestra …» / «La recepción maestra ya se eliminó; abra una nueva.»**
+El envío del aparato quedó rechazado: el camión ya tenía documentos de otro dueño o la maestra se eliminó en la web. Reciba ese documento en un camión nuevo.

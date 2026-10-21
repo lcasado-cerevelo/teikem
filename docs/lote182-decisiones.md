@@ -15,7 +15,7 @@ Pedido de Luis (2026-10-21): hacer C4 «sin mi supervisión» con la misma regla
 
 ## Decisiones a revisar con Luis
 1. **Es un envoltorio, no un recibo con varios documentos dentro.** Se descartó cambiar `ReceiptHeader.AsnId` (único por aviso en 100+ lugares: sincronización de aparatos, citas de muelle, actividad, analítica, avisos) por el riesgo; a cambio, **se captura recibo por recibo** (la maestra no reparte una captura única entre documentos). Si se quiere capturar «por producto» para todo el camión y que el sistema reparta entre los avisos, es un lote aparte.
-2. **Solo la web.** La app de almacén recibe documento por documento; «recibir juntos» desde el aparato no está. Tampoco hay aún enlace de la maestra en «Llegadas y salidas» ni en la lista de recibos (el recibo no muestra a qué maestra pertenece).
-3. La pantalla ofrece **avisos de llegada**; las **órdenes de compra** se pueden mandar por la API (`purchaseOrderPublicId`) pero no se eligen en la pantalla todavía (una orden de compra crea su aviso al recibirse).
+2. **Ampliado por decisión de Luis (2026-10-21):** la pantalla web ofrece también **órdenes de compra** (lo propio) y la **app de almacén** tiene «Recibir juntos / camión» (Lote 184): el operador abre un camión, recibe documento tras documento como siempre y cada recibo viaja con la misma llave (`groupKey`); el servidor los reúne en una maestra (`ReceiptGroup.ClientKey`). El primer documento fija el dueño; otro dueño no entra. Todavía no hay enlace de la maestra en «Llegadas y salidas» ni el recibo muestra a qué maestra pertenece.
+3. En la app el camión **se arma documento por documento** (no se eligen todos al inicio): es lo que permite el flujo sin señal de un recibo a la vez.
 4. «Confirmar todo» es **todo o nada** y el mensaje de error es el del recibo que falló (sin decir cuál; se corrige desde «Abrir recibo»).
 5. La maestra **no tiene bitácora propia** (la de cada recibo es la de siempre), como la recolección maestra.

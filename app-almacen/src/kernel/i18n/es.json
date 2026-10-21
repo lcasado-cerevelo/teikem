@@ -230,6 +230,13 @@
     "changed": "Ahora trabajas en {name}."
   },
   "receive": {
+    "truckStart": "Recibir juntos (abrir camión)",
+    "truckHelp": "Para un camión con varios documentos del mismo dueño: reciba uno tras otro como siempre y el sistema los reúne en una recepción maestra.",
+    "truckOn": "Camión abierto · {n} documento(s) enviado(s)",
+    "truckOwnerPending": "El dueño lo fija el primer documento que reciba.",
+    "truckOwnerSet": "Solo entran documentos del mismo dueño.",
+    "truckEnd": "Terminar camión",
+    "truckOtherOwner": "Ese documento es de otro dueño que los de este camión. Termine el camión para recibirlo.",
     "pendingDocs": "Avisos y órdenes pendientes",
     "tabAsn": "Avisos de llegada",
     "tabPo": "Órdenes de compra",

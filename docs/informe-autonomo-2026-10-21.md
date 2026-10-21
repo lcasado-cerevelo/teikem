@@ -58,3 +58,6 @@ Pedido de Luis: hacer sin supervisión las partes que faltan —C4, H1, G2 y los
 - **Hecho con la misma regla del despacho** (un solo dueño y almacén, se arma al abrir, sin sumar después): ver `docs/lote182-decisiones.md`. Es un **envoltorio** `RCM-#####` sobre los recibos de siempre (cada aviso conserva su `REC-#####`): se abren juntos con el mismo transporte y referencia y se confirman juntos (todo o nada).
 - Servidor, SQL, pruebas (incluida una con SQL Server real), humo contra el API real en el CI, pantalla web (pestaña «Maestros», «Recibir juntos», ficha, confirmar todo, eliminar), manual 44 + L183 + FAQ y recorrido Playwright (escritorio y móvil).
 - **No hecho:** la app de almacén, elegir órdenes de compra en la pantalla y capturar una sola vez para todo el camión repartiendo entre los avisos (cambiar el modelo del recibo era demasiado riesgo: `AsnId` único en 100+ lugares). **Decide Luis** si el envoltorio basta o si se quiere la captura única.
+
+## Seguimiento (2026-10-21, tras las decisiones de Luis)
+- `scripts/smoke.sh` retirado del CI. C4 ampliado: órdenes de compra en la pantalla web y **«Recibir juntos / camión» en la app de almacén** (Lote 184: llave `groupKey` por recibo; el servidor arma la maestra con el primero; dueño y almacén cuidados). Humo y pruebas (xunit, jest, esquema local v20).

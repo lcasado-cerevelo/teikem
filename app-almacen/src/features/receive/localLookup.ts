@@ -4,6 +4,7 @@
 import { getDb } from '../../kernel/db/database'
 import { likeTerm } from '../../kernel/warehouse/pickerSearch'
 import { findProductByCode, type LocalProduct, type TrackingType } from '../../kernel/warehouse/productLookup'
+import { getTruck, ownerKeyOf, setTruckOwner } from './receiveTruck'
 import { parseReceivingMode, type DocLine, type DraftLine, type LocalBin, type ReceivingMode } from './receiveLogic'
 
 export { findProductByCode }
@@ -85,6 +86,8 @@ export interface OpenReceipt {
   /** Lote 16: modo con que se abrió (copia del modo del almacén del aparato en ese momento); null = abierto con una app
    *  anterior al lote, se manda sin modo y entra "con acomodo" (D9-A). */
   receivingMode: ReceivingMode | null
+  /** Lote 184: la llave del camión con que viajará este recibo (null = recibo suelto). */
+  groupKey: string | null
 }
 
 /** Crea el recibo local (blind si doc es null) y devuelve su id. Solo uno a la vez por aparato (pantalla 3 no permite
@@ -98,10 +101,14 @@ export function startLocalReceipt(warehousePublicId: string, doc: LocalDoc | nul
   if (getOpenReceipt() !== null) {
     throw new Error('Ya hay un recibo en curso; hay que confirmarlo o cancelarlo antes de empezar otro.')
   }
+  // Lote 184: con un camión abierto en este almacén, el recibo de un documento viaja con la llave del camión (y el primero le fija el dueño)
+  const truck = doc ? getTruck() : null
+  const groupKey = truck && truck.warehousePublicId === warehousePublicId ? truck.groupKey : null
+  if (groupKey && doc) setTruckOwner(ownerKeyOf(doc))
   const info = db.runSync(
-    `INSERT INTO local_receipt (warehouse_public_id, purchase_order_public_id, asn_id, doc_label, created_at_utc, receiving_mode)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [warehousePublicId, doc?.purchaseOrderPublicId ?? null, doc?.asnId ?? null, doc?.label ?? null, new Date().toISOString(), receivingMode],
+    `INSERT INTO local_receipt (warehouse_public_id, purchase_order_public_id, asn_id, doc_label, created_at_utc, receiving_mode, group_key)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [warehousePublicId, doc?.purchaseOrderPublicId ?? null, doc?.asnId ?? null, doc?.label ?? null, new Date().toISOString(), receivingMode, groupKey],
   )
   return info.lastInsertRowId
 }
@@ -150,7 +157,8 @@ export function getOpenReceipt(): (OpenReceipt & { lineRows: LocalReceiptLineRow
     asn_id: number | null
     doc_label: string | null
     receiving_mode: string | null
-  }>('SELECT id, warehouse_public_id, purchase_order_public_id, asn_id, doc_label, receiving_mode FROM local_receipt LIMIT 1')
+    group_key: string | null
+  }>('SELECT id, warehouse_public_id, purchase_order_public_id, asn_id, doc_label, receiving_mode, group_key FROM local_receipt LIMIT 1')
   if (!header) return null
   const lineRows = db
     .getAllSync<{
@@ -205,6 +213,7 @@ export function getOpenReceipt(): (OpenReceipt & { lineRows: LocalReceiptLineRow
     lines: lineRows,
     lineRows,
     receivingMode: parseReceivingMode(header.receiving_mode),
+    groupKey: header.group_key,
   }
 }
 

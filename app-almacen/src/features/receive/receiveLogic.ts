@@ -337,8 +337,9 @@ export function partBlock(doc: ReceiptDoc | null, lines: DraftLine[], receivingM
 }
 
 /** Cuerpo de POST /api/v1/receipts/part; `clientKey` hace el reintento idempotente (no suma dos veces). */
-export function buildReceiptPartBody(warehousePublicId: string, doc: ReceiptDoc, lines: DraftLine[], clientKey: string) {
+export function buildReceiptPartBody(warehousePublicId: string, doc: ReceiptDoc, lines: DraftLine[], clientKey: string, groupKey: string | null = null) {
   return {
+    ...(groupKey ? { groupKey } : {}),   // Lote 184: la llave del camión (recibir juntos)
     warehousePublicId,
     purchaseOrderPublicId: doc.asnId == null ? (doc.purchaseOrderPublicId ?? null) : null,
     asnId: doc.asnId ?? null,
@@ -381,8 +382,10 @@ export function buildReceiptBody(
   doc: ReceiptDoc | null,
   lines: DraftLine[],
   receivingMode: ReceivingMode | null = null,
+  groupKey: string | null = null,
 ) {
   return {
+    ...(groupKey ? { groupKey } : {}),   // Lote 184: la llave del camión (recibir juntos)
     warehousePublicId,
     purchaseOrderPublicId: doc?.purchaseOrderPublicId ?? null,
     asnId: doc?.asnId ?? null,
