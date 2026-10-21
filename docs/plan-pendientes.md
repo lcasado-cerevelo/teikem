@@ -70,7 +70,7 @@ Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Esta
 - ☐ «Mensajes de clientes» sin ítem de menú (decidir dónde).
 - ☐ Ocultar opciones de recibo a ciegas en la web cuando la compañía exige documento.
 - ☐ Gris claro de las superficies del modo claro.
-- ☐ Color del encabezado de las tarjetas: opinión dada (no el naranja; sutil: fondo gris de superficie + borde/sombra fina; azul marino solo en lo que flota sobre la pantalla). Falta que el dueño decida y se aplique.
+- ☐ **Encabezado de las tarjetas y paneles (decidido por el dueño, 2026-10-21):** fondo = el **tercer color de la marca (el más clarito)** aclarado casi del todo (mezcla con el fondo de la tarjeta; sale de la marca y del tema, igual que la barra lateral), con un filete fino del color del borde y, si acaso, una sombra casi invisible; el texto del título conserva su color. Tres niveles: azul marino solo en lo que flota (modales, barra superior), gris muy claro en los encabezados de las tarjetas, naranja solo en acciones. Cuidados: no aplica a los encabezados de las tablas; limitar cuánto color pasa al fondo si el tercer color es muy saturado; extender la prueba de contraste AA a esta pareja; revisar con Teikem, Advance Logistics, Advance Depot y Enterprise; en oscuro, apenas más claro que la tarjeta.
 - ☐ Endurecer los endpoints con los permisos de acceso por ítem de menú.
 - ☐ Prueba de `db-update` en simulación contra SQL Server.
 - ☐ Capturas / Playwright de las pantallas nuevas (portal del cliente, avisos, filtros).
