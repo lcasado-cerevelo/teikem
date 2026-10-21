@@ -33427,6 +33427,302 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/products/import-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportTemplateDto"][];
+                        "application/json": components["schemas"]["ImportTemplateDto"][];
+                        "text/json": components["schemas"]["ImportTemplateDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ImportTemplateCreateRequest"];
+                    "text/json": components["schemas"]["ImportTemplateCreateRequest"];
+                    "application/*+json": components["schemas"]["ImportTemplateCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportTemplateDto"];
+                        "application/json": components["schemas"]["ImportTemplateDto"];
+                        "text/json": components["schemas"]["ImportTemplateDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/products/import-templates/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportTemplateDto"];
+                        "application/json": components["schemas"]["ImportTemplateDto"];
+                        "text/json": components["schemas"]["ImportTemplateDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ImportTemplatePatchRequest"];
+                    "text/json": components["schemas"]["ImportTemplatePatchRequest"];
+                    "application/*+json": components["schemas"]["ImportTemplatePatchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportTemplateDto"];
+                        "application/json": components["schemas"]["ImportTemplateDto"];
+                        "text/json": components["schemas"]["ImportTemplateDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/products/import-templates/{publicId}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportTemplateDto"];
+                        "application/json": components["schemas"]["ImportTemplateDto"];
+                        "text/json": components["schemas"]["ImportTemplateDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/products/import-templates/{publicId}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportTemplateDto"];
+                        "application/json": components["schemas"]["ImportTemplateDto"];
+                        "text/json": components["schemas"]["ImportTemplateDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/products/import-templates/fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportFieldDto"][];
+                        "application/json": components["schemas"]["ImportFieldDto"][];
+                        "text/json": components["schemas"]["ImportFieldDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/products/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: uuid */
+                        templatePublicId?: string;
+                        commit?: boolean;
+                        /** Format: binary */
+                        file?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductImportResultDto"];
+                        "application/json": components["schemas"]["ProductImportResultDto"];
+                        "text/json": components["schemas"]["ProductImportResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -44802,6 +45098,30 @@ export interface components {
             /** Format: int32 */
             take?: number;
             items?: components["schemas"]["PickGroupDto"][] | null;
+        };
+        ProductImportRowDto: {
+            /** Format: int32 */
+            row?: number;
+            /** Format: int32 */
+            line?: number;
+            sku?: string | null;
+            name?: string | null;
+            status?: string | null;
+            errors?: {
+                [key: string]: string;
+            } | null;
+        };
+        ProductImportResultDto: {
+            committed?: boolean;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            valid?: number;
+            /** Format: int32 */
+            rejected?: number;
+            /** Format: int32 */
+            created?: number;
+            rows?: components["schemas"]["ProductImportRowDto"][] | null;
         };
     };
     responses: never;

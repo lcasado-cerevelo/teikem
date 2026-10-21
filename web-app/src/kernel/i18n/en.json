@@ -10812,6 +10812,62 @@
       }
     }
   },
+  "products": {
+    "import": {
+      "open": "Import",
+      "title": "Import products",
+      "help": "Upload a file (CSV or Excel) and pick the template that says which column is each field. “Review” saves nothing; “Import” creates the valid products. Create-only: an existing SKU or barcode is rejected, never updated.",
+      "template": "Template",
+      "noTemplates": "There are no product templates yet.",
+      "newTemplate": "New template",
+      "createStandard": "Create standard format",
+      "standardName": "Standard format",
+      "file": "File",
+      "choose": "Choose file",
+      "changeFile": "Change file",
+      "review": "Review",
+      "confirm": "Import {n}",
+      "close": "Close",
+      "reviewSummary": "{total} rows · {valid} valid · {rejected} with errors",
+      "doneSummary": "{created} products created · {rejected} rejected",
+      "firstRows": "Showing the first {n} rows.",
+      "col": {
+        "row": "Row",
+        "name": "Name",
+        "status": "Status",
+        "detail": "Detail"
+      },
+      "status": {
+        "OK": "Ready",
+        "CREATED": "Created",
+        "ERROR": "Rejected"
+      },
+      "errors": {
+        "sku": "The template must include the sku column.",
+        "name": "The template must include the name column or a default value for name."
+      },
+      "fields": {
+        "sku": "SKU",
+        "name": "Name",
+        "ownerClientCode": "Owner client code",
+        "baseUom": "Base unit",
+        "trackingType": "Tracking",
+        "weightKg": "Weight (kg)",
+        "volumeM3": "Volume (m³)",
+        "barcode": "Barcode",
+        "purchaseCost": "Cost",
+        "salePrice": "Sale price",
+        "minQty": "Minimum",
+        "minPickQty": "Minimum pick",
+        "maxPickQty": "Maximum pick",
+        "brand": "Brand",
+        "model": "Model",
+        "packUom": "Pack unit",
+        "packQty": "Quantity per pack",
+        "rotationMethod": "Rotation"
+      }
+    }
+  },
   "templates": {
     "title": "Templates",
     "subtitle": "How the files of each entity are read (column → field). The same templates serve the Import wizard and integrations.",
@@ -10819,7 +10875,8 @@
     "entity": "Entity",
     "entities": {
       "ORDER": "Shipments",
-      "CONSIGNEE": "Consignees"
+      "CONSIGNEE": "Consignees",
+      "PRODUCT": "Products"
     },
     "col": {
       "name": "Name",

@@ -11,7 +11,7 @@ Reglas: trabajar en `master`, `git pull --rebase` antes de cada commit, un commi
 | A | Crear la plantilla desde la pantalla de la integración (sin salir) | ✅ hecha |
 | B | Recibo web: pedir lote y vencimiento en el mismo formulario de la línea | ✅ ya estaba hecha (Lote 140) |
 | C | Atar la orden de venta a su despacho del almacén (ver y abrir el despacho desde la venta) | ✅ hecha |
-| D | Plantillas de importación para más entidades | 📝 diseño escrito; espera decisión de Luis |
+| D | Plantillas de importación para más entidades | 🔧 Luis decidió: motor genérico, Productos primero, solo crea. **Productos hecho**; faltan las demás entidades |
 | E | Restos de la marca (botón secundario azul marino, apps móviles) | ✅ ya estaba hecha (Lote 138b) |
 
 ## Registro (una entrada por parte terminada)

@@ -10815,6 +10815,62 @@
       }
     }
   },
+  "products": {
+    "import": {
+      "open": "Importar",
+      "title": "Importar productos",
+      "help": "Sube un archivo (CSV o Excel) y elige la plantilla que dice qué columna es cada campo. «Revisar» no guarda nada; «Importar» crea los productos válidos. Solo crea: un SKU o un código de barras que ya existe se rechaza, no se actualiza.",
+      "template": "Plantilla",
+      "noTemplates": "Todavía no hay plantillas de productos.",
+      "newTemplate": "Nueva plantilla",
+      "createStandard": "Crear formato estándar",
+      "standardName": "Formato estándar",
+      "file": "Archivo",
+      "choose": "Elegir archivo",
+      "changeFile": "Cambiar archivo",
+      "review": "Revisar",
+      "confirm": "Importar {n}",
+      "close": "Cerrar",
+      "reviewSummary": "{total} filas · {valid} válidas · {rejected} con errores",
+      "doneSummary": "Se crearon {created} productos · {rejected} rechazados",
+      "firstRows": "Se muestran las primeras {n} filas.",
+      "col": {
+        "row": "Fila",
+        "name": "Nombre",
+        "status": "Estado",
+        "detail": "Detalle"
+      },
+      "status": {
+        "OK": "Lista",
+        "CREATED": "Creada",
+        "ERROR": "Rechazada"
+      },
+      "errors": {
+        "sku": "La plantilla debe incluir la columna sku.",
+        "name": "La plantilla debe incluir la columna name o un valor por defecto para name."
+      },
+      "fields": {
+        "sku": "SKU",
+        "name": "Nombre",
+        "ownerClientCode": "Código del cliente dueño",
+        "baseUom": "Unidad base",
+        "trackingType": "Seguimiento",
+        "weightKg": "Peso (kg)",
+        "volumeM3": "Volumen (m³)",
+        "barcode": "Código de barras",
+        "purchaseCost": "Costo",
+        "salePrice": "Precio de venta",
+        "minQty": "Mínimo",
+        "minPickQty": "Mínimo a recolectar",
+        "maxPickQty": "Máximo a recolectar",
+        "brand": "Marca",
+        "model": "Modelo",
+        "packUom": "Unidad de empaque",
+        "packQty": "Cantidad por empaque",
+        "rotationMethod": "Rotación"
+      }
+    }
+  },
   "templates": {
     "title": "Plantillas",
     "subtitle": "Cómo se leen los archivos de cada entidad (columna → campo). Las mismas plantillas sirven al asistente de Importar y a las integraciones.",
@@ -10822,7 +10878,8 @@
     "entity": "Entidad",
     "entities": {
       "ORDER": "Envíos",
-      "CONSIGNEE": "Consignatarios"
+      "CONSIGNEE": "Consignatarios",
+      "PRODUCT": "Productos"
     },
     "col": {
       "name": "Nombre",

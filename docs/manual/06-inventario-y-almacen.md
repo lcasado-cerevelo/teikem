@@ -676,6 +676,33 @@ Cómo se ve:
 | *Obligar* y la línea pide una posición o lote que la rotación no asigna | `La rotación es obligatoria: {SKU} debe salir de {posiciones}. No escoja posición ni lote; el sistema los asigna.` | 409 |
 | Cambiarlo sin `admin.tenant` | respuesta estándar de permiso denegado | 403 |
 
+## 2b. Importar productos con una plantilla (2026-10-21)
+
+Primera entidad del motor genérico de plantillas (dictado de Luis, 2026-10-19). **Quién puede:** `inventory.manage` (módulo Inventario con lotes y series); ver las plantillas, `inventory.view`.
+
+**Cómo se usa:** Productos → **Importar**. Se elige (o crea con «Nueva plantilla» / «Crear formato estándar») la plantilla, se elige el archivo (CSV o .xlsx, hasta 5.000 filas / 2 MB) y se pulsa **Revisar**: no guarda nada y dice por fila si está bien o por qué se rechaza. **Importar N** crea las filas válidas; una fila mala no frena a las demás. **Solo crea**: un producto que ya existe se rechaza, nunca se actualiza.
+
+**Plantilla (Kind `PRODUCT`):** `GET/POST /api/v1/products/import-templates`, `GET/PATCH …/{publicId}`, `POST …/{publicId}/deactivate|reactivate`, `GET …/fields`. También se administra en Integraciones → Plantillas (pestaña Productos). Campos: `sku` (obligatorio, siempre en columna), `name` (en columna o como valor por defecto), `ownerClientCode`, `baseUom`, `trackingType`, `weightKg`, `volumeM3`, `barcode`, `purchaseCost`, `salePrice`, `minQty`, `minPickQty`, `maxPickQty`, `brand`, `model`, `packUom`, `packQty`, `rotationMethod`. `sku` y `barcode` no admiten valor por defecto.
+
+**Importar:** `POST /api/v1/products/import` (multipart: `templatePublicId`, `file`, `commit` false = revisar / true = crear). Cada fila trae `status` OK, CREATED o ERROR y sus errores por campo.
+
+| Mensaje | HTTP / dónde | Qué hacer |
+|---|---|---|
+| «Indique al menos una columna.» | 400, plantilla | La plantilla no tiene columnas. |
+| «La plantilla debe incluir la columna sku.» | 400, plantilla | Agregue la columna sku. |
+| «La plantilla debe incluir la columna name o un valor por defecto para name.» | 400, plantilla | Agregue la columna name o un nombre por defecto. |
+| «Campo desconocido: X.» · «La posición N está repetida.» · «El campo X está repetido.» | 400, plantilla | Corrija la plantilla. |
+| «El campo X no admite valor por defecto.» | 400, plantilla | sku y barcode traen su valor en cada fila. |
+| «Elija el archivo a importar.» | 400 | No se envió archivo. |
+| «El archivo no trae filas.» | 400 | Solo trae el encabezado. |
+| «Ya existe un producto con ese SKU para ese dueño.» | fila | El SKU ya existe (se compara sin distinguir mayúsculas); no se actualiza. |
+| «El SKU está repetido en el archivo.» | fila | El mismo SKU y dueño dos veces en el archivo. |
+| «Ya existe un producto activo con ese código de barras.» | fila | Código de barras repetido (en el sistema o en el archivo). |
+| «Debe ser un número.» | fila | Costo, precio, peso, volumen, mínimos o cantidad por empaque no numéricos. |
+| «Cliente dueño no encontrado por ese código.» | fila | `ownerClientCode` no es el código de un cliente activo. |
+| «Unidad de medida desconocida: 'X'.» · «Tipo de seguimiento desconocido: 'X'.» · «Unidad de empaque desconocida: 'X'.» | fila | Use un código del catálogo. |
+| (las reglas del alta manual: SKU, nombre, código de barras, marca, modelo, costos, medidas…) | fila | Son las mismas del alta manual del producto. |
+
 ## 3. Inventario: saldos, Kárdex, ajustes, transferencias, conciliación y descuadres, genealogía y rastro de serie
 
 Qué hace: expone el saldo por almacén/posición/lote, el Kárdex de solo lectura del ledger (con resumen, filtros y detalle de cada

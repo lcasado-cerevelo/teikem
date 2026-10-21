@@ -10076,3 +10076,15 @@ Es todo o nada: si un recibo no se puede confirmar (por ejemplo, un lote o una s
 
 **Un aviso no aparece en «Recibir juntos».**
 Solo se ofrecen los avisos esperando y sin recibo: uno ya recibido, cancelado o con un recibo abierto (suelto o de otra maestra) no sale.
+
+**¿Cómo cargo muchos productos de una vez?**
+Productos → Importar. Elige (o crea) una plantilla que diga qué columna es cada campo (mínimo sku y name), elige el archivo CSV o Excel y pulsa «Revisar»: no guarda nada y te dice por fila si está bien o por qué se rechaza. Cuando estés conforme, «Importar N» crea los válidos.
+
+**La importación de productos rechazó filas con «Ya existe un producto con ese SKU para ese dueño.»**
+Importar solo crea: no actualiza lo que ya existe. Quita esas filas del archivo, o edita el producto desde su pantalla.
+
+**«La plantilla debe incluir la columna sku.» / «…la columna name o un valor por defecto para name.»**
+Toda plantilla de productos necesita la columna sku y el nombre (en una columna o como valor por defecto). El sku y el código de barras no pueden tener valor por defecto.
+
+**«Cliente dueño no encontrado por ese código.»**
+La columna ownerClientCode debe traer el código de un cliente activo (el que ves en Clientes); déjala vacía si el producto es propio.

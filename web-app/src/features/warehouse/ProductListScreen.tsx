@@ -45,6 +45,7 @@ import type { BinFilterItem } from './kardexView'
 import { DamagePanel } from './DamageListScreen'
 import { ProductCategoriesPanel } from './ProductCategoriesPanel'
 import { ProductEditorByIdModal, ProductEditorModal } from './ProductEditorModal'
+import { ProductImportModal } from './ProductImportModal'
 import { ProductLabelsButton } from './ProductLabelsPanel'
 import { parseKpiParam, productListQuery, toggleKpi, type ProductFilterState, type ProductKpi } from './productFilters'
 import '../analytics/pulse.css'
@@ -195,6 +196,7 @@ function ProductsTab() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [creating, setCreating] = useState(false)
+  const [importing, setImporting] = useState(false)   // 2026-10-21: importar productos con plantilla
   const [editingPublicId, setEditingPublicId] = useState<string | null>(null)
 
   // KPI elegido: vive en la URL (?kpi=) para poder enlazarlo; otro clic en el mismo lo quita
@@ -342,6 +344,9 @@ function ProductsTab() {
           {/* 2026-10-09: una etiqueta por producto (4 × 2, 4 × 4, 4 × 6) para impresora de etiquetas, solo la etiqueta */}
           <ProductLabelsButton filters={filters} />
           <Can perm="inventory.manage">
+            <button type="button" className="btn" onClick={() => setImporting(true)}>
+              {t('products.import.open')}
+            </button>
             <button type="button" className="btn flow" onClick={() => setCreating(true)}>
               {t('warehouse.products.new')}
             </button>
@@ -402,6 +407,7 @@ function ProductsTab() {
       </Panel>
 
       <ProductEditorModal open={creating} product={null} onClose={() => setCreating(false)} />
+      {importing && <ProductImportModal onClose={() => setImporting(false)} />}
       <ProductEditorByIdModal publicId={editingPublicId} onClose={() => setEditingPublicId(null)} />
     </>
   )
