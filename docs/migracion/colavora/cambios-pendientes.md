@@ -123,5 +123,20 @@ Luis tiene razón en que no tiene sentido (son órdenes viejas que ya se entrega
 
 **Cambios anotados (sin hacerlos todavía):**
 - **Listado de Envíos:** quitar la columna «Empaque» de orden; poner una columna con **todos los números de paquete de la orden** (lista separada por comas) **después de «Paquete»**; **quitar la columna «Cotizado»**. El filtro por número se queda y debe buscar en los números de paquete (y en el de empaque).
-- **Migración:** el waybill de Colavora es en esencia el **Conduce** (guía), así que `WaybillNumber` = waybill está bien. `PackBatchNumber` y el número de orden no deberían ser copias del waybill: decidir con Luis qué van a ser (`EMP-…` generado por Teikem, o el número de orden del cliente si Colavora trae uno aparte). Los números de pieza (`Shipments_Pieces.Barcode`) ya se migran como `PackageNumber`.
+- **Migración:** el waybill de Colavora es en esencia el **Conduce** (guía), así que `WaybillNumber` = waybill está bien. `PackBatchNumber` y el número de envío no deberían ser copias del waybill: decidir con Luis qué van a ser (`EMP-…` generado por Teikem, o el número de envío del cliente si Colavora trae uno aparte). Los números de pieza (`Shipments_Pieces.Barcode`) ya se migran como `PackageNumber`.
 - **Decisión pendiente de Luis:** si el número de empaque por orden (`PackBatchNumber`) se conserva como identificador de escaneo de la orden (como dice el diseño) o se elimina de la pantalla y queda solo el de pieza.
+
+### 7.1 Propuesta: un solo identificador por orden (análisis 2026-10-20, a validar con Luis)
+
+**Problema que ve Luis:** hay un número de más. Su modelo: la orden tiene **un identificador**, el del código de barras; lo trae el cliente o, si no, lo pone Teikem. Solo si el cliente maneja **dos** números (uno de escaneo y otro de orden) hacen falta dos.
+
+**Hallazgo:** Empaque (`PackBatchNumber`, por orden) y Conduce (`WaybillNumber`) son, a nivel de orden, lo mismo: un número único por orden que genera Teikem. El Conduce nació en el Lote 97 (pedido de Luis) porque «el número de orden se repite entre clientes y el de empaque es del almacén». Empaque nació del almacén (lote de Recolección y empaque). El escaneo ya busca por orden, conduce y paquete, así que no hace falta un campo exclusivo de escaneo.
+
+**Propuesta:**
+- **Un identificador por orden** (la columna de Conduce): el del cliente si lo trae y es único en la compañía; si no, `CND-#######`.
+- **Número de orden aparte** solo cuando el cliente maneja dos números.
+- **Quitar Empaque de la orden.** El lote de Recolección y empaque conserva su propio `EMP-…` (es del lote, no de la orden). Se quedan factura y número de paquete por pieza.
+- **Migración:** el waybill de Colavora (lo trae el cliente, p. ej. AxisCare con sufijo `AXM` y su factura dentro) es el identificador; Orden y Empaque dejan de ser copias suyas.
+- **Costo:** Empaque se usa en escaneo de salida, cross-dock, viajes, trazabilidad y lote de empaque (~24 archivos): **lote aparte**. Versión barata mientras tanto: no mostrarlo en pantalla y llenarlo con el mismo identificador.
+
+**Decisión pendiente:** si el número del cliente se **repite** en la compañía, ¿se rechaza (el cliente lo corrige) o Teikem le pone el suyo (`CND-…`) y guarda el del cliente como número de orden?
