@@ -44869,6 +44869,10 @@
           },
           "isActive": {
             "type": "boolean"
+          },
+          "countryCallingCode": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -44894,6 +44898,10 @@
           },
           "isPrimary": {
             "type": "boolean"
+          },
+          "countryCallingCode": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -61420,6 +61428,10 @@
           "rowVersion": {
             "type": "string",
             "nullable": true
+          },
+          "phoneCountryCallingCode": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -61454,6 +61466,10 @@
           "rowVersion": {
             "type": "string",
             "nullable": true
+          },
+          "phoneCountryCallingCode": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -61482,6 +61498,10 @@
             "nullable": true
           },
           "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "phoneCountryCallingCode": {
             "type": "string",
             "nullable": true
           }

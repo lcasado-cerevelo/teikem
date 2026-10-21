@@ -437,7 +437,7 @@ describe('Clientes — ficha', () => {
       role: 'Gerente',
       isPrimary: false,
       contactPoints: [
-        { contactType: 'PHONE', value: '9395550000', isPrimary: true },
+        { contactType: 'PHONE', value: '9395550000', countryCallingCode: '1', isPrimary: true },
         { contactType: 'EMAIL', value: 'luis@acme.com', isPrimary: true },
       ],
     })

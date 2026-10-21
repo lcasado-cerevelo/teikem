@@ -9,7 +9,8 @@ import { Can } from '../../kernel/access'
 import { useLookups } from '../../kernel/catalogs'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { Chip, ConfirmDialog, EmptyState, Field, Form, IconEdit, IconTrash, Modal, PhoneInput, Panel, Select, TextInput, Toggle, toast } from '../../kernel/ui'
+import { CallingCodeInput, Chip, ConfirmDialog, EmptyState, Field, Form, IconEdit, IconTrash, Modal, PhoneInput, PhoneRow, Panel, Select, TextInput, Toggle, toast } from '../../kernel/ui'
+import { isValidCallingCode } from '../../kernel/format'
 import { IconPhoneFormat } from '../../kernel/ui/screenIcons'
 import { buildPointRequest, EMAIL_TYPE, isEmailType, PHONE_TYPE, pointSchema, sortContactPoints, type ContactPoint } from '../clients/clientRules'
 import '../clients/clients.css'
@@ -58,14 +59,15 @@ function PointModal({ owner, editing, onClose, onChanged, idPrefix }: PointModal
   const point = editing?.point ?? null
 
   const schema = useMemo(
-    () => pointSchema({ valueRequired: t('clients.errors.valueRequired'), emailInvalid: t('clients.errors.emailInvalid'), phoneInvalid: t('clients.errors.phoneInvalid') }, f.isValidPhone),
+    () => pointSchema({ valueRequired: t('clients.errors.valueRequired'), emailInvalid: t('clients.errors.emailInvalid'), phoneInvalid: t('clients.errors.phoneInvalid'), countryCodeInvalid: t('ui.phone.countryCodeInvalid') }, f.isValidPhoneFor, isValidCallingCode),
     [t, f],
   )
   const form = useForm({
     resolver: zodResolver(schema),
     values: {
       contactType: point?.contactType ?? (isEmail ? EMAIL_TYPE : PHONE_TYPE),
-      value: point ? (isEmailType(point.contactType) ? (point.value ?? '') : f.phoneInput(point.value ?? '')) : '',
+      value: point ? (isEmailType(point.contactType) ? (point.value ?? '') : f.usesCompanyMaskFor(point.countryCallingCode) ? f.phoneInput(point.value ?? '') : (point.value ?? '')) : '',
+      countryCallingCode: f.callingCodeInput(point?.countryCallingCode),
       extension: point?.extension ?? '',
       label: point?.label ?? '',
       isPrimary: point?.isPrimary ?? false,
@@ -93,7 +95,7 @@ function PointModal({ owner, editing, onClose, onChanged, idPrefix }: PointModal
         id={formId}
         form={form}
         onSubmit={async (v) => {
-          const body = buildPointRequest(v, f.normalizePhone)
+          const body = buildPointRequest(v, f.normalizePhoneFor)
           if (point) await save.mutateAsync({ action: 'update', id: point.id ?? 0, body })
           else await save.mutateAsync({ action: 'create', ownerEntity: owner.entity, ownerId: owner.id, body })
           toast.success(t('clients.points.saved'))
@@ -105,9 +107,20 @@ function PointModal({ owner, editing, onClose, onChanged, idPrefix }: PointModal
             <Select options={phoneTypes.map((o) => ({ value: o.code, label: o.label }))} />
           </Field>
         )}
-        <Field name="value" label={isEmail ? t('clients.points.email') : t('clients.points.phone')} required>
-          {isEmail ? <TextInput type="email" maxLength={200} /> : <PhoneInput />}
-        </Field>
+        {isEmail ? (
+          <Field name="value" label={t('clients.points.email')} required>
+            <TextInput type="email" maxLength={200} />
+          </Field>
+        ) : (
+          <PhoneRow>
+            <Field name="countryCallingCode" label={t('ui.phone.countryCode')}>
+              <CallingCodeInput />
+            </Field>
+            <Field name="value" label={t('clients.points.phone')} required>
+              <PhoneInput />
+            </Field>
+          </PhoneRow>
+        )}
         <div className="r2">
           {!isEmail && (
             <Field name="extension" label={t('clients.points.extension')}>
@@ -145,7 +158,7 @@ export function ContactPointsPanel({ ownerEntity, ownerId, points: rows, perms, 
     points.length === 0
       ? t('clients.summary.pointsNone')
       : [
-          mainPhone ? t('clients.summary.pointsPhone', { value: f.phone(mainPhone.value ?? '') }) : null,
+          mainPhone ? t('clients.summary.pointsPhone', { value: f.phoneFor(mainPhone.value ?? '', mainPhone.countryCallingCode) }) : null,
           mainEmail ? t('clients.summary.pointsEmail', { value: mainEmail.value ?? '' }) : null,
           moreCount > 0 ? t('clients.summary.more', { n: moreCount }) : null,
         ]
@@ -161,7 +174,7 @@ export function ContactPointsPanel({ ownerEntity, ownerId, points: rows, perms, 
           <li key={p.id} className="unrow">
             <span className="cl-point-main">
               <span className="cl-point-value">
-                <span className="mono">{isEmailType(p.contactType) ? p.value : f.phone(p.value ?? '')}</span>
+                <span className="mono">{isEmailType(p.contactType) ? p.value : f.phoneFor(p.value ?? '', p.countryCallingCode)}</span>
                 {p.extension && <span className="meta"> {t('clients.points.ext', { ext: p.extension })}</span>}
               </span>
               <span className="meta">{[p.contactTypeLabel, p.label].filter(Boolean).join(' · ')}</span>

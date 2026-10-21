@@ -7,13 +7,13 @@ namespace Teikem.Infrastructure.Contracts;
 // proveedor y las líneas por id int, resueltos dentro de su encabezado filtrado.
 
 public sealed record SupplierRequest(string? Name, string? ContactName = null, string? Phone = null, string? Email = null,
-    string? PaymentTerm = null, string? Notes = null);
+    string? PaymentTerm = null, string? Notes = null, string? PhoneCountryCallingCode = null);
 
 public sealed record SupplierPatchRequest(string? Name = null, string? ContactName = null, string? Phone = null, string? Email = null,
-    string? PaymentTerm = null, string? Notes = null, string? RowVersion = null);
+    string? PaymentTerm = null, string? Notes = null, string? RowVersion = null, string? PhoneCountryCallingCode = null);
 
 public sealed record SupplierDto(int Id, string Name, string? ContactName, string? Phone, string? Email, string? PaymentTermCode, string? Notes,
-    bool IsActive, string RowVersion);
+    bool IsActive, string RowVersion, string? PhoneCountryCallingCode = null);
 
 public sealed record PurchaseOrderLineRequest(Guid? ProductPublicId, decimal? QtyOrdered, decimal? UnitCost = null, bool? UpdateProductPrice = null);
 

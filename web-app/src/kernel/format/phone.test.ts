@@ -1,9 +1,16 @@
 // Teléfono con la máscara y el código de país de la compañía (phoneDigitsOnly/fmtPhone/normPhone de la maqueta).
 import { describe, expect, it } from 'vitest'
 import {
+  callingCodeInput,
+  defaultCallingCode,
   formatPhone,
+  formatPhoneFor,
   formatPhoneInput,
+  isValidCallingCode,
   isValidPhone,
+  isValidPhoneFor,
+  normalizePhoneFor,
+  usesCompanyMask,
   maskDigitCount,
   normalizePhone,
   phoneDigits,
@@ -57,5 +64,42 @@ describe('teléfono de la compañía', () => {
     expect(normalizePhone('+1 787 555 0142', PR_FORMAT)).toBe('7875550142')
     expect(normalizePhone(' ext. 12 ', PR_FORMAT)).toBe('ext. 12')
     expect(normalizePhone('', PR_FORMAT)).toBe('')
+  })
+})
+
+describe('prefijo internacional por teléfono (2026-10-20)', () => {
+  it('el prefijo de la compañía sale de su código de país', () => {
+    expect(defaultCallingCode(PR_FORMAT)).toBe('1')
+    expect(defaultCallingCode(UK)).toBe('44')
+    expect(callingCodeInput(null, PR_FORMAT)).toBe('+1')
+    expect(callingCodeInput('593', PR_FORMAT)).toBe('+593')
+    expect(callingCodeInput(null, UK)).toBe('+44')
+  })
+
+  it('un prefijo válido es de 1 a 4 dígitos, con o sin «+», y no empieza en 0', () => {
+    for (const ok of ['', '+1', '1', '+593', ' + 44 ', '1809']) expect(isValidCallingCode(ok)).toBe(true)
+    for (const bad of ['0', '+0', '12345', '+', 'ab', '+1a']) expect(isValidCallingCode(bad)).toBe(bad === '' ? true : false)
+  })
+
+  it('con el prefijo de la compañía (o sin prefijo) rige la máscara; con otro, los dígitos y el prefijo delante', () => {
+    expect(usesCompanyMask('', PR_FORMAT)).toBe(true)
+    expect(usesCompanyMask('+1', PR_FORMAT)).toBe(true)
+    expect(usesCompanyMask('593', PR_FORMAT)).toBe(false)
+    expect(formatPhoneFor('7875551234', '1', PR_FORMAT)).toBe('(787) 555-1234')
+    expect(formatPhoneFor('7875551234', null, PR_FORMAT)).toBe('(787) 555-1234')
+    expect(formatPhoneFor('991234567', '593', PR_FORMAT)).toBe('+593 991234567')
+    expect(formatPhoneFor('', '593', PR_FORMAT)).toBe('')
+  })
+
+  it('validación y valor a guardar según el prefijo', () => {
+    expect(isValidPhoneFor('(787) 555-1234', '+1', PR_FORMAT)).toBe(true)
+    expect(isValidPhoneFor('555-1234', '+1', PR_FORMAT)).toBe(false) // la máscara pide 10 dígitos
+    expect(isValidPhoneFor('99 123 4567', '+593', PR_FORMAT)).toBe(true) // otro prefijo: de 7 dígitos hasta 15 con el prefijo
+    expect(isValidPhoneFor('123456', '+593', PR_FORMAT)).toBe(false)
+    expect(isValidPhoneFor('1'.repeat(13), '+593', PR_FORMAT)).toBe(false) // 13 + 3 = 16 > 15
+    expect(isValidPhoneFor('', '+593', PR_FORMAT)).toBe(true)
+    expect(isValidPhoneFor('7875551234', '12345', PR_FORMAT)).toBe(false) // prefijo inválido
+    expect(normalizePhoneFor('(787) 555-1234', '+1', PR_FORMAT)).toBe('7875551234')
+    expect(normalizePhoneFor('99 123 4567', '+593', PR_FORMAT)).toBe('991234567')
   })
 })

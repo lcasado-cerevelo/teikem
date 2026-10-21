@@ -199,6 +199,13 @@ public sealed partial class ColavoraImportService
     /// Colavora escribe el código del chofer con ceros a la izquierda en el usuario («003») y a veces sin ellos en los eventos («3»):
     /// cada código también se reconoce sin ceros. Un código real nunca se pisa con un alias.
     /// </summary>
+    /// <summary>Teléfono de Colavora: solo dígitos + prefijo (el de Puerto Rico, 1); si no se puede separar, queda tal cual y sin prefijo.</summary>
+    private static (string Value, string? Cc) SplitPhone(string raw)
+    {
+        try { var p = PhoneRules.Parse(raw, null, "1"); return (p.National, p.CountryCallingCode); }
+        catch (FormatException) { return (ColavoraRules.Trim(raw, 200)!, null); }
+    }
+
     private static void IndexDriverAliases(RunState s)
     {
         foreach (var (code, id) in s.Drivers.ToList())
@@ -477,7 +484,10 @@ public sealed partial class ColavoraImportService
             {
                 if (loc.Code is not null) s.ConsigneesByNumber[(loc.ClientId!.Value, loc.Code)] = loc.LocationId;
                 if (!string.IsNullOrWhiteSpace(src.Phone))
-                    db.ContactPoints.Add(new ContactPoint { TenantId = loc.TenantId, OwnerEntityLookupId = s.EntityTypeLocationId, OwnerId = loc.LocationId, ContactTypeLookupId = s.ContactPhoneId, Value = ColavoraRules.Trim(src.Phone, 200)!, IsPrimary = true, IsActive = true });
+                {
+                    var (phoneValue, phoneCc) = SplitPhone(src.Phone);
+                    db.ContactPoints.Add(new ContactPoint { TenantId = loc.TenantId, OwnerEntityLookupId = s.EntityTypeLocationId, OwnerId = loc.LocationId, ContactTypeLookupId = s.ContactPhoneId, Value = phoneValue, CountryCallingCode = phoneCc, IsPrimary = true, IsActive = true });
+                }
                 if (!string.IsNullOrWhiteSpace(src.Email))
                     foreach (var email in src.Email.Split(new[] { ';', ',', ' ' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Take(3))
                         db.ContactPoints.Add(new ContactPoint { TenantId = loc.TenantId, OwnerEntityLookupId = s.EntityTypeLocationId, OwnerId = loc.LocationId, ContactTypeLookupId = s.ContactEmailId, Value = ColavoraRules.Trim(email, 200)!, IsPrimary = false, IsActive = true });

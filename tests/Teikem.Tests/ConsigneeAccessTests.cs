@@ -306,7 +306,7 @@ public class ConsigneeAccessTests
         Assert.Equal(("Tienda Norte", "Cliente A", "tienda@norte.co"), (me.ConsigneeName, me.ClientName, me.Email));
         Assert.True(me.NoticesEnabled);
         Assert.Equal(new ConsigneeChannelDto("tienda@norte.co", true, false, false), me.EmailChannel);
-        Assert.Equal(new ConsigneeChannelDto("787-555-0100", false, false, false), me.SmsChannel);   // el cliente no lo prendió: no puede prenderlo él
+        Assert.Equal(new ConsigneeChannelDto("+17875550100", false, false, false), me.SmsChannel);   // el cliente no lo prendió: no puede prenderlo él
     }
 
     [Fact]

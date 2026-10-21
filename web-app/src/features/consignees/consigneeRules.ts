@@ -78,6 +78,8 @@ export interface ConsigneeValues {
   clientPublicId: string
   /** Teléfono con la máscara de la compañía ('' = sin teléfono). */
   phone: string
+  /** Prefijo internacional del teléfono, con «+» ("+1"); '' = el de la compañía. */
+  countryCallingCode: string
   /** Persona de contacto (Lote F-B2; '' = sin persona). */
   contactName: string
   defaultServiceMinutes: number | null
@@ -89,7 +91,7 @@ export interface ConsigneeValues {
   allowDupInvoice: boolean
 }
 
-export function consigneeSchema(m: ConsigneeMessages, isValidPhone: (v: string) => boolean) {
+export function consigneeSchema(m: ConsigneeMessages, isValidPhone: (v: string, cc?: string) => boolean) {
   const optional = (max: number) => z.string().trim().max(max, m.max(max))
   return z
     .object({
@@ -102,7 +104,8 @@ export function consigneeSchema(m: ConsigneeMessages, isValidPhone: (v: string) 
       postalCode: optional(POSTAL_MAX),
       country: z.string().trim().min(1, m.countryRequired),
       clientPublicId: z.string(),
-      phone: z.string().refine((v) => v.trim() === '' || isValidPhone(v), m.phoneInvalid),
+      phone: z.string(),
+      countryCallingCode: z.string().trim(),
       contactName: optional(CONTACT_NAME_MAX),
       defaultServiceMinutes: z.number(m.minutesInteger).int(m.minutesInteger).min(0, m.minutesNegative).nullable(),
       defaultWindowStart: z.string(),
@@ -112,6 +115,7 @@ export function consigneeSchema(m: ConsigneeMessages, isValidPhone: (v: string) 
       allowDupInvoice: z.boolean(),
     })
     .superRefine((v, ctx) => {
+      if (v.phone.trim() !== '' && !isValidPhone(v.phone, v.countryCallingCode)) ctx.addIssue({ code: 'custom', path: ['phone'], message: m.phoneInvalid })
       const start = v.defaultWindowStart.trim()
       const end = v.defaultWindowEnd.trim()
       if (!start && !end) return
@@ -144,6 +148,7 @@ export function emptyConsigneeValues(ownerClientId = SHARED): ConsigneeValues {
     country: DEFAULT_COUNTRY,
     clientPublicId: ownerClientId,
     phone: '',
+    countryCallingCode: '',
     contactName: '',
     defaultServiceMinutes: 0,
     defaultWindowStart: '',
@@ -155,7 +160,7 @@ export function emptyConsigneeValues(ownerClientId = SHARED): ConsigneeValues {
 }
 
 /** Valores del formulario de edición a partir del consignatario (y su teléfono ya con máscara). */
-export function consigneeValuesOf(c: Consignee, phone: string): ConsigneeValues {
+export function consigneeValuesOf(c: Consignee, phone: string, countryCallingCode = ''): ConsigneeValues {
   return {
     code: c.code ?? '',
     name: c.name ?? '',
@@ -167,6 +172,7 @@ export function consigneeValuesOf(c: Consignee, phone: string): ConsigneeValues 
     country: c.country ?? DEFAULT_COUNTRY,
     clientPublicId: c.isShared ? SHARED : (c.clientPublicId ?? SHARED),
     phone,
+    countryCallingCode,
     contactName: c.contactName ?? '',
     defaultServiceMinutes: c.defaultServiceMinutes ?? 0,
     defaultWindowStart: timeInput(c.defaultWindowStart),

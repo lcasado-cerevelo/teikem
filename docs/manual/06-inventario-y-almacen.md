@@ -2256,7 +2256,8 @@ Cómo se usa:
 | Nombre de proveedor repetido (activo) | `Ya existe un proveedor activo con ese nombre.` | 409 |
 | Nombre de proveedor vacío | `El nombre del proveedor es obligatorio.` | 400 |
 | Correo de proveedor inválido | `El correo electrónico no es válido.` | 400 |
-| Teléfono de proveedor de más de 40 caracteres (`errors.phone`) | `El teléfono admite como máximo 40 caracteres.` | 400 |
+| Teléfono de proveedor que no son dígitos (menos de 7, o más de 15 con el prefijo) (`errors.phone`) | `Teléfono inválido.` | 400 |
+| Prefijo del teléfono del proveedor fuera de 1 a 4 dígitos (`errors.phoneCountryCallingCode`) | `Prefijo de país inválido: use de 1 a 4 dígitos, por ejemplo 1.` | 400 |
 | Proveedor de otro tenant o inexistente | `Proveedor no encontrado.` | 404 |
 | Sin líneas / más de 200 (alta y edición) | `La orden de compra debe tener al menos una línea.` / `La orden de compra admite como máximo 200 líneas.` | 400 |
 | Alta sin proveedor (`errors.supplierId`) | `Indique el proveedor.` | 400 |
@@ -2304,8 +2305,7 @@ puede mandar el formulario completo). Desde Enviada (`SENT`) quedan **fijos**: u
 se envió y el proveedor o el almacén están mal, cancélela y cree otra. En Borrador la orden todavía no tiene avisos de llegada
 ni recibos (se crean al recibir, desde `SENT`), así que cambiar el almacén no afecta nada más: las líneas no dependen del
 almacén. El cambio queda en la auditoría de la orden (`SupplierId` / `WarehouseId`), y respeta `rowVersion` como el resto del
-`PATCH`. La máscara del teléfono del proveedor `(xxx)xxx-xxxx` es de la pantalla: el API guarda el texto que recibe (hasta 40
-caracteres) y la pantalla lo manda ya con la máscara.
+`PATCH`. El teléfono del proveedor se guarda solo con dígitos (`phone`) y con su prefijo internacional (`phoneCountryCallingCode`, solo dígitos y sin «+»; el de la compañía si no se indica): el API quita el formato que reciba y la pantalla muestra el número con la máscara de la compañía (o «+593 991234567» si el prefijo es otro). Los proveedores que ya existían se limpiaron con el script del Lote 162.
 
 ### Estatus y transiciones
 

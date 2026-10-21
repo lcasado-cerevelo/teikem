@@ -124,7 +124,7 @@ export function ConsigneeDetailPanel({ publicId, defaultOwner }: { publicId: str
           </Fact>
           <Fact label={t('consignees.town')}>{c.city || '—'}</Fact>
           <Fact label={t('consignees.contactName')}>{c.contactName || '—'}</Fact>
-          <Fact label={t('consignees.phone')}>{phone?.value ? f.phone(phone.value) : '—'}</Fact>
+          <Fact label={t('consignees.phone')}>{phone?.value ? f.phoneFor(phone.value, phone.countryCallingCode) : '—'}</Fact>
           <Fact label={t('consignees.scope')} wide>
             {ownerLabel(c, t('consignees.shared')) || '—'}
           </Fact>

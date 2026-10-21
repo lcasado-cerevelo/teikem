@@ -176,7 +176,7 @@ public sealed class ConsigneeNoticeTests
         await using var _ = x.F;
         var page = await x.Svc.ListConsigneesAsync(null, 0, 25, default);
         var c = Assert.Single(page.Items);
-        Assert.Equal(("Tienda Norte", "tienda@norte.co", "787-555-0100", false, false), (c.Name, c.Email, c.Phone, c.AcceptsEmail, c.AcceptsSms));
+        Assert.Equal(("Tienda Norte", "tienda@norte.co", "+17875550100", false, false), (c.Name, c.Email, c.Phone, c.AcceptsEmail, c.AcceptsSms));
         Assert.Empty((await x.Svc.ListConsigneesAsync("zzz", 0, 25, default)).Items);
     }
 

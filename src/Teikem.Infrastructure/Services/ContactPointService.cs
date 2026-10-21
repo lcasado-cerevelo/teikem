@@ -1,9 +1,9 @@
 using System.Net.Mail;
-using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Contacts;
+using Teikem.Domain.Tenancy;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
@@ -31,7 +31,6 @@ public sealed class UserOwnedEntityResolver(TeikemDbContext db, ITenantContext t
 /// <summary>Capa C: N contactos tipados por entidad. La integridad de la asociación polimórfica vive aquí, no en FK.</summary>
 public sealed class ContactPointService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, IEnumerable<IOwnedEntityResolver> resolvers, PermissionService permissions)
 {
-    private static readonly Regex PhoneRegex = new(@"^\+?[0-9][0-9\s\-().]{6,24}$", RegexOptions.Compiled);
 
     public async Task<IReadOnlyList<ContactPointDto>> GetForOwnerAsync(string ownerEntity, int ownerId, bool includeInactive, CancellationToken ct)
     {
@@ -59,12 +58,12 @@ public sealed class ContactPointService(TeikemDbContext db, ITenantContext tenan
         var ownerEntityId = await lookups.GetIdAsync(LookupDomains.EntityType, ownerEntity, ct);
         await EnsureOwnerExistsAsync(ownerEntity, ownerId, ct);
         var typeId = await lookups.GetIdAsync(LookupDomains.ContactType, req.ContactType, ct);
-        var value = ValidateValue(req.ContactType, req.Value);
+        var (value, country) = await NormalizeAsync(req, ct);
 
         var cp = new ContactPoint
         {
             TenantId = tenantId, OwnerEntityLookupId = ownerEntityId, OwnerId = ownerId, ContactTypeLookupId = typeId,
-            Value = value, Extension = req.Extension, Label = req.Label, IsPrimary = req.IsPrimary, IsActive = true,
+            Value = value, CountryCallingCode = country, Extension = req.Extension, Label = req.Label, IsPrimary = req.IsPrimary, IsActive = true,
         };
         db.ContactPoints.Add(cp);
         if (req.IsPrimary) await ClearOtherPrimariesAsync(ownerEntityId, ownerId, typeId, cp, ct);
@@ -83,7 +82,7 @@ public sealed class ContactPointService(TeikemDbContext db, ITenantContext tenan
         await EnsureOwnerWriteAsync(cp.OwnerEntity!.InternalCode, ct);
         var typeId = await lookups.GetIdAsync(LookupDomains.ContactType, req.ContactType, ct);
         cp.ContactTypeLookupId = typeId;
-        cp.Value = ValidateValue(req.ContactType, req.Value);
+        (cp.Value, cp.CountryCallingCode) = await NormalizeAsync(req, ct);
         cp.Extension = req.Extension;
         cp.Label = req.Label;
         if (req.IsPrimary && !cp.IsPrimary) await ClearOtherPrimariesAsync(cp.OwnerEntityLookupId, cp.OwnerId, typeId, cp, ct);
@@ -126,6 +125,31 @@ public sealed class ContactPointService(TeikemDbContext db, ITenantContext tenan
         foreach (var o in others) o.IsPrimary = false;
     }
 
+
+    /// <summary>
+    /// Valor y prefijo a guardar. Correo: minúsculas, sin prefijo. Teléfono: solo dígitos nacionales + prefijo internacional (el indicado, o el que
+    /// trae un «+», o el de la compañía); la extensión, solo dígitos. Errores 400 con el mensaje de PhoneRules.
+    /// </summary>
+    private async Task<(string Value, string? Country)> NormalizeAsync(ContactPointUpsertRequest req, CancellationToken ct)
+    {
+        if (!IsPhoneType(req.ContactType)) return (ValidateValue(req.ContactType, req.Value), null);
+        if (string.IsNullOrWhiteSpace(req.Value)) throw new ValidationException("value", "El valor es obligatorio.");
+        var tenantId = ((TenantContext)tenant).RequireTenantId();
+        var defaultCc = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.TenantId == tenantId).Select(t => t.PhoneCountryCode).FirstOrDefaultAsync(ct) ?? "+1";
+        try
+        {
+            var parts = PhoneRules.Parse(req.Value, req.CountryCallingCode, PhoneRules.NormalizeCountry(defaultCc) ?? "1");
+            return (parts.National, parts.CountryCallingCode);
+        }
+        catch (FormatException ex) { throw new ValidationException(ex.Message == PhoneRules.InvalidCountryMessage ? "countryCallingCode" : "value", ex.Message); }
+    }
+
+    public static bool IsPhoneType(string contactType) => contactType.ToUpperInvariant() is "PHONE" or "MOBILE" or "FAX" or "WHATSAPP";
+
+    /// <summary>
+    /// Validación sin guardar (importaciones y formularios): correo → minúsculas; teléfono → sin formato (solo dígitos, o «+» y dígitos si traía «+»);
+    /// el prefijo definitivo lo decide AddAsync/UpdateAsync con el de la compañía.
+    /// </summary>
     public static string ValidateValue(string contactType, string value)
     {
         if (string.IsNullOrWhiteSpace(value)) throw new ValidationException("value", "El valor es obligatorio.");
@@ -136,13 +160,13 @@ public sealed class ContactPointService(TeikemDbContext db, ITenantContext tenan
                 if (!MailAddress.TryCreate(v, out var addr) || addr.Address != v || !v.Contains('.')) throw new ValidationException("value", "Correo inválido.");
                 return v.ToLowerInvariant();
             case "PHONE": case "MOBILE": case "FAX": case "WHATSAPP":
-                if (!PhoneRegex.IsMatch(v)) throw new ValidationException("value", "Teléfono inválido.");
-                return v;
+                try { return PhoneRules.Clean(v, "1"); }
+                catch (FormatException ex) { throw new ValidationException("value", ex.Message); }
             default:
                 return v;
         }
     }
 
     private ContactPointDto ToDto(ContactPoint c) => new(c.ContactPointId, c.OwnerEntity?.InternalCode ?? "", c.OwnerId,
-        c.ContactType?.InternalCode ?? "", MultilingualText.Resolve(c.ContactType?.LabelJson, tenant.Lang), c.Value, c.Extension, c.Label, c.IsPrimary, c.IsActive);
+        c.ContactType?.InternalCode ?? "", MultilingualText.Resolve(c.ContactType?.LabelJson, tenant.Lang), c.Value, c.Extension, c.Label, c.IsPrimary, c.IsActive, c.CountryCallingCode);
 }

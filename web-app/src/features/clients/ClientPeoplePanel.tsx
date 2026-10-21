@@ -6,9 +6,10 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Can, useCan } from '../../kernel/access'
-import { useFormat } from '../../kernel/format'
+import { callingCodeDigits, useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
 import {
+  CallingCodeInput,
   Chip,
   ConfirmDialog,
   DataTable,
@@ -21,6 +22,7 @@ import {
   Modal,
   Panel,
   PhoneInput,
+  PhoneRow,
   TextInput,
   Toggle,
   toast,
@@ -55,7 +57,7 @@ function PersonModal({ client, person, open, onClose }: { client: ClientDetail; 
     () =>
       personSchema(
         { nameRequired: t('clients.errors.contactNameRequired'), nameMax: t('clients.errors.max', { max: CONTACT_NAME_MAX }), roleMax: t('clients.errors.max', { max: CONTACT_ROLE_MAX }) },
-        f.isValidPhone,
+        f.isValidPhoneFor,
         t('clients.errors.phoneInvalid'),
         t('clients.errors.emailInvalid'),
       ),
@@ -69,17 +71,21 @@ function PersonModal({ client, person, open, onClose }: { client: ClientDetail; 
       fullName: person?.fullName ?? '',
       role: person?.role ?? '',
       isPrimary: person?.isPrimary ?? false,
-      phone: phone?.value ? f.phoneInput(phone.value) : '',
+      phone: phone?.value ? (f.usesCompanyMaskFor(phone.countryCallingCode) ? f.phoneInput(phone.value) : phone.value) : '',
+      countryCallingCode: f.callingCodeInput(phone?.countryCallingCode),
       email: email?.value ?? '',
     },
   })
 
   /** Sincroniza un medio de contacto de la persona: crea, cambia o quita según el valor anterior y el nuevo. */
-  const syncPoint = async (ownerId: number, existing: ContactPoint | undefined, next: string, contactType: string) => {
-    const value = contactType === EMAIL_TYPE ? next.trim().toLowerCase() : f.normalizePhone(next)
+  const syncPoint = async (ownerId: number, existing: ContactPoint | undefined, next: string, contactType: string, countryCode = '') => {
+    const email = contactType === EMAIL_TYPE
+    const value = email ? next.trim().toLowerCase() : f.normalizePhoneFor(next, countryCode)
+    const cc = email ? '' : callingCodeDigits(countryCode)
+    const ccBody = cc || null
     if (existing && !next.trim()) await savePoint.mutateAsync({ action: 'remove', id: existing.id })
-    else if (existing && value !== existing.value) await savePoint.mutateAsync({ action: 'update', id: existing.id, body: { contactType: existing.contactType ?? contactType, value, extension: existing.extension, label: existing.label, isPrimary: existing.isPrimary } })
-    else if (!existing && next.trim()) await savePoint.mutateAsync({ action: 'create', ownerEntity: 'CLIENT_CONTACT', ownerId, body: { contactType, value, isPrimary: true } })
+    else if (existing && (value !== existing.value || (!email && cc !== (existing.countryCallingCode ?? '')))) await savePoint.mutateAsync({ action: 'update', id: existing.id, body: { contactType: existing.contactType ?? contactType, value, countryCallingCode: ccBody, extension: existing.extension, label: existing.label, isPrimary: existing.isPrimary } })
+    else if (!existing && next.trim()) await savePoint.mutateAsync({ action: 'create', ownerEntity: 'CLIENT_CONTACT', ownerId, body: { contactType, value, countryCallingCode: ccBody, isPrimary: true } })
   }
 
   return (
@@ -105,7 +111,7 @@ function PersonModal({ client, person, open, onClose }: { client: ClientDetail; 
         onSubmit={async (v) => {
           if (!person) {
             const points = []
-            if (v.phone.trim()) points.push({ contactType: PHONE_TYPE, value: f.normalizePhone(v.phone), isPrimary: true })
+            if (v.phone.trim()) points.push({ contactType: PHONE_TYPE, value: f.normalizePhoneFor(v.phone, v.countryCallingCode), countryCallingCode: callingCodeDigits(v.countryCallingCode) || null, isPrimary: true })
             if (v.email.trim()) points.push({ contactType: EMAIL_TYPE, value: v.email.trim().toLowerCase(), isPrimary: true })
             await saveContact.mutateAsync({
               action: 'create',
@@ -114,7 +120,7 @@ function PersonModal({ client, person, open, onClose }: { client: ClientDetail; 
           } else {
             await saveContact.mutateAsync({ action: 'update', id: person.id, body: { fullName: v.fullName.trim(), role: v.role.trim(), isPrimary: v.isPrimary } })
             if (canPoints) {
-              await syncPoint(person.id, phone, v.phone, PHONE_TYPE)
+              await syncPoint(person.id, phone, v.phone, PHONE_TYPE, v.countryCallingCode)
               await syncPoint(person.id, email, v.email, EMAIL_TYPE)
             }
           }
@@ -128,14 +134,17 @@ function PersonModal({ client, person, open, onClose }: { client: ClientDetail; 
         <Field name="role" label={t('clients.people.role')}>
           <TextInput maxLength={CONTACT_ROLE_MAX} />
         </Field>
-        <div className="r2">
+        <PhoneRow>
+          <Field name="countryCallingCode" label={t('ui.phone.countryCode')}>
+            <CallingCodeInput />
+          </Field>
           <Field name="phone" label={t('clients.people.phone')}>
             <PhoneInput />
           </Field>
-          <Field name="email" label={t('clients.people.email')}>
-            <TextInput type="email" maxLength={200} />
-          </Field>
-        </div>
+        </PhoneRow>
+        <Field name="email" label={t('clients.people.email')}>
+          <TextInput type="email" maxLength={200} />
+        </Field>
         {!canPoints && <p className="help">{t('clients.people.pointsNeedPermission')}</p>}
         <Field name="isPrimary" label={t('clients.people.primary')} help={t('clients.people.primaryHelp')}>
           <Toggle />
@@ -179,7 +188,7 @@ export function ClientPeoplePanel({ client }: { client: ClientDetail }) {
         header: t('clients.people.phone'),
         cell: (c) => {
           const p = personPhone(c)
-          return p?.value ? <span className="mono">{f.phone(p.value)}</span> : '—'
+          return p?.value ? <span className="mono">{f.phoneFor(p.value, p.countryCallingCode)}</span> : '—'
         },
         sortValue: (c) => personPhone(c)?.value,
         exportValue: (c) => personPhone(c)?.value ?? '',

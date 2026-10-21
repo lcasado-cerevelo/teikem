@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Teikem.Domain.Clients;
 using Teikem.Domain.Constants;
+using Teikem.Domain.Contacts;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
@@ -90,7 +91,7 @@ public sealed class ConsigneeNoticeService(TeikemDbContext db, ITenantContext te
         return new PagedResult<ConsigneeNoticeConsigneeDto>(items, total, skip, take);
     }
 
-    /// <summary>El correo y el teléfono principales de una localización (los contactos activos, el principal primero).</summary>
+    /// <summary>El correo y el teléfono principales de una localización (los contactos activos, el principal primero). El teléfono sale en E.164 («+17875551234»: prefijo + dígitos), que es lo que piden el SMS y la baja del aviso.</summary>
     public async Task<(string? Email, string? Phone)> ContactsAsync(int locationId, CancellationToken ct)
     {
         var ownerId = await lookups.GetIdAsync(LookupDomains.EntityType, EntityTypes.Location, ct);
@@ -98,9 +99,16 @@ public sealed class ConsigneeNoticeService(TeikemDbContext db, ITenantContext te
                           join t in db.LookupCodes.AsNoTracking() on c.ContactTypeLookupId equals t.LookupCodeId
                           where c.OwnerEntityLookupId == ownerId && c.OwnerId == locationId && c.IsActive
                           orderby c.IsPrimary descending, c.ContactPointId
-                          select new { c.Value, Type = t.InternalCode }).ToListAsync(ct);
+                          select new { c.Value, c.CountryCallingCode, Type = t.InternalCode }).ToListAsync(ct);
         var mail = rows.FirstOrDefault(r => r.Type == "EMAIL")?.Value?.Trim();
-        var phone = rows.FirstOrDefault(r => r.Type is "MOBILE" or "PHONE" or "WHATSAPP")?.Value?.Trim();
+        var phoneRow = rows.FirstOrDefault(r => r.Type is "MOBILE" or "PHONE" or "WHATSAPP");
+        string? phone = null;
+        if (phoneRow is not null && !string.IsNullOrWhiteSpace(phoneRow.Value))
+        {
+            var tenantId = T.RequireTenantId();
+            var defaultCc = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(x => x.TenantId == tenantId).Select(x => x.PhoneCountryCode).FirstOrDefaultAsync(ct) ?? "+1";
+            phone = PhoneRules.ToE164(phoneRow.CountryCallingCode, phoneRow.Value, PhoneRules.NormalizeCountry(defaultCc) ?? "1");
+        }
         return (string.IsNullOrEmpty(mail) ? null : mail, string.IsNullOrEmpty(phone) ? null : phone);
     }
 

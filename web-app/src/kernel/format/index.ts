@@ -20,14 +20,22 @@ export {
 export type { DateValue, MoneyOptions } from './format'
 export { FormatProvider } from './FormatProvider'
 export {
+  callingCodeDigits,
+  callingCodeInput,
+  defaultCallingCode,
   formatPhone,
+  formatPhoneFor,
   formatPhoneInput,
+  isValidCallingCode,
   isValidPhone,
+  isValidPhoneFor,
   maskDigitCount,
   normalizePhone,
+  normalizePhoneFor,
   phoneDigits,
   phoneLocalDigits,
   phonePlaceholder,
+  usesCompanyMask,
 } from './phone'
 export {
   DEFAULT_FORMAT,

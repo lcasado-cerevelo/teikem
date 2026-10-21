@@ -2660,6 +2660,12 @@
     }
   },
   "ui": {
+    "phone": {
+      "countryCode": "Country code",
+      "countryCodeHelp": "International dialing prefix, for example +1.",
+      "countryCodeInvalid": "Invalid country code: 1 to 4 digits, for example +1.",
+      "foreignInvalid": "The phone must have between 7 and {max} digits with that prefix."
+    },
     "qbox": {
       "placeholder": "Search…"
     },

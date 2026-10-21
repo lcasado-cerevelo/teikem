@@ -267,3 +267,6 @@ button.rmap-chip:focus-visible{outline:2px solid var(--action);outline-offset:1p
 .rmap-legend .sw.st.current{background:var(--flow)}
 .rmap-legend .sw.live{border-radius:50%;background:var(--money);box-shadow:0 0 0 3px var(--money-bg)}
 .rmap-pickhint{margin:0;padding:6px 16px 10px;font-size:11.5px;color:var(--faint)}
+
+/* Prefijo internacional + teléfono (2026-10-20): el prefijo angosto y el número ocupa el resto, también a 360 px */
+.phone-row{display:grid;grid-template-columns:96px minmax(0,1fr);gap:11px}

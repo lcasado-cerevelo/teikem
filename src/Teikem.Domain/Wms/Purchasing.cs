@@ -11,7 +11,10 @@ public class Supplier : ITenantScoped, ISoftDeletable
     public int TenantId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? ContactName { get; set; }
+    /// <summary>Teléfono con SOLO dígitos (sin formato ni prefijo; el formato lo pone la máscara de la compañía). Ver PhoneRules.</summary>
     public string? Phone { get; set; }
+    /// <summary>Prefijo internacional de `Phone`, solo dígitos y sin «+»; se llena siempre que haya teléfono (el de la compañía si no se indicó otro).</summary>
+    public string? PhoneCountryCallingCode { get; set; }
     public string? Email { get; set; }
     public int? PaymentTermLookupId { get; set; }
     public string? Notes { get; set; }

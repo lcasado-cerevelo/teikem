@@ -18,6 +18,7 @@ public sealed class SupplierConfiguration : IEntityTypeConfiguration<Supplier>
         b.Property(s => s.Name).HasMaxLength(200).IsRequired();
         b.Property(s => s.ContactName).HasMaxLength(150);
         b.Property(s => s.Phone).HasMaxLength(40);
+        b.Property(s => s.PhoneCountryCallingCode).HasColumnType("varchar(4)");
         b.Property(s => s.Email).HasMaxLength(150);
         b.Property(s => s.RowVersion).IsRowVersion();
 

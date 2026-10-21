@@ -184,7 +184,9 @@ describe('contactos', () => {
   it('teléfono se guarda con dígitos, correo en minúsculas', () => {
     const digits = (s: string) => s.replace(/\D/g, '')
     const base = { contactType: 'PHONE', value: '(787) 555-1234', extension: ' 12 ', label: '', isPrimary: true }
-    expect(buildPointRequest(base, digits)).toEqual({ contactType: 'PHONE', value: '7875551234', extension: '12', label: null, isPrimary: true })
+    expect(buildPointRequest(base, digits)).toEqual({ contactType: 'PHONE', value: '7875551234', countryCallingCode: null, extension: '12', label: null, isPrimary: true })
+    // con prefijo: va en su campo, solo dígitos («+593» → "593")
+    expect(buildPointRequest({ ...base, countryCallingCode: '+593' }, digits)).toMatchObject({ value: '7875551234', countryCallingCode: '593' })
     expect(buildPointRequest({ ...base, contactType: 'EMAIL', value: ' Ventas@ACME.com ' }, digits).value).toBe('ventas@acme.com')
   })
 

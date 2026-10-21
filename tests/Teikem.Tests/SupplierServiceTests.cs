@@ -43,7 +43,29 @@ public sealed class SupplierServiceTests
         f.Db.ChangeTracker.Clear();
 
         var updated = await svc.UpdateAsync(other.Id, new SupplierPatchRequest(Name: "Proveedor Tres", Phone: "787-555-0101"), default);
-        Assert.Equal(("Proveedor Tres", "787-555-0101"), (updated.Name, updated.Phone));
+        // el teléfono se guarda solo con dígitos y con su prefijo (el de la compañía si no se indica otro)
+        Assert.Equal(("Proveedor Tres", "7875550101", "1"), (updated.Name, updated.Phone, updated.PhoneCountryCallingCode));
+    }
+
+    [Fact]
+    public async Task Phone_is_stored_as_digits_with_an_international_prefix()
+    {
+        await using var f = await CreateAsync();
+        var svc = f.Get<SupplierService>();
+
+        var foreign = await svc.CreateAsync(new SupplierRequest("Proveedor Quito", Phone: "+593 99 123 4567"), default);
+        Assert.Equal(("991234567", "593"), (foreign.Phone, foreign.PhoneCountryCallingCode));
+
+        var explicitCc = await svc.CreateAsync(new SupplierRequest("Proveedor Guayaquil", Phone: "(04) 234-5678", PhoneCountryCallingCode: "+593"), default);
+        Assert.Equal(("042345678", "593"), (explicitCc.Phone, explicitCc.PhoneCountryCallingCode));
+
+        var none = await svc.CreateAsync(new SupplierRequest("Sin teléfono"), default);
+        Assert.Equal((null, null), (none.Phone, none.PhoneCountryCallingCode));
+
+        var bad = await Assert.ThrowsAsync<ValidationException>(() => svc.CreateAsync(new SupplierRequest("Proveedor Malo", Phone: "abc"), default));
+        Assert.Equal("Teléfono inválido.", Assert.Single(bad.Errors!["phone"]));
+        var badCc = await Assert.ThrowsAsync<ValidationException>(() => svc.CreateAsync(new SupplierRequest("Proveedor Malo", Phone: "7875550101", PhoneCountryCallingCode: "12345"), default));
+        Assert.True(badCc.Errors!.ContainsKey("phoneCountryCallingCode"));
     }
 
     [Fact]

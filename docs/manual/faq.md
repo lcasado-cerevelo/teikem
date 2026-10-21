@@ -9734,3 +9734,18 @@ Ese aviso lo generó una orden de compra; edite la orden, no el aviso.
 
 **Al guardar un aviso de salida sale «Error interno.» (500)**
 Era un defecto de la versión anterior (el contador SAL-##### no estaba reconocido por el API) y ya está corregido. Si lo ve, actualice el API y repita; si persiste, avise a soporte con el código de correlación del error.
+
+**¿Cómo se guardan los teléfonos y para qué sirve el prefijo? (Lote 162)**
+Todo teléfono se guarda **solo con dígitos** y con su **prefijo internacional** aparte (`1` para Puerto Rico y Estados Unidos, `593` para Ecuador…). En cada formulario de teléfono (contactos, personas del cliente, consignatarios, proveedores) hay un campo **Prefijo** a la izquierda del número, que arranca con el de la compañía. El formato con que se ve el número lo define cada compañía en **Ajustes → Región y formatos** (`Código de país` y `Máscara del teléfono`); un número con otro prefijo se ve como «+593 991234567».
+
+**¿Qué significa «Prefijo de país inválido: use de 1 a 4 dígitos, por ejemplo 1.»? (400)**
+El prefijo tiene que ser de 1 a 4 dígitos y no empezar en 0 (se acepta con «+»: `+593`). Corríjalo en el campo Prefijo.
+
+**¿Qué significa «El teléfono no empieza con el prefijo de país indicado.»? (400)**
+Se escribió el número con «+» y un prefijo (por ejemplo `+593 …`) pero en el campo Prefijo hay otro (por ejemplo `+1`). Deje solo uno o que coincidan.
+
+**¿Qué significa «El teléfono con «+» necesita el prefijo de país en su campo.»? (400)**
+El número empieza con «+» pero no se pudo reconocer el país. Escriba el prefijo en su campo y el número sin el «+».
+
+**Después del cambio, un teléfono antiguo se ve sin formato o sin prefijo. ¿Qué hago?**
+Los que traían texto (por ejemplo «787-555-1234 ext. 5») o un «+» de un país distinto al de la compañía no se tocaron al limpiar los datos. Ábralos con **Editar**, ponga el número y el prefijo correctos y guarde.

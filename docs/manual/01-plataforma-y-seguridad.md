@@ -542,8 +542,18 @@ dueño: sin él la respuesta es 403 exista o no el registro (sin oráculo 200/40
 Cómo se usa:
 - `GET /api/v1/contacts/{ownerEntity}/{ownerId}` (ej. `ownerEntity=USER`)
 - `POST /api/v1/contacts/{ownerEntity}/{ownerId}` `{ "contactType": "EMAIL", "value": "a@b.com", "isPrimary": true }`
+- Teléfono: `{ "contactType": "PHONE", "value": "(787) 555-1234", "countryCallingCode": "1", "isPrimary": true }`
 - `PUT /api/v1/contacts/{id}`
 - `DELETE /api/v1/contacts/{id}` (desactiva, no borra)
+
+**Teléfonos (2026-10-20): solo dígitos y un prefijo internacional por número.** Los tipos `PHONE`, `MOBILE`, `FAX` y `WHATSAPP` se guardan
+con **solo los dígitos** del número nacional en `value` (sin paréntesis, guiones ni espacios) y con su **prefijo internacional** en `countryCallingCode`
+(solo dígitos y sin «+»: `1` para Estados Unidos y Puerto Rico, `593` para Ecuador). Al guardar, el servidor quita el formato y llena siempre el prefijo:
+el que se indicó; si el número empieza con «+», el que trae; y si no, el **prefijo por omisión de la compañía** (`phoneCountryCode` de Ajustes → Región y
+formatos). Con prefijo `1` un número de 11 dígitos que empieza por 1 pierde ese 1. La **máscara** con que se ve el número (`phoneMask`) es de la compañía y
+solo se aplica al mostrar; un número con otro prefijo se muestra como «+593 991234567». La extensión se guarda aparte. Para mandar un SMS el número se
+arma en E.164 («+» + prefijo + dígitos). Los números que ya existían se limpiaron con un script idempotente de `Diseño/logistica-db-update.sql`
+(Lote 162): los que traían texto (por ejemplo «ext. 5») o un «+» con un país distinto al de la compañía quedaron como estaban, sin prefijo, para revisarlos a mano.
 
 Validaciones:
 
@@ -553,7 +563,10 @@ Validaciones:
 | `ownerId` no existe en el tenant | — | `<ownerEntity> '<ownerId>' no encontrado.` | 404 |
 | Valor vacío | — | `El valor es obligatorio.` | 400 |
 | Correo mal formado (tipo EMAIL) | debe tener `@` y `.` válidos | `Correo inválido.` | 400 |
-| Teléfono mal formado (tipo PHONE) | `^\+?[0-9][0-9\s\-().]{6,24}$` | `Teléfono inválido.` | 400 |
+| Teléfono mal formado (PHONE, MOBILE, FAX, WHATSAPP) | solo dígitos y formato (espacios, `-`, `(`, `)`, `.`), «+» solo al inicio; de 7 dígitos nacionales y hasta 15 en total con el prefijo | `Teléfono inválido.` | 400 |
+| `countryCallingCode` fuera de 1 a 4 dígitos (o que empiece en 0) | — | `Prefijo de país inválido: use de 1 a 4 dígitos, por ejemplo 1.` | 400 |
+| Teléfono con «+» y `countryCallingCode` distinto del que trae | — | `El teléfono no empieza con el prefijo de país indicado.` | 400 |
+| Teléfono con «+» sin prefijo reconocible | — | `El teléfono con «+» necesita el prefijo de país en su campo.` | 400 |
 | Contacto inexistente | — | `Contacto '<id>' no encontrado.` | 404 |
 
 ---

@@ -115,7 +115,7 @@ public class LegacyImportServiceTests
         Assert.Equal(("Calle Ficticia 1", "Caguas", "PR", (string?)"00725"),
             (unoAddr.Address.Line1, unoAddr.Address.City, unoAddr.Address.State, unoAddr.Address.PostalCode));
         Assert.Equal(new[] { "compras@example.com" }, uno.Emails);
-        Assert.Equal(new[] { "787-555-0101" }, uno.Phones);
+        Assert.Equal(new[] { "7875550101" }, uno.Phones);
 
         var dos = plan.Clients[1];
         Assert.Equal("CHEQUE", dos.PaymentTerm);
@@ -126,7 +126,7 @@ public class LegacyImportServiceTests
         var bill = dos.Addresses[1].Address;
         Assert.Equal(("Apartado 123", "787.555.0102"), (bill.Line1, bill.Phone));
         Assert.Equal(new[] { "pedidos@example.com", "pagos@example.com" }, dos.Emails);   // separados por ';', el primero principal
-        Assert.Equal(new[] { "787.555.0102" }, dos.Phones);
+        Assert.Equal(new[] { "7875550102" }, dos.Phones);
 
         Assert.Equal(3, report.Total(LegacyImportEntities.Consignees).Read);
         Assert.Equal(5, report.Total(LegacyImportEntities.Contacts).Read);
@@ -406,11 +406,13 @@ public class LegacyImportServiceTests
     }
 
     [Theory]
-    [InlineData("(787) 249-8344", "787-249-8344")]
-    [InlineData("787.686.6464", "787.686.6464")]
-    [InlineData("787-249-8344", "787-249-8344")]
-    [InlineData("1 (787) 555-0100", "1 (787) 555-0100")]   // ya es válido tal cual
-    [InlineData("(1) 787 555 0100", "787-555-0100")]      // 11 dígitos con 1 inicial
+    // El teléfono se guarda solo con dígitos (2026-10-20): ContactPointService.ValidateValue le quita el formato; el prefijo lo pone después AddAsync.
+    [InlineData("(787) 249-8344", "7872498344")]
+    [InlineData("787.686.6464", "7876866464")]
+    [InlineData("787-249-8344", "7872498344")]
+    [InlineData("1 (787) 555-0100", "17875550100")]
+    [InlineData("(1) 787 555 0100", "17875550100")]      // 11 dígitos con 1 inicial (AddAsync le quita el 1)
+    [InlineData("+1 (787) 555-0100", "+17875550100")]
     public void Contact_phone_is_accepted_by_the_contact_service_rules(string raw, string expected)
     {
         var (value, error) = LegacyImportPlanner.ContactPhone(raw);

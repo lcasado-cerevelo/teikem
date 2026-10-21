@@ -333,7 +333,7 @@ describe('Consignatarios — alta', () => {
       allowDupInvoice: false,
     })
     await waitFor(() => expect(callsTo('POST', '/api/v1/contacts/LOCATION/110')).toHaveLength(1))
-    expect(callsTo('POST', '/api/v1/contacts/LOCATION/110')[0].body).toEqual({ contactType: 'PHONE', value: '7875551234', isPrimary: true })
+    expect(callsTo('POST', '/api/v1/contacts/LOCATION/110')[0].body).toEqual({ contactType: 'PHONE', value: '7875551234', countryCallingCode: '1', isPrimary: true })
     await waitFor(() => expect(callsTo('GET', '/api/v1/locations/l-new').length).toBeGreaterThan(0))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Nuevo consignatario' })).toBeNull())
   })

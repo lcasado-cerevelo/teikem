@@ -11,7 +11,10 @@ public class ContactPoint : ITenantScoped, ISoftDeletable
     public int OwnerEntityLookupId { get; set; }
     public int OwnerId { get; set; }
     public int ContactTypeLookupId { get; set; }
+    /// <summary>Correo; o, en los tipos de teléfono (PHONE, MOBILE, FAX, WHATSAPP), el número nacional con SOLO dígitos (sin formato ni prefijo: el formato lo pone `Tenant.PhoneMask` al mostrarlo). Ver PhoneRules.</summary>
     public string Value { get; set; } = string.Empty;
+    /// <summary>Prefijo internacional del teléfono, solo dígitos y sin «+» («1», «593»); null en los correos. Al guardar un teléfono siempre se llena (el de la compañía si no se indicó otro).</summary>
+    public string? CountryCallingCode { get; set; }
     public string? Extension { get; set; }
     public string? Label { get; set; }
     public bool IsPrimary { get; set; }

@@ -13,6 +13,7 @@ public sealed class ContactPointConfiguration : IEntityTypeConfiguration<Contact
         b.ToTable("ContactPoint");
         b.HasKey(c => c.ContactPointId);
         b.Property(c => c.Value).HasMaxLength(200).IsRequired();
+        b.Property(c => c.CountryCallingCode).HasColumnType("varchar(4)");
         b.Property(c => c.Extension).HasMaxLength(20);
         b.Property(c => c.Label).HasMaxLength(80);
         b.HasOne(c => c.OwnerEntity).WithMany().HasForeignKey(c => c.OwnerEntityLookupId);

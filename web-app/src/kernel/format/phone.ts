@@ -68,6 +68,59 @@ export function normalizePhone(v: string | null | undefined, s: FormatSettings =
   return text && phoneDigits(text).length > 0 && isValidPhone(text, s) ? phoneLocalDigits(text, s) : text
 }
 
+// ---- Prefijo internacional por teléfono (2026-10-20): cada número lleva el suyo (`countryCallingCode`, solo dígitos y sin «+»).
+// Con el prefijo de la compañía (o sin prefijo) rige la máscara de la compañía; con otro, el número se guarda y muestra con sus dígitos
+// y el prefijo delante («+593 991234567»), porque la máscara de Puerto Rico no le aplica.
+
+/** Prefijo por omisión de la compañía en dígitos ("+1" → "1"). */
+export function defaultCallingCode(s: FormatSettings = getFormatSettings()): string {
+  return phoneDigits(s.phoneCountryCode)
+}
+
+/** Prefijo en dígitos para guardar ("+593" → "593"); '' si está vacío. */
+export function callingCodeDigits(cc: string | null | undefined): string {
+  return phoneDigits(cc)
+}
+
+/** Vacío, o de 1 a 4 dígitos que no empiezan en 0 (con o sin «+» delante). */
+export function isValidCallingCode(cc: string | null | undefined): boolean {
+  const t = String(cc ?? '').trim()
+  if (!t) return true
+  return /^\+?[1-9][0-9]{0,3}$/.test(t.replace(/\s/g, ''))
+}
+
+/** ¿El prefijo es el de la compañía (o no se puso)? Entonces rige su máscara. */
+export function usesCompanyMask(cc: string | null | undefined, s: FormatSettings = getFormatSettings()): boolean {
+  const d = callingCodeDigits(cc)
+  return d === '' || d === defaultCallingCode(s)
+}
+
+/** Teléfono con su prefijo: con el de la compañía, la máscara; con otro, de 7 dígitos hasta completar 15 con el prefijo. */
+export function isValidPhoneFor(v: string | null | undefined, cc: string | null | undefined, s: FormatSettings = getFormatSettings()): boolean {
+  if (phoneDigits(v).length === 0) return true
+  if (!isValidCallingCode(cc)) return false
+  if (usesCompanyMask(cc, s)) return isValidPhone(v, s)
+  const n = phoneDigits(v).length
+  return n >= 7 && n + callingCodeDigits(cc).length <= 15
+}
+
+/** Valor a guardar según el prefijo: con el de la compañía, `normalizePhone`; con otro, solo los dígitos. */
+export function normalizePhoneFor(v: string | null | undefined, cc: string | null | undefined, s: FormatSettings = getFormatSettings()): string {
+  return usesCompanyMask(cc, s) ? normalizePhone(v, s) : phoneDigits(v)
+}
+
+/** Para mostrar: con el prefijo de la compañía (o sin prefijo), la máscara; con otro, «+prefijo dígitos». */
+export function formatPhoneFor(v: string | null | undefined, cc: string | null | undefined, s: FormatSettings = getFormatSettings()): string {
+  if (!v) return ''
+  return usesCompanyMask(cc, s) ? formatPhone(v, s) : `+${callingCodeDigits(cc)} ${phoneDigits(v)}`
+}
+
+/** Prefijo a mostrar en el campo: el del número, o el de la compañía ("+1"). */
+export function callingCodeInput(cc: string | null | undefined, s: FormatSettings = getFormatSettings()): string {
+  const d = callingCodeDigits(cc) || defaultCallingCode(s)
+  return d ? `+${d}` : ''
+}
+
 /** Ejemplo de la máscara para el placeholder: "(000) 000-0000". */
 export function phonePlaceholder(s: FormatSettings = getFormatSettings()): string {
   return s.phoneMask.replace(/#/g, '0')

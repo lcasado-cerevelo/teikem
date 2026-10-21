@@ -32720,6 +32720,7 @@ export interface components {
             label?: string | null;
             isPrimary?: boolean;
             isActive?: boolean;
+            countryCallingCode?: string | null;
         };
         ContactPointUpsertRequest: {
             contactType?: string | null;
@@ -32727,6 +32728,7 @@ export interface components {
             extension?: string | null;
             label?: string | null;
             isPrimary?: boolean;
+            countryCallingCode?: string | null;
         };
         ContractBillingModelDto: {
             billPerService?: boolean;
@@ -38202,6 +38204,7 @@ export interface components {
             notes?: string | null;
             isActive?: boolean;
             rowVersion?: string | null;
+            phoneCountryCallingCode?: string | null;
         };
         SupplierPatchRequest: {
             name?: string | null;
@@ -38211,6 +38214,7 @@ export interface components {
             paymentTerm?: string | null;
             notes?: string | null;
             rowVersion?: string | null;
+            phoneCountryCallingCode?: string | null;
         };
         SupplierRequest: {
             name?: string | null;
@@ -38219,6 +38223,7 @@ export interface components {
             email?: string | null;
             paymentTerm?: string | null;
             notes?: string | null;
+            phoneCountryCallingCode?: string | null;
         };
         SwitchTenantRequest: {
             refreshToken?: string | null;

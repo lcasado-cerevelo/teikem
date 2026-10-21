@@ -304,16 +304,21 @@ export interface PersonValues {
   role: string
   isPrimary: boolean
   phone: string
+  /** Prefijo internacional del teléfono, con «+» ("+1"). */
+  countryCallingCode: string
   email: string
 }
 
-export function personSchema(m: { nameRequired: string; nameMax: string; roleMax: string }, isValidPhone: (v: string) => boolean, phoneInvalid: string, emailInvalid: string) {
+export function personSchema(m: { nameRequired: string; nameMax: string; roleMax: string }, isValidPhone: (v: string, cc?: string) => boolean, phoneInvalid: string, emailInvalid: string) {
   return z.object({
     fullName: z.string().trim().min(1, m.nameRequired).max(CONTACT_NAME_MAX, m.nameMax),
     role: z.string().trim().max(CONTACT_ROLE_MAX, m.roleMax),
     isPrimary: z.boolean(),
-    phone: z.string().refine((v) => isValidPhone(v), phoneInvalid),
+    phone: z.string(),
+    countryCallingCode: z.string().trim(),
     email: z.string().trim().refine((v) => v === '' || isValidEmail(v), emailInvalid),
+  }).superRefine((v, ctx) => {
+    if (!isValidPhone(v.phone, v.countryCallingCode)) ctx.addIssue({ code: 'custom', path: ['phone'], message: phoneInvalid })
   })
 }
 
@@ -351,16 +356,19 @@ export function sortContactPoints(list: readonly ContactPoint[]): ContactPoint[]
 export interface PointValues {
   contactType: string
   value: string
+  /** Prefijo internacional del teléfono, con «+» ("+1"); en los correos no se usa. */
+  countryCallingCode?: string
   extension: string
   label: string
   isPrimary: boolean
 }
 
-export function pointSchema(m: { valueRequired: string; emailInvalid: string; phoneInvalid: string }, isValidPhone: (v: string) => boolean) {
+export function pointSchema(m: { valueRequired: string; emailInvalid: string; phoneInvalid: string; countryCodeInvalid?: string }, isValidPhone: (v: string, cc?: string) => boolean, isValidCallingCode: (cc: string) => boolean = () => true) {
   return z
     .object({
       contactType: z.string().min(1),
       value: z.string().trim().min(1, m.valueRequired),
+      countryCallingCode: z.string().trim().optional(),
       extension: z.string().trim().max(20),
       label: z.string().trim().max(60),
       isPrimary: z.boolean(),
@@ -369,15 +377,19 @@ export function pointSchema(m: { valueRequired: string; emailInvalid: string; ph
       if (!v.value) return
       if (isEmailType(v.contactType)) {
         if (!isValidEmail(v.value)) ctx.addIssue({ code: 'custom', path: ['value'], message: m.emailInvalid })
-      } else if (!isValidPhone(v.value)) ctx.addIssue({ code: 'custom', path: ['value'], message: m.phoneInvalid })
+      } else if (!isValidCallingCode(v.countryCallingCode ?? '')) ctx.addIssue({ code: 'custom', path: ['countryCallingCode'], message: m.countryCodeInvalid ?? m.phoneInvalid })
+      else if (!isValidPhone(v.value, v.countryCallingCode ?? '')) ctx.addIssue({ code: 'custom', path: ['value'], message: m.phoneInvalid })
     })
 }
 
-/** Cuerpo de POST/PUT /contacts: teléfono con `normalizePhone` (solo dígitos), correo en minúsculas. */
-export function buildPointRequest(v: PointValues, normalizePhone: (s: string) => string): Schemas['ContactPointUpsertRequest'] {
+/** Cuerpo de POST/PUT /contacts: teléfono con `normalizePhone` (solo dígitos) y su prefijo internacional (solo dígitos); correo en minúsculas, sin prefijo. */
+export function buildPointRequest(v: PointValues, normalizePhone: (s: string, cc?: string) => string): Schemas['ContactPointUpsertRequest'] {
+  const email = isEmailType(v.contactType)
+  const cc = (v.countryCallingCode ?? '').replace(/\D/g, '')
   return {
     contactType: v.contactType,
-    value: isEmailType(v.contactType) ? v.value.trim().toLowerCase() : normalizePhone(v.value),
+    value: email ? v.value.trim().toLowerCase() : normalizePhone(v.value, v.countryCallingCode ?? ''),
+    countryCallingCode: email || !cc ? null : cc,
     extension: v.extension.trim() || null,
     label: v.label.trim() || null,
     isPrimary: v.isPrimary,

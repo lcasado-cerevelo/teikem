@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Constants;
+using Teikem.Domain.Contacts;
 using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
@@ -52,7 +53,7 @@ public sealed class SupplierService(TeikemDbContext db, ITenantContext tenant, I
         var errors = new Dictionary<string, string[]>();
         var name = Required(req.Name, errors);
         var contact = Optional(req.ContactName, "contactName", "El contacto", ContactMaxLength, errors);
-        var phone = Optional(req.Phone, "phone", "El teléfono", PhoneMaxLength, errors);
+        var (phone, phoneCc) = await PhoneAsync(req.Phone, req.PhoneCountryCallingCode, errors, ct);
         var email = Email(req.Email, errors);
         var notes = Optional(req.Notes, "notes", "Las notas", NotesMaxLength, errors);
         var paymentTermId = await PaymentTermAsync(req.PaymentTerm, errors, ct);
@@ -61,7 +62,7 @@ public sealed class SupplierService(TeikemDbContext db, ITenantContext tenant, I
         if (await db.Set<Supplier>().AnyAsync(s => s.IsActive && s.Name == name, ct)) throw new ConflictException(NameTaken);
         var supplier = new Supplier
         {
-            TenantId = tenantId, Name = name!, ContactName = contact, Phone = phone, Email = email,
+            TenantId = tenantId, Name = name!, ContactName = contact, Phone = phone, PhoneCountryCallingCode = phoneCc, Email = email,
             PaymentTermLookupId = paymentTermId, Notes = notes, IsActive = true,
         };
         db.Set<Supplier>().Add(supplier);
@@ -80,7 +81,7 @@ public sealed class SupplierService(TeikemDbContext db, ITenantContext tenant, I
         var errors = new Dictionary<string, string[]>();
         string? name = req.Name is null ? null : Required(req.Name, errors);
         var contact = Optional(req.ContactName, "contactName", "El contacto", ContactMaxLength, errors);
-        var phone = Optional(req.Phone, "phone", "El teléfono", PhoneMaxLength, errors);
+        var (phone, phoneCc) = await PhoneAsync(req.Phone, req.PhoneCountryCallingCode, errors, ct);
         var email = Email(req.Email, errors);
         var notes = Optional(req.Notes, "notes", "Las notas", NotesMaxLength, errors);
         int? paymentTermId = req.PaymentTerm is null || req.PaymentTerm.Trim().Length == 0 ? null : await PaymentTermAsync(req.PaymentTerm, errors, ct);
@@ -93,7 +94,7 @@ public sealed class SupplierService(TeikemDbContext db, ITenantContext tenant, I
             supplier.Name = name;
         }
         if (req.ContactName is not null) supplier.ContactName = contact;
-        if (req.Phone is not null) supplier.Phone = phone;
+        if (req.Phone is not null) { supplier.Phone = phone; supplier.PhoneCountryCallingCode = phoneCc; }
         if (req.Email is not null) supplier.Email = email;
         if (req.Notes is not null) supplier.Notes = notes;
         if (req.PaymentTerm is not null) supplier.PaymentTermLookupId = paymentTermId;
@@ -118,6 +119,27 @@ public sealed class SupplierService(TeikemDbContext db, ITenantContext tenant, I
 
     // ---------------------------------------------------------------- helpers
 
+    /// <summary>
+    /// Teléfono del proveedor: vacío → sin teléfono; si no, solo dígitos y su prefijo (el indicado, el de un «+» o el de la compañía).
+    /// Mensaje de PhoneRules en `errors` (clave phone, o phoneCountryCallingCode si el prefijo es el inválido).
+    /// </summary>
+    private async Task<(string? Phone, string? Cc)> PhoneAsync(string? raw, string? country, Dictionary<string, string[]> errors, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return (null, null);
+        var tenantId = RequireTenant();
+        var defaultCc = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.TenantId == tenantId).Select(t => t.PhoneCountryCode).FirstOrDefaultAsync(ct) ?? "+1";
+        try
+        {
+            var p = PhoneRules.Parse(raw, country, PhoneRules.NormalizeCountry(defaultCc) ?? "1");
+            return (p.National, p.CountryCallingCode);
+        }
+        catch (FormatException ex)
+        {
+            errors[ex.Message == PhoneRules.InvalidCountryMessage ? "phoneCountryCallingCode" : "phone"] = new[] { ex.Message };
+            return (null, null);
+        }
+    }
+
     private async Task<IReadOnlyList<SupplierDto>> ToDtosAsync(List<Supplier> rows, CancellationToken ct)
     {
         var terms = new Dictionary<int, string>();
@@ -125,7 +147,7 @@ public sealed class SupplierService(TeikemDbContext db, ITenantContext tenant, I
             if (await lookups.GetAsync(id, ct) is { } lc) terms[id] = lc.InternalCode;
         return rows.Select(s => new SupplierDto(s.SupplierId, s.Name, s.ContactName, s.Phone, s.Email,
             s.PaymentTermLookupId is int t ? terms.GetValueOrDefault(t) : null, s.Notes, s.IsActive,
-            Convert.ToBase64String(s.RowVersion ?? Array.Empty<byte>()))).ToList();
+            Convert.ToBase64String(s.RowVersion ?? Array.Empty<byte>()), s.PhoneCountryCallingCode)).ToList();
     }
 
     private async Task<int?> PaymentTermAsync(string? code, Dictionary<string, string[]> errors, CancellationToken ct)

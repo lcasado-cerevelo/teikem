@@ -9,7 +9,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Can, useCan } from '../../kernel/access'
 import { useLookups } from '../../kernel/catalogs'
-import { formatPhone, useFormat } from '../../kernel/format'
+import { callingCodeDigits, formatPhoneFor, isValidCallingCode, useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
 import {
   Chip,
@@ -22,8 +22,10 @@ import {
   matchesQ,
   Modal,
   Panel,
+  CallingCodeInput,
   phoneDigits,
   PhoneInput,
+  PhoneRow,
   SelectFilter,
   TextArea,
   TextInput,
@@ -70,20 +72,30 @@ function SupplierModal({ open, onClose, supplier }: { open: boolean; onClose: ()
 
   const schema = useMemo(
     () =>
-      z.object({
-        name: z.string().trim().min(1, t('warehouse.suppliers.errors.nameRequired')),
-        contactName: z.string().trim(),
-        phone: z
-          .string()
-          .trim()
-          .refine(f.isValidPhone, t('warehouse.suppliers.errors.phoneInvalid', { count: f.settings.phoneMask.split('#').length - 1, mask: f.settings.phoneMask })),
-        email: z
-          .string()
-          .trim()
-          .refine((v) => v === '' || EMAIL_RE.test(v), t('warehouse.suppliers.errors.emailInvalid')),
-        paymentTerm: z.string(),
-        notes: z.string().trim(),
-      }),
+      z
+        .object({
+          name: z.string().trim().min(1, t('warehouse.suppliers.errors.nameRequired')),
+          contactName: z.string().trim(),
+          phone: z.string().trim(),
+          countryCallingCode: z.string().trim(),
+          email: z
+            .string()
+            .trim()
+            .refine((v) => v === '' || EMAIL_RE.test(v), t('warehouse.suppliers.errors.emailInvalid')),
+          paymentTerm: z.string(),
+          notes: z.string().trim(),
+        })
+        .superRefine((v, ctx) => {
+          if (!isValidCallingCode(v.countryCallingCode)) ctx.addIssue({ code: 'custom', path: ['countryCallingCode'], message: t('ui.phone.countryCodeInvalid') })
+          else if (!f.isValidPhoneFor(v.phone, v.countryCallingCode))
+            ctx.addIssue({
+              code: 'custom',
+              path: ['phone'],
+              message: f.usesCompanyMaskFor(v.countryCallingCode)
+                ? t('warehouse.suppliers.errors.phoneInvalid', { count: f.settings.phoneMask.split('#').length - 1, mask: f.settings.phoneMask })
+                : t('ui.phone.foreignInvalid', { max: 15 - callingCodeDigits(v.countryCallingCode).length }),
+            })
+        }),
     [t, f],
   )
   const form = useForm({
@@ -91,7 +103,8 @@ function SupplierModal({ open, onClose, supplier }: { open: boolean; onClose: ()
     values: {
       name: supplier?.name ?? '',
       contactName: supplier?.contactName ?? '',
-      phone: f.phone(supplier?.phone),
+      phone: supplier?.phone ? (f.usesCompanyMaskFor(supplier.phoneCountryCallingCode) ? f.phoneInput(supplier.phone) : supplier.phone) : '',
+      countryCallingCode: f.callingCodeInput(supplier?.phoneCountryCallingCode),
       email: supplier?.email ?? '',
       paymentTerm: supplier?.paymentTermCode ?? '',
       notes: supplier?.notes ?? '',
@@ -133,7 +146,8 @@ function SupplierModal({ open, onClose, supplier }: { open: boolean; onClose: ()
               body: {
                 name: v.name,
                 contactName: v.contactName,
-                phone: f.normalizePhone(v.phone),
+                phone: f.normalizePhoneFor(v.phone, v.countryCallingCode),
+                phoneCountryCallingCode: callingCodeDigits(v.countryCallingCode) || null,
                 email: v.email,
                 paymentTerm: v.paymentTerm,
                 notes: v.notes,
@@ -147,7 +161,8 @@ function SupplierModal({ open, onClose, supplier }: { open: boolean; onClose: ()
               body: {
                 name: v.name,
                 contactName: v.contactName || null,
-                phone: f.normalizePhone(v.phone) || null,
+                phone: f.normalizePhoneFor(v.phone, v.countryCallingCode) || null,
+                phoneCountryCallingCode: callingCodeDigits(v.countryCallingCode) || null,
                 email: v.email || null,
                 paymentTerm: v.paymentTerm || null,
                 notes: v.notes || null,
@@ -161,14 +176,17 @@ function SupplierModal({ open, onClose, supplier }: { open: boolean; onClose: ()
         <Field name="name" label={t('warehouse.suppliers.fields.name')} required>
           <TextInput maxLength={200} />
         </Field>
-        <div className="r2">
-          <Field name="contactName" label={t('warehouse.suppliers.fields.contactName')}>
-            <TextInput maxLength={150} />
+        <Field name="contactName" label={t('warehouse.suppliers.fields.contactName')}>
+          <TextInput maxLength={150} />
+        </Field>
+        <PhoneRow>
+          <Field name="countryCallingCode" label={t('ui.phone.countryCode')}>
+            <CallingCodeInput />
           </Field>
           <Field name="phone" label={t('warehouse.suppliers.fields.phone')}>
             <PhoneInput />
           </Field>
-        </div>
+        </PhoneRow>
         <div className="r2">
           <Field name="email" label={t('warehouse.suppliers.fields.email')}>
             <TextInput type="email" maxLength={150} />
@@ -213,7 +231,7 @@ export default function SupplierListScreen() {
     () => [
       { id: 'name', header: t('warehouse.suppliers.fields.name'), cell: (s) => s.name, sortValue: (s) => s.name, card: 'title' },
       { id: 'contact', header: t('warehouse.suppliers.fields.contactName'), cell: (s) => s.contactName ?? '', card: 'hidden', sortValue: (s) => s.contactName },
-      { id: 'phone', header: t('warehouse.suppliers.fields.phone'), cell: (s) => formatPhone(s.phone), sortValue: (s) => s.phone, card: 'hidden' },
+      { id: 'phone', header: t('warehouse.suppliers.fields.phone'), cell: (s) => formatPhoneFor(s.phone, s.phoneCountryCallingCode), sortValue: (s) => s.phone, card: 'hidden' },
       { id: 'email', header: t('warehouse.suppliers.fields.email'), cell: (s) => s.email ?? '', sortValue: (s) => s.email },
       {
         id: 'active',

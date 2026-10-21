@@ -15,7 +15,7 @@ import {
   type DateValue,
   type MoneyOptions,
 } from './format'
-import { formatPhone, formatPhoneInput, isValidPhone, normalizePhone, phonePlaceholder } from './phone'
+import { callingCodeInput, usesCompanyMask, formatPhone, formatPhoneFor, formatPhoneInput, isValidPhone, isValidPhoneFor, normalizePhone, normalizePhoneFor, phonePlaceholder } from './phone'
 import type { FormatSettings } from './settings'
 import { getFormatSettings, subscribeFormat } from './store'
 
@@ -40,6 +40,14 @@ export interface Formatters {
   normalizePhone: (v: string | null | undefined) => string
   isValidPhone: (v: string | null | undefined) => boolean
   phonePlaceholder: () => string
+  /** Teléfono con SU prefijo: máscara de la compañía si es el de la compañía (o no hay), si no «+prefijo dígitos». */
+  phoneFor: (v: string | null | undefined, cc: string | null | undefined) => string
+  isValidPhoneFor: (v: string | null | undefined, cc: string | null | undefined) => boolean
+  normalizePhoneFor: (v: string | null | undefined, cc: string | null | undefined) => string
+  /** Prefijo para el campo del formulario: el del número o el de la compañía, con «+» ("+1"). */
+  callingCodeInput: (cc: string | null | undefined) => string
+  /** ¿El prefijo es el de la compañía (o no hay)? Entonces rige su máscara. */
+  usesCompanyMaskFor: (cc: string | null | undefined) => boolean
   /** "Hoy" 'YYYY-MM-DD' en la zona de la compañía. */
   today: (now?: Date) => string
 }
@@ -65,6 +73,11 @@ export function useFormat(): Formatters {
       normalizePhone: (v) => normalizePhone(v, s),
       isValidPhone: (v) => isValidPhone(v, s),
       phonePlaceholder: () => phonePlaceholder(s),
+      phoneFor: (v, cc) => formatPhoneFor(v, cc, s),
+      isValidPhoneFor: (v, cc) => isValidPhoneFor(v, cc, s),
+      normalizePhoneFor: (v, cc) => normalizePhoneFor(v, cc, s),
+      callingCodeInput: (cc) => callingCodeInput(cc, s),
+      usesCompanyMaskFor: (cc) => usesCompanyMask(cc, s),
       today: (now) => todayIso(now, s),
     }),
     [s, lang],

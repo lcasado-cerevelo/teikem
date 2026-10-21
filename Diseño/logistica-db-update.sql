@@ -5504,3 +5504,67 @@ GO
 IF COL_LENGTH('dbo.AsnLine', 'ExpiryDate') IS NULL
     ALTER TABLE dbo.AsnLine ADD ExpiryDate DATE NULL;
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-20 (Lote 162) — Teléfonos: solo dígitos + prefijo internacional aparte (dictado de Luis).
+   - dbo.ContactPoint.CountryCallingCode VARCHAR(4) NULL: prefijo del teléfono, solo dígitos y sin «+» ('1', '593'); null en los correos.
+   - dbo.Supplier.PhoneCountryCallingCode VARCHAR(4) NULL: lo mismo para su teléfono.
+   - Limpieza de lo ya guardado (idempotente: solo toca filas con prefijo vacío y un teléfono que, quitado el formato, son puros dígitos):
+     el número queda sin formato y el prefijo es el de la compañía (dbo.Tenant.PhoneCountryCode sin «+»), o el «1» si venía «+1…» o con 11 dígitos
+     empezando en 1 (con prefijo 1). Lo que traiga texto (extensión, letras) o un «+» con otro país NO se toca: queda con prefijo vacío para revisión manual.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.ContactPoint', 'CountryCallingCode') IS NULL
+    ALTER TABLE dbo.ContactPoint ADD CountryCallingCode VARCHAR(4) NULL;
+GO
+IF COL_LENGTH('dbo.Supplier', 'PhoneCountryCallingCode') IS NULL
+    ALTER TABLE dbo.Supplier ADD PhoneCountryCallingCode VARCHAR(4) NULL;
+GO
+;WITH P AS (
+    SELECT cp.ContactPointId, cp.Value, REPLACE(t.PhoneCountryCode, '+', '') AS DefCc,
+           REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(cp.Value)), ' ', ''), '-', ''), '(', ''), ')', ''), '.', ''), '+', '') AS Digits,
+           CASE WHEN LTRIM(cp.Value) LIKE '+%' THEN 1 ELSE 0 END AS HasPlus
+    FROM dbo.ContactPoint cp
+    JOIN dbo.LookupCode lc ON lc.LookupCodeId = cp.ContactTypeLookupId AND lc.Entity = 'ContactType' AND lc.InternalCode IN ('PHONE', 'MOBILE', 'FAX', 'WHATSAPP')
+    JOIN dbo.Tenant t ON t.TenantId = cp.TenantId
+    WHERE cp.CountryCallingCode IS NULL
+), R AS (
+    SELECT ContactPointId, Digits, DefCc, HasPlus,
+           CASE WHEN HasPlus = 1 AND Digits LIKE '1%' AND LEN(Digits) = 11 THEN '1'
+                WHEN HasPlus = 1 AND DefCc <> '1' AND Digits LIKE DefCc + '%' THEN DefCc
+                WHEN HasPlus = 0 THEN DefCc END AS Cc
+    FROM P
+    WHERE Digits <> '' AND Digits NOT LIKE '%[^0-9]%' AND LEN(Digits) BETWEEN 7 AND 15
+)
+UPDATE cp SET
+    CountryCallingCode = R.Cc,
+    Value = CASE WHEN R.Cc = '1' AND LEN(R.Digits) = 11 AND R.Digits LIKE '1%' THEN SUBSTRING(R.Digits, 2, 10)
+                 WHEN R.HasPlus = 1 THEN SUBSTRING(R.Digits, LEN(R.Cc) + 1, 20)
+                 ELSE R.Digits END
+FROM dbo.ContactPoint cp
+JOIN R ON R.ContactPointId = cp.ContactPointId
+WHERE R.Cc IS NOT NULL;
+GO
+-- Proveedores: mismo criterio que arriba (solo filas con prefijo vacío y un teléfono que, sin formato, son puros dígitos).
+;WITH Sp AS (
+    SELECT s.SupplierId, REPLACE(t.PhoneCountryCode, '+', '') AS DefCc,
+           REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(s.Phone)), ' ', ''), '-', ''), '(', ''), ')', ''), '.', ''), '+', '') AS Digits,
+           CASE WHEN LTRIM(s.Phone) LIKE '+%' THEN 1 ELSE 0 END AS HasPlus
+    FROM dbo.Supplier s
+    JOIN dbo.Tenant t ON t.TenantId = s.TenantId
+    WHERE s.PhoneCountryCallingCode IS NULL AND s.Phone IS NOT NULL
+), R AS (
+    SELECT SupplierId, Digits, HasPlus,
+           CASE WHEN HasPlus = 1 AND Digits LIKE '1%' AND LEN(Digits) = 11 THEN '1'
+                WHEN HasPlus = 1 AND DefCc <> '1' AND Digits LIKE DefCc + '%' THEN DefCc
+                WHEN HasPlus = 0 THEN DefCc END AS Cc
+    FROM Sp
+    WHERE Digits <> '' AND Digits NOT LIKE '%[^0-9]%' AND LEN(Digits) BETWEEN 7 AND 15
+)
+UPDATE s SET
+    PhoneCountryCallingCode = R.Cc,
+    Phone = CASE WHEN R.Cc = '1' AND LEN(R.Digits) = 11 AND R.Digits LIKE '1%' THEN SUBSTRING(R.Digits, 2, 10)
+                 WHEN R.HasPlus = 1 THEN SUBSTRING(R.Digits, LEN(R.Cc) + 1, 20)
+                 ELSE R.Digits END
+FROM dbo.Supplier s
+JOIN R ON R.SupplierId = s.SupplierId
+WHERE R.Cc IS NOT NULL;
+GO

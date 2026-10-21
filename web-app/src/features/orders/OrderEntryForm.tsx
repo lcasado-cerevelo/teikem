@@ -302,7 +302,7 @@ export function OrderEntryForm({ onCreated, labelOnSave }: OrderEntryFormProps) 
             <div className="r3">
               <ReadOnlyField label={t('orders.entry.town')} value={consignee?.city ?? ''} />
               <ReadOnlyField label={t('orders.entry.zip')} value={consignee?.postalCode ?? ''} mono />
-              <ReadOnlyField label={t('orders.entry.phone')} value={phone?.value ? f.phone(phone.value) : ''} mono />
+              <ReadOnlyField label={t('orders.entry.phone')} value={phone?.value ? f.phoneFor(phone.value, phone.countryCallingCode) : ''} mono />
             </div>
           </section>
 

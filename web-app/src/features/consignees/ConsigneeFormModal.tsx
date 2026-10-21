@@ -12,7 +12,8 @@ import { applyProblemDetails } from '../../kernel/api/problem'
 import { useLookups } from '../../kernel/catalogs'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { Field, Form, Modal, NumberInput, PhoneInput, Select, TextArea, TextInput, Toggle, toast } from '../../kernel/ui'
+import { CallingCodeInput, Field, Form, Modal, NumberInput, PhoneInput, PhoneRow, Select, TextArea, TextInput, Toggle, toast } from '../../kernel/ui'
+import { callingCodeDigits } from '../../kernel/format'
 import { PostalLocalityPickerInput } from '../warehouse/PostalLocalityPicker'
 import { useClientOptions, useCreateConsignee, useSaveConsigneePhone, useUpdateConsignee } from './api'
 import {
@@ -79,13 +80,18 @@ export function ConsigneeFormModal({ open, consignee, phone, defaultOwner, onClo
           windowOrder: t('consignees.errors.windowOrder'),
           phoneInvalid: t('consignees.errors.phoneInvalid'),
         },
-        f.isValidPhone,
+        f.isValidPhoneFor,
       ),
     [t, f],
   )
 
   const initial = useMemo<ConsigneeValues>(
-    () => (consignee ? consigneeValuesOf(consignee, phone?.value ? f.phoneInput(phone.value) : '') : emptyConsigneeValues(defaultOwner)),
+    () => {
+      const cc = f.callingCodeInput(phone?.countryCallingCode)
+      if (!consignee) return { ...emptyConsigneeValues(defaultOwner), countryCallingCode: cc }
+      const shown = phone?.value ? (f.usesCompanyMaskFor(phone.countryCallingCode) ? f.phoneInput(phone.value) : phone.value) : ''
+      return consigneeValuesOf(consignee, shown, cc)
+    },
     [consignee, phone, defaultOwner, f],
   )
   const form = useForm({ resolver: zodResolver(schema), values: initial, resetOptions: { keepDirtyValues: true } })
@@ -144,9 +150,10 @@ export function ConsigneeFormModal({ open, consignee, phone, defaultOwner, onClo
           // el teléfono se guarda aparte (ContactPoint); un fallo aquí no deshace el consignatario ya guardado
           let phoneProblem: string | null = null
           if (canPhone && saved.id != null) {
-            const next = f.normalizePhone(v.phone)
-            const current = f.normalizePhone(phone?.value ?? '')
-            if (next !== current) {
+            const next = f.normalizePhoneFor(v.phone, v.countryCallingCode)
+            const nextCc = callingCodeDigits(v.countryCallingCode) || null
+            const current = f.normalizePhoneFor(phone?.value ?? '', phone?.countryCallingCode)
+            if (next !== current || (next !== '' && nextCc !== (phone?.countryCallingCode ?? null))) {
               try {
                 if (phone && next === '') await savePhone.mutateAsync({ action: 'remove', id: phone.id ?? 0, locationId: saved.id })
                 else if (phone)
@@ -154,9 +161,9 @@ export function ConsigneeFormModal({ open, consignee, phone, defaultOwner, onClo
                     action: 'update',
                     id: phone.id ?? 0,
                     locationId: saved.id,
-                    body: { contactType: phone.contactType ?? PHONE_TYPE, value: next, extension: phone.extension ?? null, label: phone.label ?? null, isPrimary: phone.isPrimary ?? true },
+                    body: { contactType: phone.contactType ?? PHONE_TYPE, value: next, countryCallingCode: nextCc, extension: phone.extension ?? null, label: phone.label ?? null, isPrimary: phone.isPrimary ?? true },
                   })
-                else await savePhone.mutateAsync({ action: 'create', locationId: saved.id, body: { contactType: PHONE_TYPE, value: next, isPrimary: true } })
+                else await savePhone.mutateAsync({ action: 'create', locationId: saved.id, body: { contactType: PHONE_TYPE, value: next, countryCallingCode: nextCc, isPrimary: true } })
               } catch (err) {
                 phoneProblem = applyProblemDetails(err).title
               }
@@ -185,13 +192,18 @@ export function ConsigneeFormModal({ open, consignee, phone, defaultOwner, onClo
             <PostalLocalityPickerInput zipClass="DELIVERY" />
           </Field>
           {canPhone ? (
-            <Field name="phone" label={t('consignees.phone')}>
-              <PhoneInput />
-            </Field>
+            <PhoneRow>
+              <Field name="countryCallingCode" label={t('ui.phone.countryCode')}>
+                <CallingCodeInput />
+              </Field>
+              <Field name="phone" label={t('consignees.phone')}>
+                <PhoneInput />
+              </Field>
+            </PhoneRow>
           ) : (
             <div className="f">
               <label>{t('consignees.phone')}</label>
-              <input value={phone?.value ? f.phone(phone.value) : ''} readOnly disabled aria-label={t('consignees.phone')} />
+              <input value={phone?.value ? f.phoneFor(phone.value, phone.countryCallingCode) : ''} readOnly disabled aria-label={t('consignees.phone')} />
               <p className="help">{t('consignees.phoneNoPermission')}</p>
             </div>
           )}
