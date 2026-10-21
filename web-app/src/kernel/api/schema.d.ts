@@ -9562,6 +9562,7 @@ export interface paths {
                     skip?: number;
                     take?: number;
                     activeProductsOnly?: boolean;
+                    zoneIds?: number[];
                 };
                 header?: never;
                 path?: never;
@@ -10186,6 +10187,7 @@ export interface paths {
                     to?: string;
                     skip?: number;
                     take?: number;
+                    zoneIds?: number[];
                 };
                 header?: never;
                 path?: never;

@@ -214,6 +214,12 @@ public sealed class InventoryReconciliationService(
             var binIds = q.BinIds.Select(i => (int?)i).Distinct().ToList();
             query = query.Where(d => binIds.Contains(d.WarehouseBinId));
         }
+        // zona (menores, 2026-10-21): los descuadres de posiciones de esas zonas (el total de un producto, sin posición, no tiene zona y queda fuera)
+        if (q.ZoneIds is { Length: > 0 })
+        {
+            var zoneIds = q.ZoneIds.Distinct().ToList();
+            query = query.Where(d => db.Set<WarehouseBin>().Any(x => x.WarehouseBinId == d.WarehouseBinId && zoneIds.Contains(x.WarehouseZoneId)));
+        }
         if (q.Kinds is { Length: > 0 })
         {
             var kindIds = new List<int>();

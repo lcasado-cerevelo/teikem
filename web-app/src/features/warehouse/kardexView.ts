@@ -127,14 +127,14 @@ const KARDEX_FILTERS: readonly InventoryFilterKey[] = [
 ]
 
 /**
- * Filtros que aplica cada pestaña. Saldos: almacén, posición, producto, categoría, lote, buscador, "Incluir en cero" y
+ * Filtros que aplica cada pestaña. Saldos: almacén, zona, posición, producto, categoría, lote, buscador, "Incluir en cero" y
  * "Solo con disponible" (el API de saldos no filtra por fechas, tipo, dueño, motivo ni dirección: esos solo cambian su
- * resumen de movimientos, D13). Conciliación: almacén, posición, producto, categoría, fechas (de detección) y estatus.
+ * resumen de movimientos, D13). Conciliación: almacén, zona, posición, producto, categoría, fechas (de detección) y estatus.
  */
 export const TAB_FILTERS: Readonly<Record<InventoryTab, readonly InventoryFilterKey[]>> = {
   kardex: KARDEX_FILTERS,
-  balances: ['warehouses', 'bins', 'products', 'categories', 'lot', 'includeZero', 'onlyAvailable'],
-  reconciliation: ['range', 'warehouses', 'bins', 'products', 'categories', 'status'],
+  balances: ['warehouses', 'zones', 'bins', 'products', 'categories', 'lot', 'includeZero', 'onlyAvailable'],
+  reconciliation: ['range', 'warehouses', 'zones', 'bins', 'products', 'categories', 'status'],
 }
 
 export function filterApplies(tab: InventoryTab, key: InventoryFilterKey): boolean {
@@ -222,6 +222,7 @@ export function balancesQuery(f: InventoryFilterState): GetQuery<'/api/v1/invent
   return {
     warehousePublicIds: nonEmpty(f.warehousePublicIds),
     binIds: nonEmpty(f.bins.map((b) => b.id)),
+    zoneIds: nonEmpty(f.zoneIds.map(Number)),
     productPublicIds: nonEmpty(f.products.map((p) => p.publicId)),
     categoryIds: nonEmpty(f.categoryIds.map(Number)),
     lotNumber: f.lotNumber.trim() || undefined,
@@ -236,6 +237,7 @@ export function discrepancyQuery(f: InventoryFilterState): GetQuery<'/api/v1/inv
     status: nonEmpty(f.discrepancyStatus),
     warehousePublicIds: nonEmpty(f.warehousePublicIds),
     binIds: nonEmpty(f.bins.map((b) => b.id)),
+    zoneIds: nonEmpty(f.zoneIds.map(Number)),
     productPublicIds: nonEmpty(f.products.map((p) => p.publicId)),
     categoryIds: nonEmpty(f.categoryIds.map(Number)),
     from: f.range.from || undefined,

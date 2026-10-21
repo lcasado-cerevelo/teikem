@@ -21,15 +21,15 @@ public sealed class InventoryDiscrepanciesController(InventoryReconciliationServ
 {
     /// <summary>
     /// Descuadres paginados (take ≤ 200, por defecto 50; abiertos primero). Filtros: status (OPEN, RESOLVED, DISMISSED,
-    /// SELF_CORRECTED), almacenes, productos, categorías (con subcategorías), posiciones, kinds (BALANCE, PRODUCT_TOTAL; otro →
+    /// SELF_CORRECTED), almacenes, productos, categorías (con subcategorías), posiciones, zonas (zoneIds; el total de un producto sin posición queda fuera), kinds (BALANCE, PRODUCT_TOTAL; otro →
     /// 400) y from/to de detección (días locales). openCount = pendientes con los mismos filtros salvo el estatus.
     /// </summary>
     [HttpGet, RequirePermission(PermissionCatalog.InventoryView)]
     public Task<InventoryDiscrepancyPageDto> List([FromQuery] string[]? status, [FromQuery] Guid[]? warehousePublicIds,
         [FromQuery] Guid[]? productPublicIds, [FromQuery] int[]? categoryIds, [FromQuery] int[]? binIds, [FromQuery] string[]? kinds,
-        [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken ct, [FromQuery] int skip = 0, [FromQuery] int take = 50)
+        [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken ct, [FromQuery] int skip = 0, [FromQuery] int take = 50, [FromQuery] int[]? zoneIds = null)
         => reconciliation.ListAsync(new InventoryDiscrepancyQuery(NullIfEmpty(status), NullIfEmpty(warehousePublicIds), NullIfEmpty(productPublicIds),
-            NullIfEmpty(categoryIds), NullIfEmpty(binIds), NullIfEmpty(kinds), from, to, skip, take), ct);
+            NullIfEmpty(categoryIds), NullIfEmpty(binIds), NullIfEmpty(kinds), from, to, skip, take, NullIfEmpty(zoneIds)), ct);
 
     /// <summary>Ficha: el descuadre, lo reservado hoy, los últimos 20 movimientos de la clave y el historial de estatus.</summary>
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.InventoryView)]

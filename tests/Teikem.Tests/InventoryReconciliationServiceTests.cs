@@ -314,6 +314,10 @@ public class InventoryReconciliationServiceTests
         Assert.Equal(1, (await Svc(w).ListAsync(new InventoryDiscrepancyQuery(ProductPublicIds: new[] { w.Q.PublicId }), default)).Total);
         Assert.Equal(1, (await Svc(w).ListAsync(new InventoryDiscrepancyQuery(BinIds: new[] { w.B2.WarehouseBinId }), default)).Total);
         Assert.Equal(2, (await Svc(w).ListAsync(new InventoryDiscrepancyQuery(WarehousePublicIds: new[] { w.W.PublicId }, Kinds: new[] { "BALANCE" }), default)).Total);
+        // zona (menores, 2026-10-21): los descuadres de las posiciones de esa zona; una zona sin posiciones no da nada
+        var zoneOfB2 = w.F.Db.Set<WarehouseBin>().Single(b => b.WarehouseBinId == w.B2.WarehouseBinId).WarehouseZoneId;
+        Assert.Equal(2, (await Svc(w).ListAsync(new InventoryDiscrepancyQuery(ZoneIds: new[] { zoneOfB2 }), default)).Total);
+        Assert.Equal(0, (await Svc(w).ListAsync(new InventoryDiscrepancyQuery(ZoneIds: new[] { -1 }), default)).Total);
         var today = TenantClock.Default.Today;
         Assert.Equal(2, (await Svc(w).ListAsync(new InventoryDiscrepancyQuery(From: today, To: today), default)).Total);
         Assert.Equal(0, (await Svc(w).ListAsync(new InventoryDiscrepancyQuery(To: today.AddDays(-1)), default)).Total);

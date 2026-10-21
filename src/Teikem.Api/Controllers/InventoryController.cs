@@ -71,9 +71,9 @@ public sealed class InventoryController(InventoryReadService reads, InventoryAdj
     public Task<BalancePageDto> Balances([FromQuery] Guid[]? warehousePublicIds, [FromQuery] int[]? binIds,
         [FromQuery] Guid[]? productPublicIds, [FromQuery] int[]? categoryIds, [FromQuery] string? lotNumber,
         [FromQuery] bool includeZero, [FromQuery] bool onlyAvailable, [FromQuery] string? search, CancellationToken ct,
-        [FromQuery] int skip = 0, [FromQuery] int take = 200, [FromQuery] bool activeProductsOnly = false)
+        [FromQuery] int skip = 0, [FromQuery] int take = 200, [FromQuery] bool activeProductsOnly = false, [FromQuery] int[]? zoneIds = null)
         => reads.BalancesAsync(new BalanceQuery(NullIfEmpty(warehousePublicIds), NullIfEmpty(binIds), NullIfEmpty(productPublicIds),
-            NullIfEmpty(categoryIds), lotNumber, includeZero, onlyAvailable, search, skip, take, activeProductsOnly), InventoryScope.Any, ct);
+            NullIfEmpty(categoryIds), lotNumber, includeZero, onlyAvailable, search, skip, take, activeProductsOnly, NullIfEmpty(zoneIds)), InventoryScope.Any, ct);
 
     /// <summary>
     /// Kárdex paginado (más recientes primero). quantity = la del ledger con signo (recepción +, despacho −);

@@ -108,6 +108,25 @@ public class InventoryReadServiceTests
     }
 
     [Fact]
+    public async Task Balances_zone_filter_keeps_only_the_bins_of_those_zones()
+    {
+        var w = await SeedAsync();
+        var reads = w.F.Get<InventoryReadService>();
+        var rsv = await w.F.AddZoneAsync(w.W1, "RSV", "RESERVE");
+        var b3 = await w.F.AddBinAsync(rsv, "R01");
+        await w.F.AddBalanceAsync(w.POwn, w.W1, b3, null, 7m);
+        var pickZone = w.F.Db.Set<WarehouseBin>().Single(b => b.WarehouseBinId == w.B1.WarehouseBinId).WarehouseZoneId;
+
+        var picking = await reads.BalancesAsync(new BalanceQuery(ZoneIds: new[] { pickZone }), InventoryScope.Any, default);
+        Assert.DoesNotContain(picking.Items, b => b.BinId == b3.WarehouseBinId);
+        Assert.Equal(4, picking.Total);   // PA en B1 y B2, PB y POwn en B1
+        var reserve = await reads.BalancesAsync(new BalanceQuery(ZoneIds: new[] { rsv.WarehouseZoneId }), InventoryScope.Any, default);
+        Assert.Equal(7m, Assert.Single(reserve.Items).QtyOnHand);
+        // zona + posición: deben cumplirse las dos
+        Assert.Empty((await reads.BalancesAsync(new BalanceQuery(BinIds: new[] { w.B1.WarehouseBinId }, ZoneIds: new[] { rsv.WarehouseZoneId }), InventoryScope.Any, default)).Items);
+    }
+
+    [Fact]
     public async Task Balances_category_filter_includes_subcategories()
     {
         var w = await SeedAsync();

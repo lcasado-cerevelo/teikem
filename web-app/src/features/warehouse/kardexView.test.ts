@@ -90,6 +90,16 @@ describe('consultas desde el estado compartido', () => {
     })
   })
 
+  it('la zona también viaja a Saldos y a Conciliación (menores, 2026-10-21)', () => {
+    const withZones: InventoryFilterState = { ...filters, zoneIds: ['4', '9'] }
+    expect(balancesQuery(withZones).zoneIds).toEqual([4, 9])
+    expect(discrepancyQuery(withZones).zoneIds).toEqual([4, 9])
+    expect(filterApplies('balances', 'zones')).toBe(true)
+    expect(filterApplies('reconciliation', 'zones')).toBe(true)
+    expect(inactiveFilters('balances', withZones)).not.toContain('zones')
+    expect(balancesQuery(filters).zoneIds).toBeUndefined()
+  })
+
   it('discrepancyQuery: estatus (por defecto Pendiente), ubicación, producto, categoría y fechas de detección', () => {
     expect(discrepancyQuery(filters)).toEqual({
       status: ['OPEN'],

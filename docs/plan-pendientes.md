@@ -73,7 +73,7 @@ Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Esta
 - ☐ Prueba de `db-update` en simulación contra SQL Server.
 - ☐ Capturas / Playwright de las pantallas nuevas (portal del cliente, avisos, filtros).
 - ☐ EXIT_NOTICE como fuente de datos para Vistas.
-- ☐ Saldos y Conciliación: aplicar también el filtro de zona (hoy solo Kárdex).
+- ☑ Saldos y Conciliación: filtro de zona (menores, autónomo).
 - ☐ El portal: adjuntar documentos y editar productos ya creados.
 
 ## E. Hecho recientemente (referencia)

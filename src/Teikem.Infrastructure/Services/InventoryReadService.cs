@@ -55,6 +55,12 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
             var binIds = q.BinIds.Select(i => (int?)i).Distinct().ToList();
             query = query.Where(b => binIds.Contains(b.WarehouseBinId));
         }
+        // zona (menores, 2026-10-21): igual que en el Kárdex, equivale a las posiciones de esas zonas (con posiciones elegidas deben cumplirse las dos)
+        if (q.ZoneIds is { Length: > 0 })
+        {
+            var zoneIds = q.ZoneIds.Distinct().ToList();
+            query = query.Where(b => db.Set<WarehouseBin>().Any(x => x.WarehouseBinId == b.WarehouseBinId && zoneIds.Contains(x.WarehouseZoneId)));
+        }
         if (!string.IsNullOrWhiteSpace(q.LotNumber))
         {
             var lotTerm = q.LotNumber.Trim();

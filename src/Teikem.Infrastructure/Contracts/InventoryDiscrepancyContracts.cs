@@ -8,7 +8,7 @@ namespace Teikem.Infrastructure.Contracts;
 /// </summary>
 public sealed record InventoryDiscrepancyQuery(string[]? Status = null, Guid[]? WarehousePublicIds = null, Guid[]? ProductPublicIds = null,
     int[]? CategoryIds = null, int[]? BinIds = null, string[]? Kinds = null, DateOnly? From = null, DateOnly? To = null, int Skip = 0,
-    int Take = 50);
+    int Take = 50, int[]? ZoneIds = null);
 
 /// <summary>
 /// Descuadre: clave (producto, almacén, posición, lote; sin almacén = total del producto), cifras de la última revisión

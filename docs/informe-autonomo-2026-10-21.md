@@ -23,3 +23,7 @@ Pedido de Luis: hacer sin supervisión las partes que faltan —C4, H1, G2 y los
 ### Menores — parte 2: smoke ✔
 - **`scripts/smoke.sh` está obsoleto** (no por un cambio reciente): el script de actualización renombró los estatus de las órdenes (DRAFT→SUBMITTED, INBOUND→UNASSIGNED, PLANNED→ASSIGNED y se borraron CONFIRMED, ARRIVED, ON_HOLD, PARTIAL) y el smoke, de 5 459 líneas, sigue usando los viejos en cientos de pasos desde «estatus (B)». Lo corrí contra una base nueva: falla en el primer uso de `INBOUND`. **No lo reescribí** (sería rehacerlo casi entero); decisión de Luis: ¿se rehace, se recorta o se retira del CI?
 - **Nuevo `scripts/smoke-maestra.sh`** (agregado al CI antes del smoke general): recolección maestra de punta a punta contra el API real. **Pasa completo, incluido el empaque de la maestra con UN envío y la eliminación de una maestra empacada**, que era lo que había quedado sin probar en los Lotes 176-178.
+
+### Menores — parte 3: filtro de zona en Saldos y Conciliación ✔
+- `GET /inventory/balances` y `GET /inventory/discrepancies` aceptan `zoneIds` (como el Kárdex desde el Lote 159: equivale a las posiciones de esas zonas; con posiciones elegidas deben cumplirse las dos; en Conciliación el total de un producto sin posición queda fuera). La barra de filtros compartida ya los aplica a las tres pestañas.
+- Pruebas: 2 xunit nuevas (saldos por zona, descuadres por zona) + 1 vitest; contrato regenerado de los dos endpoints.
