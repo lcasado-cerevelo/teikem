@@ -88,6 +88,8 @@ public sealed partial class ColavoraImportService(
         public IReadOnlyDictionary<string, ColavoraRules.SubClientLink> SubClients { get; set; } = new Dictionary<string, ColavoraRules.SubClientLink>();
         /// <summary>El tipo de servicio «Pick up» (PK) de la compañía, para las órdenes de los clientes «Recogido».</summary>
         public int PickupServiceTypeId { get; set; }
+        /// <summary>Clientes que quedan como principal de una variante por servicio y cambian de nombre al nombre base (código de cliente de Colavora → nombre nuevo).</summary>
+        public IReadOnlyDictionary<string, string> ClientRenames { get; set; } = new Dictionary<string, string>();
         public int DefaultServiceTypeId { get; set; }
         public int DefaultPackageTypeId { get; set; }
         /// <summary>Los globales con que arranca el estado (solo para saber si ya se cambió al tipo de la compañía).</summary>

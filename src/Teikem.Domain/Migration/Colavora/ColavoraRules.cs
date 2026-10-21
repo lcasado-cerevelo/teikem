@@ -459,16 +459,21 @@ public static class ColavoraRules
     }
 
     /// <summary>Qué es un cliente «hijo» de Colavora: «AXISCARE RECOGIDO RX» es el recogido de AxisCare, «AXISCARE DEVOLUCION RX» su devolución.</summary>
-    public enum SubClientKind { Pickup, Return }
+    public enum SubClientKind { Pickup, Return, Variant }
 
     /// <summary>Un cliente «Recogido/Devolución» y el cliente real al que se une.</summary>
     public sealed record SubClientLink(string MainSender, SubClientKind Kind);
+
+    /// <summary>«MASCARO - PORTER (NEXT DAY)» / «(SAME DAY)»: el mismo cliente separado por servicio.</summary>
+    private static readonly Regex VariantClientName = new(@"^(?<base>.+?)\s*\((?:NEXT\s*DAY|SAME\s*DAY|ND|SD)\)\s*$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static readonly Regex SubClientName = new(@"^(?<base>.+?)\s+(?<kind>RECOGIDOS?|RECOGIDAS?|DEVOLUCI[OÓ]N(?:ES)?)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     /// <summary>«AXISCARE RECOGIDO TIRILLAS» → («AXISCARE», Pickup); «AXISCARE DEVOLUCION RX» → («AXISCARE», Return); un nombre normal → null.</summary>
     public static (string Base, SubClientKind Kind)? ParseSubClientName(string? name)
     {
+        var v = VariantClientName.Match((name ?? string.Empty).Trim());
+        if (v.Success) return (RemoveDiacritics(v.Groups["base"].Value.Trim().ToUpperInvariant()), SubClientKind.Variant);
         var m = SubClientName.Match((name ?? string.Empty).Trim());
         if (!m.Success) return null;
         var kind = m.Groups["kind"].Value.StartsWith("DEV", StringComparison.OrdinalIgnoreCase) ? SubClientKind.Return : SubClientKind.Pickup;
@@ -481,18 +486,44 @@ public static class ColavoraRules
     /// (<paramref name="orderCounts"/> por código de cliente de Colavora; empate: el código menor). Sin cliente al que unirse, el hijo queda como cliente.
     /// </summary>
     public static IReadOnlyDictionary<string, SubClientLink> ResolveSubClients(IEnumerable<(string Sender, string? Name)> clients, IReadOnlyDictionary<string, int> orderCounts)
+        => ResolveClientGroups(clients, orderCounts).Links;
+
+    /// <summary>Los clientes que se unen a otro y los nombres nuevos de los que quedan (cuando el «principal» era una de las variantes por servicio).</summary>
+    public sealed record ClientGroups(IReadOnlyDictionary<string, SubClientLink> Links, IReadOnlyDictionary<string, string> Renames);
+
+    /// <summary>
+    /// Lo de <see cref="ResolveSubClients"/> más las variantes por servicio (decisión de Luis, 2026-10-21: «MASCARO - PORTER (NEXT DAY)» y «(SAME DAY)» son un solo cliente):
+    /// si hay un cliente que se llama como el nombre base, las variantes se unen a él; si no, queda como principal la variante con más órdenes y se renombra al nombre base
+    /// (el que dejó escrito Colavora, sin el «(NEXT DAY)»).
+    /// </summary>
+    public static ClientGroups ResolveClientGroups(IEnumerable<(string Sender, string? Name)> clients, IReadOnlyDictionary<string, int> orderCounts)
     {
-        var all = clients.Select(c => (c.Sender, Name: RemoveDiacritics((c.Name ?? string.Empty).Trim().ToUpperInvariant()), Sub: ParseSubClientName(c.Name))).ToList();
+        var all = clients.Select(c => (c.Sender, Raw: (c.Name ?? string.Empty).Trim(), Name: RemoveDiacritics((c.Name ?? string.Empty).Trim().ToUpperInvariant()), Sub: ParseSubClientName(c.Name))).ToList();
         var mains = all.Where(c => c.Sub is null).ToList();
-        var result = new Dictionary<string, SubClientLink>(StringComparer.OrdinalIgnoreCase);
-        foreach (var c in all.Where(c => c.Sub is not null))
+        var links = new Dictionary<string, SubClientLink>(StringComparer.OrdinalIgnoreCase);
+        var renames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var c in all.Where(c => c.Sub is not null && c.Sub.Value.Kind != SubClientKind.Variant))
         {
             var (baseName, kind) = c.Sub!.Value;
             var main = mains.Where(m => m.Name == baseName || m.Name.StartsWith(baseName + " ", StringComparison.Ordinal))
                 .OrderByDescending(m => orderCounts.GetValueOrDefault(m.Sender)).ThenBy(m => m.Sender, StringComparer.Ordinal).FirstOrDefault();
-            if (main.Sender is not null) result[c.Sender] = new SubClientLink(main.Sender, kind);
+            if (main.Sender is not null) links[c.Sender] = new SubClientLink(main.Sender, kind);
         }
-        return result;
+
+        foreach (var group in all.Where(c => c.Sub is { Kind: SubClientKind.Variant }).GroupBy(c => c.Sub!.Value.Base))
+        {
+            var existing = mains.Where(m => m.Name == group.Key).OrderByDescending(m => orderCounts.GetValueOrDefault(m.Sender)).ThenBy(m => m.Sender, StringComparer.Ordinal).FirstOrDefault();
+            if (existing.Sender is not null)
+            {
+                foreach (var v in group) links[v.Sender] = new SubClientLink(existing.Sender, SubClientKind.Variant);
+                continue;
+            }
+            var principal = group.OrderByDescending(v => orderCounts.GetValueOrDefault(v.Sender)).ThenBy(v => v.Sender, StringComparer.Ordinal).First();
+            renames[principal.Sender] = VariantClientName.Match(principal.Raw).Groups["base"].Value.Trim();
+            foreach (var v in group.Where(v => v.Sender != principal.Sender)) links[v.Sender] = new SubClientLink(principal.Sender, SubClientKind.Variant);
+        }
+        return new ClientGroups(links, renames);
     }
 
     /// <summary>

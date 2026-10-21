@@ -346,7 +346,6 @@ public sealed class ColavoraRulesTests
     [Theory]
     [InlineData("AXISCARE HEALTH LOGISTIC")]
     [InlineData("AXIS MED VET")]
-    [InlineData("MASCARO - PORTER (NEXT DAY)")]
     [InlineData("RECOGIDO")]
     [InlineData(null)]
     public void Normal_client_names_are_not_pickup_or_return(string? name)
@@ -399,4 +398,28 @@ public sealed class ColavoraRulesTests
     [Fact]
     public void A_line_description_ignores_a_meaningless_comment_and_falls_back_to_the_package_type()
         => Assert.Equal("Box", ColavoraRules.LineDescription("0", "Box"));
+
+    [Fact]
+    public void Service_variants_of_the_same_client_are_one_client_named_without_the_service()
+    {
+        var clients = new (string, string?)[] { ("MND", "MASCARO - PORTER (NEXT DAY)"), ("MSD", "MASCARO - PORTER (SAME DAY)"), ("KP", "KOREA PARTS LLC") };
+        var counts = new Dictionary<string, int> { ["MND"] = 90000, ["MSD"] = 3000, ["KP"] = 500 };
+        var groups = ColavoraRules.ResolveClientGroups(clients, counts);
+
+        Assert.Equal("MND", groups.Links["MSD"].MainSender);
+        Assert.Equal(ColavoraRules.SubClientKind.Variant, groups.Links["MSD"].Kind);
+        Assert.False(groups.Links.ContainsKey("MND"));
+        Assert.False(groups.Links.ContainsKey("KP"));
+        Assert.Equal("MASCARO - PORTER", groups.Renames["MND"]);
+    }
+
+    [Fact]
+    public void Service_variants_join_a_client_that_already_has_the_base_name()
+    {
+        var clients = new (string, string?)[] { ("A", "ACME"), ("AND", "ACME (NEXT DAY)"), ("ASD", "ACME (SAME DAY)") };
+        var groups = ColavoraRules.ResolveClientGroups(clients, new Dictionary<string, int>());
+        Assert.Equal("A", groups.Links["AND"].MainSender);
+        Assert.Equal("A", groups.Links["ASD"].MainSender);
+        Assert.Empty(groups.Renames);
+    }
 }

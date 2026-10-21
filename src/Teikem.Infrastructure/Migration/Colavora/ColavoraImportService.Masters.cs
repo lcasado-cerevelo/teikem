@@ -347,7 +347,7 @@ public sealed partial class ColavoraImportService
             }
             if (s.SubClients.ContainsKey(cu.Sender)) { s.Report.CountSkipped(C); continue; }   // «Recogido/Devolución»: se une a su cliente real (LinkSubClients)
             var code = ColavoraRules.ClientCode(cu.Sender);
-            var name = ColavoraRules.Trim(cu.SenderName, 200) ?? cu.Sender;
+            var name = ColavoraRules.Trim(s.ClientRenames.TryGetValue(cu.Sender, out var renamed) ? renamed : cu.SenderName, 200) ?? cu.Sender;
             if (existing.TryGetValue(code, out var found))
             {
                 s.Report.CountExisting(C);
@@ -418,12 +418,14 @@ public sealed partial class ColavoraImportService
     private async Task ResolveSubClientsAsync(RunState s, List<CvCustomer> customers, CancellationToken ct)
     {
         var counts = await s.Reader.ReadOrderCountsBySenderAsync(s.CompanyId, ct);
-        s.SubClients = ColavoraRules.ResolveSubClients(customers.Select(c => (c.Sender, c.SenderName)), counts);
+        var groups = ColavoraRules.ResolveClientGroups(customers.Select(c => (c.Sender, c.SenderName)), counts);
+        s.SubClients = groups.Links;
+        s.ClientRenames = groups.Renames;
         foreach (var (sub, link) in s.SubClients.OrderBy(kv => kv.Key, StringComparer.Ordinal))
         {
             var subName = customers.First(c => string.Equals(c.Sender, sub, StringComparison.OrdinalIgnoreCase)).SenderName;
             var mainName = customers.First(c => string.Equals(c.Sender, link.MainSender, StringComparison.OrdinalIgnoreCase)).SenderName;
-            s.Report.AddInfo($"Cliente unido {sub}", $"«{subName}» ({counts.GetValueOrDefault(sub)} órdenes) se une a «{mainName}» ({link.MainSender}, {counts.GetValueOrDefault(link.MainSender)} órdenes); sus órdenes se trabajan como {(link.Kind == ColavoraRules.SubClientKind.Pickup ? "recogido" : "devolución")}.");
+            s.Report.AddInfo($"Cliente unido {sub}", $"«{subName}» ({counts.GetValueOrDefault(sub)} órdenes) se une a «{mainName}» ({link.MainSender}, {counts.GetValueOrDefault(link.MainSender)} órdenes); {(link.Kind switch { ColavoraRules.SubClientKind.Pickup => "sus órdenes se trabajan como recogido", ColavoraRules.SubClientKind.Return => "sus órdenes se trabajan como devolución", _ => "es el mismo cliente separado por servicio: sus tarifas pasan al contrato del cliente" })}.");
         }
     }
 
@@ -577,10 +579,20 @@ public sealed partial class ColavoraImportService
         var tieredId = await lookups.GetIdAsync(LookupDomains.PricingMode, PricingModes.Tiered, ct);
         var graduatedId = await lookups.GetIdAsync(LookupDomains.TierMode, TierModes.Graduated, ct);
 
+        // tarifas de las variantes por servicio (NEXT DAY / SAME DAY): se suman a las del principal; si el mismo servicio y paquete ya está, gana el del principal
+        var extraRows = new Dictionary<string, List<CvServicePrice>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (variant, vlink) in s.SubClients.Where(kv => kv.Value.Kind == ColavoraRules.SubClientKind.Variant))
+        {
+            var vid = s.SenderCodeById.FirstOrDefault(kv => string.Equals(kv.Value, variant, StringComparison.OrdinalIgnoreCase)).Key;
+            if (!extraRows.TryGetValue(vlink.MainSender, out var list)) extraRows[vlink.MainSender] = list = new List<CvServicePrice>();
+            list.AddRange(prices.GetValueOrDefault(vid) ?? new List<CvServicePrice>());
+        }
+
         foreach (var (sender, client) in s.Clients.ToList())
         {
             if (s.SubClients.TryGetValue(sender, out var subLink))
             {
+                if (subLink.Kind == ColavoraRules.SubClientKind.Variant) { s.Report.CountSkipped(K); continue; }   // sus tarifas ya se sumaron al contrato del principal (extraRows)
                 // «Recogido/Devolución»: comparten el contrato del cliente real; sus tarifas NO se migran solas (precios distintos y de prueba: 1.00, 5.75, 100.00) — se avisa para decidir
                 var subId = s.SenderCodeById.FirstOrDefault(kv => string.Equals(kv.Value, sender, StringComparison.OrdinalIgnoreCase)).Key;
                 var subRows = prices.GetValueOrDefault(subId) ?? new List<CvServicePrice>();
@@ -598,6 +610,11 @@ public sealed partial class ColavoraImportService
             }
             var senderId = s.SenderCodeById.FirstOrDefault(kv => string.Equals(kv.Value, sender, StringComparison.OrdinalIgnoreCase)).Key;
             var rows = prices.GetValueOrDefault(senderId) ?? new List<CvServicePrice>();
+            if (extraRows.TryGetValue(sender, out var more))
+            {
+                var have = rows.Select(r => (r.ServiceType, r.PackageType)).ToHashSet();
+                rows = rows.Concat(more.Where(r => !have.Contains((r.ServiceType, r.PackageType)))).ToList();
+            }
             if (s.DryRun) { s.Report.CountCreated(K); continue; }
 
             var dto = await TryAsync(s, K, sender, () => contractService.CreateAsync(new ContractCreateRequest(client.PublicId, null, $"Contrato {client.Name}",
