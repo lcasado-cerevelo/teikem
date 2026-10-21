@@ -42,6 +42,7 @@ export const listStock = (search: string, skip = 0, take = PAGE_SIZE) => unwrap(
 export const listWarehouseProducts = (search: string, skip = 0, take = PAGE_SIZE) => unwrap(api.GET('/api/v1/portal/warehouse/products', { params: { query: { search: search || undefined, skip, take } } }))
 export const listMovements = (search: string, skip = 0, take = PAGE_SIZE) => unwrap(api.GET('/api/v1/portal/warehouse/movements', { params: { query: { search: search || undefined, skip, take } } }))
 export type PortalProductCreateRequest = Schemas['PortalProductCreateRequest']
+export type PortalProductPatchRequest = Schemas['PortalProductPatchRequest']
 export type PortalArrivalRequest = Schemas['PortalArrivalRequest']
 export type PortalArrivalDto = Schemas['PortalArrivalDto']
 export type PortalExitRequest = Schemas['PortalExitRequest']
@@ -51,6 +52,7 @@ export type PortalWarehouseOptionDto = Schemas['PortalWarehouseOptionDto']
 /** Lote 156: lo que el cliente crea desde su portal (si la compañía se lo permite): productos, avisos de llegada y avisos de salida. */
 export const listWarehouseOptions = () => unwrap(api.GET('/api/v1/portal/warehouse/warehouses'))
 export const createProduct = (body: PortalProductCreateRequest) => unwrap(api.POST('/api/v1/portal/warehouse/products', { body }))
+export const updateProduct = (publicId: string, body: PortalProductPatchRequest) => unwrap(api.PATCH('/api/v1/portal/warehouse/products/{publicId}', { params: { path: { publicId } }, body }))
 export const listArrivals = (search: string) => unwrap(api.GET('/api/v1/portal/warehouse/arrivals', { params: { query: { search: search || undefined } } }))
 export const createArrival = (body: PortalArrivalRequest) => unwrap(api.POST('/api/v1/portal/warehouse/arrivals', { body }))
 export const updateArrival = (id: number, body: PortalArrivalRequest) => unwrap(api.PATCH('/api/v1/portal/warehouse/arrivals/{id}', { params: { path: { id } }, body }))

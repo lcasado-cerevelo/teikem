@@ -14,6 +14,7 @@ import {
   getExit,
   modifyExitLine,
   updateArrival,
+  updateProduct,
   updateExit,
   listWarehouseOptions,
   listWarehouseProducts,
@@ -78,6 +79,38 @@ export function NewProductForm({ onDone, onCancel }: { onDone: () => void; onCan
       <Field label={t('create.product.cost')} value={cost} onChangeText={setCost} keyboardType="decimal-pad" />
       <Muted>{t('create.product.costHelp')}</Muted>
       <Check label={t('create.product.lot')} help={t('create.product.lotHelp')} value={lot} onChange={setLot} />
+    </FormShell>
+  )
+}
+
+/** Edita un producto ya creado (nombre, código de barras, marca y, si se escribe, costo). El SKU, el seguimiento y la unidad no cambian. Código o marca vacíos los quitan; costo vacío lo deja como está. */
+export function EditProductForm({ product, onDone, onCancel }: { product: PortalProductDto; onDone: () => void; onCancel: () => void }) {
+  const { t } = useT()
+  const [name, setName] = useState(product.name ?? '')
+  const [barcode, setBarcode] = useState(product.barcode ?? '')
+  const [brand, setBrand] = useState(product.brand ?? '')
+  const [cost, setCost] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  async function save() {
+    setBusy(true)
+    setError(null)
+    try {
+      await updateProduct(product.publicId ?? '', { name, barcode, brand, purchaseCost: parseNumber(cost) })
+      onDone()
+    } catch (e) {
+      setError(apiErrorMessage(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <FormShell title={`${t('create.product.editTitle')} · ${product.sku}`} error={error} busy={busy} onSave={() => void save()} onCancel={onCancel} saveLabel={t('create.save')}>
+      <Field label={t('create.product.name')} value={name} onChangeText={setName} testID="edit-name" />
+      <Field label={t('create.product.barcode')} value={barcode} onChangeText={setBarcode} autoCapitalize="none" />
+      <Field label={t('create.product.brand')} value={brand} onChangeText={setBrand} />
+      <Field label={t('create.product.cost')} value={cost} onChangeText={setCost} keyboardType="decimal-pad" />
+      <Muted>{t('create.product.costKeep')}</Muted>
     </FormShell>
   )
 }

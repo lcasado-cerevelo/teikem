@@ -52,6 +52,23 @@ public sealed class PortalCreateService(TeikemDbContext db, ITenantContext tenan
         return page.Items.First(p => p.PublicId == created.Product.PublicId);
     }
 
+    /// <summary>
+    /// Edita un producto que el cliente ya creó (mismos permisos que crearlos: la bandera de la compañía y un rol ADMIN u OPERADOR). Solo productos DEL cliente de la sesión (otro → 404 como si no existiera);
+    /// las reglas y mensajes son los de <see cref="ProductService.UpdateAsync"/>. Cuerpo vacío (sin ningún cambio) → 400.
+    /// </summary>
+    public async Task<PortalProductDto> UpdateProductAsync(Guid publicId, PortalProductPatchRequest req, CancellationToken ct)
+    {
+        if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
+        var s = await RequireAsync(c => c.PortalCanCreateProducts, PortalCreateRules.ProductsOff, ct);
+        var mine = await db.Set<Product>().AsNoTracking().AnyAsync(p => p.PublicId == publicId && p.ClientId == s.ClientId, ct);
+        if (!mine) throw new NotFoundException("Producto", publicId);
+        if (req.Name is null && req.Barcode is null && req.Brand is null && req.Model is null && req.WeightKg is null && req.VolumeM3 is null && req.PurchaseCost is null)
+            throw new ValidationException("body", "No hay ningún cambio que guardar.");
+        await products.UpdateAsync(publicId, new ProductPatchRequest(Name: req.Name, Barcode: req.Barcode, Brand: req.Brand, Model: req.Model, WeightKg: req.WeightKg, VolumeM3: req.VolumeM3, PurchaseCost: req.PurchaseCost), ct);
+        var sku = await db.Set<Product>().AsNoTracking().Where(p => p.PublicId == publicId).Select(p => p.Sku).FirstAsync(ct);
+        return (await warehouse.ProductsAsync(sku, true, 0, 100, ct)).Items.First(p => p.PublicId == publicId);
+    }
+
     // ================================================================ avisos de llegada
 
     public async Task<PortalArrivalDto> CreateArrivalAsync(PortalArrivalRequest req, CancellationToken ct)

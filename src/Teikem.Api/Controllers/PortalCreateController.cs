@@ -25,6 +25,10 @@ public sealed class PortalCreateController(PortalCreateService create) : Control
     [HttpPost("products"), RequireModule(ModuleKeys.WmsLotSerial)]
     public Task<PortalProductDto> CreateProduct([FromBody] PortalProductCreateRequest req, CancellationToken ct) => create.CreateProductAsync(req, ct);
 
+    /// <summary>Edita un producto que el cliente ya creó (nombre, código de barras, marca, modelo, peso, volumen, costo). Producto de otro cliente → 404; sin cambios → 400.</summary>
+    [HttpPatch("products/{publicId:guid}"), RequireModule(ModuleKeys.WmsLotSerial)]
+    public Task<PortalProductDto> UpdateProduct(Guid publicId, [FromBody] PortalProductPatchRequest req, CancellationToken ct) => create.UpdateProductAsync(publicId, req, ct);
+
     [HttpGet("arrivals"), RequireModule(ModuleKeys.WmsLotSerial)]
     public Task<IReadOnlyList<PortalArrivalDto>> Arrivals([FromQuery] string? search, CancellationToken ct) => create.ListArrivalsAsync(search, ct);
 

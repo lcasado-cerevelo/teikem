@@ -74,7 +74,7 @@ Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Esta
 - ◐ Capturas / Playwright de las pantallas nuevas: hechos los de la recolección maestra y el encabezado (`e2e/lote180-encabezado-maestra.spec.ts`, capturas `l180-*`); faltan los del portal del cliente, avisos y filtros.
 - ☑ EXIT_NOTICE como fuente de datos para Vistas (menores, autónomo).
 - ☑ Saldos y Conciliación: filtro de zona (menores, autónomo).
-- ☐ El portal: adjuntar documentos y editar productos ya creados.
+- ◐ El portal: editar productos ya creados ☑ (menores, autónomo); adjuntar documentos ☐ (lote propio: no hay almacenamiento de archivos; ver informe).
 
 ## E. Hecho recientemente (referencia)
 ☑ Espacio entre el buscador y la lista de recibos (web) · ☑ Lote 154 pantallas del portal · ☑ 155 precio del producto en aviso/orden y aviso «sin costo» · ☑ 156 el cliente crea desde su portal · ☑ 157 avisos de llegada (eventos, edición, vencimiento del lote) · ☑ 158 error al guardar aviso de salida, disponible en selector, edición del cliente · ☑ 159 pulido de pantallas · ☑ 160 acomodo sin cancelar y despacho de un clic.

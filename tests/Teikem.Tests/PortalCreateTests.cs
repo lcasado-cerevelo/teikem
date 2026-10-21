@@ -76,6 +76,31 @@ public sealed class PortalCreateTests
     }
 
     [Fact]
+    public async Task A_client_edits_its_own_product_but_not_another_clients_and_not_with_an_empty_body()
+    {
+        var x = await WorldAsync();
+        await using var _ = x.F;
+        var edited = await x.Svc.UpdateProductAsync(x.P.PublicId, new PortalProductPatchRequest(Name: "Nombre nuevo", Brand: "Marca X", PurchaseCost: 7m), default);
+        Assert.Equal(("Nombre nuevo", "Marca X"), (edited.Name, edited.Brand));
+        var stored = await x.F.Db.Set<Product>().AsNoTracking().SingleAsync(p => p.ProductId == x.P.ProductId);
+        Assert.Equal((x.P.Sku, 7m), (stored.Sku, stored.PurchaseCost));
+        await Assert.ThrowsAsync<NotFoundException>(() => x.Svc.UpdateProductAsync(x.Foreign.PublicId, new PortalProductPatchRequest(Name: "Robado"), default));
+        Assert.NotEqual("Robado", (await x.F.Db.Set<Product>().AsNoTracking().SingleAsync(p => p.ProductId == x.Foreign.ProductId)).Name);
+        await Assert.ThrowsAsync<ValidationException>(() => x.Svc.UpdateProductAsync(x.P.PublicId, new PortalProductPatchRequest(), default));
+    }
+
+    [Fact]
+    public async Task Editing_a_product_needs_the_flag_and_a_writing_role()
+    {
+        var off = await WorldAsync(products: false);
+        await using (off.F)
+            Assert.Equal(PortalCreateRules.ProductsOff, (await Assert.ThrowsAsync<ForbiddenException>(() => off.Svc.UpdateProductAsync(off.P.PublicId, new PortalProductPatchRequest(Name: "X"), default))).Message);
+        var ro = await WorldAsync(PortalRoles.ClientReadOnly);
+        await using (ro.F)
+            Assert.Equal(PortalCreateRules.ReadOnlyForbidden, (await Assert.ThrowsAsync<ForbiddenException>(() => ro.Svc.UpdateProductAsync(ro.P.PublicId, new PortalProductPatchRequest(Name: "X"), default))).Message);
+    }
+
+    [Fact]
     public async Task The_flag_off_or_a_read_only_access_is_forbidden_with_its_message()
     {
         var off = await WorldAsync(products: false, arrivals: false, exits: false);

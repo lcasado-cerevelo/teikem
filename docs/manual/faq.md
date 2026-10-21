@@ -10009,3 +10009,9 @@ Cuenta el último viaje **no cancelado** con ese vehículo (la fecha del plan). 
 
 **¿Dónde cambio los 14 días o el 30 %?**
 Todavía no se pueden cambiar (son fijos); se pueden silenciar los avisos desde la campana o no armar su regla en Sistema → Reglas de aviso.
+
+**¿Puedo corregir un producto que ya creé desde el portal?**
+Sí, si su compañía le permite crear productos: en la pestaña «Productos» toque «Editar» en el producto y cambie nombre, código de barras, marca o costo. El SKU, el control por lote o serie y la unidad no se cambian desde el portal; si necesita cambiarlos, pídaselo a la compañía. Si deja el costo vacío se conserva el actual.
+
+**Al editar un producto sale «No hay ningún cambio que guardar.»**
+Se envió la edición sin ningún dato. Cambie al menos un campo y guarde de nuevo.

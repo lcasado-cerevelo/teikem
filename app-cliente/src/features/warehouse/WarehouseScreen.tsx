@@ -10,7 +10,7 @@ import { useAsync } from '../../kernel/ui/useAsync'
 import { formatDate, formatDateTime, formatMoney, formatQty } from '../format'
 import { useOffer } from '../capabilities'
 import { cancelArrival, cancelExit, type PortalArrivalDto, getValuation, listArrivals, listExits, listMovements, listStock, listWarehouseProducts, PAGE_SIZE } from '../portalApi'
-import { EditExitForm, NewArrivalForm, NewExitForm, NewProductForm } from './CreateForms'
+import { EditExitForm, EditProductForm, NewArrivalForm, NewExitForm, NewProductForm } from './CreateForms'
 import { Segments } from './Segments'
 import type { Lang } from '../../kernel/i18n/i18n'
 
@@ -103,13 +103,16 @@ function ProductsSection({ lang, canCreate }: { lang: Lang; canCreate: boolean }
   const colors = useColors()
   const { t } = useT()
   const [creating, setCreating] = useState(false)
+  const [editing, setEditing] = useState<string | null>(null)
   const list = usePaged(useCallback((s: string, skip: number) => listWarehouseProducts(s, skip, PAGE_SIZE), []))
   return (
     <>
       {canCreate && !creating && <Button title={t('create.product.title')} onPress={() => setCreating(true)} testID="create-product" />}
       {creating && <NewProductForm onCancel={() => setCreating(false)} onDone={() => { setCreating(false); list.reload() }} />}
       <Field label={t('warehouse.search')} value={list.search} onChangeText={list.setSearch} placeholder={t('warehouse.searchProducts')} autoCapitalize="none" returnKeyType="search" testID="warehouse-search" />
-      {list.items.map((p) => (
+      {list.items.map((p) => editing === p.publicId ? (
+        <EditProductForm key={p.publicId} product={p} onCancel={() => setEditing(null)} onDone={() => { setEditing(null); list.reload() }} />
+      ) : (
         <Card key={p.publicId}>
           <Text style={{ fontWeight: '700', color: colors.text }}>{p.sku} · {p.name}</Text>
           <Muted>{[p.brand, p.category, p.barcode].filter(Boolean).join(' · ')}</Muted>
@@ -119,6 +122,7 @@ function ProductsSection({ lang, canCreate }: { lang: Lang; canCreate: boolean }
             {p.trackingType === 'LOT' && <Chip label={t('warehouse.tracking.LOT')} tone="info" />}
             {p.trackingType === 'SERIAL' && <Chip label={t('warehouse.tracking.SERIAL')} tone="info" />}
           </View>
+          {canCreate && <Button title={t('create.product.edit')} variant="link" onPress={() => setEditing(p.publicId ?? null)} testID={`edit-product-${p.sku}`} />}
         </Card>
       ))}
       <Footer loading={list.loading} error={list.error} shown={list.items.length} total={list.total} empty={list.query ? t('warehouse.noMatches') : t('warehouse.emptyProducts')} onRetry={list.reload} onMore={list.more} />

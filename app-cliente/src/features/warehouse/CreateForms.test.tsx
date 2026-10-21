@@ -2,6 +2,7 @@
 jest.mock('expo-crypto', () => ({ getRandomBytes: (n: number) => new Uint8Array(n).fill(1) }))
 jest.mock('../portalApi', () => ({
   createProduct: jest.fn(),
+  updateProduct: jest.fn(),
   createArrival: jest.fn(),
   createExit: jest.fn(),
   listWarehouseOptions: jest.fn(),
@@ -11,8 +12,8 @@ jest.mock('../portalApi', () => ({
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 
 import { setLang } from '../../kernel/i18n/i18n'
-import { createProduct, listWarehouseOptions, listWarehouseProducts } from '../portalApi'
-import { NewExitForm, NewProductForm, parseNumber } from './CreateForms'
+import { createProduct, listWarehouseOptions, listWarehouseProducts, updateProduct } from '../portalApi'
+import { EditProductForm, NewExitForm, NewProductForm, parseNumber } from './CreateForms'
 
 beforeEach(() => {
   jest.clearAllMocks()
@@ -48,6 +49,29 @@ describe('NewProductForm', () => {
     await render(<NewProductForm onDone={onDone} onCancel={jest.fn()} />)
     await fireEvent.press(screen.getByTestId('create-save'))
     await waitFor(() => expect(createProduct).toHaveBeenCalled())
+    expect(onDone).not.toHaveBeenCalled()
+  })
+})
+
+describe('EditProductForm', () => {
+  const product = { publicId: 'p1', sku: 'MED', name: 'Medicina', barcode: '123', brand: 'Marca', category: null, trackingType: 'NONE', isActive: true, onHand: 0, available: 0 }
+
+  it('parte de lo que tiene, manda lo editado y el costo vacío no se manda', async () => {
+    ;(updateProduct as jest.Mock).mockResolvedValue({})
+    const onDone = jest.fn()
+    await render(<EditProductForm product={product} onDone={onDone} onCancel={jest.fn()} />)
+    await fireEvent.changeText(screen.getByTestId('edit-name'), 'Medicina nueva')
+    await fireEvent.press(screen.getByTestId('create-save'))
+    await waitFor(() => expect(onDone).toHaveBeenCalled())
+    expect(updateProduct).toHaveBeenCalledWith('p1', { name: 'Medicina nueva', barcode: '123', brand: 'Marca', purchaseCost: null })
+  })
+
+  it('muestra el error del servidor y no cierra', async () => {
+    ;(updateProduct as jest.Mock).mockRejectedValue(new Error('boom'))
+    const onDone = jest.fn()
+    await render(<EditProductForm product={product} onDone={onDone} onCancel={jest.fn()} />)
+    await fireEvent.press(screen.getByTestId('create-save'))
+    await waitFor(() => expect(updateProduct).toHaveBeenCalled())
     expect(onDone).not.toHaveBeenCalled()
   })
 })

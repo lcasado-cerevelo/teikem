@@ -31,12 +31,13 @@ Tres cosas que la compañía enciende **por cliente** en la ficha del cliente (C
 |---|---|---|
 | Almacenes para elegir | `GET /portal/warehouse/warehouses` | los activos de la compañía; con uno solo se elige solo |
 | Crear producto | `POST /portal/warehouse/products` | SKU, nombre, código de barras, marca, costo de compra opcional, por lote o no; el dueño es el cliente |
+| Editar producto | `PATCH /portal/warehouse/products/{publicId}` | nombre, código de barras, marca, modelo, peso, volumen y costo (lo no enviado queda igual; código, marca y modelo vacíos los quitan). El SKU, el control por lote/serie y la unidad no se cambian aquí. Solo productos del cliente de la sesión; en la app, botón «Editar» en cada producto (con el mismo permiso que «Nuevo producto») |
 | Mis avisos de llegada | `GET/POST /portal/warehouse/arrivals`, `POST …/arrivals/{id}/cancel` | solo productos del cliente; precio unitario opcional (si el producto no tiene costo, toma el de la primera línea); cancelar solo si sigue esperado y sin recibo |
 | Mis avisos de salida | `GET/POST /portal/warehouse/exits`, `GET …/exits/{id}`, `POST …/exits/{id}/cancel` | reserva en el acto lo que haya y deja lo demás pendiente; cancelar solo si sigue solicitado |
 
 En la app, las pestañas «Llegadas» y «Salidas» y el botón «Nuevo producto» aparecen solo si la compañía lo encendió para ese cliente (`capabilities.canCreateProducts/Arrivals/Exits` de `GET /portal/me`).
 
-Errores: 403 «Su compañía no le permite crear productos desde el portal.» / «…avisos de llegada…» / «…avisos de salida…» (bandera apagada), 403 «Su acceso es de solo lectura y no puede crear documentos.», 404 si el aviso es de otro cliente (nunca se ve ni se cancela lo ajeno), y los 400/422 del personal (producto de otro cliente, cantidad inválida, SKU repetido, etc.).
+Errores: 403 «Su compañía no le permite crear productos desde el portal.» / «…avisos de llegada…» / «…avisos de salida…» (bandera apagada), 403 «Su acceso es de solo lectura y no puede crear documentos.», 404 si el aviso o el producto es de otro cliente (nunca se ve, edita ni cancela lo ajeno), 400 «No hay ningún cambio que guardar.» al editar sin mandar nada, y los 400/422 del personal (producto de otro cliente, cantidad inválida, SKU repetido, etc.).
 
 ### Editar lo que el cliente creó (Lote 158)
 

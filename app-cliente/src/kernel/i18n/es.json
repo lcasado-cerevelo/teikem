@@ -498,26 +498,29 @@
       "cost": "Costo de compra (opcional)",
       "costHelp": "El costo sirve para valorar su inventario (base del seguro).",
       "lot": "Se controla por lote",
-      "lotHelp": "Márquelo si el producto tiene número de lote y vencimiento."
+      "lotHelp": "Márquelo si el producto tiene número de lote y vencimiento.",
+      "edit": "Editar",
+      "editTitle": "Editar producto",
+      "costKeep": "Si deja el costo vacío, se conserva el actual. El SKU, el control por lote o serie y la unidad no se cambian desde el portal."
     },
     "line": {
       "product": "Producto",
       "qty": "Cantidad",
       "lot": "Lote (opcional)",
-        "expiry": "Vencimiento del lote (AAAA-MM-DD, opcional)",
+      "expiry": "Vencimiento del lote (AAAA-MM-DD, opcional)",
       "price": "Precio unitario (opcional)",
       "add": "Agregar línea",
       "remove": "Quitar línea"
     },
     "arrival": {
       "title": "Nuevo aviso de llegada",
-        "edit": "Editar aviso de llegada",
+      "edit": "Editar aviso de llegada",
       "date": "Llegada esperada (AAAA-MM-DD, opcional)",
       "priceHelp": "Si el producto no tiene costo, el precio de la primera línea pasa a ser su costo."
     },
     "exit": {
       "title": "Nuevo aviso de salida",
-        "edit": "Editar aviso de salida",
+      "edit": "Editar aviso de salida",
       "destination": "Destino (retiro, dirección o nota)",
       "date": "Fecha requerida (AAAA-MM-DD, opcional)",
       "notes": "Notas (opcional)",

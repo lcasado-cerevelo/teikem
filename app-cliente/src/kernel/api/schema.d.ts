@@ -26955,6 +26955,51 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/v1/portal/warehouse/products/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PortalProductPatchRequest"];
+                    "text/json": components["schemas"]["PortalProductPatchRequest"];
+                    "application/*+json": components["schemas"]["PortalProductPatchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalProductDto"];
+                        "application/json": components["schemas"]["PortalProductDto"];
+                        "text/json": components["schemas"]["PortalProductDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/v1/portal/warehouse/exits/{publicId}/lines/{lineId}": {
         parameters: {
             query?: never;
@@ -39150,6 +39195,19 @@ export interface components {
             /** Format: date-time */
             createdAtUtc?: string;
             progress?: components["schemas"]["PortalProgressDto"];
+        };
+        /** @description Edición de un producto ya creado por el cliente: null = sin cambio; barcode/brand/model "" = quitarlos. El SKU, el seguimiento y la unidad no se cambian desde el portal. */
+        PortalProductPatchRequest: {
+            name?: string | null;
+            barcode?: string | null;
+            brand?: string | null;
+            model?: string | null;
+            /** Format: double */
+            weightKg?: number | null;
+            /** Format: double */
+            volumeM3?: number | null;
+            /** Format: double */
+            purchaseCost?: number | null;
         };
         PortalProductCreateRequest: {
             sku?: string | null;

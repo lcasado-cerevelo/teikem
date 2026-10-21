@@ -5,6 +5,10 @@ namespace Teikem.Infrastructure.Contracts;
 public sealed record PortalProductCreateRequest(string? Sku, string? Name, string? BaseUom = null, string? TrackingType = null, string? Barcode = null, string? Brand = null,
     string? Model = null, decimal? WeightKg = null, decimal? VolumeM3 = null, decimal? PurchaseCost = null);
 
+/// <summary>Edición de un producto ya creado por el cliente: null = sin cambio; barcode/brand/model "" = quitarlos. El SKU, el seguimiento y la unidad no se cambian desde el portal.</summary>
+public sealed record PortalProductPatchRequest(string? Name = null, string? Barcode = null, string? Brand = null, string? Model = null, decimal? WeightKg = null, decimal? VolumeM3 = null,
+    decimal? PurchaseCost = null);
+
 public sealed record PortalArrivalLineRequest(Guid? ProductPublicId, decimal? ExpectedQty, string? LotNumber = null, decimal? UnitPrice = null, DateOnly? ExpiryDate = null);
 
 public sealed record PortalArrivalRequest(Guid? WarehousePublicId = null, string? Reference = null, DateOnly? ExpectedDate = null, IReadOnlyList<PortalArrivalLineRequest>? Lines = null);

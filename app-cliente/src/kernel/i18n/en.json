@@ -498,26 +498,29 @@
       "cost": "Purchase cost (optional)",
       "costHelp": "The cost is used to value your inventory (insurance basis).",
       "lot": "Tracked by lot",
-      "lotHelp": "Check it if the product has a lot number and expiry date."
+      "lotHelp": "Check it if the product has a lot number and expiry date.",
+      "edit": "Edit",
+      "editTitle": "Edit product",
+      "costKeep": "Leave the cost empty to keep the current one. The SKU, lot/serial control and unit cannot be changed from the portal."
     },
     "line": {
       "product": "Product",
       "qty": "Quantity",
       "lot": "Lot (optional)",
-        "expiry": "Lot expiry (YYYY-MM-DD, optional)",
+      "expiry": "Lot expiry (YYYY-MM-DD, optional)",
       "price": "Unit price (optional)",
       "add": "Add line",
       "remove": "Remove line"
     },
     "arrival": {
       "title": "New arrival notice",
-        "edit": "Edit arrival notice",
+      "edit": "Edit arrival notice",
       "date": "Expected arrival (YYYY-MM-DD, optional)",
       "priceHelp": "If the product has no cost, the price on the first line becomes its cost."
     },
     "exit": {
       "title": "New exit notice",
-        "edit": "Edit exit notice",
+      "edit": "Edit exit notice",
       "destination": "Destination (pickup, address or note)",
       "date": "Required date (YYYY-MM-DD, optional)",
       "notes": "Notes (optional)",
