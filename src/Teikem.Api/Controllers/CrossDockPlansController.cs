@@ -18,6 +18,8 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/cross-dock-plans")]
 [Authorize]
 [RequireModule(ModuleKeys.CrossDock)]
+// Lote 185: además del permiso de datos de cada acción, la pantalla exige su permiso de acceso del menú ("crossdock.view"); quitarlo de un rol quita también los datos (Y entre ambos).
+[RequirePermission("crossdock.view")]
 public sealed class CrossDockPlansController(CrossDockService crossDock) : ControllerBase
 {
     /// <summary>Planes del tenant (máximo 200, más recientes primero) por almacén y estatus, con sus asignaciones.</summary>

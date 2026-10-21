@@ -15,6 +15,8 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/jobs")]
 [Authorize]
 [RequireModule(ModuleKeys.System)]
+// Lote 185: además del permiso de datos de cada acción, la pantalla exige su permiso de acceso del menú ("jobs.view"); quitarlo de un rol quita también los datos (Y entre ambos).
+[RequirePermission("jobs.view")]
 public sealed class JobsController(ScheduledJobService jobs) : ControllerBase
 {
     /// <summary>Los trabajos de la compañía con su horario, último resultado y próxima corrida.</summary>

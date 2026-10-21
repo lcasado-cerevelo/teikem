@@ -20,6 +20,8 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/inventory/multi-adjustments")]
 [Authorize]
 [RequireModule(ModuleKeys.WmsLotSerial)]
+// Lote 185: además del permiso de datos de cada acción, la pantalla exige su permiso de acceso del menú ("adjustments.view"); quitarlo de un rol quita también los datos (Y entre ambos).
+[RequirePermission("adjustments.view")]
 [RequirePermission(PermissionCatalog.InventoryAdjustMulti)]
 public sealed class MultiAdjustmentsController(MultiAdjustmentService service) : ControllerBase
 {

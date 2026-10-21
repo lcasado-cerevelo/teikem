@@ -18,6 +18,8 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/pick-batches")]
 [Authorize]
 [RequireModule(ModuleKeys.WmsLotSerial)]
+// Lote 185: además del permiso de datos de cada acción, la pantalla exige su permiso de acceso del menú ("pickbatches.view"); quitarlo de un rol quita también los datos (Y entre ambos).
+[RequirePermission("pickbatches.view")]
 public sealed class PickBatchesController(PickBatchService batches, PickBatchDocumentService documents, PickGroupService groups) : ControllerBase
 {
     /// <summary>
