@@ -211,6 +211,25 @@ export function useZoneGroupMutations() {
       onSuccess,
     }),
     /** `POST /dispatch-zones/assign-orders`: pone la zona de entrega a las órdenes que no la tienen (all = a todas). */
-    assignOrders: useMutation({ mutationFn: (all: boolean) => unwrap(api.POST('/api/v1/dispatch-zones/assign-orders', { params: { query: { all } } })) }),
+    assignOrders: useMutation({ mutationFn: (all: boolean) => unwrap(api.POST('/api/v1/dispatch-zones/assign-orders', { params: { query: { all } } })), onSuccess: () => void qc.invalidateQueries({ queryKey: unresolvedZoneKeys.all }) }),
   }
+}
+
+export type UnresolvedZones = Schemas['UnresolvedZonesDto']
+export type UnresolvedZoneRow = Schemas['UnresolvedZoneRowDto']
+export const unresolvedZoneKeys = { all: ['unresolved-zones'] as const }
+
+/** `GET /dispatch-zones/unresolved-orders` (fleet.view): por qué los envíos activos siguen sin zona (grupos por código postal y pueblo). */
+export function useUnresolvedZones(enabled = true) {
+  return useQuery({ queryKey: unresolvedZoneKeys.all, queryFn: () => unwrap(api.GET('/api/v1/dispatch-zones/unresolved-orders', { params: { query: { top: 200 } } })), enabled, meta: { handleAccessDenied: false } })
+}
+
+/** `POST /dispatch-zones/{id}/members` (fleet.manage): agrega un código postal o un pueblo a una zona; 409 si choca con otra zona activa. */
+export function useAddZoneMember() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { zoneId: number; matchType: 'POSTAL_CODE' | 'MUNICIPALITY'; matchValue: string }) =>
+      unwrap(api.POST('/api/v1/dispatch-zones/{id}/members', { params: { path: { id: v.zoneId } }, body: { matchType: v.matchType, matchValue: v.matchValue } })),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: unresolvedZoneKeys.all }),
+  })
 }

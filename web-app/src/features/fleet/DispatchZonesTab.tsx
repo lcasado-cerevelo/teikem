@@ -14,6 +14,7 @@ import { useDispatchZones, type DispatchZone } from '../drivers/api'
 import { useZoneGroupMutations, useZoneGroups, useZoneMutations, type ZoneGroup } from './api'
 import { useDrivers } from '../drivers/api'
 import { buildZoneCreate, emptyZoneValues, zoneSchema, type ZoneValues } from './fleetRules'
+import { UnresolvedZonesPanel } from './UnresolvedZonesPanel'
 
 const NO_ROWS: DispatchZone[] = []
 
@@ -102,6 +103,7 @@ export function DispatchZonesTab() {
 
   return (
     <FilterScope>
+      <UnresolvedZonesPanel />
       <ZoneLevelsPanel />
       <Panel
         flush

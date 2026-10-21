@@ -315,6 +315,34 @@ public sealed class DispatchZoneService(TeikemDbContext db, ITenantContext tenan
         return new AssignOrderZonesResultDto(rows.Count, assigned, unresolved);
     }
 
+    /// <summary>
+    /// 2026-10-21: por qué los envíos activos sin zona siguen sin ella. Agrupa por (código postal, pueblo) de la parada de entrega y dice el motivo de cada grupo con las zonas activas de hoy: sin datos, ninguna zona lo cubre o lo
+    /// cubren varias a la vez. Sirve para saber qué código postal o pueblo agregar a qué zona. Devuelve hasta <paramref name="top"/> grupos (los de más envíos primero) y el total.
+    /// </summary>
+    public async Task<UnresolvedZonesDto> UnresolvedOrdersAsync(int top, CancellationToken ct)
+    {
+        var members = await db.ActiveZoneMembersAsync(ct);
+        var deliveryTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Delivery, ct);
+        var stops = await db.TransportOrders.AsNoTracking().Where(o => o.IsActive && o.DeliveryZoneId == null)
+            .Select(o => o.Stops.Where(s => s.StopTypeLookupId == deliveryTypeId).OrderBy(s => s.Sequence).Select(s => new { s.SnapPostalCode, s.SnapCity }).FirstOrDefault()).ToListAsync(ct);
+        var groups = new Dictionary<(string Zip, string City), (string? Zip, string? City, int Count)>();
+        foreach (var s in stops)
+        {
+            var zip = DispatchZoneMatcher.NormalizeZip(s?.SnapPostalCode?.Trim());
+            var city = string.IsNullOrWhiteSpace(s?.SnapCity) ? null : System.Text.RegularExpressions.Regex.Replace(s!.SnapCity!.Trim(), @"\s+", " ");
+            var key = (zip ?? string.Empty, city?.ToLowerInvariant() ?? string.Empty);
+            groups[key] = groups.TryGetValue(key, out var g) ? (g.Zip, g.City, g.Count + 1) : (zip, city, 1);
+        }
+        var rows = new List<UnresolvedZoneRowDto>();
+        foreach (var (_, g) in groups.OrderByDescending(x => x.Value.Count).ThenBy(x => x.Value.Zip).ThenBy(x => x.Value.City))
+        {
+            var resolution = DispatchZoneMatcher.Resolve(members, g.Zip, g.City);
+            var reason = g.Zip is null && g.City is null ? "NO_DATA" : resolution.Ambiguous ? "AMBIGUOUS" : string.IsNullOrEmpty(resolution.ZoneCode) ? "NO_MATCH" : "RESOLVABLE";
+            rows.Add(new UnresolvedZoneRowDto(g.Zip, g.City, g.Count, reason, resolution.Ambiguous ? resolution.Candidates : Array.Empty<string>()));
+        }
+        return new UnresolvedZonesDto(stops.Count, rows.Count, rows.Take(Math.Clamp(top, 1, 500)).ToList());
+    }
+
     // ================================================================ adaptadores a las costuras de P0 (DispatchZoneMatcher, TripQueries)
     // Toda dependencia de las firmas de DispatchZoneMatcher y TripQueries.ActiveZoneMembersAsync vive aquí.
 

@@ -1707,6 +1707,35 @@
       "assignOrders": "Asignar zona a los envíos",
       "assignResult": "Envíos revisados: {examined}; con zona: {assigned}; sin zona: {unresolved}."
     },
+    "unresolved": {
+      "title": "Envíos sin zona",
+      "help": "{orders} envíos activos no tienen zona, en {groups} combinaciones de código postal y pueblo. Una zona se asigna por el código postal o el pueblo de la dirección de entrega: si ninguna zona lo cubre, agrégalo a una.",
+      "col": {
+        "zip": "Código postal",
+        "city": "Pueblo",
+        "orders": "Envíos",
+        "reason": "Motivo"
+      },
+      "reason": {
+        "NO_MATCH": "Ninguna zona lo cubre",
+        "AMBIGUOUS": "Lo cubren varias zonas",
+        "NO_DATA": "La dirección no trae código postal ni pueblo",
+        "RESOLVABLE": "Ya hay zona: falta asignarla"
+      },
+      "candidates": "Zonas que empatan: {zones}. Quita el criterio repetido de una de ellas.",
+      "add": "Agregar a una zona",
+      "addTitle": "Agregar {place} a una zona",
+      "addHelp": "Los envíos con esta dirección ({orders}) y los que lleguen después tomarán la zona que elijas.",
+      "zone": "Zona",
+      "pickZone": "Elige la zona…",
+      "zoneRequired": "Elige la zona.",
+      "by": "Agregar por",
+      "byZip": "Código postal {value}",
+      "byTown": "Pueblo {value}",
+      "addAndAssign": "Agregar y asignar",
+      "added": "Agregado «{value}». Con zona: {assigned}; todavía sin zona: {unresolved}.",
+      "empty": "No hay envíos sin zona."
+    },
     "avail": {
       "title": "Disponibilidad para despacho",
       "help": "Dice, para una fecha, qué choferes y vehículos pueden salir a ruta y por qué no. Aquí solo se consulta: lo que falte se arregla en la ficha del chofer o del vehículo.",

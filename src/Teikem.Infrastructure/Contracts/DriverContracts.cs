@@ -152,6 +152,14 @@ public sealed record ZoneGroupRequest(string? Code = null, string? Name = null, 
 /// <summary>Resultado de asignar zona a las órdenes existentes (Lote 129).</summary>
 public sealed record AssignOrderZonesResultDto(int Examined, int Assigned, int Unresolved);
 
+/// <summary>
+/// 2026-10-21 — Por qué unos envíos activos siguen sin zona: una fila por (código postal, pueblo) con cuántos envíos son y el motivo (NO_DATA = la parada no trae código postal ni pueblo; NO_MATCH = ninguna zona activa lo cubre;
+/// AMBIGUOUS = lo cubren varias zonas del mismo nivel) y, si es ambigua, las zonas que empatan. Las filas van de más envíos a menos.
+/// </summary>
+public sealed record UnresolvedZoneRowDto(string? PostalCode, string? City, int Orders, string Reason, IReadOnlyList<string> Candidates);
+
+public sealed record UnresolvedZonesDto(int TotalOrders, int Groups, IReadOnlyList<UnresolvedZoneRowDto> Rows);
+
 // ---------------- Lote 5 — miembros de la zona de despacho y resolución 'CP/pueblo → zona' ----------------
 
 /// <summary>Criterio de la zona: MatchTypeCode (POSTAL_CODE, POSTAL_RANGE, MUNICIPALITY) y su valor normalizado.</summary>

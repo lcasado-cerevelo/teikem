@@ -34822,6 +34822,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dispatch-zones/unresolved-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    top?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["UnresolvedZonesDto"];
+                        "application/json": components["schemas"]["UnresolvedZonesDto"];
+                        "text/json": components["schemas"]["UnresolvedZonesDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -46242,6 +46281,21 @@ export interface components {
             /** Format: int32 */
             created?: number;
             rows?: components["schemas"]["EntityImportRowDto"][] | null;
+        };
+        UnresolvedZoneRowDto: {
+            postalCode?: string | null;
+            city?: string | null;
+            /** Format: int32 */
+            orders?: number;
+            reason?: string | null;
+            candidates?: string[] | null;
+        };
+        UnresolvedZonesDto: {
+            /** Format: int32 */
+            totalOrders?: number;
+            /** Format: int32 */
+            groups?: number;
+            rows?: components["schemas"]["UnresolvedZoneRowDto"][] | null;
         };
     };
     responses: never;

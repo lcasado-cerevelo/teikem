@@ -326,6 +326,26 @@ Cómo se usa:
 
 ---
 
+### 2.8 Envíos sin zona: por qué y cómo arreglarlos (2026-10-21)
+
+Un envío toma su zona por el **código postal o el pueblo de su dirección de entrega**, comparados con los criterios de las zonas activas (código postal exacto, rango postal o municipio; gana el más específico). Cuando ninguna zona lo cubre, el envío queda «Sin zona» y no se puede planificar por zona.
+
+En **Flota → Zonas de despacho**, arriba, aparece el panel **«Envíos sin zona»** (solo si hay envíos activos sin zona; lo ve quien tiene `fleet.view`). Agrupa los envíos por **código postal y pueblo** y dice el motivo de cada grupo:
+
+| Motivo | Qué significa | Qué hacer |
+|---|---|---|
+| **Ninguna zona lo cubre** | Ese código postal y pueblo no están en ninguna zona activa. | Botón **«Agregar a una zona»** (necesita `fleet.manage`): elige la zona y si se agrega por el **código postal** o por el **pueblo**; «Agregar y asignar» lo guarda como criterio de la zona y luego asigna la zona a todos los envíos que ya la pueden tener. |
+| **Lo cubren varias zonas** | Dos zonas empatan en el mismo nivel. Se muestran cuáles. | Quite el criterio repetido de una de ellas (por el API: `DELETE /api/v1/dispatch-zones/{id}/members/{memberId}`). |
+| **La dirección no trae código postal ni pueblo** | La parada de entrega no tiene esos datos. | Se corrige en la dirección del consignatario o del envío; el panel no puede adivinarlo. |
+| **Ya hay zona: falta asignarla** | Hoy una zona sí lo cubre (se agregó después de crearse el envío). | Botón **«Asignar zona a los envíos»** del panel (`POST /api/v1/dispatch-zones/assign-orders`). |
+
+`GET /api/v1/dispatch-zones/unresolved-orders?top=100` (`fleet.view`) devuelve el mismo resumen: `totalOrders`, `groups` y `rows` con `postalCode`, `city`, `orders`, `reason` (`NO_MATCH`, `AMBIGUOUS`, `NO_DATA` o `RESOLVABLE`) y `candidates`. Hasta 500 grupos, los de más envíos primero. Los envíos nuevos toman la zona solos al crearse o al cambiar de consignatario; el panel sirve sobre todo para lo ya existente (por ejemplo, lo migrado de Colavora).
+
+| Mensaje | HTTP | Qué hacer |
+|---|---|---|
+| «Elige la zona.» | (pantalla) | Escoja la zona antes de agregar. |
+| El que dice que el criterio choca con otra zona activa | 409 | Ese código postal o pueblo ya pertenece a otra zona activa: quítelo de allí o agréguelo a esa zona. |
+
 ## 3. Documentos por vencer (panel transversal)
 
 Qué hace: une en una sola tabla los documentos de vehículo, las licencias y las certificaciones vencidos o que

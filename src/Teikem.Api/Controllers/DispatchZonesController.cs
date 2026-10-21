@@ -48,6 +48,12 @@ public sealed class DispatchZonesController(DispatchZoneService zones) : Control
     [HttpPost("assign-orders"), RequirePermission(PermissionCatalog.FleetManage)]
     public Task<AssignOrderZonesResultDto> AssignOrders([FromQuery] bool all, CancellationToken ct) => zones.AssignOrdersAsync(all, ct);
 
+    /// <summary>
+    /// 2026-10-21: por qué los envíos activos siguen sin zona: grupos por código postal y pueblo con su motivo (NO_DATA, NO_MATCH, AMBIGUOUS, o RESOLVABLE = ya hay zona que lo cubre: falta «Asignar zona a los envíos»).
+    /// </summary>
+    [HttpGet("unresolved-orders"), RequirePermission(PermissionCatalog.FleetView)]
+    public Task<UnresolvedZonesDto> UnresolvedOrders([FromQuery] int top, CancellationToken ct) => zones.UnresolvedOrdersAsync(top <= 0 ? 100 : top, ct);
+
     /// <summary>Miembros de la zona (activa o no).</summary>
     [HttpGet("{id:int}/members"), RequirePermission(PermissionCatalog.FleetView)]
     public Task<DispatchZoneMembersDto> ListMembers(int id, CancellationToken ct) => zones.ListMembersAsync(id, ct);

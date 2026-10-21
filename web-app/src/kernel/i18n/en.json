@@ -1707,6 +1707,35 @@
       "assignOrders": "Assign zone to shipments",
       "assignResult": "Shipments checked: {examined}; with zone: {assigned}; without zone: {unresolved}."
     },
+    "unresolved": {
+      "title": "Shipments without a zone",
+      "help": "{orders} active shipments have no zone, across {groups} postal code and town combinations. A zone is assigned by the delivery address postal code or town: if no zone covers it, add it to one.",
+      "col": {
+        "zip": "Postal code",
+        "city": "Town",
+        "orders": "Shipments",
+        "reason": "Reason"
+      },
+      "reason": {
+        "NO_MATCH": "No zone covers it",
+        "AMBIGUOUS": "Several zones cover it",
+        "NO_DATA": "The address has no postal code or town",
+        "RESOLVABLE": "A zone covers it: assign it"
+      },
+      "candidates": "Tied zones: {zones}. Remove the repeated criterion from one of them.",
+      "add": "Add to a zone",
+      "addTitle": "Add {place} to a zone",
+      "addHelp": "Shipments with this address ({orders}) and the ones that arrive later will take the zone you choose.",
+      "zone": "Zone",
+      "pickZone": "Choose the zone…",
+      "zoneRequired": "Choose the zone.",
+      "by": "Add by",
+      "byZip": "Postal code {value}",
+      "byTown": "Town {value}",
+      "addAndAssign": "Add and assign",
+      "added": "Added “{value}”. With a zone: {assigned}; still without: {unresolved}.",
+      "empty": "There are no shipments without a zone."
+    },
     "avail": {
       "title": "Dispatch availability",
       "help": "Tells, for a date, which drivers and vehicles can go out on a route and why not. This is view-only: fix what is missing in the driver’s or vehicle’s file.",

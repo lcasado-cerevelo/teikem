@@ -10176,3 +10176,9 @@ Recibir y Despacho usan «Seleccionar varios». Despacho une avisos y órdenes e
 
 **Me asigné un documento sin querer, ¿cómo se ve por qué?** (Lote 198)
 En la bitácora del documento (Auditoría) el cambio de «AssignedToUserId» trae `$reason` («Autoasignado al … desde la app móvil/la web») y el usuario. Un supervisor lo reasigna con Asignar.
+
+**Tengo muchos envíos «Sin zona» en la Sala de despacho. ¿Cómo los arreglo?**
+En Flota → Zonas de despacho, arriba, el panel «Envíos sin zona» agrupa esos envíos por código postal y pueblo y dice por qué cada grupo no tiene zona. Lo más común es «Ninguna zona lo cubre»: con «Agregar a una zona» eliges la zona y el código postal o el pueblo, y el sistema asigna la zona a esos envíos. Si dice «Ya hay zona: falta asignarla», pulsa «Asignar zona a los envíos». Si dice que la dirección no trae código postal ni pueblo, hay que completar la dirección del consignatario.
+
+**¿Por qué un envío sale «Sin zona»?**
+La zona se decide por el código postal o el pueblo de su dirección de entrega contra los criterios de las zonas activas. Sin coincidencia, o con empate entre dos zonas, queda sin zona.

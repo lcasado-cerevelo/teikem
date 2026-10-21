@@ -46178,6 +46178,45 @@
           }
         }
       }
+    },
+    "/api/v1/dispatch-zones/unresolved-orders": {
+      "get": {
+        "tags": [
+          "DispatchZones"
+        ],
+        "parameters": [
+          {
+            "name": "top",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnresolvedZonesDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnresolvedZonesDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnresolvedZonesDto"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -80789,6 +80828,56 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/EntityImportRowDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UnresolvedZoneRowDto": {
+        "type": "object",
+        "properties": {
+          "postalCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "orders": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UnresolvedZonesDto": {
+        "type": "object",
+        "properties": {
+          "totalOrders": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "groups": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnresolvedZoneRowDto"
             },
             "nullable": true
           }
