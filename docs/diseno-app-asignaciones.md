@@ -69,11 +69,14 @@ Hoy lo tienen todos los operadores (plantilla) y decide si el aparato ofrece en 
 
 ## 6. Preguntas
 - **P1.** ¿`pick.any` queda sin uso (el aparato deja de consultarlo) como se propone? Los operadores verían menos en Despacho que hoy.
-- **P2.** ¿Reasignar un documento que otra persona ya empezó (recibo o recolección abiertos en su aparato) se permite? Propuesta: sí, la asignación ordena y no bloquea, y no se interrumpe lo que ya está en curso.
-- **P3.** ¿La lista «Asignado a otras personas» muestra todo el almacén o solo lo del almacén activo? Propuesta: solo el almacén activo.
-- **P4.** ¿Notificar a la persona cuando le reasignan algo? Propuesta: no en este lote.
 - **D6.** En Recibir directo, ¿la **cantidad total recibida** del producto se escribe antes de escoger las posiciones (para saber cuánto sobra en la última)? Con acomodo, esa cantidad total va a la posición de staging.
 
 ## 7. Decisiones ya tomadas por Luis
 - Despacho: «Buscar en lista» abre las posiciones con existencia del producto y lote, como hoy.
 - Despacho con varios documentos: el producto sirve para cualquiera; las líneas se toman en el orden en que se marcaron.
+
+## 8. Decisiones de Luis sobre permisos (2026-10-21)
+- Reasignar algo que otra persona ya empezó: **se permite** (no se interrumpe lo que está en curso).
+- «Asignado a otras personas» muestra **solo el almacén activo**.
+- **No** se notifica a la persona al reasignar.
+- `warehouse.pick.any`: Luis quiere que el aparato **siga consultándolo**; falta definir qué controla exactamente (ver P1).
