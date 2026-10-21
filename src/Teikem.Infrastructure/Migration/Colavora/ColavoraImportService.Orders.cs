@@ -211,7 +211,7 @@ public sealed partial class ColavoraImportService
         var codAmount = sh.CodAmount is > 0 ? sh.CodAmount : null;
 
         // estatus final (D3) y cuerpo de la orden
-        var finalCode = ColavoraRules.MapStatus(sh.Status, createdUtc, s.MigrationUtc, s.Config.Options.PendingCloseDays);
+        var finalCode = ColavoraRules.MapStatus(sh.Status, createdUtc, s.MigrationUtc, s.Config.Options.PendingCloseDays, s.Config.Options.OpenOrderDays);
         var order = new TransportOrder
         {
             TenantId = tenantId, ClientId = client.ClientId, ContractId = client.ContractId,
@@ -453,8 +453,10 @@ public sealed partial class ColavoraImportService
         // estatus final decidido (D3: Pending viejas → Entregada; estatus basura → el último evento manda)
         if (finalCode is not null && s.OrderStatus.TryGetValue(finalCode, out var finalId) && current != finalId)
         {
-            var closing = string.Equals(b.Src.Status?.Trim(), "Pending", StringComparison.OrdinalIgnoreCase) && finalCode == OrderStatuses.Delivered
-                ? $"Cerrada por la migración: Pending en Colavora con más de {s.Config.Options.PendingCloseDays} días sin movimiento."
+            var sourceCode = ColavoraRules.MapStatus(b.Src.Status, DateTime.UnixEpoch, DateTime.UnixEpoch);
+            var closedByAge = finalCode == OrderStatuses.Delivered && sourceCode is not null && sourceCode != OrderStatuses.Delivered;
+            var closing = closedByAge
+                ? $"Cerrada por la migración: {b.Src.Status} en Colavora con más de {s.Config.Options.OpenOrderDays ?? s.Config.Options.PendingCloseDays} días sin cerrarse."
                 : $"Estatus de Colavora al migrar: {b.Src.Status}.";
             b.History.Add((s.MigrationUtc, current, finalId, closing, null, false));
             current = finalId;

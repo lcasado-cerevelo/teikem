@@ -36,7 +36,17 @@ public static class ColavoraRules
     /// Estatus de Teikem para el estatus actual de una orden de Colavora. Los estatus «basura» (un bug de jun–jul 2026 escribió
     /// el tipo de evento en Status) devuelven null: el llamador recalcula desde el último evento de estatus.
     /// </summary>
-    public static string? MapStatus(string? colavoraStatus, DateTime createdUtc, DateTime migrationUtc, int pendingCloseDays = DefaultPendingCloseDays)
+    public static string? MapStatus(string? colavoraStatus, DateTime createdUtc, DateTime migrationUtc, int pendingCloseDays = DefaultPendingCloseDays, int? openDays = null)
+    {
+        var code = MapStatusCore(colavoraStatus, createdUtc, migrationUtc, openDays ?? pendingCloseDays);
+        // opción de Luis (2026-10-20): con openDays, TODA orden abierta (sometida, recogida, sin asignar, asignada, en tránsito) con más días que esos se migra como Entregada
+        if (openDays is int n && code is OrderStatuses.Submitted or OrderStatuses.Pickup or OrderStatuses.Unassigned or OrderStatuses.Assigned or OrderStatuses.InTransit
+            && (migrationUtc - createdUtc).TotalDays > n)
+            return OrderStatuses.Delivered;
+        return code;
+    }
+
+    private static string? MapStatusCore(string? colavoraStatus, DateTime createdUtc, DateTime migrationUtc, int pendingCloseDays)
     {
         var s = (colavoraStatus ?? string.Empty).Trim();
         switch (s.ToUpperInvariant())

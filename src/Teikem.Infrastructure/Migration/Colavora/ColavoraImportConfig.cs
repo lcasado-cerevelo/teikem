@@ -119,6 +119,8 @@ public sealed class ColavoraOptionsConfig
 {
     /// <summary>D3: las Pending con más días que estos se migran como Entregada.</summary>
     public int PendingCloseDays { get; set; } = ColavoraRules.DefaultPendingCloseDays;
+    /// <summary>Opción de Luis: días que se dejan abiertas las órdenes; las abiertas (de cualquier estatus) con más días se migran como Entregada. Sin valor, solo se cierran las Pending (PendingCloseDays).</summary>
+    public int? OpenOrderDays { get; set; }
     /// <summary>Fecha de la migración (para el corte de Pending); sin ella, ahora.</summary>
     public DateTime? MigrationDateUtc { get; set; }
     public List<string> ExcludeSenders { get; set; } = new();

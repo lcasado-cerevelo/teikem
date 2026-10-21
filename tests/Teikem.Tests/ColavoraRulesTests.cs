@@ -265,4 +265,18 @@ public sealed class ColavoraRulesTests
     [InlineData(null, "0")]
     public void Driver_codes_are_recognized_with_or_without_leading_zeros(string? code, string expected)
         => Assert.Equal(expected, ColavoraRules.DriverCodeAlias(code));
+
+    [Theory]
+    [InlineData("Assigned", 40, "DELIVERED")]
+    [InlineData("Assigned", 20, "ASSIGNED")]
+    [InlineData("Unassign", 31, "DELIVERED")]
+    [InlineData("Out for delivery", 31, "DELIVERED")]
+    [InlineData("Pending", 31, "DELIVERED")]
+    [InlineData("Canceled", 90, "CANCELLED")]
+    public void Open_orders_older_than_the_chosen_days_are_closed(string status, int ageDays, string expected)
+        => Assert.Equal(expected.ToUpperInvariant(), ColavoraRules.MapStatus(status, Migration.AddDays(-ageDays), Migration, 5, 30)?.ToUpperInvariant());
+
+    [Fact]
+    public void Without_the_option_assigned_orders_stay_open()
+        => Assert.Equal(OrderStatuses.Assigned, ColavoraRules.MapStatus("Assigned", Migration.AddDays(-90), Migration));
 }

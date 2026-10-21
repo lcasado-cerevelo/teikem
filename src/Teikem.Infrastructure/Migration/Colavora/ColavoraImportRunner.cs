@@ -7,7 +7,7 @@ using Teikem.Infrastructure.Persistence.Scripts;
 namespace Teikem.Infrastructure.Migration.Colavora;
 
 /// <summary>Argumentos ya interpretados del verbo import-colavora (Error != null = sintaxis incorrecta).</summary>
-public sealed record ColavoraImportArgs(string? ConfigPath, bool DryRun, IReadOnlyList<string> Phases, int? From, int? To, string? Error, DateTime? SinceDate = null);
+public sealed record ColavoraImportArgs(string? ConfigPath, bool DryRun, IReadOnlyList<string> Phases, int? From, int? To, string? Error, DateTime? SinceDate = null, int? OpenDays = null);
 
 /// <summary>
 /// Verbo CLI <c>dotnet run --project src/Teikem.Api -- import-colavora &lt;config.json&gt; [--dry-run] [--solo fase,fase] [--desde N] [--hasta N]</c>.
@@ -25,6 +25,8 @@ public sealed class ColavoraImportRunner(IServiceScopeFactory scopes, ILogger<Co
     /// <summary>Para pruebas: solo las órdenes creadas en los últimos N meses (--meses) o desde una fecha (--desde-fecha aaaa-mm-dd).</summary>
     public const string MonthsFlag = "--meses";
     public const string SinceFlag = "--desde-fecha";
+    /// <summary>Días que se dejan abiertas las órdenes: las abiertas con más días se migran como Entregada (--dias-abiertas N).</summary>
+    public const string OpenDaysFlag = "--dias-abiertas";
     public const string Usage = "Uso: dotnet run --project src/Teikem.Api -- import-colavora <config.json> [--dry-run] [--solo catalogos,usuarios,zonas,clientes,consignatarios,contratos,ordenes] [--desde <ShipmentID>] [--hasta <ShipmentID>] [--meses <N> | --desde-fecha <aaaa-mm-dd>]";
     public const string AdminPasswordVariable = "TEIKEM_IMPORT_ADMIN_PASSWORD";
 
@@ -44,6 +46,7 @@ public sealed class ColavoraImportRunner(IServiceScopeFactory scopes, ILogger<Co
         var phases = new List<string>();
         int? from = null, to = null;
         DateTime? since = null;
+        int? openDays = null;
         for (var i = start + 1; i < args.Count; i++)
         {
             var a = args[i];
@@ -52,6 +55,12 @@ public sealed class ColavoraImportRunner(IServiceScopeFactory scopes, ILogger<Co
             {
                 if (++i >= args.Count || !int.TryParse(args[i], NumberStyles.None, CultureInfo.InvariantCulture, out var months) || months <= 0) return Bad();
                 since = DateTime.Today.AddMonths(-months);
+                continue;
+            }
+            if (string.Equals(a, OpenDaysFlag, StringComparison.OrdinalIgnoreCase))
+            {
+                if (++i >= args.Count || !int.TryParse(args[i], NumberStyles.None, CultureInfo.InvariantCulture, out var days) || days <= 0) return Bad();
+                openDays = days;
                 continue;
             }
             if (string.Equals(a, SinceFlag, StringComparison.OrdinalIgnoreCase))
@@ -79,7 +88,7 @@ public sealed class ColavoraImportRunner(IServiceScopeFactory scopes, ILogger<Co
             if (a.StartsWith('-') || path is not null) return Bad();
             path = a;
         }
-        return string.IsNullOrWhiteSpace(path) ? Bad() : new(path, dryRun, phases, from, to, null, since);
+        return string.IsNullOrWhiteSpace(path) ? Bad() : new(path, dryRun, phases, from, to, null, since, openDays);
 
         static ColavoraImportArgs Bad() => new(null, false, Array.Empty<string>(), null, null, Usage);
     }
@@ -116,6 +125,7 @@ public sealed class ColavoraImportRunner(IServiceScopeFactory scopes, ILogger<Co
             if (parsed.From is int f) cfg.Options.FromShipmentId = f;
             if (parsed.To is int t) cfg.Options.ToShipmentId = t;
             if (parsed.SinceDate is DateTime sd) cfg.Options.SinceDate = sd;
+            if (parsed.OpenDays is int od) cfg.Options.OpenOrderDays = od;
         }
         catch (ValidationException ex)
         {

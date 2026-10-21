@@ -10,6 +10,7 @@
 #   .\scripts\migrar-colavora.ps1 -Compania advance -Solo ordenes -Desde 1200000 -Hasta 1276964
 #   .\scripts\migrar-colavora.ps1 -Compania advance -Meses 3            # pruebas: solo las órdenes de los últimos 3 meses
 #   .\scripts\migrar-colavora.ps1 -Compania delapaz -DesdeFecha 2026-01-01
+#   .scriptsmigrar-colavora.ps1 -Compania advance -DiasAbiertas 30    # lo abierto de más de 30 días se migra como Entregada
 # Detalle: docs/migracion/colavora/README.md
 [CmdletBinding()]
 param(
@@ -21,6 +22,8 @@ param(
     # Para pruebas: solo las órdenes creadas en los últimos N meses, o desde una fecha (aaaa-mm-dd). Los maestros van completos.
     [int] $Meses,
     [string] $DesdeFecha,
+    # Días que se dejan abiertas las órdenes: las abiertas (de cualquier estatus) con más días se migran como Entregada. Sin esto, solo las Pending de más de 5 días.
+    [int] $DiasAbiertas,
     [ValidateSet('Debug', 'Release')] [string] $Configuracion = 'Release'
 )
 $ErrorActionPreference = 'Stop'
@@ -47,6 +50,7 @@ if ($PSBoundParameters.ContainsKey('Desde')) { $args += @('--desde', $Desde) }
 if ($PSBoundParameters.ContainsKey('Hasta')) { $args += @('--hasta', $Hasta) }
 if ($PSBoundParameters.ContainsKey('Meses')) { $args += @('--meses', $Meses) }
 if ($DesdeFecha) { $args += @('--desde-fecha', $DesdeFecha) }
+if ($PSBoundParameters.ContainsKey('DiasAbiertas')) { $args += @('--dias-abiertas', $DiasAbiertas) }
 
 Write-Host "dotnet $($args -join ' ')" -ForegroundColor Cyan
 $sw = [Diagnostics.Stopwatch]::StartNew()

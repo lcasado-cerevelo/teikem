@@ -150,7 +150,7 @@ public sealed partial class ColavoraImportService(
             Config = cfg, Report = report, Reader = new ColavoraReader(courierCs, loginCs), CompanyId = cfg.Company.ColavoraCompanyId!,
             DryRun = dryRun, MigrationUtc = cfg.Options.MigrationDateUtc ?? DateTime.UtcNow, Phases = phases,
         };
-        report.AddInfo("Fecha de la migración (corte de Pending)", $"{s.MigrationUtc:yyyy-MM-dd HH:mm} UTC, Pending de más de {cfg.Options.PendingCloseDays} días → Entregada");
+        report.AddInfo("Fecha de la migración (corte de órdenes abiertas)", cfg.Options.OpenOrderDays is int od ? $"{s.MigrationUtc:yyyy-MM-dd HH:mm} UTC, órdenes abiertas (cualquier estatus) de más de {od} días → Entregada" : $"{s.MigrationUtc:yyyy-MM-dd HH:mm} UTC, Pending de más de {cfg.Options.PendingCloseDays} días → Entregada");
         foreach (var t in cfg.Options.DescriptionPackageTypes) s.DescriptionPackageTypes.Add(t);
         report.AddInfo("Tipos de paquete que son descripción (no pieza)", s.DescriptionPackageTypes.Count == 0 ? "ninguno" : string.Join(", ", s.DescriptionPackageTypes.OrderBy(x => x)));
 
