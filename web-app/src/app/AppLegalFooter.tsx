@@ -25,6 +25,7 @@ export function AppLegalFooter({ year = new Date().getFullYear() }: { year?: num
         </Link>
       </div>
       <div className="rlegal-copy">{t('shell.legal.rights', { year: String(year), owner: OWNER_NAME })}</div>
+      <div className="rlegal-copy">{t('shell.legal.reserved')}</div>
       <div className="rlegal-powered">{t('shell.legal.powered', { product: PRODUCT_NAME })}</div>
     </footer>
   )

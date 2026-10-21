@@ -49,8 +49,8 @@ h1,h2,h3{letter-spacing:-.01em}
 .collapse:hover{background:var(--navbar-hover);color:var(--on-navbar)}
 /* Pie legal discreto del menú: chico, apagado y sin llamar la atención (se oculta con el menú contraído) */
 .rlegal{padding:7px 14px 11px;font-size:10px;line-height:1.5;color:var(--on-navbar-muted);opacity:.62;text-align:left}
-.rlegal a{color:inherit;text-decoration:none}
-.rlegal a:hover,.rlegal a:focus-visible{text-decoration:underline;opacity:1}
+.rlegal a{color:inherit;text-decoration:underline;text-underline-offset:2px}   /* subrayados siempre: se ve que son enlaces */
+.rlegal a:hover,.rlegal a:focus-visible{opacity:1;text-decoration-thickness:2px}
 .rlegal-links{display:flex;gap:6px;flex-wrap:wrap}
 .app.col .rlegal{display:none}
 .collapse svg{transition:.16s}

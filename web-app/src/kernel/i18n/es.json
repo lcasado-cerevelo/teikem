@@ -137,7 +137,8 @@
       "label": "Información legal",
       "privacy": "Privacidad",
       "terms": "Términos de uso",
-      "rights": "© {year} {owner}. Todos los derechos reservados.",
+      "rights": "© {year} {owner}.",
+      "reserved": "Todos los derechos reservados.",
       "powered": "Powered by {product}"
     },
 
