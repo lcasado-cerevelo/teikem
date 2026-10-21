@@ -1,54 +1,41 @@
-# Diseño — Recibir, Acomodar y Despachar en la app según lo asignado (propuesta, 2026-10-21)
+# Diseño — Recibir, Acomodar y Despachar en la app (propuesta, 2026-10-21)
 
-Estado: **propuesta para aprobación de Luis. No se ha construido nada de lo que dice «Qué cambia».**
+Estado: **propuesta para aprobación de Luis. Nada de esto está construido todavía.** Cada pantalla se diseña por separado; no se asume que una sea como otra.
 
-## 1. Idea central
-En todo el aparato la pantalla de un trabajo se lee igual: **arriba el número (escanear o escribir) → lo asignado a mí → «Ver lo que nadie tiene asignado» → (con permiso) «Ver lo asignado a otras personas»**. Tomar algo sin dueño lo asigna a quien lo toma, y la bitácora dice por qué.
+## 1. Recibir
+1. Al tocar **Recibir**, arriba: el campo del **número del aviso/orden** (escanear o escribir), el botón del teclado y **Aceptar**. Los botones «Con acomodo / Directo a posición» **no** aparecen aquí.
+2. Debajo, la lista de **avisos de llegada y órdenes de compra asignados a mí**.
+3. Debajo, **«Ver lo que nadie tiene asignado (N)»**: al tocarlo se despliega lo que no tiene dueño. Ahí se escoge **uno o varios** («Seleccionar varios»).
+4. Al escanear o escoger uno o varios, la **misma pantalla** pasa al paso de modo: aparecen **Con acomodo / Directo a posición**. Al escoger uno, esos botones desaparecen y salen ahí mismo las opciones de acomodo, o la pantalla propia de directo a posición.
+5. Varios documentos del mismo dueño y almacén: carga automática y recepción maestra; de dueños distintos: recibos separados. «Recibo ciego» al final si la compañía lo permite.
+6. Empezar a recibir algo sin dueño lo asigna a quien recibe (la bitácora dice por qué).
 
-## 2. Recibir
-1. Al tocar **Recibir** solo aparece arriba el **número del aviso/orden**: campo para escanear o escribir, botón del teclado y **Aceptar**. Los botones «Con acomodo / Directo a posición» **no** aparecen aquí.
-2. Debajo, la lista de **avisos de llegada y órdenes de compra asignados a mí** (con las pestañas Avisos / Órdenes).
-3. Debajo, **«Ver lo que nadie tiene asignado (N)»**: despliega lo que no tiene dueño. En esa lista se escoge **uno o varios** («Seleccionar varios»).
-4. Con permiso «ver todo» aparece además **«Ver lo asignado a otras personas (N)»**, con el nombre de a quién está asignado.
-5. Al escanear/escoger uno o varios, la **misma pantalla** pasa al paso de modo: aparecen **Con acomodo / Directo a posición**; al escoger uno, esos botones desaparecen y salen ahí mismo las opciones de acomodo, o la pantalla de directo a posición. Sin pantalla intermedia.
-6. «Recibo ciego» queda al final, si la compañía lo permite.
-7. Varios documentos del mismo dueño y almacén → carga automática y recepción maestra; de dueños distintos → recibos separados (como hoy).
-8. Empezar a recibir algo sin dueño lo asigna a quien recibe (`$reason` en la bitácora).
-9. Si el almacén tiene un modo fijo (Con acomodo o Directo), **se salta la pregunta** y va directo (propuesta; ver decisión D1).
+## 2. Acomodar
+1. Empieza como hoy: la lista de **acomodos asignados a mí**.
+2. Debajo, **«Ver lo que nadie tiene asignado (N)»** (como en Recibir y en Mis tareas). Al tocarlo salen **todos los acomodos sin asignar** y se escoge el que sea.
+3. Al escoger uno, **queda asignado a mí** y se abre como cualquier acomodo (la bitácora dice por qué).
 
-## 3. Acomodar
-Tras recibir en acomodo salen **todos los acomodos**: primero **los asignados a mí**, luego **«Ver lo que nadie tiene asignado»**, y con permiso «ver todo» **«Ver lo asignado a otras personas»**. Iniciar uno sin dueño lo asigna (ya ocurre en el servidor; se agrega el porqué, ya hecho).
+## 3. Despacho
+**Pantalla 1 — escoger documento**
+1. Arriba: el campo del **número del aviso de salida o de la orden de venta** (escanear o escribir), teclado y **Aceptar**.
+2. Debajo, los **avisos de salida y órdenes de venta asignados a mí**.
+3. Debajo, **«Ver lo que nadie tiene asignado (N)»**, que despliega lo que no tiene dueño.
+4. En esa lista hay **«Seleccionar varios»**; al marcar varios aparece **Continuar** y se pasa a la pantalla 2. Con un solo documento también se continúa.
 
-## 4. Despacho
-Igual: asignados a mí → «Ver lo que nadie tiene asignado» → (permiso) «Ver lo asignado a otras personas». Avisos de salida y órdenes de venta en una sola lista; «Seleccionar varios» arma la recolección maestra.
+**Pantalla 2 — sacar producto por producto** (un solo campo activo a la vez)
+1. **Producto:** campo para escanear o escribir, botón del teclado y **Aceptar**. Escondido, aún sin mostrar, el paso de posición.
+2. Al aceptar el producto, el campo del producto se **deshabilita** y se abre **Posición de donde lo saco**: muestra la **sugerida** (o la **obligatoria** si el lote la exige), con **«Buscar en lista»**, campo con teclado y **Aceptar**.
+3. Al aceptar la posición se abre la **Cantidad**, con **Aceptar** y **Volver** (para atrás).
+4. Al aceptar la cantidad se oculta todo lo demás y queda **solo el campo del producto**, listo para el siguiente.
+5. Con varios documentos, las líneas de todos se atienden en una sola ruta y se manda **una recolección maestra** (mismo cliente, como hoy). Empezar un documento sin dueño lo asigna a quien despacha.
 
-## 5. Mis tareas
-Orden Recibir → Acomodar → Despachar. Lo mío arriba; «Ver lo que nadie tiene asignado»; con permiso «ver todo», también lo de otras personas.
+## 4. Mis tareas
+No se toca en este diseño (se queda como está: Recibir, Acomodar, Despachar y «ver lo que nadie tiene asignado»).
 
-## 6. Permisos nuevos
-| Código | Nombre | Qué hace |
-|---|---|---|
-| `warehouse.app.viewall` | Ver todo en el aparato | Muestra, además de lo mío y lo sin asignar, **lo asignado a otras personas** en Recibir, Acomodar, Despacho y Mis tareas. |
-| `warehouse.app.reassign` | Reasignar desde el aparato | Botón **Reasignar** en cada documento/tarea de esas listas: elegir a una persona (o dejarlo sin asignar). **Exige `warehouse.app.viewall`**: sin él, el botón no se ofrece (la app lo comprueba y el servidor también). |
+## 5. Pendiente de definir (permisos)
+Luis pidió dos permisos: **«ver todo»** (lo asignado a otras personas además de lo mío y lo sin asignar, para el supervisor del almacén) y **«reasignar desde el aparato»** (exige el de ver todo). Falta definir **dónde** se ve cada uno en estas pantallas y qué pasa con `warehouse.pick.any`; se diseña aparte, después de aprobar lo anterior.
 
-- Se siembran en `PermissionCatalog` (categoría Almacén) y en el seed espejado vía una sección nueva de `Diseño/logistica-db-update.sql` (el SQL de estructura y seed está congelado), **propagados a los roles ya clonados** (regla del proyecto: solo agregar).
-- Se dan al rol **Supervisor de almacén** (plantilla y roles ya clonados). El operador no los recibe.
-- **Servidor:** los endpoints `assign` (aviso de llegada, aviso de salida, orden de compra, orden de venta, tarea) hoy exigen `warehouse.manage`; pasan a `warehouse.manage|warehouse.app.reassign`, y si se entra por `reassign` el servicio comprueba además que tenga `warehouse.app.viewall`. La persona asignada sigue debiendo ser miembro activo de la compañía.
-- **Lista de personas asignables:** endpoint ligero `GET /api/v1/warehouse/assignees` (miembros activos, nombre) con `warehouse.app.reassign` — no se reutiliza el de administración de usuarios para no abrir ese permiso.
-- **Bitácora:** al reasignar queda `$reason` «Reasignado por {nombre} desde la app móvil».
-
-## 7. Relación con `warehouse.pick.any`
-Hoy `warehouse.pick.any` ya existe (Lote 193) y está en la plantilla del operador. Propuesta: **`warehouse.app.viewall` lo reemplaza** como único interruptor; a los roles que tengan `pick.any` se les da `viewall` solo si son supervisor (no a todos los operadores), y `pick.any` se deja en el catálogo sin consultarse (no se quita nada). Ver decisión D2.
-
-## 8. Qué cambia en el código (cuando se apruebe)
-- App: `ReceiveDocumentList` y `receive.tsx` (campo arriba, lista mía, desplegables, paso de modo en la misma pantalla), `putaway.tsx`, `exit-dispatch.tsx`, `my-tasks.tsx` (tercera lista y botón Reasignar con selector de persona), `dispatchScope.ts` (nuevo alcance), `useMyPermissions`.
-- Servidor: dos permisos, política OR en los 5 `assign`, endpoint de personas asignables, `AuditNote` al reasignar, pruebas.
-- Web: los dos permisos aparecen en Roles automáticamente (por el catálogo).
-- Documentación: manual 09 y FAQ, `docs/lote199-decisiones.md`.
-
-## 9. Decisiones que necesito de Luis
-- **D1.** Con modo fijo en el almacén, ¿se salta la pregunta de modo? (recomendado: sí).
-- **D2.** ¿`viewall` reemplaza a `pick.any` y deja de dársele a todos los operadores? Hoy un operador ya ve en Despacho todo lo del almacén; con esto solo vería lo asignado a él y lo sin asignar (recomendado: sí).
-- **D3.** Lo **sin asignar**, ¿lo ve cualquier operador (como dijiste hoy) o solo con permiso? (recomendado: lo ve cualquiera).
-- **D4.** ¿«Reasignar» también puede **quitar** la asignación (dejarlo sin asignar)? (recomendado: sí).
-- **D5.** ¿Reasignar notifica a la persona? (fuera de este lote salvo que digas que sí).
+## 6. Preguntas
+- **D1.** Si el almacén tiene un modo fijo (Con acomodo o Directo), ¿se salta la pregunta de modo en Recibir?
+- **D2.** En Despacho, ¿«Buscar en lista» abre una lista de las posiciones con existencia de ese producto (y lote), igual que hoy?
+- **D3.** En Despacho con varios documentos, ¿el campo de producto sirve para cualquiera de los documentos marcados (la app asigna la línea que toca por orden de selección)?
