@@ -224,6 +224,7 @@ function applyAsns(db: SQLiteDatabase, items: Array<{
   clientName?: string | null
   purchaseOrderPublicId?: string | null
   purchaseOrderNumber?: string | null
+  number?: string | null
   reference?: string | null
   expectedDate?: string | null
   statusCode?: string | null
@@ -239,12 +240,12 @@ function applyAsns(db: SQLiteDatabase, items: Array<{
     }
     db.runSync(
       `INSERT INTO asn (id, warehouse_public_id, client_public_id, client_name, purchase_order_public_id, purchase_order_number,
-                         reference, expected_date, status_code, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                         reference, expected_date, status_code, number, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
        ON CONFLICT(id) DO UPDATE SET warehouse_public_id = excluded.warehouse_public_id, client_public_id = excluded.client_public_id,
          client_name = excluded.client_name, purchase_order_public_id = excluded.purchase_order_public_id,
          purchase_order_number = excluded.purchase_order_number, reference = excluded.reference,
-         expected_date = excluded.expected_date, status_code = excluded.status_code, is_active = 1`,
+         expected_date = excluded.expected_date, status_code = excluded.status_code, number = excluded.number, is_active = 1`,
       [
         asn.id,
         asn.warehousePublicId ?? '',
@@ -255,6 +256,7 @@ function applyAsns(db: SQLiteDatabase, items: Array<{
         asn.reference ?? null,
         asn.expectedDate ?? null,
         asn.statusCode ?? null,
+        asn.number || null,
       ],
     )
     applyAsnLines(db, asn.id, asn.lines)

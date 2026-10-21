@@ -5631,3 +5631,39 @@ GO
 IF COL_LENGTH('dbo.CargoLine', 'Description') <> -1
     ALTER TABLE dbo.CargoLine ALTER COLUMN Description NVARCHAR(MAX) NOT NULL;
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-21 (Lote 170) — Numero del aviso de llegada (A5): LLE-##### por compania.
+   - dbo.Asn.Number NVARCHAR(40) NOT NULL, unico por compania (UX_Asn_Number). Los avisos que ya existian se numeran en orden de creacion (por compania).
+   - Contador ASN en dbo.NumberSequence (ClientId NULL): se amplia CK_NumberSequence_Kind y, para las companias con avisos, la fila del contador queda lista para seguir despues del ultimo numero.
+   Solo AGREGA y completa. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Asn', 'Number') IS NULL
+    ALTER TABLE dbo.Asn ADD Number NVARCHAR(40) NULL;
+GO
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NumberSequence_Kind' AND parent_object_id = OBJECT_ID('dbo.NumberSequence')
+           AND definition NOT LIKE '%''ASN''%')
+BEGIN
+    ALTER TABLE dbo.NumberSequence DROP CONSTRAINT CK_NumberSequence_Kind;
+    ALTER TABLE dbo.NumberSequence ADD CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP','RECEIPT','CYCLECOUNT','CROSSDOCK','PURCHASE','RENTAL','RENTALRETURN','MANUALISSUE','MULTIADJUST','SALESORDER','BILLINVOICE','CREDITNOTE','SALESRETURN','CODREMIT','DRIVERSETTLE','WAYBILL','EXITNOTICE','ASN'));
+END
+GO
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Asn') AND name = 'Number' AND is_nullable = 1)
+BEGIN
+    -- los avisos existentes, en orden de creacion dentro de cada compania
+    ;WITH n AS (SELECT AsnId, ROW_NUMBER() OVER (PARTITION BY TenantId ORDER BY AsnId) AS rn FROM dbo.Asn WHERE Number IS NULL)
+    UPDATE a SET a.Number = 'LLE-' + RIGHT('00000' + CAST(n.rn AS VARCHAR(10)), 5)
+    FROM dbo.Asn a JOIN n ON n.AsnId = a.AsnId;
+
+    -- el contador de cada compania sigue despues del ultimo numero
+    INSERT INTO dbo.NumberSequence (TenantId, Kind, ClientId, NextValue)
+    SELECT a.TenantId, 'ASN', NULL, COUNT(*) + 1
+    FROM dbo.Asn a
+    WHERE NOT EXISTS (SELECT 1 FROM dbo.NumberSequence s WHERE s.TenantId = a.TenantId AND s.Kind = 'ASN' AND s.ClientId IS NULL)
+    GROUP BY a.TenantId;
+
+    ALTER TABLE dbo.Asn ALTER COLUMN Number NVARCHAR(40) NOT NULL;
+END
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_Asn_Number' AND object_id = OBJECT_ID('dbo.Asn'))
+    CREATE UNIQUE INDEX UX_Asn_Number ON dbo.Asn (TenantId, Number);
+GO

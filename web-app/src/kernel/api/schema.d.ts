@@ -32280,6 +32280,7 @@ export interface components {
             /** Format: uuid */
             receiptPublicId?: string | null;
             receiptNumber?: string | null;
+            number?: string;
         };
         AsnUpdateRequest: {
             /** Format: uuid */
@@ -38438,6 +38439,7 @@ export interface components {
             statusCode?: string | null;
             isActive?: boolean;
             lines?: components["schemas"]["SyncAsnLineDto"][] | null;
+            number?: string;
         };
         SyncAsnDtoSyncPage: {
             items?: components["schemas"]["SyncAsnDto"][] | null;

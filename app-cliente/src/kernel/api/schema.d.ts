@@ -39244,6 +39244,7 @@ export interface components {
             status?: string | null;
             canCancel?: boolean;
             lines?: components["schemas"]["PortalArrivalLineDto"][] | null;
+            number?: string;
         };
         PortalExitLineDto: {
             /** Format: int32 */

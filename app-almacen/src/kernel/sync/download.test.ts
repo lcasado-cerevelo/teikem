@@ -136,6 +136,7 @@ describe('downloadAsns', () => {
             id: 5,
             warehousePublicId: 'wh-1',
             reference: 'ASN-1',
+            number: 'LLE-00005',
             statusCode: 'EXPECTED',
             isActive: true,
             lines: [{ id: 1, productPublicId: 'p1', sku: 'A', expectedQty: 4 }],
@@ -146,8 +147,8 @@ describe('downloadAsns', () => {
       ),
     )
     await downloadAsns()
-    const rows = getDb().getAllSync<{ reference: string }>('SELECT reference FROM asn')
-    expect(rows).toEqual([{ reference: 'ASN-1' }])
+    const rows = getDb().getAllSync<{ reference: string; number: string }>('SELECT reference, number FROM asn')
+    expect(rows).toEqual([{ reference: 'ASN-1', number: 'LLE-00005' }])   // Lote 170: el número LLE-##### se guarda
     expect(getDb().getAllSync('SELECT * FROM asn_line WHERE asn_id = 5')).toHaveLength(1)
   })
 })

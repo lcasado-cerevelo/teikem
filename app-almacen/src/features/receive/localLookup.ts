@@ -25,11 +25,11 @@ export function findDocByCode(warehousePublicId: string, code: string): LocalDoc
     [warehousePublicId, code],
   )
   if (po) return { kind: 'po', purchaseOrderPublicId: po.public_id, asnId: null, label: po.number }
-  const asn = db.getFirstSync<{ id: number; reference: string | null; purchase_order_number: string | null }>(
-    'SELECT id, reference, purchase_order_number FROM asn WHERE is_active = 1 AND warehouse_public_id = ? AND reference = ?',
-    [warehousePublicId, code],
+  const asn = db.getFirstSync<{ id: number; number: string | null; reference: string | null; purchase_order_number: string | null }>(
+    'SELECT id, number, reference, purchase_order_number FROM asn WHERE is_active = 1 AND warehouse_public_id = ? AND (number = ? OR reference = ?) ORDER BY (number = ?) DESC',
+    [warehousePublicId, code, code, code],
   )
-  if (asn) return { kind: 'asn', purchaseOrderPublicId: null, asnId: asn.id, label: asn.reference ?? asn.purchase_order_number ?? code }
+  if (asn) return { kind: 'asn', purchaseOrderPublicId: null, asnId: asn.id, label: asn.number ?? asn.reference ?? asn.purchase_order_number ?? code }
   return null
 }
 
@@ -63,16 +63,16 @@ export function listPendingDocs(warehousePublicId: string, kind: 'asn' | 'po', s
       }))
   }
   return db
-    .getAllSync<{ id: number; reference: string | null; client_name: string | null; expected_date: string | null }>(
-      `SELECT id, reference, client_name, expected_date FROM asn
+    .getAllSync<{ id: number; number: string | null; reference: string | null; client_name: string | null; expected_date: string | null }>(
+      `SELECT id, number, reference, client_name, expected_date FROM asn
        WHERE is_active = 1 AND warehouse_public_id = ? AND purchase_order_public_id IS NULL
-         AND (reference LIKE ? ESCAPE '\\' OR client_name LIKE ? ESCAPE '\\' OR expected_date LIKE ? ESCAPE '\\' OR CAST(id AS TEXT) LIKE ? ESCAPE '\\')
+         AND (number LIKE ? ESCAPE '\\' OR reference LIKE ? ESCAPE '\\' OR client_name LIKE ? ESCAPE '\\' OR expected_date LIKE ? ESCAPE '\\' OR CAST(id AS TEXT) LIKE ? ESCAPE '\\')
        ORDER BY expected_date IS NULL, expected_date, id LIMIT ?`,
-      [warehousePublicId, term, term, term, term, limit],
+      [warehousePublicId, term, term, term, term, term, limit],
     )
     .map((a) => ({
-      doc: { kind: 'asn' as const, purchaseOrderPublicId: null, asnId: a.id, label: a.reference ?? `#${a.id}` },
-      title: a.reference ? `${a.reference} · #${a.id}` : `#${a.id}`,
+      doc: { kind: 'asn' as const, purchaseOrderPublicId: null, asnId: a.id, label: a.number ?? a.reference ?? `#${a.id}` },
+      title: [a.number ?? `#${a.id}`, a.reference].filter(Boolean).join(' · '),
       subtitle: [a.client_name, a.expected_date].filter(Boolean).join(' · ') || null,
     }))
 }

@@ -740,7 +740,7 @@ public sealed class ActivityRulesTests
 
         var asn = new Teikem.Domain.Wms.Asn
         {
-            TenantId = tenantId, WarehouseId = w1.WarehouseId, ClientId = client.ClientId, Reference = null,
+            TenantId = tenantId, WarehouseId = w1.WarehouseId, ClientId = client.ClientId, Number = "LLE-00001", Reference = null,
             StatusCodeId = f.StatusId(StatusDomains.AsnStatus, AsnStatuses.Cancelled), CreatedAtUtc = DateTime.UtcNow,
         };
         var cc = new Teikem.Domain.Wms.CycleCount
@@ -781,7 +781,7 @@ public sealed class ActivityRulesTests
         var page = await f.Get<ActivityFeedService>().GetAsync(new ActivityQuery(BusinessModules.Warehouse), default);
 
         var asnCancelled = Assert.Single(page.Items, i => i.Code == ActivityEvents.AsnCancelled);
-        Assert.Equal((EntityTypes.Asn, asn.AsnId, (Guid?)null, $"ASN #{asn.AsnId}", false),
+        Assert.Equal((EntityTypes.Asn, asn.AsnId, (Guid?)null, "LLE-00001", false),
             (asnCancelled.EntityType, asnCancelled.EntityId, asnCancelled.PublicId, asnCancelled.Reference, asnCancelled.Mandatory));
         Assert.Contains("W1", asnCancelled.Detail);
         Assert.Contains("2 líneas", asnCancelled.Detail);

@@ -24,7 +24,7 @@ public sealed record PortalArrivalLineDto(string Sku, string ProductName, decima
 
 /// <summary>Un aviso de llegada del cliente. CanCancel = todavía esperado y sin recibo abierto.</summary>
 public sealed record PortalArrivalDto(int Id, Guid WarehousePublicId, string WarehouseCode, string? Reference, DateOnly? ExpectedDate, string StatusCode, string Status, bool CanCancel,
-    IReadOnlyList<PortalArrivalLineDto> Lines);
+    IReadOnlyList<PortalArrivalLineDto> Lines, string Number = "");
 
 public sealed record PortalExitLineDto(int LineId, string Sku, string ProductName, string? LotNumber, decimal QtyOrdered, decimal QtyReserved, decimal QtyBackordered, decimal QtyShipped);
 

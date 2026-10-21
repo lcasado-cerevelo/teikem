@@ -10,6 +10,7 @@ using Teikem.Infrastructure.Clients;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
 using Teikem.Infrastructure.Notifications;
+using Teikem.Infrastructure.Orders;
 using Teikem.Infrastructure.Persistence;
 using Teikem.Infrastructure.Wms;
 
@@ -25,7 +26,7 @@ namespace Teikem.Infrastructure.Services;
 /// Lecturas con InventoryScope (D44): con OwnerClientId solo los ASN de ese cliente; los demás dan 404, sin oráculo.
 /// El ASN tiene TenantId (filtro global); sus líneas (sin TenantId) se alcanzan SIEMPRE por el ASN filtrado.
 /// </summary>
-public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, PermissionService? permissions = null, INotificationPublisher? notifications = null)
+public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, INumberSequenceService numbers, PermissionService? permissions = null, INotificationPublisher? notifications = null)
 {
     public const string AsnWhat = "Aviso de llegada";
 
@@ -51,7 +52,7 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
         if (!string.IsNullOrWhiteSpace(q.Search))
         {
             var s = q.Search.Trim();
-            query = query.Where(a => (a.Reference != null && a.Reference.Contains(s))
+            query = query.Where(a => a.Number.Contains(s) || (a.Reference != null && a.Reference.Contains(s))
                                      || db.Set<Client>().Any(c => c.ClientId == a.ClientId && c.Name.Contains(s))
                                      || db.Set<PurchaseOrder>().Any(p => p.PurchaseOrderId == a.PurchaseOrderId && p.Number.Contains(s)));
         }
@@ -60,7 +61,7 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
         {
             // Sin distinguir mayúsculas (igual que en SQL Server con la intercalación por defecto, y también en memoria).
             var r = q.Reference.Trim().ToLowerInvariant();
-            query = query.Where(a => a.Reference != null && a.Reference.ToLower().Contains(r));
+            query = query.Where(a => (a.Reference != null && a.Reference.ToLower().Contains(r)) || a.Number.ToLower().Contains(r));
         }
         if (q.ExpectedFrom is DateOnly ef) query = query.Where(a => a.ExpectedDate != null && a.ExpectedDate >= ef);
         if (q.ExpectedTo is DateOnly et) query = query.Where(a => a.ExpectedDate != null && a.ExpectedDate <= et);
@@ -108,11 +109,12 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
         var newCosts = validated.NewCosts;
 
         var initial = await statuses.GetInitialAsync(StatusDomains.AsnStatus, ct);
+        await numbers.EnsureAsync(AsnCodes.NumberKind, null, ct);
         var id = await db.RunInTransactionAsync(async ct2 =>
         {
             var asn = new Asn
             {
-                TenantId = tenantId, WarehouseId = warehouse.WarehouseId, ClientId = client.ClientId, Reference = reference,
+                TenantId = tenantId, Number = NumberFormat.Resolve(AsnCodes.NumberPattern, await numbers.NextAsync(AsnCodes.NumberKind, null, ct2)), WarehouseId = warehouse.WarehouseId, ClientId = client.ClientId, Reference = reference,
                 ExpectedDate = req.ExpectedDate, StatusCodeId = initial.StatusCodeId, IsActive = true,
                 CreatedAtUtc = DateTime.UtcNow, CreatedBy = tenant.UserId,
             };
@@ -290,7 +292,7 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
         var warehouse = await db.Set<Warehouse>().AsNoTracking().Where(w => w.WarehouseId == asn.WarehouseId).Select(w => w.Name).FirstOrDefaultAsync(ct) ?? string.Empty;
         var values = new Dictionary<string, string?>
         {
-            ["number"] = $"#{asn.AsnId}", ["reference"] = asn.Reference ?? "—", ["client"] = client, ["warehouse"] = warehouse,
+            ["number"] = asn.Number, ["reference"] = asn.Reference ?? "—", ["client"] = client, ["warehouse"] = warehouse,
             ["expected"] = asn.ExpectedDate?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) ?? "—",
             ["lineCount"] = (lineCount ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture),
         };
@@ -312,9 +314,10 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
         if (pending.Count > ReceiptRules.MaxLines) throw new ValidationException("lines", ReceiptRules.TooManyLines);
 
         var initial = await statuses.GetInitialAsync(StatusDomains.AsnStatus, ct);
+        await numbers.EnsureAsync(AsnCodes.NumberKind, null, ct);
         var asn = new Asn
         {
-            TenantId = tenantId, WarehouseId = po.WarehouseId, PurchaseOrderId = po.PurchaseOrderId,
+            TenantId = tenantId, Number = NumberFormat.Resolve(AsnCodes.NumberPattern, await numbers.NextAsync(AsnCodes.NumberKind, null, ct)), WarehouseId = po.WarehouseId, PurchaseOrderId = po.PurchaseOrderId,
             Reference = po.Number.Length > ReceiptRules.ReferenceMaxLength ? po.Number[..ReceiptRules.ReferenceMaxLength] : po.Number,
             StatusCodeId = initial.StatusCodeId, IsActive = true, CreatedAtUtc = DateTime.UtcNow, CreatedBy = tenant.UserId,
         };
@@ -377,7 +380,7 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
                 .Select(l => new AsnLineDto(l.AsnLineId, l.PublicId, l.Sku, l.Name, l.ExpectedQty, l.LotNumber, l.PurchaseOrderLineId, l.UnitPrice, trackingCodes.GetValueOrDefault(l.TrackingTypeLookupId, TrackingTypes.None), l.ExpiryDate))
                 .ToList();
             return new AsnDto(a.AsnId, w?.PublicId ?? Guid.Empty, w?.Code ?? "", c?.PublicId, c?.Name, p?.PublicId, p?.Number,
-                a.Reference, a.ExpectedDate, s?.Code ?? "", s?.Label ?? "", a.IsActive, lineDtos, r?.PublicId, r?.Number);
+                a.Reference, a.ExpectedDate, s?.Code ?? "", s?.Label ?? "", a.IsActive, lineDtos, r?.PublicId, r?.Number, a.Number);
         }).ToList();
     }
 }

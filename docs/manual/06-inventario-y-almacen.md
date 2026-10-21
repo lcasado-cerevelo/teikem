@@ -952,6 +952,15 @@ confirmar). Al confirmar, se asienta el ledger (`RECEIPT` por lo esperado + `ADJ
 diferencia), la orden de compra avanza a `PARTIAL`/`RECEIVED`, el cruce de plataforma asignado se reparte y se crean
 las tareas `PUTAWAY` del remanente con una posición sugerida.
 
+### Número del aviso de llegada: LLE-##### (Lote 170, 2026-10-21)
+
+Todo aviso de llegada tiene un **número propio por compañía**, `LLE-00001`, `LLE-00002`… (contador `ASN`, igual que `SAL-#####` del aviso de salida). Lo asigna el sistema al crearlo —lo cree el personal, el portal del cliente o la recepción contra una orden de compra— y **no se teclea ni se cambia**. Es único por compañía.
+
+- **Dónde se ve:** pestaña Avisos de llegada (columna Aviso: `LLE-00012 · referencia`), el selector de aviso al abrir un recibo y la cita de muelle (web); «Mis avisos de llegada» del portal del cliente; el listado y el escáner de **Recibir** de la app de almacén (se puede escribir o escanear `LLE-00012`, además de la referencia); y los avisos de notificación (`{number}` ahora es `LLE-00012`, ya no `#12`).
+- **Cómo se busca:** el filtro **«Referencia o número»** de la pestaña y el buscador de la app encuentran por un pedazo del número o de la referencia.
+- **Avisos que ya existían:** al aplicar la actualización de la base (`db-update`) se numeran **en orden de creación, dentro de cada compañía** (`LLE-00001` al más viejo); el contador queda listo para seguir. La app de almacén vuelve a bajar los avisos una vez para traer el número.
+- **API:** `AsnDto.number`; en el portal `PortalArrivalDto.number`; en la sincronización del aparato `SyncAsnDto.number`.
+
 Lote 13 (Lote 3 del plan de cambios): el recibo tiene un ciclo de seis estatus que muestra en qué va (Esperado,
 Recibiendo, Discrepancia, Completado, Completado con diferencia y Acomodado; ver "Estatus y transiciones"). Un recibo
 ciego o de devolución se puede crear **solo con el encabezado** (sin líneas) y llenarse después; en esos recibos se puede

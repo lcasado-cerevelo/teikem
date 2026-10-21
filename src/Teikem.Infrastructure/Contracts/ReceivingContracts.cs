@@ -13,7 +13,7 @@ public sealed record AsnLineDto(int Id, Guid ProductPublicId, string Sku, string
 
 public sealed record AsnDto(int Id, Guid WarehousePublicId, string WarehouseCode, Guid? ClientPublicId, string? ClientName,
     Guid? PurchaseOrderPublicId, string? PurchaseOrderNumber, string? Reference, DateOnly? ExpectedDate, string StatusCode, string Status,
-    bool IsActive, IReadOnlyList<AsnLineDto> Lines, Guid? ReceiptPublicId, string? ReceiptNumber);
+    bool IsActive, IReadOnlyList<AsnLineDto> Lines, Guid? ReceiptPublicId, string? ReceiptNumber, string Number = "");
 
 /// <summary>Lote 157: edita un aviso de llegada de cliente esperado. null = sin cambio; Reference "" la quita; Lines reemplaza todas las líneas.</summary>
 public sealed record AsnUpdateRequest(Guid? WarehousePublicId = null, string? Reference = null, DateOnly? ExpectedDate = null, IReadOnlyList<AsnLineRequest>? Lines = null);

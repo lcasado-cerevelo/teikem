@@ -43164,6 +43164,9 @@
           "receiptNumber": {
             "type": "string",
             "nullable": true
+          },
+          "number": {
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -61852,6 +61855,9 @@
               "$ref": "#/components/schemas/SyncAsnLineDto"
             },
             "nullable": true
+          },
+          "number": {
+            "type": "string"
           }
         },
         "additionalProperties": false

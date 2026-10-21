@@ -22,7 +22,7 @@ public sealed class AsnEventProvider : INotificationEventProvider
 {
     private static NotificationVariable[] Base(params NotificationVariable[] extra) => new[]
     {
-        new NotificationVariable("number", "Aviso de llegada", "Arrival notice", "#12"),
+        new NotificationVariable("number", "Aviso de llegada", "Arrival notice", "LLE-00012"),
         new NotificationVariable("reference", "Referencia", "Reference", "OC-778"),
         new NotificationVariable("client", "Cliente dueño", "Owner customer", "ASICS Care"),
         new NotificationVariable("warehouse", "Almacén", "Warehouse", "Almacén principal"),

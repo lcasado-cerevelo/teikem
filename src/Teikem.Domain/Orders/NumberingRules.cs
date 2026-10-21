@@ -193,6 +193,8 @@ public static class NumberingRules
         or NumberKinds.MultiAdjust
         // Lote 143: aviso de salida SAL-##### (por tenant, ClientId NULL). Faltaba aquí: el API real rechazaba el contador con «Error interno» (las pruebas usan un contador de mentira)
         or Teikem.Domain.ExitNotices.ExitNoticeCodes.NumberKind
+        // Lote 170 (A5): aviso de llegada LLE-##### (por tenant, ClientId NULL)
+        or Teikem.Domain.Wms.AsnCodes.NumberKind
         // Lote 57: orden de venta OV-##### (por tenant, ClientId NULL)
         or Teikem.Domain.Sales.SalesCodes.NumberKind
         // Lote 72: factura FAC-##### (por tenant, ClientId NULL)

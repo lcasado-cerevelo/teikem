@@ -9787,6 +9787,7 @@ No (`Los elementos por default de la plataforma no se editan ni se eliminan.`, 4
 **`La visibilidad debe ser PRIVATE, TENANT o SHARED.` (400)**
 El valor enviado a `…/visibility` no es uno de los tres. Corrígelo y vuelve a guardar.
 
+<<<<<<< HEAD
 **`El conduce solo admite letras, números, guion, guion bajo, punto y barra, hasta 40 caracteres.` (400)**
 El conduce que mandó el cliente trae espacios, símbolos u otros caracteres, o pasa de 40. Corrígelo y vuelve a crear el envío; si no manda conduce, Teikem lo genera solo.
 
@@ -9795,3 +9796,15 @@ El número ya lo tiene otro envío activo (uno dado de baja no cuenta). El clien
 
 **`Máximo 4000 caracteres.` (400) en la descripción de un paquete**
 La descripción de la línea pasó del máximo (antes 250). Acorta el texto: el contenido largo de un envío va un ítem por renglón.
+=======
+## Número del aviso de llegada (Lote 170, 2026-10-21)
+
+**¿Qué es LLE-00012 y puedo cambiarlo?**
+Es el número del aviso de llegada, por compañía. Lo asigna el sistema al crear el aviso y no se puede teclear ni cambiar. Sirve para escribirlo o escanearlo en Recibir (app de almacén), buscarlo en la pestaña Avisos de llegada («Referencia o número») y verlo en los avisos de notificación.
+
+**Mis avisos viejos salían como #12. ¿Qué pasó con ellos?**
+Al aplicar la actualización de la base se numeraron en orden de creación (el más viejo es `LLE-00001`). Si el aviso tiene referencia del cliente, sigue mostrándose junto al número.
+
+**La app de almacén no muestra el número de los avisos.**
+Abre la app con señal y deja que sincronice: baja los avisos una vez completos para traer el número. Si sigue sin salir, revisa que la app esté en la versión más reciente.
+>>>>>>> 42f0de84 (Lote 170: número del aviso de llegada LLE-##### (contador ASN, numeración de los existentes, web, portal, app de almacén y avisos de notificación))

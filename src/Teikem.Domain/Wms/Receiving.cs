@@ -3,6 +3,13 @@ using Teikem.Domain.Common;
 
 namespace Teikem.Domain.Wms;
 
+/// <summary>Lote 170 (A5): contador y patrón del número del aviso de llegada (por compañía, ClientId NULL).</summary>
+public static class AsnCodes
+{
+    public const string NumberKind = "ASN";
+    public const string NumberPattern = "LLE-#####";
+}
+
 /// <summary>
 /// Lote 6 — Aviso de llegada (ASN): de un cliente 3PL (ClientId) o nacido de una PO (PurchaseOrderId), nunca ambos
 /// (CK_Asn_Origin). Un solo recibo activo por ASN (UX_Receipt_Asn, D6).
@@ -12,6 +19,8 @@ public class Asn : ITenantScoped, ISoftDeletable, IHasStatus
 {
     public int AsnId { get; set; }
     public int TenantId { get; set; }
+    /// <summary>Lote 170 (A5): número del aviso de llegada, LLE-##### por compañía (contador ASN). Único por compañía.</summary>
+    public string Number { get; set; } = string.Empty;
     public int WarehouseId { get; set; }
     public int? ClientId { get; set; }
     public int? PurchaseOrderId { get; set; }

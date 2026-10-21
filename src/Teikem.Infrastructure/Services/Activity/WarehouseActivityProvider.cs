@@ -221,7 +221,7 @@ public sealed class WarehouseActivityProvider(TeikemDbContext db, ILookupCache l
         if (hits.Count == 0) return;
         var ids = hits.Select(h => h.EntityId).Distinct().ToList();
         var docs = await db.Set<Asn>().AsNoTracking().Where(a => ids.Contains(a.AsnId))
-            .Select(a => new { a.AsnId, a.Reference, a.WarehouseId, a.ClientId }).ToListAsync(ct);
+            .Select(a => new { a.AsnId, a.Number, a.Reference, a.WarehouseId, a.ClientId }).ToListAsync(ct);
         var lines = await (from l in db.Set<AsnLine>().AsNoTracking()
                            join a in db.Set<Asn>().AsNoTracking() on l.AsnId equals a.AsnId
                            where ids.Contains(a.AsnId)
@@ -231,7 +231,7 @@ public sealed class WarehouseActivityProvider(TeikemDbContext db, ILookupCache l
         await warehouses.LoadAsync(docs.Select(d => d.WarehouseId), ct);
 
         Emit(ctx, hits, docs.ToDictionary(d => d.AsnId), d =>
-            ((Guid?)null, string.IsNullOrWhiteSpace(d.Reference) ? $"ASN #{d.AsnId}" : d.Reference!,
+            ((Guid?)null, string.IsNullOrWhiteSpace(d.Reference) ? d.Number : d.Reference!,
              ActivityRules.Detail(warehouses.Code(d.WarehouseId), d.ClientId is int c ? clients.GetValueOrDefault(c) : null,
                  ActivityRules.Lines(lines.GetValueOrDefault(d.AsnId), ctx.Lang))));
     }

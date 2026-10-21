@@ -89,7 +89,8 @@ namespace Teikem.Infrastructure.Contracts
 
     /// <summary>Aviso de llegada. IsActive = activo y EXPECTED; recibido o cancelado → false.</summary>
     public sealed record SyncAsnDto(int Id, Guid WarehousePublicId, Guid? ClientPublicId, string? ClientName, Guid? PurchaseOrderPublicId,
-        string? PurchaseOrderNumber, string? Reference, DateOnly? ExpectedDate, string StatusCode, bool IsActive, IReadOnlyList<SyncAsnLineDto> Lines);
+        string? PurchaseOrderNumber, string? Reference, DateOnly? ExpectedDate, string StatusCode, bool IsActive, IReadOnlyList<SyncAsnLineDto> Lines,
+        string Number = "");
 
     /// <summary>Tarea de la cola. IsActive = abierta (PENDING o IN_PROGRESS); DONE o CANCELLED → false.</summary>
     public sealed record SyncWarehouseTaskDto(int Id, string TypeCode, string StatusCode, Guid WarehousePublicId, Guid? ProductPublicId,
@@ -643,7 +644,7 @@ namespace Teikem.Infrastructure.Services
                 var po = a.PurchaseOrderId is int pid ? pos.GetValueOrDefault(pid) : null;
                 var code = statuses.GetValueOrDefault(a.StatusCodeId, string.Empty);
                 return new SyncAsnDto(a.AsnId, warehouses.GetValueOrDefault(a.WarehouseId), client?.PublicId, client?.Name, po?.PublicId, po?.Number,
-                    a.Reference, a.ExpectedDate, code, a.IsActive && code == AsnStatuses.Expected, linesByAsn[a.AsnId].ToList());
+                    a.Reference, a.ExpectedDate, code, a.IsActive && code == AsnStatuses.Expected, linesByAsn[a.AsnId].ToList(), a.Number);
             }).ToList();
             return new SyncPage<SyncAsnDto>(items, next, w.Now);
         }

@@ -91,7 +91,7 @@ public sealed class PortalCreateService(TeikemDbContext db, ITenantContext tenan
     }
 
     private static PortalArrivalDto ToArrival(AsnDto a) => new(a.Id, a.WarehousePublicId, a.WarehouseCode, a.Reference, a.ExpectedDate, a.StatusCode, a.Status,
-        a.StatusCode == AsnStatuses.Expected && a.ReceiptPublicId is null && a.IsActive, a.Lines.Select(l => new PortalArrivalLineDto(l.Sku, l.ProductName, l.ExpectedQty, l.LotNumber, l.UnitPrice, l.ExpiryDate, l.ProductPublicId, l.TrackingType)).ToList());
+        a.StatusCode == AsnStatuses.Expected && a.ReceiptPublicId is null && a.IsActive, a.Lines.Select(l => new PortalArrivalLineDto(l.Sku, l.ProductName, l.ExpectedQty, l.LotNumber, l.UnitPrice, l.ExpiryDate, l.ProductPublicId, l.TrackingType)).ToList(), a.Number);
 
     // ================================================================ avisos de salida
 

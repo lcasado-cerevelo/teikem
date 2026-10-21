@@ -21,7 +21,7 @@ interface Call {
   url: URL
   body: unknown
 }
-const mock = vi.hoisted(() => ({ calls: [] as Call[], created: false, newLines: [] as unknown[], applied: false }))
+const mock = vi.hoisted(() => ({ calls: [] as Call[], created: false, newLines: [] as unknown[], applied: false, asns: [] as unknown[] }))
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
   const fetch = async (req: Request) => {
@@ -199,7 +199,7 @@ function route(method: string, url: URL, body: unknown): [number, unknown] {
     if (id === NEW) return [200, detail(HNEW, mock.newLines)]
     return DETAILS[id] ? [200, DETAILS[id]] : [404, { title: 'Recibo no encontrado.', code: 'not_found', status: 404 }]
   }
-  if (p === '/api/v1/asns') return [200, []]
+  if (p === '/api/v1/asns') return [200, mock.asns]
   if (p === '/api/v1/warehouses')
     return [
       200,
@@ -256,6 +256,7 @@ const calls = (method: string, path: string) => mock.calls.filter((c) => c.metho
 
 beforeAll(() => setLang('es'))
 beforeEach(() => {
+  mock.asns = []
   mock.calls = []
   mock.created = false
   mock.newLines = []
@@ -397,13 +398,22 @@ describe('Recibo: maestro-detalle', () => {
 })
 
 describe('Recibo: pestañas', () => {
+  it('Lote 170: el aviso de llegada se muestra con su número LLE-#####', async () => {
+    mock.asns = [
+      { id: 12, number: 'LLE-00012', warehousePublicId: 'w1', warehouseCode: 'ALM-01', clientName: 'ASICS Care', reference: 'OC-778', statusCode: 'EXPECTED', status: 'Esperado', isActive: true, lines: [] },
+    ]
+    wrap('/warehouse/notices')
+    expect(await screen.findByText(/LLE-00012/)).toBeInTheDocument()
+    expect(screen.queryByText(/#12/)).toBeNull()
+  })
+
   it('Avisos de llegada: filtros al API (referencia, llegada esperada) y sin buscador libre', async () => {
     const user = userEvent.setup()
     const { container } = wrap('/warehouse/notices')
     await waitFor(() => expect(calls('GET', '/api/v1/asns').length).toBeGreaterThan(0))
     expect(container.querySelector('.qbox')).toBeNull()
     expect(screen.getByRole('combobox', { name: 'Cliente dueño' })).toBeInTheDocument()
-    await user.type(screen.getByRole('searchbox', { name: 'Referencia' }), 'AX-1')
+    await user.type(screen.getByRole('searchbox', { name: 'Referencia o número' }), 'AX-1')
     await waitFor(() => expect(calls('GET', '/api/v1/asns').some((c) => c.url.searchParams.get('reference') === 'AX-1')).toBe(true))
     const range = screen.getByRole('group', { name: 'Llegada esperada' })
     // el filtro de fecha es un desplegable de rangos: con «Personalizado» aparecen los campos Desde / Hasta

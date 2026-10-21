@@ -72,11 +72,11 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
         header: t('warehouse.asns.columns.asn'),
         cell: (a) => (
           <span className="ref">
-            #{a.id}
+            {a.number || `#${a.id}`}
             {a.reference ? ` · ${a.reference}` : ''}
           </span>
         ),
-        sortValue: (a) => a.id ?? 0,
+        sortValue: (a) => a.number || String(a.id ?? 0),
         card: 'title',
       },
       { id: 'warehouse', header: t('warehouse.asns.columns.warehouse'), cell: (a) => a.warehouseCode, sortValue: (a) => a.warehouseCode },

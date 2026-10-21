@@ -88,7 +88,9 @@ public sealed class AsnConfiguration : IEntityTypeConfiguration<Asn>
         b.ToTable("Asn");
         b.HasKey(a => a.AsnId);
         b.Property(a => a.Reference).HasMaxLength(80);
+        b.Property(a => a.Number).HasMaxLength(40);
         b.Property(a => a.ExpectedDate).HasColumnType("date");
+        b.HasIndex(a => new { a.TenantId, a.Number }).IsUnique().HasDatabaseName("UX_Asn_Number");
 
         b.HasIndex(a => a.PurchaseOrderId).HasFilter("[PurchaseOrderId] IS NOT NULL").HasDatabaseName("IX_Asn_Po");
 

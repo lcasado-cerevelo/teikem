@@ -197,7 +197,7 @@ function CreateAppointmentModal({ open, onClose }: { open: boolean; onClose: () 
         {linkType === 'asn' && (
           <Field name="asnId" label={t('warehouse.dockAppointments.fields.asn')}>
             <Select
-              options={asns.map((a) => ({ value: String(a.id), label: a.reference ?? String(a.id) }))}
+              options={asns.map((a) => ({ value: String(a.id), label: [a.number || `#${a.id}`, a.reference].filter(Boolean).join(' · ') }))}
               placeholder={t('warehouse.dockAppointments.fields.selectAsn')}
             />
           </Field>

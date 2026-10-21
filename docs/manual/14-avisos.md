@@ -97,7 +97,7 @@ Los avisos enlazan a Flota → **Documentos por vencer** o **Mantenimiento**. M�
 
 ### 3.3 Eventos del aviso de salida (Lote 143)
 
-Módulo **Inventario por lote y serie**. Todos opcionales (se silencian en la bandeja); **no viene ninguna regla armada**. Variables comunes: `{number}` `{client}` `{warehouse}`.
+Módulo **Inventario por lote y serie**. Todos opcionales (se silencian en la bandeja); **no viene ninguna regla armada**. Variables comunes: `{number}` `{client}` `{warehouse}`. En los avisos de llegada `{number}` es el número del aviso (`LLE-00012`, desde el Lote 170; antes salía `#12`).
 
 | Evento (código) | Cuándo se dispara | Variables extra |
 |---|---|---|

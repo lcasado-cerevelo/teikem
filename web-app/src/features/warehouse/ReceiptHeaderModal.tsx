@@ -198,7 +198,7 @@ function HeaderForm({
         .filter((a) => !a.receiptPublicId || a.id === preset?.asnId)
         .map((a) => ({
           value: String(a.id),
-          label: [`#${a.id}`, a.reference, a.clientName ?? a.purchaseOrderNumber].filter(Boolean).join(' · '),
+          label: [a.number || `#${a.id}`, a.reference, a.clientName ?? a.purchaseOrderNumber].filter(Boolean).join(' · '),
           hint: a.expectedDate ? formatDate(a.expectedDate, lang) : undefined,
         })),
     [asns.data, preset?.asnId, lang],

@@ -178,7 +178,7 @@ function ArrivalsSection({ lang }: { lang: Lang }) {
       {(list.data ?? []).map((a) => (
         <Card key={String(a.id)}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <Text style={{ fontWeight: '700', color: colors.text }}>{a.reference || `#${a.id}`}</Text>
+            <Text style={{ fontWeight: '700', color: colors.text }}>{[a.number, a.reference].filter(Boolean).join(' · ') || `#${a.id}`}</Text>
             <Chip label={a.status ?? ''} tone={a.statusCode === 'EXPECTED' ? 'info' : a.statusCode === 'CANCELLED' ? 'neutral' : 'ok'} />
           </View>
           <Muted>{[a.warehouseCode, a.expectedDate ? t('create.arrivals.expected', { date: formatDate(a.expectedDate, lang) }) : null].filter(Boolean).join(' · ')}</Muted>

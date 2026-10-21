@@ -6141,7 +6141,7 @@
         "anyWarehouse": "All warehouses",
         "client": "Owner client",
         "anyClient": "All clients",
-        "reference": "Reference",
+        "reference": "Reference or number",
         "expected": "Expected arrival"
       },
       "lines": {
