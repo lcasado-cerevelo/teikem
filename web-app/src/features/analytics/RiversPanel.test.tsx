@@ -72,10 +72,10 @@ describe('ríos del Pulso', () => {
     expect(within(card('ROUTES')).getByText('3')).toBeInTheDocument()
     expect(within(card('ROUTES')).getByText('salieron hoy')).toBeInTheDocument()
     expect(within(card('DELIVERED')).getByText('31')).toBeInTheDocument()
-    // lo de ahora mismo: En ruta (grande) y, más pequeño, las rutas completadas
+    // lo de ahora mismo: En ruta (grande) y, más pequeño, los envíos completados
     expect(within(card('ON_ROUTE')).getByText('22')).toBeInTheDocument()
     expect(within(card('ON_ROUTE')).getByText('4 choferes')).toBeInTheDocument()
-    expect(within(card('ON_ROUTE')).getByText('2 rutas completadas hoy')).toBeInTheDocument()
+    expect(within(card('ON_ROUTE')).getByText('2 envíos completados hoy')).toBeInTheDocument()
     expect(card('ROUTES').querySelector('a')).toHaveAttribute('href', '/ops/dispatch')
     expect(card('ON_ROUTE').querySelector('a')).toHaveAttribute('href', '/ops/monitor')
     // el orden de las tarjetas: Entrada, En almacén, Rutas, Entregado y lo de ahora mismo; ya no hay «Por despachar»
