@@ -20,8 +20,9 @@ public sealed record PulsePanelDef(string Key, string Permission, string[] DataP
 /// Lote 15 (D1, D6): WAREHOUSE_DAY (franja "Almacén hoy") con orden −10, el primero: justo debajo de la fecha y antes de
 /// ATTENTION, también en los Pulsos ya organizados (Organizar guarda índice × 10 desde 0; un panel sin fila propia usa su orden
 /// por defecto, así que solo un orden negativo lo deja arriba). Reusa pulse.warehouse, inventory.view y WMS_LOTSERIAL (los
-/// mismos del panel Almacén): no hay permiso nuevo. Orden final por defecto: WAREHOUSE_DAY, ATTENTION, INDICATORS, CHARTS,
-/// WAREHOUSE, ACTIVITY.
+/// mismos del panel Almacén): no hay permiso nuevo. Orden final por defecto: ver más abajo (2026-10-20).
+/// Orden por defecto 2026-10-20 (pedido de Luis, por la pregunta que responde cada bloque): acción (ATTENTION −20), hoy (WAREHOUSE_DAY −10, ORDERS_RIVER 10,
+/// COD_RIVER 11), seguimiento (RADAR 12), números (INDICATORS 20, CHARTS 30) y detalle (WAREHOUSE 40, ACTIVITY 50). Solo afecta a quien no organizó su Pulso.
 /// Receta para un panel nuevo: una constante aquí, una fila en PermissionCatalog.All (+ plantillas), una línea en el seed y
 /// una entrada en el registro del frontend.
 /// </summary>
@@ -45,11 +46,11 @@ public static class PulsePanels
         new(Charts, PermissionCatalog.PulseCharts, Array.Empty<string>(), ModuleKeys.Analytics, 30),
         new(Warehouse, PermissionCatalog.PulseWarehouse, new[] { PermissionCatalog.InventoryView }, ModuleKeys.WmsLotSerial, 40),
         new(Activity, PermissionCatalog.PulseActivity, new[] { PermissionCatalog.AnalyticsView }, ModuleKeys.Analytics, 50),
-        new(Attention, PermissionCatalog.PulseAttention, Array.Empty<string>(), null, 5),
+        new(Attention, PermissionCatalog.PulseAttention, Array.Empty<string>(), null, -20),
         new(WarehouseDay, PermissionCatalog.PulseWarehouse, new[] { PermissionCatalog.InventoryView }, ModuleKeys.WmsLotSerial, -10),
         new(OrdersRiver, PermissionCatalog.PulseOrders, new[] { PermissionCatalog.OrdersView }, ModuleKeys.LtlGround, 10),
         new(CodRiver, PermissionCatalog.PulseCod, new[] { PermissionCatalog.CodView }, ModuleKeys.Cod, 11),
-        new(Radar, PermissionCatalog.PulseOrders, new[] { PermissionCatalog.OrdersView }, ModuleKeys.LtlGround, 60),
+        new(Radar, PermissionCatalog.PulseOrders, new[] { PermissionCatalog.OrdersView }, ModuleKeys.LtlGround, 12),
     };
 
     /// <summary>Panel por clave (sin distinguir mayúsculas); null si no está en el registro.</summary>

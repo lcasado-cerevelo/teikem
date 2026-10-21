@@ -783,14 +783,18 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
     /// de la definición) y visibilidad (ShowInPulse propio → de la definición); orden por SortOrder efectivo y luego nombre. Solo se
     /// calcula lo visible (elemento visible dentro de un panel visible).
     /// </summary>
-    public Task<PulseDto> GetPulseAsync(CancellationToken ct) => GetPulseAsync(companyOnly: false, ct);
+    public Task<PulseDto> GetPulseAsync(CancellationToken ct) => GetPulseAsync(companyOnly: false, computeValues: true, ct);
 
     /// <summary>
     /// `companyOnly=true` (`GET pulse?scope=company`, exige pulse.organize_company): el Pulso de la COMPAÑÍA sin la
     /// capa personal del usuario que consulta — lo que usa "Organizar el de la compañía" para partir del estado real
     /// de la compañía, no del Pulso personal de quien lo abre (que puede tener su propio orden/ocultos).
     /// </summary>
-    public async Task<PulseDto> GetPulseAsync(bool companyOnly, CancellationToken ct)
+    /// <summary>
+    /// `computeValues=false` (`GET pulse?values=false`): devuelve paneles, indicadores y gráficos SIN calcular valores (value nulo, points vacío) y responde
+    /// al instante; la pantalla pide cada valor aparte (`indicators/{id}/value`, `charts/{id}/data`) y los va mostrando según llegan (2026-10-20).
+    /// </summary>
+    public async Task<PulseDto> GetPulseAsync(bool companyOnly, bool computeValues, CancellationToken ct)
     {
         var tc = (TenantContext)tenant;
         tc.RequireTenantId();
@@ -822,7 +826,7 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
             {
                 var pref = prefs.FirstOrDefault(p => p.IndicatorDefinitionId == i.IndicatorDefinitionId);
                 var shown = pref?.ShowInPulse ?? i.ShowInPulse;
-                indicators.Add(await EvaluateAsync(i, pref, compute: indicatorsPanel.IsVisible && shown, ct));
+                indicators.Add(await EvaluateAsync(i, pref, compute: computeValues && indicatorsPanel.IsVisible && shown, ct));
             }
 
         var charts = new List<ChartDataDto>();
@@ -831,7 +835,7 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
             {
                 var pref = prefs.FirstOrDefault(p => p.ChartDefinitionId == c.ChartDefinitionId);
                 var shown = pref?.ShowInPulse ?? c.ShowInPulse;
-                charts.Add(await EvaluateAsync(c, pref, compute: chartsPanel.IsVisible && shown, ct));
+                charts.Add(await EvaluateAsync(c, pref, compute: computeValues && chartsPanel.IsVisible && shown, ct));
             }
 
         var hasPersonal = !companyOnly && (settings.Any(s => s.UserId == userId) || prefs.Any(p => p.PulseSortOrder.HasValue || p.ShowInPulse.HasValue));

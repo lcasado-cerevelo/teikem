@@ -16219,6 +16219,7 @@ export interface paths {
             parameters: {
                 query?: {
                     scope?: string;
+                    values?: boolean;
                 };
                 header?: never;
                 path?: never;

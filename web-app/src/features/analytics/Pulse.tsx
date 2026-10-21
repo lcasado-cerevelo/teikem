@@ -10,7 +10,7 @@
 // chip (`.pulse-greet`, se desplaza). Solo el encabezado (fecha con "Organizar", saludo y chip) queda fijo; ninguna sección (ni la franja "Almacén hoy") se fija
 // (decisión del dueño). El alto del encabezado se mide (`useElementHeight`) y va en `--pulse-head-h`/`--pulse-pin-h`
 // (`scroll-margin-top` de lo que se desplaza, para que el foco no quede tapado) (pulse.css).
-import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useSession } from '../../app/session'
 import { ModuleKeys, useCan, useModule } from '../../kernel/access'
@@ -29,6 +29,37 @@ import { PULSE_PANELS, type PulsePanelContext } from './pulsePanels'
 import { isKnownPanel, shownItems, shownPanels, type PulseScope } from './pulseLayout'
 import { INDICATORS_ROUTE } from './PulseSections'
 import './pulse.css'
+
+/** Secciones que se montan de inmediato; las demás esperan a acercarse a la pantalla (cada panel hace sus propias consultas). */
+const EAGER_SECTIONS = 2
+/** Alto del hueco mientras la sección no se monta (evita que la página salte al llegar). */
+const LAZY_PLACEHOLDER_MIN_HEIGHT = 160
+
+/**
+ * Monta su contenido (y con él sus consultas) cuando la sección se acerca a la pantalla; una vez montado se queda.
+ * Sin IntersectionObserver (pruebas, navegadores viejos) monta de inmediato.
+ */
+function LazySection({ eager, children }: { eager: boolean; children: ReactNode }) {
+  const supported = typeof IntersectionObserver !== 'undefined'
+  const [mounted, setMounted] = useState(eager || !supported)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (mounted || !ref.current) return
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setMounted(true)
+          io.disconnect()
+        }
+      },
+      { rootMargin: '400px 0px' },
+    )
+    io.observe(ref.current)
+    return () => io.disconnect()
+  }, [mounted])
+  if (mounted) return <>{children}</>
+  return <div ref={ref} aria-hidden="true" style={{ minHeight: LAZY_PLACEHOLDER_MIN_HEIGHT }} />
+}
 
 export default function Pulse() {
   const t = useT()
@@ -126,13 +157,14 @@ export default function Pulse() {
       />
     )
   else
-    body = sections.map((p) => (
+    // Despliegue en orden: arriba se monta de inmediato; lo de abajo, al acercarse (sus consultas no compiten con lo primero).
+    body = sections.map((p, i) => (
       <div
         key={p.key}
         className="pulse-sec"
         data-panel={p.key}
       >
-        {PULSE_PANELS[p.key].render(ctx)}
+        <LazySection eager={i < EAGER_SECTIONS}>{PULSE_PANELS[p.key].render(ctx)}</LazySection>
       </div>
     ))
 

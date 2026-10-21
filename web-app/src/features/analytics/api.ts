@@ -30,7 +30,8 @@ export const PULSE_COMPANY_QUERY_KEY = ['/api/v1/analytics/pulse', 'company'] as
 export function usePulse(enabled = true) {
   return useQuery({
     queryKey: PULSE_QUERY_KEY,
-    queryFn: () => unwrap(api.GET('/api/v1/analytics/pulse')),
+    // `values: false`: el servidor responde al instante con paneles y elementos; cada valor lo pide su tarjeta (useIndicatorValue / useChartData).
+    queryFn: () => unwrap(api.GET('/api/v1/analytics/pulse', { params: { query: { values: false } } })),
     enabled,
     meta: { handleAccessDenied: false },
   })

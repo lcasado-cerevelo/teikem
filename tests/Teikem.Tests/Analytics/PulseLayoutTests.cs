@@ -171,7 +171,7 @@ public class PulseLayoutTests
         // Registro del plan §2.3.
         // Lote 14 (D6): + ATTENTION ("Necesita tu atención", orden 5: el primero, debajo de la franja del Lote 15), sin datos ni módulo.
         Assert.Equal(new[] { ("INDICATORS", "pulse.indicators", 20), ("CHARTS", "pulse.charts", 30), ("WAREHOUSE", "pulse.warehouse", 40), ("ACTIVITY", "pulse.activity", 50),
-                ("ATTENTION", "pulse.attention", 5), ("WAREHOUSE_DAY", "pulse.warehouse", -10), ("ORDERS_RIVER", "pulse.orders", 10), ("COD_RIVER", "pulse.cod", 11), ("RADAR", "pulse.orders", 60) },
+                ("ATTENTION", "pulse.attention", -20), ("WAREHOUSE_DAY", "pulse.warehouse", -10), ("ORDERS_RIVER", "pulse.orders", 10), ("COD_RIVER", "pulse.cod", 11), ("RADAR", "pulse.orders", 12) },
             PulsePanels.All.Select(p => (p.Key, p.Permission, p.DefaultSortOrder)));
         Assert.Empty(PulsePanels.Find(PulsePanels.Attention)!.DataPermissions);
         Assert.Null(PulsePanels.Find(PulsePanels.Attention)!.Module);
@@ -481,7 +481,7 @@ public class PulseLayoutTests
 
         // Con él va primero (orden 5, antes de Indicadores 20): justo debajo del encabezado.
         x.As(Me, AllPulse.Append(PermissionCatalog.PulseAttention).ToArray());
-        Assert.Equal(new[] { "WAREHOUSE_DAY:-10:default", "ATTENTION:5:default", "INDICATORS:20:default", "CHARTS:30:default", "WAREHOUSE:40:default", "ACTIVITY:50:default" },
+        Assert.Equal(new[] { "ATTENTION:-20:default", "WAREHOUSE_DAY:-10:default", "INDICATORS:20:default", "CHARTS:30:default", "WAREHOUSE:40:default", "ACTIVITY:50:default" },
             (await x.PulseAsync()).Panels.Select(p => $"{p.Key}:{p.SortOrder}:{p.Source}"));
 
         // Sin permiso de datos ni módulo en el panel: solo pulse.attention y ningún módulo encendido basta para verlo.

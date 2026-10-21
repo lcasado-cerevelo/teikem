@@ -222,6 +222,16 @@ describe('Pulse — paneles del API', () => {
     expect(mock.calls.filter((c) => c !== '/api/v1/analytics/pulse')).toEqual([])
   })
 
+  it('el Pulso llega sin valores (values=false): cada tarjeta pide el suyo y lo muestra al llegar', async () => {
+    mock.handler = (path: string) => {
+      if (path === '/api/v1/analytics/indicators/{id}/value' || path === '/api/v1/analytics/indicators/7/value') return { id: 7, name: 'Ventas', value: 42, isMoney: false }
+      return pulse({ indicators: [{ id: 7, name: 'Ventas', value: null, isMoney: false, isVisible: true, sortOrder: 0 }] })
+    }
+    renderPulse()
+    expect(await screen.findByText('42')).toBeInTheDocument()
+    expect(mock.urls).toContain('/api/v1/analytics/pulse?values=false')
+  })
+
   it('río de indicadores: orden por sortOrder, sin los ocultos, azul cantidad / naranja dinero, el nodo lleva a Indicadores', async () => {
     mock.handler = (path: string) => {
       if (path === '/api/v1/catalogs/DateRangeMode') return [{ code: 'LAST90', label: 'Últimos 90 días', sortOrder: 1, isEnabled: true }]
@@ -321,7 +331,7 @@ describe('Pulse — paneles del API', () => {
     expect(screen.getByRole('img', { name: 'Un día. miércoles, 30 de septiembre de 2026: 7' })).toHaveAttribute('data-chart-kind', 'line')
     expect(screen.queryByRole('list', { name: 'Pocos' })).not.toBeInTheDocument()
     expect(container.querySelector('.pulse-pts')).toBeNull()
-    expect(screen.getByText('Este gráfico no tiene datos en el rango configurado.')).toBeInTheDocument()
+    expect(await screen.findByText('Este gráfico no tiene datos en el rango configurado.')).toBeInTheDocument()
     const grid = screen.getByRole('heading', { name: 'Tus gráficos' }).nextElementSibling as HTMLElement
     expect(grid).toHaveClass('pulse-charts')
     expect(grid.querySelectorAll('.pulse-chart')).toHaveLength(4)

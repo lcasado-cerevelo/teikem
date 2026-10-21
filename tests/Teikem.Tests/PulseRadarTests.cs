@@ -177,7 +177,7 @@ public sealed class PulseRadarTests
     public void The_radar_panel_and_endpoint_are_registered_with_the_orders_permissions()
     {
         var radar = PulsePanels.Find("RADAR")!;
-        Assert.Equal((PermissionCatalog.PulseOrders, 60, ModuleKeys.LtlGround), (radar.Permission, radar.DefaultSortOrder, radar.Module));
+        Assert.Equal((PermissionCatalog.PulseOrders, 12, ModuleKeys.LtlGround), (radar.Permission, radar.DefaultSortOrder, radar.Module));
         Assert.Equal(new[] { PermissionCatalog.OrdersView }, radar.DataPermissions);
         var m = typeof(PulseRiversController).GetMethod(nameof(PulseRiversController.Radar))!;
         Assert.Equal(RequirePermissionAttribute.Prefix + PermissionCatalog.OrdersView, m.GetCustomAttributes<RequirePermissionAttribute>().Single().Policy);

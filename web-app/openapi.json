@@ -21847,6 +21847,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "values",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
           }
         ],
         "responses": {

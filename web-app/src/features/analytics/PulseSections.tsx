@@ -12,7 +12,8 @@ import { Can, ModuleKeys, useCan, useModule } from '../../kernel/access'
 import { useLookups } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n/useT'
 import { Panel } from '../../kernel/ui/Panel'
-import type { PulseItemKind } from './api'
+import { Spinner } from '../../kernel/ui/Spinner'
+import { useChartData, useIndicatorValue, type PulseItemKind } from './api'
 import { ChartVisual } from './ChartVisual'
 import { customRangeDays, CUSTOM_RANGE, formatValue, formatYmd } from './format'
 import { IconSignal } from './pulseIcons'
@@ -100,6 +101,10 @@ export function StreamLabel({ icon, children, id, level = 2, tone }: StreamLabel
 /** Nodo del río: módulo (ícono) y nombre, valor y, debajo, el rango (el módulo ya lo dice la línea). Todo el nodo lleva a Indicadores. */
 function IndicatorNode({ indicator, canOpen }: { indicator: Indicator; canOpen: boolean }) {
   const caption = useRangeCaption(indicator.dateRangeMode, indicator.fromUtc, indicator.toUtc)
+  // El Pulso llega sin valores (`values=false`): la tarjeta pide el suyo y lo muestra al llegar; con valor ya presente no consulta.
+  const pending = indicator.value == null
+  const fetched = useIndicatorValue(pending ? indicator.id : null)
+  const value = indicator.value ?? fetched.data?.value
   const group = moduleGroup(indicator.businessModule)
   const ModuleIcon = MODULE_ICON[group]
   const body = (
@@ -108,7 +113,7 @@ function IndicatorNode({ indicator, canOpen }: { indicator: Indicator; canOpen: 
         <ModuleIcon />
         <span>{indicator.name}</span>
       </div>
-      <div className="big">{formatValue(indicator.value, indicator.isMoney ?? false)}</div>
+      <div className="big" aria-busy={pending && fetched.isLoading}>{pending && fetched.isLoading ? '…' : formatValue(value, indicator.isMoney ?? false)}</div>
       {caption && <div className="sub">{caption}</div>}
     </>
   )
@@ -190,9 +195,16 @@ function ChartCard({ chart }: { chart: ChartDatum }) {
   const t = useT()
   const caption = useRangeCaption(chart.dateRangeMode, chart.fromUtc, chart.toUtc)
   const ModuleIcon = MODULE_ICON[moduleGroup(chart.businessModule)]
+  const pending = chart.points.length === 0
+  const fetched = useChartData(pending ? chart.id : null)
+  const points = pending ? (fetched.data?.points ?? chart.points) : chart.points
   return (
     <Panel className="pulse-chart" icon={<ModuleIcon />} title={chart.name} subtitle={caption ?? undefined} actions={<RangeButton kind="chart" item={chart} />}>
-      <ChartVisual chartType={chart.chartType} points={chart.points} isMoney={chart.isMoney ?? false} name={chart.name} emptyText={t('analytics.pulse.chartEmpty')} />
+      {pending && fetched.isLoading ? (
+        <Spinner block label={t('common.loading')} />
+      ) : (
+        <ChartVisual chartType={chart.chartType} points={points} isMoney={chart.isMoney ?? false} name={chart.name} emptyText={t('analytics.pulse.chartEmpty')} />
+      )}
     </Panel>
   )
 }
