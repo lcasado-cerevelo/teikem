@@ -162,6 +162,7 @@
     "skipped": "skipped"
   },
   "exitDispatch": {
+    "noneMine": "Nothing assigned to you. Tap “Show unassigned”.",
     "unassigned": "Unassigned (dispatching it assigns it to you)",
     "assignedToYou": "Assigned to you",
     "assignedOther": "Assigned to someone else",
@@ -245,6 +246,7 @@
     "changed": "You are now working in {name}."
   },
   "receive": {
+    "noneMine": "Nothing assigned to you. Tap “Show unassigned” or scan the code.",
     "truckOtherOwner": "That document belongs to a different owner than this batch. Finish the batch to receive it.",
     "selectMany": "Select several",
     "selectCancel": "Cancel selection",

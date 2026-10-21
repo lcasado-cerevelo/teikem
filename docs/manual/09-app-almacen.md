@@ -1422,3 +1422,5 @@ La orden de compra (a quien la va a **recibir**) y la orden de venta (a quien la
 **Mis tareas.** Al abrirla con señal vuelve a bajar los documentos del servidor, el título lleva la cuenta y el número de Inicio incluye los acomodos asignados. **Acomodar** muestra cada tarea como «Asignada a ti», «Sin asignar» o «Asignada a otra persona».
 
 **Web.** El icono Asignar/Tomar de un aviso de llegada también aparece cuando ya tiene un recibo parcial.
+
+**Ajuste (2026-10-21, mismo lote).** Recibir y Despacho siguen el patrón de Mis tareas: la lista muestra **solo lo asignado a usted** y, debajo, la opción **«Ver lo que nadie tiene asignado (N)»** que despliega lo que no tiene dueño (lo de otras personas no se ofrece; escanear el código sigue abriendo cualquier documento). Al abrir Mis tareas, Recibir o Despacho con señal, el aparato vuelve a bajar completos los avisos de llegada y las órdenes abiertos, así lo asignado en la web aparece de una vez. En **Inicio** una tarjeta (Mis tareas, Recibir, Acomodar, Despacho) se pinta en azul solo si hay algo asignado a usted en ese rubro. En Mis tareas el orden es **Recibir, Acomodar y Despachar**.

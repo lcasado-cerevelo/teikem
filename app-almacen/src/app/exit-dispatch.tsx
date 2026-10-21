@@ -9,7 +9,7 @@ import { useFormat } from '../kernel/format/useFormat'
 import { useActiveWarehouse } from '../kernel/warehouse/activeWarehouse'
 import { resolveBinLocalFirst } from '../kernel/warehouse/binLookup'
 import { useT } from '../kernel/i18n/useT'
-import { downloadExitNoticesIfAllowed } from '../kernel/sync/download'
+import { downloadExitNoticesIfAllowed, refreshAssignments } from '../kernel/sync/download'
 import { flushNow } from '../kernel/sync/engine'
 import { discardRow, outboxResult } from '../kernel/sync/outbox'
 import { BigButton } from '../kernel/ui/BigButton'
@@ -61,6 +61,7 @@ export default function ExitDispatchScreen() {
   const [scanError, setScanError] = useState<string | null>(null)
   const [binError, setBinError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
+  const [showFree, setShowFree] = useState(false)
   // Lote 178: «Recolectar juntos» — avisos elegidos (modo selección) y, ya en la ruta, el grupo que se recolecta
   const [choosing, setChoosing] = useState(false)
   const [chosen, setChosen] = useState<LocalExitNotice[]>([])
@@ -77,12 +78,26 @@ export default function ExitDispatchScreen() {
   // Lote 198: avisos y órdenes en una sola lista, lo asignado a esta persona primero
   const notices = useMemo(() => mineFirst(noticesRaw, myId), [noticesRaw, myId])
   const orders = useMemo(() => mineFirst(ordersRaw, myId), [ordersRaw, myId])
-  const allDocs = useMemo(() => mineFirst([...noticesRaw, ...ordersRaw], myId), [noticesRaw, ordersRaw, myId])
+  const everyDoc = useMemo(() => mineFirst([...noticesRaw, ...ordersRaw], myId), [noticesRaw, ordersRaw, myId])
+  // Lote 198: primero lo asignado a esta persona; lo que nadie tiene asignado se ve con la opción de abajo
+  const freeCount = everyDoc.filter((d) => d.assignedToUserId == null).length
+  const allDocs = everyDoc.filter((d) => (d.assignedToUserId != null && d.assignedToUserId === myId) || (showFree && d.assignedToUserId == null))
   const lines = useMemo(() => (notice ? getExitNoticeLines(notice.id) : []), [notice])
   const groupData = useMemo(() => (group ? getGroupTasks(group) : null), [group])
   const tasks = useMemo(() => (groupData ? groupData.tasks : buildTasks(lines)), [lines, groupData])
   const current = notice && step === 'pick' ? currentTask(tasks, picks, skipped, focusKey) : null
   const doneAll = step === 'pick' && notice !== null && current === null
+
+  useEffect(() => {
+    if (!warehousePublicId) return undefined
+    let alive = true
+    void refreshAssignments(warehousePublicId).then(() => {
+      if (alive) setTick((x) => x + 1)
+    })
+    return () => {
+      alive = false
+    }
+  }, [warehousePublicId])
 
   useEffect(() => {
     if (noticeOpened.current || !noticeParam || !warehousePublicId) return
@@ -258,7 +273,7 @@ export default function ExitDispatchScreen() {
       <KeyboardScreen contentContainerStyle={styles.fill}>
         <Text style={styles.title}>{t('exitDispatch.title')}</Text>
         <ScanField label={t('exitDispatch.scanNotice')} help={t('exitDispatch.scanNoticeHelp')} error={scanError} notice={info} onSubmit={scanNotice} testID="exit-scan-notice" />
-        {allDocs.length === 0 ? <Text style={styles.help}>{t('exitDispatch.noNotices')}</Text> : null}
+        {allDocs.length === 0 ? <Text style={styles.help}>{t(everyDoc.length === 0 ? 'exitDispatch.noNotices' : 'exitDispatch.noneMine')}</Text> : null}
         {allDocs.length >= MIN_GROUP ? (
           <BigButton
             label={choosing ? t('exitDispatch.groupCancel') : t('exitDispatch.groupStart')}
@@ -297,6 +312,9 @@ export default function ExitDispatchScreen() {
           </Pressable>
           )
         })}
+        {freeCount > 0 ? (
+          <BigButton label={showFree ? t('myTasks.hideFree') : t('myTasks.showFree', { count: freeCount })} variant="secondary" onPress={() => setShowFree((v) => !v)} testID="exit-free-toggle" />
+        ) : null}
         {choosing ? (
           <BigButton label={t('exitDispatch.groupGo', { n: chosen.length })} onPress={startGroup} disabled={chosen.length < MIN_GROUP} testID="exit-group-go" />
         ) : null}

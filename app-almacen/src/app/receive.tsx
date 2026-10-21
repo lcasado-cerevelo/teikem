@@ -10,6 +10,7 @@ import { useActiveWarehouse } from '../kernel/warehouse/activeWarehouse'
 import { useT } from '../kernel/i18n/useT'
 import { enqueue } from '../kernel/sync/outbox'
 import { runSync } from '../kernel/sync/engine'
+import { refreshAssignments } from '../kernel/sync/download'
 import { BigButton } from '../kernel/ui/BigButton'
 import { LineList } from '../kernel/ui/LineList'
 import { ScanField } from '../kernel/ui/ScanField'
@@ -162,6 +163,18 @@ export default function ReceiveScreen() {
       alive = false
     }
   }, [suggestProduct, suggestQty, warehousePublicId])
+
+  // Lote 198: con señal se vuelve a bajar lo abierto, para que lo asignado en la web aparezca de una vez
+  useEffect(() => {
+    if (!warehousePublicId) return undefined
+    let alive = true
+    void refreshAssignments(warehousePublicId).then(() => {
+      if (alive) setTick((n) => n + 1)
+    })
+    return () => {
+      alive = false
+    }
+  }, [warehousePublicId])
 
   useEffect(() => {
     if (docOpened.current || !docParam || !warehousePublicId || getOpenReceipt() !== null) return

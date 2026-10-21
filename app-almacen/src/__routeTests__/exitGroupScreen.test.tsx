@@ -31,6 +31,12 @@ const notice = (id: number, client: string, qty: number) => ({
   ],
 })
 
+/** Lote 198: la lista muestra primero lo asignado a esta persona; los avisos de la prueba se le asignan. */
+function assignAllToMe() {
+  getDb().runSync('UPDATE exit_notice SET assigned_to_user_id = 7')
+  getDb().runSync('UPDATE sales_order SET assigned_to_user_id = 7')
+}
+
 const ME = (c: { path: string }) => (c.path === '/api/v1/me' ? json(200, { userId: 7, permissions: ['warehouse.pick', 'warehouse.pick.any', 'inventory.view'] }) : null)
 
 async function seed() {
@@ -50,6 +56,7 @@ describe('Recolectar juntos (aviso de salida)', () => {
       ME,
       (c) => (c.method === 'POST' && c.path === '/api/v1/pick-batches/groups' ? json(200, { publicId: 'g1', number: 'EMP-00020', documents: [], movements: [] }) : null),
     ])
+    assignAllToMe()
     await renderRouter('src/app', { initialUrl: '/exit-dispatch' })
     await fireEvent.press(await screen.findByTestId('exit-group-toggle'))
     await fireEvent.press(await screen.findByTestId('exit-notice-SAL-00001'))
@@ -91,6 +98,7 @@ describe('Recolectar juntos (aviso de salida)', () => {
       ME,
       (c) => (c.method === 'POST' && c.path === '/api/v1/pick-batches/groups' ? json(409, { title: 'No hay existencia suficiente en A-01.', status: 409, code: 'conflict' }) : null),
     ])
+    assignAllToMe()
     await renderRouter('src/app', { initialUrl: '/exit-dispatch' })
     await fireEvent.press(await screen.findByTestId('exit-group-toggle'))
     await fireEvent.press(await screen.findByTestId('exit-notice-SAL-00001'))
@@ -121,6 +129,7 @@ describe('Recolectar juntos (aviso de salida)', () => {
       ME,
       (c) => (c.method === 'POST' && c.path === '/api/v1/pick-batches/groups' ? json(200, { publicId: 'g2', number: 'EMP-00021', documents: [], movements: [] }) : null),
     ])
+    assignAllToMe()
     await renderRouter('src/app', { initialUrl: '/exit-dispatch' })
     await fireEvent.press(await screen.findByTestId('exit-group-toggle'))
     await fireEvent.press(await screen.findByTestId('exit-notice-SAL-00005'))
@@ -148,6 +157,7 @@ describe('Recolectar juntos (aviso de salida)', () => {
   it('Lote 192: de la lista de productos por sacar se elige cuál se saca ahora', async () => {
     await seed()
     mockFetch([ME])
+    assignAllToMe()
     await renderRouter('src/app', { initialUrl: '/exit-dispatch' })
     await fireEvent.press(await screen.findByTestId('exit-group-toggle'))
     await fireEvent.press(await screen.findByTestId('exit-notice-SAL-00001'))

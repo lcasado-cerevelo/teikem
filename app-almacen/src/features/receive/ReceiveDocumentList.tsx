@@ -34,10 +34,14 @@ export function ReceiveDocumentList({
   const [search, setSearch] = useState('')
   const [pages, setPages] = useState(1)
   const [selecting, setSelecting] = useState(false)
+  const [showFree, setShowFree] = useState(false)
   const [selected, setSelected] = useState<Record<string, LocalDoc>>({})
   const shownKind = kinds.includes(kind) ? kind : kinds[0]
   const limit = pages * PAGE
   const rows = useMemo(() => (shownKind ? listPendingDocs(warehousePublicId, shownKind, search, limit, userId) : []), [warehousePublicId, shownKind, search, limit, userId])
+  // Lote 198: primero lo asignado a esta persona; lo que nadie tiene asignado se ve con la opción de abajo (y lo de otras personas no se ofrece)
+  const freeCount = rows.filter((r) => r.assignedToUserId == null).length
+  const shown = rows.filter((r) => (r.assignedToUserId != null && r.assignedToUserId === userId) || (showFree && r.assignedToUserId == null))
   const chosen = Object.values(selected)
   if (!shownKind) return null
   return (
@@ -75,7 +79,7 @@ export function ReceiveDocumentList({
         style={styles.input}
         accessibilityLabel={t('receive.searchDocs')}
       />
-      {rows.length === 0 ? <Text style={styles.help}>{t(search.trim() ? 'receive.noDocMatches' : 'receive.noPendingDocs')}</Text> : null}
+      {shown.length === 0 ? <Text style={styles.help}>{t(search.trim() ? 'receive.noDocMatches' : showFree || freeCount === 0 ? 'receive.noPendingDocs' : 'receive.noneMine')}</Text> : null}
       <BigButton
         label={selecting ? t('receive.selectCancel') : t('receive.selectMany')}
         variant="secondary"
@@ -85,7 +89,7 @@ export function ReceiveDocumentList({
           setSelected({})
         }}
       />
-      {rows.map((r) => {
+      {shown.map((r) => {
         const k = keyOf(r.doc)
         const otherOwner = r.assignedToUserId != null && r.assignedToUserId !== userId
         const mine = r.assignedToUserId != null && r.assignedToUserId === userId
@@ -115,11 +119,19 @@ export function ReceiveDocumentList({
           </Pressable>
         )
       })}
+      {freeCount > 0 ? (
+        <BigButton
+          label={showFree ? t('myTasks.hideFree') : t('myTasks.showFree', { count: freeCount })}
+          variant="secondary"
+          testID="receive-free-toggle"
+          onPress={() => setShowFree((v) => !v)}
+        />
+      ) : null}
       {selecting && chosen.length > 0 ? (
         <BigButton
           label={t('receive.receiveSelected', { count: chosen.length })}
           testID="receive-selected-go"
-          onPress={() => onPickMany(rows.map((r) => r.doc).filter((d) => selected[keyOf(d)] !== undefined))}
+          onPress={() => onPickMany(shown.map((r) => r.doc).filter((d) => selected[keyOf(d)] !== undefined))}
         />
       ) : null}
       {rows.length >= limit ? <BigButton label={t('receive.moreDocs')} variant="secondary" onPress={() => setPages((n) => n + 1)} /> : null}

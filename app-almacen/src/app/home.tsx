@@ -10,7 +10,7 @@ import { getOpenPick } from '../features/dispatch/localPick'
 import { getOpenCount } from '../features/count/localCount'
 import { listExitNotices } from '../features/exitDispatch/localExit'
 import { dispatchScope } from '../features/dispatch/dispatchScope'
-import { countMyDocuments } from '../features/myTasks/myTasksLogic'
+import { countMyDocuments, listAsnTasks, listExitTasks, listPoTasks, listSalesTasks } from '../features/myTasks/myTasksLogic'
 import { getCachedMyPutaway } from '../features/myTasks/myTasksApi'
 import { listSalesOrders } from '../features/salesDispatch/localSales'
 import { listSalesReturns } from '../features/salesReturn/localReturns'
@@ -62,6 +62,8 @@ export default function HomeScreen() {
   const [hasExitNotices, setHasExitNotices] = useState(false)
   // Lote 172: «Mis tareas» con cuántos documentos le asignaron (de la copia local, sin señal)
   const [myDocs, setMyDocs] = useState(0)
+  // Lote 198: cada tarjeta se marca en azul solo si hay algo asignado a esta persona en ese rubro
+  const [mine, setMine] = useState({ receive: false, putaway: false, dispatch: false })
   const userId = session?.userId
   const warehouseId = activeWarehouse.publicId
   useFocusEffect(
@@ -81,6 +83,13 @@ export default function HomeScreen() {
       setHasSalesReturns(warehouseId ? listSalesReturns(warehouseId).length > 0 : false)
       setHasExitNotices(warehouseId ? listExitNotices(warehouseId, scope).length > 0 : false)
       setMyDocs(warehouseId && userId != null ? countMyDocuments(warehouseId, userId) + getCachedMyPutaway(warehouseId, userId).length : 0)
+      if (warehouseId && userId != null) {
+        setMine({
+          receive: listAsnTasks(warehouseId, userId, 'mine').length + listPoTasks(warehouseId, userId, 'mine').length > 0,
+          putaway: getCachedMyPutaway(warehouseId, userId).length > 0,
+          dispatch: listExitTasks(warehouseId, userId, 'mine').length + listSalesTasks(warehouseId, userId, 'mine').length > 0,
+        })
+      }
       let alive = true
       if (warehouseId && userId != null) {
         void refreshOpenCountHints(warehouseId, userId).then(() => {
@@ -179,19 +188,19 @@ export default function HomeScreen() {
         {/* Orden del menú (dueño, 2026-10-21): Mis tareas, Consultar, Recibir, Acomodar, Despacho, Conteo y, al final, Ajustar y Daño. Transferir ya no está aquí: se hace con «Mover» en Consultar. */}
         {/* Lote 172: lo que el supervisor le asignó (avisos de llegada, avisos de salida y acomodos); con la cuenta de documentos asignados */}
         <View style={styles.cell}>
-          <BigButton layout="tile" label={myDocs > 0 ? t('home.myTasksCount', { count: myDocs }) : t('home.myTasks')} icon="✅" onPress={() => go('/my-tasks')} testID="home-my-tasks" />
+          <BigButton layout="tile" label={myDocs > 0 ? t('home.myTasksCount', { count: myDocs }) : t('home.myTasks')} icon="✅" variant={myDocs > 0 ? 'primary' : 'secondary'} onPress={() => go('/my-tasks')} testID="home-my-tasks" />
         </View>
         <View style={styles.cell}>
           <BigButton layout="tile" label={t('home.lookup')} icon="🔎" variant="secondary" onPress={() => go('/lookup')} />
         </View>
         <View style={styles.cell}>
-          <BigButton layout="tile" label={t('home.receive')} icon="📥" onPress={() => go('/receive', 'receive')} />
+          <BigButton layout="tile" label={t('home.receive')} icon="📥" variant={mine.receive ? 'primary' : 'secondary'} onPress={() => go('/receive', 'receive')} />
         </View>
         <View style={styles.cell}>
-          <BigButton layout="tile" label={t('home.putaway')} icon="📦" variant="secondary" onPress={() => go('/putaway')} />
+          <BigButton layout="tile" label={t('home.putaway')} icon="📦" variant={mine.putaway ? 'primary' : 'secondary'} onPress={() => go('/putaway')} />
         </View>
         <View style={styles.cell}>
-          <BigButton layout="tile" label={t('home.dispatch')} icon="🚚" variant="secondary" onPress={() => go(openKind !== 'dispatch' && (hasSalesOrders || hasExitNotices) ? '/exit-dispatch' : '/dispatch', 'dispatch')} />
+          <BigButton layout="tile" label={t('home.dispatch')} icon="🚚" variant={mine.dispatch ? 'primary' : 'secondary'} onPress={() => go(openKind !== 'dispatch' && (hasSalesOrders || hasExitNotices) ? '/exit-dispatch' : '/dispatch', 'dispatch')} />
         </View>
         {hasSalesReturns && canReceive ? (
           <View style={styles.cell}>

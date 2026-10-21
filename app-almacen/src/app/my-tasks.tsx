@@ -15,7 +15,7 @@ import { colors, fontSize, radius, spacing } from '../kernel/ui/theme'
 import { getOpenCount } from '../features/count/localCount'
 import { getOpenPick } from '../features/dispatch/localPick'
 import { getOpenReceipt } from '../features/receive/localLookup'
-import { downloadAsns, downloadExitNoticesIfAllowed, downloadPurchaseOrdersIfAllowed, downloadSalesOrdersIfAllowed } from '../kernel/sync/download'
+import { refreshAssignments } from '../kernel/sync/download'
 import { fetchMyPutaway, getCachedMyPutaway, takeAsn, takeExitNotice, takePurchaseOrder, takeSalesOrder, type MyPutawayTask } from '../features/myTasks/myTasksApi'
 import {
   asnOpenCode,
@@ -79,7 +79,7 @@ export default function MyTasksScreen() {
       setPutaway(getCachedMyPutaway(warehousePublicId, userId))
       let alive = true
       // Con señal se refrescan los documentos desde el servidor antes de listar: una asignación hecha en la web aparece de una vez
-      void Promise.allSettled([downloadAsns(), downloadPurchaseOrdersIfAllowed(), downloadSalesOrdersIfAllowed(warehousePublicId), downloadExitNoticesIfAllowed(warehousePublicId)]).then(() => {
+      void refreshAssignments(warehousePublicId).then(() => {
         if (alive) reload()
       })
       void fetchMyPutaway(warehousePublicId, userId).then(
@@ -160,6 +160,22 @@ export default function MyTasksScreen() {
         </Pressable>
       ))}
 
+      {lists.poMine.length > 0 ? <Text style={styles.section}>{t('myTasks.receivePo', { count: lists.poMine.length })}</Text> : null}
+      {lists.poMine.map((o) => (
+        <Pressable key={`po${o.id}`} accessibilityRole="button" onPress={() => openPo(o)} style={({ pressed }) => [styles.card, pressed && styles.cardPressed]} testID={`my-po-${o.number}`}>
+          <Text style={styles.cardTitle}>{o.number}</Text>
+          <Text style={styles.help}>{[o.supplierName, o.expectedDate ? t('myTasks.expected', { date: f.date(o.expectedDate) }) : null].filter(Boolean).join(' · ')}</Text>
+        </Pressable>
+      ))}
+
+      {putaway.length > 0 ? <Text style={styles.section}>{t('myTasks.putaway', { count: putaway.length })}</Text> : null}
+      {putaway.map((p) => (
+        <Pressable key={`p${p.id}`} accessibilityRole="button" onPress={() => router.push('/putaway')} style={({ pressed }) => [styles.card, pressed && styles.cardPressed]} testID={`my-putaway-${p.id}`}>
+          <Text style={styles.cardTitle}>{p.sku}{p.quantity != null ? ` × ${f.qty(p.quantity)}` : ''}</Text>
+          <Text style={styles.help}>{[p.productName, p.toBinCode ? t('myTasks.toBin', { bin: p.toBinCode }) : null].filter(Boolean).join(' · ')}</Text>
+        </Pressable>
+      ))}
+
       {lists.exitMine.length > 0 ? <Text style={styles.section}>{t('myTasks.dispatch', { count: lists.exitMine.length })}</Text> : null}
       {lists.exitMine.map((o) => (
         <Pressable key={`o${o.id}`} accessibilityRole="button" onPress={() => openExit(o)} style={({ pressed }) => [styles.card, pressed && styles.cardPressed]} testID={`my-exit-${o.number}`}>
@@ -170,14 +186,6 @@ export default function MyTasksScreen() {
         </Pressable>
       ))}
 
-      {lists.poMine.length > 0 ? <Text style={styles.section}>{t('myTasks.receivePo', { count: lists.poMine.length })}</Text> : null}
-      {lists.poMine.map((o) => (
-        <Pressable key={`po${o.id}`} accessibilityRole="button" onPress={() => openPo(o)} style={({ pressed }) => [styles.card, pressed && styles.cardPressed]} testID={`my-po-${o.number}`}>
-          <Text style={styles.cardTitle}>{o.number}</Text>
-          <Text style={styles.help}>{[o.supplierName, o.expectedDate ? t('myTasks.expected', { date: f.date(o.expectedDate) }) : null].filter(Boolean).join(' · ')}</Text>
-        </Pressable>
-      ))}
-
       {lists.salesMine.length > 0 ? <Text style={styles.section}>{t('myTasks.dispatchSales', { count: lists.salesMine.length })}</Text> : null}
       {lists.salesMine.map((o) => (
         <Pressable key={`so${o.id}`} accessibilityRole="button" onPress={() => openSales(o)} style={({ pressed }) => [styles.card, pressed && styles.cardPressed]} testID={`my-sales-${o.number}`}>
@@ -185,14 +193,6 @@ export default function MyTasksScreen() {
           <Text style={styles.help}>
             {[o.clientName, o.consigneeName, o.requiredDate ? t('myTasks.required', { date: f.date(o.requiredDate) }) : null].filter(Boolean).join(' · ')}
           </Text>
-        </Pressable>
-      ))}
-
-      {putaway.length > 0 ? <Text style={styles.section}>{t('myTasks.putaway', { count: putaway.length })}</Text> : null}
-      {putaway.map((p) => (
-        <Pressable key={`p${p.id}`} accessibilityRole="button" onPress={() => router.push('/putaway')} style={({ pressed }) => [styles.card, pressed && styles.cardPressed]} testID={`my-putaway-${p.id}`}>
-          <Text style={styles.cardTitle}>{p.sku}{p.quantity != null ? ` × ${f.qty(p.quantity)}` : ''}</Text>
-          <Text style={styles.help}>{[p.productName, p.toBinCode ? t('myTasks.toBin', { bin: p.toBinCode }) : null].filter(Boolean).join(' · ')}</Text>
         </Pressable>
       ))}
 
@@ -220,20 +220,6 @@ export default function MyTasksScreen() {
           ))
         : null}
       {showFree
-        ? lists.exitFree.map((o) => (
-            <View key={`fo${o.id}`} style={styles.card}>
-              <Text style={styles.cardTitle}>{o.number}</Text>
-              <Text style={styles.help}>{[t('myTasks.kindDispatch'), o.clientName].filter(Boolean).join(' · ')}</Text>
-              <BigButton
-                label={t('myTasks.take')}
-                loading={busy === `fo${o.id}`}
-                onPress={() => void take(`fo${o.id}`, () => takeExitNotice(o.publicId), () => userId != null && markTakenLocally('exit', o.id, userId))}
-                testID={`take-exit-${o.number}`}
-              />
-            </View>
-          ))
-        : null}
-      {showFree
         ? lists.poFree.map((o) => (
             <View key={`fp${o.id}`} style={styles.card}>
               <Text style={styles.cardTitle}>{o.number}</Text>
@@ -243,6 +229,20 @@ export default function MyTasksScreen() {
                 loading={busy === `fp${o.id}`}
                 onPress={() => void take(`fp${o.id}`, () => takePurchaseOrder(o.publicId), () => userId != null && markTakenLocally('po', o.id, userId))}
                 testID={`take-po-${o.number}`}
+              />
+            </View>
+          ))
+        : null}
+      {showFree
+        ? lists.exitFree.map((o) => (
+            <View key={`fo${o.id}`} style={styles.card}>
+              <Text style={styles.cardTitle}>{o.number}</Text>
+              <Text style={styles.help}>{[t('myTasks.kindDispatch'), o.clientName].filter(Boolean).join(' · ')}</Text>
+              <BigButton
+                label={t('myTasks.take')}
+                loading={busy === `fo${o.id}`}
+                onPress={() => void take(`fo${o.id}`, () => takeExitNotice(o.publicId), () => userId != null && markTakenLocally('exit', o.id, userId))}
+                testID={`take-exit-${o.number}`}
               />
             </View>
           ))

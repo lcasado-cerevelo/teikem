@@ -74,6 +74,7 @@ describe('Recibir — varios seguidos (tanda con carga automática)', () => {
     getDb().runSync("INSERT INTO asn (id, number, reference, client_name, warehouse_public_id, is_active) VALUES (5, 'LLE-00005', 'R-5', 'ASICS Care', 'wh-1', 1)")
     getDb().runSync("INSERT INTO asn (id, number, reference, client_name, warehouse_public_id, is_active) VALUES (6, 'LLE-00006', 'R-6', 'ASICS Care', 'wh-1', 1)")
 
+    getDb().runSync('UPDATE asn SET assigned_to_user_id = 7')
     await renderRouter('src/app', { initialUrl: '/receive' })
     await waitFor(() => expect(screen.getByTestId('receive-select-many')).toBeTruthy())
     await fireEvent.press(screen.getByTestId('receive-select-many'))
@@ -91,5 +92,17 @@ describe('Recibir — varios seguidos (tanda con carga automática)', () => {
 
     await waitFor(() => expect(getOpenReceipt()?.doc?.asnId).toBe(6))
     expect(getOpenReceipt()?.groupKey).toBe(JSON.parse(listOutbox()[0].body).groupKey)
+  })
+
+  it('la lista muestra primero lo asignado a mí; lo que nadie tiene asignado sale con la opción «Ver lo que nadie tiene asignado»', async () => {
+    await signIn()
+    getDb().runSync("INSERT INTO asn (id, number, reference, client_name, warehouse_public_id, assigned_to_user_id, is_active) VALUES (5, 'LLE-00005', 'R-5', 'ASICS Care', 'wh-1', 7, 1)")
+    getDb().runSync("INSERT INTO asn (id, number, reference, client_name, warehouse_public_id, is_active) VALUES (6, 'LLE-00006', 'R-6', 'ASICS Care', 'wh-1', 1)")
+
+    await renderRouter('src/app', { initialUrl: '/receive' })
+    await waitFor(() => expect(screen.getByTestId('receive-doc-asn:5')).toBeTruthy())
+    expect(screen.queryByTestId('receive-doc-asn:6')).toBeNull()
+    await fireEvent.press(screen.getByTestId('receive-free-toggle'))
+    expect(screen.getByTestId('receive-doc-asn:6')).toBeTruthy()
   })
 })

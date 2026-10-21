@@ -854,3 +854,13 @@ export async function downloadForReceiving(options: { forceStockExit?: boolean }
   results.push(await downloadManualIssueReasons())
   return results
 }
+
+/**
+ * Lote 198: vuelve a bajar COMPLETOS los avisos de llegada y las órdenes de compra abiertos (y los avisos de salida y órdenes de venta, que ya llegan completos), para que lo asignado en la web
+ * aparezca de una vez sin depender de la marca de agua de la sincronización. Se usa al abrir Mis tareas, Recibir y Despacho con señal.
+ */
+export async function refreshAssignments(warehousePublicId: string): Promise<void> {
+  const db = getDb()
+  db.runSync("DELETE FROM sync_watermark WHERE resource IN ('asns', 'purchaseOrders')")
+  await Promise.allSettled([downloadAsns(), downloadPurchaseOrdersIfAllowed(), downloadSalesOrdersIfAllowed(warehousePublicId), downloadExitNoticesIfAllowed(warehousePublicId)])
+}

@@ -162,6 +162,7 @@
     "skipped": "omitido"
   },
   "exitDispatch": {
+    "noneMine": "Nada asignado a ti. Toca «Ver lo que nadie tiene asignado».",
     "unassigned": "Sin asignar (al despacharlo queda a tu nombre)",
     "assignedToYou": "Asignado a ti",
     "assignedOther": "Asignado a otra persona",
@@ -245,6 +246,7 @@
     "changed": "Ahora trabajas en {name}."
   },
   "receive": {
+    "noneMine": "Nada asignado a ti. Toca «Ver lo que nadie tiene asignado» o escanea el código.",
     "truckOtherOwner": "Ese documento es de otro dueño que los de esta tanda. Termine los de la tanda para recibirlo.",
     "selectMany": "Seleccionar varios",
     "selectCancel": "Cancelar selección",
