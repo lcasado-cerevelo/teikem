@@ -155,3 +155,5 @@ Luis tiene razón en que no tiene sentido (son órdenes viejas que ya se entrega
 - Una vez empacado, el lote y la orden son 1 a 1: la orden ya lo identifica todo, y ese número solo se copia a la orden como «Empaque», que es el duplicado que Luis no quiere.
 - Los despachos manuales (`DMA-#####`) no generan orden: su número es su único identificador.
 - **Conclusión propuesta:** el usuario no necesita ver ni escanear el EMP. Se deja solo como identificador interno del lote (y para el despacho manual); al empacar, las pantallas, listas y movimientos muestran el **conduce** de la orden; el EMP deja de copiarse a la orden. Alternativa más grande (otro lote): crear la orden desde que se empieza a recolectar, con su conduce, y que el lote no tenga número propio.
+
+**Decisión de Luis (2026-10-20) sobre 7.3:** el número del lote (`EMP-#####`) **se queda como está**: es el **número de la recolección**, y el **envío es otro** (su identificador es el conduce). No se toca Recolección y empaque. Lo que sigue pendiente es solo sacar el «Empaque» de la orden y de la lista de Envíos (§7, §7.2), sin cambiar el número de la recolección.
