@@ -8,7 +8,7 @@ import { applyProblemDetails } from '../../kernel/api/problem'
 import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { Chip, DataTable, Modal, Panel, QBox, Spinner, Tabs, toast, type DataColumn } from '../../kernel/ui'
+import { Chip, DataTable, Modal, Panel, QBox, Spinner, Tabs, toast, type DataColumn, RemountOnSearch } from '../../kernel/ui'
 import { IconBox } from '../../kernel/ui/screenIcons'
 import {
   claimsPageReader,
@@ -35,7 +35,7 @@ function useDebounced(value: string, ms = 300) {
   return v
 }
 
-export default function ClaimsScreen() {
+function ClaimsScreenBody() {
   const t = useT()
   // `?q=<número>` (búsqueda global): abre la lista de reclamaciones ya filtrada por ese número
   const [params] = useSearchParams()
@@ -406,5 +406,14 @@ function ClaimModal({ id, onClose }: { id: string; onClose: () => void }) {
         {error && <p className="ferr" role="alert">{error}</p>}
       </div>
     </Modal>
+  )
+}
+
+// `?q=` (búsqueda global) se lee al abrir: si cambia estando abierta, la lista se vuelve a abrir con el filtro nuevo
+export default function ClaimsScreen() {
+  return (
+    <RemountOnSearch>
+      <ClaimsScreenBody />
+    </RemountOnSearch>
   )
 }

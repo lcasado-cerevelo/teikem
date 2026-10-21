@@ -16,5 +16,4 @@ Fecha: 2026-10-21. Dictado de Luis (2026-10-20), documentado en `docs/busqueda-g
 ## Fuera por ahora / a revisar
 - **Avisos de llegada**: falta su `Number` (otra sesión); entrarán al buscador cuando exista.
 - **Serie y lote**: fuera (decisión de Luis).
-- Elegir un resultado que abre la misma lista en la que ya se está no aplica el filtro nuevo.
 - Búsqueda de un envío por el nombre del cliente: no incluida (los clientes se encuentran por nombre y de ahí a sus envíos).

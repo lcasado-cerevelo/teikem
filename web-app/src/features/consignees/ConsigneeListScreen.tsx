@@ -9,7 +9,7 @@ import { Can } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { CARDS_QUERY, Chip, EmptyState, FilterScope, IconPlus, IconUpload, IconUsers, Panel, QBox, Spinner, SplitPane, useMediaQuery } from '../../kernel/ui'
+import { CARDS_QUERY, Chip, EmptyState, FilterScope, IconPlus, IconUpload, IconUsers, Panel, QBox, Spinner, SplitPane, useMediaQuery, RemountOnSearch } from '../../kernel/ui'
 import { ExportMenu } from '../../kernel/ui/ExportMenu'
 import { useClientOptions, useConsignees } from './api'
 import { CustomFieldFilterBar, customFieldQuery, EMPTY_CUSTOM_FIELD_FILTERS, type CustomFieldFilterValues } from '../../kernel/custom-fields'
@@ -22,7 +22,7 @@ import './consignees.css'
 
 const NO_ROWS: Consignee[] = []
 
-export default function ConsigneeListScreen() {
+function ConsigneeListScreenBody() {
   const t = useT()
   const f = useFormat()
   const [params, setParams] = useSearchParams()
@@ -179,5 +179,14 @@ export default function ConsigneeListScreen() {
       />
       {importing && <ConsigneeImportModal defaultClient={clientFilter ?? SHARED} onClose={() => setImporting(false)} />}
     </div>
+  )
+}
+
+// `?q=` (búsqueda global) se lee al abrir: si cambia estando abierta, la lista se vuelve a abrir con el filtro nuevo
+export default function ConsigneeListScreen() {
+  return (
+    <RemountOnSearch>
+      <ConsigneeListScreenBody />
+    </RemountOnSearch>
   )
 }

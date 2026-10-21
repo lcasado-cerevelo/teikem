@@ -6,7 +6,7 @@ import { applyProblemDetails } from '../../kernel/api/problem'
 import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { Chip, ClientPicker, ConfirmDialog, DataTable, Modal, Panel, QBox, Spinner, Tabs, toast, type DataColumn } from '../../kernel/ui'
+import { Chip, ClientPicker, ConfirmDialog, DataTable, Modal, Panel, QBox, Spinner, Tabs, toast, type DataColumn, RemountOnSearch } from '../../kernel/ui'
 import { IconCash } from '../../kernel/ui/screenIcons'
 import {
   invoicePageReader,
@@ -533,7 +533,7 @@ function SettingsTab() {
 
 // ---------------------------------------------------------------- pantalla
 
-export default function BillingScreen() {
+function BillingScreenBody() {
   const t = useT()
   // `?q=<número>` (búsqueda global): abre las facturas ya filtradas por ese número
   const [tab, setTab] = useState<TabKey>(() => (new URLSearchParams(window.location.search).get('q') ? 'invoices' : 'runs'))
@@ -599,5 +599,14 @@ export default function BillingScreen() {
         />
       )}
     </div>
+  )
+}
+
+// `?q=` (búsqueda global) se lee al abrir: si cambia estando abierta, la lista se vuelve a abrir con el filtro nuevo
+export default function BillingScreen() {
+  return (
+    <RemountOnSearch>
+      <BillingScreenBody />
+    </RemountOnSearch>
   )
 }

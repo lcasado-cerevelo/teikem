@@ -32,6 +32,7 @@ import {
   toast,
   type DataColumn,
   type RowAction,
+  RemountOnSearch,
 } from '../../kernel/ui'
 import { useSaveSupplier, useSuppliers, type SupplierDto } from './api'
 import { IconPower, IconRotateCcw } from '../../kernel/ui/actionIcons'
@@ -204,7 +205,7 @@ function SupplierModal({ open, onClose, supplier }: { open: boolean; onClose: ()
 }
 
 // ---- Pantalla ----
-export default function SupplierListScreen() {
+function SupplierListScreenBody() {
   const t = useT()
   const [show, setShow] = useState<'active' | 'all'>('active')
   // `?q=<nombre>` (búsqueda global): abre la lista ya filtrada por ese nombre
@@ -347,5 +348,14 @@ export default function SupplierListScreen() {
         onClose={() => setConfirm(null)}
       />
     </div>
+  )
+}
+
+// `?q=` (búsqueda global) se lee al abrir: si cambia estando abierta, la lista se vuelve a abrir con el filtro nuevo
+export default function SupplierListScreen() {
+  return (
+    <RemountOnSearch>
+      <SupplierListScreenBody />
+    </RemountOnSearch>
   )
 }
