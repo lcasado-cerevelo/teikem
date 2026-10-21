@@ -274,6 +274,11 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 .rcp-confirm{padding:14px 16px 16px}
 .rcp-confirm .btn{justify-content:center}
 .rcp-confirm .help{margin:6px 0 0}
+.rcp-confirm .btn+.help{margin-bottom:12px}
+/* Lote 174: tandas del recibo */
+.rcp-batches{padding:0 16px 8px}
+.rcp-batches h4{margin:8px 0 4px;font-size:13px}
+.rcp-batches ul{margin:0;padding-left:18px;font-size:13px}
 /* Lote 16: recibo directo a posición — columna "Posición destino", pista de la sugerida, aviso de cupo y acciones */
 .rcp-target{min-width:140px}
 .rcp-direct .rcp-prod{min-width:140px}

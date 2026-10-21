@@ -118,6 +118,15 @@ public sealed class ReceiptsController(ReceiptService receipts) : ControllerBase
         => receipts.ConfirmAsync(publicId, req, ct);
 
     /// <summary>
+    /// Lote 174 (C2) — confirma una TANDA: asienta lo recibido y aún no asentado de las líneas que pueden entrar (sin serie, sin daño declarado y sin
+    /// cruce de muelle), crea su acomodo y deja el recibo abierto. Recibo directo o sin unidades nuevas → 422. La confirmación final cierra el resto.
+    /// </summary>
+    [HttpPost("{publicId:guid}/confirm-batch"), RequirePermission(PermissionCatalog.WarehouseReceive)]
+    public Task<ReceiptDetailDto> ConfirmBatch(Guid publicId, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ReceiptConfirmRequest? req,
+        CancellationToken ct)
+        => receipts.ConfirmBatchAsync(publicId, req, ct);
+
+    /// <summary>
     /// Lote 16 — posiciones destino sugeridas para una línea (take 1..10; por defecto 5): el acomodo dirigido (en devoluciones
     /// la cuarentena primero) con cupo, existencia, lo ya destinado por otras líneas del recibo, espacio libre y fits. Las que
     /// caben primero; las que exceden el cupo al final (fits = false). Línea de otro recibo → 404.

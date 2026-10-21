@@ -9890,3 +9890,28 @@ Se quitó de «Paquetes en la calle»: las tarjetas son Entrada, En almacén, Ru
 
 **¿Qué son los «productos en backorder» de la tarjeta «Productos bajo mínimo»?**
 Los productos que tienen un faltante pendiente en alguna línea abierta de una orden de venta. Es el texto de abajo de la tarjeta; el número grande sigue siendo los productos bajo su mínimo.
+## Recibo con tandas (Lote 174)
+
+**¿Para qué sirve «Confirmar tanda»?**
+Cuando el camión llega por partes: lo recibido hasta ahora entra al inventario y a acomodo, y el recibo sigue abierto para lo que falte. «Confirmar recibo» cierra el resto.
+
+**`No hay unidades nuevas por confirmar: capture lo recibido en al menos una línea antes de confirmar una tanda.` (422)**
+No hay unidades recibidas sin confirmar que puedan entrar a una tanda. Suba lo recibido de una línea (ojo: series, líneas con daño o con cruce de muelle esperan la confirmación final).
+
+**`Un recibo directo no admite tandas: cada línea ya entra a su posición destino al confirmar.` (422)**
+Los recibos directos a posición se confirman completos. Use un recibo con acomodo si necesita tandas.
+
+**`No se puede dejar lo recibido por debajo de lo ya confirmado en tandas.` (400)**
+Esas unidades ya están en el inventario. Si fue un error, corríjalo con un ajuste de inventario, no en el recibo.
+
+**`La línea ya tiene unidades confirmadas en tandas: no se puede cambiar su producto ni su lote, ni quitarla del recibo.` (409)**
+Lo confirmado ya movió inventario y generó su acomodo; la línea queda fija.
+
+**`El recibo ya tiene tandas confirmadas: no se puede eliminar.` (409)**
+Ya movió inventario. Ciérrelo con la confirmación final.
+
+**La tanda no incluyó una línea que sí capturé.**
+Las líneas con número de serie, con daño declarado o con cruce de muelle entran en la confirmación final, no en las tandas.
+
+**¿La orden de compra queda recibida con la primera tanda?**
+No: queda «Recibida parcial» y pasa a «Recibida» cuando lo recibido completa lo pedido.

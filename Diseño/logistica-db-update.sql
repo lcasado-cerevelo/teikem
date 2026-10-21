@@ -5690,3 +5690,26 @@ GO
 IF COL_LENGTH('dbo.Client', 'DefaultPackageTypeLookupId') IS NULL
     ALTER TABLE dbo.Client ADD DefaultPackageTypeLookupId INT NULL CONSTRAINT FK_Client_DefaultPackageType REFERENCES dbo.LookupCode(LookupCodeId);
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-21 (Lote 174) — Recibo con tandas (C2): confirmaciones parciales de un recibo (el camión que llega por partes).
+   - dbo.ReceiptLine.PostedQty DECIMAL(16,3) NOT NULL DEFAULT 0: lo ya asentado en el inventario por tandas.
+   - dbo.ReceiptBatch: una fila por tanda (numero consecutivo por recibo, quien y cuando, lineas y unidades).
+   Los recibos ya confirmados quedan con PostedQty = 0 y sin tandas (se comportan como siempre). Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.ReceiptLine', 'PostedQty') IS NULL
+    ALTER TABLE dbo.ReceiptLine ADD PostedQty DECIMAL(16,3) NOT NULL CONSTRAINT DF_ReceiptLine_PostedQty DEFAULT 0;
+GO
+IF OBJECT_ID('dbo.ReceiptBatch', 'U') IS NULL CREATE TABLE dbo.ReceiptBatch (
+    ReceiptBatchId  INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_ReceiptBatch PRIMARY KEY,
+    ReceiptHeaderId INT NOT NULL CONSTRAINT FK_ReceiptBatch_Receipt REFERENCES dbo.ReceiptHeader(ReceiptHeaderId),
+    BatchNumber     INT NOT NULL,
+    ConfirmedAtUtc  DATETIME2(3) NOT NULL,
+    ConfirmedBy     INT NULL,
+    Comment         NVARCHAR(300) NULL,
+    LineCount       INT NOT NULL,
+    UnitCount       DECIMAL(16,3) NOT NULL
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ReceiptBatch_Number' AND object_id = OBJECT_ID('dbo.ReceiptBatch'))
+    CREATE UNIQUE INDEX UX_ReceiptBatch_Number ON dbo.ReceiptBatch (ReceiptHeaderId, BatchNumber);
+GO

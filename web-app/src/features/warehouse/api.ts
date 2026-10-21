@@ -1017,6 +1017,20 @@ export function useConfirmReceipt() {
   })
 }
 
+/** Lote 174 (C2) — `POST /api/v1/receipts/{publicId}/confirm-batch`: confirma una TANDA (lo recibido y aún no asentado de las líneas que pueden
+ *  entrar); mueve inventario, crea su acomodo y deja el recibo abierto. */
+export function useConfirmReceiptBatch() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId, body = {} }: { publicId: string; body?: Schemas['ReceiptConfirmRequest'] }) =>
+      unwrap(api.POST('/api/v1/receipts/{publicId}/confirm-batch', { params: { path: { publicId } }, body })),
+    onSuccess: (dto) => {
+      cacheReceipt(qc, dto)
+      return invalidate(qc, 'receipts', 'receipt', 'asns', 'tasks', 'purchaseOrders', 'purchaseOrder', 'purchaseOrderShortages', 'purchaseOrderShortageLines', ...STOCK)
+    },
+  })
+}
+
 /** `DELETE /api/v1/receipts/{publicId}` (abierto —Esperado, Recibiendo o Discrepancia— sin cruce de muelle asignado). */
 export function useDeleteReceipt() {
   const qc = useQueryClient()

@@ -2589,3 +2589,37 @@ La línea de la orden de compra (alta y edición, `POST/PATCH /purchase-orders`,
 El Kárdex tiene un filtro **Zona** (entre Almacén y Posición; selección múltiple con buscador; ofrece las zonas de los almacenes elegidos o de todos). `GET /inventory/transactions` y `/transactions/summary` aceptan `zoneIds` y lo resuelven a las posiciones de esas zonas (junto con posiciones elegidas deben cumplirse las dos). La barra de filtros reparte los 14 filtros en columnas iguales (5 en pantalla ancha) para que las filas queden parejas. En Saldos y Conciliación el filtro de zona se atenúa (no se aplica).
 
 **Tareas de acomodo (Lote 160):** ya no se cancelan desde la pantalla. La mercancía de un recibo confirmado ya está recibida (el aviso o la orden quedan como recibidos): una tarea de acomodo solo se asigna, se inicia y se completa (o se reparte en varias posiciones); para moverla a otro lado después se hace una transferencia. Se pueden hacer a nivel del recibo («Asignar todas», «Iniciar todas», «Completar todas»). El reabasto sí se sigue pudiendo cancelar.
+
+## Recibo con tandas (Lote 174, 2026-10-21)
+
+**Qué es.** Cuando el camión llega por partes, el recibo se puede **confirmar por tandas**: cada tanda mete al inventario (posición de recepción) lo recibido hasta ese momento y saca sus tareas de acomodo, **y el recibo sigue abierto** para lo que falte. La **confirmación final** de siempre asienta el resto, cierra el recibo y marca el aviso como recibido. Un recibo que nunca usa tandas se comporta exactamente igual que antes.
+
+**Quién puede.** Permiso `warehouse.receive`, módulo Almacén. Pantalla: Recibo → ficha del recibo → botón **«Confirmar tanda»** (encima de «Confirmar recibo»). Endpoint: `POST /api/v1/receipts/{id}/confirm-batch` (cuerpo opcional con `comment` y `rowVersion`).
+
+**Cómo se usa.**
+1. Capture lo recibido en cada línea como siempre.
+2. Pulse «Confirmar tanda»: entra al inventario lo recibido y aún no confirmado de cada línea; se crea una tarea de acomodo por línea con esas unidades. Se registra la tanda (número, quién, cuándo, líneas y unidades) en «Tandas confirmadas».
+3. Siga capturando (suba lo recibido de la línea) y confirme otra tanda, o cierre con «Confirmar recibo».
+
+**Qué entra y qué espera.** Entran a la tanda las líneas con unidades nuevas. **Esperan la confirmación final**: productos con **número de serie**, líneas con **daño declarado** y líneas con **cruce de muelle** asignado (la pantalla lo indica: «esperan la confirmación final»).
+
+**Cómo se asienta.** Una tanda registra la entrada (RECEIPT) hasta lo esperado de la línea y, si se recibe de más, el exceso como ajuste de diferencia de recibo. **El faltante no se asienta en una tanda**; se asienta, si queda, en la confirmación final (igual que antes). Lo asentado entre tandas y cierre siempre suma exactamente lo recibido. La orden de compra recibe cada tanda por separado (queda «Recibida parcial» hasta que se complete). El costo de la línea se congela en la primera tanda.
+
+**Qué se bloquea con tandas confirmadas.**
+- No se puede bajar lo recibido de una línea por debajo de lo ya confirmado en tandas, ni cambiar su producto o lote, ni quitarla, ni eliminar el recibo.
+- El daño declarado de una línea no puede ser mayor que lo recibido y aún no confirmado en tandas.
+- Un recibo **directo** a posición no admite tandas (cada línea ya entra a su posición al confirmar).
+
+**Estatus.** La tanda no cambia el estatus (el recibo sigue Recibiendo o Discrepancia). En la confirmación final el recibo pasa a Recibido (o Recibido con diferencia); si ya no queda ninguna tarea de acomodo abierta pasa a Acomodado de inmediato, y si quedan tareas de tandas abiertas pasa a Acomodado cuando se complete la última.
+
+**Mensajes y códigos.**
+| Situación | Mensaje | HTTP |
+|---|---|---|
+| Recibo directo | `Un recibo directo no admite tandas: cada línea ya entra a su posición destino al confirmar.` | 422 |
+| Sin unidades nuevas | `No hay unidades nuevas por confirmar: capture lo recibido en al menos una línea antes de confirmar una tanda.` | 422 |
+| Bajar lo recibido de lo confirmado | `No se puede dejar lo recibido por debajo de lo ya confirmado en tandas.` (`receivedQty`) | 400 |
+| Cambiar producto/lote o quitar la línea | `La línea ya tiene unidades confirmadas en tandas: no se puede cambiar su producto ni su lote, ni quitarla del recibo.` | 409 |
+| Eliminar un recibo con tandas | `El recibo ya tiene tandas confirmadas: no se puede eliminar.` | 409 |
+| Lote faltante en una línea de la tanda | el mismo error por línea (`lines[i]`) de la confirmación final | 400 |
+
+**Casos frecuentes.** Ver las preguntas de «Recibo con tandas» en el FAQ.

@@ -130,4 +130,25 @@ public class ReceiptLine
     /// <summary>Lote 147: capa de costo — costo unitario congelado al confirmar el recibo (null = sin costo) y su origen (<see cref="CostSources"/>).</summary>
     public decimal? UnitCost { get; set; }
     public string? CostSource { get; set; }
+    /// <summary>Lote 174 (C2): lo ya asentado en el inventario por tandas (confirmaciones parciales); lo que queda por asentar es ReceivedQty - PostedQty.</summary>
+    public decimal PostedQty { get; set; }
+}
+
+/// <summary>
+/// Lote 174 (C2) — una tanda de un recibo: confirmación parcial de lo recibido hasta ese momento (el camión que llega por partes).
+/// Asienta en el inventario lo recibido y aún no asentado, crea su acomodo y deja el recibo abierto; la confirmación final cierra el resto.
+/// Sin TenantId propio en la consulta: se filtra por su recibo (que sí es del tenant).
+/// </summary>
+public class ReceiptBatch
+{
+    public int ReceiptBatchId { get; set; }
+    public int ReceiptHeaderId { get; set; }
+    /// <summary>Consecutivo dentro del recibo (1, 2, 3…).</summary>
+    public int BatchNumber { get; set; }
+    public DateTime ConfirmedAtUtc { get; set; }
+    public int? ConfirmedBy { get; set; }
+    public string? Comment { get; set; }
+    /// <summary>Líneas distintas y unidades que entraron en la tanda.</summary>
+    public int LineCount { get; set; }
+    public decimal UnitCount { get; set; }
 }

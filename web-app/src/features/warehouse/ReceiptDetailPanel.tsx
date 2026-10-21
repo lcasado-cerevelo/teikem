@@ -17,9 +17,10 @@ import { StatusChip, StatusHistory } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
 import { Chip, ConfirmDialog, EmptyState, IconCheck, IconClock, IconDoc, IconEdit, Modal, Panel, Spinner, toast } from '../../kernel/ui'
 import { IconAlert } from '../../kernel/ui/icons'
-import { useApplyReceiptTargetSuggestions, useConfirmReceipt, useReceipt, warehouseKeys, type ReceiptDetailDto } from './api'
+import { useApplyReceiptTargetSuggestions, useConfirmReceipt, useConfirmReceiptBatch, useReceipt, warehouseKeys, type ReceiptDetailDto } from './api'
 import { formatDate, formatDateTime, lineErrorsByIndex } from './lineRules'
 import { problemText } from './problemText'
+import { heldForFinalUnits, pendingBatchUnits } from './receiptBatches'
 import { hasDocument, RECEIPT_STATUS_DOMAIN, receiptOriginText } from './receiptFilters'
 import { confirmBlockers, missingTargets, rowVariance } from './receiptLineEdit'
 import { isDirectMode } from './receivingMode'
@@ -64,6 +65,8 @@ function ReceiptDetailBody({ receipt, onEditHeader }: { receipt: ReceiptDetailDt
   const hintId = useId()
   const canReceive = useCan('warehouse.receive')
   const confirm = useConfirmReceipt()
+  const confirmBatch = useConfirmReceiptBatch()
+  const [confirmingBatch, setConfirmingBatch] = useState(false)
   const applySuggested = useApplyReceiptTargetSuggestions()
   const [confirming, setConfirming] = useState(false)
   const [history, setHistory] = useState(false)
@@ -79,6 +82,10 @@ function ReceiptDetailBody({ receipt, onEditHeader }: { receipt: ReceiptDetailDt
   const anySaving = lines.rows.some((r) => r.saving)
   const anyVariance = lines.rows.some((r) => (rowVariance(r, manual) ?? 0) !== 0)
   const tasks = receipt.putawayTasks ?? []
+  const batches = receipt.batches ?? []
+  const pendingUnits = pendingBatchUnits(receipt.lines)
+  const heldUnits = heldForFinalUnits(receipt.lines)
+  const canBatch = isOpen && !direct
 
   const meta = [
     { k: 'warehouse', v: header.warehouseCode },
@@ -175,8 +182,35 @@ function ReceiptDetailBody({ receipt, onEditHeader }: { receipt: ReceiptDetailDt
             <span>{t(manual ? 'warehouse.receipts.detail.varianceNoteBlind' : 'warehouse.receipts.detail.varianceNote')}</span>
           </div>
         )}
+        {batches.length > 0 && (
+          <div className="rcp-batches">
+            <h4>{t('warehouse.receipts.batches.title')}</h4>
+            <ul>
+              {batches.map((b) => (
+                <li key={b.id}>
+                  <b>{t('warehouse.receipts.batches.number', { n: b.number ?? 0 })}</b> · {formatDateTime(b.confirmedAtUtc, lang)}
+                  {b.confirmedByName ? ` · ${b.confirmedByName}` : ''} · {t('warehouse.receipts.batches.units', { n: b.unitCount ?? 0, m: b.lineCount ?? 0 })}
+                  {b.comment ? ` · ${b.comment}` : ''}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <Can perm="warehouse.receive">
           <div className="rcp-confirm">
+            {canBatch && (
+              <>
+                <button
+                  type="button"
+                  className="btn block"
+                  disabled={blocker !== null || pendingUnits <= 0}
+                  onClick={() => setConfirmingBatch(true)}
+                >
+                  <IconCheck /> {t('warehouse.receipts.batches.confirm')}
+                </button>
+                <p className="help">{t(pendingUnits > 0 ? 'warehouse.receipts.batches.hint' : 'warehouse.receipts.batches.hintNone', { n: pendingUnits })}{heldUnits > 0 ? ` ${t('warehouse.receipts.batches.held', { n: heldUnits })}` : ''}</p>
+              </>
+            )}
             <button
               type="button"
               className="btn flow block"
@@ -195,7 +229,7 @@ function ReceiptDetailBody({ receipt, onEditHeader }: { receipt: ReceiptDetailDt
         </Can>
       </Panel>
 
-      {!isOpen && tasks.length > 0 && <ReceiptPutawayTasks tasks={tasks} queueLink />}
+      {tasks.length > 0 && <ReceiptPutawayTasks tasks={tasks} queueLink />}
 
       <DamageReportModal
         open={damaging}
@@ -206,6 +240,32 @@ function ReceiptDetailBody({ receipt, onEditHeader }: { receipt: ReceiptDetailDt
       <Modal open={history} size="md" title={t('warehouse.receipts.detail.historyTitle', { number: header.number ?? '' })} onClose={() => setHistory(false)}>
         {history && header.id != null && <StatusHistory entityType={ENTITY_TYPE} entityId={header.id} domain={RECEIPT_STATUS_DOMAIN} />}
       </Modal>
+
+      <ConfirmDialog
+        open={confirmingBatch}
+        title={t('warehouse.receipts.batches.confirmTitle')}
+        message={t('warehouse.receipts.batches.confirmBody', { number: header.number ?? '', n: pendingUnits })}
+        confirmLabel={t('warehouse.receipts.batches.confirm')}
+        onConfirm={async () => {
+          const cached = qc.getQueryData<ReceiptDetailDto>([warehouseKeys.receipt[0], publicId])
+          try {
+            await confirmBatch.mutateAsync({ publicId, body: { rowVersion: cached?.rowVersion ?? receipt.rowVersion ?? null } })
+          } catch (err) {
+            const byIndex = lineErrorsByIndex(err)
+            const ids = (receipt.lines ?? []).map((l) => l.id ?? 0).sort((a, b) => a - b)
+            const byId = new Map<number, string[]>()
+            for (const [i, msgs] of Object.entries(byIndex)) {
+              const id = ids[Number(i)]
+              if (id) byId.set(id, msgs)
+            }
+            if (byId.size > 0) lines.setLineErrors(byId)
+            if (err instanceof ApiError && err.code === 'conflict') void qc.invalidateQueries({ queryKey: [warehouseKeys.receipt[0], publicId] })
+            throw err
+          }
+          toast.success(t('warehouse.receipts.batches.confirmed', { number: header.number ?? '' }))
+        }}
+        onClose={() => setConfirmingBatch(false)}
+      />
 
       <ConfirmDialog
         open={confirming}

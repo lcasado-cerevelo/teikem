@@ -199,8 +199,9 @@ public sealed class ReceiptService(
 
         var tasks = await PutawayTasksAsync(r, header, ct);
         // Lote 13: se puede borrar mientras está abierto y sin asignaciones de cruce de muelle (mismas reglas que DeleteAsync).
-        var canDelete = header.IsOpen && lines.CrossDock.Count == 0;
-        return new ReceiptDetailDto(header, lineDtos, tasks, Convert.ToBase64String(r.RowVersion ?? Array.Empty<byte>()), canDelete);
+        var batches = await BatchesAsync(r.ReceiptHeaderId, ct);
+        var canDelete = header.IsOpen && lines.CrossDock.Count == 0 && batches.Count == 0;
+        return new ReceiptDetailDto(header, lineDtos, tasks, Convert.ToBase64String(r.RowVersion ?? Array.Empty<byte>()), canDelete, batches);
     }
 
     // ================================================================ alta
@@ -525,6 +526,7 @@ public sealed class ReceiptService(
             if (req.ProductPublicId is Guid newProductPublicId && newProductPublicId != product.PublicId)
             {
                 if (line.AsnLineId is not null) throw new ValidationException("productPublicId", ReceiptRules.DocumentLineProductFixed);
+                if (line.PostedQty > 0m) throw new ConflictException(ReceiptBatchRules.LineHasBatches);
                 var next = await db.Set<Product>().AsNoTracking().FirstOrDefaultAsync(p => p.PublicId == newProductPublicId, ct2)
                            ?? throw new NotFoundException("Producto");
                 if (!next.IsActive) throw new StatusRuleException(ReceiptRules.ProductInactive(next.Sku));
@@ -556,6 +558,7 @@ public sealed class ReceiptService(
             {
                 var e = ReceiptRules.ValidateReceivedQty(req.ReceivedQty);
                 if (e is not null) errors["receivedQty"] = new[] { e };
+                else if (req.ReceivedQty.Value < line.PostedQty) errors["receivedQty"] = new[] { ReceiptBatchRules.ReceivedBelowPosted };   // Lote 174
                 else received = req.ReceivedQty.Value;
             }
 
@@ -573,6 +576,7 @@ public sealed class ReceiptService(
             }
 
             var lotId = productChanged ? null : line.LotId;
+            if ((req.ClearLot == true || req.Lot is not null) && line.PostedQty > 0m) throw new ConflictException(ReceiptBatchRules.LineHasBatches);   // Lote 174
             if (req.ClearLot == true) lotId = null;
             if (req.Lot is not null)
             {
@@ -609,10 +613,10 @@ public sealed class ReceiptService(
                 else if (req.DamagedQty is not null)
                 {
                     damageChanged = true;
-                    newDamage = await ResolveDamageAsync(r.WarehouseId, req.DamagedQty, received, trackingCode == TrackingTypes.Serial, req.DamageCause, req.DamageNote,
+                    newDamage = await ResolveDamageAsync(r.WarehouseId, req.DamagedQty, received - line.PostedQty, trackingCode == TrackingTypes.Serial, req.DamageCause, req.DamageNote,
                         req.DamageBinId, null, req.DamageDiscard, req.DamageFinalDestination, "line", errors, ct2);
                 }
-                else if (line.DamagedQty > received) errors["line.damagedQty"] = new[] { DamageRules.LineDamagedTooMuch };
+                else if (line.DamagedQty > received - line.PostedQty) errors["line.damagedQty"] = new[] { DamageRules.LineDamagedTooMuch };
             }
             if (errors.Count > 0) throw new ValidationException(errors);
             if (damageChanged) ApplyDamage(line, newDamage);
@@ -675,6 +679,7 @@ public sealed class ReceiptService(
             var line = await db.Set<ReceiptLine>().FirstOrDefaultAsync(l => l.ReceiptLineId == lineId && l.ReceiptHeaderId == r.ReceiptHeaderId, ct2)
                        ?? throw new NotFoundException(ReceiptRules.LineNotFoundWhat, feminine: true);
             if (line.AsnLineId is not null) throw new ConflictException(ReceiptRules.AsnLineNotRemovable);
+            if (line.PostedQty > 0m) throw new ConflictException(ReceiptBatchRules.LineHasBatches);   // Lote 174
             if ((await CrossDockByLineAsync(new List<int> { line.ReceiptLineId }, ct2)).Count > 0)
                 throw new ConflictException(ReceiptRules.LineHasCrossDock);
             // Línea de un recibo abierto: aún no hay movimiento que la referencie; se retira del documento.
@@ -780,9 +785,9 @@ public sealed class ReceiptService(
                     .Where(al => al.AsnId == asn.AsnId && asnLineIds.Contains(al.AsnLineId) && al.PurchaseOrderLineId != null)
                     .ToDictionaryAsync(al => al.AsnLineId, al => al.PurchaseOrderLineId!.Value, ct2);
                 var quantities = lines
-                    .Where(l => l.AsnLineId is int al && poLineByAsnLine.ContainsKey(al) && l.ReceivedQty > 0m)
+                    .Where(l => l.AsnLineId is int al && poLineByAsnLine.ContainsKey(al) && l.ReceivedQty - l.PostedQty > 0m)   // Lote 174: lo ya aplicado por tandas no se repite
                     .GroupBy(l => poLineByAsnLine[l.AsnLineId!.Value])
-                    .Select(g => new PurchaseOrderReceiptQty(g.Key, g.Sum(l => l.ReceivedQty)))
+                    .Select(g => new PurchaseOrderReceiptQty(g.Key, g.Sum(l => l.ReceivedQty - l.PostedQty)))
                     .ToList();
                 if (quantities.Count > 0) await purchaseOrders.ApplyReceiptAsync(poId, quantities, ct2);
             }
@@ -850,7 +855,7 @@ public sealed class ReceiptService(
                     bin = l.StagingBinId;
                 }
                 landingByLine[l.ReceiptLineId] = bin;
-                foreach (var planned in ReceiptPostingRules.Plan(expects, l.ExpectedQty, l.ReceivedQty, code, serialsByLine[l.ReceiptLineId]))
+                foreach (var planned in ReceiptBatchRules.PlanClose(expects, l.ExpectedQty, l.PostedQty, l.ReceivedQty, code, serialsByLine[l.ReceiptLineId]))
                 {
                     postings.Add(new InventoryPosting(planned.TxnType, l.ProductId, planned.Quantity,
                         LotId: l.LotId, SerialNumber: planned.SerialNumber,
@@ -905,7 +910,7 @@ public sealed class ReceiptService(
             {
                 if (EntersTarget(l)) continue;
                 // lo dañado no se acomoda: se queda (o se mueve) según su reporte
-                var remaining = l.ReceivedQty - l.DamagedQty - crossDock.GetValueOrDefault(l.ReceiptLineId);
+                var remaining = l.ReceivedQty - l.PostedQty - l.DamagedQty - crossDock.GetValueOrDefault(l.ReceiptLineId);   // Lote 174: lo de las tandas ya tiene su acomodo
                 if (remaining <= 0m) continue;
                 var p = products[l.ProductId];
                 if (tracking.GetValueOrDefault(p.TrackingTypeLookupId, TrackingTypes.None) == TrackingTypes.Lot && l.LotId is null) continue;
@@ -917,7 +922,8 @@ public sealed class ReceiptService(
             // 12. Sin ninguna PUTAWAY (todo a cruce de muelle, recibido 0 o, Lote 16, recibo directo) → PUTAWAY en la misma
             // transacción (desde RECEIVED es la siguiente etapa; desde RECEIVED_VARIANCE, la entrada lateral sembrada; D7:
             // historial con los dos pasos).
-            if (created == 0)
+            // Lote 174: con tareas de acomodo de tandas aún abiertas, el recibo se queda en RECEIVED: el efecto de la última tarea lo pasa a PUTAWAY.
+            if (created == 0 && !await HasOpenPutawayAsync(r, ct2))
             {
                 var done = await statuses.TransitionAsync(StatusDomains.ReceiptStatus, EntityTypes.Receipt, r.ReceiptHeaderId, r.StatusCodeId, ReceiptStatuses.Putaway, null, ct2);
                 r.StatusCodeId = done.StatusCodeId;
@@ -940,6 +946,156 @@ public sealed class ReceiptService(
                 await SaveReceiptAsync(ct2);
             }
         }, ct);
+    }
+
+    // ================================================================ Lote 174 (C2): tandas
+
+    /// <summary>
+    /// Confirma una tanda: asienta lo recibido y aún no asentado de cada línea que pueda entrar (producto sin serie, sin daño declarado y sin
+    /// cruce de muelle), crea su acomodo y deja el recibo ABIERTO; las demás líneas esperan la confirmación final. Recibo directo → 422; sin
+    /// unidades nuevas → 422. La confirmación final (ConfirmAsync) asienta el resto, cierra el recibo y el aviso.
+    /// </summary>
+    public async Task<ReceiptDetailDto> ConfirmBatchAsync(Guid publicId, ReceiptConfirmRequest? req, CancellationToken ct)
+    {
+        var current = await ResolveAsync(publicId, ct);
+        var comment = string.IsNullOrWhiteSpace(req?.Comment) ? null : req!.Comment!.Trim();
+        await db.RunInTransactionAsync(async ct2 =>
+        {
+            var r = await LockOpenAsync(current.ReceiptHeaderId, ct2);
+            db.ApplyRowVersion(r, req?.RowVersion);
+            if (ReceivingModeRules.IsDirect(await ReceiptModeAsync(r, ct2))) throw new StatusRuleException(ReceiptBatchRules.NoModeDirect);
+            Asn? asn = r.AsnId is int asnId ? await ReceivingSupport.LockAsnAsync(db, asnId, ct2) : null;
+
+            var lines = await db.Set<ReceiptLine>().Where(l => l.ReceiptHeaderId == r.ReceiptHeaderId).OrderBy(l => l.ReceiptLineId).ToListAsync(ct2);
+            if (lines.Count == 0) throw new StatusRuleException(ReceiptRules.NoLinesToConfirm);
+            var typeCode = (await lookups.GetAsync(r.ReceiptTypeLookupId, ct2))?.InternalCode ?? ReceiptTypes.Blind;
+            var expects = ReceiptRules.ExpectsQuantities(typeCode);
+            await SyncOpenStatusAsync(r, ct2, await EnabledReceiptStatusesAsync(ct2));
+
+            var productIds = lines.Select(l => l.ProductId).Distinct().ToList();
+            var products = await db.Set<Product>().AsNoTracking().Where(p => productIds.Contains(p.ProductId)).ToDictionaryAsync(p => p.ProductId, ct2);
+            var tracking = await ReceivingSupport.TrackingCodesAsync(db, products.Values.Select(p => p.TrackingTypeLookupId), ct2);
+            var crossDock = await CrossDockByLineAsync(lines.Select(l => l.ReceiptLineId).ToList(), ct2);
+
+            // Las líneas de la tanda: con unidades nuevas y que puedan entrar (las demás esperan la confirmación final).
+            var included = new List<(int Index, ReceiptLine Line, Product Product, string Code, decimal Delta)>();
+            for (var i = 0; i < lines.Count; i++)
+            {
+                var l = lines[i];
+                var delta = l.ReceivedQty - l.PostedQty;
+                if (delta <= 0m) continue;
+                var p = products[l.ProductId];
+                var code = tracking.GetValueOrDefault(p.TrackingTypeLookupId, TrackingTypes.None);
+                if (ReceiptBatchRules.NotBatchableReason(code, l.DamagedQty, crossDock.ContainsKey(l.ReceiptLineId)) is not null) continue;
+                included.Add((i, l, p, code, delta));
+            }
+            if (included.Count == 0) throw new StatusRuleException(ReceiptBatchRules.NothingToConfirm);
+
+            var errors = new Dictionary<string, string[]>();
+            foreach (var x in included)
+            {
+                var te = ReceiptRules.ValidateTracking(x.Code, x.Product.Sku, x.Line.ReceivedQty, x.Line.LotId is not null, 0);
+                if (te is not null) errors[$"lines[{x.Index}]"] = new[] { te };
+            }
+            if (errors.Count > 0) throw new ValidationException(errors);
+
+            // PO: solo lo nuevo de esta tanda (misma regla y mismo orden de bloqueo que la confirmación final).
+            if (asn?.PurchaseOrderId is int poId)
+            {
+                var asnLineIds = included.Where(x => x.Line.AsnLineId != null).Select(x => x.Line.AsnLineId!.Value).ToList();
+                var poLineByAsnLine = await db.Set<AsnLine>().AsNoTracking()
+                    .Where(al => al.AsnId == asn.AsnId && asnLineIds.Contains(al.AsnLineId) && al.PurchaseOrderLineId != null)
+                    .ToDictionaryAsync(al => al.AsnLineId, al => al.PurchaseOrderLineId!.Value, ct2);
+                var quantities = included.Where(x => x.Line.AsnLineId is int al && poLineByAsnLine.ContainsKey(al))
+                    .GroupBy(x => poLineByAsnLine[x.Line.AsnLineId!.Value])
+                    .Select(g => new PurchaseOrderReceiptQty(g.Key, g.Sum(x => x.Delta))).ToList();
+                if (quantities.Count > 0) await purchaseOrders.ApplyReceiptAsync(poId, quantities, ct2);
+            }
+
+            // Capa de costo: la primera tanda de la línea la congela (igual que la confirmación final).
+            var costAsnLineIds = included.Where(x => x.Line.AsnLineId != null && x.Line.UnitCost is null).Select(x => x.Line.AsnLineId!.Value).ToList();
+            var asnCosts = asn is null || costAsnLineIds.Count == 0
+                ? new Dictionary<int, (decimal? PoCost, decimal? AsnPrice)>()
+                : (await (from al in db.Set<AsnLine>().AsNoTracking()
+                          join pl in db.Set<PurchaseOrderLine>().AsNoTracking() on al.PurchaseOrderLineId equals (int?)pl.PurchaseOrderLineId into plj
+                          from pl in plj.DefaultIfEmpty()
+                          where al.AsnId == asn.AsnId && costAsnLineIds.Contains(al.AsnLineId)
+                          select new { al.AsnLineId, PoCost = pl == null ? (decimal?)null : pl.UnitCost, al.UnitPrice }).ToListAsync(ct2))
+                    .ToDictionary(x => x.AsnLineId, x => (PoCost: x.PoCost, AsnPrice: x.UnitPrice));
+            foreach (var x in included.Where(x => x.Line.UnitCost is null))
+            {
+                var fromAsn = x.Line.AsnLineId is int cal && asnCosts.TryGetValue(cal, out var ac) ? ac : (PoCost: (decimal?)null, AsnPrice: (decimal?)null);
+                var (cost, source) = CostLayerRules.Resolve(fromAsn.PoCost, fromAsn.AsnPrice, x.Product.PurchaseCost);
+                x.Line.UnitCost = cost;
+                x.Line.CostSource = source;
+            }
+
+            // Asientos de la tanda en la posición de recepción de cada línea.
+            int? defaultStaging = null;
+            var postings = new List<InventoryPosting>();
+            var owners = new List<(ReceiptLine Line, PlannedReceiptPosting Planned)>();
+            foreach (var x in included)
+            {
+                var l = x.Line;
+                if (l.StagingBinId is null)
+                {
+                    defaultStaging ??= await ReceivingSupport.DefaultStagingBinAsync(db, r.WarehouseId, ct2);
+                    l.StagingBinId = defaultStaging;
+                }
+                foreach (var planned in ReceiptBatchRules.PlanBatch(expects, l.ExpectedQty, l.PostedQty, x.Delta))
+                {
+                    postings.Add(new InventoryPosting(planned.TxnType, l.ProductId, planned.Quantity,
+                        LotId: l.LotId, SerialNumber: null,
+                        FromWarehouseId: planned.Inbound ? null : r.WarehouseId, FromBinId: planned.Inbound ? null : l.StagingBinId,
+                        ToWarehouseId: planned.Inbound ? r.WarehouseId : null, ToBinId: planned.Inbound ? l.StagingBinId : null,
+                        RefEntityType: EntityTypes.Receipt, RefId: r.ReceiptHeaderId, ReasonCode: planned.ReasonCode));
+                    owners.Add((l, planned));
+                }
+            }
+            IReadOnlyList<long> txnIds = postings.Count == 0 ? Array.Empty<long>() : await ledger.PostAsync(postings, ct2);
+            for (var i = 0; i < owners.Count; i++)
+                if (owners[i].Planned.TxnType == InventoryTxnTypes.Adjustment && owners[i].Line.AdjustmentTxnId is null)
+                    owners[i].Line.AdjustmentTxnId = txnIds[i];
+
+            var number = (await db.Set<ReceiptBatch>().Where(b => b.ReceiptHeaderId == r.ReceiptHeaderId).MaxAsync(b => (int?)b.BatchNumber, ct2) ?? 0) + 1;
+            db.Set<ReceiptBatch>().Add(new ReceiptBatch
+            {
+                ReceiptHeaderId = r.ReceiptHeaderId, BatchNumber = number, ConfirmedAtUtc = DateTime.UtcNow, ConfirmedBy = tenant.UserId,
+                Comment = comment, LineCount = included.Count, UnitCount = included.Sum(x => x.Delta),
+            });
+            foreach (var x in included) x.Line.PostedQty = x.Line.ReceivedQty;
+            await SaveReceiptAsync(ct2);
+
+            // Acomodo de lo de la tanda (misma lógica de destino que la confirmación final), después de guardar las cantidades.
+            foreach (var x in included)
+            {
+                var toBin = x.Line.TargetBinId ?? await SuggestAsync(r.WarehouseId, x.Line.ProductId, x.Line.LotId, x.Delta, x.Line.StagingBinId, ct2);
+                await CreatePutawayAsync(r, x.Line, x.Delta, toBin, ct2);
+            }
+            await SaveReceiptAsync(ct2);
+        }, ct);
+        return await GetAsync(publicId, ct);
+    }
+
+    private async Task<IReadOnlyList<ReceiptBatchDto>> BatchesAsync(int receiptHeaderId, CancellationToken ct)
+    {
+        var rows = await db.Set<ReceiptBatch>().AsNoTracking().Where(b => b.ReceiptHeaderId == receiptHeaderId).OrderBy(b => b.BatchNumber).ToListAsync(ct);
+        if (rows.Count == 0) return Array.Empty<ReceiptBatchDto>();
+        var userIds = rows.Where(b => b.ConfirmedBy != null).Select(b => b.ConfirmedBy!.Value).Distinct().ToList();
+        var users = await db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.FullName ?? u.Email, ct);
+        return rows.Select(b => new ReceiptBatchDto(b.ReceiptBatchId, b.BatchNumber, b.ConfirmedAtUtc,
+            b.ConfirmedBy is int u ? users.GetValueOrDefault(u) : null, b.Comment, b.LineCount, b.UnitCount)).ToList();
+    }
+
+    /// <summary>¿Queda alguna tarea de acomodo abierta (PENDING / IN_PROGRESS) de este recibo? (las de las tandas).</summary>
+    private async Task<bool> HasOpenPutawayAsync(ReceiptHeader r, CancellationToken ct)
+    {
+        var receiptTypeId = await lookups.TryGetIdAsync(LookupDomains.EntityType, EntityTypes.Receipt, ct);
+        var putawayId = await lookups.TryGetIdAsync(LookupDomains.WarehouseTaskType, WarehouseTaskTypes.Putaway, ct);
+        if (receiptTypeId is null || putawayId is null) return false;
+        var openIds = await db.StatusIdsAsync(StatusDomains.WarehouseTaskStatus, new[] { WarehouseTaskStatuses.Pending, WarehouseTaskStatuses.InProgress }, ct);
+        return await db.Set<WarehouseTask>().AsNoTracking().AnyAsync(t => t.RefEntityLookupId == receiptTypeId && t.RefId == r.ReceiptHeaderId
+            && t.TaskTypeLookupId == putawayId && openIds.Contains(t.StatusCodeId), ct);
     }
 
     // ================================================================ Lote 16: posición destino sugerida
@@ -1045,6 +1201,7 @@ public sealed class ReceiptService(
             var lineIds = await db.Set<ReceiptLine>().AsNoTracking().Where(l => l.ReceiptHeaderId == r.ReceiptHeaderId)
                 .Select(l => l.ReceiptLineId).ToListAsync(ct2);
             if ((await CrossDockByLineAsync(lineIds, ct2)).Count > 0) throw new ConflictException(ReceiptRules.ReceiptHasCrossDock);
+            if (await db.Set<ReceiptBatch>().AnyAsync(b => b.ReceiptHeaderId == r.ReceiptHeaderId, ct2)) throw new ConflictException(ReceiptBatchRules.ReceiptHasBatches);   // Lote 174
 
             r.IsActive = false;
             if (r.AsnId is int asnId)
@@ -1693,7 +1850,7 @@ public sealed class ReceiptService(
                 l.DamageBinId is int db0 && bins.TryGetValue(db0, out var dbin) && dbin.WarehouseId == r.WarehouseId ? dbin.Code : null, l.DamageDiscard,
                 l.DamageReportId, l.DamageReportId is int dr ? DamageRules.Code(dr) : null,
                 l.DamageFinalDestinationLookupId is int fd ? (await lookups.GetAsync(fd, ct))?.InternalCode : null,
-                l.CostSource);
+                l.CostSource, l.PostedQty);
             if (!byReceipt.TryGetValue(l.ReceiptHeaderId, out var list)) byReceipt[l.ReceiptHeaderId] = list = new List<ReceiptLineDto>();
             list.Add(dto);
         }

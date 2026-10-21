@@ -204,6 +204,7 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<AsnLine> AsnLines => Set<AsnLine>();
     public DbSet<ReceiptHeader> ReceiptHeaders => Set<ReceiptHeader>();
     public DbSet<ReceiptLine> ReceiptLines => Set<ReceiptLine>();
+    public DbSet<ReceiptBatch> ReceiptBatches => Set<ReceiptBatch>();   // Lote 174
     public DbSet<WarehouseTask> WarehouseTasks => Set<WarehouseTask>();
     public DbSet<CycleCount> CycleCounts => Set<CycleCount>();
     public DbSet<DamageReport> DamageReports => Set<DamageReport>();   // 2026-10-08: daños

@@ -107,7 +107,7 @@ public sealed record ReceiptLineDto(int Id, int? AsnLineId, Guid ProductPublicId
     decimal AllocatedToCrossDock, int? TargetBinId = null, string? TargetBinCode = null, string? TargetZoneTypeCode = null,
     decimal? TargetFreeQty = null, decimal DamagedQty = 0m, string? DamageCauseCode = null, string? DamageNote = null, int? DamageBinId = null,
     string? DamageBinCode = null, bool DamageDiscard = false, int? DamageReportId = null, string? DamageReportCode = null,
-    string? DamageFinalDestinationCode = null, string? CostSource = null);
+    string? DamageFinalDestinationCode = null, string? CostSource = null, decimal PostedQty = 0m);
 
 /// <summary>
 /// Lote 16 — posición destino sugerida para una línea (GET /receipts/{id}/lines/{lineId}/target-suggestions): razón (la del
@@ -128,7 +128,10 @@ public sealed record ReceiptApplySuggestionsResultDto(ReceiptDetailDto Receipt, 
 
 /// <summary>Lote 13: CanDelete = abierto y sin asignaciones de cruce de muelle.</summary>
 public sealed record ReceiptDetailDto(ReceiptListItemDto Header, IReadOnlyList<ReceiptLineDto> Lines, IReadOnlyList<WarehouseTaskDto> PutawayTasks,
-    string RowVersion, bool CanDelete);
+    string RowVersion, bool CanDelete, IReadOnlyList<ReceiptBatchDto>? Batches = null);
+
+/// <summary>Lote 174 (C2): una tanda del recibo (confirmación parcial): consecutivo, quién y cuándo, líneas y unidades.</summary>
+public sealed record ReceiptBatchDto(int Id, int Number, DateTime ConfirmedAtUtc, string? ConfirmedByName, string? Comment, int LineCount, decimal UnitCount);
 
 public sealed record ReceiptPageDto(int Total, int Skip, int Take, IReadOnlyList<ReceiptListItemDto> Items);
 

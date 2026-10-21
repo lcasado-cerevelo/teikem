@@ -17368,6 +17368,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/receipts/{publicId}/confirm-batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ReceiptConfirmRequest"];
+                    "text/json": components["schemas"]["ReceiptConfirmRequest"];
+                    "application/*+json": components["schemas"]["ReceiptConfirmRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReceiptDetailDto"];
+                        "application/json": components["schemas"]["ReceiptDetailDto"];
+                        "text/json": components["schemas"]["ReceiptDetailDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/receipts/{publicId}/lines/{lineId}/target-suggestions": {
         parameters: {
             query?: never;
@@ -37416,6 +37461,21 @@ export interface components {
             putawayTasks?: components["schemas"]["WarehouseTaskDto"][] | null;
             rowVersion?: string | null;
             canDelete?: boolean;
+            batches?: components["schemas"]["ReceiptBatchDto"][] | null;
+        };
+        ReceiptBatchDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: int32 */
+            number?: number;
+            /** Format: date-time */
+            confirmedAtUtc?: string;
+            confirmedByName?: string | null;
+            comment?: string | null;
+            /** Format: int32 */
+            lineCount?: number;
+            /** Format: double */
+            unitCount?: number;
         };
         ReceiptHeaderUpdateRequest: {
             type?: string | null;
@@ -37482,6 +37542,8 @@ export interface components {
             damageReportCode?: string | null;
             damageFinalDestinationCode?: string | null;
             costSource?: string | null;
+            /** Format: double */
+            postedQty?: number;
         };
         ReceiptLineRequest: {
             /** Format: uuid */

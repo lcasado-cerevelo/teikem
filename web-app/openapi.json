@@ -23513,6 +23513,65 @@
         }
       }
     },
+    "/api/v1/receipts/{publicId}/confirm-batch": {
+      "post": {
+        "tags": [
+          "Receipts"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiptConfirmRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiptConfirmRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiptConfirmRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptDetailDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptDetailDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptDetailDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/receipts/{publicId}/lines/{lineId}/target-suggestions": {
       "get": {
         "tags": [
@@ -58477,6 +58536,13 @@
           },
           "canDelete": {
             "type": "boolean"
+          },
+          "batches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceiptBatchDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -58673,6 +58739,10 @@
           "costSource": {
             "type": "string",
             "nullable": true
+          },
+          "postedQty": {
+            "type": "number",
+            "format": "double"
           }
         },
         "additionalProperties": false
@@ -76612,6 +76682,40 @@
               "$ref": "#/components/schemas/ExitNoticeLineRequest"
             },
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReceiptBatchDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "confirmedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "confirmedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true
+          },
+          "lineCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unitCount": {
+            "type": "number",
+            "format": "double"
           }
         },
         "additionalProperties": false

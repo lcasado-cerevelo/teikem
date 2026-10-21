@@ -139,7 +139,8 @@
       "terms": "Términos de uso",
       "rights": "© {year} {owner}. Todos los derechos reservados.",
       "powered": "Powered by {product}"
-    },
+    },
+
     "palette": {
       "label": "Paleta de comandos",
       "placeholder": "Buscar o ejecutar…",
@@ -5840,6 +5841,18 @@
         "completeBody": "Se completarán {count} tareas con la posición sugerida de cada una. Si alguna necesita repartirse en varias posiciones o llevar series, complétela aparte."
       },
 
+      "batches": {
+        "title": "Tandas confirmadas",
+        "number": "Tanda {n}",
+        "units": "{n} u. en {m} línea(s)",
+        "confirm": "Confirmar tanda",
+        "confirmTitle": "Confirmar tanda",
+        "confirmBody": "Se confirman las {n} unidades recibidas hasta ahora del recibo {number}: entran al inventario y se crea su acomodo. El recibo sigue abierto para lo que falte.",
+        "confirmed": "Tanda del recibo {number} confirmada.",
+        "hint": "{n} unidades nuevas por confirmar. La confirmación final cierra el recibo.",
+        "hintNone": "No hay unidades nuevas para una tanda.",
+        "held": "Series, con daño o con cruce de muelle esperan la confirmación final ({n} u.)."
+      },
       "detail": {
         "expected": "Esperado",
         "received": "Recibido",

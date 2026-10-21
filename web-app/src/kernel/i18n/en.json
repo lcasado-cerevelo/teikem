@@ -139,7 +139,8 @@
       "terms": "Terms of use",
       "rights": "© {year} {owner}. All rights reserved.",
       "powered": "Powered by {product}"
-    },
+    },
+
     "palette": {
       "label": "Command palette",
       "placeholder": "Search or run…",
@@ -5840,6 +5841,18 @@
         "completeBody": "{count} tasks will be completed at each one's suggested bin. If one needs splitting across bins or serial numbers, complete it separately."
       },
 
+      "batches": {
+        "title": "Confirmed batches",
+        "number": "Batch {n}",
+        "units": "{n} units in {m} line(s)",
+        "confirm": "Confirm batch",
+        "confirmTitle": "Confirm batch",
+        "confirmBody": "The {n} units received so far on receipt {number} are confirmed: they enter inventory and their put-away is created. The receipt stays open for the rest.",
+        "confirmed": "Batch of receipt {number} confirmed.",
+        "hint": "{n} new units to confirm. The final confirmation closes the receipt.",
+        "hintNone": "There are no new units for a batch.",
+        "held": "Serial, damaged or cross-docked units wait for the final confirmation ({n} units)."
+      },
       "detail": {
         "expected": "Expected",
         "received": "Received",

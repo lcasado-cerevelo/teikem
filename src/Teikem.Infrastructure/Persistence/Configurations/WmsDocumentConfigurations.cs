@@ -155,6 +155,7 @@ public sealed class ReceiptLineConfiguration : IEntityTypeConfiguration<ReceiptL
         b.Property(l => l.ExpectedQty).HasColumnType("decimal(16,3)");
         b.Property(l => l.UnitCost).HasColumnType("decimal(18,4)");   // Lote 147: capa de costo
         b.Property(l => l.CostSource).HasColumnType("varchar(10)");
+        b.Property(l => l.PostedQty).HasColumnType("decimal(16,3)");   // Lote 174: asentado por tandas
 
         b.HasIndex(l => l.ReceiptHeaderId).HasDatabaseName("IX_ReceiptLine_Header");
 
@@ -170,6 +171,20 @@ public sealed class ReceiptLineConfiguration : IEntityTypeConfiguration<ReceiptL
         b.Property(l => l.DamageNote).HasMaxLength(300);
         b.HasOne<WarehouseBin>().WithMany().HasForeignKey(l => l.DamageBinId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<DamageReport>().WithMany().HasForeignKey(l => l.DamageReportId).OnDelete(DeleteBehavior.NoAction);
+    }
+}
+
+/// <summary>Lote 174 (C2): tandas de un recibo (confirmaciones parciales).</summary>
+public sealed class ReceiptBatchConfiguration : IEntityTypeConfiguration<ReceiptBatch>
+{
+    public void Configure(EntityTypeBuilder<ReceiptBatch> b)
+    {
+        b.ToTable("ReceiptBatch");
+        b.HasKey(x => x.ReceiptBatchId);
+        b.Property(x => x.Comment).HasMaxLength(300);
+        b.Property(x => x.UnitCount).HasColumnType("decimal(16,3)");
+        b.HasIndex(x => new { x.ReceiptHeaderId, x.BatchNumber }).IsUnique().HasDatabaseName("UX_ReceiptBatch_Number");
+        b.HasOne<ReceiptHeader>().WithMany().HasForeignKey(x => x.ReceiptHeaderId).OnDelete(DeleteBehavior.NoAction);
     }
 }
 
