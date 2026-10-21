@@ -17,3 +17,6 @@ appsettings.*.local.json
 app-almacen/modules/datawedge/android/build
 web-app/playwright.local-chrome.config.ts
 .tmp-testout/
+
+# Archivos subidos por el API en desarrollo (comprobantes, firmas): nunca van al repositorio
+src/Teikem.Api/App_Data/
