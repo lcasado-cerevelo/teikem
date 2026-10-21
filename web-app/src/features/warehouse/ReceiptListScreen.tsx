@@ -9,6 +9,7 @@
 //   los filtros lo excluyan (`withPinned`), hasta que se cambie un filtro.
 // - `?tab=asns`: avisos de llegada (`AsnsTab`); "Recibir" abre el modal con el aviso precargado.
 // - `?tab=exit-notices`: avisos de salida (`ExitNoticesTab`, Lote 144; `?notice=` abre uno): el dueño avisa qué quiere que el almacén saque.
+// - `?tab=groups`: 'Maestros' (`ReceiptGroupsTab`, Lote 183): recepciones maestras — varios avisos del mismo dueño que llegan juntos; «Recibir juntos» y confirmar todo.
 // - `?tab=putaway`: 'Acomodo pendiente' (`PutawayPendingTab`): recibos confirmados con tareas de acomodo abiertas.
 // Al cambiar de pestaña se quita `?receipt=`. Estatus: Esperado → Recibiendo ⇄ Discrepancia → Completado / Completado con
 // diferencia → Acomodado (los cambia el servidor; manual 06 §4).
@@ -21,13 +22,14 @@ import { useReceipt, type AsnDto, type ReceiptDetailDto, type ReceiptListItemDto
 import { PutawayPendingTab } from './PutawayPendingTab'
 import { ReceiptDetailPanel } from './ReceiptDetailPanel'
 import { ReceiptFilterBar } from './ReceiptFilterBar'
+import { ReceiptGroupsTab } from './ReceiptGroupsTab'
 import { selectedReceiptId, withPinned, type ReceiptFilterState } from './receiptFilters'
 import { ReceiptHeaderModal, type ReceiptHeaderModalProps } from './ReceiptHeaderModal'
 import { ReceiptMasterList } from './ReceiptMasterList'
 import { useReceiptList } from './useReceiptList'
 import './warehouse.css'
 
-const TAB_KEYS = ['receipts', 'putaway'] as const
+const TAB_KEYS = ['receipts', 'putaway', 'groups'] as const
 type TabKey = (typeof TAB_KEYS)[number]
 const isTabKey = (v: string | null): v is TabKey => (TAB_KEYS as readonly string[]).includes(v ?? '')
 const NO_ITEMS: ReceiptListItemDto[] = []
@@ -192,6 +194,7 @@ export default function ReceiptListScreen() {
           tabs={[
             { key: 'receipts', label: t('warehouse.receipts.tabReceipts') },
             { key: 'putaway', label: t('warehouse.receipts.tabPutaway') },
+            { key: 'groups', label: t('warehouse.receipts.tabGroups') },
           ]}
         />
       </div>
@@ -200,6 +203,7 @@ export default function ReceiptListScreen() {
         <ReceiptsTab selectedParam={receiptParam} onSelect={select} onOpenHeader={openHeader} pinned={pinned} onUnpin={() => setPinned(null)} />
       )}
       {tab === 'putaway' && <PutawayPendingTab selectedParam={receiptParam} onSelect={select} onOpenHeader={openHeader} />}
+      {tab === 'groups' && <ReceiptGroupsTab onOpenReceipt={(id) => setParams({ receipt: id })} />}
 
       {modal !== null && (
         <ReceiptHeaderModal

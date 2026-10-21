@@ -10047,3 +10047,32 @@ La corrida no se corrige sola. Si no está exportada, cancélela y genérela de 
 
 **¿Dónde cambio las columnas del archivo?**
 En la ventana «Exportar» de la corrida, con **Configurar…**: formato CSV o TXT, delimitador, formato de fecha, encabezado, columnas y su orden. Cada pantalla (compras y despachos) tiene sus plantillas.
+
+## Recepción maestra (Lotes 182-183)
+
+**¿Para qué sirve «Recibir juntos»?**
+Para un camión que trae varios documentos (avisos de llegada y/o órdenes de compra) del mismo dueño y almacén: se abre un recibo por documento bajo una recepción maestra (RCM-#####), con el mismo transporte y referencia, y se confirman juntos. Cada documento conserva su recibo de siempre.
+
+**«Los documentos deben ser del mismo dueño: … Reciba por separado lo de dueños distintos.»**
+Una recepción maestra es de un solo dueño (un cliente, o lo propio de la compañía). Haga una recepción por dueño.
+
+**«Los documentos deben ser del mismo almacén: …»**
+Una recepción maestra es de un solo almacén. Haga una por almacén.
+
+**«Elija al menos dos documentos para recibir juntos; para uno solo use el recibo normal.» / «Una recepción maestra admite como máximo 20 documentos.» / «El mismo documento está repetido.»**
+Elija de 2 a 20 documentos distintos. Cada uno lleva un aviso de llegada o una orden de compra, uno solo.
+
+**¿Puedo sumar un documento a una recepción maestra ya abierta?**
+No: se arma al abrir los recibos (igual que la recolección maestra). Si falta uno, reciba ese documento por separado.
+
+**«Todos los recibos de esta recepción maestra ya están confirmados.»**
+No queda nada por confirmar. Cada recibo sigue su camino (acomodo) como siempre.
+
+**«No se puede eliminar la recepción maestra: alguno de sus recibos ya está confirmado.»**
+Solo se elimina una maestra sin recibos confirmados. Los recibos confirmados ya están en el inventario.
+
+**Al «Confirmar todo» salió un error de uno de los recibos.**
+Es todo o nada: si un recibo no se puede confirmar (por ejemplo, un lote o una serie por capturar), no se confirma ninguno. Corríjalo desde «Abrir recibo» y vuelva a intentar.
+
+**Un aviso no aparece en «Recibir juntos».**
+Solo se ofrecen los avisos esperando y sin recibo: uno ya recibido, cancelado o con un recibo abierto (suelto o de otra maestra) no sale.

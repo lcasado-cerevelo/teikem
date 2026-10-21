@@ -17936,6 +17936,178 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/receipts/groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    status?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReceiptGroupPageDto"];
+                        "application/json": components["schemas"]["ReceiptGroupPageDto"];
+                        "text/json": components["schemas"]["ReceiptGroupPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ReceiptGroupCreateRequest"];
+                    "text/json": components["schemas"]["ReceiptGroupCreateRequest"];
+                    "application/*+json": components["schemas"]["ReceiptGroupCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReceiptGroupDto"];
+                        "application/json": components["schemas"]["ReceiptGroupDto"];
+                        "text/json": components["schemas"]["ReceiptGroupDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/receipts/groups/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReceiptGroupDto"];
+                        "application/json": components["schemas"]["ReceiptGroupDto"];
+                        "text/json": components["schemas"]["ReceiptGroupDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/receipts/groups/{publicId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ReceiptGroupConfirmRequest"];
+                    "text/json": components["schemas"]["ReceiptGroupConfirmRequest"];
+                    "application/*+json": components["schemas"]["ReceiptGroupConfirmRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReceiptGroupDto"];
+                        "application/json": components["schemas"]["ReceiptGroupDto"];
+                        "text/json": components["schemas"]["ReceiptGroupDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/receipts/{publicId}": {
         parameters: {
             query?: never;
@@ -38432,6 +38604,80 @@ export interface components {
             rowVersion?: string | null;
             canDelete?: boolean;
             batches?: components["schemas"]["ReceiptBatchDto"][] | null;
+        };
+        ReceiptGroupConfirmRequest: {
+            comment?: string | null;
+        };
+        ReceiptGroupCreateRequest: {
+            documents?: components["schemas"]["ReceiptGroupDocumentRequest"][] | null;
+            /** Format: int32 */
+            dockId?: number | null;
+            /** Format: int32 */
+            stagingBinId?: number | null;
+            carrier?: string | null;
+            reference?: string | null;
+            receivingMode?: string | null;
+            note?: string | null;
+        };
+        ReceiptGroupDocumentRequest: {
+            /** Format: int32 */
+            asnId?: number | null;
+            /** Format: uuid */
+            purchaseOrderPublicId?: string | null;
+        };
+        ReceiptGroupDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            statusCode?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseCode?: string | null;
+            /** Format: uuid */
+            ownerClientPublicId?: string | null;
+            ownerName?: string | null;
+            note?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            createdBy?: string | null;
+            /** Format: int32 */
+            memberCount?: number;
+            /** Format: int32 */
+            confirmedCount?: number;
+            /** Format: double */
+            expectedQty?: number;
+            /** Format: double */
+            receivedQty?: number;
+            canConfirm?: boolean;
+            canDelete?: boolean;
+            isActive?: boolean;
+            rowVersion?: string | null;
+            members?: components["schemas"]["ReceiptGroupMemberDto"][] | null;
+        };
+        ReceiptGroupMemberDto: {
+            /** Format: uuid */
+            receiptPublicId?: string;
+            receiptNumber?: string | null;
+            statusCode?: string | null;
+            status?: string | null;
+            originKind?: string | null;
+            originRef?: string | null;
+            /** Format: int32 */
+            lineCount?: number;
+            /** Format: double */
+            expectedQty?: number;
+            /** Format: double */
+            receivedQty?: number;
+            isConfirmed?: boolean;
+        };
+        ReceiptGroupPageDto: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+            items?: components["schemas"]["ReceiptGroupDto"][] | null;
         };
         ReceiptHeaderUpdateRequest: {
             type?: string | null;

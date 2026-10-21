@@ -5761,6 +5761,72 @@
     "receipts": {
       "title": "Receiving",
       "subtitle": "Blind and return receipts, against an advance shipping notice or against a purchase order.",
+      "tabGroups": "Master receipts",
+      "groups": {
+        "title": "Master receipts",
+        "create": "Receive together",
+        "createTitle": "Receive together",
+        "createSubmit": "Receive together ({n})",
+        "createHelp": "Choose two or more arrival notices that are expected, from the same owner and warehouse: a receipt is opened for each, with the same carrier and reference, and they can be confirmed together. Each document keeps its own receipt. Documents cannot be added later.",
+        "createEmpty": "There are no expected arrival notices to receive.",
+        "needTwo": "Choose at least two documents.",
+        "createdToast": "Master receipt {number} opened.",
+        "block": {
+          "otherOwner": "From another owner: receive separately what belongs to different owners.",
+          "otherWarehouse": "From another warehouse.",
+          "full": "Limit of 20 documents."
+        },
+        "asn": "Notice",
+        "po": "Order",
+        "own": "The company",
+        "carrier": "Carrier (optional)",
+        "reference": "Reference (optional)",
+        "note": "Note",
+        "searchPlaceholder": "Search by master, receipt, notice or order number",
+        "empty": "There are no master receipts yet.",
+        "columns": {
+          "number": "Master receipt",
+          "owner": "Owner",
+          "documents": "Documents",
+          "qty": "Received / expected",
+          "status": "Status",
+          "created": "Opened"
+        },
+        "status": {
+          "OPEN": "Open",
+          "CONFIRMED": "Confirmed",
+          "CANCELLED": "Deleted"
+        },
+        "badge": "Master",
+        "detailTitle": "Master receipt",
+        "notFound": "The master receipt does not exist.",
+        "warehouse": "Warehouse",
+        "progress": "Progress",
+        "confirmedOf": "{done} of {total} receipts confirmed",
+        "members": "Receipts ({count})",
+        "cols": {
+          "receipt": "Receipt",
+          "document": "Document",
+          "status": "Status",
+          "lines": "Lines",
+          "qty": "Received / expected",
+          "open": "Open"
+        },
+        "origin": {
+          "ASN": "Notice",
+          "PO": "Order"
+        },
+        "openReceipt": "Open receipt",
+        "close": "Close",
+        "delete": "Delete",
+        "confirmAll": "Confirm all",
+        "confirmTitle": "Confirm all receipts?",
+        "confirmBody": "The receipts of {number} that are not confirmed yet are confirmed together, with what was captured in each. If one cannot be confirmed, none is.",
+        "confirmedToast": "{number} confirmed.",
+        "deleteTitle": "Delete the master receipt?",
+        "deleteBody": "{number} and all its receipts are deleted (none is confirmed). The notices become free to be received again.",
+        "deleted": "{number} deleted."
+      },
       "tabReceipts": "Receipts",
       "tabAsns": "Advance shipping notices",
       "tabExitNotices": "Exit notices",

@@ -57,6 +57,7 @@ export type SerialTraceDto = Schemas['SerialTraceDto']
 export type AsnDto = Schemas['AsnDto']
 export type ReceiptListItemDto = Schemas['ReceiptListItemDto']
 export type ReceiptDetailDto = Schemas['ReceiptDetailDto']
+export type ReceiptGroupDto = Schemas['ReceiptGroupDto']   // Lote 183
 export type ReceiptTargetSuggestionDto = Schemas['ReceiptTargetSuggestionDto']
 export type WarehouseTaskDto = Schemas['WarehouseTaskDto']
 export type PutawaySuggestionDto = Schemas['PutawaySuggestionDto']
@@ -909,6 +910,63 @@ function cacheReceipt(qc: QueryClient, dto: ReceiptDetailDto) {
   const publicId = dto.header?.publicId
   if (publicId) qc.setQueryData([warehouseKeys.receipt[0], publicId], dto)
 }
+
+/**
+ * Lote 183 — recepción maestra (Lote 182): varios avisos de llegada u órdenes de compra del mismo dueño que llegan juntos; cada documento conserva su recibo. Sus claves cuelgan de las de los recibos,
+ * así que abrir, confirmar o eliminar refresca también la lista y la ficha de los recibos.
+ */
+export function useReceiptGroups(query: GetQuery<'/api/v1/receipts/groups'> = {}, options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: [warehouseKeys.receipts[0], 'groups', query],
+    queryFn: () => unwrap(api.GET('/api/v1/receipts/groups', { params: { query } })),
+    enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
+    meta: meta(options),
+  })
+}
+
+/** `GET /api/v1/receipts/groups/{publicId}`: los recibos de la maestra con su avance. */
+export function useReceiptGroup(publicId: string | null | undefined, options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: [warehouseKeys.receipts[0], 'group', publicId],
+    queryFn: () => unwrap(api.GET('/api/v1/receipts/groups/{publicId}', { params: { path: { publicId: publicId ?? '' } } })),
+    enabled: Boolean(publicId) && (options?.enabled ?? true),
+    meta: meta(options),
+  })
+}
+
+/** `POST /api/v1/receipts/groups` (`warehouse.receive`): abre un recibo por documento bajo una recepción maestra. */
+export function useCreateReceiptGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: Schemas['ReceiptGroupCreateRequest']) => unwrap(api.POST('/api/v1/receipts/groups', { body })),
+    onSuccess: () => invalidate(qc, 'receipts', 'receipt', 'asns', 'purchaseOrders', 'purchaseOrder'),
+  })
+}
+
+/** `POST /api/v1/receipts/groups/{publicId}/confirm` (`warehouse.receive`): confirma juntos los recibos de la maestra. */
+export function useConfirmReceiptGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId, comment }: { publicId: string; comment?: string }) =>
+      unwrap(api.POST('/api/v1/receipts/groups/{publicId}/confirm', { params: { path: { publicId } }, body: { comment: comment ?? null } })),
+    onSuccess: () => invalidate(qc, 'receipts', 'receipt', 'asns', 'tasks', 'purchaseOrders', 'purchaseOrder', 'purchaseOrderShortages', 'purchaseOrderShortageLines', ...STOCK),
+  })
+}
+
+/** `DELETE /api/v1/receipts/groups/{publicId}` (`warehouse.receive`): elimina la maestra y sus recibos mientras ninguno esté confirmado. */
+export function useDeleteReceiptGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (publicId: string) => {
+      await unwrap(api.DELETE('/api/v1/receipts/groups/{publicId}', { params: { path: { publicId } } }))
+    },
+    onSuccess: () => invalidate(qc, 'receipts', 'receipt', 'asns', 'purchaseOrders', 'purchaseOrder'),
+  })
+}
+
+export const exportReceiptGroups = (query: GetQuery<'/api/v1/receipts/groups'>) =>
+  fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/receipts/groups', { params: { query: { ...query, skip, take } } })))
 
 /** `POST /api/v1/receipts` (`warehouse.receive`; contra PO además `purchasing.receive`). Lote 13: sin líneas y sin
  *  `confirm` crea solo el encabezado (Esperado); la ficha devuelta queda en caché. */
