@@ -8,7 +8,9 @@ import { applyProblemDetails } from '../../kernel/api/problem'
 import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { Chip, DataTable, Panel, QBox, Spinner, Tabs, toast, type DataColumn } from '../../kernel/ui'
+import { Chip, DataTable, IconUserPlus, IconUsers, Panel, QBox, Spinner, Tabs, toast, type DataColumn, type RowAction } from '../../kernel/ui'
+import { AssignDocumentModal } from '../warehouse/AssignDocumentModal'
+import { ToggleFilter } from '../warehouse/filterControls'
 import { IconCart } from '../../kernel/ui/screenIcons'
 import { OrderModal } from './OrderModal'
 import { ReturnEditor, ReturnModal, ReturnsTab } from './ReturnsParts'
@@ -36,7 +38,10 @@ function OrdersTab({ onOpen }: { onOpen: (id: string) => void }) {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
   const search = useDebounced(q.trim())
-  const list = useSalesOrders(status, search, (page - 1) * pageSize, pageSize)
+  const [mineOnly, setMineOnly] = useState(false)   // Lote 195: solo las asignadas a mí
+  const [toAssign, setToAssign] = useState<SalesOrderListItemDto | null>(null)
+  const { assign, take } = useSalesMutations()
+  const list = useSalesOrders(status, search, (page - 1) * pageSize, pageSize, mineOnly)
 
   const columns = useMemo<DataColumn<SalesOrderListItemDto>[]>(
     () => [
@@ -57,9 +62,32 @@ function OrdersTab({ onOpen }: { onOpen: (id: string) => void }) {
       { id: 'required', header: t('sales.col.required'), cell: (o) => (o.requiredDate ? f.date(o.requiredDate) : '—'), exportValue: (o) => o.requiredDate ?? '', sortValue: (o) => o.requiredDate ?? '' },
       { id: 'lines', header: t('sales.col.lines'), cell: (o) => o.lineCount, sortValue: (o) => o.lineCount ?? 0, align: 'end' },
       { id: 'total', header: t('sales.col.total'), cell: (o) => f.money(o.total ?? 0), exportValue: (o) => o.total ?? 0, sortValue: (o) => o.total ?? 0, align: 'end' },
+      { id: 'assignee', header: t('warehouse.assign.column'), cell: (o) => o.assignedToName ?? '—', exportValue: (o) => o.assignedToName ?? '', sortValue: (o) => o.assignedToName ?? '' },
       { id: 'by', header: t('sales.col.by'), cell: (o) => o.requestedByName ?? '—', sortValue: (o) => o.requestedByName ?? '' },
     ],
     [t, f],
+  )
+
+  // Lote 195: iconos con su ayuda en la tabla (solo en una orden solicitada o despachada en parte)
+  const open1 = (o: SalesOrderListItemDto) => o.status === 'REQUESTED' || o.status === 'PARTIAL'
+  const rowActions = useMemo<RowAction<SalesOrderListItemDto>[]>(
+    () => [
+      {
+        key: 'take',
+        label: t('warehouse.assign.take'),
+        perm: 'warehouse.pick',
+        visible: (o) => open1(o) && o.assignedToUserId == null,
+        onClick: (o) => {
+          take.mutateAsync(o.publicId ?? '').then(
+            () => toast.success(t('warehouse.assign.taken')),
+            (e) => toast.error(applyProblemDetails(e).title),
+          )
+        },
+        icon: <IconUserPlus />,
+      },
+      { key: 'assign', label: t('warehouse.assign.action'), perm: 'warehouse.manage', visible: open1, onClick: (o) => setToAssign(o), icon: <IconUsers /> },
+    ],
+    [t, take],
   )
 
   return (
@@ -73,6 +101,7 @@ function OrdersTab({ onOpen }: { onOpen: (id: string) => void }) {
               <option key={s} value={s}>{t(`sales.statuses.${s}`)}</option>
             ))}
           </select>
+          <ToggleFilter label={t('warehouse.assign.mineOnly')} checked={mineOnly} onChange={(v) => (setMineOnly(v), setPage(1))} />
         </div>
         {list.isError ? (
           <p className="ferr" role="alert">{applyProblemDetails(list.error).title}</p>
@@ -84,6 +113,7 @@ function OrdersTab({ onOpen }: { onOpen: (id: string) => void }) {
             columns={columns}
             rows={list.data?.items ?? []}
             rowKey={(o) => o.publicId ?? ''}
+            rowActions={rowActions}
             page={page}
             pageSize={pageSize}
             total={list.data?.total ?? 0}
@@ -91,10 +121,18 @@ function OrdersTab({ onOpen }: { onOpen: (id: string) => void }) {
             onPageSize={(s) => (setPageSize(s), setPage(1))}
             onRowClick={(o) => onOpen(o.publicId!)}
             empty={t('sales.orders.empty')}
-            exportRows={() => fetchAllPages<SalesOrderListItemDto>(salesOrderPageReader(status, search))}
+            exportRows={() => fetchAllPages<SalesOrderListItemDto>(salesOrderPageReader(status, search, mineOnly))}
           />
         )}
       </div>
+      {toAssign && (
+        <AssignDocumentModal
+          title={t('warehouse.assign.title', { number: toAssign.number ?? '' })}
+          currentUserId={toAssign.assignedToUserId}
+          onSave={(userId) => assign.mutateAsync({ id: toAssign.publicId ?? '', userId })}
+          onClose={() => setToAssign(null)}
+        />
+      )}
     </Panel>
   )
 }

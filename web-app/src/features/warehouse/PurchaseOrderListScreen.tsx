@@ -24,11 +24,17 @@ import {
   Panel,
   SearchSelect,
   TextArea,
+  IconUsers,
+  IconUserPlus,
   toast,
   type DataColumn,
   type DateRange,
+  type RowAction,
 } from '../../kernel/ui'
-import { exportPurchaseOrders, useCreatePurchaseOrder, usePurchaseOrders, useSuppliers, useWarehouses, warehouseLabel, type PurchaseOrderDto } from './api'
+import { applyProblemDetails } from '../../kernel/api/problem'
+import { AssignDocumentModal } from './AssignDocumentModal'
+import { ToggleFilter } from './filterControls'
+import { exportPurchaseOrders, useAssignPurchaseOrder, useCreatePurchaseOrder, usePurchaseOrders, useSuppliers, useWarehouses, warehouseLabel, type PurchaseOrderDto } from './api'
 import { preloadCost, priceDiffers, ProductPriceNote } from './ProductPriceNote'
 import { ProductPickerInput, ProductSearchSelect, WarehousePickerInput, type ProductFilterItem } from './pickers'
 import { IconCart } from '../../kernel/ui/screenIcons'
@@ -244,6 +250,9 @@ export default function PurchaseOrderListScreen() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [creating, setCreating] = useState(false)
+  const [mineOnly, setMineOnly] = useState(false)   // Lote 195: solo las asignadas a mí
+  const [toAssign, setToAssign] = useState<PurchaseOrderDto | null>(null)
+  const assignPo = useAssignPurchaseOrder()
 
   const { data: poStatuses = [] } = useStatuses(STATUS_DOMAIN)
   const statusOptions = useMemo(() => poStatuses.map((s) => ({ value: s.code, label: s.label })), [poStatuses])
@@ -272,10 +281,11 @@ export default function PurchaseOrderListScreen() {
       productPublicIds: products.length > 0 ? products.map((p) => p.publicId) : undefined,
       from: range.from || undefined,
       to: range.to || undefined,
+      assignedToMe: mineOnly || undefined,
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
-    [statusFilter, supplierIds, warehouseIds, products, range, page, pageSize],
+    [statusFilter, supplierIds, warehouseIds, products, range, mineOnly, page, pageSize],
   )
   const { data, isLoading, error } = usePurchaseOrders(query)
 
@@ -297,6 +307,7 @@ export default function PurchaseOrderListScreen() {
         cell: (p) => formatDate(p.expectedDate, lang),
         sortValue: (p) => p.expectedDate,
       },
+      { id: 'assignee', header: t('warehouse.assign.column'), cell: (p) => p.assignedToName ?? '—', sortValue: (p) => p.assignedToName ?? '', exportValue: (p) => p.assignedToName ?? '' },
       {
         id: 'orderDate',
         header: t('warehouse.purchaseOrders.columns.orderDate'),
@@ -306,6 +317,28 @@ export default function PurchaseOrderListScreen() {
       },
     ],
     [t, lang],
+  )
+
+  // Lote 195: asignar la orden de compra a quien la va a recibir (iconos con su ayuda en la tabla, como los avisos de llegada)
+  const open = (p: PurchaseOrderDto) => p.statusCode === 'SENT' || p.statusCode === 'PARTIAL'
+  const rowActions = useMemo<RowAction<PurchaseOrderDto>[]>(
+    () => [
+      {
+        key: 'take',
+        label: t('warehouse.assign.take'),
+        perm: 'purchasing.receive',
+        visible: (p) => open(p) && p.assignedToUserId == null,
+        onClick: (p) => {
+          assignPo.mutateAsync({ action: 'take', publicId: p.publicId ?? '' }).then(
+            () => toast.success(t('warehouse.assign.taken')),
+            (e) => toast.error(applyProblemDetails(e).title),
+          )
+        },
+        icon: <IconUserPlus />,
+      },
+      { key: 'assign', label: t('warehouse.assign.action'), perm: 'warehouse.manage', visible: open, onClick: (p) => setToAssign(p), icon: <IconUsers /> },
+    ],
+    [t, assignPo],
   )
 
   return (
@@ -331,6 +364,7 @@ export default function PurchaseOrderListScreen() {
           setWarehouseIds([])
           setProducts([])
           setRange(EMPTY_RANGE)
+          setMineOnly(false)
         }}
       >
         <SearchSelect label={t('warehouse.purchaseOrders.filters.status')} options={statusOptions} value={statusFilter} onChange={changeStatus} />
@@ -339,6 +373,7 @@ export default function PurchaseOrderListScreen() {
         {/* 2026-10-12: Producto (varios): órdenes con alguna línea de esos productos; mismo desplegable con búsqueda que en Productos y Kárdex */}
         <ProductSearchSelect label={t('warehouse.purchaseOrders.filters.product')} value={products} onChange={changeProducts} includeInactive />
         <DateRangeFilter label={t('warehouse.purchaseOrders.filters.range')} value={range} onChange={changeRange} />
+        <ToggleFilter label={t('warehouse.assign.mineOnly')} checked={mineOnly} onChange={withPageReset(setMineOnly)} />
       </Filters>
 
       <Panel flush icon={<IconCart />} title={t('warehouse.purchaseOrders.title')} badge={data ? (data.total ?? 0) : undefined}>
@@ -352,6 +387,7 @@ export default function PurchaseOrderListScreen() {
             columns={columns}
             rows={data?.items ?? []}
             rowKey={(p) => p.publicId ?? String(p.id)}
+            rowActions={rowActions}
             loading={isLoading}
             page={page}
             pageSize={pageSize}
@@ -368,6 +404,14 @@ export default function PurchaseOrderListScreen() {
       </Panel>
 
       <CreatePurchaseOrderModal open={creating} onClose={() => setCreating(false)} />
+      {toAssign && (
+        <AssignDocumentModal
+          title={t('warehouse.assign.title', { number: toAssign.number ?? '' })}
+          currentUserId={toAssign.assignedToUserId}
+          onSave={(userId) => assignPo.mutateAsync({ action: 'assign', publicId: toAssign.publicId ?? '', userId })}
+          onClose={() => setToAssign(null)}
+        />
+      )}
     </div>
   )
 }

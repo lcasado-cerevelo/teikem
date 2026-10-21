@@ -19,22 +19,22 @@ export type SalesDispatchResultDto = Schemas['SalesDispatchResultDto']
 
 export const salesKeys = {
   all: ['sales'] as const,
-  list: (status: string, q: string, skip: number, take: number) => ['sales', '/api/v1/sales-orders', status, q, skip, take] as const,
+  list: (status: string, q: string, skip: number, take: number, mine = false) => ['sales', '/api/v1/sales-orders', status, q, skip, take, mine] as const,
   one: (id: string) => ['sales', 'one', id] as const,
   backorders: (q: string) => ['sales', '/api/v1/sales-orders/backorders', q] as const,
 }
 
-export function useSalesOrders(status: string, q: string, skip: number, take: number) {
+export function useSalesOrders(status: string, q: string, skip: number, take: number, mine = false) {
   return useQuery({
-    queryKey: salesKeys.list(status, q, skip, take),
-    queryFn: () => unwrap(api.GET('/api/v1/sales-orders', { params: { query: { status: status || undefined, q: q || undefined, skip, take } } })),
+    queryKey: salesKeys.list(status, q, skip, take, mine),
+    queryFn: () => unwrap(api.GET('/api/v1/sales-orders', { params: { query: { status: status || undefined, q: q || undefined, skip, take, assignedToMe: mine || undefined } } })),
     placeholderData: keepPreviousData,
   })
 }
 
 /** Todas las páginas del filtro actual (la exportación de la tabla). */
-export function salesOrderPageReader(status: string, q: string) {
-  return (skip: number, take: number) => unwrap(api.GET('/api/v1/sales-orders', { params: { query: { status: status || undefined, q: q || undefined, skip, take } } }))
+export function salesOrderPageReader(status: string, q: string, mine = false) {
+  return (skip: number, take: number) => unwrap(api.GET('/api/v1/sales-orders', { params: { query: { status: status || undefined, q: q || undefined, skip, take, assignedToMe: mine || undefined } } }))
 }
 
 export function useSalesOrder(publicId: string | null) {
@@ -91,6 +91,12 @@ export function useSalesMutations() {
         unwrap(api.POST('/api/v1/sales-orders/{publicId}/delivery', { params: { path: { publicId: v.id } }, body: { pickBatchPublicId: v.pickBatchPublicId, order: v.order } })),
       onSettled: refresh,
     }),
+    // Lote 195: asignar la orden de venta a quien la va a despachar (warehouse.manage) o tomarla (warehouse.pick)
+    assign: useMutation({
+      mutationFn: (v: { id: string; userId: number | null }) => unwrap(api.POST('/api/v1/sales-orders/{publicId}/assign', { params: { path: { publicId: v.id } }, body: { userId: v.userId } })),
+      onSettled: refresh,
+    }),
+    take: useMutation({ mutationFn: (id: string) => unwrap(api.POST('/api/v1/sales-orders/{publicId}/take', { params: { path: { publicId: id } } })), onSettled: refresh }),
     fulfillAll: useMutation({ mutationFn: () => unwrap(api.POST('/api/v1/sales-orders/backorders/fulfill')), onSettled: refresh }),
     closeLine: useMutation({
       mutationFn: (v: { id: string; lineId: number; comment?: string }) =>

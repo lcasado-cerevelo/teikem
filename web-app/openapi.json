@@ -20070,6 +20070,22 @@
               "type": "integer",
               "format": "int32"
             }
+          },
+          {
+            "name": "assignedToMe",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "assignedUserId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -20118,6 +20134,105 @@
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sales-orders/{publicId}/assign": {
+      "post": {
+        "tags": [
+          "SalesOrders"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskAssignRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskAssignRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskAssignRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sales-orders/{publicId}/take": {
+      "post": {
+        "tags": [
+          "SalesOrders"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -23529,6 +23644,22 @@
               "format": "int32",
               "default": 100
             }
+          },
+          {
+            "name": "assignedToMe",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "assignedUserId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -23632,6 +23763,105 @@
                   "items": {
                     "$ref": "#/components/schemas/PoShortageSummaryDto"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/purchase-orders/{publicId}/assign": {
+      "post": {
+        "tags": [
+          "PurchaseOrders"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskAssignRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskAssignRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskAssignRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseOrderDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseOrderDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseOrderDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/purchase-orders/{publicId}/take": {
+      "post": {
+        "tags": [
+          "PurchaseOrders"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseOrderDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseOrderDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseOrderDto"
                 }
               }
             }
@@ -59249,6 +59479,15 @@
               "$ref": "#/components/schemas/SalesDispatchInfoDto"
             },
             "nullable": true
+          },
+          "assignedToUserId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "assignedToName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -59459,6 +59698,15 @@
           "createdAtUtc": {
             "type": "string",
             "format": "date-time"
+          },
+          "assignedToUserId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "assignedToName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -61009,6 +61257,15 @@
             "nullable": true
           },
           "rowVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "assignedToUserId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "assignedToName": {
             "type": "string",
             "nullable": true
           }

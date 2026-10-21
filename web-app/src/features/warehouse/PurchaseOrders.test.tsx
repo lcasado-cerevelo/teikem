@@ -100,6 +100,15 @@ const problem = (status: number, title: string, code: string) =>
 const patchBody = () => mock.calls.find((c) => c.method === 'PATCH')?.body as Record<string, unknown> | undefined
 
 describe('Compras: lista', () => {
+  it('Lote 195: columna «Asignado a» y el interruptor «Solo los asignados a mí» viaja como assignedToMe', async () => {
+    const user = userEvent.setup()
+    wrap(<PurchaseOrderListScreen />, MANAGE)
+    await screen.findAllByText('PO-00001')
+    expect(screen.getByRole('columnheader', { name: 'Asignado a' })).toBeInTheDocument()
+    await user.click(screen.getByRole('switch', { name: 'Solo los asignados a mí' }))
+    await waitFor(() => expect(listGets().at(-1)!.url.searchParams.get('assignedToMe')).toBe('true'))
+  })
+
   it('sin buscador en la tabla; Proveedor y Almacén son multiselección con buscador y viajan como arreglos', async () => {
     const user = userEvent.setup()
     wrap(<PurchaseOrderListScreen />, MANAGE)

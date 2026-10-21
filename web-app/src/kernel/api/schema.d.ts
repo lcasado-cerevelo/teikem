@@ -14845,6 +14845,8 @@ export interface paths {
                     to?: string;
                     skip?: number;
                     take?: number;
+                    assignedToMe?: boolean;
+                    assignedUserId?: number;
                 };
                 header?: never;
                 path?: never;
@@ -14880,6 +14882,90 @@ export interface paths {
                     "application/*+json": components["schemas"]["SalesOrderRequest"];
                 };
             };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaskAssignRequest"];
+                    "text/json": components["schemas"]["TaskAssignRequest"];
+                    "application/*+json": components["schemas"]["TaskAssignRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/take": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
             responses: {
                 /** @description OK */
                 200: {
@@ -17467,6 +17553,8 @@ export interface paths {
                     productPublicIds?: string[];
                     skip?: number;
                     take?: number;
+                    assignedToMe?: boolean;
+                    assignedUserId?: number;
                 };
                 header?: never;
                 path?: never;
@@ -17553,6 +17641,90 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-orders/{publicId}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaskAssignRequest"];
+                    "text/json": components["schemas"]["TaskAssignRequest"];
+                    "application/*+json": components["schemas"]["TaskAssignRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PurchaseOrderDto"];
+                        "application/json": components["schemas"]["PurchaseOrderDto"];
+                        "text/json": components["schemas"]["PurchaseOrderDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-orders/{publicId}/take": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PurchaseOrderDto"];
+                        "application/json": components["schemas"]["PurchaseOrderDto"];
+                        "text/json": components["schemas"]["PurchaseOrderDto"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -39012,6 +39184,9 @@ export interface components {
             createdAtUtc?: string;
             lines?: components["schemas"]["SalesOrderLineDto"][] | null;
             dispatches?: components["schemas"]["SalesDispatchInfoDto"][] | null;
+            /** Format: int32 */
+            assignedToUserId?: number | null;
+            assignedToName?: string | null;
         };
         SalesOrderLineDto: {
             /** Format: int32 */
@@ -39092,6 +39267,9 @@ export interface components {
             requestedByName?: string | null;
             /** Format: date-time */
             createdAtUtc?: string;
+            /** Format: int32 */
+            assignedToUserId?: number | null;
+            assignedToName?: string | null;
         };
         SalesOrderListItemDtoPagedResult: {
             items?: components["schemas"]["SalesOrderListItemDto"][] | null;
@@ -39592,6 +39770,9 @@ export interface components {
             isActive?: boolean;
             lines?: components["schemas"]["PurchaseOrderLineDto"][] | null;
             rowVersion?: string | null;
+            /** Format: int32 */
+            assignedToUserId?: number | null;
+            assignedToName?: string | null;
         };
         PurchaseOrderLineDto: {
             /** Format: int32 */

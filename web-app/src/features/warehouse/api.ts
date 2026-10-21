@@ -1572,6 +1572,18 @@ export function usePurchaseOrders(query: GetQuery<'/api/v1/purchase-orders'> = {
   })
 }
 
+/** Lote 195: `POST /api/v1/purchase-orders/{publicId}/assign` (`warehouse.manage`) y `…/take` (`purchasing.receive`): asignar la orden de compra a quien la va a recibir. */
+export function useAssignPurchaseOrder() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { action: 'assign'; publicId: string; userId: number | null } | { action: 'take'; publicId: string }) =>
+      v.action === 'assign'
+        ? unwrap(api.POST('/api/v1/purchase-orders/{publicId}/assign', { params: { path: { publicId: v.publicId } }, body: { userId: v.userId } }))
+        : unwrap(api.POST('/api/v1/purchase-orders/{publicId}/take', { params: { path: { publicId: v.publicId } } })),
+    onSuccess: () => invalidate(qc, 'purchaseOrders', 'purchaseOrder'),
+  })
+}
+
 /** `GET /api/v1/purchase-orders/{publicId}`. */
 export function usePurchaseOrder(publicId: string | null | undefined, options?: WarehouseQueryOptions) {
   return useQuery({

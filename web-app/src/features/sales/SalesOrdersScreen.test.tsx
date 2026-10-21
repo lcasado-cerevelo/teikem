@@ -113,6 +113,16 @@ describe('SalesOrdersScreen', () => {
     await waitFor(() => expect(mock.requests.some((r) => r.path === '/api/v1/sales-orders' && r.search.includes('status=REQUESTED'))).toBe(true))
   })
 
+  it('Lote 195: las acciones de asignar están en la tabla como iconos (solo en la orden solicitada) y el interruptor filtra «asignadas a mí»', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await screen.findByText('OV-00002')
+    expect(screen.getAllByRole('button', { name: 'Tomar' })).toHaveLength(1)   // el borrador no se asigna
+    expect(screen.getAllByRole('button', { name: 'Asignar' })).toHaveLength(1)
+    await user.click(screen.getByRole('switch', { name: 'Solo los asignados a mí' }))
+    await waitFor(() => expect(mock.requests.some((r) => r.path === '/api/v1/sales-orders' && r.search.includes('assignedToMe=true'))).toBe(true))
+  })
+
   it('el aviso del Pulso abre la orden directo con ?order= (Lote 67)', async () => {
     wrap(`/sales-orders?order=${DRAFT}`)
     expect(await screen.findByRole('dialog', { name: /Orden OV-00001/ })).toBeInTheDocument()
