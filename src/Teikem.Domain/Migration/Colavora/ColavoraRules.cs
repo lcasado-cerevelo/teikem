@@ -389,6 +389,16 @@ public static class ColavoraRules
         return u.Length > 20 ? u[..20] : u;
     }
 
+    /// <summary>
+    /// Código del chofer sin ceros a la izquierda: Colavora lo escribe «003» en el usuario y a veces «3» en los eventos y manifiestos;
+    /// los dos son el mismo chofer. «000» queda «0».
+    /// </summary>
+    public static string DriverCodeAlias(string? code)
+    {
+        var c = (code ?? string.Empty).Trim().TrimStart('0').ToUpperInvariant();
+        return c.Length == 0 ? "0" : c;
+    }
+
     /// <summary>¿El username de Colavora es un correo real (al que se le puede mandar la invitación)?</summary>
     public static bool LooksLikeEmail(string? username)
     {

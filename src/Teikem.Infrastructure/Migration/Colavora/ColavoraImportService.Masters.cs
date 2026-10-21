@@ -125,7 +125,7 @@ public sealed partial class ColavoraImportService
         const string D = ColavoraEntities.Drivers;
         var users = await s.Reader.ReadUsersAsync(s.CompanyId, ct);
         var existingDrivers = s.TenantId is null ? new Dictionary<string, Driver>(StringComparer.OrdinalIgnoreCase)
-            : await db.Drivers.AsNoTracking().ToDictionaryAsync(d => d.EmployeeCode, d => d, StringComparer.OrdinalIgnoreCase, ct);
+            : await db.Drivers.IgnoreQueryFilters().AsNoTracking().Where(d => d.TenantId == s.TenantId).ToDictionaryAsync(d => d.EmployeeCode, d => d, StringComparer.OrdinalIgnoreCase, ct);   // también los inactivos: el índice único los cuenta
         var existingUsers = s.TenantId is null ? new Dictionary<string, (int Id, bool Member)>(StringComparer.OrdinalIgnoreCase)
             : (await db.Users.IgnoreQueryFilters().AsNoTracking().Select(u => new { u.Id, u.Email, Member = u.Memberships.Any(m => m.TenantId == s.TenantId) }).ToListAsync(ct))
                 .Where(u => u.Email is not null).GroupBy(u => u.Email!, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => (g.First().Id, g.First().Member), StringComparer.OrdinalIgnoreCase);
@@ -189,7 +189,22 @@ public sealed partial class ColavoraImportService
             s.Drivers[code] = dto.Id;
             if (!active) await TryAsync(s, D, code, async () => { await drivers.SetActiveAsync(dto.PublicId, false, ct); return dto; });
         }
+        // los choferes que ya existían pero no están en Users (los que una corrida anterior creó solo desde los eventos) también se reconocen
+        foreach (var (code, d) in existingDrivers) s.Drivers.TryAdd(code, d.DriverId);
+        IndexDriverAliases(s);
         db.ChangeTracker.Clear();
+    }
+
+    /// <summary>
+    /// Colavora escribe el código del chofer con ceros a la izquierda en el usuario («003») y a veces sin ellos en los eventos («3»):
+    /// cada código también se reconoce sin ceros. Un código real nunca se pisa con un alias.
+    /// </summary>
+    private static void IndexDriverAliases(RunState s)
+    {
+        foreach (var (code, id) in s.Drivers.ToList())
+        {
+            s.Drivers.TryAdd(ColavoraRules.DriverCodeAlias(code), id);
+        }
     }
 
     private async Task SuspendAsync(RunState s, int userId, CancellationToken ct)
@@ -201,7 +216,7 @@ public sealed partial class ColavoraImportService
         var users = await s.Reader.ReadUsersAsync(s.CompanyId, ct);
         var byEmail = (await db.Users.IgnoreQueryFilters().AsNoTracking().Where(u => u.Email != null).Select(u => new { u.Id, u.Email }).ToListAsync(ct))
             .GroupBy(u => u.Email!, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
-        var driversByCode = await db.Drivers.AsNoTracking().ToDictionaryAsync(d => d.EmployeeCode, d => d.DriverId, StringComparer.OrdinalIgnoreCase, ct);
+        var driversByCode = await db.Drivers.IgnoreQueryFilters().AsNoTracking().Where(d => d.TenantId == s.TenantId).ToDictionaryAsync(d => d.EmployeeCode, d => d.DriverId, StringComparer.OrdinalIgnoreCase, ct);
         foreach (var u in users)
         {
             var email = ColavoraRules.LooksLikeEmail(u.Username) ? u.Username.Trim()
@@ -215,6 +230,7 @@ public sealed partial class ColavoraImportService
             }
         }
         foreach (var (code, id) in driversByCode) s.Drivers.TryAdd(code, id);
+        IndexDriverAliases(s);
     }
 
     // ================================================================ zonas de despacho (D12: zonas de ruta por ZIP)

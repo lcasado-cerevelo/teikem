@@ -255,4 +255,14 @@ public sealed class ColavoraRulesTests
         // la ruta 04 tiene dos ZIP de ISLA y uno de METRO: su nivel es ISLA
         Assert.Equal("ISLA", plan.Zones.Single(z => z.Code == "R04").GroupCode);
     }
+
+    [Theory]
+    [InlineData("003", "3")]
+    [InlineData("3", "3")]
+    [InlineData(" 0850 ", "850")]
+    [InlineData("000", "0")]
+    [InlineData("kenneth", "KENNETH")]
+    [InlineData(null, "0")]
+    public void Driver_codes_are_recognized_with_or_without_leading_zeros(string? code, string expected)
+        => Assert.Equal(expected, ColavoraRules.DriverCodeAlias(code));
 }

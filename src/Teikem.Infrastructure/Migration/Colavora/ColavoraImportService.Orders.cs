@@ -495,8 +495,7 @@ public sealed partial class ColavoraImportService
     private int? ResolveDriver(RunState s, string? code, string? name, Dictionary<string, Driver> newDrivers)
     {
         if (string.IsNullOrWhiteSpace(code)) return null;
-        var c = code.Trim().TrimStart('0').ToUpperInvariant();
-        if (c.Length == 0) c = "0";
+        var c = ColavoraRules.DriverCodeAlias(code);
         if (s.Drivers.TryGetValue(c, out var id)) return id;
         if (s.Drivers.TryGetValue(code.Trim().ToUpperInvariant(), out id)) return id;
         if (newDrivers.TryGetValue(c, out var pending)) return pending.DriverId == 0 ? null : pending.DriverId;
