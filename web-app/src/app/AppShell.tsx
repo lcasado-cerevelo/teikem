@@ -10,6 +10,7 @@ import { useT } from '../kernel/i18n/useT'
 import { useFormat } from '../kernel/format/useFormat'
 import { BrandLockup, BrandMark } from '../kernel/ui/Brand'
 import { CommandPalette } from '../kernel/ui/CommandPalette'
+import { AppLegalFooter } from './AppLegalFooter'
 import { autoOpenHit, hitHref, type SearchHit } from '../kernel/search/searchRules'
 import { useGlobalSearch } from '../kernel/search/useGlobalSearch'
 import { ExportCompanyProvider, FilterScope } from '../kernel/ui/FilterScope'
@@ -292,6 +293,7 @@ export function AppShell() {
             <span>{collapsed ? t('shell.expand') : t('shell.collapse')}</span>
           </button>
         </div>
+        <AppLegalFooter />
       </aside>
       <div className="drawer-scrim" onClick={() => setDrawer(false)} aria-hidden="true" />
 

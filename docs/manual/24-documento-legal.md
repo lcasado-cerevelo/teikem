@@ -47,3 +47,5 @@ El texto lleva marcas que **hay que llenar antes de producción** en la configur
 - **Cambiamos el documento y todos quedaron pendientes:** es lo esperado; la lista de Aceptación legal muestra «Versión anterior».
 
 **Versión `2026-10-21.1` (Lote 166/167):** el texto dice «envíos» donde decía «órdenes de entrega» (la orden de transporte pasó a llamarse envío). La versión subió, así que **todos los usuarios aceptan de nuevo** la próxima vez que entren.
+
+**Dónde se ve estando dentro (2026-10-21):** al pie del menú lateral de la web hay, chico y apagado, los enlaces **Privacidad** y **Términos de uso** (abren el documento en otra pestaña, ya en la parte que corresponde), «© año Cerevelo LLC. Todos los derechos reservados.» y «Powered by Teikem». Con el menú contraído el pie se oculta; en el celular está en el menú. El dueño y el nombre del producto están en `web-app/src/app/AppLegalFooter.tsx`.

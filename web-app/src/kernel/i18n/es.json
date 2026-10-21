@@ -133,6 +133,13 @@
     "tenant": "Compañía",
     "account": "Mi cuenta",
     "logout": "Salir",
+    "legal": {
+      "label": "Información legal",
+      "privacy": "Privacidad",
+      "terms": "Términos de uso",
+      "rights": "© {year} {owner}. Todos los derechos reservados.",
+      "powered": "Powered by {product}"
+    },
     "palette": {
       "label": "Paleta de comandos",
       "placeholder": "Buscar o ejecutar…",

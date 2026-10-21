@@ -24,6 +24,12 @@ export function LegalDocumentView({ doc, onReachedEnd, height }: { doc: LegalDoc
     return () => window.clearTimeout(id)
   }, [doc.version, doc.lang, check])
 
+  // enlace a una parte (`/legal#legal-t1`): al pintarse el documento se baja a esa sección
+  useEffect(() => {
+    const id = window.location.hash.slice(1)
+    if (id) document.getElementById(id)?.scrollIntoView?.()
+  }, [doc.version, doc.lang])
+
   const sections = doc.sections ?? []
   let lastPart = ''
   return (

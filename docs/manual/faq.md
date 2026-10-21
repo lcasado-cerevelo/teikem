@@ -9755,3 +9755,6 @@ El recibo ya usaba `REC-#####` y un `REC-00012` podía ser un recibo o una recla
 
 **¿Qué puedo buscar en «Buscar o ejecutar»? (Lote 167)**
 Además de las pantallas del menú, busca registros por número o nombre: envíos (número, conduce, empaque, factura del cliente, paquete), rutas, reclamaciones (`RCL-`), clientes, almacenes, zonas, posiciones, productos (SKU y nombre), recibos, recolecciones y empaques, avisos de salida, proveedores, órdenes de compra y de venta, facturas, rentas y teléfonos. Un solo resultado exacto se abre solo; si hay varios, se muestran para escoger. Solo aparecen los tipos que su usuario puede ver. Ver capítulo 42.
+
+**¿Dónde veo la política de privacidad y los términos de uso estando dentro de la aplicación?**
+Al pie del menú lateral, en letra chica: **Privacidad** y **Términos de uso** (abren el documento en una pestaña nueva). Con el menú contraído el pie no se ve: expándalo. En el celular, abra el menú.
