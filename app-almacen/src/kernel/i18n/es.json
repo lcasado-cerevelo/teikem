@@ -246,6 +246,7 @@
     "changed": "Ahora trabajas en {name}."
   },
   "receive": {
+    "summary": "Esperado {expected} · Recibido {received} · Fallado {failed}",
     "noneMine": "Nada asignado a ti. Toca «Ver lo que nadie tiene asignado» o escanea el código.",
     "truckOtherOwner": "Ese documento es de otro dueño que los de esta tanda. Termine los de la tanda para recibirlo.",
     "selectMany": "Seleccionar varios",

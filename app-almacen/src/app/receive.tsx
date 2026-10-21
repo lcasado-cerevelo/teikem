@@ -100,9 +100,10 @@ export default function ReceiveScreen() {
   const options = receiveOptions(parseReceiptRequirement(device?.receiptRequirement))
   // Modo de este recibo: por defecto el del almacén; se puede cambiar antes de abrirlo (solo vale para ese recibo).
   const [modeChoice, setModeChoice] = useState<ReceivingMode | null>(null)
+  // Lote 198: ya escogidos el documento o los documentos (docs null = recibo ciego), espera el modo del recibo (solo si el almacén no tiene uno fijo)
+  const [staged, setStaged] = useState<{ docs: LocalDoc[] | null } | null>(null)
   // Sin elección y sin modo conocido del almacén se manda null, como antes (el servidor usa el del almacén).
   const sentMode: ReceivingMode | null = modeChoice ?? deviceMode
-  const startMode: ReceivingMode = sentMode ?? 'PUTAWAY'
   const [tick, setTick] = useState(0)
   const [docError, setDocError] = useState<string | null>(null)
   const [productError, setProductError] = useState<string | null>(null)
@@ -192,8 +193,34 @@ export default function ReceiveScreen() {
   }
 
   function startBlind() {
-    startLocalReceipt(warehousePublicId!, null, sentMode)
+    choose(null)
+  }
+
+  /** Lote 198: con modo fijo en el almacén se empieza de una vez; si no, se pregunta el modo en la misma pantalla. */
+  function choose(docs: LocalDoc[] | null) {
     setDocError(null)
+    if (deviceMode) return begin(docs, deviceMode)
+    setStaged({ docs })
+  }
+
+  /** Empieza el recibo (o el primero de la tanda) con el modo dicho. */
+  function begin(docs: LocalDoc[] | null, mode: ReceivingMode) {
+    setModeChoice(mode)
+    setStaged(null)
+    if (!docs) {
+      startLocalReceipt(warehousePublicId!, null, mode)
+    } else {
+      // varios del mismo dueño: se abre una carga y el servidor los reúne en una recepción maestra; si no, recibos separados
+      if (docs.length > 1) {
+        if (sharesOwner(docs)) startTruck(warehousePublicId!, newClientKey())
+        else endTruck()
+      }
+      const [first, ...rest] = docs
+      setQueue(rest)
+      startLocalReceipt(warehousePublicId!, first, mode)
+      void takeDocIfFree(first, userId)
+    }
+    vibrateOk()
     refresh()
   }
 
@@ -203,25 +230,13 @@ export default function ReceiveScreen() {
       vibrateError()
       return
     }
-    startLocalReceipt(warehousePublicId!, doc, sentMode)
-    void takeDocIfFree(doc, userId)
-    setDocError(null)
-    vibrateOk()
-    refresh()
+    choose([doc])
   }
 
   /** Lote 198: recibir varios seguidos. Del mismo dueño (2 o más): se abre una carga y el servidor los reúne en una recepción maestra; si no, recibos separados. */
   function pickMany(docs: LocalDoc[]) {
     if (docs.length === 0) return
-    if (sharesOwner(docs)) startTruck(warehousePublicId!, newClientKey())
-    else endTruck()
-    const [first, ...rest] = docs
-    setQueue(rest)
-    startLocalReceipt(warehousePublicId!, first, sentMode)
-    void takeDocIfFree(first, userId)
-    setDocError(null)
-    vibrateOk()
-    refresh()
+    choose(docs)
   }
 
   /** Terminado un recibo, sigue el próximo de la cola (true) o, si no queda ninguno, se cierra la carga (false). */
@@ -231,7 +246,7 @@ export default function ReceiveScreen() {
       if (getTruck()) endTruck()
       return false
     }
-    startLocalReceipt(warehousePublicId!, next, sentMode)
+    startLocalReceipt(warehousePublicId!, next, modeChoice ?? deviceMode)
     void takeDocIfFree(next, userId)
     return true
   }
@@ -253,11 +268,7 @@ export default function ReceiveScreen() {
       vibrateError()
       return
     }
-    startLocalReceipt(warehousePublicId!, doc, sentMode)
-    void takeDocIfFree(doc, userId)
-    setDocError(null)
-    vibrateOk()
-    refresh()
+    choose([doc])
   }
 
   function scanProduct(code: string) {
@@ -496,26 +507,33 @@ export default function ReceiveScreen() {
   // Paso 1: sin recibo abierto todavía. Nada que perder aquí, así que "Volver" sale directo a Inicio (a diferencia
   // de los pasos con captura en curso, donde la salida es a propósito por Confirmar o Cancelar). 2026-10-01 (Luis): va
   // abajo del todo, debajo del texto de ayuda de "Recibo ciego" (con `marginTop: auto` queda pegado al borde inferior).
-  if (!openReceipt) {
+  // Lote 198: escogido el documento (o los documentos), lo primero es el modo; al escoger uno estos botones desaparecen y sigue el recibo en esta misma pantalla
+  if (!openReceipt && staged) {
     return (
       <KeyboardScreen contentContainerStyle={styles.fill}>
         <Text style={styles.title}>{t('receive.title')}</Text>
+        <Text style={styles.help}>{staged.docs ? staged.docs.map((d) => d.label).join(' + ') : t('receive.startBlind')}</Text>
         <Text style={styles.label}>{t('receive.modeLabel')}</Text>
         <View style={styles.row}>
           {(['PUTAWAY', 'DIRECT'] as const).map((m) => (
-            <Pressable
-              key={m}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: startMode === m }}
-              testID={`receive-mode-${m}`}
-              onPress={() => setModeChoice(m)}
-              style={[styles.modeBtn, startMode === m && styles.modeBtnOn]}
-            >
+            <Pressable key={m} accessibilityRole="radio" testID={`receive-mode-${m}`} onPress={() => begin(staged.docs, m)} style={styles.modeBtn}>
               <Text style={styles.modeText}>{t(m === 'DIRECT' ? 'receive.modeDirect' : 'receive.modePutaway')}</Text>
             </Pressable>
           ))}
         </View>
-        <Text style={styles.help}>{t(startMode === 'DIRECT' ? 'receive.modeDirectHelp' : 'receive.modePutawayHelp')}</Text>
+        <Text style={styles.help}>{t('receive.modePutawayHelp')}</Text>
+        <Text style={styles.help}>{t('receive.modeDirectHelp')}</Text>
+        <View style={styles.bottom}>
+          <BigButton label={t('common.back')} variant="danger" onPress={() => setStaged(null)} />
+        </View>
+      </KeyboardScreen>
+    )
+  }
+
+  if (!openReceipt) {
+    return (
+      <KeyboardScreen contentContainerStyle={styles.fill}>
+        <Text style={styles.title}>{t('receive.title')}</Text>
         {truck || getQueue().length > 0 ? <Text style={styles.help}>{t('receive.queueNote', { count: getQueue().length })}</Text> : null}
         <ScanField label={t('receive.scanDocLabel')} help={t('receive.scanDocHelp')} error={docError} onSubmit={scanDoc} />
         <ReceiveDocumentList warehousePublicId={warehousePublicId} options={options} userId={userId} onPick={pickDoc} onPickMany={pickMany} />
@@ -948,6 +966,15 @@ export default function ReceiveScreen() {
         removeLabel={t('common.remove')}
         emptyLabel={t('receive.linesTitle')}
       />
+      {expected.length > 0 ? (
+        <Text style={styles.label} testID="receive-summary">
+          {t('receive.summary', {
+            expected: f.qty(expected.reduce((n, l) => n + l.expectedQty, 0)),
+            received: f.qty(expected.reduce((n, l) => n + l.postedQty, 0) + capturedQty),
+            failed: f.qty(openReceipt.lines.reduce((n, l) => n + l.damagedQty, 0)),
+          })}
+        </Text>
+      ) : null}
       <BigButton
         label={t('receive.confirmReceipt')}
         onPress={confirmReceipt}

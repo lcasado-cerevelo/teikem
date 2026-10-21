@@ -27,7 +27,7 @@ async function setup(withQuarantine = true) {
     }
     throw new TypeError('Network request failed')
   })
-  await saveDeviceIdentity({ devicePublicId: 'dev-1', deviceSecret: 's', tenantName: 'Demo', defaultWarehousePublicId: 'wh-1', theme: null, defaultWarehouseReceivingMode: 'DIRECT' })
+  await saveDeviceIdentity({ devicePublicId: 'dev-1', deviceSecret: 's', tenantName: 'Demo', defaultWarehousePublicId: 'wh-1', theme: null, defaultWarehouseReceivingMode: null })
   await saveUserSession({ accessToken: 'a', accessExpiresAtUtc: '', refreshToken: 'r', refreshExpiresAtUtc: '', tenantId: 1, userId: 7, fullName: 'Ana Ruiz' })
   const db = getDb()
   db.runSync("INSERT INTO product (id, public_id, sku, name, barcode, tracking_type_code, is_active) VALUES (1, 'p1', 'SKU-1', 'Tornillo', '7501', 'NONE', 1)")
@@ -47,11 +47,11 @@ afterEach(() => {
   jest.restoreAllMocks()
 })
 
-async function toCapture(mode?: 'PUTAWAY') {
+async function toCapture(mode: 'PUTAWAY' | 'DIRECT' = 'DIRECT') {
   await renderRouter('src/app', { initialUrl: '/receive' })
   await waitFor(() => expect(screen.getByText('Recibo ciego')).toBeTruthy())
-  if (mode) await fireEvent.press(screen.getByTestId(`receive-mode-${mode}`))
   await fireEvent.press(screen.getByText('Recibo ciego'))
+  await fireEvent.press(await screen.findByTestId(`receive-mode-${mode}`))
   await waitFor(() => expect(screen.getByLabelText('Escanea el producto')).toBeTruthy())
   await fireEvent(screen.getByLabelText('Escanea el producto'), 'submitEditing', { nativeEvent: { text: '7501' } })
   await waitFor(() => expect(screen.getByLabelText('Cantidad')).toBeTruthy())

@@ -60,26 +60,24 @@ describe('Recibir — modo por recibo', () => {
     await waitFor(() => expect(screen.getByText('Recibo ciego')).toBeTruthy())
   }
 
-  it('viene marcado el modo del almacén y un recibo sin tocar lo usa', async () => {
+  it('con modo fijo en el almacén no se pregunta: el recibo abre de una vez con ese modo', async () => {
     await setup('DIRECT')
-    expect(screen.getByTestId('receive-mode-DIRECT').props.accessibilityState.selected).toBe(true)
-    expect(screen.getByTestId('receive-mode-PUTAWAY').props.accessibilityState.selected).toBe(false)
+    expect(screen.queryByTestId('receive-mode-DIRECT')).toBeNull()
     await fireEvent.press(screen.getByText('Recibo ciego'))
     expect(getOpenReceipt()?.receivingMode).toBe('DIRECT')
   })
 
-  it('cambiar el modo antes de abrir vale solo para ese recibo', async () => {
-    await setup('DIRECT')
-    await fireEvent.press(screen.getByTestId('receive-mode-PUTAWAY'))
-    expect(screen.getByTestId('receive-mode-PUTAWAY').props.accessibilityState.selected).toBe(true)
+  it('sin modo fijo, escogido el documento (aquí el recibo ciego) se pregunta el modo en la misma pantalla y vale solo para ese recibo', async () => {
+    await setup('')
+    await fireEvent.press(screen.getByText('Recibo ciego'))
+    expect(getOpenReceipt()).toBeNull()
+    await fireEvent.press(await screen.findByTestId('receive-mode-DIRECT'))
+    expect(getOpenReceipt()?.receivingMode).toBe('DIRECT')
+  })
+
+  it('un almacén con acomodo fijo abre con acomodo', async () => {
+    await setup('PUTAWAY')
     await fireEvent.press(screen.getByText('Recibo ciego'))
     expect(getOpenReceipt()?.receivingMode).toBe('PUTAWAY')
-  })
-
-  it('un almacén con acomodo puede abrir un recibo directo', async () => {
-    await setup('PUTAWAY')
-    await fireEvent.press(screen.getByTestId('receive-mode-DIRECT'))
-    await fireEvent.press(screen.getByText('Recibo ciego'))
-    expect(getOpenReceipt()?.receivingMode).toBe('DIRECT')
   })
 })

@@ -246,6 +246,7 @@
     "changed": "You are now working in {name}."
   },
   "receive": {
+    "summary": "Expected {expected} · Received {received} · Failed {failed}",
     "noneMine": "Nothing assigned to you. Tap “Show unassigned” or scan the code.",
     "truckOtherOwner": "That document belongs to a different owner than this batch. Finish the batch to receive it.",
     "selectMany": "Select several",
