@@ -126,6 +126,14 @@
 .qg input:disabled,.qg select:disabled{opacity:.6}
 .qg input[aria-invalid="true"],.qg select[aria-invalid="true"]{border-color:var(--danger)}
 .qg tr.saved td{color:var(--muted)}
+/* filas con una fecha distinta de hoy: sombreadas y con una marca a la izquierda (no cambian el alto de la fila) */
+.qg tr.qk-offdate td{background:var(--warnbg)}
+.qg tr.qk-offdate td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
+.qk-offk{display:inline-flex;align-items:center;gap:6px}
+.qk-offsw{display:inline-block;width:14px;height:10px;border-radius:3px;background:var(--warnbg);box-shadow:inset 3px 0 0 var(--warn)}
+.qg .qk-c-date{width:11%}.qg .qk-c-inv{width:9%}
+.qg .datefield{display:flex}
+.qg .datefield input{font-family:var(--mono)}
 .qg .qk-r{text-align:right}
 .qg td.qk-r{padding-right:12px}
 .qg .qk-addr{display:block;color:var(--faint);font-size:11.5px;line-height:1.3;padding:9px 4px;overflow-wrap:anywhere}

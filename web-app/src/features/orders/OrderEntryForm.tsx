@@ -94,7 +94,8 @@ export function OrderEntryForm({ onCreated, labelOnSave }: OrderEntryFormProps) 
         numberMax: t('orders.entry.errors.numberMax'),
         descriptionMax: t('orders.entry.errors.descriptionMax'),
         dueBeforeReady: t('orders.entry.errors.dueBeforeReady'),
-      }),
+        pastDate: t('orders.entry.errors.pastDate'),
+      }, tenantToday()),
     [t],
   )
   const form = useForm({ resolver: zodResolver(schema), defaultValues: emptyOrderValues(tenantToday()) })
@@ -264,7 +265,7 @@ export function OrderEntryForm({ onCreated, labelOnSave }: OrderEntryFormProps) 
             </div>
             <div className="r3">
               <Field name="readyDate" label={t('orders.entry.ready')}>
-                <DateInput />
+                <DateInput min={tenantToday()} />
               </Field>
               <Field name="dueDate" label={t('orders.entry.due')}>
                 <DateInput />

@@ -35,6 +35,8 @@ export function ClientProfilePanel({ client }: { client: ClientDetail }) {
   const save = useUpdateClientProfile(publicId)
   const { data: terms = [] } = useLookups('PaymentTerm', { includeDisabled: true })
   const { data: currencies = [] } = useLookups('Currency', { includeDisabled: true })
+  const { data: serviceTypes = [] } = useLookups('ServiceType', { includeDisabled: true })
+  const { data: packageTypes = [] } = useLookups('PackageType', { includeDisabled: true })
   const original = useMemo(() => profileValuesOf(client), [client])
 
   const schema = useMemo(
@@ -98,6 +100,14 @@ export function ClientProfilePanel({ client }: { client: ClientDetail }) {
             </Field>
             <Field name="currency" label={t('clients.fields.currency')}>
               <Select options={lookupOptions(currencies, client.currency)} placeholder={t('clients.fields.none')} />
+            </Field>
+          </div>
+          <div className="r2">
+            <Field name="defaultServiceType" label={t('clients.profile.defaultService')} help={t('clients.profile.defaultsHelp')}>
+              <Select options={lookupOptions(serviceTypes, client.defaultServiceType)} placeholder={t('clients.profile.companyDefault')} />
+            </Field>
+            <Field name="defaultPackageType" label={t('clients.profile.defaultPackage')}>
+              <Select options={lookupOptions(packageTypes, client.defaultPackageType)} placeholder={t('clients.profile.companyDefault')} />
             </Field>
           </div>
           <Field name="autoPrintLabels" label={t('clients.profile.autoPrintLabels')} help={t('clients.profile.autoPrintLabelsHelp')}>

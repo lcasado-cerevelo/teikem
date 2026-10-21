@@ -489,6 +489,10 @@
       "legalNameHelp": "El nombre legal de la entidad (el que va en las facturas), distinto del nombre comercial de arriba.",
       "autoPrintLabels": "Labels",
       "autoPrintLabelsText": "Imprimir los labels automáticamente",
+      "defaultService": "Servicio por omisión",
+      "defaultPackage": "Paquete por omisión",
+      "defaultsHelp": "Lo que la entrada rápida de envíos trae puesto al elegir este cliente.",
+      "companyDefault": "El de la compañía",
       "portalCreateTitle": "Lo que el cliente crea desde su portal",
       "portalCreateHelp": "Apagado por omisión. Solo los accesos de administrador u operador del cliente pueden usarlo; el de solo lectura no.",
       "portalCreateProducts": "Productos",
@@ -4072,7 +4076,8 @@
         "specialRequired": "El servicio especial es obligatorio en una entrega especial.",
         "numberMax": "El número no puede exceder 40 caracteres.",
         "descriptionMax": "Máximo 4000 caracteres.",
-        "dueBeforeReady": "La fecha límite no puede ser anterior a la fecha lista."
+        "dueBeforeReady": "La fecha límite no puede ser anterior a la fecha lista.",
+        "pastDate": "La fecha del envío no puede ser anterior a hoy."
       },
       "dup": {
         "title": "Factura repetida para este consignatario",
@@ -4101,12 +4106,16 @@
       "dupAllowedShort": "admite factura repetida"
     },
     "quick": {
+      "offDate": "Fecha distinta de hoy",
+      "offDateLegend": "Sombreado: fecha distinta de hoy",
       "client": "Cliente",
       "lines": "Líneas",
       "codTotal": "COD acumulado",
       "keyField": "campo",
       "keySave": "guardar",
       "cols": {
+        "date": "Fecha",
+        "invoice": "N.º de factura",
         "orderNumber": "N.º de envío",
         "consignee": "Consignatario",
         "address": "Dirección · Pueblo",
@@ -4123,6 +4132,7 @@
       "captured": "{count} entradas guardadas",
       "help": "Cada fila crea un envío Sometido de 1 paquete y 1 pieza; para varios paquetes use la entrada Detallada.",
       "errors": {
+        "dateRequired": "Indique la fecha del envío.",
         "codInvalid": "El monto COD debe ser un número."
       }
     },

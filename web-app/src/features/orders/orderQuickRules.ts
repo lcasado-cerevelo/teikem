@@ -7,9 +7,13 @@ import type { OrderCreateRequest } from './api'
 import { dayStart, NUMBER_MAX } from './orderRules'
 
 /** Campos de una fila (las claves de los errores). */
-export type QuickField = 'clientPublicId' | 'orderNumber' | 'consigneeId' | 'packageType' | 'cod' | 'serviceType' | 'notes'
+export type QuickField = 'clientPublicId' | 'date' | 'orderNumber' | 'invoiceNumber' | 'consigneeId' | 'packageType' | 'cod' | 'serviceType' | 'notes'
 
 export interface QuickRowValues {
+  /** Fecha del envío ('YYYY-MM-DD'): el primer campo de la fila. Por omisión hoy; cada fila nueva repite la de la última orden guardada. */
+  date: string
+  /** Solo cuando el cliente asigna sus números de factura; vacío = lo asigna Teikem. */
+  invoiceNumber: string
   /** Solo cuando el cliente asigna sus números de orden; vacío = lo asigna Teikem. */
   orderNumber: string
   /** publicId del consignatario ('' = ninguno). */
@@ -23,16 +27,26 @@ export interface QuickRowValues {
 
 export const NOTES_MAX = 500
 
-export function emptyQuickRow(defaults: { serviceType?: string; packageType?: string } = {}): QuickRowValues {
-  return { orderNumber: '', consigneeId: '', packageType: defaults.packageType ?? '', cod: '', serviceType: defaults.serviceType ?? '', notes: '' }
+export function emptyQuickRow(defaults: { serviceType?: string; packageType?: string; date?: string } = {}): QuickRowValues {
+  return { date: defaults.date ?? '', invoiceNumber: '', orderNumber: '', consigneeId: '', packageType: defaults.packageType ?? '', cod: '', serviceType: defaults.serviceType ?? '', notes: '' }
 }
 
 /**
- * La fila siguiente: el servicio se conserva (cliente y servicio no se vuelven a elegir); el paquete vuelve al predeterminado de la compañía
- * y, si no tiene, se conserva el de la fila anterior (si no, habría que elegirlo en cada fila); lo demás vuelve a su valor inicial.
+ * La fila siguiente (dictado de Luis, 2026-10-21): **la fecha es la de la última orden guardada** (si alguien puso la de mañana, la fila siguiente sale con la de
+ * mañana); el servicio y el paquete salen con los del cliente y, si no tiene, se conservan los de la fila anterior (si no, habría que elegirlos en cada fila);
+ * lo demás vuelve a su valor inicial.
  */
-export function nextQuickRow(previous: QuickRowValues, defaults: { packageType?: string }): QuickRowValues {
-  return emptyQuickRow({ serviceType: previous.serviceType, packageType: defaults.packageType || previous.packageType })
+export function nextQuickRow(previous: QuickRowValues, defaults: { serviceType?: string; packageType?: string }): QuickRowValues {
+  return emptyQuickRow({
+    date: previous.date,
+    serviceType: defaults.serviceType || previous.serviceType,
+    packageType: defaults.packageType || previous.packageType,
+  })
+}
+
+/** ¿La fecha de la fila es distinta de hoy? (esas filas se sombrean: el usuario no debe pasarlo por alto.) */
+export function isOffDate(date: string, today: string): boolean {
+  return !!date && date !== today
 }
 
 /** Monto COD de la fila: null = vacío; NaN = no es un número. */
@@ -45,6 +59,9 @@ export function quickCod(text: string): number | null {
 
 /** Mensajes de validación (ya traducidos; los del servidor, tal cual el manual 03 §1.1). */
 export interface QuickMessages {
+  dateRequired: string
+  /** La fecha del envío no puede ser anterior a hoy (se avisa y se bloquea). */
+  pastDate: string
   clientRequired: string
   consigneeRequired: string
   packageTypeRequired: string
@@ -55,10 +72,21 @@ export interface QuickMessages {
 }
 
 /** Errores de la fila por campo (vacío = se puede guardar). El orden de las claves es el orden en que se recorren los campos. */
-export function validateQuickRow(clientPublicId: string | null, v: QuickRowValues, orderNumberEditable: boolean, m: QuickMessages): Partial<Record<QuickField, string>> {
+export interface QuickValidationContext {
+  orderNumberEditable: boolean
+  /** El cliente asigna sus números de factura (si no, el campo está apagado y Teikem la genera). */
+  invoiceNumberEditable?: boolean
+  /** Hoy de la compañía ('YYYY-MM-DD'). */
+  today: string
+}
+
+export function validateQuickRow(clientPublicId: string | null, v: QuickRowValues, ctx: QuickValidationContext, m: QuickMessages): Partial<Record<QuickField, string>> {
   const errors: Partial<Record<QuickField, string>> = {}
   if (!clientPublicId) errors.clientPublicId = m.clientRequired
-  if (orderNumberEditable && v.orderNumber.trim().length > NUMBER_MAX) errors.orderNumber = m.numberMax
+  if (!v.date) errors.date = m.dateRequired
+  else if (v.date < ctx.today) errors.date = m.pastDate
+  if (ctx.orderNumberEditable && v.orderNumber.trim().length > NUMBER_MAX) errors.orderNumber = m.numberMax
+  if (ctx.invoiceNumberEditable && v.invoiceNumber.trim().length > NUMBER_MAX) errors.invoiceNumber = m.numberMax
   if (!v.consigneeId) errors.consigneeId = m.consigneeRequired
   if (!v.packageType) errors.packageType = m.packageTypeRequired
   const cod = quickCod(v.cod)
@@ -68,8 +96,8 @@ export function validateQuickRow(clientPublicId: string | null, v: QuickRowValue
   return errors
 }
 
-/** Request de `POST /orders`: UNA línea de 1 pieza, borrador (sin cotizar) y las fechas de «hoy» como en el alta detallada. */
-export function buildQuickRequest(clientPublicId: string, v: QuickRowValues, o: { orderNumberEditable: boolean; today: string }): OrderCreateRequest {
+/** Request de `POST /orders`: UNA línea de 1 pieza, borrador (sin cotizar) y la fecha elegida en la fila (la lista y el límite, como en el alta detallada). */
+export function buildQuickRequest(clientPublicId: string, v: QuickRowValues, o: { orderNumberEditable: boolean; invoiceNumberEditable?: boolean }): OrderCreateRequest {
   const cod = quickCod(v.cod)
   const req: OrderCreateRequest = {
     clientPublicId,
@@ -77,11 +105,12 @@ export function buildQuickRequest(clientPublicId: string, v: QuickRowValues, o: 
     serviceType: v.serviceType,
     packages: [{ packageType: v.packageType, pieces: 1 }],
     codAmount: cod != null && !Number.isNaN(cod) && cod > 0 ? cod : null,
-    requestedDate: dayStart(o.today),
-    promisedDate: dayStart(o.today),
+    requestedDate: dayStart(v.date),
+    promisedDate: dayStart(v.date),
     notes: v.notes.trim() || null,
   }
   if (o.orderNumberEditable && v.orderNumber.trim()) req.orderNumber = v.orderNumber.trim()
+  if (o.invoiceNumberEditable && v.invoiceNumber.trim()) req.clientInvoiceNumber = v.invoiceNumber.trim()
   return req
 }
 
@@ -105,6 +134,8 @@ export function quickFieldOf(serverField: string): QuickField | null {
   if (bare === 'serviceType') return 'serviceType'
   if (bare === 'codAmount') return 'cod'
   if (bare === 'orderNumber') return 'orderNumber'
+  if (bare === 'requestedDate' || bare === 'promisedDate') return 'date'
+  if (bare === 'clientInvoiceNumber') return 'invoiceNumber'
   if (bare === 'clientPublicId') return 'clientPublicId'
   if (bare === 'notes') return 'notes'
   return null

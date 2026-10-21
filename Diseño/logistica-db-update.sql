@@ -5678,3 +5678,15 @@ GO
 IF COL_LENGTH('dbo.ExitNotice', 'AssignedToUserId') IS NULL
     ALTER TABLE dbo.ExitNotice ADD AssignedToUserId INT NULL CONSTRAINT FK_ExitNotice_AssignedTo REFERENCES dbo.AspNetUsers(Id);
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-21 — Servicio y paquete por omisión de cada cliente (entrada rápida de envíos, dictado de Luis).
+   - dbo.Client.DefaultServiceTypeLookupId / DefaultPackageTypeLookupId INT NULL → dbo.LookupCode: lo que la entrada rápida ya trae puesto al elegir
+     el cliente (NULL = los de la compañía: Tenant.DefaultServiceTypeLookupId / DefaultPackageTypeLookupId).
+   Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Client', 'DefaultServiceTypeLookupId') IS NULL
+    ALTER TABLE dbo.Client ADD DefaultServiceTypeLookupId INT NULL CONSTRAINT FK_Client_DefaultServiceType REFERENCES dbo.LookupCode(LookupCodeId);
+GO
+IF COL_LENGTH('dbo.Client', 'DefaultPackageTypeLookupId') IS NULL
+    ALTER TABLE dbo.Client ADD DefaultPackageTypeLookupId INT NULL CONSTRAINT FK_Client_DefaultPackageType REFERENCES dbo.LookupCode(LookupCodeId);
+GO

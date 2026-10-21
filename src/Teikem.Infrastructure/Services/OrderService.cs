@@ -169,6 +169,12 @@ public sealed class OrderService(
         // (j) numeración tecleada según las dos preguntas independientes del cliente
         var settings = NumberingSettings.FromClient(client);
         var typedOrder = EnsureTyped(NumberKinds.Order, settings, req.OrderNumber, "orderNumber");
+        // la fecha del envío (la «lista») nunca es anterior a hoy. La web manda el inicio del día de la compañía en UTC y la importación manda el día a las 00:00:
+        // solo es pasada si lo es tanto vista como instante UTC (día de la compañía) como vista como fecha (así ninguna de las dos formas se rechaza por la zona)
+        if (req.RequestedDate is DateTime requestedDate
+            && OrderRules.IsPastRequestedDate(_clock.DayOf(DateTime.SpecifyKind(requestedDate, DateTimeKind.Utc)), Today())
+            && OrderRules.IsPastRequestedDate(DateOnly.FromDateTime(requestedDate), Today()))
+            throw new ValidationException("requestedDate", OrderRules.PastRequestedDateMessage);
         string? typedWaybill;
         try { typedWaybill = OrderRules.NormalizeWaybill(req.WaybillNumber); }
         catch (FormatException ex) { throw new ValidationException("waybillNumber", ex.Message); }

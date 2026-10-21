@@ -35,6 +35,7 @@ const M: OrderMessages = {
   numberMax: 'El número no puede exceder 40 caracteres.',
   descriptionMax: 'Máximo 200 caracteres.',
   dueBeforeReady: 'La fecha límite no puede ser anterior a la fecha lista.',
+  pastDate: 'La fecha del envío no puede ser anterior a hoy.',
 }
 
 const valid = (over: Partial<OrderFormValues> = {}): OrderFormValues => ({
@@ -139,6 +140,15 @@ describe('esquema del alta (mensajes exactos del servidor)', () => {
     expect(issues(valid({ codAmount: 0 }))).toEqual({})
     expect(issues(valid({ clientInvoiceNumber: 'x'.repeat(41) }))).toEqual({ clientInvoiceNumber: M.numberMax })
     expect(issues(valid({ packages: [{ packageType: 'BOX', description: 'x'.repeat(4001), pieces: 1 }] }))).toEqual({ 'packages.0.description': M.descriptionMax })
+  })
+
+  it('la fecha del envío no puede ser anterior a hoy (ayer no, hoy y mañana sí); sin «hoy» no se revisa', () => {
+    const check = (readyDate: string) => (orderSchema(M, '2026-10-21').safeParse(valid({ readyDate, dueDate: '' })).error?.issues.map((i) => i.message) ?? []).filter((m) => m === M.pastDate)
+    expect(check('2026-10-20')).toEqual([M.pastDate])
+    expect(check('2026-10-21')).toEqual([])
+    expect(check('2026-10-22')).toEqual([])
+    expect(check('')).toEqual([])
+    expect(orderSchema(M).safeParse(valid({ readyDate: '2020-01-01' })).success).toBe(true)
   })
 
   it('el límite no puede ser anterior a la fecha lista', () => {

@@ -32871,6 +32871,8 @@ export interface components {
             portalCanCreateProducts?: boolean;
             portalCanCreateArrivals?: boolean;
             portalCanCreateExits?: boolean;
+            defaultServiceType?: string | null;
+            defaultPackageType?: string | null;
         };
         ClientInitialContractRequest: {
             /** Format: date */
@@ -32950,6 +32952,8 @@ export interface components {
             portalCanCreateProducts?: boolean | null;
             portalCanCreateArrivals?: boolean | null;
             portalCanCreateExits?: boolean | null;
+            defaultServiceType?: string | null;
+            defaultPackageType?: string | null;
         };
         CodFeeDto: {
             type?: string | null;

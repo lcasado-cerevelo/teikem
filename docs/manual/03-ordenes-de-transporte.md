@@ -32,6 +32,18 @@ Convenciones del capítulo:
 
 ## 1. Captura de un envío
 
+### 1.0 Entrada rápida y fecha del envío (2026-10-21, dictado de Luis)
+
+**La fecha del envío no puede ser anterior a hoy** (en la entrada rápida, en la detallada y en la importación): ayer ya no se permite. No es solo un aviso: **se bloquea**. Mensaje: `La fecha del envío no puede ser anterior a hoy.` (400, campo `requestedDate`; en pantalla, bajo la fecha). Hoy y los días siguientes valen; el calendario de la fecha ya no deja elegir días pasados.
+
+**La entrada rápida está hecha para capturar sin soltar el teclado:**
+- **La fecha es el primer campo** de la fila (el control de fecha de la web: calendario que se abre solo, se puede escribir solo con números y se acomoda con el formato de la compañía). Arranca en **hoy**, y se puede cambiar.
+- **Al elegir el cliente**, el cursor va **directo a la fecha** y su calendario se abre. Con **Tab** se pasa al siguiente: el **N.º de factura** (apagado y en «(automático)» si Teikem la genera; se escribe si el cliente asigna sus facturas), luego el consignatario, el paquete, el COD, el servicio y el comentario. Los campos apagados se saltan solos.
+- **Enter en cualquier campo guarda la fila.** Al guardarse se crea otra fila y **el cursor vuelve a la fecha**.
+- **La fila nueva trae la fecha de la última orden guardada**: si alguien puso la de mañana, la siguiente sale con la de mañana.
+- **Las filas con una fecha distinta de hoy se sombrean** (con una marca amarilla a la izquierda, sin cambiar el alto de la fila) y la leyenda de la barra lo recuerda; la fila que se está llenando también se sombrea en cuanto se cambia la fecha.
+- **Servicio y paquete por cliente:** cada cliente puede tener su **servicio y su paquete por omisión** (Clientes → ficha → Perfil → «Servicio por omisión» / «Paquete por omisión»; vacío = los de la compañía). Al elegir el cliente, la fila ya sale con ellos, y la fila nueva también.
+
 ### 1.1 Alta (entrada rápida, detallada o de entrega especial)
 
 Qué hace: crea un envío de transporte. Nace en el estatus inicial (**SUBMITTED**, «Sometido») con hasta dos paradas — **recogido**

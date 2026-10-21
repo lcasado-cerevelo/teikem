@@ -7,7 +7,10 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccessProvider } from '../../kernel/access'
+import { tenantToday } from '../../kernel/api/tenantZone'
 import { setLang } from '../../kernel/i18n/i18n'
+import { shownDate, typeDate } from '../../kernel/ui/typeDate'
+import { shiftDay } from '../../kernel/format/dateInput'
 import { OrderQuickEntry } from './OrderQuickEntry'
 
 interface Call {
@@ -40,6 +43,7 @@ const problem = (status: number, title: string, code: string, errors?: Record<st
   new Response(JSON.stringify({ title, code, status, errors }), { status, headers: { 'Content-Type': 'application/problem+json' } })
 
 const C1 = { id: 1, publicId: 'c-1', code: 'ACME', name: 'Acme Corp', isActive: true, numberSettings: { clientAssignsInvoiceNumber: false, clientAssignsOrderNumber: false } }
+const C3 = { id: 3, publicId: 'c-3', code: 'GAMA', name: 'Gama SRL', isActive: true, defaultServiceType: 'EXPRESS', defaultPackageType: 'ENV', numberSettings: { clientAssignsInvoiceNumber: true, clientAssignsOrderNumber: false } }
 const C2 = { id: 2, publicId: 'c-2', code: 'BETA', name: 'Beta SA', isActive: true, numberSettings: { clientAssignsInvoiceNumber: false, clientAssignsOrderNumber: true } }
 const BASE = { locationType: 'DELIVERY', country: 'PR', countryLabel: 'Puerto Rico', defaultServiceMinutes: 0, isActive: true, rowVersion: 'AAA=' }
 const L1 = { ...BASE, id: 100, publicId: 'l-1', clientPublicId: 'c-1', isShared: false, code: 'C-001', name: 'Farmacia Central', line1: 'Calle Sol 1', city: 'San Juan', postalCode: '00901', allowDupInvoice: false }
@@ -53,7 +57,8 @@ function route({ method, url, body }: Call): unknown {
     seq += 1
     return { id: 50 + seq, publicId: `o-${seq}`, orderNumber: `ORD-0000${seq}`, status: 'DRAFT', quotedAmount: 999, codAmount: body?.codAmount ?? null }
   }
-  if (p === '/api/v1/clients' && method === 'GET') return [C1, C2]
+  if (p === '/api/v1/clients' && method === 'GET') return [C1, C2, C3]
+  if (p === '/api/v1/clients/c-3') return C3
   if (p === '/api/v1/clients/c-1') return C1
   if (p === '/api/v1/clients/c-2') return C2
   if (p === '/api/v1/tenant/settings') return settings
@@ -120,7 +125,7 @@ describe('Entrada rápida — rejilla', () => {
     expect(screen.getByRole('combobox', { name: 'Consignatario' })).toBeDisabled()
     expect(screen.getByTestId('qk-lines')).toHaveTextContent('0')
     expect(screen.getByTestId('qk-cod')).toHaveTextContent('$0.00')
-    // no hay interruptor de label (F-G) ni columna de factura
+    // no hay interruptor de label (F-G); la fecha es el primer campo y la factura sigue a la orden
     expect(screen.queryByText(/label/i)).toBeNull()
     expect(screen.getByRole('button', { name: 'Guardar fila' })).toBeEnabled()
   })
@@ -162,7 +167,9 @@ describe('Entrada rápida — rejilla', () => {
     expect(screen.getByLabelText('Servicio')).toHaveValue('EXPRESS')
     expect(screen.getByLabelText('COD ($)')).toHaveValue('')
     expect(screen.getByRole('combobox', { name: 'Consignatario' })).toHaveValue('')
-    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Consignatario' })).toHaveFocus())
+    // el cursor vuelve a la fecha, que es la de la última orden guardada (hoy)
+    await waitFor(() => expect(screen.getByLabelText('Fecha')).toHaveFocus())
+    expect(screen.getByLabelText('Fecha')).toHaveValue(shownDate(tenantToday()))
   })
 
   it('varias filas seguidas: cada Enter es otra orden con otra Idempotency-Key y los contadores suman', async () => {
@@ -303,8 +310,8 @@ describe('Entrada rápida — errores del servidor por fila', () => {
     wrap()
     await fillValid(user)
     await user.keyboard('{Enter}')
-    const alert = await screen.findByRole('alert', { name: '' })
-    expect(alert).toHaveTextContent('no permite facturas repetidas')
+    const alerts = await screen.findAllByRole('alert')
+    expect(alerts.some((a) => /no permite facturas repetidas/.test(a.textContent ?? ''))).toBe(true)
     expect(screen.queryByText('ORD-00007', { selector: 'li' })).toBeNull()
     expect(screen.queryByRole('dialog')).toBeNull()
   })
@@ -394,5 +401,82 @@ describe('Entrada rápida — «Label al guardar» (Lote F-G2)', () => {
     await user.keyboard('{Enter}')
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
     expect(onSaved.mock.calls[0][0]).toMatchObject({ orderNumber: expect.any(String) })
+  })
+})
+
+describe('Entrada rápida — fecha, factura, valores del cliente y filas con otra fecha (dictado de Luis, 2026-10-21)', () => {
+  it('la fecha es el primer campo y arranca en hoy; al elegir el cliente el cursor va a la fecha y su calendario se abre solo', async () => {
+    const user = userEvent.setup()
+    wrap()
+    const heads = within(document.querySelector('table.qg thead')!).getAllByRole('columnheader').map((h) => h.textContent?.trim())
+    expect(heads.slice(0, 3)).toEqual(['Fecha', 'N.º de envío', 'N.º de factura'])
+    const date = screen.getByLabelText('Fecha')
+    expect(date).toHaveValue(shownDate(tenantToday()))
+    await pickClient(user)
+    await waitFor(() => expect(date).toHaveFocus())
+    expect(await screen.findByRole('group', { name: 'Calendario' })).toBeInTheDocument()
+  })
+
+  it('el N.º de factura está apagado («automático») si Teikem la genera; si el cliente la asigna, se escribe y viaja', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await pickClient(user, 'Acme')
+    const invoice = screen.getByLabelText('N.º de factura')
+    expect(invoice).toBeDisabled()
+    expect(invoice).toHaveAttribute('placeholder', '(automático)')
+    await pickClient(user, 'Gama')
+    await waitFor(() => expect(screen.getByLabelText('N.º de factura')).toBeEnabled())
+    await pickConsignee(user, 'Farmacia')
+    await user.type(screen.getByLabelText('N.º de factura'), 'FAC-77')
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(posts()).toHaveLength(1))
+    expect(posts()[0].body).toMatchObject({ clientInvoiceNumber: 'FAC-77' })
+  })
+
+  it('el servicio y el paquete salen del cliente (y no de la compañía) y siguen siéndolos en la fila nueva', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await pickClient(user, 'Gama')
+    await waitFor(() => expect(screen.getByLabelText('Servicio')).toHaveValue('EXPRESS'))
+    expect(screen.getByLabelText('Paquete')).toHaveValue('ENV')
+    await pickConsignee(user, 'Farmacia')
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(posts()).toHaveLength(1))
+    expect(posts()[0].body).toMatchObject({ serviceType: 'EXPRESS', packages: [{ packageType: 'ENV', pieces: 1 }] })
+    await waitFor(() => expect(screen.getByLabelText('Paquete')).toHaveValue('ENV'))
+    // otro cliente sin valores propios vuelve a los de la compañía
+    await pickClient(user, 'Acme')
+    await waitFor(() => expect(screen.getByLabelText('Servicio')).toHaveValue('STANDARD'))
+    expect(screen.getByLabelText('Paquete')).toHaveValue('BOX')
+  })
+
+  it('una fecha anterior a hoy se avisa y se BLOQUEA: no se manda nada y el cursor queda en la fecha', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await fillValid(user)
+    await typeDate(user, screen.getByLabelText('Fecha'), shiftDay(tenantToday(), -1))
+    await user.keyboard('{Enter}')
+    expect(await screen.findByText('La fecha del envío no puede ser anterior a hoy.')).toBeInTheDocument()
+    expect(posts()).toHaveLength(0)
+    expect(screen.getByLabelText('Fecha')).toHaveFocus()
+  })
+
+  it('con la fecha de mañana: la orden viaja con esa fecha, la fila nueva sale con mañana y las dos filas se sombrean con su aviso', async () => {
+    const user = userEvent.setup()
+    wrap()
+    const tomorrow = shiftDay(tenantToday(), 1)
+    await fillValid(user)
+    expect(document.querySelector('tr.qk-active')).not.toHaveClass('qk-offdate')
+    await typeDate(user, screen.getByLabelText('Fecha'), tomorrow)
+    expect(document.querySelector('tr.qk-active')).toHaveClass('qk-offdate')   // la fila que se está llenando ya se ve distinta
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(posts()).toHaveLength(1))
+    expect(posts()[0].body).toMatchObject({ requestedDate: expect.stringContaining(tomorrow.slice(0, 10)) })
+    await waitFor(() => expect(screen.getByLabelText('Fecha')).toHaveValue(shownDate(tomorrow)))   // la fila nueva: la fecha de la última orden
+    expect(document.querySelectorAll('tr.qk-offdate').length).toBe(2)                                 // la nueva y la guardada
+    expect(screen.getByText('Sombreado: fecha distinta de hoy')).toBeInTheDocument()
+    // volver a hoy quita el sombreado de la fila activa
+    await typeDate(user, screen.getByLabelText('Fecha'), tenantToday())
+    expect(document.querySelector('tr.qk-active')).not.toHaveClass('qk-offdate')
   })
 })

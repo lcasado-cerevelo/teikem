@@ -9849,3 +9849,15 @@ Necesita señal. Si dice `Ese documento ya está asignado a otra persona; pídal
 
 **Sin señal solo veo los acomodos de la última vez.**
 Es lo esperado: los acomodos asignados se piden en línea y se guardan; los avisos de llegada y de salida salen de la copia del aparato.
+
+**`La fecha del envío no puede ser anterior a hoy.` (400)**
+Un envío no se crea con fecha anterior a hoy (ayer ya no se permite): se avisa y se bloquea, en la entrada rápida, en la detallada y en la importación. Cambie la fecha a hoy o a un día posterior; el calendario ya no deja elegir días pasados. Si la pantalla se dejó abierta de un día para otro, la fecha que traía quedó vieja: cámbiela.
+
+**`Indique la fecha del envío.`**
+La fila de la entrada rápida se quedó sin fecha. Escriba una o elíjala en el calendario (por omisión es hoy).
+
+**¿Por qué una fila de la entrada rápida sale sombreada?**
+Porque su fecha es distinta de hoy (por ejemplo, mañana). Es solo un recordatorio para que no pase inadvertido; cambie la fecha a hoy para quitarlo. La fila nueva siempre sale con la fecha de la última orden guardada.
+
+**¿Cómo hago que un cliente salga con su servicio y paquete en la entrada rápida?**
+En Clientes → la ficha del cliente → **Perfil** elija «Servicio por omisión» y «Paquete por omisión» y guarde. Si los deja vacíos se usan los de la compañía.

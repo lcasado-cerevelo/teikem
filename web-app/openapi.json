@@ -44703,6 +44703,14 @@
           },
           "portalCanCreateExits": {
             "type": "boolean"
+          },
+          "defaultServiceType": {
+            "type": "string",
+            "nullable": true
+          },
+          "defaultPackageType": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -44970,6 +44978,14 @@
           },
           "portalCanCreateExits": {
             "type": "boolean",
+            "nullable": true
+          },
+          "defaultServiceType": {
+            "type": "string",
+            "nullable": true
+          },
+          "defaultPackageType": {
+            "type": "string",
             "nullable": true
           }
         },

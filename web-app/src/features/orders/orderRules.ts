@@ -230,9 +230,12 @@ export interface OrderMessages {
   numberMax: string
   descriptionMax: string
   dueBeforeReady: string
+  /** Dictado de Luis (2026-10-21): la fecha del envío no puede ser anterior a hoy (se avisa y se bloquea). */
+  pastDate?: string
 }
 
-export function orderSchema(m: OrderMessages) {
+/** `today` = hoy de la compañía ('YYYY-MM-DD'); sin él no se revisa la fecha pasada (la regla la repite el servidor). */
+export function orderSchema(m: OrderMessages, today?: string) {
   return z
     .object({
       clientPublicId: z.string().nullable(),
@@ -253,6 +256,7 @@ export function orderSchema(m: OrderMessages) {
       const issue = (path: (string | number)[], message: string) => ctx.addIssue({ code: 'custom', path, message })
       if (!v.clientPublicId) issue(['clientPublicId'], m.clientRequired)
       if (!v.serviceType) issue(['serviceType'], m.serviceRequired)
+      if (today && m.pastDate && v.readyDate && v.readyDate < today) issue(['readyDate'], m.pastDate)
       if (v.readyDate && v.dueDate && v.dueDate < v.readyDate) issue(['dueDate'], m.dueBeforeReady)
       if (!v.consigneeLocationPublicId) issue(['consigneeLocationPublicId'], m.consigneeRequired)
       if (v.isSpecial) {

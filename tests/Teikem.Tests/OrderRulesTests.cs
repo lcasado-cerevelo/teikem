@@ -343,4 +343,14 @@ public class OrderRulesTests
         Assert.Equal(new string('A', 40), OrderRules.NormalizeWaybill(new string('A', 40)));
         Assert.Throws<FormatException>(() => OrderRules.NormalizeWaybill(new string('A', 41)));
     }
+
+    [Fact]
+    public void A_shipment_date_before_today_is_past_but_today_and_later_are_fine()
+    {
+        var today = new DateOnly(2026, 10, 21);
+        Assert.True(OrderRules.IsPastRequestedDate(new DateOnly(2026, 10, 20), today));
+        Assert.False(OrderRules.IsPastRequestedDate(today, today));
+        Assert.False(OrderRules.IsPastRequestedDate(new DateOnly(2026, 10, 22), today));
+        Assert.Equal("La fecha del envío no puede ser anterior a hoy.", OrderRules.PastRequestedDateMessage);
+    }
 }

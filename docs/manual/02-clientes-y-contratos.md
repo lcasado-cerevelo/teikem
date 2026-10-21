@@ -93,6 +93,8 @@ se imprime ninguna factura** (llega con facturación). Ver el capítulo [12 — 
 | `rowVersion` distinto del actual | edición concurrente | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
 | `creditLimit` negativo | — | `El límite de crédito no puede ser negativo.` | 400 |
 
+**Servicio y paquete por omisión (2026-10-21).** En el perfil del cliente se pueden elegir su **servicio por omisión** y su **paquete por omisión** (`defaultServiceType` y `defaultPackageType` en `PATCH /clients/{id}/profile`; cadena vacía = vuelve a los de la compañía; un código que no es de ese catálogo da 400). La entrada rápida de envíos los trae puestos al elegir el cliente.
+
 ### 1.4 Numeración por cliente
 
 Qué hace: dos preguntas independientes — **¿quién asigna el número de envío?** y **¿quién asigna el número de factura?**

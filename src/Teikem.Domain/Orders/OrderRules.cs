@@ -25,6 +25,11 @@ public sealed record PackageLineInput(string? Description, int Pieces = 1, decim
 public static class OrderRules
 {
     public const int WaybillMaxLength = 40;
+    /// <summary>Dictado de Luis (2026-10-21): un envío no se crea con fecha anterior a hoy (ayer ya no se permite); se avisa y se bloquea.</summary>
+    public const string PastRequestedDateMessage = "La fecha del envío no puede ser anterior a hoy.";
+
+    /// <summary>¿El día pedido (en el día de la compañía) ya pasó? Hoy sí vale; ayer no.</summary>
+    public static bool IsPastRequestedDate(DateOnly requestedDay, DateOnly today) => requestedDay < today;
     public const string WaybillInvalidMessage = "El conduce solo admite letras, números, guion, guion bajo, punto y barra, hasta 40 caracteres.";
     public const string WaybillTakenMessage = "Ya existe un envío activo con ese conduce en la compañía.";
 

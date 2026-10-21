@@ -38,6 +38,9 @@ public class Client : ITenantScoped, ISoftDeletable, IHasStatus, IAuditStamped
     public bool NotifyConsignee { get; set; }
     public string? NoticeLang { get; set; }
     public bool ClientAssignsInvoiceNumber { get; set; }
+    /// <summary>Servicio y paquete que la entrada rápida de envíos ya trae puestos para este cliente (NULL = los de la compañía). Dictado de Luis, 2026-10-21.</summary>
+    public int? DefaultServiceTypeLookupId { get; set; }
+    public int? DefaultPackageTypeLookupId { get; set; }
     public string? OrderNumberFormat { get; set; }
     public string? InvoiceNumberFormat { get; set; }
     public string? PackageNumberFormat { get; set; }

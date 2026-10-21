@@ -3,6 +3,9 @@
 // La fila guardada queda de solo lectura con su número y arriba aparece una fila nueva con el cliente y el servicio conservados. Barra:
 // Cliente (obligatorio), Líneas guardadas y COD acumulado. Columnas: N.º de orden (solo si el cliente asigna sus números), Consignatario
 // (directorio del cliente + compartidos, «+» con `locations.create`), Dirección · Pueblo, Paquete, COD, Servicio y Comentario.
+// 2026-10-21 (dictado de Luis): la FECHA es el primer campo (el control de fecha del kit: calendario que abre solo, máscara de la compañía); al elegir el cliente
+// el foco va a la fecha; sigue el N.º de factura (apagado si Teikem la genera), el consignatario, etc.; Enter guarda; la fila nueva trae la fecha de la última orden
+// guardada y el servicio y paquete del cliente; las filas con una fecha distinta de hoy se sombrean; una fecha anterior a hoy se avisa y se bloquea.
 // Los errores del servidor se muestran en la fila sin perder lo capturado. Lote F-G2: «Label al guardar» en la leyenda (como la maqueta):
 // encendido, al guardar cada fila sale el label de cada pieza por la impresora de labels de la estación (lo imprime la lista: `onSaved`).
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
@@ -11,7 +14,7 @@ import { tenantToday } from '../../kernel/api/tenantZone'
 import { lookupLabelOrCode, useLookups, useTenantSettings } from '../../kernel/catalogs'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { ClientPicker } from '../../kernel/ui'
+import { ClientPicker, DateField } from '../../kernel/ui'
 import { useClient } from '../clients/api'
 import { useSelectedConsignee } from '../consignees/api'
 import { ConsigneePicker } from '../consignees/ConsigneePicker'
@@ -20,6 +23,7 @@ import { useCreateOrder, type OrderDetailDto } from './api'
 import {
   buildQuickRequest,
   emptyQuickRow,
+  isOffDate,
   NOTES_MAX,
   nextQuickRow,
   quickCod,
@@ -34,6 +38,8 @@ import './orders.css'
 /** Una fila ya guardada: de solo lectura, con el número que le dio el servidor. */
 interface SavedRow {
   key: number
+  date: string
+  invoice: string
   orderNumber: string
   publicId: string
   consignee: string
@@ -47,10 +53,12 @@ interface SavedRow {
 type RowErrors = Partial<Record<QuickField, string>>
 
 /** Orden en que se recorren los campos de la fila (para llevar el foco al primer error). */
-const FIELD_ORDER: QuickField[] = ['clientPublicId', 'orderNumber', 'consigneeId', 'packageType', 'cod', 'serviceType', 'notes']
+const FIELD_ORDER: QuickField[] = ['clientPublicId', 'date', 'orderNumber', 'invoiceNumber', 'consigneeId', 'packageType', 'cod', 'serviceType', 'notes']
 const FIELD_IDS: Record<QuickField, string> = {
   clientPublicId: 'qk-client',
+  date: 'qk-date',
   orderNumber: 'qk-order',
+  invoiceNumber: 'qk-inv',
   consigneeId: 'qk-cons',
   packageType: 'qk-pkg',
   cod: 'qk-cod',
@@ -78,7 +86,7 @@ export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps =
   const { data: serviceTypes = [] } = useLookups('ServiceType')
   const { data: packageTypes = [] } = useLookups('PackageType')
   const [clientId, setClientId] = useState<string | null>(null)
-  const [raw, setDraft] = useState<QuickRowValues>(() => emptyQuickRow())
+  const [raw, setDraft] = useState<QuickRowValues>(() => emptyQuickRow({ date: tenantToday() }))
   const [errors, setErrors] = useState<RowErrors>({})
   const [rowErrors, setRowErrors] = useState<{ title: string; others: string[] } | null>(null)
   const [saved, setSaved] = useState<SavedRow[]>([])
@@ -91,11 +99,17 @@ export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps =
   // ---- Cliente: quién asigna el número de orden ----
   const { data: client } = useClient(clientId, true)
   const orderNumberEditable = client?.numberSettings?.clientAssignsOrderNumber === true
+  const invoiceNumberEditable = client?.numberSettings?.clientAssignsInvoiceNumber === true
+  const today = tenantToday()
 
-  // ---- Predeterminados de la compañía ----
-  const defaultService = useMemo(() => serviceTypes.find((s) => s.code.toLowerCase() === (settings?.defaultServiceType ?? '').toLowerCase())?.code ?? '', [serviceTypes, settings])
-  const defaultPackage = useMemo(() => packageTypes.find((p) => p.code.toLowerCase() === (settings?.defaultPackageType ?? '').toLowerCase())?.code ?? '', [packageTypes, settings])
-  // lo que aún no se eligió toma el predeterminado de la compañía (derivado al pintar, no copiado al estado)
+  // ---- Predeterminados: los del cliente y, si no tiene, los de la compañía ----
+  const companyService = useMemo(() => serviceTypes.find((s) => s.code.toLowerCase() === (settings?.defaultServiceType ?? '').toLowerCase())?.code ?? '', [serviceTypes, settings])
+  const companyPackage = useMemo(() => packageTypes.find((p) => p.code.toLowerCase() === (settings?.defaultPackageType ?? '').toLowerCase())?.code ?? '', [packageTypes, settings])
+  const clientService = useMemo(() => serviceTypes.find((s) => s.code.toLowerCase() === (client?.defaultServiceType ?? '').toLowerCase())?.code ?? '', [serviceTypes, client])
+  const clientPackage = useMemo(() => packageTypes.find((p) => p.code.toLowerCase() === (client?.defaultPackageType ?? '').toLowerCase())?.code ?? '', [packageTypes, client])
+  const defaultService = clientService || companyService
+  const defaultPackage = clientPackage || companyPackage
+  // lo que aún no se eligió toma el predeterminado (derivado al pintar, no copiado al estado)
   const draft = useMemo<QuickRowValues>(() => ({ ...raw, serviceType: raw.serviceType || defaultService, packageType: raw.packageType || defaultPackage }), [raw, defaultService, defaultPackage])
 
   // ---- Consignatario elegido en la fila activa (dirección · pueblo de solo lectura) ----
@@ -111,6 +125,8 @@ export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps =
 
   const messages = useMemo(
     () => ({
+      dateRequired: t('orders.quick.errors.dateRequired'),
+      pastDate: t('orders.entry.errors.pastDate'),
       clientRequired: t('orders.entry.errors.clientRequired'),
       consigneeRequired: t('orders.entry.errors.consigneeRequired'),
       packageTypeRequired: t('orders.entry.errors.packageTypeRequired'),
@@ -129,11 +145,13 @@ export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps =
 
   function pickClient(id: string | null) {
     setClientId(id)
-    // lo que dependía del cliente anterior se limpia
-    setDraft((d) => ({ ...d, consigneeId: '', orderNumber: '' }))
+    // lo que dependía del cliente anterior se limpia (el servicio y el paquete vuelven a ser los del cliente nuevo)
+    setDraft((d) => ({ ...d, consigneeId: '', orderNumber: '', invoiceNumber: '', serviceType: '', packageType: '' }))
     setErrors({})
     setRowErrors(null)
     attemptRef.current = null
+    // al elegir el cliente el cursor va a la fecha (y su calendario se abre solo)
+    if (id) focusRef.current = 'date'
   }
 
   function firstError(errs: RowErrors): QuickField | null {
@@ -142,7 +160,7 @@ export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps =
 
   async function save() {
     if (saving) return
-    const errs = validateQuickRow(clientId, draft, orderNumberEditable, messages)
+    const errs = validateQuickRow(clientId, draft, { orderNumberEditable, invoiceNumberEditable, today }, messages)
     setRowErrors(null)
     if (Object.keys(errs).length > 0) {
       setErrors(errs)
@@ -150,7 +168,7 @@ export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps =
       return
     }
     setErrors({})
-    const body = buildQuickRequest(clientId ?? '', draft, { orderNumberEditable, today: tenantToday() })
+    const body = buildQuickRequest(clientId ?? '', draft, { orderNumberEditable, invoiceNumberEditable })
     const sig = JSON.stringify(body)
     if (attemptRef.current?.sig !== sig) attemptRef.current = { sig, key: crypto.randomUUID() }
     setSaving(true)
@@ -161,6 +179,8 @@ export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps =
       setSaved((rows) => [
         {
           key: order.id ?? rows.length + 1,
+          date: draft.date,
+          invoice: order.clientInvoiceNumber ?? '',
           orderNumber: order.orderNumber ?? '',
           publicId: order.publicId ?? '',
           consignee: consignee?.name ?? '',
@@ -173,9 +193,10 @@ export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps =
         ...rows,
       ])
       onSaved?.(order)
-      setDraft((d) => nextQuickRow(d, { packageType: defaultPackage }))
+      // la fila nueva: la fecha de la última orden guardada, y el servicio y paquete del cliente; el cursor vuelve a la fecha
+      setDraft((d) => nextQuickRow(d, { serviceType: clientService, packageType: clientPackage || companyPackage }))
       setRowSeq((n) => n + 1)
-      focusRef.current = orderNumberEditable ? 'orderNumber' : 'consigneeId'
+      focusRef.current = 'date'
     } catch (err) {
       const p = quickProblemOf(err)
       // un 4xx ya lo respondió el servidor: el siguiente intento es otro envío; un corte de red se reintenta con la misma clave
@@ -242,6 +263,9 @@ export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps =
           <span className="k">
             <kbd>Enter</kbd> {t('orders.quick.keySave')}
           </span>
+          <span className="k qk-offk" title={t('orders.quick.offDateLegend')}>
+            <i className="qk-offsw" aria-hidden="true" /> {t('orders.quick.offDateLegend')}
+          </span>
           {labelOnSave && (
             <label className="sw qk-autolabel" title={t('orders.entry.labelOnSaveNote')}>
               <input type="checkbox" role="switch" checked={labelOnSave.value} onChange={(e) => labelOnSave.onChange(e.target.checked)} />
@@ -256,7 +280,9 @@ export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps =
         <table className="qg">
           <thead>
             <tr>
+              <th className="qk-c-date">{t('orders.quick.cols.date')}</th>
               <th className="qk-c-ord">{t('orders.quick.cols.orderNumber')}</th>
+              <th className="qk-c-inv">{t('orders.quick.cols.invoice')}</th>
               <th className="qk-c-cons">{t('orders.quick.cols.consignee')}</th>
               <th className="qk-c-addr">{t('orders.quick.cols.address')}</th>
               <th className="qk-c-pkg">{t('orders.quick.cols.package')}</th>
@@ -269,7 +295,20 @@ export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps =
             </tr>
           </thead>
           <tbody>
-            <tr key={rowSeq} className="qk-active" onKeyDown={onKeyDown}>
+            <tr key={rowSeq} className={`qk-active${isOffDate(draft.date, today) ? ' qk-offdate' : ''}`} onKeyDown={onKeyDown}>
+              <td data-label={t('orders.quick.cols.date')} title={isOffDate(draft.date, today) ? t('orders.quick.offDate') : undefined}>
+                <DateField
+                  id={FIELD_IDS.date}
+                  aria-label={t('orders.quick.cols.date')}
+                  value={draft.date}
+                  min={today}
+                  disabled={saving}
+                  onChange={(v) => change({ date: v }, 'date')}
+                  aria-invalid={!!errors.date}
+                  aria-describedby={errors.date ? errId('date') : undefined}
+                />
+                {cellError('date')}
+              </td>
               <td data-label={t('orders.quick.cols.orderNumber')}>
                 <input
                   id={FIELD_IDS.orderNumber}
@@ -283,6 +322,20 @@ export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps =
                   {...aria('orderNumber')}
                 />
                 {cellError('orderNumber')}
+              </td>
+              <td data-label={t('orders.quick.cols.invoice')}>
+                <input
+                  id={FIELD_IDS.invoiceNumber}
+                  className="mono"
+                  aria-label={t('orders.quick.cols.invoice')}
+                  value={draft.invoiceNumber}
+                  maxLength={NUMBER_MAX}
+                  disabled={!invoiceNumberEditable || saving}
+                  placeholder={invoiceNumberEditable ? t('orders.quick.cols.invoice') : t('orders.entry.auto')}
+                  onChange={(e) => change({ invoiceNumber: e.target.value }, 'invoiceNumber')}
+                  {...aria('invoiceNumber')}
+                />
+                {cellError('invoiceNumber')}
               </td>
               <td data-label={t('orders.quick.cols.consignee')}>
                 <ConsigneePicker
@@ -375,7 +428,7 @@ export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps =
             </tr>
             {rowErrors && (
               <tr className="qk-rowerr">
-                <td colSpan={8}>
+                <td colSpan={10}>
                   <div className="form-alert" role="alert">
                     {rowErrors.title}
                     {rowErrors.others.length > 0 && (
@@ -390,11 +443,17 @@ export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps =
               </tr>
             )}
             {saved.map((r) => (
-              <tr key={r.key} className="saved">
+              <tr key={r.key} className={`saved${isOffDate(r.date, today) ? ' qk-offdate' : ''}`}>
+                <td data-label={t('orders.quick.cols.date')} className="mono" title={isOffDate(r.date, today) ? t('orders.quick.offDate') : undefined}>
+                  {f.date(r.date)}
+                </td>
                 <td data-label={t('orders.quick.cols.orderNumber')}>
                   <Link to={`/orders/${r.publicId}`} className="ref" title={t('orders.list.open')}>
                     {r.orderNumber}
                   </Link>
+                </td>
+                <td data-label={t('orders.quick.cols.invoice')} className="mono">
+                  {r.invoice || '—'}
                 </td>
                 <td data-label={t('orders.quick.cols.consignee')}>{r.consignee || '—'}</td>
                 <td data-label={t('orders.quick.cols.address')}>

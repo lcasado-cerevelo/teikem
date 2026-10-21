@@ -489,6 +489,10 @@
       "legalNameHelp": "The legal name of the entity (the one on invoices), different from the trade name above.",
       "autoPrintLabels": "Labels",
       "autoPrintLabelsText": "Print labels automatically",
+      "defaultService": "Default service",
+      "defaultPackage": "Default package",
+      "defaultsHelp": "What quick shipment entry pre-fills when this client is chosen.",
+      "companyDefault": "The company's",
       "portalCreateTitle": "What the client creates from its portal",
       "portalCreateHelp": "Off by default. Only the client's admin or operator accesses can use it; read-only cannot.",
       "portalCreateProducts": "Products",
@@ -4072,7 +4076,8 @@
         "specialRequired": "The special service is required for a special delivery.",
         "numberMax": "The number cannot exceed 40 characters.",
         "descriptionMax": "Maximum 4000 characters.",
-        "dueBeforeReady": "The due date cannot be before the ready date."
+        "dueBeforeReady": "The due date cannot be before the ready date.",
+        "pastDate": "The shipment date can't be earlier than today."
       },
       "dup": {
         "title": "Repeated invoice for this consignee",
@@ -4101,12 +4106,16 @@
       "dupAllowedShort": "allows repeated invoice"
     },
     "quick": {
+      "offDate": "Date other than today",
+      "offDateLegend": "Shaded: date other than today",
       "client": "Client",
       "lines": "Lines",
       "codTotal": "COD total",
       "keyField": "field",
       "keySave": "save",
       "cols": {
+        "date": "Date",
+        "invoice": "Invoice no.",
         "orderNumber": "Shipment no.",
         "consignee": "Consignee",
         "address": "Address · Town",
@@ -4123,6 +4132,7 @@
       "captured": "{count} entries saved",
       "help": "Each row creates a 1-package, 1-piece Submitted shipment; for several packages use Detailed entry.",
       "errors": {
+        "dateRequired": "Enter the shipment date.",
         "codInvalid": "The COD amount must be a number."
       }
     },

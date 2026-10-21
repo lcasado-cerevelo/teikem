@@ -30,6 +30,8 @@ public sealed class ClientConfiguration : IEntityTypeConfiguration<Client>
         b.HasOne(c => c.Status).WithMany().HasForeignKey(c => c.StatusCodeId);
         b.HasOne(c => c.PaymentTerm).WithMany().HasForeignKey(c => c.PaymentTermLookupId);
         b.HasOne(c => c.Currency).WithMany().HasForeignKey(c => c.CurrencyLookupId);
+        b.HasOne<Teikem.Domain.Catalogs.LookupCode>().WithMany().HasForeignKey(c => c.DefaultServiceTypeLookupId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<Teikem.Domain.Catalogs.LookupCode>().WithMany().HasForeignKey(c => c.DefaultPackageTypeLookupId).OnDelete(DeleteBehavior.NoAction);
         // Dos relaciones Client↔Location: el puntero al almacén por defecto y la colección de localizaciones propias.
         b.HasOne(c => c.DefaultPickupLocation).WithMany().HasForeignKey(c => c.DefaultPickupLocationId);
         b.HasMany(c => c.Locations).WithOne(l => l.Client).HasForeignKey(l => l.ClientId);

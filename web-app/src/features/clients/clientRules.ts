@@ -159,6 +159,9 @@ export interface ProfileValues {
   creditLimit: number | null
   paymentTerm: string
   currency: string
+  /** Servicio y paquete que la entrada rápida de envíos trae puestos para este cliente ('' = los de la compañía). */
+  defaultServiceType: string
+  defaultPackageType: string
   /** Lote 48: «Imprimir los labels automáticamente» (sus órdenes imprimen sus labels al guardarse). */
   autoPrintLabels: boolean
   /** Lote 43: «Imprimir la factura automáticamente» (solo la bandera; la impresión de la factura llega con facturación). */
@@ -176,6 +179,8 @@ export function profileValuesOf(c: ClientDetail): ProfileValues {
     creditLimit: c.creditLimit ?? null,
     paymentTerm: c.paymentTerm ?? '',
     currency: c.currency ?? '',
+    defaultServiceType: c.defaultServiceType ?? '',
+    defaultPackageType: c.defaultPackageType ?? '',
     autoPrintLabels: c.autoPrintLabels ?? false,
     autoPrintInvoice: c.autoPrintInvoice ?? false,
     portalCanCreateProducts: c.portalCanCreateProducts ?? false,
@@ -196,6 +201,8 @@ export function profileSchema(m: Pick<CreateMessages, 'legalNameMax' | 'taxIdMax
       .refine((v) => v != null || !hadCreditLimit, m.creditLimitRequired),
     paymentTerm: z.string(),
     currency: z.string(),
+    defaultServiceType: z.string(),
+    defaultPackageType: z.string(),
     autoPrintLabels: z.boolean(),
     autoPrintInvoice: z.boolean(),
     portalCanCreateProducts: z.boolean(),
@@ -220,6 +227,9 @@ export function buildProfileRequest(v: ProfileInput, original: ProfileValues, ro
     currency: v.currency,
     rowVersion,
   }
+  // servicio y paquete por omisión: solo si cambiaron ('' = vuelve a los de la compañía)
+  if (v.defaultServiceType !== original.defaultServiceType) req.defaultServiceType = v.defaultServiceType
+  if (v.defaultPackageType !== original.defaultPackageType) req.defaultPackageType = v.defaultPackageType
   if (v.autoPrintLabels !== original.autoPrintLabels) req.autoPrintLabels = v.autoPrintLabels
   if (v.autoPrintInvoice !== original.autoPrintInvoice) req.autoPrintInvoice = v.autoPrintInvoice
   if (v.portalCanCreateProducts !== original.portalCanCreateProducts) req.portalCanCreateProducts = v.portalCanCreateProducts

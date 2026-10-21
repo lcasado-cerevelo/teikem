@@ -68,14 +68,15 @@ public class FleetContractsTests
     }
 
     [Fact]
-    public void Order_create_request_takes_the_driver_as_last_optional_parameter()
+    public void Order_create_request_takes_the_driver_as_an_optional_parameter()
     {
+        // el conduce del cliente (WaybillNumber) se agregó después, también al final y opcional
         var ctor = typeof(OrderCreateRequest).GetConstructors().Single();
-        var last = ctor.GetParameters().Last();
-        Assert.Equal("DriverPublicId", last.Name);
-        Assert.Equal(typeof(Guid?), last.ParameterType);
-        Assert.True(last.HasDefaultValue);
-        Assert.Null(last.DefaultValue);
+        var driver = ctor.GetParameters().Single(p => p.Name == "DriverPublicId");
+        Assert.Equal(typeof(Guid?), driver.ParameterType);
+        Assert.True(driver.HasDefaultValue);
+        Assert.Null(driver.DefaultValue);
+        Assert.True(ctor.GetParameters().Last().HasDefaultValue);
     }
 
     [Fact]
