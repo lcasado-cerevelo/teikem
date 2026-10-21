@@ -14,3 +14,8 @@ Pedido de Luis: hacer sin supervisión las partes que faltan —C4, H1, G2 y los
 - Cuatro avisos nuevos en el trabajo diario existente: órdenes de trabajo abiertas > 14 días, combustible fuera de rango (> 30 % del promedio de las 3 a 5 cargas anteriores), vehículos y choferes sin viaje > 14 días.
 - Pruebas: `FleetAlertTests` 24 verdes (+10) y las de avisos/trabajos (203). Sin cambios de estructura.
 - **Para revisar:** umbrales fijos (no ajustables por compañía); lo dejé así a propósito para no abrir cuatro ajustes sin datos reales. Detalle: `docs/lote179-decisiones.md`.
+
+### Menores (Lote 180, en curso) — parte 1 ✔
+- **Ocultar opciones de recibo a ciegas cuando se exige documento:** «Nuevo recibo» (web) ofrece solo los orígenes permitidos por «el recibo exige documento» (libre: todo; cualquier documento: aviso/orden; aviso; orden de compra) y abre con el primero permitido. `receiptSources.ts` + 3 pruebas; el servidor igual valida (409).
+- **Diferencia de precio en líneas existentes de una orden de compra:** la ficha lee el costo guardado del producto de cada línea ya existente y no recibida, y muestra el aviso «El producto tiene guardado X; este precio es distinto.» con la casilla para actualizarlo (si tiene `inventory.manage`). 1 prueba nueva.
+- **«Mensajes de clientes» sin menú:** ya estaba **decidido por Luis el 2026-10-20: sin ítem de menú** (el portal tiene su propia app; la pantalla sigue en `/portal/messages`). Lo cierro como decidido, sin código.

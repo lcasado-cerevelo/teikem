@@ -20,7 +20,8 @@ import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { ModuleKeys, useCan, useModule } from '../../kernel/access'
 import type { components } from '../../kernel/api/schema'
-import { useLookups } from '../../kernel/catalogs'
+import { useLookups, useTenantSettings } from '../../kernel/catalogs'
+import { allowedReceiptSources, initialReceiptSource } from './receiptSources'
 import { useLang, useT } from '../../kernel/i18n'
 import { ComboSelectInput, ConfirmDialog, Field, Form, Modal, Select, Spinner, TextInput, toast, type ComboOption } from '../../kernel/ui'
 import {
@@ -110,7 +111,10 @@ function HeaderForm({
   const editing = receipt !== null
   const doc = editing && hasDocument(h?.origin)
   const readOnly = editing && (!h?.isOpen || !canReceive)
-  const initialSource: Source = editing ? receiptOrigin(h?.origin) : preset ? 'ASN' : 'BLIND'
+  // Lote 180: «el recibo exige documento» de la compañía recorta los orígenes que se ofrecen al crear (el servidor igual lo valida con 409)
+  const { data: tenantSettings } = useTenantSettings()
+  const allowedSources = useMemo(() => allowedReceiptSources(tenantSettings?.receiptRequirement, canReceivePo), [tenantSettings?.receiptRequirement, canReceivePo])
+  const initialSource: Source = editing ? receiptOrigin(h?.origin) : initialReceiptSource(allowedSources, Boolean(preset))
   const sourceEditable = !editing || !doc
   const warehouseEditable = editing ? !doc && (h?.lineCount ?? 0) === 0 : !preset
 
@@ -154,6 +158,11 @@ function HeaderForm({
   })
   const source = useWatch({ control: form.control, name: 'source' }) as Source
   const warehousePublicId = useWatch({ control: form.control, name: 'warehousePublicId' })
+  // Lote 180: al llegar el ajuste de la compañía, si el origen elegido ya no se ofrece (p. ej. a ciegas cuando se exige documento) pasa al primero permitido
+  useEffect(() => {
+    if (editing || allowedSources.includes(source)) return
+    form.setValue('source', initialReceiptSource(allowedSources, Boolean(preset)))
+  }, [editing, allowedSources, source, form, preset])
   const modeValue = useWatch({ control: form.control, name: 'receivingMode' })
 
   // Lote 16: modo del almacén elegido (misma consulta que WarehousePicker: comparte caché)
@@ -189,9 +198,9 @@ function HeaderForm({
   const docks = useWarehouseDocks(warehousePublicId, { includeInactive: false }, { enabled: !readOnly && Boolean(warehousePublicId), handleAccessDenied: false })
 
   const sourceOptions = useMemo(() => {
-    const all: Source[] = editing ? ['BLIND', 'RETURN'] : ['BLIND', 'RETURN', 'ASN', ...(canReceivePo ? (['PO'] as const) : [])]
+    const all: Source[] = editing ? ['BLIND', 'RETURN'] : allowedSources
     return all.map((s) => ({ value: s, label: t(`warehouse.receipts.sources.${s}`) }))
-  }, [t, editing, canReceivePo])
+  }, [t, editing, allowedSources])
   const asnOptions = useMemo<ComboOption[]>(
     () =>
       (asns.data ?? [])

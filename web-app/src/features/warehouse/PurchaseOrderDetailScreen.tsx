@@ -8,7 +8,7 @@
 // (`purchaseOrderPartyChanges`); 404/422 de uno de ellos quedan bajo su campo y el 409 en el aviso (purchaseOrderEdit.ts).
 // Pipeline: solo SENT y CANCELLED son manuales; PARTIAL/RECEIVED los pone la confirmación del recibo o la resolución.
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { z } from 'zod'
@@ -38,6 +38,7 @@ import {
   usePurchaseOrder,
   usePurchaseOrderAction,
   usePurchaseOrderShortageLines,
+  useProduct,
   useSuppliers,
   type PurchaseOrderDto,
   type ShortageLineDto,
@@ -267,6 +268,9 @@ function LinesTab({ po }: { po: PurchaseOrderDto }) {
                   <NumberInput step="0.0001" disabled={locked} />
                 </Field>
               </div>
+              {i < initialCount && !locked && f.productPublicId ? (
+                <StoredCostLoader productPublicId={f.productPublicId} onLoaded={(c) => form.setValue(`lines.${i}.storedCost`, c)} />
+              ) : null}
               <ProductPriceNote
                 entered={watched?.[i]?.unitCost}
                 stored={watched?.[i]?.storedCost}
@@ -467,4 +471,18 @@ export default function PurchaseOrderDetailScreen() {
       />
     </div>
   )
+}
+
+/**
+ * Lote 180 (menores): una línea que ya existía en la orden no trae el costo guardado del producto; se lee del producto (comparte caché) para poder mostrar el aviso de diferencia de
+ * precio al editar la línea, igual que en una línea nueva. Sin render; solo pone `storedCost` en el formulario cuando llega.
+ */
+function StoredCostLoader({ productPublicId, onLoaded }: { productPublicId: string; onLoaded: (cost: number | null) => void }) {
+  const { data } = useProduct(productPublicId, { handleAccessDenied: false })
+  const cost = data?.purchaseCost ?? null
+  useEffect(() => {
+    if (data) onLoaded(cost)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, cost])
+  return null
 }

@@ -52,6 +52,7 @@ function route({ method, url }: Call): unknown {
   const p = url.pathname
   if (method === 'GET' && p === '/api/v1/purchase-orders') return { total: 1, skip: 0, take: 25, items: [ORDER] }
   if (method === 'GET' && p === '/api/v1/products') return { total: 1, skip: 0, take: 50, items: [{ id: 1, publicId: P1, sku: 'TORN-01', name: 'Tornillo', isActive: true }] }
+  if (method === 'GET' && p === `/api/v1/products/${P1}`) return { id: 1, publicId: P1, sku: 'TORN-01', name: 'Tornillo', isActive: true, purchaseCost: 5 }
   if (method === 'GET' && p === `/api/v1/purchase-orders/${PO}`) return mock.order ?? ORDER
   if (method === 'PATCH' && mock.patch) return mock.patch()
   if (method === 'GET' && p === '/api/v1/suppliers')
@@ -151,6 +152,11 @@ describe('Compras: lista', () => {
 })
 
 describe('Compras: ficha', () => {
+  it('editar: una línea que ya existía avisa si su precio difiere del costo guardado del producto (Lote 180)', async () => {
+    wrap(<PurchaseOrderDetailScreen />, MANAGE, `/po/${PO}`, '/po/:publicId')
+    expect(await screen.findByText('El producto tiene guardado 5; este precio es distinto.')).toBeInTheDocument()
+  })
+
   it('editar: una línea con cantidad 0 no se guarda y muestra el mensaje', async () => {
     const user = userEvent.setup()
     wrap(<PurchaseOrderDetailScreen />, MANAGE, `/po/${PO}`, '/po/:publicId')

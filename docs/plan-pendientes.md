@@ -64,10 +64,10 @@ Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Esta
 - ☑ **I1.** «Avisos que puedo silenciar» (campana → lista) sale con los interruptores **sin texto**; sospecha de color tras el cambio de marca o nombre vacío del servidor; por revisar.
 
 ## D. Pendientes menores
-- ☐ Líneas existentes de una orden de compra: mostrar el aviso de diferencia de precio al editar.
+- ☑ Líneas existentes de una orden de compra: aviso de diferencia de precio al editar (Lote 180).
 - ☐ Revisar `scripts/smoke.sh`: falla antes de llegar a lo nuevo, en el estatus de órdenes `INBOUND` (no se sabe si ya fallaba).
-- ☐ «Mensajes de clientes» sin ítem de menú (decidir dónde).
-- ☐ Ocultar opciones de recibo a ciegas en la web cuando la compañía exige documento.
+- ☑ «Mensajes de clientes» sin ítem de menú: **decidido por Luis el 2026-10-20, sin menú** (la pantalla sigue en `/portal/messages`).
+- ☑ Ocultar opciones de recibo a ciegas en la web cuando la compañía exige documento (Lote 180).
 - ☐ **Encabezado de las tarjetas y paneles (decidido por el dueño, 2026-10-21):** fondo = el **tercer color de la marca (el más clarito)** aclarado casi del todo (mezcla con el fondo de la tarjeta; sale de la marca y del tema, igual que la barra lateral), con un filete fino del color del borde y, si acaso, una sombra casi invisible; el texto del título conserva su color. Tres niveles: azul marino solo en lo que flota (modales, barra superior), el tercer color de la marca, clarísimo, en los encabezados de las tarjetas y paneles, naranja solo en acciones. Cuidados: no aplica a los encabezados de las tablas; limitar cuánto color pasa al fondo si el tercer color es muy saturado; extender la prueba de contraste AA a esta pareja; revisar con Teikem, Advance Logistics, Advance Depot y Enterprise; en oscuro, apenas más claro que la tarjeta.
 - ☐ Endurecer los endpoints con los permisos de acceso por ítem de menú.
 - ☐ Prueba de `db-update` en simulación contra SQL Server.
