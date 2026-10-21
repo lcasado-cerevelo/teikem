@@ -10,6 +10,7 @@ Estado 2026-10-18: análisis hecho y decidido (`analisis.md` §7), scripts escri
 
 | Archivo | Para qué |
 |---|---|
+| `cambios-pendientes.md` | **Todo lo dictado por Luis que aún no se implementa** (teléfonos, tipos por compañía, piezas y contenido, clientes AxisCare, choferes, Pulso, números de la orden). Aquí se anota todo lo nuevo. |
 | [`analisis.md`](analisis.md) | Inventario real de la fuente, mapeo hacia Teikem y las 15 decisiones de Luis (§7). |
 | [`import.advance.json`](import.advance.json) | Configuración de **Advance Logistics** (CompanyID 10029). |
 | [`import.delapaz.json`](import.delapaz.json) | Configuración de **De La Paz Transport** (CompanyID 10030). |
@@ -27,6 +28,7 @@ dotnet run --project src/Teikem.Api -- import-colavora <config.json> [--dry-run]
 | `--dry-run` | Lee todo, cuenta lo que se crearía y escribe el reporte; **no toca la base de Teikem**. |
 | `--solo catalogos,usuarios,zonas,clientes,consignatarios,contratos,ordenes` | Solo esas fases (las demás se leen de lo que ya está en Teikem). La compañía y los catálogos van siempre. |
 | `--desde N` / `--hasta N` | Rango de `ShipmentID` de las órdenes (para reanudar o para probar con pocas). |
+| `--dias-abiertas N` | Días que se dejan abiertas las órdenes: las abiertas (de cualquier estatus) con más de N días desde su creación se migran como **Entregada**, con nota en el historial. Sin esto, solo se cierran las Pending de más de 5 días (D3). En el script: `-DiasAbiertas 30`. |
 | `--meses N` / `--desde-fecha aaaa-mm-dd` | Para pruebas: solo las órdenes creadas en los últimos N meses o desde esa fecha (los maestros van completos). En el script: `-Meses 3` / `-DesdeFecha 2026-01-01`. |
 
 | Código de salida | Significado |

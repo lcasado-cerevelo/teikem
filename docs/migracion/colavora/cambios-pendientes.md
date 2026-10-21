@@ -114,3 +114,14 @@ Luis tiene razón en que no tiene sentido (son órdenes viejas que ya se entrega
 **HECHO (2026-10-20): opción de Luis.** `-DiasAbiertas N` (script) / `--dias-abiertas N` (verbo) / `Options.OpenOrderDays` (config): las órdenes abiertas de **cualquier estatus** (sometida, recogida, sin asignar, asignada, en tránsito) con más de N días desde su creación se migran como **Entregada** (con nota en el historial «Cerrada por la migración…»); canceladas y devueltas no se tocan. Sin la opción, queda como antes (solo Pending de más de 5 días). Ej.: `.\scripts\migrar-colavora.ps1 -Compania advance -DiasAbiertas 30`. Límite: las órdenes con el estatus «basura» del bug de jun–jul 2026 se resuelven por su último evento y no pasan por esta regla.
 
 **(Resuelto con la opción de arriba.)** ¿aplicar a las `Assigned` viejas la misma regla que a las `Pending` (D3: si pasaron N días sin movimiento se migran como Entregada)? Si sí, ¿cuántos días (¿5, 10, 30?) y se marca de alguna forma que se cerraron por la migración? Mientras tanto, el panel «Por despachar» (que cuenta las asignadas sin ruta) estará inflado por esas órdenes. Además, a futuro el panel debería **excluir lo que tenga más de X días sin movimiento** o mostrarlo aparte como «atascadas».
+
+## 7. Números de la orden: Empaque, Conduce y Paquete (aclaración de Luis, 2026-10-20)
+
+**Lo que dijo Luis:** el «número de empaque» es el número de **cada pieza**; un envío puede tener varias piezas, así que puede tener varios números. Hoy el listado de Envíos tiene una columna «Empaque» con un solo número por orden, y la migración pone el waybill de Colavora en Orden, Empaque y Conduce (los tres iguales).
+
+**Lo que dice el diseño actual (maestro §2):**  (orden),  (factura),  (Empaque: **uno por orden**, identificador de escaneo del bulto/embarque,  o el lote de Recolección y empaque),  (Conduce: **uno por orden**, ) y  (**Paquete: uno por pieza**). Lo que Luis describe como «empaque» es, en el diseño, el **número de paquete** (por pieza).
+
+**Cambios anotados (sin hacerlos todavía):**
+- **Listado de Envíos:** quitar la columna «Empaque» de orden; poner una columna con **todos los números de paquete de la orden** (lista separada por comas) **después de «Paquete»**; **quitar la columna «Cotizado»**. El filtro por número se queda y debe buscar en los números de paquete (y en el de empaque).
+- **Migración:** el waybill de Colavora es en esencia el **Conduce** (guía), así que  = waybill está bien.  y el número de orden no deberían ser copias del waybill: decidir con Luis qué van a ser ( generado por Teikem, o el número de orden del cliente si Colavora trae uno aparte). Los números de pieza () ya se migran como .
+- **Decisión pendiente de Luis:** si el número de empaque por orden () se conserva como identificador de escaneo de la orden (como dice el diseño) o se elimina de la pantalla y queda solo el de pieza.
