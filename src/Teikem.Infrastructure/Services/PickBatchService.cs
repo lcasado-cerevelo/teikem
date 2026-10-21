@@ -612,9 +612,10 @@ public sealed class PickBatchService(
         // 2026-10-11: un despacho manual no se empaca (422 antes de pedir orders.create o los datos de la orden). Si no existe, el
         // orden de siempre (403 sin orders.create, luego 404) no cambia.
         var target = await db.Set<PickBatch>().AsNoTracking().Where(b => b.PublicId == publicId && b.IsActive)
-            .Select(b => new { b.Number, b.ManualIssueReasonId, b.ExitNoticeId }).FirstOrDefaultAsync(ct);
+            .Select(b => new { b.Number, b.ManualIssueReasonId, b.ExitNoticeId, b.PickGroupId }).FirstOrDefaultAsync(ct);
         if (target is not null && PickBatchRules.IsManual(target.ManualIssueReasonId))
             throw new StatusRuleException(PickBatchRules.ManualNotPackable(target.Number));
+        if (target?.PickGroupId is int groupId) throw new StatusRuleException(PickGroupRules.InGroup(target.Number, await GroupNumberAsync(groupId, ct)));   // Lote 176
         if (target?.ExitNoticeId is not null) throw new StatusRuleException(PickBatchRules.ExitNoticeNotPackable(target.Number));   // Lote 143
         await ValidatePackRequestAsync(req, ct);
         var orderDetail = await PackCoreAsync(publicId, req, ct);
@@ -639,6 +640,7 @@ public sealed class PickBatchService(
             var batch = await LockAsync(current.PickBatchId, ct2);
             if (!batch.IsActive) throw NotFound();
             if (PickBatchRules.IsManual(batch.ManualIssueReasonId)) throw new StatusRuleException(PickBatchRules.ManualNotPackable(batch.Number));
+            if (batch.PickGroupId is int gid) throw new StatusRuleException(PickGroupRules.InGroup(batch.Number, await GroupNumberAsync(gid, ct2)));   // Lote 176
             if (batch.ExitNoticeId is not null) throw new StatusRuleException(PickBatchRules.ExitNoticeNotPackable(batch.Number));   // Lote 143
             var code = await StatusCodeOfAsync(batch.StatusCodeId, ct2);
             if (!PickBatchRules.CanPack(code, batch.IsActive)) throw new StatusRuleException(PickBatchRules.NotCollected(batch.Number));
@@ -677,7 +679,13 @@ public sealed class PickBatchService(
 
     // ================================================================ eliminar (D12/D13)
 
-    public async Task DeleteAsync(Guid publicId, PickBatchDeleteRequest? req, CancellationToken ct)
+    public Task DeleteAsync(Guid publicId, PickBatchDeleteRequest? req, CancellationToken ct) => DeleteCoreAsync(publicId, req, orderHandled: false, ct);
+
+    /// <summary>
+    /// Elimina la recolección. orderHandled = el llamador (la recolección maestra) ya eliminó el envío compartido: no se vuelve a tocar. Una recolección empacada que pertenece a
+    /// una maestra solo se elimina desde ella (422).
+    /// </summary>
+    internal async Task DeleteCoreAsync(Guid publicId, PickBatchDeleteRequest? req, bool orderHandled, CancellationToken ct)
     {
         var current = await ResolveAsync(publicId, ct);
         if (!current.IsActive) throw NotFound();
@@ -692,7 +700,9 @@ public sealed class PickBatchService(
             db.ApplyRowVersion(batch, req?.RowVersion);
             var code = await StatusCodeOfAsync(batch.StatusCodeId, ct2);
 
-            if (string.Equals(code, PickBatchStatuses.Packed, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(code, PickBatchStatuses.Packed, StringComparison.OrdinalIgnoreCase) && batch.PickGroupId is int packedGroup && !orderHandled)
+                throw new StatusRuleException(PickGroupRules.InGroup(batch.Number, await GroupNumberAsync(packedGroup, ct2)));   // Lote 176
+            if (string.Equals(code, PickBatchStatuses.Packed, StringComparison.OrdinalIgnoreCase) && !orderHandled)
             {
                 await permissions.EnsureAsync(PermissionCatalog.OrdersCancel, ct2);
                 var order = batch.TransportOrderId is int orderId
@@ -709,7 +719,7 @@ public sealed class PickBatchService(
                 // La orden se borra con ella (se une a esta transacción); desde Órdenes la guarda D12 lo impide.
                 await orders.DeleteAsync(order.PublicId, OrderScope.Any, new OrderDeletionOptions(EntityTypes.PickBatch), ct2);
             }
-            else if (!PickBatchRules.CanDelete(code, false, false))
+            else if (!orderHandled && !PickBatchRules.CanDelete(code, false, false))
             {
                 throw new StatusRuleException(PickBatchRules.AlreadyCancelled(batch.Number));
             }
@@ -822,6 +832,12 @@ public sealed class PickBatchService(
             ? new Dictionary<int, string>()
             : await db.Clients.AsNoTracking().Where(c => ownerIds.Contains(c.ClientId)).ToDictionaryAsync(c => c.ClientId, c => c.Name, ct);
 
+        var groupIds = batches.Where(b => b.PickGroupId != null).Select(b => b.PickGroupId!.Value).Distinct().ToList();
+        var groupsById = groupIds.Count == 0
+            ? new Dictionary<int, (Guid PublicId, string Number)>()
+            : (await db.Set<PickGroup>().AsNoTracking().Where(g => groupIds.Contains(g.PickGroupId)).Select(g => new { g.PickGroupId, g.PublicId, g.Number }).ToListAsync(ct))
+                .ToDictionary(g => g.PickGroupId, g => (g.PublicId, g.Number));
+
         var lang = tenant.Lang;
         var linesByBatch = lines.GroupBy(x => x.Line.PickBatchId).ToDictionary(g => g.Key, g => g.ToList());
         foreach (var b in batches)
@@ -855,12 +871,13 @@ public sealed class PickBatchService(
                 orderStatus?.InternalCode, orderStatus is null ? null : MultilingualText.Resolve(orderStatus.LabelJson, lang),
                 order?.ClientName,
                 order is null ? null : PickBatchRules.DisplayNumbers(order.OrderNumber, invoice),
-                PickBatchRules.CanPack(statusCode, b.IsActive, isManual || b.ExitNoticeId != null), canDelete,
+                PickBatchRules.CanPack(statusCode, b.IsActive, isManual || b.ExitNoticeId != null || b.PickGroupId != null), canDelete,
                 own.Sum(x => x.Line.Quantity),
                 PickBatchRules.TotalCost(own.Select(x => (x.Line.Quantity, x.Line.UnitCost))),
                 lineDtos, b.IsActive,
                 Convert.ToBase64String(b.RowVersion ?? Array.Empty<byte>()),
-                isManual, reason?.Code, reason?.Label, b.Note, ownerName);
+                isManual, reason?.Code, reason?.Label, b.Note, ownerName,
+                b.PickGroupId is int pg && groupsById.TryGetValue(pg, out var grp) ? grp.PublicId : null, b.PickGroupId is int pg2 && groupsById.TryGetValue(pg2, out var grp2) ? grp2.Number : null);
         }
         return result;
     }
@@ -871,6 +888,9 @@ public sealed class PickBatchService(
         => await db.Set<PickBatch>().AsNoTracking().FirstOrDefaultAsync(b => b.PublicId == publicId, ct) ?? throw NotFound();
 
     private static NotFoundException NotFound() => new(PickBatchLabel, null, true);
+
+    private async Task<string> GroupNumberAsync(int groupId, CancellationToken ct)
+        => await db.Set<PickGroup>().AsNoTracking().Where(g => g.PickGroupId == groupId).Select(g => g.Number).FirstOrDefaultAsync(ct) ?? string.Empty;
 
     /// <summary>El almacén indicado o, si se omite, el único activo del tenant (D26): ninguno o más de uno → 400.</summary>
     private Task<Warehouse> ResolveWarehouseOrDefaultAsync(Guid? publicId, CancellationToken ct)

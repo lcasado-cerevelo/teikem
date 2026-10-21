@@ -9947,3 +9947,23 @@ Una plantilla nace como de paquete o de factura y no cambia. Crea una nueva en e
 
 **«El tipo de plantilla debe ser PIECE (label de pieza) o INVOICE (label de factura).»**
 Solo en llamadas directas al API: `kind` solo acepta `PIECE` o `INVOICE`.
+
+## Recolección maestra (Lote 176)
+
+**¿Para qué sirve la recolección maestra?**
+Para recolectar juntos varios avisos de salida u órdenes de venta del mismo cliente y mandarlos en un solo envío, y ver en un solo lugar todos los movimientos (de qué posiciones salió todo).
+
+**¿Puedo agregar otro documento a una maestra ya hecha?**
+No: se decide al recolectar. Si llega otro documento, cree otra recolección.
+
+**`Los documentos deben ser del mismo cliente…` (400)**
+Una maestra es de un solo cliente y un solo destino. Haga una recolección por cliente.
+
+**`«X» no tiene nada reservado por sacar.` (422)**
+Ese documento no tiene inventario reservado (todo pendiente o ya despachado). Quítelo de la selección o reserve primero.
+
+**`La recolección X pertenece a la recolección maestra Y…` (422)**
+Empáquela o elimínela desde la maestra Y; el envío es uno solo para todas.
+
+**Eliminé la maestra, ¿qué pasó con los documentos?**
+El inventario volvió a su posición y cada documento recuperó su reserva y su estatus anterior.

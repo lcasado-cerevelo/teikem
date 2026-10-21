@@ -32,7 +32,7 @@ public sealed record PickBatchDto(int Id, Guid PublicId, string Number, Guid War
     string? PackBatchNumber, string? ClientInvoiceNumber, string? OrderStatusCode, string? OrderStatus, string? ClientName,
     string? DisplayNumbers, bool CanPack, bool CanDelete, decimal TotalQty, decimal? TotalCost, IReadOnlyList<PickBatchLineDto> Lines,
     bool IsActive, string RowVersion, bool IsManual = false, string? ReasonCode = null, string? ReasonLabel = null, string? Note = null,
-    string? OwnerClientName = null);
+    string? OwnerClientName = null, Guid? GroupPublicId = null, string? GroupNumber = null);
 
 public sealed record PickBatchPageDto(int Total, int Skip, int Take, IReadOnlyList<PickBatchDto> Items);
 

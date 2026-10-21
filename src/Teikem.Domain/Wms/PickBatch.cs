@@ -38,9 +38,34 @@ public class PickBatch : ITenantScoped, ISoftDeletable, IHasStatus
     public int? SalesOrderId { get; set; }
     /// <summary>Lote 143: el aviso de salida que atiende esta recolección (despacho contra aviso de salida); NULL = recolección normal.</summary>
     public int? ExitNoticeId { get; set; }
+    /// <summary>Lote 176: la recolección maestra (varios documentos del mismo cliente recolectados juntos) a la que pertenece; NULL = recolección suelta.</summary>
+    public int? PickGroupId { get; set; }
 
     public StatusCode? Status { get; set; }
     public ICollection<PickBatchLine> Lines { get; set; } = new List<PickBatchLine>();
+}
+
+/// <summary>
+/// Lote 176 — recolección maestra: varios documentos (órdenes de venta y/o avisos de salida) DEL MISMO CLIENTE y almacén que se recolectan juntos y salen en UN solo envío.
+/// Cada documento conserva su recolección (PickBatch con PickGroupId) con sus movimientos; el grupo es el documento maestro y le da su número (EMP-#####, el del envío).
+/// El estatus se deriva de sus recolecciones: recolectada → empacada (TransportOrderId = el envío) → eliminada (IsActive = 0).
+/// </summary>
+public class PickGroup : ITenantScoped, ISoftDeletable
+{
+    public int PickGroupId { get; set; }
+    [NotAudited] public Guid PublicId { get; set; }
+    public int TenantId { get; set; }
+    public int WarehouseId { get; set; }
+    public int ClientId { get; set; }
+    public string Number { get; set; } = string.Empty;
+    public string? Note { get; set; }
+    public DateTime CollectedAtUtc { get; set; }
+    public int? CollectedBy { get; set; }
+    public int? TransportOrderId { get; set; }
+    public DateTime? PackedAtUtc { get; set; }
+    public int? PackedBy { get; set; }
+    public bool IsActive { get; set; } = true;
+    [NotAudited] public byte[]? RowVersion { get; set; }
 }
 
 /// <summary>

@@ -18,7 +18,7 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/pick-batches")]
 [Authorize]
 [RequireModule(ModuleKeys.WmsLotSerial)]
-public sealed class PickBatchesController(PickBatchService batches, PickBatchDocumentService documents) : ControllerBase
+public sealed class PickBatchesController(PickBatchService batches, PickBatchDocumentService documents, PickGroupService groups) : ControllerBase
 {
     /// <summary>
     /// Lista paginada (take ≤ 200), de la más reciente a la más antigua. Filtros: from/to (fecha de recolección en UTC,
@@ -43,6 +43,39 @@ public sealed class PickBatchesController(PickBatchService batches, PickBatchDoc
     public Task<PickDocumentPageDto> Documents([FromQuery] string? kind, [FromQuery] string[]? status, [FromQuery] string? search, [FromQuery] bool pendingOnly = false,
         [FromQuery] int skip = 0, [FromQuery] int take = 50, CancellationToken ct = default)
         => documents.ListAsync(new PickDocumentQuery(kind, status is { Length: > 0 } ? status : null, search, pendingOnly, skip, take), ct);
+
+    // ---------------------------------------------------------------- Lote 176: recolección maestra
+
+    /// <summary>
+    /// Lote 176 — lista de recolecciones maestras (varios documentos del mismo cliente, un solo envío), de la más reciente a la más antigua. Filtros: search (número, cliente o número de un documento) y
+    /// status (COLLECTED, PACKED, CANCELLED).
+    /// </summary>
+    [HttpGet("groups"), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<PickGroupPageDto> Groups([FromQuery] string? search, [FromQuery] string? status, [FromQuery] int skip = 0, [FromQuery] int take = 50, CancellationToken ct = default)
+        => groups.ListAsync(new PickGroupQuery(search, status, skip, take), ct);
+
+    /// <summary>Ficha de la maestra: sus documentos y TODOS los movimientos (de qué posición salió qué y para cuál documento), el envío si ya se empacó y lo que se puede hacer.</summary>
+    [HttpGet("groups/{publicId:guid}"), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<PickGroupDto> GetGroup(Guid publicId, CancellationToken ct) => groups.GetAsync(publicId, ct);
+
+    /// <summary>
+    /// Lote 176 — recolecta varios documentos juntos (de 2 a 20 órdenes de venta y/o avisos de salida DEL MISMO cliente y almacén) en UNA transacción: cada uno hace su despacho (sin Lines, todo lo reservado)
+    /// y la maestra los reúne bajo un número EMP-#####. Documentos de otro cliente o almacén → 400; sin nada reservado → 422; inventario insuficiente → 409 sin efecto parcial.
+    /// </summary>
+    [HttpPost("groups"), RequirePermission(PermissionCatalog.WarehousePick)]
+    public Task<PickGroupDto> CollectGroup([FromBody] PickGroupCreateRequest req, CancellationToken ct) => groups.CreateAsync(req, ct);
+
+    /// <summary>Empaca la maestra: UN envío para todo lo recolectado (un destino; + orders.create). Ya empacada o eliminada → 422.</summary>
+    [HttpPost("groups/{publicId:guid}/pack"), RequirePermission(PermissionCatalog.WarehousePick)]
+    public Task<PickGroupPackResultDto> PackGroup(Guid publicId, [FromBody] PickBatchPackRequest req, CancellationToken ct) => groups.PackAsync(publicId, req, ct);
+
+    /// <summary>Elimina la maestra (204): deshace todas sus recolecciones (el inventario vuelve a su posición y los documentos recuperan su reserva) y, si estaba empacada (+ orders.cancel), su envío mientras siga en la etapa inicial.</summary>
+    [HttpDelete("groups/{publicId:guid}"), RequirePermission(PermissionCatalog.WarehousePick)]
+    public async Task<IActionResult> DeleteGroup(Guid publicId, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] PickBatchDeleteRequest? req, CancellationToken ct)
+    {
+        await groups.DeleteAsync(publicId, req, ct);
+        return NoContent();
+    }
 
     /// <summary>Ficha: líneas (posición, lote, serie, costo congelado, movimiento y reversa), orden del empaque y acciones posibles.</summary>
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.InventoryView)]

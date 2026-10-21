@@ -2623,3 +2623,38 @@ El Kárdex tiene un filtro **Zona** (entre Almacén y Posición; selección múl
 | Lote faltante en una línea de la tanda | el mismo error por línea (`lines[i]`) de la confirmación final | 400 |
 
 **Casos frecuentes.** Ver las preguntas de «Recibo con tandas» en el FAQ.
+
+## Recolección maestra: varios documentos, un envío (Lote 176, 2026-10-21)
+
+**Qué es.** La **recolección maestra** reúne varios documentos —órdenes de venta y/o avisos de salida— **del mismo cliente y almacén** que se recolectan **juntos** y salen en **un solo envío**. Cada documento conserva su propia recolección (sus movimientos, su reserva, su estatus y su avance, como siempre); la maestra es el documento que los junta, con un número EMP-##### (el del envío), y muestra **todos los movimientos**: de qué posición salió qué, con su lote y para cuál documento.
+
+**Reglas decididas por el dueño.**
+- Se arma **al recolectar**: se eligen los documentos y se recolecta todo junto. **No se suman documentos después**; si llega otro, se crea otra recolección.
+- **Un solo cliente y un solo destino**: documentos de clientes distintos no se mezclan. Si se quieren destinos distintos, se hacen recolecciones distintas.
+- De **2 a 20 documentos**. Sin indicar líneas se recolecta **todo lo reservado** de cada documento; también se pueden indicar líneas, cantidades, posición y lote (igual que el despacho de un documento).
+
+**Quién puede.** Recolectar, empacar y eliminar: permiso `warehouse.pick` (empacar además `orders.create`; eliminar una empacada, `orders.cancel`), módulo Almacén (con órdenes de venta, también ese módulo). Ver: `inventory.view`.
+
+**Endpoints.** `POST /api/v1/pick-batches/groups` (recolectar), `GET /api/v1/pick-batches/groups` (lista; filtros `search`, `status`), `GET /api/v1/pick-batches/groups/{id}` (ficha con documentos y movimientos), `POST /api/v1/pick-batches/groups/{id}/pack` (empacar: UN envío), `DELETE /api/v1/pick-batches/groups/{id}` (eliminar).
+
+**Estatus.** COLLECTED (recolectada) → PACKED (empacada, con su envío) y CANCELLED (eliminada). Lo deriva de sus recolecciones.
+
+**Qué cambia en las recolecciones sueltas.** Una recolección que pertenece a una maestra **no se empaca ni se elimina empacada por separado**: se hace desde la maestra (el empaque crea un solo envío para todas; eliminar deshace todas). Eliminar una recolección de la maestra **antes de empacar** sí se puede (solo esa).
+
+**Eliminar la maestra.** Deshace **todas** sus recolecciones: el inventario vuelve a su posición original y cada documento recupera su reserva (y su estatus). Si ya estaba empacada, también se elimina su envío, **solo si sigue en la etapa inicial**.
+
+**Mensajes y códigos.**
+| Situación | Mensaje | HTTP |
+|---|---|---|
+| Menos de 2 documentos | `Elija al menos dos documentos para recolectar juntos; para uno solo use el despacho normal.` | 400 |
+| Más de 20 | `Una recolección maestra admite como máximo 20 documentos.` | 400 |
+| Documento repetido | `El mismo documento está repetido.` | 400 |
+| Tipo desconocido | `Tipo de documento desconocido: «X». Use SALES_ORDER o EXIT_NOTICE.` | 400 |
+| Otro cliente | `Los documentos deben ser del mismo cliente: «A» y «B» son de clientes distintos. Haga recolecciones separadas.` | 400 |
+| Otro almacén | `Los documentos deben ser del mismo almacén: «A» y «B» son de almacenes distintos.` | 400 |
+| Documento inexistente | `Orden de venta no encontrada.` / `Aviso de salida no encontrado.` | 404 |
+| Sin nada reservado | `«X» no tiene nada reservado por sacar.` | 422 |
+| Inventario insuficiente | el de siempre (`insufficient_stock`), sin efecto parcial | 409 |
+| Empacar una ya empacada o eliminada | `La recolección X ya está empacada o eliminada.` | 422 |
+| Empacar/eliminar suelta una recolección de la maestra | `La recolección X pertenece a la recolección maestra Y: empáquela o elimínela desde la maestra.` | 422 |
+| Eliminar con el envío ya avanzado | `La recolección X no se puede eliminar: su envío ya está en «estatus».` | 422 |

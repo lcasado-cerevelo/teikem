@@ -267,13 +267,35 @@ public sealed class PickBatchConfiguration : IEntityTypeConfiguration<PickBatch>
 
         b.HasIndex(p => new { p.TenantId, p.Number }).IsUnique().HasDatabaseName("UQ_PickBatch_Number");
         // Una orden nace de a lo sumo una recolección activa (última línea contra el doble empaque).
-        b.HasIndex(p => p.TransportOrderId).IsUnique().HasFilter("[TransportOrderId] IS NOT NULL AND [IsActive] = 1").HasDatabaseName("UX_PickBatch_Order");
+        // Lote 176: salvo las de una recolección maestra, que comparten el envío de su grupo (UX_PickGroup_Order).
+        b.HasIndex(p => p.TransportOrderId).IsUnique().HasFilter("[TransportOrderId] IS NOT NULL AND [IsActive] = 1 AND [PickGroupId] IS NULL").HasDatabaseName("UX_PickBatch_Order");
+        b.HasIndex(p => p.PickGroupId).HasFilter("[PickGroupId] IS NOT NULL").HasDatabaseName("IX_PickBatch_Group");
+        b.HasOne<PickGroup>().WithMany().HasForeignKey(p => p.PickGroupId).OnDelete(DeleteBehavior.NoAction);
         b.HasIndex(p => new { p.TenantId, p.CollectedAtUtc }).HasDatabaseName("IX_PickBatch_Tenant_Date");
 
         b.HasOne(p => p.Status).WithMany().HasForeignKey(p => p.StatusCodeId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<Warehouse>().WithMany().HasForeignKey(p => p.WarehouseId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<Teikem.Domain.Orders.TransportOrder>().WithMany().HasForeignKey(p => p.TransportOrderId).OnDelete(DeleteBehavior.NoAction);
         b.HasMany(p => p.Lines).WithOne().HasForeignKey(l => l.PickBatchId).OnDelete(DeleteBehavior.NoAction);
+    }
+}
+
+/// <summary>Lote 176: recolección maestra (varios documentos del mismo cliente, un solo envío).</summary>
+public sealed class PickGroupConfiguration : IEntityTypeConfiguration<PickGroup>
+{
+    public void Configure(EntityTypeBuilder<PickGroup> b)
+    {
+        b.ToTable("PickGroup");
+        b.HasKey(p => p.PickGroupId);
+        b.Property(p => p.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();
+        b.Property(p => p.Number).HasMaxLength(40).IsRequired();
+        b.Property(p => p.Note).HasMaxLength(500);
+        b.Property(p => p.RowVersion).IsRowVersion();
+        b.HasIndex(p => new { p.TenantId, p.Number }).IsUnique().HasDatabaseName("UQ_PickGroup_Number");
+        b.HasIndex(p => p.TransportOrderId).IsUnique().HasFilter("[TransportOrderId] IS NOT NULL AND [IsActive] = 1").HasDatabaseName("UX_PickGroup_Order");
+        b.HasIndex(p => new { p.TenantId, p.CollectedAtUtc }).HasDatabaseName("IX_PickGroup_Tenant_Date");
+        b.HasOne<Warehouse>().WithMany().HasForeignKey(p => p.WarehouseId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<Teikem.Domain.Orders.TransportOrder>().WithMany().HasForeignKey(p => p.TransportOrderId).OnDelete(DeleteBehavior.NoAction);
     }
 }
 

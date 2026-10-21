@@ -5753,3 +5753,50 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_LabelTemplate_Default' AND object_id = OBJECT_ID('dbo.LabelTemplate'))
     CREATE UNIQUE INDEX UX_LabelTemplate_Default ON dbo.LabelTemplate(TenantId, Kind) WHERE IsDefault = 1 AND IsActive = 1;
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-21 (Lote 176) — Recoleccion maestra (C3/C4): varios documentos (ordenes de venta y/o avisos de salida) DEL MISMO CLIENTE y almacen que se recolectan juntos y salen
+   en UN solo envio.
+   - dbo.PickGroup: el documento maestro (numero EMP-##### del contador PACKBATCH = el del envio, almacen, cliente, nota, quien/cuando, el envio al empacar).
+   - dbo.PickBatch.PickGroupId INT NULL -> dbo.PickGroup: cada documento conserva su recoleccion; las del grupo comparten el envio, asi que UX_PickBatch_Order se recrea
+     sin las del grupo (PickGroupId IS NULL) y el envio unico del grupo es UX_PickGroup_Order.
+   Los datos existentes no cambian (ninguna recoleccion tiene grupo). Solo AGREGA (el indice se recrea con la misma regla). Idempotente.
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID('dbo.PickGroup', 'U') IS NULL CREATE TABLE dbo.PickGroup (
+    PickGroupId      INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_PickGroup PRIMARY KEY,
+    PublicId         UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_PickGroup_PublicId DEFAULT NEWID(),
+    TenantId         INT NOT NULL,
+    WarehouseId      INT NOT NULL,
+    ClientId         INT NOT NULL,
+    Number           NVARCHAR(40) NOT NULL,
+    Note             NVARCHAR(500) NULL,
+    CollectedAtUtc   DATETIME2 NOT NULL CONSTRAINT DF_PickGroup_CollectedAt DEFAULT SYSUTCDATETIME(),
+    CollectedBy      INT NULL,
+    TransportOrderId INT NULL,
+    PackedAtUtc      DATETIME2 NULL,
+    PackedBy         INT NULL,
+    IsActive         BIT NOT NULL CONSTRAINT DF_PickGroup_IsActive DEFAULT 1,
+    RowVersion       ROWVERSION,
+    CONSTRAINT UQ_PickGroup_Number UNIQUE (TenantId, Number),
+    CONSTRAINT UQ_PickGroup_IdTenant UNIQUE (PickGroupId, TenantId),
+    CONSTRAINT FK_PickGroup_Warehouse FOREIGN KEY (WarehouseId, TenantId) REFERENCES dbo.Warehouse(WarehouseId, TenantId),
+    CONSTRAINT FK_PickGroup_Order FOREIGN KEY (TransportOrderId, TenantId) REFERENCES dbo.TransportOrder(TransportOrderId, TenantId)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_PickGroup_Order' AND object_id = OBJECT_ID('dbo.PickGroup'))
+    CREATE UNIQUE INDEX UX_PickGroup_Order ON dbo.PickGroup (TransportOrderId) WHERE TransportOrderId IS NOT NULL AND IsActive = 1;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PickGroup_Tenant_Date' AND object_id = OBJECT_ID('dbo.PickGroup'))
+    CREATE INDEX IX_PickGroup_Tenant_Date ON dbo.PickGroup (TenantId, CollectedAtUtc);
+GO
+IF COL_LENGTH('dbo.PickBatch', 'PickGroupId') IS NULL
+    ALTER TABLE dbo.PickBatch ADD PickGroupId INT NULL CONSTRAINT FK_PickBatch_Group REFERENCES dbo.PickGroup(PickGroupId);
+GO
+IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_PickBatch_Order' AND object_id = OBJECT_ID('dbo.PickBatch') AND filter_definition NOT LIKE '%PickGroupId%')
+    DROP INDEX UX_PickBatch_Order ON dbo.PickBatch;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_PickBatch_Order' AND object_id = OBJECT_ID('dbo.PickBatch'))
+    CREATE UNIQUE INDEX UX_PickBatch_Order ON dbo.PickBatch (TransportOrderId) WHERE TransportOrderId IS NOT NULL AND IsActive = 1 AND PickGroupId IS NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PickBatch_Group' AND object_id = OBJECT_ID('dbo.PickBatch'))
+    CREATE INDEX IX_PickBatch_Group ON dbo.PickBatch (PickGroupId) WHERE PickGroupId IS NOT NULL;
+GO

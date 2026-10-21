@@ -211,6 +211,7 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<CycleCountLine> CycleCountLines => Set<CycleCountLine>();
     public DbSet<PickBatch> PickBatches => Set<PickBatch>();
     public DbSet<PickBatchLine> PickBatchLines => Set<PickBatchLine>();
+    public DbSet<PickGroup> PickGroups => Set<PickGroup>();   // Lote 176
     public DbSet<MultiAdjustment> MultiAdjustments => Set<MultiAdjustment>();   // 2026-10-12: ajuste múltiple AJM-######
     public DbSet<MultiAdjustmentLine> MultiAdjustmentLines => Set<MultiAdjustmentLine>();
     public DbSet<InventoryDiscrepancy> InventoryDiscrepancies => Set<InventoryDiscrepancy>();   // Lote 14: descuadres Kárdex ↔ saldo
