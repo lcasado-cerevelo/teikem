@@ -480,6 +480,7 @@
     "reference": "Referencia",
     "new": "Nuevo",
     "cancelNotice": "Cancelar aviso",
+    "editNotice": "Editar",
     "product": {
       "title": "Nuevo producto",
       "sku": "SKU",
@@ -502,11 +503,13 @@
     },
     "arrival": {
       "title": "Nuevo aviso de llegada",
+        "edit": "Editar aviso de llegada",
       "date": "Llegada esperada (AAAA-MM-DD, opcional)",
       "priceHelp": "Si el producto no tiene costo, el precio de la primera línea pasa a ser su costo."
     },
     "exit": {
       "title": "Nuevo aviso de salida",
+        "edit": "Editar aviso de salida",
       "destination": "Destino (retiro, dirección o nota)",
       "date": "Fecha requerida (AAAA-MM-DD, opcional)",
       "notes": "Notas (opcional)",

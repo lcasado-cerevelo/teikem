@@ -14,15 +14,19 @@ public sealed record PortalExitLineRequest(Guid? ProductPublicId, decimal? Quant
 public sealed record PortalExitRequest(Guid? WarehousePublicId = null, string? Reference = null, string? Destination = null, DateOnly? RequiredDate = null, string? Notes = null,
     IReadOnlyList<PortalExitLineRequest>? Lines = null);
 
+public sealed record PortalExitHeaderRequest(string? Reference = null, string? Destination = null, DateOnly? RequiredDate = null, string? Notes = null);
+
+public sealed record PortalExitLineModifyRequest(decimal? Quantity);
+
 public sealed record PortalWarehouseOptionDto(Guid PublicId, string Code, string Name);
 
-public sealed record PortalArrivalLineDto(string Sku, string ProductName, decimal ExpectedQty, string? LotNumber, decimal? UnitPrice, DateOnly? ExpiryDate = null);
+public sealed record PortalArrivalLineDto(string Sku, string ProductName, decimal ExpectedQty, string? LotNumber, decimal? UnitPrice, DateOnly? ExpiryDate = null, Guid? ProductPublicId = null, string? TrackingType = null);
 
 /// <summary>Un aviso de llegada del cliente. CanCancel = todavía esperado y sin recibo abierto.</summary>
 public sealed record PortalArrivalDto(int Id, Guid WarehousePublicId, string WarehouseCode, string? Reference, DateOnly? ExpectedDate, string StatusCode, string Status, bool CanCancel,
     IReadOnlyList<PortalArrivalLineDto> Lines);
 
-public sealed record PortalExitLineDto(string Sku, string ProductName, string? LotNumber, decimal QtyOrdered, decimal QtyReserved, decimal QtyBackordered, decimal QtyShipped);
+public sealed record PortalExitLineDto(int LineId, string Sku, string ProductName, string? LotNumber, decimal QtyOrdered, decimal QtyReserved, decimal QtyBackordered, decimal QtyShipped);
 
 /// <summary>Un aviso de salida del cliente (sin datos del personal ni de las recolecciones).</summary>
 public sealed record PortalExitDto(Guid PublicId, string Number, string StatusCode, string Status, Guid WarehousePublicId, string WarehouseCode, string? Reference, string? Destination,

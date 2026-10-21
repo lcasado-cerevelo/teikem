@@ -119,6 +119,7 @@ export function ExitNoticeCreateModal({ onClose, onCreated }: { onClose: () => v
             <div key={f.id} className="rcp-asn-row">
               <Field name={`lines.${i}.productPublicId`} label={t('warehouse.exitNotices.lines.productOf', { n: i + 1 })} hideLabel required>
                 <ProductPickerInput
+                  showAvailable
                   ownerClientPublicId={clientPublicId}
                   disabled={!clientPublicId}
                   placeholder={clientPublicId ? undefined : t('warehouse.exitNotices.pickClientFirst')}

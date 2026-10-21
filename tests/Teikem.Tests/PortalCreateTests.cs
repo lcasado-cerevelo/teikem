@@ -139,4 +139,26 @@ public sealed class PortalCreateTests
         Assert.Empty((await x.Svc.ListExitsAsync(null, null, 0, 25, default)).Items);
         Assert.Empty(await x.Svc.ListArrivalsAsync(null, default));
     }
+
+    [Fact]
+    public async Task I_can_edit_my_arrival_and_my_exit_but_not_another_clients()
+    {
+        var x = await WorldAsync();
+        await using var _ = x.F;
+        var arrival = await x.Svc.CreateArrivalAsync(new PortalArrivalRequest(x.W.PublicId, "OC-1", Lines: new[] { new PortalArrivalLineRequest(x.P.PublicId, 6m) }), default);
+        var edited = await x.Svc.UpdateArrivalAsync(arrival.Id, new PortalArrivalRequest(Reference: "OC-2", Lines: new[] { new PortalArrivalLineRequest(x.P.PublicId, 8m) }), default);
+        Assert.Equal(("OC-2", 8m), (edited.Reference, Assert.Single(edited.Lines).ExpectedQty));
+
+        var exit = await x.Svc.CreateExitAsync(new PortalExitRequest(x.W.PublicId, "PED-1", "Retiro", Lines: new[] { new PortalExitLineRequest(x.P.PublicId, 4m) }), default);
+        var header = await x.Svc.UpdateExitAsync(exit.PublicId, new PortalExitHeaderRequest(Destination: "Dirección nueva", Notes: "urgente"), default);
+        Assert.Equal(("PED-1", "Dirección nueva", "urgente"), (header.Reference, header.Destination, header.Notes));
+        var line = await x.Svc.ModifyExitLineAsync(exit.PublicId, header.Lines[0].LineId, new PortalExitLineModifyRequest(7m), default);
+        Assert.Equal(7m, Assert.Single(line.Lines).QtyOrdered);
+
+        x.F.Tenant.PortalClientId = null;
+        var theirs = await x.F.Get<ExitNoticeService>().CreateAsync(new ExitNoticeRequest(x.W.PublicId, x.Other.PublicId, Lines: new[] { new ExitNoticeLineRequest(x.Foreign.PublicId, 1m) }), default);
+        x.F.Tenant.PortalClientId = x.Mine.ClientId;
+        await Assert.ThrowsAsync<NotFoundException>(() => x.Svc.UpdateExitAsync(theirs.PublicId, new PortalExitHeaderRequest(Notes: "x"), default));
+        await Assert.ThrowsAsync<NotFoundException>(() => x.Svc.ModifyExitLineAsync(theirs.PublicId, 1, new PortalExitLineModifyRequest(2m), default));
+    }
 }

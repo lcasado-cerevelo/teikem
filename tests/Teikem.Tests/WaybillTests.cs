@@ -14,6 +14,8 @@ public sealed class WaybillTests
     public void The_waybill_kind_and_pattern_are_known()
     {
         Assert.True(NumberingRules.IsKnownKind(WaybillCodes.NumberKind));
+        // todo contador que un servicio pide al NumberSequenceService real debe ser conocido (el aviso de salida no lo era: «Error interno» al guardar)
+        Assert.True(NumberingRules.IsKnownKind(Teikem.Domain.ExitNotices.ExitNoticeCodes.NumberKind));
         Assert.Equal("CND-0000007", NumberFormat.Resolve(WaybillCodes.NumberPattern, 7));
         Assert.Equal("CND-1234567", NumberFormat.Resolve(WaybillCodes.NumberPattern, 1234567));
     }

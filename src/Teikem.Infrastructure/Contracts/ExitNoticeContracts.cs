@@ -12,6 +12,9 @@ public sealed record ExitNoticeLineRequest(Guid? ProductPublicId, decimal? Quant
 public sealed record ExitNoticeRequest(Guid? WarehousePublicId = null, Guid? ClientPublicId = null, string? Reference = null, string? Destination = null,
     DateOnly? RequiredDate = null, string? Notes = null, IReadOnlyList<ExitNoticeLineRequest>? Lines = null);
 
+/// <summary>Lote 158: edita los datos del aviso de salida solicitado (null = sin cambio; texto vacío lo quita).</summary>
+public sealed record ExitNoticeHeaderRequest(string? Reference = null, string? Destination = null, DateOnly? RequiredDate = null, string? Notes = null);
+
 /// <summary>Cambia la cantidad pedida de una línea de un aviso solicitado (sube: reserva lo que haya y el resto queda pendiente; baja: libera primero el pendiente).</summary>
 public sealed record ExitNoticeLineModifyRequest(decimal? Quantity);
 

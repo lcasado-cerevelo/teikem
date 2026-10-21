@@ -11,10 +11,17 @@ import {
   createArrival,
   createExit,
   createProduct,
+  getExit,
+  modifyExitLine,
+  updateArrival,
+  updateExit,
   listWarehouseOptions,
   listWarehouseProducts,
+  type PortalArrivalDto,
+  type PortalExitDto,
   type PortalProductDto,
 } from '../portalApi'
+import { formatQty } from '../format'
 
 /** Número escrito por la persona (acepta coma decimal); vacío = null. */
 export function parseNumber(text: string): number | null {
@@ -86,8 +93,8 @@ export interface DraftLine {
 }
 const emptyLine = (): DraftLine => ({ product: null, qty: '', lot: '', expiry: '', price: '' })
 
-function ProductPicker({ value, onPick }: { value: PortalProductDto | null; onPick: (p: PortalProductDto | null) => void }) {
-  const { t } = useT()
+function ProductPicker({ value, onPick, showAvailable }: { value: PortalProductDto | null; onPick: (p: PortalProductDto | null) => void; showAvailable?: boolean }) {
+  const { t, lang } = useT()
   const colors = useColors()
   const [search, setSearch] = useState('')
   const [query, setQuery] = useState('')
@@ -109,14 +116,14 @@ function ProductPicker({ value, onPick }: { value: PortalProductDto | null; onPi
       {found.loading && <Spinner />}
       {(found.data?.items ?? []).map((p) => (
         <Pressable key={p.publicId} onPress={() => onPick(p)} accessibilityRole="button" style={{ padding: 10, borderRadius: 8, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}>
-          <Text style={{ color: colors.text }}>{p.sku} · {p.name}</Text>
+          <Text style={{ color: colors.text }}>{p.sku} · {p.name}{showAvailable ? ` (${formatQty(p.available, lang)})` : ''}</Text>
         </Pressable>
       ))}
     </View>
   )
 }
 
-function LinesEditor({ lines, setLines, withLotAndPrice }: { lines: DraftLine[]; setLines: (l: DraftLine[]) => void; withLotAndPrice: boolean }) {
+function LinesEditor({ lines, setLines, withLotAndPrice, showAvailable }: { lines: DraftLine[]; setLines: (l: DraftLine[]) => void; withLotAndPrice: boolean; showAvailable?: boolean }) {
   const { t } = useT()
   const colors = useColors()
   const patch = (i: number, p: Partial<DraftLine>) => setLines(lines.map((l, n) => (n === i ? { ...l, ...p } : l)))
@@ -125,7 +132,7 @@ function LinesEditor({ lines, setLines, withLotAndPrice }: { lines: DraftLine[];
       <Text style={{ fontWeight: '700', color: colors.text }}>{t('create.lines')}</Text>
       {lines.map((l, i) => (
         <View key={i} style={{ gap: 6, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: colors.line }}>
-          <ProductPicker value={l.product} onPick={(p) => patch(i, { product: p, lot: '', expiry: '' })} />
+          <ProductPicker value={l.product} onPick={(p) => patch(i, { product: p, lot: '', expiry: '' })} showAvailable={showAvailable} />
           <Field label={t('create.line.qty')} value={l.qty} onChangeText={(v) => patch(i, { qty: v })} keyboardType="decimal-pad" testID={`create-qty-${i}`} />
           {withLotAndPrice && l.product?.trackingType === 'LOT' && (
             <>
@@ -171,24 +178,37 @@ function WarehousePicker({ value, onChange }: { value: string | null; onChange: 
 
 // ---------------------------------------------------------------- aviso de llegada
 
-export function NewArrivalForm({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
+/** Las líneas de un aviso de llegada ya creado, como borrador editable. */
+function draftsOf(arrival: PortalArrivalDto): DraftLine[] {
+  return (arrival.lines ?? []).map((l) => ({
+    product: { publicId: l.productPublicId as string, sku: l.sku, name: l.productName, trackingType: l.trackingType, onHand: 0, available: 0, isActive: true } as PortalProductDto,
+    qty: String(l.expectedQty ?? ''),
+    lot: l.lotNumber ?? '',
+    expiry: l.expiryDate ?? '',
+    price: l.unitPrice == null ? '' : String(l.unitPrice),
+  }))
+}
+
+export function NewArrivalForm({ onDone, onCancel, arrival }: { onDone: () => void; onCancel: () => void; arrival?: PortalArrivalDto }) {
   const { t } = useT()
-  const [warehouse, setWarehouse] = useState<string | null>(null)
-  const [reference, setReference] = useState('')
-  const [date, setDate] = useState('')
-  const [lines, setLines] = useState<DraftLine[]>([emptyLine()])
+  const [warehouse, setWarehouse] = useState<string | null>(arrival?.warehousePublicId ?? null)
+  const [reference, setReference] = useState(arrival?.reference ?? '')
+  const [date, setDate] = useState(arrival?.expectedDate ?? '')
+  const [lines, setLines] = useState<DraftLine[]>(arrival ? draftsOf(arrival) : [emptyLine()])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   async function save() {
     setBusy(true)
     setError(null)
     try {
-      await createArrival({
+      const body = {
         warehousePublicId: warehouse,
-        reference: reference || null,
+        reference: arrival ? reference : reference || null,
         expectedDate: date.trim() || null,
         lines: lines.map((l) => ({ productPublicId: l.product?.publicId ?? null, expectedQty: parseNumber(l.qty), lotNumber: l.lot.trim() || null, expiryDate: l.lot.trim() ? l.expiry.trim() || null : null, unitPrice: parseNumber(l.price) })),
-      })
+      }
+      if (arrival) await updateArrival(arrival.id as number, body)
+      else await createArrival(body)
       onDone()
     } catch (e) {
       setError(apiErrorMessage(e))
@@ -197,7 +217,7 @@ export function NewArrivalForm({ onDone, onCancel }: { onDone: () => void; onCan
     }
   }
   return (
-    <FormShell title={t('create.arrival.title')} error={error} busy={busy} onSave={() => void save()} onCancel={onCancel} saveLabel={t('create.save')}>
+    <FormShell title={arrival ? t('create.arrival.edit') : t('create.arrival.title')} error={error} busy={busy} onSave={() => void save()} onCancel={onCancel} saveLabel={t('create.save')}>
       <WarehousePicker value={warehouse} onChange={setWarehouse} />
       <Field label={t('create.reference')} value={reference} onChangeText={setReference} />
       <Field label={t('create.arrival.date')} value={date} onChangeText={setDate} placeholder="2026-12-31" autoCapitalize="none" />
@@ -245,7 +265,58 @@ export function NewExitForm({ onDone, onCancel }: { onDone: () => void; onCancel
       <Field label={t('create.exit.destination')} value={destination} onChangeText={setDestination} />
       <Field label={t('create.exit.date')} value={date} onChangeText={setDate} placeholder="2026-12-31" autoCapitalize="none" />
       <Field label={t('create.exit.notes')} value={notes} onChangeText={setNotes} />
-      <LinesEditor lines={lines} setLines={setLines} withLotAndPrice={false} />
+      <LinesEditor lines={lines} setLines={setLines} withLotAndPrice={false} showAvailable />
+      <Muted>{t('create.exit.help')}</Muted>
+    </FormShell>
+  )
+}
+
+// ---------------------------------------------------------------- editar un aviso de salida solicitado
+
+/** Datos del aviso (referencia, destino, fecha, notas) y la cantidad de cada línea; se reajusta la reserva al cambiar una cantidad. */
+export function EditExitForm({ publicId, onDone, onCancel }: { publicId: string; onDone: () => void; onCancel: () => void }) {
+  const { t } = useT()
+  const loaded = useAsync(() => getExit(publicId), [publicId])
+  if (loaded.loading && !loaded.data) return <Spinner />
+  if (!loaded.data) return <Notice>{apiErrorMessage(loaded.error)}</Notice>
+  return <EditExitBody notice={loaded.data} onDone={onDone} onCancel={onCancel} title={t('create.exit.edit')} />
+}
+
+function EditExitBody({ notice, title, onDone, onCancel }: { notice: PortalExitDto; title: string; onDone: () => void; onCancel: () => void }) {
+  const { t } = useT()
+  const [reference, setReference] = useState(notice.reference ?? '')
+  const [destination, setDestination] = useState(notice.destination ?? '')
+  const [date, setDate] = useState(notice.requiredDate ?? '')
+  const [notes, setNotes] = useState(notice.notes ?? '')
+  const [qtys, setQtys] = useState<string[]>((notice.lines ?? []).map((l) => String(l.qtyOrdered ?? '')))
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  async function save() {
+    setBusy(true)
+    setError(null)
+    try {
+      await updateExit(notice.publicId as string, { reference, destination, requiredDate: date.trim() || null, notes })
+      const lines = notice.lines ?? []
+      for (let i = 0; i < lines.length; i++) {
+        const q = parseNumber(qtys[i] ?? '')
+        if (q !== lines[i].qtyOrdered) await modifyExitLine(notice.publicId as string, lines[i].lineId as number, q)
+      }
+      onDone()
+    } catch (e) {
+      setError(apiErrorMessage(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <FormShell title={`${title} ${notice.number ?? ''}`} error={error} busy={busy} onSave={() => void save()} onCancel={onCancel} saveLabel={t('create.save')}>
+      <Field label={t('create.reference')} value={reference} onChangeText={setReference} />
+      <Field label={t('create.exit.destination')} value={destination} onChangeText={setDestination} />
+      <Field label={t('create.exit.date')} value={date} onChangeText={setDate} placeholder="2026-12-31" autoCapitalize="none" />
+      <Field label={t('create.exit.notes')} value={notes} onChangeText={setNotes} />
+      {(notice.lines ?? []).map((l, i) => (
+        <Field key={l.lineId} label={`${l.sku} · ${l.productName}`} value={qtys[i] ?? ''} onChangeText={(v) => setQtys(qtys.map((q, n) => (n === i ? v : q)))} keyboardType="decimal-pad" />
+      ))}
       <Muted>{t('create.exit.help')}</Muted>
     </FormShell>
   )

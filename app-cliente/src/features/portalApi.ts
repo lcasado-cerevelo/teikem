@@ -53,9 +53,13 @@ export const listWarehouseOptions = () => unwrap(api.GET('/api/v1/portal/warehou
 export const createProduct = (body: PortalProductCreateRequest) => unwrap(api.POST('/api/v1/portal/warehouse/products', { body }))
 export const listArrivals = (search: string) => unwrap(api.GET('/api/v1/portal/warehouse/arrivals', { params: { query: { search: search || undefined } } }))
 export const createArrival = (body: PortalArrivalRequest) => unwrap(api.POST('/api/v1/portal/warehouse/arrivals', { body }))
+export const updateArrival = (id: number, body: PortalArrivalRequest) => unwrap(api.PATCH('/api/v1/portal/warehouse/arrivals/{id}', { params: { path: { id } }, body }))
 export const cancelArrival = (id: number) => unwrap(api.POST('/api/v1/portal/warehouse/arrivals/{id}/cancel', { params: { path: { id } } }))
 export const listExits = (search: string, skip = 0, take = PAGE_SIZE) => unwrap(api.GET('/api/v1/portal/warehouse/exits', { params: { query: { search: search || undefined, skip, take } } }))
 export const createExit = (body: PortalExitRequest) => unwrap(api.POST('/api/v1/portal/warehouse/exits', { body }))
+export const updateExit = (publicId: string, body: Schemas['PortalExitHeaderRequest']) => unwrap(api.PATCH('/api/v1/portal/warehouse/exits/{publicId}', { params: { path: { publicId } }, body }))
+export const modifyExitLine = (publicId: string, lineId: number, quantity: number | null) => unwrap(api.PATCH('/api/v1/portal/warehouse/exits/{publicId}/lines/{lineId}', { params: { path: { publicId, lineId } }, body: { quantity } }))
+export const getExit = (publicId: string) => unwrap(api.GET('/api/v1/portal/warehouse/exits/{publicId}', { params: { path: { publicId } } }))
 export const cancelExit = (publicId: string) => unwrap(api.POST('/api/v1/portal/warehouse/exits/{publicId}/cancel', { params: { path: { publicId } }, body: {} }))
 export const getValuation = (search: string, skip = 0, take = PAGE_SIZE) => unwrap(api.GET('/api/v1/portal/warehouse/valuation', { params: { query: { search: search || undefined, skip, take } } }))
 

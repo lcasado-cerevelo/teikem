@@ -9731,3 +9731,6 @@ Ya se empezó a recibir contra ese aviso. Elimine el recibo abierto para poder e
 
 **¿Qué significa «Un aviso de llegada nacido de una orden de compra se cambia en la orden de compra.»? (409)**
 Ese aviso lo generó una orden de compra; edite la orden, no el aviso.
+
+**Al guardar un aviso de salida sale «Error interno.» (500)**
+Era un defecto de la versión anterior (el contador SAL-##### no estaba reconocido por el API) y ya está corregido. Si lo ve, actualice el API y repita; si persiste, avise a soporte con el código de correlación del error.

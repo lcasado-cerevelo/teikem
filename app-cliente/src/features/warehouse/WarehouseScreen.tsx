@@ -9,8 +9,8 @@ import { Button, Card, Chip, Field, Muted, Notice, Screen, Spinner, Title, useCo
 import { useAsync } from '../../kernel/ui/useAsync'
 import { formatDate, formatDateTime, formatMoney, formatQty } from '../format'
 import { useOffer } from '../capabilities'
-import { cancelArrival, cancelExit, getValuation, listArrivals, listExits, listMovements, listStock, listWarehouseProducts, PAGE_SIZE } from '../portalApi'
-import { NewArrivalForm, NewExitForm, NewProductForm } from './CreateForms'
+import { cancelArrival, cancelExit, type PortalArrivalDto, getValuation, listArrivals, listExits, listMovements, listStock, listWarehouseProducts, PAGE_SIZE } from '../portalApi'
+import { EditExitForm, NewArrivalForm, NewExitForm, NewProductForm } from './CreateForms'
 import { Segments } from './Segments'
 import type { Lang } from '../../kernel/i18n/i18n'
 
@@ -157,6 +157,7 @@ function ArrivalsSection({ lang }: { lang: Lang }) {
   const colors = useColors()
   const { t } = useT()
   const [creating, setCreating] = useState(false)
+  const [editing, setEditing] = useState<PortalArrivalDto | null>(null)
   const [error, setError] = useState<string | null>(null)
   const list = useAsync(() => listArrivals(''), [])
   async function cancel(id: number) {
@@ -172,6 +173,7 @@ function ArrivalsSection({ lang }: { lang: Lang }) {
     <>
       {!creating && <Button title={t('create.arrival.title')} onPress={() => setCreating(true)} testID="create-arrival" />}
       {creating && <NewArrivalForm onCancel={() => setCreating(false)} onDone={() => { setCreating(false); list.reload() }} />}
+      {editing && <NewArrivalForm key={editing.id} arrival={editing} onCancel={() => setEditing(null)} onDone={() => { setEditing(null); list.reload() }} />}
       {!!error && <Notice>{error}</Notice>}
       {(list.data ?? []).map((a) => (
         <Card key={String(a.id)}>
@@ -183,6 +185,7 @@ function ArrivalsSection({ lang }: { lang: Lang }) {
           {(a.lines ?? []).map((l, n) => (
             <Text key={n} style={{ color: colors.text }}>{l.sku} · {l.productName} — <Text style={{ fontWeight: '700' }}>{formatQty(l.expectedQty, lang)}</Text>{l.lotNumber ? ` · ${t('warehouse.lot', { lot: l.lotNumber })}` : ''}</Text>
           ))}
+          {a.canCancel && <Button title={t('create.editNotice')} variant="secondary" onPress={() => { setCreating(false); setEditing(a) }} />}
           {a.canCancel && <Button title={t('create.cancelNotice')} variant="secondary" onPress={() => void cancel(a.id as number)} />}
         </Card>
       ))}
@@ -198,6 +201,7 @@ function ExitsSection({ lang }: { lang: Lang }) {
   const colors = useColors()
   const { t } = useT()
   const [creating, setCreating] = useState(false)
+  const [editing, setEditing] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const list = usePaged(useCallback((s: string, skip: number) => listExits(s, skip, PAGE_SIZE), []))
   async function cancel(publicId: string) {
@@ -213,6 +217,7 @@ function ExitsSection({ lang }: { lang: Lang }) {
     <>
       {!creating && <Button title={t('create.exit.title')} onPress={() => setCreating(true)} testID="create-exit" />}
       {creating && <NewExitForm onCancel={() => setCreating(false)} onDone={() => { setCreating(false); list.reload() }} />}
+      {editing && <EditExitForm key={editing} publicId={editing} onCancel={() => setEditing(null)} onDone={() => { setEditing(null); list.reload() }} />}
       {!!error && <Notice>{error}</Notice>}
       <Field label={t('warehouse.search')} value={list.search} onChangeText={list.setSearch} autoCapitalize="none" returnKeyType="search" testID="warehouse-search" />
       {list.items.map((n) => (
@@ -224,6 +229,7 @@ function ExitsSection({ lang }: { lang: Lang }) {
           </View>
           <Muted>{[n.warehouseCode, n.reference, n.destination, n.requestedDate ? formatDate(n.requestedDate, lang) : null].filter(Boolean).join(' · ')}</Muted>
           <Text style={{ color: colors.text }}>{formatQty(n.qtyShipped, lang)} / {formatQty(n.qtyOrdered, lang)}</Text>
+          {n.statusCode === 'REQUESTED' && <Button title={t('create.editNotice')} variant="secondary" onPress={() => { setCreating(false); setEditing(n.publicId as string) }} />}
           {n.statusCode === 'REQUESTED' && <Button title={t('create.cancelNotice')} variant="secondary" onPress={() => void cancel(n.publicId as string)} />}
         </Card>
       ))}

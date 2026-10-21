@@ -101,6 +101,44 @@ public sealed partial class ExitNoticeService
         foreach (var l in notice.Lines) (l.QtyReserved, l.QtyBackordered) = (0m, 0m);
     }
 
+    // ---------------------------------------------------------------- editar los datos (solicitado, sin despachar)
+
+    /// <summary>Cambia referencia, destino, fecha requerida y/o notas de un aviso solicitado (null = sin cambio; texto vacío lo quita). Las líneas se cambian con ModifyLine.</summary>
+    public async Task<ExitNoticeDto> UpdateHeaderAsync(Guid publicId, ExitNoticeHeaderRequest req, CancellationToken ct)
+    {
+        if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
+        string? reference = null, destination = null, notes = null;
+        if (req.Reference is not null)
+        {
+            var (v, e) = ExitNoticeRules.NormalizeText(req.Reference, ExitNoticeRules.MaxReferenceLength, ExitNoticeRules.ReferenceTooLong);
+            if (e is not null) throw new ValidationException("reference", e);
+            reference = v;
+        }
+        if (req.Destination is not null)
+        {
+            var (v, e) = ExitNoticeRules.NormalizeText(req.Destination, ExitNoticeRules.MaxDestinationLength, ExitNoticeRules.DestinationTooLong);
+            if (e is not null) throw new ValidationException("destination", e);
+            destination = v;
+        }
+        if (req.Notes is not null)
+        {
+            var (v, e) = ExitNoticeRules.NormalizeText(req.Notes, ExitNoticeRules.MaxNotesLength, ExitNoticeRules.NotesTooLong);
+            if (e is not null) throw new ValidationException("notes", e);
+            notes = v;
+        }
+        await db.RunInTransactionAsync(async ct2 =>
+        {
+            var notice = await db.Set<ExitNotice>().AsTracking().FirstOrDefaultAsync(o => o.PublicId == publicId, ct2) ?? throw NotFound();
+            if ((await StatusMapAsync(ct2))[notice.StatusCodeId].Code != ExitNoticeStatuses.Requested) throw new StatusRuleException(ExitNoticeRules.OnlyRequestedModifiable);
+            if (req.Reference is not null) notice.Reference = reference;
+            if (req.Destination is not null) notice.Destination = destination;
+            if (req.Notes is not null) notice.Notes = notes;
+            if (req.RequiredDate is DateOnly required) notice.RequiredDate = required;
+            await db.SaveGuardedAsync(ExitNoticeRules.Concurrency, ct2);
+        }, ct);
+        return await GetAsync(publicId, ct);
+    }
+
     // ---------------------------------------------------------------- modificar la cantidad de una línea (solicitado, sin despachar)
 
     /// <summary>Cambia la cantidad pedida de una línea. Subirla reserva lo que haya (el resto queda pendiente); bajarla libera primero el pendiente y luego la reserva.</summary>

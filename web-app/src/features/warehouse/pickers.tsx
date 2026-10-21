@@ -17,6 +17,7 @@ import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-quer
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useController, useFormContext } from 'react-hook-form'
 import { api, unwrap } from '../../kernel/api/client'
+import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n/useT'
 import { Chip } from '../../kernel/ui/Chip'
 import { useFieldInfo } from '../../kernel/ui/formContext'
@@ -659,6 +660,8 @@ export interface ProductPickerProps {
   onlyAvailable?: boolean
   /** Solo productos con existencia en mano &gt; 0 (en el almacén indicado si hay; incluye lo reservado y la cuarentena): es lo que cuenta un conteo. */
   onlyOnHand?: boolean
+  /** Muestra entre paréntesis lo disponible de cada producto (para saber si lo pedido se reserva o queda pendiente). */
+  showAvailable?: boolean
   /** Incluye productos dados de baja (marcados "Inactivo"), p. ej. para filtrar el historial del Kárdex. */
   includeInactive?: boolean
   id?: string
@@ -679,6 +682,7 @@ export function ProductPicker({
   warehousePublicId,
   onlyAvailable,
   onlyOnHand,
+  showAvailable,
   includeInactive,
   id,
   placeholder,
@@ -689,6 +693,7 @@ export function ProductPicker({
   ...aria
 }: ProductPickerProps) {
   const t = useT()
+  const f = useFormat()
   const autoId = useId()
   const inputId = id ?? autoId
   const listId = `${inputId}-list`
@@ -829,6 +834,7 @@ export function ProductPicker({
                 >
                   <span>
                     <span className="code">{p.sku}</span> · {p.name}
+                    {showAvailable && <span className="mono"> ({f.number(p.qtyAvailable ?? 0, { maximumFractionDigits: 3 })})</span>}
                   </span>
                   {!p.isOwn && p.ownerName && <Chip>{p.ownerName}</Chip>}
                   {p.isActive === false && <Chip tone="fail">{t('ui.productPicker.inactive')}</Chip>}
@@ -914,6 +920,8 @@ export interface ProductPickerInputProps {
   warehousePublicId?: string | null
   onlyAvailable?: boolean
   onlyOnHand?: boolean
+  /** Muestra entre paréntesis lo disponible de cada producto en la lista. */
+  showAvailable?: boolean
   placeholder?: string
   disabled?: boolean
   /** Aviso con la fila elegida (p. ej. para condicionar lote/series al `trackingTypeCode`). */

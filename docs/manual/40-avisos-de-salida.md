@@ -121,3 +121,7 @@ En la web: **Recibo → pestaña «Avisos de salida»** (`/warehouse/receipts?ta
 
 ## En el aparato de almacén (Lote 146)
 Inicio muestra **Avisos de salida** cuando el aparato tiene avisos con algo reservado (se bajan al sincronizar; requiere `inventory.view` y el módulo de lotes y series). Escanee o escriba el número SAL-… (o toque uno de la lista), vaya a cada posición, lea la posición, confirme la cantidad y al terminar toque **Despachar**. Sirve sin señal: queda en la cola y se envía al volver; si el servidor lo rechaza (por ejemplo, la rotación obligatoria o menos existencia) muestra su mensaje exacto. Con «El despacho exige documento» activo, **Despacho** pregunta primero «¿Contra qué despachas?» y ofrece aviso de salida y/o orden de venta.
+
+## Editar los datos de un aviso solicitado y disponible en el selector (Lote 158)
+
+`PATCH /exit-notices/{publicId}` (`exitnotice.create`) cambia referencia, destino, fecha requerida y notas de un aviso **solicitado** (texto vacío las quita; null no cambia). Las cantidades se siguen cambiando por línea. Otro estatus: 422 «Solo se pueden modificar las líneas de un aviso de salida solicitado.». Al elegir producto en «Nuevo aviso de salida» el selector muestra entre paréntesis lo **disponible** de cada producto, para saber si lo pedido se reserva o queda pendiente.

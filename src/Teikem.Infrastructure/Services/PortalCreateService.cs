@@ -79,8 +79,19 @@ public sealed class PortalCreateService(TeikemDbContext db, ITenantContext tenan
         return ToArrival(await asns.CancelAsync(id, ct));
     }
 
+    /// <summary>Edita mi aviso de llegada mientras siga esperado y sin recibo abierto (almacén, referencia, fecha, líneas). Las mismas reglas del personal.</summary>
+    public async Task<PortalArrivalDto> UpdateArrivalAsync(int id, PortalArrivalRequest req, CancellationToken ct)
+    {
+        if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
+        var s = await RequireAsync(c => c.PortalCanCreateArrivals, PortalCreateRules.ArrivalsOff, ct);
+        var current = await asns.GetAsync(id, InventoryScope.Any, ct);
+        if (current.ClientPublicId != s.ClientPublicId) throw new NotFoundException(AsnService.AsnWhat);
+        var lines = req.Lines?.Select(l => new AsnLineRequest(l.ProductPublicId, l.ExpectedQty, l.LotNumber, l.UnitPrice, ExpiryDate: l.ExpiryDate)).ToList();
+        return ToArrival(await asns.UpdateAsync(id, new AsnUpdateRequest(req.WarehousePublicId, req.Reference, req.ExpectedDate, lines), ct));
+    }
+
     private static PortalArrivalDto ToArrival(AsnDto a) => new(a.Id, a.WarehousePublicId, a.WarehouseCode, a.Reference, a.ExpectedDate, a.StatusCode, a.Status,
-        a.StatusCode == AsnStatuses.Expected && a.ReceiptPublicId is null && a.IsActive, a.Lines.Select(l => new PortalArrivalLineDto(l.Sku, l.ProductName, l.ExpectedQty, l.LotNumber, l.UnitPrice, l.ExpiryDate)).ToList());
+        a.StatusCode == AsnStatuses.Expected && a.ReceiptPublicId is null && a.IsActive, a.Lines.Select(l => new PortalArrivalLineDto(l.Sku, l.ProductName, l.ExpectedQty, l.LotNumber, l.UnitPrice, l.ExpiryDate, l.ProductPublicId, l.TrackingType)).ToList());
 
     // ================================================================ avisos de salida
 
@@ -119,6 +130,26 @@ public sealed class PortalCreateService(TeikemDbContext db, ITenantContext tenan
         return ToExit(await exits.CancelAsync(publicId, comment, ct));
     }
 
+    /// <summary>Edita los datos de mi aviso de salida mientras siga solicitado.</summary>
+    public async Task<PortalExitDto> UpdateExitAsync(Guid publicId, PortalExitHeaderRequest req, CancellationToken ct)
+    {
+        if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
+        var s = await RequireAsync(c => c.PortalCanCreateExits, PortalCreateRules.ExitsOff, ct);
+        var notice = await exits.GetAsync(publicId, ct);
+        if (notice.ClientPublicId != s.ClientPublicId) throw new NotFoundException("Aviso de salida");
+        return ToExit(await exits.UpdateHeaderAsync(publicId, new ExitNoticeHeaderRequest(req.Reference, req.Destination, req.RequiredDate, req.Notes), ct));
+    }
+
+    /// <summary>Cambia la cantidad pedida de una línea de mi aviso solicitado (se reajusta la reserva).</summary>
+    public async Task<PortalExitDto> ModifyExitLineAsync(Guid publicId, int lineId, PortalExitLineModifyRequest req, CancellationToken ct)
+    {
+        if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
+        var s = await RequireAsync(c => c.PortalCanCreateExits, PortalCreateRules.ExitsOff, ct);
+        var notice = await exits.GetAsync(publicId, ct);
+        if (notice.ClientPublicId != s.ClientPublicId) throw new NotFoundException("Aviso de salida");
+        return ToExit(await exits.ModifyLineAsync(publicId, lineId, new ExitNoticeLineModifyRequest(req.Quantity), ct));
+    }
+
     private static PortalExitDto ToExit(ExitNoticeDto n) => new(n.PublicId, n.Number, n.StatusCode, n.Status, n.WarehousePublicId, n.WarehouseCode, n.Reference, n.Destination, n.RequestedDate, n.RequiredDate,
-        n.Notes, n.HasBackorder, n.CanCancel, n.Lines.Select(l => new PortalExitLineDto(l.Sku, l.ProductName, l.LotNumber, l.QtyOrdered, l.QtyReserved, l.QtyBackordered, l.QtyShipped)).ToList());
+        n.Notes, n.HasBackorder, n.CanCancel, n.Lines.Select(l => new PortalExitLineDto(l.Id, l.Sku, l.ProductName, l.LotNumber, l.QtyOrdered, l.QtyReserved, l.QtyBackordered, l.QtyShipped)).ToList());
 }

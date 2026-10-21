@@ -31,6 +31,9 @@ public sealed class PortalCreateController(PortalCreateService create) : Control
     [HttpPost("arrivals"), RequireModule(ModuleKeys.WmsLotSerial)]
     public Task<PortalArrivalDto> CreateArrival([FromBody] PortalArrivalRequest req, CancellationToken ct) => create.CreateArrivalAsync(req, ct);
 
+    [HttpPatch("arrivals/{id:int}"), RequireModule(ModuleKeys.WmsLotSerial)]
+    public Task<PortalArrivalDto> UpdateArrival(int id, [FromBody] PortalArrivalRequest req, CancellationToken ct) => create.UpdateArrivalAsync(id, req, ct);
+
     [HttpPost("arrivals/{id:int}/cancel"), RequireModule(ModuleKeys.WmsLotSerial)]
     public Task<PortalArrivalDto> CancelArrival(int id, CancellationToken ct) => create.CancelArrivalAsync(id, ct);
 
@@ -42,6 +45,12 @@ public sealed class PortalCreateController(PortalCreateService create) : Control
 
     [HttpPost("exits"), RequireModule(ModuleKeys.WmsLotSerial)]
     public Task<PortalExitDto> CreateExit([FromBody] PortalExitRequest req, CancellationToken ct) => create.CreateExitAsync(req, ct);
+
+    [HttpPatch("exits/{publicId:guid}"), RequireModule(ModuleKeys.WmsLotSerial)]
+    public Task<PortalExitDto> UpdateExit(Guid publicId, [FromBody] PortalExitHeaderRequest req, CancellationToken ct) => create.UpdateExitAsync(publicId, req, ct);
+
+    [HttpPatch("exits/{publicId:guid}/lines/{lineId:int}"), RequireModule(ModuleKeys.WmsLotSerial)]
+    public Task<PortalExitDto> ModifyExitLine(Guid publicId, int lineId, [FromBody] PortalExitLineModifyRequest req, CancellationToken ct) => create.ModifyExitLineAsync(publicId, lineId, req, ct);
 
     [HttpPost("exits/{publicId:guid}/cancel"), RequireModule(ModuleKeys.WmsLotSerial)]
     public Task<PortalExitDto> CancelExit(Guid publicId, [FromBody] PortalCancelRequest? req, CancellationToken ct) => create.CancelExitAsync(publicId, req?.Comment, ct);

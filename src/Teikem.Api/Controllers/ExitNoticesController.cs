@@ -30,6 +30,10 @@ public sealed class ExitNoticesController(ExitNoticeService notices) : Controlle
     [HttpPost, RequirePermission(PermissionCatalog.ExitNoticeCreate)]
     public Task<ExitNoticeDto> Create([FromBody] ExitNoticeRequest req, CancellationToken ct) => notices.CreateAsync(req, ct);
 
+    /// <summary>Edita referencia, destino, fecha requerida y/o notas de un aviso solicitado (texto vacío lo quita).</summary>
+    [HttpPatch("{publicId:guid}"), RequirePermission(PermissionCatalog.ExitNoticeCreate)]
+    public Task<ExitNoticeDto> UpdateHeader(Guid publicId, [FromBody] ExitNoticeHeaderRequest req, CancellationToken ct) => notices.UpdateHeaderAsync(publicId, req, ct);
+
     /// <summary>Cambia la cantidad pedida de una línea de un aviso solicitado (reajusta la reserva).</summary>
     [HttpPatch("{publicId:guid}/lines/{lineId:int}"), RequirePermission(PermissionCatalog.ExitNoticeCreate)]
     public Task<ExitNoticeDto> ModifyLine(Guid publicId, int lineId, [FromBody] ExitNoticeLineModifyRequest req, CancellationToken ct) => notices.ModifyLineAsync(publicId, lineId, req, ct);
