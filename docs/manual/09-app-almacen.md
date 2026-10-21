@@ -1410,3 +1410,15 @@ Asignar se hace en la web: Recibo → Avisos de llegada / Avisos de salida, bot�
 ## Órdenes de compra y de venta asignadas (Lote 195, 2026-10-21)
 
 La orden de compra (a quien la va a **recibir**) y la orden de venta (a quien la va a **despachar**) también se asignan a una persona, igual que los avisos. En **Mis tareas** salen «Órdenes de compra por recibir» y «Órdenes de venta por despachar»: tocar una abre Recibir o Despacho con ese documento. Lo sin asignar sale aparte con **Tomar** (solo con el permiso `warehouse.pick.any`). Sin ese permiso, **Despacho → Órdenes de venta** muestra solo las asignadas a la persona (las órdenes de compra siguen visibles en Recibir, como los avisos de llegada: la asignación ordena la recepción, no la bloquea).
+
+## Recibir y despachar varios documentos; tomar = asignarse (Lote 198, 2026-10-21)
+
+**Recibir.** La lista «¿Contra qué recibo?» muestra primero lo **asignado a usted**, luego lo **sin asignar** y al final lo asignado a otra persona (atenuado y sin poder abrirse). El botón **«Seleccionar varios»** permite marcar varios avisos u órdenes y tocar **«Recibir N seleccionados»**: se reciben uno tras otro. Si son **dos o más del mismo dueño** (mismo cliente, o todo lo propio) se abre sola una carga y el servidor los reúne en una **recepción maestra**; si son de dueños distintos quedan recibos separados. Ya no existe «Recibir juntos (abrir carga)»: la carga es automática. Un documento de otro dueño que los de la tanda se rechaza con «Ese documento es de otro dueño que los de esta tanda…». Cancelar un recibo cancela el resto de la tanda.
+
+**Despacho.** Inicio ya no tiene entradas sueltas de «Órdenes de venta» y «Avisos de salida»: **Despacho** abre una sola lista con avisos y órdenes, lo suyo primero. **«Seleccionar varios»** (antes «Recolectar juntos») arma una recolección maestra (mismo cliente, mínimo 2). Una orden de venta tocada sola abre su pantalla (kits, consignatario, entrega). «Despachar sin documento» lleva al despacho manual.
+
+**Tomar = asignarse.** Empezar a recibir, despachar o acomodar algo **sin asignar** lo deja a su nombre (con señal; sin señal no estorba). En la bitácora del documento queda el porqué (`$reason`), p. ej. «Autoasignado al empezar a recibirlo desde la app móvil.». Si otra persona ya lo tenía, no se le quita (409, «Ese documento ya está asignado a otra persona…»).
+
+**Mis tareas.** Al abrirla con señal vuelve a bajar los documentos del servidor, el título lleva la cuenta y el número de Inicio incluye los acomodos asignados. **Acomodar** muestra cada tarea como «Asignada a ti», «Sin asignar» o «Asignada a otra persona».
+
+**Web.** El icono Asignar/Tomar de un aviso de llegada también aparece cuando ya tiene un recibo parcial.

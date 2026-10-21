@@ -10167,3 +10167,12 @@ La lista desplegable de eventos sale agrupada por categoría: **Almacén** (avis
 
 **¿Cómo aviso del mantenimiento de los vehículos por vencer?** (Lote 197)
 Cree una regla con el evento **«Mantenimiento próximo»** (y otra con **«Mantenimiento vencido»**), grupo Mantenimiento: el asunto y el texto ya vienen escritos por omisión (con el vehículo, el programa y lo que falta); solo elija a quién se le avisa (rol, persona o correo) y por qué canal. El trabajo diario de la flota los publica; no se repiten mientras el conjunto sea el mismo en la misma semana.
+
+**¿Cómo recibo varios avisos u órdenes seguidos en el aparato?** (Lote 198)
+En Recibir toque «Seleccionar varios», marque los documentos y «Recibir N seleccionados». Del mismo dueño se reúnen solos en una recepción maestra; de dueños distintos quedan recibos separados. Mensaje: «Ese documento es de otro dueño que los de esta tanda. Termine los de la tanda para recibirlo.» (termine o cancele la tanda).
+
+**¿Dónde quedó «Recibir juntos» / «Recolectar juntos» / «Órdenes de venta» / «Avisos de salida» en el aparato?** (Lote 198)
+Recibir y Despacho usan «Seleccionar varios». Despacho une avisos y órdenes en una lista.
+
+**Me asigné un documento sin querer, ¿cómo se ve por qué?** (Lote 198)
+En la bitácora del documento (Auditoría) el cambio de «AssignedToUserId» trae `$reason` («Autoasignado al … desde la app móvil/la web») y el usuario. Un supervisor lo reasigna con Asignar.
