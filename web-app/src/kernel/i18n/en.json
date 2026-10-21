@@ -4,6 +4,7 @@
     "cancel": "Cancel",
     "retry": "Retry",
     "copy": "Copy",
+    "close": "Close",
     "done": "Done"
   },
   "environment": {
@@ -1047,6 +1048,16 @@
       "phoneInvalid": "Invalid phone."
     },
     "import": {
+      "multiLine": "One consignee over several rows",
+      "multiLineHelp": "Check it if each consignee takes several rows of the file (for example, one per product or invoice).",
+      "rulesTitle": "Row rules",
+      "rulesHelp": "Each rule says which column tells whether a row is a description or an invoice row.",
+      "ruleKind": "Type of rule {n}",
+      "ruleColumn": "Column of rule {n}",
+      "ruleOperator": "Condition of rule {n}",
+      "ruleValue": "Value of rule {n}",
+      "removeRuleN": "Remove rule {n}",
+      "addRule": "Add rule",
       "title": "Import consignees (CSV or Excel)",
       "sub": "Upload a CSV or Excel (.xlsx) file and check how it is read before importing: the server validates every row and creates nothing until you confirm.",
       "tplLabel": "Template",
@@ -5047,6 +5058,7 @@
           "category": "Category"
         },
         "filters": {
+        "zone": "Zone",
           "warehouse": "Warehouse",
           "product": "Product",
           "category": "Category",
@@ -5243,6 +5255,7 @@
         "refTitle": "Movements of a source document",
         "refRemove": "Remove the document filter",
         "names": {
+          "zones": "Zone",
           "range": "Date",
           "types": "Type",
           "warehouses": "Warehouse",
@@ -5709,6 +5722,17 @@
         "referenceMax": "The reference allows at most 80 characters.",
         "expectedQtyNegative": "The expected quantity cannot be negative."
       },
+      "bulk": {
+        "assign": "Assign all",
+        "start": "Start all",
+        "complete": "Complete all",
+        "started": "{count} tasks started.",
+        "completed": "{count} tasks completed at their suggested bin.",
+        "partial": "{failed} of {total} tasks failed: {error}",
+        "completeTitle": "Complete all tasks of the receipt",
+        "completeBody": "{count} tasks will be completed at each one's suggested bin. If one needs splitting across bins or serial numbers, complete it separately."
+      },
+
       "detail": {
         "expected": "Expected",
         "received": "Received",
@@ -5900,6 +5924,8 @@
       }
     },
     "exitNotices": {
+      "filterSearch": "Search (number, reference, destination, product)",
+      "filterDates": "Notice date",
       "title": "Exit notices",
       "title1": "Exit notice {number}",
       "new": "New exit notice",
@@ -5988,6 +6014,8 @@
       "detailHelp": "Reserved = already set aside for this notice. Pending = there is not enough stock: it is reserved automatically when stock arrives, or with \"Reserve the backorder\".",
       "dispatch": "Dispatch",
       "dispatchTitle": "Dispatch against {number}",
+      "dispatchQty": "Dispatch",
+      "dispatchQtyOf": "Quantity to dispatch of {sku}",
       "dispatchHelp": "Enter how much leaves from each line (all the reserved quantity by default; 0 = that line does not leave). It leaves from the reserved positions and lots, which already follow the rotation.",
       "dispatchReserved": "reserved {qty}",
       "dispatchNote": "Note (optional)",
@@ -6031,6 +6059,7 @@
         "tooManyLines": "An advance shipping notice allows at most 200 lines."
       },
       "filters": {
+        "status": "Status",
         "warehouse": "Warehouse",
         "anyWarehouse": "All warehouses",
         "client": "Owner client",

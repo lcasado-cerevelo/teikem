@@ -4,6 +4,7 @@
     "cancel": "Cancelar",
     "retry": "Reintentar",
     "copy": "Copiar",
+    "close": "Cerrar",
     "done": "Listo"
   },
   "environment": {
@@ -1047,6 +1048,16 @@
       "phoneInvalid": "Teléfono inválido."
     },
     "import": {
+      "multiLine": "Un consignatario en varias filas",
+      "multiLineHelp": "Márquelo si cada consignatario ocupa varias filas del archivo (por ejemplo, una por producto o por factura).",
+      "rulesTitle": "Reglas de las filas",
+      "rulesHelp": "Cada regla dice qué columna indica si una fila es de descripción o de factura.",
+      "ruleKind": "Tipo de la regla {n}",
+      "ruleColumn": "Columna de la regla {n}",
+      "ruleOperator": "Condición de la regla {n}",
+      "ruleValue": "Valor de la regla {n}",
+      "removeRuleN": "Quitar la regla {n}",
+      "addRule": "Agregar regla",
       "title": "Importar consignatarios (CSV o Excel)",
       "sub": "Sube un archivo CSV o Excel (.xlsx) y revisa cómo se lee antes de importar: el servidor valida cada fila y no crea nada hasta que confirmes.",
       "tplLabel": "Plantilla",
@@ -5047,6 +5058,7 @@
           "category": "Categoría"
         },
         "filters": {
+        "zone": "Zona",
           "warehouse": "Almacén",
           "product": "Producto",
           "category": "Categoría",
@@ -5243,6 +5255,7 @@
         "refTitle": "Movimientos de un documento de origen",
         "refRemove": "Quitar el filtro de documento",
         "names": {
+          "zones": "Zona",
           "range": "Fecha",
           "types": "Tipo",
           "warehouses": "Almacén",
@@ -5709,6 +5722,17 @@
         "referenceMax": "La referencia admite como máximo 80 caracteres.",
         "expectedQtyNegative": "La cantidad esperada no puede ser negativa."
       },
+      "bulk": {
+        "assign": "Asignar todas",
+        "start": "Iniciar todas",
+        "complete": "Completar todas",
+        "started": "Se iniciaron {count} tareas.",
+        "completed": "Se completaron {count} tareas con su posición sugerida.",
+        "partial": "{failed} de {total} tareas no se pudieron: {error}",
+        "completeTitle": "Completar todas las tareas del recibo",
+        "completeBody": "Se completarán {count} tareas con la posición sugerida de cada una. Si alguna necesita repartirse en varias posiciones o llevar series, complétela aparte."
+      },
+
       "detail": {
         "expected": "Esperado",
         "received": "Recibido",
@@ -5900,6 +5924,8 @@
       }
     },
     "exitNotices": {
+      "filterSearch": "Buscar (número, referencia, destino, producto)",
+      "filterDates": "Fecha del aviso",
       "title": "Avisos de salida",
       "title1": "Aviso de salida {number}",
       "new": "Nuevo aviso de salida",
@@ -5988,6 +6014,8 @@
       "detailHelp": "Reservado = ya apartado para este aviso. Pendiente = falta existencia: se reserva solo cuando entre mercancía, o con «Reservar el pendiente».",
       "dispatch": "Despachar",
       "dispatchTitle": "Despachar contra {number}",
+      "dispatchQty": "Despachar",
+      "dispatchQtyOf": "Cantidad a despachar de {sku}",
       "dispatchHelp": "Escriba cuánto sale de cada línea (por omisión todo lo reservado; 0 = esa línea no sale). Sale de las posiciones y lotes reservados, que ya siguen la rotación.",
       "dispatchReserved": "reservado {qty}",
       "dispatchNote": "Nota (opcional)",
@@ -6031,6 +6059,7 @@
         "tooManyLines": "El aviso de llegada admite como máximo 200 líneas."
       },
       "filters": {
+        "status": "Estatus",
         "warehouse": "Almacén",
         "anyWarehouse": "Todos los almacenes",
         "client": "Cliente dueño",

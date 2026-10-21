@@ -259,5 +259,5 @@
 .set-brand-sample-bar { color: #fff; font-weight: 700; font-size: 12px; letter-spacing: .04em; padding: 8px 12px; }
 .set-brand-sample-body { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px; background: var(--panel); }
 
-/* Operación → rotación: Entradas a la izquierda, Salidas a la derecha; los títulos alinean arriba */
-.set-inout>div>.set-h3:first-child{margin-top:0}
+/* Operación → rotación: dos columnas parejas; cada fila alinea sus campos por arriba aunque la ayuda tenga distinto largo */
+.set-even{align-items:start}

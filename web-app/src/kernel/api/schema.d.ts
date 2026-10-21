@@ -9406,6 +9406,7 @@ export interface paths {
                     includeSystem?: boolean;
                     fromBinIds?: number[];
                     toBinIds?: number[];
+                    zoneIds?: number[];
                 };
                 header?: never;
                 path?: never;
@@ -9469,6 +9470,7 @@ export interface paths {
                     includeSystem?: boolean;
                     fromBinIds?: number[];
                     toBinIds?: number[];
+                    zoneIds?: number[];
                 };
                 header?: never;
                 path?: never;

@@ -47,33 +47,56 @@ export function ExitNoticeDispatchModal({ notice, onClose }: { notice: ExitNotic
       }
     >
       <p className="help">{t('warehouse.exitNotices.dispatchHelp')}</p>
-      {lines.map((l) => {
-        const issue = issues[l.id!]
-        return (
-          <div key={l.id} className="field">
-            <label htmlFor={`dq-${l.id}`}>
-              <b>{l.sku}</b> · {l.productName}
-              {l.lotNumber ? ` · ${l.lotNumber}` : ''} — {t('warehouse.exitNotices.dispatchReserved', { qty: f.number(l.qtyReserved ?? 0) })}
-            </label>
-            <input
-              id={`dq-${l.id}`}
-              type="number"
-              min={0}
-              step="0.001"
-              inputMode="decimal"
-              value={qtys[l.id!] ?? ''}
-              aria-invalid={issue ? true : undefined}
-              onChange={(e) => setQtys((s) => ({ ...s, [l.id!]: e.target.value === '' ? null : Number(e.target.value) }))}
-            />
-            {issue && (
-              <p className="ferr" role="alert">
-                {t(issue)}
-              </p>
-            )}
-          </div>
-        )
-      })}
-      <div className="field">
+      <div className="dt-scroll">
+        <table className="lst">
+          <thead>
+            <tr>
+              <th>{t('warehouse.exitNotices.col.product')}</th>
+              <th>{t('warehouse.exitNotices.col.lot')}</th>
+              <th style={{ textAlign: 'right' }}>{t('warehouse.exitNotices.col.reserved')}</th>
+              <th style={{ textAlign: 'right' }}>{t('warehouse.exitNotices.dispatchQty')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lines.map((l) => {
+              const issue = issues[l.id!]
+              return (
+                <tr key={l.id}>
+                  <td>
+                    <b className="mono">{l.sku}</b>
+                    <div className="sub">{l.productName}</div>
+                  </td>
+                  <td>{l.lotNumber ?? '—'}</td>
+                  <td className="mono" style={{ textAlign: 'right' }}>
+                    {f.number(l.qtyReserved ?? 0)}
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <input
+                      id={`dq-${l.id}`}
+                      className="mono"
+                      style={{ width: 110, textAlign: 'right' }}
+                      type="number"
+                      min={0}
+                      step="0.001"
+                      inputMode="decimal"
+                      aria-label={t('warehouse.exitNotices.dispatchQtyOf', { sku: l.sku ?? '' })}
+                      value={qtys[l.id!] ?? ''}
+                      aria-invalid={issue ? true : undefined}
+                      onChange={(e) => setQtys((s) => ({ ...s, [l.id!]: e.target.value === '' ? null : Number(e.target.value) }))}
+                    />
+                    {issue && (
+                      <p className="ferr" role="alert" style={{ margin: '4px 0 0' }}>
+                        {t(issue)}
+                      </p>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="f" style={{ marginTop: 12 }}>
         <label htmlFor="dispatch-note">{t('warehouse.exitNotices.dispatchNote')}</label>
         <input id="dispatch-note" type="text" maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} />
       </div>

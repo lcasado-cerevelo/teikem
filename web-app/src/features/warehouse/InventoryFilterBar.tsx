@@ -5,8 +5,10 @@
 // "Incluir en cero" y "Solo con disponible" en Saldos y Estatus en Conciliación. Un filtro que la pestaña no aplica
 // (`TAB_FILTERS`) se atenúa y, si tiene valor, se nombra en la ayuda bajo la barra. El documento de origen que llega en la
 // URL (`refEntity`/`refId`) se muestra como píldora que se puede quitar.
+import { useQueries } from '@tanstack/react-query'
 import { useMemo, useRef, type ReactNode } from 'react'
 import { useLookups, useStatuses } from '../../kernel/catalogs'
+import { api, unwrap } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n'
 import { Chip, DateRangeFilter, Filters, FilterScope, SearchSelect, SelectFilter, useRegisterFilter } from '../../kernel/ui'
 import { IconClose } from '../../kernel/ui/icons'
@@ -50,6 +52,22 @@ export function InventoryFilterBar({ tab, value, onChange, shownProducts }: Inve
   const { data: statuses = [] } = useStatuses('InventoryDiscrepancyStatus')
   const statusOptions = useMemo(() => statuses.map((s) => ({ value: s.code, label: s.label })), [statuses])
 
+  // zonas de los almacenes elegidos (o de todos si no hay ninguno elegido): «ZONA · ALMACÉN»
+  const zoneWarehouses = value.warehousePublicIds.length > 0 ? warehouses.filter((w) => value.warehousePublicIds.includes(w.publicId ?? '')) : warehouses
+  const zoneQueries = useQueries({
+    queries: zoneWarehouses.map((w) => ({
+      queryKey: ['/api/v1/warehouses/{publicId}/zones', w.publicId, 'filter'],
+      queryFn: () => unwrap(api.GET('/api/v1/warehouses/{publicId}/zones', { params: { path: { publicId: w.publicId ?? '' }, query: { includeInactive: true } } })),
+      meta: { handleAccessDenied: false },
+      staleTime: 60_000,
+    })),
+  })
+  const zoneOptions = useMemo(
+    () => zoneQueries.flatMap((q, i) => (q.data ?? []).map((z) => ({ value: String(z.id), label: `${z.code ?? z.name ?? z.id} · ${zoneWarehouses[i]?.code ?? ''}` }))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [zoneQueries.map((q) => q.dataUpdatedAt).join('|'), zoneWarehouses.length],
+  )
+
   const unused = inactiveFilters(tab, value)
   /** Envuelve un filtro que la pestaña no aplica (atenuado; sigue editable porque el estado es compartido). Sin valor, en el
    *  celular se oculta (`.f-na.empty`) para no alargar la barra. No va en la línea de filtros de las exportaciones
@@ -70,6 +88,7 @@ export function InventoryFilterBar({ tab, value, onChange, shownProducts }: Inve
   return (
     <>
       <Filters
+        className="balanced"
         label={t(`${F}.label`)}
         onClear={() => onChange({ ...EMPTY_INVENTORY_FILTERS, discrepancyStatus: [...DEFAULT_DISCREPANCY_STATUS] })}
       >
@@ -84,6 +103,7 @@ export function InventoryFilterBar({ tab, value, onChange, shownProducts }: Inve
             onChange={(warehousePublicIds) => onChange({ warehousePublicIds })}
           />,
         )}
+        {wrap('zones', <SearchSelect label={t(`${F}.zone`)} options={zoneOptions} value={value.zoneIds} onChange={(zoneIds) => onChange({ zoneIds })} />)}
         {wrap(
           'bins',
           <BinSearchSelect

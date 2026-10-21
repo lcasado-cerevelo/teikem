@@ -7,7 +7,7 @@
 import { useId, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Can } from '../../kernel/access'
-import { StatusChip } from '../../kernel/catalogs'
+import { StatusChip, useStatuses } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
 import {
   ClientPicker,
@@ -18,6 +18,7 @@ import {
   Filters,
   IconCheckin,
   Panel,
+  SearchSelect,
   toast,
   type DataColumn,
   type DateRange,
@@ -40,6 +41,9 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
   const [warehousePublicId, setWarehousePublicId] = useState<string | null>(null)
   const [clientPublicId, setClientPublicId] = useState<string | null>(null)
   const [reference, setReference] = useState('')
+  const [status, setStatus] = useState<string[]>([])
+  const statuses = useStatuses('AsnStatus')
+  const statusOptions = useMemo(() => (statuses.data ?? []).map((s) => ({ value: s.code, label: s.label })), [statuses.data])
   const [expected, setExpected] = useState<DateRange>(EMPTY_RANGE)
   const [creating, setCreating] = useState(false)
   const [toCancel, setToCancel] = useState<AsnDto | null>(null)
@@ -52,10 +56,11 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
       warehousePublicId: warehousePublicId ?? undefined,
       clientPublicId: clientPublicId ?? undefined,
       reference: ref || undefined,
+      status: status.length ? status : undefined,
       expectedFrom: expected.from || undefined,
       expectedTo: expected.to || undefined,
     }),
-    [warehousePublicId, clientPublicId, ref, expected],
+    [warehousePublicId, clientPublicId, ref, status, expected],
   )
   const { data, isLoading, error } = useAsns(query)
   const rows = useMemo(() => data ?? [], [data])
@@ -143,6 +148,7 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
           setWarehousePublicId(null)
           setClientPublicId(null)
           setReference('')
+          setStatus([])
           setExpected(EMPTY_RANGE)
         }}
       >
@@ -167,6 +173,7 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
             filterLabel={t('warehouse.asns.filters.client')}
           />
         </div>
+        <SearchSelect label={t('warehouse.asns.filters.status')} options={statusOptions} value={status} onChange={setStatus} />
         <TextFilter label={t('warehouse.asns.filters.reference')} value={reference} onChange={setReference} />
         <DateRangeFilter label={t('warehouse.asns.filters.expected')} value={expected} onChange={setExpected} mode="future" />
       </Filters>

@@ -7,12 +7,13 @@ import { applyProblemDetails } from '../../kernel/api/problem'
 import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { Chip, DataTable, Panel, QBox, Spinner, toast, type DataColumn } from '../../kernel/ui'
+import { useStatuses } from '../../kernel/catalogs'
+import { ClientPicker, Chip, DataTable, DateRangeFilter, EMPTY_RANGE, Filters, Panel, SearchSelect, Spinner, toast, type DataColumn, type DateRange } from '../../kernel/ui'
 import { IconCheckin } from '../../kernel/ui'
+import { TextFilter } from './filterControls'
 import { ExitNoticeCreateModal } from './ExitNoticeCreateModal'
 import { ExitNoticeModal } from './ExitNoticeModal'
 import { exitNoticePageReader, useExitNoticeMutations, useExitNotices, type ExitNoticeListItemDto } from './exitNoticeApi'
-import { EXIT_NOTICE_STATUSES } from './exitNoticeRules'
 
 function useDebounced(value: string, ms = 300) {
   const [v, setV] = useState(value)
@@ -26,15 +27,22 @@ function useDebounced(value: string, ms = 300) {
 export function ExitNoticesTab({ initialOpen }: { initialOpen?: string | null }) {
   const t = useT()
   const f = useFormat()
-  const [status, setStatus] = useState('')
+  const [status, setStatus] = useState<string[]>([])
+  const [clientPublicId, setClientPublicId] = useState<string | null>(null)
+  const [dates, setDates] = useState<DateRange>(EMPTY_RANGE)
   const [q, setQ] = useState('')
+  const statuses = useStatuses('ExitNoticeStatus')
+  const statusOptions = useMemo(() => (statuses.data ?? []).map((s) => ({ value: s.code, label: s.label })), [statuses.data])
   const [pendingOnly, setPendingOnly] = useState(false)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
   const [creating, setCreating] = useState(false)
   const [open, setOpen] = useState<string | null>(initialOpen ?? null)
   const search = useDebounced(q.trim())
-  const filter = useMemo(() => ({ status, q: search, backorderOnly: pendingOnly }), [status, search, pendingOnly])
+  const filter = useMemo(
+    () => ({ status: status.join(','), q: search, backorderOnly: pendingOnly, clientPublicId, from: dates.from || undefined, to: dates.to || undefined }),
+    [status, search, pendingOnly, clientPublicId, dates],
+  )
   const list = useExitNotices(filter, (page - 1) * pageSize, pageSize)
   const { fulfillAll } = useExitNoticeMutations()
 
@@ -75,6 +83,27 @@ export function ExitNoticesTab({ initialOpen }: { initialOpen?: string | null })
 
   return (
     <>
+      <Filters
+        onClear={() => {
+          setStatus([])
+          setClientPublicId(null)
+          setDates(EMPTY_RANGE)
+          setQ('')
+          setPendingOnly(false)
+          setPage(1)
+        }}
+      >
+        <TextFilter label={t('warehouse.exitNotices.filterSearch')} value={q} onChange={(v) => (setQ(v), setPage(1))} />
+        <div className="f">
+          <label>{t('warehouse.asns.filters.client')}</label>
+          <ClientPicker value={clientPublicId} onChange={(v) => (setClientPublicId(v), setPage(1))} includeInactive placeholder={t('warehouse.asns.filters.anyClient')} filterLabel={t('warehouse.asns.filters.client')} />
+        </div>
+        <SearchSelect label={t('warehouse.exitNotices.filterStatus')} options={statusOptions} value={status} onChange={(v) => (setStatus(v), setPage(1))} />
+        <DateRangeFilter label={t('warehouse.exitNotices.filterDates')} value={dates} onChange={(v) => (setDates(v), setPage(1))} />
+        <label className="chk">
+          <input type="checkbox" checked={pendingOnly} onChange={(e) => (setPendingOnly(e.target.checked), setPage(1))} /> {t('warehouse.exitNotices.pendingOnly')}
+        </label>
+      </Filters>
       <Panel
         flush
         icon={<IconCheckin />}
@@ -92,20 +121,6 @@ export function ExitNoticesTab({ initialOpen }: { initialOpen?: string | null })
         }
       >
         <div className="pb">
-          <div className="qrow tax-filters">
-            <QBox value={q} onChange={(v) => (setQ(v), setPage(1))} placeholder={t('warehouse.exitNotices.search')} />
-            <select aria-label={t('warehouse.exitNotices.filterStatus')} value={status} onChange={(e) => (setStatus(e.target.value), setPage(1))}>
-              <option value="">{t('warehouse.exitNotices.allStatuses')}</option>
-              {EXIT_NOTICE_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {t(`warehouse.exitNotices.statuses.${s}`)}
-                </option>
-              ))}
-            </select>
-            <label className="chk">
-              <input type="checkbox" checked={pendingOnly} onChange={(e) => (setPendingOnly(e.target.checked), setPage(1))} /> {t('warehouse.exitNotices.pendingOnly')}
-            </label>
-          </div>
           {list.isError ? (
             <p className="ferr" role="alert">
               {applyProblemDetails(list.error).title}

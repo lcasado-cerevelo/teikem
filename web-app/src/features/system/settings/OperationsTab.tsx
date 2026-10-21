@@ -180,33 +180,27 @@ function RotationPanel({ settings, canEdit }: { settings: TenantSettingsDto; can
         }}
       >
         <fieldset className="set-fs" disabled={!canEdit}>
-          <div className="r2 set-inout">
-            <div>
-              <h3 className="set-h3">{t('system.settings.ops.inboundTitle')}</h3>
-              <Field name="receiptRequirement" label={t('system.settings.ops.receiptRequirementLabel')} help={t('system.settings.ops.receiptRequirementHelp')}>
-                <Select options={receiptOptions} />
-              </Field>
-            </div>
-            <div>
-              <h3 className="set-h3">{t('system.settings.ops.outboundTitle')}</h3>
-              <Field name="rotationMethod" label={t('system.settings.ops.rotationLabel')} help={t('system.settings.ops.rotationHelp')}>
-                <Select options={options} />
-              </Field>
-              <Field name="rotationMethodNoLot" label={t('system.settings.ops.rotationNoLotLabel')} help={t('system.settings.ops.rotationNoLotHelp')}>
-                <Select options={noLotOptions} />
-              </Field>
-              <Field name="rotationEnforcement" label={t('system.settings.ops.rotationEnforcementLabel')} help={t('system.settings.ops.rotationEnforcementHelp')}>
-                <Select options={enforcementOptions} />
-              </Field>
-              <Field name="dispatchRequirement" label={t('system.settings.ops.requirementLabel')} help={t('system.settings.ops.requirementHelp')}>
-                <Select options={requirementOptions} />
-              </Field>
-            </div>
+          {/* seis ajustes en dos columnas parejas (tres filas): cada fila alinea sus dos campos por arriba aunque el texto de ayuda tenga 2, 3 o 4 líneas */}
+          <div className="r2 set-even">
+            <Field name="receiptRequirement" label={t('system.settings.ops.receiptRequirementLabel')} help={t('system.settings.ops.receiptRequirementHelp')}>
+              <Select options={receiptOptions} />
+            </Field>
+            <Field name="dispatchRequirement" label={t('system.settings.ops.requirementLabel')} help={t('system.settings.ops.requirementHelp')}>
+              <Select options={requirementOptions} />
+            </Field>
+            <Field name="rotationMethod" label={t('system.settings.ops.rotationLabel')} help={t('system.settings.ops.rotationHelp')}>
+              <Select options={options} />
+            </Field>
+            <Field name="rotationMethodNoLot" label={t('system.settings.ops.rotationNoLotLabel')} help={t('system.settings.ops.rotationNoLotHelp')}>
+              <Select options={noLotOptions} />
+            </Field>
+            <Field name="rotationEnforcement" label={t('system.settings.ops.rotationEnforcementLabel')} help={t('system.settings.ops.rotationEnforcementHelp')}>
+              <Select options={enforcementOptions} />
+            </Field>
+            <Field name="valuationMethod" label={t('system.settings.ops.valuationLabel')} help={t('system.settings.ops.valuationHelp')}>
+              <Select options={valuationOptions} />
+            </Field>
           </div>
-          <h3 className="set-h3">{t('system.settings.ops.valuationTitle')}</h3>
-          <Field name="valuationMethod" label={t('system.settings.ops.valuationLabel')} help={t('system.settings.ops.valuationHelp')}>
-            <Select options={valuationOptions} />
-          </Field>
         </fieldset>
         {canEdit && (
           <div className="set-actions">

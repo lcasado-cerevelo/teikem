@@ -548,14 +548,12 @@ describe('Ajustes de la compañía', () => {
     expect(put()[0].body).toEqual({ rotationMethod: 'FEFO', rotationMethodNoLot: 'FIFO', rotationEnforcement: 'SUGGEST', dispatchRequirement: 'EXIT_NOTICE', valuationMethod: 'AVERAGE', receiptRequirement: 'FREE' })
   })
 
-  it('Operación → el recibo exige documento (Lote 149): libre por omisión, va antes que las salidas; guarda receiptRequirement', async () => {
+  it('Operación → el recibo exige documento (Lote 149): libre por omisión; guarda receiptRequirement', async () => {
     const user = userEvent.setup()
     wrap('/system/settings?tab=ops')
     const panel = (await screen.findByRole('heading', { name: 'Rotación del inventario' })).closest('.panel') as HTMLElement
     const select = within(panel).getByLabelText('El recibo exige documento')
     expect(select).toHaveValue('FREE')
-    const headings = within(panel).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)
-    expect(headings.indexOf('Entradas')).toBeLessThan(headings.indexOf('Salidas'))
     await user.selectOptions(select, 'PURCHASE_ORDER')
     await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
     await waitFor(() => expect(put()).toHaveLength(1))

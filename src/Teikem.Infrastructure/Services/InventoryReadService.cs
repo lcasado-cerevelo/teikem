@@ -297,6 +297,14 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
         if (q.WarehousePublicIds is { Length: > 0 })
             whIds = (await WarehouseIdsAsync(q.WarehousePublicIds, ct)).Select(i => (int?)i).ToList();
         if (q.BinIds is { Length: > 0 }) binIds = q.BinIds.Select(i => (int?)i).Distinct().ToList();
+        // zona (Lote 159): equivale a las posiciones de esas zonas (junto con posiciones elegidas, deben cumplir las dos cosas; una zona sin posiciones no da nada)
+        if (q.ZoneIds is { Length: > 0 })
+        {
+            var zoneIds = q.ZoneIds.Distinct().ToList();
+            var inZones = await db.Set<WarehouseBin>().AsNoTracking().Where(b => zoneIds.Contains(b.WarehouseZoneId)).Select(b => (int?)b.WarehouseBinId).ToListAsync(ct);
+            binIds = binIds is null ? inZones : binIds.Intersect(inZones).ToList();
+            if (binIds.Count == 0) binIds.Add(-1);
+        }
         Expression<Func<InventoryTransaction, bool>>? fromIn = null, toIn = null;
         if (whIds is not null && binIds is not null)
         {

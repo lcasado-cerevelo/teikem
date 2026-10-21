@@ -15,21 +15,35 @@ export type ExitNoticeDispatchRequest = Schemas['ExitNoticeDispatchRequest']
 
 export const exitNoticeKeys = {
   all: ['exit-notices'] as const,
-  list: (status: string, q: string, backorderOnly: boolean, skip: number, take: number) => ['exit-notices', 'list', status, q, backorderOnly, skip, take] as const,
+  list: (f: ListQuery, skip: number, take: number) => ['exit-notices', 'list', f, skip, take] as const,
   one: (id: string) => ['exit-notices', 'one', id] as const,
 }
 
-interface ListQuery {
+/** `status`: códigos separados por coma (selección múltiple). */
+export interface ListQuery {
   status: string
   q: string
   backorderOnly: boolean
+  clientPublicId?: string | null
+  from?: string
+  to?: string
 }
+
+const queryOf = (f: ListQuery, skip: number, take: number) => ({
+  status: f.status || undefined,
+  clientPublicId: f.clientPublicId || undefined,
+  q: f.q || undefined,
+  backorderOnly: f.backorderOnly || undefined,
+  from: f.from || undefined,
+  to: f.to || undefined,
+  skip,
+  take,
+})
 
 export function useExitNotices(f: ListQuery, skip: number, take: number) {
   return useQuery({
-    queryKey: exitNoticeKeys.list(f.status, f.q, f.backorderOnly, skip, take),
-    queryFn: () =>
-      unwrap(api.GET('/api/v1/exit-notices', { params: { query: { status: f.status || undefined, q: f.q || undefined, backorderOnly: f.backorderOnly || undefined, skip, take } } })),
+    queryKey: exitNoticeKeys.list(f, skip, take),
+    queryFn: () => unwrap(api.GET('/api/v1/exit-notices', { params: { query: queryOf(f, skip, take) } })),
     placeholderData: keepPreviousData,
   })
 }
@@ -37,7 +51,7 @@ export function useExitNotices(f: ListQuery, skip: number, take: number) {
 /** Todas las páginas del filtro actual (la exportación de la tabla). */
 export function exitNoticePageReader(f: ListQuery) {
   return (skip: number, take: number) =>
-    unwrap(api.GET('/api/v1/exit-notices', { params: { query: { status: f.status || undefined, q: f.q || undefined, backorderOnly: f.backorderOnly || undefined, skip, take } } }))
+    unwrap(api.GET('/api/v1/exit-notices', { params: { query: queryOf(f, skip, take) } }))
 }
 
 export function useExitNotice(publicId: string | null) {

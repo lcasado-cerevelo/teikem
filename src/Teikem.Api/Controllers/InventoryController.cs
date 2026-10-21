@@ -96,12 +96,12 @@ public sealed class InventoryController(InventoryReadService reads, InventoryAdj
         [FromQuery] Guid[]? ownerClientPublicIds = null, [FromQuery] bool includeOwn = false, [FromQuery] string[]? reasons = null,
         [FromQuery] string? direction = null, [FromQuery] Guid[]? fromWarehousePublicIds = null, [FromQuery] Guid[]? toWarehousePublicIds = null,
         [FromQuery] bool manualOnly = false, [FromQuery] int[]? userIds = null, [FromQuery] bool includeSystem = false,
-        [FromQuery] int[]? fromBinIds = null, [FromQuery] int[]? toBinIds = null)
+        [FromQuery] int[]? fromBinIds = null, [FromQuery] int[]? toBinIds = null, [FromQuery] int[]? zoneIds = null)
         => reads.KardexAsync(new KardexQuery(from, to, NullIfEmpty(types), NullIfEmpty(warehousePublicIds), NullIfEmpty(binIds),
             NullIfEmpty(productPublicIds), NullIfEmpty(categoryIds), lotNumber, serialNumber, refEntity, refId, search, skip, take,
             NullIfEmpty(brands), name, NullIfEmpty(ownerClientPublicIds), includeOwn, NullIfEmpty(reasons), direction,
             NullIfEmpty(fromWarehousePublicIds), NullIfEmpty(toWarehousePublicIds), manualOnly, NullIfEmpty(userIds), includeSystem,
-            NullIfEmpty(fromBinIds), NullIfEmpty(toBinIds)), InventoryScope.Any, ct);
+            NullIfEmpty(fromBinIds), NullIfEmpty(toBinIds), NullIfEmpty(zoneIds)), InventoryScope.Any, ct);
 
     /// <summary>
     /// Lote 14 (D13) — resumen del Kárdex con LOS MISMOS filtros de la lista (sin skip/take): movimientos, entradas (número y
@@ -116,12 +116,12 @@ public sealed class InventoryController(InventoryReadService reads, InventoryAdj
         [FromQuery] string? name, [FromQuery] Guid[]? ownerClientPublicIds, [FromQuery] string[]? reasons, [FromQuery] string? direction,
         [FromQuery] Guid[]? fromWarehousePublicIds, [FromQuery] Guid[]? toWarehousePublicIds, CancellationToken ct,
         [FromQuery] bool includeOwn = false, [FromQuery] bool manualOnly = false, [FromQuery] int[]? userIds = null, [FromQuery] bool includeSystem = false,
-        [FromQuery] int[]? fromBinIds = null, [FromQuery] int[]? toBinIds = null)
+        [FromQuery] int[]? fromBinIds = null, [FromQuery] int[]? toBinIds = null, [FromQuery] int[]? zoneIds = null)
         => reads.KardexSummaryAsync(new KardexQuery(from, to, NullIfEmpty(types), NullIfEmpty(warehousePublicIds), NullIfEmpty(binIds),
             NullIfEmpty(productPublicIds), NullIfEmpty(categoryIds), lotNumber, serialNumber, refEntity, refId, search, 0, 0,
             NullIfEmpty(brands), name, NullIfEmpty(ownerClientPublicIds), includeOwn, NullIfEmpty(reasons), direction,
             NullIfEmpty(fromWarehousePublicIds), NullIfEmpty(toWarehousePublicIds), manualOnly, NullIfEmpty(userIds), includeSystem,
-            NullIfEmpty(fromBinIds), NullIfEmpty(toBinIds)), InventoryScope.Any, ct);
+            NullIfEmpty(fromBinIds), NullIfEmpty(toBinIds), NullIfEmpty(zoneIds)), InventoryScope.Any, ct);
 
     /// <summary>
     /// Lote 14 — detalle de un movimiento: la fila con dueño y categoría, vencimiento del lote, documento de origen (con su

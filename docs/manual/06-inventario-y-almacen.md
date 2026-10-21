@@ -2538,3 +2538,7 @@ La línea de la orden de compra (alta y edición, `POST/PATCH /purchase-orders`,
 **Editar antes de que llegue** (`PATCH /asns/{id}`, `warehouse.receive`; botón «Editar» en la lista de avisos): se cambian el almacén (por si se recibe en otro), la referencia, la llegada esperada y/o las líneas (se reemplazan todas, con las mismas reglas del alta). El cliente no cambia. Solo mientras el aviso siga esperado y sin recibo abierto; con un recibo abierto, 409 «El aviso de llegada tiene un recibo abierto; elimínelo antes de editarlo.»; cancelado o ya recibido, 422 «El aviso de llegada no está pendiente de recibir.»; uno nacido de una orden de compra, 409 «Un aviso de llegada nacido de una orden de compra se cambia en la orden de compra.»
 
 **Avisos (Reglas de aviso):** Aviso de llegada solicitado, modificado, recibido y cancelado (manual 14).
+
+## Kárdex: filtro de zona y barra pareja (Lote 159)
+
+El Kárdex tiene un filtro **Zona** (entre Almacén y Posición; selección múltiple con buscador; ofrece las zonas de los almacenes elegidos o de todos). `GET /inventory/transactions` y `/transactions/summary` aceptan `zoneIds` y lo resuelven a las posiciones de esas zonas (junto con posiciones elegidas deben cumplirse las dos). La barra de filtros reparte los 14 filtros en columnas iguales (5 en pantalla ancha) para que las filas queden parejas. En Saldos y Conciliación el filtro de zona se atenúa (no se aplica).

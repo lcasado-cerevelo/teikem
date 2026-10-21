@@ -47,8 +47,9 @@ public sealed partial class ExitNoticeService(TeikemDbContext db, ITenantContext
         var query = db.Set<ExitNotice>().AsQueryable();
         if (!string.IsNullOrWhiteSpace(status))
         {
-            var code = status.Trim().ToUpperInvariant();
-            var ids = map.Where(kv => kv.Value.Code == code).Select(kv => kv.Key).ToList();
+            // varios estatus separados por coma (filtro de selección múltiple)
+            var codes = status.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(c => c.ToUpperInvariant()).ToHashSet();
+            var ids = map.Where(kv => codes.Contains(kv.Value.Code)).Select(kv => kv.Key).ToList();
             query = query.Where(o => ids.Contains(o.StatusCodeId));
         }
         if (clientPublicId is Guid cp) query = query.Where(o => db.Set<Client>().Any(c => c.ClientId == o.ClientId && c.PublicId == cp));

@@ -40,6 +40,8 @@ export interface InventoryFilterState {
   types: string[]
   warehousePublicIds: string[]
   bins: BinFilterItem[]
+  /** Zonas (ids como texto): filtra el Kárdex por las posiciones de esas zonas. */
+  zoneIds: string[]
   products: ProductFilterItem[]
   /** ids de categoría como texto (el API incluye las subcategorías). */
   categoryIds: string[]
@@ -70,6 +72,7 @@ export const EMPTY_INVENTORY_FILTERS: InventoryFilterState = {
   types: [],
   warehousePublicIds: [],
   bins: [],
+  zoneIds: [],
   products: [],
   categoryIds: [],
   owners: [],
@@ -91,6 +94,7 @@ export type InventoryFilterKey =
   | 'range'
   | 'types'
   | 'warehouses'
+  | 'zones'
   | 'bins'
   | 'products'
   | 'categories'
@@ -109,6 +113,7 @@ const KARDEX_FILTERS: readonly InventoryFilterKey[] = [
   'range',
   'types',
   'warehouses',
+  'zones',
   'bins',
   'products',
   'categories',
@@ -142,6 +147,7 @@ export function inactiveFilters(tab: InventoryTab, f: InventoryFilterState): Inv
     ['range', Boolean(f.range.from || f.range.to)],
     ['types', f.types.length > 0],
     ['warehouses', f.warehousePublicIds.length > 0],
+    ['zones', f.zoneIds.length > 0],
     ['bins', f.bins.length > 0],
     ['products', f.products.length > 0],
     ['categories', f.categoryIds.length > 0],
@@ -191,6 +197,7 @@ export function kardexQuery(f: InventoryFilterState): GetQuery<'/api/v1/inventor
     types: nonEmpty(f.types),
     warehousePublicIds: nonEmpty(f.warehousePublicIds),
     binIds: nonEmpty(f.bins.map((b) => b.id)),
+    zoneIds: nonEmpty(f.zoneIds.map(Number)),
     productPublicIds: nonEmpty(f.products.map((p) => p.publicId)),
     categoryIds: nonEmpty(f.categoryIds.map(Number)),
     ...ownerQuery(f.owners),

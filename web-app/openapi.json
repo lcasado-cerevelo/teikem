@@ -12770,6 +12770,17 @@
                 "format": "int32"
               }
             }
+          },
+          {
+            "name": "zoneIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
           }
         ],
         "responses": {
@@ -13023,6 +13034,17 @@
           },
           {
             "name": "toBinIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          {
+            "name": "zoneIds",
             "in": "query",
             "schema": {
               "type": "array",

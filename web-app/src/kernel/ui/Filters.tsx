@@ -15,16 +15,18 @@ export interface FiltersProps {
   onClear?: () => void
   /** Etiqueta accesible del grupo (por defecto "Filtros"). */
   label?: string
+  /** Clase extra de la fila (p. ej. `balanced`: cuadrícula pareja de columnas iguales). */
+  className?: string
 }
 
 /**
  * Fila de filtros estructurados (`.filters`, flex que envuelve): cada filtro parte de 140 px y crece hasta repartirse el
  * ancho del panel, sin columnas vacías; uno por renglón a 480 px o menos. "Limpiar" usa solo el ancho de su contenido.
  */
-export function Filters({ children, onClear, label }: FiltersProps) {
+export function Filters({ children, onClear, label, className }: FiltersProps) {
   const t = useT()
   return (
-    <div className="filters" role="group" aria-label={label ?? t('ui.filters.label')}>
+    <div className={className ? `filters ${className}` : 'filters'} role="group" aria-label={label ?? t('ui.filters.label')}>
       {children}
       {onClear && (
         // .filters-clear: ocupa el ancho de su contenido, no el de la columna del grid (maestro, convenciones de interfaz)

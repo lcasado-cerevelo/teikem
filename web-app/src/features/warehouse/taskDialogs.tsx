@@ -15,7 +15,8 @@ import { parsePerBin, type SplitBin } from './splitPlan'
 // Asignar (Select de usuario del tenant; GET /api/v1/users exige admin.users — sin ese permiso se avisa sin sacar de la
 // pantalla, como ClientPicker/WarehousePicker).
 // ---------------------------------------------------------------------------------------------------------------------
-export function AssignTaskModal({ task, open, onClose }: { task: WarehouseTaskDto | null; open: boolean; onClose: () => void }) {
+/** `tasks`: asigna a la misma persona TODAS esas tareas (acciones a nivel del recibo); sin él, solo `task`. */
+export function AssignTaskModal({ task, tasks, open, onClose }: { task: WarehouseTaskDto | null; tasks?: readonly WarehouseTaskDto[]; open: boolean; onClose: () => void }) {
   const t = useT()
   const action = useWarehouseTaskAction()
   const users = useQuery({
@@ -56,7 +57,7 @@ export function AssignTaskModal({ task, open, onClose }: { task: WarehouseTaskDt
           id={formId}
           form={form}
           onSubmit={async (v) => {
-            await action.mutateAsync({ id: task.id ?? 0, action: 'assign', body: { userId: v.userId ? Number(v.userId) : null } })
+            for (const x of tasks ?? [task]) await action.mutateAsync({ id: x.id ?? 0, action: 'assign', body: { userId: v.userId ? Number(v.userId) : null } })
             toast.success(t('warehouse.tasks.assign.saved'))
             onClose()
           }}

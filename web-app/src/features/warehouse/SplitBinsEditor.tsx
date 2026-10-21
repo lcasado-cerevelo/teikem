@@ -35,7 +35,7 @@ export function SplitBinsEditor({ total, perBinText, onPerBinChange, bins, onBin
   const summary = splitSummary(total, perBin, bins.length)
 
   return (
-    <div className="split">
+    <div className="split binsplit">
       {restBin && closedAlertBin !== restBin.id && (
         <div className="split-alert" role="alert">
           <span>{t('warehouse.split.restAlert', { bin: restBin.code, qty: fmt(chunkAt(total, perBin, restAt)), per: fmt(perBin) })}</span>
