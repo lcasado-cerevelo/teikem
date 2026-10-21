@@ -3,7 +3,7 @@
 .nbell-btn{position:relative}
 .nbell-btn svg{width:19px;height:19px}
 .nbadge{position:absolute;top:1px;right:0;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--money);color:var(--on-accent);font-size:10px;font-weight:800;line-height:16px;text-align:center}
-.npop{position:absolute;right:0;top:calc(100% + 8px);width:360px;max-width:calc(100vw - 24px);max-height:min(70vh,520px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 30px 80px -18px rgba(0,0,0,.6);z-index:70;padding:12px}
+.npop{color:var(--text);position:absolute;right:0;top:calc(100% + 8px);width:360px;max-width:calc(100vw - 24px);max-height:min(70vh,520px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 30px 80px -18px rgba(0,0,0,.6);z-index:70;padding:12px}
 .nhead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 2px 10px;border-bottom:1px solid var(--line-2)}
 .nlist{list-style:none;margin:0;padding:6px 0 0;display:flex;flex-direction:column;gap:2px}
 .nitem{width:100%;display:flex;gap:10px;align-items:flex-start;text-align:left;border:none;background:transparent;color:var(--text);padding:9px 8px;border-radius:9px}
@@ -18,7 +18,7 @@
 .nempty{margin:14px 4px;color:var(--muted);font-size:13px}
 .nprefs{margin-top:10px;border-top:1px solid var(--line-2);padding-top:10px;font-size:13px}
 .nprefs summary{cursor:pointer;color:var(--muted)}
-.nprefs label{display:flex;margin:8px 0}
+.nprefs label{display:flex;margin:8px 0;color:var(--text);white-space:normal;line-height:1.35}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 /* Kemi */
