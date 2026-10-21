@@ -32,17 +32,18 @@ export function TextFilter({
   )
 }
 
-/** Interruptor simple (fuera de un `Form`), para filtros booleanos como `includeInactive`/`onlyWithStock`. Encendido se
+/** Interruptor simple (fuera de un `Form`), para filtros booleanos como `includeInactive`/`onlyWithStock`. La etiqueta va arriba y el interruptor debajo. Encendido se
  *  anota solo con su etiqueta ("Solo manuales"). */
 export function ToggleFilter({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   const ref = useRef<HTMLDivElement>(null)
   useRegisterFilter(label, checked ? '' : null, ref)
   return (
-    <div className="f" ref={ref}>
+    // la etiqueta arriba (como los demás filtros) y el interruptor debajo, a la altura de los campos
+    <div className="f f-switch" ref={ref}>
+      <label className="sw-cap">{label}</label>
       <label className="sw">
-        <input type="checkbox" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+        <input type="checkbox" role="switch" aria-label={label} checked={checked} onChange={(e) => onChange(e.target.checked)} />
         <span className="tk" aria-hidden="true" />
-        <span>{label}</span>
       </label>
     </div>
   )

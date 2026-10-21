@@ -26,6 +26,7 @@ import {
   type DateRange,
   type RowAction,
 } from '../../kernel/ui'
+import { ToggleFilter } from './filterControls'
 import { useAsns, useSaveAsn, type AsnDto } from './api'
 import { AsnCreateModal } from './AsnCreateModal'
 import { AssignDocumentModal } from './AssignDocumentModal'
@@ -226,9 +227,7 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
         <SearchSelect label={t('warehouse.asns.filters.status')} options={statusOptions} value={status} onChange={setStatus} />
         <TextFilter label={t('warehouse.asns.filters.reference')} value={reference} onChange={setReference} />
         <DateRangeFilter label={t('warehouse.asns.filters.expected')} value={expected} onChange={setExpected} mode="future" />
-        <label className="chk">
-          <input type="checkbox" checked={mineOnly} onChange={(e) => setMineOnly(e.target.checked)} /> {t('warehouse.assign.mineOnly')}
-        </label>
+        <ToggleFilter label={t('warehouse.assign.mineOnly')} checked={mineOnly} onChange={setMineOnly} />
       </Filters>
       <Panel
         flush

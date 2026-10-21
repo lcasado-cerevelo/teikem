@@ -165,8 +165,8 @@ export function AsnCreateModal({ onClose, asn }: { onClose: () => void; asn?: As
           <div className="rcp-asn-head" aria-hidden="true">
             <span>{t('warehouse.asns.lines.product')}</span>
             <span>{t('warehouse.asns.lines.expectedQty')}</span>
-            <span>{t('warehouse.asns.lines.lotAndExpiry')}</span>
             <span>{t('warehouse.asns.lines.unitPrice')}</span>
+            <span>{t('warehouse.asns.lines.lotAndExpiry')}</span>
             <span />
           </div>
           {fields.map((f, i) => (
@@ -193,6 +193,9 @@ export function AsnCreateModal({ onClose, asn }: { onClose: () => void; asn?: As
               <Field name={`lines.${i}.expectedQty`} label={t('warehouse.asns.lines.qtyOf', { n: i + 1 })} hideLabel required>
                 <NumberInput min={0} step="0.001" />
               </Field>
+              <Field name={`lines.${i}.unitPrice`} label={t('warehouse.asns.lines.unitPriceOf', { n: i + 1 })} hideLabel>
+                <NumberInput min={0} step="0.0001" />
+              </Field>
               {watched?.[i]?.isLot ? (
                 <div>
                   <Field name={`lines.${i}.lotNumber`} label={t('warehouse.asns.lines.lotOf', { n: i + 1 })} hideLabel>
@@ -205,9 +208,6 @@ export function AsnCreateModal({ onClose, asn }: { onClose: () => void; asn?: As
               ) : (
                 <span aria-hidden="true" />
               )}
-              <Field name={`lines.${i}.unitPrice`} label={t('warehouse.asns.lines.unitPriceOf', { n: i + 1 })} hideLabel>
-                <NumberInput min={0} step="0.0001" />
-              </Field>
               <button
                 type="button"
                 className="rowbtn danger rcp-asn-del"

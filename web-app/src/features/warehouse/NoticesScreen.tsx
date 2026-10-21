@@ -27,11 +27,13 @@ export default function NoticesScreen() {
           <h1>{t('warehouse.notices.title')}</h1>
           <p>{t('warehouse.notices.subtitle')}</p>
         </div>
-        <Can perm="receipts.view">
-          <Link className="btn sm" to="/warehouse/receipts?tab=groups">
-            {t('warehouse.notices.masterLink')}
-          </Link>
-        </Can>
+        <div className="act">
+          <Can perm="receipts.view">
+            <Link className="btn" to="/warehouse/receipts?tab=groups">
+              {t('warehouse.notices.masterLink')}
+            </Link>
+          </Can>
+        </div>
       </div>
       <div className="rcp-tabs">
         <Tabs<TabKey>

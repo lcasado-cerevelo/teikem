@@ -10,6 +10,7 @@ import { useT } from '../../kernel/i18n'
 import { useStatuses } from '../../kernel/catalogs'
 import { ClientPicker, Chip, DataTable, DateRangeFilter, EMPTY_RANGE, Filters, Panel, SearchSelect, Spinner, toast, type DataColumn, type DateRange } from '../../kernel/ui'
 import { IconCheckin } from '../../kernel/ui'
+import { ToggleFilter } from './filterControls'
 import { TextFilter } from './filterControls'
 import { ExitNoticeCreateModal } from './ExitNoticeCreateModal'
 import { ExitNoticeModal } from './ExitNoticeModal'
@@ -103,12 +104,8 @@ export function ExitNoticesTab({ initialOpen }: { initialOpen?: string | null })
         </div>
         <SearchSelect label={t('warehouse.exitNotices.filterStatus')} options={statusOptions} value={status} onChange={(v) => (setStatus(v), setPage(1))} />
         <DateRangeFilter label={t('warehouse.exitNotices.filterDates')} value={dates} onChange={(v) => (setDates(v), setPage(1))} />
-        <label className="chk">
-          <input type="checkbox" checked={pendingOnly} onChange={(e) => (setPendingOnly(e.target.checked), setPage(1))} /> {t('warehouse.exitNotices.pendingOnly')}
-        </label>
-        <label className="chk">
-          <input type="checkbox" checked={mineOnly} onChange={(e) => (setMineOnly(e.target.checked), setPage(1))} /> {t('warehouse.assign.mineOnly')}
-        </label>
+        <ToggleFilter label={t('warehouse.exitNotices.pendingOnly')} checked={pendingOnly} onChange={(v) => (setPendingOnly(v), setPage(1))} />
+        <ToggleFilter label={t('warehouse.assign.mineOnly')} checked={mineOnly} onChange={(v) => (setMineOnly(v), setPage(1))} />
       </Filters>
       <Panel
         flush

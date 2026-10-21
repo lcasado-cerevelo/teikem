@@ -1,13 +1,11 @@
 // Lote 183 (C4) — pestaña «Maestros» de Recibo: las recepciones maestras (varios avisos u órdenes de compra del mismo dueño que llegan juntos): número, dueño, documentos, líneas, cantidades,
 // estatus y fecha; clic = ficha con sus recibos (`ReceiptGroupModal`). «Recibir juntos» abre uno nuevo. Filtros al API: Estatus y el buscador libre. Tabla paginada por el servidor con `exportRows`.
 import { useMemo, useRef, useState } from 'react'
-import { Can } from '../../kernel/access'
 import { useFormat } from '../../kernel/format'
 import { useLang, useT } from '../../kernel/i18n'
 import { Chip, DataTable, Filters, IconDoc, Panel, QBox, SelectFilter, useElementWidth, type DataColumn } from '../../kernel/ui'
 import { exportReceiptGroups, useReceiptGroups, type ReceiptGroupDto } from './api'
 import { formatDateTime, useDebounced } from './lineRules'
-import { ReceiptGroupCreateModal } from './ReceiptGroupCreateModal'
 import { ReceiptGroupModal } from './ReceiptGroupModal'
 import './warehouse.css'
 
@@ -16,7 +14,7 @@ const PAGE_SIZE = 25
 const NO_ROWS: never[] = []
 const CARDS_BELOW_PX = 640
 
-export function ReceiptGroupsTab({ onOpenReceipt }: { onOpenReceipt: (receiptPublicId: string) => void }) {
+export function ReceiptGroupsTab({ onOpenReceipt, initialOpen }: { onOpenReceipt: (receiptPublicId: string) => void; initialOpen?: string | null }) {
   const t = useT()
   const lang = useLang()
   const f = useFormat()
@@ -26,8 +24,7 @@ export function ReceiptGroupsTab({ onOpenReceipt }: { onOpenReceipt: (receiptPub
   const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
-  const [open, setOpen] = useState<string | null>(null)
-  const [creating, setCreating] = useState(false)
+  const [open, setOpen] = useState<string | null>(initialOpen ?? null)
   const search = useDebounced(q.trim())
   const reset = <T,>(setter: (v: T) => void) => (v: T) => {
     setPage(1)
@@ -67,13 +64,6 @@ export function ReceiptGroupsTab({ onOpenReceipt }: { onOpenReceipt: (receiptPub
         icon={<IconDoc />}
         title={t('warehouse.receipts.groups.title')}
         badge={data ? (data.total ?? 0) : undefined}
-        actions={
-          <Can perm="warehouse.receive">
-            <button type="button" className="btn flow" onClick={() => setCreating(true)}>
-              {t('warehouse.receipts.groups.create')}
-            </button>
-          </Can>
-        }
       >
         <div className="collect-filters">
           <Filters
@@ -121,7 +111,6 @@ export function ReceiptGroupsTab({ onOpenReceipt }: { onOpenReceipt: (receiptPub
         )}
       </Panel>
       <ReceiptGroupModal publicId={open} onClose={() => setOpen(null)} onOpenReceipt={onOpenReceipt} />
-      {creating && <ReceiptGroupCreateModal onClose={() => setCreating(false)} onCreated={(id) => setOpen(id)} />}
     </div>
   )
 }

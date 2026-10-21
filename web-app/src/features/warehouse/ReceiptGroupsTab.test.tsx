@@ -2,10 +2,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccessProvider } from '../../kernel/access'
 import { setLang } from '../../kernel/i18n/i18n'
+import { ReceiptGroupCreateModal } from './ReceiptGroupCreateModal'
 import { ReceiptGroupsTab } from './ReceiptGroupsTab'
 
 interface Call {
@@ -62,6 +64,30 @@ function wrap(permissions = ['inventory.view', 'warehouse.receive'], onOpenRecei
   )
   return onOpenReceipt
 }
+// «Recibir juntos» vive en el encabezado de Recibo (ReceiptListScreen); aquí se prueba su ventana con el mismo flujo: al crear se abre la ficha en Maestros.
+function CreateHarness() {
+  const [creating, setCreating] = useState(false)
+  const [opened, setOpened] = useState<string | null>(null)
+  if (opened) return <ReceiptGroupsTab onOpenReceipt={() => undefined} initialOpen={opened} />
+  return (
+    <>
+      <button type="button" onClick={() => setCreating(true)}>Recibir juntos</button>
+      {creating && <ReceiptGroupCreateModal onClose={() => setCreating(false)} onCreated={setOpened} />}
+    </>
+  )
+}
+function wrapCreate() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(
+    <MemoryRouter>
+      <QueryClientProvider client={client}>
+        <AccessProvider permissions={['inventory.view', 'warehouse.receive']} modules={['WMS_LOTSERIAL']}>
+          <CreateHarness />
+        </AccessProvider>
+      </QueryClientProvider>
+    </MemoryRouter>,
+  )
+}
 const sent = (method: string, suffix: string) => mock.calls.filter((c) => c.method === method && c.url.pathname.endsWith(suffix))
 
 beforeAll(() => setLang('es'))
@@ -82,7 +108,7 @@ describe('Recepciones maestras (pestaña Maestros)', () => {
 
   it('«Recibir juntos»: pide dos, bloquea lo de otro dueño o almacén y manda los avisos con el transporte', async () => {
     const user = userEvent.setup()
-    wrap()
+    wrapCreate()
     await user.click(await screen.findByRole('button', { name: 'Recibir juntos' }))
     const dialog = await screen.findByRole('dialog', { name: 'Recibir juntos' })
     expect(await within(dialog).findByText('LLE-00001')).toBeInTheDocument()
@@ -102,7 +128,7 @@ describe('Recepciones maestras (pestaña Maestros)', () => {
 
   it('también se eligen órdenes de compra (lo propio): solo las enviadas y no se mezclan con lo de un cliente', async () => {
     const user = userEvent.setup()
-    wrap()
+    wrapCreate()
     await user.click(await screen.findByRole('button', { name: 'Recibir juntos' }))
     const dialog = await screen.findByRole('dialog', { name: 'Recibir juntos' })
     const order = await within(dialog).findByRole('checkbox', { name: /PO-00001/ })
@@ -137,7 +163,6 @@ describe('Recepciones maestras (pestaña Maestros)', () => {
     const user = userEvent.setup()
     mock.status = 'CONFIRMED'
     wrap(['inventory.view'])
-    expect(screen.queryByRole('button', { name: 'Recibir juntos' })).toBeNull()
     await user.click(await screen.findByText('RCM-00001'))
     const dialog = await screen.findByRole('dialog', { name: /RCM-00001/ })
     await within(dialog).findByText('REC-00001')

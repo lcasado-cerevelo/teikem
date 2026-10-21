@@ -245,6 +245,7 @@ h1,h2,h3{letter-spacing:-.01em}
 .filters{display:flex;flex-wrap:wrap;gap:9px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:14px;align-items:flex-end}
 .filters .f{margin:0}
 .filters>.f{flex:1 1 140px;min-width:0}
+.filters .f.f-switch{flex:0 0 auto}.filters .f.f-switch .sw{height:33px}
 .filters .f input,.filters .f select{padding:7px 9px;font-size:12.5px}
 /* Barra pareja (Kárdex): columnas iguales en vez de filas que envuelven, para que las filas de arriba y de abajo queden con los mismos filtros (5 columnas = 3 filas parejas con sus 14 filtros + «Limpiar») */
 .filters.balanced{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px 12px;align-items:end}

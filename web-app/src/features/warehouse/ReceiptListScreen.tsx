@@ -22,6 +22,7 @@ import { useReceipt, type AsnDto, type ReceiptDetailDto, type ReceiptListItemDto
 import { PutawayPendingTab } from './PutawayPendingTab'
 import { ReceiptDetailPanel } from './ReceiptDetailPanel'
 import { ReceiptFilterBar } from './ReceiptFilterBar'
+import { ReceiptGroupCreateModal } from './ReceiptGroupCreateModal'
 import { ReceiptGroupsTab } from './ReceiptGroupsTab'
 import { selectedReceiptId, withPinned, type ReceiptFilterState } from './receiptFilters'
 import { ReceiptHeaderModal, type ReceiptHeaderModalProps } from './ReceiptHeaderModal'
@@ -133,6 +134,8 @@ export default function ReceiptListScreen() {
   const receiptParam = params.get('receipt')
   const [modal, setModal] = useState<HeaderModalState>(null)
   const [pinned, setPinned] = useState<string | null>(null)
+  // «Recibir juntos» (recepción maestra) vive aquí, junto a «Nuevo recibo», y se ve en cualquier pestaña; al crearla se abre su ficha en Maestros
+  const [creatingGroup, setCreatingGroup] = useState(false)
 
   // al cambiar de pestaña se quita el recibo elegido
   const setTab = (key: TabKey) => setParams(key === 'receipts' ? {} : { tab: key }, { replace: true })
@@ -182,6 +185,9 @@ export default function ReceiptListScreen() {
             <button type="button" className="btn flow" onClick={() => setModal({ mode: 'create' })}>
               {t('warehouse.receipts.new')}
             </button>
+            <button type="button" className="btn" onClick={() => setCreatingGroup(true)}>
+              {t('warehouse.receipts.groups.create')}
+            </button>
           </Can>
         </div>
       </div>
@@ -203,7 +209,8 @@ export default function ReceiptListScreen() {
         <ReceiptsTab selectedParam={receiptParam} onSelect={select} onOpenHeader={openHeader} pinned={pinned} onUnpin={() => setPinned(null)} />
       )}
       {tab === 'putaway' && <PutawayPendingTab selectedParam={receiptParam} onSelect={select} onOpenHeader={openHeader} />}
-      {tab === 'groups' && <ReceiptGroupsTab onOpenReceipt={(id) => setParams({ receipt: id })} />}
+      {tab === 'groups' && <ReceiptGroupsTab initialOpen={params.get('group')} onOpenReceipt={(id) => setParams({ receipt: id })} />}
+      {creatingGroup && <ReceiptGroupCreateModal onClose={() => setCreatingGroup(false)} onCreated={(id) => setParams({ tab: 'groups', group: id }, { replace: true })} />}
 
       {modal !== null && (
         <ReceiptHeaderModal

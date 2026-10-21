@@ -439,7 +439,7 @@ describe('Recibo: pestañas', () => {
     await waitFor(() => expect(calls('POST', '/api/v1/asns/13/assign').length).toBe(1))
     expect(calls('POST', '/api/v1/asns/13/assign')[0].body).toEqual({ userId: 5 })
 
-    await user.click(screen.getByRole('checkbox', { name: 'Solo los asignados a mí' }))
+    await user.click(screen.getByRole('switch', { name: 'Solo los asignados a mí' }))
     await waitFor(() => expect(calls('GET', '/api/v1/asns').some((c) => c.url.searchParams.get('assignedToMe') === 'true')).toBe(true))
   })
 
