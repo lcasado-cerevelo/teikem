@@ -2662,13 +2662,13 @@ El Kárdex tiene un filtro **Zona** (entre Almacén y Posición; selección múl
 2. Pulse «Confirmar tanda»: entra al inventario lo recibido y aún no confirmado de cada línea; se crea una tarea de acomodo por línea con esas unidades. Se registra la tanda (número, quién, cuándo, líneas y unidades) en «Tandas confirmadas».
 3. Siga capturando (suba lo recibido de la línea) y confirme otra tanda, o cierre con «Confirmar recibo».
 
-**Qué entra y qué espera.** Entran a la tanda las líneas con unidades nuevas. **Esperan la confirmación final**: productos con **número de serie**, líneas con **daño declarado** y líneas con **cruce de muelle** asignado (la pantalla lo indica: «esperan la confirmación final»).
+**Qué entra y qué espera.** Entran a la tanda las líneas con unidades nuevas. **Lote 187:** los productos con **número de serie** entran cuando la línea tiene **una serie por cada unidad recibida** (se asientan solo las series nuevas), y el **daño declarado se reporta con la tanda** (reporte DAN; esas unidades no se acomodan). **Esperan la confirmación final**: las series incompletas y las líneas con **cruce de muelle** asignado (la pantalla lo indica: «esperan la confirmación final»).
 
 **Cómo se asienta.** Una tanda registra la entrada (RECEIPT) hasta lo esperado de la línea y, si se recibe de más, el exceso como ajuste de diferencia de recibo. **El faltante no se asienta en una tanda**; se asienta, si queda, en la confirmación final (igual que antes). Lo asentado entre tandas y cierre siempre suma exactamente lo recibido. La orden de compra recibe cada tanda por separado (queda «Recibida parcial» hasta que se complete). El costo de la línea se congela en la primera tanda.
 
 **Qué se bloquea con tandas confirmadas.**
 - No se puede bajar lo recibido de una línea por debajo de lo ya confirmado en tandas, ni cambiar su producto o lote, ni quitarla, ni eliminar el recibo.
-- El daño declarado de una línea no puede ser mayor que lo recibido y aún no confirmado en tandas.
+- El daño declarado de una línea (total) no puede quedar por debajo de lo ya reportado en tandas ni sumar más que lo recibido; las series ya asentadas no se cambian ni se quitan.
 - Un recibo **directo** a posición no admite tandas (cada línea ya entra a su posición al confirmar).
 
 **Estatus.** La tanda no cambia el estatus (el recibo sigue Recibiendo o Discrepancia). En la confirmación final el recibo pasa a Recibido (o Recibido con diferencia); si ya no queda ninguna tarea de acomodo abierta pasa a Acomodado de inmediato, y si quedan tareas de tandas abiertas pasa a Acomodado cuando se complete la última.

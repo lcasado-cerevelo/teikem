@@ -411,17 +411,23 @@ describe('recibir por partes (Lote 175)', () => {
     productPublicId: 'p1', sku: 'A', productName: 'A', trackingTypeCode: 'NONE', receivedQty: 3, lotNumber: null, expiryDate: null, serialNumbers: null,
     targetBinCode: null, damagedQty: 0, damageCause: null, damageNote: null, damageBinCode: null, damageDiscard: false, damageDestination: null, ...o,
   })
-  it('una parte exige documento, acomodo, y sin series ni daño', () => {
+  it('una parte exige documento y acomodo; puede traer series y daño (Lote 187)', () => {
     expect(partBlock(null, [line()], null)).toBe('noDoc')
     expect(partBlock({ asnId: 5 }, [line()], 'DIRECT')).toBe('direct')
-    expect(partBlock({ asnId: 5 }, [line({ serialNumbers: ['S1'] })], null)).toBe('serialOrDamage')
-    expect(partBlock({ purchaseOrderPublicId: 'po' }, [line({ damagedQty: 1 })], 'PUTAWAY')).toBe('serialOrDamage')
+    expect(partBlock({ asnId: 5 }, [line({ serialNumbers: ['S1'] })], null)).toBeNull()
+    expect(partBlock({ purchaseOrderPublicId: 'po' }, [line({ damagedQty: 1 })], 'PUTAWAY')).toBeNull()
     expect(partBlock({ asnId: 5 }, [line()], 'PUTAWAY')).toBeNull()
   })
-  it('arma el cuerpo con la clave del envío y sin series ni daño', () => {
+  it('arma el cuerpo con la clave del envío, con series y daño', () => {
     const body = buildReceiptPartBody('wh', { asnId: 5 }, [line({ lotNumber: 'L1', expiryDate: '2027-01-01' })], 'k-1')
     expect(body).toMatchObject({ warehousePublicId: 'wh', asnId: 5, purchaseOrderPublicId: null, clientKey: 'k-1' })
-    expect(body.lines).toEqual([{ productPublicId: 'p1', receivedQty: 3, lot: { number: 'L1', expiryDate: '2027-01-01' } }])
+    expect(body.lines).toEqual([{
+      productPublicId: 'p1', receivedQty: 3, lot: { number: 'L1', expiryDate: '2027-01-01' }, serialNumbers: null,
+      damagedQty: null, damageCause: null, damageNote: null, damageBinCode: null, damageDiscard: null, damageFinalDestination: null,
+    }])
+    const damaged = buildReceiptPartBody('wh', { asnId: 5 }, [line({ serialNumbers: ['S1', 'S2'], receivedQty: 2 }), line({ damagedQty: 1, damageCause: 'TRANSIT_ACCIDENT', damageNote: 'mojada', damageDiscard: true, damageDestination: 'SCRAP' })], 'k')
+    expect(damaged.lines[0].serialNumbers).toEqual(['S1', 'S2'])
+    expect(damaged.lines[1]).toMatchObject({ damagedQty: 1, damageCause: 'TRANSIT_ACCIDENT', damageDiscard: true, damageFinalDestination: 'SCRAP', damageBinCode: null })
     expect(buildReceiptPartBody('wh', { purchaseOrderPublicId: 'po' }, [line()], 'k').purchaseOrderPublicId).toBe('po')
   })
   it('genera claves v4 distintas', () => {

@@ -193,4 +193,34 @@ public class ReceiptDamageTests
         Assert.Equal(0m, Assert.Single(cleared.Lines).DamagedQty);
         Assert.Null(Assert.Single(cleared.Lines).DamageCauseCode);
     }
+
+    [Fact]
+    public async Task Lote187_damage_is_reported_with_the_part_that_receives_the_damaged_units_and_never_twice()
+    {
+        var x = await CreateAsync();
+        await using var f = x.F;
+        var receipts = f.Get<ReceiptService>();
+        var created = await receipts.CreateAsync(new ReceiptCreateRequest(WarehousePublicId: x.W.PublicId, Type: ReceiptTypes.Blind, StagingBinId: x.Staging.WarehouseBinId,
+            Lines: new[] { Line(x, 5m, damaged: 2m, discard: true) }), default);
+        var id = created.Header.PublicId;
+        var lineId = created.Lines[0].Id;
+
+        var one = await receipts.ConfirmBatchAsync(id, null, default);
+        Assert.Equal(5m, one.Lines[0].PostedQty);
+        Assert.Equal(1, await f.Db.Set<DamageReport>().AsNoTracking().CountAsync());
+        Assert.Equal(0m, await OnHandAsync(x, x.Staging) - 3m);   // 5 entran a recepción y 2 dañadas se desechan
+
+        // lo ya reportado no se baja
+        await Assert.ThrowsAsync<ValidationException>(() => receipts.UpdateLineAsync(id, lineId,
+            new ReceiptLineUpdateRequest(DamagedQty: 1m, DamageCause: DamageCauses.TransitAccident, DamageNote: "x", DamageDiscard: true), default));
+        // en la segunda parte llegan 3 más y 1 dañada: el total declarado pasa a 3
+        await receipts.UpdateLineAsync(id, lineId, new ReceiptLineUpdateRequest(ReceivedQty: 8m, DamagedQty: 3m, DamageCause: DamageCauses.TransitAccident, DamageNote: "otra", DamageDiscard: true), default);
+        await receipts.ConfirmBatchAsync(id, null, default);
+        Assert.Equal(2, await f.Db.Set<DamageReport>().AsNoTracking().CountAsync());
+
+        var done = await receipts.ConfirmAsync(id, null, default);
+        Assert.Equal(2, await f.Db.Set<DamageReport>().AsNoTracking().CountAsync());   // el cierre no repite el reporte
+        Assert.Equal(5m, await OnHandAsync(x, x.Staging));
+        Assert.Equal(new[] { 3m, 2m }, done.PutawayTasks.Select(t => t.Quantity!.Value).ToArray());
+    }
 }

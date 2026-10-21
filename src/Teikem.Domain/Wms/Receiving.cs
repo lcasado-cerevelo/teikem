@@ -134,6 +134,8 @@ public class ReceiptLine
     public string? CostSource { get; set; }
     /// <summary>Lote 174 (C2): lo ya asentado en el inventario por tandas (confirmaciones parciales); lo que queda por asentar es ReceivedQty - PostedQty.</summary>
     public decimal PostedQty { get; set; }
+    /// <summary>Lote 187: de DamagedQty, las unidades que ya tienen su reporte DAN (el daño se reporta en la tanda que recibe las unidades dañadas); el resto se reporta en la siguiente tanda o al cerrar.</summary>
+    public decimal DamageReportedQty { get; set; }
 }
 
 /// <summary>

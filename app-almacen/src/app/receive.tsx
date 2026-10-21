@@ -900,7 +900,6 @@ export default function ReceiveScreen() {
           <Text style={styles.help}>{t('receive.receivePartHelp')}</Text>
         </>
       )}
-      {partBlocked === 'serialOrDamage' && <Text style={styles.help}>{t('receive.receivePartBlocked')}</Text>}
       <BigButton label={t('receive.cancelReceipt')} variant="danger" onPress={cancelReceipt} />
     </KeyboardScreen>
   )

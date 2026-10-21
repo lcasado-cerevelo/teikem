@@ -9927,8 +9927,11 @@ Solo aparece al recibir contra un aviso de llegada o una orden de compra, en un 
 **`Indique el aviso de llegada o la orden de compra (uno solo): una parte se recibe contra un documento.` (400)**
 El envío trajo ninguno o los dos. Reciba la parte escaneando el aviso o la orden.
 
-**`Los productos con número de serie no se reciben por partes: se reciben en la confirmación final.` (400) / `El daño no se declara en una parte: se declara en la confirmación final.` (400)**
-Quite esa línea de la parte y recíbala al «Confirmar recibo».
+**`Capture una serie por cada unidad recibida antes de confirmar la parte.` (400)** (Lote 187)
+Una parte de un producto con serie lleva una serie por unidad. Escanee o capture las series que faltan y envíe la parte de nuevo. (Antes, las series y el daño no se admitían por partes; ya se admiten.)
+
+**`Las series de {sku} ya asentadas por tandas no se pueden cambiar ni quitar: solo se pueden agregar series nuevas.` (400) / `El daño no puede quedar por debajo de lo ya reportado en tandas anteriores.` (400)** (Lote 187)
+Lo que una tanda ya asentó (series o daño reportado) no se deshace. Para corregir, haga un ajuste de inventario o un reporte de daño aparte; las series y el daño nuevos se agregan en la siguiente parte.
 
 **Dos aparatos recibieron partes del mismo aviso, ¿se duplica el recibo?**
 No: las dos partes se suman al mismo recibo abierto del aviso, cada una como su tanda.

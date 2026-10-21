@@ -55,12 +55,25 @@ public sealed class ReceiptBatchTests
     }
 
     [Fact]
-    public void Serial_damage_and_crossdock_lines_do_not_enter_a_batch()
+    public void Serial_without_all_its_serials_and_crossdock_lines_do_not_enter_a_batch()
     {
-        Assert.Equal(ReceiptBatchRules.ReasonSerial, ReceiptBatchRules.NotBatchableReason(TrackingTypes.Serial, 0m, false));
-        Assert.Equal(ReceiptBatchRules.ReasonDamage, ReceiptBatchRules.NotBatchableReason(TrackingTypes.None, 1m, false));
-        Assert.Equal(ReceiptBatchRules.ReasonCrossDock, ReceiptBatchRules.NotBatchableReason(TrackingTypes.Lot, 0m, true));
-        Assert.Null(ReceiptBatchRules.NotBatchableReason(TrackingTypes.Lot, 0m, false));
+        // Lote 187: las series y el daño SÍ entran a tandas; una línea con serie espera a tener una serie por unidad
+        Assert.Equal(ReceiptBatchRules.ReasonSerial, ReceiptBatchRules.NotBatchableReason(TrackingTypes.Serial, false, false));
+        Assert.Null(ReceiptBatchRules.NotBatchableReason(TrackingTypes.Serial, true, false));
+        Assert.Equal(ReceiptBatchRules.ReasonCrossDock, ReceiptBatchRules.NotBatchableReason(TrackingTypes.Lot, true, true));
+        Assert.Null(ReceiptBatchRules.NotBatchableReason(TrackingTypes.None, true, false));
+    }
+
+    [Fact]
+    public void Serial_batches_post_each_new_serial_once_and_the_close_only_the_rest()
+    {
+        var first = ReceiptBatchRules.PlanBatchSerial(true, 3m, 0m, new[] { "S1", "S2" });
+        Assert.Equal(new[] { "S1", "S2" }, first.Select(x => x.SerialNumber).ToArray());
+        var second = ReceiptBatchRules.PlanBatchSerial(true, 3m, 2m, new[] { "S3", "S4" });
+        Assert.Equal((InventoryTxnTypes.Receipt, "S3"), (second[0].TxnType, second[0].SerialNumber));
+        Assert.Equal((InventoryTxnTypes.Adjustment, "S4"), (second[1].TxnType, second[1].SerialNumber));   // la de más: variación
+        var close = ReceiptBatchRules.PlanClose(true, 3m, 4m, 4m, TrackingTypes.Serial, new[] { "S1", "S2", "S3", "S4" });
+        Assert.Empty(close);
     }
 
     [Fact]
@@ -155,14 +168,6 @@ public sealed class ReceiptBatchTests
         Assert.Equal(7m, partial.PostedQty);
         Assert.Equal(7m, partial.Lines[0].PostedQty);
 
-        // sin series ni daño en una parte
-        var serial = await Assert.ThrowsAsync<ValidationException>(() => receipts.ReceivePartAsync(
-            new ReceiptPartRequest(AsnId: asn.Id, Lines: new[] { new ReceiptLineRequest(f.ProductClientPublicId, 1m, SerialNumbers: new[] { "S1" }) }), default));
-        Assert.Contains(ReceiptBatchRules.PartNoSerials, serial.Errors!["lines[0].serialNumbers"]);
-        var damage = await Assert.ThrowsAsync<ValidationException>(() => receipts.ReceivePartAsync(
-            new ReceiptPartRequest(AsnId: asn.Id, Lines: new[] { new ReceiptLineRequest(f.ProductClientPublicId, 1m, DamagedQty: 1m) }), default));
-        Assert.True(damage.Errors!.ContainsKey("lines[0].damagedQty"));
-
         // la confirmación final del aparato (POST /receipts con confirm) cierra ese recibo con lo que falta
         var done = await receipts.CreateAsync(new ReceiptCreateRequest(AsnId: asn.Id,
             Lines: new[] { new ReceiptLineRequest(f.ProductClientPublicId, 3m) }, Confirm: true), default);
@@ -171,5 +176,62 @@ public sealed class ReceiptBatchTests
         Assert.Equal(10m, done.Lines[0].ReceivedQty);
         Assert.Equal(10m, Stock());
         Assert.Equal(new[] { 4m, 3m, 3m }, done.PutawayTasks.Select(t => t.Quantity!.Value).ToArray());
+    }
+
+    [Fact]
+    public async Task Serial_products_are_received_by_parts_one_serial_per_unit_and_posted_serials_are_locked()
+    {
+        await using var f = await ReceivingFixture.CreateAsync();
+        var serialPublicId = Guid.NewGuid();
+        f.Db.Set<Product>().Add(new Product
+        {
+            ProductId = 307, PublicId = serialPublicId, TenantId = ReceivingFixture.TenantId, ClientId = f.ClientId, Sku = "PCS", Name = "Producto PCS",
+            BaseUomLookupId = f.LookupId(LookupDomains.UnitOfMeasure, "UN"), TrackingTypeLookupId = f.LookupId(LookupDomains.TrackingType, TrackingTypes.Serial), PurchaseCost = 1m, IsActive = true,
+        });
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        var receipts = f.Get<ReceiptService>();
+        var created = await receipts.CreateAsync(new ReceiptCreateRequest(Type: ReceiptTypes.Blind,
+            Lines: new[] { new ReceiptLineRequest(serialPublicId, 2m, SerialNumbers: new[] { "S1", "S2" }) }), default);
+        var id = created.Header.PublicId;
+        decimal Stock() => f.Db.Set<InventoryTransaction>().AsNoTracking().ToList().Sum(t => t.Quantity);
+
+        var one = await receipts.ConfirmBatchAsync(id, null, default);
+        Assert.Equal(2m, one.Lines[0].PostedQty);
+        Assert.Equal(2m, Stock());
+
+        // las series asentadas no se cambian; una serie nueva por unidad nueva
+        await Assert.ThrowsAsync<ValidationException>(() => receipts.UpdateLineAsync(id, created.Lines[0].Id,
+            new ReceiptLineUpdateRequest(SerialNumbers: new[] { "S9", "S2", "S3" }), default));
+        await receipts.UpdateLineAsync(id, created.Lines[0].Id, new ReceiptLineUpdateRequest(SerialNumbers: new[] { "S1", "S2", "S3" }), default);
+        var two = await receipts.ConfirmBatchAsync(id, null, default);
+        Assert.Equal(3m, two.Lines[0].PostedQty);
+        Assert.Equal(3m, Stock());
+
+        var done = await receipts.ConfirmAsync(id, null, default);
+        Assert.Equal(ReceiptStatuses.Received, done.Header.StatusCode);
+        Assert.Equal(3m, Stock());
+        Assert.Equal(new[] { 2m, 1m }, done.PutawayTasks.Select(t => t.Quantity!.Value).ToArray());
+    }
+
+    [Fact]
+    public async Task A_part_of_a_serial_product_without_a_serial_per_unit_is_rejected_and_with_them_it_is_posted()
+    {
+        foreach (var serials in new[] { new[] { "S1" }, new[] { "S1", "S2" } })
+        {
+            await using var f = await ReceivingFixture.CreateAsync();
+            var serialPublicId = Guid.NewGuid();
+            f.Db.Set<Product>().Add(new Product
+            {
+                ProductId = 307, PublicId = serialPublicId, TenantId = ReceivingFixture.TenantId, ClientId = f.ClientId, Sku = "PCS", Name = "Producto PCS",
+                BaseUomLookupId = f.LookupId(LookupDomains.UnitOfMeasure, "UN"), TrackingTypeLookupId = f.LookupId(LookupDomains.TrackingType, TrackingTypes.Serial), PurchaseCost = 1m, IsActive = true,
+            });
+            await f.Db.SaveChangesAsync();
+            f.Db.ChangeTracker.Clear();
+            var asn = await f.Get<AsnService>().CreateAsync(new AsnCreateRequest(null, f.ClientPublicId, Lines: new[] { new AsnLineRequest(serialPublicId, 3m) }), default);
+            var request = new ReceiptPartRequest(AsnId: asn.Id, Lines: new[] { new ReceiptLineRequest(serialPublicId, 2m, SerialNumbers: serials) }, ClientKey: Guid.NewGuid());
+            if (serials.Length == 1) await Assert.ThrowsAsync<ValidationException>(() => f.Get<ReceiptService>().ReceivePartAsync(request, default));
+            else Assert.Equal(2m, (await f.Get<ReceiptService>().ReceivePartAsync(request, default)).Lines[0].PostedQty);
+        }
     }
 }

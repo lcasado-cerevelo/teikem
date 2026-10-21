@@ -5920,7 +5920,7 @@
         "confirmed": "Batch of receipt {number} confirmed.",
         "hint": "{n} new units to confirm. The final confirmation closes the receipt.",
         "hintNone": "There are no new units for a batch.",
-        "held": "Serial, damaged or cross-docked units wait for the final confirmation ({n} units)."
+        "held": "Incomplete serials or cross-docked units wait for the final confirmation ({n} units)."
       },
       "detail": {
         "expected": "Expected",

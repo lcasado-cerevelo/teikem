@@ -24,12 +24,12 @@ public static class ReceiptBatchRules
     public const string ReceiptHasBatches = "El recibo ya tiene tandas confirmadas: no se puede eliminar.";
     public const string DamageAfterBatches = "El daño no puede ser mayor que lo recibido y aún no confirmado en tandas.";
     public const string PartNeedsDocument = "Indique el aviso de llegada o la orden de compra (uno solo): una parte se recibe contra un documento.";
-    public const string PartNoSerials = "Los productos con número de serie no se reciben por partes: se reciben en la confirmación final.";
-    public const string PartNoDamage = "El daño no se declara en una parte: se declara en la confirmación final.";
+    public static string SerialsPostedLocked(string sku) => $"Las series de {sku} ya asentadas por tandas no se pueden cambiar ni quitar: solo se pueden agregar series nuevas.";
+    public const string DamageBelowReported = "El daño no puede quedar por debajo de lo ya reportado en tandas anteriores.";
+    public const string PartNeedsAllSerials = "Capture una serie por cada unidad recibida antes de confirmar la parte.";
     public static string LineNotBatchable(string sku, string reason) => $"La línea de {sku} no entra en una tanda: {reason}.";
 
-    public const string ReasonSerial = "los productos con número de serie se confirman en la confirmación final";
-    public const string ReasonDamage = "tiene daño declarado; se confirma en la confirmación final";
+    public const string ReasonSerial = "faltan series: debe haber una por cada unidad recibida";
     public const string ReasonCrossDock = "tiene cruce de muelle asignado; se confirma en la confirmación final";
 
     /// <summary>Esperado que aún no se cubre con lo asentado (las tandas llenan primero lo esperado).</summary>
@@ -64,15 +64,20 @@ public static class ReceiptBatchRules
         string trackingCode, IReadOnlyList<string>? serials = null)
     {
         if (posted <= 0m) return ReceiptPostingRules.Plan(expectsQuantities, expected, received, trackingCode, serials);
-        // con tandas previas no hay series (los productos con serie no entran a tandas): solo cantidades
         var pending = PendingExpected(expectsQuantities, expected, posted);
-        return ReceiptPostingRules.Plan(expectsQuantities, pending, received - posted, trackingCode, serials);
+        // Lote 187: con serie, las `posted` primeras series ya se asentaron en tandas; el cierre asienta solo las nuevas
+        var rest = trackingCode == TrackingTypes.Serial && serials is not null ? serials.Skip((int)posted).ToList() : serials;
+        return ReceiptPostingRules.Plan(expectsQuantities, pending, received - posted, trackingCode, rest);
     }
 
     /// <summary>Motivo por el que una línea no entra a la tanda (null = sí entra, o no tiene nada nuevo).</summary>
-    public static string? NotBatchableReason(string trackingCode, decimal damagedQty, bool hasCrossDock)
-        => trackingCode == TrackingTypes.Serial ? ReasonSerial
-         : damagedQty > 0m ? ReasonDamage
+    /// Lote 187: las series y el daño SÍ entran a tandas. Una línea con serie entra cuando tiene una serie por cada unidad recibida (serialsComplete); el daño se reporta en la tanda.
+    public static string? NotBatchableReason(string trackingCode, bool serialsComplete, bool hasCrossDock)
+        => trackingCode == TrackingTypes.Serial && !serialsComplete ? ReasonSerial
          : hasCrossDock ? ReasonCrossDock
          : null;
+
+    /// <summary>Lote 187: plan de una tanda para un producto con serie: una entrada por cada serie NUEVA (las ya asentadas son las primeras `posted` de la lista).</summary>
+    public static IReadOnlyList<PlannedReceiptPosting> PlanBatchSerial(bool expectsQuantities, decimal? expected, decimal posted, IReadOnlyList<string> newSerials)
+        => ReceiptPostingRules.Plan(expectsQuantities, PendingExpected(expectsQuantities, expected, posted), newSerials.Count, TrackingTypes.Serial, newSerials);
 }

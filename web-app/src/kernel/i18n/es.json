@@ -5920,7 +5920,7 @@
         "confirmed": "Tanda del recibo {number} confirmada.",
         "hint": "{n} unidades nuevas por confirmar. La confirmación final cierra el recibo.",
         "hintNone": "No hay unidades nuevas para una tanda.",
-        "held": "Series, con daño o con cruce de muelle esperan la confirmación final ({n} u.)."
+        "held": "Series incompletas o con cruce de muelle esperan la confirmación final ({n} u.)."
       },
       "detail": {
         "expected": "Esperado",

@@ -328,11 +328,11 @@ export function findTargetConflict(docLines: readonly DocLine[], lines: readonly
 
 // ------------------------------------------------------------------ Lote 175: recibir por partes
 
-/** Una parte (tanda) se recibe contra un aviso u orden de compra, con acomodo, y sin series ni daño (esas líneas esperan la confirmación final). */
-export function partBlock(doc: ReceiptDoc | null, lines: DraftLine[], receivingMode: ReceivingMode | null): 'noDoc' | 'direct' | 'serialOrDamage' | null {
+/** Una parte (tanda) se recibe contra un aviso u orden de compra, con acomodo. Lote 187: puede traer series (una por unidad) y daño. */
+export function partBlock(doc: ReceiptDoc | null, lines: DraftLine[], receivingMode: ReceivingMode | null): 'noDoc' | 'direct' | null {
+  void lines
   if (!doc || (doc.asnId == null && !doc.purchaseOrderPublicId)) return 'noDoc'
   if (receivingMode === 'DIRECT') return 'direct'
-  if (lines.some((l) => (l.serialNumbers?.length ?? 0) > 0 || l.damagedQty > 0)) return 'serialOrDamage'
   return null
 }
 
@@ -348,6 +348,13 @@ export function buildReceiptPartBody(warehousePublicId: string, doc: ReceiptDoc,
       productPublicId: l.productPublicId,
       receivedQty: l.receivedQty,
       lot: l.lotNumber ? { number: l.lotNumber, expiryDate: l.expiryDate || null } : null,
+      serialNumbers: l.serialNumbers,
+      damagedQty: l.damagedQty > 0 ? l.damagedQty : null,
+      damageCause: l.damagedQty > 0 ? l.damageCause : null,
+      damageNote: l.damagedQty > 0 ? l.damageNote : null,
+      damageBinCode: l.damagedQty > 0 && !l.damageDiscard ? l.damageBinCode : null,
+      damageDiscard: l.damagedQty > 0 && l.damageDiscard ? true : null,
+      damageFinalDestination: l.damagedQty > 0 && l.damageDiscard ? l.damageDestination : null,
     })),
   }
 }

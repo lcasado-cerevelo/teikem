@@ -5982,3 +5982,14 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_IntegrationOutputEntity_Open' AND object_id = OBJECT_ID('dbo.IntegrationOutputEntity'))
     CREATE UNIQUE INDEX UX_IntegrationOutputEntity_Open ON dbo.IntegrationOutputEntity(IntegrationId, EntityId) WHERE IntegrationOutputId IS NULL;
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-21 (Lote 187) — Series y daño por partes (C2): dbo.ReceiptLine.DamageReportedQty = de DamagedQty, las unidades que ya tienen su reporte
+   de daño (el daño se reporta en la tanda que recibe las unidades dañadas). Los recibos ya reportados quedan con DamageReportedQty = DamagedQty.
+   Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.ReceiptLine', 'DamageReportedQty') IS NULL
+    ALTER TABLE dbo.ReceiptLine ADD DamageReportedQty DECIMAL(16,3) NOT NULL CONSTRAINT DF_ReceiptLine_DamageReportedQty DEFAULT 0;
+GO
+UPDATE dbo.ReceiptLine SET DamageReportedQty = DamagedQty WHERE DamageReportId IS NOT NULL AND DamageReportedQty = 0 AND DamagedQty > 0;
+GO

@@ -159,6 +159,7 @@ public sealed class ReceiptLineConfiguration : IEntityTypeConfiguration<ReceiptL
         b.Property(l => l.UnitCost).HasColumnType("decimal(18,4)");   // Lote 147: capa de costo
         b.Property(l => l.CostSource).HasColumnType("varchar(10)");
         b.Property(l => l.PostedQty).HasColumnType("decimal(16,3)");   // Lote 174: asentado por tandas
+        b.Property(l => l.DamageReportedQty).HasColumnType("decimal(16,3)");   // Lote 187: daño ya reportado por tandas
 
         b.HasIndex(l => l.ReceiptHeaderId).HasDatabaseName("IX_ReceiptLine_Header");
 

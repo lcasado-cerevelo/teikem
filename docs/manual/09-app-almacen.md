@@ -1376,7 +1376,7 @@ Asignar se hace en la web: Recibo → Avisos de llegada / Avisos de salida, bot�
 
 **Lo ya recibido del documento (Lote 186).** Con un aviso que ya lleva partes recibidas, la pantalla de Recibir muestra arriba **«Ya recibido de este documento»** con una línea por producto (`SKU-1: 4 de 10`). El dato viene del servidor al sincronizar (las tandas confirmadas por cualquier aparato o por la web); sin señal se ve lo de la última sincronización. Con una orden de compra no se muestra (su avance ya va en «pendiente»).
 
-**Qué no admite una parte.** No hay «Recibir una parte» sin documento (recibo ciego), en un almacén «directo a posición», ni si alguna línea lleva **series o daño declarado** (esas líneas se reciben al «Confirmar recibo»; la pantalla lo indica). Si el servidor las recibiera, responde 400: `Los productos con número de serie no se reciben por partes: se reciben en la confirmación final.` / `El daño no se declara en una parte: se declara en la confirmación final.`
+**Qué no admite una parte.** No hay «Recibir una parte» sin documento (recibo ciego), en un almacén «directo a posición», (Lote 187) Una parte **sí puede traer series y daño**: los productos con serie piden **una serie por cada unidad** de la parte (si faltan, el servidor responde 400 `Capture una serie por cada unidad recibida antes de confirmar la parte.`) y el **daño declarado se reporta con esa parte** (reporte DAN, las unidades dañadas salen de la posición de recepción y no se acomodan). El cierre («Confirmar recibo») no repite ni las series ni el daño ya asentados.
 
 **Reintentos.** Cada parte lleva una clave propia: si el envío se repite (se cortó la señal al responder), el servidor reconoce la parte y **no la suma dos veces**.
 

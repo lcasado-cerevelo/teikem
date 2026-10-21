@@ -289,7 +289,6 @@
     "confirmHelp": "Closes the receipt and creates putaway tasks.",
     "receivePart": "Receive a part",
     "receivePartHelp": "Confirms what is captured so far: it enters staging and can be put away now. The receipt stays open for the rest; \"Confirm receipt\" closes it.",
-    "receivePartBlocked": "A part cannot include serial numbers or damage: those lines are received when the receipt is confirmed.",
     "stagingFull": "What is captured ({qty}) does not fit in staging (free: {free}). Receive a part and put it away before continuing.",
     "confirmed": "Receipt queued to send",
     "confirmedQueued": "Saved on the device; it will send once there is a signal.",

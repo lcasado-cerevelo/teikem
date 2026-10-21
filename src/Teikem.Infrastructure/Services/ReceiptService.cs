@@ -586,8 +586,15 @@ public sealed class ReceiptService(
                 if (se is not null) errors["serialNumbers"] = new[] { se };
                 else
                 {
-                    serials = norm;
-                    if (req.ReceivedQty is null && trackingCode == TrackingTypes.Serial) received = norm.Count;
+                    // Lote 187: las series ya asentadas por tandas (las primeras) no se cambian ni se quitan
+                    var posted = ParseSerials(line.SerialNumbersJson).Take((int)line.PostedQty).ToList();
+                    if (!productChanged && posted.Count > 0 && !posted.SequenceEqual(norm.Take(posted.Count), StringComparer.OrdinalIgnoreCase))
+                        errors["serialNumbers"] = new[] { ReceiptBatchRules.SerialsPostedLocked(product.Sku) };
+                    else
+                    {
+                        serials = norm;
+                        if (req.ReceivedQty is null && trackingCode == TrackingTypes.Serial) received = norm.Count;
+                    }
                 }
             }
 
@@ -625,14 +632,23 @@ public sealed class ReceiptService(
             LineDamage? newDamage = null;
             if (errors.Count == 0)
             {
-                if (req.ClearDamage == true) damageChanged = true;
+                // Lote 187: el daño ya reportado en tandas no se quita; lo que se declara es el total (reportado + lo pendiente), y lo pendiente no pasa de lo recibido aún sin asentar
+                if (req.ClearDamage == true)
+                {
+                    if (line.DamageReportedQty > 0m) errors["line.damagedQty"] = new[] { ReceiptBatchRules.DamageBelowReported };
+                    else damageChanged = true;
+                }
                 else if (req.DamagedQty is not null)
                 {
-                    damageChanged = true;
-                    newDamage = await ResolveDamageAsync(r.WarehouseId, req.DamagedQty, received - line.PostedQty, trackingCode == TrackingTypes.Serial, req.DamageCause, req.DamageNote,
+                    if (req.DamagedQty < line.DamageReportedQty) errors["line.damagedQty"] = new[] { ReceiptBatchRules.DamageBelowReported };
+                    else
+                    {
+                        damageChanged = true;
+                        newDamage = await ResolveDamageAsync(r.WarehouseId, req.DamagedQty, received - line.PostedQty + line.DamageReportedQty, trackingCode == TrackingTypes.Serial, req.DamageCause, req.DamageNote,
                         req.DamageBinId, null, req.DamageDiscard, req.DamageFinalDestination, "line", errors, ct2);
+                    }
                 }
-                else if (line.DamagedQty > received - line.PostedQty) errors["line.damagedQty"] = new[] { DamageRules.LineDamagedTooMuch };
+                else if (line.DamagedQty > received - line.PostedQty + line.DamageReportedQty) errors["line.damagedQty"] = new[] { DamageRules.LineDamagedTooMuch };
             }
             if (errors.Count > 0) throw new ValidationException(errors);
             if (damageChanged) ApplyDamage(line, newDamage);
@@ -926,7 +942,7 @@ public sealed class ReceiptService(
             {
                 if (EntersTarget(l)) continue;
                 // lo dañado no se acomoda: se queda (o se mueve) según su reporte
-                var remaining = l.ReceivedQty - l.PostedQty - l.DamagedQty - crossDock.GetValueOrDefault(l.ReceiptLineId);   // Lote 174: lo de las tandas ya tiene su acomodo
+                var remaining = l.ReceivedQty - l.PostedQty - (l.DamagedQty - l.DamageReportedQty) - crossDock.GetValueOrDefault(l.ReceiptLineId);   // Lote 174: lo de las tandas ya tiene su acomodo; Lote 187: y lo dañado ya reportado en tandas también
                 if (remaining <= 0m) continue;
                 var p = products[l.ProductId];
                 if (tracking.GetValueOrDefault(p.TrackingTypeLookupId, TrackingTypes.None) == TrackingTypes.Lot && l.LotId is null) continue;
@@ -948,8 +964,8 @@ public sealed class ReceiptService(
 
             // 13. Daño declarado en las líneas: un reporte DAN-##### por línea; las unidades salen de donde aterrizaron (desecho o cuarentena). Va al
             // final porque el ledger puede limpiar el seguimiento del contexto: lo que se necesita se copia antes y la línea se vuelve a leer.
-            var damaged = lines.Where(l => l.DamagedQty > 0m && l.DamageReportId is null && l.DamageCauseLookupId != null)
-                .Select(l => (l.ReceiptLineId, l.ProductId, l.LotId, Qty: l.DamagedQty, Cause: l.DamageCauseLookupId!.Value, l.DamageNote, l.DamageBinId, l.DamageDiscard, l.DamageFinalDestinationLookupId,
+            var damaged = lines.Where(l => l.DamagedQty - l.DamageReportedQty > 0m && l.DamageCauseLookupId != null)   // Lote 187: solo lo dañado que aún no tiene reporte
+                .Select(l => (l.ReceiptLineId, l.ProductId, l.LotId, Qty: l.DamagedQty - l.DamageReportedQty, Cause: l.DamageCauseLookupId!.Value, l.DamageNote, l.DamageBinId, l.DamageDiscard, l.DamageFinalDestinationLookupId,
                     Landing: landingByLine.GetValueOrDefault(l.ReceiptLineId))).ToList();
             var receiptId = r.ReceiptHeaderId;
             var warehouseId = r.WarehouseId;
@@ -959,6 +975,7 @@ public sealed class ReceiptService(
                     x.DamageBinId, x.DamageDiscard, x.DamageFinalDestinationLookupId, ct2);
                 var fresh = await db.Set<ReceiptLine>().FirstAsync(l => l.ReceiptLineId == x.ReceiptLineId, ct2);
                 fresh.DamageReportId = reportId;
+                fresh.DamageReportedQty = fresh.DamagedQty;
                 await SaveReceiptAsync(ct2);
             }
         }, ct);
@@ -977,7 +994,7 @@ public sealed class ReceiptService(
         return await GetAsync(publicId, ct);
     }
 
-    private async Task ConfirmBatchCoreAsync(Guid publicId, ReceiptConfirmRequest? req, Guid? clientKey, CancellationToken ct)
+    private async Task ConfirmBatchCoreAsync(Guid publicId, ReceiptConfirmRequest? req, Guid? clientKey, CancellationToken ct, bool strictSerials = false)
     {
         var current = await ResolveAsync(publicId, ct);
         var comment = string.IsNullOrWhiteSpace(req?.Comment) ? null : req!.Comment!.Trim();
@@ -1000,7 +1017,9 @@ public sealed class ReceiptService(
             var crossDock = await CrossDockByLineAsync(lines.Select(l => l.ReceiptLineId).ToList(), ct2);
 
             // Las líneas de la tanda: con unidades nuevas y que puedan entrar (las demás esperan la confirmación final).
-            var included = new List<(int Index, ReceiptLine Line, Product Product, string Code, decimal Delta)>();
+            // Lote 187: las series y el daño entran a la tanda (una línea con serie, cuando tiene una serie por cada unidad recibida; el daño se reporta aquí).
+            var included = new List<(int Index, ReceiptLine Line, Product Product, string Code, decimal Delta, IReadOnlyList<string> NewSerials)>();
+            var errors = new Dictionary<string, string[]>();
             for (var i = 0; i < lines.Count; i++)
             {
                 var l = lines[i];
@@ -1008,15 +1027,18 @@ public sealed class ReceiptService(
                 if (delta <= 0m) continue;
                 var p = products[l.ProductId];
                 var code = tracking.GetValueOrDefault(p.TrackingTypeLookupId, TrackingTypes.None);
-                if (ReceiptBatchRules.NotBatchableReason(code, l.DamagedQty, crossDock.ContainsKey(l.ReceiptLineId)) is not null) continue;
-                included.Add((i, l, p, code, delta));
+                var serials = ParseSerials(l.SerialNumbersJson);
+                var serialsComplete = code != TrackingTypes.Serial || serials.Count == l.ReceivedQty;
+                if (strictSerials && !serialsComplete) { errors[$"lines[{i}]"] = new[] { ReceiptBatchRules.PartNeedsAllSerials }; continue; }
+                if (ReceiptBatchRules.NotBatchableReason(code, serialsComplete, crossDock.ContainsKey(l.ReceiptLineId)) is not null) continue;
+                included.Add((i, l, p, code, delta, code == TrackingTypes.Serial ? serials.Skip((int)l.PostedQty).ToList() : Array.Empty<string>()));
             }
+            if (errors.Count > 0) throw new ValidationException(errors);
             if (included.Count == 0) throw new StatusRuleException(ReceiptBatchRules.NothingToConfirm);
 
-            var errors = new Dictionary<string, string[]>();
             foreach (var x in included)
             {
-                var te = ReceiptRules.ValidateTracking(x.Code, x.Product.Sku, x.Line.ReceivedQty, x.Line.LotId is not null, 0);
+                var te = ReceiptRules.ValidateTracking(x.Code, x.Product.Sku, x.Line.ReceivedQty, x.Line.LotId is not null, x.Code == TrackingTypes.Serial ? ParseSerials(x.Line.SerialNumbersJson).Count : 0);
                 if (te is not null) errors[$"lines[{x.Index}]"] = new[] { te };
             }
             if (errors.Count > 0) throw new ValidationException(errors);
@@ -1064,10 +1086,13 @@ public sealed class ReceiptService(
                     defaultStaging ??= await ReceivingSupport.DefaultStagingBinAsync(db, r.WarehouseId, ct2);
                     l.StagingBinId = defaultStaging;
                 }
-                foreach (var planned in ReceiptBatchRules.PlanBatch(expects, l.ExpectedQty, l.PostedQty, x.Delta))
+                var plan = x.Code == TrackingTypes.Serial
+                    ? ReceiptBatchRules.PlanBatchSerial(expects, l.ExpectedQty, l.PostedQty, x.NewSerials)
+                    : ReceiptBatchRules.PlanBatch(expects, l.ExpectedQty, l.PostedQty, x.Delta);
+                foreach (var planned in plan)
                 {
                     postings.Add(new InventoryPosting(planned.TxnType, l.ProductId, planned.Quantity,
-                        LotId: l.LotId, SerialNumber: null,
+                        LotId: l.LotId, SerialNumber: planned.SerialNumber,
                         FromWarehouseId: planned.Inbound ? null : r.WarehouseId, FromBinId: planned.Inbound ? null : l.StagingBinId,
                         ToWarehouseId: planned.Inbound ? r.WarehouseId : null, ToBinId: planned.Inbound ? l.StagingBinId : null,
                         RefEntityType: EntityTypes.Receipt, RefId: r.ReceiptHeaderId, ReasonCode: planned.ReasonCode));
@@ -1085,16 +1110,34 @@ public sealed class ReceiptService(
                 ReceiptHeaderId = r.ReceiptHeaderId, BatchNumber = number, ConfirmedAtUtc = DateTime.UtcNow, ConfirmedBy = tenant.UserId,
                 Comment = comment, LineCount = included.Count, UnitCount = included.Sum(x => x.Delta), ClientKey = clientKey,
             });
+            // Lote 187: el daño declarado que aún no tiene reporte se reporta con esta tanda (sus unidades salen de la posición de recepción); lo copiamos antes de guardar porque el ledger limpia el seguimiento.
+            var batchDamage = included.Where(x => x.Line.DamagedQty - x.Line.DamageReportedQty > 0m && x.Line.DamageCauseLookupId != null)
+                .Select(x => (x.Line.ReceiptLineId, x.Line.ProductId, x.Line.LotId, Qty: x.Line.DamagedQty - x.Line.DamageReportedQty, Cause: x.Line.DamageCauseLookupId!.Value, x.Line.DamageNote,
+                    x.Line.DamageBinId, x.Line.DamageDiscard, x.Line.DamageFinalDestinationLookupId, Landing: x.Line.StagingBinId)).ToList();
+            var damageByLine = batchDamage.ToDictionary(d => d.ReceiptLineId, d => d.Qty);
             foreach (var x in included) x.Line.PostedQty = x.Line.ReceivedQty;
             await SaveReceiptAsync(ct2);
 
-            // Acomodo de lo de la tanda (misma lógica de destino que la confirmación final), después de guardar las cantidades.
+            // Acomodo de lo de la tanda (misma lógica de destino que la confirmación final), después de guardar las cantidades. Lo dañado no se acomoda.
             foreach (var x in included)
             {
-                var toBin = x.Line.TargetBinId ?? await SuggestAsync(r.WarehouseId, x.Line.ProductId, x.Line.LotId, x.Delta, x.Line.StagingBinId, ct2);
-                await CreatePutawayAsync(r, x.Line, x.Delta, toBin, ct2);
+                var good = x.Delta - damageByLine.GetValueOrDefault(x.Line.ReceiptLineId);
+                if (good <= 0m) continue;
+                var toBin = x.Line.TargetBinId ?? await SuggestAsync(r.WarehouseId, x.Line.ProductId, x.Line.LotId, good, x.Line.StagingBinId, ct2);
+                await CreatePutawayAsync(r, x.Line, good, toBin, ct2);
             }
             await SaveReceiptAsync(ct2);
+            var batchReceiptId = r.ReceiptHeaderId;
+            var batchWarehouseId = r.WarehouseId;
+            foreach (var d in batchDamage)
+            {
+                var reportId = await damages.ReportReceiptLineAsync(batchWarehouseId, batchReceiptId, d.ProductId, d.LotId, d.Qty, d.Cause, d.DamageNote, d.Landing,
+                    d.DamageBinId, d.DamageDiscard, d.DamageFinalDestinationLookupId, ct2);
+                var fresh = await db.Set<ReceiptLine>().FirstAsync(l => l.ReceiptLineId == d.ReceiptLineId, ct2);
+                fresh.DamageReportId = reportId;
+                fresh.DamageReportedQty += d.Qty;
+                await SaveReceiptAsync(ct2);
+            }
         }, ct);
     }
 
@@ -1121,8 +1164,7 @@ public sealed class ReceiptService(
     /// Lote 175 — «Recibir una parte» (cola del aparato): contra un aviso de llegada o una orden de compra, busca el recibo abierto del documento
     /// (o lo crea), SUMA lo capturado a sus líneas (o lo agrega como línea extra) y confirma una tanda; el recibo sigue abierto para lo que falte
     /// y la confirmación final (POST /receipts con confirm) lo cierra. Varios aparatos pueden aportar partes al mismo documento. ClientKey (el id
-    /// del envío en la cola) hace el reintento idempotente: repetido, no suma otra vez. En una parte no entran series ni daño (se reciben en la
-    /// confirmación final): 400.
+    /// del envío en la cola) hace el reintento idempotente: repetido, no suma otra vez. Lote 187: la parte puede traer series (una por unidad) y daño: el daño se reporta con la parte.
     /// </summary>
     public async Task<ReceiptDetailDto> ReceivePartAsync(ReceiptPartRequest req, CancellationToken ct)
     {
@@ -1135,8 +1177,6 @@ public sealed class ReceiptService(
         {
             var l = requestLines[i];
             if (l is null) throw new ValidationException($"lines[{i}]", ReceiptRules.LinesRequired);
-            if (l.SerialNumbers is { Count: > 0 }) throw new ValidationException($"lines[{i}].serialNumbers", ReceiptBatchRules.PartNoSerials);
-            if ((l.DamagedQty ?? 0m) > 0m) throw new ValidationException($"lines[{i}].damagedQty", ReceiptBatchRules.PartNoDamage);
         }
         if (req.ClientKey is Guid key)
         {
@@ -1161,7 +1201,7 @@ public sealed class ReceiptService(
                 id = open.PublicId;
                 await AddPartLinesAsync(id, requestLines, ct2);
             }
-            await ConfirmBatchCoreAsync(id, new ReceiptConfirmRequest(req.Comment), req.ClientKey, ct2);
+            await ConfirmBatchCoreAsync(id, new ReceiptConfirmRequest(req.Comment), req.ClientKey, ct2, strictSerials: true);
             return id;
         }, ct);
         return await GetAsync(publicId, ct);
@@ -1200,7 +1240,7 @@ public sealed class ReceiptService(
                 match.SerialNumbersJson = serials.Count == 0 ? null : JsonSerializer.Serialize(serials, Json);
                 if (built.DamagedQty > 0m)
                 {
-                    var hadDamage = match.DamagedQty > 0m;
+                    var hadDamage = match.DamagedQty > match.DamageReportedQty;   // Lote 187: solo cuenta el daño aún sin reportar
                     match.DamagedQty += built.DamagedQty;
                     if (!hadDamage) CopyDamage(built, match, qtyToo: false);
                 }
@@ -1529,7 +1569,7 @@ public sealed class ReceiptService(
             // lo dañado de la nueva captura se suma; la causa, el comentario y la posición son los de la primera que los trajo
             if (built.DamagedQty > 0m)
             {
-                var hadDamage = same.DamagedQty > 0m;
+                var hadDamage = same.DamagedQty > same.DamageReportedQty;   // Lote 187
                 same.DamagedQty += built.DamagedQty;
                 if (!hadDamage) CopyDamage(built, same, qtyToo: false);
                 else same.DamageNote = same.DamageNote is null ? built.DamageNote : built.DamageNote is null ? same.DamageNote : $"{same.DamageNote} · {built.DamageNote}";

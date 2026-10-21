@@ -19,5 +19,5 @@ Pedido de Luis: los cuatro puntos de «pendiente menor». Este lote cubre los pu
 
 ## Qué quedó fuera
 - **Empacar la maestra desde el aparato:** el envío exige un pedido completo (consignatario, servicio, bultos) y el aparato no conoce las maestras (no se sincronizan); pendiente de decisión del dueño.
-- **Series y daño por partes:** requieren que la tanda asiente series y reportes de daño (hoy esas líneas se confirman en el recibo final); queda para cuando la operación real lo defina.
+- (Series y daño por partes: resuelto en el Lote 187.)
 - **app-cliente:** no tiene pantalla de avisos de llegada, por eso «Recibido parcial» solo se ve en el portal web.

@@ -8,15 +8,16 @@ describe('receiptBatches', () => {
     expect(batchableUnits(line({ receivedQty: 8, postedQty: 5 }))).toBe(3)
     expect(batchableUnits(line({ receivedQty: 5, postedQty: 5 }))).toBe(0)
   })
-  it('no deja entrar series, daño ni cruce de muelle: esperan la confirmación final', () => {
+  it('Lote 187: las series completas y el daño entran; series incompletas y cruce de muelle esperan la confirmación final', () => {
     const lines = [
       line({ receivedQty: 4 }),
-      line({ trackingTypeCode: 'SERIAL', receivedQty: 2 }),
+      line({ trackingTypeCode: 'SERIAL', receivedQty: 2, serialNumbers: ['S1', 'S2'] }),
+      line({ trackingTypeCode: 'SERIAL', receivedQty: 3, serialNumbers: ['S1'] }),
       line({ receivedQty: 3, damagedQty: 1 }),
       line({ receivedQty: 6, allocatedToCrossDock: 6 }),
     ]
-    expect(pendingBatchUnits(lines)).toBe(4)
-    expect(heldForFinalUnits(lines)).toBe(11)
+    expect(pendingBatchUnits(lines)).toBe(9)
+    expect(heldForFinalUnits(lines)).toBe(9)
   })
   it('sin líneas no hay nada', () => {
     expect(pendingBatchUnits(undefined)).toBe(0)
