@@ -1,6 +1,6 @@
 // Lote F-G1 — configuración de la estación (localStorage por compañía) y resolución estación → compañía → integrado.
 import { afterEach, describe, expect, it } from 'vitest'
-import { BUILT_IN_LAYOUT } from '../../kernel/ui/orderLabelLayout'
+import { BUILT_IN_INVOICE_LAYOUT, BUILT_IN_LAYOUT } from '../../kernel/ui/orderLabelLayout'
 import type { StationOptions } from './printingApi'
 import {
   BUILT_IN,
@@ -11,6 +11,7 @@ import {
   PDF_ONLY,
   readStationConfig,
   resolvePrinter,
+  resolveInvoiceTemplate,
   resolveTemplate,
   stationKey,
   writeStationConfig,
@@ -82,5 +83,16 @@ describe('resolveTemplate', () => {
     expect(resolveTemplate(withLabel({ template: BUILT_IN }), OPTIONS)).toMatchObject({ source: 'builtIn', template: null })
     expect(resolveTemplate(withLabel({ template: 'borrada' }), OPTIONS)).toMatchObject({ source: 'company', notice: 'templateInactive' })
     expect(resolveTemplate(withLabel({ template: COMPANY_DEFAULT }), { ...OPTIONS, templates: [] })).toMatchObject({ source: 'builtIn', layout: BUILT_IN_LAYOUT })
+  })
+})
+
+describe('label de factura', () => {
+  const INVOICE_TPL = { publicId: 'inv', name: 'Factura 4×6', kind: 'INVOICE', isDefault: true, isActive: true, layout: BUILT_IN_INVOICE_LAYOUT }
+  it('la plantilla de piezas no toma la predeterminada de facturas (y al revés); sin plantilla de factura sale el integrado', () => {
+    const options: StationOptions = { ...OPTIONS, templates: [...(OPTIONS.templates ?? []), INVOICE_TPL] }
+    expect(resolveTemplate(DEFAULT_STATION, options)).toMatchObject({ template: { publicId: 'cod' } })
+    expect(resolveInvoiceTemplate(options)).toMatchObject({ source: 'company', template: { publicId: 'inv' } })
+    expect(resolveInvoiceTemplate(OPTIONS)).toMatchObject({ source: 'builtIn', template: null, layout: BUILT_IN_INVOICE_LAYOUT })
+    expect(resolveInvoiceTemplate(undefined).layout).toEqual(BUILT_IN_INVOICE_LAYOUT)
   })
 })

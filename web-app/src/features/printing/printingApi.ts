@@ -13,10 +13,13 @@ export type LabelTemplateDto = Schemas['LabelTemplateDto']
 export type LabelLayoutDto = Schemas['LabelLayoutDto']
 export type StationOptions = Schemas['PrintStationOptionsDto']
 
+/** Clase de plantilla: la de las PIEZAS (un label por pieza) o la de la FACTURA (un label con el código de barras del número de factura). */
+export type TemplateKind = 'PIECE' | 'INVOICE'
+
 export const printingKeys = {
   all: ['printing'] as const,
   printers: (includeInactive: boolean) => ['printing', '/api/v1/printers', { includeInactive }] as const,
-  templates: (includeInactive: boolean) => ['printing', '/api/v1/label-templates', { includeInactive }] as const,
+  templates: (includeInactive: boolean, kind: TemplateKind) => ['printing', '/api/v1/label-templates', { includeInactive, kind }] as const,
   options: ['printing', '/api/v1/printing/station-options'] as const,
   settings: ['printing', '/api/v1/printing/settings'] as const,
 }
@@ -28,10 +31,10 @@ export function usePrinters(includeInactive: boolean) {
   })
 }
 
-export function useLabelTemplates(includeInactive: boolean) {
+export function useLabelTemplates(includeInactive: boolean, kind: TemplateKind = 'PIECE') {
   return useQuery({
-    queryKey: printingKeys.templates(includeInactive),
-    queryFn: () => unwrap(api.GET('/api/v1/label-templates', { params: { query: { includeInactive } } })),
+    queryKey: printingKeys.templates(includeInactive, kind),
+    queryFn: () => unwrap(api.GET('/api/v1/label-templates', { params: { query: { includeInactive, kind } } })),
   })
 }
 
@@ -87,7 +90,7 @@ export function useTemplateMutations() {
   const path = (publicId: string) => ({ params: { path: { publicId } } })
   return {
     create: useMutation({
-      mutationFn: (body: { name: string; layout: LabelLayoutDto }) => unwrap(api.POST('/api/v1/label-templates', { body })),
+      mutationFn: (body: { name: string; layout: LabelLayoutDto; kind?: TemplateKind }) => unwrap(api.POST('/api/v1/label-templates', { body })),
       onSettled: invalidate,
     }),
     update: useMutation({

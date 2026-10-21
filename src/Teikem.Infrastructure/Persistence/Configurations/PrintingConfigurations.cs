@@ -39,10 +39,12 @@ public sealed class LabelTemplateConfiguration : IEntityTypeConfiguration<LabelT
         b.Property(t => t.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();
         b.Property(t => t.Name).HasMaxLength(80).IsRequired();
         b.Property(t => t.LayoutJson).HasMaxLength(LabelLayout.MaxJsonLength).IsRequired();
+        b.Property(t => t.Kind).HasMaxLength(10).IsUnicode(false).IsRequired().HasDefaultValue(LabelTemplateKinds.Piece);
         b.Property(t => t.RowVersion).IsRowVersion();
 
         b.HasIndex(t => t.PublicId).IsUnique().HasDatabaseName("UQ_LabelTemplate_PublicId");
-        b.HasIndex(t => new { t.TenantId, t.Name }).IsUnique().HasFilter("[IsActive] = 1").HasDatabaseName("UX_LabelTemplate_Name");
-        b.HasIndex(t => t.TenantId).IsUnique().HasFilter("[IsDefault] = 1 AND [IsActive] = 1").HasDatabaseName("UX_LabelTemplate_Default");
+        // el nombre es único por tipo y hay UNA predeterminada por compañía y tipo (la de pieza y la de factura)
+        b.HasIndex(t => new { t.TenantId, t.Kind, t.Name }).IsUnique().HasFilter("[IsActive] = 1").HasDatabaseName("UX_LabelTemplate_Name");
+        b.HasIndex(t => new { t.TenantId, t.Kind }).IsUnique().HasFilter("[IsDefault] = 1 AND [IsActive] = 1").HasDatabaseName("UX_LabelTemplate_Default");
     }
 }

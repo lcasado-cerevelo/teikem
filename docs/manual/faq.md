@@ -7549,8 +7549,8 @@ La configuración de impresión es por estación (este navegador en esta computa
 **¿Qué hace «Imprimir labels directo a la impresora»?**
 Es un ajuste de la compañía (apagado por defecto, permiso `printers.manage`). Encendido, al guardar una orden (entrada rápida o detallada) el interruptor «Label al guardar» viene encendido y sale un label por pieza a la impresora de labels de la estación; una estación puede no imprimir apagando su «Imprimir al guardar» (desde F-G2).
 
-**Encendí «Imprimir la factura automáticamente» en un cliente y no sale ninguna factura.**
-Por ahora solo se guarda la preferencia del cliente: Teikem todavía no imprime facturas (llega con facturación).
+**Encendí «Label de factura» en un cliente y no sale el label.**
+Sale al guardar un envío de ese cliente **con número de factura**, después de los labels de los paquetes, por la impresora de labels de la estación (necesita una configurada). Si el envío no tiene factura aparece «{N} envíos sin número de factura no llevan label de factura.». No pregunta ni abre vista previa. Cómo se ve se cambia en Sistema → Impresoras y labels → «Construir el label de factura».
 
 ## Lote 44 / F-G2 — Labels y documentos de las órdenes (2026-10-12)
 
@@ -9938,3 +9938,12 @@ Revise Sincronización: si ya aparece enviada, está en el servidor. Reenviarla 
 
 **Me avisa que no cabe en el staging.**
 Es solo un aviso con el cupo configurado de la posición de recepción: reciba una parte y acomode (Acomodar) para liberar espacio.
+
+**¿Cómo cambio lo que dice el label de factura?**
+Sistema → Impresoras y labels → «Construir el label de factura» (permiso `printers.manage`). Por omisión es el código de barras del número de factura, centrado y grande, con el número debajo; ahí agregas, mueves o achicas lo que quieras. «Hacer predeterminada» elige cuál sale. Las plantillas de factura son aparte de las de los paquetes.
+
+**«El tipo de la plantilla no se puede cambiar; cree otra.»**
+Una plantilla nace como de paquete o de factura y no cambia. Crea una nueva en el constructor de la clase que necesitas (o duplica y edita).
+
+**«El tipo de plantilla debe ser PIECE (label de pieza) o INVOICE (label de factura).»**
+Solo en llamadas directas al API: `kind` solo acepta `PIECE` o `INVOICE`.

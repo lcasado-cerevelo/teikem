@@ -164,6 +164,7 @@ export default function PrintersScreen() {
         <StationPrintPanel kind="doc" options={options.data} saved={saved} onSave={(c) => onSave(c, 'doc')} detected={detected} company={company} />
       </div>
       <LabelBuilderPanel mediaSize={labelPrinter.mediaSize} company={company} />
+      <LabelBuilderPanel kind="INVOICE" mediaSize={labelPrinter.mediaSize} company={company} />
       <CompanyPrintingPanel />
       <PrintersPanel detected={detected} />
     </div>

@@ -10309,6 +10309,7 @@ export interface paths {
             parameters: {
                 query?: {
                     includeInactive?: boolean;
+                    kind?: string;
                 };
                 header?: never;
                 path?: never;
@@ -35026,11 +35027,13 @@ export interface components {
             isDefault?: boolean;
             isActive?: boolean;
             rowVersion?: string | null;
+            kind?: string | null;
         };
         LabelTemplateRequest: {
             name?: string | null;
             layout?: components["schemas"]["LabelLayoutDto"];
             rowVersion?: string | null;
+            kind?: string | null;
         };
         LocationDto: {
             /** Format: int32 */
@@ -36165,6 +36168,7 @@ export interface components {
             builtInLayout?: components["schemas"]["LabelLayoutDto"];
             printLabelsDirect?: boolean;
             qzSigningConfigured?: boolean;
+            builtInInvoiceLayout?: components["schemas"]["LabelLayoutDto"];
         };
         ScheduledJobDto: {
             key?: string | null;

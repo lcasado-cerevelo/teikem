@@ -83,9 +83,9 @@ Quién puede: `clients.update`.
 Cómo se usa: `PATCH /api/v1/clients/{publicId}/profile` con solo los campos que cambian; `rowVersion` opcional (el de la
 ficha) para detectar que otro usuario editó antes. `defaultPickupLocationPublicId` fija el almacén por defecto;
 `clearDefaultPickup: true` vuelve a "se recoge en la corporativa".
-Lote 43 (2026-10-12): `autoPrintInvoice: true|false` guarda «Imprimir la factura automáticamente» de este cliente (el que manda);
-sin el campo no cambia y la ficha lo devuelve en `autoPrintInvoice` (apagado por defecto). **Solo se guarda la preferencia: todavía no
-se imprime ninguna factura** (llega con facturación). Ver el capítulo [12 — Impresoras y labels](12-impresoras-y-labels.md) §6.
+Lote 43 (2026-10-12): `autoPrintInvoice: true|false` guarda el «Label de factura» de este cliente (el que manda);
+sin el campo no cambia y la ficha lo devuelve en `autoPrintInvoice` (apagado por defecto). Desde 2026-10-21, al guardar un envío con número de
+factura, después de los labels de los paquetes sale solo un label de la factura (código de barras del número con el número debajo; rediseñable). Ver el capítulo [12 — Impresoras y labels](12-impresoras-y-labels.md) §6.
 
 | Campo / caso | Regla | Mensaje exacto | HTTP |
 |---|---|---|---|

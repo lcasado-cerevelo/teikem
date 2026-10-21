@@ -36,6 +36,8 @@ public static class PrintingRules
     public const string PrinterInactiveDefaultMessage = "La impresora está inactiva; reactívela antes de hacerla predeterminada.";
 
     // ---------------- plantillas: 400 y 409 ----------------
+    public const string UnknownTemplateKindMessage = "El tipo de plantilla debe ser PIECE (label de pieza) o INVOICE (label de factura).";
+    public const string TemplateKindImmutableMessage = "El tipo de la plantilla no se puede cambiar; cree otra.";
     public const string TemplateNameRequiredMessage = "Escriba el nombre de la plantilla.";
     public const string DuplicateTemplateMessage = "Ya existe una plantilla de label activa con ese nombre.";
     public const string TemplateInactiveDefaultMessage = "La plantilla está inactiva; reactívela antes de hacerla predeterminada.";

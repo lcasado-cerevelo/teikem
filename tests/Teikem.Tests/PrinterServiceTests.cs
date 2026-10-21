@@ -183,7 +183,7 @@ public sealed class PrinterServiceTests : IDisposable
 
         await Templates.MakeDefaultAsync(std.PublicId, default);
         _db.ChangeTracker.Clear();
-        var list = await Templates.ListAsync(false, default);
+        var list = await Templates.ListAsync(false, null, default);
         Assert.Equal(new[] { std.PublicId }, list.Where(t => t.IsDefault).Select(t => t.PublicId));
         _db.ChangeTracker.Clear();
 
@@ -201,6 +201,52 @@ public sealed class PrinterServiceTests : IDisposable
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
         Assert.Equal(built, (await Templates.GetAsync(cod.PublicId, default)).Layout);
+    }
+
+    [Fact]
+    public async Task Invoice_labels_are_a_second_kind_of_template_with_their_own_default_and_names()
+    {
+        var piece = LabelTemplateService.ToDto(LabelLayout.BuiltIn);
+        var inv = LabelTemplateService.ToDto(LabelLayout.BuiltInInvoice);
+
+        var p1 = await Templates.CreateAsync(new LabelTemplateRequest("Estándar", piece), default);
+        var i1 = await Templates.CreateAsync(new LabelTemplateRequest("Factura", inv, Kind: "invoice"), default);
+        Assert.Equal(("PIECE", true), (p1.Kind, p1.IsDefault));
+        Assert.Equal(("INVOICE", true), (i1.Kind, i1.IsDefault));          // la primera de CADA tipo nace predeterminada
+        // el mismo nombre vale en el otro tipo y la predeterminada de uno no quita la del otro
+        var i2 = await Templates.CreateAsync(new LabelTemplateRequest("Estándar", inv, Kind: "INVOICE"), default);
+        Assert.False(i2.IsDefault);
+        _db.ChangeTracker.Clear();
+        await Templates.MakeDefaultAsync(i2.PublicId, default);
+        _db.ChangeTracker.Clear();
+        Assert.Equal(new[] { p1.PublicId, i2.PublicId }.OrderBy(x => x), (await Templates.ListAsync(false, null, default)).Where(t => t.IsDefault).Select(t => t.PublicId).OrderBy(x => x));
+        Assert.Equal(new[] { i1.PublicId, i2.PublicId }.OrderBy(x => x), (await Templates.ListAsync(false, "INVOICE", default)).Select(t => t.PublicId).OrderBy(x => x));
+        Assert.Single(await Templates.ListAsync(false, "piece", default));
+        var dup = await Assert.ThrowsAsync<ConflictException>(() => Templates.CreateAsync(new LabelTemplateRequest("Factura", inv, Kind: "INVOICE"), default));
+        Assert.Equal("Ya existe una plantilla de label activa con ese nombre.", dup.Message);
+
+        // el tipo no se cambia y uno desconocido es 400
+        var immutable = await Assert.ThrowsAsync<ValidationException>(() => Templates.UpdateAsync(i1.PublicId, new LabelTemplateRequest(Kind: "PIECE"), default));
+        Assert.Equal("El tipo de la plantilla no se puede cambiar; cree otra.", immutable.Message);
+        var unknown = await Assert.ThrowsAsync<ValidationException>(() => Templates.CreateAsync(new LabelTemplateRequest("X", inv, Kind: "ZZ"), default));
+        Assert.Equal("El tipo de plantilla debe ser PIECE (label de pieza) o INVOICE (label de factura).", unknown.Message);
+    }
+
+    [Fact]
+    public void The_built_in_invoice_label_is_just_a_centered_barcode_and_the_invoice_element_is_never_used()
+    {
+        var b = LabelLayout.BuiltInInvoice;
+        Assert.Equal(new LabelElement(true, "mc", "lg"), b.Barcode);
+        Assert.All(b.Elements().Where(e => e.Key != "barcode"), e => Assert.False(e.Element.On));
+        // aunque llegue «Invoice» encendido y como código de barras, en el label de factura se apaga (si no, la factura saldría dos veces)
+        var input = LabelLayout.BuiltInInvoice.Elements().ToDictionary(e => e.Key, e => (LabelElement?)e.Element);
+        input["invoice"] = new LabelElement(true, "bl", "sm", true);
+        var (layout, error) = LabelLayout.Normalize(input, LabelTemplateKinds.Invoice);
+        Assert.Null(error);
+        Assert.False(layout!.Invoice.On);
+        Assert.False(layout.Invoice.AsBarcode);
+        Assert.Equal("PIECE", LabelTemplateKinds.Normalize(null));
+        Assert.Null(LabelTemplateKinds.Normalize("zz"));
     }
 
     [Fact]

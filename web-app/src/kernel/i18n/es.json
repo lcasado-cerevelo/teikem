@@ -503,9 +503,9 @@
       "portalCreateExits": "Avisos de salida",
       "portalCreateExitsText": "Puede crear avisos de salida",
       "autoPrintLabelsHelp": "Se guarda por cliente (el que manda). Al guardar un envío de este cliente, sus labels (uno por paquete) salen solos, aunque «Label al guardar» esté apagado en la estación. Necesita una impresora de labels configurada.",
-      "autoPrintInvoice": "Factura",
-      "autoPrintInvoiceText": "Imprimir la factura automáticamente",
-      "autoPrintInvoiceHelp": "Se guarda por cliente (el que manda). Todavía no imprime la factura: eso llega con facturación."
+      "autoPrintInvoice": "Label de factura",
+      "autoPrintInvoiceText": "Imprimir el label de la factura automáticamente",
+      "autoPrintInvoiceHelp": "Se guarda por cliente (el que manda). Al guardar un envío de este cliente con número de factura, después de los labels de sus paquetes sale solo un label de la factura (el código de barras del número con el número debajo; se puede rediseñar en Sistema → Impresoras y labels). Necesita una impresora de labels configurada."
     },
     "addresses": {
       "title": "Direcciones",
@@ -10681,6 +10681,7 @@
       "docReady": "El documento está listo para imprimir.",
       "cancelled": "{n} envíos cancelados no se imprimieron.",
       "withoutNumber": "{n} piezas sin número de paquete no se imprimieron.",
+      "withoutInvoice": "{n} envíos sin número de factura no llevan label de factura.",
       "none": "No hay labels que imprimir.",
       "large": "Son {n} labels: el PDF será grande y puede tardar un poco. Se imprimen todos; no hay límite.",
       "failed": "No se pudo imprimir: {reason}",
@@ -10710,6 +10711,7 @@
       "address": "Dirección",
       "barcode": "Código de barras",
       "waybill": "Número de waybill",
+      "barcodeInvoice": "Número de factura (código de barras)",
       "invoice": "Invoice",
       "cod": "Monto COD"
     },
@@ -10796,6 +10798,8 @@
     },
     "builder": {
       "title": "Construir el label",
+      "invoiceTitle": "Construir el label de factura",
+      "invoiceHint": "El label de factura sale una vez por envío, después de los labels de los paquetes, a los clientes que tienen marcado «Label de factura». Por omisión es el código de barras del número de factura con el número pegado debajo, centrado; si quieres, agrega lo que necesites (cliente, consignatario, COD…) y muévelo o cámbialo de tamaño.",
       "hint": "Escoge qué elementos aparecen en el label, su posición y tamaño — la vista previa se actualiza al momento. El código de barras es el número de cada paquete: sale un label por paquete.",
       "template": "Plantilla",
       "isDefault": "predeterminada",

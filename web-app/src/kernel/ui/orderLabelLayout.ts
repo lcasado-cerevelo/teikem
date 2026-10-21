@@ -38,6 +38,27 @@ export const BUILT_IN_LAYOUT: LabelLayout = {
   cod: { on: true, pos: 'br', size: 'md', asBarcode: false },
 }
 
+/** Clase de label: el de cada PIEZA o el de la FACTURA (código de barras del número de factura con el número debajo; el constructor es el mismo). */
+export type LabelKind = 'PIECE' | 'INVOICE'
+
+/**
+ * Label de factura integrado (igual a `LabelLayout.BuiltInInvoice` del servidor): solo el código de barras —que aquí es el número de factura—
+ * centrado y grande, con el número legible pegado debajo.
+ */
+export const BUILT_IN_INVOICE_LAYOUT: LabelLayout = {
+  logo: { on: false, pos: 'tl', size: 'md', asBarcode: false },
+  service: { on: false, pos: 'tr', size: 'sm', asBarcode: false },
+  sender: { on: false, pos: 'tc', size: 'sm', asBarcode: false },
+  consignee: { on: false, pos: 'ml', size: 'md', asBarcode: false },
+  address: { on: false, pos: 'ml', size: 'sm', asBarcode: false },
+  barcode: { on: true, pos: 'mc', size: 'lg', asBarcode: false },
+  waybill: { on: false, pos: 'bl', size: 'sm', asBarcode: false },
+  invoice: { on: false, pos: 'bl', size: 'sm', asBarcode: false },
+  cod: { on: false, pos: 'br', size: 'md', asBarcode: false },
+}
+
+export const builtInLayoutFor = (kind: LabelKind): LabelLayout => (kind === 'INVOICE' ? BUILT_IN_INVOICE_LAYOUT : BUILT_IN_LAYOUT)
+
 const isPos = (v: unknown): v is LabelPos => typeof v === 'string' && (LABEL_POSITIONS as readonly string[]).includes(v.toLowerCase())
 const isSize = (v: unknown): v is LabelSize => typeof v === 'string' && (LABEL_SIZES as readonly string[]).includes(v.toLowerCase())
 
@@ -45,11 +66,11 @@ const isSize = (v: unknown): v is LabelSize => typeof v === 'string' && (LABEL_S
  * Construcción segura a partir de lo que mande el API o lo que haya en memoria: cada elemento que falte o traiga una posición o un
  * tamaño desconocidos toma lo del integrado; «como código de barras» solo en waybill y factura. Nunca lanza.
  */
-export function normalizeLayout(raw: unknown): LabelLayout {
+export function normalizeLayout(raw: unknown, kind: LabelKind = 'PIECE'): LabelLayout {
   const src = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
   const out = {} as LabelLayout
   for (const key of LABEL_KEYS) {
-    const def = BUILT_IN_LAYOUT[key]
+    const def = builtInLayoutFor(kind)[key]
     const e = src[key] && typeof src[key] === 'object' ? (src[key] as Record<string, unknown>) : null
     if (!e) {
       out[key] = { ...def }
@@ -62,12 +83,14 @@ export function normalizeLayout(raw: unknown): LabelLayout {
       asBarcode: BARCODE_CAPABLE.includes(key) && e.asBarcode === true,
     }
   }
+  // en el label de factura el número de factura ES el código de barras: el elemento «Factura» no se usa
+  if (kind === 'INVOICE') out.invoice = { ...out.invoice, on: false, asBarcode: false }
   return out
 }
 
 /** ¿Hay algún código de barras visible? (el servidor exige uno para guardar la plantilla). */
-export function hasVisibleBarcode(l: LabelLayout): boolean {
-  return l.barcode.on || (l.waybill.on && l.waybill.asBarcode) || (l.invoice.on && l.invoice.asBarcode)
+export function hasVisibleBarcode(l: LabelLayout, kind: LabelKind = 'PIECE'): boolean {
+  return l.barcode.on || (l.waybill.on && l.waybill.asBarcode) || (kind === 'PIECE' && l.invoice.on && l.invoice.asBarcode)
 }
 
 /** Iguales elemento por elemento (para saber si el constructor tiene cambios sin guardar). */
@@ -142,7 +165,7 @@ const fill = (template: string, params: Record<string, string | number>) => temp
  * Plan del label de un paquete: por renglón, los textos de cada celda en el orden del constructor y los códigos de barras. Un elemento
  * sin dato (sin factura, COD 0…) no se pinta. El «Código de barras» lleva el número del paquete con «Paquete i de N».
  */
-export function planLabel(layout: LabelLayout, data: OrderLabelData, texts: LabelTexts): LabelRowPlan[] {
+export function planLabel(layout: LabelLayout, data: OrderLabelData, texts: LabelTexts, kind: LabelKind = 'PIECE'): LabelRowPlan[] {
   const rows = ROWS.map((row): LabelRowPlan => ({ row, cells: { l: [], c: [], r: [] }, barcodes: [] }))
   const at = (pos: LabelPos) => rows[ROWS.indexOf(pos[0] as LabelRow)]
   const col = (pos: LabelPos) => pos[1] as LabelCol
@@ -151,7 +174,7 @@ export function planLabel(layout: LabelLayout, data: OrderLabelData, texts: Labe
 
   for (const key of LABEL_KEYS) {
     const el = layout[key]
-    if (!el.on) continue
+    if (!el.on || (kind === 'INVOICE' && key === 'invoice')) continue
     const row = at(el.pos)
     const text = (lines: string[], bold = false, inverse = false) => {
       const kept = lines.map((l) => l.trim()).filter(Boolean)
@@ -175,6 +198,12 @@ export function planLabel(layout: LabelLayout, data: OrderLabelData, texts: Labe
         text([...(data.addressLines ?? [])])
         break
       case 'barcode': {
+        // label de factura: las barras son el número de factura y debajo va solo el número (sin «Paquete i de N»)
+        if (kind === 'INVOICE') {
+          const inv = clean(data.invoice)
+          if (inv) barcode(inv, inv)
+          break
+        }
         const n = clean(data.packageNumber)
         if (n) barcode(n, `${n} · ${packageOf}`)
         break

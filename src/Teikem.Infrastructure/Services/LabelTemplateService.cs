@@ -17,10 +17,16 @@ namespace Teikem.Infrastructure.Services;
 /// </summary>
 public sealed class LabelTemplateService(TeikemDbContext db, ITenantContext tenant)
 {
-    public async Task<IReadOnlyList<LabelTemplateDto>> ListAsync(bool includeInactive, CancellationToken ct)
+    /// <summary>Plantillas de la compañía; `kind` (PIECE | INVOICE) filtra por tipo (vacío = todas).</summary>
+    public async Task<IReadOnlyList<LabelTemplateDto>> ListAsync(bool includeInactive, string? kind, CancellationToken ct)
     {
         var q = db.LabelTemplates.AsNoTracking();
         if (!includeInactive) q = q.Where(t => t.IsActive);
+        if (!string.IsNullOrWhiteSpace(kind))
+        {
+            var k = LabelTemplateKinds.Normalize(kind) ?? throw new ValidationException("kind", PrintingRules.UnknownTemplateKindMessage);
+            q = q.Where(t => t.Kind == k);
+        }
         var rows = await q.OrderBy(t => t.Name).ThenBy(t => t.LabelTemplateId).ToListAsync(ct);
         return rows.Select(ToDto).ToList();
     }
@@ -33,10 +39,11 @@ public sealed class LabelTemplateService(TeikemDbContext db, ITenantContext tena
         var (name, nameError) = PrintingRules.NormalizeName(req.Name, PrintingRules.TemplateNameRequiredMessage);
         if (nameError is not null) throw new ValidationException("name", nameError);
         if (req.Layout is null) throw new ValidationException("layout", LabelLayout.LayoutRequiredMessage);
-        var layout = NormalizeLayout(req.Layout);
+        var kind = LabelTemplateKinds.Normalize(req.Kind) ?? throw new ValidationException("kind", PrintingRules.UnknownTemplateKindMessage);
+        var layout = NormalizeLayout(req.Layout, kind);
 
-        if (await db.LabelTemplates.AnyAsync(t => t.IsActive && t.Name == name, ct)) throw new ConflictException(PrintingRules.DuplicateTemplateMessage);
-        var hasDefault = await db.LabelTemplates.AnyAsync(t => t.IsActive && t.IsDefault, ct);
+        if (await db.LabelTemplates.AnyAsync(t => t.IsActive && t.Kind == kind && t.Name == name, ct)) throw new ConflictException(PrintingRules.DuplicateTemplateMessage);
+        var hasDefault = await db.LabelTemplates.AnyAsync(t => t.IsActive && t.Kind == kind && t.IsDefault, ct);
 
         var template = new LabelTemplate
         {
@@ -44,7 +51,8 @@ public sealed class LabelTemplateService(TeikemDbContext db, ITenantContext tena
             TenantId = tenantId,
             Name = name!,
             LayoutJson = layout.ToJson(),
-            IsDefault = !hasDefault,   // la primera activa nace predeterminada
+            Kind = kind,
+            IsDefault = !hasDefault,   // la primera activa de su tipo nace predeterminada
             IsActive = true,
         };
         db.LabelTemplates.Add(template);
@@ -57,16 +65,17 @@ public sealed class LabelTemplateService(TeikemDbContext db, ITenantContext tena
     {
         var template = await LoadAsync(publicId, ct);
         db.ApplyRowVersion(template, req.RowVersion);
+        if (req.Kind is not null && LabelTemplateKinds.Normalize(req.Kind) != template.Kind) throw new ValidationException("kind", PrintingRules.TemplateKindImmutableMessage);
         if (req.Name is not null)
         {
             var (name, error) = PrintingRules.NormalizeName(req.Name, PrintingRules.TemplateNameRequiredMessage);
             if (error is not null) throw new ValidationException("name", error);
             if (template.IsActive && !string.Equals(name, template.Name, StringComparison.Ordinal)
-                && await db.LabelTemplates.AnyAsync(t => t.IsActive && t.Name == name && t.LabelTemplateId != template.LabelTemplateId, ct))
+                && await db.LabelTemplates.AnyAsync(t => t.IsActive && t.Kind == template.Kind && t.Name == name && t.LabelTemplateId != template.LabelTemplateId, ct))
                 throw new ConflictException(PrintingRules.DuplicateTemplateMessage);
             template.Name = name!;
         }
-        if (req.Layout is not null) template.LayoutJson = NormalizeLayout(req.Layout).ToJson();
+        if (req.Layout is not null) template.LayoutJson = NormalizeLayout(req.Layout, template.Kind).ToJson();
         await db.SaveGuardedAsync(PrintingRules.DuplicateTemplateMessage, ct);
         return ToDto(template);
     }
@@ -78,7 +87,7 @@ public sealed class LabelTemplateService(TeikemDbContext db, ITenantContext tena
         if (template.IsActive == active) return ToDto(template);
         if (active)
         {
-            if (await db.LabelTemplates.AnyAsync(t => t.IsActive && t.Name == template.Name && t.LabelTemplateId != template.LabelTemplateId, ct))
+            if (await db.LabelTemplates.AnyAsync(t => t.IsActive && t.Kind == template.Kind && t.Name == template.Name && t.LabelTemplateId != template.LabelTemplateId, ct))
                 throw new ConflictException(PrintingRules.DuplicateTemplateMessage);
             template.IsActive = true;
         }
@@ -99,7 +108,7 @@ public sealed class LabelTemplateService(TeikemDbContext db, ITenantContext tena
             if (!template.IsActive) throw new ConflictException(PrintingRules.TemplateInactiveDefaultMessage);
             if (template.IsDefault) return ToDto(template);
 
-            var previous = await db.LabelTemplates.Where(t => t.IsDefault && t.LabelTemplateId != template.LabelTemplateId).ToListAsync(ct2);
+            var previous = await db.LabelTemplates.Where(t => t.IsDefault && t.Kind == template.Kind && t.LabelTemplateId != template.LabelTemplateId).ToListAsync(ct2);
             if (previous.Count > 0)
             {
                 foreach (var t in previous) t.IsDefault = false;
@@ -118,7 +127,7 @@ public sealed class LabelTemplateService(TeikemDbContext db, ITenantContext tena
     }
 
     /// <summary>Valida la construcción del cliente (400 con el mensaje exacto de <see cref="LabelLayout"/>).</summary>
-    public static LabelLayout NormalizeLayout(LabelLayoutDto dto)
+    public static LabelLayout NormalizeLayout(LabelLayoutDto dto, string kind = LabelTemplateKinds.Piece)
     {
         var input = new Dictionary<string, LabelElement?>(StringComparer.Ordinal)
         {
@@ -132,7 +141,7 @@ public sealed class LabelTemplateService(TeikemDbContext db, ITenantContext tena
             ["invoice"] = FromDto(dto.Invoice),
             ["cod"] = FromDto(dto.Cod),
         };
-        var (layout, error) = LabelLayout.Normalize(input);
+        var (layout, error) = LabelLayout.Normalize(input, kind);
         if (error is not null) throw new ValidationException("layout", error);
         return layout!;
     }
@@ -148,6 +157,6 @@ public sealed class LabelTemplateService(TeikemDbContext db, ITenantContext tena
 
     /// <summary>Plantilla como DTO; un JSON dañado en la base se lee como el label integrado (nunca un 500).</summary>
     public static LabelTemplateDto ToDto(LabelTemplate t) => new(
-        t.PublicId, t.Name, ToDto(LabelLayout.TryParse(t.LayoutJson) ?? LabelLayout.BuiltIn), t.IsDefault, t.IsActive,
-        Convert.ToBase64String(t.RowVersion ?? Array.Empty<byte>()));
+        t.PublicId, t.Name, ToDto(LabelLayout.TryParse(t.LayoutJson, t.Kind) ?? LabelLayout.BuiltInFor(t.Kind)), t.IsDefault, t.IsActive,
+        Convert.ToBase64String(t.RowVersion ?? Array.Empty<byte>()), t.Kind);
 }

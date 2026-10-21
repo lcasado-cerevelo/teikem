@@ -3,7 +3,7 @@
 // las órdenes.
 import type { jsPDF } from 'jspdf'
 import { renderOrderLabelsPdf, type LabelMedia } from '../../kernel/ui/orderLabelPdf'
-import type { LabelLayout, LabelTexts, OrderLabelData } from '../../kernel/ui/orderLabelLayout'
+import type { LabelKind, LabelLayout, LabelTexts, OrderLabelData } from '../../kernel/ui/orderLabelLayout'
 import { printPdf, type PrintDeps, type PrintOutcome } from '../../kernel/ui/printPdf'
 import { pdfSafeText } from '../../kernel/ui/exportTable'
 import { mediaInches, type ResolvedPrinter } from './stationConfig'
@@ -13,10 +13,10 @@ type Translate = (key: string, params?: Record<string, string | number>) => stri
 export const asLabelMedia = (m: string): LabelMedia => (m === '4X4' || m === '4X2' ? m : '4X6')
 
 /** PDF de labels (uno por paquete) con la impresora resuelta. */
-export function labelPdfFactory(title: string, printer: ResolvedPrinter, layout: LabelLayout, texts: LabelTexts, labels: readonly OrderLabelData[]) {
+export function labelPdfFactory(title: string, printer: ResolvedPrinter, layout: LabelLayout, texts: LabelTexts, labels: readonly OrderLabelData[], kind: LabelKind = 'PIECE') {
   let notFitting = 0
   const make = async (rotateInPdf: boolean): Promise<jsPDF> => {
-    const r = await renderOrderLabelsPdf({ title, media: asLabelMedia(printer.mediaSize), rotate: rotateInPdf && printer.rotate, layout, texts, labels })
+    const r = await renderOrderLabelsPdf({ title, media: asLabelMedia(printer.mediaSize), rotate: rotateInPdf && printer.rotate, layout, texts, labels, kind })
     notFitting = r.notFitting
     return r.doc
   }

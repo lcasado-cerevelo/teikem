@@ -5723,3 +5723,33 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ReceiptBatch_ClientKey' AND object_id = OBJECT_ID('dbo.ReceiptBatch'))
     CREATE UNIQUE INDEX UX_ReceiptBatch_ClientKey ON dbo.ReceiptBatch (ClientKey) WHERE ClientKey IS NOT NULL;
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-21 — Label de FACTURA (dictado de Luis): las plantillas de label tienen un TIPO.
+   - dbo.LabelTemplate.Kind VARCHAR(10) NOT NULL DEFAULT 'PIECE' (PIECE = label de cada pieza; INVOICE = label de la factura: un código de barras con el número de
+     la factura, uno por envío). Las que ya existen son PIECE.
+   - UX_LabelTemplate_Name pasa a (TenantId, Kind, Name) y UX_LabelTemplate_Default a (TenantId, Kind): el nombre es único por tipo y hay UNA predeterminada por
+     compañía y tipo (la de pieza y la de factura).
+   Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.LabelTemplate', 'Kind') IS NULL
+    ALTER TABLE dbo.LabelTemplate ADD Kind VARCHAR(10) NOT NULL CONSTRAINT DF_LabelTemplate_Kind DEFAULT 'PIECE';
+GO
+IF OBJECT_ID('dbo.CK_LabelTemplate_Kind', 'C') IS NULL
+    ALTER TABLE dbo.LabelTemplate ADD CONSTRAINT CK_LabelTemplate_Kind CHECK (Kind IN ('PIECE', 'INVOICE'));
+GO
+IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_LabelTemplate_Name' AND object_id = OBJECT_ID('dbo.LabelTemplate'))
+   AND NOT EXISTS (SELECT 1 FROM sys.index_columns ic JOIN sys.indexes i ON i.object_id = ic.object_id AND i.index_id = ic.index_id JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
+                   WHERE i.name = 'UX_LabelTemplate_Name' AND i.object_id = OBJECT_ID('dbo.LabelTemplate') AND c.name = 'Kind')
+    DROP INDEX UX_LabelTemplate_Name ON dbo.LabelTemplate;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_LabelTemplate_Name' AND object_id = OBJECT_ID('dbo.LabelTemplate'))
+    CREATE UNIQUE INDEX UX_LabelTemplate_Name ON dbo.LabelTemplate(TenantId, Kind, Name) WHERE IsActive = 1;
+GO
+IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_LabelTemplate_Default' AND object_id = OBJECT_ID('dbo.LabelTemplate'))
+   AND NOT EXISTS (SELECT 1 FROM sys.index_columns ic JOIN sys.indexes i ON i.object_id = ic.object_id AND i.index_id = ic.index_id JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
+                   WHERE i.name = 'UX_LabelTemplate_Default' AND i.object_id = OBJECT_ID('dbo.LabelTemplate') AND c.name = 'Kind')
+    DROP INDEX UX_LabelTemplate_Default ON dbo.LabelTemplate;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_LabelTemplate_Default' AND object_id = OBJECT_ID('dbo.LabelTemplate'))
+    CREATE UNIQUE INDEX UX_LabelTemplate_Default ON dbo.LabelTemplate(TenantId, Kind) WHERE IsDefault = 1 AND IsActive = 1;
+GO

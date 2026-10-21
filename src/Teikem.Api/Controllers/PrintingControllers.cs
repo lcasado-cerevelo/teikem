@@ -56,7 +56,7 @@ public sealed class PrintersController(PrinterService printers) : ControllerBase
 public sealed class LabelTemplatesController(LabelTemplateService templates) : ControllerBase
 {
     [HttpGet, RequirePermission(PermissionCatalog.PrintersManage)]
-    public Task<IReadOnlyList<LabelTemplateDto>> List([FromQuery] bool includeInactive, CancellationToken ct) => templates.ListAsync(includeInactive, ct);
+    public Task<IReadOnlyList<LabelTemplateDto>> List([FromQuery] bool includeInactive, [FromQuery] string? kind, CancellationToken ct) => templates.ListAsync(includeInactive, kind, ct);
 
     /// <summary>Alta: nombre y construcción obligatorios (400 con el mensaje exacto si la construcción no vale).</summary>
     [HttpPost, RequirePermission(PermissionCatalog.PrintersManage)]

@@ -2,6 +2,7 @@
 // sin número.
 import { describe, expect, it } from 'vitest'
 import {
+  BUILT_IN_INVOICE_LAYOUT,
   BUILT_IN_LAYOUT,
   hasVisibleBarcode,
   LABEL_KEYS,
@@ -85,5 +86,29 @@ describe('planLabel', () => {
     const r = printableLabels([{ packageNumber: 'PQT-1' }, { packageNumber: null }, { packageNumber: '  ' }, { packageNumber: 'PQT-2' }])
     expect(r.printable.map((x) => x.packageNumber)).toEqual(['PQT-1', 'PQT-2'])
     expect(r.withoutNumber).toBe(2)
+  })
+})
+
+describe('label de factura', () => {
+  it('el integrado es solo el código de barras centrado y grande, y normalizar con la clase lo completa con eso (nunca con el del paquete)', () => {
+    expect(normalizeLayout(null, 'INVOICE')).toEqual(BUILT_IN_INVOICE_LAYOUT)
+    expect(BUILT_IN_INVOICE_LAYOUT.barcode).toEqual({ on: true, pos: 'mc', size: 'lg', asBarcode: false })
+    expect(LABEL_KEYS.filter((k) => BUILT_IN_INVOICE_LAYOUT[k].on)).toEqual(['barcode'])
+  })
+
+  it('las barras son el número de factura con SOLO el número debajo (sin «Paquete i de N») y el elemento «Factura» nunca se usa', () => {
+    const [, mid] = planLabel(BUILT_IN_INVOICE_LAYOUT, DATA, TEXTS, 'INVOICE')
+    expect(mid.barcodes).toEqual([{ key: 'barcode', size: 'lg', value: 'AX-48217', caption: 'AX-48217', encodable: true }])
+    const withInvoiceOn = normalizeLayout({ ...BUILT_IN_INVOICE_LAYOUT, invoice: { on: true, pos: 'bl', size: 'sm', asBarcode: true } }, 'INVOICE')
+    expect(withInvoiceOn.invoice.on).toBe(false)
+    const all = planLabel({ ...BUILT_IN_INVOICE_LAYOUT, invoice: { on: true, pos: 'bl', size: 'sm', asBarcode: true } }, DATA, TEXTS, 'INVOICE')
+    expect(all.flatMap((r) => r.barcodes)).toHaveLength(1)
+  })
+
+  it('sin número de factura no hay barras; el cliente, el COD, etc. se pueden agregar como en el de las piezas', () => {
+    expect(planLabel(BUILT_IN_INVOICE_LAYOUT, { ...DATA, invoice: '' }, TEXTS, 'INVOICE').flatMap((r) => r.barcodes)).toEqual([])
+    const l: LabelLayout = { ...BUILT_IN_INVOICE_LAYOUT, sender: { on: true, pos: 'tc', size: 'sm', asBarcode: false } }
+    expect(planLabel(l, DATA, TEXTS, 'INVOICE')[0].cells.c[0].lines).toEqual(['De: Advance Solutions'])
+    expect(hasVisibleBarcode({ ...BUILT_IN_INVOICE_LAYOUT, barcode: { ...BUILT_IN_INVOICE_LAYOUT.barcode, on: false } }, 'INVOICE')).toBe(false)
   })
 })

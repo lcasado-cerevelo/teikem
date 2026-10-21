@@ -43,7 +43,7 @@ import {
 } from '../../kernel/ui'
 import { IconBolt, IconDoc, IconForm, IconLayers, IconPrint } from '../../kernel/ui/screenIcons'
 import { labelOrderFromDetail, labelOrderFromList } from '../printing/orderLabels'
-import { clientAutoPrintsLabels } from '../clients/api'
+import { clientAutoPrint } from '../clients/api'
 import { usePrinting } from '../printing/usePrinting'
 import { useClientOptions, useConsignees } from '../consignees/api'
 import { TextFilter } from '../warehouse/filterControls'
@@ -303,10 +303,14 @@ export default function OrderListScreen() {
 
   /**
    * Labels al guardar: salen si «Label al guardar» está encendido o si el CLIENTE de la orden tiene «Imprimir los labels
-   * automáticamente» (Lote 48). La orden ya se guardó: un fallo de impresión (o de leer al cliente) solo avisa.
+   * automáticamente» (Lote 48). Si el cliente tiene «Label de factura», después de los labels de las piezas sale el de la factura. Todo sale solo por
+   * la impresora de labels, sin vista previa ni pregunta. La orden ya se guardó: un fallo de impresión (o de leer al cliente) solo avisa.
    */
   async function printAfterSave(order: OrderDetailDto) {
-    if (labelOnSave || (await clientAutoPrintsLabels(queryClient, order.clientPublicId))) await printing.printLabels([labelOrderFromDetail(order)], { afterSave: true })
+    const auto = await clientAutoPrint(queryClient, order.clientPublicId)
+    const label = labelOrderFromDetail(order)
+    if (labelOnSave || auto.labels) await printing.printLabels([label], { afterSave: true, invoice: auto.invoice })
+    else if (auto.invoice) await printing.printInvoiceLabels([label], { afterSave: true })
   }
 
   function onCreated(order: OrderDetailDto) {

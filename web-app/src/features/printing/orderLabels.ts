@@ -127,6 +127,44 @@ export interface LabelJob {
   large: boolean
 }
 
+/**
+ * Label de FACTURA: uno por orden (no por pieza) con el número de factura del cliente. Las órdenes canceladas y las que no tienen número de factura no llevan;
+ * `withoutInvoice` cuenta estas últimas para avisar. Los demás datos van por si la plantilla de factura del cliente los pide (consignatario, servicio, COD…).
+ */
+export function buildInvoiceLabelJob(orders: readonly LabelOrder[], company: string, money: (n: number) => string): LabelJob & { withoutInvoice: number } {
+  const labels: OrderLabelData[] = []
+  let cancelled = 0
+  let withoutInvoice = 0
+  let count = 0
+  for (const o of orders) {
+    if (o.cancelled) {
+      cancelled++
+      continue
+    }
+    const invoice = o.clientInvoiceNumber.trim()
+    if (!invoice) {
+      withoutInvoice++
+      continue
+    }
+    count++
+    labels.push({
+      company,
+      service: o.serviceLabel,
+      sender: o.clientName,
+      consignee: o.consigneeName,
+      addressLines: o.addressLines,
+      packageNumber: null,
+      packageIndex: 1,
+      packageCount: Math.max(1, o.packages.reduce((s, p) => s + p.pieces, 0)),
+      waybill: o.waybillNumber || o.orderNumber,
+      invoice,
+      cod: o.codAmount,
+      codText: o.codAmount != null && o.codAmount > 0 ? money(o.codAmount) : null,
+    })
+  }
+  return { labels, orders: count, cancelled, withoutNumber: 0, withoutInvoice, large: labels.length >= LARGE_LABEL_JOB }
+}
+
 /** Todos los labels de varias órdenes, en el orden recibido. */
 export function buildLabelJob(orders: readonly LabelOrder[], company: string, money: (n: number) => string): LabelJob {
   const labels: OrderLabelData[] = []

@@ -29,7 +29,7 @@ public sealed class PrintingOptionsService(TeikemDbContext db, ITenantContext te
             .ToListAsync(ct);
         var direct = (await GetSettingsAsync(ct)).PrintLabelsDirect;
         return new PrintStationOptionsDto(printers, templates.Select(LabelTemplateService.ToDto).ToList(), LabelTemplateService.ToDto(LabelLayout.BuiltIn),
-            direct, qz.IsConfigured);
+            direct, qz.IsConfigured, LabelTemplateService.ToDto(LabelLayout.BuiltInInvoice));
     }
 
     public async Task<PrintingSettingsDto> GetSettingsAsync(CancellationToken ct)

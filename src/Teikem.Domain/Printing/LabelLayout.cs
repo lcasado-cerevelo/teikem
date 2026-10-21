@@ -3,6 +3,20 @@ using System.Text.Json.Serialization;
 
 namespace Teikem.Domain.Printing;
 
+/// <summary>Tipos de plantilla de label: el de cada PIEZA (uno por paquete) y el de la FACTURA (uno por envío: un código de barras con el número de la factura).</summary>
+public static class LabelTemplateKinds
+{
+    public const string Piece = "PIECE";
+    public const string Invoice = "INVOICE";
+
+    /// <summary>El tipo en mayúsculas; vacío = PIECE; null si no es uno de los dos.</summary>
+    public static string? Normalize(string? raw)
+    {
+        var k = (raw ?? string.Empty).Trim().ToUpperInvariant();
+        return k.Length == 0 ? Piece : k is Piece or Invoice ? k : null;
+    }
+}
+
 /// <summary>Un elemento del label: si se muestra, su zona (9 posiciones), su tamaño y si se dibuja como código de barras.</summary>
 public sealed record LabelElement(bool On, string Pos, string Size, bool AsBarcode = false);
 
@@ -71,6 +85,24 @@ public sealed record LabelLayout(
         Invoice: new(true, "bl", "sm", false),
         Cod: new(true, "br", "md"));
 
+    /// <summary>
+    /// El label integrado de la FACTURA (dictado de Luis, 2026-10-21): un código de barras con el número de la factura, centrado, y su número legible pegado debajo; nada más.
+    /// El «Código de barras» de este tipo ES el número de la factura (no el del paquete) y su pie es solo el número (sin «Paquete i de N»); el elemento «Invoice» no se usa.
+    /// </summary>
+    public static LabelLayout BuiltInInvoice { get; } = new(
+        Logo: new(false, "tl", "md"),
+        Service: new(false, "tr", "sm"),
+        Sender: new(false, "tc", "sm"),
+        Consignee: new(false, "ml", "md"),
+        Address: new(false, "ml", "sm"),
+        Barcode: new(true, "mc", "lg"),
+        Waybill: new(false, "bl", "sm", false),
+        Invoice: new(false, "bl", "sm", false),
+        Cod: new(false, "br", "md"));
+
+    /// <summary>El integrado de ese tipo (PIECE si no se reconoce).</summary>
+    public static LabelLayout BuiltInFor(string? kind) => kind == LabelTemplateKinds.Invoice ? BuiltInInvoice : BuiltIn;
+
     /// <summary>Elementos con su clave, en el orden canónico.</summary>
     public IEnumerable<(string Key, LabelElement Element)> Elements()
     {
@@ -94,9 +126,9 @@ public sealed record LabelLayout(
     /// los del integrado; se aceptan en mayúsculas. «Como código de barras» en un elemento que no es waybill ni factura es 400 (en
     /// «Código de barras» se ignora: siempre lo es). Devuelve (label normalizado, null) o (null, mensaje exacto de 400).
     /// </summary>
-    public static (LabelLayout? Layout, string? Error) Normalize(IReadOnlyDictionary<string, LabelElement?> input)
+    public static (LabelLayout? Layout, string? Error) Normalize(IReadOnlyDictionary<string, LabelElement?> input, string kind = LabelTemplateKinds.Piece)
     {
-        var builtIn = BuiltIn.Elements().ToDictionary(e => e.Key, e => e.Element);
+        var builtIn = BuiltInFor(kind).Elements().ToDictionary(e => e.Key, e => e.Element);
         var result = new Dictionary<string, LabelElement>(StringComparer.Ordinal);
         foreach (var key in Keys)
         {
@@ -116,6 +148,8 @@ public sealed record LabelLayout(
 
             result[key] = new LabelElement(raw.On, pos, size, asBarcode);
         }
+        // en el label de factura el código de barras ES la factura: el elemento «Invoice» no se usa (si no, saldría dos veces)
+        if (kind == LabelTemplateKinds.Invoice) result["invoice"] = new LabelElement(false, result["invoice"].Pos, result["invoice"].Size, false);
         var layout = FromDictionary(result);
         if (!layout.HasVisibleBarcode()) return (null, NeedsBarcodeMessage);
         return (layout, null);
@@ -138,7 +172,7 @@ public sealed record LabelLayout(
     public string ToJson() => JsonSerializer.Serialize(this, JsonOptions);
 
     /// <summary>Lee el JSON guardado; si está dañado o no valida, null (quien llama usa el integrado).</summary>
-    public static LabelLayout? TryParse(string? json)
+    public static LabelLayout? TryParse(string? json, string kind = LabelTemplateKinds.Piece)
     {
         if (string.IsNullOrWhiteSpace(json)) return null;
         try
@@ -152,7 +186,7 @@ public sealed record LabelLayout(
                 if (key is null || prop.Value.ValueKind != JsonValueKind.Object) continue;
                 input[key] = prop.Value.Deserialize<LabelElement>(JsonOptions);
             }
-            var (layout, error) = Normalize(input);
+            var (layout, error) = Normalize(input, kind);
             return error is null ? layout : null;
         }
         catch (JsonException)

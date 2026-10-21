@@ -67,10 +67,12 @@ public sealed record LabelTemplateDto(
     LabelLayoutDto Layout,
     bool IsDefault,
     bool IsActive,
-    string RowVersion);
+    string RowVersion,
+    // PIECE (label de cada pieza) | INVOICE (label de la factura: un código de barras con el número, uno por envío)
+    string Kind = "PIECE");
 
 /// <summary>Alta (POST: Name y Layout obligatorios) o edición (PATCH: null = sin cambio) de una plantilla. RowVersion opcional.</summary>
-public sealed record LabelTemplateRequest(string? Name = null, LabelLayoutDto? Layout = null, string? RowVersion = null);
+public sealed record LabelTemplateRequest(string? Name = null, LabelLayoutDto? Layout = null, string? RowVersion = null, string? Kind = null);
 
 /// <summary>Impresora activa para el selector de la estación (sin notas).</summary>
 public sealed record PrinterOptionDto(
@@ -96,7 +98,9 @@ public sealed record PrintStationOptionsDto(
     IReadOnlyList<LabelTemplateDto> Templates,
     LabelLayoutDto BuiltInLayout,
     bool PrintLabelsDirect,
-    bool QzSigningConfigured);
+    bool QzSigningConfigured,
+    // el label integrado de la FACTURA (el que aplica si la compañía no tiene plantilla de factura)
+    LabelLayoutDto? BuiltInInvoiceLayout = null);
 
 /// <summary>Ajustes de impresión de la compañía (printers.manage): «Imprimir labels directo a la impresora».</summary>
 public sealed record PrintingSettingsDto(bool PrintLabelsDirect);

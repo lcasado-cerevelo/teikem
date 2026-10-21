@@ -16,6 +16,8 @@ public class LabelTemplate : ITenantScoped, ISoftDeletable, IAuditStamped
     public int TenantId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string LayoutJson { get; set; } = string.Empty;
+    /// <summary>PIECE (label de pieza, uno por paquete) | INVOICE (label de factura: un código de barras con el número de la factura, uno por envío; 2026-10-21, dictado de Luis). Ver <see cref="LabelTemplateKinds"/>.</summary>
+    public string Kind { get; set; } = LabelTemplateKinds.Piece;
     public bool IsDefault { get; set; }
     public bool IsActive { get; set; } = true;
     [NotAudited] public DateTime CreatedAtUtc { get; set; }

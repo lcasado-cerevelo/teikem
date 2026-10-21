@@ -12,7 +12,7 @@ import { PT_PER_MM } from './barcodeReportPdf'
 import { sheetModuleWidth } from './binSheetPdf'
 import { CODE128_QUIET_ZONE, encodeCode128 } from './code128'
 import { pdfSafeText } from './exportTable'
-import { planLabel, type LabelLayout, type LabelRowPlan, type LabelSize, type LabelTexts, type OrderLabelData } from './orderLabelLayout'
+import { planLabel, type LabelKind, type LabelLayout, type LabelRowPlan, type LabelSize, type LabelTexts, type OrderLabelData } from './orderLabelLayout'
 
 /** Tamaños de etiqueta de una impresora (dbo.Printer.MediaSize). */
 export const LABEL_MEDIA = ['4X6', '4X4', '4X2'] as const
@@ -162,6 +162,8 @@ export interface OrderLabelSpec {
   layout: LabelLayout
   texts: LabelTexts
   labels: readonly OrderLabelData[]
+  /** Clase de label: por omisión el de cada pieza; 'INVOICE' = código de barras del número de factura. */
+  kind?: LabelKind
 }
 
 export interface OrderLabelsResult {
@@ -235,7 +237,7 @@ export async function renderOrderLabelsPdf(spec: OrderLabelSpec, options: { comp
   const withoutBars: string[] = []
   spec.labels.forEach((data, i) => {
     if (i > 0) doc.addPage(format, orientation)
-    const placed = placeLabel(planLabel(spec.layout, data, spec.texts), spec.media, measure)
+    const placed = placeLabel(planLabel(spec.layout, data, spec.texts, spec.kind), spec.media, measure)
     if (!placed.fits) notFitting++
     withoutBars.push(...placed.withoutBars)
     drawPlacement(doc, placed)

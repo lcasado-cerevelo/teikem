@@ -1,7 +1,7 @@
 // Lote F-G2 — de las órdenes a los labels: uno por pieza con el número de su paquete, «Paquete i de N», paquetes sin número y órdenes
 // canceladas avisados, y el aviso desde 500.
 import { describe, expect, it } from 'vitest'
-import { buildLabelJob, cityLine, labelFileBase, labelOrderFromDetail, labelOrderFromList, LARGE_LABEL_JOB, orderLabelsOf, type LabelOrder } from './orderLabels'
+import { buildInvoiceLabelJob, buildLabelJob, cityLine, labelFileBase, labelOrderFromDetail, labelOrderFromList, LARGE_LABEL_JOB, orderLabelsOf, type LabelOrder } from './orderLabels'
 
 const money = (n: number) => `$${n.toFixed(2)}`
 const ORDER: LabelOrder = {
@@ -89,5 +89,14 @@ describe('mapeo de la lista y de la ficha', () => {
     expect(labels.map((l) => l.packageNumber)).toEqual(['ACME52610181', 'ACME52610182', 'ACME52610183'])
     expect(labels.map((l) => `${l.packageIndex}/${l.packageCount}`)).toEqual(['1/3', '2/3', '3/3'])
     expect(withoutNumber).toBe(0)
+  })
+})
+
+describe('buildInvoiceLabelJob', () => {
+  it('un label por ORDEN (no por pieza) con su número de factura; sin factura o canceladas no llevan y se cuentan', () => {
+    const job = buildInvoiceLabelJob([ORDER, { ...ORDER, orderNumber: 'B', clientInvoiceNumber: '  ' }, { ...ORDER, orderNumber: 'C', cancelled: true }], 'Advance', money)
+    expect(job.labels).toHaveLength(1)
+    expect(job.labels[0]).toMatchObject({ invoice: 'FAC-7', consignee: 'Farmacia Central', waybill: 'ORD-00007', packageCount: 3 })
+    expect(job).toMatchObject({ orders: 1, cancelled: 1, withoutInvoice: 1 })
   })
 })

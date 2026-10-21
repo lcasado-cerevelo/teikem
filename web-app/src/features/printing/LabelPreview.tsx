@@ -4,7 +4,7 @@
 import { useMemo } from 'react'
 import { useT } from '../../kernel/i18n'
 import { CODE128_QUIET_ZONE, encodeCode128 } from '../../kernel/ui/code128'
-import { planLabel, type LabelLayout, type OrderLabelData } from '../../kernel/ui/orderLabelLayout'
+import { planLabel, type LabelKind, type LabelLayout, type OrderLabelData } from '../../kernel/ui/orderLabelLayout'
 import { useLabelTexts } from './labelTexts'
 import { mediaInches } from './stationConfig'
 import './printing.css'
@@ -29,12 +29,13 @@ export interface LabelPreviewProps {
   data: OrderLabelData
   mediaSize: string
   label?: string
+  kind?: LabelKind
 }
 
-export function LabelPreview({ layout, data, mediaSize, label }: LabelPreviewProps) {
+export function LabelPreview({ layout, data, mediaSize, label, kind }: LabelPreviewProps) {
   const t = useT()
   const texts = useLabelTexts()
-  const rows = useMemo(() => planLabel(layout, data, texts), [layout, data, texts])
+  const rows = useMemo(() => planLabel(layout, data, texts, kind), [layout, data, texts, kind])
   const { widthIn, heightIn } = mediaInches(mediaSize)
   return (
     <div className="lbl-canvas" role="img" aria-label={label ?? t('printing.builder.preview')} style={{ aspectRatio: `${widthIn} / ${heightIn}` }} data-testid="label-preview">

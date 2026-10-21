@@ -76,20 +76,20 @@ export function useUpdateClientProfile(publicId: string) {
 }
 
 /**
- * ¿El cliente imprime sus labels solo? («Imprimir los labels automáticamente», Lote 48.) Lee la ficha (en caché un minuto); si el usuario no
+ * ¿El cliente imprime solo sus labels de piezas («Imprimir los labels automáticamente», Lote 48) y su label de factura («Label de factura»)? Lee la ficha (en caché un minuto); si el usuario no
  * puede leer clientes o falla, es «no»: imprimir sin la bandera nunca debe romper el guardado de una orden.
  */
-export async function clientAutoPrintsLabels(qc: QueryClient, clientPublicId: string | null | undefined): Promise<boolean> {
-  if (!clientPublicId) return false
+export async function clientAutoPrint(qc: QueryClient, clientPublicId: string | null | undefined): Promise<{ labels: boolean; invoice: boolean }> {
+  if (!clientPublicId) return { labels: false, invoice: false }
   try {
     const detail = await qc.fetchQuery({
       queryKey: clientKeys.detail(clientPublicId),
       queryFn: () => unwrap(api.GET('/api/v1/clients/{publicId}', { params: { path: { publicId: clientPublicId } } })),
       staleTime: 60_000,
     })
-    return detail.autoPrintLabels === true
+    return { labels: detail.autoPrintLabels === true, invoice: detail.autoPrintInvoice === true }
   } catch {
-    return false
+    return { labels: false, invoice: false }
   }
 }
 

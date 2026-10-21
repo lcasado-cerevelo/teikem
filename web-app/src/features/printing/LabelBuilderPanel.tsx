@@ -10,7 +10,7 @@ import { Modal, Panel, toast } from '../../kernel/ui'
 import { IconTag } from '../../kernel/ui/screenIcons'
 import {
   BARCODE_CAPABLE,
-  BUILT_IN_LAYOUT,
+  builtInLayoutFor,
   hasVisibleBarcode,
   LABEL_KEYS,
   LABEL_POSITIONS,
@@ -19,6 +19,7 @@ import {
   sameLayout,
   sampleLabelData,
   type LabelKey,
+  type LabelKind,
   type LabelLayout,
   type LabelPos,
   type LabelSize,
@@ -92,13 +93,17 @@ export interface LabelBuilderPanelProps {
   /** Tamaño de la vista previa (el de la impresora de labels de esta estación). */
   mediaSize: string
   company: string
+  /** 'PIECE' (por omisión) = el label de cada pieza; 'INVOICE' = el label de la factura (barras del número de factura con el número debajo). */
+  kind?: LabelKind
 }
 
-export function LabelBuilderPanel({ mediaSize, company }: LabelBuilderPanelProps) {
+export function LabelBuilderPanel({ mediaSize, company, kind = 'PIECE' }: LabelBuilderPanelProps) {
+  const invoiceKind = kind === 'INVOICE'
+  const builtIn = builtInLayoutFor(kind)
   const t = useT()
   const f = useFormat()
   const selectId = useId()
-  const list = useLabelTemplates(true)
+  const list = useLabelTemplates(true, kind)
   const templates = useMemo(() => list.data ?? [], [list.data])
   const m = useTemplateMutations()
   const [picked, setSelected] = useState<string | null>(null)
@@ -107,7 +112,7 @@ export function LabelBuilderPanel({ mediaSize, company }: LabelBuilderPanelProps
   const [naming, setNaming] = useState<null | 'new' | 'duplicate' | 'saveAs'>(null)
 
   const current = templates.find((x) => x.publicId === selected) ?? null
-  const base = useMemo(() => (current ? normalizeLayout(current.layout) : BUILT_IN_LAYOUT), [current])
+  const base = useMemo(() => (current ? normalizeLayout(current.layout, kind) : builtIn), [current, kind, builtIn])
   // lo editado vale mientras siga siendo de la misma plantilla y su construcción guardada no cambie (al guardar o cambiar de
   // plantilla vuelve a la guardada)
   const [edit, setEdit] = useState<{ id: string | null; base: LabelLayout; layout: LabelLayout } | null>(null)
@@ -116,7 +121,7 @@ export function LabelBuilderPanel({ mediaSize, company }: LabelBuilderPanelProps
     setEdit({ id: selected, base, layout: typeof next === 'function' ? next(draft) : next })
 
   const dirty = !sameLayout(draft, base)
-  const noBarcode = !hasVisibleBarcode(draft)
+  const noBarcode = !hasVisibleBarcode(draft, kind)
   const sample = useMemo(() => sampleLabelData(company, f.money(125.82)), [company, f])
   const setEl = (key: LabelKey, patch: Partial<LabelLayout[LabelKey]>) => setDraft((d) => ({ ...d, [key]: { ...d[key], ...patch } }))
 
@@ -134,15 +139,15 @@ export function LabelBuilderPanel({ mediaSize, company }: LabelBuilderPanelProps
     }
   }
   const create = async (name: string, layout: LabelLayout) => {
-    const created = await m.create.mutateAsync({ name, layout })
+    const created = await m.create.mutateAsync({ name, layout, kind })
     setSelected(created.publicId ?? null)
     toast.success(t('printing.builder.created', { name }))
   }
 
   return (
-    <Panel icon={<IconTag />} title={t('printing.builder.title')}>
+    <Panel icon={<IconTag />} title={t(invoiceKind ? 'printing.builder.invoiceTitle' : 'printing.builder.title')}>
       <p className="help" style={{ marginTop: 0 }}>
-        {t('printing.builder.hint')}
+        {t(invoiceKind ? 'printing.builder.invoiceHint' : 'printing.builder.hint')}
       </p>
       <div className="prn-tplbar">
         <div className="f">
@@ -207,9 +212,9 @@ export function LabelBuilderPanel({ mediaSize, company }: LabelBuilderPanelProps
           </tr>
         </thead>
         <tbody>
-          {LABEL_KEYS.map((key) => {
+          {LABEL_KEYS.filter((key) => !(invoiceKind && key === 'invoice')).map((key) => {
             const el = draft[key]
-            const name = t(`printing.element.${key}`)
+            const name = t(invoiceKind && key === 'barcode' ? 'printing.element.barcodeInvoice' : `printing.element.${key}`)
             return (
               <tr key={key} data-el={key}>
                 <td>
@@ -248,7 +253,7 @@ export function LabelBuilderPanel({ mediaSize, company }: LabelBuilderPanelProps
       </table>
 
       <div className="prn-preview-wrap">
-        <LabelPreview layout={draft} data={sample} mediaSize={mediaSize} />
+        <LabelPreview layout={draft} data={sample} mediaSize={mediaSize} kind={kind} />
       </div>
       {noBarcode && (
         <p className="ferr" role="alert">
@@ -271,7 +276,7 @@ export function LabelBuilderPanel({ mediaSize, company }: LabelBuilderPanelProps
           title={naming === 'new' ? t('printing.builder.new') : naming === 'duplicate' ? t('printing.builder.duplicate') : t('printing.builder.saveAs')}
           initial={naming === 'duplicate' ? t('printing.builder.copyOf', { name: current?.name ?? t('printing.station.builtInTemplate') }) : ''}
           onClose={() => setNaming(null)}
-          onSave={(name) => create(name, naming === 'new' ? BUILT_IN_LAYOUT : draft)}
+          onSave={(name) => create(name, naming === 'new' ? builtIn : draft)}
         />
       )}
     </Panel>

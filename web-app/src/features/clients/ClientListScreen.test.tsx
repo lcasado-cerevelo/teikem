@@ -338,7 +338,7 @@ describe('Clientes — ficha', () => {
     wrap(ALL)
     await screen.findByRole('heading', { name: 'Perfil fiscal' })
     const labels = screen.getByLabelText(/Imprimir los labels automáticamente/)
-    const invoice = screen.getByLabelText(/Imprimir la factura automáticamente/)
+    const invoice = screen.getByLabelText(/Imprimir el label de la factura automáticamente/)
     expect(labels.compareDocumentPosition(invoice) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy() // labels primero
     const legal = screen.getByLabelText('Razón social')
     await user.clear(legal)

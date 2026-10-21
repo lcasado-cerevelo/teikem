@@ -3,7 +3,7 @@
 // defecto, sin error. Orden de resolución de la impresora y la plantilla: estación → predeterminada de la compañía → integrado
 // («PDF del navegador» 4×6 o Carta y el label integrado). Si lo elegido en la estación ya no está activo, se usa la de la compañía
 // con un aviso.
-import { BUILT_IN_LAYOUT, normalizeLayout, type LabelLayout } from '../../kernel/ui/orderLabelLayout'
+import { BUILT_IN_INVOICE_LAYOUT, BUILT_IN_LAYOUT, normalizeLayout, type LabelLayout } from '../../kernel/ui/orderLabelLayout'
 import type { LabelTemplateDto, PrinterOption, StationOptions } from './printingApi'
 
 /** Valor de «Impresora»: '' = la predeterminada de la compañía; `PDF_ONLY` = sin impresora (PDF del navegador); si no, el PublicId. */
@@ -142,9 +142,22 @@ export interface ResolvedTemplate {
   notice: StationNotice | null
 }
 
+/** Las plantillas sin clase (versiones anteriores del API) son de piezas. */
+export const isPieceTemplate = (t: LabelTemplateDto) => (t.kind ?? 'PIECE') !== 'INVOICE'
+
+/**
+ * Plantilla del label de FACTURA: la predeterminada de la compañía para facturas o, si no hay, el integrado (un código de barras centrado con el número
+ * debajo). No se elige por estación: el label de factura sale en la misma impresora de labels que el de las piezas.
+ */
+export function resolveInvoiceTemplate(options: StationOptions | undefined): ResolvedTemplate {
+  const def = (options?.templates ?? []).find((x) => !isPieceTemplate(x) && x.isDefault) ?? null
+  if (def) return { template: def, layout: normalizeLayout(def.layout, 'INVOICE'), source: 'company', notice: null }
+  return { template: null, layout: options?.builtInInvoiceLayout ? normalizeLayout(options.builtInInvoiceLayout, 'INVOICE') : BUILT_IN_INVOICE_LAYOUT, source: 'builtIn', notice: null }
+}
+
 /** Plantilla de label a usar: estación → predeterminada de la compañía → integrado. */
 export function resolveTemplate(config: StationConfig, options: StationOptions | undefined): ResolvedTemplate {
-  const list = options?.templates ?? []
+  const list = (options?.templates ?? []).filter(isPieceTemplate)
   const companyDefault = list.find((t) => t.isDefault) ?? null
   const builtIn = options?.builtInLayout ? normalizeLayout(options.builtInLayout) : BUILT_IN_LAYOUT
   const pick = (t: LabelTemplateDto | null, source: StationSource, notice: StationNotice | null = null): ResolvedTemplate =>

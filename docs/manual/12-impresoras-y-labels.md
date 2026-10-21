@@ -113,11 +113,21 @@ Plantillas:
   Desde F-G2 el interruptor «Label al guardar» de la entrada rápida y detallada viene encendido cuando el ajuste está encendido y la
   estación no se excluyó (sección 10).
 
-## 6. Bandera del cliente: «Imprimir la factura automáticamente»
+## 6. Label de factura (bandera del cliente «Label de factura»)
 
 - `Client.AutoPrintInvoice`, por cliente (el que manda, *sender*), apagada por defecto. Se ve en la ficha del cliente (`autoPrintInvoice`)
-  y se cambia en el Perfil fiscal del cliente (`PATCH …/profile` con `autoPrintInvoice: true|false`; sin el campo no cambia).
-- **Todavía no imprime ninguna factura**: solo se guarda la preferencia; la impresión llega con facturación.
+  y se cambia en el Perfil fiscal del cliente (`PATCH …/profile` con `autoPrintInvoice: true|false`; sin el campo no cambia). Desde 2026-10-21
+  enciende el **label de factura**.
+- **Qué sale**: al guardar un envío de ese cliente que tenga **número de factura**, **después** de los labels de los paquetes sale **un** label de
+  la factura (uno por envío, no por pieza) por la **misma impresora de labels** de la estación. Sale **solo, sin vista previa ni pregunta**, aunque la
+  estación esté en «Confirmar antes de imprimir». Si el envío no tiene número de factura se avisa «{N} envíos sin número de factura no llevan label de factura.».
+- **Cómo se ve**: lo define la plantilla de **clase Factura** (`kind = INVOICE`). Por omisión (sin plantilla) es el **código de barras del número de
+  factura, centrado y grande, con el número pegado debajo** (sin «Paquete i de N»). En *Sistema → Impresoras y labels* hay un segundo constructor,
+  «Construir el label de factura», igual al de las piezas (Nueva, Duplicar, Hacer predeterminada, Desactivar, Actualizar): ahí se puede agregar lo que
+  haga falta (cliente, consignatario, dirección, COD, waybill…), moverlo y cambiar su tamaño. En ese constructor «Código de barras» **es el número de
+  factura** y el elemento «Invoice» no aparece. Las plantillas de factura y las de piezas son listas aparte: cada clase tiene su predeterminada y sus
+  nombres (se puede llamar igual una de piezas y una de factura). La clase no se puede cambiar después de creada.
+- Se imprime desde la entrada rápida y la detallada. Los envíos de clientes sin la bandera no llevan label de factura.
 
 ## 7. Mensajes y códigos HTTP
 
@@ -143,7 +153,9 @@ Plantillas:
 | 400 | «Tamaño desconocido en «Consignatario»: 'X'. Use sm, md o lg.» | Ídem. |
 | 400 | «Solo el número de waybill y la factura se pueden mostrar como código de barras.» | |
 | 400 | «El label necesita al menos un código de barras para poder escanearlo.» | |
-| 409 | «Ya existe una plantilla de label activa con ese nombre.» | |
+| 400 | «El tipo de plantilla debe ser PIECE (label de pieza) o INVOICE (label de factura).» | `kind` desconocido en el alta o en `GET label-templates?kind=`. |
+| 400 | «El tipo de la plantilla no se puede cambiar; cree otra.» | PATCH con un `kind` distinto al de la plantilla. |
+| 409 | «Ya existe una plantilla de label activa con ese nombre.» | Dentro de la misma clase (pieza o factura). |
 | 409 | «La plantilla está inactiva; reactívela antes de hacerla predeterminada.» | |
 | 404 | «Plantilla de label no encontrada.» | |
 | 409 | «El registro fue modificado por otro usuario; recargue e intente de nuevo.» | PATCH con `rowVersion` viejo. |

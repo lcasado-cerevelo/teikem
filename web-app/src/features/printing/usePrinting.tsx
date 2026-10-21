@@ -17,18 +17,21 @@ import { renderReportPdf, type ReportSpec } from '../../kernel/ui/reportPdf'
 import type { PrintOutcome } from '../../kernel/ui/printPdf'
 import { LabelPreview } from './LabelPreview'
 import { useLabelTexts } from './labelTexts'
-import { buildLabelJob, labelFileBase, type LabelJob, type LabelOrder } from './orderLabels'
+import type { LabelKind } from '../../kernel/ui/orderLabelLayout'
+import { buildInvoiceLabelJob, buildLabelJob, labelFileBase, type LabelJob, type LabelOrder } from './orderLabels'
 import { labelPdfFactory, outcomeMessage, printWith } from './printActions'
 import { useStationOptions } from './printingApi'
-import { readStationConfig, resolvePrinter, resolveTemplate, type ResolvedPrinter, type ResolvedTemplate } from './stationConfig'
+import { readStationConfig, resolveInvoiceTemplate, resolvePrinter, resolveTemplate, type ResolvedPrinter, type ResolvedTemplate } from './stationConfig'
 
 type Pending =
-  | { kind: 'labels'; job: LabelJob; fileBase: string; printer: ResolvedPrinter; template: ResolvedTemplate }
+  | { kind: 'labels'; labelKind: LabelKind; job: LabelJob; fileBase: string; printer: ResolvedPrinter; template: ResolvedTemplate }
   | { kind: 'doc'; title: string; fileBase: string; printer: ResolvedPrinter; make: () => Promise<jsPDF> }
 
 export interface PrintLabelsOptions {
   /** Después de guardar una orden: un fallo avisa que la orden sí se guardó. */
   afterSave?: boolean
+  /** Después de los labels de las piezas, imprime el label de FACTURA de cada orden (cliente con «label de factura»). Nunca pregunta. */
+  invoice?: boolean
 }
 
 export function usePrinting() {
@@ -57,7 +60,7 @@ export function usePrinting() {
   async function runLabels(p: Extract<Pending, { kind: 'labels' }>, afterSave?: boolean) {
     setBusy(true)
     try {
-      const factory = labelPdfFactory(t('printing.jobs.labelsTitle'), p.printer, p.template.layout, texts, p.job.labels)
+      const factory = labelPdfFactory(t('printing.jobs.labelsTitle'), p.printer, p.template.layout, texts, p.job.labels, p.labelKind)
       report(await printWith(p.printer, factory.make, `${p.fileBase}.pdf`))
       if (factory.notFitting() > 0) toast.info(t('printing.notFit', { size: t(`printing.media.${p.printer.mediaSize}`) }))
     } catch (e) {
@@ -86,18 +89,48 @@ export function usePrinting() {
       if (job.withoutNumber > 0) toast.info(t('printing.jobs.withoutNumber', { n: job.withoutNumber }))
       if (job.labels.length === 0) {
         toast.info(t('printing.jobs.none'))
+        if (opts.invoice) await printInvoiceLabels(orders, opts)
         return 0
       }
       if (job.large) toast.info(t('printing.jobs.large', { n: job.labels.length }))
       const config = readStationConfig(tenantId)
       const p: Extract<Pending, { kind: 'labels' }> = {
         kind: 'labels',
+        labelKind: 'PIECE',
         job,
         fileBase: labelFileBase(orders, job.labels.length),
         printer: resolvePrinter('label', config, options.data),
         template: resolveTemplate(config, options.data),
       }
       // «al guardar» (label automático del cliente o «Label al guardar»): sale solo, sin vista previa ni pregunta aunque la estación esté en «confirmar»; el resto de las impresiones sí confirma
+      if (config.label.confirm && !opts.afterSave) setPending(p)
+      else await runLabels(p, opts.afterSave)
+      if (opts.invoice) await printInvoiceLabels(orders, opts)
+      return job.labels.length
+    } catch (e) {
+      fail(e, opts.afterSave)
+      return 0
+    }
+  }
+
+  /**
+   * Imprime el label de FACTURA (uno por orden con número de factura) en la impresora de labels de la estación y con la plantilla de factura de la compañía
+   * (o el integrado: código de barras del número con el número debajo). Si es «al guardar» sale solo, sin vista previa ni pregunta.
+   */
+  async function printInvoiceLabels(orders: readonly LabelOrder[], opts: PrintLabelsOptions = {}): Promise<number> {
+    try {
+      const job = buildInvoiceLabelJob(orders, company, (n) => f.money(n))
+      if (job.withoutInvoice > 0) toast.info(t('printing.jobs.withoutInvoice', { n: job.withoutInvoice }))
+      if (job.labels.length === 0) return 0
+      const config = readStationConfig(tenantId)
+      const p: Extract<Pending, { kind: 'labels' }> = {
+        kind: 'labels',
+        labelKind: 'INVOICE',
+        job,
+        fileBase: `factura-${job.labels.length === 1 ? job.labels[0].invoice : job.labels.length}`,
+        printer: resolvePrinter('label', config, options.data),
+        template: resolveInvoiceTemplate(options.data),
+      }
       if (config.label.confirm && !opts.afterSave) setPending(p)
       else await runLabels(p, opts.afterSave)
       return job.labels.length
@@ -126,7 +159,7 @@ export function usePrinting() {
     setBusy(true)
     try {
       if (pending.kind === 'labels') {
-        const factory = labelPdfFactory(t('printing.jobs.labelsTitle'), pending.printer, pending.template.layout, texts, pending.job.labels)
+        const factory = labelPdfFactory(t('printing.jobs.labelsTitle'), pending.printer, pending.template.layout, texts, pending.job.labels, pending.labelKind)
         ;(await factory.make(true)).save(`${pending.fileBase}.pdf`)
       } else (await pending.make()).save(`${pending.fileBase}.pdf`)
       setPending(null)
@@ -180,7 +213,7 @@ export function usePrinting() {
             {t('printing.jobs.summary', { labels: pending.job.labels.length, orders: pending.job.orders })}
           </p>
           <div className="prn-preview-wrap">
-            <LabelPreview layout={pending.template.layout} data={pending.job.labels[0]} mediaSize={pending.printer.mediaSize} />
+            <LabelPreview layout={pending.template.layout} data={pending.job.labels[0]} mediaSize={pending.printer.mediaSize} kind={pending.labelKind} />
           </div>
         </>
       ) : (
@@ -192,5 +225,5 @@ export function usePrinting() {
   /** «Label al guardar» por omisión: la compañía imprime directo y esta estación no se excluyó. */
   const labelOnSaveDefault = !!options.data?.printLabelsDirect && readStationConfig(tenantId).label.printOnSave
 
-  return { printLabels, printDocument, dialog, busy, labelOnSaveDefault, optionsReady: !options.isPending }
+  return { printLabels, printInvoiceLabels, printDocument, dialog, busy, labelOnSaveDefault, optionsReady: !options.isPending }
 }

@@ -503,9 +503,9 @@
       "portalCreateExits": "Exit notices",
       "portalCreateExitsText": "Can create exit notices",
       "autoPrintLabelsHelp": "Saved per client (the sender). When a shipment of this client is saved, its labels (one per package) print by themselves, even if «Label on save» is off at the station. Needs a label printer set up.",
-      "autoPrintInvoice": "Invoice",
-      "autoPrintInvoiceText": "Print the invoice automatically",
-      "autoPrintInvoiceHelp": "Saved per client (the sender). It does not print the invoice yet: that arrives with billing."
+      "autoPrintInvoice": "Invoice label",
+      "autoPrintInvoiceText": "Print the invoice label automatically",
+      "autoPrintInvoiceHelp": "Saved per client (the sender). When a shipment of this client with an invoice number is saved, after its package labels an invoice label prints by itself (the barcode of the number with the number underneath; it can be redesigned in System → Printers and labels). Needs a label printer set up."
     },
     "addresses": {
       "title": "Addresses",
@@ -10678,6 +10678,7 @@
       "docReady": "The document is ready to print.",
       "cancelled": "{n} cancelled shipments were not printed.",
       "withoutNumber": "{n} pieces without a package number were not printed.",
+      "withoutInvoice": "{n} shipments without an invoice number get no invoice label.",
       "none": "There are no labels to print.",
       "large": "That is {n} labels: the PDF will be large and may take a moment. All are printed; there is no limit.",
       "failed": "Could not print: {reason}",
@@ -10707,6 +10708,7 @@
       "address": "Address",
       "barcode": "Barcode",
       "waybill": "Waybill number",
+      "barcodeInvoice": "Invoice number (barcode)",
       "invoice": "Invoice",
       "cod": "COD amount"
     },
@@ -10793,6 +10795,8 @@
     },
     "builder": {
       "title": "Build the label",
+      "invoiceTitle": "Build the invoice label",
+      "invoiceHint": "The invoice label prints once per shipment, after the package labels, for clients with «Invoice label» turned on. By default it is the barcode of the invoice number with the number right under it, centered; add anything else you need (client, consignee, COD…) and move or resize it.",
       "hint": "Pick which elements appear on the label, their position and size — the preview updates live. The barcode is each package's number: one label prints per package.",
       "template": "Template",
       "isDefault": "default",
