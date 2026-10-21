@@ -5439,6 +5439,12 @@ WHEN NOT MATCHED THEN
     INSERT (Code, CategoryLookupId, LabelJson, IsSystem)
     VALUES (s.Code, (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'MENU'), s.LabelJson, 1);
 GO
+-- 2026-10-21 (Lote 185): estas dos migraciones de datos (acceso por ítem y pulse.view) se aplican UNA SOLA VEZ (marca dbo.AppliedMigration). Antes se repetían en cada db-update y devolvían a un rol el
+-- acceso que el administrador le había quitado. En las bases que ya las tenían se aplican una última vez y desde ahí lo quitado se queda quitado.
+IF OBJECT_ID(N'dbo.AppliedMigration', N'U') IS NULL CREATE TABLE dbo.AppliedMigration (Code VARCHAR(60) NOT NULL PRIMARY KEY, AppliedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_AppliedMigration_At DEFAULT SYSUTCDATETIME());
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L152_MENU_GRANTS')
+BEGIN
 -- el permiso que antes daba la entrada => los de acceso que lo reemplazan (a todos los roles, plantillas y clonados)
 INSERT INTO dbo.RolePermission (RoleId, PermissionId)
 SELECT DISTINCT rp.RoleId, pn.PermissionId
@@ -5476,13 +5482,14 @@ JOIN dbo.Permission po ON po.Code = g.OldCode
 JOIN dbo.Permission pn ON pn.Code = g.NewCode
 JOIN dbo.RolePermission rp ON rp.PermissionId = po.PermissionId
 WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = rp.RoleId AND x.PermissionId = pn.PermissionId);
-GO
 -- pulse.view: todos los roles
 INSERT INTO dbo.RolePermission (RoleId, PermissionId)
 SELECT r.RoleId, p.PermissionId
 FROM dbo.Role r
 JOIN dbo.Permission p ON p.Code = 'pulse.view'
 WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = p.PermissionId);
+INSERT INTO dbo.AppliedMigration (Code) VALUES ('L152_MENU_GRANTS');
+END
 GO
 /* ----------------------------------------------------------------------------
    2026-10-20 (Lote 156) — Lo que el cliente puede crear solo desde su portal: dbo.Client.PortalCanCreateProducts / PortalCanCreateArrivals / PortalCanCreateExits
