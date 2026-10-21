@@ -41,10 +41,37 @@ Estado: **propuesta para aprobación de Luis. Nada de esto está construido toda
 ## 4. Mis tareas
 No se toca en este diseño (se queda como está: Recibir, Acomodar, Despachar y «ver lo que nadie tiene asignado»).
 
-## 5. Pendiente de definir (permisos)
-Luis pidió dos permisos: **«ver todo»** (lo asignado a otras personas además de lo mío y lo sin asignar, para el supervisor del almacén) y **«reasignar desde el aparato»** (exige el de ver todo). Falta definir **dónde** se ve cada uno en estas pantallas y qué pasa con `warehouse.pick.any`; se diseña aparte, después de aprobar lo anterior.
+## 5. Permisos: «ver todo» y «reasignar» en el aparato (propuesta)
+
+**Dos permisos nuevos**, categoría Almacén, que se dan al **supervisor del almacén**:
+
+| Código | Nombre | Para qué |
+|---|---|---|
+| `warehouse.app.viewall` | Ver todo en el aparato | Muestra lo **asignado a otras personas**, además de lo mío y lo sin asignar. |
+| `warehouse.app.reassign` | Reasignar desde el aparato | Permite cambiar a quién está asignado un documento o acomodo. **Exige `warehouse.app.viewall`**: sin él, el botón no aparece y el servidor lo rechaza. |
+
+### Dónde se ve cada uno (por pantalla)
+- **Recibir:** tras «Ver lo que nadie tiene asignado (N)» aparece, solo con *ver todo*, **«Ver lo asignado a otras personas (N)»**; cada fila dice «Asignado a: {nombre}». Se puede abrir y recibir uno de esos (como hoy: la asignación ordena, no bloquea) y, con *reasignar*, cada fila (mía, sin asignar o de otra persona) trae el botón **Reasignar**.
+- **Acomodar:** igual: tras la opción de los sin asignar, **«Ver lo asignado a otras personas (N)»**, con nombre; Reasignar por fila.
+- **Despacho:** igual, en la primera pantalla, para avisos de salida y órdenes de venta; Reasignar por fila.
+- **Mis tareas:** igual: tercera opción y Reasignar por fila.
+- **Reasignar** abre una ventana con las personas de la compañía (activas) y la opción **«Sin asignar»**; al aceptar se manda al servidor. **Pide señal**: sin señal avisa «Para reasignar hace falta señal» y no cambia nada.
+- Quien no tiene *ver todo* **no ve** nada de esto: sus pantallas son las ya diseñadas (mío → sin asignar).
+
+### Servidor
+- Los endpoints `assign` (aviso de llegada, aviso de salida, orden de compra, orden de venta, tarea) hoy exigen `warehouse.manage`; pasan a aceptar `warehouse.manage` **o** `warehouse.app.reassign` (la política ya admite «a|b»); entrando por *reasignar*, el servicio comprueba además *ver todo* (403 «Para reasignar hace falta poder ver todo en el aparato.»).
+- Nuevo `GET /api/v1/warehouse/assignees` (miembros activos: id y nombre) con `viewall` **o** `reassign`; el aparato guarda la lista para mostrar «Asignado a: {nombre}» sin señal (los documentos locales solo traen el id).
+- Bitácora: `$reason` «Reasignado por {nombre} desde la app móvil» (o «Dejado sin asignar por…»).
+- Los permisos se agregan al `PermissionCatalog`, y en una sección nueva de `Diseño/logistica-db-update.sql` se dan, **solo agregando**, a las plantillas y a los roles **ya clonados** que tengan `warehouse.manage` (los supervisores). El operador no los recibe.
+
+### Qué pasa con `warehouse.pick.any` (decisión pendiente)
+Hoy lo tienen todos los operadores (plantilla) y decide si el aparato ofrece en Despacho todo lo del almacén. Con este diseño **lo sin asignar lo ve cualquiera** y **lo de otros lo ve quien tenga *ver todo***, así que `pick.any` queda sin uso. Propuesta: el aparato **deja de consultarlo** (no se quita del catálogo ni de los roles: regla «solo agregar»). Efecto para los operadores: pasan de ver todo el despacho del almacén a ver lo suyo y lo sin asignar.
 
 ## 6. Preguntas
+- **P1.** ¿`pick.any` queda sin uso (el aparato deja de consultarlo) como se propone? Los operadores verían menos en Despacho que hoy.
+- **P2.** ¿Reasignar un documento que otra persona ya empezó (recibo o recolección abiertos en su aparato) se permite? Propuesta: sí, la asignación ordena y no bloquea, y no se interrumpe lo que ya está en curso.
+- **P3.** ¿La lista «Asignado a otras personas» muestra todo el almacén o solo lo del almacén activo? Propuesta: solo el almacén activo.
+- **P4.** ¿Notificar a la persona cuando le reasignan algo? Propuesta: no en este lote.
 - **D6.** En Recibir directo, ¿la **cantidad total recibida** del producto se escribe antes de escoger las posiciones (para saber cuánto sobra en la última)? Con acomodo, esa cantidad total va a la posición de staging.
 
 ## 7. Decisiones ya tomadas por Luis
