@@ -377,7 +377,32 @@ public static class ColavoraRules
 
     /// <summary>Descripción de la línea de carga: el comentario de la pieza de Colavora (AxisCare: el equipo) o el tipo de paquete.</summary>
     public static string LineDescription(string? pieceComment, string packageTypeName)
-        => Trim(pieceComment, 250) ?? Trim(packageTypeName, 250) ?? "Pieza";
+        => CleanComment(pieceComment) ?? Trim(packageTypeName, 250) ?? "Pieza";
+
+    /// <summary>El comentario de una pieza de Colavora sin los valores vacíos que dejan los sistemas de los clientes («0», «-», «N/A»); null si no dice nada.</summary>
+    public static string? CleanComment(string? comment)
+    {
+        var c = (comment ?? string.Empty).Trim();
+        return c.Length == 0 || c is "0" or "-" or "--" or "." || string.Equals(c, "N/A", StringComparison.OrdinalIgnoreCase) || string.Equals(c, "NULL", StringComparison.OrdinalIgnoreCase) ? null : c;
+    }
+
+    /// <summary>
+    /// Contenido de un envío (los ítems de AxisCare que Colavora guarda como piezas «de descripción») como un solo texto para la descripción de la línea del
+    /// paquete (decisión de Luis, 2026-10-20: no una línea por ítem): un ítem por renglón, «cantidad × código · texto», los repetidos sumados. Null si no hay.
+    /// </summary>
+    public static string? ContentText(IEnumerable<(string Text, string? Code)> items)
+    {
+        var lines = items.Where(i => !string.IsNullOrWhiteSpace(i.Text))
+            .GroupBy(i => i.Text.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Select(g =>
+            {
+                var code = g.Select(i => i.Code).FirstOrDefault(c => !string.IsNullOrWhiteSpace(c))?.Trim();
+                var text = code is not null && !g.Key.Contains(code, StringComparison.OrdinalIgnoreCase) ? $"{code} · {g.Key}" : g.Key;
+                return $"{g.Count()} × {text}";
+            })
+            .ToList();
+        return lines.Count == 0 ? null : string.Join('\n', lines);
+    }
 
     // ---------------------------------------------------------------- usuarios (D11)
 

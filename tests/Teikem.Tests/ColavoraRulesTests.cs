@@ -370,4 +370,33 @@ public sealed class ColavoraRulesTests
         Assert.False(links.ContainsKey("10999"));   // no hay cliente «OTRO» al que unirse: queda como cliente
         Assert.False(links.ContainsKey("10532"));
     }
+
+    [Theory]
+    [InlineData("0", null)]
+    [InlineData(" 0 ", null)]
+    [InlineData("N/A", null)]
+    [InlineData("", null)]
+    [InlineData(null, null)]
+    [InlineData("OXYGEN CYLINDER", "OXYGEN CYLINDER")]
+    public void Meaningless_piece_comments_are_dropped(string? comment, string? expected)
+        => Assert.Equal(expected, ColavoraRules.CleanComment(comment));
+
+    [Fact]
+    public void Content_items_become_one_text_with_quantities_not_one_line_each()
+    {
+        var items = new (string, string?)[]
+        {
+            ("DYNASHIELD W/DIMETHICONE 4OZ", "166-1199"),
+            ("POVIDONE IODINE SWABSTICK'S", "166-1201"),
+            ("DYNASHIELD W/DIMETHICONE 4OZ", "166-1199"),
+            ("S 05 AXM 00001 N 166-3001 WITH CODE INSIDE", "166-3001"),
+        };
+        var text = ColavoraRules.ContentText(items);
+        Assert.Equal("2 × 166-1199 · DYNASHIELD W/DIMETHICONE 4OZ\n1 × 166-1201 · POVIDONE IODINE SWABSTICK'S\n1 × S 05 AXM 00001 N 166-3001 WITH CODE INSIDE", text);
+        Assert.Null(ColavoraRules.ContentText(Array.Empty<(string, string?)>()));
+    }
+
+    [Fact]
+    public void A_line_description_ignores_a_meaningless_comment_and_falls_back_to_the_package_type()
+        => Assert.Equal("Box", ColavoraRules.LineDescription("0", "Box"));
 }

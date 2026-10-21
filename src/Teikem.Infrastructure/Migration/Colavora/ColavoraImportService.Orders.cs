@@ -253,30 +253,31 @@ public sealed partial class ColavoraImportService
             }
             physical.Add((p, ++seq));
         }
-        // descripción de lo que va (una línea por texto distinto, con su cantidad y el código del producto)
-        foreach (var g in descriptions.GroupBy(d => d.Text, StringComparer.OrdinalIgnoreCase))
-        {
-            var code = g.Select(d => d.Code).FirstOrDefault(c => c is not null);
-            var text = code is not null && !g.Key.Contains(code, StringComparison.OrdinalIgnoreCase) ? $"{code} · {g.Key}" : g.Key;
-            order.CargoLines.Add(new CargoLine { Order = order, PackageTypeLookupId = s.DefaultPackageTypeId, Description = ColavoraRules.Trim(text, 250)!, Quantity = g.Count(), IsActive = true });
-        }
+        // lo que va dentro (los ítems): NO son líneas aparte; van como texto en la descripción de la línea del paquete (decisión de Luis, 2026-10-20)
+        var contentText = ColavoraRules.ContentText(descriptions);
         if (order.ClientInvoiceNumber.Length == 0 && !string.IsNullOrWhiteSpace(sh.ReferenceNo)) { order.ClientInvoiceNumber = ColavoraRules.Trim(sh.ReferenceNo, 40)!; order.ClientInvoiceNumberTyped = true; }
         if (physical.Count == 0)
         {
             // sin piezas en Colavora: una línea con Qty piezas numeradas waybill-n
             var pt = sh.PackageType is int pti && s.PackageTypes.TryGetValue(pti, out var ptv) ? ptv : (s.DefaultPackageTypeId, "Box", false);
             var qty = Math.Max(1, Math.Min(sh.Qty ?? 1, 200));
-            var line = new CargoLine { Order = order, PackageTypeLookupId = pt.Item1, Description = ColavoraRules.LineDescription(null, pt.Item2), Quantity = qty, IsActive = true };
+            var line = new CargoLine { Order = order, PackageTypeLookupId = pt.Item1, Description = contentText ?? ColavoraRules.LineDescription(null, pt.Item2), Quantity = qty, IsActive = true };
             order.CargoLines.Add(line);
             for (var i = 1; i <= qty; i++) AddPiece(s, order, line, ColavoraRules.PieceNumber(null, sh.Waybill, i), i, 0);
         }
         else
         {
+            var firstGroup = true;
             foreach (var g in physical.GroupBy(x => x.Piece.PackageType ?? 0))
             {
                 var pt = s.PackageTypes.TryGetValue(g.Key, out var ptv) ? ptv : (s.DefaultPackageTypeId, "Box", false);
-                var firstComment = g.Select(x => x.Piece.Comments).FirstOrDefault(c => !string.IsNullOrWhiteSpace(c));
-                var line = new CargoLine { Order = order, PackageTypeLookupId = pt.Item1, Description = ColavoraRules.LineDescription(firstComment, pt.Item2), Quantity = g.Count(), IsActive = true };
+                var firstComment = g.Select(x => ColavoraRules.CleanComment(x.Piece.Comments)).FirstOrDefault(c => c is not null);
+                // el contenido va en la línea del primer tipo de paquete (con su comentario, si trae uno)
+                var description = firstGroup && contentText is not null
+                    ? (firstComment is null ? contentText : firstComment + "\n" + contentText)
+                    : ColavoraRules.LineDescription(firstComment, pt.Item2);
+                firstGroup = false;
+                var line = new CargoLine { Order = order, PackageTypeLookupId = pt.Item1, Description = description, Quantity = g.Count(), IsActive = true };
                 order.CargoLines.Add(line);
                 foreach (var (piece, n) in g) AddPiece(s, order, line, ColavoraRules.PieceNumber(piece.Barcode, sh.Waybill, n), n, piece.PieceId);
             }

@@ -96,7 +96,7 @@ public sealed class CargoLineConfiguration : IEntityTypeConfiguration<CargoLine>
         b.ToTable("CargoLine");
         b.HasKey(l => l.CargoLineId);
         b.Property(l => l.PackageNumber).HasMaxLength(40);
-        b.Property(l => l.Description).HasMaxLength(250).IsRequired();
+        b.Property(l => l.Description).IsRequired();   // NVARCHAR(MAX): el contenido del envío va aquí (pendiente de la migración de Colavora §3)
         b.Property(l => l.Quantity).HasColumnType("decimal(14,3)");
         b.Property(l => l.WeightKg).HasColumnType("decimal(12,3)");
         b.Property(l => l.VolumeM3).HasColumnType("decimal(12,4)");

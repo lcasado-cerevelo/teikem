@@ -38,13 +38,13 @@ public class OrderRulesTests
         var lines = new[]
         {
             new PackageLineInput("Caja", 0),
-            new PackageLineInput(new string('x', 251), 1),
+            new PackageLineInput(new string('x', 4001), 1),
             new PackageLineInput("Sobre", 1, WeightKg: -1m),
             new PackageLineInput("Sobre", 1, VolumeM3: -0.5m),
         };
         var errors = OrderRules.ValidatePackages(lines, isSpecialDelivery: false);
         Assert.Equal("La cantidad de piezas debe ser al menos 1.", errors["packages[0].pieces"]);
-        Assert.Equal("Máximo 250 caracteres.", errors["packages[1].description"]);
+        Assert.Equal("Máximo 4000 caracteres.", errors["packages[1].description"]);
         Assert.True(errors.ContainsKey("packages[2].weightKg"));
         Assert.True(errors.ContainsKey("packages[3].volumeM3"));
         Assert.Equal(4, errors.Count);

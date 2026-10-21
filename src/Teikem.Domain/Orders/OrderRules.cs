@@ -24,7 +24,7 @@ public sealed record PackageLineInput(string? Description, int Pieces = 1, decim
 /// </summary>
 public static class OrderRules
 {
-    public const int DescriptionMaxLength = 250;
+    public const int DescriptionMaxLength = 4000;   // la columna es MAX; el límite de captura evita pegar textos enormes por error
     public const int StopNotesMaxLength = 500;
     public const int ReferenceValueMaxLength = 120;
     public const int ReferenceSourceMaxLength = 80;

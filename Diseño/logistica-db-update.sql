@@ -5622,3 +5622,12 @@ GO
 IF OBJECT_ID('dbo.CK_Tenant_FleetDocWarnDays', 'C') IS NULL
     ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_FleetDocWarnDays CHECK (FleetDocWarnDays BETWEEN 1 AND 365);
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-21 (pendiente de la migración de Colavora §3) — Descripción larga de la línea de carga.
+   - dbo.CargoLine.Description pasa de NVARCHAR(250) a NVARCHAR(MAX): el contenido de un envío (p. ej. los ítems de AxisCare, decenas por orden)
+     va dentro de la descripción de la línea del paquete, no como una línea por ítem. Ningún índice incluye la columna.
+   Idempotente: solo cambia si todavía no es MAX.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.CargoLine', 'Description') <> -1
+    ALTER TABLE dbo.CargoLine ALTER COLUMN Description NVARCHAR(MAX) NOT NULL;
+GO
