@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Clients;
 using Teikem.Domain.Orders;
+using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Clients;
 using Teikem.Infrastructure.Contracts;
@@ -302,13 +303,16 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
     /// (allowDupInvoice, defaultServiceMinutes, ventana, notas…), que el catálogo de órdenes descartaría.
     /// </summary>
     public static string SerializeDefaults(IReadOnlyDictionary<string, string> defaults, string kind = ImportKinds.Order)
-        => JsonSerializer.Serialize(IsConsignee(kind) ? ConsigneeImportMapping.NormalizeDefaults(defaults) : ImportMapping.NormalizeDefaults(defaults), JsonOptions);
+        => JsonSerializer.Serialize(IsConsignee(kind) ? ConsigneeImportMapping.NormalizeDefaults(defaults) : IsProduct(kind) ? ProductImportMapping.NormalizeDefaults(defaults) : ImportMapping.NormalizeDefaults(defaults), JsonOptions);
 
     /// <summary>
     /// Lote 40 (F-C3): catálogo de campos que una plantilla de ÓRDENES puede mapear, para el editor de plantillas (equivale a
     /// GET /locations/import/fields). Ningún campo es obligatorio por sí solo: las reglas son de grupo (consigneeName o
     /// consigneeCode; packageType o pieces, en columna o en defaults) y las valida ValidateColumns al guardar.
     /// </summary>
+    public static IReadOnlyList<ImportFieldDto> GetProductFields()
+        => ProductImportFields.All.Select(f => new ImportFieldDto(f, Required: f == ProductImportFields.Sku, DefaultAllowed: !ProductImportFields.NoDefault.Contains(f))).ToList();
+
     public static IReadOnlyList<ImportFieldDto> GetOrderFields()
         => ImportFields.All.Select(f => new ImportFieldDto(f, Required: false, DefaultAllowed: !ImportFields.NoDefault.Contains(f))).ToList();
 
@@ -330,7 +334,7 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
     private static string NormalizeKind(string? kind, string expectedKind)
     {
         var expected = expectedKind.Trim().ToUpperInvariant();
-        if (expected is not (ImportKinds.Order or ImportKinds.Consignee)) throw new ValidationException("kind", UnknownKindMessage(expected));
+        if (expected is not (ImportKinds.Order or ImportKinds.Consignee or ImportKinds.Product)) throw new ValidationException("kind", UnknownKindMessage(expected));
         if (string.IsNullOrWhiteSpace(kind)) return expected;
         var k = kind.Trim().ToUpperInvariant();
         if (k != expected) throw new ValidationException("kind", UnknownKindMessage(k));
@@ -339,8 +343,10 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
 
     private static bool IsConsignee(string? kind) => string.Equals(kind?.Trim(), ImportKinds.Consignee, StringComparison.OrdinalIgnoreCase);
 
+    private static bool IsProduct(string? kind) => string.Equals(kind?.Trim(), ImportKinds.Product, StringComparison.OrdinalIgnoreCase);
+
     private static string? CanonicalField(string kind, string? field)
-        => IsConsignee(kind) ? ConsigneeImportFields.Canonical(field) : ImportFields.Canonical(field);
+        => IsConsignee(kind) ? ConsigneeImportFields.Canonical(field) : IsProduct(kind) ? ProductImportFields.Canonical(field) : ImportFields.Canonical(field);
 
     /// <summary>
     /// Validación de la definición según el catálogo del tipo. CONSIGNEE: además, el teléfono por defecto con la misma regla
@@ -348,6 +354,7 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
     /// </summary>
     public static IReadOnlyDictionary<string, string> ValidateColumns(string kind, IReadOnlyList<ImportColumn> columns, IReadOnlyDictionary<string, string> defaults)
     {
+        if (IsProduct(kind)) return ProductImportMapping.ValidateColumns(columns, defaults);
         if (!IsConsignee(kind)) return ImportMapping.ValidateColumns(columns, defaults);
         var errors = new Dictionary<string, string>(ConsigneeImportMapping.ValidateColumns(columns, defaults), StringComparer.Ordinal);
         foreach (var (key, value) in defaults)

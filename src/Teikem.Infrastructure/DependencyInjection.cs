@@ -147,6 +147,7 @@ public static class DependencyInjection
         services.AddScoped<OrderImportService>();
         // Lote 38 (F-B): importación CSV de consignatarios (mismas plantillas y lotes, Kind CONSIGNEE)
         services.AddScoped<ConsigneeImportService>();
+        services.AddScoped<ProductImportService>();   // 2026-10-21: importación de productos con plantilla (motor genérico, 1.ª entidad)
 
         // Lote 43 (F-G1) — impresoras y plantillas de label (sin IDataSource ni StatusService: solo IsActive, D-FG5)
         services.AddScoped<PrinterService>();

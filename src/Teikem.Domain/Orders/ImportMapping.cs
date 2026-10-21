@@ -8,6 +8,8 @@ public static class ImportKinds
     public const string Order = "ORDER";
     /// <summary>Lote 38 (F-B): importación CSV de consignatarios (dbo.Location tipo DELIVERY).</summary>
     public const string Consignee = "CONSIGNEE";
+    /// <summary>2026-10-21: importación de productos (primera entidad del motor genérico de plantillas).</summary>
+    public const string Product = "PRODUCT";
 }
 
 /// <summary>Dominio de estatus ImportBatchStatus: VALIDATED (inicial, pipeline) → CONFIRMED (pipeline); DISCARDED terminal.</summary>
