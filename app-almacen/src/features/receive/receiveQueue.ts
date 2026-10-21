@@ -3,7 +3,8 @@
 import { getDb } from '../../kernel/db/database'
 import { getKv, setKv } from '../../kernel/db/kv'
 import { takeAsn, takePurchaseOrder } from '../myTasks/myTasksApi'
-import type { LocalDoc } from './localLookup'
+import type { DraftLine } from './receiveLogic'
+import type { ExpectedLine, LocalDoc } from './localLookup'
 import { ownerKeyOf } from './receiveTruck'
 
 const KEY = 'receiveQueue'
@@ -62,4 +63,74 @@ export async function takeDocIfFree(doc: LocalDoc, userId: number | null): Promi
   } catch {
     return false
   }
+}
+
+/** Los documentos de esta tanda: el del recibo abierto y los que siguen en la cola (en el orden en que se marcaron). */
+export function batchDocs(open: LocalDoc | null): LocalDoc[] {
+  return open ? [open, ...getQueue()] : []
+}
+
+/** Lo esperado de varios documentos junto (por producto): suma lo esperado y lo ya recibido por partes. */
+export function mergeExpected(lists: readonly (readonly ExpectedLine[])[]): ExpectedLine[] {
+  const by = new Map<string, ExpectedLine>()
+  for (const list of lists)
+    for (const l of list) {
+      const cur = by.get(l.productPublicId)
+      if (cur) by.set(l.productPublicId, { ...cur, expectedQty: cur.expectedQty + l.expectedQty, postedQty: cur.postedQty + l.postedQty })
+      else by.set(l.productPublicId, { ...l })
+    }
+  return [...by.values()]
+}
+
+export interface DocSlice {
+  doc: LocalDoc
+  lines: DraftLine[]
+}
+
+/**
+ * Lote 199 — recibir varios documentos juntos: lo capturado (un solo conteo por producto) se reparte entre los documentos EN EL ORDEN en que se marcaron, cada uno hasta lo que le falta
+ * (esperado − ya recibido); lo que sobre de todos va al último documento que trae el producto. Las series se reparten en orden y el daño se asigna a las primeras piezas.
+ * Devuelve solo los documentos que reciben algo. Lógica pura.
+ */
+export function allocateLines(lines: readonly DraftLine[], docs: readonly LocalDoc[], expected: readonly (readonly ExpectedLine[])[]): DocSlice[] {
+  const remaining = expected.map((list) => {
+    const m = new Map<string, number>()
+    for (const l of list) m.set(l.productPublicId, (m.get(l.productPublicId) ?? 0) + Math.max(0, l.expectedQty - l.postedQty))
+    return m
+  })
+  const slices: DocSlice[] = docs.map((doc) => ({ doc, lines: [] }))
+  for (const line of lines) {
+    let qty = line.receivedQty
+    let serialsFrom = 0
+    let damagedLeft = line.damagedQty
+    const piece = (take: number): DraftLine => {
+      const dmg = Math.min(damagedLeft, take)
+      damagedLeft -= dmg
+      const serials = line.serialNumbers ? line.serialNumbers.slice(serialsFrom, serialsFrom + take) : null
+      serialsFrom += take
+      return dmg > 0 ? { ...line, receivedQty: take, serialNumbers: serials, damagedQty: dmg } : { ...line, receivedQty: take, serialNumbers: serials, damagedQty: 0, damageCause: null, damageNote: null, damageBinCode: null, damageDiscard: false, damageDestination: null }
+    }
+    for (let i = 0; i < docs.length && qty > 1e-9; i++) {
+      const room = remaining[i].get(line.productPublicId) ?? 0
+      if (room <= 1e-9) continue
+      const take = Math.min(qty, room)
+      slices[i].lines.push(piece(take))
+      remaining[i].set(line.productPublicId, room - take)
+      qty -= take
+    }
+    if (qty > 1e-9) {
+      let target = -1
+      expected.forEach((list, i) => {
+        if (list.some((l) => l.productPublicId === line.productPublicId)) target = i
+      })
+      const extra = piece(qty)
+      const lines = slices[target >= 0 ? target : 0].lines
+      const last = lines[lines.length - 1]
+      // el sobrante se suma a la línea de ese producto que ya lleva el documento (una sola línea por producto)
+      if (last && last.productPublicId === extra.productPublicId && last.lotNumber === extra.lotNumber && last.targetBinCode === extra.targetBinCode && !extra.damagedQty) {
+        lines[lines.length - 1] = { ...last, receivedQty: last.receivedQty + extra.receivedQty, serialNumbers: last.serialNumbers && extra.serialNumbers ? [...last.serialNumbers, ...extra.serialNumbers] : last.serialNumbers }
+      } else lines.push(extra)
+    }
+  }
+  return slices.filter((x) => x.lines.length > 0)
 }

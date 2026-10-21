@@ -37,7 +37,7 @@ import { parseReceiptRequirement, receiveOptions } from '../features/receive/rec
 import { ReceiveDocumentList } from '../features/receive/ReceiveDocumentList'
 import type { LocalDoc } from '../features/receive/localLookup'
 import { countTruckDoc, endTruck, getTruck, startTruck, truckBlockForDoc } from '../features/receive/receiveTruck'
-import { getQueue, popQueue, setQueue, sharesOwner, takeDocIfFree } from '../features/receive/receiveQueue'
+import { allocateLines, batchDocs, getQueue, mergeExpected, setQueue, sharesOwner, takeDocIfFree } from '../features/receive/receiveQueue'
 import { chunkAt, distSummary, exceedsCapacity, isRestBin, parsePerBin } from '../features/putaway/putawayLogic'
 import { findBinByCode } from '../kernel/warehouse/binLookup'
 import { StickyAlert } from '../kernel/ui/StickyAlert'
@@ -147,9 +147,15 @@ export default function ReceiveScreen() {
   const stagingBinCode = openReceipt && warehousePublicId ? (getCachedWarehouseOptions().find((o) => o.publicId === warehousePublicId)?.receivingBinCode ?? findLocalBinCodeByZoneType(warehousePublicId, 'STAGING')) : null
   // Lote 175: recibir por partes y aviso de staging lleno (con lo que ya hay según los saldos locales)
   // Lote 191: con aviso u orden de compra, lo que dice el documento se ve en una lista para elegir (escanear sigue funcionando)
-  const expected = openReceipt ? getDocExpected(openReceipt.doc) : []
+  // Lote 199: con varios documentos marcados se trabajan juntos: lo esperado, los productos y el avance son de todos
+  const batch = openReceipt ? batchDocs(openReceipt.doc) : []
+  const expected = mergeExpected(batch.map((d) => getDocExpected(d)))
   const docProductIds = expected.length > 0 ? expected.map((l) => l.productPublicId) : null
-  const docProgress = openReceipt ? getDocProgress(openReceipt.doc) : null
+  const docProgress = (() => {
+    const all = batch.flatMap((d) => getDocProgress(d) ?? [])
+    return all.length > 0 ? all : null
+  })()
+  const batchLabels = batch.map((d) => d.label).join(' + ')
   const partBlocked = openReceipt ? partBlock(openReceipt.doc, openReceipt.lines, openReceipt.receivingMode) : 'noDoc'
   const partOk = openReceipt !== null && partBlocked === null
   const capturedQty = openReceipt?.lines.reduce((n, l) => n + l.receivedQty, 0) ?? 0
@@ -223,7 +229,7 @@ export default function ReceiveScreen() {
       const [first, ...rest] = docs
       setQueue(rest)
       startLocalReceipt(warehousePublicId!, first, mode)
-      void takeDocIfFree(first, userId)
+      for (const d of docs) void takeDocIfFree(d, userId)
     }
     vibrateOk()
     refresh()
@@ -242,18 +248,6 @@ export default function ReceiveScreen() {
   function pickMany(docs: LocalDoc[]) {
     if (docs.length === 0) return
     choose(docs)
-  }
-
-  /** Terminado un recibo, sigue el próximo de la cola (true) o, si no queda ninguno, se cierra la carga (false). */
-  function advanceQueue(): boolean {
-    const next = popQueue()
-    if (!next) {
-      if (getTruck()) endTruck()
-      return false
-    }
-    startLocalReceipt(warehousePublicId!, next, modeChoice ?? deviceMode)
-    void takeDocIfFree(next, userId)
-    return true
   }
 
   function scanDoc(code: string) {
@@ -285,7 +279,7 @@ export default function ReceiveScreen() {
     }
     // Lote 196: contra un aviso o una orden de compra solo entran los productos del documento
     if (docProductIds && !docProductIds.includes(product.publicId)) {
-      setProductError(t('receive.productNotInDoc', { sku: product.sku, doc: openReceipt?.doc?.label ?? '' }))
+      setProductError(t('receive.productNotInDoc', { sku: product.sku, doc: batchLabels }))
       vibrateError()
       return
     }
@@ -423,7 +417,7 @@ export default function ReceiveScreen() {
     const line = buildLine(withTarget)
     if (openReceipt.doc) {
       const lines = [...openReceipt.lines, line]
-      const conflict = findTargetConflict(getDocLines(openReceipt.doc), lines)
+      const conflict = findTargetConflict(batch.flatMap((d) => getDocLines(d)), lines)
       if (conflict && conflict.index === lines.length - 1) return fail(t('receive.targetConflict', { sku: conflict.sku, bin: conflict.bin }))
     }
     commitLines([line])
@@ -434,7 +428,7 @@ export default function ReceiveScreen() {
     if (!draft || !openReceipt || rows.length === 0) return
     const added = rows.map((r) => buildLine({ ...draft, qtyText: String(r.qty), targetBinCode: r.binCode }))
     if (openReceipt.doc) {
-      const conflict = findTargetConflict(getDocLines(openReceipt.doc), [...openReceipt.lines, ...added])
+      const conflict = findTargetConflict(batch.flatMap((d) => getDocLines(d)), [...openReceipt.lines, ...added])
       if (conflict) {
         setTargetError(t('receive.targetConflict', { sku: conflict.sku, bin: conflict.bin }))
         vibrateError()
@@ -449,7 +443,7 @@ export default function ReceiveScreen() {
     if (!draft || !openReceipt || splitCodes.length === 0 || perBin <= 0) return
     const { lines: added, left } = splitDraftLines(draft, perBin, splitCodes)
     if (openReceipt.doc) {
-      const conflict = findTargetConflict(getDocLines(openReceipt.doc), [...openReceipt.lines, ...added])
+      const conflict = findTargetConflict(batch.flatMap((d) => getDocLines(d)), [...openReceipt.lines, ...added])
       if (conflict) {
         setTargetError(t('receive.targetConflict', { sku: conflict.sku, bin: conflict.bin }))
         vibrateError()
@@ -481,32 +475,41 @@ export default function ReceiveScreen() {
     if (!openReceipt || openReceipt.lines.length === 0) return
     if (direct && openReceipt.doc) {
       // H11: el servidor rechazaría el recibo completo y un envío rechazado en la cola ya no se edita; se avisa aquí.
-      const conflict = findTargetConflict(getDocLines(openReceipt.doc), openReceipt.lines)
+      const conflict = findTargetConflict(batch.flatMap((d) => getDocLines(d)), openReceipt.lines)
       if (conflict) {
         vibrateError()
         Alert.alert(t('receive.targetConflictTitle'), t('receive.targetConflict', { sku: conflict.sku, bin: conflict.bin }))
         return
       }
     }
-    const body = buildReceiptBody(openReceipt.warehousePublicId, openReceipt.doc, openReceipt.lines, openReceipt.receivingMode, openReceipt.groupKey)
-    enqueue({ kind: 'receipt', body })
-    if (openReceipt.groupKey) countTruckDoc()
+    // Lote 199: con varios documentos marcados, lo capturado se reparte entre ellos en el orden en que se marcaron y sale un recibo por documento (con la llave de la carga si son 2 o más)
+    const slices = batch.length > 1 ? allocateLines(openReceipt.lines, batch, batch.map((d) => getDocExpected(d))) : []
+    if (slices.length > 0) {
+      const key = slices.length > 1 ? openReceipt.groupKey : null
+      for (const sl of slices) enqueue({ kind: 'receipt', body: buildReceiptBody(openReceipt.warehousePublicId, sl.doc, sl.lines, openReceipt.receivingMode, key) })
+    } else {
+      enqueue({ kind: 'receipt', body: buildReceiptBody(openReceipt.warehousePublicId, openReceipt.doc, openReceipt.lines, openReceipt.receivingMode, openReceipt.groupKey) })
+    }
+    setQueue([])
+    if (getTruck()) endTruck()
     discardLocalReceipt()
     void runSync()
-    const more = advanceQueue()
     refresh()
-    if (!more) router.replace('/home')
+    router.replace('/home')
   }
 
   // Lote 175: «Recibir una parte» — confirma una tanda de lo capturado (entra al staging y ya se puede acomodar) y deja el recibo abierto en el servidor.
   function receivePart() {
     if (!openReceipt || !openReceipt.doc || openReceipt.lines.length === 0 || partBlock(openReceipt.doc, openReceipt.lines, openReceipt.receivingMode) !== null) return
-    enqueue({ kind: 'receiptPart', body: buildReceiptPartBody(openReceipt.warehousePublicId, openReceipt.doc, openReceipt.lines, newClientKey(), openReceipt.groupKey) })
+    const slices = batch.length > 1 ? allocateLines(openReceipt.lines, batch, batch.map((d) => getDocExpected(d))) : [{ doc: openReceipt.doc, lines: openReceipt.lines }]
+    const key = slices.length > 1 ? openReceipt.groupKey : batch.length > 1 ? null : openReceipt.groupKey
+    for (const sl of slices) enqueue({ kind: 'receiptPart', body: buildReceiptPartBody(openReceipt.warehousePublicId, sl.doc, sl.lines, newClientKey(), key) })
+    setQueue([])
+    if (getTruck()) endTruck()
     discardLocalReceipt()
     void runSync()
-    const more = advanceQueue()
     refresh()
-    if (!more) router.replace('/home')
+    router.replace('/home')
   }
 
   // Paso 1: sin recibo abierto todavía. Nada que perder aquí, así que "Volver" sale directo a Inicio (a diferencia
@@ -894,12 +897,11 @@ export default function ReceiveScreen() {
       <Text style={styles.title}>
         {openReceipt.doc
           ? t(openReceipt.doc.kind === 'asn' ? 'receive.docLabelAsn' : 'receive.docLabelPo', {
-              number: openReceipt.doc.label,
-              reference: openReceipt.doc.label,
+              number: batchLabels,
+              reference: batchLabels,
             })
           : t('receive.startBlind')}
       </Text>
-      {getQueue().length > 0 ? <Text style={styles.help} testID="receive-queue-left">{t('receive.queueLeft', { count: getQueue().length })}</Text> : null}
       {docProgress ? (
         <View testID="receive-doc-progress">
           <Text style={styles.label}>{t('receive.docProgressTitle')}</Text>

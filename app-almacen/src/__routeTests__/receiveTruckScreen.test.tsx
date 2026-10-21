@@ -68,11 +68,15 @@ describe('Recibir — varios seguidos (tanda con carga automática)', () => {
     expect(getOpenReceipt()).toBeNull()
   })
 
-  it('marcar dos avisos del mismo cliente abre la carga solo y, al confirmar el primero, abre el segundo', async () => {
+  it('marcar dos avisos del mismo cliente los trabaja juntos: los productos de ambos, y al confirmar sale un recibo por aviso con la misma llave de carga', async () => {
     await signIn()
     getDb().runSync("INSERT INTO product (id, public_id, sku, name, barcode, tracking_type_code, is_active) VALUES (1, 'p1', 'SKU-1', 'Tornillo', '7501', 'NONE', 1)")
+    getDb().runSync("INSERT INTO product (id, public_id, sku, name, barcode, tracking_type_code, is_active) VALUES (2, 'p2', 'SKU-2', 'Tuerca', '7502', 'NONE', 1)")
     getDb().runSync("INSERT INTO asn (id, number, reference, client_name, warehouse_public_id, is_active) VALUES (5, 'LLE-00005', 'R-5', 'ASICS Care', 'wh-1', 1)")
     getDb().runSync("INSERT INTO asn (id, number, reference, client_name, warehouse_public_id, is_active) VALUES (6, 'LLE-00006', 'R-6', 'ASICS Care', 'wh-1', 1)")
+    getDb().runSync("INSERT INTO asn_line (id, asn_id, product_public_id, sku, product_name, expected_qty, posted_qty) VALUES (1, 5, 'p1', 'SKU-1', 'Tornillo', 4, 0)")
+    getDb().runSync("INSERT INTO asn_line (id, asn_id, product_public_id, sku, product_name, expected_qty, posted_qty) VALUES (2, 6, 'p1', 'SKU-1', 'Tornillo', 3, 0)")
+    getDb().runSync("INSERT INTO asn_line (id, asn_id, product_public_id, sku, product_name, expected_qty, posted_qty) VALUES (3, 6, 'p2', 'SKU-2', 'Tuerca', 2, 0)")
 
     getDb().runSync('UPDATE asn SET assigned_to_user_id = 7')
     await renderRouter('src/app', { initialUrl: '/receive' })
@@ -84,14 +88,26 @@ describe('Recibir — varios seguidos (tanda con carga automática)', () => {
 
     await waitFor(() => expect(getOpenReceipt()?.doc?.asnId).toBe(5))
     expect(getOpenReceipt()?.groupKey).toBeTruthy()
-    expect(screen.getByTestId('receive-queue-left')).toBeTruthy()
-    await fireEvent(screen.getByLabelText('Escanea el producto'), 'submitEditing', { nativeEvent: { text: 'SKU-1' } })
-    await waitFor(() => expect(screen.getByText('Agregar')).toBeTruthy())
-    await fireEvent.press(screen.getByText('Agregar'))
+    // el título y la lista de lo esperado son de los dos avisos juntos: Tornillo 4 + 3 = 7 y la Tuerca del segundo
+    expect(screen.getByText(/LLE-00005 \+ LLE-00006/)).toBeTruthy()
+    expect(screen.getByTestId('receive-expected-SKU-1')).toBeTruthy()
+    expect(screen.getByTestId('receive-expected-SKU-2')).toBeTruthy()
+    // 5 tornillos + 2 tuercas: los tornillos llenan el primer aviso (4) y el sobrante va al segundo; la tuerca solo es del segundo
+    for (const [code, qty] of [['SKU-1', '5'], ['SKU-2', '2']] as const) {
+      await waitFor(() => expect(screen.getByLabelText('Escanea el producto')).toBeTruthy())
+      await fireEvent(screen.getByLabelText('Escanea el producto'), 'submitEditing', { nativeEvent: { text: code } })
+      await waitFor(() => expect(screen.getByLabelText('Cantidad')).toBeTruthy())
+      await fireEvent.changeText(screen.getByLabelText('Cantidad'), qty)
+      await fireEvent.press(screen.getByText('Agregar'))
+    }
     await fireEvent.press(await screen.findByText('Confirmar recibo'))
 
-    await waitFor(() => expect(getOpenReceipt()?.doc?.asnId).toBe(6))
-    expect(getOpenReceipt()?.groupKey).toBe(JSON.parse(listOutbox()[0].body).groupKey)
+    await waitFor(() => expect(listOutbox()).toHaveLength(2))
+    const [a, b] = listOutbox().map((r) => JSON.parse(r.body))
+    expect(a).toMatchObject({ asnId: 5, lines: [{ productPublicId: 'p1', receivedQty: 4 }] })
+    expect(b).toMatchObject({ asnId: 6, lines: [{ productPublicId: 'p1', receivedQty: 1 }, { productPublicId: 'p2', receivedQty: 2 }] })
+    expect(a.groupKey).toBeTruthy()
+    expect(b.groupKey).toBe(a.groupKey)
   })
 
   it('la lista muestra primero lo asignado a mí; lo que nadie tiene asignado sale con la opción «Ver lo que nadie tiene asignado»', async () => {
