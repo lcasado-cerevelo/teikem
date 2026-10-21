@@ -10119,7 +10119,7 @@ En la importación de posiciones el almacén y la zona se buscan por su código 
 En Llegadas y salidas → Avisos de llegada, el aviso que ya tiene partes recibidas muestra la etiqueta **«Recibido parcial»** junto a su estatus y la columna **«Recibido»** (`4 / 10`: lo ya asentado entre lo esperado). Es lo mismo que ve el cliente en su portal web. En el aparato, al recibir contra ese aviso, aparece **«Ya recibido de este documento»** con cada producto. «Recibido parcial» desaparece al confirmar el recibo final (el aviso pasa a Recibido).
 
 **¿A qué recepción maestra pertenece un recibo?**
-Los recibos de una recepción maestra llevan la etiqueta **«Maestra RCM-…»** en la lista y en su ficha. Desde Llegadas y salidas, el botón **«Recepciones maestras»** lleva a la pestaña de maestras.
+Los recibos de una recepción maestra llevan la etiqueta **«Maestra RCM-…»** en la lista y en su ficha. El botón **«Recibir juntos»** está tanto en Recibo como en Llegadas y salidas (abre la misma ventana); las maestras creadas se ven en Recibo → Maestros.
 
 **¿Puedo recolectar juntos desde el aparato una orden de venta y un aviso de salida?** (Lote 186)
 Sí, si son del mismo cliente: en Despachar aviso de salida, «Recolectar juntos» muestra los avisos y las órdenes de venta con algo reservado. Elige dos o más, recorre la ruta única y envía; queda una sola recolección maestra. El envío (empaque) de la maestra se sigue creando desde la web.

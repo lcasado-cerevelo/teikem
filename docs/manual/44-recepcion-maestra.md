@@ -71,4 +71,4 @@ Mensajes nuevos de la API (`groupKey` en `POST /receipts` y `POST /receipts/part
 ## Cómo se ve la maestra desde el recibo y desde «Llegadas y salidas» (Lote 186)
 
 - Cada recibo que pertenece a una recepción maestra muestra una etiqueta **«Maestra RCM-…»** junto a su estatus, tanto en la lista de recibos como en su ficha.
-- En **Llegadas y salidas** (encabezado de la pantalla) hay un botón **«Recepciones maestras»** (permiso `receipts.view`) que lleva directo a la pestaña de maestras de Recibo.
+- En **Llegadas y salidas** (encabezado de la pantalla) hay el mismo botón **«Recibir juntos»** que en Recibo (permiso `warehouse.receive`): abre la misma ventana y, al crear la recepción maestra, lleva a su ficha en Recibo → Maestros.

@@ -4332,8 +4332,7 @@
     },
     "notices": {
       "title": "Arrivals & departures",
-      "subtitle": "Arrival notices and exit notices: what the goods owner announces is coming in and asks to go out.",
-      "masterLink": "Master receipts"
+      "subtitle": "Arrival notices and exit notices: what the goods owner announces is coming in and asks to go out."
     },
     "valuation": {
       "tab": "Inventory value",

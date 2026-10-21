@@ -4332,8 +4332,7 @@
     },
     "notices": {
       "title": "Llegadas y salidas",
-      "subtitle": "Avisos de llegada y avisos de salida: lo que el dueño de la mercancía anuncia que entra y lo que pide que salga.",
-      "masterLink": "Recepciones maestras"
+      "subtitle": "Avisos de llegada y avisos de salida: lo que el dueño de la mercancía anuncia que entra y lo que pide que salga."
     },
     "valuation": {
       "tab": "Valor del inventario",
