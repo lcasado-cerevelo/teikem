@@ -120,6 +120,8 @@ public static class ImportEntities
     {
         Add(Wms.ProductImportFields.Meta);
         Add(Wms.SupplierImportFields.Meta);
+        Add(Wms.WarehouseImportFields.Meta);
+        Add(Wms.BinImportFields.Meta);
     }
 
     private static void Add(ImportEntityMeta meta) => All[meta.Kind] = meta;

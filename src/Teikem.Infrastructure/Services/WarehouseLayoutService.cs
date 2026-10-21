@@ -339,7 +339,25 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
     /// <summary>Marca de una posición provisional: quién la crea y desde qué conteo (ver CreateProvisionalBinAsync).</summary>
     private sealed record ProvisionalMark(int? UserId, int CycleCountId);
 
-    private async Task<WarehouseBinDto> CreateBinCoreAsync(Guid warehousePublicId, WarehouseBinRequest req, ProvisionalMark? provisional, CancellationToken ct)
+    /// <summary>2026-10-21 (importación de posiciones): revisa el alta de una posición con las MISMAS reglas de <see cref="CreateBinAsync"/> sin guardar. Errores por campo (vacío = se puede crear).</summary>
+    public async Task<IReadOnlyDictionary<string, string>> CheckCreateBinAsync(Guid warehousePublicId, WarehouseBinRequest req, CancellationToken ct)
+    {
+        try
+        {
+            await ValidateBinAsync(warehousePublicId, req, ct);
+            return new Dictionary<string, string>();
+        }
+        catch (ValidationException ex) when (ex.Errors is { Count: > 0 })
+        {
+            return ex.Errors.ToDictionary(e => e.Key, e => string.Join(" ", e.Value), StringComparer.Ordinal);
+        }
+        catch (TeikemException ex)
+        {
+            return new Dictionary<string, string> { ["code"] = ex.Message };
+        }
+    }
+
+    private async Task<(Warehouse W, WarehouseZone Zone, string Code)> ValidateBinAsync(Guid warehousePublicId, WarehouseBinRequest req, CancellationToken ct)
     {
         var errors = new Dictionary<string, string[]>();
         if (req.ZoneId is null) errors["zoneId"] = new[] { WarehouseRules.ZoneRequiredMessage };
@@ -358,7 +376,12 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
             .Select(b => (bool?)b.IsActive).FirstOrDefaultAsync(ct);
         if (sameCode is not null)
             throw new ConflictException(sameCode == false ? WarehouseRules.BinInactiveCodeExists : WarehouseRules.DuplicateBinMessage);
+        return (w, zone, code!);
+    }
 
+    private async Task<WarehouseBinDto> CreateBinCoreAsync(Guid warehousePublicId, WarehouseBinRequest req, ProvisionalMark? provisional, CancellationToken ct)
+    {
+        var (_, zone, code) = await ValidateBinAsync(warehousePublicId, req, ct);
         var bin = new WarehouseBin
         {
             WarehouseZoneId = zone.WarehouseZoneId, WarehouseId = zone.WarehouseId, Code = code!,

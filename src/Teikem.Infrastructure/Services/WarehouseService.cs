@@ -85,9 +85,26 @@ public sealed class WarehouseService(TeikemDbContext db, ITenantContext tenant, 
     // ---------------------------------------------------------------- alta
 
     /// <summary>Alta: código obligatorio, único e inmutable (409); nombre obligatorio; país por catálogo (default 'PR'); nace ACTIVE.</summary>
-    public async Task<WarehouseDetailDto> CreateAsync(WarehouseCreateRequest req, CancellationToken ct)
+    /// <summary>2026-10-21 (importación de almacenes): revisa un alta con las MISMAS reglas de <see cref="CreateAsync"/> sin guardar. Devuelve los errores por campo (vacío = se puede crear), incluido el código repetido.</summary>
+    public async Task<IReadOnlyDictionary<string, string>> CheckCreateAsync(WarehouseCreateRequest req, CancellationToken ct)
     {
-        var tenantId = ((TenantContext)tenant).RequireTenantId();
+        try
+        {
+            await ValidateCreateAsync(req, ct);
+            return new Dictionary<string, string>();
+        }
+        catch (ValidationException ex) when (ex.Errors is { Count: > 0 })
+        {
+            return ex.Errors.ToDictionary(e => e.Key, e => string.Join(" ", e.Value), StringComparer.Ordinal);
+        }
+        catch (ConflictException ex)
+        {
+            return new Dictionary<string, string> { ["code"] = ex.Message };
+        }
+    }
+
+    private async Task<(string? Code, string? Name, string? Line1, string? City, string? State, string? Postal, int? CountryId, int? ModeId)> ValidateCreateAsync(WarehouseCreateRequest req, CancellationToken ct)
+    {
         var errors = new Dictionary<string, string[]>();
 
         var (code, codeError) = WarehouseRules.NormalizeCode(req.Code);
@@ -107,6 +124,13 @@ public sealed class WarehouseService(TeikemDbContext db, ITenantContext tenant, 
 
         // UQ_Warehouse_Code (TenantId, Code) sin filtro: el código de un almacén dado de baja tampoco se reutiliza.
         if (await db.Warehouses.AnyAsync(w => w.Code == code, ct)) throw new ConflictException(WarehouseRules.DuplicateWarehouseMessage);
+        return (code, name, line1, city, state, postal, countryId, modeId);
+    }
+
+    public async Task<WarehouseDetailDto> CreateAsync(WarehouseCreateRequest req, CancellationToken ct)
+    {
+        var tenantId = ((TenantContext)tenant).RequireTenantId();
+        var (code, name, line1, city, state, postal, countryId, modeId) = await ValidateCreateAsync(req, ct);
 
         var initial = await statuses.GetInitialAsync(StatusDomains.WarehouseStatus, ct);
         var publicId = await db.RunInTransactionAsync(async ct2 =>

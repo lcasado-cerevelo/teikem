@@ -12,6 +12,10 @@ public static class ImportKinds
     public const string Product = "PRODUCT";
     /// <summary>2026-10-21: importación de proveedores (2.ª entidad del motor genérico).</summary>
     public const string Supplier = "SUPPLIER";
+    /// <summary>2026-10-21: importación de almacenes (3.ª entidad del motor genérico).</summary>
+    public const string Warehouse = "WAREHOUSE";
+    /// <summary>2026-10-21: importación de posiciones de un almacén (4.ª entidad del motor genérico).</summary>
+    public const string Bin = "BIN";
 }
 
 /// <summary>Dominio de estatus ImportBatchStatus: VALIDATED (inicial, pipeline) → CONFIRMED (pipeline); DISCARDED terminal.</summary>

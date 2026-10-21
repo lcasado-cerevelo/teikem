@@ -150,6 +150,8 @@ public static class DependencyInjection
         services.AddScoped<EntityImportService>();   // 2026-10-21: motor genérico de importación por plantilla
         services.AddScoped<IImportEntityRows, ProductImportRows>();
         services.AddScoped<IImportEntityRows, SupplierImportRows>();
+        services.AddScoped<IImportEntityRows, WarehouseImportRows>();
+        services.AddScoped<IImportEntityRows, BinImportRows>();
 
         // Lote 43 (F-G1) — impresoras y plantillas de label (sin IDataSource ni StatusService: solo IsActive, D-FG5)
         services.AddScoped<PrinterService>();
