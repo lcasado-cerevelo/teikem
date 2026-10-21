@@ -12435,6 +12435,184 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pick-batches/groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    status?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PickGroupPageDto"];
+                        "application/json": components["schemas"]["PickGroupPageDto"];
+                        "text/json": components["schemas"]["PickGroupPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PickGroupCreateRequest"];
+                    "text/json": components["schemas"]["PickGroupCreateRequest"];
+                    "application/*+json": components["schemas"]["PickGroupCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PickGroupDto"];
+                        "application/json": components["schemas"]["PickGroupDto"];
+                        "text/json": components["schemas"]["PickGroupDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pick-batches/groups/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PickGroupDto"];
+                        "application/json": components["schemas"]["PickGroupDto"];
+                        "text/json": components["schemas"]["PickGroupDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PickBatchDeleteRequest"];
+                    "text/json": components["schemas"]["PickBatchDeleteRequest"];
+                    "application/*+json": components["schemas"]["PickBatchDeleteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pick-batches/groups/{publicId}/pack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PickBatchPackRequest"];
+                    "text/json": components["schemas"]["PickBatchPackRequest"];
+                    "application/*+json": components["schemas"]["PickBatchPackRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PickGroupPackResultDto"];
+                        "application/json": components["schemas"]["PickGroupPackResultDto"];
+                        "text/json": components["schemas"]["PickGroupPackResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pick-batches/{publicId}": {
         parameters: {
             query?: never;
@@ -35995,6 +36173,9 @@ export interface components {
             reasonLabel?: string | null;
             note?: string | null;
             ownerClientName?: string | null;
+            /** Format: uuid */
+            groupPublicId?: string | null;
+            groupNumber?: string | null;
         };
         PickBatchLineDto: {
             /** Format: int32 */
@@ -43540,6 +43721,99 @@ export interface components {
             comment?: string | null;
             /** Format: uuid */
             clientKey?: string | null;
+        };
+        PickGroupCreateRequest: {
+            documents?: components["schemas"]["PickGroupDocumentRequest"][] | null;
+            note?: string | null;
+        };
+        PickGroupDocumentDto: {
+            kind?: string | null;
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            /** Format: uuid */
+            batchPublicId?: string;
+            batchNumber?: string | null;
+            /** Format: double */
+            quantity?: number;
+        };
+        PickGroupDocumentRequest: {
+            kind?: string | null;
+            /** Format: uuid */
+            publicId?: string | null;
+            lines?: components["schemas"]["PickGroupLineRequest"][] | null;
+        };
+        PickGroupDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseCode?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            statusCode?: string | null;
+            /** Format: date-time */
+            collectedAtUtc?: string;
+            collectedBy?: string | null;
+            /** Format: date-time */
+            packedAtUtc?: string | null;
+            /** Format: uuid */
+            orderPublicId?: string | null;
+            orderNumber?: string | null;
+            clientInvoiceNumber?: string | null;
+            note?: string | null;
+            /** Format: double */
+            totalQty?: number;
+            canPack?: boolean;
+            canDelete?: boolean;
+            documents?: components["schemas"]["PickGroupDocumentDto"][] | null;
+            movements?: components["schemas"]["PickGroupMovementDto"][] | null;
+            isActive?: boolean;
+            rowVersion?: string | null;
+        };
+        PickGroupLineRequest: {
+            /** Format: int32 */
+            lineId?: number | null;
+            /** Format: double */
+            quantity?: number | null;
+            /** Format: int32 */
+            binId?: number | null;
+            /** Format: int32 */
+            lotId?: number | null;
+        };
+        PickGroupMovementDto: {
+            documentKind?: string | null;
+            documentNumber?: string | null;
+            batchNumber?: string | null;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: double */
+            quantity?: number;
+            /** Format: int32 */
+            binId?: number;
+            binCode?: string | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            lotNumber?: string | null;
+        };
+        PickGroupPackResultDto: {
+            group?: components["schemas"]["PickGroupDto"];
+            order?: components["schemas"]["OrderDetailDto"];
+        };
+        PickGroupPageDto: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+            items?: components["schemas"]["PickGroupDto"][] | null;
         };
     };
     responses: never;

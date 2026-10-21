@@ -17103,6 +17103,254 @@
         }
       }
     },
+    "/api/v1/pick-batches/groups": {
+      "get": {
+        "tags": [
+          "PickBatches"
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickGroupPageDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickGroupPageDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickGroupPageDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "PickBatches"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickGroupCreateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickGroupCreateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickGroupCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickGroupDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickGroupDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickGroupDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pick-batches/groups/{publicId}": {
+      "get": {
+        "tags": [
+          "PickBatches"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickGroupDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickGroupDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickGroupDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "PickBatches"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickBatchDeleteRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickBatchDeleteRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickBatchDeleteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/pick-batches/groups/{publicId}/pack": {
+      "post": {
+        "tags": [
+          "PickBatches"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickBatchPackRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickBatchPackRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickBatchPackRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickGroupPackResultDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickGroupPackResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickGroupPackResultDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/pick-batches/{publicId}": {
       "get": {
         "tags": [
@@ -54013,6 +54261,15 @@
           "ownerClientName": {
             "type": "string",
             "nullable": true
+          },
+          "groupPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "groupNumber": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -76819,6 +77076,288 @@
           "clientKey": {
             "type": "string",
             "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PickGroupCreateRequest": {
+        "type": "object",
+        "properties": {
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PickGroupDocumentRequest"
+            },
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PickGroupDocumentDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "publicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string",
+            "nullable": true
+          },
+          "batchPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "batchNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PickGroupDocumentRequest": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "publicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PickGroupLineRequest"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PickGroupDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "publicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string",
+            "nullable": true
+          },
+          "warehousePublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouseCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "clientPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clientName": {
+            "type": "string",
+            "nullable": true
+          },
+          "statusCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "collectedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "collectedBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "packedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "orderPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "orderNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "clientInvoiceNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "totalQty": {
+            "type": "number",
+            "format": "double"
+          },
+          "canPack": {
+            "type": "boolean"
+          },
+          "canDelete": {
+            "type": "boolean"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PickGroupDocumentDto"
+            },
+            "nullable": true
+          },
+          "movements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PickGroupMovementDto"
+            },
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "rowVersion": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PickGroupLineRequest": {
+        "type": "object",
+        "properties": {
+          "lineId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "binId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "lotId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PickGroupMovementDto": {
+        "type": "object",
+        "properties": {
+          "documentKind": {
+            "type": "string",
+            "nullable": true
+          },
+          "documentNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "batchNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "productPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "productName": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "binId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "binCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "lotId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "lotNumber": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PickGroupPackResultDto": {
+        "type": "object",
+        "properties": {
+          "group": {
+            "$ref": "#/components/schemas/PickGroupDto"
+          },
+          "order": {
+            "$ref": "#/components/schemas/OrderDetailDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PickGroupPageDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skip": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "take": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PickGroupDto"
+            },
             "nullable": true
           }
         },

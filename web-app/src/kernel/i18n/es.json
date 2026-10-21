@@ -6211,6 +6211,54 @@
       }
     },
     "pickBatches": {
+      "groups": {
+        "view": "Maestras",
+        "badge": "Maestra",
+        "title": "Recolecciones maestras",
+        "detailTitle": "Recolección maestra",
+        "notFound": "Recolección maestra no encontrada.",
+        "empty": "Todavía no hay recolecciones maestras. En «Por documento», use «Recolectar juntos».",
+        "searchPlaceholder": "Buscar por número, cliente o documento…",
+        "status": {
+          "COLLECTED": "Recolectada",
+          "PACKED": "Empacada",
+          "CANCELLED": "Eliminada"
+        },
+        "columns": {
+          "number": "Maestra",
+          "documents": "Documentos",
+          "qty": "Cantidad"
+        },
+        "warehouse": "Almacén",
+        "collected": "Recolectada",
+        "total": "Cantidad total",
+        "shipment": "Envío",
+        "note": "Nota",
+        "documents": "Documentos ({count})",
+        "movements": "Movimientos (de dónde salió)",
+        "docTotal": "{n} u.",
+        "cols": {
+          "product": "Producto",
+          "bin": "Posición",
+          "lot": "Lote",
+          "qty": "Cant."
+        },
+        "collectJoin": "Recolectar juntos",
+        "collectTitle": "Recolectar juntos",
+        "collectHelp": "Elija los documentos que salen juntos, en un solo envío. Deben ser del mismo cliente y de un solo destino; se recolecta todo lo reservado de cada uno. No se pueden sumar documentos después: si llega otro, haga otra recolección.",
+        "collectEmpty": "No hay avisos de salida ni órdenes de venta con inventario reservado por sacar.",
+        "collectSubmit": "Recolectar juntos ({n})",
+        "needTwo": "Elija al menos dos documentos.",
+        "collectedToast": "Recolección maestra {number} creada.",
+        "block": {
+          "otherClient": "Es de otro cliente: una maestra es de un solo cliente.",
+          "max": "Se llegó al máximo de documentos."
+        },
+        "deleteTitle": "Eliminar la recolección maestra",
+        "deleteBody": "Se deshacen todas las recolecciones de {number}: el inventario vuelve a su posición y cada documento recupera su reserva.",
+        "deletePackedBody": "Se deshacen todas las recolecciones de {number} y se elimina su envío {order} (solo si sigue en la etapa inicial). El inventario vuelve a su posición.",
+        "deleted": "Recolección maestra {number} eliminada."
+      },
       "docs": {
         "viewLabel": "Cómo se ve la lista",
         "viewDocuments": "Por documento",

@@ -1327,6 +1327,66 @@ export function usePickDocuments(query: GetQuery<'/api/v1/pick-batches/documents
   })
 }
 
+/** Claves de los avisos de salida y las órdenes de venta: recolectar o deshacer una maestra cambia su avance y su estatus. */
+const DOCUMENT_KEYS = [['exit-notices'], ['sales']] as const
+
+export type PickGroupDto = Schemas['PickGroupDto']
+export type PickGroupMovementDto = Schemas['PickGroupMovementDto']
+
+/**
+ * Lote 177 — recolección maestra (Lote 176): varios documentos del mismo cliente recolectados juntos, con UN envío. Sus claves cuelgan de las de las recolecciones, así que recolectar,
+ * empacar o eliminar refresca también la lista por documento y por movimiento.
+ */
+export function usePickGroups(query: GetQuery<'/api/v1/pick-batches/groups'> = {}, options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: [warehouseKeys.pickBatches[0], 'groups', query],
+    queryFn: () => unwrap(api.GET('/api/v1/pick-batches/groups', { params: { query } })),
+    enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
+    meta: meta(options),
+  })
+}
+
+/** `GET /api/v1/pick-batches/groups/{publicId}`: documentos y TODOS los movimientos. */
+export function usePickGroup(publicId: string | null | undefined, options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: [warehouseKeys.pickBatches[0], 'group', publicId],
+    queryFn: () => unwrap(api.GET('/api/v1/pick-batches/groups/{publicId}', { params: { path: { publicId: publicId ?? '' } } })),
+    enabled: Boolean(publicId) && (options?.enabled ?? true),
+    meta: meta(options),
+  })
+}
+
+/** `POST /api/v1/pick-batches/groups` (`warehouse.pick`): recolecta varios documentos juntos (sin líneas = todo lo reservado). */
+export function useCollectPickGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: Schemas['PickGroupCreateRequest']) => unwrap(api.POST('/api/v1/pick-batches/groups', { body })),
+    onSuccess: () => Promise.all([invalidate(qc, 'pickBatches', ...STOCK), ...DOCUMENT_KEYS.map((k) => qc.invalidateQueries({ queryKey: k }))]),
+  })
+}
+
+/** `POST /api/v1/pick-batches/groups/{publicId}/pack` (`warehouse.pick` + `orders.create`): UN envío para toda la maestra. */
+export function usePackPickGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId, body }: { publicId: string; body: Schemas['PickBatchPackRequest'] }) =>
+      unwrap(api.POST('/api/v1/pick-batches/groups/{publicId}/pack', { params: { path: { publicId } }, body })),
+    onSuccess: () => invalidate(qc, 'pickBatches', 'pickBatch', 'orders', ...STOCK),
+  })
+}
+
+/** `DELETE /api/v1/pick-batches/groups/{publicId}`: deshace todas las recolecciones de la maestra (y su envío si sigue en la etapa inicial). */
+export function useDeletePickGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ publicId, body = {} }: { publicId: string; body?: Schemas['PickBatchDeleteRequest'] }) => {
+      await unwrap(api.DELETE('/api/v1/pick-batches/groups/{publicId}', { params: { path: { publicId } }, body }))
+    },
+    onSuccess: () => Promise.all([invalidate(qc, 'pickBatches', 'pickBatch', 'orders', 'order', ...STOCK), ...DOCUMENT_KEYS.map((k) => qc.invalidateQueries({ queryKey: k }))]),
+  })
+}
+
 /** `GET /api/v1/pick-batches/{publicId}`. */
 export function usePickBatch(publicId: string | null | undefined, options?: WarehouseQueryOptions) {
   return useQuery({
@@ -1680,6 +1740,9 @@ export const exportWarehouseTasks = (query: GetQuery<'/api/v1/warehouse-tasks'>)
 
 export const exportPickBatches = (query: GetQuery<'/api/v1/pick-batches'>) =>
   fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/pick-batches', { params: { query: { ...query, skip, take } } })))
+
+export const exportPickGroups = (query: GetQuery<'/api/v1/pick-batches/groups'>) =>
+  fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/pick-batches/groups', { params: { query: { ...query, skip, take } } })))
 
 export const exportPickDocuments = (query: GetQuery<'/api/v1/pick-batches/documents'>) =>
   fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/pick-batches/documents', { params: { query: { ...query, skip, take } } })))

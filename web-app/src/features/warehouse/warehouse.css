@@ -495,3 +495,16 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 .pdoc-h{font-size:13px;margin:14px 0 6px}
 .pdoc-move{cursor:pointer}
 .pdoc-move:hover td,.pdoc-move:focus-visible td{background:var(--raise)}
+
+/* Lote 177: recolección maestra (varios documentos, un envío) */
+.pgroup-pick{list-style:none;margin:8px 0;padding:0;display:flex;flex-direction:column;gap:2px;max-height:46vh;overflow:auto}
+.pgroup-pick label{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 8px;border-radius:6px;cursor:pointer}
+.pgroup-pick label:hover{background:var(--panel-alt,rgba(0,0,0,.04))}
+.pgroup-pick label.dim{opacity:.5;cursor:not-allowed}
+.pgroup-client{flex:1;min-width:120px}
+.pgroup-note{margin-top:10px}
+.pgroup-doc{margin:8px 0 14px}
+.pgroup-dochead{margin-bottom:4px}
+.pgroup-moves{width:100%;border-collapse:collapse;font-size:13px}
+.pgroup-moves th,.pgroup-moves td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--line)}
+.pgroup-moves .num{text-align:right}

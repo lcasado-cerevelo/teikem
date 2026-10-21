@@ -16,7 +16,7 @@ import { lookupLabelOrCode, useLookups, useTenantSettings } from '../../kernel/c
 import { useT } from '../../kernel/i18n'
 import { ClientPickerInput, Field, Form, Modal, NumberInput, Select, TextArea, TextInput, toast } from '../../kernel/ui'
 import { useSalesMutations } from '../sales/salesApi'
-import { usePackPickBatch, type PickBatchDto } from './api'
+import { usePackPickBatch, usePackPickGroup, type PickBatchDto } from './api'
 import { remapProblemFields } from './lineRules'
 
 type Schemas = components['schemas']
@@ -39,9 +39,12 @@ export interface SalesDeliveryTarget {
   consigneePublicId?: string | null
 }
 
-export function PackModal({ batch, onClose, forSalesOrder }: { batch: PackableBatch; onClose: () => void; forSalesOrder?: SalesDeliveryTarget }) {
+/** `group` (Lote 177): `batch` es una recolección MAESTRA y el envío es uno solo para toda ella (POST /pick-batches/groups/{id}/pack). */
+export function PackModal({ batch, onClose, forSalesOrder, group }: { batch: PackableBatch; onClose: () => void; forSalesOrder?: SalesDeliveryTarget; group?: boolean }) {
   const t = useT()
-  const pack = usePackPickBatch()
+  const packBatch = usePackPickBatch()
+  const packGroup = usePackPickGroup()
+  const pack = group ? packGroup : packBatch
   const { deliver } = useSalesMutations()
   const { data: serviceTypes = [] } = useLookups('ServiceType')
   const { data: packageTypes = [] } = useLookups('PackageType')
@@ -193,7 +196,7 @@ export function PackModal({ batch, onClose, forSalesOrder }: { batch: PackableBa
               const so = await deliver.mutateAsync({ id: forSalesOrder.orderPublicId, pickBatchPublicId: batch.publicId ?? '', order: body.order ?? {} })
               orderNumber = (so.dispatches ?? []).find((d) => d.pickBatchPublicId === batch.publicId)?.transportOrderNumber ?? ''
             } else {
-              const result: Schemas['PickBatchPackResultDto'] = await pack.mutateAsync({ publicId: batch.publicId ?? '', body })
+              const result: Schemas['PickBatchPackResultDto'] | Schemas['PickGroupPackResultDto'] = await pack.mutateAsync({ publicId: batch.publicId ?? '', body })
               orderNumber = result.order?.orderNumber ?? ''
             }
           } catch (err) {

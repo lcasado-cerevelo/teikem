@@ -2658,3 +2658,15 @@ El Kárdex tiene un filtro **Zona** (entre Almacén y Posición; selección múl
 | Empacar una ya empacada o eliminada | `La recolección X ya está empacada o eliminada.` | 422 |
 | Empacar/eliminar suelta una recolección de la maestra | `La recolección X pertenece a la recolección maestra Y: empáquela o elimínela desde la maestra.` | 422 |
 | Eliminar con el envío ya avanzado | `La recolección X no se puede eliminar: su envío ya está en «estatus».` | 422 |
+
+### Pantallas de la recolección maestra (Lote 177)
+
+**Dónde.** Almacén → Recolección y empaque → lista de la derecha. Ahora tiene tres vistas: **Por documento**, **Maestras** (nueva) y **Por movimiento**; la vista va en la dirección (`?view=groups`).
+
+**Recolectar juntos** (permiso `warehouse.pick`). En «Por documento», botón **«Recolectar juntos»**: abre la lista de avisos de salida y órdenes de venta con inventario reservado por sacar. Marque los que salen juntos (mínimo 2, máximo 20) y pulse **«Recolectar juntos (N)»**. Al marcar el primero, los de **otro cliente quedan deshabilitados** (una maestra es de un solo cliente y un solo destino). Se recolecta **todo lo reservado** de cada uno; la nota es opcional. Al terminar se abre la ficha de la maestra creada. Los errores del servidor (cliente distinto, nada reservado, inventario insuficiente) salen en el mismo diálogo y no se recolecta nada.
+
+**Vista «Maestras».** Número, cliente, documentos que reúne, cantidad, estatus (Recolectada / Empacada / Eliminada), envío y fecha. Filtro por estatus y buscador (número, cliente o número de un documento). Ordenar y exportar usan todo el filtro.
+
+**Ficha de la maestra** (clic en la fila). Resumen (cliente, almacén, recolectada por/cuándo, cantidad, envío, nota), los **documentos** que reúne y **todos los movimientos agrupados por documento**: producto, **de qué posición salió**, lote y cantidad. Acciones: **Empacar** (`warehouse.pick` + `orders.create`; abre el formulario de empaque de siempre y crea **un solo envío** para toda la maestra) y **Eliminar** (`warehouse.pick`; deshace todas las recolecciones y, si estaba empacada, su envío mientras siga en la etapa inicial; pide `orders.cancel`).
+
+**Qué verá en las recolecciones sueltas.** La ficha de una recolección que pertenece a una maestra ya no ofrece Empacar (se hace desde la maestra) y trae el número de su maestra.

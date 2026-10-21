@@ -6211,6 +6211,54 @@
       }
     },
     "pickBatches": {
+      "groups": {
+        "view": "Masters",
+        "badge": "Master",
+        "title": "Master pick batches",
+        "detailTitle": "Master pick batch",
+        "notFound": "Master pick batch not found.",
+        "empty": "There are no master pick batches yet. In \"By document\", use \"Collect together\".",
+        "searchPlaceholder": "Search by number, client or document…",
+        "status": {
+          "COLLECTED": "Collected",
+          "PACKED": "Packed",
+          "CANCELLED": "Deleted"
+        },
+        "columns": {
+          "number": "Master",
+          "documents": "Documents",
+          "qty": "Quantity"
+        },
+        "warehouse": "Warehouse",
+        "collected": "Collected",
+        "total": "Total quantity",
+        "shipment": "Shipment",
+        "note": "Note",
+        "documents": "Documents ({count})",
+        "movements": "Movements (where it came from)",
+        "docTotal": "{n} units",
+        "cols": {
+          "product": "Product",
+          "bin": "Bin",
+          "lot": "Lot",
+          "qty": "Qty"
+        },
+        "collectJoin": "Collect together",
+        "collectTitle": "Collect together",
+        "collectHelp": "Choose the documents that leave together in a single shipment. They must be for the same client and one destination; everything reserved for each one is collected. Documents cannot be added later: if another arrives, make another pick batch.",
+        "collectEmpty": "There are no exit notices or sales orders with reserved inventory left to collect.",
+        "collectSubmit": "Collect together ({n})",
+        "needTwo": "Choose at least two documents.",
+        "collectedToast": "Master pick batch {number} created.",
+        "block": {
+          "otherClient": "It belongs to another client: a master pick batch is for one client only.",
+          "max": "The maximum number of documents was reached."
+        },
+        "deleteTitle": "Delete the master pick batch",
+        "deleteBody": "All pick batches of {number} are undone: the inventory goes back to its bin and each document gets its reservation back.",
+        "deletePackedBody": "All pick batches of {number} are undone and its shipment {order} is deleted (only if still in the initial stage). The inventory goes back to its bin.",
+        "deleted": "Master pick batch {number} deleted."
+      },
       "docs": {
         "viewLabel": "How the list is shown",
         "viewDocuments": "By document",

@@ -9,12 +9,14 @@
 // warehouse.manage) y 'Correr reabasto' (warehouse.pick); ver taskQueue.tsx.
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useCan } from '../../kernel/access'
+import { Can, useCan } from '../../kernel/access'
 import { useT } from '../../kernel/i18n'
 import { SplitPane, Tabs } from '../../kernel/ui'
 import { IconBasket } from '../../kernel/ui/screenIcons'
 import { CollectPanel } from './CollectPanel'
 import { PickBatchesPanel } from './PickBatchesPanel'
+import { PickGroupCollectModal } from './PickGroupCollectModal'
+import { PickGroupsPanel } from './PickGroupsPanel'
 import { PickDocumentsPanel } from './PickDocumentsPanel'
 import { ReplenishButton, TaskQueue } from './taskQueue'
 import './warehouse.css'
@@ -24,7 +26,7 @@ type TabKey = (typeof TAB_KEYS)[number]
 const isTabKey = (v: string | null): v is TabKey => (TAB_KEYS as readonly string[]).includes(v ?? '')
 const REPLENISH_TYPES = ['REPLENISH'] as const
 
-const VIEWS = ['documents', 'moves'] as const
+const VIEWS = ['documents', 'groups', 'moves'] as const
 type ViewKey = (typeof VIEWS)[number]
 
 /**
@@ -37,12 +39,15 @@ function BatchesTab() {
   const canCollect = useCan('warehouse.pick|warehouse.issue')
   const [highlight, setHighlight] = useState<string | null>(null)
   const [params, setParams] = useSearchParams()
-  const view: ViewKey = params.get('view') === 'moves' ? 'moves' : 'documents'
+  const raw = params.get('view')
+  const view: ViewKey = raw === 'moves' || raw === 'groups' ? raw : 'documents'
+  const [collecting, setCollecting] = useState(false)   // Lote 177: «Recolectar juntos»
+  const [groupToOpen, setGroupToOpen] = useState<string | null>(null)
   const setView = (v: ViewKey) =>
     setParams(
       (prev) => {
         const next = new URLSearchParams(prev)
-        if (v === 'moves') next.set('view', 'moves')
+        if (v !== 'documents') next.set('view', v)
         else next.delete('view')
         return next
       },
@@ -57,11 +62,34 @@ function BatchesTab() {
           onChange={setView}
           tabs={[
             { key: 'documents', label: t('warehouse.pickBatches.docs.viewDocuments') },
+            { key: 'groups', label: t('warehouse.pickBatches.groups.view') },
             { key: 'moves', label: t('warehouse.pickBatches.docs.viewMoves') },
           ]}
         />
       </div>
-      {view === 'documents' ? <PickDocumentsPanel highlight={highlight} /> : <PickBatchesPanel highlight={highlight} />}
+      {view === 'documents' && (
+        <>
+          <Can perm="warehouse.pick">
+            <div className="collect-view">
+              <button type="button" className="btn sm" onClick={() => setCollecting(true)}>
+                {t('warehouse.pickBatches.groups.collectJoin')}
+              </button>
+            </div>
+          </Can>
+          <PickDocumentsPanel highlight={highlight} />
+        </>
+      )}
+      {view === 'groups' && <PickGroupsPanel openId={groupToOpen} onOpened={() => setGroupToOpen(null)} />}
+      {view === 'moves' && <PickBatchesPanel highlight={highlight} />}
+      {collecting && (
+        <PickGroupCollectModal
+          onClose={() => setCollecting(false)}
+          onCollected={(id) => {
+            setGroupToOpen(id)
+            setView('groups')
+          }}
+        />
+      )}
     </div>
   )
   if (!canCollect) return list
