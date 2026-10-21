@@ -20,10 +20,12 @@ import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
 import { colors, fontSize, radius, spacing } from '../kernel/ui/theme'
 import { findExitNoticeByNumber, getExitNoticeLines, getGroupTasks, listExitNotices, listGroupableOrders, queueExitDispatch, queueExitGroup, type LocalExitNotice } from '../features/exitDispatch/localExit'
 import { buildGroupBody, docKey, groupBlock, groupNumber, groupReady, MIN_GROUP } from '../features/exitDispatch/exitGroupLogic'
+import { TaskChooser } from '../features/salesDispatch/TaskChooser'
 import {
   buildTasks,
   checkPickQty,
   dispatchBatchNumber,
+  currentTask,
   nextTask,
   parseQty,
   totalPicked,
@@ -47,6 +49,7 @@ export default function ExitDispatchScreen() {
   const [picks, setPicks] = useState<SalesPick[]>([])
   const [skipped, setSkipped] = useState<Set<string>>(new Set())
   const [qtyText, setQtyText] = useState('')
+  const [focusKey, setFocusKey] = useState<string | null>(null)   // Lote 192: la tarea que el operario eligió de la lista
   const [scanError, setScanError] = useState<string | null>(null)
   const [binError, setBinError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
@@ -65,7 +68,7 @@ export default function ExitDispatchScreen() {
   const lines = useMemo(() => (notice ? getExitNoticeLines(notice.id) : []), [notice])
   const groupData = useMemo(() => (group ? getGroupTasks(group) : null), [group])
   const tasks = useMemo(() => (groupData ? groupData.tasks : buildTasks(lines)), [lines, groupData])
-  const current = notice && step === 'pick' ? nextTask(tasks, picks, skipped) : null
+  const current = notice && step === 'pick' ? currentTask(tasks, picks, skipped, focusKey) : null
   const doneAll = step === 'pick' && notice !== null && current === null
 
   useEffect(() => {
@@ -131,6 +134,7 @@ export default function ExitDispatchScreen() {
   }
 
   function advance(nextPicks: SalesPick[], nextSkipped: Set<string>) {
+    setFocusKey(null)
     setPicks(nextPicks)
     setSkipped(nextSkipped)
     const n = nextTask(tasks, nextPicks, nextSkipped)
@@ -340,6 +344,18 @@ export default function ExitDispatchScreen() {
       ) : doneAll ? (
         <Text style={styles.okText}>{t('exitDispatch.allDone')}</Text>
       ) : null}
+
+      <TaskChooser
+        tasks={tasks}
+        picks={picks}
+        skipped={skipped}
+        currentKey={current?.key ?? null}
+        onChoose={(task) => {
+          setFocusKey(task.key)
+          setQtyText(String(task.qty))
+          setBinError(null)
+        }}
+      />
 
       {picks.length > 0 ? <Text style={styles.label}>{t('exitDispatch.taken')}</Text> : null}
       {picks.map((p) => {

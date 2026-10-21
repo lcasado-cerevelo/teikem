@@ -16,11 +16,13 @@ import { ScanField } from '../kernel/ui/ScanField'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
 import { colors, fontSize, radius, spacing } from '../kernel/ui/theme'
 import { findSalesOrderByNumber, getSalesOrderLines, listSalesOrders, queueSalesDispatch, type LocalSalesOrder } from '../features/salesDispatch/localSales'
+import { TaskChooser } from '../features/salesDispatch/TaskChooser'
 import {
   buildTasks,
   checkPickQty,
   kitSummaries,
   dispatchBatchNumber,
+  currentTask,
   nextTask,
   parseQty,
   totalPicked,
@@ -44,6 +46,7 @@ export default function SalesDispatchScreen() {
   const [picks, setPicks] = useState<SalesPick[]>([])
   const [skipped, setSkipped] = useState<Set<string>>(new Set())
   const [qtyText, setQtyText] = useState('')
+  const [focusKey, setFocusKey] = useState<string | null>(null)   // Lote 192: la tarea que el operario eligió de la lista
   const [pieces, setPieces] = useState('1')
   const [scanError, setScanError] = useState<string | null>(null)
   const [binError, setBinError] = useState<string | null>(null)
@@ -55,7 +58,7 @@ export default function SalesDispatchScreen() {
   const orders = useMemo(() => (warehousePublicId ? listSalesOrders(warehousePublicId) : []), [warehousePublicId, tick])
   const lines = useMemo(() => (order ? getSalesOrderLines(order.id) : []), [order])
   const tasks = useMemo(() => buildTasks(lines), [lines])
-  const current = order && step === 'pick' ? nextTask(tasks, picks, skipped) : null
+  const current = order && step === 'pick' ? currentTask(tasks, picks, skipped, focusKey) : null
   const doneAll = step === 'pick' && order !== null && current === null
 
   if (!warehousePublicId) {
@@ -90,6 +93,7 @@ export default function SalesDispatchScreen() {
   }
 
   function advance(nextPicks: SalesPick[], nextSkipped: Set<string>) {
+    setFocusKey(null)
     setPicks(nextPicks)
     setSkipped(nextSkipped)
     const n = nextTask(tasks, nextPicks, nextSkipped)
@@ -292,6 +296,18 @@ export default function SalesDispatchScreen() {
       ) : doneAll ? (
         <Text style={styles.okText}>{t('salesDispatch.allDone')}</Text>
       ) : null}
+
+      <TaskChooser
+        tasks={tasks}
+        picks={picks}
+        skipped={skipped}
+        currentKey={current?.key ?? null}
+        onChoose={(task) => {
+          setFocusKey(task.key)
+          setQtyText(String(task.qty))
+          setBinError(null)
+        }}
+      />
 
       {picks.length > 0 ? <Text style={styles.label}>{t('salesDispatch.taken')}</Text> : null}
       {picks.map((p) => {

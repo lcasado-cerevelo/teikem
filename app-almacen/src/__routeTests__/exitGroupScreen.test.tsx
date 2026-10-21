@@ -62,6 +62,7 @@ describe('Recolectar juntos (aviso de salida)', () => {
     // primera tarea (aviso 1)
     await waitFor(() => expect(screen.getByText('Ve a A-01')).toBeTruthy())
     expect(screen.getByText('SAL-00001 + SAL-00002')).toBeTruthy()
+    expect(screen.getByTestId('task-chooser')).toBeTruthy()   // Lote 192: la lista de productos por sacar
     await fireEvent.changeText(screen.getByLabelText('Posición de donde sacas'), 'a-01')
     await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
     await waitFor(() => expect(screen.getByText(/✓ 4 × MED · A-01/)).toBeTruthy())
@@ -142,5 +143,18 @@ describe('Recolectar juntos (aviso de salida)', () => {
         { kind: 'SALES_ORDER', publicId: 'so-9', lines: [{ lineId: 50, quantity: 3, binId: 55 }] },
       ],
     })
+  })
+
+  it('Lote 192: de la lista de productos por sacar se elige cuál se saca ahora', async () => {
+    await seed()
+    mockFetch([ME])
+    await renderRouter('src/app', { initialUrl: '/exit-dispatch' })
+    await fireEvent.press(await screen.findByTestId('exit-group-toggle'))
+    await fireEvent.press(await screen.findByTestId('exit-notice-SAL-00001'))
+    await fireEvent.press(screen.getByTestId('exit-notice-SAL-00002'))
+    await fireEvent.press(await screen.findByTestId('exit-group-go'))
+    await waitFor(() => expect(screen.getByText('Reservado: 4. Cantidad que sacas:')).toBeTruthy())   // la ruta empieza por el primero
+    await fireEvent.press(screen.getAllByLabelText('Sacar MED de A-01')[1])
+    await waitFor(() => expect(screen.getByText('Reservado: 3. Cantidad que sacas:')).toBeTruthy())   // el elegido pasa a ser el actual
   })
 })

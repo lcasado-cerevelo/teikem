@@ -152,6 +152,13 @@
     "sentNoNumber": "Dispatch sent.",
     "queued": "Dispatch saved: it is sent when there is signal."
   },
+  "taskChooser": {
+    "title": "Products to take",
+    "help": "Tap one to take it now; otherwise follow the route order.",
+    "pick": "Take {sku} from {bin}",
+    "line": "Bin {bin} · {qty}",
+    "skipped": "skipped"
+  },
   "exitDispatch": {
     "groupStart": "Collect together",
     "groupCancel": "Cancel selection",

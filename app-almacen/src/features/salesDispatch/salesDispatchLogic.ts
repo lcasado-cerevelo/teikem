@@ -125,6 +125,16 @@ export function nextTask(tasks: readonly SalesTask[], picks: readonly SalesPick[
   return tasks.find((t) => !done.has(t.key) && !skipped.has(t.key)) ?? null
 }
 
+/** Lote 192: la tarea actual: la que el operario eligió de la lista (si sigue pendiente) o, si no, la siguiente de la ruta. */
+export function currentTask(tasks: readonly SalesTask[], picks: readonly SalesPick[], skipped: ReadonlySet<string>, focusKey: string | null): SalesTask | null {
+  if (focusKey) {
+    const done = new Set(picks.map((p) => p.taskKey))
+    const chosen = tasks.find((t) => t.key === focusKey && !done.has(t.key))
+    if (chosen) return chosen
+  }
+  return nextTask(tasks, picks, skipped)
+}
+
 /** Lo total que se va a sacar (piezas). */
 export function totalPicked(picks: readonly SalesPick[]): number {
   return picks.reduce((sum, p) => sum + p.qty, 0)

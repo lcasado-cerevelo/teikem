@@ -1,4 +1,5 @@
-import { buildDispatchBody, buildDispatchLines, buildTasks, checkPickQty, dispatchBatchNumber, kitsReady, kitSummaries, nextTask, parseQty, taskKey, totalPicked, type LocalSalesLine } from './salesDispatchLogic'
+import {
+  currentTask, buildDispatchBody, buildDispatchLines, buildTasks, checkPickQty, dispatchBatchNumber, kitsReady, kitSummaries, nextTask, parseQty, taskKey, totalPicked, type LocalSalesLine, type SalesTask } from './salesDispatchLogic'
 
 const LINES: LocalSalesLine[] = [
   {
@@ -119,5 +120,17 @@ describe('reservas repetidas', () => {
       ],
     }
     expect(buildTasks([line]).map((t) => [t.binCode, t.qty])).toEqual([['P-01', 6]])
+  })
+})
+
+describe('currentTask (Lote 192)', () => {
+  const task = (key: string): SalesTask => ({ key, lineId: 1, productPublicId: 'p', sku: key, productName: key, binId: 1, binCode: 'A', lotId: null, lotNumber: null, qty: 2, kitSku: null, perKit: null })
+  const tasks = [task('a'), task('b'), task('c')]
+  it('sin elegir sigue la ruta; la elegida pasa primero; una ya recogida o inexistente se ignora', () => {
+    expect(currentTask(tasks, [], new Set(), null)?.key).toBe('a')
+    expect(currentTask(tasks, [], new Set(), 'c')?.key).toBe('c')
+    expect(currentTask(tasks, [{ taskKey: 'c', binId: 1, binCode: 'A', qty: 2 }], new Set(), 'c')?.key).toBe('a')
+    expect(currentTask(tasks, [], new Set(['a']), 'zz')?.key).toBe('b')
+    expect(currentTask(tasks, [], new Set(['a']), 'a')?.key).toBe('a')   // una omitida se puede retomar eligiéndola
   })
 })

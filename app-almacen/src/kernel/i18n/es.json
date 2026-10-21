@@ -152,6 +152,13 @@
     "sentNoNumber": "Despacho enviado.",
     "queued": "Despacho guardado: se envía cuando haya señal."
   },
+  "taskChooser": {
+    "title": "Productos por sacar",
+    "help": "Toque uno para sacarlo ahora; si no, siga el orden de la ruta.",
+    "pick": "Sacar {sku} de {bin}",
+    "line": "Posición {bin} · {qty}",
+    "skipped": "omitido"
+  },
   "exitDispatch": {
     "groupStart": "Recolectar juntos",
     "groupCancel": "Cancelar selección",
