@@ -38,6 +38,8 @@ export default function PutawayScreen() {
   const warehousePublicId = activeWarehouse.publicId
 
   const [tasks, setTasks] = useState<PutawayTask[] | null>(null)
+  // Lote 198: primero los acomodos asignados a esta persona; los que nadie tiene asignado salen con la opción de abajo (al escoger uno, el servidor lo asigna a quien lo inicia)
+  const [showFree, setShowFree] = useState(false)
   const [listError, setListError] = useState<string | null>(null)
   const [selected, setSelected] = useState<PutawayTask | null>(null)
   const [suggestions, setSuggestions] = useState<PutawaySuggestion[] | null>(null)
@@ -234,6 +236,9 @@ export default function PutawayScreen() {
     )
   }
 
+  const mine = (tasks ?? []).filter((x) => x.assignedToUserId != null && x.assignedToUserId === session?.userId)
+  const free = (tasks ?? []).filter((x) => x.assignedToUserId == null)
+
   return (
     <View style={styles.fill}>
       <Text style={styles.title}>{t('home.putaway')}</Text>
@@ -250,22 +255,33 @@ export default function PutawayScreen() {
       ) : tasks.length === 0 ? (
         <Text style={styles.help}>{t('putaway.empty')}</Text>
       ) : (
-        <FlatList
-          data={sortTasksMineFirst(tasks, session?.userId ?? -1)}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={({ item }) => (
-            <Pressable accessibilityRole="button" onPress={() => openTask(item)} style={styles.row} disabled={busy}>
-              <View style={styles.rowTexts}>
-                <Text style={styles.rowTitle}>{item.sku}</Text>
-                <Text style={styles.help}>{item.productName}</Text>
-                <Text style={item.assignedToUserId === session?.userId ? styles.mine : styles.help}>
-                  {t(item.assignedToUserId == null ? 'putaway.unassigned' : item.assignedToUserId === session?.userId ? 'putaway.assignedToYou' : 'putaway.assignedOther')}
-                </Text>
-              </View>
-              <Text style={styles.rowQty}>{item.quantity != null ? f.qty(item.quantity) : ''}</Text>
-            </Pressable>
-          )}
-        />
+        <>
+          {mine.length === 0 ? <Text style={styles.help}>{t('putaway.noneMine')}</Text> : null}
+          <FlatList
+            data={showFree ? [...mine, ...free] : mine}
+            keyExtractor={(item) => String(item.id)}
+            ListFooterComponent={
+              free.length > 0 ? (
+                <BigButton
+                  label={showFree ? t('myTasks.hideFree') : t('myTasks.showFree', { count: free.length })}
+                  variant="secondary"
+                  testID="putaway-free-toggle"
+                  onPress={() => setShowFree((v) => !v)}
+                />
+              ) : null
+            }
+            renderItem={({ item }) => (
+              <Pressable accessibilityRole="button" onPress={() => openTask(item)} style={styles.row} disabled={busy} testID={`putaway-task-${item.id}`}>
+                <View style={styles.rowTexts}>
+                  <Text style={styles.rowTitle}>{item.sku}</Text>
+                  <Text style={styles.help}>{item.productName}</Text>
+                  <Text style={item.assignedToUserId == null ? styles.help : styles.mine}>{t(item.assignedToUserId == null ? 'putaway.unassigned' : 'putaway.assignedToYou')}</Text>
+                </View>
+                <Text style={styles.rowQty}>{item.quantity != null ? f.qty(item.quantity) : ''}</Text>
+              </Pressable>
+            )}
+          />
+        </>
       )}
       <BigButton label={t('common.back')} variant="danger" onPress={() => router.back()} />
     </View>

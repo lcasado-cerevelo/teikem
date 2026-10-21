@@ -29,7 +29,7 @@ describe('Buscar en la lista', () => {
     const calls = mockFetch([
       (c: FetchCall) =>
         c.method === 'GET' && c.path === '/api/v1/warehouse-tasks'
-          ? json(200, { total: 1, skip: 0, take: 100, items: [{ id: 5, sku: 'SKU-1', productName: 'Tornillo', quantity: 10, toBinCode: null, assignedToUserId: null }] })
+          ? json(200, { total: 1, skip: 0, take: 100, items: [{ id: 5, sku: 'SKU-1', productName: 'Tornillo', quantity: 10, toBinCode: null, assignedToUserId: 7 }] })
           : null,
       (c: FetchCall) => (c.method === 'POST' && c.path === '/api/v1/warehouse-tasks/5/start' ? json(200, { id: 5 }) : null),
       (c: FetchCall) => (c.method === 'GET' && c.path === '/api/v1/warehouse-tasks/putaway-suggestions' ? json(200, []) : null),
