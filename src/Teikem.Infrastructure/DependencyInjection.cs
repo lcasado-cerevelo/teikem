@@ -230,6 +230,7 @@ public static class DependencyInjection
         services.AddScoped<CycleCountService>();
         services.AddScoped<DamageService>();   // 2026-10-08: daños (cuarentena / desechar / recuperar)
         services.AddScoped<PickBatchService>();
+        services.AddScoped<PickBatchDocumentService>();   // Lote 173: Recolección y empaque agrupada por documento
         services.AddScoped<SupplierService>();
         services.AddScoped<PurchaseOrderService>();
         services.AddScoped<PurchaseShortageService>();

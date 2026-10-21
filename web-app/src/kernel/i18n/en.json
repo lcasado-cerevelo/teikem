@@ -6194,6 +6194,44 @@
       }
     },
     "pickBatches": {
+      "docs": {
+        "viewLabel": "How the list is shown",
+        "viewDocuments": "By document",
+        "viewMoves": "By movement",
+        "title": "Documents",
+        "searchPlaceholder": "Search by number or client…",
+        "empty": "There are no documents with collections yet.",
+        "kinds": {
+          "EXIT_NOTICE": "Exit notice",
+          "SALES_ORDER": "Sales order",
+          "ORDER": "Shipment"
+        },
+        "columns": {
+          "document": "Document",
+          "client": "Client",
+          "status": "Status",
+          "progress": "Progress",
+          "moves": "Movements",
+          "last": "Last collection"
+        },
+        "filters": {
+          "kind": "Type",
+          "pendingOnly": "Only with pending to collect"
+        },
+        "shippedOf": "Picked {shipped} of {ordered}",
+        "shippedOnly": "Picked {shipped}",
+        "percent": "{n} % picked",
+        "toCollect": "To collect {n}",
+        "unreserved": "Not reserved {n}",
+        "ordered": "Ordered",
+        "shipped": "Picked",
+        "reserved": "Reserved to collect",
+        "unreservedLabel": "Not reserved",
+        "movesTitle": "Collections ({count})",
+        "noMoves": "It has no collections yet.",
+        "by": "By",
+        "qty": "Quantity"
+      },
       "title": "Pick & pack",
       "subtitle": "Pick inventory by FEFO or by bin, lot or serial, and pack it as a transport shipment.",
       "tabBatches": "Picks",

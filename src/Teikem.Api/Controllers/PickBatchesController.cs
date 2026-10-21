@@ -18,7 +18,7 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/pick-batches")]
 [Authorize]
 [RequireModule(ModuleKeys.WmsLotSerial)]
-public sealed class PickBatchesController(PickBatchService batches) : ControllerBase
+public sealed class PickBatchesController(PickBatchService batches, PickBatchDocumentService documents) : ControllerBase
 {
     /// <summary>
     /// Lista paginada (take ≤ 200), de la más reciente a la más antigua. Filtros: from/to (fecha de recolección en UTC,
@@ -34,6 +34,15 @@ public sealed class PickBatchesController(PickBatchService batches) : Controller
         CancellationToken ct = default)
         => batches.ListAsync(new PickBatchQuery(from, to, productPublicIds is { Length: > 0 } ? productPublicIds : null,
             status is { Length: > 0 } ? status : null, orderNumber, invoiceNumber, search, includeDeleted, skip, take, kind), ct);
+
+    /// <summary>
+    /// Lote 173: la misma pantalla agrupada por DOCUMENTO (aviso de salida, orden de venta o envío empacado) con su avance —pedido, reservado, sacado— y sus recolecciones como movimientos.
+    /// Filtros: kind (EXIT_NOTICE, SALES_ORDER, ORDER; otro valor → 400), status (códigos del estatus del documento), search (número o cliente) y pendingOnly (solo con algo reservado por sacar).
+    /// </summary>
+    [HttpGet("documents"), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<PickDocumentPageDto> Documents([FromQuery] string? kind, [FromQuery] string[]? status, [FromQuery] string? search, [FromQuery] bool pendingOnly = false,
+        [FromQuery] int skip = 0, [FromQuery] int take = 50, CancellationToken ct = default)
+        => documents.ListAsync(new PickDocumentQuery(kind, status is { Length: > 0 } ? status : null, search, pendingOnly, skip, take), ct);
 
     /// <summary>Ficha: líneas (posición, lote, serie, costo congelado, movimiento y reversa), orden del empaque y acciones posibles.</summary>
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.InventoryView)]

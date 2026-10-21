@@ -1296,6 +1296,23 @@ export function usePickBatches(query: GetQuery<'/api/v1/pick-batches'> = {}, opt
   })
 }
 
+export type PickDocumentDto = Schemas['PickDocumentDto']
+export type PickBatchSummaryDto = Schemas['PickBatchSummaryDto']
+
+/**
+ * Lote 173 — `GET /api/v1/pick-batches/documents`: «Recolección y empaque» agrupada por documento (aviso de salida, orden de venta o envío empacado) con su avance y sus recolecciones.
+ * Su clave cuelga de la de las recolecciones, así que recolectar, empacar o eliminar la refresca.
+ */
+export function usePickDocuments(query: GetQuery<'/api/v1/pick-batches/documents'> = {}, options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: [warehouseKeys.pickBatches[0], 'documents', query],
+    queryFn: () => unwrap(api.GET('/api/v1/pick-batches/documents', { params: { query } })),
+    enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
+    meta: meta(options),
+  })
+}
+
 /** `GET /api/v1/pick-batches/{publicId}`. */
 export function usePickBatch(publicId: string | null | undefined, options?: WarehouseQueryOptions) {
   return useQuery({
@@ -1649,6 +1666,9 @@ export const exportWarehouseTasks = (query: GetQuery<'/api/v1/warehouse-tasks'>)
 
 export const exportPickBatches = (query: GetQuery<'/api/v1/pick-batches'>) =>
   fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/pick-batches', { params: { query: { ...query, skip, take } } })))
+
+export const exportPickDocuments = (query: GetQuery<'/api/v1/pick-batches/documents'>) =>
+  fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/pick-batches/documents', { params: { query: { ...query, skip, take } } })))
 
 export const exportPurchaseOrders = (query: GetQuery<'/api/v1/purchase-orders'>) =>
   fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/purchase-orders', { params: { query: { ...query, skip, take } } })))

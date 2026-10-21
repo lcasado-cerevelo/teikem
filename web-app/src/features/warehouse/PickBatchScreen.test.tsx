@@ -123,7 +123,7 @@ function route(method: string, url: URL): [number, unknown] {
   return [200, []]
 }
 
-function wrap(permissions: string[], path = '/warehouse/pick-batches') {
+function wrap(permissions: string[], path = '/warehouse/pick-batches?view=moves') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <MemoryRouter initialEntries={[path]}>

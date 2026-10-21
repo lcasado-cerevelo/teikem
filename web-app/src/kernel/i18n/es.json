@@ -6194,6 +6194,44 @@
       }
     },
     "pickBatches": {
+      "docs": {
+        "viewLabel": "Cómo se ve la lista",
+        "viewDocuments": "Por documento",
+        "viewMoves": "Por movimiento",
+        "title": "Documentos",
+        "searchPlaceholder": "Buscar por número o cliente…",
+        "empty": "Todavía no hay documentos con recolecciones.",
+        "kinds": {
+          "EXIT_NOTICE": "Aviso de salida",
+          "SALES_ORDER": "Orden de venta",
+          "ORDER": "Envío"
+        },
+        "columns": {
+          "document": "Documento",
+          "client": "Cliente",
+          "status": "Estatus",
+          "progress": "Avance",
+          "moves": "Movimientos",
+          "last": "Última recolección"
+        },
+        "filters": {
+          "kind": "Tipo",
+          "pendingOnly": "Solo con pendiente por sacar"
+        },
+        "shippedOf": "Sacado {shipped} de {ordered}",
+        "shippedOnly": "Sacado {shipped}",
+        "percent": "{n} % sacado",
+        "toCollect": "Por sacar {n}",
+        "unreserved": "Sin reservar {n}",
+        "ordered": "Pedido",
+        "shipped": "Sacado",
+        "reserved": "Reservado por sacar",
+        "unreservedLabel": "Sin reservar",
+        "movesTitle": "Recolecciones ({count})",
+        "noMoves": "Todavía no tiene recolecciones.",
+        "by": "Por",
+        "qty": "Cantidad"
+      },
       "title": "Recolección y empaque",
       "subtitle": "Recolecte inventario por FEFO o con posición, lote o serie, y empáquelo como un envío de transporte.",
       "tabBatches": "Recolecciones",

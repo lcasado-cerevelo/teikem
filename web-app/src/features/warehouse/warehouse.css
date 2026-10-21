@@ -481,3 +481,12 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 .collect-detail .mi-note p{white-space:pre-wrap}
 /* El formulario «Nuevo despacho manual» vive en un modal: sin los bordes del panel, y motivo/nota a todo el ancho */
 .collect-panel .collect-top .f{margin-bottom:10px}
+/* Lote 173: Recolección y empaque por documento */
+.collect-right{min-width:0;display:flex;flex-direction:column;gap:10px}
+.collect-view{display:flex}
+.pdoc-progress{display:inline-flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}
+.pdoc-progress progress,.pdoc-bar{width:140px;max-width:100%;height:8px;accent-color:var(--flow)}
+.pdoc-bar{display:block;width:100%;margin:8px 0 4px}
+.pdoc-h{font-size:13px;margin:14px 0 6px}
+.pdoc-move{cursor:pointer}
+.pdoc-move:hover td,.pdoc-move:focus-visible td{background:var(--raise)}

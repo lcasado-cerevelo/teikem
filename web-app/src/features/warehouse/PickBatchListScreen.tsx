@@ -15,6 +15,7 @@ import { SplitPane, Tabs } from '../../kernel/ui'
 import { IconBasket } from '../../kernel/ui/screenIcons'
 import { CollectPanel } from './CollectPanel'
 import { PickBatchesPanel } from './PickBatchesPanel'
+import { PickDocumentsPanel } from './PickDocumentsPanel'
 import { ReplenishButton, TaskQueue } from './taskQueue'
 import './warehouse.css'
 
@@ -23,16 +24,51 @@ type TabKey = (typeof TAB_KEYS)[number]
 const isTabKey = (v: string | null): v is TabKey => (TAB_KEYS as readonly string[]).includes(v ?? '')
 const REPLENISH_TYPES = ['REPLENISH'] as const
 
+const VIEWS = ['documents', 'moves'] as const
+type ViewKey = (typeof VIEWS)[number]
+
+/**
+ * Lote 173 (C1): la lista de la derecha se ve por DOCUMENTO (una fila por aviso de salida, orden de venta o envío empacado con su avance y sus recolecciones como movimientos, por omisión)
+ * o por MOVIMIENTO (la lista de recolecciones y despachos manuales con todos sus filtros). La vista va en la URL (?view=moves) para poder enlazarla.
+ */
 function BatchesTab() {
   const t = useT()
   // el panel Recolección sirve a quien recolecta (warehouse.pick) y a quien solo hace despachos manuales (warehouse.issue)
   const canCollect = useCan('warehouse.pick|warehouse.issue')
   const [highlight, setHighlight] = useState<string | null>(null)
-  if (!canCollect) return <PickBatchesPanel />
+  const [params, setParams] = useSearchParams()
+  const view: ViewKey = params.get('view') === 'moves' ? 'moves' : 'documents'
+  const setView = (v: ViewKey) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        if (v === 'moves') next.set('view', 'moves')
+        else next.delete('view')
+        return next
+      },
+      { replace: true },
+    )
+  const list = (
+    <div className="collect-right">
+      <div className="collect-view">
+        <Tabs<ViewKey>
+          label={t('warehouse.pickBatches.docs.viewLabel')}
+          value={view}
+          onChange={setView}
+          tabs={[
+            { key: 'documents', label: t('warehouse.pickBatches.docs.viewDocuments') },
+            { key: 'moves', label: t('warehouse.pickBatches.docs.viewMoves') },
+          ]}
+        />
+      </div>
+      {view === 'documents' ? <PickDocumentsPanel highlight={highlight} /> : <PickBatchesPanel highlight={highlight} />}
+    </div>
+  )
+  if (!canCollect) return list
   return (
     <SplitPane storageKey="pick-batches" label={t('warehouse.pickBatches.splitLabel')} className="collect-split">
       <CollectPanel onCollected={(b) => setHighlight(b.publicId ?? null)} />
-      <PickBatchesPanel highlight={highlight} />
+      {list}
     </SplitPane>
   )
 }
@@ -43,7 +79,7 @@ export default function PickBatchListScreen() {
   const [params, setParams] = useSearchParams()
   const raw = params.get('tab')
   const tab: TabKey = isTabKey(raw) ? raw : 'batches'
-  const setTab = (key: TabKey) => setParams(key === 'batches' ? {} : { tab: key }, { replace: true })
+  const setTab = (key: TabKey) => setParams(key === 'batches' ? {} : { tab: key }, { replace: true })   // (la vista ?view= solo vale en Recolecciones)
 
   return (
     <div className="wrap">

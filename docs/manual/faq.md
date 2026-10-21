@@ -9861,3 +9861,23 @@ Porque su fecha es distinta de hoy (por ejemplo, mañana). Es solo un recordator
 
 **¿Cómo hago que un cliente salga con su servicio y paquete en la entrada rápida?**
 En Clientes → la ficha del cliente → **Perfil** elija «Servicio por omisión» y «Paquete por omisión» y guarde. Si los deja vacíos se usan los de la compañía.
+
+## Recolección y empaque por documento (Lote 173, 2026-10-21)
+
+**¿Dónde quedó la lista de recolecciones de antes?**
+En el mismo lugar, con el selector **«Por movimiento»** arriba de la lista. Por omisión ahora se ve **«Por documento»**: una fila por aviso de salida, orden de venta o envío empacado, con su avance.
+
+**¿Qué significa «Sacado 5 de 10 · Por sacar 4 · Sin reservar 1»?**
+Del pedido de 10, ya salieron 5; hay 4 reservados que todavía falta recolectar; y 1 no está ni sacado ni reservado (espera inventario).
+
+**No encuentro un despacho manual en «Por documento».**
+Un despacho manual no pertenece a ningún documento. Está en **«Por movimiento»** (Tipo → Despachos manuales).
+
+**Una recolección que eliminé ya no aparece en el documento.**
+Es lo esperado: al eliminar se revierte y deja de contar para el avance. En «Por movimiento» se ve marcando «Incluir eliminadas».
+
+**El documento de un envío no tiene «pedido».**
+El envío nace al empacar lo recolectado; solo muestra cuánto se recolectó. El pedido está en el aviso de salida o la orden de venta de donde salió.
+
+**`Tipo de documento desconocido: «X». Use EXIT_NOTICE, SALES_ORDER u ORDER.` (400)**
+El valor de `kind` en `GET /pick-batches/documents` no es uno de los tres. Corríjalo o quítelo.

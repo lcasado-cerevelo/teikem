@@ -12390,6 +12390,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pick-batches/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    kind?: string;
+                    status?: string[];
+                    search?: string;
+                    pendingOnly?: boolean;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PickDocumentPageDto"];
+                        "application/json": components["schemas"]["PickDocumentPageDto"];
+                        "text/json": components["schemas"]["PickDocumentPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pick-batches/{publicId}": {
         parameters: {
             query?: never;
@@ -39151,6 +39195,47 @@ export interface components {
         VisibilityRequest: {
             visibility?: string | null;
             shares?: components["schemas"]["ShareDto"][] | null;
+        };
+        PickBatchSummaryDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            statusCode?: string | null;
+            status?: string | null;
+            /** Format: date-time */
+            collectedAtUtc?: string;
+            collectedBy?: string | null;
+            /** Format: double */
+            totalQty?: number;
+        };
+        PickDocumentDto: {
+            kind?: string | null;
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            clientName?: string | null;
+            statusCode?: string | null;
+            status?: string | null;
+            /** Format: double */
+            ordered?: number | null;
+            /** Format: double */
+            reserved?: number | null;
+            /** Format: double */
+            shipped?: number;
+            /** Format: int32 */
+            batchCount?: number;
+            /** Format: date-time */
+            lastCollectedAtUtc?: string | null;
+            batches?: components["schemas"]["PickBatchSummaryDto"][] | null;
+        };
+        PickDocumentPageDto: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+            items?: components["schemas"]["PickDocumentDto"][] | null;
         };
         ValuationReportDto: {
             /** Format: int32 */

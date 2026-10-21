@@ -2075,6 +2075,25 @@ eliminada; solo se consulta.`) y solo aparece en la lista con `includeDeleted`. 
 
 ---
 
+## 7a. Recolección y empaque por documento (Lote 173, 2026-10-21)
+
+La lista de la derecha de **Recolección y empaque** se ve de dos maneras (selector arriba de la lista; va en la URL, `?view=moves` para la segunda):
+
+- **Por documento** (por omisión): **una fila por aviso de salida, orden de venta o envío empacado**, con su avance y cuántas recolecciones tiene. Es la misma información de siempre, agrupada: no cambia ningún dato.
+- **Por movimiento:** la lista de recolecciones y despachos manuales de siempre, con todos sus filtros (rango, estatus, producto, número de envío, factura, eliminadas, Tipo).
+
+**Qué trae cada fila (por documento):** número y tipo (Aviso de salida / Orden de venta / Envío), cliente, estatus del documento, **avance** («Sacado 5 de 10», barra, «Por sacar 4» = reservado que falta recolectar, «Sin reservar 1» = pedido que espera inventario), número de **movimientos** y fecha de la **última recolección**. Un **envío** (el que nace al empacar) no tiene «pedido»: muestra solo lo recolectado. Filtros: **Tipo**, **«Solo con pendiente por sacar»** y el buscador (número o cliente). Ordenar y exportar usan todo el filtro.
+
+**Abrir un documento** muestra el avance y sus **recolecciones como movimientos** (la más reciente primero: número y estatus, fecha, quién y cantidad); tocar una abre la ficha de esa recolección con sus acciones (Empacar, Eliminar).
+
+**Qué documentos salen:** los abiertos con algo reservado por sacar (aunque todavía no tengan recolecciones) y los que ya tienen alguna recolección; uno cancelado sin recolecciones no. Cada recolección cuenta para **un** documento, con esta prioridad: aviso de salida, luego orden de venta, luego envío. Las recolecciones **eliminadas** (revertidas) no cuentan. Un **despacho manual** no tiene documento: se ve en «Por movimiento».
+
+| Método y ruta | Permiso | Qué hace |
+|---|---|---|
+| `GET /api/v1/pick-batches/documents?kind=&status=&search=&pendingOnly=&skip=&take=` | `inventory.view` | Documentos con su avance y sus recolecciones. `kind`: `EXIT_NOTICE`, `SALES_ORDER` u `ORDER`. `take` hasta 200. 400 `Tipo de documento desconocido: «X». Use EXIT_NOTICE, SALES_ORDER u ORDER.` |
+
+La lista de **recibos** por aviso llega con el recibo de varias tandas (C2): hoy cada aviso tiene un solo recibo, así que agruparla no cambiaría nada.
+
 ## 7b. Despacho manual (DMA-#####, 2026-10-11)
 
 Qué hace: saca inventario del almacén **sin entrega** — una muestra, uso interno, un cliente que pasa a recoger, una venta de mostrador,
