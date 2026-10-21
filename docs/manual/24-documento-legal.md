@@ -45,3 +45,5 @@ El texto lleva marcas que **hay que llenar antes de producción** en la configur
 - **Un usuario dice que «no lo deja pasar»:** debe llegar al final del texto con el desplazamiento (en celular, deslizar hasta abajo del cuadro) para que se habilite el botón.
 - **Un integrador o una app recibe 403 `legal_acceptance_required`:** el usuario de esa sesión debe entrar a la web y aceptar el documento.
 - **Cambiamos el documento y todos quedaron pendientes:** es lo esperado; la lista de Aceptación legal muestra «Versión anterior».
+
+**Versión `2026-10-21.1` (Lote 166/167):** el texto dice «envíos» donde decía «órdenes de entrega» (la orden de transporte pasó a llamarse envío). La versión subió, así que **todos los usuarios aceptan de nuevo** la próxima vez que entren.

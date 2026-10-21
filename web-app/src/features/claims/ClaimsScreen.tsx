@@ -2,6 +2,7 @@
 // Pestaña «Por verificar»: órdenes con piezas faltantes; su ficha marca perdidas (claims.manage) y crea la reclamación REC-##### con valor declarado y notas.
 // Pestaña «Reclamaciones»: la lista y su ficha, donde se resuelve (pagada con monto, rechazada o cerrada).
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Can } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { fetchAllPages } from '../../kernel/api/fetchAllPages'
@@ -36,7 +37,9 @@ function useDebounced(value: string, ms = 300) {
 
 export default function ClaimsScreen() {
   const t = useT()
-  const [tab, setTab] = useState<TabKey>('toVerify')
+  // `?q=<número>` (búsqueda global): abre la lista de reclamaciones ya filtrada por ese número
+  const [params] = useSearchParams()
+  const [tab, setTab] = useState<TabKey>(params.get('q') ? 'claims' : 'toVerify')
   const [order, setOrder] = useState<string | null>(null)
   const [claim, setClaim] = useState<string | null>(null)
   return (
@@ -246,7 +249,7 @@ function ClaimsTab({ onOpen }: { onOpen: (publicId: string) => void }) {
   const t = useT()
   const f = useFormat()
   const [status, setStatus] = useState('')
-  const [q, setQ] = useState('')
+  const [q, setQ] = useState(() => new URLSearchParams(window.location.search).get('q') ?? '')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
   const search = useDebounced(q.trim())

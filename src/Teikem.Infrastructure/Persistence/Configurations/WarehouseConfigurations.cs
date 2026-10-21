@@ -72,6 +72,7 @@ public sealed class WarehouseBinConfiguration : IEntityTypeConfiguration<Warehou
         b.Property(x => x.IsRemoved).HasDefaultValue(false);
         b.HasIndex(x => new { x.WarehouseZoneId, x.Code }).IsUnique().HasFilter("[IsRemoved] = 0").HasDatabaseName("UQ_WarehouseBin");
         // Código de posición único por almacén (D18).
+        b.HasIndex(x => x.Code).HasFilter("[IsRemoved] = 0").HasDatabaseName("IX_WarehouseBin_Code");   // búsqueda global por código de posición (2026-10-21)
         b.HasIndex(x => new { x.WarehouseId, x.Code }).IsUnique().HasFilter("[IsRemoved] = 0").HasDatabaseName("UQ_WarehouseBin_WhCode");
         // Lote 21: posiciones provisionales pendientes de revisión.
         b.Property(x => x.IsProvisional).HasDefaultValue(false);

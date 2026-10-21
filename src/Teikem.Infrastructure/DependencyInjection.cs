@@ -105,6 +105,7 @@ public static class DependencyInjection
         services.AddScoped<CompanySessionService>(); // Lote F10: sesiones de toda la compañía (Seguridad y auditoría)
         services.AddScoped<CustomFieldService>();
         services.AddScoped<AnalyticsService>();
+        services.AddScoped<GlobalSearchService>();
         services.AddScoped<AnalyticsEngine>();
         services.AddScoped<ModuleService>();
         services.AddScoped<TenantService>();

@@ -261,7 +261,7 @@ function InvoicesTab({ onOpen }: { onOpen: (publicId: string) => void }) {
   const t = useT()
   const f = useFormat()
   const [status, setStatus] = useState('')
-  const [q, setQ] = useState('')
+  const [q, setQ] = useState(() => new URLSearchParams(window.location.search).get('q') ?? '')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
   const search = useDebounced(q.trim())
@@ -535,7 +535,8 @@ function SettingsTab() {
 
 export default function BillingScreen() {
   const t = useT()
-  const [tab, setTab] = useState<TabKey>('runs')
+  // `?q=<número>` (búsqueda global): abre las facturas ya filtradas por ese número
+  const [tab, setTab] = useState<TabKey>(() => (new URLSearchParams(window.location.search).get('q') ? 'invoices' : 'runs'))
   const [runId, setRunId] = useState<number | null>(null)
   const [newRun, setNewRun] = useState(false)
   const [invoiceId, setInvoiceId] = useState<string | null>(null)

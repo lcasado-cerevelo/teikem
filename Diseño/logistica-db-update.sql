@@ -5599,3 +5599,15 @@ UPDATE d SET d.Name = N'Envíos por estado del SLA', d.DescriptionJson = N'{"es"
 UPDATE dbo.IndicatorDefinition SET DescriptionJson = N'{"es":"Suma del COD pendiente de cobro de los envíos activos no cancelados","en":"Sum of pending COD of active, non-cancelled shipments"}' WHERE IsSystem = 1 AND Name = N'COD por cobrar' AND DescriptionJson <> N'{"es":"Suma del COD pendiente de cobro de los envíos activos no cancelados","en":"Sum of pending COD of active, non-cancelled shipments"}';
 UPDATE dbo.IndicatorDefinition SET DescriptionJson = N'{"es":"Porcentaje de los envíos entregados en los últimos 30 días (con SLA) que se entregaron dentro del plazo de su contrato","en":"Share of shipments delivered in the last 30 days (with an SLA) delivered within their contract deadline"}' WHERE IsSystem = 1 AND Name = N'Entregas dentro del SLA' AND DescriptionJson <> N'{"es":"Porcentaje de los envíos entregados en los últimos 30 días (con SLA) que se entregaron dentro del plazo de su contrato","en":"Share of shipments delivered in the last 30 days (with an SLA) delivered within their contract deadline"}';
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-21 (Lote 167) — Búsqueda global («Buscar o ejecutar»): índices para encontrar por prefijo sin recorrer la tabla.
+   - dbo.ContactPoint (Value) para buscar por teléfono (los teléfonos se guardan solo con dígitos).
+   - dbo.WarehouseBin (Code) para buscar una posición por código sin saber su almacén ni su zona.
+   Idempotente.
+   ---------------------------------------------------------------------------- */
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ContactPoint_Value' AND object_id = OBJECT_ID('dbo.ContactPoint'))
+    CREATE INDEX IX_ContactPoint_Value ON dbo.ContactPoint (Value) WHERE IsActive = 1;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_WarehouseBin_Code' AND object_id = OBJECT_ID('dbo.WarehouseBin'))
+    CREATE INDEX IX_WarehouseBin_Code ON dbo.WarehouseBin (Code) WHERE IsRemoved = 0;
+GO

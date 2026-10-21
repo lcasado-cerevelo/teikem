@@ -9752,3 +9752,6 @@ Los que traían texto (por ejemplo «787-555-1234 ext. 5») o un «+» de un pa�
 
 **¿Por qué las reclamaciones ahora empiezan con RCL- y no con REC-? (Lote 164)**
 El recibo ya usaba `REC-#####` y un `REC-00012` podía ser un recibo o una reclamación. Desde el Lote 164 las reclamaciones son `RCL-#####` (las existentes se renombraron solas); el recibo conserva `REC-#####`.
+
+**¿Qué puedo buscar en «Buscar o ejecutar»? (Lote 167)**
+Además de las pantallas del menú, busca registros por número o nombre: envíos (número, conduce, empaque, factura del cliente, paquete), rutas, reclamaciones (`RCL-`), clientes, almacenes, zonas, posiciones, productos (SKU y nombre), recibos, recolecciones y empaques, avisos de salida, proveedores, órdenes de compra y de venta, facturas, rentas y teléfonos. Un solo resultado exacto se abre solo; si hay varios, se muestran para escoger. Solo aparecen los tipos que su usuario puede ver. Ver capítulo 42.

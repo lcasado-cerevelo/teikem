@@ -19,6 +19,7 @@ public sealed class ContactPointConfiguration : IEntityTypeConfiguration<Contact
         b.HasOne(c => c.OwnerEntity).WithMany().HasForeignKey(c => c.OwnerEntityLookupId);
         b.HasOne(c => c.ContactType).WithMany().HasForeignKey(c => c.ContactTypeLookupId);
         b.HasIndex(c => new { c.OwnerEntityLookupId, c.OwnerId });
+        b.HasIndex(c => c.Value).HasFilter("[IsActive] = 1").HasDatabaseName("IX_ContactPoint_Value");   // búsqueda global por teléfono (2026-10-21)
     }
 }
 

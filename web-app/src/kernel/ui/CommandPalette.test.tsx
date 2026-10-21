@@ -74,7 +74,7 @@ describe('CommandPalette', () => {
     await user.clear(input)
     await user.type(input, 'zzz')
     expect(optionTitles()).toEqual([])
-    expect(screen.getByText('Ninguna pantalla coincide con la búsqueda.')).toBeInTheDocument()
+    expect(screen.getByText('Nada coincide con la búsqueda.')).toBeInTheDocument()
   })
 
   it('↓ ↓ Enter elige el tercero; ↑ vuelve; Enter con un filtro elige el primero que coincide', async () => {
@@ -180,4 +180,26 @@ describe('lógica pura y atajos', () => {
     await user.keyboard('{Control>}k{/Control}')
     expect(isCommandPaletteOpen()).toBe(true)
   })
+  it('búsqueda global: los registros salen arriba de los destinos, agrupados por tipo, y avisan lo que se teclea; «Buscando…» mientras llegan', async () => {
+    const user = userEvent.setup()
+    const onQuery = vi.fn()
+    const onSelect = vi.fn()
+    const records: CommandItem[] = [
+      { id: 'rec:ORDER:o-1', group: 'rec:ORDER', groupLabel: 'Envíos', title: 'ORD-100', subtitle: 'Conduce CND-1 · por número de envío' },
+      { id: 'rec:CLIENT:c-1', group: 'rec:CLIENT', groupLabel: 'Clientes', title: 'Acme', subtitle: 'C-100' },
+    ]
+    const { rerender } = render(<CommandPalette open items={ITEMS} records={records} loading={false} onQueryChange={onQuery} onSelect={onSelect} onClose={() => {}} />)
+    // sin filtrar: primero los registros, después el menú
+    expect(optionTitles()).toEqual(['ORD-100', 'Acme', 'Pulso del día', 'Sala de despacho', 'Gráficos', 'Roles y usuarios'])
+    expect(screen.getAllByRole('group').map((g) => g.querySelector('.pgrp')?.textContent)).toEqual(['Envíos', 'Clientes', 'Operación', 'Análisis', 'Sistema'])
+    await user.type(screen.getByRole('combobox'), 'sala')
+    expect(onQuery).toHaveBeenLastCalledWith('sala')
+    // Enter abre el activo (el primer registro)
+    await user.keyboard('{Enter}')
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'rec:ORDER:o-1' }))
+    // cargando y sin nada que mostrar
+    rerender(<CommandPalette open items={[]} records={[]} loading onSelect={onSelect} onClose={() => {}} />)
+    expect(screen.getByText('Buscando…')).toBeInTheDocument()
+  })
+
 })

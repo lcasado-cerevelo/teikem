@@ -26,7 +26,7 @@ export default function ConsigneeListScreen() {
   const t = useT()
   const f = useFormat()
   const [params, setParams] = useSearchParams()
-  const [q, setQ] = useState('')
+  const [q, setQ] = useState(params.get('q') ?? '')   // `?q=<texto>` (búsqueda global): la lista ya filtrada
   // `?client=<publicId>` abre la lista ya filtrada por ese cliente (lo usa «Ver todos» del panel Consignatarios de la ficha del cliente)
   const [filter, setFilter] = useState(params.get('client') ?? FILTER_ALL)
   const [includeInactive, setIncludeInactive] = useState(false)

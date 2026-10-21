@@ -10,6 +10,8 @@ import { useT } from '../kernel/i18n/useT'
 import { useFormat } from '../kernel/format/useFormat'
 import { BrandLockup, BrandMark } from '../kernel/ui/Brand'
 import { CommandPalette } from '../kernel/ui/CommandPalette'
+import { autoOpenHit, hitHref, type SearchHit } from '../kernel/search/searchRules'
+import { useGlobalSearch } from '../kernel/search/useGlobalSearch'
 import { ExportCompanyProvider, FilterScope } from '../kernel/ui/FilterScope'
 import {
   closeCommandPalette,
@@ -136,6 +138,35 @@ export function AppShell() {
     setDrawer(false)
     if (activeGroup) setOpenGroup(activeGroup)
   }
+
+  // Búsqueda global (2026-10-21): lo que se teclea en la paleta busca registros por número o nombre (envíos, clientes, almacenes, productos…). Un solo resultado
+  // exacto se abre solo; si hay varios, o uno exacto y otros parecidos, se muestran en la paleta para escoger.
+  const [paletteQuery, setPaletteQuery] = useState('')
+  const search = useGlobalSearch(paletteOpen ? paletteQuery : '')
+  const records = useMemo<(CommandItem & { path: string })[]>(
+    () =>
+      search.hits.map((h: SearchHit) => {
+        const matched = t(`shell.palette.matched.${h.matchedBy}`)
+        return {
+          id: `rec:${h.type}:${h.id}`,
+          path: hitHref(h),
+          group: `rec:${h.type}`,
+          groupLabel: t(`shell.palette.types.${h.type}`),
+          title: h.title ?? '',
+          subtitle: [h.subtitle, matched.startsWith('shell.palette.matched.') ? null : matched].filter(Boolean).join(' · '),
+        }
+      }),
+    [search.hits, t],
+  )
+  const auto = autoOpenHit(search.hits, search.query, search.settled)
+  useEffect(() => {
+    if (!paletteOpen || !auto) return
+    closeCommandPalette()
+    navigate(hitHref(auto))
+  }, [paletteOpen, auto, navigate])
+  useEffect(() => {
+    if (!paletteOpen) setPaletteQuery('')
+  }, [paletteOpen])
 
   // La paleta no sobrevive a la salida del shell (p. ej. cerrar sesión con la paleta abierta).
   useEffect(() => closeCommandPalette, [])
@@ -352,6 +383,9 @@ export function AppShell() {
       <CommandPalette
         open={paletteOpen}
         items={commands}
+        records={records}
+        loading={search.loading}
+        onQueryChange={setPaletteQuery}
         onClose={closeCommandPalette}
         onSelect={(item) => {
           closeCommandPalette()

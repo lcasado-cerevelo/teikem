@@ -207,7 +207,8 @@ function SupplierModal({ open, onClose, supplier }: { open: boolean; onClose: ()
 export default function SupplierListScreen() {
   const t = useT()
   const [show, setShow] = useState<'active' | 'all'>('active')
-  const [filters, setFilters] = useState(EMPTY_FILTERS)
+  // `?q=<nombre>` (búsqueda global): abre la lista ya filtrada por ese nombre
+  const [filters, setFilters] = useState<SupplierFilters>(() => ({ ...EMPTY_FILTERS, name: new URLSearchParams(window.location.search).get('q') ?? '' }))
   const canManage = useCan('purchasing.manage')
   const [modal, setModal] = useState<ModalState>(null)
   const [confirm, setConfirm] = useState<{ supplier: SupplierDto; active: boolean } | null>(null)
