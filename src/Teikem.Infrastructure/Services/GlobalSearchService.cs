@@ -102,7 +102,12 @@ public sealed class GlobalSearchService(TeikemDbContext db, ITenantContext tenan
         {
             var field = byId[r.TransportOrderId];
             var exact = field switch { "WAYBILL" => Eq(r.WaybillNumber, q), "ORDER_NUMBER" => Eq(r.OrderNumber, q), "PACK_BATCH" => Eq(r.PackBatchNumber, q), "INVOICE" => Eq(r.ClientInvoiceNumber, q), _ => false };
-            return Hit(TypeOrder, r.PublicId, r.OrderNumber, Join(r.WaybillNumber is null ? null : "Conduce " + r.WaybillNumber, r.PackBatchNumber is null ? null : "Empaque " + r.PackBatchNumber, clients.GetValueOrDefault(r.ClientId)), field, exact);
+            // sin texto fijo en español: la web arma «Conduce …· Empaque …» en el idioma del usuario con estas claves
+            var keys = new List<(string, string)>();
+            if (r.WaybillNumber is not null) keys.Add(("waybill", r.WaybillNumber));
+            if (r.PackBatchNumber is not null) keys.Add(("pack", r.PackBatchNumber));
+            if (clients.GetValueOrDefault(r.ClientId) is { } clientName) keys.Add(("client", clientName));
+            return Hit(TypeOrder, r.PublicId, r.OrderNumber, null, field, exact, keys.ToArray());
         }).ToList();
     }
 
@@ -130,7 +135,7 @@ public sealed class GlobalSearchService(TeikemDbContext db, ITenantContext tenan
         hits.AddRange(zones.Select(z => Hit(TypeZone, z.WarehouseZoneId, z.Code, Join(z.Name, z.WarehouseCode), "ZONE_CODE", Eq(z.Code, q), ("warehouse", z.PublicId.ToString()), ("zone", z.WarehouseZoneId.ToString()))));
         var bins = await (from b in db.WarehouseBins.AsNoTracking() join w in db.Warehouses.AsNoTracking() on b.WarehouseId equals w.WarehouseId
                           where !b.IsRemoved && w.IsActive && b.Code.StartsWith(q) orderby b.Code select new { b.WarehouseBinId, b.Code, b.WarehouseZoneId, w.PublicId, WarehouseCode = w.Code }).Take(PerType).ToListAsync(ct);
-        hits.AddRange(bins.Select(b => Hit(TypeBin, b.WarehouseBinId, b.Code, "Posición · " + b.WarehouseCode, "BIN_CODE", Eq(b.Code, q), ("warehouse", b.PublicId.ToString()), ("zone", b.WarehouseZoneId.ToString()), ("bin", b.Code))));
+        hits.AddRange(bins.Select(b => Hit(TypeBin, b.WarehouseBinId, b.Code, b.WarehouseCode, "BIN_CODE", Eq(b.Code, q), ("warehouse", b.PublicId.ToString()), ("zone", b.WarehouseZoneId.ToString()), ("bin", b.Code))));
         return hits;
     }
 

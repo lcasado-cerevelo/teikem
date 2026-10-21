@@ -153,7 +153,15 @@ export function AppShell() {
           group: `rec:${h.type}`,
           groupLabel: t(`shell.palette.types.${h.type}`),
           title: h.title ?? '',
-          subtitle: [h.subtitle, matched.startsWith('shell.palette.matched.') ? null : matched].filter(Boolean).join(' · '),
+          subtitle: [
+            h.subtitle,
+            h.keys?.waybill ? t('shell.palette.sub.waybill', { value: h.keys.waybill }) : null,
+            h.keys?.pack ? t('shell.palette.sub.pack', { value: h.keys.pack }) : null,
+            h.keys?.client,
+            matched.startsWith('shell.palette.matched.') ? null : matched,
+          ]
+            .filter(Boolean)
+            .join(' · '),
         }
       }),
     [search.hits, t],

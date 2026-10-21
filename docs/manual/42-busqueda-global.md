@@ -33,7 +33,6 @@ Las listas que se abren **filtradas** (reclamaciones, facturas, proveedores, con
 ## Lo que todavía no busca
 - **Avisos de llegada** (su `Number` aún no existe; lo hace otra sesión) y **números de serie / lotes** (por ahora fuera, a pedido de Luis).
 - **Número de parte** es el SKU del producto (no hay otro campo).
-- Los subtítulos de los resultados salen en español («Conduce…», «Empaque…»), también con la interfaz en inglés.
 - Si ya se está en una lista (por ejemplo Reclamaciones) y se elige otro resultado que abre la misma lista, el filtro nuevo no se aplica hasta volver a entrar.
 
 ## Casos frecuentes

@@ -138,6 +138,10 @@
       "placeholder": "Search or run…",
       "open": "Search or run",
       "empty": "Nothing matches the search.",
+      "sub": {
+        "waybill": "Waybill {value}",
+        "pack": "Pack batch {value}"
+      },
       "searching": "Searching…",
       "types": {
         "ORDER": "Shipments",

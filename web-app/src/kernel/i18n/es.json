@@ -138,6 +138,10 @@
       "placeholder": "Buscar o ejecutar…",
       "open": "Buscar o ejecutar",
       "empty": "Nada coincide con la búsqueda.",
+      "sub": {
+        "waybill": "Conduce {value}",
+        "pack": "Empaque {value}"
+      },
       "searching": "Buscando…",
       "types": {
         "ORDER": "Envíos",
