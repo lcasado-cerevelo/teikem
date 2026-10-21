@@ -9,7 +9,7 @@ import { Can } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { Chip, ConfirmDialog, DataTable, Field, Form, Modal, NumberInput, Spinner, toast, type DataColumn, type RowAction } from '../../kernel/ui'
+import { Chip, ConfirmDialog, DataTable, Field, Form, IconCheckCircle, IconEdit, Modal, NumberInput, Spinner, toast, type DataColumn, type RowAction } from '../../kernel/ui'
 import { useExitNotice, useExitNoticeMutations, type ExitNoticeLineDto } from './exitNoticeApi'
 import { ExitNoticeDispatchModal } from './ExitNoticeDispatchModal'
 import { AssignDocumentModal } from './AssignDocumentModal'
@@ -124,6 +124,7 @@ export function ExitNoticeModal({ publicId, onClose }: { publicId: string; onClo
               perm: 'exitnotice.create',
               visible: (l) => canModifyLine(notice, l),
               onClick: (l) => setEditing(l),
+              icon: <IconEdit />,
             },
             {
               key: 'fulfill',
@@ -139,6 +140,7 @@ export function ExitNoticeModal({ publicId, onClose }: { publicId: string; onClo
               tone: 'danger',
               visible: (l) => canHandlePending(notice, l),
               onClick: (l) => void run(closeLine.mutateAsync({ id: publicId, lineId: l.id! }), t('warehouse.exitNotices.lineClosedDone', { sku: l.sku ?? '' })),
+              icon: <IconCheckCircle />,
             },
           ]
         : [],

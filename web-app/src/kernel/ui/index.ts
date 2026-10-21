@@ -13,6 +13,7 @@ export {
   IconShield,
   IconShieldOff,
   IconTrash,
+  IconInbox,
   IconUserPlus,
   IconXCircle,
 } from './actionIcons'

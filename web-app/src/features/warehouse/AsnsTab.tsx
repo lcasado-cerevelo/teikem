@@ -19,6 +19,11 @@ import {
   EMPTY_RANGE,
   Filters,
   IconCheckin,
+  IconEdit,
+  IconInbox,
+  IconUserPlus,
+  IconUsers,
+  IconXCircle,
   Panel,
   SearchSelect,
   toast,
@@ -156,6 +161,7 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
         visible: (a) => a.statusCode === 'EXPECTED' && !a.receiptPublicId,
         onClick: onReceive,
         tone: 'flow',
+        icon: <IconInbox />,
       },
       {
         key: 'take',
@@ -163,6 +169,7 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
         perm: 'warehouse.receive',
         visible: (a) => a.statusCode === 'EXPECTED' && !a.receiptPublicId && a.assignedToUserId == null,
         onClick: (a) => void run(save.mutateAsync({ action: 'take', id: a.id ?? 0 }), t('warehouse.assign.taken')),
+        icon: <IconUserPlus />,
       },
       {
         key: 'assign',
@@ -170,6 +177,7 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
         perm: 'warehouse.manage',
         visible: (a) => a.statusCode === 'EXPECTED' && !a.receiptPublicId,
         onClick: (a) => setToAssign(a),
+        icon: <IconUsers />,
       },
       {
         key: 'edit',
@@ -178,6 +186,7 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
         // solo un aviso de cliente que sigue esperado y sin recibo abierto (uno nacido de una orden de compra se cambia en la orden)
         visible: (a) => a.statusCode === 'EXPECTED' && !a.receiptPublicId && !a.purchaseOrderPublicId,
         onClick: (a) => setToEdit(a),
+        icon: <IconEdit />,
       },
       {
         key: 'cancel',
@@ -186,6 +195,7 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
         visible: (a) => a.statusCode === 'EXPECTED',
         onClick: (a) => setToCancel(a),
         tone: 'danger',
+        icon: <IconXCircle />,
       },
     ],
     [t, onReceive, save],

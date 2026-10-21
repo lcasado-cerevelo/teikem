@@ -8,13 +8,14 @@ import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
 import { useStatuses } from '../../kernel/catalogs'
-import { ClientPicker, Chip, DataTable, DateRangeFilter, EMPTY_RANGE, Filters, Panel, SearchSelect, Spinner, toast, type DataColumn, type DateRange } from '../../kernel/ui'
-import { IconCheckin } from '../../kernel/ui'
+import { ClientPicker, Chip, ConfirmDialog, DataTable, DateRangeFilter, EMPTY_RANGE, Filters, IconCheckin, IconTruck, IconUserPlus, IconUsers, IconXCircle, Panel, SearchSelect, Spinner, toast, type DataColumn, type DateRange, type RowAction } from '../../kernel/ui'
+import { AssignDocumentModal } from './AssignDocumentModal'
+import { ExitNoticeDispatchModal } from './ExitNoticeDispatchModal'
 import { ToggleFilter } from './filterControls'
 import { TextFilter } from './filterControls'
 import { ExitNoticeCreateModal } from './ExitNoticeCreateModal'
 import { ExitNoticeModal } from './ExitNoticeModal'
-import { exitNoticePageReader, useExitNoticeMutations, useExitNotices, type ExitNoticeListItemDto } from './exitNoticeApi'
+import { exitNoticePageReader, useExitNotice, useExitNoticeMutations, useExitNotices, type ExitNoticeListItemDto } from './exitNoticeApi'
 
 function useDebounced(value: string, ms = 300) {
   const [v, setV] = useState(value)
@@ -46,7 +47,9 @@ export function ExitNoticesTab({ initialOpen }: { initialOpen?: string | null })
     [status, search, pendingOnly, clientPublicId, dates, mineOnly],
   )
   const list = useExitNotices(filter, (page - 1) * pageSize, pageSize)
-  const { fulfillAll } = useExitNoticeMutations()
+  const { take } = useExitNoticeMutations()
+  // acciones por fila (iconos con su ayuda): tomar es directa; despachar, asignar y cancelar abren su ventana sobre el aviso elegido
+  const [action, setAction] = useState<{ kind: 'dispatch' | 'assign' | 'cancel'; publicId: string } | null>(null)
 
   const columns = useMemo<DataColumn<ExitNoticeListItemDto>[]>(
     () => [
@@ -75,14 +78,36 @@ export function ExitNoticesTab({ initialOpen }: { initialOpen?: string | null })
     [t, f],
   )
 
-  const reserveEverything = async () => {
-    try {
-      const r = await fulfillAll.mutateAsync()
-      toast.success((r.lines ?? []).length === 0 ? t('warehouse.exitNotices.reserveNothing') : t('warehouse.exitNotices.reservedAll', { units: r.unitsReserved ?? 0, lines: r.linesReserved ?? 0 }))
-    } catch (e) {
-      toast.error(applyProblemDetails(e).title)
-    }
-  }
+  const open1 = (o: ExitNoticeListItemDto) => o.statusCode === 'REQUESTED' || o.statusCode === 'PARTIAL'
+  const rowActions = useMemo<RowAction<ExitNoticeListItemDto>[]>(
+    () => [
+      { key: 'dispatch', label: t('warehouse.exitNotices.dispatch'), perm: 'warehouse.pick', visible: open1, onClick: (o) => setAction({ kind: 'dispatch', publicId: o.publicId ?? '' }), tone: 'flow', icon: <IconTruck /> },
+      {
+        key: 'take',
+        label: t('warehouse.assign.take'),
+        perm: 'warehouse.pick',
+        visible: (o) => open1(o) && o.assignedToUserId == null,
+        onClick: (o) => {
+          take.mutateAsync(o.publicId ?? '').then(
+            () => toast.success(t('warehouse.assign.taken')),
+            (e) => toast.error(applyProblemDetails(e).title),
+          )
+        },
+        icon: <IconUserPlus />,
+      },
+      { key: 'assign', label: t('warehouse.assign.action'), perm: 'warehouse.manage', visible: open1, onClick: (o) => setAction({ kind: 'assign', publicId: o.publicId ?? '' }), icon: <IconUsers /> },
+      {
+        key: 'cancel',
+        label: t('warehouse.exitNotices.cancelNotice'),
+        perm: 'exitnotice.create',
+        visible: (o) => o.statusCode === 'REQUESTED' && (o.qtyShipped ?? 0) === 0,
+        onClick: (o) => setAction({ kind: 'cancel', publicId: o.publicId ?? '' }),
+        tone: 'danger',
+        icon: <IconXCircle />,
+      },
+    ],
+    [t, take],
+  )
 
   return (
     <>
@@ -114,9 +139,6 @@ export function ExitNoticesTab({ initialOpen }: { initialOpen?: string | null })
         badge={list.isPending ? undefined : list.data?.total}
         actions={
           <Can perm="exitnotice.create">
-            <button type="button" className="btn sm" disabled={fulfillAll.isPending} onClick={() => void reserveEverything()}>
-              {t('warehouse.exitNotices.reserveAll')}
-            </button>
             <button type="button" className="btn flow sm" onClick={() => setCreating(true)}>
               {t('warehouse.exitNotices.new')}
             </button>
@@ -141,6 +163,7 @@ export function ExitNoticesTab({ initialOpen }: { initialOpen?: string | null })
               total={list.data?.total ?? 0}
               onPage={setPage}
               onPageSize={(s) => (setPageSize(s), setPage(1))}
+              rowActions={rowActions}
               onRowClick={(o) => setOpen(o.publicId ?? null)}
               empty={t('warehouse.exitNotices.empty')}
               exportRows={() => fetchAllPages<ExitNoticeListItemDto>(exitNoticePageReader(filter))}
@@ -151,6 +174,40 @@ export function ExitNoticesTab({ initialOpen }: { initialOpen?: string | null })
       </Panel>
       {creating && <ExitNoticeCreateModal onClose={() => setCreating(false)} onCreated={(id) => setOpen(id || null)} />}
       {open && <ExitNoticeModal publicId={open} onClose={() => setOpen(null)} />}
+      {action && <NoticeActionHost kind={action.kind} publicId={action.publicId} onClose={() => setAction(null)} />}
     </>
+  )
+}
+
+/** Ventana de la acción elegida en la fila: lee el aviso completo y muestra el despacho, la asignación o la confirmación de cancelar. */
+function NoticeActionHost({ kind, publicId, onClose }: { kind: 'dispatch' | 'assign' | 'cancel'; publicId: string; onClose: () => void }) {
+  const t = useT()
+  const q = useExitNotice(publicId)
+  const { assign, cancel } = useExitNoticeMutations()
+  const notice = q.data
+  if (kind === 'cancel')
+    return (
+      <ConfirmDialog
+        open
+        tone="danger"
+        title={t('warehouse.exitNotices.cancelTitle')}
+        message={t('warehouse.exitNotices.cancelBody', { number: notice?.number ?? '' })}
+        confirmLabel={t('warehouse.exitNotices.cancelNotice')}
+        onConfirm={async () => {
+          await cancel.mutateAsync({ id: publicId })
+          toast.success(t('warehouse.exitNotices.cancelled'))
+        }}
+        onClose={onClose}
+      />
+    )
+  if (!notice) return null
+  if (kind === 'dispatch') return <ExitNoticeDispatchModal notice={notice} onClose={onClose} />
+  return (
+    <AssignDocumentModal
+      title={t('warehouse.assign.title', { number: notice.number ?? '' })}
+      currentUserId={notice.assignedToUserId}
+      onSave={(userId) => assign.mutateAsync({ id: publicId, userId })}
+      onClose={onClose}
+    />
   )
 }

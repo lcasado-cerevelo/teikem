@@ -1,7 +1,7 @@
 // Lote 144 — pestaña «Avisos de salida»: lista del servidor con filtros que viajan al API, botones solo con exitnotice.create,
 // y la ficha con sus acciones. Sobre un fetch simulado.
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -104,28 +104,34 @@ describe('Avisos de salida: lista', () => {
     expect(screen.queryByRole('button', { name: 'Reservar el pendiente' })).toBeNull()
   })
 
-  it('«Reservar el pendiente» llama al servidor', async () => {
+  it('Lote 190: las acciones están en la tabla, como iconos con su nombre, y Tomar es directa', async () => {
     const user = userEvent.setup()
-    wrap(['exitnotice.create'])
+    wrap(['warehouse.pick', 'warehouse.manage', 'exitnotice.create'])
     await screen.findByText('SAL-00001')
-    await user.click(screen.getByRole('button', { name: 'Reservar el pendiente' }))
-    await waitFor(() => expect(mock.calls.some((c) => c.method === 'POST' && c.url.pathname === '/api/v1/exit-notices/backorders/fulfill')).toBe(true))
+    expect(screen.getAllByRole('button', { name: 'Despachar' }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: 'Asignar' }).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('button', { name: 'Reservar el pendiente' })).toBeNull()
+    await user.click(screen.getAllByRole('button', { name: 'Tomar' })[0])
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'POST' && c.url.pathname.endsWith('/take'))).toBe(true))
   })
 })
+
+// la ficha se abre sobre la lista, que también tiene las acciones por fila: se busca dentro de la ficha
+const inDialog = () => within(screen.getAllByRole('dialog')[0])
 
 describe('Avisos de salida: ficha', () => {
   it('Lote 171: Tomar (warehouse.pick) y Asignar (warehouse.manage) solo en un aviso abierto sin asignar', async () => {
     const user = userEvent.setup()
     const { unmount } = wrap(['exitnotice.create'], NOTICE)
     await screen.findByText('Tornillo')
-    expect(screen.queryByRole('button', { name: 'Tomar' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Asignar' })).toBeNull()
+    expect(inDialog().queryByRole('button', { name: 'Tomar' })).toBeNull()
+    expect(inDialog().queryByRole('button', { name: 'Asignar' })).toBeNull()
     unmount()
 
     wrap(['warehouse.pick', 'warehouse.manage'], NOTICE)
     await screen.findByText('Tornillo')
-    expect(screen.getByRole('button', { name: 'Asignar' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Tomar' }))
+    expect(inDialog().getByRole('button', { name: 'Asignar' })).toBeInTheDocument()
+    await user.click(inDialog().getByRole('button', { name: 'Tomar' }))
     await waitFor(() => expect(mock.calls.some((c) => c.method === 'POST' && c.url.pathname === `/api/v1/exit-notices/${NOTICE}/take`)).toBe(true))
   })
 
@@ -139,12 +145,12 @@ describe('Avisos de salida: ficha', () => {
     const user = userEvent.setup()
     const { unmount } = wrap(['exitnotice.create'], NOTICE)
     await screen.findByText('Tornillo')
-    expect(screen.queryByRole('button', { name: 'Despachar' })).toBeNull()
+    expect(inDialog().queryByRole('button', { name: 'Despachar' })).toBeNull()
     unmount()
 
     wrap(['warehouse.pick'], NOTICE)
     await screen.findByText('Tornillo')
-    await user.click(screen.getByRole('button', { name: 'Despachar' }))
+    await user.click(inDialog().getByRole('button', { name: 'Despachar' }))
     await user.click(await screen.findByRole('button', { name: 'Ajustar cantidades' }))
     const qty = await screen.findByLabelText(/TORN-01/)
     expect(qty).toHaveValue(4)
@@ -164,7 +170,7 @@ describe('Avisos de salida: ficha', () => {
     const user = userEvent.setup()
     wrap(['warehouse.pick'], NOTICE)
     await screen.findByText('Tornillo')
-    await user.click(screen.getByRole('button', { name: 'Despachar' }))
+    await user.click(inDialog().getByRole('button', { name: 'Despachar' }))
     expect(await screen.findByText(/Se despachará todo lo reservado: 4 unidades en 1 líneas\./)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Despachar todo lo reservado' }))
     await waitFor(() => {
