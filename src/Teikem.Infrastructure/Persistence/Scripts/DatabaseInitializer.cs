@@ -87,6 +87,10 @@ public sealed class DatabaseInitializer(IServiceProvider services, IConfiguratio
         }
 
         var sync = new SchemaSync(connectionString, logger);
+        // Orden (2026-10-21): en la corrida real el update.sql va PRIMERO. Sus secciones agregan columnas NOT NULL por pasos
+        // (columna anulable, relleno, NOT NULL); si el diff las agregara antes, fallaría en tablas con datos («cannot be added to non-empty table»).
+        // El diff después solo completa lo que el script no cubra. En simulación no se toca la base: el plan es el de siempre.
+        if (!dryRun) await runner.ApplyAsync([UpdateScript(designDir)], ct);
         var plan = await sync.PlanAsync(structure.Path, [seed, UpdateScript(designDir)], ct);
         Console.WriteLine($"db-update: {plan.Changes.Count} cambio(s) de esquema por aplicar.");
         foreach (var c in plan.Changes) Console.WriteLine($"  + {c.Description}");

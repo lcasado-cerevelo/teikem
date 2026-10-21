@@ -70,7 +70,7 @@ Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Esta
 - ☑ Ocultar opciones de recibo a ciegas en la web cuando la compañía exige documento (Lote 180).
 - ☑ **Encabezado de las tarjetas y paneles (decidido por el dueño, 2026-10-21; hecho, autónomo):** fondo = el tercer color de la marca (el gris `--money`) al 8 % mezclado con el fondo del panel; lo atenuado con 25 % del texto; contraste AA verificado en los 14 temas y los dos modos; recorrido Playwright con capturas.
 - ☐ Endurecer los endpoints con los permisos de acceso por ítem de menú.
-- ☐ Prueba de `db-update` en simulación contra SQL Server.
+- ☑ Prueba de `db-update` contra SQL Server (simulación y real; se corrigió el orden update.sql → diff).
 - ◐ Capturas / Playwright de las pantallas nuevas: hechos los de la recolección maestra y el encabezado (`e2e/lote180-encabezado-maestra.spec.ts`, capturas `l180-*`); faltan los del portal del cliente, avisos y filtros.
 - ☑ EXIT_NOTICE como fuente de datos para Vistas (menores, autónomo).
 - ☑ Saldos y Conciliación: filtro de zona (menores, autónomo).
