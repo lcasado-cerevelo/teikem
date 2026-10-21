@@ -6,7 +6,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SessionContext, type Session } from '../../app/session'
 import { AccessProvider } from '../../kernel/access'
 import { setLang } from '../../kernel/i18n/i18n'
-import { UnresolvedZonesPanel } from './UnresolvedZonesPanel'
+import { municipalityOf, UnresolvedZonesPanel } from './UnresolvedZonesPanel'
 
 const mock = vi.hoisted(() => ({ requests: [] as { method: string; path: string; search: string; body: unknown }[], total: 5 }))
 
@@ -118,6 +118,13 @@ describe('UnresolvedZonesPanel', () => {
     await user.click(screen.getByRole('button', { name: 'Agregar y asignar' }))
     await waitFor(() => expect(mock.requests.some((r) => r.path === '/api/v1/dispatch-zones/7/members')).toBe(true))
     expect(mock.requests.find((r) => r.path === '/api/v1/dispatch-zones/7/members')?.body).toEqual({ matchType: 'MUNICIPALITY', matchValue: 'Utuado' })
+  })
+
+  it('el pueblo de «BARRIO, PUEBLO» es el último tramo (lo que se agrega a la zona)', () => {
+    expect(municipalityOf('LA PLATA, AIBONITO')).toBe('AIBONITO')
+    expect(municipalityOf('  Carolina ')).toBe('Carolina')
+    expect(municipalityOf('A, B, C')).toBe('C')
+    expect(municipalityOf(null)).toBe('')
   })
 
   it('sin envíos sin zona el panel no aparece', async () => {

@@ -59,6 +59,28 @@ public class DispatchZoneMatcherTests
         new("Z7", ZoneMatchTypes.PostalCode, "00725"),
     };
 
+    [Theory]
+    [InlineData("LA PLATA, AIBONITO", "Aibonito")]       // «BARRIO, PUEBLO»: lo habitual en lo migrado
+    [InlineData("Punta Santiago, Humacao", "Humacao")]
+    [InlineData("Río Blanco,Naguabo", "Naguabo")]
+    [InlineData("Aibonito", "Aibonito")]
+    public void A_town_written_as_barrio_comma_pueblo_resolves_by_its_pueblo(string city, string member)
+    {
+        var members = new[] { new ZoneMember("Z-X", ZoneMatchTypes.Municipality, member) };
+        Assert.Equal("Z-X", DispatchZoneMatcher.Resolve(members, "00999", city).ZoneCode);
+    }
+
+    [Fact]
+    public void The_full_text_wins_over_a_segment_and_a_barrio_alone_does_not_match()
+    {
+        var members = new[] { new ZoneMember("Z-FULL", ZoneMatchTypes.Municipality, "La Plata, Aibonito"), new ZoneMember("Z-PUEBLO", ZoneMatchTypes.Municipality, "Aibonito") };
+        Assert.Equal("Z-FULL", DispatchZoneMatcher.Resolve(members, null, "LA PLATA, AIBONITO").ZoneCode);
+        Assert.Equal("Z-PUEBLO", DispatchZoneMatcher.Resolve(members, null, "Cualquier barrio, Aibonito").ZoneCode);
+        Assert.Null(DispatchZoneMatcher.Resolve(new[] { new ZoneMember("Z", ZoneMatchTypes.Municipality, "Carolina") }, null, "LA PLATA, AIBONITO").ZoneCode);
+        Assert.Equal("AIBONITO", DispatchZoneMatcher.MunicipalityOf("LA PLATA, AIBONITO"));   // tal cual viene
+        Assert.Equal("Carolina", DispatchZoneMatcher.MunicipalityOf(" Carolina "));
+    }
+
     [Fact]
     public void Exact_postal_code_wins_over_range_and_municipality()
     {

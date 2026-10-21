@@ -328,7 +328,7 @@ Cómo se usa:
 
 ### 2.8 Envíos sin zona: por qué y cómo arreglarlos (2026-10-21)
 
-Un envío toma su zona por el **código postal o el pueblo de su dirección de entrega**, comparados con los criterios de las zonas activas (código postal exacto, rango postal o municipio; gana el más específico). Cuando ninguna zona lo cubre, el envío queda «Sin zona» y no se puede planificar por zona.
+Un envío toma su zona por el **código postal o el pueblo de su dirección de entrega**, comparados con los criterios de las zonas activas (código postal exacto, rango postal o municipio; gana el más específico). Un pueblo escrito como **«BARRIO, PUEBLO»** (por ejemplo «LA PLATA, AIBONITO», lo habitual en lo migrado) se compara primero completo y luego por su último tramo, el pueblo («AIBONITO»); al agregarlo a una zona se agrega el pueblo. Cuando ninguna zona lo cubre, el envío queda «Sin zona» y no se puede planificar por zona.
 
 En **Flota → Zonas de despacho**, arriba, aparece el panel **«Envíos sin zona»** (solo si hay envíos activos sin zona; lo ve quien tiene `fleet.view`). Agrupa los envíos por **código postal y pueblo** y dice el motivo de cada grupo:
 

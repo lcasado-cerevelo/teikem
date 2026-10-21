@@ -13,6 +13,12 @@ import { IconRoute } from '../../kernel/ui/screenIcons'
 import { useDispatchZones } from '../drivers/api'
 import { useAddZoneMember, useUnresolvedZones, useZoneGroupMutations, type UnresolvedZoneRow } from './api'
 
+/** El pueblo de una dirección «BARRIO, PUEBLO» (lo habitual en lo migrado): el último tramo; sin comas, el texto tal cual. Es lo que se agrega a la zona como municipio. */
+export function municipalityOf(city: string | null | undefined): string {
+  const parts = (city ?? '').split(',').map((p) => p.trim()).filter(Boolean)
+  return parts.length > 1 ? parts[parts.length - 1] : (city ?? '').trim()
+}
+
 const REASON_TONE: Record<string, ChipTone> = { NO_MATCH: 'warn', AMBIGUOUS: 'fail', NO_DATA: 'cap', RESOLVABLE: 'deliv' }
 
 function AddToZoneModal({ row, onClose, onDone }: { row: UnresolvedZoneRow; onClose: () => void; onDone: (message: string) => void }) {
@@ -21,12 +27,13 @@ function AddToZoneModal({ row, onClose, onDone }: { row: UnresolvedZoneRow; onCl
   const add = useAddZoneMember()
   const { assignOrders } = useZoneGroupMutations()
   const hasZip = !!row.postalCode
-  const hasCity = !!row.city
+  const town = municipalityOf(row.city)
+  const hasCity = town !== ''
   const [zoneId, setZoneId] = useState('')
   const [by, setBy] = useState<'POSTAL_CODE' | 'MUNICIPALITY'>(hasZip ? 'POSTAL_CODE' : 'MUNICIPALITY')
   const [error, setError] = useState<string | null>(null)
   const busy = add.isPending || assignOrders.isPending
-  const value = by === 'POSTAL_CODE' ? (row.postalCode ?? '') : (row.city ?? '')
+  const value = by === 'POSTAL_CODE' ? (row.postalCode ?? '') : town
 
   const save = async () => {
     if (!zoneId) return setError(t('fleet.unresolved.zoneRequired'))
@@ -80,7 +87,7 @@ function AddToZoneModal({ row, onClose, onDone }: { row: UnresolvedZoneRow; onCl
           </label>
           <label className="sw">
             <input type="radio" name="uz-by" checked={by === 'MUNICIPALITY'} onChange={() => setBy('MUNICIPALITY')} disabled={busy} />
-            <span>{t('fleet.unresolved.byTown', { value: row.city ?? '' })}</span>
+            <span>{t('fleet.unresolved.byTown', { value: town })}</span>
           </label>
         </div>
       )}

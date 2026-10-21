@@ -99,13 +99,36 @@ public static partial class DispatchZoneMatcher
             if (byRange is not null) return byRange;
         }
 
-        if (!string.IsNullOrWhiteSpace(city))
+        // 2026-10-21: el pueblo puede venir como «BARRIO, PUEBLO» («LA PLATA, AIBONITO», lo habitual en lo migrado): se prueba el texto completo, luego el último tramo (el pueblo) y luego el primero
+        foreach (var candidate in CityCandidates(city))
         {
-            var folded = FoldCity(city);
-            var byCity = Level(list.Where(m => Same(m.MatchTypeCode, ZoneMatchTypes.Municipality) && FoldCity(m.MatchValue) == folded), ZoneMatchTypes.Municipality);
+            var byCity = Level(list.Where(m => Same(m.MatchTypeCode, ZoneMatchTypes.Municipality) && FoldCity(m.MatchValue) == candidate), ZoneMatchTypes.Municipality);
             if (byCity is not null) return byCity;
         }
         return ZoneResolution.None;
+    }
+
+    /// <summary>
+    /// Lo que se prueba como municipio de una dirección, ya sin acentos ni mayúsculas y en este orden: el texto completo; si trae comas («BARRIO, PUEBLO»), el último tramo (el pueblo) y el primero. Vacío si no hay pueblo.
+    /// </summary>
+    public static IReadOnlyList<string> CityCandidates(string? city)
+    {
+        if (string.IsNullOrWhiteSpace(city)) return Array.Empty<string>();
+        var candidates = new List<string> { FoldCity(city) };
+        if (city.Contains(','))
+        {
+            var parts = city.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length > 1) { candidates.Add(FoldCity(parts[^1])); candidates.Add(FoldCity(parts[0])); }
+        }
+        return candidates.Where(c => c.Length > 0).Distinct().ToList();
+    }
+
+    /// <summary>El pueblo de una dirección «BARRIO, PUEBLO»: el último tramo; sin comas, el texto tal cual (recortado).</summary>
+    public static string? MunicipalityOf(string? city)
+    {
+        if (string.IsNullOrWhiteSpace(city)) return null;
+        var parts = city.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length > 1 ? parts[^1] : city.Trim();
     }
 
     /// <summary>
