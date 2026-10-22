@@ -6358,3 +6358,22 @@ UPDATE dbo.Permission
 SET LabelJson = N'{"es":"Posiciones: crear, editar y eliminar (incluye zonas)","en":"Bins: create, edit and remove (includes zones)"}'
 WHERE Code = 'bins.manage' AND JSON_VALUE(LabelJson, '$.en') <> N'Bins: create, edit and remove (includes zones)';
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-22 — Logo en la pantalla de entrada según la dirección (pedido de Luis): dominio propio y subdominio de la plataforma por compañía.
+   - dbo.Tenant.CustomDomain NVARCHAR(253) NULL (logistica.miempresa.com) y dbo.Tenant.Subdomain NVARCHAR(63) NULL (depot → depot.teikem.com).
+   - Índices únicos filtrados: una dirección pertenece a una sola compañía. Los fija solo el administrador de la plataforma.
+   Solo estructura; no toca datos.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Tenant', 'CustomDomain') IS NULL
+    ALTER TABLE dbo.Tenant ADD CustomDomain NVARCHAR(253) NULL;
+GO
+IF COL_LENGTH('dbo.Tenant', 'Subdomain') IS NULL
+    ALTER TABLE dbo.Tenant ADD Subdomain NVARCHAR(63) NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_Tenant_CustomDomain' AND object_id = OBJECT_ID('dbo.Tenant'))
+    CREATE UNIQUE INDEX UX_Tenant_CustomDomain ON dbo.Tenant (CustomDomain) WHERE CustomDomain IS NOT NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_Tenant_Subdomain' AND object_id = OBJECT_ID('dbo.Tenant'))
+    CREATE UNIQUE INDEX UX_Tenant_Subdomain ON dbo.Tenant (Subdomain) WHERE Subdomain IS NOT NULL;
+GO

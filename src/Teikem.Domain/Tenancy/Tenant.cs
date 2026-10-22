@@ -38,6 +38,10 @@ public class Tenant : ISoftDeletable
     public int? DeviceSessionMinutes { get; set; }
     /// <summary>Marca por compañía: tema de color y logos (JSON libre, validado en servicio).</summary>
     public string? BrandingJson { get; set; }
+    /// <summary>2026-10-22: dominio propio de la compañía (logistica.miempresa.com); la pantalla de entrada muestra su logo cuando se abre con esa dirección. NULL = sin dominio. Reglas: TenantDomainRules.</summary>
+    public string? CustomDomain { get; set; }
+    /// <summary>2026-10-22: subdominio de la plataforma (depot → depot.teikem.com), la otra forma de reconocer la compañía por la dirección. NULL = sin subdominio.</summary>
+    public string? Subdomain { get; set; }
     /// <summary>Lote 103: identificador corto que servía para buscar por conduce; desde el Lote 116 el seguimiento es por enlace con token y esta columna ya no se usa (se conserva por el SQL congelado).</summary>
     public string? TrackingSlug { get; set; }
     /// <summary>Lote 113: con cuántos intentos fallidos se SUGIERE devolver una orden (por omisión 2; 0 = nunca sugiere). Solo una marca y un mensaje: no bloquea nada.</summary>

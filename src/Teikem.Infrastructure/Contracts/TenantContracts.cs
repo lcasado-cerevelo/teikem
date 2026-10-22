@@ -70,7 +70,12 @@ public sealed record TenantFormatOptionsDto(
 public sealed record TenantHolidayDto(int Id, DateOnly Date, string Name, bool IsRecurring);
 public sealed record TenantHolidayRequest(DateOnly Date, string Name, bool IsRecurring);
 
-public sealed record TenantSummaryDto(int Id, Guid PublicId, string Name, string? LegalName, bool IsActive, DateTime CreatedAtUtc);
+public sealed record TenantSummaryDto(int Id, Guid PublicId, string Name, string? LegalName, bool IsActive, DateTime CreatedAtUtc, string? CustomDomain = null, string? Subdomain = null);
+/// <summary>2026-10-22: dominio propio y subdominio de la compañía (vacío o null = quitarlo). Solo el administrador de la plataforma.</summary>
+public sealed record TenantDomainsRequest(string? CustomDomain, string? Subdomain);
+/// <summary>2026-10-22: lo único que se ve de una compañía sin sesión (pantalla de entrada): su nombre y qué logos tiene. `Source`: tenant (la última compañía usada), domain, subdomain o none.</summary>
+public sealed record PublicBrandDto(string Source, Guid? TenantPublicId, string? Name, IReadOnlyList<PublicBrandLogoDto> Logos);
+public sealed record PublicBrandLogoDto(string Slot, DateTime StampUtc);
 /// <summary>
 /// `MfaRequired`: sin valor, la compañía nueva queda con la política por default (Lote F8a: exige MFA a todos).
 /// Región y formatos (2026-10): `RegionCode` sin valor = 'PR'; la compañía nace con los valores por defecto de su región y los
@@ -83,7 +88,7 @@ public sealed record TenantProvisionRequest(string Name, string? LegalName, stri
 public sealed record TenantProvisionResult(TenantSummaryDto Tenant, int AdminUserId, string? TemporaryPassword);
 
 public sealed record MeDto(int UserId, string? FullName, string? Email, bool IsPlatformAdmin, int? TenantId, string? TenantName, string Lang,
-    IReadOnlyList<MembershipDto> Memberships, IReadOnlyList<string> Permissions, IReadOnlyList<string> EnabledModules, IReadOnlyList<DataScopeDto> DataScopes, bool MfaEnabled, DateTime? Aal2VerifiedAtUtc);
+    IReadOnlyList<MembershipDto> Memberships, IReadOnlyList<string> Permissions, IReadOnlyList<string> EnabledModules, IReadOnlyList<DataScopeDto> DataScopes, bool MfaEnabled, DateTime? Aal2VerifiedAtUtc, Guid? TenantPublicId = null);
 public sealed record MembershipDto(int TenantId, string TenantName, string Status, bool IsDefault);
 
 /// <summary>

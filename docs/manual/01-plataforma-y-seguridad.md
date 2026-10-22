@@ -1180,6 +1180,9 @@ Casos frecuentes:
 - **Cambié el logo y otro usuario ve el anterior.** Cada pantalla revisa los logos al abrirse y al volver a la ventana; recargar
   la página lo trae de inmediato.
 
+
+**Logo en la pantalla de entrada (2026-10-22).** Antes de iniciar sesión, la pantalla de entrada muestra el logo de una compañía, en este orden: **(1)** la **última compañía con la que entró esa computadora** (por login o al cambiarla en el desplegable del encabezado; se recuerda en el navegador), **(2)** la compañía que tiene como **dominio propio** la dirección con la que se abrió la página (`logistica.miempresa.com`), **(3)** la que tiene como **subdominio** su primera parte (`depot` en `depot.teikem.com`) y **(4)** el logo de Teikem. Solo se muestran el nombre y los logos (nada más de la compañía). El dominio y el subdominio los fija **solo el administrador de la plataforma**: `PUT /api/v1/platform/tenants/{publicId}/domains` con `{ "customDomain": "...", "subdomain": "..." }` (vacío = quitarlo; ver `GET /api/v1/platform/tenants`). Errores: **400** «El dominio no es válido. Escríbalo como logistica.miempresa.com, sin https:// ni rutas.» / «El subdominio no es válido. Use solo letras minúsculas, números y guiones (por ejemplo depot).»; **409** «Ese dominio ya lo usa otra compañía.» / «Ese subdominio ya lo usa otra compañía.»; **404** si la compañía no existe. Lectura pública (sin sesión, 120 por minuto por IP): `GET /api/v1/public/brand` y `GET /api/v1/public/brand/logo/{slot}`; una compañía inactiva no muestra su marca.
+
 ## 12. Administración de plataforma (solo administradores de Teikem)
 
 Qué hace: un usuario marcado `IsPlatformAdmin` opera cualquier tenant sin necesidad de membresía, tiene todos

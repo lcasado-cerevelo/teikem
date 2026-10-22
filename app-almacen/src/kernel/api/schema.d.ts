@@ -20838,6 +20838,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/tenants/{publicId}/domains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TenantDomainsRequest"];
+                    "text/json": components["schemas"]["TenantDomainsRequest"];
+                    "application/*+json": components["schemas"]["TenantDomainsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantSummaryDto"];
+                        "application/json": components["schemas"]["TenantSummaryDto"];
+                        "text/json": components["schemas"]["TenantSummaryDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/portal/auth/login": {
         parameters: {
             query?: never;
@@ -24964,6 +25009,89 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/brand": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    tenant?: string;
+                    host?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PublicBrandDto"];
+                        "application/json": components["schemas"]["PublicBrandDto"];
+                        "text/json": components["schemas"]["PublicBrandDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/brand/logo/{slot}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    tenant?: string;
+                    host?: string;
+                };
+                header?: never;
+                path: {
+                    slot: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "image/svg+xml": string;
+                        "image/png": string;
+                        "image/jpeg": string;
+                        "image/webp": string;
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -40812,6 +40940,8 @@ export interface components {
             mfaEnabled?: boolean;
             /** Format: date-time */
             aal2VerifiedAtUtc?: string | null;
+            /** Format: uuid */
+            tenantPublicId?: string | null;
         };
         MembershipDto: {
             /** Format: int32 */
@@ -43051,6 +43181,18 @@ export interface components {
         };
         ProductTaxCategoryRequest: {
             category?: string | null;
+        };
+        PublicBrandDto: {
+            source?: string | null;
+            /** Format: uuid */
+            tenantPublicId?: string | null;
+            name?: string | null;
+            logos?: components["schemas"]["PublicBrandLogoDto"][] | null;
+        };
+        PublicBrandLogoDto: {
+            slot?: string | null;
+            /** Format: date-time */
+            stampUtc?: string;
         };
         PublicTrackDto: {
             waybill?: string | null;
@@ -46102,6 +46244,10 @@ export interface components {
         TemporaryPasswordRequest: {
             password?: string | null;
         };
+        TenantDomainsRequest: {
+            customDomain?: string | null;
+            subdomain?: string | null;
+        };
         TenantFormatDto: {
             regionCode?: string | null;
             timeZoneId?: string | null;
@@ -46327,6 +46473,8 @@ export interface components {
             isActive?: boolean;
             /** Format: date-time */
             createdAtUtc?: string;
+            customDomain?: string | null;
+            subdomain?: string | null;
         };
         TierDto: {
             /** Format: int32 */

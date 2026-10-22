@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { AccessProvider } from '../kernel/access/AccessProvider'
 import { FormatProvider } from '../kernel/format/FormatProvider'
 import { TenantBrand } from '../kernel/ui/TenantBrand'
+import { rememberLastTenant } from '../kernel/ui/publicBrand'
 import { api, setAuthLostHandler, unwrap } from '../kernel/api/client'
 import { logout as authLogout, switchTenantTokens } from '../kernel/auth/auth'
 import { clearTokens, getTokens, subscribeTokens } from '../kernel/auth/tokens'
@@ -78,6 +79,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [queryClient])
 
   const me = isAuthenticated ? meQuery.data : undefined
+  // la próxima pantalla de entrada muestra el logo de esta compañía (al entrar y al cambiarla en el encabezado)
+  useEffect(() => rememberLastTenant(me?.tenantPublicId), [me?.tenantPublicId])
   const permissionList = me?.permissions ?? NO_STRINGS
   const moduleList = me?.enabledModules ?? NO_STRINGS
   const permissions = useMemo(() => new Set(permissionList), [permissionList])

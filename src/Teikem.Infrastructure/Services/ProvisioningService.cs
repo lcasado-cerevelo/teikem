@@ -27,7 +27,26 @@ public sealed class ProvisioningService(TeikemDbContext db, UserManager<Applicat
         var tc = (TenantContext)tenant;
         using var _ = tc.BypassTenantFilter();
         var list = await db.Tenants.AsNoTracking().OrderBy(t => t.Name).ToListAsync(ct);
-        return list.Select(t => new TenantSummaryDto(t.TenantId, t.PublicId, t.Name, t.LegalName, t.IsActive, t.CreatedAtUtc)).ToList();
+        return list.Select(t => new TenantSummaryDto(t.TenantId, t.PublicId, t.Name, t.LegalName, t.IsActive, t.CreatedAtUtc, t.CustomDomain, t.Subdomain)).ToList();
+    }
+
+    /// <summary>
+    /// 2026-10-22: fija (o quita, con vacío) el dominio propio y el subdominio de la compañía. 400 si no son válidos y 409 si otra compañía ya usa la dirección
+    /// (mensajes de TenantDomainRules). Solo el administrador de la plataforma: la dirección decide el logo que ve cualquiera antes de entrar.
+    /// </summary>
+    public async Task<TenantSummaryDto> SetDomainsAsync(Guid publicId, TenantDomainsRequest req, CancellationToken ct)
+    {
+        var tc = (TenantContext)tenant;
+        using var _ = tc.BypassTenantFilter();
+        var t = await db.Tenants.FirstOrDefaultAsync(x => x.PublicId == publicId, ct) ?? throw new NotFoundException("Compañía", publicId.ToString());
+        var domain = TenantDomainRules.NormalizeDomain(req.CustomDomain) ?? throw new ValidationException("customDomain", TenantDomainRules.DomainInvalidMessage);
+        var sub = TenantDomainRules.NormalizeSubdomain(req.Subdomain) ?? throw new ValidationException("subdomain", TenantDomainRules.SubdomainInvalidMessage);
+        if (domain.Length > 0 && await db.Tenants.AnyAsync(x => x.CustomDomain == domain && x.TenantId != t.TenantId, ct)) throw new ConflictException(TenantDomainRules.DomainTakenMessage);
+        if (sub.Length > 0 && await db.Tenants.AnyAsync(x => x.Subdomain == sub && x.TenantId != t.TenantId, ct)) throw new ConflictException(TenantDomainRules.SubdomainTakenMessage);
+        t.CustomDomain = domain.Length == 0 ? null : domain;
+        t.Subdomain = sub.Length == 0 ? null : sub;
+        await db.SaveChangesAsync(ct);
+        return new TenantSummaryDto(t.TenantId, t.PublicId, t.Name, t.LegalName, t.IsActive, t.CreatedAtUtc, t.CustomDomain, t.Subdomain);
     }
 
     public async Task<TenantProvisionResult> ProvisionAsync(TenantProvisionRequest req, CancellationToken ct)

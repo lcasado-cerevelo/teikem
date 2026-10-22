@@ -281,8 +281,9 @@ public sealed class UserAdminService(TeikemDbContext db, UserManager<Application
         if (user.IsPlatformAdmin) perms = PermissionCatalog.All.Select(p => p.Code).OrderBy(p => p).ToList();
         var enabled = tenant.TenantId is null ? new List<string>() : (await modules.GetEnabledKeysAsync(tenant.TenantId.Value, ct)).OrderBy(k => k).ToList();
         var tenantName = tenant.TenantId is null ? null : await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.TenantId == tenant.TenantId).Select(t => t.Name).FirstOrDefaultAsync(ct);
+        var tenantPublicId = tenant.TenantId is null ? (Guid?)null : await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.TenantId == tenant.TenantId).Select(t => (Guid?)t.PublicId).FirstOrDefaultAsync(ct);
         return new MeDto(user.Id, user.FullName, user.Email, user.IsPlatformAdmin, tenant.TenantId, tenantName, tenant.Lang, memberships, perms, enabled,
-            await GetDataScopesAsync(userId, ct), user.TwoFactorEnabled, tenant.Aal2VerifiedAtUtc);
+            await GetDataScopesAsync(userId, ct), user.TwoFactorEnabled, tenant.Aal2VerifiedAtUtc, tenantPublicId);
     }
 
     /// <summary>Miembro del tenant activo y cuenta interna: una cuenta de portal (aunque tuviera una membresía espuria) responde 404 desde estas pantallas.</summary>

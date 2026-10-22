@@ -151,4 +151,8 @@ public sealed class PlatformController(ProvisioningService provisioning) : Contr
     /// <summary>Crea tenant + módulos (núcleo + pedidos) + roles clonados + admin + vistas/indicadores/gráficos por default.</summary>
     [HttpPost, RequireAal2]
     public Task<TenantProvisionResult> Provision([FromBody] TenantProvisionRequest req, CancellationToken ct) => provisioning.ProvisionAsync(req, ct);
+
+    /// <summary>2026-10-22: dominio propio y subdominio de la compañía (el logo de la pantalla de entrada sale de la dirección). Vacío = quitarlo. 400 dirección inválida, 404 compañía, 409 dirección de otra compañía.</summary>
+    [HttpPut("{publicId:guid}/domains")]
+    public Task<TenantSummaryDto> SetDomains(Guid publicId, [FromBody] TenantDomainsRequest req, CancellationToken ct) => provisioning.SetDomainsAsync(publicId, req, ct);
 }

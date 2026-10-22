@@ -10248,3 +10248,11 @@ Kemi responde con el texto del manual para el usuario; los ejemplos de JSON y la
 
 **¿Por qué la bitácora decía «Almacén #n actualizado» cuando se eliminó una posición?**
 Hasta el 2026-10-22 las zonas y las posiciones se guardaban en la bitácora como «Almacén» y con el número de la posición. Desde entonces tienen su propio tipo («Zona de almacén», «Posición de almacén») y sus campos se leen «Activo: Sí → No», «Eliminado: No → Sí», «Eliminado por: Ana Ruiz». Los renglones anteriores a esa fecha siguen con el tipo viejo (no se reescriben).
+
+## Lote 202 — Logo en la pantalla de entrada
+
+**¿Por qué la pantalla de entrada muestra el logo de otra compañía (o el de Teikem)?**
+Manda la última compañía con la que entró esa computadora (por login o al cambiarla en el encabezado); si no hay, la del dominio o subdominio con el que se abrió la página; si tampoco, el de Teikem. En una computadora nueva sin dominio configurado sale el de Teikem. La compañía sube sus logos en Ajustes → Marca.
+
+**¿Cómo configuro el dominio o el subdominio de una compañía?**
+Solo el administrador de la plataforma: `PUT /api/v1/platform/tenants/{publicId}/domains`. Mensajes: «El dominio no es válido. Escríbalo como logistica.miempresa.com, sin https:// ni rutas.» (400), «El subdominio no es válido. Use solo letras minúsculas, números y guiones (por ejemplo depot).» (400), «Ese dominio ya lo usa otra compañía.» y «Ese subdominio ya lo usa otra compañía.» (409). Hay que correr `db-update` para que existan las columnas.
