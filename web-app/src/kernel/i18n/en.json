@@ -4360,6 +4360,8 @@
       "title": "Assign {number}"
     },
     "notices": {
+      "joinNeedTwoArrivals": "You need at least two documents to receive (arrival notices or purchase orders) to receive together.",
+      "joinNeedTwoDepartures": "You need at least two documents to dispatch (exit notices or sales orders) to collect together.",
       "title": "Arrivals & departures",
       "subtitle": "Arrival notices and exit notices: what the goods owner announces is coming in and asks to go out."
     },

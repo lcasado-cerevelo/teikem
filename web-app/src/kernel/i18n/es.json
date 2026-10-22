@@ -4360,6 +4360,8 @@
       "title": "Asignar {number}"
     },
     "notices": {
+      "joinNeedTwoArrivals": "Hace falta al menos dos documentos por recibir (avisos de llegada u órdenes de compra) para recibir juntos.",
+      "joinNeedTwoDepartures": "Hace falta al menos dos documentos por despachar (avisos de salida u órdenes de venta) para recolectar juntos.",
       "title": "Llegadas y salidas",
       "subtitle": "Avisos de llegada y avisos de salida: lo que el dueño de la mercancía anuncia que entra y lo que pide que salga."
     },
