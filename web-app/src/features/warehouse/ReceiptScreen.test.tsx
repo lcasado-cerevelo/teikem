@@ -272,7 +272,7 @@ describe('Recibo: maestro-detalle', () => {
     wrap(`/warehouse/receipts?receipt=${R2}`)
     expect(await rowButton('REC-0002')).toHaveAttribute('aria-current', 'true')
     expect(await screen.findByText('Origen · Orden de compra: OC-0007')).toBeInTheDocument()
-    expect((await screen.findAllByText('Maestra RCM-00001')).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText('Carga RCM-00001')).length).toBeGreaterThan(0)
     expect(await screen.findByRole('textbox', { name: 'Recibido de la línea 1' })).toHaveValue('10')
     expect(screen.queryByRole('textbox', { name: 'Esperado de la línea 1' })).toBeNull()
     expect(screen.queryByRole('combobox', { name: 'Producto de la línea 1' })).toBeNull()

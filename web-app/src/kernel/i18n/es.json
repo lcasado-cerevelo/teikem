@@ -5803,16 +5803,16 @@
     "receipts": {
       "title": "Recibo",
       "subtitle": "Recibos ciegos, de devolución, contra aviso de llegada o contra orden de compra.",
-      "tabGroups": "Maestros",
+      "tabGroups": "Cargas",
       "groups": {
-        "title": "Recepciones maestras",
+        "title": "Cargas recibidas",
         "create": "Recibir juntos",
         "createTitle": "Recibir juntos",
         "createSubmit": "Recibir juntos ({n})",
         "createHelp": "Elija dos o más documentos (avisos de llegada esperando u órdenes de compra por recibir), del mismo dueño y almacén: se abre un recibo por cada uno, con el mismo transporte y referencia, y se pueden confirmar juntos. Cada documento conserva su recibo. No se suman documentos después.",
         "createEmpty": "No hay avisos de llegada ni órdenes de compra por recibir.",
         "needTwo": "Elija al menos dos documentos.",
-        "createdToast": "Recepción maestra {number} abierta.",
+        "createdToast": "Carga {number} abierta.",
         "block": {
           "otherOwner": "De otro dueño: reciba por separado lo de dueños distintos.",
           "otherWarehouse": "De otro almacén.",
@@ -5824,8 +5824,9 @@
         "carrier": "Transporte (opcional)",
         "reference": "Referencia (opcional)",
         "note": "Nota",
-        "searchPlaceholder": "Buscar por número de recepción, recibo, aviso u orden",
-        "empty": "Todavía no hay recepciones maestras.",
+        "search": "Buscar",
+        "searchPlaceholder": "Número de carga, recibo, aviso u orden",
+        "empty": "Todavía no hay cargas recibidas.",
         "columns": {
           "number": "Recepción",
           "owner": "Dueño",
@@ -5839,9 +5840,9 @@
           "CONFIRMED": "Confirmada",
           "CANCELLED": "Eliminada"
         },
-        "badge": "Maestra",
-        "detailTitle": "Recepción maestra",
-        "notFound": "La recepción maestra no existe.",
+        "badge": "Carga",
+        "detailTitle": "Carga recibida",
+        "notFound": "La carga no existe.",
         "warehouse": "Almacén",
         "progress": "Avance",
         "confirmedOf": "{done} de {total} recibos confirmados",
@@ -5865,7 +5866,7 @@
         "confirmTitle": "¿Confirmar todos los recibos?",
         "confirmBody": "Se confirman juntos los recibos de {number} que aún no lo están, con lo capturado en cada uno. Si uno no se puede confirmar, no se confirma ninguno.",
         "confirmedToast": "{number} confirmada.",
-        "deleteTitle": "¿Eliminar la recepción maestra?",
+        "deleteTitle": "¿Eliminar la carga?",
         "deleteBody": "Se elimina {number} y todos sus recibos (ninguno está confirmado). Los avisos quedan libres para recibirse de nuevo.",
         "deleted": "{number} eliminada."
       },
@@ -6121,7 +6122,7 @@
       },
       "chip": {
         "direct": "Directo a posición",
-        "master": "Maestra {number}"
+        "master": "Carga {number}"
       },
       "damage": {
         "title": "Unidades dañadas de {product}",
@@ -6320,12 +6321,12 @@
     },
     "pickBatches": {
       "groups": {
-        "view": "Maestras",
-        "badge": "Maestra",
-        "title": "Recolecciones maestras",
-        "detailTitle": "Recolección maestra",
-        "notFound": "Recolección maestra no encontrada.",
-        "empty": "Todavía no hay recolecciones maestras. En «Por documento», use «Recolectar juntos».",
+        "view": "Cargas",
+        "badge": "Carga",
+        "title": "Cargas recolectadas",
+        "detailTitle": "Carga recolectada",
+        "notFound": "Carga recolectada no encontrada.",
+        "empty": "Todavía no hay cargas recolectadas. En «Por documento», use «Recolectar juntos».",
         "searchPlaceholder": "Buscar por número, cliente o documento…",
         "status": {
           "COLLECTED": "Recolectada",
@@ -6333,7 +6334,7 @@
           "CANCELLED": "Eliminada"
         },
         "columns": {
-          "number": "Maestra",
+          "number": "Carga",
           "documents": "Documentos",
           "qty": "Cantidad"
         },
@@ -6357,15 +6358,15 @@
         "collectEmpty": "No hay avisos de salida ni órdenes de venta con inventario reservado por sacar.",
         "collectSubmit": "Recolectar juntos ({n})",
         "needTwo": "Elija al menos dos documentos.",
-        "collectedToast": "Recolección maestra {number} creada.",
+        "collectedToast": "Carga recolectada {number} creada.",
         "block": {
-          "otherClient": "Es de otro cliente: una maestra es de un solo cliente.",
+          "otherClient": "Es de otro cliente: una carga es de un solo cliente.",
           "max": "Se llegó al máximo de documentos."
         },
-        "deleteTitle": "Eliminar la recolección maestra",
+        "deleteTitle": "Eliminar la carga recolectada",
         "deleteBody": "Se deshacen todas las recolecciones de {number}: el inventario vuelve a su posición y cada documento recupera su reserva.",
         "deletePackedBody": "Se deshacen todas las recolecciones de {number} y se elimina su envío {order} (solo si sigue en la etapa inicial). El inventario vuelve a su posición.",
-        "deleted": "Recolección maestra {number} eliminada."
+        "deleted": "Carga recolectada {number} eliminada."
       },
       "docs": {
         "viewLabel": "Cómo se ve la lista",
@@ -6401,7 +6402,7 @@
         "reserved": "Reservado por sacar",
         "unreservedLabel": "Sin reservar",
         "movesTitle": "Recolecciones ({count})",
-        "master": "Maestra {number}",
+        "master": "Carga {number}",
         "noMoves": "Todavía no tiene recolecciones.",
         "by": "Por",
         "qty": "Cantidad"
@@ -7793,6 +7794,8 @@
       },
       "ops": {
         "defaultsTitle": "Valores por defecto",
+        "clientLabelsDefault": "Imprimir los labels automáticamente en los clientes nuevos",
+        "clientLabelsDefaultHelp": "Es el valor con que nace cada cliente nuevo; después se enciende o se apaga en la ficha del cliente (Perfil → «Imprimir los labels automáticamente»). No cambia a los clientes que ya existen.",
         "svcDefaultLabel": "Tipo de servicio por defecto",
         "pkgDefaultLabel": "Tipo de paquete por defecto",
         "noDefault": "Sin valor por defecto",

@@ -31,6 +31,7 @@ import {
   type DataColumn,
   type RowAction,
 } from '../../../kernel/ui'
+import { usePrintingSettings, useSavePrintingSettings } from '../../printing/printingApi'
 import { useProductCategories, useReceiptSummaryByWarehouse, useWarehouses } from '../../warehouse/api'
 import { problemText } from '../../warehouse/problemText'
 import { useCapabilities, useSaveTenantSettings, useSetCapabilities, type TenantSettingsDto } from '../tenantSettingsApi'
@@ -128,7 +129,43 @@ function DefaultsPanel({ settings, canEdit, wms }: { settings: TenantSettingsDto
           </div>
         )}
       </Form>
+      <ClientLabelsDefault canEdit={canEdit} />
     </Panel>
+  )
+}
+
+/**
+ * 2026-10-22 (Luis): «Imprimir los labels automáticamente» es un dato de cada cliente (ficha → Perfil); este ajuste de la compañía es solo el valor por omisión con que nace cada cliente nuevo
+ * (se apaga o se enciende después en su ficha). No cambia a los clientes que ya existen. Se guarda al instante (PUT /printing/settings, printers.manage).
+ */
+function ClientLabelsDefault({ canEdit }: { canEdit: boolean }) {
+  const t = useT()
+  const canPrinters = useCan('printers.manage')
+  const settings = usePrintingSettings()
+  const save = useSavePrintingSettings()
+  const value = settings.data?.printLabelsDirect ?? false
+  return (
+    <div className="set-gap">
+      <label className="sw">
+        <input
+          type="checkbox"
+          role="switch"
+          checked={value}
+          disabled={!canEdit || !canPrinters || settings.isPending || save.isPending}
+          onChange={async (e) => {
+            try {
+              await save.mutateAsync(e.target.checked)
+              toast.success(t('system.settings.saved'))
+            } catch (err) {
+              toast.error(problemText(err))
+            }
+          }}
+        />
+        <span className="tk" aria-hidden="true" />
+        <span>{t('system.settings.ops.clientLabelsDefault')}</span>
+      </label>
+      <p className="set-d">{t('system.settings.ops.clientLabelsDefaultHelp')}</p>
+    </div>
   )
 }
 

@@ -101,7 +101,7 @@ describe('Recolección maestra', () => {
     const post = mock.calls.find((c) => c.method === 'POST')!
     expect(post.body).toMatchObject({ documents: [{ kind: 'EXIT_NOTICE', publicId: doc(1, 'x').publicId }, { kind: 'SALES_ORDER', publicId: doc(2, 'x', 'SALES_ORDER').publicId }] })
     // la maestra recién creada se abre en la vista «Maestras»
-    expect(await screen.findByText('Recolección maestra')).toBeInTheDocument()
+    expect(await screen.findByText('Carga recolectada')).toBeInTheDocument()
   })
 
   it('la vista «Maestras» lista las maestras y su ficha agrupa los movimientos por documento', async () => {

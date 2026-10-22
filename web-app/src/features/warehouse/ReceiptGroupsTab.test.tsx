@@ -154,7 +154,7 @@ describe('Recepciones maestras (pestaña Maestros)', () => {
 
     mock.status = 'OPEN'
     await user.click(await within(dialog).findByRole('button', { name: 'Eliminar' }))
-    const del = await screen.findByRole('dialog', { name: '¿Eliminar la recepción maestra?' })
+    const del = await screen.findByRole('dialog', { name: '¿Eliminar la carga?' })
     await user.click(within(del).getByRole('button', { name: 'Eliminar' }))
     await waitFor(() => expect(sent('DELETE', `/groups/${G}`)).toHaveLength(1))
   })

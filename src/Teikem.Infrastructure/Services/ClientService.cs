@@ -95,10 +95,14 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
         publicId = await db.RunInTransactionAsync(async ct2 =>
         {
             var code = await ResolveCodeAsync(explicitCode, name, ct2);
+            // 2026-10-22 (Luis): el ajuste de la compañía «Imprimir los labels automáticamente en los clientes nuevos» (Tenant.PrintLabelsDirect) es el valor por omisión de cada cliente que se crea;
+            // luego se apaga o enciende en la ficha del cliente.
+            var labelsDefault = await db.Tenants.AsNoTracking().Where(t => t.TenantId == tenantId).Select(t => t.PrintLabelsDirect).FirstOrDefaultAsync(ct2);
             var client = new Client
             {
                 TenantId = tenantId, Code = code, Name = name, LegalName = legalName, TaxId = taxId, CreditLimit = req.CreditLimit,
                 PaymentTermLookupId = paymentTermId, CurrencyLookupId = currencyId, StatusCodeId = initialClientStatus.StatusCodeId, IsActive = true,
+                AutoPrintLabels = labelsDefault,
             };
             db.Clients.Add(client);
             await db.SaveGuardedAsync("Ya existe un cliente con ese código.", ct2);

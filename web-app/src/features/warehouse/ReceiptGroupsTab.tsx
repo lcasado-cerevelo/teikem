@@ -3,7 +3,8 @@
 import { useMemo, useRef, useState } from 'react'
 import { useFormat } from '../../kernel/format'
 import { useLang, useT } from '../../kernel/i18n'
-import { Chip, DataTable, Filters, IconDoc, Panel, QBox, SelectFilter, useElementWidth, type DataColumn } from '../../kernel/ui'
+import { Chip, DataTable, Filters, IconDoc, Panel, SelectFilter, useElementWidth, type DataColumn } from '../../kernel/ui'
+import { TextFilter } from './filterControls'
 import { exportReceiptGroups, useReceiptGroups, type ReceiptGroupDto } from './api'
 import { formatDateTime, useDebounced } from './lineRules'
 import { ReceiptGroupModal } from './ReceiptGroupModal'
@@ -59,31 +60,28 @@ export function ReceiptGroupsTab({ onOpenReceipt, initialOpen }: { onOpenReceipt
 
   return (
     <div ref={boxRef} className="collect-list">
+      {/* los filtros van juntos y arriba, como en Avisos de llegada: el estatus y el buscador libre */}
+      <Filters
+        onClear={() => {
+          setPage(1)
+          setStatus('')
+          setQ('')
+        }}
+      >
+        <SelectFilter
+          label={t('warehouse.receipts.groups.columns.status')}
+          value={status}
+          onChange={reset(setStatus)}
+          options={['OPEN', 'CONFIRMED', 'CANCELLED'].map((s) => ({ value: s, label: t(`warehouse.receipts.groups.status.${s}`) }))}
+        />
+        <TextFilter label={t('warehouse.receipts.groups.search')} value={q} onChange={reset(setQ)} />
+      </Filters>
       <Panel
         flush
         icon={<IconDoc />}
         title={t('warehouse.receipts.groups.title')}
         badge={data ? (data.total ?? 0) : undefined}
       >
-        <div className="collect-filters">
-          <Filters
-            onClear={() => {
-              setPage(1)
-              setStatus('')
-              setQ('')
-            }}
-          >
-            <SelectFilter
-              label={t('warehouse.receipts.groups.columns.status')}
-              value={status}
-              onChange={reset(setStatus)}
-              options={['OPEN', 'CONFIRMED', 'CANCELLED'].map((s) => ({ value: s, label: t(`warehouse.receipts.groups.status.${s}`) }))}
-            />
-          </Filters>
-        </div>
-        <div className="qrow">
-          <QBox value={q} onChange={reset(setQ)} placeholder={t('warehouse.receipts.groups.searchPlaceholder')} />
-        </div>
         {error ? (
           <p className="pb ferr" role="alert">
             {error.message}

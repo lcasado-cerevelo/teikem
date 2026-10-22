@@ -117,8 +117,8 @@ describe('Recolección y empaque por documento', () => {
     const rows = within(dialog).getAllByRole('row').slice(1)
     expect(rows[0]).toHaveTextContent('EMP-00002')   // la más reciente primero
     expect(rows[0]).toHaveTextContent('Ana Ruiz')
-    expect(rows[0]).toHaveTextContent('Maestra RMA-00001')
-    expect(rows[1]).not.toHaveTextContent('Maestra')
+    expect(rows[0]).toHaveTextContent('Carga RMA-00001')
+    expect(rows[1]).not.toHaveTextContent('Carga')
     await user.click(rows[0])
     await waitFor(() => expect(mock.calls.some((c) => c.url.pathname === `/api/v1/pick-batches/${B2}`)).toBe(true))
   })

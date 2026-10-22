@@ -5803,16 +5803,16 @@
     "receipts": {
       "title": "Receiving",
       "subtitle": "Blind and return receipts, against an advance shipping notice or against a purchase order.",
-      "tabGroups": "Master receipts",
+      "tabGroups": "Loads",
       "groups": {
-        "title": "Master receipts",
+        "title": "Received loads",
         "create": "Receive together",
         "createTitle": "Receive together",
         "createSubmit": "Receive together ({n})",
         "createHelp": "Choose two or more documents (expected arrival notices or purchase orders to receive), from the same owner and warehouse: a receipt is opened for each, with the same carrier and reference, and they can be confirmed together. Each document keeps its own receipt. Documents cannot be added later.",
         "createEmpty": "There are no arrival notices or purchase orders to receive.",
         "needTwo": "Choose at least two documents.",
-        "createdToast": "Master receipt {number} opened.",
+        "createdToast": "Load {number} opened.",
         "block": {
           "otherOwner": "From another owner: receive separately what belongs to different owners.",
           "otherWarehouse": "From another warehouse.",
@@ -5824,8 +5824,9 @@
         "carrier": "Carrier (optional)",
         "reference": "Reference (optional)",
         "note": "Note",
-        "searchPlaceholder": "Search by master, receipt, notice or order number",
-        "empty": "There are no master receipts yet.",
+        "search": "Search",
+        "searchPlaceholder": "Load number, receipt, notice or order",
+        "empty": "There are no received loads yet.",
         "columns": {
           "number": "Master receipt",
           "owner": "Owner",
@@ -5839,9 +5840,9 @@
           "CONFIRMED": "Confirmed",
           "CANCELLED": "Deleted"
         },
-        "badge": "Master",
-        "detailTitle": "Master receipt",
-        "notFound": "The master receipt does not exist.",
+        "badge": "Load",
+        "detailTitle": "Received load",
+        "notFound": "The load does not exist.",
         "warehouse": "Warehouse",
         "progress": "Progress",
         "confirmedOf": "{done} of {total} receipts confirmed",
@@ -5865,7 +5866,7 @@
         "confirmTitle": "Confirm all receipts?",
         "confirmBody": "The receipts of {number} that are not confirmed yet are confirmed together, with what was captured in each. If one cannot be confirmed, none is.",
         "confirmedToast": "{number} confirmed.",
-        "deleteTitle": "Delete the master receipt?",
+        "deleteTitle": "Delete the load?",
         "deleteBody": "{number} and all its receipts are deleted (none is confirmed). The notices become free to be received again.",
         "deleted": "{number} deleted."
       },
@@ -6121,7 +6122,7 @@
       },
       "chip": {
         "direct": "Direct to bin",
-        "master": "Master {number}"
+        "master": "Load {number}"
       },
       "damage": {
         "title": "Damaged units of {product}",
@@ -6320,12 +6321,12 @@
     },
     "pickBatches": {
       "groups": {
-        "view": "Masters",
-        "badge": "Master",
-        "title": "Master pick batches",
-        "detailTitle": "Master pick batch",
-        "notFound": "Master pick batch not found.",
-        "empty": "There are no master pick batches yet. In \"By document\", use \"Collect together\".",
+        "view": "Loads",
+        "badge": "Load",
+        "title": "Picked loads",
+        "detailTitle": "Picked load",
+        "notFound": "Picked load not found.",
+        "empty": "There are no picked loads yet. In “By document”, use “Collect together”.",
         "searchPlaceholder": "Search by number, client or document…",
         "status": {
           "COLLECTED": "Collected",
@@ -6333,7 +6334,7 @@
           "CANCELLED": "Deleted"
         },
         "columns": {
-          "number": "Master",
+          "number": "Load",
           "documents": "Documents",
           "qty": "Quantity"
         },
@@ -6357,15 +6358,15 @@
         "collectEmpty": "There are no exit notices or sales orders with reserved inventory left to collect.",
         "collectSubmit": "Collect together ({n})",
         "needTwo": "Choose at least two documents.",
-        "collectedToast": "Master pick batch {number} created.",
+        "collectedToast": "Picked load {number} created.",
         "block": {
-          "otherClient": "It belongs to another client: a master pick batch is for one client only.",
+          "otherClient": "It belongs to another client: a load is for a single client.",
           "max": "The maximum number of documents was reached."
         },
-        "deleteTitle": "Delete the master pick batch",
+        "deleteTitle": "Delete the picked load",
         "deleteBody": "All pick batches of {number} are undone: the inventory goes back to its bin and each document gets its reservation back.",
         "deletePackedBody": "All pick batches of {number} are undone and its shipment {order} is deleted (only if still in the initial stage). The inventory goes back to its bin.",
-        "deleted": "Master pick batch {number} deleted."
+        "deleted": "Picked load {number} deleted."
       },
       "docs": {
         "viewLabel": "How the list is shown",
@@ -6401,7 +6402,7 @@
         "reserved": "Reserved to collect",
         "unreservedLabel": "Not reserved",
         "movesTitle": "Collections ({count})",
-        "master": "Master {number}",
+        "master": "Load {number}",
         "noMoves": "It has no collections yet.",
         "by": "By",
         "qty": "Quantity"
@@ -7793,6 +7794,8 @@
       },
       "ops": {
         "defaultsTitle": "Defaults",
+        "clientLabelsDefault": "Print labels automatically for new clients",
+        "clientLabelsDefaultHelp": "It is the value each new client starts with; afterwards it is switched on or off in the client record (Profile → “Print labels automatically”). It does not change existing clients.",
         "svcDefaultLabel": "Default service type",
         "pkgDefaultLabel": "Default package type",
         "noDefault": "No default",

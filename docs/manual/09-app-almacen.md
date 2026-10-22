@@ -1447,3 +1447,12 @@ Dos permisos nuevos (categoría Almacén, Sistema → Roles; el administrador lo
 **Servidor.** Los endpoints `assign` (aviso de llegada, aviso de salida, orden de compra, orden de venta y tarea) aceptan `warehouse.manage` o `warehouse.app.reassign`; `GET /api/v1/warehouse-tasks/assignees` devuelve las personas asignables (con ver todo, reasignar o administrar). La bitácora del documento anota quién reasignó.
 
 **Recibir varios documentos juntos (corrección, 2026-10-21).** Al marcar dos o más avisos u órdenes en Recibir, **se trabajan juntos en una sola pantalla**: el título dice «LLE-00001 + LLE-00002», «Lo que dice el documento» suma lo esperado de todos y se aceptan (y salen en «Buscar en lista») los productos de **todos**. Al confirmar, lo capturado se reparte entre los documentos **en el orden en que se marcaron**, cada uno hasta lo que le falta (esperado − ya recibido); lo que sobre de todos va al último documento que trae ese producto. Sale **un recibo por documento** (con la misma llave de carga si son del mismo dueño, así el servidor arma la recepción maestra). En Despacho la ruta ya reunía las líneas de todos los documentos marcados.
+
+
+## Ajustes de Recibir, Despacho y Acomodar (2026-10-22)
+
+- **Cuándo se asigna.** Escoger o abrir un documento (o un acomodo) sin dueño **ya no lo asigna**. Queda a su nombre cuando **confirma una cantidad**: en Recibir al agregar una línea, en Despacho al aceptar la cantidad de una línea y en Acomodar al completar el acomodo. Si cancela antes, no queda asignado.
+- **Sin «Buscar en lista» contra un documento.** En Recibir contra un aviso u orden solo se usa el campo y la lista «Lo que dice el documento». En Despacho, bajo el campo del producto sale la lista **«Falta por sacar»** con cada producto y lo que falta; tocar uno equivale a escanearlo.
+- **Resumen del recibo:** «Esperado · Recibido · **Dañado**».
+- **Acomodar.** Las partes de un mismo recibo (mismo producto, lote y posición de recepción) son **una sola tarea** con el total. Cada fila dice el recibo, el almacén y la posición de donde sale. Abrir una tarea que usted ya inició no da error («La tarea ya está en proceso.» solo si la tiene otra persona). «Reasignar» es un botón pequeño a la derecha de la fila.
+- **Web.** La pestaña «Maestros» de Recibo (y «Maestras» de Recolección) se llama ahora **«Cargas»**.
