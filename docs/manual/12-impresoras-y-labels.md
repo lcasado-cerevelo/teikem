@@ -116,7 +116,7 @@ Plantillas:
 ## 6. Label de factura (bandera del cliente «Label de factura»)
 
 - `Client.AutoPrintInvoice`, por cliente (el que manda, *sender*), apagada por defecto. Se ve en la ficha del cliente (`autoPrintInvoice`)
-  y se cambia en el Perfil fiscal del cliente (`PATCH …/profile` con `autoPrintInvoice: true|false`; sin el campo no cambia). Desde 2026-10-21
+  y se cambia en el panel «Impresión y portal» de la ficha del cliente (antes estaba en el Perfil fiscal) (`PATCH …/profile` con `autoPrintInvoice: true|false`; sin el campo no cambia). Desde 2026-10-21
   enciende el **label de factura**.
 - **Qué sale**: al guardar un envío de ese cliente que tenga **número de factura**, **después** de los labels de los paquetes sale **un** label de
   la factura (uno por envío, no por pieza) por la **misma impresora de labels** de la estación. Sale **solo, sin vista previa ni pregunta**, aunque la

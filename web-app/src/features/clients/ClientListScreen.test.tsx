@@ -276,7 +276,7 @@ describe('Clientes — ficha', () => {
     wrap(ALL)
     await screen.findByRole('heading', { name: 'Acme Corp' })
     const titles = (await screen.findAllByRole('heading', { level: 2 })).map((h) => h.textContent)
-    const order = ['Acme Corp', 'Direcciones', 'Perfil fiscal', 'Teléfonos y correos', 'Personas de contacto', 'Numeración', 'Contratos', 'Historial de estatus']
+    const order = ['Acme Corp', 'Direcciones', 'Perfil fiscal', 'Impresión y portal', 'Teléfonos y correos', 'Personas de contacto', 'Numeración', 'Contratos', 'Historial de estatus']
     const idx = order.map((o) => titles.indexOf(o))
     expect(idx.every((n) => n >= 0)).toBe(true)
     expect([...idx].sort((a, b) => a - b)).toEqual(idx)
@@ -333,17 +333,13 @@ describe('Clientes — ficha', () => {
     expect(screen.getByText('Contratos: 1 · vigente: ACME-001 · Contrato marco')).toBeInTheDocument()
   })
 
-  it('perfil fiscal: guarda con rowVersion (sin direcciones ni punto de recogida) y los labels automáticos van antes que la factura', async () => {
+  it('perfil fiscal: guarda con rowVersion (sin direcciones, punto de recogida ni banderas de impresión)', async () => {
     const user = userEvent.setup()
     wrap(ALL)
     await screen.findByRole('heading', { name: 'Perfil fiscal' })
-    const labels = screen.getByLabelText(/Imprimir los labels automáticamente/)
-    const invoice = screen.getByLabelText(/Imprimir el label de la factura automáticamente/)
-    expect(labels.compareDocumentPosition(invoice) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy() // labels primero
     const legal = screen.getByLabelText('Razón social')
     await user.clear(legal)
     await user.type(legal, 'Acme Inc')
-    await user.click(labels)
     await user.click(screen.getAllByRole('button', { name: 'Guardar' })[0])
     await waitFor(() => expect(callsTo('PATCH', '/api/v1/clients/c-1/profile')).toHaveLength(1))
     expect(callsTo('PATCH', '/api/v1/clients/c-1/profile')[0].body).toMatchObject({
@@ -352,11 +348,27 @@ describe('Clientes — ficha', () => {
       creditLimit: 1000,
       paymentTerm: 'NET30',
       currency: 'USD',
-      autoPrintLabels: true,
       rowVersion: 'AAA=',
     })
     expect(callsTo('PATCH', '/api/v1/clients/c-1/profile')[0].body).not.toHaveProperty('defaultPickupLocationPublicId')
     expect(callsTo('PATCH', '/api/v1/clients/c-1/profile')[0].body).not.toHaveProperty('autoPrintInvoice')
+    expect(callsTo('PATCH', '/api/v1/clients/c-1/profile')[0].body).not.toHaveProperty('autoPrintLabels')
+  })
+
+  it('impresión y portal: tiene su propio panel, con los labels antes que la factura, y guarda solo la bandera que cambió', async () => {
+    const user = userEvent.setup()
+    wrap(ALL)
+    await screen.findByRole('heading', { name: 'Impresión y portal' })
+    const labels = screen.getByLabelText(/Imprimir los labels automáticamente/)
+    const invoice = screen.getByLabelText(/Imprimir el label de la factura automáticamente/)
+    expect(labels.compareDocumentPosition(invoice) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    await user.click(labels)
+    const panel = screen.getByRole('heading', { name: 'Impresión y portal' }).closest('section, div.panel, article') as HTMLElement
+    await user.click(within(panel).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(callsTo('PATCH', '/api/v1/clients/c-1/profile')).toHaveLength(1))
+    const body = callsTo('PATCH', '/api/v1/clients/c-1/profile')[0].body
+    expect(body).toMatchObject({ autoPrintLabels: true, rowVersion: 'AAA=' })
+    expect(body).not.toHaveProperty('autoPrintInvoice')
   })
 
   it('perfil: 409 de rowVersion muestra el mensaje exacto del servidor y relee la ficha', async () => {

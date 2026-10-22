@@ -6,7 +6,7 @@ import { Can, useCan, useModule } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useT } from '../../kernel/i18n'
 import { EmptyState, Modal, Panel, Spinner, toast } from '../../kernel/ui'
-import { IconUsers } from '../../kernel/ui/screenIcons'
+import { IconSupportTeam } from '../../kernel/ui/screenIcons'
 import { useServiceTeam, useSetServiceTeam, useTeamCandidates } from './api'
 import { WriteFirstModal } from './WriteFirstModal'
 import './clientMessages.css'
@@ -96,7 +96,7 @@ export function ClientServiceTeamPanel({ clientPublicId, clientActive = true }: 
 
   return (
     <Panel
-      icon={<IconUsers />}
+      icon={<IconSupportTeam />}
       title={t('clientMessages.team.title')}
       badge={members.length}
       collapsible
@@ -121,7 +121,7 @@ export function ClientServiceTeamPanel({ clientPublicId, clientActive = true }: 
       {isPending ? (
         <Spinner block />
       ) : error ? (
-        <EmptyState icon={<IconUsers />} title={applyProblemDetails(error).title} />
+        <EmptyState icon={<IconSupportTeam />} title={applyProblemDetails(error).title} />
       ) : (
         <>
           {data?.usesFallback && <p className="note cm-team-note">{t('clientMessages.team.fallbackNote', { n: data.fallbackCount ?? 0 })}</p>}

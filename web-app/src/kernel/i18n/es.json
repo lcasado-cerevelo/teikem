@@ -487,6 +487,12 @@
       "contractTitle": "Título del contrato",
       "contractTitlePlaceholder": "Contrato marco"
     },
+    "printing": {
+      "title": "Impresión y portal",
+      "sumLabels": "labels automáticos",
+      "sumInvoice": "label de factura",
+      "sumNone": "sin impresión automática"
+    },
     "profile": {
       "title": "Perfil fiscal",
       "nameReadOnly": "El nombre no se cambia desde aquí.",

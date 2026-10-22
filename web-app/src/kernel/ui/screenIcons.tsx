@@ -250,6 +250,45 @@ export function IconPhoneFormat() {
 /** 'print' de la maqueta (Lote F-G1): Impresoras y labels, Prueba e Imprimir. Mismo trazo que el del panel Teléfono. */
 export const IconPrint = IconPhoneFormat
 
+/** Ficha del cliente: edificio con cúpula y columnas (un Capitolio), para el nombre de la compañía. */
+export function IconCapitol() {
+  return (
+    <Svg>
+      <path d="M12 2v3M8 9a4 4 0 0 1 8 0M3 9h18M5 9v9M9.5 9v9M14.5 9v9M19 9v9M2 21h20M3 18h18" />
+    </Svg>
+  )
+}
+
+/** Personas de contacto: una persona y su tarjeta de contacto. */
+export function IconContactPerson() {
+  return (
+    <Svg>
+      <circle cx="8.5" cy="8" r="3" />
+      <path d="M3 20a5.5 5.5 0 0 1 11 0M16 7h5M16 11h5M16 15h3" />
+    </Svg>
+  )
+}
+
+/** Equipo de servicio del cliente: audífonos con micrófono (quien lo atiende). */
+export function IconSupportTeam() {
+  return (
+    <Svg>
+      <path d="M4 14v-2a8 8 0 0 1 16 0v2M4 14h3v5H4zM17 14h3v5h-3zM20 19a4 4 0 0 1-4 3h-2" />
+    </Svg>
+  )
+}
+
+/** Impresión y portal del cliente: impresora y, al lado, una pantalla (lo que sale solo y lo que el cliente crea desde su portal). */
+export function IconPrintPortal() {
+  return (
+    <Svg>
+      <path d="M6 9V3h8v6M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M6 14h8v7H6z" />
+      <rect x="16" y="3" width="6" height="9" rx="1" />
+      <path d="M18 9.5h2" />
+    </Svg>
+  )
+}
+
 /** 'scan' de la maqueta: Estación de escaneo (recuadro con barras). */
 export function IconScan() {
   return (

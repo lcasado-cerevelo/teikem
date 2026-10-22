@@ -28,7 +28,7 @@ import {
   toast,
   useElementWidth,
 } from '../../kernel/ui'
-import { IconUsers } from '../../kernel/ui/screenIcons'
+import { IconContactPerson } from '../../kernel/ui/screenIcons'
 import { useSaveClientContact, useSaveContactPoint } from './api'
 import {
   CONTACT_NAME_MAX,
@@ -207,7 +207,7 @@ export function ClientPeoplePanel({ client }: { client: ClientDetail }) {
   return (
     <Panel
       flush
-      icon={<IconUsers />}
+      icon={<IconContactPerson />}
       title={t('clients.people.title')}
       badge={people.length}
       collapsible
@@ -223,7 +223,7 @@ export function ClientPeoplePanel({ client }: { client: ClientDetail }) {
     >
       <div ref={ref}>
         {people.length === 0 ? (
-          <EmptyState icon={<IconUsers />} title={t('clients.people.empty')} />
+          <EmptyState icon={<IconContactPerson />} title={t('clients.people.empty')} />
         ) : (
           <DataTable
             label={t('clients.people.title')}

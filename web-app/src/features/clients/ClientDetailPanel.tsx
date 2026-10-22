@@ -8,7 +8,7 @@ import { StatusHistory, StatusPipeline } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
 import { Chip, ConfirmDialog, EmptyState, Panel, Spinner, toast } from '../../kernel/ui'
 import { IconPower, IconRotateCcw } from '../../kernel/ui/actionIcons'
-import { IconClock, IconUsers } from '../../kernel/ui/screenIcons'
+import { IconClock, IconCapitol } from '../../kernel/ui/screenIcons'
 import { useClient, useSetClientActive, useTransitionClient } from './api'
 import { ClientAddressesPanel } from './ClientAddressesPanel'
 import { ClientConsigneesPanel } from './ClientConsigneesPanel'
@@ -20,6 +20,7 @@ import { ClientNotificationsPanel } from './ClientNotificationsPanel'
 import { ClientServiceTeamPanel } from '../clientMessages/ClientServiceTeamPanel'
 import { ClientPortalPanel } from './ClientPortalPanel'
 import { ClientPeoplePanel } from './ClientPeoplePanel'
+import { ClientPrintingPanel } from './ClientPrintingPanel'
 import { ClientProfilePanel } from './ClientProfilePanel'
 import { CLIENT_ENTITY_TYPE, CLIENT_STATUS_DOMAIN, type ClientDetail } from './clientRules'
 import { useState } from 'react'
@@ -34,7 +35,7 @@ function ClientHeaderPanel({ client }: { client: ClientDetail }) {
 
   return (
     <Panel
-      icon={<IconUsers />}
+      icon={<IconCapitol />}
       title={client.name ?? client.code ?? ''}
       badge={client.code ?? undefined}
       collapsible
@@ -104,7 +105,7 @@ export function ClientDetailPanel({ publicId }: { publicId: string }) {
   if (error || !client) {
     return (
       <Panel>
-        <EmptyState icon={<IconUsers />} title={error ? applyProblemDetails(error).title : t('clients.notFound')} />
+        <EmptyState icon={<IconCapitol />} title={error ? applyProblemDetails(error).title : t('clients.notFound')} />
       </Panel>
     )
   }
@@ -114,6 +115,7 @@ export function ClientDetailPanel({ publicId }: { publicId: string }) {
       <ClientHeaderPanel client={client} />
       <ClientAddressesPanel client={client} />
       <ClientProfilePanel client={client} />
+      <ClientPrintingPanel client={client} />
       <ClientContactPointsPanel client={client} />
       <ClientPeoplePanel client={client} />
       <ClientNumberingPanel client={client} />

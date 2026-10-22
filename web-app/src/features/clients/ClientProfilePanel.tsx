@@ -1,12 +1,12 @@
 // Panel «Perfil fiscal»: nombre (solo lectura), razón social (el nombre legal de la entidad, el de las facturas), identificación
-// fiscal, límite de crédito, término de pago, moneda e «Imprimir los labels / la factura automáticamente» (banderas del cliente).
+// fiscal, límite de crédito, término de pago, moneda y tipos por omisión (lo de imprimir y lo del portal está en ClientPrintingPanel).
 // PATCH /profile con rowVersion (409 = otro usuario guardó antes: se muestra el mensaje del servidor y se relee la ficha).
 // Las direcciones y el punto de recogido por defecto viven en el panel «Direcciones» (ClientAddressesPanel).
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
 import { useId, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
-import { Can, ModuleGate, ModuleKeys, useCan } from '../../kernel/access'
+import { Can, useCan } from '../../kernel/access'
 import { useLookups, type LookupOption } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
 import { Field, Form, NumberInput, Panel, Select, TextInput, Toggle, toast } from '../../kernel/ui'
@@ -110,25 +110,6 @@ export function ClientProfilePanel({ client }: { client: ClientDetail }) {
               <Select options={lookupOptions(packageTypes, client.defaultPackageType)} placeholder={t('clients.profile.companyDefault')} />
             </Field>
           </div>
-          <Field name="autoPrintLabels" label={t('clients.profile.autoPrintLabels')} help={t('clients.profile.autoPrintLabelsHelp')}>
-            <Toggle text={t('clients.profile.autoPrintLabelsText')} />
-          </Field>
-          <Field name="autoPrintInvoice" label={t('clients.profile.autoPrintInvoice')} help={t('clients.profile.autoPrintInvoiceHelp')}>
-            <Toggle text={t('clients.profile.autoPrintInvoiceText')} />
-          </Field>
-          <ModuleGate module={ModuleKeys.WmsLotSerial}>
-            <h3 className="set-h3">{t('clients.profile.portalCreateTitle')}</h3>
-            <p className="help">{t('clients.profile.portalCreateHelp')}</p>
-            <Field name="portalCanCreateProducts" label={t('clients.profile.portalCreateProducts')}>
-              <Toggle text={t('clients.profile.portalCreateProductsText')} />
-            </Field>
-            <Field name="portalCanCreateArrivals" label={t('clients.profile.portalCreateArrivals')}>
-              <Toggle text={t('clients.profile.portalCreateArrivalsText')} />
-            </Field>
-            <Field name="portalCanCreateExits" label={t('clients.profile.portalCreateExits')}>
-              <Toggle text={t('clients.profile.portalCreateExitsText')} />
-            </Field>
-          </ModuleGate>
         </fieldset>
 
         <Can perm="clients.update">

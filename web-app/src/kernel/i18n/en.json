@@ -487,6 +487,12 @@
       "contractTitle": "Contract title",
       "contractTitlePlaceholder": "Master contract"
     },
+    "printing": {
+      "title": "Printing & portal",
+      "sumLabels": "automatic labels",
+      "sumInvoice": "invoice label",
+      "sumNone": "no automatic printing"
+    },
     "profile": {
       "title": "Tax profile",
       "nameReadOnly": "The name cannot be changed from here.",
