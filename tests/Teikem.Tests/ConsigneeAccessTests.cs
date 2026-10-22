@@ -196,7 +196,10 @@ public class ConsigneeAccessTests
 
         // sin correo escrito usa el principal que el consignatario ya tiene registrado (el de Tienda Norte ya tiene acceso: mismo 409 neutro)
         var dup = await Assert.ThrowsAsync<ConflictException>(() => w.Access.InviteAsync(w.LocTiendaId, new ConsigneeAccessInviteRequest(null, null), default));
-        Assert.Equal(PortalUserService.DuplicateEmail, dup.Message);
+        Assert.Equal(PortalUserService.AlreadyActive, dup.Message);
+        // y el que está invitado y todavía no entró: dice que ya tiene una invitación pendiente y que la reenvíe
+        var pending = await Assert.ThrowsAsync<ConflictException>(() => w.Access.InviteAsync(w.LocColmadoId, new ConsigneeAccessInviteRequest("colmado.nuevo@sur.co", null), default));
+        Assert.Equal(PortalUserService.AlreadyInvited, pending.Message);
         var list = await w.Access.ListAsync(w.LocColmadoId, default);
         Assert.Contains(list, x => x.Email == "colmado.nuevo@sur.co" && x.Status == PortalUserStatuses.Invited);
         Assert.Contains(list, x => x.Email == "colmado@sur.co" && x.Status == PortalUserStatuses.Active);

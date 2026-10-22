@@ -5,6 +5,8 @@ import { Pressable, Text, View } from 'react-native'
 
 import { apiErrorMessage } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n/useT'
+import { CellText, DataTable, PageHeader, type Column } from '../../kernel/ui/desk'
+import { useIsWide } from '../../kernel/ui/layout'
 import { Button, Card, Chip, Muted, Notice, Screen, Spinner, Title, useColors } from '../../kernel/ui/ui'
 import { formatDate, formatMoney } from '../format'
 import { listInvoices, PAGE_SIZE, type PortalInvoiceListItemDto } from '../portalApi'
@@ -16,6 +18,7 @@ export function InvoicesScreen() {
   const colors = useColors()
   const { t, lang } = useT()
   const router = useRouter()
+  const wide = useIsWide()
   const [status, setStatus] = useState<string>('')
   const [items, setItems] = useState<PortalInvoiceListItemDto[]>([])
   const [total, setTotal] = useState(0)
@@ -42,6 +45,39 @@ export function InvoicesScreen() {
   useEffect(() => {
     void load(0)
   }, [load])
+
+  if (wide) {
+    const columns: Column<PortalInvoiceListItemDto>[] = [
+      { key: 'number', title: t('invoices.col.number'), width: 150, render: (i) => <CellText bold>{i.number}</CellText> },
+      { key: 'issued', title: t('invoices.col.issued'), width: 120, render: (i) => <CellText>{i.issueDate ? formatDate(i.issueDate, lang) : '—'}</CellText> },
+      { key: 'due', title: t('invoices.col.due'), width: 120, render: (i) => <CellText>{i.dueDate ? formatDate(i.dueDate, lang) : '—'}</CellText> },
+      { key: 'total', title: t('invoices.col.total'), flex: 1, align: 'right', render: (i) => <CellText align="right">{formatMoney(i.total, lang)}</CellText> },
+      { key: 'paid', title: t('invoices.col.paid'), flex: 1, align: 'right', render: (i) => <CellText align="right" muted>{formatMoney(i.paid, lang)}</CellText> },
+      { key: 'balance', title: t('invoices.col.balance'), flex: 1, align: 'right', render: (i) => <CellText align="right" bold>{i.status === 'VOID' ? '—' : formatMoney(i.balance, lang)}</CellText> },
+      { key: 'status', title: t('invoices.col.status'), width: 150, render: (i) => <Chip label={i.statusLabel ?? i.status ?? ''} tone={invoiceTone(i.status)} /> },
+    ]
+    return (
+      <Screen wide>
+        <PageHeader title={t('invoices.title')} subtitle={t('invoices.readOnly')}>
+          {FILTERS.map((f) => (
+            <Pressable key={f || 'all'} onPress={() => setStatus(f)} accessibilityRole="button" accessibilityState={{ selected: status === f }} testID={`invoices-filter-${f || 'all'}`}
+              style={{ paddingVertical: 6, paddingHorizontal: 14, borderRadius: 18, borderWidth: 1, borderColor: status === f ? colors.brand : colors.line, backgroundColor: status === f ? colors.brand : colors.card }}>
+              <Text style={{ color: status === f ? colors.onBrand : colors.text, fontWeight: '600' }}>{t(`invoices.filter.${f || 'all'}`)}</Text>
+            </Pressable>
+          ))}
+        </PageHeader>
+        {!!error && (
+          <>
+            <Notice>{error}</Notice>
+            <Button title={t('common.retry')} variant="secondary" onPress={() => void load(0)} />
+          </>
+        )}
+        <DataTable columns={columns} rows={items} keyOf={(i) => String(i.publicId)} onRowPress={(i) => router.push({ pathname: '/invoice/[id]', params: { id: i.publicId as string } })} empty={loading ? undefined : t('invoices.empty')} testID="invoices-table" />
+        {loading && <Spinner />}
+        {!loading && items.length < total && <Button title={t('orders.loadMore', { shown: items.length, total })} variant="secondary" onPress={() => void load(items.length)} />}
+      </Screen>
+    )
+  }
 
   return (
     <Screen wide>

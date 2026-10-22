@@ -147,12 +147,15 @@ export const getSummary = () => unwrap(api.GET('/api/v1/portal/summary'))
 export interface OrderQuery {
   search?: string
   status?: string
+  /** Informes: del día (inclusive) al día (exclusivo), en UTC. */
+  fromUtc?: string
+  toUtc?: string
   skip?: number
   take?: number
 }
 
 export const listOrders = (q: OrderQuery) =>
-  unwrap(api.GET('/api/v1/portal/orders', { params: { query: { search: q.search || undefined, status: q.status || undefined, skip: q.skip ?? 0, take: q.take ?? PAGE_SIZE } } }))
+  unwrap(api.GET('/api/v1/portal/orders', { params: { query: { search: q.search || undefined, status: q.status || undefined, fromUtc: q.fromUtc || undefined, toUtc: q.toUtc || undefined, skip: q.skip ?? 0, take: q.take ?? PAGE_SIZE } } }))
 
 export const getOrder = (publicId: string) => unwrap(api.GET('/api/v1/portal/orders/{publicId}', { params: { path: { publicId } } }))
 

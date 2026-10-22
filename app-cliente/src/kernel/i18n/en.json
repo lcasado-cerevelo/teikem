@@ -16,7 +16,8 @@
     "shipments": "Shipments",
     "notices": "Notices",
     "messages": "Messages",
-    "settings": "Settings"
+    "settings": "Settings",
+    "reports": "Reports"
   },
   "warehouse": {
     "title": "My warehouse",
@@ -54,7 +55,24 @@
     "method": {
       "AVERAGE": "average cost",
       "LAYERS": "by layers (first in)"
-    }
+    },
+    "col": {
+      "sku": "SKU",
+      "product": "Product",
+      "warehouse": "Warehouse",
+      "lot": "Lot",
+      "expires": "Expires",
+      "brand": "Brand / category",
+      "barcode": "Barcode",
+      "tracking": "Tracking",
+      "date": "Date",
+      "type": "Type",
+      "qty": "Quantity",
+      "reference": "Reference",
+      "units": "Units",
+      "unvalued": "No cost"
+    },
+    "unvaluedShort": "Not counted in the value"
   },
   "login": {
     "title": "Client portal",
@@ -169,7 +187,18 @@
     "noMatches": "No shipment matches the search.",
     "orderNumber": "Shipment {number}",
     "loadMore": "Load more ({shown} of {total})",
-    "new": "New shipment"
+    "new": "New shipment",
+    "count": "{n} shipments",
+    "col": {
+      "waybill": "Waybill",
+      "order": "Shipment",
+      "date": "Date",
+      "consignee": "Consignee",
+      "city": "Town",
+      "pieces": "Pieces",
+      "cod": "COD",
+      "status": "Status"
+    }
   },
   "order": {
     "title": "Shipment",
@@ -301,6 +330,31 @@
       "cod": "The amount must be a number.",
       "date": "Write the date as YYYY-MM-DD, today or later.",
       "notes": "Notes cannot exceed {max} characters."
+    },
+    "mode": {
+      "quick": "Quick",
+      "detailed": "Detailed"
+    },
+    "quick": {
+      "subtitle": "One row per shipment: Enter moves to the next field and, on the last one, saves and leaves a fresh row ready.",
+      "hint": "Type the consignee and pick it from the list (Enter takes the first one); “+ New” creates it in the same row.",
+      "savedCount": "{n} saved",
+      "codTotal": "COD total: {amount}",
+      "saved": "Saved",
+      "saveRow": "Save row",
+      "consigneePlaceholder": "Search consignee…",
+      "newConsignee": "+ New consignee “{name}”",
+      "newBlock": "New consignee (name, address and town are required)",
+      "col": {
+        "date": "Date",
+        "invoice": "Invoice",
+        "consignee": "Consignee",
+        "description": "Description",
+        "pieces": "Pieces",
+        "weight": "Weight kg",
+        "cod": "COD",
+        "notes": "Notes"
+      }
     }
   },
   "unsubscribe": {
@@ -435,7 +489,16 @@
     "balanceLabel": "Balance",
     "lines": "Details",
     "order": "shipment {number}",
-    "payments": "Payments received"
+    "payments": "Payments received",
+    "col": {
+      "number": "Invoice",
+      "issued": "Issued",
+      "due": "Due",
+      "total": "Total",
+      "paid": "Paid",
+      "balance": "Balance",
+      "status": "Status"
+    }
   },
   "noticePrefs": {
     "title": "My notices",
@@ -557,6 +620,58 @@
       "title": "Exit notices",
       "empty": "There are no exit notices yet.",
       "pending": "with backorder"
+    }
+  },
+  "reports": {
+    "title": "Reports",
+    "subtitle": "Your account data to review, print or take to Excel. Pick a report, set the dates and export.",
+    "pick": "Pick a report from the list.",
+    "none": "Your company has no reports available for you yet.",
+    "back": "← Back to the list",
+    "groups": {
+      "shipments": "Shipments",
+      "money": "Money",
+      "inventory": "Inventory"
+    },
+    "name": {
+      "shipments": "Shipments of the period",
+      "byStatus": "Shipments by status",
+      "cod": "Cash on delivery (COD)",
+      "invoices": "Invoices and balance",
+      "stock": "Stock on hand",
+      "movements": "Inventory movements",
+      "valuation": "Inventory value"
+    },
+    "desc": {
+      "shipments": "Every shipment created in the dates: consignee, pieces, COD and status.",
+      "byStatus": "How many shipments, pieces and COD are in each status in the dates.",
+      "cod": "The period’s cash-on-delivery shipments and the total to collect.",
+      "invoices": "What was billed, paid and is owed, per invoice.",
+      "stock": "What you have in the warehouse by product, warehouse and lot.",
+      "movements": "Receipts, issues and adjustments of your inventory in the dates.",
+      "valuation": "What your inventory is worth by the cost of each receipt."
+    },
+    "from": "From",
+    "to": "To",
+    "search": "Search",
+    "run": "Run",
+    "hint": "Set the dates and press “Run”.",
+    "rows": "{n} rows",
+    "preview": "Showing the first {n}; the exported file has them all.",
+    "export": "Export to Excel (CSV)",
+    "truncated": "There are more rows than can be fetched at once (5,000). Shorten the dates to see the rest.",
+    "empty": "No data with those filters.",
+    "total": "Total",
+    "preset": {
+      "thisMonth": "This month",
+      "lastMonth": "Last month",
+      "last30": "Last 30 days",
+      "thisYear": "This year"
+    },
+    "col": {
+      "service": "Service",
+      "shipments": "Shipments",
+      "reason": "Reason"
     }
   }
 }

@@ -5,9 +5,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 
 import { apiErrorMessage } from '../../kernel/api/client'
+import { StoreKeys, storeGet, storeSet } from '../../kernel/storage'
+import { PageHeader } from '../../kernel/ui/desk'
+import { useIsWide } from '../../kernel/ui/layout'
 import { useT } from '../../kernel/i18n/useT'
 import { Button, Card, Field, Muted, Notice, Screen, Spinner, Title, useColors } from '../../kernel/ui/ui'
 import { createOrder, getOrderForm, type PortalOrderFormDto, type PortalPlaceDto } from '../portalApi'
+import { NewOrderQuick } from './NewOrderQuick'
 import { buildRequest, emptyConsignee, emptyDraft, emptyPackage, MAX_NOTES, MAX_PACKAGES, type ErrorKey, type OrderDraft, validateDraft } from './newOrderRules'
 
 function Choice({ selected, title, detail, onPress, testID }: { selected: boolean; title: string; detail?: string; onPress: () => void; testID?: string }) {
@@ -33,6 +37,17 @@ export function NewOrderScreen() {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState('')
+  const wide = useIsWide()
+  // «Rápida» (la rejilla de captura) o «Detallada» (la tarjeta con todos los campos); se recuerda. En escritorio sale la rápida; en el celular, la detallada.
+  const [mode, setModeState] = useState<'quick' | 'detailed' | null>(null)
+  useEffect(() => {
+    void storeGet(StoreKeys.newOrderMode).then((v) => setModeState(v === 'quick' || v === 'detailed' ? v : null))
+  }, [])
+  const effectiveMode: 'quick' | 'detailed' = mode === 'quick' || mode === 'detailed' ? mode : wide ? 'quick' : 'detailed'
+  const setMode = (m: 'quick' | 'detailed') => {
+    setModeState(m)
+    void storeSet(StoreKeys.newOrderMode, m)
+  }
 
   useEffect(() => {
     getOrderForm().then(setForm).catch((e) => setLoadError(apiErrorMessage(e)))
@@ -51,6 +66,26 @@ export function NewOrderScreen() {
       <Screen>
         <Title>{t('newOrder.title')}</Title>
         <Notice tone="info">{t('newOrder.readOnly')}</Notice>
+      </Screen>
+    )
+  }
+
+  const modeSwitch = wide ? (
+    <View style={{ flexDirection: 'row', gap: 8 }}>
+      {(['quick', 'detailed'] as const).map((m) => (
+        <Pressable key={m} accessibilityRole="button" accessibilityState={{ selected: effectiveMode === m }} testID={`neworder-mode-${m}`} onPress={() => setMode(m)}
+          style={{ paddingVertical: 6, paddingHorizontal: 14, borderRadius: 18, borderWidth: 1, borderColor: effectiveMode === m ? colors.brand : colors.line, backgroundColor: effectiveMode === m ? colors.brand : colors.card }}>
+          <Text style={{ color: effectiveMode === m ? colors.onBrand : colors.text, fontWeight: '600' }}>{t(`newOrder.mode.${m}`)}</Text>
+        </Pressable>
+      ))}
+    </View>
+  ) : null
+
+  if (wide && effectiveMode === 'quick') {
+    return (
+      <Screen wide>
+        <PageHeader title={t('newOrder.title')} subtitle={t('newOrder.quick.subtitle')}>{modeSwitch}</PageHeader>
+        <NewOrderQuick form={form} onSaved={(id) => router.push({ pathname: '/order/[id]', params: { id } })} />
       </Screen>
     )
   }
@@ -79,8 +114,7 @@ export function NewOrderScreen() {
   const usingNew = draft.consigneeId === null && draft.newConsignee !== null
   return (
     <Screen>
-      <Title>{t('newOrder.title')}</Title>
-      <Muted>{t('newOrder.help')}</Muted>
+      {wide ? <PageHeader title={t('newOrder.title')} subtitle={t('newOrder.help')}>{modeSwitch}</PageHeader> : <><Title>{t('newOrder.title')}</Title><Muted>{t('newOrder.help')}</Muted></>}
 
       <Text style={{ fontWeight: '700', color: colors.text }}>{t('newOrder.consignee')}</Text>
       {(form.consignees ?? []).length > 6 && <Field label={t('newOrder.filter')} value={filter} onChangeText={setFilter} autoCapitalize="none" testID="neworder-filter" />}

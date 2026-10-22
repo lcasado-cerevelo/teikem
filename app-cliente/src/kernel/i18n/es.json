@@ -16,7 +16,8 @@
     "shipments": "Envíos",
     "notices": "Avisos",
     "messages": "Mensajes",
-    "settings": "Ajustes"
+    "settings": "Ajustes",
+    "reports": "Informes"
   },
   "warehouse": {
     "title": "Mi almacén",
@@ -54,7 +55,24 @@
     "method": {
       "AVERAGE": "costo promedio",
       "LAYERS": "por capas (lo primero que entró)"
-    }
+    },
+    "col": {
+      "sku": "SKU",
+      "product": "Producto",
+      "warehouse": "Almacén",
+      "lot": "Lote",
+      "expires": "Vence",
+      "brand": "Marca / categoría",
+      "barcode": "Código de barras",
+      "tracking": "Control",
+      "date": "Fecha",
+      "type": "Tipo",
+      "qty": "Cantidad",
+      "reference": "Referencia",
+      "units": "Unidades",
+      "unvalued": "Sin costo"
+    },
+    "unvaluedShort": "No suman al valor"
   },
   "login": {
     "title": "Portal de clientes",
@@ -169,7 +187,18 @@
     "noMatches": "Ningún envío coincide con la búsqueda.",
     "orderNumber": "Envío {number}",
     "loadMore": "Cargar más ({shown} de {total})",
-    "new": "Nuevo envío"
+    "new": "Nuevo envío",
+    "count": "{n} envíos",
+    "col": {
+      "waybill": "Conduce",
+      "order": "Envío",
+      "date": "Fecha",
+      "consignee": "Consignatario",
+      "city": "Pueblo",
+      "pieces": "Piezas",
+      "cod": "COD",
+      "status": "Estatus"
+    }
   },
   "order": {
     "title": "Envío",
@@ -301,6 +330,31 @@
       "cod": "El cobro debe ser un número.",
       "date": "Escriba la fecha como AAAA-MM-DD, de hoy en adelante.",
       "notes": "Las notas no pueden pasar de {max} caracteres."
+    },
+    "mode": {
+      "quick": "Rápida",
+      "detailed": "Detallada"
+    },
+    "quick": {
+      "subtitle": "Una fila por envío: Enter pasa al siguiente campo y, en el último, guarda y deja lista la fila nueva.",
+      "hint": "Escriba el consignatario y elíjalo de la lista (Enter toma el primero); «+ Nuevo» lo crea en la misma fila.",
+      "savedCount": "{n} guardados",
+      "codTotal": "COD acumulado: {amount}",
+      "saved": "Guardado",
+      "saveRow": "Guardar fila",
+      "consigneePlaceholder": "Buscar consignatario…",
+      "newConsignee": "+ Nuevo consignatario «{name}»",
+      "newBlock": "Consignatario nuevo (nombre, dirección y pueblo son obligatorios)",
+      "col": {
+        "date": "Fecha",
+        "invoice": "Factura",
+        "consignee": "Consignatario",
+        "description": "Descripción",
+        "pieces": "Piezas",
+        "weight": "Peso kg",
+        "cod": "COD",
+        "notes": "Notas"
+      }
     }
   },
   "unsubscribe": {
@@ -435,7 +489,16 @@
     "balanceLabel": "Saldo",
     "lines": "Detalle",
     "order": "envío {number}",
-    "payments": "Pagos recibidos"
+    "payments": "Pagos recibidos",
+    "col": {
+      "number": "Factura",
+      "issued": "Emisión",
+      "due": "Vence",
+      "total": "Total",
+      "paid": "Pagado",
+      "balance": "Saldo",
+      "status": "Estatus"
+    }
   },
   "noticePrefs": {
     "title": "Mis avisos",
@@ -557,6 +620,58 @@
       "title": "Avisos de salida",
       "empty": "Todavía no hay avisos de salida.",
       "pending": "con pendiente"
+    }
+  },
+  "reports": {
+    "title": "Informes",
+    "subtitle": "Datos de su cuenta para revisar, imprimir o llevar a Excel. Escoja un informe, ponga las fechas y exporte.",
+    "pick": "Escoja un informe de la lista.",
+    "none": "Su compañía todavía no tiene informes disponibles para usted.",
+    "back": "← Volver a la lista",
+    "groups": {
+      "shipments": "Envíos",
+      "money": "Dinero",
+      "inventory": "Inventario"
+    },
+    "name": {
+      "shipments": "Envíos del período",
+      "byStatus": "Envíos por estatus",
+      "cod": "Cobros a la entrega (COD)",
+      "invoices": "Facturas y saldo",
+      "stock": "Existencias",
+      "movements": "Movimientos de inventario",
+      "valuation": "Valor del inventario"
+    },
+    "desc": {
+      "shipments": "Cada envío creado en las fechas: consignatario, piezas, COD y en qué estatus está.",
+      "byStatus": "Cuántos envíos, piezas y COD hay en cada estatus en las fechas.",
+      "cod": "Los envíos con cobro a la entrega del período y el total a cobrar.",
+      "invoices": "Lo facturado, lo pagado y lo que debe, por factura.",
+      "stock": "Lo que tiene en el almacén por producto, almacén y lote.",
+      "movements": "Entradas, salidas y ajustes de su inventario en las fechas.",
+      "valuation": "Cuánto vale su inventario según el costo de cada recibo."
+    },
+    "from": "Desde",
+    "to": "Hasta",
+    "search": "Buscar",
+    "run": "Generar",
+    "hint": "Ponga las fechas y pulse «Generar».",
+    "rows": "{n} filas",
+    "preview": "Se muestran las primeras {n}; el archivo exportado trae todas.",
+    "export": "Exportar a Excel (CSV)",
+    "truncated": "Hay más filas de las que se pueden traer de una vez (5,000). Acorte las fechas para ver el resto.",
+    "empty": "No hay datos con esos filtros.",
+    "total": "Total",
+    "preset": {
+      "thisMonth": "Este mes",
+      "lastMonth": "Mes pasado",
+      "last30": "Últimos 30 días",
+      "thisYear": "Este año"
+    },
+    "col": {
+      "service": "Servicio",
+      "shipments": "Envíos",
+      "reason": "Motivo"
     }
   }
 }

@@ -5,11 +5,13 @@ import { Text, View } from 'react-native'
 
 import { apiErrorMessage } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n/useT'
+import { CellText, DataTable, Kpi, KpiRow, PageHeader, type Column } from '../../kernel/ui/desk'
+import { useIsWide } from '../../kernel/ui/layout'
 import { Button, Card, Chip, Field, Muted, Notice, Screen, Spinner, Title, useColors } from '../../kernel/ui/ui'
 import { useAsync } from '../../kernel/ui/useAsync'
 import { formatDate, formatDateTime, formatMoney, formatQty } from '../format'
 import { useOffer } from '../capabilities'
-import { cancelArrival, cancelExit, type PortalArrivalDto, getValuation, listArrivals, listExits, listMovements, listStock, listWarehouseProducts, PAGE_SIZE } from '../portalApi'
+import { cancelArrival, cancelExit, type PortalArrivalDto, type PortalMovementDto, type PortalProductDto, type PortalStockItemDto, type ValuationRowDto, getValuation, listArrivals, listExits, listMovements, listStock, listWarehouseProducts, PAGE_SIZE } from '../portalApi'
 import { EditExitForm, EditProductForm, NewArrivalForm, NewExitForm, NewProductForm } from './CreateForms'
 import { Segments } from './Segments'
 import type { Lang } from '../../kernel/i18n/i18n'
@@ -79,7 +81,29 @@ function Footer({ loading, error, shown, total, empty, onRetry, onMore }: { load
 function StockSection({ lang }: { lang: Lang }) {
   const colors = useColors()
   const { t } = useT()
+  const wide = useIsWide()
   const list = usePaged(useCallback((s: string, skip: number) => listStock(s, skip, PAGE_SIZE), []))
+  if (wide) {
+    const columns: Column<PortalStockItemDto>[] = [
+      { key: 'sku', title: t('warehouse.col.sku'), width: 160, render: (i) => <CellText bold>{i.sku}</CellText> },
+      { key: 'name', title: t('warehouse.col.product'), flex: 3, render: (i) => <CellText>{i.productName}</CellText> },
+      { key: 'wh', title: t('warehouse.col.warehouse'), width: 110, render: (i) => <CellText muted>{i.warehouseCode}</CellText> },
+      { key: 'lot', title: t('warehouse.col.lot'), width: 120, render: (i) => <CellText muted>{i.lotNumber ?? '—'}</CellText> },
+      { key: 'exp', title: t('warehouse.col.expires'), width: 110, render: (i) => <CellText muted>{i.expiryDate ? formatDate(i.expiryDate, lang) : '—'}</CellText> },
+      { key: 'onHand', title: t('warehouse.onHand'), width: 100, align: 'right', render: (i) => <CellText align="right" bold>{formatQty(i.onHand, lang)}</CellText> },
+      { key: 'reserved', title: t('warehouse.reserved'), width: 100, align: 'right', render: (i) => <CellText align="right" muted>{formatQty(i.reserved, lang)}</CellText> },
+      { key: 'available', title: t('warehouse.available'), width: 110, align: 'right', render: (i) => <CellText align="right" bold>{formatQty(i.available, lang)}</CellText> },
+    ]
+    return (
+      <>
+        <Field label={t('warehouse.search')} value={list.search} onChangeText={list.setSearch} placeholder={t('warehouse.searchStock')} autoCapitalize="none" returnKeyType="search" testID="warehouse-search" />
+        <DataTable columns={columns} rows={list.items} keyOf={(i) => `${i.productPublicId}|${i.warehousePublicId}|${i.lotNumber ?? ''}|${i.expiryDate ?? ''}`} empty={list.loading ? undefined : list.query ? t('warehouse.noMatches') : t('warehouse.emptyStock')} testID="stock-table" />
+        {list.loading && <Spinner />}
+        {!list.loading && list.items.length < list.total && <Button title={t('warehouse.loadMore', { shown: list.items.length, total: list.total })} variant="secondary" onPress={list.more} testID="warehouse-more" />}
+        {!!list.error && <Notice>{list.error}</Notice>}
+      </>
+    )
+  }
   return (
     <>
       <Field label={t('warehouse.search')} value={list.search} onChangeText={list.setSearch} placeholder={t('warehouse.searchStock')} autoCapitalize="none" returnKeyType="search" testID="warehouse-search" />
@@ -104,7 +128,37 @@ function ProductsSection({ lang, canCreate }: { lang: Lang; canCreate: boolean }
   const { t } = useT()
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<string | null>(null)
+  const wide = useIsWide()
   const list = usePaged(useCallback((s: string, skip: number) => listWarehouseProducts(s, skip, PAGE_SIZE), []))
+  if (wide) {
+    const columns: Column<PortalProductDto>[] = [
+      { key: 'sku', title: t('warehouse.col.sku'), width: 160, render: (p) => <CellText bold>{p.sku}</CellText> },
+      { key: 'name', title: t('warehouse.col.product'), flex: 3, render: (p) => <CellText>{p.name}</CellText> },
+      { key: 'brand', title: t('warehouse.col.brand'), flex: 1, render: (p) => <CellText muted>{[p.brand, p.category].filter(Boolean).join(' · ') || '—'}</CellText> },
+      { key: 'barcode', title: t('warehouse.col.barcode'), width: 150, render: (p) => <CellText muted>{p.barcode ?? '—'}</CellText> },
+      { key: 'track', title: t('warehouse.col.tracking'), width: 100, render: (p) => (p.trackingType === 'LOT' ? <Chip label={t('warehouse.tracking.LOT')} tone="info" /> : p.trackingType === 'SERIAL' ? <Chip label={t('warehouse.tracking.SERIAL')} tone="info" /> : <CellText muted>—</CellText>) },
+      { key: 'onHand', title: t('warehouse.onHand'), width: 100, align: 'right', render: (p) => <CellText align="right" bold>{formatQty(p.onHand, lang)}</CellText> },
+      { key: 'available', title: t('warehouse.available'), width: 110, align: 'right', render: (p) => <CellText align="right">{formatQty(p.available, lang)}</CellText> },
+      ...(canCreate ? [{ key: 'edit', title: '', width: 90, align: 'right' as const, render: (p: PortalProductDto) => <Button title={t('create.product.edit')} variant="link" onPress={() => setEditing(p.publicId ?? null)} testID={`edit-product-${p.sku}`} /> }] : []),
+    ]
+    const editingProduct = list.items.find((p) => p.publicId === editing)
+    return (
+      <>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
+          <View style={{ flex: 1, minWidth: 260 }}>
+            <Field label={t('warehouse.search')} value={list.search} onChangeText={list.setSearch} placeholder={t('warehouse.searchProducts')} autoCapitalize="none" returnKeyType="search" testID="warehouse-search" />
+          </View>
+          {canCreate && !creating && <Button title={t('create.product.title')} onPress={() => setCreating(true)} testID="create-product" />}
+        </View>
+        {creating && <NewProductForm onCancel={() => setCreating(false)} onDone={() => { setCreating(false); list.reload() }} />}
+        {editingProduct && <EditProductForm key={editingProduct.publicId} product={editingProduct} onCancel={() => setEditing(null)} onDone={() => { setEditing(null); list.reload() }} />}
+        <DataTable columns={columns} rows={list.items} keyOf={(p) => String(p.publicId)} empty={list.loading ? undefined : list.query ? t('warehouse.noMatches') : t('warehouse.emptyProducts')} testID="products-table" />
+        {list.loading && <Spinner />}
+        {!list.loading && list.items.length < list.total && <Button title={t('warehouse.loadMore', { shown: list.items.length, total: list.total })} variant="secondary" onPress={list.more} testID="warehouse-more" />}
+        {!!list.error && <Notice>{list.error}</Notice>}
+      </>
+    )
+  }
   return (
     <>
       {canCreate && !creating && <Button title={t('create.product.title')} onPress={() => setCreating(true)} testID="create-product" />}
@@ -133,7 +187,29 @@ function ProductsSection({ lang, canCreate }: { lang: Lang; canCreate: boolean }
 function MovementsSection({ lang }: { lang: Lang }) {
   const colors = useColors()
   const { t } = useT()
+  const wide = useIsWide()
   const list = usePaged(useCallback((s: string, skip: number) => listMovements(s, skip, PAGE_SIZE), []))
+  if (wide) {
+    const columns: Column<PortalMovementDto>[] = [
+      { key: 'date', title: t('warehouse.col.date'), width: 150, render: (m) => <CellText>{formatDateTime(m.createdAtUtc, lang)}</CellText> },
+      { key: 'type', title: t('warehouse.col.type'), width: 150, render: (m) => <CellText bold>{m.type}</CellText> },
+      { key: 'sku', title: t('warehouse.col.sku'), width: 150, render: (m) => <CellText>{m.sku}</CellText> },
+      { key: 'name', title: t('warehouse.col.product'), flex: 2, render: (m) => <CellText muted>{m.productName}</CellText> },
+      { key: 'qty', title: t('warehouse.col.qty'), width: 110, align: 'right', render: (m) => { const q = m.quantity ?? 0; return <Chip label={`${q > 0 ? '+' : ''}${formatQty(q, lang)}`} tone={q > 0 ? 'ok' : q < 0 ? 'danger' : 'neutral'} /> } },
+      { key: 'wh', title: t('warehouse.col.warehouse'), width: 100, render: (m) => <CellText muted>{m.warehouseCode}</CellText> },
+      { key: 'lot', title: t('warehouse.col.lot'), width: 110, render: (m) => <CellText muted>{m.lotNumber ?? '—'}</CellText> },
+      { key: 'ref', title: t('warehouse.col.reference'), flex: 1, render: (m) => <CellText muted>{[m.reference, m.reason].filter(Boolean).join(' · ') || '—'}</CellText> },
+    ]
+    return (
+      <>
+        <Field label={t('warehouse.search')} value={list.search} onChangeText={list.setSearch} placeholder={t('warehouse.searchProducts')} autoCapitalize="none" returnKeyType="search" testID="warehouse-search" />
+        <DataTable columns={columns} rows={list.items} keyOf={(m) => String(m.id)} empty={list.loading ? undefined : list.query ? t('warehouse.noMatches') : t('warehouse.emptyMovements')} testID="movements-table" />
+        {list.loading && <Spinner />}
+        {!list.loading && list.items.length < list.total && <Button title={t('warehouse.loadMore', { shown: list.items.length, total: list.total })} variant="secondary" onPress={list.more} testID="warehouse-more" />}
+        {!!list.error && <Notice>{list.error}</Notice>}
+      </>
+    )
+  }
   return (
     <>
       <Field label={t('warehouse.search')} value={list.search} onChangeText={list.setSearch} placeholder={t('warehouse.searchProducts')} autoCapitalize="none" returnKeyType="search" testID="warehouse-search" />
@@ -251,7 +327,34 @@ function ValueSection({ lang }: { lang: Lang }) {
     setReport({ totalValue: page.totalValue ?? 0, totalQty: page.totalQty ?? 0, unvaluedQty: page.unvaluedQty ?? 0, method: page.method ?? 'AVERAGE' })
     return page
   }, [])
+  const wide = useIsWide()
   const list = usePaged(load)
+  if (wide) {
+    const columns: Column<ValuationRowDto>[] = [
+      { key: 'sku', title: t('warehouse.col.sku'), width: 160, render: (r) => <CellText bold>{r.sku}</CellText> },
+      { key: 'name', title: t('warehouse.col.product'), flex: 3, render: (r) => <CellText>{r.productName}</CellText> },
+      { key: 'onHand', title: t('warehouse.onHand'), width: 110, align: 'right', render: (r) => <CellText align="right">{formatQty(r.onHand, lang)}</CellText> },
+      { key: 'cost', title: t('warehouse.unitCost'), width: 130, align: 'right', render: (r) => <CellText align="right" muted>{r.unitCost == null ? '—' : formatMoney(r.unitCost, lang)}</CellText> },
+      { key: 'value', title: t('warehouse.value'), width: 140, align: 'right', render: (r) => <CellText align="right" bold>{formatMoney(r.value, lang)}</CellText> },
+    ]
+    return (
+      <>
+        {!!report && (
+          <KpiRow>
+            <Kpi label={t('warehouse.valueTotal')} value={formatMoney(report.totalValue, lang)} hint={t(`warehouse.method.${report.method}`)} testID="warehouse-value-total" />
+            <Kpi label={t('warehouse.col.units')} value={formatQty(report.totalQty, lang)} />
+            {report.unvaluedQty > 0 && <Kpi label={t('warehouse.col.unvalued')} value={formatQty(report.unvaluedQty, lang)} tone="warn" hint={t('warehouse.unvaluedShort')} />}
+          </KpiRow>
+        )}
+        <Muted>{t('warehouse.valueHelp')}</Muted>
+        <Field label={t('warehouse.search')} value={list.search} onChangeText={list.setSearch} placeholder={t('warehouse.searchProducts')} autoCapitalize="none" returnKeyType="search" testID="warehouse-search" />
+        <DataTable columns={columns} rows={list.items} keyOf={(r) => String(r.productPublicId)} empty={list.loading ? undefined : list.query ? t('warehouse.noMatches') : t('warehouse.emptyStock')} testID="value-table" />
+        {list.loading && <Spinner />}
+        {!list.loading && list.items.length < list.total && <Button title={t('warehouse.loadMore', { shown: list.items.length, total: list.total })} variant="secondary" onPress={list.more} testID="warehouse-more" />}
+        {!!list.error && <Notice>{list.error}</Notice>}
+      </>
+    )
+  }
   return (
     <>
       {!!report && (
@@ -292,10 +395,11 @@ export function WarehouseScreen() {
     ...(offer.canCreateExits ? [{ key: 'exits' as const, label: t('warehouse.sections.exits') }] : []),
   ]
   const current = sections.some((s) => s.key === section) ? section : 'stock'
+  const wide = useIsWide()
   return (
     <Screen wide>
-      <Title>{t('warehouse.title')}</Title>
-      {!!offer.companyName && <Muted>{offer.companyName}</Muted>}
+      {wide ? <PageHeader title={t('warehouse.title')} subtitle={offer.companyName ?? undefined} /> : <Title>{t('warehouse.title')}</Title>}
+      {!wide && !!offer.companyName && <Muted>{offer.companyName}</Muted>}
       <Segments value={current} onChange={(k) => setSection(k as Section)} options={sections} />
       {current === 'stock' && <StockSection lang={lang} />}
       {current === 'products' && <ProductsSection lang={lang} canCreate={offer.canCreateProducts} />}

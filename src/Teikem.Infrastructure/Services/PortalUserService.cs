@@ -47,6 +47,10 @@ public sealed class PortalUserService(
     private const string InvalidInvite = "Invitación inválida o vencida.";
     /// <summary>Único mensaje para todo choque de correo (mismo cliente, otro tenant o usuario interno): no revela la causa.</summary>
     public const string DuplicateEmail = "Ese correo no está disponible para el portal de esta compañía.";
+    // 2026-10-22: quien invita es el personal de la compañía (con sesión y permiso), así que cuando la persona YA está en ESE cliente se le dice claro en qué estado está y qué hacer, en lugar del mensaje neutro.
+    public const string AlreadyInvited = "Esa persona ya tiene una invitación pendiente en este cliente. Use «Reenviar invitación» en su fila para mandarle el enlace otra vez.";
+    public const string AlreadyActive = "Esa persona ya tiene acceso al portal de este cliente.";
+    public const string AlreadySuspended = "Esa persona ya tiene acceso al portal de este cliente, pero está suspendida. Reactívela en su fila en lugar de invitarla otra vez.";
     /// <summary>Comentario del historial cuando la fila nueva pasa a ACTIVE sin invitación (la cuenta ya tenía contraseña).</summary>
     public const string ClientAddedComment = "Cliente agregado a una cuenta de portal existente";
 
@@ -93,7 +97,12 @@ public sealed class PortalUserService(
                     .Where(p => p.Email == email).ToListAsync(ct2);
                 var sameClient = rows.FirstOrDefault(p => p.ClientId == client.ClientId);
                 if (sameClient is not null && sameClient.Status?.StageKind?.InternalCode != StageKinds.Terminal)
-                    throw new ConflictException(DuplicateEmail); // ya invitado, activo o suspendido en este cliente
+                    throw new ConflictException(sameClient.Status?.InternalCode switch
+                    {
+                        PortalUserStatuses.Invited => AlreadyInvited,
+                        PortalUserStatuses.Suspended => AlreadySuspended,
+                        _ => AlreadyActive,
+                    }); // ya invitado, activo o suspendido en este cliente: el mensaje dice cuál y qué hacer
 
                 var account = await users.FindByEmailAsync(email);
                 if (account is not null)

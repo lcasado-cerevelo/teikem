@@ -33,6 +33,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="home" options={{ title: t('tabs.home'), tabBarIcon: icon('home-outline'), href: show.home ? undefined : null }} />
       <Tabs.Screen name="orders" options={{ title: consignee ? t('tabs.shipments') : t('tabs.orders'), tabBarIcon: icon('cube-outline'), href: show.orders ? undefined : null }} />
       <Tabs.Screen name="warehouse" options={{ title: t('tabs.warehouse'), tabBarIcon: icon('layers-outline'), href: show.warehouse ? undefined : null }} />
+      <Tabs.Screen name="reports" options={{ title: t('tabs.reports'), tabBarIcon: icon('document-text-outline'), href: !consignee && (show.orders || show.warehouse) ? undefined : null }} />
       <Tabs.Screen name="notices" options={{ title: t('tabs.notices'), tabBarIcon: icon('notifications-outline') }} />
       <Tabs.Screen name="messages" options={{ title: t('tabs.messages'), tabBarIcon: icon('chatbubbles-outline'), tabBarBadge: unread > 0 ? (unread > 99 ? '99+' : unread) : undefined }} />
       <Tabs.Screen name="settings" options={{ title: t('tabs.settings'), tabBarIcon: icon('settings-outline') }} />
