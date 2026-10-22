@@ -8,7 +8,8 @@ afterEach(() => {
 })
 
 function mockPost(impl: () => Promise<unknown>) {
-  jest.spyOn(api, 'POST').mockImplementation(impl as never)
+  // el tipo del cliente generado es tan profundo que TypeScript no lo instancia en spyOn: se mira como objeto simple
+  jest.spyOn(api as unknown as { POST: (...a: unknown[]) => unknown }, 'POST').mockImplementation(impl as never)
 }
 
 describe('revealMessage', () => {
