@@ -131,11 +131,12 @@ public sealed class AuditQueryService(TeikemDbContext db, ITenantContext tenant,
     private async Task<List<AuditLogDto>> ToDtosAsync(IReadOnlyList<Domain.Audit.AuditLog> rows, CancellationToken ct)
     {
         var names = await UserNamesAsync(rows.Select(r => r.UserId), ct);
+        var resolver = await BuildResolverAsync(rows.Select(r => r.ChangesJson), ct);
         var items = new List<AuditLogDto>(rows.Count);
         foreach (var r in rows)
             items.Add(new AuditLogDto(r.AuditLogId, r.CreatedAtUtc, await Label(LookupDomains.EntityType, r.EntityTypeLookupId, ct), r.EntityId,
                 await Label(LookupDomains.AuditAction, r.ActionLookupId, ct), r.UserId, r.UserId.HasValue ? names.GetValueOrDefault(r.UserId.Value) : null,
-                r.ChangesJson, r.CorrelationId, r.IpAddress, await Code(r.ActionLookupId, ct)));
+                AuditChangesHumanizer.Humanize(r.ChangesJson, tenant.Lang, resolver), r.CorrelationId, r.IpAddress, await Code(r.ActionLookupId, ct)));
         return items;
     }
 
@@ -164,6 +165,44 @@ public sealed class AuditQueryService(TeikemDbContext db, ITenantContext tenant,
     {
         if (string.IsNullOrEmpty(v)) return "";
         return v.Contains(',') || v.Contains('"') || v.Contains('\n') ? "\"" + v.Replace("\"", "\"\"") + "\"" : v;
+    }
+
+    /// <summary>Nombres para los campos-llave de los detalles de una página de la bitácora (se piden todos juntos: una consulta por tipo de registro).</summary>
+    private async Task<Func<AuditChangesHumanizer.FkKind, int, string?>> BuildResolverAsync(IEnumerable<string?> details, CancellationToken ct)
+    {
+        var wanted = details.SelectMany(AuditChangesHumanizer.Keys).Distinct().ToList();
+        var names = new Dictionary<(AuditChangesHumanizer.FkKind, int), string>();
+        List<int> Ids(AuditChangesHumanizer.FkKind k) => wanted.Where(w => w.Kind == k).Select(w => w.Id).ToList();
+
+        foreach (var id in Ids(AuditChangesHumanizer.FkKind.Lookup))
+            if (await lookups.GetAsync(id, ct) is { } l) names[(AuditChangesHumanizer.FkKind.Lookup, id)] = MultilingualText.Resolve(l.LabelJson, tenant.Lang);
+        var status = Ids(AuditChangesHumanizer.FkKind.Status);
+        if (status.Count > 0)
+            foreach (var s in await db.StatusCodes.AsNoTracking().Where(x => status.Contains(x.StatusCodeId)).Select(x => new { x.StatusCodeId, x.LabelJson }).ToListAsync(ct))
+                names[(AuditChangesHumanizer.FkKind.Status, s.StatusCodeId)] = MultilingualText.Resolve(s.LabelJson, tenant.Lang);
+        foreach (var (id, name) in await UserNamesAsync(Ids(AuditChangesHumanizer.FkKind.User).Select(i => (int?)i), ct))
+            if (!string.IsNullOrWhiteSpace(name)) names[(AuditChangesHumanizer.FkKind.User, id)] = name!;
+        var wh = Ids(AuditChangesHumanizer.FkKind.Warehouse);
+        if (wh.Count > 0)
+            foreach (var w in await db.Set<Domain.Wms.Warehouse>().AsNoTracking().Where(x => wh.Contains(x.WarehouseId)).Select(x => new { x.WarehouseId, x.Name }).ToListAsync(ct))
+                names[(AuditChangesHumanizer.FkKind.Warehouse, w.WarehouseId)] = w.Name;
+        var cl = Ids(AuditChangesHumanizer.FkKind.Client);
+        if (cl.Count > 0)
+            foreach (var c in await db.Clients.AsNoTracking().Where(x => cl.Contains(x.ClientId)).Select(x => new { x.ClientId, x.Name }).ToListAsync(ct))
+                names[(AuditChangesHumanizer.FkKind.Client, c.ClientId)] = c.Name;
+        var pr = Ids(AuditChangesHumanizer.FkKind.Product);
+        if (pr.Count > 0)
+            foreach (var p in await db.Set<Domain.Wms.Product>().AsNoTracking().Where(x => pr.Contains(x.ProductId)).Select(x => new { x.ProductId, x.Sku, x.Name }).ToListAsync(ct))
+                names[(AuditChangesHumanizer.FkKind.Product, p.ProductId)] = $"{p.Sku} · {p.Name}";
+        var bn = Ids(AuditChangesHumanizer.FkKind.Bin);
+        if (bn.Count > 0)
+            foreach (var b in await db.Set<Domain.Wms.WarehouseBin>().AsNoTracking().Where(x => bn.Contains(x.WarehouseBinId)).Select(x => new { x.WarehouseBinId, x.Code }).ToListAsync(ct))
+                names[(AuditChangesHumanizer.FkKind.Bin, b.WarehouseBinId)] = b.Code;
+        var sp = Ids(AuditChangesHumanizer.FkKind.Supplier);
+        if (sp.Count > 0)
+            foreach (var s in await db.Set<Domain.Wms.Supplier>().AsNoTracking().Where(x => sp.Contains(x.SupplierId)).Select(x => new { x.SupplierId, x.Name }).ToListAsync(ct))
+                names[(AuditChangesHumanizer.FkKind.Supplier, s.SupplierId)] = s.Name;
+        return (kind, id) => names.TryGetValue((kind, id), out var n) ? n : null;
     }
 
     private async Task<string> Label(string domain, int id, CancellationToken ct)

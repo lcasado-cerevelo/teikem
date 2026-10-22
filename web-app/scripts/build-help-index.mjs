@@ -15,7 +15,18 @@ const MAX = 1100
 export function limpiar(md) {
   const lines = md.split('\n').map((l) => l.replace(/\r$/, ''))
   const out = []
+  let enCodigo = false
+  let enJson = false
   for (let l of lines) {
+    // 2026-10-22 (Luis): Kemi es para el usuario, no para el programador — nada de JSON ni llamadas a la API en la respuesta
+    if (/^\s*(```|~~~)/.test(l)) { enCodigo = !enCodigo; continue }
+    if (enCodigo) continue
+    if (enJson) { if (l.includes('`')) enJson = false; continue }
+    if (/`\{\s*"/.test(l) && (l.match(/`/g) ?? []).length % 2 === 1) { enJson = true; l = l.replace(/\s*[—-]*\s*`\{\s*".*$/, ''); if (!l.trim() || /^\s*[-*]\s*$/.test(l)) continue }
+    if (/^\s*(GET|POST|PUT|PATCH|DELETE)\s+\/\S*/.test(l)) continue
+    if (/^\s*[{}\[\]],?\s*$/.test(l) || /^\s*"[^"]+"\s*:/.test(l)) continue
+    l = l.replace(/`[^`]*[{}][^`]*"[^`]*`/g, '').replace(/`(?:(?:GET|POST|PUT|PATCH|DELETE)\s+)?\/api\/[^`]*`/g, '').replace(/`(?:GET|POST|PUT|PATCH|DELETE)\s+\/[^`]*`/g, '')
+    l = l.replace(/\b(?:GET|POST|PUT|PATCH|DELETE)(?:\/(?:GET|POST|PUT|PATCH|DELETE))*\s+\/[\w\-/{}?=&.:|]+/g, '').replace(/\/api\/v\d\/[\w\-/{}?=&.:|]*/g, '').replace(/\(\s*\)/g, '')
     if (/^\s*\|?[\s:|-]+\|?\s*$/.test(l) && l.includes('-')) continue // separador de tabla
     if (/^\s*\|/.test(l)) l = l.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim()).filter(Boolean).join(' · ')
     l = l

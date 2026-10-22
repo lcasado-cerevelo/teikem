@@ -10203,3 +10203,11 @@ Sistema → Catálogos → botón «Estatus» (necesitas `admin.statusconfig` pa
 
 **¿En qué orden van los estatus del cliente?**
 Prospecto → Activo, con Suspendido como desvío reversible. El cliente nuevo nace Activo; «Prospecto» queda antes por si quieres usarlo, y se puede apagar en Sistema → Estatus. «Dar de baja» no es un estatus: desactiva al cliente.
+
+## Lote 201 — Bitácora legible y respuestas de Kemi
+
+**¿Por qué la bitácora ya no muestra números de catálogo ni nombres de campo con «Id»?**
+Los cambios de estatus, catálogos, usuarios, almacenes, clientes, productos, posiciones y proveedores se leen con su nombre («Estatus: Esperado → Recibido», «Asignado a: Ana Ruiz»). Si algo no se puede nombrar se ve «(sin nombre)»; nunca el número interno. La asignación hecha por «tomar» muestra además el «Motivo».
+
+**¿Por qué Kemi ya no muestra código ni llamadas a la API?**
+Kemi responde con el texto del manual para el usuario; los ejemplos de JSON y las llamadas al servicio se omiten (siguen en el manual para quien integra).
