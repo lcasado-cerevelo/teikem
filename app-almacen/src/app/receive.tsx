@@ -985,6 +985,12 @@ export default function ReceiveScreen() {
           })}
         </Text>
       ) : null}
+      {partOk && openReceipt.lines.length > 0 && (
+        <>
+          <BigButton label={t('receive.receivePart')} variant="secondary" onPress={receivePart} />
+          <Text style={styles.help}>{t('receive.receivePartHelp')}</Text>
+        </>
+      )}
       <BigButton
         label={t('receive.confirmReceipt')}
         onPress={confirmReceipt}
@@ -992,12 +998,6 @@ export default function ReceiveScreen() {
       />
       <Text style={styles.help}>{t(direct ? 'receive.confirmHelpDirect' : 'receive.confirmHelp')}</Text>
       {stagingFull && <Text style={styles.warnText}>{t('receive.stagingFull', { qty: f.qty(capturedQty), free: f.qty(stagingFree ?? 0) })}</Text>}
-      {partOk && openReceipt.lines.length > 0 && (
-        <>
-          <BigButton label={t('receive.receivePart')} variant="secondary" onPress={receivePart} />
-          <Text style={styles.help}>{t('receive.receivePartHelp')}</Text>
-        </>
-      )}
       <BigButton label={t('receive.cancelReceipt')} variant="danger" onPress={cancelReceipt} />
     </KeyboardScreen>
   )
