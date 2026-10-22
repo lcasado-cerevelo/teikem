@@ -35,8 +35,9 @@ public static class PermissionDisplayOrder
         // Rentas
         "rental.view", "rental.manage", "rental.extend", "rental.return", "rental.maintenance", "rental.billing",
         // Facturación (Contabilidad): compras, contabilización de compras, ventas, contabilización de despachos, facturación, procesar entregas, liquidación a choferes, impuestos
-        "suppliers.view", "purchasing.view", "purchasing.manage", "purchasing.receive",
-        "purchaseaccounting.view",
+        "suppliers.view", "suppliers.manage",
+        "purchasing.view", "purchasing.manage", "purchasing.receive",
+        "purchaseaccounting.view", "purchaseaccounting.manage",
         "sales.view", "sales.create", "sales.price", "sales.cancel", "sales.backorder", "sales.return", "sales.return.authorize",
         "dispatchaccounting.view",
         "billing.view", "billing.generate", "billing.approve", "billing.credit", "billing.export",

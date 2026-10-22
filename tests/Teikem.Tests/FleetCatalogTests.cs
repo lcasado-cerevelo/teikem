@@ -84,8 +84,8 @@ public class FleetCatalogTests
     public void Permission_catalog_has_69_distinct_codes_with_the_three_new_fleet_permissions()
     {
         // Lote 5: 52 → 54 (trips.view, trips.scan). Lote 6: 54 → 58 (inventory.*, warehouse.manage). Lote 8A: 58 → 60 (devices.manage, warehouse.count.capture). Lote F8a: 60 → 65 (pulse.*). Lote 14: 65 → 66 (pulse.attention). Lote 27: 66 → 68 (rental.extend, rental.return); los tres de flota siguen igual.
-        Assert.Equal(141, PermissionCatalog.All.Count);   // Lote 199: + warehouse.app.viewall, warehouse.app.reassign; Lote 193: + warehouse.pick.any; Lote 143 (2026-10-20): + exitnotice.create; Lote 118: + orders.deliver; Lote 112: + orders.return; Lote 111: + claims.view, claims.manage; Lote 106: + orders.reopen;   // Lote 104: + clientmessages.reply, clientmessages.manage;   // 2026-10-08: + warehouse.damage; 2026-10-11: + warehouse.issue; 2026-10-12: + orders.view_price; 2026-10-12 (Lote 43): + printers.manage; 2026-10-12: + inventory.adjust.multi; 2026-10-16 (Lote 72): + billing.view
-        Assert.Equal(141, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.Equal(143, PermissionCatalog.All.Count);   // Lote 199: + warehouse.app.viewall, warehouse.app.reassign; Lote 193: + warehouse.pick.any; Lote 143 (2026-10-20): + exitnotice.create; Lote 118: + orders.deliver; Lote 112: + orders.return; Lote 111: + claims.view, claims.manage; Lote 106: + orders.reopen;   // Lote 104: + clientmessages.reply, clientmessages.manage;   // 2026-10-08: + warehouse.damage; 2026-10-11: + warehouse.issue; 2026-10-12: + orders.view_price; 2026-10-12 (Lote 43): + printers.manage; 2026-10-12: + inventory.adjust.multi; 2026-10-16 (Lote 72): + billing.view
+        Assert.Equal(143, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
 
         var view = Assert.Single(PermissionCatalog.All, p => p.Code == "fleet.view");
         Assert.Equal(("FLEET", "Flota y mantenimiento: entrar y ver", "Fleet & maintenance: open and view"), (view.Category, view.LabelEs, view.LabelEn));

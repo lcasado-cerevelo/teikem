@@ -23,16 +23,16 @@ public sealed class SuppliersController(SupplierService suppliers) : ControllerB
     public Task<IReadOnlyList<SupplierDto>> List([FromQuery] bool includeInactive, [FromQuery] string? search, CancellationToken ct)
         => suppliers.ListAsync(includeInactive, search, ct);
 
-    [HttpPost, RequirePermission(PermissionCatalog.PurchasingManage)]
+    [HttpPost, RequirePermission(PermissionCatalog.PurchasingManage + "|" + PermissionCatalog.SuppliersManage)]
     public Task<SupplierDto> Create([FromBody] SupplierRequest req, CancellationToken ct) => suppliers.CreateAsync(req, ct);
 
     /// <summary>PATCH: null = sin cambio; "" = quitar el valor (salvo el nombre). rowVersion opcional (409 si cambió).</summary>
-    [HttpPatch("{id:int}"), RequirePermission(PermissionCatalog.PurchasingManage)]
+    [HttpPatch("{id:int}"), RequirePermission(PermissionCatalog.PurchasingManage + "|" + PermissionCatalog.SuppliersManage)]
     public Task<SupplierDto> Update(int id, [FromBody] SupplierPatchRequest req, CancellationToken ct) => suppliers.UpdateAsync(id, req, ct);
 
-    [HttpPost("{id:int}/deactivate"), RequirePermission(PermissionCatalog.PurchasingManage)]
+    [HttpPost("{id:int}/deactivate"), RequirePermission(PermissionCatalog.PurchasingManage + "|" + PermissionCatalog.SuppliersManage)]
     public Task<SupplierDto> Deactivate(int id, CancellationToken ct) => suppliers.SetActiveAsync(id, false, ct);
 
-    [HttpPost("{id:int}/reactivate"), RequirePermission(PermissionCatalog.PurchasingManage)]
+    [HttpPost("{id:int}/reactivate"), RequirePermission(PermissionCatalog.PurchasingManage + "|" + PermissionCatalog.SuppliersManage)]
     public Task<SupplierDto> Reactivate(int id, CancellationToken ct) => suppliers.SetActiveAsync(id, true, ct);
 }

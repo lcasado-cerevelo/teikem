@@ -6233,3 +6233,30 @@ BEGIN
     INSERT INTO dbo.AppliedMigration (Code) VALUES ('L200_AUTOPRINT_PER_CLIENT');
 END
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-22 (Lote 200, b) — Dos permisos de EDITAR que faltaban (Luis: «ver es una cosa y trastearlo es otra»): suppliers.manage («Proveedores: crear y editar») y purchaseaccounting.manage
+   («Contabilización de compras: generar, aceptar, cancelar y exportar»). Hasta hoy los daba purchasing.manage, que se sigue aceptando; los roles que ya tienen purchasing.manage reciben los dos
+   para no cambiarle el trabajo a nadie. Solo AGREGA. Idempotente (marca en dbo.AppliedMigration).
+   ---------------------------------------------------------------------------- */
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'suppliers.manage')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('suppliers.manage', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'BILLING'),
+            N'{"es":"Proveedores: crear y editar","en":"Suppliers: create and edit"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'purchaseaccounting.manage')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('purchaseaccounting.manage', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'BILLING'),
+            N'{"es":"Contabilización de compras: generar, aceptar, cancelar y exportar","en":"Purchase accounting: generate, accept, cancel and export"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L200_SUPPLIERS_PURCHACCT_MANAGE')
+BEGIN
+    INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+    SELECT rp.RoleId, np.PermissionId
+    FROM dbo.RolePermission rp
+    JOIN dbo.Permission pm ON pm.PermissionId = rp.PermissionId AND pm.Code = 'purchasing.manage'
+    JOIN dbo.Permission np ON np.Code IN ('suppliers.manage', 'purchaseaccounting.manage')
+    WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = rp.RoleId AND x.PermissionId = np.PermissionId);
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L200_SUPPLIERS_PURCHACCT_MANAGE');
+END
+GO

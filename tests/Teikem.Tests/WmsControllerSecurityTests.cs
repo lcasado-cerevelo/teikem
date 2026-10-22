@@ -198,10 +198,10 @@ public class WmsControllerSecurityTests
         [(typeof(ManualIssuesController), nameof(ManualIssuesController.Delete))] = PermissionCatalog.WarehouseIssue,
 
         [(typeof(SuppliersController), nameof(SuppliersController.List))] = PermissionCatalog.PurchasingView,
-        [(typeof(SuppliersController), nameof(SuppliersController.Create))] = PermissionCatalog.PurchasingManage,
-        [(typeof(SuppliersController), nameof(SuppliersController.Update))] = PermissionCatalog.PurchasingManage,
-        [(typeof(SuppliersController), nameof(SuppliersController.Deactivate))] = PermissionCatalog.PurchasingManage,
-        [(typeof(SuppliersController), nameof(SuppliersController.Reactivate))] = PermissionCatalog.PurchasingManage,
+        [(typeof(SuppliersController), nameof(SuppliersController.Create))] = PermissionCatalog.PurchasingManage + "|" + PermissionCatalog.SuppliersManage,
+        [(typeof(SuppliersController), nameof(SuppliersController.Update))] = PermissionCatalog.PurchasingManage + "|" + PermissionCatalog.SuppliersManage,
+        [(typeof(SuppliersController), nameof(SuppliersController.Deactivate))] = PermissionCatalog.PurchasingManage + "|" + PermissionCatalog.SuppliersManage,
+        [(typeof(SuppliersController), nameof(SuppliersController.Reactivate))] = PermissionCatalog.PurchasingManage + "|" + PermissionCatalog.SuppliersManage,
 
         [(typeof(PurchaseOrdersController), nameof(PurchaseOrdersController.List))] = PermissionCatalog.PurchasingView,
         [(typeof(PurchaseOrdersController), nameof(PurchaseOrdersController.Shortages))] = PermissionCatalog.PurchasingView,

@@ -257,6 +257,10 @@ public static class PermissionCatalog
     public const string PurchasingView = "purchasing.view";
 
     public const string PurchasingManage = "purchasing.manage";
+    /// <summary>2026-10-22 (Luis): crear y editar proveedores (antes lo daba purchasing.manage). Quien ya tenía purchasing.manage lo recibe.</summary>
+    public const string SuppliersManage = "suppliers.manage";
+    /// <summary>2026-10-22 (Luis): generar, aceptar, cancelar y exportar corridas de la contabilización de compras (antes lo daba purchasing.manage). Quien ya tenía purchasing.manage lo recibe.</summary>
+    public const string PurchaseAccountingManage = "purchaseaccounting.manage";
 
     public const string PurchasingReceive = "purchasing.receive";
 
@@ -503,6 +507,10 @@ public static class PermissionCatalog
         new(PurchasingView, "BILLING", "Ver órdenes de compra", "View purchase orders"),
 
         new(PurchasingManage, "BILLING", "Crear y editar órdenes de compra", "Create and edit purchase orders"),
+
+        new(SuppliersManage, "BILLING", "Proveedores: crear y editar", "Suppliers: create and edit"),
+
+        new(PurchaseAccountingManage, "BILLING", "Contabilización de compras: generar, aceptar, cancelar y exportar", "Purchase accounting: generate, accept, cancel and export"),
 
         new(PurchasingReceive, "BILLING", "Recibir contra orden de compra", "Receive against purchase order"),
 
@@ -1086,7 +1094,7 @@ public static class PermissionCatalog
 
             PulseOrders },   // Lote 88: el río Paquetes en la calle
 
-        ["Billing"] = new[] { OrdersView, BillingView, BillingCredit, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride, DriverPayView, InventoryView, InventoryValue,
+        ["Billing"] = new[] { OrdersView, BillingView, BillingCredit, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, SuppliersManage, PurchaseAccountingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride, DriverPayView, InventoryView, InventoryValue,
 
             PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a
 

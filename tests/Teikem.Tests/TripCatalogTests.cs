@@ -88,8 +88,8 @@ public class TripCatalogTests
     [Fact]
     public void Permission_catalog_has_69_codes_with_trips_view_and_scan()
     {
-        Assert.Equal(141, PermissionCatalog.All.Count);   // Lote 199: + warehouse.app.viewall, warehouse.app.reassign; Lote 193: + warehouse.pick.any; Lote 143 (2026-10-20): + exitnotice.create; Lote 118: + orders.deliver; Lote 112: + orders.return; Lote 111: + claims.view, claims.manage; Lote 106: + orders.reopen;   // Lote 104: + clientmessages.reply, clientmessages.manage;   // Lote 14: + pulse.attention; Lote 27: + rental.extend, rental.return; 2026-10-11: + warehouse.issue; 2026-10-12: + orders.view_price; 2026-10-12 (Lote 43): + printers.manage; 2026-10-12: + inventory.adjust.multi; 2026-10-16 (Lote 72): + billing.view
-        Assert.Equal(141, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.Equal(143, PermissionCatalog.All.Count);   // Lote 199: + warehouse.app.viewall, warehouse.app.reassign; Lote 193: + warehouse.pick.any; Lote 143 (2026-10-20): + exitnotice.create; Lote 118: + orders.deliver; Lote 112: + orders.return; Lote 111: + claims.view, claims.manage; Lote 106: + orders.reopen;   // Lote 104: + clientmessages.reply, clientmessages.manage;   // Lote 14: + pulse.attention; Lote 27: + rental.extend, rental.return; 2026-10-11: + warehouse.issue; 2026-10-12: + orders.view_price; 2026-10-12 (Lote 43): + printers.manage; 2026-10-12: + inventory.adjust.multi; 2026-10-16 (Lote 72): + billing.view
+        Assert.Equal(143, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
 
         var view = Assert.Single(PermissionCatalog.All, p => p.Code == "trips.view");
         Assert.Equal(("ORDERS", "Monitoreo de ruta: entrar y ver", "Route monitor: open and view"), (view.Category, view.LabelEs, view.LabelEn));
