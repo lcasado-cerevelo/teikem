@@ -29,6 +29,7 @@ import { SmallButton } from '../kernel/ui/SmallButton'
 import { useAssignAccess, useAssignees } from '../features/assign/assignScope'
 import { assigneeName, reassign } from '../features/assign/assignApi'
 import { ReassignModal } from '../features/assign/ReassignModal'
+import { readDispatchRequirement } from '../features/dispatch/stockExit'
 import { mineFirst, takeDispatchIfFree } from '../features/dispatch/dispatchTake'
 import {
   buildTasks,
@@ -88,9 +89,11 @@ export default function ExitDispatchScreen() {
   const ordersRaw = useMemo(() => (warehousePublicId ? listGroupableOrders(warehousePublicId, scope) : []), [warehousePublicId, tick, scope])
   const myId = session?.userId ?? null
   // Lote 198: avisos y órdenes en una sola lista, lo asignado a esta persona primero
-  const notices = useMemo(() => mineFirst(noticesRaw, myId), [noticesRaw, myId])
-  const orders = useMemo(() => mineFirst(ordersRaw, myId), [ordersRaw, myId])
-  const everyDoc = useMemo(() => mineFirst([...noticesRaw, ...ordersRaw], myId), [noticesRaw, ordersRaw, myId])
+  // 2026-10-22: lo que la compañía exige (avisos de salida y/o órdenes de venta) decide qué documentos se ofrecen; sin documento solo si no se exige
+  const requirement = readDispatchRequirement()
+  const notices = useMemo(() => (requirement === 'SALES_ORDER' ? [] : mineFirst(noticesRaw, myId)), [noticesRaw, myId, requirement])
+  const orders = useMemo(() => (requirement === 'EXIT_NOTICE' ? [] : mineFirst(ordersRaw, myId)), [ordersRaw, myId, requirement])
+  const everyDoc = useMemo(() => mineFirst([...notices, ...orders], myId), [notices, orders, myId])
   // Lote 198: primero lo asignado a esta persona; lo que nadie tiene asignado se ve con la opción de abajo
   const freeCount = everyDoc.filter((d) => d.assignedToUserId == null).length
   const othersCount = access.viewAll ? everyDoc.filter((d) => d.assignedToUserId != null && d.assignedToUserId !== myId).length : 0
@@ -372,7 +375,7 @@ export default function ExitDispatchScreen() {
         {choosing ? (
           <BigButton label={t('exitDispatch.groupGo', { n: chosen.length })} onPress={startGroup} disabled={chosen.length < MIN_GROUP} testID="exit-group-go" />
         ) : null}
-        <BigButton label={t('exitDispatch.noDocument')} variant="secondary" onPress={() => router.replace('/dispatch')} testID="exit-no-document" />
+        {requirement === 'FREE' ? <BigButton label={t('exitDispatch.noDocument')} variant="secondary" onPress={() => router.replace('/dispatch')} testID="exit-no-document" /> : null}
         <View style={styles.bottom}>
           <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} />
         </View>

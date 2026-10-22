@@ -71,13 +71,16 @@ export function KemiAsk({ onBack }: { onBack: () => void }) {
           {lang === 'en' && <p className="kemi-msg kemi-note">{t('notifications.kemi.askSpanishNote')}</p>}
           <div className="kemi-askrow">
             <input type="text" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t('notifications.kemi.askPlaceholder')} aria-label={t('notifications.kemi.askLabel')} maxLength={300} autoFocus />
+          </div>
+          {/* 2026-10-22: el campo en su línea y los dos botones en la de abajo, con su separación */}
+          <div className="kemi-askacts">
             <button type="submit" className="kemi-opt" disabled={draft.trim() === '' || busy}>
               {busy ? t('notifications.kemi.askLoading') : t('notifications.kemi.askSend')}
             </button>
+            <button type="button" className="kemi-opt" onClick={onBack}>
+              {t('notifications.kemi.askBack')}
+            </button>
           </div>
-          <button type="button" className="kemi-opt" onClick={onBack}>
-            {t('notifications.kemi.askBack')}
-          </button>
         </form>
       )}
 

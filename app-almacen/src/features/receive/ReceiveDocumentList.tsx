@@ -1,20 +1,20 @@
-// Lote 161 — «¿Contra qué recibo?»: listado de los avisos de llegada y órdenes de compra pendientes del almacén (base local, funciona sin señal), con búsqueda PARCIAL
-// (se escribe un pedazo de la referencia, número, cliente o proveedor). Tocar una fila empieza el recibo contra ese documento. Solo se ofrece lo que la compañía permite.
+// Lote 161/201 — «¿Contra qué recibo?»: una sola lista con los avisos de llegada y las órdenes de compra pendientes del almacén (base local, funciona sin señal): primero lo asignado a esta persona y,
+// con la opción de abajo, lo que nadie tiene asignado (igual que Despacho). Sin pestañas ni buscador: el número se escribe o se escanea arriba. Tocar una fila empieza el recibo contra ese documento.
+// Solo se ofrece lo que la compañía permite. «Seleccionar varios» aparece solo si hay más de un documento a la vista.
 import { useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { useT } from '../../kernel/i18n/useT'
 import { BigButton } from '../../kernel/ui/BigButton'
-import { KeyboardInput } from '../../kernel/ui/KeyboardInput'
 import { colors, fontSize, radius, spacing } from '../../kernel/ui/theme'
 import { SmallButton } from '../../kernel/ui/SmallButton'
 import { useAssignAccess, useAssignees } from '../assign/assignScope'
 import { assigneeName, reassign } from '../assign/assignApi'
 import { ReassignModal } from '../assign/ReassignModal'
-import { listPendingDocs, type LocalDoc } from './localLookup'
+import { listPendingDocs, type LocalDoc, type PendingDoc } from './localLookup'
 import type { ReceiveOptions } from './receiptRequirement'
 
-const PAGE = 30
+const LIMIT = 200
 
 const keyOf = (d: LocalDoc) => `${d.kind}:${d.asnId ?? d.purchaseOrderPublicId}`
 
@@ -33,10 +33,6 @@ export function ReceiveDocumentList({
   onPickMany: (docs: LocalDoc[]) => void
 }) {
   const { t } = useT()
-  const kinds = [...(options.asn ? (['asn'] as const) : []), ...(options.purchaseOrder ? (['po'] as const) : [])]
-  const [kind, setKind] = useState<'asn' | 'po'>(kinds[0] ?? 'asn')
-  const [search, setSearch] = useState('')
-  const [pages, setPages] = useState(1)
   const [selecting, setSelecting] = useState(false)
   const [showFree, setShowFree] = useState(false)
   const [showOthers, setShowOthers] = useState(false)
@@ -45,62 +41,35 @@ export function ReceiveDocumentList({
   const access = useAssignAccess()
   const people = useAssignees(access.viewAll)
   const [selected, setSelected] = useState<Record<string, LocalDoc>>({})
-  const shownKind = kinds.includes(kind) ? kind : kinds[0]
-  const limit = pages * PAGE
-  const rows = useMemo(() => (shownKind ? listPendingDocs(warehousePublicId, shownKind, search, limit, userId) : []), [warehousePublicId, shownKind, search, limit, userId, tick])
-  // Lote 198: primero lo asignado a esta persona; lo que nadie tiene asignado se ve con la opción de abajo (y lo de otras personas no se ofrece)
+  // avisos y órdenes juntos (lo permitido por la compañía), lo asignado a esta persona primero
+  const rows = useMemo(() => {
+    const all = [...(options.asn ? listPendingDocs(warehousePublicId, 'asn', '', LIMIT, userId) : []), ...(options.purchaseOrder ? listPendingDocs(warehousePublicId, 'po', '', LIMIT, userId) : [])]
+    const rank = (d: PendingDoc) => (userId != null && d.assignedToUserId === userId ? 0 : d.assignedToUserId == null ? 1 : 2)
+    return all.map((d, i) => ({ d, i })).sort((a, b) => rank(a.d) - rank(b.d) || a.i - b.i).map((x) => x.d)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [warehousePublicId, options.asn, options.purchaseOrder, userId, tick])
+  // primero lo asignado a esta persona; lo que nadie tiene asignado se ve con la opción de abajo (y lo de otras personas, solo con ver todo)
   const freeCount = rows.filter((r) => r.assignedToUserId == null).length
   const othersCount = access.viewAll ? rows.filter((r) => r.assignedToUserId != null && r.assignedToUserId !== userId).length : 0
   const shown = rows.filter(
     (r) => (r.assignedToUserId != null && r.assignedToUserId === userId) || (showFree && r.assignedToUserId == null) || (access.viewAll && showOthers && r.assignedToUserId != null && r.assignedToUserId !== userId),
   )
   const chosen = Object.values(selected)
-  if (!shownKind) return null
   return (
     <View style={styles.wrap} testID="receive-doc-list">
       <Text style={styles.title}>{t('receive.pendingDocs')}</Text>
-      {kinds.length > 1 ? (
-        <View style={styles.tabs}>
-          {kinds.map((k) => (
-            <Pressable
-              key={k}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: shownKind === k }}
-              testID={`receive-docs-${k}`}
-              onPress={() => {
-                setKind(k)
-                setPages(1)
-              }}
-              style={[styles.tab, shownKind === k && styles.tabOn]}
-            >
-              <Text style={styles.tabText}>{t(k === 'asn' ? 'receive.tabAsn' : 'receive.tabPo')}</Text>
-            </Pressable>
-          ))}
-        </View>
+      {shown.length === 0 ? <Text style={styles.help}>{t(showFree || freeCount === 0 ? 'receive.noPendingDocs' : 'receive.noneMine')}</Text> : null}
+      {shown.length > 1 ? (
+        <BigButton
+          label={selecting ? t('receive.selectCancel') : t('receive.selectMany')}
+          variant="secondary"
+          testID="receive-select-many"
+          onPress={() => {
+            setSelecting((v) => !v)
+            setSelected({})
+          }}
+        />
       ) : null}
-      <KeyboardInput
-        value={search}
-        onChangeText={(q) => {
-          setSearch(q)
-          setPages(1)
-        }}
-        autoCapitalize="none"
-        autoCorrect={false}
-        placeholder={t(shownKind === 'asn' ? 'receive.searchAsn' : 'receive.searchPo')}
-        placeholderTextColor={colors.muted}
-        style={styles.input}
-        accessibilityLabel={t('receive.searchDocs')}
-      />
-      {shown.length === 0 ? <Text style={styles.help}>{t(search.trim() ? 'receive.noDocMatches' : showFree || freeCount === 0 ? 'receive.noPendingDocs' : 'receive.noneMine')}</Text> : null}
-      <BigButton
-        label={selecting ? t('receive.selectCancel') : t('receive.selectMany')}
-        variant="secondary"
-        testID="receive-select-many"
-        onPress={() => {
-          setSelecting((v) => !v)
-          setSelected({})
-        }}
-      />
       {shown.map((r) => {
         const k = keyOf(r.doc)
         const otherOwner = r.assignedToUserId != null && r.assignedToUserId !== userId
@@ -174,7 +143,6 @@ export function ReceiveDocumentList({
           onPress={() => onPickMany(shown.map((r) => r.doc).filter((d) => selected[keyOf(d)] !== undefined))}
         />
       ) : null}
-      {rows.length >= limit ? <BigButton label={t('receive.moreDocs')} variant="secondary" onPress={() => setPages((n) => n + 1)} /> : null}
     </View>
   )
 }

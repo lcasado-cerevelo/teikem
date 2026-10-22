@@ -1456,3 +1456,8 @@ Dos permisos nuevos (categoría Almacén, Sistema → Roles; el administrador lo
 - **Resumen del recibo:** «Esperado · Recibido · **Dañado**».
 - **Acomodar.** Las partes de un mismo recibo (mismo producto, lote y posición de recepción) son **una sola tarea** con el total. Cada fila dice el recibo, el almacén y la posición de donde sale. Abrir una tarea que usted ya inició no da error («La tarea ya está en proceso.» solo si la tiene otra persona). «Reasignar» es un botón pequeño a la derecha de la fila.
 - **Web.** La pestaña «Maestros» de Recibo (y «Maestras» de Recolección) se llama ahora **«Cargas»**.
+
+## Recibir y Despacho: una sola lista; «sin documento» solo si no se exige (2026-10-22)
+
+- **Recibir:** sin pestañas ni buscador. Una lista con los avisos de llegada y las órdenes de compra **asignados a usted** y, debajo, «Ver lo que nadie tiene asignado». «Seleccionar varios» solo aparece si hay **más de un** documento a la vista.
+- **Despacho:** la lista muestra los avisos de salida y/o las órdenes de venta que la compañía exige (**Ajustes → Operación → «el despacho exige documento»**). **«Despachar sin documento» solo sale cuando NO se exige documento** y va directo al producto y la posición. Con la exigencia puesta no existe ese botón ni la pantalla «¿Contra qué despachas?»: Despacho (avisos y órdenes) es la única entrada.

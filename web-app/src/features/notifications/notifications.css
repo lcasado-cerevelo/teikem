@@ -111,9 +111,11 @@
 .kemi-ask{display:flex;flex-direction:column;gap:7px;padding:0 14px 14px}
 .kemi-ask .kemi-msg{margin:12px 0 0}
 .kemi-you{align-self:flex-end;max-width:90%;margin:0;padding:8px 11px;border-radius:12px 12px 2px 12px;background:var(--panel-2);border:1px solid var(--line);font-size:13px;line-height:1.4;overflow-wrap:anywhere}
-.kemi-askrow{display:flex;gap:7px}
+.kemi-askrow{display:flex;gap:7px;margin-top:4px}
+.kemi-askacts{display:flex;gap:10px;margin-top:12px}
+.kemi-askacts .kemi-opt{flex:0 0 auto}
 .kemi-askrow input{flex:1;min-width:0;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:12px;padding:9px 12px;font-size:13px}
-.kemi-askrow .kemi-opt:disabled{opacity:.5;cursor:not-allowed}
+.kemi-askrow .kemi-opt:disabled,.kemi-askacts .kemi-opt:disabled{opacity:.5;cursor:not-allowed}
 .kemi-ask{max-height:min(70vh,520px);overflow-y:auto}
 .kemi-hits{display:flex;flex-direction:column;gap:7px}
 .kemi-hit{align-items:flex-start;justify-content:flex-start}

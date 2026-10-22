@@ -200,7 +200,7 @@ export default function HomeScreen() {
           <BigButton layout="tile" label={t('home.putaway')} icon="📦" variant={mine.putaway ? 'primary' : 'secondary'} onPress={() => go('/putaway')} />
         </View>
         <View style={styles.cell}>
-          <BigButton layout="tile" label={t('home.dispatch')} icon="🚚" variant={mine.dispatch ? 'primary' : 'secondary'} onPress={() => go(openKind !== 'dispatch' && (hasSalesOrders || hasExitNotices) ? '/exit-dispatch' : '/dispatch', 'dispatch')} />
+          <BigButton layout="tile" label={t('home.dispatch')} icon="🚚" variant={mine.dispatch ? 'primary' : 'secondary'} onPress={() => go(openKind === 'dispatch' ? '/dispatch' : '/exit-dispatch', 'dispatch')} />
         </View>
         {hasSalesReturns && canReceive ? (
           <View style={styles.cell}>

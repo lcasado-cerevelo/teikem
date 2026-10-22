@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
-import { useRouter } from 'expo-router'
+import { Redirect, useRouter } from 'expo-router'
 
 import { ApiError } from '../kernel/api/client'
 import { useFormat } from '../kernel/format/useFormat'
@@ -17,7 +17,6 @@ import { KeyboardInput } from '../kernel/ui/KeyboardInput'
 import { colors, fontSize, radius, spacing } from '../kernel/ui/theme'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
 import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
-import { DispatchDocumentChooser } from '../features/dispatch/DispatchDocumentChooser'
 import { readDispatchRequirement } from '../features/dispatch/stockExit'
 import { BinMarkList } from '../features/positions/BinMarkList'
 import { capMarks, markRecommended, marksToRows, toggleMark, type MarkOption, type Marks } from '../features/positions/binMarks'
@@ -81,7 +80,8 @@ type Step = { name: 'scan' } | { name: 'client' } | { name: 'consignee' } | { na
 /** Lote 146: con «el despacho exige documento» y sin un despacho libre ya abierto en el aparato, primero se escoge contra qué documento se despacha. */
 export default function DispatchScreen() {
   const requirement = readDispatchRequirement()
-  if (requirement !== 'FREE' && getOpenPick() === null) return <DispatchDocumentChooser requirement={requirement} />
+  // 2026-10-22: con «el despacho exige documento» no hay despacho sin documento: se va a la pantalla de Despacho (avisos y órdenes); el despacho libre solo existe cuando no se exige
+  if (requirement !== 'FREE' && getOpenPick() === null) return <Redirect href="/exit-dispatch" />
   return <FreeDispatchScreen />
 }
 

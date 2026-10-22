@@ -121,4 +121,14 @@ describe('Recibir — varios seguidos (tanda con carga automática)', () => {
     await fireEvent.press(screen.getByTestId('receive-free-toggle'))
     expect(screen.getByTestId('receive-doc-asn:6')).toBeTruthy()
   })
+
+  it('la lista junta avisos y órdenes (sin pestañas ni buscador) y «Seleccionar varios» solo sale con más de un documento', async () => {
+    await signIn()
+    getDb().runSync("INSERT INTO asn (id, number, reference, client_name, warehouse_public_id, assigned_to_user_id, is_active) VALUES (5, 'LLE-00005', 'R-5', 'ASICS Care', 'wh-1', 7, 1)")
+    await renderRouter('src/app', { initialUrl: '/receive' })
+    await waitFor(() => expect(screen.getByTestId('receive-doc-asn:5')).toBeTruthy())
+    expect(screen.queryByTestId('receive-select-many')).toBeNull()   // un solo documento a la vista
+    expect(screen.queryByTestId('receive-docs-asn')).toBeNull()      // ya no hay pestañas
+    expect(screen.queryByLabelText('Buscar aviso u orden')).toBeNull()
+  })
 })
