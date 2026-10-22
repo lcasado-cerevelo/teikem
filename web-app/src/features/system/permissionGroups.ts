@@ -24,3 +24,29 @@ export function groupPermissionsByCategory(perms: readonly PermissionDto[]): Per
   }
   return order.map((category) => ({ category, items: map.get(category) ?? [] }))
 }
+
+const VIEW_MARKERS = [': entrar y ver', ': open and view']
+
+/** ¿Es el permiso de «entrar y ver» de una pantalla del menú? (encabeza a los que la editan, que salen debajo y con sangría). */
+export function isScreenPermission(p: Pick<PermissionDto, 'label'>): boolean {
+  const label = (p.label ?? '').toLowerCase()
+  return VIEW_MARKERS.some((m) => label.endsWith(m))
+}
+
+export interface PermissionRow {
+  permission: PermissionDto
+  /** 'screen' = «entrar y ver» de una pantalla; 'sub' = lo que se hace en la pantalla de arriba; 'plain' = ninguno de los dos. */
+  kind: 'screen' | 'sub' | 'plain'
+}
+
+/** Marca cada permiso de un grupo: las pantallas con su «entrar y ver» y, debajo y con sangría, lo que se hace en ellas (2026-10-22, Luis: «entrar y ver recibo» y luego «recibir»). */
+export function annotatePermissions(items: readonly PermissionDto[]): PermissionRow[] {
+  let seenScreen = false
+  return items.map((permission) => {
+    if (isScreenPermission(permission)) {
+      seenScreen = true
+      return { permission, kind: 'screen' as const }
+    }
+    return { permission, kind: seenScreen ? ('sub' as const) : ('plain' as const) }
+  })
+}

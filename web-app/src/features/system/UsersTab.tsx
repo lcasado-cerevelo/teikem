@@ -63,7 +63,7 @@ import {
   type UserSummaryDto,
 } from './api'
 // (useUpdateUser lo usa `EditUserModal`, useCreateUser lo usa `CreateUserModal`.)
-import { groupPermissionsByCategory } from './permissionGroups'
+import { annotatePermissions, groupPermissionsByCategory } from './permissionGroups'
 import { categoryIcon } from './permissionIcons'
 import './system.css'
 
@@ -408,11 +408,11 @@ function ExtraPermissionsModal({
               <span>{categoryLabel(g.category)}</span>
             </div>
             <div className="permgrp-items">
-              {g.items.map((p) => {
+              {annotatePermissions(g.items).map(({ permission: p, kind }) => {
                 const locked = fromRole.has(p.code ?? '')
                 const checked = locked || extra.includes(p.code ?? '')
                 return (
-                  <label key={p.code} className={locked ? 'permrow fromrole' : 'permrow'}>
+                  <label key={p.code} className={`${locked ? 'permrow fromrole' : 'permrow'} ${kind}`}>
                     <input type="checkbox" checked={checked} disabled={locked} onChange={() => toggle(p.code ?? '')} />
                     {p.label} {locked && <span className="tag">({t('system.users.users.fromRole')})</span>}
                   </label>

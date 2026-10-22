@@ -16,3 +16,17 @@ describe('groupPermissionsByCategory', () => {
     expect(groupPermissionsByCategory([])).toEqual([])
   })
 })
+
+describe('annotatePermissions', () => {
+  it('marca las pantallas («entrar y ver») y deja con sangría lo que se hace en ellas', async () => {
+    const { annotatePermissions } = await import('./permissionGroups')
+    const rows = annotatePermissions([
+      { code: 'x.misc', label: 'Algo suelto' },
+      { code: 'receipts.view', label: 'Recibo: entrar y ver' },
+      { code: 'warehouse.receive', label: 'Recibir' },
+      { code: 'pickbatches.view', label: 'Recolección y empaque: entrar y ver' },
+      { code: 'warehouse.pick', label: 'Pickear' },
+    ] as never)
+    expect(rows.map((r) => r.kind)).toEqual(['plain', 'screen', 'sub', 'screen', 'sub'])
+  })
+})

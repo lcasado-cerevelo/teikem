@@ -45,6 +45,13 @@
   font-size: 13px;
   cursor: pointer;
 }
+.permrow.screen {
+  font-weight: 600;
+  margin-top: 6px;
+}
+.permrow.sub {
+  margin-left: 24px;
+}
 .permrow.fromrole {
   color: var(--faint);
 }

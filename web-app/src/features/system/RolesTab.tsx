@@ -27,7 +27,7 @@ import {
   type RowAction,
 } from '../../kernel/ui'
 import { useDeleteRole, useRoles, useRoleTemplates, useSaveRole, usePermissions, type PermissionDto, type RoleDto } from './api'
-import { groupPermissionsByCategory } from './permissionGroups'
+import { annotatePermissions, groupPermissionsByCategory } from './permissionGroups'
 import { categoryIcon } from './permissionIcons'
 import './system.css'
 
@@ -147,8 +147,8 @@ function RoleEditorModal({
                 <GroupCheckbox checked={allIn} indeterminate={someIn} onChange={() => toggleGroup(g.items)} label={t('system.users.roles.selectAllGroup')} />
               </div>
               <div className="permgrp-items">
-                {g.items.map((p) => (
-                  <label key={p.code} className="permrow">
+                {annotatePermissions(g.items).map(({ permission: p, kind }) => (
+                  <label key={p.code} className={`permrow ${kind}`}>
                     <input type="checkbox" checked={selected.includes(p.code ?? '')} onChange={() => toggle(p.code ?? '')} />
                     {p.label}
                   </label>
