@@ -10188,3 +10188,9 @@ Sistema → Roles → rol del supervisor → marque **«Ver todo en el aparato�
 
 **¿Y `warehouse.pick.any`?** (Lote 199)
 Ya no hace nada: lo sin asignar lo ve cualquiera y lo de otras personas lo ve quien tenga «Ver todo en el aparato».
+
+**¿Dónde se configura imprimir el label o la factura automáticamente al crear un envío?** (Lote 200)
+En la ficha del **cliente** → Perfil (es un dato por cliente). Ya no hay ajuste general en Sistema → Impresoras y labels.
+
+**¿Dónde quedaron los permisos de compras, ventas y contabilización?** (Lote 200)
+En Sistema → Roles, sección **Facturación**: cada pantalla con su «entrar y ver» y, justo debajo, lo que la edita (p. ej. Compras: ver, crear y editar, recibir; Ventas: ver, crear, precio, cancelar, backorder, devoluciones). Los envíos y las rutas están en **Transporte**.

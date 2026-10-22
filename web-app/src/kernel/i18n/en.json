@@ -11203,6 +11203,7 @@
       "templateInactive": "The template chosen on this station is no longer active: the company default is used.",
       "onSave": "Print on save",
       "confirm": "Confirm first",
+      "perClient": "Printing the label and the invoice when a shipment is created is set per client: in the client record → Profile.",
       "onSaveOn": "The company prints labels directly when a shipment is saved: with “Print on save” off, this station does not print them.",
       "onSaveOff": "The company has “Print labels directly to the printer” off: saving a shipment does not print its label.",
       "viaQz": "Prints directly with QZ Tray on “{name}”.",

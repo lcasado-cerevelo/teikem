@@ -6218,3 +6218,18 @@ GO
 UPDATE dbo.Permission SET LabelJson = N'{"es":"Planificar rutas","en":"Plan routes"}' WHERE Code = 'trips.plan' AND LabelJson <> N'{"es":"Planificar rutas","en":"Plan routes"}';
 UPDATE dbo.Permission SET LabelJson = N'{"es":"Despachar rutas","en":"Dispatch routes"}' WHERE Code = 'trips.dispatch' AND LabelJson <> N'{"es":"Despachar rutas","en":"Dispatch routes"}';
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-22 (Lote 200) — Imprimir el label (y la factura) al crear el envío es POR CLIENTE (dbo.Client.AutoPrintLabels y AutoPrintInvoice, ficha del cliente → Perfil), no un ajuste de la compañía.
+   Para no cambiarle el trabajo a nadie, las compañías que tenían encendido «Imprimir labels directo a la impresora» (dbo.Tenant.PrintLabelsDirect) pasan ese valor a cada uno de sus clientes UNA vez
+   (el ajuste de la compañía deja de usarse; la columna se queda, no se borra). Solo enciende; nunca apaga. Marca en dbo.AppliedMigration. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L200_AUTOPRINT_PER_CLIENT')
+BEGIN
+    UPDATE c SET AutoPrintLabels = 1
+    FROM dbo.Client c
+    JOIN dbo.Tenant t ON t.TenantId = c.TenantId
+    WHERE t.PrintLabelsDirect = 1 AND c.AutoPrintLabels = 0;
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L200_AUTOPRINT_PER_CLIENT');
+END
+GO

@@ -223,7 +223,8 @@ export function usePrinting() {
   ) : null
 
   /** «Label al guardar» por omisión: la compañía imprime directo y esta estación no se excluyó. */
-  const labelOnSaveDefault = !!options.data?.printLabelsDirect && readStationConfig(tenantId).label.printOnSave
+  // 2026-10-22 (Luis): imprimir el label (y la factura) al crear el envío es un dato de CADA CLIENTE (ficha del cliente → Perfil), no de la compañía ni de la estación: sin ajuste general encendido por omisión
+  const labelOnSaveDefault = false
 
   return { printLabels, printInvoiceLabels, printDocument, dialog, busy, labelOnSaveDefault, optionsReady: !options.isPending }
 }

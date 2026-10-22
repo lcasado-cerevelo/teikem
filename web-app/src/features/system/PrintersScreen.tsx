@@ -12,7 +12,7 @@ import { IconGear, IconPrint } from '../../kernel/ui/screenIcons'
 import { getQzClient, QZ_DOWNLOAD_URL, type QzState } from '../../kernel/ui/qzTray'
 import { LabelBuilderPanel } from '../printing/LabelBuilderPanel'
 import { PrintersPanel } from '../printing/PrintersPanel'
-import { usePrintingSettings, useSavePrintingSettings, useStationOptions } from '../printing/printingApi'
+import { useStationOptions } from '../printing/printingApi'
 import { StationPrintPanel } from '../printing/StationPrintPanel'
 import { readStationConfig, resolvePrinter, writeStationConfig, type StationConfig } from '../printing/stationConfig'
 import '../printing/printing.css'
@@ -87,41 +87,6 @@ function QzPanel({ detected, onDetected, signing }: { detected: readonly string[
   )
 }
 
-function CompanyPrintingPanel() {
-  const t = useT()
-  const settings = usePrintingSettings()
-  const save = useSavePrintingSettings()
-  const [pending, setPending] = useState<boolean | null>(null)
-  const value = pending ?? settings.data?.printLabelsDirect ?? false
-  return (
-    <Panel icon={<IconGear />} title={t('printing.company.title')}>
-      <label className="sw">
-        <input
-          type="checkbox"
-          role="switch"
-          checked={value}
-          disabled={settings.isPending || save.isPending}
-          onChange={async (e) => {
-            const next = e.target.checked
-            setPending(next)
-            try {
-              await save.mutateAsync(next)
-              toast.success(t(next ? 'printing.company.on' : 'printing.company.off'))
-            } catch (err) {
-              toast.error(applyProblemDetails(err).title)
-            } finally {
-              setPending(null)
-            }
-          }}
-        />
-        <span className="tk" aria-hidden="true" />
-        <span>{t('printing.company.direct')}</span>
-      </label>
-      <p className="help">{t('printing.company.directHelp')}</p>
-    </Panel>
-  )
-}
-
 export default function PrintersScreen() {
   const t = useT()
   const { tenantId, me } = useSession()
@@ -165,7 +130,7 @@ export default function PrintersScreen() {
       </div>
       <LabelBuilderPanel mediaSize={labelPrinter.mediaSize} company={company} />
       <LabelBuilderPanel kind="INVOICE" mediaSize={labelPrinter.mediaSize} company={company} />
-      <CompanyPrintingPanel />
+      
       <PrintersPanel detected={detected} />
     </div>
   )

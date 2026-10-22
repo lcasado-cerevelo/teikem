@@ -11206,6 +11206,7 @@
       "templateInactive": "La plantilla elegida en esta estación ya no está activa: se usa la predeterminada de la compañía.",
       "onSave": "Imprimir al guardar",
       "confirm": "Confirmar antes",
+      "perClient": "Imprimir el label y la factura al crear un envío se configura por cliente: en la ficha del cliente → Perfil.",
       "onSaveOn": "La compañía imprime los labels directo al guardar un envío: con «Imprimir al guardar» apagado, esta estación no los imprime.",
       "onSaveOff": "La compañía tiene apagado «Imprimir labels directo a la impresora»: al guardar un envío no sale el label solo.",
       "viaQz": "Imprime directo con QZ Tray en «{name}».",

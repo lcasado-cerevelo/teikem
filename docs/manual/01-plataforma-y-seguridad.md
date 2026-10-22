@@ -1220,3 +1220,7 @@ El **administrador de la plataforma** trabaja dentro de la compañía que tenga 
 
 ## Acceso al menú (Lote 152, 2026-10-20)
 En Roles y usuarios, los permisos empiezan con la categoría **«Acceso al menú»**: uno por opción del menú, en el orden del menú. Dar solo el permiso de acceso deja **entrar a la pantalla y verla**, sin crear ni editar nada; para actuar hace falta además el permiso de la acción (por ejemplo, `warehouse.pick` para recolectar). Quien tiene un permiso de acción entra solo a su pantalla sin que se lo den aparte, y entrar a una pantalla incluye leer los datos que muestra. Pulso del día también tiene su permiso (`pulse.view`). Al actualizar, cada rol conservó las pantallas que ya veía.
+
+## Permisos por sección y en orden lógico (2026-10-22)
+
+En Sistema → Roles los permisos se muestran **por sección, en el orden del menú** (Pulso, Transporte, Almacén, Rentas, Facturación, Clientes, Flota, Análisis, Sistema, Seguridad) y, dentro de cada una, **por pantalla**: primero «entrar y ver» y luego lo que crea, edita o ejecuta en ella (no en orden alfabético). Ya no existe el grupo aparte «Acceso al menú»: cada acceso está en su sección. **Transporte** (antes «Órdenes» y «Trips») reúne envíos, estación de escaneo, rutas (planificar, optimizar, despachar, cerrar, monitoreo) y reclamaciones. **Facturación** reúne compras, contabilización de compras, ventas (antes en Órdenes), contabilización de despachos, facturación, procesar entregas (COD), liquidación a choferes e impuestos.

@@ -150,7 +150,7 @@ describe('Impresoras y labels', () => {
     expect(within(builder).getByRole('alert')).toHaveTextContent('El label necesita al menos un código de barras para poder escanearlo.')
   })
 
-  it('alta de impresora con QZ Tray y el ajuste «Imprimir labels directo a la impresora»', async () => {
+  it('alta de impresora con QZ Tray (y sin ajuste general de «Imprimir labels directo»: es por cliente)', async () => {
     setQzClient(fakeQz('notRunning'))
     const user = userEvent.setup()
     wrap()
@@ -173,10 +173,7 @@ describe('Impresoras y labels', () => {
       notes: null,
     })
 
-    const direct = screen.getByRole('switch', { name: 'Imprimir labels directo a la impresora' })
-    await waitFor(() => expect(direct).not.toBeDisabled())
-    await user.click(direct)
-    await waitFor(() => expect(mock.requests.some((r) => r.method === 'PUT')).toBe(true))
-    expect(mock.requests.find((r) => r.method === 'PUT')!.body).toEqual({ printLabelsDirect: true })
+    // 2026-10-22: imprimir el label al crear el envío es por cliente; ya no hay ajuste general de la compañía en esta pantalla
+    expect(screen.queryByRole('switch', { name: 'Imprimir labels directo a la impresora' })).toBeNull()
   })
 })

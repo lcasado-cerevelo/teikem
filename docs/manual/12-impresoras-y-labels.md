@@ -249,3 +249,7 @@ estación (secciones 1 y 3) y nunca lleva el precio de la orden.
 - El número de paquete es por cliente (PQT-##### de cada cliente) o tecleado, así que puede repetirse: con dos o más órdenes el escaneo
   responde «El número de paquete está en {n} órdenes (de clientes distintos o repetido); escanee el empaque o el número de envío.» y no asigna.
 - La búsqueda usa el índice `IX_CargoLine_PackageNumber` (sección «2026-10-12 (e)» de `logistica-db-update.sql`; se crea con `db-update`).
+
+## Imprimir al crear el envío: es por cliente (2026-10-22)
+
+Imprimir **el label** y **la factura** automáticamente al crear un envío es un dato **de cada cliente** (ficha del cliente → Perfil → «Imprimir los labels automáticamente» y «Imprimir el label de la factura automáticamente»), no de la compañía. Por eso Sistema → Impresoras y labels **ya no tiene** el interruptor «Imprimir labels directo a la impresora», ni la estación el de «Imprimir al guardar». En la entrada de envíos queda el interruptor de la sesión (apagado por omisión) para imprimir los labels de esa captura aunque el cliente no lo tenga. Las compañías que tenían el ajuste general encendido pasaron ese valor a todos sus clientes una sola vez (migración 2026-10-22).

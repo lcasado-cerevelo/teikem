@@ -168,20 +168,13 @@ export function StationPrintPanel({ kind, options, saved, onSave, detected, comp
       {resolved.notice === 'printerInactive' && <p className="note">{t('printing.station.printerInactive')}</p>}
       {isLabel && template.notice === 'templateInactive' && <p className="note">{t('printing.station.templateInactive')}</p>}
       <div className="r2">
-        {isLabel && (
-          <label className="sw">
-            <input type="checkbox" role="switch" checked={draft.label.printOnSave} onChange={(e) => setOwn({ printOnSave: e.target.checked })} />
-            <span className="tk" aria-hidden="true" />
-            <span>{t('printing.station.onSave')}</span>
-          </label>
-        )}
         <label className="sw">
           <input type="checkbox" role="switch" checked={own.confirm} onChange={(e) => setOwn({ confirm: e.target.checked })} />
           <span className="tk" aria-hidden="true" />
           <span>{t('printing.station.confirm')}</span>
         </label>
       </div>
-      {isLabel && <p className="help">{options?.printLabelsDirect ? t('printing.station.onSaveOn') : t('printing.station.onSaveOff')}</p>}
+      {isLabel && <p className="help">{t('printing.station.perClient')}</p>}
       <p className="help prn-via">{via}</p>
       <div className="prn-acts">
         <button type="button" className="btn" disabled={busy} onClick={() => (own.confirm ? setPreview(true) : void runTest())}>
