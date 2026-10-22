@@ -51,6 +51,7 @@ const styles = StyleSheet.create({
   base: {
     minHeight: touchTarget,
     paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,   // 2026-10-22: con un texto de dos líneas (p. ej. «Ver lo que nadie tiene asignado (1)») el texto no queda pegado al borde
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -61,9 +62,9 @@ const styles = StyleSheet.create({
   danger: { backgroundColor: colors.error },
   disabled: { opacity: 0.5 },
   pressed: { opacity: 0.85 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, maxWidth: '100%' },
   icon: { fontSize: 22 },
-  label: { color: colors.text, fontSize: fontSize.button, fontWeight: '700' },
+  label: { color: colors.text, fontSize: fontSize.button, fontWeight: '700', textAlign: 'center', flexShrink: 1 },
   tile: { minHeight: tileHeight, paddingHorizontal: spacing.sm, paddingVertical: spacing.sm },
   column: { alignItems: 'center', gap: spacing.xs },
   tileIcon: { fontSize: 30 },
