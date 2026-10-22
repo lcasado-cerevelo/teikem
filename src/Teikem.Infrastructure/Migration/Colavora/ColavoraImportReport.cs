@@ -34,13 +34,14 @@ public static class ColavoraEntities
     public const string History = "Historial";
     public const string Attempts = "Intentos de entrega";
     public const string Trips = "Viajes (manifiestos)";
+    public const string RouteStops = "Paradas de ruta";
     public const string Proofs = "Comprobantes de entrega";
     public const string ProofFiles = "Firmas y fotos";
 
     public static readonly string[] Order =
     {
         Company, Catalogs, Reasons, Users, Drivers, Zones, Clients, Consignees, Contracts, CustomFields,
-        Orders, Pieces, History, Attempts, Trips, Proofs, ProofFiles,
+        Orders, Pieces, History, Attempts, Trips, RouteStops, Proofs, ProofFiles,
     };
 }
 

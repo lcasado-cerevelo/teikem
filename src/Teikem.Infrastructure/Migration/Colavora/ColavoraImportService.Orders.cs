@@ -61,6 +61,7 @@ public sealed partial class ColavoraImportService
             if (batch.Count < opt.BatchSize && last >= to) break;
         }
         s.Report.AddInfo("Envíos procesados", $"{done:N0} en {(DateTime.UtcNow - started):hh\\:mm\\:ss}");
+        ReportInferredTotals(s);
     }
 
     private sealed class OrderBuild
@@ -94,6 +95,12 @@ public sealed partial class ColavoraImportService
         var newTrips = new Dictionary<string, Trip>(StringComparer.OrdinalIgnoreCase);
         var newDrivers = new Dictionary<string, Driver>(StringComparer.OrdinalIgnoreCase);
         var seenWaybills = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // envíos nuevos que Colavora manda sin ZIP del consignatario: se infiere (historial, luego municipio) antes de armar las paradas
+        s.InferredByShipment.Clear();
+        var missingZip = batch.Where(x => !existing.Contains(x.Waybill) && ColavoraRules.NormalizeZip(x.Zip) is null)
+            .Select(x => new MissingZip(x.ShipmentId, $"{x.ShipmentId} {x.Waybill}", x.ConsigneeName, x.AddressLine1, x.AddressLine2)).ToList();
+        foreach (var kv in await InferMissingZipsAsync(s, missingZip, ct)) s.InferredByShipment[kv.Key] = kv.Value;
 
         foreach (var sh in batch)
         {
@@ -290,7 +297,8 @@ public sealed partial class ColavoraImportService
         }
         order.TotalPieces = order.CargoLines.Where(l => l.PackageNumber is not null).Sum(l => (int)l.Quantity);
         // Lote 129: zona de entrega por el ZIP del consignatario
-        if (ColavoraRules.NormalizeZip(sh.Zip) is { } dzip && s.ZoneIdByZip.TryGetValue(dzip, out var zoneId) && zoneId > 0) order.DeliveryZoneId = zoneId;
+        if (ColavoraRules.NormalizeZip(sh.Zip) is { } dzip) { if (s.ZoneIdByZip.TryGetValue(dzip, out var zoneId) && zoneId > 0) order.DeliveryZoneId = zoneId; }
+        else if (s.InferredByShipment.TryGetValue(sh.ShipmentId, out var inferred) && inferred.ZoneId > 0) order.DeliveryZoneId = inferred.ZoneId;   // sin ZIP en Colavora: el inferido (2026-10-22)
 
         // referencias
         if (!string.IsNullOrWhiteSpace(sh.ReferenceNo)) order.References.Add(new OrderReference { Order = order, RefTypeLookupId = s.RefTypeOtherId, RefValue = ColavoraRules.Trim(sh.ReferenceNo, 100)!, Source = "Colavora ReferenceNo" });
@@ -350,6 +358,8 @@ public sealed partial class ColavoraImportService
     private OrderStop BuildDeliveryStop(RunState s, CvShipment sh, ClientRef client, TransportOrder order)
     {
         var zip = ColavoraRules.NormalizeZip(sh.Zip);
+        var inferred = zip is null ? s.InferredByShipment.GetValueOrDefault(sh.ShipmentId) : null;   // sin ZIP en Colavora: el inferido, si lo hay
+        zip ??= inferred?.Zip;
         var line1 = ColavoraRules.FirstNonEmpty(sh.AddressLine1, sh.AddressLine2, sh.ConsigneeName, "Sin dirección");
         int? locationId = !string.IsNullOrWhiteSpace(sh.ConsigneeNum) && s.ConsigneesByNumber.TryGetValue((client.ClientId, sh.ConsigneeNum.Trim()), out var lid) ? lid : null;
         return new OrderStop
@@ -357,7 +367,7 @@ public sealed partial class ColavoraImportService
             Order = order, StopTypeLookupId = s.StopTypeDeliveryId, Sequence = 2, LocationId = locationId, StatusCodeId = s.StopStatus[StopStatuses.Pending],
             SnapName = ColavoraRules.Trim(sh.ConsigneeName, 200) ?? ColavoraRules.Trim(sh.ContactPerson, 200), SnapLine1 = ColavoraRules.Trim(line1, 200)!,
             SnapLine2 = string.Equals(line1, sh.AddressLine2?.Trim(), StringComparison.Ordinal) ? null : ColavoraRules.Trim(sh.AddressLine2, 200),
-            SnapCity = zip is not null && s.CityByZip.TryGetValue(zip, out var city) ? city : "—", SnapState = "PR", SnapPostalCode = zip, SnapCountryCode = "PR",
+            SnapCity = zip is not null && s.CityByZip.TryGetValue(zip, out var city) ? city : inferred?.City ?? "—", SnapState = "PR", SnapPostalCode = zip, SnapCountryCode = "PR",
             Notes = ColavoraRules.Trim(JoinNotes(sh.ContactPerson, sh.Phone), 500),
         };
     }

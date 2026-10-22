@@ -26,7 +26,7 @@ dotnet run --project src/Teikem.Api -- import-colavora <config.json> [--dry-run]
 | Opción | Qué hace |
 |---|---|
 | `--dry-run` | Lee todo, cuenta lo que se crearía y escribe el reporte; **no toca la base de Teikem**. |
-| `--solo catalogos,usuarios,zonas,clientes,consignatarios,contratos,ordenes` | Solo esas fases (las demás se leen de lo que ya está en Teikem). La compañía y los catálogos van siempre. |
+| `--solo catalogos,usuarios,zonas,clientes,consignatarios,contratos,ordenes,reparar,paradas` | Solo esas fases (las demás se leen de lo que ya está en Teikem). La compañía y los catálogos van siempre. `reparar` y `paradas` son idempotentes y también corren en una corrida completa (`paradas` además cuando se corre `ordenes`). |
 | `--desde N` / `--hasta N` | Rango de `ShipmentID` de las órdenes (para reanudar o para probar con pocas). |
 | `--dias-abiertas N` | Días que se dejan abiertas las órdenes: las abiertas (de cualquier estatus) con más de N días desde su creación se migran como **Entregada**, con nota en el historial. Sin esto, solo se cierran las Pending de más de 5 días (D3). En el script: `-DiasAbiertas 30`. |
 | `--meses N` / `--desde-fecha aaaa-mm-dd` | Para pruebas: solo las órdenes creadas en los últimos N meses o desde esa fecha (los maestros van completos). En el script: `-Meses 3` / `-DesdeFecha 2026-01-01`. |
@@ -71,6 +71,22 @@ El reporte (`.md` + `.csv` de resumen, rechazos y advertencias) queda en `report
    `SIGNATURE` y `DELIVERY_PHOTO`, dueño = el comprobante; la web las muestra en el comprobante y se piden con `GET /files/{id}`).
    Exige `Files:MasterKey` configurada en el API que corre la migración (en Development ya está; en producción la del servidor): sin
    ella se avisa una vez y las imágenes no se registran. `options.podFilesDir`, si se pone, además las exporta a disco por waybill.
+
+10. **Envíos sin código postal** (2026-10-22, Luis). Colavora manda envíos sin ZIP del consignatario (~1.070 desde el 1 de octubre, del cliente
+    AxisCare; la tabla `Consignees` tampoco lo trae) y sin ZIP no hay zona. La migración lo infiere así, en este orden:
+    (1) **historial del consignatario**: el ZIP de sus envíos anteriores en Colavora si todos traen el mismo (mismo nombre y dirección;
+    si no hay, mismo nombre), y solo si ese ZIP tiene zona; (2) **municipio en el texto** (nombre del consignatario o dirección), por
+    palabra completa y sin contar nombres de calle («AVE CAROLINA»), y solo si todos los ZIP de ese pueblo caen en **una sola zona**
+    (Bayamón y Carolina, repartidos en dos zonas, no se resuelven). El ZIP se guarda en la parada solo si es uno solo; si el pueblo
+    tiene varios ZIP en la misma zona, se guarda la ciudad y la zona y el ZIP queda vacío. Lo demás **queda sin zona**.
+    El reporte lista cada envío inferido (con de dónde salió) y cada uno sin zona (con su consignatario y dirección) como advertencias, y
+    el resumen dice cuántos fueron por historial, por municipio y sin zona. Fase `reparar`: aplica lo mismo a los envíos **ya migrados**
+    que quedaron sin zona (las órdenes existentes no se reimportan). Corrida del 2026-10-22 sobre Advance Logistics: 1.030 envíos
+    sin ZIP → 296 por historial, 174 por municipio, 560 sin zona.
+11. **Rutas y paradas de los viajes migrados** (2026-10-22). Los viajes `M-…` nacían con sus envíos enlazados pero sin ruta ni paradas, y
+    Despacho mostraba «La ruta no tiene paradas». La fase `paradas` crea la versión vigente de la ruta (ACTIVE si el viaje está despachado o
+    completado, DRAFT si no) y una parada por cada envío vigente del viaje, en el orden en que se asignó, con el estado de su parada de
+    entrega (completada, fallida o pendiente). No calcula tiempos ni distancias. Solo toca viajes sin ruta. Advance: 412 rutas, 7.203 paradas.
 
 Idempotente: volver a correr no duplica (clientes por código, consignatarios por número o dirección, choferes por código,
 zonas por código, órdenes por waybill, piezas por número). Las órdenes se escriben directo por EF con la auditoría apagada

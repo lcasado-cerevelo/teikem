@@ -23,7 +23,11 @@ public static class ColavoraPhases
     public const string Consignees = "consignatarios";
     public const string Contracts = "contratos";
     public const string Orders = "ordenes";
-    public static readonly string[] All = { Catalogs, Users, Zones, Clients, Consignees, Contracts, Orders };
+    /// <summary>Completa el ZIP y la zona de los envíos ya migrados que vinieron sin ZIP (historial del consignatario, luego municipio).</summary>
+    public const string Repair = "reparar";
+    /// <summary>Crea la ruta vigente y las paradas de los viajes migrados (M-…) que tienen envíos pero no paradas.</summary>
+    public const string Stops = "paradas";
+    public static readonly string[] All = { Catalogs, Users, Zones, Clients, Consignees, Contracts, Orders, Repair, Stops };
 }
 
 /// <summary>
@@ -140,6 +144,13 @@ public sealed partial class ColavoraImportService(
         public Dictionary<string, int> Trips { get; } = new(StringComparer.OrdinalIgnoreCase);
         /// <summary>Números de pieza ya usados en la compañía (índice único UX_OrderPiece).</summary>
         public HashSet<string> PieceNumbers { get; } = new(StringComparer.OrdinalIgnoreCase);
+        /// <summary>Pueblos de la tabla Zip de Colavora con su zona (se arma una vez, cuando hace falta inferir un ZIP).</summary>
+        public ColavoraZipInference.MunicipalityIndex? Municipalities { get; set; }
+        /// <summary>ShipmentID → ZIP/zona inferidos del lote en curso (solo los que Colavora mandó sin ZIP y se pudieron resolver).</summary>
+        public Dictionary<int, ColavoraZipInference.Inferred> InferredByShipment { get; } = new();
+        public long ZipFromHistory { get; set; }
+        public long ZipFromTown { get; set; }
+        public long ZipUnresolved { get; set; }
     }
 
     private sealed record ClientRef(int ClientId, Guid PublicId, string Code, string Name, int? PickupLocationId, int? ContractId);
@@ -185,6 +196,9 @@ public sealed partial class ColavoraImportService(
         if (phases.Contains(ColavoraPhases.Contracts)) await ImportContractsAsync(s, ct); else await LoadExistingContractsAsync(s, ct);
         await ImportCustomFieldsAsync(s, ct);
         if (phases.Contains(ColavoraPhases.Orders)) await ImportOrdersAsync(s, ct);
+        if (phases.Contains(ColavoraPhases.Repair)) await RepairOrderZonesAsync(s, ct);
+        // las paradas van tras las órdenes (también cuando solo se corre «ordenes»: un viaje sin paradas no se ve en Despacho)
+        if (phases.Contains(ColavoraPhases.Stops) || phases.Contains(ColavoraPhases.Orders)) await CreateMissingRouteStopsAsync(s, ct);
         return report;
     }
 

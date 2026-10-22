@@ -279,13 +279,20 @@ public sealed partial class ColavoraImportService
         }
 
         var existing = s.TenantId is null ? new List<DispatchZoneDto>() : (await dispatchZones.ListAsync(includeInactive: true, ct)).ToList();
+        var dryZoneId = 0;
         foreach (var p in planned)
         {
             s.Report.CountRead(Z);
             foreach (var zip in p.PostalCodes) s.ZoneIdByZip.TryAdd(zip, 0);   // se completa con el id real abajo
             var found = existing.FirstOrDefault(z => string.Equals(z.Code, p.Code, StringComparison.OrdinalIgnoreCase));
             if (found is not null) { s.Report.CountExisting(Z); s.Zones[p.Code] = found.Id; foreach (var zip in p.PostalCodes) s.ZoneIdByZip[zip] = found.Id; continue; }
-            if (s.DryRun) { s.Report.CountCreated(Z); continue; }
+            if (s.DryRun)
+            {
+                s.Report.CountCreated(Z);
+                dryZoneId--;
+                foreach (var zip in p.PostalCodes) s.ZoneIdByZip[zip] = dryZoneId;   // id provisional negativo: la simulación sí puede contar las zonas inferidas
+                continue;
+            }
             int? groupId = p.GroupCode is not null && s.ZoneGroups.TryGetValue(p.GroupCode, out var gid) ? gid : null;
             var dto = await TryAsync(s, Z, p.Code, () => dispatchZones.CreateAsync(new DispatchZoneRequest(p.Code, p.Name, groupId), ct));
             if (dto is null) continue;

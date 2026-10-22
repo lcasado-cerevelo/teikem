@@ -20,6 +20,9 @@ public sealed record CvCodType(int Id, string Name);
 public sealed record CvTypeCode(string TableName, string ColavoraId, string Name, string Language);
 public sealed record CvReason(int Id, string? CustomerId, string Code, string Description, bool CompleteOrder);
 public sealed record CvZip(string Zip, string? City, string? State, int? RoutePk, int? RouteDl, string? Zone, string? Driver);
+
+/// <summary>Un ZIP con el que el consignatario (nombre + línea 1 de la dirección) ya recibió envíos en Colavora.</summary>
+public sealed record CvConsigneeZip(string Name, string? AddressLine1, string Zip);
 public sealed record CvConsignee(int Id, int SenderId, string? Number, string? ContactName, string? CompanyName, string Address1, string? Address2, string? City, string? State,
     string PostalCode, string? Zone, string? Country, string? Latitude, string? Longitude, string? Comments, string? Email, string? Phone, DateTime? CreationDate, bool? Archived);
 public sealed record CvServicePrice(int Id, int SenderId, int ServiceType, int PackageType, decimal Price, short ItemFrom, short ItemTo, decimal CodFee, bool IsForPickup, bool HasDispatchCharge, decimal? DispatchFee);
@@ -171,6 +174,24 @@ public sealed class ColavoraReader(string courierConnectionString, string loginC
     private static bool? B(SqlDataReader r, int i) => r.IsDBNull(i) ? null : r.GetBoolean(i);
     private static DateTime? D(SqlDataReader r, int i) => r.IsDBNull(i) ? null : r.GetDateTime(i);
     private static decimal? M(SqlDataReader r, int i) => r.IsDBNull(i) ? null : r.GetDecimal(i);
+
+    /// <summary>
+    /// ZIP con los que los consignatarios indicados (por nombre) ya recibieron envíos en Colavora: solo lectura, distintos, de a 500 nombres
+    /// por consulta. Sirve para completar el ZIP de los envíos que llegan sin él (ver ColavoraZipInference).
+    /// </summary>
+    public async Task<List<CvConsigneeZip>> ReadConsigneeZipHistoryAsync(string companyId, IReadOnlyCollection<string> names, CancellationToken ct)
+    {
+        var all = new List<CvConsigneeZip>();
+        foreach (var chunk in names.Distinct(StringComparer.OrdinalIgnoreCase).Chunk(500))
+        {
+            var args = new List<(string Name, object Value)> { ("@c", companyId) };
+            for (var i = 0; i < chunk.Length; i++) args.Add(($"@n{i}", chunk[i].Trim()));
+            var sql = "SELECT DISTINCT RTRIM(ConsigneeName), RTRIM(AddressLine1), LEFT(LTRIM(RTRIM(Zip)), 10) FROM dbo.Shipments "
+                + "WHERE RTRIM(CompanyID) = @c AND ConsigneeName IN (" + string.Join(",", Enumerable.Range(0, chunk.Length).Select(i => $"@n{i}")) + ") AND Zip IS NOT NULL AND LTRIM(RTRIM(Zip)) <> ''";
+            all.AddRange(await ListAsync(courierConnectionString, sql, r => new CvConsigneeZip(S(r, 0) ?? string.Empty, S(r, 1), S(r, 2) ?? string.Empty), ct, args.ToArray()));
+        }
+        return all;
+    }
 
     private static async Task<List<T>> ListAsync<T>(string cs, string sql, Func<SqlDataReader, T> map, CancellationToken ct, params (string Name, object Value)[] args)
     {

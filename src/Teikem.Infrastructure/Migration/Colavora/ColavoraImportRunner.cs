@@ -27,7 +27,7 @@ public sealed class ColavoraImportRunner(IServiceScopeFactory scopes, ILogger<Co
     public const string SinceFlag = "--desde-fecha";
     /// <summary>Días que se dejan abiertas las órdenes: las abiertas con más días se migran como Entregada (--dias-abiertas N).</summary>
     public const string OpenDaysFlag = "--dias-abiertas";
-    public const string Usage = "Uso: dotnet run --project src/Teikem.Api -- import-colavora <config.json> [--dry-run] [--solo catalogos,usuarios,zonas,clientes,consignatarios,contratos,ordenes] [--desde <ShipmentID>] [--hasta <ShipmentID>] [--meses <N> | --desde-fecha <aaaa-mm-dd>]";
+    public const string Usage = "Uso: dotnet run --project src/Teikem.Api -- import-colavora <config.json> [--dry-run] [--solo catalogos,usuarios,zonas,clientes,consignatarios,contratos,ordenes,reparar,paradas] [--desde <ShipmentID>] [--hasta <ShipmentID>] [--meses <N> | --desde-fecha <aaaa-mm-dd>]";
     public const string AdminPasswordVariable = "TEIKEM_IMPORT_ADMIN_PASSWORD";
 
     public const int ExitOk = 0;
