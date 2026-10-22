@@ -50,3 +50,5 @@ Los mensajes de los servicios son los del servidor (capítulos 24 a 26): `Creden
 - **«Los avisos están vacíos»:** la compañía decide, cliente por cliente, qué avisos manda y por qué canal (capítulo 23); si el canal «bandeja del portal» está apagado no llega nada aquí.
 
 **Información legal (2026-10-21):** al pie de Ajustes están los enlaces **Privacidad** y **Términos de uso** (lectura del documento vigente, ruta `/legal-view`), los derechos reservados y «Powered by Teikem». Ver capítulo 24.
+
+> Capturas del portal del cliente: ver [capturas-apps.md](frontend/capturas-apps.md).

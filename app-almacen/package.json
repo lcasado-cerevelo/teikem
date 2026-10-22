@@ -37,6 +37,7 @@
     "oxlint": "^1.85.0",
     "react-test-renderer": "^19.2.3",
     "sharp": "^0.35.5",
+    "sql.js": "^1.15.1",
     "test-renderer": "^1.3.0",
     "typescript": "~5.9.0"
   },
@@ -52,7 +53,9 @@
     "typecheck": "tsc -b",
     "lint": "oxlint src modules/datawedge/src plugins",
     "test": "jest",
-    "check": "npm run api:types && npm run typecheck && npm run lint && npm run test"
+    "check": "npm run api:types && npm run typecheck && npm run lint && npm run test",
+    "export:visual": "expo export --platform web --output-dir dist-visual",
+    "visual": "node scripts/visual-check.cjs"
   },
   "private": true,
   "jest": {

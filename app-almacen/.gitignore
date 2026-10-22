@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# verificación visual (Playwright)
+dist-visual/
+visual-shots/

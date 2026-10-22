@@ -1461,3 +1461,5 @@ Dos permisos nuevos (categoría Almacén, Sistema → Roles; el administrador lo
 
 - **Recibir:** sin pestañas ni buscador. Una lista con los avisos de llegada y las órdenes de compra **asignados a usted** y, debajo, «Ver lo que nadie tiene asignado». «Seleccionar varios» solo aparece si hay **más de un** documento a la vista.
 - **Despacho:** la lista muestra los avisos de salida y/o las órdenes de venta que la compañía exige (**Ajustes → Operación → «el despacho exige documento»**). **«Despachar sin documento» solo sale cuando NO se exige documento** y va directo al producto y la posición. Con la exigencia puesta no existe ese botón ni la pantalla «¿Contra qué despachas?»: Despacho (avisos y órdenes) es la única entrada.
+
+> Capturas de las pantallas de la app de almacén: ver [capturas-apps.md](frontend/capturas-apps.md).
