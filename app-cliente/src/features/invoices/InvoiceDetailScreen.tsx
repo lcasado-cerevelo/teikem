@@ -4,6 +4,7 @@ import { Text, View } from 'react-native'
 
 import { apiErrorMessage } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n/useT'
+import { useIsWide } from '../../kernel/ui/layout'
 import { Button, Card, Chip, Muted, Notice, Screen, Spinner, Title, useColors } from '../../kernel/ui/ui'
 import { useAsync } from '../../kernel/ui/useAsync'
 import { formatDate, formatMoney } from '../format'
@@ -12,6 +13,7 @@ import { invoiceTone } from './invoiceRules'
 
 export function InvoiceDetailScreen() {
   const colors = useColors()
+  const wide = useIsWide()   // en escritorio no hay encabezado de pila: la pantalla trae su título y «← Atrás»
   const { t, lang } = useT()
   const { id } = useLocalSearchParams<{ id: string }>()
   const invoice = useAsync(() => getInvoice(String(id)), [id])
@@ -26,7 +28,7 @@ export function InvoiceDetailScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: i?.number ?? t('invoices.detailTitle'), headerShown: true }} />
+      <Stack.Screen options={{ title: i?.number ?? t('invoices.detailTitle'), headerShown: !wide }} />
       <Screen wide>
         {!!invoice.error && (
           <>

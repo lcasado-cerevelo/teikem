@@ -16,7 +16,7 @@ import { availableReports, totalsOf, type CellValue, type ColType, type ReportDe
 import { monthRange, PRESETS, type PresetId, rangeOf, todayDay } from './ranges'
 
 const PREVIEW_ROWS = 200
-const COL_WIDTH: Record<ColType, number> = { text: 170, date: 110, datetime: 160, int: 90, qty: 100, money: 120 }
+const COL_WIDTH: Record<ColType, number> = { text: 140, date: 104, datetime: 150, int: 76, qty: 90, money: 104 }
 
 export function formatCell(v: CellValue, type: ColType, lang: Lang): string {
   if (v === null || v === undefined || v === '') return type === 'text' ? '' : '—'
@@ -173,10 +173,20 @@ function ReportView({ report, onBack }: { report: ReportDef; onBack?: () => void
             <Button title={t('reports.export')} variant="secondary" onPress={() => void exportCsv()} busy={exporting} disabled={rows.length === 0} testID="report-export" />
           </View>
           {truncated && <Notice tone="warn">{t('reports.truncated')}</Notice>}
+          {Object.keys(totals).length > 0 && rows.length > 0 && (
+            <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }} testID="report-summary">
+              {report.columns.filter((c) => c.total).map((c) => (
+                <View key={c.key} style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase', color: colors.muted }}>{t(c.title)}</Text>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>{formatCell(totals[c.key], c.type, lang)}</Text>
+                </View>
+              ))}
+            </View>
+          )}
           {rows.length === 0 ? (
             <Muted>{t('reports.empty')}</Muted>
           ) : (
-            <ScrollView horizontal style={{ borderWidth: 1, borderColor: colors.line, borderRadius: 12, backgroundColor: colors.card }}>
+            <ScrollView horizontal style={{ borderWidth: 1, borderColor: colors.line, borderRadius: 12, backgroundColor: colors.card, alignSelf: 'flex-start', maxWidth: '100%' }}>
               <View>
                 <View style={{ flexDirection: 'row', backgroundColor: colors.neutralBg, paddingVertical: 10 }}>
                   {report.columns.map((c) => (

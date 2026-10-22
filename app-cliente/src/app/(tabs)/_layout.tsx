@@ -25,8 +25,8 @@ export default function TabsLayout() {
         headerTintColor: colors.onBrand,
         tabBarActiveTintColor: colors.link,
         tabBarInactiveTintColor: colors.muted,
-        tabBarPosition: wide ? 'left' : 'bottom',
-        tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.line, borderRightColor: colors.line },
+        headerShown: !wide,   // en escritorio el menú está en la barra de arriba (TopBar) y cada pantalla trae su título
+        tabBarStyle: wide ? { display: 'none' } : { backgroundColor: colors.card, borderTopColor: colors.line },
         sceneStyle: { backgroundColor: colors.bg },
       }}
     >

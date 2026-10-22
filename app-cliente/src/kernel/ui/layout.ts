@@ -5,7 +5,7 @@ import { Platform, useWindowDimensions } from 'react-native'
 export const WIDE_MIN_WIDTH = 900
 
 /** Ancho máximo del contenido en escritorio (listas y detalles) y en formularios. */
-export const WIDE_COLUMN = 1040
+export const WIDE_COLUMN = 1280
 export const NARROW_COLUMN = 560
 
 export const isWideWidth = (width: number, os: string = Platform.OS): boolean => os === 'web' && width >= WIDE_MIN_WIDTH

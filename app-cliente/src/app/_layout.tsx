@@ -17,7 +17,9 @@ import { initTheme } from '../kernel/ui/theme'
 import { EnvironmentBanner, EnvironmentFooter } from '../kernel/ui/EnvironmentBanner'
 import { useT } from '../kernel/i18n/useT'
 import { clearPortalBrand, loadPortalBrand } from '../kernel/brand/portalBrand'
+import { TopBar } from '../features/shell/TopBar'
 import { BrandBar } from '../kernel/ui/BrandBar'
+import { useIsWide } from '../kernel/ui/layout'
 import { Spinner, useColors } from '../kernel/ui/ui'
 
 /** Pantallas que se ven sin sesión. */
@@ -58,6 +60,7 @@ function Gate() {
   }, [])
 
   // con sesión el portal se viste con los colores y el logo de la compañía; sin sesión vuelve a la marca de siempre (2026-10-22)
+  const wide = useIsWide()
   const signedIn = !!session
   useEffect(() => {
     if (signedIn) void loadPortalBrand()
@@ -101,18 +104,18 @@ function Gate() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <EnvironmentBanner />
-      {!!session && <BrandBar />}
+      {!!session && (wide ? <TopBar /> : <BrandBar />)}
       <Stack screenOptions={{ headerShown: false, headerStyle: { backgroundColor: colors.brand }, headerTintColor: colors.onBrand, headerBackTitle: t('common.back') }}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="order/[id]" options={{ headerShown: true }} />
-        <Stack.Screen name="order/new" options={{ headerShown: true, title: t('newOrder.title') }} />
-        <Stack.Screen name="profile" options={{ headerShown: true, title: t('profile.title') }} />
-        <Stack.Screen name="invoices" options={{ headerShown: true, title: t('invoices.title') }} />
-        <Stack.Screen name="invoice/[id]" options={{ headerShown: true }} />
-        <Stack.Screen name="notice-prefs" options={{ headerShown: true, title: t('noticePrefs.title') }} />
-        <Stack.Screen name="consignee-notices" options={{ headerShown: true, title: t('consigneeNotices.title') }} />
-        <Stack.Screen name="consignee-messages/index" options={{ headerShown: true, title: t('consigneeMessages.title') }} />
-        <Stack.Screen name="consignee-messages/[id]" options={{ headerShown: true, title: t('consigneeMessages.title') }} />
+        <Stack.Screen name="order/[id]" options={{ headerShown: !wide }} />
+        <Stack.Screen name="order/new" options={{ headerShown: !wide, title: t('newOrder.title') }} />
+        <Stack.Screen name="profile" options={{ headerShown: !wide, title: t('profile.title') }} />
+        <Stack.Screen name="invoices" options={{ headerShown: !wide, title: t('invoices.title') }} />
+        <Stack.Screen name="invoice/[id]" options={{ headerShown: !wide }} />
+        <Stack.Screen name="notice-prefs" options={{ headerShown: !wide, title: t('noticePrefs.title') }} />
+        <Stack.Screen name="consignee-notices" options={{ headerShown: !wide, title: t('consigneeNotices.title') }} />
+        <Stack.Screen name="consignee-messages/index" options={{ headerShown: !wide, title: t('consigneeMessages.title') }} />
+        <Stack.Screen name="consignee-messages/[id]" options={{ headerShown: !wide, title: t('consigneeMessages.title') }} />
       </Stack>
       <EnvironmentFooter />
       {!!session && legalRequired === null && (

@@ -49,7 +49,9 @@
     "typecheck": "tsc -b",
     "lint": "oxlint src",
     "test": "jest",
-    "check": "npm run api:types && npm run typecheck && npm run lint && npm run test"
+    "check": "npm run api:types && npm run typecheck && npm run lint && npm run test",
+    "export:visual": "expo export --platform web --output-dir dist-visual",
+    "visual": "node scripts/visual-check.cjs"
   },
   "private": true,
   "jest": {

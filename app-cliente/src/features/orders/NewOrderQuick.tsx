@@ -17,14 +17,15 @@ interface SavedRow {
   publicId: string
   waybill: string
   consignee: string
+  description: string
   date: string
   pieces: string
   cod: number
 }
 
-const W = { date: 118, invoice: 120, pieces: 66, weight: 80, cod: 100, action: 112 } as const
+const W = { date: 124, invoice: 120, pieces: 70, weight: 84, cod: 100, action: 140 } as const
 
-export function NewOrderQuick({ form, onSaved }: { form: PortalOrderFormDto; onSaved?: (publicId: string) => void }) {
+export function NewOrderQuick({ form, onOpen }: { form: PortalOrderFormDto; onOpen?: (publicId: string) => void }) {
   const colors = useColors()
   const { t, lang } = useT()
   const hasInvoice = !!form.clientTypesInvoiceNumber
@@ -67,8 +68,7 @@ export function NewOrderQuick({ form, onSaved }: { form: PortalOrderFormDto; onS
       const created = await createOrder(quickRequest(row, hasInvoice))
       const name = row.newConsignee ? row.newConsignee.name : (consignees.find((c) => c.publicId === row.consigneeId)?.name ?? row.consigneeQuery)
       const cod = Number(row.cod.replace(',', '.')) || 0
-      setSaved((s) => [...s, { key: ++counter.current, publicId: created.publicId as string, waybill: created.waybillNumber || created.orderNumber || '', consignee: name, date: row.date, pieces: row.pieces, cod }])
-      onSaved?.(created.publicId as string)
+      setSaved((s) => [...s, { key: ++counter.current, publicId: created.publicId as string, waybill: created.waybillNumber || created.orderNumber || '', consignee: name, description: row.description.trim(), date: row.date, pieces: row.pieces, cod }])
       setRow((r) => nextQuickRow(r))
       setErrors([])
       focus('date')
@@ -94,8 +94,8 @@ export function NewOrderQuick({ form, onSaved }: { form: PortalOrderFormDto; onS
       {...extra}
     />
   )
-  const head = (label: string, width?: number) => (
-    <View style={{ width, flex: width ? undefined : 1, minWidth: width ? undefined : 120, paddingHorizontal: 4 }}>
+  const head = (label: string, width?: number, flex = 1) => (
+    <View style={{ width, flex: width ? undefined : flex, minWidth: width ? undefined : 120, paddingHorizontal: 4 }}>
       <Text numberOfLines={1} style={{ fontSize: 12, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase', color: colors.muted }}>{label}</Text>
     </View>
   )
@@ -117,7 +117,7 @@ export function NewOrderQuick({ form, onSaved }: { form: PortalOrderFormDto; onS
         <View style={{ flexDirection: 'row' }}>
           {head(t('newOrder.quick.col.date'), W.date)}
           {hasInvoice && head(t('newOrder.quick.col.invoice'), W.invoice)}
-          {head(t('newOrder.quick.col.consignee'))}
+          {head(t('newOrder.quick.col.consignee'), undefined, 2)}
           {head(t('newOrder.quick.col.description'))}
           {head(t('newOrder.quick.col.pieces'), W.pieces)}
           {head(t('newOrder.quick.col.weight'), W.weight)}
@@ -127,11 +127,11 @@ export function NewOrderQuick({ form, onSaved }: { form: PortalOrderFormDto; onS
         </View>
 
         {saved.map((s) => (
-          <Pressable key={s.key} testID={`quick-saved-${s.key}`} accessibilityRole="link" onPress={() => onSaved?.(s.publicId)} style={{ flexDirection: 'row', alignItems: 'center', minHeight: 36, backgroundColor: colors.okBg, borderRadius: 8 }}>
+          <Pressable key={s.key} testID={`quick-saved-${s.key}`} accessibilityRole="link" onPress={() => onOpen?.(s.publicId)} style={{ flexDirection: 'row', alignItems: 'center', minHeight: 36, backgroundColor: colors.okBg, borderRadius: 8 }}>
             {cell(text(s.date, false, true), W.date)}
             {hasInvoice && cell(null, W.invoice)}
-            {cell(text(s.consignee, true))}
-            {cell(text(s.waybill, true))}
+            {cell(text(s.consignee, true), undefined, 2)}
+            {cell(text([s.waybill, s.description].filter(Boolean).join(' · '), true))}
             {cell(text(s.pieces), W.pieces)}
             {cell(null, W.weight)}
             {cell(text(s.cod ? formatMoney(s.cod, lang) : '—', false, true), W.cod)}
@@ -175,6 +175,8 @@ export function NewOrderQuick({ form, onSaved }: { form: PortalOrderFormDto; onS
                 </View>
               )}
             </View>,
+            undefined,
+            2,
           )}
           {cell(input('description', row.description, (v) => set({ description: v })))}
           {cell(input('pieces', row.pieces, (v) => set({ pieces: v }), { keyboardType: 'number-pad' }), W.pieces)}

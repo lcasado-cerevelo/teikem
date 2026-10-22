@@ -4,6 +4,7 @@ import { Text, View } from 'react-native'
 
 import { apiErrorMessage } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n/useT'
+import { useIsWide } from '../../kernel/ui/layout'
 import { Button, Card, Chip, Muted, Notice, Screen, Spinner, Title, useColors } from '../../kernel/ui/ui'
 import { useAsync } from '../../kernel/ui/useAsync'
 import { formatDate, formatDateTime, statusTone } from '../format'
@@ -13,6 +14,7 @@ import { getConsigneeOrder } from '../portalApi'
 
 export function ConsigneeOrderDetailScreen() {
   const colors = useColors()
+  const wide = useIsWide()   // en escritorio no hay encabezado de pila: la pantalla trae su título y «← Atrás»
   const { t, lang } = useT()
   const { id } = useLocalSearchParams<{ id: string }>()
   const order = useAsync(() => getConsigneeOrder(String(id)), [id])
@@ -20,7 +22,7 @@ export function ConsigneeOrderDetailScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: o?.waybillNumber || t('order.title'), headerShown: true }} />
+      <Stack.Screen options={{ title: o?.waybillNumber || t('order.title'), headerShown: !wide }} />
       <Screen wide>
         {!!order.error && (
           <>

@@ -4,6 +4,7 @@ import { useMemo, type ReactNode } from 'react'
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native'
 
 import { LegalFooter } from './LegalFooter'
+import { WideBack } from '../../features/shell/WideBack'
 import { NARROW_COLUMN, WIDE_COLUMN, useIsWide } from './layout'
 import { useColors, type Palette } from './theme'
 
@@ -13,8 +14,8 @@ function makeStyles(c: Palette) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: c.bg },
     screenContent: { flexGrow: 1, alignItems: 'center' },
-    column: { width: '100%', maxWidth: Platform.OS === 'web' ? NARROW_COLUMN : undefined, gap: 12 },
-    columnWide: { width: '100%', maxWidth: WIDE_COLUMN, gap: 12 },
+    column: { width: '100%', maxWidth: Platform.OS === 'web' ? NARROW_COLUMN : undefined, gap: 12, zIndex: 1 },
+    columnWide: { width: '100%', maxWidth: WIDE_COLUMN, gap: 12, zIndex: 1 },
     padded: { padding: 16 },
     paddedWide: { padding: 24 },
     title: { fontSize: 22, fontWeight: '700', color: c.text },
@@ -61,7 +62,10 @@ export function Screen({ children, padded = true, scroll = true, wide = false }:
   const styles = useStyles()
   const isWide = useIsWide()
   // 2026-10-22: en escritorio las listas y los detalles (wide) usan una columna ancha; los formularios siguen angostos. El pie legal va al final de cada pantalla con desplazamiento.
-  const inner = <View style={[wide && isWide ? styles.columnWide : styles.column, padded && (isWide ? styles.paddedWide : styles.padded)]}>{children}</View>
+  const inner = <View style={[wide && isWide ? styles.columnWide : styles.column, padded && (isWide ? styles.paddedWide : styles.padded)]}>
+      {isWide && <WideBack />}
+      {children}
+    </View>
   return scroll ? (
     <ScrollView style={styles.screen} contentContainerStyle={styles.screenContent} keyboardShouldPersistTaps="handled">
       {inner}

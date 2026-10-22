@@ -53,7 +53,7 @@ describe('NewOrderQuick', () => {
 
     await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
     expect(createMock.mock.calls[0][0]).toMatchObject({ consigneePublicId: 'a', codAmount: 15, packages: [{ description: 'Cajas', pieces: 2, weightKg: null }], requestedDate: `${future()}T00:00:00Z` })
-    expect(await screen.findByText('W-1001')).toBeTruthy()   // la fila guardada con su número
+    expect(await screen.findByText(/W-1001/)).toBeTruthy()   // la fila guardada con su número y su descripción
     expect(screen.getByText('1 guardados')).toBeTruthy()
     // la fila nueva: misma fecha, sin consignatario
     expect(screen.getByTestId('quick-date').props.value).toBe(future())

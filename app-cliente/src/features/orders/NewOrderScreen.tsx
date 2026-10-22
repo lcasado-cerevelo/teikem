@@ -85,7 +85,7 @@ export function NewOrderScreen() {
     return (
       <Screen wide>
         <PageHeader title={t('newOrder.title')} subtitle={t('newOrder.quick.subtitle')}>{modeSwitch}</PageHeader>
-        <NewOrderQuick form={form} onSaved={(id) => router.push({ pathname: '/order/[id]', params: { id } })} />
+        <NewOrderQuick form={form} onOpen={(id) => router.push({ pathname: '/order/[id]', params: { id } })} />
       </Screen>
     )
   }
