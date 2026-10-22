@@ -7408,6 +7408,15 @@ Desde 2026-10-22 el enlace de ese correo va al **portal** (`Portal:WebBaseUrl`) 
 **En el portal, al activar la verificación en dos pasos, solo veía una clave larga y no un código QR.**
 Ahora sale el **código QR** para escanearlo con la app de autenticación (Google Authenticator, Microsoft Authenticator, Authy…). La clave escrita sigue ahí debajo por si no se puede escanear. Es necesario tener publicado el portal nuevo.
 
+**El portal se ve distinto a la web del equipo: ¿puedo poner mis colores y mi logo?**
+Sí, son los mismos de **Ajustes de la compañía → Marca** (la web del equipo): al entrar, el portal toma los colores de esa marca (barra, botones, enlaces y superficies; los colores de estado —verde, ámbar, rojo— no cambian) y, en la web de escritorio, muestra su logo en la barra de arriba (si no hay logo, el nombre de la compañía). Se prefiere el logo para fondo oscuro («lockup invertido»); en el celular los logos SVG no se pintan: suba también una versión PNG, JPG o WebP. Antes de entrar (pantalla de acceso) se ve la marca de siempre, porque todavía no se sabe de qué compañía es quien entra.
+
+**El portal en la computadora se veía como un celular angosto.**
+Desde 2026-10-22 en la web de escritorio (pantalla de 900 píxeles o más) el menú va a la izquierda y las listas y los detalles usan una columna ancha; en el celular y en una ventana angosta siguen las pestañas de abajo. Los formularios (entrar, crear una orden, perfil) se quedan en una columna angosta a propósito.
+
+**Al activar la verificación en dos pasos del portal, ¿qué pasa con los códigos de recuperación?**
+Igual que en la web del equipo: en la **misma pantalla** salen los códigos (Copiar, Descargar .txt o, en el celular, Guardar o compartir), la casilla «Ya guardé estos códigos en un lugar seguro» y el campo del código de su app. El botón «Verificar» no se habilita hasta marcar la casilla y escribir un código de 6 dígitos nuevo de la app.
+
 **Me llegó la invitación: ¿qué hago?**
 Pulse «Elegir mi contraseña», escriba una contraseña de al menos 12 caracteres dos veces y guárdela. Si dice «Invitación inválida o vencida.», el enlace ya se usó o pasaron más de 48 horas: pida que le reenvíen la invitación.
 

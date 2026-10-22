@@ -1,6 +1,6 @@
 // Baja de los avisos (pública): abrir el enlace no da de baja; hay que confirmar con el botón; se explica el resultado y los errores.
 const mockParams: { token?: string } = { token: 'baja-123' }
-jest.mock('expo-router', () => ({ useLocalSearchParams: () => mockParams }))
+jest.mock('expo-router', () => ({ useRouter: () => ({ push: jest.fn(), replace: jest.fn() }), useLocalSearchParams: () => mockParams }))
 jest.mock('../portalApi', () => ({ unsubscribeConsignee: jest.fn() }))
 
 import { fireEvent, render, screen } from '@testing-library/react-native'

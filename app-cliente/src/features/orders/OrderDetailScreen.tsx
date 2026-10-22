@@ -21,7 +21,7 @@ export function OrderDetailScreen() {
   return (
     <>
       <Stack.Screen options={{ title: o?.waybillNumber || o?.orderNumber || t('order.title'), headerShown: true }} />
-      <Screen>
+      <Screen wide>
         {!!order.error && (
           <>
             <Notice>{apiErrorMessage(order.error)}</Notice>

@@ -1,5 +1,5 @@
 // Ficha de la orden en el portal (Lote 119): el comprobante de entrega — quién recibió y cuándo, que lo registró el personal (sin nombre del usuario) y el enlace al mapa solo si se encontró la ubicación.
-jest.mock('expo-router', () => ({ useLocalSearchParams: () => ({ id: 'o1' }), Stack: { Screen: () => null } }))
+jest.mock('expo-router', () => ({ useRouter: () => ({ push: jest.fn(), replace: jest.fn() }), useLocalSearchParams: () => ({ id: 'o1' }), Stack: { Screen: () => null } }))
 jest.mock('../portalApi', () => ({ getOrder: jest.fn() }))
 
 import { render, screen, waitFor } from '@testing-library/react-native'

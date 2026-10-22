@@ -27,7 +27,7 @@ export function InvoiceDetailScreen() {
   return (
     <>
       <Stack.Screen options={{ title: i?.number ?? t('invoices.detailTitle'), headerShown: true }} />
-      <Screen>
+      <Screen wide>
         {!!invoice.error && (
           <>
             <Notice>{apiErrorMessage(invoice.error)}</Notice>

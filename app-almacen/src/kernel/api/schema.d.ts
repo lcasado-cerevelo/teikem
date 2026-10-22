@@ -20998,6 +20998,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portal/brand": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalBrandDto"];
+                        "application/json": components["schemas"]["PortalBrandDto"];
+                        "text/json": components["schemas"]["PortalBrandDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/brand/logos/{slot}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    slot: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "image/svg+xml": string;
+                        "image/png": string;
+                        "image/jpeg": string;
+                        "image/webp": string;
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/portal/summary": {
         parameters: {
             query?: never;
@@ -42081,6 +42158,10 @@ export interface components {
             canCreateProducts?: boolean;
             canCreateArrivals?: boolean;
             canCreateExits?: boolean;
+        };
+        PortalBrandDto: {
+            brandingJson?: string | null;
+            logoSlots?: string[] | null;
         };
         PortalClientDto: {
             /** Format: uuid */

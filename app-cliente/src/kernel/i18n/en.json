@@ -114,6 +114,13 @@
     "secretLabel": "Setup key",
     "openInApp": "Open in my authenticator app",
     "confirm": "Confirm",
+    "copy": "Copy the codes",
+    "copied": "Codes copied.",
+    "copyFailed": "Could not copy. Select them and copy by hand.",
+    "download": "Download (.txt)",
+    "share": "Save or share",
+    "savedCheck": "I saved these codes somewhere safe",
+    "recoveryNext": "To finish signing in, type a new code from your authenticator app.",
     "recoveryTitle": "Recovery codes",
     "recoveryHelp": "Keep them somewhere safe: they work if you lose your phone and are shown only this once.",
     "recoverySaved": "I saved them"

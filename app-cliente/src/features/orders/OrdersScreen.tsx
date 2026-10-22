@@ -58,7 +58,7 @@ export function OrdersScreen() {
   }, [load])
 
   return (
-    <Screen>
+    <Screen wide>
       <Title>{t('orders.title')}</Title>
       {canCreate && <Button title={t('orders.new')} onPress={() => router.push('/order/new')} testID="orders-new" />}
       <Field label={t('orders.search')} value={search} onChangeText={setSearch} placeholder={t('orders.searchPlaceholder')} autoCapitalize="none" returnKeyType="search" testID="orders-search" />

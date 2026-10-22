@@ -1,0 +1,498 @@
+// COPIA de web-app/src/kernel/ui/brandTheme.ts (2026-10-22): el portal interpreta la marca de la compañía con la MISMA lógica que la web del equipo (mismos temas, misma derivación de la paleta).
+// No se edita aquí: si cambia allá, se vuelve a copiar (la paridad con el servidor la cubren los vectores compartidos tests/shared/brand-vectors.json).
+// Marca de la compañía: colores (Ajustes → Marca), portado de la maqueta (`BRAND_PRESETS`, `deriveAccent`, `deriveSurfaces`,
+// `brandChecks`, `applyTenantBrand`). Se guarda en `Tenant.BrandingJson` (`PUT /tenant/settings`) y se aplica sobrescribiendo
+// las variables CSS de `tokens.css` en <html>. Qué se personaliza y qué no:
+// - Marca: los dos acentos `--flow` (operación) y `--money` (dinero). Son semánticos ("dos corrientes"): se valida que sigan
+//   siendo distinguibles (≥ 40° de matiz).
+// - Estado (`--ok`, `--warn`, `--danger`, `--info`): NO se personaliza (verde = bien, rojo = mal).
+// - Superficies: solo por preset o por un "tono base" acotado; se derivan de tono y saturación del neutro.
+// Validación: contraste WCAG contra el panel en AMBOS modos (texto ≥ 7, atenuado y acentos ≥ 4.5) y separación de matiz.
+// El servidor repite la MISMA validación (`BrandingRules`, src/Teikem.Domain/Tenancy): `validateBrandingJson` es su espejo, con los
+// mismos mensajes, y la paridad se asegura con los vectores compartidos `tests/shared/brand-vectors.json` (los leen esta
+// carpeta con vitest y las pruebas xunit). Si cambia un número o un mensaje aquí, cambia allá y se regeneran los vectores.
+// Lógica pura.
+
+export type ThemeMode = 'dark' | 'light'
+
+export interface BrandPreset {
+  id: string
+  nameEs: string
+  nameEn: string
+  flow: string
+  money: string
+  /** Tono (0-360) y saturación (0-1) del neutro: lo que hace que el tema se sienta frío, cálido o gris. */
+  nh: number
+  ns: number
+}
+
+/** Los 13 temas de la maqueta y el de Advance Logistics (el primero y el de por defecto); cada uno pasa `brandChecks` (lo comprueba la prueba). */
+export const BRAND_PRESETS: readonly BrandPreset[] = [
+  // Lote 138: la paleta de la página de Advance Logistics (azul marino de fondos, naranja de botones y enlaces, gris secundario)
+  { id: 'advance', nameEs: 'Enterprise (por defecto)', nameEn: 'Enterprise (default)', flow: '#F37123', money: '#6C757D', nh: 216, ns: 0.42 },
+  { id: 'teikem', nameEs: 'Teikem (azul y naranja)', nameEn: 'Teikem (blue and orange)', flow: '#1F6FE5', money: '#FF6A1A', nh: 222, ns: 0.39 },
+  { id: 'marino', nameEs: 'Marino', nameEn: 'Navy', flow: '#1F59A3', money: '#E08A17', nh: 215, ns: 0.42 },
+  { id: 'acero', nameEs: 'Acero', nameEn: 'Steel', flow: '#3D6E9C', money: '#D2691E', nh: 210, ns: 0.26 },
+  { id: 'carretera', nameEs: 'Carretera', nameEn: 'Highway', flow: '#D32F2F', money: '#0E8F8F', nh: 8, ns: 0.15 },
+  { id: 'granate', nameEs: 'Granate', nameEn: 'Crimson', flow: '#B02A45', money: '#0E8F8F', nh: 345, ns: 0.17 },
+  { id: 'vino', nameEs: 'Vino', nameEn: 'Burgundy', flow: '#9E2F4F', money: '#C69214', nh: 338, ns: 0.2 },
+  { id: 'bosque', nameEs: 'Bosque', nameEn: 'Forest', flow: '#1E8E5A', money: '#D98324', nh: 160, ns: 0.19 },
+  { id: 'selva', nameEs: 'Selva', nameEn: 'Jungle', flow: '#0F7A5A', money: '#C8452D', nh: 168, ns: 0.24 },
+  { id: 'oliva', nameEs: 'Oliva', nameEn: 'Olive', flow: '#5B7A2E', money: '#C2571C', nh: 92, ns: 0.15 },
+  { id: 'turquesa', nameEs: 'Turquesa', nameEn: 'Turquoise', flow: '#0E9AA7', money: '#E2622C', nh: 190, ns: 0.25 },
+  { id: 'indigo', nameEs: 'Índigo', nameEn: 'Indigo', flow: '#4F46E5', money: '#EA8C00', nh: 250, ns: 0.3 },
+  { id: 'violeta', nameEs: 'Violeta', nameEn: 'Violet', flow: '#7A4FD1', money: '#D98324', nh: 265, ns: 0.24 },
+  { id: 'grafito', nameEs: 'Grafito', nameEn: 'Graphite', flow: '#4E5A6E', money: '#C2691C', nh: 220, ns: 0.06 },
+]
+
+/** Lote 138: el tema por omisión es el de la página de Advance Logistics (azul marino, naranja y gris). */
+export const DEFAULT_PRESET = 'advance'
+/** Menores (2026-10-21): cuánto del tercer color de la marca (--money, el gris) se mezcla en el encabezado de tarjetas y paneles (base.css: `color-mix(… var(--money) 8%, var(--panel))`). Clarísimo a propósito. */
+export const PANEL_HEAD_MIX = 0.08
+
+/** Mezcla en sRGB: `share` (0-1) de `a` y el resto de `b` (lo mismo que `color-mix(in srgb, a share, b)` en CSS). */
+export function mixHex(a: string, b: string, share: number): string {
+  const x = hexToRgb(a)
+  const y = hexToRgb(b)
+  return rgbToHex(x.r * share + y.r * (1 - share), x.g * share + y.g * (1 - share), x.b * share + y.b * (1 - share))
+}
+
+/** Color del encabezado de una tarjeta/panel: el tercer color mezclado con el fondo del panel. */
+export function panelHeadColor(money: string, panel: string, mix: number = PANEL_HEAD_MIX): string {
+  return mixHex(money, panel, mix)
+}
+
+/** El texto atenuado dentro de ese encabezado se oscurece un poco (25 % del texto principal) para conservar el contraste AA sobre el fondo teñido (base.css: `--head-muted`). */
+export const HEAD_MUTED_TEXT_SHARE = 0.25
+export const headMutedColor = (muted: string, text: string) => mixHex(text, muted, HEAD_MUTED_TEXT_SHARE)
+/** Techo de la saturación del neutro propio (0.45, apenas por encima del 0.39 original). */
+export const NEUTRAL_SAT_MAX = 0.45
+export const MIN_HUE_DISTANCE = 40
+
+/** Lo que se guarda en `BrandingJson` (otras claves que hubiera se conservan al guardar). */
+export interface BrandSettings {
+  preset: string
+  useCustom: boolean
+  /** Lote 138: `action` (botones, enlaces, foco) es opcional; sin él, el mismo color que `flow` (primario). */
+  custom: { flow: string; money: string; neutral: string; action?: string }
+}
+
+export const DEFAULT_BRAND: BrandSettings = {
+  preset: DEFAULT_PRESET,
+  useCustom: false,
+  custom: { flow: '#F37123', money: '#6C757D', neutral: '#03204B' },
+}
+
+// ------------------------------------------------------------------ color
+
+export function isValidHex(h: string | null | undefined): boolean {
+  return /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(String(h ?? ''))
+}
+
+/** '#abc' / 'abc' / '#aabbcc' → '#AABBCC'. */
+export function normalizeHex(h: string): string {
+  let s = h.trim().replace('#', '')
+  if (s.length === 3) s = s.split('').map((c) => c + c).join('')
+  return `#${s.toUpperCase()}`
+}
+
+export function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const n = parseInt(normalizeHex(hex).slice(1), 16)
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }
+}
+
+export function rgbToHex(r: number, g: number, b: number): string {
+  const c = (v: number) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')
+  return `#${c(r)}${c(g)}${c(b)}`.toUpperCase()
+}
+
+export function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
+  r /= 255
+  g /= 255
+  b /= 255
+  const mx = Math.max(r, g, b)
+  const mn = Math.min(r, g, b)
+  let h = 0
+  let s = 0
+  const l = (mx + mn) / 2
+  if (mx !== mn) {
+    const d = mx - mn
+    s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn)
+    h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4
+    h *= 60
+  }
+  return { h, s, l }
+}
+
+export function hslToHex(h: number, s: number, l: number): string {
+  h = ((h % 360) + 360) % 360
+  s = Math.max(0, Math.min(1, s))
+  l = Math.max(0, Math.min(1, l))
+  const c = (1 - Math.abs(2 * l - 1)) * s
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1))
+  const m = l - c / 2
+  let r = 0
+  let g = 0
+  let b = 0
+  if (h < 60) [r, g] = [c, x]
+  else if (h < 120) [r, g] = [x, c]
+  else if (h < 180) [g, b] = [c, x]
+  else if (h < 240) [g, b] = [x, c]
+  else if (h < 300) [r, b] = [x, c]
+  else [r, b] = [c, x]
+  return rgbToHex((r + m) * 255, (g + m) * 255, (b + m) * 255)
+}
+
+const hslOf = (hex: string) => {
+  const { r, g, b } = hexToRgb(hex)
+  return rgbToHsl(r, g, b)
+}
+
+/** Luminancia relativa (WCAG 2.x). */
+export function relLum(hex: string): number {
+  const { r, g, b } = hexToRgb(hex)
+  const f = (v: number) => {
+    v /= 255
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+  }
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+}
+
+/** Razón de contraste WCAG entre dos colores (1 a 21). */
+export function contrastRatio(a: string, b: string): number {
+  const l1 = relLum(a)
+  const l2 = relLum(b)
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05)
+}
+
+/** Distancia de matiz (0-180°) entre dos colores. */
+export function hueDistance(a: string, b: string): number {
+  const d = Math.abs(hslOf(a).h - hslOf(b).h) % 360
+  return d > 180 ? 360 - d : d
+}
+
+export function rgbaOf(hex: string, alpha: number): string {
+  const { r, g, b } = hexToRgb(hex)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
+// ------------------------------------------------------------------ derivación
+
+/** Rampa de un acento para el modo: en oscuro la variante `-2` aclara (lee sobre fondo oscuro); en claro oscurece. */
+export function deriveAccent(baseHex: string, mode: ThemeMode): { base: string; v2: string; bg: string; line: string } {
+  const { h, s, l } = hslOf(baseHex)
+  const v2 = mode === 'light' ? hslToHex(h, Math.min(1, s + 0.08), Math.max(0.2, l - 0.18)) : hslToHex(h, Math.min(1, s * 0.92), Math.min(0.82, l + 0.2))
+  return { base: normalizeHex(baseHex), v2, bg: rgbaOf(baseHex, mode === 'light' ? 0.1 : 0.14), line: rgbaOf(baseHex, mode === 'light' ? 0.3 : 0.4) }
+}
+
+/** Texto oscuro (azul marino casi negro) para poner sobre colores de marca claros como el naranja. */
+export const ON_DARK = '#0A1B33'
+
+/**
+ * Color del texto sobre un fondo de marca (botón, marca, contador): blanco si llega a 4.5:1 (WCAG AA); si no, el azul marino
+ * oscuro o el blanco, el que dé más contraste. Con esto un botón naranja no lleva letras blancas ilegibles.
+ */
+export function onColor(bg: string): string {
+  const white = contrastRatio('#FFFFFF', bg)
+  if (white >= 4.5) return '#FFFFFF'
+  return contrastRatio(ON_DARK, bg) > white ? ON_DARK : '#FFFFFF'
+}
+
+/** Luminosidades de las superficies medidas sobre la paleta original de Teikem (tono 222, saturación 39 %). */
+const SURF_L: Record<ThemeMode, Record<string, number>> = {
+  dark: { bg2: 0.067, bg: 0.088, panel: 0.129, panel2: 0.153, line2: 0.18, raise: 0.194, line: 0.231, faint: 0.429, muted: 0.614, text: 0.935, appTop: 0.15 },
+  light: { text: 0.153, muted: 0.429, faint: 0.614, line: 0.904, raise: 0.925, line2: 0.937, bg: 0.955, panel2: 0.965, bg2: 0.986, panel: 1, appTop: 1 },
+}
+const MUTED_SAT = 0.44
+
+/** Superficies, líneas y texto del tema a partir del tono (`nh`) y la saturación (`ns`) del neutro. */
+export function deriveSurfaces(nh: number, ns: number, mode: ThemeMode): Record<string, string> {
+  const L = SURF_L[mode]
+  const c = (l: number, sat: number = ns) => hslToHex(nh, sat, l)
+  const o: Record<string, string> = {
+    '--bg': c(L.bg),
+    '--bg-2': c(L.bg2),
+    '--panel': mode === 'light' ? '#FFFFFF' : c(L.panel),
+    '--panel-2': c(L.panel2),
+    '--raise': c(L.raise),
+    '--line': c(L.line),
+    '--line-2': c(L.line2),
+    '--text': c(L.text),
+    '--muted': c(L.muted, ns * MUTED_SAT),
+    '--faint': c(L.faint, ns * MUTED_SAT),
+    '--neutral-fg': c(L.muted, ns * MUTED_SAT * 0.8),
+  }
+  const top = mode === 'light' ? '#FFFFFF' : c(L.appTop)
+  o['--app-bg'] =
+    mode === 'light'
+      ? `radial-gradient(1100px 560px at 82% -12%,${top} 0%,${o['--bg']} 60%)`
+      : `radial-gradient(1200px 600px at 80% -10%,${top} 0%,${o['--bg']} 55%)`
+  return o
+}
+
+/**
+ * Lote 138b: color del botón SECUNDARIO (Cancelar, Cerrar, acciones de apoyo), derivado del tono del neutro: el azul marino de
+ * Advance Logistics con su tema, grafito con Grafito. En claro es oscuro con letras blancas (como «Track order» de su página); en
+ * oscuro es una variante más clara con borde, para que no se pierda contra los fondos. Siempre con letras blancas (≥ 4.5:1, AA).
+ */
+export function deriveSecondary(nh: number, ns: number, mode: ThemeMode): { base: string; hover: string; line: string; on: string } {
+  const sat = Math.min(0.92, Math.max(0.1, ns * 2.2))
+  // oscurece (de 1 % en 1 %) hasta que las letras blancas lleguen a AA: los verdes y amarillos son más luminosos que los azules
+  const fit = (h: number, s: number, l: number) => {
+    let hex = hslToHex(h, s, l)
+    while (contrastRatio('#FFFFFF', hex) < 4.6 && l > 0.08) {
+      l -= 0.01
+      hex = hslToHex(h, s, l)
+    }
+    return hex
+  }
+  return mode === 'light'
+    ? { base: fit(nh, sat, 0.15), hover: fit(nh, sat, 0.23), line: fit(nh, sat, 0.15), on: '#FFFFFF' }
+    : { base: fit(nh, sat * 0.85, 0.3), hover: fit(nh, sat * 0.85, 0.37), line: hslToHex(nh, sat * 0.85, 0.45), on: '#FFFFFF' }
+}
+
+/**
+ * Barras y navegación (2026-10-20): el azul marino de la marca —el tono del neutro, muy saturado y oscuro— para el menú lateral, la barra de arriba y el encabezado de las ventanas, SIEMPRE con letras blancas
+ * (≥ 7:1: se oscurece de 1 % en 1 % hasta lograrlo). Con el tema Enterprise es el #03204B de la página de Advance Logistics. Sin validación propia: el contraste con el blanco queda garantizado por construcción.
+ * `title` = color de los títulos de pantalla (la barra en claro; el texto principal en oscuro).
+ */
+export function deriveBar(nh: number, ns: number, mode: ThemeMode): { bar: string; hover: string; line: string; on: string; muted: string; title: string } {
+  const sat = Math.min(0.92, Math.max(0.1, ns * 2.2))
+  let l = mode === 'light' ? 0.15 : 0.105
+  let hex = hslToHex(nh, sat, l)
+  while (contrastRatio('#FFFFFF', hex) < 7 && l > 0.04) {
+    l -= 0.01
+    hex = hslToHex(nh, sat, l)
+  }
+  return { bar: hex, hover: hslToHex(nh, sat, l + 0.07), line: 'rgba(255,255,255,.14)', on: '#FFFFFF', muted: 'rgba(255,255,255,.68)', title: mode === 'light' ? hex : '' }
+}
+
+export function presetById(id: string | null | undefined): BrandPreset | undefined {
+  return BRAND_PRESETS.find((p) => p.id === id)
+}
+
+/** Colores efectivos: los del preset, o los propios con el neutro acotado. */
+export function brandColors(b: BrandSettings): { flow: string; money: string; nh: number; ns: number; action: string } {
+  if (!b.useCustom) {
+    const p = presetById(b.preset) ?? BRAND_PRESETS[0]
+    return { flow: p.flow, money: p.money, nh: p.nh, ns: p.ns, action: p.flow }
+  }
+  const { h, s } = hslOf(isValidHex(b.custom.neutral) ? b.custom.neutral : DEFAULT_BRAND.custom.neutral)
+  const flow = normalizeHex(b.custom.flow)
+  return { flow, money: normalizeHex(b.custom.money), nh: h, ns: Math.min(NEUTRAL_SAT_MAX, s), action: isValidHex(b.custom.action) ? normalizeHex(b.custom.action!) : flow }
+}
+
+export type BrandCheckKey = 'text' | 'muted' | 'flow' | 'money' | 'action'
+
+export type BrandCheck =
+  | { type: 'contrast'; key: BrandCheckKey; mode: ThemeMode; ratio: number; min: number; pass: boolean }
+  | { type: 'hue'; distance: number; min: number; pass: boolean }
+
+/** Validaciones: contraste de texto, texto atenuado y los dos acentos contra el panel en los DOS modos, y matiz entre acentos. */
+export function brandChecks(b: BrandSettings): BrandCheck[] {
+  const c = brandColors(b)
+  const out: BrandCheck[] = []
+  for (const mode of ['dark', 'light'] as const) {
+    const surf = deriveSurfaces(c.nh, c.ns, mode)
+    const panel = surf['--panel']
+    const rows: [BrandCheckKey, string, number][] = [
+      ['text', surf['--text'], 7],
+      ['muted', surf['--muted'], 4.5],
+      ['flow', deriveAccent(c.flow, mode).v2, 4.5],
+      ['money', deriveAccent(c.money, mode).v2, 4.5],
+    ]
+    // Lote 138: el color de acción solo se comprueba cuando es propio y distinto del primario (los vectores anteriores no cambian)
+    if (c.action.toUpperCase() !== c.flow.toUpperCase()) rows.push(['action', deriveAccent(c.action, mode).v2, 4.5])
+    for (const [key, color, min] of rows) {
+      const ratio = Math.round(contrastRatio(color, panel) * 100) / 100
+      out.push({ type: 'contrast', key, mode, ratio, min, pass: ratio >= min })
+    }
+  }
+  const distance = Math.round(hueDistance(c.flow, c.money))
+  out.push({ type: 'hue', distance, min: MIN_HUE_DISTANCE, pass: distance >= MIN_HUE_DISTANCE })
+  return out
+}
+
+export function brandChecksPass(b: BrandSettings): boolean {
+  return brandChecks(b).every((x) => x.pass)
+}
+
+/** true = la marca de siempre (preset Teikem sin colores propios): no se sobrescribe nada de `tokens.css`. */
+export function isDefaultBrand(b: BrandSettings): boolean {
+  return !b.useCustom && (presetById(b.preset)?.id ?? DEFAULT_PRESET) === DEFAULT_PRESET
+}
+
+/** Variables CSS que el tema sobrescribe en <html> para el modo (vacío con la marca de siempre). */
+export function brandCssVars(b: BrandSettings, mode: ThemeMode, force = false): Record<string, string> {
+  if (!force && isDefaultBrand(b)) return {}
+  const c = brandColors(b)
+  const vars = deriveSurfaces(c.nh, c.ns, mode)
+  const f = deriveAccent(c.flow, mode)
+  const m = deriveAccent(c.money, mode)
+  const a = deriveAccent(c.action, mode)
+  const sec = deriveSecondary(c.nh, c.ns, mode)
+  const nav = deriveBar(c.nh, c.ns, mode)
+  Object.assign(vars, {
+    '--flow': f.base,
+    '--flow-2': f.v2,
+    '--flow-bg': f.bg,
+    '--flow-line': f.line,
+    '--action': a.base,
+    '--action-2': a.v2,
+    '--action-bg': a.bg,
+    '--action-line': a.line,
+    '--on-flow': onColor(f.base),
+    '--on-action': onColor(a.base),
+    '--on-action-2': onColor(a.v2),
+    '--on-accent': onColor(m.base),
+    '--secondary': sec.base,
+    '--secondary-hover': sec.hover,
+    '--secondary-line': sec.line,
+    '--on-secondary': sec.on,
+    '--navbar': nav.bar,
+    '--navbar-hover': nav.hover,
+    '--navbar-line': nav.line,
+    '--on-navbar': nav.on,
+    '--on-navbar-muted': nav.muted,
+    '--title': nav.title || deriveSurfaces(c.nh, c.ns, mode)['--text'],
+    '--money': m.base,
+    '--money-2': m.v2,
+    '--money-bg': m.bg,
+    '--money-line': m.line,
+    '--brand-wash': rgbaOf(c.flow, mode === 'light' ? 0.1 : 0.14),
+    '--brand-glow': rgbaOf(c.flow, mode === 'light' ? 0.22 : 0.4),
+    '--hexl': f.base,
+  })
+  const fl = hslOf(c.flow)
+  vars['--hexd'] = hslToHex(fl.h, fl.s, Math.max(0.12, fl.l - 0.22))
+  return vars
+}
+
+/** Todas las variables que el tema puede tocar (para limpiarlas al volver a la marca de siempre). */
+export const BRAND_CSS_VARS = Object.keys(brandCssVars({ ...DEFAULT_BRAND, preset: 'marino' }, 'dark'))
+
+/** Referencia: el tema por omisión ya vive en tokens.css; esto lo vuelve a calcular para que una prueba verifique que coinciden. */
+export function defaultBrandVars(mode: ThemeMode): Record<string, string> {
+  return brandCssVars({ ...DEFAULT_BRAND, useCustom: false, preset: 'advance', custom: { ...DEFAULT_BRAND.custom } }, mode, true)
+}
+
+/** `BrandingJson` → `BrandSettings` (lo que no se entienda, por defecto). */
+export function parseBranding(json: string | null | undefined): BrandSettings {
+  if (!json) return DEFAULT_BRAND
+  try {
+    const o = JSON.parse(json) as Partial<BrandSettings> & { custom?: Partial<BrandSettings['custom']> }
+    const custom: BrandSettings['custom'] = { ...DEFAULT_BRAND.custom }
+    for (const k of ['flow', 'money', 'neutral', 'action'] as const) {
+      const v = o.custom?.[k]
+      if (typeof v === 'string' && isValidHex(v)) custom[k] = normalizeHex(v)
+    }
+    return {
+      preset: typeof o.preset === 'string' && presetById(o.preset) ? o.preset : DEFAULT_PRESET,
+      useCustom: o.useCustom === true,
+      custom,
+    }
+  } catch {
+    return DEFAULT_BRAND
+  }
+}
+
+/**
+ * `BrandSettings` → `BrandingJson`. Solo las tres claves conocidas: el servidor rechaza los campos desconocidos (los logos ya no
+ * viajan aquí, van a su propio almacén), así que no se conserva nada más de lo que hubiera guardado.
+ */
+export function serializeBranding(b: BrandSettings): string {
+  const { action, ...rest } = b.custom
+  const custom = isValidHex(action) ? { ...rest, action: normalizeHex(action!) } : rest
+  return JSON.stringify({ preset: b.preset, useCustom: b.useCustom, custom })
+}
+
+// ------------------------------------------------------------------ validación del JSON (espejo de BrandingRules, C#)
+
+/** Tamaño máximo del `BrandingJson` en caracteres (los logos no viajan aquí). */
+export const BRAND_JSON_MAX_CHARS = 4096
+/** Claves que la marca nunca acepta: los colores de estado no se personalizan. */
+export const BRAND_STATUS_KEYS: readonly string[] = ['ok', 'warn', 'danger', 'info', 'status', 'statuscolors']
+
+export type BrandErrorCode = 'tooLarge' | 'malformed' | 'notObject' | 'unknownField' | 'statusColor' | 'badType' | 'badHex' | 'unknownPreset' | 'contrast' | 'hue'
+
+/** `ok`; si no, `code` y `message` (el mismo que devuelve el servidor); `checks` = comprobaciones de color (vacío si falló antes). */
+export interface BrandValidation {
+  ok: boolean
+  code?: BrandErrorCode
+  message?: string
+  checks: BrandCheck[]
+}
+
+const BRAND_TOP_KEYS = ['preset', 'useCustom', 'custom']
+const BRAND_CUSTOM_KEYS = ['flow', 'money', 'neutral', 'action'] as const
+const CONTRAST_LABEL: Record<BrandCheckKey, string> = {
+  text: 'del texto',
+  muted: 'del texto atenuado',
+  flow: 'del color de operación',
+  action: 'del color de acción',
+  money: 'del color de dinero',
+}
+
+const clip = (s: string) => (s.length > 40 ? `${s.slice(0, 40)}…` : s)
+const isPlainObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
+const bad = (code: BrandErrorCode, message: string, checks: BrandCheck[] = []): BrandValidation => ({ ok: false, code, message, checks })
+
+/** Primer campo de `o` que no es de la marca (o es un color de estado); null si todos son conocidos. */
+function foreignKey(o: Record<string, unknown>, known: readonly string[], prefix: string): BrandValidation | null {
+  for (const k of Object.keys(o)) {
+    if (BRAND_STATUS_KEYS.includes(k.toLowerCase())) {
+      return bad('statusColor', `Los colores de estado (ok, warn, danger, info) no se pueden personalizar: '${clip(prefix + k)}'.`)
+    }
+    if (!known.includes(k)) return bad('unknownField', `La marca trae un campo desconocido: '${clip(prefix + k)}'.`)
+  }
+  return null
+}
+
+/**
+ * Valida el `BrandingJson` con las reglas del servidor (mismos mensajes; el orden de las comprobaciones es parte del contrato):
+ * tamaño → JSON → objeto → campos ajenos → tipos → colores hexadecimales → tema predefinido existente → contraste (texto,
+ * atenuado, operación y dinero; modo oscuro y luego claro) → separación de matiz. Vacío = quitar la marca (válido).
+ */
+export function validateBrandingJson(json: string): BrandValidation {
+  if (json.length === 0) return { ok: true, checks: [] }
+  if (json.length > BRAND_JSON_MAX_CHARS) {
+    return bad('tooLarge', `La marca es demasiado grande (máximo ${BRAND_JSON_MAX_CHARS} caracteres); los logos se suben aparte.`)
+  }
+  let o: unknown
+  try {
+    o = JSON.parse(json)
+  } catch {
+    return bad('malformed', 'La marca no es un JSON válido.')
+  }
+  if (!isPlainObject(o)) return bad('notObject', 'La marca debe ser un objeto JSON.')
+  const top = foreignKey(o, BRAND_TOP_KEYS, '')
+  if (top) return top
+  if ('preset' in o && typeof o.preset !== 'string') return bad('badType', "El campo 'preset' tiene un tipo inválido.")
+  if ('useCustom' in o && typeof o.useCustom !== 'boolean') return bad('badType', "El campo 'useCustom' tiene un tipo inválido.")
+  const custom: BrandSettings['custom'] = { ...DEFAULT_BRAND.custom }
+  if ('custom' in o) {
+    if (!isPlainObject(o.custom)) return bad('badType', "El campo 'custom' tiene un tipo inválido.")
+    const inner = foreignKey(o.custom, BRAND_CUSTOM_KEYS, 'custom.')
+    if (inner) return inner
+    for (const k of BRAND_CUSTOM_KEYS) {
+      if (!(k in o.custom)) continue
+      const v = o.custom[k]
+      if (typeof v !== 'string') return bad('badType', `El campo 'custom.${k}' tiene un tipo inválido.`)
+      if (!isValidHex(v)) return bad('badHex', `El color 'custom.${k}' no es hexadecimal (use #RGB o #RRGGBB).`)
+      custom[k] = normalizeHex(v)
+    }
+  }
+  const preset = typeof o.preset === 'string' ? o.preset : DEFAULT_PRESET
+  if (!presetById(preset)) return bad('unknownPreset', `El tema predefinido '${clip(preset)}' no existe.`)
+  const settings: BrandSettings = { preset, useCustom: o.useCustom === true, custom }
+  const checks = brandChecks(settings)
+  for (const c of checks) {
+    if (c.pass) continue
+    if (c.type === 'contrast') {
+      const mode = c.mode === 'dark' ? 'oscuro' : 'claro'
+      return bad('contrast', `El contraste ${CONTRAST_LABEL[c.key]} en modo ${mode} es ${c.ratio}:1; el mínimo es ${c.min}:1.`, checks)
+    }
+    return bad('hue', `Los colores de operación y de dinero son demasiado parecidos: ${c.distance}° de separación y el mínimo es ${c.min}°.`, checks)
+  }
+  return { ok: true, checks }
+}

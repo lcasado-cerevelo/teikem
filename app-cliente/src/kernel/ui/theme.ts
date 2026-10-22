@@ -4,6 +4,7 @@ import { useColorScheme } from 'react-native'
 import { useSyncExternalStore } from 'react'
 
 import { StoreKeys, storeGet, storeSet } from '../storage'
+import { brandColors, deriveAccent, deriveBar, deriveSecondary, deriveSurfaces, isDefaultBrand, onColor, type BrandSettings } from './brandTheme'
 
 export type ThemePref = 'auto' | 'light' | 'dark'
 export type Scheme = 'light' | 'dark'
@@ -110,6 +111,39 @@ export const DARK: Palette = {
 
 export const PALETTES: Record<Scheme, Palette> = { light: LIGHT, dark: DARK }
 
+/**
+ * Paleta con la marca de la compañía (2026-10-22, pedido de Luis: el portal se ve con los colores de la compañía de Ajustes → Marca). Con la marca de siempre (Enterprise) se queda la paleta de arriba;
+ * con otra se derivan, con la misma lógica de la web del equipo, las superficies, la barra, el color de los botones, el secundario y los enlaces. Los colores de estado (ok, aviso, peligro, info) no cambian.
+ */
+export function brandedPalette(scheme: Scheme, brand: BrandSettings | null): Palette {
+  const base = PALETTES[scheme]
+  if (!brand || isDefaultBrand(brand)) return base
+  const c = brandColors(brand)
+  const surf = deriveSurfaces(c.nh, c.ns, scheme)
+  const bar = deriveBar(c.nh, c.ns, scheme)
+  const sec = deriveSecondary(c.nh, c.ns, scheme)
+  const accent = deriveAccent(c.action, scheme)
+  return {
+    ...base,
+    bg: surf['--bg'],
+    card: surf['--panel'],
+    line: surf['--line'],
+    text: surf['--text'],
+    muted: surf['--muted'],
+    brand: bar.bar,
+    onBrand: bar.on,
+    flow: c.flow,
+    onFlow: onColor(c.flow),
+    secondary: sec.base,
+    secondaryLine: sec.line,
+    onSecondary: sec.on,
+    link: accent.v2,
+    done: scheme === 'light' ? bar.bar : accent.v2,
+    segTodo: surf['--line'],
+    neutralBg: surf['--raise'],
+  }
+}
+
 /** La elección → el tema que se pinta: «Automático» sigue al sistema (y si el sistema no dice, claro). */
 export function resolveScheme(pref: ThemePref, system: string | null | undefined): Scheme {
   if (pref === 'light' || pref === 'dark') return pref
@@ -137,7 +171,32 @@ export function contrastRatio(a: string, b: string): number {
 // ---------------------------------------------------------------- la elección guardada
 
 let pref: ThemePref = 'auto'
+let brand: BrandSettings | null = null
+let brandVersion = 0
 const listeners = new Set<() => void>()
+
+/** La marca de la compañía de la sesión (null = la de siempre). Se pone al entrar y se quita al salir. */
+export function setBrand(next: BrandSettings | null): void {
+  brand = next
+  brandVersion += 1
+  listeners.forEach((l) => l())
+}
+
+export const getBrand = (): BrandSettings | null => brand
+const getBrandVersion = (): number => brandVersion
+
+// La paleta vigente se calcula una vez por (tema, marca): los componentes comparan la paleta por identidad (useMemo de los estilos), no debe ser un objeto nuevo en cada pintado.
+const paletteCache = new Map<string, Palette>()
+function currentPalette(scheme: Scheme): Palette {
+  const key = `${scheme}:${brandVersion}`
+  let p = paletteCache.get(key)
+  if (!p) {
+    if (paletteCache.size > 8) paletteCache.clear()
+    p = brandedPalette(scheme, brand)
+    paletteCache.set(key, p)
+  }
+  return p
+}
 
 export function getThemePref(): ThemePref {
   return pref
@@ -167,9 +226,10 @@ export function setThemePref(next: ThemePref): void {
 /** El tema vigente: la elección, el tema resuelto y su paleta. Se vuelve a pintar al cambiar la elección o el tema del sistema. */
 export function useTheme(): { pref: ThemePref; scheme: Scheme; colors: Palette; setPref: (p: ThemePref) => void } {
   const current = useSyncExternalStore(subscribe, getThemePref, getThemePref)
+  useSyncExternalStore(subscribe, getBrandVersion, getBrandVersion)   // vuelve a pintar al cambiar la marca
   const system = useColorScheme()
   const scheme = resolveScheme(current, system)
-  return { pref: current, scheme, colors: PALETTES[scheme], setPref: setThemePref }
+  return { pref: current, scheme, colors: currentPalette(scheme), setPref: setThemePref }
 }
 
 export function useColors(): Palette {

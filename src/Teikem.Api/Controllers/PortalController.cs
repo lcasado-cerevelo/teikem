@@ -14,7 +14,7 @@ namespace Teikem.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/portal")]
-public sealed class PortalController(AuthService auth, PortalService portal, ClientMessagingService messages, PortalOrderEntryService entry, PortalInvoiceService invoices, PortalNoticePrefService noticePrefs, PortalProfileService profile, PortalIndicatorsService indicators) : ControllerBase
+public sealed class PortalController(AuthService auth, PortalService portal, ClientMessagingService messages, PortalOrderEntryService entry, PortalInvoiceService invoices, PortalNoticePrefService noticePrefs, PortalProfileService profile, PortalIndicatorsService indicators, PortalBrandService brand) : ControllerBase
 {
     /// <summary>
     /// Login del portal: correo y contraseña (+ cliente opcional). Puede responder: <c>ok</c> (tokens), <c>mfa_required</c> (segundo paso; con challenge), <c>browser_confirmation_required</c> (computadora nueva: se manda un correo) o
@@ -34,6 +34,22 @@ public sealed class PortalController(AuthService auth, PortalService portal, Cli
     /// <summary>Quién soy en el portal: la cuenta, el cliente actual y los demás clientes a los que tengo acceso.</summary>
     [HttpGet("me"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
     public Task<PortalMeDto> Me(CancellationToken ct) => portal.GetMeAsync(ct);
+
+    /// <summary>La marca de la compañía de la sesión (colores y qué logos tiene) para vestir el portal. Solo lectura.</summary>
+    [HttpGet("brand"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
+    public Task<PortalBrandDto> Brand(CancellationToken ct) => brand.GetAsync(ct);
+
+    /// <summary>El archivo de un logo de la compañía (lockup, lockup-inverted, mark, mark-inverted): 404 si no hay logo en esa ranura.</summary>
+    [HttpGet("brand/logos/{slot}"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
+    public async Task<IActionResult> BrandLogo(string slot, CancellationToken ct)
+    {
+        var f = await brand.LogoAsync(slot, ct);
+        Response.Headers.CacheControl = "private, no-cache";
+        Response.Headers.XContentTypeOptions = "nosniff";
+        Response.Headers.ContentSecurityPolicy = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox";
+        return File(f.Content, f.ContentType, new DateTimeOffset(DateTime.SpecifyKind(f.LastModifiedUtc, DateTimeKind.Utc)),
+            new Microsoft.Net.Http.Headers.EntityTagHeaderValue($"\"{f.ETag}\""));
+    }
 
     /// <summary>Inicio del portal: total de mis órdenes, cuántas hay por estatus y las 5 más recientes.</summary>
     [HttpGet("summary"), Authorize, RequireModule(ModuleKeys.ClientPortal)]

@@ -1,5 +1,5 @@
 // Ficha de la orden en el portal (Lote 126): «Factura procesada» con la fecha cuando la compañía ya procesó la factura del cliente contra la orden; sin fecha no hay fila.
-jest.mock('expo-router', () => ({ useLocalSearchParams: () => ({ id: 'o1' }), Stack: { Screen: () => null } }))
+jest.mock('expo-router', () => ({ useRouter: () => ({ push: jest.fn(), replace: jest.fn() }), useLocalSearchParams: () => ({ id: 'o1' }), Stack: { Screen: () => null } }))
 jest.mock('../portalApi', () => ({ getOrder: jest.fn() }))
 
 import { render, screen, waitFor } from '@testing-library/react-native'

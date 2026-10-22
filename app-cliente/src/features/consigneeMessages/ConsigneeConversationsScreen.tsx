@@ -23,7 +23,7 @@ export function ConsigneeConversationsScreen() {
   const items = list.data?.items ?? []
   const total = list.data?.total ?? 0
   return (
-    <Screen>
+    <Screen wide>
       <Title>{t('consigneeMessages.title')}</Title>
       <Muted>{t('consigneeMessages.openHelp')}</Muted>
       <Field label={t('consigneeMessages.search')} value={q} onChangeText={setQ} placeholder={t('consigneeMessages.searchPlaceholder')} autoCorrect={false} testID="cm-search" />

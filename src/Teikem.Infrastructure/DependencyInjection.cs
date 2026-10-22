@@ -109,6 +109,7 @@ public static class DependencyInjection
         services.AddScoped<AnalyticsEngine>();
         services.AddScoped<ModuleService>();
         services.AddScoped<TenantService>();
+        services.AddScoped<PortalBrandService>();   // 2026-10-22: el portal se viste con la marca de la compañía
         services.AddScoped<BrandLogoService>(); // Lote 19: logos de la marca por compañía
         services.AddScoped<TrustedNetworkService>();
         services.AddScoped<AuthService>();

@@ -1,5 +1,5 @@
 // Ficha de una factura del portal (Lote 119): encabezado con lo pagado y el saldo, líneas y pagos recibidos; ninguna acción (solo lectura); una factura ajena o inexistente muestra el error.
-jest.mock('expo-router', () => ({ useLocalSearchParams: () => ({ id: 'f1' }), Stack: { Screen: () => null } }))
+jest.mock('expo-router', () => ({ useRouter: () => ({ push: jest.fn(), replace: jest.fn() }), useLocalSearchParams: () => ({ id: 'f1' }), Stack: { Screen: () => null } }))
 jest.mock('../portalApi', () => ({ getInvoice: jest.fn() }))
 
 import { render, screen, waitFor } from '@testing-library/react-native'

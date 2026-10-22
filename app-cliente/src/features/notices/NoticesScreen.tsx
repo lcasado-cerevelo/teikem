@@ -37,7 +37,7 @@ export function NoticesScreen() {
   }, [load])
 
   return (
-    <Screen>
+    <Screen wide>
       <Title>{t('notices.title')}</Title>
       <Muted>{t('notices.help')}</Muted>
       {!!error && (

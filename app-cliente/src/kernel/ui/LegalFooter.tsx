@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router'
 import { Pressable, Text, View } from 'react-native'
 
 import { useT } from '../i18n/useT'
-import { useColors } from './ui'
+import { useColors } from './theme'
 
 export const OWNER_NAME = 'Cerevelo LLC'
 export const PRODUCT_NAME = 'Teikem'

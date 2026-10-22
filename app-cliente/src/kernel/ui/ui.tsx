@@ -3,6 +3,8 @@
 import { useMemo, type ReactNode } from 'react'
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native'
 
+import { LegalFooter } from './LegalFooter'
+import { NARROW_COLUMN, WIDE_COLUMN, useIsWide } from './layout'
 import { useColors, type Palette } from './theme'
 
 export { useColors } from './theme'
@@ -11,8 +13,10 @@ function makeStyles(c: Palette) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: c.bg },
     screenContent: { flexGrow: 1, alignItems: 'center' },
-    column: { width: '100%', maxWidth: Platform.OS === 'web' ? 560 : undefined, gap: 12 },
+    column: { width: '100%', maxWidth: Platform.OS === 'web' ? NARROW_COLUMN : undefined, gap: 12 },
+    columnWide: { width: '100%', maxWidth: WIDE_COLUMN, gap: 12 },
     padded: { padding: 16 },
+    paddedWide: { padding: 24 },
     title: { fontSize: 22, fontWeight: '700', color: c.text },
     muted: { fontSize: 13, color: c.muted, lineHeight: 18 },
     card: { backgroundColor: c.card, borderRadius: 12, borderWidth: 1, borderColor: c.line, padding: 14, gap: 6 },
@@ -53,12 +57,15 @@ export function useStyles() {
 }
 
 /** Pantalla con desplazamiento, márgenes y (en la web) columna centrada. */
-export function Screen({ children, padded = true, scroll = true }: { children: ReactNode; padded?: boolean; scroll?: boolean }) {
+export function Screen({ children, padded = true, scroll = true, wide = false }: { children: ReactNode; padded?: boolean; scroll?: boolean; wide?: boolean }) {
   const styles = useStyles()
-  const inner = <View style={[styles.column, padded && styles.padded]}>{children}</View>
+  const isWide = useIsWide()
+  // 2026-10-22: en escritorio las listas y los detalles (wide) usan una columna ancha; los formularios siguen angostos. El pie legal va al final de cada pantalla con desplazamiento.
+  const inner = <View style={[wide && isWide ? styles.columnWide : styles.column, padded && (isWide ? styles.paddedWide : styles.padded)]}>{children}</View>
   return scroll ? (
     <ScrollView style={styles.screen} contentContainerStyle={styles.screenContent} keyboardShouldPersistTaps="handled">
       {inner}
+      <LegalFooter />
     </ScrollView>
   ) : (
     <View style={[styles.screen, styles.screenContent]}>{inner}</View>

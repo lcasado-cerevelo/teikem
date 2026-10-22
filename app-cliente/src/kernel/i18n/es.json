@@ -114,6 +114,13 @@
     "secretLabel": "Clave de configuración",
     "openInApp": "Abrir en mi app de autenticación",
     "confirm": "Confirmar",
+    "copy": "Copiar los códigos",
+    "copied": "Códigos copiados.",
+    "copyFailed": "No se pudo copiar. Selecciónelos y cópielos a mano.",
+    "download": "Descargar (.txt)",
+    "share": "Guardar o compartir",
+    "savedCheck": "Ya guardé estos códigos en un lugar seguro",
+    "recoveryNext": "Para terminar de entrar, escriba un código nuevo de su app de autenticación.",
     "recoveryTitle": "Códigos de recuperación",
     "recoveryHelp": "Guárdelos en un lugar seguro: sirven si pierde su teléfono y solo se muestran esta vez.",
     "recoverySaved": "Ya los guardé"

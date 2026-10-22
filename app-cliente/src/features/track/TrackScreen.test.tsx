@@ -1,6 +1,7 @@
 // «¿Cómo va mi paquete?» pública: se abre con el enlace de un aviso (token propio de la orden), no recibe datos, solo muestra el avance (sin nombres ni direcciones) y explica los errores.
 const mockParams: { token?: string } = { token: 'tok-abc' }
 jest.mock('expo-router', () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
   useLocalSearchParams: () => mockParams,
   Link: ({ children }: { children: string }) => {
     const { Text } = jest.requireActual('react-native')

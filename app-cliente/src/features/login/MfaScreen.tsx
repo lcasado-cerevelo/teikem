@@ -8,6 +8,7 @@ import { apiErrorMessage } from '../../kernel/api/client'
 import { cancelMfa, confirmMfa, enrollMfa, getChallenge, verifyMfa, type MfaEnrollResultDto } from '../../kernel/auth/portalAuth'
 import { useT } from '../../kernel/i18n/useT'
 import { QrCode } from '../../kernel/ui/QrCode'
+import { RecoveryCodes } from '../../kernel/ui/RecoveryCodes'
 import { Button, Card, Field, Muted, Notice, Screen, Title } from '../../kernel/ui/ui'
 
 type Step = 'verify' | 'enroll-start' | 'enroll-confirm' | 'recovery'
@@ -22,6 +23,7 @@ export function MfaScreen() {
   const [busy, setBusy] = useState(false)
   const [enroll, setEnroll] = useState<MfaEnrollResultDto | null>(null)
   const [recovery, setRecovery] = useState<string[]>([])
+  const [saved, setSaved] = useState(false)
 
   // sin paso pendiente (por ejemplo, al recargar la página) se vuelve al login
   useEffect(() => {
@@ -83,16 +85,16 @@ export function MfaScreen() {
   }
 
   if (step === 'recovery') {
+    // Como en la web del equipo: los códigos (copiar / descargar / «Ya los guardé») y, en esta misma pantalla, el código de la app para terminar de entrar.
     return (
       <Screen>
         <Title>{t('mfa.recoveryTitle')}</Title>
         <Notice tone="warn">{t('mfa.recoveryHelp')}</Notice>
-        <Card>
-          {recovery.map((c) => (
-            <Text key={c} selectable style={{ fontSize: 16, fontFamily: 'monospace' }}>{c}</Text>
-          ))}
-        </Card>
-        <Button title={t('mfa.recoverySaved')} onPress={() => { setStep('verify'); setError(null) }} />
+        <RecoveryCodes codes={recovery} saved={saved} onSavedChange={setSaved} />
+        <Muted>{t('mfa.recoveryNext')}</Muted>
+        {!!error && <Notice>{error}</Notice>}
+        <Field label={t('mfa.code')} value={code} onChangeText={setCode} keyboardType="number-pad" autoComplete="one-time-code" maxLength={8} testID="mfa-code" onSubmitEditing={() => saved && code.trim().length >= 6 && void onVerify()} />
+        <Button title={t('mfa.verify')} busy={busy} disabled={!saved || code.trim().length < 6} onPress={() => void onVerify()} testID="mfa-verify" />
       </Screen>
     )
   }

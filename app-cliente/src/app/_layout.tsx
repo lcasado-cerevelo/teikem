@@ -16,6 +16,8 @@ import { initLang } from '../kernel/i18n/i18n'
 import { initTheme } from '../kernel/ui/theme'
 import { EnvironmentBanner, EnvironmentFooter } from '../kernel/ui/EnvironmentBanner'
 import { useT } from '../kernel/i18n/useT'
+import { clearPortalBrand, loadPortalBrand } from '../kernel/brand/portalBrand'
+import { BrandBar } from '../kernel/ui/BrandBar'
 import { Spinner, useColors } from '../kernel/ui/ui'
 
 /** Pantallas que se ven sin sesión. */
@@ -55,6 +57,13 @@ function Gate() {
     return () => setAuthLostHandler(null)
   }, [])
 
+  // con sesión el portal se viste con los colores y el logo de la compañía; sin sesión vuelve a la marca de siempre (2026-10-22)
+  const signedIn = !!session
+  useEffect(() => {
+    if (signedIn) void loadPortalBrand()
+    else clearPortalBrand()
+  }, [signedIn])
+
   // con sesión se pregunta si falta aceptar el documento legal; sin sesión se olvida
   useEffect(() => {
     if (!session) {
@@ -72,7 +81,7 @@ function Gate() {
 
   useEffect(() => {
     // «¿Cómo va mi orden?» es pública: con o sin sesión se queda donde está
-    if (pathname.startsWith('/track') || pathname.startsWith('/unsubscribe')) return   // páginas públicas del consignatario (seguimiento por enlace y baja)
+    if (pathname.startsWith('/track') || pathname.startsWith('/unsubscribe') || pathname === '/legal-view') return   // páginas públicas: seguimiento por enlace y baja del consignatario, y la política de privacidad / términos (los enlaces del pie, con o sin sesión)
     const isPublic = PUBLIC_PATHS.includes(pathname)
     if (!session) {
       if (!isPublic) router.replace('/login')
@@ -92,6 +101,7 @@ function Gate() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <EnvironmentBanner />
+      {!!session && <BrandBar />}
       <Stack screenOptions={{ headerShown: false, headerStyle: { backgroundColor: colors.brand }, headerTintColor: colors.onBrand, headerBackTitle: t('common.back') }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="order/[id]" options={{ headerShown: true }} />

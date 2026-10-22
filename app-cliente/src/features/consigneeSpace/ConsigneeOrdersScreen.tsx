@@ -53,7 +53,7 @@ export function ConsigneeOrdersScreen() {
   }, [load])
 
   return (
-    <Screen>
+    <Screen wide>
       <Title>{t('consigneeOrders.title')}</Title>
       <Muted>{t('consigneeOrders.help')}</Muted>
       <Field label={t('consigneeOrders.search')} value={search} onChangeText={setSearch} placeholder={t('consigneeOrders.searchPlaceholder')} autoCapitalize="none" autoCorrect={false} testID="shipments-search" />

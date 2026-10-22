@@ -44,7 +44,7 @@ export function InvoicesScreen() {
   }, [load])
 
   return (
-    <Screen>
+    <Screen wide>
       <Title>{t('invoices.title')}</Title>
       <Muted>{t('invoices.readOnly')}</Muted>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>

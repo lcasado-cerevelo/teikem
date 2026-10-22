@@ -21,7 +21,7 @@ export function HomeScreen() {
 
   const first = (me.data?.fullName ?? '').split(' ')[0]
   return (
-    <Screen>
+    <Screen wide>
       <Title>{first ? t('home.greeting', { name: first }) : t('home.greetingPlain')}</Title>
       {!!me.data && <Muted>{t('home.client', { client: me.data.currentClient?.name ?? '' })}</Muted>}
       {!!(me.error || summary.error) && (

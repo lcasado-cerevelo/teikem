@@ -293,7 +293,7 @@ export function WarehouseScreen() {
   ]
   const current = sections.some((s) => s.key === section) ? section : 'stock'
   return (
-    <Screen>
+    <Screen wide>
       <Title>{t('warehouse.title')}</Title>
       {!!offer.companyName && <Muted>{offer.companyName}</Muted>}
       <Segments value={current} onChange={(k) => setSection(k as Section)} options={sections} />

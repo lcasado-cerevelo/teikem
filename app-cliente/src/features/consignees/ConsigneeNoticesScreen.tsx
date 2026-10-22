@@ -60,7 +60,7 @@ export function ConsigneeNoticesScreen() {
   }
 
   return (
-    <Screen>
+    <Screen wide>
       <Title>{t('consigneeNotices.title')}</Title>
       <Muted>{t('consigneeNotices.help')}</Muted>
       {!!error && <Notice>{error}</Notice>}

@@ -1,6 +1,7 @@
 // Pantalla de la invitación: sin enlace válido avisa, valida la contraseña antes de ir al servidor y, al guardar, manda correo + token + contraseña y ofrece ir a entrar.
 const mockParams: { email?: string; token?: string } = {}
 jest.mock('expo-router', () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
   useLocalSearchParams: () => mockParams,
   Link: ({ children }: { children: string }) => {
     const { Text } = require('react-native')

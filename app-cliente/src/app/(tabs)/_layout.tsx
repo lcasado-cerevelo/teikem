@@ -6,6 +6,7 @@ import { useT } from '../../kernel/i18n/useT'
 import { useUnreadMessages } from '../../features/messages/unread'
 import { useIsConsignee } from '../../kernel/auth/role'
 import { useOffer, visibleTabs } from '../../features/capabilities'
+import { useIsWide } from '../../kernel/ui/layout'
 import { useColors } from '../../kernel/ui/theme'
 
 export default function TabsLayout() {
@@ -13,6 +14,7 @@ export default function TabsLayout() {
   const { t } = useT()
   const unread = useUnreadMessages()
   const offer = useOffer()
+  const wide = useIsWide()   // 2026-10-22: en la web de escritorio el menú va a la izquierda; en celular y web angosta, abajo
   const consignee = useIsConsignee()   // Lote 117: el consignatario con acceso propio solo tiene Envíos, Avisos, Mensajes y Ajustes
   const show = visibleTabs(offer, consignee)
   const icon = (name: keyof typeof Ionicons.glyphMap) => ({ color, size }: { color: unknown; size: number }) => <Ionicons name={name} color={color as string} size={size} />
@@ -23,7 +25,8 @@ export default function TabsLayout() {
         headerTintColor: colors.onBrand,
         tabBarActiveTintColor: colors.link,
         tabBarInactiveTintColor: colors.muted,
-        tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.line },
+        tabBarPosition: wide ? 'left' : 'bottom',
+        tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.line, borderRightColor: colors.line },
         sceneStyle: { backgroundColor: colors.bg },
       }}
     >

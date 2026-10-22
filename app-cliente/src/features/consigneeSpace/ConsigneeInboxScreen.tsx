@@ -39,7 +39,7 @@ export function ConsigneeInboxScreen() {
   }, [load])
 
   return (
-    <Screen>
+    <Screen wide>
       <Title>{t('consigneeSpace.inbox.title')}</Title>
       <Muted>{t('consigneeSpace.inbox.help')}</Muted>
       {!!error && (
