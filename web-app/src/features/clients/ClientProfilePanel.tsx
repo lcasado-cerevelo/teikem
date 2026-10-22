@@ -9,7 +9,7 @@ import { useForm } from 'react-hook-form'
 import { Can, useCan } from '../../kernel/access'
 import { useLookups, type LookupOption } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
-import { Field, Form, NumberInput, Panel, Select, TextInput, Toggle, toast } from '../../kernel/ui'
+import { Field, Form, NumberInput, Panel, Select, TextInput, toast } from '../../kernel/ui'
 import { IconIdCard } from '../../kernel/ui/screenIcons'
 import { clientKeys, useUpdateClientProfile } from './api'
 import {
