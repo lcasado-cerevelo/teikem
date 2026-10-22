@@ -6334,6 +6334,7 @@ BEGIN
     FROM @Back b;
     UPDATE r SET StatusCodeId = @RcRecv FROM dbo.ReceiptHeader r JOIN @Back b ON b.ReceiptHeaderId = r.ReceiptHeaderId;
 END
+GO
 
 /* ----------------------------------------------------------------------------
    2026-10-22 — Bitácora: la zona y la posición del almacén tienen su propio tipo (antes se guardaban como WAREHOUSE con el número de la posición,

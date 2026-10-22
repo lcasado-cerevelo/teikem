@@ -92,7 +92,7 @@ public sealed class AuditQueryService(TeikemDbContext db, ITenantContext tenant,
         foreach (var k in page)
         {
             if (k.Change && changeDtos.TryGetValue(k.Id, out var x))
-                items.Add(new ActivityRowDto("change", x.Id, x.CreatedAtUtc, $"{x.Action} · {x.EntityType} #{x.EntityId}", x.ChangesJson, x.UserId, x.UserName, x.IpAddress, x.CorrelationId, x.ActionCode));
+                items.Add(new ActivityRowDto("change", x.Id, x.CreatedAtUtc, $"{x.Action} · {x.EntityType} {x.EntityName ?? $"#{x.EntityId}"}", x.ChangesJson, x.UserId, x.UserName, x.IpAddress, x.CorrelationId, x.ActionCode));
             else if (!k.Change && eventDtos.TryGetValue(k.Id, out var e))
                 items.Add(new ActivityRowDto("security", e.Id, e.CreatedAtUtc, $"{e.EventType} · {e.Outcome}", e.DetailJson, e.UserId, e.UserName, e.IpAddress, null, e.EventTypeCode, e.OutcomeCode));
         }
@@ -132,12 +132,60 @@ public sealed class AuditQueryService(TeikemDbContext db, ITenantContext tenant,
     {
         var names = await UserNamesAsync(rows.Select(r => r.UserId), ct);
         var resolver = await BuildResolverAsync(rows.Select(r => r.ChangesJson), ct);
+        var entityNames = await EntityNamesAsync(rows, ct);
         var items = new List<AuditLogDto>(rows.Count);
         foreach (var r in rows)
             items.Add(new AuditLogDto(r.AuditLogId, r.CreatedAtUtc, await Label(LookupDomains.EntityType, r.EntityTypeLookupId, ct), r.EntityId,
                 await Label(LookupDomains.AuditAction, r.ActionLookupId, ct), r.UserId, r.UserId.HasValue ? names.GetValueOrDefault(r.UserId.Value) : null,
-                AuditChangesHumanizer.Humanize(r.ChangesJson, tenant.Lang, resolver), r.CorrelationId, r.IpAddress, await Code(r.ActionLookupId, ct)));
+                AuditChangesHumanizer.Humanize(r.ChangesJson, tenant.Lang, resolver), r.CorrelationId, r.IpAddress, await Code(r.ActionLookupId, ct), entityNames.GetValueOrDefault(r.AuditLogId)));
         return items;
+    }
+
+    /// <summary>
+    /// 2026-10-22 (Luis): el renglón nombra QUÉ cambió (el almacén, la zona, la posición…), no un número. Se resuelve por tipo en lote; lo que no se puede nombrar queda sin nombre (la pantalla cae al «#id»).
+    /// </summary>
+    private async Task<Dictionary<long, string>> EntityNamesAsync(IReadOnlyList<Domain.Audit.AuditLog> rows, CancellationToken ct)
+    {
+        var result = new Dictionary<long, string>();
+        var typed = new List<(long LogId, string Type, int Id)>();
+        foreach (var r in rows)
+            if (r.EntityId > 0 && await Code(r.EntityTypeLookupId, ct) is { } code) typed.Add((r.AuditLogId, code, r.EntityId));
+        List<int> Ids(string type) => typed.Where(t => t.Type == type).Select(t => t.Id).Distinct().ToList();
+        var names = new Dictionary<(string, int), string>();
+
+        var wh = Ids(EntityTypes.Warehouse);
+        var zn = Ids(EntityTypes.WarehouseZone);
+        var bn = Ids(EntityTypes.WarehouseBin);
+        var dk = Ids(EntityTypes.WarehouseDock);
+        var warehouseIds = new HashSet<int>(wh);
+        var zones = zn.Count + bn.Count == 0 ? new() : await db.WarehouseZones.AsNoTracking().Where(z => zn.Contains(z.WarehouseZoneId) || db.WarehouseBins.Any(b => bn.Contains(b.WarehouseBinId) && b.WarehouseZoneId == z.WarehouseZoneId))
+            .Select(z => new { z.WarehouseZoneId, z.WarehouseId, z.Name }).ToListAsync(ct);
+        var bins = bn.Count == 0 ? new() : await db.WarehouseBins.AsNoTracking().Where(b => bn.Contains(b.WarehouseBinId)).Select(b => new { b.WarehouseBinId, b.WarehouseId, b.WarehouseZoneId, b.Code }).ToListAsync(ct);
+        var docks = dk.Count == 0 ? new() : await db.WarehouseDocks.AsNoTracking().Where(d => dk.Contains(d.WarehouseDockId)).Select(d => new { d.WarehouseDockId, d.WarehouseId, d.Code }).ToListAsync(ct);
+        foreach (var z in zones) warehouseIds.Add(z.WarehouseId);
+        foreach (var b in bins) warehouseIds.Add(b.WarehouseId);
+        foreach (var d in docks) warehouseIds.Add(d.WarehouseId);
+        var whNames = warehouseIds.Count == 0 ? new Dictionary<int, string>()
+            : await db.Warehouses.AsNoTracking().Where(w => warehouseIds.Contains(w.WarehouseId)).ToDictionaryAsync(w => w.WarehouseId, w => w.Name, ct);
+        string Wh(int id) => whNames.GetValueOrDefault(id) ?? "?";
+        foreach (var id in wh) if (whNames.TryGetValue(id, out var n)) names[(EntityTypes.Warehouse, id)] = n;
+        foreach (var z in zones.Where(z => zn.Contains(z.WarehouseZoneId))) names[(EntityTypes.WarehouseZone, z.WarehouseZoneId)] = $"{z.Name} ({Wh(z.WarehouseId)})";
+        foreach (var b in bins)
+        {
+            var zone = zones.FirstOrDefault(z => z.WarehouseZoneId == b.WarehouseZoneId);
+            names[(EntityTypes.WarehouseBin, b.WarehouseBinId)] = zone is null ? $"{b.Code} ({Wh(b.WarehouseId)})" : $"{b.Code} ({zone.Name} · {Wh(b.WarehouseId)})";
+        }
+        foreach (var d in docks) names[(EntityTypes.WarehouseDock, d.WarehouseDockId)] = $"{d.Code} ({Wh(d.WarehouseId)})";
+
+        var cl = Ids(EntityTypes.Client);
+        if (cl.Count > 0) foreach (var c in await db.Clients.AsNoTracking().Where(c => cl.Contains(c.ClientId)).Select(c => new { c.ClientId, c.Name }).ToListAsync(ct)) names[(EntityTypes.Client, c.ClientId)] = c.Name;
+        var pr = Ids(EntityTypes.Product);
+        if (pr.Count > 0) foreach (var p in await db.Set<Domain.Wms.Product>().AsNoTracking().Where(p => pr.Contains(p.ProductId)).Select(p => new { p.ProductId, p.Sku, p.Name }).ToListAsync(ct)) names[(EntityTypes.Product, p.ProductId)] = $"{p.Sku} · {p.Name}";
+        var su = Ids(EntityTypes.Supplier);
+        if (su.Count > 0) foreach (var s in await db.Set<Domain.Wms.Supplier>().AsNoTracking().Where(s => su.Contains(s.SupplierId)).Select(s => new { s.SupplierId, s.Name }).ToListAsync(ct)) names[(EntityTypes.Supplier, s.SupplierId)] = s.Name;
+
+        foreach (var t in typed) if (names.TryGetValue((t.Type, t.Id), out var n)) result[t.LogId] = n;
+        return result;
     }
 
     private async Task<List<SecurityEventDto>> ToDtosAsync(IReadOnlyList<Domain.Security.SecurityEvent> rows, CancellationToken ct)

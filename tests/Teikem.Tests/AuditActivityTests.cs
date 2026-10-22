@@ -110,4 +110,27 @@ public class AuditActivityTests
         // "Modificación" = las 30 de la bitácora de cambios
         Assert.Equal(30, (await svc.GetActivityAsync("all", "Modificación", null, null, 0, 10, default)).Total);
     }
+
+    [Fact]
+    public async Task A_bin_row_names_the_bin_with_its_zone_and_warehouse_instead_of_a_number()
+    {
+        var f = await SeedAsync();
+        var w = await f.AddWarehouseAsync("CEN");
+        var z = await f.AddZoneAsync(w, "PK", ZoneTypes.Picking);
+        var b = await f.AddBinAsync(z, "A-01-02");
+        f.Db.LookupCodes.Add(new LookupCode { LookupCodeId = 9107, Entity = LookupDomains.EntityType, InternalCode = EntityTypes.WarehouseBin, LabelJson = "{\"es\":\"Posición de almacén\"}", IsActive = true });
+        f.Db.AuditLogs.Add(new AuditLog { TenantId = WmsFixture.TenantId, EntityTypeLookupId = 9107, EntityId = b.WarehouseBinId, ActionLookupId = 9105, UserId = 1,
+            ChangesJson = "{\"IsRemoved\":{\"from\":false,\"to\":true},\"RemovedBy\":{\"from\":null,\"to\":2}}", CreatedAtUtc = T0.AddHours(1) });
+        await f.Db.SaveChangesAsync();
+        f.Lookups.Load(f.Db.LookupCodes.IgnoreQueryFilters().AsNoTracking().ToList());
+        f.Db.ChangeTracker.Clear();
+
+        var page = await f.Get<AuditQueryService>().GetActivityAsync("changes", null, null, null, 0, 1, default);
+        var row = Assert.Single(page.Items);
+        Assert.Contains("A-01-02 (Zona PK · Almacén CEN)", row.Type);
+        Assert.DoesNotContain("#", row.Type);
+        Assert.Contains("Eliminado por", row.Detail);
+        Assert.DoesNotContain("RemovedBy", row.Detail);
+        Assert.DoesNotContain("\"to\":2", row.Detail);   // el número del usuario no se muestra
+    }
 }

@@ -16,3 +16,4 @@
 - El humanizador etiqueta los campos comunes (Activo, Eliminado, Eliminado por, Código, Pasillo, Rack, Nivel, Cupo…), trata todo `*By` como usuario y nombra la zona.
 - Lo ya guardado como `WAREHOUSE` con el número de una posición no se reescribe; si quieres, se puede reclasificar por los campos que solo tiene una posición (decisión tuya).
 - La prueba de la sección `orders.reopen` ahora revisa solo esa sección (fallaba por texto de otra sección posterior).
+- Cada renglón de la bitácora nombra QUÉ cambió en vez de «#n»: «Posición de almacén A-01-02 (Zona PK · Almacén Central)», «Zona … (Almacén …)», almacén, plataforma, cliente, producto y proveedor (`AuditLogDto.EntityName`). Lo que no se pueda nombrar sigue con «#n».

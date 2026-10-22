@@ -35211,6 +35211,7 @@ export interface components {
             correlationId?: string | null;
             ipAddress?: string | null;
             actionCode?: string | null;
+            entityName?: string | null;
         };
         AuditLogDtoPagedResult: {
             items?: components["schemas"]["AuditLogDto"][] | null;

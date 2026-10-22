@@ -29,7 +29,7 @@ public sealed record DataScopesRequest(IList<DataScopeDto> Scopes);
 
 /// <remarks>Lote F10: `ActionCode` = InternalCode de la acción (CREATE, UPDATE, DELETE, RESTORE), además de su etiqueta.</remarks>
 public sealed record AuditLogDto(long Id, DateTime CreatedAtUtc, string EntityType, int EntityId, string Action, int? UserId, string? UserName, string? ChangesJson, Guid? CorrelationId, string? IpAddress,
-    string? ActionCode = null);
+    string? ActionCode = null, string? EntityName = null);
 /// <remarks>Lote F10: `EventTypeCode` (LOGIN, PERMISSION_DENIED…) y `OutcomeCode` (SUCCESS, FAILURE, BLOCKED), además de sus etiquetas.</remarks>
 public sealed record SecurityEventDto(long Id, DateTime CreatedAtUtc, string EventType, string Outcome, int? UserId, string? UserName, string? IpAddress, string? UserAgent, string? DetailJson,
     string? EventTypeCode = null, string? OutcomeCode = null);

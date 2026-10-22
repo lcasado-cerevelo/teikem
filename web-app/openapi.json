@@ -47253,6 +47253,10 @@
           "actionCode": {
             "type": "string",
             "nullable": true
+          },
+          "entityName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
