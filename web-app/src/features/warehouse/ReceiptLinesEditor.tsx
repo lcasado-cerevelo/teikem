@@ -344,6 +344,8 @@ export function ReceiptLinesEditor({ receipt, state }: ReceiptLinesEditorProps) 
         cell: (r) => {
           const d = rowVariance(r, manual)
           if (d === null) return <span className="rcp-faint">—</span>
+          // Con el recibo abierto, lo que falta no es una diferencia en rojo: es lo que aún se descarga.
+          if (d < 0 && editable) return <span className="mono rcp-diff0">{t('warehouse.receipts.lines.missing', { n: formatNumber(-d, lang) })}</span>
           return <span className={d === 0 ? 'mono rcp-diff0' : 'mono rcp-diff'}>{`${d > 0 ? '+' : ''}${formatNumber(d, lang)}`}</span>
         },
         sortValue: (r) => rowVariance(r, manual) ?? undefined,

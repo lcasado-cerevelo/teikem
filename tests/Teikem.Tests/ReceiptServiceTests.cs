@@ -44,7 +44,7 @@ public sealed class ReceiptServiceTests
         Assert.Equal(12.5m, line.UnitCost);                      // costo congelado de la línea de PO
 
         var short8 = await receipts.UpdateLineAsync(created.Header.PublicId, line.Id, new ReceiptLineUpdateRequest(ReceivedQty: 8m), default);
-        Assert.Equal(ReceiptStatuses.Discrepancy, short8.Header.StatusCode);
+        Assert.Equal(ReceiptStatuses.Receiving, short8.Header.StatusCode);   // faltante: «Descargando»
         var confirmed = await receipts.ConfirmAsync(created.Header.PublicId, new ReceiptConfirmRequest(), default);
 
         Assert.Equal(ReceiptStatuses.ReceivedWithVariance, confirmed.Header.StatusCode);   // Lote 13: con diferencia

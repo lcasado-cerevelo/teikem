@@ -41,16 +41,16 @@ public static class ReceiptStatusRules
     /// Estatus abierto que corresponde al recibo según sus líneas:
     /// - sin líneas: se queda en EXPECTED si ya estaba; si no, RECEIVING (un recibo nunca vuelve a Esperado);
     /// - RECEIVING apagado por la compañía: EXPECTED (sin él no hay camino a DISCREPANCY);
-    /// - con diferencia y DISCREPANCY encendido: DISCREPANCY; si no, RECEIVING.
+    /// - con SOBRANTE (más de lo esperado) y DISCREPANCY encendido: DISCREPANCY; si no, RECEIVING. El faltante NO es discrepancia con el recibo abierto: es lo que aún se descarga («Descargando»); solo cuenta al confirmar (RECEIVED_VARIANCE).
     /// </summary>
-    public static string OpenTarget(string current, int lineCount, bool hasVariance, IReadOnlyCollection<string> enabled)
+    public static string OpenTarget(string current, int lineCount, bool hasOverage, IReadOnlyCollection<string> enabled)
     {
         var cur = Code(current);
         var receivingOn = enabled.Contains(ReceiptStatuses.Receiving);
         if (lineCount == 0)
             return cur == ReceiptStatuses.Expected || !receivingOn ? ReceiptStatuses.Expected : ReceiptStatuses.Receiving;
         if (!receivingOn) return ReceiptStatuses.Expected;
-        return hasVariance && enabled.Contains(ReceiptStatuses.Discrepancy) ? ReceiptStatuses.Discrepancy : ReceiptStatuses.Receiving;
+        return hasOverage && enabled.Contains(ReceiptStatuses.Discrepancy) ? ReceiptStatuses.Discrepancy : ReceiptStatuses.Receiving;
     }
 
     /// <summary>Destino de la confirmación: RECEIVED_VARIANCE si hay diferencia y está encendido; si no, RECEIVED.</summary>

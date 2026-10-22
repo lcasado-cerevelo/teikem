@@ -203,6 +203,10 @@ public static class ReceiptRules
     public static decimal LineVariance(bool expectsQuantities, decimal? expected, decimal received)
         => received - ExpectedFor(expectsQuantities, expected, received);
 
+    /// <summary>Sobrante: se recibió MÁS de lo esperado. Es lo único que ya es discrepancia con el recibo abierto (el faltante puede ser lo que aún no se descarga).</summary>
+    public static bool HasOverage(bool expectsQuantities, decimal? expected, decimal received)
+        => LineVariance(expectsQuantities, expected, received) > 0m;
+
     public static bool HasVariance(bool expectsQuantities, decimal? expected, decimal received)
         => LineVariance(expectsQuantities, expected, received) != 0m;
 

@@ -1453,9 +1453,9 @@ public sealed class ReceiptService(
         var expects = ReceiptRules.ExpectsQuantities(typeCode);
         var lines = await db.Set<ReceiptLine>().AsNoTracking().Where(l => l.ReceiptHeaderId == r.ReceiptHeaderId)
             .Select(l => new { l.ExpectedQty, l.ReceivedQty }).ToListAsync(ct);
-        var hasVariance = lines.Any(l => ReceiptRules.HasVariance(expects, l.ExpectedQty, l.ReceivedQty));
+        var hasOverage = lines.Any(l => ReceiptRules.HasOverage(expects, l.ExpectedQty, l.ReceivedQty));
         enabled ??= await EnabledReceiptStatusesAsync(ct);
-        var target = ReceiptStatusRules.OpenTarget(currentCode, lines.Count, hasVariance, enabled);
+        var target = ReceiptStatusRules.OpenTarget(currentCode, lines.Count, hasOverage, enabled);
         foreach (var step in ReceiptStatusRules.Path(currentCode, target, enabled))
         {
             var to = await statuses.TransitionAsync(StatusDomains.ReceiptStatus, EntityTypes.Receipt, r.ReceiptHeaderId, r.StatusCodeId, step, null, ct);

@@ -10211,3 +10211,7 @@ Los cambios de estatus, catálogos, usuarios, almacenes, clientes, productos, po
 
 **¿Por qué Kemi ya no muestra código ni llamadas a la API?**
 Kemi responde con el texto del manual para el usuario; los ejemplos de JSON y las llamadas al servicio se omiten (siguen en el manual para quien integra).
+
+### El recibo dice «Descargando» (o «Discrepancia») y aún faltan unidades
+
+«Descargando» es el estatus del recibo abierto mientras se baja y se acomoda por partes: que falten unidades NO es una discrepancia, es lo que aún no se descarga. Siga capturando lo que baje, use «Confirmar tanda» para acomodar lo ya recibido y «Confirmar recibo» al terminar. «Discrepancia» solo aparece si se recibió MÁS de lo esperado. Se puede cerrar con faltante: el recibo pasa a «Completado con diferencia». Si «Confirmar tanda» está apagado con el mensaje de que todo lo recibido ya está confirmado, suba «Recibido» con lo que acaba de descargar para hacer otra tanda.

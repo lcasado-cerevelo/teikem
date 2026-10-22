@@ -1086,8 +1086,8 @@ Cómo se usa:
 - `POST/DELETE /api/v1/receipts/{publicId}/lines` (línea extra, solo recibos abiertos). Lote 13: `expectedQty` solo en
   ciegos y devoluciones; la línea sin `stagingBinId` toma la posición por defecto del encabezado (si no hay, la de otra
   línea o la primera `STAGING`).
-- Cada alta, cambio o baja de línea **sincroniza el estatus** abierto: Recibiendo si todo cuadra, Discrepancia si alguna
-  línea tiene diferencia (con historial de cada cambio).
+- Cada alta, cambio o baja de línea **sincroniza el estatus** abierto: **Descargando** (antes «Recibiendo») si todo cuadra o solo falta recibir (el faltante es lo que aún se descarga), **Discrepancia** solo si alguna
+  línea trae MÁS de lo esperado (sobrante) (con historial de cada cambio).
 - `POST /api/v1/receipts/{publicId}/confirm` — confirma el recibo **completo** (no hay confirmación por línea). Lote 13:
   termina en **Completado** (`RECEIVED`) o, si alguna línea tiene diferencia, en **Completado con diferencia**
   (`RECEIVED_VARIANCE`); el comentario va en ese último paso del historial.
@@ -1187,8 +1187,8 @@ elimínelo antes de cancelar.`).
 | Código | Etiqueta | Tipo | Significado |
 |---|---|---|---|
 | `EXPECTED` | Esperado | inicial | Solo encabezado (ciego o devolución sin líneas). |
-| `RECEIVING` | Recibiendo | etapa | Con líneas y todo cuadra (o nada que comparar). |
-| `DISCREPANCY` | Discrepancia | lateral | Alguna línea recibió distinto de lo esperado. |
+| `RECEIVING` | Descargando | etapa | Con líneas y todo cuadra, o solo falta recibir (se está descargando y acomodando por partes), o nada que comparar. |
+| `DISCREPANCY` | Discrepancia | lateral | Alguna línea recibió MÁS de lo esperado. El faltante con el recibo abierto no lo es. |
 | `RECEIVED` | Completado | etapa | Confirmado sin diferencia; acomodo pendiente. |
 | `RECEIVED_VARIANCE` | Completado con diferencia | lateral | Confirmado con diferencia; acomodo pendiente. |
 | `PUTAWAY` | Acomodado | terminal | Se cerró el último acomodo (o no hubo nada que acomodar). |
@@ -1199,12 +1199,12 @@ Transiciones (todas por el motor de estatus, con historial en `/api/v1/status/hi
 |---|---|---|---|
 | (alta) → **Esperado** | `warehouse.receive` | Ciego o devolución sin `lines` y sin `confirm`. El almacén debe estar activo y tener una zona `STAGING` (o traer `stagingBinId`). | Crea el encabezado con número `REC-#####`, sin líneas. |
 | (alta) → **Recibiendo** | `warehouse.receive`; contra una orden de compra, además `purchasing.receive` y el módulo PURCHASING | Contra aviso: aviso `EXPECTED` y sin recibo. Contra orden: `SENT` o `PARTIAL`, con pendiente y sin recibo abierto. Ciego o devolución con `lines`: todas las líneas cuadran. | Crea una línea por línea del documento (recibido = esperado); una orden de compra genera además su aviso. |
-| (alta) → Recibiendo → **Discrepancia** | igual | `lines` con diferencia: en un ciego, `expectedQty` distinto de lo recibido; con documento, lo escaneado distinto de lo esperado. | Dos pasos en el historial. |
-| Esperado → **Recibiendo** | quien guarda la línea (`warehouse.receive`) | La línea pasa las validaciones de captura. | Con diferencia, Esperado → Recibiendo → **Discrepancia** (dos pasos). |
-| Recibiendo → **Discrepancia** | quien guarda la línea | Alguna línea con recibido distinto de esperado. | — |
-| Discrepancia → **Recibiendo** | quien guarda la línea | Ninguna línea con diferencia. | — |
+| (alta) → Recibiendo → **Discrepancia** | igual | `lines` con sobrante: lo recibido mayor que lo esperado. | Dos pasos en el historial. |
+| Esperado → **Recibiendo** | quien guarda la línea (`warehouse.receive`) | La línea pasa las validaciones de captura. | Con sobrante, Esperado → Descargando → **Discrepancia** (dos pasos). |
+| Recibiendo → **Discrepancia** | quien guarda la línea | Alguna línea con recibido MAYOR que el esperado. | — |
+| Discrepancia → **Recibiendo** | quien guarda la línea | Ninguna línea con sobrante. | — |
 | Recibiendo → **Completado** | `warehouse.receive` (`POST .../confirm`) | Recibo abierto (si no, 422); `rowVersion` vigente si se manda (409); al menos una línea (422); seguimiento de cada línea (400 por línea: lote con recibido mayor que 0, series iguales a la cantidad); con orden de compra, que siga recibible. | Ver "Efectos de confirmar". |
-| Discrepancia → **Completado con diferencia** | igual | igual | Ver "Efectos de confirmar". |
+| Descargando o Discrepancia → **Completado con diferencia** (cerrar con faltante o con sobrante) | igual | igual | Ver "Efectos de confirmar". |
 | Completado → **Acomodado** | el sistema (efecto de las tareas) | La última `PUTAWAY` del recibo llega a `DONE` o `CANCELLED` y no queda otra abierta. Iniciar y completar exigen `warehouse.receive`; asignar y cancelar, `warehouse.manage`. | — |
 | Completado con diferencia → **Acomodado** | el sistema | igual | — |
 | Completado o Completado con diferencia → **Acomodado** (directo) | el sistema, al confirmar | Ninguna `PUTAWAY` se creó: todo fue a cruce de plataforma, se recibió 0 o el recibo es **directo a posición** (sección 4.1). | — |
@@ -1254,11 +1254,12 @@ Casos frecuentes (Lote 13):
 - *Llegó un camión sin aviso*: cree un recibo ciego solo con encabezado (almacén, transporte, referencia), agregue las
   líneas a medida que cuenta y, si conoce lo esperado (por ejemplo, la factura del proveedor), captúrelo en cada línea
   para ver la diferencia antes de confirmar.
-- *El recibo quedó en Discrepancia por error de captura*: corrija la cantidad; al cuadrar vuelve solo a Recibiendo.
+- *El recibo quedó en Discrepancia por error de captura*: corrija la cantidad; al quitar el sobrante vuelve solo a Descargando.
+- *El recibo dice «Descargando» y aún faltan unidades (por ejemplo, quedan en el vagón)*: es lo normal. Siga capturando lo que baje; use «Confirmar tanda» para acomodar lo ya recibido sin cerrar el recibo, y «Confirmar recibo» cuando termine. Si cierra con unidades por llegar, lo que falta queda como diferencia y el recibo pasa a Completado con diferencia (se puede cerrar con faltante; aparece un aviso).
 - *Buscar recibos con faltante todavía abiertos*: `GET /api/v1/receipts?phase=OPEN&variance=SHORT`.
 - *Buscar lo que falta acomodar*: `GET /api/v1/receipts?phase=PENDING_PUTAWAY`; cada fila trae `pendingPutawayCount`.
 - *Llegó menos de lo que decía la orden de compra*: capture lo recibido en la línea del documento (0 si no llegó); el recibo pasa
-  a Discrepancia y, al confirmar, a Completado con diferencia. El faltante contra la orden se resuelve después en Compras
+  se queda en Descargando (el faltante no es discrepancia mientras el recibo está abierto) y, al confirmar, a Completado con diferencia. El faltante contra la orden se resuelve después en Compras
   (sección 8), porque el recibo confirmado con diferencia cuenta como recibo confirmado para los faltantes.
 - *Llegó algo que no venía en el aviso ni en la orden*: por la web no se puede agregar la línea; por el API es una línea extra
   (`POST .../lines`) que entra como ajuste `RECEIPT_VARIANCE` y no cuenta contra la orden.

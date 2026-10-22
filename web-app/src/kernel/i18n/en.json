@@ -5967,7 +5967,7 @@
         "confirmBody": "The {n} units received so far on receipt {number} are confirmed: they enter inventory and their put-away is created. The receipt stays open for the rest.",
         "confirmed": "Batch of receipt {number} confirmed.",
         "hint": "{n} new units to confirm. The final confirmation closes the receipt.",
-        "hintNone": "There are no new units for a batch.",
+        "hintNone": "Everything received so far is already confirmed in batches. Capture what keeps arriving (raise “Received”) to make another batch.",
         "held": "Incomplete serials or cross-docked units wait for the final confirmation ({n} units)."
       },
       "detail": {
@@ -6002,6 +6002,7 @@
         "scanHint": "Scan or type each line to record what was received",
         "varianceNote": "What was received differs from what was expected — on confirming, the difference is recorded as an inventory adjustment.",
         "varianceNoteBlind": "What was received differs from what was expected — on confirming, what was received goes into inventory and the receipt becomes “Completed with variance” (no adjustment).",
+        "shortageNote": "Some units are still to be received. Keep unloading and capture them; if you close with “Confirm receipt”, what is missing is recorded as a variance (“Completed with variance”).",
         "meta": {
           "warehouse": "Warehouse",
           "staging": "Receiving",
@@ -6070,6 +6071,7 @@
         "expected": "Expected",
         "received": "Received",
         "diff": "Variance",
+        "missing": "Missing {n}",
         "productOf": "Product of line {n}",
         "expectedOf": "Expected of line {n}",
         "receivedOf": "Received of line {n}",

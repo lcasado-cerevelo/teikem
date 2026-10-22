@@ -5967,7 +5967,7 @@
         "confirmBody": "Se confirman las {n} unidades recibidas hasta ahora del recibo {number}: entran al inventario y se crea su acomodo. El recibo sigue abierto para lo que falte.",
         "confirmed": "Tanda del recibo {number} confirmada.",
         "hint": "{n} unidades nuevas por confirmar. La confirmación final cierra el recibo.",
-        "hintNone": "No hay unidades nuevas para una tanda.",
+        "hintNone": "Todo lo recibido ya está confirmado en tandas. Captura lo que siga llegando (sube «Recibido») para hacer otra tanda.",
         "held": "Series incompletas o con cruce de muelle esperan la confirmación final ({n} u.)."
       },
       "detail": {
@@ -6002,6 +6002,7 @@
         "scanHint": "Escanea o teclea cada línea para registrar lo recibido",
         "varianceNote": "Lo recibido difiere de lo esperado — al confirmar, la diferencia queda registrada como ajuste de inventario.",
         "varianceNoteBlind": "Lo recibido difiere de lo esperado — al confirmar entra al inventario lo recibido y el recibo queda como «Completado con diferencia» (sin ajuste).",
+        "shortageNote": "Faltan unidades por recibir. Sigue descargando y captúralas; si cierras con «Confirmar recibo», lo que falta queda como diferencia («Completado con diferencia»).",
         "meta": {
           "warehouse": "Almacén",
           "staging": "Recepción",
@@ -6070,6 +6071,7 @@
         "expected": "Esperado",
         "received": "Recibido",
         "diff": "Diferencia",
+        "missing": "Falta {n}",
         "productOf": "Producto de la línea {n}",
         "expectedOf": "Esperado de la línea {n}",
         "receivedOf": "Recibido de la línea {n}",

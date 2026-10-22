@@ -52,12 +52,14 @@ public sealed class ReceiptLifecycleTests
         var line = Assert.Single(same.Lines);
         Assert.Equal((5m, 5m, 0m), (line.ExpectedQty!.Value, line.ReceivedQty, line.VarianceQty));
 
-        // Distinto → DISCREPANCY; de vuelta igual → RECEIVING.
+        // Faltante con el recibo abierto → sigue RECEIVING (es lo que aún se descarga); sobrante → DISCREPANCY; de vuelta igual → RECEIVING.
         var diff = await receipts.UpdateLineAsync(id, line.Id, new ReceiptLineUpdateRequest(ReceivedQty: 3m), default);
-        Assert.Equal(ReceiptStatuses.Discrepancy, diff.Header.StatusCode);
+        Assert.Equal(ReceiptStatuses.Receiving, diff.Header.StatusCode);
         Assert.Equal(-2m, diff.Lines[0].VarianceQty);
         Assert.True(diff.Header.HasVariance);
-        var back = await receipts.UpdateLineAsync(id, line.Id, new ReceiptLineUpdateRequest(ExpectedQty: 3m), default);
+        var over = await receipts.UpdateLineAsync(id, line.Id, new ReceiptLineUpdateRequest(ReceivedQty: 9m), default);
+        Assert.Equal(ReceiptStatuses.Discrepancy, over.Header.StatusCode);
+        var back = await receipts.UpdateLineAsync(id, line.Id, new ReceiptLineUpdateRequest(ExpectedQty: 9m), default);
         Assert.Equal(ReceiptStatuses.Receiving, back.Header.StatusCode);
 
         var history = await HistoryAsync(f, back.Header.Id);
@@ -74,13 +76,13 @@ public sealed class ReceiptLifecycleTests
     }
 
     [Fact]
-    public async Task Confirming_from_discrepancy_ends_completed_with_variance_and_posts_what_was_received()
+    public async Task Confirming_with_a_shortfall_ends_completed_with_variance_and_posts_what_was_received()
     {
         await using var f = await ReceivingFixture.CreateAsync();
         var receipts = f.Get<ReceiptService>();
         var created = await receipts.CreateAsync(new ReceiptCreateRequest(
             Lines: new[] { new ReceiptLineRequest(f.ProductNonePublicId, 3m, ExpectedQty: 5m) }), default);
-        Assert.Equal(ReceiptStatuses.Discrepancy, created.Header.StatusCode);
+        Assert.Equal(ReceiptStatuses.Receiving, created.Header.StatusCode);   // faltante con el recibo abierto: «Descargando», no discrepancia
 
         var confirmed = await receipts.ConfirmAsync(created.Header.PublicId, new ReceiptConfirmRequest("Faltaron dos."), default);
 
@@ -91,7 +93,7 @@ public sealed class ReceiptLifecycleTests
         var txn = Assert.Single(await f.Db.Set<InventoryTransaction>().AsNoTracking().ToListAsync());
         Assert.Equal((f.LookupId(LookupDomains.InventoryTxnType, InventoryTxnTypes.Receipt), 3m), (txn.TxnTypeLookupId, txn.Quantity));
         Assert.Null(confirmed.Lines[0].AdjustmentTxnId);
-        Assert.Equal(new[] { ReceiptStatuses.Expected, ReceiptStatuses.Receiving, ReceiptStatuses.Discrepancy, ReceiptStatuses.ReceivedWithVariance },
+        Assert.Equal(new[] { ReceiptStatuses.Expected, ReceiptStatuses.Receiving, ReceiptStatuses.ReceivedWithVariance },
             await HistoryAsync(f, confirmed.Header.Id));
         var receiptType = f.LookupId(LookupDomains.EntityType, EntityTypes.Receipt);
         var comment = await f.Db.EntityStatusHistories.AsNoTracking()
@@ -113,12 +115,12 @@ public sealed class ReceiptLifecycleTests
         var receipts = f.Get<ReceiptService>();
         var created = await receipts.CreateAsync(new ReceiptCreateRequest(PurchaseOrderPublicId: f.PoPublicId,
             Lines: new[] { new ReceiptLineRequest(f.ProductNonePublicId, 4m) }), default);
-        Assert.Equal(ReceiptStatuses.Discrepancy, created.Header.StatusCode);
+        Assert.Equal(ReceiptStatuses.Receiving, created.Header.StatusCode);   // faltante con el recibo abierto: «Descargando», no discrepancia
 
         var confirmed = await receipts.ConfirmAsync(created.Header.PublicId, null, default);
 
         Assert.Equal(ReceiptStatuses.Putaway, confirmed.Header.StatusCode);
-        Assert.Equal(new[] { ReceiptStatuses.Expected, ReceiptStatuses.Receiving, ReceiptStatuses.Discrepancy, ReceiptStatuses.ReceivedWithVariance, ReceiptStatuses.Putaway },
+        Assert.Equal(new[] { ReceiptStatuses.Expected, ReceiptStatuses.Receiving, ReceiptStatuses.ReceivedWithVariance, ReceiptStatuses.Putaway },
             await HistoryAsync(f, confirmed.Header.Id));
     }
 
@@ -342,7 +344,7 @@ public sealed class ReceiptLifecycleTests
         Assert.Equal(Of(overR), await Ids(new ReceiptQuery(Variance: new[] { "over" })));
         Assert.Equal(Of(noneR, expectedR, doneR), await Ids(new ReceiptQuery(Variance: new[] { "NONE" })));
         Assert.Equal(Of(shortR, noneR, expectedR), await Ids(new ReceiptQuery(Phase: "OPEN", Variance: new[] { "SHORT", "NONE" })));
-        Assert.Equal(Of(shortR), await Ids(new ReceiptQuery(Status: new[] { ReceiptStatuses.Discrepancy }, Variance: new[] { "SHORT" })));
+        Assert.Equal(Of(shortR), await Ids(new ReceiptQuery(Status: new[] { ReceiptStatuses.Receiving }, Variance: new[] { "SHORT" })));
 
         var phase = await Assert.ThrowsAsync<ValidationException>(() => receipts.ListAsync(new ReceiptQuery(Phase: "LATE"), default));
         Assert.Equal(ReceiptStatusRules.UnknownPhase("LATE"), Assert.Single(phase.Errors!["phase"]));

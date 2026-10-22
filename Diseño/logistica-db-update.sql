@@ -6306,3 +6306,32 @@ BEGIN
     INSERT INTO dbo.AppliedMigration (Code) VALUES ('L200_WAREHOUSES_BINS_DISPATCHACCT_MANAGE');
 END
 GO
+
+-- ============================================================================================================================
+-- 2026-10-21 — Recibo: «Descargando» y la discrepancia solo con sobrante.
+-- El estatus RECEIVING pasa a llamarse «Descargando» (Unloading): el recibo sigue abierto mientras se descarga y se acomoda por partes.
+-- DISCREPANCY ya no marca el faltante con el recibo abierto (lo que falta puede ser lo que aún no se baja del vagón): solo el sobrante.
+-- Los recibos abiertos en DISCREPANCY que solo tienen faltante (ninguna línea con más recibido que esperado) vuelven a RECEIVING, con historial.
+-- Idempotente: la etiqueta se compara antes de escribir y, sin recibos por devolver, no inserta nada.
+-- ============================================================================================================================
+UPDATE dbo.StatusCode SET LabelJson = N'{"es":"Descargando","en":"Unloading"}'
+WHERE Entity = 'ReceiptStatus' AND InternalCode = 'RECEIVING' AND LabelJson <> N'{"es":"Descargando","en":"Unloading"}';
+GO
+DECLARE @RcDisc INT = (SELECT StatusCodeId FROM dbo.StatusCode WHERE Entity = 'ReceiptStatus' AND InternalCode = 'DISCREPANCY');
+DECLARE @RcRecv INT = (SELECT StatusCodeId FROM dbo.StatusCode WHERE Entity = 'ReceiptStatus' AND InternalCode = 'RECEIVING');
+DECLARE @RcEnt  INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'EntityType' AND InternalCode = 'RECEIPT');
+IF @RcDisc IS NOT NULL AND @RcRecv IS NOT NULL AND @RcEnt IS NOT NULL
+BEGIN
+    DECLARE @Back TABLE (ReceiptHeaderId INT PRIMARY KEY, TenantId INT);
+    INSERT INTO @Back (ReceiptHeaderId, TenantId)
+    SELECT r.ReceiptHeaderId, r.TenantId
+    FROM dbo.ReceiptHeader r
+    WHERE r.StatusCodeId = @RcDisc
+      AND NOT EXISTS (SELECT 1 FROM dbo.ReceiptLine l
+                      WHERE l.ReceiptHeaderId = r.ReceiptHeaderId AND l.ExpectedQty IS NOT NULL AND l.ReceivedQty > l.ExpectedQty);
+    INSERT INTO dbo.EntityStatusHistory (TenantId, EntityTypeLookupId, EntityId, FromStatusCodeId, ToStatusCodeId, Comment, ChangedAtUtc, ChangedBy)
+    SELECT b.TenantId, @RcEnt, b.ReceiptHeaderId, @RcDisc, @RcRecv, N'El faltante con el recibo abierto es «Descargando», no discrepancia.', SYSUTCDATETIME(), NULL
+    FROM @Back b;
+    UPDATE r SET StatusCodeId = @RcRecv FROM dbo.ReceiptHeader r JOIN @Back b ON b.ReceiptHeaderId = r.ReceiptHeaderId;
+END
+GO

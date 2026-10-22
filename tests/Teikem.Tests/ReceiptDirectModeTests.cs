@@ -117,7 +117,7 @@ public sealed class ReceiptDirectModeTests
 
         var confirmed = await receipts.ConfirmAsync(created.Header.PublicId, null, default);
         Assert.Equal(ReceiptStatuses.Putaway, confirmed.Header.StatusCode);
-        Assert.Equal(new[] { ReceiptStatuses.Expected, ReceiptStatuses.Receiving, ReceiptStatuses.Discrepancy, ReceiptStatuses.ReceivedWithVariance, ReceiptStatuses.Putaway },
+        Assert.Equal(new[] { ReceiptStatuses.Expected, ReceiptStatuses.Receiving, ReceiptStatuses.ReceivedWithVariance, ReceiptStatuses.Putaway },
             await HistoryAsync(f, confirmed.Header.Id));
         var txns = await f.Db.Set<InventoryTransaction>().AsNoTracking().OrderBy(t => t.InventoryTransactionId).ToListAsync();
         Assert.Equal(2, txns.Count);

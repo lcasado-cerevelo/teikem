@@ -80,7 +80,8 @@ function ReceiptDetailBody({ receipt, onEditHeader }: { receipt: ReceiptDetailDt
   const blocker = confirmBlockers(lines.rows, isOpen, manual, direct)
   const missing = direct ? missingTargets(lines.rows) : 0
   const anySaving = lines.rows.some((r) => r.saving)
-  const anyVariance = lines.rows.some((r) => (rowVariance(r, manual) ?? 0) !== 0)
+  const anyOverage = lines.rows.some((r) => (rowVariance(r, manual) ?? 0) > 0)
+  const anyShortage = lines.rows.some((r) => (rowVariance(r, manual) ?? 0) < 0)
   const tasks = receipt.putawayTasks ?? []
   const batches = receipt.batches ?? []
   const pendingUnits = pendingBatchUnits(receipt.lines)
@@ -177,12 +178,13 @@ function ReceiptDetailBody({ receipt, onEditHeader }: { receipt: ReceiptDetailDt
         )}
 
         {isOpen && canReceive && <div className="note rcp-note">{t('warehouse.receipts.detail.scanHint')}</div>}
-        {isOpen && anyVariance && (
+        {isOpen && anyOverage && (
           <div className="note rcp-note rcp-note-money" role="status">
             <IconAlert />
             <span>{t(manual ? 'warehouse.receipts.detail.varianceNoteBlind' : 'warehouse.receipts.detail.varianceNote')}</span>
           </div>
         )}
+        {isOpen && !anyOverage && anyShortage && <div className="note rcp-note">{t('warehouse.receipts.detail.shortageNote')}</div>}
         {batches.length > 0 && (
           <div className="rcp-batches">
             <h4>{t('warehouse.receipts.batches.title')}</h4>
