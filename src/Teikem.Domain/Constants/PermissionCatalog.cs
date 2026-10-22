@@ -440,13 +440,13 @@ public static class PermissionCatalog
 
         new(OrdersCancel, "ORDERS", "Cancelar envíos", "Cancel shipments"),
 
-        new(TripsPlan, "TRIPS", "Planificar trips", "Plan trips"),
+        new(TripsPlan, "ORDERS", "Planificar rutas", "Plan routes"),
 
-        new(TripsDispatch, "TRIPS", "Despachar trips", "Dispatch trips"),
+        new(TripsDispatch, "ORDERS", "Despachar rutas", "Dispatch routes"),
 
-        new(TripsClose, "TRIPS", "Cerrar rutas", "Close trips"),
+        new(TripsClose, "ORDERS", "Cerrar rutas", "Close routes"),
 
-        new(TripsOptimize, "TRIPS", "Optimizar rutas", "Optimize routes"),
+        new(TripsOptimize, "ORDERS", "Optimizar rutas", "Optimize routes"),
 
         new(WarehouseReceive, "WAREHOUSE", "Recibir", "Receive"),
 
@@ -484,13 +484,13 @@ public static class PermissionCatalog
 
         new(AdminStatusConfig, "ADMIN", "Configurar pipeline de estatus", "Configure status pipeline"),
 
-        new(CodCollect, "COD", "Cobrar COD en entrega", "Collect COD on delivery"),
+        new(CodCollect, "BILLING", "Cobrar COD en entrega", "Collect COD on delivery"),
 
-        new(CodReconcile, "COD", "Reconciliar COD", "Reconcile COD"),
+        new(CodReconcile, "BILLING", "Reconciliar COD", "Reconcile COD"),
 
-        new(CodRemit, "COD", "Generar remesas COD", "Generate COD remittances"),
+        new(CodRemit, "BILLING", "Generar remesas COD", "Generate COD remittances"),
 
-        new(CodView, "COD", "Ver COD", "View COD"),
+        new(CodView, "BILLING", "Ver COD", "View COD"),
 
         new(RentalView, "RENTAL", "Ver equipos en alquiler", "View rental equipment"),
 
@@ -500,11 +500,11 @@ public static class PermissionCatalog
 
         new(RentalBilling, "RENTAL", "Generar cargos de alquiler", "Generate rental charges"),
 
-        new(PurchasingView, "PURCHASING", "Ver órdenes de compra", "View purchase orders"),
+        new(PurchasingView, "BILLING", "Ver órdenes de compra", "View purchase orders"),
 
-        new(PurchasingManage, "PURCHASING", "Crear y editar órdenes de compra", "Create and edit purchase orders"),
+        new(PurchasingManage, "BILLING", "Crear y editar órdenes de compra", "Create and edit purchase orders"),
 
-        new(PurchasingReceive, "PURCHASING", "Recibir contra orden de compra", "Receive against purchase order"),
+        new(PurchasingReceive, "BILLING", "Recibir contra orden de compra", "Receive against purchase order"),
 
         new(AnalyticsView, "ANALYTICS", "Ver vistas, indicadores y gráficos", "View reports, indicators & charts"),
 
@@ -558,19 +558,19 @@ public static class PermissionCatalog
 
         new(FleetView, "FLEET", "Ver flota y choferes", "View fleet & drivers"),
 
-        new(DriverPayView, "FLEET", "Ver tarifas y viajes de choferes", "View driver rates & trips"),
+        new(DriverPayView, "BILLING", "Ver tarifas y viajes de choferes", "View driver rates & trips"),
 
-        new(DriverPayManage, "FLEET", "Gestionar tarifas y viajes de choferes", "Manage driver rates & trips"),
+        new(DriverPayManage, "BILLING", "Gestionar tarifas y viajes de choferes", "Manage driver rates & trips"),
 
-        new(DriverPayApprove, "FLEET", "Aprobar liquidaciones a choferes", "Approve driver settlements"),
+        new(DriverPayApprove, "BILLING", "Aprobar liquidaciones a choferes", "Approve driver settlements"),
 
-        new(DriverPayExport, "FLEET", "Exportar liquidaciones a choferes", "Export driver settlements"),
+        new(DriverPayExport, "BILLING", "Exportar liquidaciones a choferes", "Export driver settlements"),
 
         // Lote 5 — Trips y rutas
 
-        new(TripsView, "TRIPS", "Ver rutas y despacho", "View trips & dispatch"),
+        new(TripsView, "ORDERS", "Ver rutas y despacho", "View routes & dispatch"),
 
-        new(TripsScan, "TRIPS", "Escanear salida (Outbound)", "Scan outbound"),
+        new(TripsScan, "ORDERS", "Escanear salida (Outbound)", "Scan outbound"),
 
         // Lote 6 — Inventario y almacén
 
@@ -666,19 +666,19 @@ public static class PermissionCatalog
 
         new(TaxManage, "BILLING", "Administrar impuestos (tasas, exenciones)", "Manage taxes (rates, exemptions)"),
 
-        new(SalesView, "ORDERS", "Ver órdenes de venta", "View sales orders"),
+        new(SalesView, "BILLING", "Ver órdenes de venta", "View sales orders"),
 
-        new(SalesCreate, "ORDERS", "Crear, editar y solicitar órdenes de venta", "Create, edit and request sales orders"),
+        new(SalesCreate, "BILLING", "Crear, editar y solicitar órdenes de venta", "Create, edit and request sales orders"),
 
-        new(SalesCancel, "ORDERS", "Cancelar órdenes de venta", "Cancel sales orders"),
+        new(SalesCancel, "BILLING", "Cancelar órdenes de venta", "Cancel sales orders"),
 
-        new(SalesPrice, "ORDERS", "Cambiar el precio en las órdenes de venta", "Change the price on sales orders"),
+        new(SalesPrice, "BILLING", "Cambiar el precio en las órdenes de venta", "Change the price on sales orders"),
 
-        new(SalesBackorder, "ORDERS", "Surtir y cerrar backorders", "Fulfill and close backorders"),
+        new(SalesBackorder, "BILLING", "Surtir y cerrar backorders", "Fulfill and close backorders"),
 
-        new(SalesReturn, "ORDERS", "Pedir devoluciones de venta", "Request sales returns"),
+        new(SalesReturn, "BILLING", "Pedir devoluciones de venta", "Request sales returns"),
 
-        new(SalesReturnAuthorize, "ORDERS", "Autorizar devoluciones de venta", "Authorize sales returns"),
+        new(SalesReturnAuthorize, "BILLING", "Autorizar devoluciones de venta", "Authorize sales returns"),
 
         new(ExitNoticeCreate, "WAREHOUSE", "Crear, modificar y cancelar avisos de salida y atender su pendiente", "Create, edit and cancel exit notices and handle their backorder"),
 

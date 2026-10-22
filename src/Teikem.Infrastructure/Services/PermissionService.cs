@@ -67,7 +67,9 @@ public sealed class PermissionService(TeikemDbContext db, ITenantContext tenant,
 
     public async Task<IReadOnlyList<PermissionDto>> GetCatalogAsync(CancellationToken ct)
     {
-        var perms = await db.Permissions.AsNoTracking().Include(p => p.Category).OrderBy(p => p.Category!.SortOrder).ThenBy(p => p.Code).ToListAsync(ct);
+        var perms = await db.Permissions.AsNoTracking().Include(p => p.Category).ToListAsync(ct);
+        // orden LÓGICO (2026-10-22, Luis): secciones en el orden del menú y, dentro de cada una, por pantalla (ver primero, luego editar); no alfabético
+        perms = perms.OrderBy(p => PermissionDisplayOrder.CategoryIndex(p.Category?.InternalCode ?? string.Empty)).ThenBy(p => PermissionDisplayOrder.IndexOf(p.Code)).ThenBy(p => p.Code, StringComparer.Ordinal).ToList();
         return perms.Select(p => new PermissionDto(p.PermissionId, p.Code, p.Category?.InternalCode ?? "", MultilingualText.Resolve(p.LabelJson, tenant.Lang))).ToList();
     }
 

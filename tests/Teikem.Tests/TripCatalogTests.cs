@@ -92,9 +92,9 @@ public class TripCatalogTests
         Assert.Equal(141, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
 
         var view = Assert.Single(PermissionCatalog.All, p => p.Code == "trips.view");
-        Assert.Equal(("MENU", "Monitoreo de ruta: entrar y ver", "Route monitor: open and view"), (view.Category, view.LabelEs, view.LabelEn));
+        Assert.Equal(("ORDERS", "Monitoreo de ruta: entrar y ver", "Route monitor: open and view"), (view.Category, view.LabelEs, view.LabelEn));
         var scan = Assert.Single(PermissionCatalog.All, p => p.Code == "trips.scan");
-        Assert.Equal(("MENU", "Estación de escaneo: entrar y ver", "Scan station: open and view"), (scan.Category, scan.LabelEs, scan.LabelEn));
+        Assert.Equal(("ORDERS", "Estación de escaneo: entrar y ver", "Scan station: open and view"), (scan.Category, scan.LabelEs, scan.LabelEn));
         Assert.Equal("trips.view", PermissionCatalog.TripsView);
         Assert.Equal("trips.scan", PermissionCatalog.TripsScan);
 

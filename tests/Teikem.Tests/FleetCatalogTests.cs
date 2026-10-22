@@ -88,11 +88,11 @@ public class FleetCatalogTests
         Assert.Equal(141, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
 
         var view = Assert.Single(PermissionCatalog.All, p => p.Code == "fleet.view");
-        Assert.Equal(("MENU", "Flota y mantenimiento: entrar y ver", "Fleet & maintenance: open and view"), (view.Category, view.LabelEs, view.LabelEn));
+        Assert.Equal(("FLEET", "Flota y mantenimiento: entrar y ver", "Fleet & maintenance: open and view"), (view.Category, view.LabelEs, view.LabelEn));
         var payView = Assert.Single(PermissionCatalog.All, p => p.Code == "driverpay.view");
-        Assert.Equal(("MENU", "Liquidación a choferes: entrar y ver", "Driver settlement: open and view"), (payView.Category, payView.LabelEs, payView.LabelEn));
+        Assert.Equal(("BILLING", "Liquidación a choferes: entrar y ver", "Driver settlement: open and view"), (payView.Category, payView.LabelEs, payView.LabelEn));
         var payManage = Assert.Single(PermissionCatalog.All, p => p.Code == "driverpay.manage");
-        Assert.Equal(("FLEET", "Gestionar tarifas y viajes de choferes", "Manage driver rates & trips"), (payManage.Category, payManage.LabelEs, payManage.LabelEn));
+        Assert.Equal(("BILLING", "Gestionar tarifas y viajes de choferes", "Manage driver rates & trips"), (payManage.Category, payManage.LabelEs, payManage.LabelEn));
 
         Assert.Equal("fleet.view", PermissionCatalog.FleetView);
         Assert.Equal("driverpay.view", PermissionCatalog.DriverPayView);

@@ -13,15 +13,18 @@ public sealed class MenuPermissionsTests
     {
         Assert.Equal(44, MenuPermissions.Items.Count);
         Assert.Equal(44, MenuPermissions.Items.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
-        Assert.All(MenuPermissions.Items, p => Assert.Equal("MENU", p.Category));
+        // 2026-10-22: cada permiso de acceso vive en la categoría de su sección (ya no hay un grupo aparte «Acceso al menú»)
+        Assert.All(MenuPermissions.Items, p => Assert.NotEqual("MENU", p.Category));
         Assert.Equal(MenuPermissions.Items.Select(p => p.Code), PermissionCatalog.All.Take(44).Select(p => p.Code));
         Assert.Equal("pulse.view", PermissionCatalog.All[0].Code);
         // el orden de Contabilidad pedido por el dueño: Compras, Contab. compras, Ventas, Contab. despachos, Facturación, Procesar entregas, Liquidación, Impuestos
         var codes = MenuPermissions.Items.Select(p => p.Code).ToList();
         var order = new[] { "purchasing.view", "purchaseaccounting.view", "sales.view", "dispatchaccounting.view", "billing.view", "cod.view", "driverpay.view", "tax.view" };
         Assert.Equal(order, codes.Where(order.Contains).ToArray());
-        // ninguno se repite en otra categoría
-        Assert.Equal(MenuPermissions.Items.Count, PermissionCatalog.All.Count(p => p.Category == "MENU"));
+        Assert.DoesNotContain(PermissionCatalog.All, p => p.Category == "MENU");
+        // la contabilización de compras, la de despachos, las compras y las ventas están en Facturación
+        foreach (var c in new[] { "purchasing.view", "purchasing.manage", "purchaseaccounting.view", "sales.view", "sales.create", "dispatchaccounting.view", "billing.view", "tax.view" })
+            Assert.Equal("BILLING", Assert.Single(PermissionCatalog.All, x => x.Code == c).Category);
     }
 
     [Fact]
@@ -72,5 +75,27 @@ public sealed class MenuPermissionsTests
         Assert.Contains("suppliers.view", t["Billing"]);
         Assert.DoesNotContain("suppliers.view", t["WarehouseOperator"]);   // el Operador no trae purchasing.view
         Assert.DoesNotContain("printers.view", t["Dispatcher"]);
+    }
+
+    [Fact]
+    public void The_display_order_lists_every_permission_once_with_view_before_the_edits_of_its_screen()
+    {
+        var codes = PermissionDisplayOrder.Codes;
+        Assert.Equal(codes.Count, codes.Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.Empty(PermissionCatalog.All.Select(p => p.Code).Except(codes, StringComparer.OrdinalIgnoreCase));
+        Assert.Empty(codes.Except(PermissionCatalog.All.Select(p => p.Code), StringComparer.OrdinalIgnoreCase));
+        // cada sección sale en el orden del menú y sus permisos quedan contiguos
+        var byCategory = PermissionCatalog.All.ToDictionary(p => p.Code, p => p.Category, StringComparer.OrdinalIgnoreCase);
+        var sequence = codes.Select(c => byCategory[c]).ToList();
+        var blocks = sequence.Where((c, i) => i == 0 || sequence[i - 1] != c).ToList();
+        Assert.Equal(blocks.Count, blocks.Distinct().Count());
+        Assert.Equal(PermissionDisplayOrder.Categories, blocks);
+        // «entrar y ver» de la pantalla principal va antes de lo que la edita (EditImplies: editar ⇒ ver; el primero de la lista es su pantalla)
+        foreach (var (edit, views) in MenuPermissions.EditImplies)
+        {
+            var view = views[0];
+            if (byCategory.GetValueOrDefault(view) == byCategory.GetValueOrDefault(edit))
+                Assert.True(PermissionDisplayOrder.IndexOf(view) < PermissionDisplayOrder.IndexOf(edit), $"{view} debe ir antes que {edit}");
+        }
     }
 }
