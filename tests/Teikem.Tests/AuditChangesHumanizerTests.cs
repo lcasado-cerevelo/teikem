@@ -55,4 +55,14 @@ public class AuditChangesHumanizerTests
         Assert.Equal("Ana Ruiz", r["Eliminado por"]!["to"]!.GetValue<string>());
         Assert.Null(r["Eliminado por"]!["from"]);
     }
+
+    [Theory]
+    [InlineData("""{"IsRemoved":{"from":false,"to":true}}""", "WAREHOUSE_BIN")]
+    [InlineData("""{"Aisle":{"from":"A","to":"B"}}""", "WAREHOUSE_BIN")]
+    [InlineData("""{"WarehouseBinId":12,"Code":"A-01","WarehouseZoneId":3}""", "WAREHOUSE_BIN")]
+    [InlineData("""{"WarehouseZoneId":3,"Code":"PK","ZoneTypeLookupId":9}""", "WAREHOUSE_ZONE")]
+    [InlineData("""{"Name":{"from":"a","to":"b"}}""", null)]
+    [InlineData("""{"City":{"from":"a","to":"b"}}""", null)]
+    public void El_historial_viejo_de_zonas_y_posiciones_se_reconoce_por_sus_campos(string json, string? expected)
+        => Assert.Equal(expected, AuditChangesHumanizer.LegacyWarehouseChildType(json));
 }

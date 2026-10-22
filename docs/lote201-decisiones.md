@@ -17,3 +17,4 @@
 - Lo ya guardado como `WAREHOUSE` con el número de una posición no se reescribe; si quieres, se puede reclasificar por los campos que solo tiene una posición (decisión tuya).
 - La prueba de la sección `orders.reopen` ahora revisa solo esa sección (fallaba por texto de otra sección posterior).
 - Cada renglón de la bitácora nombra QUÉ cambió en vez de «#n»: «Posición de almacén A-01-02 (Zona PK · Almacén Central)», «Zona … (Almacén …)», almacén, plataforma, cliente, producto y proveedor (`AuditLogDto.EntityName`). Lo que no se pueda nombrar sigue con «#n».
+- Historial anterior: sin reescribir nada, al LEER una fila vieja de tipo WAREHOUSE se reconoce si era una posición o una zona por sus campos propios (pasillo, rack, nivel, cupo, eliminada, tipo de zona) y se muestra con ese tipo y su nombre. Un cambio que solo trae campos comunes (Nombre, Activo) no se puede distinguir y sigue como almacén. El filtro por tipo «Posición de almacén» solo encuentra lo nuevo.

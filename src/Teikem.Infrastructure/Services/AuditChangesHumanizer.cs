@@ -12,6 +12,31 @@ public static class AuditChangesHumanizer
 {
     public enum FkKind { None, Lookup, Status, User, Warehouse, Client, Product, Bin, Supplier, Zone, Other }
 
+    private static readonly HashSet<string> BinOnly = new(StringComparer.Ordinal)
+    {
+        "WarehouseBinId", "Aisle", "Rack", "Level", "Position", "MaxWeightKg", "MaxCapacityQty", "IsRemoved", "RemovedBy", "IsProvisional", "ProvisionalCreatedBy", "ProvisionalCycleCountId",
+    };
+
+    /// <summary>
+    /// Historial anterior al 2026-10-22: las zonas y posiciones se guardaban como WAREHOUSE con su propio número. Se reconocen por los campos que solo ellas tienen
+    /// (posición: pasillo, rack, nivel, cupo, eliminada…; zona: tipo de zona). Un cambio que solo trae campos comunes (Nombre, Activo) no se puede distinguir y queda como almacén.
+    /// Devuelve el código de tipo que le corresponde, o null si no es un caso viejo reconocible.
+    /// </summary>
+    public static string? LegacyWarehouseChildType(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            if (JsonNode.Parse(json) is not JsonObject obj) return null;
+            var keys = obj.Select(kv => kv.Key).ToList();
+            if (keys.Any(BinOnly.Contains)) return "WAREHOUSE_BIN";
+            if (keys.Contains("ZoneTypeLookupId")) return "WAREHOUSE_ZONE";
+            if (keys.Contains("WarehouseZoneId")) return "WAREHOUSE_BIN";
+            return null;
+        }
+        catch (JsonException) { return null; }
+    }
+
     private static readonly HashSet<string> OwnKeys = new(StringComparer.OrdinalIgnoreCase) { "$key" };
 
     /// <summary>¿Qué tipo de registro nombra este campo? None = no es una llave (se deja igual).</summary>

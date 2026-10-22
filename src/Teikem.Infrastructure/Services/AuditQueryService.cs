@@ -135,7 +135,7 @@ public sealed class AuditQueryService(TeikemDbContext db, ITenantContext tenant,
         var entityNames = await EntityNamesAsync(rows, ct);
         var items = new List<AuditLogDto>(rows.Count);
         foreach (var r in rows)
-            items.Add(new AuditLogDto(r.AuditLogId, r.CreatedAtUtc, await Label(LookupDomains.EntityType, r.EntityTypeLookupId, ct), r.EntityId,
+            items.Add(new AuditLogDto(r.AuditLogId, r.CreatedAtUtc, await EntityTypeLabelAsync(r, ct), r.EntityId,
                 await Label(LookupDomains.AuditAction, r.ActionLookupId, ct), r.UserId, r.UserId.HasValue ? names.GetValueOrDefault(r.UserId.Value) : null,
                 AuditChangesHumanizer.Humanize(r.ChangesJson, tenant.Lang, resolver), r.CorrelationId, r.IpAddress, await Code(r.ActionLookupId, ct), entityNames.GetValueOrDefault(r.AuditLogId)));
         return items;
@@ -144,12 +144,27 @@ public sealed class AuditQueryService(TeikemDbContext db, ITenantContext tenant,
     /// <summary>
     /// 2026-10-22 (Luis): el renglón nombra QUÉ cambió (el almacén, la zona, la posición…), no un número. Se resuelve por tipo en lote; lo que no se puede nombrar queda sin nombre (la pantalla cae al «#id»).
     /// </summary>
+    /// <summary>Código del tipo del renglón; en el historial viejo de zonas y posiciones (guardado como WAREHOUSE) es el tipo que le toca por sus campos.</summary>
+    private async Task<string?> EffectiveTypeCodeAsync(Domain.Audit.AuditLog r, CancellationToken ct)
+    {
+        var code = await Code(r.EntityTypeLookupId, ct);
+        return code == EntityTypes.Warehouse ? AuditChangesHumanizer.LegacyWarehouseChildType(r.ChangesJson) ?? code : code;
+    }
+
+    private async Task<string> EntityTypeLabelAsync(Domain.Audit.AuditLog r, CancellationToken ct)
+    {
+        var code = await EffectiveTypeCodeAsync(r, ct);
+        if (code is not null && code != await Code(r.EntityTypeLookupId, ct) && await lookups.TryGetIdAsync(LookupDomains.EntityType, code, ct) is { } id)
+            return await Label(LookupDomains.EntityType, id, ct);
+        return await Label(LookupDomains.EntityType, r.EntityTypeLookupId, ct);
+    }
+
     private async Task<Dictionary<long, string>> EntityNamesAsync(IReadOnlyList<Domain.Audit.AuditLog> rows, CancellationToken ct)
     {
         var result = new Dictionary<long, string>();
         var typed = new List<(long LogId, string Type, int Id)>();
         foreach (var r in rows)
-            if (r.EntityId > 0 && await Code(r.EntityTypeLookupId, ct) is { } code) typed.Add((r.AuditLogId, code, r.EntityId));
+            if (r.EntityId > 0 && await EffectiveTypeCodeAsync(r, ct) is { } code) typed.Add((r.AuditLogId, code, r.EntityId));
         List<int> Ids(string type) => typed.Where(t => t.Type == type).Select(t => t.Id).Distinct().ToList();
         var names = new Dictionary<(string, int), string>();
 
