@@ -289,3 +289,43 @@ export function IconTruck() {
     </Svg>
   )
 }
+
+// ---- Lote 200 (2026-10-22): íconos propios para las secciones de la ficha del cliente, que repetían Users/Tag/Doc ----
+
+/** Perfil del cliente: una tarjeta de identificación. */
+export function IconIdCard() {
+  return (
+    <Svg>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <circle cx="9" cy="11" r="2" />
+      <path d="M6 16c.6-1.4 1.7-2 3-2s2.4.6 3 2M14 10h4M14 14h4" />
+    </Svg>
+  )
+}
+
+/** Consignatarios (los lugares a donde se entrega): un edificio. */
+export function IconBuilding() {
+  return (
+    <Svg>
+      <path d="M4 21V4a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v17M15 9h4a1 1 0 0 1 1 1v11M2 21h20M8 7h3M8 11h3M8 15h3" />
+    </Svg>
+  )
+}
+
+/** Numeración de documentos: el signo de número. */
+export function IconHash() {
+  return (
+    <Svg>
+      <path d="M5 9h15M4 15h15M10 3 8 21M16 3l-2 18" />
+    </Svg>
+  )
+}
+
+/** Teléfonos y correos del cliente: un teléfono. */
+export function IconPhone() {
+  return (
+    <Svg>
+      <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" />
+    </Svg>
+  )
+}

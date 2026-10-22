@@ -10,7 +10,7 @@ import { Can, ModuleGate, ModuleKeys, useCan } from '../../kernel/access'
 import { useLookups, type LookupOption } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
 import { Field, Form, NumberInput, Panel, Select, TextInput, Toggle, toast } from '../../kernel/ui'
-import { IconUsers } from '../../kernel/ui/screenIcons'
+import { IconIdCard } from '../../kernel/ui/screenIcons'
 import { clientKeys, useUpdateClientProfile } from './api'
 import {
   buildProfileRequest,
@@ -57,7 +57,7 @@ export function ClientProfilePanel({ client }: { client: ClientDetail }) {
 
   return (
     <Panel
-      icon={<IconUsers />}
+      icon={<IconIdCard />}
       title={t('clients.profile.title')}
       collapsible
       defaultCollapsed

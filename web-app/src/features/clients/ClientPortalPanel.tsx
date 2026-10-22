@@ -12,7 +12,7 @@ import { StatusChip } from '../../kernel/catalogs'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
 import { ConfirmDialog, DataTable, type DataColumn, EmptyState, Field, Panel, Select, Spinner, TextInput, toast, useElementWidth } from '../../kernel/ui'
-import { IconUsers } from '../../kernel/ui/screenIcons'
+import { IconKey } from '../../kernel/ui/actionIcons'
 import { lookupOptions } from './contractRules'
 import { FormModal } from './contractUi'
 import { usePortalMutations, usePortalUsers } from './portalApi'
@@ -156,7 +156,7 @@ export function ClientPortalPanel({ client }: { client: ClientDetail }) {
   return (
     <Panel
       flush
-      icon={<IconUsers />}
+      icon={<IconKey />}
       title={t('clients.portal.title')}
       badge={users.length}
       collapsible
@@ -176,9 +176,9 @@ export function ClientPortalPanel({ client }: { client: ClientDetail }) {
         {isPending ? (
           <Spinner block />
         ) : error ? (
-          <EmptyState icon={<IconUsers />} title={applyProblemDetails(error).title} />
+          <EmptyState icon={<IconKey />} title={applyProblemDetails(error).title} />
         ) : users.length === 0 ? (
-          <EmptyState icon={<IconUsers />} title={t('clients.portal.empty')} />
+          <EmptyState icon={<IconKey />} title={t('clients.portal.empty')} />
         ) : (
           <DataTable
             label={t('clients.portal.title')}

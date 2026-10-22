@@ -11,7 +11,7 @@ import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
 import { Chip, DataTable, type DataColumn, EmptyState, FilterScope, IconPlus, IconUpload, Panel, QBox, Spinner, useElementWidth } from '../../kernel/ui'
 import { ExportMenu } from '../../kernel/ui/ExportMenu'
-import { IconUsers } from '../../kernel/ui/screenIcons'
+import { IconBuilding } from '../../kernel/ui/screenIcons'
 import { useConsignees } from '../consignees/api'
 import { exportConsignees } from '../consignees/consigneeExport'
 import { ConsigneeFormModal } from '../consignees/ConsigneeFormModal'
@@ -69,7 +69,7 @@ function ClientConsigneesTable({ client }: { client: ClientDetail }) {
   return (
     <Panel
       flush
-      icon={<IconUsers />}
+      icon={<IconBuilding />}
       title={t('clients.consignees.title')}
       badge={list.isPending ? undefined : filtered.length}
       collapsible
@@ -102,7 +102,7 @@ function ClientConsigneesTable({ client }: { client: ClientDetail }) {
         ) : list.isPending ? (
           <Spinner block />
         ) : filtered.length === 0 ? (
-          <EmptyState icon={<IconUsers />} title={q ? t('clients.consignees.noResults') : t('clients.consignees.empty')} />
+          <EmptyState icon={<IconBuilding />} title={q ? t('clients.consignees.noResults') : t('clients.consignees.empty')} />
         ) : (
           <DataTable
             label={t('clients.consignees.title')}

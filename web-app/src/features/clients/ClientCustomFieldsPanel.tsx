@@ -5,7 +5,7 @@ import { Can, useCan } from '../../kernel/access'
 import { CustomFieldsForm, useCustomFieldDefinitions, useCustomFieldValues, useSaveCustomFields } from '../../kernel/custom-fields'
 import { useT } from '../../kernel/i18n'
 import { Form, Panel, toast } from '../../kernel/ui'
-import { IconTag } from '../../kernel/ui/screenIcons'
+import { IconForm } from '../../kernel/ui/screenIcons'
 import { CLIENT_ENTITY_TYPE, type ClientDetail } from './clientRules'
 
 interface CustomValues {
@@ -36,7 +36,7 @@ export function ClientCustomFieldsPanel({ client }: { client: ClientDetail }) {
 
   return (
     <Panel
-      icon={<IconTag />}
+      icon={<IconForm />}
       title={t('clients.custom.title')}
       collapsible
       defaultCollapsed

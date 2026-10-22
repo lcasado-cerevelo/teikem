@@ -372,7 +372,7 @@ export function drawReportHeader(doc: jsPDF, spec: ReportHeaderSpec, logo?: stri
     } catch {
       // un PNG ilegible no impide el reporte: queda el encabezado de Teikem
     }
-  } else if (logo) {
+  } else if (typeof logo === 'string' && logo) {
     try {
       doc.addImage(logo, 'PNG', MARGIN - 4, 14, 44, 44)
       brandX = MARGIN + 48

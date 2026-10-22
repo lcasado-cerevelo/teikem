@@ -8,7 +8,7 @@ import { Can, useCan } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useT } from '../../kernel/i18n'
 import { Field, Form, Panel, Select, TextInput, toast } from '../../kernel/ui'
-import { IconTag } from '../../kernel/ui/screenIcons'
+import { IconHash } from '../../kernel/ui/screenIcons'
 import { useNumberPreview, useUpdateNumberSettings } from './api'
 import {
   buildNumberingRequest,
@@ -105,7 +105,7 @@ export function ClientNumberingPanel({ client }: { client: ClientDetail }) {
 
   return (
     <Panel
-      icon={<IconTag />}
+      icon={<IconHash />}
       title={t('clients.numbering.title')}
       collapsible
       defaultCollapsed

@@ -11,7 +11,7 @@ import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
 import { CallingCodeInput, Chip, ConfirmDialog, EmptyState, Field, Form, IconEdit, IconTrash, Modal, PhoneInput, PhoneRow, Panel, Select, TextInput, Toggle, toast } from '../../kernel/ui'
 import { isValidCallingCode } from '../../kernel/format'
-import { IconPhoneFormat } from '../../kernel/ui/screenIcons'
+import { IconPhone } from '../../kernel/ui/screenIcons'
 import { buildPointRequest, EMAIL_TYPE, isEmailType, PHONE_TYPE, pointSchema, sortContactPoints, type ContactPoint } from '../clients/clientRules'
 import '../clients/clients.css'
 import { useContactPointActions } from './api'
@@ -197,7 +197,7 @@ export function ContactPointsPanel({ ownerEntity, ownerId, points: rows, perms, 
 
   return (
     <Panel
-      icon={<IconPhoneFormat />}
+      icon={<IconPhone />}
       title={t('clients.points.title')}
       collapsible={collapsible}
       defaultCollapsed={defaultCollapsed}
@@ -216,7 +216,7 @@ export function ContactPointsPanel({ ownerEntity, ownerId, points: rows, perms, 
       }
     >
       {points.length === 0 ? (
-        <EmptyState icon={<IconPhoneFormat />} title={t(emptyKey)} />
+        <EmptyState icon={<IconPhone />} title={t(emptyKey)} />
       ) : (
         <div className="cl-points-cols">
           <div>
