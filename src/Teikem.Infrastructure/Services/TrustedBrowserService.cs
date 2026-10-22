@@ -35,7 +35,7 @@ public sealed record TrustedBrowserDto(Guid PublicId, string Label, string? IpAd
 /// El enlace confirma la marca del navegador que intentó entrar aunque se abra desde otro aparato (el teléfono, por ejemplo).
 /// </summary>
 public sealed class TrustedBrowserService(TeikemDbContext db, ITenantContext tenant, IOptions<TrustedBrowserOptions> options, IOptions<PasswordResetOptions> web,
-    ITransactionalEmailSender email, ISecurityEventWriter security)
+    ITransactionalEmailSender email, ISecurityEventWriter security, ILookupCache? lookups = null, Microsoft.Extensions.Configuration.IConfiguration? config = null)
 {
     public bool Enabled => options.Value.Enabled;
 
@@ -95,7 +95,10 @@ public sealed class TrustedBrowserService(TeikemDbContext db, ITenantContext ten
         try { await db.SaveChangesAsync(ct); } finally { db.SuppressAudit = false; }
         await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Blocked, user.Id, null, new { stage = "browser_pending", browser = row.Label, ip = row.IpAddress }, ct);
 
-        var baseUrl = (web.Value.WebBaseUrl ?? (options.Value.ReturnLinkInResponse ? "http://localhost:5173" : null))?.TrimEnd('/');
+        // 2026-10-22: el usuario de portal (cliente o consignatario) confirma la computadora en el PORTAL (Portal:WebBaseUrl), no en la web del equipo; sin esa dirección, la de la web.
+        var portalUrl = config?["Portal:WebBaseUrl"];
+        var isPortal = !string.IsNullOrWhiteSpace(portalUrl) && lookups is not null && user.UserKindLookupId is int kindId && (await lookups.GetAsync(kindId, ct))?.InternalCode == UserKinds.Portal;
+        var baseUrl = (isPortal ? portalUrl : web.Value.WebBaseUrl ?? (options.Value.ReturnLinkInResponse ? "http://localhost:5173" : null))?.TrimEnd('/');
         if (string.IsNullOrWhiteSpace(baseUrl)) return new TrustedBrowserCheck(false, false, "No se pudo armar el enlace de confirmación (falta la dirección de la web).", null);
         var link = $"{baseUrl}/confirm-browser?token={secret}";
         var sent = false;

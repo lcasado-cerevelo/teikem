@@ -7402,6 +7402,12 @@ No. Cada persona fija la suya con el enlace del correo. Si la perdió, **Dar de 
 **Invité a alguien al portal (o a un consignatario) y no le llegó el correo.**
 Revise tres cosas: (1) que el correo esté bien escrito; (2) que el ambiente tenga configurada la dirección del portal (`Portal:WebBaseUrl`; sin ella la invitación se crea pero el correo no sale: el administrador de sistemas la agrega y usted pulsa **Reenviar invitación**); (3) que no esté en la carpeta de spam. En el ambiente de pruebas todo correo llega al buzón de pruebas con el asunto «[TEST → destinatario]…».
 
+**Entro al portal y el correo «Confirme esta computadora» me manda a la web del equipo en vez del portal.**
+Desde 2026-10-22 el enlace de ese correo va al **portal** (`Portal:WebBaseUrl`) cuando quien entra es un usuario de portal (cliente o consignatario). Si todavía lo manda a la web del equipo, al ambiente le falta esa dirección: el administrador de sistemas la agrega (ver el README del despliegue) y la persona vuelve a intentar entrar.
+
+**En el portal, al activar la verificación en dos pasos, solo veía una clave larga y no un código QR.**
+Ahora sale el **código QR** para escanearlo con la app de autenticación (Google Authenticator, Microsoft Authenticator, Authy…). La clave escrita sigue ahí debajo por si no se puede escanear. Es necesario tener publicado el portal nuevo.
+
 **Me llegó la invitación: ¿qué hago?**
 Pulse «Elegir mi contraseña», escriba una contraseña de al menos 12 caracteres dos veces y guárdela. Si dice «Invitación inválida o vencida.», el enlace ya se usó o pasaron más de 48 horas: pida que le reenvíen la invitación.
 

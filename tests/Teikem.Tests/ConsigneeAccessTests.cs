@@ -80,7 +80,7 @@ public class ConsigneeAccessTests
             s.AddSingleton<IOptions<PasswordResetOptions>>(Options.Create(new PasswordResetOptions { WebBaseUrl = "https://portal.test" }));
             s.AddSingleton<IOptions<TrustedBrowserOptions>>(Options.Create(new TrustedBrowserOptions { Enabled = false }));
             s.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
-                { ["Portal:ReturnInviteTokenInResponse"] = "true", [ConsigneeNoticeService.BaseUrlKey] = "https://app.example.com" }).Build());
+                { ["Portal:ReturnInviteTokenInResponse"] = "true", ["Portal:WebBaseUrl"] = "https://portal-real.test", [ConsigneeNoticeService.BaseUrlKey] = "https://app.example.com" }).Build());
             s.AddSingleton(mail);
             s.AddSingleton<ITransactionalEmailSender>(mail);
             s.AddSingleton<IInvitationSender>(invites);
@@ -270,6 +270,7 @@ public class ConsigneeAccessTests
         w.F.Tenant.UserAgent = "Mozilla/5.0 (Windows NT 10.0) Chrome/120.0 Safari/537.36";
         var first = await w.Auth.PortalLoginAsync(Login(mail), default);
         Assert.Equal("browser_confirmation_required", first.Status);   // el consignatario también confirma la computadora nueva por correo
+        Assert.Contains("https://portal-real.test/confirm-browser?token=", w.Mail.Sent.Last().Html);   // 2026-10-22: el enlace va al PORTAL, no a la web del equipo (https://portal.test)
         await w.Browsers.ConfirmAsync(Regex.Match(w.Mail.Sent.Last().Html, "token=([0-9a-f]{64})").Groups[1].Value, default);
         w.F.Db.ChangeTracker.Clear();
     }

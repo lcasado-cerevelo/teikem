@@ -7,6 +7,7 @@ import { Linking, Text, View } from 'react-native'
 import { apiErrorMessage } from '../../kernel/api/client'
 import { cancelMfa, confirmMfa, enrollMfa, getChallenge, verifyMfa, type MfaEnrollResultDto } from '../../kernel/auth/portalAuth'
 import { useT } from '../../kernel/i18n/useT'
+import { QrCode } from '../../kernel/ui/QrCode'
 import { Button, Card, Field, Muted, Notice, Screen, Title } from '../../kernel/ui/ui'
 
 type Step = 'verify' | 'enroll-start' | 'enroll-confirm' | 'recovery'
@@ -68,6 +69,7 @@ export function MfaScreen() {
         <Title>{t('mfa.enrollTitle')}</Title>
         <Muted>{t('mfa.enrollScan')}</Muted>
         {!!error && <Notice>{error}</Notice>}
+        {!!enroll.otpAuthUri && <QrCode value={enroll.otpAuthUri} label={t('mfa.qrLabel')} />}
         <Card>
           <Muted>{t('mfa.secretLabel')}</Muted>
           <Text selectable testID="mfa-secret" style={{ fontSize: 18, fontWeight: '700', letterSpacing: 1 }}>{enroll.secret}</Text>
