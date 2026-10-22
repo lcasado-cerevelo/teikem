@@ -6260,3 +6260,11 @@ BEGIN
     INSERT INTO dbo.AppliedMigration (Code) VALUES ('L200_SUPPLIERS_PURCHACCT_MANAGE');
 END
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-21 — Orden de los estatus del cliente (dictado de Luis): Prospecto -> Activo, con Suspendido como desvio reversible (antes Activo -> Prospecto, al reves).
+   dbo.StatusCode.SortOrder de ClientStatus: PROSPECT = 1, ACTIVE = 2, SUSPENDED = 3. El estatus inicial sigue siendo ACTIVE (el cliente nuevo nace Activo). Solo cambia el orden; idempotente.
+   ---------------------------------------------------------------------------- */
+UPDATE dbo.StatusCode SET SortOrder = 1 WHERE Entity = 'ClientStatus' AND InternalCode = 'PROSPECT' AND SortOrder <> 1;
+UPDATE dbo.StatusCode SET SortOrder = 2 WHERE Entity = 'ClientStatus' AND InternalCode = 'ACTIVE' AND SortOrder <> 2;
+UPDATE dbo.StatusCode SET SortOrder = 3 WHERE Entity = 'ClientStatus' AND InternalCode = 'SUSPENDED' AND SortOrder <> 3;
+GO

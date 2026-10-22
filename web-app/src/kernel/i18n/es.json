@@ -7558,6 +7558,40 @@
         }
       }
     },
+    "statuses": {
+      "open": "Estatus",
+      "title": "Estatus",
+      "subtitle": "las etapas de clientes, envíos, rutas y demás: cuáles se usan, en qué orden y cómo se llaman",
+      "domain": "Estatus de",
+      "stages": "Etapas",
+      "help": "Cada etapa tiene un tipo: «Etapa normal» es el camino que se recorre en orden; «Desvío» es un paso al costado que se puede revertir (por ejemplo, Suspendido); «Final» es donde termina y ya no cambia (por ejemplo, Entregado). La etapa «Inicial» es donde empieza lo nuevo. Apagar una etapa hace que no se ofrezca más; subir o bajar cambia el orden del camino.",
+      "invalid": "Con esta configuración el flujo no funciona:",
+      "empty": "Este dominio no tiene etapas.",
+      "col": {
+        "order": "Orden",
+        "code": "Código",
+        "name": "Nombre",
+        "kind": "Tipo",
+        "enabled": "En uso"
+      },
+      "kind": {
+        "PIPELINE": "Etapa normal",
+        "LATERAL": "Desvío",
+        "TERMINAL": "Final"
+      },
+      "initial": "Inicial",
+      "custom": "nombre propio",
+      "enabledOf": "Usar la etapa {code}",
+      "up": "Subir",
+      "down": "Bajar",
+      "rename": "Cambiar nombre",
+      "renameTitle": "Nombre de {code}",
+      "nameEs": "Nombre en español",
+      "nameEn": "Nombre en inglés (opcional)",
+      "nameRequired": "Escribe el nombre en español.",
+      "save": "Guardar",
+      "renamed": "Nombre guardado."
+    },
     "catalogs": {
       "title": "Listas de valores",
       "subtitle": "Las listas que alimentan chips y selects en toda la aplicación.",

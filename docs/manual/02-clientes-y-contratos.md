@@ -145,7 +145,7 @@ Cómo se usa:
 
 ### 1.6 Estatus del cliente
 
-Estatus (`ClientStatus`): **ACTIVE** (inicial) → **PROSPECT** (pipeline); **SUSPENDED** (lateral, reversible). Las
+Estatus (`ClientStatus`), desde 2026-10-21 en este orden: **PROSPECT** (pipeline) → **ACTIVE** (inicial: el cliente nuevo nace Activo); **SUSPENDED** (lateral, reversible). El dominio **no tiene etapa terminal**: «Dar de baja» no es un estatus, desactiva al cliente (queda oculto salvo «Mostrar inactivos»). Cada compañía puede apagar «Prospecto» o cambiar los nombres y el orden en **Sistema → Catálogos → Estatus** (capítulo 01, sección 5). Las
 transiciones pasan por el motor de estatus del capítulo 01 (sección 5): se valida la etapa, se escribe el historial
 (`GET /api/v1/status/history/CLIENT/{id}`) y se disparan efectos. Un cliente **SUSPENDED** no puede activar contratos (ver 4.7).
 

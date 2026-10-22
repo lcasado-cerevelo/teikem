@@ -525,6 +525,28 @@ FAQ:
 
 ---
 
+### 5.1 Pantalla «Estatus» (Sistema → Catálogos → Estatus, 2026-10-21)
+
+Hasta ahora no había dónde ver ni cambiar las etapas desde la aplicación (solo el API). La pantalla **Estatus** (botón «Estatus» arriba en **Sistema → Catálogos**, ruta `/system/statuses`; entra quien tiene `catalogs.view`, cambia quien tiene `admin.statusconfig`) muestra, para el dominio que elijas (cliente, envío, ruta, recibo…):
+
+| Columna | Qué es |
+|---|---|
+| **Orden** | El lugar de la etapa en el camino. |
+| **Código** y **Nombre** | El código fijo y el nombre que ve la gente (con «nombre propio» si la compañía lo cambió). |
+| **Tipo** | **Etapa normal** (`PIPELINE`: el camino que se recorre en orden), **Desvío** (`LATERAL`: un paso al costado reversible, p. ej. Suspendido) o **Final** (`TERMINAL`: donde termina, p. ej. Entregado); y **Inicial** (donde empieza lo nuevo). |
+| **En uso** | Interruptor: apagar una etapa hace que no se ofrezca más (`PUT /api/v1/status/{entity}/{code}/override` con `isEnabled`). |
+
+Acciones por fila: **Subir** y **Bajar** (intercambian el orden con la etapa vecina; `sortOverride`) y **Cambiar nombre** (español, e inglés opcional; `labels`). Al guardar, el servidor valida el flujo completo y, si quedaría inválido, responde con el motivo y no guarda («Pipeline inválido: …»). Arriba de la tabla sale el resultado del validador con los errores actuales.
+
+**Qué exige el validador:** una etapa **inicial** habilitada, siempre; una **terminal** y una del **pipeline** habilitadas **solo si el dominio las define** (desde 2026-10-21; antes el estatus del cliente, que no tiene etapa terminal, mostraba siempre «Debe quedar habilitada al menos una etapa terminal» y nadie podía corregirlo).
+
+| Mensaje | HTTP | Qué hacer |
+|---|---|---|
+| «Pipeline inválido: Debe quedar habilitada al menos una etapa inicial.» | 422 | No apague la etapa inicial del dominio. |
+| «Pipeline inválido: Debe quedar habilitada al menos una etapa terminal.» | 422 | El dominio tiene etapa terminal y se intentó apagar la última; deje una encendida. |
+| «Pipeline inválido: Debe quedar habilitada al menos una etapa del pipeline.» | 422 | Deje al menos una etapa normal encendida. |
+| «Escribe el nombre en español.» | (pantalla) | El nombre en español es obligatorio. |
+
 ## 6. Puntos de contacto (ContactPoint)
 
 Qué hace: guarda varios contactos (teléfono, correo, etc.) para cualquier entidad del sistema que los necesite

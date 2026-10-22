@@ -10194,3 +10194,12 @@ En la ficha del **cliente** → Perfil (es un dato por cliente). Ya no hay ajust
 
 **¿Dónde quedaron los permisos de compras, ventas y contabilización?** (Lote 200)
 En Sistema → Roles, sección **Facturación**: cada pantalla con su «entrar y ver» y, justo debajo, lo que la edita (p. ej. Compras: ver, crear y editar, recibir; Ventas: ver, crear, precio, cancelar, backorder, devoluciones). Los envíos y las rutas están en **Transporte**.
+
+**En el perfil del cliente sale «La configuración de estatus de esta compañía tiene errores… Debe quedar habilitada al menos una etapa terminal.»**
+Era un defecto: el estatus del cliente no tiene etapa terminal (dar de baja no es un estatus) y el validador la exigía siempre. Desde 2026-10-21 la etapa terminal solo se exige en los estatus que sí la tienen, y el aviso ya no sale en clientes.
+
+**¿Dónde controlo los estatus (orden, nombres, cuáles se usan)?**
+Sistema → Catálogos → botón «Estatus» (necesitas `admin.statusconfig` para cambiar). Eliges el dominio (por ejemplo «Estatus de cliente»), apagas las etapas que no uses, las subes o bajas y les cambias el nombre.
+
+**¿En qué orden van los estatus del cliente?**
+Prospecto → Activo, con Suspendido como desvío reversible. El cliente nuevo nace Activo; «Prospecto» queda antes por si quieres usarlo, y se puede apagar en Sistema → Estatus. «Dar de baja» no es un estatus: desactiva al cliente.

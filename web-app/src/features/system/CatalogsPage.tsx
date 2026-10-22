@@ -2,6 +2,7 @@
 // Ruta /system/catalogs (admin.catalogs, SYSTEM). Ver docs/frontend/loteF8-plan.md §3 P6 para los mensajes exactos.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Can } from '../../kernel/access/Can'
@@ -535,6 +536,11 @@ export default function CatalogsPage() {
         <div>
           <h1>{t('system.catalogs.title')}</h1>
           <p>{t('system.catalogs.subtitle')}</p>
+        </div>
+        <div className="act">
+          <Link className="btn" to="/system/statuses">
+            {t('system.statuses.open')}
+          </Link>
         </div>
       </div>
 

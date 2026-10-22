@@ -7558,6 +7558,40 @@
         }
       }
     },
+    "statuses": {
+      "open": "Statuses",
+      "title": "Statuses",
+      "subtitle": "the stages of clients, shipments, routes and more: which are used, in what order and what they are called",
+      "domain": "Statuses of",
+      "stages": "Stages",
+      "help": "Each stage has a type: “Regular stage” is the path walked in order; “Side step” is a reversible step aside (for example, Suspended); “Final” is where it ends and no longer changes (for example, Delivered). The “Initial” stage is where new records start. Turning a stage off stops offering it; moving it up or down changes the path order.",
+      "invalid": "With this setup the flow does not work:",
+      "empty": "This domain has no stages.",
+      "col": {
+        "order": "Order",
+        "code": "Code",
+        "name": "Name",
+        "kind": "Type",
+        "enabled": "In use"
+      },
+      "kind": {
+        "PIPELINE": "Regular stage",
+        "LATERAL": "Side step",
+        "TERMINAL": "Final"
+      },
+      "initial": "Initial",
+      "custom": "custom name",
+      "enabledOf": "Use the {code} stage",
+      "up": "Move up",
+      "down": "Move down",
+      "rename": "Rename",
+      "renameTitle": "Name of {code}",
+      "nameEs": "Name in Spanish",
+      "nameEn": "Name in English (optional)",
+      "nameRequired": "Write the name in Spanish.",
+      "save": "Save",
+      "renamed": "Name saved."
+    },
     "catalogs": {
       "title": "Value lists",
       "subtitle": "The lists that feed chips and selects across the app.",

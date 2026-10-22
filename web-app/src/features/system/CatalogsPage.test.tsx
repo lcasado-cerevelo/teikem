@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccessProvider } from '../../kernel/access'
 import { setLang } from '../../kernel/i18n/i18n'
@@ -79,9 +80,11 @@ function wrap(ui: ReactNode, permissions: string[] = ['admin.catalogs'], modules
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <AccessProvider permissions={permissions} modules={modules}>
-        {ui}
-      </AccessProvider>
+      <MemoryRouter>
+        <AccessProvider permissions={permissions} modules={modules}>
+          {ui}
+        </AccessProvider>
+      </MemoryRouter>
     </QueryClientProvider>,
   )
 }

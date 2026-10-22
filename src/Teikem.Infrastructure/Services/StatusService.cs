@@ -74,9 +74,13 @@ public sealed class StatusService(TeikemDbContext db, ITenantContext tenant, ILo
         var enabled = codes.Where(c => overrides.GetValueOrDefault(c.StatusCodeId)?.IsEnabled ?? true).ToList();
         var errors = new List<string>();
         var warnings = new List<string>();
+        // 2026-10-21: la etapa terminal y la del pipeline solo se exigen en los dominios que las definen. Un dominio sin etapa terminal (el cliente: Prospecto → Activo, con Suspendido) no tiene nada que habilitar
+        // y antes mostraba siempre «Debe quedar habilitada al menos una etapa terminal» sin que nadie pudiera corregirlo.
+        var definesTerminal = codes.Any(c => c.StageKind!.InternalCode == StageKinds.Terminal);
+        var definesPipeline = codes.Any(c => c.StageKind!.InternalCode == StageKinds.Pipeline);
         if (!enabled.Any(c => c.IsInitial)) errors.Add("Debe quedar habilitada al menos una etapa inicial.");
-        if (!enabled.Any(c => c.StageKind!.InternalCode == StageKinds.Terminal)) errors.Add("Debe quedar habilitada al menos una etapa terminal.");
-        if (!enabled.Any(c => c.StageKind!.InternalCode == StageKinds.Pipeline)) errors.Add("Debe quedar habilitada al menos una etapa del pipeline.");
+        if (definesTerminal && !enabled.Any(c => c.StageKind!.InternalCode == StageKinds.Terminal)) errors.Add("Debe quedar habilitada al menos una etapa terminal.");
+        if (definesPipeline && !enabled.Any(c => c.StageKind!.InternalCode == StageKinds.Pipeline)) errors.Add("Debe quedar habilitada al menos una etapa del pipeline.");
         if (enabled.Count(c => c.IsInitial) > 1) warnings.Add("Hay más de una etapa inicial habilitada; se usará la de menor orden.");
         return new PipelineValidationResult(errors.Count == 0, errors, warnings);
     }
