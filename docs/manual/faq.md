@@ -10215,3 +10215,6 @@ Kemi responde con el texto del manual para el usuario; los ejemplos de JSON y la
 ### El recibo dice «Descargando» (o «Discrepancia») y aún faltan unidades
 
 «Descargando» es el estatus del recibo abierto mientras se baja y se acomoda por partes: que falten unidades NO es una discrepancia, es lo que aún no se descarga. Siga capturando lo que baje, use «Confirmar tanda» para acomodar lo ya recibido y «Confirmar recibo» al terminar. «Discrepancia» solo aparece si se recibió MÁS de lo esperado. Se puede cerrar con faltante: el recibo pasa a «Completado con diferencia». Si «Confirmar tanda» está apagado con el mensaje de que todo lo recibido ya está confirmado, suba «Recibido» con lo que acaba de descargar para hacer otra tanda.
+
+**¿Por qué la bitácora decía «Almacén #n actualizado» cuando se eliminó una posición?**
+Hasta el 2026-10-22 las zonas y las posiciones se guardaban en la bitácora como «Almacén» y con el número de la posición. Desde entonces tienen su propio tipo («Zona de almacén», «Posición de almacén») y sus campos se leen «Activo: Sí → No», «Eliminado: No → Sí», «Eliminado por: Ana Ruiz». Los renglones anteriores a esa fecha siguen con el tipo viejo (no se reescriben).

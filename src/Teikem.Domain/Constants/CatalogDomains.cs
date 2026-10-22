@@ -563,6 +563,9 @@ public static class EntityTypes
     /// <summary>Aviso de llegada (Asn + AsnLine); su ciclo es AsnStatus.</summary>
     public const string Asn = "ASN";
     public const string WarehouseDock = "WAREHOUSE_DOCK";
+    /// <summary>2026-10-22: zona y posición del almacén en la bitácora (antes se guardaban como WAREHOUSE con el número de la posición).</summary>
+    public const string WarehouseZone = "WAREHOUSE_ZONE";
+    public const string WarehouseBin = "WAREHOUSE_BIN";
     /// <summary>Serie de inventario: su rastro es EntityStatusHistory (SerialStatus) más el ledger; sin AuditLog.</summary>
     public const string InventorySerial = "INVENTORY_SERIAL";
     public const string WarehouseTask = "WAREHOUSE_TASK";

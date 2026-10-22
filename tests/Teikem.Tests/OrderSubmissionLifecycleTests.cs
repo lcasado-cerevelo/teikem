@@ -222,6 +222,8 @@ public sealed class OrderSubmissionLifecycleTests
         Assert.True(start > 0, "Falta la sección 2026-10-17 (ao) en logistica-db-update.sql.");
         Assert.True(start > sql.IndexOf("2026-10-11 (g) — Motivo de despacho manual", StringComparison.Ordinal));
         var section = UpdateSqlSection.From(sql, start);
+        var nextHeader = section.IndexOf("\n/* ----", 10, StringComparison.Ordinal); // solo ESTA sección: las que se agregan después al final pueden traer otros textos
+        if (nextHeader > 0) section = section[..nextHeader];
         Assert.Contains("('orders.reopen', N'{\"es\":\"Reabrir órdenes en estatus final\",\"en\":\"Reopen orders in a final status\"}')", section);
         Assert.Contains("WHEN NOT MATCHED THEN", section);
         Assert.Contains("JOIN dbo.Permission p ON p.Code = 'orders.reopen' AND r.Name = 'TenantAdmin'", section);

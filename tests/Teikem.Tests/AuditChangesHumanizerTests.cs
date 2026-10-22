@@ -44,4 +44,15 @@ public class AuditChangesHumanizerTests
         Assert.Equal("texto", AuditChangesHumanizer.Humanize("texto", "es", Resolve));
         Assert.Null(AuditChangesHumanizer.Humanize(null, "es", Resolve));
     }
+
+    [Fact]
+    public void Eliminar_una_posicion_se_lee_con_etiquetas_y_el_usuario_que_la_elimino()
+    {
+        var json = """{"IsActive":{"from":true,"to":false},"IsRemoved":{"from":false,"to":true},"RemovedBy":{"from":null,"to":7}}""";
+        var r = JsonNode.Parse(AuditChangesHumanizer.Humanize(json, "es", Resolve)!)!.AsObject();
+        Assert.False(r["Activo"]!["to"]!.GetValue<bool>());
+        Assert.True(r["Eliminado"]!["to"]!.GetValue<bool>());
+        Assert.Equal("Ana Ruiz", r["Eliminado por"]!["to"]!.GetValue<string>());
+        Assert.Null(r["Eliminado por"]!["from"]);
+    }
 }

@@ -845,6 +845,8 @@ public static class PermissionCatalog
         [EntityTypes.Warehouse] = InventoryView,
 
         [EntityTypes.WarehouseDock] = InventoryView,
+        [EntityTypes.WarehouseZone] = InventoryView,
+        [EntityTypes.WarehouseBin] = InventoryView,
 
         [EntityTypes.Product] = InventoryView,
 
@@ -1029,6 +1031,8 @@ public static class PermissionCatalog
         [EntityTypes.Warehouse] = WarehouseManage,
 
         [EntityTypes.WarehouseDock] = WarehouseManage,
+        [EntityTypes.WarehouseZone] = WarehouseManage,
+        [EntityTypes.WarehouseBin] = WarehouseManage,
 
         [EntityTypes.Product] = InventoryManage,
 

@@ -460,6 +460,8 @@ public static class DependencyInjection
         services.AddScoped<AttentionFeedService>();
         services.AddScoped<IOwnedEntityResolver, WarehouseOwnedEntityResolver>();
         services.AddScoped<IOwnedEntityResolver, WarehouseDockOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, WarehouseZoneOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, WarehouseBinOwnedEntityResolver>();
         services.AddScoped<IOwnedEntityResolver, ProductOwnedEntityResolver>();
         services.AddScoped<IOwnedEntityResolver, ReceiptOwnedEntityResolver>();
         services.AddScoped<IOwnedEntityResolver, AsnOwnedEntityResolver>();

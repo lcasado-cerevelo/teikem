@@ -202,6 +202,10 @@ public sealed class AuditQueryService(TeikemDbContext db, ITenantContext tenant,
         if (sp.Count > 0)
             foreach (var s in await db.Set<Domain.Wms.Supplier>().AsNoTracking().Where(x => sp.Contains(x.SupplierId)).Select(x => new { x.SupplierId, x.Name }).ToListAsync(ct))
                 names[(AuditChangesHumanizer.FkKind.Supplier, s.SupplierId)] = s.Name;
+        var zn = Ids(AuditChangesHumanizer.FkKind.Zone);
+        if (zn.Count > 0)
+            foreach (var z in await db.Set<Domain.Wms.WarehouseZone>().AsNoTracking().Where(x => zn.Contains(x.WarehouseZoneId)).Select(x => new { x.WarehouseZoneId, x.Name }).ToListAsync(ct))
+                names[(AuditChangesHumanizer.FkKind.Zone, z.WarehouseZoneId)] = z.Name;
         return (kind, id) => names.TryGetValue((kind, id), out var n) ? n : null;
     }
 

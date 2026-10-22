@@ -26,6 +26,26 @@ public sealed class WarehouseDockOwnedEntityResolver(TeikemDbContext db) : IOwne
             select d.WarehouseDockId).AnyAsync(ct);
 }
 
+public sealed class WarehouseZoneOwnedEntityResolver(TeikemDbContext db) : IOwnedEntityResolver
+{
+    public string EntityTypeCode => EntityTypes.WarehouseZone;
+    public Task<bool> ExistsInTenantAsync(int id, CancellationToken ct)
+        => (from z in db.WarehouseZones.AsNoTracking()
+            join w in db.Warehouses.AsNoTracking() on z.WarehouseId equals w.WarehouseId
+            where z.WarehouseZoneId == id
+            select z.WarehouseZoneId).AnyAsync(ct);
+}
+
+public sealed class WarehouseBinOwnedEntityResolver(TeikemDbContext db) : IOwnedEntityResolver
+{
+    public string EntityTypeCode => EntityTypes.WarehouseBin;
+    public Task<bool> ExistsInTenantAsync(int id, CancellationToken ct)
+        => (from b in db.WarehouseBins.AsNoTracking()
+            join w in db.Warehouses.AsNoTracking() on b.WarehouseId equals w.WarehouseId
+            where b.WarehouseBinId == id
+            select b.WarehouseBinId).AnyAsync(ct);
+}
+
 public sealed class ProductOwnedEntityResolver(TeikemDbContext db) : IOwnedEntityResolver
 {
     public string EntityTypeCode => EntityTypes.Product;

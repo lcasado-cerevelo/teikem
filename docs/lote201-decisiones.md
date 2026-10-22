@@ -10,3 +10,9 @@
 ## Decisiones a revisar
 - Otros tipos que antes mostraban llaves: usuarios, almacenes, clientes, productos, posiciones y proveedores (ahora con nombre). Una llave de otra tabla se oculta como «(sin nombre)»; si se quiere nombrar más tipos, se agrega a `KindOf`/`BuildResolverAsync`.
 - Las bitácoras ya guardadas no se reescriben: se humanizan al leerlas.
+
+## Adenda 2026-10-22 — posiciones y zonas en la bitácora
+- Nuevos tipos `WAREHOUSE_ZONE` y `WAREHOUSE_BIN` (sección al final de `logistica-db-update.sql`), con su permiso de lectura (`inventory.view`), de dueño (`warehouse.manage`) y su resolver de pertenencia.
+- El humanizador etiqueta los campos comunes (Activo, Eliminado, Eliminado por, Código, Pasillo, Rack, Nivel, Cupo…), trata todo `*By` como usuario y nombra la zona.
+- Lo ya guardado como `WAREHOUSE` con el número de una posición no se reescribe; si quieres, se puede reclasificar por los campos que solo tiene una posición (decisión tuya).
+- La prueba de la sección `orders.reopen` ahora revisa solo esa sección (fallaba por texto de otra sección posterior).

@@ -10,7 +10,7 @@ namespace Teikem.Infrastructure.Services;
 /// </summary>
 public static class AuditChangesHumanizer
 {
-    public enum FkKind { None, Lookup, Status, User, Warehouse, Client, Product, Bin, Supplier, Other }
+    public enum FkKind { None, Lookup, Status, User, Warehouse, Client, Product, Bin, Supplier, Zone, Other }
 
     private static readonly HashSet<string> OwnKeys = new(StringComparer.OrdinalIgnoreCase) { "$key" };
 
@@ -20,12 +20,13 @@ public static class AuditChangesHumanizer
         if (field.StartsWith('$')) return FkKind.None;
         if (field.EndsWith("LookupId", StringComparison.Ordinal) || field.EndsWith("LookupCodeId", StringComparison.Ordinal)) return FkKind.Lookup;
         if (field.EndsWith("StatusCodeId", StringComparison.Ordinal)) return FkKind.Status;
-        if (field.EndsWith("UserId", StringComparison.Ordinal) || field is "CreatedBy" or "UpdatedBy" or "DeletedBy") return FkKind.User;
+        if (field.EndsWith("UserId", StringComparison.Ordinal) || (field.Length > 2 && field.EndsWith("By", StringComparison.Ordinal))) return FkKind.User;
         if (field.EndsWith("WarehouseId", StringComparison.Ordinal)) return FkKind.Warehouse;
         if (field.EndsWith("ClientId", StringComparison.Ordinal)) return FkKind.Client;
         if (field.EndsWith("ProductId", StringComparison.Ordinal)) return FkKind.Product;
         if (field.EndsWith("BinId", StringComparison.Ordinal)) return FkKind.Bin;
         if (field.EndsWith("SupplierId", StringComparison.Ordinal)) return FkKind.Supplier;
+        if (field.EndsWith("ZoneId", StringComparison.Ordinal)) return FkKind.Zone;
         if (field.Length > 2 && field.EndsWith("Id", StringComparison.Ordinal) && !field.Equals("PublicId", StringComparison.Ordinal)) return FkKind.Other;
         return FkKind.None;
     }
@@ -44,6 +45,20 @@ public static class AuditChangesHumanizer
         ["DefaultStagingBinId"] = ("Posición de recepción por omisión", "Default receiving bin"),
         ["CreatedBy"] = ("Creado por", "Created by"),
         ["UpdatedBy"] = ("Editado por", "Updated by"),
+        ["WarehouseZoneId"] = ("Zona", "Zone"),
+        ["IsActive"] = ("Activo", "Active"),
+        ["IsRemoved"] = ("Eliminado", "Removed"),
+        ["RemovedBy"] = ("Eliminado por", "Removed by"),
+        ["IsProvisional"] = ("Provisional", "Provisional"),
+        ["ProvisionalCreatedBy"] = ("Creada (provisional) por", "Provisionally created by"),
+        ["Code"] = ("Código", "Code"),
+        ["Name"] = ("Nombre", "Name"),
+        ["Aisle"] = ("Pasillo", "Aisle"),
+        ["Rack"] = ("Rack", "Rack"),
+        ["Level"] = ("Nivel", "Level"),
+        ["Position"] = ("Posición", "Position"),
+        ["MaxWeightKg"] = ("Peso máximo (kg)", "Max weight (kg)"),
+        ["MaxCapacityQty"] = ("Cupo máximo (unidades)", "Max capacity (units)"),
         ["$reason"] = ("Motivo", "Reason"),
     };
 
@@ -96,7 +111,7 @@ public static class AuditChangesHumanizer
         {
             if (OwnKeys.Contains(name)) continue;
             var kind = KindOf(name);
-            if (kind == FkKind.None && name != "$reason") { result[name] = value?.DeepClone(); continue; }
+            if (kind == FkKind.None && name != "$reason" && !Known.ContainsKey(name)) { result[name] = value?.DeepClone(); continue; }
             var label = FieldLabel(name, lang);
             if (name == "$reason") { result[label] = value?.DeepClone(); continue; }
             JsonNode? Map(JsonNode? n)

@@ -39,9 +39,9 @@ public class Warehouse : ITenantScoped, ISoftDeletable, IHasStatus
 
 /// <summary>
 /// Zona tipada del almacén (ZoneType: PICKING, RESERVE, REFRIGERATED, QUARANTINE, CROSSDOCK, STAGING). Sin TenantId: se
-/// alcanza SOLO a través de su almacén filtrado (WmsResolve). Se audita bajo WAREHOUSE.
+/// alcanza SOLO a través de su almacén filtrado (WmsResolve). Se audita bajo WAREHOUSE_ZONE (2026-10-22; antes bajo WAREHOUSE).
 /// </summary>
-[AuditEntity(Constants.EntityTypes.Warehouse)]
+[AuditEntity(Constants.EntityTypes.WarehouseZone)]
 public class WarehouseZone : ISoftDeletable
 {
     public int WarehouseZoneId { get; set; }
@@ -59,7 +59,7 @@ public class WarehouseZone : ISoftDeletable
 /// Posición ('Ubicación') pasillo-rack-nivel-posición. Lleva WarehouseId (D18): FK compuesta (WarehouseZoneId, WarehouseId)
 /// y código único por almacén (UQ_WarehouseBin_WhCode). Sin TenantId: se alcanza SOLO a través de su almacén filtrado.
 /// </summary>
-[AuditEntity(Constants.EntityTypes.Warehouse)]
+[AuditEntity(Constants.EntityTypes.WarehouseBin)]
 public class WarehouseBin
 {
     public int WarehouseBinId { get; set; }

@@ -327,8 +327,8 @@ public class WmsContractsTests
     public static IEnumerable<object?[]> AuditMap() => new[]
     {
         new object?[] { typeof(Warehouse), EntityTypes.Warehouse },
-        new object?[] { typeof(WarehouseZone), EntityTypes.Warehouse },
-        new object?[] { typeof(WarehouseBin), EntityTypes.Warehouse },
+        new object?[] { typeof(WarehouseZone), EntityTypes.WarehouseZone },
+        new object?[] { typeof(WarehouseBin), EntityTypes.WarehouseBin },
         new object?[] { typeof(WarehouseDock), EntityTypes.WarehouseDock },
         new object?[] { typeof(ProductCategory), EntityTypes.ProductCategory },   // Lote 7A: propio, para no confundir su baja con la de un producto
         new object?[] { typeof(Product), EntityTypes.Product },
