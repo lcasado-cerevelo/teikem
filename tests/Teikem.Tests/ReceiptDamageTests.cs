@@ -221,6 +221,6 @@ public class ReceiptDamageTests
         var done = await receipts.ConfirmAsync(id, null, default);
         Assert.Equal(2, await f.Db.Set<DamageReport>().AsNoTracking().CountAsync());   // el cierre no repite el reporte
         Assert.Equal(5m, await OnHandAsync(x, x.Staging));
-        Assert.Equal(new[] { 3m, 2m }, done.PutawayTasks.Select(t => t.Quantity!.Value).ToArray());
+        Assert.Equal(new[] { 5m }, done.PutawayTasks.Select(t => t.Quantity!.Value).ToArray());
     }
 }

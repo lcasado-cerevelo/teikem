@@ -7,6 +7,10 @@ export interface PutawayTask {
   quantity: number | null
   toBinCode: string | null
   assignedToUserId: number | null
+  /** Dónde está (posición de recepción), en qué almacén y de qué recibo viene (Lote 201). */
+  fromBinCode?: string | null
+  warehouseCode?: string | null
+  refLabel?: string | null
 }
 
 /** Las tareas de quien tiene el aparato en mano van primero; el resto, más viejas primero (orden de llegada). */

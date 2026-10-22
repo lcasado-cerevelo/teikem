@@ -21,6 +21,9 @@ export async function fetchOpenPutawayTasks(warehousePublicId: string): Promise<
     quantity: t.quantity ?? null,
     toBinCode: t.toBinCode ?? null,
     assignedToUserId: t.assignedToUserId ?? null,
+    fromBinCode: t.fromBinCode ?? null,
+    warehouseCode: t.warehouseCode ?? null,
+    refLabel: t.refLabel ?? null,
   }))
 }
 

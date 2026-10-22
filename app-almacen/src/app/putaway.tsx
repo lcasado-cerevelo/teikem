@@ -19,6 +19,7 @@ import {
   startTask,
   type PutawaySuggestion,
 } from '../features/putaway/putawayApi'
+import { SmallButton } from '../kernel/ui/SmallButton'
 import { useAssignAccess, useAssignees } from '../features/assign/assignScope'
 import { assigneeName, reassign } from '../features/assign/assignApi'
 import { ReassignModal } from '../features/assign/ReassignModal'
@@ -290,19 +291,22 @@ export default function PutawayScreen() {
             }
             renderItem={({ item }) => (
               <Pressable accessibilityRole="button" onPress={() => openTask(item)} style={styles.row} disabled={busy} testID={`putaway-task-${item.id}`}>
-                <View style={styles.rowTexts}>
+                <View style={styles.rowTop}>
                   <Text style={styles.rowTitle}>{item.sku}</Text>
-                  <Text style={styles.help}>{item.productName}</Text>
-                  <Text style={item.assignedToUserId === session?.userId ? styles.mine : styles.help}>
-                    {item.assignedToUserId == null
-                      ? t('putaway.unassigned')
-                      : item.assignedToUserId === session?.userId
-                        ? t('putaway.assignedToYou')
-                        : t('reassign.assignedTo', { name: assigneeName(item.assignedToUserId, people) })}
-                  </Text>
-                  {access.reassign ? <BigButton label={t('reassign.button')} variant="secondary" testID={`putaway-reassign-${item.id}`} onPress={() => setToReassign(item)} /> : null}
+                  <Text style={styles.rowQty}>{item.quantity != null ? f.qty(item.quantity) : ''}</Text>
                 </View>
-                <Text style={styles.rowQty}>{item.quantity != null ? f.qty(item.quantity) : ''}</Text>
+                <Text style={styles.help}>{item.productName}</Text>
+                {item.fromBinCode || item.warehouseCode || item.refLabel ? (
+                  <Text style={styles.help}>{[item.refLabel, item.warehouseCode ? t('putaway.warehouse', { code: item.warehouseCode }) : null, item.fromBinCode ? t('putaway.fromBin', { bin: item.fromBinCode }) : null].filter(Boolean).join(' · ')}</Text>
+                ) : null}
+                <Text style={item.assignedToUserId === session?.userId ? styles.mine : styles.help}>
+                  {item.assignedToUserId == null
+                    ? t('putaway.unassigned')
+                    : item.assignedToUserId === session?.userId
+                      ? t('putaway.assignedToYou')
+                      : t('reassign.assignedTo', { name: assigneeName(item.assignedToUserId, people) })}
+                </Text>
+                {access.reassign ? <SmallButton label={t('reassign.button')} testID={`putaway-reassign-${item.id}`} onPress={() => setToReassign(item)} /> : null}
               </Pressable>
             )}
           />
@@ -332,15 +336,13 @@ const styles = StyleSheet.create({
   error: { color: colors.error, fontSize: fontSize.message, textAlign: 'center' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
   row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    minHeight: 64,
-    paddingHorizontal: spacing.md,
+    gap: 2,
+    padding: spacing.md,
     backgroundColor: colors.panelAlt,
     borderRadius: 12,
     marginBottom: spacing.sm,
   },
+  rowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.md },
   rowTexts: { gap: 2 },
   mine: { color: colors.brand, fontSize: fontSize.message, fontWeight: '600' },
   rowTitle: { color: colors.text, fontSize: fontSize.listTitle, fontWeight: '600' },

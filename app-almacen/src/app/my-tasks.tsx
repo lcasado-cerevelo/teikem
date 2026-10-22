@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react'
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
 
+import { SmallButton } from '../kernel/ui/SmallButton'
 import { useAssignAccess, useAssignees } from '../features/assign/assignScope'
 import { assigneeName, reassign } from '../features/assign/assignApi'
 import { ReassignModal } from '../features/assign/ReassignModal'
@@ -300,7 +301,7 @@ export default function MyTasksScreen() {
               <Text style={styles.cardTitle}>{o.title}</Text>
               {o.subtitle ? <Text style={styles.help}>{o.subtitle}</Text> : null}
               <Text style={styles.help}>{t('reassign.assignedTo', { name: assigneeName(o.assignedTo, people) })}</Text>
-              {access.reassign ? <BigButton label={t('reassign.button')} variant="secondary" testID={`my-reassign-${o.key}`} onPress={() => setToReassign(o)} /> : null}
+              {access.reassign ? <SmallButton label={t('reassign.button')} testID={`my-reassign-${o.key}`} onPress={() => setToReassign(o)} /> : null}
             </View>
           ))
         : null}

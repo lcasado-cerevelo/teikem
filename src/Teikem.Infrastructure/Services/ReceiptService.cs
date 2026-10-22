@@ -2136,7 +2136,29 @@ public sealed class ReceiptService(
     }
 
     /// <summary>PUTAWAY desde la posición de recepción, con Ref RECEIPT + id (historial null → PENDING lo escribe el writer).</summary>
-    private Task CreatePutawayAsync(ReceiptHeader r, ReceiptLine line, decimal qty, int? toBinId, CancellationToken ct)
+    private async Task CreatePutawayAsync(ReceiptHeader r, ReceiptLine line, decimal qty, int? toBinId, CancellationToken ct)
+    {
+        // 2026-10-22 (Luis): lo recibido en varias partes del MISMO recibo, del mismo producto y lote y en la misma posición de recepción, es UNA sola tarea de acomodo (se suma a la que todavía está
+        // pendiente) en vez de una tarea por parte; así el operador ve una fila con el total.
+        var putawayId = await lookups.TryGetIdAsync(LookupDomains.WarehouseTaskType, WarehouseTaskTypes.Putaway, ct);
+        var receiptTypeId = await lookups.TryGetIdAsync(LookupDomains.EntityType, EntityTypes.Receipt, ct);
+        var pendingId = await db.StatusIdAsync(StatusDomains.WarehouseTaskStatus, WarehouseTaskStatuses.Pending, ct);
+        if (putawayId is not null && receiptTypeId is not null)
+        {
+            var open = await db.Set<WarehouseTask>().AsTracking().FirstOrDefaultAsync(t => t.TaskTypeLookupId == putawayId && t.RefEntityLookupId == receiptTypeId && t.RefId == r.ReceiptHeaderId
+                && t.WarehouseId == r.WarehouseId && t.ProductId == line.ProductId && t.LotId == line.LotId && t.FromBinId == line.StagingBinId && t.ToBinId == toBinId
+                && t.StatusCodeId == pendingId, ct);
+            if (open is not null)
+            {
+                open.Quantity += qty;
+                await db.SaveChangesAsync(ct);
+                return;
+            }
+        }
+        await CreatePutawayTaskAsync(r, line, qty, toBinId, ct);
+    }
+
+    private Task CreatePutawayTaskAsync(ReceiptHeader r, ReceiptLine line, decimal qty, int? toBinId, CancellationToken ct)
         => taskWriter.CreateAsync(new WarehouseTaskSpec(
             TaskType: WarehouseTaskTypes.Putaway, WarehouseId: r.WarehouseId, ProductId: line.ProductId, Quantity: qty,
             LotId: line.LotId, FromBinId: line.StagingBinId, ToBinId: toBinId,

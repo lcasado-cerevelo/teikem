@@ -379,6 +379,8 @@
     "warehouseInProgress": "Finish or cancel the document in progress before changing warehouse."
   },
   "putaway": {
+    "warehouse": "Warehouse {code}",
+    "fromBin": "From {bin}",
     "noneMine": "Nothing assigned to you. Tap “Show unassigned”.",
     "unassigned": "Unassigned (putting it away assigns it to you)",
     "assignedToYou": "Assigned to you",

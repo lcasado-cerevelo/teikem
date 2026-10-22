@@ -140,8 +140,12 @@ public sealed class WarehouseTaskService(
             await handler.LockReferencesAsync(snapshot, ct2);
             var task = await LockTaskAsync(id, ct2);
             var code = await EnsureOpenAsync(task, ct2);
+            // 2026-10-22: abrir otra vez una tarea que ya iniciaste (o que nadie tiene) no es un error: se retoma. Solo si la tiene otra persona se rechaza.
             if (string.Equals(code, WarehouseTaskStatuses.InProgress, StringComparison.OrdinalIgnoreCase))
+            {
+                if (task.AssignedToUserId is null || task.AssignedToUserId == tenant.UserId) return;
                 throw new StatusRuleException(WarehouseTaskRules.AlreadyInProgress);
+            }
             var to = await statuses.TransitionAsync(StatusDomains.WarehouseTaskStatus, EntityTypes.WarehouseTask, task.WarehouseTaskId,
                 task.StatusCodeId, WarehouseTaskStatuses.InProgress, null, ct2);
             task.StatusCodeId = to.StatusCodeId;

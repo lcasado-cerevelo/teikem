@@ -7,6 +7,7 @@ import { useT } from '../../kernel/i18n/useT'
 import { BigButton } from '../../kernel/ui/BigButton'
 import { KeyboardInput } from '../../kernel/ui/KeyboardInput'
 import { colors, fontSize, radius, spacing } from '../../kernel/ui/theme'
+import { SmallButton } from '../../kernel/ui/SmallButton'
 import { useAssignAccess, useAssignees } from '../assign/assignScope'
 import { assigneeName, reassign } from '../assign/assignApi'
 import { ReassignModal } from '../assign/ReassignModal'
@@ -129,9 +130,8 @@ export function ReceiveDocumentList({
               {mine ? t('receive.assignedToYou') : otherOwner ? t('reassign.assignedTo', { name: assigneeName(r.assignedToUserId, people) }) : t('receive.unassigned')}
             </Text>
             {access.reassign ? (
-              <BigButton
+              <SmallButton
                 label={t('reassign.button')}
-                variant="secondary"
                 testID={`receive-reassign-${k}`}
                 onPress={() => setToReassign({ doc: r.doc, title: r.title, current: r.assignedToUserId })}
               />

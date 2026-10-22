@@ -24,6 +24,7 @@ import { dispatchScope } from '../features/dispatch/dispatchScope'
 import { useMyPermissions } from '../kernel/auth/permissions'
 import { useSession } from '../kernel/auth/useSession'
 import { buildGroupBody, docKey, groupBlock, groupNumber, groupReady, MIN_GROUP } from '../features/exitDispatch/exitGroupLogic'
+import { SmallButton } from '../kernel/ui/SmallButton'
 import { useAssignAccess, useAssignees } from '../features/assign/assignScope'
 import { assigneeName, reassign } from '../features/assign/assignApi'
 import { ReassignModal } from '../features/assign/ReassignModal'
@@ -343,7 +344,7 @@ export default function ExitDispatchScreen() {
                   ? t('exitDispatch.assignedToYou')
                   : t('reassign.assignedTo', { name: assigneeName(o.assignedToUserId, people) })}
             </Text>
-            {access.reassign ? <BigButton label={t('reassign.button')} variant="secondary" testID={`exit-reassign-${o.number}`} onPress={() => setToReassign(o)} /> : null}
+            {access.reassign ? <SmallButton label={t('reassign.button')} testID={`exit-reassign-${o.number}`} onPress={() => setToReassign(o)} /> : null}
             <Text style={styles.help}>
               {t('exitDispatch.toDispatch', { qty: f.qty(o.reserved) })}
               {o.requiredDate ? ' · ' + t('exitDispatch.required', { date: f.date(o.requiredDate) }) : ''}

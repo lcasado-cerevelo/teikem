@@ -25,7 +25,7 @@ describe('fetchOpenPutawayTasks', () => {
     )
     const tasks = await fetchOpenPutawayTasks('wh-1')
     expect(getMock.mock.calls[0][1].params.query).toMatchObject({ warehousePublicId: 'wh-1', types: ['PUTAWAY'], includeClosed: false })
-    expect(tasks).toEqual([{ id: 1, sku: 'A', productName: 'Uno', quantity: 3, toBinCode: 'B-1', assignedToUserId: 7 }])
+    expect(tasks).toEqual([{ id: 1, sku: 'A', productName: 'Uno', quantity: 3, toBinCode: 'B-1', assignedToUserId: 7, fromBinCode: null, warehouseCode: null, refLabel: null }])
   })
 })
 

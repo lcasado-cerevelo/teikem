@@ -112,7 +112,7 @@ public sealed class ReceiptBatchTests
         Assert.False(done.Header.IsOpen);
         Assert.Equal(ReceiptStatuses.Received, done.Header.StatusCode);
         Assert.Equal(8m, (await f.Db.Set<InventoryTransaction>().AsNoTracking().ToListAsync()).Sum(t => t.Quantity));
-        Assert.Equal(new[] { 5m, 3m }, done.PutawayTasks.Select(t => t.Quantity!.Value).ToArray());
+        Assert.Equal(new[] { 8m }, done.PutawayTasks.Select(t => t.Quantity!.Value).ToArray());   // 2026-10-22: las partes del mismo producto en la misma posición de recepción son UNA tarea de acomodo
     }
 
     [Fact]
@@ -130,7 +130,7 @@ public sealed class ReceiptBatchTests
 
         Assert.Equal(ReceiptStatuses.Received, done.Header.StatusCode);
         Assert.Equal(6m, (await f.Db.Set<InventoryTransaction>().AsNoTracking().ToListAsync()).Sum(t => t.Quantity));
-        Assert.Equal(new[] { 4m, 2m }, done.PutawayTasks.Select(t => t.Quantity!.Value).ToArray());
+        Assert.Equal(new[] { 6m }, done.PutawayTasks.Select(t => t.Quantity!.Value).ToArray());   // 2026-10-22: las partes del mismo producto en la misma posición de recepción son UNA tarea de acomodo
     }
 
     [Fact]
@@ -175,7 +175,7 @@ public sealed class ReceiptBatchTests
         Assert.Equal(ReceiptStatuses.Received, done.Header.StatusCode);
         Assert.Equal(10m, done.Lines[0].ReceivedQty);
         Assert.Equal(10m, Stock());
-        Assert.Equal(new[] { 4m, 3m, 3m }, done.PutawayTasks.Select(t => t.Quantity!.Value).ToArray());
+        Assert.Equal(new[] { 10m }, done.PutawayTasks.Select(t => t.Quantity!.Value).ToArray());   // 2026-10-22: las partes del mismo producto en la misma posición de recepción son UNA tarea de acomodo
     }
 
     [Fact]
@@ -211,7 +211,7 @@ public sealed class ReceiptBatchTests
         var done = await receipts.ConfirmAsync(id, null, default);
         Assert.Equal(ReceiptStatuses.Received, done.Header.StatusCode);
         Assert.Equal(3m, Stock());
-        Assert.Equal(new[] { 2m, 1m }, done.PutawayTasks.Select(t => t.Quantity!.Value).ToArray());
+        Assert.Equal(new[] { 3m }, done.PutawayTasks.Select(t => t.Quantity!.Value).ToArray());   // 2026-10-22: las partes del mismo producto en la misma posición de recepción son UNA tarea de acomodo
     }
 
     [Fact]

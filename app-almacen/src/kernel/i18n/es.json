@@ -379,6 +379,8 @@
     "warehouseInProgress": "Termina o cancela el documento en curso antes de cambiar de almacén."
   },
   "putaway": {
+    "warehouse": "Almacén {code}",
+    "fromBin": "Desde {bin}",
     "noneMine": "Nada asignado a ti. Toca «Ver lo que nadie tiene asignado».",
     "unassigned": "Sin asignar (al acomodarla queda a tu nombre)",
     "assignedToYou": "Asignada a ti",
