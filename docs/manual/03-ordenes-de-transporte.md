@@ -550,6 +550,8 @@ fila nueva a esa cuenta en vez de rechazarla:
 - Si no tiene contraseña (o estaba desactivada porque no le quedaba ningún cliente vivo), nace **INVITED** con un enlace
   de invitación, como siempre.
 
+**El correo de la invitación (2026-10-22).** Invitar o reenviar la invitación (la de un usuario del cliente y la de un consignatario, que es un usuario de portal ligado a su dirección) **manda un correo** por el proveedor de correo (Brevo) con el botón «Elegir mi contraseña». El enlace va a `{Portal:WebBaseUrl}/accept-invite?email=…&token=…`: la **dirección del portal de cada ambiente** (por ejemplo `https://test-portal.advancelogisticspr.com`). Esa pantalla del portal pide la contraseña dos veces (mínimo 12 caracteres) y, al guardarla, la persona ya puede entrar. El remitente se muestra con el nombre de la compañía. Si falta `Portal:WebBaseUrl`, la invitación **se crea pero el correo no sale** (queda una advertencia en el log); se corrige configurando la dirección y usando **Reenviar invitación**. Si el proveedor de correo falla, la invitación tampoco se cae: se registra el error y se reenvía. En el ambiente de pruebas el correo se redirige al buzón de pruebas como todos los demás.
+
 Aceptar la invitación (`POST /portal-users/accept-invite`) activa **todas** las filas `INVITED` de la cuenta a la vez
 (un solo enlace sirve para todos los clientes pendientes). Suspender, reactivar o quitar un usuario de portal actúa
 **por fila** (por cliente): la cuenta completa (contraseña, sesiones) solo se desactiva cuando **no le queda ninguna

@@ -7399,6 +7399,12 @@ Ya estaba **Inhabilitado**. Si necesita que vuelva, pulse **Volver a invitar** e
 **¿Puedo ver o cambiar la contraseña de un usuario de portal?**
 No. Cada persona fija la suya con el enlace del correo. Si la perdió, **Dar de baja** y luego **Volver a invitar**.
 
+**Invité a alguien al portal (o a un consignatario) y no le llegó el correo.**
+Revise tres cosas: (1) que el correo esté bien escrito; (2) que el ambiente tenga configurada la dirección del portal (`Portal:WebBaseUrl`; sin ella la invitación se crea pero el correo no sale: el administrador de sistemas la agrega y usted pulsa **Reenviar invitación**); (3) que no esté en la carpeta de spam. En el ambiente de pruebas todo correo llega al buzón de pruebas con el asunto «[TEST → destinatario]…».
+
+**Me llegó la invitación: ¿qué hago?**
+Pulse «Elegir mi contraseña», escriba una contraseña de al menos 12 caracteres dos veces y guárdela. Si dice «Invitación inválida o vencida.», el enlace ya se usó o pasaron más de 48 horas: pida que le reenvíen la invitación.
+
 **¿Por qué no veo el enlace de invitación en pantalla?**
 Es un secreto de un solo uso: solo lo recibe la persona invitada por correo. La pantalla solo le dice a quién se envió y hasta cuándo vale.
 

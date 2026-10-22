@@ -28,6 +28,9 @@
             -CorreoRedirigir <buzón>: TODO el correo que salga de este sitio va a ese buzón (Email:RedirectTo) con el destinatario original en el
                 asunto; nadie real lo recibe. -CorreoRedirigirExcepto <dominio,...>: dominios que sí reciben de verdad (los códigos del equipo).
                 Solo para ambientes de pruebas; en producción no se usa.
+            -UrlPortal <url>: dirección del portal del cliente de este ambiente (Portal:WebBaseUrl): a ella apunta el enlace del correo de la invitación al
+                portal (la del usuario del cliente y la de su consignatario). Sin ella esas invitaciones no salen por correo. Se escribe cada vez que se pasa.
+            Además, si falta, se escribe Auth:PasswordReset:WebBaseUrl = https://<dominio> (la web de este sitio): sin ella no sale el correo de «Olvidé mi contraseña».
 #>
 param(
     [string]$Sitio = 'Teikem',
@@ -42,7 +45,8 @@ param(
     [string[]]$OrigenesExtra = @(),
     [switch]$ConDescargas,
     [string]$CorreoRedirigir = '',
-    [string[]]$CorreoRedirigirExcepto = @()
+    [string[]]$CorreoRedirigirExcepto = @(),
+    [string]$UrlPortal = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -262,6 +266,21 @@ if ($CorreoRedirigir) {
     $jc | Add-Member -NotePropertyName Email -NotePropertyValue $redir -Force
     $cambiado = $true
     Ok "Correo: todo lo que salga de este sitio va a $($redir.RedirectTo)$(if ($redir.ExceptDomains.Count) { " (salvo @$($redir.ExceptDomains -join ', @'))" })."
+}
+# Direcciones de los enlaces de los correos (2026-10-22). Auth:PasswordReset:WebBaseUrl = la web de este sitio (sin ella NO sale el correo de «Olvidé mi contraseña»):
+# solo se escribe si falta, para no pisar lo que ya se ajustó a mano. Portal:WebBaseUrl = el portal del cliente (invitaciones): se escribe cada vez que se pasa -UrlPortal.
+if (-not $jc.Auth) { $jc | Add-Member -NotePropertyName Auth -NotePropertyValue ([pscustomobject]@{}) }
+if (-not $jc.Auth.PasswordReset) { $jc.Auth | Add-Member -NotePropertyName PasswordReset -NotePropertyValue ([pscustomobject]@{}) }
+if (-not $jc.Auth.PasswordReset.WebBaseUrl) {
+    $jc.Auth.PasswordReset | Add-Member -NotePropertyName WebBaseUrl -NotePropertyValue "https://$dominio" -Force
+    $cambiado = $true
+    Ok "Enlaces de «Olvidé mi contraseña»: https://$dominio"
+}
+if ($UrlPortal) {
+    $urlPortal = $UrlPortal.Trim().TrimEnd('/')
+    if (-not $jc.Portal) { $jc | Add-Member -NotePropertyName Portal -NotePropertyValue ([pscustomobject]@{}) }
+    if ($jc.Portal.WebBaseUrl -ne $urlPortal) { $jc.Portal | Add-Member -NotePropertyName WebBaseUrl -NotePropertyValue $urlPortal -Force; $cambiado = $true }
+    Ok "Invitaciones al portal: los enlaces del correo van a $urlPortal"
 }
 # Orígenes extra de CORS (p. ej. el portal del cliente en otro dominio): se agregan a los que ya hay, sin repetir.
 if ($OrigenesExtra.Count -gt 0) {

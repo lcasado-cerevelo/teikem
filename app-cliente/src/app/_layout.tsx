@@ -19,7 +19,7 @@ import { useT } from '../kernel/i18n/useT'
 import { Spinner, useColors } from '../kernel/ui/ui'
 
 /** Pantallas que se ven sin sesión. */
-const PUBLIC_PATHS = ['/login', '/mfa', '/confirm-browser']
+const PUBLIC_PATHS = ['/login', '/mfa', '/confirm-browser', '/accept-invite']
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false)

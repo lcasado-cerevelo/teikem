@@ -67,6 +67,20 @@
     "noTrust": "Do not trust this computer",
     "noTrustHelp": "Tick it on a shared or public device: you will sign in once, it will not be remembered and you will always be asked for the security code."
   },
+  "invite": {
+    "title": "Choose your password",
+    "subtitle": "You were given access to the customer portal with {email}. Choose your password to sign in.",
+    "password": "New password",
+    "confirm": "Repeat the password",
+    "rule": "At least {min} characters. Do not reuse a password from another site.",
+    "tooShort": "The password must be at least {min} characters long.",
+    "mismatch": "The two passwords do not match.",
+    "submit": "Save my password",
+    "done": "Done: your password was saved.",
+    "doneNext": "You can now sign in to the portal with your email and password.",
+    "invalid": "The link is not valid. Ask for the invitation to be sent again.",
+    "goLogin": "Go to the sign-in screen"
+  },
   "browser": {
     "title": "Confirm this computer",
     "sentTo": "We sent an email to {email}.",

@@ -124,7 +124,7 @@ public static class DependencyInjection
         services.AddScoped<PortalUserService>();
         services.AddScoped<IStatusTransitionEffect, ContractStatusEffect>();
         services.AddScoped<IStatusTransitionEffect, PortalUserStatusEffect>();
-        services.AddScoped<IInvitationSender, LoggingInvitationSender>();
+        services.AddScoped<IInvitationSender, EmailInvitationSender>();   // 2026-10-22: la invitación al portal sale por correo (Brevo); LoggingInvitationSender queda para pruebas
         // 2026-09-30: correo transaccional (código de verificación del primer ingreso) por Brevo.
         services.AddHttpClient<ITransactionalEmailSender, BrevoEmailSender>(c => c.Timeout = TimeSpan.FromSeconds(15));
         // La invitación al portal reutiliza el token DataProtector de Identity: su vida es Portal:InviteHours (48 h por defecto).

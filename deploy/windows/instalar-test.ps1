@@ -65,7 +65,7 @@ Paso "1/3 API, web y base de datos ($Sitio)"
 $args_ = @{ Sitio = $Sitio; Carpeta = $Carpeta; Dominio = $Dominio; DbNombre = $DbNombre; Etiqueta = 'TEST'
     LetsEncrypt = $true; CorreoLetsEncrypt = $CorreoLetsEncrypt; ConDescargas = $true }
 if ($CorreoRedirigir) { $args_.CorreoRedirigir = $CorreoRedirigir; if ($CorreoRedirigirExcepto.Count) { $args_.CorreoRedirigirExcepto = $CorreoRedirigirExcepto } }
-if (-not $SinPortal) { $args_.OrigenesExtra = @("https://$DominioPortal") }
+if (-not $SinPortal) { $args_.OrigenesExtra = @("https://$DominioPortal"); $args_.UrlPortal = "https://$DominioPortal" }
 if ($SinBase) { $args_.SinBase = $true }
 if ($RespaldoHecho) { $args_.RespaldoHecho = $true }
 & (Join-Path $PSScriptRoot 'instalar.ps1') @args_

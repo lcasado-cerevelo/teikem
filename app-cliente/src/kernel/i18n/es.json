@@ -67,6 +67,20 @@
     "noTrust": "No confiar en esta computadora",
     "noTrustHelp": "Márquela si es un equipo compartido o público: entrará una sola vez, no se recordará y se le pedirá el código de seguridad siempre."
   },
+  "invite": {
+    "title": "Elija su contraseña",
+    "subtitle": "Le dieron acceso al portal de clientes con {email}. Elija su contraseña para entrar.",
+    "password": "Contraseña nueva",
+    "confirm": "Repita la contraseña",
+    "rule": "Mínimo {min} caracteres. No use una contraseña que ya haya usado en otro sitio.",
+    "tooShort": "La contraseña debe tener al menos {min} caracteres.",
+    "mismatch": "Las dos contraseñas no coinciden.",
+    "submit": "Guardar mi contraseña",
+    "done": "Listo: su contraseña quedó guardada.",
+    "doneNext": "Ya puede entrar al portal con su correo y su contraseña.",
+    "invalid": "El enlace no es válido. Pida que le envíen la invitación otra vez.",
+    "goLogin": "Ir a la pantalla de entrada"
+  },
   "browser": {
     "title": "Confirme esta computadora",
     "sentTo": "Le enviamos un correo a {email}.",

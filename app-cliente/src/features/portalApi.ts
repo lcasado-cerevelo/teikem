@@ -188,3 +188,8 @@ export async function revokeTrustedBrowser(publicId: string): Promise<void> {
 export async function confirmBrowser(token: string): Promise<void> {
   await unwrap(api.POST('/api/v1/auth/confirm-browser', { body: { token } }))
 }
+
+/** La persona invitada (usuario del cliente o consignatario) elige su contraseña con el enlace del correo. Anónimo: el servidor responde lo mismo exista o no la invitación. */
+export async function acceptInvite(email: string, token: string, password: string): Promise<void> {
+  await unwrap(api.POST('/api/v1/portal-users/accept-invite', { body: { email, token, password } }))
+}
