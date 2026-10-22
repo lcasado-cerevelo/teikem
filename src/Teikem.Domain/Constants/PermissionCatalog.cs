@@ -516,7 +516,7 @@ public static class PermissionCatalog
 
         new(WarehousesManage, "WAREHOUSE", "Almacenes: crear y editar (incluye muelles)", "Warehouses: create and edit (includes docks)"),
 
-        new(BinsManage, "WAREHOUSE", "Posiciones: crear, editar y eliminar (incluye zonas)", "Bins: create, edit and delete (includes zones)"),
+        new(BinsManage, "WAREHOUSE", "Posiciones: crear, editar y eliminar (incluye zonas)", "Bins: create, edit and remove (includes zones)"),
 
         new(DispatchAccountingManage, "BILLING", "Contabilización de despachos: generar, aceptar, cancelar y exportar", "Dispatch accounting: generate, accept, cancel and export"),
 

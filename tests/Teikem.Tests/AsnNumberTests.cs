@@ -84,6 +84,8 @@ public sealed class AsnNumberTests
         var start = sql.IndexOf("2026-10-21 (Lote 170)", StringComparison.Ordinal);
         Assert.True(start > 0);
         var section = sql[start..];
+        var nextHeader = section.IndexOf("\n/* ----", 10, StringComparison.Ordinal); // solo ESTA sección
+        if (nextHeader > 0) section = section[..nextHeader];
         Assert.Contains("IF COL_LENGTH('dbo.Asn', 'Number') IS NULL", section);
         Assert.Contains("ROW_NUMBER() OVER (PARTITION BY TenantId ORDER BY AsnId)", section);
         Assert.Contains("'LLE-' + RIGHT('00000'", section);

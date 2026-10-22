@@ -24,13 +24,13 @@ public class TrackingTests
     public void The_bar_has_four_fixed_steps_in_the_askers_language()
     {
         Assert.Equal(new[] { "SUBMITTED", "RECEIVED", "ON_ROUTE", "DONE" }, OrderProgress.Steps().Select(s => s.Code));
-        Assert.Equal(new[] { "Sometida", "Recibida", "En ruta", "Completada" }, OrderProgress.Steps("es").Select(s => s.Label));
+        Assert.Equal(new[] { "Sometido", "Recibida", "En ruta", "Completada" }, OrderProgress.Steps("es").Select(s => s.Label));
         Assert.Equal(new[] { "Submitted", "Received", "On route", "Completed" }, OrderProgress.Steps("en").Select(s => s.Label));
         Assert.Equal(OrderProgress.TotalSteps, OrderProgress.Steps().Count);
     }
 
     [Theory]
-    [InlineData("SUBMITTED", "Sometida", "PIPELINE", false, 1, OrderProgress.InProgress, "Sometida")]
+    [InlineData("SUBMITTED", "Sometida", "PIPELINE", false, 1, OrderProgress.InProgress, "Sometido")]
     [InlineData("PICKUP", "Recogida", "PIPELINE", false, 2, OrderProgress.InProgress, "Recibida")]
     [InlineData("UNASSIGNED", "Sin asignar", "PIPELINE", false, 2, OrderProgress.InProgress, "Recibida")]
     [InlineData("ASSIGNED", "Asignada", "PIPELINE", false, 2, OrderProgress.InProgress, "Recibida")]

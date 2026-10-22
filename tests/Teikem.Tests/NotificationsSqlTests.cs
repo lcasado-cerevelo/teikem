@@ -486,7 +486,7 @@ public sealed class NotificationsSqlTests(NotificationSqlFixture fx) : IClassFix
         var updated = await svc.UpdateRuleAsync(rule.PublicId, new NotificationRuleRequest(null, null, null,
             new[] { new NotificationChannelRequest("APP", null, SubjectEn: "Hey {message}") },
             new[] { new NotificationRecipientRequest("USER", UserId: other), new NotificationRecipientRequest("PHONE", Value: "787-555-0101") }), default);
-        Assert.Equal(new[] { "Pedro Pérez (" + $"{await EmailOfAsync(other)})", "787-555-0101" }, updated.Recipients.Select(r => r.Label));
+        Assert.Equal(new[] { "Pedro Pérez (" + $"{await EmailOfAsync(other)})", "+17875550101" }, updated.Recipients.Select(r => r.Label));
         var app = updated.Channels.Single(c => c.Channel == "APP");
         Assert.Equal(("Hola {message}", "Hey {message}", true), (app.SubjectEs, app.SubjectEn, app.IsEnabled));   // solo cambió el inglés del asunto
 

@@ -6282,7 +6282,7 @@ GO
 IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'bins.manage')
     INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
     VALUES ('bins.manage', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'WAREHOUSE'),
-            N'{"es":"Posiciones: crear, editar y eliminar (incluye zonas)","en":"Bins: create, edit and delete (includes zones)"}', 1);
+            N'{"es":"Posiciones: crear, editar y eliminar (incluye zonas)","en":"Bins: create, edit and remove (includes zones)"}', 1);
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'dispatchaccounting.manage')
     INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
@@ -6349,4 +6349,12 @@ ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
 WHEN NOT MATCHED THEN
     INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
     VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-22 — Etiqueta en inglés de bins.manage: «remove» en lugar de «delete» (solo el texto; el permiso no cambia).
+   ---------------------------------------------------------------------------- */
+UPDATE dbo.Permission
+SET LabelJson = N'{"es":"Posiciones: crear, editar y eliminar (incluye zonas)","en":"Bins: create, edit and remove (includes zones)"}'
+WHERE Code = 'bins.manage' AND JSON_VALUE(LabelJson, '$.en') <> N'Bins: create, edit and remove (includes zones)';
 GO
