@@ -73,7 +73,8 @@ public sealed partial class AuthService(
     DeviceService devices, PinService pins, Microsoft.Extensions.Options.IOptions<OnboardingOptions> onboarding, ITransactionalEmailSender email,
     Microsoft.Extensions.Caching.Memory.IMemoryCache cache,
     Microsoft.Extensions.Options.IOptions<PasswordResetOptions>? passwordReset = null, TrustedNetworkService? trustedNetworks = null, TrustedBrowserService? trustedBrowsers = null,
-    ITurnstileVerifier? turnstile = null, Microsoft.Extensions.Options.IOptions<SessionOptions>? sessionOptions = null)
+    ITurnstileVerifier? turnstile = null, Microsoft.Extensions.Options.IOptions<SessionOptions>? sessionOptions = null,
+    Microsoft.Extensions.Hosting.IHostEnvironment? hostEnvironment = null)
 {
     private const string InvalidCredentials = "Credenciales inválidas.";
 
@@ -163,7 +164,7 @@ public sealed partial class AuthService(
             {
                 var (challenge, _) = jwt.CreateMfaChallengeToken(user, tenantId, req.DeviceInfo);
                 await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Success, user.Id, tenantId, new { stage = "password", mfa = totp is not null ? "required" : "enrollment_required" }, ct);
-                return new AuthResultDto("mfa_required", null, challenge, totp is null, null);
+                return new AuthResultDto("mfa_required", null, challenge, totp is null, null, DevMfaCode: DevMfaCodeOf(totp));
             }
             // se anota la decisión ANTES de emitir la sesión (igual que el evento de «mfa_required»): quedó claro por qué no se pidió el código
             await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Success, user.Id, tenantId,
@@ -663,7 +664,7 @@ public sealed partial class AuthService(
         factor.IsConfirmed = false; factor.ConfirmedAtUtc = null; factor.IsActive = true;
         await db.SaveChangesAsync(ct);
         await security.WriteAsync(SecurityEventTypes.Mfa, SecurityOutcomes.Success, userId, tenant.TenantId, new { action = "enroll_started" }, ct);
-        return new MfaEnrollResultDto(TotpService.Base32Encode(secret), TotpService.BuildOtpAuthUri("Teikem", user.Email ?? user.UserName ?? userId.ToString(), secret));
+        return new MfaEnrollResultDto(TotpService.Base32Encode(secret), TotpService.BuildOtpAuthUri("Teikem", user.Email ?? user.UserName ?? userId.ToString(), secret), DevMfaCodeOf(secret));
     }
 
     public async Task<MfaConfirmResultDto> ConfirmTotpAsync(int userId, MfaConfirmRequest req, CancellationToken ct)
@@ -752,6 +753,16 @@ public sealed partial class AuthService(
         await db.SaveChangesAsync(ct);
         await security.WriteAsync(SecurityEventTypes.Mfa, SecurityOutcomes.Success, user.Id, tenant.TenantId, new { action = "disabled" }, ct);
     }
+
+    /// <summary>
+    /// 2026-10-22 (Luis): SOLO en Development, el código TOTP vigente se devuelve junto con el paso del MFA para mostrarlo en pantalla y no abrir el autenticador al desarrollar.
+    /// En cualquier otro ambiente (staging, producción) siempre es null, y sin ambiente conocido también.
+    /// </summary>
+    private string? DevMfaCodeOf(UserMfaFactor? factor)
+        => hostEnvironment?.EnvironmentName == Microsoft.Extensions.Hosting.Environments.Development && factor?.SecretEnc is not null && TryUnprotectSecret(factor.SecretEnc, out var secret) ? DevMfaCodeOf(secret) : null;
+
+    private string? DevMfaCodeOf(byte[] secret)
+        => hostEnvironment?.EnvironmentName == Microsoft.Extensions.Hosting.Environments.Development ? TotpService.ComputeCode(secret, DateTimeOffset.UtcNow.ToUnixTimeSeconds()) : null;
 
     private async Task<UserMfaFactor?> ConfirmedTotpAsync(int userId, CancellationToken ct)
     {

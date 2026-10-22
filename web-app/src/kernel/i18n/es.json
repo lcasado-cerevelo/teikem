@@ -79,6 +79,8 @@
       "enrollStart": "Comenzar configuración",
       "enrollScan": "Agregue esta clave en su app de autenticación y escriba el código que le muestre.",
       "secretLabel": "Clave para ingresar a mano:",
+      "devCode": "Solo en desarrollo: su código de ahora es {code}",
+      "devUse": "Usar este código",
       "openInApp": "Abrir en la app de autenticación",
       "qrHelp": "Escanee este código con su app de autenticación (Google Authenticator, Microsoft Authenticator…) o escriba la clave de abajo.",
       "qrAlt": "Código QR para la app de autenticación",

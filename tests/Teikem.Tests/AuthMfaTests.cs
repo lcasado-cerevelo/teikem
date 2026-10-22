@@ -29,10 +29,11 @@ public class AuthMfaTests
 {
     private const string Password = "Clave-Segura1";
 
-    private static async Task<WmsFixture> FixtureAsync()
+    private static async Task<WmsFixture> FixtureAsync(string? environment = null)
     {
         var f = await WmsFixture.CreateAsync(s =>
         {
+            if (environment is not null) s.AddSingleton<Microsoft.Extensions.Hosting.IHostEnvironment>(new FakeHostEnvironment(environment));
             s.AddIdentityCore<ApplicationUser>().AddRoles<ApplicationRole>().AddEntityFrameworkStores<TeikemDbContext>();
             s.AddSingleton<ISecurityEventWriter>(_ => new ReceivingNullSecurityEventWriter());
             s.AddSingleton(new JwtTokenService(Options.Create(new JwtOptions { SigningKey = new string('k', 64) })));
@@ -235,5 +236,33 @@ public class AuthMfaTests
         Assert.Equal(result.RecoveryCodes.Count, hashes.Count);
         Assert.DoesNotContain(TotpService.Hash("viejo-1"), hashes);
         Assert.All(result.RecoveryCodes, c => Assert.Contains(TotpService.Hash(c), hashes));
+    }
+
+    private sealed class FakeHostEnvironment(string name) : Microsoft.Extensions.Hosting.IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = name;
+        public string ApplicationName { get; set; } = "Teikem.Tests";
+        public string ContentRootPath { get; set; } = "/";
+        public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } = new Microsoft.Extensions.FileProviders.NullFileProvider();
+    }
+
+    /// <summary>2026-10-22 (Luis): en Development el paso del MFA trae el código vigente para mostrarlo en pantalla; en cualquier otro ambiente, nunca.</summary>
+    [Theory]
+    [InlineData("Development", true)]
+    [InlineData("Production", false)]
+    [InlineData("Staging", false)]
+    public async Task The_current_code_comes_with_the_mfa_step_only_in_Development(string environment, bool expectCode)
+    {
+        await using var f = await FixtureAsync(environment);
+        var auth = f.Get<AuthService>();
+        var enroll = await auth.EnrollTotpAsync(1, default);
+        var secret = TotpService.Base32Decode(enroll.Secret);
+        Assert.Equal(expectCode, enroll.DevMfaCode is not null);
+        await auth.ConfirmTotpAsync(1, new MfaConfirmRequest(TotpService.ComputeCode(secret, DateTimeOffset.UtcNow.ToUnixTimeSeconds())), default);
+
+        var result = await auth.LoginAsync(new LoginRequest("yo@t.local", Password, WmsFixture.TenantId, null), default);
+        Assert.Equal("mfa_required", result.Status);
+        if (expectCode) Assert.True(TotpService.Verify(secret, result.DevMfaCode));
+        else Assert.Null(result.DevMfaCode);
     }
 }

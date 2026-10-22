@@ -8,7 +8,7 @@ public sealed record TenantOptionDto(int TenantId, string Name, bool IsDefault);
 /// compañía solo.) onboarding_required (2026-09-30): primer ingreso pendiente; MfaChallengeToken sirve para los pasos de
 /// /auth/onboarding/* y para enrolar el MFA, y Onboarding dice qué falta.</summary>
 public sealed record AuthResultDto(string Status, TokenPairDto? Tokens, string? MfaChallengeToken, bool MfaEnrollmentRequired, IReadOnlyList<TenantOptionDto>? Tenants,
-    OnboardingStateDto? Onboarding = null, BrowserConfirmationDto? Browser = null);
+    OnboardingStateDto? Onboarding = null, BrowserConfirmationDto? Browser = null, string? DevMfaCode = null);
 
 public sealed record ConfirmBrowserRequest(string? Token);
 
@@ -37,7 +37,8 @@ public sealed record OnboardingStepDto(OnboardingStateDto State, string? MfaChal
 public sealed record RefreshRequest(string RefreshToken);
 public sealed record SwitchTenantRequest(string RefreshToken, int TenantId);
 public sealed record MfaVerifyRequest(string Code, string? DeviceInfo, string? TrustedBrowserToken = null);
-public sealed record MfaEnrollResultDto(string Secret, string OtpAuthUri);
+/// <remarks>DevMfaCode (2026-10-22): el código vigente, SOLO con el ambiente en Development (para no tener que abrir el autenticador al desarrollar); en cualquier otro ambiente siempre null.</remarks>
+public sealed record MfaEnrollResultDto(string Secret, string OtpAuthUri, string? DevMfaCode = null);
 public sealed record MfaConfirmRequest(string Code);
 public sealed record MfaConfirmResultDto(IReadOnlyList<string> RecoveryCodes);
 public sealed record ReauthRequest(string Password, string? MfaCode);

@@ -13,6 +13,8 @@ export interface StoredTokens {
 export interface MfaChallenge {
   token: string
   enrollmentRequired: boolean
+  /** Solo con el API en Development: el código vigente para mostrarlo en pantalla (nunca llega en staging ni producción). */
+  devCode?: string | null
 }
 
 const TOKENS_KEY = 'teikem.auth'

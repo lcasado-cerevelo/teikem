@@ -10256,3 +10256,8 @@ Manda la última compañía con la que entró esa computadora (por login o al ca
 
 **¿Cómo configuro el dominio o el subdominio de una compañía?**
 Solo el administrador de la plataforma: `PUT /api/v1/platform/tenants/{publicId}/domains`. Mensajes: «El dominio no es válido. Escríbalo como logistica.miempresa.com, sin https:// ni rutas.» (400), «El subdominio no es válido. Use solo letras minúsculas, números y guiones (por ejemplo depot).» (400), «Ese dominio ya lo usa otra compañía.» y «Ese subdominio ya lo usa otra compañía.» (409). Hay que correr `db-update` para que existan las columnas.
+
+## Lote 203 — Código de verificación a la vista en desarrollo
+
+**En mi máquina de desarrollo el sistema pide la verificación en dos pasos. ¿Tengo que abrir el autenticador?**
+No. Solo cuando el API corre en el ambiente **Development**, el paso del código muestra «Solo en desarrollo: su código de ahora es 123456» con el botón «Usar este código». Vale unos segundos (el código cambia cada 30 s); si se venció, vuelva a iniciar sesión. En staging y producción el código **nunca** se muestra ni viaja en la respuesta. Aplica al login del personal y al del portal, y a la configuración inicial del MFA.

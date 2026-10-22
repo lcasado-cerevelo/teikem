@@ -83,6 +83,17 @@ export default function MfaPage() {
     </div>
   )
 
+  // Solo con el API en Development: el código vigente a la vista, con un botón para usarlo (nunca llega en staging ni producción)
+  const devCode = step === 'enroll-confirm' ? enroll?.devMfaCode : challenge?.devCode
+  const devCodeHint = devCode ? (
+    <p className="subtle" data-testid="mfa-dev-code">
+      {t('auth.mfa.devCode', { code: devCode })}{' '}
+      <button type="button" className="linkbtn" onClick={() => setCode(devCode)}>
+        {t('auth.mfa.devUse')}
+      </button>
+    </p>
+  ) : null
+
   const codeField = (
     <div className="f">
       <label htmlFor="mfa-code">{t('auth.fields.mfaCode')}</label>
@@ -95,6 +106,7 @@ export default function MfaPage() {
         value={code}
         onChange={(e) => setCode(e.target.value)}
       />
+      {devCodeHint}
     </div>
   )
 

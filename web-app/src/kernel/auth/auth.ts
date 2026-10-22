@@ -43,7 +43,7 @@ function handleResult(result: AuthResultDto): LoginOutcome {
   }
   if (result.status === 'browser_confirmation_required' && result.browser) return { status: 'browser_confirmation_required', browser: result.browser }
   if (result.status === 'mfa_required' && result.mfaChallengeToken) {
-    setMfaChallenge({ token: result.mfaChallengeToken, enrollmentRequired: result.mfaEnrollmentRequired ?? false })
+    setMfaChallenge({ token: result.mfaChallengeToken, enrollmentRequired: result.mfaEnrollmentRequired ?? false, devCode: result.devMfaCode ?? null })
     return { status: 'mfa_required', enrollmentRequired: result.mfaEnrollmentRequired ?? false }
   }
   storeTokenPair(result.tokens)

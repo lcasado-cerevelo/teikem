@@ -13,3 +13,6 @@
 - El dominio/subdominio solo lo fija el administrador de plataforma y por API (no hay pantalla de plataforma todavía).
 - `host` puede mandarlo la web (por si se sirve desde otro sitio que el API); solo cambia qué logo se ve, nunca da acceso.
 - Aplica a la web del personal; el login del portal del cliente y las apps no lo usan todavía.
+
+## Adenda 2026-10-22 — código de MFA a la vista en desarrollo (Luis)
+- `AuthResultDto.DevMfaCode` y `MfaEnrollResultDto.DevMfaCode`: el código TOTP vigente, **solo** con el ambiente `Development` (null en cualquier otro). La pantalla del MFA lo muestra con «Usar este código». Pruebas: `AuthMfaTests` (Development sí; Production y Staging no) y `mfaDevCode.test.tsx`.

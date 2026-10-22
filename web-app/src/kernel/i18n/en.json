@@ -79,6 +79,8 @@
       "enrollStart": "Start setup",
       "enrollScan": "Add this key to your authenticator app and enter the code it shows.",
       "secretLabel": "Key for manual entry:",
+      "devCode": "Development only: your current code is {code}",
+      "devUse": "Use this code",
       "openInApp": "Open in authenticator app",
       "qrHelp": "Scan this code with your authenticator app (Google Authenticator, Microsoft Authenticator…) or type the key below.",
       "qrAlt": "QR code for the authenticator app",

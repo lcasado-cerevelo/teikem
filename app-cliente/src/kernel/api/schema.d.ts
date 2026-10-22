@@ -21103,12 +21103,7 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content: {
-                        "image/svg+xml": string;
-                        "image/png": string;
-                        "image/jpeg": string;
-                        "image/webp": string;
-                    };
+                    content?: never;
                 };
             };
         };
@@ -36381,6 +36376,7 @@ export interface components {
             tenants?: components["schemas"]["TenantOptionDto"][] | null;
             onboarding?: components["schemas"]["OnboardingStateDto"];
             browser?: components["schemas"]["BrowserConfirmationDto"];
+            devMfaCode?: string | null;
         };
         AvailabilityIssueDto: {
             code?: string | null;
@@ -41054,6 +41050,7 @@ export interface components {
         MfaEnrollResultDto: {
             secret?: string | null;
             otpAuthUri?: string | null;
+            devMfaCode?: string | null;
         };
         MfaRequiredRequest: {
             required?: boolean;
@@ -42277,6 +42274,10 @@ export interface components {
             /** Format: int32 */
             captchaAfterFailures?: number;
         };
+        PortalBrandDto: {
+            brandingJson?: string | null;
+            logoSlots?: string[] | null;
+        };
         PortalCancelRequest: {
             comment?: string | null;
         };
@@ -42288,10 +42289,6 @@ export interface components {
             canCreateProducts?: boolean;
             canCreateArrivals?: boolean;
             canCreateExits?: boolean;
-        };
-        PortalBrandDto: {
-            brandingJson?: string | null;
-            logoSlots?: string[] | null;
         };
         PortalClientDto: {
             /** Format: uuid */

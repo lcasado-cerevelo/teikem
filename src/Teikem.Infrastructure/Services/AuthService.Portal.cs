@@ -134,7 +134,7 @@ public sealed partial class AuthService
         {
             var (challenge, _) = jwt.CreateMfaChallengeToken(user, pick.TenantId, req.DeviceInfo);
             await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Success, user.Id, pick.TenantId, new { portal = true, stage = "password", mfa = totp is not null ? "required" : "enrollment_required" }, ct);
-            return new AuthResultDto("mfa_required", null, challenge, totp is null, null);
+            return new AuthResultDto("mfa_required", null, challenge, totp is null, null, DevMfaCode: DevMfaCodeOf(totp));
         }
 
         var pair = await IssueAsync(user, pick.TenantId, UserKinds.Portal, req.DeviceInfo, aal2At: null, ct, portalClientId: pick.ClientId);
