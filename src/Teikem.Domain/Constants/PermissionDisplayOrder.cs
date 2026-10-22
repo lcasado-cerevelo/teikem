@@ -21,7 +21,8 @@ public static class PermissionDisplayOrder
         "trips.view",
         "claims.view", "claims.manage",
         // Almacén: almacenes y posiciones, productos e inventario, llegadas y salidas, recibo, recolección, ajustes, conteo, cruce, daños, kárdex y aparato
-        "warehouses.view", "bins.view", "warehouse.manage",
+        "warehouses.view", "warehouses.manage",
+        "bins.view", "bins.manage", "warehouse.manage",
         "products.view", "inventory.view", "inventory.manage", "inventory.value",
         "notices.view", "exitnotice.create",
         "receipts.view", "warehouse.receive",
@@ -39,7 +40,7 @@ public static class PermissionDisplayOrder
         "purchasing.view", "purchasing.manage", "purchasing.receive",
         "purchaseaccounting.view", "purchaseaccounting.manage",
         "sales.view", "sales.create", "sales.price", "sales.cancel", "sales.backorder", "sales.return", "sales.return.authorize",
-        "dispatchaccounting.view",
+        "dispatchaccounting.view", "dispatchaccounting.manage",
         "billing.view", "billing.generate", "billing.approve", "billing.credit", "billing.export",
         "cod.view", "cod.collect", "cod.reconcile", "cod.remit",
         "driverpay.view", "driverpay.manage", "driverpay.approve", "driverpay.export",
@@ -50,7 +51,7 @@ public static class PermissionDisplayOrder
         // Flota
         "drivers.view", "fleet.view", "fleet.manage", "fleet.maintenance",
         // Análisis
-        "analytics.view", "reports.view", "indicators.view", "charts.view", "analytics.manage", "analytics.dates",
+        "analytics.view", "reports.view", "analytics.manage", "indicators.view", "charts.view", "analytics.dates",
         // Sistema
         "users.view", "admin.users", "admin.roles",
         "settings.view", "admin.tenant",

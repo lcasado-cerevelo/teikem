@@ -19,7 +19,7 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
 
 const NOW = Date.parse('2026-10-12T15:00:00Z') // 11:00 a. m. en Puerto Rico
 const DAY = '2026-10-12'
-const ALL = ['trips.view', 'trips.dispatch', 'fleet.view']
+const ALL = ['trips.view', 'trips.dispatch', 'dispatch.view', 'fleet.view']
 const MODULES = ['LTL_GROUND', 'CATALOG']
 const utc = (msFromNow: number) => new Date(NOW + msFromNow).toISOString().replace('Z', '') // como lo manda el API: sin zona
 const ping = (secondsAgo: number, over: Record<string, unknown> = {}) => ({
@@ -494,7 +494,7 @@ describe('telemetría y estado en vivo', () => {
 })
 
 describe('vacíos y permisos', () => {
-  it('sin rutas en la fecha: mensaje honesto y enlace a la Sala de despacho (con trips.dispatch)', async () => {
+  it('sin rutas en la fecha: mensaje honesto y enlace a la Sala de despacho (con dispatch.view)', async () => {
     server.trips = []
     resetMock([])
     mock.override = monitorResponse
@@ -506,7 +506,7 @@ describe('vacíos y permisos', () => {
     expect(screen.getByText('Sin señal de choferes')).toBeInTheDocument()
   })
 
-  it('sin rutas y sin trips.dispatch: no hay enlace a la Sala de despacho', async () => {
+  it('sin rutas y sin dispatch.view: no hay enlace a la Sala de despacho', async () => {
     server.trips = []
     resetMock([])
     mock.override = monitorResponse
@@ -515,7 +515,7 @@ describe('vacíos y permisos', () => {
     expect(screen.queryByRole('link', { name: 'Abrir la Sala de despacho' })).toBeNull()
   })
 
-  it('«Abrir en Sala de despacho» lleva la fecha y la ruta, solo con trips.dispatch', async () => {
+  it('«Abrir en Sala de despacho» lleva la fecha y la ruta, solo con dispatch.view', async () => {
     const view = wrap({ url: '/ops/monitor?trip=t-2' })
     await screen.findByRole('group', { name: 'Plano de la ruta 2026-0002' })
     expect(screen.getByRole('link', { name: 'Abrir en Sala de despacho' })).toHaveAttribute('href', `/ops/dispatch?date=${DAY}&trip=t-2`)
@@ -537,7 +537,7 @@ describe('vacíos y permisos', () => {
   })
 
   it('sin fleet.view no ofrece el filtro de zona, lo explica y no consulta las zonas', async () => {
-    wrap({ permissions: ['trips.view', 'trips.dispatch'] })
+    wrap({ permissions: ['trips.view', 'trips.dispatch', 'dispatch.view'] })
     await ready()
     expect(screen.queryByRole('combobox', { name: 'Zona' })).toBeNull()
     expect(screen.getByText('Su usuario no puede consultar las zonas, así que no se ofrece el filtro por zona.')).toBeInTheDocument()

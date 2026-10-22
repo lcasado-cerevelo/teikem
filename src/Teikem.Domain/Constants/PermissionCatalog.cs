@@ -261,6 +261,12 @@ public static class PermissionCatalog
     public const string SuppliersManage = "suppliers.manage";
     /// <summary>2026-10-22 (Luis): generar, aceptar, cancelar y exportar corridas de la contabilización de compras (antes lo daba purchasing.manage). Quien ya tenía purchasing.manage lo recibe.</summary>
     public const string PurchaseAccountingManage = "purchaseaccounting.manage";
+    /// <summary>2026-10-22 (Luis): crear, editar y desactivar almacenes y sus muelles (antes warehouse.manage, que se sigue aceptando).</summary>
+    public const string WarehousesManage = "warehouses.manage";
+    /// <summary>2026-10-22 (Luis): crear, editar y eliminar posiciones y zonas (antes warehouse.manage, que se sigue aceptando).</summary>
+    public const string BinsManage = "bins.manage";
+    /// <summary>2026-10-22 (Luis): generar, aceptar, cancelar y exportar corridas de la contabilización de despachos (antes billing.generate / billing.export, que se siguen aceptando).</summary>
+    public const string DispatchAccountingManage = "dispatchaccounting.manage";
 
     public const string PurchasingReceive = "purchasing.receive";
 
@@ -508,6 +514,12 @@ public static class PermissionCatalog
 
         new(PurchasingManage, "BILLING", "Crear y editar órdenes de compra", "Create and edit purchase orders"),
 
+        new(WarehousesManage, "WAREHOUSE", "Almacenes: crear y editar (incluye muelles)", "Warehouses: create and edit (includes docks)"),
+
+        new(BinsManage, "WAREHOUSE", "Posiciones: crear, editar y eliminar (incluye zonas)", "Bins: create, edit and delete (includes zones)"),
+
+        new(DispatchAccountingManage, "BILLING", "Contabilización de despachos: generar, aceptar, cancelar y exportar", "Dispatch accounting: generate, accept, cancel and export"),
+
         new(SuppliersManage, "BILLING", "Proveedores: crear y editar", "Suppliers: create and edit"),
 
         new(PurchaseAccountingManage, "BILLING", "Contabilización de compras: generar, aceptar, cancelar y exportar", "Purchase accounting: generate, accept, cancel and export"),
@@ -516,7 +528,7 @@ public static class PermissionCatalog
 
         new(AnalyticsView, "ANALYTICS", "Ver vistas, indicadores y gráficos", "View reports, indicators & charts"),
 
-        new(AnalyticsManage, "ANALYTICS", "Crear vistas, indicadores y gráficos", "Create reports, indicators & charts"),
+        new(AnalyticsManage, "ANALYTICS", "Crear y editar vistas, indicadores y gráficos", "Create and edit reports, indicators & charts"),
 
         new(AnalyticsDates, "ANALYTICS", "Cambiar rango de fecha de indicadores/gráficos ajenos", "Change date range of others' indicators/charts"),
 
@@ -1094,7 +1106,7 @@ public static class PermissionCatalog
 
             PulseOrders },   // Lote 88: el río Paquetes en la calle
 
-        ["Billing"] = new[] { OrdersView, BillingView, BillingCredit, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, SuppliersManage, PurchaseAccountingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride, DriverPayView, InventoryView, InventoryValue,
+        ["Billing"] = new[] { OrdersView, BillingView, BillingCredit, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, SuppliersManage, PurchaseAccountingManage, DispatchAccountingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride, DriverPayView, InventoryView, InventoryValue,
 
             PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a
 

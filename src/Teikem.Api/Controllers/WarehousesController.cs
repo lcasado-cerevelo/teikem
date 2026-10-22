@@ -31,7 +31,7 @@ public sealed class WarehousesController(WarehouseService warehouses, WarehouseL
     /// Alta: código único e inmutable; país por defecto 'PR'; nace ACTIVE con historial. Lote 16: receivingMode (PUTAWAY |
     /// DIRECT; sin él, PUTAWAY; desconocido → 400).
     /// </summary>
-    [HttpPost, RequirePermission(PermissionCatalog.WarehouseManage)]
+    [HttpPost, RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehousesManage)]
     public Task<WarehouseDetailDto> Create([FromBody] WarehouseCreateRequest req, CancellationToken ct) => warehouses.CreateAsync(req, ct);
 
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.InventoryView)]
@@ -42,12 +42,12 @@ public sealed class WarehousesController(WarehouseService warehouses, WarehouseL
     /// receivingMode (PUTAWAY | DIRECT; no toca los recibos abiertos) y posición de recepción por defecto
     /// (defaultReceivingBinId: del almacén 404, zona STAGING o CROSSDOCK 400, activa 422; clearDefaultReceivingBin la quita).
     /// </summary>
-    [HttpPatch("{publicId:guid}"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    [HttpPatch("{publicId:guid}"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehousesManage)]
     public Task<WarehouseDetailDto> Update(Guid publicId, [FromBody] WarehousePatchRequest req, CancellationToken ct)
         => warehouses.UpdateAsync(publicId, req, ct);
 
     /// <summary>Baja definitiva (INACTIVE terminal): solo vacío y sin documentos abiertos (409 con Errors por tipo).</summary>
-    [HttpPost("{publicId:guid}/deactivate"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    [HttpPost("{publicId:guid}/deactivate"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehousesManage)]
     public Task<WarehouseDetailDto> Deactivate(Guid publicId,
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] WarehouseDeactivateRequest? req, CancellationToken ct)
         => warehouses.DeactivateAsync(publicId, req, ct);
@@ -58,19 +58,19 @@ public sealed class WarehousesController(WarehouseService warehouses, WarehouseL
     public Task<IReadOnlyList<WarehouseZoneDto>> Zones(Guid publicId, [FromQuery] bool includeInactive, CancellationToken ct)
         => layout.ListZonesAsync(publicId, includeInactive, ct);
 
-    [HttpPost("{publicId:guid}/zones"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    [HttpPost("{publicId:guid}/zones"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage)]
     public Task<WarehouseZoneDto> CreateZone(Guid publicId, [FromBody] WarehouseZoneRequest req, CancellationToken ct)
         => layout.CreateZoneAsync(publicId, req, ct);
 
-    [HttpPatch("{publicId:guid}/zones/{zoneId:int}"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    [HttpPatch("{publicId:guid}/zones/{zoneId:int}"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage)]
     public Task<WarehouseZoneDto> UpdateZone(Guid publicId, int zoneId, [FromBody] WarehouseZonePatchRequest req, CancellationToken ct)
         => layout.UpdateZoneAsync(publicId, zoneId, req, ct);
 
-    [HttpPost("{publicId:guid}/zones/{zoneId:int}/deactivate"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    [HttpPost("{publicId:guid}/zones/{zoneId:int}/deactivate"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage)]
     public Task<WarehouseZoneDto> DeactivateZone(Guid publicId, int zoneId, CancellationToken ct)
         => layout.SetZoneActiveAsync(publicId, zoneId, false, ct);
 
-    [HttpPost("{publicId:guid}/zones/{zoneId:int}/reactivate"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    [HttpPost("{publicId:guid}/zones/{zoneId:int}/reactivate"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage)]
     public Task<WarehouseZoneDto> ReactivateZone(Guid publicId, int zoneId, CancellationToken ct)
         => layout.SetZoneActiveAsync(publicId, zoneId, true, ct);
 
@@ -123,7 +123,7 @@ public sealed class WarehousesController(WarehouseService warehouses, WarehouseL
         => layout.SearchBinsAsync(search, NullIfEmpty(warehousePublicIds), includeInactive, take, ct);
 
     /// <summary>Alta de posición: código explícito o compuesto pasillo-rack-nivel-posición, único por almacén (409).</summary>
-    [HttpPost("{publicId:guid}/bins"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    [HttpPost("{publicId:guid}/bins"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage)]
     public Task<WarehouseBinDto> CreateBin(Guid publicId, [FromBody] WarehouseBinRequest req, CancellationToken ct)
         => layout.CreateBinAsync(publicId, req, ct);
 
@@ -132,7 +132,7 @@ public sealed class WarehousesController(WarehouseService warehouses, WarehouseL
     /// la marca isProvisional. Una posición que no es provisional → 409 'La posición no está pendiente de revisión.'; de otro
     /// almacén u otro tenant → 404. Para corregirla o desactivarla se usan PATCH y deactivate de siempre.
     /// </summary>
-    [HttpPost("{publicId:guid}/bins/{binId:int}/confirm-provisional"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    [HttpPost("{publicId:guid}/bins/{binId:int}/confirm-provisional"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage)]
     public Task<WarehouseBinDto> ConfirmProvisionalBin(Guid publicId, int binId, CancellationToken ct)
         => layout.ConfirmProvisionalBinAsync(publicId, binId, ct);
 
@@ -142,16 +142,16 @@ public sealed class WarehousesController(WarehouseService warehouses, WarehouseL
     /// transacción. Sin filtros de posiciones exige allBins: true. Devuelve { matched, changed }. Para saber de antemano cuántas
     /// se afectarán: GET .../bins?take=1 con los mismos filtros (Total).
     /// </summary>
-    [HttpPost("{publicId:guid}/bins/capacity"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    [HttpPost("{publicId:guid}/bins/capacity"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage)]
     public Task<WarehouseBinCapacityResultDto> SetBinsCapacity(Guid publicId, [FromBody] WarehouseBinCapacityRequest req, CancellationToken ct)
         => layout.SetBinsCapacityAsync(publicId, req, ct);
 
-    [HttpPatch("{publicId:guid}/bins/{binId:int}"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    [HttpPatch("{publicId:guid}/bins/{binId:int}"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage)]
     public Task<WarehouseBinDto> UpdateBin(Guid publicId, int binId, [FromBody] WarehouseBinPatchRequest req, CancellationToken ct)
         => layout.UpdateBinAsync(publicId, binId, req, ct);
 
     /// <summary>Baja de posición: 409 con inventario (en mano o reservado) o con tareas abiertas que la usan.</summary>
-    [HttpPost("{publicId:guid}/bins/{binId:int}/deactivate"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    [HttpPost("{publicId:guid}/bins/{binId:int}/deactivate"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage)]
     public Task<WarehouseBinDto> DeactivateBin(Guid publicId, int binId, CancellationToken ct)
         => layout.SetBinActiveAsync(publicId, binId, false, ct);
 
@@ -159,7 +159,7 @@ public sealed class WarehousesController(WarehouseService warehouses, WarehouseL
     /// 2026-10-12 — ELIMINAR una posición (definitivo, a diferencia de <c>deactivate</c>, que es temporal): no se reactiva, no sale en ninguna lista y su código queda libre.
     /// 409 con el motivo exacto si tiene inventario, tareas abiertas, es la posición de recepción por defecto o la preferida de un producto, o está en un conteo abierto.
     /// </summary>
-    [HttpDelete("{publicId:guid}/bins/{binId:int}"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    [HttpDelete("{publicId:guid}/bins/{binId:int}"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage)]
     public async Task<IActionResult> DeleteBin(Guid publicId, int binId, CancellationToken ct)
     {
         await layout.DeleteBinAsync(publicId, binId, ct);
@@ -169,11 +169,11 @@ public sealed class WarehousesController(WarehouseService warehouses, WarehouseL
     /// <summary>
     /// 2026-10-12 — eliminar VARIAS posiciones (hasta 500), parcial: <c>{ deleted: [...], skipped: [{ binId, code, reason }] }</c>. Cada una se revisa por separado.
     /// </summary>
-    [HttpPost("{publicId:guid}/bins/delete"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    [HttpPost("{publicId:guid}/bins/delete"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage)]
     public Task<WarehouseBinsDeleteResultDto> DeleteBins(Guid publicId, [FromBody] WarehouseBinsDeleteRequest req, CancellationToken ct)
         => layout.DeleteBinsAsync(publicId, req, ct);
 
-    [HttpPost("{publicId:guid}/bins/{binId:int}/reactivate"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    [HttpPost("{publicId:guid}/bins/{binId:int}/reactivate"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage)]
     public Task<WarehouseBinDto> ReactivateBin(Guid publicId, int binId, CancellationToken ct)
         => layout.SetBinActiveAsync(publicId, binId, true, ct);
 
@@ -184,25 +184,25 @@ public sealed class WarehousesController(WarehouseService warehouses, WarehouseL
         => layout.ListDocksAsync(publicId, includeInactive, ct);
 
     /// <summary>Alta de muelle (INBOUND, OUTBOUND o BOTH); nace FREE con historial WAREHOUSE_DOCK.</summary>
-    [HttpPost("{publicId:guid}/docks"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    [HttpPost("{publicId:guid}/docks"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehousesManage)]
     public Task<WarehouseDockDto> CreateDock(Guid publicId, [FromBody] WarehouseDockRequest req, CancellationToken ct)
         => layout.CreateDockAsync(publicId, req, ct);
 
-    [HttpPatch("{publicId:guid}/docks/{dockId:int}"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    [HttpPatch("{publicId:guid}/docks/{dockId:int}"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehousesManage)]
     public Task<WarehouseDockDto> UpdateDock(Guid publicId, int dockId, [FromBody] WarehouseDockPatchRequest req, CancellationToken ct)
         => layout.UpdateDockAsync(publicId, dockId, req, ct);
 
     /// <summary>Estatus manual del muelle (FREE, OCCUPIED o MAINTENANCE) vía StatusService, con comentario.</summary>
-    [HttpPost("{publicId:guid}/docks/{dockId:int}/status"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    [HttpPost("{publicId:guid}/docks/{dockId:int}/status"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehousesManage)]
     public Task<WarehouseDockDto> SetDockStatus(Guid publicId, int dockId, [FromBody] WarehouseDockStatusRequest req, CancellationToken ct)
         => layout.SetDockStatusAsync(publicId, dockId, req, ct);
 
     /// <summary>Baja de muelle: 409 con citas SCHEDULED/ARRIVED.</summary>
-    [HttpPost("{publicId:guid}/docks/{dockId:int}/deactivate"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    [HttpPost("{publicId:guid}/docks/{dockId:int}/deactivate"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehousesManage)]
     public Task<WarehouseDockDto> DeactivateDock(Guid publicId, int dockId, CancellationToken ct)
         => layout.SetDockActiveAsync(publicId, dockId, false, ct);
 
-    [HttpPost("{publicId:guid}/docks/{dockId:int}/reactivate"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    [HttpPost("{publicId:guid}/docks/{dockId:int}/reactivate"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehousesManage)]
     public Task<WarehouseDockDto> ReactivateDock(Guid publicId, int dockId, CancellationToken ct)
         => layout.SetDockActiveAsync(publicId, dockId, true, ct);
 }

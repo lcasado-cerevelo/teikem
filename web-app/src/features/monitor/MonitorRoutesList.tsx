@@ -88,7 +88,7 @@ export function MonitorRoutesList({
           body={searching && hasAny ? undefined : t('monitor.noRoutesHint')}
           action={
             searching && hasAny ? undefined : (
-              <Can perm="trips.dispatch">
+              <Can perm="dispatch.view">
                 <Link className="btn sm" to={`/ops/dispatch?date=${date}`}>
                   {t('monitor.openDispatchEmpty')}
                 </Link>

@@ -168,7 +168,12 @@ public class NotificationsTests
         var actions = typeof(NotificationsController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly).ToList();
         Assert.Equal(9, actions.Count);   // Events, Channels, List, Create, Get, Update, Test, TestEvent, Log
         foreach (var m in actions)
-            Assert.Equal(RequirePermissionAttribute.Prefix + PermissionCatalog.NotificationsManage, m.GetCustomAttribute<RequirePermissionAttribute>()!.Policy);
+        {
+            // 2026-10-22: las lecturas (eventos, canales, reglas, bitácora) las acepta también «entrar y ver»; crear, cambiar y probar exigen gestionar
+            var policy = m.GetCustomAttribute<RequirePermissionAttribute>()!.Policy;
+            var isRead = m.GetCustomAttributes().Any(a => a.GetType().Name == "HttpGetAttribute");
+            Assert.Equal(RequirePermissionAttribute.Prefix + PermissionCatalog.NotificationsManage + (isRead ? "|notifications.view" : string.Empty), policy);
+        }
         Assert.DoesNotContain(actions, m => m.GetCustomAttributes().Any(a => a.GetType().Name == "HttpDeleteAttribute"));   // nunca DELETE
 
         var inbox = typeof(InboxController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly).ToList();

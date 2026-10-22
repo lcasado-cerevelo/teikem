@@ -80,6 +80,9 @@ public static class MenuPermissions
         [PermissionCatalog.PurchasingManage] = new[] { PermissionCatalog.PurchasingView, "suppliers.view", "purchaseaccounting.view" },
         [PermissionCatalog.SuppliersManage] = new[] { "suppliers.view" },   // 2026-10-22
         [PermissionCatalog.PurchaseAccountingManage] = new[] { "purchaseaccounting.view" },
+        [PermissionCatalog.WarehousesManage] = new[] { "warehouses.view" },
+        [PermissionCatalog.BinsManage] = new[] { "bins.view" },
+        [PermissionCatalog.DispatchAccountingManage] = new[] { "dispatchaccounting.view" },
         [PermissionCatalog.PurchasingReceive] = new[] { PermissionCatalog.PurchasingView },
         [PermissionCatalog.ExitNoticeCreate] = new[] { "notices.view" },
         [PermissionCatalog.WarehouseReceive] = new[] { "receipts.view", "notices.view" },

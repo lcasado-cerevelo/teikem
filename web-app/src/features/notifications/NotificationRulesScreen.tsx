@@ -1,6 +1,7 @@
 // Sistema → Reglas de aviso (Lote 52): las reglas de la compañía (evento + canales con plantilla + destinatarios) con su interruptor, el
 // modal para crear y editar, y el registro de envíos con filtros. Permiso notifications.manage, módulo SYSTEM (la ruta lo exige).
 import { useMemo, useState } from 'react'
+import { Can } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import { useFormat } from '../../kernel/format'
@@ -99,9 +100,12 @@ function RulesTab() {
         title={t('notifications.rules.tabRules')}
         badge={rules.isPending ? undefined : rows.length}
         actions={
-          <button type="button" className="btn sm flow" onClick={() => setEditing({ rule: null })}>
-            <IconPlus /> {t('notifications.rules.new')}
-          </button>
+          // 2026-10-22: «entrar y ver» solo mira; crear y cambiar reglas exige notifications.manage
+          <Can perm="notifications.manage">
+            <button type="button" className="btn sm flow" onClick={() => setEditing({ rule: null })}>
+              <IconPlus /> {t('notifications.rules.new')}
+            </button>
+          </Can>
         }
       >
         <div className="pb" style={{ paddingBottom: 0 }}>
@@ -123,7 +127,7 @@ function RulesTab() {
               defaultSort={{ id: 'name', desc: false }}
               rowClassName={(r) => (r.isActive ? undefined : 'dim')}
               empty={t('notifications.rules.empty')}
-              rowActions={[{ key: 'edit', label: t('notifications.rules.edit'), icon: <IconEdit />, onClick: (r) => setEditing({ rule: r }) }]}
+              rowActions={[{ key: 'edit', label: t('notifications.rules.edit'), perm: 'notifications.manage', icon: <IconEdit />, onClick: (r) => setEditing({ rule: r }) }]}
             />
           )}
         </div>
@@ -180,6 +184,7 @@ function LogTab() {
         title={t('notifications.rules.log.title')}
         badge={log.isPending ? undefined : log.data?.total}
         actions={
+          <Can perm="notifications.manage">
           <button
             type="button"
             className="btn sm"
@@ -195,6 +200,7 @@ function LogTab() {
           >
             {t('notifications.rules.log.testEvent')}
           </button>
+          </Can>
         }
       >
         <div className="pb" style={{ paddingBottom: 0 }}>

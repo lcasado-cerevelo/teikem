@@ -34,23 +34,23 @@ public sealed class DispatchAccountingController(AccountingRunService runs) : Co
     public Task<AccountingPreviewDto> Preview([FromBody] AccountingRunRequest req, CancellationToken ct) => runs.PreviewAsync(Kind, req, ct);
 
     /// <summary>Genera la corrida con lo propio del período que no esté ya en otra corrida viva; sin nada → 422.</summary>
-    [HttpPost, RequirePermission(PermissionCatalog.BillingGenerate)]
+    [HttpPost, RequirePermission(PermissionCatalog.BillingGenerate + "|" + PermissionCatalog.DispatchAccountingManage)]
     public Task<AccountingRunDto> Generate([FromBody] AccountingRunRequest req, CancellationToken ct) => runs.GenerateAsync(Kind, req, ct);
 
     /// <summary>GENERADA → ACEPTADA (la corrida queda congelada).</summary>
-    [HttpPost("{publicId:guid}/accept"), RequirePermission(PermissionCatalog.BillingGenerate)]
+    [HttpPost("{publicId:guid}/accept"), RequirePermission(PermissionCatalog.BillingGenerate + "|" + PermissionCatalog.DispatchAccountingManage)]
     public Task<AccountingRunDto> Accept(Guid publicId, CancellationToken ct) => runs.AcceptAsync(Kind, publicId, ct);
 
     /// <summary>Cancela una corrida generada o aceptada; sus líneas quedan libres para otra corrida.</summary>
-    [HttpPost("{publicId:guid}/cancel"), RequirePermission(PermissionCatalog.BillingGenerate)]
+    [HttpPost("{publicId:guid}/cancel"), RequirePermission(PermissionCatalog.BillingGenerate + "|" + PermissionCatalog.DispatchAccountingManage)]
     public Task<AccountingRunDto> Cancel(Guid publicId, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] AccountingRunCancelRequest? req, CancellationToken ct)
         => runs.CancelAsync(Kind, publicId, req?.Comment, ct);
 
     /// <summary>El archivo de la corrida (una fila por línea) con una plantilla del alcance DISPATCH_ACCOUNTING, sin cambiar nada; sin plantilla, la primera activa.</summary>
-    [HttpGet("{publicId:guid}/export-preview"), RequirePermission(PermissionCatalog.BillingExport)]
+    [HttpGet("{publicId:guid}/export-preview"), RequirePermission(PermissionCatalog.BillingExport + "|" + PermissionCatalog.DispatchAccountingManage)]
     public Task<ExportFileDto> ExportPreview(Guid publicId, [FromQuery] Guid? templatePublicId, CancellationToken ct) => runs.PreviewExportAsync(Kind, publicId, templatePublicId, ct);
 
     /// <summary>Exporta: arma el archivo y pasa la corrida aceptada a exportada.</summary>
-    [HttpPost("{publicId:guid}/export"), RequirePermission(PermissionCatalog.BillingExport)]
+    [HttpPost("{publicId:guid}/export"), RequirePermission(PermissionCatalog.BillingExport + "|" + PermissionCatalog.DispatchAccountingManage)]
     public Task<ExportFileDto> Export(Guid publicId, [FromQuery] Guid? templatePublicId, CancellationToken ct) => runs.ExportAsync(Kind, publicId, templatePublicId, ct);
 }

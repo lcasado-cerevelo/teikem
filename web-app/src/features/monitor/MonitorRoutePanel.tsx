@@ -71,7 +71,7 @@ export function MonitorRoutePanel({
       }
       badge={`${trip.zoneCode ?? t('monitor.noZone')} · ${done}/${total}`}
       actions={
-        <Can perm="trips.dispatch">
+        <Can perm="dispatch.view">
           <Link className="btn sm" to={`/ops/dispatch?date=${date}&trip=${tripId}`}>
             <IconRoute /> {t('monitor.openDispatch')}
           </Link>

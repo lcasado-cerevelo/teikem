@@ -18,21 +18,21 @@ namespace Teikem.Api.Controllers;
 public sealed class NotificationsController(NotificationRuleService rules) : ControllerBase
 {
     /// <summary>El catálogo de eventos (con sus variables y textos por omisión).</summary>
-    [HttpGet("events"), RequirePermission(PermissionCatalog.NotificationsManage)]
+    [HttpGet("events"), RequirePermission(PermissionCatalog.NotificationsManage + "|" + "notifications.view")]
     public IReadOnlyList<NotificationEventDto> Events() => rules.ListEvents();
 
     /// <summary>Los canales y si están configurados en Teikem (los no configurados no se pueden encender).</summary>
-    [HttpGet("channels"), RequirePermission(PermissionCatalog.NotificationsManage)]
+    [HttpGet("channels"), RequirePermission(PermissionCatalog.NotificationsManage + "|" + "notifications.view")]
     public IReadOnlyList<NotificationChannelStatusDto> Channels() => rules.ListChannels();
 
-    [HttpGet("rules"), RequirePermission(PermissionCatalog.NotificationsManage)]
+    [HttpGet("rules"), RequirePermission(PermissionCatalog.NotificationsManage + "|" + "notifications.view")]
     public Task<IReadOnlyList<NotificationRuleDto>> List(CancellationToken ct) => rules.ListRulesAsync(ct);
 
     /// <summary>Alta: evento y nombre obligatorios; los canales nacen apagados con los textos del evento. 400 con el mensaje exacto; 409 si el nombre ya existe.</summary>
     [HttpPost("rules"), RequirePermission(PermissionCatalog.NotificationsManage)]
     public Task<NotificationRuleDto> Create([FromBody] NotificationRuleRequest req, CancellationToken ct) => rules.CreateRuleAsync(req, ct);
 
-    [HttpGet("rules/{publicId:guid}"), RequirePermission(PermissionCatalog.NotificationsManage)]
+    [HttpGet("rules/{publicId:guid}"), RequirePermission(PermissionCatalog.NotificationsManage + "|" + "notifications.view")]
     public Task<NotificationRuleDto> Get(Guid publicId, CancellationToken ct) => rules.GetRuleAsync(publicId, ct);
 
     /// <summary>Edición: null = sin cambio; Channels cambia solo los que vengan; Recipients reemplaza la lista; rowVersion opcional (409 si cambió).</summary>
@@ -48,7 +48,7 @@ public sealed class NotificationsController(NotificationRuleService rules) : Con
     public Task<NotificationQueuedDto> TestEvent([FromBody] NotificationTestEventRequest req, CancellationToken ct) => rules.PublishTestEventAsync(req, ct);
 
     /// <summary>Registro de envíos (los más recientes primero), con filtros por evento, canal, estado y fechas (UTC; «hasta» exclusivo).</summary>
-    [HttpGet("log"), RequirePermission(PermissionCatalog.NotificationsManage)]
+    [HttpGet("log"), RequirePermission(PermissionCatalog.NotificationsManage + "|" + "notifications.view")]
     public Task<PagedResult<NotificationLogDto>> Log([FromQuery] string? eventCode, [FromQuery] string? channel, [FromQuery] string? status,
         [FromQuery] DateTime? fromUtc, [FromQuery] DateTime? toUtc, [FromQuery] int skip, [FromQuery] int take, CancellationToken ct)
         => rules.ListLogAsync(eventCode, channel, status, fromUtc, toUtc, skip, take, ct);

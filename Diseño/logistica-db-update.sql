@@ -6268,3 +6268,41 @@ UPDATE dbo.StatusCode SET SortOrder = 1 WHERE Entity = 'ClientStatus' AND Intern
 UPDATE dbo.StatusCode SET SortOrder = 2 WHERE Entity = 'ClientStatus' AND InternalCode = 'ACTIVE' AND SortOrder <> 2;
 UPDATE dbo.StatusCode SET SortOrder = 3 WHERE Entity = 'ClientStatus' AND InternalCode = 'SUSPENDED' AND SortOrder <> 3;
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-22 (Lote 200, c) — Más permisos de EDITAR separados de «entrar y ver»: warehouses.manage («Almacenes: crear y editar (incluye muelles)»), bins.manage («Posiciones: crear, editar y eliminar
+   (incluye zonas)») y dispatchaccounting.manage («Contabilización de despachos: generar, aceptar, cancelar y exportar»). Los permisos de antes (warehouse.manage, billing.generate, billing.export) se siguen
+   aceptando; los roles que los tenían reciben los nuevos para no cambiarle el trabajo a nadie. Solo AGREGA. Idempotente (marca en dbo.AppliedMigration).
+   ---------------------------------------------------------------------------- */
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'warehouses.manage')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('warehouses.manage', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'WAREHOUSE'),
+            N'{"es":"Almacenes: crear y editar (incluye muelles)","en":"Warehouses: create and edit (includes docks)"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'bins.manage')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('bins.manage', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'WAREHOUSE'),
+            N'{"es":"Posiciones: crear, editar y eliminar (incluye zonas)","en":"Bins: create, edit and delete (includes zones)"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'dispatchaccounting.manage')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('dispatchaccounting.manage', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'BILLING'),
+            N'{"es":"Contabilización de despachos: generar, aceptar, cancelar y exportar","en":"Dispatch accounting: generate, accept, cancel and export"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L200_WAREHOUSES_BINS_DISPATCHACCT_MANAGE')
+BEGIN
+    INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+    SELECT rp.RoleId, np.PermissionId
+    FROM dbo.RolePermission rp
+    JOIN dbo.Permission pm ON pm.PermissionId = rp.PermissionId AND pm.Code = 'warehouse.manage'
+    JOIN dbo.Permission np ON np.Code IN ('warehouses.manage', 'bins.manage')
+    WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = rp.RoleId AND x.PermissionId = np.PermissionId);
+    INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+    SELECT DISTINCT rp.RoleId, np.PermissionId
+    FROM dbo.RolePermission rp
+    JOIN dbo.Permission pm ON pm.PermissionId = rp.PermissionId AND pm.Code IN ('billing.generate', 'billing.export')
+    JOIN dbo.Permission np ON np.Code = 'dispatchaccounting.manage'
+    WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = rp.RoleId AND x.PermissionId = np.PermissionId);
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L200_WAREHOUSES_BINS_DISPATCHACCT_MANAGE');
+END
+GO

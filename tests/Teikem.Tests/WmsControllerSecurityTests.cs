@@ -44,32 +44,32 @@ public class WmsControllerSecurityTests
     private static readonly Dictionary<(Type Controller, string Action), string> Expected = new()
     {
         [(typeof(WarehousesController), nameof(WarehousesController.List))] = PermissionCatalog.InventoryView,
-        [(typeof(WarehousesController), nameof(WarehousesController.Create))] = PermissionCatalog.WarehouseManage,
+        [(typeof(WarehousesController), nameof(WarehousesController.Create))] = PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehousesManage,
         [(typeof(WarehousesController), nameof(WarehousesController.Get))] = PermissionCatalog.InventoryView,
-        [(typeof(WarehousesController), nameof(WarehousesController.Update))] = PermissionCatalog.WarehouseManage,
-        [(typeof(WarehousesController), nameof(WarehousesController.Deactivate))] = PermissionCatalog.WarehouseManage,
+        [(typeof(WarehousesController), nameof(WarehousesController.Update))] = PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehousesManage,
+        [(typeof(WarehousesController), nameof(WarehousesController.Deactivate))] = PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehousesManage,
         [(typeof(WarehousesController), nameof(WarehousesController.Zones))] = PermissionCatalog.InventoryView,
-        [(typeof(WarehousesController), nameof(WarehousesController.CreateZone))] = PermissionCatalog.WarehouseManage,
-        [(typeof(WarehousesController), nameof(WarehousesController.UpdateZone))] = PermissionCatalog.WarehouseManage,
-        [(typeof(WarehousesController), nameof(WarehousesController.DeactivateZone))] = PermissionCatalog.WarehouseManage,
-        [(typeof(WarehousesController), nameof(WarehousesController.ReactivateZone))] = PermissionCatalog.WarehouseManage,
+        [(typeof(WarehousesController), nameof(WarehousesController.CreateZone))] = PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage,
+        [(typeof(WarehousesController), nameof(WarehousesController.UpdateZone))] = PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage,
+        [(typeof(WarehousesController), nameof(WarehousesController.DeactivateZone))] = PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage,
+        [(typeof(WarehousesController), nameof(WarehousesController.ReactivateZone))] = PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage,
         [(typeof(WarehousesController), nameof(WarehousesController.Bins))] = PermissionCatalog.InventoryView,
         [(typeof(WarehousesController), nameof(WarehousesController.SearchBins))] = PermissionCatalog.InventoryView,   // Lote 14
-        [(typeof(WarehousesController), nameof(WarehousesController.CreateBin))] = PermissionCatalog.WarehouseManage,
-        [(typeof(WarehousesController), nameof(WarehousesController.UpdateBin))] = PermissionCatalog.WarehouseManage,
-        [(typeof(WarehousesController), nameof(WarehousesController.SetBinsCapacity))] = PermissionCatalog.WarehouseManage,   // Lote 11: cupo en bloque
-        [(typeof(WarehousesController), nameof(WarehousesController.DeactivateBin))] = PermissionCatalog.WarehouseManage,
-        [(typeof(WarehousesController), nameof(WarehousesController.DeleteBin))] = PermissionCatalog.WarehouseManage,   // 2026-10-12: eliminar posiciones
-        [(typeof(WarehousesController), nameof(WarehousesController.DeleteBins))] = PermissionCatalog.WarehouseManage,
-        [(typeof(WarehousesController), nameof(WarehousesController.ConfirmProvisionalBin))] = PermissionCatalog.WarehouseManage,   // Lote 21
-        [(typeof(WarehousesController), nameof(WarehousesController.ReactivateBin))] = PermissionCatalog.WarehouseManage,
+        [(typeof(WarehousesController), nameof(WarehousesController.CreateBin))] = PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage,
+        [(typeof(WarehousesController), nameof(WarehousesController.UpdateBin))] = PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage,
+        [(typeof(WarehousesController), nameof(WarehousesController.SetBinsCapacity))] = PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage,   // Lote 11: cupo en bloque
+        [(typeof(WarehousesController), nameof(WarehousesController.DeactivateBin))] = PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage,
+        [(typeof(WarehousesController), nameof(WarehousesController.DeleteBin))] = PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage,   // 2026-10-12: eliminar posiciones
+        [(typeof(WarehousesController), nameof(WarehousesController.DeleteBins))] = PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage,
+        [(typeof(WarehousesController), nameof(WarehousesController.ConfirmProvisionalBin))] = PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage,   // Lote 21
+        [(typeof(WarehousesController), nameof(WarehousesController.ReactivateBin))] = PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage,
         [(typeof(WarehousesController), nameof(WarehousesController.BinProducts))] = PermissionCatalog.InventoryView,   // informe "Productos por posición"
         [(typeof(WarehousesController), nameof(WarehousesController.Docks))] = PermissionCatalog.InventoryView,
-        [(typeof(WarehousesController), nameof(WarehousesController.CreateDock))] = PermissionCatalog.WarehouseManage,
-        [(typeof(WarehousesController), nameof(WarehousesController.UpdateDock))] = PermissionCatalog.WarehouseManage,
-        [(typeof(WarehousesController), nameof(WarehousesController.SetDockStatus))] = PermissionCatalog.WarehouseManage,
-        [(typeof(WarehousesController), nameof(WarehousesController.DeactivateDock))] = PermissionCatalog.WarehouseManage,
-        [(typeof(WarehousesController), nameof(WarehousesController.ReactivateDock))] = PermissionCatalog.WarehouseManage,
+        [(typeof(WarehousesController), nameof(WarehousesController.CreateDock))] = PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehousesManage,
+        [(typeof(WarehousesController), nameof(WarehousesController.UpdateDock))] = PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehousesManage,
+        [(typeof(WarehousesController), nameof(WarehousesController.SetDockStatus))] = PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehousesManage,
+        [(typeof(WarehousesController), nameof(WarehousesController.DeactivateDock))] = PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehousesManage,
+        [(typeof(WarehousesController), nameof(WarehousesController.ReactivateDock))] = PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehousesManage,
 
         [(typeof(ProductCategoriesController), nameof(ProductCategoriesController.List))] = PermissionCatalog.InventoryView,
         [(typeof(ProductCategoriesController), nameof(ProductCategoriesController.Create))] = PermissionCatalog.InventoryManage,
@@ -319,7 +319,7 @@ public class WmsControllerSecurityTests
         // Lote 12: + GET /products/brands (inventory.view).
         Assert.Equal(PermissionCatalog.InventoryView, Expected[(typeof(ProductsController), nameof(ProductsController.Brands))]);
         // Lote 11 (cupo de posiciones): + POST /warehouses/{id}/bins/capacity (warehouse.manage, como editar una posición).
-        Assert.Equal(PermissionCatalog.WarehouseManage, Expected[(typeof(WarehousesController), nameof(WarehousesController.SetBinsCapacity))]);
+        Assert.Equal(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage, Expected[(typeof(WarehousesController), nameof(WarehousesController.SetBinsCapacity))]);
         // Lote 13: + PATCH /receipts/{publicId} (warehouse.receive, como el resto de la captura del recibo).
         Assert.Equal(PermissionCatalog.WarehouseReceive, Expected[(typeof(ReceiptsController), nameof(ReceiptsController.UpdateHeader))]);
         // Lote 14 (D5): los descuadres los ve quien ve inventario y los resuelve quien puede ajustar; + búsqueda de posiciones.
@@ -342,7 +342,7 @@ public class WmsControllerSecurityTests
         Assert.Equal(PermissionCatalog.WarehouseCount, Expected[(typeof(CycleCountsController), nameof(CycleCountsController.Review))]);
         Assert.Equal(PermissionCatalog.WarehouseCount, Expected[(typeof(CycleCountsController), nameof(CycleCountsController.ReconcileMatching))]);
         Assert.Equal(PermissionCatalog.WarehouseCountCapture, Expected[(typeof(CycleCountsController), nameof(CycleCountsController.CreateProvisionalBin))]);
-        Assert.Equal(PermissionCatalog.WarehouseManage, Expected[(typeof(WarehousesController), nameof(WarehousesController.ConfirmProvisionalBin))]);
+        Assert.Equal(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.BinsManage, Expected[(typeof(WarehousesController), nameof(WarehousesController.ConfirmProvisionalBin))]);
         // Informe "Productos por posición": se ve con inventory.view (sin permiso nuevo).
         Assert.Equal(PermissionCatalog.InventoryView, Expected[(typeof(WarehousesController), nameof(WarehousesController.BinProducts))]);
         // Lote 26 (Rentas R0): convertir a serie cambia el maestro (inventory.manage en el controlador) y mueve inventario
