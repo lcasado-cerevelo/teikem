@@ -16,7 +16,6 @@ import {
   fetchOpenPutawayTasks,
   fetchPutawaySuggestions,
   findBinByCode,
-  startTask,
   type PutawaySuggestion,
 } from '../features/putaway/putawayApi'
 import { SmallButton } from '../kernel/ui/SmallButton'
@@ -89,7 +88,7 @@ export default function PutawayScreen() {
     setScanError(null)
     setNotice(null)
     try {
-      await startTask(task.id)
+      // 2026-10-22 (Luis): abrir la tarea NO la asigna ni la inicia; queda a nombre de quien la acomoda cuando confirma la cantidad (el servidor la asigna al completarla)
       const found = await fetchPutawaySuggestions(task.id)
       setSuggestions(found)
       setSelected(task)

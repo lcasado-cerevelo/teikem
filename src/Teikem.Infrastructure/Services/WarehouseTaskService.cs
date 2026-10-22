@@ -198,6 +198,7 @@ public sealed class WarehouseTaskService(
             // 9. DONE escalonado.
             await AdvanceToDoneAsync(task, code, req.Comment, ct2);
             task.CompletedAtUtc = DateTime.UtcNow;
+            if (task.AssignedToUserId is null) db.AuditNote = "Autoasignada al confirmar la cantidad (quedó a nombre de quien la acomodó, desde la app móvil de almacén).";
             task.AssignedToUserId ??= tenant.UserId;
             await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
         }, ct);
@@ -266,6 +267,7 @@ public sealed class WarehouseTaskService(
             }
             await AdvanceToDoneAsync(task, code, req.Comment, ct2);
             task.CompletedAtUtc = DateTime.UtcNow;
+            if (task.AssignedToUserId is null) db.AuditNote = "Autoasignada al confirmar la cantidad (quedó a nombre de quien la acomodó, desde la app móvil de almacén).";
             task.AssignedToUserId ??= tenant.UserId;
             await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
         }, ct);

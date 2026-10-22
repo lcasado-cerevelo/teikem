@@ -229,7 +229,6 @@ export default function ReceiveScreen() {
       const [first, ...rest] = docs
       setQueue(rest)
       startLocalReceipt(warehousePublicId!, first, mode)
-      for (const d of docs) void takeDocIfFree(d, userId)
     }
     vibrateOk()
     refresh()
@@ -324,6 +323,8 @@ export default function ReceiveScreen() {
       if (rest) rest = attached.leftover > 0 ? { ...rest, damagedQtyText: String(attached.leftover) } : { ...rest, damaged: false }
     }
     for (const line of toAdd) addLocalReceiptLine(openReceipt.id, line)
+    // 2026-10-22 (Luis): el documento sin dueño se asigna a esta persona cuando CONFIRMA una cantidad (entra una línea), no al escogerlo ni al abrirlo
+    for (const d of batch) if (toAdd.some((l) => getDocExpected(d).some((e) => e.productPublicId === l.productPublicId))) void takeDocIfFree(d, userId)
     setPending(null)
     vibrateOk()
     refresh()
@@ -912,7 +913,7 @@ export default function ReceiveScreen() {
           ))}
         </View>
       ) : null}
-      <ScanField label={t('receive.scanProductLabel')} help={t('receive.scanProductHelp')} error={productError} onSubmit={scanProduct} pick="product" onlyProductIds={docProductIds} />
+      <ScanField label={t('receive.scanProductLabel')} help={t('receive.scanProductHelp')} error={productError} onSubmit={scanProduct} pick={docProductIds ? undefined : 'product'} onlyProductIds={docProductIds} />
       {expected.length > 0 ? (
         <View style={styles.field} testID="receive-expected">
           <Text style={styles.label}>{t('receive.expectedTitle')}</Text>

@@ -406,6 +406,10 @@
     "capacityWarn": "Room for {free}: it will receive {qty}. You can confirm anyway."
   },
   "dispatch": {
+    "pendingProducts": "Left to pick",
+    "pendingProductsHelp": "Tap a product to pick it (you can also scan it).",
+    "pickProduct": "Pick {sku}",
+    "toPick": "Left {qty}",
     "against": "Dispatch against what?",
     "requiresAnyDocument": "The company requires dispatching against an exit notice or a sales order.",
     "requiresExitNotice": "The company requires dispatching against an exit notice.",

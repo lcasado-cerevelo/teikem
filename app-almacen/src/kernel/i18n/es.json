@@ -261,7 +261,7 @@
   },
   "receive": {
     "stagingBin": "Se recibe en la posición de recepción {bin}",
-    "summary": "Esperado {expected} · Recibido {received} · Fallado {failed}",
+    "summary": "Esperado {expected} · Recibido {received} · Dañado {failed}",
     "noneMine": "Nada asignado a ti. Toca «Ver lo que nadie tiene asignado» o escanea el código.",
     "truckOtherOwner": "Ese documento es de otro dueño que los de esta tanda. Termine los de la tanda para recibirlo.",
     "selectMany": "Seleccionar varios",
@@ -406,6 +406,10 @@
     "capacityWarn": "Cupo para {free}: recibirá {qty}. Se puede confirmar igual."
   },
   "dispatch": {
+    "pendingProducts": "Falta por sacar",
+    "pendingProductsHelp": "Toque un producto para sacarlo (también puede escanearlo).",
+    "pickProduct": "Sacar {sku}",
+    "toPick": "Falta {qty}",
     "against": "¿Contra qué despachas?",
     "requiresAnyDocument": "La compañía exige despachar contra un aviso de salida o una orden de venta.",
     "requiresExitNotice": "La compañía exige despachar contra un aviso de salida.",

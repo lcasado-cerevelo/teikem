@@ -19,6 +19,8 @@ import { findSalesOrderByNumber, getSalesOrderLines, listSalesOrders, queueSales
 import { dispatchScope } from '../features/dispatch/dispatchScope'
 import { useMyPermissions } from '../kernel/auth/permissions'
 import { useSession } from '../kernel/auth/useSession'
+import { takeDispatchIfFree } from '../features/dispatch/dispatchTake'
+import { PendingProducts } from '../features/salesDispatch/PendingProducts'
 import { findProductByCode } from '../kernel/warehouse/productLookup'
 import {
   buildTasks,
@@ -73,7 +75,6 @@ export default function SalesDispatchScreen() {
   const tasks = useMemo(() => buildTasks(lines), [lines])
   const active = activeKey ? tasks.find((x) => x.key === activeKey) ?? null : null
   const doneAll = step === 'pick' && order !== null && nextTask(tasks, picks, skipped) === null
-  const pendingProductIds = useMemo(() => pendingTasks(tasks, picks, skipped).map((x) => x.productPublicId), [tasks, picks, skipped])
 
   if (!warehousePublicId) {
     return (
@@ -162,6 +163,8 @@ export default function SalesDispatchScreen() {
       vibrateError()
       return
     }
+    // 2026-10-22 (Luis): la orden sin dueño se asigna a esta persona cuando CONFIRMA la cantidad de una línea
+    if (order) void takeDispatchIfFree({ id: order.id, publicId: order.publicId, kind: 'SALES_ORDER', assignedToUserId: order.assignedToUserId }, session?.userId ?? null)
     advance([...picks, { taskKey: task.key, binId: binChosen.id, binCode: binChosen.code, qty: parseQty(qtyText) ?? 0 }], skipped)
     vibrateOk()
   }
@@ -306,15 +309,16 @@ export default function SalesDispatchScreen() {
         doneAll ? (
           <Text style={styles.okText}>{t('salesDispatch.allDone')}</Text>
         ) : (
-          <ScanField
-            label={t('exitDispatch.scanProduct')}
-            help={t('exitDispatch.scanProductHelp')}
-            error={productError}
-            onSubmit={scanProduct}
-            pick="product"
-            onlyProductIds={pendingProductIds}
-            testID="sales-scan-product"
-          />
+          <>
+            <ScanField
+              label={t('exitDispatch.scanProduct')}
+              help={t('exitDispatch.scanProductHelp')}
+              error={productError}
+              onSubmit={scanProduct}
+              testID="sales-scan-product"
+            />
+            <PendingProducts tasks={pendingTasks(tasks, picks, skipped)} onChoose={scanProduct} testID="sales-pending" />
+          </>
         )
       ) : (
         <View style={styles.current} testID="sales-current">

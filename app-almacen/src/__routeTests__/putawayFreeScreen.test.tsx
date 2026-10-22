@@ -20,7 +20,7 @@ afterEach(() => {
 })
 
 describe('Acomodar — lo asignado a mí y lo que nadie tiene', () => {
-  it('muestra lo mío; lo sin asignar sale con la opción; lo de otra persona no se ofrece; al escoger uno se inicia', async () => {
+  it('muestra lo mío; lo sin asignar sale con la opción; lo de otra persona no se ofrece; al escoger uno solo se abre (se asigna al confirmar la cantidad)', async () => {
     await setupDevice()
     const calls = mockFetch([
       (c: FetchCall) =>
@@ -49,6 +49,7 @@ describe('Acomodar — lo asignado a mí y lo que nadie tiene', () => {
     expect(screen.queryByText('AJENO-3')).toBeNull()
 
     await fireEvent.press(screen.getByText('LIBRE-2'))
-    await waitFor(() => expect(calls.some((c) => c.method === 'POST' && c.path === '/api/v1/warehouse-tasks/2/start')).toBe(true))
+    await waitFor(() => expect(calls.some((c) => c.path === '/api/v1/warehouse-tasks/putaway-suggestions')).toBe(true))
+    expect(calls.some((c) => c.method === 'POST' && c.path === '/api/v1/warehouse-tasks/2/start')).toBe(false)   // abrirla no la inicia ni la asigna
   })
 })

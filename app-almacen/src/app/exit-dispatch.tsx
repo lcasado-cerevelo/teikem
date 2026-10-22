@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 
+import { PendingProducts } from '../features/salesDispatch/PendingProducts'
 import { findProductByCode } from '../kernel/warehouse/productLookup'
 import { useFormat } from '../kernel/format/useFormat'
 import { useActiveWarehouse } from '../kernel/warehouse/activeWarehouse'
@@ -101,7 +102,6 @@ export default function ExitDispatchScreen() {
   const tasks = useMemo(() => (groupData ? groupData.tasks : buildTasks(lines)), [lines, groupData])
   const active = activeKey ? tasks.find((x) => x.key === activeKey) ?? null : null
   const doneAll = step === 'pick' && notice !== null && nextTask(tasks, picks, skipped) === null
-  const pendingProductIds = useMemo(() => pendingTasks(tasks, picks, skipped).map((x) => x.productPublicId), [tasks, picks, skipped])
 
   useEffect(() => {
     if (!warehousePublicId) return undefined
@@ -132,11 +132,9 @@ export default function ExitDispatchScreen() {
   function open(o: LocalExitNotice) {
     // una orden de venta tiene su propia pantalla (kits, consignatario y entrega)
     if (o.kind === 'SALES_ORDER') {
-      void takeDispatchIfFree(o, myId)
       router.push({ pathname: '/sales-dispatch', params: { order: o.number } })
       return
     }
-    void takeDispatchIfFree(o, myId)
     setGroup(null)
     setNotice(o)
     setPicks([])
@@ -158,7 +156,6 @@ export default function ExitDispatchScreen() {
   /** Empieza la ruta guiada de todos los avisos elegidos juntos. */
   function startGroup() {
     if (chosen.length < MIN_GROUP) return
-    for (const c of chosen) void takeDispatchIfFree(c, myId)
     const data = getGroupTasks(chosen)
     setGroup(chosen)
     setNotice(chosen[0])
@@ -233,6 +230,9 @@ export default function ExitDispatchScreen() {
       vibrateError()
       return
     }
+    // 2026-10-22 (Luis): el documento sin dueño se asigna a esta persona cuando CONFIRMA la cantidad de una línea, no al escogerlo
+    const owner = group && groupData ? group.find((d) => docKey(d) === groupData.lineNotice.get(task.lineId)) : notice
+    if (owner) void takeDispatchIfFree(owner, myId)
     advance([...picks, { taskKey: task.key, binId: binChosen.id, binCode: binChosen.code, qty: parseQty(qtyText) ?? 0 }], skipped)
     vibrateOk()
   }
@@ -412,15 +412,16 @@ export default function ExitDispatchScreen() {
         doneAll ? (
           <Text style={styles.okText}>{t('exitDispatch.allDone')}</Text>
         ) : (
-          <ScanField
-            label={t('exitDispatch.scanProduct')}
-            help={t('exitDispatch.scanProductHelp')}
-            error={productError}
-            onSubmit={scanProduct}
-            pick="product"
-            onlyProductIds={pendingProductIds}
-            testID="exit-scan-product"
-          />
+          <>
+            <ScanField
+              label={t('exitDispatch.scanProduct')}
+              help={t('exitDispatch.scanProductHelp')}
+              error={productError}
+              onSubmit={scanProduct}
+              testID="exit-scan-product"
+            />
+            <PendingProducts tasks={pendingTasks(tasks, picks, skipped)} onChoose={scanProduct} testID="exit-pending" />
+          </>
         )
       ) : (
         <View style={styles.current} testID="exit-current">
