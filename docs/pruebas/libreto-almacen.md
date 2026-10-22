@@ -14,7 +14,7 @@
 3. Cada libreto es una tabla de pasos. En cada fila: **quién y qué hace**, **con qué datos** y **qué debe ver**. Marca la última columna: ✔ si coincide con «Resultado esperado»; ✘ si no. Si pones ✘, apunta en el anexo C qué viste en realidad y toma una captura.
 4. Los libretos van **en orden**: lo que se recibe en los libretos 2 a 8 es la mercancía que se despacha en los libretos 9 a 11. No los reordenes la primera vez.
 5. Los textos entre «comillas angulares» son letra exacta de la pantalla.
-6. Los números de documento se asignan solos (**LLE-**#####, **REC-**#####, **RCM-**#####, **SAL-**#####, **EMP-**#####). Anota el que te toque en la tabla 1.4; el libreto los llama por su letra (A1, A2…).
+6. Los números de documento se asignan solos (**LLE-**#####, **REC-**#####, **RCM-**#####, **SAL-**#####, **EMP-**#####). Anota el que te toque en la tabla 1.5; el libreto los llama por su letra (A1, A2…).
 
 ### 0.1 Quién hace qué (reparto de funciones)
 
@@ -50,16 +50,71 @@
 |---|---|
 | Ambiente | `https://test.advancelogisticspr.com` (o staging). Verifica que la cinta de color/etiqueta del ambiente diga TEST o STAGING. |
 | Compañía y módulo | Una compañía con el módulo **Inventario por lote y serie** (`WMS_LOTSERIAL`) encendido. |
-| **Usuario Supervisor** | Entra a la web y al aparato. Permisos: `warehouse.manage` (asignar en la web), `exitnotice.create` (crear avisos de salida), `warehouse.receive`, `warehouse.pick`, `orders.create` (empacar), `inventory.view`, **`warehouse.app.viewall`** (ver lo asignado a otros en el aparato) y **`warehouse.app.reassign`** (reasignar en el aparato; exige el de «ver todo»). |
-| **Usuario Operador 1** | Rol **Operador de almacén**. Entra al aparato (y a la web para los pasos de recibo). **Sin** `warehouse.app.viewall` ni `warehouse.app.reassign`. |
+| **Usuario Supervisor** | Rol **Warehouse Supervisor** (ver 1.2). Entra a la web y al aparato. Permisos: `warehouse.manage` (asignar en la web), `exitnotice.create` (crear avisos de salida), `warehouse.receive`, `warehouse.pick`, `orders.create` (empacar), `inventory.view`, **`warehouse.app.viewall`** (ver lo asignado a otros en el aparato) y **`warehouse.app.reassign`** (reasignar en el aparato; exige el de «ver todo»). |
+| **Usuario Operador 1** | Rol **Warehouse Operator** («Operador de almacén», ver 1.2). Entra al aparato (y a la web para los pasos de recibo). **Sin** `warehouse.app.viewall` ni `warehouse.app.reassign`. |
 | **Usuario Operador 2** | Igual que el Operador 1, pero otra persona (otro usuario y otro PIN). Idealmente en un **segundo aparato**; si solo hay uno, se alternan cerrando sesión y entrando con el otro PIN (el aparato se bloquea con **Bloquear**). |
 | Cada usuario del aparato | Con su **PIN de 4 a 6 dígitos**, definido en la web en **Mi cuenta**. |
 | Almacén | **ALM-DEPOT** (Advance Depot): modo de recepción **con acomodo**, con una posición de recepción en una zona de staging: **R1**. |
-| Cliente dueño de la mercancía | **AxisCare** (el mismo que aparece en los recibos de Advance Depot). Si tu base de pruebas no lo tiene, usa cualquier cliente con tres productos y anótalo en 1.2. |
+| Cliente dueño de la mercancía | **AxisCare** (el mismo que aparece en los recibos de Advance Depot). Si tu base de pruebas no lo tiene, usa cualquier cliente con tres productos y anótalo en 1.3. |
 
-> **Comprobación de separación de funciones (hazla antes de empezar):** entra a la web como **Operador 1** y abre **Almacén → Llegadas y salidas**. Si ves el botón **Asignar** en las filas de los avisos, el rol del operador trae el permiso `warehouse.manage` (el rol «Operador de almacén» lo trae por catálogo). Anótalo como hallazgo en el anexo C y, para esta prueba, quítaselo al usuario del Operador 1 y del Operador 2 desde **Sistema → Roles y usuarios**.
+> Los permisos exactos de cada rol y cómo comprobarlos están en la **sección 1.2** (hazla antes de empezar).
 
-### 1.2 Productos de la prueba
+### 1.2 Permisos de cada rol (repásalos antes de empezar)
+
+En Teikem los permisos se dan **por rol** (y, si hace falta, como «permisos extra» de un usuario). Para estas pruebas hay dos roles:
+
+| Rol | De dónde sale | Quién lo usa en el libreto |
+|---|---|---|
+| **Warehouse Operator** («Operador de almacén») | Es una **plantilla que ya trae Teikem**: al crear la compañía se clona. | Operador 1 y Operador 2 |
+| **Warehouse Supervisor** («Supervisor de almacén») | **Teikem no trae una plantilla con ese nombre.** Hay que crearlo en la compañía (**Sistema → Roles y usuarios → Roles → Nuevo rol**) con los permisos de la tabla de abajo. | Supervisor |
+
+**Cómo leer la tabla:** ✔ = debe tenerlo · — = no debe tenerlo. La columna «Operador (esta prueba)» es el operador **sin** los permisos de supervisor, para comprobar que cada quien solo hace lo suyo. La plantilla del operador, tal como viene, **sí trae** `warehouse.manage` y `exitnotice.create`; para la prueba hay que **quitárselos** (así el operador no verá «Asignar» en la web ni podrá crear avisos de salida).
+
+#### Permisos que usa este libreto
+
+| Código | Cómo se llama en la pantalla de roles | Para qué sirve en el libreto | Supervisor | Operador (plantilla) | Operador (esta prueba) |
+|---|---|---|:-:|:-:|:-:|
+| `inventory.view` | Ver inventario y almacén | Ver las pantallas de almacén y leer sus datos | ✔ | ✔ | ✔ |
+| `warehouse.receive` | Recibir | Crear avisos de llegada, crear y confirmar recibos y tandas, «Recibir juntos», «Tomar» un aviso de llegada, acomodar | ✔ | ✔ | ✔ |
+| `warehouse.pick` | Pickear | Despachar, recolectar, eliminar recolecciones, «Recolectar juntos», «Tomar» un aviso de salida | ✔ | ✔ | ✔ |
+| `warehouse.issue` | Despacho manual (salida sin entrega) | «Despachar sin documento» y «Completar despacho» en el aparato (libreto 10D) | ✔ | ✔ | ✔ |
+| `warehouse.manage` | Gestionar almacenes y tareas | **«Asignar» en la web** (avisos y tareas de acomodo) y editar cupos de posiciones | ✔ | ✔ | **—** |
+| `exitnotice.create` | Crear, modificar y cancelar avisos de salida y atender su pendiente | **Llenar los avisos de salida** (libretos 9, 10 y 11) | ✔ | ✔ | **—** |
+| `warehouse.app.viewall` | Ver todo en el aparato (también lo asignado a otras personas) | «Ver lo asignado a otras personas» en el aparato (libreto 8) | ✔ | — | — |
+| `warehouse.app.reassign` | Reasignar desde el aparato (exige ver todo) | Botón **Reasignar** en el aparato (libreto 8C) | ✔ | — | — |
+| `orders.create` | Crear envíos | **Empacar** (crea el envío) en el libreto 11 | ✔ | — | — |
+| `orders.view` | Ver envíos | Ver el envío creado al empacar | ✔ | — | — |
+| `orders.cancel` | Cancelar envíos | Eliminar una recolección **ya empacada** (11.13) | ✔ | — | — |
+
+> Notas: (1) Los permisos de **entrar y ver** cada pantalla (por ejemplo «Llegadas y salidas: entrar y ver», «Recibo: entrar y ver», «Recolección y empaque: entrar y ver») **se dan solos** a quien puede editar en esa pantalla (recibir, pickear…); no hay que marcarlos aparte. (2) `warehouse.app.reassign` exige `warehouse.app.viewall`: sin el de «ver todo», no sirve. (3) `warehouse.pick.any` («Despachar cualquier documento en el aparato») viene en la plantilla del operador, pero **ya no se consulta**: no hace falta darlo. (4) Recibir **contra orden de compra** necesita además `purchasing.receive` y el módulo de Compras; **no se prueba aquí**.
+
+#### Otros permisos de almacén (no se prueban aquí, pero conviene saber dónde están)
+
+| Código | Cómo se llama | Supervisor | Operador (plantilla) |
+|---|---|:-:|:-:|
+| `warehouse.count` / `warehouse.count.capture` | Contar / Capturar conteo (a ciegas) | ✔ | ✔ |
+| `warehouse.damage` | Reportar y resolver daños | ✔ | ✔ |
+| `warehouse.transfer` | Transferir inventario entre posiciones (aparato) | ✔ | ✔ |
+| `warehouse.crossdock` | Cross-dock | ✔ | ✔ |
+| `inventory.adjust` / `inventory.manage` | Ajustar y transferir inventario / Gestionar productos | ✔ | ✔ |
+| `warehouse.adjust` | Ajustar la cantidad de una posición (aparato) | ✔ | — (la plantilla no lo trae) |
+| `sales.view` / `sales.backorder` | Ver órdenes de venta / Surtir y cerrar backorders | ✔ | ✔ |
+
+#### Revisión de permisos (hazla antes del libreto 1)
+
+| # | Qué haces | Resultado esperado | ✔/✘ |
+|---|---|---|---|
+| P.1 | **[Administrador]** Entra a **Sistema → Roles y usuarios** y abre la pestaña de **Roles**. | Aparece la lista de roles de la compañía, entre ellos **Operador de almacén**. | |
+| P.2 | **[Administrador]** Busca el rol **Supervisor de almacén** (o como lo hayas llamado). Si no existe, créalo: **Nuevo rol** → nombre «Supervisor de almacén» → marca **todos los ✔ de la columna «Supervisor»** de la tabla de arriba. | El rol queda guardado con esos permisos. Los permisos aparecen agrupados por categoría (Almacén, Envíos…); cada pantalla muestra primero su «entrar y ver» y debajo, con sangría, lo que se hace en ella. | |
+| P.3 | **[Administrador]** Abre el rol **Operador de almacén**. Compara con la columna «Operador (plantilla)». | Coincide con la tabla. Si ves algún permiso de más o de menos, anótalo en el anexo C. | |
+| P.4 | **[Administrador]** Al rol **Operador de almacén** (o a un rol copia «Operador de prueba») **desmarca `warehouse.manage` y `exitnotice.create`** y guarda. | El rol queda como la columna «Operador (esta prueba)». | |
+| P.5 | **[Administrador]** Asigna los roles: usuario **Supervisor** → «Supervisor de almacén»; **Operador 1** y **Operador 2** → «Operador de almacén» (o «Operador de prueba»). Revisa que **ninguno** tenga «permisos extra» que cambien esto. | En **Usuarios**, cada usuario muestra su rol y sus permisos extra (ninguno para estas pruebas). | |
+| P.6 | **[Supervisor]** Cierra sesión y entra a la web con el usuario Supervisor. Abre **Almacén → Llegadas y salidas**. | Ve **Nuevo aviso**, **Asignar** y **Editar** en los avisos, y en la pestaña «Avisos de salida» ve **Nuevo aviso de salida**. En el menú ve Recolección y empaque. | |
+| P.7 | **[Operador 1]** Entra a la web con el usuario Operador 1. Abre **Almacén → Llegadas y salidas**. | Ve la lista de avisos y **Recibir** y **Tomar**, pero **no** ve **Asignar** ni **Nuevo aviso de salida**. Si ve alguno de los dos, el rol conserva `warehouse.manage` o `exitnotice.create`: corrígelo (P.4). | |
+| P.8 | **[Supervisor]** Entra al aparato con el usuario Supervisor → **Mis tareas**. | Ve la sección «Ver lo asignado a otras personas» y, en cada fila, el botón **Reasignar** (esto se comprueba de verdad en el libreto 8). | |
+| P.9 | **[Operador 1]** Entra al aparato con el usuario Operador 1 → **Mis tareas**. | **No** ve «Ver lo asignado a otras personas» ni **Reasignar**. | |
+
+### 1.3 Productos de la prueba
 
 Todos deben ser **del mismo cliente dueño** y **sin lote ni serie** (si tienen, la pantalla te pedirá lote o serie y eso es otra prueba). Anota el SKU real de P2 y P3.
 
@@ -71,7 +126,7 @@ Todos deben ser **del mismo cliente dueño** y **sin lote ni serie** (si tienen,
 
 > Consejo: en el aparato el campo de escaneo no abre el teclado solo. Toca el botón **⌨**, escribe el SKU y toca **Aceptar**. Escanear con un lector hace lo mismo.
 
-### 1.3 Preparar el aparato móvil
+### 1.4 Preparar el aparato móvil
 
 | # | Qué haces | Resultado esperado | ✔/✘ |
 |---|---|---|---|
@@ -81,7 +136,7 @@ Todos deben ser **del mismo cliente dueño** y **sin lote ni serie** (si tienen,
 | 4 | Si te pide compañía: «¿En qué compañía vas a trabajar?» → elige la compañía de pruebas. Verifica la fila «Almacén: …» y, si hay más de uno, toca **Cambiar** y elige **ALM-DEPOT**. | El menú muestra los mosaicos: Mis tareas, Consultar, Recibir, Acomodar, Despacho, Conteo (y Ajustar / Daño / Devoluciones según los permisos de la persona). | |
 | 5 | Comprueba que **aparecen los tres usuarios** (Supervisor, Operador 1 y Operador 2) en «Elige tu nombre». | Los tres salen en la lista. Si solo hay un aparato, esto permite alternar entre ellos. | |
 
-### 1.4 Hoja de seguimiento (anota los números que vayan saliendo)
+### 1.5 Hoja de seguimiento (anota los números que vayan saliendo)
 
 | Letra | Documento | Número real |
 |---|---|---|
@@ -331,7 +386,7 @@ El resto lo hace el **Operador 1** en la web.
 
 | # | Qué haces | Datos | Resultado esperado | ✔/✘ |
 |---|---|---|---|---|
-| 8.1 | **[Supervisor]** Crea T1, T2, T3, T4 y T5 en **Llegadas y salidas → Nuevo aviso** (datos de la tabla). | — | Cinco avisos **Esperada**. Anótalos en la hoja 1.4. | |
+| 8.1 | **[Supervisor]** Crea T1, T2, T3, T4 y T5 en **Llegadas y salidas → Nuevo aviso** (datos de la tabla). | — | Cinco avisos **Esperada**. Anótalos en la hoja 1.5. | |
 | 8.2 | **[Supervisor]** Pulsa **Asignar** en T1 → elige **Operador 1**. En T2 → **Operador 2**. En T5 → **Operador 1**. Deja T3 y T4 **sin asignar**. | — | La columna «Asignado a» de la lista muestra los nombres. T3 y T4 muestran vacío («Sin asignar»). | |
 | 8.3 | **[Supervisor]** Activa el filtro **Solo los asignados a mí**. | — | No aparece ninguno (nada está asignado al supervisor). Desactiva el filtro. | |
 | 8.4 | **[Operador 1]** En el aparato, toca **Sincronizar ahora** y abre **Mis tareas**. | — | «Por recibir (2)»: **T1** y **T5**, con «Llega {fecha}». **No** aparece T2. Botón «Ver lo que nadie tiene asignado (2)» (T3 y T4). | |
@@ -579,6 +634,6 @@ El resto lo hace el **Operador 1** en la web.
 3. **El aviso no aparece en «Recibir» del aparato:** puede estar asignado a otra persona (y tú no tienes el permiso de ver todo) o ya tener un recibo; revisa en la web su columna «Asignado a» y «Recibo».
 4. **No aparece el botón «Recibir una parte»:** solo existe con un documento, en almacenes con acomodo y sin modo directo.
 5. **No aparece la advertencia de staging lleno:** ninguna posición de staging tiene cupo máximo configurado.
-6. **No ves un botón de la web (Empacar, Asignar, Cancelar…):** falta el permiso del usuario (ver la tabla de la sección 1.1).
+6. **No ves un botón de la web (Empacar, Asignar, Cancelar…):** falta el permiso del usuario (ver la sección 1.2).
 7. **El Supervisor no ve «Ver lo asignado a otras personas» ni «Reasignar» en el aparato:** le faltan los permisos `warehouse.app.viewall` y `warehouse.app.reassign` (el de reasignar exige el de ver todo). Se dan en **Sistema → Roles y usuarios**.
 8. **Un operador ve cosas que no le tocan** (T2 estando asignado a otro): verifica que su rol no tenga `warehouse.app.viewall`. Si no lo tiene y aun así lo ve, es un hallazgo: anótalo.
