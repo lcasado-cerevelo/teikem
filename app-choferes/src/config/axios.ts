@@ -2,44 +2,44 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { env } from './env';
 
 // ---------------------------------------------------------------------------
-// In-memory access token holder.
-// The auth layer calls setAccessToken() on login/refresh/logout. Keeping it
-// here (instead of importing the auth module) avoids a circular dependency.
+// Tokens de acceso EN MEMORIA, uno por compañía (un chofer puede trabajar en varias con una sola sesión).
+// La capa de acceso los pone con setCompanyTokens() al entrar y al renovar; vivir aquí (y no importar el módulo de acceso) evita un ciclo de dependencias.
+// Cada llamada dice de qué compañía es con `tenantId` en su configuración (axios.get(url, { tenantId })); sin él se usa la primera compañía (solo para las
+// llamadas de la sesión que no son de una compañía en particular, como el perfil y el documento legal).
 // ---------------------------------------------------------------------------
-let accessToken: string | null = null;
-export function setAccessToken(token: string | null): void {
-  accessToken = token;
-}
-export function getAccessToken(): string | null {
-  return accessToken;
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    /** Compañía a la que va la llamada (decide con qué token de acceso se firma). */
+    tenantId?: number;
+  }
 }
 
-// Optional hook the auth layer can register to be notified of a 401 that the
-// refresh handler couldn't recover from (e.g. to clear the session and
-// redirect to Login).
+let companyTokens = new Map<number, string>();
+export function setCompanyTokens(tokens: Record<number, string> | null): void {
+  companyTokens = new Map(Object.entries(tokens ?? {}).map(([k, v]) => [Number(k), v]));
+}
+export function getAccessToken(tenantId?: number | null): string | null {
+  if (tenantId != null) return companyTokens.get(tenantId) ?? null;
+  return companyTokens.values().next().value ?? null;
+}
+
+// Gancho opcional: la capa de acceso lo registra para ser avisada de un 401 que la renovación no pudo resolver (para cerrar la sesión).
 let onUnauthorized: (() => void) | null = null;
 export function setUnauthorizedHandler(handler: (() => void) | null): void {
   onUnauthorized = handler;
 }
 
-// Optional hook the auth layer registers to silently refresh an expired
-// access token. Returns the new token to retry the request, or null if the
-// caller should give up on this request (the handler itself decides whether
-// that also means logging out — see AuthContext).
-let onRefresh: (() => Promise<string | null>) | null = null;
-export function setRefreshHandler(handler: (() => Promise<string | null>) | null): void {
+// Gancho que la capa de acceso registra para renovar en silencio los tokens vencidos. Devuelve true si hay tokens nuevos (se reintenta la llamada).
+// Decide ella si «no se pudo renovar» es un cierre de sesión real (el servidor rechazó la sesión) o solo «sin señal».
+let onRefresh: (() => Promise<boolean>) | null = null;
+export function setRefreshHandler(handler: (() => Promise<boolean>) | null): void {
   onRefresh = handler;
 }
 
-// El API responde 403 cuando el token es válido pero el usuario no puede usar
-// el sistema: su 'sub' de Auth0 no está mapeado en Users.Auth0, o está
-// desactivado. Auth0 autentica igual (no sabe nada de nuestra tabla Users), así
-// que sin esto el login "entra" y la app se queda en blanco para siempre — que
-// es exactamente el bug que reportó Luis.
+// El API responde 403 cuando el token es válido pero el usuario no puede usar esa función (no es chofer, falta el permiso…).
 export interface ForbiddenInfo {
-  code?: string; // 'not_provisioned' | 'user_inactive' | 'no_sub'
-  sub?: string;
-  error?: string;
+  code?: string;
+  title?: string;
 }
 let onForbidden: ((info: ForbiddenInfo) => void) | null = null;
 export function setForbiddenHandler(handler: ((info: ForbiddenInfo) => void) | null): void {
@@ -52,43 +52,30 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Attach the Bearer token on every request. The backend is JWT-only now —
-// there is no ApiKey header anymore.
+// El token de la compañía de cada llamada va como Bearer.
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  if (accessToken) {
-    config.headers.set('Authorization', `Bearer ${accessToken}`);
-  }
+  const token = getAccessToken(config.tenantId);
+  if (token) config.headers.set('Authorization', `Bearer ${token}`);
   return config;
 });
 
-// On a 401, try ONE silent token refresh + retry before giving up. Without
-// this, a merely-expired access token (very plausible on a multi-hour route
-// with spotty signal) looked identical to a real "you're logged out" and blew
-// away the whole session on the first API call after reconnecting.
+// Ante un 401 se intenta UNA renovación silenciosa y se reintenta. Sin esto, un token de acceso vencido (normal en una ruta de horas con mala señal) se vería
+// igual que «sesión cerrada» y tiraría la sesión entera en la primera llamada tras recuperar la señal.
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const config = error.config as
-      | (InternalAxiosRequestConfig & { _retriedAfterRefresh?: boolean })
-      | undefined;
+    const config = error.config as (InternalAxiosRequestConfig & { _retriedAfterRefresh?: boolean }) | undefined;
     if (error.response?.status === 401 && config && !config._retriedAfterRefresh && onRefresh) {
       config._retriedAfterRefresh = true;
-      const newToken = await onRefresh();
-      if (newToken) {
-        config.headers.set('Authorization', `Bearer ${newToken}`);
+      if (await onRefresh()) {
+        const token = getAccessToken(config.tenantId);
+        if (token) config.headers.set('Authorization', `Bearer ${token}`);
         return api(config);
       }
-      // onRefresh() itself decides whether "couldn't refresh" means a real
-      // logout (invalid/revoked refresh token) or just "offline right now" —
-      // it calls onUnauthorized internally only in the former case.
       return Promise.reject(error);
     }
-    if (error.response?.status === 401 && !onRefresh && onUnauthorized) {
-      onUnauthorized();
-    }
-    if (error.response?.status === 403 && onForbidden) {
-      onForbidden((error.response.data ?? {}) as ForbiddenInfo);
-    }
+    if (error.response?.status === 401 && !onRefresh && onUnauthorized) onUnauthorized();
+    if (error.response?.status === 403 && onForbidden) onForbidden((error.response.data ?? {}) as ForbiddenInfo);
     return Promise.reject(error);
   },
 );

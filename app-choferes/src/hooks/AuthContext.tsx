@@ -3,20 +3,18 @@ import { Alert, AppState } from 'react-native';
 import { AxiosError } from 'axios';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
-import { setAccessToken, setForbiddenHandler, setRefreshHandler, setUnauthorizedHandler, type ForbiddenInfo } from '@config/axios';
-import { clearOfflineData, countByStatus, drainOutbox } from '@/offline';
+import { getAccessToken, setCompanyTokens, setForbiddenHandler, setRefreshHandler, setUnauthorizedHandler, type ForbiddenInfo } from '@config/axios';
+import { clearOfflineData, drainOutbox } from '@/offline';
 import { useAppStore } from '@/stores';
-import { sessionStorage, type AuthUser, type StoredSession } from '@services/auth/tokenStorage';
+import { sessionStorage, type AuthUser, type CompanyAccess, type StoredSession } from '@services/auth/tokenStorage';
 import {
   confirmMfa as apiConfirmMfa,
   enrollMfa as apiEnrollMfa,
   fetchLegalStatus,
   fetchMe,
   login as apiLogin,
-  refreshTokens,
+  fetchDriverSession,
   serverLogout,
-  switchTenant as apiSwitchTenant,
-  toSession,
   verifyMfa as apiVerifyMfa,
   type BrowserConfirmationDto,
   type LoginOutcome,
@@ -37,6 +35,8 @@ interface AuthContextValue {
   isLoading: boolean; // restaurando la sesión al arrancar
   isLoggedIn: boolean;
   user: AuthUser | null;
+  /** Las compañías donde es chofer (una sola sesión las cubre todas). */
+  companies: CompanyAccess[];
   loading: boolean; // un paso del login en curso
   /** Hay un paso de MFA pendiente (después de la contraseña): la pantalla del código. */
   mfaChallenge: MfaChallenge | null;
@@ -56,8 +56,6 @@ interface AuthContextValue {
   finishEnrollment: () => void;
   cancelMfa: () => void;
   logout: () => Promise<void>;
-  /** Cambia la compañía activa (usuarios con acceso a varias). */
-  switchTenant: (tenantId: number) => Promise<boolean>;
   /** El token de acceso vigente, para las llamadas de las pantallas del documento legal. */
   accessToken: () => string | null;
   legalAccepted: () => void;
@@ -80,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [session, setSession] = useState<StoredSession | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [companies, setCompanies] = useState<CompanyAccess[]>([]);
   const [mfaChallenge, setMfaChallenge] = useState<MfaChallenge | null>(null);
   const [browserConfirmation, setBrowserConfirmation] = useState<BrowserConfirmationDto | null>(null);
   const [legalRequired, setLegalRequired] = useState<boolean | null>(null);
@@ -88,29 +87,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const lang = () => (i18n.language === 'en' ? 'en' : 'es');
 
-  useEffect(() => {
-    setAccessToken(session?.accessToken ?? null);
-  }, [session]);
-
   const sessionRef = useRef<StoredSession | null>(null);
   useEffect(() => {
     sessionRef.current = session;
   }, [session]);
 
-  // Guarda la sesión y, ya con ella, trae quién es y si falta aceptar el documento legal.
-  const applySession = useCallback(async (s: StoredSession) => {
-    setSession(s);
-    setAccessToken(s.accessToken);
-    await sessionStorage.save(s);
+  // Renueva la sesión: un refresh token nuevo (el anterior queda revocado) y el token de acceso de cada compañía. Una sola a la vez: si dos llamadas
+  // vencidas la piden juntas, comparten la misma respuesta (el refresh token rota y el segundo intento usaría uno ya revocado).
+  const renewing = useRef<Promise<StoredSession> | null>(null);
+  const renew = useCallback((refreshToken: string, previous?: StoredSession): Promise<StoredSession> => {
+    if (renewing.current) return renewing.current;
+    const run = (async () => {
+      const dto = await fetchDriverSession(refreshToken);
+      const tokens: Record<number, string> = {};
+      const list: CompanyAccess[] = dto.companies.map((c) => {
+        if (c.accessToken) tokens[c.tenantId] = c.accessToken;
+        return { tenantId: c.tenantId, name: c.tenantName, blocked: c.blocked ?? null };
+      });
+      setCompanyTokens(tokens);
+      const next: StoredSession = { refreshToken: dto.refreshToken, refreshExpiresAt: Date.parse(dto.refreshExpiresAtUtc), user: previous?.user, companies: list };
+      setSession(next);
+      setCompanies(list);
+      sessionRef.current = next;
+      await sessionStorage.save(next);
+      return next;
+    })();
+    renewing.current = run;
+    const clear = () => {
+      renewing.current = null;
+    };
+    run.then(clear, clear);
+    return run;
+  }, []);
+
+  // Con la sesión lista: trae quién es y si falta aceptar el documento legal.
+  const loadProfile = useCallback(async (s: StoredSession) => {
+    const token = getAccessToken();
+    if (!token) {
+      setLegalRequired(false);
+      return;
+    }
     try {
-      const me = await fetchMe(s.accessToken);
+      const me = await fetchMe(token);
       setUser(me);
-      await sessionStorage.save({ ...s, user: me });
+      const withUser = { ...(sessionRef.current ?? s), user: me };
+      sessionRef.current = withUser;
+      await sessionStorage.save(withUser);
     } catch {
       /* sin red: queda el nombre guardado */
     }
     try {
-      const legal = await fetchLegalStatus(s.accessToken);
+      const legal = await fetchLegalStatus(token);
       setLegalRequired(Boolean(legal.required) && !legal.accepted);
     } catch {
       setLegalRequired(false); // si no se puede leer, el servidor igual lo exige
@@ -133,7 +160,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setBrowserConfirmation(null);
     setLegalRequired(null);
     setLocked(false);
-    setAccessToken(null);
+    setCompanyTokens(null);
+    setCompanies([]);
     await sessionStorage.clear();
     useAppStore.setState({ manifestIds: [], manifests: [], shipmentIds: [], shipment: null });
     queryClient.clear();
@@ -166,22 +194,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Renovación silenciosa para el manejador del 401. Un token de acceso vencido es lo normal a mitad de una ruta (horas con mala señal) y NO es «sesión cerrada»:
   // solo si el servidor RECHAZA el refresh (vencido o revocado: la sesión de la compañía terminó) se cierra la sesión. Un error de red solo quiere decir «sin señal».
-  const refreshHandler = useCallback(async (): Promise<string | null> => {
+  const refreshHandler = useCallback(async (): Promise<boolean> => {
     const current = sessionRef.current;
     if (!current?.refreshToken || current.refreshExpiresAt < Date.now()) {
       await logoutRef.current();
-      return null;
+      return false;
     }
     try {
-      const fresh = toSession(await refreshTokens(current.refreshToken), current);
-      setSession(fresh);
-      await sessionStorage.save(fresh);
-      return fresh.accessToken;
+      await renew(current.refreshToken, current);
+      return true;
     } catch (err) {
       if ((err as AxiosError).response) await logoutRef.current();
-      return null;
+      return false;
     }
-  }, []);
+  }, [renew]);
   useEffect(() => {
     setRefreshHandler(refreshHandler);
     return () => setRefreshHandler(null);
@@ -205,28 +231,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       if (stored.user) setUser(stored.user);
+      if (stored.companies) setCompanies(stored.companies);
       let current = stored;
-      if (stored.expiresAt - Date.now() < 60_000) {
-        try {
-          current = toSession(await refreshTokens(stored.refreshToken), stored);
-        } catch (err) {
-          if ((err as AxiosError).response) {
-            await sessionStorage.clear(); // el servidor rechazó la sesión: de verdad se cerró
-            if (active) setIsLoading(false);
-            return;
-          }
-          current = stored; // sin red al arrancar: se sigue con la sesión guardada (la caché sirve sin señal)
+      try {
+        current = await renew(stored.refreshToken, stored);
+      } catch (err) {
+        if ((err as AxiosError).response) {
+          await sessionStorage.clear(); // el servidor rechazó la sesión: de verdad se cerró
+          if (active) setIsLoading(false);
+          return;
         }
+        setSession(stored); // sin red al arrancar: se sigue con la sesión guardada (la caché sirve sin señal)
+        sessionRef.current = stored;
       }
       if (!active) return;
-      await applySession(current);
+      await loadProfile(current);
       if (bio) setLocked(true);
       setIsLoading(false);
     })();
     return () => {
       active = false;
     };
-  }, [applySession]);
+  }, [renew, loadProfile]);
 
   // Bloqueo con huella al volver de segundo plano.
   const backgroundedAt = useRef<number | null>(null);
@@ -256,10 +282,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (outcome.status === 'onboarding_required') return 'onboarding';
       setMfaChallenge(null);
       setBrowserConfirmation(null);
-      await applySession(outcome.session);
+      const next = await renew(outcome.refreshToken);
+      await loadProfile(next);
       return 'ok';
     },
-    [applySession],
+    [renew, loadProfile],
   );
 
   const showError = useCallback(
@@ -346,36 +373,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setBrowserConfirmation(null);
   }, []);
 
-  const switchTenant = useCallback(
-    async (tenantId: number): Promise<boolean> => {
-      const current = sessionRef.current;
-      if (!current) return false;
-      try {
-        setLoading(true);
-        // Cambiar de compañía limpia lo local: lo que no se haya enviado se perdería. Primero se intenta enviar; si queda algo (sin señal), NO se cambia.
-        await drainOutbox().catch(() => undefined);
-        const pending = await countByStatus('pending');
-        if (pending > 0) {
-          Alert.alert(t('PROFILE.COMPANY_SWITCH_TITLE'), t('PROFILE.COMPANY_SWITCH_PENDING', { count: pending }));
-          return false;
-        }
-        const next = toSession(await apiSwitchTenant(current.refreshToken, tenantId), current);
-        // otra compañía = otros envíos: se limpia lo local como en un cierre de sesión (la sesión sigue)
-        await clearOfflineData();
-        queryClient.clear();
-        useAppStore.setState({ manifestIds: [], manifests: [], shipmentIds: [], shipment: null });
-        await applySession({ ...next, user: undefined });
-        return true;
-      } catch (err) {
-        showError(err);
-        return false;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [applySession, queryClient, showError, t],
-  );
-
   const setBiometricEnabled = useCallback(async (value: boolean) => {
     await storeBiometricEnabled(value);
     setBiometricEnabledState(value);
@@ -386,8 +383,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider
       value={{
         isLoading,
-        isLoggedIn: Boolean(session?.accessToken),
+        isLoggedIn: Boolean(session),
         user,
+        companies,
         loading,
         mfaChallenge,
         browserConfirmation,
@@ -401,8 +399,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         finishEnrollment,
         cancelMfa,
         logout,
-        switchTenant,
-        accessToken: () => sessionRef.current?.accessToken ?? null,
+        accessToken: () => getAccessToken(),
         legalAccepted: () => setLegalRequired(false),
         setBiometricEnabled,
         unlock: () => setLocked(false),

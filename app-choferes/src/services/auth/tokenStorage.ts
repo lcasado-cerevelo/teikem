@@ -5,8 +5,8 @@ import * as SecureStore from 'expo-secure-store';
 //  - Nativo: expo-secure-store (Keychain / Keystore).
 //  - Web: localStorage (SecureStore no existe en la web).
 //
-// Se guarda lo mínimo: el par de tokens con sus vencimientos, la compañía activa y los datos para mostrar el nombre sin conexión.
-// OJO: SecureStore en Android limita el valor a unos 2 KB; por eso el perfil guardado es chico.
+// Se guarda lo mínimo: el refresh token con el vencimiento de la sesión y los datos para mostrar el nombre sin conexión (los tokens de acceso van en memoria).
+// OJO: SecureStore en Android limita el valor a unos 2 KB; por eso lo guardado es chico.
 
 const KEY = 'teikem.choferes.session';
 
@@ -14,22 +14,24 @@ export interface AuthUser {
   userId: number;
   fullName?: string | null;
   email?: string | null;
-  tenantId: number;
-  tenantName?: string | null;
-  /** Compañías a las que pertenece (para cambiar de compañía). */
-  memberships: { tenantId: number; tenantName: string }[];
 }
 
 export interface StoredSession {
-  accessToken: string;
-  /** Vencimiento del token de acceso (ms desde 1970). */
-  expiresAt: number;
+  /** El refresh token VIGENTE de la sesión (se rota en cada renovación; el anterior queda revocado). Los tokens de acceso NO se guardan: viven en memoria. */
   refreshToken: string;
-  /** Vencimiento de la SESIÓN (la fija la compañía: días o minutos); pasado este momento hay que entrar de nuevo. */
+  /** Vencimiento ABSOLUTO de la sesión (ms desde 1970): la fija la compañía (la más permisiva si el chofer trabaja en varias); renovar no la alarga. */
   refreshExpiresAt: number;
-  tenantId: number;
   /** Para mostrar el nombre y las iniciales aunque no haya señal. */
   user?: AuthUser;
+  /** Compañías donde es chofer (para mostrarlas sin conexión). */
+  companies?: CompanyAccess[];
+}
+
+export interface CompanyAccess {
+  tenantId: number;
+  name: string;
+  /** mfa_required: la compañía exige MFA y esta sesión no lo cumplió (no hay acceso hasta entrar de nuevo con contraseña y código). */
+  blocked?: string | null;
 }
 
 async function setItem(value: string): Promise<void> {
@@ -62,7 +64,7 @@ export const sessionStorage = {
     if (!raw) return null;
     try {
       const s = JSON.parse(raw) as StoredSession;
-      return s.accessToken && s.refreshToken ? s : null;
+      return s.refreshToken && s.refreshExpiresAt ? s : null;
     } catch {
       return null;
     }

@@ -74,7 +74,8 @@ public sealed class AuthController(AuthService auth, DeviceService devices, Trus
     /// 'La contraseña nueva debe ser distinta de la que le dieron.'. Devuelve un challenge token nuevo (el sello rotó).</summary>
     [HttpPost("onboarding/password"), Authorize(Policy = Policies.MfaChallenge)]
     public Task<OnboardingStepDto> OnboardingPassword([FromBody] OnboardingPasswordRequest req, CancellationToken ct)
-        => auth.SetOnboardingPasswordAsync(ChallengeUserId, ChallengeTenantId, User.FindFirst("device")?.Value, req, ct);
+        => auth.SetOnboardingPasswordAsync(ChallengeUserId, ChallengeTenantId, User.FindFirst("device")?.Value, req, ct,
+            driverApp: string.Equals(User.FindFirst(TeikemClaims.App)?.Value, TeikemClaims.AppDriver, StringComparison.Ordinal));   // el challenge de la app del chofer sigue siendo de la app
 
     // ---------------- Lote 8A: aparatos de confianza (app de almacén) ----------------
 

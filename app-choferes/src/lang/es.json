@@ -196,6 +196,7 @@
       "COMPANY_SWITCH_BODY": "Se cambiará a {{name}}. Lo que no se haya enviado se enviará primero y se cargarán los manifiestos de esa compañía.",
       "COMPANY_SWITCH_YES": "Cambiar",
       "COMPANY_CURRENT": "Actual",
+      "COMPANY_BLOCKED": "Entra de nuevo con tu contraseña y código",
       "COMPANY_SWITCH_PENDING": "Tiene {{count}} registro(s) sin enviar a esta compañía. Conéctese a internet para enviarlos y luego cambie de compañía."
     },
     "MFA": {

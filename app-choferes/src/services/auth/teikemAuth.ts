@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 import { env } from '@config/env';
-import type { AuthUser, StoredSession } from './tokenStorage';
+import type { AuthUser } from './tokenStorage';
 
 // Acceso contra el API de Teikem (/api/v1/auth/*). Usa un cliente propio SIN los interceptores de renovación de sesión: estas llamadas son las
 // que crean o renuevan la sesión, y no pueden depender de ella (evita ciclos).
@@ -11,6 +11,23 @@ import type { AuthUser, StoredSession } from './tokenStorage';
 
 const http = axios.create({ baseURL: env.baseUrl.replace(/\/api\/?$/, ''), timeout: 20000, headers: { 'Content-Type': 'application/json' } });
 
+/** Una compañía del chofer con su token de acceso (null si la compañía exige MFA y esta sesión no lo cumplió: «blocked»). */
+export interface CompanyTokenDto {
+  tenantId: number;
+  tenantName: string;
+  accessToken?: string | null;
+  accessExpiresAtUtc?: string | null;
+  blocked?: string | null;
+}
+
+/** Sesión del chofer: un refresh token (rota en cada renovación) y los tokens de acceso de TODAS sus compañías. */
+export interface DriverSessionDto {
+  refreshToken: string;
+  refreshExpiresAtUtc: string;
+  companies: CompanyTokenDto[];
+}
+
+/** Respuesta del login: el servidor entrega un par de tokens de UNA compañía solo para arrancar; la sesión real sale de company-tokens. */
 export interface TokenPairDto {
   accessToken: string;
   accessExpiresAtUtc: string;
@@ -45,24 +62,13 @@ export interface MfaChallenge {
 
 /** Resultado de un paso del login, ya traducido para la pantalla. */
 export type LoginOutcome =
-  | { status: 'ok'; session: StoredSession }
+  | { status: 'ok'; refreshToken: string }
   | { status: 'mfa_required'; challenge: MfaChallenge }
   | { status: 'browser_confirmation_required'; browser: BrowserConfirmationDto }
   | { status: 'onboarding_required' };
 
 export function deviceInfo(): string {
   return `Teikem Chofer · ${Platform.OS}`;
-}
-
-export function toSession(pair: TokenPairDto, previous?: StoredSession): StoredSession {
-  return {
-    accessToken: pair.accessToken,
-    expiresAt: Date.parse(pair.accessExpiresAtUtc),
-    refreshToken: pair.refreshToken,
-    refreshExpiresAt: Date.parse(pair.refreshExpiresAtUtc),
-    tenantId: pair.tenantId,
-    user: previous?.user,
-  };
 }
 
 function handle(result: AuthResultDto): LoginOutcome {
@@ -72,20 +78,20 @@ function handle(result: AuthResultDto): LoginOutcome {
     return { status: 'mfa_required', challenge: { token: result.mfaChallengeToken, enrollmentRequired: result.mfaEnrollmentRequired ?? false, devCode: result.devMfaCode ?? null } };
   }
   if (!result.tokens?.accessToken || !result.tokens.refreshToken) throw new Error('Respuesta de autenticación sin tokens.');
-  return { status: 'ok', session: toSession(result.tokens) };
+  return { status: 'ok', refreshToken: result.tokens.refreshToken };
 }
 
 const bearer = (token: string) => ({ Authorization: `Bearer ${token}` });
 
 /** Paso 1: correo y contraseña. Lanza el error de axios (401 «Credenciales inválidas.», 403 sin acceso…). */
 export async function login(email: string, password: string, language: string): Promise<LoginOutcome> {
-  const { data } = await http.post<AuthResultDto>('/api/v1/auth/login', { email: email.trim(), password, tenantId: null, deviceInfo: deviceInfo() }, { headers: { 'Accept-Language': language } });
+  const { data } = await http.post<AuthResultDto>('/api/v1/driver-app/auth/login', { email: email.trim(), password, tenantId: null, deviceInfo: deviceInfo() }, { headers: { 'Accept-Language': language } });
   return handle(data);
 }
 
 /** Paso 2: código TOTP (o de recuperación) con el challenge del paso 1. */
 export async function verifyMfa(challenge: MfaChallenge, code: string, language: string): Promise<LoginOutcome> {
-  const { data } = await http.post<AuthResultDto>('/api/v1/auth/mfa/verify', { code, deviceInfo: deviceInfo() }, { headers: { ...bearer(challenge.token), 'Accept-Language': language } });
+  const { data } = await http.post<AuthResultDto>('/api/v1/driver-app/auth/mfa/verify', { code, deviceInfo: deviceInfo() }, { headers: { ...bearer(challenge.token), 'Accept-Language': language } });
   return handle(data);
 }
 
@@ -107,15 +113,12 @@ export async function confirmMfa(challenge: MfaChallenge, code: string, language
   return data.recoveryCodes ?? [];
 }
 
-/** Renueva la sesión con el refresh token. Responde con el par nuevo; lanza si el servidor la rechaza (vencida o revocada). */
-export async function refreshTokens(refreshToken: string): Promise<TokenPairDto> {
-  const { data } = await http.post<TokenPairDto>('/api/v1/auth/refresh', { refreshToken });
-  return data;
-}
-
-/** Cambia la compañía activa (usuarios con acceso a varias): devuelve la sesión nueva de esa compañía. */
-export async function switchTenant(refreshToken: string, tenantId: number): Promise<TokenPairDto> {
-  const { data } = await http.post<TokenPairDto>('/api/v1/auth/switch-tenant', { refreshToken, tenantId });
+/**
+ * Abre o renueva la sesión: cambia el refresh token por uno nuevo (el anterior queda revocado; el vencimiento absoluto no se alarga) y trae el token de acceso
+ * de cada compañía. Lanza si el servidor rechaza la sesión (vencida o revocada).
+ */
+export async function fetchDriverSession(refreshToken: string): Promise<DriverSessionDto> {
+  const { data } = await http.post<DriverSessionDto>('/api/v1/driver-app/auth/company-tokens', { refreshToken });
   return data;
 }
 
@@ -132,22 +135,12 @@ interface MeDto {
   userId: number;
   fullName?: string | null;
   email?: string | null;
-  tenantId?: number | null;
-  tenantName?: string | null;
-  memberships?: { tenantId: number; tenantName: string; status?: string }[] | null;
 }
 
-/** Quién es el usuario y a qué compañías pertenece (para el nombre en pantalla y el cambio de compañía). */
+/** Quién es el usuario (para el nombre en pantalla). */
 export async function fetchMe(accessToken: string): Promise<AuthUser> {
   const { data } = await http.get<MeDto>('/api/v1/me', { headers: bearer(accessToken) });
-  return {
-    userId: data.userId,
-    fullName: data.fullName,
-    email: data.email,
-    tenantId: data.tenantId ?? 0,
-    tenantName: data.tenantName,
-    memberships: (data.memberships ?? []).map((m) => ({ tenantId: m.tenantId, tenantName: m.tenantName })),
-  };
+  return { userId: data.userId, fullName: data.fullName, email: data.email };
 }
 
 export interface LegalDocumentDto {

@@ -18,7 +18,7 @@ import { colors } from '@constants/theme';
 export default function ProfileScreen() {
   const { t, i18n } = useTranslation();
   const { data: me } = useMe();
-  const { logout, user, switchTenant, biometricEnabled, setBiometricEnabled } = useAuth();
+  const { logout, user, companies, biometricEnabled, setBiometricEnabled } = useAuth();
   const { sync, isSyncing } = useSync();
   const syncInterval = useAppStore((s) => s.syncIntervalMinutes);
   const setSyncInterval = useAppStore((s) => s.setSyncIntervalMinutes);
@@ -33,16 +33,6 @@ export default function ProfileScreen() {
   const onToggleBiometrics = async (value: boolean) => {
     if (value && !(await authenticate(t('LOGIN.BIOMETRIC_ENABLE_PROMPT'), t('LOGIN.BIOMETRIC_CANCEL')))) return;
     await setBiometricEnabled(value);
-  };
-
-  // Un usuario puede pertenecer a varias compañías: se cambia aquí (lo pendiente se envía primero y se cargan los manifiestos de la otra).
-  const companies = user?.memberships ?? [];
-  const onSwitchCompany = (tenantId: number, name: string) => {
-    if (tenantId === user?.tenantId) return;
-    Alert.alert(t('PROFILE.COMPANY_SWITCH_TITLE'), t('PROFILE.COMPANY_SWITCH_BODY', { name }), [
-      { text: t('PROFILE.LOGOUT_CANCEL'), style: 'cancel' },
-      { text: t('PROFILE.COMPANY_SWITCH_YES'), onPress: () => void switchTenant(tenantId) },
-    ]);
   };
 
   const onSync = async () => {
@@ -106,14 +96,14 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {companies.length > 1 && (
+      {companies.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.label}>{t('PROFILE.COMPANIES')}</Text>
           {companies.map((c) => (
-            <Pressable key={c.tenantId} style={[styles.company, c.tenantId === user?.tenantId && styles.companyActive]} onPress={() => onSwitchCompany(c.tenantId, c.tenantName)}>
-              <Text style={[styles.companyText, c.tenantId === user?.tenantId && styles.companyTextActive]}>{c.tenantName}</Text>
-              {c.tenantId === user?.tenantId && <Text style={styles.companyTextActive}>{t('PROFILE.COMPANY_CURRENT')}</Text>}
-            </Pressable>
+            <View key={c.tenantId} style={styles.company}>
+              <Text style={styles.companyText}>{c.name}</Text>
+              {c.blocked && <Text style={styles.companyTextActive}>{t('PROFILE.COMPANY_BLOCKED')}</Text>}
+            </View>
           ))}
         </View>
       )}
