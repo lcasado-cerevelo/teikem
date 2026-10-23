@@ -654,3 +654,15 @@ DISPATCH_ZONE|TRANSPORT_ORDER`); las corridas de optimización no generan `Audit
 
 Ver [faq.md](faq.md), sección "Lote 5 — Trips y rutas", para cada mensaje de error citado en este capítulo con su
 causa y qué hacer.
+
+## Ubicación de las paradas en el mapa (2026-10-22)
+
+El mapa de Despacho y el de Monitoreo pintan las paradas que tienen **latitud y longitud**. Esa ubicación se busca con Google cuando la parada **entra a una ruta**:
+
+- **Cuándo:** al armar la ruta (Planificar el día, Nueva ruta o Añadir a la ruta). Una vez, **en segundo plano**: el despachador no espera; en unos segundos los pines aparecen solos en el mapa (la ficha de la ruta vuelve a preguntar mientras falten, unos 2 minutos).
+- **Qué se busca:** las paradas de la versión vigente de rutas **no cerradas** de ayer en adelante, sin ubicación. No se geocodifica todo el directorio de consignatarios ni el historial.
+- **No se paga dos veces lo mismo:** cada dirección (por compañía, sin importar acentos ni mayúsculas) se busca **una sola vez**; si dos paradas tienen la misma dirección, o ya se buscó otro día, se usa lo guardado. Si Google no la encontró, tampoco se vuelve a preguntar.
+- **Tope mensual:** `GoogleMaps:MonthlyCap` (por omisión 9.000 al mes; ver el capítulo 36). Al llegar al tope no se consulta más ese mes: las paradas siguen sin pin y se retoman al mes siguiente o cuando se suba el tope. El despachador puede poner el pin a mano. El contador es de la aplicación, por mes del calendario.
+- **Precisión:** un resultado «de techo» (ROOFTOP) es **Exacto**; lo demás sale como **Aproximado** en el mapa. Un pin puesto a mano manda siempre.
+- **Apagado por omisión:** hace falta `GoogleMaps:Enabled = true` y la llave (`GoogleMaps__ApiKey`). Sin ellas las paradas quedan «Sin pin», como antes.
+- **Si Google falla** (llave mala, cuota, red): la parada se reintenta pasados 30 minutos, y tres fallos seguidos detienen el ciclo para no gastar consultas.

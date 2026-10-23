@@ -372,6 +372,10 @@ public static class DependencyInjection
         services.AddScoped<PortalInvoiceService>();   // Lote 119: facturas del cliente en su portal (solo lectura)
         services.AddSingleton<Teikem.Infrastructure.Geocoding.DeliveryGeocodeProcessor>();
         services.AddHostedService<Teikem.Infrastructure.Geocoding.DeliveryGeocodeWorker>();
+        // 2026-10-22: ubicación de las paradas de las rutas (solo al armar la ruta, con tope mensual a nivel de aplicación)
+        services.AddScoped<Teikem.Infrastructure.Geocoding.IAddressGeocoder>(sp => sp.GetRequiredService<Teikem.Infrastructure.Geocoding.GoogleGeocoder>());
+        services.AddSingleton<Teikem.Infrastructure.Geocoding.StopGeocodeProcessor>();
+        services.AddHostedService<Teikem.Infrastructure.Geocoding.StopGeocodeWorker>();
         services.AddSingleton<NotificationProcessor>();
         services.AddHostedService<NotificationWorker>();
         services.AddScoped<NotificationRuleService>();

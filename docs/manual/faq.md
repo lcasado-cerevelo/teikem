@@ -10321,3 +10321,14 @@ Cada lector necesita campos a leer (cuerpo y PDF), un nombre que no se repita, u
 
 **¿Puedo mezclar clientes en un mismo buzón?**
 Sí: cada lector puede tener su propio cliente y su propia plantilla; los que no los traen usan los de la integración.
+
+## Ubicación de las paradas en el mapa (2026-10-22)
+
+**El mapa de Despacho dice «Ninguna parada tiene coordenadas todavía». ¿Qué pasa?**
+Las paradas todavía no tienen latitud y longitud. Se buscan con Google al armar la ruta, en segundo plano, si `GoogleMaps:Enabled` es `true` y hay llave (`GoogleMaps__ApiKey`). Sin ellas, o si se llegó al tope mensual, quedan «Sin pin»: póngalo a mano desde la parada. Detalle en el capítulo 5, «Ubicación de las paradas en el mapa».
+
+**¿Cuánto cuesta? ¿Cómo evito pasarme?**
+Según la consola de Google Cloud, la Geocoding API tiene gratis las primeras 10.000 consultas al mes (después, 5 dólares por cada 1.000). El tope `GoogleMaps:MonthlyCap` (9.000 por omisión) corta la búsqueda antes de pasar de lo gratis. Cada dirección se busca una sola vez.
+
+**Subí el tope y las paradas no se llenan.**
+El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). Las paradas que quedaron sin intento por el tope se retoman solas.

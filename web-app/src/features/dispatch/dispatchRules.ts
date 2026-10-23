@@ -135,6 +135,20 @@ export function stopHasPoint(s: Pick<RouteStop, 'point'>): boolean {
   return isGeoPoint(s.point)
 }
 
+/** Cada cuántos milisegundos se vuelve a pedir la ruta mientras sus paradas esperan la ubicación de Google, y cuántas veces como máximo (unos 2 minutos). */
+export const PIN_POLL_MS = 5000
+export const PIN_POLL_MAX_UPDATES = 24
+
+/**
+ * ¿La ruta tiene paradas sin ubicación que el servidor todavía puede estar buscando? (2026-10-22: la ubicación se busca en segundo plano al armar la ruta; sin esto el mapa no se entera.) Una ruta cerrada
+ * no se espera, y la ficha deja de preguntar después de un rato: si Google no la encontró o se llegó al tope mensual, el despachador pone el pin a mano.
+ */
+export function tripAwaitsPins(detail: { stops?: readonly Pick<RouteStop, 'point'>[] | null; statusCode?: string | null } | null | undefined, updates = 0): boolean {
+  if (!detail || updates >= PIN_POLL_MAX_UPDATES) return false
+  if (['COMPLETED', 'CANCELLED'].includes((detail.statusCode ?? '').toUpperCase())) return false
+  return (detail.stops ?? []).some((s) => !stopHasPoint(s))
+}
+
 /** Paradas (ya en el orden mostrado) como las pide el plano: la secuencia mostrada, el nombre accesible «Parada 3 · Consignatario · pueblo», precisión y estado. */
 export function mapStops(stops: readonly RouteStop[], t: TFn): RouteMapStop[] {
   return stops.map((s, i) => ({

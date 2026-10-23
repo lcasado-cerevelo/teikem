@@ -6377,3 +6377,36 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_Tenant_Subdomain' AND object_id = OBJECT_ID('dbo.Tenant'))
     CREATE UNIQUE INDEX UX_Tenant_Subdomain ON dbo.Tenant (Subdomain) WHERE Subdomain IS NOT NULL;
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-22 — Ubicación (latitud y longitud) de las paradas de una ruta con Google (pedido de Luis): se busca SOLO cuando la parada entra a una ruta, en segundo plano, con un tope mensual de
+   consultas (GoogleMaps:MonthlyCap, a nivel de aplicación) y sin repetir lo ya buscado por dirección.
+   - dbo.OrderStop.GeoStatus / GeoCheckedAtUtc: en qué va la búsqueda de esa parada (RUNNING, OK, NOT_FOUND, FAILED); NULL = todavía no se ha intentado. Columnas técnicas (como GeoPoint, no se mapean en EF).
+   - dbo.AddressGeocode: lo ya buscado por dirección y compañía (SHA-256 de la dirección normalizada): la misma dirección no se vuelve a pagar. Solo guarda OK y NOT_FOUND.
+   - dbo.GeocodeUsage: cuántas consultas a Google se han hecho en el mes (una fila por mes); el tope se aplica con un UPDATE atómico.
+   Solo estructura; no toca datos.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.OrderStop', 'GeoStatus') IS NULL
+    ALTER TABLE dbo.OrderStop ADD GeoStatus VARCHAR(12) NULL;
+GO
+IF COL_LENGTH('dbo.OrderStop', 'GeoCheckedAtUtc') IS NULL
+    ALTER TABLE dbo.OrderStop ADD GeoCheckedAtUtc DATETIME2 NULL;
+GO
+IF OBJECT_ID(N'dbo.AddressGeocode', N'U') IS NULL CREATE TABLE dbo.AddressGeocode (
+        AddressGeocodeId INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_AddressGeocode PRIMARY KEY,
+        TenantId     INT NOT NULL CONSTRAINT FK_AddressGeocode_Tenant REFERENCES dbo.Tenant(TenantId),
+        AddressKey   CHAR(64) NOT NULL,
+        Status       VARCHAR(12) NOT NULL,                     -- OK | NOT_FOUND
+        Latitude     DECIMAL(9,6) NULL,
+        Longitude    DECIMAL(9,6) NULL,
+        Confidence   VARCHAR(10) NULL,                         -- HIGH | MEDIUM | LOW
+        Attempts     INT NOT NULL CONSTRAINT DF_AddressGeocode_Attempts DEFAULT 1,
+        CheckedAtUtc DATETIME2 NOT NULL,
+        CONSTRAINT UQ_AddressGeocode UNIQUE (TenantId, AddressKey)
+    );
+GO
+IF OBJECT_ID(N'dbo.GeocodeUsage', N'U') IS NULL CREATE TABLE dbo.GeocodeUsage (
+        UsageMonth CHAR(7) NOT NULL CONSTRAINT PK_GeocodeUsage PRIMARY KEY,     -- 2026-10
+        Calls      INT NOT NULL CONSTRAINT DF_GeocodeUsage_Calls DEFAULT 0
+    );
+GO

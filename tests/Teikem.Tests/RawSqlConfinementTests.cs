@@ -11,7 +11,7 @@ namespace Teikem.Tests;
 /// </summary>
 public class RawSqlConfinementTests
 {
-    private static readonly string[] Allowed = { "FleetQueries.cs", "NumberSequenceService.cs", "DriverPayPolicyService.cs", "TripQueries.cs", "InventoryQueries.cs" };
+    private static readonly string[] Allowed = { "FleetQueries.cs", "NumberSequenceService.cs", "DriverPayPolicyService.cs", "TripQueries.cs", "InventoryQueries.cs", "StopGeocodeProcessor.cs" };   // 2026-10-22: la ubicación de las paradas trabaja entre compañías por diseño (con GEOGRAPHY y contadores); su caché lleva TenantId y todo va parametrizado
 
     private static readonly Regex RawSqlApi = new(@"\b(FromSql\w*|SqlQuery\w*|ExecuteSql\w*)\s*[<(]", RegexOptions.Compiled);
 

@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Teikem.Domain.Orders;
+using Teikem.Domain.Trips;
 
 namespace Teikem.Infrastructure.Geocoding;
 
@@ -19,9 +20,21 @@ public sealed class GoogleMapsOptions
     /// <summary>Tiempo máximo de la única consulta (dictado de Luis: 30 s).</summary>
     public int TimeoutSeconds { get; set; } = 30;
     public int PollSeconds { get; set; } = 5;
+    /// <summary>
+    /// Tope mensual de consultas de ubicación de paradas de ruta (2026-10-22, a nivel de aplicación). La consola de Google Cloud muestra gratis las primeras 10.000 consultas al mes de la Geocoding API;
+    /// el valor por omisión (9.000) queda por debajo. Cero o menos = no se consulta nada. Se cuenta por mes del calendario (UTC) en la tabla GeocodeUsage.
+    /// </summary>
+    public int MonthlyCap { get; set; } = StopGeocodeRules.DefaultMonthlyCap;
 
     /// <summary>Se puede buscar solo si está encendido y hay llave de verdad (no un marcador).</summary>
     public bool IsUsable => Enabled && !string.IsNullOrWhiteSpace(ApiKey) && !ApiKey.StartsWith('<') && !ApiKey.Contains("use env", StringComparison.OrdinalIgnoreCase);
+}
+
+/// <summary>Quien ubica una dirección (Google; en las pruebas, uno falso).</summary>
+public interface IAddressGeocoder
+{
+    bool IsUsable { get; }
+    Task<GeocodeOutcome> GeocodeAsync(string address, CancellationToken ct);
 }
 
 /// <summary>Resultado de la única consulta a Google: OK con coordenadas y confianza, NOT_FOUND (no la encontró, poca precisión o fuera de Puerto Rico) o FAILED (error, tiempo o cuota).</summary>
@@ -35,7 +48,7 @@ public sealed record GeocodeOutcome(string Status, decimal? Lat, decimal? Lng, s
 /// Geocodificación con la Geocoding API de Google (Lote 118), tomada de RentComparable: <c>GET maps/api/geocode/json?address=…&amp;components=country:PR&amp;key=…</c>. UN SOLO INTENTO con tiempo máximo (30 s): si falla o
 /// se tarda, el resultado es FAILED y nadie reintenta. Nunca registra la dirección completa ni la llave (el mensaje de una excepción HTTP puede traer la URL con la llave: solo se anota el tipo de la excepción).
 /// </summary>
-public sealed class GoogleGeocoder(HttpClient http, IOptions<GoogleMapsOptions> options, ILogger<GoogleGeocoder> logger)
+public sealed class GoogleGeocoder(HttpClient http, IOptions<GoogleMapsOptions> options, ILogger<GoogleGeocoder> logger) : IAddressGeocoder
 {
     private const string Endpoint = "https://maps.googleapis.com/maps/api/geocode/json";
 

@@ -44,6 +44,7 @@ Sección `GoogleMaps` (apagada por omisión):
 |---|---|
 | `GoogleMaps:Enabled` | `true` para buscar ubicaciones. |
 | `GoogleMaps:ApiKey` | La llave. **Nunca en el repositorio**: variable de entorno `GoogleMaps__ApiKey`. Un marcador (texto que empieza con `<`) se trata como «sin llave». |
+| `GoogleMaps:MonthlyCap` | **Tope mensual de consultas de ubicación de las paradas de ruta** (2026-10-22), por encima del cual no se consulta más ese mes. Por omisión 9.000: la consola de Google Cloud muestra gratis las primeras 10.000 consultas al mes de la Geocoding API. `0` = no se consulta nada. Es de la aplicación (todas las compañías suman al mismo tope, como los cobra Google al proyecto), no una pantalla. |
 | `GoogleMaps:MinConfidence` | `LOW` (acepta todo; por omisión), `MEDIUM` o `HIGH`. |
 | `GoogleMaps:TimeoutSeconds` | Tiempo máximo de la única consulta (30). |
 | `GoogleMaps:PollSeconds` | Cada cuántos segundos el trabajo de fondo revisa lo pendiente (5). |

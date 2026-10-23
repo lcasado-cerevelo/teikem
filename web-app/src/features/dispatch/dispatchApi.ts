@@ -7,7 +7,7 @@ import { orderKeys } from '../orders/api'
 import { driverKeys } from '../drivers/api'
 import { fleetKeys } from '../fleet/api'
 import { scanKeys } from '../scan/scanApi'
-import type { OptimizationRun, TripDetail, TripPatchRequest, TripCreateRequest } from './dispatchRules'
+import { PIN_POLL_MS, tripAwaitsPins, type OptimizationRun, type TripDetail, type TripPatchRequest, type TripCreateRequest } from './dispatchRules'
 
 export const dispatchKeys = {
   list: ['/api/v1/trips'] as const,
@@ -56,6 +56,8 @@ export function useTrip(publicId: string | null, enabled: boolean) {
     queryFn: () => unwrap(api.GET('/api/v1/trips/{publicId}', { params: { path: { publicId: publicId ?? '' } } })),
     enabled: enabled && !!publicId,
     meta: { handleAccessDenied: false },
+    // las ubicaciones de las paradas se buscan en segundo plano al armar la ruta: mientras falten, se vuelve a pedir para que el mapa se llene solo
+    refetchInterval: (query) => (tripAwaitsPins(query.state.data, query.state.dataUpdateCount) ? PIN_POLL_MS : false),
   })
 }
 

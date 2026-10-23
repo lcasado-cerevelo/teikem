@@ -20,6 +20,8 @@ import {
   isSelectable,
   maxStopsSource,
   showOverStopLimit,
+  tripAwaitsPins,
+  PIN_POLL_MAX_UPDATES,
   moveStop,
   NO_ACTIONS,
   optimizeDelta,
@@ -327,5 +329,25 @@ describe('textos', () => {
       expect(translate('es', key)).not.toBe(key)
       expect(translate('en', key)).not.toBe(key)
     }
+  })
+})
+
+describe('espera de pines (2026-10-22)', () => {
+  const withPoint = { point: { lat: 18.2, lng: -66.1 } }
+  const noPoint = { point: null }
+  it('espera mientras alguna parada de una ruta abierta no tenga ubicación', () => {
+    expect(tripAwaitsPins({ statusCode: 'DRAFT', stops: [withPoint, noPoint] })).toBe(true)
+    expect(tripAwaitsPins({ statusCode: 'DISPATCHED', stops: [noPoint] })).toBe(true)
+  })
+  it('no espera si todas tienen pin, si no hay paradas o si la ruta está cerrada', () => {
+    expect(tripAwaitsPins({ statusCode: 'DRAFT', stops: [withPoint] })).toBe(false)
+    expect(tripAwaitsPins({ statusCode: 'DRAFT', stops: [] })).toBe(false)
+    expect(tripAwaitsPins({ statusCode: 'COMPLETED', stops: [noPoint] })).toBe(false)
+    expect(tripAwaitsPins({ statusCode: 'CANCELLED', stops: [noPoint] })).toBe(false)
+    expect(tripAwaitsPins(undefined)).toBe(false)
+  })
+  it('deja de preguntar después de un rato (Google no la encontró o se llegó al tope mensual)', () => {
+    expect(tripAwaitsPins({ statusCode: 'DRAFT', stops: [noPoint] }, PIN_POLL_MAX_UPDATES - 1)).toBe(true)
+    expect(tripAwaitsPins({ statusCode: 'DRAFT', stops: [noPoint] }, PIN_POLL_MAX_UPDATES)).toBe(false)
   })
 })
