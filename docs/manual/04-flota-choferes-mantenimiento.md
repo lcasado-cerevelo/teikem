@@ -938,3 +938,15 @@ capítulo con su causa y qué hacer.
 **Una sesión, todas sus compañías.** `POST company-tokens` con el refresh token devuelve un token de acceso por cada compañía donde la persona es chofer y un refresh token **nuevo** (el anterior queda revocado; reusarlo cierra toda la sesión por posible robo). No se cierra la sesión al pasar de una compañía a otra (el cambio de compañía de la web sí cierra la anterior). **El MFA de cada compañía se cumple siempre**: una compañía que exige MFA (a toda la compañía o a esa persona) solo recibe token si la sesión pasó el código; si no, responde `blocked: mfa_required` y la persona entra de nuevo con contraseña y código.
 
 **Duración de la sesión del chofer.** Cada compañía puede fijar la suya en **Sistema → Seguridad y auditoría → Política** («Sesión del chofer en la app», en horas; **vacío** = vale la sesión general). Vale la más larga entre la del chofer y la general; si el chofer trabaja en varias compañías manda la **más permisiva** de ellas. El tope de la aplicación (`DriverApp:MaxSessionMinutes` en appsettings, 43200 = 30 días) limita el valor del chofer, no la sesión general. Es una duración **absoluta**: renovar no la alarga; al vencer se pide contraseña y código otra vez. Error 400 «La duración debe estar entre 1 minuto y 365 días (8760 horas).».
+
+### Entregar y no entregar desde la app (Lote 206, 2026-10-23)
+Permiso `driverapp.use`, módulo LTL_GROUND. Solo para envíos de manifiestos **ya aceptados** del propio chofer.
+
+| Endpoint | Qué hace |
+|---|---|
+| `GET /api/v1/driver-app/shipments/{id}` | El envío con consignatario, teléfono de contacto (el principal de la orden), dirección, piezas, COD y notas. `canClose` dice si todavía se puede cerrar. |
+| `POST /api/v1/driver-app/shipments/{id}/deliver` | Cuerpo `{recipientName, notes, deliveredAtUtc, latitude, longitude, signaturePngBase64, photosBase64[≤3]}`. Registra el comprobante (origen DRIVER_APP, firma de quien recibió, ubicación del teléfono), la orden pasa a **Entregado** y se anota el intento entregado a nombre del chofer. |
+| `POST /api/v1/driver-app/shipments/{id}/fail` | Cuerpo `{reasonCode, notes, attemptedAtUtc, photoBase64}`. La orden pasa a **Fallida** y queda el intento fallido con el motivo (lista «Razón de fallo»). |
+| `GET /api/v1/driver-app/failure-reasons` | Los motivos de «No entregado». |
+
+Ambas acciones son **idempotentes**: un reintento de la cola sin señal responde `alreadyDone: true` y solo completa la firma o fotos que falten. Mensajes y códigos HTTP en el FAQ (Lote 206).

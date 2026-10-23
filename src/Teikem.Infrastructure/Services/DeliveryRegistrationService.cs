@@ -18,13 +18,16 @@ namespace Teikem.Infrastructure.Services;
 /// que lo registra (nunca del consignatario: el comprobante lo dice). La ubicación se busca aparte y sin hacer esperar (Google, un solo intento, 30 s): aquí solo se deja en cola; si no se logra, queda sin ubicación.
 /// No hay fotos todavía (falta decidir dónde se guardan los archivos). Una entrega por orden: registrarla otra vez es 409.
 /// </summary>
+/// <summary>Cómo se registra la entrega cuando NO es el personal desde la web (la app del chofer): origen, quién firmó, texto de la bitácora y la ubicación del teléfono.</summary>
+public sealed record DeliveryRegisterOptions(string Source, string SignatureKind, string Comment, double? Latitude = null, double? Longitude = null);
+
 public sealed class DeliveryRegistrationService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, IOptions<GoogleMapsOptions>? maps = null, ITenantClock? clock = null,
     StoredFileService? files = null)
 {
     private readonly ITenantClock _clock = clock ?? TenantClock.Default;
     private TenantContext Ctx => (TenantContext)tenant;
 
-    public async Task<DeliveryProofDto> RegisterAsync(Guid orderPublicId, DeliveryRegisterRequest? req, CancellationToken ct)
+    public async Task<DeliveryProofDto> RegisterAsync(Guid orderPublicId, DeliveryRegisterRequest? req, CancellationToken ct, DeliveryRegisterOptions? options = null)
     {
         var recipient = req?.RecipientName?.Trim();
         if (string.IsNullOrEmpty(recipient)) throw new ValidationException("recipientName", DeliveryProofRules.RecipientRequired);
@@ -58,7 +61,7 @@ public sealed class DeliveryRegistrationService(TeikemDbContext db, ITenantConte
             var steps = PipelinePath.StepsTo(stages, fromCode, OrderStatuses.Delivered);
             if (steps.Count == 0 || steps[^1] != OrderStatuses.Delivered) throw new StatusRuleException("El estatus «Entregado» no está habilitado para esta compañía.");
 
-            var to = await statuses.AdvanceSkippingAsync(StatusDomains.OrderStatus, EntityTypes.TransportOrder, orderId, order.StatusCodeId, steps, string.Format(DeliveryProofRules.CommentFormat, userName), ct2);
+            var to = await statuses.AdvanceSkippingAsync(StatusDomains.OrderStatus, EntityTypes.TransportOrder, orderId, order.StatusCodeId, steps, options?.Comment ?? string.Format(DeliveryProofRules.CommentFormat, userName), ct2);
             order.StatusCodeId = to.StatusCodeId;
             if (steps.Contains(OrderStatuses.Pickup) && order.ConfirmedAtUtc is null) order.ConfirmedAtUtc = now;
             await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
@@ -66,9 +69,11 @@ public sealed class DeliveryRegistrationService(TeikemDbContext db, ITenantConte
             var proof = new DeliveryProof
             {
                 PublicId = Guid.NewGuid(), TenantId = Ctx.RequireTenantId(), TransportOrderId = orderId, DeliveredAtUtc = at, RecipientName = recipient, Notes = notes,
-                Source = DeliveryProofCodes.SourceStaffWeb, RecordedBy = userId, SignedByUserId = userId, SignatureKind = DeliveryProofCodes.SignatureUser,
+                Source = options?.Source ?? DeliveryProofCodes.SourceStaffWeb, RecordedBy = userId, SignedByUserId = userId, SignatureKind = options?.SignatureKind ?? DeliveryProofCodes.SignatureUser,
             };
-            await PlaceAsync(proof, orderId, ct2);
+            if (options?.Latitude is double lat && options.Longitude is double lng && DeliveryProofRules.InPuertoRico(lat, lng))
+                (proof.GeoStatus, proof.GeoAccuracy, proof.Latitude, proof.Longitude, proof.GeoCheckedAtUtc) = (DeliveryProofCodes.GeoOk, "DEVICE", DeliveryProofRules.Round6(lat), DeliveryProofRules.Round6(lng), now);   // el GPS del teléfono manda sobre la dirección
+            else await PlaceAsync(proof, orderId, ct2);
             db.Set<DeliveryProof>().Add(proof);
             await db.SaveChangesAsync(ct2);
             proofId = proof.DeliveryProofId;

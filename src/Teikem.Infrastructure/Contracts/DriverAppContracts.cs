@@ -24,3 +24,22 @@ public sealed record DriverAcceptRequest(IReadOnlyList<DriverDeclineItem>? Decli
 
 /// <summary>`Started`: la ruta salió (quedó En curso y los envíos aceptados En tránsito). Si no aceptó ninguno, no sale (`Started` = false).</summary>
 public sealed record DriverAcceptResultDto(Guid ManifestPublicId, int Accepted, int Declined, bool Started);
+
+/// <summary>Un motivo de «No entregado» (lista «Razón de fallo»).</summary>
+public sealed record DriverFailureReasonDto(string Code, string Label);
+
+/// <summary>El envío con lo que el chofer necesita en la puerta: contacto, piezas y notas. `Delivered`/`Failed` dicen si ya se cerró desde la app.</summary>
+public sealed record DriverShipmentDetailDto(Guid PublicId, Guid ManifestPublicId, string OrderNumber, string WaybillNumber, string StatusCode, string Status, string? ConsigneeName,
+    string? ContactPerson, string? Phone, string Address, string? City, string? PostalCode, int? Pieces, decimal? CodAmount, string? Notes, string? ClientName, bool CanClose);
+
+/// <summary>
+/// Entregar un envío. `RecipientName` quien recibió (obligatorio); `SignaturePngBase64` la firma de quien recibió y `PhotosBase64` fotos (JPG, hasta 3) son opcionales; `DeliveredAtUtc` cuándo (la app lo manda porque pudo entregar sin señal);
+/// `Latitude`/`Longitude` del teléfono al entregar.
+/// </summary>
+public sealed record DriverDeliverRequest(string? RecipientName, string? Notes, DateTime? DeliveredAtUtc, double? Latitude, double? Longitude, string? SignaturePngBase64, IReadOnlyList<string>? PhotosBase64);
+
+/// <summary>No entregar un envío: `ReasonCode` de la lista «Razón de fallo» (obligatorio), nota y foto opcionales.</summary>
+public sealed record DriverFailRequest(string? ReasonCode, string? Notes, DateTime? AttemptedAtUtc, string? PhotoBase64);
+
+/// <summary>`AlreadyDone`: el envío ya estaba cerrado por la app (un reintento de la cola sin señal): no se repite ni se duplica nada.</summary>
+public sealed record DriverShipmentResultDto(Guid ShipmentPublicId, string StatusCode, string Status, bool AlreadyDone);

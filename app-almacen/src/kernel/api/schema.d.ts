@@ -11224,6 +11224,172 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/driver-app/failure-reasons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverFailureReasonDto"][];
+                        "application/json": components["schemas"]["DriverFailureReasonDto"][];
+                        "text/json": components["schemas"]["DriverFailureReasonDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver-app/shipments/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverShipmentDetailDto"];
+                        "application/json": components["schemas"]["DriverShipmentDetailDto"];
+                        "text/json": components["schemas"]["DriverShipmentDetailDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver-app/shipments/{publicId}/deliver": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DriverDeliverRequest"];
+                    "text/json": components["schemas"]["DriverDeliverRequest"];
+                    "application/*+json": components["schemas"]["DriverDeliverRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverShipmentResultDto"];
+                        "application/json": components["schemas"]["DriverShipmentResultDto"];
+                        "text/json": components["schemas"]["DriverShipmentResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver-app/shipments/{publicId}/fail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DriverFailRequest"];
+                    "text/json": components["schemas"]["DriverFailRequest"];
+                    "application/*+json": components["schemas"]["DriverFailRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverShipmentResultDto"];
+                        "application/json": components["schemas"]["DriverShipmentResultDto"];
+                        "text/json": components["schemas"]["DriverShipmentResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/driver-app/auth/login": {
         parameters: {
             query?: never;
@@ -39204,6 +39370,18 @@ export interface components {
             code?: string | null;
             label?: string | null;
         };
+        DriverDeliverRequest: {
+            recipientName?: string | null;
+            notes?: string | null;
+            /** Format: date-time */
+            deliveredAtUtc?: string | null;
+            /** Format: double */
+            latitude?: number | null;
+            /** Format: double */
+            longitude?: number | null;
+            signaturePngBase64?: string | null;
+            photosBase64?: string[] | null;
+        };
         DriverDeliveryRateCreateRequest: {
             serviceType?: string | null;
             packageType?: string | null;
@@ -39271,6 +39449,17 @@ export interface components {
             /** Format: date-time */
             lastSeenUtc?: string | null;
             isActive?: boolean;
+        };
+        DriverFailRequest: {
+            reasonCode?: string | null;
+            notes?: string | null;
+            /** Format: date-time */
+            attemptedAtUtc?: string | null;
+            photoBase64?: string | null;
+        };
+        DriverFailureReasonDto: {
+            code?: string | null;
+            label?: string | null;
         };
         DriverLicenseDto: {
             /** Format: int32 */
@@ -39559,6 +39748,29 @@ export interface components {
             periodEnd?: string | null;
             note?: string | null;
         };
+        DriverShipmentDetailDto: {
+            /** Format: uuid */
+            publicId?: string;
+            /** Format: uuid */
+            manifestPublicId?: string;
+            orderNumber?: string | null;
+            waybillNumber?: string | null;
+            statusCode?: string | null;
+            status?: string | null;
+            consigneeName?: string | null;
+            contactPerson?: string | null;
+            phone?: string | null;
+            address?: string | null;
+            city?: string | null;
+            postalCode?: string | null;
+            /** Format: int32 */
+            pieces?: number | null;
+            /** Format: double */
+            codAmount?: number | null;
+            notes?: string | null;
+            clientName?: string | null;
+            canClose?: boolean;
+        };
         DriverShipmentDto: {
             /** Format: uuid */
             publicId?: string;
@@ -39577,6 +39789,13 @@ export interface components {
             /** Format: double */
             codAmount?: number | null;
             notes?: string | null;
+        };
+        DriverShipmentResultDto: {
+            /** Format: uuid */
+            shipmentPublicId?: string;
+            statusCode?: string | null;
+            status?: string | null;
+            alreadyDone?: boolean;
         };
         DriverTripCancelRequest: {
             comment?: string | null;

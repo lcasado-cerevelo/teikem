@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Fleet;
+using Teikem.Domain.Orders;
 using Teikem.Domain.Trips;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
@@ -19,7 +20,8 @@ namespace Teikem.Tests;
 public partial class TripStatusEffectTests
 {
     private static DriverAppService AppOf(Fixture f)
-        => new(f.Db, f.Services.GetRequiredService<ITenantContext>(), f.Statuses, f.Lifecycle, f.Services.GetRequiredService<RouteWriter>(), f.Lookups);
+        => new(f.Db, f.Services.GetRequiredService<ITenantContext>(), f.Statuses, f.Lifecycle, f.Services.GetRequiredService<RouteWriter>(), f.Lookups,
+            new DeliveryRegistrationService(f.Db, f.Services.GetRequiredService<ITenantContext>(), f.Statuses));
 
     private static async Task<(DriverAppService App, Teikem.Domain.Trips.Trip Trip, List<int> Orders)> DispatchedAsync(Fixture f, int orders, bool linkDriver = true)
     {
@@ -148,5 +150,74 @@ public partial class TripStatusEffectTests
         Assert.Equal(new[] { 1, 2 }, detail.Shipments.Select(s => s.Sequence));
         Assert.Equal("Calle 1", detail.Shipments[0].Address);
         Assert.Equal(Fixture.OrderNumber(orders[0]), detail.Shipments[0].OrderNumber);
+    }
+
+    // ------------------------------------------------------------ entregar / no entregar desde la app
+
+    private static async Task<Guid> PublicOfAsync(Fixture f, int orderId) => (await f.Db.TransportOrders.AsNoTracking().SingleAsync(o => o.TransportOrderId == orderId)).PublicId;
+
+    [Fact]
+    public async Task Delivering_before_accepting_the_manifest_is_refused_with_the_accept_first_message()
+    {
+        await using var f = await Fixture.CreateAsync();
+        var (app, _, orders) = await DispatchedAsync(f, 1);
+
+        var ex = await Assert.ThrowsAsync<StatusRuleException>(() => app.DeliverAsync(await PublicOfAsync(f, orders[0]), new DriverDeliverRequest("Ana", null, null, null, null, null, null), default));
+
+        Assert.Equal(DriverAppRules.NotAcceptedMessage, ex.Message);
+    }
+
+    [Fact]
+    public async Task Delivering_after_accepting_registers_the_proof_as_driver_app_and_moves_the_order_to_delivered_and_a_retry_changes_nothing()
+    {
+        await using var f = await Fixture.CreateAsync();
+        var (app, trip, orders) = await DispatchedAsync(f, 2);
+        await app.AcceptAsync(trip.PublicId, null, default);
+        var pub = await PublicOfAsync(f, orders[0]);
+
+        var r = await app.DeliverAsync(pub, new DriverDeliverRequest(" Ana Pérez ", "en la puerta", null, 18.4, -66.1, null, null), default);
+
+        Assert.False(r.AlreadyDone);
+        Assert.Equal(OrderStatuses.Delivered, r.StatusCode);
+        var proof = await f.Db.Set<DeliveryProof>().SingleAsync();
+        Assert.Equal(("Ana Pérez", DeliveryProofCodes.SourceDriverApp, DeliveryProofCodes.SignatureRecipient, DeliveryProofCodes.GeoOk), (proof.RecipientName, proof.Source, proof.SignatureKind, proof.GeoStatus));
+        Assert.Equal(18.4m, proof.Latitude);
+
+        var again = await app.DeliverAsync(pub, new DriverDeliverRequest("Ana Pérez", null, null, null, null, null, null), default);
+        Assert.True(again.AlreadyDone);
+        Assert.Equal(1, await f.Db.Set<DeliveryProof>().CountAsync());
+    }
+
+    [Fact]
+    public async Task Delivering_needs_the_recipient_and_a_valid_signature_and_a_shipment_of_another_driver_is_not_found()
+    {
+        await using var f = await Fixture.CreateAsync();
+        var (app, trip, orders) = await DispatchedAsync(f, 1);
+        await app.AcceptAsync(trip.PublicId, null, default);
+        var pub = await PublicOfAsync(f, orders[0]);
+
+        Assert.Equal(DeliveryProofRules.RecipientRequired, (await Assert.ThrowsAsync<ValidationException>(() => app.DeliverAsync(pub, new DriverDeliverRequest(" ", null, null, null, null, null, null), default))).Message);
+        Assert.Equal(DriverAppRules.SignatureInvalidMessage, (await Assert.ThrowsAsync<ValidationException>(() => app.DeliverAsync(pub, new DriverDeliverRequest("Ana", null, null, null, null, "no-es-base64!!", null), default))).Message);
+        Assert.Equal(DriverAppRules.TooManyPhotosMessage, (await Assert.ThrowsAsync<ValidationException>(() => app.DeliverAsync(pub, new DriverDeliverRequest("Ana", null, null, null, null, null, new[] { "AA==", "AA==", "AA==", "AA==" }), default))).Message);
+        await Assert.ThrowsAsync<NotFoundException>(() => app.DeliverAsync(Guid.NewGuid(), new DriverDeliverRequest("Ana", null, null, null, null, null, null), default));
+        Assert.Empty(await f.Db.Set<DeliveryProof>().ToListAsync());
+    }
+
+    [Fact]
+    public async Task Failing_a_shipment_needs_a_valid_reason_and_moves_it_to_failed_and_a_retry_changes_nothing()
+    {
+        await using var f = await Fixture.CreateAsync();
+        var (app, trip, orders) = await DispatchedAsync(f, 1);
+        await app.AcceptAsync(trip.PublicId, null, default);
+        var pub = await PublicOfAsync(f, orders[0]);
+
+        Assert.Equal(DriverAppRules.FailureReasonRequiredMessage, (await Assert.ThrowsAsync<ValidationException>(() => app.FailAsync(pub, new DriverFailRequest(" ", null, null, null), default))).Message);
+        Assert.Equal(DriverAppRules.FailureReasonInvalidMessage, (await Assert.ThrowsAsync<ValidationException>(() => app.FailAsync(pub, new DriverFailRequest("NOPE", null, null, null), default))).Message);
+
+        var r = await app.FailAsync(pub, new DriverFailRequest("absent", "nadie abrió", null, null), default);
+
+        Assert.Equal(OrderStatuses.Failed, r.StatusCode);
+        Assert.Contains("No entregado desde la app", string.Join('|', await f.CommentsAsync(EntityTypes.TransportOrder, orders[0])));
+        Assert.Empty(await f.Db.Set<DeliveryProof>().ToListAsync());
     }
 }

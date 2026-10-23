@@ -10355,7 +10355,7 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 
 **¿Cuánto dura la sesión en la app?** Lo que fije su compañía (días o minutos). Al vencer, la app pide contraseña (y código) aunque tenga la huella activa.
 
-**Mi usuario está en varias compañías, ¿cómo cambio?** Perfil → Compañía. Se envía lo pendiente y se cargan los manifiestos de esa compañía.
+**Mi usuario está en varias compañías, ¿cómo cambio?** No hace falta cambiar: la app muestra juntas las rutas y envíos de todas sus compañías, cada uno con el nombre de su compañía. Perfil → Compañías las lista.
 
 **La app me pidió aceptar la política de privacidad.** Es el primer ingreso o el documento cambió. Hay que leerlo hasta el final; si no lo acepta, no puede usar la app.
 
@@ -10368,3 +10368,19 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **Un chofer trabaja en dos compañías y una exige MFA.** Con una sola sesión de la app, la compañía que exige MFA solo da acceso si la sesión pasó el código; si no, aparece bloqueada («mfa_required») y hay que entrar de nuevo con contraseña y código.
 
 **¿Cuánto dura la sesión de un chofer en varias compañías?** La más larga de las compañías donde es chofer (cada una con su valor del chofer o, sin él, su sesión general), con el tope de la aplicación.
+
+## Lote 206 — Entregar y no entregar desde la app del chofer
+
+**Mensaje «Acepte primero el manifiesto: todavía no ha salido.» (422).** Se intentó entregar o marcar «no entregado» un envío cuyo manifiesto no se ha aceptado. Acepte el manifiesto primero.
+
+**Mensaje «El envío no está en ninguno de sus manifiestos.» / «Envío no encontrado.» (404).** El envío no es de una ruta de este chofer.
+
+**Mensaje «Indique quién recibió la entrega.» (400).** Falta el nombre de quien recibió (máximo 150 caracteres).
+
+**Mensaje «La firma no es una imagen válida.» / «Una foto no es una imagen válida.» (400).** La imagen llegó dañada; vuelva a tomarla. Máximo 3 fotos por entrega («Máximo 3 fotos por entrega.»).
+
+**Mensaje «Indique el motivo por el que no se entregó.» / «El motivo no es válido.» (400).** Escoja un motivo de la lista «Razón de fallo».
+
+**Mensaje «El envío … ya tiene registrada su entrega.» (409).** La oficina ya registró la entrega desde la web; no se repite.
+
+**Entregué sin señal, ¿se duplica?** No: la app manda el envío cuando vuelve la señal y, si el servidor ya lo tenía, responde «ya estaba hecho» sin repetir nada.

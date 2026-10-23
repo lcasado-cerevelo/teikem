@@ -42,4 +42,17 @@ public static class DriverAppRules
     public static string NotReadyMessage(string code) => $"El manifiesto {code} no está listo para aceptar: debe estar despachado.";
     public static string DeclinedComment(string reason) => $"No aceptado por el chofer: {reason}";
     public const string AcceptedComment = "Aceptada por el chofer";
+
+    // ---- entregar / no entregar desde la app ----
+    public const int MaxPhotos = 3;
+    public const string NotAcceptedMessage = "Acepte primero el manifiesto: todavía no ha salido.";
+    public const string ShipmentNotYoursMessage = "El envío no está en ninguno de sus manifiestos.";
+    public const string FailureReasonRequiredMessage = "Indique el motivo por el que no se entregó.";
+    public const string FailureReasonInvalidMessage = "El motivo no es válido.";
+    public const string FailureNoteTooLongMessage = "La nota no puede pasar de 400 caracteres.";
+    public const string SignatureInvalidMessage = "La firma no es una imagen válida.";
+    public const string PhotoInvalidMessage = "Una foto no es una imagen válida.";
+    public static string TooManyPhotosMessage => $"Máximo {MaxPhotos} fotos por entrega.";
+    public static string DeliveredComment(string driver) => $"Entregado desde la app por {driver}.";
+    public static string FailedComment(string reason) => $"No entregado desde la app: {reason}";
 }

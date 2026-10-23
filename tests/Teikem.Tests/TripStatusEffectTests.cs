@@ -533,6 +533,7 @@ public partial class TripStatusEffectTests
                 L(LookupDomains.StopType, StopTypes.Delivery),
                 L(TripOrderDeclineCodes.ReasonDomain, "NO_SPACE"),
                 L(TripOrderDeclineCodes.ReasonDomain, "OTHER"),
+                L(DeliveryAttemptCodes.FailureReasonDomain, "ABSENT"),
             };
             Db.LookupCodes.AddRange(all);
             Lookups.Load(all);

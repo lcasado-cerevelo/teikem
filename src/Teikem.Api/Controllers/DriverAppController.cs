@@ -38,4 +38,23 @@ public sealed class DriverAppController(DriverAppService app) : ControllerBase
     [HttpPost("manifests/{publicId:guid}/accept")]
     public Task<DriverAcceptResultDto> Accept(Guid publicId, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] DriverAcceptRequest? req, CancellationToken ct)
         => app.AcceptAsync(publicId, req, ct);
+
+    /// <summary>Los motivos de «No entregado» (lista «Razón de fallo»).</summary>
+    [HttpGet("failure-reasons")]
+    public Task<IReadOnlyList<DriverFailureReasonDto>> FailureReasons(CancellationToken ct) => app.ListFailureReasonsAsync(ct);
+
+    /// <summary>Un envío del chofer con contacto, piezas y notas. 404 si no es suyo.</summary>
+    [HttpGet("shipments/{publicId:guid}")]
+    public Task<DriverShipmentDetailDto> Shipment(Guid publicId, CancellationToken ct) => app.GetShipmentAsync(publicId, ct);
+
+    /// <summary>
+    /// Entrega el envío: comprobante (quién recibió, firma y fotos en base64, ubicación) y la orden pasa a Entregada. Idempotente (`alreadyDone`). 400 nombre/firma/fotos; 404 envío ajeno; 409 ya entregado por otra vía;
+    /// 422 manifiesto sin aceptar o envío en estatus final.
+    /// </summary>
+    [HttpPost("shipments/{publicId:guid}/deliver")]
+    public Task<DriverShipmentResultDto> Deliver(Guid publicId, [FromBody] DriverDeliverRequest? req, CancellationToken ct) => app.DeliverAsync(publicId, req, ct);
+
+    /// <summary>No entrega el envío con un motivo de «Razón de fallo» (pasa a Fallida y queda el intento). Idempotente. 400 motivo/nota/foto; 404 envío ajeno; 422 manifiesto sin aceptar o estatus que no lo permite.</summary>
+    [HttpPost("shipments/{publicId:guid}/fail")]
+    public Task<DriverShipmentResultDto> Fail(Guid publicId, [FromBody] DriverFailRequest? req, CancellationToken ct) => app.FailAsync(publicId, req, ct);
 }
