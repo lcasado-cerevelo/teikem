@@ -53,7 +53,8 @@ public static class EmailTransforms
 public sealed record EmailTextMatch(string Operator, string Value);
 
 /// <summary>Cuál columna del renglón de un bloque va a cuál posición de columna de la plantilla.</summary>
-public sealed record EmailBlockColumn(int Position, int Index);
+/// <summary>Divide (2026-10-23, solo con expresión por línea): la columna vale el grupo <c>Index</c> ÷ el grupo <c>Divide</c> (p. ej. importe ÷ precio unitario = cantidad, cuando la cantidad escrita a mano no se lee).</summary>
+public sealed record EmailBlockColumn(int Position, int Index, int? Divide = null);
 
 /// <summary>
 /// Un campo a leer del cuerpo del correo. Position = la columna de la plantilla de importación (1…n) a la que va el valor: el cuerpo se convierte en una fila de archivo (o varias, con un bloque) y
@@ -192,7 +193,7 @@ public static class EmailRules
         }
     }
 
-    private static bool IsValidRegex(string pattern)
+    internal static bool IsValidRegex(string pattern)
     {
         try { _ = new Regex(pattern, RegexOptions.None, TimeSpan.FromMilliseconds(250)); return true; }
         catch (ArgumentException) { return false; }
@@ -339,9 +340,16 @@ public static class EmailRules
     /// <summary>
     /// Lo leído de un documento con VARIOS registros (2026-10-23): cada registro es un BodyReading; Missing junta lo que faltó en cada uno («Registro 3: …»).
     /// </summary>
-    public sealed record DocumentReading(IReadOnlyList<BodyReading> Parts, IReadOnlyList<string> Missing)
+    public sealed record DocumentReading(IReadOnlyList<BodyReading> Parts, IReadOnlyList<string> Missing, IReadOnlyList<string>? Texts = null)
     {
         public bool HasData => Parts.Any(p => p.HasData);
+
+        /// <summary>Las filas leídas de cada registro (valores sueltos repetidos + los de su línea), por posición de columna: lo que cada chequeo de completitud compara con el texto del registro.</summary>
+        public IReadOnlyList<IReadOnlyDictionary<int, string>> RowsOf(int part)
+        {
+            var p = Parts[part];
+            return p.Lines.Count > 0 ? p.Lines.Select(l => (IReadOnlyDictionary<int, string>)Merge(p.Single, l)).ToList() : new List<IReadOnlyDictionary<int, string>> { new Dictionary<int, string>(p.Single) };
+        }
     }
 
     public static string RecordMissingMessage(int record, string detail) => $"Registro {record}: {detail}";
@@ -356,7 +364,7 @@ public static class EmailRules
         if (string.IsNullOrWhiteSpace(recordStart))
         {
             var one = ReadBody(text, fields);
-            return new DocumentReading(new[] { one }, one.Missing);
+            return new DocumentReading(new[] { one }, one.Missing, new[] { text ?? string.Empty });
         }
         var lines = (text ?? string.Empty).Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
         var marker = PostalLocalityRules.Normalize(recordStart);
@@ -368,17 +376,20 @@ public static class EmailRules
         var recordFields = fields.Where(f => !f.FromHeader).ToList();
         var headerReading = ReadBody(header.Trim().Length > 0 ? header : text, headerFields);
         var parts = new List<BodyReading>();
+        var texts = new List<string>();
         var missing = new List<string>(headerReading.Missing);
         for (var n = 0; n < starts.Count; n++)
         {
             var end = n + 1 < starts.Count ? starts[n + 1] : lines.Length;
-            var record = ReadBody(string.Join("\n", lines.Skip(starts[n]).Take(end - starts[n])), recordFields);
+            var recordText = string.Join("\n", lines.Skip(starts[n]).Take(end - starts[n]));
+            texts.Add(recordText);
+            var record = ReadBody(recordText, recordFields);
             missing.AddRange(record.Missing.Select(m => RecordMissingMessage(n + 1, m)));
             var single = new Dictionary<int, string>(headerReading.Single);
             foreach (var (k, v) in record.Single) single[k] = v;
             parts.Add(new BodyReading(single, record.Lines, Array.Empty<string>()));
         }
-        return new DocumentReading(parts, missing);
+        return new DocumentReading(parts, missing, texts);
     }
 
     /// <summary>Todos los registros como un solo archivo CSV (una fila por línea de cada registro).</summary>
@@ -480,7 +491,18 @@ public static class EmailRules
                 try { m = lineRx.Match(line); } catch (RegexMatchTimeoutException) { continue; }
                 if (!m.Success) continue;
                 foreach (var c in f.Columns ?? Array.Empty<EmailBlockColumn>())
-                    if (c.Index >= 1 && c.Index < m.Groups.Count && m.Groups[c.Index].Success && m.Groups[c.Index].Value.Trim().Length > 0) row[c.Position] = Transform(m.Groups[c.Index].Value.Trim(), f.Transform);
+                {
+                    if (c.Index < 1 || c.Index >= m.Groups.Count || !m.Groups[c.Index].Success || m.Groups[c.Index].Value.Trim().Length == 0) continue;
+                    if (c.Divide is int dv)
+                    {
+                        if (dv < 1 || dv >= m.Groups.Count || !m.Groups[dv].Success) continue;
+                        var top = ReadCheckRules.ParseNumber(m.Groups[c.Index].Value);
+                        var bottom = ReadCheckRules.ParseNumber(m.Groups[dv].Value);
+                        if (top is decimal a && bottom is decimal b && b != 0) row[c.Position] = Math.Round(a / b, 4).ToString("0.####", System.Globalization.CultureInfo.InvariantCulture);
+                        continue;
+                    }
+                    row[c.Position] = Transform(m.Groups[c.Index].Value.Trim(), f.Transform);
+                }
             }
             else
             {

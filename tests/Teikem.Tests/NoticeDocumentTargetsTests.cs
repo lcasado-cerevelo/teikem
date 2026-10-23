@@ -25,7 +25,7 @@ public class NoticeDocumentTargetsTests
 
     private const string Drive = "Invoice\nInformation\nCustomer Number\t100361\nBILLING ADDRESS\nInvoice Number\t35549809\nInvoice Date\t09/23/2026\nDelivery Number\t57513128\nInvoice Details\nItem\tMaterial\tQuantity\tUnit Price\tAmount\nDescription\n"
         + "0010\t14003\t=\t310EA\t13.05\t4,045.50\nAPP Pad Only, 1/ea, RTL\tper EA\n0040\t14027\t=\t48CV\t302.50\t14,520.00\n0050\tRTLPC23278\t29.14\t961.62\nArm Sling, RTL,1EA,6/CS\tper CV\n"
-        + "0060\t12202KD-4\t=~\t300 CV\t98.22\t29,466.00\n";
+        + "0060\t12202KD-4\t=~\t300 CV\t98.22\t29,466.00\nTotal Amount USD\t48,993.12\n";
 
     internal static IReadOnlyList<DocumentReader> Readers()
     {
@@ -41,12 +41,14 @@ public class NoticeDocumentTargetsTests
             var fields = r.GetProperty("fields").EnumerateArray().Select(f =>
             {
                 string S(string n) => f.GetProperty(n).GetString() ?? string.Empty;
-                var columns = S("columns").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(x => x.Split('=')).Select(p => new EmailBlockColumn(int.Parse(p[0]), int.Parse(p[1]))).ToList();
+                var columns = S("columns").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(x => x.Split('=')).Select(p => p[1].Contains('/') ? new EmailBlockColumn(int.Parse(p[0]), int.Parse(p[1].Split('/')[0]), int.Parse(p[1].Split('/')[1])) : new EmailBlockColumn(int.Parse(p[0]), int.Parse(p[1]))).ToList();
                 return new EmailBodyField(int.Parse(S("position")), S("kind"), S("label").Length == 0 ? null : S("label"), S("pattern").Length == 0 ? null : S("pattern"), f.GetProperty("required").GetBoolean(), S("transform"),
                     S("start").Length == 0 ? null : S("start"), null, S("separator").Length == 0 ? null : S("separator"), columns.Count == 0 ? null : columns,
                     S("lineRegex").Length == 0 ? null : S("lineRegex"), f.GetProperty("repeat").GetBoolean(), f.GetProperty("fromHeader").GetBoolean(), S("appendWith").Length == 0 ? null : S("appendWith"));
             }).ToList();
-            list.Add(new DocumentReader(r.GetProperty("name").GetString()!, r.GetProperty("source").GetString()!, r.GetProperty("target").GetString()!, when, fields, null, null, false, r.GetProperty("recordStart").GetString() is { Length: > 0 } rs ? rs : null, r.GetProperty("mode").GetString()!, r.GetProperty("toStatus").GetString()));
+            list.Add(new DocumentReader(r.GetProperty("name").GetString()!, r.GetProperty("source").GetString()!, r.GetProperty("target").GetString()!, when, fields, null, null, false, r.GetProperty("recordStart").GetString() is { Length: > 0 } rs ? rs : null, r.GetProperty("mode").GetString()!, r.GetProperty("toStatus").GetString(), null, r.GetProperty("minConfidence").GetString() is { Length: > 0 } mc ? int.Parse(mc) : null,
+                r.GetProperty("checks").EnumerateArray().Select(c => new ReadCheck(c.GetProperty("kind").GetString()!, c.GetProperty("pattern").GetString()!, int.Parse(c.GetProperty("position").GetString()!), c.GetProperty("distinct").GetBoolean(),
+                    c.GetProperty("tolerance").GetString() is { Length: > 0 } tol ? decimal.Parse(tol, System.Globalization.CultureInfo.InvariantCulture) : null, c.GetProperty("name").GetString())).ToList()));
         }
         return list;
     }
@@ -115,13 +117,12 @@ public class NoticeDocumentTargetsTests
     }
 
     [Fact]
-    public void A_scanned_invoice_line_without_a_readable_quantity_blocks_the_whole_notice()
+    public void The_handwritten_quantity_of_a_scanned_invoice_comes_from_amount_over_unit_price()
     {
         var (groups, errors) = Read(Drive, DocumentTargets.ArrivalNotice, "Factura de Drive Medical");
-        var error = Assert.Single(errors);   // la línea 0050: el OCR no leyó la cantidad (estaba encerrada a mano)
-        Assert.Contains("cantidad", error.Reason);
-        Assert.Equal(new[] { "14003", "14027", "12202KD-4" }, groups.Single().Rows.Select(r => r.Sku));
-        Assert.Equal(new[] { 310m, 48m, 300m }, groups.Single().Rows.Select(r => r.Quantity ?? 0));
+        Assert.Empty(errors);   // la línea 0050 no traía la cantidad (estaba encerrada a mano): sale de 961,62 ÷ 29,14 = 33
+        Assert.Equal(new[] { "14003", "14027", "RTLPC23278", "12202KD-4" }, groups.Single().Rows.Select(r => r.Sku));
+        Assert.Equal(new[] { 310m, 48m, 33m, 300m }, groups.Single().Rows.Select(r => r.Quantity ?? 0));
         Assert.Equal("35549809", groups.Single().Reference);
     }
 

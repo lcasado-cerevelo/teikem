@@ -10520,3 +10520,11 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **«Lectura dudosa (N % < M %): verifique lo creado contra el documento.»** El OCR leyó los números del documento con una confianza menor que el mínimo del lector. Lo creado (orden o aviso) existe: compárelo con el documento original y corríjalo si hace falta. Si la mayoría de sus documentos buenos salen dudosos, baje la «Confianza mínima de la lectura» del lector (o póngala en 0 para no vigilarla); si pasan documentos mal leídos sin avisar, súbala. La confianza no detecta líneas o columnas que el OCR no leyó: compare siempre la cantidad de líneas.
 
 **Un cierre de «Ruta completada» quedó por confirmar aunque el lector es Automático.** La lectura fue dudosa: los cierres no se aplican solos con una lectura dudosa. Confírmelo en Integraciones → Propuestas.
+
+**«Lectura dudosa: la suma leída de «X» es A y el documento declara B.» / «el documento declara N línea(s) de «X» y se leyeron M».** Un chequeo de completitud del lector no cuadra: el OCR no leyó alguna línea (o leyó mal un importe). Lo creado existe: compárelo con el documento y complete lo que falte. Un SKU mal leído por el OCR va aparte, a la bandeja.
+
+**«… no se encontró el total «X» en el documento.»** El chequeo busca el total que declara el documento y no aparece: puede faltar la página donde está (el total va al final) o el OCR no lo leyó. Revise el documento; si el total se escribe distinto, ajuste la «Expresión del total» del chequeo.
+
+**Un chequeo que antes pasaba ahora falla en todos los documentos.** La expresión del total ya no coincide con el texto (el formato del documento cambió). Suba un PDF a mano y mire el texto leído para ajustarla, o quite el chequeo.
+
+**La cantidad de la factura escaneada sale distinta de la escrita a mano.** Si el lector calcula la cantidad como importe ÷ precio unitario, un importe o un precio mal leído da una cantidad que no es entera; el chequeo de la suma suele marcarlo. Compare con el documento.

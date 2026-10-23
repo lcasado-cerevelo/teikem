@@ -164,7 +164,7 @@ public sealed class IntegrationRunner(
                 : run.Rejected > 0 || failedFiles > 0 ? IntegrationRunStatuses.Partial : IntegrationRunStatuses.Ok;
             message = outcomes.Count == 0 ? NoFilesMessage
                 : $"{outcomes.Count} archivo(s): {run.OrdersCreated} envío(s) creado(s), {run.Rejected} a la bandeja" + (failedFiles > 0 ? $", {failedFiles} archivo(s) con error." : ".");
-            var doubtfulFiles = outcomes.Where(o => o.Log.ReadDoubtful).Select(o => $"{o.Log.FileName} ({o.Log.OcrConfidence} %)").ToList();
+            var doubtfulFiles = outcomes.Where(o => o.Log.ReadDoubtful).Select(o => o.Log.OcrConfidence is int c ? $"{o.Log.FileName} ({c} %)" : $"{o.Log.FileName} (no cuadra con los totales del documento)").ToList();
             doubtful = doubtfulFiles.Count;
             if (doubtful > 0) message += $" Lectura dudosa en {doubtful} archivo(s): {string.Join(", ", doubtfulFiles)}. Verifique lo creado.";
             foreach (var o in outcomes) await StoreInboxAsync(integration, run, o, ct);
@@ -333,16 +333,37 @@ public sealed class IntegrationRunner(
         if (!reading.HasData) return Failed(integration, run, pdf.Name, sha, pdf.Content.Length, Truncate(EmailRules.NoPdfDataMessage(pdf.Name, sample), 1000));
         var csv = EmailRules.ToCsv(reading, template.HasHeader, ImportTemplateService.DelimiterOf(template));
         // 2026-10-23: lectura DUDOSA = la confianza del OCR de los números queda bajo el mínimo del lector. Se crea igual (un cierre queda por confirmar) y se avisa que se verifique.
-        var doubtful = ReadConfidenceRules.IsDoubtful(read.Confidence, reader?.MinConfidence);
+        var lowConfidence = ReadConfidenceRules.IsDoubtful(read.Confidence, reader?.MinConfidence);
+        var failures = EvaluateChecks(reader, reading);   // 2026-10-23: lo leído contra los totales que declara el documento
+        var doubtful = lowConfidence || failures.Count > 0;
         var outcome = await DispatchAsync(target, integration, template, client, run, $"{pdf.Name}.csv", Encoding.UTF8.GetBytes(csv), ct, reader, doubtful);
         if (read.UsedOcr && outcome.Log.Message is { } msg) outcome.Log.Message = Truncate($"{msg} (PDF leído con OCR)", 1000);
-        if (read.Confidence is { } confidence && outcome.Log.Result is not (IntegrationFileResults.Duplicate or IntegrationFileResults.Failed))
-        {
-            outcome.Log.OcrConfidence = confidence.Numeric;
-            outcome.Log.ReadDoubtful = doubtful;
-            if (doubtful) outcome.Log.Message = Truncate($"{outcome.Log.Message} {ReadConfidenceRules.DoubtfulMessage(confidence.Numeric, ReadConfidenceRules.MinOf(reader?.MinConfidence))}", 1000);
-        }
+        MarkDoubtful(outcome, read.Confidence, reader, lowConfidence, failures);
         return outcome;
+    }
+
+    /// <summary>Los chequeos de completitud del lector sobre lo leído: cada registro con su texto y sus filas. Vacío = todo cuadra (o el lector no tiene chequeos).</summary>
+    private static IReadOnlyList<string> EvaluateChecks(DocumentReader? reader, EmailRules.DocumentReading reading)
+    {
+        if (reader?.Checks is not { Count: > 0 } checks) return Array.Empty<string>();
+        var all = new List<string>();
+        for (var i = 0; i < reading.Parts.Count; i++)
+        {
+            var text = reading.Texts is { } t && i < t.Count ? t[i] : string.Empty;
+            var found = ReadCheckRules.Evaluate(checks, text, reading.RowsOf(i));
+            all.AddRange(reading.Parts.Count > 1 ? found.Select(f => $"registro {i + 1}: {f}") : found);
+        }
+        return all;
+    }
+
+    /// <summary>Marca el archivo como lectura DUDOSA (confianza del OCR baja o totales que no cuadran), con el motivo en su mensaje. Un archivo repetido o con error no se marca.</summary>
+    private static void MarkDoubtful(FileOutcome outcome, OcrConfidence? confidence, DocumentReader? reader, bool lowConfidence, IReadOnlyList<string> failures)
+    {
+        if (outcome.Log.Result is IntegrationFileResults.Duplicate or IntegrationFileResults.Failed) return;
+        if (confidence is not null) outcome.Log.OcrConfidence = confidence.Numeric;
+        outcome.Log.ReadDoubtful = lowConfidence || failures.Count > 0;
+        if (lowConfidence && confidence is not null) outcome.Log.Message = Truncate($"{outcome.Log.Message} {ReadConfidenceRules.DoubtfulMessage(confidence.Numeric, ReadConfidenceRules.MinOf(reader?.MinConfidence))}", 1000);
+        if (failures.Count > 0) outcome.Log.Message = Truncate($"{outcome.Log.Message} {ReadCheckRules.DoubtfulMessage(failures)}", 1000);
     }
 
     /// <summary>El cuerpo de un correo (o el texto ya leído de un documento) → filas por los campos a leer → el destino. Lo que no se puede leer va a la bandeja con el motivo.</summary>
@@ -352,7 +373,10 @@ public sealed class IntegrationRunner(
         if (reading.Missing.Count > 0) return Failed(integration, run, label, messageSha, 0, string.Join(" | ", reading.Missing));
         if (!reading.HasData) return Failed(integration, run, label, messageSha, 0, EmailRules.NoBodyDataMessage);
         var csv = EmailRules.ToCsv(reading, template.HasHeader, ImportTemplateService.DelimiterOf(template));
-        return await DispatchAsync(target, integration, template, client, run, $"{label}.csv", Encoding.UTF8.GetBytes(csv), ct, reader);
+        var failures = EvaluateChecks(reader, reading);
+        var outcome = await DispatchAsync(target, integration, template, client, run, $"{label}.csv", Encoding.UTF8.GetBytes(csv), ct, reader, failures.Count > 0);
+        MarkDoubtful(outcome, null, reader, false, failures);
+        return outcome;
     }
 
     /// <summary>

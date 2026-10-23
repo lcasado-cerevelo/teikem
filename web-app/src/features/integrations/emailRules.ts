@@ -61,7 +61,22 @@ export interface ReaderValues {
   warehousePublicId: string
   /** Confianza mínima del OCR (0–100) de los números del documento; por debajo, la lectura es dudosa (vacío = 80; 0 = no se vigila). */
   minConfidence: string
+  /** Chequeos de completitud contra los totales que declara el documento: si no cuadran, la lectura es dudosa. */
+  checks: ReadCheckValues[]
 }
+
+export interface ReadCheckValues {
+  kind: string
+  /** Expresión que encuentra el total declarado en el texto del documento (grupo 1 si lo hay). */
+  pattern: string
+  position: string
+  distinct: boolean
+  tolerance: string
+  name: string
+}
+
+export const CHECK_KINDS = ['LINE_COUNT', 'SUM'] as const
+export const emptyCheck = (): ReadCheckValues => ({ kind: 'SUM', pattern: '', position: '1', distinct: false, tolerance: '', name: '' })
 
 export const READER_SOURCES = ['BODY', 'PDF', 'FILE'] as const
 export const READER_TARGETS = ['ORDER', 'ARRIVAL_NOTICE', 'EXIT_NOTICE', 'ORDER_COMPLETION'] as const
@@ -77,7 +92,7 @@ export function scopeApplies(scope: string, source: string): boolean {
 }
 
 export const emptyCondition = (source = 'PDF'): ConditionValues => ({ scope: source === 'BODY' ? 'SUBJECT' : 'TEXT', operator: 'CONTAINS', value: '' })
-export const emptyReader = (): ReaderValues => ({ name: '', source: 'BODY', target: 'ORDER', conditions: [], fields: [], templatePublicId: '', clientPublicId: '', firstOnly: false, recordStart: '', mode: 'SUGGEST', toStatus: 'PICKUP', warehousePublicId: '', minConfidence: '' })
+export const emptyReader = (): ReaderValues => ({ name: '', source: 'BODY', target: 'ORDER', conditions: [], fields: [], templatePublicId: '', clientPublicId: '', firstOnly: false, recordStart: '', mode: 'SUGGEST', toStatus: 'PICKUP', warehousePublicId: '', minConfidence: '', checks: [] })
 
 export interface EmailValues {
   host: string
@@ -138,15 +153,15 @@ export function emptyEmail(): EmailValues {
   }
 }
 
-/** «6=1, 7=2» → [{position: 6, index: 1}, …]; null si algo no es «número=número». */
-export function parseBlockColumns(text: string): { position: number; index: number }[] | null {
+/** «6=1, 7=2, 3=4/3» → [{position: 6, index: 1}, …, {position: 3, index: 4, divide: 3}] (el último = grupo 4 ÷ grupo 3); null si algo no es «número=número» o «número=número/número». */
+export function parseBlockColumns(text: string): { position: number; index: number; divide?: number }[] | null {
   const parts = text.split(/[,;]/).map((p) => p.trim()).filter(Boolean)
   if (parts.length === 0) return null
-  const out: { position: number; index: number }[] = []
+  const out: { position: number; index: number; divide?: number }[] = []
   for (const p of parts) {
-    const m = /^(\d+)\s*=\s*(\d+)$/.exec(p)
+    const m = /^(\d+)\s*=\s*(\d+)(?:\s*\/\s*(\d+))?$/.exec(p)
     if (!m) return null
-    out.push({ position: Number(m[1]), index: Number(m[2]) })
+    out.push(m[3] ? { position: Number(m[1]), index: Number(m[2]), divide: Number(m[3]) } : { position: Number(m[1]), index: Number(m[2]) })
   }
   return out
 }
@@ -229,7 +244,7 @@ function fieldValuesOf(f: ApiBodyField): BodyFieldValues {
     start: f.start ?? '',
     end: f.end ?? '',
     separator: f.separator ?? ' ',
-    columns: (f.columns ?? []).map((c) => `${c.position}=${c.index}`).join(', '),
+    columns: (f.columns ?? []).map((c) => `${c.position}=${c.index}${c.divide ? `/${c.divide}` : ''}`).join(', '),
     lineRegex: f.lineRegex ?? '',
     repeat: f.repeat ?? false,
     fromHeader: f.fromHeader ?? false,
@@ -291,6 +306,7 @@ export function emailValuesOf(c: EmailConfig | null | undefined): EmailValues {
       toStatus: r.toStatus ?? 'PICKUP',
       warehousePublicId: r.warehousePublicId ?? '',
       minConfidence: r.minConfidence === null || r.minConfidence === undefined ? '' : String(r.minConfidence),
+      checks: (r.checks ?? []).map((c) => ({ kind: c.kind ?? 'SUM', pattern: c.pattern ?? '', position: String(c.position ?? 1), distinct: c.distinct ?? false, tolerance: c.tolerance === null || c.tolerance === undefined ? '' : String(c.tolerance), name: c.name ?? '' })),
     })),
     bodyFields: (c.bodyFields ?? []).map(fieldValuesOf),
   }
@@ -328,6 +344,7 @@ export function buildEmailConfig(e: EmailValues): EmailConfig {
       toStatus: r.target === 'ORDER_COMPLETION' ? r.toStatus : null,
       warehousePublicId: (r.target === 'ARRIVAL_NOTICE' || r.target === 'EXIT_NOTICE') && r.warehousePublicId ? r.warehousePublicId : null,
       minConfidence: r.source === 'PDF' && r.minConfidence.trim() !== '' ? Number(r.minConfidence) : null,
+      checks: r.checks.length === 0 ? null : r.checks.map((c) => ({ kind: c.kind, pattern: c.pattern.trim(), position: Number(c.position) || 1, distinct: c.kind === 'LINE_COUNT' && c.distinct, tolerance: c.tolerance.trim() === '' ? null : Number(c.tolerance), name: c.name.trim() === '' ? null : c.name.trim() })),
     })),
   }
 }

@@ -65,3 +65,8 @@ Archivos en `F:\Download`: REGULAR 10-12-2026, OXIGENO / ALTAS / AXISMED / RECOG
 ## 11. Lectura dudosa por confianza del OCR (2026-10-23, hecho)
 - Dictado de Luis: si la lectura es dudosa, se CREA igual y se avisa que se verifique (no a la bandeja); los cierres quedan por confirmar. `MinConfidence` por lector (80 por omisión), `IntegrationFileLog.OcrConfidence/ReadDoubtful` (update.sql 2026-10-23 (m)), aviso en la corrida, marca en el historial.
 - Hallazgo: la confianza no detecta lo que el OCR dejó de leer (REGULAR: 86 % con 5/14 leídos vs 82 % con 11/14). Falta: chequeos de completitud (líneas vs «Cases», sumas) y confianza por campo; calibrar el mínimo con datos reales.
+
+## 12. Chequeos de completitud (2026-10-23, hecho)
+- `ReadCheck` por lector: LINE_COUNT (líneas leídas vs las que declara el documento) y SUM (suma de una columna vs el total que declara); falla también si el total no aparece. Marca la lectura dudosa igual que la confianza baja. Columna calculada (÷): cantidad = importe ÷ precio unitario.
+- Real: Drive 2193 cuadra (39,167.01) y las cantidades salen exactas; Drive 2194 (4 páginas) el OCR leyó 17 líneas (92,141.13 vs 92,975.53) y el chequeo lo marca. Los scripts SQL se regeneraron con el modelo nuevo: si ya corrió el de Axiscare con el modelo anterior, edite el lector de Drive Medical en la pantalla (o bórrelo y vuelva a correr).
+- Falta: chequeos para los conduces de Axiscare (INVOICES/CASES) cuando tengan lector, y confianza por campo.

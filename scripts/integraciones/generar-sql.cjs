@@ -24,13 +24,15 @@ function readerOf(key, extra = {}) {
     fields: r.fields.map((f) => ({
       position: Number(f.position), kind: f.kind, label: nul(f.label), pattern: nul(f.pattern), required: !!f.required, transform: f.transform,
       start: nul(f.start), end: nul(f.end), separator: nul(f.separator),
-      columns: f.columns ? f.columns.split(',').map((x) => x.trim()).filter(Boolean).map((x) => { const [a, b] = x.split('='); return { position: Number(a), index: Number(b) } }) : null,
+      columns: f.columns ? f.columns.split(',').map((x) => x.trim()).filter(Boolean).map((x) => { const [a, b] = x.split('='); const [i, d] = b.split('/'); return d ? { position: Number(a), index: Number(i), divide: Number(d) } : { position: Number(a), index: Number(i) } }) : null,
       lineRegex: nul(f.lineRegex), repeat: !!f.repeat, fromHeader: !!f.fromHeader, appendWith: nul(f.appendWith),
     })),
     firstOnly: !!r.firstOnly,
     recordStart: nul(r.recordStart),
     mode: r.mode || 'SUGGEST',
     toStatus: r.target === 'ORDER_COMPLETION' ? (r.toStatus || 'PICKUP') : null,
+    minConfidence: r.minConfidence === '' || r.minConfidence === undefined ? null : Number(r.minConfidence),
+    checks: (r.checks || []).length === 0 ? null : r.checks.map((c) => ({ kind: c.kind, pattern: c.pattern, position: Number(c.position) || 1, distinct: !!c.distinct, tolerance: c.tolerance === '' || c.tolerance === undefined ? null : Number(c.tolerance), name: nul(c.name) })),
     ...extra,
   }
   return JSON.parse(JSON.stringify(reader, (k, v) => (v === null ? undefined : v)))

@@ -44,6 +44,8 @@ describe('emailIssues', () => {
 describe('texto → listas', () => {
   it('las columnas del bloque son «posición=columna»', () => {
     expect(parseBlockColumns('6=1, 7=2;8 = 3')).toEqual([{ position: 6, index: 1 }, { position: 7, index: 2 }, { position: 8, index: 3 }])
+    expect(parseBlockColumns('2=2, 3=4/3, 4=4')).toEqual([{ position: 2, index: 2 }, { position: 3, index: 4, divide: 3 }, { position: 4, index: 4 }])   // la cantidad = grupo 4 ÷ grupo 3 (importe ÷ precio unitario)
+    expect(parseBlockColumns('3=4/')).toBeNull()
     expect(parseBlockColumns('6')).toBeNull()
     expect(parseBlockColumns('')).toBeNull()
     expect(parseBlockColumns('a=1')).toBeNull()
@@ -138,6 +140,7 @@ describe('lectores', () => {
   it('los lectores viajan en la configuración del API y vuelven iguales', () => {
     const r = reader({
       source: 'PDF', target: 'ORDER', firstOnly: true, templatePublicId: 't-1', clientPublicId: 'c-1', recordStart: ' Order #: ', minConfidence: '85',
+      checks: [{ kind: 'SUM', pattern: ' Total\\s*([\\d,.]+) ', position: '4', distinct: true, tolerance: '0.5', name: ' Importes ' }, { kind: 'LINE_COUNT', pattern: 'CASES:\\s*(\\d+)', position: '1', distinct: true, tolerance: '', name: '' }],
       conditions: [{ scope: 'TEXT', operator: 'CONTAINS', value: ' packing list ' }],
       fields: [
         { ...emptyBodyField(), position: '2', kind: 'BLOCK', start: 'Product', end: 'Page', lineRegex: '^(T-\\w+)$', repeat: true, columns: '2=1' },
@@ -147,6 +150,10 @@ describe('lectores', () => {
     const cfg = buildEmailConfig({ ...ok(), readers: [r] })
     expect(cfg.readers).toEqual([{
       name: 'Pedido', source: 'PDF', target: 'ORDER', firstOnly: true, templatePublicId: 't-1', clientPublicId: 'c-1', recordStart: 'Order #:', mode: 'SUGGEST', toStatus: null, warehousePublicId: null, minConfidence: 85,
+      checks: [
+        { kind: 'SUM', pattern: 'Total\\s*([\\d,.]+)', position: 4, distinct: false, tolerance: 0.5, name: 'Importes' },   // «distinct» solo cuenta en LINE_COUNT
+        { kind: 'LINE_COUNT', pattern: 'CASES:\\s*(\\d+)', position: 1, distinct: true, tolerance: null, name: null },
+      ],
       when: [{ scope: 'TEXT', operator: 'CONTAINS', value: 'packing list' }],
       fields: [
         expect.objectContaining({ position: 2, kind: 'BLOCK', start: 'Product', end: 'Page', lineRegex: '^(T-\\w+)$', repeat: true, columns: [{ position: 2, index: 1 }] }),
@@ -158,6 +165,10 @@ describe('lectores', () => {
     expect(back.fields[0]).toMatchObject({ kind: 'BLOCK', repeat: true, lineRegex: '^(T-\\w+)$', columns: '2=1' })
     expect(back.recordStart).toBe('Order #:')
     expect(back.minConfidence).toBe('85')
+    expect(back.checks).toEqual([
+      { kind: 'SUM', pattern: 'Total\\s*([\\d,.]+)', position: '4', distinct: false, tolerance: '0.5', name: 'Importes' },
+      { kind: 'LINE_COUNT', pattern: 'CASES:\\s*(\\d+)', position: '1', distinct: true, tolerance: '', name: '' },
+    ])
     expect(back.fields[1]).toMatchObject({ fromHeader: true, appendWith: ' | ' })
   })
 

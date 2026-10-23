@@ -40069,6 +40069,7 @@ export interface components {
             warehousePublicId?: string | null;
             /** Format: int32 */
             minConfidence?: number | null;
+            checks?: components["schemas"]["ReadCheck"][] | null;
         };
         DriverAcceptRequest: {
             declines?: components["schemas"]["DriverDeclineItem"][] | null;
@@ -40773,6 +40774,8 @@ export interface components {
             position?: number;
             /** Format: int32 */
             index?: number;
+            /** Format: int32 */
+            divide?: number | null;
         };
         EmailBodyField: {
             /** Format: int32 */
@@ -49341,6 +49344,16 @@ export interface components {
             total?: number;
             /** Format: int32 */
             pending?: number;
+        };
+        ReadCheck: {
+            kind?: string | null;
+            pattern?: string | null;
+            /** Format: int32 */
+            position?: number;
+            distinct?: boolean;
+            /** Format: double */
+            tolerance?: number | null;
+            name?: string | null;
         };
     };
     responses: never;

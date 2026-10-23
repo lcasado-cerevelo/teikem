@@ -14,6 +14,107 @@ public static class DocumentTargets
 }
 
 /// <summary>Qué hace un lector de cierre con lo que encuentra: SUGGEST (por omisión) deja una propuesta por confirmar; AUTO la aplica en el acto (solo cuando la exactitud del lector ya está medida).</summary>
+/// <summary>Qué compara un chequeo de completitud: LINE_COUNT = las líneas leídas contra el total de líneas que declara el documento; SUM = la suma de una columna leída contra el total que declara.</summary>
+public static class ReadCheckKinds
+{
+    public const string LineCount = "LINE_COUNT";
+    public const string Sum = "SUM";
+    public static readonly IReadOnlyList<string> All = [LineCount, Sum];
+}
+
+/// <summary>
+/// Un chequeo de completitud (2026-10-23). Pattern = expresión regular (grupo 1 si lo hay) que encuentra en el TEXTO del documento el total que declara («CASES: (\d+)», «Total Amount USD\s+([\d,.]+)»). Position = la columna leída que se cuenta o suma;
+/// Distinct (LINE_COUNT): cuenta valores distintos de esa columna (un número de orden repetido en varias líneas cuenta una vez). Tolerance = diferencia aceptada (0 en líneas; 0,01 en sumas por omisión). Name = cómo se llama en el aviso.
+/// </summary>
+public sealed record ReadCheck(string Kind, string Pattern, int Position = 1, bool Distinct = false, decimal? Tolerance = null, string? Name = null);
+
+/// <summary>
+/// Chequeos de completitud (2026-10-23): lo que la confianza del OCR NO ve (una columna o una línea que el OCR dejó de leer no baja su porcentaje) se detecta comparando lo leído con los totales del propio documento.
+/// Un total que no se encuentra también es una falla: lo normal es que el documento lo traiga, y que falte puede ser una página que no llegó.
+/// </summary>
+public static class ReadCheckRules
+{
+    public const int MaxChecks = 10;
+    public static string UnknownKindMessage(string kind) => $"Chequeo desconocido: {kind}. Use LINE_COUNT o SUM.";
+    public static string PatternRequiredMessage => "El chequeo necesita la expresión que encuentra el total en el documento.";
+    public static string PatternInvalidMessage(string pattern) => $"La expresión del chequeo no es válida: {pattern}.";
+    public static string PositionInvalidMessage => "La columna del chequeo debe estar entre 1 y 500.";
+    public static string ToleranceInvalidMessage => "La tolerancia del chequeo no puede ser negativa.";
+    public static string TooManyMessage => $"Máximo {MaxChecks} chequeos por lector.";
+    public static string TotalNotFound(string name) => $"no se encontró el total «{name}» en el documento";
+    public static string LineCountFailed(string name, decimal declared, int read) => $"el documento declara {declared:0.##} línea(s) de «{name}» y se leyeron {read}";
+    public static string SumFailed(string name, decimal declared, decimal read) => $"la suma leída de «{name}» es {read:0.##} y el documento declara {declared:0.##}";
+    public static string DoubtfulMessage(IEnumerable<string> failures) => $"Lectura dudosa: {string.Join("; ", failures)}. Verifique lo creado contra el documento.";
+
+    public static IReadOnlyDictionary<string, string> Validate(IReadOnlyList<ReadCheck>? checks, string key)
+    {
+        var errors = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (checks is null || checks.Count == 0) return errors;
+        if (checks.Count > MaxChecks) { errors[key] = TooManyMessage; return errors; }
+        for (var i = 0; i < checks.Count; i++)
+        {
+            var c = checks[i];
+            var k = $"{key}[{i}]";
+            if (!ReadCheckKinds.All.Contains((c.Kind ?? string.Empty).Trim().ToUpperInvariant())) errors[$"{k}.kind"] = UnknownKindMessage(c.Kind ?? string.Empty);
+            if (string.IsNullOrWhiteSpace(c.Pattern)) errors[$"{k}.pattern"] = PatternRequiredMessage;
+            else if (!EmailRules.IsValidRegex(c.Pattern)) errors[$"{k}.pattern"] = PatternInvalidMessage(c.Pattern);
+            if (c.Position is < 1 or > 500) errors[$"{k}.position"] = PositionInvalidMessage;
+            if (c.Tolerance is < 0) errors[$"{k}.tolerance"] = ToleranceInvalidMessage;
+        }
+        return errors;
+    }
+
+    /// <summary>Las fallas de los chequeos de un documento (o de un registro): <paramref name="text"/> es su texto y <paramref name="rows"/> sus filas leídas por posición de columna. Vacío = todo cuadra.</summary>
+    public static IReadOnlyList<string> Evaluate(IReadOnlyList<ReadCheck>? checks, string text, IReadOnlyList<IReadOnlyDictionary<int, string>> rows)
+    {
+        var failures = new List<string>();
+        foreach (var c in checks ?? Array.Empty<ReadCheck>())
+        {
+            var name = string.IsNullOrWhiteSpace(c.Name) ? c.Pattern : c.Name!.Trim();
+            var declared = FindTotal(text, c.Pattern);
+            if (declared is null) { failures.Add(TotalNotFound(name)); continue; }
+            var kind = (c.Kind ?? string.Empty).Trim().ToUpperInvariant();
+            if (kind == ReadCheckKinds.LineCount)
+            {
+                var values = rows.Select(r => r.TryGetValue(c.Position, out var v) ? v.Trim() : string.Empty).Where(v => v.Length > 0).ToList();
+                var read = c.Distinct ? values.Distinct(StringComparer.OrdinalIgnoreCase).Count() : values.Count;
+                if (Math.Abs(declared.Value - read) > (c.Tolerance ?? 0m)) failures.Add(LineCountFailed(name, declared.Value, read));
+            }
+            else if (kind == ReadCheckKinds.Sum)
+            {
+                var sum = rows.Select(r => r.TryGetValue(c.Position, out var v) ? ParseNumber(v) : null).Sum(n => n ?? 0m);
+                if (Math.Abs(declared.Value - sum) > (c.Tolerance ?? 0.01m)) failures.Add(SumFailed(name, declared.Value, sum));
+            }
+        }
+        return failures;
+    }
+
+    /// <summary>El número que declara el documento: el grupo 1 de la expresión (o todo lo que coincide); la última coincidencia, porque un total va al final y un encabezado puede repetirlo.</summary>
+    public static decimal? FindTotal(string text, string pattern)
+    {
+        try
+        {
+            var matches = System.Text.RegularExpressions.Regex.Matches(text ?? string.Empty, pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Multiline | System.Text.RegularExpressions.RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(250));
+            for (var i = matches.Count - 1; i >= 0; i--)
+            {
+                var m = matches[i];
+                var raw = m.Groups.Count > 1 && m.Groups[1].Success ? m.Groups[1].Value : m.Value;
+                if (ParseNumber(raw) is decimal n) return n;
+            }
+            return null;
+        }
+        catch (Exception ex) when (ex is ArgumentException or System.Text.RegularExpressions.RegexMatchTimeoutException) { return null; }
+    }
+
+    /// <summary>«1,430», «$2,845.15»: coma de miles y punto decimal (los documentos de Puerto Rico); lo demás que no es dígito, punto o signo se ignora.</summary>
+    public static decimal? ParseNumber(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var cleaned = System.Text.RegularExpressions.Regex.Replace(raw, @"[^\d.\-]", string.Empty);
+        return decimal.TryParse(cleaned, System.Globalization.NumberStyles.Number | System.Globalization.NumberStyles.AllowLeadingSign, System.Globalization.CultureInfo.InvariantCulture, out var n) ? n : null;
+    }
+}
+
 public static class ReaderModes
 {
     public const string Suggest = "SUGGEST";
@@ -68,6 +169,7 @@ public sealed record ReaderCondition(string Scope, string Operator, string Value
 /// Un LECTOR (2026-10-22): qué hace una integración de correo con cada documento que llega. Se aplica si TODAS sus condiciones se cumplen (sin condiciones: a todo lo de su fuente); lee con sus campos
 /// (cuerpo y PDF: los «campos a leer»; archivo de datos: la plantilla) y manda lo leído a su DESTINO. Plantilla y cliente propios (si no, los de la integración): un mismo buzón puede traer documentos de
 /// varios clientes y de varios tipos, y cada uno va por su camino. FirstOnly: solo el primer documento que lo cumpla.
+/// Checks (2026-10-23): chequeos de COMPLETITUD contra los totales que el propio documento declara (cuántas líneas dice que trae, a cuánto suman); si no cuadran, la lectura es dudosa (ver <see cref="ReadCheckRules"/>).
 /// MinConfidence (2026-10-23): la confianza mínima del OCR (0–100) de los números del documento; por debajo, la lectura es DUDOSA: se crea igual, se avisa que la verifiquen y un cierre queda por confirmar (null = 80; 0 = no se vigila).
 /// WarehousePublicId (2026-10-23): el almacén de los avisos de llegada y de salida de este lector (sin él se usa el único activo de la compañía; con varios, el aviso no se crea).
 /// RecordStart (2026-10-23): un documento con VARIAS órdenes (una por página o grupo de páginas, como la hoja de ruta de CMS) se parte en registros en cada línea que contiene este texto; cada registro se lee con los campos
@@ -76,7 +178,7 @@ public sealed record ReaderCondition(string Scope, string Operator, string Value
 public sealed record DocumentReader(
     string Name, string Source, string Target = DocumentTargets.Order,
     IReadOnlyList<ReaderCondition>? When = null, IReadOnlyList<EmailBodyField>? Fields = null,
-    Guid? TemplatePublicId = null, Guid? ClientPublicId = null, bool FirstOnly = false, string? RecordStart = null, string Mode = ReaderModes.Suggest, string? ToStatus = null, Guid? WarehousePublicId = null, int? MinConfidence = null);
+    Guid? TemplatePublicId = null, Guid? ClientPublicId = null, bool FirstOnly = false, string? RecordStart = null, string Mode = ReaderModes.Suggest, string? ToStatus = null, Guid? WarehousePublicId = null, int? MinConfidence = null, IReadOnlyList<ReadCheck>? Checks = null);
 
 /// <summary>Un documento que llegó y que los lectores evalúan: su fuente, su nombre (adjunto), el asunto del correo y su texto (si es cuerpo o PDF).</summary>
 public sealed record ReaderInput(string Source, string Name, string Subject, string? Text);
@@ -129,6 +231,7 @@ public static class DocumentReaderRules
             if (!ReaderModes.All.Contains((r.Mode ?? string.Empty).Trim().ToUpperInvariant())) errors[$"{k}.mode"] = UnknownModeMessage(r.Mode ?? string.Empty);
             if (string.Equals(r.Target, DocumentTargets.OrderCompletion, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(r.ToStatus) && !CompletionTargets.All.Contains(r.ToStatus.Trim().ToUpperInvariant())) errors[$"{k}.toStatus"] = UnknownCompletionMessage(r.ToStatus);
             if (r.MinConfidence is < 0 or > 100) errors[$"{k}.minConfidence"] = ReadConfidenceRules.MinInvalidMessage;
+            foreach (var (ek, ev) in ReadCheckRules.Validate(r.Checks, $"{k}.checks")) errors[ek] = ev;
             var when = r.When ?? Array.Empty<ReaderCondition>();
             if (when.Count > MaxConditions) errors[$"{k}.when"] = ConditionsMessage;
             for (var c = 0; c < when.Count; c++)

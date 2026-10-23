@@ -6,7 +6,7 @@ import { useT } from '../../kernel/i18n'
 import { Field, IconPlus, IconTrash, Select, TextInput, Toggle } from '../../kernel/ui'
 import { BodyFieldsEditor } from './BodyFieldsEditor'
 import presets from './readerPresets.json'
-import { COMPLETION_TARGETS, CONDITION_SCOPES, MATCH_OPERATORS, READER_MODES, READER_SOURCES, READER_TARGETS, emptyCondition, emptyReader, legacyToReaders, scopeApplies, type ReaderValues } from './emailRules'
+import { CHECK_KINDS, COMPLETION_TARGETS, CONDITION_SCOPES, MATCH_OPERATORS, READER_MODES, READER_SOURCES, READER_TARGETS, emptyCheck, emptyCondition, emptyReader, legacyToReaders, scopeApplies, type ReaderValues } from './emailRules'
 import type { IntegrationValues } from './integrationRules'
 
 type Option = { value: string; label: string }
@@ -70,6 +70,7 @@ function ReaderCard({ form, index, reader, clientOptions, templateOptions, wareh
   const t = useT()
   const base = `email.readers.${index}`
   const conditions = useFieldArray({ control: form.control, name: `${base}.conditions` as 'email.readers.0.conditions' })
+  const checks = useFieldArray({ control: form.control, name: `${base}.checks` as 'email.readers.0.checks' })
   const source = reader?.source ?? 'BODY'
   const opOptions = MATCH_OPERATORS.map((o) => ({ value: o, label: t(`integrations.email.operator.${o}`) }))
   const scopeOptions = CONDITION_SCOPES.filter((s) => scopeApplies(s, source)).map((s) => ({ value: s, label: t(`integrations.email.readers.scope.${s}`) }))
@@ -152,6 +153,46 @@ function ReaderCard({ form, index, reader, clientOptions, templateOptions, wareh
         </div>
       ) : (
         <p className="help">{t('integrations.email.readers.fileHelp')}</p>
+      )}
+
+      {source !== 'FILE' && (
+        <div className="int-reader-checks">
+          <p className="help">{t('integrations.email.readers.checksHelp')}</p>
+          {checks.fields.map((c, j) => (
+            <div className="int-check" key={c.id}>
+              <div className="r3">
+                <Field name={`${base}.checks.${j}.kind`} label={t('integrations.email.readers.checkKind', { n: j + 1 })}>
+                  <Select options={CHECK_KINDS.map((k) => ({ value: k, label: t(`integrations.email.readers.checkKindOption.${k}`) }))} />
+                </Field>
+                <Field name={`${base}.checks.${j}.name`} label={t('integrations.email.readers.checkName', { n: j + 1 })}>
+                  <TextInput placeholder="Importes" />
+                </Field>
+                <Field name={`${base}.checks.${j}.position`} label={t('integrations.email.readers.checkPosition', { n: j + 1 })} required help={t('integrations.email.readers.checkPositionHelp')}>
+                  <TextInput inputMode="numeric" maxLength={3} />
+                </Field>
+              </div>
+              <Field name={`${base}.checks.${j}.pattern`} label={t('integrations.email.readers.checkPattern', { n: j + 1 })} required help={t('integrations.email.readers.checkPatternHelp')}>
+                <TextInput placeholder="Total Amount USD\s+([\d,.]+)" />
+              </Field>
+              <div className="r2">
+                {reader?.checks?.[j]?.kind === 'LINE_COUNT' && (
+                  <Field name={`${base}.checks.${j}.distinct`} label={t('integrations.email.readers.checkDistinct', { n: j + 1 })} help={t('integrations.email.readers.checkDistinctHelp')}>
+                    <Toggle text={t('integrations.email.readers.checkDistinct', { n: j + 1 })} />
+                  </Field>
+                )}
+                <Field name={`${base}.checks.${j}.tolerance`} label={t('integrations.email.readers.checkTolerance', { n: j + 1 })} help={t('integrations.email.readers.checkToleranceHelp')}>
+                  <TextInput inputMode="decimal" maxLength={8} />
+                </Field>
+              </div>
+              <button type="button" className="btn sm" aria-label={t('integrations.email.readers.removeCheck', { n: j + 1 })} onClick={() => checks.remove(j)}>
+                <IconTrash />
+              </button>
+            </div>
+          ))}
+          <button type="button" className="btn sm" onClick={() => checks.append(emptyCheck())}>
+            <IconPlus /> {t('integrations.email.readers.addCheck')}
+          </button>
+        </div>
       )}
       <button type="button" className="btn sm" onClick={onRemove}>
         <IconTrash /> {t('integrations.email.readers.remove', { n: index + 1 })}

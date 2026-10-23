@@ -58065,6 +58065,13 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReadCheck"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -60149,6 +60156,11 @@
           "index": {
             "type": "integer",
             "format": "int32"
+          },
+          "divide": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -86230,6 +86242,36 @@
           "pending": {
             "type": "integer",
             "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReadCheck": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "pattern": {
+            "type": "string",
+            "nullable": true
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "distinct": {
+            "type": "boolean"
+          },
+          "tolerance": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

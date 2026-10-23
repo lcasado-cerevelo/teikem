@@ -432,3 +432,17 @@ El OCR deja, por cada documento escaneado, la **confianza** con que leyó sus pa
 - Un documento de texto real (los PDF de Axiscare) o un CSV no pasan por OCR: no tienen confianza ni se marcan.
 
 **La confianza es una señal, no una garantía.** Medido con los conduces escaneados de Axiscare, no detecta lo que el OCR **dejó de leer** (una columna perdida entera no la baja: una lectura peor marcó 86 % y una completa 82 %), y un documento bien leído puede marcar 88–91 %. Por eso el mínimo por omisión es 80 y se ajusta con datos reales: cada archivo guarda su confianza para calibrarlo; las validaciones de formato y de totales siguen siendo la defensa principal.
+
+## 21. Chequeos de completitud: lo leído contra los totales del documento (2026-10-23)
+
+La confianza del OCR (sección 20) **no ve lo que el OCR dejó de leer**. Por eso un lector puede llevar **chequeos de completitud** que comparan lo leído con los totales que el propio documento declara. Si algo no cuadra, **la lectura es dudosa** (lo mismo que con la confianza baja: se crea igual, el archivo queda marcado, la corrida avisa y un cierre queda por confirmar) y el motivo sale en el mensaje del archivo («Lectura dudosa: la suma leída de «Total Amount USD» es 92141.13 y el documento declara 92975.53. Verifique lo creado contra el documento.»).
+
+En el lector, sección **Chequeos de completitud → Agregar chequeo**:
+- **Líneas leídas = líneas que declara el documento** (`LINE_COUNT`): por ejemplo `INVOICES:\s*(\d+)` contra las líneas leídas del conduce. Con **Contar valores distintos** una clave repetida en varias líneas (un número de orden) cuenta una vez. Tolerancia por omisión: 0.
+- **Suma de una columna = total que declara el documento** (`SUM`): por ejemplo `Total Amount USD\s*([\d,]+\.\d{2})` contra la suma de la columna de importes. Tolerancia por omisión: 0,01.
+- **Expresión del total:** encuentra en el texto del documento el número que declara (el grupo 1 si lo hay); si hay varias coincidencias se usa **la última** (un total va al final). **Si el total no aparece, el chequeo también falla**: lo normal es que el documento lo traiga, y que falte puede ser una página que no llegó.
+- **Columna** = la columna leída (1, 2, 3…) que se cuenta o se suma. En un lector por registro (sección 17) cada registro se chequea contra **su** texto.
+
+**Columna calculada (÷).** Cuando un dato no se puede leer (la cantidad escrita a mano en un círculo sobre una factura escaneada), una columna de un bloque con expresión por línea puede valer **un grupo ÷ otro**: en «Columnas» se escribe `3=4/3` (columna 3 = grupo 4 ÷ grupo 3). Es lo que usa el modelo **Factura de Drive Medical**: la cantidad sale de **importe ÷ precio unitario** (por ejemplo 10,440.80 ÷ 130.51 = 80, el número que se escribió a mano) y la suma de los importes se compara con el «Total Amount USD» de la factura.
+
+**Probado con las facturas reales de Drive Medical.** La 2193 (2 páginas): las 7 cantidades salen exactas (80, 15, 19, 4, 80, 110, 240) y la suma cuadra con el total (39,167.01). La 2194 (4 páginas): el OCR leyó 17 líneas que suman 92,141.13 frente a los 92,975.53 del documento, **y el chequeo lo marca**: es justo la falla que la confianza no detecta. Además, dos SKU salieron con un error del OCR («12445KD-», «13031-1S8VY»): esos van a la bandeja como «El producto … no existe».
