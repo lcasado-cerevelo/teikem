@@ -17,7 +17,7 @@ namespace Teikem.Api.Controllers;
 [Authorize]
 [RequireModule(ModuleKeys.LtlGround)]
 [RequirePermission(PermissionCatalog.DriverAppUse)]
-public sealed class DriverAppController(DriverAppService app, DriverTrackingService tracking, DriverNoticeService notices) : ControllerBase
+public sealed class DriverAppController(DriverAppService app, DriverTrackingService tracking, DriverNoticeService notices, DriverPushService push) : ControllerBase
 {
     /// <summary>Sus manifiestos de entrega: despachados (por aceptar) y en curso.</summary>
     [HttpGet("manifests")]
@@ -76,4 +76,12 @@ public sealed class DriverAppController(DriverAppService app, DriverTrackingServ
     /// <summary>Marca avisos como leídos: `{ids:[…]}` o `{all:true}`. Devuelve cuántos cambió.</summary>
     [HttpPost("notices/read")]
     public async Task<int> ReadNotices([FromBody] DriverNoticesReadRequest? req, CancellationToken ct) => await notices.MarkReadAsync(req, ct);
+
+    /// <summary>Registra el teléfono para los avisos emergentes (`{platform: ANDROID|IOS, pushToken, appVersion}`). Idempotente. 400 sin token o con plataforma inválida; 403 si no es chofer.</summary>
+    [HttpPost("device")]
+    public async Task<IActionResult> RegisterDevice([FromBody] DriverDeviceRegisterRequest? req, CancellationToken ct)
+    {
+        await push.RegisterDeviceAsync(req, ct);
+        return NoContent();
+    }
 }

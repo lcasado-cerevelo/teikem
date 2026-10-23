@@ -89,6 +89,10 @@ public static class DependencyInjection
         services.Configure<DriverTrackingOptions>(config.GetSection("DriverApp:Tracking"));   // 2026-10-23: valores globales del seguimiento de ruta
         services.AddScoped<DriverTrackingService>();
         services.AddScoped<DriverNoticeService>();
+        services.Configure<FcmOptions>(config.GetSection("Push:Fcm"));   // secreto: la clave de la cuenta de servicio va en la configuración del servidor, nunca en el repo
+        services.AddHttpClient<IPushSender, FcmPushSender>(c => c.Timeout = TimeSpan.FromSeconds(20)).RemoveAllLoggers();
+        services.AddScoped<DriverPushService>();
+        services.AddSingleton<IScheduledJob, DriverPushDispatchJob>();
         services.Configure<DriverAppOptions>(config.GetSection("DriverApp"));   // 2026-10-23: tope de la sesión del chofer
         services.Configure<TurnstileOptions>(config.GetSection("Auth:Turnstile"));   // Lote 101: apagado por omisión
         services.Configure<TrustedBrowserOptions>(config.GetSection("Auth:TrustedBrowsers"));   // Lote 100: apagado por omisión

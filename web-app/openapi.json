@@ -14843,6 +14843,37 @@
         }
       }
     },
+    "/api/v1/driver-app/device": {
+      "post": {
+        "tags": [
+          "DriverApp"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DriverDeviceRegisterRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DriverDeviceRegisterRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/DriverDeviceRegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/driver-app/auth/login": {
       "post": {
         "tags": [
@@ -57973,6 +58004,24 @@
           },
           "isActive": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DriverDeviceRegisterRequest": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "nullable": true
+          },
+          "pushToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "appVersion": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

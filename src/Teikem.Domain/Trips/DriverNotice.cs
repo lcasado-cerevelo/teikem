@@ -33,6 +33,8 @@ public class DriverNotice : ITenantScoped
     public int? CreatedBy { get; set; }
     [NotAudited] public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     [NotAudited] public DateTime? ReadAtUtc { get; set; }
+    /// <summary>Cuándo se mandó el aviso emergente al teléfono (null = pendiente de mandar).</summary>
+    [NotAudited] public DateTime? PushedAtUtc { get; set; }
 }
 
 public static class DriverNoticeRules

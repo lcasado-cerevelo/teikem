@@ -11550,6 +11550,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/driver-app/device": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DriverDeviceRegisterRequest"];
+                    "text/json": components["schemas"]["DriverDeviceRegisterRequest"];
+                    "application/*+json": components["schemas"]["DriverDeviceRegisterRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/driver-app/auth/login": {
         parameters: {
             query?: never;
@@ -39712,6 +39751,11 @@ export interface components {
             /** Format: date-time */
             lastSeenUtc?: string | null;
             isActive?: boolean;
+        };
+        DriverDeviceRegisterRequest: {
+            platform?: string | null;
+            pushToken?: string | null;
+            appVersion?: string | null;
         };
         DriverFailRequest: {
             reasonCode?: string | null;

@@ -67,6 +67,10 @@ public sealed record DriverTrackingUploadResultDto(bool RouteActive, int Accepte
 public sealed record TripTrackPointDto(double Latitude, double Longitude, decimal? SpeedKmh, DateTime CapturedAtUtc);
 public sealed record TripTrackingDto(Guid TripPublicId, string TripCode, IReadOnlyList<TripTrackPointDto> Points, IReadOnlyList<DriverTrackingEventDto> Events);
 
+// ---- teléfono y avisos emergentes ----
+/// <summary>Registra el teléfono del chofer para los avisos emergentes: `Platform` ANDROID o IOS, `PushToken` el token de FCM.</summary>
+public sealed record DriverDeviceRegisterRequest(string? Platform, string? PushToken, string? AppVersion);
+
 // ---- avisos ----
 public sealed record DriverNoticeDto(Guid PublicId, string Kind, string Title, string? Body, DateTime CreatedAtUtc, bool Read, Guid? TripPublicId);
 public sealed record DriverNoticesDto(int Unread, IReadOnlyList<DriverNoticeDto> Items);

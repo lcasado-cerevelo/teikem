@@ -6593,3 +6593,14 @@ GO
 IF COL_LENGTH('dbo.Client', 'RequireDeliveryPhoto') IS NULL
     ALTER TABLE dbo.Client ADD RequireDeliveryPhoto BIT NOT NULL CONSTRAINT DF_Client_RequireDeliveryPhoto DEFAULT 0;
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-23 (g) — App del chofer: avisos emergentes (push, Firebase). dbo.DriverNotice.PushedAtUtc: cuándo salió el aviso al teléfono (NULL = pendiente).
+   Los avisos que ya existían se marcan como enviados (no se avisa de lo viejo).
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.DriverNotice', 'PushedAtUtc') IS NULL
+BEGIN
+    ALTER TABLE dbo.DriverNotice ADD PushedAtUtc DATETIME2 NULL;
+    EXEC('UPDATE dbo.DriverNotice SET PushedAtUtc = SYSUTCDATETIME() WHERE PushedAtUtc IS NULL');
+END
+GO

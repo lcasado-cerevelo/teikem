@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "834206900248",
+    "project_id": "teikem-test",
+    "storage_bucket": "teikem-test.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:834206900248:android:bd66157ab1a510f50f636d",
+        "android_client_info": {
+          "package_name": "com.advancelogisticspr.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZkPdgNHi-9ffE3wAKVMirgsdQMBSrkUA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -57,6 +57,20 @@ const brand = BRANDS[VARIANT] ?? BRANDS.advance;
 // (e.g. advanceapp://). Register it in the Auth0 application's Allowed
 // Callback URLs — though today's login is a direct password grant with no
 // redirect, so this isn't currently exercised.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { existsSync, readFileSync } = require('fs') as { existsSync: (p: string) => boolean; readFileSync: (p: string, enc: string) => string };
+
+// ¿google-services.json trae la app Android de esta marca? (si no, esa marca se construye sin avisos emergentes en vez de fallar)
+function googleServicesHas(pkg: string): boolean {
+  try {
+    if (!existsSync('./google-services.json')) return false;
+    const j = JSON.parse(readFileSync('./google-services.json', 'utf8')) as { client?: Array<{ client_info?: { android_client_info?: { package_name?: string } } }> };
+    return (j.client ?? []).some((c) => c.client_info?.android_client_info?.package_name === pkg);
+  } catch {
+    return false;
+  }
+}
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: brand.name,
@@ -81,6 +95,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     package: brand.androidPackage,
+    // Firebase (avisos emergentes). El archivo trae la app Android de cada marca; no es secreto (va dentro de la app).
+    ...(googleServicesHas(brand.androidPackage) ? { googleServicesFile: './google-services.json' } : {}),
     // Play Store exige un versionCode entero, único y creciente por release.
     // Se sube A MANO junto con `version` en cada release (autoIncrement de EAS
     // no funciona con config dinámico como este archivo).
@@ -122,6 +138,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     'expo-web-browser',
+    ['expo-notifications', { color: '#03204B' }],
     [
       'expo-location',
       {

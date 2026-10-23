@@ -10410,3 +10410,9 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **«Este cliente exige la firma de quien recibe.» / «Este cliente exige una foto de la entrega.» (400).** El cliente tiene activada la firma o la foto obligatoria (ficha del cliente → Impresión y portal → «Entrega con la app del chofer»). El chofer debe capturarla.
 
 **Mensajes de cobro (400/422)**: los del COD de la web: «El método de cobro no es válido.», monto inválido, número de cheque obligatorio, «No puede cobrar más de lo que falta…». En la app el chofer no puede cobrar más de lo pendiente.
+
+## Avisos emergentes (push)
+
+**Mensaje «Falta el token del teléfono.» / «La plataforma debe ser ANDROID o IOS.» (400).** La app mandó un registro incompleto; actualice la app.
+
+**Al chofer no le suena el aviso en el teléfono.** Revise, en este orden: (1) que el servidor tenga la clave de Firebase (`Push:Fcm:ServiceAccountJsonPath`); (2) que el chofer haya aceptado el permiso de notificaciones; (3) que la app sea de una marca incluida en `google-services.json`; (4) que el trabajo «Avisos emergentes a los choferes» esté activo en Trabajos programados. El aviso siempre queda en la pestaña «Avisos».

@@ -3,6 +3,7 @@ import { Redirect, Stack } from 'expo-router';
 import { useAuth } from '@hooks/AuthContext';
 import { useAuthSync, useAutoSync } from '@hooks/queries';
 import { useAppStore } from '@/stores';
+import { usePushRegistration } from '@/push/usePushRegistration';
 import { useRouteTracking } from '@/tracking/useRouteTracking';
 import LockScreen from '@components/LockScreen';
 import Legal from './Legal';
@@ -27,6 +28,7 @@ export default function AuthLayout() {
     void hydrateTrackingEnabled();
   }, [hydrateTrackingEnabled]);
   useRouteTracking();
+  usePushRegistration();
 
   if (!isLoggedIn) return <Redirect href="/(no-auth)/Login" />;
   // con «Abrir con huella» activo, la app arranca y vuelve de segundo plano bloqueada

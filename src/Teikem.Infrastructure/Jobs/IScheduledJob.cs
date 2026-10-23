@@ -56,4 +56,6 @@ public static class JobKeys
     public const string FleetAlertScan = "FLEET_ALERT_SCAN";
     /// <summary>2026-10-23: purga los puntos y avisos del seguimiento de rutas más viejos que la retención.</summary>
     public const string DriverTrackingPurge = "DRIVER_TRACKING_PURGE";
+    /// <summary>2026-10-23: manda al teléfono los avisos nuevos de los choferes (FCM).</summary>
+    public const string DriverPushDispatch = "DRIVER_PUSH_DISPATCH";
 }
