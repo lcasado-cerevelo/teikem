@@ -6488,3 +6488,23 @@ BEGIN
     INSERT INTO dbo.AppliedMigration (Code) VALUES ('L203_DRIVERAPP_USE');
 END
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-23 (b) — App del chofer: acceso y sesión.
+   - Tipo de usuario DRIVER («Chofer, solo app»): inicia sesión únicamente en la app del chofer; la web lo rechaza.
+   - dbo.Tenant.DriverSessionMinutes INT NULL: sesión del chofer en la app por compañía (NULL = vale la sesión general); el tope lo fija DriverApp:MaxSessionMinutes (appsettings).
+   - dbo.RefreshToken.IsDriverApp BIT NOT NULL DEFAULT 0: marca la sesión de la app del chofer (una sola sesión da acceso a todas las compañías donde es chofer).
+   ---------------------------------------------------------------------------- */
+MERGE dbo.LookupCode AS t
+USING (VALUES (N'DRIVER', N'{"es":"Chofer (solo app)","en":"Driver (app only)"}', 4)) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'UserKind' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'UserKind', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+IF COL_LENGTH('dbo.Tenant', 'DriverSessionMinutes') IS NULL
+    ALTER TABLE dbo.Tenant ADD DriverSessionMinutes INT NULL;
+GO
+IF COL_LENGTH('dbo.RefreshToken', 'IsDriverApp') IS NULL
+    ALTER TABLE dbo.RefreshToken ADD IsDriverApp BIT NOT NULL CONSTRAINT DF_RefreshToken_IsDriverApp DEFAULT 0;
+GO

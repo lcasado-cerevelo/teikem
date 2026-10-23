@@ -272,6 +272,8 @@ public static class UserKinds
     public const string Internal = "INTERNAL";
     public const string Portal = "PORTAL";
     public const string Service = "SERVICE";
+    /// <summary>2026-10-23: chofer «solo app»: inicia sesión únicamente en la app del chofer (la web lo rechaza).</summary>
+    public const string Driver = "DRIVER";
 }
 
 public static class MembershipStatuses

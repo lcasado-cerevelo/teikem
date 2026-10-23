@@ -51,8 +51,8 @@ public sealed partial class AuthService
         return email[..1] + "***" + email[at..];
     }
 
-    private (string Token, DateTime ExpiresAtUtc) OnboardingChallenge(ApplicationUser user, int tenantId, string? deviceInfo)
-        => jwt.CreateMfaChallengeToken(user, tenantId, deviceInfo, TimeSpan.FromMinutes(onboarding.Value.ChallengeMinutes));
+    private (string Token, DateTime ExpiresAtUtc) OnboardingChallenge(ApplicationUser user, int tenantId, string? deviceInfo, bool driverApp = false)
+        => jwt.CreateMfaChallengeToken(user, tenantId, deviceInfo, TimeSpan.FromMinutes(onboarding.Value.ChallengeMinutes), driverApp);
 
     private async Task<ApplicationUser> OnboardingUserAsync(int userId)
         => await users.FindByIdAsync(userId.ToString()) is { IsActive: true } u ? u : throw new UnauthorizedException();
@@ -117,7 +117,7 @@ public sealed partial class AuthService
     /// Paso 2: la contraseña propia (reemplaza la que dio el administrador). Exige el correo verificado. Rota el sello de
     /// seguridad, así que devuelve un challenge token nuevo para seguir con el MFA.
     /// </summary>
-    public async Task<OnboardingStepDto> SetOnboardingPasswordAsync(int userId, int tenantId, string? deviceInfo, OnboardingPasswordRequest req, CancellationToken ct)
+    public async Task<OnboardingStepDto> SetOnboardingPasswordAsync(int userId, int tenantId, string? deviceInfo, OnboardingPasswordRequest req, CancellationToken ct, bool driverApp = false)
     {
         var user = await OnboardingUserAsync(userId);
         if (user.EmailVerifiedUtc is null) throw new ConflictException(OnboardingEmailFirstMessage);
@@ -145,6 +145,6 @@ public sealed partial class AuthService
         db.SuppressAudit = true; await db.SaveChangesAsync(ct); db.SuppressAudit = false;
         await security.WriteAsync(SecurityEventTypes.PasswordChange, SecurityOutcomes.Success, user.Id, tenantId, new { stage = "onboarding" }, ct);
         var hasTotp = await ConfirmedTotpAsync(user.Id, ct) is not null;
-        return new OnboardingStepDto(OnboardingState(user, hasTotp), OnboardingChallenge(user, tenantId, deviceInfo).Token);
+        return new OnboardingStepDto(OnboardingState(user, hasTotp), OnboardingChallenge(user, tenantId, deviceInfo, driverApp).Token);
     }
 }

@@ -10358,3 +10358,13 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **Mi usuario está en varias compañías, ¿cómo cambio?** Perfil → Compañía. Se envía lo pendiente y se cargan los manifiestos de esa compañía.
 
 **La app me pidió aceptar la política de privacidad.** Es el primer ingreso o el documento cambió. Hay que leerlo hasta el final; si no lo acepta, no puede usar la app.
+
+## Lote 205 — Chofer «solo app» y varias compañías
+
+**Mensaje «Los choferes entran con la app del chofer.» (401/403).** El usuario es de tipo «Chofer (solo app)» y no puede iniciar sesión en la web. Use la app del chofer.
+
+**Mensaje «Esta sesión no es de la app del chofer.» (403).** Se usó una sesión de la web en un endpoint de la app del chofer (o al revés con el código MFA). Cada app inicia su propia sesión.
+
+**Un chofer trabaja en dos compañías y una exige MFA.** Con una sola sesión de la app, la compañía que exige MFA solo da acceso si la sesión pasó el código; si no, aparece bloqueada («mfa_required») y hay que entrar de nuevo con contraseña y código.
+
+**¿Cuánto dura la sesión de un chofer en varias compañías?** La más larga de las compañías donde es chofer (cada una con su valor del chofer o, sin él, su sesión general), con el tope de la aplicación.

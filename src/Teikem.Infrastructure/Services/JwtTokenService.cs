@@ -36,6 +36,9 @@ public static class TeikemClaims
     public const string ApiKeyId = "akid";
     public const string SecurityStamp = "ss";
     public const string Aal2At = "aal2";
+    /// <summary>2026-10-23: el challenge del MFA / primer ingreso de la app del chofer lleva app=driver (solo lo acepta el endpoint del chofer, y al revés).</summary>
+    public const string App = "app";
+    public const string AppDriver = "driver";
     public const string Purpose = "purpose";
     public const string PurposeAccess = "access";
     public const string PurposeMfa = "mfa";
@@ -91,7 +94,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options)
     /// Quien rota el sello y emite un token nuevo en la misma petición debe quitarla, o el token nuevo se rechaza hasta 60 s.</summary>
     public static string StampCacheKey(int userId) => $"stamp:{userId}";
 
-    public (string Token, DateTime ExpiresAtUtc) CreateMfaChallengeToken(ApplicationUser user, int tenantId, string? deviceInfo, TimeSpan? lifetime = null)
+    public (string Token, DateTime ExpiresAtUtc) CreateMfaChallengeToken(ApplicationUser user, int tenantId, string? deviceInfo, TimeSpan? lifetime = null, bool driverApp = false)
     {
         var claims = new List<Claim>
         {
@@ -101,6 +104,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options)
             new(TeikemClaims.SecurityStamp, StampHash(user.SecurityStamp)),
         };
         if (!string.IsNullOrEmpty(deviceInfo)) claims.Add(new Claim("device", deviceInfo));
+        if (driverApp) claims.Add(new Claim(TeikemClaims.App, TeikemClaims.AppDriver));
         return Create(claims, lifetime ?? TimeSpan.FromMinutes(_o.MfaChallengeMinutes));
     }
 

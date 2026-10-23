@@ -137,6 +137,8 @@ public class RefreshToken : ITenantScoped
     public string? IpAddress { get; set; }
     /// <summary>Lote 101: cliente con el que entró un usuario de PORTAL (el claim `cid` de su access token); se conserva al renovar. Null en sesiones del staff.</summary>
     public int? PortalClientId { get; set; }
+    /// <summary>2026-10-23: sesión de la app del chofer (vive lo que fija DriverSessionRules y da acceso a todas las compañías donde es chofer, sin cerrar la sesión al cambiar). Se conserva al renovar.</summary>
+    public bool IsDriverApp { get; set; }
     public bool IsActive => RevokedAtUtc == null && ExpiresAtUtc > DateTime.UtcNow;
 }
 

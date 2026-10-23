@@ -192,4 +192,17 @@ describe('política de la compañía', () => {
     const s20 = { ...saved, sessionMinutes: 20 }
     expect(policyRequestBody(s20, toPolicyValues(s20))).toEqual({})
   })
+
+  it('la sesión del chofer: vacío = la general (0 en el API), con valor se manda en minutos y un valor fuera de rango da error', () => {
+    const saved = { mfaRequired: false, aal2WindowMinutes: 30, sessionMinutes: 240, deviceSessionMinutes: 240 }
+    const v = toPolicyValues(saved)
+    expect(v.driverSessionHours).toBeNull()
+    expect(policyRequestBody(saved, v)).toEqual({})
+    expect(policyRequestBody(saved, { ...v, driverSessionHours: 720 })).toEqual({ driverSessionMinutes: 43200 })
+    const withDriver = { ...saved, driverSessionMinutes: 43200 }
+    expect(toPolicyValues(withDriver).driverSessionHours).toBe(720)
+    expect(policyRequestBody(withDriver, { ...toPolicyValues(withDriver), driverSessionHours: null })).toEqual({ driverSessionMinutes: 0 })
+    expect(policyErrors({ ...v, driverSessionHours: 0 })).toEqual({ driverSessionHours: 'hoursRange' })
+    expect(policyErrors({ ...v, driverSessionHours: null })).toEqual({})
+  })
 })

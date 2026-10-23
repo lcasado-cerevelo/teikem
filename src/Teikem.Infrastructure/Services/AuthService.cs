@@ -1,3 +1,4 @@
+using Teikem.Domain.Trips;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.DataProtection;
@@ -74,7 +75,7 @@ public sealed partial class AuthService(
     Microsoft.Extensions.Caching.Memory.IMemoryCache cache,
     Microsoft.Extensions.Options.IOptions<PasswordResetOptions>? passwordReset = null, TrustedNetworkService? trustedNetworks = null, TrustedBrowserService? trustedBrowsers = null,
     ITurnstileVerifier? turnstile = null, Microsoft.Extensions.Options.IOptions<SessionOptions>? sessionOptions = null,
-    Microsoft.Extensions.Hosting.IHostEnvironment? hostEnvironment = null)
+    Microsoft.Extensions.Hosting.IHostEnvironment? hostEnvironment = null, Microsoft.Extensions.Options.IOptions<DriverAppOptions>? driverAppOptions = null)
 {
     private const string InvalidCredentials = "Credenciales inválidas.";
 
@@ -84,7 +85,7 @@ public sealed partial class AuthService(
 
     // ---------------- Login ----------------
 
-    public async Task<AuthResultDto> LoginAsync(LoginRequest req, CancellationToken ct)
+    public async Task<AuthResultDto> LoginAsync(LoginRequest req, CancellationToken ct, bool driverApp = false)
     {
         var user = string.IsNullOrWhiteSpace(req.Email) ? null : await users.FindByEmailAsync(req.Email.Trim());
         if (user is null || !user.IsActive)
@@ -113,10 +114,18 @@ public sealed partial class AuthService(
         var kind = user.UserKindLookupId is null ? UserKinds.Internal : (await lookups.GetAsync(user.UserKindLookupId.Value, ct))?.InternalCode ?? UserKinds.Internal;
         if (kind == UserKinds.Portal) throw new UnauthorizedException("Los usuarios de portal se autentican en el portal de clientes.");
         if (kind == UserKinds.Service) throw new UnauthorizedException(InvalidCredentials);   // Lote 132: la cuenta de servicio de una integración nunca inicia sesión
+        if (kind == UserKinds.Driver && !driverApp) throw new UnauthorizedException(DriverAuthMessages.UseTheAppMessage);   // 2026-10-23: el chofer «solo app» no entra a la web
 
         // Tenant activo: pedido → predeterminado del usuario → membresía marcada como predeterminada → la primera por nombre.
         // Nunca se pregunta (pedido de Luis, 2026-09-30): se entra directo y la compañía se cambia desde el selector de la cabecera.
         var memberships = await ActiveMembershipsAsync(user, ct);
+        if (driverApp)
+        {
+            // App del chofer: solo cuentan las compañías donde la persona es chofer activo (sin ninguna, no entra).
+            var driverTenants = await DriverTenantIdsAsync(user.Id, memberships, ct);
+            if (driverTenants.Count == 0) { await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Blocked, user.Id, null, new { reason = "not_a_driver" }, ct); throw new ForbiddenException(DriverAppRules.NotADriverMessage); }
+            memberships = memberships.Where(m => driverTenants.Contains(m.TenantId)).ToList();
+        }
         int tenantId;
         if (req.TenantId.HasValue)
         {
@@ -136,7 +145,7 @@ public sealed partial class AuthService(
         // Primer ingreso pendiente (2026-09-30): sin tokens; el challenge sirve para /auth/onboarding/* y para enrolar el MFA.
         if (OnboardingPending(user, totp is not null))
         {
-            var (onbChallenge, _) = OnboardingChallenge(user, tenantId, req.DeviceInfo);
+            var (onbChallenge, _) = OnboardingChallenge(user, tenantId, req.DeviceInfo, driverApp);
             await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Success, user.Id, tenantId, new { stage = "password", onboarding = "required" }, ct);
             return new AuthResultDto("onboarding_required", null, onbChallenge, totp is null, null, OnboardingState(user, totp is not null));
         }
@@ -162,24 +171,24 @@ public sealed partial class AuthService(
                 trusted = await trustedNetworks.MatchAsync(tenantId, tenant.IpAddress, ct);
             if (trusted is null)
             {
-                var (challenge, _) = jwt.CreateMfaChallengeToken(user, tenantId, req.DeviceInfo);
+                var (challenge, _) = jwt.CreateMfaChallengeToken(user, tenantId, req.DeviceInfo, driverApp: driverApp);
                 await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Success, user.Id, tenantId, new { stage = "password", mfa = totp is not null ? "required" : "enrollment_required" }, ct);
                 return new AuthResultDto("mfa_required", null, challenge, totp is null, null, DevMfaCode: DevMfaCodeOf(totp));
             }
             // se anota la decisión ANTES de emitir la sesión (igual que el evento de «mfa_required»): quedó claro por qué no se pidió el código
             await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Success, user.Id, tenantId,
                 new { stage = "password", mfa = "skipped_trusted_network", network = trusted.Name, cidr = trusted.Cidr, device = req.DeviceInfo }, ct);
-            var trustedPair = await IssueAsync(user, tenantId, kind, req.DeviceInfo, aal2At: null, ct);
+            var trustedPair = await IssueAsync(user, tenantId, kind, req.DeviceInfo, aal2At: null, ct, driverApp: driverApp);
             return new AuthResultDto("ok", trustedPair, null, false, null);
         }
 
-        var pair = await IssueAsync(user, tenantId, kind, req.DeviceInfo, aal2At: null, ct);
+        var pair = await IssueAsync(user, tenantId, kind, req.DeviceInfo, aal2At: null, ct, driverApp: driverApp);
         await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Success, user.Id, tenantId, new { device = req.DeviceInfo }, ct);
         return new AuthResultDto("ok", pair, null, false, null);
     }
 
     /// <summary>Segundo paso del login: código TOTP o código de recuperación, con el challenge token del paso 1.</summary>
-    public async Task<AuthResultDto> VerifyMfaAsync(int userId, int tenantId, string? deviceInfo, MfaVerifyRequest req, CancellationToken ct)
+    public async Task<AuthResultDto> VerifyMfaAsync(int userId, int tenantId, string? deviceInfo, MfaVerifyRequest req, CancellationToken ct, bool driverApp = false)
     {
         var user = await users.FindByIdAsync(userId.ToString()) ?? throw new UnauthorizedException();
         // Primer ingreso: el MFA es el último paso; antes van el correo y la contraseña propia.
@@ -211,7 +220,7 @@ public sealed partial class AuthService(
             portalClientId = pick.ClientId;
             if (trustedBrowsers is not null) await trustedBrowsers.MarkMfaVerifiedAsync(user.Id, req.TrustedBrowserToken, ct);
         }
-        var pair = await IssueAsync(user, tenantId, kind, req.DeviceInfo ?? deviceInfo, aal2At: DateTime.UtcNow, ct, portalClientId: portalClientId);
+        var pair = await IssueAsync(user, tenantId, kind, req.DeviceInfo ?? deviceInfo, aal2At: DateTime.UtcNow, ct, portalClientId: portalClientId, driverApp: driverApp);
         if (kind == UserKinds.Portal && trustedBrowsers is not null) await trustedBrowsers.ConsumeIfSingleUseAsync(user.Id, req.TrustedBrowserToken, ct);   // «No confiar en esta computadora»
         await security.WriteAsync(SecurityEventTypes.Mfa, SecurityOutcomes.Success, user.Id, tenantId, null, ct);
         await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Success, user.Id, tenantId, new { stage = "mfa" }, ct);
@@ -248,15 +257,15 @@ public sealed partial class AuthService(
     /// <summary>Aparato al que queda ligada una sesión (Lote 8A): Id para RefreshToken.UserDeviceId, PublicId para `did`.</summary>
     private sealed record DeviceBinding(int UserDeviceId, Guid PublicId, int SessionMinutes);
 
-    private async Task<TokenPairDto> IssueAsync(ApplicationUser user, int tenantId, string? kind, string? deviceInfo, DateTime? aal2At, CancellationToken ct, DeviceBinding? device = null, int? portalClientId = null)
+    private async Task<TokenPairDto> IssueAsync(ApplicationUser user, int tenantId, string? kind, string? deviceInfo, DateTime? aal2At, CancellationToken ct, DeviceBinding? device = null, int? portalClientId = null, bool driverApp = false)
     {
         var t = await db.Tenants.AsNoTracking().IgnoreQueryFilters().FirstAsync(x => x.TenantId == tenantId, ct);
         var raw = JwtTokenService.NewRefreshToken();
         var rt = new RefreshToken
         {
             UserId = user.Id, TenantId = tenantId, TokenHash = JwtTokenService.HashToken(raw), DeviceInfo = deviceInfo is { Length: > 200 } d ? d[..200] : deviceInfo,
-            IssuedAtUtc = DateTime.UtcNow, ExpiresAtUtc = DateTime.UtcNow.AddMinutes(device?.SessionMinutes ?? SessionRules.Minutes(t.SessionMinutes, t.SessionDays)), Aal2VerifiedAtUtc = aal2At,   // 2026-10-12: la duración es en minutos
-            IpAddress = RequestIp(), PortalClientId = portalClientId,
+            IssuedAtUtc = DateTime.UtcNow, ExpiresAtUtc = DateTime.UtcNow.AddMinutes(device?.SessionMinutes ?? (driverApp ? await DriverSessionMinutesAsync(user.Id, ct) : SessionRules.Minutes(t.SessionMinutes, t.SessionDays))), Aal2VerifiedAtUtc = aal2At,   // 2026-10-12: la duración es en minutos
+            IpAddress = RequestIp(), PortalClientId = portalClientId, IsDriverApp = driverApp,
         };
         // Si UserManager dejó al usuario marcado como modificado (ResetAccessFailedCount que perdió la carrera con un intento
         // fallido concurrente: Identity no lanza, devuelve un IdentityResult fallido), se recarga para no arrastrar ese
@@ -441,7 +450,7 @@ public sealed partial class AuthService(
             UserId = rt.UserId, TenantId = rt.TenantId, TokenHash = JwtTokenService.HashToken(raw),
             DeviceInfo = device is null ? deviceInfo ?? rt.DeviceInfo : rt.DeviceInfo,
             IssuedAtUtc = DateTime.UtcNow, ExpiresAtUtc = expires, Aal2VerifiedAtUtc = rt.Aal2VerifiedAtUtc,
-            IpAddress = RequestIp() ?? rt.IpAddress, PortalClientId = rt.PortalClientId,
+            IpAddress = RequestIp() ?? rt.IpAddress, PortalClientId = rt.PortalClientId, IsDriverApp = rt.IsDriverApp,
         };
         db.SuppressAudit = true;
         db.RefreshTokens.Add(next);

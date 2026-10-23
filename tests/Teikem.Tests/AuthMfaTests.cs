@@ -25,7 +25,7 @@ namespace Teikem.Tests;
 /// LastLoginUtc (ver su comentario) — el proveedor InMemory de este fixture no lo traduce, así que ese camino se
 /// verificó a mano contra la API real (curl), no aquí.
 /// </summary>
-public class AuthMfaTests
+public partial class AuthMfaTests
 {
     private const string Password = "Clave-Segura1";
 

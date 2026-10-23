@@ -255,9 +255,10 @@ function PolicyForm({ settings }: { settings: TenantSettingsDto }) {
           await save.mutateAsync(body)
         } catch (err) {
           // el servidor valida en MINUTOS (sessionMinutes / deviceSessionMinutes): el error se pone bajo el campo en HORAS que lo causó
-          if (err instanceof ApiError && (err.errors.sessionMinutes || err.errors.deviceSessionMinutes)) {
+          if (err instanceof ApiError && (err.errors.sessionMinutes || err.errors.deviceSessionMinutes || err.errors.driverSessionMinutes)) {
             if (err.errors.sessionMinutes) form.setError('sessionHours', { message: err.errors.sessionMinutes[0] })
             if (err.errors.deviceSessionMinutes) form.setError('deviceSessionHours', { message: err.errors.deviceSessionMinutes[0] })
+            if (err.errors.driverSessionMinutes) form.setError('driverSessionHours', { message: err.errors.driverSessionMinutes[0] })
             return
           }
           throw err
@@ -293,6 +294,9 @@ function PolicyForm({ settings }: { settings: TenantSettingsDto }) {
           </Field>
         </div>
         <p className="set-d">{t('system.audit.policy.sessionHoursHint')}</p>
+        <Field name="driverSessionHours" label={t('system.audit.policy.driverHoursLabel')} help={t('system.audit.policy.driverHoursHint')}>
+          <NumberInput className="mono" min={0.02} max={8760} step={0.25} inputMode="decimal" />
+        </Field>
       </fieldset>
       {canEdit && (
         <div className="set-actions">

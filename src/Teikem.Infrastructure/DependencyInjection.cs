@@ -86,6 +86,7 @@ public static class DependencyInjection
         services.AddSingleton<Teikem.Infrastructure.Files.IFileStore, Teikem.Infrastructure.Files.EncryptedDiskFileStore>();
         services.AddScoped<StoredFileService>();
         services.Configure<OnboardingOptions>(config.GetSection("Auth:Onboarding"));
+        services.Configure<DriverAppOptions>(config.GetSection("DriverApp"));   // 2026-10-23: tope de la sesión del chofer
         services.Configure<TurnstileOptions>(config.GetSection("Auth:Turnstile"));   // Lote 101: apagado por omisión
         services.Configure<TrustedBrowserOptions>(config.GetSection("Auth:TrustedBrowsers"));   // Lote 100: apagado por omisión
         services.Configure<Teikem.Infrastructure.Legal.LegalOptions>(config.GetSection("Legal"));   // Lote 99

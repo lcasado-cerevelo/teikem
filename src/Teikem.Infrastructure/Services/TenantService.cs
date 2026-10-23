@@ -54,6 +54,13 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
             t.SessionMinutes = req.SessionMinutes.Value;
             t.SessionDays = SessionRules.DaysFor(req.SessionMinutes.Value);
         }
+        // 2026-10-23: sesión del chofer en la app. 0 = quitarla (vale la sesión general); si no, minutos válidos (el tope de la aplicación se aplica al usarla).
+        if (req.DriverSessionMinutes.HasValue)
+        {
+            if (req.DriverSessionMinutes.Value == 0) t.DriverSessionMinutes = null;
+            else if (!SessionRules.IsValid(req.DriverSessionMinutes.Value)) throw new ValidationException("driverSessionMinutes", SessionRules.MinutesRange);
+            else t.DriverSessionMinutes = req.DriverSessionMinutes.Value;
+        }
         if (req.DeviceSessionMinutes.HasValue)
         {
             if (!SessionRules.IsValid(req.DeviceSessionMinutes.Value)) throw new ValidationException("deviceSessionMinutes", SessionRules.MinutesRange);
@@ -257,5 +264,6 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         DispatchRequirementRules.Parse(t.DispatchRequirement) ?? DispatchRequirements.Free,   // 2026-10-20 Lote 145
         ValuationRules.Parse(t.ValuationMethod) ?? ValuationMethods.Average,   // 2026-10-20 Lote 148
         ReceiptRequirementRules.Parse(t.ReceiptRequirement) ?? ReceiptRequirements.Free,   // 2026-10-20 Lote 149
-        t.FleetDocWarnDays);   // 2026-10-21 Lote 168
+        t.FleetDocWarnDays,   // 2026-10-21 Lote 168
+        t.DriverSessionMinutes);   // 2026-10-23
 }

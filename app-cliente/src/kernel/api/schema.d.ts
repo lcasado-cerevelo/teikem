@@ -11224,6 +11224,135 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/driver-app/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["LoginRequest"];
+                    "text/json": components["schemas"]["LoginRequest"];
+                    "application/*+json": components["schemas"]["LoginRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AuthResultDto"];
+                        "application/json": components["schemas"]["AuthResultDto"];
+                        "text/json": components["schemas"]["AuthResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver-app/auth/mfa/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["MfaVerifyRequest"];
+                    "text/json": components["schemas"]["MfaVerifyRequest"];
+                    "application/*+json": components["schemas"]["MfaVerifyRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AuthResultDto"];
+                        "application/json": components["schemas"]["AuthResultDto"];
+                        "text/json": components["schemas"]["AuthResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver-app/auth/company-tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DriverCompanyTokensRequest"];
+                    "text/json": components["schemas"]["DriverCompanyTokensRequest"];
+                    "application/*+json": components["schemas"]["DriverCompanyTokensRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverSessionDto"];
+                        "application/json": components["schemas"]["DriverSessionDto"];
+                        "text/json": components["schemas"]["DriverSessionDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/driver-pay-policy": {
         parameters: {
             query?: never;
@@ -39041,6 +39170,18 @@ export interface components {
             clearIssuedDate?: boolean | null;
             clearExpiryDate?: boolean | null;
         };
+        DriverCompanyTokenDto: {
+            /** Format: int32 */
+            tenantId?: number;
+            tenantName?: string | null;
+            accessToken?: string | null;
+            /** Format: date-time */
+            accessExpiresAtUtc?: string | null;
+            blocked?: string | null;
+        };
+        DriverCompanyTokensRequest: {
+            refreshToken?: string | null;
+        };
         DriverCreateRequest: {
             code?: string | null;
             fullName?: string | null;
@@ -39284,6 +39425,12 @@ export interface components {
         };
         DriverRetireRequest: {
             comment?: string | null;
+        };
+        DriverSessionDto: {
+            refreshToken?: string | null;
+            /** Format: date-time */
+            refreshExpiresAtUtc?: string;
+            companies?: components["schemas"]["DriverCompanyTokenDto"][] | null;
         };
         DriverSettlementAdjustRequest: {
             /** Format: double */
@@ -46653,6 +46800,8 @@ export interface components {
             receiptRequirement?: string | null;
             /** Format: int32 */
             fleetDocWarnDays?: number;
+            /** Format: int32 */
+            driverSessionMinutes?: number | null;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -46714,6 +46863,8 @@ export interface components {
             receiptRequirement?: string | null;
             /** Format: int32 */
             fleetDocWarnDays?: number | null;
+            /** Format: int32 */
+            driverSessionMinutes?: number | null;
         };
         TenantSummaryDto: {
             /** Format: int32 */

@@ -139,7 +139,7 @@ function CreateUserModal({ open, roleNames, onClose }: { open: boolean; roleName
         email: z.string().trim().min(1, t('system.users.users.emailRequired')),
         fullName: z.string().trim(),
         password: z.string(),
-        userKind: z.enum(['INTERNAL', 'PORTAL']),
+        userKind: z.enum(['INTERNAL', 'PORTAL', 'DRIVER']),
       }),
     [t],
   )
@@ -213,7 +213,7 @@ function CreateUserModal({ open, roleNames, onClose }: { open: boolean; roleName
             fullName: v.fullName || null,
             password: v.password || null,
             roles: selectedRoles,
-            userKind: 'INTERNAL',
+            userKind: v.userKind === 'DRIVER' ? 'DRIVER' : 'INTERNAL',   // 2026-10-23: chofer «solo app»
             alsoTenantIds: alsoCompanies.map(Number),
           })
           toast.success(t('system.users.users.created'))
@@ -233,8 +233,9 @@ function CreateUserModal({ open, roleNames, onClose }: { open: boolean; roleName
         }}
       >
         <Field name="userKind" label={t('system.users.users.kind')}>
-          <Select options={[{ value: 'INTERNAL', label: t('system.users.users.kindInternal') }, { value: 'PORTAL', label: t('system.users.users.kindPortal') }]} />
+          <Select options={[{ value: 'INTERNAL', label: t('system.users.users.kindInternal') }, { value: 'DRIVER', label: t('system.users.users.kindDriver') }, { value: 'PORTAL', label: t('system.users.users.kindPortal') }]} />
         </Field>
+        {form.watch('userKind') === 'DRIVER' && <p className="note">{t('system.users.users.driverHint')}</p>}
         {isPortal ? (
           <p className="note">{t('system.users.users.portalHint')}</p>
         ) : (

@@ -47,7 +47,9 @@ public sealed class AuthController(AuthService auth, DeviceService devices, Trus
     /// <summary>Paso 2 (con el challenge token como Bearer): código TOTP o de recuperación.</summary>
     [HttpPost("mfa/verify"), Authorize(Policy = Policies.MfaChallenge), EnableRateLimiting(DeviceRateLimits.Login)]
     public Task<AuthResultDto> VerifyMfa([FromBody] MfaVerifyRequest req, CancellationToken ct)
-        => auth.VerifyMfaAsync(int.Parse(User.FindFirst(TeikemClaims.Subject)!.Value), int.Parse(User.FindFirst(TeikemClaims.TenantId)!.Value), User.FindFirst("device")?.Value, req, ct);
+        => string.Equals(User.FindFirst(TeikemClaims.App)?.Value, TeikemClaims.AppDriver, StringComparison.Ordinal)
+            ? throw new ForbiddenException(Teikem.Domain.Tenancy.DriverAuthMessages.UseTheAppMessage)   // el challenge de la app del chofer solo lo acepta el endpoint del chofer
+            : auth.VerifyMfaAsync(int.Parse(User.FindFirst(TeikemClaims.Subject)!.Value), int.Parse(User.FindFirst(TeikemClaims.TenantId)!.Value), User.FindFirst("device")?.Value, req, ct);
 
     // ---------------- Primer ingreso (2026-09-30): correo → contraseña propia → MFA, con el challenge token del login ----------------
 

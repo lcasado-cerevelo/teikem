@@ -36,6 +36,8 @@ public class Tenant : ISoftDeletable
     public int? SessionMinutes { get; set; }
     /// <summary>2026-10-12: vida de la sesión de un aparato de almacén en MINUTOS (NULL = vale DeviceSessionDays × 1440).</summary>
     public int? DeviceSessionMinutes { get; set; }
+    /// <summary>2026-10-23: vida de la sesión del CHOFER en la app en MINUTOS (NULL = vale la sesión general de la compañía). Nunca pasa del tope de la aplicación (DriverApp:MaxSessionMinutes). Reglas: DriverSessionRules.</summary>
+    public int? DriverSessionMinutes { get; set; }
     /// <summary>Marca por compañía: tema de color y logos (JSON libre, validado en servicio).</summary>
     public string? BrandingJson { get; set; }
     /// <summary>2026-10-22: dominio propio de la compañía (logistica.miempresa.com); la pantalla de entrada muestra su logo cuando se abre con esa dirección. NULL = sin dominio. Reglas: TenantDomainRules.</summary>

@@ -182,6 +182,8 @@ export interface PolicyValues {
   /** 2026-10-12: duración de la sesión en HORAS, con decimales (0.25 = 15 minutos; 24 = 1 día). */
   sessionHours: number | null
   deviceSessionHours: number | null
+  /** 2026-10-23: sesión del chofer en la app, en HORAS; null = vale la sesión general. */
+  driverSessionHours: number | null
 }
 
 export interface PolicySettings {
@@ -190,6 +192,8 @@ export interface PolicySettings {
   /** Duración efectiva en minutos (el servidor la calcula con los días si no está configurada). */
   sessionMinutes?: number
   deviceSessionMinutes?: number
+  /** Valor propio del chofer en minutos; null/ausente = vale la sesión general. */
+  driverSessionMinutes?: number | null
 }
 
 /** Mínimo y máximo de la duración de la sesión en minutos (1 minuto a 365 días), como `SessionRules` del servidor. */
@@ -215,6 +219,7 @@ export function toPolicyValues(s: PolicySettings): PolicyValues {
     aal2WindowMinutes: String(s.aal2WindowMinutes ?? 30),
     sessionHours: minutesToHours(s.sessionMinutes ?? 30 * 1440),
     deviceSessionHours: minutesToHours(s.deviceSessionMinutes ?? 30 * 1440),
+    driverSessionHours: minutesToHours(s.driverSessionMinutes),
   }
 }
 
@@ -231,12 +236,13 @@ export function policyErrors(v: PolicyValues): Partial<Record<keyof PolicyValues
   if (!Number.isInteger(minutes) || minutes < 5 || minutes > 240) errors.aal2WindowMinutes = 'reauthInvalid'
   if (!validSessionHours(v.sessionHours)) errors.sessionHours = 'hoursRange'
   if (!validSessionHours(v.deviceSessionHours)) errors.deviceSessionHours = 'hoursRange'
+  if (v.driverSessionHours != null && !validSessionHours(v.driverSessionHours)) errors.driverSessionHours = 'hoursRange'   // vacío es válido: vale la general
   return errors
 }
 
 /** Cuerpo del `PUT /tenant/settings` parcial: solo lo que cambió (la duración viaja en minutos; null = sin cambio en el API). */
 export function policyRequestBody(saved: PolicySettings, v: PolicyValues) {
-  const body: { mfaRequired?: boolean; aal2WindowMinutes?: number; sessionMinutes?: number; deviceSessionMinutes?: number } = {}
+  const body: { mfaRequired?: boolean; aal2WindowMinutes?: number; sessionMinutes?: number; deviceSessionMinutes?: number; driverSessionMinutes?: number } = {}
   if (v.mfaRequired !== (saved.mfaRequired ?? false)) body.mfaRequired = v.mfaRequired
   const minutes = Number(v.aal2WindowMinutes)
   if (minutes !== saved.aal2WindowMinutes) body.aal2WindowMinutes = minutes
@@ -244,5 +250,8 @@ export function policyRequestBody(saved: PolicySettings, v: PolicyValues) {
   if (session != null && session !== (saved.sessionMinutes ?? 30 * 1440)) body.sessionMinutes = session
   const device = hoursToMinutes(v.deviceSessionHours)
   if (device != null && device !== (saved.deviceSessionMinutes ?? 30 * 1440)) body.deviceSessionMinutes = device
+  // sesión del chofer: vacío = quitarla (0 en el API: vale la general)
+  const driver = hoursToMinutes(v.driverSessionHours)
+  if ((driver ?? 0) !== (saved.driverSessionMinutes ?? 0)) body.driverSessionMinutes = driver ?? 0
   return body
 }

@@ -114,6 +114,7 @@ public sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refresh
     public void Configure(EntityTypeBuilder<RefreshToken> b)
     {
         b.ToTable("RefreshToken");
+        b.Property(t => t.IsDriverApp).HasDefaultValue(false);   // 2026-10-23
         b.HasKey(t => t.RefreshTokenId);
         b.Property(t => t.TokenHash).HasMaxLength(200).IsRequired();
         b.Property(t => t.DeviceInfo).HasMaxLength(200);

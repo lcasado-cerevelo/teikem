@@ -55,3 +55,12 @@ public sealed record ResetPasswordRequest(string? Email, string? Token, string? 
 /// <summary>Administración de usuarios: contraseña temporal (vacía = el servidor genera una).</summary>
 public sealed record TemporaryPasswordRequest(string? Password);
 public sealed record TemporaryPasswordDto(string Password, DateTime ExpiresAtUtc, int ValidMinutes);
+
+/// <summary>
+/// 2026-10-23 (app del chofer): el acceso de UNA compañía donde la persona es chofer, a partir de la misma sesión. `Blocked` = mfa_required cuando esa compañía exige el segundo factor y esta sesión no lo cumplió
+/// (no se da token: entra de nuevo con contraseña y código). El token de acceso vale lo de siempre (minutos); se vuelve a pedir con la sesión.
+/// </summary>
+public sealed record DriverCompanyTokenDto(int TenantId, string TenantName, string? AccessToken, DateTime? AccessExpiresAtUtc, string? Blocked);
+public sealed record DriverCompanyTokensRequest(string RefreshToken);
+/// <summary>La sesión del chofer renovada: el refresh token NUEVO (el anterior queda revocado; reusarlo cierra la sesión por posible robo) y el acceso a cada compañía.</summary>
+public sealed record DriverSessionDto(string RefreshToken, DateTime RefreshExpiresAtUtc, IReadOnlyList<DriverCompanyTokenDto> Companies);
