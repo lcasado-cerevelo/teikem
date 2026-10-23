@@ -44,7 +44,9 @@ public static class EmailTransforms
     public const string Digits = "DIGITS";
     /// <summary>Quita el símbolo de moneda y las comas de miles («$1,234.50» → «1234.50»).</summary>
     public const string Money = "MONEY";
-    public static readonly IReadOnlyList<string> All = [None, Upper, Digits, Money];
+    /// <summary>Junta los espacios y tabuladores seguidos en uno solo (un OCR separa en celdas «ERD ⇥ Pick Up ⇥ 1» lo que es «ERD Pick Up 1»).</summary>
+    public const string Spaces = "SPACES";
+    public static readonly IReadOnlyList<string> All = [None, Upper, Digits, Money, Spaces];
 }
 
 /// <summary>Un texto y cómo compararlo (asunto o nombre de adjunto).</summary>
@@ -58,11 +60,12 @@ public sealed record EmailBlockColumn(int Position, int Index);
 /// la MISMA plantilla de la integración la lee. LABEL usa Label; REGEX usa Pattern (grupo 1 si lo hay); BLOCK usa Start, End, Separator y Columns.
 /// BLOCK con LineRegex (2026-10-22): cada línea del bloque que coincida con la expresión da una fila y los grupos (1, 2, 3…) van a las columnas de la plantilla (Columns.Index = número de grupo); las líneas que no
 /// coinciden (continuaciones de una descripción, rayas, totales) se ignoran. Repeat: el bloque se lee cada vez que aparece (un encabezado que se repite en cada página del PDF), no solo la primera.
+/// FromHeader (2026-10-23, lectores por registro): el campo se lee UNA vez de lo que viene antes del primer registro y vale para todos. AppendWith: si la posición ya tiene un valor, este se agrega a continuación con ese texto en medio (varias partes en una nota).
 /// </summary>
 public sealed record EmailBodyField(
     int Position, string Kind, string? Label = null, string? Pattern = null, bool Required = false, string Transform = EmailTransforms.None,
     string? Start = null, string? End = null, string? Separator = null, IReadOnlyList<EmailBlockColumn>? Columns = null,
-    string? LineRegex = null, bool Repeat = false);
+    string? LineRegex = null, bool Repeat = false, bool FromHeader = false, string? AppendWith = null);
 
 /// <summary>Configuración NO secreta de un conector de correo (la contraseña va aparte, cifrada). ReadPdf (2026-10-22): los PDF adjuntos se convierten en texto (con OCR si son escaneados) y se leen con los MISMOS campos a leer del cuerpo (BodyFields).</summary>
 public sealed record EmailConfig(
@@ -111,7 +114,7 @@ public static class EmailRules
     public static string BlockMarkersMessage => "Un bloque necesita el texto de inicio y el de fin (o una expresión regular por línea).";
     public static string RepeatNeedsStartMessage => "Para repetir el bloque indique el texto de inicio (el encabezado que se repite).";
     public static string BlockColumnsMessage => "Un bloque necesita al menos una columna (posición y número de columna del renglón).";
-    public static string UnknownTransformMessage(string t) => $"Transformación desconocida: {t}. Use NONE, UPPER, DIGITS o MONEY.";
+    public static string UnknownTransformMessage(string t) => $"Transformación desconocida: {t}. Use NONE, UPPER, DIGITS, MONEY o SPACES.";
     public static string NothingToReadMessage => "Marque al menos una cosa a leer: los adjuntos o el cuerpo del correo.";
     public static string SenderNotAllowedMessage(string sender) => $"Remitente no permitido: {sender}.";
     public static string NoAttachmentMessage => "El correo no trae ningún adjunto que cumpla el criterio.";
@@ -327,9 +330,67 @@ public static class EmailRules
             }
             var value = kind == EmailBodyKinds.Label ? ReadLabel(lines, f.Label) : ReadRegex(text ?? string.Empty, f.Pattern);
             if (value is null) { if (f.Required) missing.Add(RequiredFieldMissingMessage(f.Position, f.Label ?? f.Pattern ?? kind)); continue; }
-            single[f.Position] = Transform(value, f.Transform);
+            var transformed = Transform(value, f.Transform);
+            single[f.Position] = f.AppendWith is not null && single.TryGetValue(f.Position, out var before) ? before + f.AppendWith + transformed : transformed;
         }
         return new BodyReading(single, block, missing);
+    }
+
+    /// <summary>
+    /// Lo leído de un documento con VARIOS registros (2026-10-23): cada registro es un BodyReading; Missing junta lo que faltó en cada uno («Registro 3: …»).
+    /// </summary>
+    public sealed record DocumentReading(IReadOnlyList<BodyReading> Parts, IReadOnlyList<string> Missing)
+    {
+        public bool HasData => Parts.Any(p => p.HasData);
+    }
+
+    public static string RecordMissingMessage(int record, string detail) => $"Registro {record}: {detail}";
+    public const string NoRecordsMessage = "No se encontró ningún registro en el documento (el texto de inicio de registro no aparece).";
+
+    /// <summary>
+    /// Sin <paramref name="recordStart"/> el documento es un solo registro (como siempre). Con él, el texto se parte en cada línea que lo contiene: lo anterior al primer registro es el ENCABEZADO (sus campos FromHeader se leen de ahí,
+    /// o del documento entero si no están), y cada registro se lee con los demás campos y hereda lo del encabezado.
+    /// </summary>
+    public static DocumentReading ReadDocument(string? text, IReadOnlyList<EmailBodyField> fields, string? recordStart)
+    {
+        if (string.IsNullOrWhiteSpace(recordStart))
+        {
+            var one = ReadBody(text, fields);
+            return new DocumentReading(new[] { one }, one.Missing);
+        }
+        var lines = (text ?? string.Empty).Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+        var marker = PostalLocalityRules.Normalize(recordStart);
+        var starts = new List<int>();
+        for (var i = 0; i < lines.Length; i++) if (PostalLocalityRules.Normalize(lines[i]).Contains(marker, StringComparison.Ordinal)) starts.Add(i);
+        if (starts.Count == 0) return new DocumentReading(Array.Empty<BodyReading>(), new[] { NoRecordsMessage });
+        var header = string.Join("\n", lines.Take(starts[0]));
+        var headerFields = fields.Where(f => f.FromHeader).ToList();
+        var recordFields = fields.Where(f => !f.FromHeader).ToList();
+        var headerReading = ReadBody(header.Trim().Length > 0 ? header : text, headerFields);
+        var parts = new List<BodyReading>();
+        var missing = new List<string>(headerReading.Missing);
+        for (var n = 0; n < starts.Count; n++)
+        {
+            var end = n + 1 < starts.Count ? starts[n + 1] : lines.Length;
+            var record = ReadBody(string.Join("\n", lines.Skip(starts[n]).Take(end - starts[n])), recordFields);
+            missing.AddRange(record.Missing.Select(m => RecordMissingMessage(n + 1, m)));
+            var single = new Dictionary<int, string>(headerReading.Single);
+            foreach (var (k, v) in record.Single) single[k] = v;
+            parts.Add(new BodyReading(single, record.Lines, Array.Empty<string>()));
+        }
+        return new DocumentReading(parts, missing);
+    }
+
+    /// <summary>Todos los registros como un solo archivo CSV (una fila por línea de cada registro).</summary>
+    public static string ToCsv(DocumentReading reading, bool withHeader, char delimiter)
+    {
+        if (reading.Parts.Count == 1) return ToCsv(reading.Parts[0], withHeader, delimiter);
+        var rows = reading.Parts.SelectMany(p => p.Lines.Count > 0 ? p.Lines.Select(l => Merge(p.Single, l)).ToList() : new List<Dictionary<int, string>> { new(p.Single) }).ToList();
+        var width = rows.SelectMany(r => r.Keys).DefaultIfEmpty(1).Max();
+        var sb = new StringBuilder();
+        if (withHeader) sb.AppendLine(string.Join(delimiter, Enumerable.Range(1, width).Select(i => i.ToString(CultureInfo.InvariantCulture))));
+        foreach (var r in rows) sb.AppendLine(string.Join(delimiter, Enumerable.Range(1, width).Select(i => Quote(r.TryGetValue(i, out var v) ? v : string.Empty, delimiter))));
+        return sb.ToString();
     }
 
     private static string? ReadLabel(string[] lines, string? label)
@@ -437,6 +498,7 @@ public static class EmailRules
         EmailTransforms.Upper => value.ToUpperInvariant(),
         EmailTransforms.Digits => new string(value.Where(char.IsDigit).ToArray()),
         EmailTransforms.Money => Regex.Replace(value, @"[^\d.,-]", string.Empty).Replace(",", string.Empty),
+        EmailTransforms.Spaces => Regex.Replace(value, @"\s+", " ").Trim(),
         _ => value,
     };
 

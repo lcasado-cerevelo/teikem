@@ -148,6 +148,22 @@ describe('IntegrationsScreen', () => {
     })
   })
 
+  it('«Usar un modelo» agrega el lector de CMS ya armado: destino, texto que empieza cada registro y el campo que se lee del encabezado', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await user.click(await screen.findByRole('button', { name: 'Nueva integración' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Nueva integración' })
+    await user.selectOptions(within(dialog).getByLabelText(/^Conector/), 'EMAIL')
+    await user.click(await within(dialog).findByTestId('reader-preset-cms-referral-order'))
+    expect(await within(dialog).findByDisplayValue('Hoja de ruta de CMS')).toBeInTheDocument()
+    expect(within(dialog).getByDisplayValue('Order #:')).toBeInTheDocument()   // el texto que empieza cada orden del documento
+    expect(within(dialog).getByLabelText(/Texto que empieza cada registro/)).toHaveValue('Order #:')
+    expect(within(dialog).getAllByRole('switch', { name: /del encabezado/ }).length).toBeGreaterThan(0)
+    // un segundo clic no repite el nombre: se numera
+    await user.click(within(dialog).getByTestId('reader-preset-cms-referral-order'))
+    expect(await within(dialog).findByDisplayValue('Hoja de ruta de CMS 2')).toBeInTheDocument()
+  })
+
   it('la bandeja muestra el motivo, deja corregir las celdas y descartar con nota', async () => {
     const user = userEvent.setup()
     wrap(undefined, '/system/integrations?tab=inbox')

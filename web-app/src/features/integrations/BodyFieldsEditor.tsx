@@ -63,6 +63,14 @@ export function BodyFieldsEditor({ form, base, error }: { form: UseFormReturn<In
               </>
             )}
             <div className="r2">
+              <Field name={`${base}.${i}.fromHeader`} label={t('integrations.email.fromHeader', { n: i + 1 })} help={t('integrations.email.fromHeaderHelp')}>
+                <Toggle text={t('integrations.email.fromHeader', { n: i + 1 })} />
+              </Field>
+              <Field name={`${base}.${i}.appendWith`} label={t('integrations.email.appendWith', { n: i + 1 })} help={t('integrations.email.appendWithHelp')}>
+                <TextInput placeholder=" | " />
+              </Field>
+            </div>
+            <div className="r2">
               <Field name={`${base}.${i}.transform`} label={t('integrations.email.transform', { n: i + 1 })}>
                 <Select options={TRANSFORMS.map((x) => ({ value: x, label: t(`integrations.email.transformOption.${x}`) }))} />
               </Field>

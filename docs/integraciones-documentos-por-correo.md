@@ -40,3 +40,9 @@ Archivos en `F:\Download`: REGULAR 10-12-2026, OXIGENO / ALTAS / AXISMED / RECOG
 - Modelos de lector en `web-app/src/features/integrations/readerPresets.json` (fuente única; la pantalla los ofrece y `NoticeDocumentTargetsTests` los prueba con el texto real de los PDF): despacho → salida, envío (recibo) → llegada, factura Drive Medical → llegada.
 - **Sin integración creada aún**: faltan buzón, cliente y almacén de la compañía; con los modelos se arma desde la pantalla.
 - **Sin decidir**: hojas de ruta CMS (¿qué crean? no traen dirección: parecen recogidas por referido para marcar), factura de Depot (4627), «cantidad each» vs «paletas» cuando solo hay un número.
+
+## 7. CMS y lectores por registro (2026-10-23)
+- Respuestas de Luis: la **ruta de CMS = nombre del chofer de la hoja** («ERD Pick Up 1»), que en Teikem será una **zona** con sus choferes (un chofer puede cubrir varias zonas: ya existe); número de orden y de envío = **Order #** de CMS; es una **recogida**; «New DME … NOTES» va como **nota**, unida a las instrucciones de entrega; las órdenes se crean solas y el **cierre** (ruta completada, COD) va por **propuesta con confirmación** (modo sugerir/automático por lector).
+- Hecho: lectores por registro (`RecordStart`, `FromHeader`, `AppendWith`, transformación `SPACES`), modelo «Hoja de ruta de CMS» probado con el texto real del PDF (OCR) en `CmsRouteSheetReaderTests`.
+- **Pendiente (pregunta abierta a Luis):** (a) la dirección del paciente debe ser la **parada de recogida** y el consignatario CMS: hoy el importador solo conoce consignatario, la recogida sale del lugar por defecto del cliente y una ruta de recogida (Lote 211) pide una parada de recogida pendiente; (b) la zona se calcula por código postal/pueblo de la parada: «ruta → zona» necesita un campo de zona en el importador; (c) cola de propuestas para «Ruta completada» (Referral # = Order #).
+- El OCR de la hoja de CMS lee mal la cantidad (un «1» sale «4»): el modelo no la usa.

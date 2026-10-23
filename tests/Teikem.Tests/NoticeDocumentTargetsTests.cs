@@ -27,7 +27,7 @@ public class NoticeDocumentTargetsTests
         + "0010\t14003\t=\t310EA\t13.05\t4,045.50\nAPP Pad Only, 1/ea, RTL\tper EA\n0040\t14027\t=\t48CV\t302.50\t14,520.00\n0050\tRTLPC23278\t29.14\t961.62\nArm Sling, RTL,1EA,6/CS\tper CV\n"
         + "0060\t12202KD-4\t=~\t300 CV\t98.22\t29,466.00\n";
 
-    private static IReadOnlyList<DocumentReader> Readers()
+    internal static IReadOnlyList<DocumentReader> Readers()
     {
         var path = AppContext.BaseDirectory;
         while (path is not null && !File.Exists(Path.Combine(path, "web-app", "src", "features", "integrations", "readerPresets.json"))) path = Path.GetDirectoryName(path);
@@ -42,11 +42,11 @@ public class NoticeDocumentTargetsTests
             {
                 string S(string n) => f.GetProperty(n).GetString() ?? string.Empty;
                 var columns = S("columns").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(x => x.Split('=')).Select(p => new EmailBlockColumn(int.Parse(p[0]), int.Parse(p[1]))).ToList();
-                return new EmailBodyField(int.Parse(S("position")), S("kind"), S("label").Length == 0 ? null : S("label"), null, f.GetProperty("required").GetBoolean(), S("transform"),
+                return new EmailBodyField(int.Parse(S("position")), S("kind"), S("label").Length == 0 ? null : S("label"), S("pattern").Length == 0 ? null : S("pattern"), f.GetProperty("required").GetBoolean(), S("transform"),
                     S("start").Length == 0 ? null : S("start"), null, S("separator").Length == 0 ? null : S("separator"), columns.Count == 0 ? null : columns,
-                    S("lineRegex").Length == 0 ? null : S("lineRegex"), f.GetProperty("repeat").GetBoolean());
+                    S("lineRegex").Length == 0 ? null : S("lineRegex"), f.GetProperty("repeat").GetBoolean(), f.GetProperty("fromHeader").GetBoolean(), S("appendWith").Length == 0 ? null : S("appendWith"));
             }).ToList();
-            list.Add(new DocumentReader(r.GetProperty("name").GetString()!, r.GetProperty("source").GetString()!, r.GetProperty("target").GetString()!, when, fields));
+            list.Add(new DocumentReader(r.GetProperty("name").GetString()!, r.GetProperty("source").GetString()!, r.GetProperty("target").GetString()!, when, fields, null, null, false, r.GetProperty("recordStart").GetString() is { Length: > 0 } rs ? rs : null));
         }
         return list;
     }
@@ -65,7 +65,7 @@ public class NoticeDocumentTargetsTests
     public void The_presets_are_valid_readers()
     {
         var readers = Readers();
-        Assert.Equal(3, readers.Count);
+        Assert.Equal(4, readers.Count);
         Assert.Empty(DocumentReaderRules.Validate(readers));
     }
 

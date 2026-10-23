@@ -88,6 +88,9 @@ function ReaderCard({ form, index, reader, clientOptions, templateOptions, onRem
           <Toggle text={t('integrations.email.readers.firstOnly')} />
         </Field>
       </div>
+      <Field name={`${base}.recordStart`} label={t('integrations.email.readers.recordStart')} help={t('integrations.email.readers.recordStartHelp')}>
+        <TextInput placeholder="Order #:" />
+      </Field>
       <div className="r2">
         <Field name={`${base}.clientPublicId`} label={t('integrations.email.readers.client')} help={t('integrations.email.readers.clientHelp')}>
           <Select options={clientOptions} placeholder={t('integrations.email.readers.sameAsIntegration')} />

@@ -39611,6 +39611,7 @@ export interface components {
             /** Format: uuid */
             clientPublicId?: string | null;
             firstOnly?: boolean;
+            recordStart?: string | null;
         };
         DriverAcceptRequest: {
             declines?: components["schemas"]["DriverDeclineItem"][] | null;
@@ -40330,6 +40331,8 @@ export interface components {
             columns?: components["schemas"]["EmailBlockColumn"][] | null;
             lineRegex?: string | null;
             repeat?: boolean;
+            fromHeader?: boolean;
+            appendWith?: string | null;
         };
         EmailConfig: {
             host?: string | null;

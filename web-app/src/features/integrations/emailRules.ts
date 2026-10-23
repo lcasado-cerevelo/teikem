@@ -7,7 +7,7 @@ type EmailConfig = components['schemas']['EmailConfig']
 export const MATCH_OPERATORS = ['CONTAINS', 'EQUALS', 'STARTS', 'ENDS', 'WILDCARD', 'REGEX'] as const
 export const ATTACHMENT_MODES = ['ALL', 'FIRST', 'BY_NAME'] as const
 export const BODY_KINDS = ['LABEL', 'REGEX', 'BLOCK'] as const
-export const TRANSFORMS = ['NONE', 'UPPER', 'DIGITS', 'MONEY'] as const
+export const TRANSFORMS = ['NONE', 'UPPER', 'DIGITS', 'MONEY', 'SPACES'] as const
 
 export interface BodyFieldValues {
   position: string
@@ -25,6 +25,10 @@ export interface BodyFieldValues {
   lineRegex: string
   /** Solo bloques: el bloque se lee cada vez que aparece (el encabezado se repite en cada página). */
   repeat: boolean
+  /** Lectores por registro: el campo se lee una vez del encabezado y vale para todos los registros. */
+  fromHeader: boolean
+  /** Si la posición ya trae un valor, este se agrega a continuación con este texto en medio (varias partes en una nota). */
+  appendWith: string
 }
 
 /** Una condición de un lector (2026-10-22): sobre qué (nombre del adjunto, asunto o texto del documento) y cómo se compara. */
@@ -47,6 +51,8 @@ export interface ReaderValues {
   /** Vacío = el cliente de la integración. */
   clientPublicId: string
   firstOnly: boolean
+  /** Documento con varias órdenes: cada línea que contiene este texto empieza un registro (vacío = un solo registro). */
+  recordStart: string
 }
 
 export const READER_SOURCES = ['BODY', 'PDF', 'FILE'] as const
@@ -61,7 +67,7 @@ export function scopeApplies(scope: string, source: string): boolean {
 }
 
 export const emptyCondition = (source = 'PDF'): ConditionValues => ({ scope: source === 'BODY' ? 'SUBJECT' : 'TEXT', operator: 'CONTAINS', value: '' })
-export const emptyReader = (): ReaderValues => ({ name: '', source: 'BODY', target: 'ORDER', conditions: [], fields: [], templatePublicId: '', clientPublicId: '', firstOnly: false })
+export const emptyReader = (): ReaderValues => ({ name: '', source: 'BODY', target: 'ORDER', conditions: [], fields: [], templatePublicId: '', clientPublicId: '', firstOnly: false, recordStart: '' })
 
 export interface EmailValues {
   host: string
@@ -113,7 +119,7 @@ export interface EmailMessages {
   senders: string
 }
 
-export const emptyBodyField = (): BodyFieldValues => ({ position: '', kind: 'LABEL', label: '', pattern: '', required: false, transform: 'NONE', start: '', end: '', separator: ' ', columns: '', lineRegex: '', repeat: false })
+export const emptyBodyField = (): BodyFieldValues => ({ position: '', kind: 'LABEL', label: '', pattern: '', required: false, transform: 'NONE', start: '', end: '', separator: ' ', columns: '', lineRegex: '', repeat: false, fromHeader: false, appendWith: '' })
 
 export function emptyEmail(): EmailValues {
   return {
@@ -216,6 +222,8 @@ function fieldValuesOf(f: ApiBodyField): BodyFieldValues {
     columns: (f.columns ?? []).map((c) => `${c.position}=${c.index}`).join(', '),
     lineRegex: f.lineRegex ?? '',
     repeat: f.repeat ?? false,
+    fromHeader: f.fromHeader ?? false,
+    appendWith: f.appendWith ?? '',
   }
 }
 
@@ -234,6 +242,8 @@ function fieldBodyOf(f: BodyFieldValues): ApiBodyField {
     columns: f.kind === 'BLOCK' ? parseBlockColumns(f.columns) : null,
     lineRegex: f.kind === 'BLOCK' && f.lineRegex.trim() ? f.lineRegex.trim() : null,
     repeat: f.kind === 'BLOCK' && f.repeat,
+    fromHeader: f.fromHeader,
+    appendWith: f.appendWith === '' ? null : f.appendWith,
   }
 }
 
@@ -266,6 +276,7 @@ export function emailValuesOf(c: EmailConfig | null | undefined): EmailValues {
       templatePublicId: r.templatePublicId ?? '',
       clientPublicId: r.clientPublicId ?? '',
       firstOnly: r.firstOnly ?? false,
+      recordStart: r.recordStart ?? '',
     })),
     bodyFields: (c.bodyFields ?? []).map(fieldValuesOf),
   }
@@ -298,6 +309,7 @@ export function buildEmailConfig(e: EmailValues): EmailConfig {
       templatePublicId: r.templatePublicId || null,
       clientPublicId: r.clientPublicId || null,
       firstOnly: r.firstOnly,
+      recordStart: r.recordStart.trim() === '' ? null : r.recordStart.trim(),
     })),
   }
 }

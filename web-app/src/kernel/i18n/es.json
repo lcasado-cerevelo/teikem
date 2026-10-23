@@ -10853,10 +10853,13 @@
         "convertHelp": "Crea los lectores equivalentes a los ajustes de adjuntos, cuerpo y PDF de arriba, para seguir desde ahí.",
         "presets": "Usar un modelo",
         "presetsHelp": "Agrega un lector ya armado para un tipo de documento conocido. Después escoja el cliente y revise que los productos existan con el mismo número de ítem (SKU).",
+        "recordStart": "Texto que empieza cada registro",
+        "recordStartHelp": "Para un documento con varias órdenes (una por página): cada línea que contiene este texto empieza una orden nueva, por ejemplo «Order #:». Vacío = el documento es una sola orden.",
         "preset": {
           "dispatch-exit-notice": "Despacho de mercancía → aviso de salida",
           "shipment-arrival-notice": "Envío de mercancía → aviso de llegada",
-          "drive-invoice-arrival-notice": "Factura de Drive Medical → aviso de llegada"
+          "drive-invoice-arrival-notice": "Factura de Drive Medical → aviso de llegada",
+          "cms-referral-order": "Hoja de ruta de CMS → órdenes de recogida"
         },
         "name": "Nombre del lector {n}",
         "namePlaceholder": "Packing list",
@@ -10913,6 +10916,10 @@
       "blockColumns": "Columnas del renglón {n}",
       "blockColumnsHelp": "Posición de la plantilla = número de columna del renglón: 6=1, 7=2.",
       "transform": "Transformación {n}",
+      "fromHeader": "Campo {n} del encabezado",
+      "fromHeaderHelp": "Solo en lectores por registro: se lee una vez de lo que viene antes del primer registro (la ruta, el chofer, la fecha del documento) y vale para todos.",
+      "appendWith": "Unir al anterior con {n}",
+      "appendWithHelp": "Si otro campo ya puso un valor en esta misma columna, este se agrega a continuación con este texto en medio (por ejemplo « | » para juntar varias notas). Vacío = reemplaza.",
       "required": "Obligatorio {n}",
       "removeField": "Quitar el campo {n}",
       "addField": "Agregar campo a leer",
@@ -10939,7 +10946,8 @@
         "NONE": "Ninguna",
         "UPPER": "Mayúsculas",
         "DIGITS": "Solo dígitos",
-        "MONEY": "Monto (quita $ y comas)"
+        "MONEY": "Monto (quita $ y comas)",
+        "SPACES": "Junta espacios y tabuladores"
       },
       "errors": {
         "host": "Indique el servidor del buzón (IMAP).",

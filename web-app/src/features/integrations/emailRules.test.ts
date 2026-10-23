@@ -137,19 +137,27 @@ describe('lectores', () => {
 
   it('los lectores viajan en la configuración del API y vuelven iguales', () => {
     const r = reader({
-      source: 'PDF', target: 'ORDER', firstOnly: true, templatePublicId: 't-1', clientPublicId: 'c-1',
+      source: 'PDF', target: 'ORDER', firstOnly: true, templatePublicId: 't-1', clientPublicId: 'c-1', recordStart: ' Order #: ',
       conditions: [{ scope: 'TEXT', operator: 'CONTAINS', value: ' packing list ' }],
-      fields: [{ ...emptyBodyField(), position: '2', kind: 'BLOCK', start: 'Product', end: 'Page', lineRegex: '^(T-\\w+)$', repeat: true, columns: '2=1' }],
+      fields: [
+        { ...emptyBodyField(), position: '2', kind: 'BLOCK', start: 'Product', end: 'Page', lineRegex: '^(T-\\w+)$', repeat: true, columns: '2=1' },
+        { ...emptyBodyField(), position: '9', kind: 'REGEX', pattern: 'N: (.+)', fromHeader: true, appendWith: ' | ' },
+      ],
     })
     const cfg = buildEmailConfig({ ...ok(), readers: [r] })
     expect(cfg.readers).toEqual([{
-      name: 'Pedido', source: 'PDF', target: 'ORDER', firstOnly: true, templatePublicId: 't-1', clientPublicId: 'c-1',
+      name: 'Pedido', source: 'PDF', target: 'ORDER', firstOnly: true, templatePublicId: 't-1', clientPublicId: 'c-1', recordStart: 'Order #:',
       when: [{ scope: 'TEXT', operator: 'CONTAINS', value: 'packing list' }],
-      fields: [expect.objectContaining({ position: 2, kind: 'BLOCK', start: 'Product', end: 'Page', lineRegex: '^(T-\\w+)$', repeat: true, columns: [{ position: 2, index: 1 }] })],
+      fields: [
+        expect.objectContaining({ position: 2, kind: 'BLOCK', start: 'Product', end: 'Page', lineRegex: '^(T-\\w+)$', repeat: true, columns: [{ position: 2, index: 1 }] }),
+        expect.objectContaining({ position: 9, kind: 'REGEX', pattern: 'N: (.+)', fromHeader: true, appendWith: ' | ' }),
+      ],
     }])
     const back = emailValuesOf(cfg).readers[0]
     expect(back).toMatchObject({ name: 'Pedido', source: 'PDF', firstOnly: true, templatePublicId: 't-1', clientPublicId: 'c-1', conditions: [{ scope: 'TEXT', operator: 'CONTAINS', value: 'packing list' }] })
     expect(back.fields[0]).toMatchObject({ kind: 'BLOCK', repeat: true, lineRegex: '^(T-\\w+)$', columns: '2=1' })
+    expect(back.recordStart).toBe('Order #:')
+    expect(back.fields[1]).toMatchObject({ fromHeader: true, appendWith: ' | ' })
   })
 
   it('«convertir lo de arriba en lectores» crea los equivalentes a los ajustes de siempre', () => {

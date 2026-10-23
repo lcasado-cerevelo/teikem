@@ -1,63 +1,368 @@
 [
   {
     "key": "dispatch-exit-notice",
-    "name": { "es": "Despacho de mercancía → aviso de salida", "en": "Goods dispatch → exit notice" },
+    "name": {
+      "es": "Despacho de mercancía → aviso de salida",
+      "en": "Goods dispatch → exit notice"
+    },
     "reader": {
       "name": "Despacho de mercancía",
       "source": "PDF",
       "target": "EXIT_NOTICE",
-      "conditions": [{ "scope": "TEXT", "operator": "CONTAINS", "value": "Despacho de Mercancia" }],
-      "fields": [
+      "conditions": [
         {
-          "position": "1", "kind": "BLOCK", "label": "", "pattern": "", "required": true, "transform": "NONE",
-          "start": "NUMERO DE ITEMS", "end": "", "separator": "\\t", "columns": "2=1, 3=2, 4=3",
-          "lineRegex": "^\\d+\\t.+?\\t([A-Za-z0-9][A-Za-z0-9-]*\\d[A-Za-z0-9-]*)\\t(\\d+)\\t(?:\\d+\\t)?(.+)$",
-          "repeat": false
+          "scope": "TEXT",
+          "operator": "CONTAINS",
+          "value": "Despacho de Mercancia"
         }
       ],
-      "templatePublicId": "", "clientPublicId": "", "firstOnly": false
+      "fields": [
+        {
+          "position": "1",
+          "kind": "BLOCK",
+          "label": "",
+          "pattern": "",
+          "required": true,
+          "transform": "NONE",
+          "start": "NUMERO DE ITEMS",
+          "end": "",
+          "separator": "\\t",
+          "columns": "2=1, 3=2, 4=3",
+          "lineRegex": "^\\d+\\t.+?\\t([A-Za-z0-9][A-Za-z0-9-]*\\d[A-Za-z0-9-]*)\\t(\\d+)\\t(?:\\d+\\t)?(.+)$",
+          "repeat": false,
+          "fromHeader": false,
+          "appendWith": ""
+        }
+      ],
+      "templatePublicId": "",
+      "clientPublicId": "",
+      "firstOnly": false,
+      "recordStart": ""
     }
   },
   {
     "key": "shipment-arrival-notice",
-    "name": { "es": "Envío de mercancía → aviso de llegada", "en": "Goods shipment → arrival notice" },
+    "name": {
+      "es": "Envío de mercancía → aviso de llegada",
+      "en": "Goods shipment → arrival notice"
+    },
     "reader": {
       "name": "Envío de mercancía",
       "source": "PDF",
       "target": "ARRIVAL_NOTICE",
-      "conditions": [{ "scope": "TEXT", "operator": "CONTAINS", "value": "ENVIO DE MERCANCIA PARA" }],
-      "fields": [
+      "conditions": [
         {
-          "position": "1", "kind": "BLOCK", "label": "", "pattern": "", "required": true, "transform": "NONE",
-          "start": "NUMERO DE ITEMS", "end": "", "separator": "\\t", "columns": "2=1, 3=2",
-          "lineRegex": "^\\d+\\t.+?\\t\\d+\\w*\\t([A-Za-z0-9][A-Za-z0-9-]*\\d[A-Za-z0-9-]*)\\t(\\d[\\d,]*)\\w*\\t\\d+$",
-          "repeat": false
+          "scope": "TEXT",
+          "operator": "CONTAINS",
+          "value": "ENVIO DE MERCANCIA PARA"
         }
       ],
-      "templatePublicId": "", "clientPublicId": "", "firstOnly": false
+      "fields": [
+        {
+          "position": "1",
+          "kind": "BLOCK",
+          "label": "",
+          "pattern": "",
+          "required": true,
+          "transform": "NONE",
+          "start": "NUMERO DE ITEMS",
+          "end": "",
+          "separator": "\\t",
+          "columns": "2=1, 3=2",
+          "lineRegex": "^\\d+\\t.+?\\t\\d+\\w*\\t([A-Za-z0-9][A-Za-z0-9-]*\\d[A-Za-z0-9-]*)\\t(\\d[\\d,]*)\\w*\\t\\d+$",
+          "repeat": false,
+          "fromHeader": false,
+          "appendWith": ""
+        }
+      ],
+      "templatePublicId": "",
+      "clientPublicId": "",
+      "firstOnly": false,
+      "recordStart": ""
     }
   },
   {
     "key": "drive-invoice-arrival-notice",
-    "name": { "es": "Factura de Drive Medical → aviso de llegada", "en": "Drive Medical invoice → arrival notice" },
+    "name": {
+      "es": "Factura de Drive Medical → aviso de llegada",
+      "en": "Drive Medical invoice → arrival notice"
+    },
     "reader": {
       "name": "Factura de Drive Medical",
       "source": "PDF",
       "target": "ARRIVAL_NOTICE",
-      "conditions": [{ "scope": "TEXT", "operator": "CONTAINS", "value": "Invoice Number" }, { "scope": "TEXT", "operator": "CONTAINS", "value": "Delivery Number" }],
-      "fields": [
+      "conditions": [
         {
-          "position": "1", "kind": "LABEL", "label": "Invoice Number", "pattern": "", "required": true, "transform": "NONE",
-          "start": "", "end": "", "separator": "", "columns": "", "lineRegex": "", "repeat": false
+          "scope": "TEXT",
+          "operator": "CONTAINS",
+          "value": "Invoice Number"
         },
         {
-          "position": "2", "kind": "BLOCK", "label": "", "pattern": "", "required": true, "transform": "NONE",
-          "start": "Invoice Details", "end": "", "separator": "\\t", "columns": "2=1, 3=2",
-          "lineRegex": "^\\d{4}\\t([A-Za-z0-9][A-Za-z0-9-]*)(?:\\t[^\\t\\d]{0,3})?(?:\\t(\\d[\\d,]*) ?(?:EA|CV|CS|BX|PK))?(?:\\t|$)",
-          "repeat": true
+          "scope": "TEXT",
+          "operator": "CONTAINS",
+          "value": "Delivery Number"
         }
       ],
-      "templatePublicId": "", "clientPublicId": "", "firstOnly": false
+      "fields": [
+        {
+          "position": "1",
+          "kind": "LABEL",
+          "label": "Invoice Number",
+          "pattern": "",
+          "required": true,
+          "transform": "NONE",
+          "start": "",
+          "end": "",
+          "separator": "",
+          "columns": "",
+          "lineRegex": "",
+          "repeat": false,
+          "fromHeader": false,
+          "appendWith": ""
+        },
+        {
+          "position": "2",
+          "kind": "BLOCK",
+          "label": "",
+          "pattern": "",
+          "required": true,
+          "transform": "NONE",
+          "start": "Invoice Details",
+          "end": "",
+          "separator": "\\t",
+          "columns": "2=1, 3=2",
+          "lineRegex": "^\\d{4}\\t([A-Za-z0-9][A-Za-z0-9-]*)(?:\\t[^\\t\\d]{0,3})?(?:\\t(\\d[\\d,]*) ?(?:EA|CV|CS|BX|PK))?(?:\\t|$)",
+          "repeat": true,
+          "fromHeader": false,
+          "appendWith": ""
+        }
+      ],
+      "templatePublicId": "",
+      "clientPublicId": "",
+      "firstOnly": false,
+      "recordStart": ""
+    }
+  },
+  {
+    "key": "cms-referral-order",
+    "name": {
+      "es": "Hoja de ruta de CMS → órdenes de recogida",
+      "en": "CMS route sheet → pickup orders"
+    },
+    "reader": {
+      "name": "Hoja de ruta de CMS",
+      "source": "PDF",
+      "target": "ORDER",
+      "conditions": [
+        {
+          "scope": "TEXT",
+          "operator": "CONTAINS",
+          "value": "ROUTE SHEET #"
+        },
+        {
+          "scope": "TEXT",
+          "operator": "CONTAINS",
+          "value": "Order Entry Date"
+        }
+      ],
+      "recordStart": "Order #:",
+      "fields": [
+        {
+          "position": "1",
+          "kind": "REGEX",
+          "label": "",
+          "pattern": "Order #:\\s*(\\d+)",
+          "required": true,
+          "transform": "NONE",
+          "start": "",
+          "end": "",
+          "separator": "",
+          "columns": "",
+          "lineRegex": "",
+          "repeat": false,
+          "fromHeader": false,
+          "appendWith": ""
+        },
+        {
+          "position": "2",
+          "kind": "REGEX",
+          "label": "",
+          "pattern": "Order #:\\s*(\\d+)",
+          "required": true,
+          "transform": "NONE",
+          "start": "",
+          "end": "",
+          "separator": "",
+          "columns": "",
+          "lineRegex": "",
+          "repeat": false,
+          "fromHeader": false,
+          "appendWith": ""
+        },
+        {
+          "position": "3",
+          "kind": "REGEX",
+          "label": "",
+          "pattern": "^Name:\\s*([^\\t\\n]+)",
+          "required": true,
+          "transform": "NONE",
+          "start": "",
+          "end": "",
+          "separator": "",
+          "columns": "",
+          "lineRegex": "",
+          "repeat": false,
+          "fromHeader": false,
+          "appendWith": ""
+        },
+        {
+          "position": "4",
+          "kind": "REGEX",
+          "label": "",
+          "pattern": "^Address:\\s*([^\\t\\n]+)",
+          "required": true,
+          "transform": "NONE",
+          "start": "",
+          "end": "",
+          "separator": "",
+          "columns": "",
+          "lineRegex": "",
+          "repeat": false,
+          "fromHeader": false,
+          "appendWith": ""
+        },
+        {
+          "position": "5",
+          "kind": "REGEX",
+          "label": "",
+          "pattern": "^\\s*City:\\s*([^,\\t\\n]+)",
+          "required": false,
+          "transform": "NONE",
+          "start": "",
+          "end": "",
+          "separator": "",
+          "columns": "",
+          "lineRegex": "",
+          "repeat": false,
+          "fromHeader": false,
+          "appendWith": ""
+        },
+        {
+          "position": "6",
+          "kind": "REGEX",
+          "label": "",
+          "pattern": "City:[^\\n]*?(\\d{5})",
+          "required": false,
+          "transform": "NONE",
+          "start": "",
+          "end": "",
+          "separator": "",
+          "columns": "",
+          "lineRegex": "",
+          "repeat": false,
+          "fromHeader": false,
+          "appendWith": ""
+        },
+        {
+          "position": "7",
+          "kind": "REGEX",
+          "label": "",
+          "pattern": "City:[^\\n]*\\n\\s*Phone #:\\s*([\\d()\\- ]+)",
+          "required": false,
+          "transform": "NONE",
+          "start": "",
+          "end": "",
+          "separator": "",
+          "columns": "",
+          "lineRegex": "",
+          "repeat": false,
+          "fromHeader": false,
+          "appendWith": ""
+        },
+        {
+          "position": "8",
+          "kind": "REGEX",
+          "label": "",
+          "pattern": "Delivery Date:\\s*(\\d{1,2}/\\d{1,2}/\\d{4})",
+          "required": false,
+          "transform": "NONE",
+          "start": "",
+          "end": "",
+          "separator": "",
+          "columns": "",
+          "lineRegex": "",
+          "repeat": false,
+          "fromHeader": false,
+          "appendWith": ""
+        },
+        {
+          "position": "9",
+          "kind": "REGEX",
+          "label": "",
+          "pattern": "Delivery Instructions:[ \\t]*\\n[ \\t]*([^\\n]+)",
+          "required": false,
+          "transform": "SPACES",
+          "start": "",
+          "end": "",
+          "separator": "",
+          "columns": "",
+          "lineRegex": "",
+          "repeat": false,
+          "fromHeader": false,
+          "appendWith": ""
+        },
+        {
+          "position": "9",
+          "kind": "REGEX",
+          "label": "",
+          "pattern": "^New DME\\t[^\\t\\n]*\\t[^\\t\\n]*\\t([^\\t\\n]+)\\tNOTES",
+          "required": false,
+          "transform": "NONE",
+          "start": "",
+          "end": "",
+          "separator": "",
+          "columns": "",
+          "lineRegex": "",
+          "repeat": false,
+          "fromHeader": false,
+          "appendWith": " | "
+        },
+        {
+          "position": "10",
+          "kind": "REGEX",
+          "label": "",
+          "pattern": "DRIVER:\\s*([^\\n]+)",
+          "required": false,
+          "transform": "SPACES",
+          "start": "",
+          "end": "",
+          "separator": "",
+          "columns": "",
+          "lineRegex": "",
+          "repeat": false,
+          "fromHeader": true,
+          "appendWith": ""
+        },
+        {
+          "position": "11",
+          "kind": "BLOCK",
+          "label": "",
+          "pattern": "",
+          "required": true,
+          "transform": "NONE",
+          "start": "ORDER TYPE",
+          "end": "",
+          "separator": "\\t",
+          "columns": "11=1",
+          "lineRegex": "^Pick Up\\t[^\\t]+\\t[^\\t]+\\t(.+?)\\t\\S+\\t\\S+$",
+          "repeat": false,
+          "fromHeader": false,
+          "appendWith": ""
+        }
+      ],
+      "templatePublicId": "",
+      "clientPublicId": "",
+      "firstOnly": false
     }
   }
 ]

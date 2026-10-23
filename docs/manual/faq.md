@@ -10438,3 +10438,9 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **«El documento no trae ninguna línea con producto y cantidad.» (bandeja).** El lector tomó el documento (cumplió sus condiciones) pero su expresión por línea no encontró ningún renglón. Suba el PDF a mano: el motivo muestra el texto que se leyó y con él se ajusta la expresión del lector.
 
 **Dos documentos casi iguales (despacho y recibo) y uno cae en el lector equivocado.** Los lectores se evalúan en el orden de la lista y gana el primero que cumple. Ponga a cada uno una condición sobre el **texto** con su título completo («Despacho de Mercancia» / «ENVIO DE MERCANCIA PARA») y revise que ninguna condición esté contenida en el título del otro.
+
+**«No se encontró ningún registro en el documento (el texto de inicio de registro no aparece).» (bandeja).** El lector es por registro (tiene «Texto que empieza cada registro») pero ese texto no está en el PDF leído. Suba el documento a mano: el motivo muestra cómo salió el texto del OCR (una letra mal leída en «Order #:» basta). Ajuste el texto de inicio a algo que el OCR lea bien, como «Order».
+
+**«Registro N: No se encontró el campo obligatorio …» (bandeja).** En la orden N del documento no se halló un campo obligatorio (por ejemplo el nombre del paciente). Ninguna orden del documento se crea. Corrija el documento o haga ese campo opcional en el lector.
+
+**La ruta («ERD Pick Up 1») sale cortada o con tabuladores.** Ponga al campo de la ruta la transformación «Junta espacios y tabuladores» y márquelo «del encabezado».

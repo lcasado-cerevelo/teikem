@@ -10850,10 +10850,13 @@
         "convertHelp": "Creates the readers equivalent to the attachment, body and PDF settings above, to continue from there.",
         "presets": "Use a model",
         "presetsHelp": "Adds a ready-made reader for a known document type. Then pick the client and check that the products exist with the same item number (SKU).",
+        "recordStart": "Text that starts each record",
+        "recordStartHelp": "For a document with several orders (one per page): every line that contains this text starts a new order, for example \"Order #:\". Empty = the document is a single order.",
         "preset": {
           "dispatch-exit-notice": "Goods dispatch → exit notice",
           "shipment-arrival-notice": "Goods shipment → arrival notice",
-          "drive-invoice-arrival-notice": "Drive Medical invoice → arrival notice"
+          "drive-invoice-arrival-notice": "Drive Medical invoice → arrival notice",
+          "cms-referral-order": "CMS route sheet → pickup orders"
         },
         "name": "Reader {n} name",
         "namePlaceholder": "Packing list",
@@ -10910,6 +10913,10 @@
       "blockColumns": "Line columns {n}",
       "blockColumnsHelp": "Template position = line column number: 6=1, 7=2.",
       "transform": "Transformation {n}",
+      "fromHeader": "Field {n} from the header",
+      "fromHeaderHelp": "Only in per-record readers: read once from what comes before the first record (route, driver, document date) and applies to all records.",
+      "appendWith": "Join to the previous one with {n}",
+      "appendWithHelp": "If another field already set a value in this same column, this one is appended after it with this text in between (for example \" | \" to join several notes). Empty = replaces.",
       "required": "Required {n}",
       "removeField": "Remove field {n}",
       "addField": "Add a field to read",
@@ -10936,7 +10943,8 @@
         "NONE": "None",
         "UPPER": "Uppercase",
         "DIGITS": "Digits only",
-        "MONEY": "Amount (removes $ and commas)"
+        "MONEY": "Amount (removes $ and commas)",
+        "SPACES": "Collapse spaces and tabs"
       },
       "errors": {
         "host": "Enter the mailbox server (IMAP).",

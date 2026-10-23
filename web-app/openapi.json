@@ -57500,6 +57500,10 @@
           },
           "firstOnly": {
             "type": "boolean"
+          },
+          "recordStart": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -58518,7 +58522,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "DriverPayPolicyDto": {
         "type": "object",
@@ -58653,7 +58657,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "DriverRatesDto": {
         "type": "object",
@@ -59639,6 +59643,13 @@
           },
           "repeat": {
             "type": "boolean"
+          },
+          "fromHeader": {
+            "type": "boolean"
+          },
+          "appendWith": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -60987,7 +60998,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "FuelVehicleSummaryDto": {
         "type": "object",
@@ -66559,7 +66570,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "OrderDetailDto": {
         "type": "object",
@@ -67130,7 +67141,7 @@
             "type": "boolean"
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "OrderQuotePreviewDto": {
         "type": "object",
@@ -71552,7 +71563,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "ProductSerialConversionRequest": {
         "type": "object",
@@ -72266,7 +72277,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "PurchaseOrderStatusRequest": {
         "type": "object",
@@ -74867,7 +74878,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "RentalProcessAdvanceRequest": {
         "type": "object",
@@ -75578,7 +75589,7 @@
             "type": "array",
             "items": {
               "type": "object",
-              "additionalProperties": { }
+              "additionalProperties": {}
             },
             "nullable": true
           },
@@ -82297,7 +82308,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "TripStartRequest": {
         "type": "object",
@@ -83507,7 +83518,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "VisibilityRequest": {
         "type": "object",
@@ -83769,7 +83780,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "WarehouseBinRequest": {
         "type": "object",
@@ -83984,7 +83995,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "WarehouseDockRequest": {
         "type": "object",
@@ -84156,7 +84167,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "WarehousePulseDayDto": {
         "type": "object",
@@ -84531,7 +84542,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "WarehouseZoneRequest": {
         "type": "object",
@@ -85078,7 +85089,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "WorkOrderStatusRequest": {
         "type": "object",
@@ -85285,7 +85296,7 @@
   },
   "security": [
     {
-      "Bearer": [ ]
+      "Bearer": []
     }
   ]
 }
