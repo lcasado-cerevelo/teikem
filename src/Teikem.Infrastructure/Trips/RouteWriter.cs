@@ -50,7 +50,7 @@ public sealed class RouteWriter(TeikemDbContext db, StatusService statuses, ILoo
     /// tenant con etapas deshabilitadas, capacidad ASSIGN_TRIP de su estatus y parada DELIVERY pendiente. Solo lee (no exige
     /// transacción): lo usan AddOrdersAsync bajo bloqueo, el despacho y el selector (TripIssueBuilder).
     /// </summary>
-    public async Task<Dictionary<int, string>> CheckEligibilityAsync(IReadOnlyCollection<TransportOrder> orders, CancellationToken ct)
+    public async Task<Dictionary<int, string>> CheckEligibilityAsync(IReadOnlyCollection<TransportOrder> orders, CancellationToken ct, string kind = TripKinds.Delivery)
     {
         var result = new Dictionary<int, string>();
         if (orders is null || orders.Count == 0) return result;
@@ -60,8 +60,12 @@ public sealed class RouteWriter(TeikemDbContext db, StatusService statuses, ILoo
         var deliveryTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Delivery, ct);
         var roundTripTypes = await OrderRouting.RoundTripServiceTypeIdsAsync(db, ct);
         var pickupTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Pickup, ct);
-        var pending = await db.PendingDeliveryStopsAsync(orders.Select(o => o.TransportOrderId).ToList(), deliveryTypeId, ct,
-            orders.Where(o => roundTripTypes.Contains(o.ServiceTypeLookupId)).Select(o => o.TransportOrderId).ToList(), pickupTypeId);
+        var isPickupTrip = kind == TripKinds.Pickup;
+        // ruta de recogida: la parada que se rutea es la PICKUP de toda orden (sin excepciones de ida y vuelta)
+        var pending = isPickupTrip
+            ? await db.PendingDeliveryStopsAsync(orders.Select(o => o.TransportOrderId).ToList(), pickupTypeId, ct)
+            : await db.PendingDeliveryStopsAsync(orders.Select(o => o.TransportOrderId).ToList(), deliveryTypeId, ct,
+                orders.Where(o => roundTripTypes.Contains(o.ServiceTypeLookupId)).Select(o => o.TransportOrderId).ToList(), pickupTypeId);
         var allowedByStatus = new Dictionary<int, bool>();
 
         foreach (var o in orders)
@@ -72,7 +76,7 @@ public sealed class RouteWriter(TeikemDbContext db, StatusService statuses, ILoo
                 allowed = await statuses.IsAllowedAsync(EntityTypes.TransportOrder, o.StatusCodeId, Capabilities.AssignTrip, ct);
                 allowedByStatus[o.StatusCodeId] = allowed;
             }
-            var reason = TripRules.CheckEligibility(new OrderEligibilityInput(
+            var reason = (isPickupTrip ? (Func<OrderEligibilityInput, string?>)TripRules.CheckPickupEligibility : TripRules.CheckEligibility)(new OrderEligibilityInput(
                 o.OrderNumber, o.IsActive, o.IsSpecialDelivery,
                 status?.Code ?? string.Empty, status?.Label ?? string.Empty, status?.StageKind ?? string.Empty,
                 status?.IsInitial ?? false, status?.SortOrder ?? int.MaxValue, inTransitSort,
@@ -143,7 +147,7 @@ public sealed class RouteWriter(TeikemDbContext db, StatusService statuses, ILoo
         var byId = orders.ToDictionary(o => o.TransportOrderId);
 
         // 2. Elegibilidad (atómica: una sola orden no elegible rechaza la solicitud completa).
-        var ineligible = await CheckEligibilityAsync(orders, ct);
+        var ineligible = await CheckEligibilityAsync(orders, ct, trip.Kind);
         if (ineligible.Count > 0)
             throw new StatusRuleException(TripRules.EligibilityHeader)
             {
@@ -172,8 +176,10 @@ public sealed class RouteWriter(TeikemDbContext db, StatusService statuses, ILoo
         var deliveryTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Delivery, ct);
         var roundTripTypes = await OrderRouting.RoundTripServiceTypeIdsAsync(db, ct);
         var pickupTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Pickup, ct);
-        var pendingStops = await db.PendingDeliveryStopsAsync(ids, deliveryTypeId, ct,
-            orders.Where(o => roundTripTypes.Contains(o.ServiceTypeLookupId)).Select(o => o.TransportOrderId).ToList(), pickupTypeId);
+        var pendingStops = trip.Kind == TripKinds.Pickup
+            ? await db.PendingDeliveryStopsAsync(ids, pickupTypeId, ct)
+            : await db.PendingDeliveryStopsAsync(ids, deliveryTypeId, ct,
+                orders.Where(o => roundTripTypes.Contains(o.ServiceTypeLookupId)).Select(o => o.TransportOrderId).ToList(), pickupTypeId);
         var pendingStatus = await statuses.GetByCodeAsync(StatusDomains.RouteStopStatus, RouteStopStatuses.Pending, ct);
         var seq = existingStops.Count == 0 ? 0 : existingStops.Max(s => s.Sequence);
         var now = DateTime.UtcNow;

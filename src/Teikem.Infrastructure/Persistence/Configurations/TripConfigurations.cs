@@ -22,6 +22,7 @@ public sealed class TripConfiguration : IEntityTypeConfiguration<Trip>
         b.Property(t => t.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();
         b.Property(t => t.Code).HasMaxLength(40).IsRequired();
         b.Property(t => t.PlanDate).HasColumnType("date");
+        b.Property(t => t.Kind).HasMaxLength(10);
         b.Property(t => t.TotalDistanceKm).HasColumnType("decimal(12,3)");
         b.Property(t => t.RowVersion).IsRowVersion();
 

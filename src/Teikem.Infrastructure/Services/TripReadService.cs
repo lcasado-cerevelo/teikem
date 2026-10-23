@@ -129,7 +129,8 @@ public sealed class TripReadService(TeikemDbContext db, ITenantContext tenant, I
             IsActive: trip.IsActive,
             CreatedAtUtc: trip.CreatedAtUtc,
             UpdatedAtUtc: trip.UpdatedAtUtc,
-            RowVersion: RowVersionOf(trip.RowVersion));
+            RowVersion: RowVersionOf(trip.RowVersion),
+            Kind: trip.Kind);
     }
 
     // ================================================================ listado
@@ -277,7 +278,8 @@ public sealed class TripReadService(TeikemDbContext db, ITenantContext tenant, I
                 TotalDurationMin: t.TotalDurationMin,
                 PlannedStartUtc: t.PlannedStartUtc,
                 PlannedEndUtc: t.PlannedEndUtc,
-                IsActive: t.IsActive));
+                IsActive: t.IsActive,
+                Kind: t.Kind));
         }
         return items;
     }

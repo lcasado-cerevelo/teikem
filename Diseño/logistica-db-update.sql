@@ -6604,3 +6604,10 @@ BEGIN
     EXEC('UPDATE dbo.DriverNotice SET PushedAtUtc = SYSUTCDATETIME() WHERE PushedAtUtc IS NULL');
 END
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-23 (h) — Rutas de recogida: dbo.Trip.Kind NVARCHAR(10) NOT NULL DEFAULT 'DELIVERY' ('DELIVERY' = entregas, lo de siempre; 'PICKUP' = recogidas).
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Trip', 'Kind') IS NULL
+    ALTER TABLE dbo.Trip ADD Kind NVARCHAR(10) NOT NULL CONSTRAINT DF_Trip_Kind DEFAULT 'DELIVERY';
+GO

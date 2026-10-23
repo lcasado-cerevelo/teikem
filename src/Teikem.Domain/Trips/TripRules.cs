@@ -144,6 +144,25 @@ public static class TripRules
     /// 1. inactiva o terminal → ya salió o terminó; 2. entrega especial; 3. etapa inicial (Entrada); 4. lateral;
     /// 5. en IN_TRANSIT o después → ya salió; 6. sin la capacidad ASSIGN_TRIP; 7. sin parada DELIVERY pendiente.
     /// </summary>
+    // ---- rutas de recogida (2026-10-23) ----
+    public const string NotPendingPickupMessage = "El envío ya fue recogido (o salió del flujo de recogida); no se puede asignar a una ruta de recogida.";
+    public const string NoPendingPickupStopMessage = "El envío no tiene una parada de recogida pendiente.";
+
+    /// <summary>
+    /// Una orden se puede asignar a una ruta de RECOGIDA si está activa, no es entrega especial, sigue en la etapa inicial («Sometido»: todavía no se recoge) y tiene una parada PICKUP no terminal.
+    /// No pide la capacidad ASSIGN_TRIP (esa es de las rutas de entrega). null si es elegible.
+    /// </summary>
+    public static string? CheckPickupEligibility(OrderEligibilityInput o)
+    {
+        ArgumentNullException.ThrowIfNull(o);
+        if (!o.IsActive || Same(o.StageKind, StageKinds.Terminal)) return AlreadyOutMessage;
+        if (o.IsSpecialDelivery) return SpecialDeliveryMessage;
+        if (Same(o.StageKind, StageKinds.Lateral)) return LateralOrderMessage(string.IsNullOrWhiteSpace(o.StatusLabel) ? o.StatusCode : o.StatusLabel);
+        if (!o.IsInitial) return NotPendingPickupMessage;
+        if (!o.HasPendingDelivery) return NoPendingPickupStopMessage;   // en este tipo de ruta «HasPendingDelivery» dice que hay parada de RECOGIDA pendiente
+        return null;
+    }
+
     public static string? CheckEligibility(OrderEligibilityInput o)
     {
         ArgumentNullException.ThrowIfNull(o);

@@ -4,6 +4,23 @@ using Teikem.Domain.Fleet;
 
 namespace Teikem.Domain.Trips;
 
+/// <summary>Tipos de ruta (Trip.Kind).</summary>
+public static class TripKinds
+{
+    public const string Delivery = "DELIVERY";
+    public const string Pickup = "PICKUP";
+    public static readonly string[] All = { Delivery, Pickup };
+    public const string InvalidMessage = "El tipo de ruta debe ser DELIVERY (entrega) o PICKUP (recogida).";
+
+    /// <summary>Normaliza el tipo pedido (vacío = entrega). null si no es válido.</summary>
+    public static string? Normalize(string? kind)
+    {
+        if (string.IsNullOrWhiteSpace(kind)) return Delivery;
+        var k = kind.Trim().ToUpperInvariant();
+        return All.Contains(k) ? k : null;
+    }
+}
+
 /// <summary>
 /// Lote 5 — Ruta del día ('Trip' en el SQL). En pantalla, 'Ruta' es el Trip más su versión vigente del plan (Route).
 /// - Code 'AAAA-####' (NumberSequence TRIP por tenant): inmutable, único por compañía (UQ_Trip_Code) y nunca reutilizado.
@@ -34,6 +51,8 @@ public class Trip : ITenantScoped, ISoftDeletable, IHasStatus, IAuditStamped
     /// <summary>2026-10-23: cuándo el chofer aceptó el manifiesto en su app (y quién: AcceptedBy, el usuario del chofer). NULL = no lo ha aceptado desde la app (la salida pudo registrarla el personal).</summary>
     public DateTime? AcceptedAtUtc { get; set; }
     public int? AcceptedBy { get; set; }
+    /// <summary>2026-10-23: tipo de ruta. DELIVERY (entregas, lo de siempre) o PICKUP (recogidas: el chofer va a los puntos de recogida de las órdenes «Sometidas» y las recoge). No cambia después de crearla.</summary>
+    public string Kind { get; set; } = TripKinds.Delivery;
     [NotAudited] public decimal? TotalDistanceKm { get; set; }
     [NotAudited] public int? TotalDurationMin { get; set; }
     public bool IsActive { get; set; } = true;

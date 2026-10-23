@@ -261,7 +261,8 @@ describe('fechas y formularios (mensajes del servidor)', () => {
     expect(bad.success).toBe(false)
     expect(bad.error?.issues.map((i) => i.message)).toEqual(['La fecha de la ruta no puede ser anterior a ayer ni posterior a 60 días.', 'Indique la hora de salida con hora y minutos.'])
     expect(buildTripCreate(emptyTripCreateValues('2026-10-12'))).toEqual({ planDate: '2026-10-12' })
-    expect(buildTripCreate({ planDate: '2026-10-12', dispatchZoneId: '3', driverPublicId: 'd-1', vehiclePublicId: 'v-1', plannedStartUtc: '08:30' })).toEqual({
+    expect(buildTripCreate({ ...emptyTripCreateValues('2026-10-12'), kind: 'PICKUP' })).toEqual({ planDate: '2026-10-12', kind: 'PICKUP' })
+    expect(buildTripCreate({ planDate: '2026-10-12', dispatchZoneId: '3', driverPublicId: 'd-1', vehiclePublicId: 'v-1', plannedStartUtc: '08:30', kind: 'DELIVERY' })).toEqual({
       planDate: '2026-10-12',
       dispatchZoneId: 3,
       driverPublicId: 'd-1',

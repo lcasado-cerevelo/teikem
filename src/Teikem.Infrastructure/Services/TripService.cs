@@ -100,6 +100,7 @@ public sealed class TripService(
             VehicleId = spec.VehicleId,
             StatusCodeId = initial.StatusCodeId,
             PlannedStartUtc = plannedStart,
+            Kind = spec.Kind,
             IsActive = true,
         };
         db.Trips.Add(trip);
@@ -123,6 +124,8 @@ public sealed class TripService(
         if (TripPlanningRules.ValidatePlanDate(req.PlanDate, Today()) is string dateError) errors["planDate"] = new[] { dateError };
         else if (req.PlannedStartUtc is DateTime start && TripPlanningRules.ValidatePlannedStart(start, req.PlanDate!.Value) is string startError)
             errors["plannedStartUtc"] = new[] { startError };
+        var kind = TripKinds.Normalize(req.Kind);
+        if (kind is null) errors["kind"] = new[] { TripKinds.InvalidMessage };
         ThrowIfAny(errors);
         var planDate = req.PlanDate!.Value;
 
@@ -142,7 +145,7 @@ public sealed class TripService(
         }
 
         await PrepareNumberingAsync(ct);
-        var spec = new TripCreateSpec(planDate, req.DispatchZoneId, driverId, vehicleId, req.PlannedStartUtc, UseDefaultDriver: true);
+        var spec = new TripCreateSpec(planDate, req.DispatchZoneId, driverId, vehicleId, req.PlannedStartUtc, UseDefaultDriver: true, Kind: kind!);
         var publicId = await db.RunInTransactionAsync(async ct2 => (await CreateTrackedAsync(spec, ct2)).PublicId, ct);
         return await reader.GetAsync(publicId, ct);
     }

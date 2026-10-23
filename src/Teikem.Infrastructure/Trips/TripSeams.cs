@@ -10,13 +10,13 @@ namespace Teikem.Infrastructure.Trips;
 /// Alta de una ruta dentro de la transacción del llamador. Ids internos ya resueltos bajo el filtro de tenant.
 /// UseDefaultDriver: con zona y sin chofer, toma el chofer por defecto de la zona. PlannedStartUtc null = 12:00 UTC de PlanDate.
 /// </summary>
-public sealed record TripCreateSpec(DateOnly PlanDate, int? DispatchZoneId, int? DriverId, int? VehicleId, DateTime? PlannedStartUtc, bool UseDefaultDriver);
+public sealed record TripCreateSpec(DateOnly PlanDate, int? DispatchZoneId, int? DriverId, int? VehicleId, DateTime? PlannedStartUtc, bool UseDefaultDriver, string Kind = Teikem.Domain.Trips.TripKinds.Delivery);
 
 /// <summary>
 /// Filtro del pool 'sin asignar': RequestedUpTo = fecha solicitada ≤ ese día o nula; ZoneIds null = cualquier zona (lista vacía
 /// = ninguna); IncludeNoZone agrega las órdenes sin zona o con zona ambigua.
 /// </summary>
-public sealed record UnassignedPoolFilter(DateOnly? RequestedUpTo, IReadOnlyCollection<int>? ZoneIds, bool IncludeNoZone);
+public sealed record UnassignedPoolFilter(DateOnly? RequestedUpTo, IReadOnlyCollection<int>? ZoneIds, bool IncludeNoZone, string Kind = Teikem.Domain.Trips.TripKinds.Delivery);
 
 /// <summary>
 /// Orden del pool: zona resuelta (ZoneId/ZoneCode null si no hay o es ambigua) y el motivo por el que no se puede asignar

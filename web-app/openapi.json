@@ -14874,6 +14874,65 @@
         }
       }
     },
+    "/api/v1/driver-app/shipments/{publicId}/pickup": {
+      "post": {
+        "tags": [
+          "DriverApp"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DriverPickupRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DriverPickupRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/DriverPickupRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverShipmentResultDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverShipmentResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverShipmentResultDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/driver-app/auth/login": {
       "post": {
         "tags": [
@@ -42872,6 +42931,13 @@
               "type": "integer",
               "format": "int32"
             }
+          },
+          {
+            "name": "Kind",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -58497,6 +58563,42 @@
         },
         "additionalProperties": false
       },
+      "DriverPickupRequest": {
+        "type": "object",
+        "properties": {
+          "giverName": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "pickedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "latitude": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "photosBase64": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "DriverPingDto": {
         "type": "object",
         "properties": {
@@ -59080,6 +59182,10 @@
           "codPending": {
             "type": "number",
             "format": "double",
+            "nullable": true
+          },
+          "kind": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -81737,6 +81843,10 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -81923,6 +82033,10 @@
           "rowVersion": {
             "type": "string",
             "nullable": true
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -82098,6 +82212,10 @@
           },
           "isActive": {
             "type": "boolean"
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

@@ -52,6 +52,14 @@ public static class DriverAppRules
     public const string FailureReasonRequiredMessage = "Indique el motivo por el que no se entregó.";
     public const string FailureReasonInvalidMessage = "El motivo no es válido.";
     public const string FailureNoteTooLongMessage = "La nota no puede pasar de 400 caracteres.";
+    public const string WrongKindForDeliverMessage = "Este envío es de una ruta de recogida: se recoge, no se entrega.";
+    public const string WrongKindForPickupMessage = "Este envío es de una ruta de entrega: se entrega, no se recoge.";
+    public const string PickupStageMissingMessage = "El estatus «Recogido» no está habilitado para esta compañía.";
+    public static string NotPickableMessage(string order) => $"El envío {order} ya no está pendiente de recoger.";
+    public static string PickedComment(string driver, string? giver, int? meters)
+        => $"Recogido desde la app por {driver}" + (string.IsNullOrEmpty(giver) ? string.Empty : $" (lo entregó {giver})") + (meters is int m ? $" a {m} m de la dirección" : string.Empty) + ".";
+    public static string PickupFailedComment(string reason, string? note, int? meters)
+        => $"No recogido desde la app: {reason}" + (string.IsNullOrEmpty(note) ? string.Empty : $" — {note}") + (meters is int m ? $" (a {m} m de la dirección)" : string.Empty) + ".";
     public const string SignatureRequiredMessage = "Este cliente exige la firma de quien recibe.";
     public const string PhotoRequiredMessage = "Este cliente exige una foto de la entrega.";
     public const string SignatureInvalidMessage = "La firma no es una imagen válida.";

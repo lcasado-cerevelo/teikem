@@ -65,3 +65,36 @@ export function enqueueFail(input: FailInput): Promise<string> {
     },
   });
 }
+
+export interface PickupInput {
+  tenantId: number;
+  shipmentId: string;
+  /** Quién entregó el paquete al chofer. */
+  giverName?: string;
+  notes?: string;
+  pickedAtUtc: string;
+  latitude?: number;
+  longitude?: number;
+  photosBase64?: string[];
+}
+
+/** Recogida: el chofer recibe el paquete (quién lo entregó, fotos y ubicación del teléfono). */
+export function enqueuePickup(input: PickupInput): Promise<string> {
+  return enqueue({
+    kind: 'pickup',
+    endpoint: `driver-app/shipments/${input.shipmentId}/pickup`,
+    method: 'POST',
+    payload: {
+      tenantId: input.tenantId,
+      shipmentId: input.shipmentId,
+      body: {
+        giverName: input.giverName,
+        notes: input.notes,
+        pickedAtUtc: input.pickedAtUtc,
+        latitude: input.latitude,
+        longitude: input.longitude,
+        photosBase64: input.photosBase64?.length ? input.photosBase64 : undefined,
+      },
+    },
+  });
+}

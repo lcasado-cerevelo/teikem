@@ -135,6 +135,18 @@
       "ERROR": "Could not record the delivery. Try again.",
       "CAMERA_PERMISSION": "Enable camera permission to take the photo."
     },
+    "PICKUP": {
+      "TITLE": "Pick up shipment",
+      "GIVER": "Who hands over the package (optional)",
+      "GIVER_PLACEHOLDER": "Name of the person handing it over",
+      "CONFIRM": "Confirm pickup",
+      "PICK": "Pick up shipment",
+      "NOT_PICKED": "Not picked up",
+      "PICKED_TITLE": "Pickup recorded",
+      "PICKED_SENT": "The shipment was picked up.",
+      "PICKED_QUEUED": "No signal: the pickup will be sent automatically when you are back online.",
+      "ERROR": "The pickup could not be recorded."
+    },
     "ACTIONS": {
       "ORDERS_COMPLETE": "Complete order",
       "ORDERS_EXCEPTION": "Order exception",

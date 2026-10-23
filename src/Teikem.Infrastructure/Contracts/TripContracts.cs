@@ -54,7 +54,8 @@ public sealed record TripListItemDto(
     int? TotalDurationMin,
     DateTime? PlannedStartUtc,
     DateTime? PlannedEndUtc,
-    bool IsActive);
+    bool IsActive,
+    string Kind = "DELIVERY");
 
 /// <summary>Parada de la versión vigente: dirección, zona, coordenada y precisión (el mapa lo dibuja el front), ventana y ETA.</summary>
 public sealed record RouteStopDto(
@@ -139,7 +140,8 @@ public sealed record TripDetailDto(
     bool IsActive,
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc,
-    string RowVersion);
+    string RowVersion,
+    string Kind = "DELIVERY");
 
 // ================================================================ planificación y órdenes
 
@@ -149,7 +151,8 @@ public sealed record TripCreateRequest(
     int? DispatchZoneId = null,
     Guid? DriverPublicId = null,
     Guid? VehiclePublicId = null,
-    DateTime? PlannedStartUtc = null);
+    DateTime? PlannedStartUtc = null,
+    string? Kind = null);
 
 /// <summary>Edición de la cabecera (null = sin cambio; Clear* quita el dato).</summary>
 public sealed record TripPatchRequest(
@@ -220,7 +223,9 @@ public sealed record UnassignedOrdersQuery(
     DateOnly? RequestedTo = null,
     string? Search = null,
     int Skip = 0,
-    int Take = 100);
+    int Take = 100,
+    /// <summary>DELIVERY (por omisión): envíos por entregar. PICKUP: envíos «Sometidos» por recoger (rutas de recogida).</summary>
+    string? Kind = null);
 
 public sealed record UnassignedOrderDto(
     int Id,

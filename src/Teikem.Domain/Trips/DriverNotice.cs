@@ -43,5 +43,7 @@ public static class DriverNoticeRules
     public const string TitleTooLongMessage = "El título no puede pasar de 120 caracteres.";
     public const string BodyTooLongMessage = "El texto no puede pasar de 1000 caracteres.";
     public static string ManifestDispatchedTitle(string code) => $"Nuevo manifiesto {code}";
+    public static string PickupDispatchedTitle(string code) => $"Nueva ruta de recogida {code}";
+    public const string PickupDispatchedBody = "Se le despachó una ruta de recogida. Ábrala en la app y acéptela para salir.";
     public const string ManifestDispatchedBody = "Se le despachó un manifiesto. Ábralo en la app y acéptelo para salir.";
 }

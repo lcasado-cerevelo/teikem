@@ -235,7 +235,7 @@ export function ActiveRoutePanel({
           {t('dispatch.active.title')} · <span className="ref">{detail.code}</span> <StatusChip domain="TripStatus" code={detail.statusCode} label={detail.status} />
         </>
       }
-      badge={`${detail.zoneCode ?? t('dispatch.active.noZone')} · ${stopsLabel(t, total)}`}
+      badge={`${detail.kind === 'PICKUP' ? `${t('dispatch.tripKind.PICKUP')} · ` : ''}${detail.zoneCode ?? t('dispatch.active.noZone')} · ${stopsLabel(t, total)}`}
       actions={
         overLimit || actions.remove ? (
           <>

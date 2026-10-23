@@ -82,7 +82,7 @@ export default function DispatchScreen() {
   const [clientPublicId, setClientPublicId] = useState<string | null>(null)
   const settled = useDebounced(filters, 300)
   const settledClient = useDebounced(clientPublicId, 300)
-  const query = useMemo(() => buildUnassignedQuery(settled, settledClient), [settled, settledClient])
+  const query = useMemo(() => buildUnassignedQuery(settled, settledClient, detail?.kind ?? null), [settled, settledClient, detail?.kind])
   const unassigned = useUnassignedOrders(query, canView)
   const items = unassigned.data?.items ?? NO_UNASSIGNED
   const [checked, setChecked] = useState<string[]>([])

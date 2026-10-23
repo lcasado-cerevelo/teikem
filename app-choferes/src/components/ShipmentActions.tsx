@@ -6,10 +6,11 @@ import { useAppStore } from '@/stores';
 import { useShipmentDetail } from '@hooks/queries';
 import ShipmentActionComplete from './ShipmentActionComplete';
 import ShipmentActionException from './ShipmentActionException';
+import ShipmentActionPickup from './ShipmentActionPickup';
 import { useStyles, useTheme } from '@hooks/ThemeContext';
 import type { Colors } from '@constants/theme';
 
-type ActionOption = 'default' | 'complete' | 'exception';
+type ActionOption = 'default' | 'complete' | 'exception' | 'pickup';
 
 // The "Acciones" tab (Phase 5). Mirrors the old app: an initial chooser with two
 // options — Excepción de pedido / Completar pedido — each opening its own flow.
@@ -18,10 +19,14 @@ export default function ShipmentActions() {
   const { data: detail } = useShipmentDetail(shipment);
   const styles = useStyles(createStyles);
   const { t } = useTranslation();
+  const isPickup = shipment?.kind === 'PICKUP';
   const [option, setOption] = useState<ActionOption>('default');
 
   if (option === 'complete') {
     return <ShipmentActionComplete onBack={() => setOption('default')} />;
+  }
+  if (option === 'pickup') {
+    return <ShipmentActionPickup onBack={() => setOption('default')} />;
   }
   if (option === 'exception') {
     return <ShipmentActionException onBack={() => setOption('default')} />;
@@ -35,12 +40,12 @@ export default function ShipmentActions() {
     <View style={styles.container}>
       <Pressable style={styles.item} onPress={() => setOption('exception')}>
         <Text style={styles.label} numberOfLines={1} adjustsFontSizeToFit>
-          {t('ACTIONS.ORDERS_EXCEPTION')}
+          {isPickup ? t('PICKUP.NOT_PICKED') : t('ACTIONS.ORDERS_EXCEPTION')}
         </Text>
       </Pressable>
-      <Pressable style={styles.item} onPress={() => setOption('complete')}>
+      <Pressable style={styles.item} onPress={() => setOption(isPickup ? 'pickup' : 'complete')}>
         <Text style={styles.label} numberOfLines={1} adjustsFontSizeToFit>
-          {t('ACTIONS.ORDERS_COMPLETE')}
+          {isPickup ? t('PICKUP.PICK') : t('ACTIONS.ORDERS_COMPLETE')}
         </Text>
       </Pressable>
     </View>

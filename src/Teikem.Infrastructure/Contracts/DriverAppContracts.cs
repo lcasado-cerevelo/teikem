@@ -31,7 +31,7 @@ public sealed record DriverFailureReasonDto(string Code, string Label);
 /// <summary>El envío con lo que el chofer necesita en la puerta: contacto, piezas y notas. `Delivered`/`Failed` dicen si ya se cerró desde la app.</summary>
 public sealed record DriverShipmentDetailDto(Guid PublicId, Guid ManifestPublicId, string OrderNumber, string WaybillNumber, string StatusCode, string Status, string? ConsigneeName,
     string? ContactPerson, string? Phone, string Address, string? City, string? PostalCode, int? Pieces, decimal? CodAmount, string? Notes, string? ClientName, bool CanClose,
-    bool SignatureRequired = false, bool PhotoRequired = false, decimal? CodPending = null);
+    bool SignatureRequired = false, bool PhotoRequired = false, decimal? CodPending = null, string Kind = "DELIVERY");
 
 /// <summary>Un cobro contra entrega hecho al entregar. `ClientId` lo genera la app (un reintento sin señal no cobra dos veces); `Method` es CASH, CHECK, COMPANY_CHECK, ATH_MOVIL o CARD; los cheques llevan `CheckNumber`.</summary>
 public sealed record DriverCodDto(Guid ClientId, string? Method, decimal? Amount, string? CheckNumber);
@@ -78,3 +78,6 @@ public sealed record DriverNoticesDto(int Unread, IReadOnlyList<DriverNoticeDto>
 public sealed record DriverNoticesReadRequest(IReadOnlyList<Guid>? Ids, bool? All);
 /// <summary>La oficina escribe un aviso a un chofer.</summary>
 public sealed record DriverNoticeSendRequest(Guid? DriverPublicId, string? Title, string? Body);
+
+/// <summary>Recoger un envío de una ruta de recogida: quién lo entregó (opcional), notas, fotos (hasta 3), cuándo (la app lo manda porque pudo recoger sin señal) y el GPS del teléfono.</summary>
+public sealed record DriverPickupRequest(string? GiverName, string? Notes, DateTime? PickedAtUtc, double? Latitude, double? Longitude, IReadOnlyList<string>? PhotosBase64);

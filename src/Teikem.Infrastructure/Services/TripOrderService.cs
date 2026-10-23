@@ -120,16 +120,17 @@ public sealed class TripOrderService(
         var check = TripOrderRequestRules.NormalizeUnassignedQuery(q.DispatchZoneId, q.NoZone, q.RequestedFrom, q.RequestedTo, q.Skip, q.Take);
         if (!check.IsValid) throw new ValidationException(check.Field!, check.Error!);
 
+        var kind = TripKinds.Normalize(q.Kind) ?? throw new ValidationException("kind", TripKinds.InvalidMessage);
         UnassignedPoolFilter filter;
         if (q.DispatchZoneId is int zoneId)
         {
             // La zona debe ser del tenant (filtro global): ajena o inexistente → 404 sin oráculo.
             if (!await db.DispatchZones.AsNoTracking().AnyAsync(z => z.DispatchZoneId == zoneId, ct))
                 throw new NotFoundException(ZoneLabel, null, true);
-            filter = new UnassignedPoolFilter(null, new[] { zoneId }, IncludeNoZone: false);
+            filter = new UnassignedPoolFilter(null, new[] { zoneId }, IncludeNoZone: false, kind);
         }
-        else if (q.NoZone) filter = new UnassignedPoolFilter(null, Array.Empty<int>(), IncludeNoZone: true);
-        else filter = new UnassignedPoolFilter(null, null, IncludeNoZone: true);
+        else if (q.NoZone) filter = new UnassignedPoolFilter(null, Array.Empty<int>(), IncludeNoZone: true, kind);
+        else filter = new UnassignedPoolFilter(null, null, IncludeNoZone: true, kind);
 
         int? clientId = null;
         if (q.ClientPublicId is Guid clientPublicId)
@@ -174,7 +175,7 @@ public sealed class TripOrderService(
                 r.Pieces, r.WeightKg, r.VolumeM3,
                 points.GetValueOrDefault(r.OrderStopId),
                 accuracy?.InternalCode,
-                r.IsRoundTrip ? StopTypes.Pickup : StopTypes.Delivery,
+                r.StopIsPickup ? StopTypes.Pickup : StopTypes.Delivery,
                 serviceType is null ? null : MultilingualText.Resolve(serviceType.LabelJson, tenant.Lang),
                 r.IsRoundTrip));
         }
@@ -189,7 +190,7 @@ public sealed class TripOrderService(
         int OrderStopId, string? ConsigneeName, string City, string? PostalCode, DateTime? WindowStartUtc, DateTime? WindowEndUtc,
         int? GeocodeAccuracyLookupId, int? ZoneId, string? ZoneCode, bool ZoneAmbiguous,
         string StatusCode, string StatusLabel, DateTime? RequestedDate, int? Pieces, decimal? WeightKg, decimal? VolumeM3,
-        string? IneligibleReason, int ServiceTypeLookupId, bool IsRoundTrip);
+        string? IneligibleReason, int ServiceTypeLookupId, bool IsRoundTrip, bool StopIsPickup);
 
     private async Task<List<PoolRow>> LoadPoolAsync(UnassignedPoolFilter filter, bool withEligibility, CancellationToken ct)
     {
@@ -198,9 +199,11 @@ public sealed class TripOrderService(
         var inTransit = pipeline.FirstOrDefault(s => string.Equals(s.Code, OrderStatuses.InTransit, StringComparison.OrdinalIgnoreCase))
                         ?? throw new InvalidOperationException("El pipeline de envíos no tiene la etapa IN_TRANSIT.");
         var initialSort = pipeline.Where(s => s.IsInitial).Select(s => (int?)s.SortOrder).Min() ?? int.MinValue;
+        // Ruta de RECOGIDA: el pool son los envíos que todavía no se recogen (la etapa inicial, «Sometido»), por su parada PICKUP.
+        var pickupMode = filter.Kind == TripKinds.Pickup;
         var assignable = pipeline
             .Where(s => string.Equals(s.StageKind, StageKinds.Pipeline, StringComparison.OrdinalIgnoreCase)
-                        && !s.IsInitial && s.SortOrder > initialSort && s.SortOrder < inTransit.SortOrder)
+                        && (pickupMode ? s.IsInitial : (!s.IsInitial && s.SortOrder > initialSort && s.SortOrder < inTransit.SortOrder)))
             .ToDictionary(s => s.Id);
         if (assignable.Count == 0) return new List<PoolRow>();
         var statusIds = assignable.Keys.ToList();
@@ -216,7 +219,7 @@ public sealed class TripOrderService(
         var query = db.TransportOrders.AsNoTracking()
             .Where(o => o.IsActive && !o.IsSpecialDelivery && statusIds.Contains(o.StatusCodeId))
             .Where(o => !db.TripOrders.Any(t => t.TransportOrderId == o.TransportOrderId && t.IsCurrent))
-            .Where(o => o.Stops.Any(s => s.StopTypeLookupId == (roundTripTypes.Contains(o.ServiceTypeLookupId) ? pickupTypeId : deliveryTypeId) && !terminalStopIds.Contains(s.StatusCodeId)));
+            .Where(o => o.Stops.Any(s => s.StopTypeLookupId == ((pickupMode || roundTripTypes.Contains(o.ServiceTypeLookupId)) ? pickupTypeId : deliveryTypeId) && !terminalStopIds.Contains(s.StatusCodeId)));
         if (filter.RequestedUpTo is DateOnly upTo)
         {
             var limit = upTo.AddDays(1).ToDateTime(TimeOnly.MinValue);   // ≤ ese día (hasta exclusivo +1)
@@ -229,7 +232,7 @@ public sealed class TripOrderService(
                 o.TransportOrderId, o.PublicId, o.OrderNumber, o.PackBatchNumber, o.ClientInvoiceNumber, o.ClientId,
                 o.StatusCodeId, o.RequestedDate, o.TotalPieces, o.TotalWeightKg, o.TotalVolumeM3, o.ServiceTypeLookupId,
                 Stop = o.Stops
-                    .Where(s => s.StopTypeLookupId == (roundTripTypes.Contains(o.ServiceTypeLookupId) ? pickupTypeId : deliveryTypeId) && !terminalStopIds.Contains(s.StatusCodeId))
+                    .Where(s => s.StopTypeLookupId == ((pickupMode || roundTripTypes.Contains(o.ServiceTypeLookupId)) ? pickupTypeId : deliveryTypeId) && !terminalStopIds.Contains(s.StatusCodeId))
                     .OrderBy(s => s.Sequence).ThenBy(s => s.OrderStopId)
                     .Select(s => new { s.OrderStopId, s.SnapName, s.SnapCity, s.SnapPostalCode, s.WindowStartUtc, s.WindowEndUtc, s.GeocodeAccuracyLookupId })
                     .FirstOrDefault(),
@@ -268,9 +271,10 @@ public sealed class TripOrderService(
                     allowed = await statuses.IsAllowedAsync(EntityTypes.TransportOrder, o.StatusCodeId, Capabilities.AssignTrip, ct);
                     allowedByStatus[o.StatusCodeId] = allowed;
                 }
-                ineligible = TripRules.CheckEligibility(new OrderEligibilityInput(
+                var input = new OrderEligibilityInput(
                     o.OrderNumber, IsActive: true, IsSpecialDelivery: false, status.Code, status.Label, status.StageKind,
-                    status.IsInitial, status.SortOrder, inTransit.SortOrder, allowed, HasPendingDelivery: true));
+                    status.IsInitial, status.SortOrder, inTransit.SortOrder, allowed, HasPendingDelivery: true);
+                ineligible = pickupMode ? TripRules.CheckPickupEligibility(input) : TripRules.CheckEligibility(input);
             }
 
             result.Add(new PoolRow(
@@ -279,7 +283,7 @@ public sealed class TripOrderService(
                 o.Stop.WindowStartUtc, o.Stop.WindowEndUtc, o.Stop.GeocodeAccuracyLookupId,
                 zone.ZoneId, zone.ZoneCode, zone.Ambiguous,
                 status.Code, status.Label, o.RequestedDate, o.TotalPieces, o.TotalWeightKg, o.TotalVolumeM3,
-                ineligible, o.ServiceTypeLookupId, roundTripTypes.Contains(o.ServiceTypeLookupId)));
+                ineligible, o.ServiceTypeLookupId, roundTripTypes.Contains(o.ServiceTypeLookupId), pickupMode || roundTripTypes.Contains(o.ServiceTypeLookupId)));
         }
 
         return result

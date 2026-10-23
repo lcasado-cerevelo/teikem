@@ -2531,7 +2531,13 @@
       "confirm": "Cerrar ruta",
       "done": "Ruta {code} cerrada."
     },
+    "tripKind": {
+      "DELIVERY": "Entrega",
+      "PICKUP": "Recogida"
+    },
     "create": {
+      "kind": "Tipo de ruta",
+      "kindHelp": "Recogida: el chofer pasa a recoger envíos que aún no han salido de la compañía.",
       "action": "Nueva ruta",
       "title": "Nueva ruta",
       "save": "Crear ruta",

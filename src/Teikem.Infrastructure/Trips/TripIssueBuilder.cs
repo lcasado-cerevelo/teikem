@@ -106,7 +106,14 @@ public sealed class TripIssueBuilder(TeikemDbContext db, IFleetAvailabilityServi
             if (orderIds.Count > 0)
             {
                 var orders = await db.TransportOrders.AsNoTracking().Where(o => orderIds.Contains(o.TransportOrderId)).ToListAsync(ct);
-                var reasons = await writer.CheckEligibilityAsync(orders, ct);
+                // cada ruta se revisa con las reglas de su tipo (entrega o recogida)
+                var kindByTrip = await db.Trips.AsNoTracking().Where(x => ids.Contains(x.TripId)).ToDictionaryAsync(x => x.TripId, x => x.Kind, ct);
+                var reasons = new Dictionary<int, string>();
+                foreach (var group in links.GroupBy(l => kindByTrip.GetValueOrDefault(l.TripId, TripKinds.Delivery)))
+                {
+                    var groupIds = group.Select(l => l.TransportOrderId).ToHashSet();
+                    foreach (var kv in await writer.CheckEligibilityAsync(orders.Where(o => groupIds.Contains(o.TransportOrderId)).ToList(), ct, group.Key)) reasons[kv.Key] = kv.Value;
+                }
                 var numbers = orders.ToDictionary(o => o.TransportOrderId, o => o.OrderNumber);
                 foreach (var l in links.Where(l => reasons.ContainsKey(l.TransportOrderId)).OrderBy(l => numbers.GetValueOrDefault(l.TransportOrderId), StringComparer.Ordinal))
                 {

@@ -2531,7 +2531,13 @@
       "confirm": "Close route",
       "done": "Route {code} closed."
     },
+    "tripKind": {
+      "DELIVERY": "Delivery",
+      "PICKUP": "Pickup"
+    },
     "create": {
+      "kind": "Route type",
+      "kindHelp": "Pickup: the driver goes to collect shipments that have not left the company yet.",
       "action": "New route",
       "title": "New route",
       "save": "Create route",

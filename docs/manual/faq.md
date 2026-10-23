@@ -10418,3 +10418,15 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **Al chofer no le suena el aviso en el teléfono.** Revise, en este orden: (1) que el servidor tenga la clave de Firebase (`Push:Fcm:ServiceAccountJsonPath`); (2) que el chofer haya aceptado el permiso de notificaciones; (3) que la app sea de una marca incluida en `google-services.json`; (4) que el trabajo «Avisos emergentes a los choferes» esté activo en Trabajos programados. El aviso siempre queda en la pestaña «Avisos».
 
 **¿Qué significa «Entregas del chofer lejos de la dirección» en Necesita tu atención?** Son entregas o «no entregado» marcados desde la app con el teléfono a más de 300 m de la dirección de entrega (últimos 7 días). El GPS del teléfono es dónde estaba el chofer, no dónde queda la dirección; si se repite con un chofer, conviene hablar con él. «Sin GPS» en Intentos quiere decir que el chofer negó el permiso de ubicación o no había señal de satélite.
+
+## Recogidas
+
+**«El envío ya fue recogido (o salió del flujo de recogida); no se puede asignar a una ruta de recogida.» / «El envío no tiene una parada de recogida pendiente.» (422).** Al agregar a una ruta de recogida solo se aceptan envíos que siguen en la etapa inicial y con la parada de recogida pendiente. Revise el estatus de la orden; si ya se recogió, va en una ruta de entrega.
+
+**«Este envío es de una ruta de recogida: se recoge, no se entrega.» / «Este envío es de una ruta de entrega: se entrega, no se recoge.»** La app usó la acción que no corresponde al tipo de ruta. En recogidas use «Recoger envío» o «No recogido».
+
+**«El envío … ya no está pendiente de recoger.»** Otro usuario ya lo recogió o lo sacó del flujo. Actualice la lista.
+
+**«El estatus «Recogido» no está habilitado para esta compañía.»** El flujo de la compañía no tiene la etapa «Recogido»; actívela en Estatus antes de usar rutas de recogida.
+
+**«El tipo de ruta debe ser DELIVERY (entrega) o PICKUP (recogida).» (400).** Solo existen esos dos tipos.

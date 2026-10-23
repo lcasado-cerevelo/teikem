@@ -63,6 +63,10 @@ export interface Reason {
 
 /** Estatus de un envío que ya no se trabaja desde la ruta (entregado, fallido, cancelado…). */
 export const OPEN_STATUSES = ['ASSIGNED', 'IN_TRANSIT'];
+/** Una recogida sigue abierta mientras el envío está «Sometido» (el chofer aún no lo recoge). */
+export const PICKUP_OPEN_STATUSES = ['SUBMITTED'];
+export const isOpenShipment = (s: { kind: ManifestKind; statusCode: string }) =>
+  (s.kind === 'PICKUP' ? PICKUP_OPEN_STATUSES : OPEN_STATUSES).includes(s.statusCode);
 
 // Geo coordinate used by the map / delivery documentation flow.
 export interface LatLng {

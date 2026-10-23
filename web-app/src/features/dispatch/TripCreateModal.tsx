@@ -54,6 +54,9 @@ export function TripCreateModal({
         onClose()
       }}
     >
+      <Field name="kind" label={t('dispatch.create.kind')} help={t('dispatch.create.kindHelp')}>
+        <Select options={[{ value: 'DELIVERY', label: t('dispatch.tripKind.DELIVERY') }, { value: 'PICKUP', label: t('dispatch.tripKind.PICKUP') }]} />
+      </Field>
       <div className="r2">
         <Field name="planDate" label={t('dispatch.create.date')} required>
           <DateInput min={range.min} max={range.max} />

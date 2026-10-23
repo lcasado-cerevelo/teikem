@@ -38,10 +38,10 @@ public sealed class DriverAppService(TeikemDbContext db, ITenantContext tenant, 
                           join s in db.StatusCodes.AsNoTracking() on t.StatusCodeId equals s.StatusCodeId
                           where t.DriverId == driver.DriverId && t.IsActive && (s.InternalCode == TripStatuses.Dispatched || s.InternalCode == TripStatuses.InProgress)
                           orderby t.PlanDate descending, t.TripId descending
-                          select new { t.TripId, t.PublicId, t.Code, t.PlanDate, t.AcceptedAtUtc, t.RowVersion, StatusCode = s.InternalCode, s.LabelJson }).ToListAsync(ct);
+                          select new { t.TripId, t.PublicId, t.Code, t.PlanDate, t.AcceptedAtUtc, t.RowVersion, t.Kind, StatusCode = s.InternalCode, s.LabelJson }).ToListAsync(ct);
         var ids = rows.Select(r => r.TripId).ToList();
         var counts = await db.TripOrders.AsNoTracking().Where(o => ids.Contains(o.TripId) && o.IsCurrent).GroupBy(o => o.TripId).Select(g => new { g.Key, N = g.Count() }).ToDictionaryAsync(x => x.Key, x => x.N, ct);
-        return rows.Select(r => new DriverManifestDto(r.PublicId, r.Code, "DELIVERY", r.PlanDate, r.StatusCode, Label(r.LabelJson, tenant.Lang, r.StatusCode), r.AcceptedAtUtc != null, r.AcceptedAtUtc,
+        return rows.Select(r => new DriverManifestDto(r.PublicId, r.Code, r.Kind, r.PlanDate, r.StatusCode, Label(r.LabelJson, tenant.Lang, r.StatusCode), r.AcceptedAtUtc != null, r.AcceptedAtUtc,
             counts.GetValueOrDefault(r.TripId), r.RowVersion is null ? null : Convert.ToBase64String(r.RowVersion))).ToList();
     }
 
@@ -52,14 +52,15 @@ public sealed class DriverAppService(TeikemDbContext db, ITenantContext tenant, 
         var t = await (from x in db.Trips.AsNoTracking()
                        join s in db.StatusCodes.AsNoTracking() on x.StatusCodeId equals s.StatusCodeId
                        where x.PublicId == publicId && x.DriverId == driver.DriverId && x.IsActive
-                       select new { x.TripId, x.PublicId, x.Code, x.PlanDate, x.AcceptedAtUtc, x.RowVersion, StatusCode = s.InternalCode, s.LabelJson }).FirstOrDefaultAsync(ct)
+                       select new { x.TripId, x.PublicId, x.Code, x.PlanDate, x.AcceptedAtUtc, x.RowVersion, x.Kind, StatusCode = s.InternalCode, s.LabelJson }).FirstOrDefaultAsync(ct)
                 ?? throw new NotFoundException("Manifiesto", null, false);
 
         var route = await db.Routes.AsNoTracking().Where(r => r.TripId == t.TripId && r.IsActive).Select(r => (int?)r.RouteId).FirstOrDefaultAsync(ct);
+        var stopTypeCode = t.Kind == TripKinds.Pickup ? StopTypes.Pickup : StopTypes.Delivery;   // la parada de la ruta: recogida o entrega
         var shipments = await (from l in db.TripOrders.AsNoTracking()
                                join o in db.TransportOrders.AsNoTracking() on l.TransportOrderId equals o.TransportOrderId
                                join st in db.StatusCodes.AsNoTracking() on o.StatusCodeId equals st.StatusCodeId
-                               join os in db.OrderStops.AsNoTracking().Where(x => x.StopType!.InternalCode == StopTypes.Delivery) on o.TransportOrderId equals os.TransportOrderId into stops
+                               join os in db.OrderStops.AsNoTracking().Where(x => x.StopType!.InternalCode == stopTypeCode) on o.TransportOrderId equals os.TransportOrderId into stops
                                from os in stops.DefaultIfEmpty()
                                where l.TripId == t.TripId && l.IsCurrent
                                select new { o.PublicId, o.OrderNumber, o.WaybillNumber, o.TotalPieces, o.CodAmount, StatusCode = st.InternalCode, StatusLabel = st.LabelJson,
@@ -73,7 +74,7 @@ public sealed class DriverAppService(TeikemDbContext db, ITenantContext tenant, 
             .Select(s => new DriverShipmentDto(s.PublicId, s.OrderNumber, s.WaybillNumber, s.StatusCode, Label(s.StatusLabel, tenant.Lang, s.StatusCode),
                 s.OsId is int id && seqs.TryGetValue(id, out var q) ? q : s.SortHint ?? int.MaxValue, s.Name, s.Line1 ?? string.Empty, s.City, s.Postal, s.TotalPieces, s.CodAmount, s.Notes))
             .OrderBy(s => s.Sequence).ThenBy(s => s.OrderNumber, StringComparer.Ordinal).ToList();
-        return new DriverManifestDetailDto(t.PublicId, t.Code, "DELIVERY", t.PlanDate, t.StatusCode, Label(t.LabelJson, tenant.Lang, t.StatusCode), t.AcceptedAtUtc != null, t.AcceptedAtUtc,
+        return new DriverManifestDetailDto(t.PublicId, t.Code, t.Kind, t.PlanDate, t.StatusCode, Label(t.LabelJson, tenant.Lang, t.StatusCode), t.AcceptedAtUtc != null, t.AcceptedAtUtc,
             t.RowVersion is null ? null : Convert.ToBase64String(t.RowVersion), list);
     }
 
@@ -127,9 +128,13 @@ public sealed class DriverAppService(TeikemDbContext db, ITenantContext tenant, 
                     var order = orders.First(o => o.TransportOrderId == orderId);
                     var reason = reasons[d.ReasonCode.Trim()];
                     await writer.ReleaseOrderFromDispatchedAsync(trip, orderId, ct2);
-                    var to = await statuses.AdvanceSkippingAsync(StatusDomains.OrderStatus, EntityTypes.TransportOrder, orderId, order.StatusCodeId, new[] { OrderStatuses.Unassigned },
-                        DriverAppRules.DeclinedComment(Label(reason.LabelJson, tenant.Lang, reason.InternalCode)), ct2);
-                    order.StatusCodeId = to.StatusCodeId;
+                    // en una ruta de recogida el envío sigue «Sometido» (nunca salió de ahí): solo sale de la ruta; en una de entrega vuelve a «Sin asignar»
+                    if (trip.Kind != TripKinds.Pickup)
+                    {
+                        var to = await statuses.AdvanceSkippingAsync(StatusDomains.OrderStatus, EntityTypes.TransportOrder, orderId, order.StatusCodeId, new[] { OrderStatuses.Unassigned },
+                            DriverAppRules.DeclinedComment(Label(reason.LabelJson, tenant.Lang, reason.InternalCode)), ct2);
+                        order.StatusCodeId = to.StatusCodeId;
+                    }
                     db.TripOrderDeclines.Add(new TripOrderDecline
                     {
                         TenantId = trip.TenantId, TripId = trip.TripId, TransportOrderId = orderId, DriverId = driver.DriverId, ReasonLookupId = reason.LookupCodeId,
@@ -156,7 +161,7 @@ public sealed class DriverAppService(TeikemDbContext db, ITenantContext tenant, 
 
     // ================================================================ entregar / no entregar
 
-    private sealed record OwnShipment(int OrderId, Guid OrderPublicId, string OrderNumber, Guid TripPublicId, bool Accepted);
+    private sealed record OwnShipment(int OrderId, Guid OrderPublicId, string OrderNumber, Guid TripPublicId, bool Accepted, int TripId, string TripKind);
 
     /// <summary>El envío debe estar en un manifiesto vigente del chofer (si no, 404 como si no existiera) y el manifiesto ya aceptado (422).</summary>
     private async Task<OwnShipment> OwnShipmentAsync(Guid shipmentPublicId, Domain.Fleet.Driver driver, bool requireAccepted, CancellationToken ct)
@@ -165,7 +170,7 @@ public sealed class DriverAppService(TeikemDbContext db, ITenantContext tenant, 
                        join o in db.TransportOrders.AsNoTracking() on l.TransportOrderId equals o.TransportOrderId
                        join t in db.Trips.AsNoTracking() on l.TripId equals t.TripId
                        where l.IsCurrent && o.PublicId == shipmentPublicId && t.DriverId == driver.DriverId && t.IsActive
-                       select new OwnShipment(o.TransportOrderId, o.PublicId, o.OrderNumber, t.PublicId, t.AcceptedAtUtc != null)).FirstOrDefaultAsync(ct)
+                       select new OwnShipment(o.TransportOrderId, o.PublicId, o.OrderNumber, t.PublicId, t.AcceptedAtUtc != null, t.TripId, t.Kind)).FirstOrDefaultAsync(ct)
                 ?? throw new NotFoundException("Envío", null, false);
         if (requireAccepted && !x.Accepted) throw new StatusRuleException(DriverAppRules.NotAcceptedMessage);
         return x;
@@ -183,7 +188,7 @@ public sealed class DriverAppService(TeikemDbContext db, ITenantContext tenant, 
         var own = await OwnShipmentAsync(shipmentPublicId, driver, requireAccepted: false, ct);
         var x = await (from o in db.TransportOrders.AsNoTracking()
                        join st in db.StatusCodes.AsNoTracking() on o.StatusCodeId equals st.StatusCodeId
-                       join os in db.OrderStops.AsNoTracking().Where(s => s.StopType!.InternalCode == StopTypes.Delivery) on o.TransportOrderId equals os.TransportOrderId into stops
+                       join os in db.OrderStops.AsNoTracking().Where(s => s.StopType!.InternalCode == (own.TripKind == TripKinds.Pickup ? StopTypes.Pickup : StopTypes.Delivery)) on o.TransportOrderId equals os.TransportOrderId into stops
                        from os in stops.DefaultIfEmpty()
                        where o.TransportOrderId == own.OrderId
                        select new { o.PublicId, o.OrderNumber, o.WaybillNumber, o.TotalPieces, o.CodAmount, o.ClientId, StatusCode = st.InternalCode, st.LabelJson,
@@ -203,10 +208,10 @@ public sealed class DriverAppService(TeikemDbContext db, ITenantContext tenant, 
                                    where c.TransportOrderId == own.OrderId && st2.InternalCode != Teikem.Domain.Cod.CodCollectionStatuses.Void select (decimal?)c.AmountCollected).SumAsync(ct) ?? 0m;
             codPending = Math.Max(0m, ca - collected);
         }
-        var canClose = own.Accepted && string.Equals(x.StatusCode, OrderStatuses.InTransit, StringComparison.OrdinalIgnoreCase);
+        var canClose = own.Accepted && string.Equals(x.StatusCode, own.TripKind == TripKinds.Pickup ? OrderStatuses.Submitted : OrderStatuses.InTransit, StringComparison.OrdinalIgnoreCase);
         return new DriverShipmentDetailDto(x.PublicId, own.TripPublicId, x.OrderNumber, x.WaybillNumber, x.StatusCode, Label(x.LabelJson, tenant.Lang, x.StatusCode), x.Name, phone?.Label, phone?.Value,
             x.Line1 ?? string.Empty, x.City, x.Postal, x.TotalPieces, x.CodAmount, x.Notes, client, canClose,
-            flags.RequireDeliverySignature, flags.RequireDeliveryPhoto, codPending);
+            flags.RequireDeliverySignature, flags.RequireDeliveryPhoto, codPending, own.TripKind);
     }
 
     private static byte[] DecodeImage(string base64, string message)
@@ -232,10 +237,10 @@ public sealed class DriverAppService(TeikemDbContext db, ITenantContext tenant, 
     /// A cuántos metros de la dirección de entrega estaba el teléfono (línea recta). Null si no hay GPS (sin permiso o sin señal de satélite) o la dirección aún no tiene punto. El GPS del teléfono NO es la ubicación de la entrega:
     /// un chofer puede marcar entregas o excepciones desde su casa; por eso se guarda aparte y con la distancia, para que la oficina lo vea.
     /// </summary>
-    private async Task<int?> StopDistanceAsync(int orderId, double? lat, double? lng, CancellationToken ct)
+    private async Task<int?> StopDistanceAsync(int orderId, double? lat, double? lng, CancellationToken ct, string kind = TripKinds.Delivery)
     {
         if (lat is not double la || lng is not double lo || !DriverTrackingRules.ValidCoordinate(la, lo)) return null;
-        var deliveryTypeId = await db.LookupCodes.AsNoTracking().Where(l => l.Entity == LookupDomains.StopType && l.InternalCode == StopTypes.Delivery).Select(l => l.LookupCodeId).FirstOrDefaultAsync(ct);
+        var deliveryTypeId = await db.LookupCodes.AsNoTracking().Where(l => l.Entity == LookupDomains.StopType && l.InternalCode == (kind == TripKinds.Pickup ? StopTypes.Pickup : StopTypes.Delivery)).Select(l => l.LookupCodeId).FirstOrDefaultAsync(ct);
         var stop = await db.OrderStops.AsNoTracking().Where(s => s.TransportOrderId == orderId).OrderByDescending(s => s.StopTypeLookupId == deliveryTypeId).ThenByDescending(s => s.Sequence).FirstOrDefaultAsync(ct);
         if (stop is null) return null;
         var points = await db.StopPointsAsync(new[] { stop.OrderStopId }, ct);
@@ -269,6 +274,7 @@ public sealed class DriverAppService(TeikemDbContext db, ITenantContext tenant, 
         if (delivery is null) throw new InvalidOperationException("Falta DeliveryRegistrationService.");
         var driver = await CurrentDriverAsync(ct);
         var own = await OwnShipmentAsync(shipmentPublicId, driver, requireAccepted: true, ct);
+        if (own.TripKind == TripKinds.Pickup) throw new StatusRuleException(DriverAppRules.WrongKindForDeliverMessage);
         var photos = req?.PhotosBase64 ?? Array.Empty<string>();
         var flags = await (from o in db.TransportOrders.AsNoTracking() join cl in db.Clients.AsNoTracking() on o.ClientId equals cl.ClientId where o.TransportOrderId == own.OrderId
                            select new { cl.RequireDeliverySignature, cl.RequireDeliveryPhoto }).FirstOrDefaultAsync(ct) ?? new { RequireDeliverySignature = false, RequireDeliveryPhoto = false };
@@ -303,6 +309,7 @@ public sealed class DriverAppService(TeikemDbContext db, ITenantContext tenant, 
             await delivery.RegisterAsync(shipmentPublicId, new DeliveryRegisterRequest(req?.RecipientName, req?.Notes, req?.DeliveredAtUtc), ct,
                 new DeliveryRegisterOptions(DeliveryProofCodes.SourceDriverApp, DeliveryProofCodes.SignatureRecipient, DriverAppRules.DeliveredComment(driver.FullName), req?.Latitude, req?.Longitude, distance));
             await TagAttemptAsync(own.OrderId, driver.DriverId, delivered: true, reasonId: null, req?.Notes, at, req?.Latitude, req?.Longitude, distance, ct);
+            await CloseStopAsync(own, completed: true, DriverAppRules.DeliveredComment(driver.FullName), at, ct);
         }
         var proofId = await delivery.RequireProofIdAsync(shipmentPublicId, ct);
         if (signature is not null) await AttachMissingAsync(DeliveryProofCodes.EntityType, proofId, StoredFileCodes.KindSignature, new[] { signature }, "firma", ct);
@@ -334,6 +341,17 @@ public sealed class DriverAppService(TeikemDbContext db, ITenantContext tenant, 
         var own = await OwnShipmentAsync(shipmentPublicId, driver, requireAccepted: true, ct);
         var at = req?.AttemptedAtUtc is DateTime given ? DateTime.SpecifyKind(given, DateTimeKind.Utc) : DateTime.UtcNow;
 
+        // Ruta de RECOGIDA: «no recogido». El envío sigue «Sometido» (no hubo recogida), la parada queda FALLIDA con el motivo en su historial y la oficina lo ve ahí; no hay intento de entrega.
+        if (own.TripKind == TripKinds.Pickup)
+        {
+            var pickupStatus = await StatusOfAsync(own.OrderId, ct);
+            var pickupDistance = await StopDistanceAsync(own.OrderId, req?.Latitude, req?.Longitude, ct, TripKinds.Pickup);
+            var comment = DriverAppRules.PickupFailedComment(Label(reason.LabelJson, tenant.Lang, reason.InternalCode), note, pickupDistance);
+            await CloseStopAsync(own, completed: false, comment, at, ct);
+            if (photo is not null) await AttachMissingAsync(EntityTypes.TransportOrder, own.OrderId, StoredFileCodes.KindDamagePhoto, new[] { photo }, "no-recogido", ct);
+            return new DriverShipmentResultDto(shipmentPublicId, pickupStatus.Code, pickupStatus.Label, false, pickupDistance);
+        }
+
         var current = await StatusOfAsync(own.OrderId, ct);
         var already = string.Equals(current.Code, OrderStatuses.Failed, StringComparison.OrdinalIgnoreCase)
                       && await db.Set<DeliveryAttempt>().AsNoTracking().AnyAsync(a => a.TransportOrderId == own.OrderId && a.IsActive && !a.Delivered && a.Source == DeliveryAttemptSources.App, ct);
@@ -348,9 +366,100 @@ public sealed class DriverAppService(TeikemDbContext db, ITenantContext tenant, 
                 order.StatusCodeId = to.StatusCodeId;
                 await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
                 await TagAttemptAsync(own.OrderId, driver.DriverId, delivered: false, reason.LookupCodeId, note, at, req?.Latitude, req?.Longitude, distance, ct2);
+                await CloseStopAsync(own, completed: false, DriverAppRules.FailedComment(Label(reason.LabelJson, tenant.Lang, reason.InternalCode)), at, ct2);
             }, ct);
         }
         if (photo is not null) await AttachMissingAsync(EntityTypes.TransportOrder, own.OrderId, StoredFileCodes.KindDamagePhoto, new[] { photo }, "no-entrega", ct);
+        var st = await StatusOfAsync(own.OrderId, ct);
+        return new DriverShipmentResultDto(shipmentPublicId, st.Code, st.Label, already, distance);
+    }
+
+    /// <summary>
+    /// Cierra la parada del envío en la ruta del chofer: la parada de la RUTA (RouteStop) queda COMPLETED o FAILED (con la hora real) y la parada del envío (OrderStop) pasa por el motor de estatus, con el texto en su historial.
+    /// Así el monitor muestra el avance real y se sabe qué paradas faltan. Si el motor no permite ese paso (un estatus deshabilitado, por ejemplo), la entrega o recogida ya hecha no se deshace: solo se omite el historial de la parada.
+    /// </summary>
+    private async Task CloseStopAsync(OwnShipment own, bool completed, string comment, DateTime at, CancellationToken ct)
+    {
+        var routeId = await db.Routes.AsNoTracking().Where(r => r.TripId == own.TripId && r.IsActive).Select(r => (int?)r.RouteId).FirstOrDefaultAsync(ct);
+        if (routeId is null) return;
+        var link = await (from rs in db.RouteStops.AsTracking()
+                          join os in db.OrderStops.AsTracking() on rs.OrderStopId equals os.OrderStopId
+                          where rs.RouteId == routeId && os.TransportOrderId == own.OrderId
+                          select new { Stop = rs, OrderStop = os }).FirstOrDefaultAsync(ct);
+        if (link is null) return;
+        var routeStop = await statuses.GetByCodeAsync(StatusDomains.RouteStopStatus, completed ? RouteStopStatuses.Completed : RouteStopStatuses.Failed, ct);
+        link.Stop.StatusCodeId = routeStop.StatusCodeId;
+        link.Stop.ActualArrivalUtc ??= at;
+        link.Stop.ActualDepartureUtc = at;
+        try
+        {
+            if (completed)
+            {
+                var pipeline = await statuses.GetPipelineAsync(StatusDomains.StopStatus, includeDisabled: true, ct);
+                var current = pipeline.FirstOrDefault(x => x.Id == link.OrderStop.StatusCodeId);
+                if (current is not null && !string.Equals(current.Code, StopStatuses.Completed, StringComparison.OrdinalIgnoreCase))
+                {
+                    var stages = pipeline.Select(x => new PipelineStage(x.Code, x.SortOrder, x.StageKind, x.IsInitial, x.IsEnabled)).ToList();
+                    var steps = PipelinePath.StepsTo(stages, current.Code, StopStatuses.Completed);
+                    if (steps.Count > 0 && steps[^1] == StopStatuses.Completed)
+                    {
+                        var to = await statuses.AdvanceSkippingAsync(StatusDomains.StopStatus, EntityTypes.OrderStop, link.OrderStop.OrderStopId, link.OrderStop.StatusCodeId, steps, comment, ct);
+                        link.OrderStop.StatusCodeId = to.StatusCodeId;
+                    }
+                }
+            }
+            else
+            {
+                var to = await statuses.TransitionAsync(StatusDomains.StopStatus, EntityTypes.OrderStop, link.OrderStop.OrderStopId, link.OrderStop.StatusCodeId, StopStatuses.Failed, comment, ct);
+                link.OrderStop.StatusCodeId = to.StatusCodeId;
+            }
+        }
+        catch (Exception ex) when (ex is StatusRuleException or InvalidOperationException) { /* el historial de la parada es secundario */ }
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Recoger un envío de una ruta de RECOGIDA: el envío pasa de «Sometido» a «Recogido» (con quién lo entregó, notas, fotos y el GPS del teléfono a cuántos metros de la dirección de recogida), y la parada se cierra.
+    /// Idempotente (si ya salió de «Sometido» responde `AlreadyDone`). 404 si el envío no es suyo; 422 si el manifiesto no se aceptó, es una ruta de entrega o el envío ya no se puede recoger; 400 por fotos o notas.
+    /// </summary>
+    public async Task<DriverShipmentResultDto> PickupAsync(Guid shipmentPublicId, DriverPickupRequest? req, CancellationToken ct)
+    {
+        var driver = await CurrentDriverAsync(ct);
+        var own = await OwnShipmentAsync(shipmentPublicId, driver, requireAccepted: true, ct);
+        if (own.TripKind != TripKinds.Pickup) throw new StatusRuleException(DriverAppRules.WrongKindForPickupMessage);
+        var notes = string.IsNullOrWhiteSpace(req?.Notes) ? null : req!.Notes!.Trim();
+        if (notes is { Length: > DeliveryProofRules.MaxNotesLength }) throw new ValidationException("notes", DeliveryProofRules.NotesTooLong);
+        var giver = string.IsNullOrWhiteSpace(req?.GiverName) ? null : req!.GiverName!.Trim();
+        if (giver is { Length: > DeliveryProofRules.MaxRecipientLength }) throw new ValidationException("giverName", DeliveryProofRules.RecipientTooLong);
+        var photos = (req?.PhotosBase64 ?? Array.Empty<string>()).Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+        if (photos.Count > DriverAppRules.MaxPhotos) throw new ValidationException("photosBase64", DriverAppRules.TooManyPhotosMessage);
+        var photoBytes = photos.Select(x => DecodeImage(x, DriverAppRules.PhotoInvalidMessage)).ToList();
+        var at = req?.PickedAtUtc is DateTime given ? DateTime.SpecifyKind(given, DateTimeKind.Utc) : DateTime.UtcNow;
+        if (at > DateTime.UtcNow + DeliveryProofRules.FutureTolerance) throw new ValidationException("pickedAtUtc", DeliveryProofRules.FutureDelivery);
+
+        var before = await StatusOfAsync(own.OrderId, ct);
+        var already = !string.Equals(before.Code, OrderStatuses.Submitted, StringComparison.OrdinalIgnoreCase);
+        int? distance = null;
+        if (!already)
+        {
+            distance = await StopDistanceAsync(own.OrderId, req?.Latitude, req?.Longitude, ct, TripKinds.Pickup);
+            await db.RunInTransactionAsync(async ct2 =>
+            {
+                var order = (await db.LockOrdersAsync(new List<int> { own.OrderId }, includeStops: false, ct2)).First();
+                var pipeline = await statuses.GetPipelineAsync(StatusDomains.OrderStatus, includeDisabled: true, ct2);
+                var current = pipeline.First(x => x.Id == order.StatusCodeId);
+                if (!current.IsInitial) throw new StatusRuleException(DriverAppRules.NotPickableMessage(order.OrderNumber));
+                var stages = pipeline.Select(x => new PipelineStage(x.Code, x.SortOrder, x.StageKind, x.IsInitial, x.IsEnabled)).ToList();
+                var steps = PipelinePath.StepsTo(stages, current.Code, OrderStatuses.Pickup);
+                if (steps.Count == 0 || steps[^1] != OrderStatuses.Pickup) throw new StatusRuleException(DriverAppRules.PickupStageMissingMessage);
+                var to = await statuses.AdvanceSkippingAsync(StatusDomains.OrderStatus, EntityTypes.TransportOrder, own.OrderId, order.StatusCodeId, steps, DriverAppRules.PickedComment(driver.FullName, giver, distance), ct2);
+                order.StatusCodeId = to.StatusCodeId;
+                order.ConfirmedAtUtc ??= at;
+                await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
+                await CloseStopAsync(own, completed: true, DriverAppRules.PickedComment(driver.FullName, giver, distance), at, ct2);
+            }, ct);
+        }
+        await AttachMissingAsync(EntityTypes.TransportOrder, own.OrderId, StoredFileCodes.KindDeliveryPhoto, photoBytes, "recogida", ct);
         var st = await StatusOfAsync(own.OrderId, ct);
         return new DriverShipmentResultDto(shipmentPublicId, st.Code, st.Label, already, distance);
     }

@@ -349,6 +349,8 @@ export interface TripCreateValues {
   vehiclePublicId: string
   /** Hora de salida 'HH:mm' en la hora de la compañía; vacía = la del servidor (12:00 UTC). El campo se llama como el del servidor para que su error salga debajo. */
   plannedStartUtc: string
+  /** Tipo de ruta: entrega (por omisión) o recogida. */
+  kind: 'DELIVERY' | 'PICKUP'
 }
 
 export const emptyTripCreateValues = (planDate: string): TripCreateValues => ({
@@ -357,11 +359,12 @@ export const emptyTripCreateValues = (planDate: string): TripCreateValues => ({
   driverPublicId: '',
   vehiclePublicId: '',
   plannedStartUtc: '',
+  kind: 'DELIVERY',
 })
 
 export function tripCreateSchema(t: TFn, today: string) {
   return z
-    .object({ planDate: z.string(), dispatchZoneId: z.string(), driverPublicId: z.string(), vehiclePublicId: z.string(), plannedStartUtc: z.string() })
+    .object({ planDate: z.string(), dispatchZoneId: z.string(), driverPublicId: z.string(), vehiclePublicId: z.string(), plannedStartUtc: z.string(), kind: z.enum(['DELIVERY', 'PICKUP']) })
     .superRefine((v, ctx) => {
       const issue = planDateIssue(v.planDate, today, t)
       if (issue) ctx.addIssue({ code: 'custom', path: ['planDate'], message: issue })
@@ -379,6 +382,7 @@ export function buildTripCreate(v: TripCreateValues): TripCreateRequest {
     ...(v.driverPublicId ? { driverPublicId: v.driverPublicId } : {}),
     ...(v.vehiclePublicId ? { vehiclePublicId: v.vehiclePublicId } : {}),
     ...(start ? { plannedStartUtc: start } : {}),
+    ...(v.kind === 'PICKUP' ? { kind: 'PICKUP' } : {}),
   }
 }
 
@@ -454,7 +458,7 @@ export function hasUnassignedFilters(f: UnassignedFilters, clientPublicId: strin
 }
 
 /** Consulta de `GET /trips/unassigned-orders`: los filtros van al servidor (sirven aunque haya más de 500). */
-export function buildUnassignedQuery(f: UnassignedFilters, clientPublicId: string | null) {
+export function buildUnassignedQuery(f: UnassignedFilters, clientPublicId: string | null, kind: string | null = null) {
   const postalCode = f.postalCode.trim()
   const city = f.city.trim()
   const zoneId = f.zone !== '' && f.zone !== 'none' ? Number(f.zone) : null
@@ -464,6 +468,7 @@ export function buildUnassignedQuery(f: UnassignedFilters, clientPublicId: strin
     ...(postalCode ? { PostalCode: postalCode } : {}),
     ...(city ? { City: city } : {}),
     ...(clientPublicId ? { ClientPublicId: clientPublicId } : {}),
+    ...(kind === 'PICKUP' ? { Kind: 'PICKUP' } : {}),
     Skip: 0,
     Take: UNASSIGNED_TAKE,
   }

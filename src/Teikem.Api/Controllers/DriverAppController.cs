@@ -84,4 +84,10 @@ public sealed class DriverAppController(DriverAppService app, DriverTrackingServ
         await push.RegisterDeviceAsync(req, ct);
         return NoContent();
     }
+
+    /// <summary>
+    /// Recoge el envío (rutas de RECOGIDA): pasa de «Sometido» a «Recogido» y la parada se cierra. Idempotente (`alreadyDone`). 400 fotos/notas; 404 envío ajeno; 422 manifiesto sin aceptar, ruta de entrega o envío que ya no está pendiente.
+    /// </summary>
+    [HttpPost("shipments/{publicId:guid}/pickup")]
+    public Task<DriverShipmentResultDto> Pickup(Guid publicId, [FromBody] DriverPickupRequest? req, CancellationToken ct) => app.PickupAsync(publicId, req, ct);
 }

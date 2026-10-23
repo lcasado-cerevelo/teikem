@@ -4,7 +4,7 @@ import { fetchCompanyNotices, fetchCompanyWork, markNoticesRead, type Notice, fe
 import { useAuth } from '@hooks/AuthContext';
 import { drainOutbox, pendingClosedShipmentIds } from '@/offline';
 import { useAppStore } from '@/stores';
-import { OPEN_STATUSES, type Manifest, type Shipment } from '@/types/models';
+import { isOpenShipment, type Manifest, type Shipment } from '@/types/models';
 
 const READ_OPTS = { staleTime: 5 * 60_000, gcTime: 24 * 60 * 60_000 } as const;
 
@@ -36,7 +36,7 @@ async function loadWork(companies: Company[]): Promise<DriverWork> {
   });
   if (failedCompanies.length === companies.length && companies.length > 0) throw new Error('No company answered');
   const closed = await pendingClosedShipmentIds();
-  shipments = shipments.filter((s) => OPEN_STATUSES.includes(s.statusCode) && !closed.has(s.id));
+  shipments = shipments.filter((s) => isOpenShipment(s) && !closed.has(s.id));
   return { manifests, shipments, failedCompanies };
 }
 

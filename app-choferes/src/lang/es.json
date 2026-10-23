@@ -135,6 +135,18 @@
       "ERROR": "No se pudo registrar la entrega. Intenta de nuevo.",
       "CAMERA_PERMISSION": "Activa el permiso de cámara para tomar la foto."
     },
+    "PICKUP": {
+      "TITLE": "Recoger envío",
+      "GIVER": "Quién entrega el paquete (opcional)",
+      "GIVER_PLACEHOLDER": "Nombre de quien lo entrega",
+      "CONFIRM": "Confirmar recogida",
+      "PICK": "Recoger envío",
+      "NOT_PICKED": "No recogido",
+      "PICKED_TITLE": "Recogida registrada",
+      "PICKED_SENT": "El envío quedó recogido.",
+      "PICKED_QUEUED": "Sin señal: la recogida se enviará sola cuando haya conexión.",
+      "ERROR": "No se pudo registrar la recogida."
+    },
     "ACTIONS": {
       "ORDERS_COMPLETE": "Completar pedido",
       "ORDERS_EXCEPTION": "Excepción de pedido",

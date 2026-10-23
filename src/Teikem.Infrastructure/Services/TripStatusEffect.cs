@@ -72,7 +72,8 @@ public sealed class TripStatusEffect(TeikemDbContext db, IServiceProvider servic
         db.DriverNotices.Add(new Teikem.Domain.Trips.DriverNotice
         {
             TenantId = trip.TenantId, DriverId = trip.DriverId!.Value, Kind = DriverNoticeCodes.ManifestDispatched, TripId = trip.TripId,
-            Title = DriverNoticeRules.ManifestDispatchedTitle(trip.Code), Body = DriverNoticeRules.ManifestDispatchedBody,
+            Title = trip.Kind == TripKinds.Pickup ? DriverNoticeRules.PickupDispatchedTitle(trip.Code) : DriverNoticeRules.ManifestDispatchedTitle(trip.Code),
+            Body = trip.Kind == TripKinds.Pickup ? DriverNoticeRules.PickupDispatchedBody : DriverNoticeRules.ManifestDispatchedBody,
         });
 
         var statuses = services.GetRequiredService<StatusService>();
@@ -102,6 +103,20 @@ public sealed class TripStatusEffect(TeikemDbContext db, IServiceProvider servic
         // 2. Órdenes vigentes: bloqueo (después del Trip), re-verificación y avance hasta PLANNED.
         var orders = await LockCurrentOrdersAsync(trip.TripId, ct);
         if (orders.Count == 0) return;
+
+        // Ruta de RECOGIDA: se re-verifica que cada orden siga sin recoger y con su parada de recogida pendiente; los envíos NO cambian de estatus (siguen «Sometidos» hasta que el chofer los recoja).
+        if (trip.Kind == TripKinds.Pickup)
+        {
+            var writer = services.GetRequiredService<RouteWriter>();
+            var reasons = await writer.CheckEligibilityAsync(orders, ct, TripKinds.Pickup);
+            if (reasons.Count > 0)
+            {
+                var pickupErrors = orders.Where(o => reasons.ContainsKey(o.TransportOrderId)).ToDictionary(o => o.OrderNumber, o => new[] { reasons[o.TransportOrderId] });
+                var first = orders.First(o => reasons.ContainsKey(o.TransportOrderId));
+                throw new StatusRuleException(DispatchBatchRules.OrderNotEligible(first.OrderNumber, reasons[first.TransportOrderId])) { Errors = pickupErrors };
+            }
+            return;
+        }
 
         var orderPipeline = await statuses.GetPipelineAsync(StatusDomains.OrderStatus, includeDisabled: true, ct);
         var inTransit = orderPipeline.FirstOrDefault(s => Same(s.Code, OrderStatuses.InTransit))
@@ -150,6 +165,8 @@ public sealed class TripStatusEffect(TeikemDbContext db, IServiceProvider servic
     {
         var trip = await TrackedTripAsync(context.EntityId, ct);
         trip.ActualStartUtc ??= DateTime.UtcNow;
+
+        if (trip.Kind == TripKinds.Pickup) return;   // la ruta de recogida sale sin mover los envíos: cada uno pasa a «Recogido» cuando el chofer lo recoge
 
         var orders = await LockCurrentOrdersAsync(trip.TripId, ct);
         if (orders.Count == 0) return;

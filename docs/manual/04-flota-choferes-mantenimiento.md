@@ -973,3 +973,10 @@ Ambas acciones son **idempotentes**: un reintento de la cola sin señal responde
 **Escribir un aviso al chofer (web):** Catálogos → Choferes → ficha → panel «Avisos al chofer». Requiere `trips.dispatch`. Título obligatorio y texto opcional; sale a su bandeja de avisos y, si Firebase está configurado, a su teléfono.
 
 **Ver el recorrido y si el chofer apagó el GPS (web):** Operación → Monitoreo de rutas → elegir la ruta. El plano muestra el recorrido real; debajo, «Recorrido del chofer» lista los avisos (apagó, perdió el permiso, reanudó). Los puntos se conservan 10 días.
+
+### Recogidas: rutas de tipo «Recogida» (Lote 211, 2026-10-23)
+- **Qué es**: una ruta con tipo. Al crearla en Despacho → «Nueva ruta» se elige **Tipo de ruta**: Entrega (por omisión) o Recogida. Quién: `trips.plan`; módulo de transporte.
+- **Qué envíos entran**: solo los pendientes de recoger. Si no lo están, el servidor responde 422 con «El envío ya fue recogido (o salió del flujo de recogida); no se puede asignar a una ruta de recogida.» o «El envío no tiene una parada de recogida pendiente.». Un tipo inválido responde 400: «El tipo de ruta debe ser DELIVERY (entrega) o PICKUP (recogida).».
+- **En la app del chofer**: Home → «Recogidas para hoy». Dentro del envío: **Recoger envío** (quién lo entregó, comentario, foto; guarda el GPS) o **No recogido** (motivo y comentario). Sin señal, queda en cola y sale sola.
+- **Estatus**: salir con la ruta de recogida **no cambia** el estatus de los envíos. Recoger: «Sometido» → «Recogido» (chofer; cierra la parada como completada). No recogido: el envío sigue «Sometido» y la parada queda fallida.
+- **Qué bloquea**: entregar un envío de ruta de recogida («Este envío es de una ruta de recogida: se recoge, no se entrega.», 409/422); recoger en ruta de entrega («Este envío es de una ruta de entrega: se entrega, no se recoge.»); recoger un envío que ya no está pendiente («El envío … ya no está pendiente de recoger.»); estatus «Recogido» deshabilitado en la compañía («El estatus «Recogido» no está habilitado para esta compañía.»). La ruta no se puede cerrar con envíos sin atender.

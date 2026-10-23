@@ -536,6 +536,7 @@ public partial class TripStatusEffectTests
                 L(TripOrderDeclineCodes.ReasonDomain, "OTHER"),
                 L(DeliveryAttemptCodes.FailureReasonDomain, "ABSENT"),
                 L(LookupDomains.DevicePlatform, "ANDROID"),
+                L(LookupDomains.EntityType, EntityTypes.OrderStop),
             };
             Db.LookupCodes.AddRange(all);
             Lookups.Load(all);

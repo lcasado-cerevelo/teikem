@@ -74,7 +74,7 @@ export async function pendingClosedShipmentIds(): Promise<Set<string>> {
   const items = await storage.listPending(200);
   const ids = new Set<string>();
   for (const item of items) {
-    if (item.kind !== 'deliver' && item.kind !== 'fail') continue;
+    if (item.kind !== 'deliver' && item.kind !== 'fail' && item.kind !== 'pickup') continue;
     try {
       const payload = JSON.parse(item.payload) as { shipmentId?: string };
       if (payload.shipmentId) ids.add(payload.shipmentId);

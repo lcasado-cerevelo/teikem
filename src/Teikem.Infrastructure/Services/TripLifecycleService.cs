@@ -72,6 +72,18 @@ public sealed class TripLifecycleService(TeikemDbContext db, StatusService statu
             .ToListAsync(ct);
         var finished = statusRows.Where(s => DispatchBatchRules.OrderFinishedForClose(s.Stage, s.InternalCode)).Select(s => s.StatusCodeId).ToHashSet();
         var open = orders.Where(o => !finished.Contains(o.StatusCodeId)).Select(o => o.OrderNumber).OrderBy(x => x, StringComparer.Ordinal).ToList();
+        if (trip.Kind == TripKinds.Pickup)
+        {
+            // Ruta de RECOGIDA: un envío está atendido si ya se recogió (salió de «Sometido») o si su parada quedó FALLIDA (el chofer dijo por qué no se pudo); los demás bloquean el cierre.
+            var initialIds = (await db.StatusCodes.AsNoTracking().Where(s => statusIds.Contains(s.StatusCodeId) && s.IsInitial).Select(s => s.StatusCodeId).ToListAsync(ct)).ToHashSet();
+            var routeId = await db.Routes.AsNoTracking().Where(r => r.TripId == trip.TripId && r.IsActive).Select(r => (int?)r.RouteId).FirstOrDefaultAsync(ct);
+            var failedOrders = routeId is null ? new HashSet<int>() : (await (from rs in db.RouteStops.AsNoTracking()
+                                                                              join os in db.OrderStops.AsNoTracking() on rs.OrderStopId equals os.OrderStopId
+                                                                              join st in db.StatusCodes.AsNoTracking() on rs.StatusCodeId equals st.StatusCodeId
+                                                                              where rs.RouteId == routeId && st.InternalCode == RouteStopStatuses.Failed
+                                                                              select os.TransportOrderId).ToListAsync(ct)).ToHashSet();
+            open = orders.Where(o => initialIds.Contains(o.StatusCodeId) && !failedOrders.Contains(o.TransportOrderId) && !finished.Contains(o.StatusCodeId)).Select(o => o.OrderNumber).OrderBy(x => x, StringComparer.Ordinal).ToList();
+        }
         if (open.Count > 0) throw new StatusRuleException(DispatchBatchRules.OpenOrdersBlockClose(trip.Code, open));
 
         var text = string.IsNullOrWhiteSpace(comment) ? DispatchBatchRules.DefaultCompleteComment : comment.Trim();

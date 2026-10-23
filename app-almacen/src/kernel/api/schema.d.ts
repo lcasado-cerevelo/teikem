@@ -11589,6 +11589,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/driver-app/shipments/{publicId}/pickup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DriverPickupRequest"];
+                    "text/json": components["schemas"]["DriverPickupRequest"];
+                    "application/*+json": components["schemas"]["DriverPickupRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverShipmentResultDto"];
+                        "application/json": components["schemas"]["DriverShipmentResultDto"];
+                        "text/json": components["schemas"]["DriverShipmentResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/driver-app/auth/login": {
         parameters: {
             query?: never;
@@ -32591,6 +32636,7 @@ export interface paths {
                     Search?: string;
                     Skip?: number;
                     Take?: number;
+                    Kind?: string;
                 };
                 header?: never;
                 path?: never;
@@ -39911,6 +39957,17 @@ export interface components {
         DriverPayPolicyPatchRequest: {
             payoutFormula?: string | null;
         };
+        DriverPickupRequest: {
+            giverName?: string | null;
+            notes?: string | null;
+            /** Format: date-time */
+            pickedAtUtc?: string | null;
+            /** Format: double */
+            latitude?: number | null;
+            /** Format: double */
+            longitude?: number | null;
+            photosBase64?: string[] | null;
+        };
         DriverPingDto: {
             point?: components["schemas"]["GeoPointDto"];
             /** Format: double */
@@ -40112,6 +40169,7 @@ export interface components {
             photoRequired?: boolean;
             /** Format: double */
             codPending?: number | null;
+            kind?: string | null;
         };
         DriverShipmentDto: {
             /** Format: uuid */
@@ -47576,6 +47634,7 @@ export interface components {
             vehiclePublicId?: string | null;
             /** Format: date-time */
             plannedStartUtc?: string | null;
+            kind?: string | null;
         };
         TripDetailDto: {
             /** Format: int32 */
@@ -47639,6 +47698,7 @@ export interface components {
             /** Format: date-time */
             updatedAtUtc?: string | null;
             rowVersion?: string | null;
+            kind?: string | null;
         };
         TripDispatchRequest: {
             comment?: string | null;
@@ -47697,6 +47757,7 @@ export interface components {
             /** Format: date-time */
             plannedEndUtc?: string | null;
             isActive?: boolean;
+            kind?: string | null;
         };
         TripOrderRemoveRequest: {
             rowVersion?: string | null;
