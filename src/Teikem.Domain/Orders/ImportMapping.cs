@@ -65,11 +65,21 @@ public static class ImportFields
     public const string Reference = "reference";
     /// <summary>Lote 131: número de label del bulto (su PackageNumber), único por compañía; solo tiene sentido en una línea que es pieza.</summary>
     public const string PieceNumber = "pieceNumber";
+    /// <summary>2026-10-23 (CMS): punto de RECOGIDA del envío escrito libre (la dirección del paciente); el consignatario puede ser uno fijo de la plantilla (código por defecto). Nombre, línea 1 y pueblo son obligatorios si se usa alguno.</summary>
+    public const string PickupName = "pickupName";
+    public const string PickupLine1 = "pickupLine1";
+    public const string PickupLine2 = "pickupLine2";
+    public const string PickupCity = "pickupCity";
+    public const string PickupState = "pickupState";
+    public const string PickupPostalCode = "pickupPostalCode";
+    /// <summary>2026-10-23 (CMS): la zona de despacho (la ruta del cliente) por su código o nombre; manda sobre la que saldría del ZIP.</summary>
+    public const string Zone = "zone";
 
     public static readonly IReadOnlyList<string> All =
     [
         OrderNumber, Waybill, ClientInvoiceNumber, ServiceType, ConsigneeName, ConsigneeCode, Line1, Line2, City, State, PostalCode,
         Country, ContactPhone, PackageType, Pieces, WeightKg, VolumeM3, Description, CodAmount, RequestedDate, Notes, Reference, PieceNumber,
+        PickupName, PickupLine1, PickupLine2, PickupCity, PickupState, PickupPostalCode, Zone,
     ];
 
     /// <summary>

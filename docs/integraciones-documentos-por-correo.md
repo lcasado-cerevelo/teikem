@@ -46,3 +46,9 @@ Archivos en `F:\Download`: REGULAR 10-12-2026, OXIGENO / ALTAS / AXISMED / RECOG
 - Hecho: lectores por registro (`RecordStart`, `FromHeader`, `AppendWith`, transformación `SPACES`), modelo «Hoja de ruta de CMS» probado con el texto real del PDF (OCR) en `CmsRouteSheetReaderTests`.
 - **Pendiente (pregunta abierta a Luis):** (a) la dirección del paciente debe ser la **parada de recogida** y el consignatario CMS: hoy el importador solo conoce consignatario, la recogida sale del lugar por defecto del cliente y una ruta de recogida (Lote 211) pide una parada de recogida pendiente; (b) la zona se calcula por código postal/pueblo de la parada: «ruta → zona» necesita un campo de zona en el importador; (c) cola de propuestas para «Ruta completada» (Referral # = Order #).
 - El OCR de la hoja de CMS lee mal la cantidad (un «1» sale «4»): el modelo no la usa.
+
+## 8. CMS: recogida en la dirección del paciente y ruta como zona (2026-10-23, hecho)
+- `OrderCreateRequest.NewPickup` (punto de recogida escrito libre: reutiliza uno del directorio por nombre + línea 1 o lo crea dentro de la transacción) y `DispatchZoneCode` (zona forzada por código o nombre; manda sobre la del ZIP). Importador: campos `pickupName`, `pickupLine1`, `pickupLine2`, `pickupCity`, `pickupState`, `pickupPostalCode` y `zone`.
+- Consignatario fijo = código del consignatario de CMS como valor por defecto de la plantilla. Número de orden y de envío = Order # (el cliente debe tener «El cliente asigna el número de envío»).
+- Probado con OrderService real (InMemory) y el importador (validar → mapear → crear): `OrderNewPickupZoneTests`, `CmsOrderImportTests`. **No probado:** confirmar el lote completo (ExecuteUpdate no corre en InMemory; lo cubre el smoke con SQL Server) ni el camino real con el correo.
+- Falta: cola de propuestas para cerrar con «Ruta completada»; crear la integración real (buzón, cliente, zonas «ERD Pick Up N», consignatario CMS, plantilla).

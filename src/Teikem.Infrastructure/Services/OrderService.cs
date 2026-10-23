@@ -104,6 +104,9 @@ public sealed class OrderService(
 
     // ================================================================ CREAR
 
+    public const string NewPickupBothMessage = "Indique el punto de recogida existente o uno nuevo, no los dos.";
+    public static string UnknownZoneMessage(string code) => $"La zona o ruta «{code}» no existe o está inactiva en la compañía.";
+
     public async Task<OrderDetailDto> CreateAsync(OrderCreateRequest req, OrderScope scope, OrderCreationOptions? options, CancellationToken ct)
     {
         var tenantId = ((TenantContext)tenant).RequireTenantId();
@@ -133,6 +136,22 @@ public sealed class OrderService(
         var pickup = req.PickupLocationPublicId is Guid pickupPublicId
             ? await db.ResolvePickupAsync(client.ClientId, pickupPublicId, ct)
             : await db.DefaultPickupAsync(client, ct);
+        // 2026-10-23: punto de recogida escrito libre (la dirección del paciente en las hojas de CMS): coincide con uno del directorio o se crea al guardar
+        ConsigneeInput? newPickup = null;
+        if (req.NewPickup is not null)
+        {
+            if (req.PickupLocationPublicId is not null) throw new ValidationException("newPickup", NewPickupBothMessage);
+            newPickup = await ResolveConsigneeInputAsync(client, null, req.NewPickup, ct, "newPickup", "punto de recogida");
+            pickup = newPickup.Existing;
+        }
+        int? zoneOverrideId = null;
+        if (!string.IsNullOrWhiteSpace(req.DispatchZoneCode))
+        {
+            var zoneCode = req.DispatchZoneCode.Trim();
+            var zoneLower = zoneCode.ToLowerInvariant();
+            zoneOverrideId = await db.DispatchZones.AsNoTracking().Where(z => z.IsActive && (z.Code.ToLower() == zoneLower || (z.Name != null && z.Name.ToLower() == zoneLower))).Select(z => (int?)z.DispatchZoneId).FirstOrDefaultAsync(ct)
+                ?? throw new ValidationException("dispatchZoneCode", UnknownZoneMessage(zoneCode));
+        }
 
         var priorityId = await ResolvePriorityAsync(req.Priority, ct);
 
@@ -203,7 +222,7 @@ public sealed class OrderService(
 
         var pickupTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Pickup, ct);
         var deliveryTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Delivery, ct);
-        var pickupCountry = pickup is null ? null : await CountryCodeAsync(pickup.CountryLookupId, ct);
+        var pickupCountry = pickup is not null ? await CountryCodeAsync(pickup.CountryLookupId, ct) : newPickup?.ToCreate?.Country;
         var consigneeCountry = consignee.Existing is null ? consignee.ToCreate!.Country : await CountryCodeAsync(consignee.Existing.CountryLookupId, ct);
         var totals = OrderRules.Totals(lines.Select(l => new PackageLineInput(l.Description, l.Pieces, l.WeightKg, l.VolumeM3)));
 
@@ -307,15 +326,21 @@ public sealed class OrderService(
                     // Paradas: PICKUP (1) si hay recogido y DELIVERY (2) siempre, con snapshot completo (L236)
                     var stopInitial = await statuses.GetInitialAsync(StatusDomains.StopStatus, ct2);
                     OrderStop? pickupStop = null;
-                    if (pickup is not null)
+                    var pickupLoc = pickup;
+                    if (pickupLoc is null && newPickup?.ToCreate is not null)
+                    {
+                        var createdPickup = await locations.CreateAsync(newPickup.ToCreate, ct2);   // dentro de la transacción: un rollback también lo deshace
+                        pickupLoc = await db.Locations.AsNoTracking().FirstAsync(l => l.LocationId == createdPickup.Id, ct2);
+                    }
+                    if (pickupLoc is not null)
                     {
                         pickupStop = new OrderStop { TransportOrderId = order.TransportOrderId, StopTypeLookupId = pickupTypeId, Sequence = 1, StatusCodeId = stopInitial.StatusCodeId };
-                        OrderRules.ApplySnapshot(pickupStop, pickup, pickupCountry, req.RequestedDate);
+                        OrderRules.ApplySnapshot(pickupStop, pickupLoc, pickupCountry, req.RequestedDate);
                         db.OrderStops.Add(pickupStop);
                     }
                     var deliveryStop = new OrderStop { TransportOrderId = order.TransportOrderId, StopTypeLookupId = deliveryTypeId, Sequence = 2, StatusCodeId = stopInitial.StatusCodeId };
                     OrderRules.ApplySnapshot(deliveryStop, consigneeLoc, consigneeCountry, req.RequestedDate);
-                    order.DeliveryZoneId = await OrderRouting.ResolveZoneAsync(db, order.ServiceTypeLookupId, pickupStop, deliveryStop, ct2);   // Lote 129: zona (y nivel) de la entrega; 2026-10-22: de la recogida si es de ida y vuelta
+                    order.DeliveryZoneId = zoneOverrideId ?? await OrderRouting.ResolveZoneAsync(db, order.ServiceTypeLookupId, pickupStop, deliveryStop, ct2);   // Lote 129: zona (y nivel) de la entrega; 2026-10-22: de la recogida si es de ida y vuelta; 2026-10-23: la forzada (ruta del cliente) gana
                     db.OrderStops.Add(deliveryStop);
                     await db.SaveChangesAsync(ct2);
                     if (pickupStop is not null) await BornStopAsync(pickupStop, stopInitial.InternalCode, ct2);
@@ -664,7 +689,7 @@ public sealed class OrderService(
     /// para no reasignar direcciones del tenant); si coincide se reutiliza sin sobreescribir el directorio; si no, se creará
     /// dentro de la transacción asignada al cliente de la orden.
     /// </summary>
-    private async Task<ConsigneeInput> ResolveConsigneeInputAsync(Client client, Guid? locationPublicId, OrderConsigneeCreateRequest? fresh, CancellationToken ct)
+    private async Task<ConsigneeInput> ResolveConsigneeInputAsync(Client client, Guid? locationPublicId, OrderConsigneeCreateRequest? fresh, CancellationToken ct, string field = "newConsignee", string label = "consignatario")
     {
         if (locationPublicId is null && fresh is null) throw new ValidationException("consignee", ConsigneeRequiredMessage);
         if (locationPublicId is not null && fresh is not null) throw new ValidationException("consignee", ConsigneeBothMessage);
@@ -675,9 +700,9 @@ public sealed class OrderService(
             return new ConsigneeInput(loc, null, loc.Name);
         }
 
-        var name = RequireText(fresh!.Name, "newConsignee.name", "El nombre del consignatario es obligatorio.", 200);
-        var line1 = RequireText(fresh.Line1, "newConsignee.line1", "La dirección (línea 1) del consignatario es obligatoria.", 200);
-        var city = RequireText(fresh.City, "newConsignee.city", "La ciudad del consignatario es obligatoria.", 100);
+        var name = RequireText(fresh!.Name, $"{field}.name", $"El nombre del {label} es obligatorio.", 200);
+        var line1 = RequireText(fresh.Line1, $"{field}.line1", $"La dirección (línea 1) del {label} es obligatoria.", 200);
+        var city = RequireText(fresh.City, $"{field}.city", $"La ciudad del {label} es obligatoria.", 100);
 
         var deliveryTypeId = await lookups.GetIdAsync(LookupDomains.LocationType, LocationTypes.Delivery, ct);
         var bothTypeId = await lookups.GetIdAsync(LookupDomains.LocationType, LocationTypes.Both, ct);
@@ -696,7 +721,7 @@ public sealed class OrderService(
 
         // País ISO alfa-2: el snapshot de la parada es CHAR(2) (sin esto, un código largo termina en 500 por truncado).
         var country = string.IsNullOrWhiteSpace(fresh.Country) ? OrderRules.DefaultCountryCode : fresh.Country.Trim().ToUpperInvariant();
-        if (!CountryCode.IsValid(country)) throw new ValidationException("newConsignee.country", CountryCode.InvalidMessage);
+        if (!CountryCode.IsValid(country)) throw new ValidationException($"{field}.country", CountryCode.InvalidMessage);
         var toCreate = new LocationUpsertRequest(
             ClientPublicId: client.PublicId,
             Code: string.IsNullOrWhiteSpace(fresh.Code) ? null : fresh.Code.Trim(),

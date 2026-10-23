@@ -81,6 +81,8 @@ public sealed class OrderImportService(
         public required IReadOnlySet<string> Countries { get; init; }
         public required IReadOnlyList<LocationRow> Locations { get; init; }
         public required IReadOnlyList<(int LocationId, string Name, string Line1)> MatchCandidates { get; init; }
+        /// <summary>Zonas de despacho activas (código y nombre): la columna «zona» del archivo (la ruta del cliente) se compara con ellas.</summary>
+        public IReadOnlyList<(string Code, string? Name)> Zones { get; init; } = Array.Empty<(string, string?)>();
     }
 
     // ================================================================ VALIDAR
@@ -353,6 +355,28 @@ public sealed class OrderImportService(
             catch (FormatException ex) { Error(ImportFields.Waybill, ex.Message); }
         }
 
+        // 2026-10-23 (CMS): la ruta del cliente = una zona de despacho (por código o nombre); si no existe, la fila va a la bandeja con el motivo en vez de caer en otra zona
+        if (Get(ImportFields.Zone) is string zoneText)
+        {
+            var zone = ctx.Zones.FirstOrDefault(z => string.Equals(z.Code, zoneText, StringComparison.OrdinalIgnoreCase) || string.Equals(z.Name, zoneText, StringComparison.OrdinalIgnoreCase));
+            if (zone.Code is null) Error(ImportFields.Zone, OrderService.UnknownZoneMessage(zoneText));
+            else rec.Values[ImportFields.Zone] = zone.Code;
+        }
+
+        // 2026-10-23 (CMS): punto de recogida escrito libre; si se usa alguno de sus campos, nombre, línea 1 y pueblo son obligatorios
+        if (new[] { ImportFields.PickupName, ImportFields.PickupLine1, ImportFields.PickupLine2, ImportFields.PickupCity, ImportFields.PickupState, ImportFields.PickupPostalCode }.Any(f => Get(f) is not null))
+        {
+            if (Get(ImportFields.PickupName) is null) Error(ImportFields.PickupName, PickupFieldRequiredMessage("el nombre"));
+            else if (Get(ImportFields.PickupName)!.Length > 200) Error(ImportFields.PickupName, "Máximo 200 caracteres.");
+            if (Get(ImportFields.PickupLine1) is null) Error(ImportFields.PickupLine1, PickupFieldRequiredMessage("la dirección (línea 1)"));
+            else if (Get(ImportFields.PickupLine1)!.Length > 200) Error(ImportFields.PickupLine1, "Máximo 200 caracteres.");
+            if (Get(ImportFields.PickupCity) is null) Error(ImportFields.PickupCity, PickupFieldRequiredMessage("el pueblo"));
+            else if (Get(ImportFields.PickupCity)!.Length > 100) Error(ImportFields.PickupCity, "Máximo 100 caracteres.");
+            if (Get(ImportFields.PickupLine2) is { Length: > 200 }) Error(ImportFields.PickupLine2, "Máximo 200 caracteres.");
+            if (Get(ImportFields.PickupState) is { Length: > 100 }) Error(ImportFields.PickupState, "Máximo 100 caracteres.");
+            if (Get(ImportFields.PickupPostalCode) is { Length: > 20 }) Error(ImportFields.PickupPostalCode, "Máximo 20 caracteres.");
+        }
+
         // Consignatario: código del directorio → coincidencia nombre + línea 1 → se creará
         var consigneeCode = Get(ImportFields.ConsigneeCode);
         var name = Get(ImportFields.ConsigneeName);
@@ -396,6 +420,8 @@ public sealed class OrderImportService(
 
         return rec;
     }
+
+    public static string PickupFieldRequiredMessage(string what) => $"Para crear el punto de recogida falta {what}.";
 
     // ================================================================ varias líneas por orden (Lote 131)
 
@@ -704,6 +730,7 @@ public sealed class OrderImportService(
             Countries = countries,
             Locations = locations,
             MatchCandidates = candidates,
+            Zones = (await db.DispatchZones.AsNoTracking().Where(z => z.IsActive).Select(z => new { z.Code, z.Name }).ToListAsync(ct)).Select(z => (z.Code, z.Name)).ToList(),
         };
     }
 
@@ -790,7 +817,8 @@ public sealed class OrderImportService(
         }).ToList();
     }
 
-    private static OrderCreateRequest ToOrderRequest(ImportRowRecord r, Client client, bool confirmDuplicateInvoice)
+    /// <summary>La fila validada → el mismo pedido que POST /orders (público para poder probar el mapeo sin confirmar el lote).</summary>
+    public static OrderCreateRequest ToOrderRequest(ImportRowRecord r, Client client, bool confirmDuplicateInvoice)
     {
         string? Get(string field) => r.Values.TryGetValue(field, out var v) ? v : null;
 
@@ -821,6 +849,11 @@ public sealed class OrderImportService(
             consigneePublicId = r.Consignee?.LocationPublicId;
         }
 
+        OrderConsigneeCreateRequest? newPickup = Get(ImportFields.PickupName) is string pickupName
+            ? new OrderConsigneeCreateRequest(Name: pickupName, Line1: Get(ImportFields.PickupLine1) ?? string.Empty, Line2: Get(ImportFields.PickupLine2), City: Get(ImportFields.PickupCity) ?? string.Empty,
+                State: Get(ImportFields.PickupState), PostalCode: Get(ImportFields.PickupPostalCode), Country: null, Code: null)
+            : null;
+
         var references = Get(ImportFields.Reference) is string reference
             ? new List<OrderReferenceRequest> { new(RefType: ReferenceType, Value: reference, Source: ReferenceSource) }
             : null;
@@ -847,7 +880,9 @@ public sealed class OrderImportService(
             IsSpecialDelivery: false,
             SpecialServiceId: null,
             ConfirmDuplicateInvoice: confirmDuplicateInvoice,
-            ConfirmNow: false);
+            ConfirmNow: false,
+            NewPickup: newPickup,
+            DispatchZoneCode: Get(ImportFields.Zone));
     }
 
     private async Task<ImportPreviewDto> ToPreviewAsync(ImportBatch batch, CancellationToken ct)

@@ -146,6 +146,7 @@ public class ImportMappingTests
             "orderNumber", "clientInvoiceNumber", "serviceType", "consigneeName", "consigneeCode", "line1", "line2", "city", "state",
             "postalCode", "country", "contactPhone", "packageType", "pieces", "weightKg", "volumeM3", "description", "codAmount",
             "requestedDate", "notes", "reference", "pieceNumber", "waybillNumber",
+            "pickupName", "pickupLine1", "pickupLine2", "pickupCity", "pickupState", "pickupPostalCode", "zone",
         };
         Assert.Equal(expected.OrderBy(x => x), ImportFields.All.OrderBy(x => x));
         Assert.All(expected, f => Assert.True(ImportFields.IsKnown(f)));
@@ -171,7 +172,7 @@ public class ImportMappingTests
     {
         var fields = ImportTemplateService.GetOrderFields();
         Assert.Equal(ImportFields.All, fields.Select(f => f.Field).ToArray());
-        Assert.Equal(23, fields.Count);
+        Assert.Equal(30, fields.Count);
         Assert.All(fields, f => Assert.False(f.Required)); // las reglas son de grupo, no de campo
         var noDefault = fields.Where(f => !f.DefaultAllowed).Select(f => f.Field).OrderBy(x => x, StringComparer.Ordinal).ToArray();
         Assert.Equal(new[] { "clientInvoiceNumber", "consigneeName", "orderNumber", "pieceNumber", "waybillNumber" }, noDefault);

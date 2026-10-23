@@ -4403,6 +4403,13 @@
         "notes": "Notas",
         "reference": "Referencia",
         "pieceNumber": "N.º de pieza (label)",
+        "pickupName": "Recogida (nombre)",
+        "pickupLine1": "Recogida (dirección)",
+        "pickupLine2": "Recogida (línea 2)",
+        "pickupCity": "Recogida (pueblo)",
+        "pickupState": "Recogida (estado o región)",
+        "pickupPostalCode": "Recogida (ZIP)",
+        "zone": "Zona o ruta",
         "lines": "Líneas"
       }
     }

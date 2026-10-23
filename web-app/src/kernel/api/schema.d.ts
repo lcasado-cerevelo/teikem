@@ -42570,6 +42570,8 @@ export interface components {
             /** Format: uuid */
             driverPublicId?: string | null;
             waybillNumber?: string | null;
+            newPickup?: components["schemas"]["OrderConsigneeCreateRequest"];
+            dispatchZoneCode?: string | null;
         } & {
             [key: string]: unknown;
         };

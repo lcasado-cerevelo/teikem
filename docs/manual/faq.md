@@ -10444,3 +10444,11 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **«Registro N: No se encontró el campo obligatorio …» (bandeja).** En la orden N del documento no se halló un campo obligatorio (por ejemplo el nombre del paciente). Ninguna orden del documento se crea. Corrija el documento o haga ese campo opcional en el lector.
 
 **La ruta («ERD Pick Up 1») sale cortada o con tabuladores.** Ponga al campo de la ruta la transformación «Junta espacios y tabuladores» y márquelo «del encabezado».
+
+**«La zona o ruta «X» no existe o está inactiva en la compañía.» (bandeja o 400).** La columna «Zona o ruta» (o `dispatchZoneCode` por API) trae un texto que no es el código ni el nombre de ninguna zona activa. Cree la zona en Flota → Zonas con ese nombre exacto (o corrija el nombre en el documento) y reprocese la fila.
+
+**«Para crear el punto de recogida falta el nombre / la dirección (línea 1) / el pueblo.» (bandeja).** La plantilla manda alguno de los campos «Recogida (…)» pero la fila no trae los tres obligatorios. Complete el documento o el lector.
+
+**«Indique el punto de recogida existente o uno nuevo, no los dos.» (400).** Por API, `pickupLocationPublicId` y `newPickup` no van juntos.
+
+**«El número de envío lo asigna Teikem para este cliente.» en las órdenes de CMS.** El cliente no tiene activo «El cliente asigna el número de envío»; actívelo para que el Order # de CMS sea el número de la orden.

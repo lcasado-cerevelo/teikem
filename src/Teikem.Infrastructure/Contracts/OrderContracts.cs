@@ -67,7 +67,11 @@ public sealed record OrderCreateRequest(
     // argumentos con nombre y no cambia.
     Guid? DriverPublicId = null,
     // Conduce que trae el cliente (su número de envío, el del código de barras): único entre los envíos activos de la compañía; sin él, Teikem lo genera con su fórmula
-    string? WaybillNumber = null)
+    string? WaybillNumber = null,
+    // 2026-10-23 (CMS): punto de recogida escrito libre (la dirección del paciente): se compara con el directorio del cliente por nombre + línea 1 y, si no coincide, se crea. No va junto con PickupLocationPublicId
+    OrderConsigneeCreateRequest? NewPickup = null,
+    // 2026-10-23 (CMS): zona de despacho forzada por su código o nombre (la ruta del cliente); sin ella la zona sale del ZIP/pueblo de la parada que se visita
+    string? DispatchZoneCode = null)
 {
     /// <summary>Llaves del JSON que no corresponden a ninguna propiedad (el servicio rechaza las prohibidas con 400).</summary>
     [JsonExtensionData]

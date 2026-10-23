@@ -29,7 +29,7 @@ public sealed class OrderSubmissionLifecycleTests
 {
     private const decimal Rate = 50m;
 
-    private sealed class RecordingSecurity : ISecurityEventWriter
+    internal sealed class RecordingSecurity : ISecurityEventWriter
     {
         public List<(string Type, string Outcome, string Detail)> Events { get; } = new();
 
@@ -43,7 +43,7 @@ public sealed class OrderSubmissionLifecycleTests
             => Events.Where(e => e.Type == SecurityEventTypes.RoleChange && e.Detail.Contains($"\"action\":\"{action}\"", StringComparison.Ordinal)).Select(e => e.Detail);
     }
 
-    private sealed class World(WmsFixture f, Client c, Location consignee, RecordingSecurity security)
+    internal sealed class World(WmsFixture f, Client c, Location consignee, RecordingSecurity security)
     {
         public WmsFixture F { get; } = f;
         public Client C { get; } = c;
@@ -55,7 +55,7 @@ public sealed class OrderSubmissionLifecycleTests
     }
 
     /// <summary>Cliente C1 con un consignatario; con contrato ACTIVE y tarifa STANDARD/BOX de 50 si <paramref name="contract"/>; límite de crédito opcional.</summary>
-    private static async Task<World> NewWorldAsync(bool contract = true, bool rate = true, decimal? creditLimit = null)
+    internal static async Task<World> NewWorldAsync(bool contract = true, bool rate = true, decimal? creditLimit = null, Action<IServiceCollection>? extra = null)
     {
         var security = new RecordingSecurity();
         var f = await WmsFixture.CreateAsync(s =>
@@ -70,9 +70,11 @@ public sealed class OrderSubmissionLifecycleTests
             s.AddSingleton<OrderStatusEffect>();
             s.AddSingleton<IStatusTransitionEffect>(sp => sp.GetRequiredService<OrderStatusEffect>());
             s.AddSingleton<OrderStatusService>();
+            s.AddSingleton<LocationService>();   // consignatario y punto de recogida al vuelo (2026-10-23)
+            extra?.Invoke(s);
             // LocationService (consignatario al vuelo) y SpecialDeliveryDispatchService (chofer) no se usan en estas pruebas.
             s.AddSingleton(sp => new OrderService(sp.GetRequiredService<TeikemDbContext>(), sp.GetRequiredService<ITenantContext>(), sp.GetRequiredService<ILookupCache>(),
-                sp.GetRequiredService<StatusService>(), null!, sp.GetRequiredService<INumberSequenceService>(), sp.GetRequiredService<OrderStatusService>(),
+                sp.GetRequiredService<StatusService>(), sp.GetRequiredService<LocationService>(), sp.GetRequiredService<INumberSequenceService>(), sp.GetRequiredService<OrderStatusService>(),
                 sp.GetRequiredService<OrderReadService>(), sp.GetRequiredService<PermissionService>(), null!, sp.GetRequiredService<ITenantClock>()));
         });
         var db = f.Db;

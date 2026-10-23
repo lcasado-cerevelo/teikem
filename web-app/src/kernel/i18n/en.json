@@ -4403,6 +4403,13 @@
         "notes": "Notes",
         "reference": "Reference",
         "pieceNumber": "Piece no. (label)",
+        "pickupName": "Pickup (name)",
+        "pickupLine1": "Pickup (address)",
+        "pickupLine2": "Pickup (line 2)",
+        "pickupCity": "Pickup (city)",
+        "pickupState": "Pickup (state or region)",
+        "pickupPostalCode": "Pickup (ZIP)",
+        "zone": "Zone or route",
         "lines": "Lines"
       }
     }

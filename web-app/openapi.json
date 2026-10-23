@@ -66568,6 +66568,13 @@
           "waybillNumber": {
             "type": "string",
             "nullable": true
+          },
+          "newPickup": {
+            "$ref": "#/components/schemas/OrderConsigneeCreateRequest"
+          },
+          "dispatchZoneCode": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": {}
