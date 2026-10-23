@@ -111,3 +111,29 @@ export async function acceptManifest(m: Manifest, declines: Array<{ shipmentPubl
   const { data } = await api.post<AcceptResult>(`driver-app/manifests/${m.id}/accept`, { declines, rowVersion: m.rowVersion }, { tenantId: m.tenantId });
   return data;
 }
+
+// ---- avisos ----
+export interface Notice {
+  id: string;
+  tenantId: number;
+  companyName: string;
+  kind: string;
+  title: string;
+  body: string | null;
+  createdAtUtc: string;
+  read: boolean;
+}
+
+interface NoticesDto {
+  unread: number;
+  items: Array<{ publicId: string; kind: string; title: string; body?: string | null; createdAtUtc: string; read: boolean }>;
+}
+
+export async function fetchCompanyNotices(c: Company): Promise<Notice[]> {
+  const { data } = await api.get<NoticesDto>('driver-app/notices', { tenantId: c.tenantId });
+  return data.items.map((n) => ({ id: n.publicId, tenantId: c.tenantId, companyName: c.name, kind: n.kind, title: n.title, body: n.body ?? null, createdAtUtc: n.createdAtUtc, read: n.read }));
+}
+
+export async function markNoticesRead(tenantId: number, ids: string[] | 'all'): Promise<void> {
+  await api.post('driver-app/notices/read', ids === 'all' ? { all: true } : { ids }, { tenantId });
+}

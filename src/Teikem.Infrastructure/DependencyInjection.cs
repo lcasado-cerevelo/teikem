@@ -88,6 +88,7 @@ public static class DependencyInjection
         services.Configure<OnboardingOptions>(config.GetSection("Auth:Onboarding"));
         services.Configure<DriverTrackingOptions>(config.GetSection("DriverApp:Tracking"));   // 2026-10-23: valores globales del seguimiento de ruta
         services.AddScoped<DriverTrackingService>();
+        services.AddScoped<DriverNoticeService>();
         services.Configure<DriverAppOptions>(config.GetSection("DriverApp"));   // 2026-10-23: tope de la sesión del chofer
         services.Configure<TurnstileOptions>(config.GetSection("Auth:Turnstile"));   // Lote 101: apagado por omisión
         services.Configure<TrustedBrowserOptions>(config.GetSection("Auth:TrustedBrowsers"));   // Lote 100: apagado por omisión

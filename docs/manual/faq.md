@@ -10396,3 +10396,11 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **¿Cuánto tiempo se guardan los puntos?** 10 días (`DriverApp:Tracking:RetentionDays`); un trabajo nocturno borra lo más viejo.
 
 **El teléfono mata el seguimiento con la pantalla apagada.** Excluya la app de la optimización de batería (Ajustes → Batería → esta app → Sin restricciones). Algunos fabricantes lo exigen.
+
+## Lote 209 — Avisos del chofer
+
+**Mensaje «Indique el título del aviso.» / «El título no puede pasar de 120 caracteres.» / «El texto no puede pasar de 1000 caracteres.» (400).** Corrija el aviso que escribe la oficina.
+
+**Al chofer no le llegó el aviso al teléfono.** Por ahora no hay aviso emergente: el aviso aparece en la pestaña «Avisos» al abrir la app (se refresca cada 5 minutos).
+
+**El chofer no ve avisos de una compañía.** La bandeja junta las compañías con sesión; si una está bloqueada por MFA («Entra de nuevo con tu contraseña y código») no se muestran sus avisos.

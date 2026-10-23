@@ -11470,6 +11470,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/driver-app/notices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverNoticesDto"];
+                        "application/json": components["schemas"]["DriverNoticesDto"];
+                        "text/json": components["schemas"]["DriverNoticesDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver-app/notices/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DriverNoticesReadRequest"];
+                    "text/json": components["schemas"]["DriverNoticesReadRequest"];
+                    "application/*+json": components["schemas"]["DriverNoticesReadRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": number;
+                        "application/json": number;
+                        "text/json": number;
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/driver-app/auth/login": {
         parameters: {
             query?: never;
@@ -11589,6 +11669,49 @@ export interface paths {
                         "text/plain": components["schemas"]["DriverSessionDto"];
                         "application/json": components["schemas"]["DriverSessionDto"];
                         "text/json": components["schemas"]["DriverSessionDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver-notices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DriverNoticeSendRequest"];
+                    "text/json": components["schemas"]["DriverNoticeSendRequest"];
+                    "application/*+json": components["schemas"]["DriverNoticeSendRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverNoticeDto"];
+                        "application/json": components["schemas"]["DriverNoticeDto"];
+                        "text/json": components["schemas"]["DriverNoticeDto"];
                     };
                 };
             };
@@ -39661,6 +39784,33 @@ export interface components {
             /** Format: int32 */
             shipmentCount?: number;
             rowVersion?: string | null;
+        };
+        DriverNoticeDto: {
+            /** Format: uuid */
+            publicId?: string;
+            kind?: string | null;
+            title?: string | null;
+            body?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            read?: boolean;
+            /** Format: uuid */
+            tripPublicId?: string | null;
+        };
+        DriverNoticeSendRequest: {
+            /** Format: uuid */
+            driverPublicId?: string | null;
+            title?: string | null;
+            body?: string | null;
+        };
+        DriverNoticesDto: {
+            /** Format: int32 */
+            unread?: number;
+            items?: components["schemas"]["DriverNoticeDto"][] | null;
+        };
+        DriverNoticesReadRequest: {
+            ids?: string[] | null;
+            all?: boolean | null;
         };
         DriverPatchRequest: {
             fullName?: string | null;

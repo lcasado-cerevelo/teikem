@@ -68,6 +68,13 @@ public sealed class TripStatusEffect(TeikemDbContext db, IServiceProvider servic
         if (route is null || stopCount == 0) missing.Add(DispatchBatchRules.NoStopsMessage);
         if (missing.Count > 0) throw new StatusRuleException(DispatchBatchRules.DispatchBlocked(trip.Code, missing));
 
+        // Aviso para el chofer en su app (bandeja de avisos); se guarda con el resto de la transacción.
+        db.DriverNotices.Add(new Teikem.Domain.Trips.DriverNotice
+        {
+            TenantId = trip.TenantId, DriverId = trip.DriverId!.Value, Kind = DriverNoticeCodes.ManifestDispatched, TripId = trip.TripId,
+            Title = DriverNoticeRules.ManifestDispatchedTitle(trip.Code), Body = DriverNoticeRules.ManifestDispatchedBody,
+        });
+
         var statuses = services.GetRequiredService<StatusService>();
 
         // 1. La versión vigente se congela: etapa por etapa hasta ACTIVE.

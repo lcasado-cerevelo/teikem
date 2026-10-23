@@ -122,6 +122,7 @@ public sealed class DriverTrackingPurgeJob : Jobs.IScheduledJob
     {
         var svc = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<DriverTrackingService>(context.Services);
         var (points, events) = await svc.PurgeAsync(ct);
-        return points + events == 0 ? "Nada que limpiar." : $"{points} puntos y {events} avisos borrados.";
+        var notices = await Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<DriverNoticeService>(context.Services).PurgeAsync(ct);
+        return points + events + notices == 0 ? "Nada que limpiar." : $"{points} puntos, {events} avisos de seguimiento y {notices} avisos de choferes borrados.";
     }
 }

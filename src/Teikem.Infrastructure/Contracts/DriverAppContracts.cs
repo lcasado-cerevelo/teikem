@@ -62,3 +62,11 @@ public sealed record DriverTrackingUploadResultDto(bool RouteActive, int Accepte
 
 public sealed record TripTrackPointDto(double Latitude, double Longitude, decimal? SpeedKmh, DateTime CapturedAtUtc);
 public sealed record TripTrackingDto(Guid TripPublicId, string TripCode, IReadOnlyList<TripTrackPointDto> Points, IReadOnlyList<DriverTrackingEventDto> Events);
+
+// ---- avisos ----
+public sealed record DriverNoticeDto(Guid PublicId, string Kind, string Title, string? Body, DateTime CreatedAtUtc, bool Read, Guid? TripPublicId);
+public sealed record DriverNoticesDto(int Unread, IReadOnlyList<DriverNoticeDto> Items);
+/// <summary>Marcar leídos: los de `Ids`, o todos con `All` = true.</summary>
+public sealed record DriverNoticesReadRequest(IReadOnlyList<Guid>? Ids, bool? All);
+/// <summary>La oficina escribe un aviso a un chofer.</summary>
+public sealed record DriverNoticeSendRequest(Guid? DriverPublicId, string? Title, string? Body);

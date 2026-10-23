@@ -293,6 +293,11 @@
       "OFF_TITLE": "Apagar la ubicación",
       "OFF_BODY": "La oficina dejará de ver su ruta y recibirá un aviso de que usted la apagó. ¿Confirma?",
       "OFF_YES": "Apagar"
+    },
+    "NOTICES": {
+      "TITLE": "Avisos",
+      "EMPTY": "No tiene avisos.",
+      "MARK_ALL": "Marcar todo como leído"
     }
   }
 }

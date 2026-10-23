@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { fetchCompanyWork, fetchDeclineReasons, fetchFailureReasons, fetchShipmentDetail, type Company } from '@services/driverApi';
+import { fetchCompanyNotices, fetchCompanyWork, markNoticesRead, type Notice, fetchDeclineReasons, fetchFailureReasons, fetchShipmentDetail, type Company } from '@services/driverApi';
 import { useAuth } from '@hooks/AuthContext';
 import { drainOutbox, pendingClosedShipmentIds } from '@/offline';
 import { useAppStore } from '@/stores';
@@ -151,4 +151,36 @@ export function useRemoveShipmentFromLists() {
     },
     [qc, removeShipmentId],
   );
+}
+
+// ---------------------------------------------------------------------------
+// Avisos: la bandeja de TODAS las compañías del chofer en una lista (más nuevos primero), cada aviso con su compañía.
+// ---------------------------------------------------------------------------
+export function useNotices() {
+  const companies = useUsableCompanies();
+  const qc = useQueryClient();
+  const query = useQuery({
+    queryKey: ['notices', companies.map((c) => c.tenantId).join(',')],
+    queryFn: async (): Promise<Notice[]> => {
+      const results = await Promise.allSettled(companies.map((c) => fetchCompanyNotices(c)));
+      return results.flatMap((r) => (r.status === 'fulfilled' ? r.value : [])).sort((a, b) => b.createdAtUtc.localeCompare(a.createdAtUtc));
+    },
+    enabled: companies.length > 0,
+    staleTime: 60_000,
+    gcTime: READ_OPTS.gcTime,
+    refetchInterval: 5 * 60_000,
+  });
+  const markRead = useCallback(
+    async (notices: Notice[]) => {
+      const unread = notices.filter((n) => !n.read);
+      if (unread.length === 0) return;
+      // se marca en la caché al instante y luego en el servidor (por compañía); si falla, el próximo refresco lo deja como estaba
+      qc.setQueriesData<Notice[]>({ queryKey: ['notices'] }, (old) => old?.map((n) => (unread.some((u) => u.id === n.id) ? { ...n, read: true } : n)));
+      const byTenant = new Map<number, string[]>();
+      for (const n of unread) byTenant.set(n.tenantId, [...(byTenant.get(n.tenantId) ?? []), n.id]);
+      await Promise.allSettled([...byTenant].map(([tenantId, ids]) => markNoticesRead(tenantId, ids)));
+    },
+    [qc],
+  );
+  return { ...query, markRead, unread: (query.data ?? []).filter((n) => !n.read).length };
 }

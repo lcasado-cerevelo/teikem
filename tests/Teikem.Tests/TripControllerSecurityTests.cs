@@ -47,6 +47,7 @@ public class TripControllerSecurityTests
         [(typeof(TripDispatchController), nameof(TripDispatchController.Complete))] = PermissionCatalog.TripsClose,
 
         [(typeof(TripMonitorController), nameof(TripMonitorController.Get))] = PermissionCatalog.TripsView,
+        [(typeof(TripMonitorController), nameof(TripMonitorController.Track))] = PermissionCatalog.TripsView,   // 2026-10-23: la huella de la ruta
         [(typeof(TripPlanningController), nameof(TripPlanningController.PlanDay))] = PermissionCatalog.TripsPlan,
         [(typeof(ScanController), nameof(ScanController.Outbound))] = PermissionCatalog.TripsScan,
         [(typeof(ScanController), nameof(ScanController.Action))] = PermissionCatalog.TripsScan,

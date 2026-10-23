@@ -17,7 +17,7 @@ namespace Teikem.Api.Controllers;
 [Authorize]
 [RequireModule(ModuleKeys.LtlGround)]
 [RequirePermission(PermissionCatalog.DriverAppUse)]
-public sealed class DriverAppController(DriverAppService app, DriverTrackingService tracking) : ControllerBase
+public sealed class DriverAppController(DriverAppService app, DriverTrackingService tracking, DriverNoticeService notices) : ControllerBase
 {
     /// <summary>Sus manifiestos de entrega: despachados (por aceptar) y en curso.</summary>
     [HttpGet("manifests")]
@@ -68,4 +68,12 @@ public sealed class DriverAppController(DriverAppService app, DriverTrackingServ
     /// </summary>
     [HttpPost("tracking")]
     public Task<DriverTrackingUploadResultDto> Track([FromBody] DriverTrackingUploadRequest? req, CancellationToken ct) => tracking.UploadAsync(req, ct);
+
+    /// <summary>Su bandeja de avisos (los últimos 100, los más nuevos primero) y cuántos no ha leído.</summary>
+    [HttpGet("notices")]
+    public Task<DriverNoticesDto> Notices(CancellationToken ct) => notices.ListAsync(ct);
+
+    /// <summary>Marca avisos como leídos: `{ids:[…]}` o `{all:true}`. Devuelve cuántos cambió.</summary>
+    [HttpPost("notices/read")]
+    public async Task<int> ReadNotices([FromBody] DriverNoticesReadRequest? req, CancellationToken ct) => await notices.MarkReadAsync(req, ct);
 }

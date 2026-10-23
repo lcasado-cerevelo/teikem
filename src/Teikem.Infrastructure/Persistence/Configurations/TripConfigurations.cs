@@ -142,3 +142,19 @@ public sealed class DriverTrackingEventConfiguration : IEntityTypeConfiguration<
         b.HasIndex(e => new { e.TripId, e.OccurredAtUtc }).HasDatabaseName("IX_DriverTrackingEvent_Trip");
     }
 }
+
+/// <summary>2026-10-23 — avisos del chofer (1:1 con dbo.DriverNotice).</summary>
+public sealed class DriverNoticeConfiguration : IEntityTypeConfiguration<DriverNotice>
+{
+    public void Configure(EntityTypeBuilder<DriverNotice> b)
+    {
+        b.ToTable("DriverNotice");
+        b.HasKey(n => n.DriverNoticeId);
+        b.Property(n => n.PublicId).HasDefaultValueSql("NEWID()");
+        b.Property(n => n.Kind).HasMaxLength(30);
+        b.Property(n => n.Title).HasMaxLength(DriverNoticeCodes.TitleMaxLength);
+        b.Property(n => n.Body).HasMaxLength(DriverNoticeCodes.BodyMaxLength);
+        b.HasIndex(n => n.PublicId).IsUnique().HasDatabaseName("UX_DriverNotice_PublicId");
+        b.HasIndex(n => new { n.TenantId, n.DriverId, n.CreatedAtUtc }).HasDatabaseName("IX_DriverNotice_Driver");
+    }
+}

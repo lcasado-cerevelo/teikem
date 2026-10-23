@@ -194,7 +194,7 @@ public class TenantIsolationModelTests
         Assert.Equal(new[] { "Route", "RouteStop" }, withoutTenant);
 
         var withTenant = trips.Where(e => e.FindProperty("TenantId") is not null).Select(e => e.ClrType.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray();
-        Assert.Equal(new[] { "OptimizationRun", "Trip", "TripOrder", "TripOrderDecline" }, withTenant);
+        Assert.Equal(new[] { "DriverNotice", "DriverTrackingEvent", "OptimizationRun", "Trip", "TripOrder", "TripOrderDecline" }, withTenant);   // 2026-10-23: avisos y seguimiento del chofer
         Assert.All(trips.Where(e => e.FindProperty("TenantId") is not null), e => Assert.NotNull(e.GetQueryFilter()));
     }
 

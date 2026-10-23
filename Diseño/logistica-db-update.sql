@@ -6531,3 +6531,36 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_DriverTrackingEvent_Trip' AND object_id = OBJECT_ID('dbo.DriverTrackingEvent'))
     CREATE INDEX IX_DriverTrackingEvent_Trip ON dbo.DriverTrackingEvent (TripId, OccurredAtUtc);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-23 (d) — App del chofer: bandeja de avisos.
+   - dbo.DriverNotice: aviso para el chofer (lo escribe la oficina o lo genera el sistema, p. ej. «Nuevo manifiesto» al despachar); se marca leído desde la app; se purga a los 60 días.
+   - EntityType DRIVER_NOTICE (bitácora).
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID('dbo.DriverNotice', 'U') IS NULL CREATE TABLE dbo.DriverNotice (
+    DriverNoticeId INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId       UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_DriverNotice_PublicId DEFAULT NEWID(),
+    TenantId       INT NOT NULL CONSTRAINT FK_DriverNotice_Tenant REFERENCES dbo.Tenant(TenantId),
+    DriverId       INT NOT NULL CONSTRAINT FK_DriverNotice_Driver REFERENCES dbo.Driver(DriverId),
+    Kind           NVARCHAR(30) NOT NULL,
+    Title          NVARCHAR(120) NOT NULL,
+    Body           NVARCHAR(1000) NULL,
+    TripId         INT NULL CONSTRAINT FK_DriverNotice_Trip REFERENCES dbo.Trip(TripId),
+    CreatedBy      INT NULL,
+    CreatedAtUtc   DATETIME2 NOT NULL CONSTRAINT DF_DriverNotice_Created DEFAULT SYSUTCDATETIME(),
+    ReadAtUtc      DATETIME2 NULL
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_DriverNotice_PublicId' AND object_id = OBJECT_ID('dbo.DriverNotice'))
+    CREATE UNIQUE INDEX UX_DriverNotice_PublicId ON dbo.DriverNotice (PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_DriverNotice_Driver' AND object_id = OBJECT_ID('dbo.DriverNotice'))
+    CREATE INDEX IX_DriverNotice_Driver ON dbo.DriverNotice (TenantId, DriverId, CreatedAtUtc);
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES (N'DRIVER_NOTICE', N'{"es":"Aviso al chofer","en":"Driver notice"}')) AS s (Code, LabelJson)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, 93, 1, 1);
+GO

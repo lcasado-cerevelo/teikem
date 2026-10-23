@@ -963,3 +963,9 @@ Ambas acciones son **idempotentes**: un reintento de la cola sin señal responde
 - **Varias compañías**: si el chofer tiene rutas en curso en dos compañías, cada una guarda los puntos.
 - **Apagarlo**: Perfil → «Enviar mi ubicación durante la ruta». La oficina ve el aviso «Lo apagó el chofer» (distinto de «sin señal» y de «perdió el permiso»).
 - **Endpoints**: `POST /api/v1/driver-app/tracking` (400 «Máximo 500 puntos por envío.» / «Máximo 50 avisos por envío.» / «El tipo de aviso no es válido.»; 403 «Su usuario no está vinculado a un chofer activo.»), `GET /api/v1/driver-app/tracking/config`, `GET /api/v1/trips/{id}/tracking` (`trips.view`).
+
+### Avisos del chofer (Lote 209, 2026-10-23)
+- **Bandeja**: pestaña «Avisos» de la app (campana con el número de no leídos), de todas las compañías del chofer. Tocar un aviso lo marca leído.
+- **Automático**: al **despachar** una ruta el chofer recibe «Nuevo manifiesto {código}».
+- **De la oficina**: `POST /api/v1/driver-notices` con `{driverPublicId, title, body}` (`trips.dispatch`). 400 «Indique el título del aviso.» / «El título no puede pasar de 120 caracteres.» / «El texto no puede pasar de 1000 caracteres.»; 404 si el chofer no existe.
+- Se conservan 60 días. El aviso emergente (push) todavía no está.

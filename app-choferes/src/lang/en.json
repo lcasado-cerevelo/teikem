@@ -293,6 +293,11 @@
       "OFF_TITLE": "Turn location off",
       "OFF_BODY": "The office will stop seeing your route and will get a notice that you turned it off. Confirm?",
       "OFF_YES": "Turn off"
+    },
+    "NOTICES": {
+      "TITLE": "Notices",
+      "EMPTY": "You have no notices.",
+      "MARK_ALL": "Mark all as read"
     }
   }
 }

@@ -3,9 +3,11 @@ import { AntDesign, FontAwesome, MaterialCommunityIcons } from '@expo/vector-ico
 import LoggedHeader from '@components/LoggedHeader';
 import LogoutButton from '@components/LogoutButton';
 import { useTheme } from '@hooks/ThemeContext';
+import { useNotices } from '@hooks/queries';
 
 export default function TabLayout() {
   const { colors } = useTheme();
+  const { unread } = useNotices();
   return (
     <Tabs screenOptions={{ tabBarActiveTintColor: colors.primary }}>
       <Tabs.Screen
@@ -31,6 +33,16 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons name="truck-fast-outline" color={color} size={28} style={{ marginBottom: -3 }} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="notices"
+        options={{
+          title: 'Notices',
+          tabBarShowLabel: false,
+          headerShown: false,
+          tabBarBadge: unread > 0 ? unread : undefined,
+          tabBarIcon: ({ color }) => <MaterialCommunityIcons name="bell-outline" color={color} size={28} style={{ marginBottom: -3 }} />,
         }}
       />
       <Tabs.Screen
