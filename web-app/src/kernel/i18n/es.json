@@ -1550,6 +1550,17 @@
         "certNumberMax": "El número de certificación admite como máximo {max} caracteres.",
         "datesOrder": "La fecha de vencimiento no puede ser anterior a la de emisión."
       }
+    },
+    "notice": {
+      "title": "Avisos al chofer",
+      "help": "Le llega a la bandeja de su app (y al teléfono como aviso emergente).",
+      "fieldTitle": "Título",
+      "fieldBody": "Texto (opcional)",
+      "send": "Enviar aviso",
+      "sent": "Aviso enviado.",
+      "titleRequired": "Indique el título del aviso.",
+      "titleMax": "Máximo {max} caracteres.",
+      "bodyMax": "Máximo {max} caracteres."
     }
   },
   "fleet": {

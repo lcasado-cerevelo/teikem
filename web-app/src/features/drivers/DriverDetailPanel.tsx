@@ -14,6 +14,7 @@ import { contactKeys, useContactPoints } from '../contacts/api'
 import { DRIVER_ENTITY_TYPE, useDriver, type DriverDetail } from './api'
 import { DriverDevicesPanel } from './DriverDevicesPanel'
 import { DriverDocumentsPanel } from './DriverDocumentsPanel'
+import { DriverNoticePanel } from './DriverNoticePanel'
 import { DRIVER_STATUS_DOMAIN } from './driverRules'
 import { DriverProfilePanel } from './DriverProfilePanel'
 import { DriverRatesPanels } from './DriverRatesPanels'
@@ -102,6 +103,7 @@ export function DriverDetailPanel({ publicId }: { publicId: string }) {
       <DriverRatesPanels driver={driver} />
       <DriverTripsPanel driver={driver} />
       <DriverDevicesPanel driver={driver} />
+      <DriverNoticePanel driver={driver} />
       <Panel icon={<IconClock />} title={t('drivers.history')}>
         <StatusHistory entityType={DRIVER_ENTITY_TYPE} entityId={driver.id} domain={DRIVER_STATUS_DOMAIN} />
       </Panel>

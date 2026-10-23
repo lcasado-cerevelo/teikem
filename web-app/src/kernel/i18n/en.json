@@ -1550,6 +1550,17 @@
         "certNumberMax": "The certification number allows at most {max} characters.",
         "datesOrder": "The expiry date can’t be before the issue date."
       }
+    },
+    "notice": {
+      "title": "Driver notices",
+      "help": "It reaches the inbox of their app (and the phone as a pop-up notice).",
+      "fieldTitle": "Title",
+      "fieldBody": "Text (optional)",
+      "send": "Send notice",
+      "sent": "Notice sent.",
+      "titleRequired": "Enter the notice title.",
+      "titleMax": "Maximum {max} characters.",
+      "bodyMax": "Maximum {max} characters."
     }
   },
   "fleet": {

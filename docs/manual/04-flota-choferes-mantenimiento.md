@@ -969,3 +969,5 @@ Ambas acciones son **idempotentes**: un reintento de la cola sin señal responde
 - **Automático**: al **despachar** una ruta el chofer recibe «Nuevo manifiesto {código}».
 - **De la oficina**: `POST /api/v1/driver-notices` con `{driverPublicId, title, body}` (`trips.dispatch`). 400 «Indique el título del aviso.» / «El título no puede pasar de 120 caracteres.» / «El texto no puede pasar de 1000 caracteres.»; 404 si el chofer no existe.
 - Se conservan 60 días. El aviso emergente (push) todavía no está.
+
+**Escribir un aviso al chofer (web):** Catálogos → Choferes → ficha → panel «Avisos al chofer». Requiere `trips.dispatch`. Título obligatorio y texto opcional; sale a su bandeja de avisos y, si Firebase está configurado, a su teléfono.

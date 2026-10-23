@@ -34,3 +34,6 @@ Distancia en la web y aviso a la oficina (>300 m), escribir aviso al chofer y ma
 - **Pago a choferes → Intentos**: columna «Distancia a la dirección» (metros; «(lejos)» en rojo si pasa de 300 m; «Sin GPS» si el intento vino de la app sin ubicación). **Envío → Comprobante de entrega**: línea «Distancia a la dirección» (con «lejos de la dirección de entrega» pasados los 300 m).
 - **«Necesita tu atención» → «Entregas del chofer lejos de la dirección»** (`DELIVERY_FAR`): una fila agregada con las entregas y no-entregas hechas desde la app a más de 300 m en los últimos 7 días y la distancia mayor; permiso `driverpay.view`, módulo LTL_GROUND; «Revisar» abre Pago a choferes.
 - Pruebas: servidor (`OperationalAlertTests`, 17 verdes) y web (analytics, pago a choferes y órdenes: 550 verdes). El umbral (300 m) está en `DriverAppRules.FarFromAddressMeters` y en los textos de la web.
+
+## Escribir un aviso al chofer desde la web (2026-10-23)
+Ficha del chofer → panel **«Avisos al chofer»** (visible con `trips.dispatch`, oculto en un chofer retirado): título (obligatorio, 120) y texto opcional (1000) → `POST /api/v1/driver-notices`. Le llega a la bandeja de su app y, con Firebase configurado, al teléfono. Pruebas: 131 del módulo de choferes (2 nuevas).

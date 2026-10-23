@@ -297,6 +297,7 @@ export function route({ method, url, body }: Call): unknown {
     if (m[4]) return { id: Number(m[3]), isActive: false }
     return { id: m[3] ? Number(m[3]) : 99, ...body, expiryState: 'OK', isSuperseded: false, isActive: true }
   }
+  if (p === '/api/v1/driver-notices' && method === 'POST') return { publicId: 'n-1', kind: 'MESSAGE', title: body?.title, body: body?.body, read: false }
   m = /^\/api\/v1\/drivers\/([^/]+)\/devices\/(\d+)\/deactivate$/.exec(p)
   if (m && method === 'POST') return { id: Number(m[2]), isActive: false }
 

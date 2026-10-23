@@ -259,3 +259,32 @@ describe('Contactos, historial y campos personalizados', () => {
     expect(callsTo('GET', '/api/v1/drivers/d-1/devices')).toHaveLength(0)
   })
 })
+
+describe('Avisos al chofer', () => {
+  const noticePanel = async () => (await screen.findByRole('heading', { level: 2, name: 'Avisos al chofer' })).closest('section') as HTMLElement
+
+  it('con trips.dispatch escribe un aviso: POST con el título y el texto, y el formulario se limpia', async () => {
+    const user = userEvent.setup()
+    wrap([...ALL, 'trips.dispatch'])
+    const panel = await noticePanel()
+    await user.type(within(panel).getByLabelText(/^Título/), ' Cambio de ruta ')
+    await user.type(within(panel).getByLabelText(/^Texto/), 'Llame a la oficina')
+    await user.click(within(panel).getByRole('button', { name: 'Enviar aviso' }))
+    await waitFor(() => expect(callsTo('POST', '/api/v1/driver-notices')).toHaveLength(1))
+    expect(callsTo('POST', '/api/v1/driver-notices')[0].body).toMatchObject({ driverPublicId: 'd-1', title: 'Cambio de ruta', body: 'Llame a la oficina' })
+    await waitFor(() => expect(within(panel).getByLabelText(/^Título/)).toHaveValue(''))
+  })
+
+  it('sin título no se envía, y sin trips.dispatch el panel no aparece', async () => {
+    const user = userEvent.setup()
+    const first = wrap([...ALL, 'trips.dispatch'])
+    const panel = await noticePanel()
+    await user.click(within(panel).getByRole('button', { name: 'Enviar aviso' }))
+    expect(await within(panel).findByText('Indique el título del aviso.')).toBeInTheDocument()
+    expect(callsTo('POST', '/api/v1/driver-notices')).toHaveLength(0)
+    first.unmount()
+    wrap(ALL)
+    await screen.findByRole('heading', { level: 2, name: 'Dispositivos' })
+    expect(screen.queryByRole('heading', { level: 2, name: 'Avisos al chofer' })).not.toBeInTheDocument()
+  })
+})

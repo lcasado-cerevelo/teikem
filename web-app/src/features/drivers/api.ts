@@ -357,3 +357,10 @@ export function useTripMutations(publicId: string) {
     }),
   }
 }
+
+// ---- Avisos al chofer (bandeja de su app; permiso trips.dispatch) ----
+export function useSendDriverNotice() {
+  return useMutation({
+    mutationFn: (body: Schemas['DriverNoticeSendRequest']) => unwrap(api.POST('/api/v1/driver-notices', { body })),
+  })
+}
