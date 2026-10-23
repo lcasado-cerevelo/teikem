@@ -21,3 +21,6 @@ Pruebas de reglas (`DriverTrackingRulesTests`), del servicio (`TripStatusEffectT
 - **Batería**: el chofer debe excluir la app de la optimización de batería (el texto de Perfil lo dice); algunos fabricantes (Xiaomi, Huawei) matan el servicio de todos modos.
 - **iPhone**: no configurado (permiso «siempre» y modos de fondo de iOS); Android primero, como se acordó.
 - El **aviso de privacidad del chofer** (documento aparte, para revisión legal) está pendiente; el texto del aviso previo ya dice qué se recoge.
+
+## Recorrido y avisos en el monitor web (2026-10-23)
+Monitoreo de ruta → ruta elegida: el plano dibuja el **recorrido real** del chofer (línea fina azul bajo los pines; `RouteMap` ganó la propiedad `track`) y un recuadro «Recorrido del chofer» dice cuántos puntos hay guardados y lista los **avisos**: «Empezó a enviar su ubicación», «El chofer apagó el envío de su ubicación», «Perdió el permiso de ubicación», «Volvió a enviar su ubicación», cada uno con su hora. Lee `GET /api/v1/trips/{id}/tracking` (permiso `trips.view`) y se refresca cada minuto. Pruebas: monitor y plano (562 verdes en total con `kernel/ui`).

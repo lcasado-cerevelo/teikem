@@ -2357,6 +2357,16 @@
       "min": "{n} min ago",
       "h": "{n} h ago",
       "d": "{n} d ago"
+    },
+    "track": {
+      "title": "Driver track",
+      "points": "{count} location points saved (kept 10 days).",
+      "events": {
+        "STARTED": "Started sending location",
+        "STOPPED_BY_DRIVER": "The driver turned location sharing off",
+        "PERMISSION_LOST": "Lost the location permission",
+        "RESUMED": "Resumed sending location"
+      }
     }
   },
   "dispatch": {

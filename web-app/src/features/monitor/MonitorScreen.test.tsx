@@ -58,7 +58,9 @@ const server = {
   trips: [] as MonitorTrip[],
   fail: false,
 }
+const trackingOf = { points: [] as Array<{ latitude: number; longitude: number; capturedAtUtc: string }>, events: [] as Array<{ type: string; occurredAtUtc: string }> }
 function monitorResponse(call: Call): unknown {
+  if (call.method === 'GET' && /^\/api\/v1\/trips\/[^/]+\/tracking$/.test(call.url.pathname)) return { tripPublicId: 't-1', tripCode: '2026-0001', points: trackingOf.points, events: trackingOf.events }
   if (call.method !== 'GET' || call.url.pathname !== '/api/v1/trips/monitor') return undefined
   if (server.fail) return problem(500, 'Error interno.', 'internal')
   const q = call.url.searchParams
@@ -122,6 +124,8 @@ const T2 = () => tripDetail({ publicId: 't-2', code: '2026-0002', zoneCode: 'R-0
 
 function seed() {
   server.fail = false
+  trackingOf.points = []
+  trackingOf.events = []
   server.trips = [
     mtrip({ publicId: 't-1', totalStops: 3, pendingStops: 3, approximateStops: 1, lastPing: ping(12) }),
     mtrip({ publicId: 't-2', code: '2026-0002', zoneCode: 'R-02', driverCode: 'D-02', driverName: 'Luis Soto', statusCode: 'DISPATCHED', status: 'Despachado', totalStops: 4, completedStops: 2, failedStops: 0, pendingStops: 2, nextEtaUtc: utc(10 * 60_000), overStopLimit: true, lastPing: undefined }),
@@ -561,5 +565,34 @@ describe('vacíos y permisos', () => {
     } finally {
       setLang('es')
     }
+  })
+})
+
+describe('recorrido del chofer (GPS)', () => {
+  it('muestra cuántos puntos hay guardados y los avisos: lo apagó el chofer, perdió el permiso, lo reanudó', async () => {
+    trackingOf.points = [
+      { latitude: 18.4, longitude: -66.15, capturedAtUtc: utc(-600_000) },
+      { latitude: 18.35, longitude: -66.1, capturedAtUtc: utc(-300_000) },
+      { latitude: 18.31, longitude: -66.1, capturedAtUtc: utc(-60_000) },
+    ]
+    trackingOf.events = [
+      { type: 'STARTED', occurredAtUtc: utc(-900_000) },
+      { type: 'STOPPED_BY_DRIVER', occurredAtUtc: utc(-500_000) },
+      { type: 'RESUMED', occurredAtUtc: utc(-200_000) },
+    ]
+    wrap()
+    await ready()
+    const box = await screen.findByLabelText('Recorrido del chofer')
+    expect(within(box).getByText('3 puntos de ubicación guardados (se conservan 10 días).')).toBeInTheDocument()
+    expect(within(box).getByText('El chofer apagó el envío de su ubicación')).toBeInTheDocument()
+    expect(within(box).getByText('Empezó a enviar su ubicación')).toBeInTheDocument()
+    expect(within(box).getByText('Volvió a enviar su ubicación')).toBeInTheDocument()
+    expect(document.querySelector('.rmap-track')).not.toBeNull()
+  })
+
+  it('sin puntos ni avisos no aparece el recuadro', async () => {
+    wrap()
+    await ready()
+    expect(screen.queryByLabelText('Recorrido del chofer')).not.toBeInTheDocument()
   })
 })

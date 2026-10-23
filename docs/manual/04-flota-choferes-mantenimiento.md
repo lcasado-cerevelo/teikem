@@ -971,3 +971,5 @@ Ambas acciones son **idempotentes**: un reintento de la cola sin señal responde
 - Se conservan 60 días. El aviso emergente (push) todavía no está.
 
 **Escribir un aviso al chofer (web):** Catálogos → Choferes → ficha → panel «Avisos al chofer». Requiere `trips.dispatch`. Título obligatorio y texto opcional; sale a su bandeja de avisos y, si Firebase está configurado, a su teléfono.
+
+**Ver el recorrido y si el chofer apagó el GPS (web):** Operación → Monitoreo de rutas → elegir la ruta. El plano muestra el recorrido real; debajo, «Recorrido del chofer» lista los avisos (apagó, perdió el permiso, reanudó). Los puntos se conservan 10 días.

@@ -2357,6 +2357,16 @@
       "min": "hace {n} min",
       "h": "hace {n} h",
       "d": "hace {n} d"
+    },
+    "track": {
+      "title": "Recorrido del chofer",
+      "points": "{count} puntos de ubicación guardados (se conservan 10 días).",
+      "events": {
+        "STARTED": "Empezó a enviar su ubicación",
+        "STOPPED_BY_DRIVER": "El chofer apagó el envío de su ubicación",
+        "PERMISSION_LOST": "Perdió el permiso de ubicación",
+        "RESUMED": "Volvió a enviar su ubicación"
+      }
     }
   },
   "dispatch": {

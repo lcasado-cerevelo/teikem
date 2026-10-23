@@ -31,6 +31,18 @@ export function useMonitorTrip(publicId: string | null, enabled: boolean) {
   })
 }
 
+/** El recorrido de la ruta (puntos de GPS del chofer, hasta 5,000) y sus avisos de seguimiento (apagó el envío, perdió el permiso, lo reanudó). Se conserva 10 días. */
+export function useTripTracking(publicId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ['monitor', 'tracking', publicId],
+    queryFn: () => unwrap(api.GET('/api/v1/trips/{publicId}/tracking', { params: { path: { publicId: publicId ?? '' } } })),
+    enabled: enabled && !!publicId,
+    retry: false,
+    refetchInterval: 60_000,
+    meta: { handleAccessDenied: false },
+  })
+}
+
 /** ¿La pestaña está a la vista? (`visibilitychange`; sin `document` se asume que sí). */
 export function usePageVisible(): boolean {
   const [visible, setVisible] = useState(() => typeof document === 'undefined' || document.visibilityState !== 'hidden')

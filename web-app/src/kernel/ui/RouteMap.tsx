@@ -30,6 +30,8 @@ export interface RouteMapProps {
   onSelect?: (id: string | number) => void
   /** Punto vivo opcional (el chofer en monitoreo). */
   live?: (GeoPoint & { label: string }) | null
+  /** Recorrido real del chofer (puntos de GPS en orden de tiempo): se dibuja como una línea fina bajo los pines y cuenta para el ajuste del plano. */
+  track?: readonly GeoPoint[]
   /** Origen opcional (almacén/salida): solo si el servidor lo da; el plano nunca lo inventa. */
   origin?: (GeoPoint & { label: string }) | null
   /** Pin en prueba (selector de coordenadas); no mueve el ajuste del plano. */
@@ -58,7 +60,7 @@ function pinColor(accuracy: PinAccuracy, state: PinState): string {
   return COLORS[state]
 }
 
-export function RouteMap({ stops, selectedId = null, onSelect, live = null, origin = null, draft = null, onPick, height = 300, label, emptyHint, showLegend = true, className }: RouteMapProps) {
+export function RouteMap({ stops, selectedId = null, onSelect, live = null, track, origin = null, draft = null, onPick, height = 300, label, emptyHint, showLegend = true, className }: RouteMapProps) {
   const t = useT()
   const f = useFormat()
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -76,8 +78,9 @@ export function RouteMap({ stops, selectedId = null, onSelect, live = null, orig
     const pts: GeoPoint[] = located.map((s) => ({ lat: s.point!.lat as number, lng: s.point!.lng as number }))
     if (hasLive && live) pts.push({ lat: live.lat, lng: live.lng })
     if (hasOrigin && origin) pts.push({ lat: origin.lat, lng: origin.lng })
+    for (const p of track ?? []) if (isGeoPoint(p)) pts.push({ lat: p.lat, lng: p.lng })
     return fitProjection(pts, width, height)
-  }, [located, live, origin, hasLive, hasOrigin, width, height])
+  }, [located, live, origin, track, hasLive, hasOrigin, width, height])
 
   const placed = useMemo(() => {
     if (!projection) return new Map<string, { x: number; y: number }>()
@@ -111,6 +114,8 @@ export function RouteMap({ stops, selectedId = null, onSelect, live = null, orig
     return a && b ? { key: `${located[i].id}-${s.id}`, a, b, done: located[i].state === 'done' && s.state === 'done' } : null
   })
 
+  const trackPath = projection && track && track.length > 1 ? track.filter((p) => isGeoPoint(p)).map((p, i) => { const q = projection.project(p); return `${i === 0 ? 'M' : 'L'}${q.x.toFixed(1)} ${q.y.toFixed(1)}` }).join(' ') : null
+
   const scale = projection ? niceScale(projection.metersPerPx, Math.min(width / 4, 120)) : null
   const parts = scale ? scaleParts(scale.meters) : null
   const draftPos = draft && projection && isGeoPoint(draft) ? projection.project(draft) : null
@@ -141,6 +146,7 @@ export function RouteMap({ stops, selectedId = null, onSelect, live = null, orig
               </text>
             </g>
           )}
+          {trackPath && <path className="rmap-track" d={trackPath} fill="none" aria-hidden="true" />}
           {segments.map((s) =>
             s ? <line key={s.key} className={s.done ? 'rmap-line done' : 'rmap-line'} x1={s.a.x} y1={s.a.y} x2={s.b.x} y2={s.b.y} /> : null,
           )}

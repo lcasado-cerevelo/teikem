@@ -10,6 +10,7 @@ import { useT } from '../../kernel/i18n'
 import { Chip, EmptyState, IconPin, IconRoute, IconTruck, isGeoPoint, Panel, RouteMap, Spinner, stateOf } from '../../kernel/ui'
 import { IconAlert } from '../../kernel/ui/icons'
 import { mapStops, orderedStops, type RouteStop, type TripDetail } from '../dispatch/dispatchRules'
+import { useTripTracking } from './monitorApi'
 import { agoText, compassOf, hasPing, isRecentPing, pingAgeSeconds, speedOf, type MonitorTrip } from './monitorRules'
 
 export function MonitorRoutePanel({
@@ -41,6 +42,9 @@ export function MonitorRoutePanel({
   const mapData = useMemo(() => mapStops(stops, t), [stops, t])
   const tripId = detail?.publicId ?? trip?.publicId ?? ''
   const selectedStop = picked && picked.tripId === tripId ? picked.stopId : null
+  const tracking = useTripTracking(tripId || null, !!trip)
+  const track = useMemo(() => (tracking.data?.points ?? []).map((p) => ({ lat: p.latitude as number, lng: p.longitude as number })), [tracking.data])
+  const trackEvents = tracking.data?.events ?? []
 
   if (!trip) {
     return (
@@ -97,6 +101,7 @@ export function MonitorRoutePanel({
             selectedId={selectedStop}
             onSelect={(id) => setPicked({ tripId, stopId: Number(id) })}
             live={livePoint}
+            track={track}
             height={340}
             label={label}
             emptyHint={t('monitor.map.emptyHint')}
@@ -134,6 +139,18 @@ export function MonitorRoutePanel({
           <span>{t('monitor.follow')}</span>
         </label>
       </div>
+
+      {(track.length > 0 || trackEvents.length > 0) && (
+        <div className="mon-notes" aria-label={t('monitor.track.title')}>
+          <p className="hint">{t('monitor.track.points', { count: track.length })}</p>
+          {trackEvents.map((e, i) => (
+            <p key={`${e.type}-${e.occurredAtUtc}-${i}`}>
+              <Chip tone={e.type === 'STARTED' || e.type === 'RESUMED' ? 'deliv' : 'warn'}>{t(`monitor.track.events.${e.type}`)}</Chip>
+              <span>{f.dateTime(e.occurredAtUtc ?? '')}</span>
+            </p>
+          ))}
+        </div>
+      )}
 
       {(age === null || ping?.linkedToTrip === false || approx > 0 || trip.overStopLimit) && (
       <div className="mon-notes">
