@@ -226,6 +226,7 @@ export function DeliveryProofPanel({ order }: { order: OrderDetailDto }) {
         {p.notes && kv(t('orders.detail.proof.notes'), p.notes)}
         {kv(t('orders.detail.proof.registeredBy'), p.registeredByName ?? '—')}
         {kv(t('orders.detail.proof.location'), geo)}
+        {p.distanceFromStopMeters != null && kv(t('orders.detail.proof.distance'), p.distanceFromStopMeters > 300 ? t('orders.detail.proof.distanceFar', { m: p.distanceFromStopMeters }) : t('orders.detail.proof.distanceOk', { m: p.distanceFromStopMeters }))}
         <p className="od-note"><b>{t('orders.detail.proof.signature')}:</b> {p.signatureKind === 'USER' ? t('orders.detail.proof.signedByUser', { name: p.signedByName ?? '—' }) : t('orders.detail.proof.signedByRecipient')}</p>
         {p.signatureKind === 'USER' && <p className="d od-note">{t('orders.detail.proof.userSignatureNote')}</p>}
         <ProofFiles order={order} files={p.files ?? []} />

@@ -1,3 +1,4 @@
+using Teikem.Domain.Fleet;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -54,6 +55,29 @@ public sealed class OperationalAlertTests
         Assert.Equal(OrderStatuses.Failed, item.Query!["statuses"]);
         Assert.Equal(("OPERATIONS", PermissionCatalog.OrdersView, ModuleKeys.LtlGround), (provider.BusinessModule, provider.RequiredPermission, provider.TenantModule));
         Assert.Empty((await provider.ReadAsync(Scope, 0, default)).Items);              // take 0
+    }
+
+    [Fact]
+    public async Task Deliveries_from_the_app_far_from_the_address_make_one_aggregated_row_and_near_or_old_or_manual_ones_do_not_count()
+    {
+        var (f, c) = await NewWorldAsync();
+        await using var _ = f;
+        var provider = new DeliveryFarAttentionProvider(f.Db);
+        Assert.Empty((await provider.ReadAsync(Scope, 5, default)).Items);
+        var o = await f.AddOrderAsync(c.ClientId, "A", OrderStatuses.Failed);
+        DeliveryAttempt At(int n, string source, int? meters, int daysAgo) => new()
+        {
+            TenantId = WmsFixture.TenantId, TransportOrderId = o.TransportOrderId, AttemptNumber = n, Source = source, DistanceFromStopMeters = meters, AttemptedAtUtc = DateTime.UtcNow.AddDays(-daysAgo), IsActive = true,
+        };
+        f.Db.AddRange(At(1, DeliveryAttemptSources.App, 1200, 1), At(2, DeliveryAttemptSources.App, 450, 2), At(3, DeliveryAttemptSources.App, 80, 1),
+            At(4, DeliveryAttemptSources.App, 5000, 20), At(5, DeliveryAttemptSources.Manual, 5000, 1), At(6, DeliveryAttemptSources.App, null, 1));
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+
+        var item = Assert.Single((await provider.ReadAsync(Scope, 5, default)).Items);
+
+        Assert.Equal((2, "warn", "/money/driver-pay", "1200"), (item.Count, item.Tone, item.Route, item.Params["maxMeters"]));
+        Assert.Equal((PermissionCatalog.DriverPayView, ModuleKeys.LtlGround), (provider.RequiredPermission, provider.TenantModule));
     }
 
     [Fact]

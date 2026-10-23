@@ -3458,6 +3458,15 @@
           "units": "Units",
           "overdueDays": "Days overdue",
           "reviewLabel": "Review rental {number} ({client})"
+        },
+        "DELIVERY_FAR": {
+          "titleOne": "1 driver delivery far from the address",
+          "title": "{count} driver deliveries far from the address",
+          "detail": "Marked from the app more than 300 m from the delivery address in the last 7 days",
+          "maxMeters": "Farthest",
+          "meters": "{n} m",
+          "group": "Deliveries far from the address",
+          "reviewLabel": "Review {count} deliveries far from the address"
         }
       }
     },
@@ -3983,7 +3992,10 @@
           "OK": "Found",
           "NOT_FOUND": "Address not found",
           "FAILED": "Lookup failed"
-        }
+        },
+        "distance": "Distance to address",
+        "distanceFar": "{m} m — far from the delivery address",
+        "distanceOk": "{m} m"
       }
     },
     "actions": {
@@ -9264,7 +9276,11 @@
         "order": "Find and pick the shipment.",
         "driver": "Pick the driver.",
         "reason": "Enter the reason for voiding."
-      }
+      },
+      "distance": "Distance to address",
+      "noGps": "No GPS",
+      "far": "{m} m (far)",
+      "meters": "{m} m"
     }
   },
   "cod": {

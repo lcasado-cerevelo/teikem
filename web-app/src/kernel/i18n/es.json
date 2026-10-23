@@ -3458,6 +3458,15 @@
           "units": "Equipos",
           "overdueDays": "Días vencida",
           "reviewLabel": "Revisar la renta {number} ({client})"
+        },
+        "DELIVERY_FAR": {
+          "titleOne": "1 entrega del chofer lejos de la dirección",
+          "title": "{count} entregas del chofer lejos de la dirección",
+          "detail": "Marcadas desde la app a más de 300 m de la dirección de entrega en los últimos 7 días",
+          "maxMeters": "La más lejana",
+          "meters": "{n} m",
+          "group": "Entregas lejos de la dirección",
+          "reviewLabel": "Revisar {count} entregas lejos de la dirección"
         }
       }
     },
@@ -3983,7 +3992,10 @@
           "OK": "Encontrada",
           "NOT_FOUND": "No se encontró la dirección",
           "FAILED": "No se pudo buscar"
-        }
+        },
+        "distance": "Distancia a la dirección",
+        "distanceFar": "{m} m — lejos de la dirección de entrega",
+        "distanceOk": "{m} m"
       }
     },
     "actions": {
@@ -9264,7 +9276,11 @@
         "order": "Busque y elija el envío.",
         "driver": "Elija el chofer.",
         "reason": "Indique el motivo de la anulación."
-      }
+      },
+      "distance": "Distancia a la dirección",
+      "noGps": "Sin GPS",
+      "far": "{m} m (lejos)",
+      "meters": "{m} m"
     }
   },
   "cod": {

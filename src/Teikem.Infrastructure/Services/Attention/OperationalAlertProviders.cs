@@ -52,6 +52,39 @@ public sealed class OrdersFailedAttentionProvider(TeikemDbContext db, ILookupCac
 }
 
 /// <summary>
+/// App del chofer: intentos de entrega (entregó o no entregó) hechos desde la app a MÁS de 300 m de la dirección de entrega, en los últimos 7 días (el chofer pudo marcarlos desde otro lugar, p. ej. su casa).
+/// Módulo LTL_GROUND y driverpay.view. Tono: warn. «Revisar» abre Pago a choferes. Params (cadenas): count y maxMeters (la distancia mayor).
+/// </summary>
+public sealed class DeliveryFarAttentionProvider(TeikemDbContext db) : IAttentionItemProvider
+{
+    public const string ItemCode = "DELIVERY_FAR";
+    public const string Route = "/money/driver-pay";
+    public const int WindowDays = 7;
+
+    public string Code => ItemCode;
+    public string BusinessModule => BusinessModules.Operations;
+    public string? TenantModule => ModuleKeys.LtlGround;
+    public string RequiredPermission => PermissionCatalog.DriverPayView;
+
+    public async Task<AttentionProviderResult> ReadAsync(AttentionScope scope, int take, CancellationToken ct)
+    {
+        if (take <= 0) return new AttentionProviderResult(0, Array.Empty<AttentionItemDto>(), null);
+        var since = DateTime.UtcNow.AddDays(-WindowDays);
+        var far = await db.Set<DeliveryAttempt>().AsNoTracking()
+            .Where(a => a.IsActive && a.Source == DeliveryAttemptSources.App && a.AttemptedAtUtc >= since && a.DistanceFromStopMeters > Teikem.Domain.Trips.DriverAppRules.FarFromAddressMeters)
+            .Select(a => new { a.DistanceFromStopMeters, a.AttemptedAtUtc }).ToListAsync(ct);
+        if (far.Count == 0) return new AttentionProviderResult(0, Array.Empty<AttentionItemDto>(), null);
+        var parameters = new Dictionary<string, string>
+        {
+            ["count"] = far.Count.ToString(CultureInfo.InvariantCulture),
+            ["maxMeters"] = far.Max(a => a.DistanceFromStopMeters ?? 0).ToString(CultureInfo.InvariantCulture),
+        };
+        var item = new AttentionItemDto(ItemCode, BusinessModules.Operations, "warn", far.Count, parameters, Route, new Dictionary<string, string>(), far.Min(a => a.AttemptedAtUtc), Summary: true);
+        return new AttentionProviderResult(1, new[] { item }, new AttentionGroupDto(ItemCode, BusinessModules.Operations, 1, Route, new Dictionary<string, string>()));
+    }
+}
+
+/// <summary>
 /// Reclamaciones abiertas (sin resolver). Módulo LTL_GROUND y claims.view. Tono: warn; danger si la más antigua lleva más de 7 días. «Revisar» abre Reclamaciones.
 /// Params (cadenas): count, oldestDays y amount (suma del valor declarado de las que lo tienen, con punto decimal).
 /// </summary>

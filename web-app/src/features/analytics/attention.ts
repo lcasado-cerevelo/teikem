@@ -14,7 +14,7 @@ export type AttentionGroupDto = components['schemas']['AttentionGroupDto']
 type Translate = (key: string, params?: TParams) => string
 
 /** Tipos de aviso que esta web sabe describir (el resto se pinta con su código y su "Revisar"). */
-export const ATTENTION_CODES = ['INVENTORY_DISCREPANCY', 'RENTAL_DUE', 'SALES_BACKORDER_READY', 'EXIT_NOTICE_BACKORDER', 'ORDERS_NO_DRIVER', 'COD_UNRECONCILED', 'SLA_AT_RISK', 'ORDERS_FAILED', 'CLAIMS_OPEN', 'FLEET_DOCS_DUE', 'INVOICES_OVERDUE'] as const
+export const ATTENTION_CODES = ['DELIVERY_FAR', 'INVENTORY_DISCREPANCY', 'RENTAL_DUE', 'SALES_BACKORDER_READY', 'EXIT_NOTICE_BACKORDER', 'ORDERS_NO_DRIVER', 'COD_UNRECONCILED', 'SLA_AT_RISK', 'ORDERS_FAILED', 'CLAIMS_OPEN', 'FLEET_DOCS_DUE', 'INVOICES_OVERDUE'] as const
 export type AttentionCode = (typeof ATTENTION_CODES)[number]
 
 export function isKnownAttention(code: string | null | undefined): code is AttentionCode {
@@ -111,6 +111,7 @@ export function attentionRowText(item: AttentionItemDto, t: Translate, lang: str
   if (item.code === 'ORDERS_NO_DRIVER') return noDriverText(p, t, since)
   if (item.code === 'COD_UNRECONCILED') return codUnreconciledText(p, t, since)
   if (item.code === 'SLA_AT_RISK') return slaAtRiskText(p, t, since)
+  if (item.code === 'DELIVERY_FAR') return countAlertText('DELIVERY_FAR', p, t, since, (q, tt, base) => [{ label: tt(`${base}.maxMeters`), value: tt(`${base}.meters`, { n: formatNumber(Number(q.maxMeters ?? '0')) }), emphasis: true }])
   if (item.code === 'ORDERS_FAILED') return countAlertText('ORDERS_FAILED', p, t, since, daysFigure('oldestDays'))
   if (item.code === 'CLAIMS_OPEN') return countAlertText('CLAIMS_OPEN', p, t, since, daysFigure('oldestDays'), (q, tt, base) => [{ label: tt(`${base}.amount`), value: formatMoney(Number(q.amount ?? '0')) }])
   if (item.code === 'FLEET_DOCS_DUE') return fleetDocsText(p, t, since)

@@ -52,6 +52,15 @@ export function AttemptsTab() {
         exportValue: (a) => (a.delivered ? t('pay.att.delivered') : (a.failureReason ?? t('pay.att.failed'))),
         sortValue: (a) => (a.delivered ? 1 : 0),
       },
+      {
+        id: 'distance',
+        header: t('pay.att.distance'),
+        // App del chofer: a cuántos metros de la dirección estaba el teléfono (el GPS del teléfono no es el de la dirección; lejos = más de 300 m)
+        cell: (a) => (a.distanceFromStopMeters == null ? (a.source === 'APP' ? <Chip tone="warn">{t('pay.att.noGps')}</Chip> : '—') : a.distanceFromStopMeters > 300 ? <Chip tone="fail">{t('pay.att.far', { m: a.distanceFromStopMeters })}</Chip> : t('pay.att.meters', { m: a.distanceFromStopMeters })),
+        exportValue: (a) => (a.distanceFromStopMeters == null ? '' : String(a.distanceFromStopMeters)),
+        sortValue: (a) => a.distanceFromStopMeters ?? -1,
+        align: 'end',
+      },
       { id: 'source', header: t('pay.att.source'), cell: (a) => t(`pay.att.sources.${a.source}`), exportValue: (a) => a.source ?? '', sortValue: (a) => a.source ?? '' },
       {
         id: 'state',

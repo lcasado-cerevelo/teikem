@@ -10416,3 +10416,5 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **Mensaje «Falta el token del teléfono.» / «La plataforma debe ser ANDROID o IOS.» (400).** La app mandó un registro incompleto; actualice la app.
 
 **Al chofer no le suena el aviso en el teléfono.** Revise, en este orden: (1) que el servidor tenga la clave de Firebase (`Push:Fcm:ServiceAccountJsonPath`); (2) que el chofer haya aceptado el permiso de notificaciones; (3) que la app sea de una marca incluida en `google-services.json`; (4) que el trabajo «Avisos emergentes a los choferes» esté activo en Trabajos programados. El aviso siempre queda en la pestaña «Avisos».
+
+**¿Qué significa «Entregas del chofer lejos de la dirección» en Necesita tu atención?** Son entregas o «no entregado» marcados desde la app con el teléfono a más de 300 m de la dirección de entrega (últimos 7 días). El GPS del teléfono es dónde estaba el chofer, no dónde queda la dirección; si se repite con un chofer, conviene hablar con él. «Sin GPS» en Intentos quiere decir que el chofer negó el permiso de ubicación o no había señal de satélite.
