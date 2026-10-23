@@ -10384,3 +10384,15 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **Mensaje «El envío … ya tiene registrada su entrega.» (409).** La oficina ya registró la entrega desde la web; no se repite.
 
 **Entregué sin señal, ¿se duplica?** No: la app manda el envío cuando vuelve la señal y, si el servidor ya lo tenía, responde «ya estaba hecho» sin repetir nada.
+
+## Lote 208 — Seguimiento de la ruta
+
+**Mensaje «Máximo 500 puntos por envío.» / «Máximo 50 avisos por envío.» (400).** La app manda lotes de hasta 500 puntos; si ve este mensaje, la app está desactualizada.
+
+**Mensaje «El tipo de aviso no es válido.» (400).** Los avisos válidos son STARTED, STOPPED_BY_DRIVER, PERMISSION_LOST y RESUMED.
+
+**La oficina no ve la ruta de un chofer.** Revise que la ruta esté **en curso** (el chofer aceptó el manifiesto), que no haya apagado el envío en Perfil y que la app tenga el permiso de ubicación «Permitir todo el tiempo». Sin señal los puntos se acumulan y salen al volver.
+
+**¿Cuánto tiempo se guardan los puntos?** 10 días (`DriverApp:Tracking:RetentionDays`); un trabajo nocturno borra lo más viejo.
+
+**El teléfono mata el seguimiento con la pantalla apagada.** Excluya la app de la optimización de batería (Ajustes → Batería → esta app → Sin restricciones). Algunos fabricantes lo exigen.

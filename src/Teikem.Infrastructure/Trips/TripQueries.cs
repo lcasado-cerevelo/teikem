@@ -26,6 +26,12 @@ public sealed record StopTimingRow(int OrderStopId, DateTime? WindowStartUtc, Da
 public sealed record TripPingKey(int TripId, int? DriverId, DateTime? ActualStartUtc);
 
 /// <summary>Último ping de una ruta. LinkedToTrip = false si es el ping del chofer sin TripId desde la salida (respaldo).</summary>
+/// <summary>Un punto de ubicación para guardar (la hora de captura es la del teléfono).</summary>
+public sealed record PingInput(double Lat, double Lng, decimal? SpeedKmh, int? HeadingDeg, DateTime CapturedAtUtc);
+
+/// <summary>Un punto de la huella de una ruta.</summary>
+public sealed record PingTrackRow(double Lat, double Lng, decimal? SpeedKmh, DateTime CapturedAtUtc);
+
 public sealed record DriverPingRow(double Lat, double Lng, decimal? SpeedKmh, int? HeadingDeg, DateTime CapturedAtUtc, DateTime ReceivedAtUtc, bool LinkedToTrip);
 
 /// <summary>
@@ -359,6 +365,41 @@ public static class TripQueries
         return result;
     }
 
+    /// <summary>
+    /// Guarda un lote de puntos del chofer (app del chofer) de una sola vez. Idempotente: un punto con la misma hora de captura del mismo chofer no se repite (la cola de la app puede reenviar).
+    /// Devuelve cuántos puntos nuevos entraron. Sin base relacional (InMemory) devuelve 0.
+    /// </summary>
+    public static async Task<int> InsertPingsAsync(this TeikemDbContext db, int driverId, int? tripId, IReadOnlyCollection<PingInput> points, CancellationToken ct)
+    {
+        if (points.Count == 0 || !db.Database.IsRelational()) return 0;
+        var tenantId = db.CurrentTenantId;
+        var json = JsonSerializer.Serialize(points.Select(p => new
+        {
+            lat = p.Lat, lng = p.Lng, speedKmh = p.SpeedKmh, headingDeg = p.HeadingDeg,
+            capturedAtUtc = p.CapturedAtUtc.ToString("yyyy-MM-dd'T'HH:mm:ss.fffffff", CultureInfo.InvariantCulture),
+        }).ToList());
+        return await db.Database.ExecuteSqlAsync(
+            $"INSERT INTO dbo.DriverLocationPing (TenantId, DriverId, TripId, GeoPoint, SpeedKmh, HeadingDeg, CapturedAtUtc) SELECT {tenantId}, {driverId}, {tripId}, geography::Point(j.Lat, j.Lng, 4326), j.SpeedKmh, j.HeadingDeg, j.CapturedAtUtc FROM OPENJSON({json}) WITH (Lat FLOAT '$.lat', Lng FLOAT '$.lng', SpeedKmh DECIMAL(6,2) '$.speedKmh', HeadingDeg INT '$.headingDeg', CapturedAtUtc DATETIME2 '$.capturedAtUtc') j WHERE NOT EXISTS (SELECT 1 FROM dbo.DriverLocationPing p WHERE p.TenantId = {tenantId} AND p.DriverId = {driverId} AND p.CapturedAtUtc = j.CapturedAtUtc)", ct);
+    }
+
+    /// <summary>La huella de una ruta (hasta 5,000 puntos, del más viejo al más nuevo).</summary>
+    public static async Task<List<PingTrackRow>> TrackOfTripAsync(this TeikemDbContext db, int tripId, CancellationToken ct)
+    {
+        if (!db.Database.IsRelational()) return new List<PingTrackRow>();
+        var tenantId = db.CurrentTenantId;
+        return await db.Database.SqlQuery<TrackSqlRow>(
+                $"SELECT TOP (5000) p.GeoPoint.Lat AS Lat, p.GeoPoint.Long AS Lng, p.SpeedKmh AS SpeedKmh, p.CapturedAtUtc AS CapturedAtUtc FROM dbo.DriverLocationPing p WHERE p.TenantId = {tenantId} AND p.TripId = {tripId} ORDER BY p.CapturedAtUtc, p.DriverLocationPingId")
+            .Select(r => new PingTrackRow(r.Lat, r.Lng, r.SpeedKmh, r.CapturedAtUtc)).ToListAsync(ct);
+    }
+
+    /// <summary>Borra los puntos de la compañía más viejos que el corte (retención). Devuelve cuántos.</summary>
+    public static async Task<int> PurgePingsAsync(this TeikemDbContext db, DateTime olderThanUtc, CancellationToken ct)
+    {
+        if (!db.Database.IsRelational()) return 0;
+        var tenantId = db.CurrentTenantId;
+        return await db.Database.ExecuteSqlAsync($"DELETE FROM dbo.DriverLocationPing WHERE TenantId = {tenantId} AND CapturedAtUtc < {olderThanUtc}", ct);
+    }
+
     // ================================================================ helpers
 
     private static NotFoundException TripNotFound() => new(TripLabel, null, true);
@@ -368,6 +409,8 @@ public static class TripQueries
         if (db.Database.CurrentTransaction is null)
             throw new InvalidOperationException($"{what} requiere una transacción abierta (RunInTransactionAsync).");
     }
+
+    private sealed class TrackSqlRow { public double Lat { get; set; } public double Lng { get; set; } public decimal? SpeedKmh { get; set; } public DateTime CapturedAtUtc { get; set; } }
 
     /// <summary>Fila de SqlQuery para coordenadas (tipo sin mapear: propiedades con setter).</summary>
     private sealed class PointSqlRow

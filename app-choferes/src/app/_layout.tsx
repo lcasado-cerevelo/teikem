@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from '@hooks/AuthContext';
 import { ThemeProvider, useTheme } from '@hooks/ThemeContext';
 import { OfflineProvider } from '@/offline';
 import '@/lang/i18n'; // inicializa i18n (ES/EN)
+import '@/tracking/trackingTask'; // define la tarea de ubicación en segundo plano (debe cargarse con la app)
 
 // gcTime must be long for the persisted cache to be useful offline (a day's route).
 // networkMode 'offlineFirst' makes queries serve cached data when there's no signal.

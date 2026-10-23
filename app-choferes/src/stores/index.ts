@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Shipment } from '@/types/models';
+import { trackingStore } from '@/tracking/trackingStore';
 import { DEFAULT_SYNC_INTERVAL_MINUTES, saveSyncIntervalMinutes, loadSyncIntervalMinutes } from '@hooks/useSyncSettings';
 
 // Almacén «puente» global: lleva la selección entre pantallas sin volver a pedirla.
@@ -28,6 +29,11 @@ interface AppState {
   addShipment: (s: Shipment) => void;
   resetShipment: () => void;
 
+  /** El chofer puede apagar el envío de su ubicación durante la ruta (la oficina recibe el aviso). */
+  trackingEnabled: boolean;
+  setTrackingEnabled: (v: boolean) => void;
+  hydrateTrackingEnabled: () => Promise<void>;
+
   // Autosincronización: valor «vivo» único compartido entre el layout (que arma el temporizador) y Perfil (que lo cambia).
   syncIntervalMinutes: number;
   setSyncIntervalMinutes: (minutes: number) => void;
@@ -48,6 +54,13 @@ export const useAppStore = create<AppState>((set) => ({
 
   addShipment: (s) => set({ shipment: s }),
   resetShipment: () => set({ shipment: null }),
+
+  trackingEnabled: true,
+  setTrackingEnabled: (v) => {
+    set({ trackingEnabled: v });
+    void trackingStore.setEnabled(v);
+  },
+  hydrateTrackingEnabled: async () => set({ trackingEnabled: await trackingStore.getEnabled() }),
 
   syncIntervalMinutes: DEFAULT_SYNC_INTERVAL_MINUTES,
   setSyncIntervalMinutes: (minutes) => {

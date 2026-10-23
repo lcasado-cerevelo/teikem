@@ -18,6 +18,10 @@ let companyTokens = new Map<number, string>();
 export function setCompanyTokens(tokens: Record<number, string> | null): void {
   companyTokens = new Map(Object.entries(tokens ?? {}).map(([k, v]) => [Number(k), v]));
 }
+/** Las compañías con token de acceso en esta sesión (las bloqueadas por MFA no están). */
+export function getCompanyTenantIds(): number[] {
+  return [...companyTokens.keys()];
+}
 export function getAccessToken(tenantId?: number | null): string | null {
   if (tenantId != null) return companyTokens.get(tenantId) ?? null;
   return companyTokens.values().next().value ?? null;

@@ -17,11 +17,15 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/trips")]
 [Authorize]
 [RequireModule(ModuleKeys.LtlGround)]
-public sealed class TripMonitorController(TripMonitorService monitor) : ControllerBase
+public sealed class TripMonitorController(TripMonitorService monitor, DriverTrackingService tracking) : ControllerBase
 {
     /// <summary>Monitor del día (sin fecha = hoy en la zona de la compañía), opcionalmente por zona, con búsqueda libre sobre los textos visibles.</summary>
     [HttpGet("monitor"), RequirePermission(PermissionCatalog.TripsView)]
     public Task<MonitorDto> Get([FromQuery] DateOnly? date, [FromQuery] int? dispatchZoneId, [FromQuery] string? search,
         [FromQuery] bool includeCompleted = true, CancellationToken ct = default)
         => monitor.ListAsync(new MonitorQuery(date, dispatchZoneId, search, includeCompleted), ct);
+
+    /// <summary>La huella de la ruta (puntos de ubicación del chofer, hasta 5,000) y sus avisos de seguimiento (apagó el envío, perdió el permiso, lo reanudó). Se conserva 10 días. 404 si la ruta no existe.</summary>
+    [HttpGet("{publicId:guid}/tracking"), RequirePermission(PermissionCatalog.TripsView)]
+    public Task<TripTrackingDto> Track(Guid publicId, CancellationToken ct) => tracking.GetTripTrackAsync(publicId, ct);
 }

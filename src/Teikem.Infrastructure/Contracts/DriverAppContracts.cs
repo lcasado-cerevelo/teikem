@@ -43,3 +43,22 @@ public sealed record DriverFailRequest(string? ReasonCode, string? Notes, DateTi
 
 /// <summary>`AlreadyDone`: el envío ya estaba cerrado por la app (un reintento de la cola sin señal): no se repite ni se duplica nada.</summary>
 public sealed record DriverShipmentResultDto(Guid ShipmentPublicId, string StatusCode, string Status, bool AlreadyDone);
+
+// ---- seguimiento de la ruta (GPS) ----
+
+/// <summary>Los valores del seguimiento, globales (appsettings `DriverApp:Tracking`): la app los pide al arrancar y se ajustan sin publicar una versión nueva.</summary>
+public sealed record DriverTrackingConfigDto(int MinDistanceMeters, int MaxIntervalSeconds, int UploadEverySeconds, int RetentionDays);
+
+/// <summary>Un punto de ubicación. La hora es la de captura en el teléfono.</summary>
+public sealed record DriverTrackingPointDto(double Latitude, double Longitude, DateTime CapturedAtUtc, decimal? SpeedKmh, int? HeadingDeg);
+
+/// <summary>Un aviso del seguimiento (STARTED, STOPPED_BY_DRIVER, PERMISSION_LOST, RESUMED) y cuándo ocurrió.</summary>
+public sealed record DriverTrackingEventDto(string Type, DateTime OccurredAtUtc);
+
+public sealed record DriverTrackingUploadRequest(IReadOnlyList<DriverTrackingPointDto>? Points, IReadOnlyList<DriverTrackingEventDto>? Events);
+
+/// <summary>`RouteActive` = el chofer tiene una ruta EN CURSO en esta compañía (si no, los puntos no se guardan). `Accepted`: puntos nuevos guardados; `Skipped`: repetidos o descartados (fuera de rango, futuros o muy viejos).</summary>
+public sealed record DriverTrackingUploadResultDto(bool RouteActive, int Accepted, int Skipped, int Events);
+
+public sealed record TripTrackPointDto(double Latitude, double Longitude, decimal? SpeedKmh, DateTime CapturedAtUtc);
+public sealed record TripTrackingDto(Guid TripPublicId, string TripCode, IReadOnlyList<TripTrackPointDto> Points, IReadOnlyList<DriverTrackingEventDto> Events);

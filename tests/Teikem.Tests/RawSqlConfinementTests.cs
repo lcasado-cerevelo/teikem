@@ -44,7 +44,8 @@ public class RawSqlConfinementTests
 
         // Bloqueo de Trip, órdenes y Tenant; puntos; pin; pings de ruta y de chofer; Lote 41: paradas de una versión y ventanas
         // de las paradas (búsquedas puntuales con FORCESEEK para no recorrer las filas de otras rutas).
-        Assert.Equal(9, statements.Count);
+        // 2026-10-23: + la huella de una ruta (los INSERT/DELETE del seguimiento del chofer también llevan 'TenantId = {tenantId}', ver la prueba de abajo).
+        Assert.Equal(10, statements.Count);
         Assert.All(statements, s => Assert.Contains("TenantId = {tenantId}", s));
         Assert.Contains(statements, s => s.StartsWith("SELECT * FROM dbo.Trip WITH (UPDLOCK, ROWLOCK)", StringComparison.Ordinal));
         Assert.Contains(statements, s => s.StartsWith("SELECT * FROM dbo.TransportOrder WITH (UPDLOCK, ROWLOCK)", StringComparison.Ordinal) && s.Contains("OPENJSON"));
@@ -55,6 +56,10 @@ public class RawSqlConfinementTests
         Assert.Contains(statements, s => s.Contains("p.TripId IS NULL AND p.CapturedAtUtc >= k.StartUtc"));
         Assert.Contains(statements, s => s.StartsWith("SELECT rs.* FROM dbo.RouteStop rs WITH (FORCESEEK)", StringComparison.Ordinal));
         Assert.Contains(statements, s => s.Contains("os.ServiceMinutes AS ServiceMinutes FROM dbo.OrderStop os WITH (FORCESEEK)") && s.Contains("OPENJSON"));
+
+        Assert.Contains(statements, s => s.StartsWith("SELECT TOP (5000) p.GeoPoint.Lat", StringComparison.Ordinal));
+        foreach (var write in Regex.Matches(text, "\\$\"((?:INSERT|DELETE)[^\"]*)\"").Select(m => m.Groups[1].Value))
+            Assert.Contains("TenantId = {tenantId}", write);
 
         // Solo interpolación parametrizada: nada de FromSqlRaw/ExecuteSqlRaw con cadenas armadas a mano.
         Assert.DoesNotContain("SqlRaw", text);

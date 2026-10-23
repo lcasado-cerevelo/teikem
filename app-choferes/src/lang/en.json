@@ -280,6 +280,19 @@
       "ERROR": "Try again.",
       "NO_SIGNAL": "No connection. Accepting the manifest needs signal.",
       "NOT_FOUND": "This manifest is no longer available."
+    },
+    "TRACKING": {
+      "DISCLOSURE_TITLE": "Location during the route",
+      "DISCLOSURE_BODY": "While you have a route in progress, the app saves your location even with the screen off or the app closed, and sends it to the company office for route monitoring and customer service. It is only recorded during an active route, kept for 10 days, and you can turn it off in Profile (the office gets a notice). Android will ask for location permission; to keep going with the screen off choose \"Allow all the time\".",
+      "DISCLOSURE_YES": "Continue",
+      "DISCLOSURE_NO": "Not now",
+      "NOTIFICATION_TITLE": "Route in progress",
+      "NOTIFICATION_BODY": "Sending your location to the office.",
+      "PROFILE_LABEL": "Send my location during the route",
+      "PROFILE_HINT": "Only while you have a route in progress. If you turn it off, the office gets a notice. To save battery, do not restrict this app's battery in the phone settings.",
+      "OFF_TITLE": "Turn location off",
+      "OFF_BODY": "The office will stop seeing your route and will get a notice that you turned it off. Confirm?",
+      "OFF_YES": "Turn off"
     }
   }
 }

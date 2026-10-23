@@ -54,4 +54,6 @@ public static class JobKeys
     public const string ExitNoticeBackorderScan = "EXIT_NOTICE_BACKORDER_SCAN";
     /// <summary>Lote 168: revisa la flota y avisa documentos de vehículos y choferes por vencer o vencidos, y mantenimiento próximo o vencido.</summary>
     public const string FleetAlertScan = "FLEET_ALERT_SCAN";
+    /// <summary>2026-10-23: purga los puntos y avisos del seguimiento de rutas más viejos que la retención.</summary>
+    public const string DriverTrackingPurge = "DRIVER_TRACKING_PURGE";
 }

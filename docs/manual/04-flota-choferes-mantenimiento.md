@@ -956,3 +956,10 @@ Ambas acciones son **idempotentes**: un reintento de la cola sin señal responde
 - **Manifiestos**: los que faltan por aceptar van primero («Por aceptar»). Al tocarlo se abre **Aceptar manifiesto**: marcar «No aceptar» en un envío pide el motivo (lista «Motivos de no aceptación» de esa compañía) y una nota opcional; al confirmar sale la ruta (requiere señal).
 - **Envío**: pestañas Detalles y Acciones. Acciones → **Entregar** (quién recibió, nota, foto, firma) o **No entregado** (motivo de «Razón de fallo», nota, foto). Sin señal queda en la cola y sale solo; el envío desaparece de la lista de inmediato.
 - **Buscador**: orden, guía, consignatario, dirección, ciudad, notas, manifiesto y compañía (nombre o número).
+
+### Seguimiento de la ruta del chofer (Lote 208, 2026-10-23)
+- **Cuándo**: solo mientras el chofer tenga una ruta **en curso** (manifiesto aceptado con envíos abiertos). Al terminar se detiene sola.
+- **Qué se guarda**: un punto cada 150 m de movimiento (o cada 90 s si se mueve); parado, nada. Se envía por lotes cada 2 minutos y se conserva 10 días. Valores globales en `appsettings` (`DriverApp:Tracking`).
+- **Varias compañías**: si el chofer tiene rutas en curso en dos compañías, cada una guarda los puntos.
+- **Apagarlo**: Perfil → «Enviar mi ubicación durante la ruta». La oficina ve el aviso «Lo apagó el chofer» (distinto de «sin señal» y de «perdió el permiso»).
+- **Endpoints**: `POST /api/v1/driver-app/tracking` (400 «Máximo 500 puntos por envío.» / «Máximo 50 avisos por envío.» / «El tipo de aviso no es válido.»; 403 «Su usuario no está vinculado a un chofer activo.»), `GET /api/v1/driver-app/tracking/config`, `GET /api/v1/trips/{id}/tracking` (`trips.view`).

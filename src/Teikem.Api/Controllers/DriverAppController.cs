@@ -17,7 +17,7 @@ namespace Teikem.Api.Controllers;
 [Authorize]
 [RequireModule(ModuleKeys.LtlGround)]
 [RequirePermission(PermissionCatalog.DriverAppUse)]
-public sealed class DriverAppController(DriverAppService app) : ControllerBase
+public sealed class DriverAppController(DriverAppService app, DriverTrackingService tracking) : ControllerBase
 {
     /// <summary>Sus manifiestos de entrega: despachados (por aceptar) y en curso.</summary>
     [HttpGet("manifests")]
@@ -57,4 +57,15 @@ public sealed class DriverAppController(DriverAppService app) : ControllerBase
     /// <summary>No entrega el envío con un motivo de «Razón de fallo» (pasa a Fallida y queda el intento). Idempotente. 400 motivo/nota/foto; 404 envío ajeno; 422 manifiesto sin aceptar o estatus que no lo permite.</summary>
     [HttpPost("shipments/{publicId:guid}/fail")]
     public Task<DriverShipmentResultDto> Fail(Guid publicId, [FromBody] DriverFailRequest? req, CancellationToken ct) => app.FailAsync(publicId, req, ct);
+
+    /// <summary>Los valores globales del seguimiento de ruta (distancia mínima, intervalo máximo, cada cuánto se envía, retención).</summary>
+    [HttpGet("tracking/config")]
+    public DriverTrackingConfigDto TrackingConfig() => tracking.Config();
+
+    /// <summary>
+    /// Envía un lote de puntos y avisos del seguimiento (cada 2 minutos). Se guardan ligados a la ruta EN CURSO del chofer en esta compañía; sin ruta en curso solo se guardan los avisos (`routeActive` false).
+    /// Idempotente. 400 si pasa de 500 puntos o 50 avisos o un aviso tiene tipo inválido; 403 si no es chofer.
+    /// </summary>
+    [HttpPost("tracking")]
+    public Task<DriverTrackingUploadResultDto> Track([FromBody] DriverTrackingUploadRequest? req, CancellationToken ct) => tracking.UploadAsync(req, ct);
 }

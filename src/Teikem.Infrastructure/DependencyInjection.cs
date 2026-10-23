@@ -86,6 +86,8 @@ public static class DependencyInjection
         services.AddSingleton<Teikem.Infrastructure.Files.IFileStore, Teikem.Infrastructure.Files.EncryptedDiskFileStore>();
         services.AddScoped<StoredFileService>();
         services.Configure<OnboardingOptions>(config.GetSection("Auth:Onboarding"));
+        services.Configure<DriverTrackingOptions>(config.GetSection("DriverApp:Tracking"));   // 2026-10-23: valores globales del seguimiento de ruta
+        services.AddScoped<DriverTrackingService>();
         services.Configure<DriverAppOptions>(config.GetSection("DriverApp"));   // 2026-10-23: tope de la sesión del chofer
         services.Configure<TurnstileOptions>(config.GetSection("Auth:Turnstile"));   // Lote 101: apagado por omisión
         services.Configure<TrustedBrowserOptions>(config.GetSection("Auth:TrustedBrowsers"));   // Lote 100: apagado por omisión
@@ -301,6 +303,7 @@ public static class DependencyInjection
         // Lote 50 (P2.2) — trabajos programados por compañía: trabajos en código + ejecutor (reclamo atómico) + worker + servicio de la pantalla.
         services.Configure<JobsOptions>(config.GetSection(JobsOptions.Section));
         services.AddSingleton<IScheduledJob, JobRunPurgeJob>();
+        services.AddSingleton<IScheduledJob, DriverTrackingPurgeJob>();   // 2026-10-23
         services.AddSingleton<IScheduledJob, InventorySweepJob>();
         services.AddSingleton<IScheduledJob, TestJob>();
         services.AddSingleton<IScheduledJob, SalesBackorderScanJob>();   // Lote 66

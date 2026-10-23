@@ -11390,6 +11390,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/driver-app/tracking/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverTrackingConfigDto"];
+                        "application/json": components["schemas"]["DriverTrackingConfigDto"];
+                        "text/json": components["schemas"]["DriverTrackingConfigDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver-app/tracking": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DriverTrackingUploadRequest"];
+                    "text/json": components["schemas"]["DriverTrackingUploadRequest"];
+                    "application/*+json": components["schemas"]["DriverTrackingUploadRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverTrackingUploadResultDto"];
+                        "application/json": components["schemas"]["DriverTrackingUploadResultDto"];
+                        "text/json": components["schemas"]["DriverTrackingUploadResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/driver-app/auth/login": {
         parameters: {
             query?: never;
@@ -32290,6 +32370,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/trips/{publicId}/tracking": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TripTrackingDto"];
+                        "application/json": components["schemas"]["TripTrackingDto"];
+                        "text/json": components["schemas"]["TripTrackingDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/trips/unassigned-orders": {
         parameters: {
             query?: never;
@@ -39796,6 +39915,46 @@ export interface components {
             statusCode?: string | null;
             status?: string | null;
             alreadyDone?: boolean;
+        };
+        DriverTrackingConfigDto: {
+            /** Format: int32 */
+            minDistanceMeters?: number;
+            /** Format: int32 */
+            maxIntervalSeconds?: number;
+            /** Format: int32 */
+            uploadEverySeconds?: number;
+            /** Format: int32 */
+            retentionDays?: number;
+        };
+        DriverTrackingEventDto: {
+            type?: string | null;
+            /** Format: date-time */
+            occurredAtUtc?: string;
+        };
+        DriverTrackingPointDto: {
+            /** Format: double */
+            latitude?: number;
+            /** Format: double */
+            longitude?: number;
+            /** Format: date-time */
+            capturedAtUtc?: string;
+            /** Format: double */
+            speedKmh?: number | null;
+            /** Format: int32 */
+            headingDeg?: number | null;
+        };
+        DriverTrackingUploadRequest: {
+            points?: components["schemas"]["DriverTrackingPointDto"][] | null;
+            events?: components["schemas"]["DriverTrackingEventDto"][] | null;
+        };
+        DriverTrackingUploadResultDto: {
+            routeActive?: boolean;
+            /** Format: int32 */
+            accepted?: number;
+            /** Format: int32 */
+            skipped?: number;
+            /** Format: int32 */
+            events?: number;
         };
         DriverTripCancelRequest: {
             comment?: string | null;
@@ -47343,6 +47502,23 @@ export interface components {
         TripStartRequest: {
             comment?: string | null;
             rowVersion?: string | null;
+        };
+        TripTrackPointDto: {
+            /** Format: double */
+            latitude?: number;
+            /** Format: double */
+            longitude?: number;
+            /** Format: double */
+            speedKmh?: number | null;
+            /** Format: date-time */
+            capturedAtUtc?: string;
+        };
+        TripTrackingDto: {
+            /** Format: uuid */
+            tripPublicId?: string;
+            tripCode?: string | null;
+            points?: components["schemas"]["TripTrackPointDto"][] | null;
+            events?: components["schemas"]["DriverTrackingEventDto"][] | null;
         };
         TrustedBrowserDto: {
             /** Format: uuid */

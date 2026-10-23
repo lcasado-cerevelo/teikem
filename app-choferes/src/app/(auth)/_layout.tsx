@@ -3,6 +3,7 @@ import { Redirect, Stack } from 'expo-router';
 import { useAuth } from '@hooks/AuthContext';
 import { useAuthSync, useAutoSync } from '@hooks/queries';
 import { useAppStore } from '@/stores';
+import { useRouteTracking } from '@/tracking/useRouteTracking';
 import LockScreen from '@components/LockScreen';
 import Legal from './Legal';
 
@@ -20,6 +21,12 @@ export default function AuthLayout() {
     void hydrateSyncIntervalMinutes();
   }, [hydrateSyncIntervalMinutes]);
   useAutoSync(syncIntervalMinutes);
+  // Seguimiento de la ruta mientras haya una ruta en curso (la tarea en segundo plano se define en el layout raíz).
+  const hydrateTrackingEnabled = useAppStore((s) => s.hydrateTrackingEnabled);
+  useEffect(() => {
+    void hydrateTrackingEnabled();
+  }, [hydrateTrackingEnabled]);
+  useRouteTracking();
 
   if (!isLoggedIn) return <Redirect href="/(no-auth)/Login" />;
   // con «Abrir con huella» activo, la app arranca y vuelve de segundo plano bloqueada

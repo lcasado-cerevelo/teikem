@@ -129,3 +129,16 @@ public sealed class TripOrderDeclineConfiguration : IEntityTypeConfiguration<Tri
         b.HasOne<Teikem.Domain.Orders.TransportOrder>().WithMany().HasForeignKey(d => d.TransportOrderId).OnDelete(DeleteBehavior.NoAction);
     }
 }
+
+/// <summary>2026-10-23 — avisos del seguimiento de ruta del chofer (1:1 con dbo.DriverTrackingEvent).</summary>
+public sealed class DriverTrackingEventConfiguration : IEntityTypeConfiguration<DriverTrackingEvent>
+{
+    public void Configure(EntityTypeBuilder<DriverTrackingEvent> b)
+    {
+        b.ToTable("DriverTrackingEvent");
+        b.HasKey(e => e.DriverTrackingEventId);
+        b.Property(e => e.EventType).HasMaxLength(30);
+        b.HasIndex(e => new { e.TenantId, e.DriverId, e.OccurredAtUtc }).HasDatabaseName("IX_DriverTrackingEvent_Driver");
+        b.HasIndex(e => new { e.TripId, e.OccurredAtUtc }).HasDatabaseName("IX_DriverTrackingEvent_Trip");
+    }
+}

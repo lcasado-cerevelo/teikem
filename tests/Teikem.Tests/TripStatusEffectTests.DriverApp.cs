@@ -162,7 +162,8 @@ public partial class TripStatusEffectTests
         await using var f = await Fixture.CreateAsync();
         var (app, _, orders) = await DispatchedAsync(f, 1);
 
-        var ex = await Assert.ThrowsAsync<StatusRuleException>(() => app.DeliverAsync(await PublicOfAsync(f, orders[0]), new DriverDeliverRequest("Ana", null, null, null, null, null, null), default));
+        var pub0 = await PublicOfAsync(f, orders[0]);
+        var ex = await Assert.ThrowsAsync<StatusRuleException>(() => app.DeliverAsync(pub0, new DriverDeliverRequest("Ana", null, null, null, null, null, null), default));
 
         Assert.Equal(DriverAppRules.NotAcceptedMessage, ex.Message);
     }

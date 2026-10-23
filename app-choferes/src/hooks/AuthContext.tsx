@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { getAccessToken, setCompanyTokens, setForbiddenHandler, setRefreshHandler, setUnauthorizedHandler, type ForbiddenInfo } from '@config/axios';
 import { clearOfflineData, drainOutbox } from '@/offline';
 import { useAppStore } from '@/stores';
+import { resetTracking } from '@/tracking/trackingControl';
 import { sessionStorage, type AuthUser, type CompanyAccess, type StoredSession } from '@services/auth/tokenStorage';
 import {
   confirmMfa as apiConfirmMfa,
@@ -182,6 +183,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCompanyTokens(null);
     setCompanies([]);
     await sessionStorage.clear();
+    await resetTracking();
     useAppStore.setState({ shipmentIds: [], shipment: null });
     queryClient.clear();
     await clearOfflineData();

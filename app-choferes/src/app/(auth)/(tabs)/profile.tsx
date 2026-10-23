@@ -23,6 +23,19 @@ export default function ProfileScreen() {
   const { t, i18n } = useTranslation();
   const { logout, user, companies, biometricEnabled, setBiometricEnabled } = useAuth();
   const { mode, setMode } = useTheme();
+  const trackingEnabled = useAppStore((s) => s.trackingEnabled);
+  const setTrackingEnabled = useAppStore((s) => s.setTrackingEnabled);
+  // Apagarlo avisa a la oficina (el monitor distingue «lo apagó» de «sin señal»); se pide confirmar.
+  const onToggleTracking = (value: boolean) => {
+    if (value) {
+      setTrackingEnabled(true);
+      return;
+    }
+    Alert.alert(t('TRACKING.OFF_TITLE'), t('TRACKING.OFF_BODY'), [
+      { text: t('PROFILE.LOGOUT_CANCEL'), style: 'cancel' },
+      { text: t('TRACKING.OFF_YES'), style: 'destructive', onPress: () => setTrackingEnabled(false) },
+    ]);
+  };
   const { sync, isSyncing } = useSync();
   const syncInterval = useAppStore((s) => s.syncIntervalMinutes);
   const setSyncInterval = useAppStore((s) => s.setSyncIntervalMinutes);
@@ -101,6 +114,14 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.section}>
+        <View style={styles.switchRow}>
+          <Text style={[styles.label, styles.switchLabel]}>{t('TRACKING.PROFILE_LABEL')}</Text>
+          <Switch value={trackingEnabled} onValueChange={onToggleTracking} />
+        </View>
+        <Text style={styles.autoSyncHint}>{t('TRACKING.PROFILE_HINT')}</Text>
+      </View>
+
+      <View style={styles.section}>
         <Text style={styles.label}>{t('PROFILE.THEME')}</Text>
         <View style={styles.langRow}>
           {(['auto', 'light', 'dark'] as const).map((m) => (
@@ -176,6 +197,8 @@ const createStyles = (colors: Colors) => StyleSheet.create({
   title: { fontSize: 20, fontWeight: '700', color: colors.primary },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   section: { gap: 8 },
+  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  switchLabel: { flex: 1 },
   label: { fontSize: 14, color: colors.muted },
   value: { fontSize: 15, color: colors.text },
   langRow: { flexDirection: 'row', gap: 10 },

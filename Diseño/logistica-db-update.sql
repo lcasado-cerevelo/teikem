@@ -6508,3 +6508,26 @@ GO
 IF COL_LENGTH('dbo.RefreshToken', 'IsDriverApp') IS NULL
     ALTER TABLE dbo.RefreshToken ADD IsDriverApp BIT NOT NULL CONSTRAINT DF_RefreshToken_IsDriverApp DEFAULT 0;
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-23 (c) — App del chofer: seguimiento de la ruta (GPS).
+   - Los puntos se guardan en dbo.DriverLocationPing (la tabla que ya lee el monitor), ligados a la ruta en curso del chofer.
+   - dbo.DriverTrackingEvent: avisos del seguimiento (STARTED, STOPPED_BY_DRIVER, PERMISSION_LOST, RESUMED) para distinguir «lo apagó» de «sin señal».
+   - Los valores (distancia mínima, intervalo máximo, envío, retención de 10 días) son globales en appsettings: DriverApp:Tracking.
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID('dbo.DriverTrackingEvent', 'U') IS NULL CREATE TABLE dbo.DriverTrackingEvent (
+    DriverTrackingEventId BIGINT IDENTITY(1,1) PRIMARY KEY,
+    TenantId              INT NOT NULL CONSTRAINT FK_DriverTrackingEvent_Tenant REFERENCES dbo.Tenant(TenantId),
+    DriverId              INT NOT NULL CONSTRAINT FK_DriverTrackingEvent_Driver REFERENCES dbo.Driver(DriverId),
+    TripId                INT NULL CONSTRAINT FK_DriverTrackingEvent_Trip REFERENCES dbo.Trip(TripId),
+    EventType             NVARCHAR(30) NOT NULL,
+    OccurredAtUtc         DATETIME2 NOT NULL,
+    ReceivedAtUtc         DATETIME2 NOT NULL CONSTRAINT DF_DriverTrackingEvent_Received DEFAULT SYSUTCDATETIME()
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_DriverTrackingEvent_Driver' AND object_id = OBJECT_ID('dbo.DriverTrackingEvent'))
+    CREATE INDEX IX_DriverTrackingEvent_Driver ON dbo.DriverTrackingEvent (TenantId, DriverId, OccurredAtUtc);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_DriverTrackingEvent_Trip' AND object_id = OBJECT_ID('dbo.DriverTrackingEvent'))
+    CREATE INDEX IX_DriverTrackingEvent_Trip ON dbo.DriverTrackingEvent (TripId, OccurredAtUtc);
+GO

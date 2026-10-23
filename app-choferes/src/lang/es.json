@@ -280,6 +280,19 @@
       "ERROR": "Intente de nuevo.",
       "NO_SIGNAL": "Sin conexión. Aceptar el manifiesto necesita señal.",
       "NOT_FOUND": "Este manifiesto ya no está disponible."
+    },
+    "TRACKING": {
+      "DISCLOSURE_TITLE": "Ubicación durante la ruta",
+      "DISCLOSURE_BODY": "Mientras tenga una ruta en curso, la app guarda su ubicación aunque la pantalla esté apagada o la app cerrada, y la envía a la oficina de la compañía para el monitoreo de la ruta y la atención de clientes. Solo se registra con la ruta en curso, se conserva 10 días y puede apagarla en Perfil (la oficina recibe un aviso). Android le pedirá el permiso de ubicación; para seguir con la pantalla apagada escoja «Permitir todo el tiempo».",
+      "DISCLOSURE_YES": "Continuar",
+      "DISCLOSURE_NO": "Ahora no",
+      "NOTIFICATION_TITLE": "Ruta en curso",
+      "NOTIFICATION_BODY": "Enviando su ubicación a la oficina.",
+      "PROFILE_LABEL": "Enviar mi ubicación durante la ruta",
+      "PROFILE_HINT": "Solo mientras tenga una ruta en curso. Si la apaga, la oficina recibe un aviso. Para ahorrar batería, no restrinja la batería de esta app en Ajustes del teléfono.",
+      "OFF_TITLE": "Apagar la ubicación",
+      "OFF_BODY": "La oficina dejará de ver su ruta y recibirá un aviso de que usted la apagó. ¿Confirma?",
+      "OFF_YES": "Apagar"
     }
   }
 }

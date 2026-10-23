@@ -92,6 +92,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     permissions: [
       'ACCESS_FINE_LOCATION',
       'ACCESS_COARSE_LOCATION',
+      'ACCESS_BACKGROUND_LOCATION',
+      'FOREGROUND_SERVICE',
+      'FOREGROUND_SERVICE_LOCATION',
       'ACCESS_NETWORK_STATE',
       'CAMERA',
     ],
@@ -123,6 +126,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'expo-location',
       {
         locationWhenInUsePermission: `${brand.name} uses your location to geotag deliveries.`,
+        locationAlwaysAndWhenInUsePermission: `${brand.name} records your route while a route is in progress.`,
+        isAndroidBackgroundLocationEnabled: true,
+        isAndroidForegroundServiceEnabled: true,
       },
     ],
     [

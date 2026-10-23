@@ -14686,6 +14686,83 @@
         }
       }
     },
+    "/api/v1/driver-app/tracking/config": {
+      "get": {
+        "tags": [
+          "DriverApp"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverTrackingConfigDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverTrackingConfigDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverTrackingConfigDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/driver-app/tracking": {
+      "post": {
+        "tags": [
+          "DriverApp"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DriverTrackingUploadRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DriverTrackingUploadRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/DriverTrackingUploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverTrackingUploadResultDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverTrackingUploadResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverTrackingUploadResultDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/driver-app/auth/login": {
       "post": {
         "tags": [
@@ -42515,6 +42592,46 @@
         }
       }
     },
+    "/api/v1/trips/{publicId}/tracking": {
+      "get": {
+        "tags": [
+          "TripMonitor"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripTrackingDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripTrackingDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripTrackingDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/trips/unassigned-orders": {
       "get": {
         "tags": [
@@ -58695,6 +58812,111 @@
           },
           "alreadyDone": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DriverTrackingConfigDto": {
+        "type": "object",
+        "properties": {
+          "minDistanceMeters": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxIntervalSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "uploadEverySeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "retentionDays": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DriverTrackingEventDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "occurredAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DriverTrackingPointDto": {
+        "type": "object",
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "format": "double"
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double"
+          },
+          "capturedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "speedKmh": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "headingDeg": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "DriverTrackingUploadRequest": {
+        "type": "object",
+        "properties": {
+          "points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DriverTrackingPointDto"
+            },
+            "nullable": true
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DriverTrackingEventDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "DriverTrackingUploadResultDto": {
+        "type": "object",
+        "properties": {
+          "routeActive": {
+            "type": "boolean"
+          },
+          "accepted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skipped": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "events": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -81613,6 +81835,57 @@
           },
           "rowVersion": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TripTrackPointDto": {
+        "type": "object",
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "format": "double"
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double"
+          },
+          "speedKmh": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "capturedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TripTrackingDto": {
+        "type": "object",
+        "properties": {
+          "tripPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tripCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TripTrackPointDto"
+            },
+            "nullable": true
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DriverTrackingEventDto"
+            },
             "nullable": true
           }
         },

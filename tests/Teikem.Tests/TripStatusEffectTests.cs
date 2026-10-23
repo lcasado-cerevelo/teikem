@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Teikem.Domain.Catalogs;
 using Teikem.Domain.Constants;
+using Teikem.Domain.Fleet;
 using Teikem.Domain.Orders;
 using Teikem.Domain.Tenancy;
 using Teikem.Infrastructure.Abstractions;
