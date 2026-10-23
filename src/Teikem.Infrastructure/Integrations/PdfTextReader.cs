@@ -9,7 +9,7 @@ using UglyToad.PdfPig.Rendering.Skia;
 namespace Teikem.Infrastructure.Integrations;
 
 /// <summary>Lo leído de un PDF: el texto (renglones, columnas separadas por tabulador), cuántas páginas, si hizo falta OCR y, si no se pudo leer, el motivo (mensaje para el usuario).</summary>
-public sealed record PdfReadResult(string Text, int Pages, bool UsedOcr, string? Problem)
+public sealed record PdfReadResult(string Text, int Pages, bool UsedOcr, string? Problem, OcrConfidence? Confidence = null)
 {
     public static PdfReadResult Fail(string problem) => new(string.Empty, 0, false, problem);
 }
@@ -54,12 +54,15 @@ public sealed class PdfTextReader(IOptions<IntegrationOptions> options, ILogger<
             if (string.IsNullOrWhiteSpace(opt.OcrTessdataPath) || !Directory.Exists(opt.OcrTessdataPath)) return new PdfReadResult(PdfTextRules.JoinPages(texts), pages, false, NoOcrMessage);
             document.AddSkiaPageFactory();
             using var engine = new TesseractEngine(opt.OcrTessdataPath, string.IsNullOrWhiteSpace(opt.OcrLanguages) ? "spa+eng" : opt.OcrLanguages, EngineMode.Default);
+            var confidences = new List<OcrConfidence?>();
             foreach (var i in scanned)
             {
                 using var image = document.GetPageAsPng(i + 1, opt.OcrScale > 0 ? opt.OcrScale : 4f);
-                texts[i] = OcrPage(engine, image.ToArray());
+                var (pageText, pageConfidence) = OcrPage(engine, image.ToArray());
+                texts[i] = pageText;
+                confidences.Add(pageConfidence);
             }
-            return new PdfReadResult(PdfTextRules.JoinPages(texts), pages, true, null);
+            return new PdfReadResult(PdfTextRules.JoinPages(texts), pages, true, null, ReadConfidenceRules.Combine(confidences));
         }
         catch (UglyToad.PdfPig.Core.PdfDocumentFormatException ex) { logger.LogWarning(ex, "PDF ilegible."); return PdfReadResult.Fail(NotPdfMessage); }
         catch (UglyToad.PdfPig.Exceptions.PdfDocumentEncryptedException) { return PdfReadResult.Fail(EncryptedMessage); }
@@ -74,17 +77,19 @@ public sealed class PdfTextReader(IOptions<IntegrationOptions> options, ILogger<
     /// Una página escaneada → texto. Se lee con dos modos de página de Tesseract (automático y «un solo bloque») y se queda con el que reconoce más contenido: en los conduces con rayas el automático
     /// perdía columnas enteras (facturas, guiones de la orden) que el modo de bloque conservaba, y en los formularios con varias zonas ocurre lo contrario.
     /// </summary>
-    private static string OcrPage(TesseractEngine engine, byte[] png)
+    private static (string Text, OcrConfidence? Confidence) OcrPage(TesseractEngine engine, byte[] png)
     {
         var best = string.Empty;
+        OcrConfidence? bestConfidence = null;
         var bestChars = -1;
         foreach (var mode in new[] { PageSegMode.Auto, PageSegMode.SingleBlock })
         {
-            var text = PdfTextRules.PageToText(OcrWords(engine, png, mode));
+            var words = OcrWords(engine, png, mode);
+            var text = PdfTextRules.PageToText(words);
             var chars = PdfTextRules.MeaningfulChars(text);
-            if (chars > bestChars) { best = text; bestChars = chars; }
+            if (chars > bestChars) { best = text; bestChars = chars; bestConfidence = ReadConfidenceRules.Summarize(words); }
         }
-        return best;
+        return (best, bestConfidence);
     }
 
     /// <summary>Palabras de una página (imagen PNG) con su caja, pasadas al origen abajo-izquierda como el PDF.</summary>
@@ -100,7 +105,7 @@ public sealed class PdfTextReader(IOptions<IntegrationOptions> options, ILogger<
         {
             var text = it.GetText(PageIteratorLevel.Word);
             if (string.IsNullOrWhiteSpace(text) || !it.TryGetBoundingBox(PageIteratorLevel.Word, out var r)) continue;
-            result.Add(new PdfWord(text.Trim(), r.X1, r.X2, height - r.Y2, height - r.Y1));
+            result.Add(new PdfWord(text.Trim(), r.X1, r.X2, height - r.Y2, height - r.Y1, Math.Clamp(it.GetConfidence(PageIteratorLevel.Word), 0, 100)));
         } while (it.Next(PageIteratorLevel.Word));
         return result;
     }

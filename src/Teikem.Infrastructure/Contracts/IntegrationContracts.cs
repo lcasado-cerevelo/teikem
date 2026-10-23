@@ -114,7 +114,7 @@ public sealed record IntegrationOptionsDto(
     IReadOnlyList<string>? OrderStatuses = null,
     IReadOnlyList<string>? OutboundConnectors = null);
 
-public sealed record IntegrationFileDto(long Id, string FileName, string Result, long SizeBytes, int OrdersCreated, int Rejected, string? Message, DateTime ProcessedUtc);
+public sealed record IntegrationFileDto(long Id, string FileName, string Result, long SizeBytes, int OrdersCreated, int Rejected, string? Message, DateTime ProcessedUtc, int? OcrConfidence = null, bool ReadDoubtful = false);
 
 public sealed record IntegrationRunDto(
     long Id,

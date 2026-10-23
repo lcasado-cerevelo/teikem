@@ -33,7 +33,7 @@ function RunSummary({ run }: { run: IntegrationRunDto }) {
         <ul className="int-files">
           {(run.files ?? []).map((f) => (
             <li key={f.id}>
-              <Chip tone={FILE_TONE[f.result ?? 'PROCESSED']}>{t(`integrations.file.${f.result}`)}</Chip> {f.fileName} <span className="help">{f.message}</span>
+              <Chip tone={FILE_TONE[f.result ?? 'PROCESSED']}>{t(`integrations.file.${f.result}`)}</Chip> {f.fileName} {f.readDoubtful && <Chip tone="warn">{t('integrations.file.doubtful', { n: f.ocrConfidence ?? 0 })}</Chip>} <span className="help">{f.message}</span>
             </li>
           ))}
         </ul>

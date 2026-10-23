@@ -212,6 +212,10 @@ public class IntegrationFileLog : ITenantScoped
     public int OrdersCreated { get; set; }
     public int Rejected { get; set; }
     public DateTime ProcessedUtc { get; set; } = DateTime.UtcNow;
+    /// <summary>La confianza (0–100) del OCR de los números del documento; NULL si el documento no pasó por OCR (texto real, CSV…).</summary>
+    public int? OcrConfidence { get; set; }
+    /// <summary>La lectura quedó por debajo de la confianza mínima del lector: lo creado debe verificarse contra el documento.</summary>
+    public bool ReadDoubtful { get; set; }
 }
 
 /// <summary>

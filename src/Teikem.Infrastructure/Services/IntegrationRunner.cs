@@ -56,9 +56,9 @@ public sealed class IntegrationRunner(
     private Dictionary<string, IDocumentTarget> Targets => _targets ??= new IDocumentTarget[] { new OrderDocumentTarget((r, c) => ProcessBytesAsync(r.Integration, r.Template, r.Client, r.Run, r.FileName, r.Content, r.CheckDuplicate, c)) }
         .Concat(extraTargets).ToDictionary(t => t.Kind, StringComparer.OrdinalIgnoreCase);
 
-    private Task<FileOutcome> DispatchAsync(string target, Integration integration, ImportTemplate template, Client client, IntegrationRun run, string fileName, byte[] content, CancellationToken ct, DocumentReader? reader = null)
+    private Task<FileOutcome> DispatchAsync(string target, Integration integration, ImportTemplate template, Client client, IntegrationRun run, string fileName, byte[] content, CancellationToken ct, DocumentReader? reader = null, bool doubtful = false)
         => Targets.TryGetValue(target, out var t)
-            ? t.ProcessAsync(new DocumentTargetRequest(integration, template, client, run, fileName, content, CheckDuplicate: true, Reader: reader), ct)
+            ? t.ProcessAsync(new DocumentTargetRequest(integration, template, client, run, fileName, content, CheckDuplicate: true, Reader: reader, Doubtful: doubtful), ct)
             : Task.FromResult(Failed(integration, run, fileName, string.Empty, content.Length, DocumentReaderRules.UnknownTargetMessage(target)));
 
     public static readonly string InstanceId = $"{Environment.MachineName}:{Environment.ProcessId}";
@@ -149,6 +149,7 @@ public sealed class IntegrationRunner(
 
         string status;
         string message;
+        var doubtful = 0;
         try
         {
             var template = await db.ImportTemplates.AsNoTracking().FirstOrDefaultAsync(t => t.ImportTemplateId == integration.ImportTemplateId, ct)
@@ -163,6 +164,9 @@ public sealed class IntegrationRunner(
                 : run.Rejected > 0 || failedFiles > 0 ? IntegrationRunStatuses.Partial : IntegrationRunStatuses.Ok;
             message = outcomes.Count == 0 ? NoFilesMessage
                 : $"{outcomes.Count} archivo(s): {run.OrdersCreated} envío(s) creado(s), {run.Rejected} a la bandeja" + (failedFiles > 0 ? $", {failedFiles} archivo(s) con error." : ".");
+            var doubtfulFiles = outcomes.Where(o => o.Log.ReadDoubtful).Select(o => $"{o.Log.FileName} ({o.Log.OcrConfidence} %)").ToList();
+            doubtful = doubtfulFiles.Count;
+            if (doubtful > 0) message += $" Lectura dudosa en {doubtful} archivo(s): {string.Join(", ", doubtfulFiles)}. Verifique lo creado.";
             foreach (var o in outcomes) await StoreInboxAsync(integration, run, o, ct);
         }
         catch (OperationCanceledException) { throw; }
@@ -185,7 +189,7 @@ public sealed class IntegrationRunner(
         await db.Integrations.Where(i => i.IntegrationId == integration.IntegrationId).ExecuteUpdateAsync(s => s
             .SetProperty(i => i.LastStatus, status).SetProperty(i => i.LastFinishedUtc, finished).SetProperty(i => i.LastMessage, Truncate(message, 400))
             .SetProperty(i => i.LockedBy, (string?)null).SetProperty(i => i.LockedUntilUtc, (DateTime?)null).SetProperty(i => i.NextRunUtc, next), ct);
-        try { await notifier.PublishRunAsync(integration, run, ct); }
+        try { await notifier.PublishRunAsync(integration, run, ct, doubtful); }
         catch (Exception ex) when (ex is not OperationCanceledException) { logger.LogError(ex, "No se pudo anotar el aviso de la integración {Integration}.", integration.IntegrationId); }
         return (await integrations.RunsAsync(integration.PublicId, 1, ct))[0];
     }
@@ -328,8 +332,16 @@ public sealed class IntegrationRunner(
         if (reading.Missing.Count > 0) return Failed(integration, run, pdf.Name, sha, pdf.Content.Length, Truncate($"PDF {pdf.Name}: {string.Join(" | ", reading.Missing)} Texto leído: «{sample}»", 1000));
         if (!reading.HasData) return Failed(integration, run, pdf.Name, sha, pdf.Content.Length, Truncate(EmailRules.NoPdfDataMessage(pdf.Name, sample), 1000));
         var csv = EmailRules.ToCsv(reading, template.HasHeader, ImportTemplateService.DelimiterOf(template));
-        var outcome = await DispatchAsync(target, integration, template, client, run, $"{pdf.Name}.csv", Encoding.UTF8.GetBytes(csv), ct, reader);
+        // 2026-10-23: lectura DUDOSA = la confianza del OCR de los números queda bajo el mínimo del lector. Se crea igual (un cierre queda por confirmar) y se avisa que se verifique.
+        var doubtful = ReadConfidenceRules.IsDoubtful(read.Confidence, reader?.MinConfidence);
+        var outcome = await DispatchAsync(target, integration, template, client, run, $"{pdf.Name}.csv", Encoding.UTF8.GetBytes(csv), ct, reader, doubtful);
         if (read.UsedOcr && outcome.Log.Message is { } msg) outcome.Log.Message = Truncate($"{msg} (PDF leído con OCR)", 1000);
+        if (read.Confidence is { } confidence && outcome.Log.Result is not (IntegrationFileResults.Duplicate or IntegrationFileResults.Failed))
+        {
+            outcome.Log.OcrConfidence = confidence.Numeric;
+            outcome.Log.ReadDoubtful = doubtful;
+            if (doubtful) outcome.Log.Message = Truncate($"{outcome.Log.Message} {ReadConfidenceRules.DoubtfulMessage(confidence.Numeric, ReadConfidenceRules.MinOf(reader?.MinConfidence))}", 1000);
+        }
         return outcome;
     }
 

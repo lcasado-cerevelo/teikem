@@ -6747,3 +6747,12 @@ JOIN dbo.Permission pd ON pd.PermissionId = rp.PermissionId AND pd.Code = 'drive
 JOIN dbo.Permission pm ON pm.Code = 'messages.use'
 WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = rp.RoleId AND x.PermissionId = pm.PermissionId);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-23 (m) — Integraciones: confianza del OCR de cada documento leído. dbo.IntegrationFileLog.OcrConfidence TINYINT NULL (0–100, la de los números del documento; NULL = no pasó por OCR) y
+   ReadDoubtful BIT NOT NULL DEFAULT 0 (quedó por debajo de la confianza mínima del lector: se avisa que se verifique lo creado).
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.IntegrationFileLog', 'OcrConfidence') IS NULL ALTER TABLE dbo.IntegrationFileLog ADD OcrConfidence TINYINT NULL;
+GO
+IF COL_LENGTH('dbo.IntegrationFileLog', 'ReadDoubtful') IS NULL ALTER TABLE dbo.IntegrationFileLog ADD ReadDoubtful BIT NOT NULL CONSTRAINT DF_IntegrationFileLog_ReadDoubtful DEFAULT 0;
+GO

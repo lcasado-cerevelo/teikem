@@ -10437,6 +10437,7 @@
     "file": {
       "PROCESSED": "Processed",
       "REPROCESSED": "Reprocessed",
+      "doubtful": "Doubtful reading {n} %",
       "DUPLICATE": "Repeated",
       "FAILED": "With error"
     },
@@ -10877,6 +10878,8 @@
         "convertHelp": "Creates the readers equivalent to the attachment, body and PDF settings above, to continue from there.",
         "presets": "Use a model",
         "presetsHelp": "Adds a ready-made reader for a known document type. Then pick the client and check that the products exist with the same item number (SKU).",
+        "minConfidence": "Minimum reading confidence (%)",
+        "minConfidenceHelp": "Only for scanned PDFs (OCR). If the confidence of the document NUMBERS falls below it, the reading is doubtful: it is created anyway, you are told to verify what was created and a closing stays pending confirmation. Empty = 80; 0 = do not watch. Confidence is a signal, not a guarantee: it does not detect what the OCR failed to read.",
         "warehouse": "Notice warehouse",
         "warehouseHelp": "The warehouse the document goods come into (arrival notice) or leave from (exit notice). If the company has more than one active warehouse, pick it here.",
         "onlyActiveWarehouse": "The company's only active warehouse",

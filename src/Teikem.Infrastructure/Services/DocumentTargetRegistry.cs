@@ -8,7 +8,7 @@ namespace Teikem.Infrastructure.Services;
 /// Un documento ya leído y convertido al contenido que el destino espera (CSV de la plantilla), con quién lo manda y en qué corrida. El runner lo entrega al destino del lector.
 /// Template y Client son los del lector si los trae, y si no los de la integración.
 /// </summary>
-public sealed record DocumentTargetRequest(Integration Integration, ImportTemplate Template, Client Client, IntegrationRun Run, string FileName, byte[] Content, bool CheckDuplicate, DocumentReader? Reader = null);
+public sealed record DocumentTargetRequest(Integration Integration, ImportTemplate Template, Client Client, IntegrationRun Run, string FileName, byte[] Content, bool CheckDuplicate, DocumentReader? Reader = null, bool Doubtful = false);
 
 /// <summary>
 /// Un DESTINO de lo que lee una integración (2026-10-22): lo que crea en el sistema un documento leído. Cada destino se registra por su código (<see cref="DocumentTargets"/>) y recibe el contenido ya

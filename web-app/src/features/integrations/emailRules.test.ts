@@ -137,7 +137,7 @@ describe('lectores', () => {
 
   it('los lectores viajan en la configuración del API y vuelven iguales', () => {
     const r = reader({
-      source: 'PDF', target: 'ORDER', firstOnly: true, templatePublicId: 't-1', clientPublicId: 'c-1', recordStart: ' Order #: ',
+      source: 'PDF', target: 'ORDER', firstOnly: true, templatePublicId: 't-1', clientPublicId: 'c-1', recordStart: ' Order #: ', minConfidence: '85',
       conditions: [{ scope: 'TEXT', operator: 'CONTAINS', value: ' packing list ' }],
       fields: [
         { ...emptyBodyField(), position: '2', kind: 'BLOCK', start: 'Product', end: 'Page', lineRegex: '^(T-\\w+)$', repeat: true, columns: '2=1' },
@@ -146,7 +146,7 @@ describe('lectores', () => {
     })
     const cfg = buildEmailConfig({ ...ok(), readers: [r] })
     expect(cfg.readers).toEqual([{
-      name: 'Pedido', source: 'PDF', target: 'ORDER', firstOnly: true, templatePublicId: 't-1', clientPublicId: 'c-1', recordStart: 'Order #:', mode: 'SUGGEST', toStatus: null, warehousePublicId: null,
+      name: 'Pedido', source: 'PDF', target: 'ORDER', firstOnly: true, templatePublicId: 't-1', clientPublicId: 'c-1', recordStart: 'Order #:', mode: 'SUGGEST', toStatus: null, warehousePublicId: null, minConfidence: 85,
       when: [{ scope: 'TEXT', operator: 'CONTAINS', value: 'packing list' }],
       fields: [
         expect.objectContaining({ position: 2, kind: 'BLOCK', start: 'Product', end: 'Page', lineRegex: '^(T-\\w+)$', repeat: true, columns: [{ position: 2, index: 1 }] }),
@@ -157,6 +157,7 @@ describe('lectores', () => {
     expect(back).toMatchObject({ name: 'Pedido', source: 'PDF', firstOnly: true, templatePublicId: 't-1', clientPublicId: 'c-1', conditions: [{ scope: 'TEXT', operator: 'CONTAINS', value: 'packing list' }] })
     expect(back.fields[0]).toMatchObject({ kind: 'BLOCK', repeat: true, lineRegex: '^(T-\\w+)$', columns: '2=1' })
     expect(back.recordStart).toBe('Order #:')
+    expect(back.minConfidence).toBe('85')
     expect(back.fields[1]).toMatchObject({ fromHeader: true, appendWith: ' | ' })
   })
 

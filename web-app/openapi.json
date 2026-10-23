@@ -58060,6 +58060,11 @@
             "type": "string",
             "format": "uuid",
             "nullable": true
+          },
+          "minConfidence": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -59078,7 +59083,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "DriverPayPolicyDto": {
         "type": "object",
@@ -59213,7 +59218,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "DriverRatesDto": {
         "type": "object",
@@ -61554,7 +61559,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "FuelVehicleSummaryDto": {
         "type": "object",
@@ -62994,6 +62999,14 @@
           "processedUtc": {
             "type": "string",
             "format": "date-time"
+          },
+          "ocrConfidence": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "readDoubtful": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -67368,7 +67381,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "OrderDetailDto": {
         "type": "object",
@@ -67939,7 +67952,7 @@
             "type": "boolean"
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "OrderQuotePreviewDto": {
         "type": "object",
@@ -72361,7 +72374,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "ProductSerialConversionRequest": {
         "type": "object",
@@ -73075,7 +73088,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "PurchaseOrderStatusRequest": {
         "type": "object",
@@ -75676,7 +75689,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "RentalProcessAdvanceRequest": {
         "type": "object",
@@ -76387,7 +76400,7 @@
             "type": "array",
             "items": {
               "type": "object",
-              "additionalProperties": { }
+              "additionalProperties": {}
             },
             "nullable": true
           },
@@ -83146,7 +83159,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "TripStartRequest": {
         "type": "object",
@@ -84356,7 +84369,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "VisibilityRequest": {
         "type": "object",
@@ -84618,7 +84631,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "WarehouseBinRequest": {
         "type": "object",
@@ -84833,7 +84846,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "WarehouseDockRequest": {
         "type": "object",
@@ -85005,7 +85018,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "WarehousePulseDayDto": {
         "type": "object",
@@ -85380,7 +85393,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "WarehouseZoneRequest": {
         "type": "object",
@@ -85927,7 +85940,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "WorkOrderStatusRequest": {
         "type": "object",
@@ -86232,7 +86245,7 @@
   },
   "security": [
     {
-      "Bearer": [ ]
+      "Bearer": []
     }
   ]
 }

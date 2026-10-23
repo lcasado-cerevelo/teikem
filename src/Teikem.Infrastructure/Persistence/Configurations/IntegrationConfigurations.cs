@@ -56,6 +56,7 @@ public sealed class IntegrationFileLogConfiguration : IEntityTypeConfiguration<I
         b.Property(f => f.Sha256).HasMaxLength(64).IsUnicode(false).IsFixedLength().IsRequired();
         b.Property(f => f.Result).HasMaxLength(12).IsUnicode(false).IsRequired();
         b.Property(f => f.Message).HasMaxLength(1000);
+        b.Property(f => f.OcrConfidence).HasColumnType("tinyint");
         b.HasIndex(f => new { f.IntegrationId, f.Sha256 }).IsUnique().HasFilter("[Result] = 'PROCESSED'").HasDatabaseName("UX_IntegrationFileLog_Hash");
     }
 }

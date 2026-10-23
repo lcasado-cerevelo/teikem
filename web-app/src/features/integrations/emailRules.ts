@@ -59,6 +59,8 @@ export interface ReaderValues {
   toStatus: string
   /** Solo en un lector de avisos de llegada o de salida: el almacén del aviso (vacío = el único activo de la compañía). */
   warehousePublicId: string
+  /** Confianza mínima del OCR (0–100) de los números del documento; por debajo, la lectura es dudosa (vacío = 80; 0 = no se vigila). */
+  minConfidence: string
 }
 
 export const READER_SOURCES = ['BODY', 'PDF', 'FILE'] as const
@@ -75,7 +77,7 @@ export function scopeApplies(scope: string, source: string): boolean {
 }
 
 export const emptyCondition = (source = 'PDF'): ConditionValues => ({ scope: source === 'BODY' ? 'SUBJECT' : 'TEXT', operator: 'CONTAINS', value: '' })
-export const emptyReader = (): ReaderValues => ({ name: '', source: 'BODY', target: 'ORDER', conditions: [], fields: [], templatePublicId: '', clientPublicId: '', firstOnly: false, recordStart: '', mode: 'SUGGEST', toStatus: 'PICKUP', warehousePublicId: '' })
+export const emptyReader = (): ReaderValues => ({ name: '', source: 'BODY', target: 'ORDER', conditions: [], fields: [], templatePublicId: '', clientPublicId: '', firstOnly: false, recordStart: '', mode: 'SUGGEST', toStatus: 'PICKUP', warehousePublicId: '', minConfidence: '' })
 
 export interface EmailValues {
   host: string
@@ -288,6 +290,7 @@ export function emailValuesOf(c: EmailConfig | null | undefined): EmailValues {
       mode: r.mode ?? 'SUGGEST',
       toStatus: r.toStatus ?? 'PICKUP',
       warehousePublicId: r.warehousePublicId ?? '',
+      minConfidence: r.minConfidence === null || r.minConfidence === undefined ? '' : String(r.minConfidence),
     })),
     bodyFields: (c.bodyFields ?? []).map(fieldValuesOf),
   }
@@ -324,6 +327,7 @@ export function buildEmailConfig(e: EmailValues): EmailConfig {
       mode: r.target === 'ORDER_COMPLETION' ? r.mode : 'SUGGEST',
       toStatus: r.target === 'ORDER_COMPLETION' ? r.toStatus : null,
       warehousePublicId: (r.target === 'ARRIVAL_NOTICE' || r.target === 'EXIT_NOTICE') && r.warehousePublicId ? r.warehousePublicId : null,
+      minConfidence: r.source === 'PDF' && r.minConfidence.trim() !== '' ? Number(r.minConfidence) : null,
     })),
   }
 }

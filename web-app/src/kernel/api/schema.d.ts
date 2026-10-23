@@ -40067,6 +40067,8 @@ export interface components {
             toStatus?: string | null;
             /** Format: uuid */
             warehousePublicId?: string | null;
+            /** Format: int32 */
+            minConfidence?: number | null;
         };
         DriverAcceptRequest: {
             declines?: components["schemas"]["DriverDeclineItem"][] | null;
@@ -41687,6 +41689,9 @@ export interface components {
             message?: string | null;
             /** Format: date-time */
             processedUtc?: string;
+            /** Format: int32 */
+            ocrConfidence?: number | null;
+            readDoubtful?: boolean;
         };
         IntegrationNotifyUserDto: {
             /** Format: int32 */

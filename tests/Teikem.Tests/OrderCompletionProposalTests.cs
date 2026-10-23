@@ -126,6 +126,18 @@ public sealed class OrderCompletionProposalTests
     }
 
     [Fact]
+    public async Task A_doubtful_reading_keeps_the_closing_pending_even_when_the_reader_is_automatic()
+    {
+        var x = await WorldAsync();
+        var number = await NewOrderAsync(x);
+        var request = Request(x, $"{number}\n", ReaderModes.Auto) with { Doubtful = true };
+        var outcome = await x.F.Get<OrderCompletionDocumentTarget>().ProcessAsync(request, default);
+        Assert.Equal(OrderStatuses.Submitted, await StatusOfAsync(x, number));   // nada cambió solo
+        Assert.Equal(ProposalStatuses.Pending, (await x.Db.IntegrationProposals.AsNoTracking().SingleAsync()).Status);
+        Assert.Contains("lectura dudosa", outcome.Log.Message);
+    }
+
+    [Fact]
     public async Task An_unknown_order_goes_to_the_tray_and_a_second_document_does_not_repeat_a_live_proposal()
     {
         var x = await WorldAsync();

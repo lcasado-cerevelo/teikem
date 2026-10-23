@@ -92,6 +92,11 @@ function ReaderCard({ form, index, reader, clientOptions, templateOptions, wareh
           <Toggle text={t('integrations.email.readers.firstOnly')} />
         </Field>
       </div>
+      {reader?.source === 'PDF' && (
+        <Field name={`${base}.minConfidence`} label={t('integrations.email.readers.minConfidence')} help={t('integrations.email.readers.minConfidenceHelp')}>
+          <TextInput inputMode="numeric" maxLength={3} placeholder="80" />
+        </Field>
+      )}
       {(reader?.target === 'ARRIVAL_NOTICE' || reader?.target === 'EXIT_NOTICE') && (
         <Field name={`${base}.warehousePublicId`} label={t('integrations.email.readers.warehouse')} help={t('integrations.email.readers.warehouseHelp')}>
           <Select options={warehouseOptions} placeholder={t('integrations.email.readers.onlyActiveWarehouse')} />

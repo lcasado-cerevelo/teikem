@@ -103,6 +103,7 @@ public sealed class OrderCompletionDocumentTarget(TeikemDbContext db, ITenantCon
             return new FileOutcome(log, Array.Empty<Guid>(), Array.Empty<RejectedOrder>());
         }
         var mode = (request.Reader?.Mode ?? ReaderModes.Suggest).Trim().ToUpperInvariant();
+        if (request.Doubtful) mode = ReaderModes.Suggest;   // lectura dudosa: aunque el lector sea automático, el cierre queda POR CONFIRMAR
         var toStatus = string.IsNullOrWhiteSpace(request.Reader?.ToStatus) ? CompletionTargets.Pickup : request.Reader!.ToStatus!.Trim().ToUpperInvariant();
         var csv = Teikem.Domain.Orders.CsvParser.Parse(IntegrationRunner.Decode(request.Content), ImportTemplateService.DelimiterOf(request.Template), request.Template.HasHeader);
         var keys = new List<(string Key, int Row, IReadOnlyList<string> Cells)>();
@@ -164,7 +165,8 @@ public sealed class OrderCompletionDocumentTarget(TeikemDbContext db, ITenantCon
         log.Result = request.CheckDuplicate ? IntegrationFileResults.Processed : IntegrationFileResults.Reprocessed;
         log.OrdersCreated = created.Count;
         log.Rejected = rejected.Count;
-        log.Message = mode == ReaderModes.Auto
+        log.Message = request.Doubtful ? $"{created.Count} propuesta(s) por confirmar (lectura dudosa: no se aplican solas), {skipped} ya estaban propuestas, {rejected.Count} a la bandeja."
+            : mode == ReaderModes.Auto
             ? $"{applied} orden(es) cerrada(s), {skipped} ya estaban propuestas, {rejected.Count} a la bandeja."
             : $"{created.Count} propuesta(s) por confirmar, {skipped} ya estaban propuestas, {rejected.Count} a la bandeja.";
         return new FileOutcome(log, created, rejected);

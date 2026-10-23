@@ -553,7 +553,7 @@ public sealed class IntegrationService(
         var names = await db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id)).Select(u => new { u.Id, u.FullName, u.Email }).ToDictionaryAsync(u => u.Id, u => u.FullName ?? u.Email, ct);
         return runs.Select(r => new IntegrationRunDto(r.IntegrationRunId, integration.PublicId, integration.Name, r.StartedUtc, r.FinishedUtc, r.Status, r.TriggeredBy,
             r.TriggeredByUserId is int u && names.TryGetValue(u, out var n) ? n : null, r.FilesRead, r.OrdersCreated, r.Rejected, r.Message,
-            files.Where(f => f.IntegrationRunId == r.IntegrationRunId).Select(f => new IntegrationFileDto(f.IntegrationFileLogId, f.FileName, f.Result, f.SizeBytes, f.OrdersCreated, f.Rejected, f.Message, f.ProcessedUtc)).ToList())).ToList();
+            files.Where(f => f.IntegrationRunId == r.IntegrationRunId).Select(f => new IntegrationFileDto(f.IntegrationFileLogId, f.FileName, f.Result, f.SizeBytes, f.OrdersCreated, f.Rejected, f.Message, f.ProcessedUtc, f.OcrConfidence, f.ReadDoubtful)).ToList())).ToList();
     }
 
     // ---------------------------------------------------------------- cuenta de servicio

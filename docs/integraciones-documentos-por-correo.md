@@ -61,3 +61,7 @@ Archivos en `F:\Download`: REGULAR 10-12-2026, OXIGENO / ALTAS / AXISMED / RECOG
 ## 10. Scripts SQL de las integraciones (2026-10-23, hecho)
 - `scripts/integraciones/axiscare-depot.sql` y `cms-advance-logistics.sql` (generados por `generar-sql.cjs` desde `readerPresets.json`), idempotentes, aparte de update.sql; integraciones apagadas hasta poner el buzón en la pantalla. Corridos y verificados en la base local (la lectura con el modelo real, los permisos de la cuenta de servicio y la segunda corrida sin duplicar). Lector con almacén propio (`WarehousePublicId`).
 - Falta correrlos en las bases reales, poner los buzones y crear los productos y las zonas restantes.
+
+## 11. Lectura dudosa por confianza del OCR (2026-10-23, hecho)
+- Dictado de Luis: si la lectura es dudosa, se CREA igual y se avisa que se verifique (no a la bandeja); los cierres quedan por confirmar. `MinConfidence` por lector (80 por omisión), `IntegrationFileLog.OcrConfidence/ReadDoubtful` (update.sql 2026-10-23 (m)), aviso en la corrida, marca en el historial.
+- Hallazgo: la confianza no detecta lo que el OCR dejó de leer (REGULAR: 86 % con 5/14 leídos vs 82 % con 11/14). Falta: chequeos de completitud (líneas vs «Cases», sumas) y confianza por campo; calibrar el mínimo con datos reales.

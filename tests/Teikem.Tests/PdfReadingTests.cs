@@ -130,6 +130,9 @@ public class PdfReadingTests
         Assert.Null(read.Problem);
         Assert.True(read.UsedOcr);
         Assert.Contains("PO-7788", read.Text);
+        Assert.NotNull(read.Confidence);   // el OCR deja su confianza (los números del documento) para avisar de lo leído con dudas
+        Assert.InRange(read.Confidence!.Numeric, 1, 100);
+        Assert.True(read.Confidence.Words > 5);
 
         var fields = new[]
         {

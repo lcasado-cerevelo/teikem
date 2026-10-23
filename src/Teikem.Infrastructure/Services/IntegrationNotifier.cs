@@ -61,12 +61,13 @@ public sealed class IntegrationNotifier(TeikemDbContext db, ITenantContext tenan
         if (setRuleId) row.NotifyRuleId = rule.NotificationRuleId;
     }
 
-    /// <summary>Avisa del resultado de una corrida (solo si hizo algo que reportar: órdenes creadas, filas a la bandeja o una falla).</summary>
-    public async Task PublishRunAsync(Integration integration, IntegrationRun run, CancellationToken ct)
+    /// <summary>Avisa del resultado de una corrida (solo si hizo algo que reportar: órdenes creadas, filas a la bandeja, documentos de lectura dudosa o una falla).</summary>
+    public async Task PublishRunAsync(Integration integration, IntegrationRun run, CancellationToken ct, int doubtful = 0)
     {
-        if (run.OrdersCreated == 0 && run.Rejected == 0 && run.Status != IntegrationRunStatuses.Failed) return;
+        if (run.OrdersCreated == 0 && run.Rejected == 0 && doubtful == 0 && run.Status != IntegrationRunStatuses.Failed) return;
         var status = run.Status switch
         {
+            IntegrationRunStatuses.Ok when doubtful > 0 => "Terminó con lectura dudosa: verifique lo creado",
             IntegrationRunStatuses.Ok => "Terminó bien",
             IntegrationRunStatuses.Partial => "Terminó con pendientes en la bandeja",
             _ => "Falló",

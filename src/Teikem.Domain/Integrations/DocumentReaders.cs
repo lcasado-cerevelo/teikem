@@ -68,6 +68,7 @@ public sealed record ReaderCondition(string Scope, string Operator, string Value
 /// Un LECTOR (2026-10-22): qué hace una integración de correo con cada documento que llega. Se aplica si TODAS sus condiciones se cumplen (sin condiciones: a todo lo de su fuente); lee con sus campos
 /// (cuerpo y PDF: los «campos a leer»; archivo de datos: la plantilla) y manda lo leído a su DESTINO. Plantilla y cliente propios (si no, los de la integración): un mismo buzón puede traer documentos de
 /// varios clientes y de varios tipos, y cada uno va por su camino. FirstOnly: solo el primer documento que lo cumpla.
+/// MinConfidence (2026-10-23): la confianza mínima del OCR (0–100) de los números del documento; por debajo, la lectura es DUDOSA: se crea igual, se avisa que la verifiquen y un cierre queda por confirmar (null = 80; 0 = no se vigila).
 /// WarehousePublicId (2026-10-23): el almacén de los avisos de llegada y de salida de este lector (sin él se usa el único activo de la compañía; con varios, el aviso no se crea).
 /// RecordStart (2026-10-23): un documento con VARIAS órdenes (una por página o grupo de páginas, como la hoja de ruta de CMS) se parte en registros en cada línea que contiene este texto; cada registro se lee con los campos
 /// del lector, y los campos «FromHeader» se leen una sola vez de lo que viene antes del primer registro (ruta, chofer, fecha del documento).
@@ -75,7 +76,7 @@ public sealed record ReaderCondition(string Scope, string Operator, string Value
 public sealed record DocumentReader(
     string Name, string Source, string Target = DocumentTargets.Order,
     IReadOnlyList<ReaderCondition>? When = null, IReadOnlyList<EmailBodyField>? Fields = null,
-    Guid? TemplatePublicId = null, Guid? ClientPublicId = null, bool FirstOnly = false, string? RecordStart = null, string Mode = ReaderModes.Suggest, string? ToStatus = null, Guid? WarehousePublicId = null);
+    Guid? TemplatePublicId = null, Guid? ClientPublicId = null, bool FirstOnly = false, string? RecordStart = null, string Mode = ReaderModes.Suggest, string? ToStatus = null, Guid? WarehousePublicId = null, int? MinConfidence = null);
 
 /// <summary>Un documento que llegó y que los lectores evalúan: su fuente, su nombre (adjunto), el asunto del correo y su texto (si es cuerpo o PDF).</summary>
 public sealed record ReaderInput(string Source, string Name, string Subject, string? Text);
@@ -127,6 +128,7 @@ public static class DocumentReaderRules
             if (!DocumentTargets.All.Contains((r.Target ?? string.Empty).Trim().ToUpperInvariant())) errors[$"{k}.target"] = UnknownTargetMessage(r.Target ?? string.Empty);
             if (!ReaderModes.All.Contains((r.Mode ?? string.Empty).Trim().ToUpperInvariant())) errors[$"{k}.mode"] = UnknownModeMessage(r.Mode ?? string.Empty);
             if (string.Equals(r.Target, DocumentTargets.OrderCompletion, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(r.ToStatus) && !CompletionTargets.All.Contains(r.ToStatus.Trim().ToUpperInvariant())) errors[$"{k}.toStatus"] = UnknownCompletionMessage(r.ToStatus);
+            if (r.MinConfidence is < 0 or > 100) errors[$"{k}.minConfidence"] = ReadConfidenceRules.MinInvalidMessage;
             var when = r.When ?? Array.Empty<ReaderCondition>();
             if (when.Count > MaxConditions) errors[$"{k}.when"] = ConditionsMessage;
             for (var c = 0; c < when.Count; c++)

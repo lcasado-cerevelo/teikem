@@ -3,7 +3,49 @@ using System.Text;
 namespace Teikem.Domain.Integrations;
 
 /// <summary>Una palabra de una página de PDF con su caja (coordenadas con el origen ABAJO a la izquierda, como el PDF; el OCR las convierte antes).</summary>
-public sealed record PdfWord(string Text, double Left, double Right, double Bottom, double Top);
+public sealed record PdfWord(string Text, double Left, double Right, double Bottom, double Top, double Confidence = 100);
+
+/// <summary>La confianza con que el OCR leyó un documento (0–100): Mean = el promedio de todas sus palabras; Numeric = el de las palabras que traen dígitos (números de orden, SKU, cantidades), que son las que importan; Words = cuántas palabras leyó.</summary>
+public sealed record OcrConfidence(int Mean, int Numeric, int Words);
+
+/// <summary>
+/// Lectura DUDOSA (2026-10-23): la confianza del OCR de los números del documento queda por debajo del mínimo del lector (80 por omisión; 0 = no se vigila). OJO: es solo UNA señal. Medido con los conduces de Axiscare, la confianza NO
+/// detecta lo que el OCR dejó de leer (una columna perdida entera no la baja: una lectura peor tuvo 86 % y una completa 82 %), así que no sustituye a las validaciones de formato y de totales; sirve para avisar de lo leído con dudas.
+/// </summary>
+public static class ReadConfidenceRules
+{
+    public const int DefaultMin = 80;
+    public static string MinInvalidMessage => "La confianza mínima debe estar entre 0 y 100.";
+    public static string DoubtfulMessage(int confidence, int min) => $"Lectura dudosa ({confidence} % < {min} %): verifique lo creado contra el documento.";
+
+    public static OcrConfidence? Summarize(IEnumerable<PdfWord> words)
+    {
+        var all = words.Where(w => !string.IsNullOrWhiteSpace(w.Text)).ToList();
+        if (all.Count == 0) return null;
+        var numbers = all.Where(w => w.Text.Any(char.IsDigit)).ToList();
+        var mean = (int)Math.Round(all.Average(w => w.Confidence));
+        return new OcrConfidence(mean, numbers.Count == 0 ? mean : (int)Math.Round(numbers.Average(w => w.Confidence)), all.Count);
+    }
+
+    /// <summary>Une las confianzas de varias páginas escaneadas, ponderadas por sus palabras.</summary>
+    public static OcrConfidence? Combine(IEnumerable<OcrConfidence?> parts)
+    {
+        var list = parts.Where(p => p is not null).Select(p => p!).ToList();
+        if (list.Count == 0) return null;
+        var words = list.Sum(p => p.Words);
+        if (words == 0) return null;
+        return new OcrConfidence((int)Math.Round(list.Sum(p => (double)p.Mean * p.Words) / words), (int)Math.Round(list.Sum(p => (double)p.Numeric * p.Words) / words), words);
+    }
+
+    public static int MinOf(int? configured) => configured ?? DefaultMin;
+
+    /// <summary>La cifra que se compara: la de los números del documento.</summary>
+    public static bool IsDoubtful(OcrConfidence? confidence, int? configuredMin)
+    {
+        var min = MinOf(configuredMin);
+        return confidence is not null && min > 0 && confidence.Numeric < min;
+    }
+}
 
 /// <summary>
 /// Lectura de PDF en las integraciones por correo (2026-10-22, dictado de Luis): el PDF se convierte en TEXTO con renglones y, entre columnas separadas, un TABULADOR; ese texto se lee con los mismos

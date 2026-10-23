@@ -10440,6 +10440,7 @@
     "file": {
       "PROCESSED": "Procesado",
       "REPROCESSED": "Reprocesado",
+      "doubtful": "Lectura dudosa {n} %",
       "DUPLICATE": "Repetido",
       "FAILED": "Con error"
     },
@@ -10880,6 +10881,8 @@
         "convertHelp": "Crea los lectores equivalentes a los ajustes de adjuntos, cuerpo y PDF de arriba, para seguir desde ahí.",
         "presets": "Usar un modelo",
         "presetsHelp": "Agrega un lector ya armado para un tipo de documento conocido. Después escoja el cliente y revise que los productos existan con el mismo número de ítem (SKU).",
+        "minConfidence": "Confianza mínima de la lectura (%)",
+        "minConfidenceHelp": "Solo para PDF escaneados (OCR). Si la confianza con que se leyeron los NÚMEROS del documento queda por debajo, la lectura es dudosa: se crea igual, se avisa que se verifique lo creado y un cierre queda por confirmar. Vacío = 80; 0 = no vigilar. La confianza es una señal, no una garantía: no detecta lo que el OCR dejó de leer.",
         "warehouse": "Almacén del aviso",
         "warehouseHelp": "El almacén donde entra (aviso de llegada) o de donde sale (aviso de salida) lo del documento. Si la compañía tiene más de un almacén activo, escójalo aquí.",
         "onlyActiveWarehouse": "El único activo de la compañía",

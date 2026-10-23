@@ -421,3 +421,14 @@ La configuración de las integraciones por correo de **Axiscare (Advance Depot)*
 - Cada integración se crea igual que desde la pantalla: su **rol** y su **cuenta de servicio** (sin contraseña: no inicia sesión), con los permisos del alcance «Entrada de envíos por archivo». Lo que el SQL **no puede** poner es la **contraseña del buzón** (la aplicación la guarda cifrada): en **Integraciones → Editar** se ponen el servidor, el usuario y la contraseña, los remitentes permitidos, y se prende.
 - **Almacén del lector.** Un lector de aviso de llegada o de salida tiene su **Almacén del aviso**; sin él se usa el único almacén activo de la compañía y, si hay varios, el aviso no se crea (el motivo va a la bandeja). Los scripts de Axiscare lo dejan puesto.
 - **Axiscare:** los productos de los documentos deben existir con el mismo SKU como productos activos del cliente. **CMS:** hay que asignar choferes a las zonas «ERD Pick Up N» y crear las zonas que falten.
+
+## 20. Lectura dudosa de un PDF escaneado: la confianza del OCR (2026-10-23)
+
+El OCR deja, por cada documento escaneado, la **confianza** con que leyó sus palabras (0–100). Se guarda la de los **números** del documento (números de orden, SKU, cantidades), que son los que importan. Cada lector de PDF tiene una **Confianza mínima de la lectura (%)** (vacía = **80**; **0** = no se vigila). Si la confianza queda por debajo, la lectura es **dudosa**:
+- Lo que se iba a crear **se crea igual** (órdenes, avisos de llegada y de salida); no se manda a la bandeja.
+- El archivo queda marcado **«Lectura dudosa N %»** en el historial de la integración y su mensaje dice «Lectura dudosa (N % < M %): verifique lo creado contra el documento.».
+- La corrida **avisa** (campanita y correo, a quienes se definieron en la integración): «Terminó con lectura dudosa: verifique lo creado», con los nombres de los archivos y su confianza.
+- Un lector de **cierre** (propuestas) **no aplica solo** aunque sea Automático: la propuesta queda **por confirmar**.
+- Un documento de texto real (los PDF de Axiscare) o un CSV no pasan por OCR: no tienen confianza ni se marcan.
+
+**La confianza es una señal, no una garantía.** Medido con los conduces escaneados de Axiscare, no detecta lo que el OCR **dejó de leer** (una columna perdida entera no la baja: una lectura peor marcó 86 % y una completa 82 %), y un documento bien leído puede marcar 88–91 %. Por eso el mínimo por omisión es 80 y se ajusta con datos reales: cada archivo guarda su confianza para calibrarlo; las validaciones de formato y de totales siguen siendo la defensa principal.

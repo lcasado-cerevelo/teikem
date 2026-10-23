@@ -10516,3 +10516,7 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **Al tocar la tarjeta de la orden dice «Ese envío ya no está en tus rutas.»** El envío ya no está en las rutas abiertas del chofer (se entregó, se cerró o es de otra compañía). La tarjeta siempre muestra el número de la orden.
 
 **El teléfono del consignatario no abre el marcador.** En una tableta o un teléfono sin llamadas el sistema no tiene con qué abrir el enlace `tel:`; el número se puede copiar. Si es un celular, revise que el número tenga al menos 7 dígitos.
+
+**«Lectura dudosa (N % < M %): verifique lo creado contra el documento.»** El OCR leyó los números del documento con una confianza menor que el mínimo del lector. Lo creado (orden o aviso) existe: compárelo con el documento original y corríjalo si hace falta. Si la mayoría de sus documentos buenos salen dudosos, baje la «Confianza mínima de la lectura» del lector (o póngala en 0 para no vigilarla); si pasan documentos mal leídos sin avisar, súbala. La confianza no detecta líneas o columnas que el OCR no leyó: compare siempre la cantidad de líneas.
+
+**Un cierre de «Ruta completada» quedó por confirmar aunque el lector es Automático.** La lectura fue dudosa: los cierres no se aplican solos con una lectura dudosa. Confírmelo en Integraciones → Propuestas.
