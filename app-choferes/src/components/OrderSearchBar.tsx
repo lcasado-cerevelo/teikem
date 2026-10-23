@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { TextInput } from '@components/Text';
 import { useTranslation } from 'react-i18next';
 import { MaterialIcons } from '@expo/vector-icons';
 import BarcodeScannerModal from './BarcodeScannerModal';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 
 // Barra de búsqueda del listado de órdenes. El valor vive en el store
 // (useAppStore.orderFilters) para que sobreviva a entrar al detalle y volver.
@@ -16,6 +18,8 @@ export default function OrderSearchBar({
   value: string;
   onChange: (text: string) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
   const { t } = useTranslation();
   const [scanning, setScanning] = useState(false);
 
@@ -61,7 +65,7 @@ export default function OrderSearchBar({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   wrap: {
     flexDirection: 'row',
     alignItems: 'center',

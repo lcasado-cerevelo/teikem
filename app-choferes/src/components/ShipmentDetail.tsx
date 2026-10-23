@@ -1,14 +1,18 @@
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '@components/Text';
 import { useTranslation } from 'react-i18next';
 import MapPreview from './MapPreview';
 import { useCoordinatesFromAddress } from '@hooks/geocoding';
 import { useConsignee } from '@hooks/queries';
 import { useAppStore } from '@/stores';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 
 // Details tab: map at top + consignee/service/COD info. The map uses the
 // consignee's stored coordinates first, then geocodes line1+zip, then line1+city.
 export default function ShipmentDetail() {
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
   const { t } = useTranslation();
   const shipment = useAppStore((s) => s.shipment);
 
@@ -79,7 +83,7 @@ export default function ShipmentDetail() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   container: { flex: 1, gap: 24, alignContent: 'center' },
   infoContainer: { flex: 1, gap: 24, alignContent: 'center', marginBottom: 24 },
   mapContainer: { height: '45%', maxHeight: 500 },

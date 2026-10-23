@@ -1,8 +1,10 @@
 import { View, type ViewProps, StyleSheet } from 'react-native';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 
 // Bordered card matching the old atoms/Card.
 export default function Card({ style, children, ...rest }: ViewProps) {
+  const styles = useStyles(createStyles);
   return (
     <View style={[styles.card, style]} {...rest}>
       {children}
@@ -10,7 +12,7 @@ export default function Card({ style, children, ...rest }: ViewProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   card: {
     borderWidth: 1,
     borderColor: colors.gray,

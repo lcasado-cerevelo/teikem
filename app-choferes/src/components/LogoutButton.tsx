@@ -1,10 +1,12 @@
 import { Pressable } from 'react-native';
 import { SimpleLineIcons } from '@expo/vector-icons';
 import { useAuth } from '@hooks/AuthContext';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 
 // Replicates the old LogoutButton (login icon, top-right).
 export default function LogoutButton() {
+  const { colors } = useTheme();
   const { logout } = useAuth();
   return (
     <Pressable onPress={() => void logout()} accessibilityRole="button">

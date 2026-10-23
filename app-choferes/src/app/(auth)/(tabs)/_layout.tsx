@@ -2,9 +2,10 @@ import { Tabs } from 'expo-router';
 import { AntDesign, FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import LoggedHeader from '@components/LoggedHeader';
 import LogoutButton from '@components/LogoutButton';
-import { colors } from '@constants/theme';
+import { useTheme } from '@hooks/ThemeContext';
 
 export default function TabLayout() {
+  const { colors } = useTheme();
   return (
     <Tabs screenOptions={{ tabBarActiveTintColor: colors.primary }}>
       <Tabs.Screen

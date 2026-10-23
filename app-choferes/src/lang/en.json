@@ -196,6 +196,10 @@
       "COMPANY_SWITCH_BODY": "You will switch to {{name}}. Anything not yet sent is sent first and that company's manifests are loaded.",
       "COMPANY_SWITCH_YES": "Switch",
       "COMPANY_CURRENT": "Current",
+      "THEME": "Theme",
+      "THEME_AUTO": "Automatic",
+      "THEME_LIGHT": "Light",
+      "THEME_DARK": "Dark",
       "COMPANY_BLOCKED": "Sign in again with your password and code",
       "COMPANY_SWITCH_PENDING": "You have {{count}} record(s) not yet sent to this company. Connect to the internet to send them, then switch companies."
     },

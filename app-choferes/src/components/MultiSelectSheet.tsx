@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@components/Text';
 import { useTranslation } from 'react-i18next';
 import { MaterialIcons } from '@expo/vector-icons';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 
 export interface MultiOption {
   id: number;
@@ -24,6 +26,8 @@ export default function MultiSelectSheet({
   placeholder: string;
   title: string;
 }) {
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -109,7 +113,7 @@ export default function MultiSelectSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   field: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -121,7 +125,7 @@ const styles = StyleSheet.create({
   },
   fieldText: { flex: 1, color: colors.text },
   placeholder: { color: colors.muted },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  backdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: colors.background,
     borderTopLeftRadius: 16,

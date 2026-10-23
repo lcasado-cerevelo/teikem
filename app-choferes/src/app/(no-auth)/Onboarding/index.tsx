@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@components/Text';
 import { Redirect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@hooks/AuthContext';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 import { BRAND } from '@constants/brand';
 
 // Primer ingreso del chofer, dentro de la app: (1) código de 6 dígitos que llega a su correo personal, (2) contraseña propia, (3) verificación en dos pasos
 // (esa última es la pantalla del MFA). Después vuelve a iniciar sesión con su contraseña nueva y su código.
 export default function Onboarding() {
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
   const { t } = useTranslation();
   const router = useRouter();
   const { onboarding, sendEmailCode, verifyEmailCode, setPassword, continueToMfa, cancelOnboarding, mfaChallenge, loading } = useAuth();
@@ -132,7 +136,7 @@ export default function Onboarding() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
   container: { flexGrow: 1, alignItems: 'center', paddingHorizontal: 26, paddingTop: 40, paddingBottom: 26, gap: 16, backgroundColor: colors.background },
   logo: { width: 120, height: 120 },
@@ -142,7 +146,7 @@ const styles = StyleSheet.create({
   label: { fontSize: 16, color: colors.text },
   input: { height: 40, borderWidth: 1, borderColor: colors.gray, borderRadius: 10, paddingHorizontal: 12, fontSize: 18, color: colors.text },
   dev: { fontSize: 13, color: colors.muted },
-  error: { fontSize: 14, color: '#B00020' },
+  error: { fontSize: 14, color: colors.danger },
   link: { color: colors.primary, fontWeight: '600' },
   buttonOuter: { borderRadius: 8, width: '60%', maxWidth: 240 },
   button: { backgroundColor: colors.primary, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 24, alignItems: 'center', justifyContent: 'center' },

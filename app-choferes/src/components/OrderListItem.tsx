@@ -1,13 +1,16 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@components/Text';
 import { Link } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useAppStore } from '@/stores';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 import type { Shipment } from '@/types/models';
 
 // Replicates the old OrderListItem. Tapping stores the shipment and opens
 // ShipmentDetails.
 export default function OrderListItem(props: Shipment) {
+  const styles = useStyles(createStyles);
   const { t } = useTranslation();
   const addShipment = useAppStore((s) => s.addShipment);
 
@@ -34,7 +37,7 @@ export default function OrderListItem(props: Shipment) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   container: {
     borderWidth: 1,
     borderColor: colors.gray,

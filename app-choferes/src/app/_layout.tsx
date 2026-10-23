@@ -1,8 +1,9 @@
-import { Stack } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider as NavigationThemeProvider } from 'expo-router';
 import { ActivityIndicator, Platform, View } from 'react-native';
 import { NavigationBar } from 'expo-navigation-bar';
 import { QueryClient } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '@hooks/AuthContext';
+import { ThemeProvider, useTheme } from '@hooks/ThemeContext';
 import { useVersionCheck } from '@hooks/useVersionCheck';
 import { OfflineProvider } from '@/offline';
 import '@/lang/i18n'; // inicializa i18n (ES/EN)
@@ -36,30 +37,41 @@ const queryClient = new QueryClient({
 
 function RootNavigator() {
   const { isLoading } = useAuth();
+  const { scheme, colors } = useTheme();
+  const navTheme = {
+    ...(scheme === 'dark' ? DarkTheme : DefaultTheme),
+    colors: { ...(scheme === 'dark' ? DarkTheme : DefaultTheme).colors, primary: colors.primary, background: colors.background, card: colors.background, text: colors.text, border: colors.gray },
+  };
   useVersionCheck(); // sideloaded APK: ask the API once per launch if an update exists
 
   // While restoring the session, show a spinner so we don't flash Login
   // for users who are already logged in.
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
         <ActivityIndicator size="large" />
       </View>
     );
   }
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <NavigationThemeProvider value={navTheme}>
+      <Stack screenOptions={{ headerShown: false }} />
+    </NavigationThemeProvider>
+  );
 }
 
 export default function RootLayout() {
   return (
     <OfflineProvider client={queryClient}>
+      <ThemeProvider>
       <AuthProvider>
         {/* Immersive mode: keep the Android navigation bar hidden while driving
             the route; a swipe from the edge reveals it temporarily. */}
         {Platform.OS === 'android' && <NavigationBar hidden />}
         <RootNavigator />
       </AuthProvider>
+      </ThemeProvider>
     </OfflineProvider>
   );
 }

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import { Text } from '@components/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import ScreenHeader from '@components/ScreenHeader';
@@ -9,7 +10,8 @@ import OrderFiltersPanel, { isValidDate } from '@components/OrderFiltersPanel';
 import { useMe, useMySenders, useDriverShipments } from '@hooks/queries';
 import { useAppStore } from '@/stores';
 import { filterShipments } from '@utils/shipmentSearch';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 
 // Una sola fuente de datos para TODOS: el fetch bulk (useDriverShipments) ya
 // bajó, en una llamada, todas las órdenes abiertas del usuario — sean las
@@ -18,6 +20,8 @@ import { colors } from '@constants/theme';
 // no hay ninguna razón para volver a pedirle nada al servidor — la lista ya
 // está descargada y offline.
 export default function OrdersList() {
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
   const { t } = useTranslation();
 
   const shipmentIds = useAppStore((s) => s.shipmentIds);
@@ -111,7 +115,7 @@ export default function OrdersList() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { flex: 1, paddingHorizontal: 2 },
   empty: { textAlign: 'center', marginTop: 24, color: colors.muted, paddingHorizontal: 20 },

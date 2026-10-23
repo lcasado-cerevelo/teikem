@@ -1,10 +1,12 @@
 import { useCallback, useMemo } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet } from 'react-native';
+import { Text } from '@components/Text';
 import { Link, type Href } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useMe, useDriverShipments } from '@hooks/queries';
 import { useAppStore } from '@/stores';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 
 interface HomeItem {
   key: string;
@@ -27,6 +29,7 @@ const isCreated = (s?: string | null) => (s ?? '').trim().toLowerCase() === 'cre
 //  Recogidas para hoy     -> shipments Created + AssignPk = driver.
 //  Manifesto de recogida  -> # distinct pickup manifests (manifestPk).
 export default function Home() {
+  const styles = useStyles(createStyles);
   const { t } = useTranslation();
   const { data: me } = useMe();
   const driverId = me?.userID;
@@ -125,7 +128,7 @@ export default function Home() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   item: {
     flexDirection: 'row',

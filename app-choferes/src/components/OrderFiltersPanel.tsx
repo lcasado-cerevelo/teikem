@@ -1,11 +1,13 @@
 import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@components/Text';
 import { useTranslation } from 'react-i18next';
 import { MaterialIcons } from '@expo/vector-icons';
 import MultiSelectSheet, { type MultiOption } from './MultiSelectSheet';
 import type { UserSender } from '@services/custom-api/custom-api';
 import type { OrderFilters } from '@/stores';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 
 // yyyy-MM-dd: se valida en vez de usar un date-picker nativo para no meter otra
 // dependencia. Vacío = sin límite por ese lado.
@@ -25,6 +27,8 @@ export default function OrderFiltersPanel({
   filters: OrderFilters;
   onChange: (patch: Partial<OrderFilters>) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
   const { t } = useTranslation();
 
   const options: MultiOption[] = useMemo(
@@ -131,7 +135,7 @@ export default function OrderFiltersPanel({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   wrap: { marginHorizontal: 20, marginBottom: 6 },
   toggle: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8 },
   toggleText: { color: colors.primary, fontWeight: '600' },

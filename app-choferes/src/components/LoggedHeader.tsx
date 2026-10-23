@@ -1,7 +1,10 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '@components/Text';
 import { useTranslation } from 'react-i18next';
 import { useMe, useCompany } from '@hooks/queries';
 import { useIsOnline } from '@hooks/useIsOnline';
+import { useStyles } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 import InitialsAvatar from '@components/InitialsAvatar';
 
 // Replicates the old LoggedHeader: driver-initials avatar, company name,
@@ -11,6 +14,7 @@ export default function LoggedHeader() {
   const { data: me } = useMe();
   const { data: company } = useCompany(me?.companyID);
   const online = useIsOnline();
+  const styles = useStyles(createStyles);
 
   return (
     <View style={styles.container}>
@@ -26,12 +30,12 @@ export default function LoggedHeader() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   container: { flexDirection: 'row', alignItems: 'center', gap: 10, margin: 10 },
   info: { gap: 1 },
   company: { fontSize: 14 },
   user: { fontWeight: '700', fontSize: 17 },
   status: { width: 100, textAlign: 'center', borderRadius: 10, color: '#ffffff' },
-  online: { backgroundColor: '#7EC074' },
-  offline: { backgroundColor: '#9AA0A6' },
+  online: { backgroundColor: colors.online },
+  offline: { backgroundColor: colors.offline },
 });

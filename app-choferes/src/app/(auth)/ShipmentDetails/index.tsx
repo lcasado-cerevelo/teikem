@@ -7,11 +7,13 @@ import ShipmentDetail from '@components/ShipmentDetail';
 import ShipmentPieces from '@components/ShipmentPieces';
 import ShipmentComments from '@components/ShipmentComments';
 import ShipmentActions from '@components/ShipmentActions';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 
 // Header + the four tabs (Detalles / Piezas / Comentarios / Acciones), each with
 // real content now.
 export default function ShipmentDetails() {
+  const styles = useStyles(createStyles);
   const { t } = useTranslation();
   const [selectedTab, setSelectedTab] = useState<ShipmentTab>('details');
 
@@ -33,7 +35,7 @@ export default function ShipmentDetails() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   container: { flex: 1, gap: 10, backgroundColor: colors.background },
   tabs: { marginHorizontal: 15 },
 });

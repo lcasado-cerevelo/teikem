@@ -1,9 +1,11 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@components/Text';
 import { Link } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
 import Card from './Card';
 import { useAppStore } from '@/stores';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 
 // "code - date" + (count). The shipment ids for this manifest are passed in
 // (already grouped on the manifests screen), so there's no per-item query.
@@ -17,6 +19,7 @@ export default function ManifestListItem({
   date: string;
   shipmentIds: number[];
 }) {
+  const styles = useStyles(createStyles);
   const addShipmentIds = useAppStore((s) => s.addShipmentIds);
 
   return (
@@ -34,7 +37,7 @@ export default function ManifestListItem({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',

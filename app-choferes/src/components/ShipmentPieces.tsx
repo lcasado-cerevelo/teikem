@@ -1,12 +1,16 @@
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import { Text } from '@components/Text';
 import { useTranslation } from 'react-i18next';
 import { usePieceIds, usePiecesByIds } from '@hooks/queries';
 import { useAppStore } from '@/stores';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 
 // Pieces tab: lists the shipment's pieces (barcode + package type + comments).
 // Was "En construcción" in the old app — built here against the real piece API.
 export default function ShipmentPieces() {
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
   const { t } = useTranslation();
   const shipment = useAppStore((s) => s.shipment);
 
@@ -49,7 +53,7 @@ export default function ShipmentPieces() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   muted: { color: colors.muted, fontSize: 14 },
   list: { padding: 16, gap: 12 },

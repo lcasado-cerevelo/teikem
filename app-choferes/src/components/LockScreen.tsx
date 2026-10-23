@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@components/Text';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@hooks/AuthContext';
 import { authenticate, MAX_BIOMETRIC_FAILURES } from '@services/auth/biometricAuth';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 
 // Pantalla de bloqueo: «Abrir con huella». Al entrar pide la huella (o el PIN del teléfono) sola; si falla se puede reintentar. Tras 5 fallos seguidos, o con
 // «Usar mi contraseña», se cierra la sesión del teléfono y se pide todo otra vez (contraseña y, si aplica, el código).
 export default function LockScreen() {
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
   const { t } = useTranslation();
   const { unlock, logout } = useAuth();
   const [failures, setFailures] = useState(0);
@@ -55,7 +59,7 @@ export default function LockScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 14 },
   circle: { width: 104, height: 104, borderRadius: 52, borderWidth: 2, borderColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 20, fontWeight: '700', color: colors.primary },

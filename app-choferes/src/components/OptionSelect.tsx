@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors } from '@constants/theme';
+import { FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@components/Text';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 
 export interface Option {
   id: number;
@@ -26,6 +28,7 @@ export default function OptionSelect({
   onClear?: () => void;
   disabled?: boolean;
 }) {
+  const styles = useStyles(createStyles);
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => o.id === value);
 
@@ -72,7 +75,7 @@ export default function OptionSelect({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   field: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -88,7 +91,7 @@ const styles = StyleSheet.create({
   placeholder: { color: colors.muted, flex: 1 },
   caret: { color: colors.muted, marginLeft: 8 },
   clear: { color: colors.danger, marginLeft: 8, fontSize: 16, fontWeight: '600' },
-  backdrop: { flex: 1, backgroundColor: '#00000066', justifyContent: 'center', padding: 24 },
+  backdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'center', padding: 24 },
   sheet: { backgroundColor: colors.background, borderRadius: 14, maxHeight: '70%', overflow: 'hidden' },
   row: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.gray },
   rowText: { fontSize: 15, color: colors.text },

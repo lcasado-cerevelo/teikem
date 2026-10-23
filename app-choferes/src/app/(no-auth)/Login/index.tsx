@@ -1,11 +1,13 @@
-import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View, ActivityIndicator } from 'react-native';
+import { Text } from '@components/Text';
 import { useRouter } from 'expo-router';
 import { useForm, FormProvider, type SubmitHandler } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@hooks/AuthContext';
 import { useBiometricOffer } from '@hooks/useBiometricOffer';
 import FormInput from '@components/FormInput';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 import { BRAND } from '@constants/brand';
 
 // Mismo patrón de correo que usaba la app anterior para validar el usuario.
@@ -20,6 +22,8 @@ interface LoginForm {
 // Paso 1: correo y contraseña. Si la compañía (o la persona) exige el segundo factor, sigue la pantalla del código (Mfa).
 // «Abrir con huella» NO está aquí: la huella solo abre una sesión ya guardada (ver AuthContext y la pantalla de bloqueo).
 export default function Login() {
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
   const { t } = useTranslation();
   const router = useRouter();
   const { login, loading, browserConfirmation, cancelMfa } = useAuth();
@@ -91,7 +95,7 @@ export default function Login() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   // ported from Login.styles.ts
   flex: { flex: 1, backgroundColor: colors.background },
   container: {

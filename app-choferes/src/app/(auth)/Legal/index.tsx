@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '@components/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@hooks/AuthContext';
 import { acceptLegal, fetchLegalDocument, type LegalDocumentDto } from '@services/auth/teikemAuth';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 
 /** ¿Llegó el lector al final del texto? (margen de unos píxeles; un texto que cabe sin desplazar cuenta como leído). */
 export function reachedEnd(m: { contentOffset: { y: number }; layoutMeasurement: { height: number }; contentSize: { height: number } }, margin = 24): boolean {
@@ -13,6 +15,8 @@ export function reachedEnd(m: { contentOffset: { y: number }; layoutMeasurement:
 
 // Política de privacidad y términos de uso: un solo documento; «Acepto» se habilita solo al llegar al final. Se pide el primer ingreso y cada vez que cambia el documento.
 export default function Legal() {
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
   const { t, i18n } = useTranslation();
   const { accessToken, legalAccepted, logout } = useAuth();
   const lang = i18n.language === 'en' ? 'en' : 'es';
@@ -95,7 +99,7 @@ export default function Legal() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, padding: 16, gap: 10 },
   title: { fontSize: 20, fontWeight: '700', color: colors.primary },
   lead: { fontSize: 13, color: colors.muted },

@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@components/Text';
 import { useTranslation } from 'react-i18next';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import { MaterialIcons } from '@expo/vector-icons';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 
 // Tipos que realmente circulan en las piezas de Colavora: los códigos van desde
 // SSCC de 20 dígitos ("00003166348830670014") hasta alfanuméricos cortos
@@ -34,6 +36,7 @@ export default function BarcodeScannerModal({
   onClose: () => void;
   onScanned: (value: string) => void;
 }) {
+  const styles = useStyles(createStyles);
   const { t } = useTranslation();
   const [permission, requestPermission] = useCameraPermissions();
   // onBarcodeScanned se dispara EN CADA FRAME mientras el código esté a la
@@ -109,7 +112,7 @@ export default function BarcodeScannerModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#000' },
   header: {
     flexDirection: 'row',

@@ -1,5 +1,7 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
-import { colors, palette } from '@constants/theme';
+import { Pressable, StyleSheet } from 'react-native';
+import { Text } from '@components/Text';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 
 // Ported from the old app's atoms/Chip: a pill that's filled navy when active,
 // white with a gray border + gray text when inactive. Used by the ShipmentDetails
@@ -13,6 +15,8 @@ export default function Chip({
   active: boolean;
   onPress: () => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
   return (
     <Pressable
       onPress={onPress}
@@ -20,13 +24,13 @@ export default function Chip({
         styles.container,
         active
           ? { backgroundColor: colors.primary, borderColor: colors.primary }
-          : { backgroundColor: palette.background.default, borderColor: palette.lightGray.default },
+          : { backgroundColor: colors.background, borderColor: colors.gray },
       ]}
     >
       <Text
         adjustsFontSizeToFit
         numberOfLines={1}
-        style={[styles.label, { color: active ? colors.primaryContrast : palette.noStatus.default }]}
+        style={[styles.label, { color: active ? colors.primaryContrast : colors.muted }]}
       >
         {label}
       </Text>
@@ -36,7 +40,7 @@ export default function Chip({
 
 const TEXT_SIZE = 12;
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   container: {
     flex: 1,
     borderRadius: TEXT_SIZE + TEXT_SIZE / 2,

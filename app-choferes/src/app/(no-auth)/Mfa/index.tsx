@@ -1,17 +1,21 @@
 import { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@components/Text';
 import { Redirect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@hooks/AuthContext';
 import { useBiometricOffer } from '@hooks/useBiometricOffer';
 import type { MfaEnrollResultDto } from '@services/auth/teikemAuth';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 import { BRAND } from '@constants/brand';
 import { Image } from 'react-native';
 
 // Paso 2 del inicio de sesión: el código de la app de autenticación (o uno de recuperación). Si la compañía exige el segundo factor y la persona todavía no lo
 // tiene, primero lo configura (clave → código → códigos de recuperación) y vuelve a iniciar sesión, igual que la web.
 export default function Mfa() {
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
   const { t } = useTranslation();
   const router = useRouter();
   const { mfaChallenge, verifyMfa, enrollMfa, confirmMfa, finishEnrollment, cancelMfa, loading } = useAuth();
@@ -147,7 +151,7 @@ export default function Mfa() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
   container: { flexGrow: 1, alignItems: 'center', paddingHorizontal: 26, paddingTop: 40, paddingBottom: 26, gap: 16, backgroundColor: colors.background },
   logo: { width: 120, height: 120 },

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Switch, View } from 'react-native';
+import { Text } from '@components/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { authenticate, isBiometricAvailable } from '@services/auth/biometricAuth';
@@ -11,14 +12,18 @@ import { SYNC_INTERVAL_OPTIONS_MINUTES } from '@hooks/useSyncSettings';
 import { useAppStore } from '@/stores';
 import { countByStatus, drainOutbox } from '@/offline';
 import { setLanguage, type AppLanguage } from '@/lang/i18n';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 
 // Profile tab: company/driver header, username, language switch (ES/EN),
 // manual sync, logout. (The old app's profile was just a placeholder.)
 export default function ProfileScreen() {
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
   const { t, i18n } = useTranslation();
   const { data: me } = useMe();
   const { logout, user, companies, biometricEnabled, setBiometricEnabled } = useAuth();
+  const { mode, setMode } = useTheme();
   const { sync, isSyncing } = useSync();
   const syncInterval = useAppStore((s) => s.syncIntervalMinutes);
   const setSyncInterval = useAppStore((s) => s.setSyncIntervalMinutes);
@@ -96,6 +101,17 @@ export default function ProfileScreen() {
         </View>
       </View>
 
+      <View style={styles.section}>
+        <Text style={styles.label}>{t('PROFILE.THEME')}</Text>
+        <View style={styles.langRow}>
+          {(['auto', 'light', 'dark'] as const).map((m) => (
+            <Pressable key={m} style={[styles.lang, mode === m && styles.langActive]} onPress={() => setMode(m)} accessibilityRole="button">
+              <Text style={[styles.langText, mode === m && styles.langTextActive]}>{t(`PROFILE.THEME_${m.toUpperCase()}`)}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
       {companies.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.label}>{t('PROFILE.COMPANIES')}</Text>
@@ -156,7 +172,7 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, padding: 20, gap: 18 },
   title: { fontSize: 20, fontWeight: '700', color: colors.primary },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

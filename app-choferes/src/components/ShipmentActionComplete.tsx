@@ -1,15 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@components/Text';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,7 +14,8 @@ import { enqueueCod, enqueueDispatch } from '@/offline/mutations';
 import { drainOutbox, getItem } from '@/offline';
 import { compressProofPhoto } from '@utils/photo';
 import OptionSelect from './OptionSelect';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 
 // How far (meters) the driver can be from the stored address before we treat the
 // stored coordinates as wrong and re-ask.
@@ -56,6 +48,8 @@ interface CodDraft {
 // signatureOnDelivery). On delivery it also backfills/corrects the consignee's
 // stored coordinates when the driver confirms being at the address.
 export default function ShipmentActionComplete({ onBack }: { onBack: () => void }) {
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -394,7 +388,7 @@ export default function ShipmentActionComplete({ onBack }: { onBack: () => void 
             descriptionText=""
             webStyle=".m-signature-pad--footer{display:none}.m-signature-pad{box-shadow:none;border:none}"
             backgroundColor="#ffffff"
-            penColor={colors.primary}
+            penColor="#03204B"
           />
         </View>
         <Pressable style={styles.buttonOutline} onPress={clearSignature}>
@@ -424,7 +418,7 @@ export default function ShipmentActionComplete({ onBack }: { onBack: () => void 
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   screen: { flex: 1 },
   // flexShrink (not flex:1): take only the space the content needs, and only
   // shrink/scroll when it would overflow — flex:1 was forcing this region to

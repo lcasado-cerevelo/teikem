@@ -6,7 +6,8 @@ import { useLocalSearchParams } from 'expo-router';
 import ScreenHeader from '@components/ScreenHeader';
 import ManifestListItem from '@components/ManifestListItem';
 import { useMe, useDriverShipments } from '@hooks/queries';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 
 const isCreated = (s?: string | null) => (s ?? '').trim().toLowerCase() === 'created';
 
@@ -14,6 +15,8 @@ const isCreated = (s?: string | null) => (s ?? '').trim().toLowerCase() === 'cre
 // manifiesto. Modo entrega (default): por manifestDL. Modo recogida (?kind=pickup):
 // solo los Created asignados al chofer (AssignPk), agrupados por manifestPk.
 export default function ManifestsScreen() {
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
   const { t } = useTranslation();
   const { kind } = useLocalSearchParams<{ kind?: string }>();
   const isPickup = kind === 'pickup';
@@ -63,7 +66,7 @@ export default function ManifestsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { flex: 1, paddingHorizontal: 2 },
 });

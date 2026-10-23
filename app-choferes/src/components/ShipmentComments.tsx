@@ -1,16 +1,20 @@
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@components/Text';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { useComments } from '@hooks/queries';
 import { enqueueComment } from '@/offline/mutations';
 import { drainOutbox } from '@/offline';
 import { useAppStore } from '@/stores';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 
 // Comments tab: lists the shipment's comments and lets the driver add one
 // (queued offline). Was "En construcción" in the old app — built here.
 export default function ShipmentComments() {
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
   const { t } = useTranslation();
   const shipment = useAppStore((s) => s.shipment);
   const shipmentId = shipment?.shipmentID;
@@ -92,7 +96,7 @@ export default function ShipmentComments() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   muted: { color: colors.muted, fontSize: 14 },

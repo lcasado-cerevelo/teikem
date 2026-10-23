@@ -1,16 +1,10 @@
 import { useState } from 'react';
 import { useController, type UseControllerProps } from 'react-hook-form';
-import {
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput as RNTextInput,
-  type TextInputProps as RNTextInputProps,
-  View,
-} from 'react-native';
+import { Platform, Pressable, StyleSheet, TextInput as RNTextInput, type TextInputProps as RNTextInputProps, View } from 'react-native';
+import { Text } from '@components/Text';
 import { FontAwesome } from '@expo/vector-icons';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 
 type FormInputProps = UseControllerProps &
   RNTextInputProps & {
@@ -21,6 +15,8 @@ type FormInputProps = UseControllerProps &
 // label (16), bordered field radius 10 with shadow, height 40, red error text.
 // For password fields (secureTextEntry) it shows an eye toggle to reveal/hide.
 export default function FormInput(props: FormInputProps) {
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
   const { name, rules, defaultValue, label, style, secureTextEntry, ...rest } = props;
   const { field, fieldState } = useController({ name, rules, defaultValue });
   const isPassword = Boolean(secureTextEntry);
@@ -58,7 +54,7 @@ export default function FormInput(props: FormInputProps) {
 }
 
 const borderRadius = 10;
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   container: { width: '100%', justifyContent: 'center' },
   label: { fontSize: 16, marginVertical: 4, color: colors.text },
   inputContainer: { borderWidth: 0.5, borderColor: colors.text, borderRadius, width: '100%' },

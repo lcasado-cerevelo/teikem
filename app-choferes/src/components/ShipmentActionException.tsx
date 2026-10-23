@@ -1,15 +1,6 @@
 import { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@components/Text';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -21,7 +12,8 @@ import { drainOutbox, getItem } from '@/offline';
 import { compressProofPhoto } from '@utils/photo';
 import OptionSelect from './OptionSelect';
 import type { ShipmentTab } from './ShipmentDetailsTabs';
-import { colors } from '@constants/theme';
+import { useStyles, useTheme } from '@hooks/ThemeContext';
+import type { Colors } from '@constants/theme';
 
 // Exception flow of the "Acciones" tab: a non-delivery event. Reason (from the
 // server catalog) + required comment + a proof photo that is mandatory only when
@@ -34,6 +26,8 @@ export default function ShipmentActionException({
   onBack: () => void;
   setSelectedTab?: (tab: ShipmentTab) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const shipment = useAppStore((s) => s.shipment);
@@ -172,7 +166,7 @@ export default function ShipmentActionException({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Colors) => StyleSheet.create({
   container: { paddingHorizontal: 20, paddingTop: 6, paddingBottom: 20, gap: 8 },
   title: { fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 4 },
   label: { fontSize: 14, fontWeight: '600', color: colors.text, marginTop: 4 },

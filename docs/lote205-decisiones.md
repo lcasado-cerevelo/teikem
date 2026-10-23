@@ -21,3 +21,10 @@
   3. Inscripción del MFA con la pantalla del MFA existente; al terminar vuelve al login (contraseña + código).
 - Pruebas: `npx tsc --noEmit`, JSON de idiomas válido. Sin prueba contra el API real todavía.
 - **Pendiente / decisión**: la confirmación de teléfono nuevo (`browser_confirmation_required`) sigue siendo un aviso «revisa tu correo» que abre un enlace; hacerla 100 % dentro de la app requiere un endpoint de código en el servidor. No se exige que el correo sea «no corporativo»: el servidor no lo puede saber; es una regla de captura del administrador.
+
+## Parte 3 — Tema Automático / Claro / Oscuro (hecha)
+- `constants/theme.ts` define `lightColors` y `darkColors`; `hooks/ThemeContext.tsx` da `useTheme()` y `useStyles(createStyles)`. Modo por omisión **Automático** (sigue al teléfono); la elección se recuerda en el aparato (`services/prefsStorage.ts`, no se borra al cerrar sesión) y se cambia en Perfil → Tema.
+- Las 30 pantallas/componentes pasaron de colores fijos a la paleta del tema; `components/Text.tsx` (Text y TextInput) pone el color del tema por omisión; la navegación (encabezados, pestañas) toma el mismo tema; la barra de estado cambia con él.
+- Contraste WCAG AA verificado con `node scripts/check-theme-contrast.mjs` (ambos temas, todos los pares). Corregí de paso el contraste del distintivo En línea / Sin conexión y del rojo de error.
+- La firma del cliente se queda con fondo blanco y tinta azul marino en ambos temas (es una imagen que se guarda).
+- Pruebas: `npx tsc --noEmit`, `expo export --platform web` (arma), script de contraste. No se revisó a ojo en un teléfono.
