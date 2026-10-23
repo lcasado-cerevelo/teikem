@@ -26,9 +26,9 @@
     },
     {
       "client_info": {
-        "mobilesdk_app_id": "1:834206900248:android:0eadd87971ac7a3c0f636d",
+        "mobilesdk_app_id": "1:834206900248:android:238af7b7fb6f63af0f636d",
         "android_client_info": {
-          "package_name": "com.delapaz.app"
+          "package_name": "com.delapaztransport.app"
         }
       },
       "oauth_client": [],
