@@ -56,22 +56,8 @@ export default function Home() {
 
   const loading = Boolean(driverId) && isPending;
 
-  const items: HomeItem[] = [
-    {
-      key: 'deliveries',
-      label: t('HOME.DELIVERIES_FOR_TODAY'),
-      counter: `${totalDeliveries}`,
-      loading,
-      href: '/(auth)/OrdersList',
-      onPress: () => addShipmentIds(deliveryIds),
-    },
-    {
-      key: 'manifest',
-      label: t('HOME.DELIVERY_MANIFEST'),
-      counter: `${manifestCount}`,
-      loading,
-      href: '/(auth)/(tabs)/manifests',
-    },
+  // Recogidas primero, luego entregas (pedido de Luis, 2026-10-23). Solo salen los botones que tienen algo: sin recogidas no hay botones de recogida y sin entregas no hay botones de entrega.
+  const allItems: HomeItem[] = [
     {
       key: 'pickups',
       label: t('HOME.PICKUPS_FOR_TODAY'),
@@ -87,7 +73,24 @@ export default function Home() {
       loading,
       href: { pathname: '/(auth)/(tabs)/manifests', params: { kind: 'pickup' } },
     },
+    {
+      key: 'deliveries',
+      label: t('HOME.DELIVERIES_FOR_TODAY'),
+      counter: `${totalDeliveries}`,
+      loading,
+      href: '/(auth)/OrdersList',
+      onPress: () => addShipmentIds(deliveryIds),
+    },
+    {
+      key: 'manifest',
+      label: t('HOME.DELIVERY_MANIFEST'),
+      counter: `${manifestCount}`,
+      loading,
+      href: '/(auth)/(tabs)/manifests',
+    },
   ];
+  const shown = allItems.filter((it) => loading || it.counter !== '0');
+  const items = shown.length > 0 ? shown : allItems;
 
   const renderItem = useCallback(
     ({ item }: { item: HomeItem }) => {
