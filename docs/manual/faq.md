@@ -10480,3 +10480,9 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **«El documento no trae ninguna orden que cerrar.» (bandeja).** El lector tomó el documento pero no sacó ninguna clave (columna 1). Revise la expresión por línea del lector.
 
 **«Modo desconocido: …» / «Estatus de cierre desconocido: …».** El lector de cierre solo admite Sugerir o Automático y llevar a Recogida o Entregada.
+
+**El script de integraciones se detiene con «No existe la compañía / el cliente / el almacén / el tipo de servicio …».** Los parámetros de arriba del script (`@TenantName`, `@ClientCode`, `@WarehouseName`, `@ServiceTypeCode`) no coinciden con los datos de esa base. Corrija el valor y vuelva a correrlo: el script es idempotente y no deja nada a medias.
+
+**Corrí el script y la integración no recibe correos.** Nace apagada y con el buzón en marcadores «CAMBIAR». En Integraciones → Editar ponga el servidor IMAP, el usuario y la contraseña del buzón, los remitentes permitidos y préndala. Antes de prenderla pruebe con *Subir archivo*.
+
+**«No hay almacén … » / el aviso de llegada no se crea con varios almacenes.** Con más de un almacén activo, el lector debe tener su «Almacén del aviso». Edítelo en Integraciones → Editar → Lectores.

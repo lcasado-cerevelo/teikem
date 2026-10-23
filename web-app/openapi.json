@@ -57950,6 +57950,11 @@
           "toStatus": {
             "type": "string",
             "nullable": true
+          },
+          "warehousePublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           }
         },
         "additionalProperties": false

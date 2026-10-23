@@ -57,6 +57,8 @@ export interface ReaderValues {
   mode: string
   /** Solo en un lector de cierre: a qué estatus lleva la orden (PICKUP o DELIVERED). */
   toStatus: string
+  /** Solo en un lector de avisos de llegada o de salida: el almacén del aviso (vacío = el único activo de la compañía). */
+  warehousePublicId: string
 }
 
 export const READER_SOURCES = ['BODY', 'PDF', 'FILE'] as const
@@ -73,7 +75,7 @@ export function scopeApplies(scope: string, source: string): boolean {
 }
 
 export const emptyCondition = (source = 'PDF'): ConditionValues => ({ scope: source === 'BODY' ? 'SUBJECT' : 'TEXT', operator: 'CONTAINS', value: '' })
-export const emptyReader = (): ReaderValues => ({ name: '', source: 'BODY', target: 'ORDER', conditions: [], fields: [], templatePublicId: '', clientPublicId: '', firstOnly: false, recordStart: '', mode: 'SUGGEST', toStatus: 'PICKUP' })
+export const emptyReader = (): ReaderValues => ({ name: '', source: 'BODY', target: 'ORDER', conditions: [], fields: [], templatePublicId: '', clientPublicId: '', firstOnly: false, recordStart: '', mode: 'SUGGEST', toStatus: 'PICKUP', warehousePublicId: '' })
 
 export interface EmailValues {
   host: string
@@ -285,6 +287,7 @@ export function emailValuesOf(c: EmailConfig | null | undefined): EmailValues {
       recordStart: r.recordStart ?? '',
       mode: r.mode ?? 'SUGGEST',
       toStatus: r.toStatus ?? 'PICKUP',
+      warehousePublicId: r.warehousePublicId ?? '',
     })),
     bodyFields: (c.bodyFields ?? []).map(fieldValuesOf),
   }
@@ -320,6 +323,7 @@ export function buildEmailConfig(e: EmailValues): EmailConfig {
       recordStart: r.recordStart.trim() === '' ? null : r.recordStart.trim(),
       mode: r.target === 'ORDER_COMPLETION' ? r.mode : 'SUGGEST',
       toStatus: r.target === 'ORDER_COMPLETION' ? r.toStatus : null,
+      warehousePublicId: (r.target === 'ARRIVAL_NOTICE' || r.target === 'EXIT_NOTICE') && r.warehousePublicId ? r.warehousePublicId : null,
     })),
   }
 }

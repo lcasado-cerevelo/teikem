@@ -68,13 +68,14 @@ public sealed record ReaderCondition(string Scope, string Operator, string Value
 /// Un LECTOR (2026-10-22): qué hace una integración de correo con cada documento que llega. Se aplica si TODAS sus condiciones se cumplen (sin condiciones: a todo lo de su fuente); lee con sus campos
 /// (cuerpo y PDF: los «campos a leer»; archivo de datos: la plantilla) y manda lo leído a su DESTINO. Plantilla y cliente propios (si no, los de la integración): un mismo buzón puede traer documentos de
 /// varios clientes y de varios tipos, y cada uno va por su camino. FirstOnly: solo el primer documento que lo cumpla.
+/// WarehousePublicId (2026-10-23): el almacén de los avisos de llegada y de salida de este lector (sin él se usa el único activo de la compañía; con varios, el aviso no se crea).
 /// RecordStart (2026-10-23): un documento con VARIAS órdenes (una por página o grupo de páginas, como la hoja de ruta de CMS) se parte en registros en cada línea que contiene este texto; cada registro se lee con los campos
 /// del lector, y los campos «FromHeader» se leen una sola vez de lo que viene antes del primer registro (ruta, chofer, fecha del documento).
 /// </summary>
 public sealed record DocumentReader(
     string Name, string Source, string Target = DocumentTargets.Order,
     IReadOnlyList<ReaderCondition>? When = null, IReadOnlyList<EmailBodyField>? Fields = null,
-    Guid? TemplatePublicId = null, Guid? ClientPublicId = null, bool FirstOnly = false, string? RecordStart = null, string Mode = ReaderModes.Suggest, string? ToStatus = null);
+    Guid? TemplatePublicId = null, Guid? ClientPublicId = null, bool FirstOnly = false, string? RecordStart = null, string Mode = ReaderModes.Suggest, string? ToStatus = null, Guid? WarehousePublicId = null);
 
 /// <summary>Un documento que llegó y que los lectores evalúan: su fuente, su nombre (adjunto), el asunto del correo y su texto (si es cuerpo o PDF).</summary>
 public sealed record ReaderInput(string Source, string Name, string Subject, string? Text);

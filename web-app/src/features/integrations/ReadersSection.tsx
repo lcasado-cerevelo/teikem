@@ -1,6 +1,7 @@
 // Lectores de una integración de correo (2026-10-22): qué hace la integración con cada documento que llega (el cuerpo, un PDF, un archivo de datos). Cada lector tiene sus condiciones (nombre del adjunto,
 // asunto o texto del documento), sus campos a leer, su destino y, si hace falta, su plantilla y su cliente (un mismo buzón puede traer documentos de varios clientes y de varios tipos).
 import { useFieldArray, useWatch, type UseFormReturn } from 'react-hook-form'
+import { useWarehouses, warehouseLabel } from '../warehouse/api'
 import { useT } from '../../kernel/i18n'
 import { Field, IconPlus, IconTrash, Select, TextInput, Toggle } from '../../kernel/ui'
 import { BodyFieldsEditor } from './BodyFieldsEditor'
@@ -30,13 +31,16 @@ export function ReadersSection({ form, clientOptions, templateOptions }: { form:
     for (let n = 2; taken.has(name.toLowerCase()); n++) name = `${preset.reader.name} ${n}`
     readers.append({ ...(structuredClone(preset.reader) as ReaderValues), name })
   }
+  const anyNotice = (list ?? []).some((r) => r.target === 'ARRIVAL_NOTICE' || r.target === 'EXIT_NOTICE')
+  const warehouses = useWarehouses({ includeInactive: false }, { enabled: anyNotice, handleAccessDenied: false })
+  const warehouseOptions = (warehouses.data ?? []).map((w) => ({ value: w.publicId ?? '', label: warehouseLabel(w) }))
   const canConvert = (readers.fields.length === 0) && (email?.readBody || email?.readPdf || (email?.attachmentTypes ?? '').trim() !== '')
   return (
     <fieldset className="int-scopes int-readers">
       <legend>{t('integrations.email.readers.title')}</legend>
       <p className="help">{t('integrations.email.readers.help')}</p>
       {readers.fields.map((f, i) => (
-        <ReaderCard key={f.id} form={form} index={i} reader={list?.[i]} clientOptions={clientOptions} templateOptions={templateOptions} onRemove={() => readers.remove(i)} />
+        <ReaderCard key={f.id} form={form} index={i} reader={list?.[i]} clientOptions={clientOptions} templateOptions={templateOptions} warehouseOptions={warehouseOptions} onRemove={() => readers.remove(i)} />
       ))}
       {listError && (
         <p className="ferr" role="alert">
@@ -62,7 +66,7 @@ export function ReadersSection({ form, clientOptions, templateOptions }: { form:
   )
 }
 
-function ReaderCard({ form, index, reader, clientOptions, templateOptions, onRemove }: { form: UseFormReturn<IntegrationValues>; index: number; reader: ReaderValues | undefined; clientOptions: Option[]; templateOptions: Option[]; onRemove: () => void }) {
+function ReaderCard({ form, index, reader, clientOptions, templateOptions, warehouseOptions, onRemove }: { form: UseFormReturn<IntegrationValues>; index: number; reader: ReaderValues | undefined; clientOptions: Option[]; templateOptions: Option[]; warehouseOptions: Option[]; onRemove: () => void }) {
   const t = useT()
   const base = `email.readers.${index}`
   const conditions = useFieldArray({ control: form.control, name: `${base}.conditions` as 'email.readers.0.conditions' })
@@ -88,6 +92,11 @@ function ReaderCard({ form, index, reader, clientOptions, templateOptions, onRem
           <Toggle text={t('integrations.email.readers.firstOnly')} />
         </Field>
       </div>
+      {(reader?.target === 'ARRIVAL_NOTICE' || reader?.target === 'EXIT_NOTICE') && (
+        <Field name={`${base}.warehousePublicId`} label={t('integrations.email.readers.warehouse')} help={t('integrations.email.readers.warehouseHelp')}>
+          <Select options={warehouseOptions} placeholder={t('integrations.email.readers.onlyActiveWarehouse')} />
+        </Field>
+      )}
       {reader?.target === 'ORDER_COMPLETION' && (
         <div className="r2">
           <Field name={`${base}.mode`} label={t('integrations.email.readers.mode')} help={t('integrations.email.readers.modeHelp')}>

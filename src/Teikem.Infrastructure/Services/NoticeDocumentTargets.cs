@@ -75,7 +75,7 @@ public abstract class NoticeDocumentTarget(TeikemDbContext db, ITenantContext te
     public abstract string Kind { get; }
     protected abstract bool WithDestination { get; }
     protected abstract string Label { get; }
-    protected abstract Task<Guid> CreateAsync(Guid clientPublicId, NoticeRowRules.Group group, IReadOnlyList<(Guid ProductPublicId, decimal Quantity, string? Lot)> lines, CancellationToken ct);
+    protected abstract Task<Guid> CreateAsync(Guid clientPublicId, Guid? warehousePublicId, NoticeRowRules.Group group, IReadOnlyList<(Guid ProductPublicId, decimal Quantity, string? Lot)> lines, CancellationToken ct);
 
     public async Task<FileOutcome> ProcessAsync(DocumentTargetRequest request, CancellationToken ct)
     {
@@ -113,7 +113,7 @@ public abstract class NoticeDocumentTarget(TeikemDbContext db, ITenantContext te
                 .Select(x => (bySku[x.Key.Item1], x.Sum(r => r.Quantity ?? 0), x.Key.Lot)).ToList();
             if (lines.Count == 0) continue;
             if (missing.Count > 0) continue;   // un aviso a medias no se crea: todo el grupo queda en la bandeja para corregirlo
-            try { created.Add(await CreateAsync(request.Client.PublicId, g, lines, ct)); }
+            try { created.Add(await CreateAsync(request.Client.PublicId, request.Reader?.WarehousePublicId, g, lines, ct)); }
             catch (TeikemException ex)
             {
                 db.ChangeTracker.Clear();
@@ -128,16 +128,16 @@ public abstract class NoticeDocumentTarget(TeikemDbContext db, ITenantContext te
     }
 }
 
-/// <summary>Destino ARRIVAL_NOTICE: crea un aviso de llegada (ASN) del cliente por cada referencia del documento. El almacén es el único activo de la compañía.</summary>
+/// <summary>Destino ARRIVAL_NOTICE: crea un aviso de llegada (ASN) del cliente por cada referencia del documento. El almacén es el del lector o, si no trae, el único activo de la compañía.</summary>
 public sealed class ArrivalNoticeDocumentTarget(TeikemDbContext db, ITenantContext tenant, AsnService asns) : NoticeDocumentTarget(db, tenant)
 {
     public override string Kind => DocumentTargets.ArrivalNotice;
     protected override bool WithDestination => false;
     protected override string Label => "Aviso de llegada";
 
-    protected override async Task<Guid> CreateAsync(Guid clientPublicId, NoticeRowRules.Group group, IReadOnlyList<(Guid ProductPublicId, decimal Quantity, string? Lot)> lines, CancellationToken ct)
+    protected override async Task<Guid> CreateAsync(Guid clientPublicId, Guid? warehousePublicId, NoticeRowRules.Group group, IReadOnlyList<(Guid ProductPublicId, decimal Quantity, string? Lot)> lines, CancellationToken ct)
     {
-        var dto = await asns.CreateAsync(new AsnCreateRequest(null, clientPublicId, string.IsNullOrWhiteSpace(group.Reference) ? null : group.Reference, group.Date,
+        var dto = await asns.CreateAsync(new AsnCreateRequest(warehousePublicId, clientPublicId, string.IsNullOrWhiteSpace(group.Reference) ? null : group.Reference, group.Date,
             lines.Select(l => new AsnLineRequest(l.ProductPublicId, l.Quantity, l.Lot)).ToList()), ct);
         _ = dto;
         return Guid.Empty;   // el ASN se identifica por su número entero (no tiene PublicId); la corrida solo cuenta cuántos se crearon
@@ -151,9 +151,9 @@ public sealed class ExitNoticeDocumentTarget(TeikemDbContext db, ITenantContext 
     protected override bool WithDestination => true;
     protected override string Label => "Aviso de salida";
 
-    protected override async Task<Guid> CreateAsync(Guid clientPublicId, NoticeRowRules.Group group, IReadOnlyList<(Guid ProductPublicId, decimal Quantity, string? Lot)> lines, CancellationToken ct)
+    protected override async Task<Guid> CreateAsync(Guid clientPublicId, Guid? warehousePublicId, NoticeRowRules.Group group, IReadOnlyList<(Guid ProductPublicId, decimal Quantity, string? Lot)> lines, CancellationToken ct)
     {
-        var dto = await notices.CreateAsync(new ExitNoticeRequest(null, clientPublicId, string.IsNullOrWhiteSpace(group.Reference) ? null : group.Reference, group.Destination, group.Date, null,
+        var dto = await notices.CreateAsync(new ExitNoticeRequest(warehousePublicId, clientPublicId, string.IsNullOrWhiteSpace(group.Reference) ? null : group.Reference, group.Destination, group.Date, null,
             lines.Select(l => new ExitNoticeLineRequest(l.ProductPublicId, l.Quantity)).ToList()), ct);
         return dto.PublicId;
     }

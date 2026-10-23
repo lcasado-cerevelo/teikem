@@ -39964,6 +39964,8 @@ export interface components {
             recordStart?: string | null;
             mode?: string | null;
             toStatus?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string | null;
         };
         DriverAcceptRequest: {
             declines?: components["schemas"]["DriverDeclineItem"][] | null;

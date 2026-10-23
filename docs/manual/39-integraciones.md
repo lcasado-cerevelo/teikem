@@ -412,3 +412,12 @@ Los **finales de un flujo no se hacen solos**. Un lector con destino **«Cierre 
 - En modo **Automático** la propuesta nace **Aplicada** (o **Fallida**, y además va a la bandeja con el motivo).
 
 **Estados:** Por confirmar (PENDING), Confirmada (CONFIRMED), Aplicada (APPLIED, la hizo el lector automático), Rechazada (REJECTED) y Fallida (FAILED). API: `GET /api/v1/integrations/proposals?status=`, `POST …/proposals/{id}/confirm` y `…/reject` (cuerpo opcional `{ "note": "…" }`); 409 «La propuesta ya se resolvió.» si ya tenía decisión.
+
+## 19. Crear las integraciones de Axiscare y de CMS con scripts SQL (2026-10-23)
+
+La configuración de las integraciones por correo de **Axiscare (Advance Depot)** y de **CMS (Advance Logistics)** se crea con dos scripts SQL aparte, **fuera de `logistica-db-update.sql`**, que se corren a mano (`scripts/integraciones/axiscare-depot.sql` y `scripts/integraciones/cms-advance-logistics.sql`; instrucciones en `scripts/integraciones/README.md`). Son **idempotentes** y las integraciones nacen **apagadas**.
+
+- **Parámetros** al principio de cada script (compañía, cliente, almacén o tipo de servicio): si algo no existe se detienen con un mensaje claro («No existe la compañía indicada en @TenantName.», «No existe un almacén activo con el nombre de @WarehouseName en esa compañía.», «No existe el tipo de servicio de @ServiceTypeCode.»…).
+- Cada integración se crea igual que desde la pantalla: su **rol** y su **cuenta de servicio** (sin contraseña: no inicia sesión), con los permisos del alcance «Entrada de envíos por archivo». Lo que el SQL **no puede** poner es la **contraseña del buzón** (la aplicación la guarda cifrada): en **Integraciones → Editar** se ponen el servidor, el usuario y la contraseña, los remitentes permitidos, y se prende.
+- **Almacén del lector.** Un lector de aviso de llegada o de salida tiene su **Almacén del aviso**; sin él se usa el único almacén activo de la compañía y, si hay varios, el aviso no se crea (el motivo va a la bandeja). Los scripts de Axiscare lo dejan puesto.
+- **Axiscare:** los productos de los documentos deben existir con el mismo SKU como productos activos del cliente. **CMS:** hay que asignar choferes a las zonas «ERD Pick Up N» y crear las zonas que falten.
