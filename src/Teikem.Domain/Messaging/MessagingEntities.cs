@@ -30,6 +30,8 @@ public class MessageThread : ITenantScoped
     public DateTime LastMessageAtUtc { get; set; }
     public string? LastMessagePreview { get; set; }
     public int? LastSenderId { get; set; }
+    /// <summary>Lote 212 (B): si no es null, es el grupo «vivo» de ese rol: entra quien lo tiene y sale quien lo pierde (se sincroniza al escribir y al abrir). Uno por rol y compañía.</summary>
+    public int? FollowsRoleId { get; set; }
 }
 
 /// <summary>
@@ -47,6 +49,8 @@ public class MessageThreadMember : ITenantScoped
     public long LastReadMessageId { get; set; }
     public bool IsMuted { get; set; }
     public DateTime? LeftAtUtc { get; set; }
+    /// <summary>Lote 212 (B): entró a un grupo de rol POR TENER el rol (la sincronización lo saca si lo pierde). Quien entra al escribirle al grupo (un chofer) no lo tiene y se queda.</summary>
+    public bool ViaRole { get; set; }
 }
 
 /// <summary>
@@ -80,6 +84,36 @@ public static class MessageRefs
         var e = (entity ?? string.Empty).Trim().ToUpperInvariant();
         return All.Contains(e) ? e : null;
     }
+}
+
+/// <summary>Estados de una foto del chat: ACTIVE (se ve), ARCHIVED (ya no se muestra en el chat pero el contenido se conserva como evidencia), DELETED (el contenido se borró).</summary>
+public static class MessageAttachmentStates
+{
+    public const string Active = "ACTIVE";
+    public const string Archived = "ARCHIVED";
+    public const string Deleted = "DELETED";
+}
+
+/// <summary>
+/// Lote 212 (B) — una foto adjunta a un mensaje del chat. La foto (ya reducida por la app) y su miniatura viven cifradas en el almacén de archivos (IFileStore); aquí solo la referencia.
+/// Vive poco: pasados los días de retención de la compañía (Tenant.MessagePhotoDays, 30 por omisión) un trabajo programado la BORRA o la ARCHIVA (Tenant.MessagePhotoAction).
+/// Lo que importa como evidencia (entrega, excepción, daño) NO va aquí: vive pegado a su orden.
+/// </summary>
+public class MessageAttachment : ITenantScoped
+{
+    public long MessageAttachmentId { get; set; }
+    public Guid PublicId { get; set; } = Guid.NewGuid();
+    public int TenantId { get; set; }
+    public long MessageId { get; set; }
+    public string ContentType { get; set; } = string.Empty;
+    public long SizeBytes { get; set; }
+    public string Sha256 { get; set; } = string.Empty;
+    public string? StorageKey { get; set; }
+    public string? ThumbStorageKey { get; set; }
+    public string State { get; set; } = MessageAttachmentStates.Active;
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    /// <summary>Cuándo se borró o archivó (según State).</summary>
+    public DateTime? RemovedAtUtc { get; set; }
 }
 
 /// <summary>

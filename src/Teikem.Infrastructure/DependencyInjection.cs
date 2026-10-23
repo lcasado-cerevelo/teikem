@@ -399,6 +399,8 @@ public static class DependencyInjection
         // Lote 53 — mensajería interna con hilos: servicio, presencia («visto por última vez») y el empuje en vivo (nulo aquí; el API pone SignalR).
         services.AddScoped<PresenceService>();
         services.AddScoped<MessagingService>();
+        services.AddScoped<MessageRetentionService>();   // Lote 212 (B): retención de las fotos del chat
+        services.AddSingleton<IScheduledJob, MessageAttachmentPurgeJob>();
         services.AddScoped<ResponsibleService>();   // Lote 212: responsables de una ruta o zona
         services.AddScoped<MessageSuggestionService>();   // Lote 212: sugeridos de «Hablar sobre esta orden»
         services.AddScoped<AnnouncementService>();   // Lote 54

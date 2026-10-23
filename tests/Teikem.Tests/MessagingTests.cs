@@ -143,7 +143,7 @@ public class MessagingTests
     public void Every_messages_endpoint_requires_messages_use_and_presence_only_a_session()
     {
         var actions = typeof(MessagesController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly).ToList();
-        Assert.Equal(15, actions.Count);   // People, Roles, Threads, Create, Get, Send, Read, AddMembers, Leave, Mute, Unread + (Lote 212) Suggested, About, Responsibles, SetResponsibles
+        Assert.Equal(16, actions.Count);   // People, Roles, Threads, Create, Get, Send, Read, AddMembers, Leave, Mute, Unread + (Lote 212) Attachment, Suggested, About, Responsibles, SetResponsibles
         foreach (var m in actions)
             Assert.Equal(RequirePermissionAttribute.Prefix + PermissionCatalog.MessagesUse, m.GetCustomAttribute<RequirePermissionAttribute>()!.Policy);
         Assert.DoesNotContain(actions, m => m.GetCustomAttributes().Any(a => a.GetType().Name == "HttpDeleteAttribute"));   // los mensajes no se borran
@@ -163,6 +163,25 @@ public class MessagingTests
         foreach (var m in actions)
             Assert.Equal(RequirePermissionAttribute.Prefix + PermissionCatalog.AdminUsers, m.GetCustomAttribute<RequirePermissionAttribute>()!.Policy);
         Assert.NotNull(typeof(MessagingModesController).GetCustomAttribute<AuthorizeAttribute>());
+    }
+
+    [Fact]
+    public void The_photo_retention_settings_are_a_company_setting_not_messaging()
+    {
+        var actions = typeof(MessagingSettingsController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly).ToList();
+        Assert.Equal(2, actions.Count);   // Get, Put
+        foreach (var m in actions)
+            Assert.Equal(RequirePermissionAttribute.Prefix + PermissionCatalog.AdminTenant, m.GetCustomAttribute<RequirePermissionAttribute>()!.Policy);
+        Assert.NotNull(typeof(MessagingSettingsController).GetCustomAttribute<AuthorizeAttribute>());
+    }
+
+    [Fact]
+    public void The_chat_photo_purge_job_is_registered_and_runs_every_night()
+    {
+        var job = new Teikem.Infrastructure.Services.MessageAttachmentPurgeJob();
+        Assert.Equal("MESSAGE_ATTACHMENT_PURGE", job.Key);
+        Assert.Equal(new TimeSpan(3, 45, 0), job.DefaultDailyAt);
+        Assert.True(job.DefaultEnabled);
     }
 
     [Fact]

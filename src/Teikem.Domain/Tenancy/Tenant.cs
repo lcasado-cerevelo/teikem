@@ -14,6 +14,9 @@ public class Tenant : ISoftDeletable
     /// <summary>Bits Dom=1,Lun=2,Mar=4,Mié=8,Jue=16,Vie=32,Sáb=64; 62 = L-V.</summary>
     public byte WorkDaysMask { get; set; } = 62;
     public int MaxStopsPerRouteDefault { get; set; } = 25;
+    /// <summary>Lote 212 (B): días que viven las fotos del chat y qué se hace al vencer (DELETE = borrar, ARCHIVE = quitar del chat y conservar). El texto nunca se borra.</summary>
+    public int MessagePhotoDays { get; set; } = 30;
+    public string MessagePhotoAction { get; set; } = "DELETE";
     public bool IsActive { get; set; } = true;
     [NotAudited] public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     [NotAudited] public byte[]? RowVersion { get; set; }

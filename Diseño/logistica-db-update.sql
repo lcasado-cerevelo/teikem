@@ -6680,3 +6680,56 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_IntegrationProposal_Order' AND object_id = OBJECT_ID('dbo.IntegrationProposal'))
     CREATE INDEX IX_IntegrationProposal_Order ON dbo.IntegrationProposal(TenantId, TransportOrderId, ToStatus);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-23 (j) — Mensajería con el chofer, parte B (Lote 212).
+   - dbo.MessageAttachment: fotos del chat (referencia; el contenido vive cifrado en el almacén de archivos). State ACTIVE | ARCHIVED | DELETED.
+   - dbo.Tenant.MessagePhotoDays (30) / MessagePhotoAction ('DELETE' | 'ARCHIVE'): cuánto viven las fotos del chat y qué se hace al vencer.
+   - dbo.MessageThread.FollowsRoleId: grupo «vivo» de un rol (uno por rol y compañía). dbo.MessageThreadMember.ViaRole: entró POR TENER el rol (la sincronización lo saca si lo pierde).
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID(N'dbo.MessageAttachment', N'U') IS NULL CREATE TABLE dbo.MessageAttachment (
+    MessageAttachmentId BIGINT IDENTITY(1,1) PRIMARY KEY,
+    PublicId UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_MessageAttachment_PublicId DEFAULT NEWID(),
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    MessageId BIGINT NOT NULL REFERENCES dbo.Message(MessageId),
+    ContentType VARCHAR(100) NOT NULL,
+    SizeBytes BIGINT NOT NULL,
+    Sha256 CHAR(64) NOT NULL,
+    StorageKey NVARCHAR(300) NULL,
+    ThumbStorageKey NVARCHAR(300) NULL,
+    State VARCHAR(10) NOT NULL CONSTRAINT DF_MessageAttachment_State DEFAULT 'ACTIVE',
+    CreatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_MessageAttachment_Created DEFAULT SYSUTCDATETIME(),
+    RemovedAtUtc DATETIME2 NULL,
+    CONSTRAINT CK_MessageAttachment_State CHECK (State IN ('ACTIVE','ARCHIVED','DELETED'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_MessageAttachment_PublicId' AND object_id = OBJECT_ID('dbo.MessageAttachment'))
+    CREATE UNIQUE INDEX UX_MessageAttachment_PublicId ON dbo.MessageAttachment(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_MessageAttachment_Message' AND object_id = OBJECT_ID('dbo.MessageAttachment'))
+    CREATE INDEX IX_MessageAttachment_Message ON dbo.MessageAttachment(MessageId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_MessageAttachment_Purge' AND object_id = OBJECT_ID('dbo.MessageAttachment'))
+    CREATE INDEX IX_MessageAttachment_Purge ON dbo.MessageAttachment(TenantId, State, CreatedAtUtc);
+GO
+IF COL_LENGTH('dbo.Tenant', 'MessagePhotoDays') IS NULL
+BEGIN
+    ALTER TABLE dbo.Tenant ADD MessagePhotoDays INT NOT NULL CONSTRAINT DF_Tenant_MessagePhotoDays DEFAULT 30;
+    EXEC('ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_MessagePhotoDays CHECK (MessagePhotoDays BETWEEN 1 AND 3650)');
+END
+GO
+IF COL_LENGTH('dbo.Tenant', 'MessagePhotoAction') IS NULL
+BEGIN
+    ALTER TABLE dbo.Tenant ADD MessagePhotoAction VARCHAR(10) NOT NULL CONSTRAINT DF_Tenant_MessagePhotoAction DEFAULT 'DELETE';
+    EXEC('ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_MessagePhotoAction CHECK (MessagePhotoAction IN (''DELETE'',''ARCHIVE''))');
+END
+GO
+IF COL_LENGTH('dbo.MessageThreadMember', 'ViaRole') IS NULL
+    ALTER TABLE dbo.MessageThreadMember ADD ViaRole BIT NOT NULL CONSTRAINT DF_MessageThreadMember_ViaRole DEFAULT 0;
+GO
+IF COL_LENGTH('dbo.MessageThread', 'FollowsRoleId') IS NULL
+    ALTER TABLE dbo.MessageThread ADD FollowsRoleId INT NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_MessageThread_Role' AND object_id = OBJECT_ID('dbo.MessageThread'))
+    CREATE UNIQUE INDEX UX_MessageThread_Role ON dbo.MessageThread(TenantId, FollowsRoleId) WHERE FollowsRoleId IS NOT NULL;
+GO

@@ -58,4 +58,6 @@ public static class JobKeys
     public const string DriverTrackingPurge = "DRIVER_TRACKING_PURGE";
     /// <summary>2026-10-23: manda al teléfono los avisos nuevos de los choferes (FCM).</summary>
     public const string DriverPushDispatch = "DRIVER_PUSH_DISPATCH";
+    /// <summary>Lote 212 (B): borra o archiva las fotos del chat que pasaron sus días de vida.</summary>
+    public const string MessageAttachmentPurge = "MESSAGE_ATTACHMENT_PURGE";
 }

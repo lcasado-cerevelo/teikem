@@ -24,7 +24,13 @@ public sealed record MessageThreadSummaryDto(
     bool IsMuted);
 
 /// <summary>Un mensaje. Mine = lo escribió quien lo pide (la web lo pinta a la derecha).</summary>
-public sealed record MessageDto(long Id, int SenderId, string SenderName, string Body, DateTime CreatedAtUtc, bool Mine, MessageRefDto? Ref = null);
+public sealed record MessageDto(long Id, int SenderId, string SenderName, string Body, DateTime CreatedAtUtc, bool Mine, MessageRefDto? Ref = null, IReadOnlyList<MessageAttachmentDto>? Attachments = null);
+
+/// <summary>Una foto del chat. State: ACTIVE | ARCHIVED | DELETED (las dos últimas ya no se pueden ver). Se baja con GET /messages/attachments/{publicId} (?thumb=true para la miniatura).</summary>
+public sealed record MessageAttachmentDto(Guid PublicId, string ContentType, long SizeBytes, string State, bool HasThumb);
+
+/// <summary>Una foto que sube la app: DataBase64 = el contenido de la imagen en base64 (sin el prefijo data:).</summary>
+public sealed record MessageAttachmentUpload(string? FileName = null, string? DataBase64 = null);
 
 /// <summary>Lote 212 — a qué orden o ruta se refiere un mensaje. Entity ∈ ORDER | TRIP.</summary>
 public sealed record MessageRefRequest(string? Entity = null, Guid? PublicId = null);
@@ -50,9 +56,9 @@ public sealed record MessageThreadDto(
 /// Nuevo hilo: UserIds (personas) y/o RoleId (todas las personas activas con ese rol hoy, «en foto»). Una sola persona sin rol = hilo entre
 /// dos (se reusa el que ya exista); si no, grupo (Title opcional). Text = el primer mensaje.
 /// </summary>
-public sealed record MessageThreadRequest(IReadOnlyList<int>? UserIds = null, int? RoleId = null, string? Title = null, string? Text = null, MessageRefRequest? Ref = null);
+public sealed record MessageThreadRequest(IReadOnlyList<int>? UserIds = null, int? RoleId = null, string? Title = null, string? Text = null, MessageRefRequest? Ref = null, IReadOnlyList<MessageAttachmentUpload>? Attachments = null, bool? FollowRole = null);
 
-public sealed record MessageSendRequest(string? Text = null, MessageRefRequest? Ref = null);
+public sealed record MessageSendRequest(string? Text = null, MessageRefRequest? Ref = null, IReadOnlyList<MessageAttachmentUpload>? Attachments = null);
 
 public sealed record MessageMembersRequest(IReadOnlyList<int>? UserIds = null);
 
@@ -87,3 +93,7 @@ public sealed record ResponsiblesRequest(string? Entity = null, string? Key = nu
 
 /// <summary>Un mensaje (de mis hilos) que habla de una orden o ruta, con el hilo donde está.</summary>
 public sealed record MessageAboutDto(Guid ThreadPublicId, long MessageId, string SenderName, string Preview, DateTime CreatedAtUtc);
+
+/// <summary>Lote 212 (B) — cuánto viven las fotos del chat en esta compañía y qué pasa al vencer (DELETE | ARCHIVE). El texto de los mensajes no se borra nunca.</summary>
+public sealed record MessagingSettingsDto(int PhotoDays, string PhotoAction);
+public sealed record MessagingSettingsRequest(int? PhotoDays = null, string? PhotoAction = null);

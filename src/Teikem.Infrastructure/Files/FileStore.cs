@@ -34,6 +34,8 @@ public interface IFileStore
     /// <summary>Guarda el contenido en claro de un archivo nuevo y devuelve su llave en el almacén.</summary>
     Task<string> SaveAsync(int tenantId, Guid publicId, ReadOnlyMemory<byte> content, CancellationToken ct);
     Task<byte[]> ReadAsync(int tenantId, string storageKey, CancellationToken ct);
+    /// <summary>Borra el contenido de un archivo (solo para lo efímero, como las fotos del chat; la evidencia nunca se borra). No falla si ya no existe.</summary>
+    Task DeleteAsync(int tenantId, string storageKey, CancellationToken ct);
 }
 
 /// <summary>
@@ -72,6 +74,15 @@ public sealed class EncryptedDiskFileStore(IOptions<FileStoreOptions> options) :
         cipher.CopyTo(blob, NonceSize + TagSize);
         await File.WriteAllBytesAsync(full, blob, ct);
         return relative;
+    }
+
+    public Task DeleteAsync(int tenantId, string storageKey, CancellationToken ct)
+    {
+        var full = Path.GetFullPath(Path.Combine(RootPath, storageKey));
+        if (!full.StartsWith(RootPath, StringComparison.OrdinalIgnoreCase)) return Task.CompletedTask;   // nunca fuera de la raíz
+        if (!full.Replace('\\', '/').Contains($"/{tenantId}/")) return Task.CompletedTask;               // y solo dentro de la carpeta de la compañía
+        if (File.Exists(full)) File.Delete(full);
+        return Task.CompletedTask;
     }
 
     public async Task<byte[]> ReadAsync(int tenantId, string storageKey, CancellationToken ct)

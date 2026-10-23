@@ -51,6 +51,28 @@ public sealed class DriverPushService(TeikemDbContext db, ITenantContext tenant,
 
     private static string? Trim(string? s, int max) => string.IsNullOrWhiteSpace(s) ? null : (s.Trim().Length <= max ? s.Trim() : s.Trim()[..max]);
 
+    /// <summary>
+    /// Lote 212 (B): manda un aviso al teléfono de los choferes que son estos usuarios (un mensaje del chat). Sin Firebase configurado no hace nada. Un token rechazado se desactiva.
+    /// Devuelve a cuántos teléfonos se mandó. Quien llama debe tratar cualquier fallo como no fatal: el mensaje ya quedó guardado.
+    /// </summary>
+    public async Task<int> SendToUsersAsync(IReadOnlyCollection<int> userIds, string title, string? body, IReadOnlyDictionary<string, string> data, CancellationToken ct)
+    {
+        if (!push.IsConfigured || userIds.Count == 0) return 0;
+        // dos consultas: mezclar AsTracking con un AsNoTracking en el mismo join deja TODA la consulta sin seguimiento y el token muerto no se desactivaría
+        var driverIds = await db.Drivers.AsNoTracking().Where(dr => dr.UserId != null && userIds.Contains(dr.UserId.Value)).Select(dr => dr.DriverId).ToListAsync(ct);
+        if (driverIds.Count == 0) return 0;
+        var devices = await db.DriverDevices.AsTracking().Where(d => driverIds.Contains(d.DriverId) && d.IsActive && d.PushToken != null).Take(50).ToListAsync(ct);
+        var sent = 0;
+        foreach (var d in devices)
+        {
+            var r = await push.SendAsync(d.PushToken!, title, body, data, ct);
+            if (r == PushOutcome.InvalidToken) d.IsActive = false;
+            else if (r == PushOutcome.Sent) sent++;
+        }
+        if (devices.Count > 0) await db.SaveChangesAsync(ct);
+        return sent;
+    }
+
     /// <summary>Manda los avisos pendientes de esta compañía. Devuelve (enviados, sin teléfono, fallidos por reintentar).</summary>
     public async Task<(int Sent, int NoDevice, int Retry)> DispatchPendingAsync(CancellationToken ct)
     {

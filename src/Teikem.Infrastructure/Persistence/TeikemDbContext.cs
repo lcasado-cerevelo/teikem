@@ -281,6 +281,7 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<Teikem.Domain.Messaging.ConsigneeConversation> ConsigneeConversations => Set<Teikem.Domain.Messaging.ConsigneeConversation>();
     public DbSet<Teikem.Domain.Messaging.ConsigneeMessage> ConsigneeMessages => Set<Teikem.Domain.Messaging.ConsigneeMessage>();
     public DbSet<Teikem.Domain.Messaging.ClientServiceTeamMember> ClientServiceTeamMembers => Set<Teikem.Domain.Messaging.ClientServiceTeamMember>();
+    public DbSet<Teikem.Domain.Messaging.MessageAttachment> MessageAttachments => Set<Teikem.Domain.Messaging.MessageAttachment>();
     public DbSet<Teikem.Domain.Messaging.EntityResponsible> EntityResponsibles => Set<Teikem.Domain.Messaging.EntityResponsible>();
     public DbSet<Teikem.Domain.Messaging.Message> Messages => Set<Teikem.Domain.Messaging.Message>();
     public DbSet<Teikem.Domain.Messaging.UserPresence> UserPresences => Set<Teikem.Domain.Messaging.UserPresence>();

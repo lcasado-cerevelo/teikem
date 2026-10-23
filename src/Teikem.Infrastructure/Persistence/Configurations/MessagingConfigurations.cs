@@ -19,6 +19,7 @@ public sealed class MessageThreadConfiguration : IEntityTypeConfiguration<Messag
         b.Property(t => t.DirectKey).HasMaxLength(40).IsUnicode(false);
         b.Property(t => t.LastMessagePreview).HasMaxLength(200);
         b.HasIndex(t => t.PublicId).IsUnique().HasDatabaseName("UQ_MessageThread_PublicId");
+        b.HasIndex(t => new { t.TenantId, t.FollowsRoleId }).IsUnique().HasFilter("[FollowsRoleId] IS NOT NULL").HasDatabaseName("UX_MessageThread_Role");
         b.HasIndex(t => new { t.TenantId, t.DirectKey }).IsUnique().HasFilter("[DirectKey] IS NOT NULL").HasDatabaseName("UX_MessageThread_Direct");
     }
 }
@@ -135,5 +136,23 @@ public sealed class EntityResponsibleConfiguration : IEntityTypeConfiguration<En
         b.ToTable("EntityResponsible");
         b.HasKey(r => r.EntityResponsibleId);
         b.HasIndex(r => new { r.TenantId, r.EntityLookupId, r.EntityId, r.UserId }).IsUnique().HasDatabaseName("UX_EntityResponsible");
+    }
+}
+
+public sealed class MessageAttachmentConfiguration : IEntityTypeConfiguration<MessageAttachment>
+{
+    public void Configure(EntityTypeBuilder<MessageAttachment> b)
+    {
+        b.ToTable("MessageAttachment");
+        b.HasKey(a => a.MessageAttachmentId);
+        b.Property(a => a.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();
+        b.Property(a => a.ContentType).HasMaxLength(100).IsUnicode(false).IsRequired();
+        b.Property(a => a.Sha256).HasMaxLength(64).IsUnicode(false).IsRequired();
+        b.Property(a => a.StorageKey).HasMaxLength(300);
+        b.Property(a => a.ThumbStorageKey).HasMaxLength(300);
+        b.Property(a => a.State).HasMaxLength(10).IsUnicode(false).IsRequired();
+        b.HasIndex(a => a.PublicId).IsUnique().HasDatabaseName("UX_MessageAttachment_PublicId");
+        b.HasIndex(a => a.MessageId).HasDatabaseName("IX_MessageAttachment_Message");
+        b.HasIndex(a => new { a.TenantId, a.State, a.CreatedAtUtc }).HasDatabaseName("IX_MessageAttachment_Purge");
     }
 }

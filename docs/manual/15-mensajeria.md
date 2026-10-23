@@ -116,3 +116,40 @@ Los responsables de una **ruta** o de una **zona de despacho** (varios por entid
 | Responsables: clave inválida | `La clave de la entidad no es válida.` | 400 |
 | Responsables: usuario ajeno | `Usuario no encontrado en esta compañía.` | 400 |
 | Responsables sin permiso | `No tiene permiso para cambiar los responsables (trips.plan).` (o `fleet.manage`) | 403 |
+
+## 9. Fotos del chat, aviso al teléfono del chofer y grupos de rol (Lote 212 B, 2026-10-23)
+
+### 9.1 Fotos en el chat
+- Un mensaje puede llevar **hasta 4 fotos** (JPG, PNG o WEBP, de hasta 3 MB cada una; la app las reduce sola). Se mandan en `attachments` (`{fileName, dataBase64}`) al crear el hilo o al enviar. **Un mensaje puede ser solo fotos** (sin texto): en la lista se ve «📷 Foto» o «📷 3 fotos».
+- Cada foto se guarda **cifrada en el servidor**, con una miniatura (320 px) para el hilo. Se baja con `GET /api/v1/messages/attachments/{publicId}` (`?thumb=true` = miniatura). **Solo quien es parte del hilo** la puede bajar (404 si no); el teléfono no la guarda: la ve en pantalla.
+- **Las fotos del chat viven poco** (30 días por omisión). Una **evidencia** (entrega, excepción, daño) **no** va en el chat: se levanta en su pantalla y queda pegada a la orden.
+- Si la plataforma del servidor no puede generar miniaturas, el mensaje se guarda igual y la miniatura se sirve como la foto completa (en Windows lo hace siempre).
+
+### 9.2 Cuánto viven: ajuste de la compañía
+`GET/PUT /api/v1/messaging-settings` (permiso `admin.tenant`): `photoDays` (1 a 3650, 30 por omisión) y `photoAction`:
+- `DELETE` (por omisión): al vencer, el **contenido se borra** del servidor. En el hilo queda «La foto se borró el 2026-11-22.».
+- `ARCHIVE`: al vencer, la foto **deja de mostrarse** en el chat pero **el contenido se conserva** (evidencia). Todavía no se mueve a un almacén en frío: eso llega con el almacenamiento en la nube.
+- El **texto de los mensajes nunca se borra**. El trabajo programado «Limpiar las fotos del chat» (`MESSAGE_ATTACHMENT_PURGE`, cada noche a las 03:45; hasta 500 por corrida) hace el trabajo; se ve y se corre desde Trabajos programados.
+
+### 9.3 Aviso emergente (push) al teléfono del chofer
+Cada mensaje nuevo le llega al chofer como aviso emergente en su teléfono (título = quien escribe, o el nombre del grupo; texto = el mensaje, en grupo «Ana: …»), **salvo que haya silenciado el hilo**. Al tocarlo, la app abre ese hilo (`data.kind = MESSAGE`, `data.thread`). Sin Firebase configurado (`Push:Fcm:ServiceAccountJsonPath`) no sale nada y el mensaje igual está en el chat. Un token que Firebase rechaza (app desinstalada) se desactiva solo. Hoy el aviso al teléfono es para choferes; el personal lo tendrá con su app.
+
+### 9.4 Grupo de rol «vivo»
+`POST /messages/threads` con `roleId` y `followRole: true` crea (o **reusa**: es uno solo por rol y compañía) el grupo de ese rol. Entran las personas que tienen el rol, y la lista se **sincroniza sola** cada vez que alguien escribe o abre el grupo: si alguien recibe el rol, entra (ve el historial solo desde que entra); si lo pierde, sale. **Quien le escribe al grupo sin tener el rol (un chofer) se queda.** A un grupo de rol no se le agregan personas a mano. Sin `followRole`, «escribirle a un rol» sigue como antes (una «foto» de quienes lo tienen hoy).
+
+### 9.5 Mensajes exactos y códigos
+| Situación | Mensaje | HTTP |
+|---|---|---|
+| Más de 4 fotos | `Un mensaje puede llevar hasta 4 fotos.` | 400 |
+| Base64 inválido o vacío | `La foto no es válida (base64 de una imagen JPG, PNG o WEBP).` | 400 |
+| Tipo distinto de JPG/PNG/WEBP | `Solo se admiten fotos JPG, PNG o WEBP.` | 400 |
+| Foto de más de 3 MB | `Cada foto no puede pasar de 3 MB (la app las reduce sola).` | 400 |
+| Almacén de archivos sin configurar | `El almacén de archivos no está configurado (Files:MasterKey); avise a soporte.` | 400 |
+| Sin texto y sin fotos | `Escriba el mensaje.` | 400 |
+| Foto de un hilo del que no soy parte | `Foto no encontrada.` | 404 |
+| Foto ya borrada | `La foto se borró el AAAA-MM-DD.` | 409 |
+| Foto ya archivada | `La foto se archivó el AAAA-MM-DD y ya no se muestra en el chat.` | 409 |
+| Días de las fotos fuera de rango | `Los días de las fotos del chat deben estar entre 1 y 3650.` | 400 |
+| Acción al vencer inválida | `Al vencer, la foto se puede DELETE (borrar) o ARCHIVE (archivar).` | 400 |
+| `followRole` sin `roleId` | `Para un grupo de rol indique el rol (roleId).` | 400 |
+| Agregar personas a un grupo de rol | `A un grupo de rol no se agregan personas: entra quien tiene el rol.` | 409 |

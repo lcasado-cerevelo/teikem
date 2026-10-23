@@ -10486,3 +10486,17 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **Corrí el script y la integración no recibe correos.** Nace apagada y con el buzón en marcadores «CAMBIAR». En Integraciones → Editar ponga el servidor IMAP, el usuario y la contraseña del buzón, los remitentes permitidos y préndala. Antes de prenderla pruebe con *Subir archivo*.
 
 **«No hay almacén … » / el aviso de llegada no se crea con varios almacenes.** Con más de un almacén activo, el lector debe tener su «Almacén del aviso». Edítelo en Integraciones → Editar → Lectores.
+
+## Lote 212 (B) — Fotos del chat, aviso al teléfono y grupos de rol
+
+**«Un mensaje puede llevar hasta 4 fotos.» / «Solo se admiten fotos JPG, PNG o WEBP.» / «Cada foto no puede pasar de 3 MB…» (400).** Son los límites de las fotos del chat; la app las reduce sola. Un PDF o un documento no va por el chat: se adjunta a la orden.
+
+**«El almacén de archivos no está configurado (Files:MasterKey)…» al mandar una foto (400).** Falta la llave del almacén en el servidor (`Files:MasterKey`); avise a soporte. Los mensajes de texto siguen funcionando.
+
+**«La foto se borró el …» / «La foto se archivó el …» (409).** Las fotos del chat viven 30 días por omisión (ajustable en `GET/PUT /messaging-settings`, `admin.tenant`). Si había que conservarla, debió pegarse a la orden como evidencia. Con la acción `ARCHIVE` el contenido se conserva en el servidor aunque ya no se muestre.
+
+**¿Por qué el chofer no recibe el aviso emergente de un mensaje?** Revise en este orden: (1) el servidor tiene la clave de Firebase (`Push:Fcm:ServiceAccountJsonPath`); (2) el chofer aceptó el permiso de notificaciones y tiene la app instalada; (3) no silenció ese hilo; (4) su usuario no está en «Sin mensajería». El mensaje siempre queda en el chat.
+
+**«A un grupo de rol no se agregan personas: entra quien tiene el rol.» (409).** En el grupo «vivo» de un rol (por ejemplo Despachadores) entra quien tiene el rol. Para meter a alguien, dele el rol; para una conversación a medida, cree un grupo normal.
+
+**Alguien dejó de tener el rol y sigue en el grupo.** La lista se sincroniza cuando alguien escribe o abre el grupo; si no ha pasado ninguna de las dos, se actualiza en la siguiente. Quien le escribió al grupo sin tener el rol (un chofer) no sale nunca por esto.

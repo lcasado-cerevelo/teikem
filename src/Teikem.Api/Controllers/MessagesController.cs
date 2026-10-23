@@ -19,6 +19,15 @@ namespace Teikem.Api.Controllers;
 [Authorize]
 public sealed class MessagesController(MessagingService messages, MessageSuggestionService suggestions, ResponsibleService responsibles) : ControllerBase
 {
+    /// <summary>Lote 212 (B) — la foto de un mensaje (?thumb=true para la miniatura). 404 si no soy parte del hilo; 409 si ya se borró o archivó.</summary>
+    [HttpGet("attachments/{publicId:guid}"), RequirePermission(PermissionCatalog.MessagesUse)]
+    public async Task<IActionResult> Attachment(Guid publicId, [FromQuery] bool thumb, CancellationToken ct)
+    {
+        var (content, type) = await messages.GetAttachmentAsync(publicId, thumb, ct);
+        Response.Headers.CacheControl = "private, max-age=3600";
+        return File(content, type);
+    }
+
     /// <summary>Lote 212 — a quién proponerle primero para hablar de una orden (ORDER) o ruta (TRIP): responsables de la ruta y de la zona, despachadores y conversaciones recientes.</summary>
     [HttpGet("suggested"), RequirePermission(PermissionCatalog.MessagesUse)]
     public Task<IReadOnlyList<MessageSuggestionDto>> Suggested([FromQuery] string? entity, [FromQuery] Guid publicId, CancellationToken ct) => suggestions.SuggestAsync(entity, publicId, ct);
@@ -113,4 +122,17 @@ public sealed class MessagingModesController(MessagingService messages) : Contro
 
     [HttpPut("{userId:int}"), RequirePermission(PermissionCatalog.AdminUsers)]
     public Task<MessagingModeDto> Set(int userId, [FromBody] MessagingModeRequest req, CancellationToken ct) => messages.SetModeAsync(userId, req, ct);
+}
+
+/// <summary>Lote 212 (B) — cuánto viven las fotos del chat y qué pasa al vencer. Es un ajuste de la compañía: exige <c>admin.tenant</c>.</summary>
+[ApiController]
+[Route("api/v1/messaging-settings")]
+[Authorize]
+public sealed class MessagingSettingsController(MessageRetentionService retention) : ControllerBase
+{
+    [HttpGet, RequirePermission(PermissionCatalog.AdminTenant)]
+    public Task<MessagingSettingsDto> Get(CancellationToken ct) => retention.GetSettingsAsync(ct);
+
+    [HttpPut, RequirePermission(PermissionCatalog.AdminTenant)]
+    public Task<MessagingSettingsDto> Put([FromBody] MessagingSettingsRequest req, CancellationToken ct) => retention.UpdateSettingsAsync(req, ct);
 }

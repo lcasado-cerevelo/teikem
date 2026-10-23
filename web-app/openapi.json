@@ -25183,6 +25183,36 @@
         }
       }
     },
+    "/api/v1/messages/attachments/{publicId}": {
+      "get": {
+        "tags": [
+          "Messages"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "thumb",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/messages/suggested": {
       "get": {
         "tags": [
@@ -25977,6 +26007,81 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MessagingModeDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/messaging-settings": {
+      "get": {
+        "tags": [
+          "MessagingSettings"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagingSettingsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagingSettingsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagingSettingsDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "MessagingSettings"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessagingSettingsRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessagingSettingsRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessagingSettingsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagingSettingsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagingSettingsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagingSettingsDto"
                 }
               }
             }
@@ -58973,7 +59078,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": {}
+        "additionalProperties": { }
       },
       "DriverPayPolicyDto": {
         "type": "object",
@@ -59108,7 +59213,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": {}
+        "additionalProperties": { }
       },
       "DriverRatesDto": {
         "type": "object",
@@ -61449,7 +61554,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": {}
+        "additionalProperties": { }
       },
       "FuelVehicleSummaryDto": {
         "type": "object",
@@ -65294,6 +65399,45 @@
         },
         "additionalProperties": false
       },
+      "MessageAttachmentDto": {
+        "type": "object",
+        "properties": {
+          "publicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contentType": {
+            "type": "string",
+            "nullable": true
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasThumb": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MessageAttachmentUpload": {
+        "type": "object",
+        "properties": {
+          "fileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "dataBase64": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "MessageDto": {
         "type": "object",
         "properties": {
@@ -65322,6 +65466,13 @@
           },
           "ref": {
             "$ref": "#/components/schemas/MessageRefDto"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MessageAttachmentDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -65501,6 +65652,13 @@
           },
           "ref": {
             "$ref": "#/components/schemas/MessageRefRequest"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MessageAttachmentUpload"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -65591,6 +65749,17 @@
           },
           "ref": {
             "$ref": "#/components/schemas/MessageRefRequest"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MessageAttachmentUpload"
+            },
+            "nullable": true
+          },
+          "followRole": {
+            "type": "boolean",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -65682,6 +65851,35 @@
         "type": "object",
         "properties": {
           "mode": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MessagingSettingsDto": {
+        "type": "object",
+        "properties": {
+          "photoDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "photoAction": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MessagingSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "photoDays": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "photoAction": {
             "type": "string",
             "nullable": true
           }
@@ -67170,7 +67368,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": {}
+        "additionalProperties": { }
       },
       "OrderDetailDto": {
         "type": "object",
@@ -67741,7 +67939,7 @@
             "type": "boolean"
           }
         },
-        "additionalProperties": {}
+        "additionalProperties": { }
       },
       "OrderQuotePreviewDto": {
         "type": "object",
@@ -72163,7 +72361,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": {}
+        "additionalProperties": { }
       },
       "ProductSerialConversionRequest": {
         "type": "object",
@@ -72877,7 +73075,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": {}
+        "additionalProperties": { }
       },
       "PurchaseOrderStatusRequest": {
         "type": "object",
@@ -75478,7 +75676,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": {}
+        "additionalProperties": { }
       },
       "RentalProcessAdvanceRequest": {
         "type": "object",
@@ -76189,7 +76387,7 @@
             "type": "array",
             "items": {
               "type": "object",
-              "additionalProperties": {}
+              "additionalProperties": { }
             },
             "nullable": true
           },
@@ -82948,7 +83146,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": {}
+        "additionalProperties": { }
       },
       "TripStartRequest": {
         "type": "object",
@@ -84158,7 +84356,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": {}
+        "additionalProperties": { }
       },
       "VisibilityRequest": {
         "type": "object",
@@ -84420,7 +84618,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": {}
+        "additionalProperties": { }
       },
       "WarehouseBinRequest": {
         "type": "object",
@@ -84635,7 +84833,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": {}
+        "additionalProperties": { }
       },
       "WarehouseDockRequest": {
         "type": "object",
@@ -84807,7 +85005,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": {}
+        "additionalProperties": { }
       },
       "WarehousePulseDayDto": {
         "type": "object",
@@ -85182,7 +85380,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": {}
+        "additionalProperties": { }
       },
       "WarehouseZoneRequest": {
         "type": "object",
@@ -85729,7 +85927,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": {}
+        "additionalProperties": { }
       },
       "WorkOrderStatusRequest": {
         "type": "object",
@@ -86034,7 +86232,7 @@
   },
   "security": [
     {
-      "Bearer": []
+      "Bearer": [ ]
     }
   ]
 }

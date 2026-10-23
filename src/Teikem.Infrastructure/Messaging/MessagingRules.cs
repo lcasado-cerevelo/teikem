@@ -67,6 +67,30 @@ public static class MessagingRules
     /// <summary>El texto de la vista previa de un mensaje con referencia: «[ORD-123] texto».</summary>
     public static string PreviewWithRef(string? refTitle, string body) => string.IsNullOrEmpty(refTitle) ? Preview(body) : Preview($"[{refTitle}] {body}");
 
+    // ---- fotos del chat y grupos de rol (Lote 212, B)
+    public const int MaxAttachmentsPerMessage = 4;
+    public const int MaxAttachmentMegabytes = 3;
+    public const int DefaultPhotoDays = 30;
+    public const int ThumbSide = 320;
+    public const string TooManyAttachmentsMessage = "Un mensaje puede llevar hasta 4 fotos.";
+    public const string AttachmentInvalidMessage = "La foto no es válida (base64 de una imagen JPG, PNG o WEBP).";
+    public const string AttachmentTypeMessage = "Solo se admiten fotos JPG, PNG o WEBP.";
+    public static string AttachmentTooLargeMessage => $"Cada foto no puede pasar de {MaxAttachmentMegabytes} MB (la app las reduce sola).";
+    public const string PhotoDaysMessage = "Los días de las fotos del chat deben estar entre 1 y 3650.";
+    public const string PhotoActionMessage = "Al vencer, la foto se puede DELETE (borrar) o ARCHIVE (archivar).";
+    public const string RoleGroupNoAddMessage = "A un grupo de rol no se agregan personas: entra quien tiene el rol.";
+    public const string FollowRoleNeedsRoleMessage = "Para un grupo de rol indique el rol (roleId).";
+    public static string AttachmentGoneMessage(string state, DateTime? whenUtc)
+        => state == Teikem.Domain.Messaging.MessageAttachmentStates.Archived
+            ? $"La foto se archivó el {whenUtc:yyyy-MM-dd} y ya no se muestra en el chat."
+            : $"La foto se borró el {whenUtc:yyyy-MM-dd}.";
+
+    public static readonly string[] PhotoActions = { "DELETE", "ARCHIVE" };
+    public static string? NormalizePhotoAction(string? a) { var x = (a ?? string.Empty).Trim().ToUpperInvariant(); return PhotoActions.Contains(x) ? x : null; }
+
+    /// <summary>Lo que se muestra en la lista cuando el mensaje no tiene texto: «📷 Foto» / «📷 3 fotos».</summary>
+    public static string AttachmentPreview(int count) => count == 1 ? "📷 Foto" : $"📷 {count} fotos";
+
     public static string KindOf(int recipientCount, bool usedRole) => recipientCount == 1 && !usedRole ? MessageThreadKinds.Direct : MessageThreadKinds.Group;
 }
 

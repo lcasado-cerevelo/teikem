@@ -19180,6 +19180,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/messages/attachments/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    thumb?: boolean;
+                };
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/messages/suggested": {
         parameters: {
             query?: never;
@@ -19823,6 +19860,70 @@ export interface paths {
                         "text/plain": components["schemas"]["MessagingModeDto"];
                         "application/json": components["schemas"]["MessagingModeDto"];
                         "text/json": components["schemas"]["MessagingModeDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messaging-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessagingSettingsDto"];
+                        "application/json": components["schemas"]["MessagingSettingsDto"];
+                        "text/json": components["schemas"]["MessagingSettingsDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["MessagingSettingsRequest"];
+                    "text/json": components["schemas"]["MessagingSettingsRequest"];
+                    "application/*+json": components["schemas"]["MessagingSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessagingSettingsDto"];
+                        "application/json": components["schemas"]["MessagingSettingsDto"];
+                        "text/json": components["schemas"]["MessagingSettingsDto"];
                     };
                 };
             };
@@ -42371,6 +42472,19 @@ export interface components {
             /** Format: date-time */
             createdAtUtc?: string;
         };
+        MessageAttachmentDto: {
+            /** Format: uuid */
+            publicId?: string;
+            contentType?: string | null;
+            /** Format: int64 */
+            sizeBytes?: number;
+            state?: string | null;
+            hasThumb?: boolean;
+        };
+        MessageAttachmentUpload: {
+            fileName?: string | null;
+            dataBase64?: string | null;
+        };
         MessageDto: {
             /** Format: int64 */
             id?: number;
@@ -42382,6 +42496,7 @@ export interface components {
             createdAtUtc?: string;
             mine?: boolean;
             ref?: components["schemas"]["MessageRefDto"];
+            attachments?: components["schemas"]["MessageAttachmentDto"][] | null;
         };
         MessageLatestDto: {
             /** Format: uuid */
@@ -42441,6 +42556,7 @@ export interface components {
         MessageSendRequest: {
             text?: string | null;
             ref?: components["schemas"]["MessageRefRequest"];
+            attachments?: components["schemas"]["MessageAttachmentUpload"][] | null;
         };
         MessageSuggestionDto: {
             source?: string | null;
@@ -42466,6 +42582,8 @@ export interface components {
             title?: string | null;
             text?: string | null;
             ref?: components["schemas"]["MessageRefRequest"];
+            attachments?: components["schemas"]["MessageAttachmentUpload"][] | null;
+            followRole?: boolean | null;
         };
         MessageThreadSummaryDto: {
             /** Format: uuid */
@@ -42499,6 +42617,16 @@ export interface components {
         };
         MessagingModeRequest: {
             mode?: string | null;
+        };
+        MessagingSettingsDto: {
+            /** Format: int32 */
+            photoDays?: number;
+            photoAction?: string | null;
+        };
+        MessagingSettingsRequest: {
+            /** Format: int32 */
+            photoDays?: number | null;
+            photoAction?: string | null;
         };
         MfaConfirmRequest: {
             code?: string | null;
