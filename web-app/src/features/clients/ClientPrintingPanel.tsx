@@ -57,6 +57,14 @@ export function ClientPrintingPanel({ client }: { client: ClientDetail }) {
           <Field name="autoPrintInvoice" label={t('clients.profile.autoPrintInvoice')} help={t('clients.profile.autoPrintInvoiceHelp')}>
             <Toggle text={t('clients.profile.autoPrintInvoiceText')} />
           </Field>
+          <h3 className="set-h3">{t('clients.profile.driverDeliveryTitle')}</h3>
+          <p className="help">{t('clients.profile.driverDeliveryHelp')}</p>
+          <Field name="requireDeliverySignature" label={t('clients.profile.requireSignature')}>
+            <Toggle text={t('clients.profile.requireSignatureText')} />
+          </Field>
+          <Field name="requireDeliveryPhoto" label={t('clients.profile.requirePhoto')}>
+            <Toggle text={t('clients.profile.requirePhotoText')} />
+          </Field>
           <ModuleGate module={ModuleKeys.WmsLotSerial}>
             <h3 className="set-h3">{t('clients.profile.portalCreateTitle')}</h3>
             <p className="help">{t('clients.profile.portalCreateHelp')}</p>

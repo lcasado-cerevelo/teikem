@@ -48,9 +48,11 @@ export function useRouteTracking() {
         fg = await Location.requestForegroundPermissionsAsync();
       }
       if (!fg.granted) {
+        useAppStore.getState().setTrackingPermissionLost(true);
         await trackingStore.addEvent('PERMISSION_LOST');
         return;
       }
+      useAppStore.getState().setTrackingPermissionLost(false);
       // El permiso «siempre» es el que deja seguir con la pantalla apagada; si no lo da, sigue mientras la app esté abierta.
       let bg = await Location.getBackgroundPermissionsAsync();
       if (!bg.granted) bg = await Location.requestBackgroundPermissionsAsync().catch(() => bg);
@@ -98,6 +100,7 @@ export function useRouteTracking() {
       void (async () => {
         const fg = await Location.getForegroundPermissionsAsync();
         if (!fg.granted) {
+          useAppStore.getState().setTrackingPermissionLost(true);
           if (await trackingStore.getRunning()) await trackingStore.addEvent('PERMISSION_LOST');
           await trackingStore.setRunning(false);
         } else void start();

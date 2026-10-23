@@ -53,6 +53,9 @@ interface ShipmentDetailDto {
   notes?: string | null;
   clientName?: string | null;
   canClose: boolean;
+  signatureRequired?: boolean;
+  photoRequired?: boolean;
+  codPending?: number | null;
 }
 
 export interface Company {
@@ -97,6 +100,7 @@ export async function fetchShipmentDetail(s: Shipment): Promise<ShipmentDetail> 
     ...s, consigneeName: data.consigneeName ?? s.consigneeName, contactPerson: data.contactPerson ?? null, phone: data.phone ?? null, address: data.address || s.address,
     city: data.city ?? s.city, postalCode: data.postalCode ?? s.postalCode, pieces: data.pieces ?? s.pieces, codAmount: data.codAmount ?? s.codAmount, notes: data.notes ?? s.notes,
     statusCode: data.statusCode, status: data.status, clientName: data.clientName ?? null, canClose: data.canClose,
+    signatureRequired: data.signatureRequired ?? false, photoRequired: data.photoRequired ?? false, codPending: data.codPending ?? null,
   };
 }
 

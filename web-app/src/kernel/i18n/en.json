@@ -515,7 +515,13 @@
       "autoPrintLabelsHelp": "Saved per client (the sender). When a shipment of this client is saved, its labels (one per package) print by themselves, even if «Label on save» is off at the station. Needs a label printer set up.",
       "autoPrintInvoice": "Invoice label",
       "autoPrintInvoiceText": "Print the invoice label automatically",
-      "autoPrintInvoiceHelp": "Saved per client (the sender). When a shipment of this client with an invoice number is saved, after its package labels an invoice label prints by itself (the barcode of the number with the number underneath; it can be redesigned in System → Printers and labels). Needs a label printer set up."
+      "autoPrintInvoiceHelp": "Saved per client (the sender). When a shipment of this client with an invoice number is saved, after its package labels an invoice label prints by itself (the barcode of the number with the number underneath; it can be redesigned in System → Printers and labels). Needs a label printer set up.",
+      "driverDeliveryTitle": "Delivery with the driver app",
+      "driverDeliveryHelp": "What the driver must capture when delivering this client's shipments.",
+      "requireSignature": "Signature required",
+      "requireSignatureText": "Require the recipient's signature",
+      "requirePhoto": "Photo required",
+      "requirePhotoText": "Require a delivery photo"
     },
     "addresses": {
       "title": "Addresses",

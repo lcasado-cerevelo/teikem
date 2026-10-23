@@ -221,4 +221,27 @@ public partial class TripStatusEffectTests
         Assert.Contains("No entregado desde la app", string.Join('|', await f.CommentsAsync(EntityTypes.TransportOrder, orders[0])));
         Assert.Empty(await f.Db.Set<DeliveryProof>().ToListAsync());
     }
+
+    [Fact]
+    public async Task A_client_that_requires_signature_and_photo_blocks_the_delivery_until_both_come()
+    {
+        await using var f = await Fixture.CreateAsync();
+        var (app, trip, orders) = await DispatchedAsync(f, 1);
+        await app.AcceptAsync(trip.PublicId, null, default);
+        var pub = await PublicOfAsync(f, orders[0]);
+        var clientId = (await f.Db.TransportOrders.AsNoTracking().SingleAsync(o => o.TransportOrderId == orders[0])).ClientId;
+        f.Db.Clients.Add(new Teikem.Domain.Clients.Client { ClientId = clientId, TenantId = TenantId, Code = "C1", Name = "Cliente", StatusCodeId = 1, IsActive = true, RequireDeliverySignature = true, RequireDeliveryPhoto = true });
+        await f.Db.SaveChangesAsync();
+        var tiny = Convert.ToBase64String(new byte[] { 1, 2, 3 });
+
+        var noSig = await Assert.ThrowsAsync<ValidationException>(() => app.DeliverAsync(pub, new DriverDeliverRequest("Ana", null, null, null, null, null, new[] { tiny }), default));
+        Assert.Equal(DriverAppRules.SignatureRequiredMessage, noSig.Message);
+        var noPhoto = await Assert.ThrowsAsync<ValidationException>(() => app.DeliverAsync(pub, new DriverDeliverRequest("Ana", null, null, null, null, tiny, null), default));
+        Assert.Equal(DriverAppRules.PhotoRequiredMessage, noPhoto.Message);
+        Assert.Empty(await f.Db.Set<DeliveryProof>().ToListAsync());
+
+        var detail = await app.GetShipmentAsync(pub, default);
+        Assert.True(detail.SignatureRequired);
+        Assert.True(detail.PhotoRequired);
+    }
 }

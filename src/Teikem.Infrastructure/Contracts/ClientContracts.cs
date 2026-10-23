@@ -62,7 +62,8 @@ public sealed record ClientDetailDto(
     bool AutoPrintInvoice = false, bool AutoPrintLabels = false,
     bool PortalCanCreateProducts = false, bool PortalCanCreateArrivals = false, bool PortalCanCreateExits = false,
     // servicio y paquete que la entrada rápida trae puestos para este cliente (códigos; null = los de la compañía)
-    string? DefaultServiceType = null, string? DefaultPackageType = null);
+    string? DefaultServiceType = null, string? DefaultPackageType = null,
+    bool RequireDeliverySignature = false, bool RequireDeliveryPhoto = false);
 
 // ---------------- Edición ----------------
 
@@ -75,7 +76,8 @@ public sealed record ClientProfileUpdateRequest(
     Guid? DefaultPickupLocationPublicId, bool ClearDefaultPickup, string? RowVersion, bool? AutoPrintInvoice = null, bool? AutoPrintLabels = null,
     bool? PortalCanCreateProducts = null, bool? PortalCanCreateArrivals = null, bool? PortalCanCreateExits = null,
     // servicio y paquete por omisión del cliente: código = lo elige; cadena vacía = vuelve a los de la compañía; null = sin cambio
-    string? DefaultServiceType = null, string? DefaultPackageType = null);
+    string? DefaultServiceType = null, string? DefaultPackageType = null,
+    bool? RequireDeliverySignature = null, bool? RequireDeliveryPhoto = null);
 
 /// <summary>Cadena vacía en un patrón = NULL = patrón por defecto del sistema.</summary>
 public sealed record ClientNumberSettingsRequest(

@@ -52,6 +52,8 @@ public static class DriverAppRules
     public const string FailureReasonRequiredMessage = "Indique el motivo por el que no se entregó.";
     public const string FailureReasonInvalidMessage = "El motivo no es válido.";
     public const string FailureNoteTooLongMessage = "La nota no puede pasar de 400 caracteres.";
+    public const string SignatureRequiredMessage = "Este cliente exige la firma de quien recibe.";
+    public const string PhotoRequiredMessage = "Este cliente exige una foto de la entrega.";
     public const string SignatureInvalidMessage = "La firma no es una imagen válida.";
     public const string PhotoInvalidMessage = "Una foto no es una imagen válida.";
     public static string TooManyPhotosMessage => $"Máximo {MaxPhotos} fotos por entrega.";

@@ -67,6 +67,11 @@ public class Client : ITenantScoped, ISoftDeletable, IHasStatus, IAuditStamped
     /// <summary>El cliente crea sus avisos de salida desde el portal.</summary>
     public bool PortalCanCreateExits { get; set; }
 
+    // --- 2026-10-23 (app del chofer) ---
+    /// <summary>La entrega de sus envíos desde la app del chofer EXIGE la firma de quien recibe / una foto (apagadas: opcionales). Por cliente, como en Colavora.</summary>
+    public bool RequireDeliverySignature { get; set; }
+    public bool RequireDeliveryPhoto { get; set; }
+
     public StatusCode? Status { get; set; }
     public LookupCode? PaymentTerm { get; set; }
     public LookupCode? Currency { get; set; }

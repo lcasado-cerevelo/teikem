@@ -14,6 +14,8 @@ export interface DeliverInput {
   /** Base64 sin el prefijo data-URL. */
   signatureBase64?: string;
   photosBase64?: string[];
+  /** Cobros contra entrega: `clientId` único por cobro (un reintento no cobra dos veces). */
+  cods?: Array<{ clientId: string; method: string; amount: number; checkNumber?: string }>;
 }
 
 /** Entrega: quién recibió, firma, fotos y ubicación del teléfono. */
@@ -33,6 +35,7 @@ export function enqueueDeliver(input: DeliverInput): Promise<string> {
         longitude: input.longitude,
         signaturePngBase64: input.signatureBase64 || undefined,
         photosBase64: input.photosBase64?.length ? input.photosBase64 : undefined,
+        cods: input.cods?.length ? input.cods : undefined,
       },
     },
   });

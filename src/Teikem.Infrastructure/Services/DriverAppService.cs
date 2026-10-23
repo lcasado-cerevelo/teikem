@@ -19,7 +19,7 @@ namespace Teikem.Infrastructure.Services;
 /// que usa el personal); los que NO acepta llevan motivo (lista «Motivos de no aceptación»), salen de la ruta y vuelven a «Sin asignar», y quedan en TripOrderDecline para que la oficina los vuelva a asignar. Todo en una transacción.
 /// </summary>
 public sealed class DriverAppService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, TripLifecycleService lifecycle, RouteWriter writer, ILookupCache lookups,
-    DeliveryRegistrationService? delivery = null, StoredFileService? files = null)
+    DeliveryRegistrationService? delivery = null, StoredFileService? files = null, CodService? cod = null)
 {
     private async Task<Domain.Fleet.Driver> CurrentDriverAsync(CancellationToken ct)
     {
@@ -194,9 +194,19 @@ public sealed class DriverAppService(TeikemDbContext db, ITenantContext tenant, 
                                                                       && (c.ContactType!.InternalCode == "PHONE" || c.ContactType.InternalCode == "MOBILE"))
             .OrderByDescending(c => c.IsPrimary).ThenBy(c => c.ContactPointId).Select(c => new { c.Value, c.Label }).FirstOrDefaultAsync(ct);
         var client = await db.Clients.AsNoTracking().Where(c => c.ClientId == x.ClientId).Select(c => c.Name).FirstOrDefaultAsync(ct);
+        var flags = await (from o in db.TransportOrders.AsNoTracking() join cl in db.Clients.AsNoTracking() on o.ClientId equals cl.ClientId where o.TransportOrderId == own.OrderId
+                           select new { cl.RequireDeliverySignature, cl.RequireDeliveryPhoto }).FirstOrDefaultAsync(ct) ?? new { RequireDeliverySignature = false, RequireDeliveryPhoto = false };
+        decimal? codPending = null;
+        if (x.CodAmount is decimal ca && ca > 0)
+        {
+            var collected = await (from c in db.Set<Teikem.Domain.Cod.CodCollection>().AsNoTracking() join st2 in db.StatusCodes.AsNoTracking() on c.StatusCodeId equals st2.StatusCodeId
+                                   where c.TransportOrderId == own.OrderId && st2.InternalCode != Teikem.Domain.Cod.CodCollectionStatuses.Void select (decimal?)c.AmountCollected).SumAsync(ct) ?? 0m;
+            codPending = Math.Max(0m, ca - collected);
+        }
         var canClose = own.Accepted && string.Equals(x.StatusCode, OrderStatuses.InTransit, StringComparison.OrdinalIgnoreCase);
         return new DriverShipmentDetailDto(x.PublicId, own.TripPublicId, x.OrderNumber, x.WaybillNumber, x.StatusCode, Label(x.LabelJson, tenant.Lang, x.StatusCode), x.Name, phone?.Label, phone?.Value,
-            x.Line1 ?? string.Empty, x.City, x.Postal, x.TotalPieces, x.CodAmount, x.Notes, client, canClose);
+            x.Line1 ?? string.Empty, x.City, x.Postal, x.TotalPieces, x.CodAmount, x.Notes, client, canClose,
+            flags.RequireDeliverySignature, flags.RequireDeliveryPhoto, codPending);
     }
 
     private static byte[] DecodeImage(string base64, string message)
@@ -260,13 +270,32 @@ public sealed class DriverAppService(TeikemDbContext db, ITenantContext tenant, 
         var driver = await CurrentDriverAsync(ct);
         var own = await OwnShipmentAsync(shipmentPublicId, driver, requireAccepted: true, ct);
         var photos = req?.PhotosBase64 ?? Array.Empty<string>();
+        var flags = await (from o in db.TransportOrders.AsNoTracking() join cl in db.Clients.AsNoTracking() on o.ClientId equals cl.ClientId where o.TransportOrderId == own.OrderId
+                           select new { cl.RequireDeliverySignature, cl.RequireDeliveryPhoto }).FirstOrDefaultAsync(ct) ?? new { RequireDeliverySignature = false, RequireDeliveryPhoto = false };
         if (photos.Count > DriverAppRules.MaxPhotos) throw new ValidationException("photosBase64", DriverAppRules.TooManyPhotosMessage);
         var signature = string.IsNullOrWhiteSpace(req?.SignaturePngBase64) ? null : DecodeImage(req!.SignaturePngBase64!, DriverAppRules.SignatureInvalidMessage);
         var photoBytes = photos.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => DecodeImage(p, DriverAppRules.PhotoInvalidMessage)).ToList();
 
         var already = await delivery.FindByOrderAsync(shipmentPublicId, ct);
+        // Firma y foto obligatorias por cliente (solo la primera vez: un reintento ya tiene lo suyo).
+        if (already is null && flags.RequireDeliverySignature && signature is null) throw new ValidationException("signaturePngBase64", DriverAppRules.SignatureRequiredMessage);
+        if (already is null && flags.RequireDeliveryPhoto && photoBytes.Count == 0) throw new ValidationException("photosBase64", DriverAppRules.PhotoRequiredMessage);
         if (already is not null && already.Source != DeliveryProofCodes.SourceDriverApp) throw new ConflictException(string.Format(DeliveryProofRules.AlreadyRegisteredFormat, own.OrderNumber));
         var at = req?.DeliveredAtUtc is DateTime given ? DateTime.SpecifyKind(given, DateTimeKind.Utc) : DateTime.UtcNow;
+        // Cobros contra entrega: antes de registrar la entrega y con una referencia propia por cobro (APP:{id}), así un reintento no cobra dos veces.
+        if (req?.Cods is { Count: > 0 } cods)
+        {
+            if (cod is null) throw new InvalidOperationException("Falta CodService.");
+            foreach (var c in cods)
+            {
+                var reference = $"APP:{c.ClientId:N}";
+                if (await db.Set<Teikem.Domain.Cod.CodCollection>().AsNoTracking().AnyAsync(x => x.TransportOrderId == own.OrderId && x.Reference == reference, ct)) continue;
+                await cod.CollectAsync(shipmentPublicId, new CodCollectionRequest(c.Method, c.Amount, c.CheckNumber, reference, null, req.DeliveredAtUtc), ct);
+                var made = await db.Set<Teikem.Domain.Cod.CodCollection>().AsTracking().FirstAsync(x => x.TransportOrderId == own.OrderId && x.Reference == reference, ct);
+                made.DriverId = driver.DriverId;
+                await db.SaveChangesAsync(ct);
+            }
+        }
         // El GPS del teléfono se guarda SIEMPRE (aunque el chofer haya apagado el seguimiento de la ruta) y aparte de la dirección: se anota a cuántos metros de ella estaba.
         var distance = already is null ? await StopDistanceAsync(own.OrderId, req?.Latitude, req?.Longitude, ct) : null;
         if (already is null)

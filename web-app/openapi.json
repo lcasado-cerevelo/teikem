@@ -51502,6 +51502,12 @@
           "defaultPackageType": {
             "type": "string",
             "nullable": true
+          },
+          "requireDeliverySignature": {
+            "type": "boolean"
+          },
+          "requireDeliveryPhoto": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -51997,6 +52003,14 @@
           },
           "defaultPackageType": {
             "type": "string",
+            "nullable": true
+          },
+          "requireDeliverySignature": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "requireDeliveryPhoto": {
+            "type": "boolean",
             "nullable": true
           }
         },
@@ -57579,6 +57593,29 @@
         },
         "additionalProperties": false
       },
+      "DriverCodDto": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "method": {
+            "type": "string",
+            "nullable": true
+          },
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "checkNumber": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "DriverCompanyTokenDto": {
         "type": "object",
         "properties": {
@@ -57716,6 +57753,13 @@
             "type": "array",
             "items": {
               "type": "string"
+            },
+            "nullable": true
+          },
+          "cods": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DriverCodDto"
             },
             "nullable": true
           }
@@ -58977,6 +59021,17 @@
           },
           "canClose": {
             "type": "boolean"
+          },
+          "signatureRequired": {
+            "type": "boolean"
+          },
+          "photoRequired": {
+            "type": "boolean"
+          },
+          "codPending": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           }
         },
         "additionalProperties": false

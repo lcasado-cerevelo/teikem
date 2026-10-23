@@ -49,6 +49,11 @@ export interface ShipmentDetail extends Shipment {
   phone: string | null;
   clientName: string | null;
   canClose: boolean;
+  /** El cliente exige firma / foto al entregar. */
+  signatureRequired: boolean;
+  photoRequired: boolean;
+  /** Lo que falta por cobrar del COD (null = no tiene COD). */
+  codPending: number | null;
 }
 
 export interface Reason {

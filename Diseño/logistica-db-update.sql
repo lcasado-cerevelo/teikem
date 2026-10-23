@@ -6582,3 +6582,14 @@ GO
 IF COL_LENGTH('dbo.DeliveryAttempt', 'DistanceFromStopMeters') IS NULL
     ALTER TABLE dbo.DeliveryAttempt ADD DistanceFromStopMeters INT NULL;
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-23 (f) — App del chofer: firma y foto obligatorias por cliente (como en Colavora).
+   - dbo.Client.RequireDeliverySignature / RequireDeliveryPhoto BIT NOT NULL DEFAULT 0.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Client', 'RequireDeliverySignature') IS NULL
+    ALTER TABLE dbo.Client ADD RequireDeliverySignature BIT NOT NULL CONSTRAINT DF_Client_RequireDeliverySignature DEFAULT 0;
+GO
+IF COL_LENGTH('dbo.Client', 'RequireDeliveryPhoto') IS NULL
+    ALTER TABLE dbo.Client ADD RequireDeliveryPhoto BIT NOT NULL CONSTRAINT DF_Client_RequireDeliveryPhoto DEFAULT 0;
+GO

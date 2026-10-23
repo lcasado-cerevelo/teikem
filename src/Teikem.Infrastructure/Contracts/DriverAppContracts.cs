@@ -30,13 +30,17 @@ public sealed record DriverFailureReasonDto(string Code, string Label);
 
 /// <summary>El envío con lo que el chofer necesita en la puerta: contacto, piezas y notas. `Delivered`/`Failed` dicen si ya se cerró desde la app.</summary>
 public sealed record DriverShipmentDetailDto(Guid PublicId, Guid ManifestPublicId, string OrderNumber, string WaybillNumber, string StatusCode, string Status, string? ConsigneeName,
-    string? ContactPerson, string? Phone, string Address, string? City, string? PostalCode, int? Pieces, decimal? CodAmount, string? Notes, string? ClientName, bool CanClose);
+    string? ContactPerson, string? Phone, string Address, string? City, string? PostalCode, int? Pieces, decimal? CodAmount, string? Notes, string? ClientName, bool CanClose,
+    bool SignatureRequired = false, bool PhotoRequired = false, decimal? CodPending = null);
+
+/// <summary>Un cobro contra entrega hecho al entregar. `ClientId` lo genera la app (un reintento sin señal no cobra dos veces); `Method` es CASH, CHECK, COMPANY_CHECK, ATH_MOVIL o CARD; los cheques llevan `CheckNumber`.</summary>
+public sealed record DriverCodDto(Guid ClientId, string? Method, decimal? Amount, string? CheckNumber);
 
 /// <summary>
 /// Entregar un envío. `RecipientName` quien recibió (obligatorio); `SignaturePngBase64` la firma de quien recibió y `PhotosBase64` fotos (JPG, hasta 3) son opcionales; `DeliveredAtUtc` cuándo (la app lo manda porque pudo entregar sin señal);
 /// `Latitude`/`Longitude` del teléfono al entregar.
 /// </summary>
-public sealed record DriverDeliverRequest(string? RecipientName, string? Notes, DateTime? DeliveredAtUtc, double? Latitude, double? Longitude, string? SignaturePngBase64, IReadOnlyList<string>? PhotosBase64);
+public sealed record DriverDeliverRequest(string? RecipientName, string? Notes, DateTime? DeliveredAtUtc, double? Latitude, double? Longitude, string? SignaturePngBase64, IReadOnlyList<string>? PhotosBase64, IReadOnlyList<DriverCodDto>? Cods = null);
 
 /// <summary>No entregar un envío: `ReasonCode` de la lista «Razón de fallo» (obligatorio), nota y foto opcionales.</summary>
 public sealed record DriverFailRequest(string? ReasonCode, string? Notes, DateTime? AttemptedAtUtc, string? PhotoBase64, double? Latitude = null, double? Longitude = null);

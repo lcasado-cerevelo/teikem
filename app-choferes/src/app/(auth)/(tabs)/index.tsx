@@ -4,6 +4,7 @@ import { Text } from '@components/Text';
 import { Link, type Href } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useDriverWork } from '@hooks/queries';
+import TrackingBanner from '@components/TrackingBanner';
 import { useAppStore } from '@/stores';
 import { useStyles, useTheme } from '@hooks/ThemeContext';
 import type { Colors } from '@constants/theme';
@@ -103,6 +104,7 @@ export default function Home() {
 
   return (
     <FlatList
+      ListHeaderComponent={<TrackingBanner />}
       style={styles.container}
       data={items}
       keyExtractor={(item) => item.key}

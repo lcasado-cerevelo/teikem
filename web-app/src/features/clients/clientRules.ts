@@ -170,6 +170,9 @@ export interface ProfileValues {
   portalCanCreateProducts: boolean
   portalCanCreateArrivals: boolean
   portalCanCreateExits: boolean
+  /** App del chofer: firma de quien recibe / foto obligatorias al entregar sus envíos. */
+  requireDeliverySignature: boolean
+  requireDeliveryPhoto: boolean
 }
 
 export function profileValuesOf(c: ClientDetail): ProfileValues {
@@ -186,6 +189,8 @@ export function profileValuesOf(c: ClientDetail): ProfileValues {
     portalCanCreateProducts: c.portalCanCreateProducts ?? false,
     portalCanCreateArrivals: c.portalCanCreateArrivals ?? false,
     portalCanCreateExits: c.portalCanCreateExits ?? false,
+    requireDeliverySignature: c.requireDeliverySignature ?? false,
+    requireDeliveryPhoto: c.requireDeliveryPhoto ?? false,
   }
 }
 
@@ -208,6 +213,8 @@ export function profileSchema(m: Pick<CreateMessages, 'legalNameMax' | 'taxIdMax
     portalCanCreateProducts: z.boolean(),
     portalCanCreateArrivals: z.boolean(),
     portalCanCreateExits: z.boolean(),
+    requireDeliverySignature: z.boolean(),
+    requireDeliveryPhoto: z.boolean(),
   })
 }
 
@@ -235,6 +242,8 @@ export function buildProfileRequest(v: ProfileInput, original: ProfileValues, ro
   if (v.portalCanCreateProducts !== original.portalCanCreateProducts) req.portalCanCreateProducts = v.portalCanCreateProducts
   if (v.portalCanCreateArrivals !== original.portalCanCreateArrivals) req.portalCanCreateArrivals = v.portalCanCreateArrivals
   if (v.portalCanCreateExits !== original.portalCanCreateExits) req.portalCanCreateExits = v.portalCanCreateExits
+  if (v.requireDeliverySignature !== original.requireDeliverySignature) req.requireDeliverySignature = v.requireDeliverySignature
+  if (v.requireDeliveryPhoto !== original.requireDeliveryPhoto) req.requireDeliveryPhoto = v.requireDeliveryPhoto
   return req
 }
 

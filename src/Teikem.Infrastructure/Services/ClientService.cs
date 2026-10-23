@@ -225,7 +225,8 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
             client.CreatedAtUtc, client.UpdatedAtUtc, RowVersionOf(client.RowVersion), client.AutoPrintInvoice, client.AutoPrintLabels,
             client.PortalCanCreateProducts, client.PortalCanCreateArrivals, client.PortalCanCreateExits,
             client.DefaultServiceTypeLookupId is int dsId ? (await lookups.GetAsync(dsId, ct))?.InternalCode : null,
-            client.DefaultPackageTypeLookupId is int dpId ? (await lookups.GetAsync(dpId, ct))?.InternalCode : null);
+            client.DefaultPackageTypeLookupId is int dpId ? (await lookups.GetAsync(dpId, ct))?.InternalCode : null,
+            client.RequireDeliverySignature, client.RequireDeliveryPhoto);
     }
 
     // ---------------- Perfil ----------------
@@ -249,6 +250,8 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
         if (req.PortalCanCreateProducts is { } canProducts) client.PortalCanCreateProducts = canProducts;   // Lote 156: lo que crea solo desde el portal
         if (req.PortalCanCreateArrivals is { } canArrivals) client.PortalCanCreateArrivals = canArrivals;
         if (req.PortalCanCreateExits is { } canExits) client.PortalCanCreateExits = canExits;
+        if (req.RequireDeliverySignature is { } reqSig) client.RequireDeliverySignature = reqSig;   // app del chofer: firma / foto obligatorias al entregar
+        if (req.RequireDeliveryPhoto is { } reqPhoto) client.RequireDeliveryPhoto = reqPhoto;
         // servicio y paquete que la entrada rápida trae puestos (el código tiene que ser de ese catálogo; vacío = los de la compañía)
         if (req.DefaultServiceType is not null) client.DefaultServiceTypeLookupId = await OptionalLookupAsync(LookupDomains.ServiceType, req.DefaultServiceType, ct);
         if (req.DefaultPackageType is not null) client.DefaultPackageTypeLookupId = await OptionalLookupAsync(LookupDomains.PackageType, req.DefaultPackageType, ct);

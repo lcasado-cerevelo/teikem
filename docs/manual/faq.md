@@ -10404,3 +10404,9 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **Al chofer no le llegó el aviso al teléfono.** Por ahora no hay aviso emergente: el aviso aparece en la pestaña «Avisos» al abrir la app (se refresca cada 5 minutos).
 
 **El chofer no ve avisos de una compañía.** La bandeja junta las compañías con sesión; si una está bloqueada por MFA («Entra de nuevo con tu contraseña y código») no se muestran sus avisos.
+
+## Cobro y requisitos de entrega (app del chofer)
+
+**«Este cliente exige la firma de quien recibe.» / «Este cliente exige una foto de la entrega.» (400).** El cliente tiene activada la firma o la foto obligatoria (ficha del cliente → Impresión y portal → «Entrega con la app del chofer»). El chofer debe capturarla.
+
+**Mensajes de cobro (400/422)**: los del COD de la web: «El método de cobro no es válido.», monto inválido, número de cheque obligatorio, «No puede cobrar más de lo que falta…». En la app el chofer no puede cobrar más de lo pendiente.

@@ -37578,6 +37578,8 @@ export interface components {
             portalCanCreateExits?: boolean;
             defaultServiceType?: string | null;
             defaultPackageType?: string | null;
+            requireDeliverySignature?: boolean;
+            requireDeliveryPhoto?: boolean;
         };
         ClientInitialContractRequest: {
             /** Format: date */
@@ -37729,6 +37731,8 @@ export interface components {
             portalCanCreateExits?: boolean | null;
             defaultServiceType?: string | null;
             defaultPackageType?: string | null;
+            requireDeliverySignature?: boolean | null;
+            requireDeliveryPhoto?: boolean | null;
         };
         ClientServiceTeamDto: {
             members?: components["schemas"]["ClientServiceTeamMemberDto"][] | null;
@@ -39586,6 +39590,14 @@ export interface components {
             clearIssuedDate?: boolean | null;
             clearExpiryDate?: boolean | null;
         };
+        DriverCodDto: {
+            /** Format: uuid */
+            clientId?: string;
+            method?: string | null;
+            /** Format: double */
+            amount?: number | null;
+            checkNumber?: string | null;
+        };
         DriverCompanyTokenDto: {
             /** Format: int32 */
             tenantId?: number;
@@ -39631,6 +39643,7 @@ export interface components {
             longitude?: number | null;
             signaturePngBase64?: string | null;
             photosBase64?: string[] | null;
+            cods?: components["schemas"]["DriverCodDto"][] | null;
         };
         DriverDeliveryRateCreateRequest: {
             serviceType?: string | null;
@@ -40051,6 +40064,10 @@ export interface components {
             notes?: string | null;
             clientName?: string | null;
             canClose?: boolean;
+            signatureRequired?: boolean;
+            photoRequired?: boolean;
+            /** Format: double */
+            codPending?: number | null;
         };
         DriverShipmentDto: {
             /** Format: uuid */

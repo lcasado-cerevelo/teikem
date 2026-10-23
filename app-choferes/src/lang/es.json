@@ -165,7 +165,15 @@
       "REMOVE": "Quitar",
       "ACCEPT_FIRST": "Acepte primero el manifiesto: todavía no ha salido.",
       "ALREADY_CLOSED": "Este envío ya está cerrado.",
-      "COD_PENDING_NOTE": "el cobro se registra con la oficina"
+      "COD_PENDING_NOTE": "el cobro se registra con la oficina",
+      "COD_METHOD_CASH": "Efectivo",
+      "COD_METHOD_CHECK": "Cheque",
+      "COD_METHOD_COMPANY_CHECK": "Cheque de compañía",
+      "COD_METHOD_ATH_MOVIL": "ATH Móvil",
+      "COD_METHOD_CARD": "Tarjeta",
+      "COD_PENDING": "por cobrar {{amount}}",
+      "COD_EXCEEDS": "No puede cobrar más de lo que falta ({{pending}}).",
+      "COD_CHECK_REQUIRED": "Escriba el número del cheque."
     },
     "UPDATE": {
       "REQUIRED_TITLE": "Actualización requerida",
@@ -292,7 +300,10 @@
       "PROFILE_HINT": "Solo mientras tenga una ruta en curso. Si la apaga, la oficina recibe un aviso. Para ahorrar batería, no restrinja la batería de esta app en Ajustes del teléfono.",
       "OFF_TITLE": "Apagar la ubicación",
       "OFF_BODY": "La oficina dejará de ver su ruta y recibirá un aviso de que usted la apagó. ¿Confirma?",
-      "OFF_YES": "Apagar"
+      "OFF_YES": "Apagar",
+      "BANNER_OFF": "Su ubicación está apagada durante la ruta. La oficina no ve su recorrido y recibió un aviso.",
+      "BANNER_PERMISSION": "La app no tiene permiso de ubicación. Actívelo en los ajustes del teléfono para que la oficina vea su ruta.",
+      "BANNER_TURN_ON": "Encender ubicación"
     },
     "NOTICES": {
       "TITLE": "Avisos",

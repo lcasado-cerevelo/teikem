@@ -33,6 +33,9 @@ interface AppState {
   trackingEnabled: boolean;
   setTrackingEnabled: (v: boolean) => void;
   hydrateTrackingEnabled: () => Promise<void>;
+  /** Le quitaron el permiso de ubicación con la ruta en curso (la app lo avisa al chofer). */
+  trackingPermissionLost: boolean;
+  setTrackingPermissionLost: (v: boolean) => void;
 
   // Autosincronización: valor «vivo» único compartido entre el layout (que arma el temporizador) y Perfil (que lo cambia).
   syncIntervalMinutes: number;
@@ -61,6 +64,8 @@ export const useAppStore = create<AppState>((set) => ({
     void trackingStore.setEnabled(v);
   },
   hydrateTrackingEnabled: async () => set({ trackingEnabled: await trackingStore.getEnabled() }),
+  trackingPermissionLost: false,
+  setTrackingPermissionLost: (v) => set({ trackingPermissionLost: v }),
 
   syncIntervalMinutes: DEFAULT_SYNC_INTERVAL_MINUTES,
   setSyncIntervalMinutes: (minutes) => {

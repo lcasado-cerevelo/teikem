@@ -165,7 +165,15 @@
       "REMOVE": "Remove",
       "ACCEPT_FIRST": "Accept the manifest first: it has not started yet.",
       "ALREADY_CLOSED": "This shipment is already closed.",
-      "COD_PENDING_NOTE": "the collection is recorded with the office"
+      "COD_PENDING_NOTE": "the collection is recorded with the office",
+      "COD_METHOD_CASH": "Cash",
+      "COD_METHOD_CHECK": "Check",
+      "COD_METHOD_COMPANY_CHECK": "Company check",
+      "COD_METHOD_ATH_MOVIL": "ATH Móvil",
+      "COD_METHOD_CARD": "Card",
+      "COD_PENDING": "to collect {{amount}}",
+      "COD_EXCEEDS": "You cannot collect more than what is left ({{pending}}).",
+      "COD_CHECK_REQUIRED": "Enter the check number."
     },
     "UPDATE": {
       "REQUIRED_TITLE": "Update required",
@@ -292,7 +300,10 @@
       "PROFILE_HINT": "Only while you have a route in progress. If you turn it off, the office gets a notice. To save battery, do not restrict this app's battery in the phone settings.",
       "OFF_TITLE": "Turn location off",
       "OFF_BODY": "The office will stop seeing your route and will get a notice that you turned it off. Confirm?",
-      "OFF_YES": "Turn off"
+      "OFF_YES": "Turn off",
+      "BANNER_OFF": "Your location is off during the route. The office cannot see your trip and was notified.",
+      "BANNER_PERMISSION": "The app has no location permission. Turn it on in the phone settings so the office can see your route.",
+      "BANNER_TURN_ON": "Turn location on"
     },
     "NOTICES": {
       "TITLE": "Notices",

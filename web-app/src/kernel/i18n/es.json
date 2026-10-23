@@ -515,7 +515,13 @@
       "autoPrintLabelsHelp": "Se guarda por cliente (el que manda). Al guardar un envío de este cliente, sus labels (uno por paquete) salen solos, aunque «Label al guardar» esté apagado en la estación. Necesita una impresora de labels configurada.",
       "autoPrintInvoice": "Label de factura",
       "autoPrintInvoiceText": "Imprimir el label de la factura automáticamente",
-      "autoPrintInvoiceHelp": "Se guarda por cliente (el que manda). Al guardar un envío de este cliente con número de factura, después de los labels de sus paquetes sale solo un label de la factura (el código de barras del número con el número debajo; se puede rediseñar en Sistema → Impresoras y labels). Necesita una impresora de labels configurada."
+      "autoPrintInvoiceHelp": "Se guarda por cliente (el que manda). Al guardar un envío de este cliente con número de factura, después de los labels de sus paquetes sale solo un label de la factura (el código de barras del número con el número debajo; se puede rediseñar en Sistema → Impresoras y labels). Necesita una impresora de labels configurada.",
+      "driverDeliveryTitle": "Entrega con la app del chofer",
+      "driverDeliveryHelp": "Lo que el chofer debe capturar al entregar los envíos de este cliente.",
+      "requireSignature": "Firma obligatoria",
+      "requireSignatureText": "Exigir la firma de quien recibe",
+      "requirePhoto": "Foto obligatoria",
+      "requirePhotoText": "Exigir una foto de la entrega"
     },
     "addresses": {
       "title": "Direcciones",

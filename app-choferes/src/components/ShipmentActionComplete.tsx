@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import * as Crypto from 'expo-crypto';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text, TextInput } from '@components/Text';
 import { useRouter } from 'expo-router';
@@ -9,7 +10,8 @@ import { getCurrentFix } from '@utils/location';
 import Signature, { type SignatureViewRef } from 'react-native-signature-canvas';
 import { onlineManager } from '@tanstack/react-query';
 import { useAppStore } from '@/stores';
-import { useRemoveShipmentFromLists } from '@hooks/queries';
+import { useRemoveShipmentFromLists, useShipmentDetail } from '@hooks/queries';
+import OptionSelect from './OptionSelect';
 import { enqueueDeliver } from '@/offline/mutations';
 import { drainOutbox, getItem } from '@/offline';
 import { compressProofPhoto } from '@utils/photo';
@@ -34,7 +36,32 @@ export default function ShipmentActionComplete({ onBack }: { onBack: () => void 
   const [photo, setPhoto] = useState<{ uri: string; base64: string } | null>(null);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const hasCod = (shipment?.codAmount ?? 0) > 0;
+  const { data: detail } = useShipmentDetail(shipment);
+  const signatureRequired = Boolean(detail?.signatureRequired);
+  const photoRequired = Boolean(detail?.photoRequired);
+  const codPending = detail?.codPending ?? (shipment?.codAmount ?? null);
+  const hasCod = (codPending ?? 0) > 0;
+
+  // Cobro contra entrega: el chofer anota cuánto cobró y cómo (puede ser parcial o en varios pagos).
+  const METHODS = ['CASH', 'CHECK', 'COMPANY_CHECK', 'ATH_MOVIL', 'CARD'] as const;
+  const methodOptions = useMemo(() => METHODS.map((m, i) => ({ id: i + 1, label: t(`ACTIONS.COD_METHOD_${m}`) })), [t]);
+  const [cods, setCods] = useState<Array<{ clientId: string; method: string; amount: number; checkNumber?: string }>>([]);
+  const [codMethod, setCodMethod] = useState<number | null>(null);
+  const [codAmount, setCodAmount] = useState('');
+  const [codCheck, setCodCheck] = useState('');
+  const collectedNow = cods.reduce((s, c) => s + c.amount, 0);
+  const addCod = () => {
+    const method = codMethod == null ? null : METHODS[codMethod - 1];
+    const amount = Number(codAmount.replace(',', '.'));
+    if (!method) return Alert.alert(t('ACTIONS.COD_TYPE_REQUIRED'));
+    if (!Number.isFinite(amount) || amount <= 0) return Alert.alert(t('ACTIONS.COD_AMOUNT_INVALID'));
+    if (amount + collectedNow > (codPending ?? 0) + 0.005) return Alert.alert(t('ACTIONS.COD_EXCEEDS', { pending: (codPending ?? 0).toFixed(2) }));
+    if ((method === 'CHECK' || method === 'COMPANY_CHECK') && !codCheck.trim()) return Alert.alert(t('ACTIONS.COD_CHECK_REQUIRED'));
+    setCods((prev) => [...prev, { clientId: Crypto.randomUUID(), method, amount: Math.round(amount * 100) / 100, checkNumber: codCheck.trim() || undefined }]);
+    setCodMethod(null);
+    setCodAmount('');
+    setCodCheck('');
+  };
 
   // Se muestra la ubicación al abrir, pero al entregar se toma una NUEVA (la de ese momento).
   useEffect(() => {
@@ -77,6 +104,7 @@ export default function ShipmentActionComplete({ onBack }: { onBack: () => void 
         longitude: fix?.lng,
         signatureBase64,
         photosBase64: photo ? [photo.base64] : undefined,
+        cods,
       });
       if (onlineManager.isOnline()) await drainOutbox();
       const item = await getItem(id);
@@ -93,12 +121,21 @@ export default function ShipmentActionComplete({ onBack }: { onBack: () => void 
   };
 
   const onSignatureOK = (sig: string) => void finishDeliver(sig.replace(/^data:image\/\w+;base64,/, ''));
-  const onSignatureEmpty = () => void finishDeliver('');
+  const onSignatureEmpty = () => {
+    if (signatureRequired) {
+      setSubmitting(false);
+      Alert.alert(t('DELIVERY.MISSING_SIGNATURE'));
+    } else void finishDeliver('');
+  };
 
   const submit = () => {
     if (!shipment) return;
     if (!podName.trim()) {
       Alert.alert(t('DELIVERY.MISSING_NAME'));
+      return;
+    }
+    if (photoRequired && !photo) {
+      Alert.alert(t('DELIVERY.MISSING_PHOTO'));
       return;
     }
     setSubmitting(true);
@@ -118,9 +155,27 @@ export default function ShipmentActionComplete({ onBack }: { onBack: () => void 
         <Text style={styles.label}>{t('DELIVERY.COMMENT_OPTIONAL')}</Text>
         <TextInput style={styles.input} value={comment} onChangeText={setComment} placeholder={t('DELIVERY.DELIVERY_NOTES')} maxLength={500} />
 
-        {hasCod && <Text style={styles.cod}>{`${t('ACTIONS.COD_SECTION')}: ${(shipment?.codAmount ?? 0).toFixed(2)} — ${t('ACTIONS.COD_PENDING_NOTE')}`}</Text>}
+        {hasCod && (
+          <View style={styles.codBox}>
+            <Text style={styles.cod}>{`${t('ACTIONS.COD_SECTION')}: ${t('ACTIONS.COD_PENDING', { amount: ((codPending ?? 0) - collectedNow).toFixed(2) })}`}</Text>
+            <OptionSelect options={methodOptions} value={codMethod} placeholder={t('ACTIONS.SELECT_COD_TYPE')} onSelect={setCodMethod} onClear={() => setCodMethod(null)} />
+            <TextInput style={styles.input} value={codAmount} onChangeText={setCodAmount} placeholder={t('ACTIONS.COD_AMOUNT')} keyboardType="decimal-pad" />
+            {(codMethod === 2 || codMethod === 3) && <TextInput style={styles.input} value={codCheck} onChangeText={setCodCheck} placeholder={t('ACTIONS.COD_DOCUMENT')} />}
+            <Pressable style={styles.buttonOutline} onPress={addCod}>
+              <Text style={styles.buttonOutlineText}>{t('ACTIONS.ADD_COD')}</Text>
+            </Pressable>
+            {cods.map((c) => (
+              <View key={c.clientId} style={styles.codItem}>
+                <Text style={styles.codItemText}>{`${t(`ACTIONS.COD_METHOD_${c.method}`)}: ${c.amount.toFixed(2)}${c.checkNumber ? ` · ${c.checkNumber}` : ''}`}</Text>
+                <Pressable onPress={() => setCods((prev) => prev.filter((x) => x.clientId !== c.clientId))}>
+                  <Text style={styles.remove}>{t('ACTIONS.REMOVE')}</Text>
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        )}
 
-        <Text style={styles.label}>{t('DELIVERY.PROOF_PHOTO')}</Text>
+        <Text style={styles.label}>{t('DELIVERY.PROOF_PHOTO')}{photoRequired ? ' *' : ''}</Text>
         {photo ? (
           <Pressable onPress={takePhoto}>
             <Image source={{ uri: photo.uri }} style={styles.photo} />
@@ -134,7 +189,7 @@ export default function ShipmentActionComplete({ onBack }: { onBack: () => void 
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: 12 + insets.bottom }]}>
-        <Text style={styles.label}>{t('DELIVERY.SIGNATURE')}</Text>
+        <Text style={styles.label}>{t('DELIVERY.SIGNATURE')}{signatureRequired ? ' *' : ''}</Text>
         <View style={styles.signatureBox}>
           <Signature
             ref={sigRef}
@@ -180,6 +235,10 @@ const createStyles = (colors: Colors) => StyleSheet.create({
   label: { fontSize: 14, fontWeight: '600', color: colors.text, marginTop: 2 },
   muted: { color: colors.muted, fontSize: 14 },
   cod: { color: colors.text, fontSize: 14, fontWeight: '600' },
+  codBox: { gap: 8 },
+  codItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: colors.gray, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
+  codItemText: { color: colors.text, flex: 1 },
+  remove: { color: colors.danger, fontWeight: '600', marginLeft: 8 },
   input: {
     borderWidth: 1,
     borderColor: colors.gray,
