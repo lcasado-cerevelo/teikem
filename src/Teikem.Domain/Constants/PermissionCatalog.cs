@@ -96,6 +96,9 @@ public static class PermissionCatalog
 
     public const string TripsClose = "trips.close";
 
+    /// <summary>2026-10-23: usar la app del chofer (ver sus manifiestos, aceptarlos y registrar entregas y recogidas).</summary>
+    public const string DriverAppUse = "driverapp.use";
+
     public const string TripsOptimize = "trips.optimize";
 
     /// <summary>Lote 5: ver rutas, sala de despacho (lectura), 'sin asignar' y monitoreo.</summary>
@@ -455,6 +458,7 @@ public static class PermissionCatalog
         new(TripsDispatch, "ORDERS", "Despachar rutas", "Dispatch routes"),
 
         new(TripsClose, "ORDERS", "Cerrar rutas", "Close routes"),
+        new(DriverAppUse, "ORDERS", "App del chofer: usarla", "Driver app: use it"),
 
         new(TripsOptimize, "ORDERS", "Optimizar rutas", "Optimize routes"),
 
@@ -1152,7 +1156,7 @@ public static class PermissionCatalog
 
         ["CustomerService"] = new[] { ClientMessagesReply, ClientsRead, OrdersView, LocationsRead, ContractsRead },
 
-        ["Driver"] = new[] { OrdersView, CodCollect },
+        ["Driver"] = new[] { OrdersView, CodCollect, DriverAppUse },
 
         ["ReadOnly"] = new[] { OrdersView, CodView, AnalyticsView, ClientsRead, LocationsRead, ContractsRead, FleetView, TripsView, InventoryView,
 

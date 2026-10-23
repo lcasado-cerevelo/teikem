@@ -218,7 +218,24 @@ public sealed class RouteWriter(TeikemDbContext db, StatusService statuses, ILoo
     {
         EnsureTracked(trip);
         await EnsureEditableAsync(trip, ct);
+        await ReleaseCoreAsync(trip, transportOrderId, ct);
+    }
 
+    /// <summary>
+    /// 2026-10-23 (app del chofer): saca un envío de una ruta ya DESPACHADA (el chofer no lo aceptó). Igual que <see cref="ReleaseOrderAsync"/> pero sin exigir que la ruta esté abierta;
+    /// solo vale con la ruta en DISPATCHED (antes de salir): 422 con el mensaje de «no editable» en cualquier otro estatus. No guarda.
+    /// </summary>
+    public async Task ReleaseOrderFromDispatchedAsync(Trip trip, int transportOrderId, CancellationToken ct)
+    {
+        EnsureTracked(trip);
+        var code = await StatusCodeOfAsync(trip.StatusCodeId, ct);
+        if (!trip.IsActive || !string.Equals(code, TripStatuses.Dispatched, StringComparison.OrdinalIgnoreCase))
+            throw new StatusRuleException(TripRules.NotEditableMessage(trip.Code, trip.IsActive ? code : TripStatuses.Cancelled));
+        await ReleaseCoreAsync(trip, transportOrderId, ct);
+    }
+
+    private async Task ReleaseCoreAsync(Trip trip, int transportOrderId, CancellationToken ct)
+    {
         var links = await CurrentLinksAsync(trip.TripId, ct);
         var link = links.FirstOrDefault(x => x.TransportOrderId == transportOrderId)
                    ?? throw new TripMemberNotFoundException(TripRules.NotInTripMessage);

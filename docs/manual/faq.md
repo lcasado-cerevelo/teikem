@@ -10332,3 +10332,17 @@ Según la consola de Google Cloud, la Geocoding API tiene gratis las primeras 10
 
 **Subí el tope y las paradas no se llenan.**
 El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). Las paradas que quedaron sin intento por el tope se retoman solas.
+
+## Lote 203 — App del chofer: aceptar la ruta
+
+**Mensaje «Su usuario no está vinculado a un chofer activo.» (403).** Al usuario que entra a la app del chofer le falta estar vinculado a un chofer activo. Se vincula en Listas → Choferes (campo usuario). El usuario además necesita el permiso `driverapp.use`.
+
+**Mensaje «El manifiesto {código} no está listo para aceptar: debe estar despachado.» (422).** La ruta todavía no se despacha desde la Sala de despacho, o ya salió. Despáchela primero.
+
+**Mensaje «El manifiesto {código} ya fue aceptado.» (422).** El chofer ya aceptó esa ruta; no se acepta dos veces.
+
+**Mensajes «Indique el motivo de cada envío que no acepta.» y «El motivo no es válido.» (400).** Cada envío que el chofer no acepta lleva uno de los motivos de la lista «Motivos de no aceptación» (Listas). Si falta o no existe, no se guarda nada.
+
+**¿Qué pasa con los envíos que el chofer no acepta?** Salen de la ruta, vuelven a «Sin asignar» y quedan con su motivo para volver a asignarlos. Si no acepta ninguno, la ruta no sale.
+
+**¿Quién registra la salida cuando acepta el chofer?** Es la misma salida de la Sala de despacho: la ruta pasa a «En curso» y los envíos aceptados a «En tránsito», con el comentario «Aceptada por el chofer».

@@ -168,6 +168,7 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<DispatchZoneMember> DispatchZoneMembers => Set<DispatchZoneMember>();
     public DbSet<Trip> Trips => Set<Trip>();
     public DbSet<TripOrder> TripOrders => Set<TripOrder>();
+    public DbSet<TripOrderDecline> TripOrderDeclines => Set<TripOrderDecline>();   // 2026-10-23
     public DbSet<Route> Routes => Set<Route>();
     public DbSet<RouteStop> RouteStops => Set<RouteStop>();
     public DbSet<OptimizationRun> OptimizationRuns => Set<OptimizationRun>();

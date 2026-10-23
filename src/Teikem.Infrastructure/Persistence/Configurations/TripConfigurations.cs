@@ -112,3 +112,20 @@ public sealed class OptimizationRunConfiguration : IEntityTypeConfiguration<Opti
         b.HasOne<Route>().WithMany().HasForeignKey(r => r.RouteId).OnDelete(DeleteBehavior.NoAction);
     }
 }
+
+/// <summary>2026-10-23 — envíos que el chofer no aceptó (1:1 con dbo.TripOrderDecline).</summary>
+public sealed class TripOrderDeclineConfiguration : IEntityTypeConfiguration<TripOrderDecline>
+{
+    public void Configure(EntityTypeBuilder<TripOrderDecline> b)
+    {
+        b.ToTable("TripOrderDecline");
+        b.HasKey(d => d.TripOrderDeclineId);
+        b.Property(d => d.PublicId).HasDefaultValueSql("NEWID()");
+        b.Property(d => d.Note).HasMaxLength(TripOrderDeclineCodes.NoteMaxLength);
+        b.HasIndex(d => d.PublicId).IsUnique().HasDatabaseName("UX_TripOrderDecline_PublicId");
+        b.HasIndex(d => new { d.TenantId, d.TripId }).HasDatabaseName("IX_TripOrderDecline_Trip");
+        b.HasIndex(d => d.TransportOrderId).HasDatabaseName("IX_TripOrderDecline_Order");
+        b.HasOne<Trip>().WithMany().HasForeignKey(d => d.TripId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<Teikem.Domain.Orders.TransportOrder>().WithMany().HasForeignKey(d => d.TransportOrderId).OnDelete(DeleteBehavior.NoAction);
+    }
+}

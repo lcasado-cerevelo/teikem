@@ -10,6 +10,7 @@ using Teikem.Infrastructure.Exceptions;
 using Teikem.Infrastructure.Persistence;
 using Teikem.Infrastructure.Services;
 using Teikem.Infrastructure.Trips;
+using Teikem.Domain.Trips;
 using Xunit;
 using DispatchBatchRules = Teikem.Domain.Trips.DispatchBatchRules;
 using RouteStopEntity = Teikem.Domain.Trips.RouteStop;
@@ -24,7 +25,7 @@ namespace Teikem.Tests;
 /// efecto de OrderStatus que libera órdenes de rutas abiertas. InMemory con StatusService, RouteWriter y los efectos reales
 /// (resueltos por DI de forma perezosa, como en producción). Pipelines sembrados igual que logistica-db-seed.sql.
 /// </summary>
-public class TripStatusEffectTests
+public partial class TripStatusEffectTests
 {
     private const int TenantId = 1;
     private const string TripCode = "2026-0001";
@@ -530,6 +531,8 @@ public class TripStatusEffectTests
                 L(LookupDomains.Capability, Capabilities.AssignTrip),
                 L(LookupDomains.StopType, StopTypes.Pickup),
                 L(LookupDomains.StopType, StopTypes.Delivery),
+                L(TripOrderDeclineCodes.ReasonDomain, "NO_SPACE"),
+                L(TripOrderDeclineCodes.ReasonDomain, "OTHER"),
             };
             Db.LookupCodes.AddRange(all);
             Lookups.Load(all);

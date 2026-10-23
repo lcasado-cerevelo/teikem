@@ -31,6 +31,9 @@ public class Trip : ITenantScoped, ISoftDeletable, IHasStatus, IAuditStamped
     [NotAudited] public DateTime? PlannedEndUtc { get; set; }
     public DateTime? ActualStartUtc { get; set; }
     public DateTime? ActualEndUtc { get; set; }
+    /// <summary>2026-10-23: cuándo el chofer aceptó el manifiesto en su app (y quién: AcceptedBy, el usuario del chofer). NULL = no lo ha aceptado desde la app (la salida pudo registrarla el personal).</summary>
+    public DateTime? AcceptedAtUtc { get; set; }
+    public int? AcceptedBy { get; set; }
     [NotAudited] public decimal? TotalDistanceKm { get; set; }
     [NotAudited] public int? TotalDurationMin { get; set; }
     public bool IsActive { get; set; } = true;

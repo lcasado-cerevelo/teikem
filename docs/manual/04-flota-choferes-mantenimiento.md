@@ -875,3 +875,39 @@ capítulo con su causa y qué hacer.
 | `POST /api/v1/dispatch-zones/assign-orders?all=` | `fleet.manage` | Zona de entrega a las órdenes existentes; devuelve examinadas, con zona y sin zona. |
 | `GET /api/v1/orders?zoneIds=&zoneGroupIds=&noZone=` | `orders.view` | Filtros de zona, nivel y «sin zona». |
 | `POST /drivers/{id}/delivery-rates` (`zoneGroup`) · `POST /contracts/{id}/rate-components` (`zoneGroup`) | `driverpay.manage` / `contracts.update` | Tarifa con nivel (código). 400 «El nivel de zona no existe o está inactivo.»; 409 «…ya tiene una tarifa vigente para X + Y en el nivel Z…». |
+
+## App del chofer: sus manifiestos y aceptar la ruta (Lote 203, 2026-10-23)
+
+**Qué hace.** El chofer ve en su app los manifiestos que la oficina le despachó, los **acepta** antes de salir y, si algún envío no lo va a llevar, lo **no acepta con un motivo**. Aceptar es la **salida** de la ruta: los envíos aceptados pasan a **En tránsito** y la ruta a **En curso** (es la misma salida que registra el personal en Sala de despacho). Hasta que acepta, no puede registrar entregas.
+
+**Quién puede.** El usuario del chofer necesita el permiso `driverapp.use` («App del chofer: usarla»; el rol *Driver* lo trae) y estar **vinculado a un chofer** (Listas → Choferes → usuario). Módulo Transporte (LTL_GROUND). Solo ve **sus** manifiestos.
+
+**Cómo se usa (endpoints `/api/v1/driver-app`).**
+
+| Acción | Endpoint |
+|---|---|
+| Sus manifiestos (despachados por aceptar y en curso) | `GET /manifests` |
+| Un manifiesto con sus envíos, en el orden de la ruta | `GET /manifests/{publicId}` |
+| Motivos para no aceptar (lista editable en Listas → «Motivos de no aceptación») | `GET /decline-reasons` |
+| Aceptar el manifiesto; los envíos de `declines` no se aceptan | `POST /manifests/{publicId}/accept` con `{ "declines": [{ "shipmentPublicId", "reasonCode", "note" }], "rowVersion" }` |
+
+**Qué pasa con un envío que no acepta.** Sale de la ruta (y de su orden de paradas), vuelve a **Sin asignar** con el comentario «No aceptado por el chofer: {motivo}» y queda registrado con su motivo y nota (`TripOrderDecline`) para que la oficina lo vuelva a asignar. Si no acepta **ninguno**, la ruta no sale: queda despachada y vacía.
+
+**Mensajes y códigos.**
+
+| Código | Mensaje | Cuándo |
+|---|---|---|
+| 403 | Su usuario no está vinculado a un chofer activo. | El usuario no es un chofer. |
+| 404 | Manifiesto no encontrado. | No existe o es de otro chofer. |
+| 400 | Indique el motivo de cada envío que no acepta. | Falta el motivo. |
+| 400 | El motivo no es válido. | El código no está en la lista. |
+| 400 | La nota no puede pasar de 300 caracteres. | Nota larga. |
+| 400 | Un envío aparece más de una vez en la lista de los que no acepta. | Repetido. |
+| 400 | El envío no está en este manifiesto. | Envío ajeno. |
+| 422 | El manifiesto {código} ya fue aceptado. | Segunda aceptación. |
+| 422 | El manifiesto {código} no está listo para aceptar: debe estar despachado. | Sin despachar, ya en curso por el personal, completado o cancelado. |
+| 409 | (mensaje de concurrencia) | La ruta cambió mientras aceptaba. |
+
+**Motivos de no aceptación de fábrica:** No hay espacio en el vehículo, El envío está dañado, Queda fuera de mi zona, Faltan documentos, Otro. Se editan, se desactivan o se agregan en **Listas**.
+
+**Lo que viene después:** manifiestos de **recogida**, el seguimiento por **GPS** y los **avisos**.

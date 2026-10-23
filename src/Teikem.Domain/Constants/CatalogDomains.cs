@@ -565,6 +565,8 @@ public static class EntityTypes
     public const string WarehouseDock = "WAREHOUSE_DOCK";
     /// <summary>2026-10-22: zona y posición del almacén en la bitácora (antes se guardaban como WAREHOUSE con el número de la posición).</summary>
     public const string WarehouseZone = "WAREHOUSE_ZONE";
+    /// <summary>2026-10-23: envío que el chofer no aceptó (app del chofer).</summary>
+    public const string TripOrderDecline = "TRIP_ORDER_DECLINE";
     public const string WarehouseBin = "WAREHOUSE_BIN";
     /// <summary>Serie de inventario: su rastro es EntityStatusHistory (SerialStatus) más el ledger; sin AuditLog.</summary>
     public const string InventorySerial = "INVENTORY_SERIAL";

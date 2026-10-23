@@ -11066,6 +11066,164 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/driver-app/manifests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverManifestDto"][];
+                        "application/json": components["schemas"]["DriverManifestDto"][];
+                        "text/json": components["schemas"]["DriverManifestDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver-app/manifests/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverManifestDetailDto"];
+                        "application/json": components["schemas"]["DriverManifestDetailDto"];
+                        "text/json": components["schemas"]["DriverManifestDetailDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver-app/decline-reasons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverDeclineReasonDto"][];
+                        "application/json": components["schemas"]["DriverDeclineReasonDto"][];
+                        "text/json": components["schemas"]["DriverDeclineReasonDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver-app/manifests/{publicId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DriverAcceptRequest"];
+                    "text/json": components["schemas"]["DriverAcceptRequest"];
+                    "application/*+json": components["schemas"]["DriverAcceptRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverAcceptResultDto"];
+                        "application/json": components["schemas"]["DriverAcceptResultDto"];
+                        "text/json": components["schemas"]["DriverAcceptResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/driver-pay-policy": {
         parameters: {
             query?: never;
@@ -38808,6 +38966,31 @@ export interface components {
             status?: string | null;
             comment?: string | null;
         };
+        DocumentReader: {
+            name?: string | null;
+            source?: string | null;
+            target?: string | null;
+            when?: components["schemas"]["ReaderCondition"][] | null;
+            fields?: components["schemas"]["EmailBodyField"][] | null;
+            /** Format: uuid */
+            templatePublicId?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            firstOnly?: boolean;
+        };
+        DriverAcceptRequest: {
+            declines?: components["schemas"]["DriverDeclineItem"][] | null;
+            rowVersion?: string | null;
+        };
+        DriverAcceptResultDto: {
+            /** Format: uuid */
+            manifestPublicId?: string;
+            /** Format: int32 */
+            accepted?: number;
+            /** Format: int32 */
+            declined?: number;
+            started?: boolean;
+        };
         DriverAttemptRateDto: {
             /** Format: int32 */
             attemptNumber?: number;
@@ -38869,6 +39052,16 @@ export interface components {
             hireDate?: string | null;
             /** Format: int32 */
             userId?: number | null;
+        };
+        DriverDeclineItem: {
+            /** Format: uuid */
+            shipmentPublicId?: string;
+            reasonCode?: string | null;
+            note?: string | null;
+        };
+        DriverDeclineReasonDto: {
+            code?: string | null;
+            label?: string | null;
         };
         DriverDeliveryRateCreateRequest: {
             serviceType?: string | null;
@@ -38988,6 +39181,37 @@ export interface components {
             /** Format: date */
             licenseExpiry?: string | null;
             hasUser?: boolean;
+        };
+        DriverManifestDetailDto: {
+            /** Format: uuid */
+            publicId?: string;
+            code?: string | null;
+            kind?: string | null;
+            /** Format: date */
+            planDate?: string;
+            statusCode?: string | null;
+            status?: string | null;
+            accepted?: boolean;
+            /** Format: date-time */
+            acceptedAtUtc?: string | null;
+            rowVersion?: string | null;
+            shipments?: components["schemas"]["DriverShipmentDto"][] | null;
+        };
+        DriverManifestDto: {
+            /** Format: uuid */
+            publicId?: string;
+            code?: string | null;
+            kind?: string | null;
+            /** Format: date */
+            planDate?: string;
+            statusCode?: string | null;
+            status?: string | null;
+            accepted?: boolean;
+            /** Format: date-time */
+            acceptedAtUtc?: string | null;
+            /** Format: int32 */
+            shipmentCount?: number;
+            rowVersion?: string | null;
         };
         DriverPatchRequest: {
             fullName?: string | null;
@@ -39188,6 +39412,25 @@ export interface components {
             periodEnd?: string | null;
             note?: string | null;
         };
+        DriverShipmentDto: {
+            /** Format: uuid */
+            publicId?: string;
+            orderNumber?: string | null;
+            waybillNumber?: string | null;
+            statusCode?: string | null;
+            status?: string | null;
+            /** Format: int32 */
+            sequence?: number;
+            consigneeName?: string | null;
+            address?: string | null;
+            city?: string | null;
+            postalCode?: string | null;
+            /** Format: int32 */
+            pieces?: number | null;
+            /** Format: double */
+            codAmount?: number | null;
+            notes?: string | null;
+        };
         DriverTripCancelRequest: {
             comment?: string | null;
         };
@@ -39258,23 +39501,6 @@ export interface components {
             userId?: number;
             email?: string | null;
             fullName?: string | null;
-        };
-        DocumentReader: {
-            name?: string | null;
-            source?: string | null;
-            target?: string | null;
-            when?: components["schemas"]["ReaderCondition"][] | null;
-            fields?: components["schemas"]["EmailBodyField"][] | null;
-            /** Format: uuid */
-            templatePublicId?: string | null;
-            /** Format: uuid */
-            clientPublicId?: string | null;
-            firstOnly?: boolean;
-        };
-        ReaderCondition: {
-            scope?: string | null;
-            operator?: string | null;
-            value?: string | null;
         };
         EmailBlockColumn: {
             /** Format: int32 */
@@ -43537,6 +43763,11 @@ export interface components {
             rate?: number;
             /** Format: date */
             effectiveFrom?: string | null;
+        };
+        ReaderCondition: {
+            scope?: string | null;
+            operator?: string | null;
+            value?: string | null;
         };
         ReauthRequest: {
             password?: string | null;

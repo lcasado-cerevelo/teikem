@@ -6410,3 +6410,81 @@ IF OBJECT_ID(N'dbo.GeocodeUsage', N'U') IS NULL CREATE TABLE dbo.GeocodeUsage (
         Calls      INT NOT NULL CONSTRAINT DF_GeocodeUsage_Calls DEFAULT 0
     );
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-23 — App del chofer, etapa 1: aceptar el manifiesto y no aceptar envíos con motivo.
+   - dbo.Trip.AcceptedAtUtc / AcceptedBy: cuándo y quién (el usuario del chofer) aceptó el manifiesto desde la app.
+   - dbo.TripOrderDecline: cada envío que el chofer no aceptó, con su motivo y nota (historial; el envío vuelve a «Sin asignar»).
+   - Lista «Motivos de no aceptación» (TripDeclineReason), editable por compañía en Listas.
+   - EntityType TRIP_ORDER_DECLINE (bitácora) y permiso driverapp.use (al rol Chofer y a los roles ya clonados que se llaman «Driver»).
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Trip', 'AcceptedAtUtc') IS NULL
+    ALTER TABLE dbo.Trip ADD AcceptedAtUtc DATETIME2 NULL;
+GO
+IF COL_LENGTH('dbo.Trip', 'AcceptedBy') IS NULL
+    ALTER TABLE dbo.Trip ADD AcceptedBy INT NULL;
+GO
+IF OBJECT_ID('dbo.TripOrderDecline', 'U') IS NULL CREATE TABLE dbo.TripOrderDecline (
+    TripOrderDeclineId INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId           UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_TripOrderDecline_PublicId DEFAULT NEWID(),
+    TenantId           INT NOT NULL CONSTRAINT FK_TripOrderDecline_Tenant REFERENCES dbo.Tenant(TenantId),
+    TripId             INT NOT NULL CONSTRAINT FK_TripOrderDecline_Trip REFERENCES dbo.Trip(TripId),
+    TransportOrderId   INT NOT NULL CONSTRAINT FK_TripOrderDecline_Order REFERENCES dbo.TransportOrder(TransportOrderId),
+    DriverId           INT NULL,
+    ReasonLookupId     INT NOT NULL CONSTRAINT FK_TripOrderDecline_Reason REFERENCES dbo.LookupCode(LookupCodeId),
+    Note               NVARCHAR(300) NULL,
+    DeclinedAtUtc      DATETIME2 NOT NULL CONSTRAINT DF_TripOrderDecline_At DEFAULT SYSUTCDATETIME(),
+    DeclinedBy         INT NULL
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_TripOrderDecline_PublicId' AND object_id = OBJECT_ID('dbo.TripOrderDecline'))
+    CREATE UNIQUE INDEX UX_TripOrderDecline_PublicId ON dbo.TripOrderDecline (PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_TripOrderDecline_Trip' AND object_id = OBJECT_ID('dbo.TripOrderDecline'))
+    CREATE INDEX IX_TripOrderDecline_Trip ON dbo.TripOrderDecline (TenantId, TripId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_TripOrderDecline_Order' AND object_id = OBJECT_ID('dbo.TripOrderDecline'))
+    CREATE INDEX IX_TripOrderDecline_Order ON dbo.TripOrderDecline (TransportOrderId);
+GO
+MERGE dbo.CatalogDomain AS t
+USING (SELECT N'TripDeclineReason' AS DomainKey) AS s ON t.DomainKey = s.DomainKey
+WHEN NOT MATCHED THEN
+    INSERT (DomainKey, Scope, LabelJson, IsSystem, IsActive)
+    VALUES (N'TripDeclineReason', 1, N'{"es":"Motivos de no aceptación","en":"Decline reasons"}', 1, 1);
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'NO_SPACE',     N'{"es":"No hay espacio en el vehículo","en":"No room in the vehicle"}',   1),
+    (N'DAMAGED',      N'{"es":"El envío está dañado","en":"The shipment is damaged"}',            2),
+    (N'OUT_OF_ZONE',  N'{"es":"Queda fuera de mi zona","en":"It is outside my zone"}',            3),
+    (N'MISSING_DOCS', N'{"es":"Faltan documentos","en":"Documents are missing"}',                  4),
+    (N'OTHER',        N'{"es":"Otro","en":"Other"}',                                                9)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'TripDeclineReason' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'TripDeclineReason', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES (N'TRIP_ORDER_DECLINE', N'{"es":"Envío no aceptado por el chofer","en":"Shipment declined by the driver"}', 92)) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'driverapp.use')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('driverapp.use', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'ORDERS'),
+            N'{"es":"App del chofer: usarla","en":"Driver app: use it"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L203_DRIVERAPP_USE')
+BEGIN
+    INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+    SELECT r.RoleId, p.PermissionId
+    FROM dbo.Role r
+    JOIN dbo.Permission p ON p.Code = 'driverapp.use'
+    WHERE r.TenantId IS NOT NULL AND r.Name = 'Driver'
+      AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = p.PermissionId);
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L203_DRIVERAPP_USE');
+END
+GO
