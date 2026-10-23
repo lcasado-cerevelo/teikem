@@ -75,6 +75,26 @@ public sealed class IntegrationInboxItemConfiguration : IEntityTypeConfiguration
     }
 }
 
+public sealed class IntegrationProposalConfiguration : IEntityTypeConfiguration<IntegrationProposal>
+{
+    public void Configure(EntityTypeBuilder<IntegrationProposal> b)
+    {
+        b.ToTable("IntegrationProposal");
+        b.HasKey(p => p.IntegrationProposalId);
+        b.Property(p => p.Kind).HasMaxLength(20).IsUnicode(false).IsRequired();
+        b.Property(p => p.ReferenceKey).HasMaxLength(80).IsRequired();
+        b.Property(p => p.ToStatus).HasMaxLength(20).IsUnicode(false).IsRequired();
+        b.Property(p => p.Status).HasMaxLength(12).IsUnicode(false).IsRequired();
+        b.Property(p => p.Summary).HasMaxLength(500).IsRequired();
+        b.Property(p => p.Message).HasMaxLength(1000);
+        b.Property(p => p.Note).HasMaxLength(400);
+        b.Property(p => p.RowVersion).IsRowVersion();
+        b.HasIndex(p => p.PublicId).IsUnique().HasDatabaseName("UQ_IntegrationProposal_PublicId");
+        b.HasIndex(p => new { p.TenantId, p.Status, p.IntegrationProposalId }).HasDatabaseName("IX_IntegrationProposal_Status");
+        b.HasIndex(p => new { p.TenantId, p.TransportOrderId, p.ToStatus }).HasDatabaseName("IX_IntegrationProposal_Order");
+    }
+}
+
 public sealed class IntegrationApiKeyConfiguration : IEntityTypeConfiguration<IntegrationApiKey>
 {
     public void Configure(EntityTypeBuilder<IntegrationApiKey> b)

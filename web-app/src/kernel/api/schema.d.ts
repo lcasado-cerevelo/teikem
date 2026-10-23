@@ -36874,6 +36874,127 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProposalPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/proposals/{publicId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ProposalDecisionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProposalDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/proposals/{publicId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ProposalDecisionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProposalDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -39841,6 +39962,8 @@ export interface components {
             clientPublicId?: string | null;
             firstOnly?: boolean;
             recordStart?: string | null;
+            mode?: string | null;
+            toStatus?: string | null;
         };
         DriverAcceptRequest: {
             declines?: components["schemas"]["DriverDeclineItem"][] | null;
@@ -49052,6 +49175,37 @@ export interface components {
             matchedBy?: string | null;
             ambiguous?: boolean;
             candidates?: string[] | null;
+        };
+        ProposalDecisionRequest: {
+            note?: string | null;
+        };
+        ProposalDto: {
+            /** Format: uuid */
+            publicId?: string;
+            kind?: string | null;
+            referenceKey?: string | null;
+            orderNumber?: string | null;
+            /** Format: uuid */
+            orderPublicId?: string;
+            toStatus?: string | null;
+            status?: string | null;
+            summary?: string | null;
+            document?: string | null;
+            integrationName?: string | null;
+            message?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: date-time */
+            decidedAtUtc?: string | null;
+            decidedByName?: string | null;
+            note?: string | null;
+        };
+        ProposalPageDto: {
+            items?: components["schemas"]["ProposalDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            pending?: number;
         };
     };
     responses: never;

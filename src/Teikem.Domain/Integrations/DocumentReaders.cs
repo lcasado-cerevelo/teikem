@@ -8,7 +8,25 @@ public static class DocumentTargets
     public const string ArrivalNotice = "ARRIVAL_NOTICE";
     /// <summary>2026-10-23: aviso de salida (SAL-#####) de un cliente dueño del inventario: lo que sale del almacén.</summary>
     public const string ExitNotice = "EXIT_NOTICE";
-    public static readonly IReadOnlyList<string> All = [Order, ArrivalNotice, ExitNotice];
+    /// <summary>2026-10-23: cierre de órdenes por documento (la hoja «Ruta completada» de CMS, la factura con entregas…): NO cambia nada solo; deja una PROPUESTA que una persona confirma (modo SUGGEST) o, si el lector es AUTO, la aplica.</summary>
+    public const string OrderCompletion = "ORDER_COMPLETION";
+    public static readonly IReadOnlyList<string> All = [Order, ArrivalNotice, ExitNotice, OrderCompletion];
+}
+
+/// <summary>Qué hace un lector de cierre con lo que encuentra: SUGGEST (por omisión) deja una propuesta por confirmar; AUTO la aplica en el acto (solo cuando la exactitud del lector ya está medida).</summary>
+public static class ReaderModes
+{
+    public const string Suggest = "SUGGEST";
+    public const string Auto = "AUTO";
+    public static readonly IReadOnlyList<string> All = [Suggest, Auto];
+}
+
+/// <summary>A qué estatus lleva un cierre: la recogida hecha (PICKUP) o la entrega hecha (DELIVERED).</summary>
+public static class CompletionTargets
+{
+    public const string Pickup = "PICKUP";
+    public const string Delivered = "DELIVERED";
+    public static readonly IReadOnlyList<string> All = [Pickup, Delivered];
 }
 
 /// <summary>
@@ -56,7 +74,7 @@ public sealed record ReaderCondition(string Scope, string Operator, string Value
 public sealed record DocumentReader(
     string Name, string Source, string Target = DocumentTargets.Order,
     IReadOnlyList<ReaderCondition>? When = null, IReadOnlyList<EmailBodyField>? Fields = null,
-    Guid? TemplatePublicId = null, Guid? ClientPublicId = null, bool FirstOnly = false, string? RecordStart = null);
+    Guid? TemplatePublicId = null, Guid? ClientPublicId = null, bool FirstOnly = false, string? RecordStart = null, string Mode = ReaderModes.Suggest, string? ToStatus = null);
 
 /// <summary>Un documento que llegó y que los lectores evalúan: su fuente, su nombre (adjunto), el asunto del correo y su texto (si es cuerpo o PDF).</summary>
 public sealed record ReaderInput(string Source, string Name, string Subject, string? Text);
@@ -78,6 +96,8 @@ public static class DocumentReaderRules
     public static string ScopeNotForSourceMessage(string scope, string source) => $"La condición {scope} no aplica a un lector de {source}.";
     public static string FieldsRequiredMessage => "Un lector de cuerpo o de PDF necesita al menos un campo a leer.";
     public static string NoReaderMatchedMessage => "Ningún lector de la integración aplica a este correo.";
+    public static string UnknownModeMessage(string mode) => $"Modo desconocido: {mode}. Use SUGGEST o AUTO.";
+    public static string UnknownCompletionMessage(string status) => $"Estatus de cierre desconocido: {status}. Use PICKUP o DELIVERED.";
 
     /// <summary>La condición se evalúa sobre algo que ese tipo de documento tiene (un cuerpo no tiene nombre de adjunto, un archivo de datos no tiene texto).</summary>
     public static bool ScopeApplies(string scope, string source) => scope.ToUpperInvariant() switch
@@ -104,6 +124,8 @@ public static class DocumentReaderRules
             var source = (r.Source ?? string.Empty).Trim().ToUpperInvariant();
             if (!ReaderSources.All.Contains(source)) errors[$"{k}.source"] = UnknownSourceMessage(r.Source ?? string.Empty);
             if (!DocumentTargets.All.Contains((r.Target ?? string.Empty).Trim().ToUpperInvariant())) errors[$"{k}.target"] = UnknownTargetMessage(r.Target ?? string.Empty);
+            if (!ReaderModes.All.Contains((r.Mode ?? string.Empty).Trim().ToUpperInvariant())) errors[$"{k}.mode"] = UnknownModeMessage(r.Mode ?? string.Empty);
+            if (string.Equals(r.Target, DocumentTargets.OrderCompletion, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(r.ToStatus) && !CompletionTargets.All.Contains(r.ToStatus.Trim().ToUpperInvariant())) errors[$"{k}.toStatus"] = UnknownCompletionMessage(r.ToStatus);
             var when = r.When ?? Array.Empty<ReaderCondition>();
             if (when.Count > MaxConditions) errors[$"{k}.when"] = ConditionsMessage;
             for (var c = 0; c < when.Count; c++)

@@ -69,6 +69,50 @@ public static class IntegrationFileResults
     public const string Reprocessed = "REPROCESSED";
 }
 
+/// <summary>Estatus de una propuesta de cierre: PENDING (espera a una persona), CONFIRMED (la aplicó una persona), APPLIED (la aplicó el lector AUTO), REJECTED (una persona dijo que no) y FAILED (se intentó y la orden no lo permitió).</summary>
+public static class ProposalStatuses
+{
+    public const string Pending = "PENDING";
+    public const string Confirmed = "CONFIRMED";
+    public const string Applied = "APPLIED";
+    public const string Rejected = "REJECTED";
+    public const string Failed = "FAILED";
+}
+
+public static class ProposalKinds
+{
+    public const string CompleteOrder = "COMPLETE_ORDER";
+}
+
+/// <summary>
+/// 2026-10-23 — una PROPUESTA que dejó un lector de cierre (ORDER_COMPLETION): «llevar la orden X a PICKUP/DELIVERED porque este documento lo dice». Las acciones del final de un flujo no se hacen solas: una persona confirma
+/// (o rechaza). La orden se cambia SOLO por el servicio de estatus al confirmar; aquí queda la evidencia (documento, lector, línea leída) y quién decidió.
+/// </summary>
+public class IntegrationProposal : ITenantScoped
+{
+    public long IntegrationProposalId { get; set; }
+    public Guid PublicId { get; set; }
+    public int TenantId { get; set; }
+    public int IntegrationId { get; set; }
+    public long IntegrationRunId { get; set; }
+    public long? IntegrationFileLogId { get; set; }
+    public string Kind { get; set; } = ProposalKinds.CompleteOrder;
+    public int TransportOrderId { get; set; }
+    /// <summary>La clave con que el documento nombra la orden (en CMS, el Referral # = Order #).</summary>
+    public string ReferenceKey { get; set; } = string.Empty;
+    /// <summary>A qué estatus llevar la orden (CompletionTargets).</summary>
+    public string ToStatus { get; set; } = CompletionTargets.Pickup;
+    public string Status { get; set; } = ProposalStatuses.Pending;
+    public string Summary { get; set; } = string.Empty;
+    [NotAudited] public string? EvidenceJson { get; set; }
+    public string? Message { get; set; }
+    [NotAudited] public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime? DecidedAtUtc { get; set; }
+    public int? DecidedBy { get; set; }
+    public string? Note { get; set; }
+    [NotAudited] public byte[]? RowVersion { get; set; }
+}
+
 public static class InboxStatuses
 {
     public const string Pending = "PENDING";

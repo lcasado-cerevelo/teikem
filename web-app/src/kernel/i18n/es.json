@@ -10402,7 +10402,8 @@
       "label": "Secciones de Integraciones",
       "integrations": "Integraciones",
       "inbox": "Bandeja",
-      "outbox": "Salidas"
+      "outbox": "Salidas",
+      "proposals": "Propuestas"
     },
     "col": {
       "name": "Integración",
@@ -10674,6 +10675,25 @@
       "removeConfirm": "¿Quitar el webhook {url}? Deja de recibir avisos; el historial queda.",
       "removed": "Webhook quitado."
     },
+    "proposals": {
+      "title": "Propuestas de cierre",
+      "help": "Lo que los lectores de cierre encontraron en los documentos: «llevar la orden X a Recogida porque este documento lo dice». Nada cambia hasta que una persona confirma; al confirmar, la orden cambia en ese momento a su nombre. Si la orden ya no lo permite, la propuesta queda Fallida con el motivo.",
+      "empty": "No hay propuestas con ese filtro.",
+      "emptyPending": "No hay propuestas por confirmar.",
+      "col": { "status": "Estado", "order": "Orden", "action": "Propuesta", "document": "Documento", "integration": "Integración", "date": "Fecha", "decision": "Decisión" },
+      "status": { "PENDING": "Por confirmar", "CONFIRMED": "Confirmada", "APPLIED": "Aplicada", "REJECTED": "Rechazada", "FAILED": "Fallida" },
+      "to": { "PICKUP": "Recogida", "DELIVERED": "Entregada" },
+      "confirm": "Confirmar",
+      "reject": "Rechazar",
+      "confirmTitle": "Confirmar el cierre de la orden {order}",
+      "rejectTitle": "Rechazar la propuesta de la orden {order}",
+      "note": "Nota (opcional)",
+      "noteHelp": "Queda guardada con la decisión.",
+      "confirmed": "Propuesta confirmada.",
+      "rejected": "Propuesta rechazada.",
+      "alreadyThere": "La orden ya estaba en ese estatus.",
+      "noAccess": "No tiene acceso a las propuestas."
+    },
     "outbox": {
       "title": "Salidas por webhook",
       "help": "Avisos que no se pudieron entregar tras todos los reintentos. Si el webhook está suspendido, reactívelo primero en Integraciones → Webhooks y luego reintente.",
@@ -10860,13 +10880,20 @@
         "convertHelp": "Crea los lectores equivalentes a los ajustes de adjuntos, cuerpo y PDF de arriba, para seguir desde ahí.",
         "presets": "Usar un modelo",
         "presetsHelp": "Agrega un lector ya armado para un tipo de documento conocido. Después escoja el cliente y revise que los productos existan con el mismo número de ítem (SKU).",
+        "mode": "Qué hace con lo que encuentra",
+        "modeHelp": "Sugerir deja una propuesta por confirmar en la pestaña Propuestas (lo recomendado). Automático cierra la orden en el acto: úselo solo cuando este lector ya demostró que acierta.",
+        "modeOption": { "SUGGEST": "Sugerir (una persona confirma)", "AUTO": "Automático" },
+        "toStatus": "Llevar la orden a",
+        "toStatusHelp": "El estatus al que se propone llevar cada orden que nombre el documento: Recogida (la recogida ya se hizo) o Entregada.",
+        "toStatusOption": { "PICKUP": "Recogida", "DELIVERED": "Entregada" },
         "recordStart": "Texto que empieza cada registro",
         "recordStartHelp": "Para un documento con varias órdenes (una por página): cada línea que contiene este texto empieza una orden nueva, por ejemplo «Order #:». Vacío = el documento es una sola orden.",
         "preset": {
           "dispatch-exit-notice": "Despacho de mercancía → aviso de salida",
           "shipment-arrival-notice": "Envío de mercancía → aviso de llegada",
           "drive-invoice-arrival-notice": "Factura de Drive Medical → aviso de llegada",
-          "cms-referral-order": "Hoja de ruta de CMS → órdenes de recogida"
+          "cms-referral-order": "Hoja de ruta de CMS → órdenes de recogida",
+          "cms-route-completed": "Ruta completada de CMS → cerrar recogidas (propuesta)"
         },
         "name": "Nombre del lector {n}",
         "namePlaceholder": "Packing list",
@@ -10901,7 +10928,8 @@
         "targetOption": {
           "ORDER": "Orden de transporte",
           "ARRIVAL_NOTICE": "Aviso de llegada",
-          "EXIT_NOTICE": "Aviso de salida"
+          "EXIT_NOTICE": "Aviso de salida",
+          "ORDER_COMPLETION": "Cierre de órdenes (propuesta)"
         }
       },
       "bodyHelp": "Cada campo va a una columna de la plantilla de importación de la integración: el cuerpo se convierte en una fila de archivo (o varias, con un bloque de renglones) y la misma plantilla la lee.",

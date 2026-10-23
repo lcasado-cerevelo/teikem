@@ -8,6 +8,7 @@ import { buildHttpSecret, buildOutputConfig, emptyOutput, outputIssues, outputVa
 import type { IntegrationCreateRequest, IntegrationDto, IntegrationPatchRequest } from './integrationsApi'
 
 export const RUN_TONE: Record<string, ChipTone> = { OK: 'deliv', PARTIAL: 'warn', FAILED: 'fail', RUNNING: 'route', NEVER: 'neutral' }
+export const PROPOSAL_TONE: Record<string, ChipTone> = { PENDING: 'warn', CONFIRMED: 'deliv', APPLIED: 'deliv', REJECTED: 'neutral', FAILED: 'fail' }
 export const OUTBOX_TONE: Record<string, ChipTone> = { PENDING: 'warn', DELIVERED: 'deliv', UNDELIVERED: 'fail', DISCARDED: 'neutral' }
 /** Los eventos a los que se puede suscribir un webhook (Lote 136), con los códigos exactos del API. */
 export const WEBHOOK_EVENTS = ['order.status_changed', 'order.delivered', 'invoice.issued'] as const

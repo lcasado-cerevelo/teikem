@@ -5,7 +5,7 @@ import { useT } from '../../kernel/i18n'
 import { Field, IconPlus, IconTrash, Select, TextInput, Toggle } from '../../kernel/ui'
 import { BodyFieldsEditor } from './BodyFieldsEditor'
 import presets from './readerPresets.json'
-import { CONDITION_SCOPES, MATCH_OPERATORS, READER_SOURCES, READER_TARGETS, emptyCondition, emptyReader, legacyToReaders, scopeApplies, type ReaderValues } from './emailRules'
+import { COMPLETION_TARGETS, CONDITION_SCOPES, MATCH_OPERATORS, READER_MODES, READER_SOURCES, READER_TARGETS, emptyCondition, emptyReader, legacyToReaders, scopeApplies, type ReaderValues } from './emailRules'
 import type { IntegrationValues } from './integrationRules'
 
 type Option = { value: string; label: string }
@@ -88,6 +88,16 @@ function ReaderCard({ form, index, reader, clientOptions, templateOptions, onRem
           <Toggle text={t('integrations.email.readers.firstOnly')} />
         </Field>
       </div>
+      {reader?.target === 'ORDER_COMPLETION' && (
+        <div className="r2">
+          <Field name={`${base}.mode`} label={t('integrations.email.readers.mode')} help={t('integrations.email.readers.modeHelp')}>
+            <Select options={READER_MODES.map((m) => ({ value: m, label: t(`integrations.email.readers.modeOption.${m}`) }))} />
+          </Field>
+          <Field name={`${base}.toStatus`} label={t('integrations.email.readers.toStatus')} help={t('integrations.email.readers.toStatusHelp')}>
+            <Select options={COMPLETION_TARGETS.map((m) => ({ value: m, label: t(`integrations.email.readers.toStatusOption.${m}`) }))} />
+          </Field>
+        </div>
+      )}
       <Field name={`${base}.recordStart`} label={t('integrations.email.readers.recordStart')} help={t('integrations.email.readers.recordStartHelp')}>
         <TextInput placeholder="Order #:" />
       </Field>

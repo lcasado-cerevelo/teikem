@@ -230,3 +230,13 @@ public sealed record OutputPageDto(IReadOnlyList<OutputItemDto> Items, int Total
 
 /// <summary>Contenido de ejemplo de una salida con órdenes recientes del cliente; Sample = true si eran de los estatus pedidos (si no, las últimas del cliente).</summary>
 public sealed record OutputPreviewDto(string FileName, string Format, string Content, int OrderCount, bool Sample);
+
+// ---------------------------------------------------------------- propuestas de cierre (2026-10-23)
+
+/// <summary>Una propuesta de cierre: llevar la orden a PICKUP/DELIVERED según un documento. Status: PENDING, CONFIRMED, APPLIED, REJECTED o FAILED (Message = el motivo si falló).</summary>
+public sealed record ProposalDto(Guid PublicId, string Kind, string ReferenceKey, string OrderNumber, Guid OrderPublicId, string ToStatus, string Status, string Summary, string? Document, string IntegrationName,
+    string? Message, DateTime CreatedAtUtc, DateTime? DecidedAtUtc, string? DecidedByName, string? Note);
+
+public sealed record ProposalPageDto(IReadOnlyList<ProposalDto> Items, int Total, int Pending);
+
+public sealed record ProposalDecisionRequest(string? Note);

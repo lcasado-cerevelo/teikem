@@ -37,7 +37,9 @@
       "templatePublicId": "",
       "clientPublicId": "",
       "firstOnly": false,
-      "recordStart": ""
+      "recordStart": "",
+      "mode": "SUGGEST",
+      "toStatus": "PICKUP"
     }
   },
   {
@@ -78,7 +80,9 @@
       "templatePublicId": "",
       "clientPublicId": "",
       "firstOnly": false,
-      "recordStart": ""
+      "recordStart": "",
+      "mode": "SUGGEST",
+      "toStatus": "PICKUP"
     }
   },
   {
@@ -140,7 +144,9 @@
       "templatePublicId": "",
       "clientPublicId": "",
       "firstOnly": false,
-      "recordStart": ""
+      "recordStart": "",
+      "mode": "SUGGEST",
+      "toStatus": "PICKUP"
     }
   },
   {
@@ -356,6 +362,56 @@
           "columns": "11=1",
           "lineRegex": "^Pick Up\\t[^\\t]+\\t[^\\t]+\\t(.+?)\\t\\S+\\t\\S+$",
           "repeat": false,
+          "fromHeader": false,
+          "appendWith": ""
+        }
+      ],
+      "templatePublicId": "",
+      "clientPublicId": "",
+      "firstOnly": false,
+      "mode": "SUGGEST",
+      "toStatus": "PICKUP"
+    }
+  },
+  {
+    "key": "cms-route-completed",
+    "name": {
+      "es": "Ruta completada de CMS → cerrar recogidas (propuesta)",
+      "en": "CMS completed route → close pickups (proposal)"
+    },
+    "reader": {
+      "name": "Ruta completada de CMS",
+      "source": "PDF",
+      "target": "ORDER_COMPLETION",
+      "mode": "SUGGEST",
+      "toStatus": "PICKUP",
+      "recordStart": "",
+      "conditions": [
+        {
+          "scope": "TEXT",
+          "operator": "CONTAINS",
+          "value": "REFERRAL #"
+        },
+        {
+          "scope": "TEXT",
+          "operator": "CONTAINS",
+          "value": "HCPC Description"
+        }
+      ],
+      "fields": [
+        {
+          "position": "1",
+          "kind": "BLOCK",
+          "label": "",
+          "pattern": "",
+          "required": true,
+          "transform": "NONE",
+          "start": "REFERRAL #",
+          "end": "",
+          "separator": "\\t",
+          "columns": "1=1",
+          "lineRegex": "^\\w\\t(\\d{8,})\\tPU\\t",
+          "repeat": true,
           "fromHeader": false,
           "appendWith": ""
         }

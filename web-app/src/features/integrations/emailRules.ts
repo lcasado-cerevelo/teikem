@@ -53,10 +53,16 @@ export interface ReaderValues {
   firstOnly: boolean
   /** Documento con varias órdenes: cada línea que contiene este texto empieza un registro (vacío = un solo registro). */
   recordStart: string
+  /** Solo en un lector de cierre (ORDER_COMPLETION): SUGGEST deja una propuesta por confirmar; AUTO la aplica en el acto. */
+  mode: string
+  /** Solo en un lector de cierre: a qué estatus lleva la orden (PICKUP o DELIVERED). */
+  toStatus: string
 }
 
 export const READER_SOURCES = ['BODY', 'PDF', 'FILE'] as const
-export const READER_TARGETS = ['ORDER', 'ARRIVAL_NOTICE', 'EXIT_NOTICE'] as const
+export const READER_TARGETS = ['ORDER', 'ARRIVAL_NOTICE', 'EXIT_NOTICE', 'ORDER_COMPLETION'] as const
+export const READER_MODES = ['SUGGEST', 'AUTO'] as const
+export const COMPLETION_TARGETS = ['PICKUP', 'DELIVERED'] as const
 export const CONDITION_SCOPES = ['ATTACHMENT_NAME', 'SUBJECT', 'TEXT'] as const
 
 /** La condición se evalúa sobre algo que ese tipo de documento tiene: un cuerpo no tiene nombre de adjunto y un archivo de datos no tiene texto. */
@@ -67,7 +73,7 @@ export function scopeApplies(scope: string, source: string): boolean {
 }
 
 export const emptyCondition = (source = 'PDF'): ConditionValues => ({ scope: source === 'BODY' ? 'SUBJECT' : 'TEXT', operator: 'CONTAINS', value: '' })
-export const emptyReader = (): ReaderValues => ({ name: '', source: 'BODY', target: 'ORDER', conditions: [], fields: [], templatePublicId: '', clientPublicId: '', firstOnly: false, recordStart: '' })
+export const emptyReader = (): ReaderValues => ({ name: '', source: 'BODY', target: 'ORDER', conditions: [], fields: [], templatePublicId: '', clientPublicId: '', firstOnly: false, recordStart: '', mode: 'SUGGEST', toStatus: 'PICKUP' })
 
 export interface EmailValues {
   host: string
@@ -277,6 +283,8 @@ export function emailValuesOf(c: EmailConfig | null | undefined): EmailValues {
       clientPublicId: r.clientPublicId ?? '',
       firstOnly: r.firstOnly ?? false,
       recordStart: r.recordStart ?? '',
+      mode: r.mode ?? 'SUGGEST',
+      toStatus: r.toStatus ?? 'PICKUP',
     })),
     bodyFields: (c.bodyFields ?? []).map(fieldValuesOf),
   }
@@ -310,6 +318,8 @@ export function buildEmailConfig(e: EmailValues): EmailConfig {
       clientPublicId: r.clientPublicId || null,
       firstOnly: r.firstOnly,
       recordStart: r.recordStart.trim() === '' ? null : r.recordStart.trim(),
+      mode: r.target === 'ORDER_COMPLETION' ? r.mode : 'SUGGEST',
+      toStatus: r.target === 'ORDER_COMPLETION' ? r.toStatus : null,
     })),
   }
 }

@@ -10399,7 +10399,8 @@
       "label": "Integrations sections",
       "integrations": "Integrations",
       "inbox": "Inbox",
-      "outbox": "Outbox"
+      "outbox": "Outbox",
+      "proposals": "Proposals"
     },
     "col": {
       "name": "Integration",
@@ -10671,6 +10672,25 @@
       "removeConfirm": "Remove the webhook {url}? It stops receiving notices; the history stays.",
       "removed": "Webhook removed."
     },
+    "proposals": {
+      "title": "Closing proposals",
+      "help": "What the closing readers found in the documents: \"take order X to Picked up because this document says so\". Nothing changes until a person confirms; on confirming, the order changes at that moment in their name. If the order no longer allows it, the proposal becomes Failed with the reason.",
+      "empty": "No proposals match that filter.",
+      "emptyPending": "No proposals to confirm.",
+      "col": { "status": "Status", "order": "Order", "action": "Proposal", "document": "Document", "integration": "Integration", "date": "Date", "decision": "Decision" },
+      "status": { "PENDING": "To confirm", "CONFIRMED": "Confirmed", "APPLIED": "Applied", "REJECTED": "Rejected", "FAILED": "Failed" },
+      "to": { "PICKUP": "Picked up", "DELIVERED": "Delivered" },
+      "confirm": "Confirm",
+      "reject": "Reject",
+      "confirmTitle": "Confirm closing order {order}",
+      "rejectTitle": "Reject the proposal for order {order}",
+      "note": "Note (optional)",
+      "noteHelp": "It is saved with the decision.",
+      "confirmed": "Proposal confirmed.",
+      "rejected": "Proposal rejected.",
+      "alreadyThere": "The order was already in that status.",
+      "noAccess": "You do not have access to proposals."
+    },
     "outbox": {
       "title": "Webhook outbox",
       "help": "Notices that could not be delivered after all the retries. If the webhook is suspended, resume it first in Integrations → Webhooks and then retry.",
@@ -10857,13 +10877,20 @@
         "convertHelp": "Creates the readers equivalent to the attachment, body and PDF settings above, to continue from there.",
         "presets": "Use a model",
         "presetsHelp": "Adds a ready-made reader for a known document type. Then pick the client and check that the products exist with the same item number (SKU).",
+        "mode": "What it does with what it finds",
+        "modeHelp": "Suggest leaves a proposal to confirm in the Proposals tab (recommended). Automatic closes the order at once: use it only when this reader has proven it is accurate.",
+        "modeOption": { "SUGGEST": "Suggest (a person confirms)", "AUTO": "Automatic" },
+        "toStatus": "Take the order to",
+        "toStatusHelp": "The status each order named by the document is proposed to move to: Picked up (the pickup is done) or Delivered.",
+        "toStatusOption": { "PICKUP": "Picked up", "DELIVERED": "Delivered" },
         "recordStart": "Text that starts each record",
         "recordStartHelp": "For a document with several orders (one per page): every line that contains this text starts a new order, for example \"Order #:\". Empty = the document is a single order.",
         "preset": {
           "dispatch-exit-notice": "Goods dispatch → exit notice",
           "shipment-arrival-notice": "Goods shipment → arrival notice",
           "drive-invoice-arrival-notice": "Drive Medical invoice → arrival notice",
-          "cms-referral-order": "CMS route sheet → pickup orders"
+          "cms-referral-order": "CMS route sheet → pickup orders",
+          "cms-route-completed": "CMS completed route → close pickups (proposal)"
         },
         "name": "Reader {n} name",
         "namePlaceholder": "Packing list",
@@ -10898,7 +10925,8 @@
         "targetOption": {
           "ORDER": "Transport order",
           "ARRIVAL_NOTICE": "Arrival notice",
-          "EXIT_NOTICE": "Exit notice"
+          "EXIT_NOTICE": "Exit notice",
+          "ORDER_COMPLETION": "Order closing (proposal)"
         }
       },
       "bodyHelp": "Each field goes to a column of the integration's import template: the body becomes a file row (or several, with a block of lines) and the same template reads it.",

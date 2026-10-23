@@ -10468,3 +10468,15 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **«No tiene permiso para cambiar los responsables (trips.plan).» (403).** Cambiar los responsables de una ruta exige `trips.plan`; los de una zona, `fleet.manage`.
 
 **Los «Sugeridos» no incluyen a quien esperaba.** Salen, en orden: responsables de la ruta, de la zona, roles con `trips.dispatch` y conversaciones recientes; se omite a quien usted no puede ver y a usted mismo. Agregue a la persona como responsable de la ruta o de la zona.
+
+**«La propuesta ya se resolvió.» (409).** Otra persona (o el lector automático) ya confirmó o rechazó esa propuesta. Actualice la lista de Propuestas.
+
+**Una propuesta quedó «Fallida».** Al confirmar, la orden no permitió el cambio; el motivo está en la columna Decisión (por ejemplo «La orden … está en «Entregado» y no se puede llevar a «Recogido» desde ahí.», o «El estatus «Recogido» no está habilitado para esta compañía.»). Revise la orden; una propuesta fallida no se reintenta: si hace falta, vuelva a procesar el documento.
+
+**«No hay una orden «X» del cliente …» (bandeja).** El documento nombra una orden que no existe entre las órdenes activas de ese cliente (o está en otro cliente). Compruebe el número en el documento y el cliente del lector.
+
+**El documento de cierre se leyó pero no aparece ninguna propuesta.** Puede que cada orden ya tenga una propuesta viva o aplicada (el motivo del archivo dice «… ya estaban propuestas»), o que ninguna línea cumpla la expresión del lector (en CMS, solo los renglones de tipo PU). Suba el PDF a mano para ver el texto leído.
+
+**«El documento no trae ninguna orden que cerrar.» (bandeja).** El lector tomó el documento pero no sacó ninguna clave (columna 1). Revise la expresión por línea del lector.
+
+**«Modo desconocido: …» / «Estatus de cierre desconocido: …».** El lector de cierre solo admite Sugerir o Automático y llevar a Recogida o Entregada.

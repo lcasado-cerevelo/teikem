@@ -56,9 +56,9 @@ public sealed class IntegrationRunner(
     private Dictionary<string, IDocumentTarget> Targets => _targets ??= new IDocumentTarget[] { new OrderDocumentTarget((r, c) => ProcessBytesAsync(r.Integration, r.Template, r.Client, r.Run, r.FileName, r.Content, r.CheckDuplicate, c)) }
         .Concat(extraTargets).ToDictionary(t => t.Kind, StringComparer.OrdinalIgnoreCase);
 
-    private Task<FileOutcome> DispatchAsync(string target, Integration integration, ImportTemplate template, Client client, IntegrationRun run, string fileName, byte[] content, CancellationToken ct)
+    private Task<FileOutcome> DispatchAsync(string target, Integration integration, ImportTemplate template, Client client, IntegrationRun run, string fileName, byte[] content, CancellationToken ct, DocumentReader? reader = null)
         => Targets.TryGetValue(target, out var t)
-            ? t.ProcessAsync(new DocumentTargetRequest(integration, template, client, run, fileName, content, CheckDuplicate: true), ct)
+            ? t.ProcessAsync(new DocumentTargetRequest(integration, template, client, run, fileName, content, CheckDuplicate: true, Reader: reader), ct)
             : Task.FromResult(Failed(integration, run, fileName, string.Empty, content.Length, DocumentReaderRules.UnknownTargetMessage(target)));
 
     public static readonly string InstanceId = $"{Environment.MachineName}:{Environment.ProcessId}";
@@ -310,7 +310,7 @@ public sealed class IntegrationRunner(
     /// Un PDF adjunto (2026-10-22): se convierte en texto (el texto real del PDF o, si es un escaneado, OCR) y se lee con los mismos campos a leer del cuerpo; las filas resultantes pasan por la plantilla como cualquier archivo.
     /// Lo que no se puede leer va a la bandeja con el motivo y un pedazo del texto leído para poder ajustar los campos.
     /// </summary>
-    private async Task<FileOutcome> ProcessPdfAsync(Integration integration, ImportTemplate template, Client client, IntegrationRun run, IReadOnlyList<EmailBodyField> fields, string target, MailAttachmentData pdf, PdfReadResult? preRead, CancellationToken ct, string? recordStart = null)
+    private async Task<FileOutcome> ProcessPdfAsync(Integration integration, ImportTemplate template, Client client, IntegrationRun run, IReadOnlyList<EmailBodyField> fields, string target, MailAttachmentData pdf, PdfReadResult? preRead, CancellationToken ct, string? recordStart = null, DocumentReader? reader = null)
     {
         var sha = Convert.ToHexString(SHA256.HashData(pdf.Content)).ToLowerInvariant();
         if (pdf.Content.Length > options.Value.MaxPdfMegabytes * 1024L * 1024L) return Failed(integration, run, pdf.Name, sha, pdf.Content.Length, $"El PDF pesa más de {options.Value.MaxPdfMegabytes} MB.");
@@ -328,19 +328,19 @@ public sealed class IntegrationRunner(
         if (reading.Missing.Count > 0) return Failed(integration, run, pdf.Name, sha, pdf.Content.Length, Truncate($"PDF {pdf.Name}: {string.Join(" | ", reading.Missing)} Texto leído: «{sample}»", 1000));
         if (!reading.HasData) return Failed(integration, run, pdf.Name, sha, pdf.Content.Length, Truncate(EmailRules.NoPdfDataMessage(pdf.Name, sample), 1000));
         var csv = EmailRules.ToCsv(reading, template.HasHeader, ImportTemplateService.DelimiterOf(template));
-        var outcome = await DispatchAsync(target, integration, template, client, run, $"{pdf.Name}.csv", Encoding.UTF8.GetBytes(csv), ct);
+        var outcome = await DispatchAsync(target, integration, template, client, run, $"{pdf.Name}.csv", Encoding.UTF8.GetBytes(csv), ct, reader);
         if (read.UsedOcr && outcome.Log.Message is { } msg) outcome.Log.Message = Truncate($"{msg} (PDF leído con OCR)", 1000);
         return outcome;
     }
 
     /// <summary>El cuerpo de un correo (o el texto ya leído de un documento) → filas por los campos a leer → el destino. Lo que no se puede leer va a la bandeja con el motivo.</summary>
-    private async Task<FileOutcome> ProcessBodyAsync(Integration integration, ImportTemplate template, Client client, IntegrationRun run, IReadOnlyList<EmailBodyField> fields, string target, string label, string messageSha, string text, CancellationToken ct, string? recordStart = null)
+    private async Task<FileOutcome> ProcessBodyAsync(Integration integration, ImportTemplate template, Client client, IntegrationRun run, IReadOnlyList<EmailBodyField> fields, string target, string label, string messageSha, string text, CancellationToken ct, string? recordStart = null, DocumentReader? reader = null)
     {
         var reading = EmailRules.ReadDocument(text, fields, recordStart);
         if (reading.Missing.Count > 0) return Failed(integration, run, label, messageSha, 0, string.Join(" | ", reading.Missing));
         if (!reading.HasData) return Failed(integration, run, label, messageSha, 0, EmailRules.NoBodyDataMessage);
         var csv = EmailRules.ToCsv(reading, template.HasHeader, ImportTemplateService.DelimiterOf(template));
-        return await DispatchAsync(target, integration, template, client, run, $"{label}.csv", Encoding.UTF8.GetBytes(csv), ct);
+        return await DispatchAsync(target, integration, template, client, run, $"{label}.csv", Encoding.UTF8.GetBytes(csv), ct, reader);
     }
 
     /// <summary>
@@ -389,15 +389,15 @@ public sealed class IntegrationRunner(
             switch (input.Source)
             {
                 case ReaderSources.Body:
-                    outcomes.Add(await ProcessBodyAsync(integration, readerTemplate, readerClient, run, fields, target, $"{label} [{reader.Name}]", messageSha, input.Text ?? string.Empty, ct, reader.RecordStart));
+                    outcomes.Add(await ProcessBodyAsync(integration, readerTemplate, readerClient, run, fields, target, $"{label} [{reader.Name}]", messageSha, input.Text ?? string.Empty, ct, reader.RecordStart, reader));
                     break;
                 case ReaderSources.Pdf:
                     var (attachment, read) = pdfs[input.Name];
-                    outcomes.Add(await ProcessPdfAsync(integration, readerTemplate, readerClient, run, fields, target, attachment, read, ct, reader.RecordStart));
+                    outcomes.Add(await ProcessPdfAsync(integration, readerTemplate, readerClient, run, fields, target, attachment, read, ct, reader.RecordStart, reader));
                     break;
                 default:
                     var file = files[input.Name];
-                    outcomes.Add(await DispatchAsync(target, integration, readerTemplate, readerClient, run, file.Name, file.Content, ct));
+                    outcomes.Add(await DispatchAsync(target, integration, readerTemplate, readerClient, run, file.Name, file.Content, ct, reader));
                     break;
             }
         }

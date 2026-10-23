@@ -6644,4 +6644,39 @@ IF OBJECT_ID(N'dbo.EntityResponsible', N'U') IS NULL CREATE TABLE dbo.EntityResp
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_EntityResponsible' AND object_id = OBJECT_ID('dbo.EntityResponsible'))
     CREATE UNIQUE INDEX UX_EntityResponsible ON dbo.EntityResponsible(TenantId, EntityLookupId, EntityId, UserId);
+
+   2026-10-23 (j) — Propuestas de cierre de las integraciones (lectores ORDER_COMPLETION): dbo.IntegrationProposal. Una propuesta = «llevar la orden X a PICKUP/DELIVERED porque este documento lo dice»;
+   una persona la confirma o la rechaza (o el lector AUTO la aplica). La orden solo cambia por el servicio de estatus. Estatus: PENDING, CONFIRMED, APPLIED, REJECTED, FAILED.
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID(N'dbo.IntegrationProposal', N'U') IS NULL CREATE TABLE dbo.IntegrationProposal (
+    IntegrationProposalId BIGINT IDENTITY(1,1) CONSTRAINT PK_IntegrationProposal PRIMARY KEY,
+    PublicId            UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_IntegrationProposal_PublicId DEFAULT NEWID(),
+    TenantId            INT NOT NULL CONSTRAINT FK_IntegrationProposal_Tenant REFERENCES dbo.Tenant(TenantId),
+    IntegrationId       INT NOT NULL CONSTRAINT FK_IntegrationProposal_Integration REFERENCES dbo.Integration(IntegrationId),
+    IntegrationRunId    BIGINT NOT NULL CONSTRAINT FK_IntegrationProposal_Run REFERENCES dbo.IntegrationRun(IntegrationRunId),
+    IntegrationFileLogId BIGINT NULL CONSTRAINT FK_IntegrationProposal_File REFERENCES dbo.IntegrationFileLog(IntegrationFileLogId),
+    Kind                VARCHAR(20) NOT NULL CONSTRAINT DF_IntegrationProposal_Kind DEFAULT 'COMPLETE_ORDER',
+    TransportOrderId    INT NOT NULL CONSTRAINT FK_IntegrationProposal_Order REFERENCES dbo.TransportOrder(TransportOrderId),
+    ReferenceKey        NVARCHAR(80) NOT NULL,
+    ToStatus            VARCHAR(20) NOT NULL,
+    Status              VARCHAR(12) NOT NULL CONSTRAINT DF_IntegrationProposal_Status DEFAULT 'PENDING',
+    Summary             NVARCHAR(500) NOT NULL,
+    EvidenceJson        NVARCHAR(MAX) NULL,
+    Message             NVARCHAR(1000) NULL,
+    CreatedAtUtc        DATETIME2 NOT NULL CONSTRAINT DF_IntegrationProposal_Created DEFAULT SYSUTCDATETIME(),
+    DecidedAtUtc        DATETIME2 NULL,
+    DecidedBy           INT NULL CONSTRAINT FK_IntegrationProposal_DecidedBy REFERENCES dbo.AspNetUsers(Id),
+    Note                NVARCHAR(400) NULL,
+    RowVersion          ROWVERSION,
+    CONSTRAINT CK_IntegrationProposal_Status CHECK (Status IN ('PENDING', 'CONFIRMED', 'APPLIED', 'REJECTED', 'FAILED'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_IntegrationProposal_PublicId' AND object_id = OBJECT_ID('dbo.IntegrationProposal'))
+    CREATE UNIQUE INDEX UQ_IntegrationProposal_PublicId ON dbo.IntegrationProposal(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_IntegrationProposal_Status' AND object_id = OBJECT_ID('dbo.IntegrationProposal'))
+    CREATE INDEX IX_IntegrationProposal_Status ON dbo.IntegrationProposal(TenantId, Status, IntegrationProposalId DESC);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_IntegrationProposal_Order' AND object_id = OBJECT_ID('dbo.IntegrationProposal'))
+    CREATE INDEX IX_IntegrationProposal_Order ON dbo.IntegrationProposal(TenantId, TransportOrderId, ToStatus);
 GO

@@ -350,6 +350,9 @@ public static class DependencyInjection
         services.AddScoped<IntegrationRunner>();
         services.AddScoped<IDocumentTarget, ArrivalNoticeDocumentTarget>();   // 2026-10-23: lectores de correo → aviso de llegada
         services.AddScoped<IDocumentTarget, ExitNoticeDocumentTarget>();      // 2026-10-23: lectores de correo → aviso de salida
+        services.AddScoped<OrderCompletionApplier>();                          // 2026-10-23: cierre de órdenes por documento (propuestas)
+        services.AddScoped<IDocumentTarget, OrderCompletionDocumentTarget>();
+        services.AddScoped<IntegrationProposalService>();
         services.AddScoped<IntegrationInboxService>();
         services.AddSingleton<IScheduledJob, ConsigneeNoticeDispatchJob>();   // Lote 116
         services.AddSingleton<ScheduledJobRunner>();

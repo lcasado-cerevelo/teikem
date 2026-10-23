@@ -242,6 +242,7 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<Teikem.Domain.Integrations.IntegrationRun> IntegrationRuns => Set<Teikem.Domain.Integrations.IntegrationRun>();
     public DbSet<Teikem.Domain.Integrations.IntegrationFileLog> IntegrationFileLogs => Set<Teikem.Domain.Integrations.IntegrationFileLog>();
     public DbSet<Teikem.Domain.Integrations.IntegrationInboxItem> IntegrationInboxItems => Set<Teikem.Domain.Integrations.IntegrationInboxItem>();
+    public DbSet<Teikem.Domain.Integrations.IntegrationProposal> IntegrationProposals => Set<Teikem.Domain.Integrations.IntegrationProposal>();
     public DbSet<Teikem.Domain.Integrations.IntegrationApiKey> IntegrationApiKeys => Set<Teikem.Domain.Integrations.IntegrationApiKey>();   // Lote 135
     public DbSet<Teikem.Domain.Integrations.IntegrationApiLog> IntegrationApiLogs => Set<Teikem.Domain.Integrations.IntegrationApiLog>();
     public DbSet<Teikem.Domain.Integrations.IntegrationOutput> IntegrationOutputs => Set<Teikem.Domain.Integrations.IntegrationOutput>();

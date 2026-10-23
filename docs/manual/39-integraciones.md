@@ -396,4 +396,19 @@ Algunos documentos traen **una orden por página** y, antes de la primera, un en
 
 Columnas de la plantilla de importación (sin encabezado, coma, **varias líneas por envío** activado): **1** orderNumber, **2** waybillNumber, **3** pickupName (el paciente), **4** pickupLine1 (dirección), **5** pickupCity (pueblo), **6** pickupPostalCode (ZIP), **7** contactPhone (teléfono del paciente), **8** requestedDate (fecha de entrega), **9** notes, **10** zone (la ruta) y **11** description (la pieza). Cada equipo «Pick Up» es una línea de la orden (una pieza); la línea «New DME … NOTES» no es pieza: su texto se une a las instrucciones de entrega en las **notas**. La cantidad del OCR no se usa (se lee mal: un «1» sale «4»). Los datos de salud del documento (HIC, fecha de nacimiento, MT ID) **no se leen**: solo entra lo que el lector declara.
 
-**Pendiente (no construido):** la **cola de propuestas** para cerrar órdenes con la hoja «Ruta completada» (el Referral # es el Order #), con modo sugerir o automático por lector.
+## 18. Cerrar órdenes por documento: la cola de propuestas (2026-10-23)
+
+Los **finales de un flujo no se hacen solos**. Un lector con destino **«Cierre de órdenes (propuesta)»** lee de un documento qué órdenes quedaron resueltas (la hoja «Ruta completada» de CMS, por ejemplo) y, por cada orden, deja una **propuesta**: «llevar la orden X a Recogida porque este documento lo dice». Una persona la **confirma** o la **rechaza** en **Integraciones → Propuestas**. Permiso: **integrations.inbox** (el mismo de la bandeja). La pestaña muestra entre paréntesis cuántas esperan.
+
+**Cómo se arma.** En el lector: destino «Cierre de órdenes (propuesta)», **Qué hace con lo que encuentra** (**Sugerir**, por omisión: una persona confirma; **Automático**: cierra la orden en el acto, a nombre de la cuenta de servicio de la integración, y se usa solo cuando ese lector ya demostró que acierta) y **Llevar la orden a** (**Recogida** o **Entregada**). La columna **1** del lector es la clave con que el documento nombra la orden (en CMS, el **Referral #**, que es el **Order #** de la orden); las demás columnas son evidencia. Hay un modelo listo: **Usar un modelo → Ruta completada de CMS → cerrar recogidas (propuesta)**; solo toma los renglones de tipo **PU** (las líneas de notas no cuentan).
+
+**Cómo encuentra la orden.** Por su número de orden o de envío, entre las órdenes **activas del cliente** del lector. Una clave sin orden va a la **bandeja** («No hay una orden «X» del cliente …»). Una orden con una propuesta por confirmar, confirmada o aplicada para ese mismo estatus **no genera otra** (el mismo documento dos veces no duplica propuestas). Varios renglones del documento con la misma clave son **una** propuesta.
+
+**Qué pasa al confirmar.**
+- **Recogida:** la orden pasa por el pipeline de estatus (saltando los intermedios que falten) hasta «Recogida» y queda la bitácora «Cierre por documento: …». Si la orden ya estaba en «Recogida» o más adelante, no se toca y la propuesta queda **Confirmada** con «La orden ya estaba en ese estatus.».
+- **Entregada:** se registra la entrega con el comprobante («Según documento: …»), como la entrega registrada desde la web.
+- La orden cambia **a nombre de quien confirma** y queda guardado quién, cuándo y su nota. Si la orden **ya no lo permite** (cancelada, en un estatus final, el estatus de cierre no está habilitado…), la propuesta queda **Fallida** con el motivo y ya no se puede confirmar otra vez.
+- **Rechazar** deja la orden como estaba.
+- En modo **Automático** la propuesta nace **Aplicada** (o **Fallida**, y además va a la bandeja con el motivo).
+
+**Estados:** Por confirmar (PENDING), Confirmada (CONFIRMED), Aplicada (APPLIED, la hizo el lector automático), Rechazada (REJECTED) y Fallida (FAILED). API: `GET /api/v1/integrations/proposals?status=`, `POST …/proposals/{id}/confirm` y `…/reject` (cuerpo opcional `{ "note": "…" }`); 409 «La propuesta ya se resolvió.» si ya tenía decisión.

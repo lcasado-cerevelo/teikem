@@ -46,7 +46,7 @@ public class NoticeDocumentTargetsTests
                     S("start").Length == 0 ? null : S("start"), null, S("separator").Length == 0 ? null : S("separator"), columns.Count == 0 ? null : columns,
                     S("lineRegex").Length == 0 ? null : S("lineRegex"), f.GetProperty("repeat").GetBoolean(), f.GetProperty("fromHeader").GetBoolean(), S("appendWith").Length == 0 ? null : S("appendWith"));
             }).ToList();
-            list.Add(new DocumentReader(r.GetProperty("name").GetString()!, r.GetProperty("source").GetString()!, r.GetProperty("target").GetString()!, when, fields, null, null, false, r.GetProperty("recordStart").GetString() is { Length: > 0 } rs ? rs : null));
+            list.Add(new DocumentReader(r.GetProperty("name").GetString()!, r.GetProperty("source").GetString()!, r.GetProperty("target").GetString()!, when, fields, null, null, false, r.GetProperty("recordStart").GetString() is { Length: > 0 } rs ? rs : null, r.GetProperty("mode").GetString()!, r.GetProperty("toStatus").GetString()));
         }
         return list;
     }
@@ -65,7 +65,7 @@ public class NoticeDocumentTargetsTests
     public void The_presets_are_valid_readers()
     {
         var readers = Readers();
-        Assert.Equal(4, readers.Count);
+        Assert.Equal(5, readers.Count);
         Assert.Empty(DocumentReaderRules.Validate(readers));
     }
 

@@ -146,7 +146,7 @@ describe('lectores', () => {
     })
     const cfg = buildEmailConfig({ ...ok(), readers: [r] })
     expect(cfg.readers).toEqual([{
-      name: 'Pedido', source: 'PDF', target: 'ORDER', firstOnly: true, templatePublicId: 't-1', clientPublicId: 'c-1', recordStart: 'Order #:',
+      name: 'Pedido', source: 'PDF', target: 'ORDER', firstOnly: true, templatePublicId: 't-1', clientPublicId: 'c-1', recordStart: 'Order #:', mode: 'SUGGEST', toStatus: null,
       when: [{ scope: 'TEXT', operator: 'CONTAINS', value: 'packing list' }],
       fields: [
         expect.objectContaining({ position: 2, kind: 'BLOCK', start: 'Product', end: 'Page', lineRegex: '^(T-\\w+)$', repeat: true, columns: [{ position: 2, index: 1 }] }),

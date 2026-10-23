@@ -23,6 +23,8 @@ export type OutputPreviewDto = Schemas['OutputPreviewDto']
 export type WebhookDto = Schemas['WebhookDto']
 export type WebhookCreatedDto = Schemas['WebhookCreatedDto']
 export type WebhookDeliveryDto = Schemas['WebhookDeliveryDto']
+export type ProposalDto = Schemas['ProposalDto']
+export type ProposalPageDto = Schemas['ProposalPageDto']
 
 export const integrationKeys = {
   all: ['integrations'] as const,
@@ -36,6 +38,7 @@ export const integrationKeys = {
   outbox: (integration: string, status: string, skip: number, take: number) => ['integrations', 'outbox', { integration, status, skip, take }] as const,
   outputs: (integration: string, status: string, skip: number, take: number) => ['integrations', 'outputs', { integration, status, skip, take }] as const,
   item: (id: number) => ['integrations', 'inbox', 'item', id] as const,
+  proposals: (status: string, skip: number, take: number) => ['integrations', 'proposals', { status, skip, take }] as const,
 }
 
 export function useIntegrations(includeInactive: boolean) {
@@ -236,6 +239,29 @@ export function useWebhookMutations(publicId: string) {
     }),
     test: useMutation({
       mutationFn: (id: string) => unwrap(api.POST('/api/v1/integrations/{publicId}/webhooks/{webhookId}/test', path(id))),
+    }),
+  }
+}
+
+/** Propuestas de cierre de órdenes que dejaron los lectores por documento (2026-10-23). */
+export function useProposals(status: string, skip: number, take: number) {
+  return useQuery({
+    queryKey: integrationKeys.proposals(status, skip, take),
+    queryFn: () => unwrap(api.GET('/api/v1/integrations/proposals', { params: { query: { status: status || undefined, skip, take } } })),
+  })
+}
+
+export function useProposalMutations() {
+  const qc = useQueryClient()
+  const invalidate = () => qc.invalidateQueries({ queryKey: integrationKeys.all })
+  return {
+    confirm: useMutation({
+      mutationFn: (v: { id: string; note: string }) => unwrap(api.POST('/api/v1/integrations/proposals/{publicId}/confirm', { params: { path: { publicId: v.id } }, body: { note: v.note || null } })),
+      onSettled: invalidate,
+    }),
+    reject: useMutation({
+      mutationFn: (v: { id: string; note: string }) => unwrap(api.POST('/api/v1/integrations/proposals/{publicId}/reject', { params: { path: { publicId: v.id } }, body: { note: v.note || null } })),
+      onSettled: invalidate,
     }),
   }
 }

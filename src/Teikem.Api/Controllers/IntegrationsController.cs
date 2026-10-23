@@ -19,7 +19,7 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/integrations")]
 [Authorize]
 [RequireModule(ModuleKeys.Integrations)]
-public sealed class IntegrationsController(IntegrationService integrations, IntegrationRunner runner, IntegrationInboxService inbox, ApiKeyService apiKeys, WebhookService webhooks, IntegrationOutputService outputs, ITenantContext tenant) : ControllerBase
+public sealed class IntegrationsController(IntegrationService integrations, IntegrationRunner runner, IntegrationInboxService inbox, ApiKeyService apiKeys, WebhookService webhooks, IntegrationOutputService outputs, IntegrationProposalService proposals, ITenantContext tenant) : ControllerBase
 {
     /// <summary>Lo que quien mira puede dar en el alta: alcances (y por qué alguno no se puede), conectores y a quién avisar.</summary>
     [HttpGet("options"), RequirePermission(PermissionCatalog.IntegrationsCreate + "|" + PermissionCatalog.IntegrationsManage)]
@@ -219,6 +219,18 @@ public sealed class IntegrationsController(IntegrationService integrations, Inte
 
     [HttpPost("inbox/{id:long}/discard"), RequirePermission(PermissionCatalog.IntegrationsInbox)]
     public Task<InboxItemDto> InboxDiscard(long id, [FromBody] InboxDiscardRequest? req, CancellationToken ct) => inbox.DiscardAsync(id, req?.Note, ct);
+
+    /// <summary>Propuestas de cierre de órdenes que dejaron los lectores por documento (filtro: estatus PENDING / CONFIRMED / APPLIED / REJECTED / FAILED). Misma llave que la bandeja.</summary>
+    [HttpGet("proposals"), RequirePermission(PermissionCatalog.IntegrationsInbox)]
+    public Task<ProposalPageDto> ProposalList([FromQuery] string? status, [FromQuery] int skip, [FromQuery] int take, CancellationToken ct)
+        => proposals.ListAsync(status, skip, take <= 0 ? 50 : take, ct);
+
+    /// <summary>Confirma la propuesta: la orden cambia en este momento, a nombre de quien confirma. 409 si ya se resolvió; si la orden no lo permite, la propuesta queda FAILED con el motivo.</summary>
+    [HttpPost("proposals/{publicId:guid}/confirm"), RequirePermission(PermissionCatalog.IntegrationsInbox)]
+    public Task<ProposalDto> ProposalConfirm(Guid publicId, [FromBody] ProposalDecisionRequest? req, CancellationToken ct) => proposals.ConfirmAsync(publicId, req, ct);
+
+    [HttpPost("proposals/{publicId:guid}/reject"), RequirePermission(PermissionCatalog.IntegrationsInbox)]
+    public Task<ProposalDto> ProposalReject(Guid publicId, [FromBody] ProposalDecisionRequest? req, CancellationToken ct) => proposals.RejectAsync(publicId, req, ct);
 
     /// <summary>Reprocesa todos los pendientes de una integración (hasta 200 por vez).</summary>
     [HttpPost("{publicId:guid}/inbox/reprocess-all"), RequirePermission(PermissionCatalog.IntegrationsInbox)]

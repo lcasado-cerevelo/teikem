@@ -12,16 +12,17 @@ import { IconClock, IconSwap } from '../../kernel/ui/screenIcons'
 import { ApiKeysModal } from './ApiKeysModal'
 import { InboxTab } from './InboxTab'
 import { OutboxTab } from './OutboxTab'
+import { ProposalsTab } from './ProposalsTab'
 import { OutputPreviewModal } from './OutputPreviewModal'
 import { OutputsPanel } from './OutputsPanel'
 import { WebhooksModal } from './WebhooksModal'
 import { IntegrationFormModal } from './IntegrationFormModal'
 import { FILE_TONE, RUN_TONE, scheduleText } from './integrationRules'
-import { useIntegrationMutations, useIntegrationRuns, useIntegrations, useOutbox, useOutputs, type IntegrationDto, type IntegrationRunDto } from './integrationsApi'
+import { useIntegrationMutations, useIntegrationRuns, useIntegrations, useOutbox, useOutputs, useProposals, type IntegrationDto, type IntegrationRunDto } from './integrationsApi'
 import './integrations.css'
 
 const NO_ROWS: IntegrationDto[] = []
-type Tab = 'integrations' | 'inbox' | 'outbox'
+type Tab = 'integrations' | 'inbox' | 'outbox' | 'proposals'
 
 function RunSummary({ run }: { run: IntegrationRunDto }) {
   const t = useT()
@@ -90,7 +91,8 @@ export default function IntegrationsScreen() {
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploadFor, setUploadFor] = useState<IntegrationDto | null>(null)
   const wanted = params.get('tab')
-  const tab: Tab = wanted === 'inbox' && canInbox ? 'inbox' : wanted === 'outbox' && canInbox ? 'outbox' : 'integrations'
+  const tab: Tab = wanted === 'inbox' && canInbox ? 'inbox' : wanted === 'outbox' && canInbox ? 'outbox' : wanted === 'proposals' && canInbox ? 'proposals' : 'integrations'
+  const pendingProposals = useProposals('PENDING', 0, 1).data?.pending ?? 0
   const undelivered = (useOutbox('', 'UNDELIVERED', 0, 1).data?.undelivered ?? 0) + (useOutputs('', 'UNDELIVERED', 0, 1).data?.undelivered ?? 0)
   const inboxIntegration = params.get('integration') ?? ''
   const rows = list.data ?? NO_ROWS
@@ -98,7 +100,7 @@ export default function IntegrationsScreen() {
 
   const go = (next: Tab) => {
     const p = new URLSearchParams(params)
-    if (next === 'inbox') p.set('tab', 'inbox')
+    if (next !== 'integrations') p.set('tab', next)
     else p.delete('tab')
     setParams(p, { replace: true })
   }
@@ -229,6 +231,7 @@ export default function IntegrationsScreen() {
           tabs={[
             { key: 'integrations' as const, label: t('integrations.tabs.integrations') },
             ...(canInbox ? [{ key: 'inbox' as const, label: `${t('integrations.tabs.inbox')}${pendingTotal > 0 ? ` (${pendingTotal})` : ''}` }] : []),
+            ...(canInbox ? [{ key: 'proposals' as const, label: `${t('integrations.tabs.proposals')}${pendingProposals > 0 ? ` (${pendingProposals})` : ''}` }] : []),
             ...(canInbox ? [{ key: 'outbox' as const, label: `${t('integrations.tabs.outbox')}${undelivered > 0 ? ` (${undelivered})` : ''}` }] : []),
           ]}
           value={tab}
@@ -239,6 +242,8 @@ export default function IntegrationsScreen() {
 
       {tab === 'inbox' ? (
         <InboxTab integration={inboxIntegration} onIntegration={setIntegrationFilter} />
+      ) : tab === 'proposals' ? (
+        <ProposalsTab />
       ) : tab === 'outbox' ? (
         <>
           <OutboxTab integration={inboxIntegration} onIntegration={setIntegrationFilter} />

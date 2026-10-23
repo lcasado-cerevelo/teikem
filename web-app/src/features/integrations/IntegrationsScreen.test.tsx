@@ -27,6 +27,9 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
     if (req.method === 'GET' && p === '/api/v1/clients') return json([{ publicId: 'c1', code: 'AXC', name: 'AxisCare' }])
     if (req.method === 'GET' && p === '/api/v1/import-templates') return json([{ publicId: 't1', name: 'Plantilla AxisCare', isActive: true, clientPublicId: 'c1', columns: [] }])
     if (req.method === 'POST' && p === '/api/v1/integrations') return json({ ...INTEGRATIONS[0], name: (body as { name: string }).name })
+    if (req.method === 'GET' && p === '/api/v1/integrations/proposals') return json({ items: url.searchParams.get('status') === 'PENDING' ? PROPOSALS : [], total: url.searchParams.get('status') === 'PENDING' ? 1 : 0, pending: 1 })
+    if (req.method === 'POST' && p === '/api/v1/integrations/proposals/p1/confirm') return json({ ...PROPOSALS[0], status: 'CONFIRMED', note: (body as { note?: string })?.note ?? null })
+    if (req.method === 'POST' && p === '/api/v1/integrations/proposals/p1/reject') return json({ ...PROPOSALS[0], status: 'REJECTED', note: (body as { note?: string })?.note ?? null })
     if (req.method === 'PATCH' && p === '/api/v1/integrations/inbox/5') return json(INBOX_ITEM)
     if (req.method === 'POST' && p === '/api/v1/integrations/inbox/5/discard') return json({ ...INBOX[0], status: 'DISCARDED' })
     return new Response(JSON.stringify({ title: 'no encontrado' }), { status: 404 })
@@ -55,6 +58,10 @@ const OPTIONS = {
   users: [{ id: 3, name: 'Dalyshamel', email: 'd@x.com' }],
 }
 const INBOX = [{ id: 5, integrationPublicId: 'i1', integrationName: 'Envíos de AxisCare', runId: 9, fileName: 'ordenes.csv', sourceRow: 6, referenceKey: 'C-100', reason: 'El envío no trae ninguna pieza (todas sus líneas son descripción o factura).', status: 'PENDING', createdAtUtc: '2026-10-19T12:00:00Z', hasData: true }]
+const PROPOSALS = [{
+  publicId: 'p1', kind: 'COMPLETE_ORDER', referenceKey: '202608241109', orderNumber: 'ORD-77', orderPublicId: 'o1', toStatus: 'PICKUP', status: 'PENDING', summary: 'Llevar la orden ORD-77 a PICKUP según ruta-completada.pdf.',
+  document: 'ruta-completada.pdf', integrationName: 'Cierres de CMS', createdAtUtc: '2026-10-23T12:00:00Z',
+}]
 const INBOX_ITEM = { ...INBOX[0], header: ['envío', 'tipo'], rows: [{ row: 6, cells: ['C-100', 'Drum'] }] }
 
 function sessionOf(perms: string[]) {
@@ -162,6 +169,34 @@ describe('IntegrationsScreen', () => {
     // un segundo clic no repite el nombre: se numera
     await user.click(within(dialog).getByTestId('reader-preset-cms-referral-order'))
     expect(await within(dialog).findByDisplayValue('Hoja de ruta de CMS 2')).toBeInTheDocument()
+  })
+
+  it('la pestaña Propuestas muestra lo que dejó el lector de cierre y confirmar o rechazar lleva la nota; sin integrations.inbox no hay pestaña', async () => {
+    const user = userEvent.setup()
+    wrap(undefined, '/system/integrations?tab=proposals')
+    expect(await screen.findByRole('tab', { name: 'Propuestas (1)' })).toBeInTheDocument()
+    const row = (await screen.findByText('ORD-77')).closest('tr') as HTMLElement
+    expect(within(row).getByText('Por confirmar')).toBeInTheDocument()
+    expect(within(row).getByText('Recogida')).toBeInTheDocument()
+    expect(within(row).getByText('ruta-completada.pdf')).toBeInTheDocument()
+
+    await user.click(within(row).getByRole('button', { name: 'Confirmar' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Confirmar el cierre de la orden ORD-77' })
+    await user.type(within(dialog).getByLabelText(/Nota/), 'Verificado')
+    await user.click(within(dialog).getByRole('button', { name: 'Confirmar' }))
+    await waitFor(() => expect(mock.requests.some((r) => r.method === 'POST' && r.path === '/api/v1/integrations/proposals/p1/confirm')).toBe(true))
+    expect(mock.requests.find((r) => r.path === '/api/v1/integrations/proposals/p1/confirm')!.body).toEqual({ note: 'Verificado' })
+
+    await user.click(within((await screen.findByText('ORD-77')).closest('tr') as HTMLElement).getByRole('button', { name: 'Rechazar' }))
+    const reject = await screen.findByRole('dialog', { name: 'Rechazar la propuesta de la orden ORD-77' })
+    await user.click(within(reject).getByRole('button', { name: 'Rechazar' }))
+    await waitFor(() => expect(mock.requests.some((r) => r.path === '/api/v1/integrations/proposals/p1/reject')).toBe(true))
+  })
+
+  it('sin integrations.inbox no hay pestaña de propuestas', async () => {
+    wrap(['integrations.view'])
+    await screen.findByText('Envíos de AxisCare')
+    expect(screen.queryByRole('tab', { name: /Propuestas/ })).toBeNull()
   })
 
   it('la bandeja muestra el motivo, deja corregir las celdas y descartar con nota', async () => {
