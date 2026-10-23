@@ -11,6 +11,7 @@ import { NotificationsProvider } from '../notifications/NotificationsProvider'
 import MessagesScreen from './MessagesScreen'
 import { MessagesProvider } from './MessagesProvider'
 import { NewMessageHost } from './NewMessageModal'
+import { MessagesAboutPanel, TalkAboutButton } from './About'
 
 const live = vi.hoisted(() => ({ onState: null as null | ((ok: boolean) => void), onEvent: null as null | ((n: string, e: unknown) => void), stops: 0 }))
 vi.mock('./messagesRealtime', () => ({
@@ -27,6 +28,7 @@ const mock = vi.hoisted(() => ({
   groupCreator: true,
   threadUnread: 1,
   hasMore: false,
+  rich: false,
 }))
 
 vi.mock('../../kernel/api/client', async (importOriginal) => {
@@ -37,6 +39,12 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
     const body = text ? JSON.parse(text) : undefined
     mock.requests.push({ method: req.method, path: url.pathname, search: url.search, body })
     const p = url.pathname
+    if (req.method === 'GET' && p === '/api/v1/messages/attachments/p-1') return new Response(new Uint8Array([137, 80, 78, 71]), { status: 200, headers: { 'Content-Type': 'image/png' } })
+    if (req.method === 'GET' && p === '/api/v1/messages/suggested') return json([
+      { source: 'TRIP', sourceLabel: 'Responsable de la ruta', userId: 2, roleId: null, name: 'Ana Rivera', online: true },
+      { source: 'ROLE', sourceLabel: 'Despachadores', userId: null, roleId: 5, name: 'Gerencia', online: false },
+    ])
+    if (req.method === 'GET' && p === '/api/v1/messages/about') return json([{ threadPublicId: 'd1', messageId: 12, senderName: 'Ana Rivera', preview: '¿sale hoy?', createdAtUtc: ago(2) }])
     if (req.method === 'GET' && p === '/api/v1/messages/unread') return json(mock.unread)
     if (req.method === 'GET' && p === '/api/v1/messages/threads') return json(THREADS())
     if (req.method === 'GET' && p === '/api/v1/messages/threads/d1') return json(url.searchParams.has('before') ? OLDER : DIRECT())
@@ -44,7 +52,7 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
     if (req.method === 'GET' && p === '/api/v1/messages/people') return json(PEOPLE)
     if (req.method === 'GET' && p === '/api/v1/messages/roles') return json([{ id: 5, name: 'Gerencia', memberCount: 3 }, { id: 6, name: 'Vacío', memberCount: 0 }])
     if (req.method === 'POST' && p === '/api/v1/messages/threads') return json({ ...DIRECT(), thread: { ...DIRECT().thread, publicId: 'nuevo' } })
-    if (req.method === 'POST' && p.endsWith('/messages')) return json({ id: 99, senderId: 1, senderName: 'Yo', body: body.text, createdAtUtc: new Date().toISOString(), mine: true })
+    if (req.method === 'POST' && p.endsWith('/messages')) return json({ id: 99, senderId: 1, senderName: 'Yo', body: body.text ?? '', createdAtUtc: new Date().toISOString(), mine: true })
     if (req.method === 'POST' && (p.endsWith('/read') || p.endsWith('/leave'))) return new Response(null, { status: 204 })
     if (req.method === 'POST' && p.endsWith('/members')) return json(GROUP())
     if (req.method === 'PUT' && p.endsWith('/mute')) return json({ ...DIRECT().thread, isMuted: body.muted })
@@ -69,7 +77,9 @@ const m = (id: number, sender: number, name: string, body: string, min: number) 
 const DIRECT = () => ({
   thread: summary({ unread: mock.threadUnread }),
   members: [{ userId: 1, name: 'Yo', email: 'yo@x.com', online: true, lastSeenUtc: ago(0), isCreator: false }, { userId: 2, name: 'Ana Rivera', email: 'ana@advance.com', online: true, lastSeenUtc: ago(0), isCreator: true }],
-  messages: [m(10, 2, 'Ana Rivera', 'Hola Luis', 3), m(11, 1, 'Yo', 'Hola Ana', 2)],
+  messages: [m(10, 2, 'Ana Rivera', 'Hola Luis', 3), m(11, 1, 'Yo', 'Hola Ana', 2),
+    ...(mock.rich ? [{ ...m(12, 2, 'Ana Rivera', 'Llámame al 787-555-1234 sobre esto', 1), ref: { entity: 'ORDER', publicId: 'o-1', title: 'ORD-77', subtitle: 'Clínica Sur', status: 'Asignada', canOpen: true },
+      attachments: [{ publicId: 'p-1', contentType: 'image/png', sizeBytes: 100, state: 'ACTIVE', hasThumb: true }, { publicId: 'p-2', contentType: 'image/png', sizeBytes: 100, state: 'DELETED', hasThumb: false }] }] : [])],
   hasMore: mock.hasMore,
   canAddMembers: false,
 })
@@ -105,7 +115,7 @@ function Where() {
 }
 
 let client: QueryClient
-function wrap(initial = '/messages', withScreen = true) {
+function wrap(initial = '/messages', withScreen = true, extra?: React.ReactNode) {
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
@@ -114,6 +124,7 @@ function wrap(initial = '/messages', withScreen = true) {
           <NotificationsProvider>
             <MessagesProvider>
               {withScreen && <MessagesScreen />}
+              {extra}
               <KemiFloating />
               <NewMessageHost />
               <Where />
@@ -125,6 +136,11 @@ function wrap(initial = '/messages', withScreen = true) {
   )
 }
 
+vi.mock('./photo', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./photo')>()
+  return { ...actual, shrinkImage: async (f: File) => ({ fileName: f.name, dataBase64: 'QUJD', previewUrl: 'data:image/jpeg;base64,QUJD' }) }
+})
+
 const sent = () => mock.requests.filter((r) => r.method === 'POST' && r.path.endsWith('/messages'))
 
 describe('Mensajes', () => {
@@ -135,6 +151,7 @@ describe('Mensajes', () => {
     mock.groupCreator = true
     mock.threadUnread = 1
     mock.hasMore = false
+    mock.rich = false
     live.onState = null
     live.onEvent = null
     localStorage.clear()
@@ -164,6 +181,83 @@ describe('Mensajes', () => {
     expect(within(pane).getByText('Hoy')).toBeInTheDocument()
     expect(within(pane).getByText('En línea')).toBeInTheDocument()
     await waitFor(() => expect(mock.requests.some((r) => r.method === 'POST' && r.path === '/api/v1/messages/threads/d1/read')).toBe(true))
+  })
+
+  it('muestra la tarjeta de la orden, las fotos y el teléfono como enlace', async () => {
+    mock.rich = true
+    const user = userEvent.setup()
+    wrap()
+    await user.click((await screen.findByText('Ana Rivera')).closest('button')!)
+    const pane = await screen.findByRole('region', { name: 'Ana Rivera' })
+    const card = await within(pane).findByRole('link', { name: 'Abrir la orden ORD-77' })
+    expect(card).toHaveAttribute('href', '/orders/o-1')
+    expect(within(card).getByText('Clínica Sur')).toBeInTheDocument()
+    const phone = within(pane).getByRole('link', { name: '787-555-1234' })
+    expect(phone).toHaveAttribute('href', 'tel:+17875551234')
+    expect(await within(pane).findByRole('button', { name: 'Ver la foto completa' })).toBeInTheDocument()
+    expect(within(pane).getByText('Foto borrada')).toBeInTheDocument()   // la vencida no se pide y dice por qué
+    expect(mock.requests.some((r) => r.path === '/api/v1/messages/attachments/p-2')).toBe(false)
+  })
+
+  it('adjunta fotos: se ven antes de enviar, se pueden quitar y un mensaje puede ser solo fotos', async () => {
+    const user = userEvent.setup({ applyAccept: false })   // el navegador filtra por `accept`; aquí se prueba también lo que se cuela
+    wrap()
+    await user.click((await screen.findByText('Ana Rivera')).closest('button')!)
+    const pane = await screen.findByRole('region', { name: 'Ana Rivera' })
+    await within(pane).findByText('Hola Ana')
+    const input = pane.querySelector('input[type="file"]') as HTMLInputElement
+    const send = within(pane).getByRole('button', { name: 'Enviar' })
+    expect(send).toBeDisabled()
+    await user.upload(input, [new File(['x'], 'portón.png', { type: 'image/png' }), new File(['y'], 'nota.pdf', { type: 'application/pdf' })])
+    expect(await within(pane).findByAltText('portón.png')).toBeInTheDocument()
+    expect(within(pane).getByText('Solo se admiten fotos JPG, PNG o WEBP.')).toBeInTheDocument()
+    expect(send).toBeEnabled()
+    await user.click(within(pane).getByRole('button', { name: 'Quitar la foto' }))
+    expect(within(pane).queryByAltText('portón.png')).not.toBeInTheDocument()
+    await user.upload(input, new File(['x'], 'portón.png', { type: 'image/png' }))
+    await within(pane).findByAltText('portón.png')
+    await user.click(send)
+    await waitFor(() => expect(sent()).toHaveLength(1))
+    expect(sent()[0].body).toEqual({ attachments: [{ fileName: 'portón.png', dataBase64: 'QUJD' }] })   // sin texto: solo fotos
+    await waitFor(() => expect(within(pane).queryByAltText('portón.png')).not.toBeInTheDocument())
+  })
+
+  it('«Hablar sobre esta orden»: abre Nuevo mensaje con la orden, los sugeridos arriba y manda la tarjeta (un rol sugerido es el grupo vivo)', async () => {
+    const user = userEvent.setup()
+    wrap('/orders/o-1', false, <TalkAboutButton about={{ entity: 'ORDER', publicId: 'o-1', title: 'ORD-77' }} />)
+    await user.click(screen.getByRole('button', { name: 'Hablar sobre esta orden' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('Sobre ORD-77')).toBeInTheDocument()
+    const ana = await within(dialog).findByRole('button', { name: /Ana Rivera/ })
+    expect(within(dialog).getByText('Responsable de la ruta')).toBeInTheDocument()
+    await user.click(ana)
+    expect(ana).toHaveAttribute('aria-pressed', 'true')
+    await user.type(within(dialog).getByLabelText('Mensaje'), '¿esto sale hoy?')
+    await user.click(within(dialog).getByRole('button', { name: 'Enviar' }))
+    await waitFor(() => expect(mock.requests.some((r) => r.method === 'POST' && r.path === '/api/v1/messages/threads')).toBe(true))
+    const body = mock.requests.find((r) => r.method === 'POST' && r.path === '/api/v1/messages/threads')!.body as Record<string, unknown>
+    expect(body).toMatchObject({ userIds: [2], text: '¿esto sale hoy?', ref: { entity: 'ORDER', publicId: 'o-1' } })
+    expect(body.followRole).toBeUndefined()
+    expect(mock.requests.find((r) => r.path === '/api/v1/messages/suggested')!.search).toContain('entity=ORDER')
+  })
+
+  it('un rol sugerido se manda como grupo vivo (followRole)', async () => {
+    const user = userEvent.setup()
+    wrap('/orders/o-1', false, <TalkAboutButton about={{ entity: 'ORDER', publicId: 'o-1', title: 'ORD-77' }} />)
+    await user.click(screen.getByRole('button', { name: 'Hablar sobre esta orden' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(await within(dialog).findByRole('button', { name: /Gerencia/ }))
+    await user.type(within(dialog).getByLabelText('Mensaje'), 'hola')
+    await user.click(within(dialog).getByRole('button', { name: 'Enviar' }))
+    await waitFor(() => expect(mock.requests.some((r) => r.method === 'POST' && r.path === '/api/v1/messages/threads')).toBe(true))
+    expect(mock.requests.find((r) => r.method === 'POST' && r.path === '/api/v1/messages/threads')!.body).toMatchObject({ roleId: 5, followRole: true, ref: { entity: 'ORDER' } })
+  })
+
+  it('el panel de la orden lista los mensajes sobre ella y lleva a la conversación', async () => {
+    wrap('/orders/o-1', false, <MessagesAboutPanel about={{ entity: 'ORDER', publicId: 'o-1', title: 'ORD-77' }} />)
+    const link = await screen.findByRole('link', { name: /¿sale hoy\?/ })
+    expect(link).toHaveAttribute('href', '/messages?thread=d1')
+    expect(mock.requests.find((r) => r.path === '/api/v1/messages/about')!.search).toContain('entity=ORDER')
   })
 
   it('Enter envía, Mayús+Enter es salto de línea y vacío no se envía', async () => {

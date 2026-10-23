@@ -2,6 +2,7 @@
 // (/api/v1/clients/{publicId}/contacts, clients.update); «Quitar» = PATCH isActive:false (nunca DELETE); un solo principal
 // activo (marcar otro quita la marca al anterior en el servidor). El teléfono y el correo de la persona son medios de
 // contacto del dueño CLIENT_CONTACT y se escriben con contacts.manage.
+import { PhoneLink } from '../contacts/PhoneLink'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -188,7 +189,7 @@ export function ClientPeoplePanel({ client }: { client: ClientDetail }) {
         header: t('clients.people.phone'),
         cell: (c) => {
           const p = personPhone(c)
-          return p?.value ? <span className="mono">{f.phoneFor(p.value, p.countryCallingCode)}</span> : '—'
+          return p?.value ? <span className="mono"><PhoneLink value={p.value} countryCallingCode={p.countryCallingCode} /></span> : '—'
         },
         sortValue: (c) => personPhone(c)?.value,
         exportValue: (c) => personPhone(c)?.value ?? '',

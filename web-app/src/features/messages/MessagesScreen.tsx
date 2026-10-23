@@ -10,7 +10,10 @@ import { useT } from '../../kernel/i18n'
 import { ConfirmDialog, Spinner, toast } from '../../kernel/ui'
 import { UserPicker, type PersonOption } from '../notifications/UserPicker'
 import { avatarTone, dayLabel, groupMessages, initialsOf, isOnline, MAX_BODY, presenceText, shouldSend } from './messageRules'
-import { fetchOlder, useMessageMutations, usePeople, useThread, useThreads, type MessageDto, type MessageThreadSummaryDto } from './messagesApi'
+import { fetchOlder, useMessageMutations, usePeople, useThread, useThreads, type MessageAttachmentDto, type MessageDto, type MessageThreadSummaryDto } from './messagesApi'
+import { LinkText } from './LinkText'
+import { ChatPhotoThumb, PhotoViewer, RefCard } from './MessageParts'
+import { isAcceptedImage, MAX_PHOTOS, roomLeft, shrinkImage, type ChatPhoto } from './photo'
 import { useMessages } from './MessagesProvider'
 import './messages.css'
 
@@ -44,7 +47,7 @@ function ThreadList({ selected, onSelect }: { selected: string | null; onSelect:
     <aside className="chat-list" aria-label={t('messages.list.title')}>
       <div className="chat-list-head">
         <h2>{t('messages.list.title')}</h2>
-        <button type="button" className="btn sm flow" onClick={openNewMessage}>
+        <button type="button" className="btn sm flow" onClick={() => openNewMessage()}>
           {t('messages.new.button')}
         </button>
       </div>
@@ -94,6 +97,10 @@ function Conversation({ id, onBack }: { id: string; onBack: () => void }) {
   const [hasMoreOlder, setHasMoreOlder] = useState<boolean | null>(null)
   const [loadingOlder, setLoadingOlder] = useState(false)
   const [text, setText] = useState('')
+  const [photos, setPhotos] = useState<ChatPhoto[]>([])
+  const [photoError, setPhotoError] = useState<string | null>(null)
+  const [viewing, setViewing] = useState<MessageAttachmentDto | null>(null)
+  const fileInput = useRef<HTMLInputElement>(null)
   const [membersOpen, setMembersOpen] = useState(false)
   const [leaving, setLeaving] = useState(false)
   const [q, setQ] = useState('')
@@ -113,6 +120,8 @@ function Conversation({ id, onBack }: { id: string; onBack: () => void }) {
     setOlder([])
     setHasMoreOlder(null)
     setText('')
+    setPhotos([])
+    setPhotoError(null)
     setMembersOpen(false)
     stick.current = true
     lastRead.current = 0
@@ -167,15 +176,33 @@ function Conversation({ id, onBack }: { id: string; onBack: () => void }) {
     }
   }, [id, messages])
 
+  const addPhotos = async (files: FileList | null) => {
+    setPhotoError(null)
+    const picked = Array.from(files ?? []).filter(isAcceptedImage)
+    if (picked.length < (files?.length ?? 0)) setPhotoError(t('messages.photo.type'))
+    const room = roomLeft(photos.length)
+    if (picked.length > room) setPhotoError(t('messages.photo.max', { n: MAX_PHOTOS }))
+    try {
+      const shrunk = await Promise.all(picked.slice(0, room).map(shrinkImage))
+      setPhotos((p) => [...p, ...shrunk])
+    } catch {
+      setPhotoError(t('messages.photo.unreadable'))
+    }
+    if (fileInput.current) fileInput.current.value = ''
+  }
+
   const submit = async () => {
     const body = text
-    if (!body.trim()) return
+    const attached = photos
+    if (!body.trim() && attached.length === 0) return
     setText('')
+    setPhotos([])
     stick.current = true
     try {
-      await send.mutateAsync({ publicId: id, text: body })
+      await send.mutateAsync({ publicId: id, text: body, attachments: attached.map((p) => ({ fileName: p.fileName, dataBase64: p.dataBase64 })) })
     } catch (e) {
-      setText(body)   // no se pierde lo escrito
+      setText(body)   // no se pierde lo escrito ni las fotos
+      setPhotos(attached)
       toast.error(applyProblemDetails(e).title)
     }
   }
@@ -269,7 +296,15 @@ function Conversation({ id, onBack }: { id: string; onBack: () => void }) {
                 {!g.mine && sum.kind === 'GROUP' && <span className="chat-sender">{g.senderName}</span>}
                 {g.messages.map((m, j) => (
                   <div key={m.id} className="bub">
-                    <p>{m.body}</p>
+                    {m.ref && <RefCard refCard={m.ref} />}
+                    {(m.attachments ?? []).length > 0 && (
+                      <div className="msg-photos">
+                        {(m.attachments ?? []).map((a) => (
+                          <ChatPhotoThumb key={a.publicId} photo={a} onOpen={setViewing} />
+                        ))}
+                      </div>
+                    )}
+                    {m.body ? <p><LinkText>{m.body}</LinkText></p> : null}
                     {j === g.messages.length - 1 && <time dateTime={m.createdAtUtc}>{f.time(m.createdAtUtc!)}</time>}
                   </div>
                 ))}
@@ -286,6 +321,10 @@ function Conversation({ id, onBack }: { id: string; onBack: () => void }) {
           void submit()
         }}
       >
+        <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onChange={(e) => void addPhotos(e.target.files)} />
+        <button type="button" className="iconbtn" aria-label={t('messages.photo.add')} title={t('messages.photo.add')} disabled={photos.length >= MAX_PHOTOS} onClick={() => fileInput.current?.click()}>
+          📷
+        </button>
         <textarea
           rows={1}
           value={text}
@@ -300,10 +339,28 @@ function Conversation({ id, onBack }: { id: string; onBack: () => void }) {
             }
           }}
         />
-        <button type="submit" className="btn flow" disabled={!text.trim() || send.isPending}>
+        <button type="submit" className="btn flow" disabled={(!text.trim() && photos.length === 0) || send.isPending}>
           {t('messages.send')}
         </button>
       </form>
+      {(photos.length > 0 || photoError) && (
+        <div className="msg-previews">
+          {photos.map((p, i) => (
+            <span key={p.previewUrl.slice(-24) + i} className="msg-prev">
+              <img src={p.previewUrl} alt={p.fileName} />
+              <button type="button" aria-label={t('messages.photo.remove')} onClick={() => setPhotos((l) => l.filter((_, j) => j !== i))}>
+                ✕
+              </button>
+            </span>
+          ))}
+          {photoError && (
+            <p className="ferr" role="alert">
+              {photoError}
+            </p>
+          )}
+        </div>
+      )}
+      <PhotoViewer photo={viewing} onClose={() => setViewing(null)} />
       <ConfirmDialog
         open={leaving}
         tone="danger"

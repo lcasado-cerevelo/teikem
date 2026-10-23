@@ -357,6 +357,28 @@ describe('UsersTab — estado, columna PIN y permisos', () => {
     expect(mock.calls.find((c) => c.path === '/api/v1/users/2/count-see-expected')?.body).toEqual({ value: true })
   })
 
+  it('mensajería (Lote 212): la columna muestra el modo de cada persona y las acciones cambian al modo pedido', async () => {
+    const user = userEvent.setup()
+    mock.handler = ((method: string, url: URL) => {
+      if (method === 'GET' && url.pathname === '/api/v1/users') return USERS
+      if (method === 'GET' && url.pathname === '/api/v1/roles') return [ROLE]
+      if (method === 'GET' && url.pathname === '/api/v1/permissions') return PERMISSIONS
+      if (method === 'GET' && url.pathname === '/api/v1/messaging-modes') return [{ userId: 2, name: 'Carlos Rivera', email: 'carlos@advance.test', mode: 'OFFICE' }]
+      if (method === 'PUT' && url.pathname === '/api/v1/messaging-modes/2') return { userId: 2, name: 'Carlos Rivera', email: 'carlos@advance.test', mode: 'FULL' }
+      return undefined
+    }) satisfies Handler
+
+    wrap(<UsersTab />, { permissions: ['admin.users'], modules: [] })
+    await screen.findByText('Carlos Rivera')
+    expect(await screen.findByText('Solo con la oficina')).toBeInTheDocument()
+    // en OFFICE ofrece completa y sin mensajería, no repite la que ya tiene
+    expect(screen.queryByRole('button', { name: 'Mensajería: solo con la oficina' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Mensajería: sin mensajería' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Mensajería: completa' }))
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'PUT' && c.path === '/api/v1/messaging-modes/2')).toBe(true))
+    expect(mock.calls.find((c) => c.path === '/api/v1/messaging-modes/2')?.body).toEqual({ mode: 'FULL' })
+  })
+
   it('"Nuevo usuario" sin contraseña muestra la temporal una sola vez (hallazgo S2)', async () => {
     const user = userEvent.setup()
     mock.handler = ((method: string, url: URL) => {

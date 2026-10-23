@@ -7,8 +7,8 @@ import { useT } from '../../kernel/i18n'
 import { Modal } from '../../kernel/ui'
 import { UserPicker, type PersonOption } from '../notifications/UserPicker'
 import { MAX_BODY } from './messageRules'
-import { useMessageMutations, useMessageRoles, usePeople } from './messagesApi'
-import { useMessages } from './MessagesProvider'
+import { useMessageMutations, useMessageRoles, usePeople, useSuggested, type MessageSuggestionDto } from './messagesApi'
+import { useMessages, type AboutRef } from './MessagesProvider'
 import './messages.css'
 
 interface Chosen {
@@ -17,7 +17,12 @@ interface Chosen {
   email: string
 }
 
-export function NewMessageModal({ onClose, initial }: { onClose: () => void; initial?: Chosen[] }) {
+/** El texto de dónde sale un sugerido (para que se entienda por qué está ahí). */
+export function suggestionSource(s: MessageSuggestionDto, t: (k: string) => string): string {
+  return s.source === 'TRIP' ? t('messages.suggest.trip') : s.source === 'ROLE' ? t('messages.suggest.role') : s.source === 'RECENT' ? t('messages.suggest.recent') : (s.sourceLabel ?? '')
+}
+
+export function NewMessageModal({ onClose, initial, about }: { onClose: () => void; initial?: Chosen[]; about?: AboutRef | null }) {
   const t = useT()
   const navigate = useNavigate()
   const { create } = useMessageMutations()
@@ -26,6 +31,8 @@ export function NewMessageModal({ onClose, initial }: { onClose: () => void; ini
   const roles = useMessageRoles()
   const [chosen, setChosen] = useState<Chosen[]>(initial ?? [])
   const [roleId, setRoleId] = useState<number | null>(null)
+  const [followRole, setFollowRole] = useState(false)   // el grupo «vivo» de un rol (uno solo por compañía) que se escogió de los sugeridos
+  const suggested = useSuggested(about?.entity ?? 'ORDER', about?.publicId ?? '', !!about)
   const [title, setTitle] = useState('')
   const [text, setText] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -49,7 +56,14 @@ export function NewMessageModal({ onClose, initial }: { onClose: () => void; ini
     if (!text.trim()) return setError(t('messages.new.errors.text'))
     setSending(true)
     try {
-      const thread = await create.mutateAsync({ userIds: chosen.map((c) => c.id), roleId: roleId ?? undefined, title: title.trim() || undefined, text })
+      const thread = await create.mutateAsync({
+        userIds: chosen.map((c) => c.id),
+        roleId: roleId ?? undefined,
+        followRole: roleId !== null && followRole ? true : undefined,
+        title: title.trim() || undefined,
+        text,
+        ref: about ? { entity: about.entity, publicId: about.publicId } : undefined,
+      })
       onClose()
       navigate(`/messages?thread=${thread.thread?.publicId}`)
     } catch (e) {
@@ -78,6 +92,40 @@ export function NewMessageModal({ onClose, initial }: { onClose: () => void; ini
       }
     >
       <div className="pb msg-new">
+        {about && (
+          <p className="msg-about" aria-label={t('messages.about.label')}>
+            <span aria-hidden="true">{about.entity === 'ORDER' ? '📦' : '🚚'}</span> {t('messages.about.on', { title: about.title })}
+          </p>
+        )}
+        {about && (suggested.data ?? []).length > 0 && (
+          <div className="f msg-suggest">
+            <label>{t('messages.suggest.title')}</label>
+            <ul className="nr-chips">
+              {(suggested.data ?? []).map((s) => {
+                const taken = s.userId != null ? chosen.some((c) => c.id === s.userId) : roleId === s.roleId
+                return (
+                  <li key={`${s.source}-${s.userId ?? 'r'}-${s.roleId ?? 'u'}`}>
+                    <button
+                      type="button"
+                      className={`nr-chip msg-sug${taken ? ' on' : ''}`}
+                      aria-pressed={taken}
+                      onClick={() => {
+                        if (s.userId != null) setChosen((l) => (l.some((x) => x.id === s.userId) ? l.filter((x) => x.id !== s.userId) : [...l, { id: s.userId!, name: s.name ?? '', email: '' }]))
+                        else if (s.roleId != null) {
+                          setRoleId(taken ? null : s.roleId)
+                          setFollowRole(!taken)
+                        }
+                      }}
+                    >
+                      <b>{s.roleId != null ? `👥 ${s.name}` : s.name}</b>
+                      <small>{suggestionSource(s, t)}</small>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        )}
         <div className="f">
           <label htmlFor="msg-to">{t('messages.new.to')}</label>
           {(chosen.length > 0 || role) && (
@@ -93,7 +141,10 @@ export function NewMessageModal({ onClose, initial }: { onClose: () => void; ini
               {role && (
                 <li className="nr-chip">
                   <span className="nr-kind">{t('messages.new.role')}</span> {role.name}
-                  <button type="button" aria-label={t('messages.new.remove', { name: role.name ?? '' })} onClick={() => setRoleId(null)}>
+                  <button type="button" aria-label={t('messages.new.remove', { name: role.name ?? '' })} onClick={() => {
+                      setRoleId(null)
+                      setFollowRole(false)
+                    }}>
                     ✕
                   </button>
                 </li>
@@ -109,7 +160,10 @@ export function NewMessageModal({ onClose, initial }: { onClose: () => void; ini
             onQuery={setQ}
             onPickAll={(all) => setChosen((l) => [...l, ...all.filter((p) => p.id > 0 && !l.some((x) => x.id === p.id)).map((p) => ({ id: p.id, name: p.name, email: p.email }))])}
             onPick={(p) => {
-              if (p.id < 0) setRoleId(-p.id)   // un rol (un solo rol por mensaje: escoger otro reemplaza al anterior)
+              if (p.id < 0) {
+                setRoleId(-p.id)   // un rol (un solo rol por mensaje: escoger otro reemplaza al anterior)
+                setFollowRole(false)
+              }
               else setChosen((l) => (l.some((x) => x.id === p.id) ? l : [...l, { id: p.id, name: p.name, email: p.email }]))
             }}
           />
@@ -138,7 +192,7 @@ export function NewMessageModal({ onClose, initial }: { onClose: () => void; ini
 
 /** El «Nuevo mensaje» global: lo abre la pantalla o Kemi con `openNewMessage()`. Se monta una sola vez en el shell. */
 export function NewMessageHost() {
-  const { enabled, newMessageOpen, closeNewMessage } = useMessages()
+  const { enabled, newMessageOpen, newMessageAbout, closeNewMessage } = useMessages()
   if (!enabled || !newMessageOpen) return null
-  return <NewMessageModal onClose={closeNewMessage} />
+  return <NewMessageModal onClose={closeNewMessage} about={newMessageAbout} />
 }

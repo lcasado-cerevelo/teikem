@@ -31,6 +31,7 @@ import {
   type DataColumn,
   type RowAction,
 } from '../../../kernel/ui'
+import { useMessagingSettings, useUpdateMessagingSettings } from '../../messages/messagingAdminApi'
 import { usePrintingSettings, useSavePrintingSettings } from '../../printing/printingApi'
 import { useProductCategories, useReceiptSummaryByWarehouse, useWarehouses } from '../../warehouse/api'
 import { problemText } from '../../warehouse/problemText'
@@ -616,6 +617,71 @@ function RecvSummaryPanel() {
   )
 }
 
+// ------------------------------------------------------------------ mensajería (Lote 212)
+
+interface ChatPhotoValues {
+  photoDays: number | null
+  photoAction: string
+}
+
+/** Cuánto viven las fotos del chat y qué pasa al vencer: borrar el contenido o archivarlo (dejar de mostrarlo y conservarlo). El texto de los mensajes no se borra nunca. */
+function ChatPhotosPanel({ canEdit }: { canEdit: boolean }) {
+  const t = useT()
+  const q = useMessagingSettings()
+  const save = useUpdateMessagingSettings()
+  const form = useForm<ChatPhotoValues>({ values: { photoDays: q.data?.photoDays ?? 30, photoAction: q.data?.photoAction ?? 'DELETE' } })
+  const dirty = form.formState.isDirty
+  return (
+    <Panel icon={<IconGear />} title={t('system.settings.ops.chatTitle')}>
+      <Form
+        form={form}
+        onSubmit={async (v) => {
+          const n = v.photoDays
+          if (n == null || !Number.isInteger(n) || n < 1 || n > 3650) {
+            form.setError('photoDays', { message: t('system.settings.ops.chatDaysRange') })
+            return
+          }
+          try {
+            await save.mutateAsync({ photoDays: n, photoAction: v.photoAction })
+            toast.success(t('system.settings.saved'))
+          } catch (e) {
+            toast.error(problemText(e))
+          }
+        }}
+      >
+        <p className="set-d" style={{ marginBottom: 12 }}>
+          {t('system.settings.ops.chatHint')}
+        </p>
+        <fieldset className="set-fs" disabled={!canEdit}>
+          <div className="r2">
+            <Field name="photoDays" label={t('system.settings.ops.chatDays')} help={t('system.settings.ops.chatDaysHelp')}>
+              <NumberInput min={1} max={3650} step={1} className="mono" />
+            </Field>
+            <Field name="photoAction" label={t('system.settings.ops.chatAction')} help={t('system.settings.ops.chatActionHelp')}>
+              <Select
+                options={[
+                  { value: 'DELETE', label: t('system.settings.ops.chatDelete') },
+                  { value: 'ARCHIVE', label: t('system.settings.ops.chatArchive') },
+                ]}
+              />
+            </Field>
+          </div>
+        </fieldset>
+        {canEdit && (
+          <div className="set-actions">
+            <button type="button" className="btn" disabled={!dirty || form.formState.isSubmitting} onClick={() => form.reset()}>
+              {t('system.settings.discard')}
+            </button>
+            <button type="submit" className="btn flow" disabled={!dirty || form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? t('system.settings.saving') : t('system.settings.save')}
+            </button>
+          </div>
+        )}
+      </Form>
+    </Panel>
+  )
+}
+
 export function OperationsTab({ settings, canEdit }: { settings: TenantSettingsDto; canEdit: boolean }) {
   const orders = useModule(ModuleKeys.LtlGround)
   const wms = useModule(ModuleKeys.WmsLotSerial)
@@ -628,6 +694,7 @@ export function OperationsTab({ settings, canEdit }: { settings: TenantSettingsD
       {wms && <RotationPanel settings={settings} canEdit={canEdit} />}
       {wms && <InventoryAlertsPanel settings={settings} canEdit={canEdit} />}
       <FleetAlertsPanel settings={settings} canEdit={canEdit} />
+      <ChatPhotosPanel canEdit={canEdit} />
       {wms && <CountRevealPanel settings={settings} canEdit={canEdit} />}
       {wms && <RecvSummaryPanel />}
     </>

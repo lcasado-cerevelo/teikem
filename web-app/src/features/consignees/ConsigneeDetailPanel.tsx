@@ -1,6 +1,7 @@
 // Ficha del consignatario (derecha de la pantalla, maqueta «Ficha del consignatario»): Editar, número, nombre, dirección,
 // pueblo, teléfono, cliente dueño, estado (interruptor con confirmación), «Número de factura repetido» (interruptor que guarda
 // al instante) y, debajo, los campos personalizados (LOCATION). Las opciones de entrega van en una sección plegada.
+import { PhoneLink } from '../contacts/PhoneLink'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
@@ -124,7 +125,7 @@ export function ConsigneeDetailPanel({ publicId, defaultOwner }: { publicId: str
           </Fact>
           <Fact label={t('consignees.town')}>{c.city || '—'}</Fact>
           <Fact label={t('consignees.contactName')}>{c.contactName || '—'}</Fact>
-          <Fact label={t('consignees.phone')}>{phone?.value ? f.phoneFor(phone.value, phone.countryCallingCode) : '—'}</Fact>
+          <Fact label={t('consignees.phone')}>{phone?.value ? <PhoneLink value={phone.value} countryCallingCode={phone.countryCallingCode} /> : '—'}</Fact>
           <Fact label={t('consignees.scope')} wide>
             {ownerLabel(c, t('consignees.shared')) || '—'}
           </Fact>

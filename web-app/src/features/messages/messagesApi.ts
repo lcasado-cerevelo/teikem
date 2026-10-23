@@ -3,6 +3,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../../kernel/api/client'
 import type { components } from '../../kernel/api/schema'
+import { blobToDataUrl } from './photo'
 
 type Schemas = components['schemas']
 export type MessagePersonDto = Schemas['MessagePersonDto']
@@ -13,6 +14,12 @@ export type MessageDto = Schemas['MessageDto']
 export type MessageMemberDto = Schemas['MessageMemberDto']
 export type MessageUnreadDto = Schemas['MessageUnreadDto']
 export type MessageThreadRequest = Schemas['MessageThreadRequest']
+export type MessageRefDto = Schemas['MessageRefDto']
+export type MessageAttachmentDto = Schemas['MessageAttachmentDto']
+export type MessageSuggestionDto = Schemas['MessageSuggestionDto']
+export type MessageAboutDto = Schemas['MessageAboutDto']
+export type MessageAttachmentUpload = Schemas['MessageAttachmentUpload']
+export type MessageRefRequest = Schemas['MessageRefRequest']
 
 export const messageKeys = {
   all: ['messages'] as const,
@@ -21,6 +28,8 @@ export const messageKeys = {
   thread: (id: string) => ['messages', '/api/v1/messages/threads/{publicId}', id] as const,
   people: (q: string) => ['messages', '/api/v1/messages/people', q] as const,
   roles: ['messages', '/api/v1/messages/roles'] as const,
+  suggested: (entity: string, id: string) => ['messages', '/api/v1/messages/suggested', entity, id] as const,
+  about: (entity: string, id: string) => ['messages', '/api/v1/messages/about', entity, id] as const,
 }
 
 export const UNREAD_FALLBACK_MS = 30_000
@@ -79,7 +88,8 @@ export function useMessageMutations() {
   return {
     create: useMutation({ mutationFn: (body: MessageThreadRequest) => unwrap(api.POST('/api/v1/messages/threads', { body })), onSettled: invalidate }),
     send: useMutation({
-      mutationFn: (v: { publicId: string; text: string }) => unwrap(api.POST('/api/v1/messages/threads/{publicId}/messages', { ...path(v.publicId), body: { text: v.text } })),
+      mutationFn: (v: { publicId: string; text: string; ref?: MessageRefRequest; attachments?: MessageAttachmentUpload[] }) =>
+        unwrap(api.POST('/api/v1/messages/threads/{publicId}/messages', { ...path(v.publicId), body: { text: v.text || undefined, ref: v.ref, attachments: v.attachments?.length ? v.attachments : undefined } })),
       onSettled: invalidate,
     }),
     read: useMutation({ mutationFn: (publicId: string) => unwrap(api.POST('/api/v1/messages/threads/{publicId}/read', path(publicId))), onSettled: invalidate }),
@@ -98,4 +108,44 @@ export function useMessageMutations() {
 /** Respaldo de la presencia (la conexión en vivo también la renueva al conectar). */
 export function pingPresence() {
   return unwrap(api.POST('/api/v1/presence/ping'))
+}
+
+/** Lote 212: a quién proponerle primero para hablar de una orden (ORDER) o ruta (TRIP): responsables de la ruta y de la zona, despachadores y conversaciones recientes. */
+export function useSuggested(entity: 'ORDER' | 'TRIP', publicId: string, enabled = true) {
+  return useQuery({
+    queryKey: messageKeys.suggested(entity, publicId),
+    queryFn: () => unwrap(api.GET('/api/v1/messages/suggested', { params: { query: { entity, publicId } } })),
+    enabled,
+    staleTime: 30_000,
+    meta: { handleAccessDenied: false },
+  })
+}
+
+/** Lote 212: los mensajes de MIS conversaciones que hablan de esa orden o ruta. */
+export function useMessagesAbout(entity: 'ORDER' | 'TRIP', publicId: string, enabled = true) {
+  return useQuery({
+    queryKey: messageKeys.about(entity, publicId),
+    queryFn: () => unwrap(api.GET('/api/v1/messages/about', { params: { query: { entity, publicId } } })),
+    enabled,
+    staleTime: 15_000,
+    meta: { handleAccessDenied: false },
+  })
+}
+
+/** Una foto del chat (o su miniatura) pedida con la sesión y devuelta como data URL: no deja URLs de objeto sueltas ni enlaces directos. Una foto ya borrada o archivada no se pide. */
+export function useChatPhoto(photo: MessageAttachmentDto, thumb: boolean) {
+  const id = photo.publicId ?? ''
+  return useQuery({
+    queryKey: ['messages', 'photo', id, thumb && !!photo.hasThumb],
+    queryFn: async () => {
+      const res = await api.GET('/api/v1/messages/attachments/{publicId}', { params: { path: { publicId: id }, query: { thumb: thumb && !!photo.hasThumb } }, parseAs: 'blob' })
+      if (res.error || !res.data) throw res.error ?? new Error('photo')
+      return blobToDataUrl(res.data as Blob)
+    },
+    enabled: id !== '' && photo.state === 'ACTIVE',
+    staleTime: 10 * 60_000,
+    gcTime: 10 * 60_000,
+    retry: false,
+    meta: { handleAccessDenied: false },
+  })
 }

@@ -3,6 +3,7 @@
 // Reabrir (estatus final, `orders.reopen`), Eliminar y Asignar chofer (entrega especial). Debajo, el `StatusPipeline` solo con el
 // desvío «Intento fallido» y el regreso exacto (avanzar, marcar como recogida, cancelar y reabrir son botones propios). A la izquierda «Detalle» (se edita ahí mismo) e «Historial»; a la derecha COD,
 // Cotización (solo con orders.view_price), Chofer asignado, Campos personalizados y Contactos. Sin pestañas.
+import { MessagesAboutPanel } from '../messages/About'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Can, useCan, useModule } from '../../kernel/access'
@@ -180,6 +181,7 @@ export default function OrderDetailScreen() {
           <CodPanel order={order} />
           {vis.quote && <QuotePanel order={order} />}
           <DriverPanel order={order} />
+          <MessagesAboutPanel about={{ entity: 'ORDER', publicId: order.publicId ?? '', title: order.orderNumber ?? '' }} />
           <OrderCustomFieldsPanel order={order} />
           <OrderContactsPanel order={order} />
         </div>

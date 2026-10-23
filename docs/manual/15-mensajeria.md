@@ -153,3 +153,6 @@ Cada mensaje nuevo le llega al chofer como aviso emergente en su teléfono (tít
 | Acción al vencer inválida | `Al vencer, la foto se puede DELETE (borrar) o ARCHIVE (archivar).` | 400 |
 | `followRole` sin `roleId` | `Para un grupo de rol indique el rol (roleId).` | 400 |
 | Agregar personas a un grupo de rol | `A un grupo de rol no se agregan personas: entra quien tiene el rol.` | 409 |
+
+## 10. En la web (Lote 212 D)
+Todo lo anterior tiene pantalla en la web: fotos y tarjetas en la conversación, «Hablar sobre esta orden/ruta» con sugeridos, responsables en la ruta y la zona, la columna «Mensajería» en Usuarios y la retención de fotos en Ajustes → Operación. Ver [L212 — Mensajería en la web](frontend/l212-mensajeria-web.md).

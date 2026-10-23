@@ -17,6 +17,7 @@ import { typeDate } from '../../kernel/ui/typeDate'
 
 type Req = { method: string; url: URL; body: unknown }
 const mock = vi.hoisted(() => ({
+  chat: { photoDays: 30, photoAction: 'DELETE' } as { photoDays: number; photoAction: string },
   requests: [] as Req[],
   settings: {} as Record<string, unknown>,
   modules: [] as Record<string, unknown>[],
@@ -70,6 +71,12 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
       const dto = { slot, contentType: 'image/png', sizeBytes: 2048, eTag: `etag-${slot}-${mock.logos.length}`, updatedAtUtc: '2026-10-03T12:00:00' }
       mock.logos = [...mock.logos.filter((l) => l.slot !== slot), dto]
       return json(dto)
+    }
+    if (p === '/api/v1/messaging-settings' && req.method === 'GET') return json(mock.chat)
+    if (p === '/api/v1/messaging-settings' && req.method === 'PUT') {
+      const b = body as { photoDays?: number; photoAction?: string }
+      mock.chat = { photoDays: b.photoDays ?? mock.chat.photoDays, photoAction: b.photoAction ?? mock.chat.photoAction }
+      return json(mock.chat)
     }
     if (p === '/api/v1/tenant/format-options') return json(OPTIONS)
     if (p === '/api/v1/tenant/holidays' && req.method === 'GET') return json(HOLIDAYS)
@@ -468,6 +475,25 @@ describe('Ajustes de la compañía', () => {
     await user.selectOptions(within(panel).getByLabelText('Motivo por default del despacho manual'), 'SAMPLE')
     await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
     expect((await within(panel).findAllByText('El motivo REGALO no existe o está inactivo.')).length).toBeGreaterThan(0)
+  })
+
+  it('Operación → fotos del chat (Lote 212): 30 días y borrar por omisión; se cambia a archivar y se valida el rango', async () => {
+    const user = userEvent.setup()
+    wrap('/system/settings?tab=ops')
+    const panel = (await screen.findByRole('heading', { name: 'Mensajería: fotos del chat' })).closest('.panel') as HTMLElement
+    await waitFor(() => expect(within(panel).getByLabelText('Días que viven las fotos')).toHaveValue(30))
+    expect(within(panel).getByLabelText('Al vencer')).toHaveValue('DELETE')
+
+    await user.selectOptions(within(panel).getByLabelText('Al vencer'), 'ARCHIVE')
+    await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(mock.requests.some((r) => r.method === 'PUT' && r.url.pathname === '/api/v1/messaging-settings')).toBe(true))
+    expect(mock.requests.find((r) => r.method === 'PUT' && r.url.pathname === '/api/v1/messaging-settings')!.body).toEqual({ photoDays: 30, photoAction: 'ARCHIVE' })
+
+    const days = within(panel).getByLabelText('Días que viven las fotos')
+    await user.clear(days)
+    await user.type(days, '4000')
+    await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
+    expect(await within(panel).findByText('Los días deben estar entre 1 y 3650.')).toBeInTheDocument()
   })
 
   it('Operación → despacho manual: sin admin.tenant el selector es de solo lectura', async () => {

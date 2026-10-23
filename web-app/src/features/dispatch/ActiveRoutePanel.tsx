@@ -1,6 +1,8 @@
 // Lote F-E2a — «Ruta activa» (maqueta `dispatch()`, sin el mapa: llega en F-E2b): código y estatus REAL, zona y paradas, chofer y vehículo con su
 // disponibilidad, avance, avisos y bloqueantes de la ruta, resumen de la última optimización con lo que «no cupo», y «Órdenes en esta ruta»
 // con ▲ ▼ y quitar. Cada acción se pinta solo con su permiso Y con el estatus que el servidor permite (`isEditable`, `canEditHeader`).
+import { TalkAboutButton } from '../messages/About'
+import { ResponsiblesLine } from '../messages/Responsibles'
 import { useId, useMemo, useRef, useState } from 'react'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { zonedInputFromUtc } from '../../kernel/api/tenantZone'
@@ -237,8 +239,9 @@ export function ActiveRoutePanel({
       }
       badge={`${detail.kind === 'PICKUP' ? `${t('dispatch.tripKind.PICKUP')} · ` : ''}${detail.zoneCode ?? t('dispatch.active.noZone')} · ${stopsLabel(t, total)}`}
       actions={
-        overLimit || actions.remove ? (
+        (
           <>
+            <TalkAboutButton compact about={{ entity: 'TRIP', publicId: detail.publicId ?? '', title: detail.code ?? '' }} />
             {overLimit && (
               <span className="disp-over-icon" tabIndex={0} role="img" aria-label={overLimit} title={overLimit}>
                 <IconAlert />
@@ -250,10 +253,11 @@ export function ActiveRoutePanel({
               </button>
             )}
           </>
-        ) : undefined
+        )
       }
       flush
     >
+      <ResponsiblesLine entity="TRIP" keyId={detail.publicId ?? ''} title={detail.code ?? ''} />
       {mine && (
         <div className={mine.kind === 'error' ? 'form-alert disp-alert' : 'note disp-alert'} role={mine.kind === 'error' ? 'alert' : 'status'} style={{ margin: 12 }}>
           {mine.text}

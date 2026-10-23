@@ -80,3 +80,34 @@
   .chat-head{padding:10px 12px}
   .chat-head-actions .btn{padding:5px 9px}
 }
+
+/* Lote 212: enlaces, tarjeta de la orden/ruta, fotos y vista previa antes de enviar */
+.msg-link{color:var(--flow);text-decoration:underline;overflow-wrap:anywhere}
+.chat-group.mine .bub .msg-link{color:inherit}
+.msg-card{display:flex;flex-direction:column;gap:2px;margin-bottom:6px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--text);text-decoration:none;font-size:13px}
+.msg-card span{color:var(--muted);font-size:12px}
+.msg-card:not(.nolink):hover{border-color:var(--flow)}
+.chat-group.mine .bub .msg-card{background:var(--panel);}
+.msg-photos{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.msg-photo{width:120px;height:120px;border:1px solid var(--line);border-radius:10px;overflow:hidden;padding:0;background:var(--panel-2);display:grid;place-items:center;cursor:pointer}
+.msg-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.msg-photo.gone{cursor:default;color:var(--muted);font-size:12px;text-align:center;padding:6px}
+.msg-photo.loading{cursor:default;animation:msgpulse 1.2s ease-in-out infinite}
+@keyframes msgpulse{50%{opacity:.5}}
+.msg-viewer{display:grid;place-items:center;min-height:200px}
+.msg-viewer img{max-width:100%;max-height:70dvh;object-fit:contain}
+.msg-previews{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 16px 10px;border-top:1px solid var(--line-2);background:var(--panel)}
+.msg-prev{position:relative;width:56px;height:56px}
+.msg-prev img{width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.msg-prev button{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:11px;line-height:1;cursor:pointer}
+@media (max-width:600px){.msg-photo{width:96px;height:96px}}
+.msg-about{margin:0 0 8px;padding:8px 10px;border-radius:10px;background:var(--flow-bg);color:var(--text);font-size:13px;font-weight:600}
+.msg-sug{display:flex;flex-direction:column;align-items:flex-start;gap:0;cursor:pointer;text-align:left}
+.msg-sug small{color:var(--muted);font-size:11px}
+.msg-sug.on{border-color:var(--flow);background:var(--flow-bg)}
+.msg-about-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.msg-about-list a{display:flex;flex-wrap:wrap;gap:6px;align-items:baseline;text-decoration:none;color:var(--text)}
+.msg-about-list span{color:var(--muted);overflow-wrap:anywhere}
+.msg-about-list time{margin-left:auto;font-size:11px;color:var(--faint)}
+.msg-resp{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 12px;font-size:13px;color:var(--muted)}
+.msg-resp b{color:var(--text)}

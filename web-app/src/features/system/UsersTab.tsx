@@ -42,6 +42,7 @@ import {
   type RowAction,
 } from '../../kernel/ui'
 import { formatDateTime } from '../account/format'
+import { MESSAGING_MODES, useMessagingModes, useSetMessagingMode, type MessagingMode } from '../messages/messagingAdminApi'
 import { problemText } from '../warehouse/problemText'
 import { copyCode } from './EnrollCodeModal'
 import { PinModal } from './PinModal'
@@ -445,6 +446,10 @@ export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
   const closeSessions = useCloseUserSessions()
   const setMfaRequired = useSetMfaRequired()
   const setCountSeeExpected = useSetCountSeeExpected()
+  const canAdminUsers = useCanAny('admin.users')
+  const messagingModes = useMessagingModes(canAdminUsers)
+  const setMessagingMode = useSetMessagingMode()
+  const modeOf = useMemo(() => new Map((messagingModes.data ?? []).map((m) => [m.userId, m.mode as MessagingMode])), [messagingModes.data])
   const resetMfa = useResetUserMfa()
   const canManagePin = useCanAny('devices.manage', 'admin.users')
   const wmsOn = useModule(ModuleKeys.WmsLotSerial)
@@ -577,6 +582,15 @@ export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
         sortValue: (u) => Boolean(u.mfaRequired),
         cell: (u) => (u.mfaRequired ? <Chip tone="deliv">{t('system.users.users.yes')}</Chip> : <span className="muted">—</span>),
       },
+      {
+        id: 'messaging',
+        header: t('system.users.users.colMessaging'),
+        sortValue: (u) => MESSAGING_MODES.indexOf(modeOf.get(u.id) ?? 'FULL'),
+        cell: (u) => {
+          const mode = modeOf.get(u.id) ?? 'FULL'
+          return <Chip tone={mode === 'FULL' ? 'deliv' : mode === 'NONE' ? 'fail' : undefined}>{t(`system.users.users.messaging.${mode}`)}</Chip>
+        },
+      },
       ...(wmsOn
         ? [
             {
@@ -617,7 +631,7 @@ export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
       })
     }
     return cols
-  }, [t, lang, canPin, wmsOn, setMembership, me?.userId])
+  }, [t, lang, canPin, wmsOn, setMembership, me?.userId, modeOf])
 
   const actions = useMemo<RowAction<UserSummaryDto>[]>(() => {
     const list: RowAction<UserSummaryDto>[] = [
@@ -656,6 +670,22 @@ export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
         { key: 'countSeeClear', label: t('system.users.users.countSeeClear'), perm: 'admin.users', visible: (u) => u.countSeeExpected != null, icon: <IconXCircle />, onClick: (u) => mark(u, null) },
       )
     }
+    const setMode = (u: UserSummaryDto, mode: MessagingMode) => {
+      if (!u.id) return
+      setMessagingMode
+        .mutateAsync({ userId: u.id, mode })
+        .then(() => toast.success(t('system.users.users.messaging.saved')))
+        .catch((err) => toast.error(problemText(err)))
+    }
+    for (const mode of MESSAGING_MODES)
+      list.push({
+        key: `messaging${mode}`,
+        label: t(`system.users.users.messaging.set${mode}`),
+        perm: 'admin.users',
+        visible: (u) => (modeOf.get(u.id) ?? 'FULL') !== mode,
+        icon: <IconUsers />,
+        onClick: (u) => setMode(u, mode),
+      })
     list.push(
       {
         key: 'requireMfa',
@@ -690,7 +720,7 @@ export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
       },
     )
     return list
-  }, [t, canPin, wmsOn, setCountSeeExpected])
+  }, [t, canPin, wmsOn, setCountSeeExpected, setMessagingMode, modeOf])
 
   return (
     <>

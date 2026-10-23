@@ -15,6 +15,8 @@ import { useZoneGroupMutations, useZoneGroups, useZoneMutations, type ZoneGroup 
 import { useDrivers } from '../drivers/api'
 import { buildZoneCreate, emptyZoneValues, zoneSchema, type ZoneValues } from './fleetRules'
 import { UnresolvedZonesPanel } from './UnresolvedZonesPanel'
+import { ResponsiblesModal } from '../messages/Responsibles'
+import { useMessages } from '../messages/MessagesProvider'
 
 const NO_ROWS: DispatchZone[] = []
 
@@ -72,6 +74,8 @@ export function DispatchZonesTab() {
   const { setActive } = useZoneMutations()
   const [editing, setEditing] = useState<{ zone: DispatchZone | null } | null>(null)
   const [deactivating, setDeactivating] = useState<DispatchZone | null>(null)
+  const [responsibleFor, setResponsibleFor] = useState<DispatchZone | null>(null)
+  const messaging = useMessages().enabled
   // el buscador filtra lo cargado (código y nombre), sin acentos ni mayúsculas
   const rows = useMemo(() => (list.data ?? NO_ROWS).filter((z) => matchesQ(q, z.code, z.name)), [list.data, q])
 
@@ -149,6 +153,7 @@ export function DispatchZonesTab() {
               empty={t('fleet.zones.empty')}
               rowActions={[
                 { key: 'edit', label: t('fleet.edit'), icon: <IconEdit />, onClick: (z) => setEditing({ zone: z }), visible: (z) => canManage && z.isActive },
+                { key: 'responsibles', label: t('messages.responsibles.edit'), icon: <IconEdit />, onClick: (z) => setResponsibleFor(z), visible: (z) => canManage && messaging && z.isActive },
                 { key: 'deactivate', label: t('fleet.zones.deactivate'), icon: <IconPower />, tone: 'danger', onClick: (z) => setDeactivating(z), visible: (z) => canManage && z.isActive },
                 { key: 'reactivate', label: t('fleet.zones.reactivate'), icon: <IconRotateCcw />, onClick: (z) => void reactivate(z), visible: (z) => canManage && !z.isActive },
               ]}
@@ -156,6 +161,7 @@ export function DispatchZonesTab() {
           )}
         </div>
         {editing && <ZoneModal key={editing.zone?.id ?? 'new'} zone={editing.zone} onClose={() => setEditing(null)} />}
+        {responsibleFor && <ResponsiblesModal entity="DISPATCH_ZONE" keyId={String(responsibleFor.id)} title={responsibleFor.code ?? ''} onClose={() => setResponsibleFor(null)} />}
         <ConfirmDialog
           open={deactivating !== null}
           tone="danger"

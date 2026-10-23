@@ -10528,3 +10528,17 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **Un chequeo que antes pasaba ahora falla en todos los documentos.** La expresión del total ya no coincide con el texto (el formato del documento cambió). Suba un PDF a mano y mire el texto leído para ajustarla, o quite el chequeo.
 
 **La cantidad de la factura escaneada sale distinta de la escrita a mano.** Si el lector calcula la cantidad como importe ÷ precio unitario, un importe o un precio mal leído da una cantidad que no es entera; el chequeo de la suma suele marcarlo. Compare con el documento.
+
+## Lote 212 (D) — Mensajería en la web
+
+**«Solo se admiten fotos JPG, PNG o WEBP.» / «Un mensaje puede llevar hasta 4 fotos.» / «No se pudo leer la foto.» (web).** Son los límites del botón 📷: tres formatos, hasta 4 fotos por mensaje; la foto se reduce en el navegador y, si el navegador no la puede leer, avisa. Un PDF no va por el chat.
+
+**No veo «Hablar sobre esta orden».** El botón y el panel «Mensajes» de la orden solo salen con el permiso `messages.use`.
+
+**La tarjeta de la orden solo muestra el número y no abre.** Quien la ve no tiene `orders.view` (o `trips.view` para una ruta). Pida el permiso o abra la orden desde su lista.
+
+**No puedo cambiar los responsables de la ruta/zona.** Se necesita `trips.plan` (ruta) o `fleet.manage` (zona); el botón ✎ solo aparece con el permiso.
+
+**La columna «Mensajería» de Usuarios no aparece.** Se pide con `admin.users`.
+
+**«Los días deben estar entre 1 y 3650.» (Ajustes → Operación).** Los días que viven las fotos del chat van de 1 a 3650.

@@ -12,6 +12,14 @@ import { liveDecision } from './messageRules'
 import { messageKeys, pingPresence, PRESENCE_PING_MS, useMessageUnread, type MessageUnreadDto, useMessageMutations } from './messagesApi'
 import { connectMessagesHub, type LiveEvent } from './messagesRealtime'
 
+/** De qué orden o ruta se va a hablar (la tarjeta que lleva el mensaje). */
+export interface AboutRef {
+  entity: 'ORDER' | 'TRIP'
+  publicId: string
+  /** Número de la orden o código de la ruta. */
+  title: string
+}
+
 export interface MessageBubble {
   threadId: string
   fromName: string
@@ -30,7 +38,9 @@ interface MessagesState {
   /** La pantalla avisa qué hilo está viendo (null = ninguno) para no avisar ni contar lo que ya ve. */
   setActiveThread: (id: string | null) => void
   newMessageOpen: boolean
-  openNewMessage: () => void
+  /** Sobre qué orden o ruta se abrió «Nuevo mensaje» (null = un mensaje normal). */
+  newMessageAbout: AboutRef | null
+  openNewMessage: (about?: AboutRef) => void
   closeNewMessage: () => void
 }
 
@@ -44,6 +54,7 @@ const DISABLED: MessagesState = {
   dismissBubble: () => {},
   setActiveThread: () => {},
   newMessageOpen: false,
+  newMessageAbout: null,
   openNewMessage: () => {},
   closeNewMessage: () => {},
 }
@@ -84,6 +95,7 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
   const [connected, setConnected] = useState(false)
   const [bubble, setBubble] = useState<MessageBubble | null>(null)
   const [newMessageOpen, setNewMessageOpen] = useState(false)
+  const [newMessageAbout, setNewMessageAbout] = useState<AboutRef | null>(null)
   const previous = useRef<number | null>(null)
   const active = useRef<string | null>(null)
   const asleepRef = useRef(asleep)
@@ -169,10 +181,14 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
       dismissBubble: () => setBubble(null),
       setActiveThread,
       newMessageOpen,
-      openNewMessage: () => setNewMessageOpen(true),
+      newMessageAbout,
+      openNewMessage: (about?: AboutRef) => {
+        setNewMessageAbout(about ?? null)
+        setNewMessageOpen(true)
+      },
       closeNewMessage: () => setNewMessageOpen(false),
     }),
-    [enabled, count, unread.data?.threads, connected, bubble, setActiveThread, newMessageOpen],
+    [enabled, count, unread.data?.threads, connected, bubble, setActiveThread, newMessageOpen, newMessageAbout],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

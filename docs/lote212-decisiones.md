@@ -59,3 +59,25 @@ Suite completa: ver el cierre del commit. **No probado**: Firebase real, SQL Ser
 - **Tablet**: los teléfonos son enlaces `tel:`; sin llamadas el sistema no hace nada.
 - El visor de la foto usa el fondo del tema (no negro): se decidió por la regla de colores del proyecto.
 - **Falta** (parte D, web): responsables en la ficha de ruta/zona, ajuste «Mensajería» en la ficha del usuario, retención de fotos, fotos en el chat web, «Hablar sobre esta orden», pestaña «Mensajes» de la orden y los teléfonos pulsables de la web.
+
+---
+
+# Lote 212 — Parte D (web): fotos, hablar sobre una orden, responsables y ajustes
+
+## Qué se construyó
+- **Conversación** (`/messages`): teléfonos/correos/enlaces pulsables, tarjeta de la orden o ruta (enlaza a la ficha si hay permiso), fotos (📷, hasta 4, reducidas en el navegador, miniaturas con la sesión y visor; «Foto borrada/archivada» cuando ya no están).
+- **Hablar sobre esta orden/ruta**: botón en la ficha de la orden y en la ruta activa; abre «Nuevo mensaje» con la tarjeta y los **sugeridos** del servidor (un rol sugerido se manda como grupo vivo). Panel «Mensajes» en la ficha de la orden (`/messages/about`).
+- **Responsables**: línea y diálogo en la ruta activa (`trips.plan`) y acción de fila en Zonas de despacho (`fleet.manage`).
+- **Administración**: columna y acciones «Mensajería» (Completa / Solo con la oficina / Sin mensajería) en Usuarios (`admin.users`); panel «Mensajería: fotos del chat» en Ajustes → Operación (`admin.tenant`).
+- **Teléfonos** del consignatario, del cliente y de los contactos como enlaces `tel:`.
+- Manual: capítulo 15 §10, `docs/manual/frontend/l212-mensajeria-web.md` y FAQ.
+
+## Cómo se probó
+- Vitest: enlaces, fotos (tamaños y data URL), pantalla del chat (tarjeta, foto borrada, teléfono, adjuntar/quitar/enviar solo fotos), «Hablar sobre» con sugeridos y `followRole`, panel «about», responsables, columna y acciones de Usuarios, ajustes de retención. Compuerta `npm run check` (tipos del API regenerados, tsc, lint, pruebas, build).
+- **No probado**: contra el API real con navegador (Playwright) ni capturas de pantalla; las capturas del capítulo quedan pendientes.
+
+## Decisiones a revisar
+- La tarjeta de una **ruta** enlaza a `/dispatch?trip=<id>`; Despacho muestra las rutas de un día, así que si la ruta no es de la fecha que se está viendo puede no abrirse seleccionada.
+- El visor de fotos pide la foto completa al abrirla; las miniaturas y fotos se guardan en la memoria de la pestaña (no en disco) unos minutos.
+- Los **sugeridos de roles** salen del permiso `trips.dispatch`; si una compañía despacha con otro permiso, ese rol no se sugiere.
+- Pendientes de todo el Lote 212: probar con el APK y el API real; la lista de «mensajes no enviados» de la app; y el almacén en frío para «Archivar».
