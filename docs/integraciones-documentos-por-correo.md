@@ -27,3 +27,9 @@ Archivos en `F:\Download`: REGULAR 10-12-2026, OXIGENO / ALTAS / AXISMED / RECOG
 - Destinos LLE y SAL; lectura del bloque de direcciones múltiples; comparación sin acentos/mayúsculas/espacios dobles en `TEXT`.
 - Análisis de los conduces y diseño de «división de facturación».
 - Dimensionar el servidor LLM (ver respuesta en la conversación).
+
+## 5. Prueba de OCR con los conduces (2026-10-23)
+- Los 6 archivos (312 páginas) son escaneos sin texto real; Tesseract (spa+eng, 3x) los lee en 0,1–1,2 min por archivo.
+- Modo por omisión (3x, página automática): en páginas de conduce de REGULAR salen 5 de 14 números de orden/factura (se pierden las facturas y los guiones de la orden); en OXIGENO 7/14; VETERANOS 7/7.
+- **Escala 4x y modo «un solo bloque»: REGULAR 11/14, OXIGENO 14/14, VETERANOS 7/7.** Binarizar (Otsu) no mejoró. Pendiente cambiar el lector (escala 4, probar ambos modos) y validar por reglas (formato de orden/factura, conteo de líneas contra «Cases», sumas del resumen).
+- AXISMED (tipografía deformada, confianza 0,82–0,84): errores de letras en códigos («El04941» por E104941) y en importes; candidato al modelo de visión.
