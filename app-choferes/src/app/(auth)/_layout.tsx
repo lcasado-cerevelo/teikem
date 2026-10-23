@@ -43,6 +43,8 @@ export default function AuthLayout() {
       <Stack.Screen name="OrdersList/index" />
       <Stack.Screen name="AcceptManifest/index" />
       <Stack.Screen name="ShipmentDetails/index" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="Chat/index" />
+      <Stack.Screen name="NewChat/index" />
     </Stack>
   );
 }

@@ -1,6 +1,8 @@
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '@components/Text';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'expo-router';
+import LinkText from './LinkText';
 import MapPreview from './MapPreview';
 import { useCoordinatesFromAddress } from '@hooks/geocoding';
 import { useShipmentDetail } from '@hooks/queries';
@@ -14,6 +16,7 @@ export default function ShipmentDetail() {
   const { colors } = useTheme();
   const styles = useStyles(createStyles);
   const { t } = useTranslation();
+  const router = useRouter();
   const base = useAppStore((s) => s.shipment);
   const { data: detail } = useShipmentDetail(base);
   const shipment = detail ?? base;
@@ -51,7 +54,16 @@ export default function ShipmentDetail() {
             <Text style={styles.textBody}>{shipment?.companyName ?? ''}{detail?.clientName ? ` - ${detail.clientName}` : ''}</Text>
             <Text style={styles.textBody}>{shipment?.address ?? ''}</Text>
             {detail?.contactPerson ? <Text style={styles.textBody}>{detail.contactPerson}</Text> : null}
-            {detail?.phone ? <Text style={styles.textBody} selectable>{detail.phone}</Text> : null}
+            {detail?.phone ? <LinkText style={styles.textBody}>{detail.phone}</LinkText> : null}
+            {shipment ? (
+              <Pressable
+                style={styles.talkBtn}
+                onPress={() => router.push({ pathname: '/(auth)/NewChat', params: { tenantId: String(shipment.tenantId), refEntity: 'ORDER', refId: shipment.id, refTitle: shipment.orderNumber } })}
+                accessibilityRole="button"
+              >
+                <Text style={styles.talkBtnText}>{`💬 ${t('CHAT.ABOUT_SHIPMENT')}`}</Text>
+              </Pressable>
+            ) : null}
           </View>
 
           <View style={styles.section}>
@@ -81,6 +93,8 @@ export default function ShipmentDetail() {
 
 const createStyles = (colors: Colors) => StyleSheet.create({
   container: { flex: 1, gap: 24, alignContent: 'center' },
+  talkBtn: { alignSelf: 'flex-start', marginTop: 8, borderWidth: 1, borderColor: colors.primary, borderRadius: 18, paddingVertical: 8, paddingHorizontal: 14 },
+  talkBtnText: { color: colors.primary, fontWeight: '700' },
   infoContainer: { flex: 1, gap: 24, alignContent: 'center', marginBottom: 24 },
   mapContainer: { height: '45%', maxHeight: 500 },
   mapMsg: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.backgroundSecondary, paddingHorizontal: 24 },

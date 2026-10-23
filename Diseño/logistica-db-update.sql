@@ -6735,3 +6735,15 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_MessageThread_Role' AND object_id = OBJECT_ID('dbo.MessageThread'))
     CREATE UNIQUE INDEX UX_MessageThread_Role ON dbo.MessageThread(TenantId, FollowsRoleId) WHERE FollowsRoleId IS NOT NULL;
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-23 (l) — Mensajería del chofer (Lote 212 C): todo rol que usa la app del chofer (driverapp.use) puede usar la mensajería (messages.use).
+   Solo AGREGA. Los roles de chofer clonados antes de que la plantilla lo trajera no lo tenían.
+   ---------------------------------------------------------------------------- */
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT DISTINCT rp.RoleId, pm.PermissionId
+FROM dbo.RolePermission rp
+JOIN dbo.Permission pd ON pd.PermissionId = rp.PermissionId AND pd.Code = 'driverapp.use'
+JOIN dbo.Permission pm ON pm.Code = 'messages.use'
+WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = rp.RoleId AND x.PermissionId = pm.PermissionId);
+GO

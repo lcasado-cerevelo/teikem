@@ -4,10 +4,12 @@ import LoggedHeader from '@components/LoggedHeader';
 import LogoutButton from '@components/LogoutButton';
 import { useTheme } from '@hooks/ThemeContext';
 import { useNotices } from '@hooks/queries';
+import { useThreads } from '@hooks/messages';
 
 export default function TabLayout() {
   const { colors } = useTheme();
   const { unread } = useNotices();
+  const { unread: unreadMessages } = useThreads();
   return (
     <Tabs screenOptions={{ tabBarActiveTintColor: colors.primary }}>
       <Tabs.Screen
@@ -33,6 +35,16 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons name="truck-fast-outline" color={color} size={28} style={{ marginBottom: -3 }} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="messages"
+        options={{
+          title: 'Messages',
+          tabBarShowLabel: false,
+          headerShown: false,
+          tabBarBadge: unreadMessages > 0 ? unreadMessages : undefined,
+          tabBarIcon: ({ color }) => <MaterialCommunityIcons name="chat-outline" color={color} size={28} style={{ marginBottom: -3 }} />,
         }}
       />
       <Tabs.Screen

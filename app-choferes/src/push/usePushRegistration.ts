@@ -7,7 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { api, getCompanyTenantIds } from '@config/axios';
 import { useAuth } from '@hooks/AuthContext';
 
-// Avisos emergentes (Firebase). Con la app abierta el aviso se muestra igual; al tocarlo abre la pestaña de avisos.
+// Avisos emergentes (Firebase). Con la app abierta el aviso se muestra igual; al tocarlo abre la pestaña de avisos (o la conversación, si es un mensaje del chat).
 Notifications.setNotificationHandler({
   handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
 });
@@ -50,10 +50,18 @@ export function usePushRegistration() {
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
-    const received = Notifications.addNotificationReceivedListener(() => void qc.invalidateQueries({ queryKey: ['notices'] }));
-    const tapped = Notifications.addNotificationResponseReceivedListener(() => {
+    const received = Notifications.addNotificationReceivedListener(() => {
       void qc.invalidateQueries({ queryKey: ['notices'] });
-      router.push('/(auth)/(tabs)/notices');
+      void qc.invalidateQueries({ queryKey: ['threads'] });
+    });
+    const tapped = Notifications.addNotificationResponseReceivedListener((response) => {
+      void qc.invalidateQueries({ queryKey: ['notices'] });
+      void qc.invalidateQueries({ queryKey: ['threads'] });
+      // un mensaje del chat abre su conversación; cualquier otro aviso, la bandeja de avisos
+      const data = response.notification.request.content.data as { kind?: string; thread?: string; tenant?: string } | undefined;
+      if (data?.kind === 'MESSAGE' && data.thread && data.tenant) router.push({ pathname: '/(auth)/Chat', params: { tenantId: data.tenant, threadId: data.thread } });
+      else if (data?.kind === 'MESSAGE') router.push('/(auth)/(tabs)/messages');
+      else router.push('/(auth)/(tabs)/notices');
     });
     return () => {
       received.remove();

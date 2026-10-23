@@ -4,6 +4,7 @@ import { Text } from '@components/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import ScreenHeader from '@components/ScreenHeader';
+import LinkText from '@components/LinkText';
 import { useNotices } from '@hooks/queries';
 import { useStyles, useTheme } from '@hooks/ThemeContext';
 import type { Colors } from '@constants/theme';
@@ -40,7 +41,7 @@ export default function NoticesScreen() {
                 <Text style={[styles.title, !item.read && styles.bold]}>{item.title}</Text>
                 {!item.read && <View style={styles.dot} />}
               </View>
-              {item.body ? <Text style={styles.body}>{item.body}</Text> : null}
+              {item.body ? <LinkText style={styles.body}>{item.body}</LinkText> : null}
               <Text style={styles.meta}>{`${item.companyName} · ${fmt(item.createdAtUtc)}`}</Text>
             </Pressable>
           )}

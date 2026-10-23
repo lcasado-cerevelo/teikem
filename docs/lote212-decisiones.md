@@ -37,3 +37,25 @@ Suite completa: ver el cierre del commit. **No probado**: Firebase real, SQL Ser
 - El aviso al teléfono es solo para **choferes** (los dispositivos están ligados al chofer); la app del personal necesitará su propio registro de dispositivos por usuario.
 - Una foto subida antes de que falle el mensaje deja un archivo huérfano en el almacén (se sube antes de la transacción). Es poco probable y de pocos KB; si molesta, se limpia con un barrido.
 - El grupo de rol no admite agregar personas a mano; para una conversación a medida se crea un grupo normal.
+
+---
+
+# Lote 212 — Parte C (app del chofer): mensajes, fotos y teléfonos pulsables
+
+## Qué se construyó
+- **Pestaña «Mensajes»** (insignia de no leídos; todas las compañías del chofer): lista, **Nueva**, conversación con burbujas, fotos (cámara/galería, hasta 4; miniaturas con la firma de la compañía; visor a pantalla completa), tarjeta de la orden o ruta, «Sin enviar» para lo que espera conexión. Escribir en un hilo existente va por la **cola sin conexión** (reusa `Idempotency-Key`, no se duplica); empezar una conversación necesita conexión.
+- **«Hablar sobre este envío»** en el detalle del envío → **Nueva conversación** con la orden adjunta y los **sugeridos** del servidor (ruta, zona, despachadores, recientes). Un grupo de despachadores se crea/reusa con `followRole`.
+- **Aviso emergente**: tocar un mensaje abre su conversación (el servidor ahora manda también `tenant` en el aviso).
+- **Enlaces**: `LinkText` vuelve pulsables teléfonos (`tel:` normalizado a +1), correos y direcciones web en los mensajes, los avisos y el teléfono del detalle del envío.
+- SQL: sección 2026-10-23 (l) (todo rol con `driverapp.use` recibe `messages.use`). Manual 04 y FAQ.
+
+## Cómo se probó
+- `npm test` (nuevo `test:chat`: 25 comprobaciones de detección de enlaces y reglas del chat), `tsc --noEmit`, `eslint` de lo tocado (sin errores ni advertencias), contraste AA de la paleta y `expo export --platform web`. En el servidor: la prueba del aviso ahora exige `tenant`.
+- **No probado en un teléfono ni contra el API real**: el recorrido completo (cola sin conexión, cámara, toque del aviso) lo debe hacer Luis con el APK.
+
+## Decisiones a revisar
+- Un mensaje con **error permanente** del servidor (p. ej. una foto que el servidor rechaza) hoy desaparece de «Sin enviar» sin avisar: la cola no muestra los fallidos. Las validaciones de la app (máx. 4 fotos, fotos reducidas) lo hacen raro; si molesta, se agrega una lista de «no enviados».
+- La **foto de la miniatura** se pide al servidor cada vez (no se guarda en el teléfono); el sistema puede dejarla en su caché temporal. Si la señal es mala, verá el texto «Foto no disponible».
+- **Tablet**: los teléfonos son enlaces `tel:`; sin llamadas el sistema no hace nada.
+- El visor de la foto usa el fondo del tema (no negro): se decidió por la regla de colores del proyecto.
+- **Falta** (parte D, web): responsables en la ficha de ruta/zona, ajuste «Mensajería» en la ficha del usuario, retención de fotos, fotos en el chat web, «Hablar sobre esta orden», pestaña «Mensajes» de la orden y los teléfonos pulsables de la web.

@@ -568,7 +568,7 @@ public sealed class MessagingService(TeikemDbContext db, ITenantContext tenant, 
                     var group = p.Thread.Kind == MessageThreadKinds.Group;
                     var title = group && !string.IsNullOrWhiteSpace(p.Thread.Title) ? p.Thread.Title! : p.SenderName;
                     var bodyText = group && string.IsNullOrWhiteSpace(p.Thread.Title) ? preview : group ? $"{p.SenderName}: {preview}" : preview;
-                    await driverPush.SendToUsersAsync(ids, title, bodyText, new Dictionary<string, string> { ["kind"] = "MESSAGE", ["thread"] = p.Thread.PublicId.ToString() }, ct);
+                    await driverPush.SendToUsersAsync(ids, title, bodyText, new Dictionary<string, string> { ["kind"] = "MESSAGE", ["thread"] = p.Thread.PublicId.ToString(), ["tenant"] = tenantId.ToString() }, ct);
                 }
                 catch (Exception)
                 {

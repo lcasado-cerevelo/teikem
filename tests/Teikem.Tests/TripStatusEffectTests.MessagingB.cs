@@ -199,6 +199,7 @@ public partial class TripStatusEffectTests
         Assert.Equal("¿ya saliste?", sent.Body);
         Assert.Equal("MESSAGE", sent.Data!["kind"]);
         Assert.Equal(thread.Thread.PublicId.ToString(), sent.Data["thread"]);
+        Assert.Equal(TenantId.ToString(), sent.Data["tenant"]);   // la app necesita la compañía para abrir la conversación
 
         b.Tenant.UserId = 2;   // el chofer silencia el hilo: no más avisos
         await b.Messages.MuteAsync(thread.Thread.PublicId, new MessageMuteRequest(true), default);

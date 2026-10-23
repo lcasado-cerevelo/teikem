@@ -10500,3 +10500,19 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **«A un grupo de rol no se agregan personas: entra quien tiene el rol.» (409).** En el grupo «vivo» de un rol (por ejemplo Despachadores) entra quien tiene el rol. Para meter a alguien, dele el rol; para una conversación a medida, cree un grupo normal.
 
 **Alguien dejó de tener el rol y sigue en el grupo.** La lista se sincroniza cuando alguien escribe o abre el grupo; si no ha pasado ninguna de las dos, se actualiza en la siguiente. Quien le escribió al grupo sin tener el rol (un chofer) no sale nunca por esto.
+
+## Lote 212 (C) — Mensajes en la app del chofer
+
+**«Para empezar una conversación necesitas conexión. Inténtalo otra vez.»** (app). Empezar una conversación nueva se hace en el momento con el servidor; solo contestar en una conversación que ya existe funciona sin señal.
+
+**Mi mensaje dice «Sin enviar».** Está en la cola del teléfono; sale solo cuando haya conexión (no se duplica). Si pasan horas con buena señal, abra la pestaña Mensajes para que la app reintente, o avise a soporte.
+
+**«No se pudo guardar el mensaje.» (app).** No se pudo ni encolar el mensaje (poco espacio en el teléfono o un error del almacenamiento). Libere espacio y reintente.
+
+**El chofer no ve a otro chofer en «Nueva conversación».** Es lo normal (ajuste «Solo con la oficina»). Si la compañía quiere que se escriban, el administrador les pone `FULL` (capítulo 15 §8).
+
+**El chofer recibe 403 en Mensajes.** Su rol no tiene `messages.use`. Aplique la actualización de la base (`db-update`, sección 2026-10-23 (l)) o agréguelo al rol.
+
+**Al tocar la tarjeta de la orden dice «Ese envío ya no está en tus rutas.»** El envío ya no está en las rutas abiertas del chofer (se entregó, se cerró o es de otra compañía). La tarjeta siempre muestra el número de la orden.
+
+**El teléfono del consignatario no abre el marcador.** En una tableta o un teléfono sin llamadas el sistema no tiene con qué abrir el enlace `tel:`; el número se puede copiar. Si es un celular, revise que el número tenga al menos 7 dígitos.
