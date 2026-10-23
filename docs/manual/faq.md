@@ -10346,3 +10346,15 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **¿Qué pasa con los envíos que el chofer no acepta?** Salen de la ruta, vuelven a «Sin asignar» y quedan con su motivo para volver a asignarlos. Si no acepta ninguno, la ruta no sale.
 
 **¿Quién registra la salida cuando acepta el chofer?** Es la misma salida de la Sala de despacho: la ruta pasa a «En curso» y los envíos aceptados a «En tránsito», con el comentario «Aceptada por el chofer».
+
+## Lote 204 — App del chofer: acceso
+
+**¿Por qué la app me pide el código MFA si ya uso la huella?** La huella solo abre la sesión que ya está en el teléfono; no reemplaza el código. El código se pide en el ingreso con contraseña (cada vez que la sesión venció o se cerró) si su compañía o su usuario lo exigen.
+
+**¿Por qué la app ya no recuerda mi contraseña con la huella?** Antes se guardaba la contraseña en el teléfono y se reenviaba con la huella, lo que se saltaba el MFA. Ahora la huella abre la sesión guardada y la contraseña no se guarda.
+
+**¿Cuánto dura la sesión en la app?** Lo que fije su compañía (días o minutos). Al vencer, la app pide contraseña (y código) aunque tenga la huella activa.
+
+**Mi usuario está en varias compañías, ¿cómo cambio?** Perfil → Compañía. Se envía lo pendiente y se cargan los manifiestos de esa compañía.
+
+**La app me pidió aceptar la política de privacidad.** Es el primer ingreso o el documento cambió. Hay que leerlo hasta el final; si no lo acepta, no puede usar la app.

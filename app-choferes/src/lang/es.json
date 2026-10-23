@@ -28,14 +28,19 @@
       "BIOMETRIC_PROMPT": "Confirma tu identidad para entrar",
       "BIOMETRIC_CANCEL": "Cancelar",
       "BIOMETRIC_OFFER_TITLE": "Acceso con huella",
-      "BIOMETRIC_OFFER_BODY": "¿Quieres usar tu huella o rostro para iniciar sesión la próxima vez?",
+      "BIOMETRIC_OFFER_BODY": "¿Quiere abrir la app con su huella o rostro? La contraseña y el código seguirán pidiéndose cuando la sesión venza.",
       "BIOMETRIC_ENABLE": "Activar",
-      "BIOMETRIC_ENABLE_PROMPT": "Confirma tu identidad para activar el acceso con huella",
+      "BIOMETRIC_ENABLE_PROMPT": "Confirme su identidad para activar «Abrir con huella»",
       "BIOMETRIC_NOT_NOW": "Ahora no",
       "ACCESS_DENIED_TITLE": "No puedes usar el sistema",
       "ACCESS_NOT_PROVISIONED": "Tu usuario no está configurado en el sistema. Comunícate con el administrador y muéstrale el código de abajo.",
       "ACCESS_INACTIVE": "Tu usuario está desactivado. Comunícate con el administrador.",
-      "ACCESS_CODE": "Código"
+      "ACCESS_CODE": "Código",
+      "BROWSER_TITLE": "Confirme este teléfono",
+      "BROWSER_BODY": "Le enviamos un correo a {{email}}. Toque el enlace del correo para confirmar este teléfono y vuelva a iniciar sesión.",
+      "BROWSER_NOT_SENT": "No se pudo enviar el correo de confirmación.",
+      "ONBOARDING_TITLE": "Primer ingreso",
+      "ONBOARDING_BODY": "Complete su primer ingreso en la web de Teikem (correo y contraseña propia) y vuelva a entrar aquí."
     },
     "HOME": {
       "DELIVERIES_FOR_TODAY": "Entregas para hoy",
@@ -183,7 +188,49 @@
       "LOGOUT_ANYWAY": "Cerrar sesión igual",
       "BIOMETRIC_DISABLE": "Desactivar acceso con huella",
       "BIOMETRIC_DISABLE_CONFIRM": "La próxima vez tendrás que escribir tu contraseña. ¿Desactivar?",
-      "BIOMETRIC_DISABLE_YES": "Desactivar"
+      "BIOMETRIC_DISABLE_YES": "Desactivar",
+      "BIOMETRIC_ENABLE": "Abrir con huella",
+      "BIOMETRIC_ENABLE_HINT": "Bloquea la app al salir unos minutos y la abre con su huella o rostro. La contraseña y el código se piden cuando vence la sesión.",
+      "COMPANIES": "Compañía",
+      "COMPANY_SWITCH_TITLE": "Cambiar de compañía",
+      "COMPANY_SWITCH_BODY": "Se cambiará a {{name}}. Lo que no se haya enviado se enviará primero y se cargarán los manifiestos de esa compañía.",
+      "COMPANY_SWITCH_YES": "Cambiar",
+      "COMPANY_CURRENT": "Actual"
+    },
+    "MFA": {
+      "TITLE": "Verificación en dos pasos",
+      "SUBTITLE": "Escriba el código de 6 dígitos de su app de autenticación o uno de sus códigos de recuperación.",
+      "CODE": "Código de verificación",
+      "VERIFY": "Verificar",
+      "BACK": "Volver al inicio de sesión",
+      "DEV_CODE": "Solo en desarrollo: su código de ahora es {{code}}",
+      "DEV_USE": "Usar este código",
+      "ENROLL_TITLE": "Configure su verificación en dos pasos",
+      "ENROLL_SUBTITLE": "Su compañía exige un segundo factor. Agregue esta clave en su app de autenticación (Google Authenticator, Microsoft Authenticator…) y escriba el código que le muestre.",
+      "ENROLL_START": "Comenzar configuración",
+      "SECRET": "Clave para ingresar a mano:",
+      "OPEN_IN_APP": "Abrir en la app de autenticación",
+      "CONFIRM": "Confirmar",
+      "RECOVERY_TITLE": "Guarde sus códigos de recuperación",
+      "RECOVERY_BODY": "Cada código sirve una sola vez si pierde su teléfono. Se muestran solo ahora.",
+      "RECOVERY_CONTINUE": "Ya los guardé"
+    },
+    "LEGAL": {
+      "TITLE": "Privacidad y términos de uso",
+      "LEAD": "Lea el documento hasta el final para poder aceptarlo.",
+      "SCROLL_HINT": "Desplácese hasta el final para habilitar «Acepto».",
+      "ACCEPT": "Acepto",
+      "DECLINE": "No acepto (cerrar sesión)",
+      "ERROR": "No se pudo cargar el documento."
+    },
+    "LOCK": {
+      "TITLE": "App bloqueada",
+      "HELP": "Use su huella o rostro para abrirla.",
+      "UNLOCK": "Abrir con huella",
+      "PASSWORD": "Usar mi contraseña",
+      "PROMPT": "Confirme su identidad para abrir la app",
+      "CANCEL": "Cancelar",
+      "FAILED": "No coincidió. Intentos restantes: {{left}}."
     }
   }
 }

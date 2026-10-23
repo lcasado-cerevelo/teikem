@@ -1,32 +1,14 @@
-import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useForm, FormProvider, type SubmitHandler } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '@hooks/AuthContext';
-import {
-  authenticate,
-  clearCredentials,
-  getStoredCredentials,
-  isBiometricAvailable,
-  saveCredentials,
-} from '@services/auth/biometricAuth';
+import { useBiometricOffer } from '@hooks/useBiometricOffer';
 import FormInput from '@components/FormInput';
 import { colors } from '@constants/theme';
 import { BRAND } from '@constants/brand';
 
-// Same email pattern the old app used to validate the username field.
+// Mismo patrón de correo que usaba la app anterior para validar el usuario.
 const EmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface LoginForm {
@@ -34,80 +16,23 @@ interface LoginForm {
   password: string;
 }
 
-// Embedded username/password login: brand logo on top, two shadowed inputs,
-// navy button (#03204B), "Powered by <brand>" — logo/text swap per BRAND.
-// With biometric hardware + a prior opt-in, a fingerprint/face button signs
-// back in without typing (see services/auth/biometricAuth.ts).
+// Inicio de sesión: logo de la marca arriba, dos campos con sombra, botón azul marino (#03204B) y «Powered by».
+// Paso 1: correo y contraseña. Si la compañía (o la persona) exige el segundo factor, sigue la pantalla del código (Mfa).
+// «Abrir con huella» NO está aquí: la huella solo abre una sesión ya guardada (ver AuthContext y la pantalla de bloqueo).
 export default function Login() {
   const { t } = useTranslation();
-  const { login, loading } = useAuth();
+  const router = useRouter();
+  const { login, loading, browserConfirmation, cancelMfa } = useAuth();
+  const offerBiometrics = useBiometricOffer();
   const methods = useForm<LoginForm>({ defaultValues: { userName: '', password: '' } });
 
-  // Username of the stored biometric credentials (null = no button). Shown on
-  // the button so it's obvious WHOSE session a fingerprint restores.
-  const [bioUser, setBioUser] = useState<string | null>(null);
-
-  const refreshBioUser = useCallback(async () => {
-    if (!(await isBiometricAvailable())) {
-      setBioUser(null);
-      return;
-    }
-    const creds = await getStoredCredentials();
-    setBioUser(creds?.userName ?? null);
-  }, []);
-
-  useEffect(() => {
-    void refreshBioUser();
-  }, [refreshBioUser]);
-
-  // After a successful password login, offer to enable biometric sign-in
-  // (only when it isn't already stored for this same user). Accepting FIRST
-  // requires passing the device's biometric prompt — proves the person
-  // enabling it can actually unlock it, before anything is stored.
-  const maybeOfferBiometrics = async (creds: LoginForm) => {
-    if (!(await isBiometricAvailable())) return;
-    const stored = await getStoredCredentials();
-    if (stored?.userName === creds.userName && stored.password === creds.password) return;
-    // Credentials stored for ANOTHER user are stale on this phone now.
-    if (stored && stored.userName !== creds.userName) await clearCredentials();
-    Alert.alert(t('LOGIN.BIOMETRIC_OFFER_TITLE'), t('LOGIN.BIOMETRIC_OFFER_BODY'), [
-      { text: t('LOGIN.BIOMETRIC_NOT_NOW'), style: 'cancel' },
-      {
-        text: t('LOGIN.BIOMETRIC_ENABLE'),
-        onPress: () => {
-          void (async () => {
-            const passed = await authenticate(
-              t('LOGIN.BIOMETRIC_ENABLE_PROMPT'),
-              t('LOGIN.BIOMETRIC_CANCEL'),
-            );
-            if (passed) await saveCredentials(creds);
-          })();
-        },
-      },
-    ]);
-  };
-
   const onSubmit: SubmitHandler<LoginForm> = async (data) => {
-    const creds = { userName: data.userName.trim(), password: data.password };
-    const ok = await login(creds);
-    if (ok) await maybeOfferBiometrics(creds);
-  };
-
-  const onBiometricLogin = async () => {
-    const passed = await authenticate(t('LOGIN.BIOMETRIC_PROMPT'), t('LOGIN.BIOMETRIC_CANCEL'));
-    if (!passed) return;
-    const creds = await getStoredCredentials();
-    if (!creds) {
-      setBioUser(null);
-      return;
-    }
-    const ok = await login(creds);
-    // Auth0 rejected the saved password (changed/expired): drop it so the
-    // driver isn't offered a button that can never work.
-    if (!ok) {
-      await clearCredentials();
-      setBioUser(null);
-    }
+    cancelMfa();
+    const result = await login({ userName: data.userName.trim(), password: data.password });
+    if (result === 'mfa') router.push('/(no-auth)/Mfa');
+    else if (result === 'browser') Alert.alert(t('LOGIN.BROWSER_TITLE'), t('LOGIN.BROWSER_BODY', { email: browserConfirmation?.email ?? '' }));
+    else if (result === 'onboarding') Alert.alert(t('LOGIN.ONBOARDING_TITLE'), t('LOGIN.ONBOARDING_BODY'));
+    else if (result === 'ok') await offerBiometrics();
   };
 
   return (
@@ -157,19 +82,6 @@ export default function Login() {
               <Text style={styles.buttonLabel}>{t('LOGIN.LOGIN')}</Text>
             </Pressable>
           </View>
-          {bioUser && (
-            <Pressable
-              style={styles.bioButton}
-              onPress={() => void onBiometricLogin()}
-              accessibilityRole="button"
-              accessibilityLabel={t('LOGIN.BIOMETRIC_BUTTON')}
-            >
-              <View style={styles.bioIconCircle}>
-                <MaterialIcons name="fingerprint" size={44} color={colors.primary} />
-              </View>
-              <Text style={styles.bioButtonUser}>{bioUser}</Text>
-            </Pressable>
-          )}
         </>
       )}
 
@@ -209,16 +121,5 @@ const styles = StyleSheet.create({
     }),
   },
   buttonLabel: { color: colors.primaryContrast, fontWeight: '600', fontSize: 18 },
-  bioButton: { alignItems: 'center', gap: 4, paddingVertical: 6 },
-  bioIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bioButtonUser: { color: colors.muted, fontSize: 12 },
   poweredBy: { color: colors.text },
 });

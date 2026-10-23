@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { clearCredentials, getStoredCredentials } from '@services/auth/biometricAuth';
+import { authenticate, isBiometricAvailable } from '@services/auth/biometricAuth';
 import LoggedHeader from '@components/LoggedHeader';
 import { useMe, useSync } from '@hooks/queries';
 import { useAuth } from '@hooks/AuthContext';
@@ -18,32 +18,30 @@ import { colors } from '@constants/theme';
 export default function ProfileScreen() {
   const { t, i18n } = useTranslation();
   const { data: me } = useMe();
-  const { logout } = useAuth();
+  const { logout, user, switchTenant, biometricEnabled, setBiometricEnabled } = useAuth();
   const { sync, isSyncing } = useSync();
   const syncInterval = useAppStore((s) => s.syncIntervalMinutes);
   const setSyncInterval = useAppStore((s) => s.setSyncIntervalMinutes);
   const online = useIsOnline();
   const current = i18n.language as AppLanguage;
 
-  // "Desactivar acceso con huella" only shows when credentials are stored.
-  const [hasBioCreds, setHasBioCreds] = useState(false);
-  const refreshBio = useCallback(async () => {
-    setHasBioCreds(Boolean(await getStoredCredentials()));
-  }, []);
+  // «Abrir con huella»: solo si el teléfono tiene lector y huellas registradas. Activarlo exige pasar la huella primero.
+  const [bioAvailable, setBioAvailable] = useState(false);
   useEffect(() => {
-    void refreshBio();
-  }, [refreshBio]);
+    void isBiometricAvailable().then(setBioAvailable);
+  }, []);
+  const onToggleBiometrics = async (value: boolean) => {
+    if (value && !(await authenticate(t('LOGIN.BIOMETRIC_ENABLE_PROMPT'), t('LOGIN.BIOMETRIC_CANCEL')))) return;
+    await setBiometricEnabled(value);
+  };
 
-  const onDisableBiometrics = () => {
-    Alert.alert(t('PROFILE.BIOMETRIC_DISABLE'), t('PROFILE.BIOMETRIC_DISABLE_CONFIRM'), [
+  // Un usuario puede pertenecer a varias compañías: se cambia aquí (lo pendiente se envía primero y se cargan los manifiestos de la otra).
+  const companies = user?.memberships ?? [];
+  const onSwitchCompany = (tenantId: number, name: string) => {
+    if (tenantId === user?.tenantId) return;
+    Alert.alert(t('PROFILE.COMPANY_SWITCH_TITLE'), t('PROFILE.COMPANY_SWITCH_BODY', { name }), [
       { text: t('PROFILE.LOGOUT_CANCEL'), style: 'cancel' },
-      {
-        text: t('PROFILE.BIOMETRIC_DISABLE_YES'),
-        style: 'destructive',
-        onPress: () => {
-          void clearCredentials().then(refreshBio);
-        },
-      },
+      { text: t('PROFILE.COMPANY_SWITCH_YES'), onPress: () => void switchTenant(tenantId) },
     ]);
   };
 
@@ -108,6 +106,18 @@ export default function ProfileScreen() {
         </View>
       </View>
 
+      {companies.length > 1 && (
+        <View style={styles.section}>
+          <Text style={styles.label}>{t('PROFILE.COMPANIES')}</Text>
+          {companies.map((c) => (
+            <Pressable key={c.tenantId} style={[styles.company, c.tenantId === user?.tenantId && styles.companyActive]} onPress={() => onSwitchCompany(c.tenantId, c.tenantName)}>
+              <Text style={[styles.companyText, c.tenantId === user?.tenantId && styles.companyTextActive]}>{c.tenantName}</Text>
+              {c.tenantId === user?.tenantId && <Text style={styles.companyTextActive}>{t('PROFILE.COMPANY_CURRENT')}</Text>}
+            </Pressable>
+          ))}
+        </View>
+      )}
+
       <View style={styles.section}>
         <Text style={styles.label}>{t('PROFILE.AUTO_SYNC')}</Text>
         <Text style={styles.autoSyncHint}>{t('PROFILE.AUTO_SYNC_HINT', { minutes: syncInterval })}</Text>
@@ -139,10 +149,14 @@ export default function ProfileScreen() {
         )}
       </Pressable>
 
-      {hasBioCreds && (
-        <Pressable style={styles.bioDisable} onPress={onDisableBiometrics}>
-          <Text style={styles.bioDisableText}>{t('PROFILE.BIOMETRIC_DISABLE')}</Text>
-        </Pressable>
+      {bioAvailable && (
+        <View style={styles.bioRow}>
+          <View style={styles.bioText}>
+            <Text style={styles.label}>{t('PROFILE.BIOMETRIC_ENABLE')}</Text>
+            <Text style={styles.autoSyncHint}>{t('PROFILE.BIOMETRIC_ENABLE_HINT')}</Text>
+          </View>
+          <Switch value={biometricEnabled} onValueChange={(v) => void onToggleBiometrics(v)} trackColor={{ true: colors.primary }} />
+        </View>
       )}
 
       <Pressable style={styles.logout} onPress={() => void onLogout()}>
@@ -179,8 +193,12 @@ const styles = StyleSheet.create({
   sync: { marginTop: 'auto', backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   syncText: { color: colors.primaryContrast, fontWeight: '700', fontSize: 16 },
   disabled: { opacity: 0.6 },
-  bioDisable: { borderWidth: 1, borderColor: colors.gray, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
-  bioDisableText: { color: colors.text, fontWeight: '600', fontSize: 15 },
+  bioRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  bioText: { flex: 1, gap: 2 },
+  company: { flexDirection: 'row', justifyContent: 'space-between', borderWidth: 1, borderColor: colors.gray, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 14 },
+  companyActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  companyText: { color: colors.text, fontWeight: '600' },
+  companyTextActive: { color: colors.primaryContrast, fontWeight: '600' },
   logout: { borderWidth: 1, borderColor: colors.danger, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   logoutText: { color: colors.danger, fontWeight: '700', fontSize: 16 },
 });

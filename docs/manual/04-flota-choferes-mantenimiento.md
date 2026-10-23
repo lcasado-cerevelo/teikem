@@ -911,3 +911,20 @@ capítulo con su causa y qué hacer.
 **Motivos de no aceptación de fábrica:** No hay espacio en el vehículo, El envío está dañado, Queda fuera de mi zona, Faltan documentos, Otro. Se editan, se desactivan o se agregan en **Listas**.
 
 **Lo que viene después:** manifiestos de **recogida**, el seguimiento por **GPS** y los **avisos**.
+
+### Acceso a la app del chofer (Lote 204, 2026-10-23)
+
+**Qué hace.** La app del chofer (`app-choferes`) inicia sesión con el **mismo usuario de Teikem** de la web, con las mismas reglas de seguridad de la compañía.
+
+**Pasos del ingreso.**
+1. **Correo y contraseña** (`POST /api/v1/auth/login`).
+2. **Código MFA**, si la compañía lo exige o la persona lo tiene activado (`POST /api/v1/auth/mfa/verify`). La primera vez, si todavía no tiene su autenticador, la app lo configura (clave → código → **códigos de recuperación**, que se ven una sola vez) y vuelve al inicio de sesión.
+3. **Política de privacidad y términos de uso**: el primer ingreso y cada vez que cambie el documento. «Acepto» se habilita solo al llegar al final del texto; «No acepto» cierra la sesión.
+
+**«Abrir con huella».** Es opcional y se activa después del primer ingreso (o en Perfil). **No reemplaza la contraseña ni el MFA**: solo abre la sesión que ya está guardada en el teléfono. La app se bloquea al arrancar y tras **2 minutos** en segundo plano; con 5 huellas fallidas seguidas, o con «Usar mi contraseña», se cierra la sesión y se pide todo otra vez. La contraseña **no se guarda** en el teléfono. Razón: la huella la valida el teléfono, no el servidor; si sustituyera al MFA, cualquier huella registrada en el teléfono saltaría la política de la compañía.
+
+**Duración de la sesión.** La fija la compañía (Sistema → Seguridad: días o minutos) y la app la respeta: al vencer, aunque tenga huella, pide contraseña y código. Un error de red no cierra la sesión; solo la rechaza el servidor.
+
+**Varias compañías.** Un usuario puede pertenecer a varias. Entra a su compañía predeterminada y la cambia en **Perfil → Compañía** (antes se envía lo pendiente y se cargan los manifiestos de la otra).
+
+**Mensajes.** «Credenciales inválidas.» (401), el aviso de bloqueo de cuenta del servidor, «Su usuario no está vinculado a un chofer activo.» (403). Si el servidor pide confirmar el teléfono por correo o terminar el primer ingreso, la app lo indica (esos dos pasos se completan fuera de la app por ahora).

@@ -1,23 +1,34 @@
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
-import type { AuthUser } from './auth0';
 
-// Cross-platform session storage.
-//  - Native: expo-secure-store (Keychain / Keystore).
-//  - Web: localStorage (SecureStore has no web implementation).
+// Almacén de la sesión.
+//  - Nativo: expo-secure-store (Keychain / Keystore).
+//  - Web: localStorage (SecureStore no existe en la web).
 //
-// We persist ONLY the minimum (access + refresh token + expiry). The user
-// profile is re-fetched from /userinfo on restore. Keeping the blob small
-// matters because SecureStore on Android caps values around 2KB.
+// Se guarda lo mínimo: el par de tokens con sus vencimientos, la compañía activa y los datos para mostrar el nombre sin conexión.
+// OJO: SecureStore en Android limita el valor a unos 2 KB; por eso el perfil guardado es chico.
 
-const KEY = 'colavora.session';
+const KEY = 'teikem.choferes.session';
+
+export interface AuthUser {
+  userId: number;
+  fullName?: string | null;
+  email?: string | null;
+  tenantId: number;
+  tenantName?: string | null;
+  /** Compañías a las que pertenece (para cambiar de compañía). */
+  memberships: { tenantId: number; tenantName: string }[];
+}
 
 export interface StoredSession {
   accessToken: string;
-  refreshToken?: string;
-  expiresAt: number; // epoch ms
-  // Cached so the driver's name/initials still show while offline, before a
-  // fresh /userinfo call (which needs a network) can update it.
+  /** Vencimiento del token de acceso (ms desde 1970). */
+  expiresAt: number;
+  refreshToken: string;
+  /** Vencimiento de la SESIÓN (la fija la compañía: días o minutos); pasado este momento hay que entrar de nuevo. */
+  refreshExpiresAt: number;
+  tenantId: number;
+  /** Para mostrar el nombre y las iniciales aunque no haya señal. */
   user?: AuthUser;
 }
 
@@ -30,9 +41,7 @@ async function setItem(value: string): Promise<void> {
 }
 
 async function getItem(): Promise<string | null> {
-  if (Platform.OS === 'web') {
-    return localStorage.getItem(KEY);
-  }
+  if (Platform.OS === 'web') return localStorage.getItem(KEY);
   return SecureStore.getItemAsync(KEY);
 }
 
@@ -52,7 +61,8 @@ export const sessionStorage = {
     const raw = await getItem();
     if (!raw) return null;
     try {
-      return JSON.parse(raw) as StoredSession;
+      const s = JSON.parse(raw) as StoredSession;
+      return s.accessToken && s.refreshToken ? s : null;
     } catch {
       return null;
     }

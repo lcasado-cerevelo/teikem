@@ -1,4 +1,4 @@
-﻿{
+{
   "translation": {
     "POWERED_BY": "Powered by EagerLink",
     "ONLINE": "Online",
@@ -28,14 +28,19 @@
       "BIOMETRIC_PROMPT": "Confirm your identity to sign in",
       "BIOMETRIC_CANCEL": "Cancel",
       "BIOMETRIC_OFFER_TITLE": "Biometric sign-in",
-      "BIOMETRIC_OFFER_BODY": "Use your fingerprint or face to sign in next time?",
+      "BIOMETRIC_OFFER_BODY": "Open the app with your fingerprint or face? Your password and code are still asked when the session expires.",
       "BIOMETRIC_ENABLE": "Enable",
-      "BIOMETRIC_ENABLE_PROMPT": "Confirm your identity to enable biometric sign-in",
+      "BIOMETRIC_ENABLE_PROMPT": "Confirm your identity to turn on «Open with fingerprint»",
       "BIOMETRIC_NOT_NOW": "Not now",
       "ACCESS_DENIED_TITLE": "You can't use the system",
       "ACCESS_NOT_PROVISIONED": "Your user is not set up in the system. Contact the administrator and show them the code below.",
       "ACCESS_INACTIVE": "Your user is deactivated. Contact the administrator.",
-      "ACCESS_CODE": "Code"
+      "ACCESS_CODE": "Code",
+      "BROWSER_TITLE": "Confirm this phone",
+      "BROWSER_BODY": "We sent an email to {{email}}. Tap the link in the email to confirm this phone and sign in again.",
+      "BROWSER_NOT_SENT": "The confirmation email could not be sent.",
+      "ONBOARDING_TITLE": "First sign-in",
+      "ONBOARDING_BODY": "Complete your first sign-in on the Teikem web (email and your own password) and come back here."
     },
     "HOME": {
       "DELIVERIES_FOR_TODAY": "Deliveries for today",
@@ -183,7 +188,49 @@
       "LOGOUT_ANYWAY": "Log out anyway",
       "BIOMETRIC_DISABLE": "Disable biometric sign-in",
       "BIOMETRIC_DISABLE_CONFIRM": "You will need to type your password next time. Disable?",
-      "BIOMETRIC_DISABLE_YES": "Disable"
+      "BIOMETRIC_DISABLE_YES": "Disable",
+      "BIOMETRIC_ENABLE": "Open with fingerprint",
+      "BIOMETRIC_ENABLE_HINT": "Locks the app after a few minutes away and opens it with your fingerprint or face. Password and code are asked when the session expires.",
+      "COMPANIES": "Company",
+      "COMPANY_SWITCH_TITLE": "Switch company",
+      "COMPANY_SWITCH_BODY": "You will switch to {{name}}. Anything not yet sent is sent first and that company's manifests are loaded.",
+      "COMPANY_SWITCH_YES": "Switch",
+      "COMPANY_CURRENT": "Current"
+    },
+    "MFA": {
+      "TITLE": "Two-step verification",
+      "SUBTITLE": "Enter the 6-digit code from your authenticator app or one of your recovery codes.",
+      "CODE": "Verification code",
+      "VERIFY": "Verify",
+      "BACK": "Back to sign in",
+      "DEV_CODE": "Development only: your current code is {{code}}",
+      "DEV_USE": "Use this code",
+      "ENROLL_TITLE": "Set up two-step verification",
+      "ENROLL_SUBTITLE": "Your company requires a second factor. Add this key to your authenticator app (Google Authenticator, Microsoft Authenticator…) and type the code it shows.",
+      "ENROLL_START": "Start setup",
+      "SECRET": "Key to enter manually:",
+      "OPEN_IN_APP": "Open in the authenticator app",
+      "CONFIRM": "Confirm",
+      "RECOVERY_TITLE": "Save your recovery codes",
+      "RECOVERY_BODY": "Each code works once if you lose your phone. They are shown only now.",
+      "RECOVERY_CONTINUE": "I saved them"
+    },
+    "LEGAL": {
+      "TITLE": "Privacy and terms of use",
+      "LEAD": "Read the document to the end to be able to accept it.",
+      "SCROLL_HINT": "Scroll to the end to enable «I accept».",
+      "ACCEPT": "I accept",
+      "DECLINE": "I do not accept (sign out)",
+      "ERROR": "The document could not be loaded."
+    },
+    "LOCK": {
+      "TITLE": "App locked",
+      "HELP": "Use your fingerprint or face to open it.",
+      "UNLOCK": "Open with fingerprint",
+      "PASSWORD": "Use my password",
+      "PROMPT": "Confirm your identity to open the app",
+      "CANCEL": "Cancel",
+      "FAILED": "It did not match. Attempts left: {{left}}."
     }
   }
 }

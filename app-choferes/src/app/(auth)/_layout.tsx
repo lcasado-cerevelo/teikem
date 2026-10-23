@@ -3,9 +3,11 @@ import { Redirect, Stack } from 'expo-router';
 import { useAuth } from '@hooks/AuthContext';
 import { useAuthSync, useAutoSync } from '@hooks/queries';
 import { useAppStore } from '@/stores';
+import LockScreen from '@components/LockScreen';
+import Legal from './Legal';
 
 export default function AuthLayout() {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, locked, legalRequired } = useAuth();
   // Sincroniza las entregas del chofer apenas autentica (no-op si no hay sesión).
   useAuthSync();
 
@@ -20,6 +22,11 @@ export default function AuthLayout() {
   useAutoSync(syncIntervalMinutes);
 
   if (!isLoggedIn) return <Redirect href="/(no-auth)/Login" />;
+  // con «Abrir con huella» activo, la app arranca y vuelve de segundo plano bloqueada
+  if (locked) return <LockScreen />;
+
+  // primer ingreso o documento nuevo: primero se acepta la política de privacidad y los términos de uso (sin aceptarlos no se ve nada más)
+  if (legalRequired === true) return <Legal />;
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

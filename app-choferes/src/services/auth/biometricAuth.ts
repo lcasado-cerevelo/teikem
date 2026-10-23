@@ -2,62 +2,60 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
 
-// Biometric re-login: after a password login the driver can opt in to sign in
-// with fingerprint/face next time. Credentials live ONLY in the device's
-// secure enclave (Keychain / Android Keystore via expo-secure-store) — same
-// approach banking apps use — and are read back only after a successful
-// biometric prompt (authenticate() below).
+// Huella o rostro del teléfono (expo-local-authentication) — «Abrir con huella».
 //
-// NOTE: device biometrics are device-scoped: ANY finger enrolled on the phone
-// unlocks them. The Login screen shows WHOSE session the button restores, and
-// a password login by a different user replaces/clears the stored credentials.
+// REGLA (igual que el portal del cliente): la huella NO reemplaza el primer ingreso ni el MFA. Solo ABRE la sesión que ya está guardada en el teléfono
+// (la app se bloquea al arrancar y al volver de segundo plano pasados unos minutos). La contraseña NO se guarda en el teléfono: antes se guardaba y se
+// reenviaba con la huella, lo que se saltaba el MFA de la compañía. Cuando la sesión vence (los días o minutos que fija la compañía) se pide todo otra vez.
+//
+// OJO: la huella la valida el teléfono, no el servidor: cualquier huella registrada en el teléfono lo abre. Por eso el MFA se sigue pidiendo en cada ingreso nuevo.
 
-const KEY = 'colavora.biometric-login';
+const KEY = 'teikem.choferes.biometric';
 
-export interface BiometricCredentials {
-  userName: string;
-  password: string;
+/** Minutos en segundo plano antes de volver a pedir la huella. */
+export const LOCK_AFTER_MINUTES = 2;
+/** Fallos seguidos de la huella antes de pedir la contraseña de nuevo (se cierra la sesión del teléfono). */
+export const MAX_BIOMETRIC_FAILURES = 5;
+
+/** ¿Hay que bloquear al volver a primer plano? `backgroundedAt` = cuándo salió de primer plano (null = nunca salió). */
+export function shouldLock(enabled: boolean, backgroundedAt: number | null, now: number, afterMinutes = LOCK_AFTER_MINUTES): boolean {
+  if (!enabled || backgroundedAt === null) return false;
+  return now - backgroundedAt >= afterMinutes * 60_000;
 }
 
-// Hardware present AND at least one fingerprint/face enrolled.
+// Hay lector Y al menos una huella o rostro registrado.
 export async function isBiometricAvailable(): Promise<boolean> {
   if (Platform.OS === 'web') return false;
   try {
-    const hasHardware = await LocalAuthentication.hasHardwareAsync();
-    if (!hasHardware) return false;
+    if (!(await LocalAuthentication.hasHardwareAsync())) return false;
     return await LocalAuthentication.isEnrolledAsync();
   } catch {
     return false;
   }
 }
 
-export async function getStoredCredentials(): Promise<BiometricCredentials | null> {
-  if (Platform.OS === 'web') return null;
+export async function getBiometricEnabled(): Promise<boolean> {
+  if (Platform.OS === 'web') return false;
   try {
-    const raw = await SecureStore.getItemAsync(KEY);
-    return raw ? (JSON.parse(raw) as BiometricCredentials) : null;
+    return (await SecureStore.getItemAsync(KEY)) === '1';
   } catch {
-    return null;
+    return false;
   }
 }
 
-export async function saveCredentials(creds: BiometricCredentials): Promise<void> {
+export async function setBiometricEnabled(value: boolean): Promise<void> {
   if (Platform.OS === 'web') return;
-  await SecureStore.setItemAsync(KEY, JSON.stringify(creds));
+  if (value) await SecureStore.setItemAsync(KEY, '1');
+  else await SecureStore.deleteItemAsync(KEY);
 }
 
-export async function clearCredentials(): Promise<void> {
-  if (Platform.OS === 'web') return;
-  await SecureStore.deleteItemAsync(KEY);
-}
-
-// Native biometric prompt. true only on a positive match.
+// Pide la huella (o el PIN del teléfono). true = el dueño del teléfono se identificó.
 export async function authenticate(promptMessage: string, cancelLabel: string): Promise<boolean> {
   try {
     const result = await LocalAuthentication.authenticateAsync({
       promptMessage,
       cancelLabel,
-      disableDeviceFallback: false, // allow PIN fallback, like banking apps
+      disableDeviceFallback: false, // el PIN del teléfono queda como respaldo
     });
     return result.success;
   } catch {
