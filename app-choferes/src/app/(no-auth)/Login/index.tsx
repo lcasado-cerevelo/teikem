@@ -31,7 +31,7 @@ export default function Login() {
     const result = await login({ userName: data.userName.trim(), password: data.password });
     if (result === 'mfa') router.push('/(no-auth)/Mfa');
     else if (result === 'browser') Alert.alert(t('LOGIN.BROWSER_TITLE'), t('LOGIN.BROWSER_BODY', { email: browserConfirmation?.email ?? '' }));
-    else if (result === 'onboarding') Alert.alert(t('LOGIN.ONBOARDING_TITLE'), t('LOGIN.ONBOARDING_BODY'));
+    else if (result === 'onboarding') router.push('/(no-auth)/Onboarding');
     else if (result === 'ok') await offerBiometrics();
   };
 

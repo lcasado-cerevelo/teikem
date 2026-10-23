@@ -65,7 +65,7 @@ export type LoginOutcome =
   | { status: 'ok'; refreshToken: string }
   | { status: 'mfa_required'; challenge: MfaChallenge }
   | { status: 'browser_confirmation_required'; browser: BrowserConfirmationDto }
-  | { status: 'onboarding_required' };
+  | { status: 'onboarding_required'; challenge: MfaChallenge };
 
 export function deviceInfo(): string {
   return `Teikem Chofer · ${Platform.OS}`;
@@ -73,7 +73,9 @@ export function deviceInfo(): string {
 
 function handle(result: AuthResultDto): LoginOutcome {
   if (result.status === 'browser_confirmation_required' && result.browser) return { status: 'browser_confirmation_required', browser: result.browser };
-  if (result.status === 'onboarding_required') return { status: 'onboarding_required' };
+  if (result.status === 'onboarding_required' && result.mfaChallengeToken) {
+    return { status: 'onboarding_required', challenge: { token: result.mfaChallengeToken, enrollmentRequired: true, devCode: null } };
+  }
   if (result.status === 'mfa_required' && result.mfaChallengeToken) {
     return { status: 'mfa_required', challenge: { token: result.mfaChallengeToken, enrollmentRequired: result.mfaEnrollmentRequired ?? false, devCode: result.devMfaCode ?? null } };
   }
@@ -170,4 +172,47 @@ export async function fetchLegalDocument(accessToken: string, lang: string): Pro
 
 export async function acceptLegal(accessToken: string, version: string, lang: string): Promise<void> {
   await http.post('/api/v1/legal/accept', { version, lang }, { headers: bearer(accessToken) });
+}
+
+// ---------------- Primer ingreso (correo → contraseña propia → MFA), todo dentro de la app ----------------
+
+export interface OnboardingStateDto {
+  email: string;
+  emailVerified: boolean;
+  passwordChangeRequired: boolean;
+  mfaConfigured: boolean;
+}
+
+export interface OnboardingStepDto {
+  state: OnboardingStateDto;
+  /** Token nuevo del primer ingreso (al cambiar la contraseña el anterior deja de servir). */
+  mfaChallengeToken?: string | null;
+}
+
+export interface OnboardingEmailSentDto {
+  email: string;
+  sent: boolean;
+  /** Solo con el API en Development. */
+  devCode?: string | null;
+}
+
+export async function getOnboarding(token: string): Promise<OnboardingStateDto> {
+  const { data } = await http.get<OnboardingStateDto>('/api/v1/auth/onboarding', { headers: bearer(token) });
+  return data;
+}
+
+/** Manda al correo del chofer el código de 6 dígitos. */
+export async function sendOnboardingEmail(token: string, language: string): Promise<OnboardingEmailSentDto> {
+  const { data } = await http.post<OnboardingEmailSentDto>('/api/v1/auth/onboarding/email/send', undefined, { headers: { ...bearer(token), 'Accept-Language': language } });
+  return data;
+}
+
+export async function verifyOnboardingEmail(token: string, code: string, language: string): Promise<OnboardingStepDto> {
+  const { data } = await http.post<OnboardingStepDto>('/api/v1/auth/onboarding/email/verify', { code: code.trim() }, { headers: { ...bearer(token), 'Accept-Language': language } });
+  return data;
+}
+
+export async function setOnboardingPassword(token: string, newPassword: string, language: string): Promise<OnboardingStepDto> {
+  const { data } = await http.post<OnboardingStepDto>('/api/v1/auth/onboarding/password', { newPassword }, { headers: { ...bearer(token), 'Accept-Language': language } });
+  return data;
 }

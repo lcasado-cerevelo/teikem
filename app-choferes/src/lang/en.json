@@ -199,6 +199,23 @@
       "COMPANY_BLOCKED": "Sign in again with your password and code",
       "COMPANY_SWITCH_PENDING": "You have {{count}} record(s) not yet sent to this company. Connect to the internet to send them, then switch companies."
     },
+    "ONBOARDING": {
+      "EMAIL_TITLE": "Verify your email",
+      "EMAIL_BODY": "We will send a 6-digit code to {{email}}.",
+      "SEND_CODE": "Send code",
+      "CODE": "Email code",
+      "VERIFY": "Verify",
+      "RESEND": "Resend code",
+      "PASSWORD_TITLE": "Create your password",
+      "PASSWORD_BODY": "Choose your own password; the one you were given stops working.",
+      "NEW_PASSWORD": "New password",
+      "REPEAT_PASSWORD": "Repeat password",
+      "PASSWORD_MISMATCH": "The passwords do not match.",
+      "SAVE_PASSWORD": "Save password",
+      "MFA_TITLE": "Two-step verification",
+      "MFA_BODY": "You still need to set up two-step verification with your authenticator app.",
+      "CONTINUE": "Continue"
+    },
     "MFA": {
       "TITLE": "Two-step verification",
       "SUBTITLE": "Enter the 6-digit code from your authenticator app or one of your recovery codes.",

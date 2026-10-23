@@ -12,6 +12,12 @@ import {
   enrollMfa as apiEnrollMfa,
   fetchLegalStatus,
   fetchMe,
+  getOnboarding,
+  sendOnboardingEmail,
+  setOnboardingPassword,
+  verifyOnboardingEmail,
+  type OnboardingEmailSentDto,
+  type OnboardingStateDto,
   login as apiLogin,
   fetchDriverSession,
   serverLogout,
@@ -55,6 +61,17 @@ interface AuthContextValue {
   /** Termina la inscripción del MFA con los códigos de recuperación ya vistos: vuelve al inicio de sesión. */
   finishEnrollment: () => void;
   cancelMfa: () => void;
+  /** Primer ingreso pendiente: el paso en que va (null = no hay primer ingreso en curso). */
+  onboarding: OnboardingStateDto | null;
+  /** Manda el código al correo; devuelve null si falló. */
+  sendEmailCode: () => Promise<OnboardingEmailSentDto | null>;
+  /** Confirma el código del correo. */
+  verifyEmailCode: (code: string) => Promise<boolean>;
+  /** Pone la contraseña propia; sigue la inscripción del MFA (true) o, si ya lo tenía, el inicio de sesión (el llamador decide por `onboarding`). */
+  setPassword: (newPassword: string) => Promise<boolean>;
+  cancelOnboarding: () => void;
+  /** Correo y contraseña ya listos: sigue la inscripción del MFA con el mismo token. */
+  continueToMfa: () => void;
   logout: () => Promise<void>;
   /** El token de acceso vigente, para las llamadas de las pantallas del documento legal. */
   accessToken: () => string | null;
@@ -81,6 +98,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [companies, setCompanies] = useState<CompanyAccess[]>([]);
   const [mfaChallenge, setMfaChallenge] = useState<MfaChallenge | null>(null);
   const [browserConfirmation, setBrowserConfirmation] = useState<BrowserConfirmationDto | null>(null);
+  const [onboarding, setOnboarding] = useState<OnboardingStateDto | null>(null);
+  const onboardingToken = useRef<string | null>(null);
   const [legalRequired, setLegalRequired] = useState<boolean | null>(null);
   const [locked, setLocked] = useState(false);
   const [biometricEnabled, setBiometricEnabledState] = useState(false);
@@ -279,7 +298,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setBrowserConfirmation(outcome.browser);
         return 'browser';
       }
-      if (outcome.status === 'onboarding_required') return 'onboarding';
+      if (outcome.status === 'onboarding_required') {
+        onboardingToken.current = outcome.challenge.token;
+        setOnboarding(await getOnboarding(outcome.challenge.token));
+        return 'onboarding';
+      }
       setMfaChallenge(null);
       setBrowserConfirmation(null);
       const next = await renew(outcome.refreshToken);
@@ -368,6 +391,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setMfaChallenge(null);
   }, []);
 
+  const continueToMfa = useCallback(() => {
+    if (onboardingToken.current) setMfaChallenge({ token: onboardingToken.current, enrollmentRequired: true, devCode: null });
+  }, []);
+
+  const sendEmailCode = useCallback(async (): Promise<OnboardingEmailSentDto | null> => {
+    if (!onboardingToken.current) return null;
+    try {
+      setLoading(true);
+      return await sendOnboardingEmail(onboardingToken.current, lang());
+    } catch (err) {
+      showError(err);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showError]);
+
+  const applyStep = (step: { state: OnboardingStateDto; mfaChallengeToken?: string | null }) => {
+    if (step.mfaChallengeToken) onboardingToken.current = step.mfaChallengeToken;
+    setOnboarding(step.state);
+  };
+
+  const verifyEmailCode = useCallback(
+    async (code: string): Promise<boolean> => {
+      if (!onboardingToken.current) return false;
+      try {
+        setLoading(true);
+        applyStep(await verifyOnboardingEmail(onboardingToken.current, code, lang()));
+        return true;
+      } catch (err) {
+        showError(err);
+        return false;
+      } finally {
+        setLoading(false);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [showError],
+  );
+
+  // Con la contraseña puesta, si falta el MFA el mismo token sirve para inscribirlo (pantalla del MFA); si ya lo tenía, vuelve al inicio de sesión.
+  const setPassword = useCallback(
+    async (newPassword: string): Promise<boolean> => {
+      if (!onboardingToken.current) return false;
+      try {
+        setLoading(true);
+        const step = await setOnboardingPassword(onboardingToken.current, newPassword, lang());
+        applyStep(step);
+        if (!step.state.mfaConfigured) continueToMfa();
+        return true;
+      } catch (err) {
+        showError(err);
+        return false;
+      } finally {
+        setLoading(false);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [showError, continueToMfa],
+  );
+
+  const cancelOnboarding = useCallback(() => {
+    onboardingToken.current = null;
+    setOnboarding(null);
+  }, []);
+
   const cancelMfa = useCallback(() => {
     setMfaChallenge(null);
     setBrowserConfirmation(null);
@@ -398,6 +488,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         confirmMfa,
         finishEnrollment,
         cancelMfa,
+        onboarding,
+        sendEmailCode,
+        verifyEmailCode,
+        setPassword,
+        cancelOnboarding,
+        continueToMfa,
         logout,
         accessToken: () => getAccessToken(),
         legalAccepted: () => setLegalRequired(false),

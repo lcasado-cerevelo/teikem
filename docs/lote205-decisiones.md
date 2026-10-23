@@ -13,3 +13,11 @@
 ## Decisiones a revisar
 - Tope de sesión en appsettings y regla «la más permisiva» (aceptada por Luis).
 - Falta: primer ingreso dentro de la app (correo personal, contraseña, MFA), tema Automático/Claro/Oscuro, capa de datos y GPS.
+
+## Parte 2 — Primer ingreso dentro de la app (hecha)
+- El login del chofer que responde `onboarding_required` ya no manda a la web: la app abre la pantalla **Onboarding** con el token del primer ingreso.
+  1. Código de 6 dígitos al correo del chofer (`/api/v1/auth/onboarding/email/send|verify`; el correo personal lo captura el administrador al crear al chofer).
+  2. Contraseña propia (`/onboarding/password`; el token se renueva porque el sello de seguridad rota).
+  3. Inscripción del MFA con la pantalla del MFA existente; al terminar vuelve al login (contraseña + código).
+- Pruebas: `npx tsc --noEmit`, JSON de idiomas válido. Sin prueba contra el API real todavía.
+- **Pendiente / decisión**: la confirmación de teléfono nuevo (`browser_confirmation_required`) sigue siendo un aviso «revisa tu correo» que abre un enlace; hacerla 100 % dentro de la app requiere un endpoint de código en el servidor. No se exige que el correo sea «no corporativo»: el servidor no lo puede saber; es una regla de captura del administrador.

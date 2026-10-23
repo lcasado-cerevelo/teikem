@@ -199,6 +199,23 @@
       "COMPANY_BLOCKED": "Entra de nuevo con tu contraseña y código",
       "COMPANY_SWITCH_PENDING": "Tiene {{count}} registro(s) sin enviar a esta compañía. Conéctese a internet para enviarlos y luego cambie de compañía."
     },
+    "ONBOARDING": {
+      "EMAIL_TITLE": "Verifica tu correo",
+      "EMAIL_BODY": "Te mandaremos un código de 6 dígitos a {{email}}.",
+      "SEND_CODE": "Enviar código",
+      "CODE": "Código del correo",
+      "VERIFY": "Verificar",
+      "RESEND": "Reenviar código",
+      "PASSWORD_TITLE": "Crea tu contraseña",
+      "PASSWORD_BODY": "Escoge una contraseña propia; la que te dieron deja de servir.",
+      "NEW_PASSWORD": "Contraseña nueva",
+      "REPEAT_PASSWORD": "Repite la contraseña",
+      "PASSWORD_MISMATCH": "Las contraseñas no coinciden.",
+      "SAVE_PASSWORD": "Guardar contraseña",
+      "MFA_TITLE": "Verificación en dos pasos",
+      "MFA_BODY": "Falta configurar la verificación en dos pasos con tu app de autenticación.",
+      "CONTINUE": "Continuar"
+    },
     "MFA": {
       "TITLE": "Verificación en dos pasos",
       "SUBTITLE": "Escriba el código de 6 dígitos de su app de autenticación o uno de sus códigos de recuperación.",
