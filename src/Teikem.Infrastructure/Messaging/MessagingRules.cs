@@ -24,6 +24,7 @@ public static class MessagingRules
     public const string OnlyCreatorAddsMessage = "Solo quien creó el grupo puede agregar personas.";
     public const string DirectNoAddMessage = "A una conversación entre dos personas no se pueden agregar más; cree un grupo.";
     public const string DirectNoLeaveMessage = "Una conversación entre dos personas no se abandona.";
+    public const string NoMessagingMessage = "Su usuario no tiene habilitada la mensajería en esta compañía.";
     public const string NeedMembersMessage = "Indique a quién agregar.";
 
     /// <summary>Clave del hilo entre dos personas: «menorId-mayorId» (la misma sin importar quién escribe primero).</summary>
@@ -58,6 +59,13 @@ public static class MessagingRules
 
     /// <summary>Quien escribe un mensaje lo tiene leído; los de otros cuentan como no leídos si son más nuevos que lo último leído y que su entrada.</summary>
     public static bool IsUnread(long messageId, int senderId, int me, long lastRead, long joinedAfter) => senderId != me && messageId > lastRead && messageId > joinedAfter;
+
+    /// <summary>Lo que ve quien pregunta: NONE no ve a nadie; OFFICE solo ve a las personas FULL; FULL ve a todas menos las NONE. Una persona NONE nunca es visible.</summary>
+    public static bool CanSee(string viewerMode, string targetMode)
+        => viewerMode != MessagingModes.None && targetMode != MessagingModes.None && (viewerMode == MessagingModes.Full || targetMode == MessagingModes.Full);
+
+    /// <summary>El texto de la vista previa de un mensaje con referencia: «[ORD-123] texto».</summary>
+    public static string PreviewWithRef(string? refTitle, string body) => string.IsNullOrEmpty(refTitle) ? Preview(body) : Preview($"[{refTitle}] {body}");
 
     public static string KindOf(int recipientCount, bool usedRole) => recipientCount == 1 && !usedRole ? MessageThreadKinds.Direct : MessageThreadKinds.Group;
 }

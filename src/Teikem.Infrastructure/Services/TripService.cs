@@ -35,7 +35,8 @@ public sealed class TripService(
     ModuleService modules,
     RouteWriter writer,
     TripReadService reader,
-    ITenantClock? clock = null)
+    ITenantClock? clock = null,
+    ResponsibleService? responsibles = null)
 {
     private readonly ITenantClock _clock = clock ?? TenantClock.Default;
 
@@ -146,7 +147,17 @@ public sealed class TripService(
 
         await PrepareNumberingAsync(ct);
         var spec = new TripCreateSpec(planDate, req.DispatchZoneId, driverId, vehicleId, req.PlannedStartUtc, UseDefaultDriver: true, Kind: kind!);
-        var publicId = await db.RunInTransactionAsync(async ct2 => (await CreateTrackedAsync(spec, ct2)).PublicId, ct);
+        var publicId = await db.RunInTransactionAsync(async ct2 =>
+        {
+            var trip = await CreateTrackedAsync(spec, ct2);
+            // Lote 212: la ruta nace con quien la creó como responsable (para «Hablar sobre esta orden»); se puede cambiar en la ficha.
+            if (responsibles is not null && ((TenantContext)tenant).UserId is int creator)
+            {
+                await responsibles.AddAsync(EntityTypes.Trip, trip.TripId, creator, ct2);
+                await db.SaveChangesAsync(ct2);
+            }
+            return trip.PublicId;
+        }, ct);
         return await reader.GetAsync(publicId, ct);
     }
 

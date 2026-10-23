@@ -19180,6 +19180,153 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/messages/suggested": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    entity?: string;
+                    publicId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageSuggestionDto"][];
+                        "application/json": components["schemas"]["MessageSuggestionDto"][];
+                        "text/json": components["schemas"]["MessageSuggestionDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messages/about": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    entity?: string;
+                    publicId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageAboutDto"][];
+                        "application/json": components["schemas"]["MessageAboutDto"][];
+                        "text/json": components["schemas"]["MessageAboutDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messages/responsibles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    entity?: string;
+                    key?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ResponsibleDto"][];
+                        "application/json": components["schemas"]["ResponsibleDto"][];
+                        "text/json": components["schemas"]["ResponsibleDto"][];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ResponsiblesRequest"];
+                    "text/json": components["schemas"]["ResponsiblesRequest"];
+                    "application/*+json": components["schemas"]["ResponsiblesRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ResponsibleDto"][];
+                        "application/json": components["schemas"]["ResponsibleDto"][];
+                        "text/json": components["schemas"]["ResponsibleDto"][];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/messages/people": {
         parameters: {
             query?: never;
@@ -19598,6 +19745,88 @@ export interface paths {
             };
         };
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messaging-modes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessagingModeDto"][];
+                        "application/json": components["schemas"]["MessagingModeDto"][];
+                        "text/json": components["schemas"]["MessagingModeDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messaging-modes/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["MessagingModeRequest"];
+                    "text/json": components["schemas"]["MessagingModeRequest"];
+                    "application/*+json": components["schemas"]["MessagingModeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessagingModeDto"];
+                        "application/json": components["schemas"]["MessagingModeDto"];
+                        "text/json": components["schemas"]["MessagingModeDto"];
+                    };
+                };
+            };
+        };
         post?: never;
         delete?: never;
         options?: never;
@@ -42007,6 +42236,16 @@ export interface components {
         MembershipStatusRequest: {
             status?: string | null;
         };
+        MessageAboutDto: {
+            /** Format: uuid */
+            threadPublicId?: string;
+            /** Format: int64 */
+            messageId?: number;
+            senderName?: string | null;
+            preview?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+        };
         MessageDto: {
             /** Format: int64 */
             id?: number;
@@ -42017,6 +42256,7 @@ export interface components {
             /** Format: date-time */
             createdAtUtc?: string;
             mine?: boolean;
+            ref?: components["schemas"]["MessageRefDto"];
         };
         MessageLatestDto: {
             /** Format: uuid */
@@ -42052,6 +42292,20 @@ export interface components {
             /** Format: date-time */
             lastSeenUtc?: string | null;
         };
+        MessageRefDto: {
+            entity?: string | null;
+            /** Format: uuid */
+            publicId?: string;
+            title?: string | null;
+            subtitle?: string | null;
+            status?: string | null;
+            canOpen?: boolean;
+        };
+        MessageRefRequest: {
+            entity?: string | null;
+            /** Format: uuid */
+            publicId?: string | null;
+        };
         MessageRoleDto: {
             /** Format: int32 */
             id?: number;
@@ -42061,6 +42315,17 @@ export interface components {
         };
         MessageSendRequest: {
             text?: string | null;
+            ref?: components["schemas"]["MessageRefRequest"];
+        };
+        MessageSuggestionDto: {
+            source?: string | null;
+            sourceLabel?: string | null;
+            /** Format: int32 */
+            userId?: number | null;
+            /** Format: int32 */
+            roleId?: number | null;
+            name?: string | null;
+            online?: boolean;
         };
         MessageThreadDto: {
             thread?: components["schemas"]["MessageThreadSummaryDto"];
@@ -42075,6 +42340,7 @@ export interface components {
             roleId?: number | null;
             title?: string | null;
             text?: string | null;
+            ref?: components["schemas"]["MessageRefRequest"];
         };
         MessageThreadSummaryDto: {
             /** Format: uuid */
@@ -42098,6 +42364,16 @@ export interface components {
             /** Format: int32 */
             threads?: number;
             latest?: components["schemas"]["MessageLatestDto"];
+        };
+        MessagingModeDto: {
+            /** Format: int32 */
+            userId?: number;
+            name?: string | null;
+            email?: string | null;
+            mode?: string | null;
+        };
+        MessagingModeRequest: {
+            mode?: string | null;
         };
         MfaConfirmRequest: {
             code?: string | null;
@@ -45576,6 +45852,17 @@ export interface components {
             token?: string | null;
             newPassword?: string | null;
             mfaCode?: string | null;
+        };
+        ResponsibleDto: {
+            /** Format: int32 */
+            userId?: number;
+            name?: string | null;
+            email?: string | null;
+        };
+        ResponsiblesRequest: {
+            entity?: string | null;
+            key?: string | null;
+            userIds?: number[] | null;
         };
         ReturnFeeDto: {
             mode?: string | null;

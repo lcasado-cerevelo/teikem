@@ -49,6 +49,55 @@ public class MessageThreadMember : ITenantScoped
     public DateTime? LeftAtUtc { get; set; }
 }
 
+/// <summary>
+/// Qué tan visible es una persona en la mensajería de una compañía (UserTenant.MessagingMode): FULL = ve a todos y todos la ven; OFFICE = solo ve a las personas FULL
+/// (el chofer por omisión: habla con la oficina, no con otros choferes); NONE = no aparece en ninguna lista ni puede escribir.
+/// </summary>
+public static class MessagingModes
+{
+    public const string Full = "FULL";
+    public const string Office = "OFFICE";
+    public const string None = "NONE";
+    public static readonly string[] All = { Full, Office, None };
+    public const string InvalidMessage = "La mensajería debe ser FULL (completa), OFFICE (solo con la oficina) o NONE (sin mensajería).";
+    public static string? Normalize(string? mode)
+    {
+        var m = (mode ?? string.Empty).Trim().ToUpperInvariant();
+        return All.Contains(m) ? m : null;
+    }
+}
+
+/// <summary>Las entidades a las que un mensaje puede hacer referencia (la tarjeta del hilo). Nuevas se agregan aquí y en MessagingService.ResolveRefsAsync.</summary>
+public static class MessageRefs
+{
+    public const string Order = "ORDER";
+    public const string Trip = "TRIP";
+    public static readonly string[] All = { Order, Trip };
+    public const string InvalidMessage = "La referencia debe ser una ORDER (orden) o una TRIP (ruta).";
+    public const string NotFoundMessage = "La orden o ruta a la que se refiere el mensaje no existe en esta compañía.";
+    public static string? Normalize(string? entity)
+    {
+        var e = (entity ?? string.Empty).Trim().ToUpperInvariant();
+        return All.Contains(e) ? e : null;
+    }
+}
+
+/// <summary>
+/// Lote 212 — «quién responde por esto»: usuarios responsables de una entidad (hoy una ruta o una zona de despacho; mañana un cliente, una orden…) con el patrón polimórfico de
+/// StoredFile (EntityLookupId + EntityId). Varios por entidad. Alimenta las sugerencias de «Hablar sobre esta orden». Quitar a alguien = IsActive 0.
+/// </summary>
+public class EntityResponsible : ITenantScoped
+{
+    public int EntityResponsibleId { get; set; }
+    public int TenantId { get; set; }
+    public int EntityLookupId { get; set; }
+    public int EntityId { get; set; }
+    public int UserId { get; set; }
+    public int? CreatedBy { get; set; }
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public bool IsActive { get; set; } = true;
+}
+
 public class Message : ITenantScoped
 {
     public long MessageId { get; set; }
@@ -57,6 +106,9 @@ public class Message : ITenantScoped
     public int SenderId { get; set; }
     public string Body { get; set; } = string.Empty;
     public DateTime CreatedAtUtc { get; set; }
+    /// <summary>Lote 212: la orden o ruta de la que habla el mensaje (la tarjeta del hilo); NULL = mensaje normal. RefEntity ∈ MessageRefs.All.</summary>
+    public string? RefEntity { get; set; }
+    public Guid? RefPublicId { get; set; }
 }
 
 /// <summary>

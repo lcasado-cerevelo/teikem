@@ -24,7 +24,13 @@ public sealed record MessageThreadSummaryDto(
     bool IsMuted);
 
 /// <summary>Un mensaje. Mine = lo escribió quien lo pide (la web lo pinta a la derecha).</summary>
-public sealed record MessageDto(long Id, int SenderId, string SenderName, string Body, DateTime CreatedAtUtc, bool Mine);
+public sealed record MessageDto(long Id, int SenderId, string SenderName, string Body, DateTime CreatedAtUtc, bool Mine, MessageRefDto? Ref = null);
+
+/// <summary>Lote 212 — a qué orden o ruta se refiere un mensaje. Entity ∈ ORDER | TRIP.</summary>
+public sealed record MessageRefRequest(string? Entity = null, Guid? PublicId = null);
+
+/// <summary>La tarjeta del hilo: Title (número de orden / código de ruta), Subtitle (cliente / zona), Status. CanOpen = quien lo ve tiene permiso para abrirla; si no, solo se ve Title.</summary>
+public sealed record MessageRefDto(string Entity, Guid PublicId, string Title, string? Subtitle, string? Status, bool CanOpen);
 
 /// <summary>Un participante del hilo con su presencia. IsCreator = quien creó el grupo (puede agregar personas).</summary>
 public sealed record MessageMemberDto(int UserId, string Name, string Email, bool Online, DateTime? LastSeenUtc, bool IsCreator);
@@ -44,9 +50,9 @@ public sealed record MessageThreadDto(
 /// Nuevo hilo: UserIds (personas) y/o RoleId (todas las personas activas con ese rol hoy, «en foto»). Una sola persona sin rol = hilo entre
 /// dos (se reusa el que ya exista); si no, grupo (Title opcional). Text = el primer mensaje.
 /// </summary>
-public sealed record MessageThreadRequest(IReadOnlyList<int>? UserIds = null, int? RoleId = null, string? Title = null, string? Text = null);
+public sealed record MessageThreadRequest(IReadOnlyList<int>? UserIds = null, int? RoleId = null, string? Title = null, string? Text = null, MessageRefRequest? Ref = null);
 
-public sealed record MessageSendRequest(string? Text = null);
+public sealed record MessageSendRequest(string? Text = null, MessageRefRequest? Ref = null);
 
 public sealed record MessageMembersRequest(IReadOnlyList<int>? UserIds = null);
 
@@ -64,3 +70,20 @@ public sealed record MessageRoleDto(int Id, string Name, int MemberCount);
 
 /// <summary>Lo que se empuja por la conexión en vivo a las personas del hilo (el cliente vuelve a pedir lo que cambió).</summary>
 public sealed record MessageLiveEvent(int TenantId, Guid ThreadPublicId, long? MessageId, int? SenderId, string? SenderName, string? Preview, bool Muted);
+
+/// <summary>Lote 212 — la mensajería de una persona en esta compañía: Mode ∈ FULL | OFFICE | NONE (ver MessagingModes).</summary>
+public sealed record MessagingModeDto(int UserId, string Name, string Email, string Mode);
+public sealed record MessagingModeRequest(string? Mode = null);
+
+/// <summary>
+/// Lote 212 — un sugerido para «Hablar sobre esta orden»: una persona (UserId) o el grupo de un rol (RoleId). Source: TRIP (responsable de la ruta), ZONE (responsable de la zona),
+/// ROLE (rol Despachador) o RECENT (con quien se habló hace poco); SourceLabel es el texto para pintarlo («Responsable de la ruta», «Zona R-01»…).
+/// </summary>
+public sealed record MessageSuggestionDto(string Source, string SourceLabel, int? UserId, int? RoleId, string Name, bool Online);
+
+/// <summary>Un responsable de una entidad. Entity ∈ TRIP | DISPATCH_ZONE; Key = PublicId de la ruta o id de la zona.</summary>
+public sealed record ResponsibleDto(int UserId, string Name, string Email);
+public sealed record ResponsiblesRequest(string? Entity = null, string? Key = null, IReadOnlyList<int>? UserIds = null);
+
+/// <summary>Un mensaje (de mis hilos) que habla de una orden o ruta, con el hilo donde está.</summary>
+public sealed record MessageAboutDto(Guid ThreadPublicId, long MessageId, string SenderName, string Preview, DateTime CreatedAtUtc);

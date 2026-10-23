@@ -27,6 +27,13 @@ public sealed class DriverService(TeikemDbContext db, ITenantContext tenant, ILo
 {
     private readonly ITenantClock _clock = clock ?? TenantClock.Default;
 
+    /// <summary>Lote 212: quien se liga a un chofer queda en «solo con la oficina» en la mensajería (si seguía en completa); el administrador lo puede cambiar después.</summary>
+    private async Task MarkOfficeOnlyAsync(int userId, CancellationToken ct)
+    {
+        var membership = await db.UserTenants.FirstOrDefaultAsync(m => m.UserId == userId, ct);
+        if (membership is not null && membership.MessagingMode == Teikem.Domain.Messaging.MessagingModes.Full) membership.MessagingMode = Teikem.Domain.Messaging.MessagingModes.Office;
+    }
+
     private static readonly string[] ImmutableCodeKeys = ["code", "employeeCode"];
 
     // ---------------- Lista ----------------
@@ -122,6 +129,7 @@ public sealed class DriverService(TeikemDbContext db, ITenantContext tenant, ILo
             };
             db.Drivers.Add(driver);
             await SaveDriverAsync(ct2);
+            if (req.UserId is int newUser) await MarkOfficeOnlyAsync(newUser, ct2);
 
             // Historial de estatus desde el nacimiento (etapa inicial habilitada del tenant: ACTIVE en el seed).
             var to = await statuses.TransitionAsync(StatusDomains.DriverStatus, EntityTypes.Driver, driver.DriverId, null, initial.InternalCode, null, ct2);
@@ -181,7 +189,7 @@ public sealed class DriverService(TeikemDbContext db, ITenantContext tenant, ILo
             else if (req.MaxStopsPerRoute.HasValue) driver.MaxStopsPerRoute = req.MaxStopsPerRoute.Value;
             if (req.HireDate.HasValue) driver.HireDate = req.HireDate.Value;
             if (clearUser) driver.UserId = null;
-            else if (linkUser) driver.UserId = req.UserId!.Value;
+            else if (linkUser) { driver.UserId = req.UserId!.Value; await MarkOfficeOnlyAsync(req.UserId.Value, ct2); }
 
             if (req.ClearZone == true) await ReplacePrimaryZoneAsync(driver.DriverId, null, ct2);
             else if (setZone) await ReplacePrimaryZoneAsync(driver.DriverId, req.DispatchZoneId!.Value, ct2);

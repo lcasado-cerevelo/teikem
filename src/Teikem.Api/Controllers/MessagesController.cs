@@ -17,8 +17,23 @@ namespace Teikem.Api.Controllers;
 [ApiController]
 [Route("api/v1/messages")]
 [Authorize]
-public sealed class MessagesController(MessagingService messages) : ControllerBase
+public sealed class MessagesController(MessagingService messages, MessageSuggestionService suggestions, ResponsibleService responsibles) : ControllerBase
 {
+    /// <summary>Lote 212 — a quién proponerle primero para hablar de una orden (ORDER) o ruta (TRIP): responsables de la ruta y de la zona, despachadores y conversaciones recientes.</summary>
+    [HttpGet("suggested"), RequirePermission(PermissionCatalog.MessagesUse)]
+    public Task<IReadOnlyList<MessageSuggestionDto>> Suggested([FromQuery] string? entity, [FromQuery] Guid publicId, CancellationToken ct) => suggestions.SuggestAsync(entity, publicId, ct);
+
+    /// <summary>Lote 212 — los mensajes de MIS hilos que hablan de esa orden o ruta.</summary>
+    [HttpGet("about"), RequirePermission(PermissionCatalog.MessagesUse)]
+    public Task<IReadOnlyList<MessageAboutDto>> About([FromQuery] string? entity, [FromQuery] Guid publicId, CancellationToken ct) => messages.AboutAsync(entity, publicId, ct);
+
+    /// <summary>Lote 212 — responsables de una ruta (TRIP, key = publicId) o zona (DISPATCH_ZONE, key = id). Verlos: mensajería; cambiarlos: trips.plan / fleet.manage.</summary>
+    [HttpGet("responsibles"), RequirePermission(PermissionCatalog.MessagesUse)]
+    public Task<IReadOnlyList<ResponsibleDto>> Responsibles([FromQuery] string? entity, [FromQuery] string? key, CancellationToken ct) => responsibles.ListAsync(entity, key, ct);
+
+    [HttpPut("responsibles"), RequirePermission(PermissionCatalog.MessagesUse)]
+    public Task<IReadOnlyList<ResponsibleDto>> SetResponsibles([FromBody] ResponsiblesRequest req, CancellationToken ct) => responsibles.ReplaceAsync(req, ct);
+
     /// <summary>Las personas activas de la compañía (menos quien pregunta) con su presencia; q = parte del nombre o del correo.</summary>
     [HttpGet("people"), RequirePermission(PermissionCatalog.MessagesUse)]
     public Task<IReadOnlyList<MessagePersonDto>> People([FromQuery] string? q, [FromQuery] int take, CancellationToken ct) => messages.PeopleAsync(q, take, ct);
@@ -85,4 +100,17 @@ public sealed class PresenceController(PresenceService presence, ITenantContext 
         await presence.PingAsync(((TenantContext)tenant).RequireUserId(), now, ct);
         return new PresencePingDto(now);
     }
+}
+
+/// <summary>Lote 212 — quién participa en la mensajería de la compañía (FULL | OFFICE | NONE). Es administración de usuarios: exige <c>admin.users</c>, no <c>messages.use</c>.</summary>
+[ApiController]
+[Route("api/v1/messaging-modes")]
+[Authorize]
+public sealed class MessagingModesController(MessagingService messages) : ControllerBase
+{
+    [HttpGet, RequirePermission(PermissionCatalog.AdminUsers)]
+    public Task<IReadOnlyList<MessagingModeDto>> List(CancellationToken ct) => messages.ListModesAsync(ct);
+
+    [HttpPut("{userId:int}"), RequirePermission(PermissionCatalog.AdminUsers)]
+    public Task<MessagingModeDto> Set(int userId, [FromBody] MessagingModeRequest req, CancellationToken ct) => messages.SetModeAsync(userId, req, ct);
 }

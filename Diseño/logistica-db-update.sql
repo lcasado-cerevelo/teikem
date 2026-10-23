@@ -6611,3 +6611,37 @@ GO
 IF COL_LENGTH('dbo.Trip', 'Kind') IS NULL
     ALTER TABLE dbo.Trip ADD Kind NVARCHAR(10) NOT NULL CONSTRAINT DF_Trip_Kind DEFAULT 'DELIVERY';
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-23 (i) — Mensajería con el chofer (Lote 212).
+   - dbo.UserTenant.MessagingMode: FULL (ve a todos) | OFFICE (solo ve a las personas FULL) | NONE (sin mensajería). Los usuarios ligados a un chofer pasan a OFFICE.
+   - dbo.Message.RefEntity / RefPublicId: la orden o ruta de la que habla el mensaje (la tarjeta del hilo).
+   - dbo.EntityResponsible: responsables de una entidad (ruta, zona de despacho…), patrón polimórfico EntityLookupId + EntityId.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.UserTenant', 'MessagingMode') IS NULL
+BEGIN
+    ALTER TABLE dbo.UserTenant ADD MessagingMode VARCHAR(10) NOT NULL CONSTRAINT DF_UserTenant_MessagingMode DEFAULT 'FULL';
+    EXEC('ALTER TABLE dbo.UserTenant ADD CONSTRAINT CK_UserTenant_MessagingMode CHECK (MessagingMode IN (''FULL'',''OFFICE'',''NONE''))');
+    EXEC('UPDATE ut SET MessagingMode = ''OFFICE'' FROM dbo.UserTenant ut WHERE EXISTS (SELECT 1 FROM dbo.Driver d WHERE d.UserId = ut.UserId AND d.TenantId = ut.TenantId)');
+END
+GO
+IF COL_LENGTH('dbo.Message', 'RefEntity') IS NULL
+    ALTER TABLE dbo.Message ADD RefEntity VARCHAR(20) NULL, RefPublicId UNIQUEIDENTIFIER NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Message_Ref' AND object_id = OBJECT_ID('dbo.Message'))
+    CREATE INDEX IX_Message_Ref ON dbo.Message(TenantId, RefEntity, RefPublicId) WHERE RefPublicId IS NOT NULL;
+GO
+IF OBJECT_ID(N'dbo.EntityResponsible', N'U') IS NULL CREATE TABLE dbo.EntityResponsible (
+    EntityResponsibleId INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    EntityLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),
+    EntityId INT NOT NULL,
+    UserId INT NOT NULL REFERENCES dbo.AspNetUsers(Id),
+    CreatedBy INT NULL,
+    CreatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_EntityResponsible_Created DEFAULT SYSUTCDATETIME(),
+    IsActive BIT NOT NULL CONSTRAINT DF_EntityResponsible_IsActive DEFAULT 1
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_EntityResponsible' AND object_id = OBJECT_ID('dbo.EntityResponsible'))
+    CREATE UNIQUE INDEX UX_EntityResponsible ON dbo.EntityResponsible(TenantId, EntityLookupId, EntityId, UserId);
+GO

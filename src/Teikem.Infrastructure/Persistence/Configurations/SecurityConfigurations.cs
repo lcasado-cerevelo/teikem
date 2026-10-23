@@ -11,6 +11,7 @@ public sealed class UserTenantConfiguration : IEntityTypeConfiguration<UserTenan
     {
         b.ToTable("UserTenant");
         b.HasKey(m => m.UserTenantId);
+        b.Property(m => m.MessagingMode).HasMaxLength(10).IsUnicode(false).IsRequired();
         b.HasIndex(m => new { m.UserId, m.TenantId }).IsUnique();
         b.HasOne(m => m.Tenant).WithMany().HasForeignKey(m => m.TenantId);
         b.HasOne(m => m.Status).WithMany().HasForeignKey(m => m.StatusCodeId);

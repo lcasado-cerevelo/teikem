@@ -143,7 +143,7 @@ public class MessagingTests
     public void Every_messages_endpoint_requires_messages_use_and_presence_only_a_session()
     {
         var actions = typeof(MessagesController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly).ToList();
-        Assert.Equal(11, actions.Count);   // People, Roles, Threads, Create, Get, Send, Read, AddMembers, Leave, Mute, Unread
+        Assert.Equal(15, actions.Count);   // People, Roles, Threads, Create, Get, Send, Read, AddMembers, Leave, Mute, Unread + (Lote 212) Suggested, About, Responsibles, SetResponsibles
         foreach (var m in actions)
             Assert.Equal(RequirePermissionAttribute.Prefix + PermissionCatalog.MessagesUse, m.GetCustomAttribute<RequirePermissionAttribute>()!.Policy);
         Assert.DoesNotContain(actions, m => m.GetCustomAttributes().Any(a => a.GetType().Name == "HttpDeleteAttribute"));   // los mensajes no se borran
@@ -153,6 +153,16 @@ public class MessagingTests
         var ping = Assert.Single(typeof(PresenceController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly));
         Assert.Null(ping.GetCustomAttribute<RequirePermissionAttribute>());
         Assert.NotNull(typeof(PresenceController).GetCustomAttribute<AuthorizeAttribute>());
+    }
+
+    [Fact]
+    public void The_messaging_mode_endpoints_are_user_administration_not_messaging()
+    {
+        var actions = typeof(MessagingModesController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly).ToList();
+        Assert.Equal(2, actions.Count);   // List, Set
+        foreach (var m in actions)
+            Assert.Equal(RequirePermissionAttribute.Prefix + PermissionCatalog.AdminUsers, m.GetCustomAttribute<RequirePermissionAttribute>()!.Policy);
+        Assert.NotNull(typeof(MessagingModesController).GetCustomAttribute<AuthorizeAttribute>());
     }
 
     [Fact]

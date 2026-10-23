@@ -525,6 +525,7 @@ public partial class TripStatusEffectTests
             {
                 pipe, lat, term,
                 L(LookupDomains.EntityType, EntityTypes.Trip),
+                L(LookupDomains.EntityType, EntityTypes.DispatchZone),
                 L(LookupDomains.EntityType, EntityTypes.Route),
                 L(LookupDomains.EntityType, EntityTypes.TransportOrder),
                 L(LookupDomains.EntityType, EntityTypes.Client),

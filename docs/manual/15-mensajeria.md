@@ -72,3 +72,47 @@ Presencia: `POST /api/v1/presence/ping` (cualquier persona con sesión). Conexi�
   Si algún día se necesitan varias instancias a la vez, se agrega un «backplane» (SQL Server o Redis) sin cambiar nada más.
 - Los empujes en vivo **no llevan datos del mensaje que la persona no pueda pedir por la API**; son solo «algo cambió» + un resumen corto para el globo de Kemi.
 - La presencia es un dato por persona (`UserPresence.LastSeenUtc`); no guarda en qué pantalla está.
+
+## 8. Mensajería con el chofer, hablar sobre una orden o ruta y responsables (Lote 212, 2026-10-23)
+
+### 8.1 Quién ve a quién: el ajuste «Mensajería» de cada persona
+Cada persona tiene, **por compañía**, uno de tres valores (lo cambia quien administra usuarios, permiso `admin.users`):
+
+| Valor | Qué significa |
+|---|---|
+| `FULL` — Completa (por omisión) | Ve a todos los de la compañía, y todos la ven. |
+| `OFFICE` — Solo con la oficina | Escribe y recibe, pero en su lista solo salen las personas `FULL`. **Los usuarios ligados a un chofer quedan así** (al crear el chofer o al ligarle el usuario; los que ya existían se pasaron a `OFFICE` en la sección 2026-10-23 (i) del SQL). |
+| `NONE` — Sin mensajería | No aparece en ninguna lista y no puede abrir ni escribir hilos. |
+
+- Para que dos choferes se escriban entre sí, se le pone `FULL` a los dos (o a quien se quiera). Un grupo lo puede crear la oficina con quien quiera.
+- API: `GET /api/v1/messaging-modes` (lista) y `PUT /api/v1/messaging-modes/{userId}` con `{"mode":"FULL|OFFICE|NONE"}`. Ambos con `admin.users`.
+- Los hilos que ya existen siguen funcionando si cambia el modo; lo que cambia es a quién se puede escribir de nuevo.
+
+### 8.2 Hablar sobre una orden o una ruta
+Un mensaje puede llevar una **referencia** (`ref`: `{"entity":"ORDER"|"TRIP","publicId":"…"}`) al crear el hilo (`POST /messages/threads`) o al enviar (`POST /messages/threads/{id}/messages`). En el hilo se ve como una **tarjeta** (número de orden o código de ruta); en la lista, la vista previa dice `[2026-0001] texto`.
+- La referencia va **en el mensaje**, no en el hilo: Ana y Luis tienen un solo hilo entre dos y hoy pueden hablar de una orden y mañana de otra.
+- La tarjeta muestra el detalle (cliente / zona y estatus) y `canOpen = true` **solo si quien la ve tiene `orders.view` / `trips.view`**; si no, solo ve el título.
+- `GET /messages/about?entity=ORDER|TRIP&publicId=…` lista los mensajes de **mis** hilos que hablan de esa orden o ruta (para la pestaña «Mensajes» de la ficha). No revela hilos de los que no soy parte.
+
+### 8.3 Sugeridos: «¿con quién hablo de esto?»
+`GET /messages/suggested?entity=ORDER|TRIP&publicId=…` propone, en este orden y sin repetir: (1) los **responsables de la ruta** (para una orden, la ruta activa donde va), (2) los **responsables de la zona** de esa ruta, (3) los **roles que despachan** (los que tienen el permiso `trips.dispatch`) como grupo, (4) hasta 5 **conversaciones recientes**. Cada sugerido dice de dónde sale. Respeta el ajuste del punto 8.1 (nunca sugiere a quien quien pregunta no puede ver, ni a uno mismo). **No abre nada solo**: la persona escoge.
+
+### 8.4 Responsables
+Los responsables de una **ruta** o de una **zona de despacho** (varios por entidad):
+- `GET /messages/responsibles?entity=TRIP|DISPATCH_ZONE&key=…` (`key` = `publicId` de la ruta, o el id de la zona). Cualquiera con `messages.use`.
+- `PUT /messages/responsibles` con `{"entity","key","userIds":[…]}` deja **exactamente** a esas personas. Una ruta exige `trips.plan`; una zona, `fleet.manage`.
+- Una ruta nueva nace con **quien la creó** como responsable.
+- La tabla es genérica (`EntityResponsible`): mañana puede colgarse de un cliente o una orden sin cambiar el esquema.
+
+### 8.5 Mensajes exactos y códigos
+| Situación | Mensaje | HTTP |
+|---|---|---|
+| Modo inválido | `La mensajería debe ser FULL (completa), OFFICE (solo con la oficina) o NONE (sin mensajería).` | 400 |
+| Escribir sin mensajería (`NONE`) | `Su usuario no tiene habilitada la mensajería en esta compañía.` | 403 |
+| Escribirle a alguien que no se ve (por su modo) | `Usuario no encontrado en esta compañía.` | 400 |
+| Referencia de otro tipo | `La referencia debe ser una ORDER (orden) o una TRIP (ruta).` | 400 |
+| Referencia que no existe | `La orden o ruta a la que se refiere el mensaje no existe en esta compañía.` | 400 |
+| Responsables: entidad inválida | `La entidad debe ser TRIP (ruta) o DISPATCH_ZONE (zona de despacho).` | 400 |
+| Responsables: clave inválida | `La clave de la entidad no es válida.` | 400 |
+| Responsables: usuario ajeno | `Usuario no encontrado en esta compañía.` | 400 |
+| Responsables sin permiso | `No tiene permiso para cambiar los responsables (trips.plan).` (o `fleet.manage`) | 403 |

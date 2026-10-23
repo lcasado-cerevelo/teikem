@@ -10452,3 +10452,19 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **«Indique el punto de recogida existente o uno nuevo, no los dos.» (400).** Por API, `pickupLocationPublicId` y `newPickup` no van juntos.
 
 **«El número de envío lo asigna Teikem para este cliente.» en las órdenes de CMS.** El cliente no tiene activo «El cliente asigna el número de envío»; actívelo para que el Order # de CMS sea el número de la orden.
+
+## Lote 212 — Mensajería con el chofer, referencias y responsables
+
+**«Su usuario no tiene habilitada la mensajería en esta compañía.» (403).** Su ajuste de mensajería es `NONE`. Un administrador de usuarios (`admin.users`) lo cambia en Mensajería → modos (`PUT /messaging-modes/{userId}`).
+
+**El chofer no ve a otros choferes en su lista.** Es lo normal: los usuarios ligados a un chofer quedan en «Solo con la oficina» (`OFFICE`). Si la compañía quiere que se escriban, ponga `FULL` a los que corresponda. Los grupos que cree la oficina sí los juntan.
+
+**«Usuario no encontrado en esta compañía.» al escribirle a alguien que sí existe.** Esa persona no es visible para usted por su ajuste de mensajería (un chofer `OFFICE` no ve a otro `OFFICE`; nadie ve a un `NONE`).
+
+**«La referencia debe ser una ORDER (orden) o una TRIP (ruta).» / «La orden o ruta a la que se refiere el mensaje no existe en esta compañía.» (400).** La tarjeta solo admite órdenes y rutas de la compañía activa. Actualice la pantalla y reintente.
+
+**La tarjeta de la orden solo muestra el número.** Quien la ve no tiene permiso para ver órdenes (`orders.view`) o rutas (`trips.view`); por diseño solo ve el título.
+
+**«No tiene permiso para cambiar los responsables (trips.plan).» (403).** Cambiar los responsables de una ruta exige `trips.plan`; los de una zona, `fleet.manage`.
+
+**Los «Sugeridos» no incluyen a quien esperaba.** Salen, en orden: responsables de la ruta, de la zona, roles con `trips.dispatch` y conversaciones recientes; se omite a quien usted no puede ver y a usted mismo. Agregue a la persona como responsable de la ruta o de la zona.

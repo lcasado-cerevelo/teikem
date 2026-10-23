@@ -19,6 +19,8 @@ public class UserTenant : ITenantScoped, IHasStatus
     public bool MfaRequired { get; set; }
     /// <summary>Tarea 25: ve lo esperado al contar (después de capturar la línea): true = sí, false = no, null = sin marcar (vale el ajuste de la compañía).</summary>
     public bool? CountSeeExpected { get; set; }
+    /// <summary>Lote 212: visibilidad en la mensajería de esta compañía (FULL | OFFICE | NONE, ver <c>MessagingModes</c>).</summary>
+    public string MessagingMode { get; set; } = "FULL";
     public ApplicationUser? User { get; set; }
     public Tenancy.Tenant? Tenant { get; set; }
     public Catalogs.StatusCode? Status { get; set; }

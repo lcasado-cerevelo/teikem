@@ -18,9 +18,52 @@ namespace Teikem.Infrastructure.Services;
 ///   de un grupo (de uno entre dos no).
 /// - Cada mensaje se empuja en vivo a los demás (IMessageLiveNotifier) DESPUÉS de guardarse.
 /// </summary>
-public sealed class MessagingService(TeikemDbContext db, ITenantContext tenant, PresenceService presence, IMessageLiveNotifier live)
+public sealed class MessagingService(TeikemDbContext db, ITenantContext tenant, PresenceService presence, IMessageLiveNotifier live, PermissionService? permissions = null)
 {
     private TenantContext T => (TenantContext)tenant;
+
+    // ---------------------------------------------------------------- visibilidad (Lote 212)
+
+    /// <summary>Cómo participa quien pregunta en la mensajería de esta compañía (FULL si no hay fila de membresía, p. ej. en pruebas).</summary>
+    private async Task<string> MyModeAsync(CancellationToken ct)
+    {
+        var me = T.RequireUserId();
+        return await db.UserTenants.AsNoTracking().Where(m => m.UserId == me).Select(m => m.MessagingMode).FirstOrDefaultAsync(ct) ?? MessagingModes.Full;
+    }
+
+    private async Task EnsureCanWriteAsync(CancellationToken ct)
+    {
+        if (await MyModeAsync(ct) == MessagingModes.None) throw new ForbiddenException(MessagingRules.NoMessagingMessage);
+    }
+
+    /// <summary>Los usuarios de la compañía que quien pregunta puede ver, según su modo y el de cada quien.</summary>
+    private IQueryable<int> VisibleUserIds(string myMode)
+    {
+        var members = db.UserTenants.AsNoTracking();
+        if (myMode == MessagingModes.None) return members.Where(_ => false).Select(m => m.UserId);
+        return (myMode == MessagingModes.Full ? members.Where(m => m.MessagingMode != MessagingModes.None) : members.Where(m => m.MessagingMode == MessagingModes.Full)).Select(m => m.UserId);
+    }
+
+    /// <summary>La mensajería de cada persona de la compañía (para el administrador de usuarios).</summary>
+    public async Task<IReadOnlyList<MessagingModeDto>> ListModesAsync(CancellationToken ct)
+    {
+        var rows = await (from m in db.UserTenants.AsNoTracking()
+                          join u in db.Users.AsNoTracking() on m.UserId equals u.Id
+                          where u.IsActive
+                          orderby u.FullName ?? u.Email
+                          select new { u.Id, u.FullName, u.Email, m.MessagingMode }).ToListAsync(ct);
+        return rows.Select(r => new MessagingModeDto(r.Id, string.IsNullOrWhiteSpace(r.FullName) ? r.Email ?? $"#{r.Id}" : r.FullName, r.Email ?? string.Empty, r.MessagingMode)).ToList();
+    }
+
+    public async Task<MessagingModeDto> SetModeAsync(int userId, MessagingModeRequest req, CancellationToken ct)
+    {
+        var mode = MessagingModes.Normalize(req.Mode) ?? throw new ValidationException("mode", MessagingModes.InvalidMessage);
+        var row = await db.UserTenants.FirstOrDefaultAsync(m => m.UserId == userId, ct) ?? throw new NotFoundException("Usuario", null);
+        row.MessagingMode = mode;
+        await db.SaveChangesAsync(ct);
+        var user = await db.Users.AsNoTracking().Where(u => u.Id == userId).Select(u => new { u.FullName, u.Email }).FirstAsync(ct);
+        return new MessagingModeDto(userId, string.IsNullOrWhiteSpace(user.FullName) ? user.Email ?? $"#{userId}" : user.FullName, user.Email ?? string.Empty, mode);
+    }
 
     // ---------------------------------------------------------------- directorio
 
@@ -28,7 +71,7 @@ public sealed class MessagingService(TeikemDbContext db, ITenantContext tenant, 
     {
         take = Math.Clamp(take <= 0 ? 20 : take, 1, 50);
         var me = T.RequireUserId();
-        var ids = db.UserTenants.AsNoTracking().Select(m => m.UserId);
+        var ids = VisibleUserIds(await MyModeAsync(ct));
         var users = db.Users.AsNoTracking().Where(u => ids.Contains(u.Id) && u.IsActive && u.Id != me);
         var term = (q ?? string.Empty).Trim();
         if (term.Length > 0) users = users.Where(u => (u.FullName != null && u.FullName.Contains(term)) || (u.Email != null && u.Email.Contains(term)));
@@ -88,11 +131,12 @@ public sealed class MessagingService(TeikemDbContext db, ITenantContext tenant, 
         var seen = await presence.LoadAsync(ids, ct);
         var now = DateTime.UtcNow;
         var unread = (await UnreadByThreadAsync(me, ct)).GetValueOrDefault(thread.MessageThreadId);
+        var cards = await ResolveRefsAsync(page, ct);
         return new MessageThreadDto(
             Summary(thread, member, members, names, seen, now, me, unread),
             members.OrderBy(m => m.UserId).Select(m => new MessageMemberDto(m.UserId, NameOf(names, m.UserId), EmailOf(names, m.UserId), MessagingRules.IsOnline(seen.GetValueOrDefault(m.UserId), now) && seen.ContainsKey(m.UserId),
                 seen.TryGetValue(m.UserId, out var s) ? s : null, m.UserId == thread.CreatedBy)).ToList(),
-            page.Select(m => new MessageDto(m.MessageId, m.SenderId, NameOf(names, m.SenderId), m.Body, m.CreatedAtUtc, m.SenderId == me)).ToList(),
+            page.Select(m => new MessageDto(m.MessageId, m.SenderId, NameOf(names, m.SenderId), m.Body, m.CreatedAtUtc, m.SenderId == me, cards.GetValueOrDefault(m.MessageId))).ToList(),
             hasMore,
             thread.Kind == MessageThreadKinds.Group && thread.CreatedBy == me);
     }
@@ -120,8 +164,10 @@ public sealed class MessagingService(TeikemDbContext db, ITenantContext tenant, 
     {
         var me = T.RequireUserId();
         var tenantId = T.RequireTenantId();
+        await EnsureCanWriteAsync(ct);
         var body = MessagingRules.NormalizeBody(req.Text) ?? throw new ValidationException("text", MessagingRules.BodyRequiredMessage);
         if (body.Length > MessagingRules.MaxBodyLength) throw new ValidationException("text", MessagingRules.BodyTooLongMessage);
+        var mref = await ValidateRefAsync(req.Ref, ct);
         var title = string.IsNullOrWhiteSpace(req.Title) ? null : req.Title.Trim();
         if (title is { Length: > MessagingRules.MaxTitleLength }) throw new ValidationException("title", MessagingRules.TitleTooLongMessage);
 
@@ -170,7 +216,7 @@ public sealed class MessagingService(TeikemDbContext db, ITenantContext tenant, 
             {
                 t = await CreateThreadRowAsync(MessageThreadKinds.Group, title ?? roleName, null, recipients.Prepend(me).ToList(), me, tenantId, c);
             }
-            var pushed = await AppendAsync(t, me, body, c);
+            var pushed = await AppendAsync(t, me, body, mref, c);
             return (t, pushed);
         }, ct);
         await PushAsync(tenantId, events, ct);
@@ -181,18 +227,21 @@ public sealed class MessagingService(TeikemDbContext db, ITenantContext tenant, 
     {
         var me = T.RequireUserId();
         var tenantId = T.RequireTenantId();
+        await EnsureCanWriteAsync(ct);
         var body = MessagingRules.NormalizeBody(req.Text) ?? throw new ValidationException("text", MessagingRules.BodyRequiredMessage);
         if (body.Length > MessagingRules.MaxBodyLength) throw new ValidationException("text", MessagingRules.BodyTooLongMessage);
+        var mref = await ValidateRefAsync(req.Ref, ct);
         var (message, events) = await db.RunInTransactionAsync(async c =>
         {
             // todo se carga DENTRO de la transacción (al empezar se limpia el ChangeTracker); si no es parte, 404
             var (thread, _) = await LoadMineAsync(publicId, c, track: true);
-            var pushed = await AppendAsync(thread, me, body, c);
+            var pushed = await AppendAsync(thread, me, body, mref, c);
             return (pushed.Message, pushed);
         }, ct);
         await PushAsync(tenantId, events, ct);
         var name = (await NamesAsync(new List<int> { me }, ct)).GetValueOrDefault(me).Name;
-        return new MessageDto(message.MessageId, me, name ?? string.Empty, message.Body, message.CreatedAtUtc, true);
+        var cards = await ResolveRefsAsync(new[] { message }, ct);
+        return new MessageDto(message.MessageId, me, name ?? string.Empty, message.Body, message.CreatedAtUtc, true, cards.GetValueOrDefault(message.MessageId));
     }
 
     public async Task MarkReadAsync(Guid publicId, CancellationToken ct)
@@ -210,6 +259,7 @@ public sealed class MessagingService(TeikemDbContext db, ITenantContext tenant, 
     {
         var me = T.RequireUserId();
         var tenantId = T.RequireTenantId();
+        await EnsureCanWriteAsync(ct);
         var (thread, _) = await LoadMineAsync(publicId, ct, track: true);
         if (thread.Kind == MessageThreadKinds.Direct) throw new ConflictException(MessagingRules.DirectNoAddMessage);
         if (thread.CreatedBy != me) throw new ForbiddenException(MessagingRules.OnlyCreatorAddsMessage);
@@ -255,6 +305,84 @@ public sealed class MessagingService(TeikemDbContext db, ITenantContext tenant, 
         return (await GetThreadAsync(publicId, null, 1, ct)).Thread;
     }
 
+    // ---------------------------------------------------------------- referencias a orden o ruta (Lote 212)
+
+    private sealed record MessageRefResolved(string Entity, Guid PublicId, string Title);
+
+    /// <summary>La referencia pedida debe ser una orden o ruta de ESTA compañía (el filtro de tenant lo garantiza); null si no hay referencia.</summary>
+    private async Task<MessageRefResolved?> ValidateRefAsync(MessageRefRequest? r, CancellationToken ct)
+    {
+        if (r is null || (r.Entity is null && r.PublicId is null)) return null;
+        var entity = MessageRefs.Normalize(r.Entity) ?? throw new ValidationException("ref", MessageRefs.InvalidMessage);
+        var id = r.PublicId ?? throw new ValidationException("ref", MessageRefs.InvalidMessage);
+        var title = entity == MessageRefs.Order
+            ? await db.TransportOrders.AsNoTracking().Where(o => o.PublicId == id).Select(o => o.OrderNumber).FirstOrDefaultAsync(ct)
+            : await db.Trips.AsNoTracking().Where(t => t.PublicId == id).Select(t => t.Code).FirstOrDefaultAsync(ct);
+        return title is null ? throw new ValidationException("ref", MessageRefs.NotFoundMessage) : new MessageRefResolved(entity, id, title);
+    }
+
+    /// <summary>La tarjeta de cada mensaje con referencia. El detalle (cliente/zona, estatus) solo se da a quien tiene permiso para ver la orden o la ruta.</summary>
+    private async Task<Dictionary<long, MessageRefDto>> ResolveRefsAsync(IEnumerable<Message> messages, CancellationToken ct)
+    {
+        var withRef = messages.Where(m => m.RefEntity != null && m.RefPublicId != null).ToList();
+        var result = new Dictionary<long, MessageRefDto>();
+        if (withRef.Count == 0) return result;
+        var lang = T.Lang;
+
+        var orderIds = withRef.Where(m => m.RefEntity == MessageRefs.Order).Select(m => m.RefPublicId!.Value).Distinct().ToList();
+        if (orderIds.Count > 0)
+        {
+            var canOpen = permissions is not null && await permissions.HasPermissionAsync(Teikem.Domain.Constants.PermissionCatalog.OrdersView, ct);
+            var rows = await (from o in db.TransportOrders.AsNoTracking()
+                              where orderIds.Contains(o.PublicId)
+                              join c in db.Clients.AsNoTracking() on o.ClientId equals c.ClientId
+                              join s in db.StatusCodes.AsNoTracking() on o.StatusCodeId equals s.StatusCodeId
+                              select new { o.PublicId, o.OrderNumber, ClientName = c.Name, s.LabelJson }).ToListAsync(ct);
+            foreach (var m in withRef.Where(m => m.RefEntity == MessageRefs.Order))
+            {
+                var row = rows.FirstOrDefault(x => x.PublicId == m.RefPublicId);
+                result[m.MessageId] = row is null
+                    ? new MessageRefDto(MessageRefs.Order, m.RefPublicId!.Value, "—", null, null, false)
+                    : new MessageRefDto(MessageRefs.Order, row.PublicId, row.OrderNumber, canOpen ? row.ClientName : null, canOpen ? Teikem.Domain.Common.MultilingualText.Resolve(row.LabelJson, lang) : null, canOpen);
+            }
+        }
+        var tripIds = withRef.Where(m => m.RefEntity == MessageRefs.Trip).Select(m => m.RefPublicId!.Value).Distinct().ToList();
+        if (tripIds.Count > 0)
+        {
+            var canOpen = permissions is not null && await permissions.HasPermissionAsync(Teikem.Domain.Constants.PermissionCatalog.TripsView, ct);
+            var rows = await (from t in db.Trips.AsNoTracking()
+                              where tripIds.Contains(t.PublicId)
+                              join s in db.StatusCodes.AsNoTracking() on t.StatusCodeId equals s.StatusCodeId
+                              join z in db.DispatchZones.AsNoTracking() on t.DispatchZoneId equals (int?)z.DispatchZoneId into zs
+                              from z in zs.DefaultIfEmpty()
+                              select new { t.PublicId, t.Code, Zone = z != null ? z.Code : null, s.LabelJson }).ToListAsync(ct);
+            foreach (var m in withRef.Where(m => m.RefEntity == MessageRefs.Trip))
+            {
+                var row = rows.FirstOrDefault(x => x.PublicId == m.RefPublicId);
+                result[m.MessageId] = row is null
+                    ? new MessageRefDto(MessageRefs.Trip, m.RefPublicId!.Value, "—", null, null, false)
+                    : new MessageRefDto(MessageRefs.Trip, row.PublicId, row.Code, canOpen ? row.Zone : null, canOpen ? Teikem.Domain.Common.MultilingualText.Resolve(row.LabelJson, lang) : null, canOpen);
+            }
+        }
+        return result;
+    }
+
+    /// <summary>Los mensajes de MIS hilos que hablan de esa orden o ruta (los más nuevos primero): «los mensajes de esta orden».</summary>
+    public async Task<IReadOnlyList<MessageAboutDto>> AboutAsync(string? entity, Guid publicId, CancellationToken ct)
+    {
+        var e = MessageRefs.Normalize(entity) ?? throw new ValidationException("entity", MessageRefs.InvalidMessage);
+        var me = T.RequireUserId();
+        var rows = await (from msg in db.Messages.AsNoTracking()
+                          where msg.RefEntity == e && msg.RefPublicId == publicId
+                          join m in db.MessageThreadMembers.AsNoTracking() on msg.MessageThreadId equals m.MessageThreadId
+                          where m.UserId == me && m.LeftAtUtc == null && msg.MessageId > m.JoinedAfterMessageId
+                          join t in db.MessageThreads.AsNoTracking() on msg.MessageThreadId equals t.MessageThreadId
+                          orderby msg.MessageId descending
+                          select new { t.PublicId, msg.MessageId, msg.SenderId, msg.Body, msg.CreatedAtUtc }).Take(50).ToListAsync(ct);
+        var names = await NamesAsync(rows.Select(r => r.SenderId).Distinct().ToList(), ct);
+        return rows.Select(r => new MessageAboutDto(r.PublicId, r.MessageId, NameOf(names, r.SenderId), MessagingRules.Preview(r.Body), r.CreatedAtUtc)).ToList();
+    }
+
     // ---------------------------------------------------------------- internos
 
     private async Task<MessageThread> CreateThreadRowAsync(string kind, string? title, string? directKey, IReadOnlyCollection<int> userIds, int creator, int tenantId, CancellationToken ct)
@@ -272,15 +400,15 @@ public sealed class MessagingService(TeikemDbContext db, ITenantContext tenant, 
     private sealed record Pushed(Message Message, MessageThread Thread, string SenderName, IReadOnlyList<(int UserId, bool Muted)> Others);
 
     /// <summary>Guarda el mensaje, actualiza el resumen del hilo y deja leído lo propio. Devuelve a quién avisar (después de confirmar).</summary>
-    private async Task<Pushed> AppendAsync(MessageThread thread, int sender, string body, CancellationToken ct)
+    private async Task<Pushed> AppendAsync(MessageThread thread, int sender, string body, MessageRefResolved? mref, CancellationToken ct)
     {
         var now = DateTime.UtcNow;
-        var message = new Message { TenantId = thread.TenantId, MessageThreadId = thread.MessageThreadId, SenderId = sender, Body = body, CreatedAtUtc = now };
+        var message = new Message { TenantId = thread.TenantId, MessageThreadId = thread.MessageThreadId, SenderId = sender, Body = body, CreatedAtUtc = now, RefEntity = mref?.Entity, RefPublicId = mref?.PublicId };
         db.Messages.Add(message);
         await db.SaveChangesAsync(ct);
         thread.LastMessageId = Math.Max(thread.LastMessageId, message.MessageId);
         thread.LastMessageAtUtc = now;
-        thread.LastMessagePreview = MessagingRules.Preview(body);
+        thread.LastMessagePreview = MessagingRules.PreviewWithRef(mref?.Title, body);
         thread.LastSenderId = sender;
         var members = await db.MessageThreadMembers.Where(m => m.MessageThreadId == thread.MessageThreadId && m.LeftAtUtc == null).ToListAsync(ct);
         var mine = members.FirstOrDefault(m => m.UserId == sender);
@@ -325,8 +453,8 @@ public sealed class MessagingService(TeikemDbContext db, ITenantContext tenant, 
     private async Task<List<int>> ActivePeopleAsync(IReadOnlyCollection<int> ids, CancellationToken ct)
     {
         if (ids.Count == 0) return new List<int>();
-        var inTenant = db.UserTenants.AsNoTracking().Where(m => ids.Contains(m.UserId)).Select(m => m.UserId);
-        return await db.Users.AsNoTracking().Where(u => u.IsActive && inTenant.Contains(u.Id)).Select(u => u.Id).ToListAsync(ct);
+        var visible = VisibleUserIds(await MyModeAsync(ct));
+        return await db.Users.AsNoTracking().Where(u => u.IsActive && ids.Contains(u.Id) && visible.Contains(u.Id)).Select(u => u.Id).ToListAsync(ct);
     }
 
     private async Task<Dictionary<long, long>> UnreadByThreadAsync(int me, CancellationToken ct)

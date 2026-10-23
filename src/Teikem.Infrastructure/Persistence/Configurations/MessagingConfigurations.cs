@@ -41,6 +41,8 @@ public sealed class MessageConfiguration : IEntityTypeConfiguration<Message>
         b.ToTable("Message");
         b.HasKey(m => m.MessageId);
         b.Property(m => m.Body).HasMaxLength(2000).IsRequired();
+        b.Property(m => m.RefEntity).HasMaxLength(20).IsUnicode(false);
+        b.HasIndex(m => new { m.TenantId, m.RefEntity, m.RefPublicId }).HasFilter("[RefPublicId] IS NOT NULL").HasDatabaseName("IX_Message_Ref");
         b.HasIndex(m => new { m.MessageThreadId, m.MessageId }).HasDatabaseName("IX_Message_Thread");
     }
 }
@@ -123,5 +125,15 @@ public sealed class ConsigneeMessageConfiguration : IEntityTypeConfiguration<Con
         b.Property(m => m.Body).HasMaxLength(2000).IsRequired();
         b.HasIndex(m => new { m.ConsigneeConversationId, m.ConsigneeMessageId }).HasDatabaseName("IX_ConsigneeMessage_Conversation");
         b.HasIndex(m => new { m.SenderUserId, m.CreatedAtUtc }).HasDatabaseName("IX_ConsigneeMessage_Sender");
+    }
+}
+
+public sealed class EntityResponsibleConfiguration : IEntityTypeConfiguration<EntityResponsible>
+{
+    public void Configure(EntityTypeBuilder<EntityResponsible> b)
+    {
+        b.ToTable("EntityResponsible");
+        b.HasKey(r => r.EntityResponsibleId);
+        b.HasIndex(r => new { r.TenantId, r.EntityLookupId, r.EntityId, r.UserId }).IsUnique().HasDatabaseName("UX_EntityResponsible");
     }
 }
