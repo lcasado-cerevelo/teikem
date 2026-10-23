@@ -182,7 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCompanyTokens(null);
     setCompanies([]);
     await sessionStorage.clear();
-    useAppStore.setState({ manifestIds: [], manifests: [], shipmentIds: [], shipment: null });
+    useAppStore.setState({ shipmentIds: [], shipment: null });
     queryClient.clear();
     await clearOfflineData();
   }, [queryClient]);

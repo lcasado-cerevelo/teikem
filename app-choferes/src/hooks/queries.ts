@@ -1,378 +1,154 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useQueries, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
-import {
-  fetchCodTypeById,
-  fetchCodTypeIds,
-  fetchComments,
-  fetchCompany,
-  fetchConsignee,
-  fetchManifestById,
-  fetchManifestIds,
-  fetchMe,
-  fetchMySenders,
-  fetchPieceById,
-  fetchPieceIds,
-  fetchReasonById,
-  fetchReasonIds,
-  fetchShipmentById,
-  fetchShipmentIds,
-  fetchShipmentIdsByDriver,
-  fetchShipmentsFullByDriver,
-  type ManifestQuery,
-} from '@services/custom-api/custom-api';
-import { queryKeys } from '@constants/index';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { fetchCompanyWork, fetchDeclineReasons, fetchFailureReasons, fetchShipmentDetail, type Company } from '@services/driverApi';
+import { useAuth } from '@hooks/AuthContext';
 import { drainOutbox, pendingClosedShipmentIds } from '@/offline';
 import { useAppStore } from '@/stores';
-import type { CodType, Manifest, Piece, Reason, Shipment } from '@/types/models';
+import { OPEN_STATUSES, type Manifest, type Shipment } from '@/types/models';
 
 const READ_OPTS = { staleTime: 5 * 60_000, gcTime: 24 * 60 * 60_000 } as const;
 
-// Current logged-in driver (from the token). Drives everything else.
-export function useMe() {
-  return useQuery({ queryKey: ['me'], queryFn: fetchMe, ...READ_OPTS });
-}
-
-// Senders que el usuario puede consultar (UsersSender). Lista vacía = chofer:
-// la pantalla de órdenes esconde el panel de filtros por completo.
-// Se cachea con las mismas READ_OPTS (y por tanto se persiste), así que un
-// usuario de oficina que ya la cargó sigue viendo el panel sin señal — aunque
-// la búsqueda en sí sí requiera conexión.
-export function useMySenders() {
-  return useQuery({ queryKey: ['senders', 'mine'], queryFn: fetchMySenders, ...READ_OPTS });
-}
-
-// Stored geo of the delivery address (to decide whether to backfill coords).
-export function useConsignee(id: number | undefined) {
-  return useQuery({
-    queryKey: ['consignee', id ?? 0],
-    queryFn: () => fetchConsignee(id as number),
-    enabled: Boolean(id),
-    ...READ_OPTS,
-  });
-}
-
-export function useCompany(companyId: string | undefined) {
-  return useQuery({
-    queryKey: queryKeys.company(companyId ?? ''),
-    queryFn: () => fetchCompany(companyId as string),
-    enabled: Boolean(companyId),
-    ...READ_OPTS,
-  });
-}
-
-export function useManifestIds(params: ManifestQuery | null) {
-  return useQuery({
-    queryKey: params
-      ? queryKeys.manifestIds(params.driverId, params.createdDate, params.status)
-      : ['manifests', 'ids', 'disabled'],
-    queryFn: () => fetchManifestIds(params as ManifestQuery),
-    enabled: Boolean(params?.driverId),
-    ...READ_OPTS,
-  });
-}
-
-// Resolve each manifest id to its detail, in parallel.
-export function useManifestsByIds(ids: string[]) {
-  return useQueries({
-    queries: ids.map((id) => ({
-      queryKey: queryKeys.manifest(id),
-      queryFn: () => fetchManifestById(id),
-      ...READ_OPTS,
-    })),
-    combine: (results) => ({
-      data: results.map((r) => r.data).filter((m): m is Manifest => Boolean(m)),
-      pending: results.some((r) => r.isPending),
-    }),
-  });
+export interface DriverWork {
+  manifests: Manifest[];
+  /** Solo los envíos abiertos (por entregar), de todas las compañías del chofer. */
+  shipments: Shipment[];
+  /** Compañías que no respondieron (sin señal, error): lo que se ve de ellas puede estar atrasado. */
+  failedCompanies: string[];
 }
 
 // ---------------------------------------------------------------------------
-// Listas de envíos abiertos: LO LOCAL MANDA. No importa quién dispare el
-// refetch (montaje de pantalla, invalidación, sync manual), la respuesta del
-// servidor pasa por dos guardas antes de tocar la caché:
-//  1. drainOutbox() — intenta enviar los cierres pendientes ANTES de preguntar.
-//  2. pendingClosedShipmentIds() — si algún cierre AÚN no pudo enviarse, se
-//     excluye del resultado. El servidor todavía cree que esa orden está
-//     abierta; dejarla pasar "revive" una entrega ya completada en el celular.
+// TODO el trabajo del chofer en UNA lista: sus manifiestos y envíos de TODAS sus compañías (una sola sesión, un token por compañía), cada uno marcado con su compañía.
+// LO LOCAL MANDA: antes de preguntar se intenta enviar lo pendiente, y los envíos cerrados en el teléfono que aún no llegaron al servidor se excluyen
+// (el servidor todavía los cree abiertos; dejarlos pasar «reviviría» una entrega ya hecha).
+// Si una compañía no responde, las demás se muestran igual y la que falló se avisa.
 // ---------------------------------------------------------------------------
-async function fetchShipmentsIndividually(driverId: number): Promise<Shipment[]> {
-  const ids = await fetchShipmentIdsByDriver(driverId);
-  return Promise.all((ids ?? []).map((id) => fetchShipmentById(id)));
-}
-
-async function fetchOpenShipmentIds(manifest: string): Promise<number[]> {
+async function loadWork(companies: Company[]): Promise<DriverWork> {
   await drainOutbox();
-  const ids = await fetchShipmentIds(manifest);
+  const results = await Promise.allSettled(companies.map((c) => fetchCompanyWork(c)));
+  const manifests: Manifest[] = [];
+  let shipments: Shipment[] = [];
+  const failedCompanies: string[] = [];
+  results.forEach((r, i) => {
+    if (r.status === 'fulfilled') {
+      manifests.push(...r.value.manifests);
+      shipments.push(...r.value.shipments);
+    } else failedCompanies.push(companies[i].name);
+  });
+  if (failedCompanies.length === companies.length && companies.length > 0) throw new Error('No company answered');
   const closed = await pendingClosedShipmentIds();
-  return closed.size === 0 ? ids : (ids ?? []).filter((id) => !closed.has(id));
+  shipments = shipments.filter((s) => OPEN_STATUSES.includes(s.statusCode) && !closed.has(s.id));
+  return { manifests, shipments, failedCompanies };
 }
 
-// TODAS las entregas y recogidas de hoy del chofer, en UNA llamada de red: el
-// SP ya trae las filas completas, y de aquí Home, Manifiestos y OrdersList
-// (flujo chofer) sacan lo suyo filtrando en memoria — ninguno vuelve a pedir
-// detalle por-orden. Antes cada pantalla reconstruía el detalle con un
-// useQuery por ID (bien con 55 órdenes; con las ~1,600 de un usuario de
-// oficina eso solo, sin tocar la red, colgaba la UI armando 1,600 queries).
-//
-// FALLBACK deliberado: si el endpoint bulk no existe (API sin desplegar) o el
-// SP todavía devuelve solo IDs (filas sin waybill), se cae al camino viejo de
-// IDs + un GET por orden. Así el APK nuevo no depende del orden en que Luis
-// despliegue las piezas — solo se vuelve lento, no se rompe.
-async function loadDriverShipments(driverId: number): Promise<Shipment[]> {
-  await drainOutbox();
-  let rows: Shipment[];
-  try {
-    rows = await fetchShipmentsFullByDriver(driverId);
-    if (rows.length > 0 && !rows[0].waybill) {
-      rows = await fetchShipmentsIndividually(driverId);
-    }
-  } catch {
-    rows = await fetchShipmentsIndividually(driverId);
-  }
-  const closed = await pendingClosedShipmentIds();
-  return closed.size === 0 ? rows : rows.filter((s) => !closed.has(s.shipmentID));
+/** Las compañías con acceso en esta sesión (las bloqueadas por MFA no cuentan). */
+function useUsableCompanies(): Company[] {
+  const { companies } = useAuth();
+  return useMemo(() => companies.filter((c) => !c.blocked).map((c) => ({ tenantId: c.tenantId, name: c.name })), [companies]);
 }
 
-// Query única compartida: Home, Manifiestos y OrdersList (flujo chofer) leen
-// de aquí y filtran en memoria (por status/assignPK/manifestDL/manifestPk, o
-// por el subconjunto de ids que Home/Manifiestos dejó en el store) — nadie
-// vuelve a pedir la red por-orden.
-export function useDriverShipments(driverId: number | undefined) {
+const workKey = (companies: Company[]) => ['work', companies.map((c) => c.tenantId).join(',')] as const;
+
+export function useDriverWork() {
+  const companies = useUsableCompanies();
+  return useQuery({ queryKey: workKey(companies), queryFn: () => loadWork(companies), enabled: companies.length > 0, ...READ_OPTS });
+}
+
+export function useDeclineReasons(tenantId: number | undefined) {
+  return useQuery({ queryKey: ['reasons', 'decline', tenantId ?? 0], queryFn: () => fetchDeclineReasons(tenantId as number), enabled: tenantId != null, ...READ_OPTS });
+}
+
+export function useFailureReasons(tenantId: number | undefined) {
+  return useQuery({ queryKey: ['reasons', 'failure', tenantId ?? 0], queryFn: () => fetchFailureReasons(tenantId as number), enabled: tenantId != null, ...READ_OPTS });
+}
+
+/** El envío con teléfono de contacto, cliente y si ya se puede cerrar. Sin señal queda el de la lista. */
+export function useShipmentDetail(shipment: Shipment | null) {
   return useQuery({
-    queryKey: ['shipments', 'driver', driverId ?? 0, 'full'],
-    queryFn: () => loadDriverShipments(driverId as number),
-    enabled: Boolean(driverId),
+    queryKey: ['shipment', shipment?.id ?? ''],
+    queryFn: () => fetchShipmentDetail(shipment as Shipment),
+    enabled: Boolean(shipment),
     ...READ_OPTS,
   });
 }
 
 // ---------------------------------------------------------------------------
-// Sincronización: baja TODAS las entregas del chofer (IDs + detalle de cada
-// envío) a la caché persistida. Esto alimenta el Home, el listado de
-// manifiestos (agrupado por manifestDL) y deja los datos disponibles offline.
-// Se ejecuta al autenticar y desde el botón "Sincronizar" del perfil.
+// Sincronización: baja el trabajo de todas las compañías y los catálogos de motivos a la caché persistida (disponible sin señal).
+// Se ejecuta al autenticar, desde el botón «Sincronizar» del Perfil y por el temporizador de autosincronización.
 // ---------------------------------------------------------------------------
-async function downloadDriverData(
-  qc: QueryClient,
-  driverId: number,
-  force: boolean,
-): Promise<number> {
+async function downloadDriverData(qc: QueryClient, companies: Company[], force: boolean): Promise<number> {
   const staleTime = force ? 0 : READ_OPTS.staleTime;
-  // UNA llamada baja IDs + detalles completos (loadDriverShipments). Antes esto
-  // era "lista de IDs + un GET por orden" (55 requests para un chofer; el caso
-  // oficina, ~1,600, directamente se saltaba el detalle). Ahora todos los
-  // usuarios quedan con su lista completa y navegable offline con un request.
-  const shipments = await qc.fetchQuery({
-    queryKey: ['shipments', 'driver', driverId, 'full'],
-    queryFn: () => loadDriverShipments(driverId),
-    staleTime,
-    gcTime: READ_OPTS.gcTime,
-  });
-
-  // Catálogos que las Acciones necesitan estando offline: motivos de excepción
-  // y tipos de COD. Sin este prefetch, un chofer que nunca abrió esas pantallas
-  // con señal encuentra los dropdowns VACÍOS en el momento que más los
-  // necesita (registrar una excepción en una zona muerta). Best-effort: si
-  // esto falla no debe tumbar la sincronización de entregas.
-  try {
-    const reasonIds = await qc.fetchQuery({
-      queryKey: ['reasons', 'ids'],
-      queryFn: fetchReasonIds,
-      staleTime,
-      gcTime: READ_OPTS.gcTime,
-    });
-    await Promise.all(
-      (reasonIds ?? []).map((id) =>
-        qc.fetchQuery({
-          queryKey: ['reason', id],
-          queryFn: () => fetchReasonById(id),
-          staleTime,
-          gcTime: READ_OPTS.gcTime,
-        }),
-      ),
-    );
-    const codTypeIds = await qc.fetchQuery({
-      queryKey: ['codTypes', 'ids'],
-      queryFn: fetchCodTypeIds,
-      staleTime,
-      gcTime: READ_OPTS.gcTime,
-    });
-    await Promise.all(
-      (codTypeIds ?? []).map((id) =>
-        qc.fetchQuery({
-          queryKey: ['codType', id],
-          queryFn: () => fetchCodTypeById(id),
-          staleTime,
-          gcTime: READ_OPTS.gcTime,
-        }),
-      ),
-    );
-  } catch {
-    // sin señal o catálogo caído — se reintenta en el próximo sync
-  }
-
-  return shipments?.length ?? 0;
+  const work = await qc.fetchQuery({ queryKey: workKey(companies), queryFn: () => loadWork(companies), staleTime, gcTime: READ_OPTS.gcTime });
+  // Los motivos que las Acciones necesitan sin señal: un chofer en una zona muerta no debe encontrar la lista vacía. Si falla, se reintenta en la próxima.
+  await Promise.allSettled(
+    companies.flatMap((c) => [
+      qc.fetchQuery({ queryKey: ['reasons', 'decline', c.tenantId], queryFn: () => fetchDeclineReasons(c.tenantId), staleTime, gcTime: READ_OPTS.gcTime }),
+      qc.fetchQuery({ queryKey: ['reasons', 'failure', c.tenantId], queryFn: () => fetchFailureReasons(c.tenantId), staleTime, gcTime: READ_OPTS.gcTime }),
+    ]),
+  );
+  return work.shipments.length;
 }
 
-// Auto-sync al autenticar: corre una vez cuando ya se conoce el chofer.
-// (Ya no espera a useMySenders: con el fetch bulk, chofer y oficina bajan su
-// lista completa en una sola llamada — no hay caso especial que decidir.)
 export function useAuthSync() {
   const qc = useQueryClient();
-  const { data: me } = useMe();
-  const driverId = me?.userID;
-  const syncedFor = useRef<number | null>(null);
+  const companies = useUsableCompanies();
+  const key = companies.map((c) => c.tenantId).join(',');
+  const syncedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (!driverId || syncedFor.current === driverId) return;
-    syncedFor.current = driverId;
-    void downloadDriverData(qc, driverId, false);
-  }, [qc, driverId]);
+    if (!key || syncedFor.current === key) return;
+    syncedFor.current = key;
+    void downloadDriverData(qc, companies, false).catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qc, key]);
 }
 
-// Sync manual (botón "Sincronizar"): fuerza datos frescos.
 export function useSync() {
   const qc = useQueryClient();
-  const { data: me } = useMe();
-  const driverId = me?.userID;
+  const companies = useUsableCompanies();
   const [isSyncing, setIsSyncing] = useState(false);
   const [count, setCount] = useState<number | null>(null);
 
   const sync = useCallback(async (): Promise<number | undefined> => {
-    if (!driverId || isSyncing) return undefined;
+    if (companies.length === 0 || isSyncing) return undefined;
     setIsSyncing(true);
     try {
-      await qc.invalidateQueries({ queryKey: ['me'] });
-      const n = await downloadDriverData(qc, driverId, true);
+      const n = await downloadDriverData(qc, companies, true);
       setCount(n);
       return n;
     } finally {
       setIsSyncing(false);
     }
-  }, [qc, driverId, isSyncing]);
+  }, [qc, companies, isSyncing]);
 
   return { sync, isSyncing, count };
 }
 
-// Autosincronización periódica: repite el mismo downloadDriverData del botón
-// manual cada `intervalMinutes`, en segundo plano, mientras haya sesión.
-// intervalMinutes <= 0 desactiva el timer (por si el usuario quisiera apagarlo
-// en el futuro). Los errores (sin señal, etc.) se tragan a propósito: es un
-// timer de fondo, no debe reventar ni mostrar nada — simplemente lo intenta
-// de nuevo en el próximo ciclo.
+// Autosincronización periódica en segundo plano mientras haya sesión; intervalMinutes <= 0 la apaga. Los errores (sin señal) se tragan: se reintenta en el próximo ciclo.
 export function useAutoSync(intervalMinutes: number) {
   const qc = useQueryClient();
-  const { data: me } = useMe();
-  const driverId = me?.userID;
+  const companies = useUsableCompanies();
+  const key = companies.map((c) => c.tenantId).join(',');
 
   useEffect(() => {
-    if (!driverId || !intervalMinutes || intervalMinutes <= 0) return;
-    const ms = intervalMinutes * 60_000;
+    if (!key || !intervalMinutes || intervalMinutes <= 0) return;
     const id = setInterval(() => {
-      downloadDriverData(qc, driverId, true).catch(() => {
-        // sin señal u otro error transitorio — se reintenta en el próximo ciclo
-      });
-    }, ms);
+      downloadDriverData(qc, companies, true).catch(() => undefined);
+    }, intervalMinutes * 60_000);
     return () => clearInterval(id);
-  }, [qc, driverId, intervalMinutes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qc, key, intervalMinutes]);
 }
 
-// Al completar (o exceptuar) una entrega, la orden queda cerrada: sácala de
-// inmediato de todos los listados cacheados (funciona aun sin conexión) y
-// dispara el refetch para que el servidor confirme el estado. También se saca
-// del snapshot en el store (OrdersList lee de ahí, no de la caché — sin esto
-// la pantalla abierta no se actualizaba hasta salir y volver a entrar).
+// Al entregar o marcar «no entregado», el envío sale de inmediato de los listados cacheados (funciona sin conexión) y se pide al servidor que confirme.
+// También sale del snapshot del store (OrdersList lee de ahí).
 export function useRemoveShipmentFromLists() {
   const qc = useQueryClient();
   const removeShipmentId = useAppStore((s) => s.removeShipmentId);
   return useCallback(
-    (shipmentId: number) => {
-      const dropShipment = (old: Shipment[] | undefined) =>
-        old?.filter((s) => s.shipmentID !== shipmentId);
-      const dropId = (old: number[] | undefined) => old?.filter((id) => id !== shipmentId);
-      qc.setQueriesData<Shipment[]>({ queryKey: ['shipments', 'driver'] }, dropShipment);
-      qc.setQueriesData<number[]>({ queryKey: ['shipments', 'ids'] }, dropId);
-      void qc.invalidateQueries({ queryKey: ['shipments'] });
+    (shipmentId: string) => {
+      qc.setQueriesData<DriverWork>({ queryKey: ['work'] }, (old) => (old ? { ...old, shipments: old.shipments.filter((s) => s.id !== shipmentId) } : old));
+      void qc.invalidateQueries({ queryKey: ['work'] });
       removeShipmentId(shipmentId);
     },
     [qc, removeShipmentId],
   );
-}
-
-export function useShipmentIds(manifest: string | number) {
-  return useQuery({
-    queryKey: queryKeys.shipmentIds(String(manifest)),
-    queryFn: () => fetchOpenShipmentIds(String(manifest)),
-    ...READ_OPTS,
-  });
-}
-
-// ---- Pieces ----
-export function usePieceIds(shipmentId: number | undefined) {
-  return useQuery({
-    queryKey: queryKeys.pieceIds(shipmentId ?? 0),
-    queryFn: () => fetchPieceIds(shipmentId as number),
-    enabled: Boolean(shipmentId),
-    ...READ_OPTS,
-  });
-}
-
-export function usePiecesByIds(ids: number[]) {
-  return useQueries({
-    queries: ids.map((id) => ({
-      queryKey: queryKeys.piece(id),
-      queryFn: () => fetchPieceById(id),
-      ...READ_OPTS,
-    })),
-    combine: (results) => ({
-      data: results.map((r) => r.data).filter((p): p is Piece => Boolean(p)),
-      pending: results.some((r) => r.isPending),
-    }),
-  });
-}
-
-// ---- Comments ----
-export function useComments(shipmentId: number | undefined) {
-  return useQuery({
-    queryKey: ['comments', shipmentId ?? 0],
-    queryFn: () => fetchComments(shipmentId as number),
-    enabled: Boolean(shipmentId),
-    ...READ_OPTS,
-  });
-}
-
-// ---- Reasons (exception catalog) ----
-// ids -> detalle de cada motivo, en paralelo (como piezas).
-export function useReasons() {
-  const idsQuery = useQuery({ queryKey: ['reasons', 'ids'], queryFn: fetchReasonIds, ...READ_OPTS });
-  const ids = idsQuery.data ?? [];
-  const details = useQueries({
-    queries: ids.map((id) => ({
-      queryKey: ['reason', id],
-      queryFn: () => fetchReasonById(id),
-      ...READ_OPTS,
-    })),
-    combine: (results) => ({
-      data: results.map((r) => r.data).filter((x): x is Reason => Boolean(x)),
-      pending: results.some((r) => r.isPending),
-    }),
-  });
-  return { data: details.data, isLoading: idsQuery.isLoading || (ids.length > 0 && details.pending) };
-}
-
-// ---- COD types (Cash-On-Delivery catalog) ----
-export function useCodTypes() {
-  const idsQuery = useQuery({ queryKey: ['codTypes', 'ids'], queryFn: fetchCodTypeIds, ...READ_OPTS });
-  const ids = idsQuery.data ?? [];
-  const details = useQueries({
-    queries: ids.map((id) => ({
-      queryKey: ['codType', id],
-      queryFn: () => fetchCodTypeById(id),
-      ...READ_OPTS,
-    })),
-    combine: (results) => ({
-      data: results.map((r) => r.data).filter((x): x is CodType => Boolean(x)),
-      pending: results.some((r) => r.isPending),
-    }),
-  });
-  return { data: details.data, isLoading: idsQuery.isLoading || (ids.length > 0 && details.pending) };
 }

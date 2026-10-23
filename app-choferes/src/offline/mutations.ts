@@ -1,82 +1,62 @@
 import { enqueue } from './outbox';
 
-export interface DispatchInput {
-  shipmentId: number;
-  // Real piece barcodes. The single-dispatch SP silently no-ops when the barcode
-  // doesn't match a Shipments_Pieces row (Shipments.Barcode is a comma-joined
-  // list, not a real barcode), so we always dispatch through the batch endpoint,
-  // whose SP validates by ShipmentID and reports failures.
-  barcodes: string[];
-  podName: string;
+// Lo que el chofer cierra en la calle se guarda en la cola (SQLite) y sale cuando hay señal. Cada elemento lleva la compañía (tenantId): decide con qué token de acceso se envía.
+// El servidor es idempotente (un reintento de algo ya hecho responde «alreadyDone»), así que reenviar nunca duplica una entrega.
+
+export interface DeliverInput {
+  tenantId: number;
+  shipmentId: string;
+  recipientName: string;
+  notes?: string;
+  deliveredAtUtc: string;
   latitude?: number;
   longitude?: number;
-  updateLocation?: boolean;
-  comment?: string;
-  // Proof images as base64 (no data-URL prefix). The API DTO models
-  // PhotoImage/SignatureImage as base64 strings.
+  /** Base64 sin el prefijo data-URL. */
   signatureBase64?: string;
+  photosBase64?: string[];
+}
+
+/** Entrega: quién recibió, firma, fotos y ubicación del teléfono. */
+export function enqueueDeliver(input: DeliverInput): Promise<string> {
+  return enqueue({
+    kind: 'deliver',
+    endpoint: `driver-app/shipments/${input.shipmentId}/deliver`,
+    method: 'POST',
+    payload: {
+      tenantId: input.tenantId,
+      shipmentId: input.shipmentId,
+      body: {
+        recipientName: input.recipientName,
+        notes: input.notes,
+        deliveredAtUtc: input.deliveredAtUtc,
+        latitude: input.latitude,
+        longitude: input.longitude,
+        signaturePngBase64: input.signatureBase64 || undefined,
+        photosBase64: input.photosBase64?.length ? input.photosBase64 : undefined,
+      },
+    },
+  });
+}
+
+export interface FailInput {
+  tenantId: number;
+  shipmentId: string;
+  reasonCode: string;
+  notes?: string;
+  attemptedAtUtc: string;
   photoBase64?: string;
 }
 
-// Delivery confirmation (POD). Sent as multipart form fields matching
-// shipmentDispatchBatchRequest. CompanyID/UserID are forced server-side from the
-// token, so the client doesn't send them.
-export function enqueueDispatch(input: DispatchInput): Promise<string> {
-  const fields: Record<string, string | number | boolean | string[] | undefined> = {
-    ShipmentID: input.shipmentId,
-    Barcodes: input.barcodes,
-    PodName: input.podName,
-    Comment: input.comment,
-    Latitude: input.latitude,
-    Longitude: input.longitude,
-    UpdateLocation: input.updateLocation ? 'true' : 'false',
-    PhotoImage: input.photoBase64,
-    SignatureImage: input.signatureBase64,
-  };
-  return enqueue({ kind: 'dispatch', endpoint: 'shipment/event/dispatch_batch/post', method: 'POST', isMultipart: true, payload: { fields } });
-}
-
-export function enqueueComment(shipmentId: number, comment: string): Promise<string> {
-  return enqueue({ kind: 'comment', endpoint: 'shipment/comment/post', method: 'POST', payload: { shipmentId, comment } });
-}
-
-export interface ExceptionInput {
-  shipmentId: number;
-  reasonId: number;
-  comment: string;
-  // Base64 (no data-URL prefix). Only meaningful when the customer requires a
-  // photo on event (Shipment.photoOnEvent).
-  photoBase64?: string;
-}
-
-// Non-delivery exception. Sent as multipart form fields matching
-// shipmentExceptionRequest (CompanyID/UserID forced server-side from the token).
-export function enqueueException(input: ExceptionInput): Promise<string> {
-  const fields: Record<string, string | number | boolean | undefined> = {
-    ShipmentID: input.shipmentId,
-    ReasonID: input.reasonId,
-    Comment: input.comment,
-    PhotoImage: input.photoBase64,
-  };
-  return enqueue({ kind: 'exception', endpoint: 'shipment/event/exception/post', method: 'POST', isMultipart: true, payload: { fields } });
-}
-
-export interface CodInput {
-  shipmentId: number;
-  codTypeId: number;
-  codAmount: number;
-  codCheck?: string; // check / document number
-}
-
-// Cash-On-Delivery collection. One POST per COD, matching shipmentCodRequest.
-// CreatedSource marks the origin ('app') and is required by the DTO.
-export function enqueueCod(input: CodInput): Promise<string> {
-  const fields: Record<string, string | number | boolean | undefined> = {
-    ShipmentID: input.shipmentId,
-    CodTypeId: input.codTypeId,
-    CodAmount: input.codAmount,
-    CodCheck: input.codCheck,
-    CreatedSource: 'app',
-  };
-  return enqueue({ kind: 'cod', endpoint: 'shipment/event/cod/post', method: 'POST', isMultipart: true, payload: { fields } });
+/** No entregado: el motivo de la lista «Razón de fallo», una nota y una foto opcional. */
+export function enqueueFail(input: FailInput): Promise<string> {
+  return enqueue({
+    kind: 'fail',
+    endpoint: `driver-app/shipments/${input.shipmentId}/fail`,
+    method: 'POST',
+    payload: {
+      tenantId: input.tenantId,
+      shipmentId: input.shipmentId,
+      body: { reasonCode: input.reasonCode, notes: input.notes, attemptedAtUtc: input.attemptedAtUtc, photoBase64: input.photoBase64 || undefined },
+    },
+  });
 }

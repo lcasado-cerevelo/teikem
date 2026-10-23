@@ -68,21 +68,18 @@ export function requeue(id: string): Promise<void> {
   return storage.updateOutbox(id, { status: 'pending', updatedAt: Date.now() });
 }
 
-// Shipments closed locally (delivery or exception) whose write hasn't reached
-// the server yet. Server-fetched "open shipments" lists must EXCLUDE these:
-// until the outbox drains, the server still (wrongly) reports them as open,
-// and letting that answer through re-adds a completed order to the list.
-export async function pendingClosedShipmentIds(): Promise<Set<number>> {
+// Envíos cerrados en el teléfono (entregados o no entregados) cuya escritura todavía no llegó al servidor. Las listas de envíos abiertos que baja el servidor
+// deben EXCLUIRLOS: hasta que la cola se vacíe, el servidor los sigue creyendo abiertos, y dejar pasar esa respuesta «revive» una entrega ya hecha.
+export async function pendingClosedShipmentIds(): Promise<Set<string>> {
   const items = await storage.listPending(200);
-  const ids = new Set<number>();
+  const ids = new Set<string>();
   for (const item of items) {
-    if (item.kind !== 'dispatch' && item.kind !== 'exception') continue;
+    if (item.kind !== 'deliver' && item.kind !== 'fail') continue;
     try {
-      const payload = JSON.parse(item.payload) as { fields?: Record<string, unknown> };
-      const sid = Number(payload.fields?.ShipmentID);
-      if (Number.isFinite(sid)) ids.add(sid);
+      const payload = JSON.parse(item.payload) as { shipmentId?: string };
+      if (payload.shipmentId) ids.add(payload.shipmentId);
     } catch {
-      // malformed payload — never block the list over it
+      // payload dañado: nunca se bloquea la lista por eso
     }
   }
   return ids;

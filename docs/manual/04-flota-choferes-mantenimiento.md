@@ -950,3 +950,9 @@ Permiso `driverapp.use`, módulo LTL_GROUND. Solo para envíos de manifiestos **
 | `GET /api/v1/driver-app/failure-reasons` | Los motivos de «No entregado». |
 
 Ambas acciones son **idempotentes**: un reintento de la cola sin señal responde `alreadyDone: true` y solo completa la firma o fotos que falten. Mensajes y códigos HTTP en el FAQ (Lote 206).
+
+### La app del chofer: pantallas (Lote 207, 2026-10-23)
+- **Inicio**: cuatro botones (Recogidas para hoy, Manifiesto de recogida, Entregas para hoy, Manifiesto de entrega); solo aparecen los que tienen contenido. Un chofer de varias compañías ve todo junto, cada envío con el nombre de su compañía.
+- **Manifiestos**: los que faltan por aceptar van primero («Por aceptar»). Al tocarlo se abre **Aceptar manifiesto**: marcar «No aceptar» en un envío pide el motivo (lista «Motivos de no aceptación» de esa compañía) y una nota opcional; al confirmar sale la ruta (requiere señal).
+- **Envío**: pestañas Detalles y Acciones. Acciones → **Entregar** (quién recibió, nota, foto, firma) o **No entregado** (motivo de «Razón de fallo», nota, foto). Sin señal queda en la cola y sale solo; el envío desaparece de la lista de inmediato.
+- **Buscador**: orden, guía, consignatario, dirección, ciudad, notas, manifiesto y compañía (nombre o número).

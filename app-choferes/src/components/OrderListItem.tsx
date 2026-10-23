@@ -3,12 +3,10 @@ import { Text } from '@components/Text';
 import { Link } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useAppStore } from '@/stores';
-import { useStyles, useTheme } from '@hooks/ThemeContext';
+import { useStyles } from '@hooks/ThemeContext';
 import type { Colors } from '@constants/theme';
 import type { Shipment } from '@/types/models';
 
-// Replicates the old OrderListItem. Tapping stores the shipment and opens
-// ShipmentDetails.
 export default function OrderListItem(props: Shipment) {
   const styles = useStyles(createStyles);
   const { t } = useTranslation();
@@ -19,18 +17,13 @@ export default function OrderListItem(props: Shipment) {
       <Pressable style={styles.container} onPress={() => addShipment(props)}>
         <View>
           <Text style={styles.title}>{props.consigneeName}</Text>
-          <Text style={styles.title}>
-            {props.city ? `${props.city}, ${props.zip ?? ''}` : props.zip}
-          </Text>
+          <Text style={styles.title}>{[props.city, props.postalCode].filter(Boolean).join(', ')}</Text>
         </View>
         <View>
-          <Text style={styles.bodyText}>
-            {props.senderName} - {props.serviceTypeName}
-          </Text>
-          <Text style={styles.bodyText}>{props.addressLine1}</Text>
-          <Text style={styles.bodyText}>{props.addressLine2}</Text>
-          <Text style={styles.bodyText}>({props.referenceNo})</Text>
-          <Text style={styles.piecesLabel}>{t('COMMON.PIECES')}: {props.qty}</Text>
+          <Text style={styles.company}>{props.companyName}</Text>
+          <Text style={styles.bodyText}>{props.address}</Text>
+          <Text style={styles.bodyText}>({props.orderNumber})</Text>
+          <Text style={styles.piecesLabel}>{t('COMMON.PIECES')}: {props.pieces ?? ''}</Text>
         </View>
       </Pressable>
     </Link>
@@ -38,18 +31,9 @@ export default function OrderListItem(props: Shipment) {
 }
 
 const createStyles = (colors: Colors) => StyleSheet.create({
-  container: {
-    borderWidth: 1,
-    borderColor: colors.gray,
-    borderRadius: 13,
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-    gap: 8,
-    marginVertical: 10,
-    marginHorizontal: 20,
-    padding: 16,
-  },
+  container: { borderWidth: 1, borderColor: colors.gray, borderRadius: 13, alignItems: 'flex-start', justifyContent: 'center', gap: 8, marginVertical: 10, marginHorizontal: 20, padding: 16 },
   title: { fontWeight: '600', fontSize: 16, color: colors.text },
+  company: { fontWeight: '700', fontSize: 13, color: colors.primary },
   bodyText: { fontWeight: '600', fontSize: 14, color: colors.text },
   piecesLabel: { marginTop: 4, fontWeight: '400', fontSize: 12, color: colors.muted },
 });

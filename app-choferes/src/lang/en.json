@@ -81,7 +81,9 @@
     },
     "MANIFESTS": {
       "MANIFESTS": "Manifests",
-      "PICKUP_MANIFESTS": "Pickup manifests"
+      "PICKUP_MANIFESTS": "Pickup manifests",
+      "COMPANY_FAILED": "No answer from: {{names}}. What you see for that company may be out of date.",
+      "TO_ACCEPT": "To accept"
     },
     "SHIPMENT_DETAILS": {
       "SHIPMENT_DETAILS": "Shipment Details",
@@ -100,7 +102,9 @@
       "NO_PIECES": "No pieces",
       "NO_COMMENTS": "No comments",
       "ADD_COMMENT": "Add a comment",
-      "UNDER_CONSTRUCTION": "Under construction"
+      "UNDER_CONSTRUCTION": "Under construction",
+      "ORDER": "Order",
+      "MANIFEST": "Manifest"
     },
     "DELIVERY": {
       "RECEIVED_BY": "Received by",
@@ -158,7 +162,10 @@
       "COD_AMOUNT_INVALID": "Enter a valid amount.",
       "COD_TYPE_REQUIRED": "Select the COD type.",
       "NO_BARCODES": "Shipment pieces not found. Open the Pieces tab and try again.",
-      "REMOVE": "Remove"
+      "REMOVE": "Remove",
+      "ACCEPT_FIRST": "Accept the manifest first: it has not started yet.",
+      "ALREADY_CLOSED": "This shipment is already closed.",
+      "COD_PENDING_NOTE": "the collection is recorded with the office"
     },
     "UPDATE": {
       "REQUIRED_TITLE": "Update required",
@@ -254,6 +261,25 @@
       "PROMPT": "Confirm your identity to open the app",
       "CANCEL": "Cancel",
       "FAILED": "It did not match. Attempts left: {{left}}."
+    },
+    "ACCEPT": {
+      "TITLE": "Accept manifest",
+      "HINT": "On accepting, the route starts and the shipments go In transit. If you will not carry one, mark it and pick the reason.",
+      "DECLINE": "Do not accept",
+      "SELECT_REASON": "Reason",
+      "NOTE": "Note (optional)",
+      "REASON_REQUIRED": "Pick the reason for every shipment you do not accept.",
+      "SUBMIT": "Accept manifest",
+      "CONFIRM_TITLE": "Accept manifest",
+      "CONFIRM_BODY": "You accept {{accepted}} shipment(s) and decline {{declined}}. Confirm?",
+      "CONFIRM_YES": "Accept",
+      "DONE_TITLE": "Manifest accepted",
+      "DONE_BODY": "The route started: {{accepted}} shipment(s) in transit, {{declined}} declined.",
+      "DONE_NONE": "You accepted no shipment: the route did not start and the office will decide.",
+      "ERROR_TITLE": "Could not accept",
+      "ERROR": "Try again.",
+      "NO_SIGNAL": "No connection. Accepting the manifest needs signal.",
+      "NOT_FOUND": "This manifest is no longer available."
     }
   }
 }

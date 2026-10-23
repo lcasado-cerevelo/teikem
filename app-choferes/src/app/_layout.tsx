@@ -4,7 +4,6 @@ import { NavigationBar } from 'expo-navigation-bar';
 import { QueryClient } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '@hooks/AuthContext';
 import { ThemeProvider, useTheme } from '@hooks/ThemeContext';
-import { useVersionCheck } from '@hooks/useVersionCheck';
 import { OfflineProvider } from '@/offline';
 import '@/lang/i18n'; // inicializa i18n (ES/EN)
 
@@ -42,7 +41,6 @@ function RootNavigator() {
     ...(scheme === 'dark' ? DarkTheme : DefaultTheme),
     colors: { ...(scheme === 'dark' ? DarkTheme : DefaultTheme).colors, primary: colors.primary, background: colors.background, card: colors.background, text: colors.text, border: colors.gray },
   };
-  useVersionCheck(); // sideloaded APK: ask the API once per launch if an update exists
 
   // While restoring the session, show a spinner so we don't flash Login
   // for users who are already logged in.

@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { authenticate, isBiometricAvailable } from '@services/auth/biometricAuth';
 import LoggedHeader from '@components/LoggedHeader';
-import { useMe, useSync } from '@hooks/queries';
+import { useSync } from '@hooks/queries';
 import { useAuth } from '@hooks/AuthContext';
 import { useIsOnline } from '@hooks/useIsOnline';
 import { SYNC_INTERVAL_OPTIONS_MINUTES } from '@hooks/useSyncSettings';
@@ -21,7 +21,6 @@ export default function ProfileScreen() {
   const { colors } = useTheme();
   const styles = useStyles(createStyles);
   const { t, i18n } = useTranslation();
-  const { data: me } = useMe();
   const { logout, user, companies, biometricEnabled, setBiometricEnabled } = useAuth();
   const { mode, setMode } = useTheme();
   const { sync, isSyncing } = useSync();
@@ -76,7 +75,7 @@ export default function ProfileScreen() {
 
       <View style={styles.row}>
         <Text style={styles.label}>{t('PROFILE.USERNAME')}</Text>
-        <Text style={styles.value}>{me?.username ?? ''}</Text>
+        <Text style={styles.value}>{user?.email ?? ''}</Text>
       </View>
 
       <View style={styles.section}>

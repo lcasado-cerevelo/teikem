@@ -3,12 +3,10 @@ import { useTranslation } from 'react-i18next';
 import Chip from './Chip';
 
 // The four tabs of ShipmentDetails (Detalles / Piezas / Comentarios / Acciones).
-export type ShipmentTab = 'details' | 'pieces' | 'comments' | 'actions';
+export type ShipmentTab = 'details' | 'actions';
 
 const TABS: Array<{ key: ShipmentTab; i18n: string }> = [
   { key: 'details', i18n: 'SHIPMENT_DETAILS.DETAILS' },
-  { key: 'pieces', i18n: 'SHIPMENT_DETAILS.PIECES' },
-  { key: 'comments', i18n: 'SHIPMENT_DETAILS.COMMENTS' },
   { key: 'actions', i18n: 'SHIPMENT_DETAILS.ACTIONS' },
 ];
 

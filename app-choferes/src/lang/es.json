@@ -81,7 +81,9 @@
     },
     "MANIFESTS": {
       "MANIFESTS": "Manifestos",
-      "PICKUP_MANIFESTS": "Manifestos de recogida"
+      "PICKUP_MANIFESTS": "Manifestos de recogida",
+      "COMPANY_FAILED": "Sin respuesta de: {{names}}. Lo que ve de esa compañía puede estar atrasado.",
+      "TO_ACCEPT": "Por aceptar"
     },
     "SHIPMENT_DETAILS": {
       "SHIPMENT_DETAILS": "Detalles del envío",
@@ -100,7 +102,9 @@
       "NO_PIECES": "Sin piezas",
       "NO_COMMENTS": "Sin comentarios",
       "ADD_COMMENT": "Agregar un comentario",
-      "UNDER_CONSTRUCTION": "En construcción"
+      "UNDER_CONSTRUCTION": "En construcción",
+      "ORDER": "Orden",
+      "MANIFEST": "Manifiesto"
     },
     "DELIVERY": {
       "RECEIVED_BY": "Recibido por",
@@ -158,7 +162,10 @@
       "COD_AMOUNT_INVALID": "Indica un monto válido.",
       "COD_TYPE_REQUIRED": "Selecciona el tipo de COD.",
       "NO_BARCODES": "No se encontraron las piezas del envío. Abre la pestaña Piezas y vuelve a intentar.",
-      "REMOVE": "Quitar"
+      "REMOVE": "Quitar",
+      "ACCEPT_FIRST": "Acepte primero el manifiesto: todavía no ha salido.",
+      "ALREADY_CLOSED": "Este envío ya está cerrado.",
+      "COD_PENDING_NOTE": "el cobro se registra con la oficina"
     },
     "UPDATE": {
       "REQUIRED_TITLE": "Actualización requerida",
@@ -254,6 +261,25 @@
       "PROMPT": "Confirme su identidad para abrir la app",
       "CANCEL": "Cancelar",
       "FAILED": "No coincidió. Intentos restantes: {{left}}."
+    },
+    "ACCEPT": {
+      "TITLE": "Aceptar manifiesto",
+      "HINT": "Al aceptar, sale la ruta y los envíos pasan a En tránsito. Si no va a llevar alguno, márquelo y escoja el motivo.",
+      "DECLINE": "No aceptar",
+      "SELECT_REASON": "Motivo",
+      "NOTE": "Nota (opcional)",
+      "REASON_REQUIRED": "Escoja el motivo de cada envío que no acepta.",
+      "SUBMIT": "Aceptar manifiesto",
+      "CONFIRM_TITLE": "Aceptar manifiesto",
+      "CONFIRM_BODY": "Acepta {{accepted}} envío(s) y no acepta {{declined}}. ¿Confirma?",
+      "CONFIRM_YES": "Aceptar",
+      "DONE_TITLE": "Manifiesto aceptado",
+      "DONE_BODY": "Salió la ruta: {{accepted}} envío(s) en tránsito, {{declined}} no aceptado(s).",
+      "DONE_NONE": "No aceptó ningún envío: la ruta no salió y la oficina decidirá.",
+      "ERROR_TITLE": "No se pudo aceptar",
+      "ERROR": "Intente de nuevo.",
+      "NO_SIGNAL": "Sin conexión. Aceptar el manifiesto necesita señal.",
+      "NOT_FOUND": "Este manifiesto ya no está disponible."
     }
   }
 }

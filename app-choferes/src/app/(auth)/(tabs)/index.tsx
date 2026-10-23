@@ -3,7 +3,7 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet } from 'react-native
 import { Text } from '@components/Text';
 import { Link, type Href } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { useMe, useDriverShipments } from '@hooks/queries';
+import { useDriverWork } from '@hooks/queries';
 import { useAppStore } from '@/stores';
 import { useStyles, useTheme } from '@hooks/ThemeContext';
 import type { Colors } from '@constants/theme';
@@ -21,8 +21,6 @@ interface HomeItem {
 // driver is the one assigned to pick it up (AssignPk). Deliveries are the rest
 // of the driver's open shipments. The driver query already returns both
 // (AssignPk OR AssignDL), so we split them client-side.
-const isCreated = (s?: string | null) => (s ?? '').trim().toLowerCase() === 'created';
-
 // Home: 4 cards driven by the driver's open shipments (single fetch).
 //  Entregas para hoy      -> all open deliveries.
 //  Manifesto de entrega   -> # distinct delivery manifests (manifestDL).
@@ -31,35 +29,20 @@ const isCreated = (s?: string | null) => (s ?? '').trim().toLowerCase() === 'cre
 export default function Home() {
   const styles = useStyles(createStyles);
   const { t } = useTranslation();
-  const { data: me } = useMe();
-  const driverId = me?.userID;
-
-  const { data: shipmentsData, isPending } = useDriverShipments(driverId);
-  const shipments = shipmentsData ?? [];
+  const { data, isPending } = useDriverWork();
+  const shipments = data?.shipments ?? [];
+  const manifests = data?.manifests ?? [];
 
   const addShipmentIds = useAppStore((s) => s.addShipmentIds);
 
-  const deliveryIds = useMemo(() => shipments.map((s) => s.shipmentID), [shipments]);
-  const totalDeliveries = shipments.length;
-  const manifestCount = useMemo(
-    () => new Set(shipments.map((s) => s.manifestDL ?? '—')).size,
-    [shipments],
-  );
+  // Recogidas primero, luego entregas; un botón sin contenido no se muestra. Todo junto, de todas las compañías del chofer.
+  const pickups = useMemo(() => shipments.filter((s) => s.kind === 'PICKUP'), [shipments]);
+  const deliveries = useMemo(() => shipments.filter((s) => s.kind === 'DELIVERY'), [shipments]);
+  const pickupManifests = useMemo(() => manifests.filter((m) => m.kind === 'PICKUP').length, [manifests]);
+  const deliveryManifests = useMemo(() => manifests.filter((m) => m.kind === 'DELIVERY').length, [manifests]);
 
-  // Pickups = Created + assigned to this driver for pickup.
-  const pickups = useMemo(
-    () => shipments.filter((s) => isCreated(s.status) && s.assignPK === driverId),
-    [shipments, driverId],
-  );
-  const pickupIds = useMemo(() => pickups.map((s) => s.shipmentID), [pickups]);
-  const pickupManifestCount = useMemo(
-    () => new Set(pickups.map((s) => s.manifestPk ?? '—')).size,
-    [pickups],
-  );
+  const loading = isPending;
 
-  const loading = Boolean(driverId) && isPending;
-
-  // Recogidas primero, luego entregas (pedido de Luis, 2026-10-23). Solo salen los botones que tienen algo: sin recogidas no hay botones de recogida y sin entregas no hay botones de entrega.
   const allItems: HomeItem[] = [
     {
       key: 'pickups',
@@ -67,27 +50,27 @@ export default function Home() {
       counter: `${pickups.length}`,
       loading,
       href: '/(auth)/OrdersList',
-      onPress: () => addShipmentIds(pickupIds),
+      onPress: () => addShipmentIds(pickups.map((s) => s.id)),
     },
     {
       key: 'pickup-manifest',
       label: t('HOME.PICKUP_MANIFEST'),
-      counter: `${pickupManifestCount}`,
+      counter: `${pickupManifests}`,
       loading,
       href: { pathname: '/(auth)/(tabs)/manifests', params: { kind: 'pickup' } },
     },
     {
       key: 'deliveries',
       label: t('HOME.DELIVERIES_FOR_TODAY'),
-      counter: `${totalDeliveries}`,
+      counter: `${deliveries.length}`,
       loading,
       href: '/(auth)/OrdersList',
-      onPress: () => addShipmentIds(deliveryIds),
+      onPress: () => addShipmentIds(deliveries.map((s) => s.id)),
     },
     {
       key: 'manifest',
       label: t('HOME.DELIVERY_MANIFEST'),
-      counter: `${manifestCount}`,
+      counter: `${deliveryManifests}`,
       loading,
       href: '/(auth)/(tabs)/manifests',
     },

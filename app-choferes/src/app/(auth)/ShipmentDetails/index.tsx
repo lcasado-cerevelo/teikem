@@ -4,8 +4,6 @@ import { useTranslation } from 'react-i18next';
 import ScreenHeader from '@components/ScreenHeader';
 import ShipmentDetailsTabs, { type ShipmentTab } from '@components/ShipmentDetailsTabs';
 import ShipmentDetail from '@components/ShipmentDetail';
-import ShipmentPieces from '@components/ShipmentPieces';
-import ShipmentComments from '@components/ShipmentComments';
 import ShipmentActions from '@components/ShipmentActions';
 import { useStyles, useTheme } from '@hooks/ThemeContext';
 import type { Colors } from '@constants/theme';
@@ -24,12 +22,8 @@ export default function ShipmentDetails() {
 
       {selectedTab === 'details' ? (
         <ShipmentDetail />
-      ) : selectedTab === 'pieces' ? (
-        <ShipmentPieces />
-      ) : selectedTab === 'comments' ? (
-        <ShipmentComments />
       ) : (
-        <ShipmentActions setSelectedTab={setSelectedTab} />
+        <ShipmentActions />
       )}
     </View>
   );

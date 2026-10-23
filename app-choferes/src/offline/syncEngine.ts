@@ -2,13 +2,6 @@ import { AxiosError } from 'axios';
 import { api } from '@config/axios';
 import { bumpRetry, listPending, markDone, markFailed, type OutboxItem } from './outbox';
 
-interface MultipartPayload {
-  // An array value is appended once per item under the same key — how ASP.NET
-  // binds a List<string> from a form (e.g. Barcodes in dispatch_batch).
-  fields?: Record<string, string | number | boolean | null | undefined | Array<string | number>>;
-  files?: Array<{ field: string; uri: string; name: string; type: string }>;
-}
-
 let active: Promise<void> | null = null;
 let followUp: Promise<void> | null = null;
 
@@ -61,46 +54,23 @@ async function runDrain(): Promise<void> {
 
 async function sendItem(item: OutboxItem): Promise<void> {
   const headers: Record<string, string> = { 'Idempotency-Key': item.id };
-
-  if (item.isMultipart) {
-    const desc = JSON.parse(item.payload) as MultipartPayload;
-    const form = new FormData();
-    for (const [k, v] of Object.entries(desc.fields ?? {})) {
-      if (v == null) continue;
-      if (Array.isArray(v)) {
-        for (const item of v) form.append(k, String(item));
-      } else {
-        form.append(k, String(v));
-      }
-    }
-    for (const f of desc.files ?? []) {
-      form.append(f.field, { uri: f.uri, name: f.name, type: f.type } as unknown as Blob);
-    }
-    await api.request({
-      url: item.endpoint,
-      method: item.method,
-      data: form,
-      headers: { ...headers, 'Content-Type': 'multipart/form-data' },
-      // Proof photo + signature ride in this body; on a slow mobile uplink the
-      // default 20s timeout cuts the upload short and misreads it as offline.
-      timeout: 120_000,
-    });
-    return;
-  }
-
+  const payload = JSON.parse(item.payload) as { tenantId?: number; body?: unknown };
   await api.request({
     url: item.endpoint,
     method: item.method,
-    data: JSON.parse(item.payload),
+    data: payload.body,
     headers,
+    tenantId: payload.tenantId,
+    // La firma y las fotos viajan en este cuerpo; con un enlace móvil lento el tiempo normal (20 s) cortaría la subida y se confundiría con «sin señal».
+    timeout: 120_000,
   });
 }
 
 function describeError(err: unknown): string {
-  const ax = err as AxiosError<{ error_description?: string; message?: string }>;
+  const ax = err as AxiosError<{ title?: string; error_description?: string; message?: string }>;
   if (ax.response) {
     const body = ax.response.data;
-    return `HTTP ${ax.response.status}: ${body?.error_description ?? body?.message ?? ax.message}`;
+    return `HTTP ${ax.response.status}: ${body?.title ?? body?.error_description ?? body?.message ?? ax.message}`;
   }
   return ax.message ?? 'Network error';
 }

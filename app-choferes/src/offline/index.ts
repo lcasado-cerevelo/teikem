@@ -7,4 +7,4 @@ export {
 export { drainOutbox } from './syncEngine';
 export { clearOfflineData } from './reset';
 export { OfflineProvider } from './OfflineProvider';
-export { enqueueDispatch, enqueueComment, enqueueException, enqueueCod } from './mutations';
+export { enqueueDeliver, enqueueFail } from './mutations';

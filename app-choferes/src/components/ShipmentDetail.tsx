@@ -3,7 +3,7 @@ import { Text } from '@components/Text';
 import { useTranslation } from 'react-i18next';
 import MapPreview from './MapPreview';
 import { useCoordinatesFromAddress } from '@hooks/geocoding';
-import { useConsignee } from '@hooks/queries';
+import { useShipmentDetail } from '@hooks/queries';
 import { useAppStore } from '@/stores';
 import { useStyles, useTheme } from '@hooks/ThemeContext';
 import type { Colors } from '@constants/theme';
@@ -14,22 +14,18 @@ export default function ShipmentDetail() {
   const { colors } = useTheme();
   const styles = useStyles(createStyles);
   const { t } = useTranslation();
-  const shipment = useAppStore((s) => s.shipment);
+  const base = useAppStore((s) => s.shipment);
+  const { data: detail } = useShipmentDetail(base);
+  const shipment = detail ?? base;
 
-  // Stored geo of the delivery address (ConsigneeNum == Consignee.ID).
-  const consigneeId = shipment?.consigneeNum ? Number(shipment.consigneeNum) : undefined;
-  const { data: consignee } = useConsignee(Number.isFinite(consigneeId) ? consigneeId : undefined);
-
+  // El punto del mapa sale de la dirección (la ubicación exacta de la entrega la pone el GPS del teléfono al entregar).
   const { location, loading, located } = useCoordinatesFromAddress({
-    storedLat: consignee?.latitude ? Number(consignee.latitude) : NaN,
-    storedLng: consignee?.longitude ? Number(consignee.longitude) : NaN,
-    addressLine1: shipment?.addressLine1,
-    zip: shipment?.zip,
+    addressLine1: shipment?.address,
+    zip: shipment?.postalCode,
     city: shipment?.city,
   });
 
-  const dueDate = shipment?.dueDate ? new Date(shipment.dueDate).toLocaleString() : '';
-  const cityZip = [shipment?.city, shipment?.zip].filter(Boolean).join(', ');
+  const cityZip = [shipment?.city, shipment?.postalCode].filter(Boolean).join(', ');
 
   return (
     <View style={styles.container}>
@@ -52,31 +48,31 @@ export default function ShipmentDetail() {
           <View style={styles.section}>
             <Text style={styles.textHeader}>{shipment?.consigneeName ?? ''}</Text>
             <Text style={styles.textSubtitle}>{cityZip}</Text>
-            <Text style={styles.textBody}>
-              {shipment?.senderName ?? ''} - {shipment?.serviceTypeName ?? ''}
-            </Text>
-            <Text style={styles.textBody}>{shipment?.addressLine1 ?? ''}</Text>
-            <Text style={styles.textBody}>{shipment?.addressLine2 ?? ''}</Text>
-            <Text style={styles.textBody}>{shipment?.phoneNumber ?? ''}</Text>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.textBody}>{dueDate}</Text>
+            <Text style={styles.textBody}>{shipment?.companyName ?? ''}{detail?.clientName ? ` - ${detail.clientName}` : ''}</Text>
+            <Text style={styles.textBody}>{shipment?.address ?? ''}</Text>
+            {detail?.contactPerson ? <Text style={styles.textBody}>{detail.contactPerson}</Text> : null}
+            {detail?.phone ? <Text style={styles.textBody} selectable>{detail.phone}</Text> : null}
           </View>
 
           <View style={styles.section}>
             <Text style={styles.textBody}>{t('SHIPMENT_DETAILS.STATUS')}: {shipment?.status ?? ''}</Text>
+            <Text style={styles.textBody}>{t('SHIPMENT_DETAILS.ORDER')}: {shipment?.orderNumber ?? ''}</Text>
             <Text style={styles.textBody}>{t('SHIPMENT_DETAILS.WAYBILL')}: {shipment?.waybill ?? ''}</Text>
-            <Text style={styles.textBody}>{t('SHIPMENT_DETAILS.INVOICE')}: {shipment?.waybill ?? ''}</Text>
-            <Text style={styles.textBody}>{t('SHIPMENT_DETAILS.SERVICE_TYPE')}: {shipment?.serviceTypeName ?? ''}</Text>
-            <Text style={styles.textBody}>{t('SHIPMENT_DETAILS.PIECES')}: {shipment?.qty ?? ''}</Text>
+            <Text style={styles.textBody}>{t('SHIPMENT_DETAILS.MANIFEST')}: {shipment?.manifestCode ?? ''}</Text>
+            <Text style={styles.textBody}>{t('SHIPMENT_DETAILS.PIECES')}: {shipment?.pieces ?? ''}</Text>
           </View>
 
-          <View style={styles.section}>
-            <Text style={styles.textBody}>
-              {t('SHIPMENT_DETAILS.COD')}: {shipment?.codAmount && shipment.codAmount > 0 ? shipment.codAmount : ''}
-            </Text>
-          </View>
+          {shipment?.codAmount && shipment.codAmount > 0 ? (
+            <View style={styles.section}>
+              <Text style={styles.textBody}>{t('SHIPMENT_DETAILS.COD')}: {shipment.codAmount.toFixed(2)}</Text>
+            </View>
+          ) : null}
+
+          {shipment?.notes ? (
+            <View style={styles.section}>
+              <Text style={styles.textBody}>{shipment.notes}</Text>
+            </View>
+          ) : null}
         </View>
       </ScrollView>
     </View>
