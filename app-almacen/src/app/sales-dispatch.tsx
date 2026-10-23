@@ -76,6 +76,13 @@ export default function SalesDispatchScreen() {
   const active = activeKey ? tasks.find((x) => x.key === activeKey) ?? null : null
   const doneAll = step === 'pick' && order !== null && nextTask(tasks, picks, skipped) === null
 
+  useEffect(() => {
+    if (orderOpened.current || !orderParam || !warehousePublicId) return
+    orderOpened.current = true
+    scanOrder(orderParam)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderParam, warehousePublicId])
+
   if (!warehousePublicId) {
     return (
       <View style={styles.fill}>
@@ -96,13 +103,6 @@ export default function SalesDispatchScreen() {
     setQtyText(first ? String(first.qty) : '')
     vibrateOk()
   }
-
-  useEffect(() => {
-    if (orderOpened.current || !orderParam || !warehousePublicId) return
-    orderOpened.current = true
-    scanOrder(orderParam)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderParam, warehousePublicId])
 
   function scanOrder(code: string) {
     const found = findSalesOrderByNumber(warehousePublicId!, code, scope)
