@@ -6644,8 +6644,10 @@ IF OBJECT_ID(N'dbo.EntityResponsible', N'U') IS NULL CREATE TABLE dbo.EntityResp
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_EntityResponsible' AND object_id = OBJECT_ID('dbo.EntityResponsible'))
     CREATE UNIQUE INDEX UX_EntityResponsible ON dbo.EntityResponsible(TenantId, EntityLookupId, EntityId, UserId);
+GO
 
-   2026-10-23 (j) — Propuestas de cierre de las integraciones (lectores ORDER_COMPLETION): dbo.IntegrationProposal. Una propuesta = «llevar la orden X a PICKUP/DELIVERED porque este documento lo dice»;
+/* ----------------------------------------------------------------------------
+   2026-10-23 (k) — Propuestas de cierre de las integraciones (lectores ORDER_COMPLETION): dbo.IntegrationProposal. Una propuesta = «llevar la orden X a PICKUP/DELIVERED porque este documento lo dice»;
    una persona la confirma o la rechaza (o el lector AUTO la aplica). La orden solo cambia por el servicio de estatus. Estatus: PENDING, CONFIRMED, APPLIED, REJECTED, FAILED.
    ---------------------------------------------------------------------------- */
 IF OBJECT_ID(N'dbo.IntegrationProposal', N'U') IS NULL CREATE TABLE dbo.IntegrationProposal (

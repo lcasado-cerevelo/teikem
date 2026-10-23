@@ -54,7 +54,7 @@ Archivos en `F:\Download`: REGULAR 10-12-2026, OXIGENO / ALTAS / AXISMED / RECOG
 - Falta: cola de propuestas para cerrar con «Ruta completada»; crear la integración real (buzón, cliente, zonas «ERD Pick Up N», consignatario CMS, plantilla).
 
 ## 9. Cola de propuestas de cierre (2026-10-23, hecho)
-- Destino `ORDER_COMPLETION` (columna 1 = clave de la orden), modo `SUGGEST` (por omisión) o `AUTO` y estatus de cierre `PICKUP`/`DELIVERED` por lector; tabla `dbo.IntegrationProposal` (update.sql 2026-10-23 (j)); pestaña Integraciones → Propuestas; modelo «Ruta completada de CMS».
+- Destino `ORDER_COMPLETION` (columna 1 = clave de la orden), modo `SUGGEST` (por omisión) o `AUTO` y estatus de cierre `PICKUP`/`DELIVERED` por lector; tabla `dbo.IntegrationProposal` (update.sql 2026-10-23 (k)); pestaña Integraciones → Propuestas; modelo «Ruta completada de CMS».
 - La orden cambia solo al confirmar (a nombre de quien confirma) por el pipeline de estatus (recogida) o el registro de entrega (entregada). Probado: `OrderCompletionProposalTests`, `CmsCompletedRouteReaderTests` (texto real), pantalla en `IntegrationsScreen.test.tsx`.
 - Pendiente: crear la integración real (buzón, cliente, zonas, consignatario CMS, plantilla), probar con SQL Server (smoke) y decidir cuándo pasar un lector a AUTO.
 
