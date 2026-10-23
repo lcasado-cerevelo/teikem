@@ -4,7 +4,7 @@ import { AxiosError } from 'axios';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { setAccessToken, setForbiddenHandler, setRefreshHandler, setUnauthorizedHandler, type ForbiddenInfo } from '@config/axios';
-import { clearOfflineData, drainOutbox } from '@/offline';
+import { clearOfflineData, countByStatus, drainOutbox } from '@/offline';
 import { useAppStore } from '@/stores';
 import { sessionStorage, type AuthUser, type StoredSession } from '@services/auth/tokenStorage';
 import {
@@ -352,7 +352,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!current) return false;
       try {
         setLoading(true);
+        // Cambiar de compañía limpia lo local: lo que no se haya enviado se perdería. Primero se intenta enviar; si queda algo (sin señal), NO se cambia.
         await drainOutbox().catch(() => undefined);
+        const pending = await countByStatus('pending');
+        if (pending > 0) {
+          Alert.alert(t('PROFILE.COMPANY_SWITCH_TITLE'), t('PROFILE.COMPANY_SWITCH_PENDING', { count: pending }));
+          return false;
+        }
         const next = toSession(await apiSwitchTenant(current.refreshToken, tenantId), current);
         // otra compañía = otros envíos: se limpia lo local como en un cierre de sesión (la sesión sigue)
         await clearOfflineData();
@@ -367,7 +373,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       }
     },
-    [applySession, queryClient, showError],
+    [applySession, queryClient, showError, t],
   );
 
   const setBiometricEnabled = useCallback(async (value: boolean) => {
