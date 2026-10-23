@@ -10848,11 +10848,18 @@
         "add": "Add reader",
         "convert": "Turn the settings above into readers",
         "convertHelp": "Creates the readers equivalent to the attachment, body and PDF settings above, to continue from there.",
+        "presets": "Use a model",
+        "presetsHelp": "Adds a ready-made reader for a known document type. Then pick the client and check that the products exist with the same item number (SKU).",
+        "preset": {
+          "dispatch-exit-notice": "Goods dispatch → exit notice",
+          "shipment-arrival-notice": "Goods shipment → arrival notice",
+          "drive-invoice-arrival-notice": "Drive Medical invoice → arrival notice"
+        },
         "name": "Reader {n} name",
         "namePlaceholder": "Packing list",
         "source": "What it reads",
         "target": "Destination",
-        "targetHelp": "What what it reads creates in the system. For now: transport orders.",
+        "targetHelp": "What it creates in the system: a transport order, an arrival notice (what comes into the warehouse) or an exit notice (what leaves). Notices expect these columns: 1 reference, 2 product (SKU), 3 quantity, 4 destination (exit), 5 date and 6 lot (arrival).",
         "firstOnly": "Only the first document",
         "firstOnlyHelp": "If several that meet it arrive, this reader takes only the first.",
         "client": "Client",
@@ -10879,7 +10886,9 @@
           "FILE": "An attached data file"
         },
         "targetOption": {
-          "ORDER": "Transport order"
+          "ORDER": "Transport order",
+          "ARRIVAL_NOTICE": "Arrival notice",
+          "EXIT_NOTICE": "Exit notice"
         }
       },
       "bodyHelp": "Each field goes to a column of the integration's import template: the body becomes a file row (or several, with a block of lines) and the same template reads it.",

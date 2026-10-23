@@ -4,6 +4,7 @@ import { useFieldArray, useWatch, type UseFormReturn } from 'react-hook-form'
 import { useT } from '../../kernel/i18n'
 import { Field, IconPlus, IconTrash, Select, TextInput, Toggle } from '../../kernel/ui'
 import { BodyFieldsEditor } from './BodyFieldsEditor'
+import presets from './readerPresets.json'
 import { CONDITION_SCOPES, MATCH_OPERATORS, READER_SOURCES, READER_TARGETS, emptyCondition, emptyReader, legacyToReaders, scopeApplies, type ReaderValues } from './emailRules'
 import type { IntegrationValues } from './integrationRules'
 
@@ -19,6 +20,15 @@ export function ReadersSection({ form, clientOptions, templateOptions }: { form:
   const convert = () => {
     const converted = legacyToReaders(form.getValues('email'))
     for (const r of converted) readers.append(r)
+  }
+  // un modelo = un lector ya armado para un tipo de documento conocido; si ya hay uno con ese nombre se numera para no repetirlo
+  const addPreset = (key: string) => {
+    const preset = presets.find((p) => p.key === key)
+    if (!preset) return
+    const taken = new Set(readers.fields.map((_, i) => (list?.[i]?.name ?? '').toLowerCase()))
+    let name = preset.reader.name
+    for (let n = 2; taken.has(name.toLowerCase()); n++) name = `${preset.reader.name} ${n}`
+    readers.append({ ...(structuredClone(preset.reader) as ReaderValues), name })
   }
   const canConvert = (readers.fields.length === 0) && (email?.readBody || email?.readPdf || (email?.attachmentTypes ?? '').trim() !== '')
   return (
@@ -37,6 +47,11 @@ export function ReadersSection({ form, clientOptions, templateOptions }: { form:
         <button type="button" className="btn sm" onClick={() => readers.append(emptyReader())}>
           <IconPlus /> {t('integrations.email.readers.add')}
         </button>
+        {presets.map((p) => (
+          <button key={p.key} type="button" className="btn sm" onClick={() => addPreset(p.key)} title={t('integrations.email.readers.presetsHelp')} data-testid={`reader-preset-${p.key}`}>
+            <IconPlus /> {t(`integrations.email.readers.preset.${p.key}`)}
+          </button>
+        ))}
         {canConvert && (
           <button type="button" className="btn sm" onClick={convert} title={t('integrations.email.readers.convertHelp')}>
             {t('integrations.email.readers.convert')}

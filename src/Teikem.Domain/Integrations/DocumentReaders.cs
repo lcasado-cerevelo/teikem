@@ -4,7 +4,25 @@ namespace Teikem.Domain.Integrations;
 public static class DocumentTargets
 {
     public const string Order = "ORDER";
-    public static readonly IReadOnlyList<string> All = [Order];
+    /// <summary>2026-10-23: aviso de llegada (ASN, LLE-#####) de un cliente dueño del inventario: lo que llega al almacén.</summary>
+    public const string ArrivalNotice = "ARRIVAL_NOTICE";
+    /// <summary>2026-10-23: aviso de salida (SAL-#####) de un cliente dueño del inventario: lo que sale del almacén.</summary>
+    public const string ExitNotice = "EXIT_NOTICE";
+    public static readonly IReadOnlyList<string> All = [Order, ArrivalNotice, ExitNotice];
+}
+
+/// <summary>
+/// Las columnas (posición de la columna = «posición» del campo a leer) que esperan los destinos de aviso de llegada y de salida. Un renglón = una línea del aviso; los renglones con la misma referencia, destino y fecha
+/// forman UN aviso. Referencia (1), Producto = SKU del cliente (2) y Cantidad (3) son obligatorios; Destino (4, solo salida), Fecha (5: la requerida en salida, la esperada en llegada) y Lote (6, solo llegada) son opcionales.
+/// </summary>
+public static class NoticeColumns
+{
+    public const int Reference = 1;
+    public const int Sku = 2;
+    public const int Quantity = 3;
+    public const int Destination = 4;
+    public const int Date = 5;
+    public const int Lot = 6;
 }
 
 /// <summary>De dónde sale lo que lee un lector: el cuerpo del correo (BODY), un PDF adjunto (PDF) o un archivo adjunto de datos, CSV/Excel/JSON/XML (FILE).</summary>

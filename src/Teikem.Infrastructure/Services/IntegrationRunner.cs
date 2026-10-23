@@ -32,6 +32,8 @@ public sealed class IntegrationOptions
     public string OcrTessdataPath { get; set; } = "";
     /// <summary>Idiomas del OCR, como los pide Tesseract («spa+eng»).</summary>
     public string OcrLanguages { get; set; } = "spa+eng";
+    /// <summary>Escala con que se dibuja cada página para el OCR (1 = 72 ppp). 4 ≈ 288 ppp: en los conduces escaneados de Axiscare subió los números de orden y factura leídos de 5/14 a 11–14/14.</summary>
+    public float OcrScale { get; set; } = 4f;
 }
 
 /// <summary>Una orden que no se pudo procesar: va a la bandeja con su motivo y los datos tal como llegaron.</summary>

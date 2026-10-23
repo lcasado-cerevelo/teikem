@@ -33,3 +33,10 @@ Archivos en `F:\Download`: REGULAR 10-12-2026, OXIGENO / ALTAS / AXISMED / RECOG
 - Modo por omisión (3x, página automática): en páginas de conduce de REGULAR salen 5 de 14 números de orden/factura (se pierden las facturas y los guiones de la orden); en OXIGENO 7/14; VETERANOS 7/7.
 - **Escala 4x y modo «un solo bloque»: REGULAR 11/14, OXIGENO 14/14, VETERANOS 7/7.** Binarizar (Otsu) no mejoró. Pendiente cambiar el lector (escala 4, probar ambos modos) y validar por reglas (formato de orden/factura, conteo de líneas contra «Cases», sumas del resumen).
 - AXISMED (tipografía deformada, confianza 0,82–0,84): errores de letras en códigos («El04941» por E104941) y en importes; candidato al modelo de visión.
+
+## 6. Hecho (2026-10-23)
+- Lector de PDF: escala 4x, dos modos de página (se queda con el que reconoce más) y decisión de OCR **por página** (`OcrScale`, `PdfTextReader`).
+- Destinos `ARRIVAL_NOTICE` y `EXIT_NOTICE` (`NoticeDocumentTargets.cs`): columnas 1 referencia, 2 SKU, 3 cantidad, 4 destino, 5 fecha, 6 lote; un aviso por referencia/destino/fecha; si una línea falla no se crea ninguno.
+- Modelos de lector en `web-app/src/features/integrations/readerPresets.json` (fuente única; la pantalla los ofrece y `NoticeDocumentTargetsTests` los prueba con el texto real de los PDF): despacho → salida, envío (recibo) → llegada, factura Drive Medical → llegada.
+- **Sin integración creada aún**: faltan buzón, cliente y almacén de la compañía; con los modelos se arma desde la pantalla.
+- **Sin decidir**: hojas de ruta CMS (¿qué crean? no traen dirección: parecen recogidas por referido para marcar), factura de Depot (4627), «cantidad each» vs «paletas» cuando solo hay un número.

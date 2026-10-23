@@ -10851,11 +10851,18 @@
         "add": "Agregar lector",
         "convert": "Convertir lo de arriba en lectores",
         "convertHelp": "Crea los lectores equivalentes a los ajustes de adjuntos, cuerpo y PDF de arriba, para seguir desde ahí.",
+        "presets": "Usar un modelo",
+        "presetsHelp": "Agrega un lector ya armado para un tipo de documento conocido. Después escoja el cliente y revise que los productos existan con el mismo número de ítem (SKU).",
+        "preset": {
+          "dispatch-exit-notice": "Despacho de mercancía → aviso de salida",
+          "shipment-arrival-notice": "Envío de mercancía → aviso de llegada",
+          "drive-invoice-arrival-notice": "Factura de Drive Medical → aviso de llegada"
+        },
         "name": "Nombre del lector {n}",
         "namePlaceholder": "Packing list",
         "source": "Qué lee",
         "target": "Destino",
-        "targetHelp": "Qué crea en el sistema lo que lee. Por ahora: órdenes de transporte.",
+        "targetHelp": "Qué crea en el sistema lo que lee. Orden de transporte, aviso de llegada (lo que entra al almacén) o aviso de salida (lo que sale). Los avisos esperan en las columnas: 1 referencia, 2 producto (SKU), 3 cantidad, 4 destino (salida), 5 fecha y 6 lote (llegada).",
         "firstOnly": "Solo el primer documento",
         "firstOnlyHelp": "Si llegan varios que cumplen, este lector toma solo el primero.",
         "client": "Cliente",
@@ -10882,7 +10889,9 @@
           "FILE": "Un archivo de datos adjunto"
         },
         "targetOption": {
-          "ORDER": "Orden de transporte"
+          "ORDER": "Orden de transporte",
+          "ARRIVAL_NOTICE": "Aviso de llegada",
+          "EXIT_NOTICE": "Aviso de salida"
         }
       },
       "bodyHelp": "Cada campo va a una columna de la plantilla de importación de la integración: el cuerpo se convierte en una fila de archivo (o varias, con un bloque de renglones) y la misma plantilla la lee.",

@@ -356,3 +356,24 @@ Dictado de Luis: la plantilla de la entidad (columna → campo) sirve también p
 | «La integración está apagada; enciéndala para correrla.» | 422 | Encienda la integración. |
 
 **Casos frecuentes:** *«Cambié un producto y no salió»* → la integración debe estar encendida, ser de Productos y haberse creado antes del cambio; con horario, sale cuando toca. *«Quiero todo otra vez»* → «Enviar todo el catálogo». *«Faltan columnas»* → agréguelas a la plantilla de productos (Integraciones → Plantillas): la salida usa la plantilla tal como está en cada envío.
+
+## 16. Avisos de llegada y de salida desde un documento (2026-10-23)
+
+Un lector de una integración por correo puede mandar lo que lee a un **aviso de llegada** (lo que entra al almacén, `LLE-#####`) o a un **aviso de salida** (lo que sale, `SAL-#####`), además de a una orden de transporte. Sirve para documentos que el cliente manda por correo, como el «Despacho de Mercancía» o el «Envío de Mercancía» de Axiscare. Quien puede: `integrations.create` o `integrations.manage` para armar la integración; los avisos se crean a nombre de la cuenta de servicio de la integración.
+
+**Cómo se arma (pantalla Integraciones → correo → Lectores).**
+1. Cada tipo de documento es **un lector** de la misma integración. Se distinguen por una condición sobre el **texto del documento** (por ejemplo, que contenga «Despacho de Mercancia»), no por el asunto: documentos con la misma plantilla y distinto título cada uno va por su camino.
+2. Los botones **«Usar un modelo»** (junto a «Agregar lector») agregan uno ya armado: *Despacho de mercancía → aviso de salida*, *Envío de mercancía → aviso de llegada* y *Factura de Drive Medical → aviso de llegada*. Después escoja el **cliente** del lector (el dueño de la mercancía).
+3. La integración sigue pidiendo una plantilla de importación: use una sin fila de encabezado y con coma (el lector entrega los datos por posición de columna).
+4. Para armar un lector propio, la columna de cada campo es: **1** referencia, **2** producto (el SKU del cliente, tal como aparece en el documento), **3** cantidad, **4** destino (solo salida), **5** fecha (la requerida en salida, la esperada en llegada; MM/dd/yyyy o yyyy-MM-dd) y **6** lote (solo llegada).
+
+**Qué hace.**
+- Un renglón del documento es una línea del aviso. Los renglones con la misma referencia, destino y fecha forman **un solo aviso** (un despacho con cuatro destinos crea cuatro avisos de salida). Un mismo producto repetido se suma.
+- Las cantidades se leen por su número: «400bx» es 400, «1,430» es 1430. En la hoja de Axiscare la cantidad es la de «CANTIDAD EACH» (unidades), no la de paletas.
+- El almacén es el único activo de la compañía; si hay varios, el aviso no se crea y se explica en la bandeja.
+- **Nunca se crea un aviso a medias:** si una línea del documento no se puede leer (producto que no existe para ese cliente, cantidad ilegible), **ningún** aviso de ese documento se crea y todo queda en la bandeja con el número de fila y el motivo.
+- El mismo PDF (mismo contenido) no se procesa dos veces.
+
+**Lectura de PDF escaneados (OCR).** Los PDF con texto real se leen directo; las páginas escaneadas pasan por OCR a 288 ppp (escala 4) y con dos modos de página, quedándose con el que reconoce más. La decisión es **por página**: un PDF con unas páginas de texto y otras escaneadas lee cada una a su manera. Un escaneo con rayas o letra manuscrita puede salir con errores; por eso lo ilegible va a la bandeja en lugar de adivinarse.
+
+**Limitaciones conocidas.** (1) En el despacho, el destino que se guarda es la primera línea del bloque de dirección (el nombre del destinatario), no la dirección completa. (2) Si en la hoja solo hay un número después del ítem, no se sabe si es de «cantidad each» o de «paletas»: se toma como cantidad. (3) Las facturas escaneadas de Drive Medical traen cantidades encerradas a mano que el OCR no siempre lee: esas líneas mandan el documento entero a la bandeja.

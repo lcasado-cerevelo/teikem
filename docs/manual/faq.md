@@ -10430,3 +10430,11 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **«El estatus «Recogido» no está habilitado para esta compañía.»** El flujo de la compañía no tiene la etapa «Recogido»; actívela en Estatus antes de usar rutas de recogida.
 
 **«El tipo de ruta debe ser DELIVERY (entrega) o PICKUP (recogida).» (400).** Solo existen esos dos tipos.
+
+**«Fila N: la cantidad «…» no es un número mayor que cero.» / «Fila N: falta el número de ítem (SKU).» (bandeja).** El lector leyó una línea del documento sin cantidad o sin producto (en un escaneo, una cantidad tachada o encerrada a mano). Como un aviso a medias es peor que ninguno, no se creó ningún aviso de ese documento. Corrija el documento o súbalo de nuevo; las demás líneas no se perdieron: están en el motivo.
+
+**«El producto «X» no existe entre los productos activos de este cliente.» (bandeja).** El número de ítem del documento no coincide con ningún SKU activo del cliente del lector (o el lector tiene otro cliente). Cree el producto con ese SKU para ese cliente, o corrija el cliente del lector, y reprocese cargando el documento otra vez.
+
+**«El documento no trae ninguna línea con producto y cantidad.» (bandeja).** El lector tomó el documento (cumplió sus condiciones) pero su expresión por línea no encontró ningún renglón. Suba el PDF a mano: el motivo muestra el texto que se leyó y con él se ajusta la expresión del lector.
+
+**Dos documentos casi iguales (despacho y recibo) y uno cae en el lector equivocado.** Los lectores se evalúan en el orden de la lista y gana el primero que cumple. Ponga a cada uno una condición sobre el **texto** con su título completo («Despacho de Mercancia» / «ENVIO DE MERCANCIA PARA») y revise que ninguna condición esté contenida en el título del otro.

@@ -1,0 +1,63 @@
+[
+  {
+    "key": "dispatch-exit-notice",
+    "name": { "es": "Despacho de mercancía → aviso de salida", "en": "Goods dispatch → exit notice" },
+    "reader": {
+      "name": "Despacho de mercancía",
+      "source": "PDF",
+      "target": "EXIT_NOTICE",
+      "conditions": [{ "scope": "TEXT", "operator": "CONTAINS", "value": "Despacho de Mercancia" }],
+      "fields": [
+        {
+          "position": "1", "kind": "BLOCK", "label": "", "pattern": "", "required": true, "transform": "NONE",
+          "start": "NUMERO DE ITEMS", "end": "", "separator": "\\t", "columns": "2=1, 3=2, 4=3",
+          "lineRegex": "^\\d+\\t.+?\\t([A-Za-z0-9][A-Za-z0-9-]*\\d[A-Za-z0-9-]*)\\t(\\d+)\\t(?:\\d+\\t)?(.+)$",
+          "repeat": false
+        }
+      ],
+      "templatePublicId": "", "clientPublicId": "", "firstOnly": false
+    }
+  },
+  {
+    "key": "shipment-arrival-notice",
+    "name": { "es": "Envío de mercancía → aviso de llegada", "en": "Goods shipment → arrival notice" },
+    "reader": {
+      "name": "Envío de mercancía",
+      "source": "PDF",
+      "target": "ARRIVAL_NOTICE",
+      "conditions": [{ "scope": "TEXT", "operator": "CONTAINS", "value": "ENVIO DE MERCANCIA PARA" }],
+      "fields": [
+        {
+          "position": "1", "kind": "BLOCK", "label": "", "pattern": "", "required": true, "transform": "NONE",
+          "start": "NUMERO DE ITEMS", "end": "", "separator": "\\t", "columns": "2=1, 3=2",
+          "lineRegex": "^\\d+\\t.+?\\t\\d+\\w*\\t([A-Za-z0-9][A-Za-z0-9-]*\\d[A-Za-z0-9-]*)\\t(\\d[\\d,]*)\\w*\\t\\d+$",
+          "repeat": false
+        }
+      ],
+      "templatePublicId": "", "clientPublicId": "", "firstOnly": false
+    }
+  },
+  {
+    "key": "drive-invoice-arrival-notice",
+    "name": { "es": "Factura de Drive Medical → aviso de llegada", "en": "Drive Medical invoice → arrival notice" },
+    "reader": {
+      "name": "Factura de Drive Medical",
+      "source": "PDF",
+      "target": "ARRIVAL_NOTICE",
+      "conditions": [{ "scope": "TEXT", "operator": "CONTAINS", "value": "Invoice Number" }, { "scope": "TEXT", "operator": "CONTAINS", "value": "Delivery Number" }],
+      "fields": [
+        {
+          "position": "1", "kind": "LABEL", "label": "Invoice Number", "pattern": "", "required": true, "transform": "NONE",
+          "start": "", "end": "", "separator": "", "columns": "", "lineRegex": "", "repeat": false
+        },
+        {
+          "position": "2", "kind": "BLOCK", "label": "", "pattern": "", "required": true, "transform": "NONE",
+          "start": "Invoice Details", "end": "", "separator": "\\t", "columns": "2=1, 3=2",
+          "lineRegex": "^\\d{4}\\t([A-Za-z0-9][A-Za-z0-9-]*)(?:\\t[^\\t\\d]{0,3})?(?:\\t(\\d[\\d,]*) ?(?:EA|CV|CS|BX|PK))?(?:\\t|$)",
+          "repeat": true
+        }
+      ],
+      "templatePublicId": "", "clientPublicId": "", "firstOnly": false
+    }
+  }
+]

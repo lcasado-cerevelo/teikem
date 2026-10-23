@@ -50,7 +50,7 @@ export interface ReaderValues {
 }
 
 export const READER_SOURCES = ['BODY', 'PDF', 'FILE'] as const
-export const READER_TARGETS = ['ORDER'] as const
+export const READER_TARGETS = ['ORDER', 'ARRIVAL_NOTICE', 'EXIT_NOTICE'] as const
 export const CONDITION_SCOPES = ['ATTACHMENT_NAME', 'SUBJECT', 'TEXT'] as const
 
 /** La condición se evalúa sobre algo que ese tipo de documento tiene: un cuerpo no tiene nombre de adjunto y un archivo de datos no tiene texto. */

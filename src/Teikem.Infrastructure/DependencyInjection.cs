@@ -348,6 +348,8 @@ public static class DependencyInjection
         services.AddSingleton<Teikem.Infrastructure.Integrations.IRemoteFileClient, Teikem.Infrastructure.Integrations.RemoteFileClient>();   // Lote 134: SFTP/FTP
         services.AddScoped<IntegrationService>();
         services.AddScoped<IntegrationRunner>();
+        services.AddScoped<IDocumentTarget, ArrivalNoticeDocumentTarget>();   // 2026-10-23: lectores de correo → aviso de llegada
+        services.AddScoped<IDocumentTarget, ExitNoticeDocumentTarget>();      // 2026-10-23: lectores de correo → aviso de salida
         services.AddScoped<IntegrationInboxService>();
         services.AddSingleton<IScheduledJob, ConsigneeNoticeDispatchJob>();   // Lote 116
         services.AddSingleton<ScheduledJobRunner>();
