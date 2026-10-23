@@ -1,0 +1,186 @@
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
+import { clearCredentials, getStoredCredentials } from '@services/auth/biometricAuth';
+import LoggedHeader from '@components/LoggedHeader';
+import { useMe, useSync } from '@hooks/queries';
+import { useAuth } from '@hooks/AuthContext';
+import { useIsOnline } from '@hooks/useIsOnline';
+import { SYNC_INTERVAL_OPTIONS_MINUTES } from '@hooks/useSyncSettings';
+import { useAppStore } from '@/stores';
+import { countByStatus, drainOutbox } from '@/offline';
+import { setLanguage, type AppLanguage } from '@/lang/i18n';
+import { colors } from '@constants/theme';
+
+// Profile tab: company/driver header, username, language switch (ES/EN),
+// manual sync, logout. (The old app's profile was just a placeholder.)
+export default function ProfileScreen() {
+  const { t, i18n } = useTranslation();
+  const { data: me } = useMe();
+  const { logout } = useAuth();
+  const { sync, isSyncing } = useSync();
+  const syncInterval = useAppStore((s) => s.syncIntervalMinutes);
+  const setSyncInterval = useAppStore((s) => s.setSyncIntervalMinutes);
+  const online = useIsOnline();
+  const current = i18n.language as AppLanguage;
+
+  // "Desactivar acceso con huella" only shows when credentials are stored.
+  const [hasBioCreds, setHasBioCreds] = useState(false);
+  const refreshBio = useCallback(async () => {
+    setHasBioCreds(Boolean(await getStoredCredentials()));
+  }, []);
+  useEffect(() => {
+    void refreshBio();
+  }, [refreshBio]);
+
+  const onDisableBiometrics = () => {
+    Alert.alert(t('PROFILE.BIOMETRIC_DISABLE'), t('PROFILE.BIOMETRIC_DISABLE_CONFIRM'), [
+      { text: t('PROFILE.LOGOUT_CANCEL'), style: 'cancel' },
+      {
+        text: t('PROFILE.BIOMETRIC_DISABLE_YES'),
+        style: 'destructive',
+        onPress: () => {
+          void clearCredentials().then(refreshBio);
+        },
+      },
+    ]);
+  };
+
+  const onSync = async () => {
+    const n = await sync();
+    Alert.alert(t('PROFILE.SYNC'), t('PROFILE.SYNCED', { count: n ?? 0 }));
+  };
+
+  // Logout wipes ALL local data (next driver must start clean), so anything
+  // still queued would be lost. Try to send it now; if something remains
+  // (offline), make the driver confirm the loss explicitly.
+  const onLogout = async () => {
+    try {
+      await drainOutbox();
+    } catch {
+      /* still offline — the count below catches it */
+    }
+    const pending = await countByStatus('pending');
+    if (pending > 0) {
+      Alert.alert(
+        t('PROFILE.LOGOUT_PENDING_TITLE'),
+        t('PROFILE.LOGOUT_PENDING_BODY', { count: pending }),
+        [
+          { text: t('PROFILE.LOGOUT_CANCEL'), style: 'cancel' },
+          { text: t('PROFILE.LOGOUT_ANYWAY'), style: 'destructive', onPress: () => void logout() },
+        ],
+      );
+      return;
+    }
+    await logout();
+  };
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <Text style={styles.title}>{t('PROFILE.PROFILE')}</Text>
+      <LoggedHeader />
+
+      <View style={styles.row}>
+        <Text style={styles.label}>{t('PROFILE.USERNAME')}</Text>
+        <Text style={styles.value}>{me?.username ?? ''}</Text>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.label}>{t('PROFILE.LANGUAGE')}</Text>
+        <View style={styles.langRow}>
+          <Pressable
+            style={[styles.lang, current === 'es' && styles.langActive]}
+            onPress={() => void setLanguage('es')}
+          >
+            <Text style={[styles.langText, current === 'es' && styles.langTextActive]}>
+              {t('PROFILE.SPANISH')}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.lang, current === 'en' && styles.langActive]}
+            onPress={() => void setLanguage('en')}
+          >
+            <Text style={[styles.langText, current === 'en' && styles.langTextActive]}>
+              {t('PROFILE.ENGLISH')}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.label}>{t('PROFILE.AUTO_SYNC')}</Text>
+        <Text style={styles.autoSyncHint}>{t('PROFILE.AUTO_SYNC_HINT', { minutes: syncInterval })}</Text>
+        <View style={styles.intervalRow}>
+          {SYNC_INTERVAL_OPTIONS_MINUTES.map((m) => (
+            <Pressable
+              key={m}
+              style={[styles.interval, m === syncInterval && styles.intervalActive]}
+              onPress={() => setSyncInterval(m)}
+            >
+              <Text style={[styles.intervalText, m === syncInterval && styles.intervalTextActive]}>
+                {t('PROFILE.AUTO_SYNC_MINUTES', { count: m })}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      {/* Sin conexión no hay nada que sincronizar: deshabilitado y gris. */}
+      <Pressable
+        style={[styles.sync, (isSyncing || !online) && styles.disabled]}
+        onPress={() => void onSync()}
+        disabled={isSyncing || !online}
+      >
+        {isSyncing ? (
+          <ActivityIndicator color={colors.primaryContrast} />
+        ) : (
+          <Text style={styles.syncText}>{t('PROFILE.SYNC')}</Text>
+        )}
+      </Pressable>
+
+      {hasBioCreds && (
+        <Pressable style={styles.bioDisable} onPress={onDisableBiometrics}>
+          <Text style={styles.bioDisableText}>{t('PROFILE.BIOMETRIC_DISABLE')}</Text>
+        </Pressable>
+      )}
+
+      <Pressable style={styles.logout} onPress={() => void onLogout()}>
+        <Text style={styles.logoutText}>{t('PROFILE.LOGOUT')}</Text>
+      </Pressable>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background, padding: 20, gap: 18 },
+  title: { fontSize: 20, fontWeight: '700', color: colors.primary },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  section: { gap: 8 },
+  label: { fontSize: 14, color: colors.muted },
+  value: { fontSize: 15, color: colors.text },
+  langRow: { flexDirection: 'row', gap: 10 },
+  lang: { flex: 1, borderWidth: 1, borderColor: colors.gray, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
+  langActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  langText: { color: colors.text, fontWeight: '600' },
+  langTextActive: { color: colors.primaryContrast },
+  autoSyncHint: { fontSize: 12, color: colors.muted },
+  intervalRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  interval: {
+    borderWidth: 1,
+    borderColor: colors.gray,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+  },
+  intervalActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  intervalText: { color: colors.text, fontWeight: '600', fontSize: 13 },
+  intervalTextActive: { color: colors.primaryContrast },
+  sync: { marginTop: 'auto', backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  syncText: { color: colors.primaryContrast, fontWeight: '700', fontSize: 16 },
+  disabled: { opacity: 0.6 },
+  bioDisable: { borderWidth: 1, borderColor: colors.gray, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  bioDisableText: { color: colors.text, fontWeight: '600', fontSize: 15 },
+  logout: { borderWidth: 1, borderColor: colors.danger, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  logoutText: { color: colors.danger, fontWeight: '700', fontSize: 16 },
+});
