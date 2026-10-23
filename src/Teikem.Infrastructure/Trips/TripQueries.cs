@@ -252,12 +252,14 @@ public static class TripQueries
     }
 
     /// <summary>
-    /// Parada DELIVERY no terminal de menor secuencia de cada orden del tenant (la que se rutea), por TransportOrderId. Las
+    /// Parada DELIVERY no terminal de menor secuencia de cada orden del tenant (la que se rutea; PICKUP en las de ida y vuelta), por TransportOrderId. Las
     /// órdenes sin parada pendiente no aparecen. deliveryStopTypeId sale de ILookupCache (StopType DELIVERY).
     /// </summary>
     public static async Task<Dictionary<int, PendingDeliveryStop>> PendingDeliveryStopsAsync(this TeikemDbContext db, IReadOnlyCollection<int> orderIds,
-        int deliveryStopTypeId, CancellationToken ct)
+        int deliveryStopTypeId, CancellationToken ct, IReadOnlyCollection<int>? roundTripOrderIds = null, int pickupStopTypeId = 0)
     {
+        // 2026-10-22: las órdenes de ida y vuelta se rutean por su parada PICKUP (el chofer va a la recogida), no por la DELIVERY
+        var pickupOrders = (roundTripOrderIds ?? Array.Empty<int>()).Distinct().ToList();
         var ids = (orderIds ?? Array.Empty<int>()).Distinct().ToList();
         if (ids.Count == 0) return new Dictionary<int, PendingDeliveryStop>();
         var terminalStopIds = await db.StatusCodes.AsNoTracking()
@@ -265,7 +267,9 @@ public static class TripQueries
             .Select(s => s.StatusCodeId).ToListAsync(ct);
         var rows = await (from os in db.OrderStops.AsNoTracking()
                           join o in db.TransportOrders.AsNoTracking() on os.TransportOrderId equals o.TransportOrderId
-                          where ids.Contains(os.TransportOrderId) && os.StopTypeLookupId == deliveryStopTypeId
+                          where ids.Contains(os.TransportOrderId)
+                                && ((os.StopTypeLookupId == deliveryStopTypeId && !pickupOrders.Contains(os.TransportOrderId))
+                                    || (os.StopTypeLookupId == pickupStopTypeId && pickupOrders.Contains(os.TransportOrderId)))
                                 && !terminalStopIds.Contains(os.StatusCodeId)
                           select new
                           {

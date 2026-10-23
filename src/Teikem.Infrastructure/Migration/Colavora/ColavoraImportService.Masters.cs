@@ -40,11 +40,13 @@ public sealed partial class ColavoraImportService
             var pickUp = ColavoraRules.IsPickupServiceType(st.Type, st.IsForPickup);
             // decisión de Luis (2026-10-20): los tipos de servicio son de cada compañía, nunca los globales; el código lleva el CompanyID
             // porque UQ_LookupCode(Entity, InternalCode) es global y dos compañías no pueden repetir el mismo código
-            var extra = pickUp ? "{\"pickUp\":true,\"billable\":true}" : null;
+            var roundTrip = ColavoraRules.IsRoundTripServiceType(st.Type);
+            var extra = pickUp ? "{\"pickUp\":true,\"billable\":true}" : roundTrip ? RoundTripMarksJson : null;
             var id = await EnsureTenantLookupAsync(s, LookupDomains.ServiceType, ColavoraRules.CompanyCatalogCode(st.Name, s.CompanyId), Labels("SERVICETYPE", st.Id, st.Name), extra, $"servicio {st.Name}", ct);
             if (id is int sid)
             {
                 s.ServiceTypes[st.Id] = (sid, st.Name, pickUp);
+                if (roundTrip) { s.RoundTripServiceTypeIds.Add(sid); await EnsureRoundTripMarkAsync(s, sid, ct); }
                 if (pickUp && string.Equals(st.Type?.Trim(), "PK", StringComparison.OrdinalIgnoreCase)) s.PickupServiceTypeId = sid;
                 if (string.Equals(st.Type?.Trim(), "ND", StringComparison.OrdinalIgnoreCase) || s.DefaultServiceTypeId == s.GlobalServiceTypeId) s.DefaultServiceTypeId = sid;
             }
@@ -90,6 +92,20 @@ public sealed partial class ColavoraImportService
             if (id is int rid) s.Reasons[r.Code] = (rid, r.Description);
         }
         if (!s.Reasons.ContainsKey("312")) s.Reasons["312"] = (0, "DELIVERED");
+        lookups.Invalidate();
+    }
+
+    private const string RoundTripMarksJson = "{\"pickUp\":false,\"billable\":true,\"roundTrip\":true}";
+
+    /// <summary>El tipo de servicio «ida y vuelta» ya existía de una corrida anterior sin la marca: se la pone (2026-10-22).</summary>
+    private async Task EnsureRoundTripMarkAsync(RunState s, int lookupId, CancellationToken ct)
+    {
+        if (s.DryRun || s.TenantId is null) return;
+        var row = await db.LookupCodes.IgnoreQueryFilters().FirstOrDefaultAsync(l => l.LookupCodeId == lookupId, ct);
+        if (row is null || Teikem.Domain.Orders.ServiceTypeMarks.Parse(row.ExtraJson).RoundTrip) return;
+        row.ExtraJson = RoundTripMarksJson;
+        await db.SaveChangesAsync(ct);
+        db.ChangeTracker.Clear();
         lookups.Invalidate();
     }
 

@@ -98,7 +98,8 @@ public sealed partial class ColavoraImportService
 
         // envíos nuevos que Colavora manda sin ZIP del consignatario: se infiere (historial, luego municipio) antes de armar las paradas
         s.InferredByShipment.Clear();
-        var missingZip = batch.Where(x => !existing.Contains(x.Waybill) && ColavoraRules.NormalizeZip(x.Zip) is null)
+        var missingZip = batch.Where(x => !existing.Contains(x.Waybill) && ColavoraRules.NormalizeZip(x.Zip) is null
+                && !(x.ServiceType is int sti && s.ServiceTypes.TryGetValue(sti, out var stv) && s.RoundTripServiceTypeIds.Contains(stv.LookupId)))   // la ida y vuelta se zonifica por la recogida: no necesita el ZIP de entrega
             .Select(x => new MissingZip(x.ShipmentId, $"{x.ShipmentId} {x.Waybill}", x.ConsigneeName, x.AddressLine1, x.AddressLine2)).ToList();
         foreach (var kv in await InferMissingZipsAsync(s, missingZip, ct)) s.InferredByShipment[kv.Key] = kv.Value;
 
@@ -297,7 +298,12 @@ public sealed partial class ColavoraImportService
         }
         order.TotalPieces = order.CargoLines.Where(l => l.PackageNumber is not null).Sum(l => (int)l.Quantity);
         // Lote 129: zona de entrega por el ZIP del consignatario
-        if (ColavoraRules.NormalizeZip(sh.Zip) is { } dzip) { if (s.ZoneIdByZip.TryGetValue(dzip, out var zoneId) && zoneId > 0) order.DeliveryZoneId = zoneId; }
+        if (s.RoundTripServiceTypeIds.Contains(serviceType.Item1))
+        {
+            // ida y vuelta (2026-10-22): el chofer va a la recogida, así que la zona sale del ZIP del remitente
+            if (ColavoraRules.NormalizeZip(sh.SenderZip) is { } pzip && s.ZoneIdByZip.TryGetValue(pzip, out var pzone) && pzone > 0) order.DeliveryZoneId = pzone;
+        }
+        else if (ColavoraRules.NormalizeZip(sh.Zip) is { } dzip) { if (s.ZoneIdByZip.TryGetValue(dzip, out var zoneId) && zoneId > 0) order.DeliveryZoneId = zoneId; }
         else if (s.InferredByShipment.TryGetValue(sh.ShipmentId, out var inferred) && inferred.ZoneId > 0) order.DeliveryZoneId = inferred.ZoneId;   // sin ZIP en Colavora: el inferido (2026-10-22)
 
         // referencias

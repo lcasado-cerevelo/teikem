@@ -33,3 +33,15 @@ Un pick up **facturable** se cobra al llegar a **En almacén**, sea cual sea el 
 - *Quiero un pick up que no se cobre:* en Listas → Tipo de servicio → Pick up → Ajustar, apague **Facturable**.
 - *Quiero un tipo de servicio propio de pick up:* cree un valor en la lista de tipos de servicio de la compañía y encienda **Pick up**.
 - *Un envío de pick up se quedó en Recogido:* escanee **Llegó** para llevarla a En almacén.
+
+## 6. Ida y vuelta (2026-10-22)
+Un tercer interruptor del tipo de servicio, **Ida y vuelta**, marca los envíos que se **recogen en la tienda y se traen de vuelta** (en Colavora, el tipo «Roundtrip», RT). Cambia a qué dirección va el chofer:
+
+- **La zona** del envío sale del código postal (o pueblo) de la **recogida**, no de la entrega. Así la ruta de zona agrupa lo que el chofer realmente recorre.
+- **La parada de la ruta y el mapa** son las de la recogida: dirección, pin y hora estimada son los de la tienda. La entrega (el almacén del cliente, siempre el mismo) no sale como parada.
+- **En Despacho se ve qué se visita y de qué tipo es:** cada parada y cada envío de «Sin asignar» lleva una etiqueta **Recoger** (ida y vuelta) o **Entregar**, y el **tipo de servicio** (p. ej. ROUNDTRIP). Pasar el cursor por **Recoger** explica que es un envío de ida y vuelta.
+- **Dónde se enciende:** Listas → Tipo de servicio → Ajustar (o Editar) → **Ida y vuelta**. La migración de Colavora lo enciende sola para el tipo RT.
+- **Si el envío cambia** de consignatario, de recogido o de tipo de servicio, la zona se recalcula con la regla de arriba. «Recalcular zonas» (Listas → Zonas de despacho) también la respeta.
+- **Lo ya cargado** se arregla con `import-colavora --solo reparar,paradas`: pone la zona de la recogida a los envíos de ida y vuelta y pasa las paradas de las rutas vigentes de la entrega a la recogida. Las rutas que ya tenían esos envíos conservan su agrupación (la ruta de la zona de entrega); para reagruparlos por la zona de la recogida, sáquelos de la ruta en Borrador y vuelva a «Planificar el día».
+
+Casos frecuentes: *«Todos los envíos de una ruta parecen ir al mismo cliente»:* eran de ida y vuelta mostrados por su entrega; ahora se muestra la tienda donde se recoge. *«Un envío de ida y vuelta no aparece en la zona que espero»:* su zona es la de la recogida; revise el código postal de la parada de recogida.

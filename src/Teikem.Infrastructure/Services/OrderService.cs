@@ -315,7 +315,7 @@ public sealed class OrderService(
                     }
                     var deliveryStop = new OrderStop { TransportOrderId = order.TransportOrderId, StopTypeLookupId = deliveryTypeId, Sequence = 2, StatusCodeId = stopInitial.StatusCodeId };
                     OrderRules.ApplySnapshot(deliveryStop, consigneeLoc, consigneeCountry, req.RequestedDate);
-                    order.DeliveryZoneId = await OrderZoneResolver.ResolveAsync(db, deliveryStop.SnapPostalCode, deliveryStop.SnapCity, ct2);   // Lote 129: zona (y nivel) de la entrega
+                    order.DeliveryZoneId = await OrderRouting.ResolveZoneAsync(db, order.ServiceTypeLookupId, pickupStop, deliveryStop, ct2);   // Lote 129: zona (y nivel) de la entrega; 2026-10-22: de la recogida si es de ida y vuelta
                     db.OrderStops.Add(deliveryStop);
                     await db.SaveChangesAsync(ct2);
                     if (pickupStop is not null) await BornStopAsync(pickupStop, stopInitial.InternalCode, ct2);
@@ -468,7 +468,6 @@ public sealed class OrderService(
                     loc = await db.Locations.AsNoTracking().FirstAsync(l => l.LocationId == created.Id, ct2);
                 }
                 OrderRules.ApplySnapshot(deliveryStop, loc, await CountryCodeAsync(loc.CountryLookupId, ct2), requestedDate);
-                order.DeliveryZoneId = await OrderZoneResolver.ResolveAsync(db, deliveryStop.SnapPostalCode, deliveryStop.SnapCity, ct2);   // Lote 129
             }
             else if (req.RequestedDate is not null && deliveryStop.LocationId is int deliveryLocId)
             {
@@ -503,6 +502,9 @@ public sealed class OrderService(
 
             if (serviceTypeId is int st) order.ServiceTypeLookupId = st;
             if (req.Priority is not null) order.PriorityLookupId = priorityId;
+            // Lote 129: la zona sigue a la dirección que se visita (2026-10-22: la recogida si el tipo de servicio es de ida y vuelta); se recalcula si cambió el consignatario, el recogido o el servicio
+            if (consignee is not null || pickup is not null || serviceTypeId is not null)
+                order.DeliveryZoneId = await OrderRouting.ResolveZoneAsync(db, order.ServiceTypeLookupId, pickupStop, deliveryStop, ct2);
 
             // Paquetes: reemplazo (las líneas actuales quedan IsActive=0 como rastro) y totales recalculados
             if (newLines is not null)

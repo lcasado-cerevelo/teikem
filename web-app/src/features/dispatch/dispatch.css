@@ -17,6 +17,9 @@
 /* aviso rojo de «sobrepasa el máximo de paradas» */
 .disp .alertbanner{display:flex;align-items:center;gap:10px;background:var(--dangerbg);border:1px solid var(--danger);color:var(--danger);border-radius:11px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;font-weight:600;overflow-wrap:anywhere}
 .disp .alertbanner svg{color:var(--danger);flex:none;width:16px;height:16px}
+.disp .alertbanner.inpanel{margin:12px 12px 0}
+.disp .disp-over-icon{color:var(--danger);display:inline-flex;align-items:center;cursor:help;padding:0 4px}
+.disp .disp-over-icon svg{width:16px;height:16px}
 
 /* órdenes sin asignar */
 .disp-un-tools{display:flex;align-items:center;gap:8px;padding:8px 13px;border-bottom:1px solid var(--line-2);flex-wrap:wrap}

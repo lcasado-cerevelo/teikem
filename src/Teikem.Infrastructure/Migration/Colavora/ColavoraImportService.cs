@@ -146,6 +146,8 @@ public sealed partial class ColavoraImportService(
         public HashSet<string> PieceNumbers { get; } = new(StringComparer.OrdinalIgnoreCase);
         /// <summary>Pueblos de la tabla Zip de Colavora con su zona (se arma una vez, cuando hace falta inferir un ZIP).</summary>
         public ColavoraZipInference.MunicipalityIndex? Municipalities { get; set; }
+        /// <summary>LookupCodeId de los tipos de servicio «ida y vuelta» (RT) de la compañía: su zona y su parada en la ruta son las de la recogida.</summary>
+        public HashSet<int> RoundTripServiceTypeIds { get; } = new();
         /// <summary>ShipmentID → ZIP/zona inferidos del lote en curso (solo los que Colavora mandó sin ZIP y se pudieron resolver).</summary>
         public Dictionary<int, ColavoraZipInference.Inferred> InferredByShipment { get; } = new();
         public long ZipFromHistory { get; set; }

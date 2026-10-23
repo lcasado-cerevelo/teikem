@@ -115,12 +115,14 @@ export function RouteStopsList({
             <button type="button" className="body disp-stop-pick" aria-pressed={s.id === selectedId} aria-label={t('dispatch.stops.select', { number })} onClick={() => onSelect(s.id ?? 0)}>
               <span className="ref">{s.orderNumber}</span>
               <span className="meta">{[s.consigneeName, town].filter(Boolean).join(' · ')}</span>
-              {(s.lateForWindow || !located || manual || s.isApproximate) && (
-                <span className="tags">
+              <span className="tags">
+                  <Chip tone={s.stopKind === 'PICKUP' ? 'warn' : 'cap'} title={s.stopKind === 'PICKUP' ? t('dispatch.kind.pickupHint') : undefined}>
+                    {t(s.stopKind === 'PICKUP' ? 'dispatch.kind.pickup' : 'dispatch.kind.delivery')}
+                  </Chip>
+                  {s.serviceType && <Chip>{s.serviceType}</Chip>}
                   {s.lateForWindow && <Chip tone="fail">{t('dispatch.stops.late')}</Chip>}
                   {!located ? <Chip tone="warn">{t('dispatch.stops.noPin')}</Chip> : manual ? <Chip tone="cap">{t('dispatch.stops.manual')}</Chip> : s.isApproximate && <Chip tone="warn">{t('dispatch.stops.approx')}</Chip>}
-                </span>
-              )}
+              </span>
             </button>
             {s.plannedArrivalUtc && <span className="eta" title={t('dispatch.stops.eta')}>{f.time(s.plannedArrivalUtc)}</span>}
             {(editable || canPin) && (

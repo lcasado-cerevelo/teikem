@@ -58,7 +58,10 @@ public sealed class RouteWriter(TeikemDbContext db, StatusService statuses, ILoo
         var pipeline = await statuses.GetPipelineAsync(StatusDomains.OrderStatus, includeDisabled: true, ct);
         var inTransitSort = pipeline.FirstOrDefault(s => Same(s.Code, OrderStatuses.InTransit))?.SortOrder ?? int.MaxValue;
         var deliveryTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Delivery, ct);
-        var pending = await db.PendingDeliveryStopsAsync(orders.Select(o => o.TransportOrderId).ToList(), deliveryTypeId, ct);
+        var roundTripTypes = await OrderRouting.RoundTripServiceTypeIdsAsync(db, ct);
+        var pickupTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Pickup, ct);
+        var pending = await db.PendingDeliveryStopsAsync(orders.Select(o => o.TransportOrderId).ToList(), deliveryTypeId, ct,
+            orders.Where(o => roundTripTypes.Contains(o.ServiceTypeLookupId)).Select(o => o.TransportOrderId).ToList(), pickupTypeId);
         var allowedByStatus = new Dictionary<int, bool>();
 
         foreach (var o in orders)
@@ -167,7 +170,10 @@ public sealed class RouteWriter(TeikemDbContext db, StatusService statuses, ILoo
         // 5. TripOrder + RouteStop al final.
         var route = existing ?? await GetOrCreateActiveRouteAsync(trip, ct);
         var deliveryTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Delivery, ct);
-        var pendingStops = await db.PendingDeliveryStopsAsync(ids, deliveryTypeId, ct);
+        var roundTripTypes = await OrderRouting.RoundTripServiceTypeIdsAsync(db, ct);
+        var pickupTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Pickup, ct);
+        var pendingStops = await db.PendingDeliveryStopsAsync(ids, deliveryTypeId, ct,
+            orders.Where(o => roundTripTypes.Contains(o.ServiceTypeLookupId)).Select(o => o.TransportOrderId).ToList(), pickupTypeId);
         var pendingStatus = await statuses.GetByCodeAsync(StatusDomains.RouteStopStatus, RouteStopStatuses.Pending, ct);
         var seq = existingStops.Count == 0 ? 0 : existingStops.Max(s => s.Sequence);
         var now = DateTime.UtcNow;

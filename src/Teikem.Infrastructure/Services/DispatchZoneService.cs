@@ -284,16 +284,18 @@ public sealed class DispatchZoneService(TeikemDbContext db, ITenantContext tenan
 
     /// <summary>
     /// Lote 129: pone la zona de entrega (DeliveryZoneId) a las órdenes activas que no la tienen (o a todas, con all = true: después de cambiar los miembros de las zonas). Resuelve por ZIP y
-    /// pueblo de la parada de entrega como al crear la orden; las ambiguas o sin coincidencia quedan sin zona. Devuelve cuántas se examinaron, cuántas quedaron con zona y cuántas sin resolver.
+    /// pueblo de la parada de entrega (de la recogida si el tipo de servicio es de ida y vuelta) como al crear la orden; las ambiguas o sin coincidencia quedan sin zona. Devuelve cuántas se examinaron, cuántas quedaron con zona y cuántas sin resolver.
     /// </summary>
     public async Task<AssignOrderZonesResultDto> AssignOrdersAsync(bool all, CancellationToken ct)
     {
         var members = await db.ActiveZoneMembersAsync(ct);
         var deliveryTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Delivery, ct);
+        var pickupTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Pickup, ct);
+        var roundTripTypes = (await Teikem.Infrastructure.Orders.OrderRouting.RoundTripServiceTypeIdsAsync(db, ct)).ToList();   // 2026-10-22: ida y vuelta se zonifica por la recogida
         var codes = await db.DispatchZones.AsNoTracking().Where(z => z.IsActive).ToDictionaryAsync(z => z.Code, z => z.DispatchZoneId, StringComparer.OrdinalIgnoreCase, ct);
         var query = db.TransportOrders.AsNoTracking().Where(o => o.IsActive);
         if (!all) query = query.Where(o => o.DeliveryZoneId == null);
-        var rows = await query.Select(o => new { o.TransportOrderId, o.DeliveryZoneId, Stop = o.Stops.Where(s => s.StopTypeLookupId == deliveryTypeId).OrderBy(s => s.Sequence).Select(s => new { s.SnapPostalCode, s.SnapCity }).FirstOrDefault() }).ToListAsync(ct);
+        var rows = await query.Select(o => new { o.TransportOrderId, o.DeliveryZoneId, Stop = o.Stops.Where(s => s.StopTypeLookupId == (roundTripTypes.Contains(o.ServiceTypeLookupId) ? pickupTypeId : deliveryTypeId)).OrderBy(s => s.Sequence).Select(s => new { s.SnapPostalCode, s.SnapCity }).FirstOrDefault() }).ToListAsync(ct);
         var assigned = 0;
         var unresolved = 0;
         var changes = new Dictionary<int?, List<int>>();
@@ -323,8 +325,10 @@ public sealed class DispatchZoneService(TeikemDbContext db, ITenantContext tenan
     {
         var members = await db.ActiveZoneMembersAsync(ct);
         var deliveryTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Delivery, ct);
+        var pickupTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Pickup, ct);
+        var roundTripTypes = (await Teikem.Infrastructure.Orders.OrderRouting.RoundTripServiceTypeIdsAsync(db, ct)).ToList();
         var stops = await db.TransportOrders.AsNoTracking().Where(o => o.IsActive && o.DeliveryZoneId == null)
-            .Select(o => o.Stops.Where(s => s.StopTypeLookupId == deliveryTypeId).OrderBy(s => s.Sequence).Select(s => new { s.SnapPostalCode, s.SnapCity }).FirstOrDefault()).ToListAsync(ct);
+            .Select(o => o.Stops.Where(s => s.StopTypeLookupId == (roundTripTypes.Contains(o.ServiceTypeLookupId) ? pickupTypeId : deliveryTypeId)).OrderBy(s => s.Sequence).Select(s => new { s.SnapPostalCode, s.SnapCity }).FirstOrDefault()).ToListAsync(ct);
         var groups = new Dictionary<(string Zip, string City), (string? Zip, string? City, int Count)>();
         foreach (var s in stops)
         {

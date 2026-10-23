@@ -89,7 +89,10 @@ public sealed record RouteStopDto(
     string StatusCode,
     string Status,
     DateTime? ActualArrivalUtc,
-    DateTime? ActualDepartureUtc);
+    DateTime? ActualDepartureUtc,
+    string StopKind = "DELIVERY",
+    string? ServiceType = null,
+    bool IsRoundTrip = false);
 
 /// <summary>Orden que no cupo en la última optimización y sigue sin ruta, con el motivo.</summary>
 public sealed record UnassignedStopDto(Guid OrderPublicId, string OrderNumber, string ReasonCode, string Reason);
@@ -241,7 +244,10 @@ public sealed record UnassignedOrderDto(
     decimal? WeightKg,
     decimal? VolumeM3,
     GeoPointDto? Point,
-    string? GeocodeAccuracyCode);
+    string? GeocodeAccuracyCode,
+    string StopKind = "DELIVERY",
+    string? ServiceType = null,
+    bool IsRoundTrip = false);
 
 public sealed record UnassignedOrderPageDto(int Total, int Skip, int Take, IReadOnlyList<UnassignedOrderDto> Items);
 

@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Migration.Colavora;
 using Teikem.Domain.Trips;
+using Teikem.Infrastructure.Orders;
+using Teikem.Infrastructure.Trips;
 
 namespace Teikem.Infrastructure.Migration.Colavora;
 
@@ -79,6 +81,7 @@ public sealed partial class ColavoraImportService
     {
         if (s.TenantId is null) return;
         var tenant = s.TenantId.Value;
+        var roundTrip = (await OrderRouting.RoundTripServiceTypeIdsAsync(db, ct)).ToList();   // su zona sale de la recogida (RepairRoundTripAsync)
         var lastId = 0;
         long fixedCount = 0;
         var started = DateTime.UtcNow;
@@ -86,7 +89,7 @@ public sealed partial class ColavoraImportService
         {
             ct.ThrowIfCancellationRequested();
             var stops = await db.OrderStops.Include(x => x.Order)
-                .Where(x => x.OrderStopId > lastId && x.StopTypeLookupId == s.StopTypeDeliveryId && x.SnapPostalCode == null && x.Order!.DeliveryZoneId == null && x.Order.TenantId == tenant)
+                .Where(x => x.OrderStopId > lastId && x.StopTypeLookupId == s.StopTypeDeliveryId && x.SnapPostalCode == null && x.Order!.DeliveryZoneId == null && x.Order.TenantId == tenant && !roundTrip.Contains(x.Order.ServiceTypeLookupId))
                 .OrderBy(x => x.OrderStopId).Take(Math.Max(100, s.Config.Options.BatchSize)).ToListAsync(ct);
             if (stops.Count == 0) break;
             lastId = stops[^1].OrderStopId;
@@ -108,8 +111,73 @@ public sealed partial class ColavoraImportService
             }
             db.ChangeTracker.Clear();
         }
+        await RepairRoundTripAsync(s, ct);
         s.Report.AddInfo("Envíos ya migrados reparados (ZIP/zona)", $"{fixedCount:N0}{(s.DryRun ? " (simulación: no se guardó nada)" : string.Empty)} en {(DateTime.UtcNow - started):hh\\:mm\\:ss}");
         if (!s.Phases.Contains(ColavoraPhases.Orders)) ReportInferredTotals(s);   // con «ordenes» el total sale al final de esa fase
+    }
+
+    /// <summary>
+    /// Ida y vuelta (2026-10-22, dictado de Luis): el chofer va a la RECOGIDA. Para los envíos de ese tipo ya cargados: (1) la zona sale del ZIP/pueblo de la recogida
+    /// y no de la entrega; (2) las paradas de las rutas vigentes que apuntaban a la entrega pasan a la recogida (la dirección y el pin del mapa son los de la tienda).
+    /// </summary>
+    private async Task RepairRoundTripAsync(RunState s, CancellationToken ct)
+    {
+        var roundTrip = (await OrderRouting.RoundTripServiceTypeIdsAsync(db, ct)).ToList();
+        if (roundTrip.Count == 0 || s.TenantId is null) return;
+        var tenant = s.TenantId.Value;
+        var members = await db.ActiveZoneMembersAsync(ct);
+        var codes = await db.DispatchZones.AsNoTracking().Where(z => z.IsActive).ToDictionaryAsync(z => z.Code, z => z.DispatchZoneId, StringComparer.OrdinalIgnoreCase, ct);
+
+        // (1) zona por la recogida
+        var lastId = 0;
+        long zonesChanged = 0, orders = 0;
+        while (true)
+        {
+            ct.ThrowIfCancellationRequested();
+            var batch = await db.TransportOrders.Include(o => o.Stops)
+                .Where(o => o.TransportOrderId > lastId && o.TenantId == tenant && o.IsActive && roundTrip.Contains(o.ServiceTypeLookupId))
+                .OrderBy(o => o.TransportOrderId).Take(500).ToListAsync(ct);
+            if (batch.Count == 0) break;
+            lastId = batch[^1].TransportOrderId;
+            foreach (var o in batch)
+            {
+                orders++;
+                var pickup = o.Stops.Where(x => x.StopTypeLookupId == s.StopTypePickupId).OrderBy(x => x.Sequence).FirstOrDefault();
+                if (pickup is null) continue;
+                var zoneId = OrderZoneResolver.Resolve(members, codes, pickup.SnapPostalCode, pickup.SnapCity);
+                if (o.DeliveryZoneId == zoneId) continue;
+                o.DeliveryZoneId = zoneId;
+                zonesChanged++;
+            }
+            if (!s.DryRun)
+            {
+                db.SuppressAudit = true;
+                try { await db.SaveChangesAsync(ct); }
+                finally { db.SuppressAudit = false; }
+            }
+            db.ChangeTracker.Clear();
+        }
+
+        // (2) paradas de las rutas vigentes: de la entrega a la recogida
+        var moved = 0;
+        // con seguimiento (AsTracking en todo el query: mezclarlo con AsNoTracking lo deja sin seguimiento y no guardaría nada)
+        var links = await (from rs in db.RouteStops.AsTracking()
+                           join r in db.Routes on rs.RouteId equals r.RouteId
+                           join d in db.OrderStops on rs.OrderStopId equals d.OrderStopId
+                           join o in db.TransportOrders on d.TransportOrderId equals o.TransportOrderId
+                           join p in db.OrderStops on o.TransportOrderId equals p.TransportOrderId
+                           where r.IsActive && o.TenantId == tenant && roundTrip.Contains(o.ServiceTypeLookupId)
+                                 && d.StopTypeLookupId == s.StopTypeDeliveryId && p.StopTypeLookupId == s.StopTypePickupId
+                           select new { Stop = rs, PickupStopId = p.OrderStopId }).ToListAsync(ct);
+        foreach (var l in links) { l.Stop.OrderStopId = l.PickupStopId; moved++; }
+        if (!s.DryRun && moved > 0)
+        {
+            db.SuppressAudit = true;
+            try { await db.SaveChangesAsync(ct); }
+            finally { db.SuppressAudit = false; }
+        }
+        db.ChangeTracker.Clear();
+        s.Report.AddInfo("Ida y vuelta: zona por la recogida y paradas en la recogida", $"{orders:N0} envíos de ida y vuelta, {zonesChanged:N0} con la zona cambiada a la de su recogida, {moved:N0} paradas de ruta movidas de la entrega a la recogida{(s.DryRun ? " (simulación: no se guardó nada)" : string.Empty)}");
     }
 
     // ================================================================ rutas y paradas de los viajes migrados
@@ -134,6 +202,7 @@ public sealed partial class ColavoraImportService
         var tripStatusCode = s.TripStatus.ToDictionary(kv => kv.Value, kv => kv.Key);
         var orderStopStatusCode = s.StopStatus.ToDictionary(kv => kv.Value, kv => kv.Key);
 
+        var roundTripTypes = (await OrderRouting.RoundTripServiceTypeIdsAsync(db, ct)).ToList();   // la ida y vuelta se visita en su recogida
         var tripIds = await db.Trips.AsNoTracking().Where(t => t.Code.StartsWith("M-") && !db.Routes.Any(r => r.TripId == t.TripId)).Select(t => t.TripId).ToListAsync(ct);
         long routes = 0, stopsCreated = 0;
         foreach (var chunk in tripIds.Chunk(100))
@@ -142,8 +211,9 @@ public sealed partial class ColavoraImportService
             var trips = await db.Trips.AsNoTracking().Where(t => chunk.Contains(t.TripId)).Select(t => new { t.TripId, t.StatusCodeId, t.CreatedAtUtc }).ToListAsync(ct);
             var links = await (from l in db.TripOrders.AsNoTracking()
                                where chunk.Contains(l.TripId) && l.IsCurrent
+                               join o in db.TransportOrders.AsNoTracking() on l.TransportOrderId equals o.TransportOrderId
                                join st in db.OrderStops.AsNoTracking() on l.TransportOrderId equals st.TransportOrderId
-                               where st.StopTypeLookupId == s.StopTypeDeliveryId
+                               where st.StopTypeLookupId == (roundTripTypes.Contains(o.ServiceTypeLookupId) ? s.StopTypePickupId : s.StopTypeDeliveryId)
                                select new { l.TripId, l.TransportOrderId, l.AssignedAtUtc, st.OrderStopId, st.StatusCodeId, st.CompletedAtUtc }).ToListAsync(ct);
             foreach (var t in trips)
             {

@@ -8,6 +8,7 @@ import { StatusChip } from '../../kernel/catalogs'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
 import { EmptyState, IconPin, IconRoute, IconTrash, Panel, RouteMap, Spinner, toast } from '../../kernel/ui'
+import { IconAlert } from '../../kernel/ui/icons'
 import { CommentDialog } from '../drivers/CommentDialog'
 import { useCancelTrip, useCompleteTrip, usePatchTrip, useRemoveOrder, useSetSequence, useSetStopLocation, useStartTrip } from './dispatchApi'
 import {
@@ -73,6 +74,7 @@ export function ActiveRoutePanel({
   message,
   onMessage,
   note,
+  overLimit,
   onDeleted,
 }: {
   detail: TripDetail | undefined
@@ -87,6 +89,8 @@ export function ActiveRoutePanel({
   message: RouteMessage | null
   onMessage: (m: RouteMessage | null) => void
   note: OptimizeNote | null
+  /** Texto del aviso «pasa el máximo de paradas» (solo si la ruta se está armando); null = sin aviso. */
+  overLimit: string | null
   onDeleted: () => void
 }) {
   const t = useT()
@@ -231,12 +235,21 @@ export function ActiveRoutePanel({
           {t('dispatch.active.title')} · <span className="ref">{detail.code}</span> <StatusChip domain="TripStatus" code={detail.statusCode} label={detail.status} />
         </>
       }
-      badge={`${detail.zoneCode ?? t('dispatch.active.noZone')} · ${stopsLabel(t, total)}${detail.overStopLimit ? ' ⚠' : ''}`}
+      badge={`${detail.zoneCode ?? t('dispatch.active.noZone')} · ${stopsLabel(t, total)}`}
       actions={
-        actions.remove ? (
-          <button type="button" className="rowbtn" aria-label={t('dispatch.delete.action')} title={t('dispatch.delete.action')} onClick={() => setDialog('delete')}>
-            <IconTrash />
-          </button>
+        overLimit || actions.remove ? (
+          <>
+            {overLimit && (
+              <span className="disp-over-icon" tabIndex={0} role="img" aria-label={overLimit} title={overLimit}>
+                <IconAlert />
+              </span>
+            )}
+            {actions.remove && (
+              <button type="button" className="rowbtn" aria-label={t('dispatch.delete.action')} title={t('dispatch.delete.action')} onClick={() => setDialog('delete')}>
+                <IconTrash />
+              </button>
+            )}
+          </>
         ) : undefined
       }
       flush
@@ -244,6 +257,13 @@ export function ActiveRoutePanel({
       {mine && (
         <div className={mine.kind === 'error' ? 'form-alert disp-alert' : 'note disp-alert'} role={mine.kind === 'error' ? 'alert' : 'status'} style={{ margin: 12 }}>
           {mine.text}
+        </div>
+      )}
+
+      {overLimit && (
+        <div className="alertbanner inpanel" role="alert">
+          <IconAlert />
+          <span>{overLimit}</span>
         </div>
       )}
 

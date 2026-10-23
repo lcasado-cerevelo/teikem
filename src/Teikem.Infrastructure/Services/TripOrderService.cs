@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Fleet;
 using Teikem.Domain.Trips;
@@ -162,6 +163,7 @@ public sealed class TripOrderService(
         foreach (var r in page)
         {
             var accuracy = r.GeocodeAccuracyLookupId is int accId ? await lookups.GetAsync(accId, ct) : null;
+            var serviceType = await lookups.GetAsync(r.ServiceTypeLookupId, ct);
             items.Add(new UnassignedOrderDto(
                 r.TransportOrderId, r.PublicId, r.OrderNumber, r.PackBatchNumber, r.ClientInvoiceNumber,
                 clientNames.GetValueOrDefault(r.ClientId) ?? "", r.ConsigneeName,
@@ -171,7 +173,10 @@ public sealed class TripOrderService(
                 r.RequestedDate, r.WindowStartUtc, r.WindowEndUtc,
                 r.Pieces, r.WeightKg, r.VolumeM3,
                 points.GetValueOrDefault(r.OrderStopId),
-                accuracy?.InternalCode));
+                accuracy?.InternalCode,
+                r.IsRoundTrip ? StopTypes.Pickup : StopTypes.Delivery,
+                serviceType is null ? null : MultilingualText.Resolve(serviceType.LabelJson, tenant.Lang),
+                r.IsRoundTrip));
         }
         return new UnassignedOrderPageDto(all.Count, check.Skip, check.Take, items);
     }
@@ -184,7 +189,7 @@ public sealed class TripOrderService(
         int OrderStopId, string? ConsigneeName, string City, string? PostalCode, DateTime? WindowStartUtc, DateTime? WindowEndUtc,
         int? GeocodeAccuracyLookupId, int? ZoneId, string? ZoneCode, bool ZoneAmbiguous,
         string StatusCode, string StatusLabel, DateTime? RequestedDate, int? Pieces, decimal? WeightKg, decimal? VolumeM3,
-        string? IneligibleReason);
+        string? IneligibleReason, int ServiceTypeLookupId, bool IsRoundTrip);
 
     private async Task<List<PoolRow>> LoadPoolAsync(UnassignedPoolFilter filter, bool withEligibility, CancellationToken ct)
     {
@@ -200,8 +205,10 @@ public sealed class TripOrderService(
         if (assignable.Count == 0) return new List<PoolRow>();
         var statusIds = assignable.Keys.ToList();
 
-        // Parada DELIVERY no terminal (la de menor secuencia es la que se rutea).
+        // Parada DELIVERY no terminal (la de menor secuencia es la que se rutea); en los envíos de ida y vuelta (2026-10-22) es la PICKUP: el chofer va a la recogida.
         var deliveryTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Delivery, ct);
+        var pickupTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Pickup, ct);
+        var roundTripTypes = (await OrderRouting.RoundTripServiceTypeIdsAsync(db, ct)).ToList();
         var terminalStopIds = await db.StatusCodes.AsNoTracking()
             .Where(s => s.Entity == StatusDomains.StopStatus && s.StageKind!.InternalCode == StageKinds.Terminal)
             .Select(s => s.StatusCodeId).ToListAsync(ct);
@@ -209,7 +216,7 @@ public sealed class TripOrderService(
         var query = db.TransportOrders.AsNoTracking()
             .Where(o => o.IsActive && !o.IsSpecialDelivery && statusIds.Contains(o.StatusCodeId))
             .Where(o => !db.TripOrders.Any(t => t.TransportOrderId == o.TransportOrderId && t.IsCurrent))
-            .Where(o => o.Stops.Any(s => s.StopTypeLookupId == deliveryTypeId && !terminalStopIds.Contains(s.StatusCodeId)));
+            .Where(o => o.Stops.Any(s => s.StopTypeLookupId == (roundTripTypes.Contains(o.ServiceTypeLookupId) ? pickupTypeId : deliveryTypeId) && !terminalStopIds.Contains(s.StatusCodeId)));
         if (filter.RequestedUpTo is DateOnly upTo)
         {
             var limit = upTo.AddDays(1).ToDateTime(TimeOnly.MinValue);   // ≤ ese día (hasta exclusivo +1)
@@ -220,9 +227,9 @@ public sealed class TripOrderService(
             .Select(o => new
             {
                 o.TransportOrderId, o.PublicId, o.OrderNumber, o.PackBatchNumber, o.ClientInvoiceNumber, o.ClientId,
-                o.StatusCodeId, o.RequestedDate, o.TotalPieces, o.TotalWeightKg, o.TotalVolumeM3,
+                o.StatusCodeId, o.RequestedDate, o.TotalPieces, o.TotalWeightKg, o.TotalVolumeM3, o.ServiceTypeLookupId,
                 Stop = o.Stops
-                    .Where(s => s.StopTypeLookupId == deliveryTypeId && !terminalStopIds.Contains(s.StatusCodeId))
+                    .Where(s => s.StopTypeLookupId == (roundTripTypes.Contains(o.ServiceTypeLookupId) ? pickupTypeId : deliveryTypeId) && !terminalStopIds.Contains(s.StatusCodeId))
                     .OrderBy(s => s.Sequence).ThenBy(s => s.OrderStopId)
                     .Select(s => new { s.OrderStopId, s.SnapName, s.SnapCity, s.SnapPostalCode, s.WindowStartUtc, s.WindowEndUtc, s.GeocodeAccuracyLookupId })
                     .FirstOrDefault(),
@@ -272,7 +279,7 @@ public sealed class TripOrderService(
                 o.Stop.WindowStartUtc, o.Stop.WindowEndUtc, o.Stop.GeocodeAccuracyLookupId,
                 zone.ZoneId, zone.ZoneCode, zone.Ambiguous,
                 status.Code, status.Label, o.RequestedDate, o.TotalPieces, o.TotalWeightKg, o.TotalVolumeM3,
-                ineligible));
+                ineligible, o.ServiceTypeLookupId, roundTripTypes.Contains(o.ServiceTypeLookupId)));
         }
 
         return result

@@ -19,6 +19,7 @@ import {
   hasUnassignedFilters,
   isSelectable,
   maxStopsSource,
+  showOverStopLimit,
   moveStop,
   NO_ACTIONS,
   optimizeDelta,
@@ -147,6 +148,14 @@ describe('avisos, bloqueantes y despacho', () => {
   it('resumen del lote: despachadas y falladas', () => {
     expect(batchSummary([{ dispatched: true }, { dispatched: false, error: 'x' }, { dispatched: true }])).toEqual({ requested: 3, dispatched: 2, failed: 1 })
     expect(batchSummary([])).toEqual({ requested: 0, dispatched: 0, failed: 0 })
+  })
+
+  it('el aviso de máximo de paradas solo sale mientras la ruta se arma (borrador o planificada)', () => {
+    expect(showOverStopLimit(true, 'DRAFT')).toBe(true)
+    expect(showOverStopLimit(true, 'planned')).toBe(true)
+    for (const code of ['DISPATCHED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', null, undefined]) expect(showOverStopLimit(true, code)).toBe(false)
+    expect(showOverStopLimit(false, 'DRAFT')).toBe(false)
+    expect(showOverStopLimit(undefined, 'DRAFT')).toBe(false)
   })
 
   it('máximo de paradas: override del chofer o default de la compañía; sin datos del chofer no se afirma nada', () => {

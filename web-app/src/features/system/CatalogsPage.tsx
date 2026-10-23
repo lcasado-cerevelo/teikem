@@ -211,6 +211,9 @@ function ServiceTypeMarkFields() {
         <Field name="billable" label={t('system.catalogs.marks.billable')}>
           <Toggle />
         </Field>
+        <Field name="roundTrip" label={t('system.catalogs.marks.roundTrip')}>
+          <Toggle />
+        </Field>
       </div>
       <p className="help">{t('system.catalogs.marks.help')}</p>
     </>
@@ -231,6 +234,7 @@ function AdjustValueModal({ entity, row, onClose }: { entity: string; row: Looku
         isEnabled: z.boolean(),
         pickUp: z.boolean(),
         billable: z.boolean(),
+        roundTrip: z.boolean(),
       }),
     [],
   )
@@ -246,6 +250,7 @@ function AdjustValueModal({ entity, row, onClose }: { entity: string; row: Looku
       isEnabled: row.isEnabled !== false,
       pickUp: marks.pickUp,
       billable: marks.billable,
+      roundTrip: marks.roundTrip,
     },
   })
   const formId = 'catalogs-adjust-value'
@@ -279,7 +284,7 @@ function AdjustValueModal({ entity, row, onClose }: { entity: string; row: Looku
               labels: v.labelEn.trim() ? { es: v.labelEs, en: v.labelEn } : { es: v.labelEs },
               isEnabled: v.isEnabled,
               sortOverride: v.sortOverride,
-              extraJson: isServiceType ? serviceTypeMarksJson({ pickUp: v.pickUp, billable: v.billable }) : null,   // Lote 114: las marcas del tipo de servicio
+              extraJson: isServiceType ? serviceTypeMarksJson({ pickUp: v.pickUp, billable: v.billable, roundTrip: v.roundTrip }) : null,   // Lote 114: las marcas del tipo de servicio
             },
           })
           toast.success(t('system.catalogs.adjusted'))
@@ -333,6 +338,7 @@ function ValueFormModal({
         sortOrder: z.number().nullable(),
         pickUp: z.boolean(),
         billable: z.boolean(),
+        roundTrip: z.boolean(),
       }),
     [t],
   )
@@ -348,6 +354,7 @@ function ValueFormModal({
       sortOrder: row?.sortOrder ?? null,
       pickUp: ownMarks.pickUp,
       billable: ownMarks.billable,
+      roundTrip: ownMarks.roundTrip,
     },
   })
   const formId = 'catalogs-value-form'
@@ -378,7 +385,7 @@ function ValueFormModal({
             code: v.code,
             labels: v.labelEn.trim() ? { es: v.labelEs, en: v.labelEn } : { es: v.labelEs },
             descriptions: null,
-            extraJson: isServiceType ? serviceTypeMarksJson({ pickUp: v.pickUp, billable: v.billable }) : null,   // Lote 114
+            extraJson: isServiceType ? serviceTypeMarksJson({ pickUp: v.pickUp, billable: v.billable, roundTrip: v.roundTrip }) : null,   // Lote 114
             sortOrder: v.sortOrder,
           }
           if (editing && row?.code) {

@@ -6,7 +6,7 @@ import { IconAlert } from '../../kernel/ui/icons'
 import { Chip, EmptyState, IconRoute, IconUsers, Panel, Spinner } from '../../kernel/ui'
 import type { components } from '../../kernel/api/schema'
 import type { DriverAvailability } from './fleetChoices'
-import { percent, type MonitorTrip, type TripListItem } from './dispatchRules'
+import { percent, showOverStopLimit, type MonitorTrip, type TripListItem } from './dispatchRules'
 
 type DriverListItem = components['schemas']['DriverListItemDto']
 
@@ -117,7 +117,7 @@ export function TodayRoutesPanel({
                     <i style={{ width: `${pct}%` }} />
                   </div>
                 </div>
-                {r.overStopLimit && (
+                {showOverStopLimit(r.overStopLimit, r.statusCode) && (
                   <span className="warn" title={t('dispatch.overLimitShort')} role="img" aria-label={t('dispatch.overLimitShort')}>
                     <IconAlert />
                   </span>

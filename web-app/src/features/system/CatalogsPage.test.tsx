@@ -115,7 +115,7 @@ describe('CatalogsPage', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(mock.requests.some((r) => r.method === 'PUT' && r.url.pathname === '/api/v1/catalogs/ServiceType/PICK_UP/override')).toBe(true))
     const put = mock.requests.find((r) => r.method === 'PUT' && r.url.pathname === '/api/v1/catalogs/ServiceType/PICK_UP/override')!
-    expect(JSON.parse((put.body as { extraJson: string }).extraJson)).toEqual({ pickUp: true, billable: false })
+    expect(JSON.parse((put.body as { extraJson: string }).extraJson)).toEqual({ pickUp: true, billable: false, roundTrip: false })
   })
 
   it('Lote 114: un dominio que no es de tipos de servicio no muestra las marcas', async () => {

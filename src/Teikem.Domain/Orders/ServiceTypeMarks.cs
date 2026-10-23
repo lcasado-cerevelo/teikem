@@ -4,12 +4,13 @@ namespace Teikem.Domain.Orders;
 
 /// <summary>
 /// Lote 114 — marcas de un tipo de servicio (dictado por Luis): «pick up» (recojo y traigo: Sometida → Recogida → En almacén, que es final; no sale a ruta: si se quiere sacar es otra orden o el cliente viene a buscarlo) y
-/// «facturable» (interruptor: un pick up puede cobrarse o no). Viven en el ExtraJson del tipo de servicio: <c>{"pickUp":true,"billable":true}</c>; el ajuste de la compañía (CustomExtraJson) pisa lo que diga el valor global.
-/// Sin marcas: no es pick up y sí es facturable.
+/// «facturable» (interruptor: un pick up puede cobrarse o no) y, desde 2026-10-22 (dictado de Luis), «ida y vuelta» (el chofer va a la RECOGIDA: la zona, la parada de la ruta y el mapa salen de la dirección de recogida, no de la de entrega).
+/// Viven en el ExtraJson del tipo de servicio: <c>{"pickUp":true,"billable":true,"roundTrip":false}</c>; el ajuste de la compañía (CustomExtraJson) pisa lo que diga el valor global.
+/// Sin marcas: no es pick up, sí es facturable y no es ida y vuelta.
 /// </summary>
-public sealed record ServiceTypeMarks(bool PickUp, bool Billable)
+public sealed record ServiceTypeMarks(bool PickUp, bool Billable, bool RoundTrip = false)
 {
-    public static readonly ServiceTypeMarks Default = new(false, true);
+    public static readonly ServiceTypeMarks Default = new(false, true, false);
 
     public static ServiceTypeMarks Parse(string? json) => Default.Apply(json);
 
@@ -23,12 +24,14 @@ public sealed record ServiceTypeMarks(bool PickUp, bool Billable)
             if (doc.RootElement.ValueKind != JsonValueKind.Object) return this;
             var pickUp = PickUp;
             var billable = Billable;
+            var roundTrip = RoundTrip;
             foreach (var p in doc.RootElement.EnumerateObject())
             {
                 if (p.Name.Equals("pickUp", StringComparison.OrdinalIgnoreCase) && p.Value.ValueKind is JsonValueKind.True or JsonValueKind.False) pickUp = p.Value.GetBoolean();
+                else if (p.Name.Equals("roundTrip", StringComparison.OrdinalIgnoreCase) && p.Value.ValueKind is JsonValueKind.True or JsonValueKind.False) roundTrip = p.Value.GetBoolean();
                 else if (p.Name.Equals("billable", StringComparison.OrdinalIgnoreCase) && p.Value.ValueKind is JsonValueKind.True or JsonValueKind.False) billable = p.Value.GetBoolean();
             }
-            return new ServiceTypeMarks(pickUp, billable);
+            return new ServiceTypeMarks(pickUp, billable, roundTrip);
         }
         catch (JsonException) { return this; }
     }

@@ -7,6 +7,7 @@ using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
 using Teikem.Infrastructure.Fleet;
+using Teikem.Infrastructure.Orders;
 using Teikem.Infrastructure.Persistence;
 using Teikem.Infrastructure.Trips;
 
@@ -290,7 +291,8 @@ public sealed class TripReadService(TeikemDbContext db, ITenantContext tenant, I
         Guid OrderPublicId, string OrderNumber, string PackBatchNumber, int ClientId,
         int? Pieces, decimal? WeightKg, decimal? VolumeM3,
         string? ConsigneeName, string Line1, string? Line2, string City, string? PostalCode,
-        int? GeocodeAccuracyLookupId, DateTime? WindowStartUtc, DateTime? WindowEndUtc, int ServiceMinutes);
+        int? GeocodeAccuracyLookupId, DateTime? WindowStartUtc, DateTime? WindowEndUtc, int ServiceMinutes,
+        int StopTypeLookupId, int ServiceTypeLookupId);
 
     /// <summary>
     /// Paradas de una versión de ruta con su OrderStop y su orden. El JOIN a db.TransportOrders (filtro de tenant) es la
@@ -309,7 +311,8 @@ public sealed class TripReadService(TeikemDbContext db, ITenantContext tenant, I
                       o.PublicId, o.OrderNumber, o.PackBatchNumber, o.ClientId,
                       o.TotalPieces, o.TotalWeightKg, o.TotalVolumeM3,
                       os.SnapName, os.SnapLine1, os.SnapLine2, os.SnapCity, os.SnapPostalCode,
-                      os.GeocodeAccuracyLookupId, os.WindowStartUtc, os.WindowEndUtc, os.ServiceMinutes))
+                      os.GeocodeAccuracyLookupId, os.WindowStartUtc, os.WindowEndUtc, os.ServiceMinutes,
+                      os.StopTypeLookupId, o.ServiceTypeLookupId))
             .ToListAsync(ct);
 
     private async Task<IReadOnlyList<RouteStopDto>> ToStopDtosAsync(List<StopRow> stops, Dictionary<int, StatusInfo> statusMap, CancellationToken ct)
@@ -322,6 +325,7 @@ public sealed class TripReadService(TeikemDbContext db, ITenantContext tenant, I
 
         var points = await PointsAsync(stops.Select(s => s.OrderStopId).Distinct().ToList(), ct);
         var zoneCodes = await ZoneCodesAsync(stops.Select(s => (s.PostalCode, s.City)).ToList(), ct);
+        var roundTripTypes = await OrderRouting.RoundTripServiceTypeIdsAsync(db, ct);
 
         var list = new List<RouteStopDto>(stops.Count);
         for (var i = 0; i < stops.Count; i++)
@@ -331,6 +335,9 @@ public sealed class TripReadService(TeikemDbContext db, ITenantContext tenant, I
             var accuracyCode = accuracy?.InternalCode;
             var point = points.GetValueOrDefault(s.OrderStopId);
             var stopStatus = statusMap.GetValueOrDefault(s.StatusCodeId);
+            // 2026-10-22: qué se visita en esta parada (recogida o entrega) y el tipo de servicio; la ida y vuelta se ruta por su recogida
+            var stopType = await lookups.GetAsync(s.StopTypeLookupId, ct);
+            var serviceType = await lookups.GetAsync(s.ServiceTypeLookupId, ct);
 
             list.Add(new RouteStopDto(
                 Id: s.RouteStopId,
@@ -364,7 +371,10 @@ public sealed class TripReadService(TeikemDbContext db, ITenantContext tenant, I
                 StatusCode: stopStatus?.Code ?? string.Empty,
                 Status: stopStatus?.Label ?? string.Empty,
                 ActualArrivalUtc: s.ActualArrivalUtc,
-                ActualDepartureUtc: s.ActualDepartureUtc));
+                ActualDepartureUtc: s.ActualDepartureUtc,
+                StopKind: stopType?.InternalCode ?? StopTypes.Delivery,
+                ServiceType: serviceType is null ? null : MultilingualText.Resolve(serviceType.LabelJson, tenant.Lang),
+                IsRoundTrip: roundTripTypes.Contains(s.ServiceTypeLookupId)));
         }
         return list;
     }

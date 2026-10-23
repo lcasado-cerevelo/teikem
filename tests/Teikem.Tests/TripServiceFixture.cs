@@ -92,6 +92,7 @@ internal sealed class TripServiceFixture : IAsyncDisposable
         services.AddSingleton<RouteWriter>();
         services.AddSingleton<TripIssueBuilder>();
         services.AddSingleton<TripReadService>();
+        services.AddSingleton<TripOrderService>();   // 2026-10-22: la lista «Sin asignar» (ida y vuelta)
         services.AddSingleton<TripDispatchService>();
         services.AddSingleton<RouteOptimizationService>();
         services.AddSingleton<OrderReadService>();

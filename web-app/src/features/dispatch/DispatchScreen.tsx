@@ -8,7 +8,6 @@ import { Can, useCan, useModule } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { tenantToday } from '../../kernel/api/tenantZone'
 import { useT } from '../../kernel/i18n'
-import { IconAlert } from '../../kernel/ui/icons'
 import { ClientPicker, DateField, EmptyState, Filters, IconPlus, IconRoute, IconTruck, IconUsers, SelectFilter, SplitPane, toast } from '../../kernel/ui'
 import { useDispatchZones } from '../drivers/api'
 import { useDrivers } from '../drivers/api'
@@ -20,6 +19,7 @@ import {
   buildUnassignedQuery,
   hasUnassignedFilters,
   maxStopsSource,
+  showOverStopLimit,
   NO_UNASSIGNED_FILTERS,
   optimizeDelta,
   problemMessage,
@@ -155,6 +155,10 @@ export default function DispatchScreen() {
   // aviso rojo de la maqueta: la ruta activa pasa el máximo de paradas
   const overDriver = detail?.driverPublicId ? drivers.data?.find((d) => d.publicId === detail.driverPublicId) : undefined
   const source = maxStopsSource(overDriver?.maxStopsPerRoute, !!overDriver)
+  // 2026-10-22: el aviso va dentro del panel de la ruta (encima del mapa) y solo mientras la ruta se está armando
+  const overLimit = detail && showOverStopLimit(detail.overStopLimit, detail.statusCode)
+    ? `${detail.code} ${t('dispatch.overLimit')}: ${detail.stopCount} > ${detail.effectiveMaxStops}${source ? ` (${t(source === 'driver' ? 'dispatch.maxSource.driver' : 'dispatch.maxSource.tenant')})` : ''}`
+    : null
 
   return (
     <div className="wrap disp">
@@ -230,16 +234,6 @@ export default function DispatchScreen() {
         </div>
       )}
 
-      {detail?.overStopLimit && (
-        <div className="alertbanner" role="alert">
-          <IconAlert />
-          <span>
-            <b>{detail.code}</b> {t('dispatch.overLimit')}: {detail.stopCount} &gt; {detail.effectiveMaxStops}
-            {source && ` (${t(source === 'driver' ? 'dispatch.maxSource.driver' : 'dispatch.maxSource.tenant')})`}
-          </span>
-        </div>
-      )}
-
       {!canView ? (
         <EmptyState icon={<IconRoute />} title={t('dispatch.noView')} />
       ) : (
@@ -274,6 +268,7 @@ export default function DispatchScreen() {
                 message={message}
                 onMessage={setMessage}
                 note={note}
+                overLimit={overLimit}
                 onDeleted={() => update({ trip: null })}
               />
               <DriversPanel

@@ -139,8 +139,18 @@ describe('aviso de máximo de paradas', () => {
     wrap()
     const banner = await screen.findByRole('alert')
     expect(banner).toHaveTextContent('2026-0001 sobrepasa el máximo de paradas: 15 > 12 (override del chofer)')
+    // el ícono junto al título de la ruta muestra el mismo mensaje al pasar el cursor
+    expect(screen.getByTitle('2026-0001 sobrepasa el máximo de paradas: 15 > 12 (override del chofer)')).toBeInTheDocument()
     // la tarjeta de «Rutas de hoy» también marca el aviso
     expect(screen.getByRole('img', { name: 'Sobrepasa el máximo de paradas' })).toBeInTheDocument()
+  })
+
+  it('no se muestra en una ruta ya despachada (no se puede cambiar)', async () => {
+    resetMock([tripDetail({ statusCode: 'DISPATCHED', status: 'Despachado', stopCount: 33, effectiveMaxStops: 25, overStopLimit: true, stops: [stop(1, 1, 'OT-1')] })])
+    wrap()
+    await screen.findAllByText(/OT-1/)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByTitle(/sobrepasa el máximo/)).not.toBeInTheDocument()
   })
 
   it('con el default de la compañía', async () => {

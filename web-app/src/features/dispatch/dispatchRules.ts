@@ -243,6 +243,14 @@ export function maxStopsSource(driverOverride: number | null | undefined, known:
   return driverOverride != null ? 'driver' : 'tenant'
 }
 
+/**
+ * ¿Tiene sentido avisar que la ruta pasa el máximo de paradas? Solo mientras se arma (Borrador o Planificada): una ruta ya despachada, en curso o cerrada
+ * (p. ej. un manifiesto migrado) no se puede cambiar, así que el aviso solo estorba.
+ */
+export function showOverStopLimit(overStopLimit: boolean | null | undefined, statusCode: string | null | undefined): boolean {
+  return overStopLimit === true && ['DRAFT', 'PLANNED'].includes((statusCode ?? '').toUpperCase())
+}
+
 // ---------------------------------------------------------------- progreso
 
 const ATTENDED_STOPS = ['COMPLETED', 'FAILED']

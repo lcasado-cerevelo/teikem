@@ -4,7 +4,7 @@
 import { useMemo, useState } from 'react'
 import { useT } from '../../kernel/i18n'
 import { Can } from '../../kernel/access'
-import { EmptyState, IconCheck, IconLayers, IconPlus, Panel, QBox, Spinner } from '../../kernel/ui'
+import { Chip, EmptyState, IconCheck, IconLayers, IconPlus, Panel, QBox, Spinner } from '../../kernel/ui'
 import { MAX_ORDERS_PER_REQUEST, orderProblems, unassignedMatches, type UnassignedOrder } from './dispatchRules'
 
 export interface AddProblem {
@@ -130,6 +130,12 @@ export function UnassignedPanel({
                   <span className="un-name">{o.consigneeName || o.clientName}</span>
                   <span className="meta">
                     {[town, zone].filter(Boolean).join(' · ')}
+                  </span>
+                  <span className="tags">
+                    <Chip tone={o.stopKind === 'PICKUP' ? 'warn' : 'cap'} title={o.stopKind === 'PICKUP' ? t('dispatch.kind.pickupHint') : undefined}>
+                      {t(o.stopKind === 'PICKUP' ? 'dispatch.kind.pickup' : 'dispatch.kind.delivery')}
+                    </Chip>
+                    {o.serviceType && <Chip>{o.serviceType}</Chip>}
                   </span>
                 </span>
               </label>

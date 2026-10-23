@@ -290,6 +290,9 @@ public static class ColavoraRules
     public static bool IsPickupServiceType(string? colavoraType, bool isForPickupFlag)
         => isForPickupFlag || (colavoraType ?? string.Empty).Trim().ToUpperInvariant() is "PK" or "PI" or "PV";
 
+    /// <summary>Tipo de servicio «ida y vuelta» (Roundtrip, tipo RT de Colavora): se recoge en la tienda y se trae; el chofer va a la recogida (marca <c>roundTrip</c> del tipo de servicio).</summary>
+    public static bool IsRoundTripServiceType(string? colavoraType) => string.Equals((colavoraType ?? string.Empty).Trim(), "RT", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>¿La pieza es la factura del cliente (tipo de paquete Invoice) y no una pieza física (D8)?</summary>
     public static bool IsInvoicePackageType(string? colavoraType) => string.Equals((colavoraType ?? string.Empty).Trim(), "IN", StringComparison.OrdinalIgnoreCase);
 
