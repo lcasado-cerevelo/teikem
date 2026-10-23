@@ -103,6 +103,22 @@ public partial class AuthMfaTests
     }
 
     [Fact]
+    public async Task If_any_company_of_the_driver_requires_mfa_the_driver_app_login_asks_for_it_even_when_the_entry_company_does_not()
+    {
+        await using var f = await FixtureAsync();
+        await MakeDriverAsync(f, WmsFixture.TenantId);
+        await MakeDriverAsync(f, WmsFixture.OtherTenantId);
+        foreach (var t in await f.Db.Tenants.IgnoreQueryFilters().ToListAsync()) t.MfaRequired = t.TenantId == WmsFixture.OtherTenantId;   // solo la OTRA compañía lo exige
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+
+        var r = await f.Get<AuthService>().LoginAsync(new LoginRequest("yo@t.local", Password, WmsFixture.TenantId, null), default, driverApp: true);
+
+        Assert.Equal("mfa_required", r.Status);                 // sin esto la segunda compañía quedaría bloqueada sin salida para el chofer
+        Assert.True(r.MfaEnrollmentRequired);                   // y si no tiene su autenticador, lo inscribe
+    }
+
+    [Fact]
     public async Task A_session_that_is_not_from_the_driver_app_cannot_ask_for_company_tokens_and_companies_where_he_is_not_a_driver_do_not_appear()
     {
         await using var f = await FixtureAsync();

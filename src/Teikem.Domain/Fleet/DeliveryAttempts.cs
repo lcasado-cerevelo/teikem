@@ -39,6 +39,10 @@ public class DeliveryAttempt : ITenantScoped
     public bool Delivered { get; set; }
     public int? FailureReasonLookupId { get; set; }
     public string? Notes { get; set; }
+    /// <summary>App del chofer: dónde estaba el teléfono al marcar «no entregado» y a cuántos metros de la dirección (null = sin GPS). Sirve para ver si el chofer marcó la excepción lejos del lugar.</summary>
+    public decimal? Latitude { get; set; }
+    public decimal? Longitude { get; set; }
+    public int? DistanceFromStopMeters { get; set; }
     public string Source { get; set; } = DeliveryAttemptSources.Manual;
     public int? RecordedBy { get; set; }
     public bool IsActive { get; set; } = true;

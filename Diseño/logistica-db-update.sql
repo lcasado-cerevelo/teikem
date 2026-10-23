@@ -6564,3 +6564,21 @@ WHEN NOT MATCHED THEN
     INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
     VALUES (N'EntityType', s.Code, s.LabelJson, 93, 1, 1);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-23 (e) — App del chofer: el GPS del teléfono al entregar o marcar «no entregado» se guarda siempre (aunque el chofer haya apagado el seguimiento de la ruta),
+   aparte de la dirección, con la distancia a la dirección de entrega.
+   - dbo.DeliveryProof.DistanceFromStopMeters; dbo.DeliveryAttempt.Latitude / Longitude / DistanceFromStopMeters.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.DeliveryProof', 'DistanceFromStopMeters') IS NULL
+    ALTER TABLE dbo.DeliveryProof ADD DistanceFromStopMeters INT NULL;
+GO
+IF COL_LENGTH('dbo.DeliveryAttempt', 'Latitude') IS NULL
+    ALTER TABLE dbo.DeliveryAttempt ADD Latitude DECIMAL(9,6) NULL;
+GO
+IF COL_LENGTH('dbo.DeliveryAttempt', 'Longitude') IS NULL
+    ALTER TABLE dbo.DeliveryAttempt ADD Longitude DECIMAL(9,6) NULL;
+GO
+IF COL_LENGTH('dbo.DeliveryAttempt', 'DistanceFromStopMeters') IS NULL
+    ALTER TABLE dbo.DeliveryAttempt ADD DistanceFromStopMeters INT NULL;
+GO

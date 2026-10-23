@@ -119,12 +119,18 @@ public sealed partial class AuthService(
         // Tenant activo: pedido → predeterminado del usuario → membresía marcada como predeterminada → la primera por nombre.
         // Nunca se pregunta (pedido de Luis, 2026-09-30): se entra directo y la compañía se cambia desde el selector de la cabecera.
         var memberships = await ActiveMembershipsAsync(user, ct);
+        var driverAnyMfa = false;   // app del chofer: ¿ALGUNA de sus compañías exige MFA? (entonces se pide en el ingreso aunque la compañía de entrada no lo exija)
         if (driverApp)
         {
             // App del chofer: solo cuentan las compañías donde la persona es chofer activo (sin ninguna, no entra).
             var driverTenants = await DriverTenantIdsAsync(user.Id, memberships, ct);
             if (driverTenants.Count == 0) { await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Blocked, user.Id, null, new { reason = "not_a_driver" }, ct); throw new ForbiddenException(DriverAppRules.NotADriverMessage); }
             memberships = memberships.Where(m => driverTenants.Contains(m.TenantId)).ToList();
+            // Una sola sesión da acceso a TODAS sus compañías: si alguna exige MFA (la compañía entera o esta persona), el ingreso lo pide (y lo inscribe si falta); si no, esa compañía
+            // quedaría bloqueada sin que la persona pudiera hacer nada para desbloquearla.
+            driverAnyMfa = user.IsPlatformAdmin == false
+                           && (await db.Tenants.AsNoTracking().IgnoreQueryFilters().AnyAsync(x => driverTenants.Contains(x.TenantId) && x.IsActive && x.MfaRequired, ct)
+                               || await db.UserTenants.AsNoTracking().IgnoreQueryFilters().AnyAsync(m => m.UserId == user.Id && driverTenants.Contains(m.TenantId) && m.MfaRequired, ct));
         }
         int tenantId;
         if (req.TenantId.HasValue)
@@ -160,14 +166,14 @@ public sealed partial class AuthService(
 
         var membershipMfaRequired = !user.IsPlatformAdmin && await db.UserTenants.AsNoTracking().IgnoreQueryFilters()
             .AnyAsync(m => m.UserId == user.Id && m.TenantId == tenantId && m.MfaRequired, ct);
-        if (totp is not null || t.MfaRequired || membershipMfaRequired)
+        if (totp is not null || t.MfaRequired || membershipMfaRequired || driverAnyMfa)
         {
             // IP preferida (2026-10-12; docs/ip-preferida-mfa-diseno.md §3): desde la red de confianza de la compañía NO se pide el CÓDIGO (la contraseña ya se
             // verificó arriba). Nunca se salta si: es administrador de plataforma, la membresía tiene la marca individual «siempre MFA», o la persona aún no
             // inscribió su MFA (se le exige inscribirlo: la IP salta el código, no la inscripción). La sesión nace SIN verificación AAL2 (aal2At = null), así que
             // las acciones sensibles ([RequireAal2]) siguen pidiendo MFA. Con el interruptor global apagado (por defecto) esto no hace nada.
             TrustedNetworkMatch? trusted = null;
-            if (trustedNetworks is not null && totp is not null && !user.IsPlatformAdmin && !membershipMfaRequired)
+            if (trustedNetworks is not null && totp is not null && !user.IsPlatformAdmin && !membershipMfaRequired && !driverAnyMfa)
                 trusted = await trustedNetworks.MatchAsync(tenantId, tenant.IpAddress, ct);
             if (trusted is null)
             {

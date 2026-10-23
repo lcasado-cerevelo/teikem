@@ -39260,6 +39260,12 @@ export interface components {
             isActive?: boolean;
             voidReason?: string | null;
             clientName?: string | null;
+            /** Format: double */
+            latitude?: number | null;
+            /** Format: double */
+            longitude?: number | null;
+            /** Format: int32 */
+            distanceFromStopMeters?: number | null;
         };
         DeliveryAttemptDtoPagedResult: {
             items?: components["schemas"]["DeliveryAttemptDto"][] | null;
@@ -39297,6 +39303,8 @@ export interface components {
             orderStatusLabel?: string | null;
             message?: string | null;
             files?: components["schemas"]["StoredFileDto"][] | null;
+            /** Format: int32 */
+            distanceFromStopMeters?: number | null;
         };
         DeliveryRegisterRequest: {
             recipientName?: string | null;
@@ -39698,6 +39706,10 @@ export interface components {
             /** Format: date-time */
             attemptedAtUtc?: string | null;
             photoBase64?: string | null;
+            /** Format: double */
+            latitude?: number | null;
+            /** Format: double */
+            longitude?: number | null;
         };
         DriverFailureReasonDto: {
             code?: string | null;
@@ -40065,6 +40077,8 @@ export interface components {
             statusCode?: string | null;
             status?: string | null;
             alreadyDone?: boolean;
+            /** Format: int32 */
+            distanceFromStopMeters?: number | null;
         };
         DriverTrackingConfigDto: {
             /** Format: int32 */

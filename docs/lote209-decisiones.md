@@ -15,3 +15,8 @@
 - **Push** (aviso emergente con el teléfono bloqueado): no está; requiere Firebase (proyecto, `google-services.json`) — por ahora el chofer ve el aviso al abrir la app o a los 5 minutos.
 - **Pantalla web para escribir avisos** a un chofer: el endpoint existe, falta el botón en la web (por ejemplo en la ficha del chofer).
 - Otros avisos automáticos posibles (envío quitado de su ruta, ruta cancelada): hoy solo «Nuevo manifiesto».
+
+## Ajustes del 2026-10-23 (tarde): MFA con varias compañías y GPS al cerrar un envío
+- **MFA en varias compañías**: si el chofer tiene TOTP, el ingreso siempre lo pide y la sesión pasa el segundo factor para todas. Si NO tiene TOTP y alguna de sus compañías lo exige (la compañía o la persona), el ingreso de la app del chofer ahora **pide MFA (e inscribirlo)** aunque la compañía por la que entra no lo exija; antes esa otra compañía quedaba «bloqueada» sin que el chofer pudiera hacer nada. Una compañía que no lo exige no lo pide por sí sola.
+- **GPS al entregar y al marcar «no entregado»**: se toma en ese momento y **siempre**, aunque el chofer haya apagado el seguimiento en Perfil (son cosas distintas). Se guarda **aparte de la dirección** (comprobante: `DeliveryProof.Latitude/Longitude`; no entregado: `DeliveryAttempt.Latitude/Longitude`) junto con `DistanceFromStopMeters`, los metros en línea recta a la dirección de entrega. Así la oficina ve cuándo el chofer marcó desde otro lugar (su casa). Sin permiso o sin señal de satélite se registra igual, sin GPS. Umbral de «lejos»: 300 m (`DriverAppRules.FarFromAddressMeters`).
+- Pendiente: mostrar la distancia en la web (ficha del comprobante e intentos) y, si se quiere, un aviso a la oficina cuando pase de 300 m.

@@ -39,10 +39,10 @@ public sealed record DriverShipmentDetailDto(Guid PublicId, Guid ManifestPublicI
 public sealed record DriverDeliverRequest(string? RecipientName, string? Notes, DateTime? DeliveredAtUtc, double? Latitude, double? Longitude, string? SignaturePngBase64, IReadOnlyList<string>? PhotosBase64);
 
 /// <summary>No entregar un envío: `ReasonCode` de la lista «Razón de fallo» (obligatorio), nota y foto opcionales.</summary>
-public sealed record DriverFailRequest(string? ReasonCode, string? Notes, DateTime? AttemptedAtUtc, string? PhotoBase64);
+public sealed record DriverFailRequest(string? ReasonCode, string? Notes, DateTime? AttemptedAtUtc, string? PhotoBase64, double? Latitude = null, double? Longitude = null);
 
 /// <summary>`AlreadyDone`: el envío ya estaba cerrado por la app (un reintento de la cola sin señal): no se repite ni se duplica nada.</summary>
-public sealed record DriverShipmentResultDto(Guid ShipmentPublicId, string StatusCode, string Status, bool AlreadyDone);
+public sealed record DriverShipmentResultDto(Guid ShipmentPublicId, string StatusCode, string Status, bool AlreadyDone, int? DistanceFromStopMeters = null);
 
 // ---- seguimiento de la ruta (GPS) ----
 

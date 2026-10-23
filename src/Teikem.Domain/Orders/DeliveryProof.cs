@@ -46,6 +46,8 @@ public class DeliveryProof : ITenantScoped
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
     [NotAudited] public DateTime? GeoCheckedAtUtc { get; set; }
+    /// <summary>App del chofer: a cuántos metros de la dirección de entrega estaba el teléfono al entregar (null = sin GPS o sin punto de la dirección). El GPS del teléfono NO tiene por qué ser el de la dirección.</summary>
+    public int? DistanceFromStopMeters { get; set; }
     public bool IsActive { get; set; } = true;
     [NotAudited] public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }

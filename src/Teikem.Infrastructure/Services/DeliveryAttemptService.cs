@@ -150,7 +150,7 @@ public sealed class DeliveryAttemptService(TeikemDbContext db, ITenantContext te
                 (reasonCode, reason) = (lc.InternalCode, Domain.Common.MultilingualText.Resolve(lc.LabelJson, lang));
             list.Add(new DeliveryAttemptDto(r.DeliveryAttemptId, r.PublicId, o?.PublicId ?? Guid.Empty, o?.OrderNumber ?? string.Empty, o?.ClientInvoiceNumber, r.AttemptNumber,
                 d?.PublicId, d?.EmployeeCode, d?.FullName, r.TripId is int ti ? trips.GetValueOrDefault(ti) : null, r.AttemptedAtUtc, r.Delivered, reasonCode, reason, r.Notes, r.Source,
-                r.SettledRunId != null, r.SettledRunId, r.IsActive, r.VoidReason, o is null ? null : clients.GetValueOrDefault(o.ClientId)));
+                r.SettledRunId != null, r.SettledRunId, r.IsActive, r.VoidReason, o is null ? null : clients.GetValueOrDefault(o.ClientId), (double?)r.Latitude, (double?)r.Longitude, r.DistanceFromStopMeters));
         }
         return list;
     }

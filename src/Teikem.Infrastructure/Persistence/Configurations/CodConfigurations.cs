@@ -104,6 +104,8 @@ public sealed class DeliveryAttemptConfiguration : IEntityTypeConfiguration<Teik
         b.Property(a => a.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();
         b.Property(a => a.Notes).HasMaxLength(Teikem.Domain.Fleet.DeliveryAttemptRules.MaxNotesLength);
         b.Property(a => a.Source).HasMaxLength(20);
+        b.Property(a => a.Latitude).HasColumnType("decimal(9,6)");
+        b.Property(a => a.Longitude).HasColumnType("decimal(9,6)");
         b.Property(a => a.VoidReason).HasMaxLength(Teikem.Domain.Fleet.DeliveryAttemptRules.MaxVoidReasonLength);
         b.HasIndex(a => new { a.TransportOrderId, a.AttemptNumber }).HasDatabaseName("IX_DeliveryAttempt_Order");
         b.HasIndex(a => new { a.TenantId, a.DriverId, a.AttemptedAtUtc }).HasDatabaseName("IX_DeliveryAttempt_Driver");

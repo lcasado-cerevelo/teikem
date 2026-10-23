@@ -19,7 +19,7 @@ namespace Teikem.Infrastructure.Services;
 /// No hay fotos todavía (falta decidir dónde se guardan los archivos). Una entrega por orden: registrarla otra vez es 409.
 /// </summary>
 /// <summary>Cómo se registra la entrega cuando NO es el personal desde la web (la app del chofer): origen, quién firmó, texto de la bitácora y la ubicación del teléfono.</summary>
-public sealed record DeliveryRegisterOptions(string Source, string SignatureKind, string Comment, double? Latitude = null, double? Longitude = null);
+public sealed record DeliveryRegisterOptions(string Source, string SignatureKind, string Comment, double? Latitude = null, double? Longitude = null, int? DistanceFromStopMeters = null);
 
 public sealed class DeliveryRegistrationService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, IOptions<GoogleMapsOptions>? maps = null, ITenantClock? clock = null,
     StoredFileService? files = null)
@@ -69,7 +69,7 @@ public sealed class DeliveryRegistrationService(TeikemDbContext db, ITenantConte
             var proof = new DeliveryProof
             {
                 PublicId = Guid.NewGuid(), TenantId = Ctx.RequireTenantId(), TransportOrderId = orderId, DeliveredAtUtc = at, RecipientName = recipient, Notes = notes,
-                Source = options?.Source ?? DeliveryProofCodes.SourceStaffWeb, RecordedBy = userId, SignedByUserId = userId, SignatureKind = options?.SignatureKind ?? DeliveryProofCodes.SignatureUser,
+                Source = options?.Source ?? DeliveryProofCodes.SourceStaffWeb, RecordedBy = userId, SignedByUserId = userId, SignatureKind = options?.SignatureKind ?? DeliveryProofCodes.SignatureUser, DistanceFromStopMeters = options?.DistanceFromStopMeters,
             };
             if (options?.Latitude is double lat && options.Longitude is double lng && DeliveryProofRules.InPuertoRico(lat, lng))
                 (proof.GeoStatus, proof.GeoAccuracy, proof.Latitude, proof.Longitude, proof.GeoCheckedAtUtc) = (DeliveryProofCodes.GeoOk, "DEVICE", DeliveryProofRules.Round6(lat), DeliveryProofRules.Round6(lng), now);   // el GPS del teléfono manda sobre la dirección
@@ -114,7 +114,7 @@ public sealed class DeliveryRegistrationService(TeikemDbContext db, ITenantConte
         var attached = files is null ? null : await files.ListAsync(DeliveryProofCodes.EntityType, p.DeliveryProofId, ct, enforceOwnerRead: false);
         return new DeliveryProofDto(p.PublicId, order.PublicId, order.OrderNumber, p.DeliveredAtUtc, p.RecipientName, p.Notes, p.Source, p.SignatureKind,
             names.GetValueOrDefault(p.RecordedBy), names.GetValueOrDefault(p.SignedByUserId), p.GeoStatus, p.GeoAccuracy, (double?)p.Latitude, (double?)p.Longitude,
-            status.InternalCode, Domain.Common.MultilingualText.Resolve(status.LabelJson, tenant.Lang), message, attached);
+            status.InternalCode, Domain.Common.MultilingualText.Resolve(status.LabelJson, tenant.Lang), message, attached, p.DistanceFromStopMeters);
     }
 
     /// <summary>Lote 127: el id del comprobante vigente de la orden, para adjuntarle archivos; 422 si la orden no tiene registrada su entrega.</summary>

@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import * as Location from 'expo-location';
+import { getCurrentFix } from '@utils/location';
 import Signature, { type SignatureViewRef } from 'react-native-signature-canvas';
 import { onlineManager } from '@tanstack/react-query';
 import { useAppStore } from '@/stores';
@@ -36,18 +36,12 @@ export default function ShipmentActionComplete({ onBack }: { onBack: () => void 
   const [submitting, setSubmitting] = useState(false);
   const hasCod = (shipment?.codAmount ?? 0) > 0;
 
+  // Se muestra la ubicación al abrir, pero al entregar se toma una NUEVA (la de ese momento).
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      try {
-        const perm = await Location.requestForegroundPermissionsAsync();
-        if (!perm.granted) return;
-        const pos = await Location.getCurrentPositionAsync({});
-        if (!cancelled) setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      } catch {
-        /* sin ubicación: la entrega se registra igual */
-      }
-    })();
+    void getCurrentFix().then((f) => {
+      if (!cancelled && f) setCoords(f);
+    });
     return () => {
       cancelled = true;
     };
@@ -72,14 +66,15 @@ export default function ShipmentActionComplete({ onBack }: { onBack: () => void 
       return;
     }
     try {
+      const fix = (await getCurrentFix(8000)) ?? coords;
       const id = await enqueueDeliver({
         tenantId: shipment.tenantId,
         shipmentId: shipment.id,
         recipientName: podName.trim(),
         notes: comment.trim() || undefined,
         deliveredAtUtc: new Date().toISOString(),
-        latitude: coords?.lat,
-        longitude: coords?.lng,
+        latitude: fix?.lat,
+        longitude: fix?.lng,
         signatureBase64,
         photosBase64: photo ? [photo.base64] : undefined,
       });

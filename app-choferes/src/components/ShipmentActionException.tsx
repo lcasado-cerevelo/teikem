@@ -11,6 +11,7 @@ import { useFailureReasons, useRemoveShipmentFromLists } from '@hooks/queries';
 import { enqueueFail } from '@/offline/mutations';
 import { drainOutbox, getItem } from '@/offline';
 import { compressProofPhoto } from '@utils/photo';
+import { getCurrentFix } from '@utils/location';
 import OptionSelect from './OptionSelect';
 import { useStyles, useTheme } from '@hooks/ThemeContext';
 import type { Colors } from '@constants/theme';
@@ -73,6 +74,7 @@ export default function ShipmentActionException({ onBack }: { onBack: () => void
 
     setSubmitting(true);
     try {
+      const fix = await getCurrentFix(8000); // el GPS del momento, aunque el seguimiento de la ruta esté apagado
       const id = await enqueueFail({
         tenantId: shipment.tenantId,
         shipmentId: shipment.id,
@@ -80,6 +82,8 @@ export default function ShipmentActionException({ onBack }: { onBack: () => void
         notes: comment.trim(),
         attemptedAtUtc: new Date().toISOString(),
         photoBase64: photo?.base64,
+        latitude: fix?.lat,
+        longitude: fix?.lng,
       });
       if (onlineManager.isOnline()) await drainOutbox();
       const item = await getItem(id);

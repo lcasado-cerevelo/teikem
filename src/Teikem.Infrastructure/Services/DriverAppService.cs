@@ -218,8 +218,23 @@ public sealed class DriverAppService(TeikemDbContext db, ITenantContext tenant, 
             await files.AttachAsync(ownerEntity, ownerId, kind, $"{fileStem}-{i + 1}", null, items[i], ct, enforceOwnerWrite: false);
     }
 
+    /// <summary>
+    /// A cuántos metros de la dirección de entrega estaba el teléfono (línea recta). Null si no hay GPS (sin permiso o sin señal de satélite) o la dirección aún no tiene punto. El GPS del teléfono NO es la ubicación de la entrega:
+    /// un chofer puede marcar entregas o excepciones desde su casa; por eso se guarda aparte y con la distancia, para que la oficina lo vea.
+    /// </summary>
+    private async Task<int?> StopDistanceAsync(int orderId, double? lat, double? lng, CancellationToken ct)
+    {
+        if (lat is not double la || lng is not double lo || !DriverTrackingRules.ValidCoordinate(la, lo)) return null;
+        var deliveryTypeId = await db.LookupCodes.AsNoTracking().Where(l => l.Entity == LookupDomains.StopType && l.InternalCode == StopTypes.Delivery).Select(l => l.LookupCodeId).FirstOrDefaultAsync(ct);
+        var stop = await db.OrderStops.AsNoTracking().Where(s => s.TransportOrderId == orderId).OrderByDescending(s => s.StopTypeLookupId == deliveryTypeId).ThenByDescending(s => s.Sequence).FirstOrDefaultAsync(ct);
+        if (stop is null) return null;
+        var points = await db.StopPointsAsync(new[] { stop.OrderStopId }, ct);
+        if (!points.TryGetValue(stop.OrderStopId, out var p)) return null;
+        return (int)Math.Round(EtaCalculator.Haversine(la, lo, p.Lat, p.Lng) * 1000);
+    }
+
     /// <summary>La intención «anotar el intento como hecho desde la app, por este chofer y con su motivo»: el efecto del estatus ya lo agregó (Source STATUS); aquí se le pone el origen, el chofer y el motivo.</summary>
-    private async Task TagAttemptAsync(int orderId, int driverId, bool delivered, int? reasonId, string? note, DateTime at, CancellationToken ct)
+    private async Task TagAttemptAsync(int orderId, int driverId, bool delivered, int? reasonId, string? note, DateTime at, double? lat, double? lng, int? distance, CancellationToken ct)
     {
         var a = await db.Set<DeliveryAttempt>().Where(x => x.TransportOrderId == orderId && x.IsActive && x.Delivered == delivered && x.Source == DeliveryAttemptSources.Status)
             .OrderByDescending(x => x.AttemptNumber).FirstOrDefaultAsync(ct);
@@ -228,6 +243,8 @@ public sealed class DriverAppService(TeikemDbContext db, ITenantContext tenant, 
         a.DriverId = driverId;
         a.AttemptedAtUtc = at;
         a.FailureReasonLookupId = reasonId;
+        if (lat is double la && lng is double lo) (a.Latitude, a.Longitude) = (DeliveryProofRules.Round6(la), DeliveryProofRules.Round6(lo));
+        a.DistanceFromStopMeters = distance;
         if (!string.IsNullOrWhiteSpace(note)) a.Notes = note.Length > DeliveryAttemptRules.MaxNotesLength ? note[..DeliveryAttemptRules.MaxNotesLength] : note;
         await db.SaveChangesAsync(ct);
     }
@@ -250,17 +267,19 @@ public sealed class DriverAppService(TeikemDbContext db, ITenantContext tenant, 
         var already = await delivery.FindByOrderAsync(shipmentPublicId, ct);
         if (already is not null && already.Source != DeliveryProofCodes.SourceDriverApp) throw new ConflictException(string.Format(DeliveryProofRules.AlreadyRegisteredFormat, own.OrderNumber));
         var at = req?.DeliveredAtUtc is DateTime given ? DateTime.SpecifyKind(given, DateTimeKind.Utc) : DateTime.UtcNow;
+        // El GPS del teléfono se guarda SIEMPRE (aunque el chofer haya apagado el seguimiento de la ruta) y aparte de la dirección: se anota a cuántos metros de ella estaba.
+        var distance = already is null ? await StopDistanceAsync(own.OrderId, req?.Latitude, req?.Longitude, ct) : null;
         if (already is null)
         {
             await delivery.RegisterAsync(shipmentPublicId, new DeliveryRegisterRequest(req?.RecipientName, req?.Notes, req?.DeliveredAtUtc), ct,
-                new DeliveryRegisterOptions(DeliveryProofCodes.SourceDriverApp, DeliveryProofCodes.SignatureRecipient, DriverAppRules.DeliveredComment(driver.FullName), req?.Latitude, req?.Longitude));
-            await TagAttemptAsync(own.OrderId, driver.DriverId, delivered: true, reasonId: null, req?.Notes, at, ct);
+                new DeliveryRegisterOptions(DeliveryProofCodes.SourceDriverApp, DeliveryProofCodes.SignatureRecipient, DriverAppRules.DeliveredComment(driver.FullName), req?.Latitude, req?.Longitude, distance));
+            await TagAttemptAsync(own.OrderId, driver.DriverId, delivered: true, reasonId: null, req?.Notes, at, req?.Latitude, req?.Longitude, distance, ct);
         }
         var proofId = await delivery.RequireProofIdAsync(shipmentPublicId, ct);
         if (signature is not null) await AttachMissingAsync(DeliveryProofCodes.EntityType, proofId, StoredFileCodes.KindSignature, new[] { signature }, "firma", ct);
         await AttachMissingAsync(DeliveryProofCodes.EntityType, proofId, StoredFileCodes.KindDeliveryPhoto, photoBytes, "foto", ct);
         var st = await StatusOfAsync(own.OrderId, ct);
-        return new DriverShipmentResultDto(shipmentPublicId, st.Code, st.Label, already is not null);
+        return new DriverShipmentResultDto(shipmentPublicId, st.Code, st.Label, already is not null, distance);
     }
 
     private async Task<(string Code, string Label)> StatusOfAsync(int orderId, CancellationToken ct)
@@ -289,6 +308,7 @@ public sealed class DriverAppService(TeikemDbContext db, ITenantContext tenant, 
         var current = await StatusOfAsync(own.OrderId, ct);
         var already = string.Equals(current.Code, OrderStatuses.Failed, StringComparison.OrdinalIgnoreCase)
                       && await db.Set<DeliveryAttempt>().AsNoTracking().AnyAsync(a => a.TransportOrderId == own.OrderId && a.IsActive && !a.Delivered && a.Source == DeliveryAttemptSources.App, ct);
+        var distance = already ? null : await StopDistanceAsync(own.OrderId, req?.Latitude, req?.Longitude, ct);
         if (!already)
         {
             await db.RunInTransactionAsync(async ct2 =>
@@ -298,11 +318,11 @@ public sealed class DriverAppService(TeikemDbContext db, ITenantContext tenant, 
                     DriverAppRules.FailedComment(Label(reason.LabelJson, tenant.Lang, reason.InternalCode)), ct2);
                 order.StatusCodeId = to.StatusCodeId;
                 await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
-                await TagAttemptAsync(own.OrderId, driver.DriverId, delivered: false, reason.LookupCodeId, note, at, ct2);
+                await TagAttemptAsync(own.OrderId, driver.DriverId, delivered: false, reason.LookupCodeId, note, at, req?.Latitude, req?.Longitude, distance, ct2);
             }, ct);
         }
         if (photo is not null) await AttachMissingAsync(EntityTypes.TransportOrder, own.OrderId, StoredFileCodes.KindDamagePhoto, new[] { photo }, "no-entrega", ct);
         var st = await StatusOfAsync(own.OrderId, ct);
-        return new DriverShipmentResultDto(shipmentPublicId, st.Code, st.Label, already);
+        return new DriverShipmentResultDto(shipmentPublicId, st.Code, st.Label, already, distance);
     }
 }

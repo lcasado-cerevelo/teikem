@@ -45,6 +45,8 @@ export interface FailInput {
   notes?: string;
   attemptedAtUtc: string;
   photoBase64?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 /** No entregado: el motivo de la lista «Razón de fallo», una nota y una foto opcional. */
@@ -56,7 +58,7 @@ export function enqueueFail(input: FailInput): Promise<string> {
     payload: {
       tenantId: input.tenantId,
       shipmentId: input.shipmentId,
-      body: { reasonCode: input.reasonCode, notes: input.notes, attemptedAtUtc: input.attemptedAtUtc, photoBase64: input.photoBase64 || undefined },
+      body: { reasonCode: input.reasonCode, notes: input.notes, attemptedAtUtc: input.attemptedAtUtc, photoBase64: input.photoBase64 || undefined, latitude: input.latitude, longitude: input.longitude },
     },
   });
 }

@@ -56572,6 +56572,21 @@
           "clientName": {
             "type": "string",
             "nullable": true
+          },
+          "latitude": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "distanceFromStopMeters": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -56689,6 +56704,11 @@
             "items": {
               "$ref": "#/components/schemas/StoredFileDto"
             },
+            "nullable": true
+          },
+          "distanceFromStopMeters": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           }
         },
@@ -57932,6 +57952,16 @@
           "photoBase64": {
             "type": "string",
             "nullable": true
+          },
+          "latitude": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -59028,6 +59058,11 @@
           },
           "alreadyDone": {
             "type": "boolean"
+          },
+          "distanceFromStopMeters": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           }
         },
         "additionalProperties": false

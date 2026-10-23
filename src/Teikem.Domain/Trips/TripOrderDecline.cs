@@ -45,6 +45,8 @@ public static class DriverAppRules
 
     // ---- entregar / no entregar desde la app ----
     public const int MaxPhotos = 3;
+    /// <summary>Más lejos que esto de la dirección se considera «lejos de la entrega» (el chofer pudo marcar desde su casa).</summary>
+    public const int FarFromAddressMeters = 300;
     public const string NotAcceptedMessage = "Acepte primero el manifiesto: todavía no ha salido.";
     public const string ShipmentNotYoursMessage = "El envío no está en ninguno de sus manifiestos.";
     public const string FailureReasonRequiredMessage = "Indique el motivo por el que no se entregó.";
