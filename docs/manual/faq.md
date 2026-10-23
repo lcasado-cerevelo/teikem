@@ -10261,3 +10261,63 @@ Solo el administrador de la plataforma: `PUT /api/v1/platform/tenants/{publicId}
 
 **En mi máquina de desarrollo el sistema pide la verificación en dos pasos. ¿Tengo que abrir el autenticador?**
 No. Solo cuando el API corre en el ambiente **Development**, el paso del código muestra «Solo en desarrollo: su código de ahora es 123456» con el botón «Usar este código». Vale unos segundos (el código cambia cada 30 s); si se venció, vuelva a iniciar sesión. En staging y producción el código **nunca** se muestra ni viaja en la respuesta. Aplica al login del personal y al del portal, y a la configuración inicial del MFA.
+
+## Ida y vuelta en Despacho (2026-10-22)
+
+**En Sala de despacho, ¿cómo sé si voy a recoger o a entregar, y de qué tipo es el envío?**
+Cada parada de la ruta y cada envío de «Sin asignar» lleva una etiqueta **Recoger** o **Entregar** y el tipo de servicio (p. ej. NEXT DAY, ROUNDTRIP). Los envíos de ida y vuelta salen como **Recoger** (en ámbar): el chofer va a la tienda; la zona, la parada y el mapa son los de la recogida.
+
+**Una ruta tenía muchos envíos al mismo cliente. ¿Es un error?**
+No: eran envíos de ida y vuelta mostrados por su dirección de **entrega**, que es siempre el almacén del cliente. Desde 2026-10-22 se muestra y se ruta la dirección de **recogida** (la tienda). Detalle en el capítulo 33, sección 6.
+
+**¿Cómo marco un tipo de servicio como ida y vuelta?**
+Listas → Tipo de servicio → Ajustar (o Editar) → interruptor **Ida y vuelta**. Con la marca, los envíos nuevos y editados toman la zona de su recogida; para los ya cargados corra `import-colavora --solo reparar,paradas`.
+
+**En Sala de despacho, ¿dónde sale el aviso «sobrepasa el máximo de paradas» y cuándo?**
+Dentro del panel de la ruta, encima del mapa, y también como un ícono ⚠ junto al título (al pasar el cursor muestra el mismo mensaje). Solo sale mientras la ruta se está armando (Borrador o Planificada): en una ruta ya despachada, en curso o cerrada —por ejemplo un manifiesto migrado— no se muestra porque ya no se puede cambiar. El máximo es el del chofer si lo tiene y, si no, el de la compañía.
+
+## Integraciones por correo: PDF adjuntos (2026-10-22)
+
+**¿Puede la integración leer un PDF que llega por correo?**
+Sí. Active **«Leer también los PDF adjuntos»** en la integración de correo y defina los campos a leer (los mismos del cuerpo). Un PDF con texto real se lee directo; uno escaneado se lee con OCR. Detalle en el capítulo 39, sección 6.
+
+**El PDF fue a la bandeja con «El PDF es una imagen (escaneado) y la lectura por OCR no está configurada…». ¿Qué hago?**
+El servidor no tiene los idiomas del OCR. El administrador de la plataforma debe poner la carpeta de Tesseract (con `spa.traineddata` y `eng.traineddata`) en `Integrations:OcrTessdataPath` y reiniciar el API. Luego reprocese el archivo desde la bandeja.
+
+**«No se encontró ningún dato en el PDF … Texto leído: «…»».**
+Los campos a leer no coincidieron con el texto. Mire el texto que trae el mensaje: las columnas de una tabla salen separadas por **tabulador**; en un bloque de renglones use el tabulador como separador y revise el texto de inicio y fin.
+
+**«PDF …: El archivo no es un PDF válido o está dañado.» / «El PDF está protegido con contraseña: no se puede leer.»**
+El adjunto no se pudo abrir. Pida al remitente que lo envíe de nuevo sin contraseña.
+
+**«El PDF pesa más de 15 MB.»**
+Pida un PDF más liviano o suba el límite `Integrations:MaxPdfMegabytes`.
+
+**El OCR leyó mal un número o una columna.**
+Un escaneado se lee con menos precisión que un PDF con texto. Revise lo que entró a la bandeja; mejorar la calidad del escaneo (300 ppp, sin inclinación) mejora la lectura.
+
+**Mi PDF tiene la tabla en varias páginas y solo entran los renglones de la primera.**
+El encabezado de la tabla se repite en cada página y el bloque, sin más, se lee una sola vez. Active **«Repetir el bloque en cada página»** en ese campo (el texto de inicio es el encabezado y el de fin, el pie de página).
+
+**Los renglones de mi tabla no caben en columnas (descripciones en varias líneas, SKU pegado a la descripción).**
+Use una **expresión por línea** en el bloque: cada línea que coincida da una fila con los grupos que usted marque; las demás líneas se ignoran. Detalle en el capítulo 39, sección 6.
+
+**«La expresión regular por línea no es válida.» (400) / «Para repetir el bloque indique el texto de inicio (el encabezado que se repite).» (400)**
+Corrija la expresión (paréntesis o corchetes sin cerrar) o escriba el texto de inicio del bloque.
+
+## Integraciones por correo: lectores (2026-10-22)
+
+**Mi buzón recibe pedidos, packing lists y facturas. ¿Cómo hago que cada uno se lea distinto?**
+En la integración de correo, sección **Lectores**: un lector por tipo de documento, cada uno con su condición (por ejemplo, «el texto del documento contiene Packing List») y sus campos a leer. El primer lector que cumple toma el documento.
+
+**«Ningún lector de la integración aplica a este correo.»**
+Ningún lector tomó ningún documento del correo. Revise las condiciones (nombre del adjunto, asunto o texto) y el tipo que lee cada lector (cuerpo, PDF o archivo de datos). Para ver el texto que sacó de un PDF, súbalo a mano: si no da datos, el motivo trae el texto leído.
+
+**«La condición ATTACHMENT_NAME no aplica a un lector de BODY.» / «…TEXT no aplica a un lector de FILE.» (400)**
+Un cuerpo de correo no tiene nombre de adjunto y un archivo de datos no tiene texto que comparar. Use el asunto, o cambie lo que lee el lector.
+
+**«Un lector de cuerpo o de PDF necesita al menos un campo a leer.» (400) / «Ya hay un lector llamado …» (400) / «Fuente desconocida…» / «Destino desconocido…» (400)**
+Cada lector necesita campos a leer (cuerpo y PDF), un nombre que no se repita, una fuente (BODY, PDF o FILE) y un destino válido (hoy ORDER).
+
+**¿Puedo mezclar clientes en un mismo buzón?**
+Sí: cada lector puede tener su propio cliente y su propia plantilla; los que no los traen usan los de la integración.

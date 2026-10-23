@@ -2418,6 +2418,11 @@
       "blocks": "Blocks",
       "warns": "Notice"
     },
+    "kind": {
+      "pickup": "Pick up",
+      "delivery": "Deliver",
+      "pickupHint": "Round-trip order: the driver goes to the pickup; the zone, the route stop and the map are those of the pickup address."
+    },
     "stops": {
       "title": "Shipments on this route",
       "empty": "It has no shipments yet.",
@@ -7668,7 +7673,8 @@
       "marks": {
         "pickUp": "Pick up (collect and bring)",
         "billable": "Billable",
-        "help": "A pick up collects and brings to the warehouse: the shipment ends «In warehouse» and does not go on a route. «Billable» off = not quoted nor charged."
+        "roundTrip": "Round trip (the driver goes to the pickup)",
+        "help": "A pick up collects and brings to the warehouse: the shipment ends «In warehouse» and does not go on a route. «Billable» off = not quoted nor charged. Round trip: the driver goes to the pickup; the zone, the route stop and the map come from the pickup address, not the delivery one."
       }
     },
     "settings": {
@@ -10770,6 +10776,48 @@
         "typesHelp": "Extensions separated by commas (csv, txt). Anything else is ignored.",
         "requireAttachment": "The email must have an attachment",
         "readBody": "Also read the email body",
+        "readPdf": "Also read attached PDFs",
+        "readPdfHelp": "The PDF is turned into text (with OCR if it is a scan) and read with the same fields below: label, regular expression or block of rows. The columns of a PDF table come out separated by a tab.",
+        "readers": {
+          "title": "Readers (what to do with each document)",
+          "help": "A reader says what the integration does with a document that arrives: the email body, a PDF or a data file. Each document is taken by the FIRST reader whose conditions it meets (in the order of this list); with no conditions it takes everything of its source. If you add readers, they take precedence over the attachment, body and PDF settings above. Each reader can have its own client and template: one mailbox can bring documents of several clients and several kinds.",
+          "add": "Add reader",
+          "convert": "Turn the settings above into readers",
+          "convertHelp": "Creates the readers equivalent to the attachment, body and PDF settings above, to continue from there.",
+          "name": "Reader {n} name",
+          "namePlaceholder": "Packing list",
+          "source": "What it reads",
+          "target": "Destination",
+          "targetHelp": "What what it reads creates in the system. For now: transport orders.",
+          "firstOnly": "Only the first document",
+          "firstOnlyHelp": "If several that meet it arrive, this reader takes only the first.",
+          "client": "Client",
+          "clientHelp": "The client of what this reader reads. Empty = the integration's.",
+          "template": "Template",
+          "templateHelp": "This reader's import template. Empty = the integration's.",
+          "sameAsIntegration": "The integration's",
+          "whenHelp": "Conditions (all must be met). With no conditions, this reader takes everything of its source.",
+          "condScope": "Condition {n}: on",
+          "condOperator": "Condition {n}: how",
+          "condValue": "Condition {n}: text",
+          "addCondition": "Add condition",
+          "removeCondition": "Remove condition {n}",
+          "remove": "Remove reader {n}",
+          "fileHelp": "A data file (CSV, Excel, JSON or XML) is read with the integration's template and format; it has no fields to read.",
+          "scope": {
+            "ATTACHMENT_NAME": "the attachment name",
+            "SUBJECT": "the email subject",
+            "TEXT": "the document text"
+          },
+          "sourceOption": {
+            "BODY": "The email body",
+            "PDF": "An attached PDF",
+            "FILE": "An attached data file"
+          },
+          "targetOption": {
+            "ORDER": "Transport order"
+          }
+        },
         "bodyHelp": "Each field goes to a column of the integration's import template: the body becomes a file row (or several, with a block of lines) and the same template reads it.",
         "column": "Template column {n}",
         "columnHelp": "Which template column (1, 2, 3…) this value goes to.",
@@ -10782,6 +10830,10 @@
         "end": "Block end {n}",
         "separator": "Column separator {n}",
         "separatorHelp": "A space = long gaps or tabs.",
+        "lineRegex": "Per-line expression of field {n} (optional)",
+        "lineRegexHelp": "Every line of the block that matches is a row and the groups in parentheses (1, 2, 3…) go to the columns below (“6=1” = template position 6 takes group 1). Lines that do not match are ignored (continuations, dashes, totals). With it, start and end are not needed. In a PDF, columns are separated by a tab.",
+        "repeat": "Repeat the block on every page of field {n}",
+        "repeatHelp": "Read it every time the start text appears (the table header repeated on each PDF page), not only the first. It needs the start text.",
         "blockColumns": "Line columns {n}",
         "blockColumnsHelp": "Template position = line column number: 6=1, 7=2.",
         "transform": "Transformation {n}",
@@ -10825,6 +10877,13 @@
           "pattern": "Enter the regular expression.",
           "block": "A block needs the start and end text.",
           "blockColumns": "A block needs at least one column (position and line column number).",
+          "regex": "The per-line regular expression is not valid.",
+          "repeatStart": "To repeat the block, enter the start text (the repeated header).",
+          "readerName": "Enter the reader name.",
+          "readerNameDuplicate": "There is already a reader with that name.",
+          "readerFields": "A body or PDF reader needs at least one field to read.",
+          "conditionValue": "Enter the condition text.",
+          "conditionScope": "That condition does not apply to what this reader reads.",
           "nameFilter": "With \"by name\" enter the attachment name condition.",
           "senders": "An allowed sender is not a valid email or domain."
         }

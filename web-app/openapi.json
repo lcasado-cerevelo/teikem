@@ -57875,6 +57875,69 @@
         },
         "additionalProperties": false
       },
+      "DocumentReader": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "nullable": true
+          },
+          "target": {
+            "type": "string",
+            "nullable": true
+          },
+          "when": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReaderCondition"
+            },
+            "nullable": true
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EmailBodyField"
+            },
+            "nullable": true
+          },
+          "templatePublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "clientPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "firstOnly": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReaderCondition": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "nullable": true
+          },
+          "operator": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "EmailBlockColumn": {
         "type": "object",
         "properties": {
@@ -57933,6 +57996,13 @@
               "$ref": "#/components/schemas/EmailBlockColumn"
             },
             "nullable": true
+          },
+          "lineRegex": {
+            "type": "string",
+            "nullable": true
+          },
+          "repeat": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -57997,6 +58067,16 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/EmailBodyField"
+            },
+            "nullable": true
+          },
+          "readPdf": {
+            "type": "boolean"
+          },
+          "readers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentReader"
             },
             "nullable": true
           }
@@ -74414,6 +74494,17 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "stopKind": {
+            "type": "string",
+            "nullable": true
+          },
+          "serviceType": {
+            "type": "string",
+            "nullable": true
+          },
+          "isRoundTrip": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -80803,6 +80894,17 @@
           "geocodeAccuracyCode": {
             "type": "string",
             "nullable": true
+          },
+          "stopKind": {
+            "type": "string",
+            "nullable": true
+          },
+          "serviceType": {
+            "type": "string",
+            "nullable": true
+          },
+          "isRoundTrip": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

@@ -56,6 +56,13 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
             pattern: t('integrations.email.errors.pattern'),
             block: t('integrations.email.errors.block'),
             blockColumns: t('integrations.email.errors.blockColumns'),
+            regex: t('integrations.email.errors.regex'),
+            repeatStart: t('integrations.email.errors.repeatStart'),
+            readerName: t('integrations.email.errors.readerName'),
+            readerNameDuplicate: t('integrations.email.errors.readerNameDuplicate'),
+            readerFields: t('integrations.email.errors.readerFields'),
+            conditionValue: t('integrations.email.errors.conditionValue'),
+            conditionScope: t('integrations.email.errors.conditionScope'),
             nameFilter: t('integrations.email.errors.nameFilter'),
             senders: t('integrations.email.errors.senders'),
           },
@@ -270,7 +277,7 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
         </div>
       )}
 
-      {connector === 'EMAIL' && <EmailSection form={form} hasSavedPassword={integration?.hasMailPassword === true} />}
+      {connector === 'EMAIL' && <EmailSection form={form} hasSavedPassword={integration?.hasMailPassword === true} clientOptions={clientOptions} templateOptions={templateOptions} />}
       {connector !== 'API' && !outbound && <FormatSection form={form} />}
       {(connector === 'SFTP' || connector === 'FTP') && <RemoteSection form={form} kind={connector} hasSavedSecret={integration?.hasRemoteSecret === true} outbound={outbound} />}
       {outbound && <OutputSection form={form} connector={connector} options={options.data} hasSavedSecret={integration?.hasHttpSecret === true} onPreview={editing ? () => setPreviewing(true) : undefined} entity={isEntity} />}

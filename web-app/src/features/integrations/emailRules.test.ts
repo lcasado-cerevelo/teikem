@@ -1,6 +1,6 @@
 // Lote 133 — reglas puras del formulario de correo: validación con los mismos mensajes del servidor, bloques «6=1, 7=2» y el cuerpo del API (sin la contraseña en la configuración).
 import { describe, expect, it } from 'vitest'
-import { buildEmailConfig, emailIssues, emailValuesOf, emptyBodyField, emptyEmail, parseBlockColumns, parseSenders, parseTypes, type EmailMessages, type EmailValues } from './emailRules'
+import { buildEmailConfig, emailIssues, emailValuesOf, emptyBodyField, emptyCondition, emptyEmail, emptyReader, legacyToReaders, parseBlockColumns, parseSenders, parseTypes, type EmailMessages, type EmailValues } from './emailRules'
 import { emptyFormat } from './formatRules'
 import { emptyOutput } from './outputRules'
 import { emptyRemote } from './remoteRules'
@@ -8,7 +8,7 @@ import { buildCreateRequest, buildPatchRequest, integrationSchema, type Integrat
 
 const M: EmailMessages = {
   host: 'host', port: 'puerto', username: 'usuario', password: 'contraseña', mailbox: 'carpeta', noFields: 'sin campos', position: 'columna', label: 'etiqueta', pattern: 'regex', block: 'bloque',
-  blockColumns: 'columnas del bloque', nameFilter: 'nombre', senders: 'remitentes',
+  blockColumns: 'columnas del bloque', regex: 'regex inválida', repeatStart: 'repetir necesita inicio', readerName: 'nombre del lector', readerNameDuplicate: 'nombre repetido', readerFields: 'lector sin campos', conditionValue: 'condición sin texto', conditionScope: 'condición no aplica', nameFilter: 'nombre', senders: 'remitentes',
 }
 const ok = (): EmailValues => ({ ...emptyEmail(), host: ' imap.x.com ', username: ' u@x.com ', password: 'secreto' })
 const issues = (e: Partial<EmailValues>, saved = false) => emailIssues({ ...ok(), ...e }, saved, M).map((i) => `${i.path}:${i.message}`)
@@ -28,11 +28,16 @@ describe('emailIssues', () => {
 
   it('leer el cuerpo exige al menos un campo y cada tipo sus datos', () => {
     expect(issues({ readBody: true })).toEqual(['bodyFields:sin campos'])
+    expect(issues({ readPdf: true })).toEqual(['bodyFields:sin campos'])
     const f = emptyBodyField()
     expect(issues({ readBody: true, bodyFields: [{ ...f, position: '0' }] })).toEqual(['bodyFields.0.position:columna', 'bodyFields.0.label:etiqueta'])
     expect(issues({ readBody: true, bodyFields: [{ ...f, position: '2', kind: 'REGEX' }] })).toEqual(['bodyFields.0.pattern:regex'])
     expect(issues({ readBody: true, bodyFields: [{ ...f, position: '2', kind: 'BLOCK', start: 'Order Summary' }] })).toEqual(['bodyFields.0.start:bloque', 'bodyFields.0.columns:columnas del bloque'])
     expect(issues({ readBody: true, bodyFields: [{ ...f, position: '2', kind: 'BLOCK', start: 'a', end: 'b', columns: '6=1, 7=2' }] })).toEqual([])
+    // 2026-10-22: con una expresión por línea no hacen falta el inicio ni el fin; repetir sí necesita el inicio
+    expect(issues({ readBody: true, bodyFields: [{ ...f, position: '2', kind: 'BLOCK', lineRegex: '^(\\d+)$', columns: '2=1' }] })).toEqual([])
+    expect(issues({ readBody: true, bodyFields: [{ ...f, position: '2', kind: 'BLOCK', lineRegex: '([', columns: '2=1' }] })).toEqual(['bodyFields.0.lineRegex:regex inválida'])
+    expect(issues({ readBody: true, bodyFields: [{ ...f, position: '2', kind: 'BLOCK', lineRegex: '^(\\d+)$', repeat: true, columns: '2=1' }] })).toEqual(['bodyFields.0.start:repetir necesita inicio'])
   })
 })
 
@@ -106,5 +111,55 @@ describe('formulario de integración con correo', () => {
     expect(keep).not.toHaveProperty('folder')
     expect(buildPatchRequest(base, { connectorKind: 'EMAIL' }).mailPassword).toBe('secreto')
     expect(buildCreateRequest({ ...base, connectorKind: 'FOLDER', folder: 'x' })).not.toHaveProperty('email')
+  })
+})
+
+// 2026-10-22 — lectores: qué hace la integración con cada documento (cuerpo, PDF, archivo de datos), con sus condiciones, campos y destino.
+describe('lectores', () => {
+  const field = { ...emptyBodyField(), position: '1', kind: 'LABEL', label: 'Reference #' }
+  const reader = (over: object = {}) => ({ ...emptyReader(), name: 'Pedido', source: 'BODY', fields: [field], ...over })
+
+  it('un lector necesita nombre único, campos (cuerpo y PDF) y condiciones con texto que apliquen a lo que lee', () => {
+    expect(issues({ readers: [reader()] })).toEqual([])
+    expect(issues({ readers: [reader({ name: ' ' })] })).toEqual(['readers.0.name:nombre del lector'])
+    expect(issues({ readers: [reader(), reader()] })).toEqual(['readers.1.name:nombre repetido'])
+    expect(issues({ readers: [reader({ fields: [] })] })).toEqual(['readers.0.fields:lector sin campos'])
+    expect(issues({ readers: [reader({ source: 'FILE', fields: [] })] })).toEqual([])   // un archivo de datos no lleva campos
+    expect(issues({ readers: [reader({ conditions: [{ ...emptyCondition('BODY'), value: ' ' }] })] })).toEqual(['readers.0.conditions.0.value:condición sin texto'])
+    // un cuerpo no tiene nombre de adjunto
+    expect(issues({ readers: [reader({ conditions: [{ scope: 'ATTACHMENT_NAME', operator: 'CONTAINS', value: 'x' }] })] })).toEqual(['readers.0.conditions.0.scope:condición no aplica'])
+  })
+
+  it('los campos de un lector se validan como los de siempre, con su ruta', () => {
+    const bad = { ...emptyBodyField(), position: '0', kind: 'REGEX', pattern: '' }
+    expect(issues({ readers: [reader({ fields: [bad] })] })).toEqual(['readers.0.fields.0.position:columna', 'readers.0.fields.0.pattern:regex'])
+  })
+
+  it('los lectores viajan en la configuración del API y vuelven iguales', () => {
+    const r = reader({
+      source: 'PDF', target: 'ORDER', firstOnly: true, templatePublicId: 't-1', clientPublicId: 'c-1',
+      conditions: [{ scope: 'TEXT', operator: 'CONTAINS', value: ' packing list ' }],
+      fields: [{ ...emptyBodyField(), position: '2', kind: 'BLOCK', start: 'Product', end: 'Page', lineRegex: '^(T-\\w+)$', repeat: true, columns: '2=1' }],
+    })
+    const cfg = buildEmailConfig({ ...ok(), readers: [r] })
+    expect(cfg.readers).toEqual([{
+      name: 'Pedido', source: 'PDF', target: 'ORDER', firstOnly: true, templatePublicId: 't-1', clientPublicId: 'c-1',
+      when: [{ scope: 'TEXT', operator: 'CONTAINS', value: 'packing list' }],
+      fields: [expect.objectContaining({ position: 2, kind: 'BLOCK', start: 'Product', end: 'Page', lineRegex: '^(T-\\w+)$', repeat: true, columns: [{ position: 2, index: 1 }] })],
+    }])
+    const back = emailValuesOf(cfg).readers[0]
+    expect(back).toMatchObject({ name: 'Pedido', source: 'PDF', firstOnly: true, templatePublicId: 't-1', clientPublicId: 'c-1', conditions: [{ scope: 'TEXT', operator: 'CONTAINS', value: 'packing list' }] })
+    expect(back.fields[0]).toMatchObject({ kind: 'BLOCK', repeat: true, lineRegex: '^(T-\\w+)$', columns: '2=1' })
+  })
+
+  it('«convertir lo de arriba en lectores» crea los equivalentes a los ajustes de siempre', () => {
+    const e: EmailValues = { ...ok(), attachmentTypes: 'csv, xlsx, pdf', attachmentMode: 'BY_NAME', attachmentNameOperator: 'WILDCARD', attachmentNameValue: 'ordenes-*', readBody: true, readPdf: true, bodyFields: [field] }
+    const readers = legacyToReaders(e)
+    expect(readers.map((r) => [r.name, r.source])).toEqual([['Archivos de datos', 'FILE'], ['Cuerpo del correo', 'BODY'], ['PDF adjuntos', 'PDF']])
+    expect(readers[0].conditions.map((c) => `${c.scope} ${c.operator} ${c.value}`)).toEqual(['ATTACHMENT_NAME REGEX \\.(csv|xlsx)$', 'ATTACHMENT_NAME WILDCARD ordenes-*'])
+    expect(readers[2].conditions[0].value).toBe('\\.pdf$')
+    expect(readers[1].fields).toEqual([field])
+    expect(legacyToReaders({ ...ok(), attachmentTypes: 'pdf' })).toEqual([])
+    expect(issues({ readers })).toEqual([])
   })
 })

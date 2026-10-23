@@ -1,14 +1,15 @@
 // Sección «Correo» del formulario de integraciones (Lote 133, P11): el buzón (servidor IMAP, usuario, contraseña, carpeta), qué correos se toman (asunto y remitente ORIGINAL permitido), qué se lee
 // (adjuntos por nombre y tipo y/o el cuerpo con campos a leer por etiqueta, expresión regular o bloque de renglones) y a qué columna de la plantilla va cada campo.
-import { useFieldArray, useWatch, type UseFormReturn } from 'react-hook-form'
+import { useWatch, type UseFormReturn } from 'react-hook-form'
 import { useT } from '../../kernel/i18n'
-import { Field, IconPlus, IconTrash, Select, TextInput, Toggle } from '../../kernel/ui'
-import { ATTACHMENT_MODES, BODY_KINDS, MATCH_OPERATORS, TRANSFORMS, emptyBodyField } from './emailRules'
+import { Field, Select, TextInput, Toggle } from '../../kernel/ui'
+import { BodyFieldsEditor } from './BodyFieldsEditor'
+import { ATTACHMENT_MODES, MATCH_OPERATORS } from './emailRules'
+import { ReadersSection } from './ReadersSection'
 import type { IntegrationValues } from './integrationRules'
 
-export function EmailSection({ form, hasSavedPassword }: { form: UseFormReturn<IntegrationValues>; hasSavedPassword: boolean }) {
+export function EmailSection({ form, hasSavedPassword, clientOptions, templateOptions }: { form: UseFormReturn<IntegrationValues>; hasSavedPassword: boolean; clientOptions: { value: string; label: string }[]; templateOptions: { value: string; label: string }[] }) {
   const t = useT()
-  const fields = useFieldArray({ control: form.control, name: 'email.bodyFields' })
   const email = useWatch({ control: form.control, name: 'email' })
   const opOptions = MATCH_OPERATORS.map((o) => ({ value: o, label: t(`integrations.email.operator.${o}`) }))
   const bodyError = (form.formState.errors.email as { bodyFields?: { message?: string; root?: { message?: string } } } | undefined)?.bodyFields
@@ -88,76 +89,18 @@ export function EmailSection({ form, hasSavedPassword }: { form: UseFormReturn<I
         <Field name="email.readBody" label={t('integrations.email.readBody')}>
           <Toggle text={t('integrations.email.readBody')} />
         </Field>
-        {email?.readBody && (
+        <Field name="email.readPdf" label={t('integrations.email.readPdf')} help={t('integrations.email.readPdfHelp')}>
+          <Toggle text={t('integrations.email.readPdf')} />
+        </Field>
+        {(email?.readBody || email?.readPdf) && (
           <>
             <p className="help">{t('integrations.email.bodyHelp')}</p>
-            {fields.fields.map((f, i) => {
-              const kind = email?.bodyFields?.[i]?.kind ?? 'LABEL'
-              return (
-                <div className="int-bodyfield" key={f.id}>
-                  <div className="r2">
-                    <Field name={`email.bodyFields.${i}.position`} label={t('integrations.email.column', { n: i + 1 })} required help={t('integrations.email.columnHelp')}>
-                      <TextInput inputMode="numeric" maxLength={3} />
-                    </Field>
-                    <Field name={`email.bodyFields.${i}.kind`} label={t('integrations.email.kind', { n: i + 1 })}>
-                      <Select options={BODY_KINDS.map((k) => ({ value: k, label: t(`integrations.email.kindOption.${k}`) }))} />
-                    </Field>
-                  </div>
-                  {kind === 'LABEL' && (
-                    <Field name={`email.bodyFields.${i}.label`} label={t('integrations.email.label', { n: i + 1 })} required help={t('integrations.email.labelHelp')}>
-                      <TextInput placeholder="Reference #" />
-                    </Field>
-                  )}
-                  {kind === 'REGEX' && (
-                    <Field name={`email.bodyFields.${i}.pattern`} label={t('integrations.email.pattern', { n: i + 1 })} required help={t('integrations.email.patternHelp')}>
-                      <TextInput placeholder="Pueblo:\s*(\w+)" />
-                    </Field>
-                  )}
-                  {kind === 'BLOCK' && (
-                    <>
-                      <div className="r2">
-                        <Field name={`email.bodyFields.${i}.start`} label={t('integrations.email.start', { n: i + 1 })} required>
-                          <TextInput placeholder="Order Summary" />
-                        </Field>
-                        <Field name={`email.bodyFields.${i}.end`} label={t('integrations.email.end', { n: i + 1 })} required>
-                          <TextInput placeholder="Total" />
-                        </Field>
-                      </div>
-                      <div className="r2">
-                        <Field name={`email.bodyFields.${i}.separator`} label={t('integrations.email.separator', { n: i + 1 })} help={t('integrations.email.separatorHelp')}>
-                          <TextInput />
-                        </Field>
-                        <Field name={`email.bodyFields.${i}.columns`} label={t('integrations.email.blockColumns', { n: i + 1 })} required help={t('integrations.email.blockColumnsHelp')}>
-                          <TextInput placeholder="6=1, 7=2, 8=3" />
-                        </Field>
-                      </div>
-                    </>
-                  )}
-                  <div className="r2">
-                    <Field name={`email.bodyFields.${i}.transform`} label={t('integrations.email.transform', { n: i + 1 })}>
-                      <Select options={TRANSFORMS.map((x) => ({ value: x, label: t(`integrations.email.transformOption.${x}`) }))} />
-                    </Field>
-                    <Field name={`email.bodyFields.${i}.required`} label={t('integrations.email.required', { n: i + 1 })}>
-                      <Toggle text={t('integrations.email.required', { n: i + 1 })} />
-                    </Field>
-                  </div>
-                  <button type="button" className="btn sm" aria-label={t('integrations.email.removeField', { n: i + 1 })} onClick={() => fields.remove(i)}>
-                    <IconTrash /> {t('integrations.email.removeField', { n: i + 1 })}
-                  </button>
-                </div>
-              )
-            })}
-            {(bodyError?.message ?? bodyError?.root?.message) && (
-              <p className="ferr" role="alert">
-                {bodyError?.message ?? bodyError?.root?.message}
-              </p>
-            )}
-            <button type="button" className="btn sm" onClick={() => fields.append(emptyBodyField())}>
-              <IconPlus /> {t('integrations.email.addField')}
-            </button>
+            <BodyFieldsEditor form={form} base="email.bodyFields" error={bodyError?.message ?? bodyError?.root?.message} />
           </>
         )}
       </fieldset>
+
+      <ReadersSection form={form} clientOptions={clientOptions} templateOptions={templateOptions} />
     </>
   )
 }

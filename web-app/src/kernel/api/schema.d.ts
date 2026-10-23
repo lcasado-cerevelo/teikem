@@ -39259,6 +39259,23 @@ export interface components {
             email?: string | null;
             fullName?: string | null;
         };
+        DocumentReader: {
+            name?: string | null;
+            source?: string | null;
+            target?: string | null;
+            when?: components["schemas"]["ReaderCondition"][] | null;
+            fields?: components["schemas"]["EmailBodyField"][] | null;
+            /** Format: uuid */
+            templatePublicId?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            firstOnly?: boolean;
+        };
+        ReaderCondition: {
+            scope?: string | null;
+            operator?: string | null;
+            value?: string | null;
+        };
         EmailBlockColumn: {
             /** Format: int32 */
             position?: number;
@@ -39277,6 +39294,8 @@ export interface components {
             end?: string | null;
             separator?: string | null;
             columns?: components["schemas"]["EmailBlockColumn"][] | null;
+            lineRegex?: string | null;
+            repeat?: boolean;
         };
         EmailConfig: {
             host?: string | null;
@@ -39294,6 +39313,8 @@ export interface components {
             attachmentTypes?: string[] | null;
             readBody?: boolean;
             bodyFields?: components["schemas"]["EmailBodyField"][] | null;
+            readPdf?: boolean;
+            readers?: components["schemas"]["DocumentReader"][] | null;
         };
         EmailTestResultDto: {
             ok?: boolean;
@@ -44667,6 +44688,9 @@ export interface components {
             actualArrivalUtc?: string | null;
             /** Format: date-time */
             actualDepartureUtc?: string | null;
+            stopKind?: string | null;
+            serviceType?: string | null;
+            isRoundTrip?: boolean;
         };
         SalesAvailabilityDto: {
             lines?: components["schemas"]["SalesAvailabilityLineDto"][] | null;
@@ -46804,6 +46828,9 @@ export interface components {
             volumeM3?: number | null;
             point?: components["schemas"]["GeoPointDto"];
             geocodeAccuracyCode?: string | null;
+            stopKind?: string | null;
+            serviceType?: string | null;
+            isRoundTrip?: boolean;
         };
         UnassignedOrderPageDto: {
             /** Format: int32 */

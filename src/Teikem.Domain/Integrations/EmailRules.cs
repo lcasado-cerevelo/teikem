@@ -56,17 +56,21 @@ public sealed record EmailBlockColumn(int Position, int Index);
 /// <summary>
 /// Un campo a leer del cuerpo del correo. Position = la columna de la plantilla de importación (1…n) a la que va el valor: el cuerpo se convierte en una fila de archivo (o varias, con un bloque) y
 /// la MISMA plantilla de la integración la lee. LABEL usa Label; REGEX usa Pattern (grupo 1 si lo hay); BLOCK usa Start, End, Separator y Columns.
+/// BLOCK con LineRegex (2026-10-22): cada línea del bloque que coincida con la expresión da una fila y los grupos (1, 2, 3…) van a las columnas de la plantilla (Columns.Index = número de grupo); las líneas que no
+/// coinciden (continuaciones de una descripción, rayas, totales) se ignoran. Repeat: el bloque se lee cada vez que aparece (un encabezado que se repite en cada página del PDF), no solo la primera.
 /// </summary>
 public sealed record EmailBodyField(
     int Position, string Kind, string? Label = null, string? Pattern = null, bool Required = false, string Transform = EmailTransforms.None,
-    string? Start = null, string? End = null, string? Separator = null, IReadOnlyList<EmailBlockColumn>? Columns = null);
+    string? Start = null, string? End = null, string? Separator = null, IReadOnlyList<EmailBlockColumn>? Columns = null,
+    string? LineRegex = null, bool Repeat = false);
 
-/// <summary>Configuración NO secreta de un conector de correo (la contraseña va aparte, cifrada).</summary>
+/// <summary>Configuración NO secreta de un conector de correo (la contraseña va aparte, cifrada). ReadPdf (2026-10-22): los PDF adjuntos se convierten en texto (con OCR si son escaneados) y se leen con los MISMOS campos a leer del cuerpo (BodyFields).</summary>
 public sealed record EmailConfig(
     string Host, int Port, bool UseSsl, string Username, string Mailbox = "INBOX", string ProcessedFolder = "Procesados",
     EmailTextMatch? Subject = null, IReadOnlyList<string>? AllowedSenders = null, bool RequireAttachment = false,
     string AttachmentMode = EmailAttachmentModes.All, EmailTextMatch? AttachmentName = null, IReadOnlyList<string>? AttachmentTypes = null,
-    bool ReadBody = false, IReadOnlyList<EmailBodyField>? BodyFields = null);
+    bool ReadBody = false, IReadOnlyList<EmailBodyField>? BodyFields = null,
+    bool ReadPdf = false, IReadOnlyList<DocumentReader>? Readers = null);
 
 /// <summary>Un correo ya leído (de un buzón o de un .eml): lo que las reglas necesitan.</summary>
 public sealed record MailAttachmentData(string Name, string ContentType, byte[] Content);
@@ -95,13 +99,17 @@ public static class EmailRules
     public static string NameFilterRequiredMessage => "Con «por nombre» indique la condición del nombre del adjunto.";
     public static string SendersMessage => $"Máximo {MaxAllowedSenders} remitentes permitidos.";
     public static string SenderFormatMessage(string s) => $"El remitente permitido '{s}' no es un correo ni un dominio válido.";
-    public static string NoBodyFieldsMessage => "Con «leer el cuerpo» indique al menos un campo a leer.";
+    public static string NoBodyFieldsMessage => "Con «leer el cuerpo» (o los PDF) indique al menos un campo a leer.";
+    public static string NoPdfDataMessage(string name, string sample) => $"No se encontró ningún dato en el PDF {name}. Texto leído: «{sample}»";
+    public static string PdfProblemMessage(string name, string problem) => $"PDF {name}: {problem}";
+    public const string PdfExtension = ".pdf";
     public static string TooManyFieldsMessage => $"Máximo {MaxBodyFields} campos a leer.";
     public static string PositionMessage => $"La columna debe estar entre 1 y {MaxPosition}.";
     public static string UnknownKindMessage(string kind) => $"Tipo de campo desconocido: {kind}. Use LABEL, REGEX o BLOCK.";
     public static string LabelRequiredMessage => "Indique la etiqueta que se busca en el correo.";
     public static string PatternRequiredMessage => "Indique la expresión regular.";
-    public static string BlockMarkersMessage => "Un bloque necesita el texto de inicio y el de fin.";
+    public static string BlockMarkersMessage => "Un bloque necesita el texto de inicio y el de fin (o una expresión regular por línea).";
+    public static string RepeatNeedsStartMessage => "Para repetir el bloque indique el texto de inicio (el encabezado que se repite).";
     public static string BlockColumnsMessage => "Un bloque necesita al menos una columna (posición y número de columna del renglón).";
     public static string UnknownTransformMessage(string t) => $"Transformación desconocida: {t}. Use NONE, UPPER, DIGITS o MONEY.";
     public static string NothingToReadMessage => "Marque al menos una cosa a leer: los adjuntos o el cuerpo del correo.";
@@ -134,19 +142,25 @@ public static class EmailRules
             else ValidateMatch(c.AttachmentName, "email.attachmentName", errors);
         }
         var fields = c.BodyFields ?? Array.Empty<EmailBodyField>();
-        if (c.ReadBody && fields.Count == 0) errors["email.bodyFields"] = NoBodyFieldsMessage;
+        if ((c.ReadBody || c.ReadPdf) && fields.Count == 0) errors["email.bodyFields"] = NoBodyFieldsMessage;
         if (fields.Count > MaxBodyFields) errors["email.bodyFields"] = TooManyFieldsMessage;
         for (var i = 0; i < fields.Count; i++) ValidateField(fields[i], $"email.bodyFields[{i}]", errors);
+        foreach (var kv in DocumentReaderRules.Validate(c.Readers)) errors[kv.Key] = kv.Value;
         return errors;
     }
 
-    private static void ValidateMatch(EmailTextMatch? m, string key, Dictionary<string, string> errors)
+    internal static void ValidateMatch(EmailTextMatch? m, string key, Dictionary<string, string> errors)
     {
         if (m is null) return;
         var op = m.Operator?.Trim().ToUpperInvariant() ?? string.Empty;
         if (!EmailMatchOperators.All.Contains(op)) { errors[key] = UnknownOperatorMessage(m.Operator ?? string.Empty); return; }
         if (string.IsNullOrWhiteSpace(m.Value)) { errors[key] = MatchValueMessage; return; }
         if (op == EmailMatchOperators.Regex && !IsValidRegex(m.Value)) errors[key] = BadRegexMessage(m.Value);
+    }
+
+    internal static void ValidateBodyFields(IReadOnlyList<EmailBodyField> fields, string key, Dictionary<string, string> errors)
+    {
+        for (var i = 0; i < fields.Count; i++) ValidateField(fields[i], $"{key}[{i}]", errors);
     }
 
     private static void ValidateField(EmailBodyField f, string key, Dictionary<string, string> errors)
@@ -163,7 +177,12 @@ public static class EmailRules
                 else if (!IsValidRegex(f.Pattern)) errors[$"{key}.pattern"] = BadRegexMessage(f.Pattern);
                 break;
             case EmailBodyKinds.Block:
-                if (string.IsNullOrWhiteSpace(f.Start) || string.IsNullOrWhiteSpace(f.End)) errors[$"{key}.start"] = BlockMarkersMessage;
+                if (!string.IsNullOrWhiteSpace(f.LineRegex))
+                {
+                    if (!IsValidRegex(f.LineRegex)) errors[$"{key}.lineRegex"] = BadRegexMessage(f.LineRegex);
+                }
+                else if (string.IsNullOrWhiteSpace(f.Start) || string.IsNullOrWhiteSpace(f.End)) errors[$"{key}.start"] = BlockMarkersMessage;
+                if (f.Repeat && string.IsNullOrWhiteSpace(f.Start)) errors[$"{key}.start"] = RepeatNeedsStartMessage;
                 if (f.Columns is null || f.Columns.Count == 0) errors[$"{key}.columns"] = BlockColumnsMessage;
                 else if (f.Columns.Any(c => c.Position is < 1 or > MaxPosition || c.Index < 1)) errors[$"{key}.columns"] = PositionMessage;
                 break;
@@ -256,6 +275,7 @@ public static class EmailRules
     public static IReadOnlyList<MailAttachmentData> SelectAttachments(IReadOnlyList<MailAttachmentData> attachments, EmailConfig c)
     {
         var types = (c.AttachmentTypes is { Count: > 0 } ? c.AttachmentTypes : DefaultAttachmentTypes).Select(t => t.Trim().ToLowerInvariant().StartsWith('.') ? t.Trim().ToLowerInvariant() : "." + t.Trim().ToLowerInvariant()).ToList();
+        if (c.ReadPdf && !types.Contains(PdfExtension)) types.Add(PdfExtension);   // leer PDF implica tomar los .pdf adjuntos
         var byType = attachments.Where(a => !string.IsNullOrWhiteSpace(a.Name) && types.Contains(Path.GetExtension(a.Name).ToLowerInvariant())).ToList();
         return (c.AttachmentMode ?? EmailAttachmentModes.All).ToUpperInvariant() switch
         {
@@ -322,17 +342,36 @@ public static class EmailRules
             var colon = line.IndexOf(':');
             if (colon <= 0) continue;
             if (PostalLocalityRules.Normalize(line[..colon]).Trim() != wanted) continue;
-            var value = line[(colon + 1)..].Trim();
+            var value = FirstCell(line[(colon + 1)..]);
             if (value.Length > 0) return value;
         }
-        // sin dos puntos: «Reference # 123» (la etiqueta al principio de la línea)
+        // sin dos puntos: «Reference # 123» (la etiqueta al principio de la línea); el valor llega hasta la celda siguiente (tabulador)
         foreach (var raw in lines)
         {
             var line = raw.Trim();
-            if (PostalLocalityRules.Normalize(line).StartsWith(wanted + " ", StringComparison.Ordinal)) return line[wanted.Length..].Trim(' ', ':', '\t');
+            if (PostalLocalityRules.Normalize(line).StartsWith(wanted + " ", StringComparison.Ordinal) || PostalLocalityRules.Normalize(line).StartsWith(wanted + "\t", StringComparison.Ordinal))
+            {
+                var value = FirstCell(line[wanted.Length..]);
+                if (value.Length > 0) return value;
+            }
+        }
+        // en una tabla o un PDF la etiqueta puede estar en cualquier celda del renglón («Ship Date ⇥ 10/7/26 ⇥ Order # ⇥ GRUPO0037 ⇥ Customer PO ⇥ 2214…»): el valor es lo que sigue en la celda o la celda siguiente
+        foreach (var raw in lines)
+        {
+            if (!raw.Contains('\t')) continue;
+            var cells = raw.Split('\t').Select(c => c.Trim()).ToArray();
+            for (var i = 0; i < cells.Length; i++)
+            {
+                var norm = PostalLocalityRules.Normalize(cells[i]).TrimEnd(':').Trim();
+                if (norm == wanted) { var next = cells.Skip(i + 1).FirstOrDefault(c => c.Length > 0); if (next is not null) return next; }
+                else if (norm.StartsWith(wanted + " ", StringComparison.Ordinal)) { var rest = cells[i][wanted.Length..].Trim(' ', ':'); if (rest.Length > 0) return rest; }
+            }
         }
         return null;
     }
+
+    /// <summary>El valor hasta el primer tabulador (una celda), sin espacios ni dos puntos de sobra.</summary>
+    private static string FirstCell(string text) => text.Trim(' ', ':', '\t').Split('\t')[0].Trim();
 
     private static string? ReadRegex(string text, string? pattern)
     {
@@ -352,19 +391,42 @@ public static class EmailRules
         var rows = new List<IReadOnlyDictionary<int, string>>();
         var start = PostalLocalityRules.Normalize(f.Start ?? string.Empty);
         var end = PostalLocalityRules.Normalize(f.End ?? string.Empty);
-        var inside = false;
         var sepText = string.IsNullOrEmpty(f.Separator) ? "\t" : f.Separator!.Replace("\\t", "\t");
+        Regex? lineRx = null;
+        if (!string.IsNullOrWhiteSpace(f.LineRegex))
+        {
+            try { lineRx = new Regex(f.LineRegex, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(250)); }
+            catch (ArgumentException) { return rows; }
+        }
+        var inside = start.Length == 0;   // sin texto de inicio (solo con expresión por línea) el bloque arranca en la primera línea
         foreach (var raw in lines)
         {
             var line = raw.Trim();
             var norm = PostalLocalityRules.Normalize(line);
             if (!inside) { if (start.Length > 0 && norm.Contains(start, StringComparison.Ordinal)) inside = true; continue; }
-            if (end.Length > 0 && norm.Contains(end, StringComparison.Ordinal)) break;
+            if (start.Length > 0 && f.Repeat && norm.Contains(start, StringComparison.Ordinal)) continue;   // el encabezado otra vez (página siguiente): no es un renglón
+            if (end.Length > 0 && norm.Contains(end, StringComparison.Ordinal))
+            {
+                if (!f.Repeat) break;
+                inside = false;   // este bloque terminó; se espera el próximo encabezado
+                continue;
+            }
             if (line.Length == 0) continue;
-            var parts = sepText == " " ? Regex.Split(line, @"\s{2,}|\t") : line.Split(sepText);
             var row = new Dictionary<int, string>();
-            foreach (var c in f.Columns ?? Array.Empty<EmailBlockColumn>())
-                if (c.Index >= 1 && c.Index <= parts.Length && parts[c.Index - 1].Trim().Length > 0) row[c.Position] = Transform(parts[c.Index - 1].Trim(), f.Transform);
+            if (lineRx is not null)
+            {
+                Match m;
+                try { m = lineRx.Match(line); } catch (RegexMatchTimeoutException) { continue; }
+                if (!m.Success) continue;
+                foreach (var c in f.Columns ?? Array.Empty<EmailBlockColumn>())
+                    if (c.Index >= 1 && c.Index < m.Groups.Count && m.Groups[c.Index].Success && m.Groups[c.Index].Value.Trim().Length > 0) row[c.Position] = Transform(m.Groups[c.Index].Value.Trim(), f.Transform);
+            }
+            else
+            {
+                var parts = sepText == " " ? Regex.Split(line, @"\s{2,}|\t") : line.Split(sepText);
+                foreach (var c in f.Columns ?? Array.Empty<EmailBlockColumn>())
+                    if (c.Index >= 1 && c.Index <= parts.Length && parts[c.Index - 1].Trim().Length > 0) row[c.Position] = Transform(parts[c.Index - 1].Trim(), f.Transform);
+            }
             if (row.Count > 0) rows.Add(row);
         }
         return rows;

@@ -24,6 +24,14 @@ public sealed class IntegrationOptions
     public string FolderRoot { get; set; } = "App_Data/integrations";
     /// <summary>Tamaño máximo de un archivo de entrada, en megabytes (el importador además limita las filas).</summary>
     public int MaxFileMegabytes { get; set; } = 2;
+    /// <summary>Tamaño máximo de un PDF adjunto, en megabytes (un escaneado pesa más que un CSV).</summary>
+    public int MaxPdfMegabytes { get; set; } = 15;
+    /// <summary>Páginas que se leen de un PDF (las demás se ignoran con un aviso).</summary>
+    public int MaxPdfPages { get; set; } = 30;
+    /// <summary>Carpeta con los datos de idioma de Tesseract (spa.traineddata, eng.traineddata…) para el OCR de PDF escaneados; vacía = sin OCR (los PDF con texto real se leen igual).</summary>
+    public string OcrTessdataPath { get; set; } = "";
+    /// <summary>Idiomas del OCR, como los pide Tesseract («spa+eng»).</summary>
+    public string OcrLanguages { get; set; } = "spa+eng";
 }
 
 /// <summary>Una orden que no se pudo procesar: va a la bandeja con su motivo y los datos tal como llegaron.</summary>
@@ -39,8 +47,18 @@ public sealed record FileOutcome(IntegrationFileLog Log, IReadOnlyList<Guid> Cre
 /// </summary>
 public sealed class IntegrationRunner(
     TeikemDbContext db, ITenantContext tenant, OrderImportService import, ImportTemplateService templates, IntegrationService integrations, IntegrationNotifier notifier,
-    IOptions<IntegrationOptions> options, ILogger<IntegrationRunner> logger, ISecretProtector protector, IMailboxReader mailbox, IRemoteFileClient remote, IntegrationOutputService outputs)
+    IOptions<IntegrationOptions> options, ILogger<IntegrationRunner> logger, ISecretProtector protector, IMailboxReader mailbox, IRemoteFileClient remote, IntegrationOutputService outputs, IPdfTextReader pdfReader, IEnumerable<IDocumentTarget> extraTargets)
 {
+    private Dictionary<string, IDocumentTarget>? _targets;
+    /// <summary>Los destinos registrados por código: ORDER (el de siempre) y los que se agreguen por inyección (2026-10-22).</summary>
+    private Dictionary<string, IDocumentTarget> Targets => _targets ??= new IDocumentTarget[] { new OrderDocumentTarget((r, c) => ProcessBytesAsync(r.Integration, r.Template, r.Client, r.Run, r.FileName, r.Content, r.CheckDuplicate, c)) }
+        .Concat(extraTargets).ToDictionary(t => t.Kind, StringComparer.OrdinalIgnoreCase);
+
+    private Task<FileOutcome> DispatchAsync(string target, Integration integration, ImportTemplate template, Client client, IntegrationRun run, string fileName, byte[] content, CancellationToken ct)
+        => Targets.TryGetValue(target, out var t)
+            ? t.ProcessAsync(new DocumentTargetRequest(integration, template, client, run, fileName, content, CheckDuplicate: true), ct)
+            : Task.FromResult(Failed(integration, run, fileName, string.Empty, content.Length, DocumentReaderRules.UnknownTargetMessage(target)));
+
     public static readonly string InstanceId = $"{Environment.MachineName}:{Environment.ProcessId}";
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull };
     private static readonly TimeSpan Lease = TimeSpan.FromMinutes(15);
@@ -83,6 +101,20 @@ public sealed class IntegrationRunner(
         var integration = await db.Integrations.AsNoTracking().FirstOrDefaultAsync(i => i.PublicId == publicId, ct) ?? throw new NotFoundException(IntegrationService.NotFoundLabel);
         if (integration.Direction == IntegrationDirections.Outbound) throw new ValidationException("direction", "Esta integración es de salida: no recibe archivos.");
         var name = string.IsNullOrWhiteSpace(fileName) ? "archivo.csv" : Path.GetFileName(fileName.Trim());
+        // un PDF subido a mano a una integración de correo con «leer PDF»: se lee como si hubiera llegado adjunto a un correo
+        if (integration.ConnectorKind == IntegrationConnectorKinds.Email && name.EndsWith(EmailRules.PdfExtension, StringComparison.OrdinalIgnoreCase)
+            && IntegrationService.ParseEmail(integration.ConnectorConfigJson) is { } pdfCfg && (pdfCfg.ReadPdf || (pdfCfg.Readers?.Any(r => string.Equals(r.Source, ReaderSources.Pdf, StringComparison.OrdinalIgnoreCase)) ?? false)))
+            return await ExecuteAsync(integration, IntegrationTriggers.Upload, byUserId, async (run, template, client) =>
+            {
+                var pdf = new MailAttachmentData(name, "application/pdf", bytes);
+                if (pdfCfg.Readers is { Count: > 0 })   // con lectores: se evalúan sus condiciones como con un correo que trae solo este adjunto
+                {
+                    var sha = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+                    var message = new MailMessageData($"subida:{sha}", null, DateTime.UtcNow, string.Empty, null, new Dictionary<string, string>(), name, string.Empty, new[] { pdf });
+                    return await ProcessMessageByReadersAsync(integration, template, client, run, pdfCfg, message, $"PDF: {name}", sha, ct);
+                }
+                return new List<FileOutcome> { await ProcessPdfAsync(integration, template, client, run, pdfCfg.BodyFields ?? Array.Empty<EmailBodyField>(), DocumentTargets.Order, pdf, null, ct) };
+            }, ct);
         if (integration.ConnectorKind == IntegrationConnectorKinds.Email && name.EndsWith(".eml", StringComparison.OrdinalIgnoreCase))
             return await ExecuteAsync(integration, IntegrationTriggers.Upload, byUserId, async (run, template, client) =>
             {
@@ -255,26 +287,134 @@ public sealed class IntegrationRunner(
             outcomes.Add(Failed(integration, run, label, messageSha, 0, EmailRules.SenderNotAllowedMessage(sender ?? m.From)));
             return outcomes;
         }
+        if (cfg.Readers is { Count: > 0 }) return await ProcessMessageByReadersAsync(integration, template, client, run, cfg, m, label, messageSha, ct);
         var selected = EmailRules.SelectAttachments(m.Attachments, cfg);
         if (cfg.RequireAttachment && selected.Count == 0)
         {
             outcomes.Add(Failed(integration, run, label, messageSha, 0, EmailRules.NoAttachmentMessage));
             return outcomes;
         }
-        foreach (var a in selected) outcomes.Add(await ProcessBytesAsync(integration, template, client, run, a.Name, a.Content, checkDuplicate: true, ct));
-        if (cfg.ReadBody)
+        foreach (var a in selected)
         {
-            var reading = EmailRules.ReadBody(m.TextBody, cfg.BodyFields ?? Array.Empty<EmailBodyField>());
-            if (reading.Missing.Count > 0) outcomes.Add(Failed(integration, run, label, messageSha, 0, string.Join(" | ", reading.Missing)));
-            else if (!reading.HasData) outcomes.Add(Failed(integration, run, label, messageSha, 0, EmailRules.NoBodyDataMessage));
-            else
-            {
-                var csv = EmailRules.ToCsv(reading, template.HasHeader, ImportTemplateService.DelimiterOf(template));
-                outcomes.Add(await ProcessBytesAsync(integration, template, client, run, $"{label}.csv", Encoding.UTF8.GetBytes(csv), checkDuplicate: true, ct));
-            }
+            if (cfg.ReadPdf && a.Name.EndsWith(EmailRules.PdfExtension, StringComparison.OrdinalIgnoreCase)) outcomes.Add(await ProcessPdfAsync(integration, template, client, run, cfg.BodyFields ?? Array.Empty<EmailBodyField>(), DocumentTargets.Order, a, null, ct));
+            else outcomes.Add(await DispatchAsync(DocumentTargets.Order, integration, template, client, run, a.Name, a.Content, ct));
         }
+        if (cfg.ReadBody) outcomes.Add(await ProcessBodyAsync(integration, template, client, run, cfg.BodyFields ?? Array.Empty<EmailBodyField>(), DocumentTargets.Order, label, messageSha, m.TextBody, ct));
         else if (selected.Count == 0) outcomes.Add(Failed(integration, run, label, messageSha, 0, EmailRules.NoAttachmentMessage));
         return outcomes;
+    }
+
+    /// <summary>
+    /// Un PDF adjunto (2026-10-22): se convierte en texto (el texto real del PDF o, si es un escaneado, OCR) y se lee con los mismos campos a leer del cuerpo; las filas resultantes pasan por la plantilla como cualquier archivo.
+    /// Lo que no se puede leer va a la bandeja con el motivo y un pedazo del texto leído para poder ajustar los campos.
+    /// </summary>
+    private async Task<FileOutcome> ProcessPdfAsync(Integration integration, ImportTemplate template, Client client, IntegrationRun run, IReadOnlyList<EmailBodyField> fields, string target, MailAttachmentData pdf, PdfReadResult? preRead, CancellationToken ct)
+    {
+        var sha = Convert.ToHexString(SHA256.HashData(pdf.Content)).ToLowerInvariant();
+        if (pdf.Content.Length > options.Value.MaxPdfMegabytes * 1024L * 1024L) return Failed(integration, run, pdf.Name, sha, pdf.Content.Length, $"El PDF pesa más de {options.Value.MaxPdfMegabytes} MB.");
+        if (await db.IntegrationFileLogs.AsNoTracking().AnyAsync(f => f.IntegrationId == integration.IntegrationId && f.Sha256 == sha && f.Result == IntegrationFileResults.Processed, ct))
+        {
+            var dup = NewLog(integration, run, pdf.Name, sha, pdf.Content.Length);
+            dup.Result = IntegrationFileResults.Duplicate;
+            dup.Message = DuplicateFileMessage;
+            return new FileOutcome(dup, Array.Empty<Guid>(), Array.Empty<RejectedOrder>());
+        }
+        var read = preRead ?? await Task.Run(() => pdfReader.Read(pdf.Content), ct);   // el OCR usa CPU: fuera del hilo de la corrida
+        var sample = Truncate(string.Join(" ", read.Text.Split('\n', StringSplitOptions.RemoveEmptyEntries).Take(8)).Replace('\t', ' '), 300);
+        if (read.Problem is not null) return Failed(integration, run, pdf.Name, sha, pdf.Content.Length, EmailRules.PdfProblemMessage(pdf.Name, read.Problem));
+        var reading = EmailRules.ReadBody(read.Text, fields);
+        if (reading.Missing.Count > 0) return Failed(integration, run, pdf.Name, sha, pdf.Content.Length, Truncate($"PDF {pdf.Name}: {string.Join(" | ", reading.Missing)} Texto leído: «{sample}»", 1000));
+        if (!reading.HasData) return Failed(integration, run, pdf.Name, sha, pdf.Content.Length, Truncate(EmailRules.NoPdfDataMessage(pdf.Name, sample), 1000));
+        var csv = EmailRules.ToCsv(reading, template.HasHeader, ImportTemplateService.DelimiterOf(template));
+        var outcome = await DispatchAsync(target, integration, template, client, run, $"{pdf.Name}.csv", Encoding.UTF8.GetBytes(csv), ct);
+        if (read.UsedOcr && outcome.Log.Message is { } msg) outcome.Log.Message = Truncate($"{msg} (PDF leído con OCR)", 1000);
+        return outcome;
+    }
+
+    /// <summary>El cuerpo de un correo (o el texto ya leído de un documento) → filas por los campos a leer → el destino. Lo que no se puede leer va a la bandeja con el motivo.</summary>
+    private async Task<FileOutcome> ProcessBodyAsync(Integration integration, ImportTemplate template, Client client, IntegrationRun run, IReadOnlyList<EmailBodyField> fields, string target, string label, string messageSha, string text, CancellationToken ct)
+    {
+        var reading = EmailRules.ReadBody(text, fields);
+        if (reading.Missing.Count > 0) return Failed(integration, run, label, messageSha, 0, string.Join(" | ", reading.Missing));
+        if (!reading.HasData) return Failed(integration, run, label, messageSha, 0, EmailRules.NoBodyDataMessage);
+        var csv = EmailRules.ToCsv(reading, template.HasHeader, ImportTemplateService.DelimiterOf(template));
+        return await DispatchAsync(target, integration, template, client, run, $"{label}.csv", Encoding.UTF8.GetBytes(csv), ct);
+    }
+
+    /// <summary>
+    /// Un correo por LECTORES (2026-10-22): cada documento que trae (el cuerpo, cada PDF, cada archivo de datos) lo toma el primer lector cuyas condiciones cumple; ese lector lo lee con sus campos y lo manda a su
+    /// destino con su plantilla y su cliente (o los de la integración). Un documento que ningún lector toma no se pierde: si NINGUNO aplicó a nada, el correo va a la bandeja con el motivo.
+    /// </summary>
+    private async Task<List<FileOutcome>> ProcessMessageByReadersAsync(Integration integration, ImportTemplate template, Client client, IntegrationRun run, EmailConfig cfg, MailMessageData m, string label, string messageSha, CancellationToken ct)
+    {
+        var readers = cfg.Readers!;
+        var outcomes = new List<FileOutcome>();
+        var dataExtensions = FileFormatRules.ExtensionsOf(IntegrationService.ParseFormat(integration.FormatJson));
+        var inputs = new List<ReaderInput>();
+        var pdfs = new Dictionary<string, (MailAttachmentData Attachment, PdfReadResult? Read)>(StringComparer.OrdinalIgnoreCase);
+        var files = new Dictionary<string, MailAttachmentData>(StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrWhiteSpace(m.TextBody)) inputs.Add(new ReaderInput(ReaderSources.Body, string.Empty, m.Subject, m.TextBody));
+        var anyPdfReader = readers.Any(r => string.Equals(r.Source, ReaderSources.Pdf, StringComparison.OrdinalIgnoreCase));
+        foreach (var a in m.Attachments.Where(a => !string.IsNullOrWhiteSpace(a.Name)))
+        {
+            if (a.Name.EndsWith(EmailRules.PdfExtension, StringComparison.OrdinalIgnoreCase))
+            {
+                if (!anyPdfReader) continue;
+                if (a.Content.Length > options.Value.MaxPdfMegabytes * 1024L * 1024L) { outcomes.Add(Failed(integration, run, a.Name, string.Empty, a.Content.Length, $"El PDF pesa más de {options.Value.MaxPdfMegabytes} MB.")); continue; }
+                var read = await Task.Run(() => pdfReader.Read(a.Content), ct);   // se lee una sola vez; las condiciones sobre el texto y el lector que lo toma usan este texto
+                pdfs[a.Name] = (a, read);
+                inputs.Add(new ReaderInput(ReaderSources.Pdf, a.Name, m.Subject, read.Problem is null ? read.Text : string.Empty));
+            }
+            else if (dataExtensions.Contains(Path.GetExtension(a.Name), StringComparer.OrdinalIgnoreCase))
+            {
+                files[a.Name] = a;
+                inputs.Add(new ReaderInput(ReaderSources.File, a.Name, m.Subject, null));
+            }
+        }
+
+        var assigned = DocumentReaderRules.Assign(readers, inputs);
+        if (assigned.Count == 0 && outcomes.Count == 0)
+        {
+            outcomes.Add(Failed(integration, run, label, messageSha, 0, DocumentReaderRules.NoReaderMatchedMessage));
+            return outcomes;
+        }
+        foreach (var (input, reader) in assigned)
+        {
+            ct.ThrowIfCancellationRequested();
+            var (readerTemplate, readerClient) = await ResolveReaderContextAsync(reader, template, client, ct);
+            var target = (reader.Target ?? DocumentTargets.Order).Trim().ToUpperInvariant();
+            var fields = reader.Fields ?? Array.Empty<EmailBodyField>();
+            switch (input.Source)
+            {
+                case ReaderSources.Body:
+                    outcomes.Add(await ProcessBodyAsync(integration, readerTemplate, readerClient, run, fields, target, $"{label} [{reader.Name}]", messageSha, input.Text ?? string.Empty, ct));
+                    break;
+                case ReaderSources.Pdf:
+                    var (attachment, read) = pdfs[input.Name];
+                    outcomes.Add(await ProcessPdfAsync(integration, readerTemplate, readerClient, run, fields, target, attachment, read, ct));
+                    break;
+                default:
+                    var file = files[input.Name];
+                    outcomes.Add(await DispatchAsync(target, integration, readerTemplate, readerClient, run, file.Name, file.Content, ct));
+                    break;
+            }
+        }
+        return outcomes;
+    }
+
+    /// <summary>La plantilla y el cliente de un lector: los suyos si los trae (del tenant, con el tipo de plantilla de su destino) y, si no, los de la integración.</summary>
+    private async Task<(ImportTemplate Template, Client Client)> ResolveReaderContextAsync(DocumentReader reader, ImportTemplate defaultTemplate, Client defaultClient, CancellationToken ct)
+    {
+        var client = defaultClient;
+        if (reader.ClientPublicId is Guid clientGuid)
+            client = await db.Clients.AsNoTracking().FirstOrDefaultAsync(c => c.PublicId == clientGuid, ct) ?? throw new ValidationException("client", IntegrationRules.ClientRequiredMessage);
+        var template = defaultTemplate;
+        if (reader.TemplatePublicId is Guid templateGuid)
+        {
+            var resolved = await templates.ResolveForImportAsync(templateGuid, client.ClientId, ImportKinds.Order, ct);
+            template = await db.ImportTemplates.AsNoTracking().FirstOrDefaultAsync(t => t.ImportTemplateId == resolved.ImportTemplateId, ct) ?? throw new ValidationException("template", IntegrationRules.TemplateRequiredMessage);
+        }
+        return (template, client);
     }
 
     // ---------------------------------------------------------------- un archivo
