@@ -10542,3 +10542,7 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **La columna «Mensajería» de Usuarios no aparece.** Se pide con `admin.users`.
 
 **«Los días deben estar entre 1 y 3650.» (Ajustes → Operación).** Los días que viven las fotos del chat van de 1 a 3650.
+
+**«Lectura dudosa: el documento lista N elemento(s) de «X» y se leyeron M.»** Un chequeo «elementos que el documento lista» no cuadra: la tabla del documento (por ejemplo las paradas de la hoja de ruta de CMS) trae más renglones que órdenes se leyeron. Falta leer alguna orden: compare con el documento y complete lo que falte.
+
+**«… no se encontró en el documento lo que lista «X».»** La expresión del chequeo no encontró ninguna línea de la lista (el OCR leyó la tabla distinto, o la tabla no está). Suba el PDF a mano, mire el texto leído y ajuste la expresión (describe UNA línea de la lista), o quite el chequeo.

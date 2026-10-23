@@ -70,3 +70,7 @@ Archivos en `F:\Download`: REGULAR 10-12-2026, OXIGENO / ALTAS / AXISMED / RECOG
 - `ReadCheck` por lector: LINE_COUNT (líneas leídas vs las que declara el documento) y SUM (suma de una columna vs el total que declara); falla también si el total no aparece. Marca la lectura dudosa igual que la confianza baja. Columna calculada (÷): cantidad = importe ÷ precio unitario.
 - Real: Drive 2193 cuadra (39,167.01) y las cantidades salen exactas; Drive 2194 (4 páginas) el OCR leyó 17 líneas (92,141.13 vs 92,975.53) y el chequeo lo marca. Los scripts SQL se regeneraron con el modelo nuevo: si ya corrió el de Axiscare con el modelo anterior, edite el lector de Drive Medical en la pantalla (o bórrelo y vuelva a correr).
 - Falta: chequeos para los conduces de Axiscare (INVOICES/CASES) cuando tengan lector, y confianza por campo.
+
+## 13. Qué documentos declaran totales (2026-10-23, hecho)
+- Análisis y recetas en el manual 39 (sección 22). Puestos en los modelos: Drive Medical (SUM contra el total) y Hoja de ruta de CMS (MATCH_COUNT en el encabezado: paradas listadas = órdenes leídas). Mecanismo nuevo: MATCH_COUNT y ámbito RECORD/HEADER/DOCUMENT; nada atado a un documento.
+- Pendiente: lector por registro de los conduces (INVOICES/CASES del pie de la última página; Axis Med distinto) y el cruce cantidad del manifiesto = líneas de su conduce (necesita relacionar dos secciones del archivo).

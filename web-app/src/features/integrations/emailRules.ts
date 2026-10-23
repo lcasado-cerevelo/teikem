@@ -73,10 +73,13 @@ export interface ReadCheckValues {
   distinct: boolean
   tolerance: string
   name: string
+  /** RECORD (cada registro), HEADER (lo anterior al primer registro, contra todas las filas) o DOCUMENT (todo el texto contra todas las filas). */
+  scope: string
 }
 
-export const CHECK_KINDS = ['LINE_COUNT', 'SUM'] as const
-export const emptyCheck = (): ReadCheckValues => ({ kind: 'SUM', pattern: '', position: '1', distinct: false, tolerance: '', name: '' })
+export const CHECK_KINDS = ['LINE_COUNT', 'SUM', 'MATCH_COUNT'] as const
+export const CHECK_SCOPES = ['RECORD', 'HEADER', 'DOCUMENT'] as const
+export const emptyCheck = (): ReadCheckValues => ({ kind: 'SUM', pattern: '', position: '1', distinct: false, tolerance: '', name: '', scope: 'RECORD' })
 
 export const READER_SOURCES = ['BODY', 'PDF', 'FILE'] as const
 export const READER_TARGETS = ['ORDER', 'ARRIVAL_NOTICE', 'EXIT_NOTICE', 'ORDER_COMPLETION'] as const
@@ -306,7 +309,7 @@ export function emailValuesOf(c: EmailConfig | null | undefined): EmailValues {
       toStatus: r.toStatus ?? 'PICKUP',
       warehousePublicId: r.warehousePublicId ?? '',
       minConfidence: r.minConfidence === null || r.minConfidence === undefined ? '' : String(r.minConfidence),
-      checks: (r.checks ?? []).map((c) => ({ kind: c.kind ?? 'SUM', pattern: c.pattern ?? '', position: String(c.position ?? 1), distinct: c.distinct ?? false, tolerance: c.tolerance === null || c.tolerance === undefined ? '' : String(c.tolerance), name: c.name ?? '' })),
+      checks: (r.checks ?? []).map((c) => ({ kind: c.kind ?? 'SUM', pattern: c.pattern ?? '', position: String(c.position ?? 1), distinct: c.distinct ?? false, tolerance: c.tolerance === null || c.tolerance === undefined ? '' : String(c.tolerance), name: c.name ?? '', scope: c.scope ?? 'RECORD' })),
     })),
     bodyFields: (c.bodyFields ?? []).map(fieldValuesOf),
   }
@@ -344,7 +347,7 @@ export function buildEmailConfig(e: EmailValues): EmailConfig {
       toStatus: r.target === 'ORDER_COMPLETION' ? r.toStatus : null,
       warehousePublicId: (r.target === 'ARRIVAL_NOTICE' || r.target === 'EXIT_NOTICE') && r.warehousePublicId ? r.warehousePublicId : null,
       minConfidence: r.source === 'PDF' && r.minConfidence.trim() !== '' ? Number(r.minConfidence) : null,
-      checks: r.checks.length === 0 ? null : r.checks.map((c) => ({ kind: c.kind, pattern: c.pattern.trim(), position: Number(c.position) || 1, distinct: c.kind === 'LINE_COUNT' && c.distinct, tolerance: c.tolerance.trim() === '' ? null : Number(c.tolerance), name: c.name.trim() === '' ? null : c.name.trim() })),
+      checks: r.checks.length === 0 ? null : r.checks.map((c) => ({ kind: c.kind, pattern: c.pattern.trim(), position: Number(c.position) || 1, distinct: c.kind !== 'SUM' && c.distinct, tolerance: c.tolerance.trim() === '' ? null : Number(c.tolerance), name: c.name.trim() === '' ? null : c.name.trim(), scope: c.scope === 'RECORD' ? null : c.scope })),
     })),
   }
 }

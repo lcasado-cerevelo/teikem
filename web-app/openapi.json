@@ -86272,6 +86272,10 @@
           "name": {
             "type": "string",
             "nullable": true
+          },
+          "scope": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

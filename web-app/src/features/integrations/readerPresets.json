@@ -159,7 +159,8 @@
           "position": "4",
           "distinct": false,
           "tolerance": "",
-          "name": "Total Amount USD"
+          "name": "Total Amount USD",
+          "scope": "RECORD"
         }
       ]
     }
@@ -387,7 +388,17 @@
       "mode": "SUGGEST",
       "toStatus": "PICKUP",
       "minConfidence": "",
-      "checks": []
+      "checks": [
+        {
+          "kind": "MATCH_COUNT",
+          "pattern": "^\\S{1,2}\\t[^\\t]{3,}\\t[^\\t]{3,}\\t[^\\t]{2,}\\s*$",
+          "position": "1",
+          "distinct": true,
+          "tolerance": "",
+          "name": "Paradas de la hoja de ruta",
+          "scope": "HEADER"
+        }
+      ]
     }
   },
   {

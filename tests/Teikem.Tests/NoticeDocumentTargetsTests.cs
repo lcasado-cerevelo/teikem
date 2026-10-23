@@ -48,7 +48,7 @@ public class NoticeDocumentTargetsTests
             }).ToList();
             list.Add(new DocumentReader(r.GetProperty("name").GetString()!, r.GetProperty("source").GetString()!, r.GetProperty("target").GetString()!, when, fields, null, null, false, r.GetProperty("recordStart").GetString() is { Length: > 0 } rs ? rs : null, r.GetProperty("mode").GetString()!, r.GetProperty("toStatus").GetString(), null, r.GetProperty("minConfidence").GetString() is { Length: > 0 } mc ? int.Parse(mc) : null,
                 r.GetProperty("checks").EnumerateArray().Select(c => new ReadCheck(c.GetProperty("kind").GetString()!, c.GetProperty("pattern").GetString()!, int.Parse(c.GetProperty("position").GetString()!), c.GetProperty("distinct").GetBoolean(),
-                    c.GetProperty("tolerance").GetString() is { Length: > 0 } tol ? decimal.Parse(tol, System.Globalization.CultureInfo.InvariantCulture) : null, c.GetProperty("name").GetString())).ToList()));
+                    c.GetProperty("tolerance").GetString() is { Length: > 0 } tol ? decimal.Parse(tol, System.Globalization.CultureInfo.InvariantCulture) : null, c.GetProperty("name").GetString(), c.GetProperty("scope").GetString())).ToList()));
         }
         return list;
     }

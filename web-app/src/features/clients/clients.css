@@ -8,6 +8,15 @@
 .cl-q .sw{align-self:flex-start;font-weight:500;font-size:12.5px;white-space:normal}
 .cl-q .qbox{flex:0 0 auto;max-width:none}
 .cl-list{list-style:none;margin:0;padding:0;max-height:640px;overflow:auto}
+/* 2026-10-23: con los dos paneles lado a lado, la lista de clientes mide lo que mide la ficha de la derecha (que crece y se encoge al abrir y cerrar sus paneles). El panel de la izquierda no aporta
+   altura a la fila (contain:size): la fila la fija la derecha. Dentro, el panel es tan alto como su contenido sin pasar de esa altura: con pocos clientes (filtrados) queda chico y con muchos la lista
+   corre por dentro. Apilados (pantalla angosta) se queda como estaba: lista con tope de 640 px. La derecha tiene un mínimo para que la lista no quede diminuta con la ficha vacía. */
+.cl-split:not(.stacked)>.split-pane:first-child{contain:size}
+.cl-split:not(.stacked)>.split-pane:first-child>.panel{display:flex;flex-direction:column;max-height:100%;margin-bottom:0}
+.cl-split:not(.stacked)>.split-pane:first-child>.panel>.pb{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden}
+.cl-split:not(.stacked)>.split-pane:first-child>.panel>.pb>*{flex:none}
+.cl-split:not(.stacked)>.split-pane:first-child>.panel>.pb>.cl-list{flex:1 1 auto;min-height:0;max-height:none}
+.cl-split:not(.stacked)>.split-pane:last-child{min-height:420px}
 .cl-list li{min-width:0}
 .cl-row{align-items:flex-start}
 .cl-row.dim{opacity:.7}

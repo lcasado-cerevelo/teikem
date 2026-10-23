@@ -446,3 +446,27 @@ En el lector, sección **Chequeos de completitud → Agregar chequeo**:
 **Columna calculada (÷).** Cuando un dato no se puede leer (la cantidad escrita a mano en un círculo sobre una factura escaneada), una columna de un bloque con expresión por línea puede valer **un grupo ÷ otro**: en «Columnas» se escribe `3=4/3` (columna 3 = grupo 4 ÷ grupo 3). Es lo que usa el modelo **Factura de Drive Medical**: la cantidad sale de **importe ÷ precio unitario** (por ejemplo 10,440.80 ÷ 130.51 = 80, el número que se escribió a mano) y la suma de los importes se compara con el «Total Amount USD» de la factura.
 
 **Probado con las facturas reales de Drive Medical.** La 2193 (2 páginas): las 7 cantidades salen exactas (80, 15, 19, 4, 80, 110, 240) y la suma cuadra con el total (39,167.01). La 2194 (4 páginas): el OCR leyó 17 líneas que suman 92,141.13 frente a los 92,975.53 del documento, **y el chequeo lo marca**: es justo la falla que la confianza no detecta. Además, dos SKU salieron con un error del OCR («12445KD-», «13031-1S8VY»): esos van a la bandeja como «El producto … no existe».
+
+## 22. Qué documentos declaran totales y qué chequeo lleva cada lector (2026-10-23)
+
+Todo se configura en el **lector** (sección «Chequeos de completitud»), no en el código: si un documento declara un total, se le pone el chequeo; si no, no se inventa.
+
+**Dos mecanismos nuevos para los casos que faltaban:**
+- **Líneas leídas = elementos que el documento lista** (`MATCH_COUNT`): para un documento que no dice «son N» sino que **lista** lo que trae (la tabla de paradas de una hoja de ruta). La expresión describe **una línea** de la lista y se cuentan las líneas del texto que coinciden.
+- **Ámbito** del chequeo: *Cada registro* (por omisión), *El encabezado contra todas las filas* (lo que viene antes del primer registro) o *Todo el documento contra todas las filas*. En un lector por registro, la tabla de paradas del encabezado se compara con **todas** las órdenes leídas.
+
+| Documento | ¿Declara algo comprobable? | Chequeo del lector | Estado |
+|---|---|---|---|
+| **Factura de Drive Medical** (Axiscare, escaneada) | «Total Amount USD» al final | **Suma** de los importes = el total (`Total Amount USD\s*([\d,]+\.\d{2})`) | **Puesto** en el modelo; probado con las facturas reales |
+| **Hoja de ruta de CMS** (órdenes) | Lista las paradas en la primera página | **MATCH_COUNT** en el encabezado: paradas listadas = órdenes distintas leídas | **Puesto** en el modelo; probado con la hoja real |
+| **Despacho de mercancía** (Axiscare) | No: filas numeradas 1–30 sin total | Ninguno (es un PDF de Excel con texto exacto) | — |
+| **Envío de mercancía** (el recibo) | Una fila «TOTAL» que en las muestras viene vacía | Ninguno (un chequeo falla si el total falta: se activaría solo si siempre lo llenan; receta: `SUM` de la columna de cantidades contra `TOTAL\s*([\d,.]+)`) | — |
+| **Ruta completada de CMS** (cierres) | No declara totales | Ninguno: cada renglón es la evidencia de una propuesta que una persona confirma | — |
+
+**Documentos que declaran totales pero todavía no tienen lector** (los conduces no se integraron aún; esta es la receta para cuando se haga):
+- **Conduce estándar de Axiscare** (Regular, Oxígeno, Recogidos, Veteranos): el **pie de la última página** de cada conduce trae «INVOICES: n  CASES: m». Receta: `LINE_COUNT` con `INVOICES:\s*(\d+)` contra las facturas distintas leídas, y `SUM` de la columna de cajas con `CASES:?\s*(\d+)`. Hace falta un lector **por registro** (un registro por conduce): los encabezados se repiten en cada página, así que el inicio de registro sería el número de conduce que cambia.
+- **Conduce de Axis Med:** el pie dice «ROUTE BB  12 CASES  3  12» (cajas, líneas y cajas); formato distinto y letra deformada por el escáner: receta `(\d+)\s+CASES\s+(\d+)`, a verificar con más muestras antes de confiar en ella.
+- **Resumen de facturación** (la primera página de cada archivo de conduces): el «TOTAL» final es la suma de los totales por división y cada total es cantidad × tarifa. Es chequeable con `SUM`; lo que **no** se puede expresar todavía es «la cantidad de cada manifiesto = las líneas de su conduce» (cruza dos secciones del mismo archivo).
+- **Factura de Depot:** subtotal + impuesto = total; no tiene integración.
+
+**Lo que las pruebas reales enseñaron:** los chequeos funcionan donde el documento declara algo (la factura de Drive marca la falta de líneas que el OCR dejó de leer), pero un conduce con el pie en blanco en las páginas intermedias necesita que el chequeo se haga solo sobre la **última** página de cada conduce; por eso esos chequeos esperan a su lector por registro.

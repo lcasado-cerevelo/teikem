@@ -140,7 +140,7 @@ describe('lectores', () => {
   it('los lectores viajan en la configuración del API y vuelven iguales', () => {
     const r = reader({
       source: 'PDF', target: 'ORDER', firstOnly: true, templatePublicId: 't-1', clientPublicId: 'c-1', recordStart: ' Order #: ', minConfidence: '85',
-      checks: [{ kind: 'SUM', pattern: ' Total\\s*([\\d,.]+) ', position: '4', distinct: true, tolerance: '0.5', name: ' Importes ' }, { kind: 'LINE_COUNT', pattern: 'CASES:\\s*(\\d+)', position: '1', distinct: true, tolerance: '', name: '' }],
+      checks: [{ kind: 'SUM', pattern: ' Total\\s*([\\d,.]+) ', position: '4', distinct: true, tolerance: '0.5', name: ' Importes ', scope: 'RECORD' }, { kind: 'MATCH_COUNT', pattern: 'CASES:\\s*(\\d+)', position: '1', distinct: true, tolerance: '', name: '', scope: 'HEADER' }],
       conditions: [{ scope: 'TEXT', operator: 'CONTAINS', value: ' packing list ' }],
       fields: [
         { ...emptyBodyField(), position: '2', kind: 'BLOCK', start: 'Product', end: 'Page', lineRegex: '^(T-\\w+)$', repeat: true, columns: '2=1' },
@@ -151,8 +151,8 @@ describe('lectores', () => {
     expect(cfg.readers).toEqual([{
       name: 'Pedido', source: 'PDF', target: 'ORDER', firstOnly: true, templatePublicId: 't-1', clientPublicId: 'c-1', recordStart: 'Order #:', mode: 'SUGGEST', toStatus: null, warehousePublicId: null, minConfidence: 85,
       checks: [
-        { kind: 'SUM', pattern: 'Total\\s*([\\d,.]+)', position: 4, distinct: false, tolerance: 0.5, name: 'Importes' },   // «distinct» solo cuenta en LINE_COUNT
-        { kind: 'LINE_COUNT', pattern: 'CASES:\\s*(\\d+)', position: 1, distinct: true, tolerance: null, name: null },
+        { kind: 'SUM', pattern: 'Total\\s*([\\d,.]+)', position: 4, distinct: false, tolerance: 0.5, name: 'Importes', scope: null },   // «distinct» solo cuenta fuera de SUM; el ámbito RECORD es el de siempre (no se manda)
+        { kind: 'MATCH_COUNT', pattern: 'CASES:\\s*(\\d+)', position: 1, distinct: true, tolerance: null, name: null, scope: 'HEADER' },
       ],
       when: [{ scope: 'TEXT', operator: 'CONTAINS', value: 'packing list' }],
       fields: [
@@ -166,8 +166,8 @@ describe('lectores', () => {
     expect(back.recordStart).toBe('Order #:')
     expect(back.minConfidence).toBe('85')
     expect(back.checks).toEqual([
-      { kind: 'SUM', pattern: 'Total\\s*([\\d,.]+)', position: '4', distinct: false, tolerance: '0.5', name: 'Importes' },
-      { kind: 'LINE_COUNT', pattern: 'CASES:\\s*(\\d+)', position: '1', distinct: true, tolerance: '', name: '' },
+      { kind: 'SUM', pattern: 'Total\\s*([\\d,.]+)', position: '4', distinct: false, tolerance: '0.5', name: 'Importes', scope: 'RECORD' },
+      { kind: 'MATCH_COUNT', pattern: 'CASES:\\s*(\\d+)', position: '1', distinct: true, tolerance: '', name: '', scope: 'HEADER' },
     ])
     expect(back.fields[1]).toMatchObject({ fromHeader: true, appendWith: ' | ' })
   })

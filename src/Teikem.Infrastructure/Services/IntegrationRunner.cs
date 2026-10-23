@@ -334,7 +334,7 @@ public sealed class IntegrationRunner(
         var csv = EmailRules.ToCsv(reading, template.HasHeader, ImportTemplateService.DelimiterOf(template));
         // 2026-10-23: lectura DUDOSA = la confianza del OCR de los números queda bajo el mínimo del lector. Se crea igual (un cierre queda por confirmar) y se avisa que se verifique.
         var lowConfidence = ReadConfidenceRules.IsDoubtful(read.Confidence, reader?.MinConfidence);
-        var failures = EvaluateChecks(reader, reading);   // 2026-10-23: lo leído contra los totales que declara el documento
+        var failures = EvaluateChecks(reader, reading, read.Text);   // 2026-10-23: lo leído contra los totales que declara el documento
         var doubtful = lowConfidence || failures.Count > 0;
         var outcome = await DispatchAsync(target, integration, template, client, run, $"{pdf.Name}.csv", Encoding.UTF8.GetBytes(csv), ct, reader, doubtful);
         if (read.UsedOcr && outcome.Log.Message is { } msg) outcome.Log.Message = Truncate($"{msg} (PDF leído con OCR)", 1000);
@@ -343,15 +343,25 @@ public sealed class IntegrationRunner(
     }
 
     /// <summary>Los chequeos de completitud del lector sobre lo leído: cada registro con su texto y sus filas. Vacío = todo cuadra (o el lector no tiene chequeos).</summary>
-    private static IReadOnlyList<string> EvaluateChecks(DocumentReader? reader, EmailRules.DocumentReading reading)
+    public static IReadOnlyList<string> EvaluateChecks(DocumentReader? reader, EmailRules.DocumentReading reading, string fullText)
     {
         if (reader?.Checks is not { Count: > 0 } checks) return Array.Empty<string>();
+        string ScopeOf(ReadCheck c) => string.IsNullOrWhiteSpace(c.Scope) ? ReadCheckScopes.Record : c.Scope.Trim().ToUpperInvariant();
         var all = new List<string>();
-        for (var i = 0; i < reading.Parts.Count; i++)
+        var perRecord = checks.Where(c => ScopeOf(c) == ReadCheckScopes.Record).ToList();
+        if (perRecord.Count > 0)
+            for (var i = 0; i < reading.Parts.Count; i++)
+            {
+                var text = reading.Texts is { } t && i < t.Count ? t[i] : string.Empty;
+                var found = ReadCheckRules.Evaluate(perRecord, text, reading.RowsOf(i));
+                all.AddRange(reading.Parts.Count > 1 ? found.Select(f => $"registro {i + 1}: {f}") : found);
+            }
+        var wide = checks.Where(c => ScopeOf(c) != ReadCheckScopes.Record).ToList();
+        if (wide.Count > 0)
         {
-            var text = reading.Texts is { } t && i < t.Count ? t[i] : string.Empty;
-            var found = ReadCheckRules.Evaluate(checks, text, reading.RowsOf(i));
-            all.AddRange(reading.Parts.Count > 1 ? found.Select(f => $"registro {i + 1}: {f}") : found);
+            var allRows = Enumerable.Range(0, reading.Parts.Count).SelectMany(reading.RowsOf).ToList();   // todas las filas de todos los registros
+            all.AddRange(ReadCheckRules.Evaluate(wide.Where(c => ScopeOf(c) == ReadCheckScopes.Header).ToList(), reading.HeaderText is { Length: > 0 } h ? h : fullText, allRows));
+            all.AddRange(ReadCheckRules.Evaluate(wide.Where(c => ScopeOf(c) == ReadCheckScopes.Document).ToList(), fullText, allRows));
         }
         return all;
     }
@@ -373,7 +383,7 @@ public sealed class IntegrationRunner(
         if (reading.Missing.Count > 0) return Failed(integration, run, label, messageSha, 0, string.Join(" | ", reading.Missing));
         if (!reading.HasData) return Failed(integration, run, label, messageSha, 0, EmailRules.NoBodyDataMessage);
         var csv = EmailRules.ToCsv(reading, template.HasHeader, ImportTemplateService.DelimiterOf(template));
-        var failures = EvaluateChecks(reader, reading);
+        var failures = EvaluateChecks(reader, reading, text);
         var outcome = await DispatchAsync(target, integration, template, client, run, $"{label}.csv", Encoding.UTF8.GetBytes(csv), ct, reader, failures.Count > 0);
         MarkDoubtful(outcome, null, reader, false, failures);
         return outcome;

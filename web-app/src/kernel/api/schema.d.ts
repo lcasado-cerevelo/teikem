@@ -49354,6 +49354,7 @@ export interface components {
             /** Format: double */
             tolerance?: number | null;
             name?: string | null;
+            scope?: string | null;
         };
     };
     responses: never;

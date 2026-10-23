@@ -6,7 +6,7 @@ import { useT } from '../../kernel/i18n'
 import { Field, IconPlus, IconTrash, Select, TextInput, Toggle } from '../../kernel/ui'
 import { BodyFieldsEditor } from './BodyFieldsEditor'
 import presets from './readerPresets.json'
-import { CHECK_KINDS, COMPLETION_TARGETS, CONDITION_SCOPES, MATCH_OPERATORS, READER_MODES, READER_SOURCES, READER_TARGETS, emptyCheck, emptyCondition, emptyReader, legacyToReaders, scopeApplies, type ReaderValues } from './emailRules'
+import { CHECK_KINDS, CHECK_SCOPES, COMPLETION_TARGETS, CONDITION_SCOPES, MATCH_OPERATORS, READER_MODES, READER_SOURCES, READER_TARGETS, emptyCheck, emptyCondition, emptyReader, legacyToReaders, scopeApplies, type ReaderValues } from './emailRules'
 import type { IntegrationValues } from './integrationRules'
 
 type Option = { value: string; label: string }
@@ -174,8 +174,11 @@ function ReaderCard({ form, index, reader, clientOptions, templateOptions, wareh
               <Field name={`${base}.checks.${j}.pattern`} label={t('integrations.email.readers.checkPattern', { n: j + 1 })} required help={t('integrations.email.readers.checkPatternHelp')}>
                 <TextInput placeholder="Total Amount USD\s+([\d,.]+)" />
               </Field>
+              <Field name={`${base}.checks.${j}.scope`} label={t('integrations.email.readers.checkScope', { n: j + 1 })} help={t('integrations.email.readers.checkScopeHelp')}>
+                <Select options={CHECK_SCOPES.map((k) => ({ value: k, label: t(`integrations.email.readers.checkScopeOption.${k}`) }))} />
+              </Field>
               <div className="r2">
-                {reader?.checks?.[j]?.kind === 'LINE_COUNT' && (
+                {reader?.checks?.[j]?.kind !== 'SUM' && (
                   <Field name={`${base}.checks.${j}.distinct`} label={t('integrations.email.readers.checkDistinct', { n: j + 1 })} help={t('integrations.email.readers.checkDistinctHelp')}>
                     <Toggle text={t('integrations.email.readers.checkDistinct', { n: j + 1 })} />
                   </Field>

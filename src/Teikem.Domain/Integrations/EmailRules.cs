@@ -340,7 +340,7 @@ public static class EmailRules
     /// <summary>
     /// Lo leído de un documento con VARIOS registros (2026-10-23): cada registro es un BodyReading; Missing junta lo que faltó en cada uno («Registro 3: …»).
     /// </summary>
-    public sealed record DocumentReading(IReadOnlyList<BodyReading> Parts, IReadOnlyList<string> Missing, IReadOnlyList<string>? Texts = null)
+    public sealed record DocumentReading(IReadOnlyList<BodyReading> Parts, IReadOnlyList<string> Missing, IReadOnlyList<string>? Texts = null, string? HeaderText = null)
     {
         public bool HasData => Parts.Any(p => p.HasData);
 
@@ -389,7 +389,7 @@ public static class EmailRules
             foreach (var (k, v) in record.Single) single[k] = v;
             parts.Add(new BodyReading(single, record.Lines, Array.Empty<string>()));
         }
-        return new DocumentReading(parts, missing, texts);
+        return new DocumentReading(parts, missing, texts, header);
     }
 
     /// <summary>Todos los registros como un solo archivo CSV (una fila por línea de cada registro).</summary>

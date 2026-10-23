@@ -19,14 +19,26 @@ public static class ReadCheckKinds
 {
     public const string LineCount = "LINE_COUNT";
     public const string Sum = "SUM";
-    public static readonly IReadOnlyList<string> All = [LineCount, Sum];
+    /// <summary>MATCH_COUNT: el documento no declara un número sino que LISTA lo que trae (la tabla de paradas de una hoja de ruta, un resumen de líneas): se cuentan las líneas del texto que coinciden con la expresión y se comparan con lo leído.</summary>
+    public const string MatchCount = "MATCH_COUNT";
+    public static readonly IReadOnlyList<string> All = [LineCount, Sum, MatchCount];
+}
+
+/// <summary>Sobre qué se hace un chequeo: RECORD (por omisión: el texto y las filas de cada registro, o del documento entero si no es por registro), HEADER (lo que viene antes del primer registro, contra todas las filas) o DOCUMENT (todo el texto contra todas las filas).</summary>
+public static class ReadCheckScopes
+{
+    public const string Record = "RECORD";
+    public const string Header = "HEADER";
+    public const string Document = "DOCUMENT";
+    public static readonly IReadOnlyList<string> All = [Record, Header, Document];
 }
 
 /// <summary>
 /// Un chequeo de completitud (2026-10-23). Pattern = expresión regular (grupo 1 si lo hay) que encuentra en el TEXTO del documento el total que declara («CASES: (\d+)», «Total Amount USD\s+([\d,.]+)»). Position = la columna leída que se cuenta o suma;
-/// Distinct (LINE_COUNT): cuenta valores distintos de esa columna (un número de orden repetido en varias líneas cuenta una vez). Tolerance = diferencia aceptada (0 en líneas; 0,01 en sumas por omisión). Name = cómo se llama en el aviso.
+/// Scope (RECORD | HEADER | DOCUMENT; null = RECORD): sobre qué texto y qué filas se compara (útil en lectores por registro: la tabla de paradas del encabezado contra todas las órdenes leídas). MATCH_COUNT cuenta las líneas del texto que coinciden con Pattern.
+/// Distinct (LINE_COUNT y MATCH_COUNT): cuenta valores distintos de esa columna (un número de orden repetido en varias líneas cuenta una vez). Tolerance = diferencia aceptada (0 en líneas; 0,01 en sumas por omisión). Name = cómo se llama en el aviso.
 /// </summary>
-public sealed record ReadCheck(string Kind, string Pattern, int Position = 1, bool Distinct = false, decimal? Tolerance = null, string? Name = null);
+public sealed record ReadCheck(string Kind, string Pattern, int Position = 1, bool Distinct = false, decimal? Tolerance = null, string? Name = null, string? Scope = null);
 
 /// <summary>
 /// Chequeos de completitud (2026-10-23): lo que la confianza del OCR NO ve (una columna o una línea que el OCR dejó de leer no baja su porcentaje) se detecta comparando lo leído con los totales del propio documento.
@@ -35,7 +47,10 @@ public sealed record ReadCheck(string Kind, string Pattern, int Position = 1, bo
 public static class ReadCheckRules
 {
     public const int MaxChecks = 10;
-    public static string UnknownKindMessage(string kind) => $"Chequeo desconocido: {kind}. Use LINE_COUNT o SUM.";
+    public static string UnknownKindMessage(string kind) => $"Chequeo desconocido: {kind}. Use LINE_COUNT, SUM o MATCH_COUNT.";
+    public static string UnknownScopeMessage(string scope) => $"Ámbito de chequeo desconocido: {scope}. Use RECORD, HEADER o DOCUMENT.";
+    public static string MatchCountFailed(string name, int listed, int read) => $"el documento lista {listed} elemento(s) de «{name}» y se leyeron {read}";
+    public static string NothingListed(string name) => $"no se encontró en el documento lo que lista «{name}»";
     public static string PatternRequiredMessage => "El chequeo necesita la expresión que encuentra el total en el documento.";
     public static string PatternInvalidMessage(string pattern) => $"La expresión del chequeo no es válida: {pattern}.";
     public static string PositionInvalidMessage => "La columna del chequeo debe estar entre 1 y 500.";
@@ -58,6 +73,7 @@ public static class ReadCheckRules
             if (!ReadCheckKinds.All.Contains((c.Kind ?? string.Empty).Trim().ToUpperInvariant())) errors[$"{k}.kind"] = UnknownKindMessage(c.Kind ?? string.Empty);
             if (string.IsNullOrWhiteSpace(c.Pattern)) errors[$"{k}.pattern"] = PatternRequiredMessage;
             else if (!EmailRules.IsValidRegex(c.Pattern)) errors[$"{k}.pattern"] = PatternInvalidMessage(c.Pattern);
+            if (!string.IsNullOrWhiteSpace(c.Scope) && !ReadCheckScopes.All.Contains(c.Scope.Trim().ToUpperInvariant())) errors[$"{k}.scope"] = UnknownScopeMessage(c.Scope);
             if (c.Position is < 1 or > 500) errors[$"{k}.position"] = PositionInvalidMessage;
             if (c.Tolerance is < 0) errors[$"{k}.tolerance"] = ToleranceInvalidMessage;
         }
@@ -71,9 +87,18 @@ public static class ReadCheckRules
         foreach (var c in checks ?? Array.Empty<ReadCheck>())
         {
             var name = string.IsNullOrWhiteSpace(c.Name) ? c.Pattern : c.Name!.Trim();
+            var kind = (c.Kind ?? string.Empty).Trim().ToUpperInvariant();
+            if (kind == ReadCheckKinds.MatchCount)
+            {
+                var listed = CountMatches(text, c.Pattern);
+                if (listed == 0) { failures.Add(NothingListed(name)); continue; }
+                var values = rows.Select(r => r.TryGetValue(c.Position, out var v) ? v.Trim() : string.Empty).Where(v => v.Length > 0).ToList();
+                var read = c.Distinct ? values.Distinct(StringComparer.OrdinalIgnoreCase).Count() : values.Count;
+                if (Math.Abs(listed - read) > (c.Tolerance ?? 0m)) failures.Add(MatchCountFailed(name, listed, read));
+                continue;
+            }
             var declared = FindTotal(text, c.Pattern);
             if (declared is null) { failures.Add(TotalNotFound(name)); continue; }
-            var kind = (c.Kind ?? string.Empty).Trim().ToUpperInvariant();
             if (kind == ReadCheckKinds.LineCount)
             {
                 var values = rows.Select(r => r.TryGetValue(c.Position, out var v) ? v.Trim() : string.Empty).Where(v => v.Length > 0).ToList();
@@ -87,6 +112,13 @@ public static class ReadCheckRules
             }
         }
         return failures;
+    }
+
+    /// <summary>Cuántas líneas del texto coinciden con la expresión (por línea, sin importar mayúsculas); 0 si la expresión no es válida.</summary>
+    public static int CountMatches(string text, string pattern)
+    {
+        try { return System.Text.RegularExpressions.Regex.Matches(text ?? string.Empty, pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Multiline | System.Text.RegularExpressions.RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(250)).Count; }
+        catch (Exception ex) when (ex is ArgumentException or System.Text.RegularExpressions.RegexMatchTimeoutException) { return 0; }
     }
 
     /// <summary>El número que declara el documento: el grupo 1 de la expresión (o todo lo que coincide); la última coincidencia, porque un total va al final y un encabezado puede repetirlo.</summary>

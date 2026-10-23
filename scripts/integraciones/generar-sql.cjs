@@ -32,7 +32,7 @@ function readerOf(key, extra = {}) {
     mode: r.mode || 'SUGGEST',
     toStatus: r.target === 'ORDER_COMPLETION' ? (r.toStatus || 'PICKUP') : null,
     minConfidence: r.minConfidence === '' || r.minConfidence === undefined ? null : Number(r.minConfidence),
-    checks: (r.checks || []).length === 0 ? null : r.checks.map((c) => ({ kind: c.kind, pattern: c.pattern, position: Number(c.position) || 1, distinct: !!c.distinct, tolerance: c.tolerance === '' || c.tolerance === undefined ? null : Number(c.tolerance), name: nul(c.name) })),
+    checks: (r.checks || []).length === 0 ? null : r.checks.map((c) => ({ kind: c.kind, pattern: c.pattern, position: Number(c.position) || 1, distinct: !!c.distinct, tolerance: c.tolerance === '' || c.tolerance === undefined ? null : Number(c.tolerance), name: nul(c.name), scope: c.scope && c.scope !== 'RECORD' ? c.scope : null })),
     ...extra,
   }
   return JSON.parse(JSON.stringify(reader, (k, v) => (v === null ? undefined : v)))
