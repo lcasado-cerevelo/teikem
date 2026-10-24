@@ -11010,6 +11010,23 @@
       "host": "IMAP server",
       "port": "Port",
       "useSsl": "Encrypted connection (SSL/TLS)",
+      "provider": "Mailbox type",
+      "providerOption": {
+        "IMAP": "IMAP (server, user and password)",
+        "MICROSOFT365": "Microsoft 365 (Entra ID application)"
+      },
+      "providerHelpImap": "For Gmail (with an app password), cPanel accounts and any mail that gives IMAP access with a password. Microsoft 365 and Outlook.com do NOT accept a password: use the Microsoft 365 type.",
+      "providerHelpM365": "Reads the mailbox through the Microsoft API with an application registered in Microsoft Entra ID. It does not use the mailbox password and also works for shared mailboxes (no license).",
+      "m365Help": "Steps for the Microsoft 365 administrator: 1) register an application in Entra ID; 2) under “API permissions” add the Microsoft Graph application permission Mail.ReadWrite and grant admin consent; 3) under “Certificates & secrets” create a secret and copy its VALUE; 4) so it only reads this mailbox, restrict the application with an Exchange application access policy. Paste the Tenant ID, the Client ID and the secret here.",
+      "tenantId": "Tenant ID",
+      "tenantIdHelp": "The directory identifier (a GUID) or the domain, e.g. contoso.onmicrosoft.com.",
+      "clientId": "Client ID",
+      "clientIdHelp": "The “Application (client) ID” of the registered application.",
+      "mailboxAddress": "Mailbox address",
+      "mailboxAddressHelp": "The mailbox that is read, e.g. avisos@yourdomain.com. It can be a shared mailbox.",
+      "clientSecret": "Application secret (Client secret)",
+      "clientSecretHelp": "The secret VALUE (not its ID). It is stored encrypted and never shown again. It expires: note its date.",
+      "hostHelp": "e.g. imap.gmail.com, or mail.yourdomain.com for a cPanel account.",
       "username": "Mailbox user",
       "password": "Mailbox password",
       "passwordHelp": "Stored encrypted and never shown again. Use an app password for the mailbox.",
@@ -11201,6 +11218,9 @@
         "SPACES": "Collapse spaces and tabs"
       },
       "errors": {
+        "tenantId": "Enter the Microsoft 365 Tenant ID.",
+        "clientId": "Enter the application Client ID.",
+        "secret": "Enter the application secret (Client secret).",
         "host": "Enter the mailbox server (IMAP).",
         "port": "The port must be between 1 and 65535.",
         "username": "Enter the mailbox user.",

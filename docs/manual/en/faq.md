@@ -10864,3 +10864,9 @@ Kemi appears for the client's people who are signed in, after accepting the lega
 **I don't know how to write regular expressions: how do I set up what a reader reads?** You don't need to. In the reader's datum tap “Build the table with a sample document” (or “Point at the datum…” / “Point at the total…”), upload or paste a document, tap the row and say which part each datum comes from; the assistant builds the expression and tells you how many rows of the document match. If it says “No row of the document matches”, review what you chose or tap another row with data.
 
 **What does “Parts of the row” (2=2, 3=4/3) mean?** That template datum 2 comes from part 2 of the row and datum 3 from part 4 divided by part 3 (for example quantity = amount ÷ unit price). The assistant builds it; you only touch it by hand under “See or adjust the expression (advanced)”.
+
+**“Application-specific password required” when testing a Gmail mailbox connection.** Gmail does not accept the normal password over IMAP: turn on 2-step verification for the account, create an app password at myaccount.google.com/apppasswords and paste it in the mailbox password field.
+
+**The mailbox is Microsoft 365 (or Outlook.com) or a shared mailbox: what password do I enter?** None: Microsoft does not allow IMAP sign-in with a password. Choose “Mailbox type” = Microsoft 365 and use a Microsoft Entra ID application (Tenant ID, Client ID and secret); see chapter 39, section 24. It also works for shared mailboxes, with no license.
+
+**The e-mail integration read e-mails that were not mine.** Without filters it takes everything UNREAD in the folder, oldest first, up to 50 per run, and marks them as read. Set “Allowed original senders”, the subject, or use a mailbox or folder dedicated to the integration.

@@ -15,3 +15,8 @@ Each reader is its own framed card with four steps: what document it is (conditi
 The **reading assistant** builds the expressions from a sample document: tap a row, say which part of the row each datum comes from, and it shows how many rows of the document match.
 
 ![Reading assistant](img/l133-asistente.png)
+
+## Microsoft 365 (2026-10-24)
+Mailbox type “Microsoft 365 (Entra ID application)”: Tenant ID, Client ID, mailbox address and application secret instead of server, port and password. Steps and messages: [chapter 39, §24](../39-integraciones.md).
+
+![Microsoft 365 mailbox](img/l133-microsoft365.png)

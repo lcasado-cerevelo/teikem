@@ -97,7 +97,13 @@ export function scopeApplies(scope: string, source: string): boolean {
 export const emptyCondition = (source = 'PDF'): ConditionValues => ({ scope: source === 'BODY' ? 'SUBJECT' : 'TEXT', operator: 'CONTAINS', value: '' })
 export const emptyReader = (): ReaderValues => ({ name: '', source: 'BODY', target: 'ORDER', conditions: [], fields: [], templatePublicId: '', clientPublicId: '', firstOnly: false, recordStart: '', mode: 'SUGGEST', toStatus: 'PICKUP', warehousePublicId: '', minConfidence: '', checks: [] })
 
+export const EMAIL_PROVIDERS = ['IMAP', 'MICROSOFT365'] as const
+
 export interface EmailValues {
+  /** 2026-10-24: IMAP (servidor, usuario y contraseña) o MICROSOFT365 (aplicación de Entra ID; el «usuario» es la dirección del buzón y la «contraseña» es el secreto de la aplicación). */
+  provider: string
+  tenantId: string
+  clientId: string
   host: string
   port: string
   useSsl: boolean
@@ -125,6 +131,9 @@ export interface EmailValues {
 }
 
 export interface EmailMessages {
+  tenantId: string
+  clientId: string
+  secret: string
   host: string
   port: string
   username: string
@@ -151,7 +160,7 @@ export const emptyBodyField = (): BodyFieldValues => ({ position: '', kind: 'LAB
 
 export function emptyEmail(): EmailValues {
   return {
-    host: '', port: '993', useSsl: true, username: '', password: '', mailbox: 'INBOX', processedFolder: 'Procesados', subjectOperator: 'CONTAINS', subjectValue: '', allowedSenders: '', requireAttachment: false,
+    provider: 'IMAP', tenantId: '', clientId: '', host: '', port: '993', useSsl: true, username: '', password: '', mailbox: 'INBOX', processedFolder: 'Procesados', subjectOperator: 'CONTAINS', subjectValue: '', allowedSenders: '', requireAttachment: false,
     attachmentMode: 'ALL', attachmentNameOperator: 'WILDCARD', attachmentNameValue: '', attachmentTypes: 'csv, txt', readBody: false, readPdf: false, bodyFields: [], readers: [],
   }
 }
@@ -208,11 +217,17 @@ function bodyFieldIssues(fields: BodyFieldValues[], base: string, m: EmailMessag
 
 export function emailIssues(e: EmailValues, hasSavedPassword: boolean, m: EmailMessages): EmailIssue[] {
   const issues: EmailIssue[] = []
-  if (!e.host.trim()) issues.push({ path: 'host', message: m.host })
-  const port = Number(e.port)
-  if (!Number.isInteger(port) || port < 1 || port > 65535) issues.push({ path: 'port', message: m.port })
+  const m365 = e.provider === 'MICROSOFT365'
+  if (m365) {
+    if (!e.tenantId.trim()) issues.push({ path: 'tenantId', message: m.tenantId })
+    if (!e.clientId.trim()) issues.push({ path: 'clientId', message: m.clientId })
+  } else {
+    if (!e.host.trim()) issues.push({ path: 'host', message: m.host })
+    const port = Number(e.port)
+    if (!Number.isInteger(port) || port < 1 || port > 65535) issues.push({ path: 'port', message: m.port })
+  }
   if (!e.username.trim()) issues.push({ path: 'username', message: m.username })
-  if (!hasSavedPassword && !e.password) issues.push({ path: 'password', message: m.password })
+  if (!hasSavedPassword && !e.password) issues.push({ path: 'password', message: m365 ? m.secret : m.password })
   if (!e.mailbox.trim()) issues.push({ path: 'mailbox', message: m.mailbox })
   if (e.attachmentMode === 'BY_NAME' && !e.attachmentNameValue.trim()) issues.push({ path: 'attachmentNameValue', message: m.nameFilter })
   if (parseSenders(e.allowedSenders).some((s) => !/^(@?[a-z0-9.-]+\.[a-z]{2,}|[^@\s]+@[a-z0-9.-]+\.[a-z]{2,})$/.test(s))) issues.push({ path: 'allowedSenders', message: m.senders })
@@ -278,6 +293,9 @@ function fieldBodyOf(f: BodyFieldValues): ApiBodyField {
 export function emailValuesOf(c: EmailConfig | null | undefined): EmailValues {
   if (!c) return emptyEmail()
   return {
+    provider: c.provider === 'MICROSOFT365' ? 'MICROSOFT365' : 'IMAP',
+    tenantId: c.tenantId ?? '',
+    clientId: c.clientId ?? '',
     host: c.host ?? '',
     port: String(c.port ?? 993),
     useSsl: c.useSsl ?? true,
@@ -317,9 +335,13 @@ export function emailValuesOf(c: EmailConfig | null | undefined): EmailValues {
 
 /** El cuerpo del API (sin la contraseña, que va aparte). */
 export function buildEmailConfig(e: EmailValues): EmailConfig {
+  const m365 = e.provider === 'MICROSOFT365'
   return {
-    host: e.host.trim(),
-    port: Number(e.port),
+    provider: e.provider,
+    tenantId: m365 ? e.tenantId.trim() : null,
+    clientId: m365 ? e.clientId.trim() : null,
+    host: m365 ? '' : e.host.trim(),
+    port: m365 ? 993 : Number(e.port),
     useSsl: e.useSsl,
     username: e.username.trim(),
     mailbox: e.mailbox.trim(),

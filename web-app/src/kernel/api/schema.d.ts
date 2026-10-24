@@ -41594,6 +41594,9 @@ export interface components {
             bodyFields?: components["schemas"]["EmailBodyField"][] | null;
             readPdf?: boolean;
             readers?: components["schemas"]["DocumentReader"][] | null;
+            provider?: string | null;
+            tenantId?: string | null;
+            clientId?: string | null;
         };
         EmailTestResultDto: {
             ok?: boolean;

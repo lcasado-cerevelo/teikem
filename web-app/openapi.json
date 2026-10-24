@@ -61283,6 +61283,18 @@
               "$ref": "#/components/schemas/DocumentReader"
             },
             "nullable": true
+          },
+          "provider": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenantId": {
+            "type": "string",
+            "nullable": true
+          },
+          "clientId": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

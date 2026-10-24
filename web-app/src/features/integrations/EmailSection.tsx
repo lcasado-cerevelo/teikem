@@ -4,13 +4,14 @@ import { useWatch, type UseFormReturn } from 'react-hook-form'
 import { useT } from '../../kernel/i18n'
 import { Field, Select, TextInput, Toggle } from '../../kernel/ui'
 import { BodyFieldsEditor } from './BodyFieldsEditor'
-import { ATTACHMENT_MODES, MATCH_OPERATORS } from './emailRules'
+import { ATTACHMENT_MODES, EMAIL_PROVIDERS, MATCH_OPERATORS } from './emailRules'
 import { ReadersSection } from './ReadersSection'
 import type { IntegrationValues } from './integrationRules'
 
 export function EmailSection({ form, hasSavedPassword, clientOptions, templateOptions }: { form: UseFormReturn<IntegrationValues>; hasSavedPassword: boolean; clientOptions: { value: string; label: string }[]; templateOptions: { value: string; label: string }[] }) {
   const t = useT()
   const email = useWatch({ control: form.control, name: 'email' })
+  const m365 = email?.provider === 'MICROSOFT365'
   const opOptions = MATCH_OPERATORS.map((o) => ({ value: o, label: t(`integrations.email.operator.${o}`) }))
   const bodyError = (form.formState.errors.email as { bodyFields?: { message?: string; root?: { message?: string } } } | undefined)?.bodyFields
   return (
@@ -18,22 +19,41 @@ export function EmailSection({ form, hasSavedPassword, clientOptions, templateOp
       <fieldset className="int-scopes">
         <legend>{t('integrations.email.mailbox')}</legend>
         <p className="help">{t('integrations.email.mailboxHelp')}</p>
-        <div className="r2">
-          <Field name="email.host" label={t('integrations.email.host')} required>
-            <TextInput placeholder="imap.office365.com" autoComplete="off" />
-          </Field>
-          <Field name="email.port" label={t('integrations.email.port')} required>
-            <TextInput inputMode="numeric" maxLength={5} />
-          </Field>
-        </div>
-        <Field name="email.useSsl" label={t('integrations.email.useSsl')}>
-          <Toggle text={t('integrations.email.useSsl')} />
+        <Field name="email.provider" label={t('integrations.email.provider')} help={t(m365 ? 'integrations.email.providerHelpM365' : 'integrations.email.providerHelpImap')}>
+          <Select options={EMAIL_PROVIDERS.map((p) => ({ value: p, label: t(`integrations.email.providerOption.${p}`) }))} />
         </Field>
+        {m365 ? (
+          <>
+            <p className="help">{t('integrations.email.m365Help')}</p>
+            <div className="r2">
+              <Field name="email.tenantId" label={t('integrations.email.tenantId')} required help={t('integrations.email.tenantIdHelp')}>
+                <TextInput placeholder="contoso.onmicrosoft.com" autoComplete="off" />
+              </Field>
+              <Field name="email.clientId" label={t('integrations.email.clientId')} required help={t('integrations.email.clientIdHelp')}>
+                <TextInput autoComplete="off" />
+              </Field>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="r2">
+              <Field name="email.host" label={t('integrations.email.host')} required help={t('integrations.email.hostHelp')}>
+                <TextInput placeholder="imap.gmail.com" autoComplete="off" />
+              </Field>
+              <Field name="email.port" label={t('integrations.email.port')} required>
+                <TextInput inputMode="numeric" maxLength={5} />
+              </Field>
+            </div>
+            <Field name="email.useSsl" label={t('integrations.email.useSsl')}>
+              <Toggle text={t('integrations.email.useSsl')} />
+            </Field>
+          </>
+        )}
         <div className="r2">
-          <Field name="email.username" label={t('integrations.email.username')} required>
+          <Field name="email.username" label={t(m365 ? 'integrations.email.mailboxAddress' : 'integrations.email.username')} required help={m365 ? t('integrations.email.mailboxAddressHelp') : undefined}>
             <TextInput autoComplete="off" />
           </Field>
-          <Field name="email.password" label={t('integrations.email.password')} required={!hasSavedPassword} help={hasSavedPassword ? t('integrations.email.passwordKept') : t('integrations.email.passwordHelp')}>
+          <Field name="email.password" label={t(m365 ? 'integrations.email.clientSecret' : 'integrations.email.password')} required={!hasSavedPassword} help={hasSavedPassword ? t('integrations.email.passwordKept') : t(m365 ? 'integrations.email.clientSecretHelp' : 'integrations.email.passwordHelp')}>
             <TextInput type="password" autoComplete="new-password" />
           </Field>
         </div>

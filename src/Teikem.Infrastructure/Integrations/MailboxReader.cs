@@ -8,7 +8,7 @@ using Teikem.Domain.Integrations;
 namespace Teikem.Infrastructure.Integrations;
 
 /// <summary>Un correo pendiente del buzón: los datos que las reglas necesitan y la forma de marcarlo como procesado.</summary>
-public sealed record MailboxMessage(MailMessageData Data, uint Uid);
+public sealed record MailboxMessage(MailMessageData Data, string Key);
 
 /// <summary>
 /// Lote 133 (P11) — el buzón de una integración de correo. Interfaz para poder probar sin servidor real (un lector de prueba con correos de muestra) y para cambiar de protocolo sin tocar las reglas.
@@ -18,7 +18,7 @@ public interface IMailboxReader
 {
     Task<IReadOnlyList<MailboxMessage>> FetchAsync(EmailConfig config, string password, int maxMessages, CancellationToken ct);
     /// <summary>Marca como leídos y mueve a la carpeta de procesados (se crea si falta) los correos ya atendidos. Nunca borra.</summary>
-    Task MarkProcessedAsync(EmailConfig config, string password, IReadOnlyList<uint> uids, CancellationToken ct);
+    Task MarkProcessedAsync(EmailConfig config, string password, IReadOnlyList<string> keys, CancellationToken ct);
     /// <summary>Prueba la conexión (servidor, usuario, contraseña y carpeta). Devuelve cuántos correos sin leer hay.</summary>
     Task<int> TestAsync(EmailConfig config, string password, CancellationToken ct);
 }
@@ -91,19 +91,19 @@ public sealed class ImapMailboxReader : IMailboxReader
         foreach (var uid in uids)
         {
             var message = await inbox.GetMessageAsync(uid, ct);
-            result.Add(new MailboxMessage(MailMessageMapper.Map(message, uid.Id.ToString()), uid.Id));
+            result.Add(new MailboxMessage(MailMessageMapper.Map(message, uid.Id.ToString()), uid.Id.ToString()));
         }
         await client.DisconnectAsync(true, ct);
         return result;
     }
 
-    public async Task MarkProcessedAsync(EmailConfig c, string password, IReadOnlyList<uint> uids, CancellationToken ct)
+    public async Task MarkProcessedAsync(EmailConfig c, string password, IReadOnlyList<string> keys, CancellationToken ct)
     {
-        if (uids.Count == 0) return;
+        if (keys.Count == 0) return;
         using var client = await ConnectAsync(c, password, ct);
         var inbox = await client.GetFolderAsync(c.Mailbox, ct);
         await inbox.OpenAsync(FolderAccess.ReadWrite, ct);
-        var list = uids.Select(u => new UniqueId(u)).ToList();
+        var list = keys.Select(k => new UniqueId(uint.Parse(k))).ToList();
         await inbox.AddFlagsAsync(list, MessageFlags.Seen, true, ct);
         if (!string.IsNullOrWhiteSpace(c.ProcessedFolder))
         {

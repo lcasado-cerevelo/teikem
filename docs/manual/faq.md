@@ -10858,3 +10858,9 @@ Kemi aparece para las personas del cliente con sesión iniciada, después de ace
 **No sé escribir expresiones regulares: ¿cómo configuro lo que lee un lector?** No hace falta. En el dato del lector toque «Armar la tabla con un documento de muestra» (o «Señalar el dato…» / «Señalar el total…»), suba o pegue un documento, toque el renglón y diga de qué parte sale cada dato; el asistente arma la expresión y le dice cuántos renglones del documento coinciden. Si dice «Ningún renglón del documento coincide», revise lo que escogió o toque otro renglón con datos.
 
 **¿Qué significa «Partes del renglón» (2=2, 3=4/3)?** Que el dato 2 de la plantilla sale de la parte 2 del renglón y el dato 3 de la parte 4 dividida entre la parte 3 (por ejemplo cantidad = importe ÷ precio unitario). Lo arma el asistente; solo se toca a mano en «Ver o ajustar la expresión (avanzado)».
+
+**«Application-specific password required» al probar la conexión de un buzón de Gmail.** Gmail no acepta la contraseña normal por IMAP: active la verificación en dos pasos de la cuenta, cree una contraseña de aplicación en myaccount.google.com/apppasswords y péguela en el campo de contraseña del buzón.
+
+**El buzón es de Microsoft 365 (o Outlook.com) o es un buzón compartido: ¿qué contraseña pongo?** Ninguna: Microsoft no deja entrar por IMAP con contraseña. Escoja «Mailbox type» = Microsoft 365 y use una aplicación de Microsoft Entra ID (Tenant ID, Client ID y secreto); ver el capítulo 39, sección 24. También sirve para buzones compartidos, sin licencia.
+
+**La integración de correo leyó correos que no eran míos.** Sin filtros toma todo lo NO leído de la carpeta, del más viejo al más nuevo, hasta 50 por corrida, y los marca como leídos. Ponga «Remitentes originales permitidos», el asunto, o use un buzón o una carpeta dedicados a la integración.

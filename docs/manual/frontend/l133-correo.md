@@ -15,3 +15,8 @@ Cada lector es una tarjeta con su marco y cuatro pasos: qué documento es (condi
 El **asistente de lectura** arma las expresiones a partir de un documento de muestra: se toca un renglón, se dice de qué parte sale cada dato y muestra cuántos renglones del documento coinciden.
 
 ![Asistente de lectura](img/l133-asistente.png)
+
+## Microsoft 365 (2026-10-24)
+Tipo de buzón «Microsoft 365 (aplicación de Entra ID)»: Tenant ID, Client ID, dirección del buzón y secreto de la aplicación en lugar de servidor, puerto y contraseña. Pasos y mensajes: [capítulo 39, §24](../39-integraciones.md).
+
+![Buzón de Microsoft 365](img/l133-microsoft365.png)

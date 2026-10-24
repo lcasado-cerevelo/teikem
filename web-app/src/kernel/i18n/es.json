@@ -11013,6 +11013,23 @@
       "host": "Servidor IMAP",
       "port": "Puerto",
       "useSsl": "Conexión cifrada (SSL/TLS)",
+      "provider": "Tipo de buzón",
+      "providerOption": {
+        "IMAP": "IMAP (servidor, usuario y contraseña)",
+        "MICROSOFT365": "Microsoft 365 (aplicación de Entra ID)"
+      },
+      "providerHelpImap": "Para Gmail (con contraseña de aplicación), cuentas de cPanel y cualquier correo que dé acceso IMAP con contraseña. Microsoft 365 y Outlook.com NO aceptan contraseña: use el tipo Microsoft 365.",
+      "providerHelpM365": "Lee el buzón por el API de Microsoft con una aplicación registrada en Microsoft Entra ID. No usa la contraseña del buzón y sirve también para buzones compartidos (sin licencia).",
+      "m365Help": "Pasos para el administrador de Microsoft 365: 1) en Entra ID registre una aplicación; 2) en «API permissions» agregue el permiso de aplicación Mail.ReadWrite de Microsoft Graph y dé el consentimiento del administrador; 3) en «Certificates & secrets» cree un secreto y copie su VALOR; 4) para que solo lea este buzón, restrinja la aplicación con una política de acceso de aplicaciones de Exchange. Pegue aquí el Tenant ID, el Client ID y el secreto.",
+      "tenantId": "Tenant ID",
+      "tenantIdHelp": "El identificador del directorio (un GUID) o el dominio, p. ej. contoso.onmicrosoft.com.",
+      "clientId": "Client ID",
+      "clientIdHelp": "El «Application (client) ID» de la aplicación registrada.",
+      "mailboxAddress": "Dirección del buzón",
+      "mailboxAddressHelp": "El buzón que se lee, p. ej. avisos@sudominio.com. Puede ser un buzón compartido.",
+      "clientSecret": "Secreto de la aplicación (Client secret)",
+      "clientSecretHelp": "El VALOR del secreto (no su identificador). Se guarda cifrado y no se vuelve a mostrar. Vence: anote su fecha.",
+      "hostHelp": "p. ej. imap.gmail.com, o mail.sudominio.com para una cuenta de cPanel.",
       "username": "Usuario del buzón",
       "password": "Contraseña del buzón",
       "passwordHelp": "Se guarda cifrada y no se vuelve a mostrar. Use una contraseña de aplicación del buzón.",
@@ -11204,6 +11221,9 @@
         "SPACES": "Junta espacios y tabuladores"
       },
       "errors": {
+        "tenantId": "Indique el Tenant ID de Microsoft 365.",
+        "clientId": "Indique el Client ID de la aplicación.",
+        "secret": "Indique el secreto de la aplicación (Client secret).",
         "host": "Indique el servidor del buzón (IMAP).",
         "port": "El puerto debe estar entre 1 y 65535.",
         "username": "Indique el usuario del buzón.",

@@ -18,6 +18,15 @@ public static class EmailMatchOperators
     public static readonly IReadOnlyList<string> All = [EqualTo, Contains, StartsWith, EndsWith, Wildcard, Regex];
 }
 
+/// <summary>2026-10-24: cómo se conecta Teikem al buzón. IMAP = servidor, usuario y contraseña (Gmail con contraseña de aplicación, cPanel…). MICROSOFT365 = aplicación de Entra ID (sin contraseña del buzón): Username es la dirección del buzón (también compartido), TenantId y ClientId identifican la aplicación y el secreto cifrado de la integración es el secreto de la aplicación.</summary>
+public static class EmailProviders
+{
+    public const string Imap = "IMAP";
+    public const string Microsoft365 = "MICROSOFT365";
+    public static readonly IReadOnlyList<string> All = [Imap, Microsoft365];
+    public static bool IsMicrosoft365(string? provider) => string.Equals(provider, Microsoft365, StringComparison.OrdinalIgnoreCase);
+}
+
 public static class EmailAttachmentModes
 {
     public const string All = "ALL";
@@ -74,7 +83,8 @@ public sealed record EmailConfig(
     EmailTextMatch? Subject = null, IReadOnlyList<string>? AllowedSenders = null, bool RequireAttachment = false,
     string AttachmentMode = EmailAttachmentModes.All, EmailTextMatch? AttachmentName = null, IReadOnlyList<string>? AttachmentTypes = null,
     bool ReadBody = false, IReadOnlyList<EmailBodyField>? BodyFields = null,
-    bool ReadPdf = false, IReadOnlyList<DocumentReader>? Readers = null);
+    bool ReadPdf = false, IReadOnlyList<DocumentReader>? Readers = null,
+    string Provider = EmailProviders.Imap, string? TenantId = null, string? ClientId = null);
 
 /// <summary>Un correo ya leído (de un buzón o de un .eml): lo que las reglas necesitan.</summary>
 public sealed record MailAttachmentData(string Name, string ContentType, byte[] Content);
@@ -95,6 +105,10 @@ public static class EmailRules
     public static string PortMessage => "El puerto debe estar entre 1 y 65535.";
     public static string UsernameRequiredMessage => "Indique el usuario del buzón.";
     public static string PasswordRequiredMessage => "Indique la contraseña del buzón.";
+    public static string UnknownProviderMessage(string p) => $"Tipo de buzón desconocido: {p}. Use IMAP o MICROSOFT365.";
+    public static string TenantRequiredMessage => "Indique el Tenant ID de Microsoft 365 (el identificador del directorio o el dominio, p. ej. contoso.onmicrosoft.com).";
+    public static string ClientIdRequiredMessage => "Indique el Client ID (identificador de la aplicación registrada en Microsoft Entra ID).";
+    public static string ClientSecretRequiredMessage => "Indique el secreto de la aplicación (Client secret).";
     public static string MailboxRequiredMessage => "Indique la carpeta del buzón que se lee (p. ej. INBOX).";
     public static string UnknownOperatorMessage(string op) => $"Condición desconocida: {op}. Use EQUALS, CONTAINS, STARTS, ENDS, WILDCARD o REGEX.";
     public static string MatchValueMessage => "Indique el texto de la condición.";
@@ -129,10 +143,22 @@ public static class EmailRules
     {
         var errors = new Dictionary<string, string>(StringComparer.Ordinal);
         if (c is null) { errors["email"] = HostRequiredMessage; return errors; }
-        if (string.IsNullOrWhiteSpace(c.Host)) errors["email.host"] = HostRequiredMessage;
-        if (c.Port is < 1 or > 65535) errors["email.port"] = PortMessage;
-        if (string.IsNullOrWhiteSpace(c.Username)) errors["email.username"] = UsernameRequiredMessage;
-        if (!hasPassword) errors["email.password"] = PasswordRequiredMessage;
+        var provider = string.IsNullOrWhiteSpace(c.Provider) ? EmailProviders.Imap : c.Provider.Trim().ToUpperInvariant();
+        if (!EmailProviders.All.Contains(provider)) errors["email.provider"] = UnknownProviderMessage(c.Provider ?? string.Empty);
+        if (provider == EmailProviders.Microsoft365)
+        {
+            if (string.IsNullOrWhiteSpace(c.TenantId)) errors["email.tenantId"] = TenantRequiredMessage;
+            if (string.IsNullOrWhiteSpace(c.ClientId)) errors["email.clientId"] = ClientIdRequiredMessage;
+            if (string.IsNullOrWhiteSpace(c.Username)) errors["email.username"] = UsernameRequiredMessage;
+            if (!hasPassword) errors["email.password"] = ClientSecretRequiredMessage;
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(c.Host)) errors["email.host"] = HostRequiredMessage;
+            if (c.Port is < 1 or > 65535) errors["email.port"] = PortMessage;
+            if (string.IsNullOrWhiteSpace(c.Username)) errors["email.username"] = UsernameRequiredMessage;
+            if (!hasPassword) errors["email.password"] = PasswordRequiredMessage;
+        }
         if (string.IsNullOrWhiteSpace(c.Mailbox)) errors["email.mailbox"] = MailboxRequiredMessage;
         ValidateMatch(c.Subject, "email.subject", errors);
         var senders = c.AllowedSenders ?? Array.Empty<string>();

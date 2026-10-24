@@ -7,7 +7,7 @@ import { emptyRemote } from './remoteRules'
 import { buildCreateRequest, buildPatchRequest, integrationSchema, type IntegrationValues } from './integrationRules'
 
 const M: EmailMessages = {
-  host: 'host', port: 'puerto', username: 'usuario', password: 'contraseña', mailbox: 'carpeta', noFields: 'sin campos', position: 'columna', label: 'etiqueta', pattern: 'regex', block: 'bloque',
+  tenantId: 'tenant', clientId: 'cliente', secret: 'secreto', host: 'host', port: 'puerto', username: 'usuario', password: 'contraseña', mailbox: 'carpeta', noFields: 'sin campos', position: 'columna', label: 'etiqueta', pattern: 'regex', block: 'bloque',
   blockColumns: 'columnas del bloque', regex: 'regex inválida', repeatStart: 'repetir necesita inicio', readerName: 'nombre del lector', readerNameDuplicate: 'nombre repetido', readerFields: 'lector sin campos', conditionValue: 'condición sin texto', conditionScope: 'condición no aplica', nameFilter: 'nombre', senders: 'remitentes',
 }
 const ok = (): EmailValues => ({ ...emptyEmail(), host: ' imap.x.com ', username: ' u@x.com ', password: 'secreto' })
@@ -181,5 +181,28 @@ describe('lectores', () => {
     expect(readers[1].fields).toEqual([field])
     expect(legacyToReaders({ ...ok(), attachmentTypes: 'pdf' })).toEqual([])
     expect(issues({ readers })).toEqual([])
+  })
+})
+
+// 2026-10-24 — buzones de Microsoft 365 (aplicación de Entra ID): sin servidor ni puerto, con Tenant ID, Client ID y el secreto en lugar de la contraseña.
+describe('buzón de Microsoft 365', () => {
+  const m365 = (over: Partial<EmailValues> = {}): EmailValues => ({ ...emptyEmail(), provider: 'MICROSOFT365', tenantId: ' contoso.onmicrosoft.com ', clientId: ' app-1 ', username: ' avisos@contoso.com ', password: 'secreto', ...over })
+
+  it('pide tenant, cliente, buzón y secreto, y no pide servidor ni puerto', () => {
+    expect(emailIssues(m365(), false, M)).toEqual([])
+    expect(emailIssues(m365({ tenantId: ' ', clientId: '', username: '', password: '' }), false, M).map((i) => `${i.path}:${i.message}`)).toEqual(['tenantId:tenant', 'clientId:cliente', 'username:usuario', 'password:secreto'])
+    expect(emailIssues(m365({ password: '' }), true, M)).toEqual([])   // ya hay un secreto guardado
+    // IMAP sigue pidiendo servidor y contraseña
+    expect(emailIssues({ ...ok(), host: '', password: '' }, false, M).map((i) => i.message)).toEqual(['host', 'contraseña'])
+  })
+
+  it('viaja al API con el tipo, el tenant y el cliente, sin servidor, y vuelve igual', () => {
+    const cfg = buildEmailConfig(m365())
+    expect(cfg).toMatchObject({ provider: 'MICROSOFT365', tenantId: 'contoso.onmicrosoft.com', clientId: 'app-1', username: 'avisos@contoso.com', host: '' })
+    expect(cfg).not.toHaveProperty('password')
+    expect(emailValuesOf(cfg)).toMatchObject({ provider: 'MICROSOFT365', tenantId: 'contoso.onmicrosoft.com', clientId: 'app-1', password: '' })
+    // un IMAP guardado sin «provider» (los de antes) se abre como IMAP
+    expect(emailValuesOf({ ...buildEmailConfig(ok()), provider: undefined }).provider).toBe('IMAP')
+    expect(buildEmailConfig(ok())).toMatchObject({ provider: 'IMAP', tenantId: null, clientId: null, host: 'imap.x.com' })
   })
 })

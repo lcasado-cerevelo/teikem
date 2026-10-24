@@ -347,7 +347,9 @@ public static class DependencyInjection
         services.AddScoped<IStatusTransitionEffect, OutputOrderEffect>();
         services.AddSingleton<IScheduledJob, IntegrationOutputJob>();
         services.AddSingleton<Teikem.Infrastructure.Security.ISecretProtector, Teikem.Infrastructure.Security.SecretProtector>();   // Lote 133: secretos de conectores cifrados
-        services.AddSingleton<Teikem.Infrastructure.Integrations.IMailboxReader, Teikem.Infrastructure.Integrations.ImapMailboxReader>();
+        services.AddSingleton<Teikem.Infrastructure.Integrations.ImapMailboxReader>();
+        services.AddSingleton(_ => new Teikem.Infrastructure.Integrations.GraphMailboxReader());   // 2026-10-24: buzones de Microsoft 365 (también compartidos) con una aplicación de Entra ID
+        services.AddSingleton<Teikem.Infrastructure.Integrations.IMailboxReader, Teikem.Infrastructure.Integrations.RoutingMailboxReader>();
         services.AddSingleton<Teikem.Infrastructure.Integrations.IPdfTextReader, Teikem.Infrastructure.Integrations.PdfTextReader>();   // 2026-10-22: PDF adjuntos (texto real y OCR)
         services.AddSingleton<Teikem.Infrastructure.Integrations.IRemoteFileClient, Teikem.Infrastructure.Integrations.RemoteFileClient>();   // Lote 134: SFTP/FTP
         services.AddScoped<IntegrationService>();

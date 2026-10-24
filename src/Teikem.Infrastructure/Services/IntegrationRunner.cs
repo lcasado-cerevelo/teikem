@@ -265,12 +265,12 @@ public sealed class IntegrationRunner(
         try { messages = await mailbox.FetchAsync(cfg, password, MaxMessagesPerRun, ct); }
         catch (Exception ex) when (ex is not OperationCanceledException and not TeikemException) { throw new ValidationException("email", $"{ImapMailboxReader.ConnectionFailedMessage}: {ex.Message}"); }
         var outcomes = new List<FileOutcome>();
-        var handled = new List<uint>();
+        var handled = new List<string>();
         foreach (var m in messages)
         {
             ct.ThrowIfCancellationRequested();
             outcomes.AddRange(await ProcessMessageAsync(integration, template, client, run, cfg, m.Data, ct));
-            handled.Add(m.Uid);
+            handled.Add(m.Key);
         }
         try { await mailbox.MarkProcessedAsync(cfg, password, handled, ct); }
         catch (Exception ex) when (ex is not OperationCanceledException) { logger.LogWarning(ex, "No se pudieron marcar los correos de la integración {Integration}; el hash evita procesarlos otra vez.", integration.IntegrationId); }

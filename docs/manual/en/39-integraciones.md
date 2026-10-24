@@ -489,3 +489,28 @@ The email integration form no longer forces you to write expressions. The window
 **The “parts of the row” (formerly “Row columns: 2=2, 3=4/3, 4=4”).** It is the pair “template datum = part of the row”. “3=4/3” reads: datum 3 is part 4 divided by part 3. It is no longer typed: the card shows it as a list in words, and the raw text stays under “See or adjust the expression (advanced)” in case it needs touching up. A table datum still needs at least one assigned part (otherwise the reader is not saved: “A block needs at least one column…”).
 
 **Who can:** `integrations.create` or `integrations.manage` (the assistant only reads the sample PDF, `POST /api/v1/integrations/read-sample`: it saves nothing). An empty PDF answers 400 and a damaged or protected one shows the reason inside the window.
+
+## 24. Microsoft 365 mailboxes (2026-10-24)
+
+Microsoft 365 and Outlook.com **do not accept IMAP with a user and password**, so for those mailboxes the form has the **mailbox type “Microsoft 365 (Entra ID application)”**. It does not use the mailbox password and it also works for **shared mailboxes** (which have no password and no license).
+
+**What the Microsoft 365 administrator does (once):**
+1. In Microsoft Entra ID, **register an application** (for example “Teikem mail”). Copy the *Application (client) ID* and the *Directory (tenant) ID*.
+2. Under “API permissions”, add the Microsoft Graph **application** permission `Mail.ReadWrite` and grant **admin consent**.
+3. Under “Certificates & secrets”, create a **client secret** and copy its **value** (not its ID; it is only shown at creation). It expires: note the date.
+4. Recommended: restrict the application to that mailbox with an Exchange **application access policy**; without it the permission reaches every mailbox in the company.
+
+**In Teikem** (Integrations → “New integration” / edit → mailbox section): “Mailbox type” = Microsoft 365; **Tenant ID**, **Client ID**, **Mailbox address** (the mailbox that is read, e.g. `avisos@yourdomain.com`) and **Application secret (Client secret)**, which is stored encrypted and never shown again. Server and port are not asked for. Everything else (folder, processed, filters, readers, inbox) works as with IMAP. “Test connection” says how many unread e-mails there are, or explains what is missing.
+
+**How it reads:** only the **unread** ones in the folder, from the **oldest to the newest**, up to 50 per run; the subject filter is applied before downloading the e-mail (those that do not match are left alone). When each e-mail is done it is marked as read and moved to “Procesados” (the folder is created if missing). **It never deletes.**
+
+**Messages “Test connection” or the run can give** (and what to do):
+- “The application secret (Client secret) is not valid or has expired…” (AADSTS7000215): you pasted the ID instead of the value, or the secret expired. Create a new one.
+- “The application does not exist in that tenant…” (AADSTS700016): wrong Client ID, or admin consent is missing.
+- “The tenant was not found…” (AADSTS90002): wrong Tenant ID.
+- “The application has no permission on this mailbox: the Mail.ReadWrite application permission with admin consent is missing, or an application access policy blocks it” (HTTP 403): step 2 is missing, or the policy of step 4 does not include this mailbox.
+- “The mailbox was not found: check the address” (HTTP 404).
+- “Folder “X” does not exist in the mailbox”: the “Folder that is read” name does not match (INBOX = the inbox).
+- Form validations: “Enter the Microsoft 365 Tenant ID…”, “Enter the application Client ID…”, “Enter the application secret (Client secret).” (HTTP 400).
+
+**Who can:** `integrations.create` / `integrations.manage`, like the rest. **Still to verify with a real tenant**: reading is tested against a fake server; the first real connection may show a message that is not listed here.

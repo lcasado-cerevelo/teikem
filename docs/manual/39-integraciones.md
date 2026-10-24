@@ -489,3 +489,28 @@ El formulario de la integración de correo ya no obliga a escribir expresiones. 
 **Las «partes del renglón» (antes «Columnas del renglón: 2=2, 3=4/3, 4=4»).** Es la pareja «dato de la plantilla = parte del renglón». «3=4/3» se lee: el dato 3 es la parte 4 dividida entre la parte 3. Ya no se escribe: la tarjeta lo muestra como lista en palabras y el texto crudo queda en «Ver o ajustar la expresión (avanzado)» por si hace falta retocarlo. Un dato de tabla sigue necesitando al menos una parte asignada (si no, el lector no se guarda: «Un bloque necesita al menos una columna…»).
 
 **Quién puede:** `integrations.create` o `integrations.manage` (el asistente solo lee el PDF de muestra, `POST /api/v1/integrations/read-sample`: no guarda nada). Un PDF vacío responde 400 y uno dañado o protegido avisa el motivo dentro de la ventana.
+
+## 24. Buzones de Microsoft 365 (2026-10-24)
+
+Microsoft 365 y Outlook.com **no aceptan IMAP con usuario y contraseña**, así que para esos buzones el formulario tiene el **tipo de buzón «Microsoft 365 (aplicación de Entra ID)»**. No usa la contraseña del buzón y sirve también para **buzones compartidos** (que no tienen contraseña ni licencia).
+
+**Lo que hace el administrador de Microsoft 365 (una vez):**
+1. En Microsoft Entra ID, **registrar una aplicación** (por ejemplo «Teikem correo»). Copiar el *Application (client) ID* y el *Directory (tenant) ID*.
+2. En «API permissions», agregar el permiso de **aplicación** `Mail.ReadWrite` de Microsoft Graph y dar el **consentimiento del administrador**.
+3. En «Certificates & secrets», crear un **secreto de cliente** y copiar su **valor** (no su identificador; solo se ve al crearlo). Vence: anotar la fecha.
+4. Recomendado: restringir la aplicación a ese buzón con una **política de acceso de aplicaciones de Exchange** (*application access policy*); sin ella el permiso alcanza todos los buzones de la compañía.
+
+**En Teikem** (Integraciones → «New integration» / editar → sección del buzón): «Mailbox type» = Microsoft 365; **Tenant ID**, **Client ID**, **Mailbox address** (el buzón que se lee, p. ej. `avisos@sudominio.com`) y **Application secret (Client secret)**, que se guarda cifrado y no se vuelve a mostrar. El servidor y el puerto no se piden. Todo lo demás (carpeta, procesados, filtros, lectores, bandeja) funciona igual que con IMAP. «Test connection» dice cuántos correos sin leer hay, o explica qué falta.
+
+**Cómo lee:** solo los **no leídos** de la carpeta, del **más viejo al más nuevo**, hasta 50 por corrida; el filtro de asunto se aplica antes de bajar el correo (los que no cumplen no se tocan). Al terminar cada correo lo marca como leído y lo mueve a «Procesados» (la carpeta se crea si falta). **Nunca borra.**
+
+**Mensajes que puede dar «Test connection» o la corrida** (con qué hacer):
+- «El secreto de la aplicación (Client secret) no es válido o venció…» (AADSTS7000215): pegó el identificador en vez del valor, o el secreto venció. Cree uno nuevo.
+- «La aplicación no existe en ese tenant…» (AADSTS700016): Client ID equivocado o falta el consentimiento del administrador.
+- «No se encontró el tenant…» (AADSTS90002): Tenant ID equivocado.
+- «La aplicación no tiene permiso sobre este buzón: falta el permiso de aplicación Mail.ReadWrite con consentimiento del administrador, o una política de acceso de aplicaciones lo bloquea» (HTTP 403): falta el paso 2, o la política del paso 4 no incluye este buzón.
+- «No se encontró el buzón: revise la dirección» (HTTP 404).
+- «No existe la carpeta «X» en el buzón»: el nombre de «Carpeta que se lee» no coincide (INBOX = la bandeja de entrada).
+- Validaciones del formulario: «Indique el Tenant ID de Microsoft 365…», «Indique el Client ID…», «Indique el secreto de la aplicación (Client secret).» (HTTP 400).
+
+**Quién puede:** `integrations.create` / `integrations.manage`, igual que el resto. **Pendiente de verificar con un tenant real**: la lectura está probada con un servidor de mentira; la primera conexión real puede mostrar un mensaje que aquí no esté.
