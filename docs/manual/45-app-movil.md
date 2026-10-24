@@ -68,14 +68,15 @@
   | Salir | En tránsito | |
   | Devolver | Devuelta | solo con señal y `orders.return` |
   La primera pieza de una acción mueve el envío (brinca los estatus de en medio); las siguientes solo cuentan («4 de 5 piezas»). Un estatus final no se toca.
+- **El escaneo es a la PIEZA, no al envío** (Luis): la que dice Sí, Ok o No es la pieza. El número del envío, del empaque o de la factura **no se escanea** ("No se encontró la pieza."). Lo mismo vale en la estación de la web, que usa el mismo servicio.
 - **Qué dice la pantalla** (voz del teléfono, vibración y color):
   | Pasa | Voz | Color |
   |---|---|---|
-  | La pieza se encuentra y mueve el envío al estatus | **Sí** | verde |
-  | El envío **ya estaba en ese estatus** (p. ej. escaneas Enrutar y ya estaba Asignado), o la pieza ya se había escaneado con esa acción | **Ok** | ámbar |
+  | La pieza se encuentra y es **nueva** para esa acción (mueva el envío o no: si otra pieza ya lo había movido, igual dice Sí y se cuenta) | **Sí** | verde |
+  | **Esa misma pieza** ya se había escaneado con esa acción (se repite el escaneo) | **Ok** | ámbar |
   | La pieza no se encuentra; el envío está **cancelado o en un estatus final** (entregado…); es de pick up y la acción no le aplica; o **no es de lo escogido** (otra ruta, otra ciudad u otro chofer, aunque exista en el sistema) | **No** | rojo |
   | El envío ya va **más adelante** que el proceso que escaneas (p. ej. escaneas Enrutar y ya está En tránsito) | **Atención**, y el sistema **para**: dice qué está pasando y qué se está escaneando; «Cancelar» no hace nada, «Contar la pieza» la cuenta sin hacer retroceder el estatus | naranja |
-- **Por ruta / ciudad / chofer**: solo se aceptan envíos de lo marcado. La ruta de un envío es su ruta vigente; su chofer es el de esa ruta (un envío sin ruta no tiene chofer); su ciudad es la de la parada de entrega. Con **Enrutar y UNA sola ruta marcada**, los envíos libres se ponen en esa ruta; con varias rutas marcadas, solo se aceptan los que ya están en alguna.
+- **Por ruta / ciudad / chofer**: solo se aceptan **piezas** de lo marcado. La ruta de un envío es su ruta vigente; su chofer es el de esa ruta, de cualquier tipo (entrega o recogida) y estado (planeada, despachada o en curso), así que por chofer salen **todos los paquetes asignados a ese chofer** (un envío sin ruta, o que ya salió de ella, no tiene chofer); su ciudad es la de la parada de entrega. Con **Enrutar y UNA sola ruta marcada**, los envíos libres se ponen en esa ruta; con varias rutas marcadas, solo se aceptan los que ya están en alguna.
 - **La voz**: usa la voz del teléfono (texto a voz). Si «No» no se oye claro en el Android, se le puede poner un audio propio.
 - **Sin señal**: al abrir la pantalla (y con el botón **Sincronizar**) el teléfono **baja todos los envíos no completados, hasta 5000, los más recientes**, con sus piezas. Con eso contesta cada lectura **al instante**, sin señal, con color, vibración y voz **Sí / No / Ok** (interruptor «Voz»). Lo que cuenta queda en la cola («Por enviar: N») y sale solo cuando vuelve la señal.
 - **Pieza que no está en lo bajado**: con señal se le pregunta al servidor; sin señal, «No se encontró la pieza.» (aplica a lo que quedó fuera de los 5000 o es más nuevo que la descarga).

@@ -514,10 +514,10 @@
       "MSG_NOT_FOUND": "No se encontró la pieza.",
       "MSG_AMBIGUOUS": "El número está en {{n}} envíos: sin señal no se puede confirmar.",
       "MSG_NEEDS_SIGNAL": "No se encontró la pieza en lo bajado y no hay señal para preguntar.",
-      "MSG_PICKUP_ONLY": "El envío {{order}} es de pick up: se queda en el almacén.",
-      "MSG_FINAL": "El envío {{order}} está en un estatus final ({{status}}): no se cambia.",
+      "MSG_PICKUP_ONLY": "La pieza {{piece}}: el envío {{order}} es de pick up y se queda en el almacén.",
+      "MSG_FINAL": "La pieza {{piece}}: el envío {{order}} está en un estatus final ({{status}}); no se cambia.",
       "MSG_DUPLICATE": "La pieza {{piece}} ya se había escaneado con esta acción.",
-      "MSG_APPLIED": "El envío {{order}} pasó a {{status}}.",
+      "MSG_APPLIED": "La pieza {{piece}} movió el envío {{order}} a {{status}}.",
       "MSG_COUNTED": "La pieza {{piece}} se contó ({{status}}).",
       "MSG_SERVER": "{{text}}",
       "ROUTE_ALREADY": "Ya estaba en la ruta {{trip}}.",
@@ -543,13 +543,13 @@
       "ROUTE_MANY_HINT": "Con varias rutas, los envíos que no estén en ninguna de ellas no se aceptan (para poner envíos libres en una ruta, escoge solo una).",
       "SAY_WARN": "Atención",
       "BEYOND_TITLE": "Atención: el envío ya va más adelante",
-      "BEYOND_BODY": "El envío {{order}} está en «{{current}}», que va DESPUÉS de «{{target}}» (lo que estás escaneando: {{action}}).\n\nSi sigues, la pieza solo se cuenta y el estatus NO retrocede. ¿Qué quieres hacer?",
+      "BEYOND_BODY": "La pieza {{piece}} es del envío {{order}}, que está en «{{current}}», un estatus que va DESPUÉS de «{{target}}» (lo que estás escaneando: {{action}}).\n\nSi sigues, la pieza solo se cuenta y el estatus NO retrocede. ¿Qué quieres hacer?",
       "BEYOND_GO": "Contar la pieza",
-      "MSG_BEYOND": "El envío {{order}} ya está en «{{current}}», más adelante que «{{target}}». Se paró el escaneo.",
-      "MSG_SAME_STATUS": "El envío {{order}} ya estaba en «{{status}}»: la pieza {{piece}} se contó.",
-      "MSG_NOT_IN_ROUTE": "El envío {{order}} no es de las rutas escogidas.",
-      "MSG_NOT_IN_CITY": "El envío {{order}} no es de las ciudades escogidas.",
-      "MSG_NOT_IN_DRIVER": "El envío {{order}} no es de los choferes escogidos."
+      "MSG_BEYOND": "La pieza {{piece}}: el envío {{order}} ya está en «{{current}}», más adelante que «{{target}}». Se paró el escaneo.",
+      "MSG_SAME_STATUS": "La pieza {{piece}} se contó: el envío {{order}} ya estaba en «{{status}}».",
+      "MSG_NOT_IN_ROUTE": "La pieza {{piece}} (envío {{order}}) no es de las rutas escogidas.",
+      "MSG_NOT_IN_CITY": "La pieza {{piece}} (envío {{order}}) no es de las ciudades escogidas.",
+      "MSG_NOT_IN_DRIVER": "La pieza {{piece}} (envío {{order}}) no es de los choferes escogidos."
     }
   }
 }

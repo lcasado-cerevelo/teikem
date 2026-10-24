@@ -10619,7 +10619,9 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 
 **La pantalla se paró con «Atención: el envío ya va más adelante».** Escaneaste un proceso anterior al estatus en que ya está el envío (por ejemplo Enrutar sobre uno que ya está En tránsito). El sistema para para que decidas: **Cancelar** no hace nada; **Contar la pieza** la cuenta pero el estatus **no retrocede**.
 
-**Dice «Ok» y la pieza es nueva.** «Ok» significa que el envío **ya estaba** en ese estatus (por ejemplo, otra pieza del mismo envío ya lo movió) o que esa pieza ya se había escaneado con esa acción. La pieza igual se cuenta.
+**Dice «Ok».** «Ok» significa que **esa misma pieza** ya se había escaneado con esa acción. Una pieza nueva dice «Sí» aunque otra pieza del mismo envío ya hubiera movido el estatus: el escaneo es a la pieza y cada pieza nueva se cuenta.
+
+**Escaneé el número del envío y dice «No se encontró la pieza.»** Se escanea el número de **cada pieza** (el del label), no el del envío, el empaque ni la factura. Es igual en la app y en la web.
 
 **No me aparecen choferes, rutas o ciudades para escoger.** Salen de la descarga: toca **Sincronizar** con señal. Las ciudades son las de los envíos bajados.
 

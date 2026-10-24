@@ -465,6 +465,8 @@ el resultado es `NO_OPEN_ROUTE`. Ocho escaneos simultáneos de envíos distintas
 
 ## 7b. Escaneo con acción escogida (Lote 107) y por pieza (Lote 110)
 
+> **El escaneo es a la PIEZA** (confirmado por Luis, 2026-10-24): la pieza es la que dice **Sí** (nueva para esa acción), **Ok** (esa misma pieza repetida con la misma acción) o **No** (no se encuentra, envío cancelado o en estatus final). Aplica igual en la web y en la app móvil.
+>
 > **Lote 216 (2026-10-24): la app móvil del personal tiene esta estación, con trabajo sin señal** (capítulo 45 §2d). `POST /api/v1/scan/action` y `/scan/outbound` aceptan ahora `tripPublicId` (opcional): con **Enrutar**, el envío va a **esa** ruta —planeada, despachada o en curso— en vez de a la ruta de su zona; si la ruta ya no está abierta, el envío queda sin asignar con `La ruta {código} ya no está abierta; queda sin asignar.` (`NO_OPEN_ROUTE`) y Enrutar se deshace como siempre.
 
 > **Lote 110 (2026-10-18): lo que se escanea son las PIEZAS.** Se escanea el **número de cada pieza** (el del label); el **número del envío, el de empaque y el de factura no se escanean**: la estación responde «No se encontró la pieza.» (audio **«No»**). El audio de la estación es **«Sí»** (encontrada), **«No»** (no encontrada) y **«Ok»** (duplicada). Cada pieza se registra **una vez por acción**: escanearlo otra vez con la misma acción es un **duplicado** (`DUPLICATE`, «La pieza … ya se había escaneado con esta acción.», sin cambios y sin contarla dos veces).

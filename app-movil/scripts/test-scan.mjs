@@ -25,7 +25,7 @@ assert.equal(r.result.send, true);
 o = order('ASSIGNED', { pieces: [{ number: 'P1', actions: ['ROUTE'], missing: null }, { number: 'P2', actions: [], missing: null }] });
 r = applyScan(o, 'P2', 'ROUTE', statuses);
 assert.equal(r.result.outcome, 'COUNTED');
-assert.equal(r.result.voice, 'dup', 'el envío ya estaba en ese estatus: «Ok»');
+assert.equal(r.result.voice, 'found', 'el escaneo es a la PIEZA: una pieza nueva dice «Sí» aunque el envío ya estuviera en ese estatus');
 assert.equal(r.result.message.key, 'SCAN.MSG_SAME_STATUS');
 assert.equal(r.nextStatus, null);
 assert.equal(r.recorded, true, 'aun así la pieza se cuenta y va al servidor');
@@ -33,10 +33,19 @@ assert.equal(r.result.send, true);
 assert.deepEqual([r.result.scanned, r.result.total], [2, 2]);
 assert.equal(r.result.routeNote.key, 'SCAN.ROUTE_ZONE');
 
-// duplicado: Ok, no se manda
+// la MISMA pieza otra vez con la misma acción: «Ok», no se manda (y es la pieza la que lo dice)
 r = applyScan(o, 'P1', 'ROUTE', statuses);
 assert.deepEqual([r.result.outcome, r.result.voice, r.result.send, r.recorded], ['DUPLICATE', 'dup', false, false]);
 
+// otra pieza del mismo envío sigue dando «Sí» y la repetida de esa pieza «Ok»
+r = applyScan(o, 'P2', 'ROUTE', statuses);
+assert.deepEqual([r.result.voice, r.recorded], ['found', true]);
+o = order('ASSIGNED', { pieces: [{ number: 'P1', actions: ['ROUTE'], missing: null }, { number: 'P2', actions: ['ROUTE'], missing: null }] });
+assert.equal(applyScan(o, 'P2', 'ROUTE', statuses).result.voice, 'dup');
+o = order('ASSIGNED', { pieces: [{ number: 'P1', actions: ['ROUTE'], missing: null }, { number: 'P2', actions: [], missing: null }] });
+
+// el número del ENVÍO no es una pieza: «No»
+assert.equal(applyScan(o, '2026-000001', 'ROUTE', statuses).result.outcome, 'NOT_FOUND');
 // no existe la pieza
 assert.equal(applyScan(o, 'X', 'ROUTE', statuses).result.outcome, 'NOT_FOUND');
 
@@ -68,7 +77,7 @@ assert.equal(applyScan(pick, 'P1', 'ARRIVE', statuses).nextStatus, 'IN_WAREHOUSE
 assert.equal(applyScan(pick, 'P1', 'ROUTE', statuses).result.outcome, 'PICKUP_ONLY');
 const inWh = order('IN_WAREHOUSE', { pickUp: true });
 assert.equal(applyScan(inWh, 'P1', 'ARRIVE', statuses).result.outcome, 'COUNTED');
-assert.equal(applyScan(inWh, 'P1', 'ARRIVE', statuses).result.voice, 'dup');
+assert.equal(applyScan(inWh, 'P1', 'ARRIVE', statuses).result.voice, 'found');
 
 // cancelado / terminal: «No» en voz alta
 for (const done of ['CANCELLED', 'DELIVERED']) {

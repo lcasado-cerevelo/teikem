@@ -80,7 +80,7 @@ export interface LocalScanResult {
 }
 
 const msg = (key: string, params: Record<string, string | number> = {}): ScanMessage => ({ key, params });
-const voiceOf = (o: ScanOutcome): ScanVoice => (o === 'APPLIED' ? 'found' : o === 'DUPLICATE' || o === 'COUNTED' ? 'dup' : o === 'BEYOND' ? 'warn' : 'notfound');
+const voiceOf = (o: ScanOutcome): ScanVoice => (o === 'APPLIED' || o === 'COUNTED' ? 'found' : o === 'DUPLICATE' ? 'dup' : o === 'BEYOND' ? 'warn' : 'notfound');
 
 /** El código escaneado limpio (espacios y saltos de línea que mete el lector), o null si queda vacío. */
 export function normalizeCode(raw: string | null | undefined): string | null {
@@ -125,16 +125,16 @@ export function applyScan(order: LocalOrder, pieceNumber: string, action: ScanAc
 
   // 1. Lo escaneado no es de lo escogido (otra ruta, otra ciudad u otro chofer): «No», aunque exista en el sistema.
   if (!inScope(order, scope, action)) {
-    return { result: { ...base, outcome: 'NOT_IN_SCOPE', voice: 'notfound', message: msg(`SCAN.MSG_NOT_IN_${scope.mode}`, { order: order.orderNumber }), scanned: scannedWith(action), total, send: false }, nextStatus: null, recorded: false };
+    return { result: { ...base, outcome: 'NOT_IN_SCOPE', voice: 'notfound', message: msg(`SCAN.MSG_NOT_IN_${scope.mode}`, { piece: pieceNumber, order: order.orderNumber }), scanned: scannedWith(action), total, send: false }, nextStatus: null, recorded: false };
   }
   if (order.pickUp && (action === 'ROUTE' || action === 'DEPART')) {
-    return { result: { ...base, outcome: 'PICKUP_ONLY', voice: 'notfound', message: msg('SCAN.MSG_PICKUP_ONLY', { order: order.orderNumber }), scanned: scannedWith(action), total, send: false }, nextStatus: null, recorded: false };
+    return { result: { ...base, outcome: 'PICKUP_ONLY', voice: 'notfound', message: msg('SCAN.MSG_PICKUP_ONLY', { piece: pieceNumber, order: order.orderNumber }), scanned: scannedWith(action), total, send: false }, nextStatus: null, recorded: false };
   }
   // 2. Estatus final (entregada, cancelada…): «No».
   if (terminal && !countsAtWarehouse) {
-    return { result: { ...base, outcome: 'FINAL', voice: 'notfound', message: msg('SCAN.MSG_FINAL', { order: order.orderNumber, status: label(order.statusCode) }), scanned: scannedWith(action), total, send: false }, nextStatus: null, recorded: false };
+    return { result: { ...base, outcome: 'FINAL', voice: 'notfound', message: msg('SCAN.MSG_FINAL', { piece: pieceNumber, order: order.orderNumber, status: label(order.statusCode) }), scanned: scannedWith(action), total, send: false }, nextStatus: null, recorded: false };
   }
-  // 3. La pieza ya se escaneó con esta acción: «Ok».
+  // 3. ESTA pieza ya se escaneó con esta acción: «Ok».
   if (piece.actions.includes(action)) {
     return { result: { ...base, outcome: 'DUPLICATE', voice: 'dup', message: msg('SCAN.MSG_DUPLICATE', { piece: pieceNumber }), scanned: scannedWith(action), total, send: false }, nextStatus: null, recorded: false };
   }
@@ -147,7 +147,7 @@ export function applyScan(order: LocalOrder, pieceNumber: string, action: ScanAc
 
   // 4. El envío ya va MÁS ADELANTE que lo que se escanea: el sistema PARA y advierte; solo sigue si la persona lo confirma (la pieza se cuenta, el estatus no retrocede).
   if (beyond && !options.confirmedBeyond) {
-    return { result: { ...base, outcome: 'BEYOND', voice: 'warn', message: msg('SCAN.MSG_BEYOND', { order: order.orderNumber, current: label(order.statusCode), target: label(target) }), scanned: scannedWith(action), total, send: false }, nextStatus: null, recorded: false };
+    return { result: { ...base, outcome: 'BEYOND', voice: 'warn', message: msg('SCAN.MSG_BEYOND', { piece: pieceNumber, order: order.orderNumber, current: label(order.statusCode), target: label(target) }), scanned: scannedWith(action), total, send: false }, nextStatus: null, recorded: false };
   }
 
   const routeNote = action === 'ROUTE'
@@ -156,11 +156,11 @@ export function applyScan(order: LocalOrder, pieceNumber: string, action: ScanAc
   const scanned = scannedWith(action, 1);
   const moves = !sameStatus && !beyond && !!targetStage;
   if (moves) {
-    return { result: { ...base, outcome: 'APPLIED', voice: 'found', message: msg('SCAN.MSG_APPLIED', { order: order.orderNumber, status: label(target) }), toStatus: target, scanned, total, routeNote, send: true }, nextStatus: target, recorded: true };
+    return { result: { ...base, outcome: 'APPLIED', voice: 'found', message: msg('SCAN.MSG_APPLIED', { piece: pieceNumber, order: order.orderNumber, status: label(target) }), toStatus: target, scanned, total, routeNote, send: true }, nextStatus: target, recorded: true };
   }
-  // 5. Ya tenía ese estatus (o el usuario confirmó seguir): la pieza solo se cuenta. Si ya estaba en ese estatus, «Ok» (no cambió nada).
-  const okVoice: ScanVoice = sameStatus ? 'dup' : 'found';
-  return { result: { ...base, outcome: 'COUNTED', voice: okVoice, message: msg(sameStatus ? 'SCAN.MSG_SAME_STATUS' : 'SCAN.MSG_COUNTED', { piece: pieceNumber, status: label(target), order: order.orderNumber }), scanned, total, routeNote, send: true }, nextStatus: null, recorded: true };
+  // 5. La pieza es nueva para esta acción pero el envío ya estaba en ese estatus (o el usuario confirmó seguir): la pieza se cuenta y ella dice «Sí». El «Ok» es solo de la pieza repetida (paso 3):
+  //    el escaneo es a la PIEZA, y es ella la que dice Sí o No (decidido por Luis).
+  return { result: { ...base, outcome: 'COUNTED', voice: 'found', message: msg(sameStatus ? 'SCAN.MSG_SAME_STATUS' : 'SCAN.MSG_COUNTED', { piece: pieceNumber, status: label(target), order: order.orderNumber }), scanned, total, routeNote, send: true }, nextStatus: null, recorded: true };
 }
 
 /** Resultados del servidor que NO son un problema al sincronizar (el escaneo quedó hecho o ya estaba hecho). */

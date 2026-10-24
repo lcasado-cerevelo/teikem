@@ -514,10 +514,10 @@
       "MSG_NOT_FOUND": "The piece was not found.",
       "MSG_AMBIGUOUS": "The number is in {{n}} shipments: it cannot be confirmed without signal.",
       "MSG_NEEDS_SIGNAL": "The piece is not in what was downloaded and there is no signal to ask.",
-      "MSG_PICKUP_ONLY": "Shipment {{order}} is pick up: it stays in the warehouse.",
-      "MSG_FINAL": "Shipment {{order}} is in a final status ({{status}}): unchanged.",
+      "MSG_PICKUP_ONLY": "Piece {{piece}}: shipment {{order}} is pick up and stays in the warehouse.",
+      "MSG_FINAL": "Piece {{piece}}: shipment {{order}} is in a final status ({{status}}); unchanged.",
       "MSG_DUPLICATE": "Piece {{piece}} was already scanned with this action.",
-      "MSG_APPLIED": "Shipment {{order}} moved to {{status}}.",
+      "MSG_APPLIED": "Piece {{piece}} moved shipment {{order}} to {{status}}.",
       "MSG_COUNTED": "Piece {{piece}} was counted ({{status}}).",
       "MSG_SERVER": "{{text}}",
       "ROUTE_ALREADY": "It was already on route {{trip}}.",
@@ -543,13 +543,13 @@
       "ROUTE_MANY_HINT": "With several routes, shipments that are in none of them are not accepted (to put free shipments on a route, pick only one).",
       "SAY_WARN": "Attention",
       "BEYOND_TITLE": "Attention: the shipment is already further along",
-      "BEYOND_BODY": "Shipment {{order}} is in “{{current}}”, which comes AFTER “{{target}}” (what you are scanning: {{action}}).\n\nIf you continue, the piece is only counted and the status does NOT go back. What do you want to do?",
+      "BEYOND_BODY": "Piece {{piece}} belongs to shipment {{order}}, which is in “{{current}}”, a status that comes AFTER “{{target}}” (what you are scanning: {{action}}).\n\nIf you continue, the piece is only counted and the status does NOT go back. What do you want to do?",
       "BEYOND_GO": "Count the piece",
-      "MSG_BEYOND": "Shipment {{order}} is already in “{{current}}”, further along than “{{target}}”. Scanning stopped.",
-      "MSG_SAME_STATUS": "Shipment {{order}} was already in “{{status}}”: piece {{piece}} was counted.",
-      "MSG_NOT_IN_ROUTE": "Shipment {{order}} is not on the chosen routes.",
-      "MSG_NOT_IN_CITY": "Shipment {{order}} is not in the chosen cities.",
-      "MSG_NOT_IN_DRIVER": "Shipment {{order}} is not for the chosen drivers."
+      "MSG_BEYOND": "Piece {{piece}}: shipment {{order}} is already in “{{current}}”, further along than “{{target}}”. Scanning stopped.",
+      "MSG_SAME_STATUS": "Piece {{piece}} was counted: shipment {{order}} was already in “{{status}}”.",
+      "MSG_NOT_IN_ROUTE": "Piece {{piece}} (shipment {{order}}) is not on the chosen routes.",
+      "MSG_NOT_IN_CITY": "Piece {{piece}} (shipment {{order}}) is not in the chosen cities.",
+      "MSG_NOT_IN_DRIVER": "Piece {{piece}} (shipment {{order}}) is not for the chosen drivers."
     }
   }
 }
