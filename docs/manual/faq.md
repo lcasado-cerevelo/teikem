@@ -10614,3 +10614,12 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **No suena la voz.** La voz usa la del teléfono. Revise el interruptor «Voz» de la pantalla y el volumen; si el teléfono no tiene voz instalada quedan la vibración y el color (verde = Sí, ámbar = Ok, rojo = No).
 
 **La pantalla Escanear no me deja escribir ni escanear.** Primero hay que escoger qué se va a escanear (Recoger, Llegó, Enrutar, Salir o Devolver): la pantalla lo pregunta al abrir y no hay acción por omisión. Toque una y el campo queda listo para el gatillo.
+
+**Escaneo una pieza que sí existe y dice «No» (rojo) con «no es de las rutas / ciudades / choferes escogidos».** Escogiste escanear **por ruta, ciudad o chofer** y esa pieza es de otro. Toca **Cambiar** arriba para escoger otra selección o **Todo**.
+
+**La pantalla se paró con «Atención: el envío ya va más adelante».** Escaneaste un proceso anterior al estatus en que ya está el envío (por ejemplo Enrutar sobre uno que ya está En tránsito). El sistema para para que decidas: **Cancelar** no hace nada; **Contar la pieza** la cuenta pero el estatus **no retrocede**.
+
+**Dice «Ok» y la pieza es nueva.** «Ok» significa que el envío **ya estaba** en ese estatus (por ejemplo, otra pieza del mismo envío ya lo movió) o que esa pieza ya se había escaneado con esa acción. La pieza igual se cuenta.
+
+**No me aparecen choferes, rutas o ciudades para escoger.** Salen de la descarga: toca **Sincronizar** con señal. Las ciudades son las de los envíos bajados.
+

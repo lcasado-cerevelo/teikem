@@ -26,10 +26,40 @@ export interface LocalOrder {
   tripPublicId: string | null;
   pickUp: boolean;
   pieces: LocalPiece[];
+  /** Pueblo de la parada (para escanear «por ciudad»). */
+  city?: string | null;
+  /** Chofer de su ruta vigente (para escanear «por chofer»). */
+  driverPublicId?: string | null;
 }
 
-export type ScanOutcome = 'APPLIED' | 'COUNTED' | 'DUPLICATE' | 'FINAL' | 'NOT_FOUND' | 'PICKUP_ONLY' | 'AMBIGUOUS';
-export type ScanVoice = 'found' | 'dup' | 'notfound';
+/** Cómo se escanea (decidido por Luis): todo, o solo lo de unas rutas, unas ciudades o unos choferes. Los `ids` son ids de ruta, nombres de ciudad o ids de chofer. */
+export type ScanScope = { mode: 'ALL' } | { mode: 'ROUTE' | 'CITY' | 'DRIVER'; ids: string[] };
+export const ALL_SCOPE: ScanScope = { mode: 'ALL' };
+
+/** Texto sin mayúsculas ni tildes, para comparar ciudades y buscar en las listas. */
+export function fold(text: string | null | undefined): string {
+  return (text ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+/** ¿El envío es de lo escogido? «Todo» siempre. Por ruta: su ruta vigente está entre las escogidas (con Enrutar y UNA sola ruta escogida, un envío sin ruta también vale: va a esa ruta). */
+export function inScope(order: LocalOrder, scope: ScanScope, action: ScanAction): boolean {
+  if (scope.mode === 'ALL') return true;
+  if (scope.mode === 'ROUTE') {
+    if (order.tripPublicId) return scope.ids.includes(order.tripPublicId);
+    return action === 'ROUTE' && scope.ids.length === 1;
+  }
+  if (scope.mode === 'CITY') return !!order.city && scope.ids.some((c) => fold(c) === fold(order.city));
+  return !!order.driverPublicId && scope.ids.includes(order.driverPublicId);
+}
+
+/** La ruta donde ponen los envíos libres: solo con Enrutar y una única ruta escogida. */
+export function destinationTrip(scope: ScanScope, action: ScanAction): string | null {
+  return action === 'ROUTE' && scope.mode === 'ROUTE' && scope.ids.length === 1 ? scope.ids[0] : null;
+}
+
+export type ScanOutcome = 'APPLIED' | 'COUNTED' | 'DUPLICATE' | 'FINAL' | 'NOT_FOUND' | 'PICKUP_ONLY' | 'AMBIGUOUS' | 'NOT_IN_SCOPE' | 'BEYOND';
+/** found = «Sí», dup = «Ok», notfound = «No», warn = el sistema PARA y advierte (el envío ya va más adelante que lo que se escanea). */
+export type ScanVoice = 'found' | 'dup' | 'notfound' | 'warn';
 
 /** Mensaje como clave de traducción + parámetros (la pantalla lo traduce a español o inglés). */
 export interface ScanMessage { key: string; params: Record<string, string | number> }
@@ -50,7 +80,7 @@ export interface LocalScanResult {
 }
 
 const msg = (key: string, params: Record<string, string | number> = {}): ScanMessage => ({ key, params });
-const voiceOf = (o: ScanOutcome): ScanVoice => (o === 'APPLIED' || o === 'COUNTED' ? 'found' : o === 'DUPLICATE' ? 'dup' : 'notfound');
+const voiceOf = (o: ScanOutcome): ScanVoice => (o === 'APPLIED' ? 'found' : o === 'DUPLICATE' || o === 'COUNTED' ? 'dup' : o === 'BEYOND' ? 'warn' : 'notfound');
 
 /** El código escaneado limpio (espacios y saltos de línea que mete el lector), o null si queda vacío. */
 export function normalizeCode(raw: string | null | undefined): string | null {
@@ -69,6 +99,10 @@ export function ambiguous(count: number): LocalScanResult {
 export interface ApplyOptions {
   /** Ruta escogida para Enrutar (código), si la hay. */
   chosenTripCode?: string | null;
+  /** Cómo se escanea (todo / ruta / ciudad / chofer). Por omisión, todo. */
+  scope?: ScanScope;
+  /** El usuario ya vio la advertencia de «estatus más adelante» y pidió seguir: la pieza solo se cuenta. */
+  confirmedBeyond?: boolean;
 }
 
 /**
@@ -84,16 +118,23 @@ export function applyScan(order: LocalOrder, pieceNumber: string, action: ScanAc
   const scannedWith = (a: string, extra = 0) => order.pieces.filter((p) => p.actions.includes(a)).length + extra;
   if (!piece) return { result: { ...notFound() }, nextStatus: null, recorded: false };
 
+  const scope = options.scope ?? ALL_SCOPE;
   const current = statuses.find((s) => s.code === order.statusCode);
   const terminal = current?.stageKind === 'TERMINAL';
   const countsAtWarehouse = order.pickUp && action === 'ARRIVE' && order.statusCode === 'IN_WAREHOUSE';
 
+  // 1. Lo escaneado no es de lo escogido (otra ruta, otra ciudad u otro chofer): «No», aunque exista en el sistema.
+  if (!inScope(order, scope, action)) {
+    return { result: { ...base, outcome: 'NOT_IN_SCOPE', voice: 'notfound', message: msg(`SCAN.MSG_NOT_IN_${scope.mode}`, { order: order.orderNumber }), scanned: scannedWith(action), total, send: false }, nextStatus: null, recorded: false };
+  }
   if (order.pickUp && (action === 'ROUTE' || action === 'DEPART')) {
     return { result: { ...base, outcome: 'PICKUP_ONLY', voice: 'notfound', message: msg('SCAN.MSG_PICKUP_ONLY', { order: order.orderNumber }), scanned: scannedWith(action), total, send: false }, nextStatus: null, recorded: false };
   }
+  // 2. Estatus final (entregada, cancelada…): «No».
   if (terminal && !countsAtWarehouse) {
     return { result: { ...base, outcome: 'FINAL', voice: 'notfound', message: msg('SCAN.MSG_FINAL', { order: order.orderNumber, status: label(order.statusCode) }), scanned: scannedWith(action), total, send: false }, nextStatus: null, recorded: false };
   }
+  // 3. La pieza ya se escaneó con esta acción: «Ok».
   if (piece.actions.includes(action)) {
     return { result: { ...base, outcome: 'DUPLICATE', voice: 'dup', message: msg('SCAN.MSG_DUPLICATE', { piece: pieceNumber }), scanned: scannedWith(action), total, send: false }, nextStatus: null, recorded: false };
   }
@@ -101,16 +142,25 @@ export function applyScan(order: LocalOrder, pieceNumber: string, action: ScanAc
   const target = order.pickUp && action === 'ARRIVE' ? 'IN_WAREHOUSE' : targetStatus(action);
   const targetStage = statuses.find((s) => s.code === target);
   const fromSort = current?.stageKind === 'LATERAL' ? (statuses.find((s) => s.code === 'PICKUP')?.sortOrder ?? -1) : (current?.sortOrder ?? -1);
-  const moves = !countsAtWarehouse && !!targetStage && targetStage.sortOrder > fromSort;
+  const sameStatus = countsAtWarehouse || order.statusCode === target;
+  const beyond = !sameStatus && !!targetStage && targetStage.sortOrder <= fromSort;
+
+  // 4. El envío ya va MÁS ADELANTE que lo que se escanea: el sistema PARA y advierte; solo sigue si la persona lo confirma (la pieza se cuenta, el estatus no retrocede).
+  if (beyond && !options.confirmedBeyond) {
+    return { result: { ...base, outcome: 'BEYOND', voice: 'warn', message: msg('SCAN.MSG_BEYOND', { order: order.orderNumber, current: label(order.statusCode), target: label(target) }), scanned: scannedWith(action), total, send: false }, nextStatus: null, recorded: false };
+  }
 
   const routeNote = action === 'ROUTE'
     ? (order.tripCode ? msg('SCAN.ROUTE_ALREADY', { trip: order.tripCode }) : options.chosenTripCode ? msg('SCAN.ROUTE_CHOSEN', { trip: options.chosenTripCode }) : msg('SCAN.ROUTE_ZONE'))
     : null;
   const scanned = scannedWith(action, 1);
+  const moves = !sameStatus && !beyond && !!targetStage;
   if (moves) {
     return { result: { ...base, outcome: 'APPLIED', voice: 'found', message: msg('SCAN.MSG_APPLIED', { order: order.orderNumber, status: label(target) }), toStatus: target, scanned, total, routeNote, send: true }, nextStatus: target, recorded: true };
   }
-  return { result: { ...base, outcome: 'COUNTED', voice: 'found', message: msg('SCAN.MSG_COUNTED', { piece: pieceNumber, status: label(target) }), scanned, total, routeNote, send: true }, nextStatus: null, recorded: true };
+  // 5. Ya tenía ese estatus (o el usuario confirmó seguir): la pieza solo se cuenta. Si ya estaba en ese estatus, «Ok» (no cambió nada).
+  const okVoice: ScanVoice = sameStatus ? 'dup' : 'found';
+  return { result: { ...base, outcome: 'COUNTED', voice: okVoice, message: msg(sameStatus ? 'SCAN.MSG_SAME_STATUS' : 'SCAN.MSG_COUNTED', { piece: pieceNumber, status: label(target), order: order.orderNumber }), scanned, total, routeNote, send: true }, nextStatus: null, recorded: true };
 }
 
 /** Resultados del servidor que NO son un problema al sincronizar (el escaneo quedó hecho o ya estaba hecho). */

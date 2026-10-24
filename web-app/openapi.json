@@ -79529,6 +79529,20 @@
         },
         "additionalProperties": false
       },
+      "ScanSnapshotDriverDto": {
+        "type": "object",
+        "properties": {
+          "publicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ScanSnapshotOrderDto": {
         "type": "object",
         "properties": {
@@ -79565,6 +79579,15 @@
             "items": {
               "$ref": "#/components/schemas/ScanSnapshotPieceDto"
             },
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "driverPublicId": {
+            "type": "string",
+            "format": "uuid",
             "nullable": true
           }
         },
@@ -79610,6 +79633,13 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ScanSnapshotRouteDto"
+            },
+            "nullable": true
+          },
+          "drivers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScanSnapshotDriverDto"
             },
             "nullable": true
           }

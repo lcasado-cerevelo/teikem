@@ -47456,6 +47456,11 @@ export interface components {
             reappearedNumbers?: string[] | null;
             missingNumbers?: string[] | null;
         };
+        ScanSnapshotDriverDto: {
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+        };
         ScanSnapshotOrderDto: {
             /** Format: uuid */
             publicId?: string;
@@ -47467,6 +47472,9 @@ export interface components {
             tripPublicId?: string | null;
             pickUp?: boolean;
             pieces?: components["schemas"]["ScanSnapshotPieceDto"][] | null;
+            city?: string | null;
+            /** Format: uuid */
+            driverPublicId?: string | null;
         };
         ScanSnapshotPageDto: {
             /** Format: int32 */
@@ -47481,6 +47489,7 @@ export interface components {
             orders?: components["schemas"]["ScanSnapshotOrderDto"][] | null;
             statuses?: components["schemas"]["ScanSnapshotStatusDto"][] | null;
             routes?: components["schemas"]["ScanSnapshotRouteDto"][] | null;
+            drivers?: components["schemas"]["ScanSnapshotDriverDto"][] | null;
         };
         ScanSnapshotPieceDto: {
             number?: string | null;

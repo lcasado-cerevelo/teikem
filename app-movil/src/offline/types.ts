@@ -29,6 +29,8 @@ export interface ScanOrderRecord {
   tripPublicId: string | null;
   pickUp: boolean;
   pieces: ScanPieceRecord[];
+  city?: string | null;
+  driverPublicId?: string | null;
 }
 /** Una pieza con su envío (varios si el número se repite entre envíos). */
 export interface ScanPieceMatch { order: ScanOrderRecord }

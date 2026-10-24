@@ -55,7 +55,10 @@
 
 ## 2d. Escanear (Lote 216) — con trabajo sin señal
 - **Quién**: `trips.scan` en alguna compañía (módulo de transporte). Acceso «Escanear» en el inicio. **Devolver** pide además `orders.return`.
-- **Primero se escoge el proceso**: al abrir la pantalla pregunta **«¿Qué vas a escanear?»** y no deja escanear nada (el campo y la cámara quedan bloqueados) hasta que se escoge la acción (Recoger, Llegó, Enrutar, Salir o Devolver). No hay una acción por omisión; se vuelve a preguntar cada vez que se entra a la pantalla. Se puede cambiar de acción en cualquier momento tocando otra.
+- **Dos pasos antes de escanear** (decidido por Luis). La pantalla no deja escanear nada (el campo y la cámara ni aparecen) hasta completarlos, y se repiten cada vez que se entra:
+  1. **¿Qué vas a escanear?** El proceso: Recoger, Llegó, Enrutar, Salir o Devolver. No hay uno por omisión.
+  2. **¿Cómo lo vas a escanear?** **Todo** (sin escoger nada más: «voy a escanear»), **Por ruta**, **Por ciudad** o **Por chofer**. Con ruta, ciudad o chofer aparece la lista de **todas** las opciones con **buscador por escrito** y **selección múltiple** (se pueden marcar varias). Hay que marcar al menos una.
+  Entonces **Empezar a escanear**. Arriba queda el resumen («Enrutar · Por chofer: Juan +1») y **Cambiar** vuelve a los pasos.
 - **Para qué**: es la estación de escaneo del capítulo 05 §7b, en el teléfono. Se escanea el **número de cada pieza** (el del label) con el lector con gatillo —que escribe como un teclado— o con la cámara. Cada acción lleva el envío a su estatus:
   | Acción | Estatus | Notas |
   |---|---|---|
@@ -64,7 +67,16 @@
   | Enrutar | Asignada | además lo pone en una ruta: la que escojas arriba, o la de su zona |
   | Salir | En tránsito | |
   | Devolver | Devuelta | solo con señal y `orders.return` |
-  La primera pieza de una acción mueve el envío (brinca los estatus de en medio); las siguientes solo cuentan («4 de 5 piezas»). Repetir pieza + acción es duplicado. Un estatus final no se toca.
+  La primera pieza de una acción mueve el envío (brinca los estatus de en medio); las siguientes solo cuentan («4 de 5 piezas»). Un estatus final no se toca.
+- **Qué dice la pantalla** (voz del teléfono, vibración y color):
+  | Pasa | Voz | Color |
+  |---|---|---|
+  | La pieza se encuentra y mueve el envío al estatus | **Sí** | verde |
+  | El envío **ya estaba en ese estatus** (p. ej. escaneas Enrutar y ya estaba Asignado), o la pieza ya se había escaneado con esa acción | **Ok** | ámbar |
+  | La pieza no se encuentra; el envío está **cancelado o en un estatus final** (entregado…); es de pick up y la acción no le aplica; o **no es de lo escogido** (otra ruta, otra ciudad u otro chofer, aunque exista en el sistema) | **No** | rojo |
+  | El envío ya va **más adelante** que el proceso que escaneas (p. ej. escaneas Enrutar y ya está En tránsito) | **Atención**, y el sistema **para**: dice qué está pasando y qué se está escaneando; «Cancelar» no hace nada, «Contar la pieza» la cuenta sin hacer retroceder el estatus | naranja |
+- **Por ruta / ciudad / chofer**: solo se aceptan envíos de lo marcado. La ruta de un envío es su ruta vigente; su chofer es el de esa ruta (un envío sin ruta no tiene chofer); su ciudad es la de la parada de entrega. Con **Enrutar y UNA sola ruta marcada**, los envíos libres se ponen en esa ruta; con varias rutas marcadas, solo se aceptan los que ya están en alguna.
+- **La voz**: usa la voz del teléfono (texto a voz). Si «No» no se oye claro en el Android, se le puede poner un audio propio.
 - **Sin señal**: al abrir la pantalla (y con el botón **Sincronizar**) el teléfono **baja todos los envíos no completados, hasta 5000, los más recientes**, con sus piezas. Con eso contesta cada lectura **al instante**, sin señal, con color, vibración y voz **Sí / No / Ok** (interruptor «Voz»). Lo que cuenta queda en la cola («Por enviar: N») y sale solo cuando vuelve la señal.
 - **Pieza que no está en lo bajado**: con señal se le pregunta al servidor; sin señal, «No se encontró la pieza.» (aplica a lo que quedó fuera de los 5000 o es más nuevo que la descarga).
 - **Con problema**: si el servidor no acepta un escaneo ya hecho en el teléfono (por ejemplo «no hay ruta abierta que reciba el envío» al Enrutar, o el envío ya se entregó), aparece en «Con problema: N» con el mensaje del servidor; se quita con «Quitar».

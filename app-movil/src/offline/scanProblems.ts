@@ -1,5 +1,5 @@
 import { storage } from './db';
-import type { SnapRoute } from '@services/scanApi';
+import type { SnapDriver, SnapRoute } from '@services/scanApi';
 import type { SnapStatus } from '@utils/scanRules';
 
 // Lote 216 — datos chicos de la estación de escaneo (cuándo se bajó, y los escaneos que el servidor no aceptó). Módulo aparte para que la cola pueda anotar problemas sin importar al almacén de escaneo.
@@ -11,6 +11,9 @@ export interface ScanMeta {
   capped: boolean;
   statuses: SnapStatus[];
   routes: SnapRoute[];
+  /** Choferes activos y ciudades de lo bajado, para escoger «por chofer» y «por ciudad» sin señal. */
+  drivers: SnapDriver[];
+  cities: string[];
 }
 
 export interface ScanProblem { id: string; at: number; code: string; action: string; outcome: string; message: string; orderNumber: string | null }

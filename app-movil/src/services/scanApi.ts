@@ -5,7 +5,9 @@ import type { LocalOrder, SnapStatus } from '@utils/scanRules';
 
 export interface SnapRoute { publicId: string; code: string; kind: string; statusCode: string; status: string; driverName: string | null; stopCount: number }
 
-interface SnapOrderDto { publicId: string; orderNumber: string; waybillNumber?: string | null; statusCode: string; tripCode?: string | null; tripPublicId?: string | null; pickUp: boolean; pieces: { number: string; actions?: string[]; missing?: string | null }[] }
+export interface SnapDriver { publicId: string; name: string }
+
+interface SnapOrderDto { city?: string | null; driverPublicId?: string | null; publicId: string; orderNumber: string; waybillNumber?: string | null; statusCode: string; tripCode?: string | null; tripPublicId?: string | null; pickUp: boolean; pieces: { number: string; actions?: string[]; missing?: string | null }[] }
 
 export interface SnapPage {
   total: number;
@@ -15,17 +17,18 @@ export interface SnapPage {
   orders: LocalOrder[];
   statuses: SnapStatus[];
   routes: SnapRoute[];
+  drivers: SnapDriver[];
 }
 
 export const PAGE_SIZE = 500;
 
 export async function fetchSnapshotPage(tenantId: number, skip: number): Promise<SnapPage> {
-  const { data } = await api.get<{ total: number; limit: number; capped: boolean; generatedAtUtc: string; orders: SnapOrderDto[]; statuses: SnapStatus[]; routes: SnapRoute[] }>(
+  const { data } = await api.get<{ total: number; limit: number; capped: boolean; generatedAtUtc: string; orders: SnapOrderDto[]; statuses: SnapStatus[]; routes: SnapRoute[]; drivers?: SnapDriver[] }>(
     'mobile/scan/snapshot', { tenantId, params: { skip, take: PAGE_SIZE }, timeout: 60_000 });
   return {
-    total: data.total, limit: data.limit, capped: data.capped, generatedAtUtc: data.generatedAtUtc, statuses: data.statuses ?? [], routes: data.routes ?? [],
+    total: data.total, limit: data.limit, capped: data.capped, generatedAtUtc: data.generatedAtUtc, statuses: data.statuses ?? [], routes: data.routes ?? [], drivers: data.drivers ?? [],
     orders: data.orders.map((o) => ({
-      publicId: o.publicId, orderNumber: o.orderNumber, waybill: o.waybillNumber ?? null, statusCode: o.statusCode, tripCode: o.tripCode ?? null, tripPublicId: o.tripPublicId ?? null, pickUp: o.pickUp,
+      publicId: o.publicId, orderNumber: o.orderNumber, waybill: o.waybillNumber ?? null, statusCode: o.statusCode, tripCode: o.tripCode ?? null, tripPublicId: o.tripPublicId ?? null, pickUp: o.pickUp, city: o.city ?? null, driverPublicId: o.driverPublicId ?? null,
       pieces: o.pieces.map((p) => ({ number: p.number, actions: p.actions ?? [], missing: p.missing ?? null })),
     })),
   };

@@ -52,6 +52,8 @@ public partial class TripStatusEffectTests
         Assert.Equal(new[] { ScanActions.Route }, first.Pieces[0].Actions);
         Assert.Empty(first.Pieces[1].Actions);
         Assert.Contains(page.Statuses, s => s.Code == OrderStatuses.InTransit && s.StageKind == StageKinds.Pipeline);
+        Assert.All(page.Orders, o => Assert.Equal("San Juan", o.City));   // el pueblo de la parada de entrega
+        Assert.Null(first.DriverPublicId);   // sin ruta no hay chofer
     }
 
     [Fact]
@@ -77,6 +79,10 @@ public partial class TripStatusEffectTests
         Assert.Equal(all.Take(3).Select(Fixture.OrderNumber).ToArray(), p0.Orders.Concat(p1.Orders).Select(o => o.OrderNumber).ToArray());   // se bajan los 3 más nuevos; los viejos quedan fuera
         Assert.NotEmpty(p0.Statuses);
         Assert.Empty(p1.Statuses);
+        var driver = Assert.Single(p0.Drivers!);
+        Assert.Equal("Chofer Siete", driver.Name);
+        Assert.Equal(driver.PublicId, p0.Orders.First(o => o.OrderNumber == Fixture.OrderNumber(ids[0])).DriverPublicId);   // el chofer de su ruta vigente
+        Assert.Empty(p1.Drivers ?? Array.Empty<ScanSnapshotDriverDto>());
         var route = Assert.Single(p0.Routes);
         Assert.Equal((trip.PublicId, "Chofer Siete", 1), (route.PublicId, route.DriverName, route.StopCount));
         Assert.Empty(p1.Routes);

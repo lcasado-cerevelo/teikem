@@ -40,6 +40,8 @@ function openDb(): Promise<SQLite.SQLiteDatabase> {
           trip_code TEXT,
           trip_id TEXT,
           pick_up INTEGER NOT NULL DEFAULT 0,
+          city TEXT,
+          driver TEXT,
           PRIMARY KEY (tenant, gen, public_id)
         );
         CREATE TABLE IF NOT EXISTS scan_piece (
@@ -53,6 +55,9 @@ function openDb(): Promise<SQLite.SQLiteDatabase> {
         );
         CREATE INDEX IF NOT EXISTS idx_scan_piece_number ON scan_piece(tenant, number);
       `);
+      // Lote 216 (ajuste): ciudad y chofer del envío, para escanear por ciudad o por chofer. Un teléfono que ya tenía la tabla sin ellas las recibe aquí.
+      const cols = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(scan_order)`);
+      if (!cols.some((c) => c.name === 'city')) await db.execAsync(`ALTER TABLE scan_order ADD COLUMN city TEXT; ALTER TABLE scan_order ADD COLUMN driver TEXT;`);
       return db;
     })();
   }
@@ -183,14 +188,14 @@ export const storage: OfflineStorage = {
     const db = await openDb();
     await db.withTransactionAsync(async () => {
       const insOrder = await db.prepareAsync(
-        `INSERT OR REPLACE INTO scan_order (tenant, gen, public_id, order_number, waybill, status, trip_code, trip_id, pick_up) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO scan_order (tenant, gen, public_id, order_number, waybill, status, trip_code, trip_id, pick_up, city, driver) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       );
       const insPiece = await db.prepareAsync(
         `INSERT OR REPLACE INTO scan_piece (tenant, gen, number, order_id, actions, missing) VALUES (?, ?, ?, ?, ?, ?)`,
       );
       try {
         for (const o of orders) {
-          await insOrder.executeAsync(tenantId, gen, o.publicId, o.orderNumber, o.waybill, o.statusCode, o.tripCode, o.tripPublicId, o.pickUp ? 1 : 0);
+          await insOrder.executeAsync(tenantId, gen, o.publicId, o.orderNumber, o.waybill, o.statusCode, o.tripCode, o.tripPublicId, o.pickUp ? 1 : 0, o.city ?? null, o.driverPublicId ?? null);
           for (const p of o.pieces) await insPiece.executeAsync(tenantId, gen, p.number, o.publicId, p.actions.join(','), p.missing);
         }
       } finally {
@@ -223,12 +228,12 @@ export const storage: OfflineStorage = {
     const rows = await db.getAllAsync<{ order_id: string }>(`SELECT order_id FROM scan_piece WHERE tenant = ? AND gen = ? AND number = ?`, tenantId, cur.gen, number);
     const result: ScanOrderRecord[] = [];
     for (const r of rows) {
-      const o = await db.getFirstAsync<{ public_id: string; order_number: string; waybill: string | null; status: string; trip_code: string | null; trip_id: string | null; pick_up: number }>(
-        `SELECT public_id, order_number, waybill, status, trip_code, trip_id, pick_up FROM scan_order WHERE tenant = ? AND gen = ? AND public_id = ?`, tenantId, cur.gen, r.order_id);
+      const o = await db.getFirstAsync<{ public_id: string; order_number: string; waybill: string | null; status: string; trip_code: string | null; trip_id: string | null; pick_up: number; city: string | null; driver: string | null }>(
+        `SELECT public_id, order_number, waybill, status, trip_code, trip_id, pick_up, city, driver FROM scan_order WHERE tenant = ? AND gen = ? AND public_id = ?`, tenantId, cur.gen, r.order_id);
       if (!o) continue;
       const ps = await db.getAllAsync<{ number: string; actions: string; missing: string | null }>(`SELECT number, actions, missing FROM scan_piece WHERE tenant = ? AND gen = ? AND order_id = ? ORDER BY number`, tenantId, cur.gen, r.order_id);
       result.push({
-        publicId: o.public_id, orderNumber: o.order_number, waybill: o.waybill, statusCode: o.status, tripCode: o.trip_code, tripPublicId: o.trip_id, pickUp: o.pick_up === 1,
+        publicId: o.public_id, orderNumber: o.order_number, waybill: o.waybill, statusCode: o.status, tripCode: o.trip_code, tripPublicId: o.trip_id, pickUp: o.pick_up === 1, city: o.city, driverPublicId: o.driver,
         pieces: ps.map((p) => ({ number: p.number, actions: p.actions ? p.actions.split(',') : [], missing: p.missing })),
       });
     }

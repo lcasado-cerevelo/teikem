@@ -48,7 +48,13 @@ public sealed class ScanSnapshotService(TeikemDbContext db, ITenantContext tenan
         var scans = pieceIds.Count == 0 ? new() : await db.OrderPieceScans.AsNoTracking().Where(s => pieceIds.Contains(s.OrderPieceId)).Select(s => new { s.OrderPieceId, s.Action }).Distinct().ToListAsync(ct);
         var actionsByPiece = scans.GroupBy(s => s.OrderPieceId).ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.Select(x => x.Action).OrderBy(a => ScanActions.Rank(a)).ToList());
         var trips = ids.Count == 0 ? new() : await (from l in db.TripOrders.AsNoTracking() join t in db.Trips.AsNoTracking() on l.TripId equals t.TripId
-                                                   where l.IsCurrent && t.IsActive && ids.Contains(l.TransportOrderId) select new { l.TransportOrderId, t.PublicId, t.Code }).ToListAsync(ct);
+                                                   join d in db.Drivers.AsNoTracking() on t.DriverId equals d.DriverId into ds from d in ds.DefaultIfEmpty()
+                                                   where l.IsCurrent && t.IsActive && ids.Contains(l.TransportOrderId)
+                                                   select new { l.TransportOrderId, t.PublicId, t.Code, DriverPublicId = d != null ? (Guid?)d.PublicId : null }).ToListAsync(ct);
+        // El pueblo: el de la parada de entrega (la de mayor secuencia); si el envío no tiene entrega, el de cualquier parada.
+        var stops = ids.Count == 0 ? new() : await db.OrderStops.AsNoTracking().Where(st => ids.Contains(st.TransportOrderId)).Select(st => new { st.TransportOrderId, st.Sequence, st.SnapCity, IsDelivery = st.StopType != null && st.StopType.InternalCode == StopTypes.Delivery }).ToListAsync(ct);
+        var cityByOrder = stops.Where(st => !string.IsNullOrWhiteSpace(st.SnapCity)).GroupBy(st => st.TransportOrderId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.IsDelivery).ThenByDescending(x => x.Sequence).First().SnapCity!.Trim());
         var tripByOrder = trips.GroupBy(t => t.TransportOrderId).ToDictionary(g => g.Key, g => g.First());
         var pickUpByType = new Dictionary<int, bool>();
         foreach (var typeId in page.Select(o => o.ServiceTypeLookupId).Distinct())
@@ -60,18 +66,21 @@ public sealed class ScanSnapshotService(TeikemDbContext db, ITenantContext tenan
             tripByOrder.TryGetValue(o.TransportOrderId, out var trip);
             var ps = piecesByOrder.GetValueOrDefault(o.TransportOrderId) ?? new();
             return new ScanSnapshotOrderDto(o.PublicId, o.OrderNumber, o.WaybillNumber, o.StatusCode, trip?.Code, trip?.PublicId, pickUpByType.GetValueOrDefault(o.ServiceTypeLookupId),
-                ps.Select(p => new ScanSnapshotPieceDto(p.PackageNumber, actionsByPiece.GetValueOrDefault(p.OrderPieceId) ?? Array.Empty<string>(), p.MissingStatus)).ToList());
+                ps.Select(p => new ScanSnapshotPieceDto(p.PackageNumber, actionsByPiece.GetValueOrDefault(p.OrderPieceId) ?? Array.Empty<string>(), p.MissingStatus)).ToList(),
+                cityByOrder.GetValueOrDefault(o.TransportOrderId), trip?.DriverPublicId);
         }).ToList();
 
         IReadOnlyList<ScanSnapshotStatusDto> statusList = Array.Empty<ScanSnapshotStatusDto>();
         IReadOnlyList<ScanSnapshotRouteDto> routes = Array.Empty<ScanSnapshotRouteDto>();
+        IReadOnlyList<ScanSnapshotDriverDto> drivers = Array.Empty<ScanSnapshotDriverDto>();
         if (skip == 0)
         {
+            drivers = await db.Drivers.AsNoTracking().Where(d => d.IsActive).OrderBy(d => d.FullName).Select(d => new ScanSnapshotDriverDto(d.PublicId, d.FullName)).ToListAsync(ct);
             var pipeline = await statuses.GetPipelineAsync(StatusDomains.OrderStatus, includeDisabled: true, ct);
             statusList = pipeline.Select(s => new ScanSnapshotStatusDto(s.Code, s.Label, s.SortOrder, s.StageKind, s.IsInitial, s.IsEnabled)).ToList();
             routes = await OpenRoutesAsync(ct);
         }
-        return new ScanSnapshotPageDto(total, Limit, available > Limit, skip, DateTime.UtcNow, orders, statusList, routes);
+        return new ScanSnapshotPageDto(total, Limit, available > Limit, skip, DateTime.UtcNow, orders, statusList, routes, drivers);
     }
 
     /// <summary>Las rutas que se pueden escoger para Enrutar: las planeadas de hoy y las despachadas o en curso. Solo lectura.</summary>

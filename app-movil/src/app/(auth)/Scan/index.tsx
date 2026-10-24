@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Platform, Pressable, StyleSheet, Switch, TextInput, Vibration, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Platform, Pressable, ScrollView, StyleSheet, Switch, TextInput, Vibration, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import * as Speech from 'expo-speech';
@@ -7,7 +7,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Text } from '@components/Text';
 import ScreenHeader from '@components/ScreenHeader';
 import Chip from '@components/Chip';
-import OptionSelect from '@components/OptionSelect';
+import SearchMultiSelect, { type MultiOption } from '@components/SearchMultiSelect';
 import BarcodeScannerModal from '@components/BarcodeScannerModal';
 import { useAccess } from '@hooks/access';
 import { useIsOnline } from '@hooks/useIsOnline';
@@ -15,7 +15,7 @@ import { drainOutbox } from '@/offline';
 import { storage } from '@/offline/db';
 import { dismissProblem, downloadSnapshot, pendingScans, readMeta, readProblems, scanPiece, type ScanMeta, type ScanProblem } from '@/offline/scanStore';
 import { postCloseCount } from '@services/scanApi';
-import { SCAN_ACTIONS, type LocalScanResult, type ScanAction } from '@utils/scanRules';
+import { ALL_SCOPE, SCAN_ACTIONS, type LocalScanResult, type ScanAction, type ScanScope } from '@utils/scanRules';
 import { minutesSince } from '@utils/streetRules';
 import { useStyles, useTheme } from '@hooks/ThemeContext';
 import type { Colors } from '@constants/theme';
@@ -40,7 +40,11 @@ export default function Scan() {
 
   // Sin acción por omisión: la pantalla no deja escanear nada hasta que la persona escoja qué proceso va a escanear.
   const [action, setAction] = useState<ScanAction | null>(null);
-  const [routeIdx, setRouteIdx] = useState<number | null>(null);
+  // Paso 2 (decidido por Luis): cómo se escanea — todo, por ruta, por ciudad o por chofer — y, si no es todo, cuáles. Solo entonces empieza el escaneo.
+  type Mode = 'ALL' | 'ROUTE' | 'CITY' | 'DRIVER';
+  const [mode, setMode] = useState<Mode | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [started, setStarted] = useState(false);
   const [meta, setMeta] = useState<ScanMeta | null>(null);
   const [downloading, setDownloading] = useState<{ done: number; total: number } | null>(null);
   const [downloadError, setDownloadError] = useState(false);
@@ -56,9 +60,18 @@ export default function Scan() {
   const seq = useRef(0);
   const busy = useRef(false);
 
-  const routes = useMemo(() => meta?.routes ?? [], [meta]);
-  const route = routeIdx != null ? routes[routeIdx - 1] : null;
   const tid = company?.tenantId ?? null;
+  const scope: ScanScope = useMemo(() => (mode === 'ROUTE' || mode === 'CITY' || mode === 'DRIVER' ? { mode, ids: [...selected] } : ALL_SCOPE), [mode, selected]);
+  const options: MultiOption[] = useMemo(() => {
+    if (mode === 'ROUTE') return (meta?.routes ?? []).map((r) => ({ id: r.publicId, label: [r.code, r.driverName, r.status].filter(Boolean).join(' · ') }));
+    if (mode === 'CITY') return (meta?.cities ?? []).map((c) => ({ id: c, label: c }));
+    if (mode === 'DRIVER') return (meta?.drivers ?? []).map((d) => ({ id: d.publicId, label: d.name }));
+    return [];
+  }, [mode, meta]);
+  const labelOf = useCallback((id: string) => options.find((o) => o.id === id)?.label ?? id, [options]);
+  const canStart = action != null && mode != null && (mode === 'ALL' || selected.size > 0);
+  const scopeSummary = mode === 'ALL' || mode == null ? t('SCAN.MODE_ALL') : `${t(`SCAN.MODE_${mode}`)}: ${[...selected].slice(0, 3).map((id) => labelOf(id).split(' · ')[0]).join(', ')}${selected.size > 3 ? ` +${selected.size - 3}` : ''}`;
+
 
   const refreshLocal = useCallback(async () => {
     if (tid == null) return;
@@ -110,31 +123,45 @@ export default function Scan() {
   }, []);
 
   const speak = (v: LocalScanResult['voice']) => {
-    Vibration.vibrate(v === 'found' ? 60 : v === 'dup' ? [0, 60, 60, 60] : [0, 250]);
+    Vibration.vibrate(v === 'found' ? 60 : v === 'dup' ? [0, 60, 60, 60] : v === 'warn' ? [0, 400, 150, 400] : [0, 250]);
     if (!voice) return;
     try {
       Speech.stop();
-      Speech.speak(v === 'found' ? t('SCAN.SAY_YES') : v === 'dup' ? t('SCAN.SAY_OK') : t('SCAN.SAY_NO'), { language: i18n.language?.startsWith('en') ? 'en-US' : 'es-ES' });
+      Speech.speak(v === 'found' ? t('SCAN.SAY_YES') : v === 'dup' ? t('SCAN.SAY_OK') : v === 'warn' ? t('SCAN.SAY_WARN') : t('SCAN.SAY_NO'), { language: i18n.language?.startsWith('en') ? 'en-US' : 'es-ES', rate: v === 'notfound' ? 0.9 : 1 });
     } catch { /* sin voz en este teléfono: queda la vibración y el color */ }
   };
 
+  const show = (raw: string, a: ScanAction, result: LocalScanResult, orderPublicId: string | null) => {
+    setLast({ result, orderPublicId });
+    setLines((prev) => [{ id: ++seq.current, code: raw.trim(), action: a, result }, ...prev].slice(0, 30));
+    speak(result.voice);
+  };
+
   const submit = useCallback(async (raw: string) => {
-    if (tid == null || busy.current || action == null) return;
+    if (tid == null || busy.current || action == null || !started) return;
     busy.current = true;
     setText('');
     try {
-      const out = await scanPiece(tid, raw, action, { tripPublicId: action === 'ROUTE' ? route?.publicId ?? null : null, tripCode: action === 'ROUTE' ? route?.code ?? null : null });
+      const out = await scanPiece(tid, raw, action, { scope });
       if (out === 'EMPTY') return;
-      setLast({ result: out.result, orderPublicId: out.orderPublicId });
-      setLines((prev) => [{ id: ++seq.current, code: raw.trim(), action, result: out.result }, ...prev].slice(0, 30));
-      speak(out.result.voice);
+      show(raw, action, out.result, out.orderPublicId);
+      // El envío ya va más adelante que lo que se escanea: el sistema PARA y advierte; solo sigue si la persona lo confirma (la pieza se cuenta; el estatus no retrocede).
+      if (out.result.outcome === 'BEYOND') {
+        const go = await new Promise<boolean>((resolve) => Alert.alert(t('SCAN.BEYOND_TITLE'),
+          t('SCAN.BEYOND_BODY', { ...out.result.message.params, action: t(ACTION_KEY[action]) }),
+          [{ text: t('COMMON.CANCEL'), style: 'cancel', onPress: () => resolve(false) }, { text: t('SCAN.BEYOND_GO'), onPress: () => resolve(true) }], { cancelable: false }));
+        if (go) {
+          const again = await scanPiece(tid, raw, action, { scope, confirmedBeyond: true });
+          if (again !== 'EMPTY') show(raw, action, again.result, again.orderPublicId);
+        }
+      }
       void refreshLocal();
     } finally {
       busy.current = false;
       setTimeout(() => input.current?.focus(), 30);   // el gatillo siguiente cae en el campo
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tid, action, route, voice]);
+  }, [tid, action, scope, started, voice]);
 
   const closeCount = async () => {
     if (tid == null || !last?.orderPublicId) return;
@@ -155,7 +182,8 @@ export default function Scan() {
   };
 
   const age = minutesSince(meta?.downloadedAtUtc);
-  const color = !last ? colors.gray : last.result.voice === 'found' ? '#1b873f' : last.result.voice === 'dup' ? '#b7791f' : '#c0392b';
+  const colorOf = (v: LocalScanResult['voice']) => (v === 'found' ? '#1b873f' : v === 'dup' ? '#b7791f' : v === 'warn' ? '#d35400' : '#c0392b');
+  const color = !last ? colors.gray : colorOf(last.result.voice);
   const actions: ScanAction[] = [...SCAN_ACTIONS, ...(canReturn ? (['RETURN'] as ScanAction[]) : [])];
 
   return (
@@ -163,7 +191,7 @@ export default function Scan() {
       <ScreenHeader title={t('SCAN.TITLE')} />
       {companies.length > 1 ? (
         <View style={styles.chips}>
-          {companies.map((c) => <Chip key={c.tenantId} label={c.name} active={c.tenantId === company?.tenantId} onPress={() => setTenantId(c.tenantId)} />)}
+          {companies.map((c) => <Chip key={c.tenantId} label={c.name} active={c.tenantId === company?.tenantId} onPress={() => { setTenantId(c.tenantId); setStarted(false); setSelected(new Set()); }} />)}
         </View>
       ) : null}
 
@@ -183,44 +211,71 @@ export default function Scan() {
       </View>
       {downloadError ? <Text style={styles.error}>{t('SCAN.DOWNLOAD_ERROR')}</Text> : null}
 
-      <Text style={[styles.choose, action == null && styles.chooseEmpty]}>{action == null ? t('SCAN.CHOOSE') : t('SCAN.CHOSEN', { action: t(ACTION_KEY[action]) })}</Text>
-      <View style={styles.chips}>
-        {actions.map((a) => <Chip key={a} label={t(ACTION_KEY[a])} active={a === action} onPress={() => { setAction(a); setTimeout(() => input.current?.focus(), 50); }} />)}
-      </View>
-      {action === 'ROUTE' ? (
-        <View style={styles.pad}>
-          <OptionSelect
-            options={routes.map((r, i) => ({ id: i + 1, label: `${r.code} · ${r.driverName ?? t('TRIPS_TODAY.NO_DRIVER')} · ${r.status}` }))}
-            value={routeIdx}
-            placeholder={t('SCAN.ROUTE_PLACEHOLDER')}
-            onSelect={setRouteIdx}
-            onClear={() => setRouteIdx(null)}
-          />
+      {!started ? (
+        <ScrollView style={styles.setup} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.setupContent}>
+          <Text style={[styles.choose, action == null && styles.chooseEmpty]}>{t('SCAN.STEP1')}</Text>
+          <View style={styles.chipsInline}>
+            {actions.map((a) => <Chip key={a} label={t(ACTION_KEY[a])} active={a === action} onPress={() => setAction(a)} />)}
+          </View>
+          {action == null ? <Text style={styles.sub}>{t('SCAN.CHOOSE_FIRST')}</Text> : (
+            <>
+              <Text style={[styles.choose, mode == null && styles.chooseEmpty]}>{t('SCAN.STEP2')}</Text>
+              <View style={styles.chipsInline}>
+                {(['ALL', 'ROUTE', 'CITY', 'DRIVER'] as const).map((m) => (
+                  <Chip key={m} label={t(`SCAN.MODE_${m}`)} active={m === mode} onPress={() => { setMode(m); setSelected(new Set()); }} />
+                ))}
+              </View>
+              {mode === 'ALL' ? <Text style={styles.sub}>{t('SCAN.MODE_ALL_HINT')}</Text> : null}
+              {mode === 'ROUTE' || mode === 'CITY' || mode === 'DRIVER' ? (
+                <SearchMultiSelect
+                  options={options}
+                  selected={selected}
+                  onToggle={(id) => setSelected((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; })}
+                  onClear={() => setSelected(new Set())}
+                  placeholder={t(`SCAN.SEARCH_${mode}`)}
+                />
+              ) : null}
+              {action === 'RETURN' && !online ? <Text style={styles.error}>{t('SCAN.RETURN_NEEDS_SIGNAL')}</Text> : null}
+              {mode === 'ROUTE' && action === 'ROUTE' && selected.size > 1 ? <Text style={styles.sub}>{t('SCAN.ROUTE_MANY_HINT')}</Text> : null}
+              <Pressable
+                style={[styles.startBtn, !canStart && styles.disabled]}
+                disabled={!canStart}
+                accessibilityRole="button"
+                onPress={() => { setStarted(true); setTimeout(() => input.current?.focus(), 80); }}
+              >
+                <Text style={styles.startText}>{t('SCAN.START')}</Text>
+              </Pressable>
+            </>
+          )}
+        </ScrollView>
+      ) : (
+        <View style={styles.summary}>
+          <Text style={styles.summaryText} numberOfLines={2}>{`${action ? t(ACTION_KEY[action]) : ''} · ${scopeSummary}`}</Text>
+          <Pressable onPress={() => setStarted(false)} accessibilityRole="button" hitSlop={8}><Text style={styles.syncText}>{t('SCAN.CHANGE')}</Text></Pressable>
         </View>
-      ) : null}
-      {action === 'RETURN' && !online ? <Text style={styles.error}>{t('SCAN.RETURN_NEEDS_SIGNAL')}</Text> : null}
-
-      <View style={[styles.inputRow, action == null && styles.disabled]}>
+      )}
+      {!started ? null : (
+      <>
+      <View style={styles.inputRow}>
         <TextInput
           ref={input}
           style={styles.input}
           value={text}
           onChangeText={setText}
           onSubmitEditing={() => void submit(text)}
-          editable={action != null}
-          autoFocus={action != null}
+          autoFocus
           autoCapitalize="none"
           autoCorrect={false}
           blurOnSubmit={false}
           returnKeyType="done"
           // el lector con gatillo escribe como un teclado: no hace falta que salga el teclado en pantalla
           showSoftInputOnFocus={Platform.OS === 'web'}
-          placeholder={action == null ? t('SCAN.CHOOSE_FIRST') : t('SCAN.PLACEHOLDER')}
+          placeholder={t('SCAN.PLACEHOLDER')}
           placeholderTextColor={colors.muted}
           accessibilityLabel={t('SCAN.PLACEHOLDER')}
         />
         {Platform.OS !== 'web' ? (
-          <Pressable onPress={() => action != null && setCamera(true)} disabled={action == null} hitSlop={8} accessibilityLabel={t('ORDERS.SCAN_OPEN')} style={styles.cam}>
+          <Pressable onPress={() => setCamera(true)} hitSlop={8} accessibilityLabel={t('ORDERS.SCAN_OPEN')} style={styles.cam}>
             <MaterialIcons name="qr-code-scanner" size={26} color={colors.primary} />
           </Pressable>
         ) : null}
@@ -234,7 +289,7 @@ export default function Scan() {
             {last.result.routeNote ? <Text style={styles.resultSub}>{t(last.result.routeNote.key, last.result.routeNote.params)}</Text> : null}
           </>
         ) : (
-          <Text style={styles.sub}>{action == null ? t('SCAN.CHOOSE_FIRST') : t('SCAN.READY')}</Text>
+          <Text style={styles.sub}>{t('SCAN.READY')}</Text>
         )}
       </View>
 
@@ -275,7 +330,7 @@ export default function Scan() {
         keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => (
           <View style={styles.line}>
-            <View style={[styles.dot, { backgroundColor: item.result.voice === 'found' ? '#1b873f' : item.result.voice === 'dup' ? '#b7791f' : '#c0392b' }]} />
+            <View style={[styles.dot, { backgroundColor: colorOf(item.result.voice) }]} />
             <View style={styles.lineBody}>
               <Text style={styles.lineCode}>{`${item.code} · ${t(ACTION_KEY[item.action])}`}</Text>
               <Text style={styles.sub}>{t(item.result.message.key, item.result.message.params)}</Text>
@@ -283,6 +338,9 @@ export default function Scan() {
           </View>
         )}
       />
+
+      </>
+      )}
 
       <BarcodeScannerModal visible={camera} onClose={() => setCamera(false)} onScanned={(code) => { setCamera(false); void submit(code); }} />
     </SafeAreaView>
@@ -299,7 +357,14 @@ const createStyles = (colors: Colors) => StyleSheet.create({
   syncBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4, paddingHorizontal: 8 },
   syncText: { color: colors.primary, fontWeight: '700', fontSize: 12 },
   disabled: { opacity: 0.4 },
-  choose: { marginHorizontal: 20, marginBottom: 6, fontWeight: '700', fontSize: 15, color: colors.text },
+  setup: { flexGrow: 0, maxHeight: '70%' },
+  setupContent: { paddingHorizontal: 20, paddingBottom: 12, gap: 10 },
+  chipsInline: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  startBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
+  startText: { color: colors.primaryContrast, fontWeight: '700', fontSize: 16 },
+  summary: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginHorizontal: 20, marginBottom: 6, padding: 10, borderRadius: 10, backgroundColor: colors.backgroundSecondary },
+  summaryText: { flex: 1, fontWeight: '700', color: colors.text },
+  choose: { fontWeight: '700', fontSize: 15, color: colors.text },
   chooseEmpty: { fontSize: 18, color: colors.primary },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 20, marginVertical: 8, borderWidth: 2, borderColor: colors.primary, borderRadius: 12, paddingHorizontal: 12 },
   input: { flex: 1, fontSize: 20, paddingVertical: 12, color: colors.text },

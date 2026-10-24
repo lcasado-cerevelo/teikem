@@ -4,7 +4,7 @@ import { metaKey, readMeta, type ScanMeta } from './scanProblems';
 import { enqueue, listPending } from './outbox';
 import { drainOutbox } from './syncEngine';
 import { fetchSnapshotPage, postScanAction } from '@services/scanApi';
-import { ambiguous, applyScan, normalizeCode, notFound, type LocalOrder, type LocalScanResult, type ScanAction, type SnapStatus } from '@utils/scanRules';
+import { ALL_SCOPE, ambiguous, applyScan, destinationTrip, fold, inScope, normalizeCode, notFound, type LocalOrder, type LocalScanResult, type ScanAction, type ScanScope, type SnapStatus } from '@utils/scanRules';
 export { addProblem, dismissProblem, readMeta, readProblems, type ScanMeta, type ScanProblem } from './scanProblems';
 
 // Lote 216 — la estación de escaneo sin señal: la descarga (hasta 5000 envíos no completados, los más recientes) y el escaneo local-primero.
@@ -32,13 +32,17 @@ export async function pendingScans(tenantId: number): Promise<{ id: string; code
 export async function downloadSnapshot(tenantId: number, onProgress?: (done: number, total: number) => void): Promise<ScanMeta> {
   const first = await fetchSnapshotPage(tenantId, 0);
   const gen = await storage.scanNewGeneration(tenantId);
+  const cities = new Map<string, string>();   // sin tildes ni mayúsculas → como se escribe
+  const addCities = (orders: LocalOrder[]) => { for (const o of orders) if (o.city && !cities.has(fold(o.city))) cities.set(fold(o.city), o.city); };
   try {
     let got = first.orders.length;
+    addCities(first.orders);
     await storage.scanInsertOrders(tenantId, gen, first.orders);
     onProgress?.(got, first.total);
     while (got < first.total) {
       const page = await fetchSnapshotPage(tenantId, got);
       if (page.orders.length === 0) break;   // el servidor tiene menos de lo que dijo: se confirma lo que llegó
+      addCities(page.orders);
       await storage.scanInsertOrders(tenantId, gen, page.orders);
       got += page.orders.length;
       onProgress?.(got, first.total);
@@ -48,23 +52,31 @@ export async function downloadSnapshot(tenantId: number, onProgress?: (done: num
     await storage.scanAbort(tenantId, gen);
     throw e;
   }
-  const meta: ScanMeta = { generatedAtUtc: first.generatedAtUtc, downloadedAtUtc: new Date().toISOString(), total: await storage.scanOrderCount(tenantId), capped: first.capped, statuses: first.statuses, routes: first.routes };
+  const meta: ScanMeta = { generatedAtUtc: first.generatedAtUtc, downloadedAtUtc: new Date().toISOString(), total: await storage.scanOrderCount(tenantId), capped: first.capped, statuses: first.statuses, routes: first.routes, drivers: first.drivers, cities: [...cities.values()].sort((a, b) => a.localeCompare(b)) };
   await storage.kvSet(metaKey(tenantId), JSON.stringify(meta));
   // lo escaneado sin señal que aún no llegó al servidor se vuelve a marcar sobre lo recién bajado
-  for (const s of await pendingScans(tenantId)) await applyToLocal(tenantId, s.code, s.action as ScanAction, meta.statuses, s.tripPublicId, null);
+  for (const s of await pendingScans(tenantId)) await applyToLocal(tenantId, s.code, s.action as ScanAction, meta.statuses, ALL_SCOPE, null, true);
   return meta;
 }
 
-/** Aplica una acción a la pieza en lo bajado (y la anota). Devuelve el resultado local y el envío afectado. */
-async function applyToLocal(tenantId: number, code: string, action: ScanAction, statuses: SnapStatus[], tripPublicId: string | null, tripCode: string | null): Promise<{ result: LocalScanResult; order: LocalOrder | null; many: number }> {
-  const matches = await storage.scanFindPiece(tenantId, code);
-  if (matches.length === 0) return { result: notFound(), order: null, many: 0 };
-  if (matches.length > 1) return { result: ambiguous(matches.length), order: null, many: matches.length };
-  const order = matches[0].order;
-  const { result, nextStatus, recorded } = applyScan(order, code, action, statuses, { chosenTripCode: tripCode });
+/**
+ * Aplica una acción a la pieza en lo bajado (y la anota). Con un alcance (ruta, ciudad o chofer), solo cuentan los envíos de lo escogido: si el número está en el sistema pero es de otro, la respuesta es «No».
+ * `replay`: se está volviendo a marcar un escaneo que ya se aceptó (después de una descarga): no se advierte ni se filtra, solo se anota.
+ */
+async function applyToLocal(tenantId: number, code: string, action: ScanAction, statuses: SnapStatus[], scope: ScanScope, tripCode: string | null, replay = false, confirmedBeyond = false): Promise<{ result: LocalScanResult; order: LocalOrder | null }> {
+  const all = (await storage.scanFindPiece(tenantId, code)).map((m) => m.order);
+  if (all.length === 0) return { result: notFound(), order: null };
+  const effective = replay ? ALL_SCOPE : scope;
+  const matches = effective.mode === 'ALL' ? all : all.filter((o) => inScope(o, effective, action));
+  if (matches.length === 0) {
+    // existe, pero no es de lo escogido: «No» (se explica con el primero)
+    return { result: applyScan(all[0], code, action, statuses, { scope: effective, chosenTripCode: tripCode }).result, order: all[0] };
+  }
+  if (matches.length > 1) return { result: ambiguous(matches.length), order: null };
+  const order = matches[0];
+  const { result, nextStatus, recorded } = applyScan(order, code, action, statuses, { scope: effective, chosenTripCode: tripCode, confirmedBeyond: confirmedBeyond || replay });
   if (recorded) await storage.scanRecord(tenantId, order.publicId, code, action, nextStatus);
-  void tripPublicId;
-  return { result, order, many: 1 };
+  return { result, order };
 }
 
 export interface ScanOutput {
@@ -74,26 +86,36 @@ export interface ScanOutput {
   server: { outcome: string; message: string } | null;
 }
 
+export interface ScanOptions {
+  /** Cómo se escanea (por omisión, todo). Con Enrutar y una sola ruta escogida, los envíos libres van a esa ruta. */
+  scope?: ScanScope;
+  /** El usuario vio la advertencia de «estatus más adelante» y pidió seguir. */
+  confirmedBeyond?: boolean;
+}
+
 /**
- * Un escaneo. Local-primero: se contesta con lo bajado y, si cuenta, se encola para el servidor (sale solo con señal). Si la pieza no está en lo bajado y HAY señal, se le pregunta al servidor
- * (la descarga pudo quedar atrasada); sin señal, «No se encontró la pieza». Devolver (RETURN) y los números repetidos en varios envíos solo van directo al servidor, con señal.
+ * Un escaneo. Local-primero: se contesta con lo bajado y, si cuenta, se encola para el servidor (sale solo con señal). Si la pieza no está en lo bajado, se escanea TODO y HAY señal, se le pregunta al servidor
+ * (la descarga pudo quedar atrasada); sin señal, «No se encontró la pieza». Con un alcance (ruta/ciudad/chofer) no se le pregunta al servidor: el filtro vive en el teléfono y lo que no está en lo bajado es «No».
+ * Devolver (RETURN) y los números repetidos solo van directo al servidor, con señal.
  */
-export async function scanPiece(tenantId: number, rawCode: string, action: ScanAction, opts: { tripPublicId?: string | null; tripCode?: string | null } = {}): Promise<ScanOutput | 'EMPTY'> {
+export async function scanPiece(tenantId: number, rawCode: string, action: ScanAction, opts: ScanOptions = {}): Promise<ScanOutput | 'EMPTY'> {
   const code = normalizeCode(rawCode);
   if (!code) return 'EMPTY';
   const meta = await readMeta(tenantId);
   const statuses = meta?.statuses ?? [];
+  const scope = opts.scope ?? ALL_SCOPE;
+  const destination = destinationTrip(scope, action);
+  const tripCode = destination ? (meta?.routes.find((r) => r.publicId === destination)?.code ?? null) : null;
 
-  if (action === 'RETURN') return viaServer(tenantId, code, action, opts.tripPublicId ?? null);
+  if (action === 'RETURN') return viaServer(tenantId, code, action, null);
 
-  const local = await applyToLocal(tenantId, code, action, statuses, opts.tripPublicId ?? null, opts.tripCode ?? null);
+  const local = await applyToLocal(tenantId, code, action, statuses, scope, tripCode, false, opts.confirmedBeyond);
   if (local.result.outcome === 'NOT_FOUND' || local.result.outcome === 'AMBIGUOUS') {
-    // fuera de lo bajado (más de 5000, o más nueva que la descarga) o repetida: solo el servidor puede decirlo, y solo con señal
-    if (onlineManager.isOnline()) return viaServer(tenantId, code, action, opts.tripPublicId ?? null, local.result);
+    if (scope.mode === 'ALL' && onlineManager.isOnline()) return viaServer(tenantId, code, action, null, local.result);
     return { result: local.result, orderPublicId: null, server: null };
   }
   if (local.result.send) {
-    await enqueue({ kind: 'scan', endpoint: 'scan/action', method: 'POST', payload: { tenantId, body: { action, code, tripPublicId: opts.tripPublicId || undefined }, meta: { orderNumber: local.result.orderNumber } } });
+    await enqueue({ kind: 'scan', endpoint: 'scan/action', method: 'POST', payload: { tenantId, body: { action, code, tripPublicId: destination || undefined }, meta: { orderNumber: local.result.orderNumber } } });
     if (onlineManager.isOnline()) void drainOutbox();
   }
   return { result: local.result, orderPublicId: local.order?.publicId ?? null, server: null };

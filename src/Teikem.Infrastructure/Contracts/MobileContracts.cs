@@ -63,7 +63,12 @@ public sealed record StreetResultDto(string Action, Guid? OrderPublicId, string?
 public sealed record ScanSnapshotPieceDto(string Number, IReadOnlyList<string> Actions, string? Missing);
 
 /// <summary>Un envío no completado con lo que el teléfono necesita para contestar un escaneo: estatus, ruta vigente, si es de tipo «pick up» y sus piezas.</summary>
-public sealed record ScanSnapshotOrderDto(Guid PublicId, string OrderNumber, string? WaybillNumber, string StatusCode, string? TripCode, Guid? TripPublicId, bool PickUp, IReadOnlyList<ScanSnapshotPieceDto> Pieces);
+/// <summary>`City` = pueblo de la parada de entrega (la de recogida si no hay) y `DriverPublicId` = el chofer de su ruta vigente: con ellos el teléfono filtra el escaneo «por ciudad» y «por chofer» sin señal.</summary>
+public sealed record ScanSnapshotOrderDto(Guid PublicId, string OrderNumber, string? WaybillNumber, string StatusCode, string? TripCode, Guid? TripPublicId, bool PickUp, IReadOnlyList<ScanSnapshotPieceDto> Pieces,
+    string? City = null, Guid? DriverPublicId = null);
+
+/// <summary>Un chofer activo para escoger en el escaneo «por chofer».</summary>
+public sealed record ScanSnapshotDriverDto(Guid PublicId, string Name);
 
 /// <summary>Un estatus del pipeline de envíos (para avanzar en el teléfono con la misma regla que el servidor).</summary>
 public sealed record ScanSnapshotStatusDto(string Code, string Label, int SortOrder, string StageKind, bool IsInitial, bool IsEnabled);
@@ -76,4 +81,4 @@ public sealed record ScanSnapshotRouteDto(Guid PublicId, string Code, string Kin
 /// `Capped`: había más envíos de los que se bajan.
 /// </summary>
 public sealed record ScanSnapshotPageDto(int Total, int Limit, bool Capped, int Skip, DateTime GeneratedAtUtc, IReadOnlyList<ScanSnapshotOrderDto> Orders,
-    IReadOnlyList<ScanSnapshotStatusDto> Statuses, IReadOnlyList<ScanSnapshotRouteDto> Routes);
+    IReadOnlyList<ScanSnapshotStatusDto> Statuses, IReadOnlyList<ScanSnapshotRouteDto> Routes, IReadOnlyList<ScanSnapshotDriverDto>? Drivers = null);
