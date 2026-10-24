@@ -10860,3 +10860,7 @@ Kemi appears for the client's people who are signed in, after accepting the lega
 **In Warehouse an arrival notice (or exit notice, or a movement) I know exists does not appear.** Look at that list's date filter: “Arrivals” filters by the **expected** date, “Exits” by the **requested** date and “Movements” by the day of the movement. A notice expected next week does not show with “Today”. Set “All dates” and clear the search box.
 
 **Which number can I search by in Warehouse?** Stock: SKU, name, barcode, lot and warehouse. Products: SKU, name, brand and barcode. Movements: product, barcode, lot, serial and notes. Arrivals: notice number, reference and purchase order. Exits: number, reference, destination and product.
+
+**I don't know how to write regular expressions: how do I set up what a reader reads?** You don't need to. In the reader's datum tap “Build the table with a sample document” (or “Point at the datum…” / “Point at the total…”), upload or paste a document, tap the row and say which part each datum comes from; the assistant builds the expression and tells you how many rows of the document match. If it says “No row of the document matches”, review what you chose or tap another row with data.
+
+**What does “Parts of the row” (2=2, 3=4/3) mean?** That template datum 2 comes from part 2 of the row and datum 3 from part 4 divided by part 3 (for example quantity = amount ÷ unit price). The assistant builds it; you only touch it by hand under “See or adjust the expression (advanced)”.

@@ -470,3 +470,22 @@ Everything is configured in the **reader** (“Completeness checks” section), 
 - **Depot invoice:** subtotal + tax = total; it has no integration.
 
 **What the real tests taught:** the checks work where the document declares something (the Drive invoice flags the lines the OCR failed to read), but a waybill with a blank footer on the middle pages needs the check to be done only on the **last** page of each waybill; that is why those checks wait for their per-record reader.
+
+## 23. Reader cards and the reading assistant (2026-10-24)
+
+The email integration form no longer forces you to write expressions. The window is wider and each reader is a **card** with its own frame (Reader 1, Reader 2…), its name and two clear buttons: tapping the title folds or unfolds it, and **Remove reader N** deletes it.
+
+**The four steps of each card**
+1. **What document is it?** The name, where it comes from (body, PDF or data file) and the **conditions** as rows: *what is looked at* (the document text, the subject, the attachment name) + *how* (contains, equals…) + *which text*. The document must meet all of them. There is an **Add condition** button and a trash icon per row.
+2. **What is done with it?** The destination (order, arrival notice, exit notice, order closing), the notice warehouse, the closing mode, and the reader's own client and template.
+3. **What data is read?** Each datum is a card that says **how it is found** in the document (with a label, a single datum, or a table of rows) and **where it goes**. For notices the destination is chosen **by name** (“Product (SKU)”, “Quantity”, “Date”…), not by a column number.
+4. **Checks.** The minimum OCR confidence and the completeness checks (section 22).
+
+**Reading assistant (nobody writes expressions).** A button opens a window that works with a **sample document** (upload the PDF —real text or OCR— or paste its text):
+- **Table of rows**: tap a row with data; the system splits it into numbered parts and, for each datum of the destination, you choose **which part it comes from** (and, if needed, **which part it is divided by**: quantity = amount ÷ unit price). The assistant explains the choice in words (“Quantity ← part 4 divided by part 3”), builds the expression and shows **“N rows of M match”** with examples. “Use this” saves it in the datum.
+- **Single datum**: tap the row and then the value; what follows the same text as in the sample is read.
+- **Total declared by the document** (under Checks): tap the row and the total number; the system works out how to find it.
+
+**The “parts of the row” (formerly “Row columns: 2=2, 3=4/3, 4=4”).** It is the pair “template datum = part of the row”. “3=4/3” reads: datum 3 is part 4 divided by part 3. It is no longer typed: the card shows it as a list in words, and the raw text stays under “See or adjust the expression (advanced)” in case it needs touching up. A table datum still needs at least one assigned part (otherwise the reader is not saved: “A block needs at least one column…”).
+
+**Who can:** `integrations.create` or `integrations.manage` (the assistant only reads the sample PDF, `POST /api/v1/integrations/read-sample`: it saves nothing). An empty PDF answers 400 and a damaged or protected one shows the reason inside the window.
