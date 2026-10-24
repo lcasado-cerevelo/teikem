@@ -41,6 +41,28 @@ export interface Shipment {
   pieces: number | null;
   codAmount: number | null;
   notes: string | null;
+  /** Lote 214: de dónde salió. 'driver' (omitido) = de un manifiesto del chofer (/driver-app); 'staff' = una orden buscada por el personal (/mobile/orders). Decide a qué endpoint se envía lo que se cierra. */
+  source?: ShipmentSource;
+}
+
+export type ShipmentSource = 'driver' | 'staff';
+
+/** Lote 214: lo que la ficha de una orden del personal trae además de lo del chofer. */
+export interface StaffOrderExtras {
+  packBatchNumber: string;
+  clientInvoiceNumber: string | null;
+  serviceTypeLabel: string;
+  createdAtUtc: string;
+  tripCode: string | null;
+  tripStatus: string | null;
+  driverName: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  canDeliver: boolean;
+  canFail: boolean;
+  canPickup: boolean;
+  proof: { deliveredAtUtc: string; recipientName: string; notes: string | null; source: string; distanceFromStopMeters: number | null; hasSignature: boolean; photos: number } | null;
+  attempts: Array<{ number: number; attemptedAtUtc: string; delivered: boolean; reason: string | null; notes: string | null; source: string; driver: string | null; distanceFromStopMeters: number | null }>;
 }
 
 /** El envío con lo que se necesita en la puerta (teléfono, cliente…). */
@@ -54,6 +76,8 @@ export interface ShipmentDetail extends Shipment {
   photoRequired: boolean;
   /** Lo que falta por cobrar del COD (null = no tiene COD). */
   codPending: number | null;
+  /** Solo en una orden del personal (source 'staff'). */
+  staff?: StaffOrderExtras;
 }
 
 export interface Reason {

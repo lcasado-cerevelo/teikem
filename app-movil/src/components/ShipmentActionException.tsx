@@ -28,7 +28,7 @@ export default function ShipmentActionException({ onBack }: { onBack: () => void
   const insets = useSafeAreaInsets();
   const shipment = useAppStore((s) => s.shipment);
   const removeShipmentFromLists = useRemoveShipmentFromLists();
-  const { data: reasons, isLoading: reasonsLoading } = useFailureReasons(shipment?.tenantId);
+  const { data: reasons, isLoading: reasonsLoading } = useFailureReasons(shipment?.tenantId, shipment?.source === 'staff');
 
   const [reasonId, setReasonId] = useState<number | null>(null);
   const [comment, setComment] = useState('');
@@ -78,6 +78,7 @@ export default function ShipmentActionException({ onBack }: { onBack: () => void
       const id = await enqueueFail({
         tenantId: shipment.tenantId,
         shipmentId: shipment.id,
+        source: shipment.source,
         reasonCode: (reasons ?? [])[reasonId - 1].code,
         notes: comment.trim(),
         attemptedAtUtc: new Date().toISOString(),

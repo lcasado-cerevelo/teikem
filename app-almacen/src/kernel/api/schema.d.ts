@@ -20066,6 +20066,256 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/mobile/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MobileOrderSearchDto"];
+                        "application/json": components["schemas"]["MobileOrderSearchDto"];
+                        "text/json": components["schemas"]["MobileOrderSearchDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mobile/orders/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MobileOrderDto"];
+                        "application/json": components["schemas"]["MobileOrderDto"];
+                        "text/json": components["schemas"]["MobileOrderDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mobile/failure-reasons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverFailureReasonDto"][];
+                        "application/json": components["schemas"]["DriverFailureReasonDto"][];
+                        "text/json": components["schemas"]["DriverFailureReasonDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mobile/orders/{publicId}/deliver": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DriverDeliverRequest"];
+                    "text/json": components["schemas"]["DriverDeliverRequest"];
+                    "application/*+json": components["schemas"]["DriverDeliverRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverShipmentResultDto"];
+                        "application/json": components["schemas"]["DriverShipmentResultDto"];
+                        "text/json": components["schemas"]["DriverShipmentResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mobile/orders/{publicId}/fail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DriverFailRequest"];
+                    "text/json": components["schemas"]["DriverFailRequest"];
+                    "application/*+json": components["schemas"]["DriverFailRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverShipmentResultDto"];
+                        "application/json": components["schemas"]["DriverShipmentResultDto"];
+                        "text/json": components["schemas"]["DriverShipmentResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mobile/orders/{publicId}/pickup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DriverPickupRequest"];
+                    "text/json": components["schemas"]["DriverPickupRequest"];
+                    "application/*+json": components["schemas"]["DriverPickupRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverShipmentResultDto"];
+                        "application/json": components["schemas"]["DriverShipmentResultDto"];
+                        "text/json": components["schemas"]["DriverShipmentResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/mobile/device": {
         parameters: {
             query?: never;
@@ -42737,6 +42987,76 @@ export interface components {
             missingAtUtc?: string | null;
             claimNumber?: string | null;
             lineDescription?: string | null;
+        };
+        MobileAttemptDto: {
+            /** Format: int32 */
+            number?: number;
+            /** Format: date-time */
+            attemptedAtUtc?: string;
+            delivered?: boolean;
+            reason?: string | null;
+            notes?: string | null;
+            source?: string | null;
+            driver?: string | null;
+            /** Format: int32 */
+            distanceFromStopMeters?: number | null;
+        };
+        MobileOrderDto: {
+            shipment?: components["schemas"]["DriverShipmentDetailDto"];
+            /** Format: uuid */
+            clientPublicId?: string;
+            packBatchNumber?: string | null;
+            clientInvoiceNumber?: string | null;
+            serviceTypeLabel?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            isInitialStatus?: boolean;
+            tripCode?: string | null;
+            tripStatus?: string | null;
+            driverName?: string | null;
+            /** Format: double */
+            latitude?: number | null;
+            /** Format: double */
+            longitude?: number | null;
+            canDeliver?: boolean;
+            canFail?: boolean;
+            canPickup?: boolean;
+            proof?: components["schemas"]["MobileProofDto"];
+            attempts?: components["schemas"]["MobileAttemptDto"][] | null;
+        };
+        MobileOrderRowDto: {
+            /** Format: uuid */
+            publicId?: string;
+            orderNumber?: string | null;
+            waybillNumber?: string | null;
+            packBatchNumber?: string | null;
+            clientName?: string | null;
+            consigneeName?: string | null;
+            consigneeCity?: string | null;
+            statusCode?: string | null;
+            status?: string | null;
+            isInitialStatus?: boolean;
+            /** Format: int32 */
+            totalPieces?: number;
+            /** Format: double */
+            codAmount?: number | null;
+        };
+        MobileOrderSearchDto: {
+            query?: string | null;
+            matchedBy?: string | null;
+            items?: components["schemas"]["MobileOrderRowDto"][] | null;
+        };
+        MobileProofDto: {
+            /** Format: date-time */
+            deliveredAtUtc?: string;
+            recipientName?: string | null;
+            notes?: string | null;
+            source?: string | null;
+            /** Format: int32 */
+            distanceFromStopMeters?: number | null;
+            hasSignature?: boolean;
+            /** Format: int32 */
+            photos?: number;
         };
         ModuleDto: {
             key?: string | null;

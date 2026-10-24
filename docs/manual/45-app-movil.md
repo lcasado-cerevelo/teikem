@@ -12,7 +12,24 @@
 - **Inicio**: «**Necesita tu atención**» (los mismos avisos del Pulso de la web, por compañía, con `pulse.attention`) y «**Pulso del día**» (los indicadores que puede ver, con `analytics.view`). Si además es chofer, debajo «Mi trabajo de chofer» con sus tarjetas de siempre.
 - **Mensajes** (chat con fotos, tarjetas de orden, sugeridos), **Avisos** y **Perfil**: lo mismo que el chofer (capítulo 15 §8-9 y capítulo 04).
 - **Manifiestos**: solo para choferes.
-- Lo que sigue (Lotes 214-216): órdenes (buscar, ficha, completar), rutas de hoy y asignar en la calle, clientes y almacén en consulta.
+- **Órdenes** (Lote 214): ver §2a.
+- Lo que sigue (Lotes 215-216): rutas de hoy y asignar en la calle, clientes y almacén en consulta.
+
+## 2a. Órdenes (Lote 214)
+- **Quién**: el acceso «Órdenes» aparece con `orders.view` en alguna compañía; completar exige además `orders.deliver` **en esa compañía**.
+- **Buscar**: escribe o **escanea** la etiqueta. Primero se busca la coincidencia exacta (conduce, número de orden, empaque, factura, número de paquete; la lista dice «Coincidencia exacta»); si no hay, búsqueda libre (hasta 30). Con más de una compañía, un selector arriba. La búsqueda es en vivo: **sin señal no hay resultados**.
+- **Ficha**: la misma del chofer (mapa, consignatario, teléfono como enlace, «Hablar sobre este envío», estatus, orden, conduce, piezas, COD y notas) más **empaque, factura, tipo de servicio, ruta vigente y su chofer**, el **comprobante** (quién recibió, cuándo, a cuántos metros, con firma, fotos) y los **intentos**.
+- **Acciones** (pestaña Acciones): según el estatus y el tipo de la orden:
+  | Orden | Botones |
+  |---|---|
+  | En tránsito (entrega) | Excepción de pedido, Completar pedido |
+  | Fallida | Completar pedido (volver a intentar la entrega) |
+  | Sometida sin ruta o en ruta de recogida | No recogido, Recoger |
+  | Otra (entregada, cancelada, asignada…) | «Esta orden está «X»: no hay nada que completar desde aquí.» |
+  Sin `orders.deliver` en esa compañía: «No tienes permiso para completar órdenes en esta compañía.»
+- **Qué queda**: lo mismo que cuando entrega el chofer (comprobante con origen DRIVER_APP, firma y fotos, GPS y distancia a la dirección, cobros, intento), pero **a nombre de la persona** («Entregado desde la app por Ana Oficina.») y **sin chofer** en el intento ni en el cobro. Si la orden iba en una ruta, su parada se cierra y el chofer la deja de ver.
+- **Sin señal**: lo que se completa queda en la cola del teléfono y sale cuando vuelve la señal (igual que el chofer; el servidor no duplica un reintento).
+- Endpoints: `GET /api/v1/mobile/orders?q=`, `GET /api/v1/mobile/orders/{id}`, `GET /api/v1/mobile/failure-reasons`, `POST /api/v1/mobile/orders/{id}/deliver|fail|pickup`.
 
 ## 3. Avisos emergentes
 - La app registra el teléfono en `POST /api/v1/mobile/device` para cada compañía. Un chofer queda en su ficha (`DriverDevice`); el personal, en su usuario (`UserPushDevice`). Los mensajes del chat y los avisos llegan por cualquiera de los dos.
@@ -23,3 +40,9 @@
 | Sin `mobile.use` y sin ser chofer | `Su usuario no tiene acceso a la app móvil en ninguna compañía.` | 403 |
 | Sesión que no es de la app | `Esta sesión no es de la app móvil.` | 403 |
 | Registro del teléfono sin token / plataforma inválida | `Falta el token del teléfono.` / `La plataforma debe ser ANDROID o IOS.` | 400 |
+| Buscar órdenes sin texto | `Escriba o escanee un número de orden, conduce, empaque o factura.` | 400 |
+| Orden que no existe (ficha o completar) | `Orden no encontrada.` | 404 |
+| Entregar una orden de recogida / recoger una de entrega | `Este envío es de una ruta de recogida: se recoge, no se entrega.` / `Este envío es de una ruta de entrega: se entrega, no se recoge.` | 422 |
+| Recoger una orden que ya no está pendiente | `El envío {orden} ya no está pendiente de recoger.` | 422 |
+| Ya entregada desde la web | `El envío {orden} ya tiene registrada su entrega.` | 409 |
+| Las demás validaciones de entregar / no entregar | Las del chofer (capítulo 04): nombre de quien recibió, firma y foto exigidas por el cliente, motivo, nota, fotos | 400 |

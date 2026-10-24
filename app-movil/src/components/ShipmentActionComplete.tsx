@@ -97,6 +97,7 @@ export default function ShipmentActionComplete({ onBack }: { onBack: () => void 
       const id = await enqueueDeliver({
         tenantId: shipment.tenantId,
         shipmentId: shipment.id,
+        source: shipment.source,
         recipientName: podName.trim(),
         notes: comment.trim() || undefined,
         deliveredAtUtc: new Date().toISOString(),

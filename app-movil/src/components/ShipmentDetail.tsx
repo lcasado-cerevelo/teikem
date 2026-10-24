@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import LinkText from './LinkText';
 import MapPreview from './MapPreview';
+import StaffOrderExtras from './StaffOrderExtras';
 import { useCoordinatesFromAddress } from '@hooks/geocoding';
 import { useShipmentDetail } from '@hooks/queries';
 import { useAppStore } from '@/stores';
@@ -22,11 +23,15 @@ export default function ShipmentDetail() {
   const shipment = detail ?? base;
 
   // El punto del mapa sale de la dirección (la ubicación exacta de la entrega la pone el GPS del teléfono al entregar).
-  const { location, loading, located } = useCoordinatesFromAddress({
+  const geo = useCoordinatesFromAddress({
     addressLine1: shipment?.address,
     zip: shipment?.postalCode,
     city: shipment?.city,
   });
+  // Una orden del personal trae el punto de la parada del servidor (si la dirección ya tiene coordenadas); si no, se geocodifica como la del chofer.
+  const staff = detail?.staff;
+  const { location, loading, located } =
+    staff?.latitude != null && staff.longitude != null ? { location: { lat: staff.latitude, lng: staff.longitude }, loading: false, located: true } : geo;
 
   const cityZip = [shipment?.city, shipment?.postalCode].filter(Boolean).join(', ');
 
@@ -70,7 +75,7 @@ export default function ShipmentDetail() {
             <Text style={styles.textBody}>{t('SHIPMENT_DETAILS.STATUS')}: {shipment?.status ?? ''}</Text>
             <Text style={styles.textBody}>{t('SHIPMENT_DETAILS.ORDER')}: {shipment?.orderNumber ?? ''}</Text>
             <Text style={styles.textBody}>{t('SHIPMENT_DETAILS.WAYBILL')}: {shipment?.waybill ?? ''}</Text>
-            <Text style={styles.textBody}>{t('SHIPMENT_DETAILS.MANIFEST')}: {shipment?.manifestCode ?? ''}</Text>
+            {shipment?.source === 'staff' ? null : <Text style={styles.textBody}>{t('SHIPMENT_DETAILS.MANIFEST')}: {shipment?.manifestCode ?? ''}</Text>}
             <Text style={styles.textBody}>{t('SHIPMENT_DETAILS.PIECES')}: {shipment?.pieces ?? ''}</Text>
           </View>
 
@@ -85,6 +90,8 @@ export default function ShipmentDetail() {
               <Text style={styles.textBody}>{shipment.notes}</Text>
             </View>
           ) : null}
+
+          {staff ? <StaffOrderExtras x={staff} /> : null}
         </View>
       </ScrollView>
     </View>

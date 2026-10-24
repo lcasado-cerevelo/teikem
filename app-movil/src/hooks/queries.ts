@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { fetchCompanyNotices, fetchCompanyWork, markNoticesRead, type Notice, fetchDeclineReasons, fetchFailureReasons, fetchShipmentDetail, type Company } from '@services/driverApi';
+import { fetchStaffFailureReasons, fetchStaffShipmentDetail } from '@services/staffApi';
 import { useAuth } from '@hooks/AuthContext';
 import { drainOutbox, pendingClosedShipmentIds } from '@/offline';
 import { useAppStore } from '@/stores';
@@ -57,15 +58,21 @@ export function useDeclineReasons(tenantId: number | undefined) {
   return useQuery({ queryKey: ['reasons', 'decline', tenantId ?? 0], queryFn: () => fetchDeclineReasons(tenantId as number), enabled: tenantId != null, ...READ_OPTS });
 }
 
-export function useFailureReasons(tenantId: number | undefined) {
-  return useQuery({ queryKey: ['reasons', 'failure', tenantId ?? 0], queryFn: () => fetchFailureReasons(tenantId as number), enabled: tenantId != null, ...READ_OPTS });
+/** Lote 214: el personal lee los motivos por /mobile (orders.deliver); el chofer por /driver-app. Misma lista. */
+export function useFailureReasons(tenantId: number | undefined, staff = false) {
+  return useQuery({
+    queryKey: staff ? ['reasons', 'failure-staff', tenantId ?? 0] : ['reasons', 'failure', tenantId ?? 0],
+    queryFn: () => (staff ? fetchStaffFailureReasons(tenantId as number) : fetchFailureReasons(tenantId as number)),
+    enabled: tenantId != null,
+    ...READ_OPTS,
+  });
 }
 
 /** El envío con teléfono de contacto, cliente y si ya se puede cerrar. Sin señal queda el de la lista. */
 export function useShipmentDetail(shipment: Shipment | null) {
   return useQuery({
-    queryKey: ['shipment', shipment?.id ?? ''],
-    queryFn: () => fetchShipmentDetail(shipment as Shipment),
+    queryKey: ['shipment', shipment?.source ?? 'driver', shipment?.id ?? ''],
+    queryFn: () => (shipment?.source === 'staff' ? fetchStaffShipmentDetail(shipment) : fetchShipmentDetail(shipment as Shipment)),
     enabled: Boolean(shipment),
     ...READ_OPTS,
   });

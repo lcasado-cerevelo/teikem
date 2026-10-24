@@ -83,13 +83,14 @@ export default function Home() {
   ];
   const shown = allItems.filter((it) => loading || it.counter !== '0');
   const driverItems = access.isDriver || access.driverOnly || !access.staff ? (shown.length > 0 ? shown : allItems) : [];
-  const items = driverItems;
+  // Lote 214: lo del personal son accesos (sin contador): Órdenes con orders.view. Después, su trabajo de chofer si también lo es.
+  const staffItems: HomeItem[] = access.staff && access.can('orders.view') ? [{ key: 'staff-orders', label: t('STAFF_ORDERS.TITLE'), counter: '›', loading: false, href: '/(auth)/Orders' }] : [];
+  const items = [...staffItems, ...driverItems];
   const header = (
     <>
       <TrackingBanner />
       {access.staff && access.can('pulse.attention') ? <AttentionCard multi={access.companies.length > 1} /> : null}
       {access.staff && access.can('analytics.view') ? <PulseCard multi={access.companies.length > 1} /> : null}
-      {access.staff && items.length > 0 ? <Text style={styles.section}>{t('HOME.MY_DRIVER_WORK')}</Text> : null}
     </>
   );
 
@@ -105,15 +106,26 @@ export default function Home() {
           {item.loading ? <ActivityIndicator /> : <Text style={styles.counter}>{item.counter}</Text>}
         </Pressable>
       );
-      return item.href ? (
+      const linked = item.href ? (
         <Link href={item.href} asChild>
           {content}
         </Link>
       ) : (
         content
       );
+      // El rótulo «Mi trabajo de chofer» va antes de la primera tarjeta del chofer cuando también hay accesos del personal.
+      const firstDriver = staffItems.length > 0 && driverItems[0]?.key === item.key;
+      return firstDriver ? (
+        <>
+          <Text style={styles.section}>{t('HOME.MY_DRIVER_WORK')}</Text>
+          {linked}
+        </>
+      ) : (
+        linked
+      );
     },
-    [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [staffItems.length, driverItems[0]?.key],
   );
 
   return (

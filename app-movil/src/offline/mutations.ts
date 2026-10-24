@@ -1,4 +1,6 @@
 import { enqueue } from './outbox';
+import type { ShipmentSource } from '@/types/models';
+import { closeEndpoint } from '@utils/staffOrders';
 
 // Lo que el chofer cierra en la calle se guarda en la cola (SQLite) y sale cuando hay señal. Cada elemento lleva la compañía (tenantId): decide con qué token de acceso se envía.
 // El servidor es idempotente (un reintento de algo ya hecho responde «alreadyDone»), así que reenviar nunca duplica una entrega.
@@ -6,6 +8,7 @@ import { enqueue } from './outbox';
 export interface DeliverInput {
   tenantId: number;
   shipmentId: string;
+  source?: ShipmentSource;
   recipientName: string;
   notes?: string;
   deliveredAtUtc: string;
@@ -22,7 +25,7 @@ export interface DeliverInput {
 export function enqueueDeliver(input: DeliverInput): Promise<string> {
   return enqueue({
     kind: 'deliver',
-    endpoint: `driver-app/shipments/${input.shipmentId}/deliver`,
+    endpoint: closeEndpoint(input.source, input.shipmentId, 'deliver'),
     method: 'POST',
     payload: {
       tenantId: input.tenantId,
@@ -44,6 +47,7 @@ export function enqueueDeliver(input: DeliverInput): Promise<string> {
 export interface FailInput {
   tenantId: number;
   shipmentId: string;
+  source?: ShipmentSource;
   reasonCode: string;
   notes?: string;
   attemptedAtUtc: string;
@@ -56,7 +60,7 @@ export interface FailInput {
 export function enqueueFail(input: FailInput): Promise<string> {
   return enqueue({
     kind: 'fail',
-    endpoint: `driver-app/shipments/${input.shipmentId}/fail`,
+    endpoint: closeEndpoint(input.source, input.shipmentId, 'fail'),
     method: 'POST',
     payload: {
       tenantId: input.tenantId,
@@ -69,6 +73,7 @@ export function enqueueFail(input: FailInput): Promise<string> {
 export interface PickupInput {
   tenantId: number;
   shipmentId: string;
+  source?: ShipmentSource;
   /** Quién entregó el paquete al chofer. */
   giverName?: string;
   notes?: string;
@@ -82,7 +87,7 @@ export interface PickupInput {
 export function enqueuePickup(input: PickupInput): Promise<string> {
   return enqueue({
     kind: 'pickup',
-    endpoint: `driver-app/shipments/${input.shipmentId}/pickup`,
+    endpoint: closeEndpoint(input.source, input.shipmentId, 'pickup'),
     method: 'POST',
     payload: {
       tenantId: input.tenantId,

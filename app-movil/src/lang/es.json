@@ -412,6 +412,27 @@
     },
     "PULSE": {
       "TITLE": "Pulso del día"
+    },
+    "STAFF_ORDERS": {
+      "TITLE": "Órdenes",
+      "HINT": "Escribe o escanea el número de orden, conduce, empaque o factura.",
+      "ERROR": "No se pudo buscar. Revisa la señal e inténtalo de nuevo.",
+      "EXACT_MATCH": "Coincidencia exacta",
+      "PACK_BATCH": "Empaque",
+      "ROUTE": "Ruta",
+      "NO_ROUTE": "sin ruta",
+      "DRIVER": "Chofer",
+      "PROOF": "Comprobante de entrega",
+      "RECEIVED_BY": "Recibió",
+      "DISTANCE": "A {{m}} m de la dirección",
+      "WITH_SIGNATURE": "con firma",
+      "PHOTOS": "{{n}} foto(s)",
+      "ATTEMPTS": "Intentos",
+      "ATTEMPT_DELIVERED": "Entregado",
+      "ATTEMPT_FAILED": "No entregado",
+      "NO_DELIVER_PERM": "No tienes permiso para completar órdenes en esta compañía.",
+      "LOADING": "Cargando la orden…",
+      "NOTHING_TO_DO": "Esta orden está «{{status}}»: no hay nada que completar desde aquí."
     }
   }
 }

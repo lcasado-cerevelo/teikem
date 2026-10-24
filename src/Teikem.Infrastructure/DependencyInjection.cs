@@ -120,6 +120,7 @@ public static class DependencyInjection
         services.AddScoped<PortalBrandService>();   // 2026-10-22: el portal se viste con la marca de la compañía
         services.AddScoped<BrandLogoService>(); // Lote 19: logos de la marca por compañía
         services.AddScoped<DriverAppService>(); // 2026-10-23: app del chofer (manifiestos, aceptar, no aceptar con motivo)
+        services.AddScoped<MobileOrderService>(); // 2026-10-24 (Lote 214): órdenes en la app móvil del personal (buscar, ficha, completar)
         services.AddScoped<PublicBrandService>(); // 2026-10-22: logo de la pantalla de entrada (sin sesión)
         services.AddScoped<TrustedNetworkService>();
         services.AddScoped<AuthService>();

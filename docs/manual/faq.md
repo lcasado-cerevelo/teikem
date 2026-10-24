@@ -10556,3 +10556,18 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **Un chofer ve tarjetas de oficina en su app.** Si el usuario es de tipo «Chofer (solo app)» eso no puede pasar: avise a soporte. Si es un usuario normal con permisos de oficina y de chofer, es lo esperado; para que vea solo lo del chofer, cree su usuario como «Chofer (solo app)».
 
 **No me llegan los avisos emergentes y no soy chofer.** Revise que la app sea la versión del Lote 213 o posterior (registra el teléfono en `mobile/device`), que aceptó el permiso de notificaciones y que el servidor tiene la clave de Firebase.
+
+## Lote 214 — App móvil: órdenes
+
+**«Escriba o escanee un número de orden, conduce, empaque o factura.» (400).** La búsqueda llegó vacía. Escriba algo o escanee la etiqueta.
+
+**Busco una orden en la app y no aparece nada.** La búsqueda es en vivo: sin señal no hay resultados. Con señal, revise la compañía elegida arriba (la orden es de la compañía donde se creó) y que la orden esté activa. Un número parcial busca por «contiene»; el escáner busca exacto.
+
+**La pestaña Acciones dice «Esta orden está «Entregada»: no hay nada que completar desde aquí.»** Solo se completa una orden En tránsito (entregar o no entregar), Fallida (volver a entregar) o pendiente de recoger. Para cualquier otro cambio, la web.
+
+**«No tienes permiso para completar órdenes en esta compañía.»** Ver la ficha pide `orders.view`; completar pide `orders.deliver` en esa compañía. Pídaselo al administrador (Sistema → Roles).
+
+**Entregué desde la app del personal y el chofer de la ruta no aparece en el intento ni en el cobro.** Es lo esperado: el intento y el cobro quedan sin chofer y el historial dice quién lo hizo («Entregado desde la app por …»). El comprobante registra a la persona.
+
+**El chofer todavía ve en su manifiesto una orden que yo entregué desde la oficina.** Su app la quita al próximo refresco (al abrir el manifiesto o sincronizar); si intenta entregarla, el servidor responde que ya está entregada (409).
+

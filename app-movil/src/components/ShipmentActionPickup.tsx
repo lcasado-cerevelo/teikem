@@ -51,6 +51,7 @@ export default function ShipmentActionPickup({ onBack }: { onBack: () => void })
       const id = await enqueuePickup({
         tenantId: shipment.tenantId,
         shipmentId: shipment.id,
+        source: shipment.source,
         giverName: giver.trim() || undefined,
         notes: comment.trim() || undefined,
         pickedAtUtc: new Date().toISOString(),

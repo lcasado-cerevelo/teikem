@@ -412,6 +412,27 @@
     },
     "PULSE": {
       "TITLE": "Today's pulse"
+    },
+    "STAFF_ORDERS": {
+      "TITLE": "Orders",
+      "HINT": "Type or scan the order number, waybill, pack batch or invoice.",
+      "ERROR": "Search failed. Check your signal and try again.",
+      "EXACT_MATCH": "Exact match",
+      "PACK_BATCH": "Pack batch",
+      "ROUTE": "Route",
+      "NO_ROUTE": "no route",
+      "DRIVER": "Driver",
+      "PROOF": "Proof of delivery",
+      "RECEIVED_BY": "Received by",
+      "DISTANCE": "{{m}} m from the address",
+      "WITH_SIGNATURE": "with signature",
+      "PHOTOS": "{{n}} photo(s)",
+      "ATTEMPTS": "Attempts",
+      "ATTEMPT_DELIVERED": "Delivered",
+      "ATTEMPT_FAILED": "Not delivered",
+      "NO_DELIVER_PERM": "You cannot complete orders in this company.",
+      "LOADING": "Loading the order…",
+      "NOTHING_TO_DO": "This order is “{{status}}”: nothing to complete from here."
     }
   }
 }
