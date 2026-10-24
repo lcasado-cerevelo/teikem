@@ -8,6 +8,8 @@ import { useIsConsignee } from '../../kernel/auth/role'
 import { useT } from '../../kernel/i18n/useT'
 import { useColors } from '../../kernel/ui/theme'
 import { useOffer, visibleTabs } from '../capabilities'
+import { KemiSleepButton } from '../kemi/KemiFloating'
+import { useKemiOptional } from '../kemi/KemiProvider'
 import { useUnreadMessages } from '../messages/unread'
 
 interface Item {
@@ -34,6 +36,7 @@ export function TopBar() {
   const unread = useUnreadMessages()
   const { logoUri, companyName } = usePortalBrandInfo()
   const show = visibleTabs(offer, consignee)
+  const hasKemi = useKemiOptional() !== null && !consignee   // Kemi dormida se esconde aquí, junto al menú (Lote 218)
 
   const items: Item[] = [
     ...(show.home ? [{ key: 'home', route: '/home' as const, label: t('tabs.home'), also: ['/invoices', '/invoice'] }] : []),
@@ -74,6 +77,11 @@ export function TopBar() {
           )
         })}
       </View>
+      {hasKemi && (
+        <View style={{ marginLeft: 'auto' }}>
+          <KemiSleepButton />
+        </View>
+      )}
     </View>
   )
 }

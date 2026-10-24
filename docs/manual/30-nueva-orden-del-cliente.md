@@ -1,4 +1,5 @@
 # 30 — Nuevo envío desde el portal del cliente
+<!-- kemi:portal -->
 
 Lote 105 (portal de clientes, 2026-10-17) y **Lote 213 (2026-10-23, dictado de Luis)**: el «Nuevo envío» del portal tiene **los mismos campos y las mismas funciones que «Nuevo envío» de la web de la compañía** (capítulo 03), salvo lo que no aplica al cliente (el cliente sale de la sesión; no hay precio, autorización de crédito, entrega especial ni «Label al guardar»). El envío **entra directo al flujo normal** (nace Sometido, igual que uno creado por la compañía).
 

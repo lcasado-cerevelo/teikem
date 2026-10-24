@@ -1,28 +1,6 @@
-// Reglas puras de cuándo Kemi avisa y dónde se guarda si está dormida (Lote 52). Sin React: se prueban solas.
-
-/** Qué hacer con el contador de no leídos que acaba de llegar. */
-export interface BubbleDecision {
-  /** Cantidad con la que se muestra el globo (null = sin globo). */
-  bubble: number | null
-  /** Nuevo «último visto» para la próxima comparación. */
-  seen: number
-}
-
-/**
- * - Primera lectura de la sesión: con avisos sin leer, UNA vez por sesión de navegador (`greeted` = ya saludó), Kemi avisa de todos.
- * - Después: solo cuando el contador SUBE (llegó algo nuevo); lo nuevo es la diferencia.
- * - Si baja (se leyeron) no hay globo y se anota el nuevo valor.
- * - Dormida nunca muestra globo (la campanita sigue con su contador).
- */
-export function decideBubble(previous: number | null, count: number, greeted: boolean, asleep: boolean): BubbleDecision {
-  if (previous === null) return { bubble: !asleep && !greeted && count > 0 ? count : null, seen: count }
-  if (count > previous) return { bubble: asleep ? null : count - previous, seen: count }
-  return { bubble: null, seen: count }
-}
-
-export function bubbleKey(n: number): 'one' | 'many' {
-  return n === 1 ? 'one' : 'many'
-}
+// Dónde se guarda si Kemi está dormida y si ya saludó (Lote 52). Las reglas de cuándo avisa viven en shared/kemi/rules.ts (las comparte el portal del cliente).
+export { BUBBLE_SECONDS, bubbleKey, decideBubble } from '../../../../shared/kemi/rules'
+export type { BubbleDecision } from '../../../../shared/kemi/rules'
 
 const ASLEEP_KEY = 'teikem.kemi.asleep'
 const GREETED_KEY = 'teikem.kemi.greeted'
@@ -61,6 +39,3 @@ export function writeGreeted(): void {
     /* ignorar */
   }
 }
-
-/** Segundos que dura el globo de Kemi antes de esconderse solo. */
-export const BUBBLE_SECONDS = 15

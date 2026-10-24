@@ -1,84 +1,7 @@
-// Reglas puras de «Kemi con vida» (sin React, se prueban solas): cuándo parpadea, qué gestos hace y dónde se coloca al arrastrarla.
-// Todo lo que se mueve es CSS (transform y opacity); aquí solo se decide cuándo y qué. Ver useKemiLife.ts y notifications.css.
-
-/** Gestos de Kemi (atributo `data-mood` del dibujo). `calm` es la cara de reposo. */
-export type KemiMood = 'calm' | 'look-l' | 'look-r' | 'wink' | 'happy' | 'surprised' | 'tongue' | 'worried' | 'alert'
-
-/** Gestos cortos (de 1 a 2 segundos) que se hacen a cada rato. */
-export const MICRO_MOODS: readonly KemiMood[] = ['look-l', 'look-r', 'wink', 'happy']
-/** Muecas más grandes y raras. */
-export const BIG_MOODS: readonly KemiMood[] = ['tongue', 'surprised', 'worried', 'happy']
-
-/** Rangos de espera en milisegundos: siempre al azar, nunca un intervalo fijo (un reloj se nota). */
-export const BLINK_EVERY: readonly [number, number] = [2500, 6000]
-export const MICRO_EVERY: readonly [number, number] = [8000, 25000]
-export const BIG_EVERY: readonly [number, number] = [60000, 180000]
-export const BLINK_MS = 140
-export const MICRO_MS: readonly [number, number] = [900, 1800]
-export const BIG_MS: readonly [number, number] = [1500, 2500]
-
-/** Número al azar entre min y max (rng devuelve [0, 1)). */
-export function between(rng: () => number, [min, max]: readonly [number, number]): number {
-  return Math.round(min + rng() * (max - min))
-}
-
-/** Elige un gesto de la lista que no sea el último que hizo (si hay más de uno). */
-export function pickMood(rng: () => number, list: readonly KemiMood[], last: KemiMood | null): KemiMood {
-  const options = list.length > 1 ? list.filter((m) => m !== last) : list
-  return options[Math.min(options.length - 1, Math.floor(rng() * options.length))]
-}
-
-// ---------------------------------------------------------------- posición al arrastrarla
-
-/** Distancia (en píxeles) de Kemi a los bordes derecho e inferior de la ventana, que es como se coloca. */
-export interface KemiPos {
-  right: number
-  bottom: number
-}
-
-export const DEFAULT_POS: KemiPos = { right: 24, bottom: 24 }
-/** Lo que se mueve el puntero antes de contar como arrastre (menos que esto es un clic). */
-export const DRAG_THRESHOLD = 5
-const MARGIN = 8
-
-/** Mantiene a Kemi dentro de la ventana (con su tamaño y un margen). */
-export function clampPos(pos: KemiPos, viewW: number, viewH: number, size = 58): KemiPos {
-  const maxRight = Math.max(MARGIN, viewW - size - MARGIN)
-  const maxBottom = Math.max(MARGIN, viewH - size - MARGIN)
-  return {
-    right: Math.min(maxRight, Math.max(MARGIN, Math.round(pos.right))),
-    bottom: Math.min(maxBottom, Math.max(MARGIN, Math.round(pos.bottom))),
-  }
-}
-
-/**
- * De qué lado de la ventana está Kemi, para abrir su globo y su panel hacia donde hay lugar: en la mitad de arriba se abren hacia abajo, en la de la izquierda se alinean a la izquierda.
- */
-export function quadrant(pos: KemiPos, viewW: number, viewH: number, size = 58): { v: 'top' | 'bottom'; h: 'left' | 'right' } {
-  const centerX = viewW - pos.right - size / 2
-  const centerY = viewH - pos.bottom - size / 2
-  return { v: centerY < viewH / 2 ? 'top' : 'bottom', h: centerX < viewW / 2 ? 'left' : 'right' }
-}
-
-/**
- * Estilo con el que se coloca el contenedor de Kemi: se ancla por el borde más cercano (arriba o abajo, izquierda o derecha) para que, al abrirse el globo o el panel hacia el lado
- * que tiene lugar, ella se quede donde está y no se corra.
- */
-export function anchorStyle(pos: KemiPos, viewW: number, viewH: number, size = 58): { top: number | 'auto'; bottom: number | 'auto'; left: number | 'auto'; right: number | 'auto' } {
-  const side = quadrant(pos, viewW, viewH, size)
-  return {
-    // el lado contrario va en «auto»: la hoja de estilos le da a Kemi bottom y right por omisión y, con los dos puestos, el contenedor se estiraría
-    top: side.v === 'top' ? viewH - pos.bottom - size : 'auto',
-    bottom: side.v === 'top' ? 'auto' : pos.bottom,
-    left: side.h === 'left' ? viewW - pos.right - size : 'auto',
-    right: side.h === 'left' ? 'auto' : pos.right,
-  }
-}
-
-/** Si Kemi no está en su esquina de siempre. */
-export function isMoved(pos: KemiPos): boolean {
-  return pos.right !== DEFAULT_POS.right || pos.bottom !== DEFAULT_POS.bottom
-}
+// Reglas de «Kemi con vida» (Lote 52): las puras viven en shared/kemi/rules.ts (las comparte el portal del cliente); aquí queda lo que guarda esta web (dónde dejó a Kemi, en localStorage).
+import { DEFAULT_POS, isMoved, type KemiPos } from '../../../../shared/kemi/rules'
+export { MICRO_MOODS, BIG_MOODS, BLINK_EVERY, MICRO_EVERY, BIG_EVERY, BLINK_MS, MICRO_MS, BIG_MS, between, pickMood, DEFAULT_POS, DRAG_THRESHOLD, clampPos, quadrant, anchorStyle, isMoved, pupilOffset } from '../../../../shared/kemi/rules'
+export type { KemiMood, KemiPos } from '../../../../shared/kemi/rules'
 
 const POS_KEY = 'teikem.kemi.pos'
 
@@ -103,12 +26,4 @@ export function writePos(userId: number | string | null | undefined, pos: KemiPo
   } catch {
     /* sin almacenamiento: vale solo para esta pantalla abierta */
   }
-}
-
-/** Hacia dónde miran las pupilas (en unidades del dibujo, hasta 4) cuando el puntero está en (dx, dy) respecto al centro de Kemi. */
-export function pupilOffset(dx: number, dy: number, max = 4): { x: number; y: number } {
-  const len = Math.hypot(dx, dy)
-  if (len === 0) return { x: 0, y: 0 }
-  const k = Math.min(1, len / 40) * max / len
-  return { x: Math.round(dx * k * 10) / 10, y: Math.round(dy * k * 10) / 10 }
 }

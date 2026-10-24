@@ -1,4 +1,5 @@
 # 28 — «¿Cómo va mi envío?» y la barra de progreso
+<!-- kemi:portal -->
 
 Lote 103 (portal de clientes, 2026-10-17). Dos cosas relacionadas: la **barra de progreso** de un envío y la **página pública** donde cualquiera con el número de conduce ve en qué etapa va su paquete. La respuesta pública es **solo el avance**: **nunca nombres, direcciones, teléfonos ni montos** (decidido con Luis).
 

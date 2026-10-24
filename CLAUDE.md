@@ -39,6 +39,7 @@ y `Diseño/logistica-db-seed.sql`. Se construye por lotes (ver `docs/lote1-decis
   `ForbiddenException`) → el middleware las traduce a ProblemDetails. Los servicios devuelven DTOs de `Contracts/`.
 - Identificadores en inglés (como el SQL); comentarios, documentos, mensajes de error y commits en español.
 
+- **Kemi del portal del cliente solo sabe lo que el cliente puede ver** (Lote 218): un capítulo del manual o una sección de la FAQ que describe el portal/app del cliente lleva el comentario `<!-- kemi:portal -->` (en la FAQ, justo debajo del «## »; en un capítulo, en cualquier línea); un apartado o pregunta con `<!-- kemi:staff -->` adentro se queda fuera del portal. **Lo que no se marca no llega al cliente.** Lo compartido de Kemi vive en `shared/kemi/` (lo usan `web-app` y `app-cliente`): un solo cerebro (`KemiBrain`) para la IA futura. Detalle en `docs/manual/46-kemi.md`.
 - **Manual funcional obligatorio por lote** en `docs/manual/`: un capítulo por módulo (`docs/manual/NN-<modulo>.md`) escrito para el
   usuario final y el soporte: cada funcionalidad (qué hace, quién puede: permiso y módulo, cómo se usa: pantalla/endpoint),
   campos y validaciones con el **mensaje de error exacto y el código HTTP**, estatus y transiciones (de → a, quién, efectos,

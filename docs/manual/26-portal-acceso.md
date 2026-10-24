@@ -1,4 +1,5 @@
 # 26 — Portal del cliente: acceso y aislamiento
+<!-- kemi:portal -->
 
 Lote 101 (portal de clientes, 2026-10-17). El portal tiene su **propio login**, separado del del staff, y cada sesión queda ligada a **un cliente**. Este capítulo es del servidor (la app `app-cliente` con sus pantallas es el lote 102). Las invitaciones y los usuarios de portal se administran como siempre desde el expediente del cliente (`portalusers.manage`, módulo CLIENT_PORTAL).
 
@@ -20,6 +21,7 @@ Respuestas posibles del login (`status`): `ok`, `mfa_required`, `browser_confirm
 - El portal exige aceptar el **documento legal** (capítulo 24) como todos.
 
 ## 3. Lecturas disponibles (este lote)
+<!-- kemi:staff -->
 | Endpoint | Qué devuelve |
 |---|---|
 | `GET /api/v1/portal/me` | La cuenta, el cliente actual y los demás clientes a los que tiene acceso |

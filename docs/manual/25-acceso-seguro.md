@@ -1,4 +1,5 @@
 # 25 — Acceso seguro: bloqueo de cuenta y computadoras de confianza
+<!-- kemi:portal -->
 
 Lote 100 (portal de clientes, 2026-10-17). Dos protecciones que valen para **todos los accesos** (staff hoy; clientes y consignatarios cuando existan sus portales).
 

@@ -56,6 +56,8 @@ const config: ExpoConfig = {
     'expo-secure-store',
     'expo-sharing',
     ['expo-local-authentication', { faceIDPermission: 'Teikem Clientes usa Face ID para abrir el portal sin escribir su contraseña.' }],
+    // Kemi (Lote 218): hablarle en vez de escribirle usa el micrófono y el reconocimiento de voz del aparato (en el navegador, el del propio navegador)
+    ['expo-speech-recognition', { microphonePermission: 'Teikem Clientes usa el micrófono para que le pregunte a Kemi hablando.', speechRecognitionPermission: 'Teikem Clientes usa el reconocimiento de voz para entender lo que le pregunta a Kemi.', androidSpeechServicePackages: ['com.google.android.googlequicksearchbox'] }],
     // APK firmado con la llave propia (TEIKEM_RELEASE_KEYSTORE_*), igual que la app del almacén; sin las variables cae a la llave de depuración
     './plugins/withAndroidReleaseSigning',
   ],

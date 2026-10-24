@@ -1,4 +1,5 @@
 # 34 — Avisos al consignatario
+<!-- kemi:portal -->
 
 Lote 116 (2026-10-18, dictado por Luis; diseño en `docs/p12-avisos-consignatario-diseno.md`). Lo que **recibe el consignatario** (el que recibe el paquete) sobre sus envíos. **Lo prende y lo marca el cliente** (no la compañía), desde el portal.
 

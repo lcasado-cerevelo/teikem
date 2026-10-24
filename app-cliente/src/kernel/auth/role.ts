@@ -15,6 +15,13 @@ function payloadOf(token: string): Record<string, unknown> | null {
   }
 }
 
+/** Quién es (el `sub` del access token), para recordar por persona cosas de la interfaz (dónde dejó a Kemi, si la durmió). Null sin sesión. */
+export function sessionUserKey(accessToken: string | null | undefined): string | null {
+  if (!accessToken) return null
+  const sub = payloadOf(accessToken)?.sub
+  return typeof sub === 'string' || typeof sub === 'number' ? String(sub) : null
+}
+
 export function isConsigneeToken(accessToken: string | null | undefined): boolean {
   if (!accessToken) return false
   const claims = payloadOf(accessToken)

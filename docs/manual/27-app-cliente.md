@@ -1,4 +1,5 @@
 # 27 — App del cliente (Teikem Clientes)
+<!-- kemi:portal -->
 
 Lote 102 (portal de clientes, 2026-10-17). La app **aparte** del cliente: **web** (instalable en el escritorio o la pantalla de inicio) y **móvil** (Android e iOS), hecha con Expo. El cliente entra con su correo; ve **sus** envíos y **sus** avisos. Las reglas de acceso y de aislamiento son las del [capítulo 26](26-portal-acceso.md); las pantallas con sus capturas, en [el manual de pantallas L102](frontend/l102-app-cliente.md).
 

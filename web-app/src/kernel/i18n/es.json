@@ -10394,6 +10394,16 @@
       "bubble": {
         "one": "Te llegó un aviso",
         "many": "Te llegaron {n} avisos"
+      },
+      "micStart": "Hablarle a Kemi",
+      "micStop": "Dejar de escuchar",
+      "listening": "Te escucho…",
+      "voice": {
+        "denied": "No tengo permiso para usar el micrófono. Actívalo en la configuración del navegador.",
+        "no-speech": "No te escuché. Toca el micrófono y vuelve a intentar.",
+        "unsupported": "Este navegador no sabe reconocer la voz. Escribe tu pregunta.",
+        "network": "No pude conectarme al servicio de voz. Revisa tu internet o escribe tu pregunta.",
+        "other": "No pude entenderte. Intenta de nuevo o escribe tu pregunta."
       }
     },
     "picker": {

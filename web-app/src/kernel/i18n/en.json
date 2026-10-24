@@ -10391,6 +10391,16 @@
       "bubble": {
         "one": "You got a notice",
         "many": "You got {n} notices"
+      },
+      "micStart": "Talk to Kemi",
+      "micStop": "Stop listening",
+      "listening": "I'm listening…",
+      "voice": {
+        "denied": "I don't have permission to use the microphone. Turn it on in your browser settings.",
+        "no-speech": "I didn't hear you. Tap the microphone and try again.",
+        "unsupported": "This browser can't recognize speech. Type your question.",
+        "network": "I couldn't reach the voice service. Check your internet or type your question.",
+        "other": "I couldn't understand you. Try again or type your question."
       }
     },
     "picker": {

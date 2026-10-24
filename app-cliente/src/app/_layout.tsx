@@ -17,6 +17,8 @@ import { initTheme } from '../kernel/ui/theme'
 import { EnvironmentBanner, EnvironmentFooter } from '../kernel/ui/EnvironmentBanner'
 import { useT } from '../kernel/i18n/useT'
 import { clearPortalBrand, loadPortalBrand } from '../kernel/brand/portalBrand'
+import { KemiFloating, KemiSleepButton } from '../features/kemi/KemiFloating'
+import { KemiProvider } from '../features/kemi/KemiProvider'
 import { TopBar } from '../features/shell/TopBar'
 import { BrandBar } from '../kernel/ui/BrandBar'
 import { useIsWide } from '../kernel/ui/layout'
@@ -101,7 +103,11 @@ function Gate() {
     if (legalRequired === false && (isPublic || pathname === '/lock' || pathname === '/legal' || pathname === '/')) router.replace(consignee ? '/notices' : '/home')   // el consignatario con acceso propio empieza en sus avisos
   }, [session, locked, legalRequired, pathname, router, consignee])
 
+  // Kemi (Lote 218): con sesión de una persona del cliente (no del consignatario), con el documento legal aceptado y sin el bloqueo de la huella
+  const kemiOn = !!session && !consignee && legalRequired === false && !locked
+
   return (
+    <KemiProvider>
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <EnvironmentBanner />
       {!!session && (wide ? <TopBar /> : <BrandBar />)}
@@ -123,6 +129,9 @@ function Gate() {
           <Spinner />
         </View>
       )}
+      {kemiOn && <KemiFloating />}
+      {kemiOn && !wide && <KemiSleepButton floating />}
     </View>
+    </KemiProvider>
   )
 }

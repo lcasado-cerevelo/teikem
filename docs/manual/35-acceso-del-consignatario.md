@@ -1,4 +1,5 @@
 # 35 — Acceso del consignatario
+<!-- kemi:portal -->
 
 Lote 117 (117a acceso, perfil y bandeja; 117b mensajes con su cliente; 117c pantallas; 117d envíos; 117e aviso por correo; 2026-10-18, dictado por Luis; diseño en `docs/p10-portal-diseno.md`). Un **consignatario** (quien recibe el paquete) puede tener **su propio acceso** al portal. **Solo el cliente se lo da**, por **invitación a un correo**; la mayoría de los consignatarios no tendrá acceso y seguirá recibiendo los avisos con el enlace de seguimiento (capítulo 34).
 

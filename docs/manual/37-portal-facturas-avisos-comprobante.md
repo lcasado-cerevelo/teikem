@@ -1,4 +1,5 @@
 # 37 — Portal del cliente: facturas, mis avisos, comprobante de entrega y consignatarios
+<!-- kemi:portal -->
 
 > Lote 119 (P10, 2026-10-18). Es lo que la persona del cliente ve en su app (portal). Módulo **CLIENT_PORTAL** (y **BILLING** para las facturas). Todo es **del cliente de la sesión**: una cosa de otro cliente responde 404 igual que una que no existe.
 

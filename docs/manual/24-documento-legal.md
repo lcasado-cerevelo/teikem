@@ -1,4 +1,5 @@
 # 24 — Documento legal: política de privacidad y términos de uso
+<!-- kemi:portal -->
 
 Lote 99 (portal de clientes, 2026-10-17). Hay **un solo documento** —«Política de privacidad y términos de uso»— con **una sola versión para toda la plataforma** (staff, clientes del portal y consignatarios). Está en español e inglés, en dos partes: la **Parte 1** (privacidad) y la **Parte 2** (términos de uso). **Es un borrador para revisión de un abogado antes de producción.**
 
@@ -11,6 +12,7 @@ Lote 99 (portal de clientes, 2026-10-17). Hay **un solo documento** —«Políti
 - Quedan fuera por ahora las **sesiones de aparato** de la app de almacén (entran con PIN, sin pantalla web).
 
 ## 2. Quién aceptó y quién no
+<!-- kemi:staff -->
 **Seguridad y auditoría → Aceptación legal** (permiso `admin.audit`): los usuarios de la compañía con su estado —**Aceptó** (con fecha), **Pendiente** o **Versión anterior (AAAA-MM-DD)**—, los pendientes primero. Búsqueda por nombre o correo, filtro por estado, ordenar columnas y exportar todo lo que dice el filtro. Cada aceptación guarda **versión, fecha, idioma, dirección IP y navegador**, y queda un evento en la bitácora de seguridad (`LOGIN`, etapa `legal_accepted`).
 
 ## 2b. Cookies y almacenamiento del navegador
@@ -32,6 +34,7 @@ Teikem **no usa cookies de publicidad ni de seguimiento**: guarda en el navegado
 | Aceptar dos veces la misma versión | No duplica; responde el estado |
 
 ## 5. Datos del operador y cambios del texto (para el dueño)
+<!-- kemi:staff -->
 El texto lleva marcas que **hay que llenar antes de producción** en la configuración del API (`Legal:*`), y las que no se llenen salen tal cual entre corchetes:
 - `Legal:OperatorName` — razón social del operador (hoy `[RAZÓN SOCIAL DEL OPERADOR]`).
 - `Legal:OperatorAddress` — dirección postal.

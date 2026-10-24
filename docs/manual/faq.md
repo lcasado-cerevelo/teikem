@@ -8911,6 +8911,7 @@ Estos avisos son para el cliente. Avisar al consignatario (con su aceptación, q
 El cliente no tiene usuarios activos en el portal ni correos extra en ese aviso. El resumen igual queda en la bandeja del portal si esa casilla está encendida.
 
 ## Lote 99 — Documento legal
+<!-- kemi:portal -->
 
 **`Debe aceptar la política de privacidad y los términos de uso para continuar.` (403 `legal_acceptance_required`)**
 El usuario de esa sesión no ha aceptado la versión vigente del documento. Debe entrar a la web, leerlo hasta el final y pulsar «Acepto». Con eso el resto del API vuelve a responder.
@@ -8922,15 +8923,19 @@ El documento cambió mientras la persona lo leía. Que recargue la pantalla y lo
 Hay que desplazar el texto hasta el final (en el celular, deslizar dentro del cuadro hasta abajo). El botón solo se habilita al llegar ahí.
 
 **¿Cómo sé quién ha aceptado y quién no?**
+<!-- kemi:staff -->
 Seguridad y auditoría → pestaña «Aceptación legal» (permiso `admin.audit`). Los pendientes salen primero; «Versión anterior» es quien aceptó antes de un cambio del documento.
 
 **Salen marcas entre corchetes ([RAZÓN SOCIAL DEL OPERADOR]) en el documento.**
+<!-- kemi:staff -->
 Faltan los datos del operador en la configuración (`Legal:OperatorName`, `Legal:OperatorAddress`, `Legal:ContactEmail`, `Legal:Jurisdiction`). Hay que llenarlos antes de producción.
 
 **¿Qué pasa con los usuarios que ya existen cuando se pase a producción?**
+<!-- kemi:staff -->
 No tienen aceptación guardada, así que la verán en su siguiente ingreso. Cuando el documento cambie, todos la verán otra vez.
 
 ## Lote 100 — Acceso seguro
+<!-- kemi:portal -->
 
 **«Confirme esta computadora» — me pide confirmar por correo otra vez.**
 Entró desde un navegador que no se reconoce: otro navegador, modo incógnito, datos del navegador borrados, 30 días sin usar esa computadora o cambio de contraseña. Abra el enlace del correo (puede ser desde el teléfono), vuelva a la pantalla de entrada y entre otra vez.
@@ -8957,6 +8962,7 @@ Esa computadora ya se quitó o no es del usuario de la sesión.
 Mi cuenta → Sesiones → Mis computadoras de confianza → Quitar.
 
 ## Lote 101 — Portal del cliente (acceso)
+<!-- kemi:portal -->
 
 **`El usuario no tiene acceso activo al portal.` (403)**
 La cuenta existe pero su usuario de portal no está ACTIVO en ningún cliente (suspendido, dado de baja o sin aceptar la invitación). Revise el expediente del cliente → Usuarios de portal.
@@ -8980,6 +8986,7 @@ El código se recuerda 30 días por computadora de confianza. Lo vuelve a pedir 
 Valen 48 horas y una sola vez; pida al administrador que la reenvíe (el enlace anterior deja de servir).
 
 ## Lote 102 — App del cliente
+<!-- kemi:portal -->
 
 **«No hay conexión con el servidor. Revise su internet e intente de nuevo.»**
 La app no llegó al servidor (sin internet, o la dirección del API está mal en esta compilación). Con internet, avise a soporte: la dirección sale de `EXPO_PUBLIC_API_URL` / `TEIKEM_API_URL`.
@@ -9032,6 +9039,7 @@ Un estatus lateral (hoy, Intento fallido) no avanza la barra: se queda donde iba
 Viene apagado: el administrador lo enciende en Ajustes de la compañía → General → Seguimiento público.
 
 ## Idioma y tema (app del cliente y página pública)
+<!-- kemi:portal -->
 
 **¿Cómo cambio al modo oscuro?**
 En el login, la página «¿Cómo va mi orden?», el documento legal o Ajustes: **Automático / Claro / Oscuro**. Automático sigue al teléfono o al navegador; Claro y Oscuro mandan sobre el sistema. Se recuerda en ese aparato.
@@ -9043,6 +9051,7 @@ En los mismos lugares: **Español / English**. El español es el de omisión; la
 Está en Automático y el teléfono o el navegador está en modo oscuro. Escoja «Claro» para fijarlo.
 
 ## Mensajes con el equipo de servicio al cliente (Lote 104)
+<!-- kemi:portal -->
 
 **«Escriba el mensaje.» (400)** — El mensaje está vacío o solo tiene espacios. Escriba el texto y envíe de nuevo.
 
@@ -9063,6 +9072,7 @@ Está en Automático y el teléfono o el navegador está en modo oscuro. Escoja 
 **¿Se pueden adjuntar archivos?** No, por ahora solo texto.
 
 ## Nueva orden del cliente (Lote 105)
+<!-- kemi:portal -->
 
 **No veo «Nueva orden» en la app.** Su rol es de solo consulta (`CLIENT_READONLY`); por API da 403 «Su usuario solo puede consultar…». Pídale a la compañía que cambie su rol.
 
@@ -9262,6 +9272,7 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **El cargo por devolución no apareció en la factura.** La orden debe estar Devuelta con monto mayor que cero, no facturado antes, y la corrida debe incluir flete y cubrir la fecha en que quedó Devuelta.
 
 ## Avisos al consignatario (Lote 116)
+<!-- kemi:portal -->
 
 **¿Quién prende los avisos al consignatario?** El cliente, desde el portal (administrador u operador); la compañía no. Ver capítulo 34.
 
@@ -9330,6 +9341,7 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **¿Puedo adjuntar fotos a la entrega?** Todavía no: falta decidir dónde se guardan los archivos.
 
 ## Portal del cliente: facturas, mis avisos y comprobante (Lote 119)
+<!-- kemi:portal -->
 
 **¿Puedo pagar o marcar como pagada una factura desde la app?** No: las facturas son solo de consulta. Los pagos los registra la compañía; en cuanto lo hace, la factura muestra el pago y el saldo.
 
@@ -9348,6 +9360,7 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **¿Quién registró la entrega?** El comprobante del cliente no dice el nombre del usuario: solo «el personal de la compañía». La compañía sí lo ve en su ficha de la orden.
 
 ## Portal del cliente: mi perfil e indicadores (Lote 120)
+<!-- kemi:portal -->
 
 **¿Puedo cambiar mi correo desde el portal?** No: el correo es con el que usted entra y cambiarlo exige verificarlo. Pídale al administrador de su empresa o de la compañía que lo cambie. Lo que sí cambia solo es su nombre y su contraseña (Ajustes → Mi perfil y mi contraseña).
 
@@ -9739,15 +9752,18 @@ No: es una salida de inventario sin entrega (`El despacho {número} es de un avi
 **«La compañía exige recibir contra un aviso de llegada de un cliente, no contra una orden de compra.» / «…contra una orden de compra, no contra el aviso de llegada de un cliente.» (409).** El documento escogido no es del tipo exigido; use el correcto o cambie la exigencia.
 
 ## Portal del cliente de almacén (Lote 153)
+<!-- kemi:portal -->
 
 **«Su acceso no incluye ver el valor del inventario.» (403).** Su acceso al portal es de solo lectura; el valor lo ven los accesos de administrador y de operador del cliente. Pídaselo al administrador de su empresa.
 
 **No veo Inventario en el portal.** La compañía de este acceso no tiene el módulo de almacén; si tiene otro acceso en una compañía con almacén, cámbiese a él con «Cambiar de acceso».
 
 **¿Qué significa "Actualizar el precio del producto requiere el permiso de administrar inventario." (403)**
+<!-- kemi:staff -->
 Marcó «Actualizar el precio del producto con este» en un aviso de llegada sin tener `inventory.manage`. Desmarque la casilla (el aviso se guarda con su precio y el producto sigue con el suyo) o pida el permiso a su administrador.
 
 **El aviso de llegada me muestra «El producto tiene guardado X; este precio es distinto.» ¿Es un error?**
+<!-- kemi:staff -->
 No, es solo informativo. El precio del aviso se usa para esa recepción; el costo del producto cambia solo si el producto no tenía costo o si marca «Actualizar el precio del producto con este».
 
 **¿Qué significa «Su compañía no le permite crear productos / avisos de llegada / avisos de salida desde el portal.»? (403)**
@@ -9769,30 +9785,39 @@ Ya se empezó a recibir contra ese aviso. Elimine el recibo abierto para poder e
 Ese aviso lo generó una orden de compra; edite la orden, no el aviso.
 
 **Al guardar un aviso de salida sale «Error interno.» (500)**
+<!-- kemi:staff -->
 Era un defecto de la versión anterior (el contador SAL-##### no estaba reconocido por el API) y ya está corregido. Si lo ve, actualice el API y repita; si persiste, avise a soporte con el código de correlación del error.
 
 **¿Cómo se guardan los teléfonos y para qué sirve el prefijo? (Lote 162)**
+<!-- kemi:staff -->
 Todo teléfono se guarda **solo con dígitos** y con su **prefijo internacional** aparte (`1` para Puerto Rico y Estados Unidos, `593` para Ecuador…). En cada formulario de teléfono (contactos, personas del cliente, consignatarios, proveedores) hay un campo **Prefijo** a la izquierda del número, que arranca con el de la compañía. El formato con que se ve el número lo define cada compañía en **Ajustes → Región y formatos** (`Código de país` y `Máscara del teléfono`); un número con otro prefijo se ve como «+593 991234567».
 
 **¿Qué significa «Prefijo de país inválido: use de 1 a 4 dígitos, por ejemplo 1.»? (400)**
+<!-- kemi:staff -->
 El prefijo tiene que ser de 1 a 4 dígitos y no empezar en 0 (se acepta con «+»: `+593`). Corríjalo en el campo Prefijo.
 
 **¿Qué significa «El teléfono no empieza con el prefijo de país indicado.»? (400)**
+<!-- kemi:staff -->
 Se escribió el número con «+» y un prefijo (por ejemplo `+593 …`) pero en el campo Prefijo hay otro (por ejemplo `+1`). Deje solo uno o que coincidan.
 
 **¿Qué significa «El teléfono con «+» necesita el prefijo de país en su campo.»? (400)**
+<!-- kemi:staff -->
 El número empieza con «+» pero no se pudo reconocer el país. Escriba el prefijo en su campo y el número sin el «+».
 
 **Después del cambio, un teléfono antiguo se ve sin formato o sin prefijo. ¿Qué hago?**
+<!-- kemi:staff -->
 Los que traían texto (por ejemplo «787-555-1234 ext. 5») o un «+» de un país distinto al de la compañía no se tocaron al limpiar los datos. Ábralos con **Editar**, ponga el número y el prefijo correctos y guarde.
 
 **¿Por qué las reclamaciones ahora empiezan con RCL- y no con REC-? (Lote 164)**
+<!-- kemi:staff -->
 El recibo ya usaba `REC-#####` y un `REC-00012` podía ser un recibo o una reclamación. Desde el Lote 164 las reclamaciones son `RCL-#####` (las existentes se renombraron solas); el recibo conserva `REC-#####`.
 
 **¿Qué puedo buscar en «Buscar o ejecutar»? (Lote 167)**
+<!-- kemi:staff -->
 Además de las pantallas del menú, busca registros por número o nombre: envíos (número, conduce, empaque, factura del cliente, paquete), rutas, reclamaciones (`RCL-`), clientes, almacenes, zonas, posiciones, productos (SKU y nombre), recibos, recolecciones y empaques, avisos de salida, proveedores, órdenes de compra y de venta, facturas, rentas y teléfonos. Un solo resultado exacto se abre solo; si hay varios, se muestran para escoger. Solo aparecen los tipos que su usuario puede ver. Ver capítulo 42.
 
 **¿Dónde veo la política de privacidad y los términos de uso estando dentro de la aplicación?**
+<!-- kemi:staff -->
 Al pie del menú lateral, en letra chica: **Privacidad** y **Términos de uso** (abren el documento en una pestaña nueva). Con el menú contraído el pie no se ve: expándalo. En el celular, abra el menú.
 
 **¿Dónde veo la política de privacidad y los términos de uso en el portal del cliente?**
@@ -10636,6 +10661,7 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **En la web una pieza que existe dice «No… no es de los choferes escogidos».** Está filtrando por ruta, ciudad o chofer y esa pieza es de otro. No se cuenta ni cambia nada. Cambie la selección o use **Todo**.
 
 ## Lote 213 — Portal del cliente: pie, filtro de fecha, Nuevo envío igual al del personal, Mensajes y marcar varios consignatarios
+<!-- kemi:portal -->
 
 **En el teléfono o la tableta no me sale la entrada rápida de envíos.** Es a propósito: en la app instalada, la tableta y el celular (también en su navegador) solo existe la **detallada**. La rápida es de la web en una computadora (ventana de 900 px o más). La forma depende del aparato, no solo del ancho de la ventana.
 
@@ -10700,6 +10726,7 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **Quiero llenar más datos (persona de contacto, ventana horaria, notas).** Use el botón «+» junto al campo (abre la ventana completa) o edite el consignatario después en Catálogo → Consignatarios.
 
 ## Lote 213 (tanda 2) — Portal del cliente: PDF y Excel con logo, consignatario nuevo en la misma pantalla
+<!-- kemi:portal -->
 
 **¿Puedo exportar a PDF y a Excel desde el portal?** Sí, en la web: «Exportar · Excel · CSV · PDF» al pie de cada tabla (Mis envíos, Mis facturas, Mi almacén, Mis consignatarios). Se exporta todo lo filtrado. En el celular solo hay CSV.
 
@@ -10718,6 +10745,7 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **El consignatario nuevo no aparece en «Mis consignatarios».** Aparece en cuanto se graba; recargue la pantalla de Avisos/Consignatarios si la tenía abierta.
 
 ## Lote 213 (tanda 3) — Colores de los PDF y logo de Teikem; columnas de la rápida
+<!-- kemi:portal -->
 
 **¿De qué color sale el PDF?** Del color de la compañía: el encabezado de la tabla y el título usan el color de la barra que la compañía definió en Ajustes → Marca, y la línea bajo el encabezado, su color de acento (con la marca de siempre, azul marino y naranja). Vale igual para las tablas del portal y de la web de la compañía, las tablas agrupadas y los reportes.
 
@@ -10757,3 +10785,72 @@ Hay entradas guardadas, pero ninguna del rango elegido con esas palabras. Borre 
 **En la app instalada, ¿cómo exporto una tabla a Excel, CSV o PDF?** Igual que en la web: al pie de la tabla (o de la lista de tarjetas) están «Exportar · Excel · CSV · PDF». En la app el archivo se guarda en el aparato y se abre el menú de compartir: de ahí lo guarda en Archivos o Drive, lo manda por correo o WhatsApp, o lo imprime. Los tres formatos llevan lo filtrado completo (hasta 5000 filas); Excel y PDF llevan arriba el logo, la compañía, el título, la fecha y los filtros, con los colores de su compañía. Los Informes exportan igual (la fila de totales va incluida).
 
 **«Este aparato no puede compartir archivos.»** El teléfono o la tableta no tiene ninguna app que reciba archivos (o el sistema la bloqueó). Instale o active un gestor de archivos y vuelva a intentarlo; desde la web de una computadora el archivo se baja directo.
+
+## Portal del cliente de almacén: crear, editar y cancelar (Lotes 154–159)
+<!-- kemi:portal -->
+
+**¿Cómo creo un producto?**
+En **Almacén → Productos** toque **Nuevo producto**. El SKU y el nombre son obligatorios; el código de barras, la marca y el costo de compra son opcionales. Marque «Se controla por lote» si el producto lleva número de lote y vencimiento. El producto queda a nombre de su compañía cliente.
+
+**¿Cómo cambio un producto que ya creé?**
+En la lista de **Productos**, toque **Editar** en la fila. Puede cambiar el nombre, el código de barras, la marca y el costo; si deja el costo vacío se conserva el actual. El SKU, el control por lote o serie y la unidad no se cambian desde el portal.
+
+**No me aparece «Nuevo producto», «Llegadas» o «Salidas».**
+La compañía enciende esas opciones cliente por cliente, y solo las usan los accesos de administrador y de operador; un acceso de solo lectura no las ve. Pídale a su contacto en la compañía que se las active.
+
+**¿Cómo aviso que va a llegar mercancía?**
+En **Almacén → Llegadas** toque **Nuevo aviso de llegada**: escoja el almacén (si hay uno solo se escoge solo), escriba su referencia (por ejemplo su orden de compra), la fecha en que espera la llegada si la sabe, y agregue una línea por producto con la cantidad. En un producto por lote puede indicar el lote y su vencimiento (el vencimiento solo se escribe junto con el lote).
+
+**¿Puedo cambiar un aviso de llegada después de crearlo?**
+Sí, con **Editar**, mientras siga esperado: puede cambiar la referencia, la fecha y las líneas. Cuando el almacén ya empezó a recibirlo (tiene un recibo abierto) ya no se edita desde el portal; avise a la compañía. Editar no crea otro aviso: es el mismo.
+
+**¿Cómo cancelo un aviso de llegada?**
+Con **Cancelar aviso**, mientras siga esperado y sin recibo abierto. Queda como «Cancelada» y no se puede reactivar; si todavía va a llegar la mercancía, cree uno nuevo.
+
+**¿Cómo pido una salida de mi mercancía?**
+En **Almacén → Salidas** toque **Nuevo aviso de salida**: almacén, referencia, destino (retiro, dirección o nota), fecha requerida si la tiene, y una línea por producto con la cantidad. Al guardar, el sistema **reserva en el acto** lo que haya disponible; lo que falte queda pendiente («con pendiente»).
+
+**¿Puedo cambiar un aviso de salida?**
+Sí, con **Editar**, mientras siga «Solicitado»: referencia, destino, fecha, notas y la cantidad de cada línea. Al cambiar una cantidad, la reserva se reajusta sola (si pide más, se reserva más de lo que haya; si pide menos, se libera la diferencia). Cuando el almacén ya empezó a despacharlo no se edita.
+
+**¿Qué pasa con lo reservado si cancelo una salida?**
+Se libera: esas unidades vuelven a estar disponibles. La cancelación (**Cancelar aviso**) solo se hace mientras el aviso sigue «Solicitado».
+
+**¿Por qué mi «Disponible» es menor que lo que tengo «En mano»?**
+La diferencia es lo **reservado** por sus avisos de salida abiertos: está apartado para ellos y no se puede prometer dos veces.
+
+**¿Puedo ver o cambiar lo de otro cliente?**
+No. Cada cliente ve, edita y cancela solamente lo suyo; lo ajeno ni siquiera aparece.
+
+## Kemi: la asistente de Teikem, con voz (Lote 218)
+<!-- kemi:portal -->
+
+**¿Qué es Kemi y cómo la uso?**
+Kemi es la mascota asistente de Teikem. Toque a Kemi (abajo a la derecha) y escoja «Pregúntame cómo usar el portal»: escriba o diga su pregunta y Kemi busca la respuesta en el manual y las preguntas frecuentes y le muestra las opciones. También le avisa cuando le llega un mensaje nuevo, y puede llevarla a otro lugar arrastrándola.
+
+**¿Cómo le hablo a Kemi en vez de escribirle?**
+En la caja de pregunta toque el micrófono, diga su pregunta y espere: lo que Kemi entiende aparece en el campo y, al terminar de hablar, ella pregunta sola. Toque el micrófono otra vez si quiere dejar de escuchar.
+
+**No me aparece el micrófono de Kemi.**
+Su navegador o su aparato no sabe reconocer la voz. En la web funciona en Chrome, Edge y Safari (Firefox no lo trae); en el teléfono, con el reconocimiento de voz del aparato. Mientras tanto escríbale su pregunta.
+
+**Kemi dice «No tengo permiso para usar el micrófono».**
+Bloqueó el micrófono. En el navegador, toque el candado junto a la dirección y permita el micrófono para el sitio; en el teléfono, actívelo en Ajustes del aparato (micrófono y reconocimiento de voz) para esta aplicación. Después toque el micrófono otra vez.
+
+**Kemi dice «No te escuché».**
+No detectó voz. Hable después de tocar el micrófono, cerca del aparato y sin ruido fuerte, o escriba la pregunta.
+
+**¿Teikem guarda mi voz?**
+No. El audio lo procesa el servicio de voz de su navegador o de su teléfono y a Teikem solo le llega el texto de la pregunta, igual que si la hubiera escrito.
+
+**Kemi contesta en español aunque tengo la pantalla en inglés.**
+El manual y las preguntas frecuentes están escritos en español: en inglés Kemi entiende su pregunta, pero las respuestas salen en español.
+
+**Kemi no sabe contestar mi pregunta.**
+Pruebe con otras palabras, toque «No» en «¿Te contesté?» para que busque por otro lado, o escríbale a su contacto en la compañía desde la pestaña Mensajes. Kemi del portal solo conoce lo que el cliente puede hacer en el portal; lo del personal de la compañía no lo sabe.
+
+**¿Cómo duermo o despierto a Kemi?**
+En el panel de Kemi toque «Dormir a Kemi»: se esconde junto al menú (en el teléfono, en la esquina de arriba) y no muestra globos. Un toque en ese botón la despierta. Se acuerda aunque recargue la página.
+
+**No me sale Kemi.**
+Kemi aparece para las personas del cliente con sesión iniciada, después de aceptar el documento legal. Los consignatarios con acceso propio no la tienen.

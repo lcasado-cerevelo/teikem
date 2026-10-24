@@ -228,7 +228,10 @@ export function KemiFloating() {
         aria-haspopup="dialog"
         aria-expanded={kemiOpen}
         onClick={() => {
-          if (!justDragged.current) setKemiOpen(!kemiOpen)
+          if (!justDragged.current) {
+            if (!kemiOpen) setAsking(false)   // al volver a abrirla se ven sus opciones, no la pregunta de la vez pasada
+            setKemiOpen(!kemiOpen)
+          }
         }}
         onPointerDown={onDown}
         onPointerMove={onMove}
