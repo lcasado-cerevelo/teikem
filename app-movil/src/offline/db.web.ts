@@ -88,7 +88,7 @@ export const storage: OfflineStorage = {
     return orders.filter((o) => o.pieces.some((p) => p.number === number)).map((order) => ({ order: { ...order, pieces: order.pieces.map((p) => ({ ...p, actions: [...p.actions] })) } }));
   },
 
-  async scanRecord(tenantId, orderPublicId, pieceNumber, action, newStatus) {
+  async scanRecord(tenantId, orderPublicId, pieceNumber, action, newStatus, effects) {
     const gen = currentGen(tenantId);
     if (gen == null) return;
     const order = scanGens.get(tenantId)?.get(gen)?.find((o) => o.publicId === orderPublicId);
@@ -97,6 +97,8 @@ export const storage: OfflineStorage = {
     if (piece && !piece.actions.includes(action)) piece.actions.push(action);
     if (piece) piece.missing = null;
     if (newStatus) order.statusCode = newStatus;
+    if (effects?.removeActions?.length) for (const p of order.pieces) p.actions = p.actions.filter((a) => !effects.removeActions!.includes(a));
+    if (effects?.clearTrip) { order.tripCode = null; order.tripPublicId = null; order.driverPublicId = null; }
   },
 
   async scanOrderCount(tenantId) {

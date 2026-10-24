@@ -10617,7 +10617,7 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 
 **Escaneo una pieza que sí existe y dice «No» (rojo) con «no es de las rutas / ciudades / choferes escogidos».** Escogiste escanear **por ruta, ciudad o chofer** y esa pieza es de otro. Toca **Cambiar** arriba para escoger otra selección o **Todo**.
 
-**La pantalla se paró con «Atención: el envío ya va más adelante».** Escaneaste un proceso anterior al estatus en que ya está el envío (por ejemplo Enrutar sobre uno que ya está En tránsito). El sistema para para que decidas: **Cancelar** no hace nada; **Contar la pieza** la cuenta pero el estatus **no retrocede**.
+**La pantalla se paró con «Atención: el envío ya va más adelante».** Escaneaste un proceso anterior al estatus en que ya está el envío (por ejemplo Enrutar sobre uno que ya está En tránsito). El sistema para para que decidas: **Cancelar** no cambia nada; **Regresar el estatus** hace que el envío **regrese** al estatus de lo que escaneas. Es la forma de regresar un estatus escaneando. Si el estatus es anterior a Asignada, el envío sale de su ruta.
 
 **Dice «Ok».** «Ok» significa que **esa misma pieza** ya se había escaneado con esa acción. Una pieza nueva dice «Sí» aunque otra pieza del mismo envío ya hubiera movido el estatus: el escaneo es a la pieza y cada pieza nueva se cuenta.
 
@@ -10629,5 +10629,5 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 
 **La lupa dice «Sin señal: solo se muestra lo que hay en lo bajado».** Una pieza cancelada o en estatus final no se baja al teléfono; aparece cuando haya señal.
 
-**En la web salió una ventana «Atención: el envío ya va más adelante».** La pieza es de un envío cuyo estatus va después de la acción escogida. El sistema no contó nada. **Cancelar** lo deja así; **Contar la pieza** la cuenta, pero el estatus del envío no retrocede. Si el envío ya estaba en ese mismo estatus no sale la ventana.
+**En la web salió una ventana «Atención: el envío ya va más adelante».** La pieza es de un envío cuyo estatus va después de la acción escogida. El sistema no cambió nada. **Cancelar** lo deja así; **Regresar el estatus** hace que el envío regrese al estatus de la acción (si es anterior a Asignada, sale de su ruta y el chofer recibe un aviso; los escaneos posteriores de sus piezas se borran). Si el envío ya estaba en ese mismo estatus no sale la ventana.
 

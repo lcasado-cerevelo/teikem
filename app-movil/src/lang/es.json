@@ -543,14 +543,14 @@
       "ROUTE_MANY_HINT": "Con varias rutas, los envíos que no estén en ninguna de ellas no se aceptan (para poner envíos libres en una ruta, escoge solo una).",
       "SAY_WARN": "Atención",
       "BEYOND_TITLE": "Atención: el envío ya va más adelante",
-      "BEYOND_BODY": "La pieza {{piece}} es del envío {{order}}, que está en «{{current}}», un estatus que va DESPUÉS de «{{target}}» (lo que estás escaneando: {{action}}).\n\nSi sigues, la pieza solo se cuenta y el estatus NO retrocede. ¿Qué quieres hacer?",
-      "BEYOND_GO": "Contar la pieza",
+      "BEYOND_BODY": "La pieza {{piece}} es del envío {{order}}, que está en «{{current}}», un estatus que va DESPUÉS de «{{target}}» (lo que estás escaneando: {{action}}).\n\nSi sigues, el envío REGRESA a «{{target}}». ¿Qué quieres hacer?",
+      "BEYOND_GO": "Regresar el estatus",
       "MSG_BEYOND": "La pieza {{piece}}: el envío {{order}} ya está en «{{current}}», más adelante que «{{target}}». Se paró el escaneo.",
       "MSG_SAME_STATUS": "La pieza {{piece}} se contó: el envío {{order}} ya estaba en «{{status}}».",
       "MSG_NOT_IN_ROUTE": "La pieza {{piece}} (envío {{order}}) no es de las rutas escogidas.",
       "MSG_NOT_IN_CITY": "La pieza {{piece}} (envío {{order}}) no es de las ciudades escogidas.",
       "MSG_NOT_IN_DRIVER": "La pieza {{piece}} (envío {{order}}) no es de los choferes escogidos.",
-      "BEYOND_HELP": "Si sigues, la pieza solo se cuenta y el estatus NO retrocede. ¿Qué quieres hacer?",
+      "BEYOND_HELP": "Si sigues, el envío REGRESA al estatus que estás escaneando. ¿Qué quieres hacer?",
       "LK_BUTTON": "Buscar una pieza en la base",
       "LK_TITLE": "Buscar una pieza",
       "LK_HELP": "Escribe el número de la pieza para ver qué hay en la base, aunque esté cancelada, en estatus final, dada de baja o en una reclamación. No cuenta como escaneo.",
@@ -584,7 +584,8 @@
       "LK_FLAG_PIECE_CLAIMED": "En reclamación",
       "LK_FLAG_PIECE_RESOLVED": "Reclamación cerrada",
       "LK_FLAG_REAPPEARED": "Reapareció",
-      "LK_FLAG_IN_ROUTE": "En una ruta"
+      "LK_FLAG_IN_ROUTE": "En una ruta",
+      "MSG_MOVED_BACK": "La pieza {{piece}} regresó el envío {{order}} de «{{current}}» a «{{status}}»."
     }
   }
 }

@@ -20,7 +20,10 @@ public static class ScanActions
 
     public const string PieceNotFoundMessage = "No se encontró la pieza.";   // el número del envío no se escanea: lo que se escanea son las piezas
     public static string BeyondMessage(string piece, string order, string currentLabel, string targetLabel)
-        => $"La pieza {piece}: el envío {order} ya está en «{currentLabel}», que va después de «{targetLabel}». Si sigue, la pieza solo se cuenta y el estatus no retrocede.";
+        => $"La pieza {piece}: el envío {order} ya está en «{currentLabel}», que va después de «{targetLabel}». Si sigue, el envío regresará a «{targetLabel}».";
+    public static string MovedBackMessage(string piece, string order, string fromLabel, string toLabel)
+        => $"La pieza {piece} regresó el envío {order} de «{fromLabel}» a «{toLabel}».";
+    public static string MovedBackComment(string piece, string toLabel) => $"Regresado a «{toLabel}» al escanear la pieza {piece}";
     public const string InvalidActionMessage = "Escoja la acción: recoger, llegó, enrutar, salir o devolver.";
 
     /// <summary>Acción normalizada (sin distinguir mayúsculas) o null si no es una de las cuatro.</summary>
@@ -66,7 +69,10 @@ public static class ScanActionOutcomes
     public const string Duplicate = "DUPLICATE";
     /// <summary>Lote 111: una pieza perdida o reclamada apareció: se quitó de su reclamación y su orden nueva se crea al cerrar el conteo.</summary>
     public const string Reappeared = "REAPPEARED";
-    /// <summary>Lote 216: el envío de la pieza ya va MÁS ADELANTE que el estatus de la acción: no se cuenta nada y se advierte; repetir el escaneo con ConfirmBeyond cuenta la pieza sin hacer retroceder el estatus.</summary>
+    /// <summary>
+    /// Lote 216: el envío de la pieza ya va MÁS ADELANTE que el estatus de la acción. El sistema PARA y advierte (no cuenta nada); si la persona confirma (ConfirmBeyond) el envío REGRESA a ese estatus —escanear hacia atrás es la
+    /// única forma de regresarlo—: sale de la ruta si el estatus es anterior a Asignada y se borran los escaneos de acciones posteriores de sus piezas, para poder volver a avanzar escaneando.
+    /// </summary>
     public const string Beyond = "BEYOND";
     /// <summary>Lote 112: la pieza escaneada con «Devolver» viaja en la orden de vuelta (la orden queda «Devuelta»).</summary>
     public const string Returned = "RETURNED";

@@ -20,7 +20,7 @@ namespace Teikem.Infrastructure.Services;
 /// - Faltantes: cuando la orden pasa a la acción siguiente sin alguna pieza (o al cerrar el conteo), esa pieza queda «Por verificar». Si aparece (se escanea después) deja de ser faltante.
 /// Nada de esto revisa tarifa, crédito ni cliente: eso se revisó al someter la orden. Silencioso: nunca pregunta ni interrumpe; cada escaneo contesta con su resultado y su palabra (Sí / No / Ok).
 /// </summary>
-public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, OutboundScanService outbound, ReappearedOrderService reappeared, ReturnOrderService returns, PermissionService? permissions = null)
+public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, OutboundScanService outbound, ReappearedOrderService reappeared, ReturnOrderService returns, PermissionService? permissions = null, Teikem.Infrastructure.Trips.RouteWriter? writer = null)
 {
     private readonly Dictionary<string, string> labels = new(StringComparer.OrdinalIgnoreCase);
 
@@ -157,7 +157,42 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
                 return;
             }
 
-            if (steps.Count == 0)
+            // Lote 216: confirmado, el envío REGRESA al estatus de la acción (escanear hacia atrás es la forma de regresarlo).
+            var movedBack = steps.Count == 0 && !countsAtWarehouse && current.Code != targetForOrder;
+            if (movedBack)
+            {
+                var targetSort = pipeline.First(x => x.Code == targetForOrder).SortOrder;
+                var to = await statuses.AdvanceSkippingAsync(StatusDomains.OrderStatus, EntityTypes.TransportOrder, orderId, order.StatusCodeId, new[] { targetForOrder }, ScanActions.MovedBackComment(piece.PackageNumber, LabelOf(targetForOrder)), ct2);
+                order.StatusCodeId = to.StatusCodeId;
+                // Un envío «Sin asignar» (o anterior) no puede seguir en una ruta: sale de ella (y se avisa al chofer si la ruta ya estaba despachada).
+                var assignedSort = pipeline.FirstOrDefault(x => x.Code == OrderStatuses.Assigned)?.SortOrder ?? int.MaxValue;
+                if (writer is not null && targetSort < assignedSort)
+                {
+                    var tripId = await db.TripOrders.AsNoTracking().Where(l => l.TransportOrderId == orderId && l.IsCurrent).Select(l => (int?)l.TripId).FirstOrDefaultAsync(ct2);
+                    if (tripId is int tid)
+                    {
+                        var trip = await Teikem.Infrastructure.Trips.TripQueries.LockTripAsync(db, tid, ct2);
+                        var tripStatus = await db.StatusCodes.AsNoTracking().Where(x => x.StatusCodeId == trip.StatusCodeId).Select(x => x.InternalCode).FirstAsync(ct2);
+                        if (TripRules.IsEditable(tripStatus)) await writer.ReleaseOrderAsync(trip, orderId, ct2);
+                        else
+                        {
+                            await writer.ReleaseOrderLiveAsync(trip, orderId, ct2);
+                            if (trip.DriverId is int driverId)
+                                db.DriverNotices.Add(new DriverNotice { TenantId = trip.TenantId, DriverId = driverId, Kind = DriverNoticeCodes.StopRemoved, TripId = trip.TripId, Title = DriverNoticeRules.StopRemovedTitle(trip.Code), Body = DriverNoticeRules.StopRemovedBody(orderFacts.OrderNumber), CreatedBy = tenant.UserId });
+                        }
+                    }
+                }
+                // Los escaneos de acciones posteriores de sus piezas ya no valen: se borran para que, al volver a avanzar, cada pieza cuente de nuevo.
+                var rank = ScanActions.Rank(action);
+                var pieceIds = await db.OrderPieces.AsNoTracking().Where(p => p.TransportOrderId == orderId).Select(p => p.OrderPieceId).ToListAsync(ct2);
+                var later = (await db.OrderPieceScans.Where(sc => pieceIds.Contains(sc.OrderPieceId)).ToListAsync(ct2)).Where(sc => ScanActions.Rank(sc.Action) > rank).ToList();
+                db.OrderPieceScans.RemoveRange(later);
+                await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
+                toCode = to.InternalCode;
+                skipped = Array.Empty<string>();
+                message = ScanActions.MovedBackMessage(piece.PackageNumber, orderFacts.OrderNumber, current.Label, LabelOf(to.InternalCode));
+            }
+            else if (steps.Count == 0)
             {
                 // La orden ya está en ese estatus o más adelante: la pieza solo se cuenta. Con Enrutar, si ya está en una ruta se dice cuál.
                 if (action == ScanActions.Route)
@@ -212,7 +247,7 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
             if (tracked.MissingStatus == PieceMissing.ToVerify) { tracked.MissingStatus = null; tracked.MissingAtUtc = null; }
             await db.SaveChangesAsync(ct2);
 
-            done = await ResultAsync(action, steps.Count > 0 ? ScanActionOutcomes.Applied : ScanActionOutcomes.Counted, message, orderFacts, current, toCode, skipped, route, piece.PackageNumber, orderId, ct2);
+            done = await ResultAsync(action, steps.Count > 0 || movedBack ? ScanActionOutcomes.Applied : ScanActionOutcomes.Counted, message, orderFacts, current, toCode, skipped, route, piece.PackageNumber, orderId, ct2);
         }, ct);
         return done!;
     }

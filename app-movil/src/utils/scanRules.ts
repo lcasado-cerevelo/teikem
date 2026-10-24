@@ -101,16 +101,23 @@ export interface ApplyOptions {
   chosenTripCode?: string | null;
   /** Cómo se escanea (todo / ruta / ciudad / chofer). Por omisión, todo. */
   scope?: ScanScope;
-  /** El usuario ya vio la advertencia de «estatus más adelante» y pidió seguir: la pieza solo se cuenta. */
+  /** El usuario ya vio la advertencia de «estatus más adelante» y pidió seguir: el envío regresa al estatus de la acción. */
   confirmedBeyond?: boolean;
 }
 
 /**
  * Aplica una acción a una pieza del envío con lo bajado. Devuelve el resultado, el estatus nuevo del envío (o null si no cambia) y si la pieza quedó escaneada con la acción.
  * Reglas (las del servidor): un estatus final no se toca; repetir pieza+acción es duplicado; un envío «pick up» no sale a ruta ni a chofer; la acción lleva el envío a su estatus
- * solo si ese estatus está más adelante (desde un lateral, como Intento fallido, se cuenta desde «Recogida»); si no, la pieza solo se cuenta.
+ * solo si ese estatus está más adelante (desde un lateral, como Intento fallido, se cuenta desde «Recogida»); si el envío ya va más adelante, para y advierte, y confirmado lo REGRESA a ese estatus; si ya estaba en ese estatus, la pieza solo se cuenta.
  */
-export function applyScan(order: LocalOrder, pieceNumber: string, action: ScanAction, statuses: SnapStatus[], options: ApplyOptions = {}): { result: LocalScanResult; nextStatus: string | null; recorded: boolean } {
+export interface ScanEffects {
+  /** Acciones cuyos escaneos de las piezas del envío se olvidan (al regresar el estatus, las posteriores ya no valen). */
+  removeActions?: string[];
+  /** El envío sale de su ruta (el estatus al que regresó es anterior a Asignada). */
+  clearTrip?: boolean;
+}
+
+export function applyScan(order: LocalOrder, pieceNumber: string, action: ScanAction, statuses: SnapStatus[], options: ApplyOptions = {}): { result: LocalScanResult; nextStatus: string | null; recorded: boolean; effects?: ScanEffects } {
   const label = (code: string) => statuses.find((s) => s.code === code)?.label ?? code;
   const piece = order.pieces.find((p) => p.number === pieceNumber);
   const base = { orderNumber: order.orderNumber, fromStatus: order.statusCode, toStatus: null as string | null, routeNote: null as ScanMessage | null };
@@ -145,9 +152,20 @@ export function applyScan(order: LocalOrder, pieceNumber: string, action: ScanAc
   const sameStatus = countsAtWarehouse || order.statusCode === target;
   const beyond = !sameStatus && !!targetStage && targetStage.sortOrder <= fromSort;
 
-  // 4. El envío ya va MÁS ADELANTE que lo que se escanea: el sistema PARA y advierte; solo sigue si la persona lo confirma (la pieza se cuenta, el estatus no retrocede).
+  // 4. El envío ya va MÁS ADELANTE que lo que se escanea: el sistema PARA y advierte. Si la persona confirma, el envío REGRESA a ese estatus (escanear hacia atrás es la forma de regresarlo):
+  //    sale de la ruta si el estatus es anterior a Asignada y se olvidan los escaneos de acciones posteriores de sus piezas, para poder volver a avanzar.
   if (beyond && !options.confirmedBeyond) {
     return { result: { ...base, outcome: 'BEYOND', voice: 'warn', message: msg('SCAN.MSG_BEYOND', { piece: pieceNumber, order: order.orderNumber, current: label(order.statusCode), target: label(target) }), scanned: scannedWith(action), total, send: false }, nextStatus: null, recorded: false };
+  }
+  if (beyond) {
+    const assignedSort = statuses.find((s) => s.code === 'ASSIGNED')?.sortOrder ?? Number.MAX_SAFE_INTEGER;
+    const rank = SCAN_ACTIONS.indexOf(action as (typeof SCAN_ACTIONS)[number]);
+    return {
+      result: { ...base, outcome: 'APPLIED', voice: 'found', message: msg('SCAN.MSG_MOVED_BACK', { piece: pieceNumber, order: order.orderNumber, current: label(order.statusCode), status: label(target) }), toStatus: target, scanned: 1, total, routeNote: null, send: true },
+      nextStatus: target,
+      recorded: true,
+      effects: { removeActions: rank >= 0 ? SCAN_ACTIONS.slice(rank + 1).map(String) : [], clearTrip: !!targetStage && targetStage.sortOrder < assignedSort },
+    };
   }
 
   const routeNote = action === 'ROUTE'

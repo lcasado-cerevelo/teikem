@@ -240,7 +240,7 @@ export const storage: OfflineStorage = {
     return result.map((order) => ({ order }));
   },
 
-  async scanRecord(tenantId, orderPublicId, pieceNumber, action, newStatus) {
+  async scanRecord(tenantId, orderPublicId, pieceNumber, action, newStatus, effects) {
     const db = await openDb();
     const gen = await committedGen(db, tenantId);
     if (gen == null) return;
@@ -253,6 +253,16 @@ export const storage: OfflineStorage = {
         await db.runAsync(`UPDATE scan_piece SET actions = ?, missing = NULL WHERE tenant = ? AND gen = ? AND number = ? AND order_id = ?`, [...set].join(','), tenantId, cur.gen, pieceNumber, orderPublicId);
       }
       if (newStatus) await db.runAsync(`UPDATE scan_order SET status = ? WHERE tenant = ? AND gen = ? AND public_id = ?`, newStatus, tenantId, cur.gen, orderPublicId);
+      // Lote 216: al regresar el estatus se olvidan los escaneos posteriores de TODAS las piezas del envío y, si corresponde, el envío sale de su ruta
+      if (effects?.removeActions?.length) {
+        const gone = new Set(effects.removeActions);
+        const all = await db.getAllAsync<{ number: string; actions: string }>(`SELECT number, actions FROM scan_piece WHERE tenant = ? AND gen = ? AND order_id = ?`, tenantId, cur.gen, orderPublicId);
+        for (const row of all) {
+          const kept = (row.actions ? row.actions.split(',') : []).filter((a) => !gone.has(a));
+          await db.runAsync(`UPDATE scan_piece SET actions = ? WHERE tenant = ? AND gen = ? AND number = ? AND order_id = ?`, kept.join(','), tenantId, cur.gen, row.number, orderPublicId);
+        }
+      }
+      if (effects?.clearTrip) await db.runAsync(`UPDATE scan_order SET trip_code = NULL, trip_id = NULL, driver = NULL WHERE tenant = ? AND gen = ? AND public_id = ?`, tenantId, cur.gen, orderPublicId);
     });
   },
 

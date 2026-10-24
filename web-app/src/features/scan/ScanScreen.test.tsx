@@ -606,7 +606,7 @@ function installVoice() {
 }
 
 describe('Estación de escaneo — «más adelante» y la lupa (Lote 216)', () => {
-  const beyondResult = { outcome: 'BEYOND', voice: 'warn', message: 'La pieza B-1: el envío OT-0001 ya está en «En tránsito», que va después de «Sin asignar». Si sigue, la pieza solo se cuenta y el estatus no retrocede.', orderPublicId: 'o-1', orderNumber: 'OT-0001', pieceNumber: 'B-1', scanned: 0, total: 2, reasonCode: null }
+  const beyondResult = { outcome: 'BEYOND', voice: 'warn', message: 'La pieza B-1: el envío OT-0001 ya está en «En tránsito», que va después de «Sin asignar». Si sigue, el envío regresará a «Sin asignar».', orderPublicId: 'o-1', orderNumber: 'OT-0001', pieceNumber: 'B-1', scanned: 0, total: 2, reasonCode: null }
 
   it('si el envío ya va más adelante, el servidor para: se advierte, se dice «Atención» y no se cuenta nada hasta que la persona lo confirma', async () => {
     const user = userEvent.setup()
@@ -621,12 +621,12 @@ describe('Estación de escaneo — «más adelante» y la lupa (Lote 216)', () =
     expect(posts()).toHaveLength(1)
     expect(posts()[0].body).not.toHaveProperty('confirmBeyond')
 
-    // Contar la pieza: el mismo escaneo, ahora con confirmBeyond
-    mock.scans['B-1'] = { outcome: 'COUNTED', voice: 'found', message: 'La pieza B-1 se contó (Sin asignar).', orderPublicId: 'o-1', orderNumber: 'OT-0001', scanned: 1, total: 2, reasonCode: null }
+    // Regresar el estatus: el mismo escaneo, ahora con confirmBeyond; el servidor regresa el envío
+    mock.scans['B-1'] = { outcome: 'APPLIED', voice: 'found', message: 'La pieza B-1 regresó el envío OT-0001 de «En tránsito» a «Sin asignar».', orderPublicId: 'o-1', orderNumber: 'OT-0001', scanned: 1, total: 2, reasonCode: null }
     await user.click(within(dialog).getByTestId('beyond-confirm'))
     await waitFor(() => expect(posts()).toHaveLength(2))
     expect(posts()[1].body).toMatchObject({ code: 'B-1', action: 'ROUTE', confirmBeyond: true })
-    await waitFor(() => expect(result()).toHaveTextContent('La pieza B-1 se contó'))
+    await waitFor(() => expect(result()).toHaveTextContent('La pieza B-1 regresó el envío OT-0001'))
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(speak.map((u) => u.text)).toEqual(['Atención', 'Sí'])
   })

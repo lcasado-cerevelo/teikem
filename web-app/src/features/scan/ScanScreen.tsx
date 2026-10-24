@@ -151,7 +151,7 @@ export default function ScanScreen() {
         addScanEntry(latest.current.scope, entry)
         setLast({ kind: 'result', result, ref: entryRef(entry) })
         sayFor(voiceKind(result))
-        // Lote 216: el envío ya va más adelante que la acción: el servidor paró; la persona decide (cancelar no hace nada; contar la pieza no hace retroceder el estatus)
+        // Lote 216: el envío ya va más adelante que la acción: el servidor paró; la persona decide (cancelar no hace nada; confirmar REGRESA el envío al estatus de la acción)
         if (result.outcome === 'BEYOND') setBeyond({ code, action: latest.current.action, message: result.message ?? '' })
         // sin datos de «Pendientes», la ficha de la orden (si el usuario puede verla) completa cliente y pueblo
         if (!fromPending && result.orderPublicId && latest.current.canOrders) {

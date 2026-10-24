@@ -90,7 +90,7 @@ public partial class TripStatusEffectTests
     }
 
     [Fact]
-    public async Task A_shipment_further_along_than_the_action_stops_and_warns_and_only_counts_the_piece_when_confirmed_without_moving_the_status_back()
+    public async Task A_shipment_further_along_than_the_action_stops_and_warns_and_only_moves_back_when_confirmed()
     {
         await using var f = await Fixture.CreateAsync();
         var inTransit = await f.SeedOrderAsync(OrderStatuses.InTransit);
@@ -107,8 +107,8 @@ public partial class TripStatusEffectTests
 
         var go = await scan.ApplyAsync(new ScanActionRequest(ScanActions.Arrive, "B-1", null, null, ConfirmBeyond: true), default);
 
-        Assert.Equal((ScanActionOutcomes.Counted, ScanVoices.Found, 1), (go.Outcome, go.Voice, go.Scanned));
-        Assert.Equal(OrderStatuses.InTransit, await StatusCodeOfOrderAsync(f, inTransit));   // el estatus no retrocedió
+        Assert.Equal((ScanActionOutcomes.Applied, ScanVoices.Found, 1), (go.Outcome, go.Voice, go.Scanned));
+        Assert.Equal(OrderStatuses.Unassigned, await StatusCodeOfOrderAsync(f, inTransit));   // confirmado, el envío regresó a Sin asignar
         Assert.Equal(ScanActionOutcomes.Duplicate, (await scan.ApplyAsync(new ScanActionRequest(ScanActions.Arrive, "B-1", null, null, true), default)).Outcome);
     }
 

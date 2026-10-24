@@ -147,7 +147,7 @@ export default function Scan() {
       const out = await scanPiece(tid, raw, action, { scope });
       if (out === 'EMPTY') return;
       show(raw, action, out.result, out.orderPublicId);
-      // El envío ya va más adelante que lo que se escanea: el sistema PARA y advierte; solo sigue si la persona lo confirma (la pieza se cuenta; el estatus no retrocede).
+      // El envío ya va más adelante que lo que se escanea: el sistema PARA y advierte; solo sigue si la persona lo confirma (entonces el envío REGRESA al estatus de la acción).
       if (out.result.outcome === 'BEYOND') {
         const go = await new Promise<boolean>((resolve) => Alert.alert(t('SCAN.BEYOND_TITLE'),
           out.server ? `${out.server.message}\n\n${t('SCAN.BEYOND_HELP')}` : t('SCAN.BEYOND_BODY', { ...out.result.message.params, action: t(ACTION_KEY[action]) }),

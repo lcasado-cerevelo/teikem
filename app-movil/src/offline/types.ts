@@ -56,7 +56,7 @@ export interface OfflineStorage {
   scanAbort(tenantId: number, gen: number): Promise<void>;
   scanFindPiece(tenantId: number, number: string): Promise<ScanPieceMatch[]>;
   /** Anota en lo bajado que la pieza se escaneó con la acción y, si cambió, el estatus nuevo del envío. */
-  scanRecord(tenantId: number, orderPublicId: string, pieceNumber: string, action: string, newStatus: string | null): Promise<void>;
+  scanRecord(tenantId: number, orderPublicId: string, pieceNumber: string, action: string, newStatus: string | null, effects?: { removeActions?: string[]; clearTrip?: boolean }): Promise<void>;
   scanOrderCount(tenantId: number): Promise<number>;
   scanClear(tenantId?: number): Promise<void>;
 

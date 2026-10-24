@@ -74,8 +74,8 @@ async function applyToLocal(tenantId: number, code: string, action: ScanAction, 
   }
   if (matches.length > 1) return { result: ambiguous(matches.length), order: null };
   const order = matches[0];
-  const { result, nextStatus, recorded } = applyScan(order, code, action, statuses, { scope: effective, chosenTripCode: tripCode, confirmedBeyond: confirmedBeyond || replay });
-  if (recorded) await storage.scanRecord(tenantId, order.publicId, code, action, nextStatus);
+  const { result, nextStatus, recorded, effects } = applyScan(order, code, action, statuses, { scope: effective, chosenTripCode: tripCode, confirmedBeyond: confirmedBeyond || replay });
+  if (recorded) await storage.scanRecord(tenantId, order.publicId, code, action, nextStatus, effects);
   return { result, order };
 }
 

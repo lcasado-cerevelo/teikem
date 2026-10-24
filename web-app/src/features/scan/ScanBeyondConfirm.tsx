@@ -1,4 +1,4 @@
-// Lote 216 — «Atención: el envío ya va más adelante». El servidor no contó nada y pide decidir: «Cancelar» no hace nada; «Contar la pieza» la cuenta (el estatus no retrocede).
+// Lote 216 — «Atención: el envío ya va más adelante». El servidor no contó nada y pide decidir: «Cancelar» no hace nada; «Regresar el estatus» regresa el envío al estatus de la acción (escanear hacia atrás es la forma de regresarlo).
 import { useT } from '../../kernel/i18n'
 import { Modal } from '../../kernel/ui'
 

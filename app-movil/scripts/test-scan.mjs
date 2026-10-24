@@ -58,10 +58,15 @@ r = applyScan(order('IN_TRANSIT', { tripCode: 'T-9' }), 'P1', 'ROUTE', statuses)
 assert.deepEqual([r.result.outcome, r.result.voice, r.result.send, r.recorded, r.nextStatus], ['BEYOND', 'warn', false, false, null]);
 assert.equal(r.result.message.params.current, 'in_transit');
 assert.equal(r.result.message.params.target, 'assigned');
-// si la persona confirma, la pieza solo se cuenta y el estatus NO retrocede
+// si la persona confirma, el envío REGRESA al estatus de la acción (escanear hacia atrás es la forma de regresarlo)
+r = applyScan(order('IN_TRANSIT', { tripCode: 'T-9', pieces: [{ number: 'P1', actions: ['ROUTE', 'DEPART'], missing: null }, { number: 'P2', actions: ['DEPART'], missing: null }] }), 'P1', 'ARRIVE', statuses, { confirmedBeyond: true });
+assert.deepEqual([r.result.outcome, r.result.voice, r.result.send, r.recorded, r.nextStatus], ['APPLIED', 'found', true, true, 'UNASSIGNED']);
+assert.equal(r.result.message.key, 'SCAN.MSG_MOVED_BACK');
+assert.deepEqual(r.effects.removeActions, ['ROUTE', 'DEPART'], 'se olvidan los escaneos posteriores a Llegó');
+assert.equal(r.effects.clearTrip, true, 'Sin asignar es anterior a Asignada: sale de la ruta');
+// regresar a Asignada (Enrutar sobre uno En tránsito) conserva la ruta y solo olvida Salir
 r = applyScan(order('IN_TRANSIT', { tripCode: 'T-9' }), 'P1', 'ROUTE', statuses, { confirmedBeyond: true });
-assert.deepEqual([r.result.outcome, r.result.voice, r.result.send, r.recorded, r.nextStatus], ['COUNTED', 'found', true, true, null]);
-assert.equal(r.result.routeNote.params.trip, 'T-9');
+assert.deepEqual([r.result.outcome, r.nextStatus, r.effects.removeActions, r.effects.clearTrip], ['APPLIED', 'ASSIGNED', ['DEPART'], false]);
 
 // Salir desde Sometido brinca los de en medio
 r = applyScan(order('SUBMITTED'), 'P1', 'DEPART', statuses);

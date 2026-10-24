@@ -2247,9 +2247,9 @@
     },
     "beyond": {
       "title": "Atención: el envío ya va más adelante",
-      "help": "El sistema no contó la pieza. «Cancelar» no hace nada. «Contar la pieza» la cuenta, pero el estatus del envío no retrocede.",
+      "help": "El sistema no cambió nada. «Cancelar» lo deja como está. «Regresar el estatus» hace que el envío REGRESE al estatus de la acción que está escaneando.",
       "cancel": "Cancelar",
-      "confirm": "Contar la pieza"
+      "confirm": "Regresar el estatus"
     },
     "lookup": {
       "button": "Buscar una pieza en la base",

@@ -543,14 +543,14 @@
       "ROUTE_MANY_HINT": "With several routes, shipments that are in none of them are not accepted (to put free shipments on a route, pick only one).",
       "SAY_WARN": "Attention",
       "BEYOND_TITLE": "Attention: the shipment is already further along",
-      "BEYOND_BODY": "Piece {{piece}} belongs to shipment {{order}}, which is in “{{current}}”, a status that comes AFTER “{{target}}” (what you are scanning: {{action}}).\n\nIf you continue, the piece is only counted and the status does NOT go back. What do you want to do?",
-      "BEYOND_GO": "Count the piece",
+      "BEYOND_BODY": "Piece {{piece}} belongs to shipment {{order}}, which is in “{{current}}”, a status that comes AFTER “{{target}}” (what you are scanning: {{action}}).\n\nIf you continue, the shipment goes BACK to “{{target}}”. What do you want to do?",
+      "BEYOND_GO": "Move the status back",
       "MSG_BEYOND": "Piece {{piece}}: shipment {{order}} is already in “{{current}}”, further along than “{{target}}”. Scanning stopped.",
       "MSG_SAME_STATUS": "Piece {{piece}} was counted: shipment {{order}} was already in “{{status}}”.",
       "MSG_NOT_IN_ROUTE": "Piece {{piece}} (shipment {{order}}) is not on the chosen routes.",
       "MSG_NOT_IN_CITY": "Piece {{piece}} (shipment {{order}}) is not in the chosen cities.",
       "MSG_NOT_IN_DRIVER": "Piece {{piece}} (shipment {{order}}) is not for the chosen drivers.",
-      "BEYOND_HELP": "If you continue, the piece is only counted and the status does NOT go back. What do you want to do?",
+      "BEYOND_HELP": "If you continue, the shipment goes BACK to the status you are scanning. What do you want to do?",
       "LK_BUTTON": "Look up a piece in the database",
       "LK_TITLE": "Look up a piece",
       "LK_HELP": "Type the piece number to see what is in the database, even if it is cancelled, in a final status, removed or in a claim. It does not count as a scan.",
@@ -584,7 +584,8 @@
       "LK_FLAG_PIECE_CLAIMED": "In a claim",
       "LK_FLAG_PIECE_RESOLVED": "Claim closed",
       "LK_FLAG_REAPPEARED": "Reappeared",
-      "LK_FLAG_IN_ROUTE": "On a route"
+      "LK_FLAG_IN_ROUTE": "On a route",
+      "MSG_MOVED_BACK": "Piece {{piece}} moved shipment {{order}} back from “{{current}}” to “{{status}}”."
     }
   }
 }

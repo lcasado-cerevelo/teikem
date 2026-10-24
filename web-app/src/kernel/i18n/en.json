@@ -2247,9 +2247,9 @@
     },
     "beyond": {
       "title": "Attention: the shipment is already further along",
-      "help": "The system did not count the piece. “Cancel” does nothing. “Count the piece” counts it, but the shipment status does not go back.",
+      "help": "The system changed nothing. “Cancel” leaves it as it is. “Move the status back” sends the shipment BACK to the status of the action you are scanning.",
       "cancel": "Cancel",
-      "confirm": "Count the piece"
+      "confirm": "Move the status back"
     },
     "lookup": {
       "button": "Look up a piece in the database",

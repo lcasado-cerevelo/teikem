@@ -102,7 +102,7 @@ public class ScanActionServiceTests
     }
 
     [Fact]
-    public async Task A_piece_of_an_earlier_action_stops_and_warns_and_only_when_confirmed_counts_without_moving_the_order_backwards()
+    public async Task A_piece_of_an_earlier_action_stops_and_warns_and_only_when_confirmed_moves_the_order_back_to_that_status()
     {
         await using var f = await TripServiceFixture.CreateAsync();
         var order = await f.SeedOrderAsync(OrderStatuses.InTransit, pieces: 2);
@@ -113,11 +113,12 @@ public class ScanActionServiceTests
         Assert.Empty(await f.Db.OrderPieceScans.AsNoTracking().ToListAsync());
         Assert.Equal(OrderStatuses.InTransit, await f.OrderStatusAsync(order.Id));
 
-        // confirmado, la pieza se cuenta y el estatus no retrocede
+        // confirmado, el envío REGRESA a ese estatus (escanear hacia atrás es la forma de regresarlo), con su fila en el historial
         var r = await ConfirmedPieceAsync(f, ScanActions.Pickup, order, 1);
-        Assert.Equal((ScanActionOutcomes.Counted, ScanVoices.Found, 1), (r.Outcome, r.Voice, r.Scanned));
-        Assert.Equal(OrderStatuses.InTransit, await f.OrderStatusAsync(order.Id));
-        Assert.Empty(await HistoryAsync(f, order.Id));
+        Assert.Equal((ScanActionOutcomes.Applied, ScanVoices.Found, 1), (r.Outcome, r.Voice, r.Scanned));
+        Assert.Equal((OrderStatuses.InTransit, OrderStatuses.Pickup), (r.FromStatus, r.ToStatus));
+        Assert.Equal(OrderStatuses.Pickup, await f.OrderStatusAsync(order.Id));
+        Assert.Equal(OrderStatuses.Pickup, Assert.Single(await HistoryAsync(f, order.Id)).To);
 
         // y si el envío ya estaba justo en ese estatus no hay advertencia: la pieza nueva se cuenta
         var same = await f.SeedOrderAsync(OrderStatuses.InTransit, pieces: 2);
@@ -152,11 +153,12 @@ public class ScanActionServiceTests
         var row = await f.Db.EntityStatusHistories.AsNoTracking().Include(h => h.FromStatus).Where(h => h.EntityTypeLookupId == typeId && h.EntityId == order.Id).SingleAsync();
         Assert.Equal(OrderStatuses.Failed, row.FromStatus!.InternalCode);
 
-        // y «Recoger» sobre una fallida ya está más adelante: advierte (Lote 216) y, confirmado, la pieza solo cuenta
+        // y «Recoger» sobre una fallida ya está más adelante: advierte (Lote 216) y, confirmado, la regresa a Recogida
         var failed2 = await f.SeedOrderAsync(OrderStatuses.Failed);
         Assert.Equal(ScanActionOutcomes.Beyond, (await PieceAsync(f, ScanActions.Pickup, failed2)).Outcome);
-        Assert.Equal(ScanActionOutcomes.Counted, (await ConfirmedPieceAsync(f, ScanActions.Pickup, failed2)).Outcome);
         Assert.Equal(OrderStatuses.Failed, await f.OrderStatusAsync(failed2.Id));
+        Assert.Equal(ScanActionOutcomes.Applied, (await ConfirmedPieceAsync(f, ScanActions.Pickup, failed2)).Outcome);
+        Assert.Equal(OrderStatuses.Pickup, await f.OrderStatusAsync(failed2.Id));
     }
 
     [Fact]
@@ -174,6 +176,34 @@ public class ScanActionServiceTests
         Assert.Equal(trip.PublicId, r.TripPublicId);
         Assert.Equal(OrderStatuses.Assigned, await f.OrderStatusAsync(order.Id));
         Assert.True(await f.Db.TripOrders.AsNoTracking().AnyAsync(t => t.TransportOrderId == order.Id && t.IsCurrent && t.TripId == trip.TripId));
+    }
+
+    [Fact]
+    public async Task Scanning_backwards_to_before_assigned_takes_the_order_out_of_its_route_and_forgets_the_later_scans_so_it_can_move_forward_again()
+    {
+        await using var f = await TripServiceFixture.CreateAsync();
+        var trip = await f.SeedTripAsync("2026-0001", TripStatuses.Draft, f.Zone1);
+        var order = await f.SeedOrderAsync(OrderStatuses.Submitted);
+        Assert.Equal(ScanActionOutcomes.Applied, (await PieceAsync(f, ScanActions.Route, order)).Outcome);   // Asignada y en la ruta, con la pieza escaneada en Enrutar
+        Assert.True(await f.Db.TripOrders.AsNoTracking().AnyAsync(t => t.TransportOrderId == order.Id && t.IsCurrent));
+
+        // «Llegó» (Sin asignar) sobre un envío ya Asignado: advierte; confirmado, lo regresa
+        var warn = await PieceAsync(f, ScanActions.Arrive, order);
+        Assert.Equal(ScanActionOutcomes.Beyond, warn.Outcome);
+        Assert.True(await f.Db.TripOrders.AsNoTracking().AnyAsync(t => t.TransportOrderId == order.Id && t.IsCurrent));   // la advertencia no cambió nada
+
+        var back = await ConfirmedPieceAsync(f, ScanActions.Arrive, order);
+
+        Assert.Equal((ScanActionOutcomes.Applied, OrderStatuses.Assigned, OrderStatuses.Unassigned), (back.Outcome, back.FromStatus, back.ToStatus));
+        Assert.Equal(OrderStatuses.Unassigned, await f.OrderStatusAsync(order.Id));
+        Assert.False(await f.Db.TripOrders.AsNoTracking().AnyAsync(t => t.TransportOrderId == order.Id && t.IsCurrent));   // ya no está en la ruta
+        var scans = await f.Db.OrderPieceScans.AsNoTracking().Select(x => x.Action).ToListAsync();
+        Assert.Equal(new[] { ScanActions.Arrive }, scans);   // el escaneo de Enrutar ya no vale
+
+        // y se puede volver a avanzar escaneando: Enrutar la vuelve a poner en la ruta
+        var again = await PieceAsync(f, ScanActions.Route, order);
+        Assert.Equal((ScanActionOutcomes.Applied, OrderStatuses.Assigned), (again.Outcome, again.ToStatus));
+        Assert.Equal(trip.PublicId, again.TripPublicId);
     }
 
     [Fact]
