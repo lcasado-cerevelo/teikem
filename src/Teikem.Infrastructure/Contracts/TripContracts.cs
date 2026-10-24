@@ -348,10 +348,12 @@ public sealed record MonitorTotalsDto(
 public sealed record MonitorDto(DateOnly Date, MonitorTotalsDto Totals, IReadOnlyList<MonitorTripDto> Trips);
 
 /// <summary>Escaneo Outbound: número de orden, empaque o factura; sin fecha = hoy en la zona de la compañía.</summary>
-public sealed record OutboundScanRequest(string? Code, DateOnly? PlanDate = null);
+/// <summary>`TripPublicId` (Lote 216, app móvil): la ruta que escogió quien escanea; sin ella se usa la ruta abierta de la zona del envío, como siempre.</summary>
+public sealed record OutboundScanRequest(string? Code, DateOnly? PlanDate = null, Guid? TripPublicId = null);
 
 /// <summary>Lote 107: escaneo con acción escogida: Action = PICKUP, ARRIVE, ROUTE o DEPART; Code = número de orden, empaque o factura.</summary>
-public sealed record ScanActionRequest(string? Action, string? Code, DateOnly? PlanDate = null);
+/// <summary>`TripPublicId` (Lote 216): solo con ROUTE; la ruta escogida donde se pone el envío (planeada, despachada o en curso). Sin ella, la ruta abierta de su zona.</summary>
+public sealed record ScanActionRequest(string? Action, string? Code, DateOnly? PlanDate = null, Guid? TripPublicId = null);
 
 /// <summary>Lote 110: cerrar el conteo de una orden (la última acción escaneada): lo que no se escaneó queda faltante «Por verificar».</summary>
 /// <summary>Cerrar el conteo de una orden. Confirm: la estación (web y app) manda true después de mostrar el mensaje con las piezas sin escanear y la orden nueva de las que aparecieron; sin confirmar, si hay algo que decir, no se hace nada. PlanDate: el día de la ruta cuando la orden nueva debe enrutarse.</summary>

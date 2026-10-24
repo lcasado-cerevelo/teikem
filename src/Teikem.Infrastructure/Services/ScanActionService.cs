@@ -155,7 +155,7 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
                 // La orden ya está en ese estatus o más adelante: la pieza solo se cuenta. Con Enrutar, si ya está en una ruta se dice cuál.
                 if (action == ScanActions.Route)
                 {
-                    var known = await outbound.ScanAsync(new OutboundScanRequest(routeCode, req?.PlanDate), ct2);
+                    var known = await outbound.ScanAsync(new OutboundScanRequest(routeCode, req?.PlanDate, req?.TripPublicId), ct2);
                     if (known.Outcome is ScanOutcomes.AlreadyAssigned or ScanOutcomes.FoundAssigned) { route = known; message = known.Message; }
                 }
             }
@@ -175,7 +175,7 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
                 if (action == ScanActions.Route)
                 {
                     // Ya está Asignada: ahora a una ruta abierta de su zona. Si no hay quién la reciba se deshace todo (no queda Asignada sin ruta ni piezas marcadas por este escaneo).
-                    route = await outbound.ScanAsync(new OutboundScanRequest(routeCode, req?.PlanDate), ct2);
+                    route = await outbound.ScanAsync(new OutboundScanRequest(routeCode, req?.PlanDate, req?.TripPublicId), ct2);
                     if (route.Outcome is not (ScanOutcomes.FoundAssigned or ScanOutcomes.AlreadyAssigned))
                     {
                         db.ChangeTracker.Clear();

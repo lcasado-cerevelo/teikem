@@ -43,6 +43,7 @@ export default function AuthLayout() {
       <Stack.Screen name="OrdersList/index" />
       <Stack.Screen name="Orders/index" />
       <Stack.Screen name="Trips/index" />
+      <Stack.Screen name="Scan/index" />
       <Stack.Screen name="TripDetails/index" />
       <Stack.Screen name="StreetAssign/index" />
       <Stack.Screen name="AcceptManifest/index" />

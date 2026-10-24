@@ -10591,3 +10591,25 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 
 **Sin señal no me deja asignar ni ver rutas.** Es lo esperado: el personal no trabaja sin señal en estas pantallas; solo lo del chofer funciona sin conexión.
 
+## Lote 216 — App móvil: escanear sin señal
+
+**No me aparece «Escanear» en el inicio.** Necesita `trips.scan` en alguna compañía (y el módulo de transporte). Es el mismo permiso de la estación de escaneo de la web.
+
+**Escaneo y dice «No se encontró la pieza.» pero la pieza existe.** Lo que se escanea es el **número de la pieza** (el del label), no el del envío. Si el número es correcto, la pieza no está en lo bajado: o es más nueva que la última descarga (toque **Sincronizar** con señal) o el teléfono tiene más de 5000 envíos no completados y la pieza quedó fuera de los 5000 más recientes (con señal, la app le pregunta al servidor).
+
+**«No se encontró la pieza en lo bajado y no hay señal para preguntar.»** Sin señal solo se encuentra lo que se bajó. Sincronice cuando tenga señal.
+
+**Dice «El número está en N envíos: sin señal no se puede confirmar.»** El número de pieza se repite entre envíos (de clientes distintos). Con señal, el servidor lo resuelve igual que la web; sin señal, escanee el empaque en la web o espere a tener señal.
+
+**Aparece algo en «Con problema».** El teléfono lo aceptó sin señal, pero al sincronizar el servidor no pudo hacerlo (por ejemplo, al **Enrutar**: «No hay ruta abierta para la zona …», o la ruta escogida ya se cerró; o el envío ya estaba entregado). Lea el mensaje, corrija en la web si hace falta y quite el aviso con «Quitar».
+
+**Escaneé sin señal y en el historial del envío la hora es de después.** Es lo esperado: el servidor marca la hora en que el teléfono **sincronizó**, no la del escaneo.
+
+**«Por enviar» no baja a cero.** La cola sale sola con señal. Si hay señal y no baja, abra la pantalla Escanear (reintenta) o use Sincronizar; un fallo del servidor deja el escaneo en la cola para el siguiente intento.
+
+**Dos personas escanearon lo mismo sin señal.** El primero que sincroniza mueve el envío; el segundo cuenta la pieza (o ve «Ok» duplicado). No se pierde ni se duplica nada.
+
+**Devolver no funciona.** Devolver crea la orden de vuelta en el servidor: necesita señal y el permiso `orders.return`.
+
+**No suena la voz.** La voz usa la del teléfono. Revise el interruptor «Voz» de la pantalla y el volumen; si el teléfono no tiene voz instalada quedan la vibración y el color (verde = Sí, ámbar = Ok, rojo = No).
+

@@ -20484,6 +20484,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/mobile/scan/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ScanSnapshotPageDto"];
+                        "application/json": components["schemas"]["ScanSnapshotPageDto"];
+                        "text/json": components["schemas"]["ScanSnapshotPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mobile/scan/routes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ScanSnapshotRouteDto"][];
+                        "application/json": components["schemas"]["ScanSnapshotRouteDto"][];
+                        "text/json": components["schemas"]["ScanSnapshotRouteDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/mobile/device": {
         parameters: {
             query?: never;
@@ -43899,6 +43976,8 @@ export interface components {
             code?: string | null;
             /** Format: date */
             planDate?: string | null;
+            /** Format: uuid */
+            tripPublicId?: string | null;
         };
         OutboundScanResultDto: {
             outcome?: string | null;
@@ -47309,6 +47388,8 @@ export interface components {
             code?: string | null;
             /** Format: date */
             planDate?: string | null;
+            /** Format: uuid */
+            tripPublicId?: string | null;
         };
         ScanActionResultDto: {
             action?: string | null;
@@ -47374,6 +47455,57 @@ export interface components {
             newOrderStatusLabel?: string | null;
             reappearedNumbers?: string[] | null;
             missingNumbers?: string[] | null;
+        };
+        ScanSnapshotOrderDto: {
+            /** Format: uuid */
+            publicId?: string;
+            orderNumber?: string | null;
+            waybillNumber?: string | null;
+            statusCode?: string | null;
+            tripCode?: string | null;
+            /** Format: uuid */
+            tripPublicId?: string | null;
+            pickUp?: boolean;
+            pieces?: components["schemas"]["ScanSnapshotPieceDto"][] | null;
+        };
+        ScanSnapshotPageDto: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            limit?: number;
+            capped?: boolean;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: date-time */
+            generatedAtUtc?: string;
+            orders?: components["schemas"]["ScanSnapshotOrderDto"][] | null;
+            statuses?: components["schemas"]["ScanSnapshotStatusDto"][] | null;
+            routes?: components["schemas"]["ScanSnapshotRouteDto"][] | null;
+        };
+        ScanSnapshotPieceDto: {
+            number?: string | null;
+            actions?: string[] | null;
+            missing?: string | null;
+        };
+        ScanSnapshotRouteDto: {
+            /** Format: uuid */
+            publicId?: string;
+            code?: string | null;
+            kind?: string | null;
+            statusCode?: string | null;
+            status?: string | null;
+            driverName?: string | null;
+            /** Format: int32 */
+            stopCount?: number;
+        };
+        ScanSnapshotStatusDto: {
+            code?: string | null;
+            label?: string | null;
+            /** Format: int32 */
+            sortOrder?: number;
+            stageKind?: string | null;
+            isInitial?: boolean;
+            isEnabled?: boolean;
         };
         ScheduledJobDto: {
             key?: string | null;

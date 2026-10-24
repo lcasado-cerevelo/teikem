@@ -86,6 +86,7 @@ export default function Home() {
   // Lote 214: lo del personal son accesos (sin contador): Órdenes con orders.view. Después, su trabajo de chofer si también lo es.
   const staffItems: HomeItem[] = [
     ...(access.staff && access.can('orders.view') ? [{ key: 'staff-orders', label: t('STAFF_ORDERS.TITLE'), counter: '›', loading: false, href: '/(auth)/Orders' as Href }] : []),
+    ...(access.staff && access.can('trips.scan') ? [{ key: 'staff-scan', label: t('SCAN.TITLE'), counter: '›', loading: false, href: '/(auth)/Scan' as Href }] : []),
     ...(access.staff && access.can('trips.view') ? [{ key: 'staff-trips', label: t('TRIPS_TODAY.TITLE'), counter: '›', loading: false, href: '/(auth)/Trips' as Href }] : []),
   ];
   const items = [...staffItems, ...driverItems];

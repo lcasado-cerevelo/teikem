@@ -122,6 +122,12 @@ public static class OutboundScanRules
             "No hay ruta abierta para la zona {0} en la fecha {1}; queda sin asignar.",
             zoneCode, planDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
 
+    /// <summary>Lote 216: la ruta escogida en la app ya no está abierta (se despachó, cerró o canceló).</summary>
+    public static string ChosenRouteClosedMessage(string tripCode)
+        => string.Format(CultureInfo.InvariantCulture, "La ruta {0} ya no está abierta; queda sin asignar.", tripCode);
+
+    public const string ChosenRouteMissingMessage = "La ruta escogida ya no existe; queda sin asignar.";
+
     /// <summary>'Asignada a la ruta {código}.'</summary>
     public static string AssignedMessage(string tripCode)
         => string.Format(CultureInfo.InvariantCulture, "Asignado a la ruta {0}.", tripCode);

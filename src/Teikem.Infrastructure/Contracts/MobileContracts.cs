@@ -53,3 +53,27 @@ public sealed record StreetQuickRouteRequest(IReadOnlyList<Guid>? OrderPublicIds
 
 /// <summary>`Action`: ASSIGNED (de sin asignar a una ruta), MOVED (de una ruta a otra), UNASSIGNED (de una ruta a «Sin asignar») o QUICK_ROUTE. `DriverNotified`: se le dejó el aviso al chofer (le llega al teléfono en menos de un minuto).</summary>
 public sealed record StreetResultDto(string Action, Guid? OrderPublicId, string? OrderNumber, string? OrderStatusCode, string? OrderStatus, Guid? TripPublicId, string? TripCode, bool DriverNotified);
+
+// ---------------------------------------------------------------------------
+// Lote 216 — estación de escaneo de rutas en la app móvil, con trabajo sin señal (trips.scan). La app baja los envíos no completados (hasta 5000, los más recientes primero) con sus piezas
+// y resuelve cada lectura en el teléfono; los escaneos salen después por POST /api/v1/scan/action (idempotente por pieza y acción).
+// ---------------------------------------------------------------------------
+
+/// <summary>Una pieza para el escaneo sin señal: su número y las acciones con las que ya se escaneó (PICKUP, ARRIVE, ROUTE, DEPART, RETURN). `Missing` = «Por verificar», «Perdida» o «Reclamada»; null si no es faltante.</summary>
+public sealed record ScanSnapshotPieceDto(string Number, IReadOnlyList<string> Actions, string? Missing);
+
+/// <summary>Un envío no completado con lo que el teléfono necesita para contestar un escaneo: estatus, ruta vigente, si es de tipo «pick up» y sus piezas.</summary>
+public sealed record ScanSnapshotOrderDto(Guid PublicId, string OrderNumber, string? WaybillNumber, string StatusCode, string? TripCode, Guid? TripPublicId, bool PickUp, IReadOnlyList<ScanSnapshotPieceDto> Pieces);
+
+/// <summary>Un estatus del pipeline de envíos (para avanzar en el teléfono con la misma regla que el servidor).</summary>
+public sealed record ScanSnapshotStatusDto(string Code, string Label, int SortOrder, string StageKind, bool IsInitial, bool IsEnabled);
+
+/// <summary>Una ruta abierta que se puede escoger para Enrutar.</summary>
+public sealed record ScanSnapshotRouteDto(Guid PublicId, string Code, string Kind, string StatusCode, string Status, string? DriverName, int StopCount);
+
+/// <summary>
+/// Una página de la descarga. `Total` = cuántos envíos no completados se bajan (tope `Limit` = 5000, los más recientes). `Statuses` y `Routes` vienen solo en la primera página (Skip 0). `GeneratedAtUtc` marca cuándo se armó.
+/// `Capped`: había más envíos de los que se bajan.
+/// </summary>
+public sealed record ScanSnapshotPageDto(int Total, int Limit, bool Capped, int Skip, DateTime GeneratedAtUtc, IReadOnlyList<ScanSnapshotOrderDto> Orders,
+    IReadOnlyList<ScanSnapshotStatusDto> Statuses, IReadOnlyList<ScanSnapshotRouteDto> Routes);

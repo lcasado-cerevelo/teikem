@@ -70,6 +70,13 @@ public sealed class OutboundScanService(
             1, lookup.MatchedBy, match.OrderNumber, facts.CurrentTrip?.Code, facts.IneligibleReason,
             facts.Zone, facts.OpenTrips.Count > 0 ? facts.OpenTrips[0].Code : null, planDate));
 
+        // Lote 216: la app móvil puede mandar la ruta escogida; el envío libre y elegible va a ESA ruta en vez de a la de su zona.
+        if (req?.TripPublicId is Guid chosen && facts.CurrentTrip is null && facts.IneligibleReason is null)
+        {
+            var picked = await AssignToChosenAsync(match.Id, match.OrderNumber, lookup.MatchedBy, chosen, facts.Zone, planDate, ct);
+            return ToDto(picked.Decision, lookup.MatchedBy, match.PublicId, match.OrderNumber, match.PackBatchNumber, facts.Zone?.Ambiguous == true ? null : facts.Zone?.ZoneCode, picked.Trip);
+        }
+
         var result = decision.Outcome switch
         {
             ScanOutcomes.AlreadyAssigned => new Result(decision, facts.CurrentTrip),
@@ -79,6 +86,53 @@ public sealed class OutboundScanService(
 
         return ToDto(result.Decision, lookup.MatchedBy, match.PublicId, match.OrderNumber, match.PackBatchNumber,
             facts.Zone?.Ambiguous == true ? null : facts.Zone?.ZoneCode, result.Trip);
+    }
+
+    // ================================================================ ruta escogida (Lote 216)
+
+    /// <summary>
+    /// Pone el envío en la ruta que escogió quien escanea (app móvil): planeada (como la web) o ya despachada / en curso (como «asignar en la calle»). Una ruta que ya no existe, se cerró o se canceló → FOUND_UNASSIGNED con
+    /// NO_OPEN_ROUTE y su mensaje; no elegible → NOT_ELIGIBLE con el motivo; otro escaneo ganó la orden → ALREADY_ASSIGNED.
+    /// </summary>
+    private async Task<Result> AssignToChosenAsync(int orderId, string orderNumber, string? matchedBy, Guid tripPublicId, ScanZone? zone, DateOnly planDate, CancellationToken ct)
+    {
+        try
+        {
+            var assigned = await db.RunInTransactionAsync(async ct2 =>
+            {
+                Trip trip;
+                try { trip = await db.LockTripAsync(tripPublicId, ct2); }
+                catch (NotFoundException) { return (TripRef?)null; }
+                if (!trip.IsActive) return new TripRef(-trip.TripId, trip.PublicId, trip.Code);   // marca «cerrada»: TripId negativo
+                var code = await db.StatusCodes.AsNoTracking().Where(s => s.StatusCodeId == trip.StatusCodeId).Select(s => s.InternalCode).FirstAsync(ct2);
+                var editable = TripRules.IsEditable(code);
+                var live = string.Equals(code, TripStatuses.Dispatched, StringComparison.OrdinalIgnoreCase) || string.Equals(code, TripStatuses.InProgress, StringComparison.OrdinalIgnoreCase);
+                if (!editable && !live) return new TripRef(-trip.TripId, trip.PublicId, trip.Code);
+                if (await ActiveStopCountAsync(trip.TripId, ct2) >= TripRules.MaxStopsHardCap) return new TripRef(-trip.TripId, trip.PublicId, trip.Code);
+                if (editable) await writer.AddOrdersAsync(trip, new[] { orderId }, ct2);
+                else await writer.AddOrdersLiveAsync(trip, new[] { orderId }, ct2);
+                await db.SaveGuardedAsync(TripRules.OrderTakenMessage, ct2);
+                return new TripRef(trip.TripId, trip.PublicId, trip.Code);
+            }, ct);
+            if (assigned is null)
+                return new Result(new ScanDecision(ScanOutcomes.FoundUnassigned, ScanReasonCodes.NoOpenRoute, OutboundScanRules.ChosenRouteMissingMessage, ScanVoices.Found), null);
+            if (assigned.TripId < 0)
+                return new Result(new ScanDecision(ScanOutcomes.FoundUnassigned, ScanReasonCodes.NoOpenRoute, OutboundScanRules.ChosenRouteClosedMessage(assigned.Code), ScanVoices.Found), null);
+            return new Result(new ScanDecision(ScanOutcomes.FoundAssigned, null, OutboundScanRules.AssignedMessage(assigned.Code), ScanVoices.Found), assigned);
+        }
+        catch (ConflictException)
+        {
+            db.ChangeTracker.Clear();
+            var current = await CurrentTripAsync(orderId, ct);
+            if (current is not null) return new Result(Decide(orderNumber, matchedBy, current.Code, null, zone, null, planDate), current);
+            throw;
+        }
+        catch (StatusRuleException ex)
+        {
+            db.ChangeTracker.Clear();
+            var reason = ex.Errors?.Values.SelectMany(v => v).FirstOrDefault(m => !string.IsNullOrWhiteSpace(m)) ?? ex.Message;
+            return new Result(Decide(orderNumber, matchedBy, null, reason, zone, null, planDate), null);
+        }
     }
 
     // ================================================================ asignación bajo bloqueo (paso 5 y 6)

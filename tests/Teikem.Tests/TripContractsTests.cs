@@ -79,7 +79,7 @@ public class TripContractsTests
         { typeof(MonitorTripDto), "Guid PublicId, string Code, DateOnly PlanDate, string? ZoneCode, string? DriverCode, string? DriverName, string? VehicleCode, string StatusCode, string Status, int TotalStops, int CompletedStops, int FailedStops, int PendingStops, int ApproximateStops, DateTime? NextEtaUtc, DateTime? PlannedEndUtc, bool OverStopLimit, DriverPingDto? LastPing" },
         { typeof(MonitorTotalsDto), "int Trips, int TotalStops, int CompletedStops, int FailedStops, int PendingStops, int OverStopLimitTrips, int TripsWithoutPing" },
         { typeof(MonitorDto), "DateOnly Date, MonitorTotalsDto Totals, IReadOnlyList<MonitorTripDto> Trips" },
-        { typeof(OutboundScanRequest), "string? Code, DateOnly? PlanDate" },
+        { typeof(OutboundScanRequest), "string? Code, DateOnly? PlanDate, Guid? TripPublicId" },   // Lote 216: + TripPublicId (la ruta escogida en la app)
         { typeof(OutboundScanResultDto), "string Outcome, string Voice, string Message, string? MatchedBy, Guid? OrderPublicId, string? OrderNumber, string? PackBatchNumber, string? ZoneCode, Guid? TripPublicId, string? TripCode, string? ReasonCode" },
         // ---- DriverContracts (Lote 5)
         { typeof(DispatchZoneMemberDto), "int Id, string MatchTypeCode, string MatchType, string MatchValue" },
@@ -117,7 +117,7 @@ public class TripContractsTests
         Assert.Equal(new object?[] { "<required>", null, false }, Defaults(typeof(PlanDayRequest)));
         Assert.Equal(new object?[] { null, false, null, null, null, null, null, null, 0, 100, null }, Defaults(typeof(UnassignedOrdersQuery)));
         Assert.Equal(new object?[] { null, null, null, true }, Defaults(typeof(MonitorQuery)));
-        Assert.Equal(new object?[] { "<required>", null }, Defaults(typeof(OutboundScanRequest)));
+        Assert.Equal(new object?[] { "<required>", null, null }, Defaults(typeof(OutboundScanRequest)));
         Assert.Equal(new object?[] { "<required>", "<required>", null }, Defaults(typeof(StopLocationRequest)));
         Assert.All(Defaults(typeof(TripPatchRequest)), d => Assert.Null(d));
     }

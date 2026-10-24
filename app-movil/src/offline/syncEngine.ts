@@ -1,6 +1,8 @@
 import { AxiosError } from 'axios';
 import { api } from '@config/axios';
 import { bumpRetry, listPending, markDone, markFailed, type OutboxItem } from './outbox';
+import { addProblem } from './scanProblems';
+import { isServerProblem } from '@utils/scanRules';
 
 let active: Promise<void> | null = null;
 let followUp: Promise<void> | null = null;
@@ -32,30 +34,60 @@ export function drainOutbox(): Promise<void> {
   return followUp;
 }
 
+const BATCH = 25;
+
 async function runDrain(): Promise<void> {
-  const items = await listPending(25);
+  // Lote 216: con cientos de escaneos en cola se sigue de 25 en 25 hasta vaciarla (o hasta el primer fallo de señal).
+  for (;;) {
+    const items = await listPending(BATCH);
+    if (items.length === 0) return;
+    const stop = await drainBatch(items);
+    if (stop || items.length < BATCH) return;
+  }
+}
+
+/** Manda un lote; devuelve true si hay que parar (fallo transitorio: se conserva el orden). */
+async function drainBatch(items: OutboxItem[]): Promise<boolean> {
   for (const item of items) {
     try {
-      await sendItem(item);
+      const data = await sendItem(item);
       await markDone(item.id);
+      if (item.kind === 'scan') await noteScanResult(item, data);
     } catch (err) {
       const status = (err as AxiosError).response?.status;
       const permanent =
         typeof status === 'number' && status >= 400 && status < 500 && status !== 408 && status !== 429;
       if (permanent) {
         await markFailed(item.id, describeError(err));
+        if (item.kind === 'scan') await noteScanFailure(item, describeError(err));
         continue;
       }
       await bumpRetry(item.id, describeError(err), item.retryCount);
-      break;
+      return true;
     }
   }
+  return false;
 }
 
-async function sendItem(item: OutboxItem): Promise<void> {
+/** Lote 216: lo que el servidor contestó a un escaneo sin señal; si no quedó hecho, va a la lista «Con problema» para que el usuario lo vea. */
+async function noteScanResult(item: OutboxItem, data: unknown): Promise<void> {
+  const r = data as { outcome?: string; message?: string; orderNumber?: string } | undefined;
+  if (!isServerProblem(r?.outcome)) return;
+  const p = JSON.parse(item.payload) as { tenantId?: number; body?: { code?: string; action?: string } };
+  if (p.tenantId == null) return;
+  await addProblem(p.tenantId, { id: item.id, at: Date.now(), code: p.body?.code ?? '', action: p.body?.action ?? '', outcome: r?.outcome ?? '', message: r?.message ?? '', orderNumber: r?.orderNumber ?? null });
+}
+
+async function noteScanFailure(item: OutboxItem, message: string): Promise<void> {
+  const p = JSON.parse(item.payload) as { tenantId?: number; body?: { code?: string; action?: string } };
+  if (p.tenantId == null) return;
+  await addProblem(p.tenantId, { id: item.id, at: Date.now(), code: p.body?.code ?? '', action: p.body?.action ?? '', outcome: 'ERROR', message, orderNumber: null });
+}
+
+async function sendItem(item: OutboxItem): Promise<unknown> {
   const headers: Record<string, string> = { 'Idempotency-Key': item.id };
   const payload = JSON.parse(item.payload) as { tenantId?: number; body?: unknown };
-  await api.request({
+  const res = await api.request({
     url: item.endpoint,
     method: item.method,
     data: payload.body,
@@ -64,6 +96,7 @@ async function sendItem(item: OutboxItem): Promise<void> {
     // La firma y las fotos viajan en este cuerpo; con un enlace móvil lento el tiempo normal (20 s) cortaría la subida y se confundiría con «sin señal».
     timeout: 120_000,
   });
+  return res.data;
 }
 
 function describeError(err: unknown): string {

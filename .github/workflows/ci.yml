@@ -133,14 +133,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: app-movil/package-lock.json
       - name: Instalar y verificar (tsc, pruebas puras, export web)
         working-directory: app-movil
         env:
           EXPO_PUBLIC_BASE_URL: http://localhost:5000/api/
         run: |
-          npm ci --legacy-peer-deps
+          # app-movil/package-lock.json está en .gitignore (no se versiona): se instala sin él
+          npm install --legacy-peer-deps --no-audit --no-fund
           npm run typecheck
           npm test
           npx expo export --platform web --output-dir /tmp/app-movil-web

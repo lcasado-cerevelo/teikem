@@ -14,7 +14,8 @@
 - **Manifiestos**: solo para choferes.
 - **Órdenes** (Lote 214): ver §2a.
 - **Rutas de hoy** y **asignar en la calle** (Lote 215): ver §2b y §2c.
-- Lo que sigue: **Lote 216** (planeado): estación de **escaneo de rutas** con el Android con gatillo, que funciona **sin señal** (se bajan hasta 5000 envíos no completados; ver `docs/lote216-plan-escaneo.md`); **Lote 217**: clientes y almacén en consulta.
+- **Escanear** (Lote 216): estación de escaneo para el Android con gatillo, **con trabajo sin señal**: ver §2d.
+- Lo que sigue: **Lote 217**: clientes y almacén en consulta.
 
 ## 2a. Órdenes (Lote 214)
 - **Quién**: el acceso «Órdenes» aparece con `orders.view` en alguna compañía; completar exige además `orders.deliver` **en esa compañía**.
@@ -52,6 +53,24 @@
 - Endpoints: `GET /api/v1/mobile/street/orders/{id}/targets`, `POST /api/v1/mobile/street/assign|unassign|quick-route`.
 - **Qué ve el chofer**: un aviso «Nueva parada en {ruta}» o «Parada quitada de {ruta}». La parada nueva aparece en su manifiesto al refrescar.
 
+## 2d. Escanear (Lote 216) — con trabajo sin señal
+- **Quién**: `trips.scan` en alguna compañía (módulo de transporte). Acceso «Escanear» en el inicio. **Devolver** pide además `orders.return`.
+- **Para qué**: es la estación de escaneo del capítulo 05 §7b, en el teléfono. Se escanea el **número de cada pieza** (el del label) con el lector con gatillo —que escribe como un teclado— o con la cámara. Cada acción lleva el envío a su estatus:
+  | Acción | Estatus | Notas |
+  |---|---|---|
+  | Recoger | Recogida | |
+  | Llegó | Sin asignar (En almacén si es pick up) | |
+  | Enrutar | Asignada | además lo pone en una ruta: la que escojas arriba, o la de su zona |
+  | Salir | En tránsito | |
+  | Devolver | Devuelta | solo con señal y `orders.return` |
+  La primera pieza de una acción mueve el envío (brinca los estatus de en medio); las siguientes solo cuentan («4 de 5 piezas»). Repetir pieza + acción es duplicado. Un estatus final no se toca.
+- **Sin señal**: al abrir la pantalla (y con el botón **Sincronizar**) el teléfono **baja todos los envíos no completados, hasta 5000, los más recientes**, con sus piezas. Con eso contesta cada lectura **al instante**, sin señal, con color, vibración y voz **Sí / No / Ok** (interruptor «Voz»). Lo que cuenta queda en la cola («Por enviar: N») y sale solo cuando vuelve la señal.
+- **Pieza que no está en lo bajado**: con señal se le pregunta al servidor; sin señal, «No se encontró la pieza.» (aplica a lo que quedó fuera de los 5000 o es más nuevo que la descarga).
+- **Con problema**: si el servidor no acepta un escaneo ya hecho en el teléfono (por ejemplo «no hay ruta abierta que reciba el envío» al Enrutar, o el envío ya se entregó), aparece en «Con problema: N» con el mensaje del servidor; se quita con «Quitar».
+- **Cerrar conteo**: con señal, sobre el último envío escaneado; muestra qué piezas quedarán «Por verificar» y pide confirmación.
+- **Hora**: el historial del envío marca la hora en que **sincronizó**, no la del escaneo.
+- Endpoints: `GET /api/v1/mobile/scan/snapshot?skip=&take=`, `GET /api/v1/mobile/scan/routes`, y los de siempre `POST /api/v1/scan/action` (ahora con `tripPublicId` opcional para Enrutar a una ruta escogida) y `POST /api/v1/scan/close-count`.
+
 ## 3. Avisos emergentes
 - La app registra el teléfono en `POST /api/v1/mobile/device` para cada compañía. Un chofer queda en su ficha (`DriverDevice`); el personal, en su usuario (`UserPushDevice`). Los mensajes del chat y los avisos llegan por cualquiera de los dos.
 
@@ -66,6 +85,9 @@
 | Entregar una orden de recogida / recoger una de entrega | `Este envío es de una ruta de recogida: se recoge, no se entrega.` / `Este envío es de una ruta de entrega: se entrega, no se recoge.` | 422 |
 | Recoger una orden que ya no está pendiente | `El envío {orden} ya no está pendiente de recoger.` | 422 |
 | Ya entregada desde la web | `El envío {orden} ya tiene registrada su entrega.` | 409 |
+| Enrutar a una ruta escogida que ya no está abierta | `La ruta {código} ya no está abierta; queda sin asignar.` | 200 (`NO_OPEN_ROUTE`) |
+| Enrutar a una ruta escogida que no existe | `La ruta escogida ya no existe; queda sin asignar.` | 200 (`NO_OPEN_ROUTE`) |
+| Escanear una pieza que no está en lo bajado, sin señal | `No se encontró la pieza en lo bajado y no hay señal para preguntar.` | (en el teléfono) |
 | Asignar sin orden / sin ruta / sin chofer / sin vehículo | `Indique la orden.` / `Indique la ruta.` / `Indique el chofer.` / `Indique el vehículo.` | 400 |
 | Mandar una orden de entrega a una ruta de recogida (o al revés) | `La orden {orden} es de entrega: elija una ruta de entrega.` / `La orden {orden} es de recogida: elija una ruta de recogida.` | 422 |
 | Mover una orden entregada, fallida, cancelada… | `La orden {orden} está «{estatus}»: ya no se puede mover de ruta.` | 422 |

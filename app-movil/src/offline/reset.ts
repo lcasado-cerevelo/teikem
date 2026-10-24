@@ -12,5 +12,6 @@ import { sqlitePersister } from './persister';
 // AuthContext.logout.
 export async function clearOfflineData(): Promise<void> {
   await storage.clearOutbox();
+  await storage.scanClear();   // Lote 216: la descarga del escaneo de quien cierra sesión
   await sqlitePersister.removeClient();
 }

@@ -1,5 +1,5 @@
 import * as SQLite from 'expo-sqlite';
-import type { OfflineStorage, OutboxRecord, OutboxStatus } from './types';
+import type { OfflineStorage, OutboxRecord, OutboxStatus, ScanOrderRecord } from './types';
 
 // Native (Android/iOS) storage backed by expo-sqlite.
 // Metro resolves db.web.ts on web, so this file (and expo-sqlite) never loads there.
@@ -30,11 +30,40 @@ function openDb(): Promise<SQLite.SQLiteDatabase> {
           key TEXT PRIMARY KEY NOT NULL,
           value TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS scan_order (
+          tenant INTEGER NOT NULL,
+          gen INTEGER NOT NULL,
+          public_id TEXT NOT NULL,
+          order_number TEXT NOT NULL,
+          waybill TEXT,
+          status TEXT NOT NULL,
+          trip_code TEXT,
+          trip_id TEXT,
+          pick_up INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (tenant, gen, public_id)
+        );
+        CREATE TABLE IF NOT EXISTS scan_piece (
+          tenant INTEGER NOT NULL,
+          gen INTEGER NOT NULL,
+          number TEXT NOT NULL,
+          order_id TEXT NOT NULL,
+          actions TEXT NOT NULL DEFAULT '',
+          missing TEXT,
+          PRIMARY KEY (tenant, gen, number, order_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_scan_piece_number ON scan_piece(tenant, number);
       `);
       return db;
     })();
   }
   return dbPromise;
+}
+
+/** La generación CONFIRMADA de la descarga de una compañía (la que se consulta); la que se está bajando no cuenta hasta que se confirma. */
+async function committedGen(db: SQLite.SQLiteDatabase, tenantId: number): Promise<number | null> {
+  const row = await db.getFirstAsync<{ value: string }>(`SELECT value FROM kv WHERE key = ?`, `scan.gen.${tenantId}`);
+  const n = row ? Number(row.value) : NaN;
+  return Number.isFinite(n) ? n : null;
 }
 
 interface Row {
@@ -140,6 +169,108 @@ export const storage: OfflineStorage = {
   async clearOutbox() {
     const db = await openDb();
     await db.runAsync(`DELETE FROM outbox`);
+  },
+
+  async scanNewGeneration(tenantId) {
+    const db = await openDb();
+    const gen = Date.now();
+    await db.runAsync(`DELETE FROM scan_piece WHERE tenant = ? AND gen = ?`, tenantId, gen);
+    await db.runAsync(`DELETE FROM scan_order WHERE tenant = ? AND gen = ?`, tenantId, gen);
+    return gen;
+  },
+
+  async scanInsertOrders(tenantId, gen, orders) {
+    const db = await openDb();
+    await db.withTransactionAsync(async () => {
+      const insOrder = await db.prepareAsync(
+        `INSERT OR REPLACE INTO scan_order (tenant, gen, public_id, order_number, waybill, status, trip_code, trip_id, pick_up) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      );
+      const insPiece = await db.prepareAsync(
+        `INSERT OR REPLACE INTO scan_piece (tenant, gen, number, order_id, actions, missing) VALUES (?, ?, ?, ?, ?, ?)`,
+      );
+      try {
+        for (const o of orders) {
+          await insOrder.executeAsync(tenantId, gen, o.publicId, o.orderNumber, o.waybill, o.statusCode, o.tripCode, o.tripPublicId, o.pickUp ? 1 : 0);
+          for (const p of o.pieces) await insPiece.executeAsync(tenantId, gen, p.number, o.publicId, p.actions.join(','), p.missing);
+        }
+      } finally {
+        await insOrder.finalizeAsync();
+        await insPiece.finalizeAsync();
+      }
+    });
+  },
+
+  async scanCommit(tenantId, gen) {
+    const db = await openDb();
+    await db.withTransactionAsync(async () => {
+      await db.runAsync(`INSERT INTO kv (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, `scan.gen.${tenantId}`, String(gen));
+      await db.runAsync(`DELETE FROM scan_piece WHERE tenant = ? AND gen <> ?`, tenantId, gen);
+      await db.runAsync(`DELETE FROM scan_order WHERE tenant = ? AND gen <> ?`, tenantId, gen);
+    });
+  },
+
+  async scanAbort(tenantId, gen) {
+    const db = await openDb();
+    await db.runAsync(`DELETE FROM scan_piece WHERE tenant = ? AND gen = ?`, tenantId, gen);
+    await db.runAsync(`DELETE FROM scan_order WHERE tenant = ? AND gen = ?`, tenantId, gen);
+  },
+
+  async scanFindPiece(tenantId, number) {
+    const db = await openDb();
+    const gen = await committedGen(db, tenantId);
+    if (gen == null) return [];
+    const cur = { gen };
+    const rows = await db.getAllAsync<{ order_id: string }>(`SELECT order_id FROM scan_piece WHERE tenant = ? AND gen = ? AND number = ?`, tenantId, cur.gen, number);
+    const result: ScanOrderRecord[] = [];
+    for (const r of rows) {
+      const o = await db.getFirstAsync<{ public_id: string; order_number: string; waybill: string | null; status: string; trip_code: string | null; trip_id: string | null; pick_up: number }>(
+        `SELECT public_id, order_number, waybill, status, trip_code, trip_id, pick_up FROM scan_order WHERE tenant = ? AND gen = ? AND public_id = ?`, tenantId, cur.gen, r.order_id);
+      if (!o) continue;
+      const ps = await db.getAllAsync<{ number: string; actions: string; missing: string | null }>(`SELECT number, actions, missing FROM scan_piece WHERE tenant = ? AND gen = ? AND order_id = ? ORDER BY number`, tenantId, cur.gen, r.order_id);
+      result.push({
+        publicId: o.public_id, orderNumber: o.order_number, waybill: o.waybill, statusCode: o.status, tripCode: o.trip_code, tripPublicId: o.trip_id, pickUp: o.pick_up === 1,
+        pieces: ps.map((p) => ({ number: p.number, actions: p.actions ? p.actions.split(',') : [], missing: p.missing })),
+      });
+    }
+    return result.map((order) => ({ order }));
+  },
+
+  async scanRecord(tenantId, orderPublicId, pieceNumber, action, newStatus) {
+    const db = await openDb();
+    const gen = await committedGen(db, tenantId);
+    if (gen == null) return;
+    const cur = { gen };
+    await db.withTransactionAsync(async () => {
+      const p = await db.getFirstAsync<{ actions: string }>(`SELECT actions FROM scan_piece WHERE tenant = ? AND gen = ? AND number = ? AND order_id = ?`, tenantId, cur.gen, pieceNumber, orderPublicId);
+      if (p) {
+        const set = new Set(p.actions ? p.actions.split(',') : []);
+        set.add(action);
+        await db.runAsync(`UPDATE scan_piece SET actions = ?, missing = NULL WHERE tenant = ? AND gen = ? AND number = ? AND order_id = ?`, [...set].join(','), tenantId, cur.gen, pieceNumber, orderPublicId);
+      }
+      if (newStatus) await db.runAsync(`UPDATE scan_order SET status = ? WHERE tenant = ? AND gen = ? AND public_id = ?`, newStatus, tenantId, cur.gen, orderPublicId);
+    });
+  },
+
+  async scanOrderCount(tenantId) {
+    const db = await openDb();
+    const gen = await committedGen(db, tenantId);
+    if (gen == null) return 0;
+    const cur = { gen };
+    const row = await db.getFirstAsync<{ n: number }>(`SELECT COUNT(*) AS n FROM scan_order WHERE tenant = ? AND gen = ?`, tenantId, cur.gen);
+    return row?.n ?? 0;
+  },
+
+  async scanClear(tenantId) {
+    const db = await openDb();
+    if (tenantId == null) {
+      await db.runAsync(`DELETE FROM scan_piece`);
+      await db.runAsync(`DELETE FROM scan_order`);
+      await db.runAsync(`DELETE FROM kv WHERE key LIKE 'scan.%'`);
+    } else {
+      await db.runAsync(`DELETE FROM scan_piece WHERE tenant = ?`, tenantId);
+      await db.runAsync(`DELETE FROM scan_order WHERE tenant = ?`, tenantId);
+      await db.runAsync(`DELETE FROM kv WHERE key LIKE ?`, `scan.%.${tenantId}`);
+    }
   },
 
   async kvGet(key) {

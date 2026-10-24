@@ -15,7 +15,7 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/mobile")]
 [Authorize]
 [RequirePermission(PermissionCatalog.MobileUse)]
-public sealed class MobileController(DriverPushService push, MobileOrderService orders, DriverAppService app, StreetAssignService street) : ControllerBase
+public sealed class MobileController(DriverPushService push, MobileOrderService orders, DriverAppService app, StreetAssignService street, ScanSnapshotService scanSnapshot) : ControllerBase
 {
     // ---------------------------------------------------------------- Lote 214: órdenes
 
@@ -74,6 +74,23 @@ public sealed class MobileController(DriverPushService push, MobileOrderService 
     [RequirePermission(PermissionCatalog.TripsStreetAssign)]
     [RequireModule(ModuleKeys.LtlGround)]
     public Task<StreetResultDto> StreetQuickRoute([FromBody] StreetQuickRouteRequest? req, CancellationToken ct) => street.QuickRouteAsync(req, ct);
+
+    // ---------------------------------------------------------------- Lote 216: descarga del escaneo sin señal (trips.scan + módulo de transporte)
+
+    /// <summary>
+    /// Una página de la descarga del escaneo sin señal: los envíos NO completados (hasta 5000, los más recientes primero) con sus piezas y lo ya escaneado. La primera página (skip 0) trae además el pipeline de estatus y las rutas abiertas
+    /// para Enrutar. `take` hasta 500. Los escaneos se mandan después a `POST /api/v1/scan/action`.
+    /// </summary>
+    [HttpGet("scan/snapshot")]
+    [RequirePermission(PermissionCatalog.TripsScan)]
+    [RequireModule(ModuleKeys.LtlGround)]
+    public Task<ScanSnapshotPageDto> ScanSnapshot([FromQuery] int skip, [FromQuery] int take, CancellationToken ct) => scanSnapshot.PageAsync(skip, take, ct);
+
+    /// <summary>Las rutas abiertas que se pueden escoger para Enrutar (planeadas de hoy, despachadas y en curso). En vivo, para refrescar la lista sin bajar todo otra vez.</summary>
+    [HttpGet("scan/routes")]
+    [RequirePermission(PermissionCatalog.TripsScan)]
+    [RequireModule(ModuleKeys.LtlGround)]
+    public Task<IReadOnlyList<ScanSnapshotRouteDto>> ScanRoutes(CancellationToken ct) => scanSnapshot.OpenRoutesAsync(ct);
 
     // ---------------------------------------------------------------- Lote 213: teléfono
 
