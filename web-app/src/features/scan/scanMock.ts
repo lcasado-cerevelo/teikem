@@ -18,6 +18,8 @@ export const mock = {
   reappeared: false,
   /** Órdenes sin asignar que devuelve `unassigned-orders` (se filtran por la consulta). */
   pending: [] as Rec[],
+  /** Lote 216: respuesta de la lupa (`GET /scan/lookup`) por código; lo no programado es «no hay nada». */
+  lookups: {} as Record<string, Rec>,
   /** Respuesta de `GET /orders/{id}` por publicId. */
   orders: {} as Record<string, Rec>,
 }
@@ -57,6 +59,7 @@ export function resetMock() {
   mock.override = null
   mock.scans = {}
   mock.reappeared = false
+  mock.lookups = {}
   mock.pending = [P1, P2, P3]
   mock.orders = { 'o-1': ORDER_DETAIL }
 }
@@ -85,6 +88,10 @@ function route(call: Call): unknown {
     if (q.get('City')) items = items.filter((o) => fold(o.city).includes(fold(q.get('City'))))
     if (q.get('ClientPublicId')) items = items.filter((o) => o.clientName === CLIENTS.find((c) => c.publicId === q.get('ClientPublicId'))?.name)
     return { total: items.length, skip: 0, take: Number(q.get('Take') ?? 100), items }
+  }
+  if (method === 'GET' && p === '/api/v1/scan/lookup') {
+    const code = String(q.get('code') ?? '')
+    return mock.lookups[code] ?? { code, matchedBy: null, items: [] }
   }
   if (method === 'GET' && p === '/api/v1/dispatch-zones') return ZONES
   if (method === 'GET' && p === '/api/v1/clients') return CLIENTS

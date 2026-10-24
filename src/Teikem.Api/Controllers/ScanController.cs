@@ -18,8 +18,15 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/scan")]
 [Authorize]
 [RequireModule(ModuleKeys.LtlGround)]
-public sealed class ScanController(OutboundScanService scanner, ScanActionService actions) : ControllerBase
+public sealed class ScanController(OutboundScanService scanner, ScanActionService actions, ScanLookupService lookup) : ControllerBase
 {
+    /// <summary>
+    /// Lote 216: la lupa de la estación. Busca el número de una pieza (o, si no es de una pieza, el del envío, conduce, empaque o factura) y dice lo que haya en la base, también si está cancelado, final, dado de baja, perdido, en una
+    /// reclamación o «Por verificar». Solo lee. 400 si el código está vacío o es muy largo.
+    /// </summary>
+    [HttpGet("lookup"), RequirePermission(PermissionCatalog.TripsScan)]
+    public Task<ScanLookupDto> Lookup([FromQuery] string? code, CancellationToken ct) => lookup.LookupAsync(code, ct);
+
     /// <summary>Lote 110: «Cerrar conteo» de una orden: lo que no se escaneó en la acción en que va queda faltante «Por verificar».</summary>
     [HttpPost("close-count"), RequirePermission(PermissionCatalog.TripsScan)]
     public Task<ScanCloseCountResultDto> CloseCount([FromBody] ScanCloseCountRequest req, CancellationToken ct)

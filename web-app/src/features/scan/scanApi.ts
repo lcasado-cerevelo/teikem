@@ -95,3 +95,19 @@ export function useCloseCount() {
     mutationFn: (v: { orderPublicId: string; confirm?: boolean; planDate?: string | null }) => unwrap(api.POST('/api/v1/scan/close-count', { body: { orderPublicId: v.orderPublicId, ...(v.confirm ? { confirm: true } : {}), ...(v.planDate ? { planDate: v.planDate } : {}) }, headers: { 'Idempotency-Key': crypto.randomUUID() } })),
   })
 }
+
+export type ScanLookup = components['schemas']['ScanLookupDto']
+export type ScanLookupItem = components['schemas']['ScanLookupItemDto']
+
+/** `GET /scan/lookup?code=` (Lote 216): la lupa. Dice lo que haya en la base de una pieza (o, si no es una pieza, del envío), también si está cancelado, final, dado de baja o reclamado. Solo se pide con un código buscado. */
+export function useScanLookup(code: string | null) {
+  return useQuery({
+    queryKey: ['/api/v1/scan/lookup', code],
+    queryFn: () => unwrap(api.GET('/api/v1/scan/lookup', { params: { query: { code: code ?? '' } } })),
+    enabled: !!code,
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+    meta: { handleAccessDenied: false },
+  })
+}

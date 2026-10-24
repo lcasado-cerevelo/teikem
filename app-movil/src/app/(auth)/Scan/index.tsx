@@ -9,6 +9,7 @@ import ScreenHeader from '@components/ScreenHeader';
 import Chip from '@components/Chip';
 import SearchMultiSelect, { type MultiOption } from '@components/SearchMultiSelect';
 import BarcodeScannerModal from '@components/BarcodeScannerModal';
+import ScanLookupModal from '@components/ScanLookupModal';
 import { useAccess } from '@hooks/access';
 import { useIsOnline } from '@hooks/useIsOnline';
 import { drainOutbox } from '@/offline';
@@ -56,6 +57,7 @@ export default function Scan() {
   const [last, setLast] = useState<{ result: LocalScanResult; orderPublicId: string | null } | null>(null);
   const [voice, setVoice] = useState(true);
   const [camera, setCamera] = useState(false);
+  const [lookup, setLookup] = useState(false);
   const input = useRef<TextInput>(null);
   const seq = useRef(0);
   const busy = useRef(false);
@@ -148,7 +150,7 @@ export default function Scan() {
       // El envío ya va más adelante que lo que se escanea: el sistema PARA y advierte; solo sigue si la persona lo confirma (la pieza se cuenta; el estatus no retrocede).
       if (out.result.outcome === 'BEYOND') {
         const go = await new Promise<boolean>((resolve) => Alert.alert(t('SCAN.BEYOND_TITLE'),
-          t('SCAN.BEYOND_BODY', { ...out.result.message.params, action: t(ACTION_KEY[action]) }),
+          out.server ? `${out.server.message}\n\n${t('SCAN.BEYOND_HELP')}` : t('SCAN.BEYOND_BODY', { ...out.result.message.params, action: t(ACTION_KEY[action]) }),
           [{ text: t('COMMON.CANCEL'), style: 'cancel', onPress: () => resolve(false) }, { text: t('SCAN.BEYOND_GO'), onPress: () => resolve(true) }], { cancelable: false }));
         if (go) {
           const again = await scanPiece(tid, raw, action, { scope, confirmedBeyond: true });
@@ -274,6 +276,9 @@ export default function Scan() {
           placeholderTextColor={colors.muted}
           accessibilityLabel={t('SCAN.PLACEHOLDER')}
         />
+        <Pressable onPress={() => setLookup(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('SCAN.LK_BUTTON')} style={styles.cam}>
+          <MaterialIcons name="search" size={26} color={colors.primary} />
+        </Pressable>
         {Platform.OS !== 'web' ? (
           <Pressable onPress={() => setCamera(true)} hitSlop={8} accessibilityLabel={t('ORDERS.SCAN_OPEN')} style={styles.cam}>
             <MaterialIcons name="qr-code-scanner" size={26} color={colors.primary} />
@@ -342,6 +347,7 @@ export default function Scan() {
       </>
       )}
 
+      {tid != null ? <ScanLookupModal visible={lookup} tenantId={tid} onClose={() => { setLookup(false); setTimeout(() => input.current?.focus(), 80); }} /> : null}
       <BarcodeScannerModal visible={camera} onClose={() => setCamera(false)} onScanned={(code) => { setCamera(false); void submit(code); }} />
     </SafeAreaView>
   );

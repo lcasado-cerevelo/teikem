@@ -14,12 +14,15 @@ import { useFormat } from '../../kernel/format'
 import { useLang, useT } from '../../kernel/i18n'
 import { ClientPicker, DateField, Filters, IconScan, IconVolume, IconVolumeOff, SelectFilter, toast, useAppliedFilters } from '../../kernel/ui'
 import { IconDoc } from '../../kernel/ui/screenIcons'
+import { IconSearch } from '../../kernel/ui/icons'
 import { usePrinting } from '../printing/usePrinting'
 import { missingReportSpec } from './missingReport'
 import { useDispatchZones } from '../drivers/api'
 import { orderKeys } from '../orders/api'
 import { useDebounced } from '../warehouse/lineRules'
 import { fetchOrderKnown, SCAN_ACTIONS, type ScanActionKey, useCloseCount, useScanAction, useUnassignedOrders } from './scanApi'
+import { ScanBeyondConfirm } from './ScanBeyondConfirm'
+import { ScanLookupModal } from './ScanLookupModal'
 import { ScanReappearedConfirm } from './ScanReappearedConfirm'
 import { ScanOrderModal, type PeekTarget } from './ScanOrderModal'
 import { ScanFeedPanel, ScanPendingPanel } from './ScanPanels'
@@ -75,6 +78,9 @@ export default function ScanScreen() {
   const [busy, setBusy] = useState(0)
   const [planDate, setPlanDate] = useState<string | null>(null)
   const [peek, setPeek] = useState<PeekTarget | null>(null)
+  // Lote 216: «el envío ya va más adelante» (el servidor no contó nada y pide decidir) y la lupa de búsqueda de piezas
+  const [beyond, setBeyond] = useState<{ code: string; action: ScanActionKey; message: string } | null>(null)
+  const [lookupOpen, setLookupOpen] = useState(false)
   const [filters, setFilters] = useState<ScanFilters>(NO_FILTERS)
   const [clientPublicId, setClientPublicId] = useState<string | null>(null)
 
@@ -128,23 +134,25 @@ export default function ScanScreen() {
   }, [focusInput])
 
   const sayFor = useCallback(
-    (kind: 'found' | 'dup' | 'notfound') => {
+    (kind: 'found' | 'dup' | 'notfound' | 'warn') => {
       if (latest.current.voiceOn) speakWord(t(`scan.voice.${kind}`), latest.current.lang)
     },
     [t],
   )
 
   const runScan = useCallback(
-    async (code: string) => {
+    async (code: string, confirmBeyond = false) => {
       const date = latest.current.planDate ?? tenantToday()
       try {
-        const result: ScanResult = await scan.mutateAsync({ action: latest.current.action, code, planDate: date })
+        const result: ScanResult = await scan.mutateAsync({ action: latest.current.action, code, planDate: date, ...(confirmBeyond ? { confirmBeyond: true } : {}) })
         const fromPending = latest.current.pendingItems.find((o) => o.publicId && o.publicId === result.orderPublicId)
         const known: KnownOrder = { ...(fromPending ? knownFromPending(fromPending) : {}), ...(result.zoneCode ? { zoneCode: result.zoneCode } : {}) }
         const entry: ScanEntry = { id: nextEntryId(), code, at: new Date().toISOString(), result, known }
         addScanEntry(latest.current.scope, entry)
         setLast({ kind: 'result', result, ref: entryRef(entry) })
         sayFor(voiceKind(result))
+        // Lote 216: el envío ya va más adelante que la acción: el servidor paró; la persona decide (cancelar no hace nada; contar la pieza no hace retroceder el estatus)
+        if (result.outcome === 'BEYOND') setBeyond({ code, action: latest.current.action, message: result.message ?? '' })
         // sin datos de «Pendientes», la ficha de la orden (si el usuario puede verla) completa cliente y pueblo
         if (!fromPending && result.orderPublicId && latest.current.canOrders) {
           void fetchOrderKnown(qc, result.orderPublicId).then((more) => {
@@ -286,9 +294,36 @@ export default function ScanScreen() {
           <button type="submit" className="go">
             {t('scan.input.go')}
           </button>
+          <button type="button" className="btn sm" onClick={() => setLookupOpen(true)} title={t('scan.lookup.button')} aria-label={t('scan.lookup.button')}>
+            <IconSearch />
+          </button>
         </form>
         <div className="hint">{t('scan.input.hint')}</div>
         <ScanResultBox last={last} busy={busy} closing={closeCount.isPending} onCloseCount={(id) => closeOrderCount(id)} />
+        {beyond && (
+          <ScanBeyondConfirm
+            message={beyond.message}
+            busy={scan.isPending}
+            onCancel={() => {
+              setBeyond(null)
+              setTimeout(focusInput, 0)
+            }}
+            onConfirm={() => {
+              const b = beyond
+              setBeyond(null)
+              setBusy((n) => n + 1)
+              chain.current = chain.current.then(() => runScan(b.code, true)).then(focusIfIdle)
+            }}
+          />
+        )}
+        {lookupOpen && (
+          <ScanLookupModal
+            onClose={() => {
+              setLookupOpen(false)
+              setTimeout(focusInput, 0)
+            }}
+          />
+        )}
         {reappeared && <ScanReappearedConfirm preview={reappeared.preview} busy={closeCount.isPending} onConfirm={() => closeOrderCount(reappeared.orderPublicId, true)} onCancel={() => setReappeared(null)} />}
         <div className="scn-date">
           <label htmlFor="scan-plan-date">{t('scan.planDate.label')}</label>

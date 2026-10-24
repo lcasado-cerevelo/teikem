@@ -14,6 +14,7 @@ const ICON = {
   dup: <IconCheck />,
   unassigned: <IconAlert />,
   ineligible: <IconAlert />,
+  beyond: <IconAlert />,
   notfound: <IconClose />,
 } as const
 

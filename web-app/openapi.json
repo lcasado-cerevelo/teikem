@@ -40286,6 +40286,44 @@
         }
       }
     },
+    "/api/v1/scan/lookup": {
+      "get": {
+        "tags": [
+          "Scan"
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanLookupDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanLookupDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanLookupDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/scan/close-count": {
       "post": {
         "tags": [
@@ -79305,6 +79343,10 @@
             "type": "string",
             "format": "uuid",
             "nullable": true
+          },
+          "confirmBeyond": {
+            "type": "boolean",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -79524,6 +79566,148 @@
             "items": {
               "type": "string"
             },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ScanLookupDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "matchedBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScanLookupItemDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ScanLookupItemDto": {
+        "type": "object",
+        "properties": {
+          "pieceNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "pieceActive": {
+            "type": "boolean"
+          },
+          "missing": {
+            "type": "string",
+            "nullable": true
+          },
+          "claimNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "claimStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "reappearedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "scans": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScanLookupScanDto"
+            },
+            "nullable": true
+          },
+          "orderPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "waybillNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "packBatchNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "orderActive": {
+            "type": "boolean"
+          },
+          "statusCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "stageKind": {
+            "type": "string",
+            "nullable": true
+          },
+          "clientName": {
+            "type": "string",
+            "nullable": true
+          },
+          "consigneeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "tripCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "tripStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "driverName": {
+            "type": "string",
+            "nullable": true
+          },
+          "pieces": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "flags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ScanLookupScanDto": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "nullable": true
+          },
+          "scannedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "byName": {
+            "type": "string",
             "nullable": true
           }
         },

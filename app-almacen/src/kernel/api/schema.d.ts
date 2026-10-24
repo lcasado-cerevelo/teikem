@@ -30737,6 +30737,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/scan/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    code?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ScanLookupDto"];
+                        "application/json": components["schemas"]["ScanLookupDto"];
+                        "text/json": components["schemas"]["ScanLookupDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/scan/close-count": {
         parameters: {
             query?: never;
@@ -47390,6 +47429,7 @@ export interface components {
             planDate?: string | null;
             /** Format: uuid */
             tripPublicId?: string | null;
+            confirmBeyond?: boolean | null;
         };
         ScanActionResultDto: {
             action?: string | null;
@@ -47455,6 +47495,45 @@ export interface components {
             newOrderStatusLabel?: string | null;
             reappearedNumbers?: string[] | null;
             missingNumbers?: string[] | null;
+        };
+        ScanLookupDto: {
+            code?: string | null;
+            matchedBy?: string | null;
+            items?: components["schemas"]["ScanLookupItemDto"][] | null;
+        };
+        ScanLookupItemDto: {
+            pieceNumber?: string | null;
+            pieceActive?: boolean;
+            missing?: string | null;
+            claimNumber?: string | null;
+            claimStatus?: string | null;
+            /** Format: date-time */
+            reappearedAtUtc?: string | null;
+            scans?: components["schemas"]["ScanLookupScanDto"][] | null;
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            waybillNumber?: string | null;
+            packBatchNumber?: string | null;
+            orderActive?: boolean;
+            statusCode?: string | null;
+            status?: string | null;
+            stageKind?: string | null;
+            clientName?: string | null;
+            consigneeName?: string | null;
+            city?: string | null;
+            tripCode?: string | null;
+            tripStatus?: string | null;
+            driverName?: string | null;
+            /** Format: int32 */
+            pieces?: number;
+            flags?: string[] | null;
+        };
+        ScanLookupScanDto: {
+            action?: string | null;
+            /** Format: date-time */
+            scannedAtUtc?: string;
+            byName?: string | null;
         };
         ScanSnapshotDriverDto: {
             /** Format: uuid */

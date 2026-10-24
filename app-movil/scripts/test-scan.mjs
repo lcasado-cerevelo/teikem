@@ -121,6 +121,7 @@ assert.equal(applyScan(order('IN_TRANSIT', { driverPublicId: 'drv-1', tripPublic
 assert.equal(isServerProblem('APPLIED'), false);
 assert.equal(isServerProblem('ALREADY_BEYOND'), false);
 assert.equal(isServerProblem('NO_ROUTE'), true);
+assert.equal(isServerProblem('BEYOND'), true, 'si el servidor para un escaneo ya aceptado en el teléfono, aparece en «Con problema»');
 assert.equal(isServerProblem('NOT_FOUND'), true);
 assert.equal(isServerProblem(null), false);
 

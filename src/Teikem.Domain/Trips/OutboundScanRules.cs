@@ -51,6 +51,8 @@ public static class ScanVoices
     public const string Found = "found";
     public const string Duplicate = "dup";
     public const string NotFound = "notfound";
+    /// <summary>Lote 216: el sistema PARA y advierte (el envío ya va más adelante que lo que se escanea); no es ni sí, ni ok, ni no.</summary>
+    public const string Warn = "warn";
 }
 
 /// <summary>Códigos de motivo del resultado del escaneo.</summary>

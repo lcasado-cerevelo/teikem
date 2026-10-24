@@ -35,6 +35,8 @@
 .scn-res.unassigned .scn-res-ic{background:var(--warn);color:#fff}
 .scn-res.ineligible{border-color:var(--violet);background:var(--violetbg)}
 .scn-res.ineligible .scn-res-ic{background:var(--violet);color:#fff}
+.scn-res.beyond{border-color:var(--warn);background:var(--warnbg)}
+.scn-res.beyond .scn-res-ic{background:var(--warn);color:#fff}
 .scn-res.notfound{border-color:var(--danger);background:var(--dangerbg)}
 .scn-res.notfound .scn-res-ic{background:var(--danger);color:#fff}
 
@@ -72,6 +74,7 @@
 .scn .ok svg{width:15px;height:15px}
 .scn .ok.dup{background:var(--infobg);color:var(--info)}
 .scn .ok.unassigned{background:var(--warnbg);color:var(--warn)}
+.scn .ok.beyond{background:var(--warnbg);color:var(--warn)}
 .scn .ok.ineligible{background:var(--violetbg);color:var(--violet)}
 .scn .ok.notfound{background:var(--dangerbg);color:var(--danger)}
 .scn-fi-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
@@ -102,3 +105,15 @@
   .scn-res-msg{font-size:15px}
   .scn .scanmeter{padding:12px 14px}
 }
+
+/* Lote 216: la lupa de la estación (buscar una pieza en la base) */
+.scn-lookup-form{display:flex;gap:8px;margin-bottom:12px}
+.scn-lookup-form input{flex:1;min-width:0}
+.scn-lk-card{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:var(--bg-2);min-width:0}
+.scn-lk-top{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:6px}
+.scn-lk-top .ref{font-family:var(--mono);font-weight:700;overflow-wrap:anywhere}
+.scn-lk-flags{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.scn-lk-grid{display:grid;grid-template-columns:max-content 1fr;gap:3px 12px;font-size:13px;margin:0}
+.scn-lk-grid dt{color:var(--faint)}
+.scn-lk-grid dd{margin:0;overflow-wrap:anywhere}
+.scn-lk-scans{margin:8px 0 0;padding-left:18px;font-size:12.5px;color:var(--muted)}

@@ -10625,3 +10625,9 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 
 **No me aparecen choferes, rutas o ciudades para escoger.** Salen de la descarga: toca **Sincronizar** con señal. Las ciudades son las de los envíos bajados.
 
+**Escaneé y dijo «No»: ¿cómo sé por qué?** Use la **lupa** (junto al campo de escaneo, en la app y en la web): escriba el número de la pieza y verá qué hay en la base: envío cancelado, estatus final, dado de baja, pieza perdida, en reclamación o «Por verificar», y en qué ruta va. Buscar no cuenta como escaneo. Sin señal, la app solo muestra lo bajado.
+
+**La lupa dice «Sin señal: solo se muestra lo que hay en lo bajado».** Una pieza cancelada o en estatus final no se baja al teléfono; aparece cuando haya señal.
+
+**En la web salió una ventana «Atención: el envío ya va más adelante».** La pieza es de un envío cuyo estatus va después de la acción escogida. El sistema no contó nada. **Cancelar** lo deja así; **Contar la pieza** la cuenta, pero el estatus del envío no retrocede. Si el envío ya estaba en ese mismo estatus no sale la ventana.
+

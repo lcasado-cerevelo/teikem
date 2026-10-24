@@ -3,7 +3,7 @@ import { storage } from './db';
 import { metaKey, readMeta, type ScanMeta } from './scanProblems';
 import { enqueue, listPending } from './outbox';
 import { drainOutbox } from './syncEngine';
-import { fetchSnapshotPage, postScanAction } from '@services/scanApi';
+import { fetchLookup, fetchSnapshotPage, postScanAction, type LookupItem, type LookupResult } from '@services/scanApi';
 import { ALL_SCOPE, ambiguous, applyScan, destinationTrip, fold, inScope, normalizeCode, notFound, type LocalOrder, type LocalScanResult, type ScanAction, type ScanScope, type SnapStatus } from '@utils/scanRules';
 export { addProblem, dismissProblem, readMeta, readProblems, type ScanMeta, type ScanProblem } from './scanProblems';
 
@@ -107,33 +107,58 @@ export async function scanPiece(tenantId: number, rawCode: string, action: ScanA
   const destination = destinationTrip(scope, action);
   const tripCode = destination ? (meta?.routes.find((r) => r.publicId === destination)?.code ?? null) : null;
 
-  if (action === 'RETURN') return viaServer(tenantId, code, action, null);
+  if (action === 'RETURN') return viaServer(tenantId, code, action, null, undefined, opts.confirmedBeyond);
 
   const local = await applyToLocal(tenantId, code, action, statuses, scope, tripCode, false, opts.confirmedBeyond);
   if (local.result.outcome === 'NOT_FOUND' || local.result.outcome === 'AMBIGUOUS') {
-    if (scope.mode === 'ALL' && onlineManager.isOnline()) return viaServer(tenantId, code, action, null, local.result);
+    if (scope.mode === 'ALL' && onlineManager.isOnline()) return viaServer(tenantId, code, action, null, local.result, opts.confirmedBeyond);
     return { result: local.result, orderPublicId: null, server: null };
   }
   if (local.result.send) {
-    await enqueue({ kind: 'scan', endpoint: 'scan/action', method: 'POST', payload: { tenantId, body: { action, code, tripPublicId: destination || undefined }, meta: { orderNumber: local.result.orderNumber } } });
+    await enqueue({ kind: 'scan', endpoint: 'scan/action', method: 'POST', payload: { tenantId, body: { action, code, tripPublicId: destination || undefined, confirmBeyond: opts.confirmedBeyond || undefined }, meta: { orderNumber: local.result.orderNumber } } });
     if (onlineManager.isOnline()) void drainOutbox();
   }
   return { result: local.result, orderPublicId: local.order?.publicId ?? null, server: null };
 }
 
-async function viaServer(tenantId: number, code: string, action: ScanAction, tripPublicId: string | null, fallback?: LocalScanResult): Promise<ScanOutput> {
+async function viaServer(tenantId: number, code: string, action: ScanAction, tripPublicId: string | null, fallback?: LocalScanResult, confirmBeyond?: boolean): Promise<ScanOutput> {
   if (!onlineManager.isOnline()) {
     return { result: fallback ?? { ...notFound(), message: { key: 'SCAN.MSG_NEEDS_SIGNAL', params: {} } }, orderPublicId: null, server: null };
   }
   try {
-    const r = await postScanAction(tenantId, action, code, tripPublicId);
+    const r = await postScanAction(tenantId, action, code, tripPublicId, confirmBeyond);
     const found = r.voice === 'found';
     const result: LocalScanResult = {
-      outcome: found ? 'COUNTED' : r.voice === 'dup' ? 'DUPLICATE' : 'NOT_FOUND', voice: found ? 'found' : r.voice === 'dup' ? 'dup' : 'notfound',
+      outcome: r.outcome === 'BEYOND' ? 'BEYOND' : found ? 'COUNTED' : r.voice === 'dup' ? 'DUPLICATE' : 'NOT_FOUND', voice: r.outcome === 'BEYOND' ? 'warn' : found ? 'found' : r.voice === 'dup' ? 'dup' : 'notfound',
       message: { key: 'SCAN.MSG_SERVER', params: { text: r.message } }, orderNumber: r.orderNumber, fromStatus: null, toStatus: null, scanned: r.scanned ?? 0, total: r.total ?? 0, routeNote: null, send: false,
     };
     return { result, orderPublicId: null, server: { outcome: r.outcome, message: r.message } };
   } catch {
     return { result: fallback ?? { ...notFound(), message: { key: 'SCAN.MSG_NEEDS_SIGNAL', params: {} } }, orderPublicId: null, server: null };
   }
+}
+
+
+/**
+ * La lupa. Con señal pregunta a la base (todo lo que haya: cancelado, final, baja, reclamación…); sin señal muestra solo lo que hay en lo bajado (envíos no completados), y lo dice.
+ */
+export async function lookupPiece(tenantId: number, rawCode: string): Promise<LookupResult | 'EMPTY'> {
+  const code = normalizeCode(rawCode);
+  if (!code) return 'EMPTY';
+  if (onlineManager.isOnline()) {
+    try { return await fetchLookup(tenantId, code); } catch { /* sin respuesta: se cae a lo bajado */ }
+  }
+  const meta = await readMeta(tenantId);
+  const label = (c: string) => meta?.statuses.find((x) => x.code === c)?.label ?? c;
+  const found = (await storage.scanFindPiece(tenantId, code)).map((m) => m.order);
+  const items: LookupItem[] = found.map((o) => {
+    const p = o.pieces.find((x) => x.number === code);
+    return {
+      pieceNumber: p?.number ?? null, pieceActive: true, missing: p?.missing ?? null, claimNumber: null, claimStatus: null,
+      scans: (p?.actions ?? []).map((a) => ({ action: a, scannedAtUtc: null, byName: null })),
+      orderNumber: o.orderNumber, waybillNumber: o.waybill, status: label(o.statusCode), orderActive: true, clientName: null, consigneeName: null, city: o.city ?? null,
+      tripCode: o.tripCode, tripStatus: null, driverName: null, pieces: o.pieces.length, flags: o.tripCode ? ['IN_ROUTE'] : [],
+    };
+  });
+  return { code, matchedBy: items.length ? 'PIECE' : null, items, offline: true };
 }

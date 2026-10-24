@@ -352,8 +352,9 @@ public sealed record MonitorDto(DateOnly Date, MonitorTotalsDto Totals, IReadOnl
 public sealed record OutboundScanRequest(string? Code, DateOnly? PlanDate = null, Guid? TripPublicId = null);
 
 /// <summary>Lote 107: escaneo con acción escogida: Action = PICKUP, ARRIVE, ROUTE o DEPART; Code = número de orden, empaque o factura.</summary>
-/// <summary>`TripPublicId` (Lote 216): solo con ROUTE; la ruta escogida donde se pone el envío (planeada, despachada o en curso). Sin ella, la ruta abierta de su zona.</summary>
-public sealed record ScanActionRequest(string? Action, string? Code, DateOnly? PlanDate = null, Guid? TripPublicId = null);
+/// <summary>`ConfirmBeyond` (Lote 216): sin él, si el envío de la pieza ya va MÁS ADELANTE que la acción, no se cuenta nada y la respuesta es `BEYOND` (voz `warn`) con el mensaje; con `true` la pieza se cuenta sin que el estatus retroceda.
+/// `TripPublicId` (Lote 216): solo con ROUTE; la ruta escogida donde se pone el envío (planeada, despachada o en curso). Sin ella, la ruta abierta de su zona.</summary>
+public sealed record ScanActionRequest(string? Action, string? Code, DateOnly? PlanDate = null, Guid? TripPublicId = null, bool? ConfirmBeyond = null);
 
 /// <summary>Lote 110: cerrar el conteo de una orden (la última acción escaneada): lo que no se escaneó queda faltante «Por verificar».</summary>
 /// <summary>Cerrar el conteo de una orden. Confirm: la estación (web y app) manda true después de mostrar el mensaje con las piezas sin escanear y la orden nueva de las que aparecieron; sin confirmar, si hay algo que decir, no se hace nada. PlanDate: el día de la ruta cuando la orden nueva debe enrutarse.</summary>
@@ -405,3 +406,19 @@ public sealed record OutboundScanResultDto(
     Guid? TripPublicId,
     string? TripCode,
     string? ReasonCode);
+
+// ---------------------------------------------------------------- Lote 216: buscar una pieza (lupa de la estación de escaneo)
+
+/// <summary>Una acción con la que se escaneó la pieza, cuándo y quién.</summary>
+public sealed record ScanLookupScanDto(string Action, DateTime ScannedAtUtc, string? ByName);
+
+/// <summary>
+/// Lo que hay en la base de una pieza (o, si el código no es de una pieza, de un envío): el envío con su estatus (también cancelado, final o dado de baja), la reclamación si la hay, la ruta y el chofer, y las acciones con que se escaneó.
+/// `Flags`: PIECE_INACTIVE, ORDER_INACTIVE, ORDER_CANCELLED, ORDER_RETURNED, ORDER_FINAL, PIECE_TO_VERIFY, PIECE_LOST, PIECE_CLAIMED, PIECE_RESOLVED, REAPPEARED, IN_ROUTE. `PieceNumber` null = coincidió con el envío, no con una pieza.
+/// </summary>
+public sealed record ScanLookupItemDto(string? PieceNumber, bool PieceActive, string? Missing, string? ClaimNumber, string? ClaimStatus, DateTime? ReappearedAtUtc, IReadOnlyList<ScanLookupScanDto> Scans,
+    Guid OrderPublicId, string OrderNumber, string? WaybillNumber, string? PackBatchNumber, bool OrderActive, string StatusCode, string Status, string StageKind,
+    string? ClientName, string? ConsigneeName, string? City, string? TripCode, string? TripStatus, string? DriverName, int Pieces, IReadOnlyList<string> Flags);
+
+/// <summary>`MatchedBy`: PIECE, o el campo del envío que coincidió (ORDER_NUMBER, WAYBILL, PACK_BATCH, INVOICE); null si no hay nada. Varios resultados si el número se repite.</summary>
+public sealed record ScanLookupDto(string Code, string? MatchedBy, IReadOnlyList<ScanLookupItemDto> Items);

@@ -47,7 +47,10 @@ describe('resultado → chip, tono, voz y qué hacer', () => {
   it('cada outcome tiene su propio color y nombre', () => {
     const infos = Object.values(Outcomes).map((o) => outcomeInfo(o))
     expect(new Set(infos.map((i) => i.chip)).size).toBe(5)
-    expect(new Set(infos.map((i) => i.tone)).size).toBe(5)
+    expect(new Set(infos.map((i) => i.tone)).size).toBe(6)   // Lote 216: + «más adelante» (comparte el chip ámbar con «sin asignar»)
+    expect(outcomeInfo(Outcomes.Beyond)).toMatchObject({ tone: 'beyond', chip: 'warn' })
+    expect(voiceKind({ outcome: Outcomes.Beyond, voice: null as unknown as string })).toBe('warn')
+    expect(voiceKind({ outcome: Outcomes.FoundAssigned, voice: 'warn' })).toBe('warn')
     expect(outcomeInfo(Outcomes.FoundAssigned)).toMatchObject({ tone: 'ok', chip: 'deliv' })
     expect(outcomeInfo(Outcomes.AlreadyAssigned)).toMatchObject({ tone: 'dup' })
     expect(outcomeInfo(Outcomes.NotEligible)).toMatchObject({ tone: 'ineligible' })

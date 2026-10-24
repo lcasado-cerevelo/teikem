@@ -2111,7 +2111,8 @@
       "unsupportedTitle": "This browser cannot speak. Results are shown on screen.",
       "found": "Yes",
       "notfound": "No",
-      "dup": "Ok"
+      "dup": "Ok",
+      "warn": "Attention"
     },
     "mode": {
       "label": "Scan action",
@@ -2145,7 +2146,8 @@
       "ORDER_NUMBER": "shipment number",
       "PACK_BATCH": "pack number",
       "INVOICE": "client invoice",
-      "PIECE": "piece number"
+      "PIECE": "piece number",
+      "WAYBILL": "waybill"
     },
     "outcome": {
       "FOUND_ASSIGNED": "Assigned",
@@ -2153,7 +2155,8 @@
       "ALREADY_ASSIGNED": "Already there",
       "NOT_ELIGIBLE": "Not eligible",
       "NOT_FOUND": "Not found",
-      "UNKNOWN": "Unknown result"
+      "UNKNOWN": "Unknown result",
+      "BEYOND": "Further along"
     },
     "hint": {
       "NO_MATCH": "Check the code, scan the pack number or type the client's invoice number.",
@@ -2241,6 +2244,46 @@
       "confirm": "Confirm and close the count",
       "cancel": "Cancel",
       "missing": "{count} piece(s) were not scanned; they will be «To verify»:"
+    },
+    "beyond": {
+      "title": "Attention: the shipment is already further along",
+      "help": "The system did not count the piece. “Cancel” does nothing. “Count the piece” counts it, but the shipment status does not go back.",
+      "cancel": "Cancel",
+      "confirm": "Count the piece"
+    },
+    "lookup": {
+      "button": "Look up a piece in the database",
+      "title": "Look up a piece",
+      "help": "Type the piece number to see what is in the database, even if it is cancelled, in a final status, removed or in a claim. It does not count as a scan.",
+      "placeholder": "Piece number…",
+      "label": "Piece number to look up",
+      "search": "Search",
+      "error": "The search failed. Try again.",
+      "none": "Nothing in the database for “{code}”.",
+      "matchedOrder": "Not a piece: it matches the shipment by {by}.",
+      "isOrder": "Shipment",
+      "order": "Shipment",
+      "waybill": "Waybill",
+      "status": "Status",
+      "client": "Client",
+      "consignee": "Consignee",
+      "route": "Route",
+      "claim": "Claim",
+      "pieces": "Pieces",
+      "scans": "Piece scans",
+      "flag": {
+        "PIECE_INACTIVE": "Piece removed",
+        "ORDER_INACTIVE": "Shipment removed",
+        "ORDER_CANCELLED": "Shipment cancelled",
+        "ORDER_RETURNED": "Shipment returned",
+        "ORDER_FINAL": "Final status",
+        "PIECE_TO_VERIFY": "To verify",
+        "PIECE_LOST": "Lost",
+        "PIECE_CLAIMED": "In a claim",
+        "PIECE_RESOLVED": "Claim closed",
+        "REAPPEARED": "Reappeared",
+        "IN_ROUTE": "On a route"
+      }
     }
   },
   "routeMap": {
@@ -7564,7 +7607,15 @@
         "countSeeClear": "Sees expected while counting: unmarked",
         "countSeeSaved": "Saved.",
         "colMessaging": "Messaging",
-        "messaging": {"FULL": "Full", "OFFICE": "Office only", "NONE": "No messaging", "setFULL": "Messaging: full", "setOFFICE": "Messaging: office only", "setNONE": "Messaging: none", "saved": "Messaging saved."},
+        "messaging": {
+          "FULL": "Full",
+          "OFFICE": "Office only",
+          "NONE": "No messaging",
+          "setFULL": "Messaging: full",
+          "setOFFICE": "Messaging: office only",
+          "setNONE": "Messaging: none",
+          "saved": "Messaging saved."
+        },
         "kindDriver": "Driver (app only)",
         "driverHint": "An app-only driver signs in only in the driver app: the web rejects them. Link them to their record in Lists → Drivers (in every company where they work)."
       },
@@ -10144,11 +10195,47 @@
     }
   },
   "messages": {
-      "responsibles": {"label": "Owners", "nobody": "nobody yet", "edit": "Owners", "title": "Owners of {name}", "help": "They are the first people suggested when someone wants to talk about an order on this route or zone. There can be several.", "none": "There are no owners yet.", "add": "Add owner", "save": "Save", "saved": "Owners saved."},
-      "about": {"label": "What it is about", "on": "About {title}", "talkOrder": "Talk about this order", "talkTrip": "Talk about this route", "panel": "Messages", "empty": "There are no messages about this yet."},
-      "suggest": {"title": "Suggested", "trip": "Route owner", "role": "Dispatchers", "recent": "Recent conversation"},
-      "card": {"openOrder": "Open order {title}", "openTrip": "Open route {title}"},
-      "photo": {"add": "Attach photo", "remove": "Remove photo", "max": "A message can carry up to {n} photos.", "type": "Only JPG, PNG or WEBP photos are accepted.", "unreadable": "The photo could not be read.", "open": "View full photo", "alt": "Message photo", "deleted": "Photo deleted", "archived": "Photo archived", "unavailable": "Photo unavailable"},
+    "responsibles": {
+      "label": "Owners",
+      "nobody": "nobody yet",
+      "edit": "Owners",
+      "title": "Owners of {name}",
+      "help": "They are the first people suggested when someone wants to talk about an order on this route or zone. There can be several.",
+      "none": "There are no owners yet.",
+      "add": "Add owner",
+      "save": "Save",
+      "saved": "Owners saved."
+    },
+    "about": {
+      "label": "What it is about",
+      "on": "About {title}",
+      "talkOrder": "Talk about this order",
+      "talkTrip": "Talk about this route",
+      "panel": "Messages",
+      "empty": "There are no messages about this yet."
+    },
+    "suggest": {
+      "title": "Suggested",
+      "trip": "Route owner",
+      "role": "Dispatchers",
+      "recent": "Recent conversation"
+    },
+    "card": {
+      "openOrder": "Open order {title}",
+      "openTrip": "Open route {title}"
+    },
+    "photo": {
+      "add": "Attach photo",
+      "remove": "Remove photo",
+      "max": "A message can carry up to {n} photos.",
+      "type": "Only JPG, PNG or WEBP photos are accepted.",
+      "unreadable": "The photo could not be read.",
+      "open": "View full photo",
+      "alt": "Message photo",
+      "deleted": "Photo deleted",
+      "archived": "Photo archived",
+      "unavailable": "Photo unavailable"
+    },
     "title": "Messages",
     "you": "You",
     "muted": "Muted",
@@ -10694,9 +10781,26 @@
       "help": "What the closing readers found in the documents: \"take order X to Picked up because this document says so\". Nothing changes until a person confirms; on confirming, the order changes at that moment in their name. If the order no longer allows it, the proposal becomes Failed with the reason.",
       "empty": "No proposals match that filter.",
       "emptyPending": "No proposals to confirm.",
-      "col": { "status": "Status", "order": "Order", "action": "Proposal", "document": "Document", "integration": "Integration", "date": "Date", "decision": "Decision" },
-      "status": { "PENDING": "To confirm", "CONFIRMED": "Confirmed", "APPLIED": "Applied", "REJECTED": "Rejected", "FAILED": "Failed" },
-      "to": { "PICKUP": "Picked up", "DELIVERED": "Delivered" },
+      "col": {
+        "status": "Status",
+        "order": "Order",
+        "action": "Proposal",
+        "document": "Document",
+        "integration": "Integration",
+        "date": "Date",
+        "decision": "Decision"
+      },
+      "status": {
+        "PENDING": "To confirm",
+        "CONFIRMED": "Confirmed",
+        "APPLIED": "Applied",
+        "REJECTED": "Rejected",
+        "FAILED": "Failed"
+      },
+      "to": {
+        "PICKUP": "Picked up",
+        "DELIVERED": "Delivered"
+      },
       "confirm": "Confirm",
       "reject": "Reject",
       "confirmTitle": "Confirm closing order {order}",
@@ -10896,10 +11000,18 @@
         "presetsHelp": "Adds a ready-made reader for a known document type. Then pick the client and check that the products exist with the same item number (SKU).",
         "checksHelp": "Completeness checks: they compare what was read with the totals the document itself declares (how many lines it says it has, what they add up to). If they do not match, or the total is not found, the reading is doubtful: it is created anyway and you are told to verify. They catch what the OCR failed to read, which confidence cannot see.",
         "checkKind": "Check {n}",
-        "checkKindOption": { "LINE_COUNT": "Lines read = lines the document declares", "SUM": "Sum of a column = total the document declares", "MATCH_COUNT": "Lines read = items the document lists" },
+        "checkKindOption": {
+          "LINE_COUNT": "Lines read = lines the document declares",
+          "SUM": "Sum of a column = total the document declares",
+          "MATCH_COUNT": "Lines read = items the document lists"
+        },
         "checkScope": "Check scope {n}",
         "checkScopeHelp": "Per record (each order with its text), the header (what comes before the first record) against all rows, or the whole document against all rows.",
-        "checkScopeOption": { "RECORD": "Each record", "HEADER": "The header against all rows", "DOCUMENT": "The whole document against all rows" },
+        "checkScopeOption": {
+          "RECORD": "Each record",
+          "HEADER": "The header against all rows",
+          "DOCUMENT": "The whole document against all rows"
+        },
         "checkName": "Check name {n}",
         "checkPosition": "Column counted or summed {n}",
         "checkPositionHelp": "The read column (1, 2, 3…) whose lines are counted or whose values are summed.",
@@ -10918,10 +11030,16 @@
         "onlyActiveWarehouse": "The company's only active warehouse",
         "mode": "What it does with what it finds",
         "modeHelp": "Suggest leaves a proposal to confirm in the Proposals tab (recommended). Automatic closes the order at once: use it only when this reader has proven it is accurate.",
-        "modeOption": { "SUGGEST": "Suggest (a person confirms)", "AUTO": "Automatic" },
+        "modeOption": {
+          "SUGGEST": "Suggest (a person confirms)",
+          "AUTO": "Automatic"
+        },
         "toStatus": "Take the order to",
         "toStatusHelp": "The status each order named by the document is proposed to move to: Picked up (the pickup is done) or Delivered.",
-        "toStatusOption": { "PICKUP": "Picked up", "DELIVERED": "Delivered" },
+        "toStatusOption": {
+          "PICKUP": "Picked up",
+          "DELIVERED": "Delivered"
+        },
         "recordStart": "Text that starts each record",
         "recordStartHelp": "For a document with several orders (one per page): every line that contains this text starts a new order, for example \"Order #:\". Empty = the document is a single order.",
         "preset": {

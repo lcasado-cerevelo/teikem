@@ -150,6 +150,13 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
             IReadOnlyList<string>? skipped = null;
             var message = CountedMessage(piece.PackageNumber, LabelOf(targetForOrder));
 
+            // Lote 216: el envío ya va MÁS ADELANTE que lo que se escanea (no es que ya esté en ese estatus): el sistema PARA y advierte; solo sigue si quien escanea lo confirma (ConfirmBeyond).
+            if (steps.Count == 0 && !countsAtWarehouse && current.Code != targetForOrder && req?.ConfirmBeyond != true)
+            {
+                done = await ResultAsync(action, ScanActionOutcomes.Beyond, ScanActions.BeyondMessage(piece.PackageNumber, orderFacts.OrderNumber, current.Label, LabelOf(targetForOrder)), orderFacts, current, null, null, null, piece.PackageNumber, orderId, ct2);
+                return;
+            }
+
             if (steps.Count == 0)
             {
                 // La orden ya está en ese estatus o más adelante: la pieza solo se cuenta. Con Enrutar, si ya está en una ruta se dice cuál.
@@ -303,6 +310,7 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
     {
         ScanActionOutcomes.Applied or ScanActionOutcomes.Counted or ScanActionOutcomes.Reappeared or ScanActionOutcomes.Returned => ScanVoices.Found,                 // «Sí»
         ScanActionOutcomes.Duplicate => ScanVoices.Duplicate,                                          // «Ok»
+        ScanActionOutcomes.Beyond => ScanVoices.Warn,                                                  // Lote 216: «Atención» (para y advierte)
         _ => ScanVoices.NotFound,                                                                      // «No»
     };
 

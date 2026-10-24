@@ -604,3 +604,80 @@ function installVoice() {
   vi.stubGlobal('SpeechSynthesisUtterance', class { lang = ''; rate = 1; volume = 1; text: string; constructor(text: string) { this.text = text } })
   return spoken
 }
+
+describe('Estación de escaneo — «más adelante» y la lupa (Lote 216)', () => {
+  const beyondResult = { outcome: 'BEYOND', voice: 'warn', message: 'La pieza B-1: el envío OT-0001 ya está en «En tránsito», que va después de «Sin asignar». Si sigue, la pieza solo se cuenta y el estatus no retrocede.', orderPublicId: 'o-1', orderNumber: 'OT-0001', pieceNumber: 'B-1', scanned: 0, total: 2, reasonCode: null }
+
+  it('si el envío ya va más adelante, el servidor para: se advierte, se dice «Atención» y no se cuenta nada hasta que la persona lo confirma', async () => {
+    const user = userEvent.setup()
+    const speak = installVoice()
+    wrap(SCAN)
+    mock.scans['B-1'] = beyondResult
+    await scanCode(user, 'B-1')
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByTestId('beyond-message')).toHaveTextContent('La pieza B-1: el envío OT-0001 ya está en «En tránsito»')
+    expect(speak.map((u) => u.text)).toEqual(['Atención'])
+    expect(result()).toHaveTextContent('Más adelante')
+    expect(posts()).toHaveLength(1)
+    expect(posts()[0].body).not.toHaveProperty('confirmBeyond')
+
+    // Contar la pieza: el mismo escaneo, ahora con confirmBeyond
+    mock.scans['B-1'] = { outcome: 'COUNTED', voice: 'found', message: 'La pieza B-1 se contó (Sin asignar).', orderPublicId: 'o-1', orderNumber: 'OT-0001', scanned: 1, total: 2, reasonCode: null }
+    await user.click(within(dialog).getByTestId('beyond-confirm'))
+    await waitFor(() => expect(posts()).toHaveLength(2))
+    expect(posts()[1].body).toMatchObject({ code: 'B-1', action: 'ROUTE', confirmBeyond: true })
+    await waitFor(() => expect(result()).toHaveTextContent('La pieza B-1 se contó'))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(speak.map((u) => u.text)).toEqual(['Atención', 'Sí'])
+  })
+
+  it('«Cancelar» en la advertencia no hace nada más: no se manda otro escaneo', async () => {
+    const user = userEvent.setup()
+    wrap(SCAN)
+    mock.scans['B-1'] = beyondResult
+    await scanCode(user, 'B-1')
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(posts()).toHaveLength(1)
+  })
+
+  it('la lupa busca una pieza en la base y muestra por qué no se encontró: cancelado, dada de baja, reclamación, ruta y escaneos', async () => {
+    const user = userEvent.setup()
+    wrap(SCAN)
+    mock.lookups['X-2'] = {
+      code: 'X-2', matchedBy: 'PIECE',
+      items: [{ pieceNumber: 'X-2', pieceActive: true, missing: 'CLAIMED', claimNumber: 'RC-0001', claimStatus: 'Abierta', scans: [{ action: 'ROUTE', scannedAtUtc: '2026-10-24T12:00:00Z', byName: 'Ana' }],
+        orderPublicId: 'o-9', orderNumber: 'OT-0009', waybillNumber: 'W9', orderActive: true, statusCode: 'CANCELLED', status: 'Cancelada', stageKind: 'TERMINAL', clientName: 'Advance Solutions', consigneeName: 'Taller Díaz', city: 'Bayamón',
+        tripCode: 'R-0001', tripStatus: 'En curso', driverName: 'Chofer Siete', pieces: 2, flags: ['ORDER_CANCELLED', 'PIECE_CLAIMED', 'IN_ROUTE'] }],
+    }
+    await user.click(screen.getByRole('button', { name: 'Buscar una pieza en la base' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.type(within(dialog).getByRole('textbox', { name: 'Número de pieza a buscar' }), 'X-2{Enter}')
+    const card = await within(dialog).findByTestId('lookup-card')
+    expect(card).toHaveTextContent('Envío cancelado')
+    expect(card).toHaveTextContent('En reclamación')
+    expect(card).toHaveTextContent('RC-0001')
+    expect(card).toHaveTextContent('Cancelada')
+    expect(card).toHaveTextContent('R-0001 · En curso · Chofer Siete')
+    expect(card).toHaveTextContent('Enrutar')
+    expect(callsTo('GET', '/api/v1/scan/lookup')[0].url.searchParams.get('code')).toBe('X-2')
+    expect(posts()).toHaveLength(0)   // buscar no es escanear: no cuenta nada
+  })
+
+  it('la lupa dice cuando no hay nada y avisa si el código no es una pieza sino un envío', async () => {
+    const user = userEvent.setup()
+    wrap(SCAN)
+    mock.lookups['OT-5'] = { code: 'OT-5', matchedBy: 'ORDER_NUMBER', items: [{ pieceNumber: null, pieceActive: true, missing: null, scans: [], orderPublicId: 'o-5', orderNumber: 'OT-5', orderActive: false, statusCode: 'CANCELLED', status: 'Cancelada', stageKind: 'TERMINAL', pieces: 0, flags: ['ORDER_INACTIVE', 'ORDER_CANCELLED'] }] }
+    await user.click(screen.getByRole('button', { name: 'Buscar una pieza en la base' }))
+    const dialog = await screen.findByRole('dialog')
+    const box = within(dialog).getByRole('textbox', { name: 'Número de pieza a buscar' })
+    await user.type(box, 'NADA{Enter}')
+    expect(await within(dialog).findByTestId('lookup-none')).toHaveTextContent('No hay nada en la base con «NADA».')
+    await user.clear(box)
+    await user.type(box, 'OT-5{Enter}')
+    expect(await within(dialog).findByText('No es una pieza: coincide con el envío por número de envío.')).toBeInTheDocument()
+    expect(within(dialog).getByTestId('lookup-card')).toHaveTextContent('Envío dado de baja')
+  })
+})
+

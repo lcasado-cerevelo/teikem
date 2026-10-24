@@ -42,8 +42,8 @@ export async function fetchOpenRoutes(tenantId: number): Promise<SnapRoute[]> {
 /** Respuesta de POST /scan/action (lo que la pantalla y la lista de problemas necesitan). */
 export interface ServerScanResult { action: string; outcome: string; voice: string; message: string; orderNumber: string | null; scanned: number | null; total: number | null; missing: number | null }
 
-export async function postScanAction(tenantId: number, action: string, code: string, tripPublicId?: string | null): Promise<ServerScanResult> {
-  const { data } = await api.post<ServerScanResult>('scan/action', { action, code, tripPublicId: tripPublicId || undefined }, { tenantId });
+export async function postScanAction(tenantId: number, action: string, code: string, tripPublicId?: string | null, confirmBeyond?: boolean): Promise<ServerScanResult> {
+  const { data } = await api.post<ServerScanResult>('scan/action', { action, code, tripPublicId: tripPublicId || undefined, confirmBeyond: confirmBeyond || undefined }, { tenantId });
   return data;
 }
 
@@ -52,4 +52,33 @@ export interface CloseCountResult { message: string; needsConfirmation: boolean;
 export async function postCloseCount(tenantId: number, orderPublicId: string, confirm: boolean): Promise<CloseCountResult> {
   const { data } = await api.post<CloseCountResult>('scan/close-count', { orderPublicId, confirm }, { tenantId });
   return data;
+}
+
+/** Lo que hay en la base de una pieza (o del envío si el código no es de una pieza): también si está cancelado, final, dado de baja o reclamado. `flags` son códigos que la pantalla traduce. */
+export interface LookupItem {
+  pieceNumber: string | null;
+  pieceActive: boolean;
+  missing: string | null;
+  claimNumber: string | null;
+  claimStatus: string | null;
+  scans: { action: string; scannedAtUtc: string | null; byName: string | null }[];
+  orderNumber: string;
+  waybillNumber: string | null;
+  status: string;
+  orderActive: boolean;
+  clientName: string | null;
+  consigneeName: string | null;
+  city: string | null;
+  tripCode: string | null;
+  tripStatus: string | null;
+  driverName: string | null;
+  pieces: number;
+  flags: string[];
+}
+
+export interface LookupResult { code: string; matchedBy: string | null; items: LookupItem[]; offline: boolean }
+
+export async function fetchLookup(tenantId: number, code: string): Promise<LookupResult> {
+  const { data } = await api.get<{ code: string; matchedBy?: string | null; items: LookupItem[] }>('scan/lookup', { tenantId, params: { code } });
+  return { code: data.code, matchedBy: data.matchedBy ?? null, items: data.items, offline: false };
 }

@@ -19,6 +19,10 @@ public class ScanActionServiceTests
     private static Task<ScanActionResultDto> ApplyAsync(TripServiceFixture f, string action, string code)
         => f.Get<ScanActionService>().ApplyAsync(new ScanActionRequest(action, code, TripServiceFixture.Today), default);
 
+    /// <summary>Lote 216: el mismo escaneo, pero confirmando la advertencia de «el envío ya va más adelante».</summary>
+    private static Task<ScanActionResultDto> ConfirmedPieceAsync(TripServiceFixture f, string action, SeededOrder order, int piece = 1)
+        => f.Get<ScanActionService>().ApplyAsync(new ScanActionRequest(action, TripServiceFixture.PieceNumberOf(order.Id, piece), TripServiceFixture.Today, null, ConfirmBeyond: true), default);
+
     private static Task<ScanActionResultDto> PieceAsync(TripServiceFixture f, string action, SeededOrder order, int piece = 1)
         => ApplyAsync(f, action, TripServiceFixture.PieceNumberOf(order.Id, piece));
 
@@ -98,14 +102,26 @@ public class ScanActionServiceTests
     }
 
     [Fact]
-    public async Task A_late_piece_of_an_earlier_action_counts_without_moving_the_order_backwards()
+    public async Task A_piece_of_an_earlier_action_stops_and_warns_and_only_when_confirmed_counts_without_moving_the_order_backwards()
     {
         await using var f = await TripServiceFixture.CreateAsync();
         var order = await f.SeedOrderAsync(OrderStatuses.InTransit, pieces: 2);
-        var r = await PieceAsync(f, ScanActions.Pickup, order, 1);
-        Assert.Equal(ScanActionOutcomes.Counted, r.Outcome);
+
+        // Lote 216 (Luis): el envío ya va más adelante que «Recoger»: el sistema para y advierte; no cuenta nada
+        var warn = await PieceAsync(f, ScanActions.Pickup, order, 1);
+        Assert.Equal((ScanActionOutcomes.Beyond, ScanVoices.Warn, 0), (warn.Outcome, warn.Voice, warn.Scanned));
+        Assert.Empty(await f.Db.OrderPieceScans.AsNoTracking().ToListAsync());
+        Assert.Equal(OrderStatuses.InTransit, await f.OrderStatusAsync(order.Id));
+
+        // confirmado, la pieza se cuenta y el estatus no retrocede
+        var r = await ConfirmedPieceAsync(f, ScanActions.Pickup, order, 1);
+        Assert.Equal((ScanActionOutcomes.Counted, ScanVoices.Found, 1), (r.Outcome, r.Voice, r.Scanned));
         Assert.Equal(OrderStatuses.InTransit, await f.OrderStatusAsync(order.Id));
         Assert.Empty(await HistoryAsync(f, order.Id));
+
+        // y si el envío ya estaba justo en ese estatus no hay advertencia: la pieza nueva se cuenta
+        var same = await f.SeedOrderAsync(OrderStatuses.InTransit, pieces: 2);
+        Assert.Equal(ScanActionOutcomes.Counted, (await PieceAsync(f, ScanActions.Depart, same, 1)).Outcome);
     }
 
     [Theory]
@@ -136,9 +152,10 @@ public class ScanActionServiceTests
         var row = await f.Db.EntityStatusHistories.AsNoTracking().Include(h => h.FromStatus).Where(h => h.EntityTypeLookupId == typeId && h.EntityId == order.Id).SingleAsync();
         Assert.Equal(OrderStatuses.Failed, row.FromStatus!.InternalCode);
 
-        // y «Recoger» sobre una fallida ya está más adelante: la pieza solo cuenta
+        // y «Recoger» sobre una fallida ya está más adelante: advierte (Lote 216) y, confirmado, la pieza solo cuenta
         var failed2 = await f.SeedOrderAsync(OrderStatuses.Failed);
-        Assert.Equal(ScanActionOutcomes.Counted, (await PieceAsync(f, ScanActions.Pickup, failed2)).Outcome);
+        Assert.Equal(ScanActionOutcomes.Beyond, (await PieceAsync(f, ScanActions.Pickup, failed2)).Outcome);
+        Assert.Equal(ScanActionOutcomes.Counted, (await ConfirmedPieceAsync(f, ScanActions.Pickup, failed2)).Outcome);
         Assert.Equal(OrderStatuses.Failed, await f.OrderStatusAsync(failed2.Id));
     }
 

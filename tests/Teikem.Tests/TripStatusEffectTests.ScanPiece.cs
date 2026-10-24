@@ -88,4 +88,70 @@ public partial class TripStatusEffectTests
         Assert.Equal(drivers["Chofer Ocho"], DriverOf(pickupOrder));
         Assert.Null(DriverOf(free));
     }
+
+    [Fact]
+    public async Task A_shipment_further_along_than_the_action_stops_and_warns_and_only_counts_the_piece_when_confirmed_without_moving_the_status_back()
+    {
+        await using var f = await Fixture.CreateAsync();
+        var inTransit = await f.SeedOrderAsync(OrderStatuses.InTransit);
+        await SeedPiecesAsync(f, inTransit, "B-1", "B-2");
+        var scan = ScanActionOf(f);
+
+        var warn = await scan.ApplyAsync(new ScanActionRequest(ScanActions.Arrive, "B-1"), default);   // «Llegó» sobre uno que ya va En tránsito
+
+        Assert.Equal((ScanActionOutcomes.Beyond, ScanVoices.Warn, 0), (warn.Outcome, warn.Voice, warn.Scanned));
+        Assert.Contains("B-1", warn.Message);
+        Assert.Contains(Fixture.OrderNumber(inTransit), warn.Message);
+        Assert.Contains("va después de", warn.Message);
+        Assert.False(await f.Db.OrderPieceScans.AnyAsync());   // no se contó nada
+
+        var go = await scan.ApplyAsync(new ScanActionRequest(ScanActions.Arrive, "B-1", null, null, ConfirmBeyond: true), default);
+
+        Assert.Equal((ScanActionOutcomes.Counted, ScanVoices.Found, 1), (go.Outcome, go.Voice, go.Scanned));
+        Assert.Equal(OrderStatuses.InTransit, await StatusCodeOfOrderAsync(f, inTransit));   // el estatus no retrocedió
+        Assert.Equal(ScanActionOutcomes.Duplicate, (await scan.ApplyAsync(new ScanActionRequest(ScanActions.Arrive, "B-1", null, null, true), default)).Outcome);
+    }
+
+    private static ScanLookupService LookupOf(Fixture f) => new(f.Db, f.Services.GetRequiredService<ITenantContext>());
+
+    [Fact]
+    public async Task The_lookup_finds_whatever_is_in_the_database_for_a_package_number_cancelled_inactive_claimed_or_in_a_route()
+    {
+        await using var f = await Fixture.CreateAsync();
+        f.Db.Drivers.Add(new Driver { DriverId = 7, TenantId = TenantId, EmployeeCode = "D7", FullName = "Chofer Siete", UserId = 99, StatusCodeId = 1, IsActive = true });
+        await f.Db.SaveChangesAsync();
+        var (trip, ids) = await f.SeedTripAsync(TripStatuses.Dispatched, RouteStatuses.Active, OrderStatuses.Assigned, 1);
+        var cancelled = await f.SeedOrderAsync(OrderStatuses.Cancelled);
+        await SeedPiecesAsync(f, ids[0], "R-1");
+        await SeedPiecesAsync(f, cancelled, "X-1", "X-2");
+        var x2 = await f.Db.OrderPieces.AsTracking().SingleAsync(p => p.PackageNumber == "X-2");
+        x2.MissingStatus = PieceMissing.Claimed;
+        x2.ClaimId = 1;
+        (await f.Db.OrderPieces.AsTracking().SingleAsync(p => p.PackageNumber == "X-1")).IsActive = false;
+        f.Db.Claims.Add(new Claim { ClaimId = 1, TenantId = TenantId, Number = "RC-0001", TransportOrderId = cancelled, ClientId = 1, StatusCodeId = f.Id(StatusDomains.OrderStatus, OrderStatuses.Submitted), Description = "se perdió" });
+        f.Db.OrderPieceScans.Add(new OrderPieceScan { TenantId = TenantId, OrderPieceId = ids[0] * 100 + 1, Action = ScanActions.Route, ScannedAtUtc = DateTime.UtcNow });
+        await f.Db.SaveChangesAsync();
+        var lookup = LookupOf(f);
+
+        var inRoute = Assert.Single((await lookup.LookupAsync("R-1", default)).Items);
+        Assert.Equal(new[] { "IN_ROUTE" }, inRoute.Flags);
+        Assert.Equal((trip.Code, "Chofer Siete", ScanActions.Route), (inRoute.TripCode, inRoute.DriverName, Assert.Single(inRoute.Scans).Action));
+
+        var claimed = Assert.Single((await lookup.LookupAsync("X-2", default)).Items);
+        Assert.Equal(new[] { "ORDER_CANCELLED", "PIECE_CLAIMED" }, claimed.Flags);
+        Assert.Equal(("RC-0001", PieceMissing.Claimed, 1), (claimed.ClaimNumber, claimed.Missing, claimed.Pieces));   // la pieza inactiva no cuenta en el total
+
+        var inactive = Assert.Single((await lookup.LookupAsync("X-1", default)).Items);
+        Assert.Contains("PIECE_INACTIVE", inactive.Flags);   // también las dadas de baja
+
+        // si no es una pieza, se busca por el envío
+        var byOrder = await lookup.LookupAsync(Fixture.OrderNumber(cancelled), default);
+        Assert.Equal("ORDER_NUMBER", byOrder.MatchedBy);
+        Assert.Null(Assert.Single(byOrder.Items).PieceNumber);
+
+        var nothing = await lookup.LookupAsync("NO-EXISTE", default);
+        Assert.Empty(nothing.Items);
+        Assert.Null(nothing.MatchedBy);
+        await Assert.ThrowsAsync<Teikem.Infrastructure.Exceptions.ValidationException>(() => lookup.LookupAsync("  ", default));
+    }
 }

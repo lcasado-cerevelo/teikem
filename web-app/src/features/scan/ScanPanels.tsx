@@ -18,7 +18,7 @@ import {
   type UnassignedOrder,
 } from './scanRules'
 
-const TONE_ICON = { ok: IconCheck, dup: IconCheck, unassigned: IconAlert, ineligible: IconAlert, notfound: IconClose } as const
+const TONE_ICON = { ok: IconCheck, dup: IconCheck, unassigned: IconAlert, ineligible: IconAlert, beyond: IconAlert, notfound: IconClose } as const
 
 export function ScanFeedPanel({
   entries,

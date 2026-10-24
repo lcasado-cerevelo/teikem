@@ -21,6 +21,8 @@ export const Outcomes = {
   AlreadyAssigned: 'ALREADY_ASSIGNED',
   NotFound: 'NOT_FOUND',
   NotEligible: 'NOT_ELIGIBLE',
+  /** Lote 216: el envío ya va MÁS ADELANTE que la acción: el servidor no contó nada y pide confirmar. */
+  Beyond: 'BEYOND',
 } as const
 
 export const Reasons = {
@@ -46,7 +48,7 @@ export function codeProblemKey(raw: string): 'scan.errors.empty' | 'scan.errors.
   return null
 }
 
-export type ScanTone = 'ok' | 'unassigned' | 'dup' | 'ineligible' | 'notfound'
+export type ScanTone = 'ok' | 'unassigned' | 'dup' | 'ineligible' | 'notfound' | 'beyond'
 
 export interface OutcomeInfo {
   tone: ScanTone
@@ -61,6 +63,7 @@ const OUTCOME_INFO: Record<string, OutcomeInfo> = {
   [Outcomes.AlreadyAssigned]: { tone: 'dup', chip: 'disp', labelKey: 'scan.outcome.ALREADY_ASSIGNED' },
   [Outcomes.NotEligible]: { tone: 'ineligible', chip: 'wh', labelKey: 'scan.outcome.NOT_ELIGIBLE' },
   [Outcomes.NotFound]: { tone: 'notfound', chip: 'fail', labelKey: 'scan.outcome.NOT_FOUND' },
+  [Outcomes.Beyond]: { tone: 'beyond', chip: 'warn', labelKey: 'scan.outcome.BEYOND' },
 }
 
 /** Chip, tono y nombre del `outcome`; un valor desconocido se pinta como «no encontrada» (rojo) con su propio texto. */
@@ -75,11 +78,13 @@ export function hintKey(result: Pick<ScanResult, 'outcome' | 'reasonCode'>): str
   return Object.values<string>(Reasons).includes(reason) ? `scan.hint.${reason}` : null
 }
 
-export type VoiceKind = 'found' | 'dup' | 'notfound'
+/** warn (Lote 216) = «Atención»: el sistema para y advierte. */
+export type VoiceKind = 'found' | 'dup' | 'notfound' | 'warn'
 
 /** La palabra a pronunciar: la que manda el servidor (`voice`); si falta o es rara, la que sale del resultado. */
 export function voiceKind(result: Pick<ScanResult, 'outcome' | 'voice'>): VoiceKind {
-  if (result.voice === 'found' || result.voice === 'dup' || result.voice === 'notfound') return result.voice
+  if (result.voice === 'found' || result.voice === 'dup' || result.voice === 'notfound' || result.voice === 'warn') return result.voice
+  if (result.outcome === Outcomes.Beyond) return 'warn'
   if (result.outcome === Outcomes.FoundAssigned || result.outcome === Outcomes.FoundUnassigned) return 'found'
   if (result.outcome === Outcomes.AlreadyAssigned) return 'dup'
   return 'notfound'
@@ -218,4 +223,11 @@ export function buildPendingQuery(f: ScanFilters, clientPublicId: string | null)
     Skip: 0,
     Take: PENDING_TAKE,
   }
+}
+
+/** Color de la bandera de la lupa: lo que impide escanear (cancelado, final, baja) en rojo; faltante o reclamación en ámbar; el resto informativo. */
+export function flagTone(flag: string): ChipTone {
+  if (flag === 'ORDER_CANCELLED' || flag === 'ORDER_FINAL' || flag === 'ORDER_RETURNED' || flag === 'ORDER_INACTIVE' || flag === 'PIECE_INACTIVE') return 'fail'
+  if (flag === 'PIECE_LOST' || flag === 'PIECE_CLAIMED' || flag === 'PIECE_TO_VERIFY' || flag === 'PIECE_RESOLVED' || flag === 'REAPPEARED') return 'warn'
+  return 'disp'
 }
