@@ -523,7 +523,10 @@
       "MSG_SERVER": "{{text}}",
       "ROUTE_ALREADY": "It was already on route {{trip}}.",
       "ROUTE_CHOSEN": "It will go to route {{trip}} when synced.",
-      "ROUTE_ZONE": "It will be put on the route of its zone when synced."
+      "ROUTE_ZONE": "It will be put on the route of its zone when synced.",
+      "CHOOSE": "What will you scan? Pick the process to start.",
+      "CHOSEN": "Scanning: {{action}}",
+      "CHOOSE_FIRST": "First pick what you will scan."
     }
   }
 }

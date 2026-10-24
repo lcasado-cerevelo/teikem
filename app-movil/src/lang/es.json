@@ -523,7 +523,10 @@
       "MSG_SERVER": "{{text}}",
       "ROUTE_ALREADY": "Ya estaba en la ruta {{trip}}.",
       "ROUTE_CHOSEN": "Irá a la ruta {{trip}} al sincronizar.",
-      "ROUTE_ZONE": "Se pondrá en la ruta de su zona al sincronizar."
+      "ROUTE_ZONE": "Se pondrá en la ruta de su zona al sincronizar.",
+      "CHOOSE": "¿Qué vas a escanear? Escoge el proceso para empezar.",
+      "CHOSEN": "Escaneando: {{action}}",
+      "CHOOSE_FIRST": "Primero escoge qué vas a escanear."
     }
   }
 }

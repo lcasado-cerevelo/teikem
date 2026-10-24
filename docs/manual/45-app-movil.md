@@ -55,6 +55,7 @@
 
 ## 2d. Escanear (Lote 216) — con trabajo sin señal
 - **Quién**: `trips.scan` en alguna compañía (módulo de transporte). Acceso «Escanear» en el inicio. **Devolver** pide además `orders.return`.
+- **Primero se escoge el proceso**: al abrir la pantalla pregunta **«¿Qué vas a escanear?»** y no deja escanear nada (el campo y la cámara quedan bloqueados) hasta que se escoge la acción (Recoger, Llegó, Enrutar, Salir o Devolver). No hay una acción por omisión; se vuelve a preguntar cada vez que se entra a la pantalla. Se puede cambiar de acción en cualquier momento tocando otra.
 - **Para qué**: es la estación de escaneo del capítulo 05 §7b, en el teléfono. Se escanea el **número de cada pieza** (el del label) con el lector con gatillo —que escribe como un teclado— o con la cámara. Cada acción lleva el envío a su estatus:
   | Acción | Estatus | Notas |
   |---|---|---|

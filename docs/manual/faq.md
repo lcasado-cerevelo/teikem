@@ -10613,3 +10613,4 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 
 **No suena la voz.** La voz usa la del teléfono. Revise el interruptor «Voz» de la pantalla y el volumen; si el teléfono no tiene voz instalada quedan la vibración y el color (verde = Sí, ámbar = Ok, rojo = No).
 
+**La pantalla Escanear no me deja escribir ni escanear.** Primero hay que escoger qué se va a escanear (Recoger, Llegó, Enrutar, Salir o Devolver): la pantalla lo pregunta al abrir y no hay acción por omisión. Toque una y el campo queda listo para el gatillo.

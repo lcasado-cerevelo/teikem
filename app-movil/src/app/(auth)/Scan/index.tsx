@@ -38,7 +38,8 @@ export default function Scan() {
   const company = companies.find((c) => c.tenantId === tenantId) ?? companies[0] ?? null;
   const canReturn = !!company && access.companiesWith('orders.return').some((c) => c.tenantId === company.tenantId);
 
-  const [action, setAction] = useState<ScanAction>('ROUTE');
+  // Sin acción por omisión: la pantalla no deja escanear nada hasta que la persona escoja qué proceso va a escanear.
+  const [action, setAction] = useState<ScanAction | null>(null);
   const [routeIdx, setRouteIdx] = useState<number | null>(null);
   const [meta, setMeta] = useState<ScanMeta | null>(null);
   const [downloading, setDownloading] = useState<{ done: number; total: number } | null>(null);
@@ -118,7 +119,7 @@ export default function Scan() {
   };
 
   const submit = useCallback(async (raw: string) => {
-    if (tid == null || busy.current) return;
+    if (tid == null || busy.current || action == null) return;
     busy.current = true;
     setText('');
     try {
@@ -182,8 +183,9 @@ export default function Scan() {
       </View>
       {downloadError ? <Text style={styles.error}>{t('SCAN.DOWNLOAD_ERROR')}</Text> : null}
 
+      <Text style={[styles.choose, action == null && styles.chooseEmpty]}>{action == null ? t('SCAN.CHOOSE') : t('SCAN.CHOSEN', { action: t(ACTION_KEY[action]) })}</Text>
       <View style={styles.chips}>
-        {actions.map((a) => <Chip key={a} label={t(ACTION_KEY[a])} active={a === action} onPress={() => setAction(a)} />)}
+        {actions.map((a) => <Chip key={a} label={t(ACTION_KEY[a])} active={a === action} onPress={() => { setAction(a); setTimeout(() => input.current?.focus(), 50); }} />)}
       </View>
       {action === 'ROUTE' ? (
         <View style={styles.pad}>
@@ -198,26 +200,27 @@ export default function Scan() {
       ) : null}
       {action === 'RETURN' && !online ? <Text style={styles.error}>{t('SCAN.RETURN_NEEDS_SIGNAL')}</Text> : null}
 
-      <View style={styles.inputRow}>
+      <View style={[styles.inputRow, action == null && styles.disabled]}>
         <TextInput
           ref={input}
           style={styles.input}
           value={text}
           onChangeText={setText}
           onSubmitEditing={() => void submit(text)}
-          autoFocus
+          editable={action != null}
+          autoFocus={action != null}
           autoCapitalize="none"
           autoCorrect={false}
           blurOnSubmit={false}
           returnKeyType="done"
           // el lector con gatillo escribe como un teclado: no hace falta que salga el teclado en pantalla
           showSoftInputOnFocus={Platform.OS === 'web'}
-          placeholder={t('SCAN.PLACEHOLDER')}
+          placeholder={action == null ? t('SCAN.CHOOSE_FIRST') : t('SCAN.PLACEHOLDER')}
           placeholderTextColor={colors.muted}
           accessibilityLabel={t('SCAN.PLACEHOLDER')}
         />
         {Platform.OS !== 'web' ? (
-          <Pressable onPress={() => setCamera(true)} hitSlop={8} accessibilityLabel={t('ORDERS.SCAN_OPEN')} style={styles.cam}>
+          <Pressable onPress={() => action != null && setCamera(true)} disabled={action == null} hitSlop={8} accessibilityLabel={t('ORDERS.SCAN_OPEN')} style={styles.cam}>
             <MaterialIcons name="qr-code-scanner" size={26} color={colors.primary} />
           </Pressable>
         ) : null}
@@ -231,7 +234,7 @@ export default function Scan() {
             {last.result.routeNote ? <Text style={styles.resultSub}>{t(last.result.routeNote.key, last.result.routeNote.params)}</Text> : null}
           </>
         ) : (
-          <Text style={styles.sub}>{t('SCAN.READY')}</Text>
+          <Text style={styles.sub}>{action == null ? t('SCAN.CHOOSE_FIRST') : t('SCAN.READY')}</Text>
         )}
       </View>
 
@@ -296,6 +299,8 @@ const createStyles = (colors: Colors) => StyleSheet.create({
   syncBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4, paddingHorizontal: 8 },
   syncText: { color: colors.primary, fontWeight: '700', fontSize: 12 },
   disabled: { opacity: 0.4 },
+  choose: { marginHorizontal: 20, marginBottom: 6, fontWeight: '700', fontSize: 15, color: colors.text },
+  chooseEmpty: { fontSize: 18, color: colors.primary },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 20, marginVertical: 8, borderWidth: 2, borderColor: colors.primary, borderRadius: 12, paddingHorizontal: 12 },
   input: { flex: 1, fontSize: 20, paddingVertical: 12, color: colors.text },
   cam: { padding: 4 },
