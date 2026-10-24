@@ -1,7 +1,8 @@
-# Captures still in Spanish (371 of 598 referenced; 240 regenerated in English)
+# Captures still in Spanish (371 of 613 referenced; 240 are in English)
 
-These images were copied from the Spanish manual because no Playwright walkthrough regenerated them in English: captures of the
-warehouse app and the mobile apps (taken on a device), PDFs, and captures of tests that failed before reaching them.
+These images are an exact copy of the Spanish capture because no Playwright walkthrough regenerated them in English: captures of the
+warehouse app and the mobile apps (taken on a device), PDFs, and screens whose walkthrough already fails with the current interface
+(outdated walkthroughs, tracked in a separate task). Regenerate them with the recipe in [translation-notes.md](translation-notes.md).
 
 - almacen-app-01-registrar.png — frontend/capturas-apps.md
 - almacen-app-02-quien-eres.png — frontend/capturas-apps.md
@@ -374,3 +375,5 @@ warehouse app and the mobile apps (taken on a device), PDFs, and captures of tes
 - portal-11-accept-invite.png — frontend/capturas-apps.md
 - portal-13-reports-bystatus.png — frontend/capturas-apps.md
 - portal-14-login.png — frontend/capturas-apps.md
+
+Note: two images are referenced by the Spanish chapters but do not exist in either manual (broken in the source): `f6-almacen-plataformas.png` and `f8a-movil-listas.png`.

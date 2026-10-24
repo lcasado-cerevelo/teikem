@@ -1,4 +1,5 @@
 # 25 — Secure access: account lockout and trusted computers
+<!-- kemi:portal -->
 
 Batch 100 (client portal, 2026-10-17). Two protections that apply to **every access** (staff today; clients and consignees once their portals exist).
 

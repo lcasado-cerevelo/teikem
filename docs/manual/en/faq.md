@@ -8911,6 +8911,7 @@ These notices are for the client. Notifying the consignee (with their acceptance
 **The log says “No recipients”.**
 The client has no active users in the portal and no extra e-mails in that notice. The summary still goes to the portal inbox if that checkbox is on.
 
+<!-- kemi:portal -->
 ## Batch 99 — Legal document
 
 **`You must accept the privacy policy and the terms of use to continue.` (403 `legal_acceptance_required`)**
@@ -8922,15 +8923,19 @@ The document changed while the person was reading it. Have them reload the scree
 **The “I accept” button does not get enabled.**
 You have to scroll the text to the end (on the phone, swipe inside the box down to the bottom). The button only gets enabled when you reach it.
 
+<!-- kemi:staff -->
 **How do I know who has accepted and who has not?**
 Security & audit → “Legal acceptance” tab (`admin.audit` permission). The pending ones come first; “Earlier version” is whoever accepted before a change of the document.
 
+<!-- kemi:staff -->
 **Bracketed marks ([RAZÓN SOCIAL DEL OPERADOR]) appear in the document.**
 The operator data is missing in the configuration (`Legal:OperatorName`, `Legal:OperatorAddress`, `Legal:ContactEmail`, `Legal:Jurisdiction`). They have to be filled in before production.
 
+<!-- kemi:staff -->
 **What happens with the users that already exist when going to production?**
 They have no saved acceptance, so they will see it on their next sign-in. When the document changes, everyone will see it again.
 
+<!-- kemi:portal -->
 ## Batch 100 — Secure access
 
 **“Confirm this computer” — it asks me to confirm by e-mail again.**
@@ -8957,6 +8962,7 @@ That computer was already removed or does not belong to the session's user.
 **How do I remove a shared computer?**
 My account → Sessions → My trusted computers → Remove.
 
+<!-- kemi:portal -->
 ## Batch 101 — Client portal (access)
 
 **`The user has no active access to the portal.` (403)**
@@ -8980,6 +8986,7 @@ The code is remembered for 30 days per trusted computer. It asks again if it is 
 **“The invitation expired”.**
 They are valid for 48 hours and only once; ask the administrator to resend it (the previous link stops working).
 
+<!-- kemi:portal -->
 ## Batch 102 — Client app
 
 **“Cannot reach the server. Check your internet and try again.”**
@@ -9032,6 +9039,7 @@ A lateral status (today, Failed attempt) does not advance the bar: it stays wher
 **My company's public tracking does not respond.**
 It comes off: the administrator turns it on in Tenant settings → General → Public tracking.
 
+<!-- kemi:portal -->
 ## Language and theme (client app and public page)
 
 **How do I switch to dark mode?**
@@ -9043,6 +9051,7 @@ In the same places: **Español / English**. Spanish is the default; the choice i
 **The app opened in dark mode and I did not ask for it.**
 It is on Automatic and the phone or the browser is in dark mode. Choose “Light” to fix it.
 
+<!-- kemi:portal -->
 ## Messages with the customer service team (Batch 104)
 
 **“Write the message.” (400)** — The message is empty or contains only spaces. Write the text and send again.
@@ -9063,6 +9072,7 @@ It is on Automatic and the phone or the browser is in dark mode. Choose “Light
 
 **Can files be attached?** No, for now only text.
 
+<!-- kemi:portal -->
 ## New client order (Batch 105)
 
 **I do not see “New order” in the app.** Your role is read-only (`CLIENT_READONLY`); through the API it gives 403 “Your user can only view…”. Ask the company to change your role.
@@ -9262,6 +9272,7 @@ The database update rewrote the saved order filters that named old statuses: `CO
 
 **The return fee did not appear on the invoice.** The order must be Returned with an amount greater than zero, not billed before, and the run must include freight and cover the date on which it became Returned.
 
+<!-- kemi:portal -->
 ## Consignee notices (Batch 116)
 
 **Who turns on the consignee notices?** The client, from the portal (administrator or operator); not the company. See chapter 34.
@@ -9330,6 +9341,7 @@ The database update rewrote the saved order filters that named old statuses: `CO
 
 **Can I attach photos to the delivery?** Not yet: where the files are stored is still to be decided.
 
+<!-- kemi:portal -->
 ## Client portal: invoices, my notices and proof of delivery (Batch 119)
 
 **Can I pay or mark an invoice as paid from the app?** No: invoices are read-only. The company records the payments; as soon as it does, the invoice shows the payment and the balance.
@@ -9348,6 +9360,7 @@ The database update rewrote the saved order filters that named old statuses: `CO
 
 **Who recorded the delivery?** The client's proof of delivery does not give the user's name: only “the company's staff”. The company does see it in its order record.
 
+<!-- kemi:portal -->
 ## Client portal: my profile and indicators (Batch 120)
 
 **Can I change my email from the portal?** No: the email is the one you sign in with and changing it requires verifying it. Ask the administrator of your business or of the company to change it. What you can change yourself is your name and your password (Settings → My profile and password).
@@ -9739,15 +9752,18 @@ No: it is an inventory issue without delivery (`Dispatch {number} belongs to an 
 
 **“The company requires receiving against an arrival notice, not a purchase order.” / “…against a purchase order, not an arrival notice.” (409).** The chosen document is not of the required type; use the right one or change the requirement.
 
+<!-- kemi:portal -->
 ## Warehouse client portal (Batch 153)
 
 **“Your access does not include viewing the inventory value.” (403).** Your portal access is read-only; the value is seen by the client's administrator and operator accesses. Ask your business's administrator for it.
 
 **I do not see Inventory in the portal.** The company of this access does not have the warehouse module; if you have another access in a company with a warehouse, switch to it with “Switch access”.
 
+<!-- kemi:staff -->
 **What does "Updating the product price requires the manage inventory permission." (403) mean?**
 You checked “Update the product price with this one” on an arrival notice without having `inventory.manage`. Uncheck the box (the notice is saved with its price and the product keeps its own) or ask your administrator for the permission.
 
+<!-- kemi:staff -->
 **The arrival notice shows me “The product has X on file; this price is different.” Is it an error?**
 No, it is informational only. The notice's price is used for that receiving; the product cost changes only if the product had no cost or if you check “Update the product price with this one”.
 
@@ -9769,30 +9785,39 @@ Receiving against that notice has already started. Delete the open receipt to be
 **What does “An arrival notice born from a purchase order is changed in the purchase order.” (409) mean?**
 That notice was generated by a purchase order; edit the order, not the notice.
 
+<!-- kemi:staff -->
 **When saving an exit notice I get “Internal error.” (500)**
 It was a defect of the previous version (the SAL-##### counter was not recognized by the API) and it is already fixed. If you see it, update the API and try again; if it persists, tell support with the error's correlation code.
 
+<!-- kemi:staff -->
 **How are phone numbers stored and what is the prefix for? (Batch 162)**
 Every phone number is stored **with digits only** and with its **international prefix** separately (`1` for Puerto Rico and the United States, `593` for Ecuador…). In every phone form (contacts, client people, consignees, suppliers) there is a **Country code** field to the left of the number, which starts with the company's. The format in which the number is displayed is defined by each company in **Settings → Region & formats** (`Country code` and `Phone mask`); a number with another prefix is shown as “+593 991234567”.
 
+<!-- kemi:staff -->
 **What does “Invalid country code: use 1 to 4 digits, for example 1.” (400) mean?**
 The prefix must be 1 to 4 digits and not start with 0 (it is accepted with “+”: `+593`). Fix it in the Country code field.
 
+<!-- kemi:staff -->
 **What does “The phone number does not start with the given country code.” (400) mean?**
 The number was written with “+” and a prefix (for example `+593 …`) but the Country code field has another one (for example `+1`). Leave only one or make them match.
 
+<!-- kemi:staff -->
 **What does “A phone number with “+” needs the country code in its field.” (400) mean?**
 The number starts with “+” but the country could not be recognized. Type the prefix in its field and the number without the “+”.
 
+<!-- kemi:staff -->
 **After the change, an old phone number is shown without format or without prefix. What do I do?**
 The ones that had text (for example “787-555-1234 ext. 5”) or a “+” of a country other than the company's were not touched when cleaning the data. Open them with **Edit**, enter the correct number and prefix and save.
 
+<!-- kemi:staff -->
 **Why do claims now start with RCL- and not REC-? (Batch 164)**
 The receipt already used `REC-#####` and a `REC-00012` could be a receipt or a claim. Since Batch 164 claims are `RCL-#####` (existing ones were renamed automatically); the receipt keeps `REC-#####`.
 
+<!-- kemi:staff -->
 **What can I search for in “Search or run”? (Batch 167)**
 Besides the menu screens, it searches records by number or name: shipments (number, waybill, packing, client invoice, package), routes, claims (`RCL-`), clients, warehouses, zones, bins, products (SKU and name), receipts, pick batches and packings, exit notices, suppliers, purchase and sales orders, invoices, rentals and phone numbers. A single exact result opens by itself; if there are several, they are shown to choose from. Only the types your user can see appear. See chapter 42.
 
+<!-- kemi:staff -->
 **Where do I see the privacy policy and the terms of use while inside the application?**
 At the footer of the side menu, in small print: **Privacy** and **Terms of use** (they open the document in a new tab). With the menu collapsed the footer is not visible: expand it. On the phone, open the menu.
 
@@ -10636,6 +10661,7 @@ The value is read when the API starts: restart it (or the application pool). The
 **On the web, the scan field is locked and asks “Pick at least one option”.** You chose to scan **By route, By city or By driver** and have not checked any yet. Check one or several in the list (you can search by typing) or go back to **Everything** to scan without a filter.
 
 **On the web a piece that exists says “No… does not belong to the chosen drivers”.** You are filtering by route, city or driver and that piece belongs to another. It is not counted and nothing changes. Change the selection or use **Everything**.
+<!-- kemi:portal -->
 
 ## Batch 213 — Client portal: footer, date filter, New shipment same as the staff's, Messages and selecting several consignees
 
@@ -10700,6 +10726,7 @@ The value is read when the API starts: restart it (or the application pool). The
 **I changed the client with the form open and it disappeared.** The new consignee belongs to the order's client; when the client changes, the form closes so it is not created with the wrong owner. Type the name again with the right client.
 
 **I want to fill in more data (contact person, time window, notes).** Use the “+” button next to the field (it opens the full window) or edit the consignee later in Catalog → Consignees.
+<!-- kemi:portal -->
 
 ## Batch 213 (round 2) — Client portal: PDF and Excel with logo, new consignee on the same screen
 
@@ -10718,6 +10745,7 @@ The value is read when the API starts: restart it (or the application pool). The
 **I saved the consignee but the shipment gave an error.** The consignee is already saved (it is neither lost nor duplicated); fix what the shipment's error says and save it again.
 
 **The new consignee does not appear in “My consignees”.** It appears as soon as it is saved; reload the Notices/Consignees screen if you had it open.
+<!-- kemi:portal -->
 
 ## Batch 213 (round 3) — PDF colors and Teikem logo; quick entry columns
 
@@ -10759,6 +10787,75 @@ There are saved entries, but none in the chosen range with those words. Clear th
 **In the installed app, how do I export a table to Excel, CSV or PDF?** Same as on the web: at the foot of the table (or of the card list) are “Export · Excel · CSV · PDF”. In the app the file is saved on the device and the share menu opens: from there you save it to Files or Drive, send it by email or WhatsApp, or print it. All three formats carry the whole filtered set (up to 5000 rows); Excel and PDF carry the logo, the company, the title, the date and the filters at the top, with your company's colors. Reports export the same way (the totals row is included).
 
 **“This device cannot share files.”** The phone or tablet has no app that receives files (or the system blocked it). Install or enable a file manager and try again; from the web on a computer the file downloads directly.
+
+## Warehouse client portal: create, edit and cancel (Batches 154–159)
+<!-- kemi:portal -->
+
+**How do I create a product?**
+In **Warehouse → Products** tap **New product**. The SKU and the name are required; the barcode, the make and the purchase cost are optional. Check “Tracked by lot” if the product carries a lot number and expiration date. The product is created under your client company.
+
+**How do I change a product I already created?**
+In the **Products** list, tap **Edit** on the row. You can change the name, the barcode, the make and the cost; if you leave the cost empty the current one is kept. The SKU, the lot or serial control and the unit cannot be changed from the portal.
+
+**I don't see “New product”, “Arrivals” or “Exits”.**
+The company turns those options on client by client, and only administrator and operator accesses use them; a read-only access does not see them. Ask your contact at the company to turn them on for you.
+
+**How do I let you know that goods are going to arrive?**
+In **Warehouse → Arrivals** tap **New arrival notice**: choose the warehouse (if there is only one it is chosen for you), write your reference (for example your purchase order), the date you expect the arrival if you know it, and add one line per product with the quantity. For a lot-tracked product you can enter the lot and its expiration (the expiration is only entered together with the lot).
+
+**Can I change an arrival notice after creating it?**
+Yes, with **Edit**, while it is still expected: you can change the reference, the date and the lines. Once the warehouse has started receiving it (it has an open receipt) it can no longer be edited from the portal; let the company know. Editing does not create another notice: it is the same one.
+
+**How do I cancel an arrival notice?**
+With **Cancel notice**, while it is still expected and has no open receipt. It stays as “Cancelled” and cannot be reactivated; if the goods are still going to arrive, create a new one.
+
+**How do I request an exit of my goods?**
+In **Warehouse → Exits** tap **New exit notice**: warehouse, reference, destination (pickup, address or note), required date if you have one, and one line per product with the quantity. When you save, the system **reserves right away** whatever is available; what is missing stays pending (“with backorder”).
+
+**Can I change an exit notice?**
+Yes, with **Edit**, while it is still “Requested”: reference, destination, date, notes and the quantity of each line. When you change a quantity, the reservation readjusts by itself (if you ask for more, more is reserved from what there is; if you ask for less, the difference is released). Once the warehouse has started dispatching it, it can no longer be edited.
+
+**What happens to what was reserved if I cancel an exit?**
+It is released: those units become available again. Cancelling (**Cancel notice**) is only possible while the notice is still “Requested”.
+
+**Why is my “Available” lower than what I have “On hand”?**
+The difference is what is **reserved** by your open exit notices: it is set aside for them and cannot be promised twice.
+
+**Can I see or change another client's things?**
+No. Each client sees, edits and cancels only their own; what belongs to others does not even appear.
+
+## Kemi: the Teikem assistant, with voice (Batch 218)
+<!-- kemi:portal -->
+
+**What is Kemi and how do I use her?**
+Kemi is Teikem's assistant mascot. Tap Kemi (bottom right) and choose “Ask me how to use the portal”: type or say your question and Kemi looks for the answer in the manual and the frequently asked questions and shows you the options. She also lets you know when a new message arrives, and you can move her somewhere else by dragging her.
+
+**How do I talk to Kemi instead of typing?**
+In the question box tap the microphone, say your question and wait: what Kemi understands appears in the field and, when you finish speaking, she asks by herself. Tap the microphone again if you want to stop listening.
+
+**I don't see Kemi's microphone.**
+Your browser or your device cannot recognize speech. On the web it works in Chrome, Edge and Safari (Firefox does not include it); on the phone, with the device's speech recognition. In the meantime, type your question.
+
+**Kemi says “I don't have permission to use the microphone”.**
+You blocked the microphone. In the browser, tap the padlock next to the address and allow the microphone for the site; on the phone, turn it on in the device Settings (microphone and speech recognition) for this app. Then tap the microphone again.
+
+**Kemi says “I didn't hear you”.**
+She did not detect any voice. Speak after tapping the microphone, close to the device and without loud noise, or type the question.
+
+**Does Teikem store my voice?**
+No. The audio is processed by the speech service of your browser or your phone and Teikem only receives the text of the question, exactly as if you had typed it.
+
+**Kemi answers in Spanish even though I have the screen in English.**
+The manual and the frequently asked questions are written in Spanish: in English Kemi understands your question, but the answers come out in Spanish.
+
+**Kemi can't answer my question.**
+Try other words, tap “No” on “Did that answer your question?” so she searches elsewhere, or write to your contact at the company from the Messages tab. The portal's Kemi only knows what the client can do in the portal; she does not know the company staff's side.
+
+**How do I put Kemi to sleep or wake her up?**
+In Kemi's panel tap “Put Kemi to sleep”: she hides next to the menu (on the phone, in the top corner) and shows no bubbles. One tap on that button wakes her. She remembers it even if you reload the page.
+
+**I don't see Kemi.**
+Kemi appears for the client's people who are signed in, after accepting the legal document. Consignees with their own access do not have her.
 
 **In Warehouse an arrival notice (or exit notice, or a movement) I know exists does not appear.** Look at that list's date filter: “Arrivals” filters by the **expected** date, “Exits” by the **requested** date and “Movements” by the day of the movement. A notice expected next week does not show with “Today”. Set “All dates” and clear the search box.
 

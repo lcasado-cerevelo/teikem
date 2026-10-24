@@ -1,4 +1,5 @@
 # 27 — Client app (Teikem Clientes)
+<!-- kemi:portal -->
 
 Batch 102 (client portal, 2026-10-17). The client's **separate** app: **web** (installable on the desktop or the home screen) and **mobile** (Android and iOS), built with Expo. The client signs in with their e-mail; they see **their** shipments and **their** notices. The access and isolation rules are those of [chapter 26](26-portal-acceso.md); the screens with their screenshots, in [the L102 screens manual](frontend/l102-app-cliente.md).
 

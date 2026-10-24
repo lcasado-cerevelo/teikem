@@ -1,4 +1,5 @@
 # 35 — Consignee access
+<!-- kemi:portal -->
 
 Batch 117 (117a access, profile and inbox; 117b messages with their client; 117c screens; 117d shipments; 117e e-mail notice; 2026-10-18, dictated by Luis; design in `docs/p10-portal-diseno.md`). A **consignee** (whoever receives the package) can have **their own access** to the portal. **Only the client gives it**, by **invitation to an e-mail**; most consignees will not have access and will keep receiving the notices with the tracking link (chapter 34).
 

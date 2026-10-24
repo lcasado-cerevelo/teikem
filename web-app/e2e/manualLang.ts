@@ -84,10 +84,23 @@ async function isPortal(page: Page): Promise<boolean> {
   return origin === new URL(portal).origin
 }
 
-/** Portal del cliente: el idioma se lee de localStorage al arrancar; se guarda y se recarga la pantalla. */
+/**
+ * Portal del cliente. Sin recargar, si la página publica `window.__setLang` (el servidor estático de las capturas lo expone sin
+ * tocar la app); si no, el idioma se guarda en localStorage y se recarga la pantalla (se pierde lo que estuviera abierto).
+ */
 async function portalLang(page: Page, lang: 'es' | 'en') {
   const current = await page.evaluate((k) => localStorage.getItem(k) ?? 'es', PORTAL_LANG_KEY)
   if (current === lang) return
+  const hot = await page.evaluate((l) => {
+    const w = window as unknown as { __setLang?: (l: string) => void }
+    if (!w.__setLang) return false
+    w.__setLang(l)
+    return true
+  }, lang)
+  if (hot) {
+    await page.waitForTimeout(600)
+    return
+  }
   await page.evaluate(([k, v]) => localStorage.setItem(k, v), [PORTAL_LANG_KEY, lang] as const)
   await page.reload({ waitUntil: 'load' })
   await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {})

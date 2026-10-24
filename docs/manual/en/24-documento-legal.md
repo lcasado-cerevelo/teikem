@@ -1,4 +1,5 @@
 # 24 — Legal document: privacy policy and terms of use
+<!-- kemi:portal -->
 
 Batch 99 (client portal, 2026-10-17). There is **a single document** —“Privacy policy and terms of use”— with **a single version for the whole platform** (staff, portal clients and consignees). It is in Spanish and English, in two parts: **Part 1** (privacy) and **Part 2** (terms of use). **It is a draft to be reviewed by a lawyer before production.**
 
@@ -11,6 +12,7 @@ Batch 99 (client portal, 2026-10-17). There is **a single document** —“Priva
 - The **device sessions** of the warehouse app are left out for now (they sign in with a PIN, with no web screen).
 
 ## 2. Who accepted and who did not
+<!-- kemi:staff -->
 **Security & audit → Legal acceptance** (permission `admin.audit`): the company's users with their state —**Accepted** (with date), **Pending** or **Earlier version (YYYY-MM-DD)**—, pending ones first. Search by name or e-mail, filter by state, sort columns and export everything the filter says. Each acceptance stores **version, date, language, IP address and browser**, and an event is left in the security log (`LOGIN`, stage `legal_accepted`).
 
 ## 2b. Cookies and browser storage
@@ -32,6 +34,7 @@ Teikem **does not use advertising or tracking cookies**: it stores in the browse
 | Accepting the same version twice | Does not duplicate; responds with the state |
 
 ## 5. Operator data and text changes (for the owner)
+<!-- kemi:staff -->
 The text carries placeholders that **must be filled in before production** in the API configuration (`Legal:*`); the ones not filled in appear as they are, in square brackets:
 - `Legal:OperatorName` — legal name of the operator (today `[RAZÓN SOCIAL DEL OPERADOR]`).
 - `Legal:OperatorAddress` — postal address.

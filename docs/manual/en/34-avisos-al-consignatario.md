@@ -1,4 +1,5 @@
 # 34 — Consignee notices
+<!-- kemi:portal -->
 
 Batch 116 (2026-10-18, dictated by Luis; design in `docs/p12-avisos-consignatario-diseno.md`). What **the consignee** (the one who receives the package) **receives** about their shipments. **The client turns it on and marks it** (not the company), from the portal.
 

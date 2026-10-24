@@ -1,4 +1,5 @@
 # 37 — Client portal: invoices, my notices, proof of delivery and consignees
+<!-- kemi:portal -->
 
 > Batch 119 (P10, 2026-10-18). This is what the client's person sees in their app (portal). Module **CLIENT_PORTAL** (and **BILLING** for invoices). Everything belongs **to the client of the session**: something from another client responds 404, the same as something that does not exist.
 

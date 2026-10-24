@@ -1,4 +1,5 @@
 # 26 — Client portal: access and isolation
+<!-- kemi:portal -->
 
 Batch 101 (client portal, 2026-10-17). The portal has its **own login**, separate from the staff's, and each session is tied to **one client**. This chapter is about the server (the `app-cliente` app with its screens is batch 102). Invitations and portal users are managed as always from the client's file (`portalusers.manage`, module CLIENT_PORTAL).
 
@@ -20,6 +21,7 @@ Possible login responses (`status`): `ok`, `mfa_required`, `browser_confirmation
 - The portal requires accepting the **legal document** (chapter 24) like everyone.
 
 ## 3. Available reads (this batch)
+<!-- kemi:staff -->
 | Endpoint | What it returns |
 |---|---|
 | `GET /api/v1/portal/me` | The account, the current client and the other clients it has access to |

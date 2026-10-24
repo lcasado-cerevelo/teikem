@@ -1,4 +1,5 @@
 # 29 — Portal messages with the customer service team
+<!-- kemi:portal -->
 
 Batch 104 (client portal, 2026-10-17). Each person of a client can write to the company's **customer service team** from the client app, and the team answers them —or writes first— from the company's web app. Decided with Luis: **one conversation per person** (nobody from their company sees what someone else wrote) and **the team can open the conversation** by writing first to a person from the client's file.
 
@@ -9,6 +10,7 @@ Batch 104 (client portal, 2026-10-17). Each person of a client can write to the 
 - A team member sees the conversations of the clients where they are assigned **plus** those of the clients that have no team.
 
 ## 2. Permissions and module
+<!-- kemi:staff -->
 | Permission | What it allows |
 |---|---|
 | `clientmessages.reply` | See the “Client messages” inbox, reply, write first to a person, see a client's team |
@@ -24,6 +26,7 @@ Module **CLIENT_PORTAL**. The **Customer service** role template (for new compan
 - A portal user **cannot** call `/api/v1/client-messages/*` (403): they only see their own conversation through `/api/v1/portal/messages`.
 
 ## 4. On the company's side (web)
+<!-- kemi:staff -->
 - **Client portal → Client messages** (`/portal/messages`): list of conversations (free-text search, “Unread only”, client, person, last sentence and time, unread badge) and, on the right, the conversation with its composer. On mobile one or the other is shown with “Back”.
 - On opening a conversation it is marked read **for the whole team**. The list refreshes every ~20 s and the open conversation every ~10 s; there is no live notice or e-mail to the team (see FAQ).
 - **Write to a person** (client record → Customer service team): choose the person (active portal user of that client) and write the first message. If the person does not belong to that client or is deactivated: **400** “The person is not an active portal user of that client.” If there was already a conversation, the message is added to it.

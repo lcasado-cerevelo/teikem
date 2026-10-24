@@ -1,4 +1,5 @@
 # 28 — “How is my shipment doing?” and the progress bar
+<!-- kemi:portal -->
 
 Batch 103 (client portal, 2026-10-17). Two related things: the **progress bar** of a shipment and the **public page** where anyone with the waybill number sees which stage their package is at. The public response is **only the progress**: **never names, addresses, phone numbers or amounts** (decided with Luis).
 

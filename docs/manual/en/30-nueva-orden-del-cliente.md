@@ -1,4 +1,5 @@
 # 30 — New shipment from the client portal
+<!-- kemi:portal -->
 
 Batch 105 (client portal, 2026-10-17) and **Batch 213 (2026-10-23, dictated by Luis)**: the portal's “New shipment” has **the same fields and the same functions as “New shipment” in the company's web app** (chapter 03), except what does not apply to the client (the client comes from the session; there is no price, credit authorization, special delivery or “Print label on save”). The shipment **enters the normal flow directly** (it is born Submitted, the same as one created by the company).
 
