@@ -18,8 +18,12 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/scan")]
 [Authorize]
 [RequireModule(ModuleKeys.LtlGround)]
-public sealed class ScanController(OutboundScanService scanner, ScanActionService actions, ScanLookupService lookup) : ControllerBase
+public sealed class ScanController(OutboundScanService scanner, ScanActionService actions, ScanLookupService lookup, ScanSnapshotService snapshot) : ControllerBase
 {
+    /// <summary>Lote 216: lo que se puede escoger en «cómo se escanea»: rutas abiertas, choferes activos y pueblos de los envíos no completados.</summary>
+    [HttpGet("options"), RequirePermission(PermissionCatalog.TripsScan)]
+    public Task<ScanOptionsDto> Options(CancellationToken ct) => snapshot.OptionsAsync(ct);
+
     /// <summary>
     /// Lote 216: la lupa de la estación. Busca el número de una pieza (o, si no es de una pieza, el del envío, conduce, empaque o factura) y dice lo que haya en la base, también si está cancelado, final, dado de baja, perdido, en una
     /// reclamación o «Por verificar». Solo lee. 400 si el código está vacío o es muy largo.

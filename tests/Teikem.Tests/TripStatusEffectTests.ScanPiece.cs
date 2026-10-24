@@ -154,4 +154,55 @@ public partial class TripStatusEffectTests
         Assert.Null(nothing.MatchedBy);
         await Assert.ThrowsAsync<Teikem.Infrastructure.Exceptions.ValidationException>(() => lookup.LookupAsync("  ", default));
     }
+
+    [Fact]
+    public async Task Scanning_by_route_city_or_driver_says_no_to_a_piece_of_a_shipment_that_is_not_of_the_chosen_ones_even_if_it_exists()
+    {
+        await using var f = await Fixture.CreateAsync();
+        f.Db.Drivers.Add(new Driver { DriverId = 7, TenantId = TenantId, EmployeeCode = "D7", FullName = "Chofer Siete", UserId = 99, StatusCodeId = 1, IsActive = true });
+        await f.Db.SaveChangesAsync();
+        var (trip, ids) = await f.SeedTripAsync(TripStatuses.Dispatched, RouteStatuses.Active, OrderStatuses.Assigned, 1);   // chofer 7, pueblo San Juan
+        var free = await f.SeedOrderAsync(OrderStatuses.Assigned);   // sin ruta, mismo pueblo
+        await SeedPiecesAsync(f, ids[0], "S-1", "S-2");
+        await SeedPiecesAsync(f, free, "F-1");
+        var driverId = (await f.Db.Drivers.SingleAsync()).PublicId;
+        var scan = ScanActionOf(f);
+        ScanActionRequest Req(string code, string mode, params string[] scopeIds) => new(ScanActions.Depart, code, null, null, null, mode, scopeIds);
+
+        // chofer equivocado: No, aunque la pieza exista; nada se cuenta
+        var wrong = await scan.ApplyAsync(Req("S-1", "DRIVER", Guid.NewGuid().ToString()), default);
+        Assert.Equal((ScanActionOutcomes.NotInScope, ScanVoices.NotFound), (wrong.Outcome, wrong.Voice));
+        Assert.Equal(ScanActions.NotInScopeMessage("S-1", Fixture.OrderNumber(ids[0]), "DRIVER"), wrong.Message);
+        Assert.False(await f.Db.OrderPieceScans.AnyAsync());
+        // el chofer correcto: Sí (el envío sale a En tránsito)
+        var right = await scan.ApplyAsync(Req("S-1", "DRIVER", driverId.ToString()), default);
+        Assert.Equal((ScanActionOutcomes.Applied, ScanVoices.Found), (right.Outcome, right.Voice));
+        // un envío sin ruta no es de ningún chofer
+        Assert.Equal(ScanActionOutcomes.NotInScope, (await scan.ApplyAsync(Req("F-1", "DRIVER", driverId.ToString()), default)).Outcome);
+
+        // por ruta: la escogida vale, otra no, y un envío sin ruta tampoco (con Salir no hay destino)
+        Assert.Equal(ScanActionOutcomes.Counted, (await scan.ApplyAsync(Req("S-2", "ROUTE", trip.PublicId.ToString()), default)).Outcome);
+        Assert.Equal(ScanActionOutcomes.NotInScope, (await scan.ApplyAsync(Req("F-1", "ROUTE", trip.PublicId.ToString()), default)).Outcome);
+        Assert.Equal(ScanActionOutcomes.NotInScope, (await scan.ApplyAsync(Req("S-2", "ROUTE", Guid.NewGuid().ToString()), default)).Outcome);
+
+        // por ciudad: sin tildes ni mayúsculas; otra ciudad, No
+        Assert.Equal(ScanActionOutcomes.Applied, (await scan.ApplyAsync(Req("F-1", "CITY", "ponce", "SAN JUAN"), default)).Outcome);
+        Assert.Equal(ScanActionOutcomes.NotInScope, (await scan.ApplyAsync(Req("S-2", "CITY", "Ponce"), default)).Outcome);
+    }
+
+    [Fact]
+    public async Task The_scan_options_list_the_open_routes_the_active_drivers_and_the_towns_of_the_shipments_not_completed()
+    {
+        await using var f = await Fixture.CreateAsync();
+        f.Db.Drivers.Add(new Driver { DriverId = 7, TenantId = TenantId, EmployeeCode = "D7", FullName = "Chofer Siete", UserId = 99, StatusCodeId = 1, IsActive = true });
+        await f.Db.SaveChangesAsync();
+        await f.SeedTripAsync(TripStatuses.Dispatched, RouteStatuses.Active, OrderStatuses.Assigned, 1);
+        await f.SeedOrderAsync(OrderStatuses.Delivered);   // un envío completado no aporta su pueblo (aquí es el mismo, así que se prueba que no se repite)
+
+        var o = await SnapshotOf(f).OptionsAsync(default);
+
+        Assert.Equal("Chofer Siete", Assert.Single(o.Drivers).Name);
+        Assert.Single(o.Routes);
+        Assert.Equal(new[] { "San Juan" }, o.Cities);
+    }
 }

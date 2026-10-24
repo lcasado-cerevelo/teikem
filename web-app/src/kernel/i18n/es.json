@@ -2284,6 +2284,18 @@
         "REAPPEARED": "Reapareció",
         "IN_ROUTE": "En una ruta"
       }
+    },
+    "scope": {
+      "label": "Cómo se escanea",
+      "ALL": "Todo",
+      "ROUTE": "Por ruta",
+      "CITY": "Por ciudad",
+      "DRIVER": "Por chofer",
+      "pickROUTE": "Escoja una o varias rutas",
+      "pickCITY": "Escoja una o varias ciudades",
+      "pickDRIVER": "Escoja uno o varios choferes",
+      "need": "Escoja al menos una opción para empezar a escanear, o use «Todo».",
+      "error": "No se pudieron leer las opciones."
     }
   },
   "routeMap": {

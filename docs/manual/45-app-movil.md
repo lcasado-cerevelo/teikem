@@ -68,7 +68,7 @@
   | Salir | En tránsito | |
   | Devolver | Devuelta | solo con señal y `orders.return` |
   La primera pieza de una acción mueve el envío (brinca los estatus de en medio); las siguientes solo cuentan («4 de 5 piezas»). Un estatus final no se toca.
-- **El escaneo es a la PIEZA, no al envío** (Luis): la que dice Sí, Ok o No es la pieza. El número del envío, del empaque o de la factura **no se escanea** ("No se encontró la pieza."). Lo mismo vale en la estación de la web, que usa el mismo servicio.
+- **El escaneo es a la PIEZA, no al envío** (Luis): la que dice Sí, Ok o No es la pieza. El número del envío, del empaque o de la factura **no se escanea** ("No se encontró la pieza."). Lo mismo vale en la estación de la web, que usa el mismo servicio (y también tiene «Todo / Por ruta / Por ciudad / Por chofer»; capítulo 05 §7b).
 - **Qué dice la pantalla** (voz del teléfono, vibración y color):
   | Pasa | Voz | Color |
   |---|---|---|

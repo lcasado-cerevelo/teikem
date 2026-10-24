@@ -30737,6 +30737,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/scan/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ScanOptionsDto"];
+                        "application/json": components["schemas"]["ScanOptionsDto"];
+                        "text/json": components["schemas"]["ScanOptionsDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/scan/lookup": {
         parameters: {
             query?: never;
@@ -47430,6 +47467,8 @@ export interface components {
             /** Format: uuid */
             tripPublicId?: string | null;
             confirmBeyond?: boolean | null;
+            scopeMode?: string | null;
+            scopeIds?: string[] | null;
         };
         ScanActionResultDto: {
             action?: string | null;
@@ -47534,6 +47573,11 @@ export interface components {
             /** Format: date-time */
             scannedAtUtc?: string;
             byName?: string | null;
+        };
+        ScanOptionsDto: {
+            routes?: components["schemas"]["ScanSnapshotRouteDto"][] | null;
+            drivers?: components["schemas"]["ScanSnapshotDriverDto"][] | null;
+            cities?: string[] | null;
         };
         ScanSnapshotDriverDto: {
             /** Format: uuid */

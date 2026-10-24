@@ -21,6 +21,13 @@ public static class ScanActions
     public const string PieceNotFoundMessage = "No se encontró la pieza.";   // el número del envío no se escanea: lo que se escanea son las piezas
     public static string BeyondMessage(string piece, string order, string currentLabel, string targetLabel)
         => $"La pieza {piece}: el envío {order} ya está en «{currentLabel}», que va después de «{targetLabel}». Si sigue, el envío regresará a «{targetLabel}».";
+    public const string ScopeRoute = "ROUTE";
+    public const string ScopeCity = "CITY";
+    public const string ScopeDriver = "DRIVER";
+    public static string NotInScopeMessage(string piece, string order, string mode)
+        => mode == ScopeRoute ? $"La pieza {piece} (envío {order}) no es de las rutas escogidas."
+         : mode == ScopeCity ? $"La pieza {piece} (envío {order}) no es de las ciudades escogidas."
+         : $"La pieza {piece} (envío {order}) no es de los choferes escogidos.";
     public static string MovedBackMessage(string piece, string order, string fromLabel, string toLabel)
         => $"La pieza {piece} regresó el envío {order} de «{fromLabel}» a «{toLabel}».";
     public static string MovedBackComment(string piece, string toLabel) => $"Regresado a «{toLabel}» al escanear la pieza {piece}";
@@ -74,6 +81,8 @@ public static class ScanActionOutcomes
     /// única forma de regresarlo—: sale de la ruta si el estatus es anterior a Asignada y se borran los escaneos de acciones posteriores de sus piezas, para poder volver a avanzar escaneando.
     /// </summary>
     public const string Beyond = "BEYOND";
+    /// <summary>Lote 216: la pieza existe pero su envío no es de lo escogido (otra ruta, otra ciudad u otro chofer): «No».</summary>
+    public const string NotInScope = "NOT_IN_SCOPE";
     /// <summary>Lote 112: la pieza escaneada con «Devolver» viaja en la orden de vuelta (la orden queda «Devuelta»).</summary>
     public const string Returned = "RETURNED";
 }

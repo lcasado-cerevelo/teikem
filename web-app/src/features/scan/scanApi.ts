@@ -64,7 +64,7 @@ export function toScanResult(r: ScanActionResult): ScanResult {
     : r.outcome === 'COUNTED' ? 'FOUND_ASSIGNED'   // Lote 110: la pieza se contó (la orden ya estaba en ese estatus)
     : r.outcome === 'ALREADY_BEYOND' || r.outcome === 'FINAL' || r.outcome === 'DUPLICATE' ? 'ALREADY_ASSIGNED'
     : r.outcome === 'NO_ROUTE' ? 'FOUND_UNASSIGNED'
-    : r.outcome === 'NOT_FOUND' || r.outcome === 'AMBIGUOUS' ? 'NOT_FOUND'
+    : r.outcome === 'NOT_FOUND' || r.outcome === 'AMBIGUOUS' || r.outcome === 'NOT_IN_SCOPE' ? 'NOT_FOUND'   // Lote 216: existe, pero no es de la ruta, ciudad o chofer escogidos
     : r.outcome
   return { matchedBy: null, ...r, outcome } as unknown as ScanResult
 }
@@ -108,6 +108,19 @@ export function useScanLookup(code: string | null) {
     staleTime: 0,
     gcTime: 0,
     retry: false,
+    meta: { handleAccessDenied: false },
+  })
+}
+
+export type ScanOptions = components['schemas']['ScanOptionsDto']
+
+/** `GET /scan/options` (Lote 216): lo que se puede escoger en «cómo se escanea» (rutas abiertas, choferes, pueblos). Solo se pide cuando se escoge ruta, ciudad o chofer. */
+export function useScanOptions(enabled: boolean) {
+  return useQuery({
+    queryKey: ['/api/v1/scan/options'],
+    queryFn: () => unwrap(api.GET('/api/v1/scan/options', {})),
+    enabled,
+    staleTime: 60_000,
     meta: { handleAccessDenied: false },
   })
 }

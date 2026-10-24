@@ -681,3 +681,82 @@ describe('Estación de escaneo — «más adelante» y la lupa (Lote 216)', () =
   })
 })
 
+describe('Estación de escaneo — cómo se escanea: todo, ruta, ciudad o chofer (Lote 216)', () => {
+  const pick = async (user: ReturnType<typeof userEvent.setup>, label: string) => {
+    const trigger = screen.getByTestId('scan-scope').querySelector('#scan-scope-pick') as HTMLElement
+    if (trigger.getAttribute('aria-expanded') !== 'true') await user.click(trigger)
+    await user.click(await screen.findByRole('option', { name: label }))
+  }
+
+  it('por omisión es «Todo»: se escanea sin escoger nada y el escaneo no lleva alcance', async () => {
+    const user = userEvent.setup()
+    wrap(SCAN)
+    expect(screen.getByRole('radio', { name: 'Todo' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.queryByTestId('scan-scope')).toBeNull()
+    mock.scans['OK'] = assigned('o-1', 'OT-0001')
+    await scanCode(user, 'OK')
+    await waitFor(() => expect(posts()).toHaveLength(1))
+    expect(posts()[0].body).not.toHaveProperty('scopeMode')
+    expect(posts()[0].body).not.toHaveProperty('scopeIds')
+    expect(callsTo('GET', '/api/v1/scan/options')).toHaveLength(0)
+  })
+
+  it('por chofer: no deja escanear hasta escoger; con uno o varios, el escaneo va con el alcance', async () => {
+    const user = userEvent.setup()
+    wrap(SCAN)
+    await user.click(screen.getByRole('radio', { name: 'Por chofer' }))
+    expect(await screen.findByTestId('scan-scope-need')).toHaveTextContent('Escoja al menos una opción')
+    expect(input()).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Registrar' })).toBeDisabled()
+
+    await pick(user, 'Chofer Siete')
+    await pick(user, 'Chofer Ocho')
+    expect(screen.queryByTestId('scan-scope-need')).toBeNull()
+    expect(input()).toBeEnabled()
+    mock.scans['P-1'] = assigned('o-1', 'OT-0001')
+    await scanCode(user, 'P-1')
+    await waitFor(() => expect(posts()).toHaveLength(1))
+    expect(posts()[0].body).toMatchObject({ code: 'P-1', scopeMode: 'DRIVER', scopeIds: ['d-7', 'd-8'] })
+    expect(posts()[0].body).not.toHaveProperty('tripPublicId')
+  })
+
+  it('por ciudad escoge de las ciudades del servidor; por ruta con Enrutar y UNA sola ruta manda esa ruta como destino', async () => {
+    const user = userEvent.setup()
+    wrap(SCAN)
+    await user.click(screen.getByRole('radio', { name: 'Por ciudad' }))
+    await pick(user, 'San Juan')
+    mock.scans['C-1'] = assigned('o-1', 'OT-0001')
+    await scanCode(user, 'C-1')
+    await waitFor(() => expect(posts()).toHaveLength(1))
+    expect(posts()[0].body).toMatchObject({ scopeMode: 'CITY', scopeIds: ['San Juan'] })
+
+    await user.click(screen.getByRole('radio', { name: 'Por ruta' }))
+    await pick(user, 'R-0001 · Chofer Siete · Despachada')
+    await scanCode(user, 'C-1')
+    await waitFor(() => expect(posts()).toHaveLength(2))
+    expect(posts()[1].body).toMatchObject({ action: 'ROUTE', scopeMode: 'ROUTE', scopeIds: ['t-1'], tripPublicId: 't-1' })
+
+    // con otra acción, la ruta es solo un filtro (no hay destino)
+    await user.click(screen.getByRole('radio', { name: 'Salir' }))
+    await user.click(screen.getByRole('radio', { name: 'Por ruta' }))
+    await pick(user, 'R-0001 · Chofer Siete · Despachada')
+    await scanCode(user, 'C-1')
+    await waitFor(() => expect(posts()).toHaveLength(3))
+    expect(posts()[2].body).toMatchObject({ action: 'DEPART', scopeMode: 'ROUTE', scopeIds: ['t-1'] })
+    expect(posts()[2].body).not.toHaveProperty('tripPublicId')
+  })
+
+  it('una pieza que existe pero no es de lo escogido dice «No» (rojo) con el mensaje del servidor', async () => {
+    const user = userEvent.setup()
+    const speak = installVoice()
+    wrap(SCAN)
+    await user.click(screen.getByRole('radio', { name: 'Por chofer' }))
+    await pick(user, 'Chofer Ocho')
+    mock.scans['X-9'] = { outcome: 'NOT_IN_SCOPE', voice: 'notfound', message: 'La pieza X-9 (envío OT-0009) no es de los choferes escogidos.', orderPublicId: 'o-9', orderNumber: 'OT-0009', pieceNumber: 'X-9', reasonCode: null }
+    await scanCode(user, 'X-9')
+    await waitFor(() => expect(result()).toHaveTextContent('no es de los choferes escogidos'))
+    expect(result()).toHaveTextContent('No encontrada')
+    expect(speak.at(-1)?.text).toBe('No')
+  })
+})
+

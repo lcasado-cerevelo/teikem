@@ -83,6 +83,20 @@ public sealed class ScanSnapshotService(TeikemDbContext db, ITenantContext tenan
         return new ScanSnapshotPageDto(total, Limit, available > Limit, skip, DateTime.UtcNow, orders, statusList, routes, drivers);
     }
 
+    /// <summary>Las opciones de «cómo se escanea»: rutas abiertas, choferes activos y los pueblos (sin repetir, sin tildes ni mayúsculas) de los envíos no completados.</summary>
+    public async Task<ScanOptionsDto> OptionsAsync(CancellationToken ct)
+    {
+        var routes = await OpenRoutesAsync(ct);
+        var drivers = await db.Drivers.AsNoTracking().Where(d => d.IsActive).OrderBy(d => d.FullName).Select(d => new ScanSnapshotDriverDto(d.PublicId, d.FullName)).ToListAsync(ct);
+        var raw = await (from st in db.OrderStops.AsNoTracking()
+                         join o in db.TransportOrders.AsNoTracking() on st.TransportOrderId equals o.TransportOrderId
+                         join sc in db.StatusCodes.AsNoTracking() on o.StatusCodeId equals sc.StatusCodeId
+                         where o.IsActive && sc.StageKind!.InternalCode != StageKinds.Terminal && st.SnapCity != null && st.SnapCity != ""
+                         select st.SnapCity!).Distinct().Take(3000).ToListAsync(ct);
+        var cities = raw.Select(c => c.Trim()).Where(c => c.Length > 0).GroupBy(c => ScanScopeText.Fold(c)).Select(g => g.First()).OrderBy(c => c, StringComparer.CurrentCultureIgnoreCase).ToList();
+        return new ScanOptionsDto(routes, drivers, cities);
+    }
+
     /// <summary>Las rutas que se pueden escoger para Enrutar: las planeadas de hoy y las despachadas o en curso. Solo lectura.</summary>
     public async Task<IReadOnlyList<ScanSnapshotRouteDto>> OpenRoutesAsync(CancellationToken ct)
     {
@@ -98,5 +112,17 @@ public sealed class ScanSnapshotService(TeikemDbContext db, ITenantContext tenan
         var ids = rows.Select(r => r.TripId).ToList();
         var counts = ids.Count == 0 ? new() : await db.TripOrders.AsNoTracking().Where(l => l.IsCurrent && ids.Contains(l.TripId)).GroupBy(l => l.TripId).Select(g => new { g.Key, N = g.Count() }).ToDictionaryAsync(x => x.Key, x => x.N, ct);
         return rows.Select(r => new ScanSnapshotRouteDto(r.PublicId, r.Code, r.Kind, r.StatusCode, MultilingualText.Resolve(r.LabelJson, tenant.Lang), r.DriverName, counts.GetValueOrDefault(r.TripId))).ToList();
+    }
+}
+
+/// <summary>Comparación de pueblos sin tildes ni mayúsculas (igual que el teléfono).</summary>
+public static class ScanScopeText
+{
+    public static string Fold(string? text)
+    {
+        var d = (text ?? string.Empty).Normalize(System.Text.NormalizationForm.FormD);
+        var sb = new System.Text.StringBuilder(d.Length);
+        foreach (var ch in d) if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch) != System.Globalization.UnicodeCategory.NonSpacingMark) sb.Append(ch);
+        return sb.ToString().ToLowerInvariant().Trim();
     }
 }

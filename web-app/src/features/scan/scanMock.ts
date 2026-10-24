@@ -89,6 +89,10 @@ function route(call: Call): unknown {
     if (q.get('ClientPublicId')) items = items.filter((o) => o.clientName === CLIENTS.find((c) => c.publicId === q.get('ClientPublicId'))?.name)
     return { total: items.length, skip: 0, take: Number(q.get('Take') ?? 100), items }
   }
+  if (method === 'GET' && p === '/api/v1/scan/options') {
+    return { routes: [{ publicId: 't-1', code: 'R-0001', kind: 'DELIVERY', statusCode: 'DISPATCHED', status: 'Despachada', driverName: 'Chofer Siete', stopCount: 3 }, { publicId: 't-2', code: 'R-0002', kind: 'DELIVERY', statusCode: 'PLANNED', status: 'Planeada', driverName: null, stopCount: 0 }],
+      drivers: [{ publicId: 'd-7', name: 'Chofer Siete' }, { publicId: 'd-8', name: 'Chofer Ocho' }], cities: ['Bayamón', 'Caguas', 'San Juan'] }
+  }
   if (method === 'GET' && p === '/api/v1/scan/lookup') {
     const code = String(q.get('code') ?? '')
     return mock.lookups[code] ?? { code, matchedBy: null, items: [] }

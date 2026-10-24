@@ -353,8 +353,9 @@ public sealed record OutboundScanRequest(string? Code, DateOnly? PlanDate = null
 
 /// <summary>Lote 107: escaneo con acción escogida: Action = PICKUP, ARRIVE, ROUTE o DEPART; Code = número de orden, empaque o factura.</summary>
 /// <summary>`ConfirmBeyond` (Lote 216): sin él, si el envío de la pieza ya va MÁS ADELANTE que la acción, no se cuenta nada y la respuesta es `BEYOND` (voz `warn`) con el mensaje; con `true` la pieza se cuenta sin que el estatus retroceda.
+/// `ScopeMode` + `ScopeIds` (Lote 216, «cómo se escanea»): ROUTE (ids de ruta), CITY (nombres de pueblo) o DRIVER (ids de chofer); sin ellos se escanea todo. Una pieza de un envío que no es de lo escogido responde `NOT_IN_SCOPE` («No»), aunque exista; con ROUTE, ACCIÓN Enrutar y una sola ruta escogida, un envío sin ruta también vale (va a esa ruta).
 /// `TripPublicId` (Lote 216): solo con ROUTE; la ruta escogida donde se pone el envío (planeada, despachada o en curso). Sin ella, la ruta abierta de su zona.</summary>
-public sealed record ScanActionRequest(string? Action, string? Code, DateOnly? PlanDate = null, Guid? TripPublicId = null, bool? ConfirmBeyond = null);
+public sealed record ScanActionRequest(string? Action, string? Code, DateOnly? PlanDate = null, Guid? TripPublicId = null, bool? ConfirmBeyond = null, string? ScopeMode = null, IReadOnlyList<string>? ScopeIds = null);
 
 /// <summary>Lote 110: cerrar el conteo de una orden (la última acción escaneada): lo que no se escaneó queda faltante «Por verificar».</summary>
 /// <summary>Cerrar el conteo de una orden. Confirm: la estación (web y app) manda true después de mostrar el mensaje con las piezas sin escanear y la orden nueva de las que aparecieron; sin confirmar, si hay algo que decir, no se hace nada. PlanDate: el día de la ruta cuando la orden nueva debe enrutarse.</summary>

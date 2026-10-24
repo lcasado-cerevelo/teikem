@@ -82,3 +82,6 @@ public sealed record ScanSnapshotRouteDto(Guid PublicId, string Code, string Kin
 /// </summary>
 public sealed record ScanSnapshotPageDto(int Total, int Limit, bool Capped, int Skip, DateTime GeneratedAtUtc, IReadOnlyList<ScanSnapshotOrderDto> Orders,
     IReadOnlyList<ScanSnapshotStatusDto> Statuses, IReadOnlyList<ScanSnapshotRouteDto> Routes, IReadOnlyList<ScanSnapshotDriverDto>? Drivers = null);
+
+/// <summary>Lo que se puede escoger en «cómo se escanea»: las rutas abiertas, los choferes activos y los pueblos de los envíos no completados. Para la web (la app lo trae en la descarga).</summary>
+public sealed record ScanOptionsDto(IReadOnlyList<ScanSnapshotRouteDto> Routes, IReadOnlyList<ScanSnapshotDriverDto> Drivers, IReadOnlyList<string> Cities);

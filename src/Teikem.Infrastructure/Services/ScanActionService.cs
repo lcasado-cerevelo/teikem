@@ -40,6 +40,10 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
             .Select(o => new OrderFacts(o.PublicId, o.OrderNumber, o.PackBatchNumber, o.WaybillNumber)).FirstOrDefaultAsync(ct);
         if (orderFacts is null) return Plain(action, ScanActionOutcomes.NotFound, ScanActions.PieceNotFoundMessage);
 
+        // Lote 216: «cómo se escanea» — si hay ruta, ciudad o chofer escogidos, una pieza de otro envío dice «No» aunque exista.
+        if (await OutOfScopeAsync(piece.TransportOrderId, action, req, ct) is string scopeMode)
+            return await ResultAsync(action, ScanActionOutcomes.NotInScope, ScanActions.NotInScopeMessage(piece.PackageNumber, orderFacts.OrderNumber, scopeMode), orderFacts, null, null, null, null, piece.PackageNumber, piece.TransportOrderId, ct);
+
         var targetCode = ScanActions.TargetStatus(action);
         var pipeline = await statuses.GetPipelineAsync(StatusDomains.OrderStatus, includeDisabled: true, ct);
         foreach (var s in pipeline) labels[s.Code] = s.Label;
@@ -250,6 +254,35 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
             done = await ResultAsync(action, steps.Count > 0 || movedBack ? ScanActionOutcomes.Applied : ScanActionOutcomes.Counted, message, orderFacts, current, toCode, skipped, route, piece.PackageNumber, orderId, ct2);
         }, ct);
         return done!;
+    }
+
+    /// <summary>
+    /// ¿El envío NO es de lo escogido? Devuelve el modo (ROUTE/CITY/DRIVER) si no lo es, o null si vale (sin alcance, o es de lo escogido). Ruta: su ruta vigente está entre las escogidas (con Enrutar y UNA sola ruta, un envío sin ruta también vale);
+    /// chofer: el de su ruta vigente; ciudad: el pueblo de su parada de entrega (sin tildes ni mayúsculas).
+    /// </summary>
+    private async Task<string?> OutOfScopeAsync(int orderId, string action, ScanActionRequest? req, CancellationToken ct)
+    {
+        var mode = req?.ScopeMode?.Trim().ToUpperInvariant();
+        var ids = (req?.ScopeIds ?? Array.Empty<string>()).Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).ToList();
+        if (mode is not (ScanActions.ScopeRoute or ScanActions.ScopeCity or ScanActions.ScopeDriver) || ids.Count == 0) return null;
+
+        if (mode == ScanActions.ScopeCity)
+        {
+            var cities = await db.OrderStops.AsNoTracking().Where(x => x.TransportOrderId == orderId && x.SnapCity != null)
+                .OrderByDescending(x => x.StopType != null && x.StopType.InternalCode == StopTypes.Delivery).ThenByDescending(x => x.Sequence).Select(x => x.SnapCity!).ToListAsync(ct);
+            var city = cities.FirstOrDefault();
+            return city is not null && ids.Any(i => ScanScopeText.Fold(i) == ScanScopeText.Fold(city)) ? null : mode;
+        }
+        var trip = await (from l in db.TripOrders.AsNoTracking() join t in db.Trips.AsNoTracking() on l.TripId equals t.TripId
+                          join d in db.Drivers.AsNoTracking() on t.DriverId equals d.DriverId into ds from d in ds.DefaultIfEmpty()
+                          where l.TransportOrderId == orderId && l.IsCurrent && t.IsActive
+                          select new { t.PublicId, DriverPublicId = d != null ? (Guid?)d.PublicId : null }).FirstOrDefaultAsync(ct);
+        if (mode == ScanActions.ScopeRoute)
+        {
+            if (trip is null) return action == ScanActions.Route && ids.Count == 1 ? null : mode;
+            return ids.Any(i => string.Equals(i, trip.PublicId.ToString(), StringComparison.OrdinalIgnoreCase)) ? null : mode;
+        }
+        return trip?.DriverPublicId is Guid dp && ids.Any(i => string.Equals(i, dp.ToString(), StringComparison.OrdinalIgnoreCase)) ? null : mode;
     }
 
     // ================================================================ faltantes y cierre del conteo

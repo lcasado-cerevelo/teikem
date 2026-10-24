@@ -2284,6 +2284,18 @@
         "REAPPEARED": "Reappeared",
         "IN_ROUTE": "On a route"
       }
+    },
+    "scope": {
+      "label": "How to scan",
+      "ALL": "Everything",
+      "ROUTE": "By route",
+      "CITY": "By city",
+      "DRIVER": "By driver",
+      "pickROUTE": "Pick one or more routes",
+      "pickCITY": "Pick one or more cities",
+      "pickDRIVER": "Pick one or more drivers",
+      "need": "Pick at least one option to start scanning, or use “Everything”.",
+      "error": "The options could not be loaded."
     }
   },
   "routeMap": {

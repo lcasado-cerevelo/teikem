@@ -231,3 +231,18 @@ export function flagTone(flag: string): ChipTone {
   if (flag === 'PIECE_LOST' || flag === 'PIECE_CLAIMED' || flag === 'PIECE_TO_VERIFY' || flag === 'PIECE_RESOLVED' || flag === 'REAPPEARED') return 'warn'
   return 'disp'
 }
+
+/** «Cómo se escanea» (Lote 216): todo, o solo lo de unas rutas, unas ciudades o unos choferes. */
+export const SCOPE_MODES = ['ALL', 'ROUTE', 'CITY', 'DRIVER'] as const
+export type ScopeMode = (typeof SCOPE_MODES)[number]
+
+/** ¿Se puede escanear? Con ruta, ciudad o chofer hay que escoger al menos uno; con «Todo», nunca hay que escoger. */
+export function scopeReady(mode: ScopeMode, ids: readonly string[]): boolean {
+  return mode === 'ALL' || ids.length > 0
+}
+
+/** Lo que va en el `POST /scan/action`: el alcance (si lo hay) y, con Enrutar y UNA sola ruta escogida, esa ruta como destino de los envíos libres. */
+export function scopeBody(mode: ScopeMode, ids: readonly string[], action: string): { scopeMode?: string; scopeIds?: string[]; tripPublicId?: string } {
+  if (mode === 'ALL' || ids.length === 0) return {}
+  return { scopeMode: mode, scopeIds: [...ids], ...(mode === 'ROUTE' && action === 'ROUTE' && ids.length === 1 ? { tripPublicId: ids[0] } : {}) }
+}

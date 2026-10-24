@@ -40286,6 +40286,35 @@
         }
       }
     },
+    "/api/v1/scan/options": {
+      "get": {
+        "tags": [
+          "Scan"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanOptionsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanOptionsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanOptionsDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/scan/lookup": {
       "get": {
         "tags": [
@@ -79347,6 +79376,17 @@
           "confirmBeyond": {
             "type": "boolean",
             "nullable": true
+          },
+          "scopeMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "scopeIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -79708,6 +79748,33 @@
           },
           "byName": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ScanOptionsDto": {
+        "type": "object",
+        "properties": {
+          "routes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScanSnapshotRouteDto"
+            },
+            "nullable": true
+          },
+          "drivers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScanSnapshotDriverDto"
+            },
+            "nullable": true
+          },
+          "cities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
             "nullable": true
           }
         },

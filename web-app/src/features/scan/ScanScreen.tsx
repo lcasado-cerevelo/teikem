@@ -12,7 +12,7 @@ import { applyProblemDetails } from '../../kernel/api/problem'
 import { tenantToday } from '../../kernel/api/tenantZone'
 import { useFormat } from '../../kernel/format'
 import { useLang, useT } from '../../kernel/i18n'
-import { ClientPicker, DateField, Filters, IconScan, IconVolume, IconVolumeOff, SelectFilter, toast, useAppliedFilters } from '../../kernel/ui'
+import { ClientPicker, DateField, Filters, IconScan, IconVolume, IconVolumeOff, SearchMultiSelect, SelectFilter, toast, useAppliedFilters } from '../../kernel/ui'
 import { IconDoc } from '../../kernel/ui/screenIcons'
 import { IconSearch } from '../../kernel/ui/icons'
 import { usePrinting } from '../printing/usePrinting'
@@ -20,7 +20,7 @@ import { missingReportSpec } from './missingReport'
 import { useDispatchZones } from '../drivers/api'
 import { orderKeys } from '../orders/api'
 import { useDebounced } from '../warehouse/lineRules'
-import { fetchOrderKnown, SCAN_ACTIONS, type ScanActionKey, useCloseCount, useScanAction, useUnassignedOrders } from './scanApi'
+import { fetchOrderKnown, SCAN_ACTIONS, type ScanActionKey, useCloseCount, useScanAction, useScanOptions, useUnassignedOrders } from './scanApi'
 import { ScanBeyondConfirm } from './ScanBeyondConfirm'
 import { ScanLookupModal } from './ScanLookupModal'
 import { ScanReappearedConfirm } from './ScanReappearedConfirm'
@@ -40,7 +40,11 @@ import {
   normalizeCode,
   voiceKind,
   hasFilters,
+  SCOPE_MODES,
+  scopeBody,
+  scopeReady,
   type KnownOrder,
+  type ScopeMode,
   type ScanEntry,
   type ScanFilters,
   type ScanResult,
@@ -81,6 +85,11 @@ export default function ScanScreen() {
   // Lote 216: «el envío ya va más adelante» (el servidor no contó nada y pide decidir) y la lupa de búsqueda de piezas
   const [beyond, setBeyond] = useState<{ code: string; action: ScanActionKey; message: string } | null>(null)
   const [lookupOpen, setLookupOpen] = useState(false)
+  // Lote 216: «cómo se escanea» — todo, por ruta, por ciudad o por chofer (con selección múltiple y buscador)
+  const [scopeMode, setScopeMode] = useState<ScopeMode>('ALL')
+  const [scopeIds, setScopeIds] = useState<string[]>([])
+  const scopeOptions = useScanOptions(scopeMode !== 'ALL')
+  const ready = scopeReady(scopeMode, scopeIds)
   const [filters, setFilters] = useState<ScanFilters>(NO_FILTERS)
   const [clientPublicId, setClientPublicId] = useState<string | null>(null)
 
@@ -118,9 +127,9 @@ export default function ScanScreen() {
   const filtered = hasFilters(settled) || settledClient !== null
 
   // refs con lo último, para la fila de escaneos (corre fuera del ciclo de render)
-  const latest = useRef({ planDate, pendingItems, voiceOn: voice.on, lang, canOrders, scope, action })
+  const latest = useRef({ planDate, pendingItems, voiceOn: voice.on, lang, canOrders, scope, action, scopeMode, scopeIds })
   useEffect(() => {
-    latest.current = { planDate, pendingItems, voiceOn: voice.on, lang, canOrders, scope, action }
+    latest.current = { planDate, pendingItems, voiceOn: voice.on, lang, canOrders, scope, action, scopeMode, scopeIds }
   })
   const chain = useRef<Promise<void>>(Promise.resolve())
 
@@ -144,7 +153,7 @@ export default function ScanScreen() {
     async (code: string, confirmBeyond = false) => {
       const date = latest.current.planDate ?? tenantToday()
       try {
-        const result: ScanResult = await scan.mutateAsync({ action: latest.current.action, code, planDate: date, ...(confirmBeyond ? { confirmBeyond: true } : {}) })
+        const result: ScanResult = await scan.mutateAsync({ action: latest.current.action, code, planDate: date, ...scopeBody(latest.current.scopeMode, latest.current.scopeIds, latest.current.action), ...(confirmBeyond ? { confirmBeyond: true } : {}) })
         const fromPending = latest.current.pendingItems.find((o) => o.publicId && o.publicId === result.orderPublicId)
         const known: KnownOrder = { ...(fromPending ? knownFromPending(fromPending) : {}), ...(result.zoneCode ? { zoneCode: result.zoneCode } : {}) }
         const entry: ScanEntry = { id: nextEntryId(), code, at: new Date().toISOString(), result, known }
@@ -173,6 +182,7 @@ export default function ScanScreen() {
 
   const submit = (e?: FormEvent) => {
     e?.preventDefault()
+    if (!ready) return
     const raw = text
     setText('')
     focusInput()
@@ -276,11 +286,49 @@ export default function ScanScreen() {
           ))}
         </div>
         <div className="hint" data-testid="scan-action-help">{t(`scan.actionHelp.${action}`)}</div>
+        <div className="modes" role="radiogroup" aria-label={t('scan.scope.label')}>
+          {SCOPE_MODES.map((m) => (
+            <button
+              key={m}
+              type="button"
+              role="radio"
+              aria-checked={scopeMode === m}
+              className={scopeMode === m ? 'on' : undefined}
+              onClick={() => {
+                setScopeMode(m)
+                setScopeIds([])
+                if (m === 'ALL') focusInput()
+              }}
+            >
+              {t(`scan.scope.${m}`)}
+            </button>
+          ))}
+        </div>
+        {scopeMode !== 'ALL' && (
+          <div className="scn-scope" data-testid="scan-scope">
+            <SearchMultiSelect
+              id="scan-scope-pick"
+              options={
+                scopeMode === 'ROUTE'
+                  ? (scopeOptions.data?.routes ?? []).map((r) => ({ value: r.publicId, label: [r.code, r.driverName, r.status].filter(Boolean).join(' · ') }))
+                  : scopeMode === 'CITY'
+                    ? (scopeOptions.data?.cities ?? []).map((c) => ({ value: c, label: c }))
+                    : (scopeOptions.data?.drivers ?? []).map((d) => ({ value: d.publicId, label: d.name }))
+              }
+              value={scopeIds}
+              onChange={setScopeIds}
+              placeholder={t(`scan.scope.pick${scopeMode}`)}
+            />
+            {scopeOptions.isError && <span role="alert">{t('scan.scope.error')}</span>}
+            {!ready && <div className="hint" data-testid="scan-scope-need">{t('scan.scope.need')}</div>}
+          </div>
+        )}
         <form className="scaninput" onSubmit={submit}>
           <IconScan />
           <input
             ref={inputRef}
             type="text"
+            disabled={!ready}
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={t('scan.input.placeholder')}
@@ -291,7 +339,7 @@ export default function ScanScreen() {
             spellCheck={false}
             enterKeyHint="done"
           />
-          <button type="submit" className="go">
+          <button type="submit" className="go" disabled={!ready}>
             {t('scan.input.go')}
           </button>
           <button type="button" className="btn sm" onClick={() => setLookupOpen(true)} title={t('scan.lookup.button')} aria-label={t('scan.lookup.button')}>

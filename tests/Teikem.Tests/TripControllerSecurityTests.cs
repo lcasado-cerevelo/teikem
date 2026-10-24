@@ -53,6 +53,7 @@ public class TripControllerSecurityTests
         [(typeof(ScanController), nameof(ScanController.Action))] = PermissionCatalog.TripsScan,
         [(typeof(ScanController), nameof(ScanController.CloseCount))] = PermissionCatalog.TripsScan,
         [(typeof(ScanController), nameof(ScanController.Lookup))] = PermissionCatalog.TripsScan,   // Lote 216: la lupa
+        [(typeof(ScanController), nameof(ScanController.Options))] = PermissionCatalog.TripsScan,   // Lote 216: «cómo se escanea»
     };
 
     public static IEnumerable<object[]> ActionMap() => Expected.Select(kv => new object[] { kv.Key.Controller, kv.Key.Action, kv.Value });

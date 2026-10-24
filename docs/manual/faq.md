@@ -10631,3 +10631,7 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 
 **En la web salió una ventana «Atención: el envío ya va más adelante».** La pieza es de un envío cuyo estatus va después de la acción escogida. El sistema no cambió nada. **Cancelar** lo deja así; **Regresar el estatus** hace que el envío regrese al estatus de la acción (si es anterior a Asignada, sale de su ruta y el chofer recibe un aviso; los escaneos posteriores de sus piezas se borran). Si el envío ya estaba en ese mismo estatus no sale la ventana.
 
+**En la web, el campo de escaneo está bloqueado y pide «Escoja al menos una opción».** Escogió escanear **Por ruta, Por ciudad o Por chofer** y todavía no marcó ninguno. Marque una o varias en la lista (puede buscar escribiendo) o vuelva a **Todo** para escanear sin filtro.
+
+**En la web una pieza que existe dice «No… no es de los choferes escogidos».** Está filtrando por ruta, ciudad o chofer y esa pieza es de otro. No se cuenta ni cambia nada. Cambie la selección o use **Todo**.
+
