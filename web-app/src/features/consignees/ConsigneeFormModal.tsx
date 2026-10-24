@@ -7,15 +7,13 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useCan } from '../../kernel/access'
-import { applyProblemDetails } from '../../kernel/api/problem'
 import { useLookups } from '../../kernel/catalogs'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
 import { CallingCodeInput, Field, Form, Modal, NumberInput, PhoneInput, PhoneRow, Select, TextArea, TextInput, Toggle, toast } from '../../kernel/ui'
-import { callingCodeDigits } from '../../kernel/format'
 import { PostalLocalityPickerInput } from '../warehouse/PostalLocalityPicker'
-import { useClientOptions, useCreateConsignee, useSaveConsigneePhone, useUpdateConsignee } from './api'
+import { useClientOptions, useCreateConsignee, useUpdateConsignee } from './api'
+import { consigneeMessagesOf } from './consigneeMessages'
 import {
   buildCreateRequest,
   buildPatchRequest,
@@ -27,7 +25,6 @@ import {
   LINE_MAX,
   NAME_MAX,
   NOTES_MAX,
-  PHONE_TYPE,
   POSTAL_MAX,
   SHARED,
   STATE_MAX,
@@ -35,6 +32,7 @@ import {
   type ConsigneeValues,
   type ContactPoint,
 } from './consigneeRules'
+import { useConsigneePhoneSync } from './useConsigneePhoneSync'
 
 /** Campos de «Opciones de entrega»: si uno falla, la sección se abre para que el error se vea. */
 const DELIVERY_FIELDS: ReadonlySet<string> = new Set(['line2', 'state', 'postalCode', 'country', 'defaultServiceMinutes', 'defaultWindowStart', 'defaultWindowEnd', 'accessNotes', 'deliveryNotes'])
@@ -57,10 +55,9 @@ export function ConsigneeFormModal({ open, consignee, phone, defaultOwner, onClo
   const f = useFormat()
   const editing = consignee !== null
   const formId = 'consignee-form'
-  const canPhone = useCan('contacts.manage', 'locations.update')
+  const { canPhone, sync: syncPhone } = useConsigneePhoneSync()
   const create = useCreateConsignee()
   const update = useUpdateConsignee(consignee?.publicId ?? '')
-  const savePhone = useSaveConsigneePhone()
   const { data: clients = [] } = useClientOptions(false)
   const { data: countries = [] } = useLookups('Country')
   const [moreOpen, setMoreOpen] = useState(false)
@@ -68,18 +65,7 @@ export function ConsigneeFormModal({ open, consignee, phone, defaultOwner, onClo
   const schema = useMemo(
     () =>
       consigneeSchema(
-        {
-          nameRequired: t('consignees.errors.nameRequired'),
-          line1Required: t('consignees.errors.line1Required'),
-          cityRequired: t('consignees.errors.cityRequired'),
-          countryRequired: t('consignees.errors.countryRequired'),
-          max: (max) => t('consignees.errors.max', { max }),
-          minutesInteger: t('consignees.errors.minutesInteger'),
-          minutesNegative: t('consignees.errors.minutesNegative'),
-          windowPair: t('consignees.errors.windowPair'),
-          windowOrder: t('consignees.errors.windowOrder'),
-          phoneInvalid: t('consignees.errors.phoneInvalid'),
-        },
+        consigneeMessagesOf(t),
         f.isValidPhoneFor,
       ),
     [t, f],
@@ -148,27 +134,7 @@ export function ConsigneeFormModal({ open, consignee, phone, defaultOwner, onClo
             saved = await create.mutateAsync(buildCreateRequest(v))
           }
           // el teléfono se guarda aparte (ContactPoint); un fallo aquí no deshace el consignatario ya guardado
-          let phoneProblem: string | null = null
-          if (canPhone && saved.id != null) {
-            const next = f.normalizePhoneFor(v.phone, v.countryCallingCode)
-            const nextCc = callingCodeDigits(v.countryCallingCode) || null
-            const current = f.normalizePhoneFor(phone?.value ?? '', phone?.countryCallingCode)
-            if (next !== current || (next !== '' && nextCc !== (phone?.countryCallingCode ?? null))) {
-              try {
-                if (phone && next === '') await savePhone.mutateAsync({ action: 'remove', id: phone.id ?? 0, locationId: saved.id })
-                else if (phone)
-                  await savePhone.mutateAsync({
-                    action: 'update',
-                    id: phone.id ?? 0,
-                    locationId: saved.id,
-                    body: { contactType: phone.contactType ?? PHONE_TYPE, value: next, countryCallingCode: nextCc, extension: phone.extension ?? null, label: phone.label ?? null, isPrimary: phone.isPrimary ?? true },
-                  })
-                else await savePhone.mutateAsync({ action: 'create', locationId: saved.id, body: { contactType: PHONE_TYPE, value: next, countryCallingCode: nextCc, isPrimary: true } })
-              } catch (err) {
-                phoneProblem = applyProblemDetails(err).title
-              }
-            }
-          }
+          const phoneProblem = await syncPhone(saved.id, v, phone)
           if (phoneProblem) toast.error(t('consignees.phoneNotSaved', { reason: phoneProblem }))
           else toast.success(t(editing ? 'consignees.updated' : 'consignees.created', { name: saved.name ?? '' }))
           setMoreOpen(false)

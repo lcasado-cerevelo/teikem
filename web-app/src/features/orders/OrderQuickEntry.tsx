@@ -14,20 +14,27 @@ import { tenantToday } from '../../kernel/api/tenantZone'
 import { lookupLabelOrCode, useLookups, useTenantSettings } from '../../kernel/catalogs'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { ClientPicker, DateField } from '../../kernel/ui'
+import { ClientPicker, DateField, QBox } from '../../kernel/ui'
 import { useClient } from '../clients/api'
 import { useSelectedConsignee } from '../consignees/api'
+import { ConsigneeInlineForm } from '../consignees/ConsigneeInlineForm'
 import { ConsigneePicker } from '../consignees/ConsigneePicker'
+import { useInlineConsignee } from '../consignees/useInlineConsignee'
 import { consigneeAddress } from '../consignees/consigneeRules'
 import { useCreateOrder, type OrderDetailDto } from './api'
 import {
   buildQuickRequest,
   emptyQuickRow,
+  filterSavedEntries,
+  setRangeEdge,
+  widenRange,
+  type DayRange,
   isOffDate,
   NOTES_MAX,
   nextQuickRow,
   quickCod,
   quickProblemOf,
+  summarizeSaved,
   validateQuickRow,
   type QuickField,
   type QuickRowValues,
@@ -90,11 +97,16 @@ export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps =
   const [errors, setErrors] = useState<RowErrors>({})
   const [rowErrors, setRowErrors] = useState<{ title: string; others: string[] } | null>(null)
   const [saved, setSaved] = useState<SavedRow[]>([])
+  // la tabla de lo capturado se filtra por UN día (hoy al abrir) y por una búsqueda libre; una orden con otra fecha se guarda pero no sale ahí (pedido de Luis, 2026-10-23)
+  const [savedRange, setSavedRange] = useState<DayRange>(() => ({ from: tenantToday(), to: tenantToday() }))
+  const [savedQ, setSavedQ] = useState('')
   const [rowSeq, setRowSeq] = useState(0)
   const [saving, setSaving] = useState(false)
   // misma clave solo para reintentar el MISMO envío que no llegó a responderse (red / 5xx); un 4xx ya quedó guardado en el servidor
   const attemptRef = useRef<{ sig: string; key: string } | null>(null)
   const focusRef = useRef<QuickField | 'save' | null>(null)
+  // Lote 213: consignatario nuevo en línea (fila extra bajo la activa, todo con teclado); al grabar el foco pasa al desplegable «Paquete»
+  const inline = useInlineConsignee({ comboSelector: `#${FIELD_IDS.consigneeId}`, nextId: FIELD_IDS.packageType })
 
   // ---- Cliente: quién asigna el número de orden ----
   const { data: client } = useClient(clientId, true)
@@ -150,6 +162,7 @@ export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps =
     setErrors({})
     setRowErrors(null)
     attemptRef.current = null
+    inline.reset()
     // al elegir el cliente el cursor va a la fecha (y su calendario se abre solo)
     if (id) focusRef.current = 'date'
   }
@@ -176,6 +189,7 @@ export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps =
       const order = await create.mutateAsync({ body, idempotencyKey: attemptRef.current.key })
       attemptRef.current = null
       const cod = quickCod(draft.cod)
+      setSavedRange((r) => widenRange(r, draft.date))   // lo que se captura siempre se ve: el rango se ensancha a la fecha más vieja o más reciente
       setSaved((rows) => [
         {
           key: order.id ?? rows.length + 1,
@@ -220,6 +234,8 @@ export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps =
   }
 
   const totalCod = saved.reduce((sum, r) => sum + r.cod, 0)
+  const visibleSaved = filterSavedEntries(saved, savedRange, savedQ, (r) => [r.orderNumber, r.invoice, r.consignee, r.address, r.packageLabel, r.serviceLabel, r.cod > 0 ? r.cod : null, r.cod > 0 ? f.money(r.cod) : null, r.notes, f.date(r.date)])
+  const summary = summarizeSaved(visibleSaved)
   const serviceOptions = serviceTypes.map((s) => ({ value: s.code, label: s.label }))
   const packageOptions = packageTypes.map((p) => ({ value: p.code, label: p.label }))
   const errId = (field: QuickField) => `${FIELD_IDS[field]}-err`
@@ -342,6 +358,7 @@ export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps =
                   id={FIELD_IDS.consigneeId}
                   aria-label={t('orders.quick.cols.consignee')}
                   clearable={false}
+                  inline={inline}
                   clientPublicId={clientId}
                   value={draft.consigneeId}
                   onChange={(v) => change({ consigneeId: v }, 'consigneeId')}
@@ -426,6 +443,23 @@ export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps =
                 </button>
               </td>
             </tr>
+            {inline.draft !== null && clientId && (
+              <tr className="qk-newcons">
+                <td colSpan={10}>
+                  <ConsigneeInlineForm
+                    clientPublicId={clientId}
+                    initialName={inline.draft}
+                    idPrefix="qk-nc"
+                    onSaved={(publicId) => {
+                      change({ consigneeId: publicId }, 'consigneeId')
+                      inline.done()
+                    }}
+                    onCancel={inline.cancel}
+                    onTabOut={inline.tabOut}
+                  />
+                </td>
+              </tr>
+            )}
             {rowErrors && (
               <tr className="qk-rowerr">
                 <td colSpan={10}>
@@ -442,7 +476,32 @@ export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps =
                 </td>
               </tr>
             )}
-            {saved.map((r) => (
+            {saved.length > 0 && (
+              <tr className="qk-filterbar">
+                <td colSpan={10}>
+                  <div className="qk-filters">
+                    <label className="qk-day">
+                      <span>{t('orders.quick.filters.from')}</span>
+                      <DateField id="qk-saved-from" aria-label={t('orders.quick.filters.from')} value={savedRange.from} autoOpen={false} onChange={(v) => setSavedRange((r) => setRangeEdge(r, 'from', v))} />
+                    </label>
+                    <label className="qk-day">
+                      <span>{t('orders.quick.filters.to')}</span>
+                      <DateField id="qk-saved-to" aria-label={t('orders.quick.filters.to')} value={savedRange.to} autoOpen={false} onChange={(v) => setSavedRange((r) => setRangeEdge(r, 'to', v))} />
+                    </label>
+                    <QBox value={savedQ} onChange={setSavedQ} placeholder={t('orders.quick.filters.search')} label={t('orders.quick.filters.searchLabel')} />
+                    <span className="qk-shown" role="status">
+                      {t('orders.quick.filters.shown', { shown: visibleSaved.length, total: saved.length })}
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            )}
+            {saved.length > 0 && visibleSaved.length === 0 && (
+              <tr className="qk-none">
+                <td colSpan={10}>{t('orders.quick.filters.none')}</td>
+              </tr>
+            )}
+            {visibleSaved.map((r) => (
               <tr key={r.key} className={`saved${isOffDate(r.date, today) ? ' qk-offdate' : ''}`}>
                 <td data-label={t('orders.quick.cols.date')} className="mono" title={isOffDate(r.date, today) ? t('orders.quick.offDate') : undefined}>
                   {f.date(r.date)}
@@ -473,7 +532,25 @@ export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps =
           </tbody>
         </table>
         <div className="qk-foot" role="status">
-          {t('orders.quick.captured', { count: saved.length })}
+          {saved.length === 0 ? (
+            t('orders.quick.captured', { count: 0 })
+          ) : (
+            <div className="qk-summary" data-testid="qk-summary">
+              <b>{t('orders.quick.summary.title')}</b>
+              {summary.lines.length === 0 ? (
+                <span>{t('orders.quick.summary.none')}</span>
+              ) : (
+                summary.lines.map((l) => (
+                  <span key={`${l.packageLabel}|${l.serviceLabel}`} className="chip" data-testid="qk-summary-line">
+                    {t('orders.quick.summary.line', { count: l.count, package: l.packageLabel, service: l.serviceLabel })}
+                  </span>
+                ))
+              )}
+              <span data-testid="qk-summary-packages">{t('orders.quick.summary.packages', { n: summary.total })}</span>
+              <span data-testid="qk-summary-invoices">{t('orders.quick.summary.invoices', { n: summary.invoices })}</span>
+              <b data-testid="qk-summary-cod">{t('orders.quick.summary.cod', { amount: f.money(summary.cod) })}</b>
+            </div>
+          )}
         </div>
       </div>
       <p className="help qk-help">{t('orders.quick.help')}</p>

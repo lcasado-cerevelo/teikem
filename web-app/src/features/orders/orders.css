@@ -148,6 +148,15 @@
 .qg .qk-rowerr .form-alert{margin:0}
 .qk-foot{padding:11px 16px;border-top:1px solid var(--line-2);color:var(--muted);font-size:12.5px}
 .qk-help{margin:0 0 4px}
+.qg tr.qk-filterbar td{padding:8px 10px;background:var(--bg-2);border-top:1px solid var(--line-2)}
+.qk-filters{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.qk-filters .qk-day{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
+.qk-filters .qk-day .dtf,.qk-filters .qk-day input{min-width:150px}
+.qk-filters .qbox{flex:1 1 240px;max-width:420px}
+.qk-filters .qk-shown{margin-left:auto;font-size:12.5px;color:var(--muted)}
+.qg tr.qk-none td{padding:12px 16px;color:var(--muted);font-size:13px}
+.qk-summary{display:flex;gap:8px 12px;flex-wrap:wrap;align-items:center}
+.qk-summary b{color:var(--text)}
 .qk .cpick{min-width:0}
 .qk .oe-consrow .oe-consbox input{font-family:var(--ui)}
 
@@ -200,3 +209,21 @@
 
 /* Los códigos largos (empaque, conduce, número de orden) no se parten en renglones: se leen y se copian completos (2026-10-20) */
 .dt .lst td .ref.ref-nowrap{white-space:nowrap;overflow-wrap:normal}
+
+/* Lote 213 — consignatario nuevo en línea (formulario sin modal bajo el combo; colores solo del tema) */
+.cs-inline{border:1px solid var(--flow);border-radius:10px;background:var(--panel);padding:12px 14px 10px;margin:6px 0 4px;min-width:0;box-shadow:0 0 0 3px var(--flow-bg)}
+.cs-inline h4{margin:0 0 8px;font-size:13px;color:var(--text)}
+.cs-inline .f{margin:0;min-width:0}
+.cs-inline .r2+.r2{margin-top:10px}
+.cs-inline .form-alert{margin:0 0 8px}
+.cs-inline-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-top:10px}
+.cs-inline-foot .help{margin:0;flex:1 1 220px}
+.cs-inline-btns{display:inline-flex;gap:8px;flex-wrap:wrap}
+/* dentro de la rejilla de la rápida los campos vuelven a ser campos normales (con borde) */
+.qg .cs-inline input{background:var(--bg-2);border:1px solid var(--line);font-family:var(--ui);padding:8px 9px;border-radius:8px}
+.qg .cs-inline input:focus{border-color:var(--flow);box-shadow:0 0 0 3px var(--flow-bg)}
+.qg .cs-inline input[aria-invalid="true"]{border-color:var(--danger)}
+.qg tr.qk-newcons td{border-bottom:1px solid var(--line-2);padding:2px 8px 8px}
+@media(max-width:1200px){
+  .qg tr.qk-newcons{display:block;padding:0 12px 8px}
+}

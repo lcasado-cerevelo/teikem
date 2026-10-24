@@ -5,13 +5,14 @@ import { Text, View } from 'react-native'
 
 import { apiErrorMessage } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n/useT'
-import { CellText, DataTable, Kpi, KpiRow, PageHeader, type Column } from '../../kernel/ui/desk'
+import { CellText, DataTable, ExportButton, Kpi, KpiRow, PageHeader, type Column } from '../../kernel/ui/desk'
+import { type CsvColumn, csvDay, fetchAll, filtersSentence, runExport, type ExportFormat } from '../../kernel/ui/tableExport'
 import { useIsWide } from '../../kernel/ui/layout'
 import { Button, Card, Chip, Field, Muted, Notice, Screen, Spinner, Title, useColors } from '../../kernel/ui/ui'
 import { useAsync } from '../../kernel/ui/useAsync'
 import { formatDate, formatDateTime, formatMoney, formatQty } from '../format'
 import { useOffer } from '../capabilities'
-import { cancelArrival, cancelExit, type PortalArrivalDto, type PortalMovementDto, type PortalProductDto, type PortalStockItemDto, type ValuationRowDto, getValuation, listArrivals, listExits, listMovements, listStock, listWarehouseProducts, PAGE_SIZE } from '../portalApi'
+import { cancelArrival, cancelExit, type PortalArrivalDto, type PortalExitListItemDto, type PortalMovementDto, type PortalProductDto, type PortalStockItemDto, type ValuationRowDto, getValuation, listArrivals, listExits, listMovements, listStock, listWarehouseProducts, PAGE_SIZE } from '../portalApi'
 import { EditExitForm, EditProductForm, NewArrivalForm, NewExitForm, NewProductForm } from './CreateForms'
 import { Segments } from './Segments'
 import type { Lang } from '../../kernel/i18n/i18n'
@@ -23,8 +24,8 @@ interface Page<T> {
   total?: number
 }
 
-/** Lista paginada con «Cargar más» y búsqueda que espera a que se deje de escribir. */
-function usePaged<T>(load: (search: string, skip: number) => Promise<Page<T>>) {
+/** Lista paginada con «Cargar más», búsqueda que espera a que se deje de escribir y `exportAll` (todas las filas del filtro vigente, para exportar). */
+function usePaged<T>(load: (search: string, skip: number, take: number) => Promise<Page<T>>) {
   const [search, setSearch] = useState('')
   const [query, setQuery] = useState('')
   const [items, setItems] = useState<T[]>([])
@@ -42,7 +43,7 @@ function usePaged<T>(load: (search: string, skip: number) => Promise<Page<T>>) {
       setLoading(true)
       setError(null)
       try {
-        const page = await load(query, skip)
+        const page = await load(query, skip, PAGE_SIZE)
         if (mine !== seq.current) return
         setItems((prev) => (skip === 0 ? (page.items ?? []) : [...prev, ...(page.items ?? [])]))
         setTotal(page.total ?? 0)
@@ -58,13 +59,23 @@ function usePaged<T>(load: (search: string, skip: number) => Promise<Page<T>>) {
   useEffect(() => {
     void run(0)
   }, [run])
-  return { search, setSearch, query, items, total, loading, error, reload: () => void run(0), more: () => void run(items.length) }
+  const exportAll = async (format: ExportFormat, title: string, columns: readonly CsvColumn<T>[], filters: string) => {
+    const all = await fetchAll((skip, take) => load(query, skip, take))
+    await runExport({ format, title, columns, rows: all.items, filters })
+  }
+  return { search, setSearch, query, items, total, loading, error, reload: () => void run(0), more: () => void run(items.length), exportAll }
 }
 
-function Footer({ loading, error, shown, total, empty, onRetry, onMore }: { loading: boolean; error: string | null; shown: number; total: number; empty: string; onRetry: () => void; onMore: () => void }) {
+function Footer({ loading, error, shown, total, empty, onRetry, onMore, onExport }: { loading: boolean; error: string | null; shown: number; total: number; empty: string; onRetry: () => void; onMore: () => void; onExport?: (format: ExportFormat) => Promise<void> }) {
   const { t } = useT()
   return (
     <>
+      {!loading && total > 0 && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <Muted>{t('table.count', { shown, total })}</Muted>
+          {onExport && <ExportButton onExport={onExport} testID="warehouse-export" />}
+        </View>
+      )}
       {!!error && (
         <>
           <Notice>{error}</Notice>
@@ -82,22 +93,23 @@ function StockSection({ lang }: { lang: Lang }) {
   const colors = useColors()
   const { t } = useT()
   const wide = useIsWide()
-  const list = usePaged(useCallback((s: string, skip: number) => listStock(s, skip, PAGE_SIZE), []))
+  const list = usePaged(useCallback((s: string, skip: number, take: number) => listStock(s, skip, take), []))
+  const columns: Column<PortalStockItemDto>[] = [
+    { key: 'sku', title: t('warehouse.col.sku'), width: 160, render: (i) => <CellText bold>{i.sku}</CellText>, csv: (i) => i.sku },
+    { key: 'name', title: t('warehouse.col.product'), flex: 3, render: (i) => <CellText>{i.productName}</CellText>, csv: (i) => i.productName },
+    { key: 'wh', title: t('warehouse.col.warehouse'), width: 110, render: (i) => <CellText muted>{i.warehouseCode}</CellText>, csv: (i) => i.warehouseCode },
+    { key: 'lot', title: t('warehouse.col.lot'), width: 120, render: (i) => <CellText muted>{i.lotNumber ?? '—'}</CellText>, csv: (i) => i.lotNumber ?? '' },
+    { key: 'exp', title: t('warehouse.col.expires'), width: 110, render: (i) => <CellText muted>{i.expiryDate ? formatDate(i.expiryDate, lang) : '—'}</CellText>, csv: (i) => i.expiryDate ?? '' },
+    { key: 'onHand', title: t('warehouse.onHand'), width: 100, align: 'right', render: (i) => <CellText align="right" bold>{formatQty(i.onHand, lang)}</CellText>, csv: (i) => i.onHand },
+    { key: 'reserved', title: t('warehouse.reserved'), width: 100, align: 'right', render: (i) => <CellText align="right" muted>{formatQty(i.reserved, lang)}</CellText>, csv: (i) => i.reserved },
+    { key: 'available', title: t('warehouse.available'), width: 110, align: 'right', render: (i) => <CellText align="right" bold>{formatQty(i.available, lang)}</CellText>, csv: (i) => i.available },
+  ]
+  const exportAll = (format: ExportFormat) => list.exportAll(format, t('warehouse.sections.stock'), columns, filtersSentence([!!list.query && t('table.fSearch', { q: list.query })]))
   if (wide) {
-    const columns: Column<PortalStockItemDto>[] = [
-      { key: 'sku', title: t('warehouse.col.sku'), width: 160, render: (i) => <CellText bold>{i.sku}</CellText> },
-      { key: 'name', title: t('warehouse.col.product'), flex: 3, render: (i) => <CellText>{i.productName}</CellText> },
-      { key: 'wh', title: t('warehouse.col.warehouse'), width: 110, render: (i) => <CellText muted>{i.warehouseCode}</CellText> },
-      { key: 'lot', title: t('warehouse.col.lot'), width: 120, render: (i) => <CellText muted>{i.lotNumber ?? '—'}</CellText> },
-      { key: 'exp', title: t('warehouse.col.expires'), width: 110, render: (i) => <CellText muted>{i.expiryDate ? formatDate(i.expiryDate, lang) : '—'}</CellText> },
-      { key: 'onHand', title: t('warehouse.onHand'), width: 100, align: 'right', render: (i) => <CellText align="right" bold>{formatQty(i.onHand, lang)}</CellText> },
-      { key: 'reserved', title: t('warehouse.reserved'), width: 100, align: 'right', render: (i) => <CellText align="right" muted>{formatQty(i.reserved, lang)}</CellText> },
-      { key: 'available', title: t('warehouse.available'), width: 110, align: 'right', render: (i) => <CellText align="right" bold>{formatQty(i.available, lang)}</CellText> },
-    ]
     return (
       <>
         <Field label={t('warehouse.search')} value={list.search} onChangeText={list.setSearch} placeholder={t('warehouse.searchStock')} autoCapitalize="none" returnKeyType="search" testID="warehouse-search" />
-        <DataTable columns={columns} rows={list.items} keyOf={(i) => `${i.productPublicId}|${i.warehousePublicId}|${i.lotNumber ?? ''}|${i.expiryDate ?? ''}`} empty={list.loading ? undefined : list.query ? t('warehouse.noMatches') : t('warehouse.emptyStock')} testID="stock-table" />
+        <DataTable columns={columns} rows={list.items} keyOf={(i) => `${i.productPublicId}|${i.warehousePublicId}|${i.lotNumber ?? ''}|${i.expiryDate ?? ''}`} empty={list.loading ? undefined : list.query ? t('warehouse.noMatches') : t('warehouse.emptyStock')} total={list.loading && list.items.length === 0 ? undefined : list.total} onExport={exportAll} testID="stock-table" />
         {list.loading && <Spinner />}
         {!list.loading && list.items.length < list.total && <Button title={t('warehouse.loadMore', { shown: list.items.length, total: list.total })} variant="secondary" onPress={list.more} testID="warehouse-more" />}
         {!!list.error && <Notice>{list.error}</Notice>}
@@ -118,7 +130,7 @@ function StockSection({ lang }: { lang: Lang }) {
           </View>
         </Card>
       ))}
-      <Footer loading={list.loading} error={list.error} shown={list.items.length} total={list.total} empty={list.query ? t('warehouse.noMatches') : t('warehouse.emptyStock')} onRetry={list.reload} onMore={list.more} />
+      <Footer loading={list.loading} error={list.error} shown={list.items.length} total={list.total} empty={list.query ? t('warehouse.noMatches') : t('warehouse.emptyStock')} onRetry={list.reload} onMore={list.more} onExport={exportAll} />
     </>
   )
 }
@@ -129,18 +141,19 @@ function ProductsSection({ lang, canCreate }: { lang: Lang; canCreate: boolean }
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<string | null>(null)
   const wide = useIsWide()
-  const list = usePaged(useCallback((s: string, skip: number) => listWarehouseProducts(s, skip, PAGE_SIZE), []))
+  const list = usePaged(useCallback((s: string, skip: number, take: number) => listWarehouseProducts(s, skip, take), []))
+  const columns: Column<PortalProductDto>[] = [
+    { key: 'sku', title: t('warehouse.col.sku'), width: 160, render: (p) => <CellText bold>{p.sku}</CellText>, csv: (p) => p.sku },
+    { key: 'name', title: t('warehouse.col.product'), flex: 3, render: (p) => <CellText>{p.name}</CellText>, csv: (p) => p.name },
+    { key: 'brand', title: t('warehouse.col.brand'), flex: 1, render: (p) => <CellText muted>{[p.brand, p.category].filter(Boolean).join(' · ') || '—'}</CellText>, csv: (p) => [p.brand, p.category].filter(Boolean).join(' · ') },
+    { key: 'barcode', title: t('warehouse.col.barcode'), width: 150, render: (p) => <CellText muted>{p.barcode ?? '—'}</CellText>, csv: (p) => p.barcode ?? '' },
+    { key: 'track', title: t('warehouse.col.tracking'), width: 100, render: (p) => (p.trackingType === 'LOT' ? <Chip label={t('warehouse.tracking.LOT')} tone="info" /> : p.trackingType === 'SERIAL' ? <Chip label={t('warehouse.tracking.SERIAL')} tone="info" /> : <CellText muted>—</CellText>), csv: (p) => (p.trackingType === 'LOT' || p.trackingType === 'SERIAL' ? t(`warehouse.tracking.${p.trackingType}`) : '') },
+    { key: 'onHand', title: t('warehouse.onHand'), width: 100, align: 'right', render: (p) => <CellText align="right" bold>{formatQty(p.onHand, lang)}</CellText>, csv: (p) => p.onHand },
+    { key: 'available', title: t('warehouse.available'), width: 110, align: 'right', render: (p) => <CellText align="right">{formatQty(p.available, lang)}</CellText>, csv: (p) => p.available },
+    ...(canCreate ? [{ key: 'edit', title: '', width: 90, align: 'right' as const, render: (p: PortalProductDto) => <Button title={t('create.product.edit')} variant="link" onPress={() => setEditing(p.publicId ?? null)} testID={`edit-product-${p.sku}`} /> }] : []),
+  ]
+  const exportAll = (format: ExportFormat) => list.exportAll(format, t('warehouse.sections.products'), columns, filtersSentence([!!list.query && t('table.fSearch', { q: list.query })]))
   if (wide) {
-    const columns: Column<PortalProductDto>[] = [
-      { key: 'sku', title: t('warehouse.col.sku'), width: 160, render: (p) => <CellText bold>{p.sku}</CellText> },
-      { key: 'name', title: t('warehouse.col.product'), flex: 3, render: (p) => <CellText>{p.name}</CellText> },
-      { key: 'brand', title: t('warehouse.col.brand'), flex: 1, render: (p) => <CellText muted>{[p.brand, p.category].filter(Boolean).join(' · ') || '—'}</CellText> },
-      { key: 'barcode', title: t('warehouse.col.barcode'), width: 150, render: (p) => <CellText muted>{p.barcode ?? '—'}</CellText> },
-      { key: 'track', title: t('warehouse.col.tracking'), width: 100, render: (p) => (p.trackingType === 'LOT' ? <Chip label={t('warehouse.tracking.LOT')} tone="info" /> : p.trackingType === 'SERIAL' ? <Chip label={t('warehouse.tracking.SERIAL')} tone="info" /> : <CellText muted>—</CellText>) },
-      { key: 'onHand', title: t('warehouse.onHand'), width: 100, align: 'right', render: (p) => <CellText align="right" bold>{formatQty(p.onHand, lang)}</CellText> },
-      { key: 'available', title: t('warehouse.available'), width: 110, align: 'right', render: (p) => <CellText align="right">{formatQty(p.available, lang)}</CellText> },
-      ...(canCreate ? [{ key: 'edit', title: '', width: 90, align: 'right' as const, render: (p: PortalProductDto) => <Button title={t('create.product.edit')} variant="link" onPress={() => setEditing(p.publicId ?? null)} testID={`edit-product-${p.sku}`} /> }] : []),
-    ]
     const editingProduct = list.items.find((p) => p.publicId === editing)
     return (
       <>
@@ -152,7 +165,7 @@ function ProductsSection({ lang, canCreate }: { lang: Lang; canCreate: boolean }
         </View>
         {creating && <NewProductForm onCancel={() => setCreating(false)} onDone={() => { setCreating(false); list.reload() }} />}
         {editingProduct && <EditProductForm key={editingProduct.publicId} product={editingProduct} onCancel={() => setEditing(null)} onDone={() => { setEditing(null); list.reload() }} />}
-        <DataTable columns={columns} rows={list.items} keyOf={(p) => String(p.publicId)} empty={list.loading ? undefined : list.query ? t('warehouse.noMatches') : t('warehouse.emptyProducts')} testID="products-table" />
+        <DataTable columns={columns} rows={list.items} keyOf={(p) => String(p.publicId)} empty={list.loading ? undefined : list.query ? t('warehouse.noMatches') : t('warehouse.emptyProducts')} total={list.loading && list.items.length === 0 ? undefined : list.total} onExport={exportAll} testID="products-table" />
         {list.loading && <Spinner />}
         {!list.loading && list.items.length < list.total && <Button title={t('warehouse.loadMore', { shown: list.items.length, total: list.total })} variant="secondary" onPress={list.more} testID="warehouse-more" />}
         {!!list.error && <Notice>{list.error}</Notice>}
@@ -179,7 +192,7 @@ function ProductsSection({ lang, canCreate }: { lang: Lang; canCreate: boolean }
           {canCreate && <Button title={t('create.product.edit')} variant="link" onPress={() => setEditing(p.publicId ?? null)} testID={`edit-product-${p.sku}`} />}
         </Card>
       ))}
-      <Footer loading={list.loading} error={list.error} shown={list.items.length} total={list.total} empty={list.query ? t('warehouse.noMatches') : t('warehouse.emptyProducts')} onRetry={list.reload} onMore={list.more} />
+      <Footer loading={list.loading} error={list.error} shown={list.items.length} total={list.total} empty={list.query ? t('warehouse.noMatches') : t('warehouse.emptyProducts')} onRetry={list.reload} onMore={list.more} onExport={exportAll} />
     </>
   )
 }
@@ -188,22 +201,23 @@ function MovementsSection({ lang }: { lang: Lang }) {
   const colors = useColors()
   const { t } = useT()
   const wide = useIsWide()
-  const list = usePaged(useCallback((s: string, skip: number) => listMovements(s, skip, PAGE_SIZE), []))
+  const list = usePaged(useCallback((s: string, skip: number, take: number) => listMovements(s, skip, take), []))
+  const columns: Column<PortalMovementDto>[] = [
+    { key: 'date', title: t('warehouse.col.date'), width: 150, render: (m) => <CellText>{formatDateTime(m.createdAtUtc, lang)}</CellText>, csv: (m) => csvDay(m.createdAtUtc) },
+    { key: 'type', title: t('warehouse.col.type'), width: 150, render: (m) => <CellText bold>{m.type}</CellText>, csv: (m) => m.type },
+    { key: 'sku', title: t('warehouse.col.sku'), width: 150, render: (m) => <CellText>{m.sku}</CellText>, csv: (m) => m.sku },
+    { key: 'name', title: t('warehouse.col.product'), flex: 2, render: (m) => <CellText muted>{m.productName}</CellText>, csv: (m) => m.productName },
+    { key: 'qty', title: t('warehouse.col.qty'), width: 110, align: 'right', render: (m) => { const q = m.quantity ?? 0; return <Chip label={`${q > 0 ? '+' : ''}${formatQty(q, lang)}`} tone={q > 0 ? 'ok' : q < 0 ? 'danger' : 'neutral'} /> }, csv: (m) => m.quantity ?? 0 },
+    { key: 'wh', title: t('warehouse.col.warehouse'), width: 100, render: (m) => <CellText muted>{m.warehouseCode}</CellText>, csv: (m) => m.warehouseCode },
+    { key: 'lot', title: t('warehouse.col.lot'), width: 110, render: (m) => <CellText muted>{m.lotNumber ?? '—'}</CellText>, csv: (m) => m.lotNumber ?? '' },
+    { key: 'ref', title: t('warehouse.col.reference'), flex: 1, render: (m) => <CellText muted>{[m.reference, m.reason].filter(Boolean).join(' · ') || '—'}</CellText>, csv: (m) => [m.reference, m.reason].filter(Boolean).join(' · ') },
+  ]
+  const exportAll = (format: ExportFormat) => list.exportAll(format, t('warehouse.sections.movements'), columns, filtersSentence([!!list.query && t('table.fSearch', { q: list.query })]))
   if (wide) {
-    const columns: Column<PortalMovementDto>[] = [
-      { key: 'date', title: t('warehouse.col.date'), width: 150, render: (m) => <CellText>{formatDateTime(m.createdAtUtc, lang)}</CellText> },
-      { key: 'type', title: t('warehouse.col.type'), width: 150, render: (m) => <CellText bold>{m.type}</CellText> },
-      { key: 'sku', title: t('warehouse.col.sku'), width: 150, render: (m) => <CellText>{m.sku}</CellText> },
-      { key: 'name', title: t('warehouse.col.product'), flex: 2, render: (m) => <CellText muted>{m.productName}</CellText> },
-      { key: 'qty', title: t('warehouse.col.qty'), width: 110, align: 'right', render: (m) => { const q = m.quantity ?? 0; return <Chip label={`${q > 0 ? '+' : ''}${formatQty(q, lang)}`} tone={q > 0 ? 'ok' : q < 0 ? 'danger' : 'neutral'} /> } },
-      { key: 'wh', title: t('warehouse.col.warehouse'), width: 100, render: (m) => <CellText muted>{m.warehouseCode}</CellText> },
-      { key: 'lot', title: t('warehouse.col.lot'), width: 110, render: (m) => <CellText muted>{m.lotNumber ?? '—'}</CellText> },
-      { key: 'ref', title: t('warehouse.col.reference'), flex: 1, render: (m) => <CellText muted>{[m.reference, m.reason].filter(Boolean).join(' · ') || '—'}</CellText> },
-    ]
     return (
       <>
         <Field label={t('warehouse.search')} value={list.search} onChangeText={list.setSearch} placeholder={t('warehouse.searchProducts')} autoCapitalize="none" returnKeyType="search" testID="warehouse-search" />
-        <DataTable columns={columns} rows={list.items} keyOf={(m) => String(m.id)} empty={list.loading ? undefined : list.query ? t('warehouse.noMatches') : t('warehouse.emptyMovements')} testID="movements-table" />
+        <DataTable columns={columns} rows={list.items} keyOf={(m) => String(m.id)} empty={list.loading ? undefined : list.query ? t('warehouse.noMatches') : t('warehouse.emptyMovements')} total={list.loading && list.items.length === 0 ? undefined : list.total} onExport={exportAll} testID="movements-table" />
         {list.loading && <Spinner />}
         {!list.loading && list.items.length < list.total && <Button title={t('warehouse.loadMore', { shown: list.items.length, total: list.total })} variant="secondary" onPress={list.more} testID="warehouse-more" />}
         {!!list.error && <Notice>{list.error}</Notice>}
@@ -227,7 +241,7 @@ function MovementsSection({ lang }: { lang: Lang }) {
           </Card>
         )
       })}
-      <Footer loading={list.loading} error={list.error} shown={list.items.length} total={list.total} empty={list.query ? t('warehouse.noMatches') : t('warehouse.emptyMovements')} onRetry={list.reload} onMore={list.more} />
+      <Footer loading={list.loading} error={list.error} shown={list.items.length} total={list.total} empty={list.query ? t('warehouse.noMatches') : t('warehouse.emptyMovements')} onRetry={list.reload} onMore={list.more} onExport={exportAll} />
     </>
   )
 }
@@ -240,6 +254,15 @@ function ArrivalsSection({ lang }: { lang: Lang }) {
   const [editing, setEditing] = useState<PortalArrivalDto | null>(null)
   const [error, setError] = useState<string | null>(null)
   const list = useAsync(() => listArrivals(''), [])
+  const arrivalColumns: CsvColumn<PortalArrivalDto>[] = [
+    { title: t('create.arrivals.number'), csv: (a) => a.number ?? '' },
+    { title: t('warehouse.col.reference'), csv: (a) => a.reference ?? '' },
+    { title: t('warehouse.col.warehouse'), csv: (a) => a.warehouseCode ?? '' },
+    { title: t('create.arrivals.expectedShort'), csv: (a) => a.expectedDate ?? '' },
+    { title: t('warehouse.col.status'), csv: (a) => a.status ?? '' },
+    { title: t('create.arrivals.lines'), csv: (a) => (a.lines ?? []).map((l) => `${l.sku} × ${l.expectedQty ?? 0}`).join('; ') },
+  ]
+  const exportAll = (format: ExportFormat) => runExport({ format, title: t('warehouse.sections.arrivals'), columns: arrivalColumns, rows: list.data ?? [], filters: filtersSentence([]) })
   async function cancel(id: number) {
     setError(null)
     try {
@@ -255,6 +278,12 @@ function ArrivalsSection({ lang }: { lang: Lang }) {
       {creating && <NewArrivalForm onCancel={() => setCreating(false)} onDone={() => { setCreating(false); list.reload() }} />}
       {editing && <NewArrivalForm key={editing.id} arrival={editing} onCancel={() => setEditing(null)} onDone={() => { setEditing(null); list.reload() }} />}
       {!!error && <Notice>{error}</Notice>}
+      {(list.data ?? []).length > 0 && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <Muted>{t('table.count', { shown: (list.data ?? []).length, total: (list.data ?? []).length })}</Muted>
+          <ExportButton onExport={exportAll} testID="warehouse-export" />
+        </View>
+      )}
       {(list.data ?? []).map((a) => (
         <Card key={String(a.id)}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -283,7 +312,18 @@ function ExitsSection({ lang }: { lang: Lang }) {
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const list = usePaged(useCallback((s: string, skip: number) => listExits(s, skip, PAGE_SIZE), []))
+  const list = usePaged(useCallback((s: string, skip: number, take: number) => listExits(s, skip, take), []))
+  const exitColumns: CsvColumn<PortalExitListItemDto>[] = [
+    { title: t('create.arrivals.number'), csv: (n) => n.number ?? '' },
+    { title: t('warehouse.col.warehouse'), csv: (n) => n.warehouseCode ?? '' },
+    { title: t('warehouse.col.reference'), csv: (n) => n.reference ?? '' },
+    { title: t('create.exits.destination'), csv: (n) => n.destination ?? '' },
+    { title: t('create.exits.requestedDate'), csv: (n) => n.requestedDate ?? '' },
+    { title: t('warehouse.col.status'), csv: (n) => n.status ?? '' },
+    { title: t('create.exits.ordered'), csv: (n) => n.qtyOrdered ?? 0 },
+    { title: t('create.exits.shipped'), csv: (n) => n.qtyShipped ?? 0 },
+  ]
+  const exportAll = (format: ExportFormat) => list.exportAll(format, t('warehouse.sections.exits'), exitColumns, filtersSentence([!!list.query && t('table.fSearch', { q: list.query })]))
   async function cancel(publicId: string) {
     setError(null)
     try {
@@ -313,7 +353,7 @@ function ExitsSection({ lang }: { lang: Lang }) {
           {n.statusCode === 'REQUESTED' && <Button title={t('create.cancelNotice')} variant="secondary" onPress={() => void cancel(n.publicId as string)} />}
         </Card>
       ))}
-      <Footer loading={list.loading} error={list.error} shown={list.items.length} total={list.total} empty={t('create.exits.empty')} onRetry={list.reload} onMore={list.more} />
+      <Footer loading={list.loading} error={list.error} shown={list.items.length} total={list.total} empty={t('create.exits.empty')} onRetry={list.reload} onMore={list.more} onExport={exportAll} />
     </>
   )
 }
@@ -322,21 +362,22 @@ function ValueSection({ lang }: { lang: Lang }) {
   const colors = useColors()
   const { t } = useT()
   const [report, setReport] = useState<{ totalValue: number; totalQty: number; unvaluedQty: number; method: string } | null>(null)
-  const load = useCallback(async (s: string, skip: number) => {
-    const page = await getValuation(s, skip, PAGE_SIZE)
+  const load = useCallback(async (s: string, skip: number, take: number) => {
+    const page = await getValuation(s, skip, take)
     setReport({ totalValue: page.totalValue ?? 0, totalQty: page.totalQty ?? 0, unvaluedQty: page.unvaluedQty ?? 0, method: page.method ?? 'AVERAGE' })
     return page
   }, [])
   const wide = useIsWide()
   const list = usePaged(load)
+  const columns: Column<ValuationRowDto>[] = [
+    { key: 'sku', title: t('warehouse.col.sku'), width: 160, render: (r) => <CellText bold>{r.sku}</CellText>, csv: (r) => r.sku },
+    { key: 'name', title: t('warehouse.col.product'), flex: 3, render: (r) => <CellText>{r.productName}</CellText>, csv: (r) => r.productName },
+    { key: 'onHand', title: t('warehouse.onHand'), width: 110, align: 'right', render: (r) => <CellText align="right">{formatQty(r.onHand, lang)}</CellText>, csv: (r) => r.onHand },
+    { key: 'cost', title: t('warehouse.unitCost'), width: 130, align: 'right', render: (r) => <CellText align="right" muted>{r.unitCost == null ? '—' : formatMoney(r.unitCost, lang)}</CellText>, csv: (r) => r.unitCost ?? '' },
+    { key: 'value', title: t('warehouse.value'), width: 140, align: 'right', render: (r) => <CellText align="right" bold>{formatMoney(r.value, lang)}</CellText>, csv: (r) => r.value },
+  ]
+  const exportAll = (format: ExportFormat) => list.exportAll(format, t('warehouse.sections.value'), columns, filtersSentence([!!list.query && t('table.fSearch', { q: list.query })]))
   if (wide) {
-    const columns: Column<ValuationRowDto>[] = [
-      { key: 'sku', title: t('warehouse.col.sku'), width: 160, render: (r) => <CellText bold>{r.sku}</CellText> },
-      { key: 'name', title: t('warehouse.col.product'), flex: 3, render: (r) => <CellText>{r.productName}</CellText> },
-      { key: 'onHand', title: t('warehouse.onHand'), width: 110, align: 'right', render: (r) => <CellText align="right">{formatQty(r.onHand, lang)}</CellText> },
-      { key: 'cost', title: t('warehouse.unitCost'), width: 130, align: 'right', render: (r) => <CellText align="right" muted>{r.unitCost == null ? '—' : formatMoney(r.unitCost, lang)}</CellText> },
-      { key: 'value', title: t('warehouse.value'), width: 140, align: 'right', render: (r) => <CellText align="right" bold>{formatMoney(r.value, lang)}</CellText> },
-    ]
     return (
       <>
         {!!report && (
@@ -348,7 +389,7 @@ function ValueSection({ lang }: { lang: Lang }) {
         )}
         <Muted>{t('warehouse.valueHelp')}</Muted>
         <Field label={t('warehouse.search')} value={list.search} onChangeText={list.setSearch} placeholder={t('warehouse.searchProducts')} autoCapitalize="none" returnKeyType="search" testID="warehouse-search" />
-        <DataTable columns={columns} rows={list.items} keyOf={(r) => String(r.productPublicId)} empty={list.loading ? undefined : list.query ? t('warehouse.noMatches') : t('warehouse.emptyStock')} testID="value-table" />
+        <DataTable columns={columns} rows={list.items} keyOf={(r) => String(r.productPublicId)} empty={list.loading ? undefined : list.query ? t('warehouse.noMatches') : t('warehouse.emptyStock')} total={list.loading && list.items.length === 0 ? undefined : list.total} onExport={exportAll} testID="value-table" />
         {list.loading && <Spinner />}
         {!list.loading && list.items.length < list.total && <Button title={t('warehouse.loadMore', { shown: list.items.length, total: list.total })} variant="secondary" onPress={list.more} testID="warehouse-more" />}
         {!!list.error && <Notice>{list.error}</Notice>}
@@ -377,7 +418,7 @@ function ValueSection({ lang }: { lang: Lang }) {
           </View>
         </Card>
       ))}
-      <Footer loading={list.loading} error={list.error} shown={list.items.length} total={list.total} empty={list.query ? t('warehouse.noMatches') : t('warehouse.emptyStock')} onRetry={list.reload} onMore={list.more} />
+      <Footer loading={list.loading} error={list.error} shown={list.items.length} total={list.total} empty={list.query ? t('warehouse.noMatches') : t('warehouse.emptyStock')} onRetry={list.reload} onMore={list.more} onExport={exportAll} />
     </>
   )
 }

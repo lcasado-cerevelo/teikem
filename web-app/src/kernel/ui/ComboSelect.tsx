@@ -2,7 +2,9 @@
 // (input `role="combobox"` + listbox propio, ↑/↓/Enter/Escape, ✕ para quitar, clic para reabrir), pero las opciones ya
 // están en memoria (catálogos, zonas de un almacén…) y se filtran en el cliente con `matchesQ` (sin mayúsculas ni acentos,
 // cada palabra en la etiqueta, el valor o `hint`). Enter con un texto igual al valor o a la etiqueta de una opción la elige
-// aunque otra esté resaltada (lector de código de barras). `ComboSelectInput` es la variante para un <Field> del kit.
+// aunque otra esté resaltada (lector de código de barras). Opcional (Lote 213): `createLabel` + `onCreate` añaden al final de la lista la
+// opción «crear lo escrito» (solo con texto escrito; con cero coincidencias queda resaltada, así que escribir un nombre nuevo y Enter
+// la elige) y `seedText` abre la lista con ese texto (volver de cancelar la creación sin perder lo escrito). `ComboSelectInput` es la variante para un <Field> del kit.
 import { useCallback, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useController, useFormContext } from 'react-hook-form'
 import { useT } from '../i18n/useT'
@@ -33,6 +35,12 @@ export interface ComboSelectProps {
   'aria-label'?: string
   'aria-describedby'?: string
   onBlur?: () => void
+  /** Texto de la opción «crear» a partir de lo escrito (p. ej. `Nuevo consignatario «Ana»`). Con `onCreate` activa la opción; apagada por omisión. */
+  createLabel?: (text: string) => string
+  /** Se llama con el texto escrito (sin espacios sobrantes) al elegir la opción «crear» (Enter o clic). La lista se cierra. */
+  onCreate?: (text: string) => void
+  /** Texto con el que se abre la lista al entrar al campo (por omisión vacío); para volver tras cancelar una creación. */
+  seedText?: string
 }
 
 export function ComboSelect({
@@ -47,6 +55,9 @@ export function ComboSelect({
   required,
   loading,
   onBlur,
+  createLabel,
+  onCreate,
+  seedText,
   ...aria
 }: ComboSelectProps) {
   const t = useT()
@@ -65,14 +76,25 @@ export function ComboSelect({
   const selectedLabel = current?.label ?? (value || '')
   const shown = useMemo(() => options.filter((o) => matchesQ(text, o.label, o.value, o.hint)), [options, text])
 
+  // opción «crear»: solo con texto escrito y la lista ya cargada; va al final (índice = shown.length)
+  const createText = text.trim()
+  const canCreate = !!onCreate && !loading && createText !== ''
+  const total = shown.length + (canCreate ? 1 : 0)
+
   let status: string | null = null
   if (loading) status = t('common.loading')
-  else if (shown.length === 0) status = t('ui.searchSelect.none')
+  else if (shown.length === 0 && !canCreate) status = t('ui.searchSelect.none')
 
   const openList = () => {
-    setText('')
-    // al abrir se ven todas: se resalta la elegida
-    setActive(Math.max(0, options.findIndex((o) => o.value === value)))
+    if (seedText) {
+      // volver de cancelar una creación: se abre con lo que se había escrito
+      setText(seedText)
+      setActive(0)
+    } else {
+      setText('')
+      // al abrir se ven todas: se resalta la elegida
+      setActive(Math.max(0, options.findIndex((o) => o.value === value)))
+    }
     setOpen(true)
   }
 
@@ -80,6 +102,12 @@ export function ComboSelect({
     setOpen(false)
     setText('')
     onChange(o.value, o)
+  }
+
+  const create = () => {
+    setOpen(false)
+    setText('')
+    onCreate?.(createText)
   }
 
   const clear = () => {
@@ -91,7 +119,7 @@ export function ComboSelect({
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       if (!open) openList()
-      else setActive((i) => Math.min(i + 1, shown.length - 1))
+      else setActive((i) => Math.min(i + 1, total - 1))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setActive((i) => Math.max(i - 1, 0))
@@ -99,6 +127,7 @@ export function ComboSelect({
       e.preventDefault()
       const o = exactComboMatch(shown, text) ?? shown[active]
       if (o && !status) choose(o)
+      else if (!o && canCreate && active === shown.length) create()
     } else if (e.key === 'Escape' && open) {
       // no cierra el Modal que lo contiene: solo la lista
       e.stopPropagation()
@@ -119,7 +148,7 @@ export function ComboSelect({
           aria-autocomplete="list"
           aria-expanded={open}
           aria-controls={listId}
-          aria-activedescendant={open && !status && shown[active] ? `${listId}-${active}` : undefined}
+          aria-activedescendant={open && !status && (shown[active] || (canCreate && active === shown.length)) ? `${listId}-${active}` : undefined}
           aria-invalid={invalid || undefined}
           aria-required={required || undefined}
           {...aria}
@@ -165,6 +194,19 @@ export function ComboSelect({
                   {o.hint && <span className="sub">{o.hint}</span>}
                 </div>
               ))}
+            {canCreate && (
+              <div
+                id={`${listId}-${shown.length}`}
+                role="option"
+                aria-selected={false}
+                className={active === shown.length ? 'mi on mi-create' : 'mi mi-create'}
+                onMouseDown={(e) => e.preventDefault()}
+                onMouseEnter={() => setActive(shown.length)}
+                onClick={create}
+              >
+                <span>{createLabel ? createLabel(createText) : t('ui.comboSelect.create', { text: createText })}</span>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -10,7 +10,8 @@
 // Las hijas se preparan con `exportChildren` (exportChildren.ts, liviano: lo importan las pantallas); este módulo lo carga
 // `exportTable` bajo demanda. Las funciones de armado (buildGroupedExportData, flattenGroupedExport, formatExportNumber)
 // son puras y se prueban sin DOM; `renderGroupedPdf` arma el documento en memoria y `exportGroupedTable` descarga.
-import { hasCompanyLogo, loadCompanyPdfLogo } from './pdfLogo'
+import { readPdfBrand } from './pdfBrand'
+import { loadTableHeadingLogo } from './pdfLogo'
 import type { jsPDF } from 'jspdf'
 import { formatNumber } from '../format/format'
 import { t as translate } from '../i18n'
@@ -120,11 +121,7 @@ export function groupedCellText(value: ExportCell, locale: string | undefined, s
 // ---------------------------------------------------------------------------------------------------------------------
 
 type Rgb = [number, number, number]
-// mismos tonos que el PDF de `downloadPdf` (encabezado oscuro, cebra) y la banda de grupo de `reportPdf`
-const HEAD: Rgb = [38, 50, 72]
-const ZEBRA: Rgb = [245, 247, 250]
-const BAND_BG: Rgb = [232, 239, 251]
-const BAND_INK: Rgb = [11, 44, 102]
+// los tonos de marca (encabezado, cebra, banda de grupo) salen de `readPdfBrand()`; aquí solo los neutros
 const FIELD_BG: Rgb = [247, 249, 252]
 const INK: Rgb = [24, 33, 54]
 const MUTED: Rgb = [91, 104, 128]
@@ -163,7 +160,9 @@ export async function renderGroupedPdf(data: GroupedExportData, options: RenderG
   }
 
   // ---- compañía, título, fecha de generación y filtros (página 1; el mismo encabezado que el PDF de las tablas) ----
-  if (options.logo === undefined && hasCompanyLogo()) options = { ...options, logo: await loadCompanyPdfLogo('light') }
+  // el logo de la compañía y, si no subió ninguno, el de Teikem; los colores, los de su marca
+  if (options.logo === undefined) options = { ...options, logo: await loadTableHeadingLogo() }
+  const brand = readPdfBrand()
   let y = drawPdfHeading(doc, options, MARGIN, MARGIN - 6, W - MARGIN * 2)
 
   const childCols = data.child.headers.length
@@ -201,7 +200,7 @@ export async function renderGroupedPdf(data: GroupedExportData, options: RenderG
     // ---- banda: título + "etiqueta: valor" ----
     const titleText = block.title.map((v) => groupedCellText(v, locale, false)).filter(Boolean).join('  ·  ')
     const band: { content: string; colSpan?: number; styles?: Record<string, unknown> }[][] = [
-      [{ content: titleText, colSpan: pairCols, styles: { fillColor: BAND_BG, textColor: BAND_INK, fontStyle: 'bold', fontSize: 10, cellPadding: { top: 5, bottom: 5, left: 6, right: 6 } } }],
+      [{ content: titleText, colSpan: pairCols, styles: { fillColor: brand.tint, textColor: brand.navy, fontStyle: 'bold', fontSize: 10, cellPadding: { top: 5, bottom: 5, left: 6, right: 6 } } }],
     ]
     for (let r = 0; r < fieldRows; r++) {
       const cells: { content: string }[] = []
@@ -244,8 +243,8 @@ export async function renderGroupedPdf(data: GroupedExportData, options: RenderG
         startY: finalY(),
         margin: { left: MARGIN, right: MARGIN, top: MARGIN, bottom },
         styles: { font: 'helvetica', fontSize: 8, cellPadding: 3, overflow: 'linebreak', textColor: INK },
-        headStyles: { fillColor: HEAD, textColor: 255, fontStyle: 'bold' },
-        alternateRowStyles: { fillColor: ZEBRA },
+        headStyles: { fillColor: brand.navy, textColor: brand.onNavy, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: brand.zebra },
         columnStyles: childStyles,
         showHead: 'everyPage',
         rowPageBreak: 'avoid',

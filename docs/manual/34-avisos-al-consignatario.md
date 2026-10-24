@@ -27,6 +27,20 @@ Al marcarlo sale una **advertencia** (parte de la política de privacidad): *«S
 - **se le avisa al consignatario**, por el medio marcado, que el cliente lo marcó (el correo incluye cómo darse de baja). El texto (SMS) se guarda pero **no sale** hasta contratar el proveedor.
 Desmarcar también queda en la bitácora y no avisa. Marcar o desmarcar lo mismo otra vez no hace nada.
 
+## 3b. Marcar a varios de una vez (Lote 213, 2026-10-23)
+En la misma pantalla cada consignatario tiene una **casilla de selección**; arriba, **«Seleccionar los N que se ven»** y, con algo seleccionado, la barra **Avisar por correo · Avisar por texto · Quitar correo · Quitar texto** (y «Limpiar selección»). Marcar muestra la **advertencia una sola vez para todo el grupo** («Esto aplica a N consignatarios (correo)…»); quitar no la pide. El servidor marca a cada uno igual que el individual (bitácora y aviso por consignatario) y responde cuántos quedaron y **cuáles no se pudieron y por qué** (sin correo o teléfono registrado, dado de baja); esos salen en pantalla con su motivo y el resto queda marcado. En la web ancha la lista es una **tabla** (casilla, consignatario, pueblo, correo, texto, Acceso) con su total «N de M»; en el celular, tarjetas con la casilla arriba a la derecha.
+
+`PUT /api/v1/portal/consignee-notices/consignees/bulk` con `publicIds` (hasta 200), `channel`, `accepted`, `warningAccepted`. Responde `done`, `failed` e `items[]` (`publicId`, `name`, `ok`, `message`).
+
+| Situación | Código | Mensaje |
+|---|---|---|
+| Sin consignatarios | 400 | «Escoja al menos un consignatario.» |
+| Más de 200 | 400 | «Marque hasta 200 consignatarios por vez.» |
+| Marcar sin aceptar la advertencia | 400 | la misma del individual (`warningAccepted`); no se toca a nadie |
+| Marcar con el aviso apagado | 422 | la misma del individual; no se toca a nadie |
+| Rol de solo consulta | 403 | «Su rol en el portal es de solo consulta: no puede cambiar los avisos al consignatario.» |
+| Un consignatario sin ese medio, dado de baja o inexistente | 200 | ese item sale con `ok=false` y su mensaje; los demás se marcan |
+
 ## 4. Enlace de seguimiento y baja
 - **Seguimiento:** `…/track/<token>`. El token es propio de cada envío, largo y **imposible de adivinar**; la página solo muestra el avance (no recibe datos ni permite buscar por número). API: `GET /api/v1/public/track/link/{token}` (sin sesión; 404 *«No encontramos ese enlace de seguimiento.»* si no existe).
 - **Baja:** `…/unsubscribe/<token>` (cada aviso trae el suyo). API: `POST /api/v1/public/consignee-unsubscribe/{token}` (sin sesión; idempotente; 404 *«El enlace de baja no es válido.»*). La baja es **definitiva** para ese correo o teléfono en la compañía: queda en la bitácora, el consignatario deja de estar marcado y **el cliente no puede volver a marcarlo** (409).

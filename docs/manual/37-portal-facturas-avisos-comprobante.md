@@ -60,7 +60,7 @@ Ajustes → **Mi perfil y mi contraseña**.
 | `PUT /api/v1/auth/password` | Cambia mi contraseña (el mismo de siempre). |
 
 ## 6. Indicadores del cliente (Lote 120)
-En el **Inicio**, de los últimos **7, 30 o 90 días**:
+En el **Inicio**, de **hoy** (Lote 213: desde la medianoche de hoy en la zona de la compañía) o de los últimos **7, 30 o 90 días**:
 
 - **Envíos creados** y **Entregadas** (las que pasaron a Entregada en el período).
 - **Entregas a tiempo:** de las entregadas que tenían fecha prometida, cuántas se entregaron hasta ese día (día de la compañía), con su porcentaje; si ninguna tenía fecha, no se muestra.
@@ -69,7 +69,7 @@ En el **Inicio**, de los últimos **7, 30 o 90 días**:
 - **En curso ahora** (todo lo que no está en un estatus final) y cuántas van en tránsito.
 - **Saldo de facturas** (y cuántas vencidas), solo si la compañía tiene el módulo BILLING; **Cobrado por remesar**, solo si tiene COD y hay dinero cobrado por sus entregas que todavía no se le remite.
 
-`GET /api/v1/portal/indicators?days=30` (7, 30 o 90; 400 «Los días deben ser 7, 30 o 90.» con otro número). Son solo del cliente de la sesión: nada de otros clientes ni de choferes.
+`GET /api/v1/portal/indicators?days=30` (0 = hoy, 7, 30 o 90; 400 «Los días deben ser 0 (hoy), 7, 30 o 90.» con otro número). Son solo del cliente de la sesión: nada de otros clientes ni de choferes.
 
 ## 7. Factura procesada (Lote 126)
 

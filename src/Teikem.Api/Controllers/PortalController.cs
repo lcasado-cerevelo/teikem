@@ -84,6 +84,13 @@ public sealed class PortalController(AuthService auth, PortalService portal, Cli
     [HttpGet("order-form"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
     public Task<PortalOrderFormDto> OrderForm(CancellationToken ct) => entry.GetFormAsync(ct);
 
+    /// <summary>
+    /// 2026-10-23 — crea un consignatario del cliente de la sesión al momento (nombre, dirección y pueblo obligatorios; teléfono opcional) para escogerlo en la pantalla de «Nuevo envío» sin salir de ella. Si ya existe uno
+    /// con el mismo nombre y dirección responde ese (200) sin duplicar. 403 si el rol es de solo consulta; 400 con el campo que falta.
+    /// </summary>
+    [HttpPost("consignees"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
+    public Task<PortalPlaceDto> CreateConsignee([FromBody] PortalConsigneeCreateRequest req, CancellationToken ct) => entry.CreateConsigneeAsync(req, ct);
+
     /// <summary>Crear una orden (solo lo básico; entra al flujo normal). Roles CLIENT_ADMIN y CLIENT_OPERATOR; el cliente sale de la sesión.</summary>
     [HttpPost("orders"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
     public Task<PortalOrderCreatedDto> CreateOrder([FromBody] PortalOrderCreateRequest req, CancellationToken ct) => entry.CreateAsync(req, ct);
@@ -116,7 +123,7 @@ public sealed class PortalController(AuthService auth, PortalService portal, Cli
     [HttpPut("profile"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
     public Task<PortalProfileDto> SaveProfile([FromBody] PortalProfileRequest? req, CancellationToken ct) => profile.SaveAsync(req, ct);
 
-    /// <summary>Lote 120 — indicadores de mi cliente de los últimos 7, 30 (por omisión) o 90 días; 400 con otro número.</summary>
+    /// <summary>Lote 120 — indicadores de mi cliente de hoy (days = 0: desde la medianoche de la compañía; Lote 213) o de los últimos 7, 30 (por omisión) o 90 días; 400 con otro número.</summary>
     [HttpGet("indicators"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
     public Task<PortalIndicatorsDto> Indicators([FromQuery] int? days, CancellationToken ct) => indicators.GetAsync(days, ct);
 }

@@ -538,3 +538,62 @@ describe('Alta detallada — «Label al guardar» (Lote F-G2)', () => {
     expect(onChange).toHaveBeenCalledWith(false)
   })
 })
+
+describe('Alta detallada — consignatario nuevo en línea (Lote 213)', () => {
+  const active = () => document.activeElement as HTMLElement | null
+  const locationPosts = () => mock.calls.filter((c) => c.method === 'POST' && c.url.pathname === '/api/v1/locations')
+
+  it('nombre nuevo + Enter abre el panel bajo el buscador; Enter graba, elige el nuevo y el foco pasa al siguiente control; no envía la orden', async () => {
+    const user = userEvent.setup()
+    wrap(ALL)
+    await pickClient(user)
+    const box = screen.getByRole('combobox', { name: /^Nombre/ })
+    await user.click(box)
+    await user.type(box, 'Tienda Nueva')
+    expect(await screen.findByRole('option', { name: /Nuevo consignatario/ })).toHaveClass('on')
+    await user.keyboard('{Enter}')
+    const panel = await screen.findByTestId('consignee-inline')
+    expect(active()).toBe(within(panel).getByLabelText(/^Dirección/))
+    // los campos de solo lectura se empujan hacia abajo: el panel va antes que la dirección de solo lectura
+    expect(panel.compareDocumentPosition(screen.getByLabelText('Dirección', { selector: 'input[disabled]' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    await user.keyboard('Calle 9{Enter}')
+    expect(await within(panel).findByText('La ciudad es obligatoria.')).toBeInTheDocument()
+    expect(active()).toBe(within(panel).getAllByRole('combobox')[0])
+    await user.keyboard('pon')
+    await screen.findByRole('option', { name: /ponce/i })
+    await user.keyboard('{Enter}{Enter}')
+    await waitFor(() => expect(locationPosts()).toHaveLength(1))
+    expect(locationPosts()[0].body).toMatchObject({ name: 'Tienda Nueva', line1: 'Calle 9', city: 'Ponce', clientPublicId: 'c-1', locationType: 'DELIVERY' })
+    await waitFor(() => expect(screen.queryByTestId('consignee-inline')).toBeNull())
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /^Nombre/ })).toHaveValue('Tienda Nueva'))
+    // el foco pasa al tipo de paquete de la primera línea (se salta el interruptor de entrega especial) y la orden no se envió con ese Enter
+    await waitFor(() => expect((active() as HTMLElement).closest('.oe-pkg')?.querySelector('select')).toBe(active()))
+    expect(posts()).toHaveLength(0)
+  })
+
+  it('Escape cancela y devuelve el foco al buscador con el texto escrito', async () => {
+    const user = userEvent.setup()
+    wrap(ALL)
+    await pickClient(user)
+    const box = screen.getByRole('combobox', { name: /^Nombre/ })
+    await user.click(box)
+    await user.type(box, 'Zeta Nueva')
+    await user.keyboard('{Enter}')
+    await screen.findByTestId('consignee-inline')
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByTestId('consignee-inline')).toBeNull())
+    await waitFor(() => expect(active()).toBe(screen.getByRole('combobox', { name: /^Nombre/ })))
+    expect(screen.getByRole('combobox', { name: /^Nombre/ })).toHaveValue('Zeta Nueva')
+    expect(locationPosts()).toHaveLength(0)
+  })
+
+  it('sin locations.create no se ofrece', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await pickClient(user)
+    const box = screen.getByRole('combobox', { name: /^Nombre/ })
+    await user.click(box)
+    await user.type(box, 'Tienda Nueva')
+    expect(screen.queryByRole('option', { name: /Nuevo consignatario/ })).toBeNull()
+  })
+})

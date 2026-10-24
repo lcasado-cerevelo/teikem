@@ -70,7 +70,8 @@
       "qty": "Quantity",
       "reference": "Reference",
       "units": "Units",
-      "unvalued": "No cost"
+      "unvalued": "No cost",
+      "status": "Status"
     },
     "unvaluedShort": "Not counted in the value"
   },
@@ -180,6 +181,10 @@
     "invoices": "My invoices"
   },
   "orders": {
+    "attempts": {
+      "one": "{n} failed attempt",
+      "many": "{n} failed attempts"
+    },
     "title": "My shipments",
     "search": "Search",
     "searchPlaceholder": "Waybill, shipment, invoice or consignee",
@@ -198,7 +203,8 @@
       "pieces": "Pieces",
       "cod": "COD",
       "status": "Status"
-    }
+    },
+    "noMatchesRange": "No shipment matches the search or the dates."
   },
   "order": {
     "title": "Shipment",
@@ -294,11 +300,13 @@
     "placeholder": "Write your message",
     "send": "Send",
     "charsLeft": "{n} characters left",
-    "tooMany": "Too many messages in a row; please wait a while before writing again."
+    "tooMany": "Too many messages in a row; please wait a while before writing again.",
+    "inbox": "Conversations",
+    "teamSubtitle": "The company moving your shipments"
   },
   "newOrder": {
     "title": "New shipment",
-    "help": "Fill in the basics only; the shipment goes straight into the normal flow and you follow it from “Shipments”.",
+    "help": "The same data the company captures: service and dates, consignee, packages and COD. The shipment goes straight into the normal flow and you follow it from “Shipments”.",
     "readOnly": "Your user can only view. Ask an administrator at your company to let you create shipments.",
     "consignee": "Consignee",
     "filter": "Search consignee",
@@ -328,16 +336,21 @@
       "pieces": "Pieces must be a whole number, 1 or more.",
       "weight": "Weight must be a number.",
       "cod": "The amount must be a number.",
-      "date": "Write the date as YYYY-MM-DD, today or later.",
-      "notes": "Notes cannot exceed {max} characters."
+      "date": "The ready date must be today or later.",
+      "notes": "Notes cannot exceed {max} characters.",
+      "service": "Choose the service type.",
+      "packageType": "Choose the package type.",
+      "dueDate": "The due date cannot be before the ready date.",
+      "orderNumber": "The order number cannot exceed {max} characters.",
+      "invoice": "The invoice number cannot exceed {max} characters."
     },
     "mode": {
       "quick": "Quick",
       "detailed": "Detailed"
     },
     "quick": {
-      "subtitle": "One row per shipment: Enter moves to the next field and, on the last one, saves and leaves a fresh row ready.",
-      "hint": "Type the consignee and pick it from the list (Enter takes the first one); “+ New” creates it in the same row.",
+      "subtitle": "One row per shipment, all from the keyboard: Tab moves between fields and Enter saves the row and leaves the next one ready.",
+      "hint": "Type the consignee and pick it with the arrows and Enter; “+ New” creates it in the same row.",
       "savedCount": "{n} saved",
       "codTotal": "COD total: {amount}",
       "saved": "Saved",
@@ -347,14 +360,73 @@
       "newBlock": "New consignee (name, address and town are required)",
       "col": {
         "date": "Date",
-        "invoice": "Invoice",
+        "invoice": "Invoice no.",
         "consignee": "Consignee",
         "description": "Description",
         "pieces": "Pieces",
         "weight": "Weight kg",
-        "cod": "COD",
-        "notes": "Notes"
-      }
+        "cod": "COD ($)",
+        "notes": "Comment",
+        "orderNumber": "Shipment no.",
+        "address": "Address · Town",
+        "packageType": "Package",
+        "serviceType": "Service"
+      },
+      "keyField": "field",
+      "keySave": "saves",
+      "captured": "{n} entries saved",
+      "filters": {
+        "from": "From",
+        "to": "To",
+        "search": "Search what was entered…",
+        "searchLabel": "Search the saved shipments",
+        "shown": "{shown} of {total} saved shipments",
+        "none": "No saved shipment matches the dates and the search."
+      },
+      "summary": {
+        "title": "Summary",
+        "line": "{count} × {package} · {service}",
+        "cod": "Total COD: {amount}",
+        "packages": "Total packages: {n}",
+        "invoices": "Distinct invoices: {n}",
+        "none": "No shipments in these dates."
+      },
+      "offDateLegend": "Shaded: date other than today",
+      "help": "Each row creates one Submitted shipment of 1 package and 1 piece; for several packages use the Detailed entry."
+    },
+    "s1": "Service and dates",
+    "s1d": "The service type, when the shipment is ready and when it is needed.",
+    "s2": "Consignee",
+    "s2d": "Type the name and pick it from the list; if it does not exist, “+ New” creates it right here.",
+    "s3": "Packages and COD",
+    "s3d": "What is being shipped and, if any, how much to collect on delivery.",
+    "service": "Service type",
+    "chooseService": "Choose the service…",
+    "packageType": "Package type",
+    "choosePackageType": "Choose the type…",
+    "readyDate": "Ready date",
+    "dueDate": "Due date",
+    "orderNumber": "Shipment no.",
+    "auto": "(automatic)",
+    "autoPlaceholder": "Assigned by the company",
+    "consigneeHelp": "Type name, number, address or town.",
+    "consigneeNumber": "Number",
+    "address": "Address",
+    "town": "Town",
+    "zip": "ZIP code",
+    "phone": "Phone",
+    "ticket": "Shipment ticket",
+    "ticketConsignee": "Consignee",
+    "ticketPackages": "Packages",
+    "ticketCod": "COD",
+    "ticketNote": "The service price is set by the company per your contract; it is not shown here.",
+    "codNote": "If the driver must collect on delivery, enter the amount; otherwise leave it empty.",
+    "save": "Save shipment",
+    "phoneOptional": "Phone (optional)",
+    "consigneeBlock": {
+      "save": "Save consignee",
+      "hint": "Enter saves the consignee and continues with the shipment · Esc cancels",
+      "missing": "Enter the consignee's name, address and town."
     }
   },
   "unsubscribe": {
@@ -381,7 +453,28 @@
     "bySms": "Notify by text: {value}",
     "smsHelp": "Text sending is not available yet; the preference is saved.",
     "none": "not registered",
-    "on": "Receives notices"
+    "on": "Receives notices",
+    "select": "Select",
+    "selectVisible": "Select the {n} shown",
+    "selected": "{n} selected",
+    "clearSelection": "Clear selection",
+    "bulkEmailOn": "Notify by email",
+    "bulkSmsOn": "Notify by text",
+    "bulkEmailOff": "Remove email",
+    "bulkSmsOff": "Remove text",
+    "bulkHelp": "Select several consignees and apply the action to all at once; the warning is accepted once for the group.",
+    "bulkWarning": "This applies to {n} consignees ({channel}). Those without that contact on file or who unsubscribed are not marked and you will be told which.",
+    "channelEmail": "email",
+    "channelSms": "text",
+    "bulkDone": "{done} marked, {failed} could not be.",
+    "col": {
+      "consignee": "Consignee",
+      "town": "Town",
+      "email": "Notify by email",
+      "sms": "Notify by text",
+      "emailOn": "Accepts email",
+      "smsOn": "Accepts text"
+    }
   },
   "consigneeSpace": {
     "inbox": {
@@ -560,7 +653,8 @@
     "inTransit": "{n} in transit",
     "invoiceBalance": "Invoice balance",
     "overdue": "{n} overdue",
-    "cod": "Collected, to be remitted"
+    "cod": "Collected, to be remitted",
+    "today": "Today"
   },
   "environment": {
     "notProduction": "Test environment: not production"
@@ -614,12 +708,19 @@
     "arrivals": {
       "title": "Arrival notices",
       "empty": "There are no arrival notices yet.",
-      "expected": "arrives {date}"
+      "expected": "arrives {date}",
+      "number": "Number",
+      "expectedShort": "Arrives",
+      "lines": "Lines"
     },
     "exits": {
       "title": "Exit notices",
       "empty": "There are no exit notices yet.",
-      "pending": "with backorder"
+      "pending": "with backorder",
+      "destination": "Destination",
+      "requestedDate": "Requested date",
+      "ordered": "Ordered",
+      "shipped": "Shipped"
     }
   },
   "reports": {
@@ -673,5 +774,42 @@
       "shipments": "Shipments",
       "reason": "Reason"
     }
+  },
+  "table": {
+    "count": "{shown} of {total}",
+    "export": "Export",
+    "exporting": "Exporting…",
+    "yes": "Yes",
+    "no": "No",
+    "format": {
+      "xlsx": "Excel",
+      "csv": "CSV",
+      "pdf": "PDF"
+    },
+    "generatedAt": "Generated on {date}",
+    "filters": "Filters: {list}",
+    "noFilters": "No filters",
+    "fSearch": "Search “{q}”",
+    "fRange": "Dates from {from} to {to}",
+    "fStatus": "Status {status}"
+  },
+  "select": {
+    "choose": "Choose…"
+  },
+  "dateRange": {
+    "label": "Date",
+    "all": "All dates",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "last7": "Last 7 days",
+    "thisWeek": "This week",
+    "lastWeek": "Last week",
+    "last30": "Last 30 days",
+    "thisMonth": "This month",
+    "lastMonth": "Last month",
+    "thisYear": "This year",
+    "custom": "Custom",
+    "from": "From",
+    "to": "To"
   }
 }

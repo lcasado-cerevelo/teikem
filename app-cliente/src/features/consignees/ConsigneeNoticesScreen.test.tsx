@@ -4,19 +4,21 @@ jest.mock('../portalApi', () => ({
   setConsigneeNotices: jest.fn(),
   listNoticeConsignees: jest.fn(),
   markConsignee: jest.fn(),
+  markConsigneesBulk: jest.fn(),
 }))
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 
 import { ApiError } from '../../kernel/api/problem'
 import { setLang } from '../../kernel/i18n/i18n'
-import { getConsigneeNotices, listNoticeConsignees, markConsignee, setConsigneeNotices } from '../portalApi'
+import { getConsigneeNotices, listNoticeConsignees, markConsignee, markConsigneesBulk, setConsigneeNotices } from '../portalApi'
 import { ConsigneeNoticesScreen } from './ConsigneeNoticesScreen'
 
 const getS = getConsigneeNotices as jest.Mock
 const setS = setConsigneeNotices as jest.Mock
 const list = listNoticeConsignees as jest.Mock
 const mark = markConsignee as jest.Mock
+const bulk = markConsigneesBulk as jest.Mock
 
 const SETTINGS = { enabled: true, lang: 'es', emailConfigured: true, canEdit: true }
 const PAGE = (over: object = {}) => ({
@@ -36,6 +38,7 @@ beforeEach(() => {
   list.mockResolvedValue(PAGE())
   setS.mockResolvedValue(SETTINGS)
   mark.mockResolvedValue({})
+  bulk.mockResolvedValue({ done: 2, failed: 0, items: [] })
 })
 
 describe('ConsigneeNoticesScreen', () => {
@@ -89,6 +92,32 @@ describe('ConsigneeNoticesScreen', () => {
     expect(await screen.findByText('Su rol es de solo consulta: puede ver los avisos, no cambiarlos.')).toBeTruthy()
     expect(screen.getByTestId('notices-enable')).toBeDisabled()
     expect(screen.getByTestId('notices-email-l1')).toBeDisabled()
+  })
+
+  it('marcar varios: seleccionar los que se ven, una sola advertencia y una llamada con todos; los que no se pudieron salen con su motivo', async () => {
+    await render(<ConsigneeNoticesScreen />)
+    await screen.findByText('Tienda Norte')
+    expect(screen.queryByTestId('notices-bulk-email-on')).toBeNull()   // sin selección no hay acciones
+    await fireEvent.press(screen.getByTestId('notices-select-visible'))
+    expect(screen.getByText('2 seleccionados')).toBeTruthy()
+    await fireEvent.press(screen.getByTestId('notices-bulk-email-on'))
+    expect(await screen.findByText('Antes de continuar')).toBeTruthy()
+    expect(screen.getByText(/aplica a 2 consignatarios/)).toBeTruthy()
+    bulk.mockResolvedValue({ done: 1, failed: 1, items: [{ publicId: 'l1', name: 'Tienda Norte', ok: true }, { publicId: 'l2', name: 'Colmado Sur', ok: false, message: 'El consignatario no tiene correo registrado.' }] })
+    await fireEvent.press(screen.getByTestId('notices-warning-continue'))
+    await waitFor(() => expect(bulk).toHaveBeenCalledWith(['l1', 'l2'], 'EMAIL', true, true))
+    expect(await screen.findByText(/1 marcados, 1 no se pudieron.*Colmado Sur: El consignatario no tiene correo registrado\./)).toBeTruthy()
+    expect(mark).not.toHaveBeenCalled()
+  })
+
+  it('quitar a varios no pide la advertencia', async () => {
+    list.mockResolvedValue(PAGE({ acceptsEmail: true }))
+    await render(<ConsigneeNoticesScreen />)
+    await screen.findByText('Tienda Norte')
+    await fireEvent.press(screen.getByTestId('notices-select-l1'))
+    await fireEvent.press(screen.getByTestId('notices-bulk-email-off'))
+    await waitFor(() => expect(bulk).toHaveBeenCalledWith(['l1'], 'EMAIL', false, false))
+    expect(screen.queryByText('Antes de continuar')).toBeNull()
   })
 
   it('un error del servidor se muestra', async () => {

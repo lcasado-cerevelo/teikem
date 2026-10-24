@@ -27,6 +27,11 @@ public sealed class ConsigneeNoticeService(TeikemDbContext db, ITenantContext te
     public const string CannotMarkUnsubscribedMessage = "El consignatario se dio de baja de los avisos por ese medio: no se puede volver a marcar.";
     public const string EmailNotConfiguredMessage = "El envío de correo no está configurado.";
     public const string BaseUrlKey = "ConsigneeNotices:ClientAppBaseUrl";
+    // Lote 213: marcar varios de una vez
+    public const int MaxBulk = 200;
+    public const string AcceptedRequiredMessage = "Indique si el consignatario acepta o no los avisos.";
+    public const string BulkEmptyMessage = "Escoja al menos un consignatario.";
+    public const string BulkTooManyMessage = "Marque hasta 200 consignatarios por vez.";
 
     private TenantContext T => (TenantContext)tenant;
     private int ClientId => T.PortalClientId ?? throw new ForbiddenException(AuthService.PortalNoAccessMessage);
@@ -120,9 +125,71 @@ public sealed class ConsigneeNoticeService(TeikemDbContext db, ITenantContext te
     {
         await EnsureCanEditAsync(ct);
         var channel = ConsigneeNoticeChannels.Normalize(req?.Channel) ?? throw new ValidationException("channel", ConsigneeNoticeRules.InvalidChannelMessage);
-        if (req?.Accepted is not bool accepted) throw new ValidationException("accepted", "Indique si el consignatario acepta o no los avisos.");
+        if (req?.Accepted is not bool accepted) throw new ValidationException("accepted", AcceptedRequiredMessage);
+        var client = await CurrentClientAsync(ct);
+        return await MarkOneAsync(client, locationPublicId, channel, accepted, req.WarningAccepted == true, ct);
+    }
+
+    /// <summary>
+    /// Lote 213 — marca o desmarca varios consignatarios de una vez con el mismo medio. La advertencia se acepta UNA vez para todo el grupo (sin ella, 400 antes de tocar a nadie). Cada consignatario pasa por la misma regla del
+    /// individual (bitácora y aviso por cada uno); el que no se puede (sin el medio, dado de baja, no encontrado) queda con su mensaje y los demás siguen. El que ya estaba como se pide cuenta como hecho. Hasta 200 por vez.
+    /// </summary>
+    public async Task<ConsigneeNoticeBulkResultDto> SetConsigneesAsync(ConsigneeNoticeBulkMarkRequest? req, CancellationToken ct)
+    {
+        await EnsureCanEditAsync(ct);
+        var ids = (req?.PublicIds ?? new List<Guid>()).Distinct().ToList();
+        if (ids.Count == 0) throw new ValidationException("publicIds", BulkEmptyMessage);
+        if (ids.Count > MaxBulk) throw new ValidationException("publicIds", BulkTooManyMessage);
+        var channel = ConsigneeNoticeChannels.Normalize(req!.Channel) ?? throw new ValidationException("channel", ConsigneeNoticeRules.InvalidChannelMessage);
+        if (req.Accepted is not bool accepted) throw new ValidationException("accepted", AcceptedRequiredMessage);
+        var client = await CurrentClientAsync(ct);
+        if (accepted)
+        {
+            // mismas reglas del individual, pero para todo el grupo y antes de tocar a nadie
+            if (!client.NotifyConsignee) throw new StatusRuleException(ConsigneeNoticeRules.NotEnabledMessage);
+            if (req.WarningAccepted != true) throw new ValidationException("warningAccepted", ConsigneeNoticeRules.WarningRequiredMessage);
+        }
+        var cid = client.ClientId;
+        var names = await db.Locations.AsNoTracking().Where(l => l.ClientId == cid && l.IsActive && ids.Contains(l.PublicId)).Select(l => new { l.PublicId, l.Name }).ToDictionaryAsync(l => l.PublicId, l => l.Name, ct);
+        var items = new List<ConsigneeNoticeBulkItemDto>(ids.Count);
+        foreach (var id in ids)
+        {
+            var name = names.GetValueOrDefault(id) ?? string.Empty;
+            try
+            {
+                var dto = await MarkOneAsync(client, id, channel, accepted, req.WarningAccepted == true, ct);
+                items.Add(new ConsigneeNoticeBulkItemDto(id, dto.Name, true, null, dto));
+            }
+            catch (Exception ex) when (ex is ValidationException or ConflictException or StatusRuleException or NotFoundException)
+            {
+                DiscardPendingChanges();   // lo que este consignatario hubiera dejado a medias no se guarda con el siguiente
+                items.Add(new ConsigneeNoticeBulkItemDto(id, name, false, ex.Message, null));
+            }
+        }
+        var done = items.Count(i => i.Ok);
+        return new ConsigneeNoticeBulkResultDto(done, items.Count - done, items);
+    }
+
+    private async Task<Client> CurrentClientAsync(CancellationToken ct)
+    {
         var cid = ClientId;
-        var client = await db.Clients.AsNoTracking().FirstOrDefaultAsync(c => c.ClientId == cid, ct) ?? throw new NotFoundException("Cliente");
+        return await db.Clients.AsNoTracking().FirstOrDefaultAsync(c => c.ClientId == cid, ct) ?? throw new NotFoundException("Cliente");
+    }
+
+    /// <summary>Deshace en el ChangeTracker lo agregado o cambiado y todavía no guardado (un consignatario del grupo que falló).</summary>
+    private void DiscardPendingChanges()
+    {
+        foreach (var e in db.ChangeTracker.Entries().Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted).ToList())
+        {
+            if (e.State == EntityState.Added) e.State = EntityState.Detached;
+            else { e.CurrentValues.SetValues(e.OriginalValues); e.State = EntityState.Unchanged; }
+        }
+    }
+
+    /// <summary>La regla de marcar o desmarcar un consignatario (la usan el individual y el de varios). Guarda.</summary>
+    private async Task<ConsigneeNoticeConsigneeDto> MarkOneAsync(Client client, Guid locationPublicId, string channel, bool accepted, bool warningAccepted, CancellationToken ct)
+    {
+        var cid = client.ClientId;
         var loc = await db.Locations.FirstOrDefaultAsync(l => l.PublicId == locationPublicId && l.ClientId == cid && l.IsActive, ct) ?? throw new NotFoundException(ConsigneeNoticeRules.ConsigneeNotFoundMessage);
         var (mail, phone) = await ContactsAsync(loc.LocationId, ct);
         var contact = channel == ConsigneeNoticeChannels.Email ? mail : phone;
@@ -131,7 +198,7 @@ public sealed class ConsigneeNoticeService(TeikemDbContext db, ITenantContext te
         if (accepted)
         {
             if (!client.NotifyConsignee) throw new StatusRuleException(ConsigneeNoticeRules.NotEnabledMessage);
-            if (req.WarningAccepted != true) throw new ValidationException("warningAccepted", ConsigneeNoticeRules.WarningRequiredMessage);
+            if (!warningAccepted) throw new ValidationException("warningAccepted", ConsigneeNoticeRules.WarningRequiredMessage);
             if (contact is null) throw new ValidationException("channel", channel == ConsigneeNoticeChannels.Email ? ConsigneeNoticeRules.NoEmailMessage : ConsigneeNoticeRules.NoPhoneMessage);
             if (await IsUnsubscribedAsync(channel, contact, ct)) throw new ConflictException(CannotMarkUnsubscribedMessage);
         }
@@ -141,7 +208,7 @@ public sealed class ConsigneeNoticeService(TeikemDbContext db, ITenantContext te
         db.ConsigneeNoticeConsents.Add(new ConsigneeNoticeConsent
         {
             TenantId = T.RequireTenantId(), ClientId = cid, LocationId = loc.LocationId, Channel = channel, Accepted = accepted, Contact = contact ?? string.Empty,
-            WarningAccepted = accepted && req.WarningAccepted == true, Source = ConsigneeNoticeSources.Client, ChangedBy = tenant.UserId, ChangedAtUtc = clock.UtcNow,
+            WarningAccepted = accepted && warningAccepted, Source = ConsigneeNoticeSources.Client, ChangedBy = tenant.UserId, ChangedAtUtc = clock.UtcNow,
         });
         if (accepted && contact is not null)
             QueueNotice(new ConsigneeNotice { ClientId = cid, LocationId = loc.LocationId, Kind = ConsigneeNoticeKinds.Consent, Channel = channel, Contact = contact, Lang = LangOf(client.NoticeLang) }, channel == ConsigneeNoticeChannels.Sms);

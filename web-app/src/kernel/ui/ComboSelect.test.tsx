@@ -73,6 +73,86 @@ describe('ComboSelect', () => {
   })
 })
 
+describe('ComboSelect — opción de crear (Lote 213)', () => {
+  const label = (text: string) => `+ Nuevo «${text}»`
+
+  it('está apagada por omisión: sin onCreate no hay opción de crear', async () => {
+    const user = userEvent.setup()
+    render(<ComboSelect options={OPTIONS} value="" onChange={vi.fn()} aria-label="Tipo" />)
+    await user.type(screen.getByRole('combobox', { name: 'Tipo' }), 'zzz')
+    expect(screen.queryByRole('option')).toBeNull()
+    expect(screen.getByText('Sin coincidencias')).toBeInTheDocument()
+  })
+
+  it('aparece solo con texto escrito, al final de la lista', async () => {
+    const user = userEvent.setup()
+    render(<ComboSelect options={OPTIONS} value="" onChange={vi.fn()} aria-label="Tipo" createLabel={label} onCreate={vi.fn()} />)
+    const input = screen.getByRole('combobox', { name: 'Tipo' })
+    await user.click(input)
+    expect(screen.getAllByRole('option')).toHaveLength(3)
+    await user.type(input, 'a')
+    const opts = screen.getAllByRole('option')
+    expect(opts[opts.length - 1]).toHaveTextContent('+ Nuevo «a»')
+  })
+
+  it('con cero coincidencias queda resaltada y Enter la elige con el texto escrito', async () => {
+    const user = userEvent.setup()
+    const onCreate = vi.fn()
+    const onChange = vi.fn()
+    render(<ComboSelect options={OPTIONS} value="" onChange={onChange} aria-label="Tipo" createLabel={label} onCreate={onCreate} />)
+    const input = screen.getByRole('combobox', { name: 'Tipo' })
+    await user.type(input, '  Zeta nueva ')
+    const create = screen.getByRole('option', { name: /Nuevo/ })
+    expect(create).toHaveClass('on')
+    expect(screen.queryByText('Sin coincidencias')).toBeNull()
+    await user.keyboard('{Enter}')
+    expect(onCreate).toHaveBeenCalledWith('Zeta nueva')
+    expect(onChange).not.toHaveBeenCalled()
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('con coincidencias, ↓ llega a la opción de crear y Enter la elige; sin bajar, Enter elige la coincidencia', async () => {
+    const user = userEvent.setup()
+    const onCreate = vi.fn()
+    const onChange = vi.fn()
+    render(<ComboSelect options={OPTIONS} value="" onChange={onChange} aria-label="Tipo" createLabel={label} onCreate={onCreate} />)
+    const input = screen.getByRole('combobox', { name: 'Tipo' })
+    await user.type(input, 'almac')
+    await user.keyboard('{Enter}')
+    expect(onChange).toHaveBeenLastCalledWith('STORAGE', OPTIONS[0])
+    expect(onCreate).not.toHaveBeenCalled()
+    await user.click(input)
+    await user.type(input, 'almac')
+    await user.keyboard('{ArrowDown}{ArrowDown}')
+    expect(screen.getByRole('option', { name: /Nuevo/ })).toHaveClass('on')
+    await user.keyboard('{Enter}')
+    expect(onCreate).toHaveBeenCalledWith('almac')
+  })
+
+  it('el clic en la opción de crear también la elige', async () => {
+    const user = userEvent.setup()
+    const onCreate = vi.fn()
+    render(<ComboSelect options={OPTIONS} value="" onChange={vi.fn()} aria-label="Tipo" createLabel={label} onCreate={onCreate} />)
+    await user.type(screen.getByRole('combobox', { name: 'Tipo' }), 'qq')
+    await user.click(screen.getByRole('option', { name: /Nuevo/ }))
+    expect(onCreate).toHaveBeenCalledWith('qq')
+  })
+
+  it('Enter con el código exacto de una opción gana a la de crear; seedText reabre con el texto', async () => {
+    const user = userEvent.setup()
+    const onCreate = vi.fn()
+    const onChange = vi.fn()
+    const { rerender } = render(<ComboSelect options={OPTIONS} value="" onChange={onChange} aria-label="Tipo" createLabel={label} onCreate={onCreate} />)
+    await user.type(screen.getByRole('combobox', { name: 'Tipo' }), 'crossdock{Enter}')
+    expect(onChange).toHaveBeenLastCalledWith('CROSSDOCK', OPTIONS[2])
+    expect(onCreate).not.toHaveBeenCalled()
+    rerender(<ComboSelect options={OPTIONS} value="" onChange={onChange} aria-label="Tipo" createLabel={label} onCreate={onCreate} seedText="Zeta" />)
+    await user.tab()
+    await user.tab({ shift: true })
+    expect(screen.getByRole('combobox', { name: 'Tipo' })).toHaveValue('Zeta')
+  })
+})
+
 describe('ComboSelectInput', () => {
   function Harness({ onSubmit }: { onSubmit: (v: { zoneType: string }) => void }) {
     const form = useForm({ resolver: zodResolver(z.object({ zoneType: z.string().min(1, 'Elija el tipo.') })), defaultValues: { zoneType: '' } })

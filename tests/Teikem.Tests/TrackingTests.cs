@@ -50,6 +50,17 @@ public class TrackingTests
     }
 
     [Fact]
+    public void A_reassigned_order_carries_how_many_failed_attempts_it_has_without_changing_its_step()
+    {
+        var plain = OrderProgress.Compute("ASSIGNED", "Asignada", "PIPELINE", false, "es");
+        Assert.Equal(0, plain.FailedAttempts);
+        var twice = OrderProgress.Compute("ASSIGNED", "Asignada", "PIPELINE", true, "es").WithFailedAttempts(2);
+        Assert.Equal(2, twice.FailedAttempts);
+        Assert.Equal((3, OrderProgress.InProgress, "Reprogramada"), (twice.Step, twice.State, twice.StatusLabel));
+        Assert.Equal(0, plain.WithFailedAttempts(-4).FailedAttempts);   // nunca negativo
+    }
+
+    [Fact]
     public void The_extra_wording_follows_the_language_and_an_unknown_company_status_waits_in_received_with_an_alert()
     {
         Assert.Equal("Attempted", OrderProgress.Compute("FAILED", "x", "LATERAL", true, "en").StatusLabel);

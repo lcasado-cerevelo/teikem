@@ -1,4 +1,4 @@
-// Indicadores del cliente en el Inicio (Lote 120): de los últimos 7, 30 o 90 días. Lo que no aplica (sin fecha prometida, sin facturación o sin COD) no se muestra.
+// Indicadores del cliente en el Inicio (Lote 120): de hoy o de los últimos 7, 30 o 90 días. Lo que no aplica (sin fecha prometida, sin facturación o sin COD) no se muestra.
 import { useEffect, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 
@@ -8,7 +8,7 @@ import { Card, Muted, Notice, Spinner, useColors } from '../../kernel/ui/ui'
 import { formatMoney } from '../format'
 import { getIndicators, type PortalIndicatorsDto } from '../portalApi'
 
-const PERIODS = [7, 30, 90] as const
+const PERIODS = [0, 7, 30, 90] as const   // 0 = hoy (2026-10-23, pedido de Luis: «ponme de hoy también»)
 
 export function IndicatorsCard() {
   const colors = useColors()
@@ -38,7 +38,7 @@ export function IndicatorsCard() {
         {PERIODS.map((p) => (
           <Pressable key={p} onPress={() => setDays(p)} accessibilityRole="button" accessibilityState={{ selected: days === p }} testID={`indicators-days-${p}`}
             style={{ paddingVertical: 5, paddingHorizontal: 12, borderRadius: 16, borderWidth: 1, borderColor: days === p ? colors.brand : colors.line, backgroundColor: days === p ? colors.brand : 'transparent' }}>
-            <Text style={{ color: days === p ? colors.onBrand : colors.text, fontWeight: '600' }}>{t('indicators.days', { n: p })}</Text>
+            <Text style={{ color: days === p ? colors.onBrand : colors.text, fontWeight: '600' }}>{p === 0 ? t('indicators.today') : t('indicators.days', { n: p })}</Text>
           </Pressable>
         ))}
       </View>

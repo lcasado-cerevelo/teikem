@@ -8,6 +8,10 @@ import {
   buildQuickRequest,
   emptyQuickRow,
   ENTRY_MODE_KEY,
+  filterSavedEntries,
+  setRangeEdge,
+  splitInvoices,
+  widenRange,
   isOffDate,
   nextQuickRow,
   quickCod,
@@ -15,6 +19,7 @@ import {
   quickProblemOf,
   readEntryMode,
   saveEntryMode,
+  summarizeSaved,
   validateQuickRow,
   type QuickRowValues,
 } from './orderQuickRules'
@@ -190,7 +195,67 @@ describe('textos', () => {
     Object.entries(o as Record<string, unknown>).flatMap(([k, v]) => (typeof v === 'object' && v !== null ? keys(v, `${prefix}${k}.`) : [`${prefix}${k}`]))
   it('orders.quick, orders.import y los textos nuevos de orders.entry/list tienen las mismas claves en es y en', () => {
     for (const section of ['quick', 'import'] as const) expect(keys(en.orders[section]).sort()).toEqual(keys(es.orders[section]).sort())
+    expect(en.orders.quick.filters.from).toBeTruthy()
+    expect(en.orders.quick.summary.cod).toBeTruthy()
     for (const k of ['mode', 'quick', 'detailed'] as const) expect(en.orders.entry[k]).toBeTruthy()
     expect(en.orders.list.import).toBeTruthy()
   })
 })
+
+describe('lo capturado: rango de fechas, búsqueda, resumen del pie', () => {
+  const rows = [
+    { date: '2026-10-23', invoice: 'F-1', packageLabel: 'Caja', serviceLabel: 'Estándar', cod: 10.1, consignee: 'Farmacia Central' },
+    { date: '2026-10-23', invoice: 'F-2, F-3', packageLabel: 'Caja', serviceLabel: 'Estándar', cod: 20.2, consignee: 'Colmado Boricua' },
+    { date: '2026-10-23', invoice: 'f-1', packageLabel: 'Sobre', serviceLabel: 'Expreso', cod: 0, consignee: 'Café Ñandú' },
+    { date: '2026-10-24', invoice: '', packageLabel: 'Caja', serviceLabel: 'Expreso', cod: 5, consignee: 'Farmacia Norte' },
+  ]
+  const texts = (r: (typeof rows)[number]) => [r.consignee, r.packageLabel, r.serviceLabel, r.cod]
+  const day = (d: string) => ({ from: d, to: d })
+
+  it('deja las del rango (desde y hasta incluidos); un solo día es desde = hasta', () => {
+    expect(filterSavedEntries(rows, day('2026-10-23'), '', texts)).toHaveLength(3)
+    expect(filterSavedEntries(rows, day('2026-10-24'), '', texts)).toHaveLength(1)
+    expect(filterSavedEntries(rows, { from: '2026-10-23', to: '2026-10-24' }, '', texts)).toHaveLength(4)
+    expect(filterSavedEntries(rows, day('2026-10-25'), '', texts)).toHaveLength(0)
+  })
+  it('la búsqueda mira cualquier texto, sin importar mayúsculas ni acentos, con todas las palabras', () => {
+    const d = day('2026-10-23')
+    expect(filterSavedEntries(rows, d, 'FARMACIA', texts).map((r) => r.consignee)).toEqual(['Farmacia Central'])
+    expect(filterSavedEntries(rows, d, 'cafe nandu', texts)).toHaveLength(1)
+    expect(filterSavedEntries(rows, d, 'caja estandar', texts)).toHaveLength(2)
+    expect(filterSavedEntries(rows, d, '20.2', texts)).toHaveLength(1)
+    expect(filterSavedEntries(rows, d, 'farmacia norte', texts)).toHaveLength(0)   // es de otro día
+  })
+  it('capturar una fecha ensancha el rango: el desde se queda en hoy y el hasta sigue a la más adelantada; con una más vieja, el desde baja', () => {
+    const today = day('2026-10-23')
+    expect(widenRange(today, '2026-10-23')).toEqual(today)
+    expect(widenRange(today, '2026-10-26')).toEqual({ from: '2026-10-23', to: '2026-10-26' })
+    expect(widenRange({ from: '2026-10-23', to: '2026-10-26' }, '2026-10-20')).toEqual({ from: '2026-10-20', to: '2026-10-26' })
+    expect(widenRange({ from: '2026-10-23', to: '2026-10-26' }, '2026-10-25')).toEqual({ from: '2026-10-23', to: '2026-10-26' })
+    expect(widenRange(today, '')).toEqual(today)
+  })
+  it('mover un extremo a mano no deja el rango al revés', () => {
+    const r = { from: '2026-10-23', to: '2026-10-25' }
+    expect(setRangeEdge(r, 'from', '2026-10-24')).toEqual({ from: '2026-10-24', to: '2026-10-25' })
+    expect(setRangeEdge(r, 'from', '2026-10-30')).toEqual({ from: '2026-10-30', to: '2026-10-30' })
+    expect(setRangeEdge(r, 'to', '2026-10-20')).toEqual({ from: '2026-10-20', to: '2026-10-20' })
+    expect(setRangeEdge(r, 'to', '')).toEqual(r)
+  })
+  it('los números de factura se separan por coma: cada coma es otra factura', () => {
+    expect(splitInvoices('F-2, F-3 ,, F-4')).toEqual(['F-2', 'F-3', 'F-4'])
+    expect(splitInvoices('  ')).toEqual([])
+    expect(splitInvoices(undefined)).toEqual([])
+  })
+  it('el resumen cuenta paquetes por tipo y servicio (las más numerosas primero), facturas DISTINTAS (con comas, sin importar mayúsculas) y suma el COD', () => {
+    const s = summarizeSaved(filterSavedEntries(rows, day('2026-10-23'), '', texts))
+    expect(s.total).toBe(3)
+    expect(s.invoices).toBe(3)   // F-1 (y f-1, la misma), F-2 y F-3
+    expect(s.cod).toBe(30.3)
+    expect(s.lines).toEqual([
+      { packageLabel: 'Caja', serviceLabel: 'Estándar', count: 2 },
+      { packageLabel: 'Sobre', serviceLabel: 'Expreso', count: 1 },
+    ])
+    expect(summarizeSaved([])).toEqual({ total: 0, invoices: 0, cod: 0, lines: [] })
+  })
+})
+

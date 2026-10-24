@@ -70,7 +70,8 @@
       "qty": "Cantidad",
       "reference": "Referencia",
       "units": "Unidades",
-      "unvalued": "Sin costo"
+      "unvalued": "Sin costo",
+      "status": "Estatus"
     },
     "unvaluedShort": "No suman al valor"
   },
@@ -180,6 +181,10 @@
     "invoices": "Mis facturas"
   },
   "orders": {
+    "attempts": {
+      "one": "{n} intento fallido",
+      "many": "{n} intentos fallidos"
+    },
     "title": "Mis envíos",
     "search": "Buscar",
     "searchPlaceholder": "Conduce, envío, factura o consignatario",
@@ -198,7 +203,8 @@
       "pieces": "Piezas",
       "cod": "COD",
       "status": "Estatus"
-    }
+    },
+    "noMatchesRange": "Ningún envío coincide con la búsqueda o las fechas."
   },
   "order": {
     "title": "Envío",
@@ -294,11 +300,13 @@
     "placeholder": "Escriba su mensaje",
     "send": "Enviar",
     "charsLeft": "{n} caracteres restantes",
-    "tooMany": "Demasiados mensajes seguidos; espere un rato para volver a escribir."
+    "tooMany": "Demasiados mensajes seguidos; espere un rato para volver a escribir.",
+    "inbox": "Conversaciones",
+    "teamSubtitle": "La compañía que mueve sus envíos"
   },
   "newOrder": {
     "title": "Nuevo envío",
-    "help": "Escriba solo lo básico; el envío entra directo al flujo normal y usted lo sigue desde «Envíos».",
+    "help": "Los mismos datos que captura la compañía: servicio y fechas, consignatario, paquetes y COD. El envío entra directo al flujo normal y usted lo sigue desde «Envíos».",
     "readOnly": "Su usuario solo puede consultar. Pídale a un administrador de su empresa que le dé permiso para crear envíos.",
     "consignee": "Consignatario",
     "filter": "Buscar consignatario",
@@ -306,7 +314,7 @@
     "name": "Nombre",
     "line1": "Dirección",
     "line2": "Dirección (línea 2)",
-    "city": "Ciudad",
+    "city": "Pueblo",
     "state": "Estado",
     "postalCode": "Código postal",
     "pickup": "Recogida",
@@ -323,38 +331,102 @@
     "notes": "Notas",
     "submit": "Crear envío",
     "errors": {
-      "consignee": "Escoja el consignatario o escriba uno nuevo (nombre, dirección y ciudad).",
+      "consignee": "Escoja el consignatario o escriba uno nuevo (nombre, dirección y pueblo).",
       "packages": "Agregue de 1 a {max} paquetes.",
       "pieces": "Las piezas deben ser un número entero de 1 o más.",
       "weight": "El peso debe ser un número.",
       "cod": "El cobro debe ser un número.",
-      "date": "Escriba la fecha como AAAA-MM-DD, de hoy en adelante.",
-      "notes": "Las notas no pueden pasar de {max} caracteres."
+      "date": "La fecha lista debe ser de hoy en adelante.",
+      "notes": "Las notas no pueden pasar de {max} caracteres.",
+      "service": "Escoja el tipo de servicio.",
+      "packageType": "Escoja el tipo de paquete.",
+      "dueDate": "La fecha límite no puede ser anterior a la fecha lista.",
+      "orderNumber": "El número de orden no puede pasar de {max} caracteres.",
+      "invoice": "El número de factura no puede pasar de {max} caracteres."
     },
     "mode": {
       "quick": "Rápida",
       "detailed": "Detallada"
     },
     "quick": {
-      "subtitle": "Una fila por envío: Enter pasa al siguiente campo y, en el último, guarda y deja lista la fila nueva.",
-      "hint": "Escriba el consignatario y elíjalo de la lista (Enter toma el primero); «+ Nuevo» lo crea en la misma fila.",
+      "subtitle": "Una fila por envío, todo con el teclado: Tab pasa de campo en campo y Enter guarda la fila y deja lista la siguiente.",
+      "hint": "Escriba el consignatario y escójalo con las flechas y Enter; «+ Nuevo» lo crea en la misma fila.",
       "savedCount": "{n} guardados",
       "codTotal": "COD acumulado: {amount}",
-      "saved": "Guardado",
+      "saved": "Guardada",
       "saveRow": "Guardar fila",
       "consigneePlaceholder": "Buscar consignatario…",
       "newConsignee": "+ Nuevo consignatario «{name}»",
       "newBlock": "Consignatario nuevo (nombre, dirección y pueblo son obligatorios)",
       "col": {
         "date": "Fecha",
-        "invoice": "Factura",
+        "invoice": "N.º de factura",
         "consignee": "Consignatario",
         "description": "Descripción",
         "pieces": "Piezas",
         "weight": "Peso kg",
-        "cod": "COD",
-        "notes": "Notas"
-      }
+        "cod": "COD ($)",
+        "notes": "Comentario",
+        "orderNumber": "N.º de envío",
+        "address": "Dirección · Pueblo",
+        "packageType": "Paquete",
+        "serviceType": "Servicio"
+      },
+      "keyField": "campo",
+      "keySave": "guarda",
+      "captured": "{n} entradas guardadas",
+      "filters": {
+        "from": "Desde",
+        "to": "Hasta",
+        "search": "Buscar en lo capturado…",
+        "searchLabel": "Buscar en los envíos guardados",
+        "shown": "{shown} de {total} envíos guardados",
+        "none": "Ningún envío guardado coincide con las fechas y la búsqueda."
+      },
+      "summary": {
+        "title": "Resumen",
+        "line": "{count} × {package} · {service}",
+        "cod": "COD total: {amount}",
+        "packages": "Total de paquetes: {n}",
+        "invoices": "Facturas distintas: {n}",
+        "none": "Sin envíos en este día."
+      },
+      "offDateLegend": "Sombreado: fecha distinta de hoy",
+      "help": "Cada fila crea un envío Sometido de 1 paquete y 1 pieza; para varios paquetes use la entrada Detallada."
+    },
+    "s1": "Servicio y fechas",
+    "s1d": "El tipo de servicio y cuándo está listo el envío y para cuándo se necesita.",
+    "s2": "Consignatario",
+    "s2d": "Escriba el nombre y escójalo de la lista; si no existe, «+ Nuevo» lo crea aquí mismo.",
+    "s3": "Paquetes y COD",
+    "s3d": "Qué se envía y, si aplica, cuánto se cobra al entregar.",
+    "service": "Tipo de servicio",
+    "chooseService": "Escoja el servicio…",
+    "packageType": "Tipo de paquete",
+    "choosePackageType": "Escoja el tipo…",
+    "readyDate": "Fecha lista",
+    "dueDate": "Fecha límite",
+    "orderNumber": "N.º de envío",
+    "auto": "(automático)",
+    "autoPlaceholder": "Lo asigna la compañía",
+    "consigneeHelp": "Escriba nombre, número, dirección o pueblo.",
+    "consigneeNumber": "Número",
+    "address": "Dirección",
+    "town": "Pueblo",
+    "zip": "Código postal",
+    "phone": "Teléfono",
+    "ticket": "Ticket del envío",
+    "ticketConsignee": "Consignatario",
+    "ticketPackages": "Paquetes",
+    "ticketCod": "COD",
+    "ticketNote": "El precio del servicio lo pone la compañía según su contrato; aquí no se muestra.",
+    "codNote": "Si el chofer debe cobrar al entregar, escriba el monto; si no, déjelo vacío.",
+    "save": "Guardar envío",
+    "phoneOptional": "Teléfono (opcional)",
+    "consigneeBlock": {
+      "save": "Guardar consignatario",
+      "hint": "Enter guarda el consignatario y sigue con el envío · Esc cancela",
+      "missing": "Escriba el nombre, la dirección y el pueblo del consignatario."
     }
   },
   "unsubscribe": {
@@ -381,7 +453,28 @@
     "bySms": "Avisar por texto: {value}",
     "smsHelp": "El envío de texto todavía no está disponible; la preferencia se guarda.",
     "none": "sin registrar",
-    "on": "Recibe avisos"
+    "on": "Recibe avisos",
+    "select": "Seleccionar",
+    "selectVisible": "Seleccionar los {n} que se ven",
+    "selected": "{n} seleccionados",
+    "clearSelection": "Limpiar selección",
+    "bulkEmailOn": "Avisar por correo",
+    "bulkSmsOn": "Avisar por texto",
+    "bulkEmailOff": "Quitar correo",
+    "bulkSmsOff": "Quitar texto",
+    "bulkHelp": "Marque varios consignatarios y aplique la acción a todos de una vez; la advertencia se acepta una sola vez para el grupo.",
+    "bulkWarning": "Esto aplica a {n} consignatarios ({channel}). Los que no tengan ese medio registrado o se hayan dado de baja no se marcan y se le dirá cuáles.",
+    "channelEmail": "correo",
+    "channelSms": "texto",
+    "bulkDone": "{done} marcados, {failed} no se pudieron.",
+    "col": {
+      "consignee": "Consignatario",
+      "town": "Pueblo",
+      "email": "Avisar por correo",
+      "sms": "Avisar por texto",
+      "emailOn": "Acepta correo",
+      "smsOn": "Acepta texto"
+    }
   },
   "consigneeSpace": {
     "inbox": {
@@ -560,7 +653,8 @@
     "inTransit": "{n} en tránsito",
     "invoiceBalance": "Saldo de facturas",
     "overdue": "{n} vencida(s)",
-    "cod": "Cobrado por remesar"
+    "cod": "Cobrado por remesar",
+    "today": "Hoy"
   },
   "environment": {
     "notProduction": "Ambiente de pruebas: no es producción"
@@ -614,12 +708,19 @@
     "arrivals": {
       "title": "Avisos de llegada",
       "empty": "Todavía no hay avisos de llegada.",
-      "expected": "llega {date}"
+      "expected": "llega {date}",
+      "number": "Número",
+      "expectedShort": "Llega",
+      "lines": "Líneas"
     },
     "exits": {
       "title": "Avisos de salida",
       "empty": "Todavía no hay avisos de salida.",
-      "pending": "con pendiente"
+      "pending": "con pendiente",
+      "destination": "Destino",
+      "requestedDate": "Fecha pedida",
+      "ordered": "Pedido",
+      "shipped": "Despachado"
     }
   },
   "reports": {
@@ -673,5 +774,42 @@
       "shipments": "Envíos",
       "reason": "Motivo"
     }
+  },
+  "table": {
+    "count": "{shown} de {total}",
+    "export": "Exportar",
+    "exporting": "Exportando…",
+    "yes": "Sí",
+    "no": "No",
+    "format": {
+      "xlsx": "Excel",
+      "csv": "CSV",
+      "pdf": "PDF"
+    },
+    "generatedAt": "Generado el {date}",
+    "filters": "Filtros: {list}",
+    "noFilters": "Sin filtros",
+    "fSearch": "Búsqueda «{q}»",
+    "fRange": "Fechas del {from} al {to}",
+    "fStatus": "Estatus {status}"
+  },
+  "select": {
+    "choose": "Escoja…"
+  },
+  "dateRange": {
+    "label": "Fecha",
+    "all": "Todas las fechas",
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "last7": "Últimos 7 días",
+    "thisWeek": "Esta semana",
+    "lastWeek": "Semana pasada",
+    "last30": "Últimos 30 días",
+    "thisMonth": "Este mes",
+    "lastMonth": "Mes pasado",
+    "thisYear": "Este año",
+    "custom": "Personalizado",
+    "from": "Desde",
+    "to": "Hasta"
   }
 }

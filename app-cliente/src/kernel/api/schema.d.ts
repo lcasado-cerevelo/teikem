@@ -23172,6 +23172,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portal/consignees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PortalConsigneeCreateRequest"];
+                    "text/json": components["schemas"]["PortalConsigneeCreateRequest"];
+                    "application/*+json": components["schemas"]["PortalConsigneeCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalPlaceDto"];
+                        "application/json": components["schemas"]["PortalPlaceDto"];
+                        "text/json": components["schemas"]["PortalPlaceDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/portal/orders/{publicId}": {
         parameters: {
             query?: never;
@@ -24224,6 +24267,49 @@ export interface paths {
             };
         };
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/consignee-notices/consignees/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ConsigneeNoticeBulkMarkRequest"];
+                    "text/json": components["schemas"]["ConsigneeNoticeBulkMarkRequest"];
+                    "application/*+json": components["schemas"]["ConsigneeNoticeBulkMarkRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeNoticeBulkResultDto"];
+                        "application/json": components["schemas"]["ConsigneeNoticeBulkResultDto"];
+                        "text/json": components["schemas"]["ConsigneeNoticeBulkResultDto"];
+                    };
+                };
+            };
+        };
         post?: never;
         delete?: never;
         options?: never;
@@ -39416,6 +39502,27 @@ export interface components {
             emailChannel?: components["schemas"]["ConsigneeChannelDto"];
             smsChannel?: components["schemas"]["ConsigneeChannelDto"];
         };
+        ConsigneeNoticeBulkItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+            ok?: boolean;
+            message?: string | null;
+            consignee?: components["schemas"]["ConsigneeNoticeConsigneeDto"];
+        };
+        ConsigneeNoticeBulkMarkRequest: {
+            publicIds?: string[] | null;
+            channel?: string | null;
+            accepted?: boolean | null;
+            warningAccepted?: boolean | null;
+        };
+        ConsigneeNoticeBulkResultDto: {
+            /** Format: int32 */
+            done?: number;
+            /** Format: int32 */
+            failed?: number;
+            items?: components["schemas"]["ConsigneeNoticeBulkItemDto"][] | null;
+        };
         ConsigneeNoticeConsigneeDto: {
             /** Format: uuid */
             publicId?: string;
@@ -44586,6 +44693,10 @@ export interface components {
             canCreateArrivals?: boolean;
             canCreateExits?: boolean;
         };
+        PortalCatalogItemDto: {
+            code?: string | null;
+            label?: string | null;
+        };
         PortalClientDto: {
             /** Format: uuid */
             clientPublicId?: string;
@@ -44603,6 +44714,15 @@ export interface components {
             city?: string | null;
             state?: string | null;
             postalCode?: string | null;
+        };
+        PortalConsigneeCreateRequest: {
+            name?: string | null;
+            line1?: string | null;
+            line2?: string | null;
+            city?: string | null;
+            state?: string | null;
+            postalCode?: string | null;
+            phone?: string | null;
         };
         PortalDeliveryProofDto: {
             /** Format: date-time */
@@ -44927,6 +45047,10 @@ export interface components {
             /** Format: date-time */
             requestedDate?: string | null;
             notes?: string | null;
+            serviceType?: string | null;
+            orderNumber?: string | null;
+            /** Format: date-time */
+            promisedDate?: string | null;
         };
         PortalOrderCreatedDto: {
             /** Format: uuid */
@@ -44935,6 +45059,7 @@ export interface components {
             orderNumber?: string | null;
             status?: string | null;
             statusLabel?: string | null;
+            clientInvoiceNumber?: string | null;
         };
         PortalOrderDto: {
             /** Format: uuid */
@@ -44981,6 +45106,11 @@ export interface components {
             /** Format: int32 */
             maxPackages?: number;
             clientTypesInvoiceNumber?: boolean;
+            clientAssignsOrderNumber?: boolean;
+            serviceTypes?: components["schemas"]["PortalCatalogItemDto"][] | null;
+            packageTypes?: components["schemas"]["PortalCatalogItemDto"][] | null;
+            defaultServiceType?: string | null;
+            defaultPackageType?: string | null;
         };
         PortalOrderListItemDto: {
             /** Format: uuid */
@@ -45032,6 +45162,7 @@ export interface components {
             pieces?: number;
             /** Format: double */
             weightKg?: number | null;
+            packageType?: string | null;
         };
         PortalPlaceDto: {
             /** Format: uuid */
@@ -45042,6 +45173,8 @@ export interface components {
             city?: string | null;
             state?: string | null;
             postalCode?: string | null;
+            code?: string | null;
+            phone?: string | null;
         };
         PortalProductCreateRequest: {
             sku?: string | null;
@@ -45112,6 +45245,8 @@ export interface components {
             state?: string | null;
             statusCode?: string | null;
             statusLabel?: string | null;
+            /** Format: int32 */
+            failedAttempts?: number;
         };
         PortalStatusCountDto: {
             status?: string | null;

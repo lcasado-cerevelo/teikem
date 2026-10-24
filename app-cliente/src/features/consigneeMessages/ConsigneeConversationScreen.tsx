@@ -1,5 +1,6 @@
 // Una conversación de un consignatario con este cliente (Lote 117): el cliente la lee y la contesta (administrador u operador; quien solo consulta la lee). Al abrirla se marcan como leídos los mensajes del consignatario
-// para todos los de su cliente. La pantalla es la misma de los demás mensajes del portal.
+// para todos los de su cliente. La pantalla es la misma de los demás mensajes del portal. 2026-10-23: `ConsigneeConversationChat` es la conversación en sí (la usa también la vista de escritorio de Mensajes, a la
+// derecha de la lista); `ConsigneeConversationScreen` es la ruta del celular, que toma el id de la dirección.
 import { useLocalSearchParams } from 'expo-router'
 import { useMemo, useRef } from 'react'
 
@@ -10,13 +11,14 @@ import { type ChatApi, ChatScreen } from '../messages/ChatScreen'
 import { refreshUnread } from '../messages/unread'
 import { getConsigneeConversation, getConsigneeNotices, markConsigneeConversationRead, replyConsigneeConversation } from '../portalApi'
 
-export function ConsigneeConversationScreen() {
+export function ConsigneeConversationChat({ id, name }: { id: string; name?: string }) {
   const { t } = useT()
-  const { id, name } = useLocalSearchParams<{ id: string; name?: string }>()
   const settings = useAsync(getConsigneeNotices, [])   // de ahí sale si mi rol puede contestar
   const seen = useRef({ lastOther: 0, marked: 0 })   // el último mensaje del consignatario que vi / hasta cuál ya lo marqué leído
   const api = useMemo<ChatApi>(() => {
     const s = seen.current
+    s.lastOther = 0
+    s.marked = 0
     return {
       load: async (before, take) => {
         const c = await getConsigneeConversation(id, before, take)
@@ -36,6 +38,7 @@ export function ConsigneeConversationScreen() {
   const canEdit = !!settings.data?.canEdit
   return (
     <ChatScreen
+      key={id}
       api={api}
       help={t('consigneeMessages.chatHelp', { name: name ?? '' })}
       empty={t('consigneeMessages.empty')}
@@ -44,4 +47,9 @@ export function ConsigneeConversationScreen() {
       readOnlyNote={canEdit ? undefined : t('consigneeMessages.readOnly')}
     />
   )
+}
+
+export function ConsigneeConversationScreen() {
+  const { id, name } = useLocalSearchParams<{ id: string; name?: string }>()
+  return <ConsigneeConversationChat id={id} name={name} />
 }

@@ -25,9 +25,9 @@ public sealed record PortalOrderListItemDto(
 
 /// <summary>
 /// El avance de la orden para la barra de progreso: etapa actual (Step) de Total (las etapas son los estatus del camino normal de la compañía), estado (IN_PROGRESS, COMPLETED, ALERT = detenida, CANCELLED) y el estatus actual
-/// con su texto. En la ficha, StepLabels trae el texto de cada etapa.
+/// con su texto, más cuántos intentos fallidos lleva (0 = ninguno; una orden asignada con intentos ya salió a la calle y volvió). En la ficha, StepLabels trae el texto de cada etapa.
 /// </summary>
-public sealed record PortalProgressDto(int Step, int Total, string State, string StatusCode, string StatusLabel);
+public sealed record PortalProgressDto(int Step, int Total, string State, string StatusCode, string StatusLabel, int FailedAttempts = 0);
 
 public sealed record PortalOrderStopDto(string? Name, string Line1, string? Line2, string City, string? State, string? PostalCode);
 
@@ -78,17 +78,44 @@ public sealed record PortalNotificationDto(Guid PublicId, string Kind, string Su
 
 // ---------------------------------------------------------------- Lote 105: entrada de órdenes del cliente
 
-/// <summary>Un lugar del cliente para escoger en el formulario (consignatario o punto de recogida): sin códigos internos ni zonas.</summary>
-public sealed record PortalPlaceDto(Guid PublicId, string Name, string Line1, string? Line2, string City, string? State, string? PostalCode);
+/// <summary>
+/// Un lugar del cliente para escoger en el formulario (consignatario o punto de recogida): sin zonas. Lote 213: <c>Code</c> = el número del consignatario en el directorio del cliente y <c>Phone</c> = su teléfono principal (móvil,
+/// teléfono o WhatsApp; el principal primero), tal cual con su prefijo de país si lo tiene.
+/// </summary>
+public sealed record PortalPlaceDto(Guid PublicId, string Name, string Line1, string? Line2, string City, string? State, string? PostalCode, string? Code = null, string? Phone = null);
 
-/// <summary>Lo que el formulario de «Nueva orden» necesita: si esta persona puede crear, y los consignatarios y puntos de recogida del cliente.</summary>
-public sealed record PortalOrderFormDto(bool CanCreate, IReadOnlyList<PortalPlaceDto> Consignees, IReadOnlyList<PortalPlaceDto> Pickups, int MaxPackages, bool ClientTypesInvoiceNumber = false);
+/// <summary>Un valor de catálogo que el portal ofrece (tipo de servicio o de paquete): el código para mandarlo y la etiqueta en el idioma de la sesión (con el nombre que le puso la compañía).</summary>
+public sealed record PortalCatalogItemDto(string Code, string Label);
+
+/// <summary>
+/// Lo que el formulario de «Nuevo envío» necesita: si esta persona puede crear, los consignatarios y puntos de recogida del cliente y, desde el Lote 213 (los mismos campos que la entrada del personal), los tipos de servicio y de
+/// paquete habilitados en la compañía, los predeterminados (del cliente o, si no tiene, de la compañía) y si el cliente teclea sus números de factura (<c>ClientTypesInvoiceNumber</c>) y de orden (<c>ClientAssignsOrderNumber</c>).
+/// Sin permiso para crear, las listas vienen vacías.
+/// </summary>
+public sealed record PortalOrderFormDto(
+    bool CanCreate,
+    IReadOnlyList<PortalPlaceDto> Consignees,
+    IReadOnlyList<PortalPlaceDto> Pickups,
+    int MaxPackages,
+    bool ClientTypesInvoiceNumber = false,
+    bool ClientAssignsOrderNumber = false,
+    IReadOnlyList<PortalCatalogItemDto>? ServiceTypes = null,
+    IReadOnlyList<PortalCatalogItemDto>? PackageTypes = null,
+    string? DefaultServiceType = null,
+    string? DefaultPackageType = null);
 
 public sealed record PortalNewConsigneeRequest(string? Name, string? Line1, string? Line2, string? City, string? State, string? PostalCode);
 
-public sealed record PortalPackageRequest(string? Description, int Pieces = 1, decimal? WeightKg = null);
+/// <summary>Consignatario nuevo desde el portal (2026-10-23): se guarda al momento, sin esperar a la orden. Nombre, dirección y pueblo son obligatorios; el teléfono es opcional. Si ya existe uno con el mismo nombre y dirección se devuelve ese.</summary>
+public sealed record PortalConsigneeCreateRequest(string? Name, string? Line1, string? Line2, string? City, string? State, string? PostalCode, string? Phone = null);
 
-/// <summary>Nueva orden desde el portal. Exactamente uno de ConsigneePublicId / NewConsignee. Solo lo básico: sin precios, prioridad, tipo de servicio ni entrega especial.</summary>
+/// <summary>Un paquete del envío. <c>PackageType</c> = código del tipo de paquete (Lote 213); vacío = el predeterminado de la compañía.</summary>
+public sealed record PortalPackageRequest(string? Description, int Pieces = 1, decimal? WeightKg = null, string? PackageType = null);
+
+/// <summary>
+/// Nueva orden desde el portal. Exactamente uno de ConsigneePublicId / NewConsignee. Sin precios, prioridad ni entrega especial (lo cotiza la compañía). Lote 213: tipo de servicio (código; vacío = el predeterminado de la compañía),
+/// número de orden (solo si el cliente asigna los suyos; si no, 400) y fecha límite (<c>PromisedDate</c>, no antes de la fecha lista).
+/// </summary>
 public sealed record PortalOrderCreateRequest(
     Guid? ConsigneePublicId,
     PortalNewConsigneeRequest? NewConsignee,
@@ -97,9 +124,12 @@ public sealed record PortalOrderCreateRequest(
     decimal? CodAmount,
     string? ClientInvoiceNumber,
     DateTime? RequestedDate,
-    string? Notes);
+    string? Notes,
+    string? ServiceType = null,
+    string? OrderNumber = null,
+    DateTime? PromisedDate = null);
 
-public sealed record PortalOrderCreatedDto(Guid PublicId, string WaybillNumber, string OrderNumber, string Status, string StatusLabel);
+public sealed record PortalOrderCreatedDto(Guid PublicId, string WaybillNumber, string OrderNumber, string Status, string StatusLabel, string? ClientInvoiceNumber = null);
 
 // Lote 119 (P10) — facturas del cliente en su portal (solo lectura).
 
@@ -139,7 +169,7 @@ public sealed record PortalProfileDto(string? FullName, string? Email, string? R
 public sealed record PortalProfileRequest(string? FullName);
 
 /// <summary>
-/// Indicadores del cliente de los últimos <c>Days</c> días (7, 30 o 90): órdenes creadas y entregadas, entregas a tiempo (entregadas hasta su fecha prometida; solo cuenta las que tenían fecha), horas promedio de la creación a la
+/// Indicadores del cliente de los últimos <c>Days</c> días (7, 30 o 90; 0 = hoy, desde la medianoche de la compañía): órdenes creadas y entregadas, entregas a tiempo (entregadas hasta su fecha prometida; solo cuenta las que tenían fecha), horas promedio de la creación a la
 /// entrega, intentos fallidos, lo que hay en curso ahora y, si la compañía tiene esos módulos, el saldo de facturas, las vencidas y el dinero cobrado por sus entregas que todavía no se le remite. Un número que no aplica viene nulo.
 /// </summary>
 public sealed record PortalIndicatorsDto(int Days, int Created, int Delivered, int DeliveredWithPromise, int OnTime, double? OnTimePct, double? AvgDeliveryHours, int OpenNow, int InTransitNow, int FailedAttempts,

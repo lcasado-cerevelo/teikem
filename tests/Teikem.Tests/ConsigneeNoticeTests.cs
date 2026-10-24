@@ -231,6 +231,114 @@ public sealed class ConsigneeNoticeTests
         await Assert.ThrowsAsync<NotFoundException>(() => x.Svc.SetConsigneeAsync(Guid.NewGuid(), Mark(), default));
     }
 
+    // ---------------------------------------------------------------- Lote 213: marcar varios de una vez
+
+    /// <summary>Otro consignatario del cliente, con correo o sin él.</summary>
+    private static async Task<Location> AddConsigneeAsync(World x, int id, string name, string? mail)
+    {
+        var loc = new Location
+        {
+            LocationId = id, PublicId = Guid.NewGuid(), TenantId = WmsFixture.TenantId, ClientId = x.Client.ClientId, Name = name, City = "Ponce", Line1 = "Calle " + id,
+            LocationTypeLookupId = x.F.LookupId(LookupDomains.LocationType, LocationTypes.Delivery), IsActive = true,
+        };
+        x.F.Db.Locations.Add(loc);
+        if (mail is not null)
+            x.F.Db.ContactPoints.Add(new ContactPoint { TenantId = WmsFixture.TenantId, OwnerEntityLookupId = x.F.LookupId(LookupDomains.EntityType, EntityTypes.Location), OwnerId = id, ContactTypeLookupId = 9001, Value = mail, IsPrimary = true, IsActive = true });
+        await x.F.Db.SaveChangesAsync();
+        x.F.Db.ChangeTracker.Clear();
+        return loc;
+    }
+
+    private static ConsigneeNoticeBulkMarkRequest Bulk(IList<Guid>? ids, string channel = "EMAIL", bool accepted = true, bool? warning = true) => new(ids, channel, accepted, warning);
+
+    [Fact]
+    public async Task Marking_several_by_email_with_the_warning_accepted_once_logs_and_notices_each_one()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        await Enable(x);
+        var other = await AddConsigneeAsync(x, 7002, "Tienda Sur", "tienda@sur.co");
+
+        var r = await x.Svc.SetConsigneesAsync(Bulk(new[] { x.Consignee.PublicId, other.PublicId, x.Consignee.PublicId }), default);   // el repetido cuenta una vez
+
+        Assert.Equal((2, 0), (r.Done, r.Failed));
+        Assert.Equal(new[] { x.Consignee.PublicId, other.PublicId }, r.Items.Select(i => i.PublicId).ToArray());   // en el orden recibido
+        Assert.All(r.Items, i => Assert.True(i.Ok && i.Consignee!.AcceptsEmail));
+        var logs = await x.F.Db.ConsigneeNoticeConsents.AsNoTracking().OrderBy(c => c.ConsigneeNoticeConsentId).ToListAsync();
+        Assert.Equal(new[] { "tienda@norte.co", "tienda@sur.co" }, logs.Select(l => l.Contact).ToArray());
+        Assert.All(logs, l => Assert.True(l.Accepted && l.WarningAccepted));
+        var notices = await x.F.Db.ConsigneeNotices.AsNoTracking().OrderBy(n => n.ConsigneeNoticeId).ToListAsync();
+        Assert.Equal(new[] { "tienda@norte.co", "tienda@sur.co" }, notices.Select(n => n.Contact).ToArray());
+        Assert.All(notices, n => Assert.Equal((ConsigneeNoticeKinds.Consent, ConsigneeNoticeStatuses.Pending), (n.Kind, n.Status)));
+
+        // marcar otra vez lo mismo cuenta como hecho y no repite la bitácora ni el aviso
+        var again = await x.Svc.SetConsigneesAsync(Bulk(new[] { x.Consignee.PublicId, other.PublicId }), default);
+        Assert.Equal((2, 0), (again.Done, again.Failed));
+        Assert.Equal(2, await x.F.Db.ConsigneeNoticeConsents.CountAsync());
+        Assert.Equal(2, await x.F.Db.ConsigneeNotices.CountAsync());
+
+        // quitar a los dos no pide la advertencia y queda en la bitácora
+        var off = await x.Svc.SetConsigneesAsync(Bulk(new[] { x.Consignee.PublicId, other.PublicId }, accepted: false, warning: null), default);
+        Assert.Equal(2, off.Done);
+        Assert.Equal(4, await x.F.Db.ConsigneeNoticeConsents.CountAsync());
+        Assert.Equal(2, await x.F.Db.ConsigneeNotices.CountAsync());
+    }
+
+    [Fact]
+    public async Task One_without_email_in_the_group_fails_with_its_message_and_the_others_are_marked()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        await Enable(x);
+        var noMail = await AddConsigneeAsync(x, 7002, "Tienda Sin Correo", null);
+        var missing = Guid.NewGuid();
+
+        var r = await x.Svc.SetConsigneesAsync(Bulk(new[] { noMail.PublicId, x.Consignee.PublicId, missing }), default);
+
+        Assert.Equal((1, 2), (r.Done, r.Failed));
+        var failed = r.Items[0];
+        Assert.Equal((noMail.PublicId, "Tienda Sin Correo", false, ConsigneeNoticeRules.NoEmailMessage), (failed.PublicId, failed.Name, failed.Ok, failed.Message));
+        Assert.Null(failed.Consignee);
+        Assert.True(r.Items[1].Ok);
+        Assert.False(r.Items[2].Ok);                                                             // no es del cliente: no encontrado, los demás siguen
+        var log = Assert.Single(await x.F.Db.ConsigneeNoticeConsents.AsNoTracking().ToListAsync());
+        Assert.Equal(x.Consignee.LocationId, log.LocationId);
+        Assert.Single(await x.F.Db.ConsigneeNotices.AsNoTracking().ToListAsync());
+        Assert.False((await x.F.Db.Locations.AsNoTracking().SingleAsync(l => l.LocationId == noMail.LocationId)).NoticeEmailOptIn);
+    }
+
+    [Fact]
+    public async Task Without_the_warning_nothing_is_touched_and_an_empty_or_too_big_list_is_rejected()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        await Enable(x);
+        var other = await AddConsigneeAsync(x, 7002, "Tienda Sur", "tienda@sur.co");
+
+        var noWarning = await Assert.ThrowsAsync<ValidationException>(() => x.Svc.SetConsigneesAsync(Bulk(new[] { x.Consignee.PublicId, other.PublicId }, warning: false), default));
+        Assert.Equal(ConsigneeNoticeRules.WarningRequiredMessage, noWarning.Message);
+        Assert.True(noWarning.Errors!.ContainsKey("warningAccepted"));
+        Assert.Empty(await x.F.Db.ConsigneeNoticeConsents.AsNoTracking().ToListAsync());
+        Assert.Empty(await x.F.Db.ConsigneeNotices.AsNoTracking().ToListAsync());
+        Assert.DoesNotContain(await x.F.Db.Locations.AsNoTracking().ToListAsync(), l => l.NoticeEmailOptIn);
+
+        Assert.Equal(ConsigneeNoticeService.BulkEmptyMessage, (await Assert.ThrowsAsync<ValidationException>(() => x.Svc.SetConsigneesAsync(Bulk(new List<Guid>()), default))).Message);
+        Assert.Equal(ConsigneeNoticeService.BulkEmptyMessage, (await Assert.ThrowsAsync<ValidationException>(() => x.Svc.SetConsigneesAsync(Bulk(null), default))).Message);
+        Assert.Equal(ConsigneeNoticeService.BulkEmptyMessage, (await Assert.ThrowsAsync<ValidationException>(() => x.Svc.SetConsigneesAsync(null, default))).Message);
+        var tooMany = Enumerable.Range(0, ConsigneeNoticeService.MaxBulk + 1).Select(_ => Guid.NewGuid()).ToList();
+        Assert.Equal(ConsigneeNoticeService.BulkTooManyMessage, (await Assert.ThrowsAsync<ValidationException>(() => x.Svc.SetConsigneesAsync(Bulk(tooMany), default))).Message);
+        Assert.Equal(ConsigneeNoticeRules.InvalidChannelMessage, (await Assert.ThrowsAsync<ValidationException>(() => x.Svc.SetConsigneesAsync(Bulk(new[] { other.PublicId }, "PAPEL"), default))).Message);
+    }
+
+    [Fact]
+    public async Task A_read_only_portal_user_cannot_mark_several()
+    {
+        var x = await NewWorldAsync(PortalRoles.ClientReadOnly);
+        await using var _ = x.F;
+        var ex = await Assert.ThrowsAsync<ForbiddenException>(() => x.Svc.SetConsigneesAsync(Bulk(new[] { x.Consignee.PublicId }), default));
+        Assert.Equal(ConsigneeNoticeService.ReadOnlyMessage, ex.Message);
+    }
+
     // ---------------------------------------------------------------- cuándo se avisa
 
     [Fact]

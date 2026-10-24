@@ -101,7 +101,7 @@ public sealed class PortalService(TeikemDbContext db, ITenantContext tenant, Use
         return new PagedResult<PortalNotificationDto>(rows.Select(n => new PortalNotificationDto(n.PublicId, n.Kind, n.Subject, n.BodyText, n.CreatedAtUtc)).ToList(), total, skip, take);
     }
 
-    private static PortalProgressDto ProgressOf(OrderProgressResult p) => new(p.Step, p.Total, p.State, p.StatusCode, p.StatusLabel);
+    private static PortalProgressDto ProgressOf(OrderProgressResult p) => new(p.Step, p.Total, p.State, p.StatusCode, p.StatusLabel, p.FailedAttempts);
 
     /// <summary>Línea de tiempo: solo el estatus y cuándo (sin comentarios internos ni quién lo cambió).</summary>
     private async Task<IReadOnlyList<PortalOrderEventDto>> TimelineAsync(int orderId, CancellationToken ct)

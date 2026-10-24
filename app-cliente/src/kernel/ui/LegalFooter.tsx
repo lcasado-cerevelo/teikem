@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router'
 import { Pressable, Text, View } from 'react-native'
 
 import { useT } from '../i18n/useT'
+import { useIsWide } from './layout'
 import { useColors } from './theme'
 
 export const OWNER_NAME = 'Cerevelo LLC'
@@ -13,10 +14,11 @@ export function LegalFooter({ year = new Date().getFullYear() }: { year?: number
   const colors = useColors()
   const { t } = useT()
   const router = useRouter()
+  const wide = useIsWide()   // 2026-10-23: en la web de escritorio es un pie de página de verdad (todo el ancho, con su línea), pegado al borde de abajo cuando el contenido no llena la ventana
   const tiny = { fontSize: 11, color: colors.muted, opacity: 0.75 } as const
   const open = (part: 'privacy' | 'terms') => router.push({ pathname: '/legal-view', params: { part } })
   return (
-    <View accessibilityLabel={t('legalFooter.label')} style={{ alignItems: 'center', gap: 2, paddingVertical: 12 }}>
+    <View accessibilityLabel={t('legalFooter.label')} testID="legal-footer" style={{ alignItems: 'center', gap: 2, paddingVertical: 12, width: '100%', borderTopWidth: wide ? 1 : 0, borderTopColor: colors.line, backgroundColor: wide ? colors.card : 'transparent' }}>
       <View style={{ flexDirection: 'row', gap: 6 }}>
         <Pressable accessibilityRole="link" onPress={() => open('privacy')} testID="legal-footer-privacy" hitSlop={6}>
           <Text style={[tiny, { textDecorationLine: 'underline' }]}>{t('legalFooter.privacy')}</Text>

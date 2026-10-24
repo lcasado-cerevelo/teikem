@@ -30310,6 +30310,54 @@
         }
       }
     },
+    "/api/v1/portal/consignees": {
+      "post": {
+        "tags": [
+          "Portal"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalConsigneeCreateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalConsigneeCreateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalConsigneeCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalPlaceDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalPlaceDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalPlaceDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/portal/orders/{publicId}": {
       "get": {
         "tags": [
@@ -31530,6 +31578,54 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ConsigneeNoticeConsigneeDtoPagedResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/portal/consignee-notices/consignees/bulk": {
+      "put": {
+        "tags": [
+          "PortalConsigneeNotices"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsigneeNoticeBulkMarkRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsigneeNoticeBulkMarkRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsigneeNoticeBulkMarkRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsigneeNoticeBulkResultDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsigneeNoticeBulkResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsigneeNoticeBulkResultDto"
                 }
               }
             }
@@ -54898,6 +54994,77 @@
         },
         "additionalProperties": false
       },
+      "ConsigneeNoticeBulkItemDto": {
+        "type": "object",
+        "properties": {
+          "publicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "consignee": {
+            "$ref": "#/components/schemas/ConsigneeNoticeConsigneeDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConsigneeNoticeBulkMarkRequest": {
+        "type": "object",
+        "properties": {
+          "publicIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "nullable": true
+          },
+          "channel": {
+            "type": "string",
+            "nullable": true
+          },
+          "accepted": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "warningAccepted": {
+            "type": "boolean",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConsigneeNoticeBulkResultDto": {
+        "type": "object",
+        "properties": {
+          "done": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsigneeNoticeBulkItemDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ConsigneeNoticeConsigneeDto": {
         "type": "object",
         "properties": {
@@ -70751,6 +70918,20 @@
         },
         "additionalProperties": false
       },
+      "PortalCatalogItemDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "PortalClientDto": {
         "type": "object",
         "properties": {
@@ -70808,6 +70989,40 @@
             "nullable": true
           },
           "postalCode": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PortalConsigneeCreateRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "line1": {
+            "type": "string",
+            "nullable": true
+          },
+          "line2": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "postalCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
             "type": "string",
             "nullable": true
           }
@@ -71757,6 +71972,19 @@
           "notes": {
             "type": "string",
             "nullable": true
+          },
+          "serviceType": {
+            "type": "string",
+            "nullable": true
+          },
+          "orderNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "promisedDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -71781,6 +72009,10 @@
             "nullable": true
           },
           "statusLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "clientInvoiceNumber": {
             "type": "string",
             "nullable": true
           }
@@ -71935,6 +72167,31 @@
           },
           "clientTypesInvoiceNumber": {
             "type": "boolean"
+          },
+          "clientAssignsOrderNumber": {
+            "type": "boolean"
+          },
+          "serviceTypes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortalCatalogItemDto"
+            },
+            "nullable": true
+          },
+          "packageTypes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortalCatalogItemDto"
+            },
+            "nullable": true
+          },
+          "defaultServiceType": {
+            "type": "string",
+            "nullable": true
+          },
+          "defaultPackageType": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -72090,6 +72347,10 @@
             "type": "number",
             "format": "double",
             "nullable": true
+          },
+          "packageType": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -72122,6 +72383,14 @@
             "nullable": true
           },
           "postalCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
             "type": "string",
             "nullable": true
           }
@@ -72341,6 +72610,10 @@
           "statusLabel": {
             "type": "string",
             "nullable": true
+          },
+          "failedAttempts": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false

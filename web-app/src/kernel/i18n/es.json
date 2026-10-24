@@ -1035,6 +1035,11 @@
     }
   },
   "consignees": {
+    "inline": {
+      "title": "Consignatario nuevo",
+      "keys": "Enter graba · Esc cancela · Tab pasa al siguiente campo",
+      "createOption": "+ Nuevo consignatario «{text}»"
+    },
     "title": "Consignatarios",
     "subtitle": "Destinatarios de todos los clientes — alta, edición e inactivación",
     "list": "Consignatarios",
@@ -2964,7 +2969,8 @@
     },
     "comboSelect": {
       "placeholder": "Seleccione…",
-      "clear": "Quitar"
+      "clear": "Quitar",
+      "create": "Crear «{text}»"
     },
     "clientPicker": {
       "placeholder": "Buscar cliente por código o nombre…",
@@ -4263,6 +4269,22 @@
       "dupAllowedShort": "admite factura repetida"
     },
     "quick": {
+      "filters": {
+        "from": "Desde",
+        "to": "Hasta",
+        "search": "Buscar en lo capturado…",
+        "searchLabel": "Buscar en las entradas guardadas",
+        "shown": "{shown} de {total} entradas guardadas",
+        "none": "Ninguna entrada guardada coincide con las fechas y la búsqueda."
+      },
+      "summary": {
+        "title": "Resumen",
+        "line": "{count} × {package} · {service}",
+        "cod": "COD total: {amount}",
+        "packages": "Total de paquetes: {n}",
+        "invoices": "Facturas distintas: {n}",
+        "none": "Sin entradas en estas fechas."
+      },
       "offDate": "Fecha distinta de hoy",
       "offDateLegend": "Sombreado: fecha distinta de hoy",
       "client": "Cliente",

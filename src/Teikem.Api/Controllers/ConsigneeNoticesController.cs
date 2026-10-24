@@ -27,6 +27,13 @@ public sealed class PortalConsigneeNoticesController(ConsigneeNoticeService noti
     [HttpGet("consignees")]
     public Task<PagedResult<ConsigneeNoticeConsigneeDto>> Consignees([FromQuery] string? search, [FromQuery] int skip, [FromQuery] int take, CancellationToken ct) => notices.ListConsigneesAsync(search, skip, take, ct);
 
+    /// <summary>
+    /// Lote 213 — marca o desmarca varios consignatarios de una vez por el mismo medio (hasta 200), con una sola aceptación de la advertencia para todo el grupo. 400 sin consignatarios, con más de 200 o sin la advertencia
+    /// (antes de tocar a nadie); 422 si el aviso está apagado. El que no se puede marcar queda con su mensaje en el resultado y los demás siguen.
+    /// </summary>
+    [HttpPut("consignees/bulk")]
+    public Task<ConsigneeNoticeBulkResultDto> MarkMany([FromBody] ConsigneeNoticeBulkMarkRequest req, CancellationToken ct) => notices.SetConsigneesAsync(req, ct);
+
     /// <summary>Marca (accepted = true, con warningAccepted) o desmarca que el consignatario acepta avisos por correo o texto. 400 sin la advertencia o sin el medio; 409 si el consignatario se dio de baja.</summary>
     [HttpPut("consignees/{publicId:guid}")]
     public Task<ConsigneeNoticeConsigneeDto> Mark(Guid publicId, [FromBody] ConsigneeNoticeMarkRequest req, CancellationToken ct) => notices.SetConsigneeAsync(publicId, req, ct);

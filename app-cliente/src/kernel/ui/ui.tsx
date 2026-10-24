@@ -13,7 +13,9 @@ export { useColors } from './theme'
 function makeStyles(c: Palette) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: c.bg },
-    screenContent: { flexGrow: 1, alignItems: 'center' },
+    screenContent: { flexGrow: 1 },
+    // 2026-10-23 (pedido de Luis): el cuerpo crece hasta llenar la ventana, así el pie legal queda pegado abajo cuando el contenido es corto y al final del contenido cuando es largo (nunca «flotando» a media página)
+    body: { flexGrow: 1, width: '100%', alignItems: 'center' },
     column: { width: '100%', maxWidth: Platform.OS === 'web' ? NARROW_COLUMN : undefined, gap: 12, zIndex: 1 },
     columnWide: { width: '100%', maxWidth: WIDE_COLUMN, gap: 12, zIndex: 1 },
     padded: { padding: 16 },
@@ -68,11 +70,11 @@ export function Screen({ children, padded = true, scroll = true, wide = false }:
     </View>
   return scroll ? (
     <ScrollView style={styles.screen} contentContainerStyle={styles.screenContent} keyboardShouldPersistTaps="handled">
-      {inner}
+      <View style={styles.body}>{inner}</View>
       <LegalFooter />
     </ScrollView>
   ) : (
-    <View style={[styles.screen, styles.screenContent]}>{inner}</View>
+    <View style={[styles.screen, styles.body]}>{inner}</View>
   )
 }
 
@@ -128,16 +130,18 @@ export function Field({ label, error, ...input }: { label: string; error?: strin
   )
 }
 
-/** Casilla con texto (y una ayuda debajo, opcional). */
-export function Check({ label, help, value, onChange, disabled, testID }: { label: string; help?: string; value: boolean; onChange: (v: boolean) => void; disabled?: boolean; testID?: string }) {
+/** Casilla con texto (y una ayuda debajo, opcional). `compact`: baja y con letra chica (celdas de tabla y barras de acciones). */
+export function Check({ label, help, value, onChange, disabled, testID, compact }: { label: string; help?: string; value: boolean; onChange: (v: boolean) => void; disabled?: boolean; testID?: string; compact?: boolean }) {
   const styles = useStyles()
   return (
-    <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: value, disabled: !!disabled }} aria-checked={value} accessibilityLabel={label} testID={testID} disabled={disabled} onPress={() => onChange(!value)} style={styles.check}>
-      <View style={[styles.box, value && styles.boxOn]}>{value && <Text style={styles.tick}>✓</Text>}</View>
-      <View style={styles.checkText}>
-        <Text style={styles.checkLabel}>{label}</Text>
-        {!!help && <Text style={styles.muted}>{help}</Text>}
-      </View>
+    <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: value, disabled: !!disabled }} aria-checked={value} accessibilityLabel={label} testID={testID} disabled={disabled} onPress={() => onChange(!value)} style={[styles.check, compact && { minHeight: 28, paddingVertical: 0, alignItems: 'center' }, disabled && { opacity: 0.55 }]}>
+      <View style={[styles.box, value && styles.boxOn, compact && { width: 20, height: 20, marginTop: 0 }]}>{value && <Text style={[styles.tick, compact && { fontSize: 12, lineHeight: 14 }]}>✓</Text>}</View>
+      {(!!label || !!help) && (
+        <View style={styles.checkText}>
+          {!!label && <Text numberOfLines={compact ? 1 : undefined} style={[styles.checkLabel, compact && { fontSize: 13 }]}>{label}</Text>}
+          {!!help && <Text style={styles.muted}>{help}</Text>}
+        </View>
+      )}
     </Pressable>
   )
 }

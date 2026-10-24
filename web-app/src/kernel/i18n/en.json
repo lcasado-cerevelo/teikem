@@ -1035,6 +1035,11 @@
     }
   },
   "consignees": {
+    "inline": {
+      "title": "New consignee",
+      "keys": "Enter saves · Esc cancels · Tab moves to the next field",
+      "createOption": "+ New consignee «{text}»"
+    },
     "title": "Consignees",
     "subtitle": "Recipients of all clients — create, edit and deactivate",
     "list": "Consignees",
@@ -2964,7 +2969,8 @@
     },
     "comboSelect": {
       "placeholder": "Select…",
-      "clear": "Remove"
+      "clear": "Remove",
+      "create": "Create «{text}»"
     },
     "clientPicker": {
       "placeholder": "Search client by code or name…",
@@ -4263,6 +4269,22 @@
       "dupAllowedShort": "allows repeated invoice"
     },
     "quick": {
+      "filters": {
+        "from": "From",
+        "to": "To",
+        "search": "Search what was entered…",
+        "searchLabel": "Search the saved entries",
+        "shown": "{shown} of {total} saved entries",
+        "none": "No saved entry matches the dates and the search."
+      },
+      "summary": {
+        "title": "Summary",
+        "line": "{count} × {package} · {service}",
+        "cod": "Total COD: {amount}",
+        "packages": "Total packages: {n}",
+        "invoices": "Distinct invoices: {n}",
+        "none": "No entries in these dates."
+      },
       "offDate": "Date other than today",
       "offDateLegend": "Shaded: date other than today",
       "client": "Client",

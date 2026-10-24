@@ -12,12 +12,13 @@ import { Button, Card, Chip, Muted, Notice, Screen, Spinner, Title, useColors } 
 import { useAsync } from '../../kernel/ui/useAsync'
 import { formatDate, statusTone } from '../format'
 import { ProgressBar } from '../progress/ProgressBar'
+import { StatusWithAttempts } from '../progress/FailedAttempts'
 import { toProgressInfo } from '../progress/progressInfo'
 import { getMe, getSummary, type PortalOrderListItemDto } from '../portalApi'
 import { IndicatorsCard } from './IndicatorsCard'
 import { IndicatorsKpis } from './IndicatorsKpis'
 
-const PERIODS = [7, 30, 90] as const
+const PERIODS = [0, 7, 30, 90] as const   // 0 = hoy (2026-10-23, pedido de Luis: «ponme de hoy también»)
 
 export function HomeScreen() {
   const colors = useColors()
@@ -38,7 +39,7 @@ export function HomeScreen() {
       { key: 'date', title: t('orders.col.date'), width: 110, render: (o) => <CellText>{formatDate(o.createdAtUtc, lang)}</CellText> },
       { key: 'consignee', title: t('orders.col.consignee'), flex: 2, render: (o) => <CellText>{o.consigneeName}</CellText> },
       { key: 'city', title: t('orders.col.city'), flex: 1, render: (o) => <CellText muted>{o.consigneeCity}</CellText> },
-      { key: 'status', title: t('orders.col.status'), width: 170, render: (o) => <Chip label={o.statusLabel ?? o.status ?? ''} tone={statusTone(o.status)} /> },
+      { key: 'status', title: t('orders.col.status'), width: 170, render: (o) => <StatusWithAttempts status={o.status} label={o.statusLabel} attempts={o.progress?.failedAttempts} /> },
     ]
     return (
       <Screen wide>
@@ -52,7 +53,7 @@ export function HomeScreen() {
               testID={`indicators-days-${p}`}
               style={{ paddingVertical: 6, paddingHorizontal: 14, borderRadius: 18, borderWidth: 1, borderColor: days === p ? colors.brand : colors.line, backgroundColor: days === p ? colors.brand : colors.card }}
             >
-              <Text style={{ color: days === p ? colors.onBrand : colors.text, fontWeight: '600' }}>{t('indicators.days', { n: p })}</Text>
+              <Text style={{ color: days === p ? colors.onBrand : colors.text, fontWeight: '600' }}>{p === 0 ? t('indicators.today') : t('indicators.days', { n: p })}</Text>
             </Pressable>
           ))}
         </PageHeader>

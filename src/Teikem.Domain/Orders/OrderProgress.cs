@@ -3,8 +3,12 @@ namespace Teikem.Domain.Orders;
 /// <summary>Una etapa de la barra (código y texto en el idioma de quien mira).</summary>
 public sealed record ProgressStatus(string Code, string Label, string Kind, int SortOrder, bool Enabled);
 
-/// <summary>El avance de una orden: etapa actual (1 a 4; 0 = ninguna), total de etapas (4), estado, el código del estatus real y el texto que se muestra (Sometida, Recibida, En ruta, Intentada, Reprogramada o el estatus final).</summary>
-public sealed record OrderProgressResult(int Step, int Total, string State, string StatusCode, string StatusLabel);
+/// <summary>El avance de una orden (con cuántos intentos fallidos lleva): etapa actual (1 a 4; 0 = ninguna), total de etapas (4), estado, el código del estatus real y el texto que se muestra (Sometida, Recibida, En ruta, Intentada, Reprogramada o el estatus final).</summary>
+public sealed record OrderProgressResult(int Step, int Total, string State, string StatusCode, string StatusLabel, int FailedAttempts = 0)
+{
+    /// <summary>La misma etapa con la cuenta de intentos fallidos de la orden (pedido de Luis, 2026-10-24: «una asignada que ya salió a la calle y volvió» se distingue de una retrasada).</summary>
+    public OrderProgressResult WithFailedAttempts(int count) => this with { FailedAttempts = Math.Max(0, count) };
+}
 
 /// <summary>
 /// La <b>barra de progreso</b> de quien espera una orden —el cliente, el consignatario y la página pública «¿Cómo va mi orden?»—. Decidido con Luis (2026-10-17, reemplaza el criterio del Lote 103 de «tantas etapas como

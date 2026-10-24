@@ -16,6 +16,7 @@ import { formatDateLongTime, formatMoney, formatNumber } from '../format/format'
 import { t as translate } from '../i18n'
 import { BRAND_SYMBOL_SRC } from './brandAssets'
 import { exportFileName, pdfSafeText } from './exportTable'
+import { mixRgb, readPdfBrand } from './pdfBrand'
 import { fitLogo, hasCompanyLogo, loadCompanyPdfLogo, type PdfLogo } from './pdfLogo'
 
 /** Valor de una celda del reporte: número (se formatea según la columna), texto tal cual o vacío. */
@@ -229,19 +230,17 @@ export function loadReportLogo(): Promise<string | null> {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type Rgb = [number, number, number]
-const NAVY: Rgb = [11, 44, 102]
-const BLUE: Rgb = [31, 111, 229]
-const ORANGE: Rgb = [255, 106, 26]
-const ORANGE_INK: Rgb = [185, 74, 12]
+// 2026-10-23 (pedido de Luis): los colores de marca del reporte son los de la compañía (Ajustes → Marca), no los fijos de Teikem: la barra (`navy`), el primer acento (`flow`, antes el azul)
+// y el tercer color (`money`, antes el naranja). Se leen al dibujar (`B()`), así que cada PDF toma la marca vigente.
+const B = () => readPdfBrand()
 const INK: Rgb = [24, 33, 54]
 const MUTED: Rgb = [91, 104, 128]
 const LINE: Rgb = [221, 228, 240]
-const HEAD: Rgb = [24, 33, 54]
 const ZEBRA: Rgb = [245, 247, 250]
-const GROUP_BG: Rgb = [232, 239, 251]
 const SUBTOTAL_BG: Rgb = [236, 240, 247]
 const PANEL_BG: Rgb = [247, 249, 252]
-const BAND_TEXT: Rgb = [176, 200, 240]
+/** Texto atenuado sobre la banda de la marca: el color del texto de la barra mezclado con ella (antes un celeste fijo). */
+const bandText = (): Rgb => mixRgb(B().onNavy, B().navy, 0.72)
 const NOTICE_BG: Rgb = [255, 246, 232]
 const NOTICE_INK: Rgb = [140, 84, 10]
 
@@ -253,7 +252,16 @@ const FOOTER_H = 30
 /** Medidas compartidas con otros reportes de marca (p. ej. `barcodeReportPdf.ts`), en puntos. */
 export const REPORT_LAYOUT = { margin: MARGIN, thinBandHeight: THIN_BAND_H, footerHeight: FOOTER_H } as const
 /** Colores de la marca en los reportes (RGB). */
-export const REPORT_COLORS = { navy: NAVY, blue: BLUE, orange: ORANGE, ink: INK, muted: MUTED, line: LINE, noticeBg: NOTICE_BG, noticeInk: NOTICE_INK } as const
+export const REPORT_COLORS = {
+  get navy() { return B().navy },
+  get blue() { return B().flow },
+  get orange() { return B().money },
+  ink: INK,
+  muted: MUTED,
+  line: LINE,
+  noticeBg: NOTICE_BG,
+  noticeInk: NOTICE_INK,
+} as const
 
 /** Lo que pinta el encabezado de la página 1 de un reporte de marca. */
 export type ReportHeaderSpec = Pick<ReportSpec, 'title' | 'subtitle' | 'company' | 'user' | 'generatedAt' | 'locale' | 'filters' | 'summary' | 'notices'>
@@ -288,7 +296,7 @@ export async function renderReportPdf(spec: ReportSpec, options: RenderReportOpt
       const kind = row.kind === 'total' && rowIndex !== lastTotal ? 'subtotal' : row.kind
       switch (kind) {
         case 'group':
-          return { ...base, styles: { fillColor: GROUP_BG, textColor: NAVY, fontStyle: 'bold' as const, fontSize: 8.5, halign: 'left' as const } }
+          return { ...base, styles: { fillColor: B().tint, textColor: B().navy, fontStyle: 'bold' as const, fontSize: 8.5, halign: 'left' as const } }
         case 'subtotal':
           return {
             ...base,
@@ -302,7 +310,7 @@ export async function renderReportPdf(spec: ReportSpec, options: RenderReportOpt
             },
           }
         case 'total':
-          return { ...base, styles: { fillColor: NAVY, textColor: [255, 255, 255] as Rgb, fontStyle: 'bold' as const, fontSize: 9, halign: cell.align } }
+          return { ...base, styles: { fillColor: B().navy, textColor: B().onNavy, fontStyle: 'bold' as const, fontSize: 9, halign: cell.align } }
         case 'empty':
           return { ...base, styles: { textColor: MUTED, fontStyle: 'italic' as const, halign: 'center' as const, cellPadding: 12 } }
         default:
@@ -325,7 +333,7 @@ export async function renderReportPdf(spec: ReportSpec, options: RenderReportOpt
     theme: 'plain',
     margin: { left: MARGIN, right: MARGIN, top: THIN_BAND_H + 20, bottom: FOOTER_H + 14 },
     styles: { font: 'helvetica', fontSize: 8, cellPadding, textColor: INK, overflow: 'linebreak', valign: 'middle' },
-    headStyles: { fillColor: HEAD, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+    headStyles: { fillColor: B().navy, textColor: B().onNavy, fontStyle: 'bold', fontSize: 8 },
     columnStyles,
     rowPageBreak: 'avoid',
     showHead: 'everyPage',
@@ -349,11 +357,11 @@ export function drawReportHeader(doc: jsPDF, spec: ReportHeaderSpec, logo?: stri
   const company = spec.company?.trim() || ''
 
   // ---- banda de la marca ----
-  doc.setFillColor(...NAVY)
+  doc.setFillColor(...B().navy)
   doc.rect(0, 0, W, BAND_H, 'F')
-  doc.setFillColor(...BLUE)
+  doc.setFillColor(...B().flow)
   doc.rect(0, BAND_H, W, 3, 'F')
-  doc.setFillColor(...ORANGE)
+  doc.setFillColor(...B().money)
   doc.rect(0, BAND_H, 96, 3, 'F')
   let brandX = MARGIN
   let companyLogoDrawn = false
@@ -364,7 +372,7 @@ export function drawReportHeader(doc: jsPDF, spec: ReportHeaderSpec, logo?: stri
       const x = MARGIN - 4
       const y = (BAND_H - h) / 2
       if (logo.plate) {
-        doc.setFillColor(...(logo.plate === 'white' ? ([255, 255, 255] as Rgb) : NAVY))
+        doc.setFillColor(...(logo.plate === 'white' ? ([255, 255, 255] as Rgb) : B().navy))
         doc.roundedRect(x - 5, y - 4, w + 10, h + 8, 4, 4, 'F')
       }
       doc.addImage(logo.dataUrl, 'PNG', x, y, w, h)
@@ -381,25 +389,25 @@ export function drawReportHeader(doc: jsPDF, spec: ReportHeaderSpec, logo?: stri
     }
   }
   if (!companyLogoDrawn) {
-    doc.setTextColor(255, 255, 255)
+    doc.setTextColor(...B().onNavy)
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(19)
     doc.text('TEIKEM', brandX, 38)
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
-    doc.setTextColor(...BAND_TEXT)
+    doc.setTextColor(...bandText())
     doc.text(safe(translate('ui.report.tagline')).toUpperCase(), brandX + 1, 52)
   }
   if (company) {
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(13)
-    doc.setTextColor(255, 255, 255)
+    doc.setTextColor(...B().onNavy)
     const line = (doc.splitTextToSize(safe(company), inner / 2) as string[])[0] ?? ''
     doc.text(line, W - MARGIN, 34, { align: 'right' })
   }
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
-  doc.setTextColor(...BAND_TEXT)
+  doc.setTextColor(...bandText())
   doc.text(safe(when), W - MARGIN, 50, { align: 'right' })
 
   // ---- título ----
@@ -444,11 +452,11 @@ export function drawReportHeader(doc: jsPDF, spec: ReportHeaderSpec, logo?: stri
   doc.setDrawColor(...LINE)
   doc.setLineWidth(0.8)
   doc.roundedRect(MARGIN, y, inner, boxH, 5, 5, 'FD')
-  doc.setFillColor(...BLUE)
+  doc.setFillColor(...B().flow)
   doc.rect(MARGIN, y + 6, 2.5, boxH - 12, 'F')
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7.5)
-  doc.setTextColor(...BLUE)
+  doc.setTextColor(...B().flow)
   doc.text(safe(translate('ui.report.filtersTitle')).toUpperCase(), MARGIN + 12, y + 15)
   let fy = y + 28
   doc.setFontSize(8.5)
@@ -480,7 +488,7 @@ export function drawReportHeader(doc: jsPDF, spec: ReportHeaderSpec, logo?: stri
       doc.setDrawColor(...LINE)
       doc.setLineWidth(0.8)
       doc.roundedRect(x, y, cardW, 42, 5, 5, 'FD')
-      doc.setFillColor(...(s.tone === 'money' ? ORANGE : BLUE))
+      doc.setFillColor(...(s.tone === 'money' ? B().money : B().flow))
       doc.rect(x + 8, y + 7, 14, 2, 'F')
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(7)
@@ -488,7 +496,7 @@ export function drawReportHeader(doc: jsPDF, spec: ReportHeaderSpec, logo?: stri
       doc.text((doc.splitTextToSize(safe(s.label).toUpperCase(), cardW - 16) as string[])[0] ?? '', x + 8, y + 19)
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(12.5)
-      doc.setTextColor(...(s.tone === 'money' ? ORANGE_INK : INK))
+      doc.setTextColor(...(s.tone === 'money' ? B().moneyInk : INK))
       doc.text((doc.splitTextToSize(safe(s.value), cardW - 16) as string[])[0] ?? '', x + 8, y + 34)
     })
     y += 42 + 12
@@ -522,7 +530,7 @@ export function drawReportNotice(doc: jsPDF, lines: readonly string[], y: number
   doc.setFontSize(8.5)
   doc.setFillColor(...NOTICE_BG)
   doc.rect(MARGIN, y, inner, h, 'F')
-  doc.setFillColor(...ORANGE)
+  doc.setFillColor(...B().money)
   doc.rect(MARGIN, y, 2.5, h, 'F')
   doc.setTextColor(...NOTICE_INK)
   doc.text([...lines], MARGIN + 12, y + 13)
@@ -541,17 +549,17 @@ export function drawReportPageChrome(doc: jsPDF, spec: Pick<ReportSpec, 'title' 
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i)
     if (i > 1) {
-      doc.setFillColor(...NAVY)
+      doc.setFillColor(...B().navy)
       doc.rect(0, 0, W, THIN_BAND_H, 'F')
-      doc.setFillColor(...BLUE)
+      doc.setFillColor(...B().flow)
       doc.rect(0, THIN_BAND_H, W, 2, 'F')
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(10)
-      doc.setTextColor(255, 255, 255)
+      doc.setTextColor(...B().onNavy)
       doc.text('TEIKEM', MARGIN, 18)
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(8.5)
-      doc.setTextColor(...BAND_TEXT)
+      doc.setTextColor(...bandText())
       const right = [company, spec.title].filter(Boolean).join(' · ')
       doc.text((doc.splitTextToSize(safe(right), inner - 80) as string[])[0] ?? '', W - MARGIN, 18, { align: 'right' })
     }

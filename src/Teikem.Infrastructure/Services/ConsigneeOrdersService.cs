@@ -46,7 +46,7 @@ public sealed class ConsigneeOrdersService(TeikemDbContext db, ITenantContext te
         {
             var a = avance[o.TransportOrderId];
             items.Add(new ConsigneeOrderListItemDto(o.PublicId, o.WaybillNumber, await ServiceLabelAsync(o.ServiceTypeLookupId, ct), o.TotalPieces ?? 0, a.StatusCode, a.StatusLabel, o.CreatedAtUtc, o.PromisedDate,
-                new PortalProgressDto(a.Step, a.Total, a.State, a.StatusCode, a.StatusLabel), o.TrackToken));
+                new PortalProgressDto(a.Step, a.Total, a.State, a.StatusCode, a.StatusLabel, a.FailedAttempts), o.TrackToken));
         }
         return new PagedResult<ConsigneeOrderListItemDto>(items, total, skip, take);
     }
@@ -66,7 +66,7 @@ public sealed class ConsigneeOrdersService(TeikemDbContext db, ITenantContext te
         var steps = (await progress.StepsAsync(ct)).Select(s => s.Label).ToList();
         return new ConsigneeOrderDto(o.PublicId, o.WaybillNumber, await ServiceLabelAsync(o.ServiceTypeLookupId, ct), a.StatusCode, a.StatusLabel, o.TotalPieces ?? 0, o.PromisedDate, o.CreatedAtUtc,
             stop is null ? null : new PortalOrderStopDto(stop.SnapName, stop.SnapLine1, stop.SnapLine2, stop.SnapCity, stop.SnapState, stop.SnapPostalCode),
-            packages, timeline, new PortalProgressDto(a.Step, a.Total, a.State, a.StatusCode, a.StatusLabel), steps);
+            packages, timeline, new PortalProgressDto(a.Step, a.Total, a.State, a.StatusCode, a.StatusLabel, a.FailedAttempts), steps);
     }
 
     private async Task<string> ServiceLabelAsync(int lookupId, CancellationToken ct)

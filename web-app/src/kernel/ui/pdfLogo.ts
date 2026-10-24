@@ -1,6 +1,7 @@
 // Logo de la compañía en los PDF (pedido de Luis, 2026-10-21): los reportes y las exportaciones a PDF llevan en el encabezado el logo que la compañía subió
 // (Ajustes → Marca), no el de Teikem. Se toma del almacén de logos (`brandLogos.ts`, ya descargados por `TenantBrand`) y se rasteriza a PNG conservando su
 // proporción (jsPDF no dibuja SVG). Sin logo subido, el reporte de marca conserva el símbolo de Teikem y las tablas van sin logo.
+import { brandLockupSrc } from './brandAssets'
 import { getCompanyLogos, pickLogoUrl } from './brandLogos'
 
 export interface PdfLogo {
@@ -79,4 +80,20 @@ export function loadCompanyPdfLogo(surface: PdfSurface): Promise<PdfLogo | null>
 export function fitLogo(logo: Pick<PdfLogo, 'width' | 'height'>, maxW: number, maxH: number): { w: number; h: number } {
   const scale = Math.min(maxW / logo.width, maxH / logo.height)
   return { w: logo.width * scale, h: logo.height * scale }
+}
+
+let teikemLogo: Promise<PdfLogo | null> | null = null
+
+/** El logo de Teikem (lockup horizontal sin lema, versión para fondo claro) rasterizado para el PDF; null si no se pudo leer. */
+export function loadTeikemPdfLogo(): Promise<PdfLogo | null> {
+  teikemLogo ??= rasterizeLogo(brandLockupSrc('es', 'light', false)).then((r) => {
+    if (!r) teikemLogo = null
+    return r ? { ...r, plate: null } : null
+  })
+  return teikemLogo
+}
+
+/** Logo del encabezado de una tabla en hoja BLANCA (2026-10-23, pedido de Luis): el de la compañía y, si no subió ninguno, el de Teikem. */
+export async function loadTableHeadingLogo(): Promise<PdfLogo | null> {
+  return (hasCompanyLogo() ? await loadCompanyPdfLogo('light') : null) ?? (await loadTeikemPdfLogo())
 }

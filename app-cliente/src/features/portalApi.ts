@@ -82,6 +82,10 @@ export const listNoticeConsignees = (search: string, skip = 0, take = PAGE_SIZE)
   unwrap(api.GET('/api/v1/portal/consignee-notices/consignees', { params: { query: { search: search || undefined, skip, take } } }))
 export const markConsignee = (publicId: string, channel: 'EMAIL' | 'SMS', accepted: boolean, warningAccepted: boolean) =>
   unwrap(api.PUT('/api/v1/portal/consignee-notices/consignees/{publicId}', { params: { path: { publicId } }, body: { channel, accepted, warningAccepted } }))
+/** 2026-10-23: varios consignatarios en una llamada (la advertencia se acepta una vez para todos); el servidor dice cuáles no se pudieron y por qué. */
+export type ConsigneeNoticeBulkResultDto = Schemas['ConsigneeNoticeBulkResultDto']
+export const markConsigneesBulk = (publicIds: string[], channel: 'EMAIL' | 'SMS', accepted: boolean, warningAccepted: boolean) =>
+  unwrap(api.PUT('/api/v1/portal/consignee-notices/consignees/bulk', { body: { publicIds, channel, accepted, warningAccepted } }))
 
 // ---------------------------------------------------------------- consignatario con acceso propio (Lote 117): su espacio (perfil, bandeja, mensajes con su cliente)
 export type ConsigneeMeDto = Schemas['ConsigneeMeDto']
@@ -127,6 +131,9 @@ export const markConsigneeConversationRead = async (publicId: string) => {
 
 // ---------------------------------------------------------------- nueva orden (Lote 105): el cliente sale de la sesión
 export const getOrderForm = () => unwrap(api.GET('/api/v1/portal/order-form'))
+/** 2026-10-23: crea un consignatario al momento (nombre, dirección y pueblo; teléfono opcional) para escogerlo sin salir de la captura; si ya existe uno igual responde ese. */
+export type PortalConsigneeCreateRequest = Schemas['PortalConsigneeCreateRequest']
+export const createConsignee = (body: PortalConsigneeCreateRequest) => unwrap(api.POST('/api/v1/portal/consignees', { body }))
 export const createOrder = (body: PortalOrderCreateRequest) => unwrap(api.POST('/api/v1/portal/orders', { body, headers: { 'Idempotency-Key': newKey() } }))
 function newKey(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`

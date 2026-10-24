@@ -27,6 +27,14 @@ public class ConsigneeNoticeControllersSecurityTests
     }
 
     [Fact]
+    public void Marking_several_consignees_is_a_put_to_consignees_bulk_in_the_portal()
+    {
+        var m = typeof(PortalConsigneeNoticesController).GetMethod(nameof(PortalConsigneeNoticesController.MarkMany))!;
+        Assert.Equal("consignees/bulk", m.GetCustomAttribute<HttpPutAttribute>()!.Template);
+        Assert.Null(m.GetCustomAttribute<AllowAnonymousAttribute>());
+    }
+
+    [Fact]
     public void The_consignee_endpoints_are_anonymous_and_only_those_two()
     {
         var t = typeof(PublicConsigneeController);

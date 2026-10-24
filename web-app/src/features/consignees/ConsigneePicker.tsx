@@ -1,7 +1,8 @@
 // Selector de consignatario para capturar una orden (Lote F-C1): combobox con buscador sobre los consignatarios activos del cliente
 // MÁS los compartidos (`GET /locations?clientId&includeShared=true&locationType=DELIVERY`), que muestra «dirección · pueblo» y marca los
 // que admiten número de factura repetido (`allowDupInvoice`). El botón «+» abre el MISMO modal de alta del catálogo
-// (`ConsigneeFormModal`, con teléfono; exige `locations.create`) y deja elegido el recién creado. Dentro de un `<Field>`: `ConsigneePickerInput`.
+// (`ConsigneeFormModal`, con teléfono; exige `locations.create`) y deja elegido el recién creado. Lote 213: con `inline`, el propio combo ofrece
+// «+ Nuevo consignatario «texto»» (Enter / clic) y abre el formulario EN LÍNEA (`ConsigneeInlineForm`, que pinta la pantalla) para crearlo sin ratón. Dentro de un `<Field>`: `ConsigneePickerInput`.
 import { useMemo, useState } from 'react'
 import { useController, useFormContext } from 'react-hook-form'
 import { useCan } from '../../kernel/access'
@@ -11,6 +12,7 @@ import { useFieldInfo } from '../../kernel/ui/formContext'
 import { useClientConsignees, useSelectedConsignee } from './api'
 import { ConsigneeFormModal } from './ConsigneeFormModal'
 import { consigneeAddress, consigneeOptionLabel } from './consigneeRules'
+import type { InlineConsigneeController } from './useInlineConsignee'
 
 export interface ConsigneePickerProps {
   /** Cliente de la orden (publicId); sin él el selector espera ("Elija primero un cliente"). */
@@ -27,9 +29,11 @@ export interface ConsigneePickerProps {
   /** false = sin la ✕ para quitar el consignatario (una parada menos al recorrer con Tab la rejilla de la entrada rápida). Por defecto true. */
   clearable?: boolean
   onBlur?: () => void
+  /** Creación en línea (Lote 213): estado que lleva la pantalla (`useInlineConsignee`). Solo se ofrece con `locations.create` y con cliente. */
+  inline?: InlineConsigneeController
 }
 
-export function ConsigneePicker({ clientPublicId, value, onChange, id, invalid, required, onBlur, clearable, ...aria }: ConsigneePickerProps) {
+export function ConsigneePicker({ clientPublicId, value, onChange, id, invalid, required, onBlur, clearable, inline, ...aria }: ConsigneePickerProps) {
   const t = useT()
   const canCreate = useCan('locations.create')
   const [creating, setCreating] = useState(false)
@@ -63,7 +67,13 @@ export function ConsigneePicker({ clientPublicId, value, onChange, id, invalid, 
           options={options}
           value={value}
           clearable={clearable}
-          onChange={(v) => onChange(v)}
+          onChange={(v) => {
+            inline?.clearSeed()
+            onChange(v)
+          }}
+          createLabel={inline && canCreate && clientPublicId ? (text) => t('consignees.inline.createOption', { text }) : undefined}
+          onCreate={inline && canCreate && clientPublicId ? inline.begin : undefined}
+          seedText={inline?.seedText}
           loading={list.isLoading && !!clientPublicId}
           disabled={!clientPublicId}
           invalid={invalid}
@@ -100,13 +110,14 @@ export function ConsigneePicker({ clientPublicId, value, onChange, id, invalid, 
 }
 
 /** `ConsigneePicker` dentro de un `<Field name="…">`: el valor del formulario es el publicId del consignatario ('' = ninguno). */
-export function ConsigneePickerInput({ clientPublicId, onPicked }: { clientPublicId: string | null; onPicked?: (publicId: string) => void }) {
+export function ConsigneePickerInput({ clientPublicId, onPicked, inline }: { clientPublicId: string | null; onPicked?: (publicId: string) => void; inline?: InlineConsigneeController }) {
   const info = useFieldInfo('ConsigneePickerInput')
   const { control } = useFormContext()
   const { field } = useController({ name: info.name, control })
   return (
     <ConsigneePicker
       clientPublicId={clientPublicId}
+      inline={inline}
       id={info.id}
       value={(field.value as string | null | undefined) ?? ''}
       onChange={(v) => {

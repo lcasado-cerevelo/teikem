@@ -11,14 +11,14 @@ using Teikem.Infrastructure.Persistence;
 namespace Teikem.Infrastructure.Services;
 
 /// <summary>
-/// Lote 120 (P10) — indicadores del cliente en su portal (de los últimos 7, 30 o 90 días). Todo se limita al cliente de la sesión (filtro global y condición explícita). «A tiempo» cuenta solo las órdenes entregadas que tenían fecha
+/// Lote 120 (P10) — indicadores del cliente en su portal (de hoy —desde la medianoche de la compañía, Lote 213— o de los últimos 7, 30 o 90 días). Todo se limita al cliente de la sesión (filtro global y condición explícita). «A tiempo» cuenta solo las órdenes entregadas que tenían fecha
 /// prometida y se entregaron (día de la compañía) hasta ese día; si ninguna tenía fecha no hay porcentaje. Las facturas y el dinero de COD solo se calculan si la compañía tiene esos módulos encendidos; si no, vienen nulos.
 /// Nunca trae datos de otros clientes ni de choferes.
 /// </summary>
 public sealed class PortalIndicatorsService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, ModuleService modules, ITenantClock? clock = null)
 {
-    public static readonly int[] AllowedDays = { 7, 30, 90 };
-    public const string InvalidDaysMessage = "Los días deben ser 7, 30 o 90.";
+    public static readonly int[] AllowedDays = { 0, 7, 30, 90 };
+    public const string InvalidDaysMessage = "Los días deben ser 0 (hoy), 7, 30 o 90.";
     private readonly ITenantClock _clock = clock ?? TenantClock.Default;
     private TenantContext T => (TenantContext)tenant;
     private int ClientId => T.PortalClientId ?? throw new ForbiddenException(AuthService.PortalNoAccessMessage);
@@ -31,7 +31,8 @@ public sealed class PortalIndicatorsService(TeikemDbContext db, ITenantContext t
         if (!AllowedDays.Contains(d)) throw new ValidationException("days", InvalidDaysMessage);
         var cid = ClientId;
         var now = _clock.UtcNow;
-        var since = now.AddDays(-d);
+        // 0 = hoy: desde las 00:00 del día de la compañía (no las últimas 24 horas)
+        var since = d == 0 ? _clock.StartOfDayUtc(_clock.DayOf(now)) : now.AddDays(-d);
         var orders = db.TransportOrders.AsNoTracking().Where(o => o.IsActive && o.ClientId == cid);
         var statuses = await db.StatusCodes.AsNoTracking().Where(s => s.Entity == StatusDomains.OrderStatus).ToDictionaryAsync(s => s.StatusCodeId, s => s.InternalCode, ct);
         var closedIds = statuses.Where(kv => Closed.Contains(kv.Value)).Select(kv => kv.Key).ToList();

@@ -10635,3 +10635,106 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 
 **En la web una pieza que existe dice «No… no es de los choferes escogidos».** Está filtrando por ruta, ciudad o chofer y esa pieza es de otro. No se cuenta ni cambia nada. Cambie la selección o use **Todo**.
 
+## Lote 213 — Portal del cliente: pie, filtro de fecha, Nuevo envío igual al del personal, Mensajes y marcar varios consignatarios
+
+**En el teléfono no me sale la entrada rápida de envíos.** Es a propósito: en el celular (app instalada o navegador angosto) solo existe la **detallada**. La rápida es de la computadora (ventana de 900 px o más).
+
+**¿Cómo capturo envíos sin tocar el ratón?** En la rápida: **Tab** pasa de campo en campo, en Consignatario escriba y escoja con **↑/↓ y Enter** (la última opción es «+ Nuevo consignatario»), y **Enter en cualquier otro campo guarda la fila**; la siguiente trae la misma fecha, servicio y tipo de paquete y el cursor vuelve a la fecha.
+
+**Al pulsar Tab en la fecha no salgo del campo.** El calendario del navegador recorre mes, día y año con Tab antes de pasar al siguiente campo; es del navegador, no del portal.
+
+**«Escoja el tipo de servicio.» / «Escoja el tipo de paquete.»** La compañía ofrece catálogo y no hay un predeterminado habilitado para su cuenta; escójalo en el desplegable. Si el que usa no aparece, la compañía lo apagó.
+
+**«La fecha límite no puede ser anterior a la fecha lista.» (400 `promisedDate`).** Corrija la fecha límite: tiene que ser igual o posterior a la fecha lista.
+
+**«Tipo de servicio desconocido: X.» / «Tipo de paquete desconocido: X.» (400).** El código ya no está habilitado para la compañía; recargue la pantalla para traer el catálogo al día.
+
+**«El número de orden lo asigna Teikem para este cliente; déjelo en blanco.» (400).** Su cuenta no asigna sus números de orden: el campo sale apagado como «(automático)»; si lo ve editable, recargue.
+
+**No veo la columna N.º de orden (o Factura) en la rápida.** Solo aparecen si su cuenta asigna sus propios números; si no, los pone la compañía.
+
+**¿Dónde quedó la descripción / piezas / peso en la rápida?** La rápida crea un paquete de una pieza, como la del personal; descripción, piezas y peso se capturan en la **detallada**.
+
+**¿Qué cuenta «Hoy» en los indicadores?** Lo creado o entregado desde la medianoche de hoy en la zona horaria de la compañía (no las últimas 24 horas). `days=0`; con otro número: «Los días deben ser 0 (hoy), 7, 30 o 90.»
+
+**El filtro de fecha de Mis envíos dice «Personalizado» aunque yo no lo escogí.** Las fechas que hay no coinciden con ningún rango predefinido (por ejemplo «Esta semana» que quedó abierta de un día para otro). El nombre siempre describe las fechas reales.
+
+**¿Qué es «9 de 9» al pie de la tabla?** Cuántas filas se ven de cuántas cumplen el filtro; con «Cargar más» crece el primer número.
+
+**El pie (Privacidad, Términos…) ya no «flota» a media página.** En la web de escritorio queda pegado abajo cuando el contenido es corto y al final cuando es largo; en el celular, al final del contenido.
+
+**¿Cómo marco varios consignatarios para los avisos sin ir uno a uno?** En Mis consignatarios marque la casilla de cada uno (o «Seleccionar los N que se ven») y use **Avisar por correo / por texto**; la advertencia se acepta una sola vez para el grupo. «Quitar correo / texto» no pide advertencia.
+
+**«1 marcados, 1 no se pudieron. Colmado Sur: El consignatario no tiene correo registrado.»** El marcado múltiple marcó a los que podía y le dice quién no y por qué (sin ese medio registrado, dado de baja o inexistente); registre el dato que falta y vuelva a marcarlo.
+
+**«Escoja al menos un consignatario.» / «Marque hasta 200 consignatarios por vez.» (400).** El marcado múltiple necesita una selección de 1 a 200; busque y seleccione por partes.
+
+**En la web, Mensajes ya no es una sola conversación.** Es una bandeja: a la izquierda «Servicio al cliente» y «Mensajes de mis consignatarios» (con lo sin leer, buscador y «Solo sin leer»); a la derecha la conversación que abra. En el celular sigue como antes.
+
+**¿Cómo exporto una tabla del portal?** «Exportar» al pie de la tabla (web) o el botón «Exportar» bajo el buscador (celular). Baja un CSV con **todo lo que cumple el filtro** (búsqueda, fechas, estatus), hasta 5000 filas; en el celular se comparte el archivo. Está en Mis envíos, Mis facturas, Mi almacén y Mis consignatarios.
+
+**El CSV exportado trae más (o menos) filas que las que veía.** Se exporta lo filtrado completo, no la página: si la pantalla decía «20 de 130», el archivo trae 130. Si pasa de 5000, se exportan las primeras 5000: afine el filtro (fechas) y exporte por partes.
+
+## Lote 213 (web del personal) — Consignatario nuevo en línea
+
+**¿Cómo creo un consignatario que no existe sin usar el ratón?** En la entrada rápida o en la detallada, escriba el nombre en el campo del consignatario y pulse **Enter** sobre **«+ Nuevo consignatario «nombre»»** (al final de la lista; si nada coincide ya está resaltada). Llene Dirección y Pueblo y pulse **Enter**: se crea, queda elegido y el cursor pasa solo a Paquete (rápida) o al siguiente control (detallada). Guía completa en el capítulo 03, sección 1.0b.
+
+**Escribí un nombre y Enter eligió otro consignatario, no el nuevo.** Si lo escrito coincide con consignatarios que ya existen, Enter elige el resaltado (la primera coincidencia). Baje con **↓** hasta **«+ Nuevo consignatario…»** y pulse Enter. Si el consignatario ya existe, elíjalo en vez de crearlo otra vez.
+
+**Pulsé Enter en el formulario y no grabó: el cursor se fue a otro campo.** Falta un obligatorio (Nombre, Dirección o Pueblo): el cursor va al primero que falta y el mensaje sale bajo el campo (`El nombre es obligatorio.`, `La dirección (línea 1) es obligatoria.`, `La ciudad es obligatoria.`). El pueblo se escoge de la lista (escriba el pueblo o el código postal y Enter); escribirlo sin elegirlo no cuenta.
+
+**«Teléfono inválido.»** El teléfono no cumple la máscara de la compañía (Ajustes → Región y formatos). Corríjalo o déjelo vacío; es opcional.
+
+**No veo el campo Teléfono en el formulario en línea.** Hace falta `contacts.manage` y `locations.update` además de `locations.create`. Sin ellos el consignatario se crea sin teléfono; se agrega después en Catálogo → Consignatarios.
+
+**No me ofrece «+ Nuevo consignatario» al escribir.** Falta el permiso `locations.create` (el botón «+» tampoco aparecerá), o aún no se ha elegido el cliente (el dueño del consignatario nuevo es el cliente de la orden).
+
+**El servidor rechazó el alta (por ejemplo, 400 `Máximo 200 caracteres.`).** El mensaje sale dentro del formulario en línea y **no se pierde nada de lo escrito**: corrija y pulse Enter otra vez. Si el cursor no se movió, el error es de un campo que no se ve (queda en el aviso de arriba del formulario).
+
+**Se creó el consignatario pero salió «El consignatario se guardó, pero el teléfono no: …».** El consignatario existe y quedó elegido; solo falló el teléfono. Corríjalo en Catálogo → Consignatarios → Teléfono.
+
+**Pulsé Esc y se cerró el formulario.** Es lo previsto: Esc cancela, no crea nada y devuelve el cursor al campo del consignatario con el nombre que había escrito. (En el campo de Pueblo, el primer Esc cierra la lista de pueblos y el segundo cancela el formulario.)
+
+**Cambié de cliente con el formulario abierto y desapareció.** El consignatario nuevo pertenece al cliente de la orden; al cambiar de cliente el formulario se cierra para no crearlo con el dueño equivocado. Escriba el nombre otra vez con el cliente correcto.
+
+**Quiero llenar más datos (persona de contacto, ventana horaria, notas).** Use el botón «+» junto al campo (abre la ventana completa) o edite el consignatario después en Catálogo → Consignatarios.
+
+## Lote 213 (tanda 2) — Portal del cliente: PDF y Excel con logo, consignatario nuevo en la misma pantalla
+
+**¿Puedo exportar a PDF y a Excel desde el portal?** Sí, en la web: «Exportar · Excel · CSV · PDF» al pie de cada tabla (Mis envíos, Mis facturas, Mi almacén, Mis consignatarios). Se exporta todo lo filtrado. En el celular solo hay CSV.
+
+**¿Qué logo lleva el PDF?** El de la compañía que sirve a su cuenta; si la compañía no subió ninguno (Ajustes → Marca, en la web de la compañía), el de Teikem. Debajo van la compañía, el título, «Generado el …» y los filtros aplicados.
+
+**El PDF o el Excel salen sin logo.** El navegador no pudo leer el logo a tiempo (más de 3 segundos) o el archivo está dañado: el documento sale igual, sin logo. Vuelva a exportar; si sigue, avise a la compañía para que suba el logo de nuevo.
+
+**Escribí un consignatario que no existe y pulsé Enter, ¿qué pasa?** Se abre el bloque «Consignatario nuevo» (nombre, dirección, pueblo, estado, código postal y teléfono) con el cursor donde falta algo; Enter graba el consignatario en ese momento, queda escogido y el cursor sigue en el envío. No necesita el ratón.
+
+**«Escriba el nombre, la dirección y el pueblo del consignatario.»** Faltó uno de los tres obligatorios del consignatario nuevo; el cursor ya está en el primero que falta.
+
+**«El nombre / La dirección / El pueblo del consignatario es obligatorio.» (400).** El servidor recibió el consignatario nuevo sin ese dato; complételo y grabe de nuevo.
+
+**Grabé el consignatario pero el envío dio error.** El consignatario ya quedó guardado (no se pierde ni se duplica); corrija lo que dice el error del envío y guárdelo otra vez.
+
+**El consignatario nuevo no aparece en «Mis consignatarios».** Aparece en cuanto se graba; recargue la pantalla de Avisos/Consignatarios si la tenía abierta.
+
+## Lote 213 (tanda 3) — Colores de los PDF y logo de Teikem; columnas de la rápida
+
+**¿De qué color sale el PDF?** Del color de la compañía: el encabezado de la tabla y el título usan el color de la barra que la compañía definió en Ajustes → Marca, y la línea bajo el encabezado, su color de acento (con la marca de siempre, azul marino y naranja). Vale igual para las tablas del portal y de la web de la compañía, las tablas agrupadas y los reportes.
+
+**El PDF de la web de la compañía sale con el logo de Teikem.** Es lo esperado cuando la compañía no ha subido logo (Ajustes → Marca): se usa el de Teikem. Al subir el suyo, sale el de la compañía.
+
+**En la rápida del portal veo «N.º de envío» y «N.º de factura» en gris con «(automático)».** Su compañía asigna esos números; no se escriben aquí. Si la compañía deja que usted asigne sus propios números, esas dos columnas se pueden escribir (Ajustes de la compañía → ficha del cliente → numeración).
+
+### Lote 213 — lo capturado en la entrada rápida (2026-10-23)
+
+**Guardé un envío en la entrada rápida y no aparece en la tabla de debajo. ¿Se perdió?**
+No se perdió. La tabla muestra el rango **Desde/Hasta** (los dos «hoy» al abrir) y se ensancha sola al guardar una fecha más adelantada o más vieja. Si no sale es porque usted acortó el rango a mano: vuelva a mover «Desde» o «Hasta»; el contador «N de M» le dice cuántos hay en total. El envío ya existe en «Envíos».
+
+**¿Qué suman el «COD total», el «Total de paquetes» y las «Facturas distintas» del pie de la tabla de lo capturado?**
+Solo lo que se está viendo: el rango elegido y la búsqueda. Las cifras de arriba («Líneas», «COD acumulado», «guardados») cuentan todo lo capturado desde que abrió la pantalla. «Facturas distintas» cuenta **números**: si en el campo de factura puso varios separados por coma, cada coma es otro número, y uno repetido cuenta una vez.
+
+**En Mis envíos, mi envío sale «Asignada» o «Sin asignar» y con una píldora «1 intento fallido». ¿Qué significa?**
+Que ese envío ya salió a la calle, no se pudo entregar y volvió al almacén; no está retrasado por otra razón. Se vuelve a asignar y a salir. La píldora dice cuántos intentos fallidos lleva («2 intentos fallidos»). Desaparece cuando el envío termina (entregado, devuelto o cancelado).
+
+**«Ninguna entrada guardada coincide con las fechas y la búsqueda.» / «Ningún envío guardado coincide con las fechas y la búsqueda.»**
+Hay entradas guardadas, pero ninguna del rango elegido con esas palabras. Borre la búsqueda o cambie las fechas. La búsqueda mira cualquier dato (número, factura, consignatario, dirección, paquete, servicio, COD, comentario) y pide que estén todas las palabras.

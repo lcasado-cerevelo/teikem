@@ -167,7 +167,7 @@ public class PortalProfileIndicatorsTests
     }
 
     [Fact]
-    public async Task With_no_deliveries_with_a_promised_date_there_is_no_percentage_and_the_days_are_7_30_or_90()
+    public async Task With_no_deliveries_with_a_promised_date_there_is_no_percentage_and_the_days_are_0_7_30_or_90()
     {
         var x = await NewWorldAsync(ModuleKeys.ClientPortal);
         await using var _ = x.F;
@@ -177,8 +177,33 @@ public class PortalProfileIndicatorsTests
         Assert.Null(empty.OnTimePct);
         Assert.Null(empty.AvgDeliveryHours);
         Assert.Equal(PortalIndicatorsService.InvalidDaysMessage, (await Assert.ThrowsAsync<ValidationException>(() => Indicators(x).GetAsync(15, default))).Message);
+        Assert.Equal("Los días deben ser 0 (hoy), 7, 30 o 90.", PortalIndicatorsService.InvalidDaysMessage);
+        await Assert.ThrowsAsync<ValidationException>(() => Indicators(x).GetAsync(-1, default));
+        Assert.Equal(0, (await Indicators(x).GetAsync(0, default)).Days);                       // 0 = hoy se acepta
         x.F.Tenant.PortalClientId = null;
         await Assert.ThrowsAsync<ForbiddenException>(() => Indicators(x).GetAsync(30, default));
+    }
+
+    [Fact]
+    public async Task Today_counts_only_what_was_created_since_midnight_in_the_company_zone_not_the_last_24_hours()
+    {
+        var x = await NewWorldAsync(ModuleKeys.ClientPortal);
+        await using var _ = x.F;
+        var now = x.Now;   // 2026-10-18 16:00 UTC = 12:00 en Puerto Rico (UTC−4): la medianoche de hoy de la compañía es las 04:00 UTC
+        await OrderAsync(x, x.C1, "H-1", OrderStatuses.Submitted, new DateTime(2026, 10, 18, 4, 30, 0, DateTimeKind.Utc));     // hoy 00:30 en PR: cuenta
+        await OrderAsync(x, x.C1, "H-2", OrderStatuses.Submitted, now.AddMinutes(-5));                                          // hoy: cuenta
+        await OrderAsync(x, x.C1, "H-3", OrderStatuses.Submitted, new DateTime(2026, 10, 18, 3, 0, 0, DateTimeKind.Utc));      // ayer 23:00 en PR (hoy en UTC): no cuenta
+        await OrderAsync(x, x.C1, "H-4", OrderStatuses.Submitted, now.AddHours(-20));                                           // dentro de las últimas 24 horas pero ayer: no cuenta
+        var delivered = await OrderAsync(x, x.C1, "H-5", OrderStatuses.Delivered, now.AddDays(-2));
+        await DeliveredAtAsync(x, delivered, new DateTime(2026, 10, 18, 5, 0, 0, DateTimeKind.Utc));                            // entregada hoy (PR): cuenta como entregada hoy
+        AsPortal(x, x.C1, 41);
+        var pr = new TenantClock(LocalDay.DefaultZone, () => now);
+        var service = new PortalIndicatorsService(x.F.Db, x.F.Tenant, x.F.Lookups, x.F.Get<ModuleService>(), pr);
+
+        var today = await service.GetAsync(0, default);
+
+        Assert.Equal((0, 2, 1), (today.Days, today.Created, today.Delivered));
+        Assert.Equal(5, (await service.GetAsync(7, default)).Created);                         // la semana sí las trae todas
     }
 
     [Fact]

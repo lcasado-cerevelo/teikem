@@ -57,11 +57,27 @@ public sealed class OrderProgressService(TeikemDbContext db, ITenantContext tena
             failedBefore = ids.ToHashSet();
         }
 
+        // cuántos intentos fallidos lleva cada orden que sigue viva (las finales no lo muestran): los intentos de entrega vigentes que no se entregaron o, si el registro no los tiene (órdenes migradas), las veces que pasó a Intento fallido
+        var alive = list.Where(o => !(byCode.TryGetValue(o.StatusCode, out var st) && string.Equals(st.Kind, "TERMINAL", StringComparison.OrdinalIgnoreCase))).Select(o => o.OrderId).Distinct().ToList();
+        var attemptCounts = new Dictionary<int, int>();
+        if (alive.Count > 0)
+        {
+            var typeId = await lookups.GetIdAsync(LookupDomains.EntityType, EntityTypes.TransportOrder, ct);
+            var fromAttempts = await db.Set<Teikem.Domain.Fleet.DeliveryAttempt>().AsNoTracking()
+                .Where(a => alive.Contains(a.TransportOrderId) && a.IsActive && !a.Delivered)
+                .GroupBy(a => a.TransportOrderId).Select(g => new { Id = g.Key, N = g.Count() }).ToListAsync(ct);
+            var fromHistory = await db.EntityStatusHistories.AsNoTracking()
+                .Where(h => h.EntityTypeLookupId == typeId && alive.Contains(h.EntityId) && h.ToStatus!.InternalCode == OrderStatuses.Failed)
+                .GroupBy(h => h.EntityId).Select(g => new { Id = g.Key, N = g.Count() }).ToListAsync(ct);
+            foreach (var x in fromHistory) attemptCounts[x.Id] = x.N;
+            foreach (var x in fromAttempts) attemptCounts[x.Id] = Math.Max(x.N, attemptCounts.GetValueOrDefault(x.Id));
+        }
+
         var result = new Dictionary<int, OrderProgressResult>();
         foreach (var o in list)
         {
             byCode.TryGetValue(o.StatusCode, out var current);
-            result[o.OrderId] = OrderProgress.Compute(o.StatusCode, current?.Label ?? o.StatusCode, current?.Kind, failedBefore.Contains(o.OrderId), tenant.Lang);
+            result[o.OrderId] = OrderProgress.Compute(o.StatusCode, current?.Label ?? o.StatusCode, current?.Kind, failedBefore.Contains(o.OrderId), tenant.Lang).WithFailedAttempts(attemptCounts.GetValueOrDefault(o.OrderId));
         }
         return result;
     }

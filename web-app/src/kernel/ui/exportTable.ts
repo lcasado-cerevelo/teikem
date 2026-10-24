@@ -2,7 +2,8 @@
 // cargadas. Las funciones de armado (buildExportData, toCsv, exportFileName…) son puras y se prueban sin DOM; las de
 // descarga cargan SheetJS / jsPDF bajo demanda (import dinámico) para no inflar el paquete inicial.
 import type { jsPDF } from 'jspdf'
-import { fitLogo, hasCompanyLogo, loadCompanyPdfLogo, type PdfLogo } from './pdfLogo'
+import { fitLogo, loadTableHeadingLogo, type PdfLogo } from './pdfLogo'
+import { readPdfBrand } from './pdfBrand'
 import { isValidElement, type ReactNode } from 'react'
 import { parseApiDate } from '../api/dates'
 import { tenantTimeZone, tenantToday } from '../api/tenantZone'
@@ -332,7 +333,6 @@ export function exportHeadingLines(spec: ExportHeadingSpec): { kind: ExportHeadi
 }
 
 type Rgb = [number, number, number]
-const PDF_INK: Rgb = [24, 33, 54]
 const PDF_MUTED: Rgb = [91, 104, 128]
 
 /**
@@ -341,13 +341,14 @@ const PDF_MUTED: Rgb = [91, 104, 128]
  * tabla. Lo comparten el PDF de `DataTable` y el agrupado (`exportGrouped.ts`).
  */
 export function drawPdfHeading(doc: jsPDF, spec: ExportHeadingSpec, x: number, y: number, maxWidth: number): number {
+  const brand = readPdfBrand()   // 2026-10-23: los colores son los de la marca de la compañía
   let cy = y
   // Lote 188: el logo de la compañía arriba del encabezado
   if (spec.logo) {
     try {
       const { w, h } = fitLogo(spec.logo, Math.min(150, maxWidth), 34)
       if (spec.logo.plate) {
-        doc.setFillColor(...(spec.logo.plate === 'white' ? ([255, 255, 255] as [number, number, number]) : ([11, 44, 102] as [number, number, number])))
+        doc.setFillColor(...(spec.logo.plate === 'white' ? ([255, 255, 255] as [number, number, number]) : brand.navy))
         doc.roundedRect(x - 3, cy + 1, w + 6, h + 6, 3, 3, 'F')
       }
       doc.addImage(spec.logo.dataUrl, 'PNG', x, cy + 4, w, h)
@@ -367,7 +368,7 @@ export function drawPdfHeading(doc: jsPDF, spec: ExportHeadingSpec, x: number, y
     } else if (line.kind === 'title') {
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(13)
-      doc.setTextColor(...PDF_INK)
+      doc.setTextColor(...brand.navy)
       doc.text(text, x, cy + 10)
       cy += 17
     } else {
@@ -379,8 +380,12 @@ export function drawPdfHeading(doc: jsPDF, spec: ExportHeadingSpec, x: number, y
       cy += 10 * wrapped.length + 1
     }
   }
+  // filete con el primer acento de la marca bajo el encabezado
+  doc.setDrawColor(...brand.flow)
+  doc.setLineWidth(1.4)
+  doc.line(x, cy + 3, x + maxWidth, cy + 3)
   doc.setTextColor(0, 0, 0)
-  return cy + 6
+  return cy + 10
 }
 
 /** Filas de la hoja de Excel: el encabezado (un renglón por línea), una fila en blanco y la tabla. `headerRow` = índice
@@ -449,7 +454,9 @@ export async function renderTablePdf(data: ExportData, options: RenderTablePdfOp
     compress: options.compress ?? true,
   })
   const margin = 32
-  if (options.logo === undefined && hasCompanyLogo()) options = { ...options, logo: await loadCompanyPdfLogo('light') }
+  // el logo de la compañía y, si no subió ninguno, el de Teikem
+  if (options.logo === undefined) options = { ...options, logo: await loadTableHeadingLogo() }
+  const brand = readPdfBrand()
   const startY = drawPdfHeading(doc, options, margin, margin - 6, doc.internal.pageSize.getWidth() - margin * 2)
   const columnStyles: Record<number, { halign: 'right' }> = {}
   data.numeric.forEach((n, i) => {
@@ -461,8 +468,8 @@ export async function renderTablePdf(data: ExportData, options: RenderTablePdfOp
     startY,
     margin: { left: margin, right: margin, top: margin, bottom: margin },
     styles: { font: 'helvetica', fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
-    headStyles: { fillColor: [38, 50, 72], textColor: 255, fontStyle: 'bold' },
-    alternateRowStyles: { fillColor: [245, 247, 250] },
+    headStyles: { fillColor: brand.navy, textColor: brand.onNavy, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: brand.zebra },
     columnStyles,
     didDrawPage: () => {
       const page = doc.getNumberOfPages()

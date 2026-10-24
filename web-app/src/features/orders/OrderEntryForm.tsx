@@ -19,7 +19,9 @@ import { IconTag } from '../../kernel/ui/screenIcons'
 import { useClient } from '../clients/api'
 import { useSpecialServices } from '../clients/contractApi'
 import { useConsigneeContacts, useSelectedConsignee } from '../consignees/api'
+import { ConsigneeInlineForm } from '../consignees/ConsigneeInlineForm'
 import { ConsigneePickerInput } from '../consignees/ConsigneePicker'
+import { useInlineConsignee } from '../consignees/useInlineConsignee'
 import { pickPhone } from '../consignees/consigneeRules'
 import { useCreateOrder, type OrderDetailDto } from './api'
 import { CreditOverrideDialog } from './CreditOverrideDialog'
@@ -104,6 +106,13 @@ export function OrderEntryForm({ onCreated, labelOnSave }: OrderEntryFormProps) 
   const isSpecial = useWatch({ control: form.control, name: 'isSpecial' })
   const serviceType = useWatch({ control: form.control, name: 'serviceType' })
   const consigneeId = useWatch({ control: form.control, name: 'consigneeLocationPublicId' })
+  // Lote 213: consignatario nuevo en línea (panel bajo el buscador; al grabar el foco pasa al siguiente control)
+  const inline = useInlineConsignee({ comboSelector: '#oe-cons-pick input[role="combobox"]', nextSelector: '.oe-pkg select' })
+  const resetInline = inline.reset
+  useEffect(() => {
+    // otro cliente = otro dueño: el panel abierto ya no corresponde
+    resetInline()
+  }, [clientId, resetInline])
   const specialServiceId = useWatch({ control: form.control, name: 'specialServiceId' })
   const packagesValue = useWatch({ control: form.control, name: 'packages' })
   const codAmount = useWatch({ control: form.control, name: 'codAmount' })
@@ -296,10 +305,24 @@ export function OrderEntryForm({ onCreated, labelOnSave }: OrderEntryFormProps) 
                 required
                 help={consignee ? (consignee.allowDupInvoice ? t('orders.entry.dupAllowed') : t('orders.entry.dupNotAllowed')) : t('orders.entry.consigneeHelp')}
               >
-                <ConsigneePickerInput clientPublicId={clientId} />
+                <div id="oe-cons-pick">
+                  <ConsigneePickerInput clientPublicId={clientId} inline={inline} />
+                </div>
               </Field>
               <ReadOnlyField label={t('orders.entry.consigneeNumber')} value={consignee?.code ?? ''} mono />
             </div>
+            {inline.draft !== null && clientId && (
+              <ConsigneeInlineForm
+                clientPublicId={clientId}
+                initialName={inline.draft}
+                idPrefix="oe-nc"
+                onSaved={(publicId) => {
+                  form.setValue('consigneeLocationPublicId', publicId, { shouldDirty: true, shouldValidate: true })
+                  inline.done()
+                }}
+                onCancel={inline.cancel}
+              />
+            )}
             <ReadOnlyField label={t('orders.entry.address')} value={consignee ? [consignee.line1, consignee.line2].filter(Boolean).join(', ') : ''} />
             <div className="r3">
               <ReadOnlyField label={t('orders.entry.town')} value={consignee?.city ?? ''} />

@@ -37,6 +37,10 @@ describe('IndicatorsCard', () => {
     await screen.findByTestId('ind-created')
     await fireEvent.press(screen.getByTestId('indicators-days-7'))
     await waitFor(() => expect(get).toHaveBeenLastCalledWith(7))
+    // «Hoy» pide 0 días
+    expect(screen.getByText('Hoy')).toBeTruthy()
+    await fireEvent.press(screen.getByTestId('indicators-days-0'))
+    await waitFor(() => expect(get).toHaveBeenLastCalledWith(0))
     expect(screen.queryByTestId('ind-ontime')).toBeNull()
     expect(screen.queryByTestId('ind-hours')).toBeNull()
     expect(screen.queryByTestId('ind-invoices')).toBeNull()

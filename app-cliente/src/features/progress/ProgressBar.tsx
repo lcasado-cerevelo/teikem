@@ -4,6 +4,7 @@ import { Text, View } from 'react-native'
 
 import { useT } from '../../kernel/i18n/useT'
 import { useColors, type Palette } from '../../kernel/ui/theme'
+import { FailedAttemptsChip } from './FailedAttempts'
 import { progressPercent, segmentKinds, stepKind, type ProgressState, type SegmentKind } from './progressRules'
 
 function fillOf(c: Palette): Record<SegmentKind, string> {
@@ -15,6 +16,8 @@ export interface ProgressInfo {
   total: number
   state: ProgressState
   statusLabel: string
+  /** Intentos fallidos que lleva la orden (0 = ninguno): se pinta una píldora. */
+  failedAttempts?: number
 }
 
 /** La barra sola con su texto («Paso 3 de 8 · Recogido»); `compact` la hace más baja para las listas. */
@@ -47,6 +50,11 @@ export function ProgressBar({ progress, compact = false }: { progress: ProgressI
         ))}
       </View>
       <Text style={{ fontSize: compact ? 12 : 13, color: progress.state === 'ALERT' ? colors.warn : colors.muted, fontWeight: progress.state === 'ALERT' ? '700' : '500' }}>{label}</Text>
+      {(progress.failedAttempts ?? 0) > 0 && (
+        <View style={{ alignItems: 'flex-start' }} testID="failed-attempts">
+          <FailedAttemptsChip count={progress.failedAttempts} />
+        </View>
+      )}
     </View>
   )
 }

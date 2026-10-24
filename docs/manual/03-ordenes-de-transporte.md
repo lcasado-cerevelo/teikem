@@ -44,6 +44,38 @@ Convenciones del capítulo:
 - **Las filas con una fecha distinta de hoy se sombrean** (con una marca amarilla a la izquierda, sin cambiar el alto de la fila) y la leyenda de la barra lo recuerda; la fila que se está llenando también se sombrea en cuanto se cambia la fecha.
 - **Servicio y paquete por cliente:** cada cliente puede tener su **servicio y su paquete por omisión** (Clientes → ficha → Perfil → «Servicio por omisión» / «Paquete por omisión»; vacío = los de la compañía). Al elegir el cliente, la fila ya sale con ellos, y la fila nueva también.
 
+**La tabla de lo capturado: filtros y resumen (Lote 213, 2026-10-23, dictado de Luis).** Debajo de la fila de captura, las entradas guardadas en esta sesión tienen:
+- **Desde / Hasta:** el rango de fechas que se ve (controles de fecha del kit); al abrir los dos son **hoy**. **Guardar una orden con otra fecha ensancha el rango solo**: con una fecha más adelantada el «desde» se queda en hoy y el «hasta» pasa a esa fecha; con una más vieja baja el «desde». Si se mueve un extremo a mano nunca queda al revés (el otro lo sigue). El contador dice «N de M entradas guardadas».
+- **Buscar en lo capturado:** búsqueda libre (`QBox`) sobre cualquier dato mostrado: n.º de envío, factura, consignatario, dirección, paquete, servicio, COD, comentario y fecha; todas las palabras, sin importar mayúsculas ni acentos. Sin coincidencias: «Ninguna entrada guardada coincide con el día y la búsqueda.»
+- **Resumen en el pie:** «**N × Paquete · Servicio**» por combinación (la más numerosa primero), «**Total de paquetes: N**», «**Facturas distintas: N**» y «**COD total: $X**», calculados sobre lo que se ve (rango + búsqueda). **Facturas distintas** cuenta números: si en el campo de factura hay varios **separados por coma**, **cada coma es otro número**; los repetidos (sin importar mayúsculas) cuentan una vez y las órdenes sin factura no suman. Las barras superiores «Líneas» y «COD acumulado» siguen contando todo lo capturado.
+
+![Entrada rápida con rango, búsqueda y resumen](frontend/img/l213-personal-rapida-rango-resumen.png)
+
+### 1.0b Consignatario nuevo en línea (Lote 213, dictado de Luis; web del personal)
+
+**Qué hace.** Si el consignatario no existe, se crea **ahí mismo, sin ratón y sin salir de la captura**: en la entrada rápida y en la detallada. El botón «+» y su ventana siguen existiendo para quien prefiera el ratón (con más campos: número, persona de contacto, ventana horaria, notas…).
+
+**Quién puede.** `locations.create` (sin él no se ofrece nada). El campo **Teléfono** solo aparece si además tiene `contacts.manage` y `locations.update`. Módulo CATALOG, como el directorio de consignatarios.
+
+**Cómo se usa (solo teclado):**
+1. Elija el cliente. En el campo del consignatario **escriba el nombre** que no existe. Al final de la lista aparece **«+ Nuevo consignatario «nombre»»**; si nada coincide, ya está resaltada. Con otras coincidencias se llega con **↓**. **Enter** (o clic) la elige.
+2. Se abre el formulario en línea (sin ventana): en la **entrada rápida**, como una fila justo debajo de la fila que está llenando (no mueve ni borra la fecha, la factura ni nada de lo escrito); en la **detallada**, como un panel dentro de la sección 02, debajo del buscador. El **cursor cae solo en el primer campo vacío** (normalmente **Dirección**, porque el nombre ya viene escrito).
+3. Campos: **Nombre\***, **Dirección\***, **Pueblo\*** (el mismo selector de pueblo o código postal del catálogo, solo ZIP de entrega; llena ZIP, estado y país) y **Teléfono** (opcional; con la máscara de la compañía). El consignatario nace de tipo entrega, con país Puerto Rico si el pueblo no trae otro, y **su dueño es el cliente de la orden**.
+4. **Enter en cualquier campo graba.** Si falta un obligatorio, **el cursor va al primer campo que falta** y sale su mensaje; si está completo, se crea. Al elegir el pueblo con Enter el cursor pasa al teléfono (si se ve), para que el siguiente Enter grabe.
+5. Al grabar: aviso «Consignatario creado: nombre», el nuevo **queda elegido**, el formulario se cierra y **el cursor pasa solo al siguiente campo**: en la rápida el desplegable **Paquete**; en la detallada el siguiente control después del consignatario (el interruptor de entrega especial). En la rápida, **Enter en cualquier otro campo guarda la orden** como siempre.
+6. **Esc** cancela y devuelve el cursor al campo del consignatario **con el texto que había escrito**. **Tab / Mayús+Tab** recorren los campos; en la rápida, Tab desde el último campo sigue a Paquete sin grabar ni atrapar el cursor. Cambiar el cliente cierra el formulario.
+
+**Mensajes de error exactos.** Los de campos vacíos o largos salen en la pantalla, sin llamar al servidor, bajo el campo:
+| Mensaje | Cuándo |
+|---|---|
+| `El nombre es obligatorio.` | Nombre vacío |
+| `La dirección (línea 1) es obligatoria.` | Dirección vacía |
+| `La ciudad es obligatoria.` | Sin pueblo elegido |
+| `Máximo 200 caracteres.` / `Máximo 100 caracteres.` | Nombre o dirección (200); pueblo (100) |
+| `Teléfono inválido.` | Teléfono que no cumple la máscara de la compañía |
+
+Si el servidor rechaza el alta, el mensaje sale **en el mismo formulario y lo escrito se conserva** (se corrige y se vuelve a pulsar Enter): `El nombre es obligatorio.`, `La dirección (línea 1) es obligatoria.` o `La ciudad es obligatoria.` (400, campos `name`, `line1`, `city`); `Máximo N caracteres.` (400); sin permiso, 403; sin sesión, 401. Si el consignatario se creó pero el **teléfono** no, aparece «El consignatario se guardó, pero el teléfono no: motivo» y el consignatario queda elegido igual (el teléfono se corrige después en Catálogo → Consignatarios).
+
 ### 1.1 Alta (entrada rápida, detallada o de entrega especial)
 
 Qué hace: crea un envío de transporte. Nace en el estatus inicial (**SUBMITTED**, «Sometido») con hasta dos paradas — **recogido**
