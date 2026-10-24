@@ -1,8 +1,7 @@
 // Exportar una tabla del portal (2026-10-23, pedido de Luis: «como en la aplicación del personal: se exporta lo que está filtrado», y «también a PDF, con el logo de la compañía o, si no tiene, el de
-// Teikem»). Se traen TODAS las filas que cumplen el filtro (no solo las que se ven, hasta MAX_EXPORT_ROWS) y se bajan en el formato escogido: Excel (.xlsx), CSV o PDF. En la web los tres; en el celular
-// solo CSV (se comparte el archivo). Excel y PDF llevan arriba el logo, la compañía, el título, «Generado el …» y la oración de filtros, como los de la web del personal; el CSV lleva solo la tabla.
+// Teikem»). Se traen TODAS las filas que cumplen el filtro (no solo las que se ven, hasta MAX_EXPORT_ROWS) y se bajan en el formato escogido: Excel (.xlsx), CSV o PDF. En la web y en la app instalada los tres;
+// en la app se guarda el archivo y se abre el menú de compartir. Excel y PDF llevan arriba el logo, la compañía, el título, «Generado el …» y la oración de filtros, como los de la web del personal; el CSV lleva solo la tabla.
 // Lo puro (armar los datos, el texto del CSV, el nombre del archivo, la oración de filtros) se prueba en tableExport.test.ts; Excel y PDF viven en exportFiles.web.ts (se cargan bajo demanda).
-import { Platform } from 'react-native'
 
 import { csvCell, csvFileName, saveCsv } from '../../features/reports/csv'
 import { getPortalBrandInfo } from '../brand/portalBrand'
@@ -11,8 +10,8 @@ import { getLang, t, translate, type Lang } from '../i18n/i18n'
 export type CsvValue = string | number | boolean | null | undefined
 export type ExportFormat = 'xlsx' | 'csv' | 'pdf'
 
-/** Formatos que ofrece este aparato: los tres en la web; solo CSV en el teléfono. */
-export const exportFormats = (): readonly ExportFormat[] => (Platform.OS === 'web' ? ['xlsx', 'csv', 'pdf'] : ['csv'])
+/** Formatos que ofrece toda tabla: Excel, CSV y PDF, en la web y en la app instalada (el estándar de Luis, 2026-10-24). */
+export const exportFormats = (): readonly ExportFormat[] => ['xlsx', 'csv', 'pdf']
 
 export interface CsvColumn<T> {
   title: string
@@ -109,17 +108,18 @@ export interface RunExportOptions<T> {
   filters?: string | null
 }
 
-/** Arma y baja (web) o comparte (celular) el archivo en el formato pedido. En el celular todo sale como CSV. */
+/** Arma y baja (web) o guarda y comparte (app instalada) el archivo en el formato pedido: Excel, CSV o PDF. */
 export async function runExport<T>(o: RunExportOptions<T>): Promise<void> {
   const yes = t('table.yes')
   const no = t('table.no')
-  if (o.format === 'csv' || Platform.OS !== 'web') {
+  if (o.format === 'csv') {
     await saveCsv(exportFileName(o.title, 'csv'), toCsvText(o.columns, o.rows, yes, no))
     return
   }
   const data = buildExportData(o.columns, o.rows, yes, no)
   const heading: ExportHeading = { company: getPortalBrandInfo().companyName, title: o.title, generatedAt: new Date(), filters: o.filters ?? null, lang: getLang() }
-  const files = await import('./exportFiles')
+  // `require` y no `import()`: el módulo de cada plataforma (exportFiles.ts en la app, exportFiles.web.ts en la web) es chico; jsPDF y SheetJS sí se cargan bajo demanda dentro de él
+  const files = require('./exportFiles') as typeof import('./exportFiles')
   if (o.format === 'xlsx') await files.saveXlsx(data, exportFileName(o.title, 'xlsx'), heading)
   else await files.savePdf(data, exportFileName(o.title, 'pdf'), heading)
 }

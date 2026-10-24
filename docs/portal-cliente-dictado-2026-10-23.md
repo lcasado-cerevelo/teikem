@@ -122,7 +122,7 @@ de la persona), los predeterminados del cliente/compañía y las banderas `clien
 ## Estado (2026-10-23, Lote 213 — ver [lote213-portal-decisiones.md](lote213-portal-decisiones.md))
 | Punto | Estado |
 |---|---|
-| 0 Celular solo detallada | Hecho (ya era así; documentado; tablet apaisada queda como decisión 1) |
+| 0 Celular solo detallada | Hecho; desde el dictado 6 (2026-10-24) la forma móvil es para app instalada, tabletas y celulares, y la ancha solo para web en computadora |
 | 0 Toda tabla con total «N de M» | Hecho (`DataTable total`; Mis envíos, Mis consignatarios, conversaciones; texto en celular) |
 | 1 Inicio: indicador «Hoy» | Hecho (API `days=0` desde la medianoche de la compañía) |
 | 2 Pie fijo abajo en la web | Hecho (`Screen` + `LegalFooter` a todo el ancho con línea) |
@@ -136,7 +136,7 @@ de la persona), los predeterminados del cliente/compañía y las banderas `clien
 | 9 Marcar varios consignatarios | Hecho (selección + barra de acciones + una advertencia; endpoint `bulk`) |
 | Exportar tablas (dictado 2) | Hecho: «Exportar» en toda tabla y lista (lo filtrado, hasta 5000 filas, CSV): envíos, facturas, almacén, consignatarios; informes ya exportaban |
 | Rápida = personal, Tab/desplegables/Enter (dictado 2) | Cotejado campo por campo (tabla en lote213-portal-decisiones.md) y verificado con Playwright sin ratón |
-| Exportar también a PDF y Excel con logo de la compañía o de Teikem (dictado 3) | Hecho en la web del portal (Excel, CSV, PDF); en el celular solo CSV |
+| Exportar también a PDF y Excel con logo de la compañía o de Teikem (dictado 3) | Hecho en la web y en la app instalada (Excel, CSV, PDF; dictado 6: «el estándar es CSV, PDF y Excel»); Informes incluidos. App: necesita APK nuevo y prueba en un aparato |
 | Consignatario nuevo en la misma pantalla, sin ratón, en el portal y en la web del personal (dictado 3) | Hecho: portal (rápida y detallada, endpoint `POST /api/v1/portal/consignees`) y personal (rápida y detallada); verificado con el API real |
 | 10 Verificación | `npm run check` y capturas Playwright en `app-cliente/visual-shots/`; pruebas del servidor del área verdes (build normal bloqueado por DLL en uso; se compiló aparte) |
 | Tabla de lo capturado: filtro de un día (hoy), búsqueda libre y resumen por paquete/servicio/COD en el pie (dictado 4) | Hecho en la rápida del portal y en la del personal; verificado con el API real (`lote213-capturado-filtros-resumen.spec.ts`) |

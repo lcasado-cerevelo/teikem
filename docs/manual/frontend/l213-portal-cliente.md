@@ -28,6 +28,15 @@ La tabla de debajo de la fila rápida muestra un **rango Desde/Hasta** (los dos 
 ![Mis envíos con intentos fallidos](img/l213-portal-envios-intentos-fallidos.png)
 Un envío que salió a la calle, no se entregó y volvió al almacén ya no parece uno «retrasado»: bajo su estatus lleva una **píldora ámbar con «1 intento fallido» / «2 intentos fallidos»**. Sale en la tabla de Mis envíos y del Inicio, y en la barra de progreso de las tarjetas del celular, la ficha del envío y el espacio del consignatario. Las órdenes terminadas (entregada, devuelta, cancelada) no la llevan y las que nunca fallaron tampoco. En el Excel/CSV/PDF de la tabla el estatus sale con la cuenta («Sin asignar · 1 intento fallido»).
 
+## Una vista por aparato (2026-10-24)
+| Computadora (web) | Tableta (1194 px, táctil) | Celular |
+|---|---|---|
+| ![Computadora](img/l213-computadora-nuevo-envio.png) | ![Tableta](img/l213-tableta-nuevo-envio.png) | ![Celular](img/l213-celular-nuevo-envio.png) |
+
+La **web en computadora** (puntero fino, 900 px o más) ve la forma ancha: barra superior, tablas y «Nuevo envío» con la entrada Rápida. La **app instalada, las tabletas y los celulares** (también en el navegador) ven la forma móvil: pestañas, tarjetas y «Nuevo envío» solo detallado, aunque la tableta mida más de 900 px. Verificado con Playwright emulando una tableta táctil (`e2e/lote213-vista-por-dispositivo.spec.ts`).
+
+**Exportar es igual en todas partes: Excel, CSV y PDF** (web, tableta, celular, app instalada e Informes). En el navegador se baja el archivo; en la app instalada se guarda y se abre «Compartir» (necesita el APK nuevo con `expo-print`, `expo-sharing` y `expo-file-system`).
+
 ## Exportar lo filtrado
 ![Exportar en Mis envíos](img/l213-envios-exportar.png)
 ![Exportar en Mi almacén](img/l213-almacen-exportar.png)

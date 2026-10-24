@@ -54,6 +54,7 @@ const config: ExpoConfig = {
     'expo-router',
     ['expo-splash-screen', { image: './assets/splash-icon.png', backgroundColor: brandBlue, resizeMode: 'contain', imageWidth: 160 }],
     'expo-secure-store',
+    'expo-sharing',
     ['expo-local-authentication', { faceIDPermission: 'Teikem Clientes usa Face ID para abrir el portal sin escribir su contraseña.' }],
     // APK firmado con la llave propia (TEIKEM_RELEASE_KEYSTORE_*), igual que la app del almacén; sin las variables cae a la llave de depuración
     './plugins/withAndroidReleaseSigning',

@@ -2,7 +2,8 @@
 // Los dos llevan arriba el LOGO (el de la compañía si subió uno; si no, el de Teikem), la compañía, el título, «Generado el …» y la oración de filtros. Fechas AAAA-MM-DD salen como fecha en Excel.
 // En el PDF (A4, horizontal con más de 5 columnas) los números van a la derecha. Las fuentes estándar de jsPDF solo cubren Latin-1: `pdfSafeText` cambia lo demás por su parecido más cercano.
 import { loadPdfLogoSource } from '../brand/portalBrand'
-import { brandedPalette, getBrand } from './theme'
+import { pdfColors } from './exportColors'
+import { buildWorkbook } from './exportWorkbook'
 import { generatedText, type ExportData, type ExportHeading } from './tableExport'
 
 /** Las fuentes estándar de jsPDF solo cubren Latin-1 (el español cabe): lo demás se reemplaza por su equivalente más cercano. */
@@ -15,28 +16,6 @@ export function pdfSafeText(s: string): string {
     .replace(/[→▸]/g, '>')
     .replace(/[  ]/g, ' ')
     .replace(/[^\u0000-ÿ]/g, '?')
-}
-
-const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
-
-type Rgb = [number, number, number]
-const hexToRgb = (hex: string): Rgb => {
-  const n = Number.parseInt(hex.replace('#', '').slice(0, 6), 16)
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
-}
-const mix = (a: Rgb, b: Rgb, share: number): Rgb => [0, 1, 2].map((i) => Math.round(a[i] * share + b[i] * (1 - share))) as Rgb
-
-/** Los colores del PDF (hoja blanca) son los de la marca de la compañía (Ajustes → Marca): la barra para encabezados y títulos, el acento para el filete; sin marca propia, los de siempre del portal. */
-function pdfColors() {
-  const pal = brandedPalette('light', getBrand())
-  const navy = hexToRgb(pal.brand)
-  return { navy, onNavy: hexToRgb(pal.onBrand), flow: hexToRgb(pal.flow), zebra: mix(navy, [255, 255, 255], 0.05) }
-}
-
-/** Texto de fecha AAAA-MM-DD → Date a mediodía local (Excel la guarda como fecha). */
-const dayToDate = (s: string) => {
-  const [y, m, d] = s.split('-').map(Number)
-  return new Date(y, m - 1, d, 12)
 }
 
 interface Raster {
@@ -94,22 +73,7 @@ const fit = (logo: Pick<Raster, 'width' | 'height'>, maxW: number, maxH: number)
 
 export async function saveXlsx(data: ExportData, fileName: string, heading: ExportHeading): Promise<void> {
   const XLSX = await import('xlsx')
-  const aoa: (string | number | Date | null)[][] = []
-  if (heading.company?.trim()) aoa.push([heading.company.trim()])
-  aoa.push([heading.title])
-  aoa.push([generatedText(heading.generatedAt, heading.lang)])
-  if (heading.filters?.trim()) aoa.push([heading.filters.trim()])
-  aoa.push([])
-  const headerRow = aoa.length
-  aoa.push(data.headers)
-  for (const r of data.rows) aoa.push(r.map((v) => (typeof v === 'string' && ISO_DAY.test(v) ? dayToDate(v) : v)))
-  const ws = XLSX.utils.aoa_to_sheet(aoa, { cellDates: true, dateNF: 'yyyy-mm-dd' })
-  // anchos por el contenido (tope 50), encabezados con filtro automático
-  ws['!cols'] = data.headers.map((h, i) => ({ wch: Math.min(50, Math.max(h.length, 8, ...data.rows.map((r) => (r[i] === null ? 0 : String(r[i]).length))) + 2) }))
-  if (data.headers.length > 0 && data.rows.length > 0) ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: headerRow, c: 0 }, e: { r: headerRow + data.rows.length, c: data.headers.length - 1 } }) }
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, heading.title.replace(/[\\/?*[\]:]/g, ' ').slice(0, 31) || 'Hoja1')
-  XLSX.writeFile(wb, fileName, { compression: true })
+  XLSX.writeFile(buildWorkbook(XLSX, data, heading), fileName, { compression: true })
 }
 
 export async function savePdf(data: ExportData, fileName: string, heading: ExportHeading): Promise<void> {

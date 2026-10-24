@@ -24,7 +24,7 @@ export function csvFileName(report: string, day: string): string {
   return `teikem-${report.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${day}.csv`
 }
 
-/** Baja el archivo (web) o lo comparte/guarda (celular). */
+/** Baja el archivo (web) o lo guarda y lo comparte (app instalada). */
 export async function saveCsv(fileName: string, csv: string): Promise<void> {
   if (Platform.OS === 'web') {
     const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' })
@@ -38,5 +38,11 @@ export async function saveCsv(fileName: string, csv: string): Promise<void> {
     URL.revokeObjectURL(url)
     return
   }
-  await Share.share({ message: csv, title: fileName })
+  // app instalada: un archivo .csv (con la marca UTF-8 para que Excel lea los acentos) que se comparte; si el aparato no puede, se comparte el texto
+  try {
+    const { shareFile } = require('../../kernel/ui/shareFile') as typeof import('../../kernel/ui/shareFile')
+    await shareFile(fileName, '\uFEFF' + csv, 'csv')
+  } catch {
+    await Share.share({ message: csv, title: fileName })
+  }
 }

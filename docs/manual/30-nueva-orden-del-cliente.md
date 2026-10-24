@@ -13,7 +13,8 @@ Módulo **CLIENT_PORTAL** encendido. El cliente **sale de la sesión** (nunca de
 
 ## 2. Dos maneras de entrar
 - **Web ancha (computadora):** selector **Rápida / Detallada** arriba a la derecha; se recuerda la última usada (por omisión, Rápida).
-- **Celular (app instalada o navegador angosto, menos de 900 px): solo la Detallada.** La rápida es exclusiva de la computadora.
+- **App instalada, tableta y celular: solo la Detallada.** La rápida es exclusiva de la web en computadora.
+- **Vista por aparato (regla de Luis, 2026-10-24):** la **app instalada, las tabletas y los celulares** (también en el navegador, aunque la tableta mida 1194 px o más) ven la forma móvil: pestañas abajo, tarjetas y **solo la entrada Detallada**. La **web en una computadora** (puntero fino y ventana de 900 px o más) ve la forma ancha: barra superior, tablas y la entrada Rápida con teclado. Un navegador de computadora con la ventana angosta (menos de 900 px) también cae en la forma móvil.
 
 ### 2.1 Entrada rápida (web ancha) — todo con el teclado
 Una fila por envío (1 paquete, 1 pieza), como la «Entrada rápida» del personal. Columnas (**siempre las mismas que en la rápida de la web de la compañía**): **Fecha** (calendario del navegador; es la fecha lista y la límite), **N.º de envío** y **N.º de factura** (se escriben solo si la compañía deja que el cliente asigne sus números; si no, salen **apagadas con «(automático)»** y Tab las salta, igual que en la web de la compañía), **Consignatario** (buscador con autocompletar: nombre, número, dirección o pueblo), **Dirección · Pueblo** (solo lectura, del elegido), **Tipo de paquete** (desplegable; viene el predeterminado del cliente o de la compañía), **COD**, **Servicio** (desplegable; predeterminado) y **Comentario**.
@@ -82,7 +83,7 @@ En pantalla, antes de mandar: «Escoja el tipo de servicio.», «Escoja el tipo 
 ## 5. Casos frecuentes
 - **El consignatario nuevo se grabó pero el envío no:** es normal si el servidor rechazó el envío (crédito, fecha…): el consignatario ya está en su lista; corrija lo que dice el mensaje y guarde de nuevo.
 - **No veo el botón «Nuevo envío»:** su rol es de solo consulta; que la compañía cambie su rol (ficha del cliente → Usuarios de portal, en la web de la compañía).
-- **En el teléfono no me sale la entrada rápida:** es así a propósito: en el celular solo existe la detallada. La rápida es de la computadora (ventana de 900 px o más).
+- **En el teléfono o la tableta no me sale la entrada rápida:** es así a propósito: en la app instalada, la tableta y el celular solo existe la detallada. La rápida es de la web en computadora (ventana de 900 px o más).
 - **Tab en la fecha no sale del campo a la primera:** el calendario del navegador recorre mes, día y año con Tab antes de pasar al siguiente campo (comportamiento del navegador).
 - **Mi envío aparece «Sometido»:** así nacen todos los envíos (Lote 106): ya está cotizado si su cuenta tiene contrato y tarifa, y mientras siga Sometido se puede corregir; después lo recogen y avanza solo.
 - **El desplegable de servicio no trae el que yo uso:** la compañía lo apagó para su cuenta o para todos; pídaselo a la compañía.

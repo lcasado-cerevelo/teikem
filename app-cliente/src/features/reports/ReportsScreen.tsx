@@ -6,14 +6,14 @@ import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { apiErrorMessage } from '../../kernel/api/client'
 import type { Lang } from '../../kernel/i18n/i18n'
 import { useT } from '../../kernel/i18n/useT'
-import { PageHeader } from '../../kernel/ui/desk'
+import { ExportButton, PageHeader } from '../../kernel/ui/desk'
 import { useIsWide } from '../../kernel/ui/layout'
+import { filtersSentence, runExport, type ExportFormat } from '../../kernel/ui/tableExport'
 import { Button, Card, Muted, Notice, Screen, Spinner, Title, useColors } from '../../kernel/ui/ui'
 import { useOffer } from '../capabilities'
 import { formatDate, formatDateTime, formatMoney, formatQty } from '../format'
-import { csvFileName, saveCsv, toCsv } from './csv'
 import { availableReports, totalsOf, type CellValue, type ColType, type ReportDef, type ReportRow } from './reportDefs'
-import { monthRange, PRESETS, type PresetId, rangeOf, todayDay } from './ranges'
+import { monthRange, PRESETS, type PresetId, rangeOf } from './ranges'
 
 const PREVIEW_ROWS = 200
 const COL_WIDTH: Record<ColType, number> = { text: 140, date: 104, datetime: 150, int: 76, qty: 90, money: 104 }
@@ -84,7 +84,6 @@ function ReportView({ report, onBack }: { report: ReportDef; onBack?: () => void
   const [truncated, setTruncated] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [exporting, setExporting] = useState(false)
   const seq = useRef(0)
 
   const run = useCallback(async () => {
@@ -109,16 +108,18 @@ function ReportView({ report, onBack }: { report: ReportDef; onBack?: () => void
     setTo(r.to)
   }
 
-  async function exportCsv() {
+  /** Exporta lo que se ve del informe (con su fila de totales) a Excel, CSV o PDF, igual que toda tabla del portal. */
+  async function exportAs(format: ExportFormat) {
     if (!rows) return
-    setExporting(true)
-    try {
-      await saveCsv(csvFileName(t(`reports.name.${report.id}`), todayDay()), toCsv(report.columns, report.columns.map((c) => t(c.title)), rows, t('reports.total')))
-    } catch (e) {
-      setError(apiErrorMessage(e))
-    } finally {
-      setExporting(false)
-    }
+    const totalsRow = totalsOf(report.columns, rows)
+    const withTotals: ReportRow[] = Object.keys(totalsRow).length > 0 ? [...rows, { ...totalsRow, [report.columns[0].key]: t('reports.total') }] : [...rows]
+    await runExport({
+      format,
+      title: t(`reports.name.${report.id}`),
+      columns: report.columns.map((c) => ({ title: t(c.title), csv: (r: ReportRow) => r[c.key] ?? null })),
+      rows: withTotals,
+      filters: filtersSentence([(from.trim() || to.trim()) && t('table.fRange', { from: from.trim() || '…', to: to.trim() || '…' }), !!search.trim() && t('table.fSearch', { q: search.trim() })]),
+    })
   }
 
   const totals = rows ? totalsOf(report.columns, rows) : {}
@@ -170,7 +171,7 @@ function ReportView({ report, onBack }: { report: ReportDef; onBack?: () => void
             <Text style={{ fontWeight: '700', color: colors.text }} testID="report-count">{t('reports.rows', { n: rows.length })}</Text>
             {rows.length > PREVIEW_ROWS && <Muted>{t('reports.preview', { n: PREVIEW_ROWS })}</Muted>}
             <View style={{ flex: 1 }} />
-            <Button title={t('reports.export')} variant="secondary" onPress={() => void exportCsv()} busy={exporting} disabled={rows.length === 0} testID="report-export" />
+            {rows.length > 0 && <ExportButton onExport={exportAs} testID="report-export" />}
           </View>
           {truncated && <Notice tone="warn">{t('reports.truncated')}</Notice>}
           {Object.keys(totals).length > 0 && rows.length > 0 && (

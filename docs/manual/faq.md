@@ -10637,7 +10637,7 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 
 ## Lote 213 — Portal del cliente: pie, filtro de fecha, Nuevo envío igual al del personal, Mensajes y marcar varios consignatarios
 
-**En el teléfono no me sale la entrada rápida de envíos.** Es a propósito: en el celular (app instalada o navegador angosto) solo existe la **detallada**. La rápida es de la computadora (ventana de 900 px o más).
+**En el teléfono o la tableta no me sale la entrada rápida de envíos.** Es a propósito: en la app instalada, la tableta y el celular (también en su navegador) solo existe la **detallada**. La rápida es de la web en una computadora (ventana de 900 px o más). La forma depende del aparato, no solo del ancho de la ventana.
 
 **¿Cómo capturo envíos sin tocar el ratón?** En la rápida: **Tab** pasa de campo en campo, en Consignatario escriba y escoja con **↑/↓ y Enter** (la última opción es «+ Nuevo consignatario»), y **Enter en cualquier otro campo guarda la fila**; la siguiente trae la misma fecha, servicio y tipo de paquete y el cursor vuelve a la fecha.
 
@@ -10753,3 +10753,7 @@ Hay entradas guardadas, pero ninguna del rango elegido con esas palabras. Borre 
 **Toqué el teléfono, el correo o la dirección y no pasó nada.** Son enlaces del sistema: abren el marcador, el correo o el mapa del teléfono. En un aparato sin esa aplicación no hay a dónde abrirlo. Un número de menos de 7 dígitos no se ofrece como teléfono.
 
 **En Almacén la existencia no cuadra con lo que veo en la web.** La app muestra «en mano» y «disponible» (en mano menos reservado) por almacén y posición, de las mismas existencias que la web; las filas en cero no se listan. Refresque saliendo y entrando a la ficha.
+
+**En la app instalada, ¿cómo exporto una tabla a Excel, CSV o PDF?** Igual que en la web: al pie de la tabla (o de la lista de tarjetas) están «Exportar · Excel · CSV · PDF». En la app el archivo se guarda en el aparato y se abre el menú de compartir: de ahí lo guarda en Archivos o Drive, lo manda por correo o WhatsApp, o lo imprime. Los tres formatos llevan lo filtrado completo (hasta 5000 filas); Excel y PDF llevan arriba el logo, la compañía, el título, la fecha y los filtros, con los colores de su compañía. Los Informes exportan igual (la fila de totales va incluida).
+
+**«Este aparato no puede compartir archivos.»** El teléfono o la tableta no tiene ninguna app que reciba archivos (o el sistema la bloqueó). Instale o active un gestor de archivos y vuelva a intentarlo; desde la web de una computadora el archivo se baja directo.
