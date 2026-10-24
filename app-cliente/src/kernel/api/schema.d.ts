@@ -16583,6 +16583,137 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProposalPageDto"];
+                        "application/json": components["schemas"]["ProposalPageDto"];
+                        "text/json": components["schemas"]["ProposalPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/proposals/{publicId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ProposalDecisionRequest"];
+                    "text/json": components["schemas"]["ProposalDecisionRequest"];
+                    "application/*+json": components["schemas"]["ProposalDecisionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProposalDto"];
+                        "application/json": components["schemas"]["ProposalDto"];
+                        "text/json": components["schemas"]["ProposalDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/proposals/{publicId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ProposalDecisionRequest"];
+                    "text/json": components["schemas"]["ProposalDecisionRequest"];
+                    "application/*+json": components["schemas"]["ProposalDecisionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProposalDto"];
+                        "application/json": components["schemas"]["ProposalDto"];
+                        "text/json": components["schemas"]["ProposalDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/integrations/{publicId}/inbox/reprocess-all": {
         parameters: {
             query?: never;
@@ -19929,6 +20060,45 @@ export interface paths {
             };
         };
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mobile/device": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DriverDeviceRegisterRequest"];
+                    "text/json": components["schemas"]["DriverDeviceRegisterRequest"];
+                    "application/*+json": components["schemas"]["DriverDeviceRegisterRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -39942,6 +40112,13 @@ export interface components {
             clientPublicId?: string | null;
             firstOnly?: boolean;
             recordStart?: string | null;
+            mode?: string | null;
+            toStatus?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string | null;
+            /** Format: int32 */
+            minConfidence?: number | null;
+            checks?: components["schemas"]["ReadCheck"][] | null;
         };
         DriverAcceptRequest: {
             declines?: components["schemas"]["DriverDeclineItem"][] | null;
@@ -40022,6 +40199,8 @@ export interface components {
             /** Format: date-time */
             accessExpiresAtUtc?: string | null;
             blocked?: string | null;
+            permissions?: string[] | null;
+            isDriver?: boolean;
         };
         DriverCompanyTokensRequest: {
             refreshToken?: string | null;
@@ -40346,6 +40525,8 @@ export interface components {
             /** Format: date-time */
             refreshExpiresAtUtc?: string;
             companies?: components["schemas"]["DriverCompanyTokenDto"][] | null;
+            userKind?: string | null;
+            driverOnly?: boolean;
         };
         DriverSettlementAdjustRequest: {
             /** Format: double */
@@ -40646,6 +40827,8 @@ export interface components {
             position?: number;
             /** Format: int32 */
             index?: number;
+            /** Format: int32 */
+            divide?: number | null;
         };
         EmailBodyField: {
             /** Format: int32 */
@@ -41562,6 +41745,9 @@ export interface components {
             message?: string | null;
             /** Format: date-time */
             processedUtc?: string;
+            /** Format: int32 */
+            ocrConfidence?: number | null;
+            readDoubtful?: boolean;
         };
         IntegrationNotifyUserDto: {
             /** Format: int32 */
@@ -44643,6 +44829,37 @@ export interface components {
         ProductTaxCategoryRequest: {
             category?: string | null;
         };
+        ProposalDecisionRequest: {
+            note?: string | null;
+        };
+        ProposalDto: {
+            /** Format: uuid */
+            publicId?: string;
+            kind?: string | null;
+            referenceKey?: string | null;
+            orderNumber?: string | null;
+            /** Format: uuid */
+            orderPublicId?: string;
+            toStatus?: string | null;
+            status?: string | null;
+            summary?: string | null;
+            document?: string | null;
+            integrationName?: string | null;
+            message?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: date-time */
+            decidedAtUtc?: string | null;
+            decidedByName?: string | null;
+            note?: string | null;
+        };
+        ProposalPageDto: {
+            items?: components["schemas"]["ProposalDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            pending?: number;
+        };
         PublicBrandDto: {
             source?: string | null;
             /** Format: uuid */
@@ -44980,6 +45197,17 @@ export interface components {
             rate?: number;
             /** Format: date */
             effectiveFrom?: string | null;
+        };
+        ReadCheck: {
+            kind?: string | null;
+            pattern?: string | null;
+            /** Format: int32 */
+            position?: number;
+            distinct?: boolean;
+            /** Format: double */
+            tolerance?: number | null;
+            name?: string | null;
+            scope?: string | null;
         };
         ReaderCondition: {
             scope?: string | null;

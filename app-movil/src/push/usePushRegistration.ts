@@ -37,7 +37,7 @@ export function usePushRegistration() {
         const token = await Notifications.getDevicePushTokenAsync();
         if (cancelled || typeof token.data !== 'string') return;
         const body = { platform: Platform.OS === 'ios' ? 'IOS' : 'ANDROID', pushToken: token.data, appVersion: Constants.expoConfig?.version ?? null };
-        await Promise.allSettled(getCompanyTenantIds().map((tenantId) => api.post('driver-app/device', body, { tenantId })));
+        await Promise.allSettled(getCompanyTenantIds().map((tenantId) => api.post('mobile/device', body, { tenantId })));
         done.current = key;
       } catch {
         /* sin Firebase en esta marca o sin permiso: queda la bandeja */

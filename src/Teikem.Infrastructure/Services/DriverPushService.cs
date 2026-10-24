@@ -21,21 +21,29 @@ public sealed class DriverPushService(TeikemDbContext db, ITenantContext tenant,
     public const int MaxTokenLength = 400;
     private readonly ITenantClock _clock = clock ?? TenantClock.Default;
 
-    private async Task<Driver> CurrentDriverAsync(CancellationToken ct)
+    private async Task<Driver?> CurrentDriverAsync(CancellationToken ct)
     {
         var userId = ((TenantContext)tenant).RequireUserId();
-        return await db.Drivers.AsNoTracking().FirstOrDefaultAsync(d => d.UserId == userId && d.IsActive, ct) ?? throw new ForbiddenException(DriverAppRules.NotADriverMessage);
+        return await db.Drivers.AsNoTracking().FirstOrDefaultAsync(d => d.UserId == userId && d.IsActive, ct);
     }
 
-    /// <summary>Registra (o actualiza) el teléfono. Idempotente: el mismo token solo se guarda una vez en la compañía.</summary>
+    /// <summary>
+    /// Registra (o actualiza) el teléfono. Idempotente: el mismo token solo se guarda una vez en la compañía. Un chofer queda en DriverDevice (ligado a su ficha);
+    /// el personal (Lote 213) en UserPushDevice (ligado al usuario). Los avisos del chat y de la oficina llegan por cualquiera de los dos.
+    /// </summary>
     public async Task RegisterDeviceAsync(DriverDeviceRegisterRequest? req, CancellationToken ct)
     {
         var token = req?.PushToken?.Trim();
         if (string.IsNullOrEmpty(token) || token.Length > MaxTokenLength) throw new ValidationException("pushToken", TokenRequiredMessage);
         var platform = req?.Platform?.Trim().ToUpperInvariant();
         if (platform is not ("ANDROID" or "IOS")) throw new ValidationException("platform", PlatformInvalidMessage);
-        var driver = await CurrentDriverAsync(ct);
         var platformId = await db.LookupCodes.AsNoTracking().Where(l => l.Entity == LookupDomains.DevicePlatform && l.InternalCode == platform).Select(l => l.LookupCodeId).FirstAsync(ct);
+        var driver = await CurrentDriverAsync(ct);
+        if (driver is null)
+        {
+            await RegisterUserDeviceAsync(((TenantContext)tenant).RequireUserId(), platformId, token, Trim(req?.AppVersion, 30), ct);
+            return;
+        }
         // el mismo token en otro chofer de la compañía (teléfono compartido): pasa a este
         var same = await db.DriverDevices.AsTracking().Where(d => d.PushToken == token).ToListAsync(ct);
         var mine = same.FirstOrDefault(d => d.DriverId == driver.DriverId);
@@ -51,6 +59,21 @@ public sealed class DriverPushService(TeikemDbContext db, ITenantContext tenant,
 
     private static string? Trim(string? s, int max) => string.IsNullOrWhiteSpace(s) ? null : (s.Trim().Length <= max ? s.Trim() : s.Trim()[..max]);
 
+    /// <summary>El teléfono de una persona del personal (Lote 213). El mismo token en otro usuario de la compañía (teléfono compartido) pasa a este.</summary>
+    private async Task RegisterUserDeviceAsync(int userId, int platformId, string token, string? appVersion, CancellationToken ct)
+    {
+        var same = await db.UserPushDevices.AsTracking().Where(d => d.PushToken == token).ToListAsync(ct);
+        var mine = same.FirstOrDefault(d => d.UserId == userId);
+        foreach (var other in same.Where(d => d.UserId != userId && d.IsActive)) other.IsActive = false;
+        if (mine is null)
+            db.UserPushDevices.Add(new Teikem.Domain.Security.UserPushDevice { TenantId = ((TenantContext)tenant).RequireTenantId(), UserId = userId, PlatformLookupId = platformId, PushToken = token, AppVersion = appVersion, LastSeenUtc = _clock.UtcNow });
+        else
+        {
+            mine.IsActive = true; mine.PlatformLookupId = platformId; mine.AppVersion = appVersion; mine.LastSeenUtc = _clock.UtcNow;
+        }
+        await db.SaveChangesAsync(ct);
+    }
+
     /// <summary>
     /// Lote 212 (B): manda un aviso al teléfono de los choferes que son estos usuarios (un mensaje del chat). Sin Firebase configurado no hace nada. Un token rechazado se desactiva.
     /// Devuelve a cuántos teléfonos se mandó. Quien llama debe tratar cualquier fallo como no fatal: el mensaje ya quedó guardado.
@@ -60,8 +83,10 @@ public sealed class DriverPushService(TeikemDbContext db, ITenantContext tenant,
         if (!push.IsConfigured || userIds.Count == 0) return 0;
         // dos consultas: mezclar AsTracking con un AsNoTracking en el mismo join deja TODA la consulta sin seguimiento y el token muerto no se desactivaría
         var driverIds = await db.Drivers.AsNoTracking().Where(dr => dr.UserId != null && userIds.Contains(dr.UserId.Value)).Select(dr => dr.DriverId).ToListAsync(ct);
-        if (driverIds.Count == 0) return 0;
-        var devices = await db.DriverDevices.AsTracking().Where(d => driverIds.Contains(d.DriverId) && d.IsActive && d.PushToken != null).Take(50).ToListAsync(ct);
+        var devices = driverIds.Count == 0 ? new List<DriverDevice>() : await db.DriverDevices.AsTracking().Where(d => driverIds.Contains(d.DriverId) && d.IsActive && d.PushToken != null).Take(50).ToListAsync(ct);
+        // Lote 213: el personal (no chofer) tiene su teléfono en UserPushDevice
+        var userDevices = await db.UserPushDevices.AsTracking().Where(d => userIds.Contains(d.UserId) && d.IsActive && d.PushToken != null).Take(50).ToListAsync(ct);
+        if (devices.Count + userDevices.Count == 0) return 0;
         var sent = 0;
         foreach (var d in devices)
         {
@@ -69,7 +94,13 @@ public sealed class DriverPushService(TeikemDbContext db, ITenantContext tenant,
             if (r == PushOutcome.InvalidToken) d.IsActive = false;
             else if (r == PushOutcome.Sent) sent++;
         }
-        if (devices.Count > 0) await db.SaveChangesAsync(ct);
+        foreach (var d in userDevices)
+        {
+            var r = await push.SendAsync(d.PushToken!, title, body, data, ct);
+            if (r == PushOutcome.InvalidToken) d.IsActive = false;
+            else if (r == PushOutcome.Sent) sent++;
+        }
+        await db.SaveChangesAsync(ct);
         return sent;
     }
 

@@ -29,6 +29,8 @@ public static class DriverSessionRules
 public static class DriverAuthMessages
 {
     public const string UseTheAppMessage = "Los choferes entran con la app del chofer.";
-    public const string NotADriverSessionMessage = "Esta sesión no es de la app del chofer.";
+    public const string NotADriverSessionMessage = "Esta sesión no es de la app móvil.";
+    /// <summary>Lote 213: la app móvil deja entrar a quien tiene mobile.use (o es chofer activo) en alguna compañía.</summary>
+    public const string NoMobileAccessMessage = "Su usuario no tiene acceso a la app móvil en ninguna compañía.";
     public const string MfaRequiredForCompany = "mfa_required";
 }

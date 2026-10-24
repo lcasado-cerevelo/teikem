@@ -152,6 +152,7 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<DriverLicense> DriverLicenses => Set<DriverLicense>();
     public DbSet<DriverCertification> DriverCertifications => Set<DriverCertification>();
     public DbSet<DriverDevice> DriverDevices => Set<DriverDevice>();
+    public DbSet<Teikem.Domain.Security.UserPushDevice> UserPushDevices => Set<Teikem.Domain.Security.UserPushDevice>();
     public DbSet<DispatchZone> DispatchZones => Set<DispatchZone>();
     public DbSet<DriverZone> DriverZones => Set<DriverZone>();
     public DbSet<MaintenanceSchedule> MaintenanceSchedules => Set<MaintenanceSchedule>();

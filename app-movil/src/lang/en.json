@@ -46,7 +46,8 @@
       "DELIVERIES_FOR_TODAY": "Deliveries for today",
       "DELIVERY_MANIFEST": "Delivery manifest",
       "PICKUPS_FOR_TODAY": "Pickups for today",
-      "PICKUP_MANIFEST": "Pickup manifest"
+      "PICKUP_MANIFEST": "Pickup manifest",
+      "MY_DRIVER_WORK": "My driver work"
     },
     "ORDERS": {
       "ORDERS": "Orders",
@@ -353,6 +354,64 @@
       "TITLE": "Notices",
       "EMPTY": "You have no notices.",
       "MARK_ALL": "Mark all as read"
+    },
+    "ATTENTION": {
+      "TITLE": "Needs your attention",
+      "ALL_CLEAR": "All clear.",
+      "ITEMS": {
+        "INVENTORY_DISCREPANCY": {
+          "title": "Discrepancy in {{sku}}",
+          "titleTotal": "Discrepancy in the total of {{sku}}",
+          "group": "Inventory discrepancies"
+        },
+        "EXIT_NOTICE_BACKORDER": {
+          "title": "Notice {{number}}: backorder waiting to be reserved",
+          "titleReady": "Notice {{number}}: stock is available for its backorder",
+          "group": "Exit notices with backorder"
+        },
+        "SALES_BACKORDER_READY": {
+          "title": "Order {{number}}: stock is now available to fulfill",
+          "group": "Sales orders with backorder ready to fulfill"
+        },
+        "ORDERS_NO_DRIVER": {
+          "title": "{{count}} shipments without a driver",
+          "group": "Shipments without a driver"
+        },
+        "ORDERS_FAILED": {
+          "title": "{{count}} shipments with a failed attempt",
+          "group": "Shipments with a failed attempt"
+        },
+        "CLAIMS_OPEN": {
+          "title": "{{count}} open claims",
+          "group": "Open claims"
+        },
+        "FLEET_DOCS_DUE": {
+          "title": "{{count}} fleet documents expired or expiring",
+          "group": "Fleet documents expiring"
+        },
+        "INVOICES_OVERDUE": {
+          "title": "{{count}} overdue invoices",
+          "group": "Overdue invoices"
+        },
+        "SLA_AT_RISK": {
+          "title": "{{count}} shipments at risk of missing their SLA",
+          "group": "Shipments at risk of missing their SLA"
+        },
+        "COD_UNRECONCILED": {
+          "title": "{{amount}} of COD not reconciled",
+          "group": "COD not reconciled"
+        },
+        "RENTAL_DUE": {
+          "group": "Overdue or due rentals"
+        },
+        "DELIVERY_FAR": {
+          "title": "{{count}} driver deliveries far from the address",
+          "group": "Deliveries far from the address"
+        }
+      }
+    },
+    "PULSE": {
+      "TITLE": "Today's pulse"
     }
   }
 }

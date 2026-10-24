@@ -17,7 +17,7 @@ public static class PermissionDisplayOrder
         // Transporte: envíos, escaneo, rutas, reclamaciones
         "orders.view", "orders.create", "orders.edit", "orders.cancel", "orders.reopen", "orders.return", "orders.deliver", "orders.view_price", "orders.credit_override",
         "trips.scan",
-        "dispatch.view", "trips.plan", "trips.optimize", "trips.dispatch", "trips.close", "driverapp.use",
+        "dispatch.view", "trips.plan", "trips.optimize", "trips.dispatch", "trips.close", "driverapp.use", "mobile.use",
         "trips.view",
         "claims.view", "claims.manage",
         // Almacén: almacenes y posiciones, productos e inventario, llegadas y salidas, recibo, recolección, ajustes, conteo, cruce, daños, kárdex y aparato

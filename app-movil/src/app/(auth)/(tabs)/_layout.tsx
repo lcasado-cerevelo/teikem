@@ -5,11 +5,13 @@ import LogoutButton from '@components/LogoutButton';
 import { useTheme } from '@hooks/ThemeContext';
 import { useNotices } from '@hooks/queries';
 import { useThreads } from '@hooks/messages';
+import { useAccess } from '@hooks/access';
 
 export default function TabLayout() {
   const { colors } = useTheme();
   const { unread } = useNotices();
   const { unread: unreadMessages } = useThreads();
+  const access = useAccess();
   return (
     <Tabs screenOptions={{ tabBarActiveTintColor: colors.primary }}>
       <Tabs.Screen
@@ -32,6 +34,8 @@ export default function TabLayout() {
           title: 'Manifests',
           tabBarShowLabel: false,
           headerShown: false,
+          // Lote 213: la pestaña de manifiestos es del chofer; el personal que no es chofer no la ve
+          href: access.isDriver || access.driverOnly || !access.staff ? undefined : null,
           tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons name="truck-fast-outline" color={color} size={28} style={{ marginBottom: -3 }} />
           ),

@@ -3,6 +3,7 @@
 // activo (marcar otro quita la marca al anterior en el servidor). El teléfono y el correo de la persona son medios de
 // contacto del dueño CLIENT_CONTACT y se escriben con contacts.manage.
 import { PhoneLink } from '../contacts/PhoneLink'
+import { EmailLink } from '../contacts/EmailLink'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -194,7 +195,7 @@ export function ClientPeoplePanel({ client }: { client: ClientDetail }) {
         sortValue: (c) => personPhone(c)?.value,
         exportValue: (c) => personPhone(c)?.value ?? '',
       },
-      { id: 'email', header: t('clients.people.email'), cell: (c) => personEmail(c)?.value || '—', sortValue: (c) => personEmail(c)?.value },
+      { id: 'email', header: t('clients.people.email'), cell: (c) => (personEmail(c)?.value ? <EmailLink value={personEmail(c)!.value!} /> : '—'), sortValue: (c) => personEmail(c)?.value, exportValue: (c) => personEmail(c)?.value ?? '' },
       {
         id: 'primary',
         header: t('clients.people.primary'),

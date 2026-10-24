@@ -10546,3 +10546,13 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 **«Lectura dudosa: el documento lista N elemento(s) de «X» y se leyeron M.»** Un chequeo «elementos que el documento lista» no cuadra: la tabla del documento (por ejemplo las paradas de la hoja de ruta de CMS) trae más renglones que órdenes se leyeron. Falta leer alguna orden: compare con el documento y complete lo que falte.
 
 **«… no se encontró en el documento lo que lista «X».»** La expresión del chequeo no encontró ninguna línea de la lista (el OCR leyó la tabla distinto, o la tabla no está). Suba el PDF a mano, mire el texto leído y ajuste la expresión (describe UNA línea de la lista), o quite el chequeo.
+
+## Lote 213 — App móvil (chofer y personal)
+
+**«Su usuario no tiene acceso a la app móvil en ninguna compañía.» (403) al entrar a la app.** Su rol no tiene `mobile.use` y no es chofer activo. Pida a un administrador que agregue «App móvil: usarla» a su rol (Sistema → Roles). Los roles Chofer y Despachador lo traen; los roles anteriores lo reciben con la actualización de la base (sección 2026-10-24 (m)).
+
+**Soy de oficina y la app me muestra lo mismo que al chofer (sin «Necesita tu atención»).** El inicio del personal aparece con `pulse.attention` o `analytics.view` en alguna compañía. Las demás pantallas del personal llegan en los Lotes 214-216.
+
+**Un chofer ve tarjetas de oficina en su app.** Si el usuario es de tipo «Chofer (solo app)» eso no puede pasar: avise a soporte. Si es un usuario normal con permisos de oficina y de chofer, es lo esperado; para que vea solo lo del chofer, cree su usuario como «Chofer (solo app)».
+
+**No me llegan los avisos emergentes y no soy chofer.** Revise que la app sea la versión del Lote 213 o posterior (registra el teléfono en `mobile/device`), que aceptó el permiso de notificaciones y que el servidor tiene la clave de Firebase.

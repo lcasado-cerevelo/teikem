@@ -122,6 +122,20 @@ public sealed class DriverDeviceConfiguration : IEntityTypeConfiguration<DriverD
     }
 }
 
+public sealed class UserPushDeviceConfiguration : IEntityTypeConfiguration<Teikem.Domain.Security.UserPushDevice>
+{
+    public void Configure(EntityTypeBuilder<Teikem.Domain.Security.UserPushDevice> b)
+    {
+        b.ToTable("UserPushDevice");
+        b.HasKey(x => x.UserPushDeviceId);
+        b.Property(x => x.PushToken).HasMaxLength(400);
+        b.Property(x => x.AppVersion).HasMaxLength(20);
+        b.HasIndex(x => new { x.TenantId, x.PushToken }).IsUnique().HasFilter("[PushToken] IS NOT NULL AND [IsActive] = 1").HasDatabaseName("UX_UserPushDevice_Token");
+        b.HasIndex(x => new { x.TenantId, x.UserId }).HasDatabaseName("IX_UserPushDevice_User");
+        b.HasOne(x => x.Platform).WithMany().HasForeignKey(x => x.PlatformLookupId);
+    }
+}
+
 public sealed class DispatchZoneConfiguration : IEntityTypeConfiguration<DispatchZone>
 {
     public void Configure(EntityTypeBuilder<DispatchZone> b)

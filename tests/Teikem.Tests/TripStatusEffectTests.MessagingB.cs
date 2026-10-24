@@ -269,4 +269,28 @@ public partial class TripStatusEffectTests
         var ex = await Assert.ThrowsAsync<ValidationException>(() => b.Messages.CreateThreadAsync(new MessageThreadRequest(UserIds: new[] { 2 }, Text: "x", FollowRole: true), default));
         Assert.Equal(MessagingRules.FollowRoleNeedsRoleMessage, ex.Message);
     }
+
+    [Fact]
+    public async Task Staff_phones_are_registered_by_user_and_a_chat_message_reaches_them_too()
+    {
+        await using var f = await Fixture.CreateAsync();
+        using var b = await MessagingBAsync(f);
+        var platform = await f.Lookups.GetIdAsync(LookupDomains.DevicePlatform, "ANDROID");
+        // el usuario 2 es chofer con su teléfono en la ficha; el 1 (oficina) registra el suyo por usuario (Lote 213)
+        f.Db.Drivers.Add(new Driver { DriverId = 7, TenantId = TenantId, EmployeeCode = "D7", FullName = "Chofer Dos", UserId = 2, StatusCodeId = 1, IsActive = true });
+        f.Db.DriverDevices.Add(new DriverDevice { TenantId = TenantId, DriverId = 7, PlatformLookupId = platform, PushToken = "tok-chofer", IsActive = true });
+        await f.Db.SaveChangesAsync();
+        var pushSvc = new DriverPushService(f.Db, b.Tenant, b.Push);
+        b.Tenant.UserId = 1;
+        await pushSvc.RegisterDeviceAsync(new DriverDeviceRegisterRequest("android", "tok-oficina", "2.0"), default);
+        await pushSvc.RegisterDeviceAsync(new DriverDeviceRegisterRequest("ANDROID", "tok-oficina", "2.1"), default);   // idempotente
+        var mine = Assert.Single(await f.Db.UserPushDevices.AsNoTracking().ToListAsync());
+        Assert.Equal((1, "tok-oficina", "2.1", true), (mine.UserId, mine.PushToken, mine.AppVersion, mine.IsActive));
+        Assert.Single(await f.Db.DriverDevices.AsNoTracking().ToListAsync());   // el de oficina no se metió en la ficha de un chofer
+
+        // el chofer le escribe a la oficina: el aviso llega al teléfono del usuario de oficina
+        b.Tenant.UserId = 2;
+        await b.Messages.CreateThreadAsync(new MessageThreadRequest(UserIds: new[] { 1 }, Text: "ya salí"), default);
+        Assert.Equal(new[] { "tok-oficina" }, b.Push.Sent.Select(x => x.Token));
+    }
 }

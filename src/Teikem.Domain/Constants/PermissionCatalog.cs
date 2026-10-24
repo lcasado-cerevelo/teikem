@@ -98,6 +98,8 @@ public static class PermissionCatalog
 
     /// <summary>2026-10-23: usar la app del chofer (ver sus manifiestos, aceptarlos y registrar entregas y recogidas).</summary>
     public const string DriverAppUse = "driverapp.use";
+    /// <summary>Lote 213: entrar a la app móvil (la del chofer, que ahora usa también el personal). Qué ve cada quien lo deciden sus otros permisos; el usuario «solo chofer» ve solo lo del chofer.</summary>
+    public const string MobileUse = "mobile.use";
 
     public const string TripsOptimize = "trips.optimize";
 
@@ -459,6 +461,7 @@ public static class PermissionCatalog
 
         new(TripsClose, "ORDERS", "Cerrar rutas", "Close routes"),
         new(DriverAppUse, "ORDERS", "App del chofer: usarla", "Driver app: use it"),
+        new(MobileUse, "ORDERS", "App móvil: usarla", "Mobile app: use it"),
 
         new(TripsOptimize, "ORDERS", "Optimizar rutas", "Optimize routes"),
 
@@ -1108,7 +1111,7 @@ public static class PermissionCatalog
 
         ["TenantAdmin"] = All.Select(p => p.Code).ToArray(),
 
-        ["Dispatcher"] = new[] { OrdersView, OrdersCreate, OrdersEdit, OrdersCancel, TripsPlan, TripsDispatch, TripsClose, TripsOptimize, AnalyticsView, ClientsRead, LocationsRead, LocationsCreate, FleetView, TripsView, TripsScan,
+        ["Dispatcher"] = new[] { OrdersView, OrdersCreate, MobileUse, OrdersEdit, OrdersCancel, TripsPlan, TripsDispatch, TripsClose, TripsOptimize, AnalyticsView, ClientsRead, LocationsRead, LocationsCreate, FleetView, TripsView, TripsScan,
 
             PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a
 
@@ -1156,7 +1159,7 @@ public static class PermissionCatalog
 
         ["CustomerService"] = new[] { ClientMessagesReply, ClientsRead, OrdersView, LocationsRead, ContractsRead },
 
-        ["Driver"] = new[] { OrdersView, CodCollect, DriverAppUse },
+        ["Driver"] = new[] { OrdersView, CodCollect, DriverAppUse, MobileUse },
 
         ["ReadOnly"] = new[] { OrdersView, CodView, AnalyticsView, ClientsRead, LocationsRead, ContractsRead, FleetView, TripsView, InventoryView,
 

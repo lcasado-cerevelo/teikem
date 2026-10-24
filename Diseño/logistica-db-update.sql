@@ -6756,3 +6756,44 @@ IF COL_LENGTH('dbo.IntegrationFileLog', 'OcrConfidence') IS NULL ALTER TABLE dbo
 GO
 IF COL_LENGTH('dbo.IntegrationFileLog', 'ReadDoubtful') IS NULL ALTER TABLE dbo.IntegrationFileLog ADD ReadDoubtful BIT NOT NULL CONSTRAINT DF_IntegrationFileLog_ReadDoubtful DEFAULT 0;
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-24 (m) — App móvil (Lote 213): la app del chofer crece para el personal.
+   - Permiso mobile.use («App móvil: usarla», categoría ORDERS): a los roles ya clonados que tienen driverapp.use o trips.dispatch y a los TenantAdmin. Solo AGREGA.
+   - dbo.UserPushDevice: el teléfono de una persona del personal para los avisos emergentes (por compañía). Los choferes siguen en dbo.DriverDevice.
+   ---------------------------------------------------------------------------- */
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'mobile.use')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('mobile.use', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'ORDERS'),
+            N'{"es":"App móvil: usarla","en":"Mobile app: use it"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L213_MOBILE_USE')
+BEGIN
+    INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+    SELECT DISTINCT r.RoleId, pm.PermissionId
+    FROM dbo.Role r
+    JOIN dbo.Permission pm ON pm.Code = 'mobile.use'
+    WHERE r.IsActive = 1
+      AND (r.Name = 'TenantAdmin'
+           OR EXISTS (SELECT 1 FROM dbo.RolePermission rp JOIN dbo.Permission p ON p.PermissionId = rp.PermissionId WHERE rp.RoleId = r.RoleId AND p.Code IN ('driverapp.use', 'trips.dispatch')))
+      AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = pm.PermissionId);
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L213_MOBILE_USE');
+END
+GO
+IF OBJECT_ID(N'dbo.UserPushDevice', N'U') IS NULL CREATE TABLE dbo.UserPushDevice (
+    UserPushDeviceId INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    UserId INT NOT NULL REFERENCES dbo.AspNetUsers(Id),
+    PlatformLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),
+    PushToken NVARCHAR(400) NULL,
+    AppVersion NVARCHAR(20) NULL,
+    LastSeenUtc DATETIME2 NULL,
+    IsActive BIT NOT NULL CONSTRAINT DF_UserPushDevice_IsActive DEFAULT 1
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_UserPushDevice_Token' AND object_id = OBJECT_ID('dbo.UserPushDevice'))
+    CREATE UNIQUE INDEX UX_UserPushDevice_Token ON dbo.UserPushDevice(TenantId, PushToken) WHERE PushToken IS NOT NULL AND IsActive = 1;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_UserPushDevice_User' AND object_id = OBJECT_ID('dbo.UserPushDevice'))
+    CREATE INDEX IX_UserPushDevice_User ON dbo.UserPushDevice(TenantId, UserId);
+GO

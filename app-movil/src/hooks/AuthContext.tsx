@@ -42,8 +42,10 @@ interface AuthContextValue {
   isLoading: boolean; // restaurando la sesión al arrancar
   isLoggedIn: boolean;
   user: AuthUser | null;
-  /** Las compañías donde es chofer (una sola sesión las cubre todas). */
+  /** Las compañías donde puede usar la app (una sola sesión las cubre todas), cada una con sus permisos. */
   companies: CompanyAccess[];
+  /** Lote 213: usuario «solo chofer»: la app le muestra únicamente lo del chofer. */
+  driverOnly: boolean;
   loading: boolean; // un paso del login en curso
   /** Hay un paso de MFA pendiente (después de la contraseña): la pantalla del código. */
   mfaChallenge: MfaChallenge | null;
@@ -122,10 +124,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const tokens: Record<number, string> = {};
       const list: CompanyAccess[] = dto.companies.map((c) => {
         if (c.accessToken) tokens[c.tenantId] = c.accessToken;
-        return { tenantId: c.tenantId, name: c.tenantName, blocked: c.blocked ?? null };
+        return { tenantId: c.tenantId, name: c.tenantName, blocked: c.blocked ?? null, permissions: c.permissions ?? [], isDriver: !!c.isDriver };
       });
       setCompanyTokens(tokens);
-      const next: StoredSession = { refreshToken: dto.refreshToken, refreshExpiresAt: Date.parse(dto.refreshExpiresAtUtc), user: previous?.user, companies: list };
+      const next: StoredSession = { refreshToken: dto.refreshToken, refreshExpiresAt: Date.parse(dto.refreshExpiresAtUtc), user: previous?.user, companies: list, driverOnly: !!dto.driverOnly };
       setSession(next);
       setCompanies(list);
       sessionRef.current = next;
@@ -478,6 +480,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoggedIn: Boolean(session),
         user,
         companies,
+        driverOnly: !!session?.driverOnly,
         loading,
         mfaChallenge,
         browserConfirmation,

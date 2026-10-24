@@ -122,9 +122,9 @@ public sealed partial class AuthService(
         var driverAnyMfa = false;   // app del chofer: ¿ALGUNA de sus compañías exige MFA? (entonces se pide en el ingreso aunque la compañía de entrada no lo exija)
         if (driverApp)
         {
-            // App del chofer: solo cuentan las compañías donde la persona es chofer activo (sin ninguna, no entra).
-            var driverTenants = await DriverTenantIdsAsync(user.Id, memberships, ct);
-            if (driverTenants.Count == 0) { await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Blocked, user.Id, null, new { reason = "not_a_driver" }, ct); throw new ForbiddenException(DriverAppRules.NotADriverMessage); }
+            // App móvil (Lote 213): cuentan las compañías donde la persona tiene mobile.use o es chofer activo (sin ninguna, no entra).
+            var driverTenants = (await MobileTenantsAsync(user, memberships, ct)).Select(x => x.TenantId).ToList();
+            if (driverTenants.Count == 0) { await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Blocked, user.Id, null, new { reason = "no_mobile_access" }, ct); throw new ForbiddenException(DriverAuthMessages.NoMobileAccessMessage); }
             memberships = memberships.Where(m => driverTenants.Contains(m.TenantId)).ToList();
             // Una sola sesión da acceso a TODAS sus compañías: si alguna exige MFA (la compañía entera o esta persona), el ingreso lo pide (y lo inscribe si falta); si no, esa compañía
             // quedaría bloqueada sin que la persona pudiera hacer nada para desbloquearla.

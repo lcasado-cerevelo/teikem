@@ -23,8 +23,10 @@ export interface StoredSession {
   refreshExpiresAt: number;
   /** Para mostrar el nombre y las iniciales aunque no haya señal. */
   user?: AuthUser;
-  /** Compañías donde es chofer (para mostrarlas sin conexión). */
+  /** Compañías donde puede usar la app (para mostrarlas sin conexión). */
   companies?: CompanyAccess[];
+  /** Lote 213: usuario «solo chofer»: solo ve lo del chofer aunque tuviera otros permisos. */
+  driverOnly?: boolean;
 }
 
 export interface CompanyAccess {
@@ -32,6 +34,9 @@ export interface CompanyAccess {
   name: string;
   /** mfa_required: la compañía exige MFA y esta sesión no lo cumplió (no hay acceso hasta entrar de nuevo con contraseña y código). */
   blocked?: string | null;
+  /** Lote 213: permisos efectivos en esa compañía (deciden qué muestra la app) y si allí es chofer activo. */
+  permissions?: string[];
+  isDriver?: boolean;
 }
 
 async function setItem(value: string): Promise<void> {

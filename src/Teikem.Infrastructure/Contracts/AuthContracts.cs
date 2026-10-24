@@ -60,7 +60,9 @@ public sealed record TemporaryPasswordDto(string Password, DateTime ExpiresAtUtc
 /// 2026-10-23 (app del chofer): el acceso de UNA compañía donde la persona es chofer, a partir de la misma sesión. `Blocked` = mfa_required cuando esa compañía exige el segundo factor y esta sesión no lo cumplió
 /// (no se da token: entra de nuevo con contraseña y código). El token de acceso vale lo de siempre (minutos); se vuelve a pedir con la sesión.
 /// </summary>
-public sealed record DriverCompanyTokenDto(int TenantId, string TenantName, string? AccessToken, DateTime? AccessExpiresAtUtc, string? Blocked);
+/// <summary>Lote 213: además, los permisos efectivos de la persona en esa compañía (la app decide qué mostrar) y si allí es chofer activo.</summary>
+public sealed record DriverCompanyTokenDto(int TenantId, string TenantName, string? AccessToken, DateTime? AccessExpiresAtUtc, string? Blocked, IReadOnlyList<string>? Permissions = null, bool IsDriver = false);
 public sealed record DriverCompanyTokensRequest(string RefreshToken);
 /// <summary>La sesión del chofer renovada: el refresh token NUEVO (el anterior queda revocado; reusarlo cierra la sesión por posible robo) y el acceso a cada compañía.</summary>
-public sealed record DriverSessionDto(string RefreshToken, DateTime RefreshExpiresAtUtc, IReadOnlyList<DriverCompanyTokenDto> Companies);
+/// <summary>Lote 213: UserKind (INTERNAL | DRIVER) y DriverOnly = usuario «solo chofer»: la app le muestra únicamente lo del chofer.</summary>
+public sealed record DriverSessionDto(string RefreshToken, DateTime RefreshExpiresAtUtc, IReadOnlyList<DriverCompanyTokenDto> Companies, string? UserKind = null, bool DriverOnly = false);

@@ -46,7 +46,8 @@
       "DELIVERIES_FOR_TODAY": "Entregas para hoy",
       "DELIVERY_MANIFEST": "Manifesto de entrega",
       "PICKUPS_FOR_TODAY": "Recogidas para hoy",
-      "PICKUP_MANIFEST": "Manifesto de recogida"
+      "PICKUP_MANIFEST": "Manifesto de recogida",
+      "MY_DRIVER_WORK": "Mi trabajo de chofer"
     },
     "ORDERS": {
       "ORDERS": "Órdenes",
@@ -353,6 +354,64 @@
       "TITLE": "Avisos",
       "EMPTY": "No tiene avisos.",
       "MARK_ALL": "Marcar todo como leído"
+    },
+    "ATTENTION": {
+      "TITLE": "Necesita tu atención",
+      "ALL_CLEAR": "Todo en orden.",
+      "ITEMS": {
+        "INVENTORY_DISCREPANCY": {
+          "title": "Descuadre en {{sku}}",
+          "titleTotal": "Descuadre en el total de {{sku}}",
+          "group": "Descuadres de inventario"
+        },
+        "EXIT_NOTICE_BACKORDER": {
+          "title": "Aviso {{number}}: tiene pendiente por reservar",
+          "titleReady": "Aviso {{number}}: ya hay inventario para su pendiente",
+          "group": "Avisos de salida con pendiente"
+        },
+        "SALES_BACKORDER_READY": {
+          "title": "Orden {{number}}: ya hay inventario para surtir",
+          "group": "Órdenes de venta con backorder por surtir"
+        },
+        "ORDERS_NO_DRIVER": {
+          "title": "{{count}} envíos sin chofer",
+          "group": "Envíos sin chofer"
+        },
+        "ORDERS_FAILED": {
+          "title": "{{count}} envíos en intento fallido",
+          "group": "Envíos en intento fallido"
+        },
+        "CLAIMS_OPEN": {
+          "title": "{{count}} reclamaciones abiertas",
+          "group": "Reclamaciones abiertas"
+        },
+        "FLEET_DOCS_DUE": {
+          "title": "{{count}} documentos de flota vencidos o por vencer",
+          "group": "Documentos de flota por vencer"
+        },
+        "INVOICES_OVERDUE": {
+          "title": "{{count}} facturas vencidas",
+          "group": "Facturas vencidas"
+        },
+        "SLA_AT_RISK": {
+          "title": "{{count}} envíos en riesgo de pasar su SLA",
+          "group": "Envíos en riesgo de pasar su SLA"
+        },
+        "COD_UNRECONCILED": {
+          "title": "{{amount}} de COD sin cuadrar",
+          "group": "COD sin cuadrar"
+        },
+        "RENTAL_DUE": {
+          "group": "Rentas vencidas o por vencer"
+        },
+        "DELIVERY_FAR": {
+          "title": "{{count}} entregas del chofer lejos de la dirección",
+          "group": "Entregas lejos de la dirección"
+        }
+      }
+    },
+    "PULSE": {
+      "TITLE": "Pulso del día"
     }
   }
 }

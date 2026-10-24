@@ -4,6 +4,9 @@ import { Text } from '@components/Text';
 import { Link, type Href } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useDriverWork } from '@hooks/queries';
+import { useAccess } from '@hooks/access';
+import AttentionCard from '@components/home/AttentionCard';
+import PulseCard from '@components/home/PulseCard';
 import TrackingBanner from '@components/TrackingBanner';
 import { useAppStore } from '@/stores';
 import { useStyles, useTheme } from '@hooks/ThemeContext';
@@ -30,6 +33,8 @@ interface HomeItem {
 export default function Home() {
   const styles = useStyles(createStyles);
   const { t } = useTranslation();
+  const access = useAccess();
+  // Lote 213: el inicio del personal (atención y pulso) va arriba; lo del chofer (sus tarjetas) debajo si además es chofer. El usuario «solo chofer» ve solo lo suyo.
   const { data, isPending } = useDriverWork();
   const shipments = data?.shipments ?? [];
   const manifests = data?.manifests ?? [];
@@ -77,7 +82,16 @@ export default function Home() {
     },
   ];
   const shown = allItems.filter((it) => loading || it.counter !== '0');
-  const items = shown.length > 0 ? shown : allItems;
+  const driverItems = access.isDriver || access.driverOnly || !access.staff ? (shown.length > 0 ? shown : allItems) : [];
+  const items = driverItems;
+  const header = (
+    <>
+      <TrackingBanner />
+      {access.staff && access.can('pulse.attention') ? <AttentionCard multi={access.companies.length > 1} /> : null}
+      {access.staff && access.can('analytics.view') ? <PulseCard multi={access.companies.length > 1} /> : null}
+      {access.staff && items.length > 0 ? <Text style={styles.section}>{t('HOME.MY_DRIVER_WORK')}</Text> : null}
+    </>
+  );
 
   const renderItem = useCallback(
     ({ item }: { item: HomeItem }) => {
@@ -104,7 +118,7 @@ export default function Home() {
 
   return (
     <FlatList
-      ListHeaderComponent={<TrackingBanner />}
+      ListHeaderComponent={header}
       style={styles.container}
       data={items}
       keyExtractor={(item) => item.key}
@@ -128,6 +142,7 @@ const createStyles = (colors: Colors) => StyleSheet.create({
     borderRadius: 13,
   },
   itemDisabled: { opacity: 0.4 },
+  section: { marginHorizontal: 20, marginTop: 12, fontWeight: '700', color: colors.muted },
   description: { fontSize: 16, color: colors.text },
   counter: { fontSize: 24, color: colors.text },
 });

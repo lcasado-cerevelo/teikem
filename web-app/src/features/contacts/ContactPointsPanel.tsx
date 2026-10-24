@@ -3,6 +3,7 @@
 // /api/v1/contacts/{dueño}/{id} (contacts.manage; el servidor exige además el permiso de la entidad dueña: `perms`). El teléfono lleva
 // la máscara de la compañía y se guarda solo con dígitos; un principal por tipo. Los textos son los de `clients.points.*`.
 import { PhoneLink } from './PhoneLink'
+import { EmailLink } from './EmailLink'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -175,7 +176,7 @@ export function ContactPointsPanel({ ownerEntity, ownerId, points: rows, perms, 
           <li key={p.id} className="unrow">
             <span className="cl-point-main">
               <span className="cl-point-value">
-                <span className="mono">{isEmailType(p.contactType) ? p.value : <PhoneLink value={p.value ?? ''} countryCallingCode={p.countryCallingCode} />}</span>
+                <span className="mono">{isEmailType(p.contactType) ? <EmailLink value={p.value ?? ''} /> : <PhoneLink value={p.value ?? ''} countryCallingCode={p.countryCallingCode} />}</span>
                 {p.extension && <span className="meta"> {t('clients.points.ext', { ext: p.extension })}</span>}
               </span>
               <span className="meta">{[p.contactTypeLabel, p.label].filter(Boolean).join(' · ')}</span>

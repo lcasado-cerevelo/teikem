@@ -55,7 +55,7 @@ public partial class AuthMfaTests
     {
         await using var f = await FixtureAsync();
         var ex = await Assert.ThrowsAsync<ForbiddenException>(() => f.Get<AuthService>().LoginAsync(new LoginRequest("yo@t.local", Password, null, null), default, driverApp: true));
-        Assert.Equal(DriverAppRules.NotADriverMessage, ex.Message);
+        Assert.Equal(DriverAuthMessages.NoMobileAccessMessage, ex.Message);
     }
 
     [Fact]

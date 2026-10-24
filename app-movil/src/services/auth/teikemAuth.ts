@@ -18,6 +18,9 @@ export interface CompanyTokenDto {
   accessToken?: string | null;
   accessExpiresAtUtc?: string | null;
   blocked?: string | null;
+  /** Lote 213: los permisos efectivos en esa compañía (deciden qué muestra la app) y si allí es chofer activo. */
+  permissions?: string[] | null;
+  isDriver?: boolean;
 }
 
 /** Sesión del chofer: un refresh token (rota en cada renovación) y los tokens de acceso de TODAS sus compañías. */
@@ -25,6 +28,9 @@ export interface DriverSessionDto {
   refreshToken: string;
   refreshExpiresAtUtc: string;
   companies: CompanyTokenDto[];
+  /** Lote 213: INTERNAL | DRIVER; driverOnly = usuario «solo chofer»: la app le muestra únicamente lo del chofer. */
+  userKind?: string | null;
+  driverOnly?: boolean;
 }
 
 /** Respuesta del login: el servidor entrega un par de tokens de UNA compañía solo para arrancar; la sesión real sale de company-tokens. */
