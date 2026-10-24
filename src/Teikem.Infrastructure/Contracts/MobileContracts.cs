@@ -23,3 +23,33 @@ public sealed record MobileProofDto(DateTime DeliveredAtUtc, string RecipientNam
 public sealed record MobileOrderDto(DriverShipmentDetailDto Shipment, Guid ClientPublicId, string PackBatchNumber, string? ClientInvoiceNumber, string ServiceTypeLabel, DateTime CreatedAtUtc,
     bool IsInitialStatus, string? TripCode, string? TripStatus, string? DriverName, double? Latitude, double? Longitude,
     bool CanDeliver, bool CanFail, bool CanPickup, MobileProofDto? Proof, IReadOnlyList<MobileAttemptDto> Attempts);
+
+// ---------------------------------------------------------------------------
+// Lote 215 — asignar en la calle (permiso trips.streetassign). Rutas de hoy se lee con los endpoints de siempre (GET /trips, GET /trips/{id}, trips.view).
+// ---------------------------------------------------------------------------
+
+/// <summary>
+/// Una ruta a la que se puede mandar la orden (PLANNED, DISPATCHED o IN_PROGRESS, del mismo tipo que la orden: entrega o recogida), con su chofer y, si lo mandó el teléfono, su ÚLTIMA ubicación conocida y la distancia en línea recta
+/// al domicilio de la orden (`DistanceKm`: null si no hay ubicación o la dirección no tiene coordenadas). `IsCurrent`: es la ruta donde ya está la orden.
+/// </summary>
+public sealed record StreetTripDto(Guid PublicId, string Code, string Kind, string StatusCode, string Status, bool Accepted, Guid? DriverPublicId, string? DriverName, string? VehicleCode, int StopCount,
+    bool IsCurrent, double? DriverLat, double? DriverLng, DateTime? DriverPingAtUtc, double? DistanceKm);
+
+public sealed record StreetDriverDto(Guid PublicId, string Name, bool HasOpenTrip);
+
+public sealed record StreetVehicleDto(Guid PublicId, string Code, string? Plate);
+
+/// <summary>
+/// Dónde se puede mandar una orden: las rutas abiertas de hoy (ordenadas por cercanía al domicilio), y para armar una ruta rápida los choferes y vehículos activos.
+/// `Kind` es DELIVERY o PICKUP (una orden en su etapa inicial se recoge). `Movable`: false si el estatus de la orden ya no se puede mover (entregada, fallida…): `Reason` dice por qué.
+/// </summary>
+public sealed record StreetTargetsDto(Guid OrderPublicId, string OrderNumber, string Kind, string StatusCode, string Status, bool Movable, string? Reason,
+    Guid? CurrentTripPublicId, string? CurrentTripCode, double? AddressLat, double? AddressLng,
+    IReadOnlyList<StreetTripDto> Trips, IReadOnlyList<StreetDriverDto> Drivers, IReadOnlyList<StreetVehicleDto> Vehicles);
+
+public sealed record StreetAssignRequest(Guid OrderPublicId, Guid TripPublicId);
+public sealed record StreetUnassignRequest(Guid OrderPublicId);
+public sealed record StreetQuickRouteRequest(IReadOnlyList<Guid>? OrderPublicIds, Guid DriverPublicId, Guid VehiclePublicId);
+
+/// <summary>`Action`: ASSIGNED (de sin asignar a una ruta), MOVED (de una ruta a otra), UNASSIGNED (de una ruta a «Sin asignar») o QUICK_ROUTE. `DriverNotified`: se le dejó el aviso al chofer (le llega al teléfono en menos de un minuto).</summary>
+public sealed record StreetResultDto(string Action, Guid? OrderPublicId, string? OrderNumber, string? OrderStatusCode, string? OrderStatus, Guid? TripPublicId, string? TripCode, bool DriverNotified);

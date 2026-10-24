@@ -10573,3 +10573,21 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 
 **El chofer todavía ve en su manifiesto una orden que yo entregué desde la oficina.** Su app la quita al próximo refresco (al abrir el manifiesto o sincronizar); si intenta entregarla, el servidor responde que ya está entregada (409).
 
+## Lote 215 — App móvil: rutas de hoy y asignar en la calle
+
+**No me aparece «Asignar a una ruta» en las Acciones de la orden.** Necesita `trips.streetassign` en esa compañía (y el módulo de transporte). El permiso es nuevo: lo traen los administradores y se le da a quien corresponda en Sistema → Roles. No lo trae `trips.dispatch`.
+
+**«La orden … es de entrega: elija una ruta de entrega.» (422).** Las órdenes pendientes de recoger (en su etapa inicial) solo van a rutas de recogida; las demás, a rutas de entrega. La lista solo muestra rutas del tipo que corresponde.
+
+**«La orden … está «Entregada»: ya no se puede mover de ruta.» (422).** Solo se mueven órdenes que siguen en el flujo normal. Una entregada, fallida o cancelada no se pasa de ruta desde la calle.
+
+**La ruta que busco no está en la lista.** Solo salen las rutas abiertas de hoy (planeadas, despachadas o en curso) y las despachadas o en curso de días anteriores, del mismo tipo que la orden. Una ruta cerrada o cancelada no sale.
+
+**No sale la distancia a una ruta.** La distancia se calcula desde la última ubicación que mandó el chofer, y solo cuando la ruta ya salió; además la dirección de la orden debe tener coordenadas. Sin eso, la ruta aparece sin distancia.
+
+**Mandé una orden a una ruta y el chofer no la ve.** Le llega un aviso «Nueva parada en …» (al teléfono en menos de un minuto si tiene Firebase y la app instalada) y la parada aparece al refrescar su manifiesto. Si su manifiesto ya está abierto, que lo refresque.
+
+**Arme una ruta rápida y dice que falló.** La ruta se cancela sola y las órdenes quedan como estaban. Lea el mensaje: lo más común es que el chofer o el vehículo ya estén ocupados ese día, o que la orden ya esté en otra ruta (sáquela primero).
+
+**Sin señal no me deja asignar ni ver rutas.** Es lo esperado: el personal no trabaja sin señal en estas pantallas; solo lo del chofer funciona sin conexión.
+

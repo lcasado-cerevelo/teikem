@@ -6797,3 +6797,25 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_UserPushDevice_User' AND object_id = OBJECT_ID('dbo.UserPushDevice'))
     CREATE INDEX IX_UserPushDevice_User ON dbo.UserPushDevice(TenantId, UserId);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-24 (n) — Asignar en la calle (Lote 215).
+   - Permiso trips.streetassign («Asignar órdenes a rutas desde la calle (app móvil)», categoría ORDERS): solo a los roles TenantAdmin ya clonados; cada compañía se lo da después a quien quiera
+     en Sistema → Roles (no se reparte por trips.dispatch: ese es del almacén). Solo AGREGA.
+   ---------------------------------------------------------------------------- */
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'trips.streetassign')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('trips.streetassign', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'ORDERS'),
+            N'{"es":"Asignar órdenes a rutas desde la calle (app móvil)","en":"Assign orders to routes from the street (mobile app)"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L215_STREETASSIGN')
+BEGIN
+    INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+    SELECT DISTINCT r.RoleId, pm.PermissionId
+    FROM dbo.Role r
+    JOIN dbo.Permission pm ON pm.Code = 'trips.streetassign'
+    WHERE r.IsActive = 1 AND r.Name = 'TenantAdmin'
+      AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = pm.PermissionId);
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L215_STREETASSIGN');
+END
+GO

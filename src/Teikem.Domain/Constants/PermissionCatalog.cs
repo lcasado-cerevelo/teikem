@@ -100,6 +100,8 @@ public static class PermissionCatalog
     public const string DriverAppUse = "driverapp.use";
     /// <summary>Lote 213: entrar a la app móvil (la del chofer, que ahora usa también el personal). Qué ve cada quien lo deciden sus otros permisos; el usuario «solo chofer» ve solo lo del chofer.</summary>
     public const string MobileUse = "mobile.use";
+    /// <summary>Lote 215: asignar, mover o sacar órdenes de las rutas YA despachadas o en curso desde la app móvil (en la calle), y armar una ruta rápida. Distinto de trips.dispatch (despachar rutas desde el almacén).</summary>
+    public const string TripsStreetAssign = "trips.streetassign";
 
     public const string TripsOptimize = "trips.optimize";
 
@@ -462,6 +464,7 @@ public static class PermissionCatalog
         new(TripsClose, "ORDERS", "Cerrar rutas", "Close routes"),
         new(DriverAppUse, "ORDERS", "App del chofer: usarla", "Driver app: use it"),
         new(MobileUse, "ORDERS", "App móvil: usarla", "Mobile app: use it"),
+        new(TripsStreetAssign, "ORDERS", "Asignar órdenes a rutas desde la calle (app móvil)", "Assign orders to routes from the street (mobile app)"),
 
         new(TripsOptimize, "ORDERS", "Optimizar rutas", "Optimize routes"),
 

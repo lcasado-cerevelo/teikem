@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from '@components/Text';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'expo-router';
 import { useAppStore } from '@/stores';
 import { useShipmentDetail } from '@hooks/queries';
 import { useAccess } from '@hooks/access';
@@ -23,6 +24,7 @@ export default function ShipmentActions() {
   const { t } = useTranslation();
   const [option, setOption] = useState<ActionOption>('default');
   const access = useAccess();
+  const router = useRouter();
   // Lote 214: una orden del personal se cierra con orders.deliver en esa compañía; el tipo (entrega/recogida) lo dice la ficha del servidor.
   const isStaff = shipment?.source === 'staff';
   const isPickup = (detail ?? shipment)?.kind === 'PICKUP';
@@ -38,10 +40,13 @@ export default function ShipmentActions() {
   }
 
   if (isStaff) {
-    if (shipment && !access.companiesWith('orders.deliver').some((c) => c.tenantId === shipment.tenantId)) return <Text style={styles.notice}>{t('STAFF_ORDERS.NO_DELIVER_PERM')}</Text>;
+    const canDeliver = !!shipment && access.companiesWith('orders.deliver').some((c) => c.tenantId === shipment.tenantId);
+    // Lote 215: asignar en la calle (trips.streetassign) — mandar la orden a una ruta, pasarla o sacarla.
+    const canAssign = !!shipment && access.companiesWith('trips.streetassign').some((c) => c.tenantId === shipment.tenantId);
+    if (!canDeliver && !canAssign) return <Text style={styles.notice}>{t('STAFF_ORDERS.NO_DELIVER_PERM')}</Text>;
     if (!detail?.staff) return <Text style={styles.notice}>{t('STAFF_ORDERS.LOADING')}</Text>;
-    const a = staffActionsOf(detail.staff);
-    if (!a.complete && !a.pickup && !a.exception) return <Text style={styles.notice}>{t('STAFF_ORDERS.NOTHING_TO_DO', { status: detail.status })}</Text>;
+    const a = canDeliver ? staffActionsOf(detail.staff) : { complete: false, pickup: false, exception: false };
+    if (!a.complete && !a.pickup && !a.exception && !canAssign) return <Text style={styles.notice}>{t('STAFF_ORDERS.NOTHING_TO_DO', { status: detail.status })}</Text>;
     return (
       <View style={styles.container}>
         {a.exception ? (
@@ -57,6 +62,11 @@ export default function ShipmentActions() {
         {a.complete ? (
           <Pressable style={styles.item} onPress={() => setOption('complete')}>
             <Text style={styles.label} numberOfLines={1} adjustsFontSizeToFit>{t('ACTIONS.ORDERS_COMPLETE')}</Text>
+          </Pressable>
+        ) : null}
+        {canAssign && shipment ? (
+          <Pressable style={styles.item} onPress={() => router.push({ pathname: '/(auth)/StreetAssign', params: { tenantId: String(shipment.tenantId), orderId: shipment.id } })}>
+            <Text style={styles.label} numberOfLines={1} adjustsFontSizeToFit>{t('STREET.ASSIGN_BUTTON')}</Text>
           </Pressable>
         ) : null}
       </View>

@@ -84,7 +84,10 @@ export default function Home() {
   const shown = allItems.filter((it) => loading || it.counter !== '0');
   const driverItems = access.isDriver || access.driverOnly || !access.staff ? (shown.length > 0 ? shown : allItems) : [];
   // Lote 214: lo del personal son accesos (sin contador): Órdenes con orders.view. Después, su trabajo de chofer si también lo es.
-  const staffItems: HomeItem[] = access.staff && access.can('orders.view') ? [{ key: 'staff-orders', label: t('STAFF_ORDERS.TITLE'), counter: '›', loading: false, href: '/(auth)/Orders' }] : [];
+  const staffItems: HomeItem[] = [
+    ...(access.staff && access.can('orders.view') ? [{ key: 'staff-orders', label: t('STAFF_ORDERS.TITLE'), counter: '›', loading: false, href: '/(auth)/Orders' as Href }] : []),
+    ...(access.staff && access.can('trips.view') ? [{ key: 'staff-trips', label: t('TRIPS_TODAY.TITLE'), counter: '›', loading: false, href: '/(auth)/Trips' as Href }] : []),
+  ];
   const items = [...staffItems, ...driverItems];
   const header = (
     <>

@@ -20316,6 +20316,174 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/mobile/street/orders/{publicId}/targets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["StreetTargetsDto"];
+                        "application/json": components["schemas"]["StreetTargetsDto"];
+                        "text/json": components["schemas"]["StreetTargetsDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mobile/street/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["StreetAssignRequest"];
+                    "text/json": components["schemas"]["StreetAssignRequest"];
+                    "application/*+json": components["schemas"]["StreetAssignRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["StreetResultDto"];
+                        "application/json": components["schemas"]["StreetResultDto"];
+                        "text/json": components["schemas"]["StreetResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mobile/street/unassign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["StreetUnassignRequest"];
+                    "text/json": components["schemas"]["StreetUnassignRequest"];
+                    "application/*+json": components["schemas"]["StreetUnassignRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["StreetResultDto"];
+                        "application/json": components["schemas"]["StreetResultDto"];
+                        "text/json": components["schemas"]["StreetResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mobile/street/quick-route": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["StreetQuickRouteRequest"];
+                    "text/json": components["schemas"]["StreetQuickRouteRequest"];
+                    "application/*+json": components["schemas"]["StreetQuickRouteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["StreetResultDto"];
+                        "application/json": components["schemas"]["StreetResultDto"];
+                        "text/json": components["schemas"]["StreetResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/mobile/device": {
         parameters: {
             query?: never;
@@ -47640,6 +47808,91 @@ export interface components {
             /** Format: date-time */
             createdAtUtc?: string;
             uploadedByName?: string | null;
+        };
+        StreetAssignRequest: {
+            /** Format: uuid */
+            orderPublicId?: string;
+            /** Format: uuid */
+            tripPublicId?: string;
+        };
+        StreetDriverDto: {
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+            hasOpenTrip?: boolean;
+        };
+        StreetQuickRouteRequest: {
+            orderPublicIds?: string[] | null;
+            /** Format: uuid */
+            driverPublicId?: string;
+            /** Format: uuid */
+            vehiclePublicId?: string;
+        };
+        StreetResultDto: {
+            action?: string | null;
+            /** Format: uuid */
+            orderPublicId?: string | null;
+            orderNumber?: string | null;
+            orderStatusCode?: string | null;
+            orderStatus?: string | null;
+            /** Format: uuid */
+            tripPublicId?: string | null;
+            tripCode?: string | null;
+            driverNotified?: boolean;
+        };
+        StreetTargetsDto: {
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            kind?: string | null;
+            statusCode?: string | null;
+            status?: string | null;
+            movable?: boolean;
+            reason?: string | null;
+            /** Format: uuid */
+            currentTripPublicId?: string | null;
+            currentTripCode?: string | null;
+            /** Format: double */
+            addressLat?: number | null;
+            /** Format: double */
+            addressLng?: number | null;
+            trips?: components["schemas"]["StreetTripDto"][] | null;
+            drivers?: components["schemas"]["StreetDriverDto"][] | null;
+            vehicles?: components["schemas"]["StreetVehicleDto"][] | null;
+        };
+        StreetTripDto: {
+            /** Format: uuid */
+            publicId?: string;
+            code?: string | null;
+            kind?: string | null;
+            statusCode?: string | null;
+            status?: string | null;
+            accepted?: boolean;
+            /** Format: uuid */
+            driverPublicId?: string | null;
+            driverName?: string | null;
+            vehicleCode?: string | null;
+            /** Format: int32 */
+            stopCount?: number;
+            isCurrent?: boolean;
+            /** Format: double */
+            driverLat?: number | null;
+            /** Format: double */
+            driverLng?: number | null;
+            /** Format: date-time */
+            driverPingAtUtc?: string | null;
+            /** Format: double */
+            distanceKm?: number | null;
+        };
+        StreetUnassignRequest: {
+            /** Format: uuid */
+            orderPublicId?: string;
+        };
+        StreetVehicleDto: {
+            /** Format: uuid */
+            publicId?: string;
+            code?: string | null;
+            plate?: string | null;
         };
         SupplierDto: {
             /** Format: int32 */

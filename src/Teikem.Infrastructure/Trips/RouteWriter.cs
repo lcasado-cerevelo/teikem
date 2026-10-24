@@ -136,6 +136,40 @@ public sealed class RouteWriter(TeikemDbContext db, StatusService statuses, ILoo
     {
         EnsureTracked(trip);
         await EnsureEditableAsync(trip, ct);
+        await AddOrdersCoreAsync(trip, orderIds, ct);
+    }
+
+    /// <summary>
+    /// Lote 215 (asignar en la calle): igual que <see cref="AddOrdersAsync"/> pero sobre una ruta ya DESPACHADA o EN CURSO (la versión vigente está congelada, igual que cuando el chofer no acepta un envío: se modifica en el sitio).
+    /// Las órdenes nuevas van al final. NO cambia el estatus de las órdenes (lo hace el llamador según la ruta). 422 con el mensaje de «no editable» si la ruta no está en DISPATCHED ni IN_PROGRESS. No guarda... salvo lo que ya guarda AddOrdersAsync.
+    /// </summary>
+    public async Task AddOrdersLiveAsync(Trip trip, IReadOnlyCollection<int> orderIds, CancellationToken ct)
+    {
+        EnsureTracked(trip);
+        await EnsureLiveAsync(trip, ct);
+        await AddOrdersCoreAsync(trip, orderIds, ct);
+    }
+
+    /// <summary>422 si la ruta no está despachada ni en curso (activa).</summary>
+    public async Task EnsureLiveAsync(Trip trip, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(trip);
+        var code = await StatusCodeOfAsync(trip.StatusCodeId, ct);
+        var live = string.Equals(code, TripStatuses.Dispatched, StringComparison.OrdinalIgnoreCase) || string.Equals(code, TripStatuses.InProgress, StringComparison.OrdinalIgnoreCase);
+        if (!trip.IsActive || !live)
+            throw new StatusRuleException(TripRules.NotEditableMessage(trip.Code, trip.IsActive ? code : TripStatuses.Cancelled));
+    }
+
+    /// <summary>Lote 215: saca una orden de una ruta DESPACHADA o EN CURSO (libera su TripOrder y su parada). No guarda ni cambia el estatus de la orden.</summary>
+    public async Task ReleaseOrderLiveAsync(Trip trip, int transportOrderId, CancellationToken ct)
+    {
+        EnsureTracked(trip);
+        await EnsureLiveAsync(trip, ct);
+        await ReleaseCoreAsync(trip, transportOrderId, ct);
+    }
+
+    private async Task AddOrdersCoreAsync(Trip trip, IReadOnlyCollection<int> orderIds, CancellationToken ct)
+    {
         var ids = new List<int>();
         foreach (var id in orderIds ?? Array.Empty<int>())
             if (!ids.Contains(id)) ids.Add(id);

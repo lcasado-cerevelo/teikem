@@ -15,7 +15,7 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/mobile")]
 [Authorize]
 [RequirePermission(PermissionCatalog.MobileUse)]
-public sealed class MobileController(DriverPushService push, MobileOrderService orders, DriverAppService app) : ControllerBase
+public sealed class MobileController(DriverPushService push, MobileOrderService orders, DriverAppService app, StreetAssignService street) : ControllerBase
 {
     // ---------------------------------------------------------------- Lote 214: órdenes
 
@@ -48,6 +48,32 @@ public sealed class MobileController(DriverPushService push, MobileOrderService 
     [HttpPost("orders/{publicId:guid}/pickup")]
     [RequirePermission(PermissionCatalog.OrdersDeliver)]
     public Task<DriverShipmentResultDto> Pickup(Guid publicId, [FromBody] DriverPickupRequest? req, CancellationToken ct) => app.PickupAnyAsync(publicId, req, ct);
+
+    // ---------------------------------------------------------------- Lote 215: asignar en la calle (trips.streetassign + módulo de transporte)
+
+    /// <summary>Dónde se puede mandar la orden: las rutas abiertas de hoy del mismo tipo (más cercanas al domicilio primero, con la última ubicación del chofer si la mandó), y los choferes y vehículos para una ruta rápida. 404 si la orden no existe.</summary>
+    [HttpGet("street/orders/{publicId:guid}/targets")]
+    [RequirePermission(PermissionCatalog.TripsStreetAssign)]
+    [RequireModule(ModuleKeys.LtlGround)]
+    public Task<StreetTargetsDto> StreetTargets(Guid publicId, CancellationToken ct) => street.TargetsAsync(publicId, ct);
+
+    /// <summary>Manda la orden a una ruta abierta (planeada, despachada o en curso); si estaba en otra, la pasa. Al chofer se le deja un aviso. 404 orden/ruta; 409 ya está en esa ruta; 422 tipo distinto, estatus que no se mueve, ruta cerrada o no elegible.</summary>
+    [HttpPost("street/assign")]
+    [RequirePermission(PermissionCatalog.TripsStreetAssign)]
+    [RequireModule(ModuleKeys.LtlGround)]
+    public Task<StreetResultDto> StreetAssign([FromBody] StreetAssignRequest? req, CancellationToken ct) => street.AssignAsync(req, ct);
+
+    /// <summary>Saca la orden de su ruta (vuelve a «Sin asignar» si era de entrega) y avisa al chofer. 422 si no está en ninguna ruta o su estatus ya no se mueve.</summary>
+    [HttpPost("street/unassign")]
+    [RequirePermission(PermissionCatalog.TripsStreetAssign)]
+    [RequireModule(ModuleKeys.LtlGround)]
+    public Task<StreetResultDto> StreetUnassign([FromBody] StreetUnassignRequest? req, CancellationToken ct) => street.UnassignAsync(req, ct);
+
+    /// <summary>Ruta rápida: crea y despacha una ruta de hoy para el chofer y vehículo elegidos con las órdenes dadas (todas del mismo tipo). Si falla, la ruta se cancela.</summary>
+    [HttpPost("street/quick-route")]
+    [RequirePermission(PermissionCatalog.TripsStreetAssign)]
+    [RequireModule(ModuleKeys.LtlGround)]
+    public Task<StreetResultDto> StreetQuickRoute([FromBody] StreetQuickRouteRequest? req, CancellationToken ct) => street.QuickRouteAsync(req, ct);
 
     // ---------------------------------------------------------------- Lote 213: teléfono
 
