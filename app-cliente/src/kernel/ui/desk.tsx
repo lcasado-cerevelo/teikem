@@ -110,29 +110,31 @@ export function DataTable<T>({ columns, rows, keyOf, onRowPress, empty, testID, 
         ))}
       </View>
       {rows.length === 0 && !!empty && <Text style={{ padding: 16, color: c.muted }}>{empty}</Text>}
-      {rows.map((row, i) => (
-        <Pressable
-          key={keyOf(row)}
-          accessibilityRole={onRowPress ? 'button' : undefined}
-          disabled={!onRowPress}
-          onPress={() => onRowPress?.(row)}
-          style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => ({
-            flexDirection: 'row',
-            minHeight: 46,
-            paddingVertical: 8,
-            alignItems: 'center',
-            borderBottomWidth: i === rows.length - 1 ? 0 : 1,
-            borderBottomColor: c.line,
-            backgroundColor: pressed || hovered ? c.neutralBg : c.card,
-          })}
-        >
-          {columns.map((col) => (
-            <View key={col.key} style={cell(col)}>
-              {col.render(row)}
+      {rows.map((row, i) => {
+        const rowBase = { flexDirection: 'row', minHeight: 46, paddingVertical: 8, alignItems: 'center', borderBottomWidth: i === rows.length - 1 ? 0 : 1, borderBottomColor: c.line } as const
+        const cells = columns.map((col) => (
+          <View key={col.key} style={cell(col)}>
+            {col.render(row)}
+          </View>
+        ))
+        // sin acción por fila la fila es una vista normal: un Pressable deshabilitado marca como deshabilitado todo lo de adentro (p. ej. el botón «Editar» de la fila)
+        if (!onRowPress)
+          return (
+            <View key={keyOf(row)} style={{ ...rowBase, backgroundColor: c.card }}>
+              {cells}
             </View>
-          ))}
-        </Pressable>
-      ))}
+          )
+        return (
+          <Pressable
+            key={keyOf(row)}
+            accessibilityRole="button"
+            onPress={() => onRowPress(row)}
+            style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => ({ ...rowBase, backgroundColor: pressed || hovered ? c.neutralBg : c.card })}
+          >
+            {cells}
+          </Pressable>
+        )
+      })}
       {(total !== undefined || onExport) && (
         <View style={{ paddingVertical: 6, paddingHorizontal: 10, borderTopWidth: 1, borderTopColor: c.line, backgroundColor: c.neutralBg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <Text testID={testID ? `${testID}-count` : undefined} style={{ fontSize: 12, fontWeight: '600', color: c.muted }}>{total !== undefined ? t('table.count', { shown: rows.length, total }) : ''}</Text>
