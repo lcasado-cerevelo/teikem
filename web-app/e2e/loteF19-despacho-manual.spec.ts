@@ -10,13 +10,14 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
+import { manualImgDir, manualLang } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
 
 const API_URL = process.env.API_URL ?? 'http://localhost:5000'
 const ADMIN = { email: process.env.TEIKEM_ADMIN_EMAIL ?? 'teikem+admin@cerevelo.com', password: process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!' }
-const IMG_DIR = fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url))
+const IMG_DIR = manualImgDir(fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url)))
 const WAREHOUSE = 'ALM-01 · Almacén principal'
 /** Sufijo solo de letras (los dígitos del sello pasan a letras). */
 const LETTERS = String(Date.now())
@@ -29,7 +30,9 @@ async function shot(page: Page, name: string) {
   await page.waitForLoadState('networkidle')
   await expect(page.locator('.toast.on')).toHaveCount(0, { timeout: 15_000 })
   mkdirSync(IMG_DIR, { recursive: true })
+  await manualLang(page, 'en', `${IMG_DIR}f19-${name}.png`)
   await page.screenshot({ path: `${IMG_DIR}f19-${name}.png`, animations: 'disabled', caret: 'hide' })
+  await manualLang(page, 'es')
 }
 
 async function apiToken(request: APIRequestContext): Promise<string> {

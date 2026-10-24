@@ -8,6 +8,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
+import { manualImgDir, manualLang, manualTarget } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 import { contractData, withRates } from './rates'
 
@@ -17,7 +18,7 @@ const API_URL = process.env.API_URL ?? 'http://localhost:5000'
 const SQL_DB = process.env.E2E_SQL_DB
 const PASSWORD = process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!'
 const ADMIN = { email: process.env.TEIKEM_ADMIN_EMAIL ?? 'teikem+admin@cerevelo.com', password: PASSWORD }
-const IMG_DIR = fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url))
+const IMG_DIR = manualImgDir(fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url)))
 const LETTERS = String(Date.now())
   .slice(-6)
   .replace(/\d/g, (d) => 'ABCDEFGHJK'[Number(d)])
@@ -30,8 +31,11 @@ async function shot(page: Page, isMobile: boolean, name: string, target?: Locato
   await page.waitForLoadState('networkidle')
   await expect(page.locator('.toast.on')).toHaveCount(0, { timeout: 15_000 })
   mkdirSync(IMG_DIR, { recursive: true })
-  if (target) await target.screenshot({ path: `${IMG_DIR}${name}.png`, animations: 'disabled', caret: 'hide' })
+  const manualShot1 = await manualTarget(target)
+  await manualLang(page, 'en', `${IMG_DIR}${name}.png`)
+  if (manualShot1) await manualShot1.screenshot({ path: `${IMG_DIR}${name}.png`, animations: 'disabled', caret: 'hide' })
   else await page.screenshot({ path: `${IMG_DIR}${name}.png`, animations: 'disabled', caret: 'hide' })
+  await manualLang(page, 'es')
 }
 
 async function apiToken(request: APIRequestContext): Promise<string> {

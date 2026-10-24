@@ -7,6 +7,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { manualImgDir, manualLang } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -15,7 +16,7 @@ const API_URL = process.env.API_URL ?? 'http://localhost:5000'
 const ADMIN = { email: process.env.TEIKEM_ADMIN_EMAIL ?? 'teikem+admin@cerevelo.com', password: process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!' }
 // marca fija de la computadora del administrador de las pruebas: se confirma una vez y queda de confianza (si fuera nueva cada vez se toparía con el tope diario de correos)
 const ADMIN_BROWSER = 'e2e-admin-computer-'.padEnd(48, 'x')
-const IMG_DIR = fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url))
+const IMG_DIR = manualImgDir(fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url)))
 const LETTERS = String(Date.now())
   .slice(-6)
   .replace(/\d/g, (d) => 'abcdefghij'[Number(d)])
@@ -28,7 +29,9 @@ async function shot(page: Page, isMobile: boolean, name: string) {
   await page.waitForLoadState('networkidle')
   await expect(page.locator('.toast.on')).toHaveCount(0, { timeout: 15_000 })
   mkdirSync(IMG_DIR, { recursive: true })
+  await manualLang(page, 'en', `${IMG_DIR}${name}.png`)
   await page.screenshot({ path: `${IMG_DIR}${name}.png`, animations: 'disabled', caret: 'hide' })
+  await manualLang(page, 'es')
 }
 
 /** Inicio de sesión por API con una marca de computadora; si pide confirmar y el API devuelve el enlace (desarrollo), lo confirma y entra. */

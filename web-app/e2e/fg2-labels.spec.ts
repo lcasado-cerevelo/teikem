@@ -15,6 +15,7 @@
 import { mkdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Download, type Locator, type Page } from '@playwright/test'
+import { manualImgDir, manualLang, manualTarget } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 import { contractData, withRates } from './rates'
 
@@ -26,7 +27,7 @@ type OrderPageDto = components['schemas']['OrderPageDto']
 
 const API_URL = process.env.API_URL ?? 'http://localhost:5000'
 const ADMIN = { email: process.env.TEIKEM_ADMIN_EMAIL ?? 'teikem+admin@cerevelo.com', password: process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!' }
-const IMG_DIR = fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url))
+const IMG_DIR = manualImgDir(fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url)))
 const RAND = Math.random().toString(36).slice(2, 7).toUpperCase()
 
 test.use({ locale: 'es-PR' })
@@ -43,7 +44,10 @@ async function shot(page: Page, isMobile: boolean, name: string, height = 900, o
   await page.mouse.move(0, 0)
   const size = page.viewportSize()
   if (size) await page.setViewportSize({ width: size.width, height })
-  await (only ?? page).screenshot({ path: `${IMG_DIR}${name}.png`, animations: 'disabled', caret: 'hide' })
+  const manualShot1 = await manualTarget((only ?? page))
+  await manualLang(page, 'en', `${IMG_DIR}${name}.png`)
+  await manualShot1.screenshot({ path: `${IMG_DIR}${name}.png`, animations: 'disabled', caret: 'hide' })
+  await manualLang(page, 'es')
   if (size) await page.setViewportSize(size)
 }
 

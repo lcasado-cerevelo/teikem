@@ -9,6 +9,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
+import { manualImgDir, manualLang } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -27,12 +28,13 @@ const CATALOG_LABEL = `Acomodar E2E ${STAMP}`
 
 test.use({ locale: 'es-PR' })
 
-const IMG_DIR = fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url))
+const IMG_DIR = manualImgDir(fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url)))
 
 /** Captura de la pantalla actual para el manual, cuando ya no hay peticiones pendientes. */
 async function shot(page: Page, name: string, opts: { mask?: Locator[] } = {}) {
   await page.waitForLoadState('networkidle')
   mkdirSync(IMG_DIR, { recursive: true })
+  await manualLang(page, 'en', `${IMG_DIR}f8a-${name}.png`)
   await page.screenshot({
     path: `${IMG_DIR}f8a-${name}.png`,
     animations: 'disabled',
@@ -40,6 +42,7 @@ async function shot(page: Page, name: string, opts: { mask?: Locator[] } = {}) {
     mask: opts.mask,
     maskColor: '#2a3346',
   })
+  await manualLang(page, 'es')
 }
 
 const data = {

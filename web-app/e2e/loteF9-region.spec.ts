@@ -10,6 +10,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { manualImgDir, manualLang, manualTarget } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -38,13 +39,15 @@ const FORMAT_FIELDS = [
 test.use({ locale: 'es-PR' })
 test.describe.configure({ mode: 'serial' })
 
-const IMG_DIR = fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url))
+const IMG_DIR = manualImgDir(fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url)))
 
 async function shot(page: Page, name: string) {
   await page.waitForLoadState('networkidle')
   await expect(page.locator('.toast.on')).toHaveCount(0, { timeout: 15_000 })
   mkdirSync(IMG_DIR, { recursive: true })
+  await manualLang(page, 'en', `${IMG_DIR}f9-${name}.png`)
   await page.screenshot({ path: `${IMG_DIR}f9-${name}.png`, animations: 'disabled', caret: 'hide', fullPage: true })
+  await manualLang(page, 'es')
 }
 
 async function apiToken(request: APIRequestContext): Promise<string> {
@@ -169,7 +172,10 @@ test('Región y formatos: US con 24 h y AAAA-MM-DD cambia otras pantallas sin re
       // el panel de recepción queda bajo el pliegue: captura del panel solo
       const recv = page.locator('.panel').filter({ has: page.getByRole('heading', { name: 'Recepción por almacén' }) })
       await recv.scrollIntoViewIfNeeded()
-      await recv.screenshot({ path: `${IMG_DIR}f9-operacion-recepcion.png`, animations: 'disabled', caret: 'hide' })
+      const manualShot1 = await manualTarget(recv)
+      await manualLang(page, 'en', `${IMG_DIR}f9-operacion-recepcion.png`)
+      await manualShot1.screenshot({ path: `${IMG_DIR}f9-operacion-recepcion.png`, animations: 'disabled', caret: 'hide' })
+      await manualLang(page, 'es')
     }
   }
 })

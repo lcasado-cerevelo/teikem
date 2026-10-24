@@ -2,13 +2,14 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, type APIRequestContext, type Locator, type Page } from '@playwright/test'
+import { manualImgDir, manualLang, manualTarget } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 
 export type AuthResultDto = components['schemas']['AuthResultDto']
 
 export const API_URL = process.env.API_URL ?? 'http://localhost:5000'
 export const ADMIN = { email: process.env.TEIKEM_ADMIN_EMAIL ?? 'teikem+admin@cerevelo.com', password: process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!' }
-export const IMG_DIR = fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url))
+export const IMG_DIR = manualImgDir(fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url)))
 /** Sufijo solo de letras (los dígitos del sello pasan a letras). */
 export const LETTERS = String(Date.now())
   .slice(-6)
@@ -24,7 +25,10 @@ export async function shot(page: Page, isMobile: boolean, name: string, height =
   await page.evaluate(() => document.querySelectorAll('*').forEach((el) => { if (el.scrollTop > 0) el.scrollTop = 0 }))
   const size = page.viewportSize()
   if (size) await page.setViewportSize({ width: size.width, height })
-  await (only ?? page).screenshot({ path: `${IMG_DIR}${name}.png`, animations: 'disabled', caret: 'hide' })
+  const manualShot1 = await manualTarget((only ?? page))
+  await manualLang(page, 'en', `${IMG_DIR}${name}.png`)
+  await manualShot1.screenshot({ path: `${IMG_DIR}${name}.png`, animations: 'disabled', caret: 'hide' })
+  await manualLang(page, 'es')
   if (size) await page.setViewportSize(size)
 }
 

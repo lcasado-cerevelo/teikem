@@ -6,6 +6,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
+import { manualImgDir, manualLang } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -18,12 +19,13 @@ const DISPATCH = { email: process.env.TEIKEM_DISPATCH_EMAIL ?? 'teikem+dispatch@
 // Interfaz en español (el idioma inicial sale del navegador si el usuario no eligió otro).
 test.use({ locale: 'es-PR' })
 
-const IMG_DIR = fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url))
+const IMG_DIR = manualImgDir(fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url)))
 
 /** Captura de la pantalla actual para el manual, cuando ya no hay peticiones pendientes. `mask` tapa datos variables o secretos. */
 async function shot(page: Page, name: string, opts: { mask?: Locator[] } = {}) {
   await page.waitForLoadState('networkidle')
   mkdirSync(IMG_DIR, { recursive: true })
+  await manualLang(page, 'en', `${IMG_DIR}f1-${name}.png`)
   await page.screenshot({
     path: `${IMG_DIR}f1-${name}.png`,
     animations: 'disabled',
@@ -31,6 +33,7 @@ async function shot(page: Page, name: string, opts: { mask?: Locator[] } = {}) {
     mask: opts.mask,
     maskColor: '#2a3346',
   })
+  await manualLang(page, 'es')
 }
 
 /** El control con esa etiqueta queda inválido y su descripción accesible es exactamente el mensaje (el `.ferr` bajo el campo). */

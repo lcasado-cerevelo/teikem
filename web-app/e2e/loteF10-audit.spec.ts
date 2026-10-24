@@ -13,6 +13,7 @@
 import { mkdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { manualImgDir, manualLang } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -20,7 +21,7 @@ type TenantSettingsDto = components['schemas']['TenantSettingsDto']
 
 const API_URL = process.env.API_URL ?? 'http://localhost:5000'
 const ADMIN = { email: process.env.TEIKEM_ADMIN_EMAIL ?? 'teikem+admin@cerevelo.com', password: process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!' }
-const IMG_DIR = fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url))
+const IMG_DIR = manualImgDir(fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url)))
 
 test.use({ locale: 'es-PR' })
 
@@ -28,7 +29,9 @@ async function shot(page: Page, name: string) {
   await page.waitForLoadState('networkidle')
   await expect(page.locator('.toast.on')).toHaveCount(0, { timeout: 15_000 })
   mkdirSync(IMG_DIR, { recursive: true })
+  await manualLang(page, 'en', `${IMG_DIR}f10-${name}.png`)
   await page.screenshot({ path: `${IMG_DIR}f10-${name}.png`, animations: 'disabled', caret: 'hide', fullPage: true })
+  await manualLang(page, 'es')
 }
 
 async function apiLogin(request: APIRequestContext, deviceInfo?: string): Promise<string> {

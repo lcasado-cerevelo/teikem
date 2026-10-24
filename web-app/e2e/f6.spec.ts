@@ -7,6 +7,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
+import { manualImgDir, manualLang } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 import { createClient } from './staffHelpers'
 
@@ -27,7 +28,7 @@ let receiptNumber = ''
 // Interfaz en español (el idioma inicial sale del navegador si el usuario no eligió otro).
 test.use({ locale: 'es-PR' })
 
-const IMG_DIR = fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url))
+const IMG_DIR = manualImgDir(fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url)))
 
 /** Captura de la pantalla actual para el manual, cuando ya no hay peticiones pendientes. `mask` tapa datos variables. */
 /** Filtro múltiple con buscador (selector con casillas): se abre, se escribe `text` y se marca la opción cuyo SKU es `sku`. */
@@ -53,6 +54,7 @@ async function expectFilterProduct(page: Page, sku: string) {
 async function shot(page: Page, name: string, opts: { mask?: Locator[] } = {}) {
   await page.waitForLoadState('networkidle')
   mkdirSync(IMG_DIR, { recursive: true })
+  await manualLang(page, 'en', `${IMG_DIR}f6-${name}.png`)
   await page.screenshot({
     path: `${IMG_DIR}f6-${name}.png`,
     animations: 'disabled',
@@ -60,6 +62,7 @@ async function shot(page: Page, name: string, opts: { mask?: Locator[] } = {}) {
     mask: opts.mask,
     maskColor: '#2a3346',
   })
+  await manualLang(page, 'es')
 }
 
 /** Token de acceso del admin por el API (para preparar datos del recorrido). */

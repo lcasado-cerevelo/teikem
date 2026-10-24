@@ -14,6 +14,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
+import { manualImgDir, manualLang } from './manualLang'
 import { openClientPanels } from './staffHelpers'
 import type { components } from '../src/kernel/api/schema'
 
@@ -25,7 +26,7 @@ type PortalInviteResultDto = components['schemas']['PortalInviteResultDto']
 const API_URL = process.env.API_URL ?? 'http://localhost:5000'
 const ADMIN = { email: process.env.TEIKEM_ADMIN_EMAIL ?? 'teikem+admin@cerevelo.com', password: process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!' }
 const PORTAL_PASSWORD = 'Fa3-Portal-2026-Segura!'
-const IMG_DIR = fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url))
+const IMG_DIR = manualImgDir(fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url)))
 /** Sufijo solo de letras (los dígitos del sello pasan a letras). */
 const LETTERS = String(Date.now())
   .slice(-6)
@@ -52,7 +53,9 @@ async function shot(page: Page, isMobile: boolean, name: string, target?: Locato
   const size = page.viewportSize()
   if (target && size) await page.setViewportSize({ width: size.width, height: 1300 }) // el panel entero a la vista
   await page.waitForTimeout(150)
+  await manualLang(page, 'en', `${IMG_DIR}${name}.png`)
   await (target ?? page).screenshot({ path: `${IMG_DIR}${name}.png`, animations: 'disabled', caret: 'hide' })
+  await manualLang(page, 'es')
   if (target && size) await page.setViewportSize(size)
 }
 

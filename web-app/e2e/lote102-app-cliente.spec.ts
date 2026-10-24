@@ -9,6 +9,7 @@ import { createHmac } from 'node:crypto'
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { manualImgDir, manualLang } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -16,7 +17,7 @@ type AuthResultDto = components['schemas']['AuthResultDto']
 const API_URL = process.env.API_URL ?? 'http://localhost:5000'
 const APP_URL = process.env.CLIENT_APP_URL ?? 'http://localhost:8081'
 const ADMIN = { email: process.env.TEIKEM_ADMIN_EMAIL ?? 'teikem+admin@cerevelo.com', password: process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!' }
-const IMG_DIR = fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url))
+const IMG_DIR = manualImgDir(fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url)))
 const LETTERS = String(Date.now())
   .slice(-6)
   .replace(/\d/g, (d) => 'ABCDEFGHJK'[Number(d)])
@@ -28,7 +29,9 @@ async function shot(page: Page, isMobile: boolean, name: string) {
   if (isMobile) return
   await page.waitForTimeout(400)
   mkdirSync(IMG_DIR, { recursive: true })
+  await manualLang(page, 'en', `${IMG_DIR}${name}.png`)
   await page.screenshot({ path: `${IMG_DIR}${name}.png`, animations: 'disabled', caret: 'hide' })
+  await manualLang(page, 'es')
 }
 
 /** Código TOTP de 6 dígitos (RFC 6238, SHA-1, 30 s) para la clave en base32 que muestra la app. */

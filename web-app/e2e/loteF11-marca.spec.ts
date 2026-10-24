@@ -10,6 +10,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { manualImgDir, manualLang, manualTarget } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -23,7 +24,7 @@ const SLOTS = ['lockup', 'lockup-inverted', 'mark', 'mark-inverted']
 test.use({ locale: 'es-PR' })
 test.describe.configure({ mode: 'serial' })
 
-const IMG_DIR = fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url))
+const IMG_DIR = manualImgDir(fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url)))
 
 const svg = (fill: string, label: string) =>
   Buffer.from(
@@ -39,7 +40,9 @@ async function shot(page: Page, name: string) {
   await page.waitForLoadState('networkidle')
   await expect(page.locator('.toast.on')).toHaveCount(0, { timeout: 15_000 })
   mkdirSync(IMG_DIR, { recursive: true })
+  await manualLang(page, 'en', `${IMG_DIR}f11-${name}.png`)
   await page.screenshot({ path: `${IMG_DIR}f11-${name}.png`, animations: 'disabled', caret: 'hide', fullPage: true })
+  await manualLang(page, 'es')
 }
 
 /** Captura solo la sección de logos (la pantalla scrolla dentro de su escenario y la captura de página la corta). */
@@ -49,7 +52,10 @@ async function shotLogos(page: Page, name: string) {
   mkdirSync(IMG_DIR, { recursive: true })
   const logos = page.locator('.set-logos')
   await logos.scrollIntoViewIfNeeded()
-  await logos.screenshot({ path: `${IMG_DIR}f11-${name}.png`, animations: 'disabled', caret: 'hide' })
+  const manualShot1 = await manualTarget(logos)
+  await manualLang(page, 'en', `${IMG_DIR}f11-${name}.png`)
+  await manualShot1.screenshot({ path: `${IMG_DIR}f11-${name}.png`, animations: 'disabled', caret: 'hide' })
+  await manualLang(page, 'es')
 }
 
 async function login(page: Page) {
