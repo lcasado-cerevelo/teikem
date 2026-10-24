@@ -20,9 +20,12 @@ El personal en la calle debe poder **ver las rutas de hoy** y **asignar** órden
 - App: `tsc`, lint de lo tocado, prueba pura nueva (`npm run test:street`) y `expo export`. **No probado en teléfono ni contra el API real.**
 - La ruta rápida compone servicios ya probados (crear, agregar órdenes, despachar) pero **no tiene prueba propia** (el fixture de estas pruebas no los trae). La distancia y la ubicación del chofer necesitan SQL Server: tampoco se probaron en las pruebas de memoria (la regla de distancia sí).
 
-## Decisiones a revisar
-- **Quién recibe el permiso**: solo TenantAdmin por omisión; la plantilla Despachador **no** lo trae porque dijiste que `trips.dispatch` es del almacén. Si el despachador de calle es ese rol, se agrega a la plantilla (y al SQL) en un cambio pequeño.
-- **Mover una orden «En tránsito»** (el chofer ya salió con ella) se permite: vuelve a «Sin asignar» y entra a la otra ruta con el estatus que corresponda. Si ya tenía un intento de entrega fallido, no es movible (está «Fallida»).
-- **Ruta rápida**: pide chofer y vehículo (no hay vehículo por omisión del chofer) y avisa si el chofer ya tiene otra ruta abierta; no impide que tenga más de una.
+## Decisiones (Luis, 2026-10-24, tras ver el lote)
+- **El permiso `trips.streetassign`**: Luis lo reparte él (a qué roles); no se toca la plantilla Despachador.
+- **Mover una orden «En tránsito»**: se permite; vuelve a «Sin asignar» y entra a la otra ruta con el estatus que corresponda.
+- **Ruta rápida**: pide chofer y vehículo y **no impide** que el chofer ya tenga otra ruta abierta.
+- **Sin señal**: el personal no trabaja sin señal en estas pantallas. Excepción pedida: la **estación de escaneo de rutas** sí, con descarga previa (ver `docs/lote216-plan-escaneo.md`).
+
+## Notas
 - La **distancia** es en línea recta desde la última ubicación del chofer en una ruta **en curso**; las rutas despachadas aún sin salir no tienen ubicación.
-- En esta parte de la app el personal **no trabaja sin señal** (decidido): sin conexión no hay rutas, destinos ni cambios.
+- La ruta rápida compone servicios ya probados, sin prueba propia.

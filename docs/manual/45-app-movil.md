@@ -14,7 +14,7 @@
 - **Manifiestos**: solo para choferes.
 - **Órdenes** (Lote 214): ver §2a.
 - **Rutas de hoy** y **asignar en la calle** (Lote 215): ver §2b y §2c.
-- Lo que sigue (Lote 216): clientes y almacén en consulta.
+- Lo que sigue: **Lote 216** (planeado): estación de **escaneo de rutas** con el Android con gatillo, que funciona **sin señal** (se bajan hasta 5000 envíos no completados; ver `docs/lote216-plan-escaneo.md`); **Lote 217**: clientes y almacén en consulta.
 
 ## 2a. Órdenes (Lote 214)
 - **Quién**: el acceso «Órdenes» aparece con `orders.view` en alguna compañía; completar exige además `orders.deliver` **en esa compañía**.
