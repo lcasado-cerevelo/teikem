@@ -1,4 +1,7 @@
-import { enqueue } from './outbox';
+import { onlineManager } from '@tanstack/react-query';
+import { api } from '@config/axios';
+import { enqueue, getItem } from './outbox';
+import { drainOutbox } from './syncEngine';
 import type { ShipmentSource } from '@/types/models';
 import { closeEndpoint } from '@utils/staffOrders';
 
@@ -22,8 +25,8 @@ export interface DeliverInput {
 }
 
 /** Entrega: quién recibió, firma, fotos y ubicación del teléfono. */
-export function enqueueDeliver(input: DeliverInput): Promise<string> {
-  return enqueue({
+function buildDeliver(input: DeliverInput) {
+  return {
     kind: 'deliver',
     endpoint: closeEndpoint(input.source, input.shipmentId, 'deliver'),
     method: 'POST',
@@ -41,7 +44,12 @@ export function enqueueDeliver(input: DeliverInput): Promise<string> {
         cods: input.cods?.length ? input.cods : undefined,
       },
     },
-  });
+  };
+}
+
+export function enqueueDeliver(input: DeliverInput): Promise<string> {
+  const q = buildDeliver(input);
+  return enqueue({ kind: q.kind, endpoint: q.endpoint, method: 'POST', payload: q.payload });
 }
 
 export interface FailInput {
@@ -57,8 +65,8 @@ export interface FailInput {
 }
 
 /** No entregado: el motivo de la lista «Razón de fallo», una nota y una foto opcional. */
-export function enqueueFail(input: FailInput): Promise<string> {
-  return enqueue({
+function buildFail(input: FailInput) {
+  return {
     kind: 'fail',
     endpoint: closeEndpoint(input.source, input.shipmentId, 'fail'),
     method: 'POST',
@@ -67,7 +75,12 @@ export function enqueueFail(input: FailInput): Promise<string> {
       shipmentId: input.shipmentId,
       body: { reasonCode: input.reasonCode, notes: input.notes, attemptedAtUtc: input.attemptedAtUtc, photoBase64: input.photoBase64 || undefined, latitude: input.latitude, longitude: input.longitude },
     },
-  });
+  };
+}
+
+export function enqueueFail(input: FailInput): Promise<string> {
+  const q = buildFail(input);
+  return enqueue({ kind: q.kind, endpoint: q.endpoint, method: 'POST', payload: q.payload });
 }
 
 export interface PickupInput {
@@ -84,8 +97,8 @@ export interface PickupInput {
 }
 
 /** Recogida: el chofer recibe el paquete (quién lo entregó, fotos y ubicación del teléfono). */
-export function enqueuePickup(input: PickupInput): Promise<string> {
-  return enqueue({
+function buildPickup(input: PickupInput) {
+  return {
     kind: 'pickup',
     endpoint: closeEndpoint(input.source, input.shipmentId, 'pickup'),
     method: 'POST',
@@ -101,5 +114,55 @@ export function enqueuePickup(input: PickupInput): Promise<string> {
         photosBase64: input.photosBase64?.length ? input.photosBase64 : undefined,
       },
     },
-  });
+  };
+}
+
+export function enqueuePickup(input: PickupInput): Promise<string> {
+  const q = buildPickup(input);
+  return enqueue({ kind: q.kind, endpoint: q.endpoint, method: 'POST', payload: q.payload });
+}
+
+/**
+ * Cierra y dice si ya llegó al servidor. El chofer usa la cola (sin señal queda guardado y sale después: `false`). El personal (source 'staff', Lote 214) NO trabaja sin señal:
+ * se envía directo y, si no hay señal o el servidor lo rechaza, lanza el error para que la pantalla lo diga y nada quede en cola.
+ */
+export async function submitDeliver(input: DeliverInput & { creditToDriver?: boolean }): Promise<boolean> {
+  if (input.source === 'staff') {
+    const queued = buildDeliver(input);
+    await api.post(queued.endpoint, { ...queued.payload.body, creditToDriver: input.creditToDriver ?? true }, { tenantId: input.tenantId });
+    return true;
+  }
+  const id = await enqueueDeliver(input);
+  if (onlineManager.isOnline()) await drainOutbox();
+  return (await getItem(id))?.status === 'done';
+}
+
+/**
+ * Cierra y dice si ya llegó al servidor. El chofer usa la cola (sin señal queda guardado y sale después: `false`). El personal (source 'staff', Lote 214) NO trabaja sin señal:
+ * se envía directo y, si no hay señal o el servidor lo rechaza, lanza el error para que la pantalla lo diga y nada quede en cola.
+ */
+export async function submitFail(input: FailInput & { creditToDriver?: boolean }): Promise<boolean> {
+  if (input.source === 'staff') {
+    const queued = buildFail(input);
+    await api.post(queued.endpoint, { ...queued.payload.body, creditToDriver: input.creditToDriver ?? true }, { tenantId: input.tenantId });
+    return true;
+  }
+  const id = await enqueueFail(input);
+  if (onlineManager.isOnline()) await drainOutbox();
+  return (await getItem(id))?.status === 'done';
+}
+
+/**
+ * Cierra y dice si ya llegó al servidor. El chofer usa la cola (sin señal queda guardado y sale después: `false`). El personal (source 'staff', Lote 214) NO trabaja sin señal:
+ * se envía directo y, si no hay señal o el servidor lo rechaza, lanza el error para que la pantalla lo diga y nada quede en cola.
+ */
+export async function submitPickup(input: PickupInput & { creditToDriver?: boolean }): Promise<boolean> {
+  if (input.source === 'staff') {
+    const queued = buildPickup(input);
+    await api.post(queued.endpoint, { ...queued.payload.body, creditToDriver: input.creditToDriver ?? true }, { tenantId: input.tenantId });
+    return true;
+  }
+  const id = await enqueuePickup(input);
+  if (onlineManager.isOnline()) await drainOutbox();
+  return (await getItem(id))?.status === 'done';
 }

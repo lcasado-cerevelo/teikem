@@ -40489,6 +40489,7 @@ export interface components {
             signaturePngBase64?: string | null;
             photosBase64?: string[] | null;
             cods?: components["schemas"]["DriverCodDto"][] | null;
+            creditToDriver?: boolean;
         };
         DriverDeliveryRateCreateRequest: {
             serviceType?: string | null;
@@ -40573,6 +40574,7 @@ export interface components {
             latitude?: number | null;
             /** Format: double */
             longitude?: number | null;
+            creditToDriver?: boolean;
         };
         DriverFailureReasonDto: {
             code?: string | null;
@@ -40727,6 +40729,7 @@ export interface components {
             /** Format: double */
             longitude?: number | null;
             photosBase64?: string[] | null;
+            creditToDriver?: boolean;
         };
         DriverPingDto: {
             point?: components["schemas"]["GeoPointDto"];

@@ -58815,6 +58815,9 @@
               "$ref": "#/components/schemas/DriverCodDto"
             },
             "nullable": true
+          },
+          "creditToDriver": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -59077,6 +59080,9 @@
             "type": "number",
             "format": "double",
             "nullable": true
+          },
+          "creditToDriver": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -59551,6 +59557,9 @@
               "type": "string"
             },
             "nullable": true
+          },
+          "creditToDriver": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

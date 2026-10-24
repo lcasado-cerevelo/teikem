@@ -432,7 +432,9 @@
       "ATTEMPT_FAILED": "No entregado",
       "NO_DELIVER_PERM": "No tienes permiso para completar órdenes en esta compañía.",
       "LOADING": "Cargando la orden…",
-      "NOTHING_TO_DO": "Esta orden está «{{status}}»: no hay nada que completar desde aquí."
+      "NOTHING_TO_DO": "Esta orden está «{{status}}»: no hay nada que completar desde aquí.",
+      "CREDIT": "Acreditar al chofer",
+      "CREDIT_HINT": "Si la orden iba en una ruta, cuenta para la liquidación de su chofer. El historial siempre dice quién la cerró."
     }
   }
 }

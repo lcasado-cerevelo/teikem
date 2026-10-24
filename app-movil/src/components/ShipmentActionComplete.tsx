@@ -8,12 +8,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { getCurrentFix } from '@utils/location';
 import Signature, { type SignatureViewRef } from 'react-native-signature-canvas';
-import { onlineManager } from '@tanstack/react-query';
 import { useAppStore } from '@/stores';
+import CreditToggle from '@components/CreditToggle';
 import { useRemoveShipmentFromLists, useShipmentDetail } from '@hooks/queries';
 import OptionSelect from './OptionSelect';
-import { enqueueDeliver } from '@/offline/mutations';
-import { drainOutbox, getItem } from '@/offline';
+import { submitDeliver } from '@/offline/mutations';
 import { compressProofPhoto } from '@utils/photo';
 import { useStyles, useTheme } from '@hooks/ThemeContext';
 import type { Colors } from '@constants/theme';
@@ -29,6 +28,7 @@ export default function ShipmentActionComplete({ onBack }: { onBack: () => void 
   const shipment = useAppStore((s) => s.shipment);
   const resetShipment = useAppStore((s) => s.resetShipment);
   const removeShipmentFromLists = useRemoveShipmentFromLists();
+  const [credit, setCredit] = useState(true);
   const sigRef = useRef<SignatureViewRef>(null);
 
   const [podName, setPodName] = useState('');
@@ -94,10 +94,11 @@ export default function ShipmentActionComplete({ onBack }: { onBack: () => void 
     }
     try {
       const fix = (await getCurrentFix(8000)) ?? coords;
-      const id = await enqueueDeliver({
+      const sent = await submitDeliver({
         tenantId: shipment.tenantId,
         shipmentId: shipment.id,
         source: shipment.source,
+        creditToDriver: credit,
         recipientName: podName.trim(),
         notes: comment.trim() || undefined,
         deliveredAtUtc: new Date().toISOString(),
@@ -107,9 +108,6 @@ export default function ShipmentActionComplete({ onBack }: { onBack: () => void 
         photosBase64: photo ? [photo.base64] : undefined,
         cods,
       });
-      if (onlineManager.isOnline()) await drainOutbox();
-      const item = await getItem(id);
-      const sent = item?.status === 'done';
       removeShipmentFromLists(shipment.id);
       resetShipment();
       const body = sent ? t('DELIVERY.DELIVERED_SENT') : t('DELIVERY.DELIVERED_QUEUED');
@@ -209,6 +207,9 @@ export default function ShipmentActionComplete({ onBack }: { onBack: () => void 
         <Text style={styles.gps}>
           {coords ? `${t('DELIVERY.GPS')}: ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : `${t('DELIVERY.GPS')}: ${t('DELIVERY.NO_LOCATION')}`}
         </Text>
+
+        {shipment?.source === 'staff' ? <CreditToggle value={credit} onChange={setCredit} /> : null}
+
 
         <View style={styles.actions}>
           <Pressable style={styles.buttonOutlineFlex} onPress={onBack} disabled={submitting}>

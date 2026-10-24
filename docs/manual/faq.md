@@ -10567,7 +10567,9 @@ El valor se lee al arrancar el API: reinícielo (o el grupo de aplicaciones). La
 
 **«No tienes permiso para completar órdenes en esta compañía.»** Ver la ficha pide `orders.view`; completar pide `orders.deliver` en esa compañía. Pídaselo al administrador (Sistema → Roles).
 
-**Entregué desde la app del personal y el chofer de la ruta no aparece en el intento ni en el cobro.** Es lo esperado: el intento y el cobro quedan sin chofer y el historial dice quién lo hizo («Entregado desde la app por …»). El comprobante registra a la persona.
+**Entregué desde la app del personal y quiero que NO cuente para el chofer de la ruta.** Apague «Acreditar al chofer» antes de confirmar (viene encendido). Encendido, el intento y el cobro cuentan para la liquidación del chofer; el historial y la auditoría dicen siempre quién lo cerró.
+
+**Completé una orden desde la app del personal y dice que no se pudo.** El personal no trabaja sin señal: nada queda guardado. Con señal, vuelva a intentarlo.
 
 **El chofer todavía ve en su manifiesto una orden que yo entregué desde la oficina.** Su app la quita al próximo refresco (al abrir el manifiesto o sincronizar); si intenta entregarla, el servidor responde que ya está entregada (409).
 

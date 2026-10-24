@@ -37,13 +37,13 @@ public sealed record DriverShipmentDetailDto(Guid PublicId, Guid ManifestPublicI
 public sealed record DriverCodDto(Guid ClientId, string? Method, decimal? Amount, string? CheckNumber);
 
 /// <summary>
-/// Entregar un envío. `RecipientName` quien recibió (obligatorio); `SignaturePngBase64` la firma de quien recibió y `PhotosBase64` fotos (JPG, hasta 3) son opcionales; `DeliveredAtUtc` cuándo (la app lo manda porque pudo entregar sin señal);
+/// Entregar un envío. `CreditToDriver` (solo lo usa el personal desde la app móvil; el chofer siempre se acredita a sí mismo): sí por omisión = el intento y el cobro quedan a cuenta del chofer de la ruta vigente (para su liquidación); no = sin chofer. En ambos casos el historial y la auditoría dicen quién lo cerró. `RecipientName` quien recibió (obligatorio); `SignaturePngBase64` la firma de quien recibió y `PhotosBase64` fotos (JPG, hasta 3) son opcionales; `DeliveredAtUtc` cuándo (la app lo manda porque pudo entregar sin señal);
 /// `Latitude`/`Longitude` del teléfono al entregar.
 /// </summary>
-public sealed record DriverDeliverRequest(string? RecipientName, string? Notes, DateTime? DeliveredAtUtc, double? Latitude, double? Longitude, string? SignaturePngBase64, IReadOnlyList<string>? PhotosBase64, IReadOnlyList<DriverCodDto>? Cods = null);
+public sealed record DriverDeliverRequest(string? RecipientName, string? Notes, DateTime? DeliveredAtUtc, double? Latitude, double? Longitude, string? SignaturePngBase64, IReadOnlyList<string>? PhotosBase64, IReadOnlyList<DriverCodDto>? Cods = null, bool CreditToDriver = true);
 
 /// <summary>No entregar un envío: `ReasonCode` de la lista «Razón de fallo» (obligatorio), nota y foto opcionales.</summary>
-public sealed record DriverFailRequest(string? ReasonCode, string? Notes, DateTime? AttemptedAtUtc, string? PhotoBase64, double? Latitude = null, double? Longitude = null);
+public sealed record DriverFailRequest(string? ReasonCode, string? Notes, DateTime? AttemptedAtUtc, string? PhotoBase64, double? Latitude = null, double? Longitude = null, bool CreditToDriver = true);
 
 /// <summary>`AlreadyDone`: el envío ya estaba cerrado por la app (un reintento de la cola sin señal): no se repite ni se duplica nada.</summary>
 public sealed record DriverShipmentResultDto(Guid ShipmentPublicId, string StatusCode, string Status, bool AlreadyDone, int? DistanceFromStopMeters = null);
@@ -80,4 +80,4 @@ public sealed record DriverNoticesReadRequest(IReadOnlyList<Guid>? Ids, bool? Al
 public sealed record DriverNoticeSendRequest(Guid? DriverPublicId, string? Title, string? Body);
 
 /// <summary>Recoger un envío de una ruta de recogida: quién lo entregó (opcional), notas, fotos (hasta 3), cuándo (la app lo manda porque pudo recoger sin señal) y el GPS del teléfono.</summary>
-public sealed record DriverPickupRequest(string? GiverName, string? Notes, DateTime? PickedAtUtc, double? Latitude, double? Longitude, IReadOnlyList<string>? PhotosBase64);
+public sealed record DriverPickupRequest(string? GiverName, string? Notes, DateTime? PickedAtUtc, double? Latitude, double? Longitude, IReadOnlyList<string>? PhotosBase64, bool CreditToDriver = true);

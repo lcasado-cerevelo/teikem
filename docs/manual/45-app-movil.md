@@ -27,8 +27,9 @@
   | Sometida sin ruta o en ruta de recogida | No recogido, Recoger |
   | Otra (entregada, cancelada, asignada…) | «Esta orden está «X»: no hay nada que completar desde aquí.» |
   Sin `orders.deliver` en esa compañía: «No tienes permiso para completar órdenes en esta compañía.»
-- **Qué queda**: lo mismo que cuando entrega el chofer (comprobante con origen DRIVER_APP, firma y fotos, GPS y distancia a la dirección, cobros, intento), pero **a nombre de la persona** («Entregado desde la app por Ana Oficina.») y **sin chofer** en el intento ni en el cobro. Si la orden iba en una ruta, su parada se cierra y el chofer la deja de ver.
-- **Sin señal**: lo que se completa queda en la cola del teléfono y sale cuando vuelve la señal (igual que el chofer; el servidor no duplica un reintento).
+- **Qué queda**: lo mismo que cuando entrega el chofer (comprobante con origen DRIVER_APP, firma y fotos, GPS y distancia a la dirección, cobros, intento), con el historial **a nombre de la persona** («Entregado desde la app por Ana Oficina.»). Si la orden iba en una ruta, su parada se cierra y el chofer la deja de ver.
+- **«Acreditar al chofer»** (interruptor, **sí por omisión**): sí = el intento y el cobro cuentan para la liquidación del chofer de la ruta; no = quedan sin chofer. La auditoría siempre dice quién lo cerró.
+- **Sin señal**: el personal **no** trabaja sin señal. Buscar, abrir la ficha y completar piden conexión; si falla, la pantalla lo avisa y no queda nada guardado. Solo lo del chofer (sus manifiestos y envíos) se baja y se cierra sin señal.
 - Endpoints: `GET /api/v1/mobile/orders?q=`, `GET /api/v1/mobile/orders/{id}`, `GET /api/v1/mobile/failure-reasons`, `POST /api/v1/mobile/orders/{id}/deliver|fail|pickup`.
 
 ## 3. Avisos emergentes

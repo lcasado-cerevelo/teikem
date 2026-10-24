@@ -5,11 +5,10 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import { onlineManager } from '@tanstack/react-query';
 import { useAppStore } from '@/stores';
+import CreditToggle from '@components/CreditToggle';
 import { useRemoveShipmentFromLists } from '@hooks/queries';
-import { enqueuePickup } from '@/offline/mutations';
-import { drainOutbox, getItem } from '@/offline';
+import { submitPickup } from '@/offline/mutations';
 import { compressProofPhoto } from '@utils/photo';
 import { getCurrentFix } from '@utils/location';
 import { useStyles, useTheme } from '@hooks/ThemeContext';
@@ -26,6 +25,7 @@ export default function ShipmentActionPickup({ onBack }: { onBack: () => void })
   const shipment = useAppStore((s) => s.shipment);
   const resetShipment = useAppStore((s) => s.resetShipment);
   const removeShipmentFromLists = useRemoveShipmentFromLists();
+  const [credit, setCredit] = useState(true);
 
   const [giver, setGiver] = useState('');
   const [comment, setComment] = useState('');
@@ -48,10 +48,11 @@ export default function ShipmentActionPickup({ onBack }: { onBack: () => void })
     setSubmitting(true);
     try {
       const fix = await getCurrentFix(8000);
-      const id = await enqueuePickup({
+      const sent = await submitPickup({
         tenantId: shipment.tenantId,
         shipmentId: shipment.id,
         source: shipment.source,
+        creditToDriver: credit,
         giverName: giver.trim() || undefined,
         notes: comment.trim() || undefined,
         pickedAtUtc: new Date().toISOString(),
@@ -59,9 +60,6 @@ export default function ShipmentActionPickup({ onBack }: { onBack: () => void })
         longitude: fix?.lng,
         photosBase64: photo ? [photo.base64] : undefined,
       });
-      if (onlineManager.isOnline()) await drainOutbox();
-      const item = await getItem(id);
-      const sent = item?.status === 'done';
       removeShipmentFromLists(shipment.id);
       resetShipment();
       Alert.alert(t('PICKUP.PICKED_TITLE'), sent ? t('PICKUP.PICKED_SENT') : t('PICKUP.PICKED_QUEUED'), [{ text: 'OK', onPress: () => router.back() }]);
@@ -93,6 +91,9 @@ export default function ShipmentActionPickup({ onBack }: { onBack: () => void })
           <Text style={styles.buttonText}>{t('DELIVERY.TAKE_PHOTO')}</Text>
         </Pressable>
       )}
+
+      {shipment?.source === 'staff' ? <CreditToggle value={credit} onChange={setCredit} /> : null}
+
 
       <View style={styles.actions}>
         <Pressable style={styles.buttonOutline} onPress={onBack} disabled={submitting}>

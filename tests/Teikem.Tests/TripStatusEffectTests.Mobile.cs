@@ -30,12 +30,20 @@ public partial class TripStatusEffectTests
         return (app, new MobileOrderService(f.Db, tenant, reader, app, f.Statuses, f.Lookups), trip, ids);
     }
 
+    /// <summary>El fixture no registra el efecto que anota el intento al cambiar de estatus; se siembra como lo haría (origen STATUS) para que la app lo marque.</summary>
+    private static async Task SeedStatusAttemptAsync(Fixture f, int orderId, bool delivered)
+    {
+        f.Db.Set<DeliveryAttempt>().Add(new DeliveryAttempt { TenantId = TenantId, TransportOrderId = orderId, AttemptNumber = 1, Delivered = delivered, Source = DeliveryAttemptSources.Status, AttemptedAtUtc = DateTime.UtcNow, IsActive = true });
+        await f.Db.SaveChangesAsync();
+    }
+
     [Fact]
-    public async Task Staff_delivers_an_order_of_another_drivers_route_the_history_names_the_person_and_the_stop_closes()
+    public async Task Staff_delivers_an_order_of_another_drivers_route_credited_to_that_driver_by_default_and_the_history_names_the_person()
     {
         await using var f = await Fixture.CreateAsync();
         var (app, _, _, orders) = await StaffAndRouteAsync(f, 2);
         var pub = await PublicOfAsync(f, orders[0]);
+        await SeedStatusAttemptAsync(f, orders[0], delivered: true);
 
         // Como chofer no puede (no lo es); como personal sí.
         await Assert.ThrowsAsync<ForbiddenException>(() => app.DeliverAsync(pub, new DriverDeliverRequest("Ana", null, null, null, null, null, null), default));
@@ -48,10 +56,25 @@ public partial class TripStatusEffectTests
         Assert.Contains("Entregado desde la app por Ana Oficina.", string.Join('|', await f.CommentsAsync(EntityTypes.TransportOrder, orders[0])));
         var stopId = await f.Db.OrderStops.Where(o => o.TransportOrderId == orders[0]).Select(o => o.OrderStopId).FirstAsync();
         Assert.Equal(f.Id(StatusDomains.RouteStopStatus, RouteStopStatuses.Completed), (await f.Db.RouteStops.AsNoTracking().SingleAsync(s => s.OrderStopId == stopId)).StatusCodeId);
+        // Por omisión el intento queda a cuenta del chofer de la ruta (liquidación); el historial y el comprobante dicen quién lo cerró.
+        Assert.Equal(7, (await f.Db.Set<DeliveryAttempt>().SingleAsync(a => a.TransportOrderId == orders[0] && a.Delivered)).DriverId);
         // El otro envío de la ruta sigue igual.
         Assert.Equal(f.Id(StatusDomains.OrderStatus, OrderStatuses.InTransit), (await f.Db.TransportOrders.AsNoTracking().SingleAsync(o => o.TransportOrderId == orders[1])).StatusCodeId);
 
         Assert.True((await app.DeliverAnyAsync(pub, new DriverDeliverRequest("Luis Cliente", null, null, null, null, null, null), default)).AlreadyDone);
+    }
+
+    [Fact]
+    public async Task Staff_can_close_an_order_without_crediting_the_route_driver()
+    {
+        await using var f = await Fixture.CreateAsync();
+        var (app, _, _, orders) = await StaffAndRouteAsync(f, 2);
+        await SeedStatusAttemptAsync(f, orders[0], delivered: true);
+
+        await app.DeliverAnyAsync(await PublicOfAsync(f, orders[0]), new DriverDeliverRequest("Luis", null, null, null, null, null, null, null, CreditToDriver: false), default);
+
+        Assert.Null((await f.Db.Set<DeliveryAttempt>().SingleAsync(a => a.TransportOrderId == orders[0] && a.Delivered)).DriverId);
+        Assert.Contains("Entregado desde la app por Ana Oficina.", string.Join('|', await f.CommentsAsync(EntityTypes.TransportOrder, orders[0])));
     }
 
     [Fact]

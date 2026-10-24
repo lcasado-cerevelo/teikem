@@ -5,11 +5,10 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import { onlineManager } from '@tanstack/react-query';
 import { useAppStore } from '@/stores';
+import CreditToggle from '@components/CreditToggle';
 import { useFailureReasons, useRemoveShipmentFromLists } from '@hooks/queries';
-import { enqueueFail } from '@/offline/mutations';
-import { drainOutbox, getItem } from '@/offline';
+import { submitFail } from '@/offline/mutations';
 import { compressProofPhoto } from '@utils/photo';
 import { getCurrentFix } from '@utils/location';
 import OptionSelect from './OptionSelect';
@@ -28,6 +27,7 @@ export default function ShipmentActionException({ onBack }: { onBack: () => void
   const insets = useSafeAreaInsets();
   const shipment = useAppStore((s) => s.shipment);
   const removeShipmentFromLists = useRemoveShipmentFromLists();
+  const [credit, setCredit] = useState(true);
   const { data: reasons, isLoading: reasonsLoading } = useFailureReasons(shipment?.tenantId, shipment?.source === 'staff');
 
   const [reasonId, setReasonId] = useState<number | null>(null);
@@ -75,10 +75,11 @@ export default function ShipmentActionException({ onBack }: { onBack: () => void
     setSubmitting(true);
     try {
       const fix = await getCurrentFix(8000); // el GPS del momento, aunque el seguimiento de la ruta esté apagado
-      const id = await enqueueFail({
+      const sent = await submitFail({
         tenantId: shipment.tenantId,
         shipmentId: shipment.id,
         source: shipment.source,
+        creditToDriver: credit,
         reasonCode: (reasons ?? [])[reasonId - 1].code,
         notes: comment.trim(),
         attemptedAtUtc: new Date().toISOString(),
@@ -86,9 +87,6 @@ export default function ShipmentActionException({ onBack }: { onBack: () => void
         latitude: fix?.lat,
         longitude: fix?.lng,
       });
-      if (onlineManager.isOnline()) await drainOutbox();
-      const item = await getItem(id);
-      const sent = item?.status === 'done';
       // La excepción también cierra la orden (evento 'Completed' en el server):
       // sácala de los listados igual que una entrega.
       removeShipmentFromLists(shipment.id);
@@ -151,6 +149,9 @@ export default function ShipmentActionException({ onBack }: { onBack: () => void
           <Text style={styles.buttonText}>{t('DELIVERY.TAKE_PHOTO')}</Text>
         </Pressable>
       )}
+
+      {shipment?.source === 'staff' ? <CreditToggle value={credit} onChange={setCredit} /> : null}
+
 
       <View style={styles.actions}>
         <Pressable style={styles.buttonOutline} onPress={onBack} disabled={submitting}>

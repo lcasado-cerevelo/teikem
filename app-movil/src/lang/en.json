@@ -432,7 +432,9 @@
       "ATTEMPT_FAILED": "Not delivered",
       "NO_DELIVER_PERM": "You cannot complete orders in this company.",
       "LOADING": "Loading the order…",
-      "NOTHING_TO_DO": "This order is “{{status}}”: nothing to complete from here."
+      "NOTHING_TO_DO": "This order is “{{status}}”: nothing to complete from here.",
+      "CREDIT": "Credit the driver",
+      "CREDIT_HINT": "If the order was on a route, it counts for that driver's settlement. The history always says who closed it."
     }
   }
 }

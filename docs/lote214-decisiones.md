@@ -20,7 +20,8 @@ El personal debe poder **completar órdenes desde la app** igual que el chofer (
 - Contrato regenerado (`web-app/openapi.json` y los `schema.d.ts` de web-app, app-almacen y app-cliente).
 
 ## Decisiones a revisar
-- **Quién «hizo» la entrega del personal**: el intento y el cobro quedan **sin chofer** (`DriverId` NULL) y el comprobante con `RecordedBy` = la persona; el chofer de la ruta no recibe crédito por una entrega que no hizo. Si Luis prefiere atribuirla al chofer de la ruta, es un cambio pequeño en `StaffActorAsync`.
-- «Volver a entregar» una orden **Fallida** se permite desde la app del personal (como en la web); no entregar una fallida otra vez no (ya está fallida).
-- La búsqueda del personal es **en vivo**: sin señal no hay resultados (las órdenes buscadas no se bajan de antemano). Lo que ya se abrió queda en caché 24 h.
+## Decididas por Luis (2026-10-24, tras la primera versión)
+- **«Acreditar al chofer»**: la entrega (o no entrega / recogida) del personal lleva la marca `creditToDriver`, **sí por omisión**. Sí = el intento y el cobro quedan a cuenta del chofer de la ruta vigente de la orden (para su liquidación y la factura de choferes); no (o sin ruta/chofer) = sin chofer. En ambos casos el historial, el comprobante y la auditoría dicen la persona que lo cerró. No hay columna nueva: la marca es el `DriverId` del intento y del cobro.
+- «Volver a entregar» una orden **Fallida** se permite desde la app del personal, como las demás.
+- **El personal no trabaja sin señal** en lo suyo: buscar, ver la ficha y completar órdenes exigen conexión; lo que completa se envía directo (sin cola) y, si falla, la pantalla lo dice y no queda nada guardado. **Solo la parte de chofer** (sus manifiestos y envíos) se baja y se cierra sin señal.
 - Los permisos `orders.view` y `orders.deliver` son los de la web; no se creó ninguno nuevo para la app.

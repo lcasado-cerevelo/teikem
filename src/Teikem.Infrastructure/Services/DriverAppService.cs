@@ -200,14 +200,36 @@ public sealed class DriverAppService(TeikemDbContext db, ITenantContext tenant, 
     }
 
     /// <summary>Lote 214 — el personal entrega cualquier orden con la misma evidencia del chofer (firma, fotos, GPS, cobros). Exige orders.deliver (lo pone el controlador).</summary>
+    /// <summary>
+    /// Quién queda a cuenta de lo que el personal cierra: con `credit` (por omisión) el chofer de la ruta vigente de la orden (su intento y su cobro cuentan para su liquidación); sin ruta o sin chofer, nadie.
+    /// El nombre del historial es siempre el de la persona que lo cerró.
+    /// </summary>
+    private async Task<Actor> StaffActorForAsync(OwnShipment own, bool credit, CancellationToken ct)
+    {
+        var actor = await StaffActorAsync(ct);
+        if (!credit || own.TripId == 0) return actor;
+        var driverId = await db.Trips.AsNoTracking().Where(t => t.TripId == own.TripId).Select(t => t.DriverId).FirstOrDefaultAsync(ct);
+        return actor with { DriverId = driverId };
+    }
+
+    /// <summary>Lote 214 — el personal entrega cualquier orden con la misma evidencia del chofer (firma, fotos, GPS, cobros). Exige orders.deliver (lo pone el controlador).</summary>
     public async Task<DriverShipmentResultDto> DeliverAnyAsync(Guid orderPublicId, DriverDeliverRequest? req, CancellationToken ct)
-        => await DeliverCoreAsync(await AnyShipmentAsync(orderPublicId, ct), await StaffActorAsync(ct), req, ct);
+    {
+        var own = await AnyShipmentAsync(orderPublicId, ct);
+        return await DeliverCoreAsync(own, await StaffActorForAsync(own, req?.CreditToDriver ?? true, ct), req, ct);
+    }
 
     public async Task<DriverShipmentResultDto> FailAnyAsync(Guid orderPublicId, DriverFailRequest? req, CancellationToken ct)
-        => await FailCoreAsync(await AnyShipmentAsync(orderPublicId, ct), await StaffActorAsync(ct), req, ct);
+    {
+        var own = await AnyShipmentAsync(orderPublicId, ct);
+        return await FailCoreAsync(own, await StaffActorForAsync(own, req?.CreditToDriver ?? true, ct), req, ct);
+    }
 
     public async Task<DriverShipmentResultDto> PickupAnyAsync(Guid orderPublicId, DriverPickupRequest? req, CancellationToken ct)
-        => await PickupCoreAsync(await AnyShipmentAsync(orderPublicId, ct), await StaffActorAsync(ct), req, ct);
+    {
+        var own = await AnyShipmentAsync(orderPublicId, ct);
+        return await PickupCoreAsync(own, await StaffActorForAsync(own, req?.CreditToDriver ?? true, ct), req, ct);
+    }
 
     /// <summary>El envío debe estar en un manifiesto vigente del chofer (si no, 404 como si no existiera) y el manifiesto ya aceptado (422).</summary>
     private async Task<OwnShipment> OwnShipmentAsync(Guid shipmentPublicId, Domain.Fleet.Driver driver, bool requireAccepted, CancellationToken ct)
