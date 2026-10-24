@@ -23,7 +23,7 @@ export function FormModal<TIn extends FieldValues, TOut extends FieldValues = TI
   onClose: () => void
   form: UseFormReturn<TIn, unknown, TOut>
   onSubmit: (values: TOut) => Promise<unknown>
-  size?: 'sm' | 'md'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   saveLabel?: string
   children: ReactNode
 }) {

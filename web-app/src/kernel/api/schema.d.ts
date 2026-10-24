@@ -15505,6 +15505,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/read-sample": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SampleReadDto"];
+                        "application/json": components["schemas"]["SampleReadDto"];
+                        "text/json": components["schemas"]["SampleReadDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/integrations/{publicId}/email/test": {
         parameters: {
             query?: never;
@@ -24524,6 +24568,8 @@ export interface paths {
             parameters: {
                 query?: {
                     search?: string;
+                    from?: string;
+                    to?: string;
                 };
                 header?: never;
                 path?: never;
@@ -24675,6 +24721,8 @@ export interface paths {
                 query?: {
                     status?: string;
                     search?: string;
+                    from?: string;
+                    to?: string;
                     skip?: number;
                     take?: number;
                 };
@@ -41899,6 +41947,15 @@ export interface components {
             rows?: string[][] | null;
             /** Format: int32 */
             totalRows?: number;
+        };
+        SampleReadDto: {
+            text?: string | null;
+            /** Format: int32 */
+            pages?: number;
+            usedOcr?: boolean;
+            /** Format: int32 */
+            confidence?: number | null;
+            problem?: string | null;
         };
         FuelLogCreateRequest: {
             /** Format: uuid */

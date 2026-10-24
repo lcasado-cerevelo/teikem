@@ -304,6 +304,17 @@ export function usePreviewFormat() {
   })
 }
 
+/** Lee un PDF de muestra (texto real u OCR) y devuelve el texto como lo vería un lector: base del asistente de lectura. No guarda nada. */
+export function useReadSample() {
+  return useMutation({
+    mutationFn: (file: File) => {
+      const body = new FormData()
+      body.append('file', file)
+      return unwrap(api.POST('/api/v1/integrations/read-sample', { body: body as never }))
+    },
+  })
+}
+
 // ---------------------------------------------------------------- integraciones de salida (Lote 137b)
 
 /** Arma un ejemplo de la salida con órdenes recientes del cliente, sin mandar nada. */

@@ -12,8 +12,8 @@ export interface ModalProps {
   onClose: () => void
   /** Botones del pie (`.ft`); el primario va al final. */
   footer?: ReactNode
-  /** 'sm' 440 px, 'md' 640 px (por defecto), 'lg' 880 px; siempre ≤ ancho de pantalla. */
-  size?: 'sm' | 'md' | 'lg'
+  /** 'sm' 440 px, 'md' 640 px (por defecto), 'lg' 880 px, 'xl' 1180 px; siempre ≤ ancho de pantalla. */
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   /** false = no se cierra con Escape ni con ✕ (p. ej. mientras guarda). El clic fuera nunca cierra. */
   dismissible?: boolean
   children?: ReactNode

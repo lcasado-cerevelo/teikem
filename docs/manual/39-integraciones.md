@@ -470,3 +470,22 @@ Todo se configura en el **lector** (sección «Chequeos de completitud»), no en
 - **Factura de Depot:** subtotal + impuesto = total; no tiene integración.
 
 **Lo que las pruebas reales enseñaron:** los chequeos funcionan donde el documento declara algo (la factura de Drive marca la falta de líneas que el OCR dejó de leer), pero un conduce con el pie en blanco en las páginas intermedias necesita que el chequeo se haga solo sobre la **última** página de cada conduce; por eso esos chequeos esperan a su lector por registro.
+
+## 23. Lectores en tarjetas y asistente de lectura (2026-10-24)
+
+El formulario de la integración de correo ya no obliga a escribir expresiones. La ventana es más ancha y cada lector es una **tarjeta** con su propio marco (Lector 1, Lector 2…), su nombre y dos botones claros: tocar el título la pliega o la despliega y **Quitar lector N** la elimina.
+
+**Los cuatro pasos de cada tarjeta**
+1. **¿Qué documento es?** El nombre, de dónde viene (cuerpo, PDF o archivo de datos) y las **condiciones** en filas: *sobre qué se mira* (el texto del documento, el asunto, el nombre del adjunto) + *cómo* (contiene, es igual a…) + *qué texto*. El documento debe cumplir todas. Botón **Agregar condición** y un icono de papelera por fila.
+2. **¿Qué se hace con él?** El destino (orden, aviso de llegada, aviso de salida, cierre de órdenes), el almacén del aviso, el modo del cierre y el cliente y la plantilla propios del lector.
+3. **¿Qué datos se leen?** Cada dato es una tarjeta que dice **cómo se encuentra** en el documento (con etiqueta, dato suelto o tabla de renglones) y **a dónde va**. Para los avisos el destino se escoge **por su nombre** («Producto (SKU)», «Cantidad», «Fecha»…), no por un número de columna.
+4. **Revisiones.** La confianza mínima del OCR y los chequeos de completitud (sección 22).
+
+**Asistente de lectura (nadie escribe expresiones).** Un botón abre una ventana que trabaja con un **documento de muestra** (se sube el PDF —texto real u OCR— o se pega su texto):
+- **Tabla de renglones**: se toca un renglón con datos; el sistema lo separa en partes numeradas y, para cada dato del destino, se escoge **de qué parte sale** (y, si hace falta, **entre qué parte se divide**: cantidad = importe ÷ precio unitario). El asistente interpreta lo escogido en palabras («Cantidad ← parte 4 dividida entre la parte 3»), arma la expresión y muestra **«Coinciden N renglones de M»** con ejemplos. «Usar esto» la guarda en el dato.
+- **Dato suelto**: se toca el renglón y luego el valor; se lee lo que sigue al mismo texto que en la muestra.
+- **Total que declara el documento** (en Revisiones): se toca el renglón y el número del total; el sistema arma cómo encontrarlo.
+
+**Las «partes del renglón» (antes «Columnas del renglón: 2=2, 3=4/3, 4=4»).** Es la pareja «dato de la plantilla = parte del renglón». «3=4/3» se lee: el dato 3 es la parte 4 dividida entre la parte 3. Ya no se escribe: la tarjeta lo muestra como lista en palabras y el texto crudo queda en «Ver o ajustar la expresión (avanzado)» por si hace falta retocarlo. Un dato de tabla sigue necesitando al menos una parte asignada (si no, el lector no se guarda: «Un bloque necesita al menos una columna…»).
+
+**Quién puede:** `integrations.create` o `integrations.manage` (el asistente solo lee el PDF de muestra, `POST /api/v1/integrations/read-sample`: no guarda nada). Un PDF vacío responde 400 y uno dañado o protegido avisa el motivo dentro de la ventana.

@@ -181,7 +181,7 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
     <>
     <FormModal
       id="integration-form"
-      size="md"
+      size="xl"
       title={editing ? t('integrations.form.editTitle', { name: integration.name ?? '' }) : t('integrations.form.newTitle')}
       open
       onClose={onClose}

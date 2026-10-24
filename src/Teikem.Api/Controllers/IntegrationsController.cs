@@ -19,8 +19,24 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/integrations")]
 [Authorize]
 [RequireModule(ModuleKeys.Integrations)]
-public sealed class IntegrationsController(IntegrationService integrations, IntegrationRunner runner, IntegrationInboxService inbox, ApiKeyService apiKeys, WebhookService webhooks, IntegrationOutputService outputs, IntegrationProposalService proposals, ITenantContext tenant) : ControllerBase
+public sealed class IntegrationsController(IntegrationService integrations, IntegrationRunner runner, IntegrationInboxService inbox, ApiKeyService apiKeys, WebhookService webhooks, IntegrationOutputService outputs, IntegrationProposalService proposals, Teikem.Infrastructure.Integrations.IPdfTextReader pdfReader, ITenantContext tenant) : ControllerBase
 {
+    /// <summary>
+    /// 2026-10-24: lee un PDF de muestra (texto real u OCR) y devuelve el texto como lo vería un lector, para que el asistente de lectura arme los campos sin que el usuario escriba expresiones.
+    /// No guarda nada. 400 si no viene archivo.
+    /// </summary>
+    [HttpPost("read-sample"), Consumes("multipart/form-data"), RequirePermission(PermissionCatalog.IntegrationsCreate + "|" + PermissionCatalog.IntegrationsManage)]
+    [RequestSizeLimit(8 * 1024 * 1024)]
+    public async Task<SampleReadDto> ReadSample(IFormFile? file, CancellationToken ct)
+    {
+        if (file is null || file.Length == 0) throw new ValidationException("file", IntegrationRunner.EmptyFileMessage);
+        await using var stream = file.OpenReadStream();
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms, ct);
+        var r = await Task.Run(() => pdfReader.Read(ms.ToArray()), ct);
+        return new SampleReadDto(r.Text, r.Pages, r.UsedOcr, r.Confidence?.Mean, r.Problem);
+    }
+
     /// <summary>Lo que quien mira puede dar en el alta: alcances (y por qué alguno no se puede), conectores y a quién avisar.</summary>
     [HttpGet("options"), RequirePermission(PermissionCatalog.IntegrationsCreate + "|" + PermissionCatalog.IntegrationsManage)]
     public Task<IntegrationOptionsDto> Options(CancellationToken ct) => integrations.GetOptionsAsync(ct);

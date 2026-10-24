@@ -136,6 +136,7 @@
 
 /* ===== Modal ===== */
 .scrim .pal.lg{width:880px}
+.scrim .pal.xl{width:1180px}
 .scrim .pal.sm{width:440px}
 .pal .ft.kit-ft{font-size:13px;color:var(--text)}
 .modal-x{margin-left:auto}
