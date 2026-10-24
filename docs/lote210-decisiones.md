@@ -1,7 +1,7 @@
 # Lote 210 — Avisos emergentes (push) con Firebase
 
 ## Qué se construyó
-- **App**: `expo-notifications`; al entrar, la app pide el permiso de notificaciones, crea el canal «Avisos», obtiene el token de FCM y lo registra en **todas** las compañías del chofer (`POST /api/v1/driver-app/device`). Con la app abierta el aviso se muestra igual; al tocarlo abre la pestaña de avisos. `google-services.json` está en `app-choferes/` (proyecto `teikem-test`, app `com.advancelogisticspr.app`); si una marca no está en el archivo (De la Paz), se construye sin push en vez de fallar.
+- **App**: `expo-notifications`; al entrar, la app pide el permiso de notificaciones, crea el canal «Avisos», obtiene el token de FCM y lo registra en **todas** las compañías del chofer (`POST /api/v1/driver-app/device`). Con la app abierta el aviso se muestra igual; al tocarlo abre la pestaña de avisos. `google-services.json` está en `app-movil/` (proyecto `teikem-test`, app `com.advancelogisticspr.app`); si una marca no está en el archivo (De la Paz), se construye sin push en vez de fallar.
 - **Servidor**: `FcmPushSender` (API HTTP v1 de FCM; token OAuth2 firmado con la clave de la cuenta de servicio), `DriverPushService` (registro del teléfono en `DriverDevice` y envío) y el trabajo `DRIVER_PUSH_DISPATCH` (cada minuto manda los avisos de la bandeja que no han salido; un token rechazado por FCM se desactiva; sin Firebase configurado no hace nada y el aviso queda en la bandeja). Columna `DriverNotice.PushedAtUtc` (sección 2026-10-23 (g) del SQL; los avisos anteriores se marcan como enviados).
 - Todo aviso nuevo sale por aquí: «Nuevo manifiesto» al despachar y los que escriba la oficina.
 

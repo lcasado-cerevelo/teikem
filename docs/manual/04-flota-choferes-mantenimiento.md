@@ -914,7 +914,7 @@ capítulo con su causa y qué hacer.
 
 ### Acceso a la app del chofer (Lote 204, 2026-10-23)
 
-**Qué hace.** La app del chofer (`app-choferes`) inicia sesión con el **mismo usuario de Teikem** de la web, con las mismas reglas de seguridad de la compañía.
+**Qué hace.** La app del chofer (`app-movil`) inicia sesión con el **mismo usuario de Teikem** de la web, con las mismas reglas de seguridad de la compañía.
 
 **Pasos del ingreso.**
 1. **Correo y contraseña** (`POST /api/v1/auth/login`).

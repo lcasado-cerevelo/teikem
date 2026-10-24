@@ -1,4 +1,4 @@
-# Lote 207 — app-choferes conectada a los datos de Teikem
+# Lote 207 — app-movil conectada a los datos de Teikem
 
 ## Qué se construyó
 - **Capa de datos nueva** (`services/driverApi.ts`, `hooks/queries.ts`, `types/models.ts`): se eliminó el cliente de Colavora (`custom-api`, IDs numéricos, piezas, comentarios, filtros de oficina). Una consulta, `useDriverWork`, baja los manifiestos y envíos de **todas las compañías** del chofer (un token por compañía), cada uno marcado con su compañía; si una compañía no responde, las demás se muestran y se avisa cuál falló.
