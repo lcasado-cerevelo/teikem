@@ -10738,3 +10738,18 @@ Que ese envío ya salió a la calle, no se pudo entregar y volvió al almacén; 
 
 **«Ninguna entrada guardada coincide con las fechas y la búsqueda.» / «Ningún envío guardado coincide con las fechas y la búsqueda.»**
 Hay entradas guardadas, pero ninguna del rango elegido con esas palabras. Borre la búsqueda o cambie las fechas. La búsqueda mira cualquier dato (número, factura, consignatario, dirección, paquete, servicio, COD, comentario) y pide que estén todas las palabras.
+
+
+## Lote 217 — App móvil: clientes, consignatarios y almacén (consulta)
+
+**No me aparece Clientes, Consignatarios o Almacén en el inicio de la app.** Cada entrada sale solo con su permiso en alguna compañía: Clientes `clients.read`, Consignatarios `locations.read`, Almacén `inventory.view` (y el módulo de la compañía: Catálogo, o Inventario por lote y serie). Un usuario «Chofer (solo app)» no las ve.
+
+**Dice «No se pudo consultar. Se necesita señal.»** Estas consultas no funcionan sin señal (solo el escaneo y las pantallas del chofer trabajan sin ella). Vuelva a intentar con señal.
+
+**«No se encontró nada.»** No hay coincidencia con lo escrito. En Almacén se prueba primero el código como código de barras o SKU exacto y, si no existe, se busca por texto. Solo salen productos activos.
+
+**¿Por qué no veo el crédito, los contratos, los costos ni los precios?** Por decisión del dueño la app no muestra información de dinero ni facturación; eso se ve en la web con sus permisos.
+
+**Toqué el teléfono, el correo o la dirección y no pasó nada.** Son enlaces del sistema: abren el marcador, el correo o el mapa del teléfono. En un aparato sin esa aplicación no hay a dónde abrirlo. Un número de menos de 7 dígitos no se ofrece como teléfono.
+
+**En Almacén la existencia no cuadra con lo que veo en la web.** La app muestra «en mano» y «disponible» (en mano menos reservado) por almacén y posición, de las mismas existencias que la web; las filas en cero no se listan. Refresque saliendo y entrando a la ficha.

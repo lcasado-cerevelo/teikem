@@ -15,7 +15,7 @@
 - **Órdenes** (Lote 214): ver §2a.
 - **Rutas de hoy** y **asignar en la calle** (Lote 215): ver §2b y §2c.
 - **Escanear** (Lote 216): estación de escaneo para el Android con gatillo, **con trabajo sin señal**: ver §2d.
-- Lo que sigue: **Lote 217**: clientes y almacén en consulta.
+- **Clientes, Consignatarios y Almacén (consulta)** (Lote 217): ver §2e. Cada uno aparece en el inicio solo si la persona tiene el permiso.
 
 ## 2a. Órdenes (Lote 214)
 - **Quién**: el acceso «Órdenes» aparece con `orders.view` en alguna compañía; completar exige además `orders.deliver` **en esa compañía**.
@@ -85,6 +85,20 @@
 - **Cerrar conteo**: con señal, sobre el último envío escaneado; muestra qué piezas quedarán «Por verificar» y pide confirmación.
 - **Hora**: el historial del envío marca la hora en que **sincronizó**, no la del escaneo.
 - Endpoints: `GET /api/v1/mobile/scan/snapshot?skip=&take=`, `GET /api/v1/mobile/scan/routes`, y los de siempre `POST /api/v1/scan/action` (ahora con `tripPublicId` opcional para Enrutar a una ruta escogida) y `POST /api/v1/scan/close-count`.
+
+## 2e. Clientes, Consignatarios y Almacén en consulta (Lote 217)
+Tres pantallas **solo de lectura**, **con señal** (sin señal dicen «No se pudo consultar. Se necesita señal.»). Las compañías con permiso salen como fichas arriba; se consulta una a la vez. Todos los teléfonos, correos y direcciones son **enlaces que se tocan** (llama, escribe o abre el mapa con «cómo llegar»).
+
+| Pantalla | Permiso y módulo | Qué hace |
+|---|---|---|
+| **Clientes** | `clients.read` · Catálogo | Buscar por nombre o código; la ficha muestra nombre, código, razón social, estatus, dirección física y de recogido (con mapa), teléfonos/correos y los contactos con su cargo. |
+| **Consignatarios** | `locations.read` · Catálogo | Buscar por nombre, dirección o ciudad; la ficha muestra el cliente, la dirección (con mapa), el contacto, sus teléfonos/correos y las **notas de acceso y de entrega**. |
+| **Almacén (consulta)** | `inventory.view` · Inventario por lote y serie | **Por producto**: escribir nombre, SKU o **leer el código de barras** (si no hay código exacto busca por texto) y ver existencia en mano y disponible, por almacén y por posición (y lote). **Por posición**: buscar el código de la posición y ver qué productos tiene. |
+
+- **Lo que NO se muestra, por decisión de Luis**: límite de crédito, identificación fiscal, condiciones de pago, contratos y facturación del cliente; costos, precios y valor del inventario. La app descarta esos campos aunque el servidor los envíe. No hay contabilidad ni facturación en la app.
+- **No mueve nada**: no se recibe, acomoda, ajusta ni transfiere desde aquí (eso es de la app de almacén).
+- Una persona «solo chofer» no ve estas entradas. Quien tiene solo uno de los permisos ve solo esa entrada.
+- Endpoints (los de la web, sin servidor nuevo): `GET /api/v1/clients?search=`, `GET /api/v1/clients/{id}`, `GET /api/v1/locations?search=`, `GET /api/v1/locations/{id}`, `GET /api/v1/contacts/LOCATION/{id}`, `GET /api/v1/products?search=`, `GET /api/v1/products/by-barcode/{código}`, `GET /api/v1/inventory/balances`, `GET /api/v1/warehouses/bins/search` y `GET /api/v1/warehouses/{id}/bin-products`.
 
 ## 3. Avisos emergentes
 - La app registra el teléfono en `POST /api/v1/mobile/device` para cada compañía. Un chofer queda en su ficha (`DriverDevice`); el personal, en su usuario (`UserPushDevice`). Los mensajes del chat y los avisos llegan por cualquiera de los dos.
