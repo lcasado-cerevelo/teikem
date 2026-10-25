@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { Text } from '@components/Text';
 import ScreenHeader from '@components/ScreenHeader';
 import OrderSearchBar from '@components/OrderSearchBar';
-import Chip from '@components/Chip';
+import CompanyChips from '@components/CompanyChips';
 import { useAccess } from '@hooks/access';
 import { useAppStore } from '@/stores';
 import { searchOrders } from '@services/staffApi';
@@ -52,13 +52,7 @@ export default function Orders() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScreenHeader title={t('STAFF_ORDERS.TITLE')} />
-      {companies.length > 1 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-          {companies.map((c) => (
-            <Chip key={c.tenantId} label={c.name} active={c.tenantId === company?.tenantId} onPress={() => setTenantId(c.tenantId)} />
-          ))}
-        </ScrollView>
-      ) : null}
+      {companies.length > 1 ? <CompanyChips companies={companies} activeId={company?.tenantId} onPick={setTenantId} /> : null}
       <OrderSearchBar value={text} onChange={setText} />
       <View style={styles.content}>
         {!query ? (
@@ -95,7 +89,6 @@ export default function Orders() {
 
 const createStyles = (colors: Colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  chips: { paddingHorizontal: 20, gap: 8, paddingBottom: 6 },
   content: { flex: 1 },
   empty: { textAlign: 'center', marginTop: 24, color: colors.muted, paddingHorizontal: 20 },
   matched: { marginHorizontal: 20, marginTop: 6, color: colors.muted, fontSize: 12 },

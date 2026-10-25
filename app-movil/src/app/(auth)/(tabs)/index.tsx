@@ -132,7 +132,7 @@ export default function Home() {
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [staffItems.length, driverItems[0]?.key],
+    [staffItems.length, driverItems[0]?.key, styles, t],
   );
 
   return (
@@ -142,6 +142,7 @@ export default function Home() {
       data={items}
       keyExtractor={(item) => item.key}
       renderItem={renderItem}
+      extraData={styles}
     />
   );
 }
