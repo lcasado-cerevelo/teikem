@@ -11,16 +11,18 @@ public sealed record ClientNotificationSettingDto(
     string? ExtraEmails,
     string? ExtraPhones);
 
-/// <summary>Los cinco avisos del cliente con su configuración y a cuántos usuarios del portal llegaría el correo.</summary>
+/// <summary>Los avisos del cliente con su configuración, a cuántos usuarios del portal llegaría el correo y la hora local (0–23) a la que sale su resumen único del día.</summary>
 public sealed record ClientNotificationSettingsDto(
     Guid ClientPublicId,
     string ClientName,
     int PortalRecipients,
     bool EmailConfigured,
     bool SmsConfigured,
-    IReadOnlyList<ClientNotificationSettingDto> Settings);
+    IReadOnlyList<ClientNotificationSettingDto> Settings,
+    int DigestHour);
 
-public sealed record ClientNotificationSettingsRequest(IList<ClientNotificationSettingDto>? Settings);
+/// <summary>DigestHour: la hora local (0–23) del resumen del día; null = no cambiarla.</summary>
+public sealed record ClientNotificationSettingsRequest(IList<ClientNotificationSettingDto>? Settings, int? DigestHour = null);
 
 /// <summary>Un envío de un aviso por un canal. Status: PENDING, SENT, SKIPPED (no corresponde o el canal no está configurado) o FAILED (se agotaron los reintentos).</summary>
 public sealed record ClientNotificationDeliveryDto(string Channel, string Recipient, string Status, string? Message, int Attempts, DateTime? SentAtUtc);

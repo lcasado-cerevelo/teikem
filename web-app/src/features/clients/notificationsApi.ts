@@ -36,7 +36,7 @@ export function useClientNotificationLog(clientPublicId: string, skip: number, t
 export function useSaveClientNotificationSettings(clientPublicId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (settings: ClientNotificationSettingDto[]) => unwrap(api.PUT('/api/v1/clients/{publicId}/notifications/settings', { params: { path: { publicId: clientPublicId } }, body: { settings } })),
+    mutationFn: ({ settings, digestHour }: { settings: ClientNotificationSettingDto[]; digestHour: number }) => unwrap(api.PUT('/api/v1/clients/{publicId}/notifications/settings', { params: { path: { publicId: clientPublicId } }, body: { settings, digestHour } })),
     onSuccess: (data) => qc.setQueryData(notificationKeys.settings(clientPublicId), data),
   })
 }

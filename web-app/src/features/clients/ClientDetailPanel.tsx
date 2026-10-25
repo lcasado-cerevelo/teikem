@@ -118,10 +118,10 @@ export function ClientDetailPanel({ publicId }: { publicId: string }) {
       <ClientPrintingPanel client={client} />
       <ClientContactPointsPanel client={client} />
       <ClientPeoplePanel client={client} />
+      <ClientPortalPanel key={`portal-${client.publicId}`} client={client} />
       <ClientNumberingPanel client={client} />
       <ClientCustomFieldsPanel client={client} />
       <ClientContractsSection key={client.publicId} client={client} />
-      <ClientPortalPanel key={`portal-${client.publicId}`} client={client} />
       <ClientServiceTeamPanel key={`team-${client.publicId}`} clientPublicId={client.publicId ?? ''} clientActive={client.isActive} />
       <ClientNotificationsPanel key={`notif-${client.publicId}`} client={client} />
       <ClientConsigneesPanel key={`consignees-${client.publicId}`} client={client} />

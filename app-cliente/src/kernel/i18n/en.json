@@ -251,6 +251,9 @@
       "PICKED_UP": "Picked up",
       "OUT_FOR_DELIVERY": "Out for delivery",
       "DELIVERED": "Delivered",
+      "WH_RECEIVED": "Goods received",
+      "WH_DISPATCHED": "Goods dispatched",
+      "DAILY": "Daily summary",
       "COD_PROCESSED": "COD processed",
       "INVOICE_ISSUED": "Invoice issued"
     }
@@ -617,6 +620,8 @@
       "PICKED_UP": "Packages picked up",
       "OUT_FOR_DELIVERY": "Out for delivery",
       "DELIVERED": "Deliveries",
+      "WH_RECEIVED": "Goods received at the warehouse",
+      "WH_DISPATCHED": "Goods dispatched from the warehouse",
       "COD_PROCESSED": "Cash on delivery",
       "INVOICE_ISSUED": "Invoice issued"
     },
@@ -624,6 +629,8 @@
       "PICKED_UP": "A summary when your packages are picked up.",
       "OUT_FOR_DELIVERY": "A summary when your packages go out on a route.",
       "DELIVERED": "A summary of what was delivered and what could not be.",
+      "WH_RECEIVED": "When the warehouse receives your arrival notices, in the daily summary.",
+      "WH_DISPATCHED": "When the warehouse dispatches your exit notices, in the daily summary.",
       "COD_PROCESSED": "When the money collected on your deliveries is processed.",
       "INVOICE_ISSUED": "When one of your invoices is issued."
     }

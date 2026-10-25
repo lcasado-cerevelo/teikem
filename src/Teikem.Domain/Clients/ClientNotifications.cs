@@ -10,8 +10,9 @@ public static class ClientNotificationCodes
 }
 
 /// <summary>
-/// Qué avisa Teikem a un cliente (el sender, quien envía; NO al consignatario). Todos son RESÚMENES, no el detalle de cada orden. PICKED_UP, OUT_FOR_DELIVERY y DELIVERED se arman por evento de ruta (un resumen por
-/// cliente y ruta); COD_PROCESSED cuando una remesa de COD se remite; INVOICE_ISSUED cuando se emite una factura.
+/// Qué avisa Teikem a un cliente (el sender, quien envía; NO al consignatario). Todos son RESÚMENES, no el detalle de cada orden. PICKED_UP, OUT_FOR_DELIVERY, DELIVERED (transporte) y WH_RECEIVED, WH_DISPATCHED
+/// (almacén: aviso de llegada recibido, aviso de salida despachado) entran en UN SOLO resumen al día por cliente, a la hora que el cliente escoge (Client.NoticeDigestHour); si no hubo nada, no se manda nada.
+/// COD_PROCESSED (cuando una remesa de COD se remite) e INVOICE_ISSUED (cuando se emite una factura) salen aparte, uno por documento.
 /// </summary>
 public static class ClientNotificationKinds
 {
@@ -20,7 +21,16 @@ public static class ClientNotificationKinds
     public const string Delivered = "DELIVERED";
     public const string CodProcessed = "COD_PROCESSED";
     public const string InvoiceIssued = "INVOICE_ISSUED";
-    public static readonly string[] All = { PickedUp, OutForDelivery, Delivered, CodProcessed, InvoiceIssued };
+    /// <summary>Almacén: un aviso de llegada del cliente se recibió (RefId = el aviso).</summary>
+    public const string WhReceived = "WH_RECEIVED";
+    /// <summary>Almacén: un aviso de salida del cliente se despachó, total o parcialmente (RefId = el aviso).</summary>
+    public const string WhDispatched = "WH_DISPATCHED";
+    /// <summary>Clase del resumen único del día (no se configura: junta los avisos de <see cref="DailyKinds"/> que el cliente tenga encendidos).</summary>
+    public const string Daily = "DAILY";
+    public static readonly string[] All = { PickedUp, OutForDelivery, Delivered, WhReceived, WhDispatched, CodProcessed, InvoiceIssued };
+    /// <summary>Los avisos que entran en el resumen del día.</summary>
+    public static readonly string[] DailyKinds = { PickedUp, OutForDelivery, Delivered, WhReceived, WhDispatched };
+    public static bool IsDaily(string? k) => k is not null && DailyKinds.Contains(k.Trim().ToUpperInvariant());
     public static bool IsKnown(string? k) => k is not null && All.Contains(k.Trim().ToUpperInvariant());
 }
 
@@ -120,6 +130,11 @@ public static class ClientNotificationRules
     /// <summary>Minutos sin eventos nuevos de un grupo antes de resumirlo (para que una ruta que sigue entregando salga en un solo aviso).</summary>
     public const int SettleMinutes = 3;
     public const int MaxAttempts = 3;
+    /// <summary>Hora local (0–23) a la que sale el resumen del día de un cliente que no escogió otra.</summary>
+    public const int DefaultDigestHour = 18;
+    /// <summary>Cuántos números de documento o de ruta se nombran en una línea del resumen antes de poner «y N más».</summary>
+    public const int MaxNamedInSummary = 8;
+    public const string DigestHourInvalid = "La hora del resumen debe estar entre 0 y 23.";
 
     public const string KindInvalid = "El aviso no existe.";
     public const string ClientInvalid = "El cliente no existe.";

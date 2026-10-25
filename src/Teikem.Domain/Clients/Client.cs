@@ -36,6 +36,8 @@ public class Client : ITenantScoped, ISoftDeletable, IHasStatus, IAuditStamped
     public bool ClientAssignsOrderNumber { get; set; }
     /// <summary>Lote 116: el cliente prendió los avisos a sus consignatarios (solo a los que marcó); NoticeLang = idioma de esos avisos (es/en; NULL = el de la compañía).</summary>
     public bool NotifyConsignee { get; set; }
+    /// <summary>Hora local (0–23) a la que le sale el resumen único del día de los avisos (transporte y almacén). NULL = la de la compañía por omisión (18).</summary>
+    public int? NoticeDigestHour { get; set; }
     public string? NoticeLang { get; set; }
     public bool ClientAssignsInvoiceNumber { get; set; }
     /// <summary>Servicio y paquete que la entrada rápida de envíos ya trae puestos para este cliente (NULL = los de la compañía). Dictado de Luis, 2026-10-21.</summary>

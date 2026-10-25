@@ -8905,6 +8905,15 @@ Fix the value: the extra e-mails and phones go separated by commas (up to 10 of 
 **I turned on SMS and nothing goes out.**
 SMS only saves the preference: it does not go out until the provider is contracted. The log shows the send as “skipped”.
 
+**How many notices does the client get a day?**
+Just one: the daily summary, at the time set in “Daily summary time” (18:00 by default), with one line for each notice the client has turned on (picked up, out for delivery, delivered, goods received and dispatched). If nothing happened that day, nothing is sent. COD remittances and invoices go separately, one per document.
+
+**`La hora del resumen debe estar entre 0 y 23.` (400)**
+The daily summary time goes from 0 to 23 (company time). The screen offers only those hours.
+
+**Who receives the notice of what was received and dispatched at the warehouse?**
+The client who owns the goods (the one on the arrival or exit notice), if the company turned on “Goods received” or “Goods dispatched” on their record. It goes into their daily summary. Notices that come from a purchase (no client) are not announced.
+
 **Why isn't the consignee notified?**
 These notices are for the client. Notifying the consignee (with their acceptance, which the client manages from their portal) is built later.
 
@@ -9354,7 +9363,7 @@ The database update rewrote the saved order filters that named old statuses: `CO
 
 **I turned off the email for a notice and it keeps arriving.** If the email arrives at an address the company entered as an “extra email” for the notice, it is not yours: carry on as usual. It may also take until the next digest.
 
-**“The notice 'X' does not exist.”** (400) There are only five notices: PICKED_UP, OUT_FOR_DELIVERY, DELIVERED, COD_PROCESSED and INVOICE_ISSUED.
+**“The notice 'X' does not exist.”** (400) There are only seven notices: PICKED_UP, OUT_FOR_DELIVERY, DELIVERED, WH_RECEIVED, WH_DISPATCHED, COD_PROCESSED and INVOICE_ISSUED.
 
 **Why does the proof of delivery say the consignee did not sign?** Because the delivery was recorded by the company's staff from the web (with their permission, the signature is on behalf of the company). When the delivery is recorded with the driver app, the signature will be that of whoever received it.
 

@@ -7,6 +7,8 @@ using Teikem.Domain.Clients;
 using Teikem.Domain.Cod;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Contacts;
+using Teikem.Domain.ExitNotices;
+using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
@@ -37,7 +39,7 @@ public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext
             var r = rows.FirstOrDefault(x => x.Kind == k);
             return new ClientNotificationSettingDto(k, r?.EmailEnabled ?? false, r?.AppEnabled ?? false, r?.SmsEnabled ?? false, r?.ExtraEmails, r?.ExtraPhones);
         }).ToList();
-        return new ClientNotificationSettingsDto(client.PublicId, client.Name, (await PortalEmailsAsync(client.ClientId, null, ct)).Count, email.IsConfigured, false, list);
+        return new ClientNotificationSettingsDto(client.PublicId, client.Name, (await PortalEmailsAsync(client.ClientId, null, ct)).Count, email.IsConfigured, false, list, client.NoticeDigestHour ?? ClientNotificationRules.DefaultDigestHour);
     }
 
     /// <summary>Prefijo internacional por omisión de la compañía en dígitos («1»).</summary>
@@ -51,6 +53,7 @@ public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext
     public async Task<ClientNotificationSettingsDto> SaveSettingsAsync(Guid clientPublicId, ClientNotificationSettingsRequest? req, CancellationToken ct)
     {
         if (req?.Settings is null) throw new ValidationException("settings", "El cuerpo de la solicitud es obligatorio.");
+        if (req.DigestHour is int digestHour && (digestHour < 0 || digestHour > 23)) throw new ValidationException("digestHour", ClientNotificationRules.DigestHourInvalid);
         var client = await db.Set<Client>().AsNoTracking().FirstOrDefaultAsync(c => c.PublicId == clientPublicId, ct) ?? throw new NotFoundException("Cliente");
         var kinds = req.Settings.Select(s => s.Kind?.Trim().ToUpperInvariant() ?? string.Empty).ToList();
         if (kinds.Any(k => !ClientNotificationKinds.IsKnown(k))) throw new ValidationException("settings", ClientNotificationRules.KindInvalid);
@@ -72,6 +75,11 @@ public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext
         }
         var tenantId = T.RequireTenantId();
         var existing = await db.Set<ClientNotificationSetting>().AsTracking().Where(x => x.ClientId == client.ClientId).ToListAsync(ct);
+        if (req.DigestHour is int hour)
+        {
+            var tracked = await db.Set<Client>().AsTracking().FirstAsync(c => c.ClientId == client.ClientId, ct);
+            tracked.NoticeDigestHour = hour;
+        }
         foreach (var (kind, s, emails, phones) in cleaned)
         {
             var row = existing.FirstOrDefault(x => x.Kind == kind);
@@ -128,23 +136,41 @@ public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext
 
     // ================================================================ resumir y enviar (el trabajo)
 
-    private sealed record Group(int ClientId, string Kind, int? TripId, int? RefId, List<ClientNotificationEvent> Events);
+    private sealed record Group(int ClientId, string Kind, int? RefId, List<ClientNotificationEvent> Events);
 
-    /// <summary>Resume los grupos de hechos que ya se asentaron, crea los avisos y manda los pendientes. Devuelve (resúmenes creados, envíos hechos, envíos que fallaron en esta pasada).</summary>
+    /// <summary>
+    /// El último momento de salida del resumen del día de un cliente: la última vez que el reloj de la compañía marcó la hora que el cliente escogió. Lo que ocurrió hasta ese momento sale ahora; lo posterior
+    /// espera al día siguiente. Si el trabajo se atrasó o no corrió, no se pierde nada: en la pasada siguiente sale lo que quedó.
+    /// </summary>
+    public static DateTime LastDigestMomentUtc(DateTime nowUtc, int hour, TimeZoneInfo zone)
+    {
+        var local = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, zone);
+        var at = DateTime.SpecifyKind(local.Date.AddHours(hour), DateTimeKind.Unspecified);
+        if (local < at) at = at.AddDays(-1);
+        if (zone.IsInvalidTime(at)) at = at.AddHours(1);   // la hora que el cambio de horario se saltó
+        return TimeZoneInfo.ConvertTimeToUtc(at, zone);
+    }
+
+    /// <summary>
+    /// Arma los avisos que ya toca mandar y manda los pendientes. Remesas COD y facturas: un aviso por documento cuando el grupo se asentó. Transporte y almacén: UN solo resumen por cliente y día, a la hora que el cliente
+    /// escogió, con una sección por cada aviso que tenga encendido; si no hubo nada, no sale nada. Devuelve (resúmenes creados, envíos hechos, envíos que fallaron en esta pasada).
+    /// </summary>
     public async Task<(int Summaries, int Sent, int Failed)> DigestAsync(CancellationToken ct)
     {
         var now = clock.UtcNow;
         var summaries = 0;
         var pending = await db.Set<ClientNotificationEvent>().AsTracking().Where(e => e.NotificationId == null).OrderBy(e => e.ClientNotificationEventId).ToListAsync(ct);
-        var groups = pending
-            .GroupBy(e => (e.ClientId, e.Kind, Trip: e.Kind is ClientNotificationKinds.CodProcessed or ClientNotificationKinds.InvoiceIssued ? null : e.TripId, Ref: e.Kind is ClientNotificationKinds.CodProcessed or ClientNotificationKinds.InvoiceIssued ? e.RefId : null))
-            .Select(g => new Group(g.Key.ClientId, g.Key.Kind, g.Key.Trip, g.Key.Ref, g.ToList()))
-            .Where(g => g.Events.Max(e => e.OccurredAtUtc) <= now.AddMinutes(-ClientNotificationRules.SettleMinutes))
-            .ToList();
-        if (groups.Count > 0)
+        if (pending.Count > 0)
         {
             var lang = (await db.Tenants.AsNoTracking().Where(t => t.TenantId == T.RequireTenantId()).Select(t => t.DefaultLangCode).FirstOrDefaultAsync(ct)) ?? "es";
-            foreach (var g in groups)
+
+            // 1) Remesas COD y facturas: un aviso por documento
+            var documents = pending.Where(e => !ClientNotificationKinds.IsDaily(e.Kind))
+                .GroupBy(e => (e.ClientId, e.Kind, e.RefId))
+                .Select(g => new Group(g.Key.ClientId, g.Key.Kind, g.Key.RefId, g.ToList()))
+                .Where(g => g.Events.Max(e => e.OccurredAtUtc) <= now.AddMinutes(-ClientNotificationRules.SettleMinutes))
+                .ToList();
+            foreach (var g in documents)
             {
                 var setting = await db.Set<ClientNotificationSetting>().AsNoTracking().FirstOrDefaultAsync(s => s.ClientId == g.ClientId && s.Kind == g.Kind, ct);
                 if (setting is null || !setting.AnyChannel)
@@ -156,7 +182,29 @@ public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext
                 db.Set<ClientNotification>().Add(notification);
                 await db.SaveChangesAsync(ct);
                 foreach (var e in g.Events) e.NotificationId = notification.ClientNotificationId;
-                await AddDeliveriesAsync(notification, setting, ct);
+                await AddDeliveriesAsync(notification, new[] { setting }, ct);
+                await db.SaveChangesAsync(ct);
+                summaries++;
+            }
+
+            // 2) El resumen del día de cada cliente (transporte y almacén)
+            foreach (var byClient in pending.Where(e => ClientNotificationKinds.IsDaily(e.Kind)).GroupBy(e => e.ClientId))
+            {
+                var hour = await db.Set<Client>().AsNoTracking().Where(c => c.ClientId == byClient.Key).Select(c => c.NoticeDigestHour).FirstOrDefaultAsync(ct) ?? ClientNotificationRules.DefaultDigestHour;
+                var dueUtc = LastDigestMomentUtc(now, hour, clock.Zone);
+                var due = byClient.Where(e => e.OccurredAtUtc <= dueUtc).ToList();
+                if (due.Count == 0) continue;   // nada para esta hora (lo de hoy espera a la siguiente)
+                var settings = await db.Set<ClientNotificationSetting>().AsNoTracking().Where(s => s.ClientId == byClient.Key && ClientNotificationKinds.DailyKinds.Contains(s.Kind)).ToListAsync(ct);
+                var on = settings.Where(s => s.AnyChannel).ToList();
+                var onKinds = on.Select(s => s.Kind).ToHashSet();
+                db.Set<ClientNotificationEvent>().RemoveRange(due.Where(e => !onKinds.Contains(e.Kind)));   // lo apagaron mientras tanto: no hay nada que avisar
+                var keep = due.Where(e => onKinds.Contains(e.Kind)).ToList();
+                if (keep.Count == 0) continue;
+                var notification = await BuildDailyAsync(byClient.Key, keep, on, lang, ct);
+                db.Set<ClientNotification>().Add(notification);
+                await db.SaveChangesAsync(ct);
+                foreach (var e in keep) e.NotificationId = notification.ClientNotificationId;
+                await AddDeliveriesAsync(notification, on, ct);
                 await db.SaveChangesAsync(ct);
                 summaries++;
             }
@@ -166,22 +214,25 @@ public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext
         return (summaries, sent, failed);
     }
 
-    private async Task AddDeliveriesAsync(ClientNotification n, ClientNotificationSetting s, CancellationToken ct)
+    /// <summary>Los envíos de un aviso: correo (usuarios activos del portal que no lo apagaron + correos extra de cada aviso incluido), la bandeja del portal (en el aviso) y SMS (se guarda; no sale hasta contratar el proveedor).</summary>
+    private async Task AddDeliveriesAsync(ClientNotification n, IReadOnlyList<ClientNotificationSetting> settings, CancellationToken ct)
     {
         void Add(string channel, string recipient, string status, string? message) => db.Set<ClientNotificationDelivery>().Add(new ClientNotificationDelivery
         {
             TenantId = n.TenantId, ClientNotificationId = n.ClientNotificationId, Channel = channel, Recipient = recipient, Status = status, Message = message,
             NextAttemptUtc = status == ClientNotificationDeliveryStatuses.Pending ? clock.UtcNow : null,
         });
-        if (s.EmailEnabled)
+        if (settings.Any(s => s.EmailEnabled))
         {
-            var to = (await PortalEmailsAsync(n.ClientId, n.Kind, ct)).Concat(ClientNotificationRules.ParseEmails(s.ExtraEmails)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var to = new List<string>();
+            foreach (var s in settings.Where(x => x.EmailEnabled)) to.AddRange((await PortalEmailsAsync(n.ClientId, s.Kind, ct)).Concat(ClientNotificationRules.ParseEmails(s.ExtraEmails)));
+            to = to.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             if (to.Count == 0) Add(ClientNotificationChannels.Email, string.Empty, ClientNotificationDeliveryStatuses.Skipped, "No hay destinatarios: el cliente no tiene usuarios activos en el portal ni correos extra.");
             foreach (var r in to) Add(ClientNotificationChannels.Email, r, ClientNotificationDeliveryStatuses.Pending, null);
         }
-        if (s.SmsEnabled)
+        if (settings.Any(s => s.SmsEnabled))
         {
-            var phones = ClientNotificationRules.ParsePhones(s.ExtraPhones);
+            var phones = settings.Where(x => x.SmsEnabled).SelectMany(x => ClientNotificationRules.ParsePhones(x.ExtraPhones)).Distinct().ToList();
             if (phones.Count == 0) Add(ClientNotificationChannels.Sms, string.Empty, ClientNotificationDeliveryStatuses.Skipped, "No hay teléfonos para el SMS.");
             foreach (var p in phones) Add(ClientNotificationChannels.Sms, p, ClientNotificationDeliveryStatuses.Skipped, "El envío de SMS todavía no está configurado.");
         }
@@ -225,41 +276,24 @@ public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext
 
     // ================================================================ el texto del resumen
 
+    private static string Named(IReadOnlyList<string> items, bool en)
+    {
+        var shown = items.Take(ClientNotificationRules.MaxNamedInSummary).ToList();
+        var rest = items.Count - shown.Count;
+        return string.Join(", ", shown) + (rest > 0 ? (en ? $" and {rest} more" : $" y {rest} más") : string.Empty);
+    }
+
+    /// <summary>El texto de un aviso de documento: una remesa COD o una factura.</summary>
     private async Task<ClientNotification> BuildAsync(Group g, ClientNotificationSetting setting, string lang, CancellationToken ct)
     {
         var en = lang.StartsWith("en", StringComparison.OrdinalIgnoreCase);
         var culture = CultureInfo.GetCultureInfo("en-US");
         string Money(decimal v) => v.ToString("C2", culture);
         var client = await db.Set<Client>().AsNoTracking().FirstAsync(c => c.ClientId == g.ClientId, ct);
-        var orderIds = g.Events.Where(e => e.TransportOrderId != null).Select(e => e.TransportOrderId!.Value).Distinct().ToList();
-        var pieces = g.Events.Where(e => e.TransportOrderId != null).GroupBy(e => e.TransportOrderId).Sum(x => x.First().Pieces);
-        string? tripCode = g.TripId is int tid ? await db.Set<Domain.Trips.Trip>().AsNoTracking().Where(t => t.TripId == tid).Select(t => t.Code).FirstOrDefaultAsync(ct) : null;
         string subject, body;
         var summary = new Dictionary<string, object?>();
         switch (g.Kind)
         {
-            case ClientNotificationKinds.PickedUp:
-            case ClientNotificationKinds.OutForDelivery:
-            {
-                var picked = g.Kind == ClientNotificationKinds.PickedUp;
-                subject = en ? (picked ? $"We picked up your packages — {client.Name}" : $"Your packages are out for delivery — {client.Name}") : (picked ? $"Recogimos sus paquetes — {client.Name}" : $"Sus paquetes salieron a entrega — {client.Name}");
-                body = en
-                    ? $"{(picked ? "Picked up" : "Out for delivery")}: {pieces} package(s) from {orderIds.Count} order(s){(tripCode is null ? "" : $" on route {tripCode}")}."
-                    : $"{(picked ? "Recogido" : "Salió a entrega")}: {pieces} caja(s) de {orderIds.Count} envío(s){(tripCode is null ? "" : $" en la ruta {tripCode}")}.";
-                summary["orders"] = orderIds.Count; summary["pieces"] = pieces; summary["trip"] = tripCode;
-                break;
-            }
-            case ClientNotificationKinds.Delivered:
-            {
-                var voidId = await db.StatusCodes.AsNoTracking().Where(s => s.Entity == CodCodes.CollectionStatusDomain && s.InternalCode == CodCollectionStatuses.Void).Select(s => (int?)s.StatusCodeId).FirstOrDefaultAsync(ct);
-                var cod = await db.Set<CodCollection>().AsNoTracking().Where(c => orderIds.Contains(c.TransportOrderId) && c.StatusCodeId != voidId).SumAsync(c => (decimal?)c.AmountCollected, ct) ?? 0m;
-                subject = en ? $"Your packages were delivered — {client.Name}" : $"Se entregaron sus paquetes — {client.Name}";
-                var codText = cod > 0 ? (en ? $" COD collected: {Money(cod)}." : $" COD cobrado: {Money(cod)}.") : string.Empty;
-                body = en ? $"Delivered: {pieces} package(s) from {orderIds.Count} order(s){(tripCode is null ? "" : $" on route {tripCode}")}.{codText}"
-                          : $"Entregado: {pieces} caja(s) de {orderIds.Count} envío(s){(tripCode is null ? "" : $" en la ruta {tripCode}")}.{codText}";
-                summary["orders"] = orderIds.Count; summary["pieces"] = pieces; summary["trip"] = tripCode; summary["cod"] = cod;
-                break;
-            }
             case ClientNotificationKinds.CodProcessed:
             {
                 var b = await db.Set<CodRemittanceBatch>().AsNoTracking().Include(x => x.Lines).FirstOrDefaultAsync(x => x.CodRemittanceBatchId == g.RefId, ct);
@@ -289,12 +323,84 @@ public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext
         };
     }
 
+    /// <summary>El resumen único del día de un cliente: una línea por cada aviso encendido que tuvo algo (recogido, en ruta, entregado, llegadas recibidas, salidas despachadas).</summary>
+    private async Task<ClientNotification> BuildDailyAsync(int clientId, IReadOnlyList<ClientNotificationEvent> events, IReadOnlyList<ClientNotificationSetting> settings, string lang, CancellationToken ct)
+    {
+        var en = lang.StartsWith("en", StringComparison.OrdinalIgnoreCase);
+        var culture = CultureInfo.GetCultureInfo("en-US");
+        string Money(decimal v) => v.ToString("C2", culture);
+        var client = await db.Set<Client>().AsNoTracking().FirstAsync(c => c.ClientId == clientId, ct);
+        var lines = new List<string>();
+        var summary = new Dictionary<string, object?>();
+
+        async Task OrderLineAsync(string kind)
+        {
+            var mine = events.Where(e => e.Kind == kind).ToList();
+            if (mine.Count == 0) return;
+            var orderIds = mine.Where(e => e.TransportOrderId != null).Select(e => e.TransportOrderId!.Value).Distinct().ToList();
+            var pieces = mine.Where(e => e.TransportOrderId != null).GroupBy(e => e.TransportOrderId).Sum(x => x.First().Pieces);
+            var tripIds = mine.Where(e => e.TripId != null).Select(e => e.TripId!.Value).Distinct().ToList();
+            var tripCodes = tripIds.Count == 0 ? new List<string>() : await db.Set<Domain.Trips.Trip>().AsNoTracking().Where(t => tripIds.Contains(t.TripId)).OrderBy(t => t.Code).Select(t => t.Code).ToListAsync(ct);
+            summary[kind] = new { orders = orderIds.Count, pieces, routes = tripCodes };
+            switch (kind)
+            {
+                case ClientNotificationKinds.PickedUp:
+                    lines.Add(en ? $"Picked up: {pieces} package(s) from {orderIds.Count} order(s)." : $"Recogido: {pieces} caja(s) de {orderIds.Count} envío(s).");
+                    break;
+                case ClientNotificationKinds.OutForDelivery:
+                {
+                    var routes = tripCodes.Count == 0 ? string.Empty : en ? $" on {tripCodes.Count} route(s) ({Named(tripCodes, en)})" : $" en {tripCodes.Count} ruta(s) ({Named(tripCodes, en)})";
+                    lines.Add(en ? $"Out for delivery: {pieces} package(s) from {orderIds.Count} order(s){routes}." : $"Salió a entrega: {pieces} caja(s) de {orderIds.Count} envío(s){routes}.");
+                    break;
+                }
+                default:
+                {
+                    var voidId = await db.StatusCodes.AsNoTracking().Where(s => s.Entity == CodCodes.CollectionStatusDomain && s.InternalCode == CodCollectionStatuses.Void).Select(s => (int?)s.StatusCodeId).FirstOrDefaultAsync(ct);
+                    var cod = await db.Set<CodCollection>().AsNoTracking().Where(c => orderIds.Contains(c.TransportOrderId) && c.StatusCodeId != voidId).SumAsync(c => (decimal?)c.AmountCollected, ct) ?? 0m;
+                    var codText = cod > 0 ? (en ? $" COD collected: {Money(cod)}." : $" COD cobrado: {Money(cod)}.") : string.Empty;
+                    lines.Add(en ? $"Delivered: {pieces} package(s) from {orderIds.Count} order(s).{codText}" : $"Entregado: {pieces} caja(s) de {orderIds.Count} envío(s).{codText}");
+                    summary[kind] = new { orders = orderIds.Count, pieces, routes = tripCodes, cod };
+                    break;
+                }
+            }
+        }
+
+        await OrderLineAsync(ClientNotificationKinds.PickedUp);
+        await OrderLineAsync(ClientNotificationKinds.OutForDelivery);
+        await OrderLineAsync(ClientNotificationKinds.Delivered);
+
+        var receivedIds = events.Where(e => e.Kind == ClientNotificationKinds.WhReceived && e.RefId != null).Select(e => e.RefId!.Value).Distinct().ToList();
+        if (receivedIds.Count > 0)
+        {
+            var numbers = await db.Set<Asn>().AsNoTracking().Where(a => receivedIds.Contains(a.AsnId)).OrderBy(a => a.Number).Select(a => a.Number).ToListAsync(ct);
+            var units = await db.Set<ReceiptLine>().AsNoTracking().Where(l => db.Set<ReceiptHeader>().Any(h => h.ReceiptHeaderId == l.ReceiptHeaderId && h.AsnId != null && receivedIds.Contains(h.AsnId.Value))).SumAsync(l => (decimal?)l.ReceivedQty, ct) ?? 0m;
+            summary[ClientNotificationKinds.WhReceived] = new { notices = numbers, units };
+            lines.Add(en ? $"Received at the warehouse: {numbers.Count} arrival notice(s) ({Named(numbers, en)}), {units:0.##} unit(s)." : $"Recibido en el almacén: {numbers.Count} aviso(s) de llegada ({Named(numbers, en)}), {units:0.##} unidad(es).");
+        }
+        var dispatchedIds = events.Where(e => e.Kind == ClientNotificationKinds.WhDispatched && e.RefId != null).Select(e => e.RefId!.Value).Distinct().ToList();
+        if (dispatchedIds.Count > 0)
+        {
+            var numbers = await db.Set<ExitNotice>().AsNoTracking().Where(x => dispatchedIds.Contains(x.ExitNoticeId)).OrderBy(x => x.Number).Select(x => x.Number).ToListAsync(ct);
+            var units = await db.Set<ExitNoticeLine>().AsNoTracking().Where(l => dispatchedIds.Contains(l.ExitNoticeId)).SumAsync(l => (decimal?)l.QtyShipped, ct) ?? 0m;
+            summary[ClientNotificationKinds.WhDispatched] = new { notices = numbers, units };
+            lines.Add(en ? $"Dispatched from the warehouse: {numbers.Count} exit notice(s) ({Named(numbers, en)}), {units:0.##} unit(s)." : $"Despachado del almacén: {numbers.Count} aviso(s) de salida ({Named(numbers, en)}), {units:0.##} unidad(es).");
+        }
+
+        return new ClientNotification
+        {
+            PublicId = Guid.NewGuid(), TenantId = T.RequireTenantId(), ClientId = clientId, Kind = ClientNotificationKinds.Daily,
+            Subject = Trim(en ? $"Your daily summary — {client.Name}" : $"Su resumen del día — {client.Name}", 200), BodyText = Trim(string.Join("\n", lines), 2000),
+            SummaryJson = Trim(JsonSerializer.Serialize(summary), 1000), InPortal = settings.Any(x => x.AppEnabled), CreatedAtUtc = clock.UtcNow,
+        };
+    }
+
     private static string Html(string company, ClientNotification n)
     {
         static string E(string s) => s.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
         var sb = new StringBuilder();
         sb.Append("<div style=\"font-family:Arial,Helvetica,sans-serif;color:#1b2430;font-size:14px\">");
-        sb.Append($"<h2 style=\"margin:0 0 8px\">{E(n.Subject)}</h2><p style=\"margin:0 0 14px\">{E(n.BodyText)}</p>");
+        var body = E(n.BodyText).Replace("\n", "<br>");
+        sb.Append($"<h2 style=\"margin:0 0 8px\">{E(n.Subject)}</h2><p style=\"margin:0 0 14px\">{body}</p>");
         sb.Append($"<p style=\"color:#5b6573;margin:0\">{E(company)}</p></div>");
         return sb.ToString();
     }
@@ -366,5 +472,35 @@ public sealed class ClientNotificationRemittanceEffect(TeikemDbContext db, Clien
         var clientId = db.Set<CodRemittanceBatch>().Local.FirstOrDefault(b => b.CodRemittanceBatchId == context.EntityId)?.ClientId
                        ?? await db.Set<CodRemittanceBatch>().AsNoTracking().Where(b => b.CodRemittanceBatchId == context.EntityId).Select(b => (int?)b.ClientId).FirstOrDefaultAsync(ct);
         if (clientId is int c) await notifications.RecordRefEventAsync(c, ClientNotificationKinds.CodProcessed, context.EntityId, ct);
+    }
+}
+
+/// <summary>Almacén — efecto del dominio AsnStatus: un aviso de llegada de un cliente que pasa a RECEIVED se anota como «recibido» (entra en el resumen del día). Los avisos que nacen de una compra no tienen cliente y no se avisan. No guarda.</summary>
+public sealed class ClientNotificationAsnReceivedEffect(TeikemDbContext db, ClientNotificationService notifications) : IStatusTransitionEffect
+{
+    public string StatusDomain => StatusDomains.AsnStatus;
+
+    public async Task OnTransitionedAsync(StatusTransitionContext context, CancellationToken ct)
+    {
+        if (!string.Equals(context.EntityTypeCode, EntityTypes.Asn, StringComparison.OrdinalIgnoreCase)) return;
+        if (!string.Equals(context.To.InternalCode, AsnStatuses.Received, StringComparison.OrdinalIgnoreCase)) return;
+        var clientId = db.Set<Asn>().Local.FirstOrDefault(a => a.AsnId == context.EntityId)?.ClientId
+                       ?? await db.Set<Asn>().AsNoTracking().Where(a => a.AsnId == context.EntityId).Select(a => a.ClientId).FirstOrDefaultAsync(ct);
+        if (clientId is int c) await notifications.RecordRefEventAsync(c, ClientNotificationKinds.WhReceived, context.EntityId, ct);
+    }
+}
+
+/// <summary>Almacén — efecto del dominio ExitNoticeStatus: un aviso de salida que se despacha (parcial o totalmente) se anota como «despachado» (entra en el resumen del día; el mismo aviso despachado en dos partes se cuenta una vez). No guarda.</summary>
+public sealed class ClientNotificationExitNoticeDispatchedEffect(TeikemDbContext db, ClientNotificationService notifications) : IStatusTransitionEffect
+{
+    public string StatusDomain => ExitNoticeCodes.StatusDomain;
+
+    public async Task OnTransitionedAsync(StatusTransitionContext context, CancellationToken ct)
+    {
+        if (!string.Equals(context.EntityTypeCode, ExitNoticeCodes.EntityType, StringComparison.OrdinalIgnoreCase)) return;
+        if (context.To.InternalCode is not (ExitNoticeStatuses.Partial or ExitNoticeStatuses.Shipped)) return;
+        var clientId = db.Set<ExitNotice>().Local.FirstOrDefault(x => x.ExitNoticeId == context.EntityId)?.ClientId
+                       ?? await db.Set<ExitNotice>().AsNoTracking().Where(x => x.ExitNoticeId == context.EntityId).Select(x => (int?)x.ClientId).FirstOrDefaultAsync(ct);
+        if (clientId is int c) await notifications.RecordRefEventAsync(c, ClientNotificationKinds.WhDispatched, context.EntityId, ct);
     }
 }

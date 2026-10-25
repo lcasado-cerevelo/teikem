@@ -31,9 +31,9 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
 function json(body: unknown) {
   return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } })
 }
-const KINDS = ['PICKED_UP', 'OUT_FOR_DELIVERY', 'DELIVERED', 'COD_PROCESSED', 'INVOICE_ISSUED']
+const KINDS = ['PICKED_UP', 'OUT_FOR_DELIVERY', 'DELIVERED', 'WH_RECEIVED', 'WH_DISPATCHED', 'COD_PROCESSED', 'INVOICE_ISSUED']
 const SETTINGS = (rows: Record<string, unknown>[] = []) => ({
-  clientPublicId: CLIENT, clientName: 'Acme', portalRecipients: 2, emailConfigured: true, smsConfigured: false,
+  clientPublicId: CLIENT, clientName: 'Acme', portalRecipients: 2, emailConfigured: true, smsConfigured: false, digestHour: 18,
   settings: KINDS.map((k) => ({ kind: k, emailEnabled: false, appEnabled: false, smsEnabled: false, extraEmails: null, extraPhones: null, ...(rows.find((r) => r.kind === k) ?? {}) })),
 })
 const LOG = {
@@ -71,7 +71,7 @@ describe('Avisos al cliente (panel)', () => {
     await open(user)
     expect(await screen.findByText(/nunca al consignatario/)).toBeInTheDocument()
     expect(screen.getByText(/usuarios activos del portal de este cliente \(2\)/)).toBeInTheDocument()
-    for (const title of ['Recogido', 'Salió a entrega', 'Entregado', 'COD procesado', 'Factura emitida']) expect(screen.getAllByText(title).length).toBeGreaterThan(0)
+    for (const title of ['Recogido', 'Salió a entrega', 'Entregado', 'Mercancía recibida', 'Mercancía despachada', 'COD procesado', 'Factura emitida']) expect(screen.getAllByText(title).length).toBeGreaterThan(0)
     expect(screen.getAllByRole('checkbox').every((c) => !(c as HTMLInputElement).checked)).toBe(true)
     expect(await screen.findByText('Entregado: 8 caja(s) de 2 orden(es) en la ruta RUT-1.')).toBeInTheDocument()
     expect(screen.getByText('En el portal')).toBeInTheDocument()
@@ -96,6 +96,20 @@ describe('Avisos al cliente (panel)', () => {
     expect(sent.find((s) => s.kind === 'DELIVERED')).toMatchObject({ emailEnabled: true, appEnabled: true, smsEnabled: true, extraEmails: 'ana@x.co; luis@x.co', extraPhones: null })
     expect(sent.find((s) => s.kind === 'PICKED_UP')).toMatchObject({ emailEnabled: false, appEnabled: false, smsEnabled: false })
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Guardar avisos' })).not.toBeInTheDocument())   // guardado: ya no hay cambios
+  })
+
+  it('la hora del resumen del día es la guardada (18:00 por omisión) y cambiarla la manda al guardar', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await open(user)
+    const hour = (await screen.findByLabelText('Hora del resumen del día')) as HTMLSelectElement
+    expect(hour.value).toBe('18')
+    expect(screen.getByText(/UN solo resumen al día/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Guardar avisos' })).not.toBeInTheDocument()
+    await user.selectOptions(hour, '20')
+    await user.click(screen.getAllByRole('button', { name: 'Guardar avisos' })[0])
+    await waitFor(() => expect(mock.requests.filter((r) => r.method === 'PUT')).toHaveLength(1))
+    expect((mock.requests.find((r) => r.method === 'PUT')!.body as { digestHour: number }).digestHour).toBe(20)
   })
 
   it('un correo mal escrito se avisa y no deja guardar', async () => {

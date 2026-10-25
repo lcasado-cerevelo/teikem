@@ -1,5 +1,7 @@
 // Reglas puras de «Avisos al cliente» (Lote 98): el orden de los avisos, comparar lo editado con lo guardado y revisar los correos y teléfonos antes de enviar. El servidor repite todas las validaciones.
-export const NOTIFICATION_KINDS = ['PICKED_UP', 'OUT_FOR_DELIVERY', 'DELIVERED', 'COD_PROCESSED', 'INVOICE_ISSUED'] as const
+export const NOTIFICATION_KINDS = ['PICKED_UP', 'OUT_FOR_DELIVERY', 'DELIVERED', 'WH_RECEIVED', 'WH_DISPATCHED', 'COD_PROCESSED', 'INVOICE_ISSUED'] as const
+/** Hora local por omisión del resumen del día (la misma que usa el servidor). */
+export const DEFAULT_DIGEST_HOUR = 18
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number]
 export const MAX_NOTIFICATION_LIST = 400
 export const MAX_RECIPIENTS = 10

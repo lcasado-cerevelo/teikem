@@ -38993,9 +38993,13 @@ export interface components {
             emailConfigured?: boolean;
             smsConfigured?: boolean;
             settings?: components["schemas"]["ClientNotificationSettingDto"][] | null;
+            /** Format: int32 */
+            digestHour?: number;
         };
         ClientNotificationSettingsRequest: {
             settings?: components["schemas"]["ClientNotificationSettingDto"][] | null;
+            /** Format: int32 */
+            digestHour?: number | null;
         };
         ClientNumberSettingsDto: {
             clientAssignsOrderNumber?: boolean;

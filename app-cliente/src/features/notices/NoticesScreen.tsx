@@ -8,7 +8,7 @@ import { Button, Card, Chip, Muted, Notice, Screen, Spinner, Title, useColors } 
 import { formatDateTime } from '../format'
 import { listNotifications, PAGE_SIZE, type PortalNotificationDto } from '../portalApi'
 
-const KIND_TONE: Record<string, 'ok' | 'info' | 'warn' | 'neutral'> = { DELIVERED: 'ok', PICKED_UP: 'info', OUT_FOR_DELIVERY: 'info', COD_PROCESSED: 'warn', INVOICE_ISSUED: 'warn' }
+const KIND_TONE: Record<string, 'ok' | 'info' | 'warn' | 'neutral'> = { DAILY: 'info', WH_RECEIVED: 'info', WH_DISPATCHED: 'info', DELIVERED: 'ok', PICKED_UP: 'info', OUT_FOR_DELIVERY: 'info', COD_PROCESSED: 'warn', INVOICE_ISSUED: 'warn' }
 
 export function NoticesScreen() {
   const colors = useColors()

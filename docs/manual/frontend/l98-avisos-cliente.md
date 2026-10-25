@@ -6,7 +6,8 @@ Dónde: **Clientes y contratos** (`/catalog/clients`), ficha del cliente, panel 
 
 ## Qué se ve
 - Una explicación (la decide la compañía, son resúmenes, van al cliente y nunca al consignatario), cuántos **usuarios del portal** recibirían el correo y, si hace falta, el aviso de que el correo no está configurado en la plataforma.
-- **Cinco avisos** —Recogido, Salió a entrega, Entregado, COD procesado, Factura emitida—, cada uno con su explicación y tres casillas: **Correo**, **Bandeja del portal** y **SMS**. Todo apagado por omisión.
+- **«Hora del resumen del día»** (de 00:00 a 23:00; 18:00 por omisión): el cliente recibe un **solo** resumen al día a esa hora; si ese día no pasó nada, no se manda nada. Cambiarla cuenta como cambio por guardar.
+- **Siete avisos** —Recogido, Salió a entrega, Entregado, Mercancía recibida, Mercancía despachada, COD procesado, Factura emitida—, cada uno con su explicación y tres casillas: **Correo**, **Bandeja del portal** y **SMS**. Todo apagado por omisión.
 - Al encender **Correo** aparece **«Correos extra»**; al encender **SMS**, **«Teléfonos para SMS»** (con la nota de que el SMS no sale hasta contratar el proveedor).
 - Un correo o teléfono mal escrito se avisa en el momento y **no deja guardar**. «Guardar avisos» (y «Descartar cambios») solo aparecen si hay cambios. Sin `clients.update` las casillas están apagadas y no hay botones.
 - Abajo, **«Resúmenes enviados»**: fecha, aviso, el texto del resumen y los envíos (en el portal, enviados, omitidos, con error; el detalle sale al pasar el cursor).

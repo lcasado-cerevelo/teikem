@@ -251,6 +251,9 @@
       "PICKED_UP": "Recogido",
       "OUT_FOR_DELIVERY": "Salió a entrega",
       "DELIVERED": "Entregado",
+      "WH_RECEIVED": "Mercancía recibida",
+      "WH_DISPATCHED": "Mercancía despachada",
+      "DAILY": "Resumen del día",
       "COD_PROCESSED": "COD procesado",
       "INVOICE_ISSUED": "Factura emitida"
     }
@@ -617,6 +620,8 @@
       "PICKED_UP": "Paquetes recogidos",
       "OUT_FOR_DELIVERY": "Salida a entrega",
       "DELIVERED": "Entregas",
+      "WH_RECEIVED": "Mercancía recibida en el almacén",
+      "WH_DISPATCHED": "Mercancía despachada del almacén",
       "COD_PROCESSED": "Cobros contra entrega",
       "INVOICE_ISSUED": "Factura emitida"
     },
@@ -624,6 +629,8 @@
       "PICKED_UP": "Un resumen cuando se recogen sus paquetes.",
       "OUT_FOR_DELIVERY": "Un resumen cuando sus paquetes salen en ruta.",
       "DELIVERED": "Un resumen de lo entregado y lo que no se pudo entregar.",
+      "WH_RECEIVED": "Cuando el almacén recibe sus avisos de llegada, en el resumen del día.",
+      "WH_DISPATCHED": "Cuando el almacén despacha sus avisos de salida, en el resumen del día.",
       "COD_PROCESSED": "Cuando se procesa el dinero cobrado por sus entregas.",
       "INVOICE_ISSUED": "Cuando se emite una factura suya."
     }

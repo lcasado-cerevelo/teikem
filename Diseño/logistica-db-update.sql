@@ -6836,3 +6836,12 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_IntegrationMailLog_Key' AND object_id = OBJECT_ID('dbo.IntegrationMailLog'))
     CREATE UNIQUE INDEX UX_IntegrationMailLog_Key ON dbo.IntegrationMailLog(IntegrationId, MessageKey);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-25 — Resumen único del día de los avisos al cliente: dbo.Client.NoticeDigestHour = la hora local (0–23) a la que el cliente recibe su resumen del día
+   (transporte: recogido, en ruta, entregado; almacén: llegada recibida, salida despachada). NULL = la de la compañía por omisión (18). Solo AGREGA una columna.
+   Los avisos nuevos del almacén (WH_RECEIVED, WH_DISPATCHED) no necesitan datos: el aviso se configura por cliente igual que los demás (sin fila = apagado).
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH(N'dbo.Client', N'NoticeDigestHour') IS NULL
+    ALTER TABLE dbo.Client ADD NoticeDigestHour INT NULL CONSTRAINT CK_Client_NoticeDigestHour CHECK (NoticeDigestHour IS NULL OR (NoticeDigestHour BETWEEN 0 AND 23));
+GO

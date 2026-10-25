@@ -899,7 +899,7 @@
     "notif": {
       "title": "Avisos al cliente",
       "summary": "{n} aviso(s) encendido(s)",
-      "intro": "Lo decide la compañía, cliente por cliente: qué avisos recibe este cliente y por qué canal. Son resúmenes (no el detalle de cada envío) y se mandan al cliente, nunca al consignatario. Mientras no se encienda uno, el cliente no recibe nada.",
+      "intro": "Lo decide la compañía, cliente por cliente: qué avisos recibe este cliente y por qué canal. Son resúmenes (no el detalle de cada envío) y se mandan al cliente, nunca al consignatario: el cliente recibe un solo resumen al día. Mientras no se encienda uno, el cliente no recibe nada.",
       "recipients": "El correo llega a los usuarios activos del portal de este cliente ({n}) y a los correos extra que ponga abajo. La bandeja es la del portal del cliente.",
       "emailOff": "El envío de correo no está configurado en la plataforma: los avisos por correo quedan registrados como omitidos.",
       "save": "Guardar avisos",
@@ -915,6 +915,10 @@
       "extraPhones": "Teléfonos para SMS (separados por coma)",
       "extraPhonesPh": "787-555-0100, 939-555-0101",
       "smsHelp": "Se guarda la preferencia; el SMS no sale hasta que se contrate el proveedor.",
+      "digestHour": {
+        "label": "Hora del resumen del día",
+        "help": "El cliente recibe UN solo resumen al día, a esta hora (hora de la compañía), con lo recogido, en ruta, entregado, recibido y despachado de los avisos que tenga encendidos. Si ese día no pasó nada, no se manda nada. Las remesas de COD y las facturas salen aparte, una por documento."
+      },
       "kinds": {
         "PICKED_UP": {
           "title": "Recogido",
@@ -927,6 +931,18 @@
         "DELIVERED": {
           "title": "Entregado",
           "help": "Resumen de lo entregado (cajas, envíos y el COD cobrado)."
+        },
+        "WH_RECEIVED": {
+          "title": "Mercancía recibida",
+          "help": "Cuando el almacén recibe un aviso de llegada de este cliente: cuántos avisos y cuántas unidades. Entra en el resumen del día."
+        },
+        "WH_DISPATCHED": {
+          "title": "Mercancía despachada",
+          "help": "Cuando el almacén despacha un aviso de salida de este cliente: cuántos avisos y cuántas unidades. Entra en el resumen del día."
+        },
+        "DAILY": {
+          "title": "Resumen del día",
+          "help": "El resumen único del día."
         },
         "COD_PROCESSED": {
           "title": "COD procesado",

@@ -899,7 +899,7 @@
     "notif": {
       "title": "Client notifications",
       "summary": "{n} notice(s) on",
-      "intro": "The company decides, client by client: which notices this client receives and through which channel. They are summaries (not the detail of each shipment) and go to the client, never to the consignee. Until one is turned on, the client receives nothing.",
+      "intro": "The company decides, client by client: which notices this client receives and through which channel. They are summaries (not the detail of each shipment) and go to the client, never to the consignee: the client receives a single summary a day. Until one is turned on, the client receives nothing.",
       "recipients": "The email goes to this client's active portal users ({n}) and to the extra emails you add below. The inbox is the client's portal inbox.",
       "emailOff": "Email sending is not configured on the platform: email notices are logged as skipped.",
       "save": "Save notices",
@@ -915,6 +915,10 @@
       "extraPhones": "Phones for SMS (comma separated)",
       "extraPhonesPh": "787-555-0100, 939-555-0101",
       "smsHelp": "The preference is saved; SMS is not sent until the provider is contracted.",
+      "digestHour": {
+        "label": "Daily summary time",
+        "help": "The client receives ONE summary a day, at this time (company time), with what was picked up, out for delivery, delivered, received and dispatched among the notices turned on. If nothing happened that day, nothing is sent. COD remittances and invoices go separately, one per document."
+      },
       "kinds": {
         "PICKED_UP": {
           "title": "Picked up",
@@ -927,6 +931,18 @@
         "DELIVERED": {
           "title": "Delivered",
           "help": "Summary of what was delivered (boxes, shipments and the COD collected)."
+        },
+        "WH_RECEIVED": {
+          "title": "Goods received",
+          "help": "When the warehouse receives one of this client's arrival notices: how many notices and how many units. Goes into the daily summary."
+        },
+        "WH_DISPATCHED": {
+          "title": "Goods dispatched",
+          "help": "When the warehouse dispatches one of this client's exit notices: how many notices and how many units. Goes into the daily summary."
+        },
+        "DAILY": {
+          "title": "Daily summary",
+          "help": "The single summary of the day."
         },
         "COD_PROCESSED": {
           "title": "COD processed",

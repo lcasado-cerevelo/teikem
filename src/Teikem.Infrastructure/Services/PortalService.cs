@@ -95,6 +95,8 @@ public sealed class PortalService(TeikemDbContext db, ITenantContext tenant, Use
         var userId = ((TenantContext)tenant).UserId;
         var hidden = userId is null ? new List<string>() : await db.Set<Teikem.Domain.Clients.PortalNoticePref>().AsNoTracking()
             .Where(p => !p.AppEnabled && db.Set<Teikem.Domain.Clients.PortalUser>().Any(u => u.PortalUserId == p.PortalUserId && u.UserId == userId && u.ClientId == cid)).Select(p => p.Kind).ToListAsync(ct);
+        // el resumen del día (DAILY) junta varios avisos: solo se oculta si la persona apagó la bandeja de TODOS los que lo componen
+        if (Teikem.Domain.Clients.ClientNotificationKinds.DailyKinds.All(hidden.Contains)) hidden.Add(Teikem.Domain.Clients.ClientNotificationKinds.Daily);
         if (hidden.Count > 0) q = q.Where(n => !hidden.Contains(n.Kind));
         var total = await q.CountAsync(ct);
         var rows = await q.OrderByDescending(n => n.CreatedAtUtc).ThenByDescending(n => n.ClientNotificationId).Skip(skip).Take(take).ToListAsync(ct);

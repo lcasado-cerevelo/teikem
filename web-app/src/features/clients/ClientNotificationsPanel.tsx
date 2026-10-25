@@ -8,7 +8,7 @@ import { useT } from '../../kernel/i18n'
 import { Chip, DataTable, Panel, PhoneListInput, Spinner, toast, type DataColumn } from '../../kernel/ui'
 import { IconBolt } from '../../kernel/ui/screenIcons'
 import { useClientNotificationLog, useClientNotificationSettings, useSaveClientNotificationSettings, type ClientNotificationDto } from './notificationsApi'
-import { enabledCount, isDirty, rowError, rowsFrom, type NotificationRow } from './notificationRules'
+import { DEFAULT_DIGEST_HOUR, enabledCount, isDirty, rowError, rowsFrom, type NotificationRow } from './notificationRules'
 import type { ClientDetail } from './clientRules'
 
 export function ClientNotificationsPanel({ client }: { client: ClientDetail }) {
@@ -20,15 +20,19 @@ export function ClientNotificationsPanel({ client }: { client: ClientDetail }) {
   const save = useSaveClientNotificationSettings(publicId)
   const saved = useMemo(() => rowsFrom(settings.data?.settings), [settings.data])
   const [draft, setDraft] = useState<NotificationRow[] | null>(null)
+  const [hourDraft, setHourDraft] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const log = useClientNotificationLog(publicId, (page - 1) * 10, 10)
   const rows = draft ?? saved
-  const dirty = draft !== null && isDirty(draft, saved)
+  const savedHour = settings.data?.digestHour ?? DEFAULT_DIGEST_HOUR
+  const hour = hourDraft ?? savedHour
+  const dirty = (draft !== null && isDirty(draft, saved)) || hour !== savedHour
 
   // al cambiar de cliente o recargar lo guardado, el borrador vuelve a lo guardado
   useEffect(() => {
     setDraft(null)
+    setHourDraft(null)
     setError(null)
   }, [publicId, settings.data])
 
@@ -67,7 +71,7 @@ export function ClientNotificationsPanel({ client }: { client: ClientDetail }) {
     if (hasProblem) return
     setError(null)
     try {
-      await save.mutateAsync(rows.map((r) => ({ kind: r.kind, emailEnabled: r.emailEnabled, appEnabled: r.appEnabled, smsEnabled: r.smsEnabled, extraEmails: r.extraEmails.trim() || null, extraPhones: r.extraPhones.trim() || null })))
+      await save.mutateAsync({ digestHour: hour, settings: rows.map((r) => ({ kind: r.kind, emailEnabled: r.emailEnabled, appEnabled: r.appEnabled, smsEnabled: r.smsEnabled, extraEmails: r.extraEmails.trim() || null, extraPhones: r.extraPhones.trim() || null })) })
       toast.success(t('clients.notif.saved'))
     } catch (e) {
       setError(applyProblemDetails(e).title)
@@ -98,6 +102,15 @@ export function ClientNotificationsPanel({ client }: { client: ClientDetail }) {
             <p className="help">{t('clients.notif.intro')}</p>
             <p className="help">{t('clients.notif.recipients', { n: data.portalRecipients ?? 0 })}</p>
             {!data.emailConfigured && <p className="cl-notif-warn" role="status">{t('clients.notif.emailOff')}</p>}
+            <div className="f">
+              <label htmlFor="cn-hour">{t('clients.notif.digestHour.label')}</label>
+              <select id="cn-hour" value={hour} disabled={!canEdit} onChange={(e) => setHourDraft(Number(e.target.value))}>
+                {Array.from({ length: 24 }, (_, h) => (
+                  <option key={h} value={h}>{`${String(h).padStart(2, '0')}:00`}</option>
+                ))}
+              </select>
+              <p className="help">{t('clients.notif.digestHour.help')}</p>
+            </div>
             <div className="cl-notif-list">
               {rows.map((r, i) => {
                 const problem = problems[i]
@@ -137,7 +150,7 @@ export function ClientNotificationsPanel({ client }: { client: ClientDetail }) {
               {dirty && (
                 <div className="cl-notif-actions">
                   <button type="button" className="btn flow" disabled={save.isPending || hasProblem} onClick={() => void submit()}>{save.isPending ? t('common.loading') : t('clients.notif.save')}</button>
-                  <button type="button" className="btn" disabled={save.isPending} onClick={() => setDraft(null)}>{t('clients.notif.discard')}</button>
+                  <button type="button" className="btn" disabled={save.isPending} onClick={() => { setDraft(null); setHourDraft(null) }}>{t('clients.notif.discard')}</button>
                 </div>
               )}
             </Can>

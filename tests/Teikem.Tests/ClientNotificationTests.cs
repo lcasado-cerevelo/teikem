@@ -3,9 +3,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Teikem.Domain.Billing;
 using Teikem.Domain.Clients;
 using Teikem.Domain.Cod;
+using Teikem.Domain.ExitNotices;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Orders;
 using Teikem.Domain.Trips;
+using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
@@ -166,12 +168,21 @@ public sealed class ClientNotificationTests
         Assert.Equal(new[] { "DELIVERED", "PICKED_UP" }, kinds);   // EN_RUTA está apagado y Fallida no avisa
     }
 
+    private static void AfterCutoff(World x) => x.Clock.Now = new DateTime(2026, 10, 17, 22, 5, 0, DateTimeKind.Utc);   // 18:05 en Puerto Rico: pasó el corte por omisión (18:00)
+
+    private static async Task AddActivePortalUserAsync(World x, string email)
+    {
+        x.F.Db.Set<PortalUser>().Add(new PortalUser { TenantId = WmsFixture.TenantId, ClientId = x.Client.ClientId, Email = email, FullName = "Pat", StatusCodeId = x.F.StatusId(StatusDomains.PortalUserStatus, PortalUserStatuses.Active), IsActive = true });
+        await x.F.Db.SaveChangesAsync();
+    }
+
     [Fact]
-    public async Task A_route_event_becomes_one_summary_per_client_and_route_after_it_settles()
+    public async Task All_the_day_goes_in_ONE_summary_per_client_with_a_section_per_enabled_notice_and_nothing_goes_out_before_the_cut()
     {
         var x = await NewWorldAsync();
         await using var _ = x.F;
-        await x.Svc.SaveSettingsAsync(x.Client.PublicId, On("OUT_FOR_DELIVERY", extraEmails: "extra@x.co"), default);
+        var kinds = new[] { "PICKED_UP", "OUT_FOR_DELIVERY", "DELIVERED" };
+        await x.Svc.SaveSettingsAsync(x.Client.PublicId, new ClientNotificationSettingsRequest(kinds.Select(k => new ClientNotificationSettingDto(k, true, true, false, "extra@x.co", null)).ToList()), default);
         var o1 = await OrderAsync(x, "O-1", 3);
         var o2 = await OrderAsync(x, "O-2", 5);
         var o3 = await OrderAsync(x, "O-3", 2);
@@ -180,34 +191,152 @@ public sealed class ClientNotificationTests
         var effect = new ClientNotificationOrderEffect(x.Svc);
         foreach (var o in new[] { o1, o2, o3 })
             await effect.OnTransitionedAsync(Ctx(StatusDomains.OrderStatus, EntityTypes.TransportOrder, o.TransportOrderId, OrderStatuses.InTransit), default);
+        await effect.OnTransitionedAsync(Ctx(StatusDomains.OrderStatus, EntityTypes.TransportOrder, o1.TransportOrderId, OrderStatuses.Delivered), default);
+        await effect.OnTransitionedAsync(Ctx(StatusDomains.OrderStatus, EntityTypes.TransportOrder, o3.TransportOrderId, OrderStatuses.Pickup), default);
         await x.F.Db.SaveChangesAsync();
-        // portal activo del cliente
-        x.F.Db.Set<PortalUser>().Add(new PortalUser { TenantId = WmsFixture.TenantId, ClientId = x.Client.ClientId, Email = "portal@cliente.co", FullName = "Pat", StatusCodeId = x.F.StatusId(StatusDomains.PortalUserStatus, PortalUserStatuses.Active), IsActive = true });
+        await AddActivePortalUserAsync(x, "portal@cliente.co");
         x.F.Db.Set<PortalUser>().Add(new PortalUser { TenantId = WmsFixture.TenantId, ClientId = x.Client.ClientId, Email = "invitado@cliente.co", StatusCodeId = x.F.StatusId(StatusDomains.PortalUserStatus, PortalUserStatuses.Invited), IsActive = true });
         await x.F.Db.SaveChangesAsync();
 
-        // todavía no se asentó: no sale nada
-        x.Clock.Now = x.Clock.Now.AddMinutes(1);
+        // 11:00 locales: todavía no es la hora del resumen (las 18:00) aunque pase de sobra el tiempo de asentarse
+        x.Clock.Now = x.Clock.Now.AddMinutes(ClientNotificationRules.SettleMinutes + 30);
         Assert.Equal((0, 0, 0), await x.Svc.DigestAsync(default));
         Assert.Empty(x.Email.Sent);
 
-        x.Clock.Now = x.Clock.Now.AddMinutes(ClientNotificationRules.SettleMinutes);
+        AfterCutoff(x);
         var (summaries, sent, failed) = await x.Svc.DigestAsync(default);
-        Assert.Equal((2, 4, 0), (summaries, sent, failed));   // dos rutas; cada una a portal@ y extra@ (el invitado no recibe)
+        Assert.Equal((1, 2, 0), (summaries, sent, failed));   // UN resumen; a portal@ y extra@ (el invitado no recibe)
         var log = await x.Svc.ListAsync(x.Client.PublicId, 0, 50, default);
-        Assert.Equal(2, log.Total);
-        var r1 = log.Items.Single(n => n.BodyText.Contains("RUT-1"));
-        Assert.Contains("8 caja(s) de 2 envío(s)", r1.BodyText);
-        Assert.Contains("RUT-2", log.Items.Single(n => n.BodyText.Contains("2 caja(s) de 1 envío(s)")).BodyText);
-        Assert.True(r1.InPortal);
-        Assert.Equal(new[] { "extra@x.co", "portal@cliente.co" }, r1.Deliveries.Select(d => d.Recipient).OrderBy(d => d).ToArray());
-        Assert.All(r1.Deliveries, d => Assert.Equal(("EMAIL", "SENT"), (d.Channel, d.Status)));
-        Assert.Contains("Sus paquetes salieron a entrega", x.Email.Sent[0].Subject);
-        Assert.Equal(new[] { "extra@x.co", "portal@cliente.co" }, x.Email.Sent.Select(s => s.To).Distinct().OrderBy(s => s).ToArray());
+        var n = Assert.Single(log.Items);
+        Assert.Equal("DAILY", n.Kind);
+        Assert.True(n.InPortal);
+        Assert.Contains("Recogido: 2 caja(s) de 1 envío(s).", n.BodyText);
+        Assert.Contains("Salió a entrega: 10 caja(s) de 3 envío(s) en 2 ruta(s) (RUT-1, RUT-2).", n.BodyText);
+        Assert.Contains("Entregado: 3 caja(s) de 1 envío(s).", n.BodyText);
+        Assert.Equal(new[] { "extra@x.co", "portal@cliente.co" }, n.Deliveries.Select(d => d.Recipient).OrderBy(d => d).ToArray());
+        Assert.Equal("Su resumen del día — Cliente C1", x.Email.Sent[0].Subject);
+        Assert.Contains("<br>", x.Email.Sent[0].Html);   // cada sección en su línea
 
-        // los hechos ya resumidos no se vuelven a mandar
+        // lo ya resumido no se vuelve a mandar
         Assert.Equal((0, 0, 0), await x.Svc.DigestAsync(default));
-        Assert.Equal(4, x.Email.Sent.Count);
+        Assert.Equal(2, x.Email.Sent.Count);
+    }
+
+    [Fact]
+    public async Task The_client_picks_the_hour_and_what_happens_after_the_cut_waits_for_the_next_day_and_a_quiet_day_sends_nothing()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        await x.Svc.SaveSettingsAsync(x.Client.PublicId, new ClientNotificationSettingsRequest(new List<ClientNotificationSettingDto> { new("DELIVERED", true, false, false, "extra@x.co", null) }, 20), default);
+        Assert.Equal(20, (await x.Svc.GetSettingsAsync(x.Client.PublicId, default)).DigestHour);
+        var o1 = await OrderAsync(x, "O-1", 3);
+        var o2 = await OrderAsync(x, "O-2", 4);
+        var effect = new ClientNotificationOrderEffect(x.Svc);
+        await effect.OnTransitionedAsync(Ctx(StatusDomains.OrderStatus, EntityTypes.TransportOrder, o1.TransportOrderId, OrderStatuses.Delivered), default);   // 11:00 locales
+        await x.F.Db.SaveChangesAsync();
+
+        x.Clock.Now = new DateTime(2026, 10, 17, 22, 5, 0, DateTimeKind.Utc);   // 18:05: él escogió las 20:00
+        Assert.Equal((0, 0, 0), await x.Svc.DigestAsync(default));
+        Assert.Empty(x.Email.Sent);
+
+        x.Clock.Now = new DateTime(2026, 10, 18, 0, 5, 0, DateTimeKind.Utc);   // 20:05
+        Assert.Equal((1, 1, 0), await x.Svc.DigestAsync(default));
+        Assert.Contains("Entregado: 3 caja(s) de 1 envío(s).", x.Email.Sent.Single().Html);
+
+        // una entrega a las 20:30 (después del corte) no sale hoy: espera al de mañana
+        x.Clock.Now = new DateTime(2026, 10, 18, 0, 30, 0, DateTimeKind.Utc);
+        await effect.OnTransitionedAsync(Ctx(StatusDomains.OrderStatus, EntityTypes.TransportOrder, o2.TransportOrderId, OrderStatuses.Delivered), default);
+        await x.F.Db.SaveChangesAsync();
+        x.Clock.Now = new DateTime(2026, 10, 18, 1, 0, 0, DateTimeKind.Utc);
+        Assert.Equal((0, 0, 0), await x.Svc.DigestAsync(default));
+        x.Clock.Now = new DateTime(2026, 10, 19, 0, 5, 0, DateTimeKind.Utc);
+        Assert.Equal((1, 1, 0), await x.Svc.DigestAsync(default));
+        Assert.Contains("Entregado: 4 caja(s) de 1 envío(s).", x.Email.Sent.Last().Html);
+
+        // un día sin nada no manda nada
+        x.Clock.Now = new DateTime(2026, 10, 20, 0, 5, 0, DateTimeKind.Utc);
+        Assert.Equal((0, 0, 0), await x.Svc.DigestAsync(default));
+        Assert.Equal(2, x.Email.Sent.Count);
+    }
+
+    [Fact]
+    public async Task The_digest_hour_is_validated_defaults_to_18_and_the_cut_moment_follows_the_company_clock()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        Assert.Equal(ClientNotificationRules.DefaultDigestHour, (await x.Svc.GetSettingsAsync(x.Client.PublicId, default)).DigestHour);
+        var tooLow = await Assert.ThrowsAsync<ValidationException>(() => x.Svc.SaveSettingsAsync(x.Client.PublicId, new ClientNotificationSettingsRequest(new List<ClientNotificationSettingDto>(), -1), default));
+        var tooHigh = await Assert.ThrowsAsync<ValidationException>(() => x.Svc.SaveSettingsAsync(x.Client.PublicId, new ClientNotificationSettingsRequest(new List<ClientNotificationSettingDto>(), 24), default));
+        Assert.Equal(new[] { ClientNotificationRules.DigestHourInvalid, ClientNotificationRules.DigestHourInvalid }, new[] { tooLow.Message, tooHigh.Message });
+        var saved = await x.Svc.SaveSettingsAsync(x.Client.PublicId, new ClientNotificationSettingsRequest(new List<ClientNotificationSettingDto>(), 0), default);
+        Assert.Equal(0, saved.DigestHour);   // medianoche también vale
+        // sin DigestHour en la solicitud la hora no se toca
+        Assert.Equal(0, (await x.Svc.SaveSettingsAsync(x.Client.PublicId, On("DELIVERED"), default)).DigestHour);
+        var zone = TenantClock.Default.Zone;
+        Assert.Equal(new DateTime(2026, 10, 16, 22, 0, 0, DateTimeKind.Utc), ClientNotificationService.LastDigestMomentUtc(new DateTime(2026, 10, 17, 15, 0, 0, DateTimeKind.Utc), 18, zone));   // aún no son las 18:00 de hoy: el corte fue ayer
+        Assert.Equal(new DateTime(2026, 10, 17, 22, 0, 0, DateTimeKind.Utc), ClientNotificationService.LastDigestMomentUtc(new DateTime(2026, 10, 17, 22, 0, 0, DateTimeKind.Utc), 18, zone));   // justo a la hora: ya es el corte de hoy
+    }
+
+    [Fact]
+    public async Task The_warehouse_notices_enter_the_same_daily_summary_and_a_partly_dispatched_notice_counts_once()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        await x.Svc.SaveSettingsAsync(x.Client.PublicId, new ClientNotificationSettingsRequest(new List<ClientNotificationSettingDto>
+        {
+            new("WH_RECEIVED", true, true, false, "extra@x.co", null), new("WH_DISPATCHED", true, false, false, "extra@x.co", null),
+        }), default);
+        var wh = await x.F.AddWarehouseAsync("W1");
+        var product = await x.F.AddProductAsync("P-1");
+        var asnA = new Asn { TenantId = WmsFixture.TenantId, Number = "LLE-00001", WarehouseId = wh.WarehouseId, ClientId = x.Client.ClientId, StatusCodeId = x.F.StatusId(StatusDomains.AsnStatus, AsnStatuses.Received), CreatedAtUtc = x.Clock.Now };
+        var asnPo = new Asn { TenantId = WmsFixture.TenantId, Number = "LLE-00002", WarehouseId = wh.WarehouseId, ClientId = null, PurchaseOrderId = null, StatusCodeId = x.F.StatusId(StatusDomains.AsnStatus, AsnStatuses.Received), CreatedAtUtc = x.Clock.Now };
+        x.F.Db.Set<Asn>().AddRange(asnA, asnPo);
+        var exit = new ExitNotice { PublicId = Guid.NewGuid(), TenantId = WmsFixture.TenantId, Number = "SAL-00001", WarehouseId = wh.WarehouseId, ClientId = x.Client.ClientId, RequestedDate = x.Clock.Today, StatusCodeId = x.F.StatusId(ExitNoticeCodes.StatusDomain, ExitNoticeStatuses.Shipped), CreatedAtUtc = x.Clock.Now };
+        exit.Lines.Add(new ExitNoticeLine { TenantId = WmsFixture.TenantId, LineNo = 1, ProductId = product.ProductId, QtyOrdered = 40m, QtyShipped = 40m });
+        x.F.Db.Set<ExitNotice>().Add(exit);
+        await x.F.Db.SaveChangesAsync();
+
+        var asnEffect = new ClientNotificationAsnReceivedEffect(x.F.Db, x.Svc);
+        await asnEffect.OnTransitionedAsync(Ctx(StatusDomains.AsnStatus, EntityTypes.Asn, asnA.AsnId, AsnStatuses.Expected), default);   // no es RECEIVED: no se anota
+        await asnEffect.OnTransitionedAsync(Ctx(StatusDomains.AsnStatus, EntityTypes.Asn, asnA.AsnId, AsnStatuses.Received), default);
+        await asnEffect.OnTransitionedAsync(Ctx(StatusDomains.AsnStatus, EntityTypes.Asn, asnPo.AsnId, AsnStatuses.Received), default);   // nació de una compra: sin cliente, no se avisa
+        var exitEffect = new ClientNotificationExitNoticeDispatchedEffect(x.F.Db, x.Svc);
+        await exitEffect.OnTransitionedAsync(Ctx(ExitNoticeCodes.StatusDomain, ExitNoticeCodes.EntityType, exit.ExitNoticeId, ExitNoticeStatuses.Partial), default);
+        await exitEffect.OnTransitionedAsync(Ctx(ExitNoticeCodes.StatusDomain, ExitNoticeCodes.EntityType, exit.ExitNoticeId, ExitNoticeStatuses.Shipped), default);
+        await exitEffect.OnTransitionedAsync(Ctx(ExitNoticeCodes.StatusDomain, ExitNoticeCodes.EntityType, exit.ExitNoticeId, ExitNoticeStatuses.Cancelled), default);   // cancelado: no se anota
+        await x.F.Db.SaveChangesAsync();
+        Assert.Equal(new[] { "WH_DISPATCHED", "WH_DISPATCHED", "WH_RECEIVED" }, (await x.F.Db.Set<ClientNotificationEvent>().ToListAsync()).Select(e => e.Kind).OrderBy(k => k).ToArray());
+
+        AfterCutoff(x);
+        Assert.Equal((1, 1, 0), await x.Svc.DigestAsync(default));
+        var n = Assert.Single((await x.Svc.ListAsync(x.Client.PublicId, 0, 10, default)).Items);
+        Assert.Equal("DAILY", n.Kind);
+        Assert.True(n.InPortal);   // basta que UNO de los avisos incluidos tenga la bandeja encendida
+        Assert.Contains("Recibido en el almacén: 1 aviso(s) de llegada (LLE-00001), 0 unidad(es).", n.BodyText);
+        Assert.Contains("Despachado del almacén: 1 aviso(s) de salida (SAL-00001), 40 unidad(es).", n.BodyText);
+        Assert.Equal("extra@x.co", Assert.Single(x.Email.Sent.Select(s => s.To).Distinct()));
+
+        // apagado: no se anota nada
+        await x.Svc.SaveSettingsAsync(x.Client.PublicId, new ClientNotificationSettingsRequest(new List<ClientNotificationSettingDto> { new("WH_RECEIVED", false, false, false, null, null) }), default);
+        await asnEffect.OnTransitionedAsync(Ctx(StatusDomains.AsnStatus, EntityTypes.Asn, asnA.AsnId, AsnStatuses.Received), default);
+        await x.F.Db.SaveChangesAsync();
+        Assert.Empty(await x.F.Db.Set<ClientNotificationEvent>().Where(e => e.NotificationId == null).ToListAsync());
+    }
+
+    [Fact]
+    public async Task Invoices_and_cod_stay_apart_and_do_not_wait_for_the_daily_cut()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        await x.Svc.SaveSettingsAsync(x.Client.PublicId, new ClientNotificationSettingsRequest(new List<ClientNotificationSettingDto> { new("INVOICE_ISSUED", true, true, false, "extra@x.co", null) }), default);
+        var invoice = new Invoice { PublicId = Guid.NewGuid(), TenantId = WmsFixture.TenantId, ClientId = x.Client.ClientId, InvoiceNumber = "FAC-00001", StatusCodeId = x.F.StatusId(BillingCodes.InvoiceStatusDomain, InvoiceStatuses.Issued), IssueDate = x.Clock.Today, Subtotal = 100m, TaxAmount = 10m };
+        x.F.Db.Set<Invoice>().Add(invoice);
+        await x.F.Db.SaveChangesAsync();
+        await new ClientNotificationInvoiceEffect(x.F.Db, x.Svc).OnTransitionedAsync(Ctx(BillingCodes.InvoiceStatusDomain, BillingCodes.InvoiceEntityType, invoice.InvoiceId, InvoiceStatuses.Issued), default);
+        await x.F.Db.SaveChangesAsync();
+        x.Clock.Now = x.Clock.Now.AddMinutes(ClientNotificationRules.SettleMinutes + 1);   // 11:05 locales: antes del corte del día
+        Assert.Equal((1, 1, 0), await x.Svc.DigestAsync(default));
+        Assert.Equal("INVOICE_ISSUED", Assert.Single((await x.Svc.ListAsync(x.Client.PublicId, 0, 10, default)).Items).Kind);
     }
 
     [Fact]
@@ -231,7 +360,7 @@ public sealed class ClientNotificationTests
         var effect = new ClientNotificationOrderEffect(x.Svc);
         await effect.OnTransitionedAsync(Ctx(StatusDomains.OrderStatus, EntityTypes.TransportOrder, o1.TransportOrderId, OrderStatuses.InTransit), default);
         await x.F.Db.SaveChangesAsync();
-        x.Clock.Now = x.Clock.Now.AddMinutes(ClientNotificationRules.SettleMinutes + 1);
+        AfterCutoff(x);
 
         await x.Svc.DigestAsync(default);
 
@@ -251,9 +380,10 @@ public sealed class ClientNotificationTests
         await x.F.Db.SaveChangesAsync();
         await new ClientNotificationOrderEffect(x.Svc).OnTransitionedAsync(Ctx(StatusDomains.OrderStatus, EntityTypes.TransportOrder, o.TransportOrderId, OrderStatuses.Delivered), default);
         await x.F.Db.SaveChangesAsync();
-        x.Clock.Now = x.Clock.Now.AddMinutes(10);
+        AfterCutoff(x);
         await x.Svc.DigestAsync(default);
         var n = (await x.Svc.ListAsync(x.Client.PublicId, 0, 10, default)).Items.Single();
+        Assert.Equal("DAILY", n.Kind);
         Assert.Contains("Entregado: 4 caja(s) de 1 envío(s)", n.BodyText);
         Assert.Contains("COD cobrado: $75.50", n.BodyText);
 
@@ -261,7 +391,7 @@ public sealed class ClientNotificationTests
         await new ClientNotificationOrderEffect(x.Svc).OnTransitionedAsync(Ctx(StatusDomains.OrderStatus, EntityTypes.TransportOrder, o.TransportOrderId, OrderStatuses.Delivered), default);
         await x.F.Db.SaveChangesAsync();
         await x.Svc.SaveSettingsAsync(x.Client.PublicId, On("DELIVERED", false, false, false), default);
-        x.Clock.Now = x.Clock.Now.AddMinutes(10);
+        x.Clock.Now = x.Clock.Now.AddDays(1);   // el corte del día siguiente
         Assert.Equal((0, 0, 0), await x.Svc.DigestAsync(default));
         Assert.Empty(await x.F.Db.Set<ClientNotificationEvent>().Where(e => e.NotificationId == null).ToListAsync());
         Assert.Equal(1, (await x.Svc.ListAsync(x.Client.PublicId, 0, 10, default)).Total);
@@ -309,7 +439,7 @@ public sealed class ClientNotificationTests
         await new ClientNotificationOrderEffect(x.Svc).OnTransitionedAsync(Ctx(StatusDomains.OrderStatus, EntityTypes.TransportOrder, o.TransportOrderId, OrderStatuses.Pickup), default);
         await x.F.Db.SaveChangesAsync();
         x.Email.FailTimes = 100;
-        x.Clock.Now = x.Clock.Now.AddMinutes(10);
+        AfterCutoff(x);
         Assert.Equal((1, 0, 1), await x.Svc.DigestAsync(default));   // 1.er intento falla
         var delivery = () => x.F.Db.Set<ClientNotificationDelivery>().AsNoTracking().SingleAsync(d => d.Channel == "EMAIL");
         Assert.Equal(("PENDING", 1), ((await delivery()).Status, (await delivery()).Attempts));
@@ -333,7 +463,7 @@ public sealed class ClientNotificationTests
         var o2 = await OrderAsync(x2, "O-1", 1);
         await new ClientNotificationOrderEffect(x2.Svc).OnTransitionedAsync(Ctx(StatusDomains.OrderStatus, EntityTypes.TransportOrder, o2.TransportOrderId, OrderStatuses.Pickup), default);
         await x2.F.Db.SaveChangesAsync();
-        x2.Clock.Now = x2.Clock.Now.AddMinutes(10);
+        AfterCutoff(x2);
         await x2.Svc.DigestAsync(default);
         var skipped = await x2.F.Db.Set<ClientNotificationDelivery>().AsNoTracking().SingleAsync();
         Assert.Equal(("SKIPPED", "El envío de correo no está configurado."), (skipped.Status, skipped.Message));
@@ -345,7 +475,7 @@ public sealed class ClientNotificationTests
         var o3 = await OrderAsync(x3, "O-1", 1);
         await new ClientNotificationOrderEffect(x3.Svc).OnTransitionedAsync(Ctx(StatusDomains.OrderStatus, EntityTypes.TransportOrder, o3.TransportOrderId, OrderStatuses.Pickup), default);
         await x3.F.Db.SaveChangesAsync();
-        x3.Clock.Now = x3.Clock.Now.AddMinutes(10);
+        AfterCutoff(x3);
         await x3.Svc.DigestAsync(default);
         var none = (await x3.Svc.ListAsync(x3.Client.PublicId, 0, 10, default)).Items.Single();
         Assert.True(none.InPortal);   // igual queda en la bandeja del portal

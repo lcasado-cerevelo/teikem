@@ -8904,6 +8904,15 @@ Corrija el valor: los correos y teléfonos extra van separados por coma (hasta 1
 **Encendí SMS y no sale nada.**
 El SMS solo guarda la preferencia: no sale hasta contratar el proveedor. El registro muestra el envío como «omitido».
 
+**¿Cuántos avisos le llegan al cliente al día?**
+Uno solo: el resumen del día, a la hora que tenga configurada (18:00 por omisión) en «Hora del resumen del día», con una línea por cada aviso que tenga encendido (recogido, en ruta, entregado, mercancía recibida y despachada). Si ese día no pasó nada, no se manda nada. Las remesas de COD y las facturas salen aparte, una por documento.
+
+**`La hora del resumen debe estar entre 0 y 23.` (400)**
+La hora del resumen del día va de 0 a 23 (hora de la compañía). La pantalla ofrece solo esas horas.
+
+**¿Quién recibe el aviso de lo recibido y lo despachado en el almacén?**
+El cliente dueño de la mercancía (el del aviso de llegada o de salida), si la compañía encendió «Mercancía recibida» o «Mercancía despachada» en su ficha. Entra en su resumen del día. Los avisos de una compra (sin cliente) no se avisan.
+
 **¿Por qué no le avisan al consignatario?**
 Estos avisos son para el cliente. Avisar al consignatario (con su aceptación, que la maneja el cliente desde su portal) se construye después.
 
@@ -9353,7 +9362,7 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 **Apagué el correo de un aviso y me sigue llegando.** Si el correo llega a una dirección que la compañía anotó como «correo extra» del aviso, no es suyo: siga igual. También puede tardar hasta el próximo resumen.
 
-**«El aviso 'X' no existe.»** (400) Solo hay cinco avisos: PICKED_UP, OUT_FOR_DELIVERY, DELIVERED, COD_PROCESSED e INVOICE_ISSUED.
+**«El aviso 'X' no existe.»** (400) Solo hay siete avisos: PICKED_UP, OUT_FOR_DELIVERY, DELIVERED, WH_RECEIVED, WH_DISPATCHED, COD_PROCESSED e INVOICE_ISSUED.
 
 **¿Por qué el comprobante de entrega dice que el consignatario no firmó?** Porque la entrega la registró el personal de la compañía desde la web (con su permiso, la firma queda a nombre de la compañía). Cuando la entrega se registre con la app del chofer, la firma será de quien recibió.
 

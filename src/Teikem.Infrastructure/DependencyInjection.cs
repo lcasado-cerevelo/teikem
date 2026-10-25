@@ -556,6 +556,8 @@ public static class DependencyInjection
         services.AddScoped<ConsigneeSelfService>();     // Lote 117: el espacio del consignatario (perfil y bandeja)
         services.AddScoped<IStatusTransitionEffect, ConsigneeNoticeOrderEffect>();
         services.AddScoped<IStatusTransitionEffect, ClientNotificationInvoiceEffect>();
+        services.AddScoped<IStatusTransitionEffect, ClientNotificationAsnReceivedEffect>();   // avisos del almacén al cliente: llegada recibida
+        services.AddScoped<IStatusTransitionEffect, ClientNotificationExitNoticeDispatchedEffect>();   // avisos del almacén al cliente: salida despachada
         services.AddScoped<IStatusTransitionEffect, ClientNotificationRemittanceEffect>();
         services.AddScoped<IDataSource, KpiDailyDataSource>();
         services.AddScoped<IDataSource, CodCollectionDataSource>();   // Lote 91 (P12)
