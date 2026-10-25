@@ -514,3 +514,11 @@ Microsoft 365 and Outlook.com **do not accept IMAP with a user and password**, s
 - Form validations: “Enter the Microsoft 365 Tenant ID…”, “Enter the application Client ID…”, “Enter the application secret (Client secret).” (HTTP 400).
 
 **Who can:** `integrations.create` / `integrations.manage`, like the rest. **Still to verify with a real tenant**: reading is tested against a fake server; the first real connection may show a message that is not listed here.
+
+## 25. The mailbox is read in batches until it is empty (2026-10-24)
+
+A run no longer stops at 50 e-mails. It reads **batches of 50** (the oldest unread first), handles each e-mail, marks them as read and moves them to “Procesados”, and **asks for the next batch until no unread ones are left**. The limits per run are **300 e-mails** and **8 minutes**; if the mailbox has more, the run summary says so (“E-mails are left to read; they are read in the next run.”) and the next run continues where it stopped.
+
+**If they cannot be marked as read** (for example the Microsoft 365 application only has read permission, or the account is read-only), the run **stops reading** and says so in the summary: “Some mailbox e-mails could not be marked as read… reading stopped so the same ones are not repeated. Check the mailbox permissions.” Without that stop, every run would download the same first e-mails again and never reach the new ones.
+
+**Is what was not marked read again?** Every processed file and e-mail stays in the history with its fingerprint (hash): the same content is not processed twice even if it is still unread. An e-mail you mark as unread by hand is downloaded again, but it does not duplicate what was already created.

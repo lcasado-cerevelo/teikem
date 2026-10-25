@@ -155,6 +155,7 @@ public sealed class IntegrationRunner(
             var template = await db.ImportTemplates.AsNoTracking().FirstOrDefaultAsync(t => t.ImportTemplateId == integration.ImportTemplateId, ct)
                            ?? throw new ValidationException("template", IntegrationRules.TemplateRequiredMessage);
             var client = await db.Clients.AsNoTracking().FirstOrDefaultAsync(c => c.ClientId == integration.ClientId, ct) ?? throw new ValidationException("client", IntegrationRules.ClientRequiredMessage);
+            mailRunNote = null;
             var outcomes = await work(run, template, client);
             run.FilesRead = outcomes.Count;
             run.OrdersCreated = outcomes.Sum(o => o.Created.Count);
@@ -167,6 +168,7 @@ public sealed class IntegrationRunner(
             var doubtfulFiles = outcomes.Where(o => o.Log.ReadDoubtful).Select(o => o.Log.OcrConfidence is int c ? $"{o.Log.FileName} ({c} %)" : $"{o.Log.FileName} (no cuadra con los totales del documento)").ToList();
             doubtful = doubtfulFiles.Count;
             if (doubtful > 0) message += $" Lectura dudosa en {doubtful} archivo(s): {string.Join(", ", doubtfulFiles)}. Verifique lo creado.";
+            if (mailRunNote is not null) message += " " + mailRunNote;
             foreach (var o in outcomes) await StoreInboxAsync(integration, run, o, ct);
         }
         catch (OperationCanceledException) { throw; }
@@ -253,7 +255,47 @@ public sealed class IntegrationRunner(
     // ---------------------------------------------------------------- correo
 
     public const string MailTooManyNote = "Quedan correos por leer; se leen en la próxima corrida.";
-    private const int MaxMessagesPerRun = 50;
+    public const string MailNotMarkedNote = "No se pudieron marcar como leídos algunos correos del buzón (¿la aplicación o la cuenta solo puede leer?); se dejó de leer para no repetir los mismos. Revise los permisos del buzón.";
+    /// <summary>Correos por tanda: lo que se baja de una vez (cada uno con sus adjuntos y, si hace falta, su OCR).</summary>
+    private const int MaxMessagesPerBatch = 50;
+    /// <summary>Tope por corrida (varias tandas): lo que sobre se lee en la corrida siguiente.</summary>
+    private const int MaxMessagesPerRun = 300;
+    /// <summary>Tiempo máximo leyendo tandas en una corrida; muy por debajo del arrendamiento de la corrida (15 min).</summary>
+    private static readonly TimeSpan MailRunBudget = TimeSpan.FromMinutes(8);
+
+    /// <summary>Lo que dejó una lectura del buzón en tandas: cuántas tandas y correos, y la nota para el resumen de la corrida (null = se vació el buzón).</summary>
+    public sealed record MailDrainResult(int Batches, int Messages, string? Note);
+
+    /// <summary>
+    /// Lee el buzón en tandas hasta que no queden correos NO leídos, con un tope de correos y de tiempo por corrida. Cada tanda se atiende y se marca como leída antes de pedir la siguiente.
+    /// Si marcar falla (o el buzón devuelve los mismos correos de la tanda anterior) se deja de leer: así no se repiten los mismos correos y nunca se llega a los nuevos; la nota lo dice.
+    /// </summary>
+    public static async Task<MailDrainResult> DrainMailboxAsync(Func<int, CancellationToken, Task<IReadOnlyList<MailboxMessage>>> fetch, Func<MailboxMessage, Task> process,
+        Func<IReadOnlyList<string>, Task> mark, int batchSize, int maxMessages, TimeSpan budget, Func<DateTime> now, CancellationToken ct)
+    {
+        var started = now();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var batches = 0;
+        var total = 0;
+        while (true)
+        {
+            ct.ThrowIfCancellationRequested();
+            var batch = await fetch(batchSize, ct);
+            if (batch.Count == 0) return new MailDrainResult(batches, total, null);
+            var fresh = batch.Where(m => seen.Add(m.Key)).ToList();
+            if (fresh.Count == 0) return new MailDrainResult(batches, total, MailNotMarkedNote);   // los mismos de antes: no se marcaron
+            foreach (var m in fresh) { ct.ThrowIfCancellationRequested(); await process(m); }
+            batches++;
+            total += fresh.Count;
+            try { await mark(fresh.Select(m => m.Key).ToList()); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { return new MailDrainResult(batches, total, MailNotMarkedNote); }
+            if (batch.Count < batchSize) return new MailDrainResult(batches, total, null);   // era la última tanda
+            if (total >= maxMessages || now() - started >= budget) return new MailDrainResult(batches, total, MailTooManyNote);
+        }
+    }
+
+    /// <summary>La nota de la lectura del buzón (quedan correos, o no se pudieron marcar) para el resumen de la corrida; se vacía al usarla.</summary>
+    private string? mailRunNote;
 
     /// <summary>Lee el buzón de la integración: los correos nuevos (NO leídos), uno por uno por las reglas; al terminar cada uno se marca como leído y se mueve a «Procesados» (nunca se borra).</summary>
     private async Task<List<FileOutcome>> ReadMailboxAsync(Integration integration, ImportTemplate template, Client client, IntegrationRun run, CancellationToken ct)
@@ -261,19 +303,22 @@ public sealed class IntegrationRunner(
         var cfg = IntegrationService.ParseEmail(integration.ConnectorConfigJson) ?? throw new ValidationException("email", EmailRules.HostRequiredMessage);
         if (integration.SecretEnc is null) throw new ValidationException("email.password", EmailRules.PasswordRequiredMessage);
         var password = protector.Unprotect(integration.TenantId, IntegrationService.MailPurpose, integration.SecretEnc);
-        IReadOnlyList<MailboxMessage> messages;
-        try { messages = await mailbox.FetchAsync(cfg, password, MaxMessagesPerRun, ct); }
-        catch (Exception ex) when (ex is not OperationCanceledException and not TeikemException) { throw new ValidationException("email", $"{ImapMailboxReader.ConnectionFailedMessage}: {ex.Message}"); }
         var outcomes = new List<FileOutcome>();
-        var handled = new List<string>();
-        foreach (var m in messages)
-        {
-            ct.ThrowIfCancellationRequested();
-            outcomes.AddRange(await ProcessMessageAsync(integration, template, client, run, cfg, m.Data, ct));
-            handled.Add(m.Key);
-        }
-        try { await mailbox.MarkProcessedAsync(cfg, password, handled, ct); }
-        catch (Exception ex) when (ex is not OperationCanceledException) { logger.LogWarning(ex, "No se pudieron marcar los correos de la integración {Integration}; el hash evita procesarlos otra vez.", integration.IntegrationId); }
+        // solo lo que falla al pedir correos es «no se pudo conectar»; un fallo al atender un correo no se disfraza de problema de conexión
+        var drained = await DrainMailboxAsync(
+                async (size, token) =>
+                {
+                    try { return await mailbox.FetchAsync(cfg, password, size, token); }
+                    catch (Exception ex) when (ex is not OperationCanceledException and not TeikemException) { throw new ValidationException("email", $"{ImapMailboxReader.ConnectionFailedMessage}: {ex.Message}"); }
+                },
+                async m => outcomes.AddRange(await ProcessMessageAsync(integration, template, client, run, cfg, m.Data, ct)),
+                async keys =>
+                {
+                    try { await mailbox.MarkProcessedAsync(cfg, password, keys, ct); }
+                    catch (Exception ex) when (ex is not OperationCanceledException) { logger.LogWarning(ex, "No se pudieron marcar los correos de la integración {Integration}; el hash evita procesarlos otra vez.", integration.IntegrationId); throw; }
+                },
+                MaxMessagesPerBatch, MaxMessagesPerRun, MailRunBudget, () => DateTime.UtcNow, ct);
+        mailRunNote = drained.Note;
         return outcomes;
     }
 

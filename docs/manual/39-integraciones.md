@@ -514,3 +514,11 @@ Microsoft 365 y Outlook.com **no aceptan IMAP con usuario y contraseña**, así 
 - Validaciones del formulario: «Indique el Tenant ID de Microsoft 365…», «Indique el Client ID…», «Indique el secreto de la aplicación (Client secret).» (HTTP 400).
 
 **Quién puede:** `integrations.create` / `integrations.manage`, igual que el resto. **Pendiente de verificar con un tenant real**: la lectura está probada con un servidor de mentira; la primera conexión real puede mostrar un mensaje que aquí no esté.
+
+## 25. El buzón se lee en tandas hasta vaciarlo (2026-10-24)
+
+Una corrida ya no se queda en 50 correos. Lee **tandas de 50** (los no leídos más viejos primero), atiende cada correo, los marca como leídos y mueve a «Procesados», y **pide la siguiente tanda hasta que no queden no leídos**. Los topes por corrida son **300 correos** y **8 minutos**; si el buzón tiene más, el resumen de la corrida lo dice («Quedan correos por leer; se leen en la próxima corrida.») y la corrida siguiente sigue donde quedó.
+
+**Si no se pueden marcar como leídos** (por ejemplo la aplicación de Microsoft 365 solo tiene permiso de lectura, o la cuenta es de solo lectura), la corrida **deja de leer** y lo dice en el resumen: «No se pudieron marcar como leídos algunos correos del buzón… se dejó de leer para no repetir los mismos. Revise los permisos del buzón.» Sin esa parada, cada corrida volvería a bajar los mismos primeros correos y nunca llegaría a los nuevos.
+
+**¿Se vuelve a leer lo que no se marcó?** Cada archivo y correo procesado queda en el historial con su huella (hash): el mismo contenido no se procesa dos veces aunque siga como no leído. Un correo que se vuelva a marcar como no leído a mano se baja otra vez, pero no duplica lo ya creado.
