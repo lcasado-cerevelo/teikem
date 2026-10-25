@@ -40,7 +40,7 @@ public sealed class IntegrationOptions
 public sealed record RejectedOrder(string? ReferenceKey, int? SourceRow, string Reason, string? DataJson);
 
 /// <summary>Lo que pasó con un archivo: su registro, las órdenes creadas y las que van a la bandeja.</summary>
-public sealed record FileOutcome(IntegrationFileLog Log, IReadOnlyList<Guid> Created, IReadOnlyList<RejectedOrder> Rejected);
+public sealed record FileOutcome(IntegrationFileLog Log, IReadOnlyList<Guid> Created, IReadOnlyList<RejectedOrder> Rejected, string? Target = null);
 
 /// <summary>
 /// Lote 132 (P11) — el ejecutor de integraciones de entrada: lee los archivos (carpeta de entrada o subida manual), los pasa por el importador de órdenes con la plantilla de la
@@ -59,7 +59,10 @@ public sealed class IntegrationRunner(
     /// <summary>El día (en la zona de la compañía) en que llegó el correo que se está atendiendo; lo usan los avisos cuando el documento no trae fecha.</summary>
     private DateOnly? mailDate;
 
-    private Task<FileOutcome> DispatchAsync(string target, Integration integration, ImportTemplate template, Client client, IntegrationRun run, string fileName, byte[] content, CancellationToken ct, DocumentReader? reader = null, bool doubtful = false)
+    private async Task<FileOutcome> DispatchAsync(string target, Integration integration, ImportTemplate template, Client client, IntegrationRun run, string fileName, byte[] content, CancellationToken ct, DocumentReader? reader = null, bool doubtful = false)
+        => (await DispatchCoreAsync(target, integration, template, client, run, fileName, content, ct, reader, doubtful)) with { Target = target };
+
+    private Task<FileOutcome> DispatchCoreAsync(string target, Integration integration, ImportTemplate template, Client client, IntegrationRun run, string fileName, byte[] content, CancellationToken ct, DocumentReader? reader, bool doubtful)
         => Targets.TryGetValue(target, out var t)
             ? t.ProcessAsync(new DocumentTargetRequest(integration, template, client, run, fileName, content, CheckDuplicate: true, Reader: reader, Doubtful: doubtful, MailDate: mailDate), ct)
             : Task.FromResult(Failed(integration, run, fileName, string.Empty, content.Length, DocumentReaderRules.UnknownTargetMessage(target)));
@@ -153,6 +156,7 @@ public sealed class IntegrationRunner(
         string status;
         string message;
         var doubtful = 0;
+        var noticeSummary = new List<(string Target, int Count, string Document)>();   // avisos creados en esta corrida: destino, cuántos y de qué documento
         try
         {
             var template = await db.ImportTemplates.AsNoTracking().FirstOrDefaultAsync(t => t.ImportTemplateId == integration.ImportTemplateId, ct)
@@ -170,6 +174,7 @@ public sealed class IntegrationRunner(
                 : $"{outcomes.Count} archivo(s): {run.OrdersCreated} envío(s) creado(s), {run.Rejected} a la bandeja" + (failedFiles > 0 ? $", {failedFiles} archivo(s) con error." : ".");
             var doubtfulFiles = outcomes.Where(o => o.Log.ReadDoubtful).Select(o => o.Log.OcrConfidence is int c ? $"{o.Log.FileName} ({c} %)" : $"{o.Log.FileName} (no cuadra con los totales del documento)").ToList();
             doubtful = doubtfulFiles.Count;
+            noticeSummary = outcomes.Where(o => o.Created.Count > 0 && (o.Target == DocumentTargets.ArrivalNotice || o.Target == DocumentTargets.ExitNotice)).Select(o => (o.Target!, o.Created.Count, o.Log.FileName)).ToList();
             if (doubtful > 0) message += $" Lectura dudosa en {doubtful} archivo(s): {string.Join(", ", doubtfulFiles)}. Verifique lo creado.";
             if (mailRunNote is not null) message += " " + mailRunNote;
             foreach (var o in outcomes) await StoreInboxAsync(integration, run, o, ct);
@@ -194,6 +199,8 @@ public sealed class IntegrationRunner(
         await db.Integrations.Where(i => i.IntegrationId == integration.IntegrationId).ExecuteUpdateAsync(s => s
             .SetProperty(i => i.LastStatus, status).SetProperty(i => i.LastFinishedUtc, finished).SetProperty(i => i.LastMessage, Truncate(message, 400))
             .SetProperty(i => i.LockedBy, (string?)null).SetProperty(i => i.LockedUntilUtc, (DateTime?)null).SetProperty(i => i.NextRunUtc, next), ct);
+        try { await notifier.PublishNoticesAsync(integration, run, noticeSummary, ct); }
+        catch (Exception ex) when (ex is not OperationCanceledException) { logger.LogError(ex, "No se pudo avisar de los avisos creados por la integración {Integration}.", integration.IntegrationId); }
         try { await notifier.PublishRunAsync(integration, run, ct, doubtful); }
         catch (Exception ex) when (ex is not OperationCanceledException) { logger.LogError(ex, "No se pudo anotar el aviso de la integración {Integration}.", integration.IntegrationId); }
         return (await integrations.RunsAsync(integration.PublicId, 1, ct))[0];

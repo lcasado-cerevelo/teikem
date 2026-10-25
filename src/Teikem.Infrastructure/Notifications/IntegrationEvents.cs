@@ -9,6 +9,10 @@ public static class IntegrationEventCodes
     public const string RunFinished = "INTEGRATION_RUN";
     /// <summary>Lote 136: un webhook se suspendió solo tras varias salidas seguidas sin entregarse.</summary>
     public const string WebhookSuspended = "INTEGRATION_WEBHOOK";
+    /// <summary>2026-10-24: una corrida creó avisos de llegada (UN aviso por corrida, por mucho que sean). Va a quienes tienen el permiso de crearlos.</summary>
+    public const string ArrivalNotices = "INTEGRATION_ARRIVALS";
+    /// <summary>2026-10-24: una corrida creó avisos de salida (UN aviso por corrida). Va a quienes tienen el permiso de crearlos.</summary>
+    public const string ExitNotices = "INTEGRATION_EXITS";
 }
 
 /// <summary>
@@ -17,6 +21,14 @@ public static class IntegrationEventCodes
 /// </summary>
 public sealed class IntegrationEventProvider : INotificationEventProvider
 {
+    private static readonly NotificationVariable[] NoticeVariables =
+    {
+        new NotificationVariable("integration", "Integración", "Integration", "Axiscare avisos por correo"),
+        new NotificationVariable("count", "Avisos creados", "Notices created", "10"),
+        new NotificationVariable("documents", "Documentos", "Documents", "Despacho de Mercancia ..pdf, Despacho de Mercancia (2).pdf"),
+        new NotificationVariable("integrationId", "Número de la integración", "Integration id", "7"),
+    };
+
     public IEnumerable<NotificationEventDef> Events { get; } = new[]
     {
         new NotificationEventDef(
@@ -34,6 +46,20 @@ public sealed class IntegrationEventProvider : INotificationEventProvider
             IsOptional: false, LinkTemplate: "/integrations?integration={integrationId}",
             "Integración «{integration}»: {status}", "Integration “{integration}”: {status}",
             "{message} Creadas: {created}. A la bandeja: {rejected}.", "{message} Created: {created}. To the inbox: {rejected}."),
+        new NotificationEventDef(
+            IntegrationEventCodes.ArrivalNotices, ModuleKeys.Integrations, "Avisos de llegada creados por una integración", "Arrival notices created by an integration",
+            NoticeVariables,
+            IsOptional: true, LinkTemplate: "/warehouse/receipts?tab=asns",
+            "{count} aviso(s) de llegada creado(s) por «{integration}»", "{count} arrival notice(s) created by “{integration}”",
+            "La integración «{integration}» creó {count} aviso(s) de llegada a partir de: {documents}. Revíselos en Almacén → Recibo.",
+            "The integration “{integration}” created {count} arrival notice(s) from: {documents}. Review them in Warehouse → Receiving."),
+        new NotificationEventDef(
+            IntegrationEventCodes.ExitNotices, ModuleKeys.Integrations, "Avisos de salida creados por una integración", "Exit notices created by an integration",
+            NoticeVariables,
+            IsOptional: true, LinkTemplate: "/warehouse/receipts?tab=exit-notices",
+            "{count} aviso(s) de salida creado(s) por «{integration}»", "{count} exit notice(s) created by “{integration}”",
+            "La integración «{integration}» creó {count} aviso(s) de salida a partir de: {documents}. Revíselos en Almacén → Recibo.",
+            "The integration “{integration}” created {count} exit notice(s) from: {documents}. Review them in Warehouse → Receiving."),
         new NotificationEventDef(
             IntegrationEventCodes.WebhookSuspended, ModuleKeys.Integrations, "Webhook suspendido", "Webhook suspended",
             new[]
