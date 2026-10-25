@@ -4,7 +4,7 @@
 // 1) Sometida: botones de la cabecera, edición dentro del Detalle (consignatario, paquetes, COD, comentario) con UN «Guardar cambios»
 //    que manda solo lo cambiado; 409 de edición concurrente (otra persona guarda primero) con aviso, recarga y lo escrito intacto.
 // 2) «Marcar como recogida» con crédito excedido: aviso → «Autorizar y marcar como recogida»; Cotización (vista previa); Re-cotizar con una tarifa nueva.
-// 3) Estatus laterales: «Pasar a Intento fallido» y «Volver a Recogida» (solo ese regreso); campos personalizados y contactos.
+// 3) Estatus laterales: «Pasar a Intento fallido» y «Volver a Recogido» (solo ese regreso); campos personalizados y contactos.
 // 4) Cancelar con razón obligatoria (queda en el historial).
 // 5) Entrega especial: «Asignar chofer» (409 si es el mismo, chofer y viaje en el panel) y «Reasignar chofer».
 // 6) Eliminar desde el expediente: vuelve a la lista.
@@ -172,12 +172,12 @@ test.describe('Órdenes — expediente (Lote F-C2)', () => {
     await expect(page.getByRole('heading', { level: 1 })).toContainText(`Farmacia Sol FC2 ${suffix}`)
 
     // ---- 1. Sometida: cabecera, panel Detalle editable, paneles de la derecha ----
-    for (const name of ['Marcar como recogida', 'Cancelar la orden', 'Eliminar la orden']) await expect(headBtn(page, name)).toBeVisible()
+    for (const name of ['Marcar como recogido', 'Cancelar el envío', 'Eliminar el envío']) await expect(headBtn(page, name)).toBeVisible()
     await expect(headBtn(page, 'Re-cotizar')).toBeVisible() // Lote 106: Sometida ya nace cotizada y se puede re-cotizar
     await expect(headBtn(page, /chofer/i)).toHaveCount(0)
     await expect(headBtn(page, 'Imprimir label')).toBeVisible() // F-G2
     await expect(headBtn(page, /pod/i)).toHaveCount(0)
-    await expect(page.getByText('Este envío está en Sometida: puede corregir sus datos y sus paquetes.')).toBeVisible()
+    await expect(page.getByText('Este envío está en Sometido: puede corregir sus datos y sus paquetes.')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Guardar cambios' })).toBeDisabled()
     for (const title of ['Detalle', 'Historial', 'COD', 'Cotización']) await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Campos personalizados' })).toBeVisible()
@@ -238,26 +238,26 @@ test.describe('Órdenes — expediente (Lote F-C2)', () => {
     const requote = page.getByRole('dialog')
     await shot(page, isMobile, 'fc2-recotizar')
     await requote.getByRole('button', { name: 'Re-cotizar', exact: true }).click()
-    await expect(toast(page, `Orden ${draft.orderNumber} re-cotizada.`)).toBeVisible()
+    await expect(toast(page, `Envío ${draft.orderNumber} re-cotizado.`)).toBeVisible()
     expect((await get<OrderDetailDto>(`/api/v1/orders/${draft.publicId}`)).quotedAmount).toBe(180) // caja 120 + sobre 60
 
     // ---- 2. Marcar como recogida (Lote 107: ya no cotiza ni mide el crédito —eso se revisó al someter—; solo congela el precio) ----
-    await headBtn(page, 'Marcar como recogida').click()
+    await headBtn(page, 'Marcar como recogido').click()
     let dialog = page.getByRole('dialog')
     await expect(dialog).toContainText(`Marcar como recogido el envío ${draft.orderNumber}`)
     await shot(page, isMobile, 'fc2-confirmar')
     await dialog.getByRole('button', { name: 'Marcar como recogido', exact: true }).click()
-    await expect(toast(page, `Orden ${draft.orderNumber} marcada como recogida.`)).toBeVisible()
+    await expect(toast(page, `Envío ${draft.orderNumber} marcado como recogido.`)).toBeVisible()
     // el límite del cliente era 10 y la orden vale 180: no hay aviso de crédito porque pasó el cernidor al crearla (autorizado por API)
     await expect(page.getByRole('dialog', { name: 'El cliente excede su límite de crédito' })).toHaveCount(0)
     saved = await get<OrderDetailDto>(`/api/v1/orders/${draft.publicId}`)
     expect(saved.status).toBe('PICKUP')
     expect(saved.quotedAmount).toBe(180) // el precio que tenía al marcarla recogida (caja 120 + sobre 60) queda congelado
     // recogida: los datos pasan a referencia, ya no se edita ni se re-cotiza (precio congelado), y queda Cancelar
-    await expect(page.getByText('Este envío ya avanzó de Sometida', { exact: false })).toBeVisible()
+    await expect(page.getByText('Este envío ya avanzó de Sometido', { exact: false })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Guardar cambios' })).toHaveCount(0)
-    await expect(headBtn(page, 'Marcar como recogida')).toHaveCount(0)
-    await expect(headBtn(page, 'Eliminar la orden')).toHaveCount(0)
+    await expect(headBtn(page, 'Marcar como recogido')).toHaveCount(0)
+    await expect(headBtn(page, 'Eliminar el envío')).toHaveCount(0)
     await expect(headBtn(page, 'Re-cotizar')).toHaveCount(0)
     await ok(request.patch(`${API_URL}/api/v1/clients/${client.publicId}/profile`, { headers, data: { creditLimit: 100000 } }), 'subir el límite')
 
@@ -294,36 +294,36 @@ test.describe('Órdenes — expediente (Lote F-C2)', () => {
     await shot(page, isMobile, 'fc2-paneles', 1500, page.locator('.od-side'))
 
     // ---- 3. Laterales: Intento fallido y regreso exacto ----
-    await expect(page.getByRole('button', { name: /Avanzar a|Pasar a Cancelada|Pasar a Entregada/ })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /Avanzar a|Pasar a Cancelado|Pasar a Entregado/ })).toHaveCount(0)
     await page.getByRole('button', { name: 'Pasar a Intento fallido' }).click()
     dialog = page.getByRole('dialog')
     await dialog.getByLabel('Comentario (opcional)').fill('El cliente no está')
     await dialog.getByRole('button', { name: 'Cambiar estatus' }).click()
-    await expect(toast(page, `La orden ${draft.orderNumber} pasó a Intento fallido.`)).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Volver a Recogida' })).toBeVisible()
+    await expect(toast(page, `El envío ${draft.orderNumber} pasó a Intento fallido.`)).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Volver a Recogido' })).toBeVisible()
     // desde un lateral solo se vuelve a la etapa de la que salió (no a la siguiente, ni se cancela por aquí)
-    await expect(page.getByRole('button', { name: /Volver a (?!Recogida)|Avanzar a|Pasar a Cancelada/ })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /Volver a (?!Recogido)|Avanzar a|Pasar a Cancelado/ })).toHaveCount(0)
     expect((await get<OrderDetailDto>(`/api/v1/orders/${draft.publicId}`)).status).toBe('FAILED')
     await expect(page.getByText('El cliente no está')).toBeVisible() // el historial real lo muestra
     await shot(page, isMobile, 'fc2-lateral', 1500)
     if (isMobile) await expectNoHorizontalScroll(page)
-    await page.getByRole('button', { name: 'Volver a Recogida' }).click()
+    await page.getByRole('button', { name: 'Volver a Recogido' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Cambiar estatus' }).click()
-    await expect(toast(page, `La orden ${draft.orderNumber} pasó a Recogida.`)).toBeVisible()
+    await expect(toast(page, `El envío ${draft.orderNumber} pasó a Recogido.`)).toBeVisible()
     expect((await get<OrderDetailDto>(`/api/v1/orders/${draft.publicId}`)).status).toBe('PICKUP')
 
     // ---- 4. Cancelar con comentario ----
-    await headBtn(page, 'Cancelar la orden').click()
+    await headBtn(page, 'Cancelar el envío').click()
     dialog = page.getByRole('dialog')
     await expect(dialog).toContainText(`Cancelar el envío ${draft.orderNumber}`)
     await dialog.getByLabel('Razón de la cancelación').fill('El cliente anuló el pedido')
     await shot(page, isMobile, 'fc2-cancelar')
     if (isMobile) await expectNoHorizontalScroll(page)
     await dialog.getByRole('button', { name: 'Cancelar el envío' }).click()
-    await expect(toast(page, `Orden ${draft.orderNumber} cancelada.`)).toBeVisible()
+    await expect(toast(page, `Envío ${draft.orderNumber} cancelado.`)).toBeVisible()
     expect((await get<OrderDetailDto>(`/api/v1/orders/${draft.publicId}`)).status).toBe('CANCELLED')
     await expect(page.getByText('El cliente anuló el pedido')).toBeVisible()
-    await expect(headBtn(page, 'Cancelar la orden')).toHaveCount(0)
+    await expect(headBtn(page, 'Cancelar el envío')).toHaveCount(0)
     await expect(headBtn(page, 'Re-cotizar')).toHaveCount(0)
     await shot(page, isMobile, 'fc2-cancelada', 1500)
 
@@ -343,7 +343,7 @@ test.describe('Órdenes — expediente (Lote F-C2)', () => {
     await shot(page, isMobile, 'fc2-chofer')
     if (isMobile) await expectNoHorizontalScroll(page)
     await dialog.getByRole('button', { name: 'Asignar chofer' }).click()
-    await expect(toast(page, `Chofer asignado a la orden ${sp.orderNumber}.`)).toBeVisible()
+    await expect(toast(page, `Chofer asignado al envío ${sp.orderNumber}.`)).toBeVisible()
     const spSaved = await get<OrderDetailDto>(`/api/v1/orders/${sp.publicId}`)
     expect(spSaved.status).toBe('IN_TRANSIT')
     expect(spSaved.assignedDriverName).toBe(`Chofer FC2 ${suffix}`)
@@ -359,7 +359,7 @@ test.describe('Órdenes — expediente (Lote F-C2)', () => {
     await dialog.getByRole('combobox', { name: 'Chofer' }).fill(`Chofer FC2 ${suffix}`)
     await page.getByRole('option', { name: new RegExp(`Chofer FC2 ${suffix}`) }).click()
     await dialog.getByRole('button', { name: 'Reasignar chofer' }).click()
-    await expect(dialog.getByRole('alert')).toContainText('El envío ya está asignada a ese chofer.')
+    await expect(dialog.getByRole('alert')).toContainText('El envío ya está asignado a ese chofer.')
     await shot(page, isMobile, 'fc2-chofer-error')
     await dialog.getByRole('button', { name: 'Volver' }).click()
     await expect(dialog).toBeHidden()
@@ -367,11 +367,11 @@ test.describe('Órdenes — expediente (Lote F-C2)', () => {
     // ---- 6. Eliminar desde el expediente ----
     const toDelete = await newOrder({ packages: [{ packageType: 'BOX', pieces: 1 }] })
     await page.goto(`/orders/${toDelete.publicId}`)
-    await headBtn(page, 'Eliminar la orden').click()
+    await headBtn(page, 'Eliminar el envío').click()
     dialog = page.getByRole('dialog')
     await expect(dialog).toContainText(toDelete.orderNumber ?? '')
     await dialog.getByRole('button', { name: 'Eliminar', exact: true }).click()
-    await expect(toast(page, `Orden ${toDelete.orderNumber} eliminada.`)).toBeVisible()
+    await expect(toast(page, `Envío ${toDelete.orderNumber} eliminado.`)).toBeVisible()
     await expect(page).toHaveURL(/\/orders$/)
   })
 })

@@ -151,7 +151,7 @@ async function runJourney(page: Page, request: APIRequestContext, variant: 'D' |
   // porque los dos proyectos corren en paralelo sobre la misma compañía)
   if (variant === 'D') {
     await page.goto('/system/settings?tab=ops')
-    const settingsPanel = page.locator('.panel', { has: page.getByRole('heading', { name: 'Despacho manual' }) })
+    const settingsPanel = page.locator('.panel', { has: page.getByRole('heading', { name: 'Valores por defecto' }) })
     const select = settingsPanel.getByLabel('Motivo por default del despacho manual')
     await expect(select).toBeVisible()
     await expect(settingsPanel).toContainText('Llega preseleccionado al despachar; el motivo sigue siendo obligatorio.')
@@ -213,6 +213,8 @@ async function runJourney(page: Page, request: APIRequestContext, variant: 'D' |
 
   // La lista muestra el DMA con su tipo, el motivo y «Despachado»; el filtro Tipo y la búsqueda libre
   // la lista del panel derecho pasa a tarjetas cuando mide menos de 640 px (también en escritorio)
+  // desde el Lote 173 el panel derecho abre «Por documento»; los despachos manuales (DMA) se ven «Por movimiento»
+  await page.getByRole('tab', { name: 'Por movimiento' }).click()
   const row = page.locator('.collect-list tr, .collect-list .dt-card').filter({ hasText: issue.number })
   await expect(row.first()).toBeVisible()
   await expect(row.first()).toContainText('Despachado')
@@ -254,6 +256,7 @@ async function runJourney(page: Page, request: APIRequestContext, variant: 'D' |
   await expect(page.locator('.toast').filter({ hasText: `Despacho manual ${issue.number} eliminado.` }).first()).toBeVisible()
   // al eliminar vuelve a la lista, que por omisión no muestra lo eliminado: el DMA aparece Cancelado con «Incluir eliminadas»
   await expect(page).toHaveURL(/\/warehouse\/pick-batches$/)
+  await page.getByRole('tab', { name: 'Por movimiento' }).click()
   await expect(page.locator('.collect-list tr, .collect-list .dt-card').filter({ hasText: issue.number })).toHaveCount(0)
   await page.getByRole('switch', { name: 'Incluir eliminadas' }).check()
   await expect(row.first()).toBeVisible()

@@ -27,7 +27,8 @@ test('Recepción maestra: recibir juntos dos avisos del mismo cliente y confirma
   const a3 = await asn(clientB.publicId, pb, 2)
 
   await login(page)
-  await page.goto('/warehouse/receipts?tab=groups')
+  // desde la pestaña «Recibos» (no desde «Cargas»): la pestaña Cargas ya montada no abre sola la ficha de la carga recién creada
+  await page.goto('/warehouse/receipts')
   await page.getByRole('button', { name: 'Recibir juntos' }).click()
   const dialog = page.getByRole('dialog', { name: 'Recibir juntos' })
   await expect(dialog.getByText(a1.number)).toBeVisible()

@@ -191,7 +191,18 @@ async function pickCategoryOrProduct(page: Page, text: string, option: RegExp, s
 
 /** Lleva a la vista el panel de Pulso con ese título (van debajo de los indicadores del API) para la captura. */
 async function scrollToPanel(page: Page, title: string) {
+  await revealPulsePanel(page, title)
   await page.getByRole('heading', { level: 2, name: title, exact: true }).scrollIntoViewIfNeeded()
+}
+
+/** Los paneles de abajo del Pulso se montan al acercarse a la pantalla (carga diferida): se baja hasta que el h2 existe. */
+async function revealPulsePanel(page: Page, title: string) {
+  const heading = page.getByRole('heading', { level: 2, name: title, exact: true })
+  await page.mouse.move(Math.floor((page.viewportSize()?.width ?? 1400) / 2), 500)
+  for (let i = 0; i < 30 && (await heading.count()) === 0; i++) {
+    await page.mouse.wheel(0, 700)
+    await page.waitForTimeout(250)
+  }
 }
 
 /**
@@ -242,6 +253,7 @@ test.describe('Lote F7A — escritorio', () => {
 
   test("1. Pulso: el panel Almacén trae el selector de almacén y el control 'Categoría o producto'", async ({ page }) => {
     await login(page, ADMIN)
+    await revealPulsePanel(page, 'Almacén')
     const panel = pulseSection(page, 'Almacén')
     await expect(panel).toBeVisible()
     await expect(panel.getByRole('combobox', { name: 'Almacén' })).toHaveValue('')
@@ -310,10 +322,12 @@ test.describe('Lote F7A — escritorio', () => {
 
   test('3. al recargar se conserva la selección; ✕ vuelve a los totales generales', async ({ page }) => {
     await login(page, ADMIN)
+    await revealPulsePanel(page, 'Almacén')
     await expect(tile(page, 'En almacén')).not.toContainText('…')
     await pickCategoryOrProduct(page, CATEGORY, new RegExp(CATEGORY))
     await expect(tile(page, 'En almacén')).toContainText(`${CATEGORY} · 1 producto`)
     await page.reload()
+    await revealPulsePanel(page, 'Almacén')
     const trigger = pulseSection(page, 'Almacén').getByRole('button', { name: /^Categoría o producto/ })
     await expect(trigger).toHaveAccessibleName(new RegExp(`^Categoría o producto: Categoría .*${CATEGORY}$`))
     await expect(tile(page, 'En almacén')).toContainText(`${CATEGORY} · 1 producto`)
@@ -336,6 +350,7 @@ test.describe('Lote F7A — escritorio', () => {
     await expect(tile(page, 'Bajo mínimo').getByRole('link')).toHaveCount(0)
     // sin selección no queda nada guardado: otra recarga sigue en 'Todos'
     await page.reload()
+    await revealPulsePanel(page, 'Almacén')
     await expect(trigger).toHaveAccessibleName('Categoría o producto')
   })
 
@@ -351,6 +366,7 @@ test.describe('Lote F7A — escritorio', () => {
     expect(batchNumber).toMatch(/^EMP-/)
 
     await login(page, ADMIN)
+    await revealPulsePanel(page, 'Actividad reciente')
     const panel = pulseSection(page, 'Actividad reciente')
     const tabs = panel.getByRole('tablist', { name: 'Módulos de la actividad' })
     await expect(tabs.getByRole('tab', { name: 'Almacén' })).toHaveAttribute('aria-selected', 'true')
@@ -387,6 +403,7 @@ test.describe('Lote F7A — escritorio', () => {
     await login(page, ADMIN)
     // marca en la ventana: si la página se recargara, desaparecería
     await page.evaluate(() => Object.assign(window, { __f7aNoReload: true }))
+    await revealPulsePanel(page, 'Actividad reciente')
     const panel = pulseSection(page, 'Actividad reciente')
     const table = panel.getByRole('table', { name: 'Eventos recientes' })
     await expect(table.getByRole('row').filter({ hasText: SKU }).getByText('Ajuste de inventario')).toBeVisible()
@@ -417,7 +434,8 @@ test.describe('Lote F7A — escritorio', () => {
     await shot(page, 'pulso-actividad-ingles')
 
     // vuelve al español (solo vive en el localStorage de este contexto, pero se deja como estaba)
-    await page.getByRole('button', { name: 'Language' }).click()
+    // (con RUN_LANG=en la captura ya devolvió la interfaz a español: el botón se llama 'Idioma' o 'Language' según el caso)
+    await page.getByRole('button', { name: /^(Language|Idioma)$/ }).click()
     await page.getByRole('menuitemradio', { name: 'Español' }).click()
     await expect(pulseSection(page, 'Actividad reciente')).toBeVisible()
   })
@@ -426,6 +444,7 @@ test.describe('Lote F7A — escritorio', () => {
     const activityResponse = page.waitForResponse((r) => new URL(r.url()).pathname === '/api/v1/analytics/activity')
     await login(page, DISPATCH)
     await page.waitForLoadState('networkidle')
+    await revealPulsePanel(page, 'Actividad reciente')
     await expect(page.getByRole('heading', { level: 2, name: 'Almacén', exact: true })).toHaveCount(0)
     await expect(page.getByRole('group', { name: 'Filtros del panel Almacén' })).toHaveCount(0)
     // el servidor no devuelve ningún módulo visible: el panel de Actividad reciente no se pinta
@@ -454,6 +473,7 @@ test.describe('Lote F7A — móvil (360 px)', () => {
   test('7. panel Almacén y Actividad reciente en tarjetas, sin scroll horizontal (también con el selector abierto)', async ({ page }) => {
     await login(page, ADMIN)
     expect(page.viewportSize()?.width).toBe(360)
+    await revealPulsePanel(page, 'Almacén')
     const warehouse = pulseSection(page, 'Almacén')
     await expect(warehouse).toBeVisible()
     // tarjetas del panel Almacén en una columna: todas del mismo ancho y apiladas
@@ -477,6 +497,7 @@ test.describe('Lote F7A — móvil (360 px)', () => {
     await expectNoHorizontalScroll(page)
 
     // bajo 720 px la actividad son tarjetas, nunca una tabla: el ajuste del producto aparece como tarjeta
+    await revealPulsePanel(page, 'Actividad reciente')
     const activity = pulseSection(page, 'Actividad reciente')
     await expect(activity).toBeVisible()
     await expect(activity.locator('table')).toHaveCount(0)

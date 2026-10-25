@@ -116,6 +116,12 @@ function tenantDay(plus = 0): string {
   return d.toISOString().slice(0, 10)
 }
 
+/** Escribe una fecha y sale del campo con Tab: el calendario que se abre al escribir tapaba el botón Guardar. */
+async function fillDate(input: Locator, iso: string): Promise<void> {
+  await input.fill(iso)
+  await input.press('Tab')
+}
+
 /** Aviso (toast) con ese texto. */
 const toast = (page: Page, text: string | RegExp): Locator => page.locator('.toast.on', { hasText: text })
 /** Panel por el título de su cabecera. */
@@ -290,11 +296,11 @@ test.describe('Flota y mantenimiento (Lote F-D2)', () => {
     await expect(dialog.getByText('El tipo de documento es obligatorio.')).toBeVisible()
     await dialog.getByLabel(/^Documento/).selectOption({ label: 'Seguro' })
     await dialog.getByLabel('Número').fill(`S-${suffix}-A`)
-    await dialog.getByLabel('Emisión').fill(tenantDay(-300))
-    await dialog.getByLabel('Vencimiento').fill(tenantDay(-400))
+    await fillDate(dialog.getByLabel('Emisión'), tenantDay(-300))
+    await fillDate(dialog.getByLabel('Vencimiento'), tenantDay(-400))
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expect(dialog.getByText('La fecha de vencimiento no puede ser anterior a la de emisión.')).toBeVisible()
-    await dialog.getByLabel('Vencimiento').fill(tenantDay(10))
+    await fillDate(dialog.getByLabel('Vencimiento'), tenantDay(10))
     await shot(page, isMobile, 'fd2-documento-alta', 700, dialog)
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expect(toast(page, 'Documento guardado.')).toBeVisible()
@@ -304,7 +310,7 @@ test.describe('Flota y mantenimiento (Lote F-D2)', () => {
     dialog = page.getByRole('dialog', { name: 'Agregar documento' })
     await dialog.getByLabel(/^Documento/).selectOption({ label: 'Registro' })
     await dialog.getByLabel('Número').fill(`R-${suffix}`)
-    await dialog.getByLabel('Vencimiento').fill(tenantDay(-5))
+    await fillDate(dialog.getByLabel('Vencimiento'), tenantDay(-5))
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expect(rowOf(docs, `R-${suffix}`)).toContainText('Vencida hace 5 días')
 
@@ -320,7 +326,7 @@ test.describe('Flota y mantenimiento (Lote F-D2)', () => {
     dialog = page.getByRole('dialog', { name: 'Agregar documento' })
     await dialog.getByLabel(/^Documento/).selectOption({ label: 'Seguro' })
     await dialog.getByLabel('Número').fill(`S-${suffix}-B`)
-    await dialog.getByLabel('Vencimiento').fill(tenantDay(400))
+    await fillDate(dialog.getByLabel('Vencimiento'), tenantDay(400))
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expect(rowOf(docs, `S-${suffix}-A`)).toContainText('Reemplazada')
     await expect(rowOf(docs, `S-${suffix}-B`)).toContainText('Vigente')
@@ -329,7 +335,7 @@ test.describe('Flota y mantenimiento (Lote F-D2)', () => {
     // editar (nuevo vencimiento por vencer) y quitar
     await rowOf(docs, `I-${suffix}`).getByRole('button', { name: 'Editar' }).click()
     dialog = page.getByRole('dialog', { name: 'Editar documento' })
-    await dialog.getByLabel('Vencimiento').fill(tenantDay(20))
+    await fillDate(dialog.getByLabel('Vencimiento'), tenantDay(20))
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expect(rowOf(docs, `I-${suffix}`)).toContainText('Vence en 20 días')
     await rowOf(docs, `S-${suffix}-A`).getByRole('button', { name: 'Quitar' }).click()

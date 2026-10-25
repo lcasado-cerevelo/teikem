@@ -94,6 +94,7 @@ test('Impuestos: tasas con vigencia, reglas, categoría de producto, exenciones 
   await dialog.getByLabel('Código', { exact: true }).fill(code)
   await dialog.getByLabel('Nombre', { exact: true }).fill('IVU Puerto Rico')
   await dialog.getByLabel('Rige desde').fill('2026-01-01')
+  await dialog.getByLabel('Rige desde').press('Escape')   // cierra el calendario que se abre al escribir la fecha
   await dialog.getByLabel('Código del componente 1').fill('STATE')
   await dialog.getByLabel('Nombre del componente 1').fill('Estatal')
   await dialog.getByLabel('Porcentaje del componente 1').fill('10,5')
@@ -116,6 +117,7 @@ test('Impuestos: tasas con vigencia, reglas, categoría de producto, exenciones 
   await dialog.getByLabel('Código', { exact: true }).fill(code)
   await dialog.getByLabel('Nombre', { exact: true }).fill('Otra')
   await dialog.getByLabel('Rige desde').fill('2026-06-01')
+  await dialog.getByLabel('Rige desde').press('Escape')   // cierra el calendario que se abre al escribir la fecha
   await dialog.getByLabel('Código del componente 1').fill('STATE')
   await dialog.getByLabel('Nombre del componente 1').fill('Estatal')
   await dialog.getByLabel('Porcentaje del componente 1').fill('12')
@@ -127,13 +129,14 @@ test('Impuestos: tasas con vigencia, reglas, categoría de producto, exenciones 
   await row(code).getByRole('button', { name: 'Cerrar vigencia' }).click()
   dialog = page.getByRole('dialog')
   await dialog.getByLabel('Último día de vigencia').fill('2026-10-14')
+  await dialog.getByLabel('Último día de vigencia').press('Escape')   // cierra el calendario que se abre al escribir la fecha
   await dialog.getByRole('button', { name: 'Cerrar vigencia' }).click()
   await expect(page.locator('.toast.on').filter({ hasText: 'cerrada' })).toHaveCount(1)
   await expect(row(code)).toContainText('Cerrada')
   await row(code).getByRole('button', { name: 'Nueva tasa desde esta' }).click()
   dialog = page.getByRole('dialog')
   await expect(dialog.getByLabel('Código', { exact: true })).toHaveValue(code)
-  await expect(dialog.getByLabel('Rige desde')).toHaveValue('2026-10-15')
+  await expect(dialog.getByLabel('Rige desde')).toHaveValue('10/15/2026')
   await dialog.getByLabel('Porcentaje del componente 2').fill('2')   // 10.5 + 2 = 12.5
   await dialog.getByRole('button', { name: 'Crear tasa' }).click()
   await expect(page.locator('.toast.on').first()).toContainText(`Tasa ${code} creada.`)
@@ -170,6 +173,7 @@ test('Impuestos: tasas con vigencia, reglas, categoría de producto, exenciones 
   await dialog.getByLabel('Tipo de exención').fill('Sin fines de lucro')
   await dialog.getByLabel('Número de certificado').fill(`CERT-${suffix}`)
   await dialog.getByLabel('Vale desde').fill('2026-01-01')
+  await dialog.getByLabel('Vale desde').press('Escape')   // cierra el calendario que se abre al escribir la fecha
   await shot(page, isMobile, 'l56-nueva-exencion', dialog)
   await dialog.getByRole('button', { name: 'Guardar exención' }).click()
   await expect(page.locator('.toast.on').first()).toContainText('Exención creada.')
@@ -180,10 +184,12 @@ test('Impuestos: tasas con vigencia, reglas, categoría de producto, exenciones 
   // 5) simulador: la tasa cambia a mitad de mes y la exención vigente deja el impuesto en cero
   await page.getByRole('tab', { name: 'Simulador' }).click()
   await page.getByLabel('Fecha (opcional)').fill('2026-10-14')
+  await page.getByLabel('Fecha (opcional)').press('Escape')   // cierra el calendario que se abre al escribir la fecha
   await page.getByRole('button', { name: 'Calcular' }).click()
   await expect(page.getByText(/Tasa .* al 11.5 %/)).toBeVisible()
   await expect(page.locator('.tax-table tfoot')).toContainText('$11.50')
   await page.getByLabel('Fecha (opcional)').fill('2026-10-15')
+  await page.getByLabel('Fecha (opcional)').press('Escape')   // cierra el calendario que se abre al escribir la fecha
   await page.getByRole('button', { name: 'Calcular' }).click()
   await expect(page.getByText(/Tasa .* al 12.5 %/)).toBeVisible()
   await expect(page.locator('.tax-table tfoot')).toContainText('$12.50')

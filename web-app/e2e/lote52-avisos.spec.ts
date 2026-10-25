@@ -91,7 +91,8 @@ test('Avisos: reglas, aviso de prueba por la cola real, campanita y Kemi', async
   await expect(options.first()).toContainText('teikem+admin@cerevelo.com')   // el buscador muestra nombre y correo
   await shot(page, isMobile, 'l52-buscador-personas', dialog)
   await options.first().click()
-  for (const channel of ['Correo', 'SMS', 'Push']) await expect(dialog.getByRole('switch', { name: `Enviar por ${channel}` })).toBeDisabled()
+  // el correo depende del entorno (con la llave de Brevo puesta sí está configurado): solo SMS y Push siguen sin configurar
+  for (const channel of ['SMS', 'Push']) await expect(dialog.getByRole('switch', { name: `Enviar por ${channel}` })).toBeDisabled()
   await expect(dialog.getByText('Este canal todavía no está configurado en Teikem.').first()).toBeVisible()
   const campanita = dialog.getByRole('switch', { name: 'Enviar por Campanita' })
   await dialog.locator('[data-channel="APP"] label.sw').click()
@@ -100,6 +101,8 @@ test('Avisos: reglas, aviso de prueba por la cola real, campanita y Kemi', async
   await shot(page, isMobile, 'l52-regla-nueva', dialog)
   await dialog.getByRole('button', { name: 'Guardar' }).click()
   await expect(dialog).toBeHidden()
+  // la lista ya trae decenas de reglas de integraciones (paginada): se busca la regla recién creada
+  await page.getByRole('searchbox', { name: 'Buscar…' }).fill(ruleName)
   const row = page.locator('tr, .dt-cards > li').filter({ has: page.getByText(ruleName, { exact: true }) }).first()
   await expect(row).toContainText('Campanita')
   await expect(row.getByRole('switch')).toBeChecked()

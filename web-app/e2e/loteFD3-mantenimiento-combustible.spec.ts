@@ -116,6 +116,12 @@ function tenantDay(plus = 0): string {
   return d.toISOString().slice(0, 10)
 }
 
+/** Escribe una fecha y sale del campo con Tab: el calendario que se abre al escribir tapaba el botón Guardar. */
+async function fillDate(input: Locator, iso: string): Promise<void> {
+  await input.fill(iso)
+  await input.press('Tab')
+}
+
 /** Aviso (toast) con ese texto. */
 const toast = (page: Page, text: string | RegExp): Locator => page.locator('.toast.on', { hasText: text })
 /** Panel por el título de su cabecera. */
@@ -270,7 +276,7 @@ test.describe('Mantenimiento y combustible (Lote F-D3)', () => {
     await expect(dialog.getByLabel('Programa preventivo')).not.toHaveValue('')
     await expect(dialog.getByLabel(/^Tipo de mantenimiento/)).toHaveValue('PREVENTIVE')
     await dialog.getByLabel('Proveedor').fill('Taller Díaz')
-    await dialog.getByLabel('Fecha programada').fill(tenantDay())
+    await fillDate(dialog.getByLabel('Fecha programada'), tenantDay())
     if (isMobile) await expectNoHorizontalScroll(page)
     await shot(page, isMobile, 'fd3-orden-alta', 1100, dialog)
     await dialog.getByRole('button', { name: 'Guardar' }).click()
@@ -368,11 +374,11 @@ test.describe('Mantenimiento y combustible (Lote F-D3)', () => {
     await expect(dialog.getByText('Obligatorio: el programa de esta orden es por kilometraje.')).toBeVisible()
     await dialog.getByRole('button', { name: 'Cerrar orden' }).click()
     await expect(dialog.getByText('Indique la lectura de odómetro para cerrar una orden de un programa por kilometraje.')).toBeVisible()
-    await dialog.getByLabel('Fecha de cierre').fill(tenantDay(1))
+    await fillDate(dialog.getByLabel('Fecha de cierre'), tenantDay(1))
     await dialog.getByLabel(/^Odómetro al cerrar/).fill('1200')
     await dialog.getByRole('button', { name: 'Cerrar orden' }).click()
     await expect(dialog.getByText('La fecha de cierre no puede ser futura.')).toBeVisible()
-    await dialog.getByLabel('Fecha de cierre').fill(tenantDay())
+    await fillDate(dialog.getByLabel('Fecha de cierre'), tenantDay())
     await dialog.getByLabel('Comentario (opcional)').fill('Servicio completo')
     if (isMobile) await expectNoHorizontalScroll(page)
     await shot(page, isMobile, 'fd3-cerrar', 900, dialog)
@@ -467,12 +473,12 @@ test.describe('Mantenimiento y combustible (Lote F-D3)', () => {
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expect(dialog.getByText('Los litros deben ser mayores que 0.')).toBeVisible()
     await expect(dialog.getByText('Indique el costo total de la carga.')).toBeVisible()
-    await dialog.getByLabel(/^Fecha/).fill(tenantDay(2))
+    await fillDate(dialog.getByLabel(/^Fecha/), tenantDay(2))
     await dialog.getByLabel(/^Litros/).fill('40')
     await dialog.getByLabel(/^Costo total/).fill('60')
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expect(dialog.getByText('La fecha de la carga no puede ser futura.')).toBeVisible()
-    await dialog.getByLabel(/^Fecha/).fill(tenantDay(-2))
+    await fillDate(dialog.getByLabel(/^Fecha/), tenantDay(-2))
     await dialog.getByLabel(/^Hora/).fill('10:00')
     await dialog.getByLabel(/^Odómetro/).fill('1300')
     await dialog.getByLabel('Chofer').selectOption({ label: `F3D${suffix} · ${driverName}` })

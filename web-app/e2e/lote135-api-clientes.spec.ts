@@ -193,7 +193,7 @@ test('pantalla: conector API, llaves con el secreto una sola vez, bitácora y re
   await form.getByRole('button', { name: 'Cancelar' }).click()
 
   // llaves
-  await rowOf(`0 API almacén ${s}`).getByRole('button', { name: 'Llaves de API' }).click()
+  await rowOf(`0 API almacén ${s}`).getByRole('button', { name: 'Llaves de API' }).first().click()
   const keys = page.getByRole('dialog', { name: /Llaves de API de/ })
   await keys.getByRole('button', { name: 'Crear llave' }).click()
   await expect(keys.getByText('Escriba el nombre de la llave.')).toBeVisible()

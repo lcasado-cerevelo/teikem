@@ -43,17 +43,22 @@ async function expectFieldError(field: Locator, message: string) {
 }
 
 /** Token de acceso del admin por el API (para preparar datos del recorrido). */
-async function apiToken(request: APIRequestContext): Promise<string> {
-  let res = await request.post(`${API_URL}/api/v1/auth/login`, { data: { email: ADMIN.email, password: ADMIN.password } })
+async function apiToken(request: APIRequestContext, user: { email: string; password: string } = ADMIN): Promise<string> {
+  let res = await request.post(`${API_URL}/api/v1/auth/login`, { data: { email: user.email, password: user.password } })
   expect(res.ok()).toBeTruthy()
   let body = (await res.json()) as AuthResultDto
   if (body.status === 'tenant_selection') {
     const tenant = body.tenants?.find((t) => t.isDefault) ?? body.tenants?.[0]
-    res = await request.post(`${API_URL}/api/v1/auth/login`, { data: { email: ADMIN.email, password: ADMIN.password, tenantId: tenant?.tenantId } })
+    res = await request.post(`${API_URL}/api/v1/auth/login`, { data: { email: user.email, password: user.password, tenantId: tenant?.tenantId } })
     body = (await res.json()) as AuthResultDto
   }
   expect(body.status).toBe('ok')
-  return body.tokens?.accessToken ?? ''
+  const token = body.tokens?.accessToken ?? ''
+  // con el documento legal vigente exigido, el usuario de pruebas lo acepta por API (si no, la pantalla de aceptación tapa el menú)
+  const headers = { Authorization: `Bearer ${token}` }
+  const status = (await (await request.get(`${API_URL}/api/v1/legal/status`, { headers })).json()) as { required?: boolean; currentVersion?: string }
+  if (status.required) await request.post(`${API_URL}/api/v1/legal/accept`, { headers, data: { version: status.currentVersion, lang: 'es' } })
+  return token
 }
 
 /** Garantiza al menos un gráfico en el Pulso del admin (los indicadores de sistema ya vienen en Pulso). */
@@ -137,14 +142,15 @@ test.describe('Lote F1 — escritorio', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Organizar mi Pulso' })).toBeVisible()
     const menu = page.getByRole('complementary', { name: 'Menú principal' })
-    await expect(menu.getByRole('button', { name: 'Operación' })).toBeVisible()
+    await expect(menu.getByRole('button', { name: 'Transporte' })).toBeVisible()
     await expect(menu.getByRole('link', { name: 'Pulso del día' })).toBeVisible()
   })
 
-  test('2. despacho: el menú no muestra Sistema; Mi cuenta está disponible', async ({ page }) => {
+  test('2. despacho: el menú no muestra Sistema; Mi cuenta está disponible', async ({ page, request }) => {
+    await apiToken(request, DISPATCH)
     await login(page, DISPATCH)
     const menu = page.getByRole('complementary', { name: 'Menú principal' })
-    await expect(menu.getByRole('button', { name: 'Operación' })).toBeVisible()
+    await expect(menu.getByRole('button', { name: 'Transporte' })).toBeVisible()
     await expect(menu.getByRole('button', { name: 'Sistema' })).toHaveCount(0)
     await page.getByRole('link', { name: /Carlos Rivera|despacho@teikem\.local/ }).click()
     await expect(page).toHaveURL(/\/account$/)
@@ -157,7 +163,7 @@ test.describe('Lote F1 — escritorio', () => {
     await page.goto('/account?tab=password')
     const current = page.getByLabel(/Contraseña actual/)
     await current.fill('a-medias')
-    const group = page.getByRole('button', { name: 'Operación' })
+    const group = page.getByRole('button', { name: 'Transporte' })
     await group.click() // el usuario cierra el grupo
     await expect(group).toHaveAttribute('aria-expanded', 'false')
 
@@ -166,7 +172,7 @@ test.describe('Lote F1 — escritorio', () => {
 
     await expect(page.getByRole('heading', { level: 1, name: 'My account' })).toBeVisible()
     await expect(page).toHaveURL(/\/account\?tab=password$/)
-    await expect(page.getByRole('button', { name: 'Operations' })).toHaveAttribute('aria-expanded', 'false')
+    await expect(page.getByRole('button', { name: 'Transport' })).toHaveAttribute('aria-expanded', 'false')
     await expect(page.getByLabel(/Current password/)).toHaveValue('a-medias')
     await shot(page, 'idioma-ingles')
   })
@@ -174,6 +180,20 @@ test.describe('Lote F1 — escritorio', () => {
   test('4. Pulso muestra al menos un indicador y un gráfico del tenant demo', async ({ page, request }) => {
     await ensureChartInPulse(request)
     await login(page, ADMIN)
+    // las secciones de abajo se montan al acercarse a la pantalla (LazySection): se recorre el Pulso y se vuelve arriba
+    await page.locator('.stage').evaluate(async (el) => {
+      for (let i = 0; i < 12; i++) {
+        el.scrollTop += 700
+        await new Promise((r) => setTimeout(r, 250))
+      }
+      el.scrollTop = 0
+    })
+    // los paneles de abajo se montan al acercarse (carga diferida): se baja hasta que existe el primer gráfico
+    await page.mouse.move(Math.floor((page.viewportSize()?.width ?? 1400) / 2), 500)
+    for (let i = 0; i < 30 && (await page.locator('.pulse-charts > *').count()) === 0; i++) {
+      await page.mouse.wheel(0, 700)
+      await page.waitForTimeout(250)
+    }
     await expect(page.getByRole('heading', { level: 2, name: 'Tus indicadores' })).toBeVisible()
     await expect(page.getByRole('heading', { level: 2, name: 'Tus gráficos' })).toBeVisible()
     await expect(page.locator('.river > .node').first()).toBeVisible()

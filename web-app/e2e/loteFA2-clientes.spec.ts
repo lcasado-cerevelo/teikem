@@ -289,7 +289,7 @@ test.describe('Clientes y contratos (F-A1 + F-A2)', () => {
     await expect(perService.getByText('Sin tarifas por servicio configuradas.')).toBeVisible()
     await perService.getByRole('button', { name: 'Agregar tarifa' }).click()
     const rateDialog = page.getByRole('dialog', { name: 'Agregar tarifa por servicio' })
-    await expect(rateDialog.getByLabel(/Vigente desde/)).toHaveValue(/^\d{4}-\d{2}-\d{2}$/)
+    await expect(rateDialog.getByLabel(/Vigente desde/)).toHaveValue(/^\d{2}\/\d{2}\/\d{4}$/)
     await rateDialog.getByLabel(/^Servicio/).selectOption('STANDARD')
     await rateDialog.getByLabel(/^Paquete/).selectOption('BOX')
     await rateDialog.getByLabel(/^Tarifa/).fill('6.5')

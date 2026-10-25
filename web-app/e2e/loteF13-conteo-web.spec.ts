@@ -201,8 +201,11 @@ test.describe('Lote F13 — escritorio', () => {
     expect(created.lines).toHaveLength(1)
     expect(created.lines![0].sku).toBe(s.skuStock)
 
-    // se ve en la lista (buscador libre por SKU)
-    await page.getByRole('searchbox').first().fill(s.skuStock)
+    // se ve en la lista (filtro «Producto» con buscador, por SKU: la lista ya no trae buscador libre)
+    await page.getByRole('button', { name: 'Producto', exact: true }).first().click()
+    await page.getByRole('searchbox', { name: 'Buscar…' }).fill(s.skuStock)
+    await page.getByRole('option', { name: new RegExp(`^${s.skuStock} · `) }).click()
+    await page.keyboard.press('Escape')
     await expect(page.locator('.cc-list').getByText(created.count!.number!).first()).toBeVisible()
   })
 })

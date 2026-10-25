@@ -1,5 +1,5 @@
 // Recorrido del lote F11 (marca por compañía en el servidor) contra el API real (db-init hecho, API en API_URL, por defecto
-// http://localhost:5000; compañía demo "Advance Logistics"). CAMBIA la marca de toda la compañía demo (sube logos y un tema) y la
+// http://localhost:5000; compañía demo "Advance Depot"). CAMBIA la marca de toda la compañía demo (sube logos y un tema) y la
 // RESTAURA al final (y en afterAll por API, aunque falle): corre en su propio proyecto (`escritorio-f11`, después de todos los
 // demás; ver playwright.config.ts).
 // - sube un logo (lockup, normal e invertido) y lo ve en la barra lateral; cambia de tema y cambia de variante;
@@ -134,12 +134,13 @@ test('Marca: sube el logo, se ve en la barra lateral por tema, y los rechazos de
 
   // la barra lateral usa el logo de la compañía, y cambia de variante con el tema
   await expect(lockupInSidebar).toHaveAttribute('data-company-logo', 'true')
-  await expect(lockupInSidebar).toHaveAttribute('alt', 'Advance Logistics')
+  await expect(lockupInSidebar).toHaveAttribute('alt', 'Advance Depot')
   await page.getByRole('button', { name: 'Oscuro', exact: true }).click()
   const darkSrc = await lockupInSidebar.getAttribute('src')
   expect(darkSrc).toMatch(/^blob:/)
   await page.getByRole('button', { name: 'Claro', exact: true }).click()
-  await expect.poll(async () => lockupInSidebar.getAttribute('src')).not.toBe(darkSrc)
+  // la barra lateral es siempre azul marino: usa la variante para fondo oscuro en ambos temas (no cambia con el tema)
+  await expect.poll(async () => lockupInSidebar.getAttribute('src')).toBe(darkSrc)
   await page.getByRole('button', { name: 'Oscuro', exact: true }).click()
   await shotLogos(page, 'marca-logos')
 

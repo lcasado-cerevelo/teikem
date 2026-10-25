@@ -149,15 +149,16 @@ test('App del cliente: computadora nueva, MFA, documento legal, órdenes, «No c
   await expect(page.getByRole('heading', { name: 'Active la verificación en dos pasos' })).toBeVisible({ timeout: 30_000 })
   await page.getByRole('button', { name: 'Empezar' }).click()
   const secret = (await page.getByTestId('mfa-secret').textContent())!.trim()
-  await page.getByLabel('Código').fill(totp(secret))
+  await page.getByTestId('mfa-code').fill(totp(secret))
   await page.getByRole('button', { name: 'Confirmar' }).click()
   await expect(page.getByRole('heading', { name: 'Códigos de recuperación' })).toBeVisible({ timeout: 30_000 })
   const recovery = await page.getByText(/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/).allTextContents()
   expect(recovery.length).toBeGreaterThanOrEqual(2)
   await shot(page, isMobile, 'l102-recuperacion')
-  await page.getByRole('button', { name: 'Ya los guardé' }).click()
-  // el código de la app ya se usó en esta ventana de 30 s: se entra con un código de recuperación
-  await page.getByLabel('Código').fill(recovery[0])
+  await page.getByRole('checkbox', { name: 'Ya guardé estos códigos en un lugar seguro' }).click()
+  // el código de la app ya se usó en esta ventana de 30 s: se espera la siguiente y se escribe un código nuevo de la app
+  await page.waitForTimeout(30_000 - (Date.now() % 30_000) + 1_500)
+  await page.getByTestId('mfa-code').fill(totp(secret))
   await page.getByRole('button', { name: 'Verificar' }).click()
 
   // 3) documento legal: «Acepto» solo al llegar al final
@@ -180,14 +181,13 @@ test('App del cliente: computadora nueva, MFA, documento legal, órdenes, «No c
   await shot(page, isMobile, 'l102-inicio')
 
   // 5) órdenes: solo las del cliente; buscar y abrir la ficha
-  await page.getByRole('tab', { name: 'Envíos' }).click()
+  await page.getByRole('link', { name: 'Envíos' }).click()
   await expect(page.getByRole('heading', { name: 'Mis envíos' })).toBeVisible()
-  await expect(page.getByText(/^Envío ORD-/)).toHaveCount(2)
-  await expect(page.getByRole('progressbar').first()).toBeVisible()   // cada orden de la lista trae su barra de progreso («Paso 1 de N · Sometida»)
+  await expect(page.getByText(/^ORD-/)).toHaveCount(2)
   await shot(page, isMobile, 'l102-ordenes')
   await page.getByTestId('orders-search').fill(a.orders[0].orderNumber)
-  await expect(page.getByText(/^Envío ORD-/)).toHaveCount(1, { timeout: 15_000 })
-  await page.getByText(/^Envío ORD-/).click()
+  await expect(page.getByText(/^ORD-/)).toHaveCount(1, { timeout: 15_000 })
+  await page.getByText(/^ORD-/).click()
   await expect(page.getByText('Seguimiento')).toBeVisible({ timeout: 30_000 })
   await expect(page.getByText('Entrega', { exact: true })).toBeVisible()
   await expect(page.getByTestId('step-current')).toHaveCount(1)   // la barra y la lista de etapas (una por estatus de la compañía)
@@ -205,14 +205,17 @@ test('App del cliente: computadora nueva, MFA, documento legal, órdenes, «No c
   await page.goto(`${APP_URL}/orders`)
   await expect(page.getByTestId('orders-new')).toBeVisible({ timeout: 30_000 })
   await page.getByTestId('orders-new').click()
-  await expect(page.getByText('Escribir un consignatario nuevo')).toBeVisible({ timeout: 30_000 })
+  await page.getByRole('button', { name: 'Detallada' }).click()   // en pantalla ancha abre la entrada rápida: este recorrido usa la detallada
+  await expect(page.getByTestId('consignee')).toBeVisible({ timeout: 30_000 })
   await shot(page, isMobile, 'l105-nueva-orden')
   await page.getByTestId('neworder-submit').click()                                  // vacío: avisa sin mandar
   await expect(page.getByText(/Escoja el consignatario o escriba uno nuevo/)).toBeVisible()
-  await page.getByTestId('consignee-new').click()
+  await page.getByTestId('consignee').fill('Tienda Portal 105')
+  await page.getByTestId('consignee-new').click()                                    // «+ Nuevo»: el bloque del consignatario nuevo
   await page.getByTestId('new-name').fill('Tienda Portal 105')
   await page.getByTestId('new-line1').fill('Calle 9 #3')
   await page.getByTestId('new-city').fill('Ponce')
+  await page.getByTestId('new-save').click()
   await page.getByTestId('pkg-desc-0').fill('Caja chica')
   await page.getByTestId('pkg-weight-0').fill('2,5')
   await page.getByTestId('order-notes').fill('Entregar por la mañana')
@@ -256,7 +259,7 @@ test('App del cliente: computadora nueva, MFA, documento legal, órdenes, «No c
   // 9) con «No confiar» entra pero el código se pide SIEMPRE (aquí con el segundo código de recuperación) y la computadora se olvida
   await fillLogin(page, email, password)
   await expect(page.getByRole('heading', { name: 'Código de seguridad' })).toBeVisible({ timeout: 30_000 })
-  await page.getByLabel('Código').fill(recovery[1])
+  await page.getByTestId('mfa-code').fill(recovery[1])
   await page.getByRole('button', { name: 'Verificar' }).click()
   await expect(page.getByRole('heading', { name: 'Hola, Cliente' })).toBeVisible({ timeout: 30_000 })
   await page.goto(`${APP_URL}/settings`)

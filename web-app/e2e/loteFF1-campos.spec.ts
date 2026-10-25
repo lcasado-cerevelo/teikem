@@ -149,7 +149,7 @@ test.describe('Campos personalizados (Lote F-F1)', () => {
       await dialog().getByLabel(/^Formato/).fill('^CC-\\d{3}$')
       await dialog().getByLabel('Longitud máxima').fill('6')
       await dialog().getByRole('switch', { name: 'Único' }).check()
-      await dialog().getByRole('switch', { name: 'Mostrar en listados' }).check()
+      await dialog().getByRole('switch', { name: 'Mostrar en la búsqueda' }).check()
       if (isMobile) await expectNoHorizontalScroll(page)
       await shot(page, isMobile, 'ff1-texto', 1250)
       await save()

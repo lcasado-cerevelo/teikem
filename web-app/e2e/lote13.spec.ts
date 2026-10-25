@@ -109,13 +109,14 @@ test.describe('Lote 13 — escritorio', () => {
     const received = detail.getByRole('textbox', { name: 'Recibido de la línea 1' })
     await received.fill('10')
     await received.press('Tab')
-    await expect(detail.locator('.chip', { hasText: 'Recibiendo' }).first()).toBeVisible()
+    await expect(detail.locator('.chip', { hasText: 'Descargando' }).first()).toBeVisible()
 
-    // esperado 12, recibido 10: Discrepancia, diferencia −2 y el aviso de lo que pasará al confirmar
+    // esperado 12, recibido 10: sigue Descargando, diferencia «Falta 2» y el aviso de lo que pasará al confirmar
+    // (ya no existe el estatus «Discrepancia»: el aviso lo dice en el pie del detalle)
     const expected = detail.getByRole('textbox', { name: 'Esperado de la línea 1' })
     await expected.fill('12')
     await expected.press('Tab')
-    await expect(detail.locator('.chip', { hasText: 'Discrepancia' }).first()).toBeVisible()
+    await expect(detail.getByText('Falta 2')).toBeVisible()
     await expect(detail.getByText(/Completado con diferencia/).first()).toBeVisible()
 
     await detail.getByRole('button', { name: 'Confirmar recibo' }).click()

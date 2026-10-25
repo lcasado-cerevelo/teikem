@@ -90,7 +90,7 @@ async function prepareData(request: APIRequestContext) {
     data: {
       name: ROLE_NAME,
       descriptions: { es: ROLE_NAME, en: ROLE_NAME },
-      permissions: ['inventory.view', 'warehouse.receive', 'analytics.view', 'pulse.warehouse', 'pulse.indicators', 'pulse.activity'],
+      permissions: ['inventory.view', 'warehouse.receive', 'analytics.view', 'pulse.view', 'pulse.warehouse', 'pulse.indicators', 'pulse.activity'],
     },
   })
   expect(roleRes.ok()).toBeTruthy()
@@ -102,6 +102,21 @@ async function prepareData(request: APIRequestContext) {
   })
   expect(userRes.ok()).toBeTruthy()
   data.userId = ((await userRes.json()) as { user: { id: number } }).user.id ?? 0
+
+  // Igual que el administrador de las pruebas (staffHelpers.apiHeaders): a un usuario nuevo la web le pide primero aceptar el documento legal;
+  // el recorrido lo acepta por API (en la base de pruebas) para llegar al Pulso sin pasar por esa pantalla.
+  const lr = await request.post(`${API_URL}/api/v1/auth/login`, { data: { email: E2E.email, password: E2E.password } })
+  if (lr.ok()) {
+    let body = (await lr.json()) as { status?: string; tenants?: { tenantId?: number; isDefault?: boolean }[]; tokens?: { accessToken?: string } }
+    if (body.status === 'tenant_selection') {
+      const tenant = body.tenants?.find((t) => t.isDefault) ?? body.tenants?.[0]
+      const lr2 = await request.post(`${API_URL}/api/v1/auth/login`, { data: { email: E2E.email, password: E2E.password, tenantId: tenant?.tenantId } })
+      body = (await lr2.json()) as typeof body
+    }
+    const headers = { Authorization: `Bearer ${body.tokens?.accessToken ?? ''}` }
+    const st = (await (await request.get(`${API_URL}/api/v1/legal/status`, { headers })).json()) as { required?: boolean; currentVersion?: string }
+    if (st.required) await request.post(`${API_URL}/api/v1/legal/accept`, { headers, data: { version: st.currentVersion, lang: 'es' } })
+  }
 }
 
 /** Deshace lo creado (rol, usuario, aparato); no falla el recorrido si algo ya no aplica. */
@@ -132,6 +147,21 @@ async function login(page: Page, user: { email: string; password: string }) {
     await ((await def.count()) > 0 ? def.first() : page.locator('.tenant-list button').first()).click()
   }
   await page.waitForURL((url) => url.pathname === '/')
+  await revealAllPulse(page)
+}
+
+/**
+ * Los paneles de abajo del Pulso se montan al acercarse a la pantalla (carga diferida): se baja por la página para que
+ * todos queden montados (una vez montados se quedan) y se vuelve arriba. Sin Pulso en pantalla no hace nada.
+ */
+async function revealAllPulse(page: Page) {
+  await page.mouse.move(Math.floor((page.viewportSize()?.width ?? 1400) / 2), 500)
+  for (let i = 0; i < 14; i++) {
+    await page.mouse.wheel(0, 900)
+    await page.waitForTimeout(150)
+  }
+  for (let i = 0; i < 14; i++) await page.mouse.wheel(0, -900)
+  await page.waitForTimeout(200)
 }
 
 /**
@@ -230,7 +260,7 @@ test.describe('Lote F8a — escritorio', () => {
   test('2. Menú completo: los 7 grupos de la maqueta y "Sala de despacho" como pantalla pendiente', async ({ page }) => {
     await login(page, ADMIN)
     const rail = page.locator('nav.rnav')
-    for (const label of ['Operación', 'Almacén', 'Contabilidad', 'Listas', 'Análisis', 'Sistema', 'Portal de clientes']) {
+    for (const label of ['Transporte', 'Almacén', 'Contabilidad', 'Listas', 'Análisis', 'Sistema']) {
       await expect(rail.getByRole('button', { name: label })).toBeVisible()
     }
     await shot(page, 'menu-completo')
@@ -240,12 +270,7 @@ test.describe('Lote F8a — escritorio', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Sala de despacho' })).toBeVisible()
     await expect(page.getByText('Esta pantalla llega en un lote posterior.')).toHaveCount(0)
 
-    // una pantalla que sigue pendiente (Perfil del portal) sí muestra el aviso
-    await page.goto('/portal/profile')
-    await expect(page.getByRole('heading', { level: 1, name: 'Perfil' })).toBeVisible()
-    await expect(page.getByText('información de tu cuenta')).toBeVisible()
-    await expect(page.getByText('Esta pantalla llega en un lote posterior.')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Abrir otra pantalla' })).toBeVisible()
+    // ya no queda ninguna pantalla pendiente en el menú (todas son reales): la captura es la Sala de despacho real
     await shot(page, 'pendiente-sala-despacho')
   })
 
@@ -254,8 +279,10 @@ test.describe('Lote F8a — escritorio', () => {
   }) => {
     await login(page, E2E)
     const rail = page.locator('nav.rnav')
-    for (const label of ['Operación', 'Almacén', 'Análisis']) await expect(rail.getByRole('button', { name: label })).toBeVisible()
-    for (const label of ['Contabilidad', 'Listas', 'Sistema', 'Portal de clientes']) await expect(rail.getByRole('button', { name: label })).toHaveCount(0)
+    // el Pulso del día va suelto arriba (ya no cuelga de un grupo) y este usuario solo ve el grupo Almacén
+    await expect(rail.getByRole('link', { name: 'Pulso del día' })).toBeVisible()
+    for (const label of ['Almacén']) await expect(rail.getByRole('button', { name: label })).toBeVisible()
+    for (const label of ['Transporte', 'Análisis', 'Contabilidad', 'Listas', 'Sistema', 'Portal de clientes']) await expect(rail.getByRole('button', { name: label })).toHaveCount(0)
 
     await expect(pulseSection(page, 'Tus indicadores')).toBeVisible()
     await expect(pulseSection(page, 'Almacén')).toBeVisible()
@@ -285,6 +312,7 @@ test.describe('Lote F8a — escritorio', () => {
     await shot(page, 'indicadores')
 
     await page.goto('/')
+    await revealAllPulse(page)
     await expect(pulseSection(page, 'Tus indicadores').getByText('Productos bajo mínimo', { exact: true })).toHaveCount(0)
 
     await page.goto('/analytics/indicators')
@@ -292,6 +320,7 @@ test.describe('Lote F8a — escritorio', () => {
     await Promise.all([page.waitForResponse((r) => r.url().includes('/my-pulse') && r.ok()), toggle2.click()])
     await expect(toggle2).toBeChecked()
     await page.goto('/')
+    await revealAllPulse(page)
     await expect(pulseSection(page, 'Tus indicadores').getByText('Productos bajo mínimo', { exact: true })).toBeVisible()
   })
 
@@ -330,6 +359,7 @@ test.describe('Lote F8a — escritorio', () => {
 
     // recargar conserva el orden personal
     await page.reload()
+    await revealAllPulse(page)
     await expect(pulseSection(page, 'Almacén')).toHaveCount(0)
     await shot(page, 'pulso-personal')
 
@@ -342,6 +372,7 @@ test.describe('Lote F8a — escritorio', () => {
     // 'Volver al de la compañía': el orden original vuelve (el ConfirmDialog usa el mismo texto como confirmLabel)
     await page.getByRole('button', { name: 'Volver al de la compañía' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Volver al de la compañía' }).click()
+    await revealAllPulse(page) // los paneles de abajo se montan al desplazarse
     await expect(pulseSection(page, 'Almacén')).toBeVisible()
     await expect(page.getByText('Pulso personal')).toHaveCount(0)
   })
@@ -501,6 +532,7 @@ test.describe('Lote F8a — escritorio', () => {
     await shot(page, 'catalogos-ajustado')
 
     await page.goto('/')
+    await revealAllPulse(page)
     await expect(pulseSection(page, 'Almacén').getByText(CATALOG_LABEL)).toBeVisible()
 
     await page.goto('/system/catalogs')

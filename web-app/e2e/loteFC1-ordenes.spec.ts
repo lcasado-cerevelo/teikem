@@ -190,10 +190,10 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
 
     // ---- Guardar ----
     await page.getByRole('button', { name: 'Guardar', exact: true }).click()
-    await expect(toast(page, /^Orden .+ guardada\.$/)).toBeVisible()
+    await expect(toast(page, /^Envío .+ guardado\.$/)).toBeVisible()
     await expect(page.getByText('Ticket del envío')).toHaveCount(0)
     const banner = page.locator('.oe-created')
-    await expect(banner).toContainText('guardada')
+    await expect(banner).toContainText('guardado')
     const page1 = await ok<OrderPageDto>(request.get(`${API_URL}/api/v1/orders?clientId=${client.publicId}`, { headers }), 'órdenes del cliente')
     expect(page1.total).toBe(1)
     const created = page1.items?.[0]
@@ -261,7 +261,7 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
     await expect(dialog).toContainText(orderNumber)
     await shot(page, isMobile, 'fc1-eliminar')
     await dialog.getByRole('button', { name: 'Eliminar' }).click()
-    await expect(toast(page, `Orden ${orderNumber} eliminada.`)).toBeVisible()
+    await expect(toast(page, `Envío ${orderNumber} eliminado.`)).toBeVisible()
     await expect(page.getByText('Sin resultados')).toBeVisible()
     const gone = await ok<OrderPageDto>(request.get(`${API_URL}/api/v1/orders?clientId=${client.publicId}`, { headers }), 'órdenes tras eliminar')
     expect(gone.total).toBe(0)
@@ -311,7 +311,7 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
     const credit1 = page.getByRole('dialog', { name: 'El cliente excede su límite de crédito' })
     await expect(credit1).toBeVisible()
     await credit1.getByRole('button', { name: 'Autorizar y guardar' }).click()
-    await expect(toast(page, /^Orden .+ guardada\.$/)).toBeVisible()
+    await expect(toast(page, /^Envío .+ guardado\.$/)).toBeVisible()
     await expect(page.getByText('Ticket del envío')).toHaveCount(0)
 
     // segunda con la misma factura: el consignatario la admite repetida, avisa y deja decidir

@@ -144,6 +144,7 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
     let offset = 2 + (Math.floor(Date.now() / 1000) % 28)
     while (busy.has(tenantDay(offset)) && offset < 29) offset++
     const day = tenantDay(offset)
+    const dayUi = day.replace(/(\d{4})-(\d\d)-(\d\d)/, "$2/$3/$1") // la interfaz muestra MM/DD/YYYY
     const license = tenantDay(300)
 
     // ---- Datos: cliente con contrato y tarifa; zonas A y B con su pueblo; choferes y vehículos; órdenes recogidas ----
@@ -216,7 +217,7 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
     }
 
     // ---- 0. La pantalla: tres columnas, filtros, sin rutas en la fecha ----
-    await expect(page.getByLabel('Fecha de las rutas')).toHaveValue(day)
+    await expect(page.getByLabel('Fecha de las rutas')).toHaveValue(dayUi)
     for (const name of ['Planificar el día', 'Nueva ruta', 'Reasignar por zona', 'Optimizar', 'Despachar ruta']) await expect(header.getByRole('button', { name })).toBeVisible()
     for (const title of ['Envíos sin asignar', 'Ruta activa', 'Choferes', 'Rutas de hoy']) await expect(page.getByRole('heading', { name: title })).toBeVisible()
     await expect(page.getByText('No hay rutas para esta fecha. Use «Planificar el día» o «Nueva ruta».')).toBeVisible()
@@ -235,7 +236,7 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
     // ---- 1. Planificar el día (solo la zona A): crea la ruta con el chofer estándar y le asigna las 4 órdenes ----
     await header.getByRole('button', { name: 'Planificar el día' }).click()
     await expect(dialog()).toContainText('Reparte por zona los envíos confirmados que no tienen ruta')
-    await expect(dialog().getByLabel(/^Fecha/)).toHaveValue(day)
+    await expect(dialog().getByLabel(/^Fecha/)).toHaveValue(dayUi)
     await dialog().getByLabel(/^Zonas/).click()
     await dialog().getByLabel(new RegExp(`EA${suffix}`)).check()
     await dialog().locator('p.d').click() // cierra la lista de zonas
@@ -243,7 +244,7 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
     await dialog().getByRole('button', { name: 'Planificar' }).click()
     const planResult = page.getByRole('dialog', { name: /Día planificado/ })
     await expect(planResult.getByRole('group', { name: 'Resumen de la planificación' })).toContainText('1Rutas creadas')
-    await expect(planResult.getByRole('group', { name: 'Resumen de la planificación' })).toContainText('4Órdenes asignadas')
+    await expect(planResult.getByRole('group', { name: 'Resumen de la planificación' })).toContainText('4Envíos asignados')
     await expect(planResult).toContainText(`EA${suffix}`)
     if (isMobile) await expectNoHorizontalScroll(page)
     await shot(page, isMobile, 'fe2a-planificar-resultado', 800, planResult)
@@ -268,7 +269,7 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
     await create.getByLabel(/^Fecha de la ruta/).fill('2020-01-01')
     await create.getByRole('button', { name: 'Crear ruta' }).click()
     await expect(create).toContainText('La fecha de la ruta no puede ser anterior a ayer ni posterior a 60 días.')
-    await create.getByLabel(/^Fecha de la ruta/).fill(day)
+    await create.getByLabel(/^Fecha de la ruta/).fill(dayUi)
     await create.getByLabel('Zona de despacho').selectOption({ label: `EB${suffix} · Zona B E2A ${suffix}` })
     await expect(create.getByLabel('Chofer', { exact: true }).locator('option', { hasText: `DB${suffix}` })).toHaveCount(1)
     await create.getByLabel('Chofer', { exact: true }).selectOption({ value: driverB.publicId ?? '' })
@@ -332,7 +333,7 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
     const other = await ok<TripDetailDto>(request.post(`${API_URL}/api/v1/trips`, { headers, data: { planDate: day, dispatchZoneId: zoneB.id, vehiclePublicId: v3.publicId } }), 'ruta auxiliar')
     await ok(request.post(`${API_URL}/api/v1/trips/${other.publicId}/orders`, { headers, data: { orderPublicIds: [b3.publicId] } }), 'b3 en otra ruta')
     await page.getByRole('button', { name: /^Añadir a la ruta/ }).click()
-    await expect(page.locator('.disp-problems')).toContainText(`El envío ya está asignada a la ruta ${other.code}.`)
+    await expect(page.locator('.disp-problems')).toContainText(`El envío ya está asignado a la ruta ${other.code}.`)
     await page.getByRole('button', { name: 'Entendido' }).click()
     expect((await request.delete(`${API_URL}/api/v1/trips/${other.publicId}`, { headers, data: {} })).ok(), 'eliminar la ruta auxiliar por API').toBeTruthy()
     // la ruta activa y la fecha viven en la dirección: al recargar sigue la misma ruta (el filtro y la selección empiezan de cero)

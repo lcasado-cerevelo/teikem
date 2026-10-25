@@ -176,7 +176,7 @@ test.describe('Vistas e informes (Lote F-F2)', () => {
       // ================= 1) La galería =================
       await heading('Vistas e informes')
       await expect(panel('Clientes')).toBeVisible()
-      await expect(panel('Órdenes')).toBeVisible()
+      await expect(panel('Envíos')).toBeVisible()
       // abiertos por defecto: la vista de sistema «Clientes» se ve con su insignia y sin Editar/Eliminar
       const sysRow = panel('Clientes').locator('.vw-view').filter({ hasText: '6 columnas' })
       await expect(sysRow).toContainText('Por defecto')
@@ -201,9 +201,9 @@ test.describe('Vistas e informes (Lote F-F2)', () => {
       await mainCols.getByLabel('Nombre', { exact: true }).check()
       await mainCols.getByLabel('Estatus', { exact: true }).check()
       await addFilter('Name', 'contains', `FF2 ${s}`)
-      await dialog().getByRole('button', { name: 'Agregar envío' }).click()
+      await dialog().getByRole('button', { name: 'Agregar orden' }).click()
       await dialog().getByLabel('Ordenar por 1').selectOption('Name')
-      await dialog().getByLabel('Dirección del envío 1').selectOption('desc')
+      await dialog().getByLabel('Dirección del orden 1').selectOption('desc')
       // vista previa con datos reales
       await expect(dialog().getByText(clientNames[0], { exact: true })).toBeVisible()
       await expect(dialog().getByText(clientNames[2], { exact: true })).toBeVisible()
@@ -268,9 +268,9 @@ test.describe('Vistas e informes (Lote F-F2)', () => {
       await dialog().getByLabel('Función del agregado 2').selectOption('SUM')
       await dialog().getByLabel('Campo del agregado 2').selectOption('TotalPieces')
       await dialog().getByLabel('Mostrar fila de totales').check()
-      await dialog().getByRole('button', { name: 'Agregar envío' }).click()
+      await dialog().getByRole('button', { name: 'Agregar orden' }).click()
       await dialog().getByLabel('Ordenar por 1').selectOption('sum_TotalPieces')
-      await dialog().getByLabel('Dirección del envío 1').selectOption('desc')
+      await dialog().getByLabel('Dirección del orden 1').selectOption('desc')
       // la vista previa agrupa y rotula el agregado
       await expect(isMobile ? dialog().locator('li.dt-card').first() : dialog().getByRole('columnheader', { name: /Suma · Piezas/ })).toContainText(isMobile ? 'Suma · Piezas' : '')
       await expect(dialog().getByText('Escoge al menos una columna')).toHaveCount(0)
@@ -324,7 +324,7 @@ test.describe('Vistas e informes (Lote F-F2)', () => {
       await dialog().getByRole('group', { name: 'Cliente', exact: true }).getByLabel('Nombre', { exact: true }).check()
       await dialog().getByRole('group', { name: 'Cliente', exact: true }).getByLabel('Código', { exact: true }).check()
       await addFilter('ClientName', 'contains', `FF2 ${s}`)
-      await dialog().getByRole('button', { name: 'Agregar envío' }).click()
+      await dialog().getByRole('button', { name: 'Agregar orden' }).click()
       await dialog().getByLabel('Ordenar por 1').selectOption('cf.' + cfKey)
       await expect(dialog().getByText('REF-A1').first()).toBeVisible()
       if (isMobile) await expectNoHorizontalScroll(page)

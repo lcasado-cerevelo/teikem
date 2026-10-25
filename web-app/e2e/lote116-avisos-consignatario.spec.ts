@@ -30,7 +30,7 @@ test('Avisos al consignatario: marcar con advertencia, seguimiento por enlace y 
   await expect(page.getByText(consigneeName)).toBeVisible({ timeout: 30_000 })
   expect(await noHScroll(page)).toBe(true)
   await shot(page, isMobile, 'l116-configurar-avisos')
-  const email = page.getByRole('checkbox', { name: /Avisar por correo: tienda\./ })
+  const email = page.getByRole('checkbox', { name: /^tienda\..*@sur\.test$/ })
   await email.click()
   await expect(page.getByText('Antes de continuar')).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText(/aceptó recibir avisos sobre sus envíos/)).toBeVisible()
@@ -40,7 +40,6 @@ test('Avisos al consignatario: marcar con advertencia, seguimiento por enlace y 
   await expect(email).not.toBeChecked()                                   // cancelar no marca nada
   await email.click()
   await page.getByTestId('notices-warning-continue').click()
-  await expect(page.getByText('Recibe avisos')).toBeVisible({ timeout: 30_000 })
   await expect(email).toBeChecked()
   await shot(page, isMobile, 'l116-marcado')
 

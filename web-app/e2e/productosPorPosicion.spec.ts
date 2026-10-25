@@ -142,10 +142,18 @@ async function readPdf(download: Download, name: string): Promise<string> {
 /** Fila (escritorio) o tarjeta (móvil) de una posición. */
 const binRow = (page: Page, code: string) => page.locator('tr, li.dt-card').filter({ hasText: code })
 
+/** Filtro «Posición» (selector múltiple con buscador): se escribe el sufijo de la corrida y se marcan las posiciones indicadas. */
+async function filterBins(page: Page, suffix: string, codes: string[]) {
+  await page.getByRole('button', { name: 'Posición', exact: true }).first().click()
+  await page.getByRole('searchbox', { name: 'Buscar…' }).fill(suffix)
+  for (const code of codes) await page.getByRole('option', { name: new RegExp(`^${code} · `) }).click()
+  await page.keyboard.press('Escape')
+}
+
 async function openLocations(page: Page, s: Seed) {
   await page.goto(`/warehouse/locations?warehouse=${s.warehousePublicId}`)
   await expect(page.getByRole('heading', { level: 1, name: 'Posiciones' })).toBeVisible()
-  await page.getByLabel('Posición', { exact: true }).fill(s.suffix)
+  await filterBins(page, s.suffix, [s.binA.code, s.binB.code])
   await expect(binRow(page, s.binA.code)).toBeVisible()
   await expect(binRow(page, s.binB.code)).toBeVisible()
 }
@@ -170,7 +178,7 @@ async function flow(page: Page, s: Seed, mobile: boolean) {
   await expect(dialog.getByRole('switch', { name: 'Incluir posiciones vacías' })).not.toBeChecked()
   if (mobile) await expectNoHorizontalScroll(page)
   const download = await generate(page)
-  expect(download.suggestedFilename()).toMatch(/^productos-por-posicion-advance-logistics-\d{4}-\d{2}-\d{2}\.pdf$/)
+  expect(download.suggestedFilename()).toMatch(/^productos-por-posicion-advance-depot-\d{4}-\d{2}-\d{2}\.pdf$/)
   const text = await readPdf(download, `productos-${s.suffix}`)
   // desde 2026-10-10 el PDF usa el formato de Códigos de barras: cada posición abre con su encabezado «Posición {código} · Zona … — N producto(s)»
   expect(text).toContain(`Posición ${s.binA.code}`)

@@ -1,3 +1,4 @@
+// (Requiere el API con Jobs__PollSeconds=5, Jobs__Enabled=true e Integrations__Webhooks__AllowInsecure=true.)
 // Recorrido del Lote 136 (P11) contra el API real y un receptor HTTP de prueba: webhooks de salida. El cliente (con su llave y el alcance webhooks:manage) se suscribe a lo SUYO, el secreto de firma sale
 // una sola vez, cada entrega va firmada con HMAC-SHA256 (marca de tiempo contra repetición), solo salen eventos de su cliente, una URL que falla se reintenta con espera creciente y tras seis intentos queda
 // «no entregada» (bandeja de salidas); cinco seguidas suspenden el webhook (y no se puede reintentar hasta reactivarlo). Escritorio y móvil.

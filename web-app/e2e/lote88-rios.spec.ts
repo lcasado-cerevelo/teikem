@@ -89,7 +89,7 @@ test('Pulso: los dos ríos con sus tarjetas y los enlaces a donde se atiende cad
   const cod = page.locator('[data-river="cod"]')
   await expect(orders.getByRole('heading', { name: 'Paquetes en la calle' })).toBeVisible({ timeout: 30_000 })
   await expect(cod.getByRole('heading', { name: 'Dinero COD' })).toBeVisible()
-  for (const name of ['Entrada', 'En almacén', 'Por despachar', 'En ruta', 'Entregado']) await expect(orders.getByText(name, { exact: true })).toBeVisible()
+  for (const name of ['Entrada', 'En almacén', 'Rutas', 'En ruta', 'Entregado']) await expect(orders.getByText(name, { exact: true })).toBeVisible()
   for (const name of ['Por cobrar', 'Cobrado', 'Cuadrado', 'Remesa lista']) await expect(cod.getByText(name, { exact: true })).toBeVisible()
   // «Entrada» cuenta lo de hoy (al menos la orden recién creada) y lleva barritas
   const entryBig = orders.locator('[data-node="ENTRY"] .big')
@@ -101,11 +101,11 @@ test('Pulso: los dos ríos con sus tarjetas y los enlaces a donde se atiende cad
   await shot(page, isMobile, 'l88-rio-ordenes', orders)
   await shot(page, isMobile, 'l88-rio-cod', cod)
 
-  // los enlaces: «Cobrado» → COD, pestaña Reconciliar; «Por despachar» → Sala de despacho
+  // los enlaces: «Cobrado» → COD, pestaña Reconciliar; «Rutas» → Sala de despacho
   await cod.locator('[data-node="COLLECTED"] a').click()
   await expect(page).toHaveURL(/\/money\/cod\?tab=reconcile/)
   await expect(page.getByRole('tab', { name: 'Reconciliar', selected: true })).toBeVisible({ timeout: 20_000 })
   await page.goto('/')
-  await orders.locator('[data-node="TO_DISPATCH"] a').click()
+  await orders.locator('[data-node="ROUTES"] a').click()
   await expect(page).toHaveURL(/\/ops\/dispatch/)
 })

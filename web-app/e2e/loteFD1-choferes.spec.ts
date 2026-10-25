@@ -111,6 +111,12 @@ function tenantDay(plus = 0): string {
   return d.toISOString().slice(0, 10)
 }
 
+/** Escribe una fecha y sale del campo con Tab: el calendario que se abre al escribir tapaba el botón Guardar. */
+async function fillDate(input: Locator, iso: string): Promise<void> {
+  await input.fill(iso)
+  await input.press('Tab')
+}
+
 /** Aviso (toast) con ese texto. */
 const toast = (page: Page, text: string | RegExp): Locator => page.locator('.toast.on', { hasText: text })
 /** Panel por el título de su cabecera. */
@@ -232,11 +238,11 @@ test.describe('Choferes y tarifas (Lote F-D1)', () => {
     await expect(dialog.getByText('El número de licencia es obligatorio.')).toBeVisible()
     await dialog.getByLabel(/^Clase de licencia/).selectOption({ value: 'CDL_A' })
     await dialog.getByLabel(/^Número de licencia/).fill(`L-${suffix}-A`)
-    await dialog.getByLabel('Emisión').fill(tenantDay(-300))
-    await dialog.getByLabel('Vencimiento').fill(tenantDay(-400))
+    await fillDate(dialog.getByLabel('Emisión'), tenantDay(-300))
+    await fillDate(dialog.getByLabel('Vencimiento'), tenantDay(-400))
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expect(dialog.getByText('La fecha de vencimiento no puede ser anterior a la de emisión.')).toBeVisible()
-    await dialog.getByLabel('Vencimiento').fill(tenantDay(10))
+    await fillDate(dialog.getByLabel('Vencimiento'), tenantDay(10))
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expect(toast(page, 'Documento guardado.')).toBeVisible()
     await expect(rowOf(docs, `L-${suffix}-A`)).toContainText('Vence en 10 días')
@@ -245,7 +251,7 @@ test.describe('Choferes y tarifas (Lote F-D1)', () => {
     dialog = page.getByRole('dialog', { name: 'Agregar licencia' })
     await dialog.getByLabel(/^Clase de licencia/).selectOption({ value: 'REGULAR' })
     await dialog.getByLabel(/^Número de licencia/).fill(`L-${suffix}-V`)
-    await dialog.getByLabel('Vencimiento').fill(tenantDay(-5))
+    await fillDate(dialog.getByLabel('Vencimiento'), tenantDay(-5))
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expect(rowOf(docs, `L-${suffix}-V`)).toContainText('Vencida hace 5 días')
 
@@ -261,7 +267,7 @@ test.describe('Choferes y tarifas (Lote F-D1)', () => {
     dialog = page.getByRole('dialog', { name: 'Agregar licencia' })
     await dialog.getByLabel(/^Clase de licencia/).selectOption({ value: 'CDL_A' })
     await dialog.getByLabel(/^Número de licencia/).fill(`L-${suffix}-B`)
-    await dialog.getByLabel('Vencimiento').fill(tenantDay(400))
+    await fillDate(dialog.getByLabel('Vencimiento'), tenantDay(400))
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expect(rowOf(docs, `L-${suffix}-A`)).toContainText('Reemplazada')
     await expect(rowOf(docs, `L-${suffix}-B`)).toContainText('Vigente')
@@ -275,7 +281,7 @@ test.describe('Choferes y tarifas (Lote F-D1)', () => {
     // editar (cambia el vencimiento) y quitar
     await rowOf(docs, `L-${suffix}-V`).getByRole('button', { name: 'Editar' }).click()
     dialog = page.getByRole('dialog', { name: 'Editar licencia' })
-    await dialog.getByLabel('Vencimiento').fill(tenantDay(60))
+    await fillDate(dialog.getByLabel('Vencimiento'), tenantDay(60))
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expect(rowOf(docs, `L-${suffix}-V`)).toContainText('Vigente')
     await rowOf(docs, `L-${suffix}-S`).getByRole('button', { name: 'Quitar' }).click()
@@ -318,12 +324,12 @@ test.describe('Choferes y tarifas (Lote F-D1)', () => {
     // editar con vigencia: hoy cambia la tarifa; una fecha futura deja la vigente y agenda la nueva
     await rowOf(delivery, 'Estándar').getByRole('button', { name: 'Editar' }).click()
     dialog = page.getByRole('dialog', { name: 'Editar tarifa' })
-    await expect(dialog.getByLabel(/^Vigente desde/)).toHaveValue(tenantDay())
-    await dialog.getByLabel(/^Vigente desde/).fill(tenantDay(-1))
+    await expect(dialog.getByLabel(/^Vigente desde/)).toHaveValue(tenantDay().replace(/(\d{4})-(\d{2})-(\d{2})/, '$2/$3/$1'))   // los campos de fecha se muestran MM/DD/YYYY
+    await fillDate(dialog.getByLabel(/^Vigente desde/), tenantDay(-1))
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expect(dialog.getByText('La fecha no puede ser anterior a hoy: el historial de tarifas no se reescribe.')).toBeVisible()
     await dialog.getByLabel(/^Tarifa/).fill('6')
-    await dialog.getByLabel(/^Vigente desde/).fill(tenantDay())
+    await fillDate(dialog.getByLabel(/^Vigente desde/), tenantDay())
     await shot(page, isMobile, 'fd1-editar-tarifa', 700, dialog)
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expect(toast(page, 'Tarifa guardada.')).toBeVisible()
@@ -331,7 +337,7 @@ test.describe('Choferes y tarifas (Lote F-D1)', () => {
     await rowOf(delivery, 'Estándar').getByRole('button', { name: 'Editar' }).click()
     dialog = page.getByRole('dialog', { name: 'Editar tarifa' })
     await dialog.getByLabel(/^Tarifa/).fill('6.5')
-    await dialog.getByLabel(/^Vigente desde/).fill(tenantDay(10))
+    await fillDate(dialog.getByLabel(/^Vigente desde/), tenantDay(10))
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expect(toast(page, 'Tarifa guardada.')).toBeVisible()
     // hoy sigue rigiendo $6.00 (la fila quedó cerrada a futuro: ya no se edita)
@@ -426,10 +432,10 @@ test.describe('Choferes y tarifas (Lote F-D1)', () => {
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expect(dialog.getByText('El tipo de viaje es obligatorio.')).toBeVisible()
     await dialog.getByLabel(/^Tipo de viaje/).selectOption({ label: tripType })
-    await dialog.getByLabel(/^Fecha/).fill(tenantDay(1))
+    await fillDate(dialog.getByLabel(/^Fecha/), tenantDay(1))
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expect(dialog.getByText('La fecha del viaje no puede ser futura.')).toBeVisible()
-    await dialog.getByLabel(/^Fecha/).fill(tenantDay())
+    await fillDate(dialog.getByLabel(/^Fecha/), tenantDay())
     await dialog.getByLabel('Notas').fill('Muelle 3')
     await shot(page, isMobile, 'fd1-registrar-viaje', 700, dialog)
     await dialog.getByRole('button', { name: 'Guardar' }).click()

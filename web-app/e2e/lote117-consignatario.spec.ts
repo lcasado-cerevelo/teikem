@@ -58,13 +58,13 @@ test('Acceso del consignatario: el cliente invita, el consignatario entra sin MF
   const cp = c.page
   await loginConfirmingTheComputer(cp, consigneeMail, password)
   await expect(cp.getByRole('heading', { name: 'Mis avisos' })).toBeVisible({ timeout: 30_000 })
-  for (const tab of ['Envíos', 'Avisos', 'Mensajes', 'Ajustes']) await expect(cp.getByRole('tab', { name: tab })).toBeVisible()
-  await expect(cp.getByRole('tab', { name: 'Inicio' })).toHaveCount(0)
+  for (const tab of ['Envíos', 'Avisos', 'Mensajes', 'Ajustes']) await expect(cp.getByRole('link', { name: tab })).toBeVisible()
+  await expect(cp.getByRole('link', { name: 'Inicio' })).toHaveCount(0)
   expect(await noHScroll(cp)).toBe(true)
   await shot(cp, isMobile, 'l117-consignatario-avisos')
 
   // 4) sus envíos: solo lectura, sin precios, sin botón de crear
-  await cp.getByRole('tab', { name: 'Envíos' }).click()
+  await cp.getByRole('link', { name: 'Envíos' }).click()
   await expect(cp.getByRole('heading', { name: 'Mis envíos' })).toBeVisible({ timeout: 30_000 })
   await expect(cp.getByText(/^Conduce /)).toHaveCount(1)
   await expect(cp.getByTestId('orders-new')).toHaveCount(0)
@@ -91,9 +91,8 @@ test('Acceso del consignatario: el cliente invita, el consignatario entra sin MF
 
   // 7) EL CLIENTE ve el contador, la conversación, y contesta
   await page.goto(`${APP_URL}/messages`)
-  await expect(page.getByText('1 sin leer')).toBeVisible({ timeout: 45_000 })
+  await expect(page.getByRole('link', { name: 'Mensajes 1' })).toBeVisible({ timeout: 45_000 })   // el contador de sin leer va en la pestaña
   await shot(page, isMobile, 'l117-cliente-mensajes')
-  await page.getByTestId('open-consignee-messages').click()
   await expect(page.getByText(consigneeName)).toBeVisible({ timeout: 30_000 })
   await shot(page, isMobile, 'l117-cliente-conversaciones')
   await page.getByText(consigneeName).click()

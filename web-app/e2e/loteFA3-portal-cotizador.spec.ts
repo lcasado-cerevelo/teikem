@@ -14,7 +14,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
-import { manualImgDir, manualLang } from './manualLang'
+import { manualImgDir, manualLang, manualTarget } from './manualLang'
 import { openClientPanels } from './staffHelpers'
 import type { components } from '../src/kernel/api/schema'
 
@@ -53,8 +53,9 @@ async function shot(page: Page, isMobile: boolean, name: string, target?: Locato
   const size = page.viewportSize()
   if (target && size) await page.setViewportSize({ width: size.width, height: 1300 }) // el panel entero a la vista
   await page.waitForTimeout(150)
+  const manualShot = await manualTarget(target)   // se resuelve antes de pasar a inglés: el localizador busca por texto en español
   await manualLang(page, 'en', `${IMG_DIR}${name}.png`)
-  await (target ?? page).screenshot({ path: `${IMG_DIR}${name}.png`, animations: 'disabled', caret: 'hide' })
+  await (manualShot ?? page).screenshot({ path: `${IMG_DIR}${name}.png`, animations: 'disabled', caret: 'hide' })
   await manualLang(page, 'es')
   if (target && size) await page.setViewportSize(size)
 }
@@ -179,14 +180,17 @@ test.describe('Usuarios de portal y cotizador del cliente (F-A3)', () => {
     expect(await page.content()).not.toContain(invited.inviteToken!)
     expect((await portalUsers(request, token, clientId)).map((u) => [u.email, u.status])).toEqual([[ana, 'INVITED']])
 
-    // 409: el mismo correo en este cliente, y el de un usuario interno: el mismo mensaje neutro, a propósito
-    for (const taken of [ana, ADMIN.email]) {
+    // 409: el mismo correo en este cliente (ya invitado: dice que use «Reenviar invitación») y el de un usuario interno (mensaje neutro, a propósito)
+    for (const [taken, message] of [
+      [ana, 'Esa persona ya tiene una invitación pendiente en este cliente.'],
+      [ADMIN.email, 'Ese correo no está disponible para el portal de esta compañía.'],
+    ]) {
       await portal.getByRole('button', { name: 'Invitar usuario' }).click()
       dialog = page.getByRole('dialog', { name: 'Invitar a una persona del cliente' })
       await dialog.getByLabel(/^Correo/).fill(taken)
       await dialog.getByLabel(/^Rol/).selectOption('CLIENT_ADMIN')
       await dialog.getByRole('button', { name: 'Enviar invitación' }).click()
-      await expect(dialog.getByText('Ese correo no está disponible para el portal de esta compañía.')).toBeVisible()
+      await expect(dialog.getByText(message)).toBeVisible()
       await dialog.getByRole('button', { name: 'Cancelar' }).click()
       await expect(dialog).toBeHidden()
     }

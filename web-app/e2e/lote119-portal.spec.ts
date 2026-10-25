@@ -70,7 +70,7 @@ test('Portal del cliente: comprobante de entrega, facturas de solo lectura, Mis 
   await page.getByTestId('invoices-filter-all').click()
   await page.getByText(/^FAC-/).first().click()
   await expect(page.getByText('Detalle', { exact: true })).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByText('Saldo', { exact: true })).toBeVisible()
+  await expect(page.getByText('Saldo', { exact: true }).last()).toBeVisible()
   await expect(page.getByText(/Pagar|Marcar/i)).toHaveCount(0)
   await shot(page, isMobile, 'l119-factura')
 

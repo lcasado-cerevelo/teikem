@@ -37,7 +37,8 @@ test('Portal del cliente: indicadores con datos reales, mi perfil y el cambio de
   // 1) los indicadores en el Inicio
   await expect(page.getByTestId('ind-created')).toHaveText('3', { timeout: 30_000 })
   await expect(page.getByTestId('ind-delivered')).toHaveText('1')
-  await expect(page.getByTestId('ind-open')).toContainText('2 · 1 en tránsito')
+  await expect(page.getByTestId('ind-open')).toHaveText('2')
+  await expect(page.getByText('1 en tránsito')).toBeVisible()   // el detalle de «En curso ahora» va en su propia línea
   await expect(page.getByTestId('ind-failed')).toHaveText('0')
   await shot(page, isMobile, 'l120-indicadores')
   await page.getByTestId('indicators-days-7').click()

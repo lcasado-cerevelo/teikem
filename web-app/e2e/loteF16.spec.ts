@@ -163,10 +163,18 @@ async function readPdf(download: Download, name: string): Promise<PdfInfo> {
 /** Fila (escritorio) o tarjeta (móvil) de una posición. */
 const binRow = (page: Page, code: string) => page.locator('tr, li.dt-card').filter({ hasText: code })
 
+/** Filtro «Posición» (selector múltiple con buscador): se escribe el sufijo de la corrida y se marcan las posiciones indicadas. */
+async function filterBins(page: Page, suffix: string, codes: string[]) {
+  await page.getByRole('button', { name: 'Posición', exact: true }).first().click()
+  await page.getByRole('searchbox', { name: 'Buscar…' }).fill(suffix)
+  for (const code of codes) await page.getByRole('option', { name: new RegExp(`^${code} · `) }).click()
+  await page.keyboard.press('Escape')
+}
+
 async function openLocations(page: Page, s: Seed) {
   await page.goto(`/warehouse/locations?warehouse=${s.warehousePublicId}`)
   await expect(page.getByRole('heading', { level: 1, name: 'Posiciones' })).toBeVisible()
-  await page.getByLabel('Posición', { exact: true }).fill(s.suffix)
+  await filterBins(page, s.suffix, s.bins.map((b) => b.code))
   for (const b of s.bins) await expect(binRow(page, b.code)).toBeVisible()
 }
 
@@ -233,7 +241,7 @@ test.describe('Lote F16 — escritorio', () => {
     const calls = await apiCallsDuring(page, async () => {
       for (const size of ['4x2', '4x4', '4x6'] as const) {
         const download = await generate(page, size)
-        expect(download.suggestedFilename()).toMatch(new RegExp(`^etiquetas-de-posicion-${size}-advance-logistics-\\d{4}-\\d{2}-\\d{2}\\.pdf$`))
+        expect(download.suggestedFilename()).toMatch(new RegExp(`^etiquetas-de-posicion-${size}-advance-depot-\\d{4}-\\d{2}-\\d{2}\\.pdf$`))
         const pdf = await readPdf(download, `etiquetas-${size}-${s.suffix}`)
         expectLabels(pdf, size, codes)
         // los datos de la ubicación (solo los que tienen valor)

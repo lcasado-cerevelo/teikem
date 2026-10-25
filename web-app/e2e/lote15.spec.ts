@@ -123,7 +123,16 @@ async function expectNoHorizontalScroll(page: Page) {
 async function waitPulse(page: Page) {
   await expect(page.locator('.wh-band')).toBeVisible()
   for (const key of CARDS) await expect(card(page, key).locator('.big')).not.toHaveText(/…|—/)
-  await expect(page.locator('.pulse-charts .pulse-chartbox').first()).toBeVisible()
+  // los paneles de abajo (gráficos) se montan al acercarse a la pantalla (carga diferida): se baja hasta que existen y se vuelve arriba
+  const chart = page.locator('.pulse-charts .pulse-chartbox').first()
+  await page.mouse.move(Math.floor((page.viewportSize()?.width ?? 1400) / 2), 500)
+  for (let i = 0; i < 30 && (await chart.count()) === 0; i++) {
+    await page.mouse.wheel(0, 700)
+    await page.waitForTimeout(250)
+  }
+  await expect(chart).toBeVisible()
+  for (let i = 0; i < 30; i++) await page.mouse.wheel(0, -700)
+  await page.waitForTimeout(200)
 }
 
 /**
@@ -195,12 +204,12 @@ test.describe('Lote 15 — escritorio', () => {
     await expect(card(page, 'moves').locator('rect[fill="var(--flow)"]')).toHaveCount(7)
     await expect(card(page, 'belowMin').locator('.recharts-bar-rectangle')).toHaveCount(0)
     await expect(card(page, 'belowMin').locator('svg.recharts-surface')).toHaveCount(0)
-    await expect(card(page, 'belowMin')).toContainText('en este momento')
+    await expect(card(page, 'belowMin')).toContainText('productos en backorder')   // la tarjeta ya no dice «en este momento»: debajo del número va el conteo de backorder
 
-    // el pulso del día va arriba de todo (antes de "Necesita tu atención")
+    // la franja va justo debajo de "Necesita tu atención" (orden −20 y −10 del dominio)
     const bandTop = (await band.boundingBox())?.y ?? 0
     const attentionTop = (await page.locator('section.inbox').boundingBox())?.y ?? 0
-    expect(bandTop).toBeLessThan(attentionTop)
+    expect(bandTop).toBeGreaterThan(attentionTop)
     await shot(page, 'pulso-franja')
 
     // tooltip de una barrita: la fecha larga de hoy y la cantidad
@@ -430,7 +439,7 @@ test.describe('Lote 15 — escritorio', () => {
     const lines = section.locator('.pulse-line')
     expect(await lines.count()).toBeGreaterThanOrEqual(2)
     const names = (await lines.locator('h3').evaluateAll((els) => els.map((e) => (e.textContent ?? '').trim())))
-    expect(names.slice(0, 2)).toEqual(['Operación', 'Almacén'])
+    expect(names.slice(0, 2)).toEqual(['Transporte', 'Almacén'])
     // cada fila tiene sus indicadores y esa fila es un río propio (una sola línea de tarjetas en escritorio)
     for (let i = 0; i < (await lines.count()); i++) expect(await lines.nth(i).locator('.river > .node').count()).toBeGreaterThan(0)
     // captura sin desplazar y con una ventana alta: desplazado, la fila "Operación" quedaría bajo la franja fija

@@ -288,7 +288,7 @@ test.describe('Lote 16 — escritorio', () => {
     const received1 = detail.getByRole('textbox', { name: 'Recibido de la línea 1' })
     await received1.fill('5')
     await received1.press('Tab')
-    await expect(detail.locator('.chip', { hasText: 'Recibiendo' }).first()).toBeVisible()
+    await expect(detail.locator('.chip', { hasText: 'Descargando' }).first()).toBeVisible()
     await pickProduct(detail, 'Producto de la línea 2', SKU_B)
     const received2 = detail.getByRole('textbox', { name: 'Recibido de la línea 2' })
     await received2.fill('3')
@@ -427,6 +427,8 @@ test.describe('Lote 16 — escritorio', () => {
     await expect(options.first()).toContainText('8 disp.')
     await expect(options.first()).toContainText('Sugerida')
     await shot(page, 'recoleccion-posicion')
+    // con la captura en inglés el cambio de idioma cierra la lista: se vuelve a abrir
+    if ((await options.count()) === 0) await bin.click()
     await options.first().click()
     await expect(bin).toHaveValue(new RegExp(fx.capBinCode))
     // al cambiar de producto se limpia la posición elegida (la de C no es una posición de D)

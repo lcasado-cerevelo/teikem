@@ -47,7 +47,7 @@ test('Devolución: la ficha sugiere devolver tras 2 intentos fallidos, se devuel
   await ok(request.post(`${API_URL}/api/v1/locations`, { headers, data: { clientPublicId: client.publicId, name: `Almacén 112 ${suffix}`, locationType: 'PICKUP', line1: 'Calle 1 #1', city: 'San Juan', postalCode: '00901', country: 'PR' } }), 'dirección del cliente')
   await page.getByRole('button', { name: 'Devolver', exact: true }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Devolver el envío' }).click()
-  await expect(page.locator('.chip', { hasText: 'Devuelta' }).first()).toBeVisible({ timeout: 30_000 })   // el aviso de arriba dura poco: se comprueba el estatus de la ficha
+  await expect(page.locator('.chip', { hasText: 'Devuelto' }).first()).toBeVisible({ timeout: 30_000 })   // el aviso de arriba dura poco: se comprueba el estatus de la ficha
   await expect(page.getByRole('button', { name: 'Devolver', exact: true })).toHaveCount(0)               // ya no se puede devolver otra vez
   await shot(page, isMobile, 'l112-devuelta')
 

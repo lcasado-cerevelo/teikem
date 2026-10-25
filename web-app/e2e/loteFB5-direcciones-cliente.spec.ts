@@ -163,12 +163,12 @@ test('Ficha del cliente: Direcciones, Perfil fiscal con labels automáticos y pa
   await expect(pickup).toHaveValue('physical')
 
   // Perfil fiscal: los labels automáticos van antes que la factura y se guardan
-  const profile = page.locator('.panel', { has: page.getByRole('heading', { name: 'Perfil fiscal' }) })
+  const profile = page.locator('.panel', { has: page.getByRole('heading', { name: 'Impresión y portal' }) })   // los labels automáticos viven en su propio panel «Impresión y portal»
   await profile.scrollIntoViewIfNeeded()
   await profile.getByRole('button', { name: 'Abrir el panel' }).click()
   const names = await profile.locator('.f > label').allTextContents()
   expect(names.indexOf('Labels')).toBeGreaterThanOrEqual(0)
-  expect(names.indexOf('Labels')).toBeLessThan(names.indexOf('Factura'))
+  expect(names.indexOf('Labels')).toBeLessThan(names.indexOf('Label de factura'))
   await profile.getByLabel(/Imprimir los labels automáticamente/).click()
   await profile.getByRole('button', { name: 'Guardar' }).click()
   await expect.poll(async () => (await detail()).autoPrintLabels, { timeout: 15_000 }).toBe(true)

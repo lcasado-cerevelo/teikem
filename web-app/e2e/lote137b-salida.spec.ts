@@ -100,8 +100,8 @@ test('Salida: API saliente HTTP (al instante y por horario), reintentos, bandeja
       expect(res.status()).toBe(400)
       expect(await res.text()).toContain(text)
     }
-    await bad({ clientPublicId: undefined }, 'Indique el cliente de las órdenes de esta integración.')
-    await bad({ scopes: ['files.orders_import'] }, 'Una integración de salida solo admite el alcance de salida de órdenes.')
+    await bad({ clientPublicId: undefined }, 'Indique el cliente de los envíos de esta integración.')
+    await bad({ scopes: ['files.orders_import'] }, 'Una integración de salida solo admite el alcance de salida de envíos (o el de salida de productos si manda un catálogo).')
     await bad({ connectorKind: 'EMAIL' }, 'Una integración de salida usa SFTP, FTP o HTTP.')
     await bad({ output: undefined }, 'Indique qué se manda (estatus, formato y columnas).')
     await bad({ output: { statuses: [], trigger: 'EVENT', format: 'JSON', columns: COLUMNS, http: { url: `${receiver.url}/ok`, method: 'POST', authKind: 'NONE' } } }, 'Escoja al menos un estatus que dispare la salida.')
@@ -327,8 +327,8 @@ test('pantalla: crear una integración de salida (API saliente), probar, enviar 
     const order = await createOrder(request, headers, client.publicId, cons.publicId)
     await ok(request.post(`${API_URL}/api/v1/orders/${order.publicId}/delivery`, { headers, data: { recipientName: `Recibe ${s}` } }), 'entrega')
     await row.getByRole('button', { name: 'Enviar ahora' }).click()
-    await expect.poll(() => receiver.received.filter((r) => r.body.includes(`Recibe ${s}`)).length, { timeout: 20_000 }).toBe(1)
-    await expect(row).toContainText('1 envío(s) armado(s) con 1 envío(es): 1 enviado(s)', { timeout: 20_000 })
+    await expect.poll(() => receiver.received.filter((r) => r.body.includes(`Recibe ${s}`)).length, { timeout: 20_000 }).toBeGreaterThanOrEqual(1) // con los trabajos encendidos el envío puede salir también por su horario
+    await expect(row).toContainText('1 envío(s) armado(s) con 1 envío(s): 1 enviado(s)', { timeout: 20_000 })
 
     // vista previa
     await row.getByRole('button', { name: 'Vista previa' }).click()

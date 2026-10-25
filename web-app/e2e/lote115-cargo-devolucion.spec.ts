@@ -34,7 +34,7 @@ test('Cargo por devolución: los tres modos en el contrato y el cargo en la orde
 
   // por orden: pide el monto
   await mode.selectOption('ORDER')
-  await section.getByRole('button', { name: 'Guardar' }).last().click()
+  await section.getByTestId('return-fee').getByRole('button', { name: 'Guardar' }).click()
   await expect(section.getByText('Indique el monto del cargo por devolución.')).toBeVisible()
   // por tipo de paquete: un monto por cada tipo
   await mode.selectOption('PACKAGE_TYPE')
@@ -45,7 +45,7 @@ test('Cargo por devolución: los tres modos en el contrato y el cargo en la orde
   await mode.selectOption('PIECE')
   await section.getByLabel('Monto por cada pieza devuelta').fill('3.50')
   await shot(page, isMobile, 'l115-por-pieza')
-  await section.getByRole('button', { name: 'Guardar' }).last().click()
+  await section.getByTestId('return-fee').getByRole('button', { name: 'Guardar' }).click()
   await expect(page.getByText('Cambios guardados.')).toBeVisible({ timeout: 30_000 })
   const contract = await ok<{ returnFee?: { mode?: string; amount?: number } | null }>(request.get(`${API_URL}/api/v1/contracts/${client.contractId}`, { headers }), 'contrato')
   expect([contract.returnFee?.mode, contract.returnFee?.amount]).toEqual(['PIECE', 3.5])
@@ -54,7 +54,7 @@ test('Cargo por devolución: los tres modos en el contrato y el cargo en la orde
   await page.goto(`/orders/${order.publicId}`)
   await page.getByRole('button', { name: 'Devolver', exact: true }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Devolver el envío' }).click()
-  await expect(page.locator('.chip', { hasText: 'Devuelta' }).first()).toBeVisible({ timeout: 30_000 })
+  await expect(page.locator('.chip', { hasText: 'Devuelto' }).first()).toBeVisible({ timeout: 30_000 })
   await shot(page, isMobile, 'l115-orden-devuelta')
 
   const { scrollWidth, innerWidth } = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth }))

@@ -190,7 +190,7 @@ test.describe('Labels y documentos (Lote F-G2)', () => {
       const one = await downloadFromPreview(page, () => page.getByRole('button', { name: 'Imprimir label' }).click(), 'Imprimir 3 labels')
       expect(one.pages).toBe(3)
 
-      // 6) entrada rápida con «Label al guardar»: al guardar sale la vista del label de la orden nueva
+      // 6) entrada rápida con «Label al guardar»: al guardar sale el label de la orden nueva (descarga directa, sin vista previa)
       await page.goto('/orders')
       await page.getByRole('button', { name: /Nuevo envío/ }).click()
       if ((await page.getByRole('button', { name: /Rápida/ }).getAttribute('aria-pressed')) !== 'true') await page.getByRole('button', { name: /Rápida/ }).click()
@@ -204,11 +204,13 @@ test.describe('Labels y documentos (Lote F-G2)', () => {
       await qk.getByRole('combobox', { name: 'Consignatario' }).click()
       await page.getByRole('option', { name: new RegExp(`Farmacia FG2 ${s}`) }).click()
       for (const label of ['Paquete', 'Servicio']) if ((await qk.getByLabel(label, { exact: true }).inputValue()) === '') await qk.getByLabel(label, { exact: true }).selectOption({ index: 1 })
-      await qk.getByRole('button', { name: 'Guardar fila' }).click()
-      const quickPreview = page.getByRole('dialog', { name: 'Imprimir 1 label' })
-      await expect(quickPreview).toBeVisible()
+      // «al guardar» el label sale solo, sin vista previa ni pregunta (usePrinting): con la estación en PDF se descarga el archivo
+      const [quickDownload] = await Promise.all([page.waitForEvent('download'), qk.getByRole('button', { name: 'Guardar fila' }).click()])
+      const quickPdf = await readPdf(quickDownload)
+      expect(quickPdf.pages).toBe(1)
+      expect(quickPdf.mediaBoxes).toEqual([[0, 0, 288, 432]])
+      await expect(page.getByRole('dialog', { name: 'Imprimir 1 label' })).toHaveCount(0)
       await shot(page, isMobile, 'fg2-label-al-guardar', 1000)
-      await quickPreview.getByRole('button', { name: 'Cancelar' }).click()
       const quick = await ok<OrderPageDto>(request.get(`${API_URL}/api/v1/orders?clientIds=${client.publicId}&take=50`, { headers }), 'órdenes')
       for (const o of quick.items ?? []) if (o.publicId && !created.includes(o.publicId)) created.push(o.publicId)
 

@@ -81,7 +81,7 @@ test('Órdenes de venta: borrador, faltante y backorder al solicitar, surtir tod
   const product = await request.post(`${API_URL}/api/v1/products`, { headers, data: { sku, name: `Medidor ${suffix}`, trackingType: 'NONE', salePrice: 12.5 } })
   expect(product.ok(), await product.text()).toBeTruthy()
   const productId = ((await product.json()) as { product: { publicId: string } }).product.publicId
-  const warehouses = (await (await request.get(`${API_URL}/api/v1/warehouses`, { headers })).json()) as { publicId: string }[]
+  const warehouses = (await (await request.get(`${API_URL}/api/v1/warehouses`, { headers })).json()) as { publicId: string; name?: string; code?: string }[]
   const warehouseId = warehouses[0].publicId
   const adjust = async (qty: number) => {
     const res = await request.post(`${API_URL}/api/v1/inventory/adjustments`, { headers, data: { productPublicId: productId, warehousePublicId: warehouseId, binId: 2, quantity: qty, reason: 'FOUND', notes: 'e2e' } })
@@ -107,6 +107,9 @@ test('Órdenes de venta: borrador, faltante y backorder al solicitar, surtir tod
   let dialog = page.getByRole('dialog')
   await dialog.getByRole('combobox').first().fill(clientName.slice(0, 12))
   await page.getByRole('option').filter({ hasText: clientName }).first().click()
+  // la compañía tiene más de un almacén: se escoge el primero (el mismo donde se ajustó la existencia)
+  await dialog.getByRole('combobox', { name: 'Almacén' }).fill(warehouses[0].code ?? warehouses[0].name ?? '')
+  await page.getByRole('listbox').getByRole('option').first().click()
   await dialog.getByLabel('Producto de la línea 1').fill(sku)
   await page.getByRole('option').filter({ hasText: sku }).first().click()
   await dialog.getByLabel('Cantidad de la línea 1').fill('10')
@@ -166,7 +169,7 @@ test('Órdenes de venta: borrador, faltante y backorder al solicitar, surtir tod
   // lo reservado volvió a estar disponible: una orden nueva de 17 (6 + 10 − 0 ajustes, la anterior ya liberó) comprueba que alcanza
   const list = (await (await request.get(`${API_URL}/api/v1/sales-orders?q=${encodeURIComponent(clientName)}`, { headers })).json()) as SalesOrderDtoPaged
   expect(list.items?.[0].status).toBe('CANCELLED')
-  const again = await request.post(`${API_URL}/api/v1/sales-orders`, { headers, data: { clientPublicId: list.items?.[0].clientPublicId, lines: [{ productPublicId: productId, quantity: 16 }] } })
+  const again = await request.post(`${API_URL}/api/v1/sales-orders`, { headers, data: { clientPublicId: list.items?.[0].clientPublicId, warehousePublicId: warehouseId, lines: [{ productPublicId: productId, quantity: 16 }] } })
   expect(again.ok(), await again.text()).toBeTruthy()
   const check2 = (await (await request.get(`${API_URL}/api/v1/sales-orders/${((await again.json()) as { publicId: string }).publicId}/availability`, { headers })).json()) as components['schemas']['SalesAvailabilityDto']
   expect(check2.hasShortage).toBe(false)   // 16 en mano y ya nada reservado

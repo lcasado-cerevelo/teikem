@@ -41,7 +41,7 @@ test('Registrar entrega: la orden queda Entregada y el comprobante lleva la firm
   await dialog.getByRole('button', { name: 'Registrar la entrega' }).click()
 
   // la orden queda Entregada (el aviso de arriba dura poco: se comprueba el estatus de la ficha) y aparece el comprobante
-  await expect(page.locator('.chip', { hasText: 'Entregada' }).first()).toBeVisible({ timeout: 30_000 })
+  await expect(page.locator('.chip', { hasText: 'Entregado' }).first()).toBeVisible({ timeout: 30_000 })
   await expect(page.getByRole('button', { name: 'Registrar entrega', exact: true })).toHaveCount(0)
   const proof = page.getByTestId('delivery-proof')
   await expect(proof).toBeVisible({ timeout: 30_000 })

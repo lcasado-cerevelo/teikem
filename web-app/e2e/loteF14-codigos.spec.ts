@@ -140,12 +140,12 @@ function valuesInPdf(text: string, suffix: string): string[] {
   return seen
 }
 
-/** Elige un producto en el filtro «SKU o nombre» (combobox de varios productos que busca en el API). */
+/** Elige un producto en el filtro «SKU o nombre» (selector múltiple con buscador que busca en el API). */
 async function pickProductByText(scope: Page, label: string, text: string, sku: string) {
-  const box = scope.getByRole('combobox', { name: label })
-  await box.click()
-  await box.fill(text)
+  await scope.getByRole('button', { name: label, exact: true }).first().click()
+  await scope.getByRole('searchbox', { name: 'Buscar…' }).fill(text)
   await scope.getByRole('option', { name: new RegExp(`^${sku} · `) }).click()
+  await scope.keyboard.press('Escape')
 }
 
 async function downloadReport(page: Page, scope: Page | ReturnType<Page['locator']>): Promise<Download> {
@@ -158,14 +158,14 @@ async function downloadReport(page: Page, scope: Page | ReturnType<Page['locator
 async function productsFlow(page: Page, request: APIRequestContext, s: Seed, shots: boolean) {
   await page.goto('/warehouse/products')
   await expect(page.getByRole('heading', { level: 1, name: 'Productos e inventario' })).toBeVisible()
-  // el filtro «SKU o nombre» elige productos uno a uno (píldora «Quitar <SKU>»): los tres sembrados
+  // el filtro «SKU o nombre» elige productos uno a uno (el botón dice «3 elegidos»): los tres sembrados
   for (const sku of s.skus) await pickProductByText(page, 'SKU o nombre', `Etiqueta ${s.suffix}`, sku)
-  for (const sku of s.skus) await expect(page.getByRole('button', { name: `Quitar ${sku}`, exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'SKU o nombre', exact: true }).first()).toContainText('3 elegidos')
   await expect(page.getByText(`${s.suffix}-10`).first()).toBeVisible()
   await expect(page.getByText(`${s.suffix}-1`, { exact: true }).first()).toBeVisible()
   if (shots) await shot(page, 'productos-boton')
   const download = await downloadReport(page, page)
-  expect(download.suggestedFilename()).toMatch(/^codigos-de-barras-de-productos-advance-logistics-\d{4}-\d{2}-\d{2}\.pdf$/)
+  expect(download.suggestedFilename()).toMatch(/^codigos-de-barras-de-productos-advance-depot-\d{4}-\d{2}-\d{2}\.pdf$/)
   const text = await readPdf(download, `productos-${s.suffix}`)
 
   // lo mismo que filtra la pantalla, según el API
@@ -182,15 +182,23 @@ async function productsFlow(page: Page, request: APIRequestContext, s: Seed, sho
   expect(text).toContain('FILTROS APLICADOS')
 }
 
+/** Filtro «Posición» (selector múltiple con buscador): se escribe el sufijo de la corrida y se marcan las posiciones indicadas. */
+async function filterBins(page: Page, suffix: string, codes: string[]) {
+  await page.getByRole('button', { name: 'Posición', exact: true }).first().click()
+  await page.getByRole('searchbox', { name: 'Buscar…' }).fill(suffix)
+  for (const code of codes) await page.getByRole('option', { name: new RegExp(`^${code} · `) }).click()
+  await page.keyboard.press('Escape')
+}
+
 async function locationsFlow(page: Page, request: APIRequestContext, s: Seed, shots: boolean) {
   await page.goto(`/warehouse/locations?warehouse=${s.warehousePublicId}`)
   await expect(page.getByRole('heading', { level: 1, name: 'Posiciones' })).toBeVisible()
-  await page.getByLabel('Posición', { exact: true }).fill(s.suffix)
+  await filterBins(page, s.suffix, s.bins)
   await expect(page.getByText(`R10-${s.suffix}`).first()).toBeVisible()
   await expect(page.getByText(`GEN-${s.suffix}`).first()).toBeVisible()
   if (shots) await shot(page, 'ubicaciones-boton')
   const download = await downloadReport(page, page)
-  expect(download.suggestedFilename()).toMatch(/^codigos-de-barras-de-posiciones-advance-logistics-\d{4}-\d{2}-\d{2}\.pdf$/)
+  expect(download.suggestedFilename()).toMatch(/^codigos-de-barras-de-posiciones-advance-depot-\d{4}-\d{2}-\d{2}\.pdf$/)
   const text = await readPdf(download, `posiciones-${s.suffix}`)
 
   const headers = { Authorization: `Bearer ${await apiToken(request)}` }

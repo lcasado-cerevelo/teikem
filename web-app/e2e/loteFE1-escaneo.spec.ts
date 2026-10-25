@@ -193,8 +193,8 @@ test.describe('Estación de escaneo (Lote F-E1)', () => {
 
     // ---- 1. Asignar por número de envío (FOUND_ASSIGNED) y por número de empaque ----
     await scan(pc(a1))
-    await expect(result).toContainText(`Asignada a la ruta ${tripCode}.`)
-    await expect(result).toContainText('Asignada')
+    await expect(result).toContainText(`Asignado a la ruta ${tripCode}.`)
+    await expect(result).toContainText('Asignado')
     await expect(result).toContainText('Encontrada por número de pieza.')
     await expect(page.getByTestId('scan-count')).toContainText('1 de 2 piezas')
     await expect(result).toContainText(`Zona FA${suffix}`)
@@ -203,7 +203,7 @@ test.describe('Estación de escaneo (Lote F-E1)', () => {
     await expect(pendingList.getByRole('button', { name: `Ver el envío ${a1.orderNumber}` })).toHaveCount(0)
     await shot(page, isMobile, 'fe1-resultado-asignada', 1000)
     await scan(pc(a2))
-    await expect(result).toContainText(`Asignada a la ruta ${tripCode}.`)
+    await expect(result).toContainText(`Asignado a la ruta ${tripCode}.`)
     await expect(result).toContainText('Encontrada por número de pieza.')
 
     // ---- 2. Repetir (ALREADY_ASSIGNED), inexistente, vacío, Sometida, sin ruta abierta, sin zona ----
@@ -217,12 +217,14 @@ test.describe('Estación de escaneo (Lote F-E1)', () => {
     await expect(result).toContainText('No se encontró la pieza.')
     await scan(`NOEXISTE-${suffix}`)
     await expect(result).toContainText('No se encontró la pieza.')
+    await expect(input).toBeEnabled()   // el escaneo anterior ya terminó (con la app ocupada el Enter vacío se ignora)
+    await expect(input).toHaveValue('')
     await input.press('Enter')
     await expect(result).toContainText('Escanee o escriba un código.')
     await scan(pc(draft))
     // Lote 106/107: una Sometida ya no se rechaza: «Enrutar» la lleva hasta Asignada brincando Recogida y Sin asignar (quedan registrados como brincados)
     await expect(result).toContainText('(brincó 2 estatus)')
-    await expect(result).toContainText('Asignada')
+    await expect(result).toContainText('Asignado')
     await scan(pc(b1))
     await expect(result).toContainText(`No hay ruta abierta para la zona FB${suffix} en la fecha ${tenantDay()}; queda sin asignar.`)
     await expect(result).toContainText('Planifique el día o cree la ruta')

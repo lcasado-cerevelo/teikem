@@ -35,6 +35,12 @@ function tenantDay(plus = 0): string {
   return d.toISOString().slice(0, 10)
 }
 
+/** El mismo día en el formato de los campos de fecha de la pantalla (MM/DD/YYYY). */
+function tenantDayUs(plus = 0): string {
+  const [y, m, d] = tenantDay(plus).split('-')
+  return `${m}/${d}/${y}`
+}
+
 async function shot(page: Page, name: string) {
   await page.waitForLoadState('networkidle')
   await expect(page.locator('.toast.on')).toHaveCount(0, { timeout: 15_000 })
@@ -215,7 +221,7 @@ async function journey(page: Page, request: APIRequestContext, variant: 'D' | 'M
   await page.getByRole('button', { name: 'Registrar devolución' }).click()
   const form = page.getByRole('dialog', { name: `Registrar devolución de la renta ${s.number}` })
   await expect(form.getByText('Equipos que vuelven (3 de 3)')).toBeVisible()
-  await expect(form.getByLabel(/^Fecha de devolución/)).toHaveValue(tenantDay(0))
+  await expect(form.getByLabel(/^Fecha de devolución/)).toHaveValue(tenantDayUs(0))
   await expect(form.getByText(/Devolución anticipada: la fecha es anterior al recogido/)).toBeVisible()
   // "Otro" sin notas: el mensaje del servidor, sin enviar
   await form.getByLabel(/^Motivo/).selectOption('OTHER')

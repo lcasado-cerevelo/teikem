@@ -14,6 +14,7 @@ import bwipjs from 'bwip-js'
 import { jsPDF } from 'jspdf'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 import { manualImgDir, manualLang, manualTarget } from './manualLang'
+import { createClient } from './staffHelpers'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -81,9 +82,8 @@ test('COD: cobrar y reconciliar con hojas escaneadas (PDF e imagen) leídas en e
   const clientName = `Cobra ${suffix}`
 
   // 1) cliente, consignatario y una orden con COD de 100 (entregada)
-  const client = await request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: clientName } })
-  expect(client.ok(), await client.text()).toBeTruthy()
-  const clientId = ((await client.json()) as { publicId: string }).publicId
+  // el cliente lleva contrato activo con tarifa (confirmar una orden sin tarifa vigente hoy da 422)
+  const clientId = (await createClient(request, headers, clientName)).publicId
   const loc = await request.post(`${API_URL}/api/v1/locations`, {
     headers,
     data: { clientPublicId: clientId, name: `Sucursal ${suffix}`, locationType: 'DELIVERY', line1: 'Calle 5 #12', city: 'Ponce', postalCode: '00716', country: 'PR' },

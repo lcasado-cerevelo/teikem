@@ -10,6 +10,7 @@ import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 import { manualImgDir, manualLang, manualTarget } from './manualLang'
+import { createClient } from './staffHelpers'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -82,9 +83,8 @@ test('Remesas COD: crear, cuadrar, aprobar, exportar y remitir', async ({ page, 
   const clientName = `Remesa ${suffix}`
 
   // 1) cliente con dos órdenes cobradas y cuadradas
-  const client = await request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: clientName } })
-  expect(client.ok(), await client.text()).toBeTruthy()
-  const clientId = ((await client.json()) as { publicId: string }).publicId
+  // el cliente lleva contrato activo con tarifa (confirmar una orden sin tarifa vigente hoy da 422)
+  const clientId = (await createClient(request, headers, clientName)).publicId
   const loc = await request.post(`${API_URL}/api/v1/locations`, {
     headers,
     data: { clientPublicId: clientId, name: `Sucursal ${suffix}`, locationType: 'DELIVERY', line1: 'Calle 5 #12', city: 'Ponce', postalCode: '00716', country: 'PR' },

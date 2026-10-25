@@ -78,10 +78,13 @@ test('Despachar contra una orden de venta: por partes, retiro, entrega con orden
   const product = await request.post(`${API_URL}/api/v1/products`, { headers, data: { sku, name: `Medidor ${suffix}`, trackingType: 'NONE', salePrice: 12.5, purchaseCost: 4 } })
   expect(product.ok(), await product.text()).toBeTruthy()
   const productId = ((await product.json()) as { product: { publicId: string } }).product.publicId
-  const warehouses = (await (await request.get(`${API_URL}/api/v1/warehouses`, { headers })).json()) as { publicId: string }[]
-  const adjust = await request.post(`${API_URL}/api/v1/inventory/adjustments`, { headers, data: { productPublicId: productId, warehousePublicId: warehouses[0].publicId, binId: 2, quantity: 10, reason: 'FOUND', notes: 'e2e' } })
+  // la compañía tiene varios almacenes: la orden y el ajuste van al ALM-01, con una posición activa de ese almacén
+  const warehouses = (await (await request.get(`${API_URL}/api/v1/warehouses`, { headers })).json()) as { publicId: string; code: string }[]
+  const alm01 = warehouses.find((w) => w.code === 'ALM-01') ?? warehouses[0]
+  const bins = (await (await request.get(`${API_URL}/api/v1/warehouses/${alm01.publicId}/bins`, { headers, params: { includeInactive: false, take: 1 } })).json()) as { items: { id: number }[] }
+  const adjust = await request.post(`${API_URL}/api/v1/inventory/adjustments`, { headers, data: { productPublicId: productId, warehousePublicId: alm01.publicId, binId: bins.items[0].id, quantity: 10, reason: 'FOUND', notes: 'e2e' } })
   expect(adjust.ok(), await adjust.text()).toBeTruthy()
-  const draft = await request.post(`${API_URL}/api/v1/sales-orders`, { headers, data: { clientPublicId: clientId, lines: [{ productPublicId: productId, quantity: 6 }] } })
+  const draft = await request.post(`${API_URL}/api/v1/sales-orders`, { headers, data: { clientPublicId: clientId, warehousePublicId: alm01.publicId, lines: [{ productPublicId: productId, quantity: 6 }] } })
   expect(draft.ok(), await draft.text()).toBeTruthy()
   const orderId = ((await draft.json()) as SalesOrderDto).publicId!
   const requested = await request.post(`${API_URL}/api/v1/sales-orders/${orderId}/request`, { headers, data: {} })
@@ -121,8 +124,8 @@ test('Despachar contra una orden de venta: por partes, retiro, entrega con orden
   await pack.getByLabel(/^Ciudad/).fill('San Juan')
   await pack.getByLabel(/^Tipo de paquete/).selectOption({ index: 1 })
   await shot(page, isMobile, 'l63-entrega', pack)
-  await pack.getByRole('button', { name: 'Empacar y crear orden' }).click()
-  await expect(page.locator('.toast.on').filter({ hasText: 'se creó la orden' })).toHaveCount(1, { timeout: 20_000 })
+  await pack.getByRole('button', { name: 'Empacar y crear envío' }).click()
+  await expect(page.locator('.toast.on').filter({ hasText: 'se creó el envío' })).toHaveCount(1, { timeout: 20_000 })
   await expect(dispatchRow()).toContainText('Con entrega')
   await expect(dispatchRow()).toContainText(/ORD-/)
   await shot(page, isMobile, 'l63-despachos', dialog)
