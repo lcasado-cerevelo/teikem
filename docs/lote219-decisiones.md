@@ -27,3 +27,6 @@ Para la página de login y **donde quiera que haya un password**: el **ojito** p
 
 ## Ajuste (2026-10-25): selector de compañía de la app móvil
 El selector de compañías de Órdenes y de las consultas (Clientes, Consignatarios, Almacén) salía **alto y angosto** (cada compañía era una tarjeta que se estiraba a lo alto, con letra de 12) porque el chip de las pestañas de la ficha —hecho para repartirse el ancho— se estiraba dentro de una lista horizontal. Ahora es `CompanyChips`: las compañías **una al lado de otra, bajitas** (36 de alto, letra de 14), y si no caben en una línea pasan a la siguiente; la activa va en azul marino. Lo usan también Órdenes, Escanear y las tres consultas. **No probado en el teléfono** (solo `tsc` y el empaquetado).
+
+## Ajuste (2026-10-25): modo oscuro del inicio de la app móvil
+Los botones del inicio (Órdenes, Escanear, Rutas de hoy, Clientes…) se veían con letra oscura sobre fondo oscuro. Causa: `renderItem` del `FlatList` estaba memorizado con `useCallback` sin `styles` en sus dependencias; el modo guardado se lee de forma asíncrona, así que el primer pintado (tema claro) quedaba congelado. Ahora depende de `styles` y `t`, y la lista recibe `extraData={styles}`. Se revisaron las demás pantallas: ninguna otra memoriza estilos. Pendiente: verlo en el emulador.
