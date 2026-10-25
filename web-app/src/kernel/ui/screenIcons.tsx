@@ -14,6 +14,15 @@ function Svg({ children }: { children: ReactNode }) {
 
 // ===== Grupos del menú =====
 
+/** Enchufe: probar una conexión (distinto del triángulo de «ejecutar»). */
+export function IconPlug() {
+  return (
+    <Svg>
+      <path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0V8zM12 18v4" />
+    </Svg>
+  )
+}
+
 /** Operación ('box'); en la maqueta también Portal → Inicio. */
 export function IconBox() {
   return (

@@ -525,3 +525,9 @@ Microsoft 365 y Outlook.com **no aceptan IMAP con usuario y contraseña**, así 
 - **«Test connection»** dice cuántos correos faltan por atender («N correo(s) por leer… los que Teikem todavía no ha atendido; el buzón no se toca»).
 - **Base de datos:** requiere la tabla nueva de `Diseño/logistica-db-update.sql` (sección 2026-10-24 (o)); correr `db-update` antes de usar esta versión.
 - Si en una versión anterior ya se marcaron o movieron correos a «Procesados», el log de Teikem empieza vacío: no los vuelve a leer porque ya no están en la carpeta que se lee. Para que se lean otra vez, devuélvalos a la bandeja de entrada (no hace falta marcarlos como no leídos).
+
+## 26. Botones de la lista mientras una integración corre (2026-10-24)
+
+- **Mientras una integración corre** (la corrida está en marcha, la hayan lanzado desde esta pantalla, otro usuario o el horario), **todos sus botones quedan desactivados** —«Correr ahora» / «Enviar ahora», «Subir archivo», «Test connection», llaves, editar y el interruptor de encendida— para no romper la corrida. Los de las demás filas siguen activos. Solo el **historial** se puede abrir: mirar no estorba. Los botones vuelven solos al terminar (la lista se actualiza cada 5 segundos mientras haya una corrida en marcha).
+- **«Correr ahora»** lleva el triángulo de reproducir y **«Test connection»** (probar conexión) lleva un **enchufe**: ya no son el mismo icono.
+- **«Con pendientes»** (último resultado) = la corrida terminó, pero parte de lo que leyó fue a la **bandeja** para revisarlo o descartarlo; el número de la columna «En la bandeja» y el de la pestaña «Bandeja (N)» cuentan esos casos. «Falló» = todo fue a la bandeja y no se creó nada.

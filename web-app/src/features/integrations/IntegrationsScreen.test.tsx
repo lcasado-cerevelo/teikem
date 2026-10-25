@@ -10,7 +10,7 @@ import { AccessProvider } from '../../kernel/access'
 import { setLang } from '../../kernel/i18n/i18n'
 import IntegrationsScreen from './IntegrationsScreen'
 
-const mock = vi.hoisted(() => ({ requests: [] as { method: string; path: string; body: unknown }[] }))
+const mock = vi.hoisted(() => ({ requests: [] as { method: string; path: string; body: unknown }[], hold: null as Promise<void> | null }))
 
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
@@ -30,6 +30,10 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
     if (req.method === 'GET' && p === '/api/v1/integrations/proposals') return json({ items: url.searchParams.get('status') === 'PENDING' ? PROPOSALS : [], total: url.searchParams.get('status') === 'PENDING' ? 1 : 0, pending: 1 })
     if (req.method === 'POST' && p === '/api/v1/integrations/proposals/p1/confirm') return json({ ...PROPOSALS[0], status: 'CONFIRMED', note: (body as { note?: string })?.note ?? null })
     if (req.method === 'POST' && p === '/api/v1/integrations/proposals/p1/reject') return json({ ...PROPOSALS[0], status: 'REJECTED', note: (body as { note?: string })?.note ?? null })
+    if (req.method === 'POST' && p === '/api/v1/integrations/i1/run') {
+      await mock.hold   // la corrida «dura» hasta que la prueba la suelta
+      return json({ id: 30, status: 'OK', message: 'listo' })
+    }
     if (req.method === 'PATCH' && p === '/api/v1/integrations/inbox/5') return json(INBOX_ITEM)
     if (req.method === 'POST' && p === '/api/v1/integrations/inbox/5/discard') return json({ ...INBOX[0], status: 'DISCARDED' })
     return new Response(JSON.stringify({ title: 'no encontrado' }), { status: 404 })
@@ -114,6 +118,24 @@ describe('IntegrationsScreen', () => {
     expect(within(folder).getByRole('button', { name: 'Correr ahora' })).toBeInTheDocument()
     expect(within(manual).queryByRole('button', { name: 'Correr ahora' })).toBeNull()
     expect(within(manual).getByRole('button', { name: 'Subir archivo' })).toBeInTheDocument()
+  })
+
+  it('mientras una integración corre, todos sus botones (menos el historial) quedan desactivados y la otra fila no se afecta', async () => {
+    let release: () => void = () => {}
+    mock.hold = new Promise<void>((resolve) => { release = resolve })
+    wrap()
+    const folder = (await screen.findByText('Envíos de AxisCare')).closest('tr') as HTMLElement
+    const manual = (await screen.findByText('Subidas de Truss')).closest('tr') as HTMLElement
+    await userEvent.click(within(folder).getByRole('button', { name: 'Correr ahora' }))
+    await waitFor(() => expect(within(folder).getByRole('button', { name: 'Correr ahora' })).toBeDisabled())
+    expect(within(folder).getByRole('button', { name: 'Subir archivo' })).toBeDisabled()
+    expect(within(folder).getByRole('button', { name: 'Editar' })).toBeDisabled()
+    expect(within(folder).getByRole('switch')).toBeDisabled()
+    expect(within(folder).getByRole('button', { name: 'Historial' })).toBeEnabled()   // mirar el historial no rompe nada
+    expect(within(manual).getByRole('button', { name: 'Subir archivo' })).toBeEnabled()
+    release()
+    mock.hold = null
+    await waitFor(() => expect(within(folder).getByRole('button', { name: 'Correr ahora' })).toBeEnabled())
   })
 
   it('sin permisos de crear, administrar ni bandeja no hay alta, acciones ni pestaña de bandeja', async () => {

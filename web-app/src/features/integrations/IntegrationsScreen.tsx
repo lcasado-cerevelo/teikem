@@ -8,7 +8,7 @@ import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
 import { Chip, DataTable, IconEdit, IconPlay, IconPlus, Modal, Panel, Spinner, Tabs, toast, type DataColumn } from '../../kernel/ui'
-import { IconClock, IconSwap } from '../../kernel/ui/screenIcons'
+import { IconClock, IconPlug, IconSwap } from '../../kernel/ui/screenIcons'
 import { ApiKeysModal } from './ApiKeysModal'
 import { InboxTab } from './InboxTab'
 import { OutboxTab } from './OutboxTab'
@@ -96,6 +96,14 @@ export default function IntegrationsScreen() {
   const undelivered = (useOutbox('', 'UNDELIVERED', 0, 1).data?.undelivered ?? 0) + (useOutputs('', 'UNDELIVERED', 0, 1).data?.undelivered ?? 0)
   const inboxIntegration = params.get('integration') ?? ''
   const rows = list.data ?? NO_ROWS
+  // una integración ocupada (corriendo, aquí o en otro lado) no admite más acciones: todos sus botones quedan desactivados hasta que termine, para no romper la corrida
+  const busy = (i: IntegrationDto) =>
+    i.lastStatus === 'RUNNING' ||
+    (run.isPending && run.variables === i.publicId) ||
+    (sendAll.isPending && sendAll.variables === i.publicId) ||
+    (upload.isPending && upload.variables?.publicId === i.publicId) ||
+    (testConnection.isPending && testConnection.variables === i.publicId) ||
+    (setActive.isPending && setActive.variables?.publicId === i.publicId)
   const pendingTotal = rows.reduce((n, i) => n + (i.pendingInbox ?? 0), 0)
 
   const go = (next: Tab) => {
@@ -151,7 +159,7 @@ export default function IntegrationsScreen() {
               role="switch"
               aria-label={t('integrations.col.activeFor', { name: i.name ?? '' })}
               checked={!!i.isActive}
-              disabled={!canManage || setActive.isPending}
+              disabled={!canManage || busy(i)}
               onChange={(e) => void act(setActive.mutateAsync({ publicId: i.publicId!, active: e.target.checked }), t(e.target.checked ? 'integrations.on' : 'integrations.off', { name: i.name ?? '' }))}
             />
             <span className="tk" aria-hidden="true" />
@@ -204,7 +212,7 @@ export default function IntegrationsScreen() {
     ],
     // act cambia con cada render pero solo usa mutaciones estables
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [t, f, canManage, setActive.isPending, params],
+    [t, f, canManage, setActive.isPending, setActive.variables, run.isPending, run.variables, sendAll.isPending, sendAll.variables, upload.isPending, upload.variables, testConnection.isPending, testConnection.variables, params],
   )
 
   return (
@@ -277,14 +285,16 @@ export default function IntegrationsScreen() {
                     label: t('integrations.runNow'),
                     icon: <IconPlay />,
                     onClick: (i) => void act(run.mutateAsync(i.publicId!), t('integrations.ran', { name: i.name ?? '' })),
-                    visible: (i) => canManage && !!i.isActive && i.direction !== 'OUTBOUND' && (i.connectorKind === 'FOLDER' || i.connectorKind === 'EMAIL' || i.connectorKind === 'SFTP' || i.connectorKind === 'FTP') && i.lastStatus !== 'RUNNING',
+                    visible: (i) => canManage && !!i.isActive && i.direction !== 'OUTBOUND' && (i.connectorKind === 'FOLDER' || i.connectorKind === 'EMAIL' || i.connectorKind === 'SFTP' || i.connectorKind === 'FTP'),
+                    disabled: busy,
                   },
                   {
                     key: 'send',
                     label: t('integrations.out.sendNow'),
                     icon: <IconPlay />,
                     onClick: (i) => void act(run.mutateAsync(i.publicId!), t('integrations.ran', { name: i.name ?? '' })),
-                    visible: (i) => canManage && !!i.isActive && i.direction === 'OUTBOUND' && i.lastStatus !== 'RUNNING',
+                    visible: (i) => canManage && !!i.isActive && i.direction === 'OUTBOUND',
+                    disabled: busy,
                   },
                   {
                     // 2026-10-21: salida de un catálogo (productos): manda TODO el catálogo ahora (lo que cambia sale solo)
@@ -292,7 +302,8 @@ export default function IntegrationsScreen() {
                     label: t('integrations.out.sendAll'),
                     icon: <IconPlay />,
                     onClick: (i) => void act(sendAll.mutateAsync(i.publicId!), t('integrations.ran', { name: i.name ?? '' })),
-                    visible: (i) => canManage && !!i.isActive && !!i.entityKind && i.lastStatus !== 'RUNNING',
+                    visible: (i) => canManage && !!i.isActive && !!i.entityKind,
+                    disabled: busy,
                   },
                   {
                     key: 'upload',
@@ -303,23 +314,25 @@ export default function IntegrationsScreen() {
                       fileRef.current?.click()
                     },
                     visible: (i) => canManage && !!i.isActive && i.connectorKind !== 'API' && i.direction !== 'OUTBOUND',
+                    disabled: busy,
                   },
-                  { key: 'outpreview', label: t('integrations.out.preview'), icon: <IconPlay />, onClick: (i) => setPreviewFor(i), visible: (i) => canManage && i.direction === 'OUTBOUND' },
-                  { key: 'keys', label: t('integrations.api.open'), icon: <IconPlus />, onClick: (i) => setKeysFor(i), visible: (i) => canManage && i.connectorKind === 'API' },
-                  { key: 'hooks', label: t('integrations.hooks.open'), icon: <IconPlus />, onClick: (i) => setHooksFor(i), visible: (i) => canManage && i.connectorKind === 'API' && (i.scopes ?? []).includes('webhooks:manage') },
+                  { key: 'outpreview', label: t('integrations.out.preview'), icon: <IconPlay />, onClick: (i) => setPreviewFor(i), visible: (i) => canManage && i.direction === 'OUTBOUND', disabled: busy },
+                  { key: 'keys', label: t('integrations.api.open'), icon: <IconPlus />, onClick: (i) => setKeysFor(i), visible: (i) => canManage && i.connectorKind === 'API', disabled: busy },
+                  { key: 'hooks', label: t('integrations.hooks.open'), icon: <IconPlus />, onClick: (i) => setHooksFor(i), visible: (i) => canManage && i.connectorKind === 'API' && (i.scopes ?? []).includes('webhooks:manage'), disabled: busy },
                   {
                     key: 'test',
                     label: t('integrations.testConnection'),
-                    icon: <IconPlay />,
+                    icon: <IconPlug />,
                     onClick: (i) =>
                       void testConnection
                         .mutateAsync(i.publicId!)
                         .then((r) => (r.ok ? toast.success(r.message ?? '') : toast.error(r.message ?? '')))
                         .catch((e) => toast.error(applyProblemDetails(e).title)),
                     visible: (i) => canManage && (i.connectorKind === 'EMAIL' || i.connectorKind === 'SFTP' || i.connectorKind === 'FTP' || i.connectorKind === 'HTTP'),
+                    disabled: busy,
                   },
                   { key: 'history', label: t('integrations.history.open'), icon: <IconClock />, onClick: (i) => setHistory(i) },
-                  { key: 'edit', label: t('integrations.edit'), icon: <IconEdit />, onClick: (i) => setEditing(i), visible: () => canManage },
+                  { key: 'edit', label: t('integrations.edit'), icon: <IconEdit />, onClick: (i) => setEditing(i), visible: () => canManage, disabled: busy },
                 ]}
               />
             )}

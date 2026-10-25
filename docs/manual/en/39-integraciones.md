@@ -525,3 +525,9 @@ Microsoft 365 and Outlook.com **do not accept IMAP with a user and password**, s
 - **“Test connection”** says how many e-mails are left to handle (“N e-mail(s) to read… the ones Teikem has not handled yet; the mailbox is not touched”).
 - **Database:** needs the new table in `Diseño/logistica-db-update.sql` (section 2026-10-24 (o)); run `db-update` before using this version.
 - If an earlier version already marked or moved e-mails to “Procesados”, Teikem's log starts empty: it does not read them again because they are no longer in the folder that is read. To have them read again, move them back to the inbox (they do not need to be marked unread).
+
+## 26. List buttons while an integration is running (2026-10-24)
+
+- **While an integration is running** (the run is in progress, whether started from this screen, by another user or by the schedule), **all of its buttons are disabled** —“Run now” / “Send now”, “Upload file”, “Test connection”, keys, edit and the on/off switch— so the run is not broken. The other rows stay active. Only the **history** can be opened: looking does not get in the way. The buttons come back by themselves when it ends (the list refreshes every 5 seconds while a run is in progress).
+- **“Run now”** has the play triangle and **“Test connection”** has a **plug**: they are no longer the same icon.
+- **“With pending items”** (last result) = the run ended, but part of what it read went to the **inbox** to be reviewed or discarded; the number in the “In the inbox” column and the one in the “Inbox (N)” tab count those cases. “Failed” = everything went to the inbox and nothing was created.
