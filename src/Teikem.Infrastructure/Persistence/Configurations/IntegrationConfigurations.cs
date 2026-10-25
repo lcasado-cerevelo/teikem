@@ -76,6 +76,17 @@ public sealed class IntegrationInboxItemConfiguration : IEntityTypeConfiguration
     }
 }
 
+public sealed class IntegrationMailLogConfiguration : IEntityTypeConfiguration<IntegrationMailLog>
+{
+    public void Configure(EntityTypeBuilder<IntegrationMailLog> b)
+    {
+        b.ToTable("IntegrationMailLog");
+        b.HasKey(m => m.IntegrationMailLogId);
+        b.Property(m => m.MessageKey).HasMaxLength(300).IsRequired();
+        b.HasIndex(m => new { m.IntegrationId, m.MessageKey }).IsUnique().HasDatabaseName("UX_IntegrationMailLog_Key");
+    }
+}
+
 public sealed class IntegrationProposalConfiguration : IEntityTypeConfiguration<IntegrationProposal>
 {
     public void Configure(EntityTypeBuilder<IntegrationProposal> b)

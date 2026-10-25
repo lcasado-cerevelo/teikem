@@ -197,6 +197,20 @@ public class IntegrationRun : ITenantScoped
     public string? Message { get; set; }
 }
 
+/// <summary>
+/// 2026-10-24 — un correo del buzón que la integración ya atendió (el «ya lo leí» de Teikem, sin tocar el buzón). MessageKey = la clave que da el lector del buzón (IMAP: «validez:uid»; Microsoft 365: el id del mensaje).
+/// Una fila por correo e integración (índice único): lo que está aquí no se vuelve a leer.
+/// </summary>
+public class IntegrationMailLog : ITenantScoped
+{
+    public long IntegrationMailLogId { get; set; }
+    public int TenantId { get; set; }
+    public int IntegrationId { get; set; }
+    public long? IntegrationRunId { get; set; }
+    public string MessageKey { get; set; } = string.Empty;
+    public DateTime ProcessedUtc { get; set; } = DateTime.UtcNow;
+}
+
 /// <summary>Un archivo procesado: su hash (SHA-256) evita procesar dos veces el mismo contenido.</summary>
 public class IntegrationFileLog : ITenantScoped
 {

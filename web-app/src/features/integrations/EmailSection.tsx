@@ -2,9 +2,9 @@
 // (adjuntos por nombre y tipo y/o el cuerpo con campos a leer por etiqueta, expresión regular o bloque de renglones) y a qué columna de la plantilla va cada campo.
 import { useWatch, type UseFormReturn } from 'react-hook-form'
 import { useT } from '../../kernel/i18n'
-import { Field, Select, TextInput, Toggle } from '../../kernel/ui'
+import { DateInput, Field, Select, TextInput, Toggle } from '../../kernel/ui'
 import { BodyFieldsEditor } from './BodyFieldsEditor'
-import { ATTACHMENT_MODES, EMAIL_PROVIDERS, MATCH_OPERATORS } from './emailRules'
+import { ATTACHMENT_MODES, EMAIL_PROVIDERS, MARK_MODES, MATCH_OPERATORS } from './emailRules'
 import { ReadersSection } from './ReadersSection'
 import type { IntegrationValues } from './integrationRules'
 
@@ -61,9 +61,21 @@ export function EmailSection({ form, hasSavedPassword, clientOptions, templateOp
           <Field name="email.mailbox" label={t('integrations.email.folder')} required>
             <TextInput />
           </Field>
-          <Field name="email.processedFolder" label={t('integrations.email.processed')} help={t('integrations.email.processedHelp')}>
-            <TextInput />
+          {email?.markMode === 'MAILBOX' && (
+            <Field name="email.processedFolder" label={t('integrations.email.processed')} help={t('integrations.email.processedHelp')}>
+              <TextInput />
+            </Field>
+          )}
+        </div>
+        <div className="r2">
+          <Field name="email.markMode" label={t('integrations.email.markMode')} help={t(email?.markMode === 'MAILBOX' ? 'integrations.email.markModeHelpMailbox' : 'integrations.email.markModeHelpLog')}>
+            <Select options={MARK_MODES.map((m) => ({ value: m, label: t(`integrations.email.markModeOption.${m}`) }))} />
           </Field>
+          {email?.markMode !== 'MAILBOX' && (
+            <Field name="email.readSince" label={t('integrations.email.readSince')} help={t('integrations.email.readSinceHelp')}>
+              <DateInput />
+            </Field>
+          )}
         </div>
       </fieldset>
 

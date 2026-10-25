@@ -21,6 +21,8 @@ public sealed class GraphMailboxReader : IMailboxReader
     public const string GraphBase = "https://graph.microsoft.com/v1.0";
     private const string LoginBase = "https://login.microsoftonline.com";
     private const int MaxPages = 5;
+    /// <summary>Páginas de 100 mensajes que se recorren por corrida buscando correos sin atender (modo «log de Teikem»): 100 páginas = 10 000 correos.</summary>
+    private const int MaxScanPages = 100;
 
     private readonly HttpClient http;
     private readonly ConcurrentDictionary<string, (string Token, DateTime ExpiresUtc)> tokens = new();
@@ -193,6 +195,44 @@ public sealed class GraphMailboxReader : IMailboxReader
         }
     }
 
+    public async Task<IReadOnlyList<string>> ListNewKeysAsync(EmailConfig c, string password, DateTime? sinceUtc, int need, Func<IReadOnlyList<string>, CancellationToken, Task<ISet<string>>> alreadyLogged, CancellationToken ct)
+    {
+        var token = await TokenAsync(c, password, ct);
+        var folder = await FolderIdAsync(c, token, c.Mailbox, false, ct);
+        var from = (sinceUtc ?? new DateTime(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc)).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture);
+        var filter = Uri.EscapeDataString($"receivedDateTime ge {from}");
+        string? next = $"{UserPath(c)}/mailFolders/{Uri.EscapeDataString(folder)}/messages?$filter={filter}&$orderby=receivedDateTime asc&$select=id,subject&$top=100";
+        var result = new List<string>();
+        for (var page = 0; next is not null && result.Count < need && page < MaxScanPages; page++)
+        {
+            using var doc = JsonDocument.Parse(await SendAsync(HttpMethod.Get, next, token, null, ct));
+            var keys = new List<string>();
+            foreach (var m in doc.RootElement.GetProperty("value").EnumerateArray())
+            {
+                var subject = m.TryGetProperty("subject", out var s) ? s.GetString() ?? string.Empty : string.Empty;
+                if (EmailRules.TextMatches(subject, c.Subject)) keys.Add(m.GetProperty("id").GetString()!);
+            }
+            var done = keys.Count == 0 ? new HashSet<string>() : await alreadyLogged(keys, ct);
+            foreach (var k in keys) { if (!done.Contains(k)) { result.Add(k); if (result.Count >= need) break; } }
+            next = doc.RootElement.TryGetProperty("@odata.nextLink", out var nl) ? nl.GetString() : null;
+        }
+        return result;
+    }
+
+    public async Task<IReadOnlyList<MailboxMessage>> GetAsync(EmailConfig c, string password, IReadOnlyList<string> keys, CancellationToken ct)
+    {
+        if (keys.Count == 0) return Array.Empty<MailboxMessage>();
+        var token = await TokenAsync(c, password, ct);
+        var result = new List<MailboxMessage>();
+        foreach (var id in keys)
+        {
+            var mime = await SendBytesAsync($"{UserPath(c)}/messages/{Uri.EscapeDataString(id)}/$value", token, ct);
+            using var ms = new MemoryStream(mime);
+            result.Add(new MailboxMessage(MailMessageMapper.Map(MimeMessage.Load(ms), id), id));
+        }
+        return result;
+    }
+
     public async Task<int> TestAsync(EmailConfig c, string password, CancellationToken ct)
     {
         var token = await TokenAsync(c, password, ct);
@@ -210,4 +250,6 @@ public sealed class RoutingMailboxReader(ImapMailboxReader imap, GraphMailboxRea
     public Task<IReadOnlyList<MailboxMessage>> FetchAsync(EmailConfig c, string password, int maxMessages, CancellationToken ct) => For(c).FetchAsync(c, password, maxMessages, ct);
     public Task MarkProcessedAsync(EmailConfig c, string password, IReadOnlyList<string> keys, CancellationToken ct) => For(c).MarkProcessedAsync(c, password, keys, ct);
     public Task<int> TestAsync(EmailConfig c, string password, CancellationToken ct) => For(c).TestAsync(c, password, ct);
+    public Task<IReadOnlyList<string>> ListNewKeysAsync(EmailConfig c, string password, DateTime? sinceUtc, int need, Func<IReadOnlyList<string>, CancellationToken, Task<ISet<string>>> alreadyLogged, CancellationToken ct) => For(c).ListNewKeysAsync(c, password, sinceUtc, need, alreadyLogged, ct);
+    public Task<IReadOnlyList<MailboxMessage>> GetAsync(EmailConfig c, string password, IReadOnlyList<string> keys, CancellationToken ct) => For(c).GetAsync(c, password, keys, ct);
 }

@@ -16,7 +16,7 @@ Crean **los datos de configuración** de las integraciones (no estructura: eso v
    sqlcmd -S <servidor> -d <base> -E -C -f 65001 -b -i scripts/integraciones/axiscare-depot.sql
    sqlcmd -S <servidor> -d <base> -E -C -f 65001 -b -i scripts/integraciones/cms-advance-logistics.sql
    ```
-3. Las integraciones nacen **apagadas** y con el servidor del buzón en marcadores «CAMBIAR». En **Integraciones → Editar**: servidor IMAP, usuario, **contraseña** (se guarda cifrada por la aplicación; desde SQL no se puede), remitentes permitidos y **prenderla**. Pruebe primero subiendo a mano un PDF (botón *Subir archivo*) y revise el resultado.
+3. Las integraciones nacen **apagadas** y con el servidor del buzón en marcadores «CAMBIAR» y en el modo **«log de Teikem»** (`markMode: LOG`: Teikem anota en su propio log lo que ya atendió y NO marca ni mueve nada en el buzón; requiere la tabla `dbo.IntegrationMailLog` de `logistica-db-update.sql`, sección 2026-10-24 (o)). Si el buzón es de **Microsoft 365**, en vez del servidor y la contraseña escoja «Mailbox type» = Microsoft 365 (capítulo 39, sección 24). En **Integraciones → Editar**: servidor IMAP, usuario, **contraseña** (se guarda cifrada por la aplicación; desde SQL no se puede), remitentes permitidos y **prenderla**. Pruebe primero subiendo a mano un PDF (botón *Subir archivo*) y revise el resultado.
 
 ## Lo que queda por hacer a mano
 

@@ -290,6 +290,14 @@ public sealed class IntegrationService(
         try
         {
             var password = protector.Unprotect(row.TenantId, MailPurpose, row.SecretEnc);
+            if (EmailMarkModes.IsLog(cfg.MarkMode))
+            {
+                // el log de Teikem manda: se cuentan los correos de la carpeta que todavía no se atendieron (hasta 1000)
+                var pending = await mailbox.ListNewKeysAsync(cfg, password, EmailMarkModes.SinceUtc(cfg.ReadSince), 1000, async (keys, t) =>
+                    (await db.IntegrationMailLogs.AsNoTracking().Where(l => l.IntegrationId == row.IntegrationId && keys.Contains(l.MessageKey)).Select(l => l.MessageKey).ToListAsync(t)).ToHashSet(StringComparer.Ordinal), ct);
+                var more = pending.Count >= 1000 ? "más de " : string.Empty;
+                return new EmailTestResultDto(true, $"Conexión correcta: {more}{pending.Count} correo(s) por leer en {cfg.Mailbox} (los que Teikem todavía no ha atendido; el buzón no se toca).", pending.Count);
+            }
             var unseen = await mailbox.TestAsync(cfg, password, ct);
             return new EmailTestResultDto(true, $"Conexión correcta: {unseen} correo(s) sin leer en {cfg.Mailbox}.", unseen);
         }

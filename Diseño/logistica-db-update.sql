@@ -6819,3 +6819,20 @@ BEGIN
     INSERT INTO dbo.AppliedMigration (Code) VALUES ('L215_STREETASSIGN');
 END
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-24 (o) — «Ya lo leí» de las integraciones de correo en el log de Teikem: dbo.IntegrationMailLog. Una fila por correo atendido (clave que da el lector del buzón) e integración;
+   así el buzón no se toca (no se marca leído ni se mueve) y cada correo se atiende una sola vez. Solo AGREGA una tabla.
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID(N'dbo.IntegrationMailLog', N'U') IS NULL CREATE TABLE dbo.IntegrationMailLog (
+    IntegrationMailLogId BIGINT IDENTITY(1,1) CONSTRAINT PK_IntegrationMailLog PRIMARY KEY,
+    TenantId            INT NOT NULL CONSTRAINT FK_IntegrationMailLog_Tenant REFERENCES dbo.Tenant(TenantId),
+    IntegrationId       INT NOT NULL CONSTRAINT FK_IntegrationMailLog_Integration REFERENCES dbo.Integration(IntegrationId),
+    IntegrationRunId    BIGINT NULL CONSTRAINT FK_IntegrationMailLog_Run REFERENCES dbo.IntegrationRun(IntegrationRunId),
+    MessageKey          NVARCHAR(300) NOT NULL,
+    ProcessedUtc        DATETIME2 NOT NULL CONSTRAINT DF_IntegrationMailLog_Processed DEFAULT SYSUTCDATETIME()
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_IntegrationMailLog_Key' AND object_id = OBJECT_ID('dbo.IntegrationMailLog'))
+    CREATE UNIQUE INDEX UX_IntegrationMailLog_Key ON dbo.IntegrationMailLog(IntegrationId, MessageKey);
+GO

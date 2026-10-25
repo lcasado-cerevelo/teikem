@@ -61295,6 +61295,14 @@
           "clientId": {
             "type": "string",
             "nullable": true
+          },
+          "markMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "readSince": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

@@ -502,7 +502,7 @@ Microsoft 365 y Outlook.com **no aceptan IMAP con usuario y contraseña**, así 
 
 **En Teikem** (Integraciones → «New integration» / editar → sección del buzón): «Mailbox type» = Microsoft 365; **Tenant ID**, **Client ID**, **Mailbox address** (el buzón que se lee, p. ej. `avisos@sudominio.com`) y **Application secret (Client secret)**, que se guarda cifrado y no se vuelve a mostrar. El servidor y el puerto no se piden. Todo lo demás (carpeta, procesados, filtros, lectores, bandeja) funciona igual que con IMAP. «Test connection» dice cuántos correos sin leer hay, o explica qué falta.
 
-**Cómo lee:** solo los **no leídos** de la carpeta, del **más viejo al más nuevo**, hasta 50 por corrida; el filtro de asunto se aplica antes de bajar el correo (los que no cumplen no se tocan). Al terminar cada correo lo marca como leído y lo mueve a «Procesados» (la carpeta se crea si falta). **Nunca borra.**
+**Cómo lee:** igual que con IMAP (sección 25): por omisión anota lo ya atendido en el log de Teikem y **no toca el buzón**; lee del **más viejo al más nuevo**, 50 por corrida, y el filtro de asunto se aplica antes de bajar el correo (los que no cumplen no se tocan). Solo si escoge «In the mailbox» los marca como leídos y los mueve a «Procesados» (la carpeta se crea si falta). **Nunca borra.**
 
 **Mensajes que puede dar «Test connection» o la corrida** (con qué hacer):
 - «El secreto de la aplicación (Client secret) no es válido o venció…» (AADSTS7000215): pegó el identificador en vez del valor, o el secreto venció. Cree uno nuevo.
@@ -515,10 +515,13 @@ Microsoft 365 y Outlook.com **no aceptan IMAP con usuario y contraseña**, así 
 
 **Quién puede:** `integrations.create` / `integrations.manage`, igual que el resto. **Pendiente de verificar con un tenant real**: la lectura está probada con un servidor de mentira; la primera conexión real puede mostrar un mensaje que aquí no esté.
 
-## 25. El buzón se lee en tandas hasta vaciarlo (2026-10-24)
+## 25. «Ya lo leí» en el log de Teikem: el buzón no se toca (2026-10-24)
 
-Una corrida ya no se queda en 50 correos. Lee **tandas de 50** (los no leídos más viejos primero), atiende cada correo, los marca como leídos y mueve a «Procesados», y **pide la siguiente tanda hasta que no queden no leídos**. Los topes por corrida son **300 correos** y **8 minutos**; si el buzón tiene más, el resumen de la corrida lo dice («Quedan correos por leer; se leen en la próxima corrida.») y la corrida siguiente sigue donde quedó.
+**Por omisión Teikem NO marca como leídos ni mueve los correos del buzón.** Lo que ya atendió lo anota en su propio **log** (tabla `IntegrationMailLog`: una fila por correo e integración) y no lo vuelve a leer. El buzón se queda exactamente como está y se puede seguir usando con normalidad.
 
-**Si no se pueden marcar como leídos** (por ejemplo la aplicación de Microsoft 365 solo tiene permiso de lectura, o la cuenta es de solo lectura), la corrida **deja de leer** y lo dice en el resumen: «No se pudieron marcar como leídos algunos correos del buzón… se dejó de leer para no repetir los mismos. Revise los permisos del buzón.» Sin esa parada, cada corrida volvería a bajar los mismos primeros correos y nunca llegaría a los nuevos.
-
-**¿Se vuelve a leer lo que no se marcó?** Cada archivo y correo procesado queda en el historial con su huella (hash): el mismo contenido no se procesa dos veces aunque siga como no leído. Un correo que se vuelva a marcar como no leído a mano se baja otra vez, pero no duplica lo ya creado.
+- **Qué lee:** los correos de la carpeta («Folder to read»), **estén leídos o no**, recibidos desde la fecha de **«Read e-mails received since»** (vacío = todos los de la carpeta; con un buzón grande conviene poner una fecha). Siempre **50 por corrida**, del más viejo al más nuevo; si quedan más, el resumen de la corrida dice «Quedan correos por leer; se leen en la próxima corrida.»
+- **Cómo no repite:** cada correo atendido (haya creado algo o haya ido a la bandeja) queda en el log y se salta en las corridas siguientes. Además, el contenido ya procesado (hash del archivo) tampoco se duplica.
+- **El otro modo:** «How what was already read is recorded» = «In the mailbox» hace lo de antes: solo los NO leídos, que se marcan como leídos y se mueven a «Procesados» (y se avisa si no se pueden marcar). Úselo solo si de verdad quiere que el buzón refleje lo atendido.
+- **«Test connection»** dice cuántos correos faltan por atender («N correo(s) por leer… los que Teikem todavía no ha atendido; el buzón no se toca»).
+- **Base de datos:** requiere la tabla nueva de `Diseño/logistica-db-update.sql` (sección 2026-10-24 (o)); correr `db-update` antes de usar esta versión.
+- Si en una versión anterior ya se marcaron o movieron correos a «Procesados», el log de Teikem empieza vacío: no los vuelve a leer porque ya no están en la carpeta que se lee. Para que se lean otra vez, devuélvalos a la bandeja de entrada (no hace falta marcarlos como no leídos).

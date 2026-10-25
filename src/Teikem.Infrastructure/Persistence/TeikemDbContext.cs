@@ -244,6 +244,7 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<Teikem.Domain.Integrations.IntegrationFileLog> IntegrationFileLogs => Set<Teikem.Domain.Integrations.IntegrationFileLog>();
     public DbSet<Teikem.Domain.Integrations.IntegrationInboxItem> IntegrationInboxItems => Set<Teikem.Domain.Integrations.IntegrationInboxItem>();
     public DbSet<Teikem.Domain.Integrations.IntegrationProposal> IntegrationProposals => Set<Teikem.Domain.Integrations.IntegrationProposal>();
+    public DbSet<Teikem.Domain.Integrations.IntegrationMailLog> IntegrationMailLogs => Set<Teikem.Domain.Integrations.IntegrationMailLog>();   // 2026-10-24: correos ya atendidos (el «ya lo leí» de Teikem)
     public DbSet<Teikem.Domain.Integrations.IntegrationApiKey> IntegrationApiKeys => Set<Teikem.Domain.Integrations.IntegrationApiKey>();   // Lote 135
     public DbSet<Teikem.Domain.Integrations.IntegrationApiLog> IntegrationApiLogs => Set<Teikem.Domain.Integrations.IntegrationApiLog>();
     public DbSet<Teikem.Domain.Integrations.IntegrationOutput> IntegrationOutputs => Set<Teikem.Domain.Integrations.IntegrationOutput>();

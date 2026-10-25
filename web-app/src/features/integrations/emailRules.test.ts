@@ -206,3 +206,19 @@ describe('buzón de Microsoft 365', () => {
     expect(buildEmailConfig(ok())).toMatchObject({ provider: 'IMAP', tenantId: null, clientId: null, host: 'imap.x.com' })
   })
 })
+
+// 2026-10-24 — dónde se anota lo ya leído: en el log de Teikem (por omisión, el buzón no se toca) o en el buzón (marcar leído y mover).
+describe('forma de anotar lo ya leído', () => {
+  it('por omisión es el log de Teikem y viaja con la fecha desde la que se lee', () => {
+    expect(emptyEmail()).toMatchObject({ markMode: 'LOG', readSince: '' })
+    expect(buildEmailConfig({ ...ok(), readSince: ' 2026-10-01 ' })).toMatchObject({ markMode: 'LOG', readSince: '2026-10-01' })
+    expect(buildEmailConfig({ ...ok(), readSince: '' }).readSince).toBeNull()
+    // en el buzón no hay fecha: se leen los no leídos
+    expect(buildEmailConfig({ ...ok(), markMode: 'MAILBOX', readSince: '2026-10-01' })).toMatchObject({ markMode: 'MAILBOX', readSince: null })
+  })
+
+  it('un buzón guardado sin esos datos (los de antes) se abre en modo log', () => {
+    expect(emailValuesOf({ ...buildEmailConfig(ok()), markMode: undefined, readSince: undefined })).toMatchObject({ markMode: 'LOG', readSince: '' })
+    expect(emailValuesOf({ ...buildEmailConfig(ok()), markMode: 'MAILBOX' }).markMode).toBe('MAILBOX')
+  })
+})

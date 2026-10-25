@@ -98,10 +98,15 @@ export const emptyCondition = (source = 'PDF'): ConditionValues => ({ scope: sou
 export const emptyReader = (): ReaderValues => ({ name: '', source: 'BODY', target: 'ORDER', conditions: [], fields: [], templatePublicId: '', clientPublicId: '', firstOnly: false, recordStart: '', mode: 'SUGGEST', toStatus: 'PICKUP', warehousePublicId: '', minConfidence: '', checks: [] })
 
 export const EMAIL_PROVIDERS = ['IMAP', 'MICROSOFT365'] as const
+export const MARK_MODES = ['LOG', 'MAILBOX'] as const
 
 export interface EmailValues {
   /** 2026-10-24: IMAP (servidor, usuario y contraseña) o MICROSOFT365 (aplicación de Entra ID; el «usuario» es la dirección del buzón y la «contraseña» es el secreto de la aplicación). */
   provider: string
+  /** 2026-10-24: dónde se anota que un correo ya se leyó: LOG = en el log de Teikem (el buzón no se toca; por omisión) o MAILBOX = marcar leído y mover a «Procesados». */
+  markMode: string
+  /** AAAA-MM-DD: solo se leen los correos recibidos desde ese día (modo LOG); vacío = todos los de la carpeta. */
+  readSince: string
   tenantId: string
   clientId: string
   host: string
@@ -160,7 +165,7 @@ export const emptyBodyField = (): BodyFieldValues => ({ position: '', kind: 'LAB
 
 export function emptyEmail(): EmailValues {
   return {
-    provider: 'IMAP', tenantId: '', clientId: '', host: '', port: '993', useSsl: true, username: '', password: '', mailbox: 'INBOX', processedFolder: 'Procesados', subjectOperator: 'CONTAINS', subjectValue: '', allowedSenders: '', requireAttachment: false,
+    provider: 'IMAP', markMode: 'LOG', readSince: '', tenantId: '', clientId: '', host: '', port: '993', useSsl: true, username: '', password: '', mailbox: 'INBOX', processedFolder: 'Procesados', subjectOperator: 'CONTAINS', subjectValue: '', allowedSenders: '', requireAttachment: false,
     attachmentMode: 'ALL', attachmentNameOperator: 'WILDCARD', attachmentNameValue: '', attachmentTypes: 'csv, txt', readBody: false, readPdf: false, bodyFields: [], readers: [],
   }
 }
@@ -294,6 +299,8 @@ export function emailValuesOf(c: EmailConfig | null | undefined): EmailValues {
   if (!c) return emptyEmail()
   return {
     provider: c.provider === 'MICROSOFT365' ? 'MICROSOFT365' : 'IMAP',
+    markMode: c.markMode === 'MAILBOX' ? 'MAILBOX' : 'LOG',
+    readSince: c.readSince ?? '',
     tenantId: c.tenantId ?? '',
     clientId: c.clientId ?? '',
     host: c.host ?? '',
@@ -338,6 +345,8 @@ export function buildEmailConfig(e: EmailValues): EmailConfig {
   const m365 = e.provider === 'MICROSOFT365'
   return {
     provider: e.provider,
+    markMode: e.markMode,
+    readSince: e.markMode === 'LOG' && e.readSince.trim() !== '' ? e.readSince.trim() : null,
     tenantId: m365 ? e.tenantId.trim() : null,
     clientId: m365 ? e.clientId.trim() : null,
     host: m365 ? '' : e.host.trim(),

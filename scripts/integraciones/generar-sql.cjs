@@ -41,7 +41,9 @@ function readerOf(key, extra = {}) {
 /** La configuración del buzón: lo del servidor son marcadores que se cambian en la pantalla (Editar la integración) antes de prenderla. */
 function emailConfig(readers) {
   return {
-    host: 'imap.CAMBIAR.com', port: 993, useSsl: true, username: 'buzon@CAMBIAR.com', mailbox: 'INBOX', processedFolder: 'Procesados',
+    // markMode LOG = Teikem anota en su propio log (dbo.IntegrationMailLog) lo que ya atendió y NO toca el buzón (ni marca leído ni mueve); readSince (AAAA-MM-DD) se pone en la pantalla si el buzón es grande.
+    // Para un buzón de Microsoft 365 se cambia en la pantalla el «Mailbox type» (Tenant ID, Client ID y secreto de la aplicación); ahí no hay servidor ni contraseña.
+    provider: 'IMAP', markMode: 'LOG', host: 'imap.CAMBIAR.com', port: 993, useSsl: true, username: 'buzon@CAMBIAR.com', mailbox: 'INBOX', processedFolder: 'Procesados',
     requireAttachment: false, attachmentMode: 'ALL', readBody: false, readPdf: false, readers,
   }
 }
@@ -54,7 +56,8 @@ ${lines.map((l) => '   ' + l).join('\n')}
    IDEMPOTENTE: se puede correr otra vez; lo que ya existe no se toca ni se duplica (para cambiar una integración ya creada se edita en la pantalla Integraciones).
    NO es parte de logistica-db-update.sql: son datos de ESTA operación, no estructura. Antes de correrlo, mire los parámetros de arriba (DECLARE).
    Las integraciones nacen APAGADAS (IsActive = 0) y con el servidor del buzón en marcadores «CAMBIAR»: en Integraciones → Editar ponga el servidor, el usuario y la
-   CONTRASEÑA del buzón (la contraseña se guarda cifrada por la aplicación; no se puede poner desde SQL), los remitentes permitidos y préndala.
+   CONTRASEÑA del buzón (la contraseña se guarda cifrada por la aplicación; no se puede poner desde SQL) —o, si el buzón es de Microsoft 365, el tipo «Microsoft 365» con su Tenant ID, Client ID y secreto—,
+   los remitentes permitidos, y préndala. Requiere la tabla dbo.IntegrationMailLog (logistica-db-update.sql, sección 2026-10-24 (o)): el «ya lo leí» queda en Teikem y el buzón no se toca.
    ============================================================================ */
 SET NOCOUNT ON;
 SET QUOTED_IDENTIFIER ON;

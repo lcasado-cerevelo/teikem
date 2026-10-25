@@ -11006,7 +11006,16 @@
     },
     "email": {
       "mailbox": "Mailbox",
-      "mailboxHelp": "One mailbox per integration. Teikem reads only the UNREAD messages of that folder and never deletes anything: handled messages are marked read and moved to \"Procesados\".",
+      "mailboxHelp": "One mailbox per integration. Teikem never deletes anything. By default it records in ITS own log the e-mails it has handled and does not touch the mailbox (no marking, no moving); it can also mark them as read and move them to \"Procesados\".",
+      "markMode": "How what was already read is recorded",
+      "markModeOption": {
+        "LOG": "In Teikem's log (the mailbox is not touched)",
+        "MAILBOX": "In the mailbox (mark as read and move to \"Procesados\")"
+      },
+      "markModeHelpLog": "Teikem keeps in its log every e-mail it handles, so it never reads one twice. It reads the e-mails in the folder, read or not, and does not mark or move anything in the mailbox: you can keep using it as usual.",
+      "markModeHelpMailbox": "Only UNREAD e-mails are read; as each one is handled it is marked as read and moved to the processed folder. If they are marked unread again in the mailbox, they are downloaded again (what was already created is not duplicated).",
+      "readSince": "Read e-mails received since",
+      "readSinceHelp": "Only in Teikem's log mode. E-mails before this day are ignored. Empty = every e-mail in the folder (50 are handled per run, oldest first): with a big mailbox, set a date.",
       "host": "IMAP server",
       "port": "Port",
       "useSsl": "Encrypted connection (SSL/TLS)",

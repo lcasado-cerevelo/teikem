@@ -258,8 +258,8 @@ public sealed class IntegrationRunner(
     public const string MailNotMarkedNote = "No se pudieron marcar como leídos algunos correos del buzón (¿la aplicación o la cuenta solo puede leer?); se dejó de leer para no repetir los mismos. Revise los permisos del buzón.";
     /// <summary>Correos por tanda: lo que se baja de una vez (cada uno con sus adjuntos y, si hace falta, su OCR).</summary>
     private const int MaxMessagesPerBatch = 50;
-    /// <summary>Tope por corrida (varias tandas): lo que sobre se lee en la corrida siguiente.</summary>
-    private const int MaxMessagesPerRun = 300;
+    /// <summary>Tope por corrida: 50 correos (una tanda); lo que sobre se lee en la corrida siguiente.</summary>
+    private const int MaxMessagesPerRun = 50;
     /// <summary>Tiempo máximo leyendo tandas en una corrida; muy por debajo del arrendamiento de la corrida (15 min).</summary>
     private static readonly TimeSpan MailRunBudget = TimeSpan.FromMinutes(8);
 
@@ -297,29 +297,56 @@ public sealed class IntegrationRunner(
     /// <summary>La nota de la lectura del buzón (quedan correos, o no se pudieron marcar) para el resumen de la corrida; se vacía al usarla.</summary>
     private string? mailRunNote;
 
-    /// <summary>Lee el buzón de la integración: los correos nuevos (NO leídos), uno por uno por las reglas; al terminar cada uno se marca como leído y se mueve a «Procesados» (nunca se borra).</summary>
+    /// <summary>
+    /// Lee el buzón de la integración, hasta 50 correos por corrida, uno por uno por las reglas. Dos formas de saber qué ya se atendió (<c>EmailConfig.MarkMode</c>):
+    /// LOG (por omisión) = Teikem lo anota en su propio log (<c>IntegrationMailLog</c>) y NO toca el buzón: se leen los correos de la carpeta (leídos o no) desde <c>ReadSince</c> que el log todavía no tiene;
+    /// MAILBOX = solo los NO leídos, que se marcan como leídos y se mueven a «Procesados» (nunca se borra).
+    /// </summary>
     private async Task<List<FileOutcome>> ReadMailboxAsync(Integration integration, ImportTemplate template, Client client, IntegrationRun run, CancellationToken ct)
     {
         var cfg = IntegrationService.ParseEmail(integration.ConnectorConfigJson) ?? throw new ValidationException("email", EmailRules.HostRequiredMessage);
         if (integration.SecretEnc is null) throw new ValidationException("email.password", EmailRules.PasswordRequiredMessage);
         var password = protector.Unprotect(integration.TenantId, IntegrationService.MailPurpose, integration.SecretEnc);
         var outcomes = new List<FileOutcome>();
+        var logMode = EmailMarkModes.IsLog(cfg.MarkMode);
+        var since = EmailMarkModes.SinceUtc(cfg.ReadSince);
         // solo lo que falla al pedir correos es «no se pudo conectar»; un fallo al atender un correo no se disfraza de problema de conexión
         var drained = await DrainMailboxAsync(
                 async (size, token) =>
                 {
-                    try { return await mailbox.FetchAsync(cfg, password, size, token); }
+                    try
+                    {
+                        if (!logMode) return await mailbox.FetchAsync(cfg, password, size, token);
+                        var keys = await mailbox.ListNewKeysAsync(cfg, password, since, size, (page, t) => MailKeysLoggedAsync(integration, page, t), token);
+                        return await mailbox.GetAsync(cfg, password, keys, token);
+                    }
                     catch (Exception ex) when (ex is not OperationCanceledException and not TeikemException) { throw new ValidationException("email", $"{ImapMailboxReader.ConnectionFailedMessage}: {ex.Message}"); }
                 },
                 async m => outcomes.AddRange(await ProcessMessageAsync(integration, template, client, run, cfg, m.Data, ct)),
                 async keys =>
                 {
+                    if (logMode) { await LogMailKeysAsync(integration, run, keys, ct); return; }
                     try { await mailbox.MarkProcessedAsync(cfg, password, keys, ct); }
                     catch (Exception ex) when (ex is not OperationCanceledException) { logger.LogWarning(ex, "No se pudieron marcar los correos de la integración {Integration}; el hash evita procesarlos otra vez.", integration.IntegrationId); throw; }
                 },
                 MaxMessagesPerBatch, MaxMessagesPerRun, MailRunBudget, () => DateTime.UtcNow, ct);
         mailRunNote = drained.Note;
         return outcomes;
+    }
+
+    /// <summary>De esas claves de correo, las que el log de Teikem ya tiene (ya se atendieron).</summary>
+    private async Task<ISet<string>> MailKeysLoggedAsync(Integration integration, IReadOnlyList<string> keys, CancellationToken ct)
+    {
+        var found = await db.IntegrationMailLogs.AsNoTracking().Where(l => l.IntegrationId == integration.IntegrationId && keys.Contains(l.MessageKey)).Select(l => l.MessageKey).ToListAsync(ct);
+        return found.ToHashSet(StringComparer.Ordinal);
+    }
+
+    /// <summary>Anota en el log de Teikem que estos correos ya se atendieron: el «ya lo leí», sin tocar el buzón.</summary>
+    private async Task LogMailKeysAsync(Integration integration, IntegrationRun run, IReadOnlyList<string> keys, CancellationToken ct)
+    {
+        foreach (var key in keys)
+            db.IntegrationMailLogs.Add(new IntegrationMailLog { TenantId = integration.TenantId, IntegrationId = integration.IntegrationId, IntegrationRunId = run.IntegrationRunId, MessageKey = key, ProcessedUtc = DateTime.UtcNow });
+        await db.SaveChangesAsync(ct);
     }
 
     /// <summary>

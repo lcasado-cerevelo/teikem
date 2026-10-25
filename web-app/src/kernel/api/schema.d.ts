@@ -41597,6 +41597,8 @@ export interface components {
             provider?: string | null;
             tenantId?: string | null;
             clientId?: string | null;
+            markMode?: string | null;
+            readSince?: string | null;
         };
         EmailTestResultDto: {
             ok?: boolean;

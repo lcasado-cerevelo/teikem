@@ -502,7 +502,7 @@ Microsoft 365 and Outlook.com **do not accept IMAP with a user and password**, s
 
 **In Teikem** (Integrations → “New integration” / edit → mailbox section): “Mailbox type” = Microsoft 365; **Tenant ID**, **Client ID**, **Mailbox address** (the mailbox that is read, e.g. `avisos@yourdomain.com`) and **Application secret (Client secret)**, which is stored encrypted and never shown again. Server and port are not asked for. Everything else (folder, processed, filters, readers, inbox) works as with IMAP. “Test connection” says how many unread e-mails there are, or explains what is missing.
 
-**How it reads:** only the **unread** ones in the folder, from the **oldest to the newest**, up to 50 per run; the subject filter is applied before downloading the e-mail (those that do not match are left alone). When each e-mail is done it is marked as read and moved to “Procesados” (the folder is created if missing). **It never deletes.**
+**How it reads:** like IMAP (section 25): by default it records what was handled in Teikem's log and **does not touch the mailbox**; it reads from the **oldest to the newest**, 50 per run, and the subject filter is applied before downloading the e-mail (those that do not match are left alone). Only if you choose “In the mailbox” does it mark them as read and move them to “Procesados” (the folder is created if missing). **It never deletes.**
 
 **Messages “Test connection” or the run can give** (and what to do):
 - “The application secret (Client secret) is not valid or has expired…” (AADSTS7000215): you pasted the ID instead of the value, or the secret expired. Create a new one.
@@ -515,10 +515,13 @@ Microsoft 365 and Outlook.com **do not accept IMAP with a user and password**, s
 
 **Who can:** `integrations.create` / `integrations.manage`, like the rest. **Still to verify with a real tenant**: reading is tested against a fake server; the first real connection may show a message that is not listed here.
 
-## 25. The mailbox is read in batches until it is empty (2026-10-24)
+## 25. “Already read” in Teikem's log: the mailbox is not touched (2026-10-24)
 
-A run no longer stops at 50 e-mails. It reads **batches of 50** (the oldest unread first), handles each e-mail, marks them as read and moves them to “Procesados”, and **asks for the next batch until no unread ones are left**. The limits per run are **300 e-mails** and **8 minutes**; if the mailbox has more, the run summary says so (“E-mails are left to read; they are read in the next run.”) and the next run continues where it stopped.
+**By default Teikem does NOT mark e-mails as read or move them in the mailbox.** What it has handled it records in its own **log** (table `IntegrationMailLog`: one row per e-mail and integration) and never reads it again. The mailbox stays exactly as it is and can be used as usual.
 
-**If they cannot be marked as read** (for example the Microsoft 365 application only has read permission, or the account is read-only), the run **stops reading** and says so in the summary: “Some mailbox e-mails could not be marked as read… reading stopped so the same ones are not repeated. Check the mailbox permissions.” Without that stop, every run would download the same first e-mails again and never reach the new ones.
-
-**Is what was not marked read again?** Every processed file and e-mail stays in the history with its fingerprint (hash): the same content is not processed twice even if it is still unread. An e-mail you mark as unread by hand is downloaded again, but it does not duplicate what was already created.
+- **What it reads:** the e-mails in the folder (“Folder to read”), **read or not**, received since the date in **“Read e-mails received since”** (empty = all the folder's e-mails; with a big mailbox set a date). Always **50 per run**, oldest first; if more are left, the run summary says “E-mails are left to read; they are read in the next run.”
+- **How it does not repeat:** each handled e-mail (whether it created something or went to the inbox) stays in the log and is skipped in later runs. The already processed content (file hash) is not duplicated either.
+- **The other mode:** “How what was already read is recorded” = “In the mailbox” does what it did before: only UNREAD e-mails, which are marked as read and moved to “Procesados” (and it warns if they cannot be marked). Use it only if you really want the mailbox to reflect what was handled.
+- **“Test connection”** says how many e-mails are left to handle (“N e-mail(s) to read… the ones Teikem has not handled yet; the mailbox is not touched”).
+- **Database:** needs the new table in `Diseño/logistica-db-update.sql` (section 2026-10-24 (o)); run `db-update` before using this version.
+- If an earlier version already marked or moved e-mails to “Procesados”, Teikem's log starts empty: it does not read them again because they are no longer in the folder that is read. To have them read again, move them back to the inbox (they do not need to be marked unread).

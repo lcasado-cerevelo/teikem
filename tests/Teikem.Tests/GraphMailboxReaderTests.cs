@@ -152,6 +152,46 @@ public class GraphMailboxReaderTests
     }
 
     [Fact]
+    public async Task Modo_log_lista_los_que_el_log_no_tiene_del_mas_viejo_al_mas_nuevo_sin_tocar_el_buzon()
+    {
+        var fake = new FakeGraph(req => AfterLogin(req, "{\"value\":[{\"id\":\"m1\",\"subject\":\"a\"},{\"id\":\"m2\",\"subject\":\"b\"},{\"id\":\"m3\",\"subject\":\"c\"},{\"id\":\"m4\",\"subject\":\"d\"}]}"));
+        fake.Mime["m3"] = Eml("c", "tres");
+        fake.Mime["m4"] = Eml("d", "cuatro");
+        var reader = new GraphMailboxReader(new HttpClient(fake));
+        var asked = new List<string>();
+
+        // el log de Teikem ya tiene m1 y m2 (aunque en el buzón sigan como no leídos o ya leídos: da igual)
+        var keys = await reader.ListNewKeysAsync(Config(), "s", new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc), 1, (page, ct) =>
+        {
+            asked.AddRange(page);
+            ISet<string> done = new HashSet<string> { "m1", "m2" };
+            return Task.FromResult(done);
+        }, default);
+        var messages = await reader.GetAsync(Config(), "s", keys, default);
+
+        Assert.Equal(new[] { "m3" }, keys.ToArray());   // el más viejo que falta; el tope (1) corta ahí
+        Assert.Equal("tres", messages[0].Data.TextBody.Trim());
+        var list = fake.Calls.First(c => c[1].Contains("/messages?"))[1];
+        Assert.Contains(Uri.EscapeDataString("receivedDateTime ge 2026-10-01T00:00:00Z"), list);   // desde la fecha configurada
+        Assert.DoesNotContain("isRead", list);   // leídos o no: el estado del buzón no importa
+        Assert.DoesNotContain(fake.Calls, c => c[0] == "PATCH" || c[1].EndsWith("/move") || c[0] == "DELETE");   // el buzón no se toca
+    }
+
+    [Fact]
+    public void Anotar_en_el_log_de_Teikem_es_lo_normal_y_la_fecha_desde_se_valida()
+    {
+        Assert.True(EmailMarkModes.IsLog(null));   // por omisión: log de Teikem
+        Assert.True(EmailMarkModes.IsLog("LOG"));
+        Assert.False(EmailMarkModes.IsLog("mailbox"));
+        Assert.Equal(new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc), EmailMarkModes.SinceUtc(" 2026-10-01 "));
+        Assert.Null(EmailMarkModes.SinceUtc(""));
+        Assert.Null(EmailMarkModes.SinceUtc("1/10/2026"));
+        Assert.Empty(EmailRules.Validate(Config() with { MarkMode = "MAILBOX", ReadSince = "2026-10-01" }, true));
+        Assert.Equal(EmailRules.ReadSinceMessage, EmailRules.Validate(Config() with { ReadSince = "ayer" }, true)["email.readSince"]);
+        Assert.Equal(EmailRules.UnknownMarkModeMessage("X"), EmailRules.Validate(Config() with { MarkMode = "X" }, true)["email.markMode"]);
+    }
+
+    [Fact]
     public void Microsoft_365_pide_tenant_cliente_y_secreto_en_lugar_de_servidor_y_puerto()
     {
         Assert.Empty(EmailRules.Validate(Config(), true));   // no pide servidor ni puerto

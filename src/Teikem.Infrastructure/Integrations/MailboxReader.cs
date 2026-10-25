@@ -21,6 +21,16 @@ public interface IMailboxReader
     Task MarkProcessedAsync(EmailConfig config, string password, IReadOnlyList<string> keys, CancellationToken ct);
     /// <summary>Prueba la conexión (servidor, usuario, contraseña y carpeta). Devuelve cuántos correos sin leer hay.</summary>
     Task<int> TestAsync(EmailConfig config, string password, CancellationToken ct);
+
+    /// <summary>
+    /// «Ya lo leí» en el log de Teikem (el buzón no se toca): las claves de los correos de la carpeta (leídos o no) recibidos desde <paramref name="sinceUtc"/>, del más viejo al más nuevo, que el log todavía NO tiene,
+    /// hasta <paramref name="need"/>. Se recorre el buzón por páginas y por cada una se pregunta al log (<paramref name="alreadyLogged"/> devuelve de esas claves las ya atendidas): se corta en cuanto hay las que hacen falta.
+    /// El filtro del asunto «contiene» se aplica aquí; el resto lo comprueba el ciclo de la corrida.
+    /// </summary>
+    Task<IReadOnlyList<string>> ListNewKeysAsync(EmailConfig config, string password, DateTime? sinceUtc, int need, Func<IReadOnlyList<string>, CancellationToken, Task<ISet<string>>> alreadyLogged, CancellationToken ct);
+
+    /// <summary>Baja los correos completos de esas claves (sin marcarlos ni moverlos).</summary>
+    Task<IReadOnlyList<MailboxMessage>> GetAsync(EmailConfig config, string password, IReadOnlyList<string> keys, CancellationToken ct);
 }
 
 /// <summary>Convierte un correo MIME (de un buzón o de un archivo .eml) en los datos que usan las reglas. El HTML se reduce a texto; nada se ejecuta.</summary>
@@ -127,5 +137,47 @@ public sealed class ImapMailboxReader : IMailboxReader
         var unseen = (await inbox.SearchAsync(SearchQuery.NotSeen, ct)).Count;
         await client.DisconnectAsync(true, ct);
         return unseen;
+    }
+
+    private const int KeyPage = 500;
+
+    public async Task<IReadOnlyList<string>> ListNewKeysAsync(EmailConfig c, string password, DateTime? sinceUtc, int need, Func<IReadOnlyList<string>, CancellationToken, Task<ISet<string>>> alreadyLogged, CancellationToken ct)
+    {
+        using var client = await ConnectAsync(c, password, ct);
+        var inbox = await client.GetFolderAsync(c.Mailbox, ct);
+        await inbox.OpenAsync(FolderAccess.ReadOnly, ct);
+        var query = SearchQuery.All;
+        if (sinceUtc is { } since) query = query.And(SearchQuery.DeliveredAfter(since.Date.AddDays(-1)));   // el servidor compara por día: se pide un día de más y abajo se descartan los que no tocan
+        if (c.Subject is { } s && string.Equals(s.Operator, EmailMatchOperators.Contains, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(s.Value))
+            query = query.And(SearchQuery.SubjectContains(s.Value));
+        var uids = (await inbox.SearchAsync(query, ct)).OrderBy(u => u.Id).ToList();
+        var keys = uids.Select(u => $"{inbox.UidValidity}:{u.Id}").ToList();
+        var result = new List<string>();
+        for (var i = 0; i < keys.Count && result.Count < need; i += KeyPage)
+        {
+            var page = keys.Skip(i).Take(KeyPage).ToList();
+            var done = await alreadyLogged(page, ct);
+            foreach (var k in page) { if (!done.Contains(k)) { result.Add(k); if (result.Count >= need) break; } }
+        }
+        await client.DisconnectAsync(true, ct);
+        return result;
+    }
+
+    public async Task<IReadOnlyList<MailboxMessage>> GetAsync(EmailConfig c, string password, IReadOnlyList<string> keys, CancellationToken ct)
+    {
+        if (keys.Count == 0) return Array.Empty<MailboxMessage>();
+        using var client = await ConnectAsync(c, password, ct);
+        var inbox = await client.GetFolderAsync(c.Mailbox, ct);
+        await inbox.OpenAsync(FolderAccess.ReadOnly, ct);
+        var result = new List<MailboxMessage>();
+        foreach (var key in keys)
+        {
+            var parts = key.Split(':');
+            if (parts.Length != 2 || !uint.TryParse(parts[0], out var validity) || !uint.TryParse(parts[1], out var id) || validity != inbox.UidValidity) continue;   // el buzón se reconstruyó: esa clave ya no existe
+            var message = await inbox.GetMessageAsync(new UniqueId(id), ct);
+            result.Add(new MailboxMessage(MailMessageMapper.Map(message, id.ToString()), key));
+        }
+        await client.DisconnectAsync(true, ct);
+        return result;
     }
 }
