@@ -1,10 +1,10 @@
 import { useState, type ReactNode } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Text, TextInput } from '@components/Text';
 import ScreenHeader from '@components/ScreenHeader';
-import Chip from '@components/Chip';
+import CompanyChips from '@components/CompanyChips';
 import BarcodeScannerModal from '@components/BarcodeScannerModal';
 import { useStyles, useTheme } from '@hooks/ThemeContext';
 import type { Colors } from '@constants/theme';
@@ -27,11 +27,7 @@ export default function LookupShell({ title, companies, tenantId, onTenant, text
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScreenHeader title={title} />
-      {companies.length > 1 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-          {companies.map((c) => <Chip key={c.tenantId} label={c.name} active={c.tenantId === tenantId} onPress={() => onTenant(c.tenantId)} />)}
-        </ScrollView>
-      ) : null}
+      {companies.length > 1 ? <CompanyChips companies={companies} activeId={tenantId} onPick={onTenant} /> : null}
       <View style={styles.wrap}>
         <MaterialIcons name="search" size={20} color={colors.muted} />
         <TextInput style={styles.input} value={text} onChangeText={onText} placeholder={placeholder} placeholderTextColor={colors.muted} autoCapitalize="none" autoCorrect={false} returnKeyType="search" accessibilityLabel={placeholder} />
@@ -58,7 +54,6 @@ export function InfoLine({ label, value, href }: { label?: string; value: string
 
 const createStyles = (colors: Colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  chips: { paddingHorizontal: 20, gap: 8, paddingBottom: 6 },
   wrap: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: colors.gray, borderRadius: 12, marginHorizontal: 20, marginBottom: 8, paddingHorizontal: 12, minHeight: 46 },
   input: { flex: 1, color: colors.text, fontSize: 16, paddingVertical: 8 },
   content: { flex: 1 },

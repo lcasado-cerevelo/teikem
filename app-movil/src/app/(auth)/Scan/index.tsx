@@ -7,6 +7,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Text } from '@components/Text';
 import ScreenHeader from '@components/ScreenHeader';
 import Chip from '@components/Chip';
+import CompanyChips from '@components/CompanyChips';
 import SearchMultiSelect, { type MultiOption } from '@components/SearchMultiSelect';
 import BarcodeScannerModal from '@components/BarcodeScannerModal';
 import ScanLookupModal from '@components/ScanLookupModal';
@@ -191,11 +192,7 @@ export default function Scan() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScreenHeader title={t('SCAN.TITLE')} />
-      {companies.length > 1 ? (
-        <View style={styles.chips}>
-          {companies.map((c) => <Chip key={c.tenantId} label={c.name} active={c.tenantId === company?.tenantId} onPress={() => { setTenantId(c.tenantId); setStarted(false); setSelected(new Set()); }} />)}
-        </View>
-      ) : null}
+      {companies.length > 1 ? <CompanyChips companies={companies} activeId={company?.tenantId} onPick={(id) => { setTenantId(id); setStarted(false); setSelected(new Set()); }} /> : null}
 
       <View style={styles.statusRow}>
         <Text style={styles.sub}>
@@ -356,7 +353,6 @@ export default function Scan() {
 const createStyles = (colors: Colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   pad: { marginHorizontal: 20, marginBottom: 6 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginHorizontal: 20, marginBottom: 8 },
   statusRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: 20, marginBottom: 4 },
   sub: { fontSize: 12, color: colors.muted },
   error: { marginHorizontal: 20, color: '#c0392b', fontWeight: '600', marginBottom: 4 },
