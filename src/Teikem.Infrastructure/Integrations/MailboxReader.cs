@@ -12,12 +12,12 @@ public sealed record MailboxMessage(MailMessageData Data, string Key);
 
 /// <summary>
 /// Lote 133 (P11) — el buzón de una integración de correo. Interfaz para poder probar sin servidor real (un lector de prueba con correos de muestra) y para cambiar de protocolo sin tocar las reglas.
-/// El filtro del asunto corre en el servidor de correo: nunca se baja todo el buzón; solo los NO leídos, hasta <c>maxMessages</c> por corrida.
+/// El filtro del asunto corre en el servidor de correo: nunca se baja todo el buzón; se leen los de la carpeta (leídos o no, desde «ReadSince» si se puso), hasta <c>maxMessages</c> por corrida.
 /// </summary>
 public interface IMailboxReader
 {
     Task<IReadOnlyList<MailboxMessage>> FetchAsync(EmailConfig config, string password, int maxMessages, CancellationToken ct);
-    /// <summary>Marca como leídos y mueve a la carpeta de procesados (se crea si falta) los correos ya atendidos. Nunca borra.</summary>
+    /// <summary>Mueve a la carpeta de procesados (se crea si falta) los correos ya atendidos; no cambia leído/no leído. Nunca borra.</summary>
     Task MarkProcessedAsync(EmailConfig config, string password, IReadOnlyList<string> keys, CancellationToken ct);
     /// <summary>Prueba la conexión (servidor, usuario, contraseña y carpeta). Devuelve cuántos correos sin leer hay.</summary>
     Task<int> TestAsync(EmailConfig config, string password, CancellationToken ct);
@@ -92,7 +92,8 @@ public sealed class ImapMailboxReader : IMailboxReader
         using var client = await ConnectAsync(c, password, ct);
         var inbox = await client.GetFolderAsync(c.Mailbox, ct);
         await inbox.OpenAsync(FolderAccess.ReadOnly, ct);
-        var query = SearchQuery.NotSeen;
+        // la carpeta es la verdad: todo lo que está en ella (leído o no) está por atender; lo procesado se mueve a «Procesados»
+        var query = EmailMarkModes.SinceUtc(c.ReadSince) is { } since ? SearchQuery.DeliveredAfter(since.AddSeconds(-1)) : SearchQuery.All;
         // el filtro del asunto va al servidor cuando es «contiene» (lo demás se vuelve a comprobar aquí)
         if (c.Subject is { } s && string.Equals(s.Operator, EmailMatchOperators.Contains, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(s.Value))
             query = query.And(SearchQuery.SubjectContains(s.Value));
@@ -114,7 +115,7 @@ public sealed class ImapMailboxReader : IMailboxReader
         var inbox = await client.GetFolderAsync(c.Mailbox, ct);
         await inbox.OpenAsync(FolderAccess.ReadWrite, ct);
         var list = keys.Select(k => new UniqueId(uint.Parse(k))).ToList();
-        await inbox.AddFlagsAsync(list, MessageFlags.Seen, true, ct);
+        // solo se mueve: no se cambia leído/no leído (el buzón lo puede estar usando una persona)
         if (!string.IsNullOrWhiteSpace(c.ProcessedFolder))
         {
             IMailFolder target;
@@ -134,9 +135,9 @@ public sealed class ImapMailboxReader : IMailboxReader
         using var client = await ConnectAsync(c, password, ct);
         var inbox = await client.GetFolderAsync(c.Mailbox, ct);
         await inbox.OpenAsync(FolderAccess.ReadOnly, ct);
-        var unseen = (await inbox.SearchAsync(SearchQuery.NotSeen, ct)).Count;
+        var pending = (await inbox.SearchAsync(SearchQuery.All, ct)).Count;
         await client.DisconnectAsync(true, ct);
-        return unseen;
+        return pending;
     }
 
     private const int KeyPage = 500;

@@ -98,7 +98,7 @@ export const emptyCondition = (source = 'PDF'): ConditionValues => ({ scope: sou
 export const emptyReader = (): ReaderValues => ({ name: '', source: 'BODY', target: 'ORDER', conditions: [], fields: [], templatePublicId: '', clientPublicId: '', firstOnly: false, recordStart: '', mode: 'SUGGEST', toStatus: 'PICKUP', warehousePublicId: '', minConfidence: '', checks: [] })
 
 export const EMAIL_PROVIDERS = ['IMAP', 'MICROSOFT365'] as const
-export const MARK_MODES = ['LOG', 'MAILBOX'] as const
+export const MARK_MODES = ['MAILBOX', 'LOG'] as const
 
 export interface EmailValues {
   /** 2026-10-24: IMAP (servidor, usuario y contraseña) o MICROSOFT365 (aplicación de Entra ID; el «usuario» es la dirección del buzón y la «contraseña» es el secreto de la aplicación). */
@@ -165,7 +165,7 @@ export const emptyBodyField = (): BodyFieldValues => ({ position: '', kind: 'LAB
 
 export function emptyEmail(): EmailValues {
   return {
-    provider: 'IMAP', markMode: 'LOG', readSince: '', tenantId: '', clientId: '', host: '', port: '993', useSsl: true, username: '', password: '', mailbox: 'INBOX', processedFolder: 'Procesados', subjectOperator: 'CONTAINS', subjectValue: '', allowedSenders: '', requireAttachment: false,
+    provider: 'IMAP', markMode: 'MAILBOX', readSince: '', tenantId: '', clientId: '', host: '', port: '993', useSsl: true, username: '', password: '', mailbox: 'INBOX', processedFolder: 'Procesados', subjectOperator: 'CONTAINS', subjectValue: '', allowedSenders: '', requireAttachment: false,
     attachmentMode: 'ALL', attachmentNameOperator: 'WILDCARD', attachmentNameValue: '', attachmentTypes: 'csv, txt', readBody: false, readPdf: false, bodyFields: [], readers: [],
   }
 }
@@ -299,7 +299,7 @@ export function emailValuesOf(c: EmailConfig | null | undefined): EmailValues {
   if (!c) return emptyEmail()
   return {
     provider: c.provider === 'MICROSOFT365' ? 'MICROSOFT365' : 'IMAP',
-    markMode: c.markMode === 'MAILBOX' ? 'MAILBOX' : 'LOG',
+    markMode: c.markMode === 'LOG' ? 'LOG' : 'MAILBOX',
     readSince: c.readSince ?? '',
     tenantId: c.tenantId ?? '',
     clientId: c.clientId ?? '',
@@ -346,7 +346,7 @@ export function buildEmailConfig(e: EmailValues): EmailConfig {
   return {
     provider: e.provider,
     markMode: e.markMode,
-    readSince: e.markMode === 'LOG' && e.readSince.trim() !== '' ? e.readSince.trim() : null,
+    readSince: e.readSince.trim() !== '' ? e.readSince.trim() : null,
     tenantId: m365 ? e.tenantId.trim() : null,
     clientId: m365 ? e.clientId.trim() : null,
     host: m365 ? '' : e.host.trim(),

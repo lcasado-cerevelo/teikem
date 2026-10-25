@@ -61,21 +61,19 @@ export function EmailSection({ form, hasSavedPassword, clientOptions, templateOp
           <Field name="email.mailbox" label={t('integrations.email.folder')} required>
             <TextInput />
           </Field>
-          {email?.markMode === 'MAILBOX' && (
+          {email?.markMode !== 'LOG' && (
             <Field name="email.processedFolder" label={t('integrations.email.processed')} help={t('integrations.email.processedHelp')}>
               <TextInput />
             </Field>
           )}
         </div>
         <div className="r2">
-          <Field name="email.markMode" label={t('integrations.email.markMode')} help={t(email?.markMode === 'MAILBOX' ? 'integrations.email.markModeHelpMailbox' : 'integrations.email.markModeHelpLog')}>
+          <Field name="email.markMode" label={t('integrations.email.markMode')} help={t(email?.markMode === 'LOG' ? 'integrations.email.markModeHelpLog' : 'integrations.email.markModeHelpMailbox')}>
             <Select options={MARK_MODES.map((m) => ({ value: m, label: t(`integrations.email.markModeOption.${m}`) }))} />
           </Field>
-          {email?.markMode !== 'MAILBOX' && (
-            <Field name="email.readSince" label={t('integrations.email.readSince')} help={t('integrations.email.readSinceHelp')}>
-              <DateInput />
-            </Field>
-          )}
+          <Field name="email.readSince" label={t('integrations.email.readSince')} help={t('integrations.email.readSinceHelp')}>
+            <DateInput />
+          </Field>
         </div>
       </fieldset>
 

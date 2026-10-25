@@ -10904,3 +10904,10 @@ El enlace vale 60 minutos y se usa una sola vez (o ya pidió otro más nuevo). T
 
 **¿Por qué sale el logo de otra compañía (o el de Teikem) en la pantalla de entrada?**
 La pantalla muestra el logo de la última compañía con la que entró ese teléfono o computadora; si es la primera vez, el de la compañía de la dirección web con que abrió la página; si la instalación tiene una sola compañía, el suyo; y si no se sabe, el de Teikem. Después de entrar una vez, la próxima vez saldrá el de su compañía.
+
+
+## Integraciones de correo: ¿cómo sabe Teikem qué correo ya procesó? (2026-10-25)
+- **P: ¿Teikem marca los correos como leídos o lleva su propia cuenta?** No. Lo procesado se **mueve** a la carpeta «Procesados» y es lo único que se le hace al buzón; lo que sigue en la carpeta es lo pendiente. Nunca borra.
+- **P: Alguien abrió un correo en el buzón y Teikem no lo tomó.** Ya no pasa: se leen los correos de la carpeta, leídos o no.
+- **P: «Escriba la carpeta a la que se mueven los correos procesados…» (400).** Llene «Folder for processed e-mails» (por omisión «Procesados»).
+- **P: Puse una integración nueva sobre un buzón viejo y leyó cientos de correos.** Use «Read e-mails received since» con la fecha de arranque; sin fecha se lee todo lo que haya en la carpeta.
