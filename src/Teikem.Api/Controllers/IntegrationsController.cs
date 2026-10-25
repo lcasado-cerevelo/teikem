@@ -222,6 +222,10 @@ public sealed class IntegrationsController(IntegrationService integrations, Inte
         return File(System.Text.Encoding.UTF8.GetPreamble().Concat(System.Text.Encoding.UTF8.GetBytes(csv)).ToArray(), "text/csv; charset=utf-8", "bandeja-integraciones.csv");
     }
 
+    /// <summary>Descarta todos los pendientes de la bandeja (de la integración dada, o de todas). Nunca borra: quedan DISCARDED con la nota. Devuelve cuántos descartó.</summary>
+    [HttpPost("inbox/discard-all"), RequirePermission(PermissionCatalog.IntegrationsInbox)]
+    public async Task<InboxDiscardAllDto> InboxDiscardAll([FromBody] InboxDiscardAllRequest req, CancellationToken ct) => new(await inbox.DiscardAllAsync(req.Integration, req.Note, ct));
+
     [HttpGet("inbox/{id:long}"), RequirePermission(PermissionCatalog.IntegrationsInbox)]
     public Task<InboxItemDto> InboxGet(long id, CancellationToken ct) => inbox.GetAsync(id, ct);
 

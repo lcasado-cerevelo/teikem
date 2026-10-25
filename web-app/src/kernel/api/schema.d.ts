@@ -15505,6 +15505,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/inbox/discard-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["InboxDiscardAllRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InboxDiscardAllDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/integrations/read-sample": {
         parameters: {
             query?: never;
@@ -41952,6 +41991,15 @@ export interface components {
             rows?: string[][] | null;
             /** Format: int32 */
             totalRows?: number;
+        };
+        InboxDiscardAllRequest: {
+            /** Format: uuid */
+            integration?: string | null;
+            note?: string | null;
+        };
+        InboxDiscardAllDto: {
+            /** Format: int32 */
+            discarded?: number;
         };
         SampleReadDto: {
             text?: string | null;

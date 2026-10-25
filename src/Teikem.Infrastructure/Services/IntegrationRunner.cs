@@ -49,16 +49,19 @@ public sealed record FileOutcome(IntegrationFileLog Log, IReadOnlyList<Guid> Cre
 /// </summary>
 public sealed class IntegrationRunner(
     TeikemDbContext db, ITenantContext tenant, OrderImportService import, ImportTemplateService templates, IntegrationService integrations, IntegrationNotifier notifier,
-    IOptions<IntegrationOptions> options, ILogger<IntegrationRunner> logger, ISecretProtector protector, IMailboxReader mailbox, IRemoteFileClient remote, IntegrationOutputService outputs, IPdfTextReader pdfReader, IEnumerable<IDocumentTarget> extraTargets)
+    IOptions<IntegrationOptions> options, ILogger<IntegrationRunner> logger, ISecretProtector protector, IMailboxReader mailbox, IRemoteFileClient remote, IntegrationOutputService outputs, IPdfTextReader pdfReader, IEnumerable<IDocumentTarget> extraTargets, Teikem.Infrastructure.Abstractions.ITenantClock? clock = null)
 {
     private Dictionary<string, IDocumentTarget>? _targets;
     /// <summary>Los destinos registrados por código: ORDER (el de siempre) y los que se agreguen por inyección (2026-10-22).</summary>
     private Dictionary<string, IDocumentTarget> Targets => _targets ??= new IDocumentTarget[] { new OrderDocumentTarget((r, c) => ProcessBytesAsync(r.Integration, r.Template, r.Client, r.Run, r.FileName, r.Content, r.CheckDuplicate, c)) }
         .Concat(extraTargets).ToDictionary(t => t.Kind, StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>El día (en la zona de la compañía) en que llegó el correo que se está atendiendo; lo usan los avisos cuando el documento no trae fecha.</summary>
+    private DateOnly? mailDate;
+
     private Task<FileOutcome> DispatchAsync(string target, Integration integration, ImportTemplate template, Client client, IntegrationRun run, string fileName, byte[] content, CancellationToken ct, DocumentReader? reader = null, bool doubtful = false)
         => Targets.TryGetValue(target, out var t)
-            ? t.ProcessAsync(new DocumentTargetRequest(integration, template, client, run, fileName, content, CheckDuplicate: true, Reader: reader, Doubtful: doubtful), ct)
+            ? t.ProcessAsync(new DocumentTargetRequest(integration, template, client, run, fileName, content, CheckDuplicate: true, Reader: reader, Doubtful: doubtful, MailDate: mailDate), ct)
             : Task.FromResult(Failed(integration, run, fileName, string.Empty, content.Length, DocumentReaderRules.UnknownTargetMessage(target)));
 
     public static readonly string InstanceId = $"{Environment.MachineName}:{Environment.ProcessId}";
@@ -322,7 +325,7 @@ public sealed class IntegrationRunner(
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException and not TeikemException) { throw new ValidationException("email", $"{ImapMailboxReader.ConnectionFailedMessage}: {ex.Message}"); }
                 },
-                async m => outcomes.AddRange(await ProcessMessageAsync(integration, template, client, run, cfg, m.Data, ct)),
+                async m => outcomes.AddRange(await ProcessMessageAsync(integration, template, client, run, cfg, m.Data, ct, silentSkip: true)),
                 async keys =>
                 {
                     if (logMode) { await LogMailKeysAsync(integration, run, keys, ct); return; }
@@ -353,15 +356,17 @@ public sealed class IntegrationRunner(
     /// Un correo por las reglas de la integración: asunto, remitente ORIGINAL permitido, adjuntos elegidos (cada uno por la plantilla) y/o el cuerpo (convertido en filas de la misma plantilla).
     /// Lo que no cumple va a la bandeja con su motivo; nada se pierde ni se ejecuta.
     /// </summary>
-    public async Task<List<FileOutcome>> ProcessMessageAsync(Integration integration, ImportTemplate template, Client client, IntegrationRun run, EmailConfig cfg, MailMessageData m, CancellationToken ct)
+    public async Task<List<FileOutcome>> ProcessMessageAsync(Integration integration, ImportTemplate template, Client client, IntegrationRun run, EmailConfig cfg, MailMessageData m, CancellationToken ct, bool silentSkip = false)
     {
         var outcomes = new List<FileOutcome>();
+        mailDate = m.DateUtc is { } received ? (clock ?? Teikem.Infrastructure.Abstractions.TenantClock.Default).DayOf(DateTime.SpecifyKind(received, DateTimeKind.Utc)) : null;
         if (!EmailRules.TextMatches(m.Subject, cfg.Subject)) return outcomes;   // otro tema: no es de esta integración
         var label = $"correo: {(string.IsNullOrWhiteSpace(m.Subject) ? m.MessageId : m.Subject)}";
         var messageSha = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(m.MessageId))).ToLowerInvariant();
         var sender = EmailRules.OriginalSender(m);
         if (!EmailRules.SenderAllowed(sender, cfg.AllowedSenders))
         {
+            if (silentSkip) return outcomes;   // del buzón: lo que no viene de un remitente permitido se salta sin llegar a la bandeja (queda anotado como ya atendido)
             outcomes.Add(Failed(integration, run, label, messageSha, 0, EmailRules.SenderNotAllowedMessage(sender ?? m.From)));
             return outcomes;
         }

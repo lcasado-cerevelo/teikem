@@ -35,6 +35,7 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
       return json({ id: 30, status: 'OK', message: 'listo' })
     }
     if (req.method === 'PATCH' && p === '/api/v1/integrations/inbox/5') return json(INBOX_ITEM)
+    if (req.method === 'POST' && p === '/api/v1/integrations/inbox/discard-all') return json({ discarded: 1 })
     if (req.method === 'POST' && p === '/api/v1/integrations/inbox/5/discard') return json({ ...INBOX[0], status: 'DISCARDED' })
     return new Response(JSON.stringify({ title: 'no encontrado' }), { status: 404 })
   }
@@ -243,5 +244,18 @@ describe('IntegrationsScreen', () => {
     await user.click(within(discard).getByRole('button', { name: 'Descartar' }))
     await waitFor(() => expect(mock.requests.some((r) => r.path === '/api/v1/integrations/inbox/5/discard')).toBe(true))
     expect(mock.requests.find((r) => r.path.endsWith('/discard'))!.body).toEqual({ note: 'El cliente la manda de nuevo' })
+  })
+
+  it('«Descartar todos los pendientes» pide confirmación con la cantidad y descarta de una vez (con nota), sin borrar', async () => {
+    const user = userEvent.setup()
+    wrap(undefined, '/system/integrations?tab=inbox')
+    expect(await screen.findByText('C-100')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Descartar todos los pendientes (1)' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Descartar 1 pendiente(s)' })
+    expect(within(dialog).getByText(/pendientes de TODAS las integraciones/)).toBeInTheDocument()
+    await user.type(within(dialog).getByLabelText(/^Nota/), 'Ruido del buzón')
+    await user.click(within(dialog).getByRole('button', { name: 'Descartar los 1' }))
+    await waitFor(() => expect(mock.requests.some((r) => r.path === '/api/v1/integrations/inbox/discard-all')).toBe(true))
+    expect(mock.requests.find((r) => r.path.endsWith('/discard-all'))!.body).toEqual({ integration: null, note: 'Ruido del buzón' })
   })
 })

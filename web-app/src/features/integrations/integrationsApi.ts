@@ -148,6 +148,11 @@ export function useInboxMutations() {
       mutationFn: (v: { id: number; note: string }) => unwrap(api.POST('/api/v1/integrations/inbox/{id}/discard', { params: { path: { id: v.id } }, body: { note: v.note || null } })),
       onSettled: invalidate,
     }),
+    /** Descarta todos los pendientes (de una integración si se da, o de todas); nunca borra. */
+    discardAll: useMutation({
+      mutationFn: (v: { integration: string; note: string }) => unwrap(api.POST('/api/v1/integrations/inbox/discard-all', { body: { integration: v.integration || null, note: v.note || null } })),
+      onSettled: invalidate,
+    }),
   }
 }
 

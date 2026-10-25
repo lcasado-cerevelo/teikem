@@ -217,6 +217,10 @@ public sealed record WebhookDeliveryPageDto(IReadOnlyList<WebhookDeliveryDto> It
 /// <summary>Vista previa de un archivo con el formato configurado: las hojas (Excel), el encabezado y las primeras filas tal como las leería la plantilla.</summary>
 public sealed record FormatPreviewDto(string Kind, IReadOnlyList<string> Sheets, IReadOnlyList<string> Header, IReadOnlyList<IReadOnlyList<string>> Rows, int TotalRows);
 
+/// <summary>2026-10-24: descartar de una vez todos los pendientes de la bandeja (de una integración o de todas).</summary>
+public sealed record InboxDiscardAllRequest(Guid? Integration, string? Note);
+public sealed record InboxDiscardAllDto(int Discarded);
+
 /// <summary>2026-10-24: el texto que leería un lector de un PDF de muestra (renglones, columnas separadas por tabulador) para armar los campos con el asistente. Confidence = % medio del OCR (null si el PDF traía texto real).</summary>
 public sealed record SampleReadDto(string Text, int Pages, bool UsedOcr, int? Confidence, string? Problem);
 

@@ -62,6 +62,23 @@ public sealed class ArrivalNoticeTargetServiceTests
     }
 
     [Fact]
+    public async Task The_notice_date_is_the_documents_then_the_e_mails_then_the_services()
+    {
+        var x = await WorldAsync();
+        await using var _ = x.F;
+        // el documento trae fecha (columna 5): manda sobre la del correo
+        var withDate = await x.Target.ProcessAsync(Request(x, "REF-A,402-RE-351001-U,10bx,,10/01/2026\n", x.W.PublicId) with { MailDate = new DateOnly(2026, 10, 20) }, default);
+        // el documento no trae fecha: se usa la del correo
+        var withoutDate = await x.Target.ProcessAsync(Request(x, "REF-B,402-RE-351001-U,10bx\n", x.W.PublicId, "otro.pdf.csv") with { MailDate = new DateOnly(2026, 10, 20) }, default);
+
+        Assert.Empty(withDate.Rejected);
+        Assert.Empty(withoutDate.Rejected);
+        var asns = await x.F.Db.Set<Asn>().AsNoTracking().OrderBy(a => a.AsnId).ToListAsync();
+        Assert.Equal(new DateOnly?(new DateOnly(2026, 10, 1)), asns[0].ExpectedDate);
+        Assert.Equal(new DateOnly?(new DateOnly(2026, 10, 20)), asns[1].ExpectedDate);
+    }
+
+    [Fact]
     public async Task Two_references_make_two_notices()
     {
         var x = await WorldAsync();

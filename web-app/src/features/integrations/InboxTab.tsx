@@ -132,6 +132,33 @@ function DiscardModal({ item, onClose }: { item: InboxItemDto; onClose: () => vo
   )
 }
 
+function DiscardAllModal({ integration, integrationName, count, onClose }: { integration: string; integrationName: string; count: number; onClose: () => void }) {
+  const t = useT()
+  const { discardAll } = useInboxMutations()
+  const form = useForm<{ note: string }>({ defaultValues: { note: '' } })
+  return (
+    <FormModal
+      id="inbox-discard-all"
+      size="sm"
+      title={t('integrations.inbox.discardAllTitle', { n: count })}
+      open
+      onClose={onClose}
+      form={form}
+      saveLabel={t('integrations.inbox.discardAllConfirm', { n: count })}
+      onSubmit={async (v: { note: string }) => {
+        const r = await discardAll.mutateAsync({ integration, note: v.note.trim() })
+        toast.success(t('integrations.inbox.discardedN', { n: r.discarded ?? 0 }))
+        onClose()
+      }}
+    >
+      <p className="help">{t(integration ? 'integrations.inbox.discardAllHelpOne' : 'integrations.inbox.discardAllHelpAll', { n: count, name: integrationName })}</p>
+      <Field name="note" label={t('integrations.inbox.note')} help={t('integrations.inbox.noteHelp')}>
+        <TextInput maxLength={400} />
+      </Field>
+    </FormModal>
+  )
+}
+
 export function InboxTab({ integration, onIntegration }: { integration: string; onIntegration: (publicId: string) => void }) {
   const t = useT()
   const f = useFormat()
@@ -143,6 +170,7 @@ export function InboxTab({ integration, onIntegration }: { integration: string; 
   const { reprocess, reprocessAll } = useInboxMutations()
   const [fixing, setFixing] = useState<number | null>(null)
   const [discarding, setDiscarding] = useState<InboxItemDto | null>(null)
+  const [discardingAll, setDiscardingAll] = useState(false)
   const items = inbox.data?.items ?? NO_ROWS
 
   const run = async (p: Promise<{ reprocessed?: number; stillPending?: number; items?: InboxItemDto[] }>) => {
@@ -204,6 +232,11 @@ export function InboxTab({ integration, onIntegration }: { integration: string; 
                   <IconRotateCcw /> {t('integrations.inbox.reprocessAll')}
                 </button>
               )}
+              {pending > 0 && (
+                <button type="button" className="btn sm" onClick={() => setDiscardingAll(true)}>
+                  <IconTrash /> {t('integrations.inbox.discardAll', { n: pending })}
+                </button>
+              )}
             </Can>
           </div>
           {inbox.isError ? (
@@ -243,6 +276,7 @@ export function InboxTab({ integration, onIntegration }: { integration: string; 
       </Panel>
       {fixing !== null && <FixModal key={fixing} id={fixing} onClose={() => setFixing(null)} />}
       {discarding && <DiscardModal key={discarding.id} item={discarding} onClose={() => setDiscarding(null)} />}
+      {discardingAll && <DiscardAllModal integration={integration} integrationName={integrationOptions.find((o) => o.value === integration)?.label ?? ''} count={pending} onClose={() => setDiscardingAll(false)} />}
     </>
   )
 }

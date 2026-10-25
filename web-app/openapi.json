@@ -19998,6 +19998,34 @@
         }
       }
     },
+    "/api/v1/integrations/inbox/discard-all": {
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InboxDiscardAllRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxDiscardAllDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/integrations/read-sample": {
       "post": {
         "tags": [
@@ -62382,6 +62410,31 @@
             "nullable": true
           },
           "totalRows": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "InboxDiscardAllRequest": {
+        "type": "object",
+        "properties": {
+          "integration": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "InboxDiscardAllDto": {
+        "type": "object",
+        "properties": {
+          "discarded": {
             "type": "integer",
             "format": "int32"
           }

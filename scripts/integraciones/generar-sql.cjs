@@ -39,12 +39,13 @@ function readerOf(key, extra = {}) {
 }
 
 /** La configuración del buzón: lo del servidor son marcadores que se cambian en la pantalla (Editar la integración) antes de prenderla. */
-function emailConfig(readers) {
+function emailConfig(readers, extra = {}) {
   return {
     // markMode LOG = Teikem anota en su propio log (dbo.IntegrationMailLog) lo que ya atendió y NO toca el buzón (ni marca leído ni mueve); readSince (AAAA-MM-DD) se pone en la pantalla si el buzón es grande.
     // Para un buzón de Microsoft 365 se cambia en la pantalla el «Mailbox type» (Tenant ID, Client ID y secreto de la aplicación); ahí no hay servidor ni contraseña.
     provider: 'IMAP', markMode: 'LOG', host: 'imap.CAMBIAR.com', port: 993, useSsl: true, username: 'buzon@CAMBIAR.com', mailbox: 'INBOX', processedFolder: 'Procesados',
     requireAttachment: false, attachmentMode: 'ALL', readBody: false, readPdf: false, readers,
+    ...extra,
   }
 }
 
@@ -140,7 +141,8 @@ DECLARE @TemplateId INT = (SELECT TOP 1 ImportTemplateId FROM dbo.ImportTemplate
 axiscare += integrationBlock({
   name: 'Axiscare avisos por correo',
   description: 'Avisos de llegada y de salida de Axiscare leídos de los documentos que llegan por correo (despacho, envío/recibo y facturas de Drive Medical).',
-  cfg: emailConfig(axiscareReaders), template: '@TemplateId', scopesJson: '["files.orders_import"]',
+  // solo se aceptan los correos cuyo remitente ORIGINAL es de Axiscare (el resto se salta sin llegar a la bandeja); se amplía en la pantalla (Allowed original senders)
+  cfg: emailConfig(axiscareReaders, { allowedSenders: ['@axiscare.com'] }), template: '@TemplateId', scopesJson: '["files.orders_import"]',
 })
 
 // ================================================================ CMS → Advance Logistics (órdenes de recogida y su cierre)

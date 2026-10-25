@@ -164,6 +164,36 @@ public sealed class IntegrationInboxService(TeikemDbContext db, ITenantContext t
         return await GetAsync(id, ct);
     }
 
+    /// <summary>Descarta TODOS los pendientes (de una integración, o de todas): quedan DISCARDED con la nota y quién lo hizo. Nunca borra. Devuelve cuántos descartó.</summary>
+    public async Task<int> DiscardAllAsync(Guid? integrationPublicId, string? note, CancellationToken ct)
+    {
+        var n = note?.Trim();
+        if (n is { Length: > 400 }) throw new ValidationException("note", "Máximo 400 caracteres.");
+        var q = db.IntegrationInboxItems.Where(i => i.Status == InboxStatuses.Pending);
+        if (integrationPublicId is Guid ip)
+        {
+            var id = await db.Integrations.AsNoTracking().Where(i => i.PublicId == ip).Select(i => (int?)i.IntegrationId).FirstOrDefaultAsync(ct) ?? throw new NotFoundException(IntegrationService.NotFoundLabel);
+            q = q.Where(i => i.IntegrationId == id);
+        }
+        var total = 0;
+        while (true)
+        {
+            ct.ThrowIfCancellationRequested();
+            var chunk = await q.OrderBy(i => i.IntegrationInboxItemId).Take(200).ToListAsync(ct);   // por tandas: cada ítem queda auditado como si se descartara a mano
+            if (chunk.Count == 0) return total;
+            foreach (var item in chunk)
+            {
+                item.Status = InboxStatuses.Discarded;
+                item.Note = string.IsNullOrEmpty(n) ? null : n;
+                item.ResolvedAtUtc = DateTime.UtcNow;
+                item.ResolvedBy = tenant.UserId;
+            }
+            await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct);
+            total += chunk.Count;
+            db.ChangeTracker.Clear();
+        }
+    }
+
     /// <summary>CSV con los pendientes (integración, fila, referencia, motivo y fecha): para devolverlos al cliente.</summary>
     public async Task<string> ExportPendingAsync(Guid? integrationPublicId, CancellationToken ct)
     {

@@ -113,7 +113,9 @@ public abstract class NoticeDocumentTarget(TeikemDbContext db, ITenantContext te
                 .Select(x => (bySku[x.Key.Item1], x.Sum(r => r.Quantity ?? 0), x.Key.Lot)).ToList();
             if (lines.Count == 0) continue;
             if (missing.Count > 0) continue;   // un aviso a medias no se crea: todo el grupo queda en la bandeja para corregirlo
-            try { created.Add(await CreateAsync(request.Client.PublicId, request.Reader?.WarehousePublicId, g, lines, ct)); }
+            // fecha del aviso: la del documento; si no trae, la del correo; si tampoco, la del servicio (hoy)
+            var dated = g.Date is null && request.MailDate is { } mailDate ? g with { Date = mailDate } : g;
+            try { created.Add(await CreateAsync(request.Client.PublicId, request.Reader?.WarehousePublicId, dated, lines, ct)); }
             catch (TeikemException ex)
             {
                 db.ChangeTracker.Clear();
