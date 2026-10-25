@@ -43,7 +43,7 @@ public class PasswordRecoveryTests
             s.AddSingleton<DeviceService>();
             s.AddSingleton<PinService>();
             s.AddSingleton<IOptions<OnboardingOptions>>(Options.Create(new OnboardingOptions { Enabled = true }));
-            s.AddSingleton<IOptions<PasswordResetOptions>>(Options.Create(new PasswordResetOptions { WebBaseUrl = "https://app.test", ReturnLinkInResponse = true }));
+            s.AddSingleton<IOptions<PasswordResetOptions>>(Options.Create(new PasswordResetOptions { WebBaseUrl = "https://app.test", PortalWebBaseUrl = "https://portal.test", ReturnLinkInResponse = true }));
             s.AddSingleton<NoEmailSender>();
             s.AddSingleton<ITransactionalEmailSender>(sp => sp.GetRequiredService<NoEmailSender>());
             s.AddSingleton<AuthService>();
@@ -231,6 +231,58 @@ public class PasswordRecoveryTests
         await Assert.ThrowsAsync<ValidationException>(() => auth.ResetPasswordWithLinkAsync(new ResetPasswordRequest("ana@t.local", token, "corta"), default));
         await auth.ResetPasswordWithLinkAsync(new ResetPasswordRequest("ana@t.local", token, NewPassword), default);
         AssertEntered(await Login(f, NewPassword));
+    }
+
+    // ---------------------------------------------------------------- Lote 219: las personas del portal también recuperan su contraseña, con el enlace del PORTAL
+
+    /// <summary>Convierte a Ana (usuario 2) en una persona del portal del cliente.</summary>
+    private static async Task MakeAnaPortalAsync(WmsFixture f)
+    {
+        f.Db.LookupCodes.Add(new LookupCode { LookupCodeId = 960, Entity = LookupDomains.UserKind, InternalCode = UserKinds.Portal, LabelJson = "{\"es\":\"Portal\"}", IsActive = true });
+        await f.Db.SaveChangesAsync();
+        var ana = await f.Db.Users.AsTracking().SingleAsync(u => u.Id == 2);
+        ana.UserKindLookupId = 960;
+        await f.Db.SaveChangesAsync();
+        f.Lookups.Load(f.Db.LookupCodes.IgnoreQueryFilters().AsNoTracking().ToList());
+        f.Db.ChangeTracker.Clear();
+    }
+
+    [Fact]
+    public async Task A_portal_person_gets_a_link_to_the_PORTAL_not_to_the_staff_web()
+    {
+        await using var f = await FixtureAsync();
+        await MakeAnaPortalAsync(f);
+        var known = await f.Get<AuthService>().RequestPasswordResetAsync(new ForgotPasswordRequest("ana@t.local"), default);
+        Assert.Equal(AuthService.ForgotPasswordMessage, known.Message);
+        Assert.StartsWith("https://portal.test/reset-password?email=ana%40t.local&token=", known.Link);
+        Assert.Equal("ana@t.local", Assert.Single(f.Get<NoEmailSender>().Sent).To);
+    }
+
+    [Fact]
+    public async Task Without_a_portal_address_nothing_is_sent_and_the_answer_is_the_same()
+    {
+        await using var f = await FixtureAsync();
+        await MakeAnaPortalAsync(f);
+        f.Get<IOptions<PasswordResetOptions>>().Value.PortalWebBaseUrl = null;
+        var r = await f.Get<AuthService>().RequestPasswordResetAsync(new ForgotPasswordRequest("ana@t.local"), default);
+        Assert.Equal(AuthService.ForgotPasswordMessage, r.Message);
+        Assert.Null(r.Link);
+        Assert.Empty(f.Get<NoEmailSender>().Sent);
+    }
+
+    [Fact]
+    public async Task A_portal_person_with_MFA_enrolled_still_needs_the_code_to_reset()
+    {
+        await using var f = await FixtureAsync();
+        await MakeAnaPortalAsync(f);
+        var auth = f.Get<AuthService>();
+        var (secret, _) = await EnrollAnaAsync(auth);
+        var token = await LinkTokenAsync(auth);
+        await Assert.ThrowsAsync<MfaCodeRequiredException>(() => auth.ResetPasswordWithLinkAsync(new ResetPasswordRequest("ana@t.local", token, NewPassword), default));
+        await auth.ResetPasswordWithLinkAsync(new ResetPasswordRequest("ana@t.local", token, NewPassword, CurrentCode(secret)), default);
+        // una persona del portal no entra por el login del personal: se comprueba la contraseña directamente
+        var users = f.Get<UserManager<ApplicationUser>>();
+        Assert.True(await users.CheckPasswordAsync((await users.FindByIdAsync("2"))!, NewPassword));
     }
 
     // ---------------------------------------------------------------- 2026-10-12: restablecer la contraseña exige el código MFA (docs/ip-preferida-mfa-diseno.md §3.1)

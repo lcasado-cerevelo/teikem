@@ -86,6 +86,9 @@ export default function Login() {
               <Text style={styles.buttonLabel}>{t('LOGIN.LOGIN')}</Text>
             </Pressable>
           </View>
+          <Pressable onPress={() => router.push('/(no-auth)/ForgotPassword')} accessibilityRole="button" testID="login-forgot">
+            <Text style={styles.forgot}>{t('LOGIN.FORGOT')}</Text>
+          </Pressable>
         </>
       )}
 
@@ -109,6 +112,7 @@ const createStyles = (colors: Colors) => StyleSheet.create({
     backgroundColor: colors.background,
   },
   logo: { width: 120, height: 120, maxWidth: 120, maxHeight: 120 },
+  forgot: { color: colors.primary, fontWeight: '600', fontSize: 15, paddingVertical: 4 },
   formContainer: { width: '100%', justifyContent: 'center', alignItems: 'center', gap: 16 },
   buttonOuter: { borderRadius: 8, width: '50%', maxWidth: 200 },
   button: {

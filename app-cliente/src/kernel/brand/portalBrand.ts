@@ -6,6 +6,7 @@ import { Platform } from 'react-native'
 import { api, unwrap } from '../api/client'
 import { setBrand } from '../ui/theme'
 import { parseBranding } from '../ui/brandTheme'
+import { rememberLastTenant } from './publicBrand'
 
 export interface PortalBrandInfo {
   /** Ranuras de logo que subió la compañía (`lockup`, `lockup-inverted`, `mark`, `mark-inverted`); vacío = sin logo propio. */
@@ -53,6 +54,16 @@ async function loadLogo(slot: string): Promise<string | null> {
   return blobToDataUri(blob)
 }
 
+/** Anota la compañía de la sesión para la pantalla de entrada de la próxima vez. Nunca lanza. */
+async function rememberTenantOfSession(): Promise<void> {
+  try {
+    const res = await (api as unknown as { GET: (path: string) => Promise<{ data?: { tenantPublicId?: string | null } }> }).GET('/api/v1/auth/me')
+    await rememberLastTenant(res.data?.tenantPublicId)
+  } catch {
+    // sin recordarla: la próxima vez manda el dominio o la única compañía
+  }
+}
+
 /** Lee la marca de la compañía de la sesión y la aplica. Nunca lanza. */
 export async function loadPortalBrand(): Promise<void> {
   try {
@@ -62,6 +73,8 @@ export async function loadPortalBrand(): Promise<void> {
     const logoUri = slot ? await loadLogo(slot).catch(() => null) : null
     info = { logoSlots: [...(brand.logoSlots ?? [])], companyName: me.currentClient?.tenantName ?? null, logoUri }
     emit()
+    // la próxima vez que se abra la pantalla de entrada saldrá el logo de esta compañía (Lote 219)
+    void rememberTenantOfSession()
   } catch {
     // sin marca: se queda la de siempre
   }

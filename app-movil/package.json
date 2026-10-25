@@ -66,13 +66,14 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:tracking && npm run test:chat && npm run test:staff && npm run test:street && npm run test:scan && npm run test:lookup",
+    "test": "npm run test:tracking && npm run test:chat && npm run test:staff && npm run test:street && npm run test:scan && npm run test:lookup && npm run test:login",
     "test:tracking": "node --experimental-strip-types scripts/test-tracking-core.mjs",
     "test:chat": "node --experimental-strip-types scripts/test-chat-core.mjs",
     "test:staff": "node --experimental-strip-types scripts/test-staff-orders.mjs",
     "test:lookup": "node --experimental-strip-types scripts/test-lookup.mjs",
     "test:street": "node --experimental-strip-types scripts/test-street.mjs",
-    "test:scan": "node --experimental-strip-types scripts/test-scan.mjs"
+    "test:scan": "node --experimental-strip-types scripts/test-scan.mjs",
+    "test:login": "node --experimental-strip-types scripts/test-login-errors.mjs"
   },
   "private": true
 }

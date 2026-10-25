@@ -100,6 +100,11 @@ Tres pantallas **solo de lectura**, **con señal** (sin señal dicen «No se pud
 - Una persona «solo chofer» no ve estas entradas. Quien tiene solo uno de los permisos ve solo esa entrada.
 - Endpoints (los de la web, sin servidor nuevo): `GET /api/v1/clients?search=`, `GET /api/v1/clients/{id}`, `GET /api/v1/locations?search=`, `GET /api/v1/locations/{id}`, `GET /api/v1/contacts/LOCATION/{id}`, `GET /api/v1/products?search=`, `GET /api/v1/products/by-barcode/{código}`, `GET /api/v1/inventory/balances`, `GET /api/v1/warehouses/bins/search` y `GET /api/v1/warehouses/{id}/bin-products`.
 
+## 2f. Contraseña en la app (Lote 219)
+- El campo de contraseña del inicio de sesión y del primer ingreso lleva el **ojito** para ver lo que se escribe. El teléfono no informa si las mayúsculas están activadas, así que no hay aviso de mayúsculas aquí.
+- Mensajes al fallar el ingreso: «El correo o la contraseña no son correctos…» (revise mayúsculas, ojito y bloqueo), «Demasiados intentos seguidos…», «El servidor tuvo un problema…» y «No hay señal…».
+- **«¿Olvidaste tu contraseña?»** (debajo de «Iniciar sesión») pide el correo y manda el enlace de un solo uso (60 minutos); el enlace abre la **web** para elegir la contraseña nueva (con el código de la verificación en dos pasos si la persona la usa: recuperar no se salta el segundo factor). Después se vuelve a la app a iniciar sesión.
+
 ## 3. Avisos emergentes
 - La app registra el teléfono en `POST /api/v1/mobile/device` para cada compañía. Un chofer queda en su ficha (`DriverDevice`); el personal, en su usuario (`UserPushDevice`). Los mensajes del chat y los avisos llegan por cualquiera de los dos.
 

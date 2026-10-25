@@ -21,7 +21,7 @@
       "USERNAME": "Usuario",
       "PASSWORD": "Contraseña",
       "ERROR_TITLE": "No se pudo iniciar sesión",
-      "INVALID_CREDENTIALS": "Usuario o contraseña incorrectos.",
+      "INVALID_CREDENTIALS": "El correo o la contraseña no son correctos. Revisa que las mayúsculas no estén activadas y toca el ojito para ver lo que escribes. Si fallaste varias veces, la cuenta se bloquea unos minutos y te avisamos por correo.",
       "NETWORK_ERROR_TITLE": "Sin conexión",
       "NETWORK_ERROR": "No hay señal. Verifica tu conexión e intenta de nuevo.",
       "BIOMETRIC_BUTTON": "Entrar con huella",
@@ -40,7 +40,12 @@
       "BROWSER_BODY": "Le enviamos un correo a {{email}}. Toque el enlace del correo para confirmar este teléfono y vuelva a iniciar sesión.",
       "BROWSER_NOT_SENT": "No se pudo enviar el correo de confirmación.",
       "ONBOARDING_TITLE": "Primer ingreso",
-      "ONBOARDING_BODY": "Complete su primer ingreso en la web de Teikem (correo y contraseña propia) y vuelva a entrar aquí."
+      "ONBOARDING_BODY": "Complete su primer ingreso en la web de Teikem (correo y contraseña propia) y vuelva a entrar aquí.",
+      "TOO_MANY": "Demasiados intentos seguidos. Espera un minuto e intenta de nuevo.",
+      "SERVER_ERROR": "El servidor tuvo un problema. Intenta de nuevo en unos minutos; si sigue pasando, avisa a tu supervisor.",
+      "FORGOT": "¿Olvidaste tu contraseña?",
+      "SHOW_PASSWORD": "Mostrar contraseña",
+      "HIDE_PASSWORD": "Ocultar contraseña"
     },
     "HOME": {
       "DELIVERIES_FOR_TODAY": "Entregas para hoy",
@@ -623,6 +628,15 @@
       "ON_HAND_AVAILABLE": "{{onHand}} en mano · {{available}} disp.",
       "NO_STOCK": "Este producto no tiene existencia.",
       "BIN_EMPTY": "Esta posición no tiene productos con existencia."
+    },
+    "FORGOT_PASSWORD": {
+      "TITLE": "Restablecer contraseña",
+      "SUBTITLE": "Escribe tu correo y te enviaremos un enlace para elegir una contraseña nueva.",
+      "SUBMIT": "Enviar enlace",
+      "SENT": "Si el correo está registrado, te enviamos un enlace para restablecer tu contraseña.",
+      "SENT_HELP": "Abre el correo y toca el enlace: te lleva a elegir la contraseña nueva en el navegador (si usas la verificación en dos pasos, ten a la mano tu código). Vale 60 minutos y se usa una sola vez. Cuando termines, vuelve aquí a iniciar sesión.",
+      "BACK": "Volver al inicio de sesión",
+      "ERROR_TITLE": "No se pudo enviar"
     }
   }
 }

@@ -7,8 +7,9 @@ import { useSession } from '../../app/session'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { login, type BrowserConfirmationDto } from '../../kernel/auth/auth'
 import { useT } from '../../kernel/i18n/useT'
-import { IconEye, IconEyeOff } from '../../kernel/ui/icons'
+import { PasswordBox } from '../../kernel/ui/PasswordBox'
 import { AuthLayout } from './AuthLayout'
+import { loginErrorText } from './loginErrors'
 import { safeNext } from './next'
 
 /** Paso 1 del login (POST /api/v1/auth/login): correo y contraseña. */
@@ -18,7 +19,6 @@ export default function LoginPage() {
   const [params] = useSearchParams()
   const { isAuthenticated } = useSession()
   const [formError, setFormError] = useState<string | null>(null)
-  const [showPassword, setShowPassword] = useState(false)
   // Lote 100: la computadora no se reconoce; se muestra «revise su correo» en lugar del formulario
   const [confirm, setConfirm] = useState<BrowserConfirmationDto | null>(null)
   const next = safeNext(params.get('next'))
@@ -45,7 +45,7 @@ export default function LoginPage() {
       else if (outcome.status === 'onboarding_required') navigate(`/onboarding?next=${encodeURIComponent(next)}`)
       else navigate(`/mfa?next=${encodeURIComponent(next)}`)
     } catch (err) {
-      setFormError(applyProblemDetails(err, form).title)
+      setFormError(loginErrorText(applyProblemDetails(err, form), t))
     }
   })
 
@@ -83,23 +83,7 @@ export default function LoginPage() {
         </div>
         <div className="f">
           <label htmlFor="login-password">{t('auth.fields.password')}</label>
-          <div className="pwd-field">
-            <input
-              id="login-password"
-              type={showPassword ? 'text' : 'password'}
-              autoComplete="current-password"
-              aria-invalid={errors.password ? true : undefined}
-              {...form.register('password')}
-            />
-            <button
-              type="button"
-              className="iconbtn"
-              aria-label={showPassword ? t('auth.fields.hidePassword') : t('auth.fields.showPassword')}
-              onClick={() => setShowPassword((v) => !v)}
-            >
-              {showPassword ? <IconEyeOff /> : <IconEye />}
-            </button>
-          </div>
+          <PasswordBox id="login-password" autoComplete="current-password" aria-invalid={errors.password ? true : undefined} {...form.register('password')} />
           {errors.password && <p className="ferr">{errors.password.message}</p>}
         </div>
         <button type="submit" className="btn flow block" disabled={isSubmitting}>

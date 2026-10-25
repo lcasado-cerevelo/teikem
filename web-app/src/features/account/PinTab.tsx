@@ -7,6 +7,7 @@ import { ConfirmDialog, EmptyState, Modal, Panel, Spinner, toast } from '../../k
 import { formatDateTime } from './format'
 import { useMyPin, useRemoveMyPin, useSetMyPin } from './api'
 import { IconKey } from '../../kernel/ui/actionIcons'
+import { PasswordBox } from '../../kernel/ui/PasswordBox'
 
 function SetPinModal({ open, hasPin, onClose }: { open: boolean; hasPin: boolean; onClose: () => void }) {
   const t = useT()
@@ -67,9 +68,8 @@ function SetPinModal({ open, hasPin, onClose }: { open: boolean; hasPin: boolean
     >
       <div className="f">
         <label htmlFor="pintab-current">{t('account.pin.currentPassword')}</label>
-        <input
+        <PasswordBox
           id="pintab-current"
-          type="password"
           autoComplete="current-password"
           value={currentPassword}
           onChange={(e) => setCurrentPassword(e.target.value)}
@@ -82,11 +82,10 @@ function SetPinModal({ open, hasPin, onClose }: { open: boolean; hasPin: boolean
       </div>
       <div className="f">
         <label htmlFor="pintab-pin">{t('account.pin.pin')}</label>
-        <input
+        <PasswordBox
           id="pintab-pin"
-          type="password"
           autoComplete="new-password"
-          inputMode="numeric"
+          inputMode="numeric" pin
           maxLength={6}
           value={pin}
           onChange={(e) => setPin1(e.target.value)}
@@ -94,11 +93,10 @@ function SetPinModal({ open, hasPin, onClose }: { open: boolean; hasPin: boolean
       </div>
       <div className="f">
         <label htmlFor="pintab-confirm">{t('account.pin.confirmPin')}</label>
-        <input
+        <PasswordBox
           id="pintab-confirm"
-          type="password"
           autoComplete="new-password"
-          inputMode="numeric"
+          inputMode="numeric" pin
           maxLength={6}
           value={confirmPin}
           onChange={(e) => setConfirmPin(e.target.value)}

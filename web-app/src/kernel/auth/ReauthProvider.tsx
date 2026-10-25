@@ -3,6 +3,7 @@ import { api, applyProblemDetails, setStepUpHandler, unwrap } from '../api/clien
 import { useT } from '../i18n/useT'
 import { ReauthContext, type ReauthApi } from './reauthContext'
 import { updateAccessToken } from './tokens'
+import { PasswordBox } from '../ui/PasswordBox'
 
 interface Props {
   /** Si el usuario tiene MFA activo, el modal pide también el código. */
@@ -79,9 +80,8 @@ export function ReauthProvider({ mfaEnabled, children }: Props) {
               <p className="subtle">{t('auth.reauth.help')}</p>
               <div className="f">
                 <label htmlFor="reauth-password">{t('auth.fields.password')}</label>
-                <input
+                <PasswordBox
                   id="reauth-password"
-                  type="password"
                   autoComplete="current-password"
                   autoFocus
                   required

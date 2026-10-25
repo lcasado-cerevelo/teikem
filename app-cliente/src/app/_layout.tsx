@@ -25,7 +25,7 @@ import { useIsWide } from '../kernel/ui/layout'
 import { Spinner, useColors } from '../kernel/ui/ui'
 
 /** Pantallas que se ven sin sesión. */
-const PUBLIC_PATHS = ['/login', '/mfa', '/confirm-browser', '/accept-invite']
+const PUBLIC_PATHS = ['/login', '/mfa', '/confirm-browser', '/accept-invite', '/forgot-password', '/reset-password']
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false)

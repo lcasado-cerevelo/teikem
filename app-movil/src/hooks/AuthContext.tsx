@@ -86,6 +86,8 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 /** Mensaje del servidor (título del ProblemDetails) o null. */
+import { KEY_BY_KIND, loginErrorKind } from '@utils/loginErrors';
+
 function serverMessage(err: unknown): string | null {
   const data = (err as AxiosError<{ title?: string }>).response?.data;
   return data && typeof data.title === 'string' && data.title.trim() ? data.title : null;
@@ -319,8 +321,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const showError = useCallback(
     (err: unknown) => {
       const ax = err as AxiosError;
-      if (!ax.response) Alert.alert(t('LOGIN.NETWORK_ERROR_TITLE'), t('LOGIN.NETWORK_ERROR'));
-      else Alert.alert(t('LOGIN.ERROR_TITLE'), serverMessage(err) ?? t('LOGIN.INVALID_CREDENTIALS'));
+      const kind = loginErrorKind(ax.response?.status);
+      if (kind === 'other') Alert.alert(t('LOGIN.ERROR_TITLE'), serverMessage(err) ?? t('LOGIN.INVALID_CREDENTIALS'));
+      else Alert.alert(t(KEY_BY_KIND[kind].title), t(KEY_BY_KIND[kind].body));
     },
     [t],
   );
