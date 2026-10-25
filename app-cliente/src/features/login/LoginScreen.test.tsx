@@ -4,6 +4,7 @@ const mockRouter = { push: jest.fn(), replace: jest.fn() }
 jest.mock('expo-router', () => ({ useRouter: () => mockRouter }))
 jest.mock('../../kernel/auth/portalAuth', () => ({ login: jest.fn() }))
 jest.mock('../portalApi', () => ({ getAuthConfig: jest.fn() }))
+jest.mock('../../kernel/brand/publicBrand', () => ({ loadPublicBrand: jest.fn().mockResolvedValue(undefined), usePublicBrand: () => ({ companyName: null, logos: {} }), pickPublicSlot: () => null }))
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 
@@ -77,8 +78,33 @@ describe('LoginScreen', () => {
     loginMock.mockRejectedValue(new ApiError(401, { title: 'Credenciales inválidas.' }))
     await render(<LoginScreen />)
     await fillAndSubmit()
-    expect(await screen.findByText('Credenciales inválidas.')).toBeTruthy()
+    // el servidor responde lo mismo ante cualquier credencial mala; la pantalla le dice a la persona qué revisar (Lote 219)
+    expect(await screen.findByText(/no son correctos.*mayúsculas.*ojito/)).toBeTruthy()
     expect(mockRouter.replace).not.toHaveBeenCalled()
+  })
+
+  it('demasiados intentos, servidor caído y sin red tienen su propio mensaje', async () => {
+    loginMock.mockRejectedValueOnce(new ApiError(429, { title: 'Demasiados intentos; espere un minuto e intente de nuevo.' }))
+    await render(<LoginScreen />)
+    await fillAndSubmit()
+    expect(await screen.findByText('Demasiados intentos seguidos. Espere un minuto e intente de nuevo.')).toBeTruthy()
+    loginMock.mockRejectedValueOnce(new ApiError(500, { title: 'Error interno.' }))
+    await fillAndSubmit()
+    expect(await screen.findByText(/El servidor tuvo un problema/)).toBeTruthy()
+    loginMock.mockRejectedValueOnce(new ApiError(0, null))
+    await fillAndSubmit()
+    expect(await screen.findByText('No hay conexión con el servidor. Revise su internet e intente de nuevo.')).toBeTruthy()
+  })
+
+  it('«¿Olvidó su contraseña?» lleva a pedir el enlace; la contraseña se puede ver con el ojito', async () => {
+    await render(<LoginScreen />)
+    await fireEvent.press(screen.getByTestId('login-forgot'))
+    expect(mockRouter.push).toHaveBeenCalledWith('/forgot-password')
+    expect(screen.getByTestId('login-password').props.secureTextEntry).toBe(true)
+    await fireEvent.press(screen.getByTestId('login-password-eye'))
+    expect(screen.getByTestId('login-password').props.secureTextEntry).toBe(false)
+    await fireEvent.press(screen.getByTestId('login-password-eye'))
+    expect(screen.getByTestId('login-password').props.secureTextEntry).toBe(true)
   })
 
   it('el reto anti-robot: el servidor lo pide y se muestra; en el teléfono se pide entrar desde el navegador', async () => {

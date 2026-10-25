@@ -94,7 +94,8 @@ describe('Login (AuthResultDto)', () => {
     loginReply = () => json({ title: 'Correo o contraseña incorrectos.', status: 401, code: 'unauthorized' }, 401)
     await renderAppAt('/login')
     await submitLogin('admin@teikem.local', 'mala')
-    expect(await screen.findByRole('alert')).toHaveTextContent('Correo o contraseña incorrectos.')
+    // el servidor responde lo mismo ante cualquier credencial mala; la pantalla le dice a la persona qué revisar (Lote 219)
+    expect(await screen.findByRole('alert')).toHaveTextContent(/no son correctos.*mayúsculas.*ojito/)
     expect(screen.getByRole('button', { name: 'Entrar' })).toBeInTheDocument()
   })
 

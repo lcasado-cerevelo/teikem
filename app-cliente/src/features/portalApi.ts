@@ -205,3 +205,14 @@ export async function confirmBrowser(token: string): Promise<void> {
 export async function acceptInvite(email: string, token: string, password: string): Promise<void> {
   await unwrap(api.POST('/api/v1/portal-users/accept-invite', { body: { email, token, password } }))
 }
+
+/** «Olvidé mi contraseña» (Lote 219): el servidor manda al correo un enlace al portal y responde SIEMPRE lo mismo exista o no el correo. */
+export async function forgotPassword(email: string): Promise<{ message: string; link: string | null }> {
+  const r = await unwrap(api.POST('/api/v1/auth/forgot-password', { body: { email } }))
+  return { message: r.message ?? '', link: r.link ?? null }
+}
+
+/** Pone la contraseña nueva con el enlace del correo. Quien tiene la verificación en dos pasos debe dar también su código (si falta, el servidor responde 400 `mfa_required` y el enlace no se gasta). */
+export async function resetPassword(email: string, token: string, newPassword: string, mfaCode?: string): Promise<void> {
+  await unwrap(api.POST('/api/v1/auth/reset-password', { body: { email, token, newPassword, mfaCode: mfaCode || null } }))
+}

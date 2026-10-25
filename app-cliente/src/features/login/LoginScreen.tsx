@@ -4,14 +4,16 @@ import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import { Linking, View } from 'react-native'
 
-import { apiErrorMessage } from '../../kernel/api/client'
+import { loginErrorMessage } from '../../kernel/api/loginErrors'
 import { login, type BrowserConfirmationDto } from '../../kernel/auth/portalAuth'
 import { getNoTrust, setNoTrust } from '../../kernel/auth/preferences'
 import { useT } from '../../kernel/i18n/useT'
 import { PreferencesBar } from '../../kernel/ui/PreferencesBar'
 import { Button, Card, Check, Field, Muted, Notice, Screen, Title } from '../../kernel/ui/ui'
+import { PasswordField } from '../../kernel/ui/PasswordField'
 import { getAuthConfig } from '../portalApi'
 import { Captcha } from './Captcha'
+import { LoginBrand } from './LoginBrand'
 import { InstallPrompt } from './InstallPrompt'
 
 export function LoginScreen() {
@@ -19,7 +21,6 @@ export function LoginScreen() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
   const [noTrust, setNoTrustState] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -55,7 +56,7 @@ export function LoginScreen() {
         setError(t('captcha.required'))
       }
     } catch (e) {
-      setError(apiErrorMessage(e))
+      setError(loginErrorMessage(e, t))
     } finally {
       setBusy(false)
     }
@@ -85,13 +86,13 @@ export function LoginScreen() {
   const canSubmit = email.trim().length > 3 && password.length > 0 && (!captchaSiteKey || !!captchaToken)
   return (
     <Screen>
-      <View style={{ height: 8 }} />
+      <LoginBrand />
       <Title>{t('login.title')}</Title>
       <Muted>{t('login.subtitle')}</Muted>
       {!!error && <Notice>{error}</Notice>}
       <Field label={t('login.email')} value={email} onChangeText={setEmail} autoCapitalize="none" autoComplete="email" keyboardType="email-address" textContentType="username" testID="login-email" />
-      <Field label={t('login.password')} value={password} onChangeText={setPassword} secureTextEntry={!showPassword} autoCapitalize="none" autoComplete="current-password" textContentType="password" testID="login-password" onSubmitEditing={() => canSubmit && void submit()} />
-      <Button title={showPassword ? t('login.hide') : t('login.show')} variant="link" onPress={() => setShowPassword((v) => !v)} />
+      <PasswordField label={t('login.password')} value={password} onChangeText={setPassword} autoComplete="current-password" textContentType="password" testID="login-password" onSubmitEditing={() => canSubmit && void submit()} />
+      <Button title={t('login.forgot')} variant="link" onPress={() => router.push('/forgot-password')} testID="login-forgot" />
       <Check label={t('login.noTrust')} help={t('login.noTrustHelp')} value={noTrust} onChange={onNoTrust} testID="login-notrust" />
       {!!captchaSiteKey && (
         <Card>

@@ -10874,3 +10874,37 @@ Kemi aparece para las personas del cliente con sesión iniciada, después de ace
 **Tengo cientos de pendientes en la bandeja con «Ningún lector de la integración aplica a este correo»: ¿qué hago?** Son correos que no son de esta integración. Escoja en el filtro la integración y pulse «Descartar todos los pendientes (N)»: quedan como descartados, no se borra nada. Para que no vuelvan a llegar, ponga en «Allowed original senders» el dominio de quien manda los documentos (por ejemplo `@axiscare.com`): los demás remitentes se saltan sin pasar por la bandeja.
 
 **¿Qué fecha lleva el aviso de llegada o de salida?** La primera disponible: la fecha del documento; si no trae, la del correo (en la hora de la compañía); si tampoco, la de hoy.
+
+
+## Contraseña: ojito, mayúsculas, mensajes y «¿Olvidó su contraseña?» (Lote 219)
+<!-- kemi:portal -->
+
+**¿Cómo veo lo que estoy escribiendo en la contraseña?**
+Toque el ojito que está dentro del campo: la contraseña se muestra; vuélvalo a tocar para ocultarla. Lo hay en todos los campos de contraseña y de PIN.
+
+**Sale «Las mayúsculas están activadas.»**
+Tiene el Bloq Mayús puesto: las contraseñas distinguen mayúsculas de minúsculas. Apáguelo y vuelva a escribir (use el ojito para comprobarlo). El aviso aparece al teclear y se quita al apagarlas. En el teléfono el sistema no informa de las mayúsculas, así que ahí solo está el ojito.
+
+**«El correo o la contraseña no son correctos…» y estoy seguro de que sí lo son.**
+Por seguridad el sistema responde igual si el correo no existe, la contraseña está mal o la cuenta está bloqueada. Revise las mayúsculas, que no haya un espacio al final del correo y use el ojito para ver lo que escribe. Si falló varias veces, la cuenta se bloquea unos minutos (1, 5, 15 o 60) y le avisamos por correo: espere ese tiempo o use «¿Olvidó su contraseña?».
+
+**«Demasiados intentos seguidos. Espere un minuto e intente de nuevo.»**
+Hizo demasiados intentos en poco tiempo desde esa conexión. Espere un minuto y vuelva a intentar.
+
+**«El servidor tuvo un problema…» al entrar.**
+Es un fallo del servicio, no de su contraseña. Intente de nuevo en unos minutos; si sigue pasando, avise a su contacto en la compañía.
+
+**¿Cómo recupero mi contraseña si la olvidé?**
+En la pantalla de entrada toque «¿Olvidó su contraseña?», escriba su correo y toque «Enviar enlace». Le llega un correo con un enlace de un solo uso que vale 60 minutos: ábralo, elija su contraseña nueva (mínimo 12 caracteres) y guárdela. Después entre con ella; la computadora se vuelve a confirmar.
+
+**Al elegir la contraseña nueva me pide un código de verificación.**
+Si usted usa la verificación en dos pasos, cambiar la contraseña con el enlace NO basta: escriba el código de su app de autenticación (o uno de sus códigos de recuperación). Así nadie puede quitarle su protección con solo tener acceso a su correo. Si el código es incorrecto, el enlace sigue sirviendo y puede intentar otra vez (los intentos fallidos cuentan para el bloqueo de la cuenta).
+
+**No me llega el correo de «¿Olvidó su contraseña?».**
+La respuesta es la misma exista o no el correo, así que si no llega: revise la carpeta de no deseados, confirme que escribió el correo con el que lo invitaron y espere unos minutos. Si sigue sin llegar, pida a su contacto en la compañía que revise que su acceso esté activo y que el correo del portal esté configurado.
+
+**«El enlace no es válido o venció. Pida uno nuevo.»**
+El enlace vale 60 minutos y se usa una sola vez (o ya pidió otro más nuevo). Toque «Pedir otro enlace» y repita.
+
+**¿Por qué sale el logo de otra compañía (o el de Teikem) en la pantalla de entrada?**
+La pantalla muestra el logo de la última compañía con la que entró ese teléfono o computadora; si es la primera vez, el de la compañía de la dirección web con que abrió la página; si la instalación tiene una sola compañía, el suyo; y si no se sabe, el de Teikem. Después de entrar una vez, la próxima vez saldrá el de su compañía.

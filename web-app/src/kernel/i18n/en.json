@@ -24,11 +24,15 @@
       "password": "Password",
       "mfaCode": "Verification code",
       "showPassword": "Show password",
-      "hidePassword": "Hide password"
+      "hidePassword": "Hide password",
+      "capsLock": "Caps Lock is on."
     },
     "errors": {
       "emailInvalid": "Enter a valid email.",
-      "passwordRequired": "Enter your password."
+      "passwordRequired": "Enter your password.",
+      "invalidCredentials": "The email or password is not correct. Check that Caps Lock is off and tap the eye to see what you typed. After several failed tries the account is locked for a few minutes and we email you.",
+      "tooManyRequests": "Too many attempts in a row. Wait a minute and try again.",
+      "serverDown": "The server had a problem. Try again in a few minutes; if it keeps happening, tell support."
     },
     "backToLogin": "Back to sign in",
     "browser": {

@@ -9,6 +9,7 @@ import { applyProblemDetails } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n/useT'
 import { ConfirmDialog, Modal, toast } from '../../kernel/ui'
 import { useRemoveUserPin, useSetUserPin, type UserSummaryDto } from './api'
+import { PasswordBox } from '../../kernel/ui/PasswordBox'
 
 export function PinModal({ open, user, onClose }: { open: boolean; user: UserSummaryDto | null; onClose: () => void }) {
   const t = useT()
@@ -69,13 +70,12 @@ export function PinModal({ open, user, onClose }: { open: boolean; user: UserSum
       >
         <div className="f">
           <label htmlFor="pinmodal-pin">{t('system.users.pin.pin')}</label>
-          <input
+          <PasswordBox
             id="pinmodal-pin"
-            type="password"
             // new-password: el navegador no rellena ni propone la contraseña guardada en un campo que NO es una contraseña (es el PIN de otra persona)
             autoComplete="new-password"
             autoFocus
-            inputMode="numeric"
+            inputMode="numeric" pin
             maxLength={6}
             value={pin}
             onChange={(e) => setPinValue(e.target.value)}
@@ -83,11 +83,10 @@ export function PinModal({ open, user, onClose }: { open: boolean; user: UserSum
         </div>
         <div className="f">
           <label htmlFor="pinmodal-confirm">{t('system.users.pin.confirmPin')}</label>
-          <input
+          <PasswordBox
             id="pinmodal-confirm"
-            type="password"
             autoComplete="new-password"
-            inputMode="numeric"
+            inputMode="numeric" pin
             maxLength={6}
             value={confirmPin}
             onChange={(e) => setConfirmPin(e.target.value)}

@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { apiErrorMessage } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n/useT'
 import { Button, Field, Muted, Notice, Screen, Title, useColors } from '../../kernel/ui/ui'
+import { PasswordField } from '../../kernel/ui/PasswordField'
 import { acceptInvite } from '../portalApi'
 
 /** Mínimo que pide el servidor (NIST: ≥ 12, sin reglas de composición); se avisa antes de ir al servidor. */
@@ -67,8 +68,8 @@ export function AcceptInviteScreen() {
       <Title>{t('invite.title')}</Title>
       <Muted>{t('invite.subtitle', { email: String(email) })}</Muted>
       {!!error && <Notice>{error}</Notice>}
-      <Field label={t('invite.password')} value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" autoComplete="new-password" />
-      <Field label={t('invite.confirm')} value={confirm} onChangeText={setConfirm} secureTextEntry autoCapitalize="none" autoComplete="new-password" />
+      <PasswordField label={t('invite.password')} value={password} onChangeText={setPassword} autoComplete="new-password" />
+      <PasswordField label={t('invite.confirm')} value={confirm} onChangeText={setConfirm} autoComplete="new-password" />
       <Muted>{t('invite.rule', { min: INVITE_PASSWORD_MIN })}</Muted>
       <Button title={t('invite.submit')} busy={busy} onPress={() => void submit()} />
       {login}

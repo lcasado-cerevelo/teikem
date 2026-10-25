@@ -17,6 +17,8 @@ public sealed class PasswordResetOptions
 {
     /// <summary>Dirección de la web (https://app.teikem.com). Sin ella no se puede armar el enlace.</summary>
     public string? WebBaseUrl { get; set; }
+    /// <summary>Lote 219: dirección del PORTAL del cliente, a donde apunta el enlace de quien es usuario del portal (cliente o consignatario). Si falta se usa <c>Portal:WebBaseUrl</c>; sin ninguna, no sale el correo.</summary>
+    public string? PortalWebBaseUrl { get; set; }
     public int LinkMinutes { get; set; } = 60;
     /// <summary>Solo desarrollo: devolver el enlace en la respuesta para probar sin proveedor de correo.</summary>
     public bool ReturnLinkInResponse { get; set; }
@@ -124,12 +126,16 @@ public sealed partial class AuthService
             return new ForgotPasswordResultDto(ForgotPasswordMessage, null);
         }
         var kind = user.UserKindLookupId is null ? UserKinds.Internal : (await lookups.GetAsync(user.UserKindLookupId.Value, ct))?.InternalCode ?? UserKinds.Internal;
-        if (kind == UserKinds.Portal) return new ForgotPasswordResultDto(ForgotPasswordMessage, null);
+        // Lote 219: las personas del portal (cliente y consignatario) también recuperan su contraseña por correo; el enlace abre el PORTAL, no la web del personal. Sin la dirección del portal no hay enlace
+        // que mandar y se responde igual que siempre (no se dice nada de quién existe).
+        var isPortal = kind == UserKinds.Portal;
+        var baseUrl = isPortal ? opts.PortalWebBaseUrl : opts.WebBaseUrl;
+        if (isPortal && string.IsNullOrWhiteSpace(baseUrl)) return new ForgotPasswordResultDto(ForgotPasswordMessage, null);
 
         var raw = await users.GeneratePasswordResetTokenAsync(user);
         var minutes = Math.Max(5, opts.LinkMinutes);
         var protectedToken = ResetLinkProtector.Protect(raw, TimeSpan.FromMinutes(minutes));
-        var link = $"{(opts.WebBaseUrl ?? string.Empty).TrimEnd('/')}/reset-password?email={Uri.EscapeDataString(user.Email)}&token={Uri.EscapeDataString(protectedToken)}";
+        var link = $"{(baseUrl ?? string.Empty).TrimEnd('/')}/reset-password?email={Uri.EscapeDataString(user.Email)}&token={Uri.EscapeDataString(protectedToken)}";
         var html = $"""
             <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px">
               <h2 style="color:#0B2C66">Restablecer su contraseña</h2>
@@ -139,7 +145,7 @@ public sealed partial class AuthService
               <p>El enlace vale {minutes} minutos y se puede usar una sola vez. Si usted no lo pidió, ignore este correo: su contraseña no cambia.</p>
             </div>
             """;
-        if (!string.IsNullOrWhiteSpace(opts.WebBaseUrl))
+        if (!string.IsNullOrWhiteSpace(baseUrl))
         {
             try { await email.SendAsync(user.Email, user.FullName, "Restablecer su contraseña de Teikem", html, ct, await CompanyNameForEmailAsync(user, null, ct)); }
             catch (Exception ex) when (ex is not OperationCanceledException) { /* misma respuesta: el log del proveedor registra el fallo */ }

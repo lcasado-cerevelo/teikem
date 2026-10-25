@@ -39,6 +39,8 @@ function codeFromStatus(status: number, errors: Record<string, string[]>): strin
   if (status === 404) return 'not_found'
   if (status === 409) return 'conflict'
   if (status === 422) return 'status_rule'
+  if (status === 423) return 'locked'
+  if (status === 429) return 'too_many_requests'
   if (status >= 500) return 'internal'
   return 'error'
 }

@@ -89,7 +89,14 @@
     "hide": "Ocultar contraseña",
     "submit": "Entrar",
     "noTrust": "No confiar en esta computadora",
-    "noTrustHelp": "Márquela si es un equipo compartido o público: entrará una sola vez, no se recordará y se le pedirá el código de seguridad siempre."
+    "noTrustHelp": "Márquela si es un equipo compartido o público: entrará una sola vez, no se recordará y se le pedirá el código de seguridad siempre.",
+    "capsLock": "Las mayúsculas están activadas.",
+    "forgot": "¿Olvidó su contraseña?",
+    "errors": {
+      "invalid": "El correo o la contraseña no son correctos. Revise que las mayúsculas no estén activadas y toque el ojito para ver lo que escribe. Si falló varias veces, la cuenta se bloquea unos minutos y le avisamos por correo.",
+      "tooMany": "Demasiados intentos seguidos. Espere un minuto e intente de nuevo.",
+      "server": "El servidor tuvo un problema. Intente de nuevo en unos minutos; si sigue pasando, avise a su contacto en la compañía."
+    }
   },
   "invite": {
     "title": "Elija su contraseña",
@@ -865,5 +872,26 @@
       "network": "No pude conectarme al servicio de voz. Revisa tu internet o escribe tu pregunta.",
       "other": "No pude entenderte. Intenta de nuevo o escribe tu pregunta."
     }
+  },
+  "forgot": {
+    "title": "Restablecer contraseña",
+    "subtitle": "Escriba su correo y le enviaremos un enlace para elegir una contraseña nueva.",
+    "submit": "Enviar enlace",
+    "sent": "Si el correo está registrado, le enviamos un enlace para restablecer su contraseña.",
+    "sentHelp": "Revise su correo (y la carpeta de no deseados). El enlace vale 60 minutos y se usa una sola vez. Si usa la verificación en dos pasos, tenga a la mano su código.",
+    "devLink": "Enlace (solo en desarrollo)",
+    "back": "Volver a la pantalla de entrada"
+  },
+  "reset": {
+    "title": "Elija su contraseña nueva",
+    "subtitle": "Cuenta: {email}",
+    "submit": "Guardar contraseña",
+    "badLink": "El enlace no es válido o venció. Pida uno nuevo.",
+    "askAgain": "Pedir otro enlace",
+    "mfaCode": "Código de verificación",
+    "mfaHelp": "El de su app de autenticación, o un código de recuperación.",
+    "doneTitle": "Contraseña cambiada",
+    "done": "Listo. Ya puede entrar con su contraseña nueva. Por seguridad, la computadora se vuelve a confirmar la próxima vez.",
+    "goLogin": "Ir a iniciar sesión"
   }
 }

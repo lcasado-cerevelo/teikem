@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import PasswordInput from '@components/PasswordInput';
 import { Text, TextInput } from '@components/Text';
 import { Redirect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -104,9 +105,9 @@ export default function Onboarding() {
         <Text style={styles.subtitle}>{t('ONBOARDING.PASSWORD_BODY')}</Text>
         <View style={styles.field}>
           <Text style={styles.label}>{t('ONBOARDING.NEW_PASSWORD')}</Text>
-          <TextInput style={styles.input} value={pwd} onChangeText={setPwd} secureTextEntry autoCapitalize="none" autoComplete="new-password" />
+          <PasswordInput style={styles.input} value={pwd} onChangeText={setPwd} autoComplete="new-password" />
           <Text style={styles.label}>{t('ONBOARDING.REPEAT_PASSWORD')}</Text>
-          <TextInput style={styles.input} value={pwd2} onChangeText={setPwd2} secureTextEntry autoCapitalize="none" autoComplete="new-password" />
+          <PasswordInput style={styles.input} value={pwd2} onChangeText={setPwd2} autoComplete="new-password" />
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </View>
         {button(t('ONBOARDING.SAVE_PASSWORD'), () => void onSetPassword(), pwd.length === 0)}

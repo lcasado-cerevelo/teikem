@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Teikem.Tests;
 
-/// <summary>2026-10-22 — logo de la pantalla de entrada: la última compañía usada, si no el dominio, si no el subdominio, si no ninguna.</summary>
+/// <summary>2026-10-22 — logo de la pantalla de entrada: la última compañía usada, si no el dominio, si no el subdominio, si no (Lote 219) la única compañía activa de la instalación, si no ninguna.</summary>
 public class PublicBrandTests
 {
     private static async Task<(WmsFixture F, PublicBrandService Svc, Tenant A, Tenant B)> SeedAsync()
@@ -60,12 +60,38 @@ public class PublicBrandTests
     [Fact]
     public async Task Una_compania_inactiva_no_muestra_su_marca()
     {
-        var (f, svc, a, _) = await SeedAsync();
+        var (f, svc, a, b) = await SeedAsync();
         var t = await f.Db.Tenants.IgnoreQueryFilters().FirstAsync(x => x.TenantId == a.TenantId);
         t.IsActive = false;
         await f.Db.SaveChangesAsync();
         f.Db.ChangeTracker.Clear();
-        Assert.Equal("none", (await svc.GetAsync(a.PublicId, "logistica.acme.com", default)).Source);
+        // la inactiva no sale por ningún camino: ni por su identificador ni por su dominio (la que queda es la única activa, ver la prueba de abajo)
+        var r = await svc.GetAsync(a.PublicId, "logistica.acme.com", default);
+        Assert.NotEqual(a.PublicId, r.TenantPublicId);
+        Assert.Equal(("single", b.PublicId), (r.Source, r.TenantPublicId));
+    }
+
+    [Fact]
+    public async Task Con_una_sola_compania_activa_en_la_instalacion_sale_la_suya_aunque_nadie_haya_entrado()
+    {
+        var (f, svc, a, b) = await SeedAsync();
+        var other = await f.Db.Tenants.IgnoreQueryFilters().FirstAsync(x => x.TenantId == a.TenantId);
+        other.IsActive = false;
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        var r = await svc.GetAsync(null, "localhost", default);
+        Assert.Equal(("single", b.PublicId, b.Name), (r.Source, r.TenantPublicId, r.Name));
+        Assert.Equal(new[] { "lockup" }, r.Logos.Select(l => l.Slot));
+        // y su archivo también sale sin que nadie diga cuál compañía es
+        Assert.Equal(3, (await svc.GetLogoAsync("lockup", null, "localhost", default)).Content.Length);
+    }
+
+    [Fact]
+    public async Task Con_varias_companias_activas_y_sin_pista_no_se_adivina_cual()
+    {
+        var (_, svc, _, _) = await SeedAsync();
+        var r = await svc.GetAsync(null, "localhost", default);
+        Assert.Equal(("none", null), (r.Source, r.TenantPublicId));
     }
 
     [Fact]

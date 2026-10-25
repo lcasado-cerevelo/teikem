@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useController, type UseControllerProps } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { Platform, Pressable, StyleSheet, TextInput as RNTextInput, type TextInputProps as RNTextInputProps, View } from 'react-native';
 import { Text } from '@components/Text';
 import { FontAwesome } from '@expo/vector-icons';
@@ -17,6 +18,7 @@ type FormInputProps = UseControllerProps &
 export default function FormInput(props: FormInputProps) {
   const { colors } = useTheme();
   const styles = useStyles(createStyles);
+  const { t } = useTranslation();
   const { name, rules, defaultValue, label, style, secureTextEntry, ...rest } = props;
   const { field, fieldState } = useController({ name, rules, defaultValue });
   const isPassword = Boolean(secureTextEntry);
@@ -41,6 +43,7 @@ export default function FormInput(props: FormInputProps) {
             onPress={() => setHidden((h) => !h)}
             hitSlop={8}
             accessibilityRole="button"
+            accessibilityLabel={hidden ? t('LOGIN.SHOW_PASSWORD') : t('LOGIN.HIDE_PASSWORD')}
           >
             <FontAwesome name={hidden ? 'eye-slash' : 'eye'} size={18} color={colors.muted} />
           </Pressable>

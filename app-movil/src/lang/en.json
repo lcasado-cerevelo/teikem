@@ -21,7 +21,7 @@
       "USERNAME": "Username",
       "PASSWORD": "Password",
       "ERROR_TITLE": "Couldn't sign in",
-      "INVALID_CREDENTIALS": "Incorrect username or password.",
+      "INVALID_CREDENTIALS": "The email or password is not correct. Check that Caps Lock is off and tap the eye to see what you typed. After several failed tries the account is locked for a few minutes and we email you.",
       "NETWORK_ERROR_TITLE": "No connection",
       "NETWORK_ERROR": "No signal. Check your connection and try again.",
       "BIOMETRIC_BUTTON": "Sign in with fingerprint",
@@ -40,7 +40,12 @@
       "BROWSER_BODY": "We sent an email to {{email}}. Tap the link in the email to confirm this phone and sign in again.",
       "BROWSER_NOT_SENT": "The confirmation email could not be sent.",
       "ONBOARDING_TITLE": "First sign-in",
-      "ONBOARDING_BODY": "Complete your first sign-in on the Teikem web (email and your own password) and come back here."
+      "ONBOARDING_BODY": "Complete your first sign-in on the Teikem web (email and your own password) and come back here.",
+      "TOO_MANY": "Too many attempts in a row. Wait a minute and try again.",
+      "SERVER_ERROR": "The server had a problem. Try again in a few minutes; if it keeps happening, tell your supervisor.",
+      "FORGOT": "Forgot your password?",
+      "SHOW_PASSWORD": "Show password",
+      "HIDE_PASSWORD": "Hide password"
     },
     "HOME": {
       "DELIVERIES_FOR_TODAY": "Deliveries for today",
@@ -623,6 +628,15 @@
       "ON_HAND_AVAILABLE": "{{onHand}} on hand · {{available}} avail.",
       "NO_STOCK": "This product has no stock.",
       "BIN_EMPTY": "This bin has no products in stock."
+    },
+    "FORGOT_PASSWORD": {
+      "TITLE": "Reset password",
+      "SUBTITLE": "Enter your email and we'll send you a link to choose a new password.",
+      "SUBMIT": "Send link",
+      "SENT": "If the email is registered, we sent you a link to reset your password.",
+      "SENT_HELP": "Open the email and tap the link: it takes you to choose the new password in the browser (if you use two-step verification, have your code at hand). It is valid for 60 minutes and can be used once. When you finish, come back here to sign in.",
+      "BACK": "Back to sign in",
+      "ERROR_TITLE": "Could not send"
     }
   }
 }

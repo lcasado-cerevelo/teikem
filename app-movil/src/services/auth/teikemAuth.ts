@@ -222,3 +222,9 @@ export async function setOnboardingPassword(token: string, newPassword: string, 
   const { data } = await http.post<OnboardingStepDto>('/api/v1/auth/onboarding/password', { newPassword }, { headers: { ...bearer(token), 'Accept-Language': language } });
   return data;
 }
+
+/** «Olvidé mi contraseña» (Lote 219): el servidor manda al correo un enlace de un solo uso que abre la web para elegir la contraseña nueva (con el código de la verificación en dos pasos si la persona la usa). Responde SIEMPRE lo mismo exista o no el correo. */
+export async function forgotPassword(email: string, language: string): Promise<string> {
+  const { data } = await http.post<{ message?: string | null }>('/api/v1/auth/forgot-password', { email: email.trim() }, { headers: { 'Accept-Language': language } });
+  return data.message ?? '';
+}

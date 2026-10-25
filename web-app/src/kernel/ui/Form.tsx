@@ -5,6 +5,7 @@ import { FormProvider, get, useController, useFormContext, type FieldValues, typ
 import { applyProblemDetails, type AppliedProblem } from '../api/problem'
 import { DateField } from './DateField'
 import { DateTimeField } from './DateTimeField'
+import { PasswordBox } from './PasswordBox'
 import { FieldContext, FieldRegistryContext, useFieldInfo, type FieldRegistry } from './formContext'
 import './ui.css'
 
@@ -183,6 +184,8 @@ export interface TextInputProps extends NativeInput {
 export function TextInput({ type = 'text', ...rest }: TextInputProps) {
   const { info, aria } = useControlProps('TextInput')
   const { register } = useFormContext()
+  // toda contraseña de la web lleva el ojito y el aviso de mayúsculas (Lote 219)
+  if (type === 'password') return <PasswordBox pin={rest.inputMode === 'numeric'} {...rest} {...aria} {...register(info.name)} />
   return <input type={type} {...rest} {...aria} {...register(info.name)} />
 }
 

@@ -65,3 +65,7 @@ Los mensajes de los servicios son los del servidor (capítulos 24 a 26): `Creden
   - **El logo del PDF y del Excel es el de la compañía** que sirve al cliente (el normal, que se lee sobre blanco; si solo subió el invertido, va sobre una placa del color de su barra); **si la compañía no subió ninguno, sale el de Teikem**.
   - **Los colores del PDF son los de la compañía** (Ajustes → Marca): el encabezado de la tabla, el título y la línea bajo el encabezado salen en el color de la barra y del acento que la compañía definió; con la marca de siempre, el azul marino y el naranja de siempre. No se usa ningún otro color.
   - **CSV** lleva solo la tabla (UTF-8, Excel lo abre con acentos). **En el celular solo hay CSV** y se comparte el archivo en lugar de bajarse.
+
+## 7. Contraseña: ojito, mayúsculas, mensajes claros y «¿Olvidó su contraseña?» (Lote 219)
+La pantalla de entrada del portal lleva arriba el **logo de su compañía** y, en cada campo de contraseña (entrar, elegir la contraseña de la invitación, cambiarla en Mi perfil), un **ojito** dentro del campo para ver lo que escribe. En la web avisa «Las mayúsculas están activadas.» al teclear con ellas puestas. Si se equivoca, el mensaje le dice qué revisar. **«¿Olvidó su contraseña?»** (debajo de la contraseña) pide su correo y manda un enlace de un solo uso (60 minutos) que abre `/reset-password` en el portal; si usted tiene la verificación en dos pasos, la pantalla le pide también su código. Detalle y mensajes exactos en el capítulo [25 §7](25-acceso-seguro.md).
+

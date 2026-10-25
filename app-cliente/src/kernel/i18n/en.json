@@ -89,7 +89,14 @@
     "hide": "Hide password",
     "submit": "Sign in",
     "noTrust": "Do not trust this computer",
-    "noTrustHelp": "Tick it on a shared or public device: you will sign in once, it will not be remembered and you will always be asked for the security code."
+    "noTrustHelp": "Tick it on a shared or public device: you will sign in once, it will not be remembered and you will always be asked for the security code.",
+    "capsLock": "Caps Lock is on.",
+    "forgot": "Forgot your password?",
+    "errors": {
+      "invalid": "The email or password is not correct. Check that Caps Lock is off and tap the eye to see what you typed. After several failed tries the account is locked for a few minutes and we email you.",
+      "tooMany": "Too many attempts in a row. Wait a minute and try again.",
+      "server": "The server had a problem. Try again in a few minutes; if it keeps happening, tell your contact at the company."
+    }
   },
   "invite": {
     "title": "Choose your password",
@@ -865,5 +872,26 @@
       "network": "I couldn't reach the voice service. Check your internet or type your question.",
       "other": "I couldn't understand you. Try again or type your question."
     }
+  },
+  "forgot": {
+    "title": "Reset password",
+    "subtitle": "Enter your email and we'll send you a link to choose a new password.",
+    "submit": "Send link",
+    "sent": "If the email is registered, we sent you a link to reset your password.",
+    "sentHelp": "Check your email (and the spam folder). The link is valid for 60 minutes and can be used once. If you use two-step verification, have your code at hand.",
+    "devLink": "Link (development only)",
+    "back": "Back to sign in"
+  },
+  "reset": {
+    "title": "Choose your new password",
+    "subtitle": "Account: {email}",
+    "submit": "Save password",
+    "badLink": "The link is not valid or has expired. Ask for a new one.",
+    "askAgain": "Ask for another link",
+    "mfaCode": "Verification code",
+    "mfaHelp": "The one from your authenticator app, or a recovery code.",
+    "doneTitle": "Password changed",
+    "done": "Done. You can now sign in with your new password. For security, this computer will be confirmed again next time.",
+    "goLogin": "Go to sign in"
   }
 }

@@ -11,12 +11,13 @@ namespace Teikem.Infrastructure.Services;
 ///   1. la última con la que entró esa computadora (por login o al cambiar de compañía en el encabezado), si llega su identificador público y está activa;
 ///   2. si no, la que tiene como DOMINIO la dirección con la que se abrió la página;
 ///   3. si no, la que tiene como SUBDOMINIO la primera parte de esa dirección;
-///   4. si no, ninguna (la pantalla usa el logo de Teikem).
+///   4. si no, y SOLO si la instalación tiene una única compañía activa, esa (Lote 219, Luis: «con una sola compañía en la instalación sale la suya»);
+///   5. si no, ninguna (la pantalla usa el logo de Teikem).
 /// Es anónimo: solo sale lo que ya es público en la pantalla de entrada. Una dirección o un identificador que no existe responde igual que «ninguna».
 /// </summary>
 public sealed class PublicBrandService(TeikemDbContext db)
 {
-    public const string SourceTenant = "tenant", SourceDomain = "domain", SourceSubdomain = "subdomain", SourceNone = "none";
+    public const string SourceTenant = "tenant", SourceDomain = "domain", SourceSubdomain = "subdomain", SourceSingle = "single", SourceNone = "none";
 
     private async Task<(Tenant? Tenant, string Source)> ResolveAsync(Guid? tenantPublicId, string? host, CancellationToken ct)
     {
@@ -25,7 +26,9 @@ public sealed class PublicBrandService(TeikemDbContext db)
         var (domain, sub) = TenantDomainRules.Candidates(host);
         if (domain is not null && await q.FirstOrDefaultAsync(t => t.CustomDomain == domain, ct) is { } byDomain) return (byDomain, SourceDomain);
         if (sub is not null && await q.FirstOrDefaultAsync(t => t.Subdomain == sub, ct) is { } bySub) return (bySub, SourceSubdomain);
-        return (null, SourceNone);
+        // una instalación de una sola compañía (el caso de cada cliente que compra Teikem para sí): su marca sale sin que nadie la haya usado antes ni haya dominio
+        var two = await q.OrderBy(t => t.TenantId).Take(2).ToListAsync(ct);
+        return two.Count == 1 ? (two[0], SourceSingle) : (null, SourceNone);
     }
 
     public async Task<PublicBrandDto> GetAsync(Guid? tenantPublicId, string? host, CancellationToken ct)

@@ -5,6 +5,7 @@ import { Text } from 'react-native'
 import { apiErrorMessage } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n/useT'
 import { Button, Card, Field, Muted, Notice, Screen, Spinner, Title, useColors } from '../../kernel/ui/ui'
+import { PasswordField } from '../../kernel/ui/PasswordField'
 import { changePassword, getProfile, saveProfile, type PortalProfileDto } from '../portalApi'
 
 export function ProfileScreen() {
@@ -100,9 +101,9 @@ export function ProfileScreen() {
           <Card>
             <Text style={{ fontWeight: '700', color: colors.text }}>{t('profile.password')}</Text>
             <Muted>{t('profile.passwordHelp')}</Muted>
-            <Field label={t('profile.passwordCurrent')} value={current} onChangeText={setCurrent} secureTextEntry autoCapitalize="none" testID="profile-pw-current" />
-            <Field label={t('profile.passwordNew')} value={next} onChangeText={setNext} secureTextEntry autoCapitalize="none" testID="profile-pw-new" />
-            <Field label={t('profile.passwordAgain')} value={again} onChangeText={setAgain} secureTextEntry autoCapitalize="none" testID="profile-pw-again" />
+            <PasswordField label={t('profile.passwordCurrent')} value={current} onChangeText={setCurrent} testID="profile-pw-current" />
+            <PasswordField label={t('profile.passwordNew')} value={next} onChangeText={setNext} testID="profile-pw-new" />
+            <PasswordField label={t('profile.passwordAgain')} value={again} onChangeText={setAgain} testID="profile-pw-again" />
             {!!pwError && <Notice>{pwError}</Notice>}
             {pwDone && <Notice tone="ok">{t('profile.passwordDone')}</Notice>}
             <Button title={t('profile.passwordSave')} variant="secondary" onPress={() => void onChangePassword()} disabled={busy} testID="profile-pw-save" />

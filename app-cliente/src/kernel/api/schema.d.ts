@@ -15505,6 +15505,89 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/inbox/discard-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["InboxDiscardAllRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InboxDiscardAllDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/read-sample": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SampleReadDto"];
+                        "application/json": components["schemas"]["SampleReadDto"];
+                        "text/json": components["schemas"]["SampleReadDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/integrations/{publicId}/email/test": {
         parameters: {
             query?: never;
@@ -41550,6 +41633,11 @@ export interface components {
             bodyFields?: components["schemas"]["EmailBodyField"][] | null;
             readPdf?: boolean;
             readers?: components["schemas"]["DocumentReader"][] | null;
+            provider?: string | null;
+            tenantId?: string | null;
+            clientId?: string | null;
+            markMode?: string | null;
+            readSince?: string | null;
         };
         EmailTestResultDto: {
             ok?: boolean;
@@ -41903,6 +41991,24 @@ export interface components {
             rows?: string[][] | null;
             /** Format: int32 */
             totalRows?: number;
+        };
+        InboxDiscardAllRequest: {
+            /** Format: uuid */
+            integration?: string | null;
+            note?: string | null;
+        };
+        InboxDiscardAllDto: {
+            /** Format: int32 */
+            discarded?: number;
+        };
+        SampleReadDto: {
+            text?: string | null;
+            /** Format: int32 */
+            pages?: number;
+            usedOcr?: boolean;
+            /** Format: int32 */
+            confidence?: number | null;
+            problem?: string | null;
         };
         FuelLogCreateRequest: {
             /** Format: uuid */

@@ -24,11 +24,15 @@
       "password": "Contraseña",
       "mfaCode": "Código de verificación",
       "showPassword": "Mostrar contraseña",
-      "hidePassword": "Ocultar contraseña"
+      "hidePassword": "Ocultar contraseña",
+      "capsLock": "Las mayúsculas están activadas."
     },
     "errors": {
       "emailInvalid": "Escriba un correo válido.",
-      "passwordRequired": "Escriba su contraseña."
+      "passwordRequired": "Escriba su contraseña.",
+      "invalidCredentials": "El correo o la contraseña no son correctos. Revise que las mayúsculas no estén activadas y toque el ojito para ver lo que escribe. Si falló varias veces, la cuenta se bloquea unos minutos y le avisamos por correo.",
+      "tooManyRequests": "Demasiados intentos seguidos. Espere un minuto e intente de nuevo.",
+      "serverDown": "El servidor tuvo un problema. Intente de nuevo en unos minutos; si sigue pasando, avise a soporte."
     },
     "backToLogin": "Volver al inicio de sesión",
     "browser": {
