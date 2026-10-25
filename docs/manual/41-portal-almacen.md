@@ -4,9 +4,9 @@ Lote 153 (2026-10-20). Sesión del portal (`/api/v1/portal/*`): la cuenta entra 
 
 | Qué | Ruta | Quién | Detalle |
 |---|---|---|---|
-| Mis existencias | `GET /portal/warehouse/stock` | cualquier acceso del cliente con almacén | por producto, lote y almacén; buscador y almacén; máximo 100 por página |
+| Mis existencias | `GET /portal/warehouse/stock` | cualquier acceso del cliente con almacén | por producto, lote y almacén; el buscador mira SKU, nombre, código de barras, **número de lote y almacén (código o nombre)** (2026-10-24); máximo 100 por página |
 | Mis productos | `GET /portal/warehouse/products` | igual | con lo que hay en total; inactivos con `includeInactive` |
-| Mis movimientos | `GET /portal/warehouse/movements` | igual | `from`/`to` (días de la compañía) y buscador; sin posición ni usuario |
+| Mis movimientos | `GET /portal/warehouse/movements` | igual | `from`/`to` (días de la compañía) y buscador (producto, SKU, código de barras, lote, serie o nota); sin posición ni usuario |
 | Valor de mi inventario | `GET /portal/warehouse/valuation` | **ADMIN u OPERADOR** del cliente | valuación de la compañía (promedio o por capas) |
 
 Errores: 403 «El usuario no tiene acceso activo al portal.» (sesión sin cliente), 403 «Su acceso no incluye ver el valor del inventario.» (acceso de solo lectura), 403 con el aviso de módulo apagado si la compañía no tiene almacén. Un producto o movimiento de otro cliente nunca aparece.
@@ -20,6 +20,10 @@ Lote 154 (2026-10-20). La barra de pestañas de `app-cliente` sigue a la **compa
 | Solo transporte | Inicio, Órdenes, Avisos, Mensajes, Ajustes | Inicio |
 | Solo almacén | Almacén, Avisos, Mensajes, Ajustes | Almacén |
 | Ambos | Todas | Inicio |
+
+**Filtros de fecha y buscadores (2026-10-24, Lote 213):** **Movimientos**, **Llegadas** y **Salidas** traen el mismo filtro de fecha que Mis envíos (Hoy, Ayer, Últimos 7 días, Esta semana, Semana pasada, Últimos 30 días, Este mes, Mes pasado, Este año, Personalizado con Desde/Hasta): en Movimientos filtra por el día del movimiento, en Llegadas por la **fecha esperada** (`from`/`to` de `GET /portal/warehouse/arrivals`) y en Salidas por la **fecha solicitada** (`from`/`to` de `GET /portal/warehouse/exits`). **Llegadas** ahora tiene también su buscador (número del aviso, referencia u orden de compra). Los buscadores esperan a que se deje de escribir. Al exportar (Excel, CSV o PDF) la oración de filtros dice la búsqueda y el rango.
+
+![Llegadas con buscador y filtro de fecha](frontend/img/l213-almacen-llegadas-filtros.png)
 
 La pestaña **Almacén** tiene cuatro secciones: **Existencias** (por producto, lote y almacén), **Productos**, **Movimientos** y **Valor** (solo si el acceso es ADMIN u OPERADOR). Cada lista tiene buscador y «Cargar más». Las cantidades y los precios van en la moneda de la compañía. En Ajustes, quien tiene accesos en varias compañías ve «Cliente · Compañía» y al cambiar, el menú se rehace con lo que ofrece la nueva compañía.
 

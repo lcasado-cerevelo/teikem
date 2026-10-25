@@ -130,7 +130,7 @@ de la persona), los predeterminados del cliente/compañía y las banderas `clien
 | 4.2 Detallada igual al personal | Hecho (01/02/03 + ticket; autocompletar; datos de solo lectura; servicio, fechas, números, tipo de paquete, recogida) |
 | 4.3 Rápida igual al personal y con teclado | Hecho (columnas del personal; Tab campo, Enter guarda, flechas en la lista; verificado con Playwright solo con teclado) |
 | 4.4 Servidor | Hecho (formulario con catálogos y predeterminados; alta con servicio, n.º de orden, fecha límite y tipo de paquete; contrato regenerado) |
-| 5 Almacén: campos de búsqueda | Propuesta en decisiones (nada construido: decisión 4) |
+| 5 Almacén: campos de búsqueda | Hecho (2026-10-24): filtro de fecha en Movimientos, Llegadas y Salidas; buscador en Llegadas; Existencias también por lote y almacén (séptima tanda de lote213-portal-decisiones.md) |
 | 6 Informes | Sin cambios |
 | 8 Mensajes en escritorio | Hecho (dos columnas: lista + conversación) |
 | 9 Marcar varios consignatarios | Hecho (selección + barra de acciones + una advertencia; endpoint `bulk`) |

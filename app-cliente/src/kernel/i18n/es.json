@@ -22,7 +22,12 @@
   "warehouse": {
     "title": "Mi almacén",
     "search": "Buscar",
-    "searchStock": "SKU, nombre o código de barras",
+    "searchStock": "SKU, nombre, código de barras, lote o almacén",
+    "searchMovements": "SKU, nombre, código de barras, lote, serie o nota",
+    "searchArrivals": "Número, referencia u orden de compra",
+    "searchExits": "Número, referencia, destino o producto",
+    "expectedDate": "Fecha esperada",
+    "requestedDate": "Fecha solicitada",
     "searchProducts": "SKU, nombre, marca o código de barras",
     "sections": {
       "stock": "Existencias",

@@ -80,11 +80,11 @@ public sealed class PortalCreateService(TeikemDbContext db, ITenantContext tenan
         return ToArrival(created);
     }
 
-    public async Task<IReadOnlyList<PortalArrivalDto>> ListArrivalsAsync(string? search, CancellationToken ct)
+    public async Task<IReadOnlyList<PortalArrivalDto>> ListArrivalsAsync(string? search, DateOnly? from, DateOnly? to, CancellationToken ct)
     {
         var cid = ((TenantContext)tenant).PortalClientId ?? throw new ForbiddenException(AuthService.PortalNoAccessMessage);
         var publicId = await db.Set<Client>().AsNoTracking().Where(c => c.ClientId == cid).Select(c => c.PublicId).FirstOrDefaultAsync(ct);
-        var list = await asns.ListAsync(new AsnQuery(ClientPublicId: publicId, Search: search), InventoryScope.Any, ct);
+        var list = await asns.ListAsync(new AsnQuery(ClientPublicId: publicId, Search: search, ExpectedFrom: from, ExpectedTo: to), InventoryScope.Any, ct);
         return list.Where(a => a.ClientPublicId == publicId).Take(MaxList).Select(ToArrival).ToList();
     }
 
@@ -121,11 +121,11 @@ public sealed class PortalCreateService(TeikemDbContext db, ITenantContext tenan
         return ToExit(created);
     }
 
-    public async Task<PortalExitPageDto> ListExitsAsync(string? status, string? search, int skip, int take, CancellationToken ct)
+    public async Task<PortalExitPageDto> ListExitsAsync(string? status, string? search, DateOnly? from, DateOnly? to, int skip, int take, CancellationToken ct)
     {
         var cid = ((TenantContext)tenant).PortalClientId ?? throw new ForbiddenException(AuthService.PortalNoAccessMessage);
         var publicId = await db.Set<Client>().AsNoTracking().Where(c => c.ClientId == cid).Select(c => c.PublicId).FirstOrDefaultAsync(ct);
-        var page = await exits.ListAsync(status, publicId, search, false, null, null, skip, Math.Clamp(take <= 0 ? 25 : take, 1, MaxList), ct);
+        var page = await exits.ListAsync(status, publicId, search, false, from, to, skip, Math.Clamp(take <= 0 ? 25 : take, 1, MaxList), ct);
         return new PortalExitPageDto(page.Total, page.Skip, page.Take, page.Items.Where(i => i.ClientPublicId == publicId)
             .Select(i => new PortalExitListItemDto(i.PublicId, i.Number, i.StatusCode, i.Status, i.WarehouseCode, i.Reference, i.Destination, i.RequestedDate, i.RequiredDate, i.LineCount, i.QtyOrdered, i.QtyShipped, i.HasBackorder)).ToList());
     }

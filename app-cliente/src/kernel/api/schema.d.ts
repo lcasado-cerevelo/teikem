@@ -24524,6 +24524,8 @@ export interface paths {
             parameters: {
                 query?: {
                     search?: string;
+                    from?: string;
+                    to?: string;
                 };
                 header?: never;
                 path?: never;
@@ -24675,6 +24677,8 @@ export interface paths {
                 query?: {
                     status?: string;
                     search?: string;
+                    from?: string;
+                    to?: string;
                     skip?: number;
                     take?: number;
                 };

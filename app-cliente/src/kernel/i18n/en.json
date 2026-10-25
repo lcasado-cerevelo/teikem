@@ -22,7 +22,12 @@
   "warehouse": {
     "title": "My warehouse",
     "search": "Search",
-    "searchStock": "SKU, name or barcode",
+    "searchStock": "SKU, name, barcode, lot or warehouse",
+    "searchMovements": "SKU, name, barcode, lot, serial or note",
+    "searchArrivals": "Number, reference or purchase order",
+    "searchExits": "Number, reference, destination or product",
+    "expectedDate": "Expected date",
+    "requestedDate": "Requested date",
     "searchProducts": "SKU, name, brand or barcode",
     "sections": {
       "stock": "Stock",

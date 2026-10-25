@@ -40,7 +40,9 @@ export type ValuationReportDto = Schemas['ValuationReportDto']
 export type ValuationRowDto = Schemas['ValuationRowDto']
 export const listStock = (search: string, skip = 0, take = PAGE_SIZE) => unwrap(api.GET('/api/v1/portal/warehouse/stock', { params: { query: { search: search || undefined, skip, take } } }))
 export const listWarehouseProducts = (search: string, skip = 0, take = PAGE_SIZE) => unwrap(api.GET('/api/v1/portal/warehouse/products', { params: { query: { search: search || undefined, skip, take } } }))
-export const listMovements = (search: string, skip = 0, take = PAGE_SIZE) => unwrap(api.GET('/api/v1/portal/warehouse/movements', { params: { query: { search: search || undefined, skip, take } } }))
+/** Rango de fechas (AAAA-MM-DD) como parámetros del API; vacío = sin límite. */
+const dayParams = (r?: { from: string; to: string }) => ({ from: r?.from || undefined, to: r?.to || undefined })
+export const listMovements = (search: string, skip = 0, take = PAGE_SIZE, range?: { from: string; to: string }) => unwrap(api.GET('/api/v1/portal/warehouse/movements', { params: { query: { search: search || undefined, skip, take, ...dayParams(range) } } }))
 export type PortalProductCreateRequest = Schemas['PortalProductCreateRequest']
 export type PortalProductPatchRequest = Schemas['PortalProductPatchRequest']
 export type PortalArrivalRequest = Schemas['PortalArrivalRequest']
@@ -53,11 +55,11 @@ export type PortalWarehouseOptionDto = Schemas['PortalWarehouseOptionDto']
 export const listWarehouseOptions = () => unwrap(api.GET('/api/v1/portal/warehouse/warehouses'))
 export const createProduct = (body: PortalProductCreateRequest) => unwrap(api.POST('/api/v1/portal/warehouse/products', { body }))
 export const updateProduct = (publicId: string, body: PortalProductPatchRequest) => unwrap(api.PATCH('/api/v1/portal/warehouse/products/{publicId}', { params: { path: { publicId } }, body }))
-export const listArrivals = (search: string) => unwrap(api.GET('/api/v1/portal/warehouse/arrivals', { params: { query: { search: search || undefined } } }))
+export const listArrivals = (search: string, range?: { from: string; to: string }) => unwrap(api.GET('/api/v1/portal/warehouse/arrivals', { params: { query: { search: search || undefined, ...dayParams(range) } } }))
 export const createArrival = (body: PortalArrivalRequest) => unwrap(api.POST('/api/v1/portal/warehouse/arrivals', { body }))
 export const updateArrival = (id: number, body: PortalArrivalRequest) => unwrap(api.PATCH('/api/v1/portal/warehouse/arrivals/{id}', { params: { path: { id } }, body }))
 export const cancelArrival = (id: number) => unwrap(api.POST('/api/v1/portal/warehouse/arrivals/{id}/cancel', { params: { path: { id } } }))
-export const listExits = (search: string, skip = 0, take = PAGE_SIZE) => unwrap(api.GET('/api/v1/portal/warehouse/exits', { params: { query: { search: search || undefined, skip, take } } }))
+export const listExits = (search: string, skip = 0, take = PAGE_SIZE, range?: { from: string; to: string }) => unwrap(api.GET('/api/v1/portal/warehouse/exits', { params: { query: { search: search || undefined, skip, take, ...dayParams(range) } } }))
 export const createExit = (body: PortalExitRequest) => unwrap(api.POST('/api/v1/portal/warehouse/exits', { body }))
 export const updateExit = (publicId: string, body: Schemas['PortalExitHeaderRequest']) => unwrap(api.PATCH('/api/v1/portal/warehouse/exits/{publicId}', { params: { path: { publicId } }, body }))
 export const modifyExitLine = (publicId: string, lineId: number, quantity: number | null) => unwrap(api.PATCH('/api/v1/portal/warehouse/exits/{publicId}/lines/{lineId}', { params: { path: { publicId, lineId } }, body: { quantity } }))

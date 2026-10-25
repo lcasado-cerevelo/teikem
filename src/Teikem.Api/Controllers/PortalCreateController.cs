@@ -30,7 +30,7 @@ public sealed class PortalCreateController(PortalCreateService create) : Control
     public Task<PortalProductDto> UpdateProduct(Guid publicId, [FromBody] PortalProductPatchRequest req, CancellationToken ct) => create.UpdateProductAsync(publicId, req, ct);
 
     [HttpGet("arrivals"), RequireModule(ModuleKeys.WmsLotSerial)]
-    public Task<IReadOnlyList<PortalArrivalDto>> Arrivals([FromQuery] string? search, CancellationToken ct) => create.ListArrivalsAsync(search, ct);
+    public Task<IReadOnlyList<PortalArrivalDto>> Arrivals([FromQuery] string? search, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken ct) => create.ListArrivalsAsync(search, from, to, ct);
 
     [HttpPost("arrivals"), RequireModule(ModuleKeys.WmsLotSerial)]
     public Task<PortalArrivalDto> CreateArrival([FromBody] PortalArrivalRequest req, CancellationToken ct) => create.CreateArrivalAsync(req, ct);
@@ -42,7 +42,7 @@ public sealed class PortalCreateController(PortalCreateService create) : Control
     public Task<PortalArrivalDto> CancelArrival(int id, CancellationToken ct) => create.CancelArrivalAsync(id, ct);
 
     [HttpGet("exits"), RequireModule(ModuleKeys.WmsLotSerial)]
-    public Task<PortalExitPageDto> Exits([FromQuery] string? status, [FromQuery] string? search, [FromQuery] int skip, [FromQuery] int take, CancellationToken ct) => create.ListExitsAsync(status, search, skip, take, ct);
+    public Task<PortalExitPageDto> Exits([FromQuery] string? status, [FromQuery] string? search, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] int skip, [FromQuery] int take, CancellationToken ct) => create.ListExitsAsync(status, search, from, to, skip, take, ct);
 
     [HttpGet("exits/{publicId:guid}"), RequireModule(ModuleKeys.WmsLotSerial)]
     public Task<PortalExitDto> Exit(Guid publicId, CancellationToken ct) => create.GetExitAsync(publicId, ct);

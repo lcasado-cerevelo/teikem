@@ -10855,6 +10855,10 @@ En el panel de Kemi toque «Dormir a Kemi»: se esconde junto al menú (en el te
 **No me sale Kemi.**
 Kemi aparece para las personas del cliente con sesión iniciada, después de aceptar el documento legal. Los consignatarios con acceso propio no la tienen.
 
+**En Almacén no me aparece un aviso de llegada (o de salida, o un movimiento) que sé que existe.** Mire el filtro de fecha de esa lista: «Llegadas» filtra por la fecha **esperada**, «Salidas» por la fecha **solicitada** y «Movimientos» por el día del movimiento. Un aviso que se espera la semana que viene no sale con «Hoy». Ponga «Todas las fechas» y borre el buscador.
+
+**¿Por qué número puedo buscar en Almacén?** Existencias: SKU, nombre, código de barras, lote y almacén. Productos: SKU, nombre, marca y código de barras. Movimientos: producto, código de barras, lote, serie y notas. Llegadas: número del aviso, referencia y orden de compra. Salidas: número, referencia, destino y producto.
+
 **No sé escribir expresiones regulares: ¿cómo configuro lo que lee un lector?** No hace falta. En el dato del lector toque «Armar la tabla con un documento de muestra» (o «Señalar el dato…» / «Señalar el total…»), suba o pegue un documento, toque el renglón y diga de qué parte sale cada dato; el asistente arma la expresión y le dice cuántos renglones del documento coinciden. Si dice «Ningún renglón del documento coincide», revise lo que escogió o toque otro renglón con datos.
 
 **¿Qué significa «Partes del renglón» (2=2, 3=4/3)?** Que el dato 2 de la plantilla sale de la parte 2 del renglón y el dato 3 de la parte 4 dividida entre la parte 3 (por ejemplo cantidad = importe ÷ precio unitario). Lo arma el asistente; solo se toca a mano en «Ver o ajustar la expresión (avanzado)».

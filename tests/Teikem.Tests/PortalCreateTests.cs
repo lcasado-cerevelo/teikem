@@ -123,7 +123,7 @@ public sealed class PortalCreateTests
         var arrival = await x.Svc.CreateArrivalAsync(new PortalArrivalRequest(x.W.PublicId, "OC-1", Lines: new[] { new PortalArrivalLineRequest(x.P.PublicId, 6m, UnitPrice: 5m) }), default);
         Assert.Equal(("OC-1", true), (arrival.Reference, arrival.CanCancel));
         Assert.Equal(6m, Assert.Single(arrival.Lines).ExpectedQty);
-        Assert.Single(await x.Svc.ListArrivalsAsync(null, default));
+        Assert.Single(await x.Svc.ListArrivalsAsync(null, null, null, default));
 
         // el producto de otro cliente no se acepta
         await Assert.ThrowsAsync<ValidationException>(() => x.Svc.CreateArrivalAsync(new PortalArrivalRequest(x.W.PublicId, Lines: new[] { new PortalArrivalLineRequest(x.Foreign.PublicId, 1m) }), default));
@@ -139,12 +139,32 @@ public sealed class PortalCreateTests
         await using var _ = x.F;
         var exit = await x.Svc.CreateExitAsync(new PortalExitRequest(x.W.PublicId, "PED-9", "Retiro", Lines: new[] { new PortalExitLineRequest(x.P.PublicId, 4m) }), default);
         Assert.Equal(4m, Assert.Single(exit.Lines).QtyReserved);
-        Assert.Equal(1, (await x.Svc.ListExitsAsync(null, null, 0, 25, default)).Total);
+        Assert.Equal(1, (await x.Svc.ListExitsAsync(null, null, null, null, 0, 25, default)).Total);
 
         await Assert.ThrowsAsync<ValidationException>(() => x.Svc.CreateExitAsync(new PortalExitRequest(x.W.PublicId, Lines: new[] { new PortalExitLineRequest(x.Foreign.PublicId, 1m) }), default));
 
         var cancelled = await x.Svc.CancelExitAsync(exit.PublicId, null, default);
         Assert.False(cancelled.CanCancel);
+    }
+
+    [Fact]
+    public async Task Arrivals_and_exits_can_be_listed_by_a_date_range()
+    {
+        var x = await WorldAsync();
+        await using var _ = x.F;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var soon = today.AddDays(3);
+        await x.Svc.CreateArrivalAsync(new PortalArrivalRequest(x.W.PublicId, "OC-FECHA", soon, Lines: new[] { new PortalArrivalLineRequest(x.P.PublicId, 2m) }), default);
+        Assert.Single(await x.Svc.ListArrivalsAsync(null, soon, soon, default));                  // el día exacto
+        Assert.Single(await x.Svc.ListArrivalsAsync(null, today, soon.AddDays(10), default));     // un rango que lo incluye
+        Assert.Empty(await x.Svc.ListArrivalsAsync(null, soon.AddDays(1), null, default));        // desde después de su fecha
+        Assert.Empty(await x.Svc.ListArrivalsAsync(null, null, today, default));                  // hasta antes de su fecha
+
+        await x.Svc.CreateExitAsync(new PortalExitRequest(x.W.PublicId, "PED-FECHA", "Retiro", Lines: new[] { new PortalExitLineRequest(x.P.PublicId, 1m) }), default);
+        var day = (await x.Svc.ListExitsAsync(null, null, null, null, 0, 25, default)).Items.Single().RequestedDate;
+        Assert.Equal(1, (await x.Svc.ListExitsAsync(null, null, day, day, 0, 25, default)).Total);
+        Assert.Equal(0, (await x.Svc.ListExitsAsync(null, null, day.AddDays(1), null, 0, 25, default)).Total);
+        Assert.Equal(0, (await x.Svc.ListExitsAsync(null, null, null, day.AddDays(-1), 0, 25, default)).Total);
     }
 
     [Fact]
@@ -161,8 +181,8 @@ public sealed class PortalCreateTests
         await Assert.ThrowsAsync<NotFoundException>(() => x.Svc.GetExitAsync(theirs.PublicId, default));
         await Assert.ThrowsAsync<NotFoundException>(() => x.Svc.CancelExitAsync(theirs.PublicId, null, default));
         await Assert.ThrowsAsync<NotFoundException>(() => x.Svc.CancelArrivalAsync(theirArrival.Id, default));
-        Assert.Empty((await x.Svc.ListExitsAsync(null, null, 0, 25, default)).Items);
-        Assert.Empty(await x.Svc.ListArrivalsAsync(null, default));
+        Assert.Empty((await x.Svc.ListExitsAsync(null, null, null, null, 0, 25, default)).Items);
+        Assert.Empty(await x.Svc.ListArrivalsAsync(null, null, null, default));
     }
 
     [Fact]

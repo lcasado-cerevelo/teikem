@@ -71,7 +71,13 @@ public sealed class PortalWarehouseService(TeikemDbContext db, ITenantContext te
                    where p.ClientId == cid && (b.QtyOnHand != 0 || b.QtyReserved != 0)
                    select new { b, p, w };
         if (warehousePublicId is Guid wp) rows = rows.Where(x => x.w.PublicId == wp);
-        if (!string.IsNullOrEmpty(s)) rows = rows.Where(x => x.p.Sku.Contains(s) || x.p.Name.Contains(s) || (x.p.Barcode != null && x.p.Barcode.Contains(s)));
+        if (!string.IsNullOrEmpty(s))
+        {
+            // 2026-10-24: además de SKU, nombre y código de barras, por número de lote y por almacén (código o nombre)
+            var byLot = db.Set<InventoryLot>().AsNoTracking().Where(l => l.LotNumber.Contains(s)).Select(l => (int?)l.LotId);
+            rows = rows.Where(x => x.p.Sku.Contains(s) || x.p.Name.Contains(s) || (x.p.Barcode != null && x.p.Barcode.Contains(s))
+                                   || x.w.Code.Contains(s) || x.w.Name.Contains(s) || byLot.Contains(x.b.LotId));
+        }
 
         var grouped = rows.GroupBy(x => new { ProductPublicId = x.p.PublicId, x.p.Sku, ProductName = x.p.Name, WarehousePublicId = x.w.PublicId, WarehouseCode = x.w.Code, WarehouseName = x.w.Name, x.b.LotId })
             .Select(g => new { g.Key.ProductPublicId, g.Key.Sku, g.Key.ProductName, g.Key.WarehousePublicId, g.Key.WarehouseCode, g.Key.WarehouseName, g.Key.LotId, OnHand = g.Sum(x => x.b.QtyOnHand), Reserved = g.Sum(x => x.b.QtyReserved) });

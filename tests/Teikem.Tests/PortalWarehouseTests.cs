@@ -61,6 +61,15 @@ public sealed class PortalWarehouseTests
     }
 
     [Fact]
+    public async Task Stock_can_also_be_searched_by_warehouse_code_or_name()
+    {
+        var x = await WorldAsync();
+        await using var _ = x.F;
+        Assert.Single((await x.Svc.StockAsync("W1", null, 0, 25, default)).Items);   // por el código del almacén
+        Assert.Empty((await x.Svc.StockAsync("W9", null, 0, 25, default)).Items);
+    }
+
+    [Fact]
     public async Task Products_lists_mine_with_totals_and_hides_inactive_unless_asked()
     {
         var x = await WorldAsync();

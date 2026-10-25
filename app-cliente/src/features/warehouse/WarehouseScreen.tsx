@@ -7,6 +7,8 @@ import { apiErrorMessage } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n/useT'
 import { CellText, DataTable, ExportButton, Kpi, KpiRow, PageHeader, type Column } from '../../kernel/ui/desk'
 import { type CsvColumn, csvDay, fetchAll, filtersSentence, runExport, type ExportFormat } from '../../kernel/ui/tableExport'
+import { DateRangeFilter } from '../../kernel/ui/DateRangeFilter'
+import { type DayRange, hasRange } from '../../kernel/ui/dateRanges'
 import { useIsWide } from '../../kernel/ui/layout'
 import { Button, Card, Chip, Field, Muted, Notice, Screen, Spinner, Title, useColors } from '../../kernel/ui/ui'
 import { useAsync } from '../../kernel/ui/useAsync'
@@ -25,8 +27,9 @@ interface Page<T> {
 }
 
 /** Lista paginada con «Cargar más», búsqueda que espera a que se deje de escribir y `exportAll` (todas las filas del filtro vigente, para exportar). */
-function usePaged<T>(load: (search: string, skip: number, take: number) => Promise<Page<T>>) {
+function usePaged<T>(load: (search: string, skip: number, take: number, range: DayRange) => Promise<Page<T>>) {
   const [search, setSearch] = useState('')
+  const [range, setRange] = useState<DayRange>({ from: '', to: '' })   // solo lo usan las listas con filtro de fecha (movimientos y salidas)
   const [query, setQuery] = useState('')
   const [items, setItems] = useState<T[]>([])
   const [total, setTotal] = useState(0)
@@ -43,7 +46,7 @@ function usePaged<T>(load: (search: string, skip: number, take: number) => Promi
       setLoading(true)
       setError(null)
       try {
-        const page = await load(query, skip, PAGE_SIZE)
+        const page = await load(query, skip, PAGE_SIZE, range)
         if (mine !== seq.current) return
         setItems((prev) => (skip === 0 ? (page.items ?? []) : [...prev, ...(page.items ?? [])]))
         setTotal(page.total ?? 0)
@@ -54,17 +57,21 @@ function usePaged<T>(load: (search: string, skip: number, take: number) => Promi
         if (mine === seq.current) setLoading(false)
       }
     },
-    [load, query],
+    [load, query, range],
   )
   useEffect(() => {
     void run(0)
   }, [run])
   const exportAll = async (format: ExportFormat, title: string, columns: readonly CsvColumn<T>[], filters: string) => {
-    const all = await fetchAll((skip, take) => load(query, skip, take))
+    const all = await fetchAll((skip, take) => load(query, skip, take, range))
     await runExport({ format, title, columns, rows: all.items, filters })
   }
-  return { search, setSearch, query, items, total, loading, error, reload: () => void run(0), more: () => void run(items.length), exportAll }
+  return { search, setSearch, query, range, setRange, items, total, loading, error, reload: () => void run(0), more: () => void run(items.length), exportAll }
 }
+
+/** «Filtros: Buscar «x» · Del … al …» de una lista de Almacén. */
+const listFilters = (t: (key: string, vars?: Record<string, string | number>) => string, query: string, range: DayRange) =>
+  filtersSentence([!!query && t('table.fSearch', { q: query }), hasRange(range) && t('table.fRange', { from: range.from || '…', to: range.to || '…' })])
 
 function Footer({ loading, error, shown, total, empty, onRetry, onMore, onExport }: { loading: boolean; error: string | null; shown: number; total: number; empty: string; onRetry: () => void; onMore: () => void; onExport?: (format: ExportFormat) => Promise<void> }) {
   const { t } = useT()
@@ -201,7 +208,7 @@ function MovementsSection({ lang }: { lang: Lang }) {
   const colors = useColors()
   const { t } = useT()
   const wide = useIsWide()
-  const list = usePaged(useCallback((s: string, skip: number, take: number) => listMovements(s, skip, take), []))
+  const list = usePaged(useCallback((s: string, skip: number, take: number, r: DayRange) => listMovements(s, skip, take, r), []))
   const columns: Column<PortalMovementDto>[] = [
     { key: 'date', title: t('warehouse.col.date'), width: 150, render: (m) => <CellText>{formatDateTime(m.createdAtUtc, lang)}</CellText>, csv: (m) => csvDay(m.createdAtUtc) },
     { key: 'type', title: t('warehouse.col.type'), width: 150, render: (m) => <CellText bold>{m.type}</CellText>, csv: (m) => m.type },
@@ -212,11 +219,12 @@ function MovementsSection({ lang }: { lang: Lang }) {
     { key: 'lot', title: t('warehouse.col.lot'), width: 110, render: (m) => <CellText muted>{m.lotNumber ?? '—'}</CellText>, csv: (m) => m.lotNumber ?? '' },
     { key: 'ref', title: t('warehouse.col.reference'), flex: 1, render: (m) => <CellText muted>{[m.reference, m.reason].filter(Boolean).join(' · ') || '—'}</CellText>, csv: (m) => [m.reference, m.reason].filter(Boolean).join(' · ') },
   ]
-  const exportAll = (format: ExportFormat) => list.exportAll(format, t('warehouse.sections.movements'), columns, filtersSentence([!!list.query && t('table.fSearch', { q: list.query })]))
+  const exportAll = (format: ExportFormat) => list.exportAll(format, t('warehouse.sections.movements'), columns, listFilters(t, list.query, list.range))
   if (wide) {
     return (
       <>
-        <Field label={t('warehouse.search')} value={list.search} onChangeText={list.setSearch} placeholder={t('warehouse.searchProducts')} autoCapitalize="none" returnKeyType="search" testID="warehouse-search" />
+        <Field label={t('warehouse.search')} value={list.search} onChangeText={list.setSearch} placeholder={t('warehouse.searchMovements')} autoCapitalize="none" returnKeyType="search" testID="warehouse-search" />
+        <DateRangeFilter value={list.range} onChange={list.setRange} testID="movements-range" />
         <DataTable columns={columns} rows={list.items} keyOf={(m) => String(m.id)} empty={list.loading ? undefined : list.query ? t('warehouse.noMatches') : t('warehouse.emptyMovements')} total={list.loading && list.items.length === 0 ? undefined : list.total} onExport={exportAll} testID="movements-table" />
         {list.loading && <Spinner />}
         {!list.loading && list.items.length < list.total && <Button title={t('warehouse.loadMore', { shown: list.items.length, total: list.total })} variant="secondary" onPress={list.more} testID="warehouse-more" />}
@@ -226,7 +234,8 @@ function MovementsSection({ lang }: { lang: Lang }) {
   }
   return (
     <>
-      <Field label={t('warehouse.search')} value={list.search} onChangeText={list.setSearch} placeholder={t('warehouse.searchProducts')} autoCapitalize="none" returnKeyType="search" testID="warehouse-search" />
+      <Field label={t('warehouse.search')} value={list.search} onChangeText={list.setSearch} placeholder={t('warehouse.searchMovements')} autoCapitalize="none" returnKeyType="search" testID="warehouse-search" />
+      <DateRangeFilter value={list.range} onChange={list.setRange} testID="movements-range" />
       {list.items.map((m) => {
         const qty = m.quantity ?? 0
         return (
@@ -241,7 +250,7 @@ function MovementsSection({ lang }: { lang: Lang }) {
           </Card>
         )
       })}
-      <Footer loading={list.loading} error={list.error} shown={list.items.length} total={list.total} empty={list.query ? t('warehouse.noMatches') : t('warehouse.emptyMovements')} onRetry={list.reload} onMore={list.more} onExport={exportAll} />
+      <Footer loading={list.loading} error={list.error} shown={list.items.length} total={list.total} empty={list.query || hasRange(list.range) ? t('warehouse.noMatches') : t('warehouse.emptyMovements')} onRetry={list.reload} onMore={list.more} onExport={exportAll} />
     </>
   )
 }
@@ -253,7 +262,14 @@ function ArrivalsSection({ lang }: { lang: Lang }) {
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<PortalArrivalDto | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const list = useAsync(() => listArrivals(''), [])
+  const [search, setSearch] = useState('')
+  const [query, setQuery] = useState('')
+  const [range, setRange] = useState<DayRange>({ from: '', to: '' })
+  useEffect(() => {
+    const id = setTimeout(() => setQuery(search.trim()), 350)
+    return () => clearTimeout(id)
+  }, [search])
+  const list = useAsync(() => listArrivals(query, range), [query, range.from, range.to])
   const arrivalColumns: CsvColumn<PortalArrivalDto>[] = [
     { title: t('create.arrivals.number'), csv: (a) => a.number ?? '' },
     { title: t('warehouse.col.reference'), csv: (a) => a.reference ?? '' },
@@ -262,7 +278,7 @@ function ArrivalsSection({ lang }: { lang: Lang }) {
     { title: t('warehouse.col.status'), csv: (a) => a.status ?? '' },
     { title: t('create.arrivals.lines'), csv: (a) => (a.lines ?? []).map((l) => `${l.sku} × ${l.expectedQty ?? 0}`).join('; ') },
   ]
-  const exportAll = (format: ExportFormat) => runExport({ format, title: t('warehouse.sections.arrivals'), columns: arrivalColumns, rows: list.data ?? [], filters: filtersSentence([]) })
+  const exportAll = (format: ExportFormat) => runExport({ format, title: t('warehouse.sections.arrivals'), columns: arrivalColumns, rows: list.data ?? [], filters: listFilters(t, query, range) })
   async function cancel(id: number) {
     setError(null)
     try {
@@ -278,6 +294,8 @@ function ArrivalsSection({ lang }: { lang: Lang }) {
       {creating && <NewArrivalForm onCancel={() => setCreating(false)} onDone={() => { setCreating(false); list.reload() }} />}
       {editing && <NewArrivalForm key={editing.id} arrival={editing} onCancel={() => setEditing(null)} onDone={() => { setEditing(null); list.reload() }} />}
       {!!error && <Notice>{error}</Notice>}
+      <Field label={t('warehouse.search')} value={search} onChangeText={setSearch} placeholder={t('warehouse.searchArrivals')} autoCapitalize="none" returnKeyType="search" testID="arrivals-search" />
+      <DateRangeFilter value={range} onChange={setRange} label={t('warehouse.expectedDate')} testID="arrivals-range" />
       {(list.data ?? []).length > 0 && (
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <Muted>{t('table.count', { shown: (list.data ?? []).length, total: (list.data ?? []).length })}</Muted>
@@ -300,7 +318,7 @@ function ArrivalsSection({ lang }: { lang: Lang }) {
       ))}
       {list.loading && <Spinner />}
       {!!list.error && <Notice>{apiErrorMessage(list.error)}</Notice>}
-      {!list.loading && !list.error && (list.data ?? []).length === 0 && <Muted>{t('create.arrivals.empty')}</Muted>}
+      {!list.loading && !list.error && (list.data ?? []).length === 0 && <Muted>{query || hasRange(range) ? t('warehouse.noMatches') : t('create.arrivals.empty')}</Muted>}
     </>
   )
 }
@@ -312,7 +330,7 @@ function ExitsSection({ lang }: { lang: Lang }) {
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const list = usePaged(useCallback((s: string, skip: number, take: number) => listExits(s, skip, take), []))
+  const list = usePaged(useCallback((s: string, skip: number, take: number, r: DayRange) => listExits(s, skip, take, r), []))
   const exitColumns: CsvColumn<PortalExitListItemDto>[] = [
     { title: t('create.arrivals.number'), csv: (n) => n.number ?? '' },
     { title: t('warehouse.col.warehouse'), csv: (n) => n.warehouseCode ?? '' },
@@ -323,7 +341,7 @@ function ExitsSection({ lang }: { lang: Lang }) {
     { title: t('create.exits.ordered'), csv: (n) => n.qtyOrdered ?? 0 },
     { title: t('create.exits.shipped'), csv: (n) => n.qtyShipped ?? 0 },
   ]
-  const exportAll = (format: ExportFormat) => list.exportAll(format, t('warehouse.sections.exits'), exitColumns, filtersSentence([!!list.query && t('table.fSearch', { q: list.query })]))
+  const exportAll = (format: ExportFormat) => list.exportAll(format, t('warehouse.sections.exits'), exitColumns, listFilters(t, list.query, list.range))
   async function cancel(publicId: string) {
     setError(null)
     try {
@@ -339,7 +357,8 @@ function ExitsSection({ lang }: { lang: Lang }) {
       {creating && <NewExitForm onCancel={() => setCreating(false)} onDone={() => { setCreating(false); list.reload() }} />}
       {editing && <EditExitForm key={editing} publicId={editing} onCancel={() => setEditing(null)} onDone={() => { setEditing(null); list.reload() }} />}
       {!!error && <Notice>{error}</Notice>}
-      <Field label={t('warehouse.search')} value={list.search} onChangeText={list.setSearch} autoCapitalize="none" returnKeyType="search" testID="warehouse-search" />
+      <Field label={t('warehouse.search')} value={list.search} onChangeText={list.setSearch} placeholder={t('warehouse.searchExits')} autoCapitalize="none" returnKeyType="search" testID="warehouse-search" />
+      <DateRangeFilter value={list.range} onChange={list.setRange} label={t('warehouse.requestedDate')} testID="exits-range" />
       {list.items.map((n) => (
         <Card key={n.publicId}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -353,7 +372,7 @@ function ExitsSection({ lang }: { lang: Lang }) {
           {n.statusCode === 'REQUESTED' && <Button title={t('create.cancelNotice')} variant="secondary" onPress={() => void cancel(n.publicId as string)} />}
         </Card>
       ))}
-      <Footer loading={list.loading} error={list.error} shown={list.items.length} total={list.total} empty={t('create.exits.empty')} onRetry={list.reload} onMore={list.more} onExport={exportAll} />
+      <Footer loading={list.loading} error={list.error} shown={list.items.length} total={list.total} empty={list.query || hasRange(list.range) ? t('warehouse.noMatches') : t('create.exits.empty')} onRetry={list.reload} onMore={list.more} onExport={exportAll} />
     </>
   )
 }
