@@ -5,8 +5,13 @@
 // Escritorio y móvil. Capturas (solo escritorio): docs/manual/frontend/img/l120-<paso>.png.
 import { expect, test } from '@playwright/test'
 
-import { API_URL, APP_URL, createClientWithAdmin, loginAsClientAdmin, shot } from './portalHelpers'
+import { API_URL, APP_URL, createClientWithAdmin, loginAsClientAdmin, shot, shotFresh } from './portalHelpers'
+import { MANUAL_LANG, manualLang } from './manualLang'
+
 import { createOrder, scan } from './staffHelpers'
+
+const EN = MANUAL_LANG === 'en'
+const CNAME = EN ? 'Profile 120' : 'Perfil 120'
 
 test.use({ locale: 'es-PR' })
 test.setTimeout(240_000)
@@ -14,8 +19,8 @@ test.setTimeout(240_000)
 test('Portal del cliente: indicadores con datos reales, mi perfil y el cambio de contraseña', async ({ page, request }, testInfo) => {
   const isMobile = testInfo.project.name.startsWith('movil')
   const suffix = `${isMobile ? 'M' : 'D'}${String(Date.now()).slice(-6)}`
-  const c = await createClientWithAdmin(request, suffix, 'Perfil 120')
-  const loc = await c.locations.post(`Tienda ${suffix}`)
+  const c = await createClientWithAdmin(request, suffix, CNAME)
+  const loc = await c.locations.post(`${EN ? 'Store' : 'Tienda'} ${suffix}`)
 
   // tres órdenes: entregada por el personal, en tránsito y Sometida
   const delivered = await createOrder(request, c.staff, c.client.publicId, loc.publicId, 1)
@@ -40,7 +45,7 @@ test('Portal del cliente: indicadores con datos reales, mi perfil y el cambio de
   await expect(page.getByTestId('ind-open')).toHaveText('2')
   await expect(page.getByText('1 en tránsito')).toBeVisible()   // el detalle de «En curso ahora» va en su propia línea
   await expect(page.getByTestId('ind-failed')).toHaveText('0')
-  await shot(page, isMobile, 'l120-indicadores')
+  await shotFresh(page, isMobile, 'l120-indicadores')
   await page.getByTestId('indicators-days-7').click()
   await expect(page.getByTestId('ind-created')).toHaveText('3')                      // todo es de esta semana
   await page.getByTestId('indicators-days-90').click()
@@ -51,11 +56,11 @@ test('Portal del cliente: indicadores con datos reales, mi perfil y el cambio de
   await page.getByTestId('settings-profile').click()
   await expect(page.getByRole('heading', { name: 'Mi perfil' }).first()).toBeVisible({ timeout: 30_000 })
   await expect(page.getByText(`Correo: ${c.adminMail}`)).toBeVisible()
-  await expect(page.getByText(`Perfil 120 ${suffix}`).last()).toBeVisible()            // los datos de mi empresa
+  await expect(page.getByText(`${CNAME} ${suffix}`).last()).toBeVisible()            // los datos de mi empresa
   await expect(page.getByText(/^Código: /)).toBeVisible()
   await expect(page.getByText(/Estos datos los cambia la compañía/)).toBeVisible()
   await expect(page.getByTestId('profile-save')).toBeDisabled()
-  await shot(page, isMobile, 'l120-perfil')
+  await shotFresh(page, isMobile, 'l120-perfil')
   await page.getByTestId('profile-name').fill(`Ana María ${suffix}`)
   await page.getByTestId('profile-save').click()
   await expect(page.getByText('Su nombre quedó guardado.')).toBeVisible({ timeout: 30_000 })
@@ -77,8 +82,9 @@ test('Portal del cliente: indicadores con datos reales, mi perfil y el cambio de
   await page.getByTestId('profile-pw-save').click()
   await expect(page.getByRole('alert').filter({ hasText: /contraseña|incorrecta|inválid/i }).first()).toBeVisible({ timeout: 30_000 })
   await page.getByTestId('profile-pw-current').fill(c.password)
+  await manualLang(page, 'en', 'l120 contraseña')   // el aviso verde se arma al guardar: guardar ya en inglés
   await page.getByTestId('profile-pw-save').click()
-  await expect(page.getByText('Su contraseña se cambió.')).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText(/Su contraseña se cambió|Your password was changed/)).toBeVisible({ timeout: 30_000 })
   await shot(page, isMobile, 'l120-contrasena')
   if (isMobile) expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
 })

@@ -7,7 +7,12 @@
 // Capturas (solo escritorio): docs/manual/frontend/img/l117-<paso>.png.
 import { expect, test, type Page } from '@playwright/test'
 
-import { API_URL, APP_URL, type AuthResultDto, confirmBrowserByApi, createClientWithAdmin, loginAsClientAdmin, loginConfirmingTheComputer, newConsigneeContext, post, shot } from './portalHelpers'
+import { API_URL, APP_URL, type AuthResultDto, confirmBrowserByApi, createClientWithAdmin, loginAsClientAdmin, loginConfirmingTheComputer, newConsigneeContext, post, shot, shotFresh } from './portalHelpers'
+import { MANUAL_LANG, manualLang } from './manualLang'
+
+const EN = MANUAL_LANG === 'en'
+const MSG1 = EN ? 'Hello, when will my package arrive?' : 'Hola, ¿cuándo llega mi paquete?'
+const MSG2 = EN ? 'Tomorrow morning.' : 'Mañana por la mañana.'
 
 test.use({ locale: 'es-PR' })
 test.setTimeout(300_000)
@@ -17,12 +22,12 @@ test('Acceso del consignatario: el cliente invita, el consignatario entra sin MF
   const noHScroll = (p: Page) => p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
 
   // 0) cliente con contrato y tarifa y su administrador con MFA; un consignatario con una orden
-  const c0 = await createClientWithAdmin(request, suffix, 'Cliente 117')
+  const c0 = await createClientWithAdmin(request, suffix, (EN ? 'Client 117' : 'Cliente 117'))
   const { staff, client, password, clientApi } = c0
   const legal = { currentVersion: c0.legalVersion }
-  const consigneeName = `Tienda Norte ${suffix}`
+  const consigneeName = `${EN ? 'North Store' : 'Tienda Norte'} ${suffix}`
   const loc = await c0.locations.post(consigneeName)
-  await post(request, '/api/v1/orders', staff, { clientPublicId: client.publicId, consigneeLocationPublicId: loc.publicId, packages: [{ pieces: 2, description: 'Caja de pruebas' }] })
+  await post(request, '/api/v1/orders', staff, { clientPublicId: client.publicId, consigneeLocationPublicId: loc.publicId, packages: [{ pieces: 2, description: (EN ? 'Test box' : 'Caja de pruebas') }] })
 
   // 1) EL CLIENTE: Configurar avisos → Acceso → invita al consignatario
   if (!isMobile) await page.setViewportSize({ width: 1100, height: 760 })
@@ -33,12 +38,13 @@ test('Acceso del consignatario: el cliente invita, el consignatario entra sin MF
   const consigneeMail = `c117.tienda.${suffix.toLowerCase()}@demo.test`
   await expect(page.getByText('Nadie tiene acceso todavía.')).toBeVisible({ timeout: 30_000 })
   await page.getByTestId('access-email').fill(consigneeMail)
-  await page.getByTestId('access-name').fill('Doña Tienda')
+  await page.getByTestId('access-name').fill(EN ? 'Mrs. Store' : 'Doña Tienda')
   expect(await noHScroll(page)).toBe(true)
   await shot(page, isMobile, 'l117-acceso-invitar')
+  await manualLang(page, 'en', 'l117 invitar')   // el aviso «Invitación enviada…» se arma al invitar: invitar ya en inglés
   await page.getByTestId('access-invite').click()
-  await expect(page.getByText(`Invitación enviada a ${consigneeMail}.`)).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByText('Invitación pendiente')).toBeVisible()
+  await expect(page.getByText(new RegExp(`(Invitación enviada a|Invitation sent to) ${consigneeMail}`))).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText(/Invitación pendiente|Invitation pending/)).toBeVisible()
   await shot(page, isMobile, 'l117-acceso-pendiente')
 
   // 2) el consignatario acepta la invitación (el enlace vuelve a emitirse por API: la pantalla no lo muestra)
@@ -68,19 +74,19 @@ test('Acceso del consignatario: el cliente invita, el consignatario entra sin MF
   await expect(cp.getByRole('heading', { name: 'Mis envíos' })).toBeVisible({ timeout: 30_000 })
   await expect(cp.getByText(/^Conduce /)).toHaveCount(1)
   await expect(cp.getByTestId('orders-new')).toHaveCount(0)
-  await shot(cp, isMobile, 'l117-consignatario-envios')
+  await shotFresh(cp, isMobile, 'l117-consignatario-envios')
   await cp.getByText(/^Conduce /).click()
   await expect(cp.getByText('Calle 5 #12')).toBeVisible({ timeout: 30_000 })
-  await expect(cp.getByText('2 × Caja de pruebas')).toBeVisible()
+  await expect(cp.getByText('2 × ' + (EN ? 'Test box' : 'Caja de pruebas'))).toBeVisible()
   await expect(cp.getByText(/Factura|COD/)).toHaveCount(0)
-  await shot(cp, isMobile, 'l117-consignatario-envio')
+  await shotFresh(cp, isMobile, 'l117-consignatario-envio')
 
   // 5) le escribe a su cliente
   await cp.goto(`${APP_URL}/messages`)
   await expect(cp.getByText('Su conversación con su cliente. Solo usted y las personas de su cliente la ven.')).toBeVisible({ timeout: 30_000 })
-  await cp.getByTestId('messages-input').fill('Hola, ¿cuándo llega mi paquete?')
+  await cp.getByTestId('messages-input').fill(MSG1)
   await cp.getByTestId('messages-send').click()
-  await expect(cp.getByText('Hola, ¿cuándo llega mi paquete?')).toBeVisible({ timeout: 30_000 })
+  await expect(cp.getByText(MSG1)).toBeVisible({ timeout: 30_000 })
   await shot(cp, isMobile, 'l117-consignatario-mensajes')
 
   // 6) su cuenta: apaga el correo y se le dice cómo volver a prenderlo
@@ -96,16 +102,16 @@ test('Acceso del consignatario: el cliente invita, el consignatario entra sin MF
   await expect(page.getByText(consigneeName)).toBeVisible({ timeout: 30_000 })
   await shot(page, isMobile, 'l117-cliente-conversaciones')
   await page.getByText(consigneeName).click()
-  await expect(page.getByTestId('bubble-team').getByText('Hola, ¿cuándo llega mi paquete?')).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByTestId('bubble-team').getByText(MSG1)).toBeVisible({ timeout: 30_000 })
   // la pestaña Mensajes queda montada debajo: el hilo abierto es el último
-  await page.getByTestId('messages-input').last().fill('Mañana por la mañana.')
+  await page.getByTestId('messages-input').last().fill(MSG2)
   await page.getByTestId('messages-send').last().click()
-  await expect(page.getByTestId('bubble-mine').getByText('Mañana por la mañana.')).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByTestId('bubble-mine').getByText(MSG2)).toBeVisible({ timeout: 30_000 })
   await shot(page, isMobile, 'l117-cliente-conversacion')
 
   // 8) el consignatario ve la respuesta
   await cp.goto(`${APP_URL}/messages`)
-  await expect(cp.getByTestId('bubble-team').getByText('Mañana por la mañana.')).toBeVisible({ timeout: 30_000 })
+  await expect(cp.getByTestId('bubble-team').getByText(MSG2)).toBeVisible({ timeout: 30_000 })
 
   // 9) lo que no le toca: las rutas del cliente le responden 403 (el servidor limita, no la interfaz)
   const forbidden = await request.get(`${API_URL}/api/v1/portal/orders`, { headers: cApi })

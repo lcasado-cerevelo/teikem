@@ -6,6 +6,7 @@
 // Escritorio y móvil (360 px sin scroll horizontal). Capturas: docs/manual/frontend/img/l118-<paso>.png (solo escritorio).
 import { expect, test } from '@playwright/test'
 
+import { manualApiEnglish, manualLang } from './manualLang'
 import { API_URL, apiHeaders, createClient, createConsignee, createOrder, LETTERS, login, ok, scan, shot } from './staffHelpers'
 
 test.use({ locale: 'es-PR' })
@@ -15,11 +16,12 @@ test('Registrar entrega: la orden queda Entregada y el comprobante lleva la firm
   const isMobile = testInfo.project.name.startsWith('movil')
   const suffix = `${isMobile ? 'M' : 'D'}${LETTERS}`
   const headers = await apiHeaders(request)
-  const client = await createClient(request, headers, `Cliente 118 ${suffix}`)
-  const consignee = await createConsignee(request, headers, client.publicId, `Tienda 118 ${suffix}`)
+  const client = await createClient(request, headers, `Client 118 ${suffix}`)
+  const consignee = await createConsignee(request, headers, client.publicId, `Store 118 ${suffix}`)
   const order = await createOrder(request, headers, client.publicId, consignee.publicId, 2)
   await scan(request, headers, 'DEPART', order.pieceNumbers[0])                         // sale a ruta: En tránsito
 
+  await manualApiEnglish(page)   // manual en inglés: estatus de la orden y demás etiquetas del servidor en inglés
   await login(page)
   await page.goto(`/orders/${order.publicId}`)
   const register = page.getByRole('button', { name: 'Registrar entrega', exact: true })
@@ -33,20 +35,24 @@ test('Registrar entrega: la orden queda Entregada y el comprobante lleva la firm
   await expect(dialog.getByText(/se firma automáticamente a su nombre/i)).toBeVisible()
   await shot(page, isMobile, 'l118-dialogo')
   // sin quién recibió no se manda nada
-  await dialog.getByRole('button', { name: 'Registrar la entrega' }).click()
-  await expect(dialog.getByText('Indique quién recibió la entrega.')).toBeVisible()
+  // el error en línea se crea al pulsar con el idioma vigente: se pulsa ya en inglés para que la foto del manual lo muestre en inglés
+  const registerBtn = await dialog.getByRole('button', { name: 'Registrar la entrega' }).elementHandle()
+  await manualLang(page, 'en', 'l118-sin-receptor (error)')
+  await registerBtn!.click()
+  await expect(dialog.getByText(/Indique quién recibió la entrega.|Enter who received the delivery./)).toBeVisible()
   await shot(page, isMobile, 'l118-sin-receptor')
-  await dialog.getByLabel('Quién recibió').fill(`Ana Rivera ${suffix}`)
-  await dialog.getByLabel('Nota (opcional)').fill('Se dejó con la vecina')
+  await manualLang(page, 'es')
+  await dialog.getByLabel('Quién recibió').fill(`Anna Rivera ${suffix}`)
+  await dialog.getByLabel('Nota (opcional)').fill('Left with the neighbor')
   await dialog.getByRole('button', { name: 'Registrar la entrega' }).click()
 
   // la orden queda Entregada (el aviso de arriba dura poco: se comprueba el estatus de la ficha) y aparece el comprobante
-  await expect(page.locator('.chip', { hasText: 'Entregado' }).first()).toBeVisible({ timeout: 30_000 })
+  await expect(page.locator('.chip', { hasText: /Entregado|Delivered/ }).first()).toBeVisible({ timeout: 30_000 })
   await expect(page.getByRole('button', { name: 'Registrar entrega', exact: true })).toHaveCount(0)
   const proof = page.getByTestId('delivery-proof')
   await expect(proof).toBeVisible({ timeout: 30_000 })
-  await expect(proof).toContainText(`Ana Rivera ${suffix}`)
-  await expect(proof).toContainText('Se dejó con la vecina')
+  await expect(proof).toContainText(`Anna Rivera ${suffix}`)
+  await expect(proof).toContainText('Left with the neighbor')
   await expect(proof).toContainText('Firmada automáticamente por')
   await expect(proof).toContainText('El consignatario no firmó')
   if (isMobile) expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
@@ -55,7 +61,7 @@ test('Registrar entrega: la orden queda Entregada y el comprobante lleva la firm
   // por API: el mismo comprobante, firma del usuario y sin ubicación (Google apagado en el entorno de pruebas); registrar otra vez es 409
   const dto = await ok<{ recipientName: string; signatureKind: string; source: string; signedByName: string; geoStatus: string; orderStatusCode: string }>(
     request.get(`${API_URL}/api/v1/orders/${order.publicId}/delivery`, { headers }), 'comprobante')
-  expect(dto).toMatchObject({ recipientName: `Ana Rivera ${suffix}`, signatureKind: 'USER', source: 'STAFF_WEB', orderStatusCode: 'DELIVERED' })
+  expect(dto).toMatchObject({ recipientName: `Anna Rivera ${suffix}`, signatureKind: 'USER', source: 'STAFF_WEB', orderStatusCode: 'DELIVERED' })
   expect(dto.signedByName).toBeTruthy()
   expect(['NONE', 'PENDING', 'FROM_STOP']).toContain(dto.geoStatus)
   const again = await request.post(`${API_URL}/api/v1/orders/${order.publicId}/delivery`, { headers, data: { recipientName: 'Otra persona' } })

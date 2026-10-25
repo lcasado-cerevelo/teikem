@@ -16,12 +16,12 @@ test('Avisos al consignatario: marcar con advertencia, seguimiento por enlace y 
   const noHScroll = (p: Page) => p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
 
   // 0) cliente con administrador; un consignatario con correo y teléfono; una orden
-  const c0 = await createClientWithAdmin(request, suffix, 'Cliente 116')
-  const consigneeName = `Tienda Sur ${suffix}`
+  const c0 = await createClientWithAdmin(request, suffix, 'Client 116')
+  const consigneeName = `South Store ${suffix}`
   const loc = await c0.locations.post(consigneeName)
-  await post(request, `/api/v1/contacts/LOCATION/${loc.id}`, c0.staff, { contactType: 'EMAIL', value: `tienda.${suffix.toLowerCase()}@sur.test`, isPrimary: true })
+  await post(request, `/api/v1/contacts/LOCATION/${loc.id}`, c0.staff, { contactType: 'EMAIL', value: `store.${suffix.toLowerCase()}@south.test`, isPrimary: true })
   await post(request, `/api/v1/contacts/LOCATION/${loc.id}`, c0.staff, { contactType: 'MOBILE', value: '787-555-0142', isPrimary: false })
-  const order = await post<{ packages: { pieceNumbers: string[] }[] }>(request, '/api/v1/orders', c0.staff, { clientPublicId: c0.client.publicId, consigneeLocationPublicId: loc.publicId, packages: [{ pieces: 1, description: 'Caja' }] })
+  const order = await post<{ packages: { pieceNumbers: string[] }[] }>(request, '/api/v1/orders', c0.staff, { clientPublicId: c0.client.publicId, consigneeLocationPublicId: loc.publicId, packages: [{ pieces: 1, description: 'Box' }] })
 
   // 1) EL CLIENTE: Configurar avisos → marcar el correo (advertencia) y cancelar / continuar
   if (!isMobile) await page.setViewportSize({ width: 1100, height: 760 })
@@ -30,7 +30,7 @@ test('Avisos al consignatario: marcar con advertencia, seguimiento por enlace y 
   await expect(page.getByText(consigneeName)).toBeVisible({ timeout: 30_000 })
   expect(await noHScroll(page)).toBe(true)
   await shot(page, isMobile, 'l116-configurar-avisos')
-  const email = page.getByRole('checkbox', { name: /^tienda\..*@sur\.test$/ })
+  const email = page.getByRole('checkbox', { name: /^store\..*@south\.test$/ })
   await email.click()
   await expect(page.getByText('Antes de continuar')).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText(/aceptó recibir avisos sobre sus envíos/)).toBeVisible()

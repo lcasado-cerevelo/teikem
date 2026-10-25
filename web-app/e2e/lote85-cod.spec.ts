@@ -79,7 +79,7 @@ test('COD: cobrar y reconciliar con hojas escaneadas (PDF e imagen) leídas en e
   const suffix = `${isMobile ? 'M' : 'D'}${LETTERS}`
   const noHScroll = (p: Page) => p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
   const headers = { Authorization: `Bearer ${await apiToken(request)}` }
-  const clientName = `Cobra ${suffix}`
+  const clientName = `Acme Collect ${suffix}`
 
   // 1) cliente, consignatario y una orden con COD de 100 (entregada)
   // el cliente lleva contrato activo con tarifa (confirmar una orden sin tarifa vigente hoy da 422)

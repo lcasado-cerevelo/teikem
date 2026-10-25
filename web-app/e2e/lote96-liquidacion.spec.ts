@@ -83,7 +83,7 @@ test('Liquidación a choferes: intentos, generar, ajustar, revisar, aprobar y ex
   const suffix = `${isMobile ? 'M' : 'D'}${LETTERS}`
   const noHScroll = (p: Page) => p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
   const headers = { Authorization: `Bearer ${await apiToken(request)}` }
-  const driverName = `Chofer ${suffix}`
+  const driverName = `Driver ${suffix}`
 
   // 1) chofer con tarifas, cliente, orden y un intento fallido
   const client = await request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: `Liq ${suffix}`, contract: contractData() } })
@@ -153,9 +153,9 @@ test('Liquidación a choferes: intentos, generar, ajustar, revisar, aprobar y ex
   await ficha.getByRole('button', { name: 'Ajustar' }).click()
   const ajuste = page.getByRole('dialog', { name: /^Ajustar/ })
   await ajuste.getByLabel('A pagar').fill('20')
-  await ajuste.getByLabel('Motivo del ajuste').fill('Bono por zona difícil')
+  await ajuste.getByLabel('Motivo del ajuste').fill('Difficult zone bonus')
   await ajuste.getByRole('button', { name: 'Guardar ajuste' }).click()
-  await expect(ficha).toContainText('Ajustado: Bono por zona difícil', { timeout: 20_000 })
+  await expect(ficha).toContainText('Ajustado: Difficult zone bonus', { timeout: 20_000 })
   await expect(ficha).toContainText('$20.00')
   await ficha.getByRole('button', { name: 'Marcar revisada' }).click()
   await expect(ficha).toContainText('Revisada', { timeout: 20_000 })

@@ -26,7 +26,7 @@ const DISPATCH = { email: process.env.TEIKEM_DISPATCH_EMAIL ?? 'teikem+dispatch@
 const STAMP = Date.now()
 const CATEGORY = `CAT-${STAMP}`
 const SKU = `PROD-${STAMP}`
-const PRODUCT_NAME = `Producto e2e F7A ${STAMP}`
+const PRODUCT_NAME = `E2E product F7A ${STAMP}`
 
 // Interfaz en español (el idioma inicial sale del navegador si el usuario no eligió otro).
 test.use({ locale: 'es-PR' })
@@ -119,9 +119,13 @@ async function prepareData(request: APIRequestContext, variant = '') {
   expect(catRes.ok()).toBeTruthy()
   data.categoryId = ((await catRes.json()) as ProductCategoryDto).id ?? 0
 
+  // dueño: un cliente con nombre en inglés (sin dueño el libro de movimientos dice «Propio», texto solo en español del servidor)
+  const ownerRes = await request.post(`${API_URL}/api/v1/clients`, { headers: auth(), data: { name: `Harbor Medical ${variant}${STAMP}` } })
+  expect(ownerRes.ok()).toBeTruthy()
+  const ownerPublicId = ((await ownerRes.json()) as { publicId: string }).publicId
   const prodRes = await request.post(`${API_URL}/api/v1/products`, {
     headers: auth(),
-    data: { sku: data.sku, name: variant ? `${PRODUCT_NAME} ${variant}` : PRODUCT_NAME, trackingType: 'NONE', categoryId: data.categoryId, minQty: 5 },
+    data: { sku: data.sku, name: variant ? `${PRODUCT_NAME} ${variant}` : PRODUCT_NAME, trackingType: 'NONE', categoryId: data.categoryId, minQty: 5, ownerClientPublicId: ownerPublicId },
   })
   expect(prodRes.ok()).toBeTruthy()
   data.productPublicId = ((await prodRes.json()) as ProductDetailDto).product?.publicId ?? ''

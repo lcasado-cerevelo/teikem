@@ -10,7 +10,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
-import { manualImgDir, manualLang } from './manualLang'
+import { manualImgDir, manualLang, nm } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -230,10 +230,15 @@ test.describe('Lote 15 — escritorio', () => {
     // producto nuevo + recibo a ciegas de 5 unidades en ALM-01 (se confirma) + recolección de 2
     const whs = (await (await request.get(`${API_URL}/api/v1/warehouses`, { headers })).json()) as WarehouseDto[]
     const wh = whs.find((w) => w.code === 'ALM-01') ?? whs[0]
-    const bins = (await (await request.get(`${API_URL}/api/v1/warehouses/${wh.publicId}/bins?take=500`, { headers })).json()) as { items?: { id?: number; zoneTypeCode?: string }[] }
-    const staging = bins.items?.find((b) => b.zoneTypeCode === 'STAGING')
+    // el API topa 'take' en 200: se recorre por páginas hasta hallar una posición de zona STAGING
+    let staging: { id?: number; zoneTypeCode?: string } | undefined
+    for (let skip = 0; !staging && skip < 2000; skip += 200) {
+      const bins = (await (await request.get(`${API_URL}/api/v1/warehouses/${wh.publicId}/bins?take=200&skip=${skip}`, { headers })).json()) as { items?: { id?: number; zoneTypeCode?: string }[] }
+      if (!bins.items?.length) break
+      staging = bins.items.find((b) => b.zoneTypeCode === 'STAGING')
+    }
     expect(staging, 'ALM-01 necesita una posición en zona STAGING').toBeTruthy()
-    const created = await request.post(`${API_URL}/api/v1/products`, { headers, data: { sku: SKU, name: `Producto pulso e2e ${STAMP}`, trackingType: 'NONE' } })
+    const created = await request.post(`${API_URL}/api/v1/products`, { headers, data: { sku: SKU, name: `E2E pulse product ${STAMP}`, trackingType: 'NONE' } })
     expect(created.ok()).toBeTruthy()
     const product = ((await created.json()) as { product: { publicId: string } }).product
     const receipt = await request.post(`${API_URL}/api/v1/receipts`, {
@@ -395,8 +400,8 @@ test.describe('Lote 15 — escritorio', () => {
     expect(Math.max(...perRow.values())).toBeLessThanOrEqual(2)
 
     // primera fila: valor de inventario (dona con total) a la izquierda y movimientos por tipo a la derecha
-    const value = panels.filter({ hasText: 'Valor de inventario por categoría' })
-    const moves = panels.filter({ hasText: 'Movimientos de inventario por tipo' })
+    const value = panels.filter({ hasText: nm('Valor de inventario por categoría') })
+    const moves = panels.filter({ hasText: nm('Movimientos de inventario por tipo') })
     await expect(value).toHaveCount(1)
     await expect(moves).toHaveCount(1)
     const vBox = await value.boundingBox()
@@ -421,13 +426,13 @@ test.describe('Lote 15 — escritorio', () => {
     await page.goto('/analytics/charts')
     await expect(page.getByRole('heading', { level: 1, name: 'Gráficos' })).toBeVisible()
     await page.waitForLoadState('networkidle')
-    for (const name of ['Valor de inventario por categoría', 'Movimientos de inventario por tipo']) {
+    for (const name of [nm('Valor de inventario por categoría'), nm('Movimientos de inventario por tipo')]) {
       const row = page.locator('.panel, section, article, li, tr').filter({ has: page.getByText(name, { exact: false }) }).filter({ hasText: 'De la compañía' }).last()
       await expect(row).toBeVisible()
       await expect(row).toContainText('De la compañía')
       await expect(row.getByRole('button', { name: /^Editar/ }).or(row.getByRole('link', { name: /^Editar/ })).first()).toBeVisible()
     }
-    await page.getByText('Valor de inventario por categoría').first().scrollIntoViewIfNeeded()
+    await page.getByText(nm('Valor de inventario por categoría')).first().scrollIntoViewIfNeeded()
     await shot(page, 'graficos-de-la-compania', { settleMs: 2000 })
   })
 

@@ -2,7 +2,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, type APIRequestContext, type Locator, type Page } from '@playwright/test'
-import { manualImgDir, manualLang, manualTarget } from './manualLang'
+import { MANUAL_LANG, manualImgDir, manualLang, manualTarget } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 
 export type AuthResultDto = components['schemas']['AuthResultDto']
@@ -112,7 +112,7 @@ export interface TestOrder {
 
 export async function createOrder(request: APIRequestContext, headers: Record<string, string>, clientPublicId: string, consigneePublicId: string, pieces = 1): Promise<TestOrder> {
   const o = await ok<{ publicId: string; orderNumber: string; waybillNumber?: string; packages: { pieceNumbers: string[] }[] }>(
-    request.post(`${API_URL}/api/v1/orders`, { headers, data: { clientPublicId, consigneeLocationPublicId: consigneePublicId, packages: [{ pieces, description: 'Cajas de prueba' }] } }),
+    request.post(`${API_URL}/api/v1/orders`, { headers, data: { clientPublicId, consigneeLocationPublicId: consigneePublicId, packages: [{ pieces, description: MANUAL_LANG === 'en' ? 'Test boxes' : 'Cajas de prueba' }] } }),
     'orden',
   )
   return { publicId: o.publicId, orderNumber: o.orderNumber, waybillNumber: o.waybillNumber, pieceNumbers: o.packages.flatMap((p) => p.pieceNumbers) }

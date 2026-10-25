@@ -10,15 +10,15 @@ test.setTimeout(180_000)
 test('Contabilización de compras y de despachos: generar, aceptar y exportar lo propio', async ({ page, request, isMobile }) => {
   const headers = await apiHeaders(request)
   const sfx = `K${LETTERS}`
-  const wh = await ok<{ warehouse: { publicId: string } }>(request.post(`${API_URL}/api/v1/warehouses`, { headers, data: { code: `W${sfx}`.slice(0, 20), name: `Conta ${sfx}` } }), 'almacén')
+  const wh = await ok<{ warehouse: { publicId: string } }>(request.post(`${API_URL}/api/v1/warehouses`, { headers, data: { code: `W${sfx}`.slice(0, 20), name: `Acct ${sfx}` } }), 'almacén')
   const W = wh.warehouse.publicId
   const zone = async (code: string, zoneType: string) => (await ok<{ id: number }>(request.post(`${API_URL}/api/v1/warehouses/${W}/zones`, { headers, data: { code, name: code, zoneType } }), 'zona')).id
   const bin = async (zoneId: number, code: string) => (await ok<{ id: number }>(request.post(`${API_URL}/api/v1/warehouses/${W}/bins`, { headers, data: { zoneId, code } }), 'posición')).id
   const staging = await bin(await zone('STG', 'STAGING'), 'S-01')
   const picking = await bin(await zone('PCK', 'PICKING'), 'P-01')
-  const client = await createClient(request, headers, `Conta ${sfx}`)
+  const client = await createClient(request, headers, `Acct ${sfx}`)
   const product = async (sku: string, extra: object) =>
-    (await ok<{ product: { publicId: string } }>(request.post(`${API_URL}/api/v1/products`, { headers, data: { sku, name: `Producto ${sku}`, purchaseCost: 5, ...extra } }), 'producto')).product.publicId
+    (await ok<{ product: { publicId: string } }>(request.post(`${API_URL}/api/v1/products`, { headers, data: { sku, name: `Product ${sku}`, purchaseCost: 5, ...extra } }), 'producto')).product.publicId
   const own = await product(`KO${sfx}`, {})
   const theirs = await product(`KC${sfx}`, { ownerClientPublicId: client.publicId })
   for (const [p, qty] of [[own, 10], [theirs, 4]] as const)

@@ -14,7 +14,10 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
-import { manualImgDir, manualLang, manualTarget } from './manualLang'
+import { MANUAL_LANG, manualImgDir, manualLang, manualServerEnglish, manualTarget } from './manualLang'
+
+const EN = MANUAL_LANG === 'en'
+const SVC = EN ? 'Standard' : 'Estándar'   // etiqueta del servicio STANDARD en el idioma de la corrida
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -146,6 +149,8 @@ test.describe('Choferes y tarifas (Lote F-D1)', () => {
     await ok(request.post(`${API_URL}/api/v1/clients/${client.publicId}/special-services`, { headers, data: { newTypeName: tripType, rate: 150 } }), 'servicio especial')
     const policy0 = await ok<DriverPayPolicyDto>(request.get(`${API_URL}/api/v1/driver-pay-policy`, { headers }), 'política inicial')
 
+    await manualServerEnglish(page, '**/api/v1/catalogs/**')
+    await manualServerEnglish(page, '**/api/v1/drivers/**')   // etiquetas de servicio/paquete en inglés
     await login(page)
     await page.goto('/catalog/drivers')
     await expect(page.getByRole('heading', { level: 1, name: 'Choferes y tarifas' })).toBeVisible()
@@ -306,13 +311,13 @@ test.describe('Choferes y tarifas (Lote F-D1)', () => {
     await addRate.fill('5')
     await delivery.getByRole('button', { name: /Agregar/ }).click()
     await expect(toast(page, 'Tarifa agregada.')).toBeVisible()
-    await expect(rowOf(delivery, 'Estándar')).toContainText('$5.00')
+    await expect(rowOf(delivery, SVC)).toContainText('$5.00')
     // el mismo par otra vez: 409 del servidor con su mensaje
     await addSvc.selectOption({ value: 'STANDARD' })
     await addPkg.selectOption({ value: 'BOX' })
     await addRate.fill('9')
     await delivery.getByRole('button', { name: /Agregar/ }).click()
-    await expect(delivery.getByText(/El chofer ya tiene una tarifa vigente para Estándar \+ Caja/)).toBeVisible()
+    await expect(delivery.getByText(/El chofer ya tiene una tarifa vigente para/)).toBeVisible()
     await addRate.fill('')
     // segunda tarifa (Express · Sobre) para cerrarla después
     await addSvc.selectOption({ value: 'EXPRESS' })
@@ -322,8 +327,13 @@ test.describe('Choferes y tarifas (Lote F-D1)', () => {
     await expect(rowOf(delivery, 'Express')).toContainText('$7.50')
 
     // editar con vigencia: hoy cambia la tarifa; una fecha futura deja la vigente y agenda la nueva
-    await rowOf(delivery, 'Estándar').getByRole('button', { name: 'Editar' }).click()
-    dialog = page.getByRole('dialog', { name: 'Editar tarifa' })
+    // el título del diálogo se arma al abrirlo: abrirlo ya en inglés y volver a español (el botón se resuelve antes del cambio)
+    const editRate = await manualTarget(rowOf(delivery, SVC).getByRole('button', { name: 'Editar' }))
+    await manualLang(page, 'en', 'fd1 editar tarifa')
+    await editRate.click()
+    dialog = page.getByRole('dialog', { name: /Editar tarifa|Edit rate/ })
+    await expect(dialog).toBeVisible()
+    await manualLang(page, 'es')
     await expect(dialog.getByLabel(/^Vigente desde/)).toHaveValue(tenantDay().replace(/(\d{4})-(\d{2})-(\d{2})/, '$2/$3/$1'))   // los campos de fecha se muestran MM/DD/YYYY
     await fillDate(dialog.getByLabel(/^Vigente desde/), tenantDay(-1))
     await dialog.getByRole('button', { name: 'Guardar' }).click()
@@ -333,22 +343,22 @@ test.describe('Choferes y tarifas (Lote F-D1)', () => {
     await shot(page, isMobile, 'fd1-editar-tarifa', 700, dialog)
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expect(toast(page, 'Tarifa guardada.')).toBeVisible()
-    await expect(rowOf(delivery, 'Estándar')).toContainText('$6.00')
-    await rowOf(delivery, 'Estándar').getByRole('button', { name: 'Editar' }).click()
+    await expect(rowOf(delivery, SVC)).toContainText('$6.00')
+    await rowOf(delivery, SVC).getByRole('button', { name: 'Editar' }).click()
     dialog = page.getByRole('dialog', { name: 'Editar tarifa' })
     await dialog.getByLabel(/^Tarifa/).fill('6.5')
     await fillDate(dialog.getByLabel(/^Vigente desde/), tenantDay(10))
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expect(toast(page, 'Tarifa guardada.')).toBeVisible()
     // hoy sigue rigiendo $6.00 (la fila quedó cerrada a futuro: ya no se edita)
-    await expect(rowOf(delivery, 'Estándar')).toContainText('$6.00')
-    await expect(rowOf(delivery, 'Estándar').getByRole('button', { name: 'Editar' })).toHaveCount(0)
+    await expect(rowOf(delivery, SVC)).toContainText('$6.00')
+    await expect(rowOf(delivery, SVC).getByRole('button', { name: 'Editar' })).toHaveCount(0)
 
     // historial
     await rates.getByRole('switch', { name: 'Ver historial' }).check()
-    await expect(rowOf(delivery, 'Estándar')).toHaveCount(3)
-    await expect(rowOf(delivery, 'Estándar').filter({ hasText: '$6.50' })).toHaveCount(1)
-    await expect(rowOf(delivery, 'Estándar').filter({ hasText: '$5.00' })).toHaveCount(1)
+    await expect(rowOf(delivery, SVC)).toHaveCount(3)
+    await expect(rowOf(delivery, SVC).filter({ hasText: '$6.50' })).toHaveCount(1)
+    await expect(rowOf(delivery, SVC).filter({ hasText: '$5.00' })).toHaveCount(1)
     await shot(page, isMobile, 'fd1-historial', 1000, rates)
     await rates.getByRole('switch', { name: 'Ver historial' }).uncheck()
 
@@ -365,14 +375,14 @@ test.describe('Choferes y tarifas (Lote F-D1)', () => {
 
     // filtros Servicio / Paquete (del cliente)
     await delivery.getByRole('group', { name: 'Filtros' }).getByRole('button', { name: 'Servicio' }).click()
-    await page.getByRole('listbox').getByRole('option', { name: 'Estándar' }).click({ force: true })
+    await page.getByRole('listbox').getByRole('option', { name: SVC }).click({ force: true })
     await page.keyboard.press('Escape')
-    await expect(rowOf(delivery, 'Estándar')).toHaveCount(1)
+    await expect(rowOf(delivery, SVC)).toHaveCount(1)
     await delivery.getByRole('button', { name: 'Limpiar' }).click()
 
     // ---- 4b. Tarifas por intento: «sin tarifa» ≠ $0 ----
     const attempts = rates.getByRole('list', { name: 'Tarifas por intento' })
-    await expect(attempts.locator('li', { hasText: 'Intento 1' })).toContainText('sin tarifa')
+    await expect(attempts.locator('li', { hasText: /Intento 1(?![0-9])/ })).toContainText('sin tarifa')
     const addLevel = rates.getByRole('button', { name: '+ Agregar intento' })
     const levelsBefore = await attempts.locator('li').count()
     if (await addLevel.isEnabled()) {
@@ -380,17 +390,17 @@ test.describe('Choferes y tarifas (Lote F-D1)', () => {
       await expect(toast(page, 'Se agregó un nivel de intento.')).toBeVisible()
       await expect(attempts.locator('li')).toHaveCount(levelsBefore + 1)
     }
-    await attempts.locator('li', { hasText: 'Intento 1' }).getByRole('button', { name: 'Fijar tarifa' }).click()
+    await attempts.locator('li', { hasText: /Intento 1(?![0-9])/ }).getByRole('button', { name: 'Fijar tarifa' }).click()
     dialog = page.getByRole('dialog', { name: 'Fijar la tarifa del intento 1' })
     await dialog.getByLabel(/^Tarifa/).fill('0')
     await dialog.getByRole('button', { name: 'Guardar' }).click()
-    await expect(attempts.locator('li', { hasText: 'Intento 1' })).toContainText('$0.00')
-    await expect(attempts.locator('li', { hasText: 'Intento 1' })).not.toContainText('sin tarifa')
-    await attempts.locator('li', { hasText: 'Intento 2' }).getByRole('button', { name: 'Fijar tarifa' }).click()
+    await expect(attempts.locator('li', { hasText: /Intento 1(?![0-9])/ })).toContainText('$0.00')
+    await expect(attempts.locator('li', { hasText: /Intento 1(?![0-9])/ })).not.toContainText('sin tarifa')
+    await attempts.locator('li', { hasText: /Intento 2(?![0-9])/ }).getByRole('button', { name: 'Fijar tarifa' }).click()
     dialog = page.getByRole('dialog', { name: 'Fijar la tarifa del intento 2' })
     await dialog.getByLabel(/^Tarifa/).fill('3')
     await dialog.getByRole('button', { name: 'Guardar' }).click()
-    await expect(attempts.locator('li', { hasText: 'Intento 2' })).toContainText('$3.00')
+    await expect(attempts.locator('li', { hasText: /Intento 2(?![0-9])/ })).toContainText('$3.00')
 
     // ---- 4c. Tarifas por viaje ----
     const tripRates = panel(page, 'Tarifas por viaje')
@@ -481,7 +491,7 @@ test.describe('Choferes y tarifas (Lote F-D1)', () => {
     await expect(roster.getByRole('button', { name: new RegExp(name2) })).toHaveCount(0)
     // las tarifas abiertas se cerraron hoy: solo se consultan
     await expect(rates.getByText('El chofer fue eliminado; sus tarifas y viajes solo se consultan.')).toBeVisible()
-    await expect(rowOf(delivery, 'Estándar')).toHaveCount(0)
+    await expect(rowOf(delivery, SVC)).toHaveCount(0)
     await page.getByRole('switch', { name: 'Mostrar inactivos' }).check()
     await expect(roster.getByRole('button', { name: new RegExp(name2) })).toContainText('Eliminado')
     await shot(page, isMobile, 'fd1-eliminado', 1000, ficha)

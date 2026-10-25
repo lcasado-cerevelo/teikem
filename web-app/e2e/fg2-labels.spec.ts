@@ -15,7 +15,9 @@
 import { mkdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Download, type Locator, type Page } from '@playwright/test'
-import { manualImgDir, manualLang, manualTarget } from './manualLang'
+import { MANUAL_LANG, manualImgDir, manualLang, manualServerEnglish, manualTarget } from './manualLang'
+
+const EN = MANUAL_LANG === 'en'
 import type { components } from '../src/kernel/api/schema'
 import { contractData, withRates } from './rates'
 
@@ -127,20 +129,22 @@ test.describe('Labels y documentos (Lote F-G2)', () => {
     const s = `${isMobile ? 'M' : 'D'}${RAND}`
     const headers = { Authorization: `Bearer ${await apiToken(request)}` }
     const created: string[] = []
-    const client = await ok<ClientDetailDto>(request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: `Cliente FG2 ${s}`, contract: contractData() } }), 'cliente')
+    const client = await ok<ClientDetailDto>(request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: `${EN ? 'Client FG2' : 'Cliente FG2'} ${s}`, contract: contractData() } }), 'cliente')
     await withRates(request, headers, client)
     const cons = await ok<LocationDto>(
-      request.post(`${API_URL}/api/v1/locations`, { headers, data: { clientPublicId: client.publicId, locationType: 'DELIVERY', name: `Farmacia FG2 ${s}`, line1: 'Carr. 2 km 14.5', city: 'Toa Baja', postalCode: '00949', country: 'PR' } }),
+      request.post(`${API_URL}/api/v1/locations`, { headers, data: { clientPublicId: client.publicId, locationType: 'DELIVERY', name: `${EN ? 'Pharmacy FG2' : 'Farmacia FG2'} ${s}`, line1: 'Carr. 2 km 14.5', city: 'Toa Baja', postalCode: '00949', country: 'PR' } }),
       'consignatario',
     )
     const order = (packages: unknown[], cod?: number) =>
-      ok<OrderDetailDto>(request.post(`${API_URL}/api/v1/orders`, { headers, data: { clientPublicId: client.publicId, consigneeLocationPublicId: cons.publicId, serviceType: 'STANDARD', packages, codAmount: cod ?? null } }), 'orden')
+      ok<OrderDetailDto>(request.post(`${API_URL}/api/v1/orders`, { headers: EN ? { ...headers, 'Accept-Language': 'en' } : headers, data: { clientPublicId: client.publicId, consigneeLocationPublicId: cons.publicId, serviceType: 'STANDARD', packages, codAmount: cod ?? null } }), 'orden')
     const a = await order([{ packageType: 'BOX', pieces: 2, packageNumber: `PKG-${s}` }, { packageType: 'ENVELOPE', pieces: 1 }], 125.82)
     const b = await order([{ packageType: 'BOX', pieces: 1 }])
     created.push(a.publicId!, b.publicId!)
     const ROW = isMobile ? 'li.dt-card' : 'tbody tr'
 
     try {
+      await manualServerEnglish(page, '**/api/v1/catalogs/**')
+      await manualServerEnglish(page, '**/api/v1/orders**')   // estándar/caja/sobre en inglés (lista y label)
       await login(page)
 
       // 1) esta estación con «Confirmar antes» (labels; los documentos ya lo traen)
@@ -199,10 +203,10 @@ test.describe('Labels y documentos (Lote F-G2)', () => {
       if (!(await sw.isChecked())) await sw.check()
       const clientBox = qk.getByRole('combobox', { name: 'Cliente', exact: true })
       await clientBox.click()
-      await clientBox.fill(`Cliente FG2 ${s}`)
-      await page.getByRole('option', { name: new RegExp(`Cliente FG2 ${s}`) }).first().click()
+      await clientBox.fill(`${EN ? 'Client FG2' : 'Cliente FG2'} ${s}`)
+      await page.getByRole('option', { name: new RegExp(`${EN ? 'Client FG2' : 'Cliente FG2'} ${s}`) }).first().click()
       await qk.getByRole('combobox', { name: 'Consignatario' }).click()
-      await page.getByRole('option', { name: new RegExp(`Farmacia FG2 ${s}`) }).click()
+      await page.getByRole('option', { name: new RegExp(`${EN ? 'Pharmacy FG2' : 'Farmacia FG2'} ${s}`) }).click()
       for (const label of ['Paquete', 'Servicio']) if ((await qk.getByLabel(label, { exact: true }).inputValue()) === '') await qk.getByLabel(label, { exact: true }).selectOption({ index: 1 })
       // «al guardar» el label sale solo, sin vista previa ni pregunta (usePrinting): con la estación en PDF se descarga el archivo
       const [quickDownload] = await Promise.all([page.waitForEvent('download'), qk.getByRole('button', { name: 'Guardar fila' }).click()])

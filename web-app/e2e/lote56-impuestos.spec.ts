@@ -76,11 +76,11 @@ test('Impuestos: tasas con vigencia, reglas, categoría de producto, exenciones 
   const headers = { Authorization: `Bearer ${await apiToken(request)}` }
 
   // datos de apoyo por API: un cliente y un producto
-  const client = await request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: `Cliente impuestos ${suffix}` } })
+  const client = await request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: `Tax client ${suffix}` } })
   expect(client.ok(), await client.text()).toBeTruthy()
   const clientName = ((await client.json()) as ClientDetailDto).name ?? ''
   const sku = `TAX-${suffix}`
-  const product = await request.post(`${API_URL}/api/v1/products`, { headers, data: { sku, name: `Producto impuestos ${suffix}`, trackingType: 'NONE' } })
+  const product = await request.post(`${API_URL}/api/v1/products`, { headers, data: { sku, name: `Tax product ${suffix}`, trackingType: 'NONE' } })
   expect(product.ok(), await product.text()).toBeTruthy()
 
   if (!isMobile) await page.setViewportSize({ width: 1280, height: 900 })   // alto suficiente para que las capturas de ventanas salgan completas
@@ -96,7 +96,7 @@ test('Impuestos: tasas con vigencia, reglas, categoría de producto, exenciones 
   await dialog.getByLabel('Rige desde').fill('2026-01-01')
   await dialog.getByLabel('Rige desde').press('Escape')   // cierra el calendario que se abre al escribir la fecha
   await dialog.getByLabel('Código del componente 1').fill('STATE')
-  await dialog.getByLabel('Nombre del componente 1').fill('Estatal')
+  await dialog.getByLabel('Nombre del componente 1').fill('State')
   await dialog.getByLabel('Porcentaje del componente 1').fill('10,5')
   await dialog.getByRole('button', { name: 'Agregar componente' }).click()
   await dialog.getByLabel('Código del componente 2').fill('CITY')
@@ -108,18 +108,18 @@ test('Impuestos: tasas con vigencia, reglas, categoría de producto, exenciones 
   await expect(page.locator('.toast.on').first()).toContainText(`Tasa ${code} creada.`)
   const row = (text: string) => page.locator('tr, .dt-cards > li').filter({ has: page.getByText(text, { exact: true }) }).first()
   await expect(row(code)).toContainText('11.5 %')
-  await expect(row(code)).toContainText('Estatal 10.5 % + Municipal 1 %')
+  await expect(row(code)).toContainText('State 10.5 % + Municipal 1 %')
   await expect(row(code)).toContainText('Vigente')
 
   // un traslape se rechaza con el mensaje del servidor
   await page.getByRole('button', { name: 'Nueva tasa' }).first().click()
   dialog = page.getByRole('dialog')
   await dialog.getByLabel('Código', { exact: true }).fill(code)
-  await dialog.getByLabel('Nombre', { exact: true }).fill('Otra')
+  await dialog.getByLabel('Nombre', { exact: true }).fill('Other')
   await dialog.getByLabel('Rige desde').fill('2026-06-01')
   await dialog.getByLabel('Rige desde').press('Escape')   // cierra el calendario que se abre al escribir la fecha
   await dialog.getByLabel('Código del componente 1').fill('STATE')
-  await dialog.getByLabel('Nombre del componente 1').fill('Estatal')
+  await dialog.getByLabel('Nombre del componente 1').fill('State')
   await dialog.getByLabel('Porcentaje del componente 1').fill('12')
   await dialog.getByRole('button', { name: 'Crear tasa' }).click()
   await expect(dialog.getByRole('alert')).toContainText('Ya hay una tasa con ese código que cubre esas fechas.')

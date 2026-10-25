@@ -5,6 +5,9 @@ import { expect, test, type Browser, type Download, type Page } from '@playwrigh
 
 import { APP_URL, createClientWithAdmin, loginConfirmingTheComputer, shot, type ClientWithAdmin } from './portalHelpers'
 import { pdfText } from './pdfHelpers'
+import { MANUAL_LANG, manualServerEnglish } from './manualLang'
+
+const EN = MANUAL_LANG === 'en'
 import { createOrder } from './staffHelpers'
 import { readFileSync } from 'node:fs'
 
@@ -42,13 +45,14 @@ async function download(page: Page, testId: string): Promise<{ file: Download; b
 test('Portal: computadora = vista ancha; tableta y celular = vista móvil; los tres formatos en cada una', async ({ browser, request }, testInfo) => {
   test.skip(testInfo.project.name.startsWith('movil'), 'este recorrido arma sus propios aparatos')
   const suffix = `V${String(Date.now()).slice(-6)}`
-  const c = await createClientWithAdmin(request, suffix, 'Portal 213 aparatos')
-  const loc = await c.locations.post(`Tienda Aparatos ${suffix}`)
+  const c = await createClientWithAdmin(request, suffix, (EN ? 'Portal 213 devices' : 'Portal 213 aparatos'))
+  const loc = await c.locations.post(`${EN ? 'Devices Store' : 'Tienda Aparatos'} ${suffix}`)
   await createOrder(request, c.staff, c.client.publicId, loc.publicId, 1) // con envíos la tabla ofrece «Exportar»
 
   // ---------------------------------------------------------------- computadora
   const pc = await open(browser, COMPUTER, c, 0)
   await expect(pc.getByTestId('top-bar')).toBeVisible()
+  await manualServerEnglish(pc, '**/api/v1/portal/order-form*')
   await pc.goto(`${APP_URL}/order/new`)
   await expect(pc.getByTestId('neworder-mode-quick')).toBeVisible({ timeout: 60_000 })
   await expect(pc.getByTestId('quick-consignee')).toBeVisible()
@@ -60,6 +64,7 @@ test('Portal: computadora = vista ancha; tableta y celular = vista móvil; los t
   expect(await tablet.evaluate(() => window.matchMedia('(pointer: coarse)').matches), 'la tableta emulada tiene el dedo como puntero principal').toBe(true)
   expect(await tablet.evaluate(() => window.innerWidth)).toBeGreaterThanOrEqual(1100)
   await expect(tablet.getByTestId('top-bar')).toHaveCount(0) // sin barra de escritorio: pestañas de abajo
+  await manualServerEnglish(tablet, '**/api/v1/portal/order-form*')
   await tablet.goto(`${APP_URL}/order/new`)
   await expect(tablet.getByTestId('neworder-mode-quick')).toHaveCount(0, { timeout: 60_000 }) // sin selector Rápida/Detallada
   await expect(tablet.getByTestId('quick-consignee')).toHaveCount(0) // la rápida no existe en tabletas
@@ -79,6 +84,7 @@ test('Portal: computadora = vista ancha; tableta y celular = vista móvil; los t
   // ---------------------------------------------------------------- celular
   const phone = await open(browser, PHONE, c, 2)
   await expect(phone.getByTestId('top-bar')).toHaveCount(0)
+  await manualServerEnglish(phone, '**/api/v1/portal/order-form*')
   await phone.goto(`${APP_URL}/order/new`)
   await expect(phone.getByTestId('neworder-mode-quick')).toHaveCount(0, { timeout: 60_000 })
   await shot(phone, false, 'l213-celular-nuevo-envio')
@@ -90,8 +96,8 @@ test('Portal: computadora = vista ancha; tableta y celular = vista móvil; los t
 test('Portal: los Informes también exportan a Excel, CSV y PDF', async ({ browser, request }, testInfo) => {
   test.skip(testInfo.project.name.startsWith('movil'), 'este recorrido arma sus propios aparatos')
   const suffix = `R${String(Date.now()).slice(-6)}`
-  const c = await createClientWithAdmin(request, suffix, 'Portal 213 informes')
-  const loc = await c.locations.post(`Tienda Informes ${suffix}`)
+  const c = await createClientWithAdmin(request, suffix, (EN ? 'Portal 213 reports' : 'Portal 213 informes'))
+  const loc = await c.locations.post(`${EN ? 'Reports Store' : 'Tienda Informes'} ${suffix}`)
   await createOrder(request, c.staff, c.client.publicId, loc.publicId, 1)
   await createOrder(request, c.staff, c.client.publicId, loc.publicId, 2)
   const page = await open(browser, COMPUTER, c, 0)

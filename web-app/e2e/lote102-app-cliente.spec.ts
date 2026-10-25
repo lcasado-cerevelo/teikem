@@ -9,7 +9,7 @@ import { createHmac } from 'node:crypto'
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
-import { manualImgDir, manualLang } from './manualLang'
+import { MANUAL_LANG, manualImgDir, manualLang, manualLegalMarkers } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -22,16 +22,17 @@ const LETTERS = String(Date.now())
   .slice(-6)
   .replace(/\d/g, (d) => 'ABCDEFGHJK'[Number(d)])
 
+const EN = MANUAL_LANG === 'en'
 test.use({ locale: 'es-PR' })
 test.setTimeout(240_000)
 
-async function shot(page: Page, isMobile: boolean, name: string) {
+async function shot(page: Page, isMobile: boolean, name: string, refetch = false) {
   if (isMobile) return
   await page.waitForTimeout(400)
   mkdirSync(IMG_DIR, { recursive: true })
-  await manualLang(page, 'en', `${IMG_DIR}${name}.png`)
+  await manualLang(page, 'en', `${IMG_DIR}${name}.png`, { refetch })
   await page.screenshot({ path: `${IMG_DIR}${name}.png`, animations: 'disabled', caret: 'hide' })
-  await manualLang(page, 'es')
+  await manualLang(page, 'es', '', { refetch })
 }
 
 /** Código TOTP de 6 dígitos (RFC 6238, SHA-1, 30 s) para la clave en base32 que muestra la app. */
@@ -123,6 +124,7 @@ test('App del cliente: computadora nueva, MFA, documento legal, órdenes, «No c
   const accept = await request.post(`${API_URL}/api/v1/portal-users/accept-invite`, { data: { email, token: inviteToken, password } })
   expect(accept.status()).toBe(204)
 
+  await manualLegalMarkers(page)
   if (!isMobile) await page.setViewportSize({ width: 1100, height: 760 })
   await page.goto(`${APP_URL}/login`)
   await expect(page.getByRole('heading', { name: 'Portal de clientes' })).toBeVisible({ timeout: 60_000 })
@@ -178,13 +180,13 @@ test('App del cliente: computadora nueva, MFA, documento legal, órdenes, «No c
   await expect(page.getByText(`Cliente: ${suffix} Cliente A`)).toBeVisible()
   await expect(page.getByTestId('home-total')).toHaveText('2')
   expect(await noHScroll()).toBe(true)
-  await shot(page, isMobile, 'l102-inicio')
+  await shot(page, isMobile, 'l102-inicio', true)
 
   // 5) órdenes: solo las del cliente; buscar y abrir la ficha
   await page.getByRole('link', { name: 'Envíos' }).click()
   await expect(page.getByRole('heading', { name: 'Mis envíos' })).toBeVisible()
   await expect(page.getByText(/^ORD-/)).toHaveCount(2)
-  await shot(page, isMobile, 'l102-ordenes')
+  await shot(page, isMobile, 'l102-ordenes', true)
   await page.getByTestId('orders-search').fill(a.orders[0].orderNumber)
   await expect(page.getByText(/^ORD-/)).toHaveCount(1, { timeout: 15_000 })
   await page.getByText(/^ORD-/).click()
@@ -192,7 +194,7 @@ test('App del cliente: computadora nueva, MFA, documento legal, órdenes, «No c
   await expect(page.getByText('Entrega', { exact: true })).toBeVisible()
   await expect(page.getByTestId('step-current')).toHaveCount(1)   // la barra y la lista de etapas (una por estatus de la compañía)
   expect(await page.getByTestId(/^step-/).count()).toBeGreaterThanOrEqual(3)
-  await shot(page, isMobile, 'l102-orden')
+  await shot(page, isMobile, 'l102-orden', true)
   const orderUrl = page.url()
   expect(orderUrl).toContain(a.orders[0].publicId)
 
@@ -204,26 +206,27 @@ test('App del cliente: computadora nueva, MFA, documento legal, órdenes, «No c
   // 6b) Lote 105: «Nueva orden» (el rol Operador puede crear): se escribe un consignatario nuevo, se manda y se abre la ficha con el seguimiento
   await page.goto(`${APP_URL}/orders`)
   await expect(page.getByTestId('orders-new')).toBeVisible({ timeout: 30_000 })
+  await manualLang(page, 'en', 'l105 formulario')   // las etiquetas de paquete/servicio del formulario se piden al abrirlo: abrirlo ya en inglés
   await page.getByTestId('orders-new').click()
-  await page.getByRole('button', { name: 'Detallada' }).click()   // en pantalla ancha abre la entrada rápida: este recorrido usa la detallada
+  await page.getByRole('button', { name: /Detallada|Detailed/ }).click()   // en pantalla ancha abre la entrada rápida: este recorrido usa la detallada
   await expect(page.getByTestId('consignee')).toBeVisible({ timeout: 30_000 })
-  await shot(page, isMobile, 'l105-nueva-orden')
+  await shot(page, isMobile, 'l105-nueva-orden', false)
   await page.getByTestId('neworder-submit').click()                                  // vacío: avisa sin mandar
-  await expect(page.getByText(/Escoja el consignatario o escriba uno nuevo/)).toBeVisible()
+  await expect(page.getByText(/Escoja el consignatario o escriba uno nuevo|Choose the consignee or enter a new one/)).toBeVisible()
   await page.getByTestId('consignee').fill('Tienda Portal 105')
   await page.getByTestId('consignee-new').click()                                    // «+ Nuevo»: el bloque del consignatario nuevo
   await page.getByTestId('new-name').fill('Tienda Portal 105')
   await page.getByTestId('new-line1').fill('Calle 9 #3')
   await page.getByTestId('new-city').fill('Ponce')
   await page.getByTestId('new-save').click()
-  await page.getByTestId('pkg-desc-0').fill('Caja chica')
+  await page.getByTestId('pkg-desc-0').fill(EN ? 'Small box' : 'Caja chica')
   await page.getByTestId('pkg-weight-0').fill('2,5')
-  await page.getByTestId('order-notes').fill('Entregar por la mañana')
-  await shot(page, isMobile, 'l105-nueva-orden-llena')
+  await page.getByTestId('order-notes').fill(EN ? 'Deliver in the morning' : 'Entregar por la mañana')
+  await shot(page, isMobile, 'l105-nueva-orden-llena', false)
   await page.getByTestId('neworder-submit').click()
   await expect(page.getByText('Seguimiento')).toBeVisible({ timeout: 30_000 })      // la ficha de la orden recién creada
   await expect(page.getByText(/Tienda Portal 105/)).toBeVisible()
-  await shot(page, isMobile, 'l105-orden-creada')
+  await shot(page, isMobile, 'l105-orden-creada', true)
 
   // 7) avisos y ajustes
   await page.goto(`${APP_URL}/notices`)
@@ -241,7 +244,7 @@ test('App del cliente: computadora nueva, MFA, documento legal, órdenes, «No c
   await shot(page, isMobile, 'l102-ajustes-oscuro')
   await page.goto(`${APP_URL}/orders`)
   await expect(page.getByTestId('orders-search')).toBeVisible({ timeout: 30_000 })
-  await shot(page, isMobile, 'l102-ordenes-oscuro')
+  await shot(page, isMobile, 'l102-ordenes-oscuro', true)
   await page.goto(`${APP_URL}/settings`)
   await page.getByTestId('theme-auto').click()
 

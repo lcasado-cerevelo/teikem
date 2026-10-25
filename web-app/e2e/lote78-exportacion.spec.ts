@@ -8,7 +8,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
-import { manualImgDir, manualLang, manualTarget } from './manualLang'
+import { manualImgDir, manualLang, manualTarget, nm } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -124,8 +124,8 @@ test('Exportar: plantilla nueva, vista previa y descarga que marca la corrida co
   await page.locator('tr, .dt-cards > li').filter({ hasText: `#${runId}` }).first().click()
   const run2 = page.getByRole('dialog', { name: new RegExp(`Corrida #${runId}`) })
   await expect(run2.getByText('Exportar a contabilidad')).toBeVisible({ timeout: 20_000 })
-  await expect(run2.getByLabel('Plantilla de exportación')).toContainText('Formato estándar')
-  await run2.getByLabel('Plantilla de exportación').selectOption({ label: 'Formato estándar' })   // otras corridas del mismo recorrido dejan plantillas propias
+  await expect(run2.getByLabel('Plantilla de exportación')).toContainText(nm('Formato estándar'))
+  await run2.getByLabel('Plantilla de exportación').selectOption({ label: nm('Formato estándar') })   // otras corridas del mismo recorrido dejan plantillas propias
   expect(await noHScroll(page)).toBe(true)
   await shot(page, isMobile, 'l78-seccion', run2)
 

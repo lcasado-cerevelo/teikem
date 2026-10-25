@@ -6,8 +6,11 @@
 // Escritorio y móvil. Capturas (solo escritorio): docs/manual/frontend/img/l119-<paso>.png.
 import { expect, test } from '@playwright/test'
 
-import { ADMIN, API_URL, createClientWithAdmin, loginAsClientAdmin, post, shot, APP_URL } from './portalHelpers'
+import { ADMIN, API_URL, createClientWithAdmin, loginAsClientAdmin, post, shotFresh, APP_URL } from './portalHelpers'
 import { createOrder, scan } from './staffHelpers'
+import { MANUAL_LANG } from './manualLang'
+
+const EN = MANUAL_LANG === 'en'
 
 test.use({ locale: 'es-PR' })
 test.setTimeout(240_000)
@@ -16,7 +19,7 @@ test('Portal del cliente: comprobante de entrega, facturas de solo lectura, Mis 
   const isMobile = testInfo.project.name.startsWith('movil')
   const suffix = `${isMobile ? 'M' : 'D'}${String(Date.now()).slice(-6)}`
   const c = await createClientWithAdmin(request, suffix, 'Portal 119')
-  const consigneeName = `Colmado Sur ${suffix}`
+  const consigneeName = `${EN ? 'South Grocery' : 'Colmado Sur'} ${suffix}`
   const loc = await c.locations.post(consigneeName)
 
   // una orden que el personal entrega desde la web: queda el comprobante
@@ -54,7 +57,7 @@ test('Portal del cliente: comprobante de entrega, facturas de solo lectura, Mis 
   await expect(page.getByText(`Ana Rivera ${suffix}`)).toBeVisible()
   await expect(page.getByText('La entrega la registró el personal de la compañía; el consignatario no firmó.')).toBeVisible()
   await expect(page.getByText('nota interna')).toHaveCount(0)
-  await shot(page, isMobile, 'l119-comprobante')
+  await shotFresh(page, isMobile, 'l119-comprobante')
 
   // 2) las facturas: el inicio las ofrece, la lista, el filtro y la ficha; ninguna acción de pago
   await page.goto(`${APP_URL}/home`)
@@ -64,7 +67,7 @@ test('Portal del cliente: comprobante de entrega, facturas de solo lectura, Mis 
   await expect(page.getByText(/^FAC-/).first()).toBeVisible({ timeout: 30_000 })
   await expect(page.getByText('Emitida', { exact: true }).first()).toBeVisible()
   await expect(page.getByText(/Pagar/i)).toHaveCount(0)
-  await shot(page, isMobile, 'l119-facturas')
+  await shotFresh(page, isMobile, 'l119-facturas')
   await page.getByTestId('invoices-filter-PAID').click()
   await expect(page.getByText('No hay facturas.')).toBeVisible({ timeout: 30_000 })          // ninguna pagada todavía
   await page.getByTestId('invoices-filter-all').click()
@@ -72,7 +75,7 @@ test('Portal del cliente: comprobante de entrega, facturas de solo lectura, Mis 
   await expect(page.getByText('Detalle', { exact: true })).toBeVisible({ timeout: 30_000 })
   await expect(page.getByText('Saldo', { exact: true }).last()).toBeVisible()
   await expect(page.getByText(/Pagar|Marcar/i)).toHaveCount(0)
-  await shot(page, isMobile, 'l119-factura')
+  await shotFresh(page, isMobile, 'l119-factura')
 
   // por API: la factura de otro cliente o inexistente responde 404 y los borradores no salen
   expect((await request.get(`${API_URL}/api/v1/portal/invoices/${crypto.randomUUID()}`, { headers: c.clientApi })).status()).toBe(404)
@@ -83,20 +86,20 @@ test('Portal del cliente: comprobante de entrega, facturas de solo lectura, Mis 
   await expect(page.getByRole('heading', { name: 'Mis avisos' }).first()).toBeVisible({ timeout: 30_000 })
   await expect(page.getByText('Salida a entrega')).toBeVisible()
   await expect(page.getByText('La compañía no tiene este aviso encendido para su empresa.').first()).toBeVisible()
-  await shot(page, isMobile, 'l119-mis-avisos')
+  await shotFresh(page, isMobile, 'l119-mis-avisos')
   await page.getByTestId('prefs-email-OUT_FOR_DELIVERY').click()
   await expect.poll(async () => {
     const prefs = (await (await request.get(`${API_URL}/api/v1/portal/notice-prefs`, { headers: c.clientApi })).json()) as { prefs: { kind: string; emailEnabled: boolean; emailAvailable: boolean }[] }
     const mine = prefs.prefs.find((p) => p.kind === 'OUT_FOR_DELIVERY')
     return `${mine?.emailEnabled}/${mine?.emailAvailable}`
   }, { timeout: 30_000 }).toBe('false/true')                                                       // la persona lo apagó y la compañía lo sigue teniendo encendido
-  await shot(page, isMobile, 'l119-mis-avisos-apagado')
+  await shotFresh(page, isMobile, 'l119-mis-avisos-apagado')
 
   // 4) Mis consignatarios: la lista del cliente
   await page.goto(`${APP_URL}/settings`)
   await page.getByTestId('settings-consignee-notices').click()
   await expect(page.getByRole('heading', { name: 'Mis consignatarios' }).first()).toBeVisible({ timeout: 30_000 })
   await expect(page.getByText(consigneeName)).toBeVisible({ timeout: 30_000 })
-  await shot(page, isMobile, 'l119-mis-consignatarios')
+  await shotFresh(page, isMobile, 'l119-mis-consignatarios')
   if (isMobile) expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
 })

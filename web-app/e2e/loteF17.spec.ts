@@ -112,11 +112,11 @@ async function seed(request: APIRequestContext, variant: 'D' | 'M'): Promise<See
   const suffix = `RF${variant}${LETTERS}`
   const clientName = `Hospital ${suffix}`
   const client = await ok<{ publicId: string }>(request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: clientName } }), 'cliente')
-  const locationName = `Sala ${suffix}`
+  const locationName = `Room ${suffix}`
   await ok(
     request.post(`${API_URL}/api/v1/locations`, {
       headers,
-      data: { clientPublicId: client.publicId, name: locationName, locationType: 'DELIVERY', line1: 'Calle Hospital 1', city: 'Ponce', country: 'PR' },
+      data: { clientPublicId: client.publicId, name: locationName, locationType: 'DELIVERY', line1: '1 Hospital Street', city: 'Ponce', country: 'PR' },
     }),
     'localidad',
   )
@@ -126,7 +126,7 @@ async function seed(request: APIRequestContext, variant: 'D' | 'M'): Promise<See
   const zone = zones.find((z) => z.code === 'RSV')!.id
   const sku = `EQ-${suffix}`
   const created = await ok<{ product: { publicId: string } }>(
-    request.post(`${API_URL}/api/v1/products`, { headers, data: { sku, name: `Concentrador de oxígeno ${suffix}`, trackingType: 'NONE' } }),
+    request.post(`${API_URL}/api/v1/products`, { headers, data: { sku, name: `Oxygen concentrator ${suffix}`, trackingType: 'NONE' } }),
     'producto',
   )
   const productPublicId = created.product.publicId
@@ -325,7 +325,7 @@ async function journey(page: Page, request: APIRequestContext, variant: 'D' | 'M
     await expect(page.getByRole('heading', { level: 1 })).toContainText(number)
   } else {
     // con más de 5 avisos más antiguos, la renta se alcanza con "Ver todos" del grupo de rentas
-    const all = inbox.getByRole('link', { name: /Rentas vencidas o por vencer|Ver todos/ }).last()
+    const all = inbox.getByRole('link', { name: /Ver todos: Rentas vencidas o por vencer|Rentas vencidas o por vencer/ }).last()
     await expect(all).toBeVisible()
     await shot(page, `${prefix}aviso`)
     await all.click()

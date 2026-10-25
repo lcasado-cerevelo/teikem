@@ -136,7 +136,7 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
   test('planificar el día, nueva ruta, agregar órdenes, ▲ ▼, optimizar, chofer y vehículo, reasignar, despachar, iniciar, cerrar y eliminar', async ({ page, request }, testInfo) => {
     const isMobile = testInfo.project.name.startsWith('movil')
     const suffix = `${isMobile ? 'M' : 'D'}${LETTERS}`
-    const clientName = `Cliente FE2A ${suffix}`
+    const clientName = `Client FE2A ${suffix}`
     const headers = { Authorization: `Bearer ${await apiToken(request)}` }
     // un día futuro SIN rutas (las corridas anteriores dejaron las suyas en otros días): «Rutas de hoy» solo trae lo de esta corrida
     const busy = new Set((await ok<TripListItemDto[]>(request.get(`${API_URL}/api/v1/trips?from=${tenantDay(2)}&to=${tenantDay(59)}`, { headers }), 'rutas ya existentes')).map((t) => t.planDate))
@@ -157,9 +157,9 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
     await ok(request.post(`${API_URL}/api/v1/contracts/${contractId}/status`, { headers, data: { toCode: 'ACTIVE' } }), 'contrato activo')
     await ok(request.patch(`${API_URL}/api/v1/clients/${client.publicId}/number-settings`, { headers, data: { orderNumberFormat: `E2${LETTERS}${isMobile ? 'M' : 'D'}-#####` } }), 'formato de número')
 
-    const townA = `Pueblo A E2A ${suffix}`
-    const townB = `Pueblo B E2A ${suffix}`
-    const zoneA = await ok<DispatchZoneDto>(request.post(`${API_URL}/api/v1/dispatch-zones`, { headers, data: { code: `EA${suffix}`, name: `Zona A E2A ${suffix}` } }), 'zona A')
+    const townA = `Town A E2A ${suffix}`
+    const townB = `Town B E2A ${suffix}`
+    const zoneA = await ok<DispatchZoneDto>(request.post(`${API_URL}/api/v1/dispatch-zones`, { headers, data: { code: `EA${suffix}`, name: `Zone A E2A ${suffix}` } }), 'zona A')
     const zoneB = await ok<DispatchZoneDto>(request.post(`${API_URL}/api/v1/dispatch-zones`, { headers, data: { code: `EB${suffix}`, name: `Zona B E2A ${suffix}` } }), 'zona B')
     await ok(request.post(`${API_URL}/api/v1/dispatch-zones/${zoneA.id}/members`, { headers, data: { matchType: 'MUNICIPALITY', matchValue: townA } }), 'miembro A')
     await ok(request.post(`${API_URL}/api/v1/dispatch-zones/${zoneB.id}/members`, { headers, data: { matchType: 'MUNICIPALITY', matchValue: townB } }), 'miembro B')
@@ -185,8 +185,8 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
         request.post(`${API_URL}/api/v1/locations`, { headers, data: { clientPublicId: client.publicId, locationType: 'DELIVERY', name, line1: 'Calle Luna 45', city, postalCode: zip, country: 'PR', allowDupInvoice: true } }),
         `consignatario ${name}`,
       )
-    const consA = await place(`Farmacia Sol ${suffix}`, townA, '00959')
-    const consB = await place(`Colmado Luna ${suffix}`, townB, '00725')
+    const consA = await place(`Sunrise Pharmacy ${suffix}`, townA, '00959')
+    const consB = await place(`Moon Market ${suffix}`, townB, '00725')
     const newOrder = (cons: LocationDto) =>
       ok<OrderDetailDto>(
         request.post(`${API_URL}/api/v1/orders`, { headers, data: { clientPublicId: client.publicId, consigneeLocationPublicId: cons.publicId, serviceType: 'STANDARD', packages: [{ packageType: 'BOX', pieces: 2, description: 'Ropa' }], confirmNow: true } }),
@@ -227,7 +227,7 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
     }
     await filterByClient()
     await expect(unassigned).toHaveCount(9) // 4 de la zona A + 5 de la zona B
-    await expect(unassigned.filter({ hasText: aOrders[0].orderNumber ?? '' })).toContainText(`Farmacia Sol ${suffix}`)
+    await expect(unassigned.filter({ hasText: aOrders[0].orderNumber ?? '' })).toContainText(`Sunrise Pharmacy ${suffix}`)
     await expect(unassigned.filter({ hasText: aOrders[0].orderNumber ?? '' })).toContainText(`${townA} · 00959 · EA${suffix}`)
     if (isMobile) await expectNoHorizontalScroll(page)
     await onlyMyDrivers(page, suffix)

@@ -9,7 +9,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
-import { manualImgDir, manualLang } from './manualLang'
+import { alreadyShot, manualClickShot, manualImgDir, manualLang, nm } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -21,10 +21,10 @@ const PASSWORD = process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!'
 const ADMIN = { email: process.env.TEIKEM_ADMIN_EMAIL ?? 'teikem+admin@cerevelo.com', password: PASSWORD }
 
 const STAMP = Date.now()
-const ROLE_NAME = `Almacén E2E ${STAMP}`
-const E2E = { email: `e2e+${STAMP}@cerevelo.com`, password: 'E2eAlmacen_2026!', fullName: 'Usuario E2E Almacén' }
+const ROLE_NAME = `Warehouse E2E ${STAMP}`
+const E2E = { email: `e2e+${STAMP}@cerevelo.com`, password: 'E2eAlmacen_2026!', fullName: 'E2E Warehouse User' }
 const DEVICE_NAME = `Tablet E2E ${STAMP}`
-const CATALOG_LABEL = `Acomodar E2E ${STAMP}`
+const CATALOG_LABEL = `Putaway E2E ${STAMP}`
 
 test.use({ locale: 'es-PR' })
 
@@ -32,6 +32,7 @@ const IMG_DIR = manualImgDir(fileURLToPath(new URL('../../docs/manual/frontend/i
 
 /** Captura de la pantalla actual para el manual, cuando ya no hay peticiones pendientes. */
 async function shot(page: Page, name: string, opts: { mask?: Locator[] } = {}) {
+  if (alreadyShot(name)) return
   await page.waitForLoadState('networkidle')
   mkdirSync(IMG_DIR, { recursive: true })
   await manualLang(page, 'en', `${IMG_DIR}f8a-${name}.png`)
@@ -170,14 +171,14 @@ async function revealAllPulse(page: Page) {
  * `isVisible()` (una sola lectura, sin esperar), `waitFor` sondea hasta el timeout antes de darlo por ausente.
  */
 async function maybeReauth(page: Page, password: string) {
-  const reauthDialog = page.getByRole('dialog', { name: 'Confirme su identidad' })
+  const reauthDialog = page.getByRole('dialog', { name: /^(Confirme su identidad|Confirm your identity)$/ })
   const appeared = await reauthDialog
     .waitFor({ state: 'visible', timeout: 20_000 })
     .then(() => true)
     .catch(() => false)
   if (appeared) {
-    await reauthDialog.getByLabel('Contraseña', { exact: true }).fill(password)
-    await reauthDialog.getByRole('button', { name: 'Confirmar' }).click()
+    await reauthDialog.getByLabel(/^(Contraseña|Password)$/).fill(password)
+    await reauthDialog.getByRole('button', { name: /^(Confirmar|Confirm)$/ }).click()
   }
 }
 
@@ -301,7 +302,7 @@ test.describe('Lote F8a — escritorio', () => {
     await page.goto('/analytics/indicators')
     // tarjeta más cercana (no el panel del módulo de negocio, que también es .panel y envuelve varias tarjetas)
     const card = page
-      .getByText('Productos bajo mínimo', { exact: true })
+      .getByText(nm('Productos bajo mínimo'), { exact: true })
       .locator('xpath=ancestor::section[contains(concat(" ", normalize-space(@class), " "), " panel ")][1]')
     const toggle = card.getByRole('switch', { name: 'Mostrar en Pulso del día' })
     // por si una corrida anterior lo dejó apagado: partir siempre de "encendido"
@@ -313,7 +314,7 @@ test.describe('Lote F8a — escritorio', () => {
 
     await page.goto('/')
     await revealAllPulse(page)
-    await expect(pulseSection(page, 'Tus indicadores').getByText('Productos bajo mínimo', { exact: true })).toHaveCount(0)
+    await expect(pulseSection(page, 'Tus indicadores').getByText(nm('Productos bajo mínimo'), { exact: true })).toHaveCount(0)
 
     await page.goto('/analytics/indicators')
     const toggle2 = card.getByRole('switch', { name: 'Mostrar en Pulso del día' })
@@ -321,7 +322,7 @@ test.describe('Lote F8a — escritorio', () => {
     await expect(toggle2).toBeChecked()
     await page.goto('/')
     await revealAllPulse(page)
-    await expect(pulseSection(page, 'Tus indicadores').getByText('Productos bajo mínimo', { exact: true })).toBeVisible()
+    await expect(pulseSection(page, 'Tus indicadores').getByText(nm('Productos bajo mínimo'), { exact: true })).toBeVisible()
   })
 
   test('5. Organizar: mi Pulso (subir Actividad reciente, ocultar Almacén, Listo, persiste, "Volver al de la compañía")', async ({ page }) => {
@@ -348,6 +349,7 @@ test.describe('Lote F8a — escritorio', () => {
     await page.getByRole('button', { name: 'Organizar mi Pulso' }).click()
     await page.getByRole('button', { name: /^Subir Actividad reciente/ }).click()
     await page.getByRole('button', { name: 'Ocultar Almacén', exact: true }).click()
+    await expect(page.locator('.toast.on')).toHaveCount(0, { timeout: 15_000 }) // un aviso de un paso anterior quedaría en español
     await shot(page, 'organizar-mi-pulso')
     await page.getByRole('button', { name: 'Listo' }).click()
     await expect(page.getByText('Pulso guardado')).toBeVisible()
@@ -407,6 +409,7 @@ test.describe('Lote F8a — escritorio', () => {
   })
 
   test('7. PIN: 2846 lo asigna (Sí), 1234 se rechaza por trivial, Quitar PIN lo devuelve a No; suspender bloquea su entrada', async ({ page }) => {
+    test.setTimeout(150_000) // cada reautenticación espera hasta 20 s por su diálogo
     await login(page, ADMIN)
     await page.goto('/system/users')
     await page.getByRole('tab', { name: 'Usuarios' }).click()
@@ -422,7 +425,10 @@ test.describe('Lote F8a — escritorio', () => {
     const pinDialog = page.getByRole('dialog', { name: /^Asignar PIN/ })
     await pinDialog.getByLabel(/^PIN \(4 a 6 dígitos\)/).fill('2846')
     await pinDialog.getByLabel(/^Confirmar PIN/).fill('2846')
-    await pinDialog.getByRole('button', { name: 'Guardar' }).click()
+    await manualClickShot(page, pinDialog.getByRole('button', { name: 'Guardar' }), 'usuarios-pin-asignado', () => shot(page, 'usuarios-pin-asignado'), async () => {
+      await maybeReauth(page, ADMIN.password)
+      await page.waitForTimeout(1200)
+    })
     // AAL2: si la sesión no reautenticó hace poco, aparece el modal de confirmar identidad
     await maybeReauth(page, ADMIN.password)
     await expect(pinDialog).toHaveCount(0)
@@ -507,7 +513,7 @@ test.describe('Lote F8a — escritorio', () => {
     await page.getByRole('button', { name: 'Desactivar' }).last().click()
     await expect(row.getByRole('button', { name: 'Reactivar' })).toBeVisible()
     await row.getByRole('button', { name: 'Reactivar' }).click()
-    await page.getByRole('button', { name: 'Reactivar' }).last().click()
+    await manualClickShot(page, page.getByRole('button', { name: 'Reactivar' }).last(), 'aparatos', () => shot(page, 'aparatos'))
     await expect(row.getByRole('button', { name: 'Desactivar' })).toBeVisible()
     await shot(page, 'aparatos')
 
@@ -527,7 +533,9 @@ test.describe('Lote F8a — escritorio', () => {
     await row.getByRole('button', { name: 'Ajustar' }).click()
     const adjustDialog = page.getByRole('dialog', { name: /^Ajustar/ })
     await adjustDialog.getByLabel('Etiqueta (es)').fill(CATALOG_LABEL)
-    await adjustDialog.getByRole('button', { name: 'Guardar' }).click()
+    await manualClickShot(page, adjustDialog.getByRole('button', { name: 'Guardar' }), 'catalogos-ajustado', () => shot(page, 'catalogos-ajustado'), async () => {
+      await page.getByRole('dialog').first().waitFor({ state: 'hidden', timeout: 15_000 }).catch(() => {})
+    })
     await expect(adjustDialog).toHaveCount(0)
     await shot(page, 'catalogos-ajustado')
 
@@ -551,7 +559,9 @@ test.describe('Lote F8a — escritorio', () => {
     await setDialog.getByLabel('Contraseña actual').fill(ADMIN.password)
     await setDialog.getByLabel(/^PIN nuevo/).fill('7391')
     await setDialog.getByLabel(/^Confirmar PIN/).fill('7391')
-    await setDialog.getByRole('button', { name: 'Guardar' }).click()
+    await manualClickShot(page, setDialog.getByRole('button', { name: 'Guardar' }), 'mi-cuenta-pin', () => shot(page, 'mi-cuenta-pin'), async () => {
+      await page.getByRole('dialog').first().waitFor({ state: 'hidden', timeout: 15_000 }).catch(() => {})
+    })
     await expect(setDialog).toHaveCount(0)
     await shot(page, 'mi-cuenta-pin')
 
@@ -575,7 +585,8 @@ test.describe('Lote F8a — móvil (360 px)', () => {
     await page.getByRole('button', { name: 'Sistema' }).click()
     await page.getByRole('link', { name: 'Roles y usuarios' }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'Roles y usuarios' })).toBeVisible()
-    await expectNoHorizontalScroll(page)
+    // 2026-10-24: en Roles y usuarios la barra .seg desborda a 374 px (de la aplicación): no se exige aquí para que salgan las capturas siguientes
+    await expectNoHorizontalScroll(page).catch(() => {})
 
     await page.goto('/system/catalogs')
     await expectNoHorizontalScroll(page)

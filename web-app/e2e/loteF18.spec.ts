@@ -12,7 +12,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
-import { manualImgDir, manualLang } from './manualLang'
+import { manualImgDir, manualLang, manualResubmit, nm } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -117,12 +117,12 @@ interface Seed {
 async function seed(request: APIRequestContext, variant: 'D' | 'M'): Promise<Seed> {
   const headers = { Authorization: `Bearer ${await apiToken(request)}` }
   const suffix = `RD${variant}${LETTERS}`
-  const clientName = `Clínica ${suffix}`
+  const clientName = `Clinic ${suffix}`
   const client = await ok<{ publicId: string }>(request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: clientName } }), 'cliente')
   const location = await ok<{ publicId: string }>(
     request.post(`${API_URL}/api/v1/locations`, {
       headers,
-      data: { clientPublicId: client.publicId, name: `Piso 2 ${suffix}`, locationType: 'DELIVERY', line1: 'Calle Salud 2', city: 'Mayagüez', country: 'PR' },
+      data: { clientPublicId: client.publicId, name: `Floor 2 ${suffix}`, locationType: 'DELIVERY', line1: '2 Health Street', city: 'Mayaguez', country: 'PR' },
     }),
     'localidad',
   )
@@ -132,7 +132,7 @@ async function seed(request: APIRequestContext, variant: 'D' | 'M'): Promise<See
   const zone = zones.find((z) => z.code === 'RSV')!.id
   const sku = `EQ-${suffix}`
   const created = await ok<{ product: { publicId: string } }>(
-    request.post(`${API_URL}/api/v1/products`, { headers, data: { sku, name: `Monitor de signos ${suffix}`, trackingType: 'NONE' } }),
+    request.post(`${API_URL}/api/v1/products`, { headers, data: { sku, name: `Vital signs monitor ${suffix}`, trackingType: 'NONE' } }),
     'producto',
   )
   const productPublicId = created.product.publicId
@@ -228,7 +228,7 @@ async function journey(page: Page, request: APIRequestContext, variant: 'D' | 'M
   await form.getByRole('button', { name: 'Registrar devolución (3)' }).click()
   await expect(form.getByText("Con el motivo 'Otro' describa la devolución en las notas.")).toBeVisible()
   await form.getByLabel(/^Motivo/).selectOption('EARLY_DAMAGE')
-  await form.getByLabel(/^Notas$/).fill('Se mojaron en una inundación del piso 2')
+  await form.getByLabel(/^Notas$/).fill('Soaked in a flood on the 2nd floor')
   // parcial: el tercero se queda en el cliente
   await form.getByRole('checkbox', { name: new RegExp(`^${S3} `) }).uncheck()
   await expect(form.getByText('Equipos que vuelven (2 de 3)')).toBeVisible()
@@ -274,6 +274,7 @@ async function journey(page: Page, request: APIRequestContext, variant: 'D' | 'M
   await adv.getByRole('button', { name: 'Avanzar' }).click()
   await expect(adv.getByText("Salto ilegal: de 'PENDING' solo se puede avanzar a 'INSPECTION'.")).toBeVisible()
   await noScroll()
+  await manualResubmit(page, adv.getByRole('button', { name: 'Avanzar' }), 'proceso-avanzar-error')
   await shot(page, `${prefix}proceso-avanzar-error`)
   await adv.getByLabel('Pasa a').selectOption('INSPECTION')
   await adv.getByRole('button', { name: 'Avanzar' }).click()
@@ -343,9 +344,9 @@ async function journey(page: Page, request: APIRequestContext, variant: 'D' | 'M
   await page.getByRole('link', { name: 'Reportes de rentas' }).click()
   await page.waitForURL(/\/warehouse\/rental-reports/)
   await expect(page.getByRole('heading', { level: 1, name: 'Reportes de rentas' })).toBeVisible()
-  await expect(page.getByRole('group', { name: 'Rentas vencidas' })).toBeVisible()
-  if (mobile) await page.getByLabel('Vista').selectOption({ label: 'Devoluciones de renta por motivo' })
-  else await page.getByRole('button', { name: /Devoluciones de renta por motivo/ }).click()
+  await expect(page.getByRole('group', { name: nm('Rentas vencidas') })).toBeVisible()
+  if (mobile) await page.getByLabel('Vista').selectOption({ label: nm('Devoluciones de renta por motivo') })
+  else await page.getByRole('button', { name: new RegExp(nm('Devoluciones de renta por motivo').replace(/[()]/g, '.')) }).click()
   await expect(page.getByText('Anticipada por daño').first()).toBeVisible()
   await expect(page.getByRole('group', { name: 'Totales' })).toBeVisible()
   await noScroll()

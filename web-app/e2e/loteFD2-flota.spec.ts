@@ -15,7 +15,11 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
-import { manualImgDir, manualLang, manualTarget } from './manualLang'
+import { MANUAL_LANG, manualImgDir, manualLang, manualServerEnglish, manualTarget } from './manualLang'
+
+const EN = MANUAL_LANG === 'en'
+/** Etiqueta de un catálogo de la flota en el idioma de la corrida (los selects se eligen por etiqueta). */
+const L = (s: string) => (EN ? ({ Propio: 'Owned', 'Diésel': 'Diesel', Seguro: 'Insurance', Registro: 'Registration', 'Inspección': 'Inspection' } as Record<string, string>)[s] ?? s : s)
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -151,6 +155,8 @@ test.describe('Flota y mantenimiento (Lote F-D2)', () => {
     await ok<DriverDetailDto>(request.post(`${API_URL}/api/v1/drivers`, { headers, data: { code: `F2B${suffix}`, fullName: `Chofer FD2 ${suffix} B` } }), 'chofer B')
     const other = await ok<VehicleDetailDto>(request.post(`${API_URL}/api/v1/vehicles`, { headers, data: { code: `FO${suffix}`, plateNumber: plate2, vin: vin2 } }), 'otro vehículo')
 
+    await manualServerEnglish(page, '**/api/v1/catalogs/**')
+    await manualServerEnglish(page, '**/api/v1/vehicles/**')   // etiquetas de catálogo (tipo de documento, combustible…) en inglés
     await login(page)
     await page.goto('/catalog/fleet')
     await expect(page.getByRole('heading', { level: 1, name: 'Flota y mantenimiento' })).toBeVisible()
@@ -182,8 +188,8 @@ test.describe('Flota y mantenimiento (Lote F-D2)', () => {
     await dialog.getByLabel('Año del modelo').fill('2022')
     await dialog.getByLabel('Placa').fill(plate)
     await dialog.getByLabel('Tipo').selectOption({ label: 'Van' })
-    await dialog.getByLabel('Propiedad').selectOption({ label: 'Propio' })
-    await dialog.getByLabel('Combustible').selectOption({ label: 'Diésel' })
+    await dialog.getByLabel('Propiedad').selectOption({ label: L('Propio') })
+    await dialog.getByLabel('Combustible').selectOption({ label: L('Diésel') })
     await dialog.getByLabel('Marca').fill('Ford')
     await dialog.getByLabel('Modelo', { exact: true }).fill('Transit')
     await dialog.getByLabel('VIN').fill(vin1.toLowerCase())
@@ -272,7 +278,7 @@ test.describe('Flota y mantenimiento (Lote F-D2)', () => {
     await listPanel.getByRole('searchbox').fill(suffix.toLowerCase())
     await expect(roster.getByRole('button')).toHaveCount(2)
     await listPanel.getByLabel('Tipo').selectOption({ label: 'Van' })
-    await listPanel.getByLabel('Combustible').selectOption({ label: 'Diésel' })
+    await listPanel.getByLabel('Combustible').selectOption({ label: L('Diésel') })
     await expect(roster.getByRole('button')).toHaveCount(1)
     await listPanel.getByLabel('Combustible').selectOption({ label: 'Todos' })
     await listPanel.getByLabel('Tipo').selectOption({ label: 'Todos' })
@@ -294,7 +300,7 @@ test.describe('Flota y mantenimiento (Lote F-D2)', () => {
     dialog = page.getByRole('dialog', { name: 'Agregar documento' })
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expect(dialog.getByText('El tipo de documento es obligatorio.')).toBeVisible()
-    await dialog.getByLabel(/^Documento/).selectOption({ label: 'Seguro' })
+    await dialog.getByLabel(/^Documento/).selectOption({ label: L('Seguro') })
     await dialog.getByLabel('Número').fill(`S-${suffix}-A`)
     await fillDate(dialog.getByLabel('Emisión'), tenantDay(-300))
     await fillDate(dialog.getByLabel('Vencimiento'), tenantDay(-400))
@@ -308,7 +314,7 @@ test.describe('Flota y mantenimiento (Lote F-D2)', () => {
 
     await docs.getByRole('button', { name: 'Agregar documento' }).click()
     dialog = page.getByRole('dialog', { name: 'Agregar documento' })
-    await dialog.getByLabel(/^Documento/).selectOption({ label: 'Registro' })
+    await dialog.getByLabel(/^Documento/).selectOption({ label: L('Registro') })
     await dialog.getByLabel('Número').fill(`R-${suffix}`)
     await fillDate(dialog.getByLabel('Vencimiento'), tenantDay(-5))
     await dialog.getByRole('button', { name: 'Guardar' }).click()
@@ -316,7 +322,7 @@ test.describe('Flota y mantenimiento (Lote F-D2)', () => {
 
     await docs.getByRole('button', { name: 'Agregar documento' }).click()
     dialog = page.getByRole('dialog', { name: 'Agregar documento' })
-    await dialog.getByLabel(/^Documento/).selectOption({ label: 'Inspección' })
+    await dialog.getByLabel(/^Documento/).selectOption({ label: L('Inspección') })
     await dialog.getByLabel('Número').fill(`I-${suffix}`)
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expect(rowOf(docs, `I-${suffix}`)).toContainText('Sin vencimiento')
@@ -324,7 +330,7 @@ test.describe('Flota y mantenimiento (Lote F-D2)', () => {
     // un seguro más nuevo deja «Reemplazada» al anterior
     await docs.getByRole('button', { name: 'Agregar documento' }).click()
     dialog = page.getByRole('dialog', { name: 'Agregar documento' })
-    await dialog.getByLabel(/^Documento/).selectOption({ label: 'Seguro' })
+    await dialog.getByLabel(/^Documento/).selectOption({ label: L('Seguro') })
     await dialog.getByLabel('Número').fill(`S-${suffix}-B`)
     await fillDate(dialog.getByLabel('Vencimiento'), tenantDay(400))
     await dialog.getByRole('button', { name: 'Guardar' }).click()
@@ -365,7 +371,7 @@ test.describe('Flota y mantenimiento (Lote F-D2)', () => {
     await expect(rowOf(due, `Chofer FD2 ${suffix} A`)).toHaveCount(1) // su licencia vence en 12 días
     await due.getByRole('button', { name: 'Limpiar' }).click()
     await due.getByLabel('Documento', { exact: true }).click()
-    await page.getByRole('option', { name: 'Registro' }).click()
+    await page.getByRole('option', { name: L('Registro') }).click()
     await page.keyboard.press('Escape')
     await expect(rowOf(due, code)).toHaveCount(1)
     await due.getByRole('switch', { name: 'Incluir vencidos' }).uncheck()

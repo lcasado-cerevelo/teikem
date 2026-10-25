@@ -4,8 +4,11 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 
 import { API_URL, APP_URL, createClientWithAdmin, loginAsClientAdmin, post, shot as portalShot } from './portalHelpers'
+import { MANUAL_LANG, manualServerEnglish } from './manualLang'
 import { LETTERS, apiHeaders, createClient, createConsignee, login, ok, shot as staffShot, tenantDay } from './staffHelpers'
 
+const EN = MANUAL_LANG === 'en'
+const NM = { farm: EN ? 'Pharmacy Filter' : 'Farmacia Filtro', shop: EN ? 'Grocery Filter' : 'Colmado Filtro', clin: EN ? 'Clinic Filter' : 'Clínica Filtro' }
 test.use({ locale: 'es-PR' })
 test.setTimeout(420_000)
 
@@ -28,10 +31,11 @@ async function serviceValues(select: ReturnType<Page['locator']>): Promise<strin
 test('Personal: la tabla de lo capturado se filtra por un día y por texto, y el pie resume paquete, servicio y COD', async ({ page, request }, testInfo) => {
   test.skip(testInfo.project.name.startsWith('movil'), 'la entrada rápida es de la web ancha')
   const headers = await apiHeaders(request)
-  const client = await createClient(request, headers, `Cliente L213 filtros ${LETTERS}`)
-  const names = [`Farmacia Filtro ${LETTERS}`, `Colmado Filtro ${LETTERS}`, `Clínica Filtro ${LETTERS}`]
+  const client = await createClient(request, headers, `${EN ? 'Client L213 filters' : 'Cliente L213 filtros'} ${LETTERS}`)
+  const names = [`${NM.farm} ${LETTERS}`, `${NM.shop} ${LETTERS}`, `${NM.clin} ${LETTERS}`]
   for (const n of names) await createConsignee(request, headers, client.publicId, n)
 
+  await manualServerEnglish(page, '**/api/v1/catalogs/**')   // las etiquetas de servicio/paquete se guardan en cada fila: pedirlas en inglés
   await login(page)
   await page.goto('/orders')
   await page.getByRole('button', { name: /Nuevo envío/ }).click()
@@ -85,7 +89,7 @@ test('Personal: la tabla de lo capturado se filtra por un día y por texto, y el
   await staffShot(page, false, 'l213-personal-rapida-filtros-resumen', 900, qk)
 
   // la búsqueda libre filtra la tabla y el resumen (por consignatario, acentos y mayúsculas no importan)
-  await qk.getByRole('searchbox', { name: 'Buscar en las entradas guardadas' }).fill('CLINICA')
+  await qk.getByRole('searchbox', { name: 'Buscar en las entradas guardadas' }).fill(EN ? 'CLINIC' : 'CLINICA')
   await expect.poll(countSaved).toBe(1)
   await expect(qk.locator('.qk-shown')).toHaveText('1 de 3 entradas guardadas')
   await expect(summary.getByTestId('qk-summary-cod')).toContainText('COD total: $7.25')
@@ -126,17 +130,18 @@ test('Personal: la tabla de lo capturado se filtra por un día y por texto, y el
 test('Portal: la tabla de lo capturado se filtra por un día y por texto, y el pie resume paquete, servicio y COD', async ({ page, request }, testInfo) => {
   test.skip(testInfo.project.name.startsWith('movil'), 'la entrada rápida es de la web ancha')
   const suffix = `F${String(Date.now()).slice(-6)}`
-  const c = await createClientWithAdmin(request, suffix, 'Portal 213 filtros')
+  const c = await createClientWithAdmin(request, suffix, (EN ? 'Portal 213 filters' : 'Portal 213 filtros'))
   const settings = (await (await request.get(`${API_URL}/api/v1/tenant/settings`, { headers: c.staff })).json()) as { defaultServiceType?: string | null; defaultPackageType?: string | null }
   if (!settings.defaultServiceType || !settings.defaultPackageType) {
     const put = await request.put(`${API_URL}/api/v1/tenant/settings`, { headers: c.staff, data: { defaultServiceType: settings.defaultServiceType ?? 'STANDARD', defaultPackageType: settings.defaultPackageType ?? 'BOX' } })
     expect(put.ok(), await put.text()).toBeTruthy()
   }
-  const names = [`Farmacia Filtro ${suffix}`, `Colmado Filtro ${suffix}`, `Clínica Filtro ${suffix}`]
+  const names = [`${NM.farm} ${suffix}`, `${NM.shop} ${suffix}`, `${NM.clin} ${suffix}`]
   for (const n of names) await c.locations.post(n)
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto(`${APP_URL}/login`)
   await loginAsClientAdmin(page, c)
+  await manualServerEnglish(page, '**/api/v1/portal/order-form*')
   await page.goto(`${APP_URL}/order/new`)
   await expect(page.getByTestId('quick-consignee')).toBeVisible({ timeout: 60_000 })
 
@@ -175,7 +180,7 @@ test('Portal: la tabla de lo capturado se filtra por un día y por texto, y el p
   await portalShot(page, false, 'l213-portal-rapida-filtros-resumen')
 
   const search = page.getByTestId('quick-saved-search')
-  await search.fill('CLINICA')
+  await search.fill(EN ? 'CLINIC' : 'CLINICA')
   await expect.poll(savedCount).toBe(1)
   await expect(page.getByTestId('quick-shown')).toHaveText('1 de 3 envíos guardados')
   await expect(page.getByTestId('quick-summary-cod')).toHaveText('COD total: $7.25')
@@ -204,12 +209,12 @@ test('Portal: la tabla de lo capturado se filtra por un día y por texto, y el p
 test('Portal: Mis envíos muestra la píldora de intentos fallidos en lo que volvió al almacén', async ({ page, request }, testInfo) => {
   test.skip(testInfo.project.name.startsWith('movil'), 'la tabla de Mis envíos es de la web ancha')
   const suffix = `P${String(Date.now()).slice(-6)}`
-  const c = await createClientWithAdmin(request, suffix, 'Portal 213 intentos')
-  const loc = await c.locations.post(`Tienda Intentos ${suffix}`)
+  const c = await createClientWithAdmin(request, suffix, (EN ? 'Portal 213 attempts' : 'Portal 213 intentos'))
+  const loc = await c.locations.post(`${EN ? 'Attempts Store' : 'Tienda Intentos'} ${suffix}`)
   type Piece = { packages: { pieceNumbers: string[] }[] }
   const newOrder = () => post<{ publicId: string; waybillNumber?: string } & Piece>(request, '/api/v1/orders', c.staff, { clientPublicId: c.client.publicId, consigneeLocationPublicId: loc.publicId, packages: [{ pieces: 1 }] })
   const scan = (o: Piece, action: string) => post(request, '/api/v1/scan/action', c.staff, { action, code: o.packages[0].pieceNumbers[0] })
-  const fail = (o: { publicId: string }) => post(request, `/api/v1/orders/${o.publicId}/status`, c.staff, { toCode: 'FAILED', comment: 'Nadie en casa' })
+  const fail = (o: { publicId: string }) => post(request, `/api/v1/orders/${o.publicId}/status`, c.staff, { toCode: 'FAILED', comment: (EN ? 'Nobody home' : 'Nadie en casa') })
   await newOrder() // una sin intentos: no lleva píldora
   const once = await newOrder()
   const twice = await newOrder()
@@ -227,6 +232,7 @@ test('Portal: Mis envíos muestra la píldora de intentos fallidos en lo que vol
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto(`${APP_URL}/login`)
   await loginAsClientAdmin(page, c)
+  await manualServerEnglish(page, '**/api/v1/portal/orders*')
   await page.goto(`${APP_URL}/orders`)
   await expect(page.getByText('1 intento fallido', { exact: true })).toBeVisible({ timeout: 60_000 })
   await expect(page.getByText('2 intentos fallidos', { exact: true })).toBeVisible()

@@ -13,13 +13,13 @@ export const APP_URL = process.env.CLIENT_APP_URL ?? 'http://localhost:8081'
 export const ADMIN = { email: process.env.TEIKEM_ADMIN_EMAIL ?? 'teikem+admin@cerevelo.com', password: process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!' }
 export const IMG_DIR = manualImgDir(fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url)))
 
-export async function shot(page: Page, isMobile: boolean, name: string) {
+export async function shot(page: Page, isMobile: boolean, name: string, refetch = false) {
   if (isMobile) return
   await page.waitForTimeout(500)
   mkdirSync(IMG_DIR, { recursive: true })
-  await manualLang(page, 'en', `${IMG_DIR}${name}.png`)
+  await manualLang(page, 'en', `${IMG_DIR}${name}.png`, { refetch })
   await page.screenshot({ path: `${IMG_DIR}${name}.png`, animations: 'disabled', caret: 'hide' })
-  await manualLang(page, 'es')
+  await manualLang(page, 'es', '', { refetch })
 }
 
 /** Código TOTP de 6 dígitos (RFC 6238, SHA-1, 30 s) para la clave en base32. */
@@ -161,3 +161,6 @@ export async function createConsigneeAccess(request: APIRequestContext, c: Clien
   await post(request, '/api/v1/legal/accept', api, { version: c.legalVersion, lang: 'es' })
   return { mail, api }
 }
+
+/** Como `shot`, pero recarga la pantalla al cambiar de idioma para que las etiquetas del servidor (estatus, servicio, paquete) lleguen en inglés. */
+export const shotFresh = (page: Page, isMobile: boolean, name: string) => shot(page, isMobile, name, true)

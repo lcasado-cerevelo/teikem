@@ -10,7 +10,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
-import { manualImgDir, manualLang, manualTarget } from './manualLang'
+import { MANUAL_LANG, manualImgDir, manualLang, manualTarget } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -120,6 +120,13 @@ test('Marca: sube el logo, se ve en la barra lateral por tema, y los rechazos de
   // más de 512 KB: lo avisa la pantalla antes de mandarlo (y el servidor lo rechaza igual: ver la prueba por API abajo)
   await lockupInput.setInputFiles({ name: 'enorme.png', mimeType: 'image/png', buffer: Buffer.alloc(512 * 1024 + 1) })
   await expect(lockupCard.getByRole('alert')).toHaveText('El logo supera el tamaño máximo de 512 KB.')
+  if (MANUAL_LANG === 'en') {
+    // el aviso de tamaño es del cliente y se escribe con t(): se vuelve a elegir el archivo ya en inglés
+    const input = await lockupInput.elementHandle()
+    await manualLang(page, 'en')
+    await input!.setInputFiles({ name: 'enorme.png', mimeType: 'image/png', buffer: Buffer.alloc(512 * 1024 + 1) })
+    await page.waitForTimeout(500)
+  }
   await shotLogos(page, 'marca-errores')
 
   // logo bueno: normal (fondo claro) e invertido (fondo oscuro)

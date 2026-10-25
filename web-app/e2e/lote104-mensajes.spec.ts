@@ -58,7 +58,7 @@ test('mensajes del portal: equipo, escribir primero, bandeja y responder', async
   const res = await request.put(`${API_URL}/api/v1/modules/CLIENT_PORTAL`, { headers: { ...headers, 'Idempotency-Key': crypto.randomUUID() }, data: { isEnabled: true } })
   // encender el módulo pide AAL2: en una base ya preparada está encendido y el 403 no importa
   if (!res.ok()) expect((await request.get(`${API_URL}/api/v1/client-messages/unread`, { headers })).ok()).toBeTruthy()
-  const clientName = `Mensajes ${suffix}`
+  const clientName = `Messages ${suffix}`
   const c = await request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: clientName } })
   expect(c.ok(), await c.text()).toBeTruthy()
   const clientId = ((await c.json()) as { publicId: string }).publicId
@@ -94,7 +94,11 @@ test('mensajes del portal: equipo, escribir primero, bandeja y responder', async
   await expect(dlg).toBeVisible()
   await dlg.locator('input[type=checkbox]').first().check()
   await shot(page, isMobile, 'l104-designar-equipo')
-  await dlg.getByRole('button', { name: 'Guardar equipo' }).click()
+  // el aviso «Equipo guardado.» se crea con el idioma vigente y la foto del paso 3 lo muestra: se guarda en inglés (manual en inglés)
+  const saveTeam = await dlg.getByRole('button', { name: 'Guardar equipo' }).elementHandle()
+  await manualLang(page, 'en', 'l104-escribir-primero (aviso)')
+  await saveTeam!.click()
+  await manualLang(page, 'es')
   await expect(panel.getByText(/no tiene equipo designado/)).toHaveCount(0, { timeout: 30_000 })   // ya hay equipo: la nota del respaldo desaparece
 
   // 3) escribirle primero a Ana
@@ -103,14 +107,14 @@ test('mensajes del portal: equipo, escribir primero, bandeja y responder', async
   await expect(w).toBeVisible()
   const opt = await w.getByLabel('Persona').locator('option', { hasText: `Ana ${suffix}` }).first().getAttribute('value')
   await w.getByLabel('Persona').selectOption(opt ?? '')
-  await w.getByLabel('Mensaje').fill('Hola Ana, hay un problema con tu envío; ¿puedes confirmarnos la dirección?')
+  await w.getByLabel('Mensaje').fill('Hi Ana, there is a problem with your shipment; can you confirm the address for us?')
   await shot(page, isMobile, 'l104-escribir-primero')
   await w.getByRole('button', { name: 'Enviar' }).click()
 
   // 4) la bandeja con la conversación abierta
   await expect(page).toHaveURL(/\/portal\/messages\?conversation=/, { timeout: 30_000 })
   await expect(page.getByRole('heading', { name: 'Mensajes de clientes' })).toBeVisible()
-  await expect(page.locator('.cm-msg.staff', { hasText: '¿puedes confirmarnos la dirección?' })).toBeVisible({ timeout: 30_000 })
+  await expect(page.locator('.cm-msg.staff', { hasText: 'can you confirm the address for us?' })).toBeVisible({ timeout: 30_000 })
   expect(await noHScroll()).toBe(true)
   await shot(page, isMobile, 'l104-bandeja')
 
@@ -119,9 +123,9 @@ test('mensajes del portal: equipo, escribir primero, bandeja y responder', async
   await draft.fill('   ')
   await page.getByRole('button', { name: 'Enviar' }).click()
   await expect(page.getByText('Escriba el mensaje.')).toBeVisible()
-  await draft.fill('Quedamos pendientes de su confirmación.')
+  await draft.fill('We are waiting for your confirmation.')
   await page.getByRole('button', { name: 'Enviar' }).click()
-  await expect(page.locator('.cm-msg.staff', { hasText: 'Quedamos pendientes' })).toBeVisible({ timeout: 30_000 })
+  await expect(page.locator('.cm-msg.staff', { hasText: 'We are waiting' })).toBeVisible({ timeout: 30_000 })
   await shot(page, isMobile, 'l104-respondida')
 
   // 6) Beto (misma empresa) no tiene conversación: la lista solo trae la de Ana

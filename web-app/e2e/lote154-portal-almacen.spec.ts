@@ -6,6 +6,12 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 
 import { API_URL, APP_URL, createClientWithAdmin, loginAsClientAdmin, post, shot } from './portalHelpers'
+import { MANUAL_LANG, manualLang } from './manualLang'
+
+const EN = MANUAL_LANG === 'en'
+const PROD = EN ? 'Portal product' : 'Producto portal'
+const PRODED = EN ? 'Edited product' : 'Producto editado'
+const DOCK = EN ? 'Dock' : 'Muelle'
 
 test.use({ locale: 'es-PR' })
 test.setTimeout(240_000)
@@ -40,9 +46,9 @@ test('Portal de almacén: producto, llegada y salida — crear, editar y cancela
   test.skip(!appUp, `La app del cliente no responde en ${APP_URL}`)
   const suffix = `W${LETTERS}`
   const sku = `PA${LETTERS}`
-  const c = await createClientWithAdmin(request, suffix, 'Portal almacén')
+  const c = await createClientWithAdmin(request, suffix, (EN ? 'Warehouse portal' : 'Portal almacén'))
   // un almacén propio, con zona y posición, para que el cliente escoja y el personal pueda dejar existencia
-  const wh = await post<{ warehouse: { publicId: string } }>(request, '/api/v1/warehouses', c.staff, { code: `W${suffix}`.slice(0, 20), name: `Almacén ${suffix}` })
+  const wh = await post<{ warehouse: { publicId: string } }>(request, '/api/v1/warehouses', c.staff, { code: `W${suffix}`.slice(0, 20), name: `${EN ? 'Warehouse' : 'Almacén'} ${suffix}` })
   const W = wh.warehouse.publicId
   const zone = await post<{ id: number }>(request, `/api/v1/warehouses/${W}/zones`, c.staff, { code: 'PCK', name: 'Picking', zoneType: 'PICKING' })
   const bin = await post<{ id: number }>(request, `/api/v1/warehouses/${W}/bins`, c.staff, { zoneId: zone.id, code: 'P-01' })
@@ -58,21 +64,21 @@ test('Portal de almacén: producto, llegada y salida — crear, editar y cancela
   await section(page, 'products')
   await page.getByTestId('create-product').click()
   await page.getByTestId('create-sku').fill(sku)
-  await page.getByTestId('create-name').fill(`Producto portal ${suffix}`)
+  await page.getByTestId('create-name').fill(`${PROD} ${suffix}`)
   await shot(page, isMobile, 'l154-producto-nuevo')
   await page.getByTestId('create-save').click()
-  await expect(page.getByText(`Producto portal ${suffix}`)).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText(`${PROD} ${suffix}`)).toBeVisible({ timeout: 30_000 })
   let products = itemsOf(await get<{ sku: string; name: string; publicId: string }[]>(request, '/api/v1/portal/warehouse/products', c.clientApi))
-  expect(products.find((p) => p.sku === sku)?.name).toBe(`Producto portal ${suffix}`)
+  expect(products.find((p) => p.sku === sku)?.name).toBe(`${PROD} ${suffix}`)
 
   await page.getByTestId(`edit-product-${sku}`).first().click()
-  await page.getByTestId('edit-name').fill(`Producto editado ${suffix}`)
+  await page.getByTestId('edit-name').fill(`${PRODED} ${suffix}`)
   await shot(page, isMobile, 'l154-producto-editar')
   await page.getByTestId('create-save').click()
-  await expect(page.getByText(`Producto editado ${suffix}`)).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText(`${PRODED} ${suffix}`)).toBeVisible({ timeout: 30_000 })
   products = itemsOf(await get<{ sku: string; name: string; publicId: string }[]>(request, '/api/v1/portal/warehouse/products', c.clientApi))
   const product = products.find((p) => p.sku === sku)!
-  expect(product.name, 'la edición quedó guardada en el servidor').toBe(`Producto editado ${suffix}`)
+  expect(product.name, 'la edición quedó guardada en el servidor').toBe(`${PRODED} ${suffix}`)
 
   // el personal deja existencia (el cliente no mueve inventario): 10 unidades en la posición
   await post(request, '/api/v1/inventory/adjustments', c.staff, { productPublicId: product.publicId, warehousePublicId: W, binId: bin.id, quantity: 10, reason: 'FOUND', notes: 'e2e portal' })
@@ -106,14 +112,14 @@ test('Portal de almacén: producto, llegada y salida — crear, editar y cancela
   await expect(page.getByText(/^Cancelad[ao]$/).first()).toBeVisible({ timeout: 30_000 })
   arrivals = itemsOf(await get<{ id: number; reference: string; statusCode: string; lines: { expectedQty: number }[] }[]>(request, '/api/v1/portal/warehouse/arrivals', c.clientApi))
   expect(arrivals.find((a) => a.reference === `OC-${suffix}-B`)?.statusCode).toBe('CANCELLED')
-  await shot(page, isMobile, 'l154-llegada-cancelada')
+  await shotSection(page, isMobile, 'l154-llegada-cancelada', 'arrivals')
 
   // ------------------------------------------------------------------ 3) SALIDA: crear (reserva), editar datos y cantidad, cancelar (libera)
   await section(page, 'exits')
   await page.getByTestId('create-exit').click()
   await page.getByRole('button', { name: `W${suffix}`.slice(0, 20), exact: true }).click()
   await page.getByLabel('Referencia', { exact: true }).fill(`RET-${suffix}`)
-  await page.getByLabel('Destino (retiro, dirección o nota)', { exact: true }).fill('Muelle 3')
+  await page.getByLabel('Destino (retiro, dirección o nota)', { exact: true }).fill(`${DOCK} 3`)
   await pickProduct(page, sku)
   await page.getByTestId('create-qty-0').fill('4')
   await shot(page, isMobile, 'l154-salida-nueva')
@@ -127,14 +133,14 @@ test('Portal de almacén: producto, llegada y salida — crear, editar y cancela
   expect(await available(), 'el aviso reservó 4 de las 10').toBe(6)
 
   await page.getByRole('button', { name: 'Editar', exact: true }).first().click()
-  await page.getByLabel('Destino (retiro, dirección o nota)', { exact: true }).fill('Muelle 9')
+  await page.getByLabel('Destino (retiro, dirección o nota)', { exact: true }).fill(`${DOCK} 9`)
   await page.getByLabel(new RegExp(`^${sku} ·`)).fill('6')
   await shot(page, isMobile, 'l154-salida-editar')
   await page.getByTestId('create-save').click()
-  await expect(page.getByText(/Muelle 9/)).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText(new RegExp(`${DOCK} 9`))).toBeVisible({ timeout: 30_000 })
   exits = itemsOf(await get<ExitItem[]>(request, '/api/v1/portal/warehouse/exits', c.clientApi))
   exit = exits.find((e) => e.reference === `RET-${suffix}`)!
-  expect(exit.destination).toBe('Muelle 9')
+  expect(exit.destination).toBe(`${DOCK} 9`)
   expect(exit.qtyOrdered, 'la cantidad editada quedó guardada').toBe(6)
   expect(await available(), 'la reserva se reajustó a 6: quedan 4').toBe(4)
 
@@ -143,12 +149,22 @@ test('Portal de almacén: producto, llegada y salida — crear, editar y cancela
   exits = itemsOf(await get<ExitItem[]>(request, '/api/v1/portal/warehouse/exits', c.clientApi))
   expect(exits.find((e) => e.reference === `RET-${suffix}`)?.statusCode).toBe('CANCELLED')
   expect(await available(), 'al cancelar se liberó la reserva: vuelven las 10').toBe(10)
-  await shot(page, isMobile, 'l154-salida-cancelada')
+  await shotSection(page, isMobile, 'l154-salida-cancelada', 'exits')
 
   // ------------------------------------------------------------------ 4) lo ajeno no existe: otro cliente no ve ni toca estos avisos
-  const other = await createClientWithAdmin(request, `${suffix}X`.slice(0, 12), 'Otro portal')
+  const other = await createClientWithAdmin(request, `${suffix}X`.slice(0, 12), (EN ? 'Other portal' : 'Otro portal'))
   const foreign = await request.patch(`${API_URL}/api/v1/portal/warehouse/arrivals/${arrival.id}`, { headers: other.clientApi, data: { reference: 'x', lines: [] } })
   expect([403, 404], 'un aviso ajeno no se puede editar').toContain(foreign.status())
   const none = itemsOf(await get<{ reference: string }[]>(request, '/api/v1/portal/warehouse/arrivals', other.clientApi))
   expect(none.length).toBe(0)
 })
+
+/** Captura de una sección del almacén con las etiquetas del servidor (estatus) en inglés: recarga y vuelve a la sección (la sección no va en la ruta). */
+async function shotSection(page: Page, isMobile: boolean, name: string, key: 'arrivals' | 'exits') {
+  if (MANUAL_LANG === 'en' && !isMobile) {
+    await manualLang(page, 'en', name, { refetch: true })
+    await section(page, key)
+    await page.waitForTimeout(800)
+  }
+  await shot(page, isMobile, name)
+}

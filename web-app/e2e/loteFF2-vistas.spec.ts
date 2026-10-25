@@ -117,7 +117,7 @@ test.describe('Vistas e informes (Lote F-F2)', () => {
     let cfId = 0
 
     // ---------- Datos: tres clientes con un consignatario cada uno y seis órdenes (borrador) con piezas 2,3,5 · 4,1 · 7 ----------
-    const clientNames = ['Alfa', 'Bravo', 'Condor'].map((l) => `Cliente FF2 ${s} ${l}`)
+    const clientNames = ['Alpha', 'Bravo', 'Condor'].map((l) => `Client FF2 ${s} ${l}`)
     const pieces = [[2, 3, 5], [4, 1], [7]]
     const cf = await ok<{ id: number }>(
       request.post(`${API_URL}/api/v1/custom-fields/definitions/TRANSPORT_ORDER`, {
@@ -152,7 +152,7 @@ test.describe('Vistas e informes (Lote F-F2)', () => {
     }
     expect(orders).toHaveLength(6)
 
-    const names = { simple: `Clientes FF2 ${s}`, simple2: `Clientes FF2 ${s} renombrada`, grouped: `Piezas por cliente FF2 ${s}`, combined: `Órdenes con cliente FF2 ${s}` }
+    const names = { simple: `Clients FF2 ${s}`, simple2: `Clients FF2 ${s} renamed`, grouped: `Pieces by client FF2 ${s}`, combined: `Orders with client FF2 ${s}` }
     const dialog = () => page.getByRole('dialog')
     const toastOf = (text: string | RegExp) => expect(page.locator('.toast.on').filter({ hasText: text })).toBeVisible()
     const ROW = isMobile ? 'li.dt-card' : 'tbody tr'

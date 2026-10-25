@@ -48,13 +48,13 @@ export type ManualShotTarget = Locator | ElementHandle
  * MANUAL_LANG=en. Usa dispatchEvent para que funcione aunque haya un diálogo modal abierto encima de la cabecera. En el portal
  * del cliente guarda el idioma y recarga. Si la pantalla no tiene selector, lo anota en la bitácora y la captura sale como esté.
  */
-export async function manualLang(page: Page, lang: 'es' | 'en', what = ''): Promise<void> {
+export async function manualLang(page: Page, lang: 'es' | 'en', what = '', opts: { refetch?: boolean } = {}): Promise<void> {
   if (MANUAL_LANG !== 'en') return
   try {
     const dd = page.locator('.langdd').first()
     if ((await dd.count()) === 0) {
       if (await isPortal(page)) {
-        await portalLang(page, lang)
+        await portalLang(page, lang, opts.refetch === true)
         return
       }
       if (lang === 'en') note(page, what, 'sin selector de idioma: la captura queda en español')
@@ -88,7 +88,7 @@ async function isPortal(page: Page): Promise<boolean> {
  * Portal del cliente. Sin recargar, si la página publica `window.__setLang` (el servidor estático de las capturas lo expone sin
  * tocar la app); si no, el idioma se guarda en localStorage y se recarga la pantalla (se pierde lo que estuviera abierto).
  */
-async function portalLang(page: Page, lang: 'es' | 'en') {
+async function portalLang(page: Page, lang: 'es' | 'en', refetch = false) {
   const current = await page.evaluate((k) => localStorage.getItem(k) ?? 'es', PORTAL_LANG_KEY)
   if (current === lang) return
   const hot = await page.evaluate((l) => {
@@ -97,12 +97,154 @@ async function portalLang(page: Page, lang: 'es' | 'en') {
     w.__setLang(l)
     return true
   }, lang)
-  if (hot) {
+  if (hot && !refetch) {
     await page.waitForTimeout(600)
+    return
+  }
+  // refetch: las etiquetas que vienen del servidor (estatus, servicio, paquete…) se piden una sola vez; para que lleguen en el
+  // idioma nuevo se recarga la pantalla (sesión y ruta se conservan; se pierde lo escrito en un formulario a medias)
+  if (hot) {
+    await page.waitForTimeout(300)
+    await page.reload({ waitUntil: 'load' })
+    await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {})
+    await page.waitForTimeout(700)
     return
   }
   await page.evaluate(([k, v]) => localStorage.setItem(k, v), [PORTAL_LANG_KEY, lang] as const)
   await page.reload({ waitUntil: 'load' })
   await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {})
   await page.waitForTimeout(500)
+}
+
+/**
+ * Manual en inglés: las etiquetas que resuelve el servidor (estatus, tipos, pasos) llegan en el idioma de la cabecera
+ * `Accept-Language`. Con MANUAL_LANG=en esta función hace que TODAS las peticiones del API que salen de la página lleven
+ * `Accept-Language: en`, para que esas etiquetas ya vengan en inglés aunque la pantalla se haya cargado en español.
+ * Sin MANUAL_LANG=en no hace nada. Los recorridos que afirman etiquetas del servidor deben aceptar también la versión en inglés.
+ */
+export async function manualApiEnglish(page: Page): Promise<void> {
+  if (MANUAL_LANG !== 'en') return
+  await page.route('**/api/v1/**', (route) => route.continue({ headers: { ...route.request().headers(), 'accept-language': 'en' } }))
+}
+
+/**
+ * Nombres de datos de la base de pruebas que, para capturar en inglés, se renombran a inglés en la base (indicadores, gráficos,
+ * informes y zonas por omisión). Con MANUAL_LANG=en los recorridos buscan el nombre en inglés; sin la variable, el original.
+ */
+const NAMES_EN: Record<string, string> = {
+  'Productos bajo mínimo': 'Products below minimum',
+  'Actividad reciente': 'Recent activity',
+  'Valor de inventario por categoría': 'Inventory value by category',
+  'Movimientos de inventario por tipo': 'Inventory movements by type',
+  'Cambios por acción': 'Changes by action',
+  'Ventas por día': 'Sales by day',
+  'Productos activos': 'Active products',
+  'Inventario disponible': 'Available inventory',
+  'Rentas por vencer (7 días)': 'Rentals expiring (7 days)',
+  'Rentas vencidas': 'Overdue rentals',
+  'Devoluciones de renta por motivo': 'Rental returns by reason',
+  'Equipos en proceso': 'Units in process',
+  'Equipos en renta por cliente': 'Rented units by client',
+  'Cambios por usuario y acción': 'Changes by user and action',
+  'Cambios por usuario': 'Changes by user',
+  Clientes: 'Clients',
+  Cuarentena: 'Quarantine',
+  'En renta': 'Rented out',
+  Reserva: 'Reserve',
+  Recepción: 'Receiving',
+  'Formato estándar': 'Standard format',
+}
+/** El almacén ALM-01 solo se renombra a inglés en la base de pruebas durante las corridas que lo piden (MANUAL_WH_EN=1). */
+const WAREHOUSE_EN: Record<string, string> = { 'ALM-01 · Almacén principal': 'ALM-01 · Main warehouse', 'Almacén principal': 'Main warehouse' }
+export function nm(es: string): string {
+  if (MANUAL_LANG !== 'en') return es
+  if (process.env.MANUAL_WH_EN === '1' && WAREHOUSE_EN[es]) return WAREHOUSE_EN[es]
+  return NAMES_EN[es] ?? es
+}
+
+/**
+ * Documento legal (Lote 99): los datos del operador salen de Legal:* y, sin configurar, traen marcadores en español entre corchetes
+ * («[RAZÓN SOCIAL DEL OPERADOR]»). Para las capturas en inglés se traducen los marcadores en la respuesta (solo con MANUAL_LANG=en).
+ */
+export async function manualLegalMarkers(page: Page): Promise<void> {
+  if (MANUAL_LANG !== 'en') return
+  await page.route('**/api/v1/legal/current*', async (route) => {
+    const res = await route.fetch()
+    const body = (await res.text())
+      .replaceAll('[RAZÓN SOCIAL DEL OPERADOR]', '[OPERATOR LEGAL NAME]')
+      .replaceAll('[DIRECCIÓN POSTAL DEL OPERADOR]', '[OPERATOR POSTAL ADDRESS]')
+      .replaceAll('[CORREO DE PRIVACIDAD]', '[PRIVACY EMAIL]')
+      .replaceAll('RAZ\u00d3N SOCIAL DEL OPERADOR', 'OPERATOR LEGAL NAME')
+    await route.fulfill({ response: res, body })
+  })
+}
+
+/**
+ * Avisos (toasts) que la pantalla crea con t(): el aviso queda en el idioma que había al crearse. Con MANUAL_LANG=en esta ayuda
+ * resuelve el elemento, pasa a inglés ANTES del clic, hace el clic, toma la captura enseguida (el aviso dura poco) y vuelve a
+ * español. La captura queda registrada para que el `shot()` posterior del recorrido (alreadyShot) no la repita sin el aviso.
+ * Sin MANUAL_LANG=en solo hace el clic.
+ */
+const takenShots = new Set<string>()
+export async function manualClickShot(
+  page: Page,
+  locator: Locator,
+  name: string,
+  takeShot: () => Promise<void>,
+  afterClick?: () => Promise<void>,
+): Promise<void> {
+  if (MANUAL_LANG !== 'en') {
+    await locator.click()
+    return
+  }
+  const handle = await locator.elementHandle({ timeout: 15_000 })
+  await manualLang(page, 'en', name)
+  await handle!.click()
+  if (afterClick) await afterClick()
+  await takeShot()
+  takenShots.add(name)
+  await manualLang(page, 'es')
+}
+export function alreadyShot(name: string): boolean {
+  return takenShots.delete(name)
+}
+
+/**
+ * Pide al servidor en inglés (Accept-Language: en) las respuestas que coinciden con `glob`, solo con MANUAL_LANG=en. Sirve para las etiquetas que
+ * el servidor resuelve (servicio, paquete, estatus) en pantallas que se abren una vez en español y donde recargar perdería lo escrito.
+ */
+export async function manualServerEnglish(page: Page, glob: string): Promise<void> {
+  if (MANUAL_LANG !== 'en') return
+  await page.route(glob, async (route) => {
+    await route.continue({ headers: { ...route.request().headers(), 'accept-language': 'en' } })
+  })
+}
+
+/**
+ * Manual en inglés: los avisos (toasts) duran 3,5 s y el cambio de idioma antes y después de pulsar consume buena parte de ese
+ * tiempo. Con MANUAL_LANG=en, esto alarga a 9 s la vida de los avisos de la página (solo en la prueba; la aplicación no cambia)
+ * para que sigan en pantalla cuando se toma la foto. Sin MANUAL_LANG=en no hace nada.
+ */
+export async function manualLongToasts(page: Page): Promise<void> {
+  if (MANUAL_LANG !== 'en') return
+  await page.addInitScript(() => {
+    const orig = window.setTimeout.bind(window)
+    window.setTimeout = ((fn: TimerHandler, ms?: number, ...args: unknown[]) =>
+      orig(fn, ms === 3500 ? 9000 : ms, ...args)) as typeof window.setTimeout
+  })
+}
+
+/**
+ * Mensajes que el servidor devuelve en el idioma de la petición (errores de validación bajo un campo, resultados de una acción):
+ * quedan en español si la acción se hizo con la interfaz en español. Con MANUAL_LANG=en esta ayuda vuelve a pulsar el mismo botón
+ * (resuelto ANTES, en español) ya en inglés y deja la interfaz en inglés; el `shot()` siguiente toma la foto y devuelve el español.
+ * Sin MANUAL_LANG=en no hace nada.
+ */
+export async function manualResubmit(page: Page, locator: Locator, what = ''): Promise<void> {
+  if (MANUAL_LANG !== 'en') return
+  const handle = await locator.elementHandle({ timeout: 15_000 })
+  await manualLang(page, 'en', what)
+  await handle!.click()
+  await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {})
+  await page.waitForTimeout(700)
 }

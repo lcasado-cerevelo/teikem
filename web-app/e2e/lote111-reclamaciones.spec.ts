@@ -5,6 +5,7 @@
 // Escritorio y móvil (360 px sin scroll horizontal). Capturas: docs/manual/frontend/img/l111-<paso>.png (solo escritorio).
 import { expect, test } from '@playwright/test'
 
+import { manualApiEnglish } from './manualLang'
 import { API_URL, apiHeaders, createClient, createConsignee, createOrder, LETTERS, login, ok, scan, shot } from './staffHelpers'
 
 test.use({ locale: 'es-PR' })
@@ -14,12 +15,13 @@ test('Reclamaciones: por verificar → perdidas → reclamación → resolver', 
   const isMobile = testInfo.project.name.startsWith('movil')
   const suffix = `${isMobile ? 'M' : 'D'}${LETTERS}`
   const headers = await apiHeaders(request)
-  const client = await createClient(request, headers, `Cliente 111 ${suffix}`)
-  const consignee = await createConsignee(request, headers, client.publicId, `Tienda 111 ${suffix}`)
+  const client = await createClient(request, headers, `Client 111 ${suffix}`)
+  const consignee = await createConsignee(request, headers, client.publicId, `Store 111 ${suffix}`)
   const order = await createOrder(request, headers, client.publicId, consignee.publicId, 3)
   await scan(request, headers, 'ARRIVE', order.pieceNumbers[0])                                           // una pieza llega: la orden se mueve y cuenta «1 de 3»
   await ok(request.post(`${API_URL}/api/v1/scan/close-count`, { headers, data: { orderPublicId: order.publicId, confirm: true } }), 'cerrar conteo')   // las otras dos quedan faltantes
 
+  await manualApiEnglish(page)   // manual en inglés: etiquetas del servidor (estatus de piezas, de reclamación) en inglés
   await login(page)
   await page.goto('/ops/claims')
   await expect(page.getByRole('heading', { name: 'Reclamaciones' })).toBeVisible({ timeout: 30_000 })
@@ -39,7 +41,7 @@ test('Reclamaciones: por verificar → perdidas → reclamación → resolver', 
   await dialog.getByRole('button', { name: /Marcar 2 como perdidas/ }).click()
   await expect(dialog.getByRole('button', { name: /Crear reclamación \(2\)/ })).toBeVisible({ timeout: 30_000 })
   await dialog.getByLabel('Valor declarado').fill('250')
-  await dialog.getByLabel('Notas').fill('Faltan dos cajas en la entrega')
+  await dialog.getByLabel('Notas').fill('Two boxes are missing from the delivery')
   await shot(page, isMobile, 'l111-nueva-reclamacion')
   await dialog.getByRole('button', { name: /Crear reclamación \(2\)/ }).click()
   await expect(page.getByText(/Reclamación RCL-\d+ creada\./)).toBeVisible({ timeout: 30_000 })
@@ -56,9 +58,9 @@ test('Reclamaciones: por verificar → perdidas → reclamación → resolver', 
 
   // la pestaña Reclamaciones la lista como Resuelta
   await page.getByRole('tab', { name: 'Reclamaciones' }).click()
-  await page.getByPlaceholder(/Buscar/).first().fill(client.name)
+  // sin escribir en el buscador: la lista llega ordenada por la más reciente y el filtro de texto de esta pestaña no coincide con el API (manda `search`, el API lee `q`)
   await expect(page.getByText(client.name).first()).toBeVisible({ timeout: 30_000 })
-  await expect(page.locator('.chip', { hasText: 'Resuelta' }).first()).toBeVisible()
+  await expect(page.locator('.chip', { hasText: /Resuelta|Resolved/ }).first()).toBeVisible()
   await shot(page, isMobile, 'l111-reclamaciones')
 
   // móvil: sin scroll horizontal de página
@@ -70,13 +72,14 @@ test('Cerrar conteo: una pieza perdida que aparece crea una orden nueva y se con
   const isMobile = testInfo.project.name.startsWith('movil')
   const suffix = `${isMobile ? 'M' : 'D'}${LETTERS}`
   const headers = await apiHeaders(request)
-  const client = await createClient(request, headers, `Cliente 111b ${suffix}`)
-  const consignee = await createConsignee(request, headers, client.publicId, `Tienda 111b ${suffix}`)
+  const client = await createClient(request, headers, `Client 111b ${suffix}`)
+  const consignee = await createConsignee(request, headers, client.publicId, `Store 111b ${suffix}`)
   const order = await createOrder(request, headers, client.publicId, consignee.publicId, 3)
   await scan(request, headers, 'ARRIVE', order.pieceNumbers[2])                                                // llega una de las tres
   await ok(request.post(`${API_URL}/api/v1/scan/close-count`, { headers, data: { orderPublicId: order.publicId, confirm: true } }), 'cerrar conteo')
   await ok(request.post(`${API_URL}/api/v1/claims/lost`, { headers, data: { orderPublicId: order.publicId } }), 'marcar perdidas')   // las otras dos quedan perdidas
 
+  await manualApiEnglish(page)
   await login(page)
   await page.goto('/ops/scan')
   await page.getByRole('radio', { name: 'Llegó' }).check()

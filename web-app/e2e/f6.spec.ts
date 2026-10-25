@@ -7,7 +7,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
-import { manualImgDir, manualLang } from './manualLang'
+import { MANUAL_LANG, manualImgDir, manualLang, manualLongToasts, nm } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 import { createClient } from './staffHelpers'
 
@@ -15,13 +15,13 @@ type AuthResultDto = components['schemas']['AuthResultDto']
 
 const API_URL = process.env.API_URL ?? 'http://localhost:5000'
 const ADMIN = { email: process.env.TEIKEM_ADMIN_EMAIL ?? 'teikem+admin@cerevelo.com', password: process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!' }
-const WAREHOUSE = 'ALM-01 · Almacén principal'
+const WAREHOUSE = nm('ALM-01 · Almacén principal')
 
 const STAMP = Date.now()
 const SKU = `PROD-${STAMP}`
-const PRODUCT_NAME = `Producto e2e ${STAMP}`
+const PRODUCT_NAME = `Product e2e ${STAMP}`
 const SUPPLIER = `Prov-${STAMP}`
-const CLIENT = `Cliente e2e F6 ${STAMP}`
+const CLIENT = `Client e2e F6 ${STAMP}`
 /** Número del recibo del paso 7 (lo usa el paso 8; el describe corre en serie). */
 let receiptNumber = ''
 
@@ -65,6 +65,20 @@ async function shot(page: Page, name: string, opts: { mask?: Locator[] } = {}) {
   await manualLang(page, 'es')
 }
 
+/**
+ * Manual en inglés: los avisos (toasts) y los errores en línea se crean con el idioma vigente al pulsar y ya no cambian. Se resuelve el
+ * botón, se pasa a inglés, se pulsa y se vuelve a español para seguir con los selectores del recorrido. Sin MANUAL_LANG=en es un clic normal.
+ */
+async function clickEn(page: Page, target: Locator, what: string, toastEn?: string | RegExp) {
+  const h = MANUAL_LANG === 'en' ? await target.elementHandle() : null
+  if (!h) return target.click()
+  await manualLang(page, 'en', what)
+  await h.click()
+  // el aviso se crea cuando responde el servidor: hay que esperarlo en inglés antes de volver a español
+  if (toastEn) await expect(page.locator('.toast').filter({ hasText: toastEn }).first()).toBeVisible({ timeout: 20_000 })
+  await manualLang(page, 'es')
+}
+
 /** Token de acceso del admin por el API (para preparar datos del recorrido). */
 async function apiToken(request: APIRequestContext): Promise<string> {
   let res = await request.post(`${API_URL}/api/v1/auth/login`, { data: { email: ADMIN.email, password: ADMIN.password } })
@@ -80,6 +94,7 @@ async function apiToken(request: APIRequestContext): Promise<string> {
 }
 
 async function login(page: Page) {
+  await manualLongToasts(page)
   await page.goto('/login')
   await page.getByLabel('Correo electrónico').fill(ADMIN.email)
   await page.getByLabel('Contraseña', { exact: true }).fill(ADMIN.password)
@@ -151,8 +166,8 @@ async function openPutawayOf(page: Page, number: string) {
 }
 
 /** Espera el aviso (toast) de éxito con ese texto. */
-async function expectToast(page: Page, text: string | RegExp) {
-  await expect(page.locator('.toast').filter({ hasText: text }).first()).toBeVisible()
+async function expectToast(page: Page, text: string | RegExp, en?: string | RegExp) {
+  await expect(page.locator('.toast').filter({ hasText: MANUAL_LANG === 'en' && en ? en : text }).first()).toBeVisible()
 }
 
 /**
@@ -212,7 +227,7 @@ test.describe('Lote F6 — escritorio', () => {
     await (await warehouseMenuLink(page, 'Almacenes')).click()
     await expect(page.getByRole('heading', { level: 1, name: 'Almacenes' })).toBeVisible()
     const row = page.getByRole('row').filter({ hasText: 'ALM-01' })
-    await expect(row.getByText('Almacén principal')).toBeVisible()
+    await expect(row.getByText(nm('Almacén principal'))).toBeVisible()
     await shot(page, 'almacenes')
     // Lote 11: la lista es maestro-detalle — el clic elige el almacén (panel "Zonas de este almacén") y el lápiz abre la ficha
     await row.getByText('ALM-01', { exact: true }).click()
@@ -241,17 +256,17 @@ test.describe('Lote F6 — escritorio', () => {
     await page.getByRole('button', { name: 'Nuevo producto' }).click()
     const dialog = page.getByRole('dialog')
     await dialog.getByLabel('Nombre').fill(PRODUCT_NAME)
-    await dialog.getByRole('button', { name: 'Guardar' }).click()
+    await clickEn(page, dialog.getByRole('button', { name: 'Guardar' }), 'f6-producto-nuevo-error')
     const sku = dialog.getByLabel('SKU')
     await expect(sku).toHaveAttribute('aria-invalid', 'true')
-    await expect(sku).toHaveAccessibleDescription('El SKU es obligatorio.')
+    await expect(sku).toHaveAccessibleDescription(MANUAL_LANG === 'en' ? 'SKU is required.' : 'El SKU es obligatorio.')
     await shot(page, 'producto-nuevo-error')
 
     await sku.fill(SKU)
     // Rastreo es un desplegable con buscador (Lote 12): muestra la etiqueta del catálogo
     await expect(dialog.getByRole('combobox', { name: 'Rastreo' })).toHaveValue('Ninguno')
-    await dialog.getByRole('button', { name: 'Guardar' }).click()
-    await expectToast(page, 'Producto creado.')
+    await clickEn(page, dialog.getByRole('button', { name: 'Guardar' }), 'f6-productos (aviso)', 'Product created.')
+    await expectToast(page, 'Producto creado.', 'Product created.')
     // modal único de la maqueta: tras el alta se queda en la lista
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect(page).toHaveURL(/\/warehouse\/products$/)
@@ -305,10 +320,10 @@ test.describe('Lote F6 — escritorio', () => {
     await reason.click()
     await reason.fill('Encontrado')
     await dialog.getByRole('option', { name: 'Encontrado' }).click()
-    await dialog.getByLabel(/^Notas/).fill(`Recorrido e2e ${STAMP}`)
+    await dialog.getByLabel(/^Notas/).fill(`e2e walkthrough ${STAMP}`)
     await shot(page, 'inventario-ajuste')
-    await dialog.getByRole('button', { name: 'Aplicar ajuste' }).click()
-    await expectToast(page, /Ajuste registrado/)
+    await clickEn(page, dialog.getByRole('button', { name: 'Aplicar ajuste' }), 'f6-inventario-saldos (aviso)', /Adjustment recorded/)
+    await expectToast(page, /Ajuste registrado/, /Adjustment recorded/)
 
     const row = page.getByRole('row').filter({ hasText: SKU })
     await expect(row).toHaveCount(1)
@@ -327,7 +342,7 @@ test.describe('Lote F6 — escritorio', () => {
     await expect(row.getByText('Ajuste', { exact: true })).toBeVisible()
     await expect(row.getByText('+10')).toBeVisible()
     await expect(row.getByRole('cell').nth(10)).toHaveText('Encontrado')
-    await expect(row.getByRole('cell').nth(10).locator('span')).toHaveAttribute('title', `Recorrido e2e ${STAMP}`)
+    await expect(row.getByRole('cell').nth(10).locator('span')).toHaveAttribute('title', `e2e walkthrough ${STAMP}`)
     await shot(page, 'inventario-kardex')
     await page.getByRole('tab', { name: 'Conciliación' }).click()
     await shot(page, 'inventario-conciliacion')
@@ -339,8 +354,8 @@ test.describe('Lote F6 — escritorio', () => {
     await page.getByRole('button', { name: 'Nuevo proveedor' }).click()
     let dialog = page.getByRole('dialog')
     await dialog.getByLabel(/^Nombre/).fill(SUPPLIER)
-    await dialog.getByRole('button', { name: 'Guardar' }).click()
-    await expectToast(page, 'Proveedor creado.')
+    await clickEn(page, dialog.getByRole('button', { name: 'Guardar' }), 'f6-proveedores (aviso)', 'Supplier created.')
+    await expectToast(page, 'Proveedor creado.', 'Supplier created.')
     await expect(page.getByRole('row').filter({ hasText: SUPPLIER })).toHaveCount(1)
     await shot(page, 'proveedores')
 
@@ -356,8 +371,8 @@ test.describe('Lote F6 — escritorio', () => {
     // el producto nuevo no tiene costo de compra: la línea lo pide
     await dialog.getByLabel(/^Costo unitario/).fill('2.5')
     await shot(page, 'orden-compra-nueva')
-    await dialog.getByRole('button', { name: 'Guardar' }).click()
-    await expectToast(page, 'Orden de compra creada.')
+    await clickEn(page, dialog.getByRole('button', { name: 'Guardar' }), 'f6-orden-compra-ficha (aviso)', 'Purchase order created.')
+    await expectToast(page, 'Orden de compra creada.', 'Purchase order created.')
     await expect(page).toHaveURL(/\/warehouse\/purchase-orders\/[0-9a-f-]+$/)
 
     const pipeline = page.locator('.stpipe')
@@ -383,11 +398,11 @@ test.describe('Lote F6 — escritorio', () => {
     // Lote 13: el modal solo lleva el encabezado; las líneas se capturan en el detalle
     await dialog.getByLabel(/^Origen/).selectOption('BLIND')
     await pickWarehouse(dialog, dialog.getByRole('combobox', { name: /^Almacén/ }))
-    await dialog.getByLabel('Transporte').fill('Camión e2e')
+    await dialog.getByLabel('Transporte').fill('e2e truck')
     await dialog.getByLabel('Referencia').fill(`BOL-${STAMP}`)
     await shot(page, 'recibo-nuevo')
-    await dialog.getByRole('button', { name: 'Crear recibo' }).click()
-    await expectToast(page, /Recibo REC-\d+ creado\./)
+    await clickEn(page, dialog.getByRole('button', { name: 'Crear recibo' }), 'f6-recibo (aviso)', /Receipt REC-\d+ created\./)
+    await expectToast(page, /Recibo REC-\d+ creado\./, /Receipt REC-\d+ created\./)
     // maestro-detalle en la misma pantalla: ?receipt= elige el recibo y el detalle queda a la derecha
     await expect(page).toHaveURL(/\/warehouse\/receipts\?receipt=[0-9a-f-]+/)
     const detail = page.locator('.rcp-side')
@@ -404,8 +419,8 @@ test.describe('Lote F6 — escritorio', () => {
     await expect(detail.locator('.chip', { hasText: 'Descargando' }).first()).toBeVisible()
 
     await detail.getByRole('button', { name: 'Confirmar recibo' }).click()
-    await page.getByRole('dialog').getByRole('button', { name: 'Confirmar recibo' }).click()
-    await expectToast(page, /Recibo REC-\d+ confirmado\./)
+    await clickEn(page, page.getByRole('dialog').getByRole('button', { name: 'Confirmar recibo' }), 'f6-recibo-ficha (aviso)', /Receipt REC-\d+ confirmed\./)
+    await expectToast(page, /Recibo REC-\d+ confirmado\./, /Receipt REC-\d+ confirmed\./)
     // sin diferencia: Completado, con su tarea de acomodo debajo de las líneas
     await expect(detail.locator('.chip', { hasText: /^Completado$/ }).first()).toBeVisible()
     await expect(detail.getByRole('row').filter({ hasText: SKU }).filter({ hasText: 'Pendiente' })).toHaveCount(1)
@@ -433,12 +448,12 @@ test.describe('Lote F6 — escritorio', () => {
     await row.getByRole('button', { name: 'Asignar' }).click()
     let dialog = page.getByRole('dialog')
     await dialog.getByLabel('Usuario').selectOption({ label: 'Administrador Advance' })
-    await dialog.getByRole('button', { name: 'Guardar' }).click()
-    await expectToast(page, 'Tarea asignada.')
+    await clickEn(page, dialog.getByRole('button', { name: 'Guardar' }), 'f6-tareas (aviso)', 'Task assigned.')
+    await expectToast(page, 'Tarea asignada.', 'Task assigned.')
     await expect(row.getByText('Administrador Advance')).toBeVisible()
 
-    await row.getByRole('button', { name: 'Iniciar' }).click()
-    await expectToast(page, 'Tarea iniciada.')
+    await clickEn(page, row.getByRole('button', { name: 'Iniciar' }), 'f6-tarea-completar (aviso)', 'Task started.')
+    await expectToast(page, 'Tarea iniciada.', 'Task started.')
 
     await row.getByRole('button', { name: 'Completar' }).click()
     dialog = page.getByRole('dialog')
@@ -449,8 +464,8 @@ test.describe('Lote F6 — escritorio', () => {
     await dialog.getByRole('option').filter({ hasText: 'Sugerida' }).first().click()
     await expect(toBin).not.toHaveValue('')
     await shot(page, 'tarea-completar')
-    await dialog.getByRole('button', { name: /Guardar|Completar/ }).click()
-    await expectToast(page, 'Tarea completada.')
+    await clickEn(page, dialog.getByRole('button', { name: /Guardar|Completar/ }), 'f6-tarea (aviso)', 'Task completed.')
+    await expectToast(page, 'Tarea completada.', 'Task completed.')
     // sin tareas abiertas el recibo pasa a Acomodado y sale de 'Acomodo pendiente'
     await expect(receiptItem(page, receiptNumber)).toHaveCount(0)
     await page.goto('/warehouse/receipts')
@@ -471,8 +486,8 @@ test.describe('Lote F6 — escritorio', () => {
     await pickProduct(page, 'Producto de la línea 1', SKU)
     await page.getByLabel('Cantidad de la línea 1').fill('3')
     await shot(page, 'recoleccion-nueva')
-    await page.getByRole('button', { name: 'Recolectar (bajar de inventario)' }).click()
-    const collectedToast = page.locator('.toast').filter({ hasText: /Recolección EMP-\d{5} creada\./ }).first()
+    await clickEn(page, page.getByRole('button', { name: 'Recolectar (bajar de inventario)' }), 'f6-empacar (aviso)', /Pick batch EMP-\d{5} created\./)
+    const collectedToast = page.locator('.toast').filter({ hasText: /(Recolección|Pick batch) EMP-\d{5} (creada|created)\./ }).first()
     await expect(collectedToast).toBeVisible()
     const batchNumber = /EMP-\d{5}/.exec((await collectedToast.textContent()) ?? '')?.[0] ?? ''
     expect(batchNumber).not.toBe('')
@@ -494,15 +509,15 @@ test.describe('Lote F6 — escritorio', () => {
     await dialog.getByLabel(/^Tipo de servicio/).selectOption('STANDARD')
     await dialog.getByLabel(/^Tipo de paquete/).selectOption('BOX')
     await dialog.getByLabel(/^Consignatario(?! del)/).selectOption('new')
-    await dialog.getByLabel(/^Nombre/).fill(`Consignatario e2e ${STAMP}`)
-    await dialog.getByLabel(/^Dirección \(línea 1\)/).fill('Calle Luna 12')
+    await dialog.getByLabel(/^Nombre/).fill(`Consignee e2e ${STAMP}`)
+    await dialog.getByLabel(/^Dirección \(línea 1\)/).fill('12 Luna St')
     await dialog.getByLabel(/^Ciudad/).fill('San Juan')
     await dialog.getByLabel(/^Piezas/).fill('1')
     await shot(page, 'empacar')
-    await dialog.getByRole('button', { name: 'Empacar y crear envío' }).click()
-    const packedToast = page.locator('.toast').filter({ hasText: /Empacada: se creó el envío / }).first()
+    await clickEn(page, dialog.getByRole('button', { name: 'Empacar y crear envío' }), 'f6-recolecciones (aviso)', /Packed: shipment .* was created/)
+    const packedToast = page.locator('.toast').filter({ hasText: /Empacada: se creó el envío |Packed: shipment .* was created/ }).first()
     await expect(packedToast).toBeVisible()
-    const orderNumber = /envío\s+([A-Z0-9-]+)/.exec((await packedToast.textContent()) ?? '')?.[1] ?? ''
+    const orderNumber = /(?:envío|shipment)\s+([A-Z0-9-]+)/.exec((await packedToast.textContent()) ?? '')?.[1] ?? ''
     expect(orderNumber.length).toBeGreaterThan(0)
     // la recolección queda Empacada (ya no ofrece Empacar) y su detalle (clic en la fila) enlaza la orden creada
     await expect(batchRow.locator('.chip', { hasText: 'Empacada' })).toBeVisible()

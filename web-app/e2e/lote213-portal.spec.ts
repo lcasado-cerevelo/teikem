@@ -9,10 +9,13 @@ import { join } from 'node:path'
 import { expect, test, type Download, type Page } from '@playwright/test'
 import * as XLSX from 'xlsx'
 
-import { API_URL, APP_URL, createClientWithAdmin, loginAsClientAdmin, shot } from './portalHelpers'
+import { API_URL, APP_URL, createClientWithAdmin, loginAsClientAdmin, shot, shotFresh } from './portalHelpers'
+import { MANUAL_LANG, manualServerEnglish } from './manualLang'
 import { cssToRgb, pdfImageWidths, pdfText, pdfUsesFill } from './pdfHelpers'
 import { createOrder } from './staffHelpers'
 
+const EN = MANUAL_LANG === 'en'
+const PICK = { farm: EN ? 'North Pharmacy' : 'Farmacia Norte', shop: EN ? 'South Grocery' : 'Colmado Sur', clin: EN ? 'East Clinic' : 'Clínica Este', newq: EN ? 'New Store' : 'Tienda Nueva', hard: EN ? 'Sun Hardware' : 'Ferretería Sol', street1: EN ? 'Moon St 77' : 'Calle Luna 77', street2: EN ? 'Sun Ave 1' : 'Av. Sol 1' }
 test.use({ locale: 'es-PR' })
 test.setTimeout(420_000)
 
@@ -39,7 +42,7 @@ test('Portal del cliente: consignatario nuevo en línea sin ratón y exportar lo
     const put = await request.put(`${API_URL}/api/v1/tenant/settings`, { headers: c.staff, data: { defaultServiceType: settings.defaultServiceType ?? 'STANDARD', defaultPackageType: settings.defaultPackageType ?? 'BOX' } })
     expect(put.ok(), await put.text()).toBeTruthy()
   }
-  const existing = [`Farmacia Norte ${suffix}`, `Colmado Sur ${suffix}`, `Clínica Este ${suffix}`]
+  const existing = [`${PICK.farm} ${suffix}`, `${PICK.shop} ${suffix}`, `${PICK.clin} ${suffix}`]
   for (const name of existing) {
     const loc = await c.locations.post(name)
     await createOrder(request, c.staff, c.client.publicId, loc.publicId, 2)
@@ -49,7 +52,8 @@ test('Portal del cliente: consignatario nuevo en línea sin ratón y exportar lo
   await loginAsClientAdmin(page, c)
 
   // ------------------------------------------------------------------ 1) RÁPIDA: consignatario nuevo sin ratón
-  const quickName = `Tienda Nueva ${suffix}`
+  const quickName = `${PICK.newq} ${suffix}`
+  await manualServerEnglish(page, '**/api/v1/portal/order-form*')   // las etiquetas de servicio/paquete del formulario salen en inglés
   await page.goto(`${APP_URL}/order/new`)
   const consignee = page.getByTestId('quick-consignee')
   await expect(consignee).toBeVisible({ timeout: 60_000 })
@@ -74,7 +78,7 @@ test('Portal del cliente: consignatario nuevo en línea sin ratón y exportar lo
   await page.keyboard.press('Enter') // sin coincidencias: Enter = «+ Nuevo consignatario»
   await expect(page.getByTestId('quick-new-block')).toBeVisible()
   await expect.poll(() => activeTestId(page)).toBe('quick-new-line1') // el foco cae solo en lo que falta: la dirección (el nombre ya viene)
-  await page.keyboard.type('Calle Luna 77')
+  await page.keyboard.type(PICK.street1)
   await page.keyboard.press('Tab')
   expect(await activeTestId(page)).toBe('quick-new-city')
   await page.keyboard.type('Caguas')
@@ -93,7 +97,7 @@ test('Portal del cliente: consignatario nuevo en línea sin ratón y exportar lo
   const form1 = (await (await request.get(`${API_URL}/api/v1/portal/order-form`, { headers: c.clientApi })).json()) as { consignees: { name: string; line1: string; city: string; postalCode?: string; phone?: string; code?: string }[] }
   const created = form1.consignees.find((x) => x.name === quickName)
   expect(created, 'el consignatario nuevo debe quedar guardado al grabarlo, antes del envío').toBeTruthy()
-  expect(created).toMatchObject({ line1: 'Calle Luna 77', city: 'Caguas', postalCode: '00725' })
+  expect(created).toMatchObject({ line1: PICK.street1, city: 'Caguas', postalCode: '00725' })
   expect(created?.phone).toMatch(/787/)
   // desplegable del tipo de paquete: las flechas cambian la opción sin ratón (el contrato de prueba solo tiene tarifa para «Caja»: se va y se vuelve)
   const pkg = page.getByTestId('quick-packageType')
@@ -116,7 +120,7 @@ test('Portal del cliente: consignatario nuevo en línea sin ratón y exportar lo
   await shot(page, false, 'l213-rapida-guardada')
 
   // ------------------------------------------------------------------ 2) DETALLADA: igual, ahí mismo
-  const detailedName = `Ferretería Sol ${suffix}`
+  const detailedName = `${PICK.hard} ${suffix}`
   await page.getByTestId('neworder-mode-detailed').click()
   const dcons = page.getByTestId('consignee')
   await expect(dcons).toBeVisible({ timeout: 30_000 })
@@ -125,7 +129,7 @@ test('Portal del cliente: consignatario nuevo en línea sin ratón y exportar lo
   await page.keyboard.press('Enter')
   await expect(page.getByTestId('new-consignee-block')).toBeVisible()
   await expect.poll(() => activeTestId(page)).toBe('new-line1')
-  await page.keyboard.type('Av. Sol 1')
+  await page.keyboard.type(PICK.street2)
   await page.keyboard.press('Tab')
   await page.keyboard.type('Yauco')
   await shot(page, false, 'l213-consignatario-en-linea-detallada')
@@ -145,7 +149,7 @@ test('Portal del cliente: consignatario nuevo en línea sin ratón y exportar lo
   await page.goto(`${APP_URL}/orders`)
   await expect(page.getByTestId('orders-table')).toBeVisible({ timeout: 30_000 })
   await expect(page.getByTestId('orders-table-count')).toHaveText('5 de 5', { timeout: 30_000 })
-  await shot(page, false, 'l213-exportar-formatos')
+  await shotFresh(page, false, 'l213-exportar-formatos')
   const me = (await (await request.get(`${API_URL}/api/v1/portal/me`, { headers: c.clientApi })).json()) as { currentClient?: { tenantName?: string } }
   const company = me.currentClient?.tenantName ?? ''
   expect(company).not.toBe('')
@@ -163,24 +167,24 @@ test('Portal del cliente: consignatario nuevo en línea sin ratón y exportar lo
   expect(pdf.file.suggestedFilename()).toMatch(/^teikem-mis-envios-\d{4}-\d{2}-\d{2}\.pdf$/)
   expect(pdf.buf.subarray(0, 5).toString()).toBe('%PDF-')
   const text = pdfText(pdf.buf)
-  for (const n of [company, 'Mis env', 'Sin filtros', `Colmado Sur ${suffix}`, quickName, detailedName]) expect(text, `el PDF debe decir «${n}»`).toContain(n)
+  for (const n of [company, 'Mis env', 'Sin filtros', `${PICK.shop} ${suffix}`, quickName, detailedName]) expect(text, `el PDF debe decir «${n}»`).toContain(n)
   const teikemWidths = pdfImageWidths(pdf.buf)
   expect(teikemWidths.length, 'el PDF lleva un logo (el de Teikem, porque la compañía no subió ninguno)').toBeGreaterThan(0)
   expect(teikemWidths).toContain(480) // el logo horizontal de Teikem, rasterizado a 480 px de ancho
 
   // lo FILTRADO: buscar un consignatario y exportar solo eso (CSV)
-  await page.getByTestId('orders-search').fill(`Colmado Sur ${suffix}`)
+  await page.getByTestId('orders-search').fill(`${PICK.shop} ${suffix}`)
   await expect(page.getByTestId('orders-table-count')).toHaveText('1 de 1', { timeout: 30_000 })
   const csv = await download(page, 'orders-table-export-csv', 'mis-envios-filtrado.csv')
   expect(csv.file.suggestedFilename()).toMatch(/\.csv$/)
   const lines = csv.buf.toString('utf8').replace(/^﻿/, '').trim().split(/\r?\n/)
   expect(lines).toHaveLength(2) // el encabezado y UNA fila: lo filtrado, no las cinco
-  expect(lines[1]).toContain(`Colmado Sur ${suffix}`)
+  expect(lines[1]).toContain(`${PICK.shop} ${suffix}`)
   const pdfFiltered = await download(page, 'orders-table-export-pdf', 'mis-envios-filtrado.pdf')
   const filteredText = pdfText(pdfFiltered.buf)
   expect(filteredText).toContain('Filtros: ')
-  expect(filteredText).toContain(`Colmado Sur ${suffix}`)
-  expect(filteredText).not.toContain(`Farmacia Norte ${suffix}`)
+  expect(filteredText).toContain(`${PICK.shop} ${suffix}`)
+  expect(filteredText).not.toContain(`${PICK.farm} ${suffix}`)
 
   // ------------------------------------------------------------------ 4) los colores del PDF son los de la compañía (Ajustes → Marca), no otros
   const setBrand = async (preset: string) => {

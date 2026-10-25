@@ -14,7 +14,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
-import { manualImgDir, manualLang, manualTarget } from './manualLang'
+import { MANUAL_LANG, manualImgDir, manualLang, manualTarget } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -120,7 +120,7 @@ test.describe('Plano de ruta, arrastrar y pin manual (Lote F-E2b)', () => {
     const rnd = Array.from({ length: 4 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random() * 24)]).join('')
     // el azar va primero: el servidor recorta los códigos (cliente, zona…) y el sello de tiempo queda al final
     const suffix = `${isMobile ? 'M' : 'D'}${rnd}${LETTERS}`
-    const clientName = `Cliente FE2B ${suffix}`
+    const clientName = `Client FE2B ${suffix}`
     const headers = { Authorization: `Bearer ${await apiToken(request)}` }
     const day = tenantDay(32 + (Math.floor(Date.now() / 1000) % 27)) // rango propio (32..58); el de F-E2a es 2..29
     const license = tenantDay(300)
@@ -132,7 +132,7 @@ test.describe('Plano de ruta, arrastrar y pin manual (Lote F-E2b)', () => {
     await ok(request.post(`${API_URL}/api/v1/contracts/${contractId}/status`, { headers, data: { toCode: 'ACTIVE' } }), 'contrato activo')
     await ok(request.patch(`${API_URL}/api/v1/clients/${client.publicId}/number-settings`, { headers, data: { orderNumberFormat: `E3${LETTERS}${rnd}${isMobile ? 'M' : 'D'}-#####` } }), 'formato de número')
 
-    const town = `Pueblo E2B ${suffix}`
+    const town = `Town E2B ${suffix}`
     const zone = await ok<DispatchZoneDto>(request.post(`${API_URL}/api/v1/dispatch-zones`, { headers, data: { code: `EZ${suffix}`, name: `Zona E2B ${suffix}` } }), 'zona')
     await ok(request.post(`${API_URL}/api/v1/dispatch-zones/${zone.id}/members`, { headers, data: { matchType: 'MUNICIPALITY', matchValue: town } }), 'miembro')
     const driver = await ok<DriverDetailDto>(request.post(`${API_URL}/api/v1/drivers`, { headers, data: { code: `DE${suffix}`, fullName: `Elisa Mapa ${suffix}`, dispatchZoneId: zone.id } }), 'chofer')
@@ -141,7 +141,7 @@ test.describe('Plano de ruta, arrastrar y pin manual (Lote F-E2b)', () => {
 
     const place = (name: string, zip: string) =>
       ok<LocationDto>(request.post(`${API_URL}/api/v1/locations`, { headers, data: { clientPublicId: client.publicId, locationType: 'DELIVERY', name, line1: 'Calle Luna 45', city: town, postalCode: zip, country: 'PR', allowDupInvoice: true } }), `consignatario ${name}`)
-    const names = ['Farmacia Sol', 'Colmado Luna', 'Taller Díaz', 'Ferretería Mar']
+    const names = ['Sunrise Pharmacy', 'Moon Market', 'Diaz Workshop', 'Sea Hardware']
     const consignees: LocationDto[] = []
     for (const [i, n] of names.entries()) consignees.push(await place(`${n} ${suffix}`, `0095${i}`))
     const orders: OrderDetailDto[] = []
@@ -242,6 +242,14 @@ test.describe('Plano de ruta, arrastrar y pin manual (Lote F-E2b)', () => {
     await expect(dialog.getByText('La latitud debe estar entre -90 y 90.')).toBeVisible()
     await expect(dialog.getByText('La longitud debe estar entre -180 y 180.')).toBeVisible()
     if (isMobile) await expectNoHorizontalScroll(page)
+    // la validación del pin es del cliente y se escribe con t(): para la captura en inglés se vuelve a validar ya en inglés
+    if (MANUAL_LANG === 'en' && !isMobile) {
+      const save = await dialog.getByRole('button', { name: 'Guardar pin' }).elementHandle()
+      await manualLang(page, 'en')
+      await save!.click()
+      await page.waitForTimeout(400)
+      await manualLang(page, 'es')
+    }
     await shot(page, isMobile, 'fe2b-pin-error', 1100, dialog)
     // tomar una posición del plano de referencia (aproximada)
     const picker = dialog.getByRole('group', { name: 'Plano de referencia para tomar una posición' })

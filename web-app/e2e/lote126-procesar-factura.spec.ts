@@ -6,6 +6,10 @@ import { expect, test } from '@playwright/test'
 
 import { API_URL, apiHeaders, createClient, createConsignee, createOrder, enableModule, login, ok, shot } from './staffHelpers'
 
+import { MANUAL_LANG } from './manualLang'
+
+const EN = MANUAL_LANG === 'en'
+const CN = EN ? 'Invoice' : 'Factura'
 test.use({ locale: 'es-PR' })
 test.setTimeout(240_000)
 
@@ -15,12 +19,12 @@ test('Procesar entregas: la factura de una orden sin COD se coteja contra la ord
   await enableModule(request, 'COD')
   await enableModule(request, 'LTL_GROUND')
   const headers = await apiHeaders(request)
-  const client = await createClient(request, headers, `Factura ${suffix}`)
-  const consignee = await createConsignee(request, headers, client.publicId, `Colmado ${suffix}`)
+  const client = await createClient(request, headers, `${CN} ${suffix}`)
+  const consignee = await createConsignee(request, headers, client.publicId, `${EN ? 'Grocery' : 'Colmado'} ${suffix}`)
   const delivered = await createOrder(request, headers, client.publicId, consignee.publicId)
   const open = await createOrder(request, headers, client.publicId, consignee.publicId)
   // la entregada: registrar la entrega desde la web (Lote 118) la lleva a Entregada brincando lo que falte
-  await ok(request.post(`${API_URL}/api/v1/orders/${delivered.publicId}/delivery`, { headers, data: { recipientName: `Ana ${suffix}` } }), 'entrega')
+  await ok(request.post(`${API_URL}/api/v1/orders/${delivered.publicId}/delivery`, { headers, data: { recipientName: `${EN ? 'Anne' : 'Ana'} ${suffix}` } }), 'entrega')
   const detail = await ok<{ clientInvoiceNumber: string }>(request.get(`${API_URL}/api/v1/orders/${delivered.publicId}`, { headers }), 'ficha')
   const openDetail = await ok<{ clientInvoiceNumber: string }>(request.get(`${API_URL}/api/v1/orders/${open.publicId}`, { headers }), 'ficha')
 
@@ -43,8 +47,8 @@ test('Procesar entregas: la factura de una orden sin COD se coteja contra la ord
     request.post(`${API_URL}/api/v1/cod/reconcile`, { headers, data: { codes: [{ code: detail.clientInvoiceNumber }, { code: openDetail.clientInvoiceNumber }], dryRun: true, clientPublicId: client.publicId } }), 'por factura')
   expect(byInvoice.items.map((i) => i.result)).toEqual(['INVOICE_CHECKED', 'NOT_DELIVERED'])
   // en la pantalla: se elige el cliente de las hojas (los números se repiten entre clientes) y se teclean los números de factura
-  await page.locator('#cod-client').fill(`Factura ${suffix}`)
-  await page.getByRole('option', { name: new RegExp(`Factura ${suffix}`) }).click()
+  await page.locator('#cod-client').fill(`${CN} ${suffix}`)
+  await page.getByRole('option', { name: new RegExp(`${CN} ${suffix}`) }).click()
   await page.getByLabel('Códigos escritos a mano').fill(`${detail.clientInvoiceNumber} ${openDetail.clientInvoiceNumber}`)
   await page.getByRole('button', { name: 'Agregar' }).click()
   await expect(page.getByText('Códigos por procesar (2)')).toBeVisible()

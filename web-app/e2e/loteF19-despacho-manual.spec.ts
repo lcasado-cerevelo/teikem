@@ -10,7 +10,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
-import { manualImgDir, manualLang } from './manualLang'
+import { manualImgDir, manualLang, nm } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -18,7 +18,7 @@ type AuthResultDto = components['schemas']['AuthResultDto']
 const API_URL = process.env.API_URL ?? 'http://localhost:5000'
 const ADMIN = { email: process.env.TEIKEM_ADMIN_EMAIL ?? 'teikem+admin@cerevelo.com', password: process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!' }
 const IMG_DIR = manualImgDir(fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url)))
-const WAREHOUSE = 'ALM-01 · Almacén principal'
+const WAREHOUSE = nm('ALM-01 · Almacén principal')
 /** Sufijo solo de letras (los dígitos del sello pasan a letras). */
 const LETTERS = String(Date.now())
   .slice(-6)
@@ -104,8 +104,10 @@ async function seed(request: APIRequestContext, variant: 'D' | 'M'): Promise<See
   const zones = await ok<{ id: number; code: string }[]>(request.get(`${API_URL}/api/v1/warehouses/${wh}/zones`, { headers }), 'zonas')
   const zone = zones.find((z) => z.code === 'RSV')!.id
   const sku = `DM-${suffix}`
+  // dueño del producto: un cliente con nombre en inglés (sin dueño, el libro de movimientos dice «Propio», texto solo en español del servidor)
+  const owner = await ok<{ publicId: string }>(request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: `Harbor Medical ${suffix}` } }), 'dueño')
   const created = await ok<{ product: { publicId: string } }>(
-    request.post(`${API_URL}/api/v1/products`, { headers, data: { sku, name: `Muestra médica ${suffix}`, trackingType: 'NONE' } }),
+    request.post(`${API_URL}/api/v1/products`, { headers, data: { sku, name: `Medical sample ${suffix}`, trackingType: 'NONE', ownerClientPublicId: owner.publicId } }),
     'producto',
   )
   const productPublicId = created.product.publicId

@@ -9,6 +9,9 @@
 // Solo escritorio: el recorrido es de teclado (en el móvil la rápida es una tarjeta táctil).
 import { expect, test } from '@playwright/test'
 import { API_URL, LETTERS, apiHeaders, createClient, login, ok, shot } from './staffHelpers'
+import { MANUAL_LANG, manualServerEnglish } from './manualLang'
+
+const EN = MANUAL_LANG === 'en'
 
 test.use({ locale: 'es-PR' })
 test.setTimeout(180_000)
@@ -40,9 +43,10 @@ test.describe('Consignatario nuevo en línea — solo con teclado (Lote 213)', (
     test.skip(testInfo.project.name.startsWith('movil'), 'recorrido de teclado: solo escritorio')
     const suffix = `D${LETTERS}`
     const headers = await apiHeaders(request)
-    const client = await createClient(request, headers, `Cliente L213 rápida ${suffix}`)
-    const newName = `Tienda Nueva L213 ${suffix}`
+    const client = await createClient(request, headers, `${EN ? 'Client L213 quick' : 'Cliente L213 rápida'} ${suffix}`)
+    const newName = `${EN ? 'New Store L213' : 'Tienda Nueva L213'} ${suffix}`
 
+    await manualServerEnglish(page, '**/api/v1/catalogs/**')
     await login(page)
     await page.goto('/orders')
     await page.getByRole('button', { name: /Nuevo envío/ }).click()
@@ -72,7 +76,7 @@ test.describe('Consignatario nuevo en línea — solo con teclado (Lote 213)', (
     // Enter con faltantes: el foco se queda en el primer faltante y sale el mensaje
     await page.keyboard.press('Enter')
     await expect(panel.getByText('La dirección (línea 1) es obligatoria.')).toBeVisible()
-    await page.keyboard.type('Calle Luna 3')
+    await page.keyboard.type(EN ? 'Moon St 3' : 'Calle Luna 3')
     await page.keyboard.press('Enter')
     await expect(panel.getByText('La ciudad es obligatoria.')).toBeVisible()
     await expect(panel.getByRole('combobox')).toBeFocused()
@@ -92,7 +96,7 @@ test.describe('Consignatario nuevo en línea — solo con teclado (Lote 213)', (
 
     const created = (await consigneesOf(request, headers, client.publicId)).find((c) => c.name === newName)
     expect(created, 'el consignatario quedó en el catálogo').toBeTruthy()
-    expect(created?.line1).toBe('Calle Luna 3')
+    expect(created?.line1).toBe(EN ? 'Moon St 3' : 'Calle Luna 3')
     expect(created?.clientPublicId).toBe(client.publicId)
   })
 
@@ -100,9 +104,10 @@ test.describe('Consignatario nuevo en línea — solo con teclado (Lote 213)', (
     test.skip(testInfo.project.name.startsWith('movil'), 'recorrido de teclado: solo escritorio')
     const suffix = `D${LETTERS}`
     const headers = await apiHeaders(request)
-    const client = await createClient(request, headers, `Cliente L213 detallada ${suffix}`)
-    const newName = `Colmado Nuevo L213 ${suffix}`
+    const client = await createClient(request, headers, `${EN ? 'Client L213 detailed' : 'Cliente L213 detallada'} ${suffix}`)
+    const newName = `${EN ? 'New Grocery L213' : 'Colmado Nuevo L213'} ${suffix}`
 
+    await manualServerEnglish(page, '**/api/v1/catalogs/**')
     await login(page)
     await page.goto('/orders')
     await page.getByRole('button', { name: /Nuevo envío/ }).click()
@@ -121,7 +126,7 @@ test.describe('Consignatario nuevo en línea — solo con teclado (Lote 213)', (
     const panel = page.getByTestId('consignee-inline')
     await expect(panel).toBeVisible()
     await expect(panel.getByLabel(/^Dirección/)).toBeFocused()
-    await page.keyboard.type('Calle Sol 9')
+    await page.keyboard.type(EN ? 'Sun St 9' : 'Calle Sol 9')
     await page.keyboard.press('Tab')
     await expect(panel.getByRole('combobox')).toBeFocused()
     await pickTown(page, 'ponce')

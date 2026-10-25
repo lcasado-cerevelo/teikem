@@ -7,7 +7,8 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
-import { manualImgDir, manualLang } from './manualLang'
+import { execFileSync } from 'node:child_process'
+import { MANUAL_LANG, manualImgDir, manualLang } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -63,7 +64,7 @@ test('Computadora de confianza: confirmar por correo la primera vez, reconocerla
   const adminToken = (await apiLogin(request, ADMIN, ADMIN_BROWSER)).tokens?.accessToken
   expect(adminToken).toBeTruthy()
   const headers = { Authorization: `Bearer ${adminToken}` }
-  const user = { email: `pc.${suffix}@teikem.local`, password: `Pc_${suffix}_2026!xyz`, fullName: `Computadora Prueba ${suffix}` }
+  const user = { email: `pc.${suffix}@teikem.local`, password: `Pc_${suffix}_2026!xyz`, fullName: `${MANUAL_LANG === 'en' ? 'Test Computer' : 'Computadora Prueba'} ${suffix}` }
   const created = await request.post(`${API_URL}/api/v1/users`, { headers, data: { email: user.email, fullName: user.fullName, password: user.password, roles: [] } })
   expect(created.ok(), await created.text()).toBeTruthy()
   const userId = ((await created.json()) as { user: { id: number } }).user.id
@@ -71,6 +72,17 @@ test('Computadora de confianza: confirmar por correo la primera vez, reconocerla
   // con la función apagada en este API el recorrido no aplica
   const probe = await request.post(`${API_URL}/api/v1/auth/login`, { data: { email: user.email, password: user.password, trustedBrowserToken: 'p'.repeat(64) } })
   test.skip(((await probe.json()) as AuthResultDto).status !== 'browser_confirmation_required', 'Auth:TrustedBrowsers no está encendido en este API')
+
+  // si el API exige el documento legal, el usuario nuevo lo acepta por API (con otra marca de computadora) para que la pantalla de Mi cuenta no quede tapada por él
+  const userSession = (await apiLogin(request, user, 'l'.repeat(64))).tokens?.accessToken
+  if (userSession) {
+    const uh = { Authorization: `Bearer ${userSession}` }
+    const st = (await (await request.get(`${API_URL}/api/v1/legal/status`, { headers: uh })).json()) as { required?: boolean; currentVersion?: string }
+    if (st.required) await request.post(`${API_URL}/api/v1/legal/accept`, { headers: uh, data: { version: st.currentVersion, lang: 'es' } })
+    // y esa computadora auxiliar se quita para que la lista de Mi cuenta solo muestre la del navegador del recorrido
+    const mine = (await (await request.get(`${API_URL}/api/v1/auth/trusted-browsers`, { headers: { ...uh, 'X-Trusted-Browser': 'l'.repeat(64) } })).json()) as { publicId: string }[]
+    for (const b of mine) await request.delete(`${API_URL}/api/v1/auth/trusted-browsers/${b.publicId}`, { headers: uh })
+  }
 
   if (!isMobile) await page.setViewportSize({ width: 1280, height: 900 })
 
@@ -100,6 +112,12 @@ test('Computadora de confianza: confirmar por correo la primera vez, reconocerla
   await expect(panel).toBeVisible({ timeout: 20_000 })
   await expect(panel.getByText('Esta computadora', { exact: true }).first()).toBeVisible()
   expect(await noHScroll(page)).toBe(true)
+  if (MANUAL_LANG === 'en' && process.env.E2E_SQL_DB) {
+    // el servidor arma «Chrome en Windows» solo en español al registrar la computadora: en la base de pruebas se pasa a «Chrome on Windows» para la captura en inglés
+    execFileSync('sqlcmd', ['-S', process.env.E2E_SQL_SERVER ?? 'localhost,1433', '-E', '-C', '-I', '-d', process.env.E2E_SQL_DB, '-Q', "UPDATE dbo.TrustedBrowser SET Label = REPLACE(Label, N' en ', N' on ') WHERE Label LIKE N'% en %' AND CreatedAtUtc > DATEADD(HOUR, -2, SYSUTCDATETIME())"])
+    await page.reload()
+    await expect(panel).toBeVisible({ timeout: 20_000 })
+  }
   await shot(page, isMobile, 'l100-lista')
 
   // 5) otra computadora (otro contexto: otro almacenamiento) vuelve a pedir confirmación

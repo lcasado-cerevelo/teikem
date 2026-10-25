@@ -13,7 +13,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
-import { manualImgDir, manualLang } from './manualLang'
+import { manualImgDir, manualLang, nm } from './manualLang'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -22,7 +22,7 @@ type ReceiptDetailDto = components['schemas']['ReceiptDetailDto']
 
 const API_URL = process.env.API_URL ?? 'http://localhost:5000'
 const ADMIN = { email: process.env.TEIKEM_ADMIN_EMAIL ?? 'teikem+admin@cerevelo.com', password: process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!' }
-const WAREHOUSE = 'ALM-01 · Almacén principal'
+const WAREHOUSE = nm('ALM-01 · Almacén principal')
 // único por proceso y por proyecto (escritorio y móvil corren a la vez): sufijo aleatorio para no repetir SKU ni código de posición
 const STAMP = `${Date.now()}${Math.floor(Math.random() * 1000)}`
 const SKU_A = `P16A-${STAMP}`
@@ -127,8 +127,14 @@ async function buildFixture(request: APIRequestContext, skus: string[]): Promise
   const whs = (await (await request.get(`${API_URL}/api/v1/warehouses`, { headers })).json()) as WarehouseDto[]
   const warehouse = whs.find((w) => w.code === 'ALM-01')
   expect(warehouse, 'la demo necesita el almacén ALM-01').toBeTruthy()
-  const binsRes = await request.get(`${API_URL}/api/v1/warehouses/${warehouse?.publicId}/bins?take=500`, { headers })
-  const bins = ((await binsRes.json()) as { items?: { id?: number; code?: string; zoneId?: number; zoneTypeCode?: string }[] }).items ?? []
+  // el API topa 'take' en 200: se recorre por páginas
+  const bins: { id?: number; code?: string; zoneId?: number; zoneTypeCode?: string }[] = []
+  for (let skip = 0; skip < 5000; skip += 200) {
+    const binsRes = await request.get(`${API_URL}/api/v1/warehouses/${warehouse?.publicId}/bins?take=200&skip=${skip}`, { headers })
+    const page = ((await binsRes.json()) as { items?: typeof bins }).items ?? []
+    bins.push(...page)
+    if (page.length < 200) break
+  }
   const binIds = new Map<string, number>()
   for (const b of bins) if (b.code && b.id != null) binIds.set(b.code, b.id)
   expect(binIds.has(QUARANTINE_BIN), 'ALM-01 necesita la posición de cuarentena Q-01').toBeTruthy()
@@ -137,7 +143,7 @@ async function buildFixture(request: APIRequestContext, skus: string[]): Promise
 
   const products: Record<string, string> = {}
   for (const sku of skus) {
-    const created = await request.post(`${API_URL}/api/v1/products`, { headers, data: { sku, name: `Producto recibo directo e2e ${STAMP} ${sku}`, trackingType: 'NONE' } })
+    const created = await request.post(`${API_URL}/api/v1/products`, { headers, data: { sku, name: `Direct receipt e2e product ${STAMP} ${sku}`, trackingType: 'NONE' } })
     expect(created.ok(), await created.text()).toBeTruthy()
     products[sku] = ((await created.json()) as { product: { publicId: string } }).product.publicId
   }

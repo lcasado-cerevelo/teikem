@@ -13,7 +13,9 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
-import { manualImgDir, manualLang, manualTarget } from './manualLang'
+import { MANUAL_LANG, manualImgDir, manualLang, manualServerEnglish, manualTarget } from './manualLang'
+
+const EN = MANUAL_LANG === 'en'
 import type { components } from '../src/kernel/api/schema'
 import { contractData, withRates } from './rates'
 
@@ -121,7 +123,7 @@ test.describe('Órdenes — entrada rápida e importación (Lote F-C3)', () => {
   test('entrada rápida: Enter guarda una orden por fila, validaciones, cliente que asigna el número y el segmentado recuerda la elección', async ({ page, request }, testInfo) => {
     const isMobile = testInfo.project.name.startsWith('movil')
     const suffix = `${isMobile ? 'M' : 'D'}${LETTERS}`
-    const clientName = `Cliente FC3 ${suffix}`
+    const clientName = `${EN ? 'Client FC3' : 'Cliente FC3'} ${suffix}`
     const clientNumName = `Cliente Num FC3 ${suffix}`
     const headers = { Authorization: `Bearer ${await apiToken(request)}` }
     const place = (clientPublicId: string | null | undefined, name: string, line1: string, city: string, zip: string) =>
@@ -138,10 +140,11 @@ test.describe('Órdenes — entrada rápida e importación (Lote F-C3)', () => {
       request.patch(`${API_URL}/api/v1/clients/${clientNum.publicId}/number-settings`, { headers, data: { clientAssignsOrderNumber: true } }),
       'el cliente asigna su número de envío',
     )
-    const cons1 = await place(client.publicId, `Farmacia Sol FC3 ${suffix}`, 'Calle Sol 123', 'Ponce', '00716')
-    const cons2 = await place(client.publicId, `Colmado Luna FC3 ${suffix}`, 'Calle Luna 45', 'Bayamón', '00959')
-    const consNum = await place(clientNum.publicId, `Tienda Numerada FC3 ${suffix}`, 'Calle Norte 7', 'Arecibo', '00612')
+    const cons1 = await place(client.publicId, `${EN ? 'Sun Pharmacy' : 'Farmacia Sol'} FC3 ${suffix}`, EN ? 'Sun St 123' : 'Calle Sol 123', 'Ponce', '00716')
+    const cons2 = await place(client.publicId, `${EN ? 'Moon Grocery' : 'Colmado Luna'} FC3 ${suffix}`, EN ? 'Moon St 45' : 'Calle Luna 45', 'Bayamón', '00959')
+    const consNum = await place(clientNum.publicId, `${EN ? 'Numbered Store' : 'Tienda Numerada'} FC3 ${suffix}`, EN ? 'North St 7' : 'Calle Norte 7', 'Arecibo', '00612')
 
+    await manualServerEnglish(page, '**/api/v1/catalogs/**')   // etiquetas de paquete/servicio de las filas guardadas en inglés
     await login(page)
     await page.goto('/orders')
     await expect(page.getByRole('heading', { level: 1, name: 'Envíos' })).toBeVisible()
@@ -163,8 +166,12 @@ test.describe('Órdenes — entrada rápida e importación (Lote F-C3)', () => {
     await clientBox.click()
     await clientBox.fill(clientName)
     await page.getByRole('option', { name: new RegExp(clientName) }).first().click()
-    await qk.getByRole('button', { name: 'Guardar fila' }).click()
-    await expect(qk.getByText('El consignatario es obligatorio: elija uno del directorio o capture uno nuevo.')).toBeVisible()
+    // el mensaje se arma al guardar: se guarda ya en inglés (el botón se resuelve antes del cambio de idioma)
+    const saveRow = await manualTarget(qk.getByRole('button', { name: 'Guardar fila' }))
+    await manualLang(page, 'en', 'fc3 validación')
+    await saveRow.click()
+    await expect(qk.getByText(/El consignatario es obligatorio|The consignee is required/)).toBeVisible()
+    await manualLang(page, 'es')
     await expect(qk.getByRole('combobox', { name: 'Consignatario' })).toBeFocused()
     await page.keyboard.press('Escape') // la lista del consignatario se abre sola al enfocarlo: se cierra para la captura
     await shot(page, isMobile, 'fc3-rapida-validacion', 900, page.locator('.oe-wrap'))
@@ -174,7 +181,7 @@ test.describe('Órdenes — entrada rápida e importación (Lote F-C3)', () => {
     const consBox = qk.getByRole('combobox', { name: 'Consignatario' })
     await consBox.click()
     await page.getByRole('option', { name: new RegExp(cons1.name ?? '') }).click()
-    await expect(qk.getByText('Calle Sol 123 · Ponce')).toBeVisible()
+    await expect(qk.getByText(`${EN ? 'Sun St 123' : 'Calle Sol 123'} · Ponce`)).toBeVisible()
     // la compañía demo puede no tener servicio ni paquete predeterminados: se eligen en la primera fila
     for (const label of ['Paquete', 'Servicio']) if ((await qk.getByLabel(label, { exact: true }).inputValue()) === '') await qk.getByLabel(label, { exact: true }).selectOption({ index: 1 })
     if (!isMobile) {
@@ -186,7 +193,7 @@ test.describe('Órdenes — entrada rápida e importación (Lote F-C3)', () => {
       await expect(qk.getByLabel('COD ($)')).toBeFocused()
     }
     await qk.getByLabel('COD ($)').fill('25')
-    await qk.getByLabel('Comentario').fill('Llamar antes de entregar')
+    await qk.getByLabel('Comentario').fill(EN ? 'Call before delivering' : 'Llamar antes de entregar')
     await qk.getByLabel('COD ($)').press('Enter')
     const saved1 = qk.locator('tr.saved').first()
     await expect(saved1.getByRole('link', { name: /^ORD-/ })).toBeVisible()
