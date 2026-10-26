@@ -415,13 +415,13 @@ public sealed class IntegrationRunner(
     {
         var outcomes = new List<FileOutcome>();
         mailDate = m.DateUtc is { } received ? (clock ?? Teikem.Infrastructure.Abstractions.TenantClock.Default).DayOf(DateTime.SpecifyKind(received, DateTimeKind.Utc)) : null;
-        if (!EmailRules.TextMatches(m.Subject, cfg.Subject)) return outcomes;   // otro tema: no es de esta integración
+        if (!EmailRules.TextMatches(m.Subject, cfg.Subject)) { logger.LogInformation("Integración {Integration}: se salta el correo «{Subject}»: el asunto no cumple la condición de la integración.", integration.IntegrationId, m.Subject); return outcomes; }   // otro tema: no es de esta integración
         var label = $"correo: {(string.IsNullOrWhiteSpace(m.Subject) ? m.MessageId : m.Subject)}";
         var messageSha = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(m.MessageId))).ToLowerInvariant();
         var sender = EmailRules.OriginalSender(m);
         if (!EmailRules.SenderAllowed(sender, cfg.AllowedSenders))
         {
-            if (silentSkip) return outcomes;   // del buzón: lo que no viene de un remitente permitido se salta sin llegar a la bandeja (queda anotado como ya atendido)
+            if (silentSkip) { logger.LogInformation("Integración {Integration}: se salta el correo «{Subject}»: el remitente original ({Sender}) no está en los permitidos.", integration.IntegrationId, m.Subject, sender ?? m.From); return outcomes; }   // del buzón: lo que no viene de un remitente permitido se salta sin llegar a la bandeja (queda anotado como ya atendido)
             outcomes.Add(Failed(integration, run, label, messageSha, 0, EmailRules.SenderNotAllowedMessage(sender ?? m.From)));
             return outcomes;
         }
