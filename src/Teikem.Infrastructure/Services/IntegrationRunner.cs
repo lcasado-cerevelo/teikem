@@ -194,7 +194,15 @@ public sealed class IntegrationRunner(
         run.FinishedUtc = finished;
         run.Message = Truncate(message, 1000);
         db.IntegrationRuns.Update(run);
-        await db.SaveChangesAsync(ct);
+        try { await db.SaveChangesAsync(ct); }
+        catch (DbUpdateException ex)
+        {
+            // la corrida SIEMPRE se cierra y suelta su reserva, aunque algo pendiente en el contexto no se pueda guardar (antes quedaba en «Corriendo» hasta vencer la reserva)
+            logger.LogError(ex, "No se pudo guardar el cierre de la corrida {Run} de la integración {Integration}; se cierra por otra vía.", run.IntegrationRunId, integration.IntegrationId);
+            db.ChangeTracker.Clear();
+            await db.IntegrationRuns.Where(r => r.IntegrationRunId == run.IntegrationRunId).ExecuteUpdateAsync(u => u
+                .SetProperty(r => r.Status, status).SetProperty(r => r.FinishedUtc, finished).SetProperty(r => r.Message, Truncate(message, 1000)), ct);
+        }
         var next = trigger == IntegrationTriggers.Schedule || integration.NextRunUtc is not null ? IntegrationRules.NextRun(integration.ScheduleKind, integration.IntervalSeconds, finished) : null;
         await db.Integrations.Where(i => i.IntegrationId == integration.IntegrationId).ExecuteUpdateAsync(s => s
             .SetProperty(i => i.LastStatus, status).SetProperty(i => i.LastFinishedUtc, finished).SetProperty(i => i.LastMessage, Truncate(message, 400))
@@ -374,15 +382,29 @@ public sealed class IntegrationRunner(
     private async Task<ISet<string>> MailKeysLoggedAsync(Integration integration, IReadOnlyList<string> keys, CancellationToken ct)
     {
         var found = await db.IntegrationMailLogs.AsNoTracking().Where(l => l.IntegrationId == integration.IntegrationId && keys.Contains(l.MessageKey)).Select(l => l.MessageKey).ToListAsync(ct);
-        return found.ToHashSet(StringComparer.Ordinal);
+        return found.ToHashSet(StringComparer.OrdinalIgnoreCase);   // la base compara sin distinguir mayúsculas: «ya lo tiene» también lo es
     }
 
     /// <summary>Anota en el log de Teikem que estos correos ya se atendieron: el «ya lo leí», sin tocar el buzón.</summary>
     private async Task LogMailKeysAsync(Integration integration, IntegrationRun run, IReadOnlyList<string> keys, CancellationToken ct)
     {
-        foreach (var key in keys)
-            db.IntegrationMailLogs.Add(new IntegrationMailLog { TenantId = integration.TenantId, IntegrationId = integration.IntegrationId, IntegrationRunId = run.IntegrationRunId, MessageKey = key, ProcessedUtc = DateTime.UtcNow });
-        await db.SaveChangesAsync(ct);
+        // 2026-10-26: solo las claves que el log todavía no tiene (y sin repetirlas): una clave repetida rompía el índice único, el fallo se tragaba en el ciclo del buzón y las filas
+        // quedaban pendientes en el contexto: el guardado final de la corrida volvía a fallar y la integración se quedaba en «Corriendo» para siempre.
+        var wanted = keys.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var have = (await db.IntegrationMailLogs.AsNoTracking().Where(l => l.IntegrationId == integration.IntegrationId && wanted.Contains(l.MessageKey)).Select(l => l.MessageKey).ToListAsync(ct)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var added = new List<IntegrationMailLog>();
+        foreach (var key in wanted.Where(k => !have.Contains(k)))
+        {
+            var row = new IntegrationMailLog { TenantId = integration.TenantId, IntegrationId = integration.IntegrationId, IntegrationRunId = run.IntegrationRunId, MessageKey = key, ProcessedUtc = DateTime.UtcNow };
+            db.IntegrationMailLogs.Add(row);
+            added.Add(row);
+        }
+        try { await db.SaveChangesAsync(ct); }
+        catch
+        {
+            foreach (var row in added) db.Entry(row).State = EntityState.Detached;   // lo que no se pudo guardar no se queda pendiente para el guardado de la corrida
+            throw;
+        }
     }
 
     /// <summary>
