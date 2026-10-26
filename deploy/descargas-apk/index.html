@@ -70,11 +70,31 @@
     <div class="card featured">
       <div class="info">
         <span class="badge">RECOMENDADA</span>
-        <div class="name">Última versión</div>
-        <div class="desc">Versión estable para uso diario</div>
+        <div class="name">Última versión — Teikem Almacén</div>
+        <div class="desc">App del almacén (recibir, acomodar, recolectar, contar, despachar). Versión estable para uso diario.</div>
         <div class="ver" id="v-ultima"></div>
       </div>
       <a class="btn" href="apk/teikem-almacen.apk">Descargar</a>
+    </div>
+
+    <div class="card">
+      <div class="info">
+        <span class="badge">PORTAL DEL CLIENTE</span>
+        <div class="name">Teikem Portal</div>
+        <div class="desc">App del portal del cliente (sus órdenes, almacén, avisos y cuenta).</div>
+        <div class="ver" id="v-portal"></div>
+      </div>
+      <a class="btn" id="b-portal" href="apk/teikem-portal.apk">Descargar</a>
+    </div>
+
+    <div class="card">
+      <div class="info">
+        <span class="badge">PERSONAL Y CHOFERES</span>
+        <div class="name">Advance App</div>
+        <div class="desc">App móvil del personal y de los choferes (rutas, escaneo de paquetes, órdenes, entregas, mensajes).</div>
+        <div class="ver" id="v-movil"></div>
+      </div>
+      <a class="btn" id="b-movil" href="apk/teikem-movil.apk">Descargar</a>
     </div>
 
     <div class="card staging">
@@ -103,11 +123,21 @@
     <div class="card test">
       <div class="info">
         <span class="badge green">TEST · PORTAL DEL CLIENTE</span>
-        <div class="name">Teikem Clientes TEST</div>
+        <div class="name">Teikem Portal TEST</div>
         <div class="desc">App del portal del cliente (órdenes, avisos y cuenta). La misma web: <a href="https://test-portal.advancelogisticspr.com">test-portal.advancelogisticspr.com</a>. Solo existe en test por ahora.</div>
         <div class="ver" id="v-clientes-test"></div>
       </div>
       <a class="btn green" id="b-clientes-test" href="https://test.advancelogisticspr.com/descargas/apk/teikem-clientes-test.apk">Descargar</a>
+    </div>
+
+    <div class="card test">
+      <div class="info">
+        <span class="badge green">TEST · PERSONAL Y CHOFERES</span>
+        <div class="name">Advance App TEST</div>
+        <div class="desc">App móvil del personal y de los choferes contra el ambiente de test. Se instala junto a la de producción.</div>
+        <div class="ver" id="v-movil-test"></div>
+      </div>
+      <a class="btn green" id="b-movil-test" href="https://test.advancelogisticspr.com/descargas/apk/teikem-movil-test.apk">Descargar</a>
     </div>
   </div>
 
@@ -139,8 +169,10 @@
 
 <script>
   // versions.json (junto a este archivo) controla los números mostrados:
-  // { "ultima": "1.0.0", "staging": "1.0.0", "test": "1.0.0 (c2)", "clientes-test": "1.0.0 (c2)" }
-  // Las de test: sin su clave la tarjeta dice que aún no se publicó y apaga el botón (los APK viven en el servidor de test).
+  // { "ultima": "1.0.0 (c5)", "staging": "1.0.0 (c3)", "portal": "1.0.0 (c2)", "movil": "1.3.0 (c2)",
+  //   "test": "1.0.0 (c3)", "clientes-test": "1.0.0 (c3)", "movil-test": "1.3.0 (c2)" }
+  // Lo escribe scripts\versiones-descargas.ps1 a partir de los APK de F:\Download\TeikemApp (y copia a apk\ los de producción y staging).
+  // Sin su clave, la tarjeta dice que aún no se publicó y apaga el botón (los APK de test viven en el servidor de test).
   fetch('versions.json', { cache: 'no-store' })
     .then(function (r) { return r.json(); })
     .then(function (v) {
@@ -148,7 +180,13 @@
         var el = document.getElementById('v-' + k);
         if (v[k] && el) el.textContent = 'Versión ' + v[k];
       });
-      ['test', 'clientes-test'].forEach(function (k) {
+      ['portal', 'movil'].forEach(function (k) {
+        var el = document.getElementById('v-' + k), btn = document.getElementById('b-' + k);
+        if (!el) return;
+        if (v[k]) { el.textContent = 'Versión ' + v[k]; }
+        else { el.textContent = 'Todavía no se publicó el APK de producción de esta app.'; el.className = 'ver missing'; if (btn) btn.className = 'btn disabled'; }
+      });
+      ['test', 'clientes-test', 'movil-test'].forEach(function (k) {
         var el = document.getElementById('v-' + k), btn = document.getElementById('b-' + k);
         if (!el) return;
         if (v[k]) { el.textContent = 'Versión ' + v[k]; }

@@ -14,7 +14,7 @@ export default function Root({ children }: PropsWithChildren) {
         <style dangerouslySetInnerHTML={{ __html: 'html,body{background:#F1F3F8}@media (prefers-color-scheme: dark){html,body{background:#0B1220}}' }} />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
-        <title>Teikem Clientes</title>
+        <title>Teikem / Portal</title>
         <ScrollViewStyleReset />
       </head>
       <body>{children}</body>

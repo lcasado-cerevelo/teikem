@@ -9,11 +9,14 @@
   No toca el servidor ni la base de datos: usted los hace.
   Uso:   powershell -ExecutionPolicy Bypass -File "F:\Visual Studio 2022\Projects\teikem\scripts\publicar-test.ps1"
   Opciones:  -SinApk (no pregunta por APK: arma el paquete con los que ya hay)   -Forzar almacen,cliente,movil (ofrece compilar esas aunque no hayan cambiado)
+             -SoloApk movil (solo considera el APK de esas apps: -SoloApk movil publica la app móvil nueva y deja los APK del almacén y de clientes como están;
+             el API, la web del personal y el portal del cliente siempre van en el paquete)
              -CarpetaApk <carpeta> (dónde están los APK; por omisión F:\Download\TeikemApp)
 #>
 param(
     [switch]$SinApk,
     [ValidateSet('almacen', 'cliente', 'movil')][string[]]$Forzar = @(),
+    [ValidateSet('almacen', 'cliente', 'movil')][string[]]$SoloApk = @('almacen', 'cliente', 'movil'),
     [string]$CarpetaApk = 'F:\Download\TeikemApp'
 )
 
@@ -36,6 +39,8 @@ $apps = @(
     @{ clave = 'cliente'; nombre = 'Clientes TEST';       patron = 'TeikemClientesTest-*.apk'; extra = '-App cliente';  rutas = @('app-cliente/src', 'app-cliente/app.config.ts', 'app-cliente/package.json', 'app-cliente/assets', 'app-cliente/plugins', 'shared') },
     @{ clave = 'movil';   nombre = 'Advance App TEST (móvil del personal)'; patron = 'TeikemMovilTest-*.apk'; extra = '-App movil'; rutas = @('app-movil/src', 'app-movil/app.config.ts', 'app-movil/package.json', 'app-movil/assets', 'app-movil/plugins', 'shared') }
 )
+
+$apps = @($apps | Where-Object { $SoloApk -contains $_.clave })   # -SoloApk: solo esas apps se consideran para compilar su APK
 
 if (-not $SinApk) {
     Paso '2. ¿Qué apps móviles cambiaron desde su último APK de test?'

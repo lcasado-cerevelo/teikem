@@ -22,7 +22,7 @@ const withCleartextTraffic: ConfigPlugin = (config) =>
   })
 
 const config: ExpoConfig = {
-  name: variant === 'production' ? 'Teikem Clientes' : staging ? 'Teikem Clientes STAGING' : test ? 'Teikem Clientes TEST' : 'Teikem Clientes (dev)',
+  name: variant === 'production' ? 'Teikem Portal' : staging ? 'Teikem Portal STAGING' : test ? 'Teikem Portal TEST' : 'Teikem Portal (dev)',
   slug: 'teikem-cliente',
   version: process.env.TEIKEM_APP_VERSION || '1.0.0',
   orientation: 'portrait',
@@ -45,7 +45,7 @@ const config: ExpoConfig = {
     bundler: 'metro',
     output: 'single',
     favicon: './assets/favicon.png',
-    name: envTag ? `Teikem Clientes ${envTag.toUpperCase()}` : 'Teikem Clientes',
+    name: envTag ? `Teikem Portal ${envTag.toUpperCase()}` : 'Teikem Portal',
     shortName: 'Teikem',
     themeColor: brandBlue,
     backgroundColor: '#F1F3F8',
@@ -55,9 +55,9 @@ const config: ExpoConfig = {
     ['expo-splash-screen', { image: './assets/splash-icon.png', backgroundColor: brandBlue, resizeMode: 'contain', imageWidth: 160 }],
     'expo-secure-store',
     'expo-sharing',
-    ['expo-local-authentication', { faceIDPermission: 'Teikem Clientes usa Face ID para abrir el portal sin escribir su contraseña.' }],
+    ['expo-local-authentication', { faceIDPermission: 'Teikem Portal usa Face ID para abrir el portal sin escribir su contraseña.' }],
     // Kemi (Lote 218): hablarle en vez de escribirle usa el micrófono y el reconocimiento de voz del aparato (en el navegador, el del propio navegador)
-    ['expo-speech-recognition', { microphonePermission: 'Teikem Clientes usa el micrófono para que le pregunte a Kemi hablando.', speechRecognitionPermission: 'Teikem Clientes usa el reconocimiento de voz para entender lo que le pregunta a Kemi.', androidSpeechServicePackages: ['com.google.android.googlequicksearchbox'] }],
+    ['expo-speech-recognition', { microphonePermission: 'Teikem Portal usa el micrófono para que le pregunte a Kemi hablando.', speechRecognitionPermission: 'Teikem Portal usa el reconocimiento de voz para entender lo que le pregunta a Kemi.', androidSpeechServicePackages: ['com.google.android.googlequicksearchbox'] }],
     // APK firmado con la llave propia (TEIKEM_RELEASE_KEYSTORE_*), igual que la app del almacén; sin las variables cae a la llave de depuración
     './plugins/withAndroidReleaseSigning',
   ],
