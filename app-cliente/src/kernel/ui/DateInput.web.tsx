@@ -34,7 +34,7 @@ export function DateInput({ value, onChange, accessibilityLabel, min, max, disab
         color: c.text,
         padding: compact ? '0 8px' : '0 12px',
         fontSize: compact ? 14 : 16,
-        fontFamily: 'inherit',
+        fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',   // la misma fuente que el resto del texto (el <select> no hereda nada y caía en serif)
         colorScheme: c.bg === '#F1F3F8' ? 'light' : 'dark',
         opacity: disabled ? 0.6 : 1,
       }}

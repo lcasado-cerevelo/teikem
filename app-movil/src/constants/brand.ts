@@ -17,13 +17,13 @@ interface BrandInfo {
 const BRANDS: Record<AppVariant, BrandInfo> = {
   advance: {
     name: 'Advance App',
-    poweredBy: 'Powered by Cerevelo',
+    poweredBy: 'Powered by Teikem',
     logo: require('@assets/brands/advance/login-logo.png'),
     primaryColor: '#F1592A',
   },
   delapaz: {
     name: 'De La Paz App',
-    poweredBy: 'Powered by Cerevelo',
+    poweredBy: 'Powered by Teikem',
     logo: require('@assets/brands/delapaz/login-logo.png'),
     primaryColor: '#EC0C8C',
   },

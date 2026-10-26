@@ -113,7 +113,8 @@ const createStyles = (colors: Colors) => StyleSheet.create({
   },
   logo: { width: 120, height: 120, maxWidth: 120, maxHeight: 120 },
   forgot: { color: colors.primary, fontWeight: '600', fontSize: 15, paddingVertical: 4 },
-  formContainer: { width: '100%', justifyContent: 'center', alignItems: 'center', gap: 16 },
+  // paddingBottom/marginBottom: la sombra del botón (elevation) no debe tapar la línea de abajo del campo de contraseña
+  formContainer: { width: '100%', justifyContent: 'center', alignItems: 'center', gap: 16, paddingBottom: 12, marginBottom: 8 },
   buttonOuter: { borderRadius: 8, width: '50%', maxWidth: 200 },
   button: {
     backgroundColor: colors.primary,

@@ -16,7 +16,7 @@ export function PageHeader({ title, subtitle, children }: { title: string; subti
         <Text accessibilityRole="header" style={{ fontSize: 26, fontWeight: '800', color: c.text }}>{title}</Text>
         {!!subtitle && <Text style={{ fontSize: 14, color: c.muted }}>{subtitle}</Text>}
       </View>
-      {!!children && <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>{children}</View>}
+      {!!children && <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, flexWrap: 'wrap' }}>{children}</View>}
     </View>
   )
 }

@@ -32,7 +32,7 @@ export function Select({ value, options, onChange, placeholder, accessibilityLab
         color: value ? c.text : c.muted,
         padding: compact ? '0 8px' : '0 12px',
         fontSize: compact ? 14 : 16,
-        fontFamily: 'inherit',
+        fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',   // la misma fuente que el resto del texto (el <select> no hereda nada y caía en serif)
         opacity: disabled ? 0.6 : 1,
         cursor: disabled ? 'default' : 'pointer',
       }}

@@ -9,10 +9,11 @@ const variant: Variant = process.env.APP_VARIANT === 'production' ? 'production'
 const staging = variant === 'staging'
 const test = variant === 'test'
 const envTag = staging ? 'staging' : test ? 'test' : null
-// Iconos de staging (morado, cinta STAGING) y test (verde, cinta TEST): `node ../scripts/brand-icons.mjs staging cliente` / `... test cliente`; no se editan a mano.
+// Iconos: el logo de Advance (de app-movil/assets/brands/advance); staging y test le agregan una franja morada STAGING / verde TEST.
 const icons = envTag ? `./assets/${envTag}` : './assets'
 const brandBlue = '#0B2C66'
-const envBackground = staging ? '#6D28D9' : test ? '#047857' : brandBlue
+// Icono de instalación: el logo de Advance Logistics (2026-10-26); el fondo del icono adaptable es blanco en todas las variantes (las de staging/test llevan su franja de color)
+const envBackground = '#FFFFFF'
 
 const withCleartextTraffic: ConfigPlugin = (config) =>
   withAndroidManifest(config, (mod) => {
@@ -36,7 +37,6 @@ const config: ExpoConfig = {
       backgroundColor: envBackground,
       foregroundImage: `${icons}/android-icon-foreground.png`,
       backgroundImage: `${icons}/android-icon-background.png`,
-      monochromeImage: `${icons}/android-icon-monochrome.png`,
     },
     // la huella: expo-local-authentication agrega USE_BIOMETRIC / USE_FINGERPRINT
   },
@@ -52,7 +52,7 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-router',
-    ['expo-splash-screen', { image: './assets/splash-icon.png', backgroundColor: brandBlue, resizeMode: 'contain', imageWidth: 160 }],
+    ['expo-splash-screen', { image: './assets/splash-icon.png', backgroundColor: '#FFFFFF', resizeMode: 'contain', imageWidth: 160 }],
     'expo-secure-store',
     'expo-sharing',
     ['expo-local-authentication', { faceIDPermission: 'Teikem Portal usa Face ID para abrir el portal sin escribir su contraseña.' }],

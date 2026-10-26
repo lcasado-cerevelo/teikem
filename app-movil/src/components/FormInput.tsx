@@ -60,7 +60,7 @@ const borderRadius = 10;
 const createStyles = (colors: Colors) => StyleSheet.create({
   container: { width: '100%', justifyContent: 'center' },
   label: { fontSize: 16, marginVertical: 4, color: colors.text },
-  inputContainer: { borderWidth: 0.5, borderColor: colors.text, borderRadius, width: '100%' },
+  inputContainer: { borderWidth: 1, borderColor: colors.text, borderRadius, width: '100%', backgroundColor: colors.background, overflow: 'hidden' },
   input: {
     width: '100%',
     borderRadius,

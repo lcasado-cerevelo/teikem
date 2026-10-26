@@ -65,7 +65,7 @@ export function HomeScreen() {
             <DataTable columns={columns} rows={recent} keyOf={(o) => String(o.publicId)} onRowPress={open} empty={summary.loading ? undefined : t('home.noOrders')} testID="home-recent" />
             {recent.length > 0 && <Button title={t('home.seeAll')} variant="secondary" onPress={() => router.push('/orders')} />}
           </View>
-          <View style={{ flex: 1, flexBasis: 280, gap: 12, minWidth: 260 }}>
+          <View style={{ flex: 1, flexBasis: 280, gap: 12, minWidth: 260, marginTop: 28 }}>   {/* 28 = el rótulo «Envíos recientes» + su separación: la tarjeta arranca a la altura de la tabla */}
             <Card>
               <Text style={{ fontSize: 34, fontWeight: '800', color: colors.brand }} testID="home-total">{summary.data?.totalOrders ?? '—'}</Text>
               <Muted>{t('home.totalOrders')}</Muted>
