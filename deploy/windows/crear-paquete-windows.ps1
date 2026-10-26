@@ -43,6 +43,9 @@ New-Item -ItemType Directory -Force (Join-Path $stage 'app') | Out-Null
 Paso 'Publicando el API'
 dotnet publish (Join-Path $repo 'src\Teikem.Api\Teikem.Api.csproj') -c Release -o (Join-Path $stage 'app') -p:UseAppHost=false --nologo -v q
 if ($LASTEXITCODE -ne 0) { Fallar 'dotnet publish falló.' }
+# 2026-10-26: el registro de lo que escribe el sitio (logs) va ENCENDIDO en el paquete. Quien actualiza copiando los archivos (sin correr el instalador) pisa el web.config del servidor con este: publicado en falso apagaba los logs en cada copia.
+$wcPaquete = Join-Path $stage 'app\web.config'
+if (Test-Path $wcPaquete) { [IO.File]::WriteAllText($wcPaquete, ([IO.File]::ReadAllText($wcPaquete) -replace 'stdoutLogEnabled="false"', 'stdoutLogEnabled="true"'), (New-Object Text.UTF8Encoding $true)) }
 
 Paso 'Juntando la web con el API (wwwroot)'
 Copy-Item (Join-Path $repo 'web-app\dist') (Join-Path $stage 'app\wwwroot') -Recurse
