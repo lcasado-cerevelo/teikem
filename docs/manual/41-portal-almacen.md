@@ -52,3 +52,6 @@ Errores: 403 «Su compañía no le permite crear productos desde el portal.» / 
 | Cambiar la cantidad de una línea | `PATCH /portal/warehouse/exits/{publicId}/lines/{lineId}` | reajusta la reserva (sube: reserva lo que haya; baja: libera primero el pendiente) |
 
 Se necesita la misma bandera de creación del cliente; lo ajeno responde 404. En la app, cada aviso editable trae el botón «Editar». Al elegir producto en un aviso de salida se ve entre paréntesis lo disponible.
+
+## Descargar inventario (reporte de existencias) — 2026-10-26
+En **Mi almacén → Existencias**, junto al buscador (como «Nuevo producto» junto al de Productos), está **«Descargar inventario»** con **Excel · CSV · PDF**. Baja el **reporte de inventario** con todas las filas que cumplen la búsqueda vigente (no solo las que se ven; hasta 5000): SKU, producto, almacén, lote, vencimiento, en mano, reservado y disponible. El título del archivo es «Reporte de inventario» y el PDF dice qué búsqueda se aplicó. Sin búsqueda baja todo el inventario. Lo ve cualquiera que vea las existencias; en el celular el botón sale arriba de la lista. El pie de la tabla conserva su «Exportar» de siempre. Probado de punta a punta (`portal-reporte-inventario.spec.ts`: el CSV trae el producto y su cantidad y el Excel baja).

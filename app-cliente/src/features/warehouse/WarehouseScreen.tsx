@@ -111,11 +111,16 @@ function StockSection({ lang }: { lang: Lang }) {
     { key: 'reserved', title: t('warehouse.reserved'), width: 100, align: 'right', render: (i) => <CellText align="right" muted>{formatQty(i.reserved, lang)}</CellText>, csv: (i) => i.reserved },
     { key: 'available', title: t('warehouse.available'), width: 110, align: 'right', render: (i) => <CellText align="right" bold>{formatQty(i.available, lang)}</CellText>, csv: (i) => i.available },
   ]
-  const exportAll = (format: ExportFormat) => list.exportAll(format, t('warehouse.sections.stock'), columns, filtersSentence([!!list.query && t('table.fSearch', { q: list.query })]))
+  const exportAll = (format: ExportFormat) => list.exportAll(format, t('warehouse.inventoryReportTitle'), columns, filtersSentence([!!list.query && t('table.fSearch', { q: list.query })]))
   if (wide) {
     return (
       <>
-        <Field label={t('warehouse.search')} value={list.search} onChangeText={list.setSearch} placeholder={t('warehouse.searchStock')} autoCapitalize="none" returnKeyType="search" testID="warehouse-search" />
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
+          <View style={{ flex: 1, minWidth: 260 }}>
+            <Field label={t('warehouse.search')} value={list.search} onChangeText={list.setSearch} placeholder={t('warehouse.searchStock')} autoCapitalize="none" returnKeyType="search" testID="warehouse-search" />
+          </View>
+          <View style={{ minHeight: 48, justifyContent: 'center' }}><ExportButton onExport={exportAll} label={t('warehouse.inventoryReport')} testID="inventory-report" /></View>
+        </View>
         <DataTable columns={columns} rows={list.items} keyOf={(i) => `${i.productPublicId}|${i.warehousePublicId}|${i.lotNumber ?? ''}|${i.expiryDate ?? ''}`} empty={list.loading ? undefined : list.query ? t('warehouse.noMatches') : t('warehouse.emptyStock')} total={list.loading && list.items.length === 0 ? undefined : list.total} onExport={exportAll} testID="stock-table" />
         {list.loading && <Spinner />}
         {!list.loading && list.items.length < list.total && <Button title={t('warehouse.loadMore', { shown: list.items.length, total: list.total })} variant="secondary" onPress={list.more} testID="warehouse-more" />}
@@ -125,6 +130,7 @@ function StockSection({ lang }: { lang: Lang }) {
   }
   return (
     <>
+      <ExportButton onExport={exportAll} label={t('warehouse.inventoryReport')} testID="inventory-report" />
       <Field label={t('warehouse.search')} value={list.search} onChangeText={list.setSearch} placeholder={t('warehouse.searchStock')} autoCapitalize="none" returnKeyType="search" testID="warehouse-search" />
       {list.items.map((i, n) => (
         <Card key={`${i.productPublicId}|${i.warehousePublicId}|${i.lotNumber ?? ''}|${n}`}>

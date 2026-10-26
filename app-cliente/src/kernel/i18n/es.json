@@ -22,6 +22,8 @@
   "warehouse": {
     "title": "Mi almacén",
     "search": "Buscar",
+    "inventoryReport": "Descargar inventario",
+    "inventoryReportTitle": "Reporte de inventario",
     "searchStock": "SKU, nombre, código de barras, lote o almacén",
     "searchMovements": "SKU, nombre, código de barras, lote, serie o nota",
     "searchArrivals": "Número, referencia u orden de compra",

@@ -51,7 +51,7 @@ export interface Column<T> {
 }
 
 /** «Exportar» de una tabla o lista (2026-10-23, pedido de Luis: como en la web del personal, se exporta TODO lo filtrado y en varios formatos): Excel, CSV y PDF en la web; solo CSV en el teléfono. `onExport` trae las filas y baja el archivo. */
-export function ExportButton({ onExport, testID = 'export', link }: { onExport: (format: ExportFormat) => Promise<void>; testID?: string; link?: boolean }) {
+export function ExportButton({ onExport, testID = 'export', link, label }: { onExport: (format: ExportFormat) => Promise<void>; testID?: string; link?: boolean; label?: string }) {
   const c = useColors()
   const { t } = useT()
   const [busy, setBusy] = useState<ExportFormat | null>(null)
@@ -70,7 +70,7 @@ export function ExportButton({ onExport, testID = 'export', link }: { onExport: 
   }
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }} testID={testID}>
-      <Text style={{ fontSize: link ? 12 : 13, fontWeight: '700', color: c.muted }}>{t('table.export')}</Text>
+      <Text style={{ fontSize: link ? 12 : 13, fontWeight: '700', color: c.muted }}>{label ?? t('table.export')}</Text>
       {exportFormats().map((f) => (
         <Pressable key={f} accessibilityRole="button" accessibilityLabel={`${t('table.export')} ${t(`table.format.${f}`)}`} accessibilityState={{ busy: busy === f, disabled: !!busy }} testID={`${testID}-${f}`} disabled={!!busy} onPress={() => void run(f)}
           style={link ? { paddingVertical: 2, paddingHorizontal: 2, flexDirection: 'row', gap: 4, alignItems: 'center' } : { minHeight: 36, borderRadius: 10, borderWidth: 1, borderColor: c.secondaryLine, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6, backgroundColor: c.card }}>
