@@ -121,7 +121,7 @@ describe('IntegrationsScreen', () => {
     expect(within(manual).getByRole('button', { name: 'Subir archivo' })).toBeInTheDocument()
   })
 
-  it('mientras una integración corre, todos sus botones (menos el historial) quedan desactivados y la otra fila no se afecta', async () => {
+  it('mientras una integración corre, las acciones de la corrida (correr, subir) quedan desactivadas pero historial, editar, probar y encender siguen disponibles y la otra fila no se afecta', async () => {
     let release: () => void = () => {}
     mock.hold = new Promise<void>((resolve) => { release = resolve })
     wrap()
@@ -130,8 +130,8 @@ describe('IntegrationsScreen', () => {
     await userEvent.click(within(folder).getByRole('button', { name: 'Correr ahora' }))
     await waitFor(() => expect(within(folder).getByRole('button', { name: 'Correr ahora' })).toBeDisabled())
     expect(within(folder).getByRole('button', { name: 'Subir archivo' })).toBeDisabled()
-    expect(within(folder).getByRole('button', { name: 'Editar' })).toBeDisabled()
-    expect(within(folder).getByRole('switch')).toBeDisabled()
+    expect(within(folder).getByRole('button', { name: 'Editar' })).toBeEnabled()   // 2026-10-26: si la corrida se cuelga no se puede dejar todo apagado
+    expect(within(folder).getByRole('switch')).toBeEnabled()
     expect(within(folder).getByRole('button', { name: 'Historial' })).toBeEnabled()   // mirar el historial no rompe nada
     expect(within(manual).getByRole('button', { name: 'Subir archivo' })).toBeEnabled()
     release()

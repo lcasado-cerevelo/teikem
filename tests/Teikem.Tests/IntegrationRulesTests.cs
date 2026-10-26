@@ -112,4 +112,15 @@ public sealed class IntegrationRulesTests
         foreach (var scope in IntegrationScopes.All) foreach (var p in scope.Permissions) Assert.Contains(p, all);
         Assert.Equal("INTEGRATIONS", ModuleKeys.Integrations);
     }
+    [Fact]
+    public void The_warehouse_notices_scope_needs_the_warehouse_module_and_not_transport()
+    {
+        // una compañía de almacén SIN Transporte puede crear su integración de avisos de llegada y salida (2026-10-26)
+        Assert.Empty(IntegrationScopes.Validate(new[] { IntegrationScopes.FilesWarehouseNotices }, Set(Everything), Set(ModuleKeys.WmsLotSerial)));
+        // y la entrada de envíos sigue pidiendo Transporte
+        Assert.Contains("Entrada de envíos", IntegrationScopes.Validate(new[] { IntegrationScopes.FilesOrdersImport }, Set(Everything), Set(ModuleKeys.WmsLotSerial))["scopes"]);
+        // sin el módulo de almacén no se ofrece
+        Assert.True(IntegrationScopes.Validate(new[] { IntegrationScopes.FilesWarehouseNotices }, Set(Everything), Set(ModuleKeys.LtlGround)).ContainsKey("scopes"));
+    }
+
 }

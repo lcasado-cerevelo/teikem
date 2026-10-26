@@ -34,11 +34,16 @@ public static class IntegrationScopes
     public const string FilesOrdersExport = "files.orders_export";
     /// <summary>2026-10-21: salida de un catálogo (productos…) por archivo (SFTP/FTP) o por API saliente (HTTP), con la plantilla de la entidad.</summary>
     public const string FilesCatalogExport = "files.catalog_export";
+    /// <summary>2026-10-26: avisos de llegada (LLE) y de salida (SAL) de mercancía de un cliente a partir de archivos o correos. Es de ALMACÉN: no necesita el módulo de Transporte (antes la única entrada por archivo era la de envíos, y una compañía de almacén sin Transporte no podía crear su integración de avisos).</summary>
+    public const string FilesWarehouseNotices = "files.warehouse_notices";
 
     public static readonly IReadOnlyList<IntegrationScope> All =
     [
         new(FilesOrdersImport, IntegrationFamilies.Files, ModuleKeys.LtlGround, "Entrada de envíos por archivo", "Shipment intake by file",
             [PermissionCatalog.OrdersView, PermissionCatalog.OrdersCreate, PermissionCatalog.LocationsRead, PermissionCatalog.LocationsCreate, PermissionCatalog.ClientsRead], NeedsClient: true),
+
+        new(FilesWarehouseNotices, IntegrationFamilies.Files, ModuleKeys.WmsLotSerial, "Avisos de llegada y salida de mercancía por archivo o correo", "Goods arrival and exit notices by file or email",
+            [PermissionCatalog.InventoryView, PermissionCatalog.WarehouseReceive, PermissionCatalog.ExitNoticeCreate, PermissionCatalog.ClientsRead], NeedsClient: true),
 
         new(FilesOrdersExport, IntegrationFamilies.Files, ModuleKeys.LtlGround, "Salida de envíos por archivo o API", "Shipment output by file or API",
             [PermissionCatalog.OrdersView, PermissionCatalog.ClientsRead, PermissionCatalog.LocationsRead], NeedsClient: true),

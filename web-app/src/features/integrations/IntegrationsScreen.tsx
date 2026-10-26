@@ -74,6 +74,9 @@ function HistoryModal({ integration, onClose }: { integration: IntegrationDto; o
   )
 }
 
+/** Cuánto dura la reserva de una corrida en el servidor (IntegrationRunner.Lease): pasado ese tiempo la corrida se da por colgada. */
+const RUN_LEASE_MS = 15 * 60 * 1000
+
 export default function IntegrationsScreen() {
   const t = useT()
   const f = useFormat()
@@ -97,13 +100,18 @@ export default function IntegrationsScreen() {
   const inboxIntegration = params.get('integration') ?? ''
   const rows = list.data ?? NO_ROWS
   // una integración ocupada (corriendo, aquí o en otro lado) no admite más acciones: todos sus botones quedan desactivados hasta que termine, para no romper la corrida
+  // 2026-10-26: una corrida que lleva más que la reserva del servidor (15 min) está colgada, no corriendo: el servidor ya la reemplaza solo, y la pantalla no debe dejar todo apagado para siempre
+  const runningNow = (i: IntegrationDto) => i.lastStatus === 'RUNNING' && (!i.lastStartedUtc || Date.now() - new Date(i.lastStartedUtc).getTime() < RUN_LEASE_MS)
   const busy = (i: IntegrationDto) =>
-    i.lastStatus === 'RUNNING' ||
+    runningNow(i) ||
     (run.isPending && run.variables === i.publicId) ||
     (sendAll.isPending && sendAll.variables === i.publicId) ||
     (upload.isPending && upload.variables?.publicId === i.publicId) ||
     (testConnection.isPending && testConnection.variables === i.publicId) ||
     (setActive.isPending && setActive.variables?.publicId === i.publicId)
+  // editar, probar la conexión y encender/apagar no tocan la corrida en curso: siguen disponibles mientras corre (solo se esperan a sí mismos)
+  const own = (i: IntegrationDto) =>
+    (testConnection.isPending && testConnection.variables === i.publicId) || (setActive.isPending && setActive.variables?.publicId === i.publicId)
   const pendingTotal = rows.reduce((n, i) => n + (i.pendingInbox ?? 0), 0)
 
   const go = (next: Tab) => {
@@ -159,7 +167,7 @@ export default function IntegrationsScreen() {
               role="switch"
               aria-label={t('integrations.col.activeFor', { name: i.name ?? '' })}
               checked={!!i.isActive}
-              disabled={!canManage || busy(i)}
+              disabled={!canManage || own(i)}
               onChange={(e) => void act(setActive.mutateAsync({ publicId: i.publicId!, active: e.target.checked }), t(e.target.checked ? 'integrations.on' : 'integrations.off', { name: i.name ?? '' }))}
             />
             <span className="tk" aria-hidden="true" />
@@ -329,10 +337,10 @@ export default function IntegrationsScreen() {
                         .then((r) => (r.ok ? toast.success(r.message ?? '') : toast.error(r.message ?? '')))
                         .catch((e) => toast.error(applyProblemDetails(e).title)),
                     visible: (i) => canManage && (i.connectorKind === 'EMAIL' || i.connectorKind === 'SFTP' || i.connectorKind === 'FTP' || i.connectorKind === 'HTTP'),
-                    disabled: busy,
+                    disabled: own,
                   },
                   { key: 'history', label: t('integrations.history.open'), icon: <IconClock />, onClick: (i) => setHistory(i) },
-                  { key: 'edit', label: t('integrations.edit'), icon: <IconEdit />, onClick: (i) => setEditing(i), visible: () => canManage, disabled: busy },
+                  { key: 'edit', label: t('integrations.edit'), icon: <IconEdit />, onClick: (i) => setEditing(i), visible: () => canManage, disabled: own },
                 ]}
               />
             )}
