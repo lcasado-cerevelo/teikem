@@ -74,8 +74,8 @@ async function composeSquare(file, size, symbolSvg, ratio, background) {
   console.log(`  ${file} (${size}x${size})`)
 }
 
-/** Lockup (símbolo + TEIKEM + lema) -inv sin su fondo, recortado al contenido, a 1x/2x/3x con ancho base `baseWidth`. */
-async function lockup(sourceFile, lang, baseWidth) {
+/** Lockup (símbolo + TEIKEM + lema) sin su fondo, recortado al contenido, a 1x/2x/3x con ancho base `baseWidth`. `variant` '-light' = el de letras oscuras para fondo claro (archivo brand-lockup-<lang>-light). */
+async function lockup(sourceFile, lang, baseWidth, variant = '') {
   const svg = (await readFile(path.join(logos, sourceFile), 'utf8'))
     // El rectángulo de fondo de todo el lienzo (480x150); el resto del dibujo no se toca.
     .replace(/<rect x="0" y="0" width="480" height="150"[^>]*\/>/, '')
@@ -86,7 +86,7 @@ async function lockup(sourceFile, lang, baseWidth) {
   const baseHeight = Math.round((baseWidth * meta.height) / meta.width)
   for (const scale of [1, 2, 3]) {
     const suffix = scale === 1 ? '' : `@${scale}x`
-    const file = `brand-lockup-${lang}${suffix}.png`
+    const file = `brand-lockup-${lang}${variant}${suffix}.png`
     const info = await sharp(big)
       .resize({ width: baseWidth * scale, height: baseHeight * scale, fit: 'fill' })
       .png({ compressionLevel: 9 })
@@ -134,6 +134,13 @@ async function stagingIcons(variant) {
 
 async function main() {
   const variant = process.argv[2]
+  if (variant === 'lockups-light') {
+    // Solo los lockups para fondo claro (letras oscuras), sin tocar los iconos: node scripts/brand-icons.mjs lockups-light cliente
+    console.log(`Generando los lockups para tema claro en ${appFolder}/assets:`)
+    await lockup('teikem-1b-horizontal-tagline-es.svg', 'es', 240, '-light')
+    await lockup('teikem-1a-horizontal-tagline-en.svg', 'en', 240, '-light')
+    return
+  }
   if (variant in VARIANTS) {
     console.log(`Generando los iconos de ${variant} en ${appFolder}/assets/${variant}:`)
     return stagingIcons(variant)

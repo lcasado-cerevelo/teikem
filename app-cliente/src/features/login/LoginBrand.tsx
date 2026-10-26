@@ -6,7 +6,11 @@ import { loadPublicBrand, pickPublicSlot, usePublicBrand } from '../../kernel/br
 import { useT } from '../../kernel/i18n/useT'
 import { useTheme } from '../../kernel/ui/theme'
 
-const TEIKEM = { es: require('../../../assets/brand-lockup-es.png'), en: require('../../../assets/brand-lockup-en.png') }
+// Letras claras para el tema oscuro y oscuras para el claro (si no, «TEIKEM» en blanco desaparece sobre el fondo claro).
+const TEIKEM = {
+  dark: { es: require('../../../assets/brand-lockup-es.png'), en: require('../../../assets/brand-lockup-en.png') },
+  light: { es: require('../../../assets/brand-lockup-es-light.png'), en: require('../../../assets/brand-lockup-en-light.png') },
+}
 
 export function LoginBrand() {
   const { lang } = useT()
@@ -38,7 +42,7 @@ export function LoginBrand() {
   }
   return (
     <View style={{ alignItems: 'center', paddingVertical: 8 }} testID="login-brand">
-      <Image source={TEIKEM[lang === 'en' ? 'en' : 'es']} accessibilityLabel="Teikem" resizeMode="contain" style={{ width: 200, height: 56 }} />
+      <Image source={TEIKEM[scheme === 'dark' ? 'dark' : 'light'][lang === 'en' ? 'en' : 'es']} accessibilityLabel="Teikem" resizeMode="contain" style={{ width: 200, height: 56 }} />
     </View>
   )
 }
