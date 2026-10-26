@@ -7963,8 +7963,14 @@ Cerrado, cada panel muestra una línea con lo principal (estatus, dirección y d
 **Veo tres módulos nuevos (Órdenes de venta, Impuestos (IVU) y Facturación) y están apagados.**
 Es lo esperado: se definieron para poder encenderlos por compañía cuando se construyan; hoy no abren ninguna pantalla. No hay que hacer nada.
 
-**«Órdenes de venta» (o «Facturación») no se deja encender.**
-Cada uno exige que su dependencia esté encendida: **Órdenes de venta** necesita **Inventario y trazabilidad**; **Facturación** necesita **Órdenes de venta**. Encienda primero la dependencia. **Impuestos (IVU)** no depende de ninguno.
+**«Órdenes de venta» no se deja encender.**
+Exige que **Inventario y trazabilidad** esté encendido: encienda primero esa dependencia. **Facturación** e **Impuestos (IVU)** no dependen de ningún módulo (desde 2026-10-26 Facturación ya no exige Órdenes de venta ni inventario: factura el flete de transporte y el COD sola; la venta de producto solo se factura si la compañía también tiene Órdenes de venta encendido).
+
+**¿Cómo quito el módulo de Transporte a una compañía que solo es almacén (por ejemplo Advance Depot)?**
+El administrador de la plataforma lo apaga en Sistema → Módulos («Transporte (última milla terrestre)»). Desaparecen del menú y del API las órdenes de transporte, rutas, escaneo, reclamaciones, choferes, flota, vehículos y zonas de despacho; **COD** se apaga con él. No se borra ningún dato: si se vuelve a encender, todo reaparece. Las compañías nuevas nacen con Transporte encendido.
+
+**¿Por qué me exigía Órdenes de venta e inventario para encender Facturación?**
+Venía del diseño original (facturar era vender producto despachado). Desde el Lote 74 la facturación también cubre el flete de las órdenes de transporte y el COD, que no usan ventas ni inventario, así que la dependencia se quitó. Si la compañía apaga Órdenes de venta, Facturación sigue encendida.
 
 ## Lote 50 — Trabajos programados
 

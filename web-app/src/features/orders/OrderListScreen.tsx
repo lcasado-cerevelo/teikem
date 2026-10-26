@@ -160,23 +160,23 @@ export default function OrderListScreen() {
       },
       { id: 'date', header: t('orders.list.columns.date'), cell: (o) => <span className="mono">{f.date(o.createdAtUtc)}</span>, sortValue: (o) => o.createdAtUtc, exportValue: (o) => f.date(o.createdAtUtc) },
       // Lote 128: cuándo se procesó la factura del cliente
-      { id: 'zone', header: t('orders.list.columns.zone'), cell: (o) => (o.zoneCode ? <span>{o.zoneCode}{o.zoneGroupCode ? <span className="d"> · {o.zoneGroupCode}</span> : null}</span> : ''), sortValue: (o) => `${o.zoneGroupCode ?? ''} ${o.zoneCode ?? ''}`, exportValue: (o) => [o.zoneCode, o.zoneGroupCode].filter(Boolean).join(' · ') },   // Lote 129
+      { id: 'zone', header: t('orders.list.columns.zone'), cell: (o) => (o.zoneCode ? <span className="oe-nowrap">{o.zoneCode}{o.zoneGroupCode ? <span className="d"> · {o.zoneGroupCode}</span> : null}</span> : ''), sortValue: (o) => `${o.zoneGroupCode ?? ''} ${o.zoneCode ?? ''}`, exportValue: (o) => [o.zoneCode, o.zoneGroupCode].filter(Boolean).join(' · ') },   // Lote 129
       { id: 'processed', header: t('orders.list.columns.processed'), cell: (o) => (o.invoiceProcessedAtUtc ? <span className="mono">{f.date(o.invoiceProcessedAtUtc)}</span> : ''), sortValue: (o) => o.invoiceProcessedAtUtc ?? '', exportValue: (o) => (o.invoiceProcessedAtUtc ? f.date(o.invoiceProcessedAtUtc) : '') },
       { id: 'consignee', header: t('orders.list.columns.consignee'), cell: (o) => o.consigneeName, sortValue: (o) => o.consigneeName },
       { id: 'town', header: t('orders.list.columns.town'), cell: (o) => o.consigneeCity, sortValue: (o) => o.consigneeCity },
       { id: 'zip', header: t('orders.list.columns.zip'), cell: (o) => <span className="mono">{o.consigneePostalCode}</span>, sortValue: (o) => o.consigneePostalCode, exportValue: (o) => o.consigneePostalCode },
-      { id: 'service', header: t('orders.list.columns.serviceType'), cell: (o) => o.serviceTypeLabel ?? o.serviceType, sortValue: (o) => o.serviceTypeLabel ?? o.serviceType },
+      { id: 'service', header: t('orders.list.columns.serviceType'), cell: (o) => <span className="oe-nowrap">{o.serviceTypeLabel ?? o.serviceType}</span>, sortValue: (o) => o.serviceTypeLabel ?? o.serviceType },
       {
         id: 'package',
         header: t('orders.list.columns.package'),
         // tabla: el primer tipo en la fila de la orden y los demás en continuaciones; tarjeta: todos
         cell: (o) => {
           const groups = packageGroups(o)
-          return cards ? groups.map((g, i) => <PackageCell key={i} label={g.label} descriptions={g.descriptions} pieces={g.pieces} showPieces />) : <PackageCell label={groups[0].label} descriptions={groups[0].descriptions} />
+          return cards ? groups.map((g, i) => <PackageCell key={i} label={g.label} descriptions={g.descriptions} pieces={g.pieces} showPieces />) : <PackageCell label={groups[0].label} descriptions={groups[0].descriptions} short />
         },
         continuation: (o, i) => {
           const g = packageGroups(o)[i]
-          return g ? <PackageCell label={g.label} descriptions={g.descriptions} /> : null
+          return g ? <PackageCell label={g.label} descriptions={g.descriptions} short /> : null
         },
         sortValue: (o) => packageSummaryText(packageGroups(o)),
         exportValue: (o) => {
@@ -205,7 +205,7 @@ export default function OrderListScreen() {
       {
         id: 'cod',
         header: t('orders.list.columns.cod'),
-        cell: (o) => <span className={o.codAmount ? 'cash' : 'cash z'}>{o.codAmount ? f.money(o.codAmount) : '—'}</span>,
+        cell: (o) => <span className={`${o.codAmount ? 'cash' : 'cash z'} oe-nowrap`}>{o.codAmount ? f.money(o.codAmount) : '—'}</span>,
         sortValue: (o) => o.codAmount,
         exportValue: (o) => o.codAmount,
         align: 'end',
@@ -523,14 +523,14 @@ function shortText(s: string, max: number): string {
   return s.length <= max ? s : `${s.slice(0, max).trimEnd()}…`
 }
 
-function PackageCell({ label, descriptions, pieces, showPieces = false }: { label: string; descriptions: string[]; pieces?: number; showPieces?: boolean }) {
+function PackageCell({ label, descriptions, pieces, showPieces = false, short = false }: { label: string; descriptions: string[]; pieces?: number; showPieces?: boolean; short?: boolean }) {
   return (
     <div className="oe-pkgcell">
       {label}
       {showPieces && pieces != null ? ` ×${pieces}` : ''}
       {descriptions.length > 0 && (
-        <div className="meta oe-desc" title={descriptions.join('\n')}>
-          {shortText(descriptions.join(' · '), 120)}
+        <div className={short ? 'meta oe-desc oe-desc-short' : 'meta oe-desc'} title={descriptions.join('\n')}>
+          {shortText(descriptions.join(' · '), short ? 26 : 120)}
         </div>
       )}
     </div>

@@ -16,7 +16,7 @@ namespace Teikem.Api.Controllers;
 [ApiController]
 [Route("api/v1/fleet")]
 [Authorize]
-[RequireModule(ModuleKeys.Catalog)]
+[RequireModule(ModuleKeys.LtlGround)]
 public sealed class FleetController(FleetDocumentService documents, IFleetAvailabilityService availability, ITenantClock clock) : ControllerBase
 {
     /// <summary>

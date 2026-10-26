@@ -16,7 +16,7 @@ namespace Teikem.Api.Controllers;
 [ApiController]
 [Route("api/v1/vehicles")]
 [Authorize]
-[RequireModule(ModuleKeys.Catalog)]
+[RequireModule(ModuleKeys.LtlGround)]
 public sealed class VehiclesController(VehicleService vehicles, VehicleDocumentService documents) : ControllerBase
 {
     /// <summary>Lista con buscador libre (search) y filtros multi-valor por código (?vehicleType=VAN&amp;vehicleType=TRUCK o VAN,TRUCK).</summary>

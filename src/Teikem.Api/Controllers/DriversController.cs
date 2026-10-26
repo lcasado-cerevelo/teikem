@@ -18,7 +18,7 @@ namespace Teikem.Api.Controllers;
 [ApiController]
 [Route("api/v1/drivers")]
 [Authorize]
-[RequireModule(ModuleKeys.Catalog)]
+[RequireModule(ModuleKeys.LtlGround)]
 public sealed class DriversController(DriverService drivers, DriverDocumentService documents) : ControllerBase
 {
     /// <summary>Lista con buscador libre (código, nombre, zona y área), filtros de estatus y zona primaria.</summary>

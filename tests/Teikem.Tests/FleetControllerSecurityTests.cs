@@ -19,10 +19,10 @@ public class FleetControllerSecurityTests
     /// <summary>(controlador, módulo, permiso de lectura (GET), permiso de escritura (resto)).</summary>
     public static IEnumerable<object[]> Controllers() => new[]
     {
-        new object[] { typeof(VehiclesController), ModuleKeys.Catalog, PermissionCatalog.FleetView, PermissionCatalog.FleetManage },
-        new object[] { typeof(DriversController), ModuleKeys.Catalog, PermissionCatalog.FleetView, PermissionCatalog.FleetManage },
-        new object[] { typeof(DispatchZonesController), ModuleKeys.Catalog, PermissionCatalog.FleetView, PermissionCatalog.FleetManage },
-        new object[] { typeof(FleetController), ModuleKeys.Catalog, PermissionCatalog.FleetView, PermissionCatalog.FleetManage },
+        new object[] { typeof(VehiclesController), ModuleKeys.LtlGround, PermissionCatalog.FleetView, PermissionCatalog.FleetManage },
+        new object[] { typeof(DriversController), ModuleKeys.LtlGround, PermissionCatalog.FleetView, PermissionCatalog.FleetManage },
+        new object[] { typeof(DispatchZonesController), ModuleKeys.LtlGround, PermissionCatalog.FleetView, PermissionCatalog.FleetManage },
+        new object[] { typeof(FleetController), ModuleKeys.LtlGround, PermissionCatalog.FleetView, PermissionCatalog.FleetManage },
         new object[] { typeof(MaintenanceSchedulesController), ModuleKeys.Catalog, PermissionCatalog.FleetView, PermissionCatalog.FleetMaintenance },
         new object[] { typeof(MaintenanceWorkOrdersController), ModuleKeys.Catalog, PermissionCatalog.FleetView, PermissionCatalog.FleetMaintenance },
         new object[] { typeof(FuelLogsController), ModuleKeys.Catalog, PermissionCatalog.FleetView, PermissionCatalog.FleetMaintenance },

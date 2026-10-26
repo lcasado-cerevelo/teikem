@@ -16,7 +16,7 @@ namespace Teikem.Api.Controllers;
 [ApiController]
 [Route("api/v1/dispatch-zones")]
 [Authorize]
-[RequireModule(ModuleKeys.Catalog)]
+[RequireModule(ModuleKeys.LtlGround)]
 public sealed class DispatchZonesController(DispatchZoneService zones) : ControllerBase
 {
     /// <summary>Zonas del tenant con la cantidad de choferes activos asignados.</summary>

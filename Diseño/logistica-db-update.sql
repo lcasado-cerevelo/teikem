@@ -6845,3 +6845,22 @@ GO
 IF COL_LENGTH(N'dbo.Client', N'NoticeDigestHour') IS NULL
     ALTER TABLE dbo.Client ADD NoticeDigestHour INT NULL CONSTRAINT CK_Client_NoticeDigestHour CHECK (NoticeDigestHour IS NULL OR (NoticeDigestHour BETWEEN 0 AND 23));
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-26 — Facturación (BILLING) deja de depender de Órdenes de venta (SALES_ORDERS), y con ellas de Almacén (WMS_LOTSERIAL). La dependencia venía del diseño original
+   (facturar = vender producto despachado), pero desde el Lote 74 la corrida de facturación también factura el FLETE de las órdenes de transporte y el COD, que no usan ventas ni
+   inventario: una compañía de transporte puede encender Facturación sola. Si la compañía tiene Órdenes de venta encendido, la venta de producto se sigue facturando igual.
+   Va después de las secciones que definen el módulo (el MERGE de 2026-10-14 (e) lo vuelve a poner cada corrida). Solo cambia una columna de la definición; no toca lo encendido por compañía.
+   ---------------------------------------------------------------------------- */
+UPDATE dbo.ModuleDefinition SET DependsOnModuleKey = NULL WHERE ModuleKey = N'BILLING' AND DependsOnModuleKey IS NOT NULL;
+GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-26 (b) — El módulo de Transporte (LTL_GROUND, «Última milla terrestre») deja de ser núcleo: se puede apagar por compañía (p. ej. Advance Depot, que solo es almacén, y las
+   compañías que vengan sin transporte). Se le pone nombre claro, y el Cobro contra entrega (COD) pasa a depender de él (el COD es del transporte: se apaga en cascada). Las compañías que ya
+   lo tienen encendido (todas) siguen igual: apagarlo es una decisión del administrador de la plataforma en Sistema → Módulos. Va después del seed, que vuelve a marcarlo como núcleo en cada
+   corrida. Solo cambia la definición de dos módulos; no toca lo encendido por compañía.
+   ---------------------------------------------------------------------------- */
+UPDATE dbo.ModuleDefinition SET IsCore = 0, Name = N'Transporte (última milla terrestre)', NameEn = N'Transport (ground last mile)' WHERE ModuleKey = N'LTL_GROUND';
+UPDATE dbo.ModuleDefinition SET DependsOnModuleKey = N'LTL_GROUND' WHERE ModuleKey = N'COD' AND ISNULL(DependsOnModuleKey, N'') <> N'LTL_GROUND';
+GO

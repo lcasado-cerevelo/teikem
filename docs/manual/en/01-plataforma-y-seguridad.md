@@ -908,13 +908,12 @@ What it does: each company turns on only the business modules it uses (for examp
 COD, warehouse with lot/serial and rental units, but not cross-dock or maritime). The menu and the endpoints
 protected with `[RequireModule]` only work if the module is turned on.
 
-List of 16 modules (`ModuleKeys`): `LTL_GROUND` (core), `COD`, `WMS_LOTSERIAL`, `CROSSDOCK`,
+List of 16 modules (`ModuleKeys`): `LTL_GROUND` (Transport; **since 2026-10-26 it is no longer core**: it can be turned off per company, and `COD` depends on it), `COD`, `WMS_LOTSERIAL`, `CROSSDOCK`,
 `RENTAL_EQUIPMENT`, `RENTAL_BILLING` (depends on `RENTAL_EQUIPMENT`), `MARITIME`, `CLIENT_PORTAL`,
 `CUSTOM_FIELDS` (depends on `ANALYTICS`), `PURCHASING`, `CATALOG`, `ANALYTICS`, `SYSTEM` (core) and, since Batch 49,
 `SALES_ORDERS` (Sales orders; depends on `WMS_LOTSERIAL`), `TAX` (Taxes / IVU; no dependencies) and `BILLING`
-(Billing; depends on `SALES_ORDERS`). The three new ones **are only defined**: no company has them turned on
-yet and they do not open any screen until they are built (taxes and sales). The **core** modules (`LTL_GROUND`,
-`SYSTEM`) cannot be turned off. Notices (notifications) are not a module: they are always available under `SYSTEM`.
+(Billing; **no dependencies since 2026-10-26**: it used to depend on `SALES_ORDERS`, and through it on `WMS_LOTSERIAL`, but since Batch 74 it also bills transport freight and COD, which use neither sales nor inventory; a transport company turns it on alone, and product sales are billed if it also has Sales orders on). The three new ones **are only defined**: no company has them turned on
+yet and they do not open any screen until they are built (taxes and sales). The **core** module (`SYSTEM`) cannot be turned off. **Transport** (`LTL_GROUND`) can: turning it off removes its screens and endpoints (orders, routes, scanning, claims, **drivers, fleet, vehicles and dispatch zones**, driver settlement) and, in cascade, **COD**; the warehouse, inventory, billing and the rest keep working. The platform administrator turns it off in System → Modules; a new company is born with Transport on. Notices (notifications) are not a module: they are always available under `SYSTEM`.
 
 Who can: view the list, any authenticated user; turn on/off, `admin.tenant` **+ AAL2**.
 

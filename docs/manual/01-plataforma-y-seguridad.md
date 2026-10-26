@@ -908,13 +908,12 @@ Qué hace: cada compañía enciende solo los módulos de negocio que usa (por ej
 COD, almacén con lote/serie y equipos en alquiler, pero no cross-dock ni marítimo). El menú y los endpoints
 protegidos con `[RequireModule]` solo funcionan si el módulo está encendido.
 
-Lista de 16 módulos (`ModuleKeys`): `LTL_GROUND` (núcleo), `COD`, `WMS_LOTSERIAL`, `CROSSDOCK`,
+Lista de 16 módulos (`ModuleKeys`): `LTL_GROUND` (Transporte; **desde 2026-10-26 ya no es núcleo**: se puede apagar por compañía, y `COD` depende de él), `COD`, `WMS_LOTSERIAL`, `CROSSDOCK`,
 `RENTAL_EQUIPMENT`, `RENTAL_BILLING` (depende de `RENTAL_EQUIPMENT`), `MARITIME`, `CLIENT_PORTAL`,
 `CUSTOM_FIELDS` (depende de `ANALYTICS`), `PURCHASING`, `CATALOG`, `ANALYTICS`, `SYSTEM` (núcleo) y, desde el Lote 49,
 `SALES_ORDERS` (Órdenes de venta; depende de `WMS_LOTSERIAL`), `TAX` (Impuestos / IVU; sin dependencias) y `BILLING`
-(Facturación; depende de `SALES_ORDERS`). Los tres nuevos **solo están definidos**: ninguna compañía los tiene encendidos
-todavía y no abren ninguna pantalla hasta que se construyan (impuestos y ventas). Los módulos **núcleo** (`LTL_GROUND`,
-`SYSTEM`) no se pueden apagar. Los avisos (notificaciones) no son un módulo: van siempre disponibles bajo `SYSTEM`.
+(Facturación; **sin dependencias desde 2026-10-26**: antes dependía de `SALES_ORDERS`, y con ella de `WMS_LOTSERIAL`, pero desde el Lote 74 también factura el flete de transporte y el COD, que no usan ventas ni inventario; una compañía de transporte la enciende sola, y la venta de producto se factura si además tiene Órdenes de venta). Los tres nuevos **solo están definidos**: ninguna compañía los tiene encendidos
+todavía y no abren ninguna pantalla hasta que se construyan (impuestos y ventas). El módulo **núcleo** (`SYSTEM`) no se puede apagar. **Transporte** (`LTL_GROUND`) sí: al apagarlo se apagan sus pantallas y endpoints (órdenes, rutas, escaneo, reclamaciones, **choferes, flota, vehículos y zonas de despacho**, liquidación a choferes) y, en cascada, **COD**; el almacén, el inventario, la facturación y el resto siguen. Lo apaga el administrador de la plataforma en Sistema → Módulos; una compañía nueva nace con Transporte encendido. Los avisos (notificaciones) no son un módulo: van siempre disponibles bajo `SYSTEM`.
 
 Quién puede: ver la lista, cualquier autenticado; encender/apagar, `admin.tenant` **+ AAL2**.
 

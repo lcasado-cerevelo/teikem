@@ -73,6 +73,10 @@
 .oe-cont{color:var(--faint);font-size:11px}
 .oe-pkgcell{min-width:0}
 .oe-desc{font-size:11px;color:var(--faint);overflow-wrap:anywhere}
+/* en la tabla la descripción es solo una pista (completa al pasar el cursor): un renglón con «…» para que la columna no se ensanche */
+.oe-desc-short{max-width:24ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;overflow-wrap:normal}
+/* zona, servicio y COD en un solo renglón: no se parten ni se cortan */
+.oe-nowrap{white-space:nowrap;overflow-wrap:normal}
 
 /* Lote F-C2 — Expediente de la orden (maqueta `record()`): columna principal + columna de 320 px (COD, Cotización, Chofer, Campos, Contactos) */
 .od-pipe{margin-bottom:14px;min-width:0}

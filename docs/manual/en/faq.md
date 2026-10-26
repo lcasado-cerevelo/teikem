@@ -7964,8 +7964,14 @@ Closed, each panel shows a line with the main points (status, address and where 
 **I see three new modules (Sales orders, Taxes (IVU) and Billing) and they are turned off.**
 That is expected: they were defined so they can be turned on per company when they are built; today they open no screen. Nothing needs to be done.
 
-**“Sales orders” (or “Billing”) cannot be turned on.**
-Each one requires its dependency to be turned on: **Sales orders** needs **Inventory and traceability**; **Billing** needs **Sales orders**. Turn on the dependency first. **Taxes (IVU)** depends on none.
+**“Sales orders” cannot be turned on.**
+It requires **Inventory and traceability** to be turned on: turn on that dependency first. **Billing** and **Taxes (IVU)** depend on no module (since 2026-10-26 Billing no longer requires Sales orders or inventory: it bills transport freight and COD on its own; product sales are billed only if the company also has Sales orders on).
+
+**How do I remove the Transport module from a company that is only a warehouse (for example Advance Depot)?**
+The platform administrator turns it off in System → Modules (“Transport (ground last mile)”). Transport orders, routes, scanning, claims, drivers, fleet, vehicles and dispatch zones disappear from the menu and the API; **COD** turns off with it. No data is deleted: if it is turned back on, everything reappears. New companies are born with Transport on.
+
+**Why did Billing require Sales orders and inventory before it could be turned on?**
+It came from the original design (billing meant selling dispatched product). Since Batch 74 billing also covers the freight of transport orders and COD, which use neither sales nor inventory, so the dependency was removed. If the company turns Sales orders off, Billing stays on.
 
 ## Batch 50 — Scheduled jobs
 
