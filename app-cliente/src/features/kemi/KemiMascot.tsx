@@ -1,6 +1,7 @@
 // La mascota de Teikem (Kemi) en el portal: el MISMO dibujo de la web (web-app/src/features/notifications/KemiMascot.tsx), con react-native-svg, y la cara que le pone `faceOf` (shared/kemi/rules.ts),
 // que es lo mismo que la web hace con CSS. Dormida: ojos cerrados y una «z».
 import { memo } from 'react'
+import { Platform } from 'react-native'
 import Svg, { ClipPath, Defs, Ellipse, G, Path, Rect, Circle, Text as SvgText } from 'react-native-svg'
 
 import type { KemiFace } from '../../../../shared/kemi/rules'
@@ -42,6 +43,9 @@ function Mouth({ kind }: { kind: KemiFace['mouth'] }) {
   }
 }
 
+// En web, react-native-svg pasa al HTML las propiedades de accesibilidad de móvil y React avisa («React does not recognize the `importantForAccessibility` prop»): allá se oculta con aria-hidden.
+const HIDDEN: object = Platform.OS === 'web' ? { 'aria-hidden': true } : { accessibilityElementsHidden: true, importantForAccessibility: 'no-hide-descendants' }
+
 interface Props {
   size?: number
   sleeping?: boolean
@@ -50,7 +54,7 @@ interface Props {
 
 function KemiMascotView({ size = 38, sleeping = false, face = CALM }: Props) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 124 132" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" testID={sleeping ? 'kemi-mascot-asleep' : 'kemi-mascot'}>
+    <Svg width={size} height={size} viewBox="0 0 124 132" {...HIDDEN} testID={sleeping ? 'kemi-mascot-asleep' : 'kemi-mascot'}>
       <Defs>
         <ClipPath id="kemi-body">
           <Path d={BODY} />
