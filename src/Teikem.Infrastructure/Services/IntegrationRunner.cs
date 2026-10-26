@@ -267,6 +267,25 @@ public sealed class IntegrationRunner(
     public const string MailTooManyNote = "Quedan correos por leer; se leen en la próxima corrida.";
     public const string MailNotMarkedNote = "No se pudieron marcar como leídos algunos correos del buzón (¿la aplicación o la cuenta solo puede leer?); se dejó de leer para no repetir los mismos. Revise los permisos del buzón.";
     /// <summary>Correos por tanda: lo que se baja de una vez (cada uno con sus adjuntos y, si hace falta, su OCR).</summary>
+    /// <summary>2026-10-26: lo más que se espera por la lectura de UN PDF (texto u OCR). Pasado ese tiempo el PDF se deja con su motivo (a la bandeja) y la corrida sigue con lo siguiente: un documento que se traba ya no deja la integración en «Corriendo» para siempre.</summary>
+    public static readonly TimeSpan PdfReadTimeout = TimeSpan.FromSeconds(90);
+
+    private async Task<PdfReadResult> ReadPdfBoundedAsync(string name, byte[] content, CancellationToken ct)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var work = Task.Run(() => pdfReader.Read(content), ct);
+        var finished = await Task.WhenAny(work, Task.Delay(PdfReadTimeout, ct));
+        if (finished != work)
+        {
+            ct.ThrowIfCancellationRequested();
+            logger.LogWarning("Integraciones: el PDF {Name} ({Bytes} bytes) tardó más de {Seconds} s en leerse y se dejó para revisión.", name, content.Length, (int)PdfReadTimeout.TotalSeconds);
+            return new PdfReadResult(string.Empty, 0, false, $"tardó más de {(int)PdfReadTimeout.TotalSeconds} segundos en leerse");
+        }
+        var read = await work;
+        if (sw.Elapsed > TimeSpan.FromSeconds(10)) logger.LogInformation("Integraciones: el PDF {Name} ({Bytes} bytes) se leyó en {Seconds:0.#} s (OCR: {Ocr}).", name, content.Length, sw.Elapsed.TotalSeconds, read.UsedOcr);
+        return read;
+    }
+
     private const int MaxMessagesPerBatch = 50;
     /// <summary>Tope por corrida: 50 correos (una tanda); lo que sobre se lee en la corrida siguiente.</summary>
     private const int MaxMessagesPerRun = 50;
@@ -332,7 +351,14 @@ public sealed class IntegrationRunner(
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException and not TeikemException) { throw new ValidationException("email", $"{ImapMailboxReader.ConnectionFailedMessage}: {ex.Message}"); }
                 },
-                async m => outcomes.AddRange(await ProcessMessageAsync(integration, template, client, run, cfg, m.Data, ct, silentSkip: true)),
+                async m =>
+                {
+                    // una línea por correo en el log del servidor: si una corrida tarda se ve en cuál va
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    logger.LogInformation("Integración {Integration}: atendiendo el correo «{Subject}» ({Attachments} adjunto(s)).", integration.IntegrationId, m.Data.Subject, m.Data.Attachments.Count);
+                    outcomes.AddRange(await ProcessMessageAsync(integration, template, client, run, cfg, m.Data, ct, silentSkip: true));
+                    logger.LogInformation("Integración {Integration}: correo atendido en {Seconds:0.#} s.", integration.IntegrationId, sw.Elapsed.TotalSeconds);
+                },
                 async keys =>
                 {
                     if (logMode) { await LogMailKeysAsync(integration, run, keys, ct); return; }
@@ -409,7 +435,7 @@ public sealed class IntegrationRunner(
             dup.Message = DuplicateFileMessage;
             return new FileOutcome(dup, Array.Empty<Guid>(), Array.Empty<RejectedOrder>());
         }
-        var read = preRead ?? await Task.Run(() => pdfReader.Read(pdf.Content), ct);   // el OCR usa CPU: fuera del hilo de la corrida
+        var read = preRead ?? await ReadPdfBoundedAsync(pdf.Name, pdf.Content, ct);   // el OCR usa CPU: fuera del hilo de la corrida y con tope de tiempo
         var sample = Truncate(string.Join(" ", read.Text.Split('\n', StringSplitOptions.RemoveEmptyEntries).Take(8)).Replace('\t', ' '), 300);
         if (read.Problem is not null) return Failed(integration, run, pdf.Name, sha, pdf.Content.Length, EmailRules.PdfProblemMessage(pdf.Name, read.Problem));
         var reading = EmailRules.ReadDocument(read.Text, fields, recordStart);
@@ -493,7 +519,7 @@ public sealed class IntegrationRunner(
             {
                 if (!anyPdfReader) continue;
                 if (a.Content.Length > options.Value.MaxPdfMegabytes * 1024L * 1024L) { outcomes.Add(Failed(integration, run, a.Name, string.Empty, a.Content.Length, $"El PDF pesa más de {options.Value.MaxPdfMegabytes} MB.")); continue; }
-                var read = await Task.Run(() => pdfReader.Read(a.Content), ct);   // se lee una sola vez; las condiciones sobre el texto y el lector que lo toma usan este texto
+                var read = await ReadPdfBoundedAsync(a.Name, a.Content, ct);   // se lee una sola vez; las condiciones sobre el texto y el lector que lo toma usan este texto
                 pdfs[a.Name] = (a, read);
                 inputs.Add(new ReaderInput(ReaderSources.Pdf, a.Name, m.Subject, read.Problem is null ? read.Text : string.Empty));
             }
