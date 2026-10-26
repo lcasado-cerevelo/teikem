@@ -1,6 +1,6 @@
 // Lote F-E2b — Reglas puras del plano de ruta esquemático: proyección y ajuste al rectángulo, inversa, pines encimados, escala y claves de estado.
 import { describe, expect, it } from 'vitest'
-import { accuracyOf, fitProjection, isGeoPoint, niceScale, scaleParts, spreadOverlaps, stateOf } from './routeMapRules'
+import { accuracyOf, fitProjection, isGeoPoint, niceScale, scaleParts, spreadOverlaps, stateOf, tilesFor } from './routeMapRules'
 
 describe('claves de precisión y de estado', () => {
   it('MANUAL y EXACT se reconocen; todo lo demás (centroides, sin dato) es aproximado', () => {
@@ -156,5 +156,24 @@ describe('escala', () => {
   it('metros o kilómetros', () => {
     expect(scaleParts(500)).toEqual({ value: 500, unit: 'm' })
     expect(scaleParts(2000)).toEqual({ value: 2, unit: 'km' })
+  })
+})
+
+describe('teselas del mapa de fondo', () => {
+  it('cubren el plano, con el zoom que da teselas nítidas, y caen en el mismo lugar que los pines', () => {
+    const pts2 = [{ lat: 18.40, lng: -66.10 }, { lat: 18.48, lng: -66.00 }]
+    const p = fitProjection(pts2, 600, 300)!
+    const tiles = tilesFor(p.world, 600, 300)
+    expect(tiles.length).toBeGreaterThan(0)
+    expect(tiles.length).toBeLessThanOrEqual(80)
+    expect(tiles[0].url).toMatch(/^https:\/\/tile\.openstreetmap\.org\/1[0-9]\/\d+\/\d+\.png$/)
+    // la esquina de las teselas cubre el plano entero
+    expect(Math.min(...tiles.map((t) => t.x))).toBeLessThanOrEqual(0)
+    expect(Math.max(...tiles.map((t) => t.x + t.size))).toBeGreaterThanOrEqual(600)
+    expect(Math.min(...tiles.map((t) => t.y))).toBeLessThanOrEqual(0)
+    expect(Math.max(...tiles.map((t) => t.y + t.size))).toBeGreaterThanOrEqual(300)
+  })
+  it('un mundo demasiado grande para pintar no trae teselas (queda la cuadrícula)', () => {
+    expect(tilesFor({ scale: 256 * 2 ** 12, originX: 0, originY: 0 }, 6000, 6000)).toEqual([])
   })
 })

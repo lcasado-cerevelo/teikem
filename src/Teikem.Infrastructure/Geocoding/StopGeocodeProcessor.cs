@@ -12,7 +12,7 @@ namespace Teikem.Infrastructure.Geocoding;
 
 /// <summary>
 /// 2026-10-22 — busca la latitud y la longitud de las paradas que están en una ruta y todavía no la tienen (pedido de Luis: solo cuando se arma la ruta). Corre en segundo plano, fuera de la petición del despachador:
-/// 1) toma las paradas de la versión vigente de rutas no cerradas de hoy en adelante (ayer incluido), sin ubicación y sin intento; 2) cada una se «reclama» con un UPDATE atómico (varias copias del API no la buscan
+/// 1) toma las paradas de la versión vigente de rutas no cerradas de los últimos 10 días en adelante (una ruta del viernes que sigue abierta el lunes también cuenta), sin ubicación y sin intento; 2) cada una se «reclama» con un UPDATE atómico (varias copias del API no la buscan
 /// dos veces); 3) si la dirección ya se buscó (misma compañía y misma dirección normalizada) usa lo guardado y NO consulta a Google; 4) si no, reserva una consulta del mes con un UPDATE atómico contra el tope
 /// (<c>GoogleMaps:MonthlyCap</c>): sin cupo, la parada queda sin intento y se retoma el mes siguiente; 5) consulta a Google (un intento, 30 s) y guarda el resultado por dirección y en la parada, con su precisión.
 /// Tres fallos seguidos detienen el ciclo (llave o cuota mal: no se sigue gastando). El SQL va con la compañía explícita (como TripQueries); GeoPoint (GEOGRAPHY) y las columnas técnicas no se mapean en EF.
@@ -40,7 +40,7 @@ public sealed class StopGeocodeProcessor(IServiceScopeFactory scopes, IOptions<G
         var cap = opt.MonthlyCap;
         var month = StopGeocodeRules.UsageMonth(now);
         var retryBefore = now - StopGeocodeRules.RetryFailedAfter;
-        var minPlanDate = DateOnly.FromDateTime(now.AddDays(-1).Date);
+        var minPlanDate = DateOnly.FromDateTime(now.AddDays(-10).Date);   // 2026-10-26: antes era «ayer» y las rutas del viernes no se buscaban el lunes
         var due = await db.Database.SqlQuery<Candidate>($@"
             SELECT TOP ({BatchSize}) os.OrderStopId AS StopId, o.TenantId AS TenantId, os.SnapLine1 AS Line1, os.SnapLine2 AS Line2, os.SnapCity AS City, os.SnapState AS State, os.SnapPostalCode AS PostalCode
             FROM dbo.RouteStop rs

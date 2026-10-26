@@ -40,40 +40,81 @@ export interface Projection {
   unproject: (x: number, y: number) => GeoPoint
   /** Metros por píxel (a la latitud media): para la escala. */
   metersPerPx: number
+  /** Mercator del mundo entero: píxeles que mide el mundo (de 0 a 1 en x y en y) y dónde cae su esquina noroeste en el plano; con esto se colocan las teselas del mapa. */
+  world: { scale: number; originX: number; originY: number }
 }
 
-/** Metros por grado de latitud. */
-const METERS_PER_DEG = 111_195
+/** Metros que mide el ecuador (el mundo entero en Mercator). */
+const EQUATOR_METERS = 40_075_016.686
 /** Alcance mínimo del plano en grados (≈ 1.1 km): con un solo punto, o puntos casi iguales, no se amplía sin fin. */
 const MIN_SPAN_DEG = 0.01
 
+/** Longitud → x del mundo (0 a 1) y latitud → y del mundo (0 arriba, 1 abajo), Web Mercator (el de las teselas de OpenStreetMap y Google). */
+export const worldX = (lng: number): number => (lng + 180) / 360
+export const worldY = (lat: number): number => 0.5 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / (2 * Math.PI)
+const lngOf = (wx: number): number => wx * 360 - 180
+const latOf = (wy: number): number => (2 * Math.atan(Math.exp((0.5 - wy) * 2 * Math.PI)) - Math.PI / 2) * (180 / Math.PI)
+
 /**
- * Proyección equirectangular ajustada al rectángulo que contiene todos los puntos, con `margin` px de margen. Corrige la distorsión en longitud
- * con cos(latitud media) y conserva la proporción (un grado de latitud mide lo mismo que su equivalente en longitud). El contenido queda centrado.
+ * Proyección Web Mercator ajustada al rectángulo que contiene todos los puntos, con `margin` px de margen (2026-10-26: antes equirectangular sin mapa de fondo; ahora
+ * es la misma proyección de las teselas del mapa, así los pines caen sobre las calles). Conserva la proporción y deja el contenido centrado.
  * Sin puntos → null (no hay con qué ajustar).
  */
 export function fitProjection(points: readonly GeoPoint[], width: number, height: number, margin = 28): Projection | null {
   if (points.length === 0 || width <= 0 || height <= 0) return null
-  const lats = points.map((p) => p.lat)
-  const lngs = points.map((p) => p.lng)
-  const latMin = Math.min(...lats)
-  const latMax = Math.max(...lats)
-  const lngMin = Math.min(...lngs)
-  const lngMax = Math.max(...lngs)
-  const lat0 = (latMin + latMax) / 2
-  const kx = Math.max(Math.cos((lat0 * Math.PI) / 180), 0.01)
-  const spanX = Math.max((lngMax - lngMin) * kx, MIN_SPAN_DEG)
-  const spanY = Math.max(latMax - latMin, MIN_SPAN_DEG)
+  const xs = points.map((p) => worldX(p.lng))
+  const ys = points.map((p) => worldY(p.lat))
+  const xMin = Math.min(...xs)
+  const xMax = Math.max(...xs)
+  const yMin = Math.min(...ys)
+  const yMax = Math.max(...ys)
+  const lat0 = (Math.min(...points.map((p) => p.lat)) + Math.max(...points.map((p) => p.lat))) / 2
+  const minSpan = MIN_SPAN_DEG / 360
+  const spanX = Math.max(xMax - xMin, minSpan)
+  const spanY = Math.max(yMax - yMin, minSpan)
   const availW = Math.max(width - 2 * margin, 1)
   const availH = Math.max(height - 2 * margin, 1)
-  const scale = Math.min(availW / spanX, availH / spanY) // px por grado de latitud
-  const offX = margin + (availW - (lngMax - lngMin) * kx * scale) / 2
-  const offY = margin + (availH - (latMax - latMin) * scale) / 2
+  const scale = Math.min(availW / spanX, availH / spanY) // px que mide el mundo entero
+  const offX = margin + (availW - (xMax - xMin) * scale) / 2
+  const offY = margin + (availH - (yMax - yMin) * scale) / 2
   return {
-    project: (p) => ({ x: offX + (p.lng - lngMin) * kx * scale, y: offY + (latMax - p.lat) * scale }),
-    unproject: (x, y) => ({ lat: latMax - (y - offY) / scale, lng: lngMin + (x - offX) / (kx * scale) }),
-    metersPerPx: METERS_PER_DEG / scale,
+    project: (p) => ({ x: offX + (worldX(p.lng) - xMin) * scale, y: offY + (worldY(p.lat) - yMin) * scale }),
+    unproject: (x, y) => ({ lat: latOf(yMin + (y - offY) / scale), lng: lngOf(xMin + (x - offX) / scale) }),
+    metersPerPx: (EQUATOR_METERS * Math.cos((lat0 * Math.PI) / 180)) / scale,
+    world: { scale, originX: offX - xMin * scale, originY: offY - yMin * scale },
   }
+}
+
+/** Una tesela del mapa de fondo, ya colocada en píxeles del plano. */
+export interface MapTile {
+  key: string
+  url: string
+  x: number
+  y: number
+  size: number
+}
+
+/** Mapa de fondo: teselas de OpenStreetMap (como en RentComparable). Cambiar de proveedor es cambiar esta plantilla. */
+export const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+
+/** Teselas que cubren el plano (ancho × alto px). Zoom = el menor que da teselas nítidas (≤ 19); como mucho `maxTiles` (si no, no hay mapa de fondo). */
+export function tilesFor(world: Projection['world'], width: number, height: number, maxTiles = 80): MapTile[] {
+  const z = Math.min(19, Math.max(0, Math.ceil(Math.log2(Math.max(world.scale, 1) / 256))))
+  const n = 2 ** z
+  const size = world.scale / n
+  const x0 = Math.floor((0 - world.originX) / size)
+  const x1 = Math.floor((width - world.originX) / size)
+  const y0 = Math.max(0, Math.floor((0 - world.originY) / size))
+  const y1 = Math.min(n - 1, Math.floor((height - world.originY) / size))
+  if ((x1 - x0 + 1) * (y1 - y0 + 1) > maxTiles) return []
+  const out: MapTile[] = []
+  for (let ty = y0; ty <= y1; ty++) {
+    for (let tx = x0; tx <= x1; tx++) {
+      const wrapped = ((tx % n) + n) % n
+      out.push({ key: `${z}/${tx}/${ty}`, url: TILE_URL.replace('{z}', String(z)).replace('{x}', String(wrapped)).replace('{y}', String(ty)), x: world.originX + tx * size, y: world.originY + ty * size, size })
+    }
+  }
+  return out
 }
 
 export interface Placed {

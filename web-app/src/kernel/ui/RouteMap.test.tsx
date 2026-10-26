@@ -144,19 +144,22 @@ describe('RouteMap', () => {
     expect(screen.queryByText('Ninguna parada tiene coordenadas todavía')).toBeNull()
   })
 
-  it('la leyenda lleva exacto, aproximado y manual, y avisa que es un plano esquemático', () => {
+  it('la leyenda lleva exacto, aproximado y manual, y da el crédito de OpenStreetMap', () => {
     render(<RouteMap {...props} stops={[A]} />)
     expect(screen.getByText('Pin exacto')).toBeInTheDocument()
     expect(screen.getByText('Aproximado (centro del CP o del pueblo)')).toBeInTheDocument()
     expect(screen.getByText('Pin manual')).toBeInTheDocument()
-    expect(screen.getByText(/Plano esquemático/)).toBeInTheDocument()
+    expect(screen.getByText(/OpenStreetMap/)).toBeInTheDocument()
   })
 
-  it('mide su alto (300 por omisión) y no usa imágenes ni servidores externos', () => {
+  it('mide su alto (300 por omisión) y las únicas imágenes son las teselas del mapa de OpenStreetMap', () => {
     const { container } = render(<RouteMap {...props} stops={[A, B]} />)
     const svg = container.querySelector('svg.rmap-svg')!
     expect(svg).toHaveAttribute('height', '300')
-    expect(container.querySelectorAll('img, image, iframe')).toHaveLength(0)
+    expect(container.querySelectorAll('img, iframe')).toHaveLength(0)
+    const tiles = Array.from(container.querySelectorAll('image'))
+    expect(tiles.length).toBeGreaterThan(0)
+    for (const tl of tiles) expect(tl.getAttribute('href')).toMatch(/^https:\/\/tile\.openstreetmap\.org\/\d+\/\d+\/\d+\.png$/)
   })
 
   it('con onPick, un clic en el plano entrega una posición dentro del área de los puntos y el clic en un pin no la entrega', () => {

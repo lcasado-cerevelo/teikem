@@ -553,6 +553,8 @@ Aclaraciones: `includeCompleted` es `true` por omisión en el API; los totales i
 Sin validaciones propias más allá de las compartidas (permiso y módulo). La ficha de cada ruta
 (`GET /api/v1/trips/{publicId}`) trae las coordenadas (`point`, ausente si la parada no tiene) y la precisión de cada parada; el front dibuja con ellas un plano esquemático (sin calles) en la Sala de despacho (manual de pantallas: `frontend/fe2a-despacho.md`).
 
+> **Desde 2026-10-26 el plano lleva mapa de fondo real** (OpenStreetMap, con su crédito al pie): los pines, la línea de la ruta y el recorrido del chofer caen sobre las calles, y el clic para fijar un pin manual da la posición exacta bajo el cursor. Si el navegador no puede bajar las teselas (sin Internet), se ve la cuadrícula de antes.
+
 ---
 
 ## 10. Estatus y transiciones
@@ -668,7 +670,7 @@ causa y qué hacer.
 El mapa de Despacho y el de Monitoreo pintan las paradas que tienen **latitud y longitud**. Esa ubicación se busca con Google cuando la parada **entra a una ruta**:
 
 - **Cuándo:** al armar la ruta (Planificar el día, Nueva ruta o Añadir a la ruta). Una vez, **en segundo plano**: el despachador no espera; en unos segundos los pines aparecen solos en el mapa (la ficha de la ruta vuelve a preguntar mientras falten, unos 2 minutos).
-- **Qué se busca:** las paradas de la versión vigente de rutas **no cerradas** de ayer en adelante, sin ubicación. No se geocodifica todo el directorio de consignatarios ni el historial.
+- **Qué se busca:** las paradas de la versión vigente de rutas **no cerradas** de los últimos 10 días en adelante (desde 2026-10-26; antes eran de ayer en adelante y las rutas del viernes no se buscaban el lunes), sin ubicación. No se geocodifica todo el directorio de consignatarios ni el historial.
 - **No se paga dos veces lo mismo:** cada dirección (por compañía, sin importar acentos ni mayúsculas) se busca **una sola vez**; si dos paradas tienen la misma dirección, o ya se buscó otro día, se usa lo guardado. Si Google no la encontró, tampoco se vuelve a preguntar.
 - **Tope mensual:** `GoogleMaps:MonthlyCap` (por omisión 9.000 al mes; ver el capítulo 36). Al llegar al tope no se consulta más ese mes: las paradas siguen sin pin y se retoman al mes siguiente o cuando se suba el tope. El despachador puede poner el pin a mano. El contador es de la aplicación, por mes del calendario.
 - **Precisión:** un resultado «de techo» (ROOFTOP) es **Exacto**; lo demás sale como **Aproximado** en el mapa. Un pin puesto a mano manda siempre.

@@ -4,7 +4,7 @@
 import { useId, useMemo, useRef, type KeyboardEvent, type MouseEvent } from 'react'
 import { useFormat } from '../format'
 import { useT } from '../i18n/useT'
-import { fitProjection, isGeoPoint, niceScale, scaleParts, spreadOverlaps, type GeoPoint, type PinAccuracy, type PinState } from './routeMapRules'
+import { fitProjection, isGeoPoint, niceScale, scaleParts, spreadOverlaps, tilesFor, type GeoPoint, type PinAccuracy, type PinState } from './routeMapRules'
 import { useElementWidth } from './useElementWidth'
 import './ui.css'
 
@@ -88,6 +88,7 @@ export function RouteMap({ stops, selectedId = null, onSelect, live = null, trac
     return spreadOverlaps(raw)
   }, [located, projection])
 
+  const tiles = useMemo(() => (projection ? tilesFor(projection.world, width, height) : []), [projection, width, height])
   const empty = !projection
   const interactive = !!onSelect
 
@@ -132,7 +133,12 @@ export function RouteMap({ stops, selectedId = null, onSelect, live = null, trac
           </defs>
           {/* fondo sólido (recibe el clic: un relleno de patrón solo recibe el puntero sobre las líneas) y encima la cuadrícula, que no lo intercepta */}
           <rect className="rmap-bg" x="0" y="0" width={width} height={height} fill="var(--bg-2)" onClick={pick} />
-          <rect x="0" y="0" width={width} height={height} fill={`url(#${gridId})`} pointerEvents="none" />
+          {/* mapa de fondo (OpenStreetMap): teselas en la misma proyección que los pines; no reciben el clic (lo recibe el fondo de abajo) */}
+          {tiles.map((tl) => (
+            <image key={tl.key} href={tl.url} x={tl.x} y={tl.y} width={tl.size + 0.5} height={tl.size + 0.5} pointerEvents="none" aria-hidden="true" />
+          ))}
+          {tiles.length === 0 && <rect x="0" y="0" width={width} height={height} fill={`url(#${gridId})`} pointerEvents="none" />}
+          {tiles.length > 0 && <rect className="rmap-hit" x="0" y="0" width={width} height={height} fill="transparent" onClick={pick} />}
           {/* norte (arriba) y escala: el plano conserva la proporción real entre latitud y longitud */}
           <g className="rmap-north" transform={`translate(${width - 18} 24)`} aria-hidden="true">
             <path d="M0 -12 L5 2 L0 -1 L-5 2 Z" fill="var(--faint)" />
@@ -271,7 +277,7 @@ export function RouteMap({ stops, selectedId = null, onSelect, live = null, trac
               {t('routeMap.legend.live')}
             </span>
           )}
-          <span className="lp hint">{t('routeMap.schematic')}</span>
+          <span className="lp hint">{tiles.length > 0 ? t('routeMap.attribution') : t('routeMap.schematic')}</span>
         </div>
       )}
       {onPick && projection && <p className="rmap-pickhint">{t('routeMap.pickHint')}</p>}

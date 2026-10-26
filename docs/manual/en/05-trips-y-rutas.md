@@ -668,7 +668,7 @@ cause and what to do.
 The Dispatch map and the Monitoring map draw the stops that have **latitude and longitude**. That location is looked up with Google when the stop **enters a route**:
 
 - **When:** when building the route (Plan the day, New route or Add to route). Once, **in the background**: the dispatcher does not wait; within a few seconds the pins appear on the map by themselves (the route record keeps asking while some are missing, about 2 minutes).
-- **What is looked up:** the stops of the current version of **unclosed** routes from yesterday onward, without a location. The whole consignee directory and the history are not geocoded.
+- **What is looked up:** the stops of the current version of **unclosed** routes from the last 10 days onward (since 2026-10-26; before it was from yesterday onward, so Friday routes were not looked up on Monday), without a location. The whole consignee directory and the history are not geocoded.
 - **The same thing is not paid for twice:** each address (per company, ignoring accents and case) is looked up **only once**; if two stops have the same address, or it was already looked up another day, what was saved is used. If Google did not find it, it is not asked again either.
 - **Monthly cap:** `GoogleMaps:MonthlyCap` (by default 9,000 per month; see chapter 36). When the cap is reached there are no more queries that month: the stops remain without a pin and are resumed the following month or when the cap is raised. The dispatcher can place the pin by hand. The counter belongs to the application, per calendar month.
 - **Accuracy:** a “rooftop” result (ROOFTOP) is **Exact**; everything else shows as **Approximate** on the map. A pin placed by hand always prevails.
