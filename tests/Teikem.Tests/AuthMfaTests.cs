@@ -151,7 +151,7 @@ public partial class AuthMfaTests
     {
         await using var f = await WmsFixture.CreateAsync(s => { s.AddSingleton<TenantZoneCache>(); s.AddSingleton<TenantService>(); });
         var svc = f.Get<TenantService>();
-        TenantSettingsUpdateRequest Req(bool on) => new(null, null, null, null, null, null, null, null, MfaRequired: on, Aal2WindowMinutes: null, SessionDays: null, DeviceSessionDays: null, BrandingJson: null);
+        TenantSettingsUpdateRequest Req(bool on) => new(null, null, null, null, null, null, null, null, MfaRequired: on, Aal2WindowMinutes: null, BrandingJson: null);
 
         Assert.True((await svc.UpdateSettingsAsync(Req(true), default)).MfaRequired);
         f.Db.ChangeTracker.Clear();

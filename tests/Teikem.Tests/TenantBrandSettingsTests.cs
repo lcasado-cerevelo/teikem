@@ -21,7 +21,7 @@ public sealed class TenantBrandSettingsTests
     });
 
     private static TenantSettingsUpdateRequest Brand(string? json, string? name = null)
-        => new(name, null, null, null, null, null, null, null, null, null, null, null, json);
+        => new(name, null, null, null, null, null, null, null, null, null, json);
 
     private const string Teal = "{\"preset\":\"turquesa\",\"useCustom\":false,\"custom\":{\"flow\":\"#1F6FE5\",\"money\":\"#FF6A1A\",\"neutral\":\"#2B3A5C\"}}";
 

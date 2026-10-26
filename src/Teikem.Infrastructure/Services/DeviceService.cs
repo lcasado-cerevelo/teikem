@@ -56,7 +56,6 @@ public sealed class DeviceService(
     public const int AppVersionMaxLength = 20;
     public const int EnrollCodeLength = 8;
     public static readonly TimeSpan EnrollCodeLifetime = TimeSpan.FromHours(24);
-    public const int DefaultDeviceSessionDays = 30;
     public const string DefaultTheme = UiThemes.Light;
     public const string DefaultPlatform = "ANDROID";
 
@@ -371,14 +370,13 @@ public sealed class DeviceService(
         => db.Set<UserDevice>().IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(d => d.UserDeviceId == userDeviceId, ct);
 
     /// <summary>
-    /// Minutos de sesión de aparato de la compañía (2026-10-12: Tenant.DeviceSessionMinutes; si no está configurado, Tenant.DeviceSessionDays × 1440; 30 días si no es positivo).
+    /// Minutos de sesión de aparato de la compañía (Tenant.DeviceSessionMinutes; si no está configurado, 30 días).
     /// </summary>
     internal async Task<int> SessionMinutesAsync(int tenantId, CancellationToken ct)
     {
         var t = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(x => x.TenantId == tenantId)
-            .Select(x => new { x.DeviceSessionMinutes, x.DeviceSessionDays }).FirstOrDefaultAsync(ct);
-        if (t is null) return DefaultDeviceSessionDays * 1440;
-        return SessionRules.Minutes(t.DeviceSessionMinutes, t.DeviceSessionDays > 0 ? t.DeviceSessionDays : DefaultDeviceSessionDays);
+            .Select(x => x.DeviceSessionMinutes).FirstOrDefaultAsync(ct);
+        return SessionRules.Minutes(t);
     }
 
     /// <summary>

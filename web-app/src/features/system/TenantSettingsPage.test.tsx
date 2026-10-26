@@ -87,6 +87,20 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
       return json({ id: 99, ...(body as object) })
     }
     if (p.startsWith('/api/v1/tenant/holidays/') && req.method === 'DELETE') return new Response(null, { status: 204 })
+    if (p === '/api/v1/platform/tenants' && req.method === 'POST') {
+      const b = body as { name: string }
+      return json({ tenant: { id: 7, publicId: 'tenant-7', name: b.name, isActive: true }, adminUserId: null, temporaryPassword: null })
+    }
+    if (p === '/api/v1/platform/tenants/tenant-1/domains' && req.method === 'PUT') {
+      const b = body as { customDomain: string; subdomain: string }
+      mock.settings = { ...mock.settings, customDomain: b.customDomain || null, subdomain: b.subdomain || null }
+      return json({ id: 1, publicId: 'tenant-1', name: 'Advance Logistics', isActive: true, customDomain: b.customDomain || null, subdomain: b.subdomain || null })
+    }
+    if (p === '/api/v1/platform/tenants/tenant-1/active' && req.method === 'PUT') {
+      const b = body as { isActive: boolean }
+      mock.settings = { ...mock.settings, isActive: b.isActive }
+      return json({ id: 1, publicId: 'tenant-1', name: 'Advance Logistics', isActive: b.isActive })
+    }
     if (p === '/api/v1/modules') return json(mock.modules)
     if (p.startsWith('/api/v1/modules/') && req.method === 'PUT') {
       const key = p.split('/').pop()
@@ -139,7 +153,9 @@ const PR = {
 }
 const SETTINGS = {
   id: 1,
+  publicId: 'tenant-1',
   name: 'Advance Logistics',
+  isActive: true,
   legalName: 'Advance Logistics, LLC',
   taxId: '66-0000000',
   defaultLangCode: 'es',
@@ -190,11 +206,11 @@ function Where() {
   return <span data-testid="where">{loc.pathname + loc.search}</span>
 }
 
-function wrap(path = '/system/settings', permissions = ALL, modules = ['SYSTEM', 'LTL_GROUND', 'WMS_LOTSERIAL'], platformAdmin = false) {
+function wrap(path = '/system/settings', permissions = ALL, modules = ['SYSTEM', 'LTL_GROUND', 'WMS_LOTSERIAL'], platformAdmin = false, session: Partial<Session> = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const ui: ReactNode = (
     <QueryClientProvider client={client}>
-      <SessionContext.Provider value={{ me: { isPlatformAdmin: platformAdmin } } as unknown as Session}>
+      <SessionContext.Provider value={{ me: { isPlatformAdmin: platformAdmin }, ...session } as unknown as Session}>
       <AccessProvider permissions={permissions} modules={modules}>
         <FormatProvider enabled>
           <TenantBrand enabled />
@@ -264,11 +280,118 @@ describe('Ajustes de la compañía', () => {
     await user.type(legal, 'Advance Logistics Corp.')
     await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
     await waitFor(() => expect(put()).toHaveLength(1))
-    expect(put()[0].body).toEqual({ legalName: 'Advance Logistics Corp.', taxId: '66-0000000', defaultLangCode: 'es' })
+    expect(put()[0].body).toEqual({ legalName: 'Advance Logistics Corp.', taxId: '66-0000000', defaultLangCode: 'es', phoneNumber: '', postalSameAsAddress: true })
     // enlace a Seguridad y auditoría
     await user.click(screen.getByRole('button', { name: 'Abrir Seguridad y auditoría' }))
     // abre directo la pestaña Sesiones y MFA (MFA, reautenticación y duración de las sesiones viven allá)
     expect(screen.getAllByTestId('where').at(-1)).toHaveTextContent('/system/audit?tab=sessions')
+  })
+
+  it('General (administrador de la compañía): el nombre está bloqueado y no ve «Nueva compañía» ni el panel de la plataforma', async () => {
+    wrap()
+    expect(await screen.findByLabelText('Nombre')).toBeDisabled()
+    expect(screen.queryByTestId('new-company')).not.toBeInTheDocument()
+    expect(screen.queryByText('Solo la plataforma')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('company-active-toggle')).not.toBeInTheDocument()
+  })
+
+  it('General (plataforma): el nombre se edita y viaja solo si cambió; teléfono, domicilio y dirección postal se guardan', async () => {
+    const user = userEvent.setup()
+    wrap('/system/settings', ALL, ['SYSTEM'], true)
+    const name = await screen.findByLabelText(/Nombre/)
+    expect(name).toBeEnabled()
+    await user.clear(name)
+    await user.type(name, 'Advance Depot')
+    await user.type(screen.getByLabelText('Teléfono'), '787-555-0100')
+    await user.type(screen.getByLabelText(/Dirección \(línea 1\)/), 'Calle Sol 123')
+    await user.type(screen.getByLabelText(/Ciudad/), 'San Juan')
+    // dirección postal distinta
+    await user.click(screen.getByRole('switch'))
+    expect(screen.getAllByLabelText(/Dirección \(línea 1\)/)).toHaveLength(2)
+    await user.type(screen.getAllByLabelText(/Dirección \(línea 1\)/)[1], 'PO Box 99')
+    await user.type(screen.getAllByLabelText(/Ciudad/)[1], 'San Juan')
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(put()).toHaveLength(1))
+    expect(put()[0].body).toMatchObject({
+      name: 'Advance Depot',
+      phoneNumber: '787-555-0100',
+      address: { line1: 'Calle Sol 123', city: 'San Juan', line2: null, country: 'PR' },
+      postalAddress: { line1: 'PO Box 99', city: 'San Juan' },
+    })
+    expect(put()[0].body).not.toHaveProperty('postalSameAsAddress')
+  })
+
+  it('General: con la misma dirección postal se manda postalSameAsAddress y sin cambiar el nombre no se manda name', async () => {
+    const user = userEvent.setup()
+    wrap('/system/settings', ALL, ['SYSTEM'], true)
+    await user.type(await screen.findByLabelText('Teléfono'), '787-555-0100')
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(put()).toHaveLength(1))
+    expect(put()[0].body).toMatchObject({ phoneNumber: '787-555-0100', postalSameAsAddress: true })
+    expect(put()[0].body).not.toHaveProperty('name')
+    expect(put()[0].body).not.toHaveProperty('address')
+  })
+
+  it('General: el error 400 del teléfono sale debajo del campo', async () => {
+    const user = userEvent.setup()
+    mock.settingsFail = { status: 400, title: 'El teléfono debe tener entre 7 y 15 dígitos (puede llevar espacios, guiones, paréntesis, «+» y «ext»).', field: 'phoneNumber' }
+    wrap()
+    await user.type(await screen.findByLabelText('Teléfono'), '123')
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    expect(await screen.findByText(/El teléfono debe tener entre 7 y 15 dígitos/)).toBeInTheDocument()
+  })
+
+  it('Plataforma: dominio y subdominio se guardan por el endpoint de la plataforma', async () => {
+    const user = userEvent.setup()
+    wrap('/system/settings', ALL, ['SYSTEM'], true)
+    await user.type(await screen.findByLabelText('Dominio propio'), 'logistica.depot.com')
+    await user.type(screen.getByLabelText('Subdominio'), 'depot')
+    await user.click(screen.getByRole('button', { name: 'Guardar dirección web' }))
+    await waitFor(() => expect(mock.requests.filter((r) => r.method === 'PUT' && r.url.pathname.endsWith('/domains'))).toHaveLength(1))
+    expect(mock.requests.find((r) => r.url.pathname.endsWith('/domains'))!.body).toEqual({ customDomain: 'logistica.depot.com', subdomain: 'depot' })
+  })
+
+  it('Plataforma: desactivar pide confirmación, avisa lo que pasa y se puede activar de nuevo', async () => {
+    const user = userEvent.setup()
+    const reloadMe = vi.fn(async () => {})
+    wrap('/system/settings', ALL, ['SYSTEM'], true, { reloadMe } as unknown as Partial<Session>)
+    expect(await screen.findByTestId('company-status')).toHaveTextContent('La compañía está activa.')
+    await user.click(screen.getByTestId('company-active-toggle'))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/se cerrarán las sesiones de las demás personas/)).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Desactivar compañía' }))
+    await waitFor(() => expect(mock.requests.find((r) => r.url.pathname.endsWith('/active'))?.body).toEqual({ isActive: false }))
+    await waitFor(() => expect(screen.getByTestId('company-status')).toHaveTextContent('DESACTIVADA'))
+    expect(reloadMe).toHaveBeenCalled()
+    await user.click(screen.getByTestId('company-active-toggle'))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Activar compañía' }))
+    await waitFor(() => expect(mock.requests.filter((r) => r.url.pathname.endsWith('/active')).at(-1)?.body).toEqual({ isActive: true }))
+  })
+
+  it('Nueva compañía: pide nombre, teléfono y domicilio; crea con lo base y entra a la compañía nueva', async () => {
+    const user = userEvent.setup()
+    const switchTenant = vi.fn(async () => {})
+    wrap('/system/settings', ALL, ['SYSTEM'], true, { switchTenant } as unknown as Partial<Session>)
+    await user.click(await screen.findByTestId('new-company'))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByTestId('new-company-save'))
+    expect(await within(dialog).findByText('El nombre es obligatorio.')).toBeInTheDocument()
+    expect(within(dialog).getByText('El teléfono de la compañía es obligatorio.')).toBeInTheDocument()
+    expect(within(dialog).getByText('La dirección (línea 1) es obligatoria.')).toBeInTheDocument()
+    expect(within(dialog).getByText('La ciudad es obligatoria.')).toBeInTheDocument()
+    expect(mock.requests.some((r) => r.method === 'POST')).toBe(false)
+
+    await user.type(within(dialog).getByTestId('new-company-name'), 'Compañía Norte')
+    await user.type(within(dialog).getByLabelText(/^Teléfono/), '787-555-0100')
+    await user.type(within(dialog).getByLabelText(/Dirección \(línea 1\)/), 'Calle Sol 123')
+    await user.type(within(dialog).getByLabelText(/Ciudad/), 'San Juan')
+    await user.type(within(dialog).getByLabelText('Subdominio'), 'norte')
+    await user.click(within(dialog).getByTestId('new-company-save'))
+    await waitFor(() => expect(switchTenant).toHaveBeenCalledWith(7))
+    const post = mock.requests.find((r) => r.method === 'POST' && r.url.pathname === '/api/v1/platform/tenants')!
+    expect(post.body).toMatchObject({ name: 'Compañía Norte', phoneNumber: '787-555-0100', address: { line1: 'Calle Sol 123', city: 'San Juan', country: 'PR' }, subdomain: 'norte', customDomain: null })
+    expect(post.body).not.toHaveProperty('postalAddress')
+    expect(post.body).not.toHaveProperty('modules')   // los módulos base los pone el servidor
   })
 
   it('Región y formatos: vista previa en vivo, intercambio de separadores, "Personalizada" y guardar cambia la app', async () => {

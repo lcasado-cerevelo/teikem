@@ -191,7 +191,7 @@ public class DeviceServiceTests
         var locked = new PinLockedException();
         Assert.Equal("PIN bloqueado por 15 minutos.", locked.Message);
         Assert.Equal(423, locked.StatusCode);
-        Assert.Equal(30, DeviceService.DefaultDeviceSessionDays);
+        Assert.Equal(30 * 1440, Teikem.Domain.Tenancy.SessionRules.DefaultMinutes);
         Assert.Equal("did", DeviceClaims.DeviceId);
     }
 

@@ -195,7 +195,7 @@ public class PinRulesTests
         Assert.Equal("[IdempotencyKey] IS NOT NULL", idem.GetFilter());
         Assert.Equal(new[] { "TenantId", "UserId", "IdempotencyKey" }, idem.Properties.Select(p => p.Name));
         Assert.NotNull(db.Model.FindEntityType(typeof(RefreshToken))!.FindProperty(nameof(RefreshToken.UserDeviceId)));
-        Assert.NotNull(db.Model.FindEntityType(typeof(Teikem.Domain.Tenancy.Tenant))!.FindProperty("DeviceSessionDays"));
+        Assert.NotNull(db.Model.FindEntityType(typeof(Teikem.Domain.Tenancy.Tenant))!.FindProperty("DeviceSessionMinutes"));
 
         var sql = Structure.Value;
         Assert.Contains("CREATE TABLE dbo.UserDevice (", sql);

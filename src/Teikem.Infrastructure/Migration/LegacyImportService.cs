@@ -966,10 +966,10 @@ public sealed class LegacyImportService(
         {
             var result = await provisioning.ProvisionAsync(new TenantProvisionRequest(name, cfg.Company.LegalName, cfg.Company.TaxId, cfg.Company.Lang,
                 cfg.Company.Modules, cfg.Company.AdminEmail.Trim(), cfg.Company.AdminFullName ?? cfg.Company.AdminEmail.Trim(),
-                string.IsNullOrWhiteSpace(cfg.Company.AdminPassword) ? null : cfg.Company.AdminPassword), ct);
+                string.IsNullOrWhiteSpace(cfg.Company.AdminPassword) ? null : cfg.Company.AdminPassword), ct, fromScreen: false);
             TemporaryAdminPassword = result.TemporaryPassword;
             report.AddInfo("Compañía", $"{name} (id {result.Tenant.Id}, aprovisionada)");
-            return (result.Tenant.Id, result.AdminUserId, true, false);
+            return (result.Tenant.Id, result.AdminUserId ?? 0, true, false);
         }
         catch (TeikemException ex)
         {

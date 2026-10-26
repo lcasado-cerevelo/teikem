@@ -14,6 +14,8 @@ export type TenantHolidayDto = components['schemas']['TenantHolidayDto']
 export type TenantHolidayRequest = components['schemas']['TenantHolidayRequest']
 export type ModuleDto = components['schemas']['ModuleDto']
 export type StatusCapabilityDto = components['schemas']['StatusCapabilityDto']
+export type TenantProvisionRequest = components['schemas']['TenantProvisionRequest']
+export type TenantProvisionResult = components['schemas']['TenantProvisionResult']
 
 export const tenantSettingsKeys = {
   formatOptions: ['/api/v1/tenant/format-options'] as const,
@@ -137,5 +139,34 @@ export function useSetCapabilities(entityType: string, statusDomain: string) {
         }),
       ),
     onSuccess: (list) => qc.setQueryData(tenantSettingsKeys.capabilities(entityType), list),
+  })
+}
+
+/**
+ * `POST /api/v1/platform/tenants` (solo administrador de la plataforma, pide MFA reciente): alta de una compañía con sus datos base (nombre, teléfono, domicilio, dirección postal, dominio y subdominio).
+ * Nace con los módulos base; el resto se enciende después en Ajustes → Módulos. 400 con el campo (phoneNumber, address.line1, address.city, customDomain…), 409 nombre o dirección web repetidos.
+ */
+export function useProvisionTenant() {
+  return useMutation({
+    mutationFn: (body: TenantProvisionRequest): Promise<TenantProvisionResult> => unwrap(api.POST('/api/v1/platform/tenants', { body })),
+  })
+}
+
+/** `PUT /api/v1/platform/tenants/{publicId}/domains` (solo plataforma): dominio propio y subdominio de la compañía; vacío = quitarlo. 400 no válido, 409 de otra compañía. */
+export function useSetTenantDomains(publicId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { customDomain: string | null; subdomain: string | null }) =>
+      unwrap(api.PUT('/api/v1/platform/tenants/{publicId}/domains', { params: { path: { publicId } }, body })),
+    onSuccess: () => qc.invalidateQueries({ queryKey: catalogKeys.tenantSettings }),
+  })
+}
+
+/** `PUT /api/v1/platform/tenants/{publicId}/active` (solo plataforma): activa o desactiva la compañía. Desactivar cierra las sesiones de las demás personas. */
+export function useSetTenantActive(publicId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (isActive: boolean) => unwrap(api.PUT('/api/v1/platform/tenants/{publicId}/active', { params: { path: { publicId } }, body: { isActive } })),
+    onSuccess: () => qc.invalidateQueries({ queryKey: catalogKeys.tenantSettings }),
   })
 }

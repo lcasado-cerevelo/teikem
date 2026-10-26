@@ -28,7 +28,7 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         b.HasKey(t => t.TenantId);
         b.Property(t => t.PublicId).HasDefaultValueSql("NEWID()");
         b.Property(t => t.Name).HasMaxLength(200).IsRequired();
-        b.Property(t => t.TrackingSlug).HasMaxLength(40);   // Lote 103
+        b.Property(t => t.PhoneNumber).HasMaxLength(30);   // 2026-10-26
         b.Property(t => t.CustomDomain).HasMaxLength(253);   // 2026-10-22
         b.Property(t => t.Subdomain).HasMaxLength(63);   // 2026-10-22
         b.HasIndex(t => t.CustomDomain).IsUnique().HasFilter("[CustomDomain] IS NOT NULL").HasDatabaseName("UX_Tenant_CustomDomain");

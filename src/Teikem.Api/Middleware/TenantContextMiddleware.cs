@@ -30,6 +30,13 @@ public sealed class TenantContextMiddleware(RequestDelegate next)
             if (int.TryParse(user.FindFirst(TeikemClaims.Subject)?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid)) tenant.UserId = uid;
             if (int.TryParse(user.FindFirst(TeikemClaims.TenantId)?.Value, out var tid)) tenant.TenantId = tid;
             tenant.IsPlatformAdmin = user.FindFirst(TeikemClaims.PlatformAdmin)?.Value == "1";
+            // Compañía desactivada por la plataforma (2026-10-26): quien ya tenía una sesión no pasa (la plataforma sí, para poder volver a activarla).
+            if (tenant.TenantId is int activeTid && !tenant.IsPlatformAdmin && !await TenantStatusGuard.IsActiveAsync(db, activeTid, http.RequestAborted))
+            {
+                http.Response.StatusCode = StatusCodes.Status403Forbidden;
+                await http.Response.WriteAsJsonAsync(new { type = "https://teikem.app/errors/forbidden", title = TenantStatusGuard.InactiveMessage, status = 403, code = "forbidden", correlationId = correlation });
+                return;
+            }
             if (long.TryParse(user.FindFirst(TeikemClaims.Aal2At)?.Value, out var aal2)) tenant.Aal2VerifiedAtUtc = DateTimeOffset.FromUnixTimeSeconds(aal2).UtcDateTime;
             // Sesión de PORTAL (Lote 101): el cliente del claim `cid` es el alcance de datos (segundo filtro, además de la compañía); no se carga el alcance del staff.
             if (user.FindFirst(TeikemClaims.UserKind)?.Value == Teikem.Domain.Constants.UserKinds.Portal)

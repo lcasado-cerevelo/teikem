@@ -264,8 +264,8 @@ Cómo se usa (ambos sin `Authorization`, autenticados con aparato + secreto; lí
   como `Usuario` (nunca su correo: el aparato es compartido).
 - `POST /api/v1/auth/device/login` — `{ "devicePublicId": "...", "deviceSecret": "...", "userId": 12, "pin":
   "4826" }`. Devuelve el mismo par de tokens (`access`/`refresh`) que un login normal; la sesión queda ligada al
-  aparato, dura `Tenant.DeviceSessionDays` días (30 por defecto, configurable de 1 a 365 en `PUT
-  /api/v1/tenant/settings` con `admin.tenant`) y se renueva en cada refresh mientras el aparato siga activo y la
+  aparato, dura `Tenant.DeviceSessionMinutes` minutos (30 días por defecto, configurable de 1 minuto a 365 días en `PUT
+  /api/v1/tenant/settings` con `admin.tenant`; 2026-10-26: ya no existe `deviceSessionDays`) y se renueva en cada refresh mientras el aparato siga activo y la
   compañía siga activa con el módulo **WMS_LOTSERIAL** encendido. Si el aparato se desactiva o se apaga el módulo,
   `POST /api/v1/auth/refresh` de esa sesión responde 401 `El aparato no está registrado o fue desactivado.` y la
   sesión queda revocada (encender otra vez el módulo no la revive: se vuelve a entrar con el PIN). Cada refresh de
@@ -291,7 +291,7 @@ el dueño ya no podría entrar a la web con su contraseña. El segundo factor se
 | PIN correcto, pero lo asignó otra persona que ya no cubre los permisos actuales del usuario (ver 3.2) | `Su PIN lo asignó otra persona que ya no tiene sus permisos; defina su propio PIN en Mi cuenta.` | 403 |
 | Refresh de una sesión de aparato en ese mismo caso (la sesión queda revocada) | `Su PIN lo asignó otra persona que ya no tiene sus permisos; defina su propio PIN en Mi cuenta.` | 401 |
 | Usuario válido y PIN correcto, pero sin `inventory.view` | `Falta el permiso 'inventory.view'.` | 403 |
-| `deviceSessionDays` fuera de 1–365 (configuración) | `Entre 1 y 365 días.` | 400 |
+| `deviceSessionMinutes` fuera de 1–525600 (configuración) | `La duración debe estar entre 1 minuto y 365 días (8760 horas).` | 400 |
 | Cambiar de compañía con una sesión de aparato (`POST /auth/switch-tenant`) | `La sesión de un aparato no cambia de compañía.` | 403 |
 | Activar o confirmar la verificación en dos pasos con una sesión de aparato (`POST /auth/mfa/totp/enroll` o `/confirm`) | `La sesión de un aparato no administra el segundo factor.` | 403 |
 | Refresh de una sesión de aparato cuyo usuario ya no está activo, perdió la membresía activa en la compañía, o ya no tiene `inventory.view` | `Refresh token inválido.` | 401 |

@@ -181,3 +181,30 @@ repite sola. Al terminar, el menú y el buscador muestran u ocultan las pantalla
 - **Las fechas en español ahora salen mes/día/año.** Es el formato de la compañía (Puerto Rico = MM/DD/AAAA). Para día/mes/año,
   cambie el *Orden de la fecha* en Región y formatos.
 - **Un teléfono se ve "tal cual".** No tiene los dígitos que pide la máscara; edítelo y escriba los dígitos completos.
+
+## 9. Teléfono, domicilio, dirección postal y «Nueva compañía» (2026-10-26, Lote 220)
+
+![Ajustes → General con teléfono, domicilio y dirección postal](img/compania-general.png)
+
+En **General** (además de razón social, ID fiscal e idioma):
+- **Teléfono:** sale en las cartas y los documentos de la compañía (7 a 15 dígitos, p. ej. `787-555-0100`).
+- **Domicilio:** dirección (línea 1 y 2), ciudad, estado o municipio, código postal y país. Es una localización de la compañía como cualquier otra.
+- **Dirección postal:** el interruptor dice «La misma que el domicilio»; al cambiarlo a «Una dirección distinta» salen los campos de la postal. Con «la misma» se quita la postal propia (baja lógica).
+- **Nombre:** solo lo cambia el administrador de la plataforma; para los demás sale bloqueado.
+
+**Solo la plataforma** (panel aparte, solo lo ve el administrador de la plataforma): **dominio propio** y **subdominio** (de la dirección sale el logo de la pantalla de entrada) y **Activar / Desactivar compañía**.
+
+![Desactivar compañía](img/compania-desactivar.png)
+
+- **Desactivar** pide confirmar. Nadie puede entrar a esa compañía ni cambiarse a ella y se cierran las sesiones de las demás personas; no se borra nada. La persona de la plataforma sigue dentro y en el selector de compañías la ve como **«(desactivada)»**. **Activar** la devuelve a como estaba.
+
+![Desactivada](img/compania-desactivada.png)
+
+**Nueva compañía** (botón arriba a la derecha, solo plataforma): abre una ventana con lo base.
+
+![Nueva compañía](img/compania-nueva.png)
+
+- **Obligatorio:** nombre, teléfono, dirección (línea 1) y ciudad del domicilio. **Opcional:** línea 2, estado, código postal, país (Puerto Rico por omisión), dirección postal distinta, dominio y subdominio.
+- Crear una compañía es una acción sensible: si hace tiempo que confirmó su identidad, el sistema le pide **la contraseña** (y el código MFA si lo tiene) y continúa solo al confirmarla.
+- Al **Crear compañía** nace con los **módulos base** (sin transporte, almacén ni facturación) y el sistema **entra directo a ella**, en Ajustes. Ahí se termina: **Módulos**, **Región y formatos**, **Marca**, etc.
+- Errores: nombre repetido «Ya existe la compañía '…'.» (409); teléfono, dirección o ciudad faltantes (400, debajo de cada campo); dominio o subdominio inválidos (400) o ya usados (409).

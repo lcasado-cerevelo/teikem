@@ -153,6 +153,10 @@ public sealed class PlatformController(ProvisioningService provisioning) : Contr
     public Task<TenantProvisionResult> Provision([FromBody] TenantProvisionRequest req, CancellationToken ct) => provisioning.ProvisionAsync(req, ct);
 
     /// <summary>2026-10-22: dominio propio y subdominio de la compañía (el logo de la pantalla de entrada sale de la dirección). Vacío = quitarlo. 400 dirección inválida, 404 compañía, 409 dirección de otra compañía.</summary>
+    /// <summary>2026-10-26: activa o desactiva la compañía (solo plataforma). Desactivar cierra las sesiones de las demás personas y no deja entrar. 404 compañía.</summary>
+    [HttpPut("{publicId:guid}/active")]
+    public Task<TenantSummaryDto> SetActive(Guid publicId, [FromBody] TenantActiveRequest req, CancellationToken ct) => provisioning.SetActiveAsync(publicId, req.IsActive, ct);
+
     [HttpPut("{publicId:guid}/domains")]
     public Task<TenantSummaryDto> SetDomains(Guid publicId, [FromBody] TenantDomainsRequest req, CancellationToken ct) => provisioning.SetDomainsAsync(publicId, req, ct);
 }

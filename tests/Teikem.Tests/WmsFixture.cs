@@ -239,6 +239,8 @@ internal sealed class WmsFixture : IAsyncDisposable
         foreach (var m in new[] { Teikem.Domain.Billing.FreightRules.BillingModelPickup, Teikem.Domain.Billing.FreightRules.BillingModelDelivery, Teikem.Domain.Billing.FreightRules.BillingModelMixed })
             L(LookupDomains.BillingModel, m);
         L(LookupDomains.EntityType, Teikem.Domain.Accounting.AccountingCodes.EntityType);   // Lote 181
+        L(LookupDomains.LocationType, LocationTypes.Company);   // 2026-10-26: las dos direcciones de la compañía
+        L(LookupDomains.LocationType, LocationTypes.CompanyPostal);
         Db.LookupCodes.AddRange(all);
         Lookups.Load(all);
 

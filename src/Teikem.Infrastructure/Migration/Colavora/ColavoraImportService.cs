@@ -261,10 +261,10 @@ public sealed partial class ColavoraImportService(
             var modules = new List<string>(cfg.Company.Modules);
             var result = await provisioning.ProvisionAsync(new TenantProvisionRequest(name, cfg.Company.LegalName ?? source.Name, cfg.Company.TaxId, cfg.Company.Lang,
                 modules, cfg.Company.AdminEmail.Trim(), cfg.Company.AdminFullName ?? cfg.Company.AdminEmail.Trim(),
-                string.IsNullOrWhiteSpace(cfg.Company.AdminPassword) ? null : cfg.Company.AdminPassword), ct);
+                string.IsNullOrWhiteSpace(cfg.Company.AdminPassword) ? null : cfg.Company.AdminPassword), ct, fromScreen: false);
             TemporaryAdminPassword = result.TemporaryPassword;
             s.TenantId = result.Tenant.Id;
-            s.AdminUserId = result.AdminUserId;
+            s.AdminUserId = result.AdminUserId ?? 0;
             report.AddInfo("Compañía en Teikem", $"{name} (id {result.Tenant.Id}, aprovisionada)");
             return true;
         }

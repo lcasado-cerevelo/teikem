@@ -366,6 +366,10 @@ public static class LocationTypes
     public const string Both = "BOTH";
     public const string Billing = "BILLING";
     public const string Corporate = "CORPORATE";
+    /// <summary>2026-10-26: domicilio de la propia compañía (localización compartida, sin cliente).</summary>
+    public const string Company = "COMPANY";
+    /// <summary>2026-10-26: dirección postal de la propia compañía (localización compartida, sin cliente).</summary>
+    public const string CompanyPostal = "COMPANY_POSTAL";
 }
 
 /// <summary>Capacidades del motor de estatus (LookupDomains.Capability) que el código consulta por nombre.</summary>

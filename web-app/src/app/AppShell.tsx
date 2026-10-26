@@ -342,7 +342,7 @@ export function AppShell() {
               >
                 {memberships.map((m) => (
                   <option key={m.tenantId} value={String(m.tenantId)}>
-                    {m.tenantName}
+                    {m.status === 'PLATFORM_INACTIVE' ? t('shell.tenantInactive', { name: m.tenantName ?? '' }) : m.tenantName}
                   </option>
                 ))}
               </select>

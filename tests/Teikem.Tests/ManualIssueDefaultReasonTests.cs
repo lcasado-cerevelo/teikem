@@ -246,7 +246,11 @@ public sealed class ManualIssueDefaultReasonTests
         // 2026-10-11 (Lote 34): y después de esa, el método de rotación (en el DTO siempre trae valor, FEFO por omisión; en el cambio parcial, null = sin cambio).
         // 2026-10-23: al final se agregó DriverSessionMinutes (sesión del chofer en la app; opcional); por eso los índices cuentan desde un lugar más atrás.
         // 2026-10-12: al final se agregaron SessionMinutes y DeviceSessionMinutes (duración de la sesión en minutos); lo anterior conserva su orden relativo.
-        var dto = typeof(TenantSettingsDto).GetConstructors().Single().GetParameters();
+        // 2026-10-26: al final se agregaron teléfono, domicilio, dirección postal, dominio y subdominio (todos opcionales); lo anterior conserva su lugar contando desde ahí.
+        var allDto = typeof(TenantSettingsDto).GetConstructors().Single().GetParameters();
+        Assert.Equal(new[] { "PhoneNumber", "Address", "PostalAddress", "CustomDomain", "Subdomain" }, allDto.TakeLast(5).Select(p => p.Name));
+        Assert.All(allDto.TakeLast(5), p => { Assert.True(p.HasDefaultValue); Assert.Null(p.DefaultValue); });
+        var dto = allDto.SkipLast(5).ToArray();
         Assert.Equal(("DefaultManualIssueReason", typeof(string)), (dto[^14].Name, dto[^14].ParameterType));
         Assert.Equal(("DefaultProductCategoryId", typeof(int?)), (dto[^13].Name, dto[^13].ParameterType));
         Assert.Equal(("RotationMethod", typeof(string)), (dto[^12].Name, dto[^12].ParameterType));
@@ -257,7 +261,10 @@ public sealed class ManualIssueDefaultReasonTests
         Assert.Equal(("DeviceSessionMinutes", typeof(int)), (dto[^10].Name, dto[^10].ParameterType));
         Assert.Equal(("RotationEnforcement", typeof(string)), (dto[^9].Name, dto[^9].ParameterType));   // 2026-10-20 (al final, SUGGEST por omisión)
         Assert.Equal("SUGGEST", dto[^9].DefaultValue);
-        var req = typeof(TenantSettingsUpdateRequest).GetConstructors().Single().GetParameters();
+        var allReq = typeof(TenantSettingsUpdateRequest).GetConstructors().Single().GetParameters();
+        Assert.Equal(new[] { "PhoneNumber", "Address", "PostalAddress", "PostalSameAsAddress" }, allReq.TakeLast(4).Select(p => p.Name));
+        Assert.All(allReq.TakeLast(4), p => { Assert.True(p.HasDefaultValue); Assert.Null(p.DefaultValue); });
+        var req = allReq.SkipLast(4).ToArray();
         Assert.Equal(("DefaultManualIssueReason", typeof(string)), (req[^14].Name, req[^14].ParameterType));
         Assert.Equal(("DefaultProductCategoryId", typeof(int?)), (req[^13].Name, req[^13].ParameterType));
         Assert.Equal(("RotationMethod", typeof(string)), (req[^12].Name, req[^12].ParameterType));

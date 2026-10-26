@@ -10,17 +10,17 @@ public static class DriverSessionRules
     public const int DefaultMaxMinutes = 30 * 1440;
 
     /// <summary>La sesión de UNA compañía: el valor del chofer (con el tope) o, si es más largo, la sesión general. Nunca menor que la general.</summary>
-    public static int CompanyMinutes(int? driverMinutes, int? generalMinutes, int generalDays, int maxMinutes)
+    public static int CompanyMinutes(int? driverMinutes, int? generalMinutes, int maxMinutes)
     {
-        var general = SessionRules.Minutes(generalMinutes, generalDays);
+        var general = SessionRules.Minutes(generalMinutes);
         var driver = driverMinutes is int d && d > 0 ? Math.Min(d, Math.Max(maxMinutes, 1)) : 0;
         return Math.Max(general, driver);
     }
 
     /// <summary>La sesión del chofer entre varias compañías: la más permisiva. Sin compañías, la general mínima de un día.</summary>
-    public static int Minutes(IEnumerable<(int? DriverMinutes, int? GeneralMinutes, int GeneralDays)> companies, int maxMinutes)
+    public static int Minutes(IEnumerable<(int? DriverMinutes, int? GeneralMinutes)> companies, int maxMinutes)
     {
-        var all = companies.Select(c => CompanyMinutes(c.DriverMinutes, c.GeneralMinutes, c.GeneralDays, maxMinutes)).ToList();
+        var all = companies.Select(c => CompanyMinutes(c.DriverMinutes, c.GeneralMinutes, maxMinutes)).ToList();
         return all.Count == 0 ? 1440 : all.Max();
     }
 }
