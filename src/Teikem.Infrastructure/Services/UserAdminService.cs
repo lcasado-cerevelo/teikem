@@ -268,13 +268,13 @@ public sealed class UserAdminService(TeikemDbContext db, UserManager<Application
         var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId, ct) ?? throw new UnauthorizedException();
         var memberships = await db.UserTenants.AsNoTracking().IgnoreQueryFilters().Include(m => m.Tenant).Include(m => m.Status)
             .Where(m => m.UserId == userId).Select(m => new MembershipDto(m.TenantId, m.Tenant!.Name, m.Status!.InternalCode, m.IsDefault)).ToListAsync(ct);
-        // Admin de plataforma: además de sus membresías, todas las demás compañías activas (2026-10-01: el de la siembra es miembro
-        // de la demo y antes solo veía esa; el selector de la cabecera debe dejarle entrar a cualquiera).
+        // Admin de plataforma: además de sus membresías, todas las demás compañías (2026-10-01: el de la siembra es miembro
+        // de la demo y antes solo veía esa; el selector de la cabecera debe dejarle entrar a cualquiera). 2026-10-26: también las desactivadas, marcadas PLATFORM_INACTIVE, para poder volver a activarlas.
         if (user.IsPlatformAdmin)
         {
             var mine = memberships.Select(m => m.TenantId).ToHashSet();
-            var others = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.IsActive && !mine.Contains(t.TenantId))
-                .Select(t => new MembershipDto(t.TenantId, t.Name, "PLATFORM", false)).ToListAsync(ct);
+            var others = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => !mine.Contains(t.TenantId))
+                .Select(t => new MembershipDto(t.TenantId, t.Name, t.IsActive ? "PLATFORM" : "PLATFORM_INACTIVE", false)).ToListAsync(ct);
             memberships = memberships.Concat(others).OrderBy(m => m.TenantName).ToList();
         }
         var perms = tenant.TenantId is null ? new List<string>() : (await permissions.GetEffectivePermissionsAsync(userId, tenant.TenantId.Value, ct)).OrderBy(p => p).ToList();

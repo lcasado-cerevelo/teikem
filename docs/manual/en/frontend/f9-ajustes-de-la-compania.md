@@ -181,3 +181,31 @@ repeats by itself. When done, the menu and the search show or hide the module's 
 - **Dates in Spanish now come out month/day/year.** It is the company's format (Puerto Rico = MM/DD/YYYY). For day/month/year,
   change the *Date order* in Region & formats.
 - **A phone number is shown "as is".** It does not have the digits the mask requires; edit it and type the complete digits.
+
+
+## 9. Phone, address, mailing address and “New company” (2026-10-26, Batch 220)
+
+![Settings → General with phone, address and mailing address](img/compania-general.png)
+
+In **General** (besides legal name, tax ID and language):
+- **Phone:** shown on the company's letters and documents (7 to 15 digits, e.g. `787-555-0100`).
+- **Address:** address (line 1 and 2), city, state or municipality, postal code and country. It is a company location like any other.
+- **Mailing address:** the switch says “Same as the address”; change it to “A different address” to show the mailing fields. With “same”, the company's own mailing address is removed (soft delete).
+- **Name:** only the platform administrator changes it; for everyone else it is locked.
+
+**Platform only** (separate panel, visible only to the platform administrator): **own domain** and **subdomain** (the sign-in screen logo comes from the address) and **Activate / Deactivate company**.
+
+![Deactivate company](img/compania-desactivar.png)
+
+- **Deactivate** asks for confirmation. Nobody can sign in to that company or switch to it, and everyone else's sessions are closed; nothing is deleted. The platform person stays in and sees it in the company selector as **“(deactivated)”**. **Activate** returns it as it was.
+
+![Deactivated](img/compania-desactivada.png)
+
+**New company** (button at the top right, platform only): opens a window with the basics.
+
+![New company](img/compania-nueva.png)
+
+- **Required:** name, phone, address (line 1) and city. **Optional:** line 2, state, postal code, country (Puerto Rico by default), a different mailing address, domain and subdomain.
+- Creating a company is a sensitive action: if you confirmed your identity a while ago, the system asks for **your password** (and the MFA code if you have one) and continues on its own once confirmed.
+- On **Create company** it is born with the **base modules** (no transport, warehouse or billing) and the system **enters it directly**, in Settings. Finish there: **Modules**, **Region and formats**, **Brand**, etc.
+- Errors: repeated name “The company '…' already exists.” (409); missing phone, address or city (400, under each field); invalid domain or subdomain (400) or already used (409).

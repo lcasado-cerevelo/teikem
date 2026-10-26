@@ -81,7 +81,7 @@ El token para renovar tu sesión no existe, ya se usó (los refresh tokens son d
 cada llamada) o fue revocado (por ejemplo, alguien cerró esa sesión). Vuelve a iniciar sesión.
 
 **¿Qué significa "Sesión expirada."?**
-Tu sesión superó los días configurados por tu compañía (`SessionDays`). Vuelve a iniciar sesión.
+Tu sesión superó el tiempo configurado por tu compañía (por omisión 30 días; se cambia en Seguridad y auditoría → Sesiones). Vuelve a iniciar sesión.
 
 **¿Qué significa "La membresía ya no está activa."?**
 Al renovar tu sesión, el sistema detectó que ya no tienes membresía activa en ese tenant (te suspendieron o
@@ -1973,9 +1973,9 @@ aparato (`ZB-01`).
 Desde el Lote 8A, sin `warehouse.count` el conteo es a ciegas también en la lista: el API no envía la diferencia y la
 pantalla oculta esa columna. Antes estos roles veían la diferencia real. Si la persona debe verla, dele `warehouse.count`.
 
-**¿Qué significa "Entre 1 y 365 días." en `deviceSessionDays` (400)?**
-La vida de la sesión de los aparatos (`PUT /api/v1/tenant/settings`, `admin.tenant`) va de 1 a 365 días (30 por
-defecto); cada renovación del aparato la extiende desde ese momento.
+**¿Qué significa "La duración debe estar entre 1 minuto y 365 días (8760 horas)." en `deviceSessionMinutes` (400)?**
+La vida de la sesión de los aparatos (`PUT /api/v1/tenant/settings`, `admin.tenant`) va de 1 minuto a 365 días (30 días por
+defecto; desde 2026-10-26 ya no existe `deviceSessionDays`); cada renovación del aparato la extiende desde ese momento.
 
 **¿Qué significa "Ya existe un aparato con ese código." (409)?**
 El código del aparato (`POST /api/v1/devices`, campo `code`) es único por compañía, incluso si el aparato que ya
@@ -10924,3 +10924,13 @@ La pantalla muestra el logo de la última compañía con la que entró ese telé
 - **P: Alguien abrió un correo en el buzón y Teikem no lo tomó.** Ya no pasa: se leen los correos de la carpeta, leídos o no.
 - **P: «Escriba la carpeta a la que se mueven los correos procesados…» (400).** Llene «Folder for processed e-mails» (por omisión «Procesados»).
 - **P: Puse una integración nueva sobre un buzón viejo y leyó cientos de correos.** Use «Read e-mails received since» con la fecha de arranque; sin fecha se lee todo lo que haya en la carpeta.
+
+
+## Compañía: teléfono, domicilio, nombre, desactivar y alta nueva (2026-10-26)
+- **¿Por qué no veo «Nueva compañía»?** Solo la ve el administrador de la **plataforma** (no el administrador de una compañía). Está arriba a la derecha en Ajustes de la compañía.
+- **«El teléfono de la compañía es obligatorio.» / «El teléfono debe tener entre 7 y 15 dígitos (puede llevar espacios, guiones, paréntesis, «+» y «ext»).» (400)** El teléfono sale en las cartas y documentos: escríbalo completo, p. ej. `787-555-0100`.
+- **«La dirección (línea 1) es obligatoria.» / «La ciudad es obligatoria.» (400)** El domicilio de una compañía nueva necesita al menos la dirección y la ciudad; la dirección postal solo si es distinta (y entonces también).
+- **«Solo el administrador de la plataforma cambia el nombre de la compañía.» (403)** El nombre lo cambia el equipo de plataforma; pídaselo. **«Ya existe una compañía con ese nombre.» (409)**: escoja otro.
+- **Desactivé una compañía y su gente me llama.** Es lo esperado: nadie entra («El usuario no tiene ninguna compañía activa.») y a quien estaba dentro le sale «La compañía está inactiva.» (403). Para devolverles el acceso, entre a la compañía desde el selector (sale «(desactivada)») y pulse **Activar compañía**; sus datos siguen intactos, pero deben volver a iniciar sesión.
+- **La compañía nueva no tiene transporte ni almacén.** Nace con los módulos base a propósito: enciéndalos en Ajustes → Módulos.
+- **Ya no existen `sessionDays` ni `deviceSessionDays` ni `trackingSlug`.** La duración de la sesión es solo en minutos; el seguimiento público va en el enlace de cada aviso.

@@ -31,13 +31,9 @@ public class Tenant : ISoftDeletable
     public bool MfaRequired { get; set; } = true;
     /// <summary>Ventana de reautenticación AAL2 en minutos (step-up para acciones sensibles).</summary>
     public int Aal2WindowMinutes { get; set; } = 30;
-    /// <summary>Vida del refresh token (sesión) en días.</summary>
-    public int SessionDays { get; set; } = 30;
-    /// <summary>Lote 8A: vida en días de la sesión de un aparato de almacén (login por aparato + PIN); se renueva al refrescar.</summary>
-    public int DeviceSessionDays { get; set; } = 30;
-    /// <summary>2026-10-12: vida de la sesión en MINUTOS (NULL = sin configurar: vale SessionDays × 1440). Ver SessionRules.</summary>
+    /// <summary>2026-10-12: vida de la sesión en MINUTOS (NULL = sin configurar: vale el valor por omisión, 30 días). Ver SessionRules.</summary>
     public int? SessionMinutes { get; set; }
-    /// <summary>2026-10-12: vida de la sesión de un aparato de almacén en MINUTOS (NULL = vale DeviceSessionDays × 1440).</summary>
+    /// <summary>2026-10-12: vida de la sesión de un aparato de almacén en MINUTOS (NULL = sin configurar: vale el valor por omisión, 30 días). Se renueva al refrescar.</summary>
     public int? DeviceSessionMinutes { get; set; }
     /// <summary>2026-10-23: vida de la sesión del CHOFER en la app en MINUTOS (NULL = vale la sesión general de la compañía). Nunca pasa del tope de la aplicación (DriverApp:MaxSessionMinutes). Reglas: DriverSessionRules.</summary>
     public int? DriverSessionMinutes { get; set; }
@@ -47,8 +43,12 @@ public class Tenant : ISoftDeletable
     public string? CustomDomain { get; set; }
     /// <summary>2026-10-22: subdominio de la plataforma (depot → depot.teikem.com), la otra forma de reconocer la compañía por la dirección. NULL = sin subdominio.</summary>
     public string? Subdomain { get; set; }
-    /// <summary>Lote 103: identificador corto que servía para buscar por conduce; desde el Lote 116 el seguimiento es por enlace con token y esta columna ya no se usa (se conserva por el SQL congelado).</summary>
-    public string? TrackingSlug { get; set; }
+    /// <summary>2026-10-26: teléfono de la compañía (para cartas y documentos). NULL = sin teléfono (las compañías anteriores a esta fecha); el alta de una compañía nueva lo exige.</summary>
+    public string? PhoneNumber { get; set; }
+    /// <summary>2026-10-26: domicilio físico de la compañía: una fila de dbo.Location (ClientId NULL, tipo CORPORATE) como cualquier otra dirección. NULL = todavía sin domicilio.</summary>
+    public int? CorporateLocationId { get; set; }
+    /// <summary>2026-10-26: dirección postal de la compañía: una fila de dbo.Location (ClientId NULL, tipo BILLING). NULL = la misma que la física.</summary>
+    public int? BillingLocationId { get; set; }
     /// <summary>Lote 113: con cuántos intentos fallidos se SUGIERE devolver una orden (por omisión 2; 0 = nunca sugiere). Solo una marca y un mensaje: no bloquea nada.</summary>
     public int ReturnSuggestAfterAttempts { get; set; } = 2;
 

@@ -56,7 +56,7 @@ public sealed class DemoTenantSeeder(TeikemDbContext db, ITenantContext tenant, 
             var existing = await db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Name == name, ct);
             if (existing is null)
             {
-                var result = await provisioning.ProvisionAsync(new TenantProvisionRequest(name, "Advance Logistics, LLC", null, "es", AdvanceModules, adminEmail, "Administrador Advance", adminPassword), ct);
+                var result = await provisioning.ProvisionAsync(new TenantProvisionRequest(name, "Advance Logistics, LLC", null, "es", AdvanceModules, adminEmail, "Administrador Advance", adminPassword), ct, fromScreen: false);
                 tenantId = result.Tenant.Id;
                 // Tenant.MfaRequired es true por default (Lote F8a): el tenant demo lo apaga, si no las pruebas
                 // automatizadas y el desarrollo local quedarían bloqueados por el segundo factor en cada login.

@@ -6845,3 +6845,53 @@ GO
 IF COL_LENGTH(N'dbo.Client', N'NoticeDigestHour') IS NULL
     ALTER TABLE dbo.Client ADD NoticeDigestHour INT NULL CONSTRAINT CK_Client_NoticeDigestHour CHECK (NoticeDigestHour IS NULL OR (NoticeDigestHour BETWEEN 0 AND 23));
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-26 — Datos de la compañía (pantalla de Ajustes → General y alta de compañía nueva).
+   1) AGREGA a dbo.Tenant: PhoneNumber (teléfono, para cartas y documentos), CorporateLocationId (domicilio físico) y BillingLocationId (dirección postal; NULL = la misma que la física).
+      Son filas de dbo.Location como cualquier otra (ClientId NULL, tipos CORPORATE / BILLING), igual que las direcciones de un cliente.
+   2) QUITA lo que ya no se usa: SessionDays y DeviceSessionDays (la vida de la sesión vive en SessionMinutes / DeviceSessionMinutes; antes de borrar las columnas se copia su valor a los
+      minutos donde estén sin configurar, para que ninguna compañía cambie de duración) y TrackingSlug con su índice (el seguimiento público viaja en el enlace de cada aviso).
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH(N'dbo.Tenant', N'PhoneNumber') IS NULL
+    ALTER TABLE dbo.Tenant ADD PhoneNumber NVARCHAR(30) NULL;
+GO
+IF COL_LENGTH(N'dbo.Tenant', N'CorporateLocationId') IS NULL
+    ALTER TABLE dbo.Tenant ADD CorporateLocationId INT NULL CONSTRAINT FK_Tenant_CorporateLocation REFERENCES dbo.Location(LocationId);
+GO
+IF COL_LENGTH(N'dbo.Tenant', N'BillingLocationId') IS NULL
+    ALTER TABLE dbo.Tenant ADD BillingLocationId INT NULL CONSTRAINT FK_Tenant_BillingLocation REFERENCES dbo.Location(LocationId);
+GO
+IF COL_LENGTH(N'dbo.Tenant', N'SessionDays') IS NOT NULL
+BEGIN
+    EXEC(N'UPDATE dbo.Tenant SET SessionMinutes = SessionDays * 1440 WHERE SessionMinutes IS NULL AND SessionDays > 0');
+    EXEC(N'UPDATE dbo.Tenant SET DeviceSessionMinutes = DeviceSessionDays * 1440 WHERE DeviceSessionMinutes IS NULL AND DeviceSessionDays > 0');
+    DECLARE @drop NVARCHAR(MAX) = N'';
+    SELECT @drop += N'ALTER TABLE dbo.Tenant DROP CONSTRAINT ' + QUOTENAME(dc.name) + N';'
+      FROM sys.default_constraints dc JOIN sys.columns c ON c.default_object_id = dc.object_id AND c.object_id = dc.parent_object_id
+     WHERE dc.parent_object_id = OBJECT_ID(N'dbo.Tenant') AND c.name IN (N'SessionDays', N'DeviceSessionDays');
+    SELECT @drop += N'ALTER TABLE dbo.Tenant DROP CONSTRAINT ' + QUOTENAME(cc.name) + N';'
+      FROM sys.check_constraints cc
+     WHERE cc.parent_object_id = OBJECT_ID(N'dbo.Tenant') AND (cc.definition LIKE N'%SessionDays%' OR cc.definition LIKE N'%DeviceSessionDays%');
+    SET @drop += N'ALTER TABLE dbo.Tenant DROP COLUMN SessionDays, DeviceSessionDays;';
+    EXEC(@drop);
+END
+GO
+IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Tenant_TrackingSlug' AND object_id = OBJECT_ID(N'dbo.Tenant'))
+    DROP INDEX UX_Tenant_TrackingSlug ON dbo.Tenant;
+GO
+IF COL_LENGTH(N'dbo.Tenant', N'TrackingSlug') IS NOT NULL
+    ALTER TABLE dbo.Tenant DROP COLUMN TrackingSlug;
+GO
+/* 2026-10-26 (continuación) — tipos de localización para las dos direcciones de la compañía (la corporativa y la postal de un CLIENTE no pueden ser compartidas, así que la compañía usa los suyos):
+   COMPANY = domicilio de la compañía, COMPANY_POSTAL = su dirección postal. No aparecen como almacén, recogida ni consignatario. Idempotente. */
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'COMPANY',        N'{"es":"Domicilio de la compañía","en":"Company address"}',              6),
+    (N'COMPANY_POSTAL', N'{"es":"Dirección postal de la compañía","en":"Company mailing address"}', 7)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'LocationType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'LocationType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO

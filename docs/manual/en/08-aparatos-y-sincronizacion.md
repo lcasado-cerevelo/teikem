@@ -264,8 +264,8 @@ How it is used (both without `Authorization`, authenticated with device + secret
   as `User` (never their e-mail: the device is shared).
 - `POST /api/v1/auth/device/login` — `{ "devicePublicId": "...", "deviceSecret": "...", "userId": 12, "pin":
   "4826" }`. Returns the same token pair (`access`/`refresh`) as a normal login; the session is tied to the
-  device, lasts `Tenant.DeviceSessionDays` days (30 by default, configurable from 1 to 365 in `PUT
-  /api/v1/tenant/settings` with `admin.tenant`) and is renewed on every refresh as long as the device is still active and the
+  device, lasts `Tenant.DeviceSessionMinutes` minutes (30 days by default, configurable from 1 minute to 365 days in `PUT
+  /api/v1/tenant/settings` with `admin.tenant`; since 2026-10-26 `deviceSessionDays` no longer exists) and is renewed on every refresh as long as the device is still active and the
   company is still active with the **WMS_LOTSERIAL** module turned on. If the device is deactivated or the module is turned off,
   `POST /api/v1/auth/refresh` of that session responds 401 `The device is not enrolled or was deactivated.` and the
   session is revoked (turning the module on again does not revive it: sign in again with the PIN). Every refresh of
@@ -291,7 +291,7 @@ the owner could no longer sign in to the web with their password. The second fac
 | Correct PIN, but it was assigned by someone else who no longer covers the user's current permissions (see 3.2) | `Your PIN was assigned by someone else who no longer has your permissions; define your own PIN in My account.` | 403 |
 | Refresh of a device session in that same case (the session is revoked) | `Your PIN was assigned by someone else who no longer has your permissions; define your own PIN in My account.` | 401 |
 | Valid user and correct PIN, but without `inventory.view` | `Missing permission 'inventory.view'.` | 403 |
-| `deviceSessionDays` outside 1–365 (settings) | `Between 1 and 365 days.` | 400 |
+| `deviceSessionMinutes` outside 1–525600 (settings) | `The duration must be between 1 minute and 365 days (8760 hours).` | 400 |
 | Switch company with a device session (`POST /auth/switch-tenant`) | `A device session does not switch company.` | 403 |
 | Activate or confirm two-step verification with a device session (`POST /auth/mfa/totp/enroll` or `/confirm`) | `A device session does not manage the second factor.` | 403 |
 | Refresh of a device session whose user is no longer active, lost active membership in the company, or no longer has `inventory.view` | `Invalid refresh token.` | 401 |

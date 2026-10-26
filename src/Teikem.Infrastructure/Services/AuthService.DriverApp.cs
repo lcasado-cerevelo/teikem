@@ -52,8 +52,8 @@ public sealed partial class AuthService
         var memberships = user is null ? new List<TenantOptionDto>() : await ActiveMembershipsAsync(user, ct);
         var tenantIds = user is null ? new List<int>() : (await MobileTenantsAsync(user, memberships, ct)).Select(x => x.TenantId).ToList();
         var companies = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => tenantIds.Contains(t.TenantId) && t.IsActive)
-            .Select(t => new { t.DriverSessionMinutes, t.SessionMinutes, t.SessionDays }).ToListAsync(ct);
-        return DriverSessionRules.Minutes(companies.Select(c => (c.DriverSessionMinutes, c.SessionMinutes, c.SessionDays)), DriverMaxSessionMinutes);
+            .Select(t => new { t.DriverSessionMinutes, t.SessionMinutes }).ToListAsync(ct);
+        return DriverSessionRules.Minutes(companies.Select(c => (c.DriverSessionMinutes, c.SessionMinutes)), DriverMaxSessionMinutes);
     }
 
     /// <summary>

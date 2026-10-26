@@ -969,8 +969,10 @@ Validations:
 | `workDaysMask` | 1-127 | `Invalid mask (1-127).` | 400 |
 | `maxStopsPerRouteDefault` | ≥ 1 | `Must be ≥ 1.` | 400 |
 | `aal2WindowMinutes` | 15, 30 or 60 (a different value already saved is kept if it is resent unchanged) | `The reauthentication window must be 15, 30 or 60 minutes.` | 400 |
-| `sessionDays` | 1-365 | `Between 1 and 365 days.` | 400 |
-| `deviceSessionDays` (Batch 8A: lifetime in days of the warehouse devices' session; 30 by default; read in `GET /api/v1/tenant/settings` and changed in `PUT /api/v1/tenant/settings` with `admin.tenant`) | 1-365 | `Between 1 and 365 days.` | 400 |
+| `sessionMinutes` / `deviceSessionMinutes` / `driverSessionMinutes` (session lifetime is **in minutes only**; unset means 30 days; since 2026-10-26 `sessionDays` and `deviceSessionDays` no longer exist) | 1 to 525600 minutes (365 days) | `The duration must be between 1 minute and 365 days (8760 hours).` | 400 |
+| `phoneNumber` (2026-10-26; `""` removes it) | 7 to 15 digits; only digits, spaces, hyphens, dots, parentheses, `+` and `ext`; up to 30 characters | `The phone must have between 7 and 15 digits (it may contain spaces, hyphens, parentheses, “+” and “ext”).` | 400 |
+| `address` / `postalAddress` (2026-10-26: address and mailing address; `postalSameAsAddress: true` removes the mailing one) | `line1` and `city` required; line up to 200, city and state up to 100, postal code up to 20; 2-letter `country` (`PR` if omitted) | `The address (line 1) is required.` / `The city is required.` / `It cannot exceed {max} characters.` (the error carries the field: `address.line1`, `postalAddress.city`…) | 400 |
+| `name` (2026-10-26) | only the platform administrator changes it; it cannot repeat another company's; up to 200 characters | `Only the platform administrator changes the company name.` (403) / `A company with that name already exists.` (409) | 403 / 409 |
 | `brandingJson` | the branding rules (section 11.2: size, JSON, fields, colors, contrast, hue) | those in the table of section 11.2 | 400 |
 | `defaultManualIssueReason` (2026-10-11 b: “Default reason for manual issues”; `""` = no default; see [06 §7c](06-inventario-y-almacen.md#7c-default-reason-for-the-manual-issue-2026-10-11-b)) | code from the `ManualIssueReason` list, active and enabled for the company | `The reason {CÓDIGO} does not exist or is inactive.` (`errors.defaultManualIssueReason`) | 400 |
 | Empty holiday name | — | `The name is required.` | 400 |
@@ -1211,11 +1213,26 @@ Validations:
 | Field / case | Exact message | HTTP |
 |---|---|---|
 | Empty name | `The name is required.` | 400 |
-| Empty administrator email | `The administrator's email is required.` | 400 |
+| Empty or invalid phone (2026-10-26) | `The company phone is required.` / the phone message in the settings table | 400 |
+| Address without line 1 or city (2026-10-26) | `The address (line 1) is required.` / `The city is required.` (field `address.line1` / `address.city`; same for `postalAddress`) | 400 |
+| `adminEmail` present but `adminFullName` missing | `The administrator's name is required.` | 400 |
+| Invalid domain or subdomain, or already used by another company | the messages of the domains section | 400 / 409 |
 | Repeated company name | `The company '<name>' already exists.` | 409 |
 | Unknown requested module | `Unknown module: <key>.` | 400 |
 | Invalid region or format | the messages of section 11.1 (e.g. `Unknown region: 'MX'. Use PR (Puerto Rico) or US (United States).`) | 400 |
 | Invalid admin password (Identity) | Identity message | 400 |
+
+## Company data and creating a company from Settings (2026-10-26)
+
+**What changed.** Everything the company has can be seen and changed in **Company settings → General** (and a new company is created with the **New company** button on that same screen). Before, the name, domain, subdomain and status could only be changed through the API.
+
+**Who.** The company administrator (`admin.tenant`) changes legal name, tax ID, language, **phone, address and mailing address**. The **platform administrator** also changes the **name**, the **domain**, the **subdomain**, **activates or deactivates** the company, and is the only one who sees **New company**.
+
+- **New company** (`POST /api/v1/platform/tenants`, requires recent MFA): a window with the basics: **name, phone, address** (required), **mailing address** (if different), **domain and subdomain** (optional). On accept, the company is born with the **base modules** (System, Catalog, Analytics and Custom fields; **no** transport, warehouse or billing: they are turned on later in Settings → Modules) and the system **enters it directly** so you can finish the setup. The initial administrator (`adminEmail`) is now **optional**: the platform operates any company and users are added afterwards.
+- **Address and mailing address:** they are locations of the company like any other (`Location` without a client, types `COMPANY` and `COMPANY_POSTAL`), with country. With no mailing address of its own, the address is used (as with a client). Removing the mailing address is a soft delete, never a deletion.
+- **Phone:** for letters and documents. Required when creating; companies older than this date may have none until someone writes it.
+- **Deactivate** (`PUT /api/v1/platform/tenants/{publicId}/active` with `{ "isActive": false }`): nobody gets in (login and company switch answer 403 `The user has no active company.` / `The company is inactive.`), the API cuts off whoever was already in with 403 `The company is inactive.` and **everyone else's sessions are closed**; the platform person who did it stays in so they can reactivate it. Nothing is deleted. In the platform's company selector it shows as “(deactivated)”. **Activate** returns it as it was.
+- **What was removed because it was unused:** `sessionDays`, `deviceSessionDays` (session lifetime lives in minutes; when the database was updated, where the minutes were unset the days value was copied, so no company changed duration) and `trackingSlug` (public tracking travels in each notice's link).
 
 ## Session setting: `Auth:Sessions:SingleSessionPerBrowser`
 By default (`true`) when signing in, the previous sessions of the same person, with the same browser and the same IP, are closed. Only in **tests** is it set to `false` (environment variable `Auth__Sessions__SingleSessionPerBrowser=false`, as the CI already does): the Playwright runs sign in in parallel with the same administrator from the same browser and, with the rule active, some closed the session of others (“Invalid session.” when reauthenticating). **It is never turned off in production.**

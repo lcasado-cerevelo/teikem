@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Teikem.Domain.Clients;
+using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Fleet;
 using Teikem.Domain.Tenancy;
@@ -26,7 +28,23 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
     public async Task<TenantSettingsDto> UpdateSettingsAsync(TenantSettingsUpdateRequest req, CancellationToken ct)
     {
         var t = await db.Tenants.FirstOrDefaultAsync(x => x.TenantId == tenant.TenantId, ct) ?? throw new NotFoundException("Compañía");
-        if (!string.IsNullOrWhiteSpace(req.Name)) t.Name = req.Name.Trim();
+        var renamed = false;
+        if (!string.IsNullOrWhiteSpace(req.Name) && !string.Equals(req.Name.Trim(), t.Name, StringComparison.Ordinal))
+        {
+            // el nombre es lo que identifica a la compañía en toda la plataforma: solo lo cambia el administrador de la plataforma
+            if (!tenant.IsPlatformAdmin) throw new ForbiddenException(TenantContactRules.NameOnlyPlatformMessage);
+            var newName = req.Name.Trim();
+            if (newName.Length > 200) throw new ValidationException("name", TenantContactRules.MaxMessage(200));
+            if (await db.Tenants.AnyAsync(x => x.Name == newName && x.TenantId != t.TenantId, ct)) throw new ConflictException(TenantContactRules.NameTakenMessage);
+            t.Name = newName;
+            renamed = true;
+        }
+        if (req.PhoneNumber is not null)
+        {
+            var (phone, phoneError) = TenantContactRules.NormalizePhone(req.PhoneNumber, required: false);
+            if (phoneError is not null) throw new ValidationException("phoneNumber", phoneError);
+            t.PhoneNumber = phone;
+        }
         if (req.LegalName is not null) t.LegalName = req.LegalName;
         if (req.TaxId is not null) t.TaxId = req.TaxId;
         if (!string.IsNullOrWhiteSpace(req.DefaultLangCode))
@@ -45,14 +63,11 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
             if (windowError is not null) throw new ValidationException("aal2WindowMinutes", windowError);
             t.Aal2WindowMinutes = req.Aal2WindowMinutes.Value;
         }
-        if (req.SessionDays.HasValue) { if (req.SessionDays.Value is < 1 or > 365) throw new ValidationException("sessionDays", "Entre 1 y 365 días."); t.SessionDays = req.SessionDays.Value; }
-        if (req.DeviceSessionDays.HasValue) { if (req.DeviceSessionDays.Value is < 1 or > 365) throw new ValidationException("deviceSessionDays", "Entre 1 y 365 días."); t.DeviceSessionDays = req.DeviceSessionDays.Value; }
-        // 2026-10-12: la duración de la sesión se configura en MINUTOS (la pantalla pide horas con decimales); manda sobre los días y los deja equivalentes
+        // 2026-10-12: la duración de la sesión se configura en MINUTOS (la pantalla pide horas con decimales)
         if (req.SessionMinutes.HasValue)
         {
             if (!SessionRules.IsValid(req.SessionMinutes.Value)) throw new ValidationException("sessionMinutes", SessionRules.MinutesRange);
             t.SessionMinutes = req.SessionMinutes.Value;
-            t.SessionDays = SessionRules.DaysFor(req.SessionMinutes.Value);
         }
         // 2026-10-23: sesión del chofer en la app. 0 = quitarla (vale la sesión general); si no, minutos válidos (el tope de la aplicación se aplica al usarla).
         if (req.DriverSessionMinutes.HasValue)
@@ -65,7 +80,6 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         {
             if (!SessionRules.IsValid(req.DeviceSessionMinutes.Value)) throw new ValidationException("deviceSessionMinutes", SessionRules.MinutesRange);
             t.DeviceSessionMinutes = req.DeviceSessionMinutes.Value;
-            t.DeviceSessionDays = SessionRules.DaysFor(req.DeviceSessionMinutes.Value);
         }
         if (req.BrandingJson is not null)
         {
@@ -115,6 +129,9 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         if (req.DefaultProductCategoryId.HasValue) await ApplyDefaultProductCategoryAsync(t, req.DefaultProductCategoryId.Value, ct);
         var formatChanges = FormatChanges(req);
         if (!formatChanges.IsEmpty) ApplyFormat(t, TenantFormatRules.Read(t), formatChanges);
+        // 2026-10-26: domicilio y dirección postal (filas de Location, tipos COMPANY y COMPANY_POSTAL)
+        await TenantAddresses.ApplyAsync(db, lookups, t, req.Address, req.PostalAddress, req.PostalSameAsAddress, ct);
+        if (renamed) await TenantAddresses.RenameAsync(db, t, ct);
         await db.SaveChangesAsync(ct);
         if (!formatChanges.IsEmpty) zones?.Invalidate(t.TenantId);
         return await ToDtoAsync(t, ct);
@@ -249,7 +266,7 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         t.TenantId, t.PublicId, t.Name, t.LegalName, t.TaxId, t.DefaultLangCode, t.WorkDaysMask, t.MaxStopsPerRouteDefault,
         t.DefaultServiceTypeLookupId is null ? null : (await lookups.GetAsync(t.DefaultServiceTypeLookupId.Value, ct))?.InternalCode,
         t.DefaultPackageTypeLookupId is null ? null : (await lookups.GetAsync(t.DefaultPackageTypeLookupId.Value, ct))?.InternalCode,
-        t.MfaRequired, t.Aal2WindowMinutes, t.SessionDays, t.DeviceSessionDays, t.BrandingJson, t.IsActive,
+        t.MfaRequired, t.Aal2WindowMinutes, t.BrandingJson, t.IsActive,
         t.RegionCode, t.TimeZoneId, t.CurrencyCode, t.CurrencySymbol, t.CurrencySymbolPosition, t.CurrencyDecimals,
         t.DateOrder, t.DateSeparator, t.TimeFormat, t.WeekStartDay, t.ThousandsSeparator, t.DecimalSeparator,
         t.PhoneCountryCode, t.PhoneMask, !TenantFormatRules.MatchesRegionDefaults(TenantFormatRules.Read(t)),
@@ -257,7 +274,7 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         await ManualIssueReasonLookup.UsableCodeAsync(db, t.DefaultManualIssueReasonLookupId, ct),
         await UsableDefaultCategoryAsync(t.DefaultProductCategoryId, ct),   // 2026-10-11 c
         RotationRules.Parse(t.RotationMethod) ?? RotationMethods.Fefo,        // 2026-10-11 Lote 34
-        SessionRules.Minutes(t.SessionMinutes, t.SessionDays), SessionRules.Minutes(t.DeviceSessionMinutes, t.DeviceSessionDays),   // 2026-10-12
+        SessionRules.Minutes(t.SessionMinutes), SessionRules.Minutes(t.DeviceSessionMinutes),   // 2026-10-12
         RotationRules.ParseEnforcement(t.RotationEnforcement) ?? RotationEnforcements.Suggest,   // 2026-10-20
         t.InventoryExpiryWarnDays, t.InventoryNoMovementDays,
         RotationRules.Parse(t.RotationMethodNoLot) is string nl && RotationMethods.ForNoLot.Contains(nl) ? nl : RotationMethods.Fifo,   // 2026-10-20
@@ -265,5 +282,6 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         ValuationRules.Parse(t.ValuationMethod) ?? ValuationMethods.Average,   // 2026-10-20 Lote 148
         ReceiptRequirementRules.Parse(t.ReceiptRequirement) ?? ReceiptRequirements.Free,   // 2026-10-20 Lote 149
         t.FleetDocWarnDays,   // 2026-10-21 Lote 168
-        t.DriverSessionMinutes);   // 2026-10-23
+        t.DriverSessionMinutes,   // 2026-10-23
+        t.PhoneNumber, await TenantAddresses.ReadAsync(db, tenant.Lang, t.CorporateLocationId, ct), await TenantAddresses.ReadAsync(db, tenant.Lang, t.BillingLocationId, ct), t.CustomDomain, t.Subdomain);   // 2026-10-26
 }

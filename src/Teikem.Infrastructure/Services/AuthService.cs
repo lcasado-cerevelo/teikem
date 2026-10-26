@@ -246,12 +246,12 @@ public sealed partial class AuthService(
         return memberships.Count == 1 ? memberships[0].Name : null;
     }
 
-    private async Task<List<TenantOptionDto>> ActiveMembershipsAsync(ApplicationUser user, CancellationToken ct)
+    private async Task<List<TenantOptionDto>> ActiveMembershipsAsync(ApplicationUser user, CancellationToken ct, bool platformSeesInactive = false)
     {
         var active = await db.StatusCodes.AsNoTracking().Where(s => s.Entity == StatusDomains.MembershipStatus && s.InternalCode == MembershipStatuses.Active).Select(s => (int?)s.StatusCodeId).FirstOrDefaultAsync(ct) ?? throw new NotFoundException($"Estatus {StatusDomains.MembershipStatus}", MembershipStatuses.Active);
         if (user.IsPlatformAdmin)
         {
-            var all = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.IsActive).OrderBy(t => t.Name).ToListAsync(ct);
+            var all = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.IsActive || platformSeesInactive).OrderBy(t => t.Name).ToListAsync(ct);
             return all.Select(t => new TenantOptionDto(t.TenantId, t.Name, t.TenantId == user.DefaultTenantId)).ToList();
         }
         return await db.UserTenants.AsNoTracking().IgnoreQueryFilters()
@@ -270,7 +270,7 @@ public sealed partial class AuthService(
         var rt = new RefreshToken
         {
             UserId = user.Id, TenantId = tenantId, TokenHash = JwtTokenService.HashToken(raw), DeviceInfo = deviceInfo is { Length: > 200 } d ? d[..200] : deviceInfo,
-            IssuedAtUtc = DateTime.UtcNow, ExpiresAtUtc = DateTime.UtcNow.AddMinutes(device?.SessionMinutes ?? (driverApp ? await DriverSessionMinutesAsync(user.Id, ct) : SessionRules.Minutes(t.SessionMinutes, t.SessionDays))), Aal2VerifiedAtUtc = aal2At,   // 2026-10-12: la duración es en minutos
+            IssuedAtUtc = DateTime.UtcNow, ExpiresAtUtc = DateTime.UtcNow.AddMinutes(device?.SessionMinutes ?? (driverApp ? await DriverSessionMinutesAsync(user.Id, ct) : SessionRules.Minutes(t.SessionMinutes))), Aal2VerifiedAtUtc = aal2At,   // 2026-10-12: la duración es en minutos
             IpAddress = RequestIp(), PortalClientId = portalClientId, IsDriverApp = driverApp,
         };
         // Si UserManager dejó al usuario marcado como modificado (ResetAccessFailedCount que perdió la carrera con un intento
@@ -514,7 +514,8 @@ public sealed partial class AuthService(
         var rt = await FindActiveAsync(req.RefreshToken, ct);
         if (TokenDevice(rt) is not null) throw new ForbiddenException("La sesión de un aparato no cambia de compañía.");
         var user = await users.FindByIdAsync(rt.UserId.ToString()) ?? throw new UnauthorizedException();
-        var memberships = await ActiveMembershipsAsync(user, ct);
+        // el administrador de la plataforma puede entrar también a una compañía desactivada (para volver a activarla)
+        var memberships = await ActiveMembershipsAsync(user, ct, platformSeesInactive: true);
         if (!memberships.Any(m => m.TenantId == req.TenantId)) throw new ForbiddenException("No pertenece a esa compañía.");
         await RevokeAsync(rt, null, ct);
         var kind = user.UserKindLookupId is null ? UserKinds.Internal : (await lookups.GetAsync(user.UserKindLookupId.Value, ct))?.InternalCode;

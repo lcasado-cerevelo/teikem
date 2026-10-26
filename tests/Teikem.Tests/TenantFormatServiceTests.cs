@@ -36,7 +36,7 @@ public sealed class TenantFormatServiceTests
 
     private static TenantSettingsUpdateRequest Put(string? regionCode = null, string? timeZoneId = null, string? dateOrder = null, byte? timeFormat = null,
         string? thousandsSeparator = null, string? decimalSeparator = null, string? name = null)
-        => new(name, null, null, null, null, null, null, null, null, null, null, null, null,
+        => new(name, null, null, null, null, null, null, null, null, null, null,
             RegionCode: regionCode, TimeZoneId: timeZoneId, DateOrder: dateOrder, TimeFormat: timeFormat,
             ThousandsSeparator: thousandsSeparator, DecimalSeparator: decimalSeparator);
 
@@ -159,10 +159,10 @@ public sealed class TenantFormatServiceTests
         var provisioning = new ProvisioningService(f.Db, null!, f.Tenant, f.Lookups, null!, null!, null!, null!, NullLogger<ProvisioningService>.Instance);
         var before = await f.Db.Tenants.IgnoreQueryFilters().CountAsync();
         var ex = await Assert.ThrowsAsync<ValidationException>(() => provisioning.ProvisionAsync(
-            new TenantProvisionRequest("Compañía US", null, null, "en", null, "admin@example.com", "Admin", null, RegionCode: "US", ThousandsSeparator: "."), default));
+            new TenantProvisionRequest("Compañía US", null, null, "en", null, "admin@example.com", "Admin", null, RegionCode: "US", ThousandsSeparator: ".", PhoneNumber: "787-555-0100", Address: new TenantAddressInput("Calle 1", null, "San Juan", null, null, null)), default));
         Assert.Equal(TenantFormatRules.SameSeparators, ex.Message);
         await Assert.ThrowsAsync<ValidationException>(() => provisioning.ProvisionAsync(
-            new TenantProvisionRequest("Compañía MX", null, null, "es", null, "admin@example.com", "Admin", null, RegionCode: "MX"), default));
+            new TenantProvisionRequest("Compañía MX", null, null, "es", null, "admin@example.com", "Admin", null, RegionCode: "MX", PhoneNumber: "787-555-0100", Address: new TenantAddressInput("Calle 1", null, "San Juan", null, null, null)), default));
         Assert.Equal(before, await f.Db.Tenants.IgnoreQueryFilters().CountAsync());
     }
 

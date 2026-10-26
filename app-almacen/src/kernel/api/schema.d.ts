@@ -15089,6 +15089,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/read-sample": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SampleReadDto"];
+                        "application/json": components["schemas"]["SampleReadDto"];
+                        "text/json": components["schemas"]["SampleReadDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/integrations/options": {
         parameters: {
             query?: never;
@@ -16425,6 +16469,49 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/inbox/discard-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["InboxDiscardAllRequest"];
+                    "text/json": components["schemas"]["InboxDiscardAllRequest"];
+                    "application/*+json": components["schemas"]["InboxDiscardAllRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["InboxDiscardAllDto"];
+                        "application/json": components["schemas"]["InboxDiscardAllDto"];
+                        "text/json": components["schemas"]["InboxDiscardAllDto"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -22573,6 +22660,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/tenants/{publicId}/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TenantActiveRequest"];
+                    "text/json": components["schemas"]["TenantActiveRequest"];
+                    "application/*+json": components["schemas"]["TenantActiveRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantSummaryDto"];
+                        "application/json": components["schemas"]["TenantSummaryDto"];
+                        "text/json": components["schemas"]["TenantSummaryDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/tenants/{publicId}/domains": {
         parameters: {
             query?: never;
@@ -23166,6 +23298,49 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/consignees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PortalConsigneeCreateRequest"];
+                    "text/json": components["schemas"]["PortalConsigneeCreateRequest"];
+                    "application/*+json": components["schemas"]["PortalConsigneeCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalPlaceDto"];
+                        "application/json": components["schemas"]["PortalPlaceDto"];
+                        "text/json": components["schemas"]["PortalPlaceDto"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -24231,6 +24406,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portal/consignee-notices/consignees/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ConsigneeNoticeBulkMarkRequest"];
+                    "text/json": components["schemas"]["ConsigneeNoticeBulkMarkRequest"];
+                    "application/*+json": components["schemas"]["ConsigneeNoticeBulkMarkRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeNoticeBulkResultDto"];
+                        "application/json": components["schemas"]["ConsigneeNoticeBulkResultDto"];
+                        "text/json": components["schemas"]["ConsigneeNoticeBulkResultDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/portal/consignee-notices/consignees/{publicId}": {
         parameters: {
             query?: never;
@@ -24438,6 +24656,8 @@ export interface paths {
             parameters: {
                 query?: {
                     search?: string;
+                    from?: string;
+                    to?: string;
                 };
                 header?: never;
                 path?: never;
@@ -24589,6 +24809,8 @@ export interface paths {
                 query?: {
                     status?: string;
                     search?: string;
+                    from?: string;
+                    to?: string;
                     skip?: number;
                     take?: number;
                 };
@@ -38820,9 +39042,13 @@ export interface components {
             emailConfigured?: boolean;
             smsConfigured?: boolean;
             settings?: components["schemas"]["ClientNotificationSettingDto"][] | null;
+            /** Format: int32 */
+            digestHour?: number;
         };
         ClientNotificationSettingsRequest: {
             settings?: components["schemas"]["ClientNotificationSettingDto"][] | null;
+            /** Format: int32 */
+            digestHour?: number | null;
         };
         ClientNumberSettingsDto: {
             clientAssignsOrderNumber?: boolean;
@@ -39415,6 +39641,27 @@ export interface components {
             noticesEnabled?: boolean;
             emailChannel?: components["schemas"]["ConsigneeChannelDto"];
             smsChannel?: components["schemas"]["ConsigneeChannelDto"];
+        };
+        ConsigneeNoticeBulkItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+            ok?: boolean;
+            message?: string | null;
+            consignee?: components["schemas"]["ConsigneeNoticeConsigneeDto"];
+        };
+        ConsigneeNoticeBulkMarkRequest: {
+            publicIds?: string[] | null;
+            channel?: string | null;
+            accepted?: boolean | null;
+            warningAccepted?: boolean | null;
+        };
+        ConsigneeNoticeBulkResultDto: {
+            /** Format: int32 */
+            done?: number;
+            /** Format: int32 */
+            failed?: number;
+            items?: components["schemas"]["ConsigneeNoticeBulkItemDto"][] | null;
         };
         ConsigneeNoticeConsigneeDto: {
             /** Format: uuid */
@@ -41439,6 +41686,11 @@ export interface components {
             bodyFields?: components["schemas"]["EmailBodyField"][] | null;
             readPdf?: boolean;
             readers?: components["schemas"]["DocumentReader"][] | null;
+            provider?: string | null;
+            tenantId?: string | null;
+            clientId?: string | null;
+            markMode?: string | null;
+            readSince?: string | null;
         };
         EmailTestResultDto: {
             ok?: boolean;
@@ -42140,6 +42392,15 @@ export interface components {
             position?: number;
             operator?: string | null;
             value?: string | null;
+        };
+        InboxDiscardAllDto: {
+            /** Format: int32 */
+            discarded?: number;
+        };
+        InboxDiscardAllRequest: {
+            /** Format: uuid */
+            integration?: string | null;
+            note?: string | null;
         };
         InboxDiscardRequest: {
             note?: string | null;
@@ -44586,6 +44847,10 @@ export interface components {
             canCreateArrivals?: boolean;
             canCreateExits?: boolean;
         };
+        PortalCatalogItemDto: {
+            code?: string | null;
+            label?: string | null;
+        };
         PortalClientDto: {
             /** Format: uuid */
             clientPublicId?: string;
@@ -44603,6 +44868,15 @@ export interface components {
             city?: string | null;
             state?: string | null;
             postalCode?: string | null;
+        };
+        PortalConsigneeCreateRequest: {
+            name?: string | null;
+            line1?: string | null;
+            line2?: string | null;
+            city?: string | null;
+            state?: string | null;
+            postalCode?: string | null;
+            phone?: string | null;
         };
         PortalDeliveryProofDto: {
             /** Format: date-time */
@@ -44927,6 +45201,10 @@ export interface components {
             /** Format: date-time */
             requestedDate?: string | null;
             notes?: string | null;
+            serviceType?: string | null;
+            orderNumber?: string | null;
+            /** Format: date-time */
+            promisedDate?: string | null;
         };
         PortalOrderCreatedDto: {
             /** Format: uuid */
@@ -44935,6 +45213,7 @@ export interface components {
             orderNumber?: string | null;
             status?: string | null;
             statusLabel?: string | null;
+            clientInvoiceNumber?: string | null;
         };
         PortalOrderDto: {
             /** Format: uuid */
@@ -44981,6 +45260,11 @@ export interface components {
             /** Format: int32 */
             maxPackages?: number;
             clientTypesInvoiceNumber?: boolean;
+            clientAssignsOrderNumber?: boolean;
+            serviceTypes?: components["schemas"]["PortalCatalogItemDto"][] | null;
+            packageTypes?: components["schemas"]["PortalCatalogItemDto"][] | null;
+            defaultServiceType?: string | null;
+            defaultPackageType?: string | null;
         };
         PortalOrderListItemDto: {
             /** Format: uuid */
@@ -45032,6 +45316,7 @@ export interface components {
             pieces?: number;
             /** Format: double */
             weightKg?: number | null;
+            packageType?: string | null;
         };
         PortalPlaceDto: {
             /** Format: uuid */
@@ -45042,6 +45327,8 @@ export interface components {
             city?: string | null;
             state?: string | null;
             postalCode?: string | null;
+            code?: string | null;
+            phone?: string | null;
         };
         PortalProductCreateRequest: {
             sku?: string | null;
@@ -45112,6 +45399,8 @@ export interface components {
             state?: string | null;
             statusCode?: string | null;
             statusLabel?: string | null;
+            /** Format: int32 */
+            failedAttempts?: number;
         };
         PortalStatusCountDto: {
             status?: string | null;
@@ -47459,6 +47748,15 @@ export interface components {
             /** Format: int32 */
             windowDays?: number | null;
         };
+        SampleReadDto: {
+            text?: string | null;
+            /** Format: int32 */
+            pages?: number;
+            usedOcr?: boolean;
+            /** Format: int32 */
+            confidence?: number | null;
+            problem?: string | null;
+        };
         ScanActionRequest: {
             action?: string | null;
             code?: string | null;
@@ -48792,6 +49090,26 @@ export interface components {
         TemporaryPasswordRequest: {
             password?: string | null;
         };
+        TenantActiveRequest: {
+            isActive?: boolean;
+        };
+        TenantAddressDto: {
+            line1?: string | null;
+            line2?: string | null;
+            city?: string | null;
+            state?: string | null;
+            postalCode?: string | null;
+            country?: string | null;
+            countryLabel?: string | null;
+        };
+        TenantAddressInput: {
+            line1?: string | null;
+            line2?: string | null;
+            city?: string | null;
+            state?: string | null;
+            postalCode?: string | null;
+            country?: string | null;
+        };
         TenantDomainsRequest: {
             customDomain?: string | null;
             subdomain?: string | null;
@@ -48876,11 +49194,16 @@ export interface components {
             decimalSeparator?: string | null;
             phoneCountryCode?: string | null;
             phoneMask?: string | null;
+            phoneNumber?: string | null;
+            address?: components["schemas"]["TenantAddressInput"];
+            postalAddress?: components["schemas"]["TenantAddressInput"];
+            customDomain?: string | null;
+            subdomain?: string | null;
         };
         TenantProvisionResult: {
             tenant?: components["schemas"]["TenantSummaryDto"];
             /** Format: int32 */
-            adminUserId?: number;
+            adminUserId?: number | null;
             temporaryPassword?: string | null;
         };
         TenantSettingsDto: {
@@ -48901,10 +49224,6 @@ export interface components {
             mfaRequired?: boolean;
             /** Format: int32 */
             aal2WindowMinutes?: number;
-            /** Format: int32 */
-            sessionDays?: number;
-            /** Format: int32 */
-            deviceSessionDays?: number;
             brandingJson?: string | null;
             isActive?: boolean;
             regionCode?: string | null;
@@ -48951,6 +49270,11 @@ export interface components {
             fleetDocWarnDays?: number;
             /** Format: int32 */
             driverSessionMinutes?: number | null;
+            phoneNumber?: string | null;
+            address?: components["schemas"]["TenantAddressDto"];
+            postalAddress?: components["schemas"]["TenantAddressDto"];
+            customDomain?: string | null;
+            subdomain?: string | null;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -48966,10 +49290,6 @@ export interface components {
             mfaRequired?: boolean | null;
             /** Format: int32 */
             aal2WindowMinutes?: number | null;
-            /** Format: int32 */
-            sessionDays?: number | null;
-            /** Format: int32 */
-            deviceSessionDays?: number | null;
             brandingJson?: string | null;
             regionCode?: string | null;
             timeZoneId?: string | null;
@@ -49014,6 +49334,10 @@ export interface components {
             fleetDocWarnDays?: number | null;
             /** Format: int32 */
             driverSessionMinutes?: number | null;
+            phoneNumber?: string | null;
+            address?: components["schemas"]["TenantAddressInput"];
+            postalAddress?: components["schemas"]["TenantAddressInput"];
+            postalSameAsAddress?: boolean | null;
         };
         TenantSummaryDto: {
             /** Format: int32 */

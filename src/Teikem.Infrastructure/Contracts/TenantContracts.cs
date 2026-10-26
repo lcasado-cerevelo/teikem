@@ -4,7 +4,8 @@ public sealed record ModuleDto(string Key, string Name, string? Description, str
 public sealed record TenantModuleRequest(bool IsEnabled);
 
 /// <summary>
-/// Configuración de la compañía. DeviceSessionDays (Lote 8A): vida en días de la sesión de los aparatos de almacén (1 a 365).
+/// Configuración de la compañía. La vida de la sesión va en minutos (SessionMinutes, DeviceSessionMinutes, DriverSessionMinutes).
+/// 2026-10-26: PhoneNumber (teléfono), Address (domicilio) y PostalAddress (dirección postal; null = la misma que el domicilio), y los dominios CustomDomain / Subdomain (los cambia solo el administrador de la plataforma).
 /// Región y formatos (2026-10): RegionCode ('PR' | 'US') y los valores con que se muestran fechas, horas, dinero, números y
 /// teléfonos (TenantFormatRules); TimeZoneId es la zona de "hoy". IsRegionCustomized = algún valor difiere del juego de su región
 /// (la pantalla la muestra como "Personalizada").
@@ -13,7 +14,7 @@ public sealed record TenantModuleRequest(bool IsEnabled);
 /// </summary>
 public sealed record TenantSettingsDto(
     int Id, Guid PublicId, string Name, string? LegalName, string? TaxId, string DefaultLangCode, byte WorkDaysMask, int MaxStopsPerRouteDefault,
-    string? DefaultServiceType, string? DefaultPackageType, bool MfaRequired, int Aal2WindowMinutes, int SessionDays, int DeviceSessionDays, string? BrandingJson, bool IsActive,
+    string? DefaultServiceType, string? DefaultPackageType, bool MfaRequired, int Aal2WindowMinutes, string? BrandingJson, bool IsActive,
     string RegionCode, string TimeZoneId, string CurrencyCode, string CurrencySymbol, string CurrencySymbolPosition, byte CurrencyDecimals,
     string DateOrder, string DateSeparator, byte TimeFormat, byte WeekStartDay, string ThousandsSeparator, string DecimalSeparator,
     string PhoneCountryCode, string PhoneMask, bool IsRegionCustomized,
@@ -22,7 +23,14 @@ public sealed record TenantSettingsDto(
     int SessionMinutes = 43200, int DeviceSessionMinutes = 43200, string RotationEnforcement = "SUGGEST",
     int InventoryExpiryWarnDays = 30, int InventoryNoMovementDays = 90, string RotationMethodNoLot = "FIFO",
     string DispatchRequirement = "FREE", string ValuationMethod = "AVERAGE", string ReceiptRequirement = "FREE",
-    int FleetDocWarnDays = 30, int? DriverSessionMinutes = null);
+    int FleetDocWarnDays = 30, int? DriverSessionMinutes = null,
+    string? PhoneNumber = null, TenantAddressDto? Address = null, TenantAddressDto? PostalAddress = null, string? CustomDomain = null, string? Subdomain = null);
+
+/// <summary>2026-10-26: una dirección de la compañía (domicilio o postal); Country es el código ISO de 2 letras y CountryLabel su nombre en el idioma de la persona.</summary>
+public sealed record TenantAddressDto(string Line1, string? Line2, string City, string? State, string? PostalCode, string Country, string? CountryLabel);
+
+/// <summary>2026-10-26: lo que se manda para guardar una dirección de la compañía (Country vacío = «PR»).</summary>
+public sealed record TenantAddressInput(string? Line1, string? Line2, string? City, string? State, string? PostalCode, string? Country);
 
 /// <summary>
 /// Cambio parcial de los ajustes: null = sin cambio. Región y formatos: si RegionCode es distinto del actual se cargan los valores
@@ -40,7 +48,7 @@ public sealed record TenantSettingsDto(
 /// </summary>
 public sealed record TenantSettingsUpdateRequest(
     string? Name, string? LegalName, string? TaxId, string? DefaultLangCode, byte? WorkDaysMask, int? MaxStopsPerRouteDefault,
-    string? DefaultServiceType, string? DefaultPackageType, bool? MfaRequired, int? Aal2WindowMinutes, int? SessionDays, int? DeviceSessionDays, string? BrandingJson,
+    string? DefaultServiceType, string? DefaultPackageType, bool? MfaRequired, int? Aal2WindowMinutes, string? BrandingJson,
     string? RegionCode = null, string? TimeZoneId = null, string? CurrencyCode = null, string? CurrencySymbol = null, string? CurrencySymbolPosition = null,
     byte? CurrencyDecimals = null, string? DateOrder = null, string? DateSeparator = null, byte? TimeFormat = null, byte? WeekStartDay = null,
     string? ThousandsSeparator = null, string? DecimalSeparator = null, string? PhoneCountryCode = null, string? PhoneMask = null,
@@ -49,7 +57,8 @@ public sealed record TenantSettingsUpdateRequest(
     int? SessionMinutes = null, int? DeviceSessionMinutes = null, string? RotationEnforcement = null,
     int? InventoryExpiryWarnDays = null, int? InventoryNoMovementDays = null, string? RotationMethodNoLot = null,
     string? DispatchRequirement = null, string? ValuationMethod = null, string? ReceiptRequirement = null,
-    int? FleetDocWarnDays = null, int? DriverSessionMinutes = null);
+    int? FleetDocWarnDays = null, int? DriverSessionMinutes = null,
+    string? PhoneNumber = null, TenantAddressInput? Address = null, TenantAddressInput? PostalAddress = null, bool? PostalSameAsAddress = null);
 
 /// <summary>Juego de valores de región y formatos (los de una región en <see cref="TenantFormatOptionsDto"/>).</summary>
 public sealed record TenantFormatDto(
@@ -81,11 +90,15 @@ public sealed record PublicBrandLogoDto(string Slot, DateTime StampUtc);
 /// Región y formatos (2026-10): `RegionCode` sin valor = 'PR'; la compañía nace con los valores por defecto de su región y los
 /// campos de formato que vengan mandan sobre ellos (mismas validaciones que PUT /tenant/settings).
 /// </summary>
-public sealed record TenantProvisionRequest(string Name, string? LegalName, string? TaxId, string? DefaultLangCode, IList<string>? Modules, string AdminEmail, string AdminFullName, string? AdminPassword, bool? MfaRequired = null,
+public sealed record TenantProvisionRequest(string Name, string? LegalName, string? TaxId, string? DefaultLangCode, IList<string>? Modules, string? AdminEmail = null, string? AdminFullName = null, string? AdminPassword = null, bool? MfaRequired = null,
     string? RegionCode = null, string? TimeZoneId = null, string? CurrencyCode = null, string? CurrencySymbol = null, string? CurrencySymbolPosition = null,
     byte? CurrencyDecimals = null, string? DateOrder = null, string? DateSeparator = null, byte? TimeFormat = null, byte? WeekStartDay = null,
-    string? ThousandsSeparator = null, string? DecimalSeparator = null, string? PhoneCountryCode = null, string? PhoneMask = null);
-public sealed record TenantProvisionResult(TenantSummaryDto Tenant, int AdminUserId, string? TemporaryPassword);
+    string? ThousandsSeparator = null, string? DecimalSeparator = null, string? PhoneCountryCode = null, string? PhoneMask = null,
+    string? PhoneNumber = null, TenantAddressInput? Address = null, TenantAddressInput? PostalAddress = null, string? CustomDomain = null, string? Subdomain = null);
+/// <summary>Resultado del alta: la compañía y, si se pidió un administrador inicial (AdminEmail), su usuario y la contraseña temporal (solo si no se mandó una).</summary>
+public sealed record TenantProvisionResult(TenantSummaryDto Tenant, int? AdminUserId, string? TemporaryPassword);
+/// <summary>2026-10-26: activar o desactivar una compañía (solo el administrador de la plataforma). Desactivar cierra las sesiones de todas las demás personas y no deja entrar.</summary>
+public sealed record TenantActiveRequest(bool IsActive);
 
 public sealed record MeDto(int UserId, string? FullName, string? Email, bool IsPlatformAdmin, int? TenantId, string? TenantName, string Lang,
     IReadOnlyList<MembershipDto> Memberships, IReadOnlyList<string> Permissions, IReadOnlyList<string> EnabledModules, IReadOnlyList<DataScopeDto> DataScopes, bool MfaEnabled, DateTime? Aal2VerifiedAtUtc, Guid? TenantPublicId = null);

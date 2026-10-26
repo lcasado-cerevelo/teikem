@@ -81,7 +81,7 @@ The token to renew your session does not exist, was already used (refresh tokens
 every call) or was revoked (for example, someone closed that session). Sign in again.
 
 **What does "Session expired." mean?**
-Your session exceeded the days configured by your company (`SessionDays`). Sign in again.
+Your session exceeded the time configured by your company (30 days by default; changed in Security and audit → Sessions). Sign in again.
 
 **What does "The membership is no longer active." mean?**
 When renewing your session, the system detected that you no longer have an active membership in that tenant (you were suspended or
@@ -1973,9 +1973,9 @@ allows 1 to 30 characters. The error arrives in `errors.code`. Give a short code
 Since Batch 8A, without `warehouse.count` the count is blind in the list as well: the API does not send the variance and the
 screen hides that column. Before, these roles saw the real variance. If the person must see it, give them `warehouse.count`.
 
-**What does "Between 1 and 365 days." in `deviceSessionDays` (400) mean?**
-The device session lifetime (`PUT /api/v1/tenant/settings`, `admin.tenant`) goes from 1 to 365 days (30 by
-default); every device renewal extends it from that moment.
+**What does "The duration must be between 1 minute and 365 days (8760 hours)." in `deviceSessionMinutes` (400) mean?**
+The device session lifetime (`PUT /api/v1/tenant/settings`, `admin.tenant`) goes from 1 minute to 365 days (30 days by
+default; since 2026-10-26 `deviceSessionDays` no longer exists); every device renewal extends it from that moment.
 
 **What does "A device with that code already exists." (409) mean?**
 The device code (`POST /api/v1/devices`, field `code`) is unique per company, even if the device that already
@@ -10885,3 +10885,13 @@ Kemi appears for the client's people who are signed in, after accepting the lega
 **I have hundreds of pending items in the inbox with “No reader of the integration applies to this e-mail”: what do I do?** They are e-mails that are not for this integration. Choose the integration in the filter and press “Discard all pending (N)”: they stay as discarded, nothing is deleted. So they do not come back, set the domain of whoever sends the documents in “Allowed original senders” (for example `@axiscare.com`): other senders are skipped without going through the inbox.
 
 **What date does the arrival or exit notice carry?** The first one available: the document's date; if it has none, the e-mail's (in the company's time); if neither, today's.
+
+
+## Company: phone, address, name, deactivate and new company (2026-10-26)
+- **Why don't I see “New company”?** Only the **platform** administrator sees it (not a company's administrator). It is at the top right of Company settings.
+- **“The company phone is required.” / “The phone must have between 7 and 15 digits (it may contain spaces, hyphens, parentheses, “+” and “ext”).” (400)** The phone appears on the company's letters and documents: write it in full, e.g. `787-555-0100`.
+- **“The address (line 1) is required.” / “The city is required.” (400)** A new company's address needs at least the street and the city; the mailing address only if it differs (and then it needs them too).
+- **“Only the platform administrator changes the company name.” (403)** The platform team changes the name; ask them. **“A company with that name already exists.” (409)**: pick another.
+- **I deactivated a company and its people are calling.** Expected: nobody gets in (“The user has no active company.”) and whoever was inside sees “The company is inactive.” (403). To give access back, enter the company from the selector (it shows “(deactivated)”) and press **Activate company**; its data is intact, but they must sign in again.
+- **The new company has no transport or warehouse.** It is born with the base modules on purpose: turn them on in Settings → Modules.
+- **`sessionDays`, `deviceSessionDays` and `trackingSlug` no longer exist.** Session duration is in minutes only; public tracking travels in each notice's link.

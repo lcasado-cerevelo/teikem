@@ -969,8 +969,10 @@ Validaciones:
 | `workDaysMask` | 1-127 | `Máscara inválida (1-127).` | 400 |
 | `maxStopsPerRouteDefault` | ≥ 1 | `Debe ser ≥ 1.` | 400 |
 | `aal2WindowMinutes` | 15, 30 o 60 (un valor ya guardado distinto se conserva si se reenvía igual) | `La ventana de reautenticación debe ser de 15, 30 o 60 minutos.` | 400 |
-| `sessionDays` | 1-365 | `Entre 1 y 365 días.` | 400 |
-| `deviceSessionDays` (Lote 8A: vida en días de la sesión de los aparatos de almacén; 30 por defecto; se lee en `GET /api/v1/tenant/settings` y se cambia en `PUT /api/v1/tenant/settings` con `admin.tenant`) | 1-365 | `Entre 1 y 365 días.` | 400 |
+| `sessionMinutes` / `deviceSessionMinutes` / `driverSessionMinutes` (la vida de la sesión va **solo en minutos**; sin configurar valen 30 días; desde 2026-10-26 ya no existen `sessionDays` ni `deviceSessionDays`) | 1 a 525600 minutos (365 días) | `La duración debe estar entre 1 minuto y 365 días (8760 horas).` | 400 |
+| `phoneNumber` (2026-10-26; `""` lo quita) | 7 a 15 dígitos; solo dígitos, espacios, guiones, puntos, paréntesis, `+` y `ext`; hasta 30 caracteres | `El teléfono debe tener entre 7 y 15 dígitos (puede llevar espacios, guiones, paréntesis, «+» y «ext»).` | 400 |
+| `address` / `postalAddress` (2026-10-26: domicilio y dirección postal; `postalSameAsAddress: true` quita la postal) | `line1` y `city` obligatorios; línea hasta 200, ciudad y estado hasta 100, código postal hasta 20; `country` de 2 letras (`PR` si no se manda) | `La dirección (línea 1) es obligatoria.` / `La ciudad es obligatoria.` / `No puede pasar de {max} caracteres.` (el error trae el campo: `address.line1`, `postalAddress.city`…) | 400 |
+| `name` (2026-10-26) | solo el administrador de la plataforma lo cambia; no puede repetir el de otra compañía; hasta 200 caracteres | `Solo el administrador de la plataforma cambia el nombre de la compañía.` (403) / `Ya existe una compañía con ese nombre.` (409) | 403 / 409 |
 | `brandingJson` | las reglas de la marca (sección 11.2: tamaño, JSON, campos, colores, contraste, matiz) | los de la tabla de la sección 11.2 | 400 |
 | `defaultManualIssueReason` (2026-10-11 b: «Motivo por default del despacho manual»; `""` = sin default; ver [06 §7c](06-inventario-y-almacen.md#7c-motivo-por-default-del-despacho-manual-2026-10-11-b)) | código de la lista `ManualIssueReason` activo y habilitado para la compañía | `El motivo {CÓDIGO} no existe o está inactivo.` (`errors.defaultManualIssueReason`) | 400 |
 | Nombre de feriado vacío | — | `El nombre es obligatorio.` | 400 |
@@ -1211,11 +1213,26 @@ Validaciones:
 | Campo / caso | Mensaje exacto | HTTP |
 |---|---|---|
 | Nombre vacío | `El nombre es obligatorio.` | 400 |
-| Correo de administrador vacío | `El correo del administrador es obligatorio.` | 400 |
+| Teléfono vacío o inválido (2026-10-26) | `El teléfono de la compañía es obligatorio.` / el mensaje del teléfono de la tabla de ajustes | 400 |
+| Domicilio sin dirección o sin ciudad (2026-10-26) | `La dirección (línea 1) es obligatoria.` / `La ciudad es obligatoria.` (campo `address.line1` / `address.city`; igual para `postalAddress`) | 400 |
+| Hay `adminEmail` pero falta `adminFullName` | `El nombre del administrador es obligatorio.` | 400 |
+| Dominio o subdominio inválido, o ya usado por otra compañía | los mensajes de la sección de dominios | 400 / 409 |
 | Nombre de compañía repetido | `Ya existe la compañía '<name>'.` | 409 |
 | Módulo pedido desconocido | `Módulo desconocido: <key>.` | 400 |
 | Región o formato inválido | los mensajes de la sección 11.1 (p. ej. `Región desconocida: 'MX'. Use PR (Puerto Rico) o US (Estados Unidos).`) | 400 |
 | Contraseña de admin inválida (Identity) | mensaje de Identity | 400 |
+
+## Datos de la compañía y alta desde Ajustes (2026-10-26)
+
+**Qué cambió.** Todo lo que tiene la compañía se puede ver y cambiar desde **Ajustes de la compañía → General** (y, para el alta, con el botón **Nueva compañía** de esa misma pantalla). Antes el nombre, el dominio, el subdominio y el estado solo se tocaban por API.
+
+**Quién.** El administrador de la compañía (`admin.tenant`) cambia razón social, ID fiscal, idioma, **teléfono, domicilio y dirección postal**. El **administrador de la plataforma** además cambia el **nombre**, el **dominio**, el **subdominio**, **activa o desactiva** la compañía y es el único que ve **Nueva compañía**.
+
+- **Nueva compañía** (`POST /api/v1/platform/tenants`, pide MFA reciente): una ventana con lo base: **nombre, teléfono, domicilio** (obligatorios), **dirección postal** (si no es la misma), **dominio y subdominio** (opcionales). Al aceptar, la compañía nace con los **módulos base** (Sistema, Catálogo, Análisis y Campos personalizados; **no** trae transporte, almacén ni facturación: se encienden después en Ajustes → Módulos) y el sistema **entra directo a ella** para terminar la configuración. El administrador inicial (`adminEmail`) ya es **opcional**: la plataforma opera cualquier compañía y los usuarios se agregan después.
+- **Domicilio y dirección postal:** son localizaciones de la compañía como cualquier otra (`Location` sin cliente, tipos `COMPANY` y `COMPANY_POSTAL`), con país. Sin dirección postal propia vale el domicilio (como en un cliente). Quitar la postal es baja lógica, nunca borrado.
+- **Teléfono:** para cartas y documentos. Obligatorio al crear; las compañías anteriores a esta fecha pueden no tenerlo hasta que alguien lo escriba.
+- **Desactivar** (`PUT /api/v1/platform/tenants/{publicId}/active` con `{ "isActive": false }`): nadie entra (el login y el cambio de compañía responden 403 `El usuario no tiene ninguna compañía activa.` / `La compañía está inactiva.`), la API corta a quien ya estaba dentro con 403 `La compañía está inactiva.` y se **cierran las sesiones de las demás personas**; la persona de la plataforma que lo hizo sigue dentro para poder reactivarla. No se borra nada. En el selector de compañías de la plataforma aparece como «(desactivada)». **Activar** la devuelve a como estaba.
+- **Se quitó lo que no se usaba:** `sessionDays`, `deviceSessionDays` (la vida de la sesión vive en minutos; al actualizar la base, donde los minutos estaban sin configurar se copió el valor de los días, así que ninguna compañía cambió de duración) y `trackingSlug` (el seguimiento público viaja en el enlace de cada aviso).
 
 ## Ajuste de sesiones: `Auth:Sessions:SingleSessionPerBrowser`
 Por omisión (`true`) al iniciar sesión se cierran las sesiones anteriores de la misma persona, con el mismo navegador y la misma IP. Solo en **pruebas** se pone en `false` (variable de entorno `Auth__Sessions__SingleSessionPerBrowser=false`, como ya hace el CI): los recorridos de Playwright entran en paralelo con el mismo administrador desde el mismo navegador y, con la regla activa, unos cerraban la sesión de otros («Sesión inválida.» al reautenticar). **Nunca se apaga en producción.**

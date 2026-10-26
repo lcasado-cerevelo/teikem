@@ -19509,6 +19509,55 @@
         }
       }
     },
+    "/api/v1/integrations/read-sample": {
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              },
+              "encoding": {
+                "file": {
+                  "style": "form"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SampleReadDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SampleReadDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SampleReadDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/integrations/options": {
       "get": {
         "tags": [
@@ -19991,83 +20040,6 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FormatPreviewDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/integrations/inbox/discard-all": {
-      "post": {
-        "tags": [
-          "Integrations"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/InboxDiscardAllRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InboxDiscardAllDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/integrations/read-sample": {
-      "post": {
-        "tags": [
-          "Integrations"
-        ],
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "file": {
-                    "type": "string",
-                    "format": "binary"
-                  }
-                }
-              },
-              "encoding": {
-                "file": {
-                  "style": "form"
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/SampleReadDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SampleReadDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SampleReadDto"
                 }
               }
             }
@@ -21261,6 +21233,54 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/inbox/discard-all": {
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InboxDiscardAllRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InboxDiscardAllRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/InboxDiscardAllRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxDiscardAllDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxDiscardAllDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxDiscardAllDto"
+                }
+              }
+            }
           }
         }
       }
@@ -29754,6 +29774,65 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TenantProvisionResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/platform/tenants/{publicId}/active": {
+      "put": {
+        "tags": [
+          "Platform"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantActiveRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantActiveRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantActiveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantSummaryDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantSummaryDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantSummaryDto"
                 }
               }
             }
@@ -62425,57 +62504,6 @@
         },
         "additionalProperties": false
       },
-      "InboxDiscardAllRequest": {
-        "type": "object",
-        "properties": {
-          "integration": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          },
-          "note": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "InboxDiscardAllDto": {
-        "type": "object",
-        "properties": {
-          "discarded": {
-            "type": "integer",
-            "format": "int32"
-          }
-        },
-        "additionalProperties": false
-      },
-      "SampleReadDto": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "nullable": true
-          },
-          "pages": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "usedOcr": {
-            "type": "boolean"
-          },
-          "confidence": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "problem": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
       "FuelLogCreateRequest": {
         "type": "object",
         "properties": {
@@ -63537,6 +63565,31 @@
             "nullable": true
           },
           "value": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "InboxDiscardAllDto": {
+        "type": "object",
+        "properties": {
+          "discarded": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "InboxDiscardAllRequest": {
+        "type": "object",
+        "properties": {
+          "integration": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "note": {
             "type": "string",
             "nullable": true
           }
@@ -79814,6 +79867,32 @@
         },
         "additionalProperties": false
       },
+      "SampleReadDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "nullable": true
+          },
+          "pages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "usedOcr": {
+            "type": "boolean"
+          },
+          "confidence": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "problem": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ScanActionRequest": {
         "type": "object",
         "properties": {
@@ -83891,6 +83970,79 @@
         },
         "additionalProperties": false
       },
+      "TenantActiveRequest": {
+        "type": "object",
+        "properties": {
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TenantAddressDto": {
+        "type": "object",
+        "properties": {
+          "line1": {
+            "type": "string",
+            "nullable": true
+          },
+          "line2": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "postalCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "country": {
+            "type": "string",
+            "nullable": true
+          },
+          "countryLabel": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TenantAddressInput": {
+        "type": "object",
+        "properties": {
+          "line1": {
+            "type": "string",
+            "nullable": true
+          },
+          "line2": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "postalCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "country": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "TenantDomainsRequest": {
         "type": "object",
         "properties": {
@@ -84203,6 +84355,24 @@
           "phoneMask": {
             "type": "string",
             "nullable": true
+          },
+          "phoneNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "$ref": "#/components/schemas/TenantAddressInput"
+          },
+          "postalAddress": {
+            "$ref": "#/components/schemas/TenantAddressInput"
+          },
+          "customDomain": {
+            "type": "string",
+            "nullable": true
+          },
+          "subdomain": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -84215,7 +84385,8 @@
           },
           "adminUserId": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "nullable": true
           },
           "temporaryPassword": {
             "type": "string",
@@ -84271,14 +84442,6 @@
             "type": "boolean"
           },
           "aal2WindowMinutes": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "sessionDays": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "deviceSessionDays": {
             "type": "integer",
             "format": "int32"
           },
@@ -84419,6 +84582,24 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "phoneNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "$ref": "#/components/schemas/TenantAddressDto"
+          },
+          "postalAddress": {
+            "$ref": "#/components/schemas/TenantAddressDto"
+          },
+          "customDomain": {
+            "type": "string",
+            "nullable": true
+          },
+          "subdomain": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -84465,16 +84646,6 @@
             "nullable": true
           },
           "aal2WindowMinutes": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "sessionDays": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "deviceSessionDays": {
             "type": "integer",
             "format": "int32",
             "nullable": true
@@ -84620,6 +84791,20 @@
           "driverSessionMinutes": {
             "type": "integer",
             "format": "int32",
+            "nullable": true
+          },
+          "phoneNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "$ref": "#/components/schemas/TenantAddressInput"
+          },
+          "postalAddress": {
+            "$ref": "#/components/schemas/TenantAddressInput"
+          },
+          "postalSameAsAddress": {
+            "type": "boolean",
             "nullable": true
           }
         },
