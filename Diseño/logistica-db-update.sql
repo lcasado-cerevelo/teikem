@@ -1,6 +1,4 @@
-/* =====================================================================GO
-
-/* ----------------------------------------------------------------------------
+/* ============================================================================
    TEIKEM — CAMBIOS A LA BASE DE DATOS DESDE LA PUESTA EN PRODUCCIÓN (2026-10-09)
    ESTRUCTURA Y DATOS en UN SOLO archivo, IDEMPOTENTE: se puede correr cuantas veces
    haga falta (db-init y db-update lo aplican después de estructura y seed).
@@ -6865,7 +6863,9 @@ GO
    ---------------------------------------------------------------------------- */
 UPDATE dbo.ModuleDefinition SET IsCore = 0, Name = N'Transporte (última milla terrestre)', NameEn = N'Transport (ground last mile)' WHERE ModuleKey = N'LTL_GROUND';
 UPDATE dbo.ModuleDefinition SET DependsOnModuleKey = N'LTL_GROUND' WHERE ModuleKey = N'COD' AND ISNULL(DependsOnModuleKey, N'') <> N'LTL_GROUND';
-=======
+GO
+
+/* ----------------------------------------------------------------------------
    2026-10-26 — Datos de la compañía (pantalla de Ajustes → General y alta de compañía nueva).
    1) AGREGA a dbo.Tenant: PhoneNumber (teléfono, para cartas y documentos), CorporateLocationId (domicilio físico) y BillingLocationId (dirección postal; NULL = la misma que la física).
       Son filas de dbo.Location como cualquier otra (ClientId NULL, tipos CORPORATE / BILLING), igual que las direcciones de un cliente.
