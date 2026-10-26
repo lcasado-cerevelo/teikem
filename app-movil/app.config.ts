@@ -7,7 +7,7 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 // its assets in a new ./assets/brands/<key>/ folder, add an entry to BRANDS
 // below, and add matching profiles in eas.json (see the delapaz-* profiles).
 // ---------------------------------------------------------------------------
-type BrandKey = 'advance' | 'delapaz';
+type BrandKey = 'advance' | 'delapaz' | 'advance-test';
 
 interface Brand {
   name: string;
@@ -44,6 +44,19 @@ const BRANDS: Record<BrandKey, Brand> = {
     favicon: './assets/brands/delapaz/favicon.png',
     primaryColor: '#EC0C8C',
   },
+  // Ambiente de TEST (test.advancelogisticspr.com): se instala AL LADO de la app de producción (otro paquete) y dice TEST en el nombre.
+  // Lo compila scripts/construir-apk.ps1 -App movil -Test. Sin la app Android de este paquete en google-services.json, queda sin avisos emergentes.
+  'advance-test': {
+    name: 'Advance App TEST',
+    scheme: 'advanceapptest',
+    androidPackage: 'com.advancelogisticspr.app.test',
+    iosBundleId: 'com.advancelogisticspr.app.test',
+    icon: './assets/brands/advance/icon.png',
+    adaptiveIcon: './assets/brands/advance/adaptive-icon.png',
+    splash: './assets/brands/advance/splash.png',
+    favicon: './assets/brands/advance/favicon.png',
+    primaryColor: '#F1592A',
+  },
 };
 
 // APP_VARIANT is set per EAS build profile (see eas.json). Local `expo start`
@@ -77,7 +90,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: 'colavora',
   scheme: brand.scheme,
   owner: 'lcasado-advance',
-  version: '1.3.0',
+  version: process.env.TEIKEM_APP_VERSION || '1.3.0',   // scripts/construir-apk.ps1 la fija; sin ella, la de aquí
   orientation: 'portrait',
   icon: brand.icon,
   userInterfaceStyle: 'automatic',
@@ -100,7 +113,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // Play Store exige un versionCode entero, único y creciente por release.
     // Se sube A MANO junto con `version` en cada release (autoIncrement de EAS
     // no funciona con config dinámico como este archivo).
-    versionCode: 4,
+    versionCode: Number.parseInt(process.env.TEIKEM_VERSION_CODE ?? '', 10) || 4,   // scripts/construir-apk.ps1 lo sube solo; sin él, el de aquí
     adaptiveIcon: {
       foregroundImage: brand.adaptiveIcon,
       backgroundColor: '#FFFFFF',
@@ -122,6 +135,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   plugins: [
     'expo-router',
+    // APK firmado con la llave propia (TEIKEM_RELEASE_KEYSTORE_*), igual que las apps del almacén y del cliente; sin las variables cae a la llave de depuración
+    './plugins/withAndroidReleaseSigning',
     [
       'expo-splash-screen',
       {
@@ -161,6 +176,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   extra: {
     ...config.extra,
     appVariant: VARIANT,
+    buildStamp: process.env.TEIKEM_BUILD_STAMP ?? 'local',
     brand: { name: brand.name, primaryColor: brand.primaryColor },
     eas: {
       projectId: 'bcce9813-d49e-4447-b265-c60dc296a26c',

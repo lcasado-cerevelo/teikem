@@ -37,6 +37,8 @@ Los iconos salen de `npm run brand:icons:test` (en `app-almacen`).
 El mismo script construye la app del cliente (`app-cliente`) con `-App cliente`: producción `TeikemClientes-*.apk` (`com.teikem.cliente`, servidor `https://teikem.advancelogisticspr.com`),
 `-Staging` (`com.teikem.cliente.staging`, morado) o `-Test` (`com.teikem.cliente.test`, verde, `https://test.advancelogisticspr.com`; sale como `TeikemClientesTest-*.apk`). Misma llave de firma;
 contadores propios (`apk-versioncode-cliente[-staging|-test].txt`). Instalar por USB: `scripts\actualizar-aparatos.ps1 -App cliente [-Staging|-Test]`.
+
+Con `-App movil` (2026-10-26) construye la app móvil del personal y los choferes (`app-movil`): producción `TeikemMovil-*.apk` (`com.advancelogisticspr.app`, servidor `https://teikem.advancelogisticspr.com`) o `-Test` (`com.advancelogisticspr.app.test`, «Advance App TEST», `https://test.advancelogisticspr.com`; sale como `TeikemMovilTest-*.apk`). No tiene variante staging. Contadores `apk-versioncode-movil[-test].txt`; instalar por USB con `scripts\actualizar-aparatos.ps1 -App movil [-Test]`. La dirección del API se escribe en la app al compilar (`EXPO_PUBLIC_BASE_URL`, con `/api/`). `scripts\publicar-test.ps1` decide solo cuáles de las tres apps hay que recompilar para TEST.
 Los iconos de las variantes: `node scripts/brand-icons.mjs staging cliente` y `node scripts/brand-icons.mjs test cliente` (desde la raíz; dejan `app-cliente/assets/{staging,test}`).
 
 Los APK de test se publican para el teléfono en `https://test.advancelogisticspr.com/descargas/` (los recoge `deploy\windows\crear-paquete-windows.ps1 -Test` de `F:\Download\TeikemApp`).

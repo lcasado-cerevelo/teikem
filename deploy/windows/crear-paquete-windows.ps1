@@ -6,7 +6,7 @@
   AMBIENTE DE TEST (2026-10-19):  -Test  arma el paquete del ambiente de test (teikem-test-AAAAMMDD-HHMM.zip): lo mismo que el normal (API + web +
     scripts de la base + instalar.ps1) MÁS el portal del cliente compilado para la web (app-cliente, apuntando a https://test.advancelogisticspr.com,
     con la cinta TEST) en «portal\», la página de descargas de las apps de test en «descargas\» con los APK más recientes de
-    F:\Download\TeikemApp (TeikemTest-*.apk y TeikemClientesTest-*.apk, si los hay), letsencrypt.ps1 e instalar-test.ps1 (lo que se corre en el servidor).
+    F:\Download\TeikemApp (TeikemTest-*.apk, TeikemClientesTest-*.apk y TeikemMovilTest-*.apk, si los hay), letsencrypt.ps1 e instalar-test.ps1 (lo que se corre en el servidor).
     -DominioTest / -DominioPortalTest cambian los nombres; -CarpetaApk, de dónde toma los APK.
 #>
 param(
@@ -84,7 +84,7 @@ if ($Test) {
     Copy-Item (Join-Path $repo 'deploy\descargas-apk\logo.png') $desc
     Copy-Item (Join-Path $repo 'deploy\descargas-apk\favicon.ico') $desc
     $versiones = [ordered]@{}
-    foreach ($par in @(@{ clave = 'almacen'; patron = 'TeikemTest-*.apk'; destino = 'teikem-almacen-test.apk' }, @{ clave = 'clientes'; patron = 'TeikemClientesTest-*.apk'; destino = 'teikem-clientes-test.apk' })) {
+    foreach ($par in @(@{ clave = 'almacen'; patron = 'TeikemTest-*.apk'; destino = 'teikem-almacen-test.apk' }, @{ clave = 'clientes'; patron = 'TeikemClientesTest-*.apk'; destino = 'teikem-clientes-test.apk' }, @{ clave = 'movil'; patron = 'TeikemMovilTest-*.apk'; destino = 'teikem-movil-test.apk' })) {
         $apk = Get-ChildItem $CarpetaApk -Filter $par.patron -ErrorAction SilentlyContinue | Sort-Object LastWriteTime | Select-Object -Last 1
         if ($apk) {
             Copy-Item $apk.FullName (Join-Path $desc ('apk\' + $par.destino))
@@ -93,7 +93,7 @@ if ($Test) {
             $versiones[$par.clave] = $v
             Write-Host "  $($par.clave): $($apk.Name) -> apk\$($par.destino) ($v)"
         } else {
-            Write-Host "  $($par.clave): no hay $($par.patron) en $CarpetaApk (la tarjeta dirá que aún no se publicó; constrúyalo con scripts\construir-apk.ps1$(if ($par.clave -eq 'clientes') { ' -App cliente' }) -Test)" -ForegroundColor Yellow
+            Write-Host "  $($par.clave): no hay $($par.patron) en $CarpetaApk (la tarjeta dirá que aún no se publicó; constrúyalo con scripts\construir-apk.ps1$(if ($par.clave -eq 'clientes') { ' -App cliente' } elseif ($par.clave -eq 'movil') { ' -App movil' }) -Test)" -ForegroundColor Yellow
         }
     }
     [IO.File]::WriteAllText((Join-Path $desc 'versions.json'), ($versiones | ConvertTo-Json), (New-Object Text.UTF8Encoding $false))

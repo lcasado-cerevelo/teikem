@@ -117,8 +117,14 @@ Tercer ambiente, junto a producción y staging, con **todo lo que hay en `master
 |---|---|
 | API + web | `https://test.advancelogisticspr.com` — sitio IIS `TeikemTest`, carpeta `C:\inetpub\teikem-test`, base `Teikem_Test`. Cinta roja **TEST** arriba de todas las pantallas, etiqueta al pie y `[TEST]` en el título de la pestaña (igual que staging; lo pone `Hosting:EnvironmentLabel = TEST`). |
 | Portal del cliente | `https://test-portal.advancelogisticspr.com` — sitio IIS `TeikemTestPortal`, carpeta `C:\inetpub\teikem-test-portal`: la web de `app-cliente` compilada apuntando al API de test, con la misma cinta TEST arriba y abajo. Es la **primera publicación del portal** (producción aún no lo tiene). |
-| Descargas de las apps | `https://test.advancelogisticspr.com/descargas/` — página para bajar los APK de test (Almacén TEST y Clientes TEST) desde el teléfono. |
+| Descargas de las apps | `https://test.advancelogisticspr.com/descargas/` — página para bajar los APK de test (Almacén TEST, Clientes TEST y Advance App TEST) desde el teléfono. |
 | Certificados | Let's Encrypt para los dos nombres, pedidos por el instalador con **win-acme** (lo descarga a `C:\Tools\win-acme` si el servidor no lo tiene) y renovados solos por su tarea programada. |
+
+**Atajo (2026-10-26): `scriptspublicar-test.ps1`** hace los pasos 1 y siguientes en su computadora de una vez: revisa que esté en master, mira qué apps móviles cambiaron desde su último APK de test y le ofrece compilar solo esas (cada una pide la contraseña de la llave), arma el paquete y le imprime la lista de lo que le toca a mano en el servidor y en la base:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "F:\Visual Studio 2022\Projects\teikem\scripts\publicar-test.ps1"
+```
 
 **1. En su computadora** (hace falta Node y el SDK de .NET; para los APK, Android Studio):
 
@@ -126,6 +132,8 @@ Tercer ambiente, junto a producción y staging, con **todo lo que hay en `master
 # los APK de test (opcional, pero sin ellos la página de descargas dice que aún no se publicaron); piden la contraseña de la llave de firma
 powershell -ExecutionPolicy Bypass -File "F:\Visual Studio 2022\Projects\teikem\scripts\construir-apk.ps1" -Test
 powershell -ExecutionPolicy Bypass -File "F:\Visual Studio 2022\Projects\teikem\scripts\construir-apk.ps1" -App cliente -Test
+# la app móvil del personal y los choferes (app-movil): Advance App TEST, com.advancelogisticspr.app.test (se instala al lado de la de producción)
+powershell -ExecutionPolicy Bypass -File "F:\Visual Studio 2022\Projects\teikem\scripts\construir-apk.ps1" -App movil -Test
 # el paquete: API + web + scripts de la base + portal compilado + página de descargas con los APK más recientes de F:\Download\TeikemApp
 powershell -ExecutionPolicy Bypass -File "F:\Visual Studio 2022\Projects\teikem\deploy\windows\crear-paquete-windows.ps1" -Test
 ```

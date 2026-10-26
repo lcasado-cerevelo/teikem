@@ -31,6 +31,10 @@
   APP DEL CLIENTE (2026-10-19): con  -App cliente  construye el APK del portal del cliente (app-cliente) en vez del de almacén, con las mismas
     variantes: producción (com.teikem.cliente, TeikemClientes-*.apk), -Staging (.staging) o -Test (.test, TeikemClientesTest-*.apk). Misma llave de
     firma; contadores propios (apk-versioncode-cliente[-staging|-test].txt). Ejemplo:  construir-apk.ps1 -App cliente -Test
+  APP MÓVIL (2026-10-26): con  -App movil  construye el APK de la app móvil del personal y los choferes (app-movil): sin -Test es la de producción (Advance App,
+    com.advancelogisticspr.app, TeikemMovil-*.apk, servidor https://teikem.advancelogisticspr.com) y con -Test la de TEST (Advance App TEST, com.advancelogisticspr.app.test,
+    se instala al lado, TeikemMovilTest-*.apk, servidor https://test.advancelogisticspr.com). No tiene variante staging. Misma llave de firma; contadores propios
+    (apk-versioncode-movil[-test].txt). Ejemplo:  construir-apk.ps1 -App movil -Test
 #>
 param(
     [string]$ApiUrl = 'https://teikem.advancelogisticspr.com',
@@ -42,23 +46,25 @@ param(
     [switch]$PermitirBajar,
     [switch]$Staging,
     [switch]$Test,
-    [ValidateSet('almacen', 'cliente')][string]$App = 'almacen'
+    [ValidateSet('almacen', 'cliente', 'movil')][string]$App = 'almacen'
 )
 
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 $cliente = ($App -eq 'cliente')
-$carpetaApp = Join-Path $repo $(if ($cliente) { 'app-cliente' } else { 'app-almacen' })
+$movil = ($App -eq 'movil')
+$carpetaApp = Join-Path $repo $(if ($cliente) { 'app-cliente' } elseif ($movil) { 'app-movil' } else { 'app-almacen' })
 function Paso([string]$m) { Write-Host ''; Write-Host "== $m" -ForegroundColor Cyan }
 function Fallar([string]$m) { Write-Host ''; Write-Host $m -ForegroundColor Red; exit 1 }
 
 if ($Staging -and $Test) { Fallar 'Use -Staging o -Test, no los dos.' }
+if ($movil -and $Staging) { Fallar 'La app móvil no tiene variante staging: use -Test (o nada, para producción).' }
 if ($Staging -and -not $PSBoundParameters.ContainsKey('ApiUrl')) { $ApiUrl = 'https://teikem.isaxpr.com' }
 if ($Test -and -not $PSBoundParameters.ContainsKey('ApiUrl')) { $ApiUrl = 'https://test.advancelogisticspr.com' }
 # Nombre de la variante (APP_VARIANT de app.config.ts), sufijo del contador y prefijo del archivo .apk
-$variante = if ($Staging) { 'staging' } elseif ($Test) { 'test' } else { 'production' }
-$sufijoContador = ($(if ($cliente) { '-cliente' } else { '' }) + $(if ($Staging) { '-staging' } elseif ($Test) { '-test' } else { '' }))
-$prefijoApk = if ($cliente) { $(if ($Staging) { 'TeikemClientesStaging' } elseif ($Test) { 'TeikemClientesTest' } else { 'TeikemClientes' }) }
+$variante = if ($movil) { $(if ($Test) { 'advance-test' } else { 'advance' }) } elseif ($Staging) { 'staging' } elseif ($Test) { 'test' } else { 'production' }
+$sufijoContador = ($(if ($cliente) { '-cliente' } elseif ($movil) { '-movil' } else { '' }) + $(if ($Staging) { '-staging' } elseif ($Test) { '-test' } else { '' }))
+$prefijoApk = if ($movil) { $(if ($Test) { 'TeikemMovilTest' } else { 'TeikemMovil' }) } elseif ($cliente) { $(if ($Staging) { 'TeikemClientesStaging' } elseif ($Test) { 'TeikemClientesTest' } else { 'TeikemClientes' }) }
               else { $(if ($Staging) { 'TeikemStaging' } elseif ($Test) { 'TeikemTest' } else { 'TeikemAlmacen' }) }
 if ($ApiUrl -notmatch '^https://') { Fallar 'La dirección del servidor debe empezar con https:// (la app de producción no admite HTTP sin cifrar).' }
 
@@ -74,6 +80,8 @@ if ($CodigoVersion -le 0) {
     Fallar "El código de versión $CodigoVersion no es mayor que el último que compiló ($anterior): Android no dejaría instalar este APK encima del anterior. Use uno mayor (o quite -CodigoVersion para que suba solo). Si de verdad lo quiere igual o menor, agregue -PermitirBajar."
 }
 if (-not $Version) { $Version = (Get-Content (Join-Path $carpetaApp 'package.json') -Raw | ConvertFrom-Json).version }
+# la app móvil del personal lleva su versión en app.config.ts (la de package.json es la de la plantilla de Expo)
+if ($movil -and -not $PSBoundParameters.ContainsKey('Version')) { $mv = [regex]::Match((Get-Content (Join-Path $carpetaApp 'app.config.ts') -Raw), "version: process[^']*'([0-9]+[.][0-9]+[.][0-9]+)'"); if ($mv.Success) { $Version = $mv.Groups[1].Value } }
 if ($Version -notmatch '^\d+\.\d+\.\d+$') { Fallar "La versión debe verse como 1.2.3 (tres números separados por puntos); recibí '$Version'." }
 Write-Host "Versión de este APK:           $Version" -ForegroundColor Cyan
 Write-Host "Código de versión de este APK: $CodigoVersion (el último que compiló fue el $anterior; tiene que ser mayor que el de los aparatos; no lo baje)" -ForegroundColor Cyan
@@ -127,6 +135,7 @@ if (-not (Test-Path 'node_modules')) { Paso 'Instalando dependencias'; npm ci --
 $env:APP_VARIANT = $variante
 $env:EXPO_PUBLIC_API_URL = $ApiUrl
 $env:TEIKEM_API_URL = $ApiUrl   # la app del cliente también la lee de extra.apiUrl
+if ($movil) { $env:EXPO_PUBLIC_BASE_URL = ($ApiUrl.TrimEnd('/') + '/api/') }   # la app móvil lee la dirección del API (con /api/) de esta variable; la del entorno manda sobre su .env
 $env:CI = '1'
 Paso "Generando el proyecto Android (variante $env:APP_VARIANT)"
 npx expo prebuild --platform android --clean
@@ -187,10 +196,11 @@ if (-not $SinRestaurar) {
     Remove-Item Env:TEIKEM_BUILD_STAMP -ErrorAction SilentlyContinue
     Remove-Item Env:EXPO_PUBLIC_API_URL -ErrorAction SilentlyContinue
     Remove-Item Env:TEIKEM_API_URL -ErrorAction SilentlyContinue
+    Remove-Item Env:EXPO_PUBLIC_BASE_URL -ErrorAction SilentlyContinue
     npx expo prebuild --platform android --clean
 }
 Remove-Item Env:TEIKEM_RELEASE_KEYSTORE_PASSWORD, Env:TEIKEM_RELEASE_KEY_PASSWORD -ErrorAction SilentlyContinue
 if (-not $ok) { exit 1 }
 Write-Host ''
-$opciones = $(if ($cliente) { ' -App cliente' }) + $(if ($Staging) { ' -Staging' } elseif ($Test) { ' -Test' })
+$opciones = $(if ($cliente) { ' -App cliente' } elseif ($movil) { ' -App movil' }) + $(if ($Staging) { ' -Staging' } elseif ($Test) { ' -Test' })
 Write-Host "Para ACTUALIZAR los aparatos (sin desinstalar, conservan su configuración): scripts\actualizar-aparatos.ps1$opciones  o copie el APK al aparato y ábralo (diga «Actualizar»/«Instalar»)."

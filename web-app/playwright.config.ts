@@ -3,6 +3,8 @@ import { defineConfig, devices } from '@playwright/test'
 // Recorre la aplicación real contra el API real (http://localhost:5000, ya levantado con db-init hecho), igual que scripts/smoke.sh.
 export default defineConfig({
   testDir: './e2e',
+  // se niega a correr si el API tiene el correo real (Brevo) configurado: ver e2e/globalSetup.ts
+  globalSetup: './e2e/globalSetup.ts',
   timeout: 60_000,
   // la primera carga en frío del Pulso (varias consultas del API a la vez con 4 workers) pasa a veces de los 5 s por defecto
   expect: { timeout: 15_000 },

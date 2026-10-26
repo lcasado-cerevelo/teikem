@@ -99,6 +99,16 @@
       </div>
       <a class="btn" id="b-clientes" href="apk/teikem-clientes-test.apk">Descargar</a>
     </div>
+
+    <div class="card">
+      <div class="info">
+        <span class="badge">PERSONAL Y CHOFERES</span>
+        <div class="name">Advance App TEST</div>
+        <div class="desc">App móvil del personal y de los choferes (rutas, escaneo de paquetes, órdenes, entregas, mensajes).</div>
+        <div class="ver" id="v-movil"></div>
+      </div>
+      <a class="btn" id="b-movil" href="apk/teikem-movil-test.apk">Descargar</a>
+    </div>
   </div>
 
   <p class="links">Web de la plataforma (test): <a href="/">test.advancelogisticspr.com</a></p>
@@ -131,11 +141,11 @@
 
 <script>
   // versions.json (junto a este archivo, lo escribe crear-paquete-windows.ps1 -Test) controla los números mostrados:
-  // { "almacen": "1.0.0 (c7)", "clientes": "1.0.0 (c2)" }   — sin una clave, la tarjeta dice que aún no se publicó y apaga el botón.
+  // { "almacen": "1.0.0 (c7)", "clientes": "1.0.0 (c2)", "movil": "1.3.0 (c2)" }   — sin una clave, la tarjeta dice que aún no se publicó y apaga el botón.
   fetch('versions.json', { cache: 'no-store' })
     .then(function (r) { return r.json(); })
     .then(function (v) {
-      ['almacen', 'clientes'].forEach(function (k) {
+      ['almacen', 'clientes', 'movil'].forEach(function (k) {
         var el = document.getElementById('v-' + k), btn = document.getElementById('b-' + k);
         if (!el) return;
         if (v[k]) { el.textContent = 'Versión ' + v[k]; }

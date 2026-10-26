@@ -13,12 +13,12 @@ param(
     [string]$Carpeta = 'F:\Download\TeikemApp',
     [switch]$Staging,
     [switch]$Test,
-    [ValidateSet('almacen', 'cliente')][string]$App = 'almacen'
+    [ValidateSet('almacen', 'cliente', 'movil')][string]$App = 'almacen'
 )
 if ($Staging -and $Test) { Write-Host 'Use -Staging o -Test, no los dos.' -ForegroundColor Red; exit 1 }
-$prefijo = if ($App -eq 'cliente') { $(if ($Staging) { 'TeikemClientesStaging' } elseif ($Test) { 'TeikemClientesTest' } else { 'TeikemClientes' }) }
+$prefijo = if ($App -eq 'movil') { $(if ($Test) { 'TeikemMovilTest' } else { 'TeikemMovil' }) } elseif ($App -eq 'cliente') { $(if ($Staging) { 'TeikemClientesStaging' } elseif ($Test) { 'TeikemClientesTest' } else { 'TeikemClientes' }) }
            else { $(if ($Staging) { 'TeikemStaging' } elseif ($Test) { 'TeikemTest' } else { 'TeikemAlmacen' }) }
-$opciones = $(if ($App -eq 'cliente') { ' -App cliente' }) + $(if ($Staging) { ' -Staging' } elseif ($Test) { ' -Test' })
+$opciones = $(if ($App -eq 'cliente') { ' -App cliente' } elseif ($App -eq 'movil') { ' -App movil' }) + $(if ($Staging) { ' -Staging' } elseif ($Test) { ' -Test' })
 
 $ErrorActionPreference = 'Continue'
 function Paso([string]$m) { Write-Host ''; Write-Host "== $m" -ForegroundColor Cyan }
