@@ -419,6 +419,8 @@
       "TITLE": "Today's pulse"
     },
     "STAFF_ORDERS": {
+      "CLOSE_ORDER": "Complete this order",
+      "PICKUP_ORDER": "Pick up this order",
       "TITLE": "Orders",
       "HINT": "Type or scan the order number, waybill, pack batch or invoice.",
       "ERROR": "Search failed. Check your signal and try again.",

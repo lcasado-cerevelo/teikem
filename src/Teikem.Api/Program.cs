@@ -56,6 +56,9 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddDeviceRateLimiting(builder.Configuration);
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .WithOrigins(builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? Array.Empty<string>())
+    // En desarrollo, la web y los portales de Expo salen en el puerto que esté libre (5173, 8081, 8083…): se acepta cualquier puerto de localhost. En producción solo lo configurado.
+    .SetIsOriginAllowed(origin => (builder.Environment.IsDevelopment() && Uri.TryCreate(origin, UriKind.Absolute, out var u) && u.IsLoopback)
+        || (builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? Array.Empty<string>()).Contains(origin, StringComparer.OrdinalIgnoreCase))
     .AllowAnyHeader().AllowAnyMethod().WithExposedHeaders(TenantContextMiddleware.CorrelationHeader, Teikem.Domain.Security.IdempotencyRules.ReplayedHeader)));
 
 // --- Autenticación JWT (access tokens cortos; el SecurityStamp invalida tokens vivos) ---

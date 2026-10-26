@@ -30,3 +30,7 @@ El selector de compañías de Órdenes y de las consultas (Clientes, Consignatar
 
 ## Ajuste (2026-10-25): modo oscuro del inicio de la app móvil
 Los botones del inicio (Órdenes, Escanear, Rutas de hoy, Clientes…) se veían con letra oscura sobre fondo oscuro. Causa: `renderItem` del `FlatList` estaba memorizado con `useCallback` sin `styles` en sus dependencias; el modo guardado se lee de forma asíncrona, así que el primer pintado (tema claro) quedaba congelado. Ahora depende de `styles` y `t`, y la lista recibe `extraData={styles}`. Se revisaron las demás pantallas: ninguna otra memoriza estilos. Pendiente: verlo en el emulador.
+
+
+## Ajuste (2026-10-25): correo de integraciones — la carpeta es la verdad
+Pedido de Luis: el sistema solo puede saber que un correo se procesó porque se movió a otra carpeta; no inventar otra forma (el buzón lo puede usar alguien). Se encontró que el modo por omisión (LOG, una cuenta en el log de Teikem) era justo esa «otra manera», y que el modo MAILBOX solo leía los NO leídos y los marcaba leídos (un correo abierto por una persona nunca se procesaba). Ahora MAILBOX es el modo por omisión y lee todo lo de la carpeta (leído o no, desde «ReadSince» si hay), y solo MUEVE a «Procesados» (IMAP y Microsoft 365; sin marcar leído); la carpeta de procesados es obligatoria. LOG queda como opción explícita. Pruebas: 5552 del servidor y las de la pantalla pasan. **No probado con un buzón real** (IMAP/Microsoft 365). A decidir: si se quiere quitar LOG por completo (la tabla `IntegrationMailLog` no se puede borrar: SQL congelado).

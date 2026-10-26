@@ -28,15 +28,16 @@ public static class EmailProviders
 }
 
 /// <summary>
-/// 2026-10-24 — dónde se anota que un correo ya se leyó. LOG (por omisión) = en el log de Teikem (<c>IntegrationMailLog</c>): el buzón no se toca (ni se marca leído ni se mueve), se leen TODOS los correos de la carpeta
-/// (leídos o no) desde <c>ReadSince</c> y cada uno se atiende una sola vez. MAILBOX = como antes: solo los NO leídos, que se marcan como leídos y se mueven a la carpeta de procesados.
+/// Dónde se anota que un correo ya se procesó. MAILBOX (por omisión, decisión del dueño 2026-10-25) = LA CARPETA ES LA VERDAD: se lee todo lo que hay en la carpeta (leído o no: una persona que abre un correo no lo saca de la cola)
+/// y lo procesado se MUEVE a la carpeta de procesados; es lo único que se le hace al buzón (no se cambia leído/no leído y nunca se borra). LOG = opción vieja: lleva la cuenta en el log de Teikem (<c>IntegrationMailLog</c>) y no toca el buzón;
+/// ya no es la de por omisión (otra forma de saber qué se procesó, que el dueño no quiere).
 /// </summary>
 public static class EmailMarkModes
 {
     public const string Log = "LOG";
     public const string Mailbox = "MAILBOX";
     public static readonly IReadOnlyList<string> All = [Log, Mailbox];
-    public static bool IsLog(string? mode) => !string.Equals(mode, Mailbox, StringComparison.OrdinalIgnoreCase);
+    public static bool IsLog(string? mode) => string.Equals(mode?.Trim(), Log, StringComparison.OrdinalIgnoreCase);
     /// <summary>«yyyy-MM-dd» → el inicio de ese día en UTC; null si está vacío o no es una fecha.</summary>
     public static DateTime? SinceUtc(string? readSince) => DateTime.TryParseExact(readSince?.Trim(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var d) ? d : null;
 }
@@ -99,7 +100,7 @@ public sealed record EmailConfig(
     bool ReadBody = false, IReadOnlyList<EmailBodyField>? BodyFields = null,
     bool ReadPdf = false, IReadOnlyList<DocumentReader>? Readers = null,
     string Provider = EmailProviders.Imap, string? TenantId = null, string? ClientId = null,
-    string MarkMode = EmailMarkModes.Log, string? ReadSince = null);
+    string MarkMode = EmailMarkModes.Mailbox, string? ReadSince = null);
 
 /// <summary>Un correo ya leído (de un buzón o de un .eml): lo que las reglas necesitan.</summary>
 public sealed record MailAttachmentData(string Name, string ContentType, byte[] Content);
@@ -125,6 +126,7 @@ public static class EmailRules
     public static string ClientIdRequiredMessage => "Indique el Client ID (identificador de la aplicación registrada en Microsoft Entra ID).";
     public static string ClientSecretRequiredMessage => "Indique el secreto de la aplicación (Client secret).";
     public static string UnknownMarkModeMessage(string m) => $"Forma de anotar los correos leídos desconocida: {m}. Use LOG o MAILBOX.";
+    public static string ProcessedFolderRequiredMessage => "Escriba la carpeta a la que se mueven los correos procesados (por omisión «Procesados»): es la forma de saber cuáles ya se atendieron.";
     public static string ReadSinceMessage => "La fecha desde la que se leen los correos debe tener el formato AAAA-MM-DD.";
     public static string MailboxRequiredMessage => "Indique la carpeta del buzón que se lee (p. ej. INBOX).";
     public static string UnknownOperatorMessage(string op) => $"Condición desconocida: {op}. Use EQUALS, CONTAINS, STARTS, ENDS, WILDCARD o REGEX.";
@@ -177,7 +179,8 @@ public static class EmailRules
             if (!hasPassword) errors["email.password"] = PasswordRequiredMessage;
         }
         if (string.IsNullOrWhiteSpace(c.Mailbox)) errors["email.mailbox"] = MailboxRequiredMessage;
-        var markMode = string.IsNullOrWhiteSpace(c.MarkMode) ? EmailMarkModes.Log : c.MarkMode.Trim().ToUpperInvariant();
+        var markMode = string.IsNullOrWhiteSpace(c.MarkMode) ? EmailMarkModes.Mailbox : c.MarkMode.Trim().ToUpperInvariant();
+        if (markMode == EmailMarkModes.Mailbox && string.IsNullOrWhiteSpace(c.ProcessedFolder)) errors["email.processedFolder"] = ProcessedFolderRequiredMessage;
         if (!EmailMarkModes.All.Contains(markMode)) errors["email.markMode"] = UnknownMarkModeMessage(c.MarkMode ?? string.Empty);
         if (!string.IsNullOrWhiteSpace(c.ReadSince) && EmailMarkModes.SinceUtc(c.ReadSince) is null) errors["email.readSince"] = ReadSinceMessage;
         ValidateMatch(c.Subject, "email.subject", errors);

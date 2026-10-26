@@ -299,7 +299,7 @@ public sealed class IntegrationService(
                 return new EmailTestResultDto(true, $"Conexión correcta: {more}{pending.Count} correo(s) por leer en {cfg.Mailbox} (los que Teikem todavía no ha atendido; el buzón no se toca).", pending.Count);
             }
             var unseen = await mailbox.TestAsync(cfg, password, ct);
-            return new EmailTestResultDto(true, $"Conexión correcta: {unseen} correo(s) sin leer en {cfg.Mailbox}.", unseen);
+            return new EmailTestResultDto(true, $"Conexión correcta: {unseen} correo(s) por atender en {cfg.Mailbox} (los que ya se atienden se mueven a «{cfg.ProcessedFolder}»).", unseen);
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)

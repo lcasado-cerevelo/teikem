@@ -12,7 +12,7 @@ namespace Teikem.Infrastructure.Integrations;
 /// <summary>
 /// 2026-10-24 — buzones de Microsoft 365 (también los compartidos, que no tienen contraseña ni licencia) con una aplicación registrada en Microsoft Entra ID y el API de correo de Microsoft (Graph).
 /// Acceso de aplicación (client credentials): nada de contraseña del buzón. En la configuración, <c>Username</c> es la dirección del buzón, <c>TenantId</c> y <c>ClientId</c> identifican la aplicación y el secreto
-/// que se pasa como «password» es el secreto de la aplicación (Client secret), guardado cifrado como cualquier otro secreto de conector. Permisos de aplicación necesarios: <c>Mail.ReadWrite</c> (leer, marcar leído y mover a «Procesados»;
+/// que se pasa como «password» es el secreto de la aplicación (Client secret), guardado cifrado como cualquier otro secreto de conector. Permisos de aplicación necesarios: <c>Mail.ReadWrite</c> (leer y mover a «Procesados»;
 /// nunca se borra) con consentimiento del administrador. El administrador puede limitarla a buzones concretos con una política de acceso de aplicaciones de Exchange.
 /// Misma regla que IMAP: solo los NO leídos, del más viejo al más nuevo, hasta <c>maxMessages</c> por corrida.
 /// </summary>
@@ -157,7 +157,9 @@ public sealed class GraphMailboxReader : IMailboxReader
         var folder = await FolderIdAsync(c, token, c.Mailbox, false, ct);
         var max = Math.Clamp(maxMessages, 1, 200);
         // «receivedDateTime» primero en el filtro: Graph lo exige para poder ordenar de más viejo a más nuevo
-        var filter = Uri.EscapeDataString("receivedDateTime ge 1900-01-01T00:00:00Z and isRead eq false");
+        // la carpeta es la verdad: leídos o no, todo lo que está en ella está por atender (desde «ReadSince» si se puso)
+        var from = EmailMarkModes.SinceUtc(c.ReadSince)?.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture) ?? "1900-01-01T00:00:00Z";
+        var filter = Uri.EscapeDataString($"receivedDateTime ge {from}");
         string? next = $"{UserPath(c)}/mailFolders/{Uri.EscapeDataString(folder)}/messages?$filter={filter}&$orderby=receivedDateTime asc&$select=id,subject&$top=100";
         var ids = new List<string>();
         for (var page = 0; next is not null && page < MaxPages && ids.Count < max; page++)
@@ -190,7 +192,6 @@ public sealed class GraphMailboxReader : IMailboxReader
         foreach (var id in keys)
         {
             var path = $"{UserPath(c)}/messages/{Uri.EscapeDataString(id)}";
-            await SendAsync(new HttpMethod("PATCH"), path, token, "{\"isRead\":true}", ct);
             if (target is not null) await SendAsync(HttpMethod.Post, $"{path}/move", token, JsonSerializer.Serialize(new { destinationId = target }), ct);
         }
     }
@@ -237,8 +238,8 @@ public sealed class GraphMailboxReader : IMailboxReader
     {
         var token = await TokenAsync(c, password, ct);
         var folder = await FolderIdAsync(c, token, c.Mailbox, false, ct);
-        using var doc = JsonDocument.Parse(await SendAsync(HttpMethod.Get, $"{UserPath(c)}/mailFolders/{Uri.EscapeDataString(folder)}?$select=unreadItemCount", token, null, ct));
-        return doc.RootElement.TryGetProperty("unreadItemCount", out var n) && n.TryGetInt32(out var count) ? count : 0;
+        using var doc = JsonDocument.Parse(await SendAsync(HttpMethod.Get, $"{UserPath(c)}/mailFolders/{Uri.EscapeDataString(folder)}?$select=totalItemCount", token, null, ct));
+        return doc.RootElement.TryGetProperty("totalItemCount", out var n) && n.TryGetInt32(out var count) ? count : 0;
     }
 }
 

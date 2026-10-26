@@ -11030,13 +11030,13 @@
     "email": {
       "mailbox": "Buzón de correo",
       "mailboxHelp": "Un buzón por integración. Teikem nunca borra nada. Por omisión anota en SU propio log los correos que ya atendió y no toca el buzón (ni marca ni mueve); también puede marcarlos como leídos y moverlos a «Procesados».",
-      "markMode": "Cómo se anota lo ya leído",
+      "markMode": "Cómo se sabe qué ya se procesó",
       "markModeOption": {
-        "LOG": "En el log de Teikem (el buzón no se toca)",
-        "MAILBOX": "En el buzón (marcar leído y mover a «Procesados»)"
+        "LOG": "En el log de Teikem (otra forma; no recomendada)",
+        "MAILBOX": "Moviendo el correo a «Procesados» (recomendada)"
       },
-      "markModeHelpLog": "Teikem guarda en su log cada correo que atiende, para no leerlo dos veces. Lee los correos de la carpeta, estén leídos o no, y no marca ni mueve nada en el buzón: usted puede seguir usándolo con normalidad.",
-      "markModeHelpMailbox": "Solo se leen los correos NO leídos; al atender cada uno se marca como leído y se mueve a la carpeta de procesados. Si en el buzón se marcan como no leídos otra vez, se vuelven a bajar (lo ya creado no se duplica).",
+      "markModeHelpLog": "Teikem guarda en su propio log cada correo que atiende. Lee los de la carpeta, estén leídos o no, y no mueve ni marca nada en el buzón. Es una forma aparte; lo normal es mover a «Procesados».",
+      "markModeHelpMailbox": "La carpeta manda: se leen TODOS los correos que están en ella (leídos o no) y, al atender cada uno, se MUEVE a la carpeta de procesados. No se marca leído ni se borra nada, y quien use el buzón puede abrirlos con normalidad. Lo que sigue en la carpeta es lo que falta por procesar.",
       "readSince": "Leer los correos recibidos desde",
       "readSinceHelp": "Solo en el log de Teikem. Los correos anteriores a este día se ignoran. Vacío = todos los de la carpeta (se atienden 50 por corrida, del más viejo al más nuevo): con un buzón grande, ponga una fecha.",
       "host": "Servidor IMAP",

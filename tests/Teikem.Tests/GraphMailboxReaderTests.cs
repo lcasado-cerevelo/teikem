@@ -82,7 +82,8 @@ public class GraphMailboxReaderTests
         var list = fake.Calls.First(c => c[1].Contains("/messages?"))[1];
         Assert.Contains("/users/avisos%40contoso.com/mailFolders/inbox/messages", list);
         Assert.Contains("orderby=receivedDateTime%20asc", list);
-        Assert.Contains(Uri.EscapeDataString("receivedDateTime ge 1900-01-01T00:00:00Z and isRead eq false"), list);
+        Assert.Contains(Uri.EscapeDataString("receivedDateTime ge 1900-01-01T00:00:00Z"), list);
+        Assert.DoesNotContain("isRead", list);   // la carpeta es la verdad: leídos o no, todo lo que está en ella se atiende
         var token = fake.Calls.First(c => c[1].Contains("login.microsoftonline.com"));
         Assert.Contains("contoso.onmicrosoft.com/oauth2/v2.0/token", token[1]);
         Assert.Contains("grant_type=client_credentials", token[2]);
@@ -119,15 +120,15 @@ public class GraphMailboxReaderTests
         await reader.MarkProcessedAsync(Config(), "s", new[] { "m1", "m2" }, default);
 
         Assert.Contains(fake.Calls, c => c[0] == "POST" && c[1].EndsWith("/mailFolders") && c[2].Contains("\"Procesados\""));
-        Assert.Equal(2, fake.Calls.Count(c => c[0] == "PATCH" && c[2] == "{\"isRead\":true}"));
+        Assert.DoesNotContain(fake.Calls, c => c[0] == "PATCH");   // solo se mueve: no se cambia leído/no leído
         Assert.Equal(2, fake.Calls.Count(c => c[0] == "POST" && c[1].EndsWith("/move") && c[2].Contains("folder-9")));
         Assert.DoesNotContain(fake.Calls, c => c[0] == "DELETE");   // nunca se borra
     }
 
     [Fact]
-    public async Task Probar_la_conexion_cuenta_los_no_leidos_de_la_carpeta()
+    public async Task Probar_la_conexion_cuenta_los_correos_de_la_carpeta()
     {
-        var fake = new FakeGraph(req => AfterLogin(req, "{\"unreadItemCount\":7}"));
+        var fake = new FakeGraph(req => AfterLogin(req, "{\"totalItemCount\":7}"));
         Assert.Equal(7, await new GraphMailboxReader(new HttpClient(fake)).TestAsync(Config(), "s", default));
     }
 
@@ -178,11 +179,12 @@ public class GraphMailboxReaderTests
     }
 
     [Fact]
-    public void Anotar_en_el_log_de_Teikem_es_lo_normal_y_la_fecha_desde_se_valida()
+    public void La_carpeta_es_la_verdad_por_omision_y_la_fecha_desde_se_valida()
     {
-        Assert.True(EmailMarkModes.IsLog(null));   // por omisión: log de Teikem
+        Assert.False(EmailMarkModes.IsLog(null));   // por omisión: la carpeta manda (se mueve a «Procesados»); el log de Teikem es solo una opción explícita
         Assert.True(EmailMarkModes.IsLog("LOG"));
         Assert.False(EmailMarkModes.IsLog("mailbox"));
+        Assert.Equal(EmailRules.ProcessedFolderRequiredMessage, EmailRules.Validate(Config() with { ProcessedFolder = "" }, true)["email.processedFolder"]);
         Assert.Equal(new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc), EmailMarkModes.SinceUtc(" 2026-10-01 "));
         Assert.Null(EmailMarkModes.SinceUtc(""));
         Assert.Null(EmailMarkModes.SinceUtc("1/10/2026"));

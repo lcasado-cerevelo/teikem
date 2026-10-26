@@ -25,3 +25,6 @@ El personal debe poder **completar órdenes desde la app** igual que el chofer (
 - «Volver a entregar» una orden **Fallida** se permite desde la app del personal, como las demás.
 - **El personal no trabaja sin señal** en lo suyo: buscar, ver la ficha y completar órdenes exigen conexión; lo que completa se envía directo (sin cola) y, si falla, la pantalla lo dice y no queda nada guardado. **Solo la parte de chofer** (sus manifiestos y envíos) se baja y se cierra sin señal.
 - Los permisos `orders.view` y `orders.deliver` son los de la web; no se creó ninguno nuevo para la app.
+
+## Ajuste (2026-10-25): botón a la vista para completar la orden
+Completar una orden ya existía, pero escondido en la pestaña «Acciones» de la ficha. Ahora, si quien la mira es personal con `orders.deliver` en la compañía de la orden y la orden admite cerrarse, la ficha (pestaña Detalles) muestra arriba un botón grande «Completar esta orden» (o «Recoger esta orden» si es una recogida) que abre las acciones. Camino: Inicio → Órdenes → buscar/escanear → abrir la orden → botón. Sin señal el personal no cierra (decisión del Lote 214). No probado en teléfono.

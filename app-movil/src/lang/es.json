@@ -420,6 +420,8 @@
     },
     "STAFF_ORDERS": {
       "TITLE": "Órdenes",
+      "CLOSE_ORDER": "Completar esta orden",
+      "PICKUP_ORDER": "Recoger esta orden",
       "HINT": "Escribe o escanea el número de orden, conduce, empaque o factura.",
       "ERROR": "No se pudo buscar. Revisa la señal e inténtalo de nuevo.",
       "EXACT_MATCH": "Coincidencia exacta",

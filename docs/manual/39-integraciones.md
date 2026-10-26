@@ -526,6 +526,17 @@ Microsoft 365 y Outlook.com **no aceptan IMAP con usuario y contraseña**, así 
 - **Base de datos:** requiere la tabla nueva de `Diseño/logistica-db-update.sql` (sección 2026-10-24 (o)); correr `db-update` antes de usar esta versión.
 - Si en una versión anterior ya se marcaron o movieron correos a «Procesados», el log de Teikem empieza vacío: no los vuelve a leer porque ya no están en la carpeta que se lee. Para que se lean otra vez, devuélvalos a la bandeja de entrada (no hace falta marcarlos como no leídos).
 
+## 25b. La carpeta es la verdad: lo procesado se MUEVE a «Procesados» (2026-10-25, decisión del dueño)
+
+**Esto reemplaza lo de la sección 25 como forma por omisión.** El buzón de la integración lo puede estar usando una persona u otro sistema, así que la única forma de saber que Teikem ya procesó un correo es que **ese correo ya no está en la carpeta que se lee: Teikem lo movió a «Procesados»**. No hay otra cuenta escondida (el log de Teikem queda solo como opción explícita, no recomendada).
+
+- **Qué lee:** TODOS los correos de la carpeta («Folder to read»), **estén leídos o no** (si alguien abre un correo no lo saca de la cola; antes, un correo abierto por una persona nunca se procesaba), desde «Read e-mails received since» si se puso una fecha (recomendado con un buzón grande: la primera vez, sin fecha, se leería todo lo que haya en la carpeta). 50 por corrida, del más viejo al más nuevo.
+- **Qué le hace al buzón:** una sola cosa: al terminar cada tanda **mueve** esos correos a la carpeta de procesados (se crea si falta). **No** los marca como leídos, **no** cambia ninguna marca y **nunca borra**. Lo que sigue en la carpeta es lo que falta por procesar.
+- **Carpeta de procesados obligatoria:** sin ella no habría forma de saber qué se atendió. Si se deja vacía: 400 «Escriba la carpeta a la que se mueven los correos procesados (por omisión «Procesados»): es la forma de saber cuáles ya se atendieron.»
+- **Si no se puede mover** (el buzón no deja, falta el permiso Mail.ReadWrite): la corrida lo avisa («No se pudieron mover los correos…»), y lo ya creado no se duplica porque el contenido (hash del archivo) ya está registrado.
+- **«Test connection»** dice «N correo(s) por atender en la carpeta (los que ya se atienden se mueven a «Procesados»)».
+- **Integraciones ya guardadas** sin esta opción pasan a este modo al guardarse o correr; las que se guardaron explícitamente con «En el log de Teikem» siguen como están hasta que se cambie el selector.
+
 ## 26. Botones de la lista mientras una integración corre (2026-10-24)
 
 - **Mientras una integración corre** (la corrida está en marcha, la hayan lanzado desde esta pantalla, otro usuario o el horario), **todos sus botones quedan desactivados** —«Correr ahora» / «Enviar ahora», «Subir archivo», «Test connection», llaves, editar y el interruptor de encendida— para no romper la corrida. Los de las demás filas siguen activos. Solo el **historial** se puede abrir: mirar no estorba. Los botones vuelven solos al terminar (la lista se actualiza cada 5 segundos mientras haya una corrida en marcha).
