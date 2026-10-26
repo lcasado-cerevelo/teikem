@@ -46,10 +46,10 @@ describe('buildInviteRequest', () => {
 
 describe('portalActions', () => {
   it('INVITED reenvía y se da de baja; ACTIVE suspende; SUSPENDED reactiva; DISABLED solo se vuelve a invitar', () => {
-    expect(portalActions(user('INVITED'), true)).toEqual({ resend: true, suspend: false, reactivate: false, remove: true, reinvite: false })
-    expect(portalActions(user('ACTIVE'), true)).toEqual({ resend: false, suspend: true, reactivate: false, remove: true, reinvite: false })
-    expect(portalActions(user('SUSPENDED'), true)).toEqual({ resend: false, suspend: false, reactivate: true, remove: true, reinvite: false })
-    expect(portalActions(user('DISABLED'), true)).toEqual({ resend: false, suspend: false, reactivate: false, remove: false, reinvite: true })
+    expect(portalActions(user('INVITED'), true)).toEqual({ resend: true, suspend: false, reactivate: false, resetMfa: false, remove: true, reinvite: false })
+    expect(portalActions(user('ACTIVE'), true)).toEqual({ resend: false, suspend: true, reactivate: false, resetMfa: true, remove: true, reinvite: false })
+    expect(portalActions(user('SUSPENDED'), true)).toEqual({ resend: false, suspend: false, reactivate: true, resetMfa: true, remove: true, reinvite: false })
+    expect(portalActions(user('DISABLED'), true)).toEqual({ resend: false, suspend: false, reactivate: false, resetMfa: false, remove: false, reinvite: true })
   })
   it('con el cliente de baja no se reenvía ni se vuelve a invitar (el servidor lo rechaza con 409), pero sí se suspende y se da de baja', () => {
     expect(portalActions(user('INVITED'), false).resend).toBe(false)
@@ -58,7 +58,7 @@ describe('portalActions', () => {
     expect(portalActions(user('ACTIVE'), false).remove).toBe(true)
   })
   it('sin estatus no ofrece nada', () => {
-    expect(portalActions({ status: '' }, true)).toEqual({ resend: false, suspend: false, reactivate: false, remove: false, reinvite: false })
+    expect(portalActions({ status: '' }, true)).toEqual({ resend: false, suspend: false, reactivate: false, resetMfa: false, remove: false, reinvite: false })
   })
 })
 

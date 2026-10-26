@@ -629,8 +629,7 @@ INVITED (accepted, was suspended or deactivated), or the company's portal module
 resend the invitation (`.../resend-invite`) and use the most recent link.
 
 **What does "That e-mail is not available for this company's portal." mean?**
-That e-mail is already registered on the platform: as a portal user of your company (in any client and in any
-status except deactivated), as a portal user of another company, or as an internal user. The message is the same in all
+That e-mail is already registered on the platform: as a portal user **of this same client** (invited, active or suspended) or as an internal staff user. (Since 2026-10-26 an e-mail that is already a portal account in ANOTHER company or in ANOTHER client of yours **can** be invited: the person simply gets one more access.) The message is the same in all
 cases on purpose (it does not reveal where the e-mail is). If it is a portal user of yours, look for it in the corresponding client;
 if it was deactivated (DISABLED) in **that same client**, the invitation does not return 409: it reinvites them. If it is deactivated in another
 client, reinvite them from that client (moving a person between clients is a business decision). In any other case use
@@ -7390,6 +7389,12 @@ Press **Resend invitation** on their row (it only appears while they are **Invit
 
 **“The invitation can only be resent to a user who has not accepted it yet (status INVITED).” (409)**
 The person already accepted the invitation (or changed status) while you had the list open. Open the record again and look at their current status.
+
+**A portal person lost their device (or their MFA stopped working) and cannot pass the security code. How do I reset it?**
+In the client record, “Portal users” panel, the **“Reset MFA”** button on their row (permission to manage portal users, and you re-confirm your identity with your own verification code). Their authenticator and recovery codes are removed; **the password does not change**. The next time they sign in to the portal, the screen shows them the code/QR to set up their authenticator app again. The code they must type comes from their app, not from the system; only in development does the system show it on screen.
+
+**“Esta persona todavía no ha entrado al portal: no tiene verificación en dos pasos que reiniciar.” / “Esta persona fue dada de baja: no se puede reiniciar su verificación en dos pasos.” (409)**
+MFA can only be reset for someone who has already signed in (ACTIVE) or is suspended (SUSPENDED). If they are still INVITED, resend the invitation; if they were removed, invite them again.
 
 **“Only a portal user in status ACTIVE can be suspended.” / “Only a portal user in status SUSPENDED can be reactivated.” (409)**
 Someone else changed the status before you. Open the record again and use the button that matches the current status.

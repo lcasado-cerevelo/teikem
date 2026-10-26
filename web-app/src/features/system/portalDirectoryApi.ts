@@ -7,7 +7,7 @@ import { portalKeys } from '../clients/portalApi'
 
 export type PortalUserAdminDto = components['schemas']['PortalUserAdminDto']
 export type PortalDirectoryKind = 'CLIENT' | 'CONSIGNEE'
-export type PortalDirectoryAction = 'suspend' | 'reactivate' | 'remove' | 'resend'
+export type PortalDirectoryAction = 'suspend' | 'reactivate' | 'remove' | 'resend' | 'resetMfa'
 
 export const portalDirectoryKeys = {
   list: (kind: PortalDirectoryKind, includeRemoved: boolean) => ['/api/v1/portal-users', kind, includeRemoved] as const,
@@ -37,6 +37,8 @@ export function usePortalDirectoryAction() {
           return unwrap(api.POST('/api/v1/clients/{publicId}/portal-users/{id}/reactivate', { ...p, headers: idempotency() }))
         case 'remove':
           return unwrap(api.POST('/api/v1/clients/{publicId}/portal-users/{id}/remove', { ...p, headers: idempotency() }))
+        case 'resetMfa':
+          return unwrap(api.POST('/api/v1/clients/{publicId}/portal-users/{id}/reset-mfa', { ...p, headers: idempotency() }))
         default:
           return unwrap(api.POST('/api/v1/clients/{publicId}/portal-users/{id}/resend-invite', p))
       }

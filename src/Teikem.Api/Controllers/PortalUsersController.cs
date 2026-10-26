@@ -42,6 +42,10 @@ public sealed class PortalUsersController(PortalUserService portalUsers, PortalU
     [HttpPost("clients/{publicId:guid}/portal-users/{id:int}/reactivate"), RequireModule(ModuleKeys.ClientPortal), RequirePermission(PermissionCatalog.PortalUsersManage)]
     public async Task<IActionResult> Reactivate(Guid publicId, int id, CancellationToken ct) { await portalUsers.ReactivateAsync(publicId, id, ct); return NoContent(); }
 
+    /// <summary>Reinicia la verificación en dos pasos de una persona de portal que perdió su dispositivo (vuelve a configurarla en su próximo ingreso; la contraseña no cambia). Exige AAL2. 409 si todavía está invitada o ya fue dada de baja.</summary>
+    [HttpPost("clients/{publicId:guid}/portal-users/{id:int}/reset-mfa"), RequireModule(ModuleKeys.ClientPortal), RequirePermission(PermissionCatalog.PortalUsersManage), RequireAal2]
+    public async Task<IActionResult> ResetMfa(Guid publicId, int id, CancellationToken ct) { await portalUsers.ResetMfaAsync(publicId, id, ct); return NoContent(); }
+
     /// <summary>Baja definitiva: → DISABLED (terminal), nunca DELETE.</summary>
     [HttpPost("clients/{publicId:guid}/portal-users/{id:int}/remove"), RequireModule(ModuleKeys.ClientPortal), RequirePermission(PermissionCatalog.PortalUsersManage)]
     public async Task<IActionResult> Remove(Guid publicId, int id, CancellationToken ct) { await portalUsers.RemoveAsync(publicId, id, ct); return NoContent(); }

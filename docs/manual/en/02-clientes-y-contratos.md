@@ -810,8 +810,8 @@ keeping their history.
 > **Updated by Batch 3 (multi-client portal)**: the same account (email) can belong to **several clients**
 > of the company, each with its own row (independent role and status). Inviting the same email from another client
 > of the same tenant no longer responds 409: it adds a new row to that account (active immediately if it already had a password, or
-> `INVITED` with a new link if not). The neutral 409 still applies to an internal user's email or one from another tenant, or
-> one already invited/active/suspended **in that same client**. See [chapter 03, section 6](03-ordenes-de-transporte.md#6-multi-client-portal-changes-chapter-02-section-7).
+> `INVITED` with a new link if not). **Since 2026-10-26 the same email can also have access in ANOTHER company**: the portal account belongs to the person and each access (company + client) is its own row; if the account already has a password, the new access is active right away (no link). The neutral 409 still applies to an internal staff user's email (they sign in through the staff login), or
+> one already invited/active/suspended **in that same client**. Suspending or removing one access does not turn the account off while the person has another live access, in this company or another. See [chapter 03, section 6](03-ordenes-de-transporte.md#6-multi-client-portal-changes-chapter-02-section-7).
 
 Who can: `portalusers.manage` (different from `admin.users`). The platform administrator can too, and their
 actions are attributed to them in the tenant's log.
@@ -827,6 +827,7 @@ How it is used:
 - `POST /api/v1/clients/{publicId}/portal-users/invite` `{ "email", "fullName"?, "role": "CLIENT_ADMIN" | "CLIENT_OPERATOR" | "CLIENT_READONLY" }` → user, `expiresAtUtc` and `inviteToken` **only** in Development (`Portal:ReturnInviteTokenInResponse`); in production the link is sent through `IInvitationSender` (today, a log entry without the token).
 - `POST /api/v1/clients/{publicId}/portal-users/{id}/resend-invite` (only in INVITED; new token, the previous link stops being valid)
 - `POST /api/v1/clients/{publicId}/portal-users/{id}/suspend` (only from ACTIVE) · `.../reactivate` (only from SUSPENDED) · `.../remove` (from any non-terminal status) → 204
+- `POST /api/v1/clients/{publicId}/portal-users/{id}/reset-mfa` (2026-10-26; permission `portalusers.manage` + **AAL2**; module CLIENT_PORTAL) → 204. **Resets the two-step verification (MFA)** of a portal person who lost their device: it removes the confirmed TOTP and the recovery codes; the password does not change; the next time they sign in to the portal they set MFA up again from scratch with their authenticator app. Only while the person is ACTIVE or SUSPENDED. On the screen: **“Reset MFA”** button on the portal user's row (with confirmation). Portal people have no company membership, which is why the reset of `/api/v1/users/{id}/mfa` (internal users) does not reach them. Errors: 409 `Esta persona todavía no ha entrado al portal: no tiene verificación en dos pasos que reiniciar.` (INVITED) and 409 `Esta persona fue dada de baja: no se puede reiniciar su verificación en dos pasos.` (DISABLED).
 - `POST /api/v1/portal-users/accept-invite` `{ "email", "token", "password" }` **without Authorization** → 204. Password: minimum 12 characters, no composition rules; the check against known breaches (HIBP) is wired in the code but is a no-op today: it will be turned on when the environment has Internet access (see 1.6).
 
 | Case | Exact message | HTTP |

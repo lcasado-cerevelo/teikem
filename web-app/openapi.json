@@ -32803,6 +32803,38 @@
         }
       }
     },
+    "/api/v1/clients/{publicId}/portal-users/{id}/reset-mfa": {
+      "post": {
+        "tags": [
+          "PortalUsers"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/clients/{publicId}/portal-users/{id}/remove": {
       "post": {
         "tags": [

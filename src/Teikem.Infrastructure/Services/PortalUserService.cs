@@ -33,6 +33,7 @@ namespace Teikem.Infrastructure.Services;
 /// - accept-invite activa TODAS las filas INVITED de la cuenta (un solo enlace sirve para todos los clientes pendientes).
 /// - Suspender/reactivar/quitar actúan por fila (por cliente); PortalUserStatusEffect desactiva la cuenta solo cuando no le
 ///   queda ninguna otra fila viva en el tenant, y la reactiva cuando vuelve a haber una.
+/// - La cuenta de portal es de la PERSONA (un correo): puede tener acceso a varios clientes de una compañía y a clientes de varias compañías (2026-10-26); cada acceso es una fila PortalUser (compañía + cliente).
 /// - Los usuarios de portal no reciben UserTenant (no aparecen en /api/v1/users, R39): su alcance es PortalUser.ClientId.
 /// - Todo cambio de estatus pasa por StatusService (INVITED → ACTIVE; SUSPENDED lateral reversible; DISABLED terminal).
 /// - Toda fila se alcanza a través del cliente del tenant (ResolveClientAsync + ClientId); IgnoreQueryFilters solo en
@@ -107,10 +108,10 @@ public sealed class PortalUserService(
                 var account = await users.FindByEmailAsync(email);
                 if (account is not null)
                 {
-                    // Solo sirve una cuenta de portal que ya pertenezca a este tenant (alguna fila suya, aunque esté dada de baja).
-                    // Usuario interno o cuenta de portal de otro tenant ⇒ mismo 409 neutro.
+                    // Una MISMA persona puede tener acceso al portal de varios clientes y de varias compañías (2026-10-26, pedido de Luis): la cuenta de portal es de la persona y cada
+                    // PortalUser (compañía + cliente) es un acceso. Solo se rechaza (409 neutro) un correo que es de un usuario interno: ese entra por el login del staff, no por el portal.
                     var kindCode = account.UserKindLookupId is null ? null : (await lookups.GetAsync(account.UserKindLookupId.Value, ct2))?.InternalCode;
-                    if (kindCode != UserKinds.Portal || !rows.Any(p => p.UserId == account.Id)) throw new ConflictException(DuplicateEmail);
+                    if (kindCode != UserKinds.Portal) throw new ConflictException(DuplicateEmail);
                 }
                 else
                 {
@@ -237,6 +238,35 @@ public sealed class PortalUserService(
         }, ct);
         await security.WriteAsync(SecurityEventTypes.RoleChange, SecurityOutcomes.Success, tenant.UserId, tenantId,
             new { action = "portal_user_suspended", portalUser = portalUserId, byPlatformAdmin = tenant.IsPlatformAdmin }, ct);
+    }
+
+    public const string ResetMfaNotYetMessage = "Esta persona todavía no ha entrado al portal: no tiene verificación en dos pasos que reiniciar.";
+    public const string ResetMfaDisabledMessage = "Esta persona fue dada de baja: no se puede reiniciar su verificación en dos pasos.";
+
+    /// <summary>
+    /// Un administrador (portalusers.manage + AAL2) reinicia la verificación en dos pasos (MFA) de una persona de portal que perdió su dispositivo: le quita el TOTP confirmado y sus códigos de recuperación;
+    /// en su próximo ingreso (el portal siempre la exige) la configura de nuevo desde cero con su app de autenticación. La contraseña no cambia. Las personas de portal no tienen membresía en la compañía
+    /// (no entran por el reinicio de /api/v1/users/{id}/mfa), por eso este camino va por el expediente del cliente. 409 si todavía está invitada o ya fue dada de baja.
+    /// </summary>
+    public async Task ResetMfaAsync(Guid clientPublicId, int id, CancellationToken ct)
+    {
+        var (tenantId, portalUserId, userId) = await db.RunInTransactionAsync(async ct2 =>
+        {
+            var client = await db.ResolveClientAsync(clientPublicId, ct2);
+            var pu = await LoadForClientAsync(client, id, ct2);
+            if (Is(pu, PortalUserStatuses.Invited) || pu.UserId is null) throw new ConflictException(ResetMfaNotYetMessage);
+            if (Is(pu, PortalUserStatuses.Disabled)) throw new ConflictException(ResetMfaDisabledMessage);
+            return (pu.TenantId, pu.PortalUserId, pu.UserId.Value);
+        }, ct);
+        var user = await users.FindByIdAsync(userId.ToString()) ?? throw new NotFoundException("Usuario de portal", id);
+        var factors = await db.UserMfaFactors.Where(f => f.UserId == userId).ToListAsync(ct);
+        foreach (var f in factors) { f.IsActive = false; f.IsConfirmed = false; }
+        db.MfaRecoveryCodes.RemoveRange(db.MfaRecoveryCodes.Where(c => c.UserId == userId));
+        user.TwoFactorEnabled = false;
+        await users.UpdateAsync(user);
+        await db.SaveChangesAsync(ct);
+        await security.WriteAsync(SecurityEventTypes.Mfa, SecurityOutcomes.Success, userId, tenantId,
+            new { action = "reset_by_admin", portalUser = portalUserId, by = tenant.UserId, byPlatformAdmin = tenant.IsPlatformAdmin }, ct);
     }
 
     /// <summary>SUSPENDED → ACTIVE (salida del lateral) en este cliente. La contraseña se conserva; el efecto vuelve a habilitar la cuenta.</summary>

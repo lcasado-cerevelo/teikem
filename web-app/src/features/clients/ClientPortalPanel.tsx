@@ -92,7 +92,7 @@ function inviteMessage(t: ReturnType<typeof useT>, dateTime: (v: string) => stri
   return r.expiresAtUtc ? t('clients.portal.sent', { email, date: dateTime(r.expiresAtUtc) }) : t('clients.portal.sentNoDate', { email })
 }
 
-type Confirm = { kind: 'suspend' | 'reactivate' | 'remove' | 'resend'; user: PortalUser }
+type Confirm = { kind: 'suspend' | 'reactivate' | 'remove' | 'resend' | 'resetMfa'; user: PortalUser }
 
 export function ClientPortalPanel({ client }: { client: ClientDetail }) {
   const t = useT()
@@ -147,6 +147,7 @@ export function ClientPortalPanel({ client }: { client: ClientDetail }) {
     return {
       suspend: { title: t('clients.portal.suspendTitle'), body: t('clients.portal.suspendBody', { name }), label: t('clients.portal.suspend') },
       reactivate: { title: t('clients.portal.reactivateTitle'), body: t('clients.portal.reactivateBody', { name }), label: t('clients.portal.reactivate') },
+      resetMfa: { title: t('clients.portal.resetMfaTitle'), body: t('clients.portal.resetMfaBody', { name }), label: t('clients.portal.resetMfa') },
       remove: { title: t('clients.portal.removeTitle'), body: t('clients.portal.removeBody', { name }), label: t('clients.portal.remove') },
       resend: { title: t('clients.portal.resendTitle'), body: t('clients.portal.resendBody', { email: c.user.email ?? '' }), label: t('clients.portal.resend') },
     }[c.kind]
@@ -194,6 +195,7 @@ export function ClientPortalPanel({ client }: { client: ClientDetail }) {
               { key: 'reinvite', label: t('clients.portal.reinvite'), onClick: (u) => setInviting(reinviteValues(u)), visible: (u) => portalActions(u, clientActive).reinvite },
               { key: 'suspend', label: t('clients.portal.suspend'), onClick: (u) => setConfirm({ kind: 'suspend', user: u }), visible: (u) => portalActions(u, clientActive).suspend },
               { key: 'reactivate', label: t('clients.portal.reactivate'), onClick: (u) => setConfirm({ kind: 'reactivate', user: u }), visible: (u) => portalActions(u, clientActive).reactivate },
+              { key: 'resetMfa', label: t('clients.portal.resetMfa'), onClick: (u) => setConfirm({ kind: 'resetMfa', user: u }), visible: (u) => portalActions(u, clientActive).resetMfa },
               { key: 'remove', label: t('clients.portal.remove'), tone: 'danger', onClick: (u) => setConfirm({ kind: 'remove', user: u }), visible: (u) => portalActions(u, clientActive).remove },
             ]}
           />
@@ -219,6 +221,9 @@ export function ClientPortalPanel({ client }: { client: ClientDetail }) {
           } else if (confirm.kind === 'reactivate') {
             await mutations.reactivate.mutateAsync(id)
             toast.success(t('clients.portal.reactivated'))
+          } else if (confirm.kind === 'resetMfa') {
+            await mutations.resetMfa.mutateAsync(id)
+            toast.success(t('clients.portal.resetMfaDone', { name: confirm.user.fullName || confirm.user.email || '' }))
           } else {
             await mutations.remove.mutateAsync(id)
             toast.success(t('clients.portal.removed'))

@@ -75,6 +75,8 @@ export interface PortalActions {
   suspend: boolean
   /** SUSPENDED → ACTIVE (conserva la contraseña). */
   reactivate: boolean
+  /** ACTIVE o SUSPENDED: reinicia su verificación en dos pasos (perdió el dispositivo); la configura de nuevo al entrar. */
+  resetMfa: boolean
   /** Cualquier estatus no terminal → DISABLED (baja definitiva). */
   remove: boolean
   /** DISABLED: se invita de nuevo con el mismo correo (la fila renace en INVITED). */
@@ -88,6 +90,7 @@ export function portalActions(user: Pick<PortalUser, 'status'>, clientActive: bo
     resend: s === PortalStatus.Invited && clientActive,
     suspend: s === PortalStatus.Active,
     reactivate: s === PortalStatus.Suspended,
+    resetMfa: s === PortalStatus.Active || s === PortalStatus.Suspended,
     remove: s !== PortalStatus.Disabled && s !== '',
     reinvite: s === PortalStatus.Disabled && clientActive,
   }

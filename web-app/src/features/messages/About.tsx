@@ -14,7 +14,7 @@ export function TalkAboutButton({ about, compact }: { about: AboutRef; compact?:
   if (!enabled) return null
   const label = t(about.entity === 'ORDER' ? 'messages.about.talkOrder' : 'messages.about.talkTrip')
   return (
-    <button type="button" className={compact ? 'rowbtn' : 'btn'} aria-label={label} title={label} onClick={() => openNewMessage(about)}>
+    <button type="button" className={compact ? 'rowbtn' : 'btn sm flow'} aria-label={label} title={label} onClick={() => openNewMessage(about)}>
       <span aria-hidden="true">💬</span>
       {!compact && ` ${label}`}
     </button>
@@ -30,7 +30,7 @@ export function MessagesAboutPanel({ about }: { about: AboutRef }) {
   if (!enabled) return null
   const rows = q.data ?? []
   return (
-    <Panel icon={<span aria-hidden="true">💬</span>} title={t('messages.about.panel')} actions={<TalkAboutButton about={about} compact />}>
+    <Panel icon={<span aria-hidden="true">💬</span>} title={t('messages.about.panel')} actions={<TalkAboutButton about={about} />}>
       {q.isPending ? (
         <Spinner block />
       ) : rows.length === 0 ? (

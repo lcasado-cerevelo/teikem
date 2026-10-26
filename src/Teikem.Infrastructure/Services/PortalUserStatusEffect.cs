@@ -47,8 +47,8 @@ public sealed class PortalUserStatusEffect(TeikemDbContext db, UserManager<Appli
                  ?? throw new NotFoundException("Usuario de portal", portalUserId);
         if (pu.UserId is null) return;
 
-        // Otra fila viva de la misma cuenta en el tenant (otro cliente ACTIVE, o INVITED pendiente de aceptar): la cuenta sigue.
-        var otherAlive = await db.PortalUsers.AsNoTracking().AnyAsync(p =>
+        // Otra fila viva de la misma cuenta (otro cliente ACTIVE, o INVITED pendiente de aceptar) en CUALQUIER compañía (la persona puede tener acceso en varias): la cuenta sigue.
+        var otherAlive = await db.PortalUsers.AsNoTracking().IgnoreQueryFilters().AnyAsync(p =>
             p.PortalUserId != pu.PortalUserId && p.UserId == pu.UserId && p.IsActive
             && (p.Status!.InternalCode == PortalUserStatuses.Active || p.Status!.InternalCode == PortalUserStatuses.Invited), ct);
         if (otherAlive) return;

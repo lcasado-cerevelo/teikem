@@ -63,7 +63,7 @@ function route({ method, url }: Call): unknown {
   if (p === '/api/v1/clients/c-1/portal-users/invite')
     return { user: row(9, 'nuevo@acme.com', 'INVITED', 'Invitado'), inviteToken: 'SECRETO-NO-SE-MUESTRA', expiresAtUtc: '2026-10-14T19:51:00Z' }
   if (/\/portal-users\/\d+\/resend-invite$/.test(p)) return { user: row(1, 'ana@acme.com', 'INVITED', 'Invitado'), inviteToken: 'OTRO-SECRETO', expiresAtUtc: '2026-10-14T19:51:00Z' }
-  if (/\/portal-users\/\d+\/(suspend|reactivate|remove)$/.test(p)) return null
+  if (/\/portal-users\/\d+\/(suspend|reactivate|remove|reset-mfa)$/.test(p)) return null
   if (p === '/api/v1/catalogs/PortalRole')
     return [
       { code: 'CLIENT_ADMIN', label: 'Admin cliente', isEnabled: true, sortOrder: 1 },
@@ -143,8 +143,8 @@ describe('Usuarios de portal — lista y acciones por estatus', () => {
         .map((b) => b.textContent)
     expect(within(rowOf('ana@acme.com')).getByText('Invitado')).toBeInTheDocument()
     expect(actions('ana@acme.com')).toEqual(['Reenviar invitación', 'Dar de baja'])
-    expect(actions('beto@acme.com')).toEqual(['Suspender', 'Dar de baja'])
-    expect(actions('carla@acme.com')).toEqual(['Reactivar', 'Dar de baja'])
+    expect(actions('beto@acme.com')).toEqual(['Suspender', 'Restablecer MFA', 'Dar de baja'])
+    expect(actions('carla@acme.com')).toEqual(['Reactivar', 'Restablecer MFA', 'Dar de baja'])
     expect(actions('dario@acme.com')).toEqual(['Volver a invitar'])
   })
 
@@ -314,6 +314,20 @@ describe('Usuarios de portal — reenviar, suspender, reactivar y dar de baja', 
     const dialog = await screen.findByRole('dialog', { name: 'Reenviar la invitación' })
     await user.click(within(dialog).getByRole('button', { name: 'Reenviar invitación' }))
     expect(await within(dialog).findByText('Solo se puede reenviar la invitación a un usuario que todavía no la ha aceptado (estatus INVITED).')).toBeInTheDocument()
+  })
+
+  it('restablecer la verificación en dos pasos pide confirmación, llama al servidor y avisa (solo a quien ya entró)', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await screen.findByText('beto@acme.com')
+    expect(within(rowOf('ana@acme.com')).queryByRole('button', { name: 'Restablecer MFA' })).toBeNull()   // invitada: todavía no tiene MFA
+    await user.click(within(rowOf('beto@acme.com')).getByRole('button', { name: 'Restablecer MFA' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Restablecer la verificación en dos pasos' })
+    expect(within(dialog).getByText(/La contraseña no cambia/)).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Restablecer MFA' }))
+    await waitFor(() => expect(callsTo('POST', '/api/v1/clients/c-1/portal-users/2/reset-mfa')).toHaveLength(1))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(getToast()?.message).toMatch(/restablecida: la configura al entrar\.$/)
   })
 
   it('suspender y reactivar llevan una Idempotency-Key distinta por intento y avisan', async () => {

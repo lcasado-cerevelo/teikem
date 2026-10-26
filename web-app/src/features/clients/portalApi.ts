@@ -42,6 +42,9 @@ export function usePortalMutations(clientPublicId: string) {
       mutationFn: (id: number) => unwrap(api.POST('/api/v1/clients/{publicId}/portal-users/{id}/reactivate', path(id))),
       onSuccess: refresh,
     }),
+    resetMfa: useMutation({
+      mutationFn: (id: number) => unwrap(api.POST('/api/v1/clients/{publicId}/portal-users/{id}/reset-mfa', path(id))),
+    }),
     remove: useMutation({
       mutationFn: (id: number) => unwrap(api.POST('/api/v1/clients/{publicId}/portal-users/{id}/remove', path(id))),
       onSuccess: refresh,

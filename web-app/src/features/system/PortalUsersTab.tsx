@@ -19,12 +19,12 @@ export function PortalUsersTab({ kind }: { kind: PortalDirectoryKind }) {
   const [includeRemoved, setIncludeRemoved] = useState(false)
   const { data, isLoading, error } = usePortalDirectory(kind, includeRemoved)
   const act = usePortalDirectoryAction()
-  const [confirming, setConfirming] = useState<{ user: PortalUserAdminDto; action: 'suspend' | 'remove' } | null>(null)
+  const [confirming, setConfirming] = useState<{ user: PortalUserAdminDto; action: 'suspend' | 'remove' | 'resetMfa' } | null>(null)
   const consignees = kind === 'CONSIGNEE'
 
   const rows = useMemo(() => (data ?? []).filter((u) => matchesQ(q, u.fullName, u.email, u.clientName, u.clientCode, u.consigneeName, u.roleLabel)), [data, q])
 
-  const run = async (user: PortalUserAdminDto, action: 'suspend' | 'reactivate' | 'remove' | 'resend') => {
+  const run = async (user: PortalUserAdminDto, action: 'suspend' | 'reactivate' | 'remove' | 'resend' | 'resetMfa') => {
     try {
       await act.mutateAsync({ clientPublicId: user.clientPublicId ?? '', id: user.id ?? 0, action })
       toast.success(t(`system.users.portal.done.${action}`, { name: user.fullName || user.email || '' }))
@@ -55,6 +55,8 @@ export function PortalUsersTab({ kind }: { kind: PortalDirectoryKind }) {
       { key: 'resend', label: t('system.users.portal.resend'), perm: 'portalusers.manage', icon: <IconKey />, visible: (u) => u.status === 'INVITED', onClick: (u) => void run(u, 'resend') },
       { key: 'suspend', label: t('system.users.portal.suspend'), perm: 'portalusers.manage', icon: <IconShieldOff />, visible: (u) => u.status === 'ACTIVE', onClick: (u) => setConfirming({ user: u, action: 'suspend' }) },
       { key: 'reactivate', label: t('system.users.portal.reactivate'), perm: 'portalusers.manage', icon: <IconRotateCcw />, visible: (u) => u.status === 'SUSPENDED', onClick: (u) => void run(u, 'reactivate') },
+      // las personas de un CLIENTE tienen MFA (obligatorio); el consignatario no (su acceso es contraseña + computadora de confianza): solo a ellas se les restablece
+      { key: 'resetMfa', label: t('system.users.portal.resetMfa'), perm: 'portalusers.manage', icon: <IconKey />, visible: (u) => u.kind !== 'CONSIGNEE' && (u.status === 'ACTIVE' || u.status === 'SUSPENDED'), onClick: (u) => setConfirming({ user: u, action: 'resetMfa' }) },
       { key: 'remove', label: t('system.users.portal.remove'), perm: 'portalusers.manage', icon: <IconXCircle />, visible: (u) => u.status !== 'DISABLED', onClick: (u) => setConfirming({ user: u, action: 'remove' }) },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -87,9 +89,9 @@ export function PortalUsersTab({ kind }: { kind: PortalDirectoryKind }) {
       </Panel>
       <ConfirmDialog
         open={confirming !== null}
-        title={t(confirming?.action === 'remove' ? 'system.users.portal.removeTitle' : 'system.users.portal.suspendTitle')}
-        message={t(confirming?.action === 'remove' ? 'system.users.portal.removeBody' : 'system.users.portal.suspendBody', { name: confirming?.user.fullName || confirming?.user.email || '' })}
-        confirmLabel={t(confirming?.action === 'remove' ? 'system.users.portal.remove' : 'system.users.portal.suspend')}
+        title={t(`system.users.portal.${confirming?.action === 'remove' ? 'removeTitle' : confirming?.action === 'resetMfa' ? 'resetMfaTitle' : 'suspendTitle'}`)}
+        message={t(`system.users.portal.${confirming?.action === 'remove' ? 'removeBody' : confirming?.action === 'resetMfa' ? 'resetMfaBody' : 'suspendBody'}`, { name: confirming?.user.fullName || confirming?.user.email || '' })}
+        confirmLabel={t(`system.users.portal.${confirming?.action === 'remove' ? 'remove' : confirming?.action === 'resetMfa' ? 'resetMfa' : 'suspend'}`)}
         onConfirm={async () => {
           if (confirming) await run(confirming.user, confirming.action)
         }}

@@ -810,8 +810,8 @@ conservando su historial.
 > **Actualizado por el Lote 3 (portal multi-cliente)**: una misma cuenta (correo) puede pertenecer a **varios clientes**
 > de la compañía, cada uno con su propia fila (rol y estatus independientes). Invitar el mismo correo desde otro cliente
 > del mismo tenant ya no responde 409: agrega una fila nueva a esa cuenta (activa de inmediato si ya tenía contraseña, o
-> `INVITED` con un enlace nuevo si no). El 409 neutro sigue aplicando a un correo de usuario interno o de otro tenant, o
-> ya invitado/activo/suspendido **en ese mismo cliente**. Ver [capítulo 03, sección 6](03-ordenes-de-transporte.md#6-portal-multi-cliente-cambia-el-capítulo-02-sección-7).
+> `INVITED` con un enlace nuevo si no). **Desde 2026-10-26 el mismo correo también puede tener acceso en OTRA compañía**: la cuenta de portal es de la persona y cada acceso (compañía + cliente) es una fila propia; si la cuenta ya tiene contraseña, el acceso nuevo queda activo de inmediato (sin enlace). El 409 neutro sigue aplicando a un correo de usuario interno (entra por el login del personal), o
+> ya invitado/activo/suspendido **en ese mismo cliente**. Suspender o dar de baja un acceso no apaga la cuenta mientras la persona tenga otro acceso vivo, en esta compañía o en otra. Ver [capítulo 03, sección 6](03-ordenes-de-transporte.md#6-portal-multi-cliente-cambia-el-capítulo-02-sección-7).
 
 Quién puede: `portalusers.manage` (distinto de `admin.users`). El administrador de plataforma también puede, y sus
 acciones quedan atribuidas a él en la bitácora del tenant.
@@ -827,13 +827,14 @@ Cómo se usa:
 - `POST /api/v1/clients/{publicId}/portal-users/invite` `{ "email", "fullName"?, "role": "CLIENT_ADMIN" | "CLIENT_OPERATOR" | "CLIENT_READONLY" }` → usuario, `expiresAtUtc` y `inviteToken` **solo** en Development (`Portal:ReturnInviteTokenInResponse`); en producción el enlace se envía por `IInvitationSender` (hoy, registro en el log sin el token).
 - `POST /api/v1/clients/{publicId}/portal-users/{id}/resend-invite` (solo en INVITED; token nuevo, el enlace anterior deja de valer)
 - `POST /api/v1/clients/{publicId}/portal-users/{id}/suspend` (solo desde ACTIVE) · `.../reactivate` (solo desde SUSPENDED) · `.../remove` (desde cualquier estatus no terminal) → 204
+- `POST /api/v1/clients/{publicId}/portal-users/{id}/reset-mfa` (2026-10-26; permiso `portalusers.manage` + **AAL2**; módulo CLIENT_PORTAL) → 204. **Reinicia la verificación en dos pasos (MFA)** de una persona de portal que perdió su dispositivo: le quita el TOTP confirmado y sus códigos de recuperación; la contraseña no cambia; en su próximo ingreso al portal configura el MFA de nuevo desde cero con su app de autenticación. Solo con la persona ACTIVE o SUSPENDED. En la pantalla: botón **«Restablecer MFA»** en la fila del usuario de portal (con confirmación). Las personas de portal no tienen membresía en la compañía, por eso el reinicio de `/api/v1/users/{id}/mfa` (usuarios internos) no les llega. Errores: 409 `Esta persona todavía no ha entrado al portal: no tiene verificación en dos pasos que reiniciar.` (INVITED) y 409 `Esta persona fue dada de baja: no se puede reiniciar su verificación en dos pasos.` (DISABLED).
 - `POST /api/v1/portal-users/accept-invite` `{ "email", "token", "password" }` **sin Authorization** → 204. Contraseña: mínimo 12 caracteres, sin reglas de composición; el chequeo contra brechas conocidas (HIBP) está conectado en el código pero hoy es no-op: se activará cuando el entorno tenga salida a Internet (ver 1.6).
 
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|
 | `email` vacío / inválido | `El correo es obligatorio.` / `Correo inválido.` | 400 |
 | `role` vacío / desconocido | `El rol de portal es obligatorio.` / `Lista PortalRole 'X' no encontrada.` | 400 / 404 |
-| El correo no está disponible (ya invitado, activo o suspendido **en este mismo cliente**; cuenta de portal de otra compañía; o usuario interno) | `Ese correo no está disponible para el portal de esta compañía.` (mismo mensaje en todos los casos, a propósito; queda `SecurityEvent` ROLE_CHANGE/FAILURE `portal_invite_conflict`) | 409 |
+| El correo no está disponible (ya invitado, activo o suspendido **en este mismo cliente**; o usuario interno del personal; una cuenta de portal de otra compañía **sí** sirve desde 2026-10-26) | `Ese correo no está disponible para el portal de esta compañía.` (mismo mensaje en todos los casos, a propósito; queda `SecurityEvent` ROLE_CHANGE/FAILURE `portal_invite_conflict`) | 409 |
 | Invitar desde **otro** cliente de la compañía un correo que ya es cuenta de portal (aunque en el primer cliente esté dada de baja) | **No** responde 409 (corregido 2026-10-12: antes decía lo contrario): agrega una fila nueva a esa cuenta, activa de inmediato si la cuenta ya tiene contraseña (sin `expiresAtUtc`) o `INVITED` con enlace si no (ver el recuadro del Lote 3 y el capítulo 03, sección 6). El 409 neutro queda para el mismo cliente, un usuario interno y una cuenta de otra compañía | 200 |
 | Cliente dado de baja: invitar o reenviar | `El cliente está dado de baja; solo se consulta su historial.` (la lista, suspender, reactivar y dar de baja sí se permiten) | 409 |
 | Reenviar cuando ya no está INVITED | `Solo se puede reenviar la invitación a un usuario que todavía no la ha aceptado (estatus INVITED).` | 409 |

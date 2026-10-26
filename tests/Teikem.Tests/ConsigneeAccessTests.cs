@@ -90,6 +90,8 @@ public class ConsigneeAccessTests
             s.AddSingleton<ITurnstileVerifier>(new NoCaptcha());
             s.AddSingleton<AuthService>();
             s.AddSingleton<PortalUserService>();
+            s.AddMemoryCache();
+            s.AddSingleton<IStatusTransitionEffect, PortalUserStatusEffect>();
             s.AddSingleton<ConsigneeNoticeService>();
             s.AddSingleton<ConsigneeAccessService>();
             s.AddSingleton<ConsigneeSelfService>();
@@ -103,6 +105,8 @@ public class ConsigneeAccessTests
             new LookupCode { LookupCodeId = 960, Entity = LookupDomains.PortalRole, InternalCode = PortalRoles.ClientAdmin, LabelJson = "{\"es\":\"Admin\"}", IsActive = true },
             new LookupCode { LookupCodeId = 961, Entity = LookupDomains.PortalRole, InternalCode = PortalRoles.ClientReadOnly, LabelJson = "{\"es\":\"Solo lectura\"}", IsActive = true },
             new LookupCode { LookupCodeId = 962, Entity = LookupDomains.PortalRole, InternalCode = PortalRoles.Consignee, LabelJson = "{\"es\":\"Consignatario\"}", IsActive = true },
+            new LookupCode { LookupCodeId = 970, Entity = LookupDomains.SecurityEventType, InternalCode = SecurityEventTypes.TokenRevoked, LabelJson = "{}", IsActive = true },
+            new LookupCode { LookupCodeId = 971, Entity = LookupDomains.SecurityOutcome, InternalCode = SecurityOutcomes.Success, LabelJson = "{}", IsActive = true },
             new LookupCode { LookupCodeId = 9001, Entity = "ContactType", InternalCode = "EMAIL", LabelJson = "{}", IsActive = true },
             new LookupCode { LookupCodeId = 9002, Entity = "ContactType", InternalCode = "MOBILE", LabelJson = "{}", IsActive = true });
         var a = new Client { ClientId = ClientA, PublicId = Guid.NewGuid(), TenantId = WmsFixture.TenantId, Code = "A", Name = "Cliente A", IsActive = true, StatusCodeId = 900, NotifyConsignee = true };
@@ -431,4 +435,55 @@ public class ConsigneeAccessTests
         w.AsConsignee(OtroCliente, ClientA, LocOtro);
         await Assert.ThrowsAsync<ForbiddenException>(() => w.Self.GetMeAsync(default));
     }
+    [Fact]
+    public async Task The_same_email_can_have_portal_access_in_several_companies_and_clients_and_suspending_one_access_does_not_turn_the_person_off()
+    {
+        await using var w = await WorldAsync();
+        var db = w.F.Db;
+        // la persona ya existe como cuenta de portal con acceso ACTIVO en OTRA compañía
+        const int Visitor = 30;
+        var visitor = new ApplicationUser
+        {
+            Id = Visitor, UserName = "visita@z.co", NormalizedUserName = "VISITA@Z.CO", Email = "visita@z.co", NormalizedEmail = "VISITA@Z.CO", FullName = "Visita", SecurityStamp = "s30", IsActive = true,
+            LockoutEnabled = true, OnboardingRequired = false, MustChangePassword = false, EmailVerifiedUtc = DateTime.UtcNow, UserKindLookupId = 951,
+        };
+        visitor.PasswordHash = new PasswordHasher<ApplicationUser>().HashPassword(visitor, Password);
+        db.Users.Add(visitor);
+        db.Clients.Add(new Client { ClientId = 601, PublicId = Guid.NewGuid(), TenantId = WmsFixture.OtherTenantId, Code = "Z", Name = "Cliente Z", IsActive = true, StatusCodeId = 900 });
+        db.PortalUsers.Add(new PortalUser
+        {
+            PortalUserId = 90, TenantId = WmsFixture.OtherTenantId, ClientId = 601, UserId = Visitor, Email = "visita@z.co", RoleLookupId = 960,
+            StatusCodeId = w.F.StatusId(StatusDomains.PortalUserStatus, PortalUserStatuses.Active), IsActive = true,
+        });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var svc = w.F.Get<PortalUserService>();
+        // esta compañía le da acceso al Cliente A: antes era el 409 «Ese correo no está disponible…»; ahora entra ACTIVA de una vez (la cuenta ya tiene contraseña) y sin enlace
+        var first = await svc.InviteAsync(w.ClientAId, new PortalInviteRequest("visita@z.co", "Visita", PortalRoles.ClientAdmin), default);
+        Assert.Equal(PortalUserStatuses.Active, first.User.Status);
+        Assert.Null(first.InviteToken);
+        // y también al Cliente B de esta misma compañía (varios clientes con la misma persona de contacto)
+        var clientB = await db.Clients.AsNoTracking().Where(c => c.ClientId == ClientB).Select(c => c.PublicId).SingleAsync();
+        var second = await svc.InviteAsync(clientB, new PortalInviteRequest("visita@z.co", "Visita", PortalRoles.ClientReadOnly), default);
+        Assert.Equal(PortalUserStatuses.Active, second.User.Status);
+
+        // dar de baja SUS dos accesos de esta compañía no apaga la cuenta: sigue activa en la otra compañía
+        await svc.RemoveAsync(w.ClientAId, first.User.Id, default);
+        Assert.True((await db.Users.AsNoTracking().SingleAsync(u => u.Id == Visitor)).IsActive);   // le queda el Cliente B y el de la otra compañía
+        await svc.RemoveAsync(clientB, second.User.Id, default);
+        Assert.True((await db.Users.AsNoTracking().SingleAsync(u => u.Id == Visitor)).IsActive);   // le queda el acceso de la otra compañía
+
+        // un correo de un usuario INTERNO sí sigue sin servir para el portal (entra por el login del staff)
+        db.Users.Add(new ApplicationUser
+        {
+            Id = 31, UserName = "interno@a.co", NormalizedUserName = "INTERNO@A.CO", Email = "interno@a.co", NormalizedEmail = "INTERNO@A.CO", FullName = "Interno", SecurityStamp = "s31", IsActive = true,
+            LockoutEnabled = true, UserKindLookupId = 952,
+        });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+        var ex = await Assert.ThrowsAsync<ConflictException>(() => svc.InviteAsync(w.ClientAId, new PortalInviteRequest("interno@a.co", null, PortalRoles.ClientAdmin), default));
+        Assert.Equal(PortalUserService.DuplicateEmail, ex.Message);
+    }
+
 }

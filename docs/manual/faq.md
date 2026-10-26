@@ -629,8 +629,7 @@ INVITED (aceptó, fue suspendido o dado de baja), o el módulo de portal de la c
 reenvíe la invitación (`.../resend-invite`) y usa el enlace más reciente.
 
 **¿Qué significa "Ese correo no está disponible para el portal de esta compañía."?**
-Ese correo ya está registrado en la plataforma: como usuario de portal de tu compañía (en cualquier cliente y en cualquier
-estatus salvo dado de baja), como usuario de portal de otra compañía, o como usuario interno. El mensaje es el mismo en todos
+Ese correo ya está registrado en la plataforma: como usuario de portal **de este mismo cliente** (invitado, activo o suspendido) o como usuario interno del personal. (Desde 2026-10-26 un correo que ya es de portal en OTRA compañía o en OTRO cliente de la tuya **sí** se puede invitar: la persona queda con un acceso más.) El mensaje es el mismo en todos
 los casos a propósito (no revela dónde está el correo). Si es un usuario de portal tuyo, búscalo en el cliente correspondiente;
 si fue dado de baja (DISABLED) en **ese mismo cliente**, la invitación no da 409: lo reinvita. Si está dado de baja en otro
 cliente, reinvítalo desde ese cliente (mover una persona de cliente es una decisión de negocio). En cualquier otro caso usa
@@ -7376,7 +7375,7 @@ Antes del 2026-10-12 sí: cuando varias compañías creaban órdenes a la vez, l
 Su usuario no tiene el permiso `portalusers.manage` o su compañía no tiene encendido el módulo **Portal de clientes**. Pídaselo al administrador de su compañía. Sin esos dos requisitos el panel no aparece.
 
 **«Ese correo no está disponible para el portal de esta compañía.» (409)**
-Al invitar, ese correo ya está invitado, activo o suspendido **en este mismo cliente**, o pertenece a un usuario interno de su compañía o a una cuenta de otra compañía. El mensaje es el mismo en todos los casos, a propósito, para no revelar dónde está registrado. Use otro correo; si la persona ya está en este cliente, búsquela en la lista y use **Reenviar invitación**, **Reactivar** o **Volver a invitar** según su estatus.
+Al invitar, ese correo ya está invitado, activo o suspendido **en este mismo cliente**, o pertenece a un usuario interno del personal. (Una cuenta de portal de otra compañía o de otro cliente **sí** se puede invitar: desde 2026-10-26 la misma persona puede tener acceso a varios clientes y a varias compañías.) El mensaje es el mismo en todos los casos, a propósito, para no revelar dónde está registrado. Use otro correo; si la persona ya está en este cliente, búsquela en la lista y use **Reenviar invitación**, **Reactivar** o **Volver a invitar** según su estatus.
 
 **Invité a una persona que ya está en otro cliente y no dio error. ¿Es normal?**
 Sí. Una misma persona puede pertenecer a varios clientes de su compañía: queda **Activa** al instante en este cliente (si ya tenía contraseña) y la lista muestra «También en N cliente(s) más». No se le envía correo.
@@ -7389,6 +7388,12 @@ Pulse **Reenviar invitación** en su fila (solo aparece mientras está **Invitad
 
 **«Solo se puede reenviar la invitación a un usuario que todavía no la ha aceptado (estatus INVITED).» (409)**
 La persona ya aceptó la invitación (o cambió de estatus) mientras usted tenía la lista abierta. Vuelva a abrir la ficha y mire su estatus actual.
+
+**Una persona del portal perdió su dispositivo (o se le desconfiguró) y no puede pasar el código de seguridad. ¿Cómo se lo restablezco?**
+En la ficha del cliente, panel «Usuarios de portal», botón **«Restablecer MFA»** de su fila (permiso de administrar usuarios de portal y reconfirmar su identidad con el código de su propia verificación). Se le quitan el autenticador y los códigos de recuperación; **la contraseña no cambia**. La próxima vez que entre al portal, la pantalla le muestra el código/QR para configurar su app de autenticación de nuevo. El código que debe escribir sale de su app, no del sistema; solo en desarrollo el sistema lo muestra en pantalla.
+
+**«Esta persona todavía no ha entrado al portal: no tiene verificación en dos pasos que reiniciar.» / «Esta persona fue dada de baja: no se puede reiniciar su verificación en dos pasos.» (409)**
+Solo se puede restablecer el MFA de quien ya entró (ACTIVE) o está suspendida (SUSPENDED). Si sigue INVITADA, reenvíele la invitación; si fue dada de baja, vuélvala a invitar.
 
 **«Solo se puede suspender un usuario de portal en estatus ACTIVE.» / «Solo se puede reactivar un usuario de portal en estatus SUSPENDED.» (409)**
 Otra persona cambió el estatus antes que usted. Vuelva a abrir la ficha y use el botón que corresponde al estatus actual.
@@ -9317,7 +9322,7 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 **¿El consignatario usa verificación en dos pasos?** No: entra con contraseña y la computadora de confianza (se confirma por correo la primera vez y dura 30 días sin uso).
 
-**Invité al consignatario y responde «Ese correo no está disponible para el portal de esta compañía.» (409).** Ese correo ya tiene acceso en este cliente, o es de un usuario del staff o de otra compañía; el mensaje es el mismo en todos los casos para no revelar dónde está registrado. Use otro correo.
+**Invité al consignatario y responde «Ese correo no está disponible para el portal de esta compañía.» (409).** Ese correo ya tiene acceso en este cliente, o es de un usuario del staff (una cuenta de portal de otra compañía o de otro cliente sí sirve); el mensaje es el mismo en todos los casos para no revelar dónde está registrado. Use otro correo.
 
 **¿Con quién habla el consignatario en los mensajes?** Con su cliente (no con la compañía): él abre la conversación con su primer mensaje y los administradores y operadores del cliente la contestan. Quien solo consulta la lee sin poder contestar (`Su rol en el portal es de solo consulta: puede leer los mensajes de los consignatarios, no contestarlos.`, 403).
 
