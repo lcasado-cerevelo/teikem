@@ -2,7 +2,7 @@
   PÁGINA DE DESCARGAS DE LAS APPS (deploy\descargas-apk): arma, lista para subir, la carpeta con la página, los APK de producción y de staging, y el versions.json
   con la versión de TODAS las apps (producción, staging y test), a partir de los APK que hay en F:\Download\TeikemApp (el más reciente de cada una).
     · Producción y staging se COPIAN a apk\ con el nombre que espera la página (teikem-almacen.apk, teikem-staging.apk, teikem-portal.apk, teikem-movil.apk).
-    · Los de TEST no se copian: viven en el servidor de test (los pone el paquete de TEST); aquí solo se escribe su versión para que la tarjeta la muestre.
+    · Los de TEST también se copian a apk (la página los baja de su propia carpeta; el servidor de test tiene además los suyos en /descargas/).
     · La app que no tenga APK todavía queda sin clave en versions.json: su tarjeta dice «Todavía no se publicó» y el botón se apaga.
   Uso:   powershell -ExecutionPolicy Bypass -File "F:\Visual Studio 2022\Projects\teikem\scripts\versiones-descargas.ps1"
   Opciones:  -CarpetaApk <carpeta de los APK>   -Destino <carpeta que se sube al servidor>   -SinCopiar (solo escribe versions.json)
@@ -24,9 +24,9 @@ $apps = @(
     @{ clave = 'staging';       nombre = 'Almacén STAGING';             patron = 'TeikemStaging-*.apk';       copia = 'teikem-staging.apk' },
     @{ clave = 'portal';        nombre = 'Portal del cliente (producción)'; patron = 'TeikemClientes-*.apk';  copia = 'teikem-portal.apk' },
     @{ clave = 'movil';         nombre = 'Advance App (producción)';    patron = 'TeikemMovil-*.apk';         copia = 'teikem-movil.apk' },
-    @{ clave = 'test';          nombre = 'Almacén TEST';                patron = 'TeikemTest-*.apk';          copia = '' },
-    @{ clave = 'clientes-test'; nombre = 'Portal TEST';                 patron = 'TeikemClientesTest-*.apk';  copia = '' },
-    @{ clave = 'movil-test';    nombre = 'Advance App TEST';            patron = 'TeikemMovilTest-*.apk';     copia = '' }
+    @{ clave = 'test';          nombre = 'Almacén TEST';                patron = 'TeikemTest-*.apk';          copia = 'teikem-almacen-test.apk' },
+    @{ clave = 'clientes-test'; nombre = 'Portal TEST';                 patron = 'TeikemClientesTest-*.apk';  copia = 'teikem-clientes-test.apk' },
+    @{ clave = 'movil-test';    nombre = 'Advance App TEST';            patron = 'TeikemMovilTest-*.apk';     copia = 'teikem-movil-test.apk' }
 )
 
 if (-not $SinCopiar) {

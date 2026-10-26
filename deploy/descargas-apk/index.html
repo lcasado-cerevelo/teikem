@@ -117,7 +117,7 @@
         <div class="desc">App del almacén contra el ambiente de test. No es producción ni staging.</div>
         <div class="ver" id="v-test"></div>
       </div>
-      <a class="btn green" id="b-test" href="https://test.advancelogisticspr.com/descargas/apk/teikem-almacen-test.apk">Descargar</a>
+      <a class="btn green" id="b-test" href="apk/teikem-almacen-test.apk">Descargar</a>
     </div>
 
     <div class="card test">
@@ -127,7 +127,7 @@
         <div class="desc">App del portal del cliente (órdenes, avisos y cuenta). La misma web: <a href="https://test-portal.advancelogisticspr.com">test-portal.advancelogisticspr.com</a>. Solo existe en test por ahora.</div>
         <div class="ver" id="v-clientes-test"></div>
       </div>
-      <a class="btn green" id="b-clientes-test" href="https://test.advancelogisticspr.com/descargas/apk/teikem-clientes-test.apk">Descargar</a>
+      <a class="btn green" id="b-clientes-test" href="apk/teikem-clientes-test.apk">Descargar</a>
     </div>
 
     <div class="card test">
@@ -137,7 +137,7 @@
         <div class="desc">App móvil del personal y de los choferes contra el ambiente de test. Se instala junto a la de producción.</div>
         <div class="ver" id="v-movil-test"></div>
       </div>
-      <a class="btn green" id="b-movil-test" href="https://test.advancelogisticspr.com/descargas/apk/teikem-movil-test.apk">Descargar</a>
+      <a class="btn green" id="b-movil-test" href="apk/teikem-movil-test.apk">Descargar</a>
     </div>
   </div>
 
@@ -172,7 +172,7 @@
   // { "ultima": "1.0.0 (c5)", "staging": "1.0.0 (c3)", "portal": "1.0.0 (c2)", "movil": "1.3.0 (c2)",
   //   "test": "1.0.0 (c3)", "clientes-test": "1.0.0 (c3)", "movil-test": "1.3.0 (c2)" }
   // Lo escribe scripts\versiones-descargas.ps1 a partir de los APK de F:\Download\TeikemApp (y copia a apk\ los de producción y staging).
-  // Sin su clave, la tarjeta dice que aún no se publicó y apaga el botón (los APK de test viven en el servidor de test).
+  // Sin su clave, la tarjeta dice que aún no se publicó y apaga el botón (los APK de test van en la misma carpeta apk).
   fetch('versions.json', { cache: 'no-store' })
     .then(function (r) { return r.json(); })
     .then(function (v) {
