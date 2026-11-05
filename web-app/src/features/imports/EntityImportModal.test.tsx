@@ -118,7 +118,7 @@ describe('EntityImportModal', () => {
     expect(review.form).toMatchObject({ templatePublicId: 't-1', commit: 'false', file: 'file' })
 
     await user.click(screen.getByRole('button', { name: 'Importar 1' }))
-    expect(await screen.findByText('Se crearon 1 registros · 1 rechazados')).toBeInTheDocument()
+    expect(await screen.findByText('Se crearon 1 · se actualizaron 0 · 1 rechazados')).toBeInTheDocument()
     expect(mock.requests.filter((r) => r.path === '/api/v1/products/import').at(-1)!.form.commit).toBe('true')
   })
 

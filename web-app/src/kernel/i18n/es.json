@@ -11516,7 +11516,7 @@
   "entityImport": {
     "open": "Importar",
     "title": "Importar {entity}",
-    "help": "Sube un archivo (CSV o Excel) y elige la plantilla que dice qué columna es cada campo. «Revisar» no guarda nada; «Importar» crea los registros válidos. Solo crea: lo que ya existe se rechaza, no se actualiza.",
+    "help": "Sube un archivo (CSV o Excel) y elige la plantilla que dice qué columna es cada campo. «Revisar» no guarda nada; «Importar» guarda los registros válidos. Los productos que ya existen (mismo SKU y dueño) se actualizan: una celda vacía deja el dato como está. En las demás listas solo se crea y lo que ya existe se rechaza.",
     "template": "Plantilla",
     "noTemplates": "Todavía no hay plantillas.",
     "newTemplate": "Nueva plantilla",
@@ -11529,7 +11529,7 @@
     "confirm": "Importar {n}",
     "close": "Cerrar",
     "reviewSummary": "{total} filas · {valid} válidas · {rejected} con errores",
-    "doneSummary": "Se crearon {created} registros · {rejected} rechazados",
+    "doneSummary": "Se crearon {created} · se actualizaron {updated} · {rejected} rechazados",
     "firstRows": "Se muestran las primeras {n} filas.",
     "col": {
       "row": "Fila",
@@ -11557,6 +11557,8 @@
     "status": {
       "OK": "Lista",
       "CREATED": "Creada",
+      "UPDATE": "Se actualizará",
+      "UPDATED": "Actualizada",
       "ERROR": "Rechazada"
     },
     "errors": {
@@ -11596,7 +11598,8 @@
         "model": "Modelo",
         "packUom": "Unidad de empaque",
         "packQty": "Cantidad por empaque",
-        "rotationMethod": "Rotación"
+        "rotationMethod": "Rotación",
+        "category": "Categoría"
       },
       "SUPPLIER": {
         "name": "Nombre",

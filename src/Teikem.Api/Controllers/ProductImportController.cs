@@ -52,7 +52,7 @@ public sealed class ProductImportController(EntityImportService imports) : Contr
 {
     /// <summary>
     /// Importar productos (multipart/form-data): <c>templatePublicId</c>, el archivo <c>file</c> (CSV o .xlsx) y <c>commit</c> (false = vista previa que no guarda; true = crea las filas válidas).
-    /// Solo crea: los repetidos se rechazan por fila. Máximo 5.000 filas / 2 MB → 400.
+    /// Crea los SKU nuevos y actualiza los que ya existen (SKU + dueño); se rechazan por fila los errores. Máximo 5.000 filas / 2 MB → 400.
     /// </summary>
     [HttpPost, Consumes("multipart/form-data"), RequirePermission(PermissionCatalog.InventoryManage)]
     [RequestSizeLimit(4 * 1024 * 1024)]

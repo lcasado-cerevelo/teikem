@@ -11513,7 +11513,7 @@
   "entityImport": {
     "open": "Import",
     "title": "Import {entity}",
-    "help": "Upload a file (CSV or Excel) and pick the template that says which column is each field. “Review” saves nothing; “Import” creates the valid records. Create-only: anything that already exists is rejected, never updated.",
+    "help": "Upload a file (CSV or Excel) and pick the template that says which column is each field. “Review” saves nothing; “Import” saves the valid records. Products that already exist (same SKU and owner) are updated: an empty cell leaves the data as it is. Other lists only create, and anything that already exists is rejected.",
     "template": "Template",
     "noTemplates": "There are no templates yet.",
     "newTemplate": "New template",
@@ -11526,7 +11526,7 @@
     "confirm": "Import {n}",
     "close": "Close",
     "reviewSummary": "{total} rows · {valid} valid · {rejected} with errors",
-    "doneSummary": "{created} records created · {rejected} rejected",
+    "doneSummary": "{created} created · {updated} updated · {rejected} rejected",
     "firstRows": "Showing the first {n} rows.",
     "col": {
       "row": "Row",
@@ -11554,6 +11554,8 @@
     "status": {
       "OK": "Ready",
       "CREATED": "Created",
+      "UPDATE": "Will be updated",
+      "UPDATED": "Updated",
       "ERROR": "Rejected"
     },
     "errors": {
@@ -11593,7 +11595,8 @@
         "model": "Model",
         "packUom": "Pack unit",
         "packQty": "Quantity per pack",
-        "rotationMethod": "Rotation"
+        "rotationMethod": "Rotation",
+        "category": "Category"
       },
       "SUPPLIER": {
         "name": "Name",

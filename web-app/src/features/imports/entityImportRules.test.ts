@@ -44,7 +44,7 @@ describe('entityTemplateIssues — proveedores', () => {
 
 describe('resultado de la importación', () => {
   it('cuenta filas por estado y arma el texto de errores', () => {
-    expect(importCounts([{ status: 'OK' }, { status: 'CREATED' }, { status: 'ERROR' }, { status: 'ERROR' }])).toEqual({ ok: 1, created: 1, error: 2 })
+    expect(importCounts([{ status: 'OK' }, { status: 'CREATED' }, { status: 'UPDATE' }, { status: 'UPDATED' }, { status: 'ERROR' }, { status: 'ERROR' }])).toEqual({ ok: 2, created: 1, updated: 1, error: 2 })
     expect(rowErrorText({ sku: 'repetido', salePrice: 'Debe ser un número.' }, (f) => f.toUpperCase())).toBe('SKU: repetido · SALEPRICE: Debe ser un número.')
     expect(rowErrorText(null, (f) => f)).toBe('')
   })

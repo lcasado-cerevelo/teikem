@@ -697,11 +697,11 @@ Cómo se ve:
 
 Primera entidad del motor genérico de plantillas (dictado de Luis, 2026-10-19). **Quién puede:** `inventory.manage` (módulo Inventario con lotes y series); ver las plantillas, `inventory.view`.
 
-**Cómo se usa:** Productos → **Importar**. Se elige (o crea con «Nueva plantilla» / «Crear formato estándar») la plantilla, se elige el archivo (CSV o .xlsx, hasta 5.000 filas / 2 MB) y se pulsa **Revisar**: no guarda nada y dice por fila si está bien o por qué se rechaza. **Importar N** crea las filas válidas; una fila mala no frena a las demás. **Solo crea**: un producto que ya existe se rechaza, nunca se actualiza.
+**Cómo se usa:** Productos → **Importar**. Se elige (o crea con «Nueva plantilla» / «Crear formato estándar») la plantilla, se elige el archivo (CSV o .xlsx, hasta 5.000 filas / 2 MB) y se pulsa **Revisar**: no guarda nada y dice por fila si está bien o por qué se rechaza. **Importar N** guarda las filas válidas; una fila mala no frena a las demás. **Crea y actualiza (2026-11-05, pedido de Luis)**: un SKU nuevo se crea; un SKU que ya existe para ese dueño **se actualiza**. En la revisión la fila dice «Se actualizará» (`UPDATE`) y al confirmar «Actualizada» (`UPDATED`). En una actualización: la **celda vacía = sin cambio**; los **valores por defecto de la plantilla no se aplican** a lo que ya existe (solo a los nuevos); el SKU y el dueño identifican y no se cambian; el seguimiento, la unidad base y el dueño siguen sin poder cambiarse tras el primer movimiento (error en esa fila); un producto dado de baja se actualiza pero **no se reactiva**; el código de barras propio no cuenta como repetido.
 
-**Plantilla (Kind `PRODUCT`):** `GET/POST /api/v1/products/import-templates`, `GET/PATCH …/{publicId}`, `POST …/{publicId}/deactivate|reactivate`, `GET …/fields`. También se administra en Integraciones → Plantillas (pestaña Productos). Campos: `sku` (obligatorio, siempre en columna), `name` (en columna o como valor por defecto), `ownerClientCode`, `baseUom`, `trackingType`, `weightKg`, `volumeM3`, `barcode`, `purchaseCost`, `salePrice`, `minQty`, `minPickQty`, `maxPickQty`, `brand`, `model`, `packUom`, `packQty`, `rotationMethod`. `sku` y `barcode` no admiten valor por defecto.
+**Plantilla (Kind `PRODUCT`):** `GET/POST /api/v1/products/import-templates`, `GET/PATCH …/{publicId}`, `POST …/{publicId}/deactivate|reactivate`, `GET …/fields`. También se administra en Integraciones → Plantillas (pestaña Productos). Campos: `sku` (obligatorio, siempre en columna), `name` (en columna o como valor por defecto), `ownerClientCode`, `baseUom`, `trackingType`, `weightKg`, `volumeM3`, `barcode`, `purchaseCost`, `salePrice`, `minQty`, `minPickQty`, `maxPickQty`, `brand`, `model`, `packUom`, `packQty`, `rotationMethod`, `category` (nombre de una categoría activa ya creada, o su ruta «Raíz / Hija»; no crea categorías; si el nombre se repite hay que usar la ruta). `sku` y `barcode` no admiten valor por defecto.
 
-**Importar:** `POST /api/v1/products/import` (multipart: `templatePublicId`, `file`, `commit` false = revisar / true = crear). Cada fila trae `key` (el SKU), `label` (el nombre), `status` OK, CREATED o ERROR y sus errores por campo (`errors`).
+**Importar:** `POST /api/v1/products/import` (multipart: `templatePublicId`, `file`, `commit` false = revisar / true = crear). Cada fila trae `key` (el SKU), `label` (el nombre), `status` OK, UPDATE (actualiza), CREATED, UPDATED o ERROR y sus errores por campo (`errors`). El resultado trae además `created` y `updated`.
 
 **Motor genérico:** productos y proveedores usan el mismo motor (`ImportEntities` + `EntityImportService`; ver §8b para proveedores). Una entidad nueva solo declara sus campos y reglas de grupo y cómo revisar y crear una fila.
 
@@ -714,9 +714,11 @@ Primera entidad del motor genérico de plantillas (dictado de Luis, 2026-10-19).
 | «El campo X no admite valor por defecto.» | 400, plantilla | sku y barcode traen su valor en cada fila. |
 | «Elija el archivo a importar.» | 400 | No se envió archivo. |
 | «El archivo no trae filas.» | 400 | Solo trae el encabezado. |
-| «Ya existe un producto con ese SKU para ese dueño.» | fila | El SKU ya existe (se compara sin distinguir mayúsculas); no se actualiza. |
+| «Ya existe un producto con ese SKU para ese dueño.» | fila | Ya no sale al importar (el SKU existente se actualiza); sigue saliendo al crear un producto a mano. |
 | «El SKU está repetido en el archivo.» | fila | El mismo SKU y dueño dos veces en el archivo. |
-| «Ya existe un producto activo con ese código de barras.» | fila | Código de barras repetido (en el sistema o en el archivo). |
+| «Ya existe un producto activo con ese código de barras.» | fila | Código de barras de OTRO producto activo, o repetido en el archivo. |
+| «No existe una categoría activa con ese nombre o ruta.» | fila, `category` | Escriba el nombre o la ruta «Raíz / Hija» de una categoría que exista y esté activa. |
+| «Hay varias categorías con ese nombre: use la ruta completa (Raíz / Hija).» | fila, `category` | El nombre lo comparten varias categorías. |
 | «Debe ser un número.» | fila | Costo, precio, peso, volumen, mínimos o cantidad por empaque no numéricos. |
 | «Cliente dueño no encontrado por ese código.» | fila | `ownerClientCode` no es el código de un cliente activo. |
 | «Unidad de medida desconocida: 'X'.» · «Tipo de seguimiento desconocido: 'X'.» · «Unidad de empaque desconocida: 'X'.» | fila | Use un código del catálogo. |

@@ -71,16 +71,18 @@ export function entityTemplateIssues(entity: ImportEntity, v: Pick<TemplateValue
 }
 
 /** Cuántas filas de cada estado trae el resultado (para el resumen y el color). */
-export function importCounts(rows: readonly { status?: string | null }[]): { ok: number; created: number; error: number } {
+export function importCounts(rows: readonly { status?: string | null }[]): { ok: number; created: number; updated: number; error: number } {
   let ok = 0
   let created = 0
+  let updated = 0
   let error = 0
   for (const r of rows) {
     if (r.status === 'CREATED') created++
-    else if (r.status === 'OK') ok++
+    else if (r.status === 'UPDATED') updated++
+    else if (r.status === 'OK' || r.status === 'UPDATE') ok++
     else error++
   }
-  return { ok, created, error }
+  return { ok, created, updated, error }
 }
 
 /** Los errores de una fila en un solo texto: «campo: mensaje · campo: mensaje». */

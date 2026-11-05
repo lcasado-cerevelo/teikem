@@ -11,7 +11,7 @@ namespace Teikem.Tests;
 
 /// <summary>
 /// 2026-10-21 — Importación de productos con plantilla (Kind PRODUCT, primera entidad del motor genérico): campos del catálogo, reglas de la plantilla, vista previa que no guarda,
-/// confirmación que crea las filas válidas y rechazo de repetidos (solo crea, decisión de Luis).
+/// confirmación que crea las filas válidas, y (2026-11-05, pedido de Luis) actualiza por SKU el producto que ya existe: celda vacía = sin cambio y sin valores por defecto de la plantilla.
 /// </summary>
 public sealed class ProductImportTests
 {
@@ -85,19 +85,82 @@ public sealed class ProductImportTests
     }
 
     [Fact]
-    public async Task Existing_sku_or_barcode_and_repeats_inside_the_file_are_rejected_never_updated()
+    public async Task Existing_sku_is_updated_new_sku_is_created_and_barcode_of_another_product_or_repeats_in_the_file_are_rejected()
     {
         await using var f = await CreateAsync();
         var tpl = await TemplateAsync(f);
         var imports = f.Get<EntityImportService>();
         await imports.ImportAsync(ImportKinds.Product, tpl.PublicId, Csv("sku,name,price,barcode", "B-1,Original,5,900"), "p.csv", commit: true, default);
 
-        var second = await imports.ImportAsync(ImportKinds.Product, tpl.PublicId, Csv("sku,name,price,barcode", "b-1,Cambiado,9,901", "B-2,Otro,1,900", "B-3,Tres,1,902", "B-3,Tres otra vez,1,903"), "p.csv", commit: true, default);
-        Assert.Equal(ProductRules.SkuTaken, second.Rows[0].Errors["sku"]);
-        Assert.Equal(ProductRules.BarcodeTaken, second.Rows[1].Errors["barcode"]);
+        var file = Csv("sku,name,price,barcode", "b-1,Cambiado,9,901", "B-2,Otro,1,900", "B-3,Tres,1,902", "B-3,Tres otra vez,1,903");
+        var preview = await imports.ImportAsync(ImportKinds.Product, tpl.PublicId, file, "p.csv", commit: false, default);
+        Assert.Equal(("UPDATE", "ERROR", "OK", "ERROR"), (preview.Rows[0].Status, preview.Rows[1].Status, preview.Rows[2].Status, preview.Rows[3].Status));
+        Assert.Equal("Original", f.Db.Set<Product>().Single(p => p.Sku == "B-1").Name);   // la vista previa no guarda nada
+
+        var second = await imports.ImportAsync(ImportKinds.Product, tpl.PublicId, file, "p.csv", commit: true, default);
+        Assert.Equal("UPDATED", second.Rows[0].Status);
+        Assert.Equal(ProductRules.BarcodeTaken, second.Rows[1].Errors["barcode"]);   // el 900 lo tiene B-1 al revisar (aunque esta misma carga se lo cambie a 901): B-2 nuevo no lo puede usar
         Assert.Equal("CREATED", second.Rows[2].Status);
         Assert.Equal(ProductImportRows.RepeatedInFileMessage, second.Rows[3].Errors["sku"]);
-        Assert.Equal("Original", f.Db.Set<Product>().Single(p => p.Sku == "B-1").Name);   // lo existente no se tocó
+        Assert.Equal((1, 1), (second.Created, second.Updated));
+        var b1 = f.Db.Set<Product>().Single(p => p.Sku == "B-1");
+        Assert.Equal(("Cambiado", "901", 9m), (b1.Name, b1.Barcode, b1.SalePrice));
+    }
+
+    [Fact]
+    public async Task Update_keeps_what_the_empty_cells_leave_out_and_ignores_the_template_defaults()
+    {
+        await using var f = await CreateAsync();
+        var tpl = await TemplateAsync(f, "Con defaults", [new(1, "sku"), new(2, "name"), new(3, "salePrice"), new(4, "barcode")], new Dictionary<string, string> { ["name"] = "Sin nombre", ["salePrice"] = "1" });
+        var imports = f.Get<EntityImportService>();
+        await imports.ImportAsync(ImportKinds.Product, tpl.PublicId, Csv("sku,name,price,barcode", "D-1,Nombre real,25,700"), "p.csv", commit: true, default);
+
+        // nombre y precio vacíos: por defecto la plantilla pondría "Sin nombre" y 1, pero a un producto que ya existe no se los pone; el código de barras sí cambia
+        var done = await imports.ImportAsync(ImportKinds.Product, tpl.PublicId, Csv("sku,name,price,barcode", "D-1,,,701"), "p.csv", commit: true, default);
+        Assert.Equal("UPDATED", done.Rows[0].Status);
+        var p = f.Db.Set<Product>().Single(x => x.Sku == "D-1");
+        Assert.Equal(("Nombre real", 25m, "701"), (p.Name, p.SalePrice, p.Barcode));
+
+        // un SKU nuevo con las mismas celdas vacías SÍ recibe los valores por defecto
+        var created = await imports.ImportAsync(ImportKinds.Product, tpl.PublicId, Csv("sku,name,price,barcode", "D-2,,,"), "p.csv", commit: true, default);
+        Assert.Equal("CREATED", created.Rows[0].Status);
+        Assert.Equal(("Sin nombre", 1m), (f.Db.Set<Product>().Single(x => x.Sku == "D-2").Name, f.Db.Set<Product>().Single(x => x.Sku == "D-2").SalePrice));
+    }
+
+    [Fact]
+    public async Task Updating_a_product_keeps_its_own_barcode_without_conflict()
+    {
+        await using var f = await CreateAsync();
+        var tpl = await TemplateAsync(f);
+        var imports = f.Get<EntityImportService>();
+        await imports.ImportAsync(ImportKinds.Product, tpl.PublicId, Csv("sku,name,price,barcode", "E-1,Uno,5,800"), "p.csv", commit: true, default);
+
+        var done = await imports.ImportAsync(ImportKinds.Product, tpl.PublicId, Csv("sku,name,price,barcode", "E-1,Uno,7,800"), "p.csv", commit: true, default);
+        Assert.Equal("UPDATED", done.Rows[0].Status);
+        Assert.Equal(7m, f.Db.Set<Product>().Single(x => x.Sku == "E-1").SalePrice);
+    }
+
+    [Fact]
+    public async Task Category_is_matched_by_path_or_unique_name_and_updates_keep_it_when_the_cell_is_empty()
+    {
+        await using var f = await CreateAsync();
+        var tenant = f.Tenant.TenantId!.Value;
+        f.Db.Set<ProductCategory>().AddRange(
+            new ProductCategory { ProductCategoryId = 901, TenantId = tenant, Name = "Bebidas" },
+            new ProductCategory { ProductCategoryId = 902, TenantId = tenant, Name = "Jugos", ParentId = 901 },
+            new ProductCategory { ProductCategoryId = 903, TenantId = tenant, Name = "Jugos", ParentId = 1001 });
+        f.Db.Set<ProductCategory>().Add(new ProductCategory { ProductCategoryId = 1001, TenantId = tenant, Name = "Otra" });
+        await f.Db.SaveChangesAsync();
+        var tpl = await TemplateAsync(f, "Con categoría", [new(1, "sku"), new(2, "name"), new(3, "category")]);
+        var imports = f.Get<EntityImportService>();
+
+        var r = await imports.ImportAsync(ImportKinds.Product, tpl.PublicId, Csv("sku,name,cat", "K-1,Uno,bebidas / jugos", "K-2,Dos,Bebidas", "K-3,Tres,Nada"), "p.csv", commit: true, default);
+        Assert.Equal(("CREATED", "CREATED", "ERROR"), (r.Rows[0].Status, r.Rows[1].Status, r.Rows[2].Status));
+        Assert.Equal(ProductImportRows.UnknownCategoryMessage, r.Rows[2].Errors["category"]);
+        Assert.Equal(902, f.Db.Set<Product>().Single(p => p.Sku == "K-1").ProductCategoryId);
+
+        await imports.ImportAsync(ImportKinds.Product, tpl.PublicId, Csv("sku,name,cat", "K-1,Uno bis,"), "p.csv", commit: true, default);
+        Assert.Equal(902, f.Db.Set<Product>().Single(p => p.Sku == "K-1").ProductCategoryId);
     }
 
     [Fact]

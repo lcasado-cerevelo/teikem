@@ -61514,6 +61514,10 @@
               "$ref": "#/components/schemas/EntityImportRowDto"
             },
             "nullable": true
+          },
+          "updated": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false

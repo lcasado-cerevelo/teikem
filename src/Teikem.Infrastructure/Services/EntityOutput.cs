@@ -66,10 +66,14 @@ public sealed class ProductExportRows(TeikemDbContext db) : IExportEntityRows
                           select new
                           {
                               p.Sku, p.Name, OwnerCode = owner != null ? owner.Code : null, BaseUom = u.InternalCode, Tracking = t.InternalCode, p.WeightKg, p.VolumeM3, p.Barcode, p.PurchaseCost, p.SalePrice,
-                              p.MinQty, p.MinPickQty, p.MaxPickQty, p.Brand, p.Model, PackUom = pack != null ? pack.InternalCode : null, p.PackQty, p.RotationMethod,
+                              p.MinQty, p.MinPickQty, p.MaxPickQty, p.Brand, p.Model, PackUom = pack != null ? pack.InternalCode : null, p.PackQty, p.RotationMethod, p.ProductCategoryId,
                           }).ToListAsync(ct);
+        var cats = await db.Set<ProductCategory>().AsNoTracking().Select(c => new { c.ProductCategoryId, c.ParentId, c.Name }).ToListAsync(ct);
+        var parents = cats.ToDictionary(c => c.ProductCategoryId, c => c.ParentId);
+        var names = cats.ToDictionary(c => c.ProductCategoryId, c => c.Name);
         return rows.Select(r => (IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>
         {
+            [ProductImportFields.Category] = r.ProductCategoryId is int cid ? ProductRules.CategoryPath(cid, parents, names) : null,
             [ProductImportFields.Sku] = r.Sku, [ProductImportFields.Name] = r.Name, [ProductImportFields.OwnerClientCode] = r.OwnerCode, [ProductImportFields.BaseUom] = r.BaseUom,
             [ProductImportFields.TrackingType] = r.Tracking, [ProductImportFields.WeightKg] = r.WeightKg, [ProductImportFields.VolumeM3] = r.VolumeM3, [ProductImportFields.Barcode] = r.Barcode,
             [ProductImportFields.PurchaseCost] = r.PurchaseCost, [ProductImportFields.SalePrice] = r.SalePrice, [ProductImportFields.MinQty] = r.MinQty, [ProductImportFields.MinPickQty] = r.MinPickQty,

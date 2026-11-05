@@ -10158,8 +10158,11 @@ Solo se ofrecen los avisos esperando y sin recibo: uno ya recibido, cancelado o 
 **¿Cómo cargo muchos productos de una vez?**
 Productos → Importar. Elige (o crea) una plantilla que diga qué columna es cada campo (mínimo sku y name), elige el archivo CSV o Excel y pulsa «Revisar»: no guarda nada y te dice por fila si está bien o por qué se rechaza. Cuando estés conforme, «Importar N» crea los válidos.
 
-**La importación de productos rechazó filas con «Ya existe un producto con ese SKU para ese dueño.»**
-Importar solo crea: no actualiza lo que ya existe. Quita esas filas del archivo, o edita el producto desde su pantalla.
+**Importé productos dos veces: ¿qué pasa con los que ya existían? (desde 2026-11-05)**
+Los SKU nuevos se crean y los que ya existen para ese dueño se **actualizan** (la revisión los marca «Se actualizará»). La celda vacía deja el dato como está y los valores por defecto de la plantilla no se aplican a lo existente. Un producto dado de baja se actualiza pero no se reactiva. Siguen rechazándose por fila: el SKU repetido en el archivo y el código de barras que ya usa otro producto.
+
+**La importación de productos rechazó una fila con «No existe una categoría activa con ese nombre o ruta.» / «Hay varias categorías con ese nombre…»**
+La columna `category` (campo «Categoría» de la plantilla) debe traer el nombre de una categoría que ya exista y esté activa, o su ruta completa «Raíz / Hija» (no distingue mayúsculas). Importar no crea categorías: créela antes en Productos → Categorías. Si dos categorías se llaman igual, use la ruta.
 
 **«La plantilla debe incluir la columna sku.» / «…la columna name o un valor por defecto para name.»**
 Toda plantilla de productos necesita la columna sku y el nombre (en una columna o como valor por defecto). El sku y el código de barras no pueden tener valor por defecto.

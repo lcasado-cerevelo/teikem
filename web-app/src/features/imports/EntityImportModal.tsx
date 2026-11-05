@@ -169,7 +169,7 @@ export function EntityImportModal({ entity, onClose }: { entity: ImportEntity; o
         <>
           <p data-testid="pi-summary" role="status">
             {result.committed
-              ? t('entityImport.doneSummary', { created: result.created ?? 0, rejected: result.rejected ?? 0 })
+              ? t('entityImport.doneSummary', { created: result.created ?? 0, updated: result.updated ?? 0, rejected: result.rejected ?? 0 })
               : t('entityImport.reviewSummary', { total: result.total ?? 0, valid: result.valid ?? 0, rejected: result.rejected ?? 0 })}
           </p>
           <div className="tblwrap">

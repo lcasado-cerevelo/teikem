@@ -26,10 +26,12 @@ public static class ProductImportFields
     public const string PackUom = "packUom";
     public const string PackQty = "packQty";
     public const string RotationMethod = "rotationMethod";
+    /// <summary>Categoría ya creada: su nombre o su ruta «Raíz / Hija». No crea categorías nuevas.</summary>
+    public const string Category = "category";
 
     public static readonly IReadOnlyList<string> All = new[]
     {
-        Sku, Name, OwnerClientCode, BaseUom, TrackingType, WeightKg, VolumeM3, Barcode, PurchaseCost, SalePrice, MinQty, MinPickQty, MaxPickQty, Brand, Model, PackUom, PackQty, RotationMethod,
+        Sku, Name, OwnerClientCode, BaseUom, TrackingType, WeightKg, VolumeM3, Barcode, PurchaseCost, SalePrice, MinQty, MinPickQty, MaxPickQty, Brand, Model, PackUom, PackQty, RotationMethod, Category,
     };
 
     /// <summary>Campos que no admiten valor por defecto (cada producto trae el suyo).</summary>

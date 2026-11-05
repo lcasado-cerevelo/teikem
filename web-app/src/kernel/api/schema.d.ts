@@ -41749,6 +41749,8 @@ export interface components {
             /** Format: int32 */
             created?: number;
             rows?: components["schemas"]["EntityImportRowDto"][] | null;
+            /** Format: int32 */
+            updated?: number;
         };
         EntityImportRowDto: {
             /** Format: int32 */
