@@ -216,6 +216,8 @@ h1,h2,h3{letter-spacing:-.01em}
 /* ===== FORMULARIOS ===== */
 .f{margin-bottom:13px;min-width:0}.f label{display:block;font-size:11.5px;color:var(--muted);font-weight:600;margin-bottom:5px}
 .f input,.f select,.f textarea{width:100%;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13.5px;color:var(--text);outline:none}
+/* un botón o una fila de botones pegada debajo de un campo no se enyunta con él */
+.f>:is(input,select,textarea)+:is(.btn,.cs-filerow,.row,.actions,.btnrow){margin-top:8px}
 .f input:focus,.f select:focus,.f textarea:focus{border-color:var(--action);box-shadow:0 0 0 3px var(--action-bg)}
 .f input[aria-invalid="true"],.f select[aria-invalid="true"],.f textarea[aria-invalid="true"]{border-color:var(--danger)}
 .pwd-field{position:relative}
