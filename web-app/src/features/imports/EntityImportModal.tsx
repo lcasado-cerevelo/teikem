@@ -7,6 +7,7 @@ import { Chip, IconPlus, IconUpload, Modal, Spinner, toast } from '../../kernel/
 import { ImportTemplateEditorModal } from '../consignees/ImportTemplateEditorModal'
 import { useEntityImportFields, useEntityImportTemplates, useImportEntity, useSaveEntityImportTemplate, type EntityImportResult } from './entityImportApi'
 import { importCounts, rowErrorText, type ImportEntity } from './entityImportRules'
+import '../consignees/consignees.css'   // 2026-11-05: las clases cs-* (fila de botones, selector de archivo oculto) viven aquí; sin este import, Posiciones y Productos mostraban los botones pegados y el «Choose File» del navegador
 
 /** Formato estándar de cada entidad: lo habitual de su catálogo. */
 export const STANDARD_COLUMNS: Record<ImportEntity, readonly string[]> = {
