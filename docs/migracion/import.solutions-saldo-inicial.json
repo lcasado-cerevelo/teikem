@@ -11,8 +11,8 @@
   },
   "products": {
     "types": ["Inventory Part"],
-    "categoryFromManufacturer": true,
-    "defaultCategory": "PRODUCTOS",
+    "categoryFromManufacturer": false,
+    "defaultCategory": "PERSONAL CARE",
     "excludeSkus": [],
     "baseUom": "UN",
     "trackingType": "NONE",
