@@ -17,4 +17,4 @@ Configuración: [import.solutions-saldo-inicial.json](import.solutions-saldo-ini
 5. Si cuadra, correr lo mismo **sin** `--dry-run`. Si se vuelve a correr, dice «El saldo inicial ya fue cargado en ALM-SOLUTIONS; no se repite».
 6. Revisar en Productos e inventario que las existencias coincidan con QuickBooks.
 
-Nota: si PISO no existe en ALM-SOLUTIONS, la herramienta la crea en la zona PCK (que ya existe en el almacén por el archivo de posiciones).
+Nota: si PISO no existe en ALM-SOLUTIONS, la herramienta crea la posición PISO dentro de la zona PISO, que ya existe en el almacén.

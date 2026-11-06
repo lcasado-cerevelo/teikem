@@ -1,7 +1,7 @@
 {
   // Saldo inicial de Advance Solutions en PRODUCCIÓN (2026-11-05, pedido de Luis): una sola vez, desde el Item List de QuickBooks de hoy.
   // Compañía y almacén YA existen y los productos también ("Ya existían", no se tocan): solo se agrega el saldo inicial (ajustes OPENING_BALANCE)
-  // a la posición PISO. Si el almacén ya tiene un saldo inicial, NO se repite. Uso: ver docs/migracion/saldo-inicial-solutions.md
+  // a la posición PISO (dentro de la zona PISO). Si el almacén ya tiene un saldo inicial, NO se repite. Uso: ver docs/migracion/saldo-inicial-solutions.md
   "company": {
     "name": "Advance Solutions",
     "lang": "es"
@@ -22,7 +22,7 @@
   "warehouse": {
     "code": "ALM-SOLUTIONS",
     "singleBin": {
-      "zone": { "code": "PCK", "name": "PCK", "zoneType": "PICK" },
+      "zone": { "code": "PISO", "name": "Piso", "zoneType": "PICKING" },
       "bin": "PISO"
     }
   },
