@@ -7,13 +7,13 @@
     "lang": "es"
   },
   "sources": {
-    "products": "F:/Download/ItemList.CSV"
+    "products": "C:/tools/ItemList-saldo.CSV"
   },
   "products": {
     "types": ["Inventory Part"],
     "categoryFromManufacturer": true,
     "defaultCategory": "PRODUCTOS",
-    "excludeSkus": ["101010", "121212", "979"],
+    "excludeSkus": [],
     "baseUom": "UN",
     "trackingType": "NONE",
     "nameFallbackToSku": true,
