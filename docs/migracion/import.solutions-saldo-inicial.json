@@ -1,0 +1,37 @@
+{
+  // Saldo inicial de Advance Solutions en PRODUCCIÓN (2026-11-05, pedido de Luis): una sola vez, desde el Item List de QuickBooks de hoy.
+  // Compañía y almacén YA existen y los productos también ("Ya existían", no se tocan): solo se agrega el saldo inicial (ajustes OPENING_BALANCE)
+  // a la posición PISO. Si el almacén ya tiene un saldo inicial, NO se repite. Uso: ver docs/migracion/saldo-inicial-solutions.md
+  "company": {
+    "name": "Advance Solutions",
+    "lang": "es"
+  },
+  "sources": {
+    "products": "F:/Download/ItemList.CSV"
+  },
+  "products": {
+    "types": ["Inventory Part"],
+    "categoryFromManufacturer": true,
+    "defaultCategory": "PRODUCTOS",
+    "excludeSkus": ["101010", "121212", "979"],
+    "baseUom": "UN",
+    "trackingType": "NONE",
+    "nameFallbackToSku": true,
+    "createUnknownWmsSkusWithStock": false
+  },
+  "warehouse": {
+    "code": "ALM-SOLUTIONS",
+    "singleBin": {
+      "zone": { "code": "PCK", "name": "PCK", "zoneType": "PICK" },
+      "bin": "PISO"
+    }
+  },
+  "openingBalances": {
+    "source": "quickbooks",
+    "reason": "OPENING_BALANCE",
+    "notes": "Saldo inicial QuickBooks 2026-11-05"
+  },
+  "report": {
+    "prefix": "reporte-saldo-solutions"
+  }
+}
