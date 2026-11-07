@@ -1,7 +1,7 @@
 # 18 — Órdenes de venta
 
 Lotes 57 a 64 (2026-10-15) — **S1: borrador, solicitar y reservar, backorders; S2: despachar**. Una **orden de venta** (OV-#####) es el documento que viaja de **Ventas a Almacén**: Ventas le pide al almacén que despache algo para un cliente. Hasta aquí se puede **armar la orden en borrador, solicitarla (validar y reservar inventario), modificarla y cancelarla**; ver, surtir y cerrar los **backorders**; **despachar contra la orden**, retiro / entrega y deshacer un despacho; la web y la app llegan en los lotes siguientes.
-**Pedido de vendedores (Lotes 221 a 226, 2026-11-07):** la orden suma urgente, entrega o recogido, forma de pago, cargo de envío, consignación, firma de quien autoriza y cliente prospecto (secciones 18 a 23); el precio sale de listas ([47](47-precios-y-ofertas.md)); el pedido guiado es otra puerta a esta misma orden ([48](48-pedido-guiado.md)); las facturas pasan a QuickBooks ([49](49-quickbooks.md)) y lo consignado se cobra aparte ([19 §4e](19-facturacion.md#4e-consignación-lote-224)).
+**Pedido de vendedores (Lotes 221 a 226, 2026-11-07):** la orden suma urgente, entrega o recogido, forma de pago, cargo de envío, consignación, firma de quien autoriza y cliente prospecto (secciones 18 a 23); el precio sale de listas ([47](47-precios-y-ofertas.md)); el pedido guiado es otra puerta a esta misma orden ([48](48-pedido-guiado.md)); las facturas pasan a QuickBooks ([49](49-quickbooks.md)) y lo consignado se cobra aparte ([19 §4e](19-facturacion.md#4e-consignación-lote-224)); con una **compañía enlazada**, la entrega de un despacho la hace otra compañía ([50](50-companias-enlazadas.md), sección 24).
 El diseño completo está en `Diseño/logistica-funcionalidades-maestro.md`, sección 13C. La pantalla se describe en [L60 — Órdenes de venta](frontend/l60-ordenes-de-venta.md) y [L63 — Despachar](frontend/l63-despachar-orden-de-venta.md).
 
 ## 1. Quién puede
@@ -442,3 +442,17 @@ Como todos los avisos de ventas, **la campana y el correo necesitan una regla** 
 - Una orden con el cargo de envío ya facturado (`ShippingInvoiced`) no vuelve a cobrarlo. Si hace falta liberarlo, se anula la factura o se cancela la corrida.
 - «¿Por qué la orden de un cliente nuevo no se despacha?»: mire `awaitingClientApproval` y el estatus del cliente.
 - «¿Por qué no sale la forma de pago prellenada?»: el cliente no tiene término de pago, o es `COD` u otro que no se traduce (sección 19).
+
+## 24. Entrega por la compañía enlazada (Lote 227)
+
+<!-- kemi:staff -->
+
+Si la compañía tiene un **enlace activo** con otra que da el transporte ([50](50-companias-enlazadas.md)) y el módulo **Compañías enlazadas (`INTERCOMPANY`)** encendido, la **entrega** de un despacho (sección 11, en la web o en el aparato) **no crea la orden de transporte aquí**: se crea en la compañía enlazada, a nombre del cliente que representa a esta compañía. Sin enlace, o con el enlace solo propuesto, o con el módulo apagado, todo sigue como en la sección 11.
+
+- **Quién y cómo:** igual que la entrega de la sección 11 (`warehouse.pick`; `POST /api/v1/sales-orders/{publicId}/delivery`, o el despacho con entrega en una sola llamada). La entrega **necesita consignatario** (el de la orden de venta o uno nuevo) y al menos una línea de paquete.
+- **Qué pasa:** en la misma transacción la recolección (`EMP-#####`) pasa a **empacada (`PACKED`) sin orden de transporte aquí** y queda el registro de la entrega, «Por enviar». Al terminar se manda a la otra compañía; si no se puede en ese momento, la manda el trabajo `INTERCOMPANY_SYNC` en 2 minutos o menos. Una orden de venta **urgente** nace allá con prioridad alta y avisa al transporte de allá.
+- **Qué se ve en la orden:** en la lista de **despachos** (`dispatches`), cada despacho trae `linkedDelivery`: el estado de la entrega (**Por enviar**, **Enviada** o **No se pudo crear**, con el mensaje de allá), la compañía, el **número y el estatus** de la orden de allá, **quién recibió y cuándo**, y **Ver comprobante** (firma y fotos, que se leen en vivo de la otra compañía). En esos despachos `transportOrderPublicId` va vacío: aquí no hay orden de transporte.
+- **Si la otra compañía rechaza la orden** (cliente suspendido, sin tarifa vigente, tipo de servicio…), la entrega queda **No se pudo crear** con el mensaje de allá y un aviso. Se corrige **allá** y se pulsa **Reintentar** en Integraciones / API → Compañías enlazadas (`intercompany.manage` o `warehouse.pick`).
+- **Facturación «al entregar»** ([19](19-facturacion.md)): el despacho cuenta como entregado cuando la entrega de allá está **Entregada** o trae comprobante. Antes de eso no se factura.
+- **Deshacer el despacho** (sección 11): ya no se puede desde aquí; la entrega es de la otra compañía y se cancela allá. El servidor responde 422 con el mensaje de las recolecciones empacadas cuyo envío ya avanzó (por lectura del código; no se probó).
+- Los mensajes de esta sección están en el capítulo [50, sección 5](50-companias-enlazadas.md#5-validaciones-y-mensajes) y en la [FAQ](faq.md#lote-227--compañías-enlazadas).

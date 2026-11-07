@@ -11385,3 +11385,127 @@ The scheduled job publishes it at 07:00, one a day and only if there are invoice
 
 **I do not see the QuickBooks tab.**
 Any of `sales.quickbooks.view`, `sales.quickbooks.mark` or `sales.quickbooks.export` is needed and the Sales orders module turned on.
+
+## Batch 227 — Linked companies
+<!-- kemi:staff -->
+
+> The server answers these messages in Spanish; each question quotes the exact Spanish text, followed by its English meaning.
+
+Chapter: [50 — Linked companies](50-companias-enlazadas.md). Sales order section: [18 §24](18-ordenes-de-venta.md#24-delivery-by-the-linked-company-batch-227).
+
+**What does "Indique el papel de su compañía: CLIENT (somos el cliente de la otra) o PROVIDER (la otra es nuestro cliente)." mean?**
+(Give your company's role: CLIENT (we are the other's client) or PROVIDER (the other is our client).) A link was proposed without a role or with a role that is neither `CLIENT` nor `PROVIDER` (400). `CLIENT` = your company dispatches through the other; `PROVIDER` = your company provides the transport and the other is your client. On screen it is «Our role».
+
+**What does "Indique la compañía con la que se quiere enlazar." mean?**
+(Give the company you want to link with.) The company is missing (400). Choose it from the «Propose link» list.
+
+**What does "No se encontró esa compañía, no tiene encendido el módulo de compañías enlazadas o usted no pertenece a ella." mean?**
+(That company was not found, it does not have the linked companies module on, or you do not belong to it.) The company does not exist, does not have the Linked companies module on, or you do not belong to it (400). For security the message does not say which of the three. Ask for the module to be turned on in the other company, or have the same owner propose it from a person who belongs to both.
+
+**What does "Una compañía no se puede enlazar consigo misma." mean?**
+(A company cannot be linked with itself.) Your own company was chosen (400). Choose the other one.
+
+**What does "La compañía que da el transporte necesita el módulo de Transporte encendido." mean?**
+(The company that provides the transport needs the Transport module on.) The company that would do the transport does not have the Transport module (`LTL_GROUND`) (422). Turn it on over there before proposing or accepting.
+
+**What does "Indique el cliente de su compañía a cuyo nombre nacerán las órdenes de la compañía enlazada." mean?**
+(Give the client of your company in whose name the linked company's orders will be created.) The company that provides the transport must choose its client when proposing (role `PROVIDER`) or accepting (400). It is the client of your company in whose name the other's orders will be created.
+
+**What does "El cliente indicado no existe, está dado de baja o no está activo." mean?**
+(The given client does not exist, was deactivated or is not active.) The chosen client is not from your company, was deactivated or is not in Active status (for example, it is a prospect or is suspended) (400). Choose an active client.
+
+**What does "Ese cliente ya representa a otra compañía enlazada." mean?**
+(That client already represents another linked company.) A client represents **a single** linked company (409). Create another client for this company or end the previous link.
+
+**What does "Ya hay un enlace propuesto o activo entre estas compañías (o la compañía cliente ya despacha por otra). Termínelo antes de proponer otro." mean?**
+(There is already a proposed or active link between these companies (or the client company already dispatches through another). End it before proposing another.) The client company dispatches through **a single** company at a time (409). End the active link (with a reason) or wait for / withdraw the proposed one, and propose the new one. It also appears if the other proposal was made at the same time.
+
+**What does "El enlace ya no está propuesto: no se puede aceptar ni rechazar." mean?**
+(The link is no longer proposed: it cannot be accepted or rejected.) Someone already accepted, rejected or withdrew that link (422, or 409 if it was at the same time). Reload the list.
+
+**What does "Su compañía propuso este enlace: lo acepta o lo rechaza la otra." mean?**
+(Your company proposed this link: the other one accepts or rejects it.) Whoever proposes cannot accept their own proposal (422). The other company accepts it; you can only withdraw it.
+
+**What does "Solo se termina un enlace activo." mean?**
+(Only an active link is ended.) An attempt was made to end a link that is proposed, rejected or already ended (422). A proposal is rejected or withdrawn.
+
+**What does "Escriba el motivo." mean?**
+(Enter the reason.) Rejecting, withdrawing and ending ask for a reason (400). The screen only marks it required when ending, but the server also requires it when rejecting or withdrawing: write one line.
+
+**What does "La nota no puede pasar de 250 caracteres." mean?**
+(The note cannot exceed 250 characters.) The note or the reason is over 250 characters (400). Shorten it.
+
+**What does "Enlace no encontrado." mean?**
+(Link not found.) The link does not exist or belongs to two other companies (404). A link only exists for the two companies it joins.
+
+**What does "Esta acción requiere reautenticación reciente (AAL2)." mean?**
+(This action requires a recent re-authentication (AAL2).) Proposing and accepting a link require having confirmed your identity recently (403). Verify your access again (password or code) and repeat.
+
+**What does "Falta el permiso 'intercompany.manage'." (or 'intercompany.view') mean?**
+(The permission is missing.) Your role does not have the permission (403). `intercompany.view` to view, `intercompany.manage` to propose, accept, reject and end. The administrator assigns them.
+
+**What does "El módulo 'INTERCOMPANY' no está habilitado para esta compañía." mean?**
+(The module 'INTERCOMPANY' is not enabled for this company.) The Linked companies module is off in your company (403). Ask whoever manages the modules to turn it on (it needs Integrations).
+
+**What does "La entrega por la compañía enlazada necesita el consignatario (de la orden de venta o uno nuevo)." mean?**
+(The delivery by the linked company needs the consignee (from the sales order or a new one).) The sales order has no consignee and the delivery did not bring a new one (400). With a linked company the other one needs to know whom to deliver to: add the consignee to the order or enter a new one in the delivery.
+
+**What does "Indique al menos una línea de paquete." mean?**
+(Give at least one package line.) The delivery has no packages (400). Add at least one, with description, pieces and weight.
+
+**What does "La compañía enlazada «X» no está recibiendo órdenes ahora (está desactivada o apagó el módulo de compañías enlazadas o el de Transporte). Revise el enlace en Integraciones." mean?**
+(The linked company «X» is not receiving orders now (it is deactivated or turned off the linked companies module or the Transport one). Check the link in Integrations.) The other company is deactivated or had Linked companies or Transport turned off. When creating the delivery it appears as an error (422) and nothing is saved; if it happens to an already saved delivery, it stays «To send» and retries on its own. Tell the other company to turn it on.
+
+**What does "El enlace con «X» ya no está activo: la orden no se mandó." mean?**
+(The link with «X» is no longer active: the order was not sent.) The delivery was left «Could not be created» because the link was ended before it was sent. Nothing crosses with an ended link: the order must be created some other way or a new link proposed.
+
+**What does "El cliente que representa a esta compañía en «X» ya no puede recibir órdenes (dado de baja o inactivo)." mean?**
+(The client that represents this company in «X» can no longer receive orders (deactivated or inactive).) The other company's client that represents yours was deactivated or switched off. Ask for it to be reactivated, or end the link and propose another with another client.
+
+**What does "El enlace con «X» ya no está activo: no se puede consultar la orden de allá." mean?**
+(The link with «X» is no longer active: the order over there cannot be consulted.) «Check now» or «View proof» was requested with the link ended (422). For isolation nothing more is fetched from the other company; what was fetched before stays as it was.
+
+**What does "La orden todavía no existe en la compañía enlazada." mean?**
+(The order does not exist in the linked company yet.) A check or the proof was requested for a delivery that is not «Sent» yet (422). Wait for it to be created, or fix and retry if it is «Could not be created».
+
+**What does "Solo se reintenta una entrega que no se pudo crear en la compañía enlazada." mean?**
+(Only a delivery that could not be created in the linked company is retried.) Retry was pressed on a delivery that is not in «Could not be created» (422). If it is «To send», the job already retries it on its own.
+
+**What does "El estado debe ser PENDING, CREATED o FAILED." mean?**
+(The state must be PENDING, CREATED or FAILED.) The state filter of the deliveries list is not valid (400). Use «To send» (`PENDING`), «Sent» (`CREATED`) or «Could not be created» (`FAILED`).
+
+**What does "Entrega por compañía enlazada no encontrada." / "Archivo no encontrado." mean?**
+(Delivery by linked company not found. / File not found.) The delivery is not from your company, or the file is not from that order's proof of delivery (404). Open it from «View proof» on the delivery itself.
+
+**What does "El cliente está suspendido; no se pueden crear ni confirmar envíos." mean on a «Could not be created» delivery?**
+(The client is suspended; shipments cannot be created or confirmed.) It is the message from the **other company**: its client that represents yours is Suspended. Ask for it to be reactivated and press **Retry**.
+
+**What does "No hay tarifa vigente para …/…; configure la tarifa en el contrato del cliente antes de confirmar." mean on a «Could not be created» delivery?**
+(There is no current rate for …/…; set the rate in the client's contract before confirming.) The other company has no current rate for the service and package type in that client's contract. Ask for it to be loaded and press **Retry**.
+
+**What does "El envío de la recolección EMP-… ya avanzó a '—'; la recolección ya no se puede eliminar." mean when undoing a dispatch?**
+(The shipment of pick batch EMP-… already advanced to '—'; the pick batch can no longer be deleted.) The dispatch was delivered by the linked company and there is no transport order here to delete: it can no longer be undone from here (422). The delivery is cancelled in the other company. (Message according to the code; not tested.)
+
+**I proposed the link and nothing happens.**
+The other company still has to accept. Until then deliveries are created in your company as usual. Whoever accepts needs `intercompany.manage` and re-authentication.
+
+**The delivery says «Could not be created».**
+Read the message on the delivery: it is the other company's. Fix it over there (rate, client, service) and press **Retry**. It does not retry on its own when the other company rejects the order.
+
+**The delivery is «To send» and does not move.**
+The `INTERCOMPANY_SYNC` job retries it every 2 minutes (waiting 1, 2, 4… up to 60) and up to 10 times. If the other company is off, see the «is not receiving orders now» message.
+
+**There is no transport order in my company for that delivery.**
+By design: the delivery is made by the other company and the order is born over there. The dispatch shows the number and status of the order over there.
+
+**The dispatch is not invoiced with billing «on delivery».**
+It waits for the other company's delivery to be Delivered or to have a proof. Press **Check now** to bring the status without waiting the 2 minutes.
+
+**Who created the order in the other company?**
+It shows as «Sistema» (no user) and with the bridge's origin mark. There is no named account.
+
+**Why am I not notified of link or delivery changes?**
+The notices (`INTEGRATION_LINK_*`) need a notification rule that the administrator builds (System → Notification rules): none is seeded.
+
+**I do not see the «Linked companies» tab.**
+`intercompany.view` and the Linked companies module on in your company are needed.

@@ -157,16 +157,16 @@ function ReasonModal({ link, kind, onClose }: { link: TenantLinkDto; kind: 'reje
       saveLabel={t(`tenantLink.${key}.save`)}
       onSubmit={async (v: { reason: string }) => {
         const reason = v.reason.trim()
-        if (kind === 'end' && !reason) return void form.setError('reason', { message: t('tenantLink.errors.reasonRequired') })
+        if (!reason) return void form.setError('reason', { message: t('tenantLink.errors.reasonRequired') })
         if (reason.length > 250) return void form.setError('reason', { message: t('tenantLink.errors.noteMax') })
         if (kind === 'end') await end.mutateAsync({ publicId: link.publicId!, reason })
-        else await reject.mutateAsync({ publicId: link.publicId!, reason: reason || null })
+        else await reject.mutateAsync({ publicId: link.publicId!, reason })
         toast.success(t(`tenantLink.${key}.done`))
         onClose()
       }}
     >
       <p className="help">{t(`tenantLink.${key}.help`)}</p>
-      <Field name="reason" label={t('tenantLink.reason')} required={kind === 'end'}>
+      <Field name="reason" label={t('tenantLink.reason')} required>
         <TextArea rows={2} maxLength={250} />
       </Field>
     </FormModal>

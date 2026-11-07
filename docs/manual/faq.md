@@ -11375,3 +11375,125 @@ El trabajo programado lo publica a las 07:00, uno al día y solo si hay facturas
 
 **No veo la pestaña QuickBooks.**
 Hace falta alguno de `sales.quickbooks.view`, `sales.quickbooks.mark` o `sales.quickbooks.export` y el módulo Órdenes de venta encendido.
+
+## Lote 227 — Compañías enlazadas
+<!-- kemi:staff -->
+
+Capítulo: [50 — Compañías enlazadas](50-companias-enlazadas.md). Sección de la orden de venta: [18 §24](18-ordenes-de-venta.md#24-entrega-por-la-compañía-enlazada-lote-227).
+
+**¿Qué significa "Indique el papel de su compañía: CLIENT (somos el cliente de la otra) o PROVIDER (la otra es nuestro cliente)."?**
+Se propuso un enlace sin papel o con un papel que no es `CLIENT` ni `PROVIDER` (400). `CLIENT` = su compañía despacha por la otra; `PROVIDER` = su compañía da el transporte y la otra es su cliente. En la pantalla es «Nuestro papel».
+
+**¿Qué significa "Indique la compañía con la que se quiere enlazar."?**
+Falta escoger la compañía (400). Escójala de la lista de «Proponer enlace».
+
+**¿Qué significa "No se encontró esa compañía, no tiene encendido el módulo de compañías enlazadas o usted no pertenece a ella."?**
+La compañía no existe, no tiene encendido el módulo Compañías enlazadas, o usted no pertenece a ella (400). Por seguridad el mensaje no dice cuál de las tres. Pida que enciendan el módulo en la otra compañía, o que el mismo dueño lo proponga desde una persona que pertenezca a las dos.
+
+**¿Qué significa "Una compañía no se puede enlazar consigo misma."?**
+Se escogió la propia compañía (400). Escoja la otra.
+
+**¿Qué significa "La compañía que da el transporte necesita el módulo de Transporte encendido."?**
+La compañía que haría el transporte no tiene el módulo Transporte (`LTL_GROUND`) (422). Enciéndalo allá antes de proponer o aceptar.
+
+**¿Qué significa "Indique el cliente de su compañía a cuyo nombre nacerán las órdenes de la compañía enlazada."?**
+La compañía que da el transporte debe elegir su cliente al proponer (papel `PROVIDER`) o al aceptar (400). Es el cliente de su compañía a cuyo nombre se crearán las órdenes de la otra.
+
+**¿Qué significa "El cliente indicado no existe, está dado de baja o no está activo."?**
+El cliente elegido no es de su compañía, está dado de baja o no está en estatus Activo (por ejemplo, es prospecto o está suspendido) (400). Elija un cliente activo.
+
+**¿Qué significa "Ese cliente ya representa a otra compañía enlazada."?**
+Un cliente representa a **una sola** compañía enlazada (409). Cree otro cliente para esta compañía o termine el enlace anterior.
+
+**¿Qué significa "Ya hay un enlace propuesto o activo entre estas compañías (o la compañía cliente ya despacha por otra). Termínelo antes de proponer otro."?**
+La compañía cliente despacha por **una sola** compañía a la vez (409). Termine el enlace activo (con motivo) o espere/retire el propuesto, y proponga el nuevo. También sale si la otra propuesta se hizo al mismo tiempo.
+
+**¿Qué significa "El enlace ya no está propuesto: no se puede aceptar ni rechazar."?**
+Alguien ya aceptó, rechazó o retiró ese enlace (422, o 409 si fue al mismo tiempo). Recargue la lista.
+
+**¿Qué significa "Su compañía propuso este enlace: lo acepta o lo rechaza la otra."?**
+Quien propone no puede aceptar su propia propuesta (422). La acepta la otra compañía; usted solo puede retirarla.
+
+**¿Qué significa "Solo se termina un enlace activo."?**
+Se quiso terminar un enlace que está propuesto, rechazado o ya terminado (422). Una propuesta se rechaza o se retira.
+
+**¿Qué significa "Escriba el motivo."?**
+Rechazar, retirar y terminar piden motivo (400). La pantalla solo lo marca obligatorio al terminar, pero el servidor también lo exige al rechazar o retirar: escriba una línea.
+
+**¿Qué significa "La nota no puede pasar de 250 caracteres."?**
+La nota o el motivo pasa de 250 caracteres (400). Acórtelo.
+
+**¿Qué significa "Enlace no encontrado."?**
+El enlace no existe o es de otras dos compañías (404). Un enlace solo existe para las dos que une.
+
+**¿Qué significa "Esta acción requiere reautenticación reciente (AAL2)."?**
+Proponer y aceptar un enlace piden haber confirmado la identidad hace poco (403). Vuelva a verificar su acceso (contraseña o código) y repita.
+
+**¿Qué significa "Falta el permiso 'intercompany.manage'." (o 'intercompany.view')?**
+Su rol no tiene el permiso (403). `intercompany.view` para ver, `intercompany.manage` para proponer, aceptar, rechazar y terminar. El administrador se los asigna.
+
+**¿Qué significa "El módulo 'INTERCOMPANY' no está habilitado para esta compañía."?**
+El módulo Compañías enlazadas está apagado en su compañía (403). Pida a quien administra los módulos que lo encienda (necesita Integraciones).
+
+**¿Qué significa "La entrega por la compañía enlazada necesita el consignatario (de la orden de venta o uno nuevo)."?**
+La orden de venta no tiene consignatario y la entrega no trajo uno nuevo (400). Con una compañía enlazada la otra necesita saber a quién se entrega: agregue el consignatario a la orden o capture uno nuevo en la entrega.
+
+**¿Qué significa "Indique al menos una línea de paquete."?**
+La entrega no trae paquetes (400). Agregue al menos uno, con descripción, piezas y peso.
+
+**¿Qué significa "La compañía enlazada «X» no está recibiendo órdenes ahora (está desactivada o apagó el módulo de compañías enlazadas o el de Transporte). Revise el enlace en Integraciones."?**
+La otra compañía está desactivada o le apagaron Compañías enlazadas o Transporte. Al crear la entrega sale como error (422) y no se guarda; si pasa con una entrega ya guardada, queda «Por enviar» y se reintenta sola. Avise a la otra compañía para que lo encienda.
+
+**¿Qué significa "El enlace con «X» ya no está activo: la orden no se mandó."?**
+La entrega quedó «No se pudo crear» porque el enlace se terminó antes de mandarla. Nada cruza con un enlace terminado: la orden hay que crearla por otro camino o proponer un enlace nuevo.
+
+**¿Qué significa "El cliente que representa a esta compañía en «X» ya no puede recibir órdenes (dado de baja o inactivo)."?**
+El cliente de la otra compañía que representa a la suya fue dado de baja o desactivado. Pida que lo reactiven o que terminen el enlace y propongan otro con otro cliente.
+
+**¿Qué significa "El enlace con «X» ya no está activo: no se puede consultar la orden de allá."?**
+Se pidió «Revisar ahora» o «Ver comprobante» con el enlace terminado (422). Por aislamiento no se trae nada más de la otra compañía; lo traído antes se queda como estaba.
+
+**¿Qué significa "La orden todavía no existe en la compañía enlazada."?**
+Se pidió revisar o ver el comprobante de una entrega que aún no está «Enviada» (422). Espere a que se cree o corrija y reintente si está «No se pudo crear».
+
+**¿Qué significa "Solo se reintenta una entrega que no se pudo crear en la compañía enlazada."?**
+Se pulsó Reintentar en una entrega que no está en «No se pudo crear» (422). Si está «Por enviar», el trabajo ya la reintenta solo.
+
+**¿Qué significa "El estado debe ser PENDING, CREATED o FAILED."?**
+El filtro de estado de la lista de entregas no es válido (400). Use «Por enviar» (`PENDING`), «Enviada» (`CREATED`) o «No se pudo crear» (`FAILED`).
+
+**¿Qué significa "Entrega por compañía enlazada no encontrada." / "Archivo no encontrado."?**
+La entrega no es de su compañía, o el archivo no es de la prueba de entrega de esa orden (404). Ábralo desde «Ver comprobante» de la propia entrega.
+
+**¿Qué significa "El cliente está suspendido; no se pueden crear ni confirmar envíos." en una entrega «No se pudo crear»?**
+Es el mensaje de la **otra compañía**: su cliente que representa a la suya está Suspendido. Pida que lo reactiven y pulse **Reintentar**.
+
+**¿Qué significa "No hay tarifa vigente para …/…; configure la tarifa en el contrato del cliente antes de confirmar." en una entrega «No se pudo crear»?**
+La otra compañía no tiene tarifa vigente para el servicio y el tipo de paquete en el contrato de ese cliente. Pida que la carguen y pulse **Reintentar**.
+
+**¿Qué significa "El envío de la recolección EMP-… ya avanzó a '—'; la recolección ya no se puede eliminar." al deshacer un despacho?**
+El despacho se entregó por la compañía enlazada y aquí no hay orden de transporte que borrar: ya no se puede deshacer desde aquí (422). La entrega se cancela en la otra compañía. (Mensaje según el código; no se probó.)
+
+**Propuse el enlace y no pasa nada.**
+Falta que la otra compañía lo acepte. Hasta entonces las entregas se crean en su compañía como siempre. Quien acepta necesita `intercompany.manage` y reautenticación.
+
+**La entrega dice «No se pudo crear».**
+Lea el mensaje en la entrega: es el de la otra compañía. Corríjalo allá (tarifa, cliente, servicio) y pulse **Reintentar**. No se reintenta sola cuando la otra compañía rechaza la orden.
+
+**La entrega está «Por enviar» y no avanza.**
+El trabajo `INTERCOMPANY_SYNC` la reintenta cada 2 minutos (esperando 1, 2, 4… hasta 60) y hasta 10 veces. Si la otra compañía está apagada, vea el mensaje de «no está recibiendo órdenes ahora».
+
+**No hay orden de transporte en mi compañía para esa entrega.**
+Es por diseño: la entrega la hace la otra compañía y la orden nace allá. El despacho muestra el número y el estatus de la orden de allá.
+
+**El despacho no se factura con la facturación «al entregar».**
+Espera a que la entrega de la otra compañía esté Entregada o traiga comprobante. Pulse **Revisar ahora** para traer el estatus sin esperar los 2 minutos.
+
+**¿Quién creó la orden en la otra compañía?**
+Aparece como «Sistema» (sin usuario) y con la marca de origen del puente. No hay una cuenta con nombre.
+
+**¿Por qué no me avisan de los cambios del enlace o de las entregas?**
+Los avisos (`INTEGRATION_LINK_*`) necesitan una regla de aviso que arme el administrador (Sistema → Reglas de aviso): no se siembra ninguna.
+
+**No veo la pestaña «Compañías enlazadas».**
+Hace falta `intercompany.view` y el módulo Compañías enlazadas encendido en su compañía.
