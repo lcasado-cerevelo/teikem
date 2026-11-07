@@ -9,6 +9,7 @@ import { AttentionPanel } from './AttentionPanel'
 import { ChartsGrid, IndicatorsRiver } from './PulseSections'
 import type { ChartDatum, Indicator, PulseDto, PulsePanelKey } from './pulseLayout'
 import { RadarPanel } from './RadarPanel'
+import { SalesPulsePanel } from './SalesPulsePanel'
 import { CodRiver, OrdersRiver } from './RiversPanel'
 import { WarehouseDayBand } from './WarehouseDayBand'
 import { WarehousePulsePanel } from './WarehousePulsePanel'
@@ -97,5 +98,11 @@ export const PULSE_PANELS: Record<PulsePanelKey, PulsePanelEntry> = {
     hasContent: always,
     render: () => <RadarPanel />,
   },
+  // Lote 222 (plan §1.7): panel Ventas (pulse.sales + sales.view + SALES_ORDERS; orden 13).
+  SALES: {
+    key: 'SALES',
+    titleKey: 'analytics.pulse.panels.SALES',
+    hasContent: always,
+    render: () => <SalesPulsePanel />,
+  },
 }
-

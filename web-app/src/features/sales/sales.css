@@ -40,3 +40,11 @@
 .ret-grid input{min-width:0;width:100%}
 @media (min-width:720px){.ret-grid-head{display:grid;grid-template-columns:minmax(0,1fr) repeat(4,64px) 96px;gap:8px;font-size:12px;color:var(--muted,#6b7280)}}
 @media (max-width:719px){.ret-grid>li{grid-template-columns:1fr 1fr}.ret-grid>li>span:first-child{grid-column:1/-1}.ret-grid>li>input{grid-column:1/-1}.ret-line-grid{grid-template-columns:1fr}}
+
+/* Lote 222: distintivos de la orden y bloque de pago/entrega */
+.sales-badges { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-inline-start: 6px; vertical-align: middle; }
+.sales-extra { display: flex; flex-direction: column; gap: 10px; }
+.sales-extra .sw { align-self: flex-start; }
+.sales-ship { text-align: right; margin: 2px 0 0; }
+.sales-ship .help { display: block; font-weight: 400; }
+.sales-sign img { max-width: 240px; max-height: 100px; background: #fff; border: 1px solid var(--line, #8884); border-radius: 6px; }

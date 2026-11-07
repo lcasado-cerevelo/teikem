@@ -12,6 +12,7 @@ import { Chip, DataTable, IconUserPlus, IconUsers, Panel, QBox, Spinner, Tabs, t
 import { AssignDocumentModal } from '../warehouse/AssignDocumentModal'
 import { ToggleFilter } from '../warehouse/filterControls'
 import { IconCart } from '../../kernel/ui/screenIcons'
+import { OrderBadges } from './OrderBadges'
 import { OrderModal } from './OrderModal'
 import { ReturnEditor, ReturnModal, ReturnsTab } from './ReturnsParts'
 import { ORDER_STATUSES } from './salesRules'
@@ -53,6 +54,7 @@ function OrdersTab({ onOpen }: { onOpen: (id: string) => void }) {
         cell: (o) => (
           <>
             <Chip color={o.statusColor ?? undefined}>{o.statusLabel}</Chip> {o.hasBackorder && <Chip tone="warn">{t('sales.withBackorder')}</Chip>}
+            <OrderBadges info={o} />
           </>
         ),
         exportValue: (o) => `${o.statusLabel ?? ''}${o.hasBackorder ? ` (${t('sales.withBackorder')})` : ''}`,

@@ -6,16 +6,17 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
 import { useId, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
-import { Can, useCan } from '../../kernel/access'
+import { Can, ModuleKeys, useCan, useModule } from '../../kernel/access'
 import { useLookups, type LookupOption } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
-import { Field, Form, NumberInput, Panel, Select, TextInput, toast } from '../../kernel/ui'
+import { Field, Form, NumberInput, Panel, Select, TextInput, Toggle, toast } from '../../kernel/ui'
 import { IconIdCard } from '../../kernel/ui/screenIcons'
 import { clientKeys, useUpdateClientProfile } from './api'
 import {
   buildProfileRequest,
   LEGAL_NAME_MAX,
   profileSchema,
+  SURI_MAX,
   profileValuesOf,
   TAX_ID_MAX,
   type ClientDetail,
@@ -30,6 +31,7 @@ export function ClientProfilePanel({ client }: { client: ClientDetail }) {
   const t = useT()
   const qc = useQueryClient()
   const canEdit = useCan('clients.update')
+  const sales = useModule(ModuleKeys.SalesOrders)
   const nameId = useId()
   const publicId = client.publicId ?? ''
   const save = useUpdateClientProfile(publicId)
@@ -48,12 +50,16 @@ export function ClientProfilePanel({ client }: { client: ClientDetail }) {
           creditLimitNumber: t('clients.errors.creditLimitNumber'),
           creditLimitMin: t('clients.errors.creditLimitMin'),
           creditLimitRequired: t('clients.errors.creditLimitRequired'),
+          suriMax: t('clients.errors.max', { max: SURI_MAX }),
+          shippingChargeRequired: t('clients.sales.chargeRequired'),
+          shippingAmountMin: t('clients.sales.amountMin'),
         },
         client.creditLimit != null,
       ),
     [t, client.creditLimit],
   )
   const form = useForm({ resolver: zodResolver(schema), values: original, resetOptions: { keepDirtyValues: true } })
+  const shippingMode = form.watch('shippingMode')
 
   return (
     <Panel
@@ -110,6 +116,36 @@ export function ClientProfilePanel({ client }: { client: ClientDetail }) {
               <Select options={lookupOptions(packageTypes, client.defaultPackageType)} placeholder={t('clients.profile.companyDefault')} />
             </Field>
           </div>
+          {sales && (
+            <>
+            <h3 className="set-h3">{t('clients.sales.title')}</h3>
+            <Field name="merchantRegistration" label={t('clients.sales.suri')} help={t('clients.sales.suriHelp')}>
+              <TextInput maxLength={SURI_MAX} autoComplete="off" />
+            </Field>
+            <Field name="shippingMode" label={t('clients.sales.shipping')} help={t('clients.sales.shippingHelp')}>
+              <Select
+                options={[
+                  { value: 'FREE', label: t('clients.sales.shippingFree') },
+                  { value: 'OWN', label: t('clients.sales.shippingOwn') },
+                ]}
+                placeholder={t('clients.sales.shippingCompany')}
+              />
+            </Field>
+            {shippingMode === 'OWN' && (
+              <div className="r2">
+                <Field name="shippingCharge" label={t('clients.sales.charge')}>
+                  <NumberInput min={0} />
+                </Field>
+                <Field name="shippingFreeFrom" label={t('clients.sales.freeFrom')} help={t('clients.sales.freeFromHelp')}>
+                  <NumberInput min={0} />
+                </Field>
+              </div>
+            )}
+            <Field name="requireOrderSignature" label={t('clients.sales.requireSignature')} help={t('clients.sales.requireSignatureHelp')}>
+              <Toggle text={t('clients.sales.requireSignatureText')} />
+            </Field>
+            </>
+          )}
         </fieldset>
 
         <Can perm="clients.update">

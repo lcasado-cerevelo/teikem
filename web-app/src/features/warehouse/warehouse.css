@@ -508,3 +508,20 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 .pgroup-moves{width:100%;border-collapse:collapse;font-size:13px}
 .pgroup-moves th,.pgroup-moves td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--line)}
 .pgroup-moves .num{text-align:right}
+
+/* Lote 221 (P1) — Precios y ofertas: tarjetas de oferta con foto, miniaturas de renglón y barra de acciones; todo con la paleta del tema, sin scroll de página a 360 px. */
+.pl-offers{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));gap:12px;padding:14px}
+.pl-offer{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;min-width:0;background:transparent}
+.pl-offer .pl-photo{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
+.pl-offer .pl-body{padding:10px 12px;display:flex;flex-direction:column;gap:6px;min-width:0;flex:1}
+.pl-offer h3{margin:0;font-size:14px;overflow-wrap:anywhere}
+.pl-offer .pl-sub{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.pl-nophoto{width:100%;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted);text-align:center;padding:8px}
+.pl-thumb{width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--line);display:block}
+.pl-thumb-empty{width:40px;height:40px;border-radius:6px;border:1px dashed var(--line);display:inline-block}
+.pl-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.pl-chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.pl-price{width:110px;max-width:100%}
+.pl-add{display:grid;grid-template-columns:minmax(0,1fr) 120px auto;gap:8px;align-items:end;margin:10px 0}
+@media (max-width:720px){.pl-add{grid-template-columns:minmax(0,1fr)}}
+.promo-photo{max-width:220px;width:100%;border-radius:var(--radius);border:1px solid var(--line);display:block}

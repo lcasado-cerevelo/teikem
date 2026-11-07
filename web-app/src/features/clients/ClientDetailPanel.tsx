@@ -11,6 +11,8 @@ import { IconPower, IconRotateCcw } from '../../kernel/ui/actionIcons'
 import { IconClock, IconCapitol } from '../../kernel/ui/screenIcons'
 import { useClient, useSetClientActive, useTransitionClient } from './api'
 import { ClientAddressesPanel } from './ClientAddressesPanel'
+import { ClientApprovalActions } from './ClientApprovalActions'
+import { ClientDocumentsPanel } from './ClientDocumentsPanel'
 import { ClientConsigneesPanel } from './ClientConsigneesPanel'
 import { ClientContactPointsPanel } from './ClientContactPointsPanel'
 import { ClientContractsSection } from './ClientContractsSection'
@@ -22,13 +24,15 @@ import { ClientPortalPanel } from './ClientPortalPanel'
 import { ClientPeoplePanel } from './ClientPeoplePanel'
 import { ClientPrintingPanel } from './ClientPrintingPanel'
 import { ClientProfilePanel } from './ClientProfilePanel'
-import { CLIENT_ENTITY_TYPE, CLIENT_STATUS_DOMAIN, type ClientDetail } from './clientRules'
+import { CLIENT_ENTITY_TYPE, CLIENT_STATUS_DOMAIN, isProspect, type ClientDetail } from './clientRules'
 import { useState } from 'react'
 
 function ClientHeaderPanel({ client }: { client: ClientDetail }) {
   const t = useT()
   const publicId = client.publicId ?? ''
   const canUpdate = useCan('clients.update')
+  const canApprove = useCan('sales.approve_client')
+  const prospect = isProspect(client)
   const transition = useTransitionClient(publicId)
   const setActive = useSetClientActive(publicId)
   const [confirm, setConfirm] = useState<'deactivate' | 'reactivate' | null>(null)
@@ -42,6 +46,8 @@ function ClientHeaderPanel({ client }: { client: ClientDetail }) {
       defaultCollapsed
       summary={t(client.isActive ? 'clients.summary.header' : 'clients.summary.headerInactive', { status: client.statusLabel ?? client.status ?? '—' })}
       actions={
+        <>
+        <ClientApprovalActions client={client} />
         <Can perm="clients.update">
           {client.isActive ? (
             <button type="button" className="btn sm danger" onClick={() => setConfirm('deactivate')}>
@@ -53,9 +59,15 @@ function ClientHeaderPanel({ client }: { client: ClientDetail }) {
             </button>
           )}
         </Can>
+        </>
       }
     >
       <div className="cl-head">
+        {prospect && (
+          <p className="note cl-inactive-note" role="status">
+            <Chip tone="warn">{t('clients.approval.newClient')}</Chip> {t('clients.approval.pendingNote')}
+          </p>
+        )}
         {!client.isActive && (
           <p className="note cl-inactive-note">
             <Chip tone="cap">{t('clients.inactive')}</Chip> {t('clients.inactiveNote')}
@@ -66,7 +78,7 @@ function ClientHeaderPanel({ client }: { client: ClientDetail }) {
           entityType={CLIENT_ENTITY_TYPE}
           entityId={client.id}
           currentCode={client.status}
-          disabled={!canUpdate}
+          disabled={!canUpdate || (prospect && !canApprove)}
           onTransition={async (toCode, comment) => {
             await transition.mutateAsync({ toCode, comment: comment || null })
             toast.success(t('clients.statusChanged'))
@@ -115,6 +127,9 @@ export function ClientDetailPanel({ publicId }: { publicId: string }) {
       <ClientHeaderPanel client={client} />
       <ClientAddressesPanel client={client} />
       <ClientProfilePanel client={client} />
+      <Can perm="clients.read">
+        <ClientDocumentsPanel key={`docs-${client.publicId}`} client={client} />
+      </Can>
       <ClientPrintingPanel client={client} />
       <ClientContactPointsPanel client={client} />
       <ClientPeoplePanel client={client} />

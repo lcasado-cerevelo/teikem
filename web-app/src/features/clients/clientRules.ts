@@ -173,7 +173,18 @@ export interface ProfileValues {
   /** App del chofer: firma de quien recibe / foto obligatorias al entregar sus envíos. */
   requireDeliverySignature: boolean
   requireDeliveryPhoto: boolean
+  /** Lote 222: SURI (registro de comerciante), hasta 50. */
+  merchantRegistration: string
+  /** Lote 222: envío de sus pedidos: '' = el de la compañía, FREE = no se le cobra, OWN = regla propia (cargo y mínimo). */
+  shippingMode: ShippingMode
+  shippingCharge: number | null
+  shippingFreeFrom: number | null
+  /** Lote 222: «Exige la firma de quien autoriza el pedido». */
+  requireOrderSignature: boolean
 }
+
+export type ShippingMode = '' | 'FREE' | 'OWN'
+export const SURI_MAX = 50
 
 export function profileValuesOf(c: ClientDetail): ProfileValues {
   return {
@@ -191,10 +202,18 @@ export function profileValuesOf(c: ClientDetail): ProfileValues {
     portalCanCreateExits: c.portalCanCreateExits ?? false,
     requireDeliverySignature: c.requireDeliverySignature ?? false,
     requireDeliveryPhoto: c.requireDeliveryPhoto ?? false,
+    merchantRegistration: c.merchantRegistration ?? '',
+    shippingMode: c.shippingMode === 'FREE' || c.shippingMode === 'OWN' ? c.shippingMode : '',
+    shippingCharge: c.shippingCharge ?? null,
+    shippingFreeFrom: c.shippingFreeFrom ?? null,
+    requireOrderSignature: c.requireOrderSignature ?? false,
   }
 }
 
-export function profileSchema(m: Pick<CreateMessages, 'legalNameMax' | 'taxIdMax' | 'creditLimitNumber' | 'creditLimitMin'> & { creditLimitRequired: string }, hadCreditLimit: boolean) {
+export function profileSchema(
+  m: Pick<CreateMessages, 'legalNameMax' | 'taxIdMax' | 'creditLimitNumber' | 'creditLimitMin'> & { creditLimitRequired: string; suriMax?: string; shippingChargeRequired?: string; shippingAmountMin?: string },
+  hadCreditLimit: boolean,
+) {
   return z.object({
     legalName: z.string().trim().max(LEGAL_NAME_MAX, m.legalNameMax),
     taxId: z.string().trim().max(TAX_ID_MAX, m.taxIdMax),
@@ -215,6 +234,14 @@ export function profileSchema(m: Pick<CreateMessages, 'legalNameMax' | 'taxIdMax
     portalCanCreateExits: z.boolean(),
     requireDeliverySignature: z.boolean(),
     requireDeliveryPhoto: z.boolean(),
+    merchantRegistration: z.string().trim().max(SURI_MAX, m.suriMax ?? ''),
+    shippingMode: z.enum(['', 'FREE', 'OWN']),
+    shippingCharge: z.number().min(0, m.shippingAmountMin ?? '').nullable(),
+    shippingFreeFrom: z.number().min(0, m.shippingAmountMin ?? '').nullable(),
+    requireOrderSignature: z.boolean(),
+  }).superRefine((v, ctx) => {
+    // la regla propia necesita un cargo mayor que cero (el servidor repite la regla)
+    if (v.shippingMode === 'OWN' && !((v.shippingCharge ?? 0) > 0)) ctx.addIssue({ code: 'custom', path: ['shippingCharge'], message: m.shippingChargeRequired ?? '' })
   })
 }
 
@@ -223,7 +250,22 @@ export function profileSchema(m: Pick<CreateMessages, 'legalNameMax' | 'taxIdMax
  * «Imprimir los labels automáticamente» (Lote 48) y «Imprimir la factura automáticamente» (Lote 43): solo si cambiaron.
  * El punto de recogido ya no va aquí (panel «Direcciones»).
  */
-export type ProfileInput = Omit<ProfileValues, 'creditLimit'> & { creditLimit?: number | null }
+export type ProfileInput = Omit<ProfileValues, 'creditLimit' | 'shippingCharge' | 'shippingFreeFrom'> & { creditLimit?: number | null; shippingCharge?: number | null; shippingFreeFrom?: number | null }
+
+/** Lote 222: SURI, regla de envío y firma de quien autoriza: solo lo que cambió. Dejar la regla propia ('' o FREE) borra su cargo y su mínimo en el servidor; mínimo vacío = 0 («sin mínimo»). */
+function applySalesProfile(req: ClientProfileUpdateRequest, v: ProfileInput, original: ProfileValues) {
+  if (v.merchantRegistration.trim() !== original.merchantRegistration.trim()) req.merchantRegistration = v.merchantRegistration.trim()
+  if (v.requireOrderSignature !== original.requireOrderSignature) req.requireOrderSignature = v.requireOrderSignature
+  const charge = v.shippingCharge ?? null
+  const freeFrom = v.shippingFreeFrom ?? null
+  if (v.shippingMode !== original.shippingMode || (v.shippingMode === 'OWN' && (charge !== original.shippingCharge || freeFrom !== original.shippingFreeFrom))) {
+    req.shippingMode = v.shippingMode === '' ? 'COMPANY' : v.shippingMode
+    if (v.shippingMode === 'OWN') {
+      req.shippingCharge = charge
+      req.shippingFreeFrom = freeFrom ?? 0
+    }
+  }
+}
 
 export function buildProfileRequest(v: ProfileInput, original: ProfileValues, rowVersion: string | null | undefined): ClientProfileUpdateRequest {
   const req: ClientProfileUpdateRequest = {
@@ -244,6 +286,7 @@ export function buildProfileRequest(v: ProfileInput, original: ProfileValues, ro
   if (v.portalCanCreateExits !== original.portalCanCreateExits) req.portalCanCreateExits = v.portalCanCreateExits
   if (v.requireDeliverySignature !== original.requireDeliverySignature) req.requireDeliverySignature = v.requireDeliverySignature
   if (v.requireDeliveryPhoto !== original.requireDeliveryPhoto) req.requireDeliveryPhoto = v.requireDeliveryPhoto
+  applySalesProfile(req, v, original)
   return req
 }
 
@@ -418,4 +461,19 @@ export function buildPointRequest(v: PointValues, normalizePhone: (s: string, cc
 // ---- Contratos (solo lectura) ----
 export function contractName(c: Schemas['ClientContractSummaryDto']): string {
   return [c.contractNumber, c.title].filter(Boolean).join(' · ')
+}
+
+// ---- Cliente prospecto (Lote 222) ----
+/** Estatus con que nace el cliente que da de alta un vendedor (código del dominio ClientStatus). */
+export const PROSPECT_STATUS = 'PROSPECT'
+
+export function isProspect(client: Pick<ClientDetail, 'status'>): boolean {
+  return (client.status ?? '').toUpperCase() === PROSPECT_STATUS
+}
+
+/** Número escrito a mano («1500,5» o «1500.5»): vacío = null (sin cambio), inválido = NaN. */
+export function parseAmount(text: string): number | null {
+  const clean = text.trim().replace(',', '.')
+  if (clean === '') return null
+  return /^\d+(\.\d+)?$/.test(clean) ? Number(clean) : Number.NaN
 }

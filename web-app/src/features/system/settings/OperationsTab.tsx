@@ -36,6 +36,7 @@ import { usePrintingSettings, useSavePrintingSettings } from '../../printing/pri
 import { useProductCategories, useReceiptSummaryByWarehouse, useWarehouses } from '../../warehouse/api'
 import { problemText } from '../../warehouse/problemText'
 import { useCapabilities, useSaveTenantSettings, useSetCapabilities, type TenantSettingsDto } from '../tenantSettingsApi'
+import { SettingsSalesSection } from './SettingsSalesSection'
 import { capabilityAllowed, ORDER_CAPABILITIES, recvSummaryRows, type RecvRow } from './operations'
 
 // ------------------------------------------------------------------ valores por defecto
@@ -685,6 +686,7 @@ function ChatPhotosPanel({ canEdit }: { canEdit: boolean }) {
 export function OperationsTab({ settings, canEdit }: { settings: TenantSettingsDto; canEdit: boolean }) {
   const orders = useModule(ModuleKeys.LtlGround)
   const wms = useModule(ModuleKeys.WmsLotSerial)
+  const sales = useModule(ModuleKeys.SalesOrders)
   return (
     <>
       <div className="set-cols">
@@ -697,6 +699,7 @@ export function OperationsTab({ settings, canEdit }: { settings: TenantSettingsD
       <ChatPhotosPanel canEdit={canEdit} />
       {wms && <CountRevealPanel settings={settings} canEdit={canEdit} />}
       {wms && <RecvSummaryPanel />}
+      {sales && <SettingsSalesSection canEdit={canEdit} />}
     </>
   )
 }

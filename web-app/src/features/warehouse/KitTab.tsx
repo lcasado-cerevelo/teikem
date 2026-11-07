@@ -6,9 +6,10 @@ import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
 import { Chip, ConfirmDialog, DataTable, EmptyState, Modal, Spinner, toast, type DataColumn } from '../../kernel/ui'
-import { useKit, useSetKit, type ProductListItemDto } from './api'
+import { useKit, useProduct, useSetKit, type ProductListItemDto } from './api'
 import { bestCanBuild, kitDraftError, newKitRow, rowsFromKit, toKitRequest, type KitDto, type KitRow } from './kitRules'
 import { ProductPicker } from './pickers'
+import { KitPromoSection } from './KitPromoSection'
 
 type Component = NonNullable<KitDto['components']>[number]
 
@@ -119,7 +120,7 @@ export function KitTab({ publicId, product, canManage }: { publicId: string; pro
   )
 }
 
-function KitEditorModal({ publicId, product, kit, onClose }: { publicId: string; product: ProductListItemDto; kit: KitDto | undefined; onClose: () => void }) {
+export function KitEditorModal({ publicId, product, kit, onClose }: { publicId: string; product: ProductListItemDto; kit: KitDto | undefined; onClose: () => void }) {
   const t = useT()
   const uid = useId()
   const setKit = useSetKit()
@@ -201,6 +202,8 @@ function KitEditorModal({ publicId, product, kit, onClose }: { publicId: string;
           <input type="checkbox" checked={adjustable} onChange={(e) => setAdjustable(e.target.checked)} />
           {t('warehouse.products.kit.adjustable')}
         </label>
+        {/* Lote 221 (P1): oferta del kit (marca, vigencia y foto); solo un kit ya guardado puede ser oferta */}
+        {kit?.isKit === true && <KitPromoSection publicId={publicId} />}
         {error && (
           <p role="alert" className="err">
             {error}
@@ -209,4 +212,12 @@ function KitEditorModal({ publicId, product, kit, onClose }: { publicId: string;
       </div>
     </Modal>
   )
+}
+
+/** Lote 221 (P1): el editor del kit abierto desde «Precios y ofertas» a partir del publicId (pide la ficha y el kit). */
+export function KitEditorByIdModal({ publicId, onClose }: { publicId: string; onClose: () => void }) {
+  const { data: detail } = useProduct(publicId, { handleAccessDenied: false })
+  const { data: kit, isLoading } = useKit(publicId)
+  if (!detail?.product || isLoading) return null
+  return <KitEditorModal publicId={publicId} product={detail.product} kit={kit} onClose={onClose} />
 }

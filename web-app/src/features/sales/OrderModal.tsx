@@ -2,16 +2,20 @@
 // y precio) y se «Solicita»: antes de reservar se comprueba el inventario y el crédito; si falta algo sale el diálogo de faltante (pedido / disponible /
 // faltante) con las salidas que da el servidor (reservar lo disponible y dejar el resto en backorder, o volver a editar). Una orden SOLICITADA se ve con
 // lo reservado y lo pendiente y permite cambiar la cantidad de una línea, surtir o cerrar con faltante y cancelar.
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Can, useCan } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
+import { useLookups } from '../../kernel/catalogs'
 import { Chip, ClientPicker, ConfirmDialog, type DataColumn, DataTable, DateField, Modal, Spinner, toast } from '../../kernel/ui'
+import { useClient } from '../clients/api'
+import { useStoredFileUrl } from '../orders/api'
 import { PackModal } from '../warehouse/PackModal'
 import { ProductPicker, WarehousePicker } from '../warehouse/pickers'
-import { draftError, draftSubtotal, effectivePrice, lineAmount, parseNumber, toRequest, type LineDraft, type OrderDraft } from './salesRules'
+import { OrderBadges } from './OrderBadges'
+import { AUTHORIZED_BY_MAX, authorizerMissing, DELIVERY_MODES, draftError, draftSubtotal, effectivePrice, EXTRA_DEFAULTS, isCreditTerm, lineAmount, parseNumber, paymentChanged, prefillPayment, toRequest, withMethod, type DeliveryMode, type LineDraft, type OrderDraft } from './salesRules'
 import { KitLineBlock, KitComponentsSection } from './KitLineBlock'
 import { useSalesMutations, useSalesOrder, type SalesAvailabilityDto, type SalesDispatchInfoDto, type SalesDispatchResultDto, type SalesOrderDto, type SalesOrderLineDto } from './salesApi'
 
@@ -19,12 +23,19 @@ let nextKey = 1
 
 function draftOf(order: SalesOrderDto | null): OrderDraft {
   // una orden nueva arranca con una línea vacía para escoger el primer producto
-  if (!order) return { clientPublicId: null, warehousePublicId: null, requiredDate: '', notes: '', lines: [{ key: nextKey++, productPublicId: null, sku: '', name: '', listPrice: null, quantity: '', price: '', isKit: false, components: null }] }
+  if (!order) return { clientPublicId: null, warehousePublicId: null, requiredDate: '', notes: '', ...EXTRA_DEFAULTS, lines: [{ key: nextKey++, productPublicId: null, sku: '', name: '', listPrice: null, quantity: '', price: '', isKit: false, components: null }] }
   return {
     clientPublicId: order.clientPublicId ?? null,
     warehousePublicId: order.warehousePublicId ?? null,
     requiredDate: order.requiredDate ?? '',
     notes: order.notes ?? '',
+    isUrgent: order.terms?.isUrgent === true,
+    // sin deliveryModeSet el servidor lo deduce del consignatario: se deja en «automático»
+    deliveryMode: order.terms?.deliveryModeSet && (order.terms.deliveryMode === 'DELIVERY' || order.terms.deliveryMode === 'PICKUP') ? (order.terms.deliveryMode as DeliveryMode) : '',
+    paymentMethod: order.terms?.paymentMethod ?? '',
+    paymentTerm: order.terms?.paymentTerm ?? '',
+    isConsignment: order.terms?.isConsignment === true,
+    authorizedByName: order.terms?.authorizedByName ?? '',
     // el precio de una línea ya guardada viaja siempre (no se sabe si era el de lista)
     lines: (order.lines ?? []).map((l) => ({ key: nextKey++, productPublicId: l.productPublicId ?? null, sku: l.sku ?? '', name: l.productName ?? '', listPrice: null, quantity: String(l.qtyOrdered ?? ''), price: String(l.unitPrice ?? ''), isKit: l.isKit === true, components: null })),
   }
@@ -121,6 +132,37 @@ function AvailabilityDialog({ order, check, onClose, onDone }: { order: SalesOrd
   )
 }
 
+// ---------------------------------------------------------------- piezas comunes (Lote 222)
+
+type OrderTerms = NonNullable<SalesOrderDto['terms']>
+
+/** Línea «Cargo de envío» con su porqué (la regla que lo puso o lo quitó: compañía, cliente, monto mínimo o recogido). */
+function ShippingLine({ terms }: { terms: OrderTerms | undefined }) {
+  const t = useT()
+  const f = useFormat()
+  if (!terms || (!terms.shippingReason && !((terms.shippingCharge ?? 0) > 0))) return null
+  const charge = terms.shippingCharge ?? 0
+  return (
+    <p className="sales-ship" role="status">
+      <b>{charge > 0 ? t('sales.ship.line', { amount: f.money(charge) }) : t('sales.ship.free')}</b>
+      {charge > 0 && (terms.shippingTaxAmount ?? 0) > 0 && ` ${t('sales.ship.tax', { tax: f.money(terms.shippingTaxAmount ?? 0) })}`}
+      {terms.shippingReasonLabel && <span className="help">{t('sales.ship.reason', { reason: terms.shippingReasonLabel })}</span>}
+    </p>
+  )
+}
+
+/** La firma dibujada de quien autoriza (se pide con la sesión: nunca un enlace directo al archivo). */
+function SignatureView({ filePublicId }: { filePublicId: string }) {
+  const t = useT()
+  const file = useStoredFileUrl(filePublicId)
+  if (!file.data) return null
+  return (
+    <div className="sales-sign">
+      <img src={file.data} alt={t('sales.sign.alt')} />
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------- borrador
 
 function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose: () => void }) {
@@ -136,6 +178,21 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
   const set = (patch: Partial<OrderDraft>) => setDraft((d) => ({ ...d, ...patch }))
   const setLine = (key: number, patch: Partial<LineDraft>) => set({ lines: draft.lines.map((l) => (l.key === key ? { ...l, ...patch } : l)) })
   const current = saved ?? order
+  // Lote 222: la forma de pago se prellena con la del cliente (una vez por cliente escogido; una orden ya guardada conserva la suya)
+  const client = useClient(draft.clientPublicId, true)
+  const { data: methodOptions = [] } = useLookups('SalesPaymentMethod')
+  const { data: termOptions = [] } = useLookups('PaymentTerm', { includeDisabled: true })
+  const prefilledFor = useRef<string | null>(order?.clientPublicId ?? null)
+  useEffect(() => {
+    const c = client.data
+    if (!c?.publicId || c.publicId !== draft.clientPublicId || prefilledFor.current === c.publicId) return
+    prefilledFor.current = c.publicId
+    const p = prefillPayment(c.paymentTerm)
+    const consignment = (c.paymentTerm ?? '').toUpperCase() === 'CONSIGNMENT'
+    setDraft((d) => ({ ...d, paymentMethod: p.method, paymentTerm: p.term, isConsignment: consignment }))
+  }, [client.data, draft.clientPublicId])
+  const changed = client.data?.publicId === draft.clientPublicId ? paymentChanged(client.data?.paymentTerm, draft.paymentMethod, draft.paymentTerm) : current?.terms?.paymentChanged === true
+  const needsAuthorizer = (client.data?.publicId === draft.clientPublicId ? client.data?.requireOrderSignature : current?.terms?.clientRequiresSignature) === true
 
   const save = async (): Promise<SalesOrderDto | null> => {
     setError(null)
@@ -215,6 +272,60 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
             <input id="so-notes" value={draft.notes} maxLength={500} autoComplete="off" onChange={(e) => set({ notes: e.target.value })} />
           </div>
         </div>
+        <fieldset className="tax-comps sales-extra">
+          <legend>{t('sales.extra.title')}</legend>
+          <label className="sw">
+            <input type="checkbox" role="switch" checked={draft.isUrgent} onChange={(e) => set({ isUrgent: e.target.checked })} />
+            <span className="tk" aria-hidden="true" />
+            <span>{t('sales.extra.urgent')}</span>
+          </label>
+          <p className="help">{t('sales.extra.urgentHelp')}</p>
+          <div className="r2">
+            <div className="f">
+              <label htmlFor="so-delivery">{t('sales.extra.delivery')}</label>
+              <select id="so-delivery" value={draft.deliveryMode} onChange={(e) => set({ deliveryMode: e.target.value as DeliveryMode })}>
+                <option value="">{t('sales.extra.deliveryAuto')}</option>
+                {DELIVERY_MODES.map((m) => (
+                  <option key={m} value={m}>{t(m === 'PICKUP' ? 'sales.badge.pickup' : 'sales.badge.delivery')}</option>
+                ))}
+              </select>
+              <p className="help">{t('sales.extra.deliveryHelp')}</p>
+            </div>
+            <div className="f">
+              <label htmlFor="so-pay">{t('sales.extra.payment')}</label>
+              <select id="so-pay" value={draft.paymentMethod} onChange={(e) => setDraft((d) => withMethod(d, e.target.value))}>
+                <option value="">{t('sales.extra.paymentNone')}</option>
+                {methodOptions.map((m) => (
+                  <option key={m.code} value={m.code}>{m.label}</option>
+                ))}
+              </select>
+              {changed && <p className="help"><Chip tone="warn">{t('sales.badge.paymentChanged')}</Chip> {t('sales.badge.paymentChangedHelp')}</p>}
+            </div>
+          </div>
+          {draft.paymentMethod === 'CREDIT' && (
+            <div className="f">
+              <label htmlFor="so-term">{t('sales.extra.term')}</label>
+              <select id="so-term" value={draft.paymentTerm} onChange={(e) => set({ paymentTerm: e.target.value })}>
+                <option value="">{t('sales.extra.termNone')}</option>
+                {termOptions.filter((o) => isCreditTerm(o.code)).map((o) => (
+                  <option key={o.code} value={o.code}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {draft.paymentMethod === 'CONSIGNMENT' && (
+            <label className="sw">
+              <input type="checkbox" role="switch" checked={draft.isConsignment} onChange={(e) => set({ isConsignment: e.target.checked })} />
+              <span className="tk" aria-hidden="true" />
+              <span>{t('sales.extra.consignment')}</span>
+            </label>
+          )}
+          <div className="f">
+            <label htmlFor="so-auth">{needsAuthorizer ? t('sales.extra.authorizedByRequired') : t('sales.extra.authorizedBy')}</label>
+            <input id="so-auth" value={draft.authorizedByName} maxLength={AUTHORIZED_BY_MAX} autoComplete="off" aria-required={needsAuthorizer} onChange={(e) => set({ authorizedByName: e.target.value })} />
+            <p className={authorizerMissing(needsAuthorizer, draft.authorizedByName) ? 'help ferr' : 'help'}>{needsAuthorizer ? t('sales.extra.signatureRequired') : t('sales.extra.authorizedByHelp')}</p>
+          </div>
+        </fieldset>
         <fieldset className="tax-comps">
           <legend>{t('sales.lines')}</legend>
           {draft.lines.map((l, i) => (
@@ -254,6 +365,7 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
             <b role="status">{t('sales.subtotal', { n: f.money(draftSubtotal(draft)) })}</b>
           </div>
         </fieldset>
+        <ShippingLine terms={current?.terms} />
         <p className="help">{t('sales.priceHelp')}</p>
         {error && <p className="ferr" role="alert">{error}</p>}
       </div>
@@ -443,6 +555,7 @@ function OrderView({ order, onClose, onReturn }: { order: SalesOrderDto; onClose
   const open = order.status === 'REQUESTED' || order.status === 'PARTIAL'
   const canDispatch = open && (order.lines ?? []).some((l) => (l.qtyReserved ?? 0) > 0)
   const anyShipped = (order.lines ?? []).some((l) => (l.qtyShipped ?? 0) > 0)
+  const terms = order.terms
 
   const run = async (p: Promise<unknown>, ok: string) => {
     try {
@@ -530,13 +643,32 @@ function OrderView({ order, onClose, onReturn }: { order: SalesOrderDto; onClose
         <p>
           <Chip color={order.statusColor ?? undefined}>{order.statusLabel}</Chip>{' '}
           {order.hasBackorder && <Chip tone="warn">{t('sales.withBackorder')}</Chip>}
+          {terms?.clientIsProspect && <> <Chip tone="warn">{t('sales.badge.newClient')}</Chip></>}
+          {terms && (
+            <OrderBadges
+              info={{ isUrgent: terms.isUrgent, deliveryMode: terms.deliveryModeSet ? terms.deliveryMode : null, paymentChanged: terms.paymentChanged, isConsignment: terms.isConsignment, awaitingClientApproval: terms.awaitingClientApproval }}
+            />
+          )}
         </p>
+        {terms?.awaitingClientApproval && <p className="note" role="status">{t('sales.badge.awaitingHelp')}</p>}
         <dl className="sales-facts">
           <div><dt>{t('sales.client')}</dt><dd>{order.clientName}</dd></div>
           <div><dt>{t('sales.warehouse')}</dt><dd>{order.warehouseName}</dd></div>
           <div><dt>{t('sales.requestedDate')}</dt><dd>{f.date(order.requestedDate)}{order.requestedByName ? ` · ${order.requestedByName}` : ''}</dd></div>
           <div><dt>{t('sales.requiredDate')}</dt><dd>{order.requiredDate ? f.date(order.requiredDate) : '—'}</dd></div>
           {order.notes && <div><dt>{t('sales.notes')}</dt><dd>{order.notes}</dd></div>}
+          {terms?.paymentMethodLabel && <div><dt>{t('sales.extra.payment')}</dt><dd>{[terms.paymentMethodLabel, terms.paymentTermLabel].filter(Boolean).join(' · ')}</dd></div>}
+          {terms?.deliveryModeSet && <div><dt>{t('sales.extra.delivery')}</dt><dd>{t(terms.deliveryMode === 'PICKUP' ? 'sales.badge.pickup' : 'sales.badge.delivery')}</dd></div>}
+          {(terms?.authorizedByName || terms?.clientRequiresSignature) && (
+            <div>
+              <dt>{t('sales.extra.authorizedBy')}</dt>
+              <dd>
+                {terms?.authorizedByName ?? '—'}
+                {terms?.clientRequiresSignature && !terms.signatureFilePublicId && <> <Chip tone="warn">{t('sales.sign.pending')}</Chip></>}
+                {terms?.signatureFilePublicId && <SignatureView filePublicId={terms.signatureFilePublicId} />}
+              </dd>
+            </div>
+          )}
         </dl>
         <DataTable
           label={t('sales.lines')}
@@ -566,6 +698,7 @@ function OrderView({ order, onClose, onReturn }: { order: SalesOrderDto; onClose
         <p className="sales-totals" role="status">
           {t('sales.totals', { subtotal: f.money(order.subtotal ?? 0), tax: f.money(order.taxAmount ?? 0), total: f.money(order.total ?? 0) })}
         </p>
+        <ShippingLine terms={terms} />
         {(order.dispatches ?? []).length > 0 && (
           <DataTable
             label={t('sales.dispatches.title')}

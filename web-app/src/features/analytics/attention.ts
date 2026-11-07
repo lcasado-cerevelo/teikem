@@ -14,7 +14,7 @@ export type AttentionGroupDto = components['schemas']['AttentionGroupDto']
 type Translate = (key: string, params?: TParams) => string
 
 /** Tipos de aviso que esta web sabe describir (el resto se pinta con su código y su "Revisar"). */
-export const ATTENTION_CODES = ['DELIVERY_FAR', 'INVENTORY_DISCREPANCY', 'RENTAL_DUE', 'SALES_BACKORDER_READY', 'EXIT_NOTICE_BACKORDER', 'ORDERS_NO_DRIVER', 'COD_UNRECONCILED', 'SLA_AT_RISK', 'ORDERS_FAILED', 'CLAIMS_OPEN', 'FLEET_DOCS_DUE', 'INVOICES_OVERDUE'] as const
+export const ATTENTION_CODES = ['DELIVERY_FAR', 'INVENTORY_DISCREPANCY', 'RENTAL_DUE', 'SALES_BACKORDER_READY', 'SALES_CLIENT_PENDING', 'SALES_ORDER_URGENT', 'EXIT_NOTICE_BACKORDER', 'ORDERS_NO_DRIVER', 'COD_UNRECONCILED', 'SLA_AT_RISK', 'ORDERS_FAILED', 'CLAIMS_OPEN', 'FLEET_DOCS_DUE', 'INVOICES_OVERDUE'] as const
 export type AttentionCode = (typeof ATTENTION_CODES)[number]
 
 export function isKnownAttention(code: string | null | undefined): code is AttentionCode {
@@ -107,6 +107,8 @@ export function attentionRowText(item: AttentionItemDto, t: Translate, lang: str
 
   if (item.code === 'RENTAL_DUE') return rentalDueText(p, t, lang, since)
   if (item.code === 'SALES_BACKORDER_READY') return salesBackorderText(p, t, lang, since)
+  if (item.code === 'SALES_CLIENT_PENDING') return salesClientPendingText(p, t, since)
+  if (item.code === 'SALES_ORDER_URGENT') return salesUrgentText(p, t, since)
   if (item.code === 'EXIT_NOTICE_BACKORDER') return exitNoticeBackorderText(p, t, lang, since)
   if (item.code === 'ORDERS_NO_DRIVER') return noDriverText(p, t, since)
   if (item.code === 'COD_UNRECONCILED') return codUnreconciledText(p, t, since)
@@ -172,6 +174,37 @@ function exitNoticeBackorderText(p: Record<string, string>, t: Translate, lang: 
     title: t(Number.isFinite(fulfillable) && fulfillable > 0 ? `${base}.titleReady` : `${base}.title`, { number }),
     detail: [p.client, p.warehouse].filter(Boolean).join(' · '),
     figures: figures.filter((f) => f.value !== ''),
+    since,
+    reviewLabel: t(`${base}.reviewLabel`, { number, client: p.client ?? '' }),
+  }
+}
+
+/** Lote 222 — cliente nuevo (prospecto) por aprobar (SALES_CLIENT_PENDING, sales.approve_client). Params: name, code, seller, orders (órdenes que esperan) y days. «Revisar» abre la ficha del cliente. */
+function salesClientPendingText(p: Record<string, string>, t: Translate, since: string): AttentionRowText {
+  const base = 'analytics.attention.items.SALES_CLIENT_PENDING'
+  const name = p.name ?? ''
+  const orders = Number(p.orders ?? '0')
+  const days = Number(p.days ?? '0')
+  const figures: AttentionFigure[] = []
+  if (Number.isFinite(orders) && orders > 0) figures.push({ label: t(`${base}.orders`), value: formatNumber(orders), emphasis: true })
+  if (Number.isFinite(days) && days > 0) figures.push({ label: t(`${base}.days`), value: formatNumber(days), emphasis: days > 3 })
+  return {
+    title: t(`${base}.title`, { name }),
+    detail: p.seller ? t(`${base}.seller`, { seller: p.seller }) : t(`${base}.noSeller`),
+    figures,
+    since,
+    reviewLabel: t(`${base}.reviewLabel`, { name }),
+  }
+}
+
+/** Lote 222 — pedido urgente abierto (SALES_ORDER_URGENT, warehouse.pick). Params: number, client, warehouse y note. «Revisar» abre la orden. */
+function salesUrgentText(p: Record<string, string>, t: Translate, since: string): AttentionRowText {
+  const base = 'analytics.attention.items.SALES_ORDER_URGENT'
+  const number = p.number ?? ''
+  return {
+    title: t(`${base}.title`, { number }),
+    detail: [p.client, p.warehouse, p.note].filter(Boolean).join(' · '),
+    figures: [],
     since,
     reviewLabel: t(`${base}.reviewLabel`, { number, client: p.client ?? '' }),
   }

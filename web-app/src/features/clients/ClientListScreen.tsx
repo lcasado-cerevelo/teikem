@@ -14,7 +14,7 @@ import { IconUsers } from '../../kernel/ui/screenIcons'
 import { useClients } from './api'
 import { ClientCreateModal } from './ClientCreateModal'
 import { ClientDetailPanel } from './ClientDetailPanel'
-import { CLIENT_ENTITY_TYPE, CLIENT_STATUS_DOMAIN, type ClientListItem } from './clientRules'
+import { CLIENT_ENTITY_TYPE, CLIENT_STATUS_DOMAIN, isProspect, type ClientListItem } from './clientRules'
 import './clients.css'
 
 const NO_CLIENTS: ClientListItem[] = []
@@ -108,6 +108,7 @@ export default function ClientListScreen() {
                       </span>
                       <span className="cl-chips">
                         <StatusChip domain={CLIENT_STATUS_DOMAIN} code={c.status} label={c.statusLabel} />
+                        {isProspect(c) && <Chip tone="warn">{t('clients.approval.newClient')}</Chip>}
                         {!c.isActive && <Chip tone="cap">{t('clients.inactive')}</Chip>}
                       </span>
                       {c.billingSummary && <span className="meta">{c.billingSummary}</span>}
