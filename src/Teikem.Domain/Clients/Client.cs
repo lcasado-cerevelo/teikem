@@ -84,6 +84,10 @@ public class Client : ITenantScoped, ISoftDeletable, IHasStatus, IAuditStamped
     /// <summary>Someter un pedido de este cliente exige el nombre y la firma dibujada de quien lo autoriza (al lado de «Exige la firma de quien recibe»).</summary>
     public bool RequireOrderSignature { get; set; }
 
+    // --- Lote 225 (P5 del pedido de vendedores) ---
+    /// <summary>Cuándo (UTC) quedó el cliente como ya mandado a QuickBooks (al marcar o confirmar su primera factura). NULL = nuevo para QuickBooks (salvo que traiga el campo «Código QuickBooks» de la migración).</summary>
+    public DateTime? QuickBooksSentAt { get; set; }
+
     public StatusCode? Status { get; set; }
     public LookupCode? PaymentTerm { get; set; }
     public LookupCode? Currency { get; set; }

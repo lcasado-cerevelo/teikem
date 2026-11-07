@@ -60,4 +60,6 @@ public static class JobKeys
     public const string DriverPushDispatch = "DRIVER_PUSH_DISPATCH";
     /// <summary>Lote 212 (B): borra o archiva las fotos del chat que pasaron sus días de vida.</summary>
     public const string MessageAttachmentPurge = "MESSAGE_ATTACHMENT_PURGE";
+    /// <summary>Lote 225: el aviso de la mañana «Facturas por pasar a QuickBooks: N» (uno al día, solo si hay algo).</summary>
+    public const string SalesQuickBooksPending = "SALES_QUICKBOOKS_PENDING";
 }

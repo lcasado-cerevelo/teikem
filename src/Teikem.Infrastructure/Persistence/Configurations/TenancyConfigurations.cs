@@ -27,6 +27,14 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         b.Property(t => t.CodDefaultCommissionPct).HasColumnType("decimal(5,2)");   // Lote 86
         b.Property(t => t.SalesShippingCharge).HasColumnType("decimal(18,2)");   // Lote 222
         b.Property(t => t.SalesShippingFreeFrom).HasColumnType("decimal(18,2)");
+        b.Property(t => t.QuickBooksReceivableAccount).HasMaxLength(159);   // Lote 225
+        b.Property(t => t.QuickBooksSalesAccount).HasMaxLength(159);
+        b.Property(t => t.QuickBooksCostAccount).HasMaxLength(159);
+        b.Property(t => t.QuickBooksInventoryAccount).HasMaxLength(159);
+        b.Property(t => t.QuickBooksTaxAccount).HasMaxLength(159);
+        b.Property(t => t.QuickBooksTaxItem).HasMaxLength(31);
+        b.Property(t => t.QuickBooksShippingItem).HasMaxLength(31);
+        b.Property(t => t.QuickBooksTermsJson).HasMaxLength(2000);
         b.HasKey(t => t.TenantId);
         b.Property(t => t.PublicId).HasDefaultValueSql("NEWID()");
         b.Property(t => t.Name).HasMaxLength(200).IsRequired();

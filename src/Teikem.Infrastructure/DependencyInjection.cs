@@ -321,6 +321,7 @@ public static class DependencyInjection
         services.AddSingleton<IScheduledJob, TestJob>();
         services.AddSingleton<IScheduledJob, SalesBackorderScanJob>();   // Lote 66
         services.AddSingleton<IScheduledJob, InventoryAlertScanJob>();   // Lote 141
+        services.AddSingleton<IScheduledJob, SalesQuickBooksPendingJob>();   // Lote 225: aviso de la mañana de QuickBooks
         services.AddSingleton<IScheduledJob, FleetAlertScanJob>();   // Lote 168
         services.AddSingleton<IScheduledJob, ExitNoticeBackorderScanJob>();   // Lote 143
         services.AddSingleton<IScheduledJob, BillingOverdueScanJob>();   // Lote 75
@@ -534,6 +535,7 @@ public static class DependencyInjection
         services.AddScoped<IOwnedEntityResolver, SalesOrderOwnedEntityResolver>();   // Lote 223: la orden de venta como dueña de la firma
         services.AddScoped<BillingService>();   // Lote 72 (P5)
         services.AddScoped<PaymentService>();   // Lote 75 (P5)
+        services.AddScoped<ConsignmentService>();   // Lote 224: pagos de consignación (pestaña Consignación de Facturación)
         services.AddScoped<ExportTemplateService>();   // Lote 77 (P5)
         services.AddScoped<CreditNoteService>();   // Lote 79 (P6)
         services.AddScoped<SalesReturnService>();   // Lote 81 (P6)
@@ -581,12 +583,15 @@ public static class DependencyInjection
         services.AddScoped<IDataSource, SalesOrderDataSource>();        // Lote 67: órdenes de venta
         services.AddScoped<IDataSource, ExitNoticeDataSource>();        // menores 2026-10-21: avisos de salida como fuente de Vistas
         services.AddScoped<IDataSource, SalesOrderLineDataSource>();
+        services.AddScoped<IDataSource, SalesRevenueDataSource>();   // Lote 224: lo vendido (lo consignado cuenta al pagarse, en la fecha del pago)
         services.AddScoped<IDataSource, RentalProcessDataSource>();
         services.AddScoped<IAttentionItemProvider, RentalDueAttentionProvider>();
         services.AddScoped<IAttentionItemProvider, SalesBackorderReadyAttentionProvider>();   // Lote 67
         services.AddScoped<IAttentionItemProvider, SalesClientPendingAttentionProvider>();   // Lote 222: cliente nuevo por aprobar (sales.approve_client)
         services.AddScoped<IAttentionItemProvider, SalesUrgentAttentionProvider>();   // Lote 222: pedido urgente (warehouse.pick)
         services.AddScoped<SalesPulseService>();   // Lote 222: panel Ventas del Pulso
+        services.AddScoped<QuickBooksService>();   // Lote 225: QuickBooks (facturas por pasar, archivo IIF, marca, ajustes)
+        services.AddScoped<IAttentionItemProvider, SalesQuickBooksAttentionProvider>();   // Lote 225: facturas por pasar a QuickBooks (sales.quickbooks.view)
         services.AddScoped<IAttentionItemProvider, ExitNoticeBackorderAttentionProvider>();   // Lote 194: avisos de salida con pendiente
 
         // Seeders e inicialización

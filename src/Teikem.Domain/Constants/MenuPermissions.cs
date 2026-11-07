@@ -98,10 +98,14 @@ public static class MenuPermissions
         [PermissionCatalog.RentalManage] = new[] { PermissionCatalog.RentalView },
         [PermissionCatalog.SalesCreate] = new[] { PermissionCatalog.SalesView },
         [PermissionCatalog.SalesPricelist] = new[] { PermissionCatalog.SalesView },   // Lote 221
+        [PermissionCatalog.SalesQuickBooksMark] = new[] { PermissionCatalog.SalesView },     // Lote 225: la pestaña QuickBooks vive en Órdenes de venta (la lista la ven view, mark y export)
+        [PermissionCatalog.SalesQuickBooksExport] = new[] { PermissionCatalog.SalesView },   // Lote 225
+        [PermissionCatalog.SalesQuickBooksView] = new[] { PermissionCatalog.SalesView },     // Lote 225
         [PermissionCatalog.BillingGenerate] = new[] { PermissionCatalog.BillingView, "dispatchaccounting.view" },   // Lote 181: quien genera corridas de despachos entra a su pantalla
         [PermissionCatalog.BillingApprove] = new[] { PermissionCatalog.BillingView },
         [PermissionCatalog.BillingExport] = new[] { PermissionCatalog.BillingView, "dispatchaccounting.view" },
         [PermissionCatalog.BillingCredit] = new[] { PermissionCatalog.BillingView },
+        [PermissionCatalog.BillingConsignmentPay] = new[] { PermissionCatalog.BillingView },   // Lote 224: la pestaña Consignación vive en Facturación
         [PermissionCatalog.CodCollect] = new[] { PermissionCatalog.CodView },
         [PermissionCatalog.CodReconcile] = new[] { PermissionCatalog.CodView },
         [PermissionCatalog.CodRemit] = new[] { PermissionCatalog.CodView },

@@ -197,6 +197,10 @@ public static class PermissionCatalog
 
     public const string BillingCredit = "billing.credit";
 
+    /// <summary>Lote 224 (P6 del pedido de vendedores): registrar (y anular, con reautenticación) los pagos de las facturas en consignación; con él se entra a Facturación.</summary>
+
+    public const string BillingConsignmentPay = "billing.consignment.pay";
+
     public const string FleetManage = "fleet.manage";
 
     public const string FleetMaintenance = "fleet.maintenance";
@@ -452,6 +456,15 @@ public static class PermissionCatalog
     /// <summary>Lote 222: panel Ventas del Pulso del día (pedidos de hoy, urgentes abiertos, clientes por aprobar…; datos: sales.view; módulo SALES_ORDERS).</summary>
     public const string PulseSales = "pulse.sales";
 
+    /// <summary>Lote 225 (P5 del pedido de vendedores): ver «Facturas por pasar a QuickBooks» (lista, «Necesita tu atención», panel Ventas, aviso de la mañana) y los clientes y productos nuevos con sus datos.</summary>
+    public const string SalesQuickBooksView = "sales.quickbooks.view";
+
+    /// <summary>Lote 225: marcar a mano facturas como «en QuickBooks» (una, varias o todas) y quitarles la marca, con quién y cuándo.</summary>
+    public const string SalesQuickBooksMark = "sales.quickbooks.mark";
+
+    /// <summary>Lote 225: exportar el archivo IIF de QuickBooks Desktop (facturas y, si se pide, clientes y productos nuevos) y confirmar las que ya se importaron.</summary>
+    public const string SalesQuickBooksExport = "sales.quickbooks.export";
+
     /// <summary>Lote 143 (2026-10-20): crear, modificar y cancelar avisos de salida y atender su pendiente (ver usa inventory.view y despachar warehouse.pick).</summary>
 
     public const string ExitNoticeCreate = "exitnotice.create";
@@ -492,6 +505,8 @@ public static class PermissionCatalog
         new(BillingView, "BILLING", "Ver facturación", "View billing"),
 
         new(BillingCredit, "BILLING", "Notas de crédito", "Credit notes"),
+
+        new(BillingConsignmentPay, "BILLING", "Consignación: registrar pagos", "Consignment: record payments"),   // Lote 224
 
         new(BillingGenerate, "BILLING", "Generar facturación", "Generate billing"),
 
@@ -731,6 +746,13 @@ public static class PermissionCatalog
         new(ClientsCreateBasic, "CLIENTS", "Alta mínima de clientes desde el pedido (nacen prospecto)", "Quick client sign-up from an order (born as prospect)"),
 
         new(PulseSales, "PULSE", "Ver el panel Ventas del Pulso", "See the Sales panel"),
+
+        // Lote 225 — pedido de vendedores: QuickBooks
+        new(SalesQuickBooksView, "BILLING", "QuickBooks: ver las facturas por pasar", "QuickBooks: see the invoices to pass"),
+
+        new(SalesQuickBooksMark, "BILLING", "QuickBooks: marcar facturas como ya pasadas", "QuickBooks: mark invoices as passed"),
+
+        new(SalesQuickBooksExport, "BILLING", "QuickBooks: exportar el archivo y confirmar lo importado", "QuickBooks: export the file and confirm what was imported"),
 
         new(ExitNoticeCreate, "WAREHOUSE", "Crear, modificar y cancelar avisos de salida y atender su pendiente", "Create, edit and cancel exit notices and handle their backorder"),
 
@@ -976,6 +998,10 @@ public static class PermissionCatalog
 
         [Analytics.FinanceAnalyticsRules.InvoiceSource] = BillingView,
 
+        // Lote 224: lo vendido (órdenes y pagos de consignación) con sales.view, como las órdenes de venta
+
+        [Analytics.FinanceAnalyticsRules.SalesRevenueSource] = SalesView,
+
     };
 
 
@@ -1185,7 +1211,9 @@ public static class PermissionCatalog
         // la oficina de ventas captura pedidos (los permisos de QuickBooks y de consignación los suma su propio lote).
         ["SalesSupervisor"] = new[] { SalesPricelist, SalesApproveClient, SalesView, ClientsRead, ClientsUpdate, PulseSales },
 
-        ["SalesOffice"] = new[] { SalesView, SalesCreate, PulseSales },
+        ["SalesOffice"] = new[] { SalesView, SalesCreate, PulseSales,
+            SalesQuickBooksView, SalesQuickBooksMark, SalesQuickBooksExport,   // Lote 225: la oficina pasa las facturas a QuickBooks
+            BillingConsignmentPay },   // Lote 224: y registra los pagos de consignación
 
         // Lote 104: el rol «Servicio al cliente» atiende los mensajes de los clientes (si un cliente no tiene equipo designado, lo atiende quien tenga ClientMessagesReply)
 

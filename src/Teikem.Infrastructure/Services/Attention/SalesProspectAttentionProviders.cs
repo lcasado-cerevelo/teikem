@@ -104,7 +104,8 @@ public sealed class SalesUrgentAttentionProvider(TeikemDbContext db) : IAttentio
 /// Lote 222 (plan §1.7) — panel Ventas del Pulso del día (pulse.sales; datos: sales.view; módulo SALES_ORDERS). Cifras de hoy (fecha de la compañía) y de lo pendiente; QuickBooks y
 /// consignación quedan en null hasta que sus partes las sumen.
 /// </summary>
-public sealed class SalesPulseService(TeikemDbContext db, ITenantClock clock, PermissionService permissions)
+public sealed class SalesPulseService(TeikemDbContext db, ITenantClock clock, PermissionService permissions, QuickBooksService? quickBooks = null,
+    ConsignmentService? consignment = null, ModuleService? modules = null)
 {
     public async Task<PulseSalesPanelDto> GetAsync(CancellationToken ct)
     {
@@ -125,6 +126,21 @@ public sealed class SalesPulseService(TeikemDbContext db, ITenantClock clock, Pe
         {
             ["ordersToday"] = "/sales-orders", ["urgentOpen"] = "/sales-orders", ["clientsToApprove"] = "/clients", ["awaitingApproval"] = "/sales-orders",
         };
-        return new PulseSalesPanelDto(ordersToday, amountToday, urgent, toApprove, awaiting, null, null, routes);
+        // Lote 225: facturas por pasar a QuickBooks, solo para quien las puede ver (sales.quickbooks.view); si no, null
+        int? toQuickBooks = null;
+        if (quickBooks is not null && await permissions.HasPermissionAsync(PermissionCatalog.SalesQuickBooksView, ct))
+        {
+            toQuickBooks = (await quickBooks.CountPendingAsync(ct)).Count;
+            routes["invoicesToQuickBooks"] = "/sales-orders?tab=quickbooks";
+        }
+        // Lote 224: facturas con saldo en consignación, para quien ve Facturación (billing.view o billing.consignment.pay) con el módulo encendido; si no, null
+        int? consignmentUnpaid = null;
+        if (consignment is not null && (modules is null || await modules.IsEnabledAsync(ModuleKeys.Billing, ct))
+            && (await permissions.HasPermissionAsync(PermissionCatalog.BillingView, ct) || await permissions.HasPermissionAsync(PermissionCatalog.BillingConsignmentPay, ct)))
+        {
+            consignmentUnpaid = await consignment.CountUnpaidAsync(ct);
+            routes["consignmentUnpaid"] = "/money/billing?tab=consignment";
+        }
+        return new PulseSalesPanelDto(ordersToday, amountToday, urgent, toApprove, awaiting, toQuickBooks, consignmentUnpaid, routes);
     }
 }

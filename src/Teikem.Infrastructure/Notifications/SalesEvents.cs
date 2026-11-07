@@ -14,8 +14,10 @@ public static class SalesEventCodes
     public const string ClientPendingApproval = "SALES_CLIENT_PENDING_APPROVAL";
     /// <summary>Lote 222: se solicitó un pedido urgente (para el almacén).</summary>
     public const string OrderUrgent = "SALES_ORDER_URGENT";
+    /// <summary>Lote 225: el aviso del día «Facturas por pasar a QuickBooks: N» (lo publica el trabajo SALES_QUICKBOOKS_PENDING, uno al día y solo si hay algo).</summary>
+    public const string QuickBooksPending = "SALES_QUICKBOOKS_PENDING";
 
-    public static readonly string[] All = { OrderRequested, OrderShipped, OrderCancelled, CreditOverrideNeeded, BackorderAvailable, ClientPendingApproval, OrderUrgent };
+    public static readonly string[] All = { OrderRequested, OrderShipped, OrderCancelled, CreditOverrideNeeded, BackorderAvailable, ClientPendingApproval, OrderUrgent, QuickBooksPending };
 }
 
 /// <summary>
@@ -93,5 +95,18 @@ public sealed class SalesEventProvider : INotificationEventProvider
             "Pedido urgente {orderNumber} de {client}", "Urgent order {orderNumber} for {client}",
             "{seller} solicitó el pedido URGENTE {orderNumber} de {client} para {warehouse}. {note}",
             "{seller} requested the URGENT order {orderNumber} for {client} for {warehouse}. {note}"),
+        // Lote 225 (pedido de vendedores): el aviso de la mañana de QuickBooks
+        new NotificationEventDef(
+            SalesEventCodes.QuickBooksPending, ModuleKeys.SalesOrders, "Facturas por pasar a QuickBooks", "Invoices to pass to QuickBooks",
+            new[]
+            {
+                new NotificationVariable("count", "Facturas por pasar", "Invoices to pass", "12"),
+                new NotificationVariable("exported", "De ellas, ya salieron en un archivo", "Of them, already in a file", "3"),
+                new NotificationVariable("oldest", "Emisión más vieja", "Oldest issue date", "2026-11-02"),
+            },
+            IsOptional: true, LinkTemplate: "/sales-orders",
+            "Facturas por pasar a QuickBooks: {count}", "Invoices to pass to QuickBooks: {count}",
+            "Hay {count} factura(s) por pasar a QuickBooks (la más vieja es del {oldest}; {exported} ya salieron en un archivo sin confirmar). Entre a Órdenes de venta → QuickBooks para exportarlas o marcarlas.",
+            "There are {count} invoice(s) to pass to QuickBooks (the oldest is from {oldest}; {exported} already went out in a file without confirmation). Go to Sales orders → QuickBooks to export or mark them."),
     };
 }

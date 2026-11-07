@@ -7201,3 +7201,149 @@ BEGIN
     INSERT INTO dbo.AppliedMigration (Code) VALUES ('L222_SALES_PROSPECT');
 END
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-11-07 — Lote 225 (P5 del pedido de vendedores): QuickBooks Desktop (archivo IIF).
+   - dbo.Invoice: QuickBooksAt / QuickBooksBy (la marca «en QuickBooks»: cuándo y quién; NULL = por pasar) y QuickBooksExportedAt (la última vez que salió en un
+     archivo; no la marca). Índice filtrado de las por pasar.
+   - dbo.Client.QuickBooksSentAt y dbo.Product.QuickBooksSentAt: ya mandados a QuickBooks (se ponen al marcar o confirmar su primera factura; NULL = nuevo).
+   - dbo.Tenant (Ajustes → Operación → QuickBooks): QuickBooksReceivableAccount, QuickBooksSalesAccount, QuickBooksCostAccount, QuickBooksInventoryAccount,
+     QuickBooksTaxAccount, QuickBooksTaxItem, QuickBooksShippingItem (NULL = el valor por omisión) y QuickBooksTermsJson (término de Teikem → nombre en QuickBooks).
+   - Permisos sales.quickbooks.view, sales.quickbooks.mark y sales.quickbooks.export (BILLING) a los roles YA clonados TenantAdmin y SalesOffice («Oficina de
+     ventas»), una sola vez (marca L225_SALES_QUICKBOOKS). Las plantillas las pone el sembrador de permisos (PermissionCatalog). Solo AGREGA.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH(N'dbo.Invoice', N'QuickBooksAt') IS NULL
+    ALTER TABLE dbo.Invoice ADD QuickBooksAt DATETIME2 NULL;
+GO
+IF COL_LENGTH(N'dbo.Invoice', N'QuickBooksBy') IS NULL
+    ALTER TABLE dbo.Invoice ADD QuickBooksBy INT NULL;
+GO
+IF COL_LENGTH(N'dbo.Invoice', N'QuickBooksExportedAt') IS NULL
+    ALTER TABLE dbo.Invoice ADD QuickBooksExportedAt DATETIME2 NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Invoice_QuickBooksPending' AND object_id = OBJECT_ID('dbo.Invoice'))
+    CREATE INDEX IX_Invoice_QuickBooksPending ON dbo.Invoice(TenantId, StatusCodeId) WHERE QuickBooksAt IS NULL;
+GO
+IF COL_LENGTH(N'dbo.Client', N'QuickBooksSentAt') IS NULL
+    ALTER TABLE dbo.Client ADD QuickBooksSentAt DATETIME2 NULL;
+GO
+IF COL_LENGTH(N'dbo.Product', N'QuickBooksSentAt') IS NULL
+    ALTER TABLE dbo.Product ADD QuickBooksSentAt DATETIME2 NULL;
+GO
+IF COL_LENGTH(N'dbo.Tenant', N'QuickBooksReceivableAccount') IS NULL
+    ALTER TABLE dbo.Tenant ADD QuickBooksReceivableAccount NVARCHAR(159) NULL;
+GO
+IF COL_LENGTH(N'dbo.Tenant', N'QuickBooksSalesAccount') IS NULL
+    ALTER TABLE dbo.Tenant ADD QuickBooksSalesAccount NVARCHAR(159) NULL;
+GO
+IF COL_LENGTH(N'dbo.Tenant', N'QuickBooksCostAccount') IS NULL
+    ALTER TABLE dbo.Tenant ADD QuickBooksCostAccount NVARCHAR(159) NULL;
+GO
+IF COL_LENGTH(N'dbo.Tenant', N'QuickBooksInventoryAccount') IS NULL
+    ALTER TABLE dbo.Tenant ADD QuickBooksInventoryAccount NVARCHAR(159) NULL;
+GO
+IF COL_LENGTH(N'dbo.Tenant', N'QuickBooksTaxAccount') IS NULL
+    ALTER TABLE dbo.Tenant ADD QuickBooksTaxAccount NVARCHAR(159) NULL;
+GO
+IF COL_LENGTH(N'dbo.Tenant', N'QuickBooksTaxItem') IS NULL
+    ALTER TABLE dbo.Tenant ADD QuickBooksTaxItem NVARCHAR(31) NULL;
+GO
+IF COL_LENGTH(N'dbo.Tenant', N'QuickBooksShippingItem') IS NULL
+    ALTER TABLE dbo.Tenant ADD QuickBooksShippingItem NVARCHAR(31) NULL;
+GO
+IF COL_LENGTH(N'dbo.Tenant', N'QuickBooksTermsJson') IS NULL
+    ALTER TABLE dbo.Tenant ADD QuickBooksTermsJson NVARCHAR(2000) NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'sales.quickbooks.view')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('sales.quickbooks.view', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'BILLING'),
+            N'{"es":"QuickBooks: ver las facturas por pasar","en":"QuickBooks: see the invoices to pass"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'sales.quickbooks.mark')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('sales.quickbooks.mark', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'BILLING'),
+            N'{"es":"QuickBooks: marcar facturas como ya pasadas","en":"QuickBooks: mark invoices as passed"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'sales.quickbooks.export')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('sales.quickbooks.export', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'BILLING'),
+            N'{"es":"QuickBooks: exportar el archivo y confirmar lo importado","en":"QuickBooks: export the file and confirm what was imported"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L225_SALES_QUICKBOOKS')
+BEGIN
+    -- el administrador de la compañía y la «Oficina de ventas»: los tres
+    INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+    SELECT DISTINCT r.RoleId, pm.PermissionId
+    FROM dbo.Role r
+    JOIN dbo.Permission pm ON pm.Code IN ('sales.quickbooks.view', 'sales.quickbooks.mark', 'sales.quickbooks.export')
+    WHERE r.IsActive = 1 AND r.TenantId IS NOT NULL AND r.Name IN ('TenantAdmin', 'SalesOffice')
+      AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = pm.PermissionId);
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L225_SALES_QUICKBOOKS');
+END
+GO
+
+/* ----------------------------------------------------------------------------
+   2026-11-07 — Lote 224 (P6 del pedido de vendedores): consignación.
+   - dbo.ConsignmentPayment (nueva): pago de una factura en consignación → monto, fecha del pago (día de la compañía), método (PaymentMethod), referencia, quién y cuándo;
+     PaymentId = el pago de la factura que generó (NULL = la factura ya estaba pagada: solo se informa lo vendido). No se borra: se anula (VoidedAtUtc, VoidedBy, VoidReason).
+   - Permiso billing.consignment.pay (BILLING) a los roles YA clonados TenantAdmin y SalesOffice («Oficina de ventas»), una sola vez (marca L224_CONSIGNMENT). La plantilla
+     la pone el sembrador de permisos (PermissionCatalog). Solo AGREGA.
+   - «Ventas (30 días)» y «Ventas por día» de fábrica pasan a la fuente SALES_REVENUE (lo vendido: lo consignado cuenta solo al pagarse, en la fecha del pago), solo si siguen
+     exactamente como se sembraron (la fuente SALES_ORDER, su campo y su filtro de entonces).
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID(N'dbo.ConsignmentPayment', N'U') IS NULL CREATE TABLE dbo.ConsignmentPayment (
+    ConsignmentPaymentId  INT IDENTITY(1,1) CONSTRAINT PK_ConsignmentPayment PRIMARY KEY,
+    PublicId              UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_ConsignmentPayment_PublicId DEFAULT NEWID(),
+    TenantId              INT NOT NULL CONSTRAINT FK_ConsignmentPayment_Tenant REFERENCES dbo.Tenant(TenantId),
+    InvoiceId             INT NOT NULL CONSTRAINT FK_ConsignmentPayment_Invoice REFERENCES dbo.Invoice(InvoiceId),
+    PaymentId             INT NULL CONSTRAINT FK_ConsignmentPayment_Payment REFERENCES dbo.Payment(PaymentId),
+    Amount                DECIMAL(18,4) NOT NULL,
+    PaidDate              DATE NOT NULL,
+    PaymentMethodLookupId INT NOT NULL CONSTRAINT FK_ConsignmentPayment_Method REFERENCES dbo.LookupCode(LookupCodeId),
+    Reference             NVARCHAR(80) NULL,
+    RecordedBy            INT NULL,
+    RecordedAtUtc         DATETIME2 NOT NULL CONSTRAINT DF_ConsignmentPayment_Recorded DEFAULT SYSUTCDATETIME(),
+    VoidedAtUtc           DATETIME2 NULL,
+    VoidedBy              INT NULL,
+    VoidReason            NVARCHAR(250) NULL,
+    CONSTRAINT CK_ConsignmentPayment_Amount CHECK (Amount > 0)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ConsignmentPayment_PublicId' AND object_id = OBJECT_ID('dbo.ConsignmentPayment'))
+    CREATE UNIQUE INDEX UX_ConsignmentPayment_PublicId ON dbo.ConsignmentPayment(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ConsignmentPayment_Invoice' AND object_id = OBJECT_ID('dbo.ConsignmentPayment'))
+    CREATE INDEX IX_ConsignmentPayment_Invoice ON dbo.ConsignmentPayment(TenantId, InvoiceId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ConsignmentPayment_PaidDate' AND object_id = OBJECT_ID('dbo.ConsignmentPayment'))
+    CREATE INDEX IX_ConsignmentPayment_PaidDate ON dbo.ConsignmentPayment(TenantId, PaidDate);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'billing.consignment.pay')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('billing.consignment.pay', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'BILLING'),
+            N'{"es":"Consignación: registrar pagos","en":"Consignment: record payments"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L224_CONSIGNMENT')
+BEGIN
+    -- el administrador de la compañía y la «Oficina de ventas»
+    INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+    SELECT DISTINCT r.RoleId, pm.PermissionId
+    FROM dbo.Role r
+    JOIN dbo.Permission pm ON pm.Code = 'billing.consignment.pay'
+    WHERE r.IsActive = 1 AND r.TenantId IS NOT NULL AND r.Name IN ('TenantAdmin', 'SalesOffice')
+      AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = pm.PermissionId);
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L224_CONSIGNMENT');
+END
+GO
+UPDATE dbo.IndicatorDefinition
+SET DataSourceKey = N'SALES_REVENUE', FieldKey = N'Amount', FilterJson = NULL,
+    DescriptionJson = N'{"es":"Lo vendido en los últimos 30 días: órdenes de venta confirmadas y pagos de consignación (lo consignado cuenta al pagarse)","en":"Sold in the last 30 days: confirmed sales orders and consignment payments (consignment counts when paid)"}'
+WHERE IsSystem = 1 AND Name = N'Ventas (30 días)' AND DataSourceKey = N'SALES_ORDER' AND FieldKey = N'Total'
+  AND FilterJson = N'{"and":[{"field":"StatusCode","op":"in","value":["REQUESTED","PARTIAL","SHIPPED"]}]}';
+GO
+UPDATE dbo.ChartDefinition
+SET DataSourceKey = N'SALES_REVENUE', GroupByField = N'SoldAtUtc', FieldKey = N'Amount', FilterJson = NULL,
+    DescriptionJson = N'{"es":"Tendencia diaria de lo vendido (lo consignado cuenta en la fecha de su pago)","en":"Daily trend of what was sold (consignment counts on its payment date)"}'
+WHERE IsSystem = 1 AND Name = N'Ventas por día' AND DataSourceKey = N'SALES_ORDER' AND GroupByField = N'CreatedAtUtc' AND FieldKey = N'Total'
+  AND FilterJson = N'{"and":[{"field":"StatusCode","op":"in","value":["REQUESTED","PARTIAL","SHIPPED"]}]}';
+GO

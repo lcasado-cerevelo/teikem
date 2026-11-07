@@ -118,6 +118,18 @@ public class Tenant : ISoftDeletable
     public decimal? SalesShippingCharge { get; set; }
     public decimal? SalesShippingFreeFrom { get; set; }
     public bool SalesShippingTaxable { get; set; }
+    /// <summary>
+    /// Lote 225 (Ajustes → Operación → QuickBooks): las cuentas e ítems con que sale el archivo IIF de QuickBooks Desktop (NULL = el valor por omisión de QuickBooksRules)
+    /// y el mapa término de pago de Teikem → nombre del término en QuickBooks (JSON {"NET30":"Net 30"}; NULL = sin mapa: la factura sale sin término).
+    /// </summary>
+    public string? QuickBooksReceivableAccount { get; set; }
+    public string? QuickBooksSalesAccount { get; set; }
+    public string? QuickBooksCostAccount { get; set; }
+    public string? QuickBooksInventoryAccount { get; set; }
+    public string? QuickBooksTaxAccount { get; set; }
+    public string? QuickBooksTaxItem { get; set; }
+    public string? QuickBooksShippingItem { get; set; }
+    public string? QuickBooksTermsJson { get; set; }
     /// <summary>Lote 81: días después del último despacho en que se acepta pedir una devolución de venta (0 = sin ventana).</summary>
     public int SalesReturnWindowDays { get; set; } = 30;
     /// <summary>Lote 86 (P8): comisión por omisión de la remesa COD (% de lo cobrado) cuando el contrato del cliente no trae la suya.</summary>

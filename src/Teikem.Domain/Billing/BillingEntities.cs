@@ -93,6 +93,12 @@ public class Invoice : ITenantScoped, IHasStatus
     public bool IsActive { get; set; } = true;
     public string? Notes { get; set; }
     [NotAudited] public byte[]? RowVersion { get; set; }
+    // --- Lote 225 (P5 del pedido de vendedores): QuickBooks ---
+    /// <summary>La marca «en QuickBooks»: cuándo (UTC) y quién la puso (a mano con sales.quickbooks.mark o al confirmar un archivo con sales.quickbooks.export). NULL = por pasar.</summary>
+    public DateTime? QuickBooksAt { get; set; }
+    public int? QuickBooksBy { get; set; }
+    /// <summary>La última vez (UTC) que la factura salió en un archivo IIF (aviso «N de estas ya salieron el …»). No la marca: sigue por pasar hasta que la confirmen.</summary>
+    public DateTime? QuickBooksExportedAt { get; set; }
     public List<InvoiceLine> Lines { get; set; } = new();
 }
 

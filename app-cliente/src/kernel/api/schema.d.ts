@@ -7184,6 +7184,215 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/billing/consignment/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    balance?: string;
+                    clientPublicId?: string;
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsignmentInvoiceListItemDtoPagedResult"];
+                        "application/json": components["schemas"]["ConsignmentInvoiceListItemDtoPagedResult"];
+                        "text/json": components["schemas"]["ConsignmentInvoiceListItemDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/consignment/invoices/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsignmentInvoiceDto"];
+                        "application/json": components["schemas"]["ConsignmentInvoiceDto"];
+                        "text/json": components["schemas"]["ConsignmentInvoiceDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/consignment/by-client": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsignmentByClientDto"];
+                        "application/json": components["schemas"]["ConsignmentByClientDto"];
+                        "text/json": components["schemas"]["ConsignmentByClientDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/consignment/invoices/{publicId}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ConsignmentPaymentRequest"];
+                    "text/json": components["schemas"]["ConsignmentPaymentRequest"];
+                    "application/*+json": components["schemas"]["ConsignmentPaymentRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsignmentInvoiceDto"];
+                        "application/json": components["schemas"]["ConsignmentInvoiceDto"];
+                        "text/json": components["schemas"]["ConsignmentInvoiceDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/consignment/payments/{publicId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ConsignmentPaymentVoidRequest"];
+                    "text/json": components["schemas"]["ConsignmentPaymentVoidRequest"];
+                    "application/*+json": components["schemas"]["ConsignmentPaymentVoidRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsignmentInvoiceDto"];
+                        "application/json": components["schemas"]["ConsignmentInvoiceDto"];
+                        "text/json": components["schemas"]["ConsignmentInvoiceDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/contacts/{ownerEntity}/{ownerId}": {
         parameters: {
             query?: never;
@@ -29157,6 +29366,322 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sales-orders/quickbooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["QuickBooksPendingDto"];
+                        "application/json": components["schemas"]["QuickBooksPendingDto"];
+                        "text/json": components["schemas"]["QuickBooksPendingDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/quickbooks/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["QuickBooksExportRequest"];
+                    "text/json": components["schemas"]["QuickBooksExportRequest"];
+                    "application/*+json": components["schemas"]["QuickBooksExportRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["QuickBooksExportDto"];
+                        "application/json": components["schemas"]["QuickBooksExportDto"];
+                        "text/json": components["schemas"]["QuickBooksExportDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/quickbooks/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["QuickBooksConfirmRequest"];
+                    "text/json": components["schemas"]["QuickBooksConfirmRequest"];
+                    "application/*+json": components["schemas"]["QuickBooksConfirmRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["QuickBooksMarkResultDto"];
+                        "application/json": components["schemas"]["QuickBooksMarkResultDto"];
+                        "text/json": components["schemas"]["QuickBooksMarkResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/quickbooks/mark": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["QuickBooksMarkRequest"];
+                    "text/json": components["schemas"]["QuickBooksMarkRequest"];
+                    "application/*+json": components["schemas"]["QuickBooksMarkRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["QuickBooksMarkResultDto"];
+                        "application/json": components["schemas"]["QuickBooksMarkResultDto"];
+                        "text/json": components["schemas"]["QuickBooksMarkResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/quickbooks/unmark": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["QuickBooksMarkRequest"];
+                    "text/json": components["schemas"]["QuickBooksMarkRequest"];
+                    "application/*+json": components["schemas"]["QuickBooksMarkRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["QuickBooksMarkResultDto"];
+                        "application/json": components["schemas"]["QuickBooksMarkResultDto"];
+                        "text/json": components["schemas"]["QuickBooksMarkResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/quickbooks/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    from?: string;
+                    to?: string;
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["QuickBooksHistoryItemDtoPagedResult"];
+                        "application/json": components["schemas"]["QuickBooksHistoryItemDtoPagedResult"];
+                        "text/json": components["schemas"]["QuickBooksHistoryItemDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/quickbooks/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["QuickBooksSettingsDto"];
+                        "application/json": components["schemas"]["QuickBooksSettingsDto"];
+                        "text/json": components["schemas"]["QuickBooksSettingsDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["QuickBooksSettingsRequest"];
+                    "text/json": components["schemas"]["QuickBooksSettingsRequest"];
+                    "application/*+json": components["schemas"]["QuickBooksSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["QuickBooksSettingsDto"];
+                        "application/json": components["schemas"]["QuickBooksSettingsDto"];
+                        "text/json": components["schemas"]["QuickBooksSettingsDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/v1/receipts": {
         parameters: {
             query?: never;
@@ -41092,6 +41617,128 @@ export interface components {
             /** Format: int32 */
             take?: number;
         };
+        ConsignmentByClientDto: {
+            items?: components["schemas"]["ConsignmentClientRowDto"][] | null;
+            /** Format: double */
+            consigned?: number;
+            /** Format: double */
+            returned?: number;
+            /** Format: double */
+            paid?: number;
+            /** Format: double */
+            balance?: number;
+            /** Format: int32 */
+            openInvoiceCount?: number;
+        };
+        ConsignmentClientRowDto: {
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientCode?: string | null;
+            clientName?: string | null;
+            /** Format: int32 */
+            invoiceCount?: number;
+            /** Format: int32 */
+            openInvoiceCount?: number;
+            /** Format: double */
+            consigned?: number;
+            /** Format: double */
+            returned?: number;
+            /** Format: double */
+            paid?: number;
+            /** Format: double */
+            balance?: number;
+            /** Format: date */
+            oldestOpenIssueDate?: string | null;
+        };
+        ConsignmentInvoiceDto: {
+            invoice?: components["schemas"]["ConsignmentInvoiceListItemDto"];
+            lines?: components["schemas"]["ConsignmentLineDto"][] | null;
+            payments?: components["schemas"]["ConsignmentPaymentDto"][] | null;
+        };
+        ConsignmentInvoiceListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientCode?: string | null;
+            clientName?: string | null;
+            /** Format: date */
+            issueDate?: string | null;
+            /** Format: date */
+            dueDate?: string | null;
+            orderNumbers?: string[] | null;
+            /** Format: double */
+            consigned?: number;
+            /** Format: double */
+            returned?: number;
+            /** Format: double */
+            paid?: number;
+            /** Format: double */
+            balance?: number;
+            /** Format: double */
+            invoiceTotal?: number;
+            /** Format: double */
+            invoiceBalance?: number;
+            /** Format: int32 */
+            paymentCount?: number;
+            /** Format: date */
+            lastPaidDate?: string | null;
+        };
+        ConsignmentInvoiceListItemDtoPagedResult: {
+            items?: components["schemas"]["ConsignmentInvoiceListItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        ConsignmentLineDto: {
+            /** Format: int32 */
+            invoiceLineId?: number;
+            orderNumber?: string | null;
+            description?: string | null;
+            /** Format: double */
+            quantity?: number;
+            /** Format: double */
+            amount?: number;
+            /** Format: double */
+            returned?: number;
+        };
+        ConsignmentPaymentDto: {
+            /** Format: uuid */
+            publicId?: string;
+            /** Format: double */
+            amount?: number;
+            /** Format: date */
+            paidDate?: string;
+            method?: string | null;
+            methodLabel?: string | null;
+            reference?: string | null;
+            recordedByName?: string | null;
+            /** Format: date-time */
+            recordedAtUtc?: string;
+            linkedToInvoicePayment?: boolean;
+            isVoided?: boolean;
+            /** Format: date-time */
+            voidedAtUtc?: string | null;
+            voidReason?: string | null;
+        };
+        ConsignmentPaymentRequest: {
+            /** Format: double */
+            amount?: number | null;
+            method?: string | null;
+            /** Format: date */
+            paidDate?: string | null;
+            reference?: string | null;
+        };
+        ConsignmentPaymentVoidRequest: {
+            reason?: string | null;
+        };
         ContactPointDto: {
             /** Format: int32 */
             id?: number;
@@ -47503,6 +48150,173 @@ export interface components {
             maxCapacityQty?: number | null;
             /** Format: double */
             freeQty?: number | null;
+        };
+        QuickBooksConfirmRequest: {
+            invoiceIds?: string[] | null;
+        };
+        QuickBooksExportDto: {
+            fileName?: string | null;
+            contentType?: string | null;
+            contentBase64?: string | null;
+            /** Format: date-time */
+            exportedAtUtc?: string;
+            /** Format: int32 */
+            invoiceCount?: number;
+            /** Format: double */
+            total?: number;
+            /** Format: int32 */
+            alreadyExportedCount?: number;
+            /** Format: date-time */
+            lastExportedAtUtc?: string | null;
+            includedNew?: boolean;
+            /** Format: int32 */
+            newClientCount?: number;
+            /** Format: int32 */
+            newProductCount?: number;
+            invoices?: components["schemas"]["QuickBooksPendingInvoiceDto"][] | null;
+        };
+        QuickBooksExportRequest: {
+            includeNew?: boolean;
+        };
+        QuickBooksHistoryItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            /** Format: date */
+            issueDate?: string | null;
+            clientCode?: string | null;
+            clientName?: string | null;
+            /** Format: double */
+            total?: number;
+            /** Format: date-time */
+            quickBooksAtUtc?: string;
+            /** Format: int32 */
+            quickBooksBy?: number | null;
+            quickBooksByName?: string | null;
+            /** Format: date-time */
+            exportedAtUtc?: string | null;
+        };
+        QuickBooksHistoryItemDtoPagedResult: {
+            items?: components["schemas"]["QuickBooksHistoryItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        QuickBooksMarkRequest: {
+            invoiceIds?: string[] | null;
+            all?: boolean;
+        };
+        QuickBooksMarkResultDto: {
+            /** Format: int32 */
+            marked?: number;
+            /** Format: int32 */
+            alreadyMarked?: number;
+            /** Format: int32 */
+            clientsSent?: number;
+            /** Format: int32 */
+            productsSent?: number;
+            /** Format: date-time */
+            atUtc?: string;
+        };
+        QuickBooksNewClientDto: {
+            /** Format: uuid */
+            publicId?: string;
+            code?: string | null;
+            quickBooksName?: string | null;
+            companyName?: string | null;
+            billTo?: string[] | null;
+            shipTo?: string[] | null;
+            phone1?: string | null;
+            phone2?: string | null;
+            email?: string | null;
+            contact?: string | null;
+            paymentTerm?: string | null;
+            quickBooksTerms?: string | null;
+            merchantRegistration?: string | null;
+            /** Format: double */
+            creditLimit?: number | null;
+        };
+        QuickBooksNewProductDto: {
+            /** Format: uuid */
+            publicId?: string;
+            sku?: string | null;
+            quickBooksName?: string | null;
+            name?: string | null;
+            /** Format: double */
+            price?: number | null;
+            /** Format: double */
+            cost?: number | null;
+            taxable?: boolean;
+        };
+        QuickBooksPendingDto: {
+            /** Format: int32 */
+            count?: number;
+            /** Format: double */
+            total?: number;
+            /** Format: int32 */
+            alreadyExportedCount?: number;
+            /** Format: date-time */
+            lastExportedAtUtc?: string | null;
+            invoices?: components["schemas"]["QuickBooksPendingInvoiceDto"][] | null;
+            newClients?: components["schemas"]["QuickBooksNewClientDto"][] | null;
+            newProducts?: components["schemas"]["QuickBooksNewProductDto"][] | null;
+            warnings?: string[] | null;
+        };
+        QuickBooksPendingInvoiceDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            /** Format: date */
+            issueDate?: string | null;
+            /** Format: date */
+            dueDate?: string | null;
+            status?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientCode?: string | null;
+            clientName?: string | null;
+            quickBooksCustomer?: string | null;
+            /** Format: double */
+            subtotal?: number;
+            /** Format: double */
+            taxAmount?: number;
+            /** Format: double */
+            total?: number;
+            orderNumbers?: string[] | null;
+            /** Format: date-time */
+            exportedAtUtc?: string | null;
+            newClient?: boolean;
+            newProductSkus?: string[] | null;
+        };
+        QuickBooksSettingsDto: {
+            receivableAccount?: string | null;
+            salesAccount?: string | null;
+            costAccount?: string | null;
+            inventoryAccount?: string | null;
+            taxAccount?: string | null;
+            taxItem?: string | null;
+            shippingItem?: string | null;
+            terms?: components["schemas"]["QuickBooksTermMapDto"][] | null;
+        };
+        QuickBooksSettingsRequest: {
+            receivableAccount?: string | null;
+            salesAccount?: string | null;
+            costAccount?: string | null;
+            inventoryAccount?: string | null;
+            taxAccount?: string | null;
+            taxItem?: string | null;
+            shippingItem?: string | null;
+            terms?: {
+                [key: string]: string | null;
+            } | null;
+        };
+        QuickBooksTermMapDto: {
+            code?: string | null;
+            label?: string | null;
+            quickBooksName?: string | null;
         };
         QuoteLineDto: {
             serviceType?: string | null;

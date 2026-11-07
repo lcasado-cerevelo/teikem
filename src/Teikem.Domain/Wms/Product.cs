@@ -70,6 +70,8 @@ public class Product : ITenantScoped, ISoftDeletable
     public DateOnly? PromoTo { get; set; }
     /// <summary>Lote 221: la foto de la oferta (StoredFile del producto, una imagen).</summary>
     public int? PromoImageFileId { get; set; }
+    /// <summary>Lote 225: cuándo (UTC) quedó el producto como ya mandado a QuickBooks (al marcar o confirmar la primera factura que lo lleva). NULL = nuevo para QuickBooks. Un kit no se manda: van sus componentes.</summary>
+    public DateTime? QuickBooksSentAt { get; set; }
     public bool IsActive { get; set; } = true;
     [NotAudited] public byte[]? RowVersion { get; set; }
 }

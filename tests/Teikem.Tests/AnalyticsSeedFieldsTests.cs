@@ -162,7 +162,7 @@ public class AnalyticsSeedFieldsTests
         var orderFields = new SalesOrderDataSource(db, lookups, tenant).Fields.Select(f => f.Key).ToHashSet();
         var lineFields = new SalesOrderLineDataSource(db, tenant).Fields.Select(f => f.Key).ToHashSet();
         var inds = await db.IndicatorDefinitions.AsNoTracking().Where(i => i.DataSourceKey == Teikem.Domain.Sales.SalesCodes.EntityType).ToListAsync();
-        Assert.Equal(5, inds.Count);   // Lote 91 sumó «Ventas (30 días)»
+        Assert.Equal(4, inds.Count);   // Lote 91 sumó «Ventas (30 días)»; Lote 224 la pasó a SALES_REVENUE (lo vendido)
         Assert.All(inds, i => Assert.True(i.IsSystem));
         Assert.Equal(new[] { Teikem.Domain.Sales.SalesAnalyticsRules.OpenOrdersIndicatorName }, inds.Where(i => i.ShowInPulse).Select(i => i.Name));   // solo las abiertas en el Pulso
         foreach (var i in inds)
@@ -204,6 +204,7 @@ public class AnalyticsSeedFieldsTests
             [Teikem.Domain.Analytics.FinanceAnalyticsRules.CodSource] = new CodCollectionDataSource(db, lookups, tenant).Fields.Select(f => f.Key).ToHashSet(),
             [Teikem.Domain.Analytics.FinanceAnalyticsRules.InvoiceSource] = new InvoiceDataSource(db, tenant).Fields.Select(f => f.Key).ToHashSet(),
             [Teikem.Domain.Sales.SalesCodes.EntityType] = new SalesOrderDataSource(db, lookups, tenant).Fields.Select(f => f.Key).ToHashSet(),
+            [Teikem.Domain.Analytics.FinanceAnalyticsRules.SalesRevenueSource] = new SalesRevenueDataSource(db, tenant).Fields.Select(f => f.Key).ToHashSet(),   // Lote 224
         };
         var names = new[]
         {
@@ -238,6 +239,11 @@ public class AnalyticsSeedFieldsTests
             if (c.FieldKey is not null) Assert.Contains(c.FieldKey, f);
             foreach (var x in JsonFields(c.FilterJson)) Assert.Contains(x, f);
         }
+        // Lote 224: las ventas leen de lo vendido (lo consignado cuenta al pagarse, en la fecha del pago)
+        var sales = inds.Single(i => i.Name == Teikem.Domain.Analytics.FinanceAnalyticsRules.SalesLast30IndicatorName);
+        Assert.Equal((Teikem.Domain.Analytics.FinanceAnalyticsRules.SalesRevenueSource, "Amount", (string?)null), (sales.DataSourceKey, sales.FieldKey, sales.FilterJson));
+        var byDay = charts.Single(c => c.Name == Teikem.Domain.Analytics.FinanceAnalyticsRules.SalesByDayChartName);
+        Assert.Equal((Teikem.Domain.Analytics.FinanceAnalyticsRules.SalesRevenueSource, "SoldAtUtc", "Amount"), (byDay.DataSourceKey, byDay.GroupByField!, byDay.FieldKey!));
     }
 
     [Fact]

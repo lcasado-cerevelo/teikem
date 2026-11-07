@@ -25,6 +25,17 @@ public static class FinanceAnalyticsRules
     /// <summary>Ventas confirmadas: órdenes de venta que no son borrador ni canceladas (para sumar su total).</summary>
     public const string SalesConfirmedFilter = "{\"and\":[{\"field\":\"StatusCode\",\"op\":\"in\",\"value\":[\"REQUESTED\",\"PARTIAL\",\"SHIPPED\"]}]}";
 
+    /// <summary>
+    /// Lote 224 (P6 del pedido de vendedores): fuente SALES_REVENUE («lo vendido»): las órdenes de venta confirmadas que NO son de consignación, en su fecha de creación, y los
+    /// pagos de consignación, en la fecha del pago. «Ventas (30 días)» y «Ventas por día» leen de aquí (campos Amount y SoldAtUtc): lo consignado cuenta solo cuando se paga.
+    /// </summary>
+    public const string SalesRevenueSource = "SALES_REVENUE";
+
+    public const string SalesLast30DescriptionEs = "Lo vendido en los últimos 30 días: órdenes de venta confirmadas y pagos de consignación (lo consignado cuenta al pagarse)";
+    public const string SalesLast30DescriptionEn = "Sold in the last 30 days: confirmed sales orders and consignment payments (consignment counts when paid)";
+    public const string SalesByDayDescriptionEs = "Tendencia diaria de lo vendido (lo consignado cuenta en la fecha de su pago)";
+    public const string SalesByDayDescriptionEn = "Daily trend of what was sold (consignment counts on its payment date)";
+
     public const string SalesLast30IndicatorName = "Ventas (30 días)";
     public const string CodCollectedIndicatorName = "COD cobrado (30 días)";
     public const string CodUnreconciledIndicatorName = "COD cobrado sin cuadrar";

@@ -377,8 +377,9 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
             FinanceAnalyticsRules.InvoiceSource, null, count, FinanceAnalyticsRules.InvoiceOverdueFilter, all, true, 124, module: acct);
         Indicator(FinanceAnalyticsRules.InvoicedIndicatorName, "Total facturado en los últimos 30 días (facturas emitidas, pagadas o vencidas)", "Total invoiced in the last 30 days (issued, paid or overdue invoices)",
             FinanceAnalyticsRules.InvoiceSource, "Total", sum, FinanceAnalyticsRules.InvoiceIssuedFilter, last30, false, 125, isMoney: true, module: acct);
-        Indicator(FinanceAnalyticsRules.SalesLast30IndicatorName, "Total de las órdenes de venta de los últimos 30 días (sin borradores ni canceladas)", "Total of the sales orders of the last 30 days (no drafts or cancelled)",
-            SalesCodes.EntityType, "Total", sum, FinanceAnalyticsRules.SalesConfirmedFilter, last30, false, 126, isMoney: true, module: wh);
+        // Lote 224: lee de lo vendido (SALES_REVENUE): lo consignado cuenta solo cuando se paga, en la fecha del pago (las compañías ya sembradas las cambia logistica-db-update.sql)
+        Indicator(FinanceAnalyticsRules.SalesLast30IndicatorName, FinanceAnalyticsRules.SalesLast30DescriptionEs, FinanceAnalyticsRules.SalesLast30DescriptionEn,
+            FinanceAnalyticsRules.SalesRevenueSource, "Amount", sum, null, last30, false, 126, isMoney: true, module: wh);
 
         // Corrección idempotente de tenants ya sembrados con la versión anterior (rango null / COD en Operación).
         var orderIndicators = await db.IndicatorDefinitions
@@ -515,8 +516,8 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
             FinanceAnalyticsRules.InvoiceSource, "Status", donut, "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"}]}", last30, true, 122, module: acct);
         Chart(FinanceAnalyticsRules.InvoicedByDayChartName, "Tendencia diaria de lo facturado", "Daily trend of invoiced amounts",
             FinanceAnalyticsRules.InvoiceSource, "IssueDate", line, FinanceAnalyticsRules.InvoiceIssuedFilter, last30, false, 123, field: "Total", fn: sum, isMoney: true, module: acct);
-        Chart(FinanceAnalyticsRules.SalesByDayChartName, "Tendencia diaria del total de las órdenes de venta", "Daily trend of sales order totals",
-            SalesCodes.EntityType, "CreatedAtUtc", line, FinanceAnalyticsRules.SalesConfirmedFilter, last30, false, 124, field: "Total", fn: sum, isMoney: true, module: wh);
+        Chart(FinanceAnalyticsRules.SalesByDayChartName, FinanceAnalyticsRules.SalesByDayDescriptionEs, FinanceAnalyticsRules.SalesByDayDescriptionEn,
+            FinanceAnalyticsRules.SalesRevenueSource, "SoldAtUtc", line, null, last30, false, 124, field: "Amount", fn: sum, isMoney: true, module: wh);   // Lote 224: lo vendido
 
         await db.SaveChangesAsync(ct);
         db.SuppressAudit = false;

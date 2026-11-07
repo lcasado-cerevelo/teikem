@@ -61,6 +61,7 @@ public sealed class SalesOrderDataSource(TeikemDbContext db, ILookupCache lookup
         new DataField("IsOpen", "Abierta", "Open", DataFieldType.Bool),
         new DataField("HasBackorder", "Con backorder", "Has backorder", DataFieldType.Bool),
         new DataField("IsLate", "Atrasada", "Late", DataFieldType.Bool),
+        new DataField("IsConsignment", "En consignación", "On consignment", DataFieldType.Bool),   // Lote 224: lo vendido (con lo consignado al pagarse) está en SALES_REVENUE
         new DataField("RequestedDate", "Fecha del pedido", "Order date", DataFieldType.Date),
         new DataField("RequiredDate", "Fecha requerida", "Required date", DataFieldType.Date),
         new DataField("RequestedAtUtc", "Solicitada el", "Requested at", DataFieldType.Date),
@@ -143,6 +144,7 @@ public sealed class SalesOrderDataSource(TeikemDbContext db, ILookupCache lookup
                 ["IsOpen"] = SalesAnalyticsRules.IsOpen(code),
                 ["HasBackorder"] = (l?.Backordered ?? 0m) > 0m,
                 ["IsLate"] = SalesAnalyticsRules.IsLate(code, o.RequiredDate, today),
+                ["IsConsignment"] = o.IsConsignment,
                 ["RequestedDate"] = o.RequestedDate,
                 ["RequiredDate"] = o.RequiredDate,
                 ["RequestedAtUtc"] = o.RequestedAtUtc,
