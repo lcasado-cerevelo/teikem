@@ -10948,3 +10948,430 @@ La pantalla muestra el logo de la última compañía con la que entró ese telé
 - **Desactivé una compañía y su gente me llama.** Es lo esperado: nadie entra («El usuario no tiene ninguna compañía activa.») y a quien estaba dentro le sale «La compañía está inactiva.» (403). Para devolverles el acceso, entre a la compañía desde el selector (sale «(desactivada)») y pulse **Activar compañía**; sus datos siguen intactos, pero deben volver a iniciar sesión.
 - **La compañía nueva no tiene transporte ni almacén.** Nace con los módulos base a propósito: enciéndalos en Ajustes → Módulos.
 - **Ya no existen `sessionDays` ni `deviceSessionDays` ni `trackingSlug`.** La duración de la sesión es solo en minutos; el seguimiento público va en el enlace de cada aviso.
+
+
+## Lote 221 — Listas de precios y ofertas
+<!-- kemi:staff -->
+
+Capítulo: [47 — Listas de precios y ofertas](47-precios-y-ofertas.md).
+
+### Listas de precios
+
+**¿Qué significa "Indique el nombre de la lista de precios."?**
+Se intentó crear o renombrar una lista sin nombre (400). Escriba un nombre; admite hasta 120 caracteres ("El nombre de la lista no puede pasar de 120 caracteres.").
+
+**¿Qué significa "Indique desde qué fecha vale la lista."?**
+Falta «Vigente desde» (400). Es obligatorio; «Hasta» es opcional (vacío = sin fin).
+
+**¿Qué significa "La fecha «hasta» no puede ser anterior a la fecha «desde»."?**
+Las fechas están al revés (400). Corrija la vigencia; los dos extremos cuentan como vigentes.
+
+**¿Qué significa "Las notas no pueden pasar de 500 caracteres."?**
+Las notas de la lista (o de la orden) son más largas que el tope (400). Acórtelas.
+
+**¿Qué significa "Lista de precios no encontrada." o "Renglón de la lista no encontrado." o "Cliente de la lista no encontrado."?**
+El identificador no existe o es de otra compañía (404). Recargue la pantalla: alguien pudo quitar el renglón o el cliente.
+
+**¿Qué significa "La lista de precios está desactivada: reactívela para cambiarla."?**
+Una lista desactivada no se edita (renglones, clientes, fotos, fechas) (422). Pulse **Reactivar** y haga el cambio; si estaba publicada, al reactivar se vuelven a comprobar los cruces.
+
+**¿Qué significa "La lista ya está desactivada." o "La lista ya está activa."?**
+Se pidió desactivar o reactivar algo que ya estaba así (422). Recargue y revise el estado.
+
+**¿Qué significa "Indique los productos y sus precios." / "Escoja el producto o kit de cada renglón." / "Indique el precio de cada renglón."?**
+Al agregar renglones falta la lista, el producto o el precio (400). Cada renglón necesita producto (o kit) y un precio de 0 en adelante.
+
+**¿Qué significa "Una lista admite como máximo 2000 renglones." o "Una lista admite como máximo 2000 clientes."?**
+Se pasó del tope de la lista (400). Divida los precios en otra lista (por ejemplo, una por marca o por temporada).
+
+**¿Qué significa "El precio no es válido." o "El precio admite como máximo 4 decimales."?**
+El precio es negativo, demasiado grande o trae más de 4 decimales (400). Escriba un número de 0 en adelante con hasta 4 decimales.
+
+**¿Qué significa "El producto {SKU} viene repetido."?**
+El mismo producto aparece dos veces en lo que se mandó (400). Quite el duplicado; si solo quiere cambiar el precio de uno que ya está, mande un solo renglón con el precio nuevo.
+
+**¿Qué significa "Solo se ponen en una lista productos propios de la compañía."?**
+El producto es de un cliente de paso (422). Las listas solo llevan productos y kits propios.
+
+**¿Qué significa "El producto {SKU} está inactivo: no se puede poner en la lista."?**
+El producto está dado de baja (422). Reactívelo en Productos o escoja otro.
+
+**¿Qué significa "Escoja los clientes de la lista."?**
+Se intentó agregar clientes sin escoger ninguno (400). Escoja al menos uno.
+
+**¿Qué significa "La lista aplica a todos los clientes: no lleva clientes escogidos. Desmarque «aplica a todos» para escogerlos."?**
+Se quiso agregar clientes a una lista general (422). Para precios negociados, desmarque «Aplica a todos los clientes» primero.
+
+**¿Qué significa "La lista tiene clientes escogidos: quítelos antes de hacerla general (aplica a todos)."?**
+Se marcó «Aplica a todos» en una lista que ya tiene clientes (422). Quite los clientes o cree otra lista general.
+
+**¿Qué significa "Agregue al menos un renglón antes de publicar la lista."?**
+Se intentó publicar una lista vacía (422). Agregue renglones y publique.
+
+**¿Qué significa "Escoja al menos un cliente o marque que la lista aplica a todos los clientes."?**
+Se intentó publicar (o dejar publicada) una lista de clientes escogidos sin clientes (422). Agregue clientes o márquela como general. También sale al quitar el último cliente de una lista publicada: pásela a borrador primero.
+
+**¿Qué significa "La lista ya está publicada." o "La lista ya está en borrador."?**
+Se pidió publicar o volver a borrador algo que ya estaba así (422). Recargue la lista.
+
+**¿Qué significa "La lista se cruza con «…» en las mismas fechas y para los mismos clientes en: … Cambie las fechas o quite esos productos de una de las dos."?**
+Dos listas publicadas de la misma audiencia darían dos precios al mismo producto en fechas que se cruzan (409). El mensaje cita los SKU (hasta 5). Cambie las fechas de una, quite esos productos de una, o pase una a borrador. Una lista general y una de un cliente **sí** pueden traer el mismo producto: gana la del cliente.
+
+**¿Qué significa "La lista cambió al mismo tiempo. Recárguela e intente de nuevo."?**
+Otra persona guardó la misma lista a la vez (409). Recargue y repita el cambio.
+
+**¿Qué significa "Adjunte la foto." o "La foto debe ser una imagen (JPG, PNG, WEBP o GIF)."?**
+No se mandó archivo, o su contenido no es una imagen admitida (400). Suba JPG, PNG, WEBP o GIF (se comprueba el contenido, no la extensión). Si dice "El archivo no puede pasar de {n} MB.", reduzca la foto.
+
+### Ofertas (kits en promoción)
+
+**¿Qué significa "Solo un kit puede ser oferta (promoción)."?**
+Se marcó «Es promoción» en un producto que no es kit (422). Convierta el producto en kit (Productos → tipo Kit) o use una lista de precios para darle precio especial.
+
+**¿Qué significa "La fecha «hasta» de la oferta no puede ser anterior a la fecha «desde»."?**
+La vigencia de la oferta está al revés (400). Corrija «Oferta desde» / «Oferta hasta».
+
+**¿Qué significa "Marque el kit como oferta antes de ponerle la foto."?**
+Se subió la foto antes de guardar la marca (422). Guarde primero «Es promoción» y luego ponga la foto.
+
+**¿Qué significa "La oferta {SKU} no está vigente hoy (vale del … al …): no se puede vender."?**
+La oferta está programada o vencida (422): no se puede poner en una línea nueva ni en un borrador que se vuelve a guardar. Cambie su vigencia en el kit, o quite la línea del pedido. Las órdenes ya hechas no cambian.
+
+### Precio de una línea
+
+**¿Qué significa "El producto {SKU} no tiene precio de venta: escriba el precio."?**
+No hay lista vigente (del cliente o general) que traiga el producto y el producto no tiene precio de venta (400). Póngalo en una lista publicada y vigente, dele precio de venta, o pida a quien tenga `sales.price` que escriba el precio.
+
+**¿Qué significa "Cambiar el precio exige el permiso de precios (sales.price)."?**
+Se escribió en la línea un precio distinto del que salió de la lista (403). El vendedor no teclea precios: si el precio es incorrecto, corrija la lista; si hace falta una excepción, la hace quien tenga `sales.price`.
+
+**El vendedor ve un producto «Sin precio» en el pedido.**
+No está en ninguna lista vigente para ese cliente y no tiene precio de venta. Agréguelo a una lista publicada, o dele precio de venta.
+
+**Publiqué la lista y el pedido sigue con el precio anterior.**
+Revise que la lista esté publicada (no borrador ni desactivada), que hoy caiga dentro de su vigencia y que el cliente esté en la lista si no es general. Un pedido ya hecho no cambia nunca; el precio se toma al crear o editar la línea.
+
+**¿Quién gana si el producto está en la lista del cliente y en la general?**
+La del cliente. Si no está en ninguna, el precio de venta del producto.
+
+## Lote 222 — Pedido de vendedores: la orden, el envío, la forma de pago y el cliente nuevo
+<!-- kemi:staff -->
+
+Capítulos: [18 §18 a §23](18-ordenes-de-venta.md#18-pedido-de-vendedores-lo-nuevo-de-la-orden-lote-222) y [02 §1.8](02-clientes-y-contratos.md#18-cliente-prospecto-alta-mínima-y-aprobación-lote-222).
+
+### La orden
+
+**¿Qué significa "La entrega debe ser DELIVERY (entrega) o PICKUP (recogido)."?**
+El campo `deliveryMode` trae otro valor (400). Mande DELIVERY, PICKUP o vacío (se deduce del consignatario).
+
+**¿Qué significa "El nombre de quien autoriza no puede pasar de 150 caracteres."?**
+El nombre de quien autoriza es muy largo (400). Acórtelo.
+
+**¿Qué significa "Este cliente exige el nombre y la firma de quien autoriza el pedido."?**
+La ficha del cliente tiene «Exige la firma de quien autoriza el pedido» y la orden no tiene el nombre o la firma (400, campo `signature`). Escriba el nombre y dibuje la firma en el paso Autorización (o en la orden) antes de enviar. Si esa regla ya no aplica, quítela en la ficha del cliente, panel «Ventas».
+
+**¿Qué significa "El cliente está suspendido: no se le puede solicitar una orden."?**
+El cliente está en estatus Suspendido (422), por ejemplo porque se rechazó como prospecto. Antes de solicitar, reactívelo (Cambiar estatus) si corresponde.
+
+**¿Qué significa "La orden espera la aprobación del cliente nuevo: no se puede despachar hasta que lo aprueben."?**
+El pedido es de un cliente prospecto (422). Está reservado, pero no se despacha hasta que alguien con `sales.approve_client` apruebe al cliente en su ficha. Si lo rechazan, la orden se cancela.
+
+### Forma de pago y consignación
+
+**¿Qué significa "La forma de pago debe ser COD_CHECK, COD_CASH, COD_ACH, CREDIT o CONSIGNMENT."?**
+Se mandó una forma de pago que no existe (400). Use una de esas cinco: contra entrega cheque, efectivo o ACH, crédito o consignación.
+
+**¿Qué significa "Indique el término del crédito (15, 20, 30 o 45 días, o cobra el representante)."?**
+Se escogió Crédito sin término (400). Escoja el término (NET15, NET20, NET30, NET45 o «cobra el representante»).
+
+**¿Qué significa "El término de pago solo se indica con la forma de pago Crédito."?**
+Se mandó un término con otra forma de pago (400). Quite el término, o cambie la forma a Crédito.
+
+**¿Qué significa "El término de pago no es de crédito."?**
+El código del término no es de crédito o no existe en el catálogo (400). Use NET15, NET20, NET30, NET45 o PK_BY_REP.
+
+**¿Qué significa "La venta en consignación exige la forma de pago Consignación."?**
+Se marcó «En consignación» con otra forma de pago (400). Cambie la forma de pago a Consignación, o desmarque la casilla.
+
+**La forma de pago salió vacía.**
+El cliente no tiene término de pago, o es `COD` u otro que no se traduce a una forma: el vendedor la escoge en el pedido. Para que se prellene, llene el término de pago en la ficha del cliente.
+
+**¿Qué significa la marca «Cambió la forma de pago»?**
+La forma de pago del pedido es distinta de la del cliente. La oficina decide si lo pasa al cliente. Un cliente «COD» que paga con cheque, efectivo o ACH no se marca.
+
+### Cargo de envío
+
+**¿Qué significa "El cargo de envío debe ser un monto mayor que cero con hasta 2 decimales."?**
+El cargo (de la compañía o del cliente) es cero, negativo o trae más de 2 decimales (400). Para quitar el cargo de la compañía mande 0 en Ajustes o deje el campo vacío; para el cliente use «No se le cobra envío».
+
+**¿Qué significa "El mínimo para envío gratis debe ser un monto de cero o más con hasta 2 decimales."?**
+El mínimo es negativo o trae más de 2 decimales (400). Vacío o 0 = sin mínimo.
+
+**¿Qué significa "La regla de envío debe ser COMPANY (la de la compañía), FREE (no se le cobra) u OWN (regla propia)."?**
+Valor inválido en la regla de envío del cliente (400). En la ficha escoja «La de la compañía», «No se le cobra envío» o «Regla propia».
+
+**¿Qué significa "La regla propia de envío necesita el cargo."?**
+Se escogió «Regla propia» sin cargo (400). Escriba el cargo (mayor que cero) y, si quiere, el mínimo para envío gratis.
+
+**¿Por qué mi pedido no lleva cargo de envío?**
+Es recogido; o el cliente tiene «No se le cobra envío»; o el total después del IVU llegó al mínimo («Gratis por monto»); o no hay cargo configurado (Ajustes → Operación → Ventas). El «Por qué» del resumen lo dice.
+
+**Cambié el cargo en Ajustes y mis órdenes viejas no cambiaron.**
+Es lo esperado: las órdenes ya solicitadas conservan su envío; los borradores toman la regla nueva al guardarse o solicitarse, y una vez facturado no cambia.
+
+**El cargo de envío no salió en la factura.**
+Entra una sola vez por orden, en la primera corrida que factura algo de esa orden. Si la orden no tiene cargo, o es recogida, no hay línea. Anular la factura o cancelar la corrida lo libera para la siguiente.
+
+### Cliente nuevo (prospecto)
+
+**¿Qué significa "El nombre del negocio es obligatorio."?**
+Falta el nombre en el alta mínima del cliente nuevo (400). Escríbalo (hasta 200 caracteres; si pasa, "No puede exceder 200 caracteres.").
+
+**¿Qué significa "El nombre del contacto es obligatorio."?**
+Falta la persona de contacto (400). Escriba su nombre (hasta 150 caracteres).
+
+**¿Qué significa "El teléfono es obligatorio." o "El teléfono debe tener 10 dígitos, sin espacios ni guiones."?**
+El teléfono falta o no son exactamente 10 dígitos (400). Escríbalo sin espacios ni guiones: `7875550100`. Lo mismo vale para el teléfono 2 (opcional).
+
+**¿Qué significa "La extensión admite solo dígitos (hasta 6)."?**
+La extensión trae letras o más de 6 dígitos (400). Déjela vacía o use solo números.
+
+**¿Qué significa "Correo inválido."?**
+El correo del cliente nuevo no tiene forma de correo (400). Corríjalo o déjelo vacío (es opcional).
+
+**¿Qué significa "El registro de comerciante no puede pasar de 50 caracteres."?**
+El SURI es más largo que el tope (400), en el alta o en el panel «Ventas» de la ficha.
+
+**¿Qué significa "La dirección física es obligatoria."?**
+Falta la línea 1 o el pueblo de la dirección física (400). Escríbalos; la dirección postal es opcional. Si la postal lleva línea 1 pero no pueblo: "La ciudad es obligatoria."
+
+**¿Qué significa "Término de pago desconocido: '…'."?**
+El código de forma de pago del cliente no existe en el catálogo de términos de pago (400). Use uno de la lista (CHEQUE, CASH, ACH, NET15, NET20, NET30, NET45, PK_BY_REP, CONSIGNMENT…).
+
+**¿Qué significa "El límite de crédito no puede ser negativo."?**
+Al aprobar se escribió un límite negativo (400). Escriba 0 o más.
+
+**¿Qué significa "El cliente no está pendiente de aprobación."?**
+Se pulsó Aprobar o Rechazar en un cliente que ya no es prospecto (422), por ejemplo porque otra persona lo aprobó. Recargue la ficha.
+
+**¿Qué significa "Escriba por qué se rechaza el cliente."?**
+Rechazar exige el motivo (400). Escríbalo (hasta 500 caracteres; si pasa, "El comentario admite como máximo 500 caracteres.").
+
+**¿Qué significa "Un cliente prospecto se aprueba o se rechaza con «Aprobar» o «Rechazar» (permiso sales.approve_client)."?**
+Alguien sin `sales.approve_client` intentó sacar al cliente de Prospecto con «Cambiar estatus» (403). Pida a quien tenga ese permiso (supervisor de ventas) que lo apruebe o rechace.
+
+**¿Qué significa "El tipo de documento debe ser MERCHANT_REGISTRATION, RESELLER_CERTIFICATE u OTHER."?**
+Falta o es inválido el tipo al subir un documento (400). Escoja «Registro de comerciante (SURI)», «Certificado de revendedor» u «Otro».
+
+**¿Qué significa "La nota del documento no puede pasar de 300 caracteres."?**
+La nota del documento es larga (400). Acórtela.
+
+**¿Qué significa "Subir documentos de este cliente exige el permiso de editar clientes (clients.update)."?**
+El vendedor (`clients.create_basic`) solo sube o quita documentos mientras el cliente es prospecto (403). Después los sube quien tenga `clients.update`.
+
+**¿Qué significa "Adjunte un archivo." / "Solo se admiten imágenes (JPG, PNG, WEBP, GIF) y PDF." / "El contenido del archivo no corresponde a su tipo."?**
+El archivo falta, no es de un tipo admitido o su contenido no coincide con su extensión (400). Suba una imagen o un PDF reales. Si dice "El archivo no puede pasar de {n} MB.", redúzcalo (por omisión 10 MB). "El almacén de archivos no está configurado (Files:MasterKey); avise a soporte." (422) es un tema del servidor: avise a soporte.
+
+**¿Quién ve el aviso de cliente nuevo?**
+Las filas de «Necesita tu atención» («Cliente nuevo por aprobar») las ve quien tenga `sales.approve_client`. Para la campana y el correo, el administrador debe crear la regla del evento «Cliente nuevo pendiente de aprobación» en Sistema → Reglas de aviso.
+
+**Rechacé al cliente y se cancelaron órdenes.**
+Es lo esperado: al rechazar, las órdenes abiertas (borrador o solicitadas) se cancelan y lo reservado se libera. El historial del cliente dice cuántas y por qué.
+
+## Lotes 223 y 226 — Pedido guiado (web y app móvil)
+<!-- kemi:staff -->
+
+Capítulo: [48 — Pedido guiado](48-pedido-guiado.md).
+
+**¿Qué significa "El paso del pedido debe ser CLIENT, PRODUCTS, DELIVERY o AUTHORIZATION."?**
+Se mandó un paso que no existe (400). Es un error de la integración: la web y la app mandan los cuatro pasos correctos.
+
+**¿Qué significa "Agregue al menos un producto a la orden."?**
+Se intentó guardar el paso 2 en adelante, o enviar el pedido, sin productos (400). Escriba una cantidad en algún producto.
+
+**¿Qué significa "Escoja a dónde se entrega el pedido o márquelo como recogido."?**
+El pedido es «Entrega» y no tiene a dónde (400). Escoja la dirección física del cliente u otra dirección, o márquelo «Recogido».
+
+**¿Qué significa "Dibuje la firma de quien autoriza el pedido."?**
+Se subió una firma vacía o el cliente la exige y no se dibujó (400). Dibuje la firma en el recuadro.
+
+**¿Qué significa "La firma debe ser una imagen PNG o JPG."?**
+El archivo de la firma no es PNG ni JPG (400). La web y la app mandan PNG; si usa el API, mande PNG o JPG.
+
+**¿Qué significa "Indique cómo se confirmó el envío del pedido: PASSWORD (contraseña) o BIOMETRIC (huella o rostro en la app)."?**
+El envío llegó sin método de confirmación (400). Error de integración: la web manda PASSWORD y la app BIOMETRIC o PASSWORD.
+
+**¿Qué significa "La reautenticación debe ser BIOMETRIC o PASSWORD."?**
+El método de confirmación no es válido (400). Mande PASSWORD o BIOMETRIC.
+
+**¿Qué significa "Escriba su contraseña para enviar el pedido."?**
+Se pulsó «Enviar» sin contraseña (400). Escriba la contraseña con la que entra a Teikem.
+
+**¿Qué significa "Contraseña incorrecta." al enviar un pedido?**
+La contraseña no es la de su usuario (400, en el campo de la contraseña). Cuenta para el bloqueo de la cuenta, como al iniciar sesión (5 intentos fallidos bloquean la cuenta 15 minutos). Si la olvidó, use «¿Olvidó su contraseña?» en el inicio de sesión.
+
+**¿Qué significa "Código MFA inválido." al enviar un pedido?**
+Su cuenta tiene verificación en dos pasos y el código es incorrecto o venció (400). Escriba el código vigente de su aplicación.
+
+**¿Qué significa "Esta acción requiere reautenticación reciente (AAL2)." al enviar con la huella?**
+La huella la valida el teléfono, pero el servidor exige que la sesión haya verificado contraseña y MFA hace poco (403, `aal2_required`; 30 minutos por omisión). La app lo resuelve pidiendo la contraseña (y el código MFA); escríbala y vuelva a enviar.
+
+**¿Qué significa "Solo se puede editar una orden en borrador." al cambiar la firma o el nombre?**
+La orden ya se envió (422). Después de enviar ya no se edita el pedido ni su firma; se modifican líneas ([18 §7](18-ordenes-de-venta.md#7-cancelar-y-modificar-una-orden-solicitada-lote-58)) o se cancela.
+
+**¿Qué significa "Solo se puede solicitar una orden en borrador."?**
+Se envió dos veces el mismo pedido o ya estaba solicitado (422). Abra la orden en Órdenes de venta y revise su estatus.
+
+**¿Qué significa "No alcanza el inventario de {SKU}: pedido {n}, disponible {n}, faltante {n}." al enviar?**
+Falta inventario (409). Aparece el diálogo de faltante: quitar la línea, pedir lo disponible, o **Enviar con backorder** para reservar lo que hay y dejar el resto pendiente.
+
+**¿Qué significa "El cliente excede su límite de crédito: límite {n}, en curso {n}, esta orden {n}." al enviar?**
+El pedido pasa el crédito del cliente (422). Solo quien tenga `orders.credit_override` puede enviarlo autorizando el crédito; si no, pídale que lo haga o ajuste el pedido.
+
+**¿Qué significa "La orden {número} ya no es un borrador: ábrala en Órdenes de venta."?**
+Abrió un enlace de un pedido en borrador que ya se envió o canceló. Ábralo desde Órdenes de venta.
+
+**No me aparece «Nuevo pedido» o «Pedidos».**
+Hace falta el permiso `sales.create` y el módulo Órdenes de venta encendido. En la app, además, la persona no puede ser «solo chofer».
+
+**Mis pedidos en la app está vacío.**
+La app muestra los pedidos que usted capturó (compara el nombre o el correo de la sesión con quien pidió) y exige `sales.view` para ver la lista; sin él puede hacer pedidos pero no verlos. Se miran los 200 más nuevos del filtro.
+
+**¿Por qué la app me pide la contraseña si ya puse la huella?**
+Porque el teléfono no tiene huella o rostro registrados, no se confirmó, o la verificación de la sesión venció. Cada caso muestra su explicación en la ventana.
+
+**«No se pudo consultar. Se necesita señal.»**
+El pedido guiado no tiene modo sin señal: sin conexión no se avanza. Lo ya guardado queda como borrador en el servidor; continúe cuando haya señal desde Pedidos → Mis pedidos.
+
+**La foto del cliente nuevo no se subió.**
+El cliente queda creado de todos modos («El cliente quedó creado, pero alguna foto no se pudo subir…»). Súbala después en la ficha del cliente, panel «Documentos del cliente».
+
+**El pedido del cliente nuevo salió con «Espera aprobación».**
+Es lo esperado: quedó reservado pero no se despacha hasta que el supervisor apruebe al cliente.
+
+## Lote 224 — Consignación
+<!-- kemi:staff -->
+
+Capítulo: [19 §4e](19-facturacion.md#4e-consignación-lote-224).
+
+**¿Qué significa "El pago ({X}) es mayor que el saldo en consignación de la factura ({Y})."?**
+El monto pasa de lo que falta por pagar de lo consignado: dejado − devuelto − pagado (422). Escriba un monto de hasta ese saldo, o el saldo completo para cerrarla.
+
+**¿Qué significa "El pago ({X}) es mayor que el saldo de la factura ({Y})."?**
+La factura ya tiene cobros por Pagos y su saldo es menor que el del pago de consignación (422). Registre el pago de consignación por el saldo de la factura que muestra el mensaje.
+
+**¿Qué significa "La factura no tiene nada en consignación."?**
+La factura no lleva líneas de órdenes marcadas «En consignación» (422). Revise que la orden se marcó en consignación antes de facturarla. En el detalle, si ninguna línea es de consignación, sale "Factura en consignación no encontrada." (404).
+
+**¿Qué significa "Solo se registran pagos de consignación de una factura emitida, vencida o pagada."?**
+La factura está en borrador o anulada (422). Apruebe la corrida para que se emita, o use otra factura.
+
+**¿Qué significa "Lo consignado en esta factura ya está pagado por completo."?**
+El saldo en consignación ya es cero (422). No hay nada más que registrar; si un pago estuvo mal, anúlelo.
+
+**¿Qué significa "El filtro debe ser OPEN, PAID o ALL."?**
+Se mandó otro valor en el filtro de saldo (400). Use Con saldo (OPEN), Pagadas por completo (PAID) o Todas (ALL).
+
+**¿Qué significa "Indique el monto del pago." / "El monto del pago debe ser mayor que cero y tener hasta 2 decimales."?**
+El monto falta, es cero o negativo, o trae más de 2 decimales (400). Escriba, por ejemplo, `150.00`.
+
+**¿Qué significa "Indique el método de pago." / "El método de pago no existe."?**
+Falta el método o no existe (400). Escoja ACH, cheque, tarjeta o efectivo: el pago de consignación también es el pago de la factura y lo exige.
+
+**¿Qué significa "La fecha del pago no puede ser futura." / "La fecha del pago no puede ser anterior a la emisión de la factura."?**
+La fecha del pago es posterior a hoy o anterior a la emisión (400). Escriba una fecha desde la emisión hasta hoy; en esa fecha cuenta como vendido.
+
+**¿Qué significa "La referencia no puede pasar de 80 caracteres."?**
+La referencia (número de cheque, ACH…) es más larga que el tope (400). Acórtela.
+
+**¿Qué significa "Escriba el motivo para anular el pago." / "El motivo no puede pasar de 250 caracteres."?**
+Anular exige un motivo de hasta 250 caracteres (400).
+
+**¿Qué significa "El pago ya está anulado."?**
+Se intentó anular un pago de consignación ya anulado (422). Recargue el detalle: los anulados aparecen marcados.
+
+**¿Qué significa "La factura ya está pagada por completo: un pago registrado por error se corrige con una nota de crédito o con soporte."?**
+Al anular un pago de consignación que dejó la factura saldada, Pagos no permite anularlo (422). Corrija con una nota de crédito o avise a soporte.
+
+**¿Qué significa "Esta acción requiere reautenticación reciente (AAL2)." al anular un pago?**
+Anular exige confirmar su contraseña (y el código MFA) hace poco (403). La pantalla se lo pide; escríbala y repita.
+
+**¿Qué significa "Pago de consignación no encontrado." o "Factura no encontrada."?**
+El identificador no existe o es de otra compañía (404). Recargue la lista.
+
+**No veo la pestaña Consignación en Facturación.**
+Hace falta `billing.view` o `billing.consignment.pay` y el módulo Facturación encendido. Para registrar pagos se necesita `billing.consignment.pay`.
+
+**Registré el pago y la factura cambió a Pagada.**
+Es lo esperado: el pago de consignación también es el pago de la factura; al saldarla pasa a Pagada.
+
+**Registré el pago de consignación y la venta del día no cambió.**
+Cuenta en la **fecha del pago** que escribió, no en la de la orden. Una orden en consignación no suma a «Ventas (30 días)» ni a «Ventas por día» hasta que se paga.
+
+**La factura de consignación venció.**
+Las facturas de consignación vencen como cualquier factura; el trabajo de vencidas no distingue la consignación.
+
+## Lote 225 — QuickBooks (archivo IIF)
+<!-- kemi:staff -->
+
+Capítulo: [49 — Facturas a QuickBooks](49-quickbooks.md).
+
+**¿Qué significa "No hay facturas por pasar a QuickBooks."?**
+Se pulsó Exportar y no hay facturas de venta emitidas sin marca (422). Ya están todas marcadas como en QuickBooks, o todavía no se emite ninguna factura con venta de producto.
+
+**¿Qué significa "Indique las facturas (invoiceIds) o pida todas (all = true)."?**
+Se pidió marcar o confirmar sin escoger facturas (400). Marque casillas o use «Marcar todas».
+
+**¿Qué significa "No se pueden marcar más de 1000 facturas en una sola llamada; use «todas»."?**
+Se mandaron más de 1000 facturas en una llamada (400). Use «Marcar todas» (la pantalla marca en tandas de 1000 las que se escogen una a una).
+
+**¿Qué significa "Alguna de las facturas indicadas no existe o no es una factura de venta emitida."?**
+Entre las facturas había una inexistente, de otra compañía, en borrador, anulada o sin venta de producto (400). Recargue la lista y vuelva a escoger.
+
+**¿Qué significa "La factura {número} no ha salido en ningún archivo de QuickBooks; para marcarla a mano use «Marcar como en QuickBooks»."?**
+Se quiso confirmar («Sí, ya están») una factura que nunca salió en un archivo (422). Si ya la capturó en QuickBooks por otro camino, use **Marcar como en QuickBooks** (permiso `sales.quickbooks.mark`).
+
+**¿Qué significa "El cuerpo de la solicitud es obligatorio."?**
+La llamada llegó sin datos (400). Error de integración.
+
+**¿Qué significa "El nombre de una cuenta de QuickBooks no puede pasar de 159 caracteres." / "El nombre de un ítem de QuickBooks no puede pasar de 31 caracteres." / "El nombre de un término de QuickBooks no puede pasar de 31 caracteres."?**
+Un nombre de Ajustes → QuickBooks pasa el límite de QuickBooks (400): cuentas 159, ítems 31, términos 31. Escriba el nombre exacto como está en QuickBooks.
+
+**¿Qué significa "El término de pago «…» no existe en el catálogo de términos de pago."?**
+En la tabla de términos se escribió un código que no existe (400). Use los códigos del catálogo (`NET15`, `NET30`, `COD`…) que aparecen en la tabla.
+
+**¿Qué significa el aviso "El nombre del cliente «…» pasa de 41 caracteres: QuickBooks no lo acepta como nombre de cliente."?**
+Aviso de la lista (no bloquea). Si el cliente es nuevo para QuickBooks, QuickBooks no lo aceptará con ese nombre: acórtelo, o llene «Código QuickBooks» con el nombre que tiene en QuickBooks.
+
+**¿Qué significa el aviso "El SKU «…» pasa de 31 caracteres: QuickBooks no lo acepta como nombre de ítem."?**
+Aviso de la lista (no bloquea). El archivo usa el SKU como nombre de ítem y QuickBooks admite 31 caracteres: acorte el SKU en Teikem.
+
+**¿Qué significa el aviso "El término «…» no tiene nombre en QuickBooks (Ajustes → Operación → QuickBooks): esas facturas salen sin término."?**
+Aviso de la lista (no bloquea). Agregue el nombre del término en Ajustes → Operación → QuickBooks → Términos de pago, o importe sabiendo que esas facturas quedarán sin término.
+
+**Exporté, importé y las facturas siguen en la lista.**
+Exportar no las marca. Después de importar pulse **Sí, ya están (N)** en «¿Ya importaste estas N?»; si ya salió de esa pantalla, use **Marcar como en QuickBooks**.
+
+**QuickBooks rechazó algunas facturas al importar.**
+Desmárquelas en «¿Ya importaste estas N?» y confirme el resto: las desmarcadas salen en el próximo archivo. Antes de reexportar, revise que los ítems se llamen como el SKU de Teikem, que el cliente exista y que los términos tengan nombre.
+
+**«N de estas ya salieron el {fecha} en un archivo y no se han confirmado».**
+Esas facturas se exportaron antes y nadie confirmó. Si ya están en QuickBooks, márquelas; si no, saldrán otra vez en el próximo archivo (exportar saca siempre todas las que no están marcadas).
+
+**Marqué una factura por error.**
+En «Ver las ya pasadas» use **Quitar la marca**: vuelve a «por pasar». Sus clientes y productos no vuelven a salir como nuevos.
+
+**¿Por qué el cliente sale como «Cliente nuevo» si ya existe en QuickBooks?**
+Teikem no sabe cómo se llama en QuickBooks. Llene su campo «Código QuickBooks» con el nombre exacto (esos clientes nunca son nuevos), o desmarque «Incluir los clientes y productos nuevos» al exportar.
+
+**¿Por qué todos los productos salen como «nuevos» la primera vez?**
+Los productos migrados no tienen la marca de «ya mandado». Soporte los marca con el script de datos de la compañía, y la primera exportación se hace sin los nuevos hasta confirmar los nombres de los ítems.
+
+**¿Cómo se importa el archivo en QuickBooks?**
+Archivo → Utilidades → Importar → Archivos IIF, y escoja el `.iif` que bajó Teikem. El archivo está en Windows-1252; los caracteres que no caben salen como «?».
+
+**No llega el aviso de «Facturas por pasar a QuickBooks».**
+El trabajo programado lo publica a las 07:00, uno al día y solo si hay facturas por pasar; a quién le llega por campana o correo lo decide una regla de aviso que debe crear el administrador (Sistema → Reglas de aviso). La fila de «Necesita tu atención» sale sola para quien tiene `sales.quickbooks.view`.
+
+**No veo la pestaña QuickBooks.**
+Hace falta alguno de `sales.quickbooks.view`, `sales.quickbooks.mark` o `sales.quickbooks.export` y el módulo Órdenes de venta encendido.

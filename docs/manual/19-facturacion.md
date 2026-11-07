@@ -2,7 +2,7 @@
 
 Lote 72 (P5, 2026-10-16). La **facturación** convierte lo que ya salió (despachado) en facturas al cliente, por **corridas** que se generan, se revisan, se aprueban y se exportan.
 Este capítulo describe las corridas y facturas de la **venta de producto** de las órdenes de venta ([capítulo 18](18-ordenes-de-venta.md)) y, desde el Lote 74, el **flete de las órdenes de
-transporte** (sección 2b) y, desde el Lote 75, los **pagos, el estado de cuenta y las cuentas por cobrar** (sección 4b). Desde el Lote 77, la **exportación a contabilidad** con plantillas (sección 4c) y, desde el Lote 79, las **notas de crédito** (sección 4d).
+transporte** (sección 2b) y, desde el Lote 75, los **pagos, el estado de cuenta y las cuentas por cobrar** (sección 4b). Desde el Lote 77, la **exportación a contabilidad** con plantillas (sección 4c) y, desde el Lote 79, las **notas de crédito** (sección 4d). Desde el Lote 224, la **consignación** (sección 4e) y, desde el Lote 222, el **cargo de envío** de las órdenes de venta (sección 2); las facturas de venta emitidas pasan a QuickBooks desde la pestaña de Órdenes de venta ([49](49-quickbooks.md)).
 
 ## 1. Quién puede y dónde
 
@@ -53,6 +53,8 @@ Si el desglose ya **no coincide** con lo cotizado a la orden (se cambió el mode
 **Nunca dos veces.** Al generar se bloquea cada orden y se marca `TransportOrder.FreightInvoiced`; dos corridas a la vez no facturan la misma orden. Cancelar la corrida o anular la factura la libera. Al crear la corrida se elige **qué facturar**: la venta de producto, el flete o las dos cosas (por omisión las dos; al menos una).
 
 El ajuste manual (sección 3) también aplica a las líneas de flete.
+
+**Cargo de envío de la orden de venta (Lote 222).** Si la orden tiene cargo de envío ([18 §20](18-ordenes-de-venta.md#20-cargo-de-envío-lote-222)), la corrida agrega una línea de servicio **«OV-##### — Cargo de envío»** (tipo de cargo `SHIPPING`, cantidad 1) **una sola vez por orden**, en la primera corrida que factura algo de esa orden (lo marca `SalesOrder.ShippingInvoiced`, bajo el bloqueo de la orden). Cancelar la corrida o anular la factura lo libera para la siguiente. El IVU del envío va en la línea cuando el ajuste «El envío lleva IVU» está encendido.
 
 ## 3. El ajuste manual
 
@@ -114,6 +116,71 @@ Una **nota de crédito** (`NC-#####`, un contador por compañía) le acredita al
 **Anular** (`POST .../void`, con motivo): una nota en borrador o aprobada **sin aplicaciones**. Una **factura con notas aprobadas o aplicadas no se puede anular** (anule primero la nota, si no se aplicó). Una factura **Pagada** se corrige ahora con una nota de crédito.
 
 **Estado de cuenta y por cobrar.** El estado de cuenta del cliente trae las notas aprobadas como movimientos de crédito (con su saldo corrido), el **saldo a favor** (`unappliedCredit`: lo aprobado que no se ha aplicado) y la antigüedad ya descuenta lo aplicado. Cuentas por cobrar trae la columna **saldo a favor** por cliente.
+
+## 4e. Consignación (Lote 224)
+
+<!-- kemi:staff -->
+
+Lote 224 (2026-11-07), pedido de vendedores, parte P6. Una venta **en consignación** deja producto al cliente **sin cobrar**; el cliente paga a medida que lo vende. La orden se marca «En consignación» ([18 §19](18-ordenes-de-venta.md#19-forma-de-pago-y-consignación-lote-222)); al facturarla, la factura queda en consignación y aquí se registran los **pagos** (parciales o totales). Los reportes de ventas **no cuentan** lo consignado hasta que se paga: cada pago cuenta por su monto en **su fecha de pago**.
+
+> Capturas pendientes (P8): la pestaña «Consignación» (vista «Facturas» y vista «Consignado por cliente»), la ventana «Registrar pago» y el detalle «Consignación de la factura».
+
+**Quién puede.** Módulo **Facturación (`BILLING`)**. Ver la pestaña: `billing.view` o **`billing.consignment.pay`**. Registrar pagos: `billing.consignment.pay` (implica entrar a Facturación; lo traen el Admin de compañía y el rol **Oficina de ventas**). Anular un pago: `billing.consignment.pay` y **reautenticación reciente (AAL2)**.
+
+**Las cifras de una factura en consignación.**
+- **En consignación** = una factura emitida, vencida o pagada (activa) con líneas de órdenes de venta marcadas en consignación: la venta del producto y el cargo de envío.
+- **Dejado** = esas líneas con su IVU. **Devuelto** = las notas de crédito **aprobadas o aplicadas** de esas líneas (la devolución de venta de siempre, [20](20-devoluciones-de-venta.md): no hay otra pantalla de devolución). **Pagado** = los pagos de consignación no anulados. **Saldo** = dejado − devuelto − pagado (nunca negativo).
+
+**Cómo se usa (pantalla).** Contabilidad → **Facturación** → pestaña **Consignación** (`/money/billing?tab=consignment`).
+1. Vista **Facturas** (por omisión «Con saldo»; también «Pagadas por completo» y «Todas»; buscador por factura, orden o cliente; filtro por cliente) o vista **Consignado por cliente** (qué se le dejó, qué devolvió, qué pagó y qué queda; tocar un cliente abre sus facturas con saldo).
+2. **Registrar pago**: escoja el cliente y la factura (la lista dice «{número} · saldo {importe}»), el **monto** (parcial o total), el **método**, la **fecha** y la **referencia**.
+3. Tocar una factura abre **«Consignación de la factura {número}»**: lo dejado por línea y sus pagos (también los anulados), con **Anular** (pide motivo y reautenticación).
+4. El Pulso del día muestra **«Consignación sin pagar»** (facturas con saldo) en el panel Ventas ([18 §22](18-ordenes-de-venta.md#22-avisos-pulso-y-análisis-del-pedido-de-vendedores-lotes-222-224-y-225)).
+
+**Cómo se usa (API)** (`/api/v1/billing/consignment`):
+
+| Acción | Llamada | Permiso |
+|---|---|---|
+| Lista (`balance=OPEN\|PAID\|ALL`, `clientPublicId`, `q`, `skip`, `take`) | `GET /invoices` | `billing.view` o `billing.consignment.pay` |
+| Una factura con sus líneas y pagos | `GET /invoices/{publicId}` | ídem |
+| Reporte «Consignado por cliente» | `GET /by-client` | ídem |
+| Registrar un pago | `POST /invoices/{publicId}/payments` `{ "amount": 100.00, "method": "CHECK", "paidDate": "2026-11-12", "reference": "Cheque 1042" }` | `billing.consignment.pay` |
+| Anular un pago | `POST /payments/{publicId}/void` `{ "reason": "Cheque rebotado" }` | `billing.consignment.pay` + AAL2 |
+
+**Reglas.**
+- **El pago de consignación es también el pago de la factura.** Si la factura todavía tiene saldo por cobrar, registrar el pago crea el pago de siempre (mismas reglas que Pagos; la factura pasa a **Pagada** al saldarse) y queda ligado: no se entra dos veces. Si la factura ya se cobró por Pagos, el pago de consignación solo informa lo vendido.
+- Se pide el **método** (ACH, cheque, tarjeta o efectivo), además de monto, fecha y referencia. La fecha por omisión es hoy.
+- **Anular** un pago (con motivo y AAL2) anula también su pago de la factura; no se puede si la factura ya quedó pagada por completo. Anular el pago desde Pagos también lo saca de la consignación.
+- **Vencimiento**: las facturas de consignación vencen como cualquier factura (el trabajo de vencidas no sabe de consignación).
+- **Qué cuenta como vendido**: la fuente de análisis «Ventas (lo vendido)» ([18 §22](18-ordenes-de-venta.md#22-avisos-pulso-y-análisis-del-pedido-de-vendedores-lotes-222-224-y-225)).
+
+| Campo / situación | Regla | Mensaje exacto | HTTP |
+|---|---|---|---|
+| Cuerpo | Obligatorio | `El cuerpo de la solicitud es obligatorio.` | 400 |
+| Monto | Obligatorio | `Indique el monto del pago.` | 400 (`amount`) |
+| Monto | Mayor que cero, hasta 2 decimales | `El monto del pago debe ser mayor que cero y tener hasta 2 decimales.` | 400 |
+| Método | Obligatorio / debe existir | `Indique el método de pago.` / `El método de pago no existe.` | 400 (`method`) |
+| Fecha | No futura | `La fecha del pago no puede ser futura.` | 400 (`paidDate`) |
+| Fecha | No antes de la emisión | `La fecha del pago no puede ser anterior a la emisión de la factura.` | 400 |
+| Referencia | Hasta 80 | `La referencia no puede pasar de 80 caracteres.` | 400 (`reference`) |
+| Factura inexistente | — | `Factura no encontrada.` | 404 |
+| Factura en borrador o anulada | — | `Solo se registran pagos de consignación de una factura emitida, vencida o pagada.` | 422 |
+| Factura sin nada en consignación | — | `La factura no tiene nada en consignación.` | 422 |
+| Detalle de una factura sin consignación | — | `Factura en consignación no encontrada.` | 404 |
+| Todo lo consignado ya pagado | — | `Lo consignado en esta factura ya está pagado por completo.` | 422 |
+| Pago mayor que el saldo en consignación | — | `El pago ({X}) es mayor que el saldo en consignación de la factura ({Y}).` | 422 |
+| Pago mayor que el saldo de la factura (lo demás ya se cobró por Pagos) | — | `El pago ({X}) es mayor que el saldo de la factura ({Y}).` | 422 |
+| Filtro | OPEN, PAID o ALL | `El filtro debe ser OPEN, PAID o ALL.` | 400 (`balance`) |
+| Anular sin motivo / motivo largo | Hasta 250 | `Escriba el motivo para anular el pago.` / `El motivo no puede pasar de 250 caracteres.` | 400 (`reason`) |
+| Pago de consignación inexistente | — | `Pago de consignación no encontrado.` | 404 |
+| Pago ya anulado | — | `El pago ya está anulado.` | 422 |
+| Anular cuando la factura ya está pagada por completo | — | `La factura ya está pagada por completo: un pago registrado por error se corrige con una nota de crédito o con soporte.` | 422 |
+| Anular sin reautenticación reciente | — | `Esta acción requiere reautenticación reciente (AAL2).` | 403 (`aal2_required`) |
+| Sin el permiso | — | `Falta el permiso 'billing.consignment.pay'.` | 403 |
+
+**Estatus de la factura y la consignación.** No hay estatus propio de consignación: el saldo se **calcula al leer**. Solo se registran pagos con la factura **Emitida**, **Vencida** o **Pagada**; **Borrador** y **Anulada** no admiten pagos de consignación. Registrar el pago que salda la factura la pasa a Pagada (con su pago de la factura). Una vez Pagada, anular ese pago ya no se puede (regla de Pagos: el último mensaje de la tabla).
+
+**Para soporte.** Tabla `ConsignmentPayment` (factura, monto, `PaidDate`, método, referencia, quién y cuándo, `PaymentId` del pago de la factura que generó y la anulación `VoidedAtUtc`/`VoidedBy`/`VoidReason`), permiso `billing.consignment.pay` (marca `L224_CONSIGNMENT` para los roles clonados de Admin de compañía y Oficina de ventas) y la conversión de «Ventas (30 días)» / «Ventas por día» a la fuente «Ventas (lo vendido)» (sección «2026-11-07 — Lote 224» de `Diseño/logistica-db-update.sql`). Con muchas facturas de consignación convendría guardar el saldo en la factura; hoy no hace falta.
 
 ## 5. Validaciones y mensajes
 

@@ -2,7 +2,7 @@
 
 Batch 72 (P5, 2026-10-16). **Billing** turns what already went out (dispatched) into invoices to the client, through **runs** that are generated, reviewed, approved and exported.
 This chapter describes the runs and invoices of the **product sales** of sales orders ([chapter 18](18-ordenes-de-venta.md)) and, since Batch 74, the **freight of transport
-orders** (section 2b) and, since Batch 75, **payments, the statement and accounts receivable** (section 4b). Since Batch 77, the **export to accounting** with templates (section 4c) and, since Batch 79, **credit notes** (section 4d).
+orders** (section 2b) and, since Batch 75, **payments, the statement and accounts receivable** (section 4b). Since Batch 77, the **export to accounting** with templates (section 4c) and, since Batch 79, **credit notes** (section 4d). Since Batch 224, **consignment** (section 4e) and, since Batch 222, the **shipping charge** of sales orders (section 2); issued sales invoices go to QuickBooks from the Sales orders tab ([49](49-quickbooks.md)). In this edition, messages in code font are the exact Spanish text the server sends, followed by their English meaning.
 
 ## 1. Who can and where
 
@@ -53,6 +53,8 @@ If the breakdown **no longer matches** what was quoted to the order (the contrac
 **Never twice.** When generating, each order is locked and `TransportOrder.FreightInvoiced` is set; two runs at the same time do not invoice the same order. Cancelling the run or voiding the invoice releases it. When creating the run you choose **what to bill**: product sales, freight or both (by default both; at least one).
 
 The manual adjustment (section 3) also applies to freight lines.
+
+**Shipping charge of the sales order (Batch 222).** If the order has a shipping charge ([18 §20](18-ordenes-de-venta.md#20-shipping-charge-batch-222)), the run adds a service line **«OV-##### — Cargo de envío»** (charge type `SHIPPING`, quantity 1) **once per order**, in the first run that invoices something of that order (marked by `SalesOrder.ShippingInvoiced`, under the order lock). Cancelling the run or voiding the invoice frees it for the next one. The shipping's IVU goes on the line when the «Shipping carries IVU» setting is on.
 
 ## 3. The manual adjustment
 
@@ -114,6 +116,71 @@ A **credit note** (`NC-#####`, one counter per company) credits the client part 
 **Void** (`POST .../void`, with a reason): a draft or approved note **without applications**. An **invoice with approved or applied notes cannot be voided** (void the note first, if it was not applied). A **Paid** invoice is now corrected with a credit note.
 
 **Statement and receivables.** The client's statement brings the approved notes as credit movements (with their running balance), the **credit balance** (`unappliedCredit`: what is approved and has not been applied) and the aging already deducts what was applied. Accounts receivable brings the **credit balance** column per client.
+
+## 4e. Consignment (Batch 224)
+
+<!-- kemi:staff -->
+
+Batch 224 (2026-11-07), salespeople's order, part P6. A sale **on consignment** leaves product with the client **unpaid**; the client pays as they sell it. The order is marked «On consignment» ([18 §19](18-ordenes-de-venta.md#19-payment-method-and-consignment-batch-222)); when invoiced, the invoice is on consignment and the **payments** (partial or full) are recorded here. Sales reports **do not count** what is consigned until it is paid: each payment counts for its amount on **its payment date**.
+
+> Screenshots pending (P8): the «Consignment» tab («Invoices» view and «Consigned by customer» view), the «Record payment» window and the «Consignment of invoice» detail.
+
+**Who can.** Module **Billing (`BILLING`)**. See the tab: `billing.view` or **`billing.consignment.pay`**. Record payments: `billing.consignment.pay` (implies entering Billing; the Company admin and the **Sales office** role have it). Void a payment: `billing.consignment.pay` and **recent re-authentication (AAL2)**.
+
+**The figures of a consignment invoice.**
+- **On consignment** = an issued, overdue or paid (active) invoice with lines from sales orders marked as consignment: the sale of the product and the shipping charge.
+- **Left** = those lines with their IVU. **Returned** = the **approved or applied** credit notes of those lines (the usual sales return, [20](20-devoluciones-de-venta.md): there is no other return screen). **Paid** = the consignment payments not voided. **Balance** = left − returned − paid (never negative).
+
+**How to use it (screen).** Accounting → **Billing** → **Consignment** tab (`/money/billing?tab=consignment`).
+1. **Invoices** view (default «With balance»; also «Fully paid» and «All»; search by invoice, order or customer; filter by customer) or **Consigned by customer** view (what was left, what they returned, what they paid and what remains; tapping a customer opens its invoices with a balance).
+2. **Record payment**: choose the customer and the invoice (the list says «{number} · balance {amount}»), the **amount** (partial or full), the **method**, the **date** and the **reference**.
+3. Tapping an invoice opens **«Consignment of invoice {number}»**: what was left per line and its payments (voided ones too), with **Void** (asks for a reason and re-authentication).
+4. The Day pulse shows **«Unpaid consignment»** (invoices with a balance) in the Sales panel ([18 §22](18-ordenes-de-venta.md#22-notices-pulse-and-analytics-of-the-sales-rep-order-batches-222-224-and-225)).
+
+**How to use it (API)** (`/api/v1/billing/consignment`):
+
+| Action | Call | Permission |
+|---|---|---|
+| List (`balance=OPEN\|PAID\|ALL`, `clientPublicId`, `q`, `skip`, `take`) | `GET /invoices` | `billing.view` or `billing.consignment.pay` |
+| One invoice with its lines and payments | `GET /invoices/{publicId}` | same |
+| «Consigned by customer» report | `GET /by-client` | same |
+| Record a payment | `POST /invoices/{publicId}/payments` `{ "amount": 100.00, "method": "CHECK", "paidDate": "2026-11-12", "reference": "Check 1042" }` | `billing.consignment.pay` |
+| Void a payment | `POST /payments/{publicId}/void` `{ "reason": "Bounced check" }` | `billing.consignment.pay` + AAL2 |
+
+**Rules.**
+- **The consignment payment is also the invoice payment.** If the invoice still has a balance to collect, recording the payment creates the usual payment (same rules as Payments; the invoice becomes **Paid** when settled) and it stays linked: it is not entered twice. If the invoice was already collected through Payments, the consignment payment only reports what was sold.
+- The **method** (ACH, check, card or cash) is asked, besides amount, date and reference. The default date is today.
+- **Voiding** a payment (with a reason and AAL2) also voids its invoice payment; it cannot be done if the invoice is already fully paid. Voiding the payment from Payments also removes it from the consignment.
+- **Due date**: consignment invoices become overdue like any invoice (the overdue job does not know about consignment).
+- **What counts as sold**: the analytics source «Sales (what was sold)» ([18 §22](18-ordenes-de-venta.md#22-notices-pulse-and-analytics-of-the-sales-rep-order-batches-222-224-and-225)).
+
+| Field / situation | Rule | Exact message (Spanish, as sent) | Meaning | HTTP |
+|---|---|---|---|---|
+| Body | Required | `El cuerpo de la solicitud es obligatorio.` | The request body is required. | 400 |
+| Amount | Required | `Indique el monto del pago.` | Give the payment amount. | 400 (`amount`) |
+| Amount | Greater than zero, up to 2 decimals | `El monto del pago debe ser mayor que cero y tener hasta 2 decimales.` | The payment amount must be greater than zero with up to 2 decimals. | 400 |
+| Method | Required / must exist | `Indique el método de pago.` / `El método de pago no existe.` | Give the payment method. / The payment method does not exist. | 400 (`method`) |
+| Date | Not in the future | `La fecha del pago no puede ser futura.` | The payment date cannot be in the future. | 400 (`paidDate`) |
+| Date | Not before issue | `La fecha del pago no puede ser anterior a la emisión de la factura.` | The payment date cannot be earlier than the invoice issue. | 400 |
+| Reference | Up to 80 | `La referencia no puede pasar de 80 caracteres.` | The reference cannot exceed 80 characters. | 400 (`reference`) |
+| Invoice does not exist | — | `Factura no encontrada.` | Invoice not found. | 404 |
+| Draft or voided invoice | — | `Solo se registran pagos de consignación de una factura emitida, vencida o pagada.` | Consignment payments are only recorded for an issued, overdue or paid invoice. | 422 |
+| Invoice with nothing on consignment | — | `La factura no tiene nada en consignación.` | The invoice has nothing on consignment. | 422 |
+| Detail of an invoice without consignment | — | `Factura en consignación no encontrada.` | Consignment invoice not found. | 404 |
+| Everything consigned already paid | — | `Lo consignado en esta factura ya está pagado por completo.` | What was consigned on this invoice is already fully paid. | 422 |
+| Payment greater than the consignment balance | — | `El pago ({X}) es mayor que el saldo en consignación de la factura ({Y}).` | The payment ({X}) exceeds the invoice's consignment balance ({Y}). | 422 |
+| Payment greater than the invoice balance (the rest was already collected through Payments) | — | `El pago ({X}) es mayor que el saldo de la factura ({Y}).` | The payment ({X}) exceeds the invoice balance ({Y}). | 422 |
+| Filter | OPEN, PAID or ALL | `El filtro debe ser OPEN, PAID o ALL.` | The filter must be OPEN, PAID or ALL. | 400 (`balance`) |
+| Void without a reason / long reason | Up to 250 | `Escriba el motivo para anular el pago.` / `El motivo no puede pasar de 250 caracteres.` | Write the reason for voiding the payment. / The reason cannot exceed 250 characters. | 400 (`reason`) |
+| Consignment payment does not exist | — | `Pago de consignación no encontrado.` | Consignment payment not found. | 404 |
+| Payment already voided | — | `El pago ya está anulado.` | The payment is already voided. | 422 |
+| Voiding when the invoice is already fully paid | — | `La factura ya está pagada por completo: un pago registrado por error se corrige con una nota de crédito o con soporte.` | The invoice is already fully paid: a payment recorded by mistake is fixed with a credit note or with support. | 422 |
+| Voiding without recent re-authentication | — | `Esta acción requiere reautenticación reciente (AAL2).` | This action requires recent re-authentication (AAL2). | 403 (`aal2_required`) |
+| Without the permission | — | `Falta el permiso 'billing.consignment.pay'.` | Permission 'billing.consignment.pay' is missing. | 403 |
+
+**Invoice status and consignment.** There is no consignment status of its own: the balance is **calculated when read**. Payments are only recorded with the invoice **Issued**, **Overdue** or **Paid**; **Draft** and **Voided** do not admit consignment payments. Recording the payment that settles the invoice makes it Paid (with its invoice payment). Once Paid, voiding that payment is no longer possible (Payments rule: the last message in the table).
+
+**For support.** Table `ConsignmentPayment` (invoice, amount, `PaidDate`, method, reference, who and when, `PaymentId` of the invoice payment it generated and the voiding `VoidedAtUtc`/`VoidedBy`/`VoidReason`), permission `billing.consignment.pay` (mark `L224_CONSIGNMENT` for the cloned Company admin and Sales office roles) and the conversion of the «Ventas (30 días)» / «Ventas por día» indicator and chart to the «Sales (what was sold)» source (section «2026-11-07 — Lote 224» of `Diseño/logistica-db-update.sql`). With many consignment invoices it would be worth storing the balance on the invoice; today it is not needed.
 
 ## 5. Validations and messages
 

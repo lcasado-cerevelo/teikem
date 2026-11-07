@@ -147,7 +147,7 @@ Cómo se usa:
 
 Estatus (`ClientStatus`), desde 2026-10-21 en este orden: **PROSPECT** (pipeline) → **ACTIVE** (inicial: el cliente nuevo nace Activo); **SUSPENDED** (lateral, reversible). El dominio **no tiene etapa terminal**: «Dar de baja» no es un estatus, desactiva al cliente (queda oculto salvo «Mostrar inactivos»). Cada compañía puede apagar «Prospecto» o cambiar los nombres y el orden en **Sistema → Catálogos → Estatus** (capítulo 01, sección 5). Las
 transiciones pasan por el motor de estatus del capítulo 01 (sección 5): se valida la etapa, se escribe el historial
-(`GET /api/v1/status/history/CLIENT/{id}`) y se disparan efectos. Un cliente **SUSPENDED** no puede activar contratos (ver 4.7).
+(`GET /api/v1/status/history/CLIENT/{id}`) y se disparan efectos. Un cliente **SUSPENDED** no puede activar contratos (ver 4.7) ni solicitar órdenes de venta. Un cliente **PROSPECT** nace del alta mínima desde un pedido y sale de ese estatus con «Aprobar» o «Rechazar» (sección 1.8).
 
 Cómo se usa: `POST /api/v1/clients/{publicId}/status` `{ "toCode": "SUSPENDED", "comment": "morosidad" }` (`clients.update`).
 
@@ -169,6 +169,93 @@ Quién puede: `clients.update`. Cómo se usa: `POST /api/v1/clients/{publicId}/d
 > servicios especiales, invitaciones de portal) con `409` `El cliente está dado de baja; solo se consulta su historial.`; **desde 2026-10-11 (D39) también la
 > cotización** (`POST /api/v1/billing/contract-rate-quote`) responde ese mismo 409;
 > las lecturas y los cierres/cancelaciones siguen permitidos. Ver [capítulo 03, sección 5](03-ordenes-de-transporte.md#5-cliente-dado-de-baja-se-bloquea-solo-lo-nuevo).
+
+### 1.8 Cliente prospecto: alta mínima y aprobación (Lote 222)
+
+<!-- kemi:staff -->
+
+Lote 222 (2026-11-07), pedido de vendedores. Un vendedor que atiende a un negocio que todavía no es cliente puede darlo de alta **desde el pedido**, sin contrato ni numeración a mano. El cliente nace **Prospecto** (`PROSPECT`) y el supervisor de ventas lo **aprueba** o lo **rechaza**. Mientras es prospecto se le puede armar y solicitar un pedido (se reserva), pero el pedido **no se despacha** ([18 §21](18-ordenes-de-venta.md#21-cliente-nuevo-prospecto-y-la-orden-lote-222)).
+
+> Capturas pendientes (P8): la ficha de un prospecto (banner «Cliente nuevo», botones Aprobar y Rechazar), los paneles «Ventas» y «Documentos del cliente», y las ventanas de aprobar y rechazar.
+
+**Quién puede.** Módulo **CATALOG** (y Órdenes de venta para el pedido).
+- Alta mínima: **`clients.create_basic`** (rol Ventas) o `clients.create`.
+- Aprobar y rechazar: **`sales.approve_client`** (rol Supervisor de ventas y Admin de compañía). Implica poder ver clientes (`clients.read`).
+- Documentos: `clients.read` para verlos; subirlos o quitarlos, `clients.update`, o `clients.create_basic` **solo mientras el cliente es prospecto**.
+- Perfil de ventas (SURI, envío, firma): `clients.update`.
+
+**Alta mínima (cómo se usa).** En el pedido guiado, paso 1 → **Cliente nuevo** ([48](48-pedido-guiado.md)). API: `POST /api/v1/clients/basic`:
+
+```json
+{ "name": "Farmacia Central", "legalName": "Farmacia Central Inc.", "contactName": "Ana Pérez",
+  "phone": "7875550100", "phoneExtension": "12", "phone2": "7875550101", "email": "compras@farmaciacentral.example",
+  "merchantRegistration": "SURI-123456",
+  "physicalAddress": { "line1": "Calle Sol 12", "line2": "Local 3", "city": "Caguas", "postalCode": "00725" },
+  "postalAddress": null, "paymentTerm": "NET30" }
+```
+
+Qué hace, todo en una transacción: crea el cliente (código y numeración automáticos; nace **Prospecto** por el motor de estatus, con historial), su **contacto principal** con los teléfonos y el correo, la **dirección física** (tipo corporativa) y, si se manda, la **postal** (tipo facturación), guarda el SURI y publica el aviso **«Cliente nuevo pendiente de aprobación»**. No crea contrato. La forma de pago del cliente es su **término de pago** (`paymentTerm`, código del catálogo: `CHEQUE`, `CASH`, `ACH`, `NET15`…, `PK_BY_REP`, `CONSIGNMENT`…). Las **fotos** del registro de comerciante y del certificado de revendedor se suben después, como documentos (abajo). El pueblo se escoge de la lista de pueblos en la web y se escribe en la app, pero el servidor **no lo valida** contra la lista de códigos postales; la dirección postal es opcional y solo se guarda si trae línea 1.
+
+**Aprobar** (`POST /api/v1/clients/{publicId}/approve`, `{ "creditLimit": 5000, "paymentTerm": "NET30", "comment": "Referencias verificadas" }`; todo opcional): el cliente pasa **Prospecto → Activo**, con el **límite de crédito** y el **término de pago** con que queda (lo que no viene no cambia). Deja en el historial de estatus el comentario «Aprobado por {nombre}: límite de crédito {$…}, término {…}.» más lo que se escriba. Sus órdenes dejan de «esperar aprobación» y ya se pueden despachar. En la ficha: botón **Aprobar** → «Aprobar a {nombre}».
+
+**Rechazar** (`POST /api/v1/clients/{publicId}/reject`, `{ "comment": "Sin registro de comerciante" }`; el comentario es **obligatorio**): el cliente pasa **Prospecto → Suspendido**, sus **órdenes abiertas** (borrador o solicitadas) se **cancelan** liberando lo reservado, y el historial dice «Rechazado por {nombre} (N orden(es) abierta(s) cancelada(s)): …». La respuesta trae el cliente y los números de las órdenes canceladas. En la ficha: botón **Rechazar** → «Motivo del rechazo (obligatorio)».
+
+**Documentos del cliente** (panel «Documentos del cliente» de la ficha). `GET /api/v1/clients/{publicId}/documents` · `POST …/documents` (multipart: `file`, `documentType` = `MERCHANT_REGISTRATION` «Registro de comerciante (SURI)», `RESELLER_CERTIFICATE` «Certificado de revendedor» u `OTHER` «Otro», `notes` opcional) · `DELETE …/documents/{documentPublicId}` (quita en lógico: el archivo se queda). Admite JPG, PNG, WEBP, GIF y PDF (por su contenido), hasta el tope del almacén de archivos (10 MB por omisión). El archivo se ve con `GET /files/{filePublicId}`.
+
+**Perfil de ventas** (panel «Ventas» de la ficha; `PATCH /api/v1/clients/{publicId}/profile`):
+
+| Campo | Qué hace | Regla |
+|---|---|---|
+| **SURI (registro de comerciante)** `merchantRegistration` | Número de registro de comerciante | Hasta 50 caracteres; `""` lo quita |
+| **Envío de sus pedidos** `shippingMode` | «La de la compañía» (`COMPANY` o vacío, por omisión), «No se le cobra envío» (`FREE`) o «Regla propia» (`OWN`) | Con `OWN`, `shippingCharge` obligatorio y mayor que cero; `shippingFreeFrom` opcional (vacío o 0 = sin mínimo, se compara con el total después del IVU). Al dejar la regla propia se borran su cargo y su mínimo |
+| **Firma de quien autoriza** `requireOrderSignature` | «Exige la firma de quien autoriza el pedido»: sin nombre y firma, su pedido no se puede solicitar | Verdadero o falso |
+
+Cómo se calcula el envío: [18 §20](18-ordenes-de-venta.md#20-cargo-de-envío-lote-222).
+
+**Estatus y transiciones del prospecto** (`ClientStatus`: orden **Prospecto** → **Activo**; **Suspendido** es lateral):
+
+| De → a | Quién | Qué valida | Efectos | Qué queda bloqueado |
+|---|---|---|---|---|
+| (nuevo) → Prospecto | `clients.create_basic` o `clients.create` | Los datos del alta mínima | Historial; aviso «Cliente nuevo pendiente de aprobación»; fila «Cliente nuevo por aprobar» en «Necesita tu atención» | Sus pedidos se reservan pero no se despachan |
+| Prospecto → Activo (**Aprobar**) | `sales.approve_client` | Que sea prospecto; límite ≥ 0; término existente | Límite y término; comentario de constancia; las órdenes dejan de esperar | Nada: ya se despacha |
+| Prospecto → Suspendido (**Rechazar**) | `sales.approve_client` | Que sea prospecto; comentario obligatorio | Cancela sus órdenes abiertas; comentario de constancia | No puede solicitar órdenes de venta ni activar contratos |
+| Prospecto → otro estatus por «Cambiar estatus» | `clients.update` **y** `sales.approve_client` | Reglas del motor de estatus | Sin la constancia ni los efectos de Aprobar / Rechazar | Sin `sales.approve_client`: 403 |
+
+Un cliente **Suspendido** no puede solicitar órdenes de venta (antes sí podía). Desde Suspendido, el motor de estatus solo deja volver a la etapa de la que venía (Prospecto) o avanzar a la siguiente (Activo) con «Cambiar estatus» (`clients.update`); esa vuelta no se probó en este lote.
+
+| Campo / situación | Regla | Mensaje exacto | HTTP |
+|---|---|---|---|
+| Cuerpo | Obligatorio | `El cuerpo de la solicitud es obligatorio.` | 400 |
+| Negocio `name` | Obligatorio, hasta 200 | `El nombre del negocio es obligatorio.` / `No puede exceder 200 caracteres.` | 400 |
+| DBA `legalName` | Hasta 250 | `No puede exceder 250 caracteres.` | 400 |
+| Contacto `contactName` | Obligatorio, hasta 150 | `El nombre del contacto es obligatorio.` / `No puede exceder 150 caracteres.` | 400 |
+| Teléfono `phone` | Obligatorio, 10 dígitos | `El teléfono es obligatorio.` / `El teléfono debe tener 10 dígitos, sin espacios ni guiones.` | 400 |
+| Teléfono 2 `phone2` | Opcional, 10 dígitos | `El teléfono debe tener 10 dígitos, sin espacios ni guiones.` | 400 (`phone2`) |
+| Extensión `phoneExtension` | Solo dígitos, hasta 6 | `La extensión admite solo dígitos (hasta 6).` | 400 |
+| Correo `email` | Opcional, válido | `Correo inválido.` | 400 (`email`) |
+| SURI `merchantRegistration` | Hasta 50 | `El registro de comerciante no puede pasar de 50 caracteres.` | 400 |
+| Dirección física | Línea 1 y pueblo | `La dirección física es obligatoria.` | 400 (`physicalAddress`) |
+| Dirección postal | Con línea 1 lleva pueblo | `La ciudad es obligatoria.` | 400 (`postalAddress.city`) |
+| Término de pago | Debe existir | `Término de pago desconocido: '{código}'.` | 400 (`paymentTerm`) |
+| Aprobar: límite | Cero o más | `El límite de crédito no puede ser negativo.` | 400 (`creditLimit`) |
+| Aprobar o rechazar un cliente que no es prospecto | — | `El cliente no está pendiente de aprobación.` | 422 |
+| Rechazar sin motivo | Obligatorio | `Escriba por qué se rechaza el cliente.` | 400 (`comment`) |
+| Rechazar con motivo largo | Hasta 500 | `El comentario admite como máximo 500 caracteres.` | 400 |
+| Sacar a un prospecto con «Cambiar estatus» sin `sales.approve_client` | — | `Un cliente prospecto se aprueba o se rechaza con «Aprobar» o «Rechazar» (permiso sales.approve_client).` | 403 |
+| Cliente inexistente | — | `Cliente no encontrado.` | 404 |
+| Documento: tipo | MERCHANT_REGISTRATION, RESELLER_CERTIFICATE u OTHER | `El tipo de documento debe ser MERCHANT_REGISTRATION, RESELLER_CERTIFICATE u OTHER.` | 400 (`documentType`) |
+| Documento: nota | Hasta 300 | `La nota del documento no puede pasar de 300 caracteres.` | 400 (`notes`) |
+| Documento: permiso | `clients.update` (o `clients.create_basic` con el cliente prospecto) | `Subir documentos de este cliente exige el permiso de editar clientes (clients.update).` | 403 |
+| Documento: sin archivo | — | `Adjunte un archivo.` | 400 (`file`) |
+| Documento: tipo de archivo | JPG, PNG, WEBP, GIF o PDF | `Solo se admiten imágenes (JPG, PNG, WEBP, GIF) y PDF.` / `El contenido del archivo no corresponde a su tipo.` | 400 |
+| Documento: tamaño | Hasta el tope | `El archivo no puede pasar de {n} MB.` | 400 |
+| Documento inexistente | — | `Documento '{id}' no encontrado.` | 404 |
+| Almacén de archivos sin llave | — | `El almacén de archivos no está configurado (Files:MasterKey); avise a soporte.` | 422 |
+| Perfil: regla de envío | COMPANY, FREE u OWN | `La regla de envío debe ser COMPANY (la de la compañía), FREE (no se le cobra) u OWN (regla propia).` | 400 (`shippingMode`) |
+| Perfil: regla propia sin cargo | — | `La regla propia de envío necesita el cargo.` | 400 |
+| Perfil: cargo | Mayor que cero, hasta 2 decimales | `El cargo de envío debe ser un monto mayor que cero con hasta 2 decimales.` | 400 |
+| Perfil: mínimo | Cero o más, hasta 2 decimales | `El mínimo para envío gratis debe ser un monto de cero o más con hasta 2 decimales.` | 400 |
+| Sin el permiso | — | `Falta el permiso 'sales.approve_client'.` (o el que corresponda) | 403 |
 
 ---
 
@@ -866,6 +953,8 @@ bitácora de seguridad sin identificar al usuario.
 | `contracts.read` | contratos, tarifas, cotización, servicios especiales y tipos (lectura) |
 | `contracts.create` / `contracts.update` | crear contratos / editar contratos, tarifas, tramos y servicios especiales |
 | `portalusers.manage` | usuarios de portal del cliente (módulo CLIENT_PORTAL) |
+| `clients.create_basic` | alta mínima del cliente desde un pedido (nace prospecto) y subir sus documentos mientras es prospecto (Lote 222, §1.8) |
+| `sales.approve_client` | aprobar o rechazar clientes prospecto (Lote 222, §1.8) |
 
 Las rutas transversales del capítulo 1 aplican el permiso de la entidad dueña: `GET /api/v1/contacts/CLIENT|CLIENT_CONTACT/{id}`,
 `GET /api/v1/status/history/CLIENT/{id}` y `GET /api/v1/custom-fields/values/CLIENT/{id}` exigen `clients.read`

@@ -147,7 +147,7 @@ How it is used:
 
 Statuses (`ClientStatus`), since 2026-10-21 in this order: **PROSPECT** (pipeline) → **ACTIVE** (initial: the new client is born Active); **SUSPENDED** (lateral, reversible). The domain **has no terminal stage**: “Deactivate” is not a status, it deactivates the client (it stays hidden unless “Show inactive” is on). Each company can turn off “Prospect” or change the names and the order in **System → Catalogs → Statuses** (chapter 01, section 5). The
 transitions go through the status engine of chapter 01 (section 5): the stage is validated, the history is written
-(`GET /api/v1/status/history/CLIENT/{id}`) and effects are triggered. A **SUSPENDED** client cannot activate contracts (see 4.7).
+(`GET /api/v1/status/history/CLIENT/{id}`) and effects are triggered. A **SUSPENDED** client cannot activate contracts (see 4.7) nor request sales orders. A **PROSPECT** client is born from the minimal sign-up in an order and leaves that status with «Approve» or «Reject» (section 1.8).
 
 How it is used: `POST /api/v1/clients/{publicId}/status` `{ "toCode": "SUSPENDED", "comment": "morosidad" }` (`clients.update`).
 
@@ -169,6 +169,95 @@ Who can: `clients.update`. How it is used: `POST /api/v1/clients/{publicId}/deac
 > special services, portal invitations) with `409` `The client has been deactivated; only its history can be viewed.`; **since 2026-10-11 (D39) the
 > quote too** (`POST /api/v1/billing/contract-rate-quote`) responds with that same 409;
 > reads and closures/cancellations are still allowed. See [chapter 03, section 5](03-ordenes-de-transporte.md#5-deactivated-client-only-what-is-new-is-blocked).
+
+### 1.8 Prospect client: minimal sign-up and approval (Batch 222)
+
+<!-- kemi:staff -->
+
+> In this edition, messages written in code font are the exact Spanish text the server sends, followed by their English meaning.
+
+Batch 222 (2026-11-07), salespeople's order. A salesperson serving a business that is not yet a client can sign it up **from the order**, without a contract or manual numbering. The client is born a **Prospect** (`PROSPECT`) and the sales supervisor **approves** or **rejects** it. While it is a prospect, an order can be built and requested for it (it reserves), but the order is **not dispatched** ([18 §21](18-ordenes-de-venta.md#21-new-client-prospect-and-the-order-batch-222)).
+
+> Screenshots pending (P8): a prospect's record («New client» banner, Approve and Reject buttons), the «Sales» and «Client documents» panels, and the approve and reject windows.
+
+**Who can.** Module **CATALOG** (and Sales orders for the order).
+- Minimal sign-up: **`clients.create_basic`** (Sales role) or `clients.create`.
+- Approve and reject: **`sales.approve_client`** (Sales supervisor role and Company admin). Implies being able to see clients (`clients.read`).
+- Documents: `clients.read` to see them; upload or remove them, `clients.update`, or `clients.create_basic` **only while the client is a prospect**.
+- Sales profile (SURI, shipping, signature): `clients.update`.
+
+**Minimal sign-up (how it is used).** In the guided order, step 1 → **New client** ([48](48-pedido-guiado.md)). API: `POST /api/v1/clients/basic`:
+
+```json
+{ "name": "Farmacia Central", "legalName": "Farmacia Central Inc.", "contactName": "Ana Pérez",
+  "phone": "7875550100", "phoneExtension": "12", "phone2": "7875550101", "email": "compras@farmaciacentral.example",
+  "merchantRegistration": "SURI-123456",
+  "physicalAddress": { "line1": "Calle Sol 12", "line2": "Local 3", "city": "Caguas", "postalCode": "00725" },
+  "postalAddress": null, "paymentTerm": "NET30" }
+```
+
+What it does, all in one transaction: creates the client (automatic code and numbering; born **Prospect** through the status engine, with history), its **primary contact** with the phones and the email, the **physical address** (corporate type) and, if sent, the **mailing** one (billing type), stores the SURI and publishes the **«New client pending approval»** notice. It creates no contract. The client's payment method is its **payment term** (`paymentTerm`, catalog code: `CHEQUE`, `CASH`, `ACH`, `NET15`…, `PK_BY_REP`, `CONSIGNMENT`…). The **photos** of the merchant registration and the reseller certificate are uploaded afterwards, as documents (below). The town is chosen from the towns list on the web and typed in the app, but the server **does not validate** it against the postal code list; the mailing address is optional and only stored if it has line 1.
+
+**Approve** (`POST /api/v1/clients/{publicId}/approve`, `{ "creditLimit": 5000, "paymentTerm": "NET30", "comment": "References checked" }`; all optional): the client goes **Prospect → Active**, with the **credit limit** and **payment term** it ends up with (what is not sent does not change). It leaves in the status history the comment «Aprobado por {name}: límite de crédito {$…}, término {…}.» (Approved by {name}: credit limit …, term …) plus whatever is typed. Its orders stop «waiting for approval» and can be dispatched. On the record: **Approve** button → «Approve {name}».
+
+**Reject** (`POST /api/v1/clients/{publicId}/reject`, `{ "comment": "No merchant registration" }`; the comment is **required**): the client goes **Prospect → Suspended**, its **open orders** (draft or requested) are **cancelled** releasing what was reserved, and the history says «Rechazado por {name} (N orden(es) abierta(s) cancelada(s)): …» (Rejected by {name} (N open order(s) cancelled): …). The response carries the client and the numbers of the cancelled orders. On the record: **Reject** button → «Reason for rejection (required)».
+
+**Client documents** («Client documents» panel of the record). `GET /api/v1/clients/{publicId}/documents` · `POST …/documents` (multipart: `file`, `documentType` = `MERCHANT_REGISTRATION` «Merchant registration (SURI)», `RESELLER_CERTIFICATE` «Reseller certificate» or `OTHER` «Other», optional `notes`) · `DELETE …/documents/{documentPublicId}` (logical removal: the file stays). Accepts JPG, PNG, WEBP, GIF and PDF (by content), up to the file store limit (10 MB by default). The file is seen with `GET /files/{filePublicId}`.
+
+**Sales profile** («Sales» panel of the record; `PATCH /api/v1/clients/{publicId}/profile`):
+
+| Field | What it does | Rule |
+|---|---|---|
+| **SURI (merchant registration)** `merchantRegistration` | Merchant registration number | Up to 50 characters; `""` removes it |
+| **Shipping on its orders** `shippingMode` | «The company's» (`COMPANY` or empty, default), «No shipping charge» (`FREE`) or «Own rule» (`OWN`) | With `OWN`, `shippingCharge` is required and greater than zero; `shippingFreeFrom` optional (empty or 0 = no minimum, compared with the total after IVU). Leaving the own rule clears its charge and minimum |
+| **Authorizer's signature** `requireOrderSignature` | «Requires the signature of whoever authorizes the order»: without name and signature, its order cannot be requested | True or false |
+
+How shipping is calculated: [18 §20](18-ordenes-de-venta.md#20-shipping-charge-batch-222).
+
+**Prospect statuses and transitions** (`ClientStatus`: order **Prospect** → **Active**; **Suspended** is lateral):
+
+| From → to | Who | What it validates | Effects | What stays blocked |
+|---|---|---|---|---|
+| (new) → Prospect | `clients.create_basic` or `clients.create` | The minimal sign-up data | History; «New client pending approval» notice; «New client to approve» row in «Needs your attention» | Its orders are reserved but not dispatched |
+| Prospect → Active (**Approve**) | `sales.approve_client` | That it is a prospect; limit ≥ 0; existing term | Limit and term; evidence comment; orders stop waiting | Nothing: it can be dispatched now |
+| Prospect → Suspended (**Reject**) | `sales.approve_client` | That it is a prospect; comment required | Cancels its open orders; evidence comment | It cannot request sales orders nor activate contracts |
+| Prospect → another status through «Change status» | `clients.update` **and** `sales.approve_client` | Status engine rules | Without the evidence or the effects of Approve / Reject | Without `sales.approve_client`: 403 |
+
+A **Suspended** client cannot request sales orders (it could before). From Suspended, the status engine only lets it go back to the stage it came from (Prospect) or move forward to the next (Active) with «Change status» (`clients.update`); that return was not tested in this batch.
+
+| Field / situation | Rule | Exact message (Spanish, as sent) | Meaning | HTTP |
+|---|---|---|---|---|
+| Body | Required | `El cuerpo de la solicitud es obligatorio.` | The request body is required. | 400 |
+| Business `name` | Required, up to 200 | `El nombre del negocio es obligatorio.` / `No puede exceder 200 caracteres.` | The business name is required. / It cannot exceed 200 characters. | 400 |
+| DBA `legalName` | Up to 250 | `No puede exceder 250 caracteres.` | It cannot exceed 250 characters. | 400 |
+| Contact `contactName` | Required, up to 150 | `El nombre del contacto es obligatorio.` / `No puede exceder 150 caracteres.` | The contact name is required. / It cannot exceed 150 characters. | 400 |
+| Phone `phone` | Required, 10 digits | `El teléfono es obligatorio.` / `El teléfono debe tener 10 dígitos, sin espacios ni guiones.` | The phone is required. / The phone must have 10 digits, without spaces or hyphens. | 400 |
+| Phone 2 `phone2` | Optional, 10 digits | `El teléfono debe tener 10 dígitos, sin espacios ni guiones.` | The phone must have 10 digits, without spaces or hyphens. | 400 (`phone2`) |
+| Extension `phoneExtension` | Digits only, up to 6 | `La extensión admite solo dígitos (hasta 6).` | The extension admits digits only (up to 6). | 400 |
+| Email `email` | Optional, valid | `Correo inválido.` | Invalid email. | 400 (`email`) |
+| SURI `merchantRegistration` | Up to 50 | `El registro de comerciante no puede pasar de 50 caracteres.` | The merchant registration cannot exceed 50 characters. | 400 |
+| Physical address | Line 1 and town | `La dirección física es obligatoria.` | The physical address is required. | 400 (`physicalAddress`) |
+| Mailing address | With line 1 it carries a town | `La ciudad es obligatoria.` | The city is required. | 400 (`postalAddress.city`) |
+| Payment term | Must exist | `Término de pago desconocido: '{código}'.` | Unknown payment term: '{code}'. | 400 (`paymentTerm`) |
+| Approve: limit | Zero or more | `El límite de crédito no puede ser negativo.` | The credit limit cannot be negative. | 400 (`creditLimit`) |
+| Approve or reject a client that is not a prospect | — | `El cliente no está pendiente de aprobación.` | The client is not pending approval. | 422 |
+| Reject without a reason | Required | `Escriba por qué se rechaza el cliente.` | Write why the client is rejected. | 400 (`comment`) |
+| Reject with a long reason | Up to 500 | `El comentario admite como máximo 500 caracteres.` | The comment admits at most 500 characters. | 400 |
+| Taking a prospect out with «Change status» without `sales.approve_client` | — | `Un cliente prospecto se aprueba o se rechaza con «Aprobar» o «Rechazar» (permiso sales.approve_client).` | A prospect client is approved or rejected with «Approve» or «Reject» (permission sales.approve_client). | 403 |
+| Client does not exist | — | `Cliente no encontrado.` | Client not found. | 404 |
+| Document: type | MERCHANT_REGISTRATION, RESELLER_CERTIFICATE or OTHER | `El tipo de documento debe ser MERCHANT_REGISTRATION, RESELLER_CERTIFICATE u OTHER.` | The document type must be MERCHANT_REGISTRATION, RESELLER_CERTIFICATE or OTHER. | 400 (`documentType`) |
+| Document: note | Up to 300 | `La nota del documento no puede pasar de 300 caracteres.` | The document note cannot exceed 300 characters. | 400 (`notes`) |
+| Document: permission | `clients.update` (or `clients.create_basic` with the client a prospect) | `Subir documentos de este cliente exige el permiso de editar clientes (clients.update).` | Uploading this client's documents requires the permission to edit clients (clients.update). | 403 |
+| Document: no file | — | `Adjunte un archivo.` | Attach a file. | 400 (`file`) |
+| Document: file type | JPG, PNG, WEBP, GIF or PDF | `Solo se admiten imágenes (JPG, PNG, WEBP, GIF) y PDF.` / `El contenido del archivo no corresponde a su tipo.` | Only images (JPG, PNG, WEBP, GIF) and PDF are accepted. / The file content does not match its type. | 400 |
+| Document: size | Up to the limit | `El archivo no puede pasar de {n} MB.` | The file cannot exceed {n} MB. | 400 |
+| Document does not exist | — | `Documento '{id}' no encontrado.` | Document '{id}' not found. | 404 |
+| File store without key | — | `El almacén de archivos no está configurado (Files:MasterKey); avise a soporte.` | The file store is not configured (Files:MasterKey); tell support. | 422 |
+| Profile: shipping rule | COMPANY, FREE or OWN | `La regla de envío debe ser COMPANY (la de la compañía), FREE (no se le cobra) u OWN (regla propia).` | The shipping rule must be COMPANY, FREE or OWN. | 400 (`shippingMode`) |
+| Profile: own rule without a charge | — | `La regla propia de envío necesita el cargo.` | The own shipping rule needs the charge. | 400 |
+| Profile: charge | Greater than zero, up to 2 decimals | `El cargo de envío debe ser un monto mayor que cero con hasta 2 decimales.` | The shipping charge must be an amount greater than zero with up to 2 decimals. | 400 |
+| Profile: minimum | Zero or more, up to 2 decimals | `El mínimo para envío gratis debe ser un monto de cero o más con hasta 2 decimales.` | The minimum for free shipping must be an amount of zero or more with up to 2 decimals. | 400 |
+| Without the permission | — | `Falta el permiso 'sales.approve_client'.` (or the one that applies) | Permission is missing. | 403 |
 
 ---
 
@@ -866,6 +955,8 @@ security log without identifying the user.
 | `contracts.read` | contracts, rates, quote, special services and types (read) |
 | `contracts.create` / `contracts.update` | create contracts / edit contracts, rates, tiers and special services |
 | `portalusers.manage` | the client's portal users (CLIENT_PORTAL module) |
+| `clients.create_basic` | minimal client sign-up from an order (born as a prospect) and uploading its documents while it is a prospect (Batch 222, §1.8) |
+| `sales.approve_client` | approve or reject prospect clients (Batch 222, §1.8) |
 
 The cross-cutting routes of chapter 1 apply the permission of the owning entity: `GET /api/v1/contacts/CLIENT|CLIENT_CONTACT/{id}`,
 `GET /api/v1/status/history/CLIENT/{id}` and `GET /api/v1/custom-fields/values/CLIENT/{id}` require `clients.read`

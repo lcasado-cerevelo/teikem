@@ -16,6 +16,7 @@
 - **Rutas de hoy** y **asignar en la calle** (Lote 215): ver §2b y §2c.
 - **Escanear** (Lote 216): estación de escaneo para el Android con gatillo, **con trabajo sin señal**: ver §2d.
 - **Clientes, Consignatarios y Almacén (consulta)** (Lote 217): ver §2e. Cada uno aparece en el inicio solo si la persona tiene el permiso.
+- **Pedidos** (Lote 226): hacer un pedido de venta en cuatro pasos y ver «Mis pedidos»; aparece solo con `sales.create`: ver §2g.
 
 ## 2a. Órdenes (Lote 214)
 - **Quién**: el acceso «Órdenes» aparece con `orders.view` en alguna compañía; completar exige además `orders.deliver` **en esa compañía**.
@@ -104,6 +105,13 @@ Tres pantallas **solo de lectura**, **con señal** (sin señal dicen «No se pud
 - El campo de contraseña del inicio de sesión y del primer ingreso lleva el **ojito** para ver lo que se escribe. El teléfono no informa si las mayúsculas están activadas, así que no hay aviso de mayúsculas aquí.
 - Mensajes al fallar el ingreso: «El correo o la contraseña no son correctos…» (revise mayúsculas, ojito y bloqueo), «Demasiados intentos seguidos…», «El servidor tuvo un problema…» y «No hay señal…».
 - **«¿Olvidaste tu contraseña?»** (debajo de «Iniciar sesión») pide el correo y manda el enlace de un solo uso (60 minutos); el enlace abre la **web** para elegir la contraseña nueva (con el código de la verificación en dos pasos si la persona la usa: recuperar no se salta el segundo factor). Después se vuelve a la app a iniciar sesión.
+
+## 2g. Pedidos (Lote 226)
+<!-- kemi:staff -->
+- **Inicio → Pedidos** aparece con el permiso `sales.create` (en alguna compañía) y la persona no es «solo chofer». Dentro: **Mis pedidos** (por estatus, con buscador; ver la lista exige además `sales.view`) y **Nuevo pedido**.
+- **Nuevo pedido**: cuatro pasos (Cliente, Productos, Entrega, Autorización) que guardan un **borrador** en el servidor en cada «Siguiente»; alta de cliente nuevo con fotos de cámara o galería; firma con el dedo; **Enviar pedido** con la **huella o el rostro** (o la contraseña, y el código MFA si hace falta). **Sin modo sin señal**: sin conexión no se avanza («No se pudo consultar. Se necesita señal.») y lo guardado queda como borrador.
+- El detalle completo, las reglas, los mensajes y lo que la app todavía no hace están en el capítulo [48 — Pedido guiado](48-pedido-guiado.md); los precios salen de las listas ([47](47-precios-y-ofertas.md)).
+- Endpoints (los de la web): `GET /api/v1/sales-orders`, `GET /api/v1/sales-orders/catalog`, `POST|PATCH /api/v1/sales-orders`, `POST …/signature`, `POST …/submit`, `POST /api/v1/clients/basic` y `POST /api/v1/clients/{id}/documents`.
 
 ## 3. Avisos emergentes
 - La app registra el teléfono en `POST /api/v1/mobile/device` para cada compañía. Un chofer queda en su ficha (`DriverDevice`); el personal, en su usuario (`UserPushDevice`). Los mensajes del chat y los avisos llegan por cualquiera de los dos.

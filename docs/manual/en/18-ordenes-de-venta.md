@@ -1,6 +1,7 @@
 # 18 — Sales orders
 
 Batches 57 to 64 (2026-10-15) — **S1: draft, request and reserve, backorders; S2: dispatch**. A **sales order** (OV-#####) is the document that travels from **Sales to Warehouse**: Sales asks the warehouse to dispatch something for a client. So far you can **build the order as a draft, request it (validate and reserve inventory), modify it and cancel it**; view, fill and close **backorders**; **dispatch against the order**, pickup / delivery and undo a dispatch; the web and the app come in the following batches.
+**Salespeople's order (Batches 221 to 226, 2026-11-07):** the order adds urgent, delivery or pickup, payment method, shipping charge, consignment, signature of whoever authorizes and prospect client (sections 18 to 23); the price comes from lists ([47](47-precios-y-ofertas.md)); the guided order is another door to this same order ([48](48-pedido-guiado.md)); invoices go to QuickBooks ([49](49-quickbooks.md)) and what is consigned is collected separately ([19 §4e](19-facturacion.md#4e-consignment-batch-224)). In this edition, messages written in code font are the exact Spanish text the server sends, followed by their English meaning.
 The full design is in `Diseño/logistica-funcionalidades-maestro.md`, section 13C. The screen is described in [L60 — Sales orders](frontend/l60-ordenes-de-venta.md) and [L63 — Dispatch](frontend/l63-despachar-orden-de-venta.md).
 
 ## 1. Who can
@@ -285,3 +286,159 @@ For support: table `SalesOrderLineComponent` (the snapshot, deleted with the lin
 
 - In the sales order record, the **Order dispatches** table shows the dispatch number (pick & pack) **as a link**: it opens the dispatch record (needs `pickbatches.view`; without it the number is shown without a link). The shipment created when packing is still shown in its column.
 - In the dispatch record (Picking & packing) the **Sales order** field appears with its number as a link to the sale (needs `sales.view`; without it, only the number). It shows only when the dispatch was born from a sales order (API: `salesOrderPublicId` and `salesOrderNumber` in the dispatch).
+
+## 18. Sales-rep order: what is new in the order (Batch 222)
+
+<!-- kemi:staff -->
+
+Batch 222 (2026-11-07). The sales order is still the same; it now carries the data that used to be asked on the salespeople's form. All of it lives in `terms` of the order DTO (`GET /sales-orders/{publicId}`) and the list carries the badges.
+
+> Screenshots pending (P8): the order window with «Order: urgency, delivery, payment and authorization», the list badges and the «Shipping charge» line.
+
+| Data | What it is | API field (`terms` / body) |
+|---|---|---|
+| **Urgent** | The warehouse sees it first; the transport order of its delivery is born with high priority (`HIGH`) if no other is given; requesting it sends the «Urgent order» notice | `isUrgent` |
+| **Delivery or pickup** | `DELIVERY` (taken to the client) or `PICKUP` (the client collects it, no shipping charge). Empty = deduced: with a consignee it is delivery, without one pickup (so older orders do not change) | `deliveryMode` / `deliveryModeSet` |
+| **Payment method** and **term** | How this order is paid (section 19) | `paymentMethod`, `paymentTerm` |
+| **Payment method changed** | Mark when it differs from the client's | `paymentChanged` |
+| **Shipping charge** and its reason | Section 20 | `shippingCharge`, `shippingTaxAmount`, `shippingReason` |
+| **On consignment** | Left with the client and collected when sold (section 19; collection in [19 §4e](19-facturacion.md#4e-consignment-batch-224)) | `isConsignment` |
+| **Who authorizes** and their **signature** | Name (up to 150) and drawn signature of whoever authorizes the order | `authorizedByName`, `signatureFilePublicId` |
+| **How it was sent** | `PASSWORD` or `BIOMETRIC` (only if it came from the guided order) | `submittedWithAuth` |
+| **Awaiting approval** | The client is a prospect: it was reserved but is not dispatched (section 21) | `awaitingClientApproval` |
+| **New client** / **requires signature** | Client data the screen needs | `clientIsProspect`, `clientRequiresSignature` |
+
+**Where it shows.** In the order window («Order: urgency, delivery, payment and authorization» section) and in the list, with the badges **Urgent**, **Delivery** / **Pickup**, **On consignment**, **Payment method changed**, **Awaiting approval** and **New client**; the line «Shipping charge: $12.00 (plus IVU …)» or «No shipping charge», with «Why: …»; and «Signature pending» if the client requires it and it is missing.
+
+**How it is captured (API).** `POST /sales-orders` and `PATCH /sales-orders/{publicId}` (draft; `sales.create`) accept, besides the usual: `{ "isUrgent": true, "deliveryMode": "DELIVERY", "paymentMethod": "CREDIT", "paymentTerm": "NET30", "isConsignment": false, "authorizedByName": "Ana Pérez" }`. In the PATCH, what is not sent does not change; `""` removes the value (delivery, payment method, term, name).
+
+**New permissions and roles** (module `SALES_ORDERS` unless stated):
+
+| Permission | What it allows | Who has it |
+|---|---|---|
+| `sales.pricelist` | Price lists and offers ([47](47-precios-y-ofertas.md)) | Company admin, Sales supervisor |
+| `sales.approve_client` | Approve or reject prospect clients ([02 §1.8](02-clientes-y-contratos.md#18-prospect-client-minimal-sign-up-and-approval-batch-222)) | Sales supervisor (and Company admin) |
+| `clients.create_basic` | Minimal client sign-up from the order; uploading its documents while it is a prospect | Sales |
+| `pulse.sales` | «Sales» panel of the Day pulse (also requires `sales.view`) | Admin, Sales, Sales supervisor, Sales office |
+| `sales.quickbooks.view` / `.mark` / `.export` | QuickBooks tab ([49](49-quickbooks.md)) | Sales office (and Admin) |
+| `billing.consignment.pay` | Record consignment payments ([19 §4e](19-facturacion.md#4e-consignment-batch-224); module `BILLING`) | Sales office (and Admin) |
+
+Role templates: **Sales supervisor** (`SalesSupervisor`: `sales.pricelist`, `sales.approve_client`, `sales.view`, `clients.read`, `clients.update`, `pulse.sales`) and **Sales office** (`SalesOffice`: `sales.view`, `sales.create`, `pulse.sales`, `sales.quickbooks.*`, `billing.consignment.pay`) are created by default in new companies; in a company that already existed the administrator creates them in System → Roles. **Sales** adds `clients.create_basic` and `pulse.sales`. In companies that already existed, the Company admin received the new permissions and the Sales role received `clients.create_basic` and `pulse.sales`; no other cloned role receives them on its own.
+
+| Field / situation | Rule | Exact message (Spanish, as sent) | Meaning | HTTP |
+|---|---|---|---|---|
+| `deliveryMode` | DELIVERY, PICKUP or empty | `La entrega debe ser DELIVERY (entrega) o PICKUP (recogido).` | Delivery must be DELIVERY or PICKUP. | 400 (`deliveryMode`) |
+| `authorizedByName` | Up to 150 | `El nombre de quien autoriza no puede pasar de 150 caracteres.` | The name of who authorizes cannot exceed 150 characters. | 400 (`authorizedByName`) |
+| Requesting for a client that requires a signature, without name or signature | — | `Este cliente exige el nombre y la firma de quien autoriza el pedido.` | This client requires the name and signature of whoever authorizes the order. | 400 (`signature`) |
+| Requesting for a suspended client | — | `El cliente está suspendido: no se le puede solicitar una orden.` | The client is suspended: an order cannot be requested for it. | 422 |
+| Dispatching with the client not approved | — | `La orden espera la aprobación del cliente nuevo: no se puede despachar hasta que lo aprueben.` | The order awaits the new client's approval: it cannot be dispatched until they approve. | 422 |
+
+## 19. Payment method and consignment (Batch 222)
+
+<!-- kemi:staff -->
+
+The order stores **how this order is paid** (catalog `SalesPaymentMethod`): **COD: check** (`COD_CHECK`), **COD: cash** (`COD_CASH`), **COD: ACH** (`COD_ACH`), **Credit** (`CREDIT`) or **Consignment** (`CONSIGNMENT`). With Credit it also stores the **term** (15, 20, 30, 45 days, or «collected by the rep»).
+
+**The client's payment method is its payment term** (the «Payment term» field of the profile, already migrated from QuickBooks). When the order is created without choosing a method, the system **prefills** it like this:
+
+| Client's payment term | Method that is prefilled | Credit term |
+|---|---|---|
+| `CHEQUE` | COD: check | — |
+| `CASH` | COD: cash | — |
+| `ACH` | COD: ACH | — |
+| `NET15`, `NET20`, `NET30`, `NET45`, `NET60` | Credit | the same |
+| `PK_BY_REP` (the rep collects; «salesperson picks up the check») | Credit | `PK_BY_REP` |
+| `CONSIGNMENT` | Consignment (and «On consignment» is born checked) | — |
+| `COD` (cash on delivery without saying how) | Nothing: the salesperson chooses check, cash or ACH | — |
+| Any other or no term | Nothing | — |
+
+- **«Payment method changed»**: the order is marked when its method differs from the prefilled one, so the office can decide whether to pass it on to the client. A `COD` client paying by check, cash or ACH does **not** count as a change.
+- The **term** only goes with Credit, and Credit requires it.
+- **Consignment**: checking «On consignment» is only possible with the Consignment payment method; changing the payment method removes it. Sales reports **do not count** what is consigned until it is paid ([19 §4e](19-facturacion.md#4e-consignment-batch-224) and section 22).
+
+| Situation | Exact message (Spanish, as sent) | Meaning | HTTP |
+|---|---|---|---|
+| Unknown payment method | `La forma de pago debe ser COD_CHECK, COD_CASH, COD_ACH, CREDIT o CONSIGNMENT.` | The payment method must be COD_CHECK, COD_CASH, COD_ACH, CREDIT or CONSIGNMENT. | 400 (`paymentMethod`) |
+| Credit without a term | `Indique el término del crédito (15, 20, 30 o 45 días, o cobra el representante).` | Give the credit term (15, 20, 30 or 45 days, or the rep collects). | 400 |
+| Term with another payment method | `El término de pago solo se indica con la forma de pago Crédito.` | The payment term is only given with the Credit payment method. | 400 |
+| Term that is not credit or does not exist | `El término de pago no es de crédito.` | The payment term is not a credit one. | 400 (`paymentTerm`) |
+| «On consignment» with another payment method | `La venta en consignación exige la forma de pago Consignación.` | A consignment sale requires the Consignment payment method. | 400 (`isConsignment`) |
+
+## 20. Shipping charge (Batch 222)
+
+<!-- kemi:staff -->
+
+**What it does.** Adds to an order **with delivery** a shipping charge calculated by the system, with its reason. The salesperson does not type it.
+
+**Where it is configured.**
+- **Company**: System → Settings → **Operations → Sales**: **Shipping charge** (empty = no charge), **Free shipping from** (empty or 0 = no minimum; compared with the order total **after IVU**) and **Shipping carries IVU** (uses the product sale rate, respects the client's exemption and only counts with the tax module on). API: `GET /api/v1/sales-orders/settings` (`sales.view` or `admin.tenant`) and `PATCH` (`admin.tenant`) with `{ "charge": 12, "freeFrom": 120, "taxable": true }`: no change = do not send the field; charge `0` = remove the charge; minimum `0` = remove the minimum.
+- **Client** (record → «Sales» panel): **Shipping on its orders**: «The company's» (default), «No shipping charge» or «Own rule» (charge, and optional «Free shipping from»). See [02 §1.8](02-clientes-y-contratos.md#18-prospect-client-minimal-sign-up-and-approval-batch-222).
+
+**How it is calculated** (the client beats the company):
+
+| Case | Charge | Reason shown |
+|---|---|---|
+| Pickup | $0 | Pickup: no shipping |
+| «No shipping charge» | $0 | No charge by agreement with the client |
+| Own (or company) rule with no charge configured | $0 | (no reason) |
+| Rule with a charge and the total after IVU **reaches the minimum** | $0 | Free by amount |
+| Own rule with a charge | the client's | Client shipping charge |
+| Company rule with a charge | the company's | Shipping charge |
+
+A client without its own rule always uses the company's **at that moment**: a change in Settings reaches everyone who has no rule of their own.
+
+**When it is recalculated.** When saving the draft, when requesting and when modifying a requested line. **Once invoiced it does not change.** Changing the company settings does not touch orders already requested; drafts take the new rule when saved or requested.
+
+**How it adds to the total.** The order's `total` includes the shipping and its IVU; `subtotal` and `taxAmount` remain products only (per-product analytics do not change). The shipping's IVU is stored separately (`shippingTaxAmount`).
+
+**On the invoice.** The shipping charge enters as a service line **«OV-##### — Cargo de envío»** (charge type `SHIPPING`) **once per order**, in the first run that invoices something of that order. Cancelling the run or voiding the invoice frees it for the next one. There is no PDF of the order or the invoice: the data is in the DTO for the screen.
+
+| Field | Rule | Exact message (Spanish, as sent) | Meaning | HTTP |
+|---|---|---|---|---|
+| Charge (company or client) | Greater than zero, up to 2 decimals | `El cargo de envío debe ser un monto mayor que cero con hasta 2 decimales.` | The shipping charge must be an amount greater than zero with up to 2 decimals. | 400 (`charge` / `shippingCharge`) |
+| Minimum for free shipping | Zero or more, up to 2 decimals | `El mínimo para envío gratis debe ser un monto de cero o más con hasta 2 decimales.` | The minimum for free shipping must be an amount of zero or more with up to 2 decimals. | 400 (`freeFrom` / `shippingFreeFrom`) |
+| Client's rule | COMPANY, FREE or OWN | `La regla de envío debe ser COMPANY (la de la compañía), FREE (no se le cobra) u OWN (regla propia).` | The shipping rule must be COMPANY, FREE or OWN. | 400 (`shippingMode`) |
+| Own rule without a charge | — | `La regla propia de envío necesita el cargo.` | The own shipping rule needs the charge. | 400 (`shippingCharge`) |
+| Settings without a body | — | `El cuerpo de la solicitud es obligatorio.` | The request body is required. | 400 |
+| `PATCH …/settings` without `admin.tenant` | — | `Falta el permiso 'admin.tenant'.` | Permission 'admin.tenant' is missing. | 403 |
+
+## 21. New client (prospect) and the order (Batch 222)
+
+<!-- kemi:staff -->
+
+A client created from an order is born a **Prospect** ([02 §1.8](02-clientes-y-contratos.md#18-prospect-client-minimal-sign-up-and-approval-batch-222)). With a prospect client:
+- The order is **built and requested** as usual: stock and credit are validated and **it reserves**.
+- The order is marked **«Awaiting approval»** (`awaitingClientApproval`) and **cannot be dispatched**: `POST …/dispatch` answers 422 `La orden espera la aprobación del cliente nuevo: no se puede despachar hasta que lo aprueben.`
+- When the client is **approved**, the mark is removed and it can be dispatched. When it is **rejected** (the client becomes Suspended) its open orders (draft or requested) **are cancelled** and what was reserved is released.
+- A **Suspended** client cannot request orders (it could before): `El cliente está suspendido: no se le puede solicitar una orden.`
+- The warehouse device receives `isUrgent` and `awaitingClientApproval` when syncing; if it tries to dispatch an order awaiting approval, the server rejects it with the message above.
+
+## 22. Notices, Pulse and analytics of the sales-rep order (Batches 222, 224 and 225)
+
+<!-- kemi:staff -->
+
+**Notices and «Needs your attention».**
+
+| Event / row | When | Who sees it |
+|---|---|---|
+| **«New client pending approval»** notice (`SALES_CLIENT_PENDING_APPROVAL`, cannot be muted) | When a client is created from an order | Whoever sets up the rule in System → Notification rules |
+| **«Urgent order»** notice (`SALES_ORDER_URGENT`, optional) | When an urgent order is requested | Same |
+| **«Invoices to pass to QuickBooks»** notice (`SALES_QUICKBOOKS_PENDING`, optional) | Daily at 07:00, only if there is something ([49](49-quickbooks.md)) | Same |
+| Row «New client to approve: {name}» | While the client is still a prospect | `sales.approve_client` |
+| Row «Urgent order {number}» | Open urgent order not awaiting approval | `warehouse.pick` |
+| Row «Invoices to pass to QuickBooks: N» | There are unmarked invoices | `sales.quickbooks.view` |
+
+Like all sales notices, **the bell and the email need a rule** (System → Notification rules, `notifications.manage`): none is seeded. The «Needs your attention» rows show up on their own by permission.
+
+**Day pulse → «Sales» panel** (`pulse.sales` + `sales.view`, module `SALES_ORDERS`; `GET /sales-orders/pulse`): **Today's orders**, **Open urgent orders**, **Clients to approve**, **Orders waiting for a new client**, **Invoices to send to QuickBooks** (only with `sales.quickbooks.view`) and **Unpaid consignment** (only with `billing.view` or `billing.consignment.pay` and Billing on). Each figure opens its list.
+
+**Analytics.** The **Sales orders** source (`SALES_ORDER`) adds the field **On consignment** (`IsConsignment`). There is a new source, **«Sales (what was sold)»** (`SALES_REVENUE`, `sales.view`, module `SALES_ORDERS`), used by the default sales indicators and charts **«Ventas (30 días)»** and **«Ventas por día»** (sales, last 30 days / by day): it counts confirmed orders (requested, partially dispatched or dispatched) that are **not** consignment on the day they were created, and **consignment payments** on the day they were paid. The order views (list, «by client», backorders) are operational and stay the same; «Today's orders» counts orders, not sales.
+
+## 23. For support of the sales-rep order
+
+<!-- kemi:staff -->
+
+- Columns of `SalesOrder`, `Client` and `Tenant`, table `ClientDocument`, catalogs `SalesPaymentMethod`, `ClientDocumentType` and `ShippingReason`, charge type `SHIPPING` and the Batch 222 permissions: section «2026-11-07 — Lote 222» of `Diseño/logistica-db-update.sql` (propagation to cloned roles with the mark `L222_SALES_PROSPECT`).
+- An order whose shipping charge was already invoiced (`ShippingInvoiced`) does not charge it again. If it must be freed, the invoice is voided or the run is cancelled.
+- «Why is a new client's order not dispatched?»: look at `awaitingClientApproval` and the client's status.
+- «Why is the payment method not prefilled?»: the client has no payment term, or it is `COD` or another that does not translate (section 19).

@@ -16,6 +16,7 @@
 - **Today's routes** and **street assignment** (Batch 215): see §2b and §2c.
 - **Scan** (Batch 216): scan station for the Android with a trigger, **with offline work**: see §2d.
 - **Clients, Consignees and Warehouse (lookup)** (Batch 217): see §2e. Each one appears on the home screen only if the person has the permission.
+- **Orders** (Batch 226; «Pedidos» in Spanish): place a sales order in four steps and see «My orders»; it shows only with `sales.create`: see §2g.
 
 ## 2a. Orders (Batch 214)
 - **Who**: the “Orders” entry appears with `orders.view` in some company; completing also requires `orders.deliver` **in that company**.
@@ -99,6 +100,13 @@ Three **read-only** screens, **with signal** (with no signal they say “Could n
 - **It moves nothing**: nothing is received, put away, adjusted or transferred from here (that belongs to the warehouse app).
 - A “driver only” person does not see these entries. Whoever has only one of the permissions sees only that entry.
 - Endpoints (the web ones, no new server): `GET /api/v1/clients?search=`, `GET /api/v1/clients/{id}`, `GET /api/v1/locations?search=`, `GET /api/v1/locations/{id}`, `GET /api/v1/contacts/LOCATION/{id}`, `GET /api/v1/products?search=`, `GET /api/v1/products/by-barcode/{código}`, `GET /api/v1/inventory/balances`, `GET /api/v1/warehouses/bins/search` and `GET /api/v1/warehouses/{id}/bin-products`.
+
+## 2g. Orders — salespeople's sales orders (Batch 226)
+<!-- kemi:staff -->
+- **Home → Orders** (Spanish «Pedidos») shows with the `sales.create` permission (in some company) and the person is not «driver only». Inside: **My orders** (by status, with a search box; seeing the list also requires `sales.view`) and **New order**.
+- **New order**: four steps (Client, Products, Delivery, Authorization) that save a **draft** on the server at every «Next»; new-client sign-up with camera or gallery photos; signature drawn with the finger; **Send order** with the **fingerprint or face** (or the password, and the MFA code if needed). **No offline mode**: without a connection you cannot move on («Could not load. A connection is needed.») and what is saved stays as a draft.
+- The full detail, the rules, the messages and what the app does not do yet are in chapter [48 — Guided order](48-pedido-guiado.md); prices come from the lists ([47](47-precios-y-ofertas.md)).
+- Endpoints (the web's): `GET /api/v1/sales-orders`, `GET /api/v1/sales-orders/catalog`, `POST|PATCH /api/v1/sales-orders`, `POST …/signature`, `POST …/submit`, `POST /api/v1/clients/basic` and `POST /api/v1/clients/{id}/documents`.
 
 ## 3. Push notifications
 - The app registers the phone in `POST /api/v1/mobile/device` for each company. A driver is recorded in their profile (`DriverDevice`); staff, in their user (`UserPushDevice`). Chat messages and notices arrive through either of the two.

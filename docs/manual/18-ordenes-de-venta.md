@@ -1,6 +1,7 @@
 # 18 — Órdenes de venta
 
 Lotes 57 a 64 (2026-10-15) — **S1: borrador, solicitar y reservar, backorders; S2: despachar**. Una **orden de venta** (OV-#####) es el documento que viaja de **Ventas a Almacén**: Ventas le pide al almacén que despache algo para un cliente. Hasta aquí se puede **armar la orden en borrador, solicitarla (validar y reservar inventario), modificarla y cancelarla**; ver, surtir y cerrar los **backorders**; **despachar contra la orden**, retiro / entrega y deshacer un despacho; la web y la app llegan en los lotes siguientes.
+**Pedido de vendedores (Lotes 221 a 226, 2026-11-07):** la orden suma urgente, entrega o recogido, forma de pago, cargo de envío, consignación, firma de quien autoriza y cliente prospecto (secciones 18 a 23); el precio sale de listas ([47](47-precios-y-ofertas.md)); el pedido guiado es otra puerta a esta misma orden ([48](48-pedido-guiado.md)); las facturas pasan a QuickBooks ([49](49-quickbooks.md)) y lo consignado se cobra aparte ([19 §4e](19-facturacion.md#4e-consignación-lote-224)).
 El diseño completo está en `Diseño/logistica-funcionalidades-maestro.md`, sección 13C. La pantalla se describe en [L60 — Órdenes de venta](frontend/l60-ordenes-de-venta.md) y [L63 — Despachar](frontend/l63-despachar-orden-de-venta.md).
 
 ## 1. Quién puede
@@ -285,3 +286,159 @@ Para soporte: tabla `SalesOrderLineComponent` (la foto, se borra con la línea) 
 
 - En la ficha de la orden de venta, la tabla **Despachos de la orden** muestra el número del despacho (recolección y empaque) **como enlace**: abre la ficha del despacho (necesita `pickbatches.view`; sin él se ve el número sin enlace). El envío que se creó al empacar sigue mostrándose en su columna.
 - En la ficha del despacho (Recolección y empaque) aparece el campo **Orden de venta** con su número como enlace a la venta (necesita `sales.view`; sin él, solo el número). Sale solo cuando el despacho nació de una orden de venta (API: `salesOrderPublicId` y `salesOrderNumber` en el despacho).
+
+## 18. Pedido de vendedores: lo nuevo de la orden (Lote 222)
+
+<!-- kemi:staff -->
+
+Lote 222 (2026-11-07). La orden de venta sigue siendo la misma; ahora lleva los datos que antes se pedían en el formulario de los vendedores. Todos viven en `terms` del DTO de la orden (`GET /sales-orders/{publicId}`) y la lista trae los distintivos.
+
+> Capturas pendientes (P8): la ventana de la orden con «Pedido: urgencia, entrega, pago y autorización», los distintivos de la lista y la línea «Cargo de envío».
+
+| Dato | Qué es | Campo del API (`terms` / cuerpo) |
+|---|---|---|
+| **Urgente** | El almacén lo ve primero; la orden de transporte de su entrega nace con prioridad alta (`HIGH`) si no mandan otra; al solicitarlo sale el aviso «Pedido urgente» | `isUrgent` |
+| **Entrega o recogido** | `DELIVERY` (se lleva) o `PICKUP` (lo recoge, sin cargo de envío). Vacío = se deduce: con consignatario es entrega, sin él recogido (así las órdenes de antes no cambian) | `deliveryMode` / `deliveryModeSet` |
+| **Forma de pago** y **término** | Cómo paga este pedido (sección 19) | `paymentMethod`, `paymentTerm` |
+| **Cambió la forma de pago** | Marca cuando es distinta de la del cliente | `paymentChanged` |
+| **Cargo de envío** y su porqué | Sección 20 | `shippingCharge`, `shippingTaxAmount`, `shippingReason` |
+| **En consignación** | Se deja al cliente y se cobra cuando lo venda (sección 19; cobro en [19 §4e](19-facturacion.md#4e-consignación-lote-224)) | `isConsignment` |
+| **Quién autoriza** y su **firma** | Nombre (hasta 150) y firma dibujada de quien autoriza el pedido | `authorizedByName`, `signatureFilePublicId` |
+| **Cómo se envió** | `PASSWORD` o `BIOMETRIC` (solo si salió del pedido guiado) | `submittedWithAuth` |
+| **Espera aprobación** | El cliente es prospecto: se reservó, pero no se despacha (sección 21) | `awaitingClientApproval` |
+| **Cliente nuevo** / **exige firma** | Datos del cliente que la pantalla necesita | `clientIsProspect`, `clientRequiresSignature` |
+
+**Dónde se ve.** En la ventana de la orden (sección «Pedido: urgencia, entrega, pago y autorización») y en la lista, con los distintivos **Urgente**, **Entrega** / **Recogido**, **En consignación**, **Cambió la forma de pago**, **Espera aprobación** y **Cliente nuevo**; la línea «Cargo de envío: $12.00 (más IVU …)» o «Envío sin cargo», con «Porqué: …»; y «Firma pendiente» si el cliente la exige y falta.
+
+**Cómo se captura (API).** `POST /sales-orders` y `PATCH /sales-orders/{publicId}` (borrador; `sales.create`) aceptan, además de lo de siempre: `{ "isUrgent": true, "deliveryMode": "DELIVERY", "paymentMethod": "CREDIT", "paymentTerm": "NET30", "isConsignment": false, "authorizedByName": "Ana Pérez" }`. En el PATCH, lo que no se manda no cambia; `""` quita el valor (entrega, forma de pago, término, nombre).
+
+**Permisos y roles nuevos** (módulo `SALES_ORDERS` salvo que se diga):
+
+| Permiso | Qué permite | Quién lo trae |
+|---|---|---|
+| `sales.pricelist` | Listas de precios y ofertas ([47](47-precios-y-ofertas.md)) | Admin de compañía, Supervisor de ventas |
+| `sales.approve_client` | Aprobar o rechazar clientes prospecto ([02 §1.8](02-clientes-y-contratos.md#18-cliente-prospecto-alta-mínima-y-aprobación-lote-222)) | Supervisor de ventas (y Admin de compañía) |
+| `clients.create_basic` | Alta mínima del cliente desde el pedido; subir sus documentos mientras es prospecto | Ventas |
+| `pulse.sales` | Panel «Ventas» del Pulso del día (exige además `sales.view`) | Admin, Ventas, Supervisor de ventas, Oficina de ventas |
+| `sales.quickbooks.view` / `.mark` / `.export` | Pestaña QuickBooks ([49](49-quickbooks.md)) | Oficina de ventas (y Admin) |
+| `billing.consignment.pay` | Registrar pagos de consignación ([19 §4e](19-facturacion.md#4e-consignación-lote-224); módulo `BILLING`) | Oficina de ventas (y Admin) |
+
+Plantillas de rol: **Supervisor de ventas** (`SalesSupervisor`: `sales.pricelist`, `sales.approve_client`, `sales.view`, `clients.read`, `clients.update`, `pulse.sales`) y **Oficina de ventas** (`SalesOffice`: `sales.view`, `sales.create`, `pulse.sales`, `sales.quickbooks.*`, `billing.consignment.pay`) se crean de fábrica en las compañías nuevas; en una compañía que ya existía las crea el administrador en Sistema → Roles. **Ventas** suma `clients.create_basic` y `pulse.sales`. En las compañías que ya existían, el Admin de compañía recibió los permisos nuevos y el rol Ventas recibió `clients.create_basic` y `pulse.sales`; ningún otro rol clonado los recibe solo.
+
+| Campo / situación | Regla | Mensaje exacto | HTTP |
+|---|---|---|---|
+| `deliveryMode` | DELIVERY, PICKUP o vacío | `La entrega debe ser DELIVERY (entrega) o PICKUP (recogido).` | 400 (`deliveryMode`) |
+| `authorizedByName` | Hasta 150 | `El nombre de quien autoriza no puede pasar de 150 caracteres.` | 400 (`authorizedByName`) |
+| Solicitar con un cliente que exige firma, sin nombre o sin firma | — | `Este cliente exige el nombre y la firma de quien autoriza el pedido.` | 400 (`signature`) |
+| Solicitar a un cliente suspendido | — | `El cliente está suspendido: no se le puede solicitar una orden.` | 422 |
+| Despachar con el cliente sin aprobar | — | `La orden espera la aprobación del cliente nuevo: no se puede despachar hasta que lo aprueben.` | 422 |
+
+## 19. Forma de pago y consignación (Lote 222)
+
+<!-- kemi:staff -->
+
+La orden guarda **cómo paga este pedido** (catálogo `SalesPaymentMethod`): **Contra entrega: cheque** (`COD_CHECK`), **Contra entrega: efectivo** (`COD_CASH`), **Contra entrega: ACH** (`COD_ACH`), **Crédito** (`CREDIT`) o **Consignación** (`CONSIGNMENT`). Con Crédito guarda además el **término** (15, 20, 30, 45 días, o «cobra el representante»).
+
+**La forma de pago del cliente es su término de pago** (el campo «Término de pago» del perfil, ya migrado de QuickBooks). Al crear la orden sin escoger forma, el sistema la **prellena** así:
+
+| Término de pago del cliente | Forma que se prellena | Término del crédito |
+|---|---|---|
+| `CHEQUE` | Contra entrega: cheque | — |
+| `CASH` | Contra entrega: efectivo | — |
+| `ACH` | Contra entrega: ACH | — |
+| `NET15`, `NET20`, `NET30`, `NET45`, `NET60` | Crédito | el mismo |
+| `PK_BY_REP` (cobra el representante; «vendedor recoge cheque») | Crédito | `PK_BY_REP` |
+| `CONSIGNMENT` | Consignación (y «En consignación» nace marcada) | — |
+| `COD` (contra entrega sin decir cómo) | Nada: el vendedor escoge cheque, efectivo o ACH | — |
+| Cualquier otro o sin término | Nada | — |
+
+- **«Cambió la forma de pago»**: la orden queda marcada cuando su forma es distinta de la prellenada, para que la oficina decida si lo pasa al cliente. Un cliente `COD` que paga con cheque, efectivo o ACH **no** cuenta como cambio.
+- El **término** solo va con Crédito, y Crédito lo exige.
+- **Consignación**: marcar «En consignación» solo se puede con la forma de pago Consignación; cambiar la forma de pago la quita. Los reportes de ventas **no cuentan** lo consignado hasta que se paga ([19 §4e](19-facturacion.md#4e-consignación-lote-224) y sección 22).
+
+| Situación | Mensaje exacto | HTTP |
+|---|---|---|
+| Forma de pago desconocida | `La forma de pago debe ser COD_CHECK, COD_CASH, COD_ACH, CREDIT o CONSIGNMENT.` | 400 (`paymentMethod`) |
+| Crédito sin término | `Indique el término del crédito (15, 20, 30 o 45 días, o cobra el representante).` | 400 |
+| Término con otra forma de pago | `El término de pago solo se indica con la forma de pago Crédito.` | 400 |
+| Término que no es de crédito o que no existe | `El término de pago no es de crédito.` | 400 (`paymentTerm`) |
+| «En consignación» con otra forma de pago | `La venta en consignación exige la forma de pago Consignación.` | 400 (`isConsignment`) |
+
+## 20. Cargo de envío (Lote 222)
+
+<!-- kemi:staff -->
+
+**Qué hace.** Suma a una orden **con entrega** un cargo de envío calculado por el sistema, con su porqué. El vendedor no lo teclea.
+
+**Dónde se configura.**
+- **Compañía**: Sistema → Ajustes → **Operación → Ventas**: **Cargo de envío** (vacío = sin cargo), **Envío gratis desde** (vacío o 0 = sin mínimo; se compara con el total del pedido **después del IVU**) y **El envío lleva IVU** (usa la tasa de la venta de producto, respeta la exención del cliente y solo cuenta con el módulo de impuestos encendido). API: `GET /api/v1/sales-orders/settings` (`sales.view` o `admin.tenant`) y `PATCH` (`admin.tenant`) con `{ "charge": 12, "freeFrom": 120, "taxable": true }`: sin cambio = no mandar el campo; cargo `0` = quitar el cargo; mínimo `0` = quitar el mínimo.
+- **Cliente** (ficha → panel «Ventas»): **Envío de sus pedidos**: «La de la compañía» (por omisión), «No se le cobra envío» o «Regla propia» (cargo, y «Envío gratis desde» opcional). Ver [02 §1.8](02-clientes-y-contratos.md#18-cliente-prospecto-alta-mínima-y-aprobación-lote-222).
+
+**Cómo se calcula** (el cliente gana a la compañía):
+
+| Caso | Cargo | Porqué que se muestra |
+|---|---|---|
+| Recogido | $0 | Recogido: sin envío |
+| «No se le cobra envío» | $0 | Sin cargo por acuerdo con el cliente |
+| Regla propia (o la de la compañía) sin cargo configurado | $0 | (sin motivo) |
+| Regla con cargo y el total después del IVU **llega al mínimo** | $0 | Gratis por monto |
+| Regla propia con cargo | el del cliente | Cargo de envío del cliente |
+| Regla de la compañía con cargo | el de la compañía | Cargo de envío |
+
+El cliente sin regla propia usa siempre la de la compañía **al momento**: un cambio en Ajustes alcanza a todos los que no tienen la suya.
+
+**Cuándo se recalcula.** Al guardar el borrador, al solicitar y al modificar una línea solicitada. **Una vez facturado no cambia.** Cambiar los ajustes de la compañía no toca las órdenes ya solicitadas; los borradores toman la regla nueva al guardarse o solicitarse.
+
+**Cómo suma al total.** El `total` de la orden incluye el envío y su IVU; el `subtotal` y el `taxAmount` siguen siendo solo de productos (los análisis por producto no cambian). El IVU del envío se guarda aparte (`shippingTaxAmount`).
+
+**En la factura.** El cargo de envío entra como una línea de servicio **«OV-##### — Cargo de envío»** (tipo de cargo `SHIPPING`) **una sola vez por orden**, en la primera corrida que factura algo de esa orden. Cancelar la corrida o anular la factura lo libera para la siguiente. No hay PDF de la orden ni de la factura: los datos están en el DTO para la pantalla.
+
+| Campo | Regla | Mensaje exacto | HTTP |
+|---|---|---|---|
+| Cargo (compañía o cliente) | Mayor que cero, hasta 2 decimales | `El cargo de envío debe ser un monto mayor que cero con hasta 2 decimales.` | 400 (`charge` / `shippingCharge`) |
+| Mínimo para envío gratis | Cero o más, hasta 2 decimales | `El mínimo para envío gratis debe ser un monto de cero o más con hasta 2 decimales.` | 400 (`freeFrom` / `shippingFreeFrom`) |
+| Regla del cliente | COMPANY, FREE u OWN | `La regla de envío debe ser COMPANY (la de la compañía), FREE (no se le cobra) u OWN (regla propia).` | 400 (`shippingMode`) |
+| Regla propia sin cargo | — | `La regla propia de envío necesita el cargo.` | 400 (`shippingCharge`) |
+| Ajustes sin cuerpo | — | `El cuerpo de la solicitud es obligatorio.` | 400 |
+| `PATCH …/settings` sin `admin.tenant` | — | `Falta el permiso 'admin.tenant'.` | 403 |
+
+## 21. Cliente nuevo (prospecto) y la orden (Lote 222)
+
+<!-- kemi:staff -->
+
+Un cliente dado de alta desde un pedido nace **Prospecto** ([02 §1.8](02-clientes-y-contratos.md#18-cliente-prospecto-alta-mínima-y-aprobación-lote-222)). Con un cliente prospecto:
+- Se **arma y se solicita** la orden como siempre: se valida el inventario y el crédito y **se reserva**.
+- La orden queda marcada **«Espera aprobación»** (`awaitingClientApproval`) y **no se puede despachar**: `POST …/dispatch` responde 422 `La orden espera la aprobación del cliente nuevo: no se puede despachar hasta que lo aprueben.`
+- Al **aprobar** al cliente, la marca se quita y ya se despacha. Al **rechazarlo** (el cliente pasa a Suspendido) sus órdenes abiertas (borrador o solicitadas) **se cancelan** y lo reservado se libera.
+- Un cliente **Suspendido** no puede solicitar órdenes (antes sí se podía): `El cliente está suspendido: no se le puede solicitar una orden.`
+- El aparato de almacén recibe `isUrgent` y `awaitingClientApproval` al sincronizar; si intenta despachar una orden que espera aprobación, el servidor la rechaza con el mensaje de arriba.
+
+## 22. Avisos, Pulso y análisis del pedido de vendedores (Lotes 222, 224 y 225)
+
+<!-- kemi:staff -->
+
+**Avisos y «Necesita tu atención».**
+
+| Evento / fila | Cuándo | Quién lo ve |
+|---|---|---|
+| Aviso **«Cliente nuevo pendiente de aprobación»** (`SALES_CLIENT_PENDING_APPROVAL`, no se puede silenciar) | Al dar de alta un cliente desde un pedido | Quien arme la regla en Sistema → Reglas de aviso |
+| Aviso **«Pedido urgente»** (`SALES_ORDER_URGENT`, opcional) | Al solicitar una orden urgente | Ídem |
+| Aviso **«Facturas por pasar a QuickBooks»** (`SALES_QUICKBOOKS_PENDING`, opcional) | Diario a las 07:00, solo si hay algo ([49](49-quickbooks.md)) | Ídem |
+| Fila «Cliente nuevo por aprobar: {nombre}» | Mientras el cliente siga prospecto | `sales.approve_client` |
+| Fila «Pedido urgente {número}» | Orden urgente abierta y sin esperar aprobación | `warehouse.pick` |
+| Fila «Facturas por pasar a QuickBooks: N» | Hay facturas sin marcar | `sales.quickbooks.view` |
+
+Como todos los avisos de ventas, **la campana y el correo necesitan una regla** (Sistema → Reglas de aviso, `notifications.manage`): no se siembra ninguna. Las filas de «Necesita tu atención» salen solas por permiso.
+
+**Pulso del día → panel «Ventas»** (`pulse.sales` + `sales.view`, módulo `SALES_ORDERS`; `GET /sales-orders/pulse`): **Pedidos de hoy**, **Urgentes abiertos**, **Clientes por aprobar**, **Pedidos esperando al cliente nuevo**, **Facturas por pasar a QuickBooks** (solo con `sales.quickbooks.view`) y **Consignación sin pagar** (solo con `billing.view` o `billing.consignment.pay` y Facturación encendida). Cada cifra abre su lista.
+
+**Análisis.** La fuente **Órdenes de venta** (`SALES_ORDER`) suma el campo **En consignación** (`IsConsignment`). Hay una fuente nueva, **«Ventas (lo vendido)»** (`SALES_REVENUE`, `sales.view`, módulo `SALES_ORDERS`), que usan los indicadores y gráficos de ventas de fábrica **«Ventas (30 días)»** y **«Ventas por día»**: cuenta las órdenes confirmadas (solicitadas, despachadas en parte o despachadas) que **no** son de consignación el día en que se crearon, y los **pagos de consignación** el día en que se pagaron. Las vistas de órdenes (lista, «por cliente», backorders) son operativas y siguen igual; «Pedidos de hoy» cuenta pedidos, no ventas.
+
+## 23. Para soporte del pedido de vendedores
+
+<!-- kemi:staff -->
+
+- Columnas de `SalesOrder`, `Client` y `Tenant`, tabla `ClientDocument`, catálogos `SalesPaymentMethod`, `ClientDocumentType` y `ShippingReason`, tipo de cargo `SHIPPING` y los permisos del Lote 222: sección «2026-11-07 — Lote 222» de `Diseño/logistica-db-update.sql` (propagación a roles clonados con la marca `L222_SALES_PROSPECT`).
+- Una orden con el cargo de envío ya facturado (`ShippingInvoiced`) no vuelve a cobrarlo. Si hace falta liberarlo, se anula la factura o se cancela la corrida.
+- «¿Por qué la orden de un cliente nuevo no se despacha?»: mire `awaitingClientApproval` y el estatus del cliente.
+- «¿Por qué no sale la forma de pago prellenada?»: el cliente no tiene término de pago, o es `COD` u otro que no se traduce (sección 19).

@@ -10906,3 +10906,482 @@ Kemi appears for the client's people who are signed in, after accepting the lega
 - **I deactivated a company and its people are calling.** Expected: nobody gets in (“The user has no active company.”) and whoever was inside sees “The company is inactive.” (403). To give access back, enter the company from the selector (it shows “(deactivated)”) and press **Activate company**; its data is intact, but they must sign in again.
 - **The new company has no transport or warehouse.** It is born with the base modules on purpose: turn them on in Settings → Modules.
 - **`sessionDays`, `deviceSessionDays` and `trackingSlug` no longer exist.** Session duration is in minutes only; public tracking travels in each notice's link.
+
+
+## Batch 221 — Price lists and offers
+<!-- kemi:staff -->
+
+> The server answers these messages in Spanish; each question quotes the exact Spanish text, followed by its English meaning.
+
+Chapter: [47 — Price lists and offers](47-precios-y-ofertas.md).
+
+### Price lists
+
+**What does "Indique el nombre de la lista de precios." mean?**
+(Give the price list a name.)
+A list was created or renamed without a name (400). Type a name; up to 120 characters ("El nombre de la lista no puede pasar de 120 caracteres.").
+
+**What does "Indique desde qué fecha vale la lista." mean?**
+(Say from which date the list is valid.)
+«Valid from» is missing (400). It is required; «Until» is optional (empty = no end).
+
+**What does "La fecha «hasta» no puede ser anterior a la fecha «desde»." mean?**
+(«Until» cannot be earlier than «from».)
+The dates are the wrong way round (400). Fix the validity; both ends count as in effect.
+
+**What does "Las notas no pueden pasar de 500 caracteres." mean?**
+(Notes cannot exceed 500 characters.)
+The list's (or order's) notes are longer than the limit (400). Shorten them.
+
+**What does "Lista de precios no encontrada." / "Renglón de la lista no encontrado." / "Cliente de la lista no encontrado." mean?**
+(Price list / list line / list client not found.)
+The identifier does not exist or belongs to another company (404). Reload the screen: someone may have removed the line or the client.
+
+**What does "La lista de precios está desactivada: reactívela para cambiarla." mean?**
+(The price list is deactivated: reactivate it to change it.)
+A deactivated list is not edited (lines, clients, photos, dates) (422). Press **Reactivate** and make the change; if it was published, overlaps are checked again when reactivating.
+
+**What does "La lista ya está desactivada." / "La lista ya está activa." mean?**
+(The list is already deactivated / active.)
+Deactivating or reactivating something that already was so (422). Reload and check the state.
+
+**What does "Indique los productos y sus precios." / "Escoja el producto o kit de cada renglón." / "Indique el precio de cada renglón." mean?**
+(Give the products and prices / choose the product or kit of each line / give the price of each line.)
+When adding lines, the list, the product or the price is missing (400). Each line needs a product (or kit) and a price from 0 up.
+
+**What does "Una lista admite como máximo 2000 renglones." / "Una lista admite como máximo 2000 clientes." mean?**
+(A list admits at most 2000 lines / clients.)
+The list limit was exceeded (400). Split the prices into another list (for example, one per brand or season).
+
+**What does "El precio no es válido." / "El precio admite como máximo 4 decimales." mean?**
+(The price is not valid / admits at most 4 decimals.)
+The price is negative, too large or has more than 4 decimals (400). Type a number from 0 up with up to 4 decimals.
+
+**What does "El producto {SKU} viene repetido." mean?**
+(Product {SKU} comes repeated.)
+The same product appears twice in what was sent (400). Remove the duplicate; to change the price of one already there, send a single line with the new price.
+
+**What does "Solo se ponen en una lista productos propios de la compañía." mean?**
+(Only the company's own products go in a list.)
+The product belongs to a pass-through client (422). Lists only carry own products and kits.
+
+**What does "El producto {SKU} está inactivo: no se puede poner en la lista." mean?**
+(Product {SKU} is inactive: it cannot go in the list.)
+The product is deactivated (422). Reactivate it in Products or choose another.
+
+**What does "Escoja los clientes de la lista." mean?**
+(Choose the clients of the list.)
+Clients were added without choosing any (400). Choose at least one.
+
+**What does "La lista aplica a todos los clientes: no lleva clientes escogidos. Desmarque «aplica a todos» para escogerlos." mean?**
+(The list applies to all clients: it carries no chosen clients.)
+Clients were added to a general list (422). For negotiated prices, uncheck «Applies to all clients» first.
+
+**What does "La lista tiene clientes escogidos: quítelos antes de hacerla general (aplica a todos)." mean?**
+(The list has chosen clients: remove them before making it general.)
+«Applies to all» was checked on a list that already has clients (422). Remove the clients or create another general list.
+
+**What does "Agregue al menos un renglón antes de publicar la lista." mean?**
+(Add at least one line before publishing the list.)
+An empty list was published (422). Add lines and publish.
+
+**What does "Escoja al menos un cliente o marque que la lista aplica a todos los clientes." mean?**
+(Choose at least one client or mark that the list applies to all clients.)
+A list of chosen clients was published (or left published) without clients (422). Add clients or make it general. It also appears when removing the last client of a published list: move it to draft first.
+
+**What does "La lista ya está publicada." / "La lista ya está en borrador." mean?**
+(The list is already published / a draft.)
+Publish or back-to-draft was requested on something already so (422). Reload the list.
+
+**What does "La lista se cruza con «…» en las mismas fechas y para los mismos clientes en: … Cambie las fechas o quite esos productos de una de las dos." mean?**
+(The list overlaps with «…» on the same dates and for the same clients in: … Change the dates or remove those products from one of the two.)
+Two published lists of the same audience would give two prices to the same product on overlapping dates (409). The message cites the SKUs (up to 5). Change the dates of one, remove those products from one, or move one to draft. A general list and a client's list **can** carry the same product: the client's wins.
+
+**What does "La lista cambió al mismo tiempo. Recárguela e intente de nuevo." mean?**
+(The list changed at the same time. Reload it and try again.)
+Someone else saved the same list at the same time (409). Reload and repeat the change.
+
+**What does "Adjunte la foto." / "La foto debe ser una imagen (JPG, PNG, WEBP o GIF)." mean?**
+(Attach the photo / the photo must be an image.)
+No file was sent, or its content is not a supported image (400). Upload JPG, PNG, WEBP or GIF (the content is checked, not the extension). If it says "El archivo no puede pasar de {n} MB." (the file cannot exceed {n} MB), reduce the photo.
+
+### Offers (kits on promotion)
+
+**What does "Solo un kit puede ser oferta (promoción)." mean?**
+(Only a kit can be an offer.)
+«Is a promotion» was checked on a product that is not a kit (422). Turn the product into a kit (Products → type Kit) or use a price list to give it a special price.
+
+**What does "La fecha «hasta» de la oferta no puede ser anterior a la fecha «desde»." mean?**
+(The offer's «until» date cannot be earlier than its «from» date.)
+The offer's validity is the wrong way round (400). Fix «Offer from» / «Offer until».
+
+**What does "Marque el kit como oferta antes de ponerle la foto." mean?**
+(Mark the kit as an offer before adding the photo.)
+The photo was uploaded before saving the mark (422). Save «Is a promotion» first, then add the photo.
+
+**What does "La oferta {SKU} no está vigente hoy (vale del … al …): no se puede vender." mean?**
+(Offer {SKU} is not in effect today (valid from … to …): it cannot be sold.)
+The offer is scheduled or expired (422): it cannot be put on a new line or on a draft that is saved again. Change its validity on the kit, or remove the line from the order. Orders already placed do not change.
+
+### Price of a line
+
+**What does "El producto {SKU} no tiene precio de venta: escriba el precio." mean?**
+(Product {SKU} has no sale price: type the price.)
+No in-effect list (the client's or the general one) carries the product and the product has no sale price (400). Put it in a published, in-effect list, give it a sale price, or ask whoever has `sales.price` to type the price.
+
+**What does "Cambiar el precio exige el permiso de precios (sales.price)." mean?**
+(Changing the price requires the price permission.)
+A price different from the one that came from the list was written on the line (403). The salesperson does not type prices: if the price is wrong, fix the list; if an exception is needed, whoever has `sales.price` makes it.
+
+**The salesperson sees a product as «No price» in the order.**
+It is not in any in-effect list for that client and has no sale price. Add it to a published list, or give it a sale price.
+
+**I published the list and the order still has the previous price.**
+Check that the list is published (not draft nor deactivated), that today falls within its validity and that the client is in the list if it is not general. An order already placed never changes; the price is taken when the line is created or edited.
+
+**Who wins if the product is in the client's list and in the general one?**
+The client's. If it is in neither, the product's sale price.
+
+## Batch 222 — Sales-rep order: the order, shipping, payment method and the new client
+<!-- kemi:staff -->
+
+> The server answers these messages in Spanish; each question quotes the exact Spanish text, followed by its English meaning.
+
+Chapters: [18 §18 to §23](18-ordenes-de-venta.md#18-sales-rep-order-what-is-new-in-the-order-batch-222) and [02 §1.8](02-clientes-y-contratos.md#18-prospect-client-minimal-sign-up-and-approval-batch-222).
+
+### The order
+
+**What does "La entrega debe ser DELIVERY (entrega) o PICKUP (recogido)." mean?**
+(Delivery must be DELIVERY or PICKUP.)
+The `deliveryMode` field has another value (400). Send DELIVERY, PICKUP or empty (deduced from the consignee).
+
+**What does "El nombre de quien autoriza no puede pasar de 150 caracteres." mean?**
+(The name of who authorizes cannot exceed 150 characters.)
+The authorizer's name is too long (400). Shorten it.
+
+**What does "Este cliente exige el nombre y la firma de quien autoriza el pedido." mean?**
+(This client requires the name and signature of whoever authorizes the order.)
+The client's record has «Requires the signature of whoever authorizes the order» and the order lacks the name or the signature (400, `signature` field). Type the name and draw the signature in the Authorization step (or on the order) before sending. If that rule no longer applies, remove it on the client's record, «Sales» panel.
+
+**What does "El cliente está suspendido: no se le puede solicitar una orden." mean?**
+(The client is suspended: an order cannot be requested for it.)
+The client's status is Suspended (422), for example because it was rejected as a prospect. Before requesting, reactivate it (Change status) if appropriate.
+
+**What does "La orden espera la aprobación del cliente nuevo: no se puede despachar hasta que lo aprueben." mean?**
+(The order awaits the new client's approval: it cannot be dispatched until they approve.)
+The order belongs to a prospect client (422). It is reserved but not dispatched until someone with `sales.approve_client` approves the client on its record. If they reject it, the order is cancelled.
+
+### Payment method and consignment
+
+**What does "La forma de pago debe ser COD_CHECK, COD_CASH, COD_ACH, CREDIT o CONSIGNMENT." mean?**
+(The payment method must be one of these five.)
+A payment method that does not exist was sent (400). Use one of the five: cash on delivery by check, cash or ACH, credit or consignment.
+
+**What does "Indique el término del crédito (15, 20, 30 o 45 días, o cobra el representante)." mean?**
+(Give the credit term.)
+Credit was chosen without a term (400). Choose the term (NET15, NET20, NET30, NET45 or «the rep collects»).
+
+**What does "El término de pago solo se indica con la forma de pago Crédito." mean?**
+(The payment term is only given with the Credit payment method.)
+A term was sent with another payment method (400). Remove the term, or change the method to Credit.
+
+**What does "El término de pago no es de crédito." mean?**
+(The payment term is not a credit one.)
+The term code is not a credit one or does not exist in the catalog (400). Use NET15, NET20, NET30, NET45 or PK_BY_REP.
+
+**What does "La venta en consignación exige la forma de pago Consignación." mean?**
+(A consignment sale requires the Consignment payment method.)
+«On consignment» was checked with another payment method (400). Change the payment method to Consignment, or uncheck the box.
+
+**The payment method came out empty.**
+The client has no payment term, or it is `COD` or another that does not translate into a method: the salesperson chooses it in the order. To have it prefilled, fill the payment term on the client's record.
+
+**What does the «Payment method changed» mark mean?**
+The order's payment method differs from the client's. The office decides whether to pass it on to the client. A «COD» client paying by check, cash or ACH is not marked.
+
+### Shipping charge
+
+**What does "El cargo de envío debe ser un monto mayor que cero con hasta 2 decimales." mean?**
+(The shipping charge must be an amount greater than zero with up to 2 decimals.)
+The charge (company's or client's) is zero, negative or has more than 2 decimals (400). To remove the company charge send 0 in Settings or leave the field empty; for the client use «No shipping charge».
+
+**What does "El mínimo para envío gratis debe ser un monto de cero o más con hasta 2 decimales." mean?**
+(The minimum for free shipping must be zero or more with up to 2 decimals.)
+The minimum is negative or has more than 2 decimals (400). Empty or 0 = no minimum.
+
+**What does "La regla de envío debe ser COMPANY (la de la compañía), FREE (no se le cobra) u OWN (regla propia)." mean?**
+(The shipping rule must be COMPANY, FREE or OWN.)
+Invalid value in the client's shipping rule (400). On the record choose «The company's», «No shipping charge» or «Own rule».
+
+**What does "La regla propia de envío necesita el cargo." mean?**
+(The own shipping rule needs the charge.)
+«Own rule» was chosen without a charge (400). Type the charge (greater than zero) and, if you want, the minimum for free shipping.
+
+**Why does my order carry no shipping charge?**
+It is pickup; or the client has «No shipping charge»; or the total after IVU reached the minimum («Free by amount»); or no charge is configured (Settings → Operations → Sales). The summary's «Why» says it.
+
+**I changed the charge in Settings and my old orders did not change.**
+Expected: orders already requested keep their shipping; drafts take the new rule when saved or requested, and once invoiced it does not change.
+
+**The shipping charge did not appear on the invoice.**
+It enters once per order, in the first run that invoices something of that order. If the order has no charge, or is pickup, there is no line. Voiding the invoice or cancelling the run frees it for the next one.
+
+### New client (prospect)
+
+**What does "El nombre del negocio es obligatorio." mean?**
+(The business name is required.) The name is missing in the new client's minimal sign-up (400). Type it (up to 200 characters; beyond that, "No puede exceder 200 caracteres." — it cannot exceed 200 characters).
+
+**What does "El nombre del contacto es obligatorio." mean?**
+(The contact name is required.) The contact person is missing (400). Type their name (up to 150 characters).
+
+**What does "El teléfono es obligatorio." / "El teléfono debe tener 10 dígitos, sin espacios ni guiones." mean?**
+(The phone is required / must have 10 digits, without spaces or hyphens.) The phone is missing or is not exactly 10 digits (400). Type it without spaces or hyphens: `7875550100`. The same applies to phone 2 (optional).
+
+**What does "La extensión admite solo dígitos (hasta 6)." mean?**
+(The extension admits digits only, up to 6.) The extension has letters or more than 6 digits (400). Leave it empty or use numbers only.
+
+**What does "Correo inválido." mean?**
+(Invalid email.) The new client's email is not shaped like an email (400). Fix it or leave it empty (optional).
+
+**What does "El registro de comerciante no puede pasar de 50 caracteres." mean?**
+(The merchant registration cannot exceed 50 characters.) The SURI is longer than the limit (400), in the sign-up or in the «Sales» panel of the record.
+
+**What does "La dirección física es obligatoria." mean?**
+(The physical address is required.) Line 1 or the town of the physical address is missing (400). Type them; the mailing address is optional. If the mailing address has line 1 but no town: "La ciudad es obligatoria." (The city is required.)
+
+**What does "Término de pago desconocido: '…'." mean?**
+(Unknown payment term.) The client's payment method code does not exist in the payment terms catalog (400). Use one from the list (CHEQUE, CASH, ACH, NET15, NET20, NET30, NET45, PK_BY_REP, CONSIGNMENT…).
+
+**What does "El límite de crédito no puede ser negativo." mean?**
+(The credit limit cannot be negative.) A negative limit was typed when approving (400). Type 0 or more.
+
+**What does "El cliente no está pendiente de aprobación." mean?**
+(The client is not pending approval.) Approve or Reject was pressed on a client that is no longer a prospect (422), for example because someone else approved it. Reload the record.
+
+**What does "Escriba por qué se rechaza el cliente." mean?**
+(Write why the client is rejected.) Rejecting requires the reason (400). Type it (up to 500 characters; beyond that, "El comentario admite como máximo 500 caracteres.").
+
+**What does "Un cliente prospecto se aprueba o se rechaza con «Aprobar» o «Rechazar» (permiso sales.approve_client)." mean?**
+(A prospect client is approved or rejected with «Approve» or «Reject».) Someone without `sales.approve_client` tried to take the client out of Prospect with «Change status» (403). Ask whoever has that permission (the sales supervisor) to approve or reject it.
+
+**What does "El tipo de documento debe ser MERCHANT_REGISTRATION, RESELLER_CERTIFICATE u OTHER." mean?**
+(The document type must be one of those three.) The type is missing or invalid when uploading a document (400). Choose «Merchant registration (SURI)», «Reseller certificate» or «Other».
+
+**What does "La nota del documento no puede pasar de 300 caracteres." mean?**
+(The document note cannot exceed 300 characters.) The document note is long (400). Shorten it.
+
+**What does "Subir documentos de este cliente exige el permiso de editar clientes (clients.update)." mean?**
+(Uploading this client's documents requires the permission to edit clients.) The salesperson (`clients.create_basic`) only uploads or removes documents while the client is a prospect (403). Afterwards, whoever has `clients.update` uploads them.
+
+**What does "Adjunte un archivo." / "Solo se admiten imágenes (JPG, PNG, WEBP, GIF) y PDF." / "El contenido del archivo no corresponde a su tipo." mean?**
+(Attach a file / only images and PDF are accepted / the file content does not match its type.) The file is missing, is not a supported type or its content does not match its extension (400). Upload a real image or PDF. If it says "El archivo no puede pasar de {n} MB." (the file cannot exceed {n} MB), reduce it (10 MB by default). "El almacén de archivos no está configurado (Files:MasterKey); avise a soporte." (422) is a server matter: tell support.
+
+**Who sees the new-client notice?**
+The «Needs your attention» rows («New client to approve») are seen by whoever has `sales.approve_client`. For the bell and email, the administrator must create the rule of the «New client pending approval» event in System → Notification rules.
+
+**I rejected the client and orders were cancelled.**
+Expected: when rejecting, open orders (draft or requested) are cancelled and what was reserved is released. The client's history says how many and why.
+
+## Batches 223 and 226 — Guided order (web and mobile app)
+<!-- kemi:staff -->
+
+> The server answers these messages in Spanish; each question quotes the exact Spanish text, followed by its English meaning.
+
+Chapter: [48 — Guided order](48-pedido-guiado.md).
+
+**What does "El paso del pedido debe ser CLIENT, PRODUCTS, DELIVERY o AUTHORIZATION." mean?**
+(The order step must be CLIENT, PRODUCTS, DELIVERY or AUTHORIZATION.) A step that does not exist was sent (400). It is an integration error: the web and the app send the four correct steps.
+
+**What does "Agregue al menos un producto a la orden." mean?**
+(Add at least one product to the order.) Step 2 onwards was saved, or the order was sent, without products (400). Type a quantity on some product.
+
+**What does "Escoja a dónde se entrega el pedido o márquelo como recogido." mean?**
+(Choose where the order is delivered or mark it as pickup.) The order is «Delivery» and has no destination (400). Choose the client's physical address or another address, or mark it «Pickup».
+
+**What does "Dibuje la firma de quien autoriza el pedido." mean?**
+(Draw the signature of whoever authorizes the order.) An empty signature was uploaded or the client requires it and none was drawn (400). Draw the signature in the box.
+
+**What does "La firma debe ser una imagen PNG o JPG." mean?**
+(The signature must be a PNG or JPG image.) The signature file is not PNG nor JPG (400). The web and the app send PNG; if you use the API, send PNG or JPG.
+
+**What does "Indique cómo se confirmó el envío del pedido: PASSWORD (contraseña) o BIOMETRIC (huella o rostro en la app)." mean?**
+(Say how the sending was confirmed.) The sending arrived without a confirmation method (400). Integration error: the web sends PASSWORD and the app BIOMETRIC or PASSWORD.
+
+**What does "La reautenticación debe ser BIOMETRIC o PASSWORD." mean?**
+(Re-authentication must be BIOMETRIC or PASSWORD.) The confirmation method is not valid (400). Send PASSWORD or BIOMETRIC.
+
+**What does "Escriba su contraseña para enviar el pedido." mean?**
+(Type your password to send the order.) «Send» was pressed without a password (400). Type the password you sign in to Teikem with.
+
+**What does "Contraseña incorrecta." mean when sending an order?**
+(Wrong password.) The password is not your user's (400, in the password field). It counts toward the account lockout, as when signing in (5 failed attempts lock the account for 15 minutes). If you forgot it, use «Forgot your password?» on the sign-in screen.
+
+**What does "Código MFA inválido." mean when sending an order?**
+(Invalid MFA code.) Your account has two-step verification and the code is wrong or expired (400). Type the current code from your authenticator.
+
+**What does "Esta acción requiere reautenticación reciente (AAL2)." mean when sending with the fingerprint?**
+(This action requires recent re-authentication.) The phone validates the fingerprint, but the server requires the session to have verified password and MFA recently (403, `aal2_required`; 30 minutes by default). The app solves it by asking for the password (and the MFA code); type it and send again.
+
+**What does "Solo se puede editar una orden en borrador." mean when changing the signature or the name?**
+(Only a draft order can be edited.) The order was already sent (422). After sending, neither the order nor its signature is edited; lines are modified ([18 §7](18-ordenes-de-venta.md#7-cancelling-and-modifying-a-requested-order-batch-58)) or it is cancelled.
+
+**What does "Solo se puede solicitar una orden en borrador." mean?**
+(Only a draft order can be requested.) The same order was sent twice or was already requested (422). Open the order in Sales orders and check its status.
+
+**What does "No alcanza el inventario de {SKU}: pedido {n}, disponible {n}, faltante {n}." mean when sending?**
+(Not enough inventory.) There is a shortage (409). The shortage dialog appears: remove the line, order what is available, or **Send with backorder** to reserve what there is and leave the rest pending.
+
+**What does "El cliente excede su límite de crédito: límite {n}, en curso {n}, esta orden {n}." mean when sending?**
+(The client exceeds its credit limit.) The order exceeds the client's credit (422). Only whoever has `orders.credit_override` can send it authorizing the credit; otherwise ask them to do it or adjust the order.
+
+**What does "La orden {número} ya no es un borrador: ábrala en Órdenes de venta." mean?**
+(Order {number} is no longer a draft: open it in Sales orders.) You opened a link to a draft order that was already sent or cancelled. Open it from Sales orders.
+
+**I do not see «Guided order» or «Orders».**
+The `sales.create` permission and the Sales orders module turned on are needed. In the app, the person also cannot be «driver only».
+
+**My orders in the app is empty.**
+The app shows the orders you captured (it compares the session's name or email with who requested) and requires `sales.view` to see the list; without it you can place orders but not see them. The 200 newest of the filter are looked at.
+
+**Why does the app ask for the password if I already used the fingerprint?**
+Because the phone has no fingerprint or face enrolled, it was not confirmed, or the session verification expired. Each case shows its explanation in the window.
+
+**«Could not load. A connection is needed.»**
+The guided order has no offline mode: without a connection you cannot move on. What is already saved stays as a draft on the server; continue when there is signal from Orders → My orders.
+
+**The new client's photo did not upload.**
+The client is created anyway («The client was created, but a photo could not be uploaded…»). Upload it later on the client's record, «Client documents» panel.
+
+**The new client's order came out «Awaiting approval».**
+Expected: it is reserved but not dispatched until the supervisor approves the client.
+
+## Batch 224 — Consignment
+<!-- kemi:staff -->
+
+> The server answers these messages in Spanish; each question quotes the exact Spanish text, followed by its English meaning.
+
+Chapter: [19 §4e](19-facturacion.md#4e-consignment-batch-224).
+
+**What does "El pago ({X}) es mayor que el saldo en consignación de la factura ({Y})." mean?**
+(The payment exceeds the invoice's consignment balance.) The amount is more than what remains to be paid of what was consigned: left − returned − paid (422). Type an amount up to that balance, or the full balance to close it.
+
+**What does "El pago ({X}) es mayor que el saldo de la factura ({Y})." mean?**
+(The payment exceeds the invoice balance.) The invoice already has collections through Payments and its balance is lower than the consignment payment (422). Record the consignment payment for the invoice balance shown in the message.
+
+**What does "La factura no tiene nada en consignación." mean?**
+(The invoice has nothing on consignment.) The invoice carries no lines of orders marked «On consignment» (422). Check that the order was marked on consignment before invoicing it. In the detail, if no line is consignment, "Factura en consignación no encontrada." (Consignment invoice not found.) appears (404).
+
+**What does "Solo se registran pagos de consignación de una factura emitida, vencida o pagada." mean?**
+(Consignment payments are only recorded for an issued, overdue or paid invoice.) The invoice is a draft or voided (422). Approve the run so it is issued, or use another invoice.
+
+**What does "Lo consignado en esta factura ya está pagado por completo." mean?**
+(What was consigned on this invoice is already fully paid.) The consignment balance is already zero (422). There is nothing more to record; if a payment was wrong, void it.
+
+**What does "El filtro debe ser OPEN, PAID o ALL." mean?**
+(The filter must be OPEN, PAID or ALL.) Another value was sent in the balance filter (400). Use With balance (OPEN), Fully paid (PAID) or All (ALL).
+
+**What does "Indique el monto del pago." / "El monto del pago debe ser mayor que cero y tener hasta 2 decimales." mean?**
+(Give the payment amount / it must be greater than zero with up to 2 decimals.) The amount is missing, zero or negative, or has more than 2 decimals (400). Type, for example, `150.00`.
+
+**What does "Indique el método de pago." / "El método de pago no existe." mean?**
+(Give the payment method / the payment method does not exist.) The method is missing or does not exist (400). Choose ACH, check, card or cash: the consignment payment is also the invoice payment and requires it.
+
+**What does "La fecha del pago no puede ser futura." / "La fecha del pago no puede ser anterior a la emisión de la factura." mean?**
+(The payment date cannot be in the future / earlier than the invoice issue.) The payment date is after today or before the issue (400). Type a date from the issue up to today; it counts as sold on that date.
+
+**What does "La referencia no puede pasar de 80 caracteres." mean?**
+(The reference cannot exceed 80 characters.) The reference (check number, ACH…) is longer than the limit (400). Shorten it.
+
+**What does "Escriba el motivo para anular el pago." / "El motivo no puede pasar de 250 caracteres." mean?**
+(Write the reason for voiding / the reason cannot exceed 250 characters.) Voiding requires a reason of up to 250 characters (400).
+
+**What does "El pago ya está anulado." mean?**
+(The payment is already voided.) A consignment payment already voided was voided again (422). Reload the detail: voided ones appear marked.
+
+**What does "La factura ya está pagada por completo: un pago registrado por error se corrige con una nota de crédito o con soporte." mean?**
+(The invoice is already fully paid: a payment recorded by mistake is fixed with a credit note or with support.) When voiding a consignment payment that left the invoice settled, Payments does not allow voiding it (422). Fix it with a credit note or tell support.
+
+**What does "Esta acción requiere reautenticación reciente (AAL2)." mean when voiding a payment?**
+(This action requires recent re-authentication.) Voiding requires confirming your password (and MFA code) recently (403). The screen asks for it; type it and repeat.
+
+**What does "Pago de consignación no encontrado." / "Factura no encontrada." mean?**
+(Consignment payment / invoice not found.) The identifier does not exist or belongs to another company (404). Reload the list.
+
+**I do not see the Consignment tab in Billing.**
+`billing.view` or `billing.consignment.pay` and the Billing module turned on are needed. To record payments, `billing.consignment.pay` is needed.
+
+**I recorded the payment and the invoice changed to Paid.**
+Expected: the consignment payment is also the invoice payment; when it settles it, it becomes Paid.
+
+**I recorded the consignment payment and the day's sales did not change.**
+It counts on the **payment date** you typed, not on the order's date. A consignment order does not add to «Ventas (30 días)» or «Ventas por día» until it is paid.
+
+**The consignment invoice became overdue.**
+Consignment invoices become overdue like any invoice; the overdue job does not tell consignment apart.
+
+## Batch 225 — QuickBooks (IIF file)
+<!-- kemi:staff -->
+
+> The server answers these messages in Spanish; each question quotes the exact Spanish text, followed by its English meaning.
+
+Chapter: [49 — Invoices to QuickBooks](49-quickbooks.md).
+
+**What does "No hay facturas por pasar a QuickBooks." mean?**
+(There are no invoices to pass to QuickBooks.) Export was pressed and there are no issued sales invoices without the mark (422). They are all already marked as in QuickBooks, or no invoice with product sales has been issued yet.
+
+**What does "Indique las facturas (invoiceIds) o pida todas (all = true)." mean?**
+(Give the invoices or ask for all.) Marking or confirming was requested without choosing invoices (400). Check boxes or use «Mark all».
+
+**What does "No se pueden marcar más de 1000 facturas en una sola llamada; use «todas»." mean?**
+(No more than 1000 invoices can be marked in a single call; use «all».) More than 1000 invoices were sent in one call (400). Use «Mark all» (the screen marks in batches of 1000 those chosen one by one).
+
+**What does "Alguna de las facturas indicadas no existe o no es una factura de venta emitida." mean?**
+(One of the given invoices does not exist or is not an issued sales invoice.) Among the invoices there was one that does not exist, belongs to another company, is a draft, voided or has no product sales (400). Reload the list and choose again.
+
+**What does "La factura {número} no ha salido en ningún archivo de QuickBooks; para marcarla a mano use «Marcar como en QuickBooks»." mean?**
+(Invoice {number} has not gone out in any QuickBooks file; to mark it by hand use «Mark as in QuickBooks».) Confirming («Yes, they are in») an invoice that never went out in a file was attempted (422). If you already entered it in QuickBooks some other way, use **Mark as in QuickBooks** (permission `sales.quickbooks.mark`).
+
+**What does "El cuerpo de la solicitud es obligatorio." mean?**
+(The request body is required.) The call arrived without data (400). Integration error.
+
+**What does "El nombre de una cuenta de QuickBooks no puede pasar de 159 caracteres." / "El nombre de un ítem de QuickBooks no puede pasar de 31 caracteres." / "El nombre de un término de QuickBooks no puede pasar de 31 caracteres." mean?**
+A name in Settings → QuickBooks exceeds QuickBooks' limit (400): accounts 159, items 31, terms 31. Type the exact name as it is in QuickBooks.
+
+**What does "El término de pago «…» no existe en el catálogo de términos de pago." mean?**
+(The payment term «…» does not exist in the payment terms catalog.) A code that does not exist was typed in the terms table (400). Use the catalog codes (`NET15`, `NET30`, `COD`…) shown in the table.
+
+**What does the warning "El nombre del cliente «…» pasa de 41 caracteres: QuickBooks no lo acepta como nombre de cliente." mean?**
+(The client name exceeds 41 characters.) List warning (does not block). If the client is new to QuickBooks, QuickBooks will not accept it with that name: shorten it, or fill «QuickBooks code» with the name it has in QuickBooks.
+
+**What does the warning "El SKU «…» pasa de 31 caracteres: QuickBooks no lo acepta como nombre de ítem." mean?**
+(The SKU exceeds 31 characters.) List warning (does not block). The file uses the SKU as the item name and QuickBooks admits 31 characters: shorten the SKU in Teikem.
+
+**What does the warning "El término «…» no tiene nombre en QuickBooks (Ajustes → Operación → QuickBooks): esas facturas salen sin término." mean?**
+(The term has no name in QuickBooks: those invoices go out without terms.) List warning (does not block). Add the term's name in Settings → Operations → QuickBooks → Payment terms, or import knowing those invoices will have no terms.
+
+**I exported, imported and the invoices are still in the list.**
+Exporting does not mark them. After importing press **Yes, they are in (N)** in «Did you already import these N?»; if you already left that screen, use **Mark as in QuickBooks**.
+
+**QuickBooks rejected some invoices when importing.**
+Uncheck them in «Did you already import these N?» and confirm the rest: the unchecked ones go out in the next file. Before re-exporting, check that the items are named like Teikem's SKU, that the client exists and that the terms have a name.
+
+**«{n} of these already went out on {date} in a file and have not been confirmed».**
+Those invoices were exported before and nobody confirmed. If they are already in QuickBooks, mark them; if not, they will go out again in the next file (exporting always takes all the unmarked ones).
+
+**I marked an invoice by mistake.**
+In «See the ones already passed» use **Remove the mark**: it goes back to «to pass». Its clients and products do not go out as new again.
+
+**Why does the client show as «New client» if it already exists in QuickBooks?**
+Teikem does not know what it is called in QuickBooks. Fill its «QuickBooks code» field with the exact name (those clients are never new), or uncheck «Include the new clients and products» when exporting.
+
+**Why do all the products show as «new» the first time?**
+Migrated products have no «already sent» mark. Support marks them with the company's data script, and the first export is done without the new ones until the item names are confirmed.
+
+**How is the file imported into QuickBooks?**
+File → Utilities → Import → IIF Files, and choose the `.iif` Teikem downloaded. The file is in Windows-1252; characters that do not fit come out as «?».
+
+**The «Invoices to pass to QuickBooks» notice does not arrive.**
+The scheduled job publishes it at 07:00, one a day and only if there are invoices to pass; who receives it by bell or email is decided by a notification rule that the administrator must create (System → Notification rules). The «Needs your attention» row shows up on its own for whoever has `sales.quickbooks.view`.
+
+**I do not see the QuickBooks tab.**
+Any of `sales.quickbooks.view`, `sales.quickbooks.mark` or `sales.quickbooks.export` is needed and the Sales orders module turned on.
