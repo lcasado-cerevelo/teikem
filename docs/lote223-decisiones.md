@@ -31,3 +31,19 @@ Parte P3 de [pedido-vendedores-plan-desarrollo.md](pedido-vendedores-plan-desarr
 - Frontend (P3): pantallas del pedido guiado; claves i18n de los mensajes nuevos.
 - P4 (app): mandar `authMethod: BIOMETRIC` después de la huella; si responde `aal2_required`, pedir contraseña (+MFA) con `/auth/reauth` y repetir.
 - Manual (capítulo 18) y FAQ: los mensajes exactos están en `SalesDraftStepRules`.
+
+## Frontend web (P3): el pedido guiado — `web-app/src/features/sales/wizard/*`
+Ruta `/sales-orders/new-order` (`sales.create`, módulo SALES_ORDERS, sin ítem de menú), botón «Nuevo pedido» junto a «Nueva orden» en Órdenes de venta. Cuatro pasos con
+barra de progreso; firma dibujada con el componente nuevo del kit `SignaturePad` (+ `signature.ts`, documentados en `web-app/KIT.md`).
+
+Decisiones (para ratificar):
+1. **«Siguiente» guarda; «Atrás» no.** Cada «Siguiente» manda el paso que se deja (POST la primera vez, PATCH después); volver atrás (botón o barra de pasos) no guarda, y la barra solo deja ir a pasos anteriores. Lo cambiado al volver se guarda con el siguiente «Siguiente».
+2. **La dirección guarda el borrador**: tras el primer guardado queda `?order=<publicId>`; abrir esa dirección retoma el borrador en el primer paso pendiente (`resumeStep`). Una orden que ya no es borrador no se edita ahí (aviso).
+3. **Entrega por omisión = dirección física del cliente**, puesta al pasar de Productos a Entrega; cambiar entrega/recogido o el consignatario guarda el borrador al momento (paso PRODUCTS, que no exige consignatario) para que el resumen traiga el envío y su porqué recalculados.
+4. **Almacén**: el paso 1 lo pide solo si la compañía tiene más de un almacén activo (validación local `warehouse`).
+5. **Enviar**: valida todos los pasos en la pantalla, guarda AUTHORIZATION, sube la firma (PNG negro sobre blanco) solo si se dibujó o se borró, y luego pide la contraseña (y el MFA si la cuenta lo tiene). Contraseña/MFA malos: el error queda en su campo. 409 de inventario o 422 de crédito: el diálogo de faltante de siempre (`AvailabilityDialog`, ahora exportado con `onRequest`) repite `/submit` con la misma contraseña en memoria; se borra al terminar o cancelar.
+6. **El vendedor no teclea precios**: las líneas viajan sin precio; el carrito muestra el del catálogo y, tras guardar, el que dejó el servidor.
+
+Pruebas (vitest): `wizardRules.test.ts` (25), `ClientStep.test.tsx` (5), `ProductsStep.test.tsx` (4), `DeliveryStep.test.tsx` (4), `AuthorizationStep.test.tsx` (4) y
+`NewOrderScreen.test.tsx` (7: recorrido completo con borrador por paso, contraseña mala, faltante → backorder, pantalla final y «Nuevo pedido»; firma exigida subida
+como PNG; retomar `?order=`; MFA; y tres de 360 px). Pendiente para el cierre: capítulo del manual de pantallas con capturas y FAQ de los mensajes nuevos.

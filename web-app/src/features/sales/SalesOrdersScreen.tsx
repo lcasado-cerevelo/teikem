@@ -2,7 +2,7 @@
 // (lista con filtro de estatus y buscador; «Nueva orden» con sales.create) y los BACKORDERS (lo pendiente, el más antiguo primero; surtir una línea, surtir todo
 // o cerrar con faltante con sales.backorder). Una orden se abre en su ventana (borrador editable, o solicitada con lo reservado y lo pendiente).
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Can } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { fetchAllPages } from '../../kernel/api/fetchAllPages'
@@ -256,7 +256,11 @@ export default function SalesOrdersScreen() {
           <p>{t('sales.subtitle')}</p>
         </div>
         <Can perm="sales.create">
-          <button type="button" className="btn flow" onClick={() => setOpenId('new')}>{t('sales.new')}</button>
+          <div className="act">
+            {/* Lote 223: el pedido guiado (pantalla completa por pasos) junto a la ventana de siempre */}
+            <Link className="btn flow" to="/sales-orders/new-order">{t('sales.newGuided')}</Link>
+            <button type="button" className="btn" onClick={() => setOpenId('new')}>{t('sales.new')}</button>
+          </div>
         </Can>
       </div>
       <Tabs<TabKey>

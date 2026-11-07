@@ -43,26 +43,42 @@ function draftOf(order: SalesOrderDto | null): OrderDraft {
 
 // ---------------------------------------------------------------- diálogo de faltante y crédito
 
-function AvailabilityDialog({ order, check, onClose, onDone }: { order: SalesOrderDto; check: SalesAvailabilityDto; onClose: () => void; onDone: () => void }) {
+/**
+ * Lote 223: exportado para el pedido guiado, que solicita con «Enviar pedido» (contraseña) en vez de `/request`: `onRequest(allowBackorder, overrideCredit)` reemplaza la
+ * solicitud de siempre (si lanza, el diálogo muestra el error y no se cierra).
+ */
+export function AvailabilityDialog({ order, check, onClose, onDone, onRequest }: {
+  order: SalesOrderDto
+  check: SalesAvailabilityDto
+  onClose: () => void
+  onDone: () => void
+  onRequest?: (allowBackorder: boolean, overrideCredit: boolean) => Promise<unknown>
+}) {
   const t = useT()
   const f = useFormat()
   const { request } = useSalesMutations()
   const canOverride = useCan('orders.credit_override')
   const [override, setOverride] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sending, setSending] = useState(false)
   const credit = check.credit
   const exceeded = !!credit?.exceeded
   const shortLines = (check.lines ?? []).filter((l) => (l.shortage ?? 0) > 0)
   const blockedByCredit = exceeded && !(override && canOverride)
+  const busy = request.isPending || sending
 
   const go = async (allowBackorder: boolean) => {
     setError(null)
     try {
-      await request.mutateAsync({ id: order.publicId!, allowBackorder, overrideCredit: exceeded && override ? true : undefined })
+      setSending(true)
+      if (onRequest) await onRequest(allowBackorder, exceeded && override)
+      else await request.mutateAsync({ id: order.publicId!, allowBackorder, overrideCredit: exceeded && override ? true : undefined })
       toast.success(t('sales.requested', { number: order.number ?? '' }))
       onDone()
     } catch (e) {
       setError(applyProblemDetails(e).title)
+    } finally {
+      setSending(false)
     }
   }
 
@@ -72,14 +88,14 @@ function AvailabilityDialog({ order, check, onClose, onDone }: { order: SalesOrd
       size="md"
       title={t('sales.check.title', { number: order.number ?? '' })}
       onClose={onClose}
-      dismissible={!request.isPending}
+      dismissible={!busy}
       footer={
         <>
-          <button type="button" className="btn" onClick={onClose} disabled={request.isPending}>{t('sales.check.back')}</button>
+          <button type="button" className="btn" onClick={onClose} disabled={busy}>{t('sales.check.back')}</button>
           {shortLines.length > 0 ? (
-            <button type="button" className="btn flow" disabled={request.isPending || blockedByCredit} onClick={() => void go(true)}>{t('sales.check.backorder')}</button>
+            <button type="button" className="btn flow" disabled={busy || blockedByCredit} onClick={() => void go(true)}>{t('sales.check.backorder')}</button>
           ) : (
-            <button type="button" className="btn flow" disabled={request.isPending || blockedByCredit} onClick={() => void go(false)}>{t('sales.check.request')}</button>
+            <button type="button" className="btn flow" disabled={busy || blockedByCredit} onClick={() => void go(false)}>{t('sales.check.request')}</button>
           )}
         </>
       }

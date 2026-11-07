@@ -1,0 +1,10 @@
+/* Lote 223 — cuadro de firma (SignaturePad). Colores del tema; nunca más ancho que su contenedor (360 px en adelante). */
+.sigpad { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.sigpad-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; }
+.sigpad-label { font-weight: 600; }
+.sigpad-box { display: block; width: 100%; height: auto; aspect-ratio: 5 / 2; background: var(--panel-2); border: 1px dashed var(--line); border-radius: var(--radius-sm); touch-action: none; cursor: crosshair; user-select: none; }
+.sigpad.invalid .sigpad-box { border: 1px solid var(--danger); }
+.sigpad.disabled .sigpad-box { opacity: .55; cursor: not-allowed; }
+.sigpad-baseline { stroke: var(--line); stroke-width: 2; stroke-dasharray: 8 6; }
+.sigpad-ink { fill: none; stroke: var(--text); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.sigpad .help { margin: 0; }
