@@ -1,0 +1,40 @@
+/* Lote 225 (P5): pestaña QuickBooks de Órdenes de venta. Colores de la paleta del tema (claro y oscuro); sin scroll horizontal de página desde 360 px. */
+.qb-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; min-width: 0; }
+.qb-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px; }
+.qb-tools .qbox { flex: 1 1 220px; min-width: 0; }
+.qb-all, .qb-include { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; min-width: 0; }
+.qb-include { margin: 8px 0 0; }
+.qb-note { margin: 0 0 10px; color: var(--text); }
+.qb-warn { border-color: var(--warn); }
+.qb-warn ul { margin: 6px 0 0; padding-left: 18px; }
+.qb-news { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.qb-check { width: 18px; height: 18px; }
+.qb-summary { margin: 0 0 8px; overflow-wrap: anywhere; }
+.qb-ask-list { list-style: none; margin: 8px 0; padding: 0; max-height: 320px; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--radius-sm, 9px); }
+.qb-ask-list li + li { border-top: 1px solid var(--line); }
+.qb-ask-list label { display: grid; grid-template-columns: auto minmax(0, 8rem) minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 10px; cursor: pointer; }
+.qb-ask-num { font-weight: 700; overflow-wrap: anywhere; }
+.qb-ask-client { overflow-wrap: anywhere; color: var(--muted); }
+.qb-ask-total { text-align: right; white-space: nowrap; }
+.qb-ask-actions { margin-top: 10px; }
+.qb-data + .qb-data { margin-top: 16px; }
+.qb-data h3 { margin: 0 0 8px; font-size: 14px; }
+.qb-data dd { overflow-wrap: anywhere; }
+.qb-products { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.qb-products > li { border: 1px solid var(--line); border-radius: var(--radius-sm, 9px); padding: 10px; }
+.qb-terms { width: 100%; border-collapse: collapse; }
+.qb-terms th, .qb-terms td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+.qb-terms td input { width: 100%; min-width: 0; }
+.qb-terms .code { color: var(--muted); font-size: 12px; }
+@media (max-width: 480px) {
+  .qb-ask-list label { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .qb-ask-client { grid-column: 2 / -1; }
+  .qb-actions { justify-content: stretch; }
+  .qb-actions .btn { flex: 1 1 auto; }
+  .qb-terms thead { display: none; }
+  .qb-terms, .qb-terms tbody, .qb-terms tr, .qb-terms td { display: block; width: 100%; }
+  .qb-terms tr { border-bottom: 1px solid var(--line); padding: 6px 0; }
+  .qb-terms td { border-bottom: 0; padding: 4px 0; }
+}
+.qb-sub { margin: 14px 0 8px; font-size: 13px; font-weight: 700; color: var(--text); }
+.qb-sub:first-child { margin-top: 0; }

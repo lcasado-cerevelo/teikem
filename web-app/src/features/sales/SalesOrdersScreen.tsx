@@ -3,7 +3,7 @@
 // o cerrar con faltante con sales.backorder). Una orden se abre en su ventana (borrador editable, o solicitada con lo reservado y lo pendiente).
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Can } from '../../kernel/access'
+import { Can, permAllowed, useAccess } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import { useFormat } from '../../kernel/format'
@@ -14,13 +14,17 @@ import { ToggleFilter } from '../warehouse/filterControls'
 import { IconCart } from '../../kernel/ui/screenIcons'
 import { OrderBadges } from './OrderBadges'
 import { OrderModal } from './OrderModal'
+import { QuickBooksTab } from './QuickBooksTab'
 import { ReturnEditor, ReturnModal, ReturnsTab } from './ReturnsParts'
 import { ORDER_STATUSES } from './salesRules'
 import { salesOrderPageReader, useBackorders, useSalesMutations, useSalesOrders, type SalesBackorderLineDto, type SalesOrderListItemDto } from './salesApi'
 import '../tax/tax.css'
 import './sales.css'
 
-type TabKey = 'orders' | 'backorders' | 'returns'
+type TabKey = 'orders' | 'backorders' | 'returns' | 'quickbooks'
+const TAB_KEYS: readonly TabKey[] = ['orders', 'backorders', 'returns', 'quickbooks']
+/** Lote 225: la pestaña QuickBooks la ven los tres permisos de QuickBooks (quien marca o exporta necesita ver la lista, como el API). */
+const QUICKBOOKS_PERMS = 'sales.quickbooks.view|sales.quickbooks.mark|sales.quickbooks.export'
 
 function useDebounced(value: string, ms = 300) {
   const [v, setV] = useState(value)
@@ -241,9 +245,24 @@ function BackordersTab({ onOpen }: { onOpen: (id: string) => void }) {
 
 export default function SalesOrdersScreen() {
   const t = useT()
-  const [tab, setTab] = useState<TabKey>('orders')
+  // Lote 225: la pestaña va en ?tab= (orders = sin parámetro) para que el Pulso y «Necesita tu atención» abran QuickBooks directo (?tab=quickbooks)
+  const [params, setParams] = useSearchParams()
+  const { permissions } = useAccess()
+  const canQuickBooks = permAllowed(QUICKBOOKS_PERMS, permissions)
+  const raw = params.get('tab') as TabKey | null
+  const tab: TabKey = raw && TAB_KEYS.includes(raw) && (raw !== 'quickbooks' || canQuickBooks) ? raw : 'orders'
+  const setTab = (k: TabKey) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('qb')
+        if (k === 'orders') next.delete('tab')
+        else next.set('tab', k)
+        return next
+      },
+      { replace: true },
+    )
   // Lote 67: el aviso del Pulso «Necesita tu atención» abre la orden directo (?order=<publicId>)
-  const [params] = useSearchParams()
   const [openId, setOpenId] = useState<string | null | 'new'>(() => params.get('order'))
   // Lote 82: devoluciones (la ficha por su id y el editor, opcionalmente sobre una orden)
   const [returnId, setReturnId] = useState<string | null>(null)
@@ -271,9 +290,18 @@ export default function SalesOrdersScreen() {
           { key: 'orders', label: t('sales.tabs.orders') },
           { key: 'backorders', label: t('sales.tabs.backorders') },
           { key: 'returns', label: t('sales.tabs.returns') },
+          ...(canQuickBooks ? [{ key: 'quickbooks' as const, label: t('sales.tabs.quickbooks') }] : []),
         ]}
       />
-      {tab === 'orders' ? <OrdersTab onOpen={setOpenId} /> : tab === 'backorders' ? <BackordersTab onOpen={setOpenId} /> : <ReturnsTab onOpen={setReturnId} onNew={() => setNewReturn({ orderId: null })} />}
+      {tab === 'orders' ? (
+        <OrdersTab onOpen={setOpenId} />
+      ) : tab === 'backorders' ? (
+        <BackordersTab onOpen={setOpenId} />
+      ) : tab === 'quickbooks' ? (
+        <QuickBooksTab />
+      ) : (
+        <ReturnsTab onOpen={setReturnId} onNew={() => setNewReturn({ orderId: null })} />
+      )}
       {openId !== null && (
         <OrderModal
           key={openId}

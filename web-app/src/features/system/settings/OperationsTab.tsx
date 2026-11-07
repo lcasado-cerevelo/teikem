@@ -10,7 +10,7 @@
 import { useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
-import { ModuleKeys, useCan, useModule } from '../../../kernel/access'
+import { ModuleKeys, useCan, useCanAny, useModule } from '../../../kernel/access'
 import { isAccessDenied } from '../../warehouse/accessDenied'
 import { useLookups, useStatuses, type StatusOption } from '../../../kernel/catalogs'
 import { useT } from '../../../kernel/i18n'
@@ -36,6 +36,7 @@ import { usePrintingSettings, useSavePrintingSettings } from '../../printing/pri
 import { useProductCategories, useReceiptSummaryByWarehouse, useWarehouses } from '../../warehouse/api'
 import { problemText } from '../../warehouse/problemText'
 import { useCapabilities, useSaveTenantSettings, useSetCapabilities, type TenantSettingsDto } from '../tenantSettingsApi'
+import { SettingsQuickBooksSection } from './SettingsQuickBooksSection'
 import { SettingsSalesSection } from './SettingsSalesSection'
 import { capabilityAllowed, ORDER_CAPABILITIES, recvSummaryRows, type RecvRow } from './operations'
 
@@ -687,6 +688,8 @@ export function OperationsTab({ settings, canEdit }: { settings: TenantSettingsD
   const orders = useModule(ModuleKeys.LtlGround)
   const wms = useModule(ModuleKeys.WmsLotSerial)
   const sales = useModule(ModuleKeys.SalesOrders)
+  // Lote 225: Ajustes → QuickBooks lo leen sales.quickbooks.view o admin.tenant (como el API)
+  const quickBooks = useCanAny('sales.quickbooks.view', 'admin.tenant')
   return (
     <>
       <div className="set-cols">
@@ -700,6 +703,7 @@ export function OperationsTab({ settings, canEdit }: { settings: TenantSettingsD
       {wms && <CountRevealPanel settings={settings} canEdit={canEdit} />}
       {wms && <RecvSummaryPanel />}
       {sales && <SettingsSalesSection canEdit={canEdit} />}
+      {sales && quickBooks && <SettingsQuickBooksSection canEdit={canEdit} />}
     </>
   )
 }

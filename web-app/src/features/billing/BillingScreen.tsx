@@ -1,7 +1,7 @@
 // Contabilidad → Facturación (Lote 73, módulo BILLING, permiso billing.view): las CORRIDAS (generar → revisar → aprobar → cancelar), las FACTURAS (ficha, ajustar el monto de una línea con motivo, anular)
 // y los AJUSTES (base de facturación del producto y días de vencimiento). Aprobar y anular exigen reautenticación (AAL2): el cliente del API la pide solo.
 import { useEffect, useMemo, useState } from 'react'
-import { Can, useCan } from '../../kernel/access'
+import { Can, useCan, useCanAny } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import { useFormat } from '../../kernel/format'
@@ -26,11 +26,12 @@ import {
 import { adjustError, INVOICE_STATUSES, invoiceCanCredit, invoiceCanVoid, monthStartIso, parseAmount, RUN_STATUSES, runFormError, runIsOpen, todayIso, toRunRequest, type RunForm } from './billingRules'
 import { PaymentsSection, ReceivablesTab, StatementModal } from './CollectionsParts'
 import { CreditEditor, CreditNoteModal, CreditNotesTab } from './CreditParts'
+import { ConsignmentTab } from './ConsignmentTab'
 import { ExportSection } from './ExportParts'
 import './billing.css'
 import '../tax/tax.css'
 
-type TabKey = 'runs' | 'invoices' | 'collections' | 'credits' | 'settings'
+type TabKey = 'runs' | 'invoices' | 'collections' | 'credits' | 'consignment' | 'settings'
 
 function useDebounced(value: string, ms = 300) {
   const [v, setV] = useState(value)
@@ -536,7 +537,13 @@ function SettingsTab() {
 function BillingScreenBody() {
   const t = useT()
   // `?q=<número>` (búsqueda global): abre las facturas ya filtradas por ese número
-  const [tab, setTab] = useState<TabKey>(() => (new URLSearchParams(window.location.search).get('q') ? 'invoices' : 'runs'))
+  // `?tab=consignment` (el aviso del Pulso) abre Consignación
+  const [tab, setTab] = useState<TabKey>(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('tab') === 'consignment') return 'consignment'
+    return params.get('q') ? 'invoices' : 'runs'
+  })
+  const canConsignment = useCanAny('billing.view', 'billing.consignment.pay')
   const [runId, setRunId] = useState<number | null>(null)
   const [newRun, setNewRun] = useState(false)
   const [invoiceId, setInvoiceId] = useState<string | null>(null)
@@ -563,6 +570,7 @@ function BillingScreenBody() {
           { key: 'invoices', label: t('billing.tabs.invoices') },
           { key: 'collections', label: t('billing.tabs.collections') },
           { key: 'credits', label: t('billing.tabs.credits') },
+          ...(canConsignment ? [{ key: 'consignment' as const, label: t('billing.tabs.consignment') }] : []),
           { key: 'settings', label: t('billing.tabs.settings') },
         ]}
       />
@@ -570,6 +578,7 @@ function BillingScreenBody() {
       {tab === 'invoices' && <InvoicesTab onOpen={setInvoiceId} />}
       {tab === 'collections' && <ReceivablesTab onOpenStatement={(id, name) => setStatement({ id, name })} />}
       {tab === 'credits' && <CreditNotesTab onOpen={setCreditId} onNew={() => setCreditEditor({})} />}
+      {tab === 'consignment' && canConsignment && <ConsignmentTab />}
       {tab === 'settings' && <SettingsTab />}
       {newRun && (
         <NewRunModal

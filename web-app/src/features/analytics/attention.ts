@@ -14,7 +14,7 @@ export type AttentionGroupDto = components['schemas']['AttentionGroupDto']
 type Translate = (key: string, params?: TParams) => string
 
 /** Tipos de aviso que esta web sabe describir (el resto se pinta con su código y su "Revisar"). */
-export const ATTENTION_CODES = ['DELIVERY_FAR', 'INVENTORY_DISCREPANCY', 'RENTAL_DUE', 'SALES_BACKORDER_READY', 'SALES_CLIENT_PENDING', 'SALES_ORDER_URGENT', 'EXIT_NOTICE_BACKORDER', 'ORDERS_NO_DRIVER', 'COD_UNRECONCILED', 'SLA_AT_RISK', 'ORDERS_FAILED', 'CLAIMS_OPEN', 'FLEET_DOCS_DUE', 'INVOICES_OVERDUE'] as const
+export const ATTENTION_CODES = ['DELIVERY_FAR', 'INVENTORY_DISCREPANCY', 'RENTAL_DUE', 'SALES_BACKORDER_READY', 'SALES_CLIENT_PENDING', 'SALES_ORDER_URGENT', 'SALES_QUICKBOOKS_PENDING', 'EXIT_NOTICE_BACKORDER', 'ORDERS_NO_DRIVER', 'COD_UNRECONCILED', 'SLA_AT_RISK', 'ORDERS_FAILED', 'CLAIMS_OPEN', 'FLEET_DOCS_DUE', 'INVOICES_OVERDUE'] as const
 export type AttentionCode = (typeof ATTENTION_CODES)[number]
 
 export function isKnownAttention(code: string | null | undefined): code is AttentionCode {
@@ -109,6 +109,7 @@ export function attentionRowText(item: AttentionItemDto, t: Translate, lang: str
   if (item.code === 'SALES_BACKORDER_READY') return salesBackorderText(p, t, lang, since)
   if (item.code === 'SALES_CLIENT_PENDING') return salesClientPendingText(p, t, since)
   if (item.code === 'SALES_ORDER_URGENT') return salesUrgentText(p, t, since)
+  if (item.code === 'SALES_QUICKBOOKS_PENDING') return salesQuickBooksText(p, t, since)
   if (item.code === 'EXIT_NOTICE_BACKORDER') return exitNoticeBackorderText(p, t, lang, since)
   if (item.code === 'ORDERS_NO_DRIVER') return noDriverText(p, t, since)
   if (item.code === 'COD_UNRECONCILED') return codUnreconciledText(p, t, since)
@@ -207,6 +208,28 @@ function salesUrgentText(p: Record<string, string>, t: Translate, since: string)
     figures: [],
     since,
     reviewLabel: t(`${base}.reviewLabel`, { number, client: p.client ?? '' }),
+  }
+}
+
+/**
+ * Lote 225 — facturas por pasar a QuickBooks (SALES_QUICKBOOKS_PENDING, sales.quickbooks.view): una fila resumen. Params: count, exported (ya salieron en un archivo sin
+ * confirmar), oldest (AAAA-MM-DD) y days. «Revisar» abre Órdenes de venta en la pestaña QuickBooks (`?tab=quickbooks`).
+ */
+function salesQuickBooksText(p: Record<string, string>, t: Translate, since: string): AttentionRowText {
+  const base = 'analytics.attention.items.SALES_QUICKBOOKS_PENDING'
+  const count = Number(p.count ?? '0')
+  const exported = Number(p.exported ?? '0')
+  const days = Number(p.days ?? '0')
+  const figures: AttentionFigure[] = []
+  if (Number.isFinite(exported) && exported > 0) figures.push({ label: t(`${base}.exported`), value: formatNumber(exported) })
+  if (p.oldest) figures.push({ label: t(`${base}.oldest`), value: formatDate(p.oldest) })
+  if (Number.isFinite(days) && days > 0) figures.push({ label: t(`${base}.days`), value: formatNumber(days), emphasis: days > 7 })
+  return {
+    title: t(count === 1 ? `${base}.titleOne` : `${base}.title`, { count: formatNumber(count) }),
+    detail: t(`${base}.detail`),
+    figures,
+    since,
+    reviewLabel: t(`${base}.reviewLabel`, { count: formatNumber(count) }),
   }
 }
 
