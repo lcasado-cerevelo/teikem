@@ -132,6 +132,9 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         b.Property(p => p.PackQty).HasColumnType("decimal(16,3)");   // 2026-10-09: empaque
         b.Property(p => p.Brand).HasMaxLength(100);   // Lote 12
         b.Property(p => p.Model).HasMaxLength(100);   // Lote 12
+        b.Property(p => p.PromoFrom).HasColumnType("date");   // Lote 221: oferta (kit en promoción)
+        b.Property(p => p.PromoTo).HasColumnType("date");
+        b.HasOne<Teikem.Domain.Files.StoredFile>().WithMany().HasForeignKey(p => p.PromoImageFileId).OnDelete(DeleteBehavior.NoAction);
         b.Property(p => p.RowVersion).IsRowVersion();
 
         // SKU único por dueño (ClientId NULL = propio): sin el filtro 'IS NOT NULL' que EF agregaría.

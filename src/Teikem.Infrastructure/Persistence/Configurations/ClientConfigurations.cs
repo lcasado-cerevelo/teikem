@@ -24,6 +24,10 @@ public sealed class ClientConfiguration : IEntityTypeConfiguration<Client>
         b.Property(c => c.InvoiceNumberFormat).HasMaxLength(40);
         b.Property(c => c.PackageNumberFormat).HasMaxLength(40);
         b.Property(c => c.NoticeLang).HasMaxLength(2);   // Lote 116
+        b.Property(c => c.MerchantRegistration).HasMaxLength(50);   // Lote 222
+        b.Property(c => c.ShippingMode).HasColumnType("varchar(10)");
+        b.Property(c => c.ShippingCharge).HasColumnType("decimal(18,2)");
+        b.Property(c => c.ShippingFreeFrom).HasColumnType("decimal(18,2)");
         b.Property(c => c.RowVersion).IsRowVersion();
         b.HasIndex(c => new { c.TenantId, c.Code }).IsUnique().HasDatabaseName("UQ_Client_Tenant_Code");
         b.HasIndex(c => c.PublicId);
@@ -256,5 +260,22 @@ public sealed class PortalUserConfiguration : IEntityTypeConfiguration<PortalUse
         b.HasOne(p => p.Status).WithMany().HasForeignKey(p => p.StatusCodeId);
         b.HasOne(p => p.User).WithMany().HasForeignKey(p => p.UserId);
         b.HasOne(p => p.Location).WithMany().HasForeignKey(p => p.LocationId);   // Lote 117: consignatario con acceso
+    }
+}
+
+/// <summary>Lote 222 — documentos del cliente (registro de comerciante, certificado de revendedor). Sección 2026-11-07 de update.sql.</summary>
+public sealed class ClientDocumentConfiguration : IEntityTypeConfiguration<ClientDocument>
+{
+    public void Configure(EntityTypeBuilder<ClientDocument> b)
+    {
+        b.ToTable("ClientDocument");
+        b.HasKey(d => d.ClientDocumentId);
+        b.Property(d => d.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();
+        b.Property(d => d.Notes).HasMaxLength(300);
+        b.HasIndex(d => d.PublicId).IsUnique().HasDatabaseName("UX_ClientDocument_PublicId");
+        b.HasIndex(d => new { d.TenantId, d.ClientId }).HasDatabaseName("IX_ClientDocument_Client");
+        b.HasOne<Client>().WithMany().HasForeignKey(d => d.ClientId);
+        b.HasOne<Teikem.Domain.Files.StoredFile>().WithMany().HasForeignKey(d => d.StoredFileId);
+        b.HasOne<Teikem.Domain.Catalogs.LookupCode>().WithMany().HasForeignKey(d => d.DocumentTypeLookupId);
     }
 }

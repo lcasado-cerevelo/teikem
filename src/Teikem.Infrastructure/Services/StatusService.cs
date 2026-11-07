@@ -234,6 +234,32 @@ public sealed class StatusService(TeikemDbContext db, ITenantContext tenant, ILo
     }
 
     /// <summary>
+    /// Lote 222 — un registro NUEVO que nace en una etapa del pipeline ANTERIOR a la inicial (el cliente que entra por un pedido nace Prospecto, antes de Activo). Solo vale la inicial
+    /// o una etapa PIPELINE habilitada de menor orden que la inicial; registra el historial (de nada a esa etapa) y dispara los efectos, como <see cref="TransitionAsync(string, string, int, int?, string, string?, CancellationToken)"/>.
+    /// </summary>
+    public async Task<StatusCode> StartAtAsync(string statusDomain, string entityTypeCode, int entityId, string toCode, string? comment, CancellationToken ct)
+    {
+        if (comment is { Length: > CommentMaxLength }) throw new ValidationException("comment", CommentTooLongMessage);
+        var enabled = await LoadEnabledAsync(statusDomain, ct);
+        var to = enabled.FirstOrDefault(s => s.InternalCode.Equals(toCode, StringComparison.OrdinalIgnoreCase))
+                 ?? throw new StatusRuleException($"El estatus '{toCode}' no existe o no está habilitado para esta compañía.");
+        var initial = enabled.Where(s => s.IsInitial).OrderBy(s => s.SortOrder).FirstOrDefault()
+                      ?? throw new StatusRuleException($"El pipeline '{statusDomain}' no tiene etapa inicial habilitada.");
+        if (!to.IsInitial && !(to.StageKind!.InternalCode == StageKinds.Pipeline && to.SortOrder < initial.SortOrder))
+            throw new StatusRuleException($"Un registro nuevo debe empezar en la etapa inicial o en una del pipeline anterior a ella; '{to.InternalCode}' no lo es.");
+        var entityTypeId = await lookups.GetIdAsync(LookupDomains.EntityType, entityTypeCode, ct);
+        db.EntityStatusHistories.Add(new EntityStatusHistory
+        {
+            TenantId = ((TenantContext)tenant).RequireTenantId(), EntityTypeLookupId = entityTypeId, EntityId = entityId,
+            FromStatusCodeId = null, ToStatusCodeId = to.StatusCodeId, Comment = comment, ChangedAtUtc = DateTime.UtcNow, ChangedBy = tenant.UserId,
+        });
+        var context = new StatusTransitionContext(statusDomain, entityTypeCode, entityId, null, to, comment);
+        foreach (var effect in effects.Where(e => e.StatusDomain.Equals(statusDomain, StringComparison.OrdinalIgnoreCase)))
+            await effect.OnTransitionedAsync(context, ct);
+        return to;
+    }
+
+    /// <summary>
     /// Lote 107 — avanza una entidad por varias etapas PIPELINE de una vez (un escaneo que se brinca estatus): una fila de historial por etapa, TODAS con la misma fecha y hora, y las de en medio marcadas IsSkipped.
     /// Los efectos corren en cada etapa (los de aviso al cliente ignoran las brincadas: context.Skipped). Quien llama calcula <paramref name="stepCodes"/> con PipelinePath.StepsTo (ya válidos y en orden); aquí no se
     /// revalida el pipeline, así que sirve también para regresar de un lateral (Intento fallido → Sin asignar). Devuelve el StatusCode final.

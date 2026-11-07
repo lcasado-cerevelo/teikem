@@ -39,6 +39,8 @@ public static class PulsePanels
     public const string CodRiver = "COD_RIVER";
     /// <summary>Lote 89 (P12): Radar de órdenes abiertas (orden 60); mismos permisos y módulo que el río de órdenes.</summary>
     public const string Radar = "RADAR";
+    /// <summary>Lote 222 (pedido de vendedores): panel Ventas (orden 13): pedidos de hoy, urgentes abiertos, clientes por aprobar (y lo que sumen QuickBooks y consignación).</summary>
+    public const string Sales = "SALES";
 
     public static readonly IReadOnlyList<PulsePanelDef> All = new List<PulsePanelDef>
     {
@@ -51,6 +53,7 @@ public static class PulsePanels
         new(OrdersRiver, PermissionCatalog.PulseOrders, new[] { PermissionCatalog.OrdersView }, ModuleKeys.LtlGround, 10),
         new(CodRiver, PermissionCatalog.PulseCod, new[] { PermissionCatalog.CodView }, ModuleKeys.Cod, 11),
         new(Radar, PermissionCatalog.PulseOrders, new[] { PermissionCatalog.OrdersView }, ModuleKeys.LtlGround, 12),
+        new(Sales, PermissionCatalog.PulseSales, new[] { PermissionCatalog.SalesView }, ModuleKeys.SalesOrders, 13),
     };
 
     /// <summary>Panel por clave (sin distinguir mayúsculas); null si no está en el registro.</summary>

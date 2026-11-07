@@ -197,6 +197,16 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
                 }
             }
             if (work.Count == 0 && freightWork.Count == 0 && returnFeeWork.Count == 0 && checkFeeWork.Count == 0) throw new StatusRuleException(BillingRules.NothingToBill);
+            // 1c) Lote 222: el cargo de envío de cada orden de venta que entra a esta corrida, una sola vez (SalesOrder.ShippingInvoiced, bajo bloqueo de la orden)
+            var shippingWork = new List<SalesOrder>();
+            foreach (var orderId in work.Select(w => w.E.OrderId).Distinct().OrderBy(i => i))
+            {
+                var so = await db.LockSalesOrderAsync(orderId, ct2);
+                if (so.ShippingInvoiced || so.ShippingCharge <= 0m) continue;
+                so.ShippingInvoiced = true;
+                shippingWork.Add(so);
+            }
+            var shippingChargeId = shippingWork.Count == 0 ? 0 : await lookups.GetIdAsync(BillingCodes.ChargeTypeDomain, SalesShippingCodes.ChargeType, ct2);
 
             // 2) la corrida y una factura por cliente y moneda
             var runInitial = await statuses.GetInitialAsync(BillingCodes.RunStatusDomain, ct2);
@@ -224,6 +234,12 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
                         ProductId = w.E.ProductId, ChargeTypeLookupId = productSale, Description = BillingRules.Describe(w.E.OrderNumber, w.E.Sku, w.E.Name), Quantity = w.Qty, UnitAmount = w.E.UnitPrice,
                         SalesOrderLineId = w.E.LineId, TaxRateId = w.E.TaxRateId, TaxRatePct = w.E.TaxRatePct, TaxAmount = w.Tax, IsTaxExempt = w.E.Exempt,
                     });
+                foreach (var so in shippingWork.Where(o => o.ClientId == key.ClientId && (o.CurrencyLookupId ?? usd) == key.Currency))
+                    invoice.Lines.Add(new InvoiceLine
+                    {
+                        SalesOrderId = so.SalesOrderId, ChargeTypeLookupId = shippingChargeId, Description = SalesShippingCodes.InvoiceDescription(so.Number), Quantity = 1m, UnitAmount = so.ShippingCharge,
+                        TaxAmount = so.ShippingTaxAmount, TaxRatePct = so.ShippingTaxAmount > 0m ? Math.Round(so.ShippingTaxAmount / so.ShippingCharge * 100m, 4) : 0m, IsTaxExempt = false,
+                    });   // Lote 222: el cargo de envío, línea de servicio (no de inventario)
                 foreach (var f in freightWork.Where(f => f.ClientId == key.ClientId && (f.CurrencyLookupId ?? usd) == key.Currency))
                 {
                     var charges = freightCharges[f.OrderId];
@@ -540,6 +556,9 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
         }
         foreach (var orderId in invoices.SelectMany(i => i.Lines).Where(l => l.TransportOrderId != null && !l.IsReturnFee).Select(l => l.TransportOrderId!.Value).Distinct().OrderBy(i => i))
             (await db.LockTransportOrderAsync(orderId, ct)).FreightInvoiced = false;
+        // Lote 222: el cargo de envío de la orden de venta vuelve a «por facturar»
+        foreach (var orderId in invoices.SelectMany(i => i.Lines).Where(l => l.SalesOrderId != null).Select(l => l.SalesOrderId!.Value).Distinct().OrderBy(i => i))
+            (await db.LockSalesOrderAsync(orderId, ct)).ShippingInvoiced = false;
         // Lote 115: el cargo por devolución se libera aparte del flete
         foreach (var orderId in invoices.SelectMany(i => i.Lines).Where(l => l.TransportOrderId != null && l.IsReturnFee).Select(l => l.TransportOrderId!.Value).Distinct().OrderBy(i => i))
             (await db.LockTransportOrderAsync(orderId, ct)).ReturnFeeInvoiced = false;

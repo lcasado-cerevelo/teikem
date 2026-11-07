@@ -29,13 +29,16 @@ public sealed class SalesDeliveryService(TeikemDbContext db, PickBatchService pi
         return new SalesDispatchResultDto(dispatched!.PickBatchPublicId, dispatched.PickBatchNumber, await sales.GetAsync(publicId, ct));
     }
 
+    /// <summary>Lote 222: la prioridad (catálogo OrderPriority) con que nace la orden de transporte de un pedido urgente.</summary>
+    public const string UrgentPriority = "HIGH";
+
     public async Task<SalesOrderDto> CreateAsync(Guid publicId, SalesDeliveryRequest? req, CancellationToken ct)
     {
         if (req?.PickBatchPublicId is null) throw new ValidationException("pickBatchPublicId", SalesRules.DeliveryBatchRequired);
         if (req.Order is null) throw new ValidationException("order", SalesRules.DeliveryOrderRequired);
 
         var order = await db.Set<SalesOrder>().AsNoTracking().Where(o => o.PublicId == publicId)
-            .Select(o => new { o.SalesOrderId, o.ClientId, o.ConsigneeId }).FirstOrDefaultAsync(ct) ?? throw new NotFoundException("Orden de venta", feminine: true);
+            .Select(o => new { o.SalesOrderId, o.ClientId, o.ConsigneeId, o.IsUrgent }).FirstOrDefaultAsync(ct) ?? throw new NotFoundException("Orden de venta", feminine: true);
         var batch = await db.Set<PickBatch>().AsNoTracking().Where(b => b.PublicId == req.PickBatchPublicId && b.SalesOrderId == order.SalesOrderId)
             .Select(b => new { b.PublicId, b.Number, b.StatusCodeId, b.IsActive }).FirstOrDefaultAsync(ct) ?? throw new NotFoundException(SalesRules.DeliveryBatchNotFound);
         var status = await db.StatusCodes.AsNoTracking().Where(s => s.StatusCodeId == batch.StatusCodeId).Select(s => s.InternalCode).FirstAsync(ct);
@@ -48,6 +51,8 @@ public sealed class SalesDeliveryService(TeikemDbContext db, PickBatchService pi
         {
             ClientPublicId = req.Order.ClientPublicId ?? buyer,
             ConsigneeLocationPublicId = req.Order.ConsigneeLocationPublicId ?? (req.Order.NewConsignee is null ? consignee : null),
+            // Lote 222: el pedido urgente nace con prioridad alta para el chofer (si no mandan otra)
+            Priority = string.IsNullOrWhiteSpace(req.Order.Priority) && order.IsUrgent ? UrgentPriority : req.Order.Priority,
         };
 
         // el empaque y el enlace con la orden de venta, juntos

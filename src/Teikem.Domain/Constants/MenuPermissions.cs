@@ -97,6 +97,7 @@ public static class MenuPermissions
         [PermissionCatalog.WarehouseCrossdock] = new[] { "crossdock.view" },
         [PermissionCatalog.RentalManage] = new[] { PermissionCatalog.RentalView },
         [PermissionCatalog.SalesCreate] = new[] { PermissionCatalog.SalesView },
+        [PermissionCatalog.SalesPricelist] = new[] { PermissionCatalog.SalesView },   // Lote 221
         [PermissionCatalog.BillingGenerate] = new[] { PermissionCatalog.BillingView, "dispatchaccounting.view" },   // Lote 181: quien genera corridas de despachos entra a su pantalla
         [PermissionCatalog.BillingApprove] = new[] { PermissionCatalog.BillingView },
         [PermissionCatalog.BillingExport] = new[] { PermissionCatalog.BillingView, "dispatchaccounting.view" },
@@ -108,6 +109,8 @@ public static class MenuPermissions
         [PermissionCatalog.TaxManage] = new[] { "tax.view" },
         [PermissionCatalog.ClientsCreate] = new[] { PermissionCatalog.ClientsRead },
         [PermissionCatalog.ClientsUpdate] = new[] { PermissionCatalog.ClientsRead },
+        [PermissionCatalog.ClientsCreateBasic] = new[] { PermissionCatalog.ClientsRead },   // Lote 222: el alta mínima se hace viendo la lista de clientes
+        [PermissionCatalog.SalesApproveClient] = new[] { PermissionCatalog.ClientsRead },   // Lote 222: aprobar o rechazar se hace en la ficha del cliente
         [PermissionCatalog.LocationsCreate] = new[] { PermissionCatalog.LocationsRead },
         [PermissionCatalog.LocationsUpdate] = new[] { PermissionCatalog.LocationsRead },
         [PermissionCatalog.FleetManage] = new[] { PermissionCatalog.FleetView, "drivers.view" },

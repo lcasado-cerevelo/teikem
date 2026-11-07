@@ -439,6 +439,19 @@ public static class PermissionCatalog
 
     public const string SalesReturnAuthorize = "sales.return.authorize";
 
+    /// <summary>Lote 221 (P1 del pedido de vendedores): crear, publicar y cambiar listas de precios y ofertas (kits en promoción con foto y vigencia). Verlas usa sales.view.</summary>
+
+    public const string SalesPricelist = "sales.pricelist";
+
+    /// <summary>Lote 222 (P2 del pedido de vendedores): aprobar (→ Activo, con límite de crédito y término) o rechazar (→ Suspendido, cancela sus órdenes abiertas) los clientes prospecto; recibe el aviso del cliente nuevo.</summary>
+    public const string SalesApproveClient = "sales.approve_client";
+
+    /// <summary>Lote 222: alta mínima de un cliente desde el pedido (nace Prospecto) y subir sus documentos mientras es prospecto. Sin contrato ni numeración.</summary>
+    public const string ClientsCreateBasic = "clients.create_basic";
+
+    /// <summary>Lote 222: panel Ventas del Pulso del día (pedidos de hoy, urgentes abiertos, clientes por aprobar…; datos: sales.view; módulo SALES_ORDERS).</summary>
+    public const string PulseSales = "pulse.sales";
+
     /// <summary>Lote 143 (2026-10-20): crear, modificar y cancelar avisos de salida y atender su pendiente (ver usa inventory.view y despachar warehouse.pick).</summary>
 
     public const string ExitNoticeCreate = "exitnotice.create";
@@ -709,6 +722,15 @@ public static class PermissionCatalog
         new(SalesReturn, "BILLING", "Pedir devoluciones de venta", "Request sales returns"),
 
         new(SalesReturnAuthorize, "BILLING", "Autorizar devoluciones de venta", "Authorize sales returns"),
+
+        new(SalesPricelist, "BILLING", "Listas de precios y ofertas: crearlas y cambiarlas", "Price lists and offers: create and change them"),
+
+        // Lote 222 — pedido de vendedores: cliente prospecto y panel Ventas del Pulso
+        new(SalesApproveClient, "BILLING", "Aprobar o rechazar clientes nuevos (prospectos)", "Approve or reject new clients (prospects)"),
+
+        new(ClientsCreateBasic, "CLIENTS", "Alta mínima de clientes desde el pedido (nacen prospecto)", "Quick client sign-up from an order (born as prospect)"),
+
+        new(PulseSales, "PULSE", "Ver el panel Ventas del Pulso", "See the Sales panel"),
 
         new(ExitNoticeCreate, "WAREHOUSE", "Crear, modificar y cancelar avisos de salida y atender su pendiente", "Create, edit and cancel exit notices and handle their backorder"),
 
@@ -1156,7 +1178,14 @@ public static class PermissionCatalog
 
         // Lote 57: quien arma las ventas (sin precio ni backorder: eso lo da el administrador)
 
-        ["Sales"] = new[] { SalesView, SalesCreate, SalesCancel, SalesReturn, InventoryView, ClientsRead },
+        ["Sales"] = new[] { SalesView, SalesCreate, SalesCancel, SalesReturn, InventoryView, ClientsRead,
+            ClientsCreateBasic, PulseSales },   // Lote 222: el vendedor da de alta al cliente nuevo desde el pedido (nace prospecto) y ve el panel Ventas
+
+        // Lote 222 (pedido de vendedores): el supervisor de ventas fija las listas de precios y aprueba o rechaza los clientes nuevos;
+        // la oficina de ventas captura pedidos (los permisos de QuickBooks y de consignación los suma su propio lote).
+        ["SalesSupervisor"] = new[] { SalesPricelist, SalesApproveClient, SalesView, ClientsRead, ClientsUpdate, PulseSales },
+
+        ["SalesOffice"] = new[] { SalesView, SalesCreate, PulseSales },
 
         // Lote 104: el rol «Servicio al cliente» atiende los mensajes de los clientes (si un cliente no tiene equipo designado, lo atiende quien tenga ClientMessagesReply)
 
@@ -1209,6 +1238,10 @@ public static class PermissionCatalog
         ["Billing"] = ("Facturación", "Billing"),
 
         ["Sales"] = ("Ventas", "Sales"),
+
+        ["SalesSupervisor"] = ("Supervisor de ventas", "Sales supervisor"),   // Lote 222
+
+        ["SalesOffice"] = ("Oficina de ventas", "Sales office"),   // Lote 222
 
         ["WarehouseOperator"] = ("Operador de almacén", "Warehouse operator"),
 

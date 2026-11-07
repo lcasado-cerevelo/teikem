@@ -12,8 +12,14 @@ public sealed record SalesOrderLineRequest(Guid? ProductPublicId = null, decimal
 /// <summary>
 /// Orden de venta a crear o a reemplazar (PATCH, solo en borrador). WarehousePublicId vacío = el único almacén activo. ClearConsignee quita el consignatario.
 /// </summary>
+/// <remarks>
+/// Lote 222 (null = sin cambio en el PATCH): IsUrgent; DeliveryMode DELIVERY | PICKUP ("" = se deduce del consignatario); PaymentMethod (COD_CHECK, COD_CASH, COD_ACH, CREDIT,
+/// CONSIGNMENT; "" = quitarla) y PaymentTerm (término del crédito, solo con CREDIT; "" = quitarlo): sin forma de pago al crear se prellena con la del cliente y, si es otra,
+/// la orden queda marcada «cambió»; IsConsignment solo con CONSIGNMENT; AuthorizedByName = nombre de quien autoriza ("" = quitarlo).
+/// </remarks>
 public sealed record SalesOrderRequest(Guid? WarehousePublicId = null, Guid? ClientPublicId = null, Guid? ConsigneePublicId = null, bool? ClearConsignee = null,
-    DateOnly? RequiredDate = null, bool? ClearRequiredDate = null, string? Notes = null, IReadOnlyList<SalesOrderLineRequest>? Lines = null);
+    DateOnly? RequiredDate = null, bool? ClearRequiredDate = null, string? Notes = null, IReadOnlyList<SalesOrderLineRequest>? Lines = null,
+    bool? IsUrgent = null, string? DeliveryMode = null, string? PaymentMethod = null, string? PaymentTerm = null, bool? IsConsignment = null, string? AuthorizedByName = null);
 
 public sealed record SalesOrderLineDto(int Id, int LineNo, Guid ProductPublicId, string Sku, string ProductName, int? LotId, decimal QtyOrdered, decimal QtyReserved,
     decimal QtyBackordered, decimal QtyShipped, bool IsClosed, decimal UnitPrice, decimal LineSubtotal, decimal TaxRatePct, decimal TaxAmount, bool IsTaxExempt,
@@ -24,12 +30,25 @@ public sealed record SalesOrderLineComponentDto(Guid ProductPublicId, string Sku
 
 public sealed record SalesOrderListItemDto(Guid PublicId, string Number, string Status, string StatusLabel, string StatusColor, Guid ClientPublicId, string ClientName,
     Guid WarehousePublicId, string WarehouseName, DateOnly RequestedDate, DateOnly? RequiredDate, decimal Subtotal, decimal TaxAmount, decimal Total,
-    int LineCount, bool HasBackorder, string? RequestedByName, DateTime CreatedAtUtc, int? AssignedToUserId = null, string? AssignedToName = null);
+    int LineCount, bool HasBackorder, string? RequestedByName, DateTime CreatedAtUtc, int? AssignedToUserId = null, string? AssignedToName = null,
+    // Lote 222: distintivos de la lista (urgente, cliente nuevo por aprobar, consignación, forma de pago cambiada), entrega efectiva y cargo de envío
+    bool IsUrgent = false, bool AwaitingClientApproval = false, bool IsConsignment = false, bool PaymentChanged = false, string? DeliveryMode = null, decimal ShippingCharge = 0m);
 
 public sealed record SalesOrderDto(Guid PublicId, string Number, string Status, string StatusLabel, string StatusColor, Guid ClientPublicId, string ClientName,
     Guid? ConsigneePublicId, string? ConsigneeName, Guid WarehousePublicId, string WarehouseName, DateOnly RequestedDate, DateOnly? RequiredDate, string? Notes,
     decimal Subtotal, decimal TaxAmount, decimal Total, bool HasBackorder, string? RequestedByName, DateTime? RequestedAtUtc, DateTime CreatedAtUtc,
-    IReadOnlyList<SalesOrderLineDto> Lines, IReadOnlyList<SalesDispatchInfoDto>? Dispatches = null, int? AssignedToUserId = null, string? AssignedToName = null);
+    IReadOnlyList<SalesOrderLineDto> Lines, IReadOnlyList<SalesDispatchInfoDto>? Dispatches = null, int? AssignedToUserId = null, string? AssignedToName = null,
+    SalesOrderTermsDto? Terms = null);
+
+/// <summary>
+/// Lote 222 — los datos nuevos de la orden (pedido de vendedores). DeliveryMode = la entrega efectiva (DELIVERY | PICKUP) y DeliveryModeSet = si la orden la dice (o se dedujo
+/// del consignatario). Forma de pago con su etiqueta y la marca «cambió respecto al cliente». Envío: cargo, su IVU y el porqué (ShippingReason null = sin cargo configurado).
+/// ClientIsProspect = el comprador sigue como prospecto (distintivo «Cliente nuevo»); AwaitingClientApproval = no se puede despachar hasta que lo aprueben.
+/// La firma de quien autoriza se ve por GET /files/{SignatureFilePublicId}.
+/// </summary>
+public sealed record SalesOrderTermsDto(bool IsUrgent, string DeliveryMode, bool DeliveryModeSet, string? PaymentMethod, string? PaymentMethodLabel, string? PaymentTerm,
+    string? PaymentTermLabel, bool PaymentChanged, decimal ShippingCharge, decimal ShippingTaxAmount, string? ShippingReason, string? ShippingReasonLabel, bool IsConsignment,
+    string? AuthorizedByName, Guid? SignatureFilePublicId, string? SubmittedWithAuth, bool AwaitingClientApproval, bool ClientIsProspect, bool ClientRequiresSignature);
 
 // ---------------------------------------------------------------- Lote 58 — solicitar, disponibilidad, modificar línea
 

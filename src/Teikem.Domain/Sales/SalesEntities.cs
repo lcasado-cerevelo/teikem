@@ -57,6 +57,35 @@ public class SalesOrder : ITenantScoped, IHasStatus, IAuditStamped
     [NotAudited] public byte[]? RowVersion { get; set; }
     /// <summary>Lote 195: a quién se le asignó despacharla (NULL = sin asignar; lo puede tomar cualquiera con permiso de recolectar).</summary>
     public int? AssignedToUserId { get; set; }
+
+    // --- Lote 222 (P2 del pedido de vendedores) ---
+    /// <summary>Pedido urgente: el almacén lo ve arriba y con distintivo, y entra a los avisos.</summary>
+    public bool IsUrgent { get; set; }
+    /// <summary>DELIVERY (entrega) | PICKUP (recogido). NULL = se deduce del consignatario (ShippingRules.EffectiveMode).</summary>
+    public string? DeliveryMode { get; set; }
+    /// <summary>Forma de pago acordada para ESTE pedido (catálogo SalesPaymentMethod), prellenada con la del cliente.</summary>
+    public int? PaymentMethodLookupId { get; set; }
+    /// <summary>Término del crédito (catálogo PaymentTerm), solo con la forma de pago Crédito.</summary>
+    public int? PaymentTermLookupId { get; set; }
+    /// <summary>La forma de pago es distinta de la del cliente (SalesPaymentRules.IsChange): la oficina lo ve marcado.</summary>
+    public bool PaymentChanged { get; set; }
+    /// <summary>Cargo de envío (antes de su IVU), calculado con ShippingRules al guardar y al solicitar; ShippingTaxAmount = su IVU (si la compañía lo cobra con IVU).</summary>
+    public decimal ShippingCharge { get; set; }
+    public decimal ShippingTaxAmount { get; set; }
+    /// <summary>Por qué lleva (o no) envío (catálogo ShippingReason); NULL = no hay cargo de envío configurado.</summary>
+    public int? ShippingReasonLookupId { get; set; }
+    /// <summary>El cargo de envío ya está en una factura (se libera al cancelar la corrida o anular la factura).</summary>
+    public bool ShippingInvoiced { get; set; }
+    /// <summary>Venta en consignación (solo con la forma de pago Consignación).</summary>
+    public bool IsConsignment { get; set; }
+    /// <summary>Nombre de quien autoriza el pedido (del lado del cliente) y su firma dibujada (StoredFile SIGNATURE).</summary>
+    public string? AuthorizedByName { get; set; }
+    public int? SignatureFileId { get; set; }
+    /// <summary>Cómo se reautenticó el vendedor al enviar: BIOMETRIC | PASSWORD (SalesSubmitAuth). NULL = solicitada sin reautenticación (la ventana de siempre).</summary>
+    public string? SubmittedWithAuth { get; set; }
+    /// <summary>El cliente es un prospecto sin aprobar: la orden se solicita y reserva, pero NO se despacha hasta que lo aprueben.</summary>
+    public bool AwaitingClientApproval { get; set; }
+
     public List<SalesOrderLine> Lines { get; set; } = new();
 }
 

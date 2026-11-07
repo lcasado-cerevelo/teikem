@@ -67,7 +67,8 @@ namespace Teikem.Infrastructure.Contracts
 
     /// <summary>Orden de venta por despachar (Lote 64). IsActive = solicitada o despachada parcial CON algo reservado; si no, el aparato la borra.</summary>
     public sealed record SyncSalesOrderDto(int Id, Guid PublicId, string Number, Guid WarehousePublicId, string ClientName, string? ConsigneeName, string StatusCode,
-        DateOnly? RequiredDate, DateTime? RequestedAtUtc, bool IsActive, IReadOnlyList<SyncSalesOrderLineDto> Lines, int? AssignedToUserId = null);
+        DateOnly? RequiredDate, DateTime? RequestedAtUtc, bool IsActive, IReadOnlyList<SyncSalesOrderLineDto> Lines, int? AssignedToUserId = null,
+        bool IsUrgent = false, bool AwaitingClientApproval = false);   // Lote 222: distintivo urgente y «espera aprobación del cliente» (no se despacha)
 
     /// <summary>Lote 146: línea de un aviso de salida por despachar (sin kits, sin precio): lo reservado y de qué posición/lote.</summary>
     public sealed record SyncExitNoticeLineDto(int Id, Guid ProductPublicId, string Sku, string ProductName, decimal QtyOrdered, decimal QtyReserved, decimal QtyShipped,
@@ -483,7 +484,7 @@ namespace Teikem.Infrastructure.Services
                     componentsByLine[l.SalesOrderLineId].Any(), componentsByLine[l.SalesOrderLineId].Any() ? componentsByLine[l.SalesOrderLineId].Select(c => new SyncSalesComponentDto(c.PublicId, c.Sku, c.Name, c.Quantity)).ToList() : null)).ToList();
                 var open = code is Teikem.Domain.Sales.SalesOrderStatuses.Requested or Teikem.Domain.Sales.SalesOrderStatuses.Partial && dto.Any(l => l.QtyReserved > 0m);
                 return new SyncSalesOrderDto(o.SalesOrderId, o.PublicId, o.Number, warehouses.GetValueOrDefault(o.WarehouseId), clients.GetValueOrDefault(o.ClientId, string.Empty),
-                    o.ConsigneeId is int cid ? consignees.GetValueOrDefault(cid) : null, code, o.RequiredDate, o.RequestedAtUtc, open, dto, o.AssignedToUserId);
+                    o.ConsigneeId is int cid ? consignees.GetValueOrDefault(cid) : null, code, o.RequiredDate, o.RequestedAtUtc, open, dto, o.AssignedToUserId, o.IsUrgent, o.AwaitingClientApproval);
             }).ToList();
             return new SyncPage<SyncSalesOrderDto>(items, next, w.Now);
         }

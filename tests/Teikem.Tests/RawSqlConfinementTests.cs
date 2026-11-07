@@ -73,8 +73,9 @@ public class RawSqlConfinementTests
         var statements = Regex.Matches(text, "\\$\"((?:SELECT|UPDATE|IF|INSERT|MERGE)[^\"]*)\"").Select(m => m.Groups[1].Value).ToList();
 
         // (1) upsert, (2) bloqueo por clave, (3-5) rangos, (6-14) encabezados, (15) muelle, (16) series, (17) lote, (18) renta (Lote 27),
-        // (19) proceso del equipo devuelto (Lote 28), (20) línea de orden de venta (Lote 72), (21) orden de transporte (Lote 74), (22) factura (Lote 75), (23) viajes pagados al chofer (Lote 94).
-        Assert.Equal(23, statements.Count);
+        // (19) proceso del equipo devuelto (Lote 28), (20) línea de orden de venta (Lote 72), (21) orden de transporte (Lote 74), (22) factura (Lote 75), (23) viajes pagados al chofer (Lote 94),
+        // (24) orden de venta (Lote 222: su cargo de envío al facturar).
+        Assert.Equal(24, statements.Count);
         Assert.All(statements, s => Assert.Contains("TenantId = {tenantId}", s));
         Assert.Contains(statements, s => s.StartsWith("IF NOT EXISTS (SELECT 1 FROM dbo.StockBalance WITH (UPDLOCK, HOLDLOCK)", StringComparison.Ordinal) && s.Contains("INSERT INTO dbo.StockBalance"));
         Assert.Contains(statements, s => s.StartsWith("SELECT * FROM dbo.StockBalance WITH (UPDLOCK, ROWLOCK)", StringComparison.Ordinal));

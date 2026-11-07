@@ -54,6 +54,7 @@ public sealed partial class SalesOrderService
                     var order = await db.Set<SalesOrder>().AsTracking().Include(o => o.Lines).FirstOrDefaultAsync(o => o.PublicId == publicId, ct2) ?? throw NotFound();
                     var code = (await StatusMapAsync(ct2))[order.StatusCodeId].Code;
                     if (code is not (SalesOrderStatuses.Requested or SalesOrderStatuses.Partial)) throw new StatusRuleException(SalesRules.NotDispatchable);
+                    if (order.AwaitingClientApproval) throw new StatusRuleException(SalesOrderExtraRules.AwaitingClientApproval);   // Lote 222: cliente nuevo sin aprobar
 
                     var lineIds = order.Lines.Select(l => l.SalesOrderLineId).ToList();
                     var rows = await db.Set<SalesOrderReservation>().AsTracking().Where(r => lineIds.Contains(r.SalesOrderLineId)).OrderBy(r => r.SalesOrderReservationId).ToListAsync(ct2);

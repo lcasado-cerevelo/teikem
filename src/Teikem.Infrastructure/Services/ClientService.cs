@@ -4,6 +4,7 @@ using Teikem.Domain.Catalogs;
 using Teikem.Domain.Clients;
 using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
+using Teikem.Domain.Sales;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Clients;
 using Teikem.Infrastructure.Contracts;
@@ -17,7 +18,8 @@ namespace Teikem.Infrastructure.Services;
 /// numeración, contactos, contratos), estatus vía StatusService y baja lógica.
 /// El TenantId sale siempre del principal; las hijas sin TenantId (ClientContact) se alcanzan solo a través del cliente.
 /// </summary>
-public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, StatusService statuses, ContactPointService contacts, ITenantClock? clock = null)
+public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, StatusService statuses, ContactPointService contacts, ITenantClock? clock = null,
+    PermissionService? permissions = null)
 {
     private readonly ITenantClock _clock = clock ?? TenantClock.Default;
 
@@ -57,7 +59,8 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
 
     // ---------------- Alta compuesta ----------------
 
-    public async Task<ClientDetailDto> CreateAsync(ClientCreateRequest req, CancellationToken ct)
+    /// <param name="bornAtStatus">Lote 222: el estatus con que nace (el alta mínima del pedido nace PROSPECT, antes de la etapa inicial); null = la etapa inicial de la compañía.</param>
+    public async Task<ClientDetailDto> CreateAsync(ClientCreateRequest req, CancellationToken ct, string? bornAtStatus = null)
     {
         var tenantId = ((TenantContext)tenant).RequireTenantId();
         var name = RequireText(req.Name, "name", "El nombre es obligatorio.", 200);
@@ -83,7 +86,7 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
             levels = await ValidateServiceLevelsAsync(contractReq.ServiceLevels, ct);
         }
 
-        var initialClientStatus = await statuses.GetInitialAsync(StatusDomains.ClientStatus, ct);
+        var initialClientStatus = bornAtStatus is null ? await statuses.GetInitialAsync(StatusDomains.ClientStatus, ct) : await statuses.GetByCodeAsync(StatusDomains.ClientStatus, bornAtStatus, ct);
         var initialContractStatus = contractReq is null ? null : await statuses.GetInitialAsync(StatusDomains.ContractStatus, ct);
 
         // Un código autogenerado puede chocar con otro alta simultánea (los códigos son cortos): se reintenta con el siguiente libre
@@ -107,7 +110,8 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
             db.Clients.Add(client);
             await db.SaveGuardedAsync("Ya existe un cliente con ese código.", ct2);
             // Historial de estatus desde el inicio (etapa inicial habilitada del tenant: ACTIVE en el seed)
-            await statuses.TransitionAsync(StatusDomains.ClientStatus, EntityTypes.Client, client.ClientId, null, initialClientStatus.InternalCode, null, ct2);
+            if (bornAtStatus is null) await statuses.TransitionAsync(StatusDomains.ClientStatus, EntityTypes.Client, client.ClientId, null, initialClientStatus.InternalCode, null, ct2);
+            else await statuses.StartAtAsync(StatusDomains.ClientStatus, EntityTypes.Client, client.ClientId, initialClientStatus.InternalCode, null, ct2);   // Lote 222
 
             if (contractReq is not null)
             {
@@ -226,7 +230,8 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
             client.PortalCanCreateProducts, client.PortalCanCreateArrivals, client.PortalCanCreateExits,
             client.DefaultServiceTypeLookupId is int dsId ? (await lookups.GetAsync(dsId, ct))?.InternalCode : null,
             client.DefaultPackageTypeLookupId is int dpId ? (await lookups.GetAsync(dpId, ct))?.InternalCode : null,
-            client.RequireDeliverySignature, client.RequireDeliveryPhoto);
+            client.RequireDeliverySignature, client.RequireDeliveryPhoto,
+            client.MerchantRegistration, client.ShippingMode, client.ShippingCharge, client.ShippingFreeFrom, client.RequireOrderSignature);   // Lote 222
     }
 
     // ---------------- Perfil ----------------
@@ -252,6 +257,7 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
         if (req.PortalCanCreateExits is { } canExits) client.PortalCanCreateExits = canExits;
         if (req.RequireDeliverySignature is { } reqSig) client.RequireDeliverySignature = reqSig;   // app del chofer: firma / foto obligatorias al entregar
         if (req.RequireDeliveryPhoto is { } reqPhoto) client.RequireDeliveryPhoto = reqPhoto;
+        ApplySalesProfile(client, req);   // Lote 222: SURI, regla de envío y firma de quien autoriza el pedido
         // servicio y paquete que la entrada rápida trae puestos (el código tiene que ser de ese catálogo; vacío = los de la compañía)
         if (req.DefaultServiceType is not null) client.DefaultServiceTypeLookupId = await OptionalLookupAsync(LookupDomains.ServiceType, req.DefaultServiceType, ct);
         if (req.DefaultPackageType is not null) client.DefaultPackageTypeLookupId = await OptionalLookupAsync(LookupDomains.PackageType, req.DefaultPackageType, ct);
@@ -398,6 +404,10 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
     {
         if (string.IsNullOrWhiteSpace(req.ToCode)) throw new ValidationException("toCode", "El estatus destino es obligatorio.");
         var client = await LoadForUpdateAsync(publicId, ct);
+        // Lote 222: un prospecto sale de Prospecto solo por Aprobar / Rechazar (dejan constancia y aplican sus efectos) o con el permiso de aprobar clientes
+        var current = await db.StatusCodes.AsNoTracking().Where(s => s.StatusCodeId == client.StatusCodeId).Select(s => s.InternalCode).FirstOrDefaultAsync(ct);
+        if (current == ClientStatuses.Prospect && permissions is not null && !await permissions.HasPermissionAsync(PermissionCatalog.SalesApproveClient, ct))
+            throw new ForbiddenException(Teikem.Domain.Clients.ClientProspectRules.ProspectLeavesByApproval);
         var to = await statuses.TransitionAsync(StatusDomains.ClientStatus, EntityTypes.Client, client.ClientId, client.StatusCodeId, req.ToCode.Trim(), req.Comment, ct);
         client.StatusCodeId = to.StatusCodeId;
         await db.SaveGuardedAsync("Ya existe un cliente con ese código.", ct);
@@ -414,6 +424,44 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
     }
 
     // ---------------- Helpers ----------------
+
+    /// <summary>
+    /// Lote 222 — lo de ventas del perfil: SURI ("" = quitarlo), la regla de envío (""/COMPANY = la de la compañía, FREE = no se le cobra, OWN = regla propia con cargo
+    /// mayor que cero y mínimo opcional; al dejar la regla propia se borran su cargo y su mínimo) y «Exige la firma de quien autoriza el pedido».
+    /// </summary>
+    private static void ApplySalesProfile(Client client, ClientProfileUpdateRequest req)
+    {
+        if (req.MerchantRegistration is not null)
+        {
+            var (suri, e) = ClientProspectRules.NormalizeMerchantRegistration(req.MerchantRegistration);
+            if (e is not null) throw new ValidationException("merchantRegistration", e);
+            client.MerchantRegistration = suri;
+        }
+        if (req.RequireOrderSignature is { } reqOrderSig) client.RequireOrderSignature = reqOrderSig;
+        if (req.ShippingMode is null && req.ShippingCharge is null && req.ShippingFreeFrom is null) return;
+        var mode = client.ShippingMode;
+        if (req.ShippingMode is not null)
+        {
+            var (m, e) = ShippingRules.ParseClientMode(req.ShippingMode);
+            if (e is not null) throw new ValidationException("shippingMode", e);
+            mode = m;
+        }
+        if (mode != ClientShippingModes.Own)
+        {
+            client.ShippingMode = mode;
+            client.ShippingCharge = null;
+            client.ShippingFreeFrom = null;
+            return;
+        }
+        var charge = req.ShippingCharge ?? client.ShippingCharge;
+        if (charge is not decimal c) throw new ValidationException("shippingCharge", ShippingRules.OwnNeedsCharge);
+        if (!ShippingRules.IsValidCharge(c)) throw new ValidationException("shippingCharge", ShippingRules.ChargeInvalid);
+        var freeFrom = req.ShippingFreeFrom is decimal f ? (f == 0m ? null : f) : client.ShippingFreeFrom;
+        if (freeFrom is decimal ff && !ShippingRules.IsValidFreeFrom(ff)) throw new ValidationException("shippingFreeFrom", ShippingRules.FreeFromInvalid);
+        client.ShippingMode = ClientShippingModes.Own;
+        client.ShippingCharge = c;
+        client.ShippingFreeFrom = freeFrom;
+    }
 
     private async Task<Client> LoadForUpdateAsync(Guid publicId, CancellationToken ct)
         => await db.Clients.FirstOrDefaultAsync(c => c.PublicId == publicId, ct) ?? throw new NotFoundException("Cliente");

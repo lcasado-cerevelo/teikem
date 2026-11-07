@@ -24,8 +24,8 @@ public sealed class SalesOrdersController(SalesOrderService sales) : ControllerB
     [HttpGet, RequirePermission(PermissionCatalog.SalesView)]
     public Task<PagedResult<SalesOrderListItemDto>> List([FromQuery] string? status, [FromQuery] Guid? clientPublicId, [FromQuery] string? q, [FromQuery] bool backorderOnly,
         [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] int skip, [FromQuery] int take, CancellationToken ct,
-        [FromQuery] bool assignedToMe = false, [FromQuery] int? assignedUserId = null)
-        => sales.ListAsync(status, clientPublicId, q, backorderOnly, from, to, skip, take, ct, assignedToMe, assignedUserId);
+        [FromQuery] bool assignedToMe = false, [FromQuery] int? assignedUserId = null, [FromQuery] bool urgent = false)
+        => sales.ListAsync(status, clientPublicId, q, backorderOnly, from, to, skip, take, ct, assignedToMe, assignedUserId, urgent);   // Lote 222: urgent = solo urgentes
 
     /// <summary>Lote 195: asigna (o desasigna con userId null) una orden de venta solicitada o despachada en parte a quien la va a despachar. Supervisión.</summary>
     [HttpPost("{publicId:guid}/assign"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehouseAppReassign)]
@@ -89,4 +89,18 @@ public sealed class SalesOrdersController(SalesOrderService sales) : ControllerB
 
     [HttpPost("{publicId:guid}/cancel"), RequirePermission(PermissionCatalog.SalesCancel)]
     public Task<SalesOrderDto> Cancel(Guid publicId, [FromBody] SalesOrderCancelRequest? req, CancellationToken ct) => sales.CancelAsync(publicId, req?.Comment, ct);
+
+    // ---------------------------------------------------------------- Lote 222 (pedido de vendedores)
+
+    /// <summary>Ajustes → Operación → Ventas: cargo de envío de la compañía, mínimo para envío gratis (medido después del IVU) y si el cargo lleva IVU.</summary>
+    [HttpGet("settings"), RequirePermission(PermissionCatalog.SalesView + "|" + PermissionCatalog.AdminTenant)]
+    public Task<SalesShippingSettingsDto> ShippingSettings(CancellationToken ct) => sales.GetShippingSettingsAsync(ct);
+
+    /// <summary>Cambia los ajustes de envío (null = sin cambio; cargo 0 = sin cargo; mínimo 0 = sin mínimo). 400 con el mensaje exacto si un monto no es válido.</summary>
+    [HttpPatch("settings"), RequirePermission(PermissionCatalog.AdminTenant)]
+    public Task<SalesShippingSettingsDto> UpdateShippingSettings([FromBody] SalesShippingSettingsRequest? req, CancellationToken ct) => sales.UpdateShippingSettingsAsync(req, ct);
+
+    /// <summary>Panel Ventas del Pulso del día: pedidos de hoy, urgentes abiertos, clientes por aprobar y órdenes que esperan aprobación (exige además sales.view).</summary>
+    [HttpGet("pulse"), RequirePermission(PermissionCatalog.PulseSales)]
+    public Task<PulseSalesPanelDto> Pulse([FromServices] SalesPulseService pulse, CancellationToken ct) => pulse.GetAsync(ct);
 }

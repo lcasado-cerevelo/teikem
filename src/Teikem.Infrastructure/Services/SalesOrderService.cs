@@ -32,7 +32,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
     // ---------------------------------------------------------------- consulta
 
     public async Task<PagedResult<SalesOrderListItemDto>> ListAsync(string? status, Guid? clientPublicId, string? q, bool backorderOnly, DateOnly? from, DateOnly? to,
-        int skip, int take, CancellationToken ct, bool assignedToMe = false, int? assignedUserId = null)
+        int skip, int take, CancellationToken ct, bool assignedToMe = false, int? assignedUserId = null, bool urgentOnly = false)
     {
         skip = Math.Max(0, skip);
         take = Math.Clamp(take <= 0 ? 50 : take, 1, MaxPageSize);
@@ -49,6 +49,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         // Lote 195: solo las asignadas a mí (o a una persona dada)
         if (assignedToMe && tenant.UserId is int me) query = query.Where(o => o.AssignedToUserId == me);
         else if (assignedUserId is int assignedUser) query = query.Where(o => o.AssignedToUserId == assignedUser);
+        if (urgentOnly) query = query.Where(o => o.IsUrgent);   // Lote 222
         if (from is DateOnly f) query = query.Where(o => o.RequestedDate >= f);
         if (to is DateOnly t2) query = query.Where(o => o.RequestedDate <= t2);
         if (backorderOnly) query = query.Where(o => db.Set<SalesOrderLine>().Any(l => l.SalesOrderId == o.SalesOrderId && l.QtyBackordered > 0 && !l.IsClosed));
@@ -82,9 +83,10 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         var consigneeId = await ResolveConsigneeAsync(req.ConsigneePublicId, ct);
         var (notes, notesError) = SalesRules.NormalizeNotes(req.Notes);
         if (notesError is not null) throw new ValidationException("notes", notesError);
-        var planned = await PlanLinesAsync(req.Lines, ct);
         var today = clock.Today;
+        var planned = await PlanLinesAsync(req.Lines, client.ClientId, today, null, ct);   // Lote 221: el precio sale de la lista vigente del cliente
         var priced = await PriceAsync(planned, client.ClientId, today, ct);
+        var terms = await PlanTermsAsync(req, client, null, false, ct);   // Lote 222: urgente, entrega, forma de pago (prellenada con la del cliente), consignación
 
         await numbers.EnsureAsync(SalesCodes.NumberKind, null, ct);
         var id = await db.RunInTransactionAsync(async ct2 =>
@@ -98,6 +100,8 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
                 StatusCodeId = initial.StatusCodeId,
             };
             ApplyLines(order, priced);
+            ApplyTerms(order, terms);   // Lote 222
+            await RecalculateShippingAsync(order, ct2);
             db.Set<SalesOrder>().Add(order);
             await db.SaveGuardedAsync(SalesRules.NumberTaken, ct2);
             var born = await statuses.TransitionAsync(SalesCodes.StatusDomain, SalesCodes.EntityType, order.SalesOrderId, null, initial.InternalCode, null, ct2);
@@ -116,14 +120,21 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
         var (notes, notesError) = SalesRules.NormalizeNotes(req.Notes);
         if (notesError is not null) throw new ValidationException("notes", notesError);
-        var peek = await db.Set<SalesOrder>().Where(o => o.PublicId == publicId).Select(o => new { o.StatusCodeId, o.ClientId, o.RequestedDate }).FirstOrDefaultAsync(ct) ?? throw NotFound();
+        var peek = await db.Set<SalesOrder>().Where(o => o.PublicId == publicId).Select(o => new { o.SalesOrderId, o.StatusCodeId, o.ClientId, o.RequestedDate }).FirstOrDefaultAsync(ct) ?? throw NotFound();
         await EnsureDraftAsync(peek.StatusCodeId, ct);
 
         var clientId = peek.ClientId;
         if (req.ClientPublicId is not null) clientId = (await ResolveClientAsync(req.ClientPublicId, ct)).ClientId;
+        // Lote 222: los datos nuevos (si cambió el cliente y no mandan la forma de pago, se vuelve a prellenar con la del cliente nuevo)
+        var currentOrder = await db.Set<SalesOrder>().AsNoTracking().FirstAsync(o => o.PublicId == publicId, ct);
+        var termsClient = await db.Set<Client>().AsNoTracking().FirstAsync(c => c.ClientId == clientId, ct);
+        var terms = await PlanTermsAsync(req, termsClient, currentOrder, clientId != peek.ClientId, ct);
         Warehouse? warehouse = req.WarehousePublicId is null ? null : await ResolveWarehouseAsync(req.WarehousePublicId, ct);
         int? consigneeId = req.ConsigneePublicId is null ? null : await ResolveConsigneeAsync(req.ConsigneePublicId, ct);
-        var planned = req.Lines is null ? null : await PlanLinesAsync(req.Lines, ct);
+        // Lote 221: el precio de cada línea se resuelve hoy para el cliente (lista del cliente > lista general > producto); el que la línea ya tenía no se vuelve a autorizar
+        var previousPrices = req.Lines is null ? null : (await db.Set<SalesOrderLine>().AsNoTracking().Where(l => l.SalesOrderId == peek.SalesOrderId)
+            .Select(l => new { l.ProductId, l.UnitPrice }).ToListAsync(ct)).GroupBy(l => l.ProductId).ToDictionary(g => g.Key, g => g.First().UnitPrice);
+        var planned = req.Lines is null ? null : await PlanLinesAsync(req.Lines, clientId, clock.Today, previousPrices, ct);
         var priced = planned is null ? null : await PriceAsync(planned, clientId, peek.RequestedDate, ct);
 
         await db.RunInTransactionAsync(async ct2 =>
@@ -152,13 +163,22 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
             else if (req.ClientPublicId is not null)
             {
                 // cambió el cliente: el impuesto depende de su exención, se recalcula con las mismas líneas
-                var again = await PriceAsync(order.Lines.OrderBy(l => l.LineNo).Select(l => new PlannedLine(db.Set<Product>().First(p => p.ProductId == l.ProductId), l.QtyOrdered, l.UnitPrice, l.LotId, l.Components.Count == 0 ? null : l.Components.Select(c => (c.ComponentProductId, c.Quantity)).ToList())).ToList(),
+                // Lote 221: y el precio de lista también (la línea con el precio resuelto del cliente anterior toma el del nuevo; una excepción con sales.price se queda)
+                var lineProductIds = order.Lines.Select(l => l.ProductId).Distinct().ToList();
+                var lineProducts = await db.Set<Product>().AsNoTracking().Where(p => lineProductIds.Contains(p.ProductId)).ToListAsync(ct2);
+                var oldPrices = await PriceListQueries.ResolveAsync(db, lineProducts, peek.ClientId, clock.Today, ct2);
+                var newPrices = clientId == peek.ClientId ? oldPrices : await PriceListQueries.ResolveAsync(db, lineProducts, clientId, clock.Today, ct2);
+                var again = await PriceAsync(order.Lines.OrderBy(l => l.LineNo).Select(l => new PlannedLine(lineProducts.First(p => p.ProductId == l.ProductId), l.QtyOrdered,
+                        PriceListRules.RepriceOnClientChange(l.UnitPrice, oldPrices[l.ProductId].Price, newPrices[l.ProductId].Price), l.LotId,
+                        l.Components.Count == 0 ? null : l.Components.Select(c => (c.ComponentProductId, c.Quantity)).ToList())).ToList(),
                     clientId, order.RequestedDate, ct2);
                 db.Set<SalesOrderLineComponent>().RemoveRange(order.Lines.SelectMany(l => l.Components));
                 db.Set<SalesOrderLine>().RemoveRange(order.Lines);
                 order.Lines.Clear();
                 ApplyLines(order, again);
             }
+            ApplyTerms(order, terms);   // Lote 222
+            await RecalculateShippingAsync(order, ct2);
             await db.SaveGuardedAsync(SalesRules.Concurrency, ct2);
         }, ct);
         return await GetAsync(publicId, ct);
@@ -202,8 +222,13 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         return active[0];
     }
 
-    /// <summary>Valida las líneas (producto propio y activo, sin repetir, cantidad, precio) y resuelve el precio por omisión; el cambio de precio exige sales.price.</summary>
-    private async Task<List<PlannedLine>> PlanLinesAsync(IReadOnlyList<SalesOrderLineRequest>? lines, CancellationToken ct)
+    /// <summary>
+    /// Valida las líneas (producto propio y activo, sin repetir, cantidad, precio) y resuelve el precio por omisión; el cambio de precio exige sales.price.
+    /// Lote 221: el precio por omisión sale de la lista vigente del cliente, si no de la general y si no del precio de venta del producto (PriceListRules.Resolve); un
+    /// precio distinto exige sales.price salvo que sea el que la línea ya tenía en el borrador (previousPrices). Una oferta fuera de vigencia no se vende.
+    /// </summary>
+    private async Task<List<PlannedLine>> PlanLinesAsync(IReadOnlyList<SalesOrderLineRequest>? lines, int clientId, DateOnly date, IReadOnlyDictionary<int, decimal>? previousPrices,
+        CancellationToken ct)
     {
         if (lines is null || lines.Count == 0) throw new ValidationException("lines", SalesRules.LinesRequired);
         if (lines.Count > SalesRules.MaxLines) throw new ValidationException("lines", SalesRules.TooManyLines);
@@ -211,6 +236,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         var products = await db.Set<Product>().AsNoTracking().Where(p => ids.Contains(p.PublicId)).ToDictionaryAsync(p => p.PublicId, ct);
         var serialId = await lookups.GetIdAsync(LookupDomains.TrackingType, TrackingTypes.Serial, ct);
         var kitTypeId = await lookups.TryGetIdAsync(KitCodes.ProductTypeDomain, ProductTypes.Kit, ct);   // Lote 69
+        var resolved = await PriceListQueries.ResolveAsync(db, products.Values, clientId, date, ct);   // Lote 221
         var seen = new HashSet<int>();
         var result = new List<PlannedLine>();
         var canPrice = false;
@@ -224,23 +250,26 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
             if (product.ClientId is not null) throw new StatusRuleException(SalesRules.ProductNotOwn);
             if (product.TrackingTypeLookupId == serialId) throw new StatusRuleException(SalesRules.SerialNotSupported);
             if (!seen.Add(product.ProductId)) throw new ValidationException($"lines[{i}].productPublicId", SalesRules.ProductRepeated);
+            if (!KitPromoRules.IsSellable(product.IsPromotion, product.PromoFrom, product.PromoTo, date))   // Lote 221: oferta fuera de vigencia
+                throw new StatusRuleException(KitPromoRules.NotInEffect(product.Sku, product.PromoFrom, product.PromoTo));
             var qtyError = SalesRules.QuantityError(l.Quantity);
             if (qtyError is not null) throw new ValidationException($"lines[{i}].quantity", qtyError);
             var priceError = SalesRules.PriceError(l.UnitPrice);
             if (priceError is not null) throw new ValidationException($"lines[{i}].unitPrice", priceError);
 
             decimal price;
+            var listPrice = resolved[product.ProductId].Price;   // Lote 221: lista del cliente > lista general > precio de venta del producto
             if (l.UnitPrice is decimal given)
             {
                 // escribir un precio distinto del de lista exige el permiso
-                if (given != (product.SalePrice ?? -1m))
+                if (PriceListRules.NeedsPricePermission(given, listPrice, previousPrices is not null && previousPrices.TryGetValue(product.ProductId, out var prev) ? prev : null))
                 {
                     if (!checkedPrice) { canPrice = await permissions.HasPermissionAsync(PermissionCatalog.SalesPrice, ct); checkedPrice = true; }
                     if (!canPrice) throw new ForbiddenException(SalesRules.PriceNeedsPermission);
                 }
                 price = given;
             }
-            else price = product.SalePrice ?? throw new ValidationException($"lines[{i}].unitPrice", SalesRules.NoPrice(product.Sku));
+            else price = listPrice ?? throw new ValidationException($"lines[{i}].unitPrice", SalesRules.NoPrice(product.Sku));
 
             if (l.LotId is int lotId
                 && !await db.Set<InventoryLot>().AsNoTracking().AnyAsync(x => x.LotId == lotId && x.ProductId == product.ProductId, ct))
@@ -351,8 +380,9 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
             var w = warehouses[o.WarehouseId];
             var st = lineStats.GetValueOrDefault(o.SalesOrderId);
             return new SalesOrderListItemDto(o.PublicId, o.Number, s.Code, s.Label, s.Color, c.PublicId, c.Name, w.PublicId, w.Name, o.RequestedDate, o.RequiredDate,
-                o.Subtotal, o.TaxAmount, o.Subtotal + o.TaxAmount, st?.Count ?? 0, st?.Back ?? false, o.RequestedBy is int u ? users.GetValueOrDefault(u) : null, o.CreatedAtUtc,
-                o.AssignedToUserId, o.AssignedToUserId is int au ? assignees.GetValueOrDefault(au) : null);
+                o.Subtotal, o.TaxAmount, TotalOf(o), st?.Count ?? 0, st?.Back ?? false, o.RequestedBy is int u ? users.GetValueOrDefault(u) : null, o.CreatedAtUtc,
+                o.AssignedToUserId, o.AssignedToUserId is int au ? assignees.GetValueOrDefault(au) : null,
+                o.IsUrgent, o.AwaitingClientApproval, o.IsConsignment, o.PaymentChanged, ShippingRules.EffectiveMode(o.DeliveryMode, o.ConsigneeId is not null), o.ShippingCharge);   // Lote 222
         }).ToList();
     }
 
@@ -370,6 +400,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         var users = await UserNamesAsync(orders.Where(o => o.RequestedBy is not null).Select(o => o.RequestedBy!.Value)
             .Concat(orders.Where(o => o.AssignedToUserId is not null).Select(o => o.AssignedToUserId!.Value)), ct);
         var dispatchInfo = await DispatchesOfAsync(orders.Select(o => o.SalesOrderId).ToList(), ct);
+        var terms = await TermsOfAsync(orders, clients, ct);   // Lote 222
         // Lote 69: kits — la foto de componentes de cada línea y lo reservado de cada componente
         var allLineIds = orders.SelectMany(o => o.Lines.Select(l => l.SalesOrderLineId)).ToList();
         var snapshots = (await db.Set<SalesOrderLineComponent>().AsNoTracking().Where(c => allLineIds.Contains(c.SalesOrderLineId)).ToListAsync(ct))
@@ -404,9 +435,9 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
                     l.UnitPrice, SalesRules.LineAmount(l.QtyOrdered, l.UnitPrice), l.TaxRatePct, l.TaxAmount, l.IsTaxExempt, comps is { Count: > 0 }, comps);
             }).ToList();
             return new SalesOrderDto(o.PublicId, o.Number, s.Code, s.Label, s.Color, c.PublicId, c.Name, cons?.PublicId, cons?.Name, w.PublicId, w.Name, o.RequestedDate, o.RequiredDate,
-                o.Notes, o.Subtotal, o.TaxAmount, o.Subtotal + o.TaxAmount, o.Lines.Any(l => SalesRules.IsBackordered(l.QtyBackordered, l.IsClosed)),
+                o.Notes, o.Subtotal, o.TaxAmount, TotalOf(o), o.Lines.Any(l => SalesRules.IsBackordered(l.QtyBackordered, l.IsClosed)),
                 o.RequestedBy is int u ? users.GetValueOrDefault(u) : null, o.RequestedAtUtc, o.CreatedAtUtc, lines, dispatchInfo.GetValueOrDefault(o.SalesOrderId) ?? new List<SalesDispatchInfoDto>(),
-                o.AssignedToUserId, o.AssignedToUserId is int au ? users.GetValueOrDefault(au) : null);
+                o.AssignedToUserId, o.AssignedToUserId is int au ? users.GetValueOrDefault(au) : null, terms.GetValueOrDefault(o.SalesOrderId));   // Lote 222
         }).ToList();
     }
 

@@ -6914,3 +6914,290 @@ WHEN NOT MATCHED THEN
     INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
     VALUES (N'LocationType', s.Code, s.LabelJson, s.Srt, 1, 1);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-11-07 — Lote 221 (P1 del pedido de vendedores): listas de precios y ofertas.
+   - dbo.PriceList: lista de precios (nombre, vigencia desde/hasta, publicada o borrador, aplica a todos los clientes o a los escogidos). Nunca DELETE: IsActive = 0.
+   - dbo.PriceListItem: renglón (producto o kit → precio, foto opcional = StoredFile del producto). Quitar = IsActive = 0 (único por lista y producto entre los activos).
+   - dbo.PriceListClient: clientes de una lista que no es general. Quitar = IsActive = 0.
+   - dbo.Product: IsPromotion (solo kits: la oferta), PromoFrom / PromoTo (vigencia de la oferta, opcionales) y PromoImageFileId (su foto).
+   - EntityType PRICE_LIST (bitácora) y permiso sales.pricelist («Listas de precios y ofertas: crearlas y cambiarlas», categoría BILLING) al administrador de la
+     compañía (plantilla y roles YA clonados; una sola vez, marca L221_SALES_PRICELIST). Solo AGREGA.
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID(N'dbo.PriceList', N'U') IS NULL CREATE TABLE dbo.PriceList (
+    PriceListId   INT IDENTITY(1,1) CONSTRAINT PK_PriceList PRIMARY KEY,
+    PublicId      UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_PriceList_PublicId DEFAULT NEWID(),
+    TenantId      INT NOT NULL CONSTRAINT FK_PriceList_Tenant REFERENCES dbo.Tenant(TenantId),
+    Name          NVARCHAR(120) NOT NULL,
+    ValidFrom     DATE NOT NULL,
+    ValidTo       DATE NULL,
+    IsPublished   BIT NOT NULL CONSTRAINT DF_PriceList_IsPublished DEFAULT 0,
+    AppliesToAll  BIT NOT NULL CONSTRAINT DF_PriceList_AppliesToAll DEFAULT 1,
+    Notes         NVARCHAR(500) NULL,
+    IsActive      BIT NOT NULL CONSTRAINT DF_PriceList_IsActive DEFAULT 1,
+    CreatedAtUtc  DATETIME2 NOT NULL CONSTRAINT DF_PriceList_Created DEFAULT SYSUTCDATETIME(),
+    CreatedBy     INT NULL,
+    UpdatedAtUtc  DATETIME2 NULL,
+    UpdatedBy     INT NULL,
+    RowVersion    ROWVERSION,
+    CONSTRAINT CK_PriceList_Dates CHECK (ValidTo IS NULL OR ValidTo >= ValidFrom)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_PriceList_PublicId' AND object_id = OBJECT_ID('dbo.PriceList'))
+    CREATE UNIQUE INDEX UQ_PriceList_PublicId ON dbo.PriceList(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PriceList_Tenant' AND object_id = OBJECT_ID('dbo.PriceList'))
+    CREATE INDEX IX_PriceList_Tenant ON dbo.PriceList(TenantId, IsActive, IsPublished);
+GO
+IF OBJECT_ID(N'dbo.PriceListItem', N'U') IS NULL CREATE TABLE dbo.PriceListItem (
+    PriceListItemId INT IDENTITY(1,1) CONSTRAINT PK_PriceListItem PRIMARY KEY,
+    TenantId        INT NOT NULL CONSTRAINT FK_PriceListItem_Tenant REFERENCES dbo.Tenant(TenantId),
+    PriceListId     INT NOT NULL CONSTRAINT FK_PriceListItem_List REFERENCES dbo.PriceList(PriceListId),
+    ProductId       INT NOT NULL CONSTRAINT FK_PriceListItem_Product REFERENCES dbo.Product(ProductId),
+    Price           DECIMAL(18,4) NOT NULL,
+    ImageFileId     INT NULL CONSTRAINT FK_PriceListItem_Image REFERENCES dbo.StoredFile(StoredFileId),
+    IsActive        BIT NOT NULL CONSTRAINT DF_PriceListItem_IsActive DEFAULT 1,
+    CreatedAtUtc    DATETIME2 NOT NULL CONSTRAINT DF_PriceListItem_Created DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT CK_PriceListItem_Price CHECK (Price >= 0)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_PriceListItem_Product' AND object_id = OBJECT_ID('dbo.PriceListItem'))
+    CREATE UNIQUE INDEX UX_PriceListItem_Product ON dbo.PriceListItem(PriceListId, ProductId) WHERE IsActive = 1;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PriceListItem_Product' AND object_id = OBJECT_ID('dbo.PriceListItem'))
+    CREATE INDEX IX_PriceListItem_Product ON dbo.PriceListItem(TenantId, ProductId);
+GO
+IF OBJECT_ID(N'dbo.PriceListClient', N'U') IS NULL CREATE TABLE dbo.PriceListClient (
+    PriceListClientId INT IDENTITY(1,1) CONSTRAINT PK_PriceListClient PRIMARY KEY,
+    TenantId          INT NOT NULL CONSTRAINT FK_PriceListClient_Tenant REFERENCES dbo.Tenant(TenantId),
+    PriceListId       INT NOT NULL CONSTRAINT FK_PriceListClient_List REFERENCES dbo.PriceList(PriceListId),
+    ClientId          INT NOT NULL CONSTRAINT FK_PriceListClient_Client REFERENCES dbo.Client(ClientId),
+    IsActive          BIT NOT NULL CONSTRAINT DF_PriceListClient_IsActive DEFAULT 1,
+    CreatedAtUtc      DATETIME2 NOT NULL CONSTRAINT DF_PriceListClient_Created DEFAULT SYSUTCDATETIME()
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_PriceListClient_Client' AND object_id = OBJECT_ID('dbo.PriceListClient'))
+    CREATE UNIQUE INDEX UX_PriceListClient_Client ON dbo.PriceListClient(PriceListId, ClientId) WHERE IsActive = 1;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PriceListClient_Client' AND object_id = OBJECT_ID('dbo.PriceListClient'))
+    CREATE INDEX IX_PriceListClient_Client ON dbo.PriceListClient(TenantId, ClientId);
+GO
+IF COL_LENGTH(N'dbo.Product', N'IsPromotion') IS NULL
+    ALTER TABLE dbo.Product ADD IsPromotion BIT NOT NULL CONSTRAINT DF_Product_IsPromotion DEFAULT 0;
+GO
+IF COL_LENGTH(N'dbo.Product', N'PromoFrom') IS NULL
+    ALTER TABLE dbo.Product ADD PromoFrom DATE NULL;
+GO
+IF COL_LENGTH(N'dbo.Product', N'PromoTo') IS NULL
+    ALTER TABLE dbo.Product ADD PromoTo DATE NULL;
+GO
+IF COL_LENGTH(N'dbo.Product', N'PromoImageFileId') IS NULL
+    ALTER TABLE dbo.Product ADD PromoImageFileId INT NULL CONSTRAINT FK_Product_PromoImage REFERENCES dbo.StoredFile(StoredFileId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_Product_PromoDates')
+    ALTER TABLE dbo.Product ADD CONSTRAINT CK_Product_PromoDates CHECK (PromoFrom IS NULL OR PromoTo IS NULL OR PromoTo >= PromoFrom);
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'PRICE_LIST', N'{"es":"Lista de precios","en":"Price list"}', 185)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'sales.pricelist')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('sales.pricelist', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'BILLING'),
+            N'{"es":"Listas de precios y ofertas: crearlas y cambiarlas","en":"Price lists and offers: create and change them"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L221_SALES_PRICELIST')
+BEGIN
+    INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+    SELECT DISTINCT r.RoleId, pm.PermissionId
+    FROM dbo.Role r
+    JOIN dbo.Permission pm ON pm.Code = 'sales.pricelist'
+    WHERE r.IsActive = 1 AND r.Name = 'TenantAdmin'
+      AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = pm.PermissionId);
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L221_SALES_PRICELIST');
+END
+GO
+
+/* ----------------------------------------------------------------------------
+   2026-11-07 — Lote 222 (P2 del pedido de vendedores): la orden con sus datos nuevos, el envío, el cliente prospecto y sus permisos.
+   - dbo.SalesOrder: IsUrgent, DeliveryMode (DELIVERY | PICKUP; NULL = se deduce del consignatario), PaymentMethodLookupId (catálogo SalesPaymentMethod),
+     PaymentTermLookupId (PaymentTerm, solo con crédito), PaymentChanged, ShippingCharge / ShippingTaxAmount / ShippingReasonLookupId (catálogo ShippingReason) /
+     ShippingInvoiced, IsConsignment, AuthorizedByName, SignatureFileId (StoredFile), SubmittedWithAuth (BIOMETRIC | PASSWORD) y AwaitingClientApproval.
+   - dbo.Client: MerchantRegistration (SURI), ShippingMode (NULL = la de la compañía | FREE | OWN), ShippingCharge, ShippingFreeFrom, RequireOrderSignature.
+   - dbo.Tenant (Ajustes → Operación → Ventas): SalesShippingCharge (NULL = sin cargo), SalesShippingFreeFrom (NULL = sin mínimo), SalesShippingTaxable.
+   - dbo.InvoiceLine.SalesOrderId: la línea del cargo de envío de una orden de venta (tipo de cargo SHIPPING).
+   - dbo.ClientDocument: cliente → StoredFile con su tipo (catálogo ClientDocumentType: MERCHANT_REGISTRATION, RESELLER_CERTIFICATE, OTHER). Quitar = IsActive = 0.
+   - EntityType CLIENT_DOCUMENT; catálogos SalesPaymentMethod, ClientDocumentType y ShippingReason; tipo de cargo SHIPPING.
+   - Permisos sales.approve_client (BILLING), clients.create_basic (CLIENTS) y pulse.sales (PULSE): a los roles YA clonados TenantAdmin (los tres) y Sales
+     (clients.create_basic y pulse.sales), una sola vez (marca L222_SALES_PROSPECT). Las plantillas «Supervisor de ventas» y «Oficina de ventas» las crea el sembrador
+     de permisos (PermissionCatalog). Solo AGREGA.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH(N'dbo.SalesOrder', N'IsUrgent') IS NULL
+    ALTER TABLE dbo.SalesOrder ADD IsUrgent BIT NOT NULL CONSTRAINT DF_SalesOrder_IsUrgent DEFAULT 0;
+GO
+IF COL_LENGTH(N'dbo.SalesOrder', N'DeliveryMode') IS NULL
+    ALTER TABLE dbo.SalesOrder ADD DeliveryMode VARCHAR(10) NULL CONSTRAINT CK_SalesOrder_DeliveryMode CHECK (DeliveryMode IN ('DELIVERY', 'PICKUP'));
+GO
+IF COL_LENGTH(N'dbo.SalesOrder', N'PaymentMethodLookupId') IS NULL
+    ALTER TABLE dbo.SalesOrder ADD PaymentMethodLookupId INT NULL CONSTRAINT FK_SalesOrder_PaymentMethod REFERENCES dbo.LookupCode(LookupCodeId);
+GO
+IF COL_LENGTH(N'dbo.SalesOrder', N'PaymentTermLookupId') IS NULL
+    ALTER TABLE dbo.SalesOrder ADD PaymentTermLookupId INT NULL CONSTRAINT FK_SalesOrder_PaymentTerm REFERENCES dbo.LookupCode(LookupCodeId);
+GO
+IF COL_LENGTH(N'dbo.SalesOrder', N'PaymentChanged') IS NULL
+    ALTER TABLE dbo.SalesOrder ADD PaymentChanged BIT NOT NULL CONSTRAINT DF_SalesOrder_PaymentChanged DEFAULT 0;
+GO
+IF COL_LENGTH(N'dbo.SalesOrder', N'ShippingCharge') IS NULL
+    ALTER TABLE dbo.SalesOrder ADD ShippingCharge DECIMAL(18,2) NOT NULL CONSTRAINT DF_SalesOrder_ShippingCharge DEFAULT 0;
+GO
+IF COL_LENGTH(N'dbo.SalesOrder', N'ShippingTaxAmount') IS NULL
+    ALTER TABLE dbo.SalesOrder ADD ShippingTaxAmount DECIMAL(18,4) NOT NULL CONSTRAINT DF_SalesOrder_ShippingTaxAmount DEFAULT 0;
+GO
+IF COL_LENGTH(N'dbo.SalesOrder', N'ShippingReasonLookupId') IS NULL
+    ALTER TABLE dbo.SalesOrder ADD ShippingReasonLookupId INT NULL CONSTRAINT FK_SalesOrder_ShippingReason REFERENCES dbo.LookupCode(LookupCodeId);
+GO
+IF COL_LENGTH(N'dbo.SalesOrder', N'ShippingInvoiced') IS NULL
+    ALTER TABLE dbo.SalesOrder ADD ShippingInvoiced BIT NOT NULL CONSTRAINT DF_SalesOrder_ShippingInvoiced DEFAULT 0;
+GO
+IF COL_LENGTH(N'dbo.SalesOrder', N'IsConsignment') IS NULL
+    ALTER TABLE dbo.SalesOrder ADD IsConsignment BIT NOT NULL CONSTRAINT DF_SalesOrder_IsConsignment DEFAULT 0;
+GO
+IF COL_LENGTH(N'dbo.SalesOrder', N'AuthorizedByName') IS NULL
+    ALTER TABLE dbo.SalesOrder ADD AuthorizedByName NVARCHAR(150) NULL;
+GO
+IF COL_LENGTH(N'dbo.SalesOrder', N'SignatureFileId') IS NULL
+    ALTER TABLE dbo.SalesOrder ADD SignatureFileId INT NULL CONSTRAINT FK_SalesOrder_Signature REFERENCES dbo.StoredFile(StoredFileId);
+GO
+IF COL_LENGTH(N'dbo.SalesOrder', N'SubmittedWithAuth') IS NULL
+    ALTER TABLE dbo.SalesOrder ADD SubmittedWithAuth VARCHAR(10) NULL CONSTRAINT CK_SalesOrder_SubmittedWithAuth CHECK (SubmittedWithAuth IN ('BIOMETRIC', 'PASSWORD'));
+GO
+IF COL_LENGTH(N'dbo.SalesOrder', N'AwaitingClientApproval') IS NULL
+    ALTER TABLE dbo.SalesOrder ADD AwaitingClientApproval BIT NOT NULL CONSTRAINT DF_SalesOrder_AwaitingClientApproval DEFAULT 0;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesOrder_Urgent' AND object_id = OBJECT_ID('dbo.SalesOrder'))
+    CREATE INDEX IX_SalesOrder_Urgent ON dbo.SalesOrder(TenantId, StatusCodeId) WHERE IsUrgent = 1;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesOrder_AwaitingClient' AND object_id = OBJECT_ID('dbo.SalesOrder'))
+    CREATE INDEX IX_SalesOrder_AwaitingClient ON dbo.SalesOrder(TenantId, ClientId) WHERE AwaitingClientApproval = 1;
+GO
+IF COL_LENGTH(N'dbo.Client', N'MerchantRegistration') IS NULL
+    ALTER TABLE dbo.Client ADD MerchantRegistration NVARCHAR(50) NULL;
+GO
+IF COL_LENGTH(N'dbo.Client', N'ShippingMode') IS NULL
+    ALTER TABLE dbo.Client ADD ShippingMode VARCHAR(10) NULL CONSTRAINT CK_Client_ShippingMode CHECK (ShippingMode IN ('FREE', 'OWN'));
+GO
+IF COL_LENGTH(N'dbo.Client', N'ShippingCharge') IS NULL
+    ALTER TABLE dbo.Client ADD ShippingCharge DECIMAL(18,2) NULL CONSTRAINT CK_Client_ShippingCharge CHECK (ShippingCharge IS NULL OR ShippingCharge > 0);
+GO
+IF COL_LENGTH(N'dbo.Client', N'ShippingFreeFrom') IS NULL
+    ALTER TABLE dbo.Client ADD ShippingFreeFrom DECIMAL(18,2) NULL CONSTRAINT CK_Client_ShippingFreeFrom CHECK (ShippingFreeFrom IS NULL OR ShippingFreeFrom >= 0);
+GO
+IF COL_LENGTH(N'dbo.Client', N'RequireOrderSignature') IS NULL
+    ALTER TABLE dbo.Client ADD RequireOrderSignature BIT NOT NULL CONSTRAINT DF_Client_RequireOrderSignature DEFAULT 0;
+GO
+IF COL_LENGTH(N'dbo.Tenant', N'SalesShippingCharge') IS NULL
+    ALTER TABLE dbo.Tenant ADD SalesShippingCharge DECIMAL(18,2) NULL CONSTRAINT CK_Tenant_SalesShippingCharge CHECK (SalesShippingCharge IS NULL OR SalesShippingCharge > 0);
+GO
+IF COL_LENGTH(N'dbo.Tenant', N'SalesShippingFreeFrom') IS NULL
+    ALTER TABLE dbo.Tenant ADD SalesShippingFreeFrom DECIMAL(18,2) NULL CONSTRAINT CK_Tenant_SalesShippingFreeFrom CHECK (SalesShippingFreeFrom IS NULL OR SalesShippingFreeFrom >= 0);
+GO
+IF COL_LENGTH(N'dbo.Tenant', N'SalesShippingTaxable') IS NULL
+    ALTER TABLE dbo.Tenant ADD SalesShippingTaxable BIT NOT NULL CONSTRAINT DF_Tenant_SalesShippingTaxable DEFAULT 0;
+GO
+IF COL_LENGTH(N'dbo.InvoiceLine', N'SalesOrderId') IS NULL
+    ALTER TABLE dbo.InvoiceLine ADD SalesOrderId INT NULL CONSTRAINT FK_InvoiceLine_SalesOrder REFERENCES dbo.SalesOrder(SalesOrderId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_InvoiceLine_SalesOrder' AND object_id = OBJECT_ID('dbo.InvoiceLine'))
+    CREATE INDEX IX_InvoiceLine_SalesOrder ON dbo.InvoiceLine(SalesOrderId) WHERE SalesOrderId IS NOT NULL;
+GO
+IF OBJECT_ID(N'dbo.ClientDocument', N'U') IS NULL CREATE TABLE dbo.ClientDocument (
+    ClientDocumentId     INT IDENTITY(1,1) CONSTRAINT PK_ClientDocument PRIMARY KEY,
+    PublicId             UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_ClientDocument_PublicId DEFAULT NEWID(),
+    TenantId             INT NOT NULL CONSTRAINT FK_ClientDocument_Tenant REFERENCES dbo.Tenant(TenantId),
+    ClientId             INT NOT NULL CONSTRAINT FK_ClientDocument_Client REFERENCES dbo.Client(ClientId),
+    StoredFileId         INT NOT NULL CONSTRAINT FK_ClientDocument_File REFERENCES dbo.StoredFile(StoredFileId),
+    DocumentTypeLookupId INT NOT NULL CONSTRAINT FK_ClientDocument_Type REFERENCES dbo.LookupCode(LookupCodeId),
+    Notes                NVARCHAR(300) NULL,
+    IsActive             BIT NOT NULL CONSTRAINT DF_ClientDocument_IsActive DEFAULT 1,
+    CreatedAtUtc         DATETIME2 NOT NULL CONSTRAINT DF_ClientDocument_Created DEFAULT SYSUTCDATETIME(),
+    CreatedBy            INT NULL
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ClientDocument_PublicId' AND object_id = OBJECT_ID('dbo.ClientDocument'))
+    CREATE UNIQUE INDEX UX_ClientDocument_PublicId ON dbo.ClientDocument(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ClientDocument_Client' AND object_id = OBJECT_ID('dbo.ClientDocument'))
+    CREATE INDEX IX_ClientDocument_Client ON dbo.ClientDocument(TenantId, ClientId);
+GO
+MERGE dbo.CatalogDomain AS t
+USING (VALUES
+    (N'SalesPaymentMethod', N'{"es":"Formas de pago de la venta","en":"Sales payment methods"}'),
+    (N'ClientDocumentType', N'{"es":"Tipos de documento del cliente","en":"Client document types"}'),
+    (N'ShippingReason',     N'{"es":"Motivos del cargo de envío","en":"Shipping charge reasons"}')
+) AS s (DomainKey, LabelJson) ON t.DomainKey = s.DomainKey
+WHEN NOT MATCHED THEN
+    INSERT (DomainKey, Scope, LabelJson, IsSystem, IsActive)
+    VALUES (s.DomainKey, 1, s.LabelJson, 1, 1);
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'SalesPaymentMethod', N'COD_CHECK',   N'{"es":"Contra entrega: cheque","en":"COD: check"}',                    1),
+    (N'SalesPaymentMethod', N'COD_CASH',    N'{"es":"Contra entrega: efectivo","en":"COD: cash"}',                   2),
+    (N'SalesPaymentMethod', N'COD_ACH',     N'{"es":"Contra entrega: ACH","en":"COD: ACH"}',                         3),
+    (N'SalesPaymentMethod', N'CREDIT',      N'{"es":"Crédito","en":"Credit"}',                                        4),
+    (N'SalesPaymentMethod', N'CONSIGNMENT', N'{"es":"Consignación","en":"Consignment"}',                              5),
+    (N'ClientDocumentType', N'MERCHANT_REGISTRATION', N'{"es":"Registro de comerciante (SURI)","en":"Merchant registration (SURI)"}', 1),
+    (N'ClientDocumentType', N'RESELLER_CERTIFICATE',  N'{"es":"Certificado de revendedor","en":"Reseller certificate"}',          2),
+    (N'ClientDocumentType', N'OTHER',                 N'{"es":"Otro","en":"Other"}',                                               9),
+    (N'ShippingReason', N'COMPANY_RULE', N'{"es":"Cargo de envío","en":"Shipping charge"}',                                       1),
+    (N'ShippingReason', N'CLIENT_FREE',  N'{"es":"Sin cargo por acuerdo con el cliente","en":"No charge by agreement with the client"}', 2),
+    (N'ShippingReason', N'CLIENT_RULE',  N'{"es":"Cargo de envío del cliente","en":"Client shipping charge"}',                     3),
+    (N'ShippingReason', N'AMOUNT',       N'{"es":"Gratis por monto","en":"Free by amount"}',                                      4),
+    (N'ShippingReason', N'PICKUP',       N'{"es":"Recogido: sin envío","en":"Pickup: no shipping"}',                               5),
+    (N'ChargeType',     N'SHIPPING',     N'{"es":"Cargo de envío","en":"Shipping charge"}',                                       9),
+    (N'EntityType',     N'CLIENT_DOCUMENT', N'{"es":"Documento del cliente","en":"Client document"}',                            186)
+) AS s (Entity, Code, LabelJson, Srt)
+ON t.Entity = s.Entity AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (s.Entity, s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'sales.approve_client')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('sales.approve_client', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'BILLING'),
+            N'{"es":"Aprobar o rechazar clientes nuevos (prospectos)","en":"Approve or reject new clients (prospects)"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'clients.create_basic')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('clients.create_basic', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'CLIENTS'),
+            N'{"es":"Alta mínima de clientes desde el pedido (nacen prospecto)","en":"Quick client sign-up from an order (born as prospect)"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'pulse.sales')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('pulse.sales', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'PULSE'),
+            N'{"es":"Ver el panel Ventas del Pulso","en":"See the Sales panel"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L222_SALES_PROSPECT')
+BEGIN
+    -- el administrador de la compañía: los tres
+    INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+    SELECT DISTINCT r.RoleId, pm.PermissionId
+    FROM dbo.Role r
+    JOIN dbo.Permission pm ON pm.Code IN ('sales.approve_client', 'clients.create_basic', 'pulse.sales')
+    WHERE r.IsActive = 1 AND r.TenantId IS NOT NULL AND r.Name = 'TenantAdmin'
+      AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = pm.PermissionId);
+    -- Ventas (el vendedor): alta mínima del cliente nuevo y el panel Ventas
+    INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+    SELECT DISTINCT r.RoleId, pm.PermissionId
+    FROM dbo.Role r
+    JOIN dbo.Permission pm ON pm.Code IN ('clients.create_basic', 'pulse.sales')
+    WHERE r.IsActive = 1 AND r.TenantId IS NOT NULL AND r.Name = 'Sales'
+      AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = pm.PermissionId);
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L222_SALES_PROSPECT');
+END
+GO

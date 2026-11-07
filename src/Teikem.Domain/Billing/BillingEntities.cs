@@ -121,6 +121,8 @@ public class InvoiceLine
     public string? AdjustmentNote { get; set; }
     /// <summary>Lote 115: la línea es el cargo por devolución de la orden (se libera aparte del flete al anular).</summary>
     public bool IsReturnFee { get; set; }
+    /// <summary>Lote 222: la línea es el cargo de envío de esa orden de venta (SalesOrder.ShippingInvoiced se libera al anular).</summary>
+    public int? SalesOrderId { get; set; }
 }
 
 /// <summary>Pago recibido de una factura. Una factura se salda (PAID) cuando sus pagos cubren el total.</summary>

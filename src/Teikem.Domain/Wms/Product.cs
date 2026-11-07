@@ -61,6 +61,15 @@ public class Product : ITenantScoped, ISoftDeletable
     public int? ProductTypeLookupId { get; set; }
     /// <summary>Lote 68: kit «ajustable al pedir» — en una orden de venta se pueden cambiar sus piezas sin tocar el catálogo.</summary>
     public bool KitAdjustable { get; set; }
+    /// <summary>
+    /// Lote 221: el kit es una OFERTA (promoción) — se muestra como tarjeta con su foto en el pedido y solo se vende dentro de su vigencia
+    /// (PromoFrom / PromoTo, ambos opcionales: NULL = sin límite de ese lado). Solo un kit puede serlo. Las órdenes ya hechas no cambian al vencer.
+    /// </summary>
+    public bool IsPromotion { get; set; }
+    public DateOnly? PromoFrom { get; set; }
+    public DateOnly? PromoTo { get; set; }
+    /// <summary>Lote 221: la foto de la oferta (StoredFile del producto, una imagen).</summary>
+    public int? PromoImageFileId { get; set; }
     public bool IsActive { get; set; } = true;
     [NotAudited] public byte[]? RowVersion { get; set; }
 }

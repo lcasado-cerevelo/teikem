@@ -246,6 +246,19 @@ public static class InventoryQueries
         return await LoadTrackedAsync(db, db.Set<Teikem.Domain.Sales.SalesOrderLine>().Where(x => x.SalesOrderLineId == salesOrderLineId), () => new NotFoundException("Línea", null, true), ct);
     }
 
+    /// <summary>(Lote 222) Orden de venta con UPDLOCK, tracked: la facturación la bloquea para reclamar su cargo de envío una sola vez (SalesOrder.ShippingInvoiced). 404 'Orden de venta no encontrada.'</summary>
+    public static async Task<Teikem.Domain.Sales.SalesOrder> LockSalesOrderAsync(this TeikemDbContext db, int salesOrderId, CancellationToken ct)
+    {
+        if (db.Database.IsRelational())
+        {
+            RequireTransaction(db, nameof(LockSalesOrderAsync));
+            var tenantId = db.CurrentTenantId;
+            await RequireLockedAsync(db.Database.SqlQuery<int>($"SELECT SalesOrderId AS Value FROM dbo.SalesOrder WITH (UPDLOCK, ROWLOCK) WHERE SalesOrderId = {salesOrderId} AND TenantId = {tenantId}"),
+                () => new NotFoundException("Orden de venta", null, true), ct);
+        }
+        return await LoadTrackedAsync(db, db.Set<Teikem.Domain.Sales.SalesOrder>().Where(x => x.SalesOrderId == salesOrderId), () => new NotFoundException("Orden de venta", null, true), ct);
+    }
+
     /// <summary>(Lote 94) Viajes pagados al chofer con UPDLOCK (en una sola lectura): la liquidación a choferes los bloquea para reservarlos sin que otra corrida los pague también. Los ids viajan como JSON (OPENJSON), nunca pegados al texto.</summary>
     public static async Task LockDriverTripsAsync(this TeikemDbContext db, IReadOnlyCollection<int> ids, CancellationToken ct)
     {

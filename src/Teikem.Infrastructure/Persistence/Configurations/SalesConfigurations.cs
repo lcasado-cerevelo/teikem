@@ -19,6 +19,16 @@ public sealed class SalesOrderConfiguration : IEntityTypeConfiguration<SalesOrde
         b.Property(o => o.Notes).HasMaxLength(500);
         b.Property(o => o.Subtotal).HasColumnType("decimal(18,4)");
         b.Property(o => o.TaxAmount).HasColumnType("decimal(18,4)");
+        // Lote 222 (sección 2026-11-07 de update.sql): urgente, entrega, forma de pago, envío, consignación, autorización y prospecto
+        b.Property(o => o.DeliveryMode).HasColumnType("varchar(10)");
+        b.Property(o => o.ShippingCharge).HasColumnType("decimal(18,2)");
+        b.Property(o => o.ShippingTaxAmount).HasColumnType("decimal(18,4)");
+        b.Property(o => o.AuthorizedByName).HasMaxLength(150);
+        b.Property(o => o.SubmittedWithAuth).HasColumnType("varchar(10)");
+        b.HasOne<Teikem.Domain.Catalogs.LookupCode>().WithMany().HasForeignKey(o => o.PaymentMethodLookupId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<Teikem.Domain.Catalogs.LookupCode>().WithMany().HasForeignKey(o => o.PaymentTermLookupId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<Teikem.Domain.Catalogs.LookupCode>().WithMany().HasForeignKey(o => o.ShippingReasonLookupId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<Teikem.Domain.Files.StoredFile>().WithMany().HasForeignKey(o => o.SignatureFileId).OnDelete(DeleteBehavior.NoAction);
         b.Property(o => o.RowVersion).IsRowVersion();
         b.HasMany(o => o.Lines).WithOne().HasForeignKey(l => l.SalesOrderId);
         b.HasIndex(o => o.PublicId).IsUnique().HasDatabaseName("UQ_SalesOrder_PublicId");

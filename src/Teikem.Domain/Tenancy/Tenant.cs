@@ -113,6 +113,11 @@ public class Tenant : ISoftDeletable
     public string SalesBillingTrigger { get; set; } = "ON_DISPATCH";
     /// <summary>Lote 72 (P5): días entre la emisión de una factura y su vencimiento.</summary>
     public int InvoiceDueDays { get; set; } = 30;
+    /// <summary>Lote 222 (Ajustes → Operación → Ventas): cargo de envío de la compañía (NULL = sin cargo de envío), mínimo para envío gratis (NULL = sin mínimo: siempre se cobra)
+    /// y si el cargo lleva IVU. El mínimo se compara con el total de los productos DESPUÉS del IVU y solo en entrega (ShippingRules).</summary>
+    public decimal? SalesShippingCharge { get; set; }
+    public decimal? SalesShippingFreeFrom { get; set; }
+    public bool SalesShippingTaxable { get; set; }
     /// <summary>Lote 81: días después del último despacho en que se acepta pedir una devolución de venta (0 = sin ventana).</summary>
     public int SalesReturnWindowDays { get; set; } = 30;
     /// <summary>Lote 86 (P8): comisión por omisión de la remesa COD (% de lo cobrado) cuando el contrato del cliente no trae la suya.</summary>

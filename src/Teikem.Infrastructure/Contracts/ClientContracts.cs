@@ -63,7 +63,10 @@ public sealed record ClientDetailDto(
     bool PortalCanCreateProducts = false, bool PortalCanCreateArrivals = false, bool PortalCanCreateExits = false,
     // servicio y paquete que la entrada rápida trae puestos para este cliente (códigos; null = los de la compañía)
     string? DefaultServiceType = null, string? DefaultPackageType = null,
-    bool RequireDeliverySignature = false, bool RequireDeliveryPhoto = false);
+    bool RequireDeliverySignature = false, bool RequireDeliveryPhoto = false,
+    // Lote 222: SURI, regla de envío (ShippingMode null = la de la compañía | FREE | OWN) y «Exige la firma de quien autoriza el pedido»
+    string? MerchantRegistration = null, string? ShippingMode = null, decimal? ShippingCharge = null, decimal? ShippingFreeFrom = null,
+    bool RequireOrderSignature = false);
 
 // ---------------- Edición ----------------
 
@@ -77,7 +80,11 @@ public sealed record ClientProfileUpdateRequest(
     bool? PortalCanCreateProducts = null, bool? PortalCanCreateArrivals = null, bool? PortalCanCreateExits = null,
     // servicio y paquete por omisión del cliente: código = lo elige; cadena vacía = vuelve a los de la compañía; null = sin cambio
     string? DefaultServiceType = null, string? DefaultPackageType = null,
-    bool? RequireDeliverySignature = null, bool? RequireDeliveryPhoto = null);
+    bool? RequireDeliverySignature = null, bool? RequireDeliveryPhoto = null,
+    // Lote 222: SURI ("" = quitarlo); regla de envío: "" o COMPANY = la de la compañía, FREE = no se le cobra, OWN = regla propia (exige ShippingCharge > 0;
+    // ShippingFreeFrom opcional, 0 = sin mínimo); RequireOrderSignature = exige nombre y firma de quien autoriza el pedido. null = sin cambio.
+    string? MerchantRegistration = null, string? ShippingMode = null, decimal? ShippingCharge = null, decimal? ShippingFreeFrom = null,
+    bool? RequireOrderSignature = null);
 
 /// <summary>Cadena vacía en un patrón = NULL = patrón por defecto del sistema.</summary>
 public sealed record ClientNumberSettingsRequest(

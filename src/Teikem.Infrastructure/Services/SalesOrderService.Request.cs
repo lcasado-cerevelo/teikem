@@ -64,6 +64,11 @@ public sealed partial class SalesOrderService
         if (!client.IsActive) throw new StatusRuleException(SalesRules.ClientInactive);
         var warehouse = await db.Set<Warehouse>().AsNoTracking().FirstAsync(w => w.WarehouseId == peek.WarehouseId, ct);
         if (!warehouse.IsActive) throw new StatusRuleException(SalesRules.WarehouseInactive);
+        // Lote 222: un cliente suspendido (p. ej. un prospecto rechazado) no compra; un prospecto sí (la orden queda esperando su aprobación); la firma que exige el cliente
+        var clientStatus = await db.StatusCodes.AsNoTracking().Where(s => s.StatusCodeId == client.StatusCodeId).Select(s => s.InternalCode).FirstOrDefaultAsync(ct);
+        if (clientStatus == ClientStatuses.Suspended) throw new StatusRuleException(SalesOrderExtraRules.ClientSuspended);
+        if (SalesOrderExtraRules.MissingRequiredSignature(client.RequireOrderSignature, peek.AuthorizedByName, peek.SignatureFileId))
+            throw new Exceptions.ValidationException("signature", SalesOrderExtraRules.SignatureRequired);
 
         // crédito: excedido = 409 con el aviso; con OverrideCredit y el permiso se autoriza y queda en el historial y en la bitácora de seguridad
         var (check, _) = await EvaluateCreditAsync(peek, ct);
@@ -112,10 +117,13 @@ public sealed partial class SalesOrderService
                         }
                     }
                     await ledger.ReserveAsync(reservations, ct2);   // el saldo se bloquea y se vuelve a verificar: una carrera lanza insufficient_stock
+                    await RecalculateShippingAsync(order, ct2);   // Lote 222: el envío final, con la regla de hoy
+                    order.AwaitingClientApproval = clientStatus == ClientStatuses.Prospect;   // Lote 222: se reserva, pero no se despacha hasta aprobar al cliente
                     var to = await statuses.TransitionAsync(SalesCodes.StatusDomain, SalesCodes.EntityType, order.SalesOrderId, order.StatusCodeId, SalesOrderStatuses.Requested, comment, ct2);
                     order.StatusCodeId = to.StatusCodeId;
                     order.RequestedAtUtc = DateTime.UtcNow;
                     await NotifyRequestedAsync(order, ct2);
+                    if (order.IsUrgent) await NotifyUrgentAsync(order, ct2);   // Lote 222: el almacén se entera del pedido urgente
                     await db.SaveGuardedAsync(SalesRules.Concurrency, ct2);
                 }, ct);
                 break;
@@ -199,8 +207,10 @@ public sealed partial class SalesOrderService
 
                     if (req.UnitPrice is decimal price && price != line.UnitPrice)
                     {
-                        var listPrice = await db.Set<Product>().AsNoTracking().Where(p => p.ProductId == line.ProductId).Select(p => p.SalePrice).FirstAsync(ct2);
-                        if (price != (listPrice ?? -1m) && !await permissions.HasPermissionAsync(PermissionCatalog.SalesPrice, ct2)) throw new ForbiddenException(SalesRules.PriceNeedsPermission);
+                        // Lote 221: «de lista» = el precio resuelto hoy para el cliente de la orden (lista del cliente > lista general > precio de venta del producto)
+                        var lineProduct = await db.Set<Product>().AsNoTracking().FirstAsync(p => p.ProductId == line.ProductId, ct2);
+                        var listPrice = (await PriceListQueries.ResolveAsync(db, new[] { lineProduct }, order.ClientId, clock.Today, ct2))[lineProduct.ProductId].Price;
+                        if (PriceListRules.NeedsPricePermission(price, listPrice, null) && !await permissions.HasPermissionAsync(PermissionCatalog.SalesPrice, ct2)) throw new ForbiddenException(SalesRules.PriceNeedsPermission);
                         line.UnitPrice = price;
                     }
                     if (req.Quantity is decimal newQty && newQty != line.QtyOrdered)
@@ -210,6 +220,7 @@ public sealed partial class SalesOrderService
                         line.QtyOrdered = newQty;
                     }
                     await RecalculateTaxAsync(order, ct2);
+                    await RecalculateShippingAsync(order, ct2);   // Lote 222: el total cambió (el mínimo para envío gratis)
                     await db.SaveGuardedAsync(SalesRules.Concurrency, ct2);
                 }, ct);
                 break;
@@ -425,8 +436,8 @@ public sealed partial class SalesOrderService
         // en curso = lo pendiente de las órdenes de transporte del cliente + lo vendido y aún sin despachar de sus otras órdenes de venta
         var pendingTransport = await balance.PendingBalanceAsync(client.ClientId, null, ct);
         var openSales = await db.Set<SalesOrder>().AsNoTracking().Where(o => o.ClientId == client.ClientId && o.SalesOrderId != order.SalesOrderId && openIds.Contains(o.StatusCodeId))
-            .SumAsync(o => (decimal?)(o.Subtotal + o.TaxAmount), ct) ?? 0m;
-        var check = new CreditCheck(client.CreditLimit, pendingTransport + openSales, order.Subtotal + order.TaxAmount);
+            .SumAsync(o => (decimal?)(o.Subtotal + o.TaxAmount + o.ShippingCharge + o.ShippingTaxAmount), ct) ?? 0m;   // Lote 222: con el envío
+        var check = new CreditCheck(client.CreditLimit, pendingTransport + openSales, TotalOf(order));
         var (ok, available) = CreditRules.Evaluate(check);
         return (check, new SalesCreditDto(client.CreditLimit, CreditRules.Exposure(check), check.NewAmount, available, !ok, ok ? null : CreditRules.Message(check)));
     }

@@ -134,6 +134,8 @@ public static class DependencyInjection
 
         // Lote 2 — Clientes y contratos
         services.AddScoped<ClientService>();
+        services.AddScoped<ClientProspectService>();   // Lote 222: alta mínima, aprobar y rechazar el cliente prospecto
+        services.AddScoped<ClientDocumentService>();   // Lote 222: documentos del cliente
         services.AddScoped<LocationService>();
         services.AddScoped<ContractService>();
         services.AddScoped<RateService>();
@@ -526,6 +528,8 @@ public static class DependencyInjection
         services.AddScoped<IDataSource, RentalDataSource>();
         services.AddScoped<IDataSource, RentalReturnDataSource>();
         services.AddScoped<KitService>();   // Lote 68
+        services.AddScoped<PriceListService>();   // Lote 221: listas de precios
+        services.AddScoped<SalesCatalogService>();   // Lote 221: ofertas y catálogo del pedido
         services.AddScoped<BillingService>();   // Lote 72 (P5)
         services.AddScoped<PaymentService>();   // Lote 75 (P5)
         services.AddScoped<ExportTemplateService>();   // Lote 77 (P5)
@@ -578,6 +582,9 @@ public static class DependencyInjection
         services.AddScoped<IDataSource, RentalProcessDataSource>();
         services.AddScoped<IAttentionItemProvider, RentalDueAttentionProvider>();
         services.AddScoped<IAttentionItemProvider, SalesBackorderReadyAttentionProvider>();   // Lote 67
+        services.AddScoped<IAttentionItemProvider, SalesClientPendingAttentionProvider>();   // Lote 222: cliente nuevo por aprobar (sales.approve_client)
+        services.AddScoped<IAttentionItemProvider, SalesUrgentAttentionProvider>();   // Lote 222: pedido urgente (warehouse.pick)
+        services.AddScoped<SalesPulseService>();   // Lote 222: panel Ventas del Pulso
         services.AddScoped<IAttentionItemProvider, ExitNoticeBackorderAttentionProvider>();   // Lote 194: avisos de salida con pendiente
 
         // Seeders e inicialización

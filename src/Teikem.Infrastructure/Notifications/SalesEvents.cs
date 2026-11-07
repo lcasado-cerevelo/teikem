@@ -10,8 +10,12 @@ public static class SalesEventCodes
     public const string OrderCancelled = "SALES_ORDER_CANCELLED";
     public const string CreditOverrideNeeded = "SALES_CREDIT_OVERRIDE_NEEDED";
     public const string BackorderAvailable = "SALES_BACKORDER_AVAILABLE";
+    /// <summary>Lote 222: entró un cliente nuevo (prospecto) por un pedido; lo aprueba o lo rechaza quien tiene sales.approve_client.</summary>
+    public const string ClientPendingApproval = "SALES_CLIENT_PENDING_APPROVAL";
+    /// <summary>Lote 222: se solicitó un pedido urgente (para el almacén).</summary>
+    public const string OrderUrgent = "SALES_ORDER_URGENT";
 
-    public static readonly string[] All = { OrderRequested, OrderShipped, OrderCancelled, CreditOverrideNeeded, BackorderAvailable };
+    public static readonly string[] All = { OrderRequested, OrderShipped, OrderCancelled, CreditOverrideNeeded, BackorderAvailable, ClientPendingApproval, OrderUrgent };
 }
 
 /// <summary>
@@ -69,5 +73,25 @@ public sealed class SalesEventProvider : INotificationEventProvider
             "Ya hay inventario para la orden {orderNumber}", "Stock is now available for order {orderNumber}",
             "La orden {orderNumber} de {client} tiene backorder que ya se puede surtir en {warehouse}: {lines}.",
             "Order {orderNumber} for {client} has backorder that can now be fulfilled in {warehouse}: {lines}."),
+        // Lote 222 (pedido de vendedores): el cliente nuevo por aprobar y el pedido urgente
+        new NotificationEventDef(
+            SalesEventCodes.ClientPendingApproval, ModuleKeys.SalesOrders, "Cliente nuevo pendiente de aprobación", "New client pending approval",
+            new[]
+            {
+                new NotificationVariable("client", "Cliente", "Customer", "Farmacia Central"),
+                new NotificationVariable("clientCode", "Número del cliente", "Customer number", "FARMACIA-CE"),
+                new NotificationVariable("seller", "Vendedor", "Sales rep", "Ana Pérez"),
+            },
+            IsOptional: false, LinkTemplate: "/clients",
+            "Cliente nuevo pendiente de aprobación: {client}", "New client pending approval: {client}",
+            "{seller} dio de alta al cliente {client} ({clientCode}) desde un pedido. Verifique sus datos (registro de comerciante, certificado) y apruébelo o recházelo; sus pedidos no se despachan hasta entonces.",
+            "{seller} added the client {client} ({clientCode}) from an order. Check its data (merchant registration, certificate) and approve or reject it; its orders are not shipped until then."),
+        new NotificationEventDef(
+            SalesEventCodes.OrderUrgent, ModuleKeys.SalesOrders, "Pedido urgente", "Urgent order",
+            Base(new NotificationVariable("note", "Nota", "Note", "Lo necesitan antes del mediodía."), new NotificationVariable("seller", "Vendedor", "Sales rep", "Ana Pérez")),
+            IsOptional: true, LinkTemplate: "/sales-orders",
+            "Pedido urgente {orderNumber} de {client}", "Urgent order {orderNumber} for {client}",
+            "{seller} solicitó el pedido URGENTE {orderNumber} de {client} para {warehouse}. {note}",
+            "{seller} requested the URGENT order {orderNumber} for {client} for {warehouse}. {note}"),
     };
 }

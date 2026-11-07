@@ -13,7 +13,7 @@ public static class PermissionDisplayOrder
     public static readonly IReadOnlyList<string> Codes = new[]
     {
         // Pulso
-        "pulse.view", "pulse.indicators", "pulse.charts", "pulse.warehouse", "pulse.activity", "pulse.orders", "pulse.cod", "pulse.attention", "pulse.organize_company",
+        "pulse.view", "pulse.indicators", "pulse.charts", "pulse.warehouse", "pulse.activity", "pulse.orders", "pulse.cod", "pulse.attention", "pulse.sales", "pulse.organize_company",
         // Transporte: envíos, escaneo, rutas, reclamaciones
         "orders.view", "orders.create", "orders.edit", "orders.cancel", "orders.reopen", "orders.return", "orders.deliver", "orders.view_price", "orders.credit_override",
         "trips.scan",
@@ -39,14 +39,14 @@ public static class PermissionDisplayOrder
         "suppliers.view", "suppliers.manage",
         "purchasing.view", "purchasing.manage", "purchasing.receive",
         "purchaseaccounting.view", "purchaseaccounting.manage",
-        "sales.view", "sales.create", "sales.price", "sales.cancel", "sales.backorder", "sales.return", "sales.return.authorize",
+        "sales.view", "sales.create", "sales.price", "sales.cancel", "sales.backorder", "sales.return", "sales.return.authorize", "sales.pricelist", "sales.approve_client",
         "dispatchaccounting.view", "dispatchaccounting.manage",
         "billing.view", "billing.generate", "billing.approve", "billing.credit", "billing.export",
         "cod.view", "cod.collect", "cod.reconcile", "cod.remit",
         "driverpay.view", "driverpay.manage", "driverpay.approve", "driverpay.export",
         "tax.view", "tax.manage",
         // Clientes y contratos
-        "clients.read", "clients.create", "clients.update", "locations.read", "locations.create", "locations.update", "contracts.read", "contracts.create", "contracts.update",
+        "clients.read", "clients.create", "clients.create_basic", "clients.update", "locations.read", "locations.create", "locations.update", "contracts.read", "contracts.create", "contracts.update",
         "portalusers.manage", "clientmessages.reply", "clientmessages.manage",
         // Flota
         "drivers.view", "fleet.view", "fleet.manage", "fleet.maintenance",

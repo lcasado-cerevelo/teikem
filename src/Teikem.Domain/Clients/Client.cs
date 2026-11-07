@@ -74,6 +74,16 @@ public class Client : ITenantScoped, ISoftDeletable, IHasStatus, IAuditStamped
     public bool RequireDeliverySignature { get; set; }
     public bool RequireDeliveryPhoto { get; set; }
 
+    // --- Lote 222 (P2 del pedido de vendedores) ---
+    /// <summary>Registro de comerciante (SURI, Puerto Rico).</summary>
+    public string? MerchantRegistration { get; set; }
+    /// <summary>Regla de envío del cliente: NULL = usa la de la compañía; FREE = no se le cobra; OWN = regla propia (ShippingCharge y, opcional, ShippingFreeFrom).</summary>
+    public string? ShippingMode { get; set; }
+    public decimal? ShippingCharge { get; set; }
+    public decimal? ShippingFreeFrom { get; set; }
+    /// <summary>Someter un pedido de este cliente exige el nombre y la firma dibujada de quien lo autoriza (al lado de «Exige la firma de quien recibe»).</summary>
+    public bool RequireOrderSignature { get; set; }
+
     public StatusCode? Status { get; set; }
     public LookupCode? PaymentTerm { get; set; }
     public LookupCode? Currency { get; set; }

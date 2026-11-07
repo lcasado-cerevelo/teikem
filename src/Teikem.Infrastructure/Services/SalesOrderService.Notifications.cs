@@ -36,6 +36,17 @@ public sealed partial class SalesOrderService
             new Dictionary<string, string?> { ["lineCount"] = order.Lines.Count.ToString(CultureInfo.InvariantCulture), ["detail"] = detail }, null, ct);
     }
 
+    /// <summary>Lote 222 — aviso de pedido urgente (dentro de la transacción de Solicitar): una vez por orden.</summary>
+    private async Task NotifyUrgentAsync(SalesOrder order, CancellationToken ct)
+    {
+        if (notifications is null) return;
+        await NotifyOrderAsync(SalesEventCodes.OrderUrgent, order, new Dictionary<string, string?>
+        {
+            ["note"] = order.Notes ?? string.Empty,
+            ["seller"] = await CurrentUserNameAsync(ct),
+        }, $"URG-{order.PublicId:N}", ct);
+    }
+
     /// <summary>Aviso de crédito excedido: quien intentó solicitar no tiene (o no usó) la autorización. Una vez por orden y situación (no se repite por cada intento igual).</summary>
     private async Task NotifyCreditNeededAsync(SalesOrder order, CreditCheck check, CancellationToken ct)
     {

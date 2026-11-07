@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Teikem.Api.Auth;
 using Teikem.Domain.Constants;
@@ -66,4 +67,49 @@ public sealed class ClientsController(ClientService clients) : ControllerBase
 
     [HttpPost("{publicId:guid}/reactivate"), RequirePermission(PermissionCatalog.ClientsUpdate)]
     public async Task<IActionResult> Reactivate(Guid publicId, CancellationToken ct) { await clients.SetActiveAsync(publicId, true, ct); return NoContent(); }
+
+    // ---------------------------------------------------------------- Lote 222 (pedido de vendedores): cliente prospecto y documentos
+
+    /// <summary>Alta mínima del cliente nuevo desde un pedido: nace PROSPECTO y avisa a quien aprueba. 400 con el campo y el mensaje exacto si falta algo.</summary>
+    [HttpPost("basic"), RequirePermission(PermissionCatalog.ClientsCreateBasic + "|" + PermissionCatalog.ClientsCreate)]
+    public Task<ClientDetailDto> CreateBasic([FromBody] ClientBasicCreateRequest? req, [FromServices] ClientProspectService prospects, CancellationToken ct)
+        => prospects.CreateBasicAsync(req, ct);
+
+    /// <summary>Aprueba el prospecto (→ ACTIVO) con su límite de crédito y término; sus órdenes ya se pueden despachar. 422 si no es prospecto.</summary>
+    [HttpPost("{publicId:guid}/approve"), RequirePermission(PermissionCatalog.SalesApproveClient)]
+    public Task<ClientDetailDto> Approve(Guid publicId, [FromBody] ClientApproveRequest? req, [FromServices] ClientProspectService prospects, CancellationToken ct)
+        => prospects.ApproveAsync(publicId, req, ct);
+
+    /// <summary>Rechaza el prospecto (→ SUSPENDIDO) y cancela sus órdenes abiertas. El comentario es obligatorio (400); 422 si no es prospecto.</summary>
+    [HttpPost("{publicId:guid}/reject"), RequirePermission(PermissionCatalog.SalesApproveClient)]
+    public Task<ClientRejectResultDto> Reject(Guid publicId, [FromBody] ClientRejectRequest? req, [FromServices] ClientProspectService prospects, CancellationToken ct)
+        => prospects.RejectAsync(publicId, req, ct);
+
+    /// <summary>Documentos del cliente (registro de comerciante, certificado de revendedor, otro). El archivo se ve por GET /files/{filePublicId}.</summary>
+    [HttpGet("{publicId:guid}/documents"), RequirePermission(PermissionCatalog.ClientsRead)]
+    public Task<IReadOnlyList<ClientDocumentDto>> Documents(Guid publicId, [FromServices] ClientDocumentService documents, CancellationToken ct) => documents.ListAsync(publicId, ct);
+
+    /// <summary>Sube un documento (JPG, PNG, WEBP, GIF o PDF). documentType: MERCHANT_REGISTRATION, RESELLER_CERTIFICATE u OTHER. Exige clients.update (o clients.create_basic si es prospecto).</summary>
+    [HttpPost("{publicId:guid}/documents"), Consumes("multipart/form-data"), RequirePermission(PermissionCatalog.ClientsUpdate + "|" + PermissionCatalog.ClientsCreateBasic)]
+    [RequestSizeLimit(32 * 1024 * 1024)]
+    public async Task<ClientDocumentDto> UploadDocument(Guid publicId, IFormFile? file, [FromForm] string? documentType, [FromForm] string? notes,
+        [FromServices] ClientDocumentService documents, CancellationToken ct)
+    {
+        byte[] bytes = Array.Empty<byte>();
+        if (file is not null && file.Length > 0)
+        {
+            await using var ms = new MemoryStream();
+            await file.CopyToAsync(ms, ct);
+            bytes = ms.ToArray();
+        }
+        return await documents.UploadAsync(publicId, documentType, notes, file?.FileName, file?.ContentType, bytes, ct);
+    }
+
+    /// <summary>Quita el documento (en lógico).</summary>
+    [HttpDelete("{publicId:guid}/documents/{documentPublicId:guid}"), RequirePermission(PermissionCatalog.ClientsUpdate + "|" + PermissionCatalog.ClientsCreateBasic)]
+    public async Task<IActionResult> RemoveDocument(Guid publicId, Guid documentPublicId, [FromServices] ClientDocumentService documents, CancellationToken ct)
+    {
+        await documents.RemoveAsync(publicId, documentPublicId, ct);
+        return NoContent();
+    }
 }

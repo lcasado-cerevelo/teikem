@@ -70,6 +70,7 @@ public sealed class KitService(TeikemDbContext db, ITenantContext tenant, ILooku
                 db.Set<ProductKitComponent>().RemoveRange(existing);
                 product.ProductTypeLookupId = null;
                 product.KitAdjustable = false;
+                product.IsPromotion = false;   // Lote 221: solo un kit puede ser oferta (la vigencia y la foto se quedan por si vuelve a ser kit)
                 await db.SaveGuardedAsync(Concurrency, ct2);
                 return;
             }

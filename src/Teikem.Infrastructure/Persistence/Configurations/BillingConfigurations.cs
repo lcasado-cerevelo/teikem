@@ -55,6 +55,7 @@ public sealed class InvoiceLineConfiguration : IEntityTypeConfiguration<InvoiceL
         b.Property(l => l.TaxAmount).HasColumnType("decimal(18,4)");
         b.Property(l => l.AdjustmentNote).HasMaxLength(250);
         b.HasIndex(l => l.SalesOrderLineId).HasDatabaseName("IX_InvoiceLine_SalesOrderLine");
+        b.HasIndex(l => l.SalesOrderId).HasDatabaseName("IX_InvoiceLine_SalesOrder");   // Lote 222: el cargo de envío de la orden de venta
     }
 }
 
