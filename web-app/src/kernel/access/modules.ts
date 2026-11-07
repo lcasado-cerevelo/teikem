@@ -17,6 +17,7 @@ export const ModuleKeys = {
   Tax: 'TAX',
   Billing: 'BILLING',
   Integrations: 'INTEGRATIONS',
+  Intercompany: 'INTERCOMPANY',
 } as const
 
 export type ModuleKey = (typeof ModuleKeys)[keyof typeof ModuleKeys]

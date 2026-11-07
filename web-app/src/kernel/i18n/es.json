@@ -11225,6 +11225,121 @@
       }
     }
   },
+  "tenantLink": {
+    "col": {
+      "company": "Compañía",
+      "status": "Estado",
+      "client": "Cliente que la representa",
+      "proposed": "Propuesta",
+      "response": "Respuesta",
+      "deliveries": "Entregas",
+      "salesOrder": "Orden de venta",
+      "dispatch": "Despacho",
+      "delivery": "Entrega",
+      "attempts": "Intentos",
+      "synced": "Última revisión",
+      "created": "Creada",
+      "state": "Estado de la entrega"
+    },
+    "status": {
+      "PROPOSED": "Propuesto",
+      "ACTIVE": "Activo",
+      "REJECTED": "Rechazado",
+      "ENDED": "Terminado"
+    },
+    "summary": {
+      "CLIENT": "Somos cliente de {name}: sus entregas las hace esa compañía.",
+      "PROVIDER": "{name} es cliente nuestro: le damos el transporte."
+    },
+    "proposedByUs": "La propusimos nosotros",
+    "proposedByThem": "La propuso la otra compañía",
+    "endedByUs": "La terminamos nosotros el {when}",
+    "endedByThem": "La terminó la otra compañía el {when}",
+    "note": "Nota",
+    "noteHelp": "Opcional, hasta 250 caracteres.",
+    "reason": "Motivo",
+    "errors": {
+      "companyRequired": "Indique la compañía con la que se quiere enlazar.",
+      "clientRequired": "Indique el cliente de su compañía a cuyo nombre nacerán las órdenes de la compañía enlazada.",
+      "noteMax": "La nota no puede pasar de 250 caracteres.",
+      "reasonRequired": "Escriba el motivo."
+    },
+    "links": {
+      "title": "Compañías enlazadas",
+      "empty": "Esta compañía todavía no tiene enlaces. Proponga el primero con «Proponer enlace».",
+      "help": "Un enlace vale cuando las dos compañías lo aceptan. Con el enlace activo, lo que esta compañía despacha a su cliente final se manda como orden de transporte a la compañía enlazada. Sin enlace aceptado por ambas, nada cruza."
+    },
+    "propose": {
+      "button": "Proponer enlace",
+      "title": "Proponer enlace con otra compañía",
+      "save": "Proponer",
+      "done": "Se propuso el enlace. La otra compañía debe aceptarlo.",
+      "role": "Nuestro papel",
+      "roleClient": "Somos el cliente (la otra compañía da el transporte)",
+      "roleProvider": "Somos quien da el transporte (la otra es nuestro cliente)",
+      "company": "Compañía",
+      "companyHelp": "Solo aparecen las compañías a las que usted pertenece.",
+      "noCompanies": "No hay otras compañías disponibles para enlazar.",
+      "noModule": "{name} (sin el módulo de compañías enlazadas)",
+      "choose": "Elija…",
+      "client": "Cliente de esta compañía que la representa",
+      "clientHelp": "A su nombre nacerán las órdenes que mande la compañía enlazada."
+    },
+    "accept": {
+      "button": "Aceptar",
+      "title": "Aceptar el enlace con {name}",
+      "save": "Aceptar enlace",
+      "done": "Se aceptó el enlace.",
+      "clientHelp": "Elija el cliente a cuyo nombre nacerán las órdenes que mande la otra compañía."
+    },
+    "reject": {
+      "button": "Rechazar",
+      "title": "Rechazar el enlace con {name}",
+      "save": "Rechazar enlace",
+      "done": "Se rechazó el enlace.",
+      "help": "Un enlace rechazado no se reabre: la otra compañía tendría que proponer otro."
+    },
+    "withdraw": {
+      "title": "Retirar la propuesta a {name}",
+      "save": "Retirar propuesta",
+      "done": "Se retiró la propuesta.",
+      "help": "Retirar la propuesta la deja como rechazada; se puede proponer otra después."
+    },
+    "end": {
+      "button": "Terminar",
+      "title": "Terminar el enlace con {name}",
+      "save": "Terminar enlace",
+      "done": "Se terminó el enlace.",
+      "help": "Terminado el enlace no se manda ni se trae nada más; las entregas pendientes quedan sin enviar. No se reabre."
+    },
+    "deliveries": {
+      "title": "Entregas por compañía enlazada",
+      "search": "Buscar por orden de venta o despacho",
+      "allStates": "Todos los estados",
+      "empty": "Todavía no hay entregas por compañía enlazada.",
+      "retry": "Reintentar",
+      "retried": "Se reintentó la entrega.",
+      "sync": "Revisar ahora",
+      "synced": "Se revisó la entrega en la compañía enlazada.",
+      "help": "«Reintentar» manda otra vez una entrega que la otra compañía no aceptó (corríjala primero allá). «Revisar ahora» trae el estatus y la entrega sin esperar a la revisión automática (cada 2 minutos)."
+    },
+    "delivery": {
+      "order": "Orden en la otra compañía",
+      "state": {
+        "PENDING": "Por enviar",
+        "CREATED": "Enviada",
+        "FAILED": "No se pudo crear"
+      }
+    },
+    "proof": {
+      "show": "Ver comprobante",
+      "hide": "Ocultar comprobante",
+      "none": "Todavía no hay comprobante de entrega.",
+      "recipient": "Recibió {name} el {when}",
+      "file": "Archivo",
+      "fileError": "No se pudo abrir el archivo del comprobante."
+    }
+  },
   "integrations": {
     "title": "Integraciones",
     "subtitle": "Entrada y salida de datos con otros sistemas, sin programar cada vez",
@@ -11255,7 +11370,8 @@
       "integrations": "Integraciones",
       "inbox": "Bandeja",
       "outbox": "Salidas",
-      "proposals": "Propuestas"
+      "proposals": "Propuestas",
+      "links": "Compañías enlazadas"
     },
     "col": {
       "name": "Integración",

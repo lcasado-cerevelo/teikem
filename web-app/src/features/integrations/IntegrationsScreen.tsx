@@ -3,7 +3,7 @@
 // Módulo INTEGRATIONS (la ruta lo exige). Nunca se borra: se apaga.
 import { useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Can, useCan } from '../../kernel/access'
+import { Can, useCan, useModule } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
@@ -13,6 +13,7 @@ import { ApiKeysModal } from './ApiKeysModal'
 import { InboxTab } from './InboxTab'
 import { OutboxTab } from './OutboxTab'
 import { ProposalsTab } from './ProposalsTab'
+import { TenantLinkPanel } from './TenantLinkPanel'
 import { OutputPreviewModal } from './OutputPreviewModal'
 import { OutputsPanel } from './OutputsPanel'
 import { WebhooksModal } from './WebhooksModal'
@@ -22,7 +23,7 @@ import { useIntegrationMutations, useIntegrationRuns, useIntegrations, useOutbox
 import './integrations.css'
 
 const NO_ROWS: IntegrationDto[] = []
-type Tab = 'integrations' | 'inbox' | 'outbox' | 'proposals'
+type Tab = 'integrations' | 'inbox' | 'outbox' | 'proposals' | 'links'
 
 function RunSummary({ run }: { run: IntegrationRunDto }) {
   const t = useT()
@@ -80,6 +81,10 @@ export default function IntegrationsScreen() {
   const [params, setParams] = useSearchParams()
   const canManage = useCan('integrations.manage')
   const canInbox = useCan('integrations.inbox')
+  // Lote 227 (P7): «Compañías enlazadas» solo con el módulo INTERCOMPANY y intercompany.view
+  const linksModule = useModule('INTERCOMPANY')
+  const canLinksPerm = useCan('intercompany.view')
+  const canLinks = linksModule && canLinksPerm
   const [showInactive, setShowInactive] = useState(false)
   const list = useIntegrations(showInactive)
   const { run, sendAll, setActive, upload, testConnection } = useIntegrationMutations()
@@ -91,7 +96,7 @@ export default function IntegrationsScreen() {
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploadFor, setUploadFor] = useState<IntegrationDto | null>(null)
   const wanted = params.get('tab')
-  const tab: Tab = wanted === 'inbox' && canInbox ? 'inbox' : wanted === 'outbox' && canInbox ? 'outbox' : wanted === 'proposals' && canInbox ? 'proposals' : 'integrations'
+  const tab: Tab = wanted === 'inbox' && canInbox ? 'inbox' : wanted === 'outbox' && canInbox ? 'outbox' : wanted === 'proposals' && canInbox ? 'proposals' : wanted === 'links' && canLinks ? 'links' : 'integrations'
   const pendingProposals = useProposals('PENDING', 0, 1).data?.pending ?? 0
   const undelivered = (useOutbox('', 'UNDELIVERED', 0, 1).data?.undelivered ?? 0) + (useOutputs('', 'UNDELIVERED', 0, 1).data?.undelivered ?? 0)
   const inboxIntegration = params.get('integration') ?? ''
@@ -241,6 +246,7 @@ export default function IntegrationsScreen() {
             ...(canInbox ? [{ key: 'inbox' as const, label: `${t('integrations.tabs.inbox')}${pendingTotal > 0 ? ` (${pendingTotal})` : ''}` }] : []),
             ...(canInbox ? [{ key: 'proposals' as const, label: `${t('integrations.tabs.proposals')}${pendingProposals > 0 ? ` (${pendingProposals})` : ''}` }] : []),
             ...(canInbox ? [{ key: 'outbox' as const, label: `${t('integrations.tabs.outbox')}${undelivered > 0 ? ` (${undelivered})` : ''}` }] : []),
+            ...(canLinks ? [{ key: 'links' as const, label: t('integrations.tabs.links') }] : []),
           ]}
           value={tab}
           onChange={go}
@@ -252,6 +258,8 @@ export default function IntegrationsScreen() {
         <InboxTab integration={inboxIntegration} onIntegration={setIntegrationFilter} />
       ) : tab === 'proposals' ? (
         <ProposalsTab />
+      ) : tab === 'links' ? (
+        <TenantLinkPanel />
       ) : tab === 'outbox' ? (
         <>
           <OutboxTab integration={inboxIntegration} onIntegration={setIntegrationFilter} />

@@ -18,6 +18,7 @@ import { OrderBadges } from './OrderBadges'
 import { AUTHORIZED_BY_MAX, authorizerMissing, DELIVERY_MODES, draftError, draftSubtotal, effectivePrice, EXTRA_DEFAULTS, isCreditTerm, lineAmount, parseNumber, paymentChanged, prefillPayment, toRequest, withMethod, type DeliveryMode, type LineDraft, type OrderDraft } from './salesRules'
 import { KitLineBlock, KitComponentsSection } from './KitLineBlock'
 import { useSalesMutations, useSalesOrder, type SalesAvailabilityDto, type SalesDispatchInfoDto, type SalesDispatchResultDto, type SalesOrderDto, type SalesOrderLineDto } from './salesApi'
+import { LinkedDeliveryInfo } from '../integrations/LinkedDeliveryInfo'
 
 let nextKey = 1
 
@@ -622,7 +623,14 @@ function OrderView({ order, onClose, onReturn }: { order: SalesOrderDto; onClose
       },
       { id: 'qty', header: t('sales.dispatches.quantity'), cell: (d) => f.number(d.quantity ?? 0), sortValue: (d) => d.quantity ?? 0, align: 'end' },
       { id: 'when', header: t('sales.dispatches.when'), cell: (d) => f.dateTime(d.collectedAtUtc), exportValue: (d) => d.collectedAtUtc ?? '', sortValue: (d) => d.collectedAtUtc ?? '' },
-      { id: 'delivery', header: t('sales.dispatches.delivery'), cell: (d) => d.transportOrderNumber ?? '—', exportValue: (d) => d.transportOrderNumber ?? '', sortValue: (d) => d.transportOrderNumber ?? '' },
+      {
+        id: 'delivery',
+        header: t('sales.dispatches.delivery'),
+        // Lote 227 (P7): despachado por la compañía enlazada no hay orden de transporte aquí; se muestra la de allá
+        cell: (d) => (d.linkedDelivery ? <LinkedDeliveryInfo delivery={d.linkedDelivery} /> : (d.transportOrderNumber ?? '—')),
+        exportValue: (d) => d.linkedDelivery?.providerOrderNumber ?? d.transportOrderNumber ?? '',
+        sortValue: (d) => d.linkedDelivery?.providerOrderNumber ?? d.transportOrderNumber ?? '',
+      },
     ],
     [t, f],
   )

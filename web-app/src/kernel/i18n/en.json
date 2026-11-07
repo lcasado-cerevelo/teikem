@@ -11222,6 +11222,121 @@
       }
     }
   },
+  "tenantLink": {
+    "col": {
+      "company": "Company",
+      "status": "Status",
+      "client": "Client that represents it",
+      "proposed": "Proposal",
+      "response": "Response",
+      "deliveries": "Deliveries",
+      "salesOrder": "Sales order",
+      "dispatch": "Dispatch",
+      "delivery": "Delivery",
+      "attempts": "Attempts",
+      "synced": "Last check",
+      "created": "Created",
+      "state": "Delivery state"
+    },
+    "status": {
+      "PROPOSED": "Proposed",
+      "ACTIVE": "Active",
+      "REJECTED": "Rejected",
+      "ENDED": "Ended"
+    },
+    "summary": {
+      "CLIENT": "We are a client of {name}: that company makes our deliveries.",
+      "PROVIDER": "{name} is our client: we provide the transport."
+    },
+    "proposedByUs": "We proposed it",
+    "proposedByThem": "The other company proposed it",
+    "endedByUs": "We ended it on {when}",
+    "endedByThem": "The other company ended it on {when}",
+    "note": "Note",
+    "noteHelp": "Optional, up to 250 characters.",
+    "reason": "Reason",
+    "errors": {
+      "companyRequired": "Choose the company to link with.",
+      "clientRequired": "Choose the client of your company in whose name the linked company's orders will be created.",
+      "noteMax": "The note cannot exceed 250 characters.",
+      "reasonRequired": "Enter the reason."
+    },
+    "links": {
+      "title": "Linked companies",
+      "empty": "This company has no links yet. Propose the first one with \"Propose link\".",
+      "help": "A link works once both companies accept it. With an active link, what this company dispatches to its end customer is sent as a transport order to the linked company. Without a link accepted by both, nothing crosses."
+    },
+    "propose": {
+      "button": "Propose link",
+      "title": "Propose a link with another company",
+      "save": "Propose",
+      "done": "The link was proposed. The other company must accept it.",
+      "role": "Our role",
+      "roleClient": "We are the client (the other company provides transport)",
+      "roleProvider": "We provide the transport (the other is our client)",
+      "company": "Company",
+      "companyHelp": "Only companies you belong to appear.",
+      "noCompanies": "There are no other companies available to link.",
+      "noModule": "{name} (without the linked companies module)",
+      "choose": "Choose…",
+      "client": "Client of this company that represents it",
+      "clientHelp": "The orders sent by the linked company will be created in its name."
+    },
+    "accept": {
+      "button": "Accept",
+      "title": "Accept the link with {name}",
+      "save": "Accept link",
+      "done": "The link was accepted.",
+      "clientHelp": "Choose the client in whose name the orders sent by the other company will be created."
+    },
+    "reject": {
+      "button": "Reject",
+      "title": "Reject the link with {name}",
+      "save": "Reject link",
+      "done": "The link was rejected.",
+      "help": "A rejected link is not reopened: the other company would have to propose a new one."
+    },
+    "withdraw": {
+      "title": "Withdraw the proposal to {name}",
+      "save": "Withdraw proposal",
+      "done": "The proposal was withdrawn.",
+      "help": "Withdrawing leaves the proposal as rejected; you can propose another later."
+    },
+    "end": {
+      "button": "End",
+      "title": "End the link with {name}",
+      "save": "End link",
+      "done": "The link was ended.",
+      "help": "Once ended, nothing more is sent or fetched; pending deliveries stay unsent. It is not reopened."
+    },
+    "deliveries": {
+      "title": "Deliveries by linked company",
+      "search": "Search by sales order or dispatch",
+      "allStates": "All states",
+      "empty": "There are no deliveries by linked company yet.",
+      "retry": "Retry",
+      "retried": "The delivery was retried.",
+      "sync": "Check now",
+      "synced": "The delivery was checked at the linked company.",
+      "help": "\"Retry\" sends again a delivery the other company did not accept (fix it there first). \"Check now\" brings the status and delivery without waiting for the automatic check (every 2 minutes)."
+    },
+    "delivery": {
+      "order": "Order at the other company",
+      "state": {
+        "PENDING": "To send",
+        "CREATED": "Sent",
+        "FAILED": "Could not be created"
+      }
+    },
+    "proof": {
+      "show": "View proof",
+      "hide": "Hide proof",
+      "none": "There is no proof of delivery yet.",
+      "recipient": "Received by {name} on {when}",
+      "file": "File",
+      "fileError": "The proof file could not be opened."
+    }
+  },
   "integrations": {
     "title": "Integrations",
     "subtitle": "Data in and out with other systems, without programming each time",
@@ -11252,7 +11367,8 @@
       "integrations": "Integrations",
       "inbox": "Inbox",
       "outbox": "Outbox",
-      "proposals": "Proposals"
+      "proposals": "Proposals",
+      "links": "Linked companies"
     },
     "col": {
       "name": "Integration",
