@@ -60,7 +60,7 @@ public static class PermissionDisplayOrder
         "printers.view", "printers.manage",
         "contacts.manage",
         "notifications.view", "notifications.send", "notifications.manage", "messages.use",
-        "integrations.view", "integrations.create", "integrations.create.transport", "integrations.create.warehouse", "integrations.create.files", "integrations.manage", "integrations.inbox",
+        "integrations.view", "integrations.create", "integrations.create.transport", "integrations.create.warehouse", "integrations.create.files", "integrations.manage", "integrations.inbox", "intercompany.view", "intercompany.manage",
         "jobs.view", "jobs.manage",
         "admin.audit",
         // Seguridad

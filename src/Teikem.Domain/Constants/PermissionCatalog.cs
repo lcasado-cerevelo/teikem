@@ -409,6 +409,12 @@ public static class PermissionCatalog
 
     public const string IntegrationsInbox = "integrations.inbox";
 
+    /// <summary>Lote 227 (P7 del pedido de vendedores): compañías enlazadas (módulo INTERCOMPANY). Ver los enlaces y sus entregas; proponer, aceptar, rechazar y terminar enlaces y reintentar entregas.</summary>
+
+    public const string IntercompanyView = "intercompany.view";
+
+    public const string IntercompanyManage = "intercompany.manage";
+
     public const string NotificationsManage = "notifications.manage";
 
     /// <summary>Lote 54: enviar avisos a otras personas (a personas, roles o todos).</summary>
@@ -716,6 +722,11 @@ public static class PermissionCatalog
 
         new(IntegrationsInbox, "ADMIN", "Trabajar la bandeja de las integraciones (corregir, reprocesar, descartar)", "Work the integrations inbox (fix, reprocess, discard)"),
 
+        // Lote 227 — pedido de vendedores: compañías enlazadas
+        new(IntercompanyView, "ADMIN", "Compañías enlazadas: ver los enlaces y sus entregas", "Linked companies: see the links and their deliveries"),
+
+        new(IntercompanyManage, "ADMIN", "Compañías enlazadas: proponer, aceptar, rechazar y terminar enlaces", "Linked companies: propose, accept, reject and end links"),
+
         new(NotificationsManage, "ADMIN", "Gestionar las reglas de aviso", "Manage notification rules"),
 
         new(NotificationsSend, "ADMIN", "Enviar avisos a otras personas", "Send notices to other people"),
@@ -793,6 +804,8 @@ public static class PermissionCatalog
         [WarehouseCount] = new[] { WarehouseCountCapture },
 
         [InventoryAdjust] = new[] { WarehouseTransfer },   // 2026-10-10: quien ya ajusta inventario puede transferir
+
+        [IntercompanyManage] = new[] { IntercompanyView },   // Lote 227: quien administra los enlaces los ve
 
     };
 

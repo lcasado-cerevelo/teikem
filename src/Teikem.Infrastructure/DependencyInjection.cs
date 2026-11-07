@@ -381,6 +381,7 @@ public static class DependencyInjection
         services.AddSingleton<INotificationEventProvider, FleetEventProvider>();   // Lote 168
         services.AddSingleton<INotificationEventProvider, ExitNoticeEventProvider>();   // Lote 143
         services.AddSingleton<INotificationEventProvider, AsnEventProvider>();   // Lote 157: avisos de llegada
+        services.AddSingleton<INotificationEventProvider, TenantLinkEventProvider>();   // Lote 227: compañías enlazadas
         services.AddSingleton<NotificationEventCatalog>();
         services.AddScoped<INotificationPublisher, NotificationPublisher>();
         services.AddScoped<INotificationChannelSender, EmailChannelSender>();
@@ -419,6 +420,10 @@ public static class DependencyInjection
         services.AddScoped<SalesOrderService>();   // Lote 57
         services.AddScoped<ISalesDispatchReversal>(sp => sp.GetRequiredService<SalesOrderService>());   // Lote 62: deshacer una recolección de venta
         services.AddScoped<SalesDeliveryService>();   // Lote 62: entrega de una orden de venta
+        services.AddScoped<LinkedTenantScope>();   // Lote 227: el contexto acotado de la otra compañía (puente entre compañías)
+        services.AddScoped<TenantLinkService>();   // Lote 227: enlaces entre compañías (proponer, aceptar, rechazar, terminar)
+        services.AddScoped<TenantLinkBridge>();   // Lote 227: entregas por la compañía enlazada (mandar y traer de vuelta)
+        services.AddSingleton<IScheduledJob, TenantLinkSyncJob>();   // Lote 227: INTERCOMPANY_SYNC
         services.AddSingleton<IMessageLiveNotifier, NullMessageLiveNotifier>();
 
         // Lote 8A — app de almacén: aparatos de confianza, PIN por usuario (login por aparato en AuthService) y

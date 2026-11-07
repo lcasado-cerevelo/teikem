@@ -7347,3 +7347,137 @@ SET DataSourceKey = N'SALES_REVENUE', GroupByField = N'SoldAtUtc', FieldKey = N'
 WHERE IsSystem = 1 AND Name = N'Ventas por día' AND DataSourceKey = N'SALES_ORDER' AND GroupByField = N'CreatedAtUtc' AND FieldKey = N'Total'
   AND FilterJson = N'{"and":[{"field":"StatusCode","op":"in","value":["REQUESTED","PARTIAL","SHIPPED"]}]}';
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-11-07 — Lote 227 (P7 del pedido de vendedores): compañías enlazadas (puente entre compañías, módulo INTERCOMPANY).
+   - Módulo INTERCOMPANY «Compañías enlazadas» (depende de INTEGRATIONS; solo se DEFINE: no se enciende en ninguna compañía).
+   - dbo.TenantLink (nueva): «la compañía cliente (ClientTenantId) es cliente de la que da el transporte (ProviderTenantId)», con el Client del proveedor que la representa
+     (ProviderClientId), estado PROPOSED | ACTIVE | REJECTED | ENDED, quién y cuándo propuso, respondió y terminó. No lleva TenantId: es de las dos compañías (el servicio la
+     lee siempre por la compañía del principal). A lo sumo un enlace propuesto o activo por compañía cliente; un cliente del proveedor representa a una sola compañía activa.
+     Nunca se borra: se termina o se rechaza.
+   - dbo.TenantLinkOrder (nueva, de la compañía cliente): despacho (PickBatch) y orden de venta de aquí ↔ orden de transporte creada en la otra compañía; única por despacho
+     (idempotencia), con lo que se manda (RequestJson), el estado del envío (PENDING | CREATED | FAILED, intentos, error, reclamo) y la foto que se trae de vuelta (número,
+     estatus, final, entregada a quién y cuándo).
+   - EntityType TENANT_LINK (bitácora) y TENANT_LINK_ORDER (origen de la orden creada en la otra compañía).
+   - Permisos intercompany.view e intercompany.manage (ADMIN) a los roles YA clonados TenantAdmin, una sola vez (marca L227_INTERCOMPANY). La plantilla la pone el
+     sembrador de permisos (PermissionCatalog). Solo AGREGA.
+   ---------------------------------------------------------------------------- */
+MERGE dbo.ModuleDefinition AS t
+USING (VALUES
+ ('INTERCOMPANY', N'Compañías enlazadas', N'Linked companies', N'Una compañía despacha por otra como su cliente: la entrega crea la orden de transporte en la compañía enlazada y trae de vuelta su estatus y la prueba de entrega', N'Sistema', 'INTEGRATIONS', 135)
+) AS s(ModuleKey, Name, NameEn, Description, Category, DependsOnModuleKey, SortOrder)
+ON t.ModuleKey = s.ModuleKey
+WHEN MATCHED THEN UPDATE SET Name = s.Name, NameEn = s.NameEn, Description = s.Description, Category = s.Category, DependsOnModuleKey = s.DependsOnModuleKey, SortOrder = s.SortOrder, IsActive = 1
+WHEN NOT MATCHED THEN INSERT (ModuleKey, Name, NameEn, Description, Category, DependsOnModuleKey, SortOrder) VALUES (s.ModuleKey, s.Name, s.NameEn, s.Description, s.Category, s.DependsOnModuleKey, s.SortOrder);
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'TENANT_LINK', N'{"es":"Enlace entre compañías","en":"Company link"}', 186),
+    (N'TENANT_LINK_ORDER', N'{"es":"Entrega por compañía enlazada","en":"Delivery by linked company"}', 187)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+IF OBJECT_ID(N'dbo.TenantLink', N'U') IS NULL CREATE TABLE dbo.TenantLink (
+    TenantLinkId       INT IDENTITY(1,1) CONSTRAINT PK_TenantLink PRIMARY KEY,
+    PublicId           UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_TenantLink_PublicId DEFAULT NEWID(),
+    ClientTenantId     INT NOT NULL CONSTRAINT FK_TenantLink_ClientTenant REFERENCES dbo.Tenant(TenantId),
+    ProviderTenantId   INT NOT NULL CONSTRAINT FK_TenantLink_ProviderTenant REFERENCES dbo.Tenant(TenantId),
+    ProviderClientId   INT NULL CONSTRAINT FK_TenantLink_ProviderClient REFERENCES dbo.Client(ClientId),
+    Status             VARCHAR(20) NOT NULL CONSTRAINT DF_TenantLink_Status DEFAULT 'PROPOSED',
+    ProposedByTenantId INT NOT NULL,
+    ProposedBy         INT NULL,
+    ProposedAtUtc      DATETIME2 NOT NULL CONSTRAINT DF_TenantLink_Proposed DEFAULT SYSUTCDATETIME(),
+    Note               NVARCHAR(250) NULL,
+    RespondedBy        INT NULL,
+    RespondedAtUtc     DATETIME2 NULL,
+    ResponseNote       NVARCHAR(250) NULL,
+    EndedByTenantId    INT NULL,
+    EndedBy            INT NULL,
+    EndedAtUtc         DATETIME2 NULL,
+    EndReason          NVARCHAR(250) NULL,
+    RowVersion         ROWVERSION,
+    CONSTRAINT CK_TenantLink_Status CHECK (Status IN ('PROPOSED','ACTIVE','REJECTED','ENDED')),
+    CONSTRAINT CK_TenantLink_TwoCompanies CHECK (ClientTenantId <> ProviderTenantId),
+    CONSTRAINT CK_TenantLink_Proposer CHECK (ProposedByTenantId IN (ClientTenantId, ProviderTenantId)),
+    CONSTRAINT CK_TenantLink_ActiveClient CHECK (Status <> 'ACTIVE' OR ProviderClientId IS NOT NULL)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_TenantLink_PublicId' AND object_id = OBJECT_ID('dbo.TenantLink'))
+    CREATE UNIQUE INDEX UX_TenantLink_PublicId ON dbo.TenantLink(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_TenantLink_ClientOpen' AND object_id = OBJECT_ID('dbo.TenantLink'))
+    CREATE UNIQUE INDEX UX_TenantLink_ClientOpen ON dbo.TenantLink(ClientTenantId) WHERE Status IN ('PROPOSED','ACTIVE');
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_TenantLink_ProviderClient' AND object_id = OBJECT_ID('dbo.TenantLink'))
+    CREATE UNIQUE INDEX UX_TenantLink_ProviderClient ON dbo.TenantLink(ProviderTenantId, ProviderClientId) WHERE Status = 'ACTIVE' AND ProviderClientId IS NOT NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_TenantLink_Provider' AND object_id = OBJECT_ID('dbo.TenantLink'))
+    CREATE INDEX IX_TenantLink_Provider ON dbo.TenantLink(ProviderTenantId, Status);
+GO
+IF OBJECT_ID(N'dbo.TenantLinkOrder', N'U') IS NULL CREATE TABLE dbo.TenantLinkOrder (
+    TenantLinkOrderId       INT IDENTITY(1,1) CONSTRAINT PK_TenantLinkOrder PRIMARY KEY,
+    PublicId                UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_TenantLinkOrder_PublicId DEFAULT NEWID(),
+    TenantId                INT NOT NULL CONSTRAINT FK_TenantLinkOrder_Tenant REFERENCES dbo.Tenant(TenantId),
+    TenantLinkId            INT NOT NULL CONSTRAINT FK_TenantLinkOrder_Link REFERENCES dbo.TenantLink(TenantLinkId),
+    SalesOrderId            INT NOT NULL CONSTRAINT FK_TenantLinkOrder_SalesOrder REFERENCES dbo.SalesOrder(SalesOrderId),
+    PickBatchId             INT NOT NULL CONSTRAINT FK_TenantLinkOrder_PickBatch REFERENCES dbo.PickBatch(PickBatchId),
+    ProviderTenantId        INT NOT NULL CONSTRAINT FK_TenantLinkOrder_ProviderTenant REFERENCES dbo.Tenant(TenantId),
+    RequestJson             NVARCHAR(MAX) NOT NULL,
+    State                   VARCHAR(20) NOT NULL CONSTRAINT DF_TenantLinkOrder_State DEFAULT 'PENDING',
+    Attempts                INT NOT NULL CONSTRAINT DF_TenantLinkOrder_Attempts DEFAULT 0,
+    LastError               NVARCHAR(1000) NULL,
+    NextAttemptUtc          DATETIME2 NULL,
+    ClaimToken              UNIQUEIDENTIFIER NULL,
+    ClaimedUntilUtc         DATETIME2 NULL,
+    ProviderOrderId         INT NULL CONSTRAINT FK_TenantLinkOrder_ProviderOrder REFERENCES dbo.TransportOrder(TransportOrderId),
+    ProviderOrderPublicId   UNIQUEIDENTIFIER NULL,
+    ProviderOrderNumber     NVARCHAR(40) NULL,
+    ProviderStatusCode      VARCHAR(40) NULL,
+    ProviderStatusLabelJson NVARCHAR(400) NULL,
+    IsFinal                 BIT NOT NULL CONSTRAINT DF_TenantLinkOrder_IsFinal DEFAULT 0,
+    DeliveredAtUtc          DATETIME2 NULL,
+    DeliveredTo             NVARCHAR(150) NULL,
+    LastSyncedAtUtc         DATETIME2 NULL,
+    CreatedAtUtc            DATETIME2 NOT NULL CONSTRAINT DF_TenantLinkOrder_Created DEFAULT SYSUTCDATETIME(),
+    CreatedBy               INT NULL,
+    CONSTRAINT CK_TenantLinkOrder_State CHECK (State IN ('PENDING','CREATED','FAILED')),
+    CONSTRAINT CK_TenantLinkOrder_Created CHECK (State <> 'CREATED' OR ProviderOrderId IS NOT NULL)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_TenantLinkOrder_PublicId' AND object_id = OBJECT_ID('dbo.TenantLinkOrder'))
+    CREATE UNIQUE INDEX UX_TenantLinkOrder_PublicId ON dbo.TenantLinkOrder(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_TenantLinkOrder_PickBatch' AND object_id = OBJECT_ID('dbo.TenantLinkOrder'))
+    CREATE UNIQUE INDEX UX_TenantLinkOrder_PickBatch ON dbo.TenantLinkOrder(PickBatchId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_TenantLinkOrder_SalesOrder' AND object_id = OBJECT_ID('dbo.TenantLinkOrder'))
+    CREATE INDEX IX_TenantLinkOrder_SalesOrder ON dbo.TenantLinkOrder(TenantId, SalesOrderId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_TenantLinkOrder_Sync' AND object_id = OBJECT_ID('dbo.TenantLinkOrder'))
+    CREATE INDEX IX_TenantLinkOrder_Sync ON dbo.TenantLinkOrder(TenantId, State, IsFinal);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'intercompany.view')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('intercompany.view', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'ADMIN'),
+            N'{"es":"Compañías enlazadas: ver los enlaces y sus entregas","en":"Linked companies: see the links and their deliveries"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'intercompany.manage')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('intercompany.manage', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'ADMIN'),
+            N'{"es":"Compañías enlazadas: proponer, aceptar, rechazar y terminar enlaces","en":"Linked companies: propose, accept, reject and end links"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L227_INTERCOMPANY')
+BEGIN
+    -- el administrador de la compañía: los dos
+    INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+    SELECT DISTINCT r.RoleId, pm.PermissionId
+    FROM dbo.Role r
+    JOIN dbo.Permission pm ON pm.Code IN ('intercompany.view', 'intercompany.manage')
+    WHERE r.IsActive = 1 AND r.TenantId IS NOT NULL AND r.Name = 'TenantAdmin'
+      AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = pm.PermissionId);
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L227_INTERCOMPANY');
+END
+GO

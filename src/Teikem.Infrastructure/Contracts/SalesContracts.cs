@@ -121,5 +121,9 @@ public sealed record SalesDispatchResultDto(Guid PickBatchPublicId, string PickB
 /// </summary>
 public sealed record SalesDeliveryRequest(Guid? PickBatchPublicId = null, OrderCreateRequest? Order = null);
 
-/// <summary>Un despacho de la orden (su recolección): Status = COLLECTED (despachado, sin entrega), PACKED (con entrega) o CANCELLED (deshecho).</summary>
-public sealed record SalesDispatchInfoDto(Guid PickBatchPublicId, string Number, string Status, DateTime CollectedAtUtc, decimal Quantity, Guid? TransportOrderPublicId, string? TransportOrderNumber);
+/// <summary>
+/// Un despacho de la orden (su recolección): Status = COLLECTED (despachado, sin entrega), PACKED (con entrega) o CANCELLED (deshecho). Lote 227: LinkedDelivery = la entrega
+/// hecha por la compañía enlazada (su orden allá, estatus y entrega); en ese caso no hay orden de transporte aquí (TransportOrder* en null).
+/// </summary>
+public sealed record SalesDispatchInfoDto(Guid PickBatchPublicId, string Number, string Status, DateTime CollectedAtUtc, decimal Quantity, Guid? TransportOrderPublicId, string? TransportOrderNumber,
+    TenantLinkDeliveryDto? LinkedDelivery = null);

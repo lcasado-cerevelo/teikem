@@ -219,10 +219,21 @@ public sealed partial class SalesOrderService
         var codes = await db.StatusCodes.AsNoTracking().Where(s => statusCodes.Contains(s.StatusCodeId)).ToDictionaryAsync(s => s.StatusCodeId, s => s.InternalCode, ct);
         var transportIds = batches.Where(b => b.TransportOrderId != null).Select(b => b.TransportOrderId!.Value).ToList();
         var transports = transportIds.Count == 0 ? new() : await db.TransportOrders.AsNoTracking().Where(t => transportIds.Contains(t.TransportOrderId)).ToDictionaryAsync(t => t.TransportOrderId, t => (t.PublicId, t.OrderNumber), ct);
+        // Lote 227: las entregas hechas por la compañía enlazada (la foto que se trajo de allá)
+        var linkedRows = await db.Set<Teikem.Domain.Integrations.TenantLinkOrder>().AsNoTracking().Where(o => ids.Contains(o.PickBatchId)).ToListAsync(ct);
+        var providerIds = linkedRows.Select(r => r.ProviderTenantId).Distinct().ToList();
+        var linkedNames = linkedRows.Count == 0 ? new Dictionary<int, string>()
+            : await db.Tenants.AsNoTracking().Where(t => providerIds.Contains(t.TenantId)).ToDictionaryAsync(t => t.TenantId, t => t.Name, ct);
+        var orderRefs = linkedRows.Count == 0 ? new Dictionary<int, (Guid, string)>()
+            : await db.Set<SalesOrder>().AsNoTracking().Where(o => orderIds.Contains(o.SalesOrderId)).ToDictionaryAsync(o => o.SalesOrderId, o => (o.PublicId, o.Number), ct);
+        var linked = linkedRows.ToDictionary(r => r.PickBatchId);
         return batches.GroupBy(b => b.SalesOrderId!.Value).ToDictionary(g => g.Key, g => g.Select(b =>
         {
             var tr = b.TransportOrderId is int tid && transports.TryGetValue(tid, out var t) ? ((Guid, string)?)t : null;
-            return new SalesDispatchInfoDto(b.PublicId, b.Number, codes.GetValueOrDefault(b.StatusCodeId, string.Empty), b.CollectedAtUtc, qty.GetValueOrDefault(b.PickBatchId), tr?.Item1, tr?.Item2);
+            var ld = linked.TryGetValue(b.PickBatchId, out var lr) && orderRefs.TryGetValue(lr.SalesOrderId, out var so)
+                ? TenantLinkBridge.ToDto(lr, linkedNames.GetValueOrDefault(lr.ProviderTenantId, string.Empty), so.Item1, so.Item2, b.PublicId, b.Number, tenant.Lang)
+                : null;
+            return new SalesDispatchInfoDto(b.PublicId, b.Number, codes.GetValueOrDefault(b.StatusCodeId, string.Empty), b.CollectedAtUtc, qty.GetValueOrDefault(b.PickBatchId), tr?.Item1, tr?.Item2, ld);
         }).ToList());
     }
 

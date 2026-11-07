@@ -62,4 +62,6 @@ public static class JobKeys
     public const string MessageAttachmentPurge = "MESSAGE_ATTACHMENT_PURGE";
     /// <summary>Lote 225: el aviso de la mañana «Facturas por pasar a QuickBooks: N» (uno al día, solo si hay algo).</summary>
     public const string SalesQuickBooksPending = "SALES_QUICKBOOKS_PENDING";
+    /// <summary>Lote 227: manda a la compañía enlazada las entregas pendientes y trae de vuelta su estatus.</summary>
+    public const string IntercompanySync = "INTERCOMPANY_SYNC";
 }

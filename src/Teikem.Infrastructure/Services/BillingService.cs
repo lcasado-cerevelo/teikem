@@ -91,7 +91,9 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
                            join b in db.Set<PickBatch>().AsNoTracking() on bl.PickBatchId equals b.PickBatchId
                            where b.IsActive && bl.SalesOrderLineId != null && lineIds.Contains(bl.SalesOrderLineId.Value)
                                  && (rangeFrom == null || b.CollectedAtUtc >= rangeFrom) && (toExclusive == null || b.CollectedAtUtc < toExclusive)
-                                 && (!onDelivery || b.TransportOrderId == null
+                                 && (!onDelivery || (b.TransportOrderId == null
+                                         // Lote 227: la entrega por la compañía enlazada cuenta cuando allá se entregó (la foto traída de vuelta)
+                                         && !db.Set<Teikem.Domain.Integrations.TenantLinkOrder>().Any(lo => lo.PickBatchId == b.PickBatchId && !(lo.ProviderStatusCode == OrderStatuses.Delivered || lo.DeliveredAtUtc != null)))
                                      || db.Set<TransportOrder>().Any(t => t.TransportOrderId == b.TransportOrderId && deliveredIds.Contains(t.StatusCodeId)))
                            select new { LineId = bl.SalesOrderLineId!.Value, Units = bl.KitProductId == null ? bl.Quantity : (bl.KitQuantity ?? 0m) }).ToListAsync(ct);
         var shippedInRange = dated.GroupBy(d => d.LineId).ToDictionary(g => g.Key, g => g.Sum(d => d.Units));

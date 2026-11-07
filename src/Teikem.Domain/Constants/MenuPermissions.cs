@@ -106,6 +106,8 @@ public static class MenuPermissions
         [PermissionCatalog.BillingExport] = new[] { PermissionCatalog.BillingView, "dispatchaccounting.view" },
         [PermissionCatalog.BillingCredit] = new[] { PermissionCatalog.BillingView },
         [PermissionCatalog.BillingConsignmentPay] = new[] { PermissionCatalog.BillingView },   // Lote 224: la pestaña Consignación vive en Facturación
+        [PermissionCatalog.IntercompanyView] = new[] { "integrations.view" },   // Lote 227: los enlaces viven en Integraciones / API
+        [PermissionCatalog.IntercompanyManage] = new[] { "integrations.view" },
         [PermissionCatalog.CodCollect] = new[] { PermissionCatalog.CodView },
         [PermissionCatalog.CodReconcile] = new[] { PermissionCatalog.CodView },
         [PermissionCatalog.CodRemit] = new[] { PermissionCatalog.CodView },

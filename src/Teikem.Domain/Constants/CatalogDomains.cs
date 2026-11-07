@@ -756,6 +756,8 @@ public static class ModuleKeys
     public const string Billing = "BILLING";
     /// <summary>Lote 132 (P11): integraciones (carpeta, subida manual y, después, SFTP, correo y API).</summary>
     public const string Integrations = "INTEGRATIONS";
+    /// <summary>Lote 227 (P7 del pedido de vendedores): «Compañías enlazadas» — una compañía despacha por otra como su cliente (depende de INTEGRATIONS).</summary>
+    public const string Intercompany = "INTERCOMPANY";
 }
 
 // ---------------- Lote 4 — Flota, choferes y mantenimiento ----------------

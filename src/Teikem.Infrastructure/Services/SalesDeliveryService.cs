@@ -14,7 +14,9 @@ namespace Teikem.Infrastructure.Services;
 /// con servicio, paquetes y COD) y la enlaza con la orden de venta (TransportOrder.SalesOrderId). El cliente y el consignatario salen de la orden de venta si no se
 /// mandan. El estado de la entrega vive en la orden de transporte. Un retiro no necesita nada: el cliente recoge y ahí termina.
 /// </summary>
-public sealed class SalesDeliveryService(TeikemDbContext db, PickBatchService pickBatches, SalesOrderService sales)
+/// Lote 227: con el módulo INTERCOMPANY y un enlace ACTIVE en que esta compañía es la cliente, la entrega NO se crea aquí: la recolección queda empacada y la orden de transporte
+/// se crea en la compañía enlazada a nombre del cliente que nos representa (TenantLinkBridge, por el camino de la API de clientes); sin enlace, todo sigue como siempre.
+public sealed class SalesDeliveryService(TeikemDbContext db, PickBatchService pickBatches, SalesOrderService sales, TenantLinkBridge? bridge = null)
 {
     /// <summary>Despacha y entrega en UNA transacción (si la entrega falla, no sale el inventario).</summary>
     public async Task<SalesDispatchResultDto> DispatchAndDeliverAsync(Guid publicId, SalesDispatchRequest req, CancellationToken ct)
@@ -26,6 +28,7 @@ public sealed class SalesDeliveryService(TeikemDbContext db, PickBatchService pi
             dispatched = await sales.DispatchAsync(publicId, req with { Delivery = null }, ct2);
             await CreateAsync(publicId, new SalesDeliveryRequest(dispatched.PickBatchPublicId, req.Delivery), ct2);
         }, ct);
+        if (bridge is not null) await bridge.TryPushBatchAsync(dispatched!.PickBatchPublicId, ct);   // Lote 227: la orden de allá, ya fuera de la transacción
         return new SalesDispatchResultDto(dispatched!.PickBatchPublicId, dispatched.PickBatchNumber, await sales.GetAsync(publicId, ct));
     }
 
@@ -54,6 +57,15 @@ public sealed class SalesDeliveryService(TeikemDbContext db, PickBatchService pi
             // Lote 222: el pedido urgente nace con prioridad alta para el chofer (si no mandan otra)
             Priority = string.IsNullOrWhiteSpace(req.Order.Priority) && order.IsUrgent ? UrgentPriority : req.Order.Priority,
         };
+
+        // Lote 227: con el enlace activo la entrega la hace la compañía enlazada (la recolección se empaca aquí, la orden nace allá)
+        if (bridge is not null && await bridge.ActiveAsClientAsync(ct) is { } link)
+        {
+            var batchId = await db.Set<PickBatch>().AsNoTracking().Where(b => b.PublicId == batch.PublicId).Select(b => b.PickBatchId).FirstAsync(ct);
+            var linkOrderId = await db.RunInTransactionAsync(ct2 => bridge.CreateLinkedDeliveryAsync(link, order.SalesOrderId, batchId, data, ct2), ct);
+            await bridge.TryPushAsync(linkOrderId, ct);
+            return await sales.GetAsync(publicId, ct);
+        }
 
         // el empaque y el enlace con la orden de venta, juntos
         await db.RunInTransactionAsync(async ct2 =>
