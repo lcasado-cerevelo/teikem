@@ -109,7 +109,7 @@ Lista de facturas en consignación por cliente (dejado, pagado, saldo). **Regist
 factura → monto (parcial o total), fecha, referencia. Los reportes de ventas **excluyen** lo consignado hasta su pago (se cuenta lo pagado en
 la fecha del pago). Las devoluciones de lo no vendido usan la devolución de venta que ya existe.
 
-### 1.9 Puente entre compañías (módulo opcional `INTERCOMPANY`, al final)
+### 1.9 Puente entre compañías (módulo opcional `INTERCOMPANY`)
 Sistema → Integraciones / API → tipo nuevo **«Compañía enlazada»**: «Solutions es cliente de Advance Logistics». Lo propone el admin de una y lo
 acepta el de la otra, eligiendo el `Client` de su lado. Con el enlace activo: al crear la entrega de un despacho en Solutions, Teikem crea la
 **orden de transporte en Logistics** a nombre de ese cliente (consignatario, paquetes, urgente), por el mismo camino que el API de clientes,
@@ -167,7 +167,7 @@ agentes nombrados, hace el mismo flujo con los agentes que tenga (un implementad
 | **P8** | **Datos, cierre y reporte** | kit OFERTA1 (6 × 52800 + 1 × 070120, $41.94, foto), marcas revisadas en los productos de Solutions, roles «Supervisor de ventas» y «Oficina de ventas» en Solutions, un usuario por vendedor (7) con rol Ventas, forma de pago en los clientes, lista de precios inicial (precios del formulario) y lista negociada (guantes/cajas), ajustes de envío ($12 / $120) y QuickBooks; lista de los 7 ítems a renombrar en QuickBooks; manual + FAQ (es y en) con capturas; **prueba completa**; reporte final | scripts SQL idempotentes de datos (no código) | capturas con Playwright para el manual | todas | M |
 
 Orden: **P1 → P2 → P3 → P5 → P6 → P4 → P7 → P8**. P1 y P2 se pueden construir en paralelo (archivos distintos) si Luis lo permite con «2
-workers». P7 es el más grande y el único que toca otra compañía: va al final y se puede posponer sin afectar el resto.
+workers». P7 es el más grande y el único que toca otra compañía: va al final del orden, pero **es parte de este plan y se construye en esta ejecución**, igual que todo lo demás.
 
 ---
 
@@ -214,11 +214,11 @@ por lentes, hallazgos altos refutados o corregidos, y su `docs/loteN-decisiones.
 ---
 
 ## 6. Antes de arrancar, Luis decide (y lo dice en el mensaje de arranque de la sesión en la nube)
-1. **Aprobar este diseño y el orden** (o cambiar el orden; P7 se puede dejar para después).
+1. **Aprobado por Luis (2026-11-06): se ejecuta el plan completo, las 8 partes, en esta ejecución.** El orden lo decide la sesión (el de §3 es una sugerencia).
 2. **Rama: `master`** (decidido por Luis, 2026-11-06). Todo va a `master`; no se crea ninguna rama.
-3. **Paralelismo**: ¿P1 y P2 a la vez (2 piezas) o una tras otra?
+3. **Paralelismo**: lo decide la sesión, con el tope de 2 piezas a la vez.
 4. **Renombrar los 7 ítems en QuickBooks** al SKU de Teikem (lo hace Luis o la oficina, cuando P5 esté listo; la sesión solo entrega la lista).
-5. **Nombre visible del módulo** del puente («Compañías enlazadas») y si se construye ahora o después.
+5. **Nombre visible del módulo** del puente: «Compañías enlazadas» (si Luis no dice otro).
 
 Mensaje de arranque sugerido para la sesión en la nube: «Ejecuta `docs/pedido-vendedores-plan-desarrollo.md` completo en `master`,
-partes P1 a P8 en ese orden (P7 sí/no), con 2 piezas a la vez como máximo; sin preguntarme; un solo reporte al final».
+las 8 partes completas, con 2 piezas a la vez como máximo; sin preguntarme; un solo reporte al final».
