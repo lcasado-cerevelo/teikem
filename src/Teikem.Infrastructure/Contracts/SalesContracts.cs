@@ -16,10 +16,13 @@ public sealed record SalesOrderLineRequest(Guid? ProductPublicId = null, decimal
 /// Lote 222 (null = sin cambio en el PATCH): IsUrgent; DeliveryMode DELIVERY | PICKUP ("" = se deduce del consignatario); PaymentMethod (COD_CHECK, COD_CASH, COD_ACH, CREDIT,
 /// CONSIGNMENT; "" = quitarla) y PaymentTerm (término del crédito, solo con CREDIT; "" = quitarlo): sin forma de pago al crear se prellena con la del cliente y, si es otra,
 /// la orden queda marcada «cambió»; IsConsignment solo con CONSIGNMENT; AuthorizedByName = nombre de quien autoriza ("" = quitarlo).
+/// Lote 223 (pedido guiado): Step = el paso que se guarda (CLIENT, PRODUCTS, DELIVERY, AUTHORIZATION; vacío = guardado normal). Con CLIENT el borrador puede no llevar
+/// productos (Lines vacío o ausente); desde PRODUCTS la orden necesita al menos uno; en DELIVERY y AUTHORIZATION un pedido marcado DELIVERY necesita consignatario.
 /// </remarks>
 public sealed record SalesOrderRequest(Guid? WarehousePublicId = null, Guid? ClientPublicId = null, Guid? ConsigneePublicId = null, bool? ClearConsignee = null,
     DateOnly? RequiredDate = null, bool? ClearRequiredDate = null, string? Notes = null, IReadOnlyList<SalesOrderLineRequest>? Lines = null,
-    bool? IsUrgent = null, string? DeliveryMode = null, string? PaymentMethod = null, string? PaymentTerm = null, bool? IsConsignment = null, string? AuthorizedByName = null);
+    bool? IsUrgent = null, string? DeliveryMode = null, string? PaymentMethod = null, string? PaymentTerm = null, bool? IsConsignment = null, string? AuthorizedByName = null,
+    string? Step = null);
 
 public sealed record SalesOrderLineDto(int Id, int LineNo, Guid ProductPublicId, string Sku, string ProductName, int? LotId, decimal QtyOrdered, decimal QtyReserved,
     decimal QtyBackordered, decimal QtyShipped, bool IsClosed, decimal UnitPrice, decimal LineSubtotal, decimal TaxRatePct, decimal TaxAmount, bool IsTaxExempt,
@@ -57,6 +60,14 @@ public sealed record SalesOrderTermsDto(bool IsUrgent, string DeliveryMode, bool
 /// (backorder); sin él, un faltante responde 409 y no se reserva nada. OverrideCredit = autorizar un crédito excedido (exige orders.credit_override).
 /// </summary>
 public sealed record SalesOrderRequestRequest(bool? AllowBackorder = null, bool? OverrideCredit = null, string? Comment = null);
+
+/// <summary>
+/// Lote 223 — «Enviar pedido» del pedido guiado: reautenticación del vendedor y, en seguida, solicitar (lo mismo que POST /request: valida inventario y crédito y reserva).
+/// AuthMethod = PASSWORD (Password del propio usuario y MfaCode si tiene MFA; la web) o BIOMETRIC (la app, después de la huella o el rostro: exige una verificación reciente
+/// de la sesión). AllowBackorder / OverrideCredit / Comment, como en solicitar. Queda en SalesOrder.SubmittedWithAuth.
+/// </summary>
+public sealed record SalesOrderSubmitRequest(string? AuthMethod = null, string? Password = null, string? MfaCode = null, bool? AllowBackorder = null,
+    bool? OverrideCredit = null, string? Comment = null);
 
 /// <summary>Una línea de la comprobación: pedido, disponible para vender y faltante.</summary>
 public sealed record SalesAvailabilityLineDto(int LineNo, Guid ProductPublicId, string Sku, string ProductName, decimal Ordered, decimal Available, decimal Shortage);

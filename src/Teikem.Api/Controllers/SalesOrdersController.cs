@@ -103,4 +103,35 @@ public sealed class SalesOrdersController(SalesOrderService sales) : ControllerB
     /// <summary>Panel Ventas del Pulso del día: pedidos de hoy, urgentes abiertos, clientes por aprobar y órdenes que esperan aprobación (exige además sales.view).</summary>
     [HttpGet("pulse"), RequirePermission(PermissionCatalog.PulseSales)]
     public Task<PulseSalesPanelDto> Pulse([FromServices] SalesPulseService pulse, CancellationToken ct) => pulse.GetAsync(ct);
+
+    // ---------------------------------------------------------------- Lote 223 (pedido guiado)
+
+    /// <summary>
+    /// Firma dibujada de quien autoriza el pedido (PNG o JPG, hasta Files:MaxMegabytes), con su nombre (authorizedByName; "" lo quita, ausente no lo cambia). Solo en borrador (422).
+    /// Queda como StoredFile SIGNATURE de la orden; se ve por GET /files/{terms.signatureFilePublicId}. Subir otra reemplaza la anterior.
+    /// </summary>
+    [HttpPost("{publicId:guid}/signature"), Consumes("multipart/form-data"), RequirePermission(PermissionCatalog.SalesCreate)]
+    [RequestSizeLimit(32 * 1024 * 1024)]
+    public async Task<SalesOrderDto> SetSignature(Guid publicId, IFormFile? file, [FromForm] string? authorizedByName, [FromServices] SalesDraftService drafts,
+        [FromServices] StoredFileService files, CancellationToken ct)
+    {
+        if (file is null || file.Length == 0) throw new Teikem.Infrastructure.Exceptions.ValidationException("file", Teikem.Domain.Sales.SalesDraftStepRules.SignatureRequiredFile);
+        if (file.Length > files.MaxBytes) throw new Teikem.Infrastructure.Exceptions.ValidationException("file", Teikem.Domain.Files.StoredFileRules.TooLarge(files.MaxBytes / 1024 / 1024));
+        using var buffer = new MemoryStream((int)file.Length);
+        await file.CopyToAsync(buffer, ct);
+        return await drafts.SetSignatureAsync(publicId, authorizedByName, file.FileName, file.ContentType, buffer.ToArray(), ct);
+    }
+
+    /// <summary>Quita la firma de la orden en borrador (el archivo se queda, desligado). POST y no DELETE: en las órdenes de venta no se borra nada.</summary>
+    [HttpPost("{publicId:guid}/signature/remove"), RequirePermission(PermissionCatalog.SalesCreate)]
+    public Task<SalesOrderDto> ClearSignature(Guid publicId, [FromServices] SalesDraftService drafts, CancellationToken ct) => drafts.ClearSignatureAsync(publicId, ct);
+
+    /// <summary>
+    /// «Enviar pedido» del pedido guiado: reautentica al vendedor (authMethod PASSWORD con su contraseña y su código MFA si lo tiene; BIOMETRIC desde la app, válido solo con una
+    /// verificación reciente de la sesión: si no, 403 aal2_required) y solicita la orden como POST /request (faltante 409 → repetir con allowBackorder; crédito excedido 422).
+    /// Contraseña o código incorrectos = 400 (cuentan para el bloqueo de la cuenta). Queda en terms.submittedWithAuth.
+    /// </summary>
+    [HttpPost("{publicId:guid}/submit"), RequirePermission(PermissionCatalog.SalesCreate)]
+    public Task<SalesOrderDto> Submit(Guid publicId, [FromBody] SalesOrderSubmitRequest? req, [FromServices] SalesDraftService drafts, CancellationToken ct)
+        => drafts.SubmitAsync(publicId, req, long.TryParse(User.FindFirst(TeikemClaims.SessionId)?.Value, out var s) ? s : 0, ct);
 }

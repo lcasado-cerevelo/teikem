@@ -54,12 +54,14 @@ public sealed partial class SalesOrderService
 
     // ---------------------------------------------------------------- solicitar
 
-    public async Task<SalesOrderDto> RequestAsync(Guid publicId, SalesOrderRequestRequest? req, CancellationToken ct)
+    /// <param name="submittedWithAuth">Lote 223: cómo se reautenticó el vendedor (BIOMETRIC / PASSWORD) cuando la solicitud viene de «Enviar pedido»; null = solicitar de siempre.</param>
+    public async Task<SalesOrderDto> RequestAsync(Guid publicId, SalesOrderRequestRequest? req, CancellationToken ct, string? submittedWithAuth = null)
     {
         req ??= new SalesOrderRequestRequest();
         var allowBackorder = req.AllowBackorder == true;
         var peek = await db.Set<SalesOrder>().AsNoTracking().Include(o => o.Lines).FirstOrDefaultAsync(o => o.PublicId == publicId, ct) ?? throw NotFound();
         if ((await StatusMapAsync(ct))[peek.StatusCodeId].Code != SalesOrderStatuses.Draft) throw new StatusRuleException(SalesRules.OnlyDraftRequestable);
+        if (peek.Lines.Count == 0) throw new Exceptions.ValidationException("lines", SalesRules.LinesRequired);   // Lote 223: un borrador del pedido guiado puede no tener productos aún
         var client = await db.Set<Client>().AsNoTracking().FirstAsync(c => c.ClientId == peek.ClientId, ct);
         if (!client.IsActive) throw new StatusRuleException(SalesRules.ClientInactive);
         var warehouse = await db.Set<Warehouse>().AsNoTracking().FirstAsync(w => w.WarehouseId == peek.WarehouseId, ct);
@@ -119,6 +121,7 @@ public sealed partial class SalesOrderService
                     await ledger.ReserveAsync(reservations, ct2);   // el saldo se bloquea y se vuelve a verificar: una carrera lanza insufficient_stock
                     await RecalculateShippingAsync(order, ct2);   // Lote 222: el envío final, con la regla de hoy
                     order.AwaitingClientApproval = clientStatus == ClientStatuses.Prospect;   // Lote 222: se reserva, pero no se despacha hasta aprobar al cliente
+                    if (submittedWithAuth is not null) order.SubmittedWithAuth = submittedWithAuth;   // Lote 223: la «firma» del vendedor al enviar el pedido
                     var to = await statuses.TransitionAsync(SalesCodes.StatusDomain, SalesCodes.EntityType, order.SalesOrderId, order.StatusCodeId, SalesOrderStatuses.Requested, comment, ct2);
                     order.StatusCodeId = to.StatusCodeId;
                     order.RequestedAtUtc = DateTime.UtcNow;

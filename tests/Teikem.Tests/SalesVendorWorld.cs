@@ -35,7 +35,8 @@ internal sealed class SalesVendorWorld : IAsyncDisposable
     public ClientService Clients => F.Get<ClientService>();
     public ClientDocumentService Documents => F.Get<ClientDocumentService>();
 
-    public static async Task<SalesVendorWorld> CreateAsync()
+    /// <param name="extra">Lote 223: servicios de más para una prueba (p. ej. el de autenticación para «Enviar pedido»).</param>
+    public static async Task<SalesVendorWorld> CreateAsync(Action<IServiceCollection>? extra = null)
     {
         var x = new SalesVendorWorld();
         var opts = Options.Create(new FileStoreOptions { Root = x._root, MasterKey = Key, MaxMegabytes = 10 });
@@ -65,6 +66,7 @@ internal sealed class SalesVendorWorld : IAsyncDisposable
             s.AddSingleton<RateService>();
             s.AddSingleton<OrderQuoteService>();
             s.AddSingleton<BillingService>();
+            extra?.Invoke(s);
         });
         x.F.SetModules(ModuleKeys.SalesOrders, ModuleKeys.Catalog, ModuleKeys.Billing);
         await x.SeedLote222Async();

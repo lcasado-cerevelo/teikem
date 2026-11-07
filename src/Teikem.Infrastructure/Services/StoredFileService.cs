@@ -31,6 +31,8 @@ public sealed class StoredFileService(TeikemDbContext db, ITenantContext tenant,
     private static readonly Dictionary<string, (string Read, string Write)> ExtraOwnerPermissions = new(StringComparer.OrdinalIgnoreCase)
     {
         [DeliveryProofCodes.EntityType] = (PermissionCatalog.OrdersView, PermissionCatalog.OrdersDeliver),
+        // Lote 223: la firma de quien autoriza el pedido (StoredFile SIGNATURE de la orden de venta) se ve con sales.view y se sube con sales.create
+        [Teikem.Domain.Sales.SalesCodes.EntityType] = (PermissionCatalog.SalesView, PermissionCatalog.SalesCreate),
     };
 
     public int MaxBytes => Math.Max(1, options.Value.MaxMegabytes) * 1024 * 1024;

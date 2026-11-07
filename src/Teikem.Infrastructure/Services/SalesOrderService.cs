@@ -83,10 +83,12 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         var consigneeId = await ResolveConsigneeAsync(req.ConsigneePublicId, ct);
         var (notes, notesError) = SalesRules.NormalizeNotes(req.Notes);
         if (notesError is not null) throw new ValidationException("notes", notesError);
+        var step = ParseStep(req.Step);   // Lote 223: el pedido guiado guarda el borrador por pasos
         var today = clock.Today;
-        var planned = await PlanLinesAsync(req.Lines, client.ClientId, today, null, ct);   // Lote 221: el precio sale de la lista vigente del cliente
+        var planned = await PlanLinesAsync(req.Lines, client.ClientId, today, null, ct, SalesDraftStepRules.LinesOptional(step));   // Lote 221: el precio sale de la lista vigente del cliente
         var priced = await PriceAsync(planned, client.ClientId, today, ct);
         var terms = await PlanTermsAsync(req, client, null, false, ct);   // Lote 222: urgente, entrega, forma de pago (prellenada con la del cliente), consignación
+        EnsureStep(step, planned.Count, terms.DeliveryMode, consigneeId is not null);
 
         await numbers.EnsureAsync(SalesCodes.NumberKind, null, ct);
         var id = await db.RunInTransactionAsync(async ct2 =>
@@ -120,6 +122,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
         var (notes, notesError) = SalesRules.NormalizeNotes(req.Notes);
         if (notesError is not null) throw new ValidationException("notes", notesError);
+        var step = ParseStep(req.Step);   // Lote 223
         var peek = await db.Set<SalesOrder>().Where(o => o.PublicId == publicId).Select(o => new { o.SalesOrderId, o.StatusCodeId, o.ClientId, o.RequestedDate }).FirstOrDefaultAsync(ct) ?? throw NotFound();
         await EnsureDraftAsync(peek.StatusCodeId, ct);
 
@@ -134,8 +137,15 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         // Lote 221: el precio de cada línea se resuelve hoy para el cliente (lista del cliente > lista general > producto); el que la línea ya tenía no se vuelve a autorizar
         var previousPrices = req.Lines is null ? null : (await db.Set<SalesOrderLine>().AsNoTracking().Where(l => l.SalesOrderId == peek.SalesOrderId)
             .Select(l => new { l.ProductId, l.UnitPrice }).ToListAsync(ct)).GroupBy(l => l.ProductId).ToDictionary(g => g.Key, g => g.First().UnitPrice);
-        var planned = req.Lines is null ? null : await PlanLinesAsync(req.Lines, clientId, clock.Today, previousPrices, ct);
+        var planned = req.Lines is null ? null : await PlanLinesAsync(req.Lines, clientId, clock.Today, previousPrices, ct, SalesDraftStepRules.LinesOptional(step));
         var priced = planned is null ? null : await PriceAsync(planned, clientId, peek.RequestedDate, ct);
+        if (step is not null)
+        {
+            // Lote 223: lo que el paso exige, con la orden como va a quedar (las líneas que mandan o las que ya tiene; el consignatario y la entrega igual)
+            var lineCount = planned?.Count ?? await db.Set<SalesOrderLine>().CountAsync(l => l.SalesOrderId == peek.SalesOrderId, ct);
+            var finalConsignee = req.ClearConsignee == true ? null : consigneeId ?? currentOrder.ConsigneeId;
+            EnsureStep(step, lineCount, terms.DeliveryModeGiven ? terms.DeliveryMode : currentOrder.DeliveryMode, finalConsignee is not null);
+        }
 
         await db.RunInTransactionAsync(async ct2 =>
         {
@@ -193,6 +203,23 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         if ((await StatusMapAsync(ct))[statusCodeId].Code != SalesOrderStatuses.Draft) throw new StatusRuleException(SalesRules.OnlyDraftEditable);
     }
 
+    /// <summary>Lote 223: el paso del pedido guiado (vacío = guardado normal). 400 si no es uno de los cuatro.</summary>
+    private static string? ParseStep(string? value)
+    {
+        var (step, error) = SalesDraftStepRules.ParseStep(value);
+        if (error is not null) throw new ValidationException("step", error);
+        return step;
+    }
+
+    /// <summary>Lote 223: lo que exige cada paso del pedido guiado: productos desde PRODUCTS; a dónde se entrega (si es entrega) desde DELIVERY.</summary>
+    private static void EnsureStep(string? step, int lineCount, string? deliveryMode, bool hasConsignee)
+    {
+        if (step is null) return;
+        if (SalesDraftStepRules.NeedsLines(step) && lineCount == 0) throw new ValidationException("lines", SalesRules.LinesRequired);
+        if (SalesDraftStepRules.ChecksDelivery(step) && SalesDraftStepRules.MissingConsignee(deliveryMode, hasConsignee))
+            throw new ValidationException("consigneePublicId", SalesDraftStepRules.ConsigneeRequired);
+    }
+
     private async Task<Client> ResolveClientAsync(Guid? publicId, CancellationToken ct)
     {
         if (publicId is null) throw new ValidationException("clientPublicId", SalesRules.ClientRequired);
@@ -228,9 +255,13 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
     /// precio distinto exige sales.price salvo que sea el que la línea ya tenía en el borrador (previousPrices). Una oferta fuera de vigencia no se vende.
     /// </summary>
     private async Task<List<PlannedLine>> PlanLinesAsync(IReadOnlyList<SalesOrderLineRequest>? lines, int clientId, DateOnly date, IReadOnlyDictionary<int, decimal>? previousPrices,
-        CancellationToken ct)
+        CancellationToken ct, bool allowEmpty = false)
     {
-        if (lines is null || lines.Count == 0) throw new ValidationException("lines", SalesRules.LinesRequired);
+        if (lines is null || lines.Count == 0)
+        {
+            if (allowEmpty) return new List<PlannedLine>();   // Lote 223: el paso del cliente del pedido guiado guarda el borrador sin productos
+            throw new ValidationException("lines", SalesRules.LinesRequired);
+        }
         if (lines.Count > SalesRules.MaxLines) throw new ValidationException("lines", SalesRules.TooManyLines);
         var ids = lines.Where(l => l.ProductPublicId is not null).Select(l => l.ProductPublicId!.Value).Distinct().ToList();
         var products = await db.Set<Product>().AsNoTracking().Where(p => ids.Contains(p.PublicId)).ToDictionaryAsync(p => p.PublicId, ct);
@@ -326,6 +357,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
     /// <summary>Calcula el impuesto de cada línea (si el módulo TAX está encendido) y devuelve las líneas con su copia.</summary>
     private async Task<List<PricedLine>> PriceAsync(IReadOnlyList<PlannedLine> lines, int clientId, DateOnly date, CancellationToken ct)
     {
+        if (lines.Count == 0) return new List<PricedLine>();   // Lote 223: borrador sin productos (paso del cliente)
         var amounts = lines.Select(l => SalesRules.LineAmount(l.Quantity, l.UnitPrice)).ToList();
         if (!await modules.IsEnabledAsync(ModuleKeys.Tax, ct))
             return lines.Select((l, i) => new PricedLine(l, amounts[i], 0m, 0m, null, false)).ToList();

@@ -31683,6 +31683,137 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sales-orders/{publicId}/signature": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file?: string;
+                        authorizedByName?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/signature/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesOrderSubmitRequest"];
+                    "text/json": components["schemas"]["SalesOrderSubmitRequest"];
+                    "application/*+json": components["schemas"]["SalesOrderSubmitRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sales-returns/settings": {
         parameters: {
             query?: never;
@@ -49006,8 +49137,17 @@ export interface components {
             paymentTerm?: string | null;
             isConsignment?: boolean | null;
             authorizedByName?: string | null;
+            step?: string | null;
         };
         SalesOrderRequestRequest: {
+            allowBackorder?: boolean | null;
+            overrideCredit?: boolean | null;
+            comment?: string | null;
+        };
+        SalesOrderSubmitRequest: {
+            authMethod?: string | null;
+            password?: string | null;
+            mfaCode?: string | null;
             allowBackorder?: boolean | null;
             overrideCredit?: boolean | null;
             comment?: string | null;
