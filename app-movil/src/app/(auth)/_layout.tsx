@@ -49,6 +49,8 @@ export default function AuthLayout() {
       <Stack.Screen name="Clients/index" />
       <Stack.Screen name="Consignees/index" />
       <Stack.Screen name="Stock/index" />
+      <Stack.Screen name="SalesOrders/index" />
+      <Stack.Screen name="NewSalesOrder/index" />
       <Stack.Screen name="AcceptManifest/index" />
       <Stack.Screen name="ShipmentDetails/index" options={{ presentation: 'modal' }} />
       <Stack.Screen name="Chat/index" />

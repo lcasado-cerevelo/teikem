@@ -11,6 +11,8 @@ declare module 'axios' {
   interface AxiosRequestConfig {
     /** Compañía a la que va la llamada (decide con qué token de acceso se firma). */
     tenantId?: number;
+    /** Lote 226: un 403 de esta llamada lo muestra la pantalla (p. ej. «Enviar pedido» ante aal2_required pide la contraseña): no sale el aviso general. */
+    silentForbidden?: boolean;
   }
 }
 
@@ -79,7 +81,7 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
     if (error.response?.status === 401 && !onRefresh && onUnauthorized) onUnauthorized();
-    if (error.response?.status === 403 && onForbidden) onForbidden((error.response.data ?? {}) as ForbiddenInfo);
+    if (error.response?.status === 403 && onForbidden && !config?.silentForbidden) onForbidden((error.response.data ?? {}) as ForbiddenInfo);
     return Promise.reject(error);
   },
 );

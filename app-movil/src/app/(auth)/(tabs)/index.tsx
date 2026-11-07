@@ -90,6 +90,8 @@ export default function Home() {
     ...(access.staff && access.can('trips.view') ? [{ key: 'staff-trips', label: t('TRIPS_TODAY.TITLE'), counter: '›', loading: false, href: '/(auth)/Trips' as Href }] : []),
     ...(access.staff && access.can('clients.read') ? [{ key: 'staff-clients', label: t('LOOKUP.CLIENTS'), counter: '›', loading: false, href: '/(auth)/Clients' as Href }] : []),
     ...(access.staff && access.can('locations.read') ? [{ key: 'staff-consignees', label: t('LOOKUP.CONSIGNEES'), counter: '›', loading: false, href: '/(auth)/Consignees' as Href }] : []),
+    // Lote 226: el pedido del vendedor (Mis pedidos y Nuevo pedido)
+    ...(access.staff && access.can('sales.create') ? [{ key: 'staff-sales', label: t('SALES_ORDER.TITLE'), counter: '›', loading: false, href: '/(auth)/SalesOrders' as Href }] : []),
     ...(access.staff && access.can('inventory.view') ? [{ key: 'staff-stock', label: t('LOOKUP.STOCK'), counter: '›', loading: false, href: '/(auth)/Stock' as Href }] : []),
   ];
   const items = [...staffItems, ...driverItems];

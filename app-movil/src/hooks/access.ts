@@ -20,7 +20,7 @@ export interface Access {
   staff: boolean;
 }
 
-export const STAFF_PERMS = ['pulse.attention', 'analytics.view', 'orders.view', 'trips.view', 'trips.scan', 'clients.read', 'locations.read', 'inventory.view'] as const;
+export const STAFF_PERMS = ['pulse.attention', 'analytics.view', 'orders.view', 'trips.view', 'trips.scan', 'clients.read', 'locations.read', 'inventory.view', 'sales.create'] as const;
 
 export function computeAccess(companies: CompanyAccess[], driverOnly: boolean): Access {
   const usable = companies.filter((c) => !c.blocked);
