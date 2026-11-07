@@ -17,7 +17,9 @@
   .sales-line > .btn { grid-column: 2; justify-self: end; }
   .sales-table { display: block; overflow-x: auto; }
 }
-.sales-qty { width: 6rem; text-align: right; }
+/* Lote 228: casilla suelta (fuera de .f) con los colores del tema; sin esto el navegador la pinta blanca también en el tema oscuro */
+.sales-qty { width: 6rem; text-align: right; background: var(--bg-2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; color: var(--text); font: inherit; outline: none; }
+.sales-qty:focus { border-color: var(--action); box-shadow: 0 0 0 3px var(--action-bg); }
 
 /* Lote 82: devoluciones de venta */
 .linklike{border:none;background:none;padding:0;color:var(--flow);font:inherit;cursor:pointer;text-decoration:underline}
@@ -47,4 +49,5 @@
 .sales-extra .sw { align-self: flex-start; }
 .sales-ship { text-align: right; margin: 2px 0 0; }
 .sales-ship .help { display: block; font-weight: 400; }
-.sales-sign img { max-width: 240px; max-height: 100px; background: #fff; border: 1px solid var(--line, #8884); border-radius: 6px; }
+/* Lote 228: sin pasar del ancho de su celda (se salía de la ventana de la orden) */
+.sales-sign img { max-width: min(240px, 100%); max-height: 100px; box-sizing: border-box; background: #fff; border: 1px solid var(--line, #8884); border-radius: 6px; }

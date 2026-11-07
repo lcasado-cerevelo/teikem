@@ -4,7 +4,7 @@
 
 Lotes 223 y 226 (2026-11-07) — pedido de vendedores, partes P3 (web) y P4 (app móvil). El **pedido guiado** es otra puerta a la **misma orden de venta** del [capítulo 18](18-ordenes-de-venta.md): el vendedor arma el pedido en **cuatro pasos** (cliente, productos, entrega, autorización), se guarda como **borrador** en cada paso y al final lo **envía** confirmando quién es. La ventana «Nueva orden» sigue como siempre, para la oficina. Los precios salen de las listas ([47](47-precios-y-ofertas.md)); el cliente nuevo nace como prospecto ([02 §1.8](02-clientes-y-contratos.md#18-cliente-prospecto-alta-mínima-y-aprobación-lote-222)).
 
-> Capturas pendientes (P8): los cuatro pasos en la web (escritorio y 360 px), el alta de «Cliente nuevo», el carrito, la firma, la ventana «Confirme con su contraseña», el diálogo de faltante y la pantalla final; en la app, Pedidos → Mis pedidos, los cuatro pasos y la confirmación con la huella.
+> Capturas del recorrido del lote 228 (2026-11-07, datos de demostración): web en escritorio (claro y oscuro) y a 360 px. Siguen pendientes las de la **app móvil** (Pedidos → Mis pedidos, los pasos y la huella; el recorrido de Playwright no corre la app) y la del **diálogo de faltante** (es el mismo de [18 §6](18-ordenes-de-venta.md#6-solicitar-la-orden-validar-y-reservar-lote-58)).
 
 ## 1. Quién puede y dónde
 
@@ -24,6 +24,11 @@ Barra de progreso arriba («Paso 2 de 4: Productos»). **Siguiente** guarda el b
 - **Datos del pedido**: **Pedido urgente** y **Nota del pedido** (hasta 500 caracteres); **Forma de pago** prellenada con la del cliente y editable (si cambia queda la marca «Cambió la forma de pago»); **Término del crédito** si la forma es Crédito. Detalle de las formas de pago en [18 §19](18-ordenes-de-venta.md#19-forma-de-pago-y-consignación-lote-222).
 - «Siguiente» crea el borrador (`POST /sales-orders` con `step = CLIENT`): todavía **sin productos**.
 
+![Paso 1: el cliente nuevo escogido (prospecto), pedido urgente con nota y la forma de pago prellenada](frontend/img/l228-paso1-cliente.png)
+![Paso 1 en el tema oscuro](frontend/img/l228-paso1-cliente-oscuro.png)
+
+![«Cliente nuevo»: el alta mínima con dirección física, forma de pago y las fotos de los documentos](frontend/img/l228-cliente-nuevo.png)
+
 ### Paso 2 — Productos
 - Pestañas por **marca**; marcas sin producto activo no salen; los sin marca van al final («Sin marca»).
 - Arriba de cada marca, sus **ofertas vigentes** como tarjetas con foto y precio, con **+** y **−**. Debajo, la **lista completa** de la marca: SKU, nombre, precio (de la lista vigente del cliente o general) y casilla de cantidad; teclear una cantidad agrega la línea. Un buscador por SKU o nombre filtra la marca.
@@ -32,11 +37,19 @@ Barra de progreso arriba («Paso 2 de 4: Productos»). **Siguiente** guarda el b
 - Un kit se pide en piezas enteras. En la web, un kit ajustable permite cambiar las piezas de esta orden; en la app todavía no (se piden con las del catálogo).
 - «Siguiente» guarda con `step = PRODUCTS`: desde aquí la orden necesita al menos un producto.
 
+![Paso 2: pestañas por marca, la oferta con foto y la lista de la marca con el precio de la lista](frontend/img/l228-paso2-productos.png)
+![Paso 2 en el tema oscuro](frontend/img/l228-paso2-productos-oscuro.png)
+
+![El carrito abierto: las líneas para corregir o quitar, con el subtotal](frontend/img/l228-carrito.png)
+
 ### Paso 3 — Entrega
 - **Entrega** (se lleva al cliente) o **Recogido** (lo recoge: no lleva cargo de envío). Con «Entrega», el destino por omisión es la **dirección física del cliente**; se puede escoger otra dirección (consignatario) del cliente o crear una (en la web).
 - **En consignación**: solo si la forma de pago es Consignación.
 - **Fecha requerida** (opcional). En la app se escribe `AAAA-MM-DD`.
 - **Resumen**: subtotal, IVU, **cargo de envío** (con su «Por qué») y **total**. Lo calcula el servidor con la regla de la compañía y del cliente ([18 §20](18-ordenes-de-venta.md#20-cargo-de-envío-lote-222)); cambiar entrega/recogido o el destino guarda el borrador al momento para recalcular.
+
+![Paso 3: entrega a la dirección física y el resumen con el cargo de envío de $12 y su porqué](frontend/img/l228-paso3-entrega.png)
+![Paso 3 en el tema oscuro](frontend/img/l228-paso3-entrega-oscuro.png)
 
 ### Paso 4 — Autorización y envío
 - **Nombre de quien autoriza** (hasta 150 caracteres) y **firma dibujada** (con el mouse o el dedo; se sube como imagen PNG). Son **obligatorios solo si el cliente exige la firma de quien autoriza el pedido**; si no, son opcionales.
@@ -45,6 +58,26 @@ Barra de progreso arriba («Paso 2 de 4: Productos»). **Siguiente** guarda el b
   - **App**: pide **huella o rostro**; si el teléfono no tiene o no se confirma, pide la **contraseña** (más el código MFA si hace falta).
 - Luego el servidor **solicita** la orden: valida inventario y crédito y reserva (igual que «Solicitar» en [18 §6](18-ordenes-de-venta.md#6-solicitar-la-orden-validar-y-reservar-lote-58)). Si falta inventario o se excede el crédito aparece el **diálogo de faltante** de siempre: se repite el envío con backorder, o con la autorización de crédito (`orders.credit_override`).
 - **Pantalla final**: número `OV-#####`, total, y **Nuevo pedido**. Si el cliente es prospecto: «El cliente es prospecto: el pedido quedó reservado pero espera la aprobación del cliente y no se puede despachar todavía.»
+
+![Paso 4: nombre de quien autoriza y la firma dibujada](frontend/img/l228-paso4-firma.png)
+![Paso 4 en el tema oscuro](frontend/img/l228-paso4-firma-oscuro.png)
+
+![«Confirme con su contraseña» al enviar el pedido](frontend/img/l228-contrasena.png)
+
+![Pantalla final de un cliente prospecto: el número, el total y «espera la aprobación del cliente»](frontend/img/l228-enviado.png)
+![Pantalla final en el tema oscuro](frontend/img/l228-enviado-oscuro.png)
+
+**A 360 px** (celular en el navegador): los mismos pasos, sin desplazamiento horizontal de la página.
+
+![Paso 1 a 360 px](frontend/img/l228-movil-paso1.png) ![Paso 2 a 360 px](frontend/img/l228-movil-paso2.png) ![Carrito a 360 px](frontend/img/l228-movil-carrito.png) ![Paso 3 a 360 px](frontend/img/l228-movil-paso3.png) ![Paso 4 a 360 px](frontend/img/l228-movil-paso4.png) ![Pedido enviado a 360 px](frontend/img/l228-movil-enviado.png)
+
+**Después del envío** (recorrido completo): el supervisor de ventas aprueba al cliente en su ficha ([02 §1.8](02-clientes-y-contratos.md#18-cliente-prospecto-alta-mínima-y-aprobación-lote-222)) y la oficina despacha desde la orden, factura ([19](19-facturacion.md)) y la pasa a QuickBooks ([49](49-quickbooks.md)).
+
+![La orden enviada: urgente, entrega, crédito a 30 días, quien autoriza con su firma, el kit con sus piezas y el cargo de envío](frontend/img/l228-orden.png)
+
+**Pedido en consignación**: con la forma de pago Consignación y «Recogido», sin cargo de envío; el precio negociado del cliente gana a la lista general.
+
+![Paso 3 de un pedido en consignación: Recogido, «En consignación» y sin cargo de envío](frontend/img/l228-consignacion-entrega.png)
 
 ## 3. El borrador
 

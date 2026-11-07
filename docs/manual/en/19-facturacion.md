@@ -123,7 +123,16 @@ A **credit note** (`NC-#####`, one counter per company) credits the client part 
 
 Batch 224 (2026-11-07), salespeople's order, part P6. A sale **on consignment** leaves product with the client **unpaid**; the client pays as they sell it. The order is marked «On consignment» ([18 §19](18-ordenes-de-venta.md#19-payment-method-and-consignment-batch-222)); when invoiced, the invoice is on consignment and the **payments** (partial or full) are recorded here. Sales reports **do not count** what is consigned until it is paid: each payment counts for its amount on **its payment date**.
 
-> Screenshots pending (P8): the «Consignment» tab («Invoices» view and «Consigned by customer» view), the «Record payment» window and the «Consignment of invoice» detail.
+> Screenshots from the batch 228 walkthrough (the «Consigned by customer» view and the «Consignment of invoice» detail are still pending):
+
+![The «Consignment» tab, «Invoices» view: left, returned, paid and balance](frontend/img/l228-consignacion-lista.png)
+![The tab in the dark theme](frontend/img/l228-consignacion-lista-oscuro.png)
+
+![The «Record payment» window (partial payment)](frontend/img/l228-consignacion-pago.png)
+
+![After the partial payment: the balance goes down](frontend/img/l228-consignacion-parcial.png)
+
+![Paid in full: «Fully paid» filter, balance zero](frontend/img/l228-consignacion-pagada.png)
 
 **Who can.** Module **Billing (`BILLING`)**. See the tab: `billing.view` or **`billing.consignment.pay`**. Record payments: `billing.consignment.pay` (implies entering Billing; the Company admin and the **Sales office** role have it). Void a payment: `billing.consignment.pay` and **recent re-authentication (AAL2)**.
 

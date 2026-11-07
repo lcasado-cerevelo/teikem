@@ -5151,7 +5151,7 @@
           "open": "no end",
           "applies": "Applies to",
           "appliesAll": "All clients",
-          "appliesSome": "{count} clients",
+          "appliesSome": "Selected clients: {count}",
           "appliesAllToggle": "Applies to all clients",
           "itemsCol": "Lines",
           "inactive": "Deactivated",

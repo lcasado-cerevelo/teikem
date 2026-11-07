@@ -6,7 +6,7 @@
 
 Batch 225 (2026-11-07) — salespeople's order, part P5. The office passes the **issued sales invoices** to **QuickBooks Desktop** with an **IIF** file that Teikem builds, and keeps a record of which ones already went in. There is no direct connection with QuickBooks: Teikem downloads the file and the office imports it. The screen is in **Accounting → Sales orders → «QuickBooks» tab** (`/sales-orders?tab=quickbooks`); accounts and names are set in **System → Settings → Operations → QuickBooks**. Invoices come from sales billing ([19](19-facturacion.md)) and from the order ([18](18-ordenes-de-venta.md)).
 
-> Screenshots pending (P8): the QuickBooks tab (list, notice «N of these already went out…»), the «Export to QuickBooks» window, the «Did you already import these N?» panel, «see data» of a new client, the «Already in QuickBooks» history and Settings → QuickBooks.
+> Screenshots from the batch 228 walkthrough (2026-11-07, demo data).
 
 ## 1. Who can and where
 
@@ -44,6 +44,20 @@ Batch 225 (2026-11-07) — salespeople's order, part P5. The office passes the *
 | History (`from`, `to`, `q`, `skip`, `take`) | `GET /history` | any of the three |
 | Settings | `GET /settings` · `PATCH /settings` | view or `admin.tenant` · `admin.tenant` |
 
+![The QuickBooks tab: the invoice to pass with «New client», «3 new products» and «see data»](frontend/img/l228-qb-lista.png)
+![The tab in the dark theme](frontend/img/l228-qb-lista-oscuro.png)
+
+![«see data»: what QuickBooks does not have yet of the new client and its products](frontend/img/l228-qb-ver-datos.png)
+
+![The «Export to QuickBooks» window with «Include the new clients and products»](frontend/img/l228-qb-exportar.png)
+
+![«Did you already import these N?» with the checked list, «Download the file again», «Not yet» and «Yes, they are in»](frontend/img/l228-qb-ya-importaste.png)
+
+![The «Already in QuickBooks» history with who, when, the last file and «Remove the mark»](frontend/img/l228-qb-historico.png)
+![The history in the dark theme](frontend/img/l228-qb-historico-oscuro.png)
+
+![An invoice whose mark was removed: back to «to pass» with «Went out on…» and the notice «N of these already went out…»](frontend/img/l228-qb-ya-salieron.png)
+
 ## 4. The file
 
 Text with **tabs** and CRLF rows, in **Windows-1252** (what does not fit that code page comes out as «?»), dates MM/DD/YYYY and amounts with a period. In this order: **new products** (`!INVITEM`), **new clients** (`!CUST`) and **invoices** (`!TRNS` / `!SPL` / `!ENDTRNS`).
@@ -79,6 +93,8 @@ Empty = default value.
 | Payment terms | Table: Teikem term → name in QuickBooks (an empty name removes the term from the map) | — | 31 |
 
 The daily «Invoices to pass to QuickBooks» notice goes out at **07:00** company time through the scheduled job `SALES_QUICKBOOKS_PENDING` (the time is changed in System → Scheduled jobs), **one a day and only if there is something**. Who gets it and through which channel (bell, email) is set by a **notification rule** that the administrator creates in System → Notification rules: none is seeded. In the Pulse, the «Invoices to send to QuickBooks» figure of the Sales panel and the «Needs your attention» row (red if the oldest is over 7 days) show up on their own for whoever has `sales.quickbooks.view`.
+
+![Settings → Operations → QuickBooks](frontend/img/l228-ajustes-quickbooks.png)
 
 ## 6. Before the first export
 

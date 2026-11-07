@@ -123,7 +123,16 @@ Una **nota de crédito** (`NC-#####`, un contador por compañía) le acredita al
 
 Lote 224 (2026-11-07), pedido de vendedores, parte P6. Una venta **en consignación** deja producto al cliente **sin cobrar**; el cliente paga a medida que lo vende. La orden se marca «En consignación» ([18 §19](18-ordenes-de-venta.md#19-forma-de-pago-y-consignación-lote-222)); al facturarla, la factura queda en consignación y aquí se registran los **pagos** (parciales o totales). Los reportes de ventas **no cuentan** lo consignado hasta que se paga: cada pago cuenta por su monto en **su fecha de pago**.
 
-> Capturas pendientes (P8): la pestaña «Consignación» (vista «Facturas» y vista «Consignado por cliente»), la ventana «Registrar pago» y el detalle «Consignación de la factura».
+> Capturas del recorrido del lote 228 (siguen pendientes la vista «Consignado por cliente» y el detalle «Consignación de la factura»):
+
+![La pestaña «Consignación», vista «Facturas»: dejado, devuelto, pagado y saldo](frontend/img/l228-consignacion-lista.png)
+![La pestaña en el tema oscuro](frontend/img/l228-consignacion-lista-oscuro.png)
+
+![La ventana «Registrar pago» (pago parcial)](frontend/img/l228-consignacion-pago.png)
+
+![Después del pago parcial: el saldo baja](frontend/img/l228-consignacion-parcial.png)
+
+![Pagada por completo: filtro «Pagadas por completo», saldo en cero](frontend/img/l228-consignacion-pagada.png)
 
 **Quién puede.** Módulo **Facturación (`BILLING`)**. Ver la pestaña: `billing.view` o **`billing.consignment.pay`**. Registrar pagos: `billing.consignment.pay` (implica entrar a Facturación; lo traen el Admin de compañía y el rol **Oficina de ventas**). Anular un pago: `billing.consignment.pay` y **reautenticación reciente (AAL2)**.
 

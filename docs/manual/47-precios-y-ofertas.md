@@ -6,7 +6,10 @@ Lote 221 (2026-11-07) — pedido de vendedores, parte P1. El **precio de lo que 
 
 La pantalla está en **Almacén → Productos e inventario → pestaña «Precios y ofertas»** (`/warehouse/products?tab=prices`). La pestaña solo se ve con `sales.view`.
 
-> Capturas pendientes (P8): la pestaña «Precios y ofertas» (ofertas como tarjetas y lista de listas), la ventana de una lista de precios y el editor del kit con la marca «Es promoción».
+> Capturas del recorrido del lote 228 (2026-11-07, datos de demostración).
+
+![Pestaña «Precios y ofertas»: la oferta como tarjeta con su foto y la lista de listas](frontend/img/l228-precios-ofertas.png)
+![La misma pestaña en el tema oscuro](frontend/img/l228-precios-ofertas-oscuro.png)
 
 ## 1. Quién puede y dónde
 
@@ -75,6 +78,8 @@ Reglas que conviene saber:
 
 **Cruces de listas.** Dos listas **publicadas** de la misma audiencia (dos generales, o dos de clientes que comparten un cliente) no pueden dar precio al mismo producto en fechas que se cruzan: el servidor lo rechaza con 409 y cita hasta 5 SKU. Una lista general y una de clientes **sí** pueden traer el mismo producto (gana la del cliente). Los cruces se comprueban al publicar y en cada cambio de una lista publicada (fechas, renglones, clientes, reactivar). Una lista de temporada encima de la base se permite si no repite productos.
 
+![Ventana de una lista de precios de clientes escogidos: datos, clientes de la lista y renglones](frontend/img/l228-lista-precios.png)
+
 ## 4. Ofertas (kits en promoción)
 
 **Qué hace.** Una **oferta** es un **kit** (capítulo [06 §8b](06-inventario-y-almacen.md#8b-kits-lote-68-2026-10-16)) marcado «Es promoción», con **foto** y **vigencia** opcionales. En la pestaña se ven como tarjetas con su foto (lo que verá el vendedor en el pedido guiado, arriba de su marca). Fuera de su vigencia **no se vende**: no se puede poner en una línea nueva ni en un borrador que se vuelve a guardar. Las órdenes ya hechas no cambian (la línea guarda su precio y la copia de sus componentes).
@@ -88,6 +93,8 @@ Reglas que conviene saber:
 Estado de una oferta en la tarjeta: **En vigor**, **Programada** (empieza más adelante) o **Vencida**.
 
 Volver un kit a producto normal le quita la marca de oferta; la vigencia y la foto se quedan por si vuelve a ser kit.
+
+![Editor del kit con la sección «Oferta (promoción)»: «Es promoción», vigencia y foto](frontend/img/l228-kit-promocion.png)
 
 ## 5. El catálogo del pedido
 

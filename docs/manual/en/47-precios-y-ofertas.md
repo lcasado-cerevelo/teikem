@@ -8,7 +8,10 @@ Batch 221 (2026-11-07) — salespeople's order, part P1. The **price of what is 
 
 The screen is in **Warehouse → Products and inventory → «Prices and offers» tab** (`/warehouse/products?tab=prices`). The tab only shows with `sales.view`.
 
-> Screenshots pending (P8): the «Prices and offers» tab (offers as cards and the list of lists), a price list window and the kit editor with the «Is a promotion» mark.
+> Screenshots from the batch 228 walkthrough (2026-11-07, demo data).
+
+![«Prices and offers» tab: the offer as a card with its photo and the list of lists](frontend/img/l228-precios-ofertas.png)
+![The same tab in the dark theme](frontend/img/l228-precios-ofertas-oscuro.png)
 
 ## 1. Who can and where
 
@@ -77,6 +80,8 @@ Rules worth knowing:
 
 **List overlaps.** Two **published** lists of the same audience (two general ones, or two client lists that share a client) cannot give a price to the same product on overlapping dates: the server rejects it with 409 and cites up to 5 SKUs. A general list and a client list **can** carry the same product (the client's wins). Overlaps are checked when publishing and on every change of a published list (dates, lines, clients, reactivate). A seasonal list on top of the base one is allowed if it does not repeat products.
 
+![Window of a price list for chosen clients: data, clients of the list and lines](frontend/img/l228-lista-precios.png)
+
 ## 4. Offers (kits on promotion)
 
 **What it does.** An **offer** is a **kit** (chapter [06 §8b](06-inventario-y-almacen.md#8b-kits-batch-68-2026-10-16)) marked «Is a promotion», with an optional **photo** and **validity**. On the tab they show as cards with their photo (what the salesperson will see in the guided order, above their brand). Outside its validity it **cannot be sold**: it cannot be put on a new line or on a draft that is saved again. Orders already placed do not change (the line keeps its price and the copy of its components).
@@ -90,6 +95,8 @@ Rules worth knowing:
 Offer status on the card: **In effect**, **Scheduled** (starts later) or **Expired**.
 
 Turning a kit back into a normal product removes the offer mark; the validity and photo stay in case it becomes a kit again.
+
+![Kit editor with the «Offer (promotion)» section: «Is a promotion», validity and photo](frontend/img/l228-kit-promocion.png)
 
 ## 5. The order catalog
 

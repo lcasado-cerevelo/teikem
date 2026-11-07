@@ -178,7 +178,11 @@ Who can: `clients.update`. How it is used: `POST /api/v1/clients/{publicId}/deac
 
 Batch 222 (2026-11-07), salespeople's order. A salesperson serving a business that is not yet a client can sign it up **from the order**, without a contract or manual numbering. The client is born a **Prospect** (`PROSPECT`) and the sales supervisor **approves** or **rejects** it. While it is a prospect, an order can be built and requested for it (it reserves), but the order is **not dispatched** ([18 §21](18-ordenes-de-venta.md#21-new-client-prospect-and-the-order-batch-222)).
 
-> Screenshots pending (P8): a prospect's record («New client» banner, Approve and Reject buttons), the «Sales» and «Client documents» panels, and the approve and reject windows.
+> Screenshots from the batch 228 walkthrough (the «Sales» and «Client documents» panels and the reject window are still pending):
+
+![A prospect record: «This client was added by a sales rep and awaits approval», with Approve and Reject](frontend/img/l228-ficha-prospecto.png)
+
+![The «Approve …» window with credit limit, term and comment](frontend/img/l228-aprobar-cliente.png)
 
 **Who can.** Module **CATALOG** (and Sales orders for the order).
 - Minimal sign-up: **`clients.create_basic`** (Sales role) or `clients.create`.

@@ -73,3 +73,81 @@ todo en una transacción que se deshace) y termina con `Filas cambiadas: N`. Ide
 - Llenar los correos de los vendedores y el supervisor; confirmar el SKU del underpad 3/50; decidir el IVU del envío y las cuentas reales de QuickBooks.
 - La foto de OFERTA1 (paso manual).
 - Apagar Formsite (pasos en el LEEME).
+
+## Recorrido y capturas (§4.2 punto 4)
+
+### Qué se corrió
+- **Base local nueva `TeikemE2E`** con `db-init` (Release ya compilado) y el API en `http://localhost:5000` con `ASPNETCORE_ENVIRONMENT=Development`,
+  **`Brevo__ApiKey=` vacía**, `Auth__Onboarding__Enabled=false`, `Portal__ReturnInviteTokenInResponse=true`, `Auth__TrustedBrowsers__ReturnLinkInResponse=true` y
+  `Auth__PasswordReset__ReturnLinkInResponse=true` (lo de `scripts/api-para-pruebas.ps1`, a mano en Linux); la web con `vite` en `:5173`
+  (`VITE_API_URL=http://localhost:5000`). `e2e/globalSetup.ts` corrió y no encontró correo configurado. Ningún correo salió.
+- **Recorrido** `web-app/e2e/lote228-pedido-vendedores.spec.ts` (`--trace off`, un worker). Siembra todo por API en un `beforeAll`: módulos `SALES_ORDERS`,
+  `TAX` y `BILLING` (los enciende el **administrador de la plataforma**, `teikem+support@…`: el administrador de la compañía recibe 403 «Solo el administrador de la
+  plataforma puede encender o apagar módulos.»), IVU 11.5 % por omisión, envío $12 / gratis desde $120 (sin IVU), mapa de términos de QuickBooks, productos con
+  marca PRODIGY y GLOBAL, el kit **OFERTA1** (6 × 52800 + 1 × 070120, $41.94, promoción vigente con foto), la lista general publicada, una lista negociada
+  (la crema a $2.99) para un cliente con forma de pago Consignación, existencia, y dos usuarios: **vendedor** (rol Ventas) y **supervisor** (rol Supervisor de ventas).
+  1. *Precios y ofertas*: tarjeta de la oferta con foto, la ventana de la lista negociada, el editor del kit en promoción.
+  2. *Pedido guiado completo, todo por la pantalla*: el vendedor da de alta el cliente nuevo (con las dos fotos) → oferta (+) y 4 cremas de otra marca → entrega a la
+     dirección física, resumen **$54.94 + IVU $6.32 + envío $12.00 = $73.26** → nombre y firma dibujada → «Enviar pedido» con contraseña mala (marca el error) y luego
+     la buena → «Pedido enviado», «espera la aprobación del cliente»; por API se confirma `awaitingClientApproval=true` y que **despachar se rechaza**. El supervisor
+     (otra sesión) aprueba al cliente en su ficha (límite $1,000, 30 días) y la orden deja de esperar. La oficina (administrador) **despacha desde la ventana de la
+     orden**, **factura por la pantalla** (Nueva corrida → Marcar como revisada → Aprobar y emitir con reautenticación) y en **QuickBooks**: «ver datos», Exportar
+     (baja el `.iif`), **abre el archivo y lo compara renglón por renglón** con lo esperado (armado con lo tecleado y los montos de la factura: los 3 INVITEM, el CUST
+     completo y el bloque TRNS/SPL/ENDTRNS exacto, con el kit desglosado a prorrata que cierra al centavo), «Sí, ya están», histórico → «Quitar la marca» → vuelve con
+     «Salió el…» y el aviso → «Marcar como en QuickBooks» por fila. Ajustes → Operación (Ventas y QuickBooks).
+  3. *Consignación*: el vendedor arma el pedido (precio negociado $2.99 gana a la lista; Recogido, «En consignación», sin envío). **Despacho y factura encadenados por
+     API** (la misma secuencia ya se probó por la pantalla en el punto 2). En Facturación → Consignación: pago parcial $10.00 → saldo baja; pago del resto →
+     `balance = 0`, `paid = total` ($33.34).
+  4. *360 px* (proyecto `movil-impuestos`): los cuatro pasos y el envío, sin desplazamiento horizontal de la página.
+- El recorrido entra en los proyectos `escritorio-impuestos` / `movil-impuestos` de `playwright.config.ts` (enciende impuestos, como los lotes 56 y 60).
+- **Capturas**: 42 en `docs/manual/frontend/img/l228-*.png` y 42 en `docs/manual/en/frontend/img/` (`MANUAL_LANG=en`), `deviceScaleFactor: 2`, claro y oscuro
+  (`-oscuro`) en las pantallas principales; cada idioma sobre una base recién creada (datos limpios). Referenciadas en los capítulos **47, 48 y 49** (es y en), y
+  también en 02 §1.8, 18 y 19 §4e, que tenían su nota «Capturas pendientes (P8)»; quedan pendientes (dicho en cada nota) las de la **app móvil**, el diálogo de
+  faltante, los distintivos de la lista de órdenes, los paneles «Ventas»/«Documentos del cliente», la ventana de rechazar, la vista «Consignado por cliente» y el
+  detalle de consignación.
+- Al terminar: API y web apagados, base `TeikemE2E` borrada.
+
+### Resultado literal (corrida final, base limpia)
+```
+es: ✓ 1 [escritorio-impuestos] Precios y ofertas … (6.5s)
+    ✓ 2 [escritorio-impuestos] Pedido guiado: cliente nuevo → … → QuickBooks (50.0s)
+    ✓ 3 [escritorio-impuestos] Consignación: pedido en consignación, pago parcial y total, saldo en cero (19.7s)
+    ✓ 8 [movil-impuestos] Pedido guiado a 360 px … (6.4s)
+    4 skipped · 4 passed (1.6m)          (los 4 «skipped» son cada prueba en el proyecto que no le toca)
+en: los mismos 4 passed, 4 skipped (2.0m)
+```
+Bloque de la factura en el IIF (tabuladores como `→`):
+```
+TRNS→→INVOICE→11/07/2026→Accounts Receivable→Farmacia Nueva DKAHADG→73.26→FAC-00001→OV-00001→N→N→Y→12/07/2026→Net 30
+SPL→→INVOICE→11/07/2026→Sales→→-33.41→FAC-00001→Tirillas Prodigy No Coding (50) (OFERTA1-DKAHADG)→N→-6→5.56833→52800-DKAHADG→Y→
+SPL→→INVOICE→11/07/2026→Sales→→-8.53→FAC-00001→Monitor Prodigy AutoCode (OFERTA1-DKAHADG)→N→-1→8.53→070120-DKAHADG→Y→
+SPL→→INVOICE→11/07/2026→Sales→→-13.00→FAC-00001→Crema Global 4 oz→N→-4→3.25→GL-100-DKAHADG→Y→
+SPL→→INVOICE→11/07/2026→Sales→→-12.00→FAC-00001→OV-00001 — Cargo de envío→N→-1→12.00→Shipping→N→
+SPL→→INVOICE→11/07/2026→Sales Tax Payable→→-6.32→FAC-00001→IVU→N→→→IVU→N→AUTOSTAX
+ENDTRNS
+```
+
+### Errores que destapó y se corrigieron (solo frontend, cambios mínimos)
+1. **Pedido guiado, paso 2: el buscador de la marca medía ~200 px de alto** (más a 360 px): `.qbox` trae `flex: 1 1 200px` y en la columna del paso esa base se
+   volvía alto. `wizard.css`: `.wz-step > .qbox { flex: none; }`. Lo vigila el recorrido a 360 px (alto < 60 px).
+2. **Tema oscuro: casillas sueltas blancas** (fuera de `.f` no reciben los colores del tema): cantidades del pedido guiado (`.wz-qty`), cantidades de la ventana de la
+   orden (`.sales-qty`), precio de un renglón de lista (`.pl-price`) y el buscador de cliente en la fila de filtros de Consignación (`.tax-filters .cpick input`).
+   Ahora usan `--bg-2`/`--panel`, `--line` y `--text`. El recorrido comprueba que `.wz-qty` no sea blanca en oscuro.
+3. **Editor del kit: el botón «×» de cada componente caía a un renglón propio de todo el ancho** (`.r2` es de dos columnas): `.r2.kit-comp-row` de tres columnas.
+4. **La firma en la ventana de la orden se salía de su celda**: `.sales-sign img { max-width: min(240px, 100%) }`.
+5. **«Precios y ofertas»: «Mostrar desactivadas» descuadrado** (casilla arriba, texto abajo): usa el `ToggleFilter` de los filtros del almacén.
+6. **«1 clientes»** en la lista de listas y en la ventana: el texto pasa a «Clientes escogidos: {count}» / «Selected clients: {count}» (el i18n no tiene plurales).
+
+Compuerta tras los cambios: `tsc -b` limpio, `npm run lint` sin errores, `vitest` de warehouse/sales/billing/tax/i18n **100 archivos, 896 pruebas, todas pasan**,
+`npm run build` ✓. La corrida completa de `npm run check` dio **3715 pasan, 1 falla**: `DispatchMap.test.tsx › plano de la ruta activa › va dentro de «Ruta
+activa»…` («Unable to find … /Plano esquemático/»); falla igual corrida sola, el archivo no se ha tocado desde el lote 216 y no tiene que ver con este lote:
+**no se arregló, se reporta**.
+
+### Hallazgos que no se arreglaron (para decidir)
+- **Tema oscuro sin `color-scheme: dark`**: las casillas de verificación nativas (p. ej. «Elegir» en la pestaña QuickBooks) y los selectores de fecha del navegador
+  salen claros en oscuro. Se arregla con una línea en `src/styles/tokens.css`, pero cambia el aspecto de toda la aplicación: se deja a decisión.
+- **`e2e/staffHelpers.ts › enableModule`** usa al administrador de la compañía y el API responde 403 (solo la plataforma enciende módulos): los recorridos que lo
+  llaman (p. ej. `lote60-ordenes-de-venta`) fallarían en una base nueva. Este recorrido usa su propio ayudante con la plataforma; no se cambió el compartido.
+- La ficha del cliente muestra «Teléfonos y correos: Sin teléfonos ni correos» para el cliente dado de alta en el pedido: el alta mínima guarda teléfono y correo
+  en la **persona de contacto** (por diseño, lote 222); el IIF sí los lleva (`7875551234 x12`). Puede confundir a la oficina.
+- El supervisor de ventas, además de **Aprobar**, ve en la ficha el avance de estatus «Avanzar a Activo» (el de siempre), que aprueba sin pedir límite ni término.

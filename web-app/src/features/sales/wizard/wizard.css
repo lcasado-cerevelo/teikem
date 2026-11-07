@@ -24,6 +24,8 @@
 .wz-step h2 { margin: 0; font-size: 18px; }
 .wz-sub { margin: 4px 0 0; font-size: 15px; }
 .wz-step .f { margin: 0; min-width: 0; }
+/* Lote 228: .qbox trae flex: 1 1 200px (pensado para una fila de filtros); en la columna del paso esa base de 200px se volvía ALTO */
+.wz-step > .qbox { flex: none; }
 .wz-fieldset { border: 1px solid var(--line-2); border-radius: var(--radius-sm); padding: 10px 12px; margin: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .wz-fieldset legend { font-weight: 600; padding: 0 4px; }
 .wz-form { display: flex; flex-direction: column; gap: 12px; }
@@ -46,7 +48,10 @@
 .wz-offer-body b { overflow-wrap: anywhere; }
 .wz-stepper { display: flex; align-items: center; gap: 6px; }
 .wz-stepper .btn { min-width: 40px; justify-content: center; }
-.wz-qty { width: 5.5rem; max-width: 100%; text-align: right; }
+/* Lote 228: casilla suelta (fuera de .f) con los colores del tema; sin esto el navegador la pinta blanca también en el tema oscuro */
+.wz-qty { width: 5.5rem; max-width: 100%; text-align: right; background: var(--bg-2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; color: var(--text); font: inherit; outline: none; }
+.wz-qty:focus { border-color: var(--action); box-shadow: 0 0 0 3px var(--action-bg); }
+.wz-qty:disabled { opacity: .6; }
 .wz-stepper .wz-qty { flex: 1 1 auto; width: auto; min-width: 0; }
 .wz-noprice { color: var(--warn); font-size: 13px; }
 .wz-prods { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line-2); border-radius: var(--radius-sm); max-height: 60vh; overflow-y: auto; }

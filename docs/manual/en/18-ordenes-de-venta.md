@@ -293,7 +293,11 @@ For support: table `SalesOrderLineComponent` (the snapshot, deleted with the lin
 
 Batch 222 (2026-11-07). The sales order is still the same; it now carries the data that used to be asked on the salespeople's form. All of it lives in `terms` of the order DTO (`GET /sales-orders/{publicId}`) and the list carries the badges.
 
-> Screenshots pending (P8): the order window with «Order: urgency, delivery, payment and authorization», the list badges and the «Shipping charge» line.
+> Screenshot from the batch 228 walkthrough (the list badges are still pending):
+
+![The order window: urgent, delivery, payment method, who authorizes with the signature and the shipping charge with its reason](frontend/img/l228-orden.png)
+
+![Settings → Operations → Sales: shipping charge, minimum for free shipping and whether it carries IVU](frontend/img/l228-ajustes-ventas.png)
 
 | Data | What it is | API field (`terms` / body) |
 |---|---|---|

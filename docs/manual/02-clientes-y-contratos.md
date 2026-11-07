@@ -176,7 +176,11 @@ Quién puede: `clients.update`. Cómo se usa: `POST /api/v1/clients/{publicId}/d
 
 Lote 222 (2026-11-07), pedido de vendedores. Un vendedor que atiende a un negocio que todavía no es cliente puede darlo de alta **desde el pedido**, sin contrato ni numeración a mano. El cliente nace **Prospecto** (`PROSPECT`) y el supervisor de ventas lo **aprueba** o lo **rechaza**. Mientras es prospecto se le puede armar y solicitar un pedido (se reserva), pero el pedido **no se despacha** ([18 §21](18-ordenes-de-venta.md#21-cliente-nuevo-prospecto-y-la-orden-lote-222)).
 
-> Capturas pendientes (P8): la ficha de un prospecto (banner «Cliente nuevo», botones Aprobar y Rechazar), los paneles «Ventas» y «Documentos del cliente», y las ventanas de aprobar y rechazar.
+> Capturas del recorrido del lote 228 (siguen pendientes los paneles «Ventas» y «Documentos del cliente» y la ventana de rechazar):
+
+![Ficha de un prospecto: «Este cliente lo dio de alta un vendedor y espera su aprobación», con Aprobar y Rechazar](frontend/img/l228-ficha-prospecto.png)
+
+![La ventana «Aprobar a …» con límite de crédito, término y comentario](frontend/img/l228-aprobar-cliente.png)
 
 **Quién puede.** Módulo **CATALOG** (y Órdenes de venta para el pedido).
 - Alta mínima: **`clients.create_basic`** (rol Ventas) o `clients.create`.

@@ -293,7 +293,11 @@ Para soporte: tabla `SalesOrderLineComponent` (la foto, se borra con la línea) 
 
 Lote 222 (2026-11-07). La orden de venta sigue siendo la misma; ahora lleva los datos que antes se pedían en el formulario de los vendedores. Todos viven en `terms` del DTO de la orden (`GET /sales-orders/{publicId}`) y la lista trae los distintivos.
 
-> Capturas pendientes (P8): la ventana de la orden con «Pedido: urgencia, entrega, pago y autorización», los distintivos de la lista y la línea «Cargo de envío».
+> Captura del recorrido del lote 228 (siguen pendientes los distintivos de la lista):
+
+![La ventana de la orden: urgente, entrega, forma de pago, quien autoriza con su firma y el cargo de envío con su porqué](frontend/img/l228-orden.png)
+
+![Ajustes → Operación → Ventas: cargo de envío, mínimo para envío gratis y si lleva IVU](frontend/img/l228-ajustes-ventas.png)
 
 | Dato | Qué es | Campo del API (`terms` / cuerpo) |
 |---|---|---|

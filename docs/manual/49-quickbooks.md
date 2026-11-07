@@ -4,7 +4,7 @@
 
 Lote 225 (2026-11-07) — pedido de vendedores, parte P5. La oficina pasa a **QuickBooks Desktop** las **facturas de venta emitidas** con un archivo **IIF** que Teikem arma, y deja constancia de cuáles ya entraron. No hay conexión directa con QuickBooks: Teikem baja el archivo y la oficina lo importa. La pantalla está en **Contabilidad → Órdenes de venta → pestaña «QuickBooks»** (`/sales-orders?tab=quickbooks`); las cuentas y nombres se configuran en **Sistema → Ajustes → Operación → QuickBooks**. Las facturas salen de la facturación de ventas ([19](19-facturacion.md)) y de la orden ([18](18-ordenes-de-venta.md)).
 
-> Capturas pendientes (P8): la pestaña QuickBooks (lista, aviso «N de estas ya salieron…»), la ventana «Exportar a QuickBooks», el panel «¿Ya importaste estas N?», «ver datos» de un cliente nuevo, el histórico «Ya pasadas a QuickBooks» y Ajustes → QuickBooks.
+> Capturas del recorrido del lote 228 (2026-11-07, datos de demostración).
 
 ## 1. Quién puede y dónde
 
@@ -42,6 +42,20 @@ Lote 225 (2026-11-07) — pedido de vendedores, parte P5. La oficina pasa a **Qu
 | Histórico (`from`, `to`, `q`, `skip`, `take`) | `GET /history` | cualquiera de los tres |
 | Ajustes | `GET /settings` · `PATCH /settings` | view o `admin.tenant` · `admin.tenant` |
 
+![La pestaña QuickBooks: la factura por pasar con «Cliente nuevo», «3 productos nuevos» y «ver datos»](frontend/img/l228-qb-lista.png)
+![La pestaña en el tema oscuro](frontend/img/l228-qb-lista-oscuro.png)
+
+![«ver datos»: lo que QuickBooks todavía no tiene del cliente nuevo y de sus productos](frontend/img/l228-qb-ver-datos.png)
+
+![La ventana «Exportar a QuickBooks» con «Incluir los clientes y productos nuevos»](frontend/img/l228-qb-exportar.png)
+
+![«¿Ya importaste estas N?» con la lista marcada, «Bajar el archivo otra vez», «Todavía no» y «Sí, ya están»](frontend/img/l228-qb-ya-importaste.png)
+
+![El histórico «Ya pasadas a QuickBooks» con quién, cuándo, el último archivo y «Quitar la marca»](frontend/img/l228-qb-historico.png)
+![El histórico en el tema oscuro](frontend/img/l228-qb-historico-oscuro.png)
+
+![Una factura a la que se le quitó la marca: vuelve a «por pasar» con «Salió el…» y el aviso «N de estas ya salieron…»](frontend/img/l228-qb-ya-salieron.png)
+
 ## 4. El archivo
 
 Texto con **tabuladores** y renglones CRLF, en **Windows-1252** (lo que no cabe en esa página sale como «?»), fechas MM/DD/AAAA y montos con punto. En este orden: **productos nuevos** (`!INVITEM`), **clientes nuevos** (`!CUST`) y **facturas** (`!TRNS` / `!SPL` / `!ENDTRNS`).
@@ -77,6 +91,8 @@ Vacío = valor por omisión.
 | Términos de pago | Tabla: término de Teikem → nombre en QuickBooks (un nombre vacío quita el término del mapa) | — | 31 |
 
 El aviso diario «Facturas por pasar a QuickBooks» sale a las **07:00** de la compañía por el trabajo programado `SALES_QUICKBOOKS_PENDING` (la hora se cambia en Sistema → Trabajos programados), **uno al día y solo si hay algo**. A quién y por qué canal (campana, correo) lo dice una **regla de aviso** que arma el administrador en Sistema → Reglas de aviso: no se siembra ninguna. En el Pulso, la cifra «Facturas por pasar a QuickBooks» del panel Ventas y la fila de «Necesita tu atención» (en rojo si la más vieja pasa de 7 días) salen solas para quien tiene `sales.quickbooks.view`.
+
+![Ajustes → Operación → QuickBooks](frontend/img/l228-ajustes-quickbooks.png)
 
 ## 6. Antes de la primera exportación
 

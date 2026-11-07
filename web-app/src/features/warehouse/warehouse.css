@@ -521,7 +521,13 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 .pl-thumb-empty{width:40px;height:40px;border-radius:6px;border:1px dashed var(--line);display:inline-block}
 .pl-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
 .pl-chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
-.pl-price{width:110px;max-width:100%}
+/* Lote 228: casilla suelta (fuera de .f) con los colores del tema; sin esto el navegador la pinta blanca también en el tema oscuro */
+.pl-price{width:110px;max-width:100%;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:7px 9px;color:var(--text);font:inherit;outline:none;}
+.pl-price:focus{border-color:var(--action);box-shadow:0 0 0 3px var(--action-bg)}
 .pl-add{display:grid;grid-template-columns:minmax(0,1fr) 120px auto;gap:8px;align-items:end;margin:10px 0}
 @media (max-width:720px){.pl-add{grid-template-columns:minmax(0,1fr)}}
 .promo-photo{max-width:220px;width:100%;border-radius:var(--radius);border:1px solid var(--line);display:block}
+
+/* Lote 228: renglón de un componente del kit = producto, cantidad y el botón «×» en la misma fila (el «×» caía a un renglón propio de todo el ancho) */
+.r2.kit-comp-row{grid-template-columns:minmax(0,1fr) minmax(0,10rem) auto}
+@media (max-width:480px){.r2.kit-comp-row{grid-template-columns:minmax(0,1fr) minmax(0,6rem) auto}}

@@ -6,7 +6,7 @@
 
 Batches 223 and 226 (2026-11-07) — salespeople's order, parts P3 (web) and P4 (mobile app). The **guided order** is another door to the **same sales order** of [chapter 18](18-ordenes-de-venta.md): the salesperson builds the order in **four steps** (client, products, delivery, authorization), it is saved as a **draft** at every step and at the end they **send** it confirming who they are. The «New order» window stays as it always was, for the office. Prices come from the lists ([47](47-precios-y-ofertas.md)); the new client is born as a prospect ([02 §1.8](02-clientes-y-contratos.md#18-prospect-client-minimal-sign-up-and-approval-batch-222)).
 
-> Screenshots pending (P8): the four steps on the web (desktop and 360 px), the «New client» sign-up, the cart, the signature, the «Confirm with your password» window, the shortage dialog and the final screen; in the app, Orders → My orders, the four steps and the fingerprint confirmation.
+> Screenshots from the batch 228 walkthrough (2026-11-07, demo data): web on desktop (light and dark) and at 360 px. Still pending: the **mobile app** ones (Orders → My orders, the steps and the fingerprint; the Playwright walkthrough does not run the app) and the **shortage dialog** (it is the same as in [18 §6](18-ordenes-de-venta.md)).
 
 ## 1. Who can and where
 
@@ -26,6 +26,11 @@ Progress bar on top («Step 2 of 4: Products»). **Next** saves the draft of the
 - **Order data**: **Urgent order** and **Order note** (up to 500 characters); **Payment method** prefilled with the client's and editable (if it changes, the «Payment method changed» mark remains); **Credit term** if the method is Credit. Payment methods in detail in [18 §19](18-ordenes-de-venta.md#19-payment-method-and-consignment-batch-222).
 - «Next» creates the draft (`POST /sales-orders` with `step = CLIENT`): still **without products**.
 
+![Step 1: the chosen new client (prospect), urgent order with a note and the prefilled payment method](frontend/img/l228-paso1-cliente.png)
+![Step 1 in the dark theme](frontend/img/l228-paso1-cliente-oscuro.png)
+
+![«New client»: the minimal sign-up with physical address, payment method and the document photos](frontend/img/l228-cliente-nuevo.png)
+
 ### Step 2 — Products
 - Tabs by **brand**; brands without an active product do not show; those without a brand go last («No brand»).
 - Above each brand, its **offers in effect** as cards with photo and price, with **+** and **−**. Below, the brand's **full list**: SKU, name, price (from the client's in-effect list or the general one) and a quantity box; typing a quantity adds the line. A search box by SKU or name filters the brand.
@@ -34,11 +39,19 @@ Progress bar on top («Step 2 of 4: Products»). **Next** saves the draft of the
 - A kit is ordered in whole pieces. On the web, an adjustable kit lets you change the pieces of this order; in the app not yet (they are ordered with the catalog's pieces).
 - «Next» saves with `step = PRODUCTS`: from here the order needs at least one product.
 
+![Step 2: tabs by brand, the offer with its photo and the brand list with the list price](frontend/img/l228-paso2-productos.png)
+![Step 2 in the dark theme](frontend/img/l228-paso2-productos-oscuro.png)
+
+![The open cart: the lines to correct or remove, with the subtotal](frontend/img/l228-carrito.png)
+
 ### Step 3 — Delivery
 - **Delivery** (taken to the client) or **Pickup** (the client picks it up: no shipping charge). With «Delivery», the default destination is the client's **physical address**; another client address (consignee) can be chosen or created (on the web).
 - **On consignment**: only if the payment method is Consignment.
 - **Required date** (optional). In the app it is typed as `YYYY-MM-DD`.
 - **Summary**: subtotal, IVU, **shipping charge** (with its «Why») and **total**. The server calculates it with the company's and the client's rule ([18 §20](18-ordenes-de-venta.md#20-shipping-charge-batch-222)); changing delivery/pickup or the destination saves the draft at once to recalculate.
+
+![Step 3: delivery to the physical address and the summary with the $12 shipping charge and its reason](frontend/img/l228-paso3-entrega.png)
+![Step 3 in the dark theme](frontend/img/l228-paso3-entrega-oscuro.png)
 
 ### Step 4 — Authorization and sending
 - **Name of who authorizes** (up to 150 characters) and **drawn signature** (with the mouse or the finger; uploaded as a PNG image). They are **required only if the client requires the signature of whoever authorizes the order**; otherwise they are optional.
@@ -47,6 +60,26 @@ Progress bar on top («Step 2 of 4: Products»). **Next** saves the draft of the
   - **App**: asks for **fingerprint or face**; if the phone has none or it is not confirmed, it asks for the **password** (plus the MFA code if needed).
 - Then the server **requests** the order: it checks stock and credit and reserves (same as «Request» in [18 §6](18-ordenes-de-venta.md#6-requesting-the-order-validate-and-reserve-batch-58)). If there is a shortage or the credit is exceeded, the usual **shortage dialog** appears: the sending is repeated with backorder, or with the credit authorization (`orders.credit_override`).
 - **Final screen**: number `OV-#####`, total, and **New guided order**. If the client is a prospect: «The client is a prospect: the order is reserved but awaits the client's approval and cannot be dispatched yet.»
+
+![Step 4: name of who authorizes and the drawn signature](frontend/img/l228-paso4-firma.png)
+![Step 4 in the dark theme](frontend/img/l228-paso4-firma-oscuro.png)
+
+![«Confirm with your password» when sending the order](frontend/img/l228-contrasena.png)
+
+![Final screen for a prospect client: the number, the total and «awaits the client approval»](frontend/img/l228-enviado.png)
+![Final screen in the dark theme](frontend/img/l228-enviado-oscuro.png)
+
+**At 360 px** (phone browser): the same steps, with no horizontal page scroll.
+
+![Step 1 at 360 px](frontend/img/l228-movil-paso1.png) ![Step 2 at 360 px](frontend/img/l228-movil-paso2.png) ![Cart at 360 px](frontend/img/l228-movil-carrito.png) ![Step 3 at 360 px](frontend/img/l228-movil-paso3.png) ![Step 4 at 360 px](frontend/img/l228-movil-paso4.png) ![Order sent at 360 px](frontend/img/l228-movil-enviado.png)
+
+**After sending** (full walkthrough): the sales supervisor approves the client in its record ([02 §1.8](02-clientes-y-contratos.md)) and the office dispatches from the order, invoices ([19](19-facturacion.md)) and passes it to QuickBooks ([49](49-quickbooks.md)).
+
+![The sent order: urgent, delivery, 30-day credit, who authorizes with the signature, the kit with its pieces and the shipping charge](frontend/img/l228-orden.png)
+
+**Consignment order**: with the Consignment payment method and «Pickup», no shipping charge; the client negotiated price wins over the general list.
+
+![Step 3 of a consignment order: Pickup, «On consignment» and no shipping charge](frontend/img/l228-consignacion-entrega.png)
 
 ## 3. The draft
 

@@ -173,7 +173,7 @@ export function KitEditorModal({ publicId, product, kit, onClose }: { publicId: 
       <div className="pb">
         <p>{t('warehouse.products.kit.editorHelp')}</p>
         {rows.map((r, i) => (
-          <div className="r2" key={r.key} style={{ alignItems: 'end', marginBottom: 8 }}>
+          <div className="r2 kit-comp-row" key={r.key} style={{ alignItems: 'end', marginBottom: 8 }}>
             <div className="f">
               <label htmlFor={`${r.key}-p`}>{t('warehouse.products.kit.component', { n: i + 1 })}</label>
               <ProductPicker

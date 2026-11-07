@@ -7,6 +7,7 @@ import { Can } from '../../kernel/access'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
 import { Chip, DataTable, EmptyState, Filters, IconTag, Panel, Spinner, type DataColumn } from '../../kernel/ui'
+import { ToggleFilter } from './filterControls'
 import { KitEditorByIdModal } from './KitTab'
 import { PriceListEditorModal } from './PriceListEditorModal'
 import { useOffers, usePriceLists, type PriceListListItemDto, type ProductPromoDto } from './priceListApi'
@@ -140,10 +141,8 @@ export function PriceListsTab() {
             ))}
           </select>
         </div>
-        <label className="f" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <input type="checkbox" checked={includeInactive} onChange={(e) => setIncludeInactive(e.target.checked)} />
-          {t('warehouse.products.prices.showInactive')}
-        </label>
+        {/* Lote 228: el interruptor de los filtros del almacén (etiqueta arriba, a la altura de los campos); la casilla suelta quedaba descuadrada */}
+        <ToggleFilter label={t('warehouse.products.prices.showInactive')} checked={includeInactive} onChange={setIncludeInactive} />
       </Filters>
       <Panel flush icon={<IconTag />} title={t('warehouse.products.prices.lists')} badge={lists.data?.length}>
         {lists.error ? (

@@ -20,3 +20,7 @@
 /* listas sueltas (filtro y categoría dentro de la tabla): la misma apariencia que los campos del kit */
 .tax-filters select, .tax-screen table select { min-height: 34px; padding: 4px 10px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--panel); color: inherit; font: inherit; }
 .tax-filters select:focus-visible, .tax-screen table select:focus-visible { outline: 2px solid var(--brand, #1f6feb); outline-offset: 1px; }
+/* Lote 228: el buscador de cliente (ClientPicker) en esta fila de filtros, con los mismos colores del tema que los select (salía blanco en el tema oscuro) */
+.tax-filters .cpick { min-width: 200px; flex: 1 1 200px; }
+.tax-filters .cpick input { width: 100%; min-height: 34px; padding: 4px 10px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--panel); color: inherit; font: inherit; }
+.tax-filters .cpick input:focus-visible { outline: 2px solid var(--brand, #1f6feb); outline-offset: 1px; }
