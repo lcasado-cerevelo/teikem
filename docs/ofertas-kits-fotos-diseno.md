@@ -97,3 +97,11 @@ Hoy el producto solo guarda peso (kg) y volumen (m³); casi nadie piensa en metr
   métrico o inglés; Puerto Rico es de habla hispana y usa el sistema inglés).
 - **«Ajustable al pedir»:** no se sabe si se usa hoy; Luis: «vamos a permitir lo que se use así». *Por confirmar: lo entiendo como que
   NO se quita (cambia lo anotado en §5); lo nuevo es la sustitución.*
+
+## 9. Respuestas de Luis (2026-11-09, cuarta ronda)
+- **«Ajustable al pedir» SE QUEDA** (anula lo anotado en §5). Hoy no hay datos de kits ni de ofertas en las bases, así que nada de este
+  rediseño afecta datos existentes.
+- **«No sustituible» se marca en la pieza del kit** (por omisión toda pieza es sustituible). La marca se puede poner **desde los dos
+  lugares donde se trabaja un kit**: el editor del kit (producto) y la pantalla de la oferta cuando se crea o edita un kit ahí.
+- **Editor de producto en escritorio:** Luis lo ve muy angosto y con demasiado scroll; se quiere más ancho en pantalla grande (ver la
+  conversación; pendiente de su visto bueno).
