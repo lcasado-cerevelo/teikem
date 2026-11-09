@@ -1,0 +1,38 @@
+/* Lote 229 — ofertas (Contabilidad → Precios y ofertas), kit de oferta y foto del producto. Solo colores del tema (claro y oscuro). */
+.of-card{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;min-width:0;background:transparent}
+.of-card.dim{opacity:.6}
+.of-card .pl-photo{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
+.of-card-body{padding:10px 12px;display:flex;flex-direction:column;gap:6px;min-width:0;flex:1}
+.of-card-body h3{margin:0;font-size:14px;overflow-wrap:anywhere}
+.of-card-body .pl-sub{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.of-card-body .btn{align-self:flex-start}
+.of-chips{display:flex;flex-wrap:wrap;gap:6px}
+/* «Sin fecha de fin»: bien visible (borde y fondo de aviso), en tarjetas y en el editor */
+.of-open{display:block;font-size:12.5px;font-weight:600;color:var(--warn);background:var(--warnbg);border:1px solid var(--warn);border-radius:8px;padding:6px 9px;overflow-wrap:anywhere}
+.of-warns{margin:10px 0;padding:10px 12px;border:1px solid var(--warn);border-radius:9px;background:var(--panel-2);display:flex;flex-direction:column;gap:6px;min-width:0}
+.of-warns b{display:block;color:var(--warn);font-size:13px}
+.of-warns ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.of-warns li{font-size:13px;overflow-wrap:anywhere;color:var(--text)}
+.of-section{margin-top:14px;min-width:0}
+.of-section>h3{font-size:13px;margin:0 0 8px}
+.of-photo-row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
+.of-photo{width:160px;max-width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--radius-sm);border:1px solid var(--line);display:block}
+.of-photo-empty{width:160px;max-width:100%;aspect-ratio:4/3;border-radius:var(--radius-sm);border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);text-align:center;padding:8px}
+.of-ways{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.of-item-photo{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-width:0}
+.of-from-product{font-size:11.5px;color:var(--muted)}
+/* kit de oferta: una pieza por renglón (producto, cantidad, «No sustituible», quitar); a 360 px se apila */
+.of-piece{display:grid;grid-template-columns:minmax(0,1fr) 110px auto auto;gap:8px;align-items:end;margin-bottom:8px;min-width:0}
+.of-piece .f{margin:0;min-width:0}
+.of-piece .of-ns{display:flex;gap:6px;align-items:center;white-space:nowrap;padding-bottom:9px}
+@media (max-width:720px){.of-piece{grid-template-columns:minmax(0,1fr) 90px}.of-piece .of-ns{padding-bottom:0}}
+.of-sum{margin:10px 0;display:flex;flex-direction:column;gap:4px;font-size:13px}
+.of-sum .of-save{color:var(--ok);font-weight:600}
+.of-sum .of-loss{color:var(--warn);font-weight:600}
+/* foto del producto (editor de producto) */
+.pp-block .pp-row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;min-width:0}
+.pp-block .pp-img{width:180px;max-width:100%;aspect-ratio:1/1;object-fit:contain;background:var(--panel-2);border-radius:var(--radius-sm);border:1px solid var(--line);display:block}
+.pp-block .pp-empty{width:180px;max-width:100%;aspect-ratio:1/1;border-radius:var(--radius-sm);border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);text-align:center;padding:8px}
+.pp-block .pp-side{display:flex;flex-direction:column;gap:8px;min-width:0;flex:1 1 200px}
+.pp-block .pp-side p{margin:0}
+.pp-block .pp-actions{display:flex;flex-wrap:wrap;gap:8px}

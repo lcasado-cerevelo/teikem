@@ -2,6 +2,7 @@
 // de totales que devuelve el servidor (subtotal, IVU, envío con su porqué y total), la validación de cada paso antes de guardar el borrador, el cuerpo que se
 // manda en cada paso (POST/PATCH con `step`) y el alta mínima del cliente nuevo. Sin React ni navegador: la app móvil (P4) puede copiarlas tal cual.
 // El servidor repite todas estas reglas (SalesDraftStepRules, SalesPaymentRules, ClientProspectRules): aquí solo se evita mandar lo que sabemos que va a fallar.
+import { piecesToRequest } from '../kitSubstitution'
 import { decimalsOf, paymentChanged, paymentError, parseNumber, prefillPayment, type KitPiece, type PaymentErrorKey } from '../salesRules'
 
 export type WizardStep = 'CLIENT' | 'PRODUCTS' | 'DELIVERY' | 'AUTHORIZATION'
@@ -40,7 +41,7 @@ export interface CartLine {
   imagePublicId: string | null
   /** Texto de la casilla de cantidad, tal cual se escribió. */
   quantity: string
-  /** Piezas ajustadas al pedir (kit ajustable); null = las del catálogo o las ya guardadas. */
+  /** Piezas ajustadas (kit ajustable) o sustituidas (Lote 230) al pedir; null = las del catálogo o las ya guardadas. */
   components: KitPiece[] | null
 }
 
@@ -198,7 +199,8 @@ export function cartToLines(cart: readonly CartLine[]) {
       productPublicId: l.productPublicId,
       quantity: parseNumber(l.quantity) ?? undefined,
       ...(typed !== null ? { unitPrice: typed } : {}),
-      components: l.isKit && l.components ? l.components.map((c) => ({ productPublicId: c.productPublicId, quantity: parseNumber(c.quantity) ?? 0 })) : undefined,
+      // Lote 230: piezas ajustadas o sustituidas: todas, la sustituta con la original en substitutesProductPublicId
+      components: l.isKit && l.components ? piecesToRequest(l.components) : undefined,
     }
   })
 }

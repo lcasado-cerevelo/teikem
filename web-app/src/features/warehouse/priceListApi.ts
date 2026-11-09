@@ -1,21 +1,19 @@
-// Lote 221 (P1) — hooks de listas de precios y ofertas (`/api/v1/price-lists`, `/api/v1/products/{id}/promo`). Todo con el cliente generado.
+// Lote 221 (P1) — hooks de las listas de precios (`/api/v1/price-lists`). Todo con el cliente generado. Las ofertas (lote 229) van aparte, en `offerApi.ts`.
 // Lectura: sales.view; escritura: sales.pricelist. Las mutaciones de una lista devuelven la lista completa: se deja en la caché del detalle.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../../kernel/api/client'
 import type { components } from '../../kernel/api/schema'
-import type { PriceListRequest, ProductPromoRequest } from './priceListRules'
+import type { PriceListRequest } from './priceListRules'
 
 type S = components['schemas']
 export type PriceListListItemDto = S['PriceListListItemDto']
 export type PriceListDto = S['PriceListDto']
 export type PriceListItemDto = S['PriceListItemDto']
 export type PriceListClientDto = S['PriceListClientDto']
-export type ProductPromoDto = S['ProductPromoDto']
 
 export const priceListKeys = {
   list: ['/api/v1/price-lists'] as const,
   detail: ['/api/v1/price-lists', 'detail'] as const,
-  offers: ['/api/v1/price-lists/offers'] as const,
 }
 
 export function usePriceLists(query: { q?: string; state?: string; includeInactive?: boolean }) {
@@ -35,21 +33,12 @@ export function usePriceList(publicId: string | null | undefined) {
   })
 }
 
-export function useOffers(includeInactive: boolean) {
-  return useQuery({
-    queryKey: [...priceListKeys.offers, includeInactive],
-    queryFn: () => unwrap(api.GET('/api/v1/price-lists/offers', { params: { query: { includeInactive } } })),
-    meta: { handleAccessDenied: false },
-  })
-}
-
-/** Después de cualquier cambio: la lista devuelta queda en caché y la tabla y las ofertas se vuelven a pedir. */
+/** Después de cualquier cambio: la lista devuelta queda en caché y la tabla se vuelve a pedir. */
 function useAfterChange() {
   const qc = useQueryClient()
   return (dto: PriceListDto) => {
     qc.setQueryData([...priceListKeys.detail, dto.publicId], dto)
     void qc.invalidateQueries({ queryKey: priceListKeys.list, predicate: (q) => q.queryKey[1] !== 'detail' })
-    void qc.invalidateQueries({ queryKey: priceListKeys.offers })
   }
 }
 
@@ -103,38 +92,5 @@ export function usePriceListActions() {
         unwrap(api.DELETE('/api/v1/price-lists/{publicId}/clients/{clientPublicId}', { params: { path: { publicId, clientPublicId } } })),
       ...opts,
     }),
-  }
-}
-
-// ---- Oferta (promoción) de un kit ----
-export const promoKey = (publicId: string | null | undefined) => ['/api/v1/products/promo', publicId] as const
-
-export function useProductPromo(publicId: string | null | undefined) {
-  return useQuery({
-    queryKey: promoKey(publicId),
-    queryFn: () => unwrap(api.GET('/api/v1/products/{publicId}/promo', { params: { path: { publicId: publicId ?? '' } } })),
-    enabled: Boolean(publicId),
-    meta: { handleAccessDenied: false },
-  })
-}
-
-export function useProductPromoActions(publicId: string) {
-  const qc = useQueryClient()
-  const onSuccess = (dto: ProductPromoDto) => {
-    qc.setQueryData(promoKey(publicId), dto)
-    void qc.invalidateQueries({ queryKey: priceListKeys.offers })
-  }
-  const path = { params: { path: { publicId } } }
-  return {
-    save: useMutation({ mutationFn: (body: ProductPromoRequest) => unwrap(api.PUT('/api/v1/products/{publicId}/promo', { ...path, body })), onSuccess }),
-    uploadImage: useMutation({
-      mutationFn: (file: File) => {
-        const form = new FormData()
-        form.append('file', file)
-        return unwrap(api.POST('/api/v1/products/{publicId}/promo/image', { ...path, body: {}, bodySerializer: () => form }))
-      },
-      onSuccess,
-    }),
-    removeImage: useMutation({ mutationFn: () => unwrap(api.DELETE('/api/v1/products/{publicId}/promo/image', path)), onSuccess }),
   }
 }

@@ -7,6 +7,8 @@ import { DateField } from './DateField'
 import { DateTimeField } from './DateTimeField'
 import { PasswordBox } from './PasswordBox'
 import { FieldContext, FieldRegistryContext, useFieldInfo, type FieldRegistry } from './formContext'
+import { HelpTip } from './HelpTip'
+import { useT } from '../i18n/useT'
 import './ui.css'
 
 export interface FormProps<TFieldValues extends FieldValues, TContext, TTransformed> {
@@ -102,6 +104,8 @@ export interface FieldProps {
   /** Pinta el asterisco; la validación la hace el esquema zod. */
   required?: boolean
   help?: ReactNode
+  /** Lote 230: ayuda larga plegada en un botón «?» junto a la etiqueta (`HelpTip`); `help` sigue siendo la línea corta visible. */
+  tip?: ReactNode
   className?: string
   /** true = la etiqueta existe para lectores de pantalla (`.sr-only`) pero no se ve: campos dentro de una celda de una
    *  rejilla cuyo encabezado de columna ya dice qué es. El error y la ayuda se siguen viendo. */
@@ -111,7 +115,8 @@ export interface FieldProps {
 }
 
 /** Etiqueta + control + ayuda + error (del esquema o del servidor) bajo el campo. */
-export function Field({ name, label, required = false, help, className, hideLabel = false, children }: FieldProps) {
+export function Field({ name, label, required = false, help, tip, className, hideLabel = false, children }: FieldProps) {
+  const t = useT()
   const id = useId()
   const registry = useContext(FieldRegistryContext)
   const { formState } = useFormContext()
@@ -136,16 +141,27 @@ export function Field({ name, label, required = false, help, className, hideLabe
     [name, id, error, required, errId, helpId],
   )
 
+  const labelEl = (
+    <label htmlFor={id} className={hideLabel ? 'sr-only' : undefined}>
+      {label}
+      {required && (
+        <span className="req" aria-hidden="true">
+          *
+        </span>
+      )}
+    </label>
+  )
+
   return (
     <div className={['f', className].filter(Boolean).join(' ')}>
-      <label htmlFor={id} className={hideLabel ? 'sr-only' : undefined}>
-        {label}
-        {required && (
-          <span className="req" aria-hidden="true">
-            *
-          </span>
-        )}
-      </label>
+      {tip ? (
+        <div className="f-head">
+          {labelEl}
+          <HelpTip label={typeof label === 'string' ? t('ui.helpTip.about', { label }) : t('ui.helpTip.label')}>{tip}</HelpTip>
+        </div>
+      ) : (
+        labelEl
+      )}
       <FieldContext.Provider value={info}>{children}</FieldContext.Provider>
       {help && !message && (
         <p id={helpId} className="help">

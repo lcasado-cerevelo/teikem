@@ -153,3 +153,42 @@ Avisos (no errores, código 200):
   API levantado en Development sin llave de Brevo; nada existente se borró. `schema.d.ts` regenerado en web-app y copiado igual a app-cliente y app-almacen.
 - Nota: un primer `db-init` se corrió por error contra la base local de desarrollo `Teikem` (no se recrea: solo aplica los scripts idempotentes); sin efecto fuera de la
   máquina de desarrollo.
+
+## Frontend (web-app, 2026-11-09)
+Qué quedó:
+- **Contabilidad → Precios y ofertas** (`PriceListsTab`): dos secciones, **Ofertas** (`OffersPanel`, tarjetas con foto, nombre, estado, vigencia, a quién aplica y
+  renglones; sin «hasta» sale «Sin fecha de fin: vale hasta que la desactive» en un recuadro de aviso) y **Listas de precios** (igual que antes). «Nueva oferta» y cada
+  tarjeta abren `OfferEditorModal`: datos (nombre, notas, desde/hasta con aviso si «hasta» va en blanco, aplica a todos), foto de la oferta, clientes escogidos,
+  renglones con las **dos maneras** (escoger producto o kit + precio de oferta; «Crear kit para esta oferta» → `OfferKitModal` con SKU, nombre, precio y piezas con
+  cantidad y «No sustituible», suma a precio de venta y ahorro), foto por renglón (la efectiva del producto por omisión, «Poner otra foto», «Volver a la del
+  producto»), publicar / volver a borrador / desactivar / reactivar, y los `warnings` del servidor en un recuadro `role="status"` (no como error).
+- **Quitado**: el flujo viejo de «Nueva oferta» (escoger un producto y convertirlo en kit), `KitPromoSection` (archivo borrado y su uso en `KitTab` con un Edit de
+  dos líneas), los hooks `useOffers`/`useProductPromo*` y las reglas `promo*` de `priceListApi.ts`/`priceListRules.ts`, y los textos `prices.offerPick*`,
+  `prices.offerStatus`, `prices.editOffer`, `prices.noDates` y `kit.promo.*`. La web ya no llama `/price-lists/offers` ni `/products/{id}/promo`: el backend puede
+  quitarlos cuando las apps tampoco los usen (no lo revisé en app-cliente/app-almacen).
+- **Listas de precios**: el renglón muestra la foto efectiva (`effectiveImagePublicId`) con «Foto del producto» cuando no tiene propia; se quitó el chip «Oferta» del
+  renglón (`isPromotion` ya siempre es false).
+- **Foto del producto**: `ProductPhotoBlock` (subir/cambiar/quitar con `inventory.manage`, vista previa local mientras sube, JPG/PNG/WEBP revisado antes de enviar y
+  mensajes del servidor tal cual; sin foto propia muestra la de la primera pieza del kit y lo dice). Insertado como **primer bloque** del editor de producto, en el
+  lugar que dejó el lote 230 (con un producto nuevo solo dice que la foto se pone después de guardar). Ajusté la prueba de bloques del lote 230 (`ProductEditorModal.test.tsx`,
+  «alta (Lote 230)…») para que espere «Foto» primero.
+- **Pedido guiado**: tarjetas de oferta con el nombre de la oferta y «Válida hasta …» / «Sin fecha de fin»; si se cobra el negociado (más bajo), la tarjeta lo dice;
+  precio de oferta con el chip «Oferta» (nombre de la oferta al pasar el mouse); `notices` en texto pequeño junto al producto, en la línea del carrito (con «Oferta
+  «nombre»») y en un recuadro «Avisos de precio» del paso de entrega (de `linePrices` del borrador guardado y del catálogo, sin repetir); un kit de oferta solo sale
+  como tarjeta. El cuadrito de foto ya usaba `imagePublicId` resuelto por el catálogo. Lo de hoy (cantidad antes que precio con $, búsqueda en todas las marcas,
+  foco, precio escrito con `sales.price`) no se tocó.
+
+Decisiones (revisar):
+1. **Estado de la tarjeta**: `SCHEDULED` se muestra «Publicada (todavía no empieza)» (en las listas sigue «Programada») y, aparte, el chip «Se aplica hoy» con `inEffect`.
+2. **Renglón existente = alta directa** (producto + precio → `POST /items`), como en las listas; el precio se cambia en la celda (al salir del campo) y el kit de oferta
+   se cambia con «Cambiar kit» (nombre y piezas; SKU y precio no, el precio va en el renglón).
+3. **Suma a precio normal del kit** = precio de venta de cada pieza × cantidad, **solo** si se conocen todos (se conocen al escogerlas en el buscador; al cambiar un kit
+   ya creado no vienen y se dice que se calcula al escoger). No se usa la lista general (el servidor no la manda por pieza).
+4. **«Mostrar desactivadas»** de la barra de filtros vale para ofertas y listas, como antes.
+5. **Avisos en el pedido**: se toman del catálogo (al escoger) y de `linePrices` (al guardar); como `linePrices` no se guarda, al reabrir un borrador solo quedan los del
+   catálogo.
+6. Archivos nuevos con estilos propios (`offers.css`, `wizard/priceNotices.css`) para no chocar con los CSS que el lote 230 cambiaba a la vez.
+
+Pruebas: `OffersScreen.test.tsx` (6: tarjetas y «sin fecha de fin», crear con validación y cuerpo, renglón existente, crear kit de oferta con «No sustituible» y ahorro,
+avisos como `status` y foto del renglón, solo lectura), `offerRules.test.ts` (6), `ProductPhotoBlock.test.tsx` (6), `ProductsStep.offers.test.tsx` (5); ajustadas
+`PriceListsTab.test.tsx` y `priceListRules.test.ts` (sin lo de «Es promoción»).

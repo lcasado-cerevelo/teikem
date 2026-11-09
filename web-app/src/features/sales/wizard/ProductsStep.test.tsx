@@ -7,7 +7,7 @@ import { setLang } from '../../../kernel/i18n/i18n'
 import { CartBar, ProductsStep } from './ProductsStep'
 import type { FakeApi } from './wizardTestApi'
 import { StepHarness, WizardProviders } from './wizardTestKit'
-import type { WizardState } from './wizardRules'
+import { cartToLines, type WizardState } from './wizardRules'
 
 const mock = vi.hoisted(() => ({ requests: [], route: null }) as FakeApi)
 
@@ -127,5 +127,56 @@ describe('ProductsStep — paso 2 del pedido guiado', () => {
     await user.clear(screen.getByRole('searchbox', { name: /Buscar por SKU o nombre/ }))
     await user.type(screen.getByRole('searchbox', { name: /Buscar por SKU o nombre/ }), 'zzz')
     expect(screen.getByText('Ningún producto de esta marca coincide con la búsqueda.')).toBeInTheDocument()
+  })
+
+  it('Lote 230: en el carrito, una pieza del kit con sustitutos lleva «Cambiar»; escoger deja «en lugar de» y la línea manda todas las piezas', async () => {
+    const user = userEvent.setup()
+    let last: WizardState | null = null
+    mock.route = (r) => {
+      if (r.method === 'GET' && r.path === '/api/v1/sales-orders/catalog') return CATALOG
+      if (r.method === 'GET' && r.path === '/api/v1/sales-orders/kits/k-1/substitutes')
+        return {
+          kitPublicId: 'k-1', sku: 'OFERTA1', name: 'Oferta guantes y cajas', adjustable: false,
+          components: [
+            {
+              productPublicId: 'p-1', sku: '52800', name: 'Guantes de nitrilo M', quantity: 2, notSubstitutable: false, categoryPath: 'Guantes / Nitrilo', salePrice: 6.25,
+              substitutes: [{ productPublicId: 'p-9', sku: '52801', name: 'Guantes de nitrilo L', brand: 'Ammex', salePrice: 6.25 }],
+            },
+            { productPublicId: 'p-3', sku: '070120', name: 'Caja de cartón', quantity: 1, notSubstitutable: true, substitutes: [] },
+          ],
+        }
+      return undefined
+    }
+    render(<WizardProviders><Step onState={(s) => (last = s)} /></WizardProviders>)
+    const offers = await screen.findByRole('list', { name: 'Ofertas de Ammex' })
+    await user.click(within(offers).getByRole('button', { name: 'Agregar uno de Oferta guantes y cajas' }))
+    await user.click(screen.getByRole('button', { name: /Carrito: 1 producto/ }))
+    const region = screen.getByRole('region', { name: 'Carrito' })
+    // la pieza «no sustituible» no lleva el botón
+    expect(await within(region).findByRole('button', { name: 'Cambiar 52800' })).toBeInTheDocument()
+    expect(within(region).queryByRole('button', { name: 'Cambiar 070120' })).toBeNull()
+    await user.click(within(region).getByRole('button', { name: 'Cambiar 52800' }))
+    await user.click(within(region).getByRole('button', { name: 'Usar 52801 en lugar de 52800' }))
+    expect(within(region).getByText('Guantes de nitrilo L')).toBeInTheDocument()
+    expect(within(region).getByText('en lugar de 52800')).toBeInTheDocument()
+    // el precio de la línea no cambia
+    expect(within(region).getByText('$41.94')).toBeInTheDocument()
+    expect(cartToLines(last!.cart)).toEqual([
+      {
+        productPublicId: 'k-1',
+        quantity: 1,
+        components: [
+          { productPublicId: 'p-9', quantity: 2, substitutesProductPublicId: 'p-1' },
+          { productPublicId: 'p-3', quantity: 1 },
+        ],
+      },
+    ])
+    // Deshacer vuelve la pieza del kit
+    await user.click(within(region).getByRole('button', { name: 'Deshacer el cambio de 52800' }))
+    expect(within(region).queryByText('en lugar de 52800')).toBeNull()
+    expect(cartToLines(last!.cart)[0].components).toEqual([
+      { productPublicId: 'p-1', quantity: 2 },
+      { productPublicId: 'p-3', quantity: 1 },
+    ])
   })
 })

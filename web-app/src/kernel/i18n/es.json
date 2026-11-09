@@ -3044,6 +3044,10 @@
     "modal": {
       "close": "Cerrar"
     },
+    "helpTip": {
+      "label": "Ayuda",
+      "about": "Ayuda: {label}"
+    },
     "confirm": {
       "ok": "Confirmar"
     },
@@ -5119,29 +5123,130 @@
       "title": "Productos e inventario",
       "subtitle": "Lista con existencias disponibles, reservadas y rastreo por lote/serie",
       "tabProducts": "Productos",
+        "photo": {
+          "title": "Foto",
+          "saveFirst": "Guarde el producto para ponerle foto.",
+          "none": "Sin foto",
+          "alt": "Foto de {sku}",
+          "preview": "Vista previa de la foto",
+          "fromPiece": "Sin foto propia: se muestra la de la primera pieza del kit que tiene foto.",
+          "help": "JPG, PNG o WEBP; se reduce a 1200 px. Es la foto que sale en el pedido, en las listas de precios y en las ofertas.",
+          "file": "Archivo de la foto del producto",
+          "add": "Poner foto",
+          "change": "Cambiar foto",
+          "remove": "Quitar foto",
+          "saved": "Foto guardada.",
+          "removed": "Foto quitada.",
+          "badType": "La foto debe ser una imagen JPG, PNG o WEBP."
+        },
         "prices": {
           "newOffer": "Nueva oferta",
-          "offerPickTitle": "Nueva oferta",
-          "offerPickHelp": "Escoge el producto propio que será la oferta. Si todavía no es un kit, define sus componentes y, al guardar, podrás poner la foto, la vigencia y marcarlo «Es promoción».",
-          "offerPickLabel": "Producto",
-          "offerPickContinue": "Continuar",
-          "offerPickNone": "Escoge un producto.",
+          "offer": {
+            "newTitle": "Nueva oferta",
+            "openOffer": "Abrir oferta",
+            "viewOffer": "Ver oferta",
+            "openEnded": "Sin fecha de fin: vale hasta que la desactive",
+            "openEndedEditor": "«Hasta» está en blanco: la oferta no tiene fecha de fin y vale hasta que la desactive.",
+            "validity": "Del {from} al {to}",
+            "validityOpen": "Desde el {from}",
+            "state": {
+              "DRAFT": "Borrador",
+              "SCHEDULED": "Publicada (todavía no empieza)",
+              "ACTIVE": "Vigente",
+              "EXPIRED": "Vencida"
+            },
+            "inEffect": "Se aplica hoy",
+            "inactive": "Desactivada",
+            "itemsCount": "{count} renglón(es)",
+            "name": "Nombre de la oferta",
+            "notes": "Notas",
+            "from": "Vale desde",
+            "to": "Hasta (en blanco = sin fecha de fin)",
+            "appliesAllToggle": "Aplica a todos los clientes",
+            "create": "Crear oferta",
+            "created": "Oferta creada: agregue su foto y sus renglones.",
+            "saveData": "Guardar datos",
+            "saved": "Oferta guardada.",
+            "photo": "Foto de la oferta",
+            "photoAlt": "Foto de la oferta {name}",
+            "photoFile": "Archivo de la foto de la oferta",
+            "clients": "Clientes de la oferta",
+            "allClientsNote": "La oferta aplica a todos los clientes. Desmarque «Aplica a todos los clientes» para escoger algunos.",
+            "items": "Renglones (producto o kit y precio de oferta)",
+            "waysHelp": "Dos maneras de agregar: escoja un producto o kit que ya existe y póngale su precio de oferta, o cree un kit solo para esta oferta.",
+            "addExisting": "Escoger un producto o kit",
+            "createKit": "Crear kit para esta oferta",
+            "offerPrice": "Precio de oferta",
+            "priceOf": "Precio de oferta de {sku}",
+            "generalPrice": "Lista general",
+            "itemAdded": "Renglón agregado.",
+            "noItems": "La oferta no tiene renglones",
+            "offerKitChip": "Kit de la oferta",
+            "editKit": "Cambiar kit",
+            "editKitOf": "Cambiar el kit {sku}",
+            "otherPhoto": "Poner otra foto",
+            "backToProductPhoto": "Volver a la del producto",
+            "warningsTitle": "Avisos (no impiden guardar ni publicar)",
+            "published": "Oferta publicada.",
+            "unpublished": "La oferta volvió a borrador.",
+            "deactivated": "Oferta desactivada.",
+            "reactivated": "Oferta reactivada.",
+            "deactivateTitle": "Desactivar «{name}»",
+            "deactivateBody": "La oferta deja de aplicarse en los pedidos nuevos y sus kits de oferta dejan de venderse. Los pedidos ya hechos no cambian y se puede reactivar.",
+            "err": {
+              "nameRequired": "Indique el nombre de la oferta.",
+              "nameLong": "El nombre de la oferta no puede pasar de 120 caracteres.",
+              "fromRequired": "Indique desde qué fecha vale la oferta.",
+              "range": "La fecha «hasta» de la oferta no puede ser anterior a la fecha «desde».",
+              "notesLong": "Las notas no pueden pasar de 500 caracteres.",
+              "noItems": "Agregue al menos un renglón antes de publicar la oferta.",
+              "noClients": "Escoja al menos un cliente o marque que la oferta aplica a todos los clientes.",
+              "itemProduct": "Escoja el producto o kit de cada renglón.",
+              "itemPrice": "Indique el precio de oferta de cada renglón."
+            },
+            "kit": {
+              "title": "Crear kit para la oferta «{name}»",
+              "editTitle": "Kit {sku} de la oferta",
+              "help": "El kit queda atado a esta oferta: solo se vende mientras la oferta esté vigente y nace no ajustable. Al pedir, toda pieza se puede cambiar por otra de la misma categoría y el mismo precio, salvo las marcadas «No sustituible».",
+              "sku": "SKU del kit",
+              "name": "Nombre del kit",
+              "price": "Precio de oferta del kit",
+              "priceNote": "El precio de oferta del kit se cambia en su renglón.",
+              "pieces": "Piezas del kit",
+              "piece": "Pieza {n}",
+              "quantity": "Cantidad",
+              "notSubstitutable": "No sustituible",
+              "notSubstitutableOf": "Pieza {n}: no sustituible",
+              "removePiece": "Quitar la pieza {n}",
+              "addPiece": "Agregar pieza",
+              "normalSum": "Suma de las piezas a su precio de venta: {amount}",
+              "saving": "Ahorro para el cliente: {amount}",
+              "loss": "Ojo: la oferta sale {amount} más cara que las piezas sueltas.",
+              "sumUnknown": "La suma de las piezas a precio normal se calcula al escoger cada pieza en el buscador.",
+              "create": "Crear kit",
+              "save": "Guardar kit",
+              "created": "Kit {sku} creado y agregado a la oferta.",
+              "saved": "Kit guardado.",
+              "err": {
+                "skuRequired": "Indique el SKU del kit.",
+                "nameRequired": "Indique el nombre del kit.",
+                "priceRequired": "Indique el precio de oferta del kit.",
+                "noPieces": "Un kit necesita al menos un componente.",
+                "pieceProduct": "Escoja el producto de cada pieza.",
+                "pieceQuantity": "La cantidad de cada pieza debe ser un número mayor que cero.",
+                "pieceRepeated": "Una pieza viene repetida: ponga la cantidad en un solo renglón."
+              }
+            }
+          },
           "title": "Precios y ofertas",
-          "subtitle": "Listas de precios por cliente y ofertas (kits en promoción) con foto y vigencia.",
+          "subtitle": "Ofertas con foto y vigencia, aparte de las listas de precios por cliente.",
           "new": "Nueva lista de precios",
           "newTitle": "Nueva lista de precios",
           "offers": "Ofertas",
           "lists": "Listas de precios",
           "noOffers": "Todavía no hay ofertas",
-          "noOffersBody": "Abra un kit y marque «Es promoción» para que aparezca aquí.",
+          "noOffersBody": "Cree una con «Nueva oferta»: nombre, foto, vigencia y sus productos o kits con precio de oferta.",
           "noPhoto": "Sin foto",
-          "noDates": "Sin fechas",
-          "editOffer": "Editar oferta",
-          "offerStatus": {
-            "active": "En vigor",
-            "scheduled": "Programada",
-            "expired": "Vencida"
-          },
           "search": "Buscar",
           "stateCol": "Estado",
           "allStates": "Todos los estados",
@@ -5193,6 +5298,7 @@
           "changePhoto": "Cambiar foto",
           "removePhoto": "Quitar foto",
           "photoSaved": "Foto guardada.",
+          "photoFromProduct": "Foto del producto",
           "publish": "Publicar",
           "published": "Lista publicada.",
           "unpublish": "Volver a borrador",
@@ -5256,27 +5362,6 @@
       },
       "tabCategories": "Categorías",
       "kit": {
-          "promo": {
-            "title": "Oferta (promoción)",
-            "help": "Marque el kit como oferta para que salga en «Precios y ofertas» con su foto y vigencia.",
-            "isPromotion": "Es promoción",
-            "from": "Oferta desde",
-            "to": "Oferta hasta",
-            "noPhoto": "Sin foto",
-            "photoAlt": "Foto de la oferta",
-            "photoFile": "Archivo de foto de la oferta",
-            "photoNeedsSave": "Guarde primero la marca «Es promoción».",
-            "addPhoto": "Poner foto",
-            "changePhoto": "Cambiar foto",
-            "removePhoto": "Quitar foto",
-            "photoSaved": "Foto guardada.",
-            "photoRemoved": "Foto quitada.",
-            "save": "Guardar oferta",
-            "saved": "Oferta guardada.",
-            "err": {
-              "range": "La fecha «hasta» de la oferta no puede ser anterior a la fecha «desde»."
-            }
-          },
         "tab": "Kit",
         "chip": "Kit",
         "adjustableChip": "Ajustable al pedir",
@@ -5303,6 +5388,9 @@
         "addComponent": "Agregar componente",
         "removeComponent": "Quitar el componente {n}",
         "adjustable": "Ajustable al pedir (en una orden se pueden cambiar sus piezas sin tocar el catálogo)",
+        "notSubstitutable": "No sustituible",
+        "notSubstitutableOf": "No sustituible: componente {n}",
+        "substituteHelp": "Al pedir, una pieza se puede cambiar por otra de la misma categoría y el mismo precio. Marque «No sustituible» en las que no.",
         "save": "Guardar kit",
         "cancel": "Cancelar",
         "err": {
@@ -5386,7 +5474,35 @@
         "rotationCompany": "Igual que la compañía",
         "rotationFefo": "FEFO — vence primero",
         "rotationFifo": "FIFO — entra primero",
-        "rotationPosition": "Por posición — zona y código"
+        "rotationPosition": "Por posición — zona y código",
+        "blocks": {
+          "identification": "Identificación",
+          "inventory": "Inventario",
+          "prices": "Precios",
+          "measures": "Medidas y peso",
+          "custom": "Campos personalizados"
+        }
+      },
+      "measures": {
+        "help": "Medidas de la unidad base (lo que se vende), no de la caja ni de la paleta. Con largo, ancho y alto el volumen se calcula solo; si falta alguna, se escribe a mano.",
+        "dimensionUnit": "Unidad de las medidas",
+        "length": "Largo",
+        "width": "Ancho",
+        "height": "Alto",
+        "volume": "Volumen ({unit})",
+        "volumeCalculated": "Calculado con las tres medidas (se guarda como {m3} m³).",
+        "volumeStoredAs": "Se guarda como {m3} m³.",
+        "volumeManual": "Sin las tres medidas, escríbalo a mano.",
+        "weight": "Peso",
+        "weightUnit": "Unidad del peso",
+        "units": {
+          "IN": "Pulgadas (in)",
+          "CM": "Centímetros (cm)",
+          "FT": "Pies (ft)",
+          "M": "Metros (m)",
+          "LB": "Libras (lb)",
+          "KG": "Kilos (kg)"
+        }
       },
       "fields": {
         "sku": "SKU",
@@ -5527,7 +5643,16 @@
         "packUnitWithoutQty": "Indique cuántas unidades trae el empaque.",
         "packQtyWithoutUnit": "Indique la unidad del empaque (caja, barril, paquete…).",
         "packQtyInvalid": "Las unidades por empaque deben ser un número mayor que 0 (hasta 3 decimales).",
-        "packSameAsBase": "La unidad del empaque no puede ser la misma que la unidad base."
+        "packSameAsBase": "La unidad del empaque no puede ser la misma que la unidad base.",
+        "lengthNegative": "El largo no puede ser negativo.",
+        "widthNegative": "El ancho no puede ser negativo.",
+        "heightNegative": "El alto no puede ser negativo.",
+        "lengthInvalid": "El largo debe ser un número de hasta 4 decimales.",
+        "widthInvalid": "El ancho debe ser un número de hasta 4 decimales.",
+        "heightInvalid": "El alto debe ser un número de hasta 4 decimales.",
+        "weightNegative": "El peso no puede ser negativo.",
+        "weightTooLarge": "El peso es demasiado grande.",
+        "volumeTooLarge": "El volumen calculado con el largo, el ancho y el alto es demasiado grande."
       }
     },
     "categories": {
@@ -10355,7 +10480,15 @@
       "adjust": "Ajustar piezas",
       "adjustHelp": "Este kit se puede ajustar al pedir: cambie las piezas solo para esta orden.",
       "reset": "Volver a las del catálogo",
-      "sectionTitle": "Componentes de los kits"
+      "sectionTitle": "Componentes de los kits",
+      "change": "Cambiar",
+      "changeOf": "Cambiar {sku}",
+      "insteadOf": "en lugar de {sku}",
+      "undo": "Deshacer",
+      "undoOf": "Deshacer el cambio de {sku}",
+      "substitutesOf": "Productos que pueden sustituir a {sku}",
+      "substituteHint": "Misma categoría y mismo precio: el precio del kit no cambia.",
+      "chooseSubstitute": "Usar {sku} en lugar de {original}"
     },
     "lines": "Productos",
     "line": {
@@ -10594,6 +10727,12 @@
       "search": "Buscar por SKU o nombre",
       "noMatch": "Ningún producto de esta marca coincide con la búsqueda.",
       "noPrice": "Sin precio",
+      "validUntil": "Válida hasta el {date}",
+      "noEndDate": "Sin fecha de fin",
+      "offerPriceChip": "Oferta",
+      "priceFromOffer": "Precio de la oferta «{name}»",
+      "negotiatedWins": "Oferta: {offer}. Se cobra su precio negociado, que es más bajo.",
+      "notices": "Avisos de precio de {sku}",
       "empty": "No hay productos activos para vender."
     },
     "cart": {
@@ -10603,7 +10742,8 @@
       "hide": "Toque para ocultar las líneas",
       "empty": "El carrito está vacío: escriba una cantidad en un producto.",
       "remove": "Quitar",
-      "removeOf": "Quitar {sku} del carrito"
+      "removeOf": "Quitar {sku} del carrito",
+      "offerOf": "Oferta «{name}»"
     },
     "delivery": {
       "title": "Entrega",
@@ -10630,7 +10770,9 @@
       "noShipping": "Sin cargo",
       "why": "Por qué: {reason}",
       "total": "Total",
-      "help": "El envío y el IVU los calcula el sistema con las reglas de la compañía y del cliente."
+      "help": "El envío y el IVU los calcula el sistema con las reglas de la compañía y del cliente.",
+      "priceNotices": "Avisos de precio",
+      "priceNoticesHelp": "Se cobra siempre el precio más bajo; estos avisos son para que lo sepa, no impiden enviar el pedido."
     },
     "auth": {
       "title": "Autorización y envío",

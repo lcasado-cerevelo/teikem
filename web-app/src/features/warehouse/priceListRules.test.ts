@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EMPTY_LIST_DRAFT, listDraftError, parsePrice, promoDraftError, promoStatus, publishBlocker, stateKey, stateTone, toListRequest, toPromoRequest } from './priceListRules'
+import { EMPTY_LIST_DRAFT, listDraftError, parsePrice, publishBlocker, stateKey, stateTone, toListRequest } from './priceListRules'
 
 describe('priceListRules', () => {
   it('estado: color y clave, desconocido = borrador', () => {
@@ -42,14 +42,5 @@ describe('priceListRules', () => {
     expect(publishBlocker(2, false, 0)).toBe('noClients')
     expect(publishBlocker(2, false, 1)).toBeNull()
     expect(publishBlocker(2, true, 0)).toBeNull()
-  })
-
-  it('oferta: rango, cuerpo y vigencia', () => {
-    expect(promoDraftError({ isPromotion: true, promoFrom: '2026-11-10', promoTo: '2026-11-09' })).toBe('range')
-    expect(promoDraftError({ isPromotion: false, promoFrom: '2026-11-10', promoTo: '2026-11-09' })).toBeNull()
-    expect(toPromoRequest({ isPromotion: true, promoFrom: '', promoTo: '2026-12-01' })).toEqual({ isPromotion: true, promoFrom: null, promoTo: '2026-12-01' })
-    expect(promoStatus('2026-11-10', null, '2026-11-07')).toBe('scheduled')
-    expect(promoStatus(null, '2026-11-06', '2026-11-07')).toBe('expired')
-    expect(promoStatus('2026-11-01', '2026-11-30', '2026-11-07')).toBe('active')
   })
 })

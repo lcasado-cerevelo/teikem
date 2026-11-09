@@ -1,11 +1,10 @@
 // Lote 221 (P1) — reglas puras de «Precios y ofertas»: estado de la lista, validación del borrador, cuerpo que se envía y precio de un renglón.
-// Espejo de `PriceListRules` / `KitPromoRules` del servidor (que repite todo); aquí solo para avisar antes de enviar.
+// Espejo de `PriceListRules` del servidor (que repite todo); aquí solo para avisar antes de enviar. Las ofertas (lote 229) están en `offerRules.ts`.
 import type { components } from '../../kernel/api/schema'
 import type { ChipTone } from '../../kernel/ui'
 
 type S = components['schemas']
 export type PriceListRequest = S['PriceListRequest']
-export type ProductPromoRequest = S['ProductPromoRequest']
 
 export type PriceListState = 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'EXPIRED'
 
@@ -72,25 +71,4 @@ export function publishBlocker(itemCount: number, appliesToAll: boolean, clientC
   if (itemCount < 1) return 'noItems'
   if (!appliesToAll && clientCount < 1) return 'noClients'
   return null
-}
-
-export interface PromoDraft {
-  isPromotion: boolean
-  promoFrom: string
-  promoTo: string
-}
-
-export function promoDraftError(d: PromoDraft): 'range' | null {
-  return d.isPromotion && d.promoFrom && d.promoTo && d.promoTo < d.promoFrom ? 'range' : null
-}
-
-export function toPromoRequest(d: PromoDraft): ProductPromoRequest {
-  return { isPromotion: d.isPromotion, promoFrom: d.promoFrom || null, promoTo: d.promoTo || null }
-}
-
-/** Una oferta está «en vigor» hoy si ya empezó (o no tiene inicio) y no ha vencido. */
-export function promoStatus(from: string | null | undefined, to: string | null | undefined, today: string): 'scheduled' | 'active' | 'expired' {
-  if (from && today < from) return 'scheduled'
-  if (to && today > to) return 'expired'
-  return 'active'
 }

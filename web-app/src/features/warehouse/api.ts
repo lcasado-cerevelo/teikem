@@ -454,6 +454,20 @@ export function useProductBrands(search = '', options?: WarehouseQueryOptions) {
   })
 }
 
+/**
+ * Lote 230 — `GET /api/v1/products/units-suggestion` (`inventory.view`): unidades de medidas y peso que se sugieren por la región de la compañía
+ * (PR y US: IN / FT / LB; el resto: CM / M / KG). Casi no cambia: caché de 10 min; un 403 no saca de la pantalla.
+ */
+export function useUnitsSuggestion(options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: ['/api/v1/products/units-suggestion'],
+    queryFn: () => unwrap(api.GET('/api/v1/products/units-suggestion')),
+    enabled: options?.enabled ?? true,
+    staleTime: 10 * 60 * 1000,
+    meta: { handleAccessDenied: false },
+  })
+}
+
 /** Lote 68 — `GET /api/v1/products/{publicId}/kit`: si el producto es kit, sus componentes y cuántos se pueden armar por almacén. */
 export function useKit(publicId: string | null | undefined, options?: WarehouseQueryOptions) {
   return useQuery({

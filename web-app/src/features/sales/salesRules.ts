@@ -36,6 +36,10 @@ export interface KitPiece {
   name: string
   /** Cantidad por kit escrita a mano. */
   quantity: string
+  /** Lote 230: si la pieza se sustituyó al pedir, la pieza ORIGINAL del kit (`productPublicId` es la que quedó) y su SKU y nombre. */
+  substitutesProductPublicId?: string | null
+  substitutesSku?: string
+  substitutesName?: string
 }
 
 export interface OrderDraft {
@@ -179,7 +183,10 @@ export function toRequest(d: OrderDraft) {
         productPublicId: l.productPublicId,
         quantity: parseNumber(l.quantity) ?? undefined,
         unitPrice: price === null || price === l.listPrice ? undefined : price,
-        components: l.isKit && l.components ? l.components.map((c) => ({ productPublicId: c.productPublicId, quantity: parseNumber(c.quantity) ?? 0 })) : undefined,
+        // Lote 230: todas las piezas; la sustituta lleva la original en substitutesProductPublicId (misma forma que kitSubstitution.piecesToRequest)
+        components: l.isKit && l.components
+          ? l.components.map((c) => ({ productPublicId: c.productPublicId, quantity: parseNumber(c.quantity) ?? 0, ...(c.substitutesProductPublicId ? { substitutesProductPublicId: c.substitutesProductPublicId } : {}) }))
+          : undefined,
       }
     }),
   }

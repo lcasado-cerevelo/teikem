@@ -2,6 +2,9 @@
 // arriba de cada marca sus ofertas vigentes como tarjetas con foto, precio y + / −; debajo la lista completa de la marca (SKU, nombre, precio de la lista del
 // cliente o la general) con su casilla de cantidad: teclear una cantidad agrega la línea. El carrito (`CartBar`) va fijo abajo; tocarlo muestra las líneas para
 // corregir o quitar, y un kit muestra sus piezas (`KitLineBlock`). El vendedor no teclea precios.
+// Lote 229: las tarjetas de oferta dicen de qué oferta salen y hasta cuándo valen («sin fecha de fin» si no tienen); un precio de oferta lleva el chip «Oferta»;
+// los avisos del servidor (dos ofertas a la vez, oferta más cara que la lista general) salen discretos junto al precio y en el carrito; un kit de oferta solo
+// sale como tarjeta.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useCan } from '../../../kernel/access'
 import { applyProblemDetails } from '../../../kernel/api/problem'
@@ -12,6 +15,8 @@ import { useStoredFileUrl } from '../../orders/api'
 import { StoredImage } from '../../warehouse/StoredImage'
 import { KitLineBlock } from '../KitLineBlock'
 import type { SalesOrderDto } from '../salesApi'
+import { CartLinePriceInfo, PriceNoticeList } from './PriceNotices'
+import { itemNotices } from './priceSource'
 import { useSalesCatalog, type SalesCatalogBrandDto, type SalesCatalogItemDto } from './wizardApi'
 import {
   cartLineAmount,
@@ -41,7 +46,10 @@ function PriceText({ item }: { item: SalesCatalogItemDto }) {
   return <span className="mono">{f.money(item.price)}</span>
 }
 
-/** Cuadrito con la foto del producto (la de su oferta o la del renglón de la lista, si la hay); al pasar el mouse, al enfocar o al tocarlo se ve grande. */
+/**
+ * Cuadrito con la foto del producto, ya resuelta por el catálogo (Lote 229: la del renglón de la oferta o la lista → la del producto → la de la primera pieza
+ * con foto si es un kit); al pasar el mouse, al enfocar o al tocarlo se ve grande.
+ */
 function ProductThumb({ item }: { item: SalesCatalogItemDto }) {
   const t = useT()
   const url = useStoredFileUrl(item.imagePublicId).data
@@ -84,6 +92,7 @@ function decimalText(text: string): string {
 
 function OfferCard({ item, quantity, onStep, onSet }: { item: SalesCatalogItemDto; quantity: string; onStep: (delta: number) => void; onSet: (text: string) => void }) {
   const t = useT()
+  const f = useFormat()
   const name = item.name ?? item.sku ?? ''
   const canSell = item.price != null
   return (
@@ -93,7 +102,20 @@ function OfferCard({ item, quantity, onStep, onSet }: { item: SalesCatalogItemDt
         <Chip tone="cod">{t('salesWizard.products.offer')}</Chip>
         <b>{name}</b>
         <span className="help">{item.sku}</span>
-        <PriceText item={item} />
+        {/* Lote 229: la oferta de donde sale (nombre y «válida hasta …» o «sin fecha de fin») */}
+        {item.offerName && <span className="wz-offer-when">{item.offerName}</span>}
+        {item.offerPublicId && (
+          <span className={`wz-offer-when${item.offerValidTo ? '' : ' open'}`}>
+            {item.offerValidTo ? t('salesWizard.products.validUntil', { date: f.date(item.offerValidTo) }) : t('salesWizard.products.noEndDate')}
+          </span>
+        )}
+        <span className="wz-price-wrap">
+          <PriceText item={item} />
+          {item.offerPrice != null && item.price != null && item.priceSource !== 'OFFER' && item.offerPrice !== item.price && (
+            <span className="help">{t('salesWizard.products.negotiatedWins', { offer: f.money(item.offerPrice) })}</span>
+          )}
+          <PriceNoticeList notices={itemNotices(item)} label={t('salesWizard.products.notices', { sku: item.sku ?? '' })} />
+        </span>
       </div>
       <div className="wz-stepper">
         <button type="button" className="btn sm" aria-label={t('salesWizard.products.less', { name })} disabled={!canSell || !quantity} onClick={() => onStep(-1)}>−</button>
@@ -116,7 +138,8 @@ export function ProductsStep({ state, onChange }: ProductsStepProps) {
   // con texto en el buscador se busca en TODAS las marcas (productos y ofertas); sin texto, la lista de la marca escogida
   const searching = q.trim() !== ''
   const products = useMemo(
-    () => (searching ? brands.flatMap((b) => b.products ?? []) : current?.products ?? []).filter((p) => matchesQ(q, p.sku ?? '', p.name ?? '')),
+    // Lote 229: un kit de oferta solo sale como tarjeta (no en la lista de la marca)
+    () => (searching ? brands.flatMap((b) => b.products ?? []) : current?.products ?? []).filter((p) => !p.isOfferKit && matchesQ(q, p.sku ?? '', p.name ?? '')),
     [brands, current, q, searching],
   )
   const offers = useMemo(
@@ -177,6 +200,7 @@ export function ProductsStep({ state, onChange }: ProductsStepProps) {
                       <b className="mono">{p.sku}</b>
                       <span>{p.name}</span>
                       {p.isKit && <Chip tone="neutral">{t('sales.kit.badge')}</Chip>}
+                      <PriceNoticeList notices={itemNotices(p)} label={t('salesWizard.products.notices', { sku: p.sku ?? '' })} />
                     </div>
                     <input
                       aria-label={t('salesWizard.products.qtyOf', { sku: p.sku ?? '' })}
@@ -201,7 +225,15 @@ export function ProductsStep({ state, onChange }: ProductsStepProps) {
                         />
                       </label>
                     ) : (
-                      <PriceText item={p} />
+                      // Lote 229: si el precio sale de una oferta, se dice con el chip «Oferta» (su nombre al pasar el mouse)
+                      <span className="wz-price-wrap">
+                        <PriceText item={p} />
+                        {p.priceSource === 'OFFER' && (
+                          <Chip tone="cod" title={p.offerName ? t('salesWizard.products.priceFromOffer', { name: p.offerName }) : undefined}>
+                            {t('salesWizard.products.offerPriceChip')}
+                          </Chip>
+                        )}
+                      </span>
                     )}
                   </li>
                 )
@@ -246,6 +278,7 @@ export function CartBar({ state, onChange, saved }: { state: WizardState; onChan
                   <button type="button" className="btn sm" onClick={() => onChange((s) => ({ ...s, cart: removeFromCart(s.cart, l.productPublicId) }))} aria-label={t('salesWizard.cart.removeOf', { sku: l.sku })}>
                     {t('salesWizard.cart.remove')}
                   </button>
+                  <CartLinePriceInfo productPublicId={l.productPublicId} sku={l.sku} clientPublicId={state.clientPublicId} saved={saved} />
                   {l.isKit && (
                     <KitLineBlock
                       line={{ key: 0, productPublicId: l.productPublicId, sku: l.sku, name: l.name, listPrice: l.price, quantity: l.quantity, price: '', isKit: true, components: l.components }}

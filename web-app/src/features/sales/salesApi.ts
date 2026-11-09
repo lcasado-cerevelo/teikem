@@ -86,6 +86,20 @@ export function useSalesOrder(publicId: string | null) {
   })
 }
 
+/**
+ * Lote 230 — `GET /sales-orders/kits/{kitPublicId}/substitutes` (`sales.create`, módulo SALES_ORDERS): cada pieza del catálogo del kit con «no
+ * sustituible» y sus sustitutos válidos (misma categoría y mismo precio). Sirve antes de guardar la línea; un 403 no saca de la pantalla.
+ */
+export function useKitSubstitutes(kitPublicId: string | null | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ['/api/v1/sales-orders/kits/{kitPublicId}/substitutes', kitPublicId ?? ''] as const,
+    queryFn: () => unwrap(api.GET('/api/v1/sales-orders/kits/{kitPublicId}/substitutes', { params: { path: { kitPublicId: kitPublicId ?? '' } } })),
+    enabled: Boolean(kitPublicId) && enabled,
+    staleTime: 60 * 1000,
+    meta: { handleAccessDenied: false },
+  })
+}
+
 export function useBackorders(q: string) {
   return useQuery({ queryKey: salesKeys.backorders(q), queryFn: () => unwrap(api.GET('/api/v1/sales-orders/backorders', { params: { query: { q: q || undefined } } })) })
 }

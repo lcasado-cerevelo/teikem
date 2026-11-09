@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { bestCanBuild, kitDraftError, newKitRow, parseQuantity, rowsFromKit, toKitRequest, type KitDto, type KitRow } from './kitRules'
 
-const row = (over: Partial<KitRow> = {}): KitRow => ({ key: 'k', productPublicId: 'p1', sku: 'A', name: 'Producto A', quantity: '2', ...over })
+const row = (over: Partial<KitRow> = {}): KitRow => ({ key: 'k', productPublicId: 'p1', sku: 'A', name: 'Producto A', quantity: '2', notSubstitutable: false, ...over })
 
 describe('cantidad', () => {
   it('acepta coma decimal y rechaza vacío, cero y texto', () => {
@@ -29,18 +29,28 @@ describe('kitDraftError', () => {
 
 describe('cuerpo', () => {
   it('manda isKit, ajustable y solo las filas con producto, con la cantidad como número', () => {
-    expect(toKitRequest([row({ quantity: '1,5' }), newKitRow('b')], true)).toEqual({ isKit: true, adjustable: true, components: [{ productPublicId: 'p1', quantity: 1.5 }] })
+    expect(toKitRequest([row({ quantity: '1,5' }), newKitRow('b')], true)).toEqual({
+      isKit: true,
+      adjustable: true,
+      components: [{ productPublicId: 'p1', quantity: 1.5, notSubstitutable: false }],
+    })
+  })
+  it('Lote 230: la marca «No sustituible» viaja por pieza', () => {
+    expect(toKitRequest([row({ notSubstitutable: true }), row({ key: 'k2', productPublicId: 'p2' })], false).components).toEqual([
+      { productPublicId: 'p1', quantity: 2, notSubstitutable: true },
+      { productPublicId: 'p2', quantity: 2, notSubstitutable: false },
+    ])
   })
 })
 
 describe('kit existente', () => {
   const kit: KitDto = {
     productPublicId: 'k', sku: 'KIT-1', name: 'Kit', isKit: true, adjustable: false,
-    components: [{ productPublicId: 'p1', sku: 'A', name: 'A', quantity: 2, sortOrder: 1, isActive: true }],
+    components: [{ productPublicId: 'p1', sku: 'A', name: 'A', quantity: 2, sortOrder: 1, isActive: true, notSubstitutable: true }],
     availability: [{ warehousePublicId: 'w1', warehouseCode: 'W1', canBuild: 3 }, { warehousePublicId: 'w2', warehouseCode: 'W2', canBuild: 7 }],
   }
   it('las filas parten de los componentes (o de una fila vacía) y el mejor almacén resume', () => {
-    expect(rowsFromKit(kit, (i) => `r${i}`)).toEqual([{ key: 'r0', productPublicId: 'p1', sku: 'A', name: 'A', quantity: '2' }])
+    expect(rowsFromKit(kit, (i) => `r${i}`)).toEqual([{ key: 'r0', productPublicId: 'p1', sku: 'A', name: 'A', quantity: '2', notSubstitutable: true }])
     expect(rowsFromKit(undefined, (i) => `r${i}`)).toEqual([newKitRow('r0')])
     expect(bestCanBuild(kit)).toBe(7)
     expect(bestCanBuild(undefined)).toBe(0)

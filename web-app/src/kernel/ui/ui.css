@@ -134,6 +134,16 @@
 .form-alert{background:var(--dangerbg);border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:600;margin-bottom:14px}
 .form-acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:6px}
 
+/* ===== HelpTip (Lote 230): «?» junto a la etiqueta con la ayuda larga plegada ===== */
+.f-head{position:relative;display:flex;align-items:center;gap:6px;margin-bottom:5px;min-width:0}
+.f .f-head>label{margin-bottom:0;min-width:0}
+.help-tip{display:inline-flex;flex:none}
+.help-tip-btn{display:inline-grid;place-items:center;width:18px;height:18px;padding:0;border-radius:50%;border:1px solid var(--line);background:var(--panel-2);color:var(--muted);font-size:11px;font-weight:700;line-height:1;cursor:pointer}
+.help-tip-btn:hover{color:var(--text);border-color:var(--muted)}
+.help-tip-btn:focus-visible{outline:2px solid var(--flow);outline-offset:2px}
+.help-tip-btn[aria-expanded="true"]{background:var(--flow-bg);color:var(--text);border-color:var(--flow)}
+.help-tip-body{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:40;display:block;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow-pop);padding:9px 11px;font-size:12.5px;font-weight:500;line-height:1.45;overflow-wrap:anywhere}
+
 /* ===== Modal ===== */
 .scrim .pal.lg{width:880px}
 .scrim .pal.xl{width:1180px}

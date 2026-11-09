@@ -282,6 +282,41 @@ Por dentro, todo se mueve en sus **componentes**.
 Para soporte: tabla `SalesOrderLineComponent` (la foto, se borra con la línea) y columnas `SalesOrderReservation.ProductId`, `PickBatchLine.KitProductId` y `KitQuantity`
 (sección **2026-10-16 (q)** de `Diseño/logistica-db-update.sql`).
 
+### 17.1 Cambiar una pieza del kit al pedir (Lote 230)
+
+**Qué hace.** En un pedido, una pieza de un kit se puede **cambiar** por otro producto de la **misma categoría exacta** y **exactamente el mismo
+precio de venta**, en la misma cantidad (p. ej. guantes de otra talla). El **precio del kit no cambia**. Vale para kits fijos y ajustables, regulares
+y de oferta.
+
+**Quién puede.** El vendedor, con `sales.create` (no hay permiso aparte). Módulo **SALES_ORDERS**. Lo decide la definición del kit: una pieza marcada
+«No sustituible» ([06 §8b.3b](06-inventario-y-almacen.md#8b3b-no-sustituible-lote-230-2026-11-09)) no se cambia.
+
+**Cómo se usa.** En el **pedido guiado** (carrito abierto) y en la ventana de la orden **en borrador**, cada pieza con sustitutos válidos lleva
+**«Cambiar»**: la lista muestra solo los productos permitidos (SKU, nombre y marca). Al escoger uno, la pieza muestra el producto nuevo y «en lugar de
+{SKU original}», con **«Deshacer»**. Las piezas «no sustituibles» o sin sustitutos no llevan el botón. En la orden guardada o solicitada se ve la pieza
+real con «en lugar de …»; la reserva, el despacho, la factura y el aparato usan la pieza real.
+
+**API.** `GET /api/v1/sales-orders/kits/{kitPublicId}/substitutes` (cada pieza del kit con sus sustitutos). En `POST/PATCH /sales-orders` la línea
+manda **todas** sus piezas en `components` y la que cambia lleva `substitutesProductPublicId` = la pieza original. Volver a guardar el borrador sin
+piezas conserva la sustitución.
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| Pieza marcada no sustituible | `La pieza GM del kit no es sustituible.` | 400 |
+| La «original» no es pieza del kit | `GV no es una pieza del kit KIT-1: solo se sustituyen sus piezas.` | 400 |
+| Pieza sin categoría | `La pieza CAJA no tiene categoría: solo se sustituye por un producto de la misma categoría.` | 400 |
+| Otra categoría | `GV no es de la misma categoría que GM: solo se sustituye por un producto de la misma categoría.` | 400 |
+| Pieza sin precio de venta | `La pieza GM no tiene precio de venta: solo se sustituye por un producto del mismo precio.` | 400 |
+| Otro precio | `GXL no tiene el mismo precio de venta que GM: solo se sustituye por un producto del mismo precio.` | 400 |
+| Otra cantidad (kit fijo) | `El sustituto de GM va en la misma cantidad que la pieza: 2.` | 400 |
+| Sustituto que ya es otra pieza | `CAJA ya es otra pieza del kit: no puede sustituir una pieza.` | 400 |
+| La misma pieza dos veces | `La pieza GM se sustituyó más de una vez.` | 400 |
+| Kit fijo con otro cambio además de la sustitución | `El kit KIT-1 no se puede ajustar al pedir.` | 400 |
+| Sustitutos de algo que no es kit | `El producto GM no es un kit.` | 422 |
+
+La pantalla solo ofrece sustitutos válidos, así que estos mensajes salen sobre todo si el catálogo cambió mientras se armaba el pedido: el aviso
+aparece arriba de la ventana (o como aviso del paso) y basta con «Deshacer» o escoger otro.
+
 ## Ver el despacho desde la venta y la venta desde el despacho (2026-10-21)
 
 - En la ficha de la orden de venta, la tabla **Despachos de la orden** muestra el número del despacho (recolección y empaque) **como enlace**: abre la ficha del despacho (necesita `pickbatches.view`; sin él se ve el número sin enlace). El envío que se creó al empacar sigue mostrándose en su columna.

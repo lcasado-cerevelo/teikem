@@ -1,5 +1,6 @@
 // Lote 68 (kits) — lógica pura del editor de componentes de un kit (sin React). El servidor es quien manda en las reglas de fondo (otro kit, otro dueño, rastreo,
 // existencia…); aquí solo lo que se puede decir antes de enviar: al menos un componente, cantidades mayores que 0 y sin repetir.
+// Lote 230: cada pieza lleva «No sustituible» (por omisión desmarcada = al pedir se puede cambiar por otra de la misma categoría y el mismo precio).
 import type { components } from '../../kernel/api/schema'
 
 export type KitDto = components['schemas']['KitDto']
@@ -12,6 +13,8 @@ export interface KitRow {
   name: string
   /** Texto escrito por la persona (acepta coma decimal). */
   quantity: string
+  /** Lote 230: la pieza NO se puede sustituir al pedir (por omisión false = sustituible). */
+  notSubstitutable: boolean
 }
 
 export type KitDraftError = 'need' | 'product' | 'quantity' | 'duplicate'
@@ -22,7 +25,7 @@ export function parseQuantity(text: string): number | null {
 }
 
 export function newKitRow(key: string): KitRow {
-  return { key, productPublicId: '', sku: '', name: '', quantity: '1' }
+  return { key, productPublicId: '', sku: '', name: '', quantity: '1', notSubstitutable: false }
 }
 
 /** Filas con los componentes del kit actual (para editar). */
@@ -33,6 +36,7 @@ export function rowsFromKit(kit: KitDto | undefined, keyOf: (i: number) => strin
     sku: c.sku ?? '',
     name: c.name ?? '',
     quantity: String(c.quantity ?? 1),
+    notSubstitutable: c.notSubstitutable === true,
   }))
   return rows.length > 0 ? rows : [newKitRow(keyOf(0))]
 }
@@ -51,7 +55,9 @@ export function toKitRequest(rows: readonly KitRow[], adjustable: boolean): KitS
   return {
     isKit: true,
     adjustable,
-    components: rows.filter((r) => r.productPublicId !== '').map((r) => ({ productPublicId: r.productPublicId, quantity: parseQuantity(r.quantity) ?? 0 })),
+    components: rows
+      .filter((r) => r.productPublicId !== '')
+      .map((r) => ({ productPublicId: r.productPublicId, quantity: parseQuantity(r.quantity) ?? 0, notSubstitutable: r.notSubstitutable })),
   }
 }
 

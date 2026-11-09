@@ -1,6 +1,8 @@
 // Lote 68 (kits) — pestaña «Kit» de la ficha del producto. Un kit es un producto que se arma al pedir con otros productos y NO tiene existencia propia: aquí se
 // define de qué se compone (componentes y cantidad por kit), si se puede ajustar al pedir, y se ve cuántos se pueden armar por almacén con lo disponible para vender.
 // Convertir en kit y editar los componentes exigen inventory.manage; volver a producto normal pide confirmación (el servidor lo niega si algún pedido ya lo usó).
+// Lote 230: cada pieza lleva la casilla «No sustituible» (desmarcada = al pedir se puede cambiar por otra de la misma categoría y el mismo precio); en la
+// tabla del kit la pieza marcada lleva su chip. «Ajustable al pedir» no cambia.
 import { useId, useMemo, useState } from 'react'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
@@ -9,7 +11,6 @@ import { Chip, ConfirmDialog, DataTable, EmptyState, Modal, Spinner, toast, type
 import { useKit, useProduct, useSetKit, type ProductListItemDto } from './api'
 import { bestCanBuild, kitDraftError, newKitRow, rowsFromKit, toKitRequest, type KitDto, type KitRow } from './kitRules'
 import { ProductPicker } from './pickers'
-import { KitPromoSection } from './KitPromoSection'
 
 type Component = NonNullable<KitDto['components']>[number]
 
@@ -29,7 +30,8 @@ export function KitTab({ publicId, product, canManage }: { publicId: string; pro
         header: t('warehouse.products.kit.name'),
         cell: (c) => (
           <>
-            {c.name} {!c.isActive && <Chip tone="fail">{t('warehouse.products.inactive')}</Chip>}
+            {c.name} {!c.isActive && <Chip tone="fail">{t('warehouse.products.inactive')}</Chip>}{' '}
+            {c.notSubstitutable && <Chip tone="neutral">{t('warehouse.products.kit.notSubstitutable')}</Chip>}
           </>
         ),
         sortValue: (c) => c.name ?? '',
@@ -173,6 +175,9 @@ export function KitEditorModal({ publicId, product, kit, onClose, onSaved }: { p
     >
       <div className="pb">
         <p>{t('warehouse.products.kit.editorHelp')}</p>
+        <p className="help" id={`${uid}-subst`}>
+          {t('warehouse.products.kit.substituteHelp')}
+        </p>
         {rows.map((r, i) => (
           <div className="r2 kit-comp-row" key={r.key} style={{ alignItems: 'end', marginBottom: 8 }}>
             <div className="f">
@@ -189,6 +194,16 @@ export function KitEditorModal({ publicId, product, kit, onClose, onSaved }: { p
               <label htmlFor={`${r.key}-q`}>{t('warehouse.products.kit.quantity')}</label>
               <input id={`${r.key}-q`} inputMode="decimal" value={r.quantity} onChange={(e) => set(r.key, { quantity: e.target.value })} />
             </div>
+            <label className="kit-nosub">
+              <input
+                type="checkbox"
+                checked={r.notSubstitutable}
+                aria-describedby={`${uid}-subst`}
+                onChange={(e) => set(r.key, { notSubstitutable: e.target.checked })}
+              />
+              <span aria-hidden="true">{t('warehouse.products.kit.notSubstitutable')}</span>
+              <span className="sr-only">{t('warehouse.products.kit.notSubstitutableOf', { n: i + 1 })}</span>
+            </label>
             <button type="button" className="btn" aria-label={t('warehouse.products.kit.removeComponent', { n: i + 1 })} onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))} disabled={rows.length === 1}>
               ×
             </button>
@@ -203,8 +218,6 @@ export function KitEditorModal({ publicId, product, kit, onClose, onSaved }: { p
           <input type="checkbox" checked={adjustable} onChange={(e) => setAdjustable(e.target.checked)} />
           {t('warehouse.products.kit.adjustable')}
         </label>
-        {/* Lote 221 (P1): oferta del kit (marca, vigencia y foto); solo un kit ya guardado puede ser oferta */}
-        {kit?.isKit === true && <KitPromoSection publicId={publicId} />}
         {error && (
           <p role="alert" className="err">
             {error}

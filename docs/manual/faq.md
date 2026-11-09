@@ -11526,3 +11526,53 @@ Para buscar clientes hace falta el permiso `clients.read`. Sin él puede filtrar
 
 **Elegí dos clientes y un producto: ¿salen las de cualquiera?**
 Dentro de un filtro, sí: cualquiera de los clientes elegidos. Entre filtros, no: la orden tiene que ser de uno de esos clientes **y** tener una línea del producto (y cumplir el estatus y la fecha si los puso).
+
+## Lote 230 — Medidas y peso del producto; «No sustituible» y cambiar piezas de un kit
+
+**¿Por qué el volumen no me deja escribir?** Porque el producto tiene largo, ancho y alto: con las tres medidas el volumen se calcula solo. Quite
+una medida si de verdad quiere escribirlo a mano ([06 §2.4](06-inventario-y-almacen.md#24-medidas-y-peso-con-su-unidad-y-el-editor-ancho-lote-230-2026-11-09)).
+
+**¿En qué unidad escribo las medidas?** En la que diga «Unidad de las medidas» (la pantalla sugiere la del producto o la de la región: pulgadas en
+Puerto Rico). Son las medidas de **una unidad base** (lo que se vende), no de la caja ni de la paleta. Cambiar la unidad no convierte los números.
+
+**«El largo no puede ser negativo.» (400)** — Escriba 0 o deje el campo vacío para quitar la medida (igual con «ancho» y «alto»).
+
+**«El largo debe ser un número de hasta 4 decimales.» (400)** — Redondee a 4 decimales o use una unidad más grande (pies o metros).
+
+**«La unidad de las medidas debe ser IN (pulgadas), CM (centímetros), FT (pies) o M (metros).» (400)** — Viene de una importación o del API con
+otra unidad: use uno de los cuatro códigos.
+
+**«La unidad del peso debe ser LB (libras) o KG (kilos).» (400)** — Igual, con LB o KG.
+
+**«El peso no puede ser negativo.» / «El peso es demasiado grande.» (400)** — Revise el número y la unidad del peso.
+
+**«El volumen calculado con el largo, el ancho y el alto es demasiado grande.» (400)** — Seguramente la unidad no es la correcta (p. ej. metros en vez
+de centímetros): corrija la unidad o las medidas.
+
+**¿Qué es «No sustituible» en el editor del kit?** Por omisión, al pedir se puede cambiar una pieza por otra de la misma categoría y el mismo precio.
+Marque «No sustituible» en las piezas que no se pueden cambiar.
+
+**No me sale «Cambiar» en una pieza del kit.** La pieza está marcada «No sustituible», no tiene categoría o precio de venta, o no hay otro producto
+activo de la misma categoría exacta y el mismo precio (ni que sea ya otra pieza del kit). Revise la categoría y el precio de los productos.
+
+**¿Cambia el precio del kit si cambio una pieza?** No: el kit vale lo mismo. La orden, la reserva, el despacho y la factura usan la pieza que quedó.
+
+**«La pieza GM del kit no es sustituible.» (400)** — La pieza se marcó «No sustituible» después de armar el pedido: use «Deshacer».
+
+**«GV no es una pieza del kit KIT-1: solo se sustituyen sus piezas.» (400)** — El catálogo del kit cambió: quite la línea y vuelva a agregarla.
+
+**«La pieza CAJA no tiene categoría…» / «La pieza GM no tiene precio de venta…» (400)** — Esa pieza no se puede sustituir hasta que tenga categoría y
+precio de venta.
+
+**«GV no es de la misma categoría que GM…» / «GXL no tiene el mismo precio de venta que GM…» (400)** — El producto o la pieza cambió de categoría o de
+precio mientras se armaba el pedido: use «Deshacer» o escoja otro de la lista.
+
+**«El sustituto de GM va en la misma cantidad que la pieza: 2.» (400)** — En un kit fijo el sustituto va en la misma cantidad; vuelva a escogerlo.
+
+**«CAJA ya es otra pieza del kit: no puede sustituir una pieza.» / «La pieza GM se sustituyó más de una vez.» (400)** — Use «Deshacer» en la pieza y
+escoja otro sustituto.
+
+**«El kit KIT-1 no se puede ajustar al pedir.» (400)** — En un kit fijo solo se cambia la pieza, no las cantidades: use «Deshacer» y vuelva a escoger.
+
+**«El producto GM no es un kit.» (422)** — Se pidieron sustitutos de un producto que no es kit (llamada directa al API).
+

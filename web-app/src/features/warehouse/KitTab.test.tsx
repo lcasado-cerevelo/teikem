@@ -1,7 +1,7 @@
 // Lote 68 (kits) — pestaña «Kit» de la ficha del producto sobre un fetch simulado: producto normal (convertir, solo con inventory.manage y sin rastreo), kit con sus
 // componentes y «se pueden armar N» por almacén, el cuerpo que se envía y el mensaje del servidor tal cual.
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -110,7 +110,8 @@ describe('Pestaña Kit: producto normal', () => {
     mock.kit = IS_KIT
     await user.click(screen.getByRole('button', { name: 'Guardar kit' }))
     await waitFor(() => expect(mock.calls.some((c) => c.method === 'PUT')).toBe(true))
-    expect(mock.calls.find((c) => c.method === 'PUT')?.body).toEqual({ isKit: true, adjustable: false, components: [{ productPublicId: A, quantity: 4 }] })
+    // Lote 230: por omisión la pieza es sustituible
+    expect(mock.calls.find((c) => c.method === 'PUT')?.body).toEqual({ isKit: true, adjustable: false, components: [{ productPublicId: A, quantity: 4, notSubstitutable: false }] })
   })
 
   it('el mensaje del servidor se muestra tal cual', async () => {
@@ -135,6 +136,30 @@ describe('Pestaña Kit: un kit', () => {
     expect(screen.getByText('ALM-01: se pueden armar 5')).toBeInTheDocument()
     expect(screen.getByText('ALM-02: se pueden armar 0')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Editar componentes' })).toBeInTheDocument()
+  })
+
+  it('Lote 230: «No sustituible» por pieza — desmarcada por omisión, con su ayuda; marcarla viaja en el PUT y la tabla muestra el chip', async () => {
+    const user = userEvent.setup()
+    mock.kit = IS_KIT
+    wrap(MANAGE)
+    await user.click(await screen.findByRole('button', { name: 'Editar componentes' }))
+    const dialog = await screen.findByRole('dialog')
+    const box = within(dialog).getByRole('checkbox', { name: 'No sustituible: componente 1' })
+    expect(box).not.toBeChecked()
+    expect(within(dialog).getByText(/Al pedir, una pieza se puede cambiar por otra de la misma categoría y el mismo precio/)).toBeInTheDocument()
+    // «Ajustable al pedir» sigue igual
+    expect(within(dialog).getByRole('checkbox', { name: /Ajustable al pedir/ })).toBeChecked()
+    await user.click(box)
+    mock.kit = { ...IS_KIT, components: [{ ...IS_KIT.components[0], notSubstitutable: true }] }
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar kit' }))
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'PUT')).toBe(true))
+    expect(mock.calls.find((c) => c.method === 'PUT')?.body).toEqual({
+      isKit: true,
+      adjustable: true,
+      components: [{ productPublicId: A, quantity: 4, notSubstitutable: true }],
+    })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(await screen.findByText('No sustituible')).toBeInTheDocument()
   })
 
   it('volver a producto normal pide confirmación y manda isKit=false', async () => {

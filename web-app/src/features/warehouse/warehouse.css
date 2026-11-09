@@ -132,6 +132,29 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 /* Modal de producto (maqueta `renderProductModalHtml`): título con ícono, "Total (usa Ajustar abajo)", interruptor "Producto
    activo" que envuelve a 360 px (la etiqueta es larga), "Más datos" plegable y el bloque "Ajustar inventario" separado por
    una línea, con su botón a todo el ancho. */
+/* Lote 230: editor de producto ancho — bloques con título y rejilla de 4 columnas (3 bajo 1100 px, 2 bajo 720 px, 1 bajo 480 px: sin scroll horizontal) */
+.pe-block{margin:0;min-width:0}
+.pe-block+.pe-block{border-top:1px solid var(--line-2);padding-top:12px;margin-top:2px}
+.pe-block-title{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.pe-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));column-gap:12px;min-width:0}
+.pe-grid>.span2{grid-column:span 2}
+.pe-grid>.span3{grid-column:span 3}
+.pe-grid>.pe-span-all{grid-column:1/-1}
+.pe-grid>p.help.pe-span-all{margin:-4px 0 10px}
+.pe-grid>.pe-active{margin:0 0 13px;align-self:center}
+.pe-custom:not(:has(.r2)){display:none}
+.pe-custom .r2{grid-template-columns:repeat(4,minmax(0,1fr));column-gap:12px;gap:0 12px}
+@media(max-width:1100px){
+  .pe-grid,.pe-custom .r2{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .pe-grid>.span3{grid-column:1/-1}
+}
+@media(max-width:720px){
+  .pe-grid,.pe-custom .r2{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:480px){
+  .pe-grid,.pe-custom .r2{grid-template-columns:minmax(0,1fr)}
+  .pe-grid>.span2{grid-column:1/-1}
+}
 .pe-title{display:inline-flex;align-items:center;gap:8px;min-width:0}
 .pe-title svg{width:17px;height:17px;flex:none}
 .pe-fields{border:0;padding:0;margin:0;min-width:0}
@@ -529,5 +552,9 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 .promo-photo{max-width:220px;width:100%;border-radius:var(--radius);border:1px solid var(--line);display:block}
 
 /* Lote 228: renglón de un componente del kit = producto, cantidad y el botón «×» en la misma fila (el «×» caía a un renglón propio de todo el ancho) */
-.r2.kit-comp-row{grid-template-columns:minmax(0,1fr) minmax(0,10rem) auto}
-@media (max-width:480px){.r2.kit-comp-row{grid-template-columns:minmax(0,1fr) minmax(0,6rem) auto}}
+.r2.kit-comp-row{grid-template-columns:minmax(0,1fr) minmax(0,10rem) auto auto}
+@media (max-width:480px){.r2.kit-comp-row{grid-template-columns:minmax(0,1fr) minmax(0,6rem) auto}.r2.kit-comp-row .kit-nosub{grid-column:1/-1;order:3}}
+/* Lote 230: casilla «No sustituible» de la pieza (en una línea con la cantidad; a 360 px baja a su propio renglón) */
+.kit-nosub{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text);white-space:nowrap;padding-bottom:10px;cursor:pointer}
+.kit-nosub input{width:16px;height:16px;margin:0;accent-color:var(--flow)}
+.kit-nosub input:focus-visible{outline:2px solid var(--flow);outline-offset:2px}

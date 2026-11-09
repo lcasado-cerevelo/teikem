@@ -1,98 +1,22 @@
-// Lote 221 (P1) — pantalla «Precios y ofertas» (Contabilidad, `/money/prices`, sales.pricelist; antes pestaña de Productos). Dos bloques:
-// - Ofertas: tarjetas con foto de los kits marcados «Es promoción» (vigencia y precio de venta); «Editar oferta» abre el editor del kit (foto, vigencia y marca).
+// Lote 221 (P1) / Lote 229 — pantalla «Precios y ofertas» (Contabilidad, `/money/prices`, sales.view ve, sales.pricelist edita). Dos secciones claras:
+// - Ofertas (`OffersPanel`, `/api/v1/offers`): cosa aparte de las listas, con foto, vigencia y renglones producto/kit → precio de oferta; «Nueva oferta» y cada
+//   tarjeta abren `OfferEditorModal`. (Antes del lote 229 una oferta era un kit marcado «Es promoción»: ese flujo se quitó.)
 // - Listas de precios: nombre, vigencia, estado calculado (borrador / programada / vigente / vencida), a quién aplica y cuántos renglones; la fila abre su editor.
 // La lista no es paginada por el servidor (viene completa): no lleva `exportRows`.
 import { useMemo, useState } from 'react'
 import { Can } from '../../kernel/access'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { Chip, DataTable, EmptyState, Filters, IconTag, Modal, Panel, Spinner, type DataColumn } from '../../kernel/ui'
+import { Chip, DataTable, EmptyState, Filters, IconTag, Panel, type DataColumn } from '../../kernel/ui'
 import { ToggleFilter } from './filterControls'
-import { KitEditorByIdModal } from './KitTab'
+import { OfferEditorModal } from './OfferEditorModal'
+import { OffersPanel } from './OffersPanel'
 import { PriceListEditorModal } from './PriceListEditorModal'
-import { useOffers, usePriceLists, type PriceListListItemDto, type ProductPromoDto } from './priceListApi'
-import { promoStatus, stateKey, stateTone } from './priceListRules'
-import { ProductPicker } from './pickers'
-import { StoredImage } from './StoredImage'
+import { usePriceLists, type PriceListListItemDto } from './priceListApi'
+import { stateKey, stateTone } from './priceListRules'
 
 const STATES = ['DRAFT', 'SCHEDULED', 'ACTIVE', 'EXPIRED'] as const
 const NO_LISTS: PriceListListItemDto[] = []
-
-function OfferCard({ offer, onEdit }: { offer: ProductPromoDto; onEdit: () => void }) {
-  const t = useT()
-  const f = useFormat()
-  const status = promoStatus(offer.promoFrom, offer.promoTo, f.today())
-  const range = [offer.promoFrom && f.date(offer.promoFrom), offer.promoTo && f.date(offer.promoTo)].filter(Boolean).join(' – ')
-  return (
-    <article className="pl-offer" aria-label={`${offer.sku ?? ''} ${offer.name ?? ''}`}>
-      <StoredImage publicId={offer.imagePublicId} alt={offer.name ?? ''} className="pl-photo" emptyClassName="pl-nophoto" emptyText={t('warehouse.products.prices.noPhoto')} />
-      <div className="pl-body">
-        <h3>{offer.name}</h3>
-        <span className="pl-sub">
-          {offer.sku}
-          {offer.brand ? ` · ${offer.brand}` : ''}
-        </span>
-        <span>
-          <Chip tone={status === 'active' ? 'deliv' : status === 'scheduled' ? 'warn' : 'fail'}>{t(`warehouse.products.prices.offerStatus.${status}`)}</Chip>{' '}
-          {!offer.isActive && <Chip tone="fail">{t('warehouse.products.inactive')}</Chip>}
-        </span>
-        <span className="pl-sub">{range || t('warehouse.products.prices.noDates')}</span>
-        {offer.salePrice != null && <b className="mono">{f.money(offer.salePrice)}</b>}
-        <Can perm="sales.pricelist">
-          <button type="button" className="btn sm" onClick={onEdit}>
-            {t('warehouse.products.prices.editOffer')}
-          </button>
-        </Can>
-      </div>
-    </article>
-  )
-}
-
-/** «Nueva oferta»: escoge el producto propio que será el kit en promoción; luego abre el editor del kit (componentes y sección «Oferta»). */
-function OfferPickerModal({ onPicked, onClose }: { onPicked: (publicId: string) => void; onClose: () => void }) {
-  const t = useT()
-  const [value, setValue] = useState<string | null>(null)
-  const [error, setError] = useState(false)
-  return (
-    <Modal
-      open
-      title={t('warehouse.products.prices.offerPickTitle')}
-      onClose={onClose}
-      footer={
-        <>
-          <button type="button" className="btn" onClick={onClose}>
-            {t('common.cancel')}
-          </button>
-          <button type="button" className="btn flow" onClick={() => (value ? onPicked(value) : setError(true))}>
-            {t('warehouse.products.prices.offerPickContinue')}
-          </button>
-        </>
-      }
-    >
-      <div className="pb">
-        <p>{t('warehouse.products.prices.offerPickHelp')}</p>
-        <div className="f">
-          <label htmlFor="offer-pick">{t('warehouse.products.prices.offerPickLabel')}</label>
-          <ProductPicker
-            id="offer-pick"
-            ownOnly
-            value={value}
-            onChange={(id) => {
-              setValue(id)
-              setError(false)
-            }}
-            invalid={error}
-          />
-        </div>
-        {error && (
-          <p role="alert" className="err">
-            {t('warehouse.products.prices.offerPickNone')}
-          </p>
-        )}
-      </div>
-    </Modal>
-  )
-}
 
 export function PriceListsTab() {
   const t = useT()
@@ -101,11 +25,8 @@ export function PriceListsTab() {
   const [state, setState] = useState('')
   const [includeInactive, setIncludeInactive] = useState(false)
   const [opened, setOpened] = useState<string | null | undefined>(undefined) // undefined = cerrado, null = nueva
-  const [offerId, setOfferId] = useState<string | null>(null)
-  const [picking, setPicking] = useState(false)
-  const [editorKey, setEditorKey] = useState(0) // reabre el editor al guardar un kit nuevo para que aparezca la sección «Oferta»
+  const [offerId, setOfferId] = useState<string | null | undefined>(undefined) // undefined = cerrada, null = nueva
   const lists = usePriceLists({ q: q.trim() || undefined, state: state || undefined, includeInactive })
-  const offers = useOffers(includeInactive)
 
   const columns = useMemo<DataColumn<PriceListListItemDto>[]>(
     () => [
@@ -146,7 +67,7 @@ export function PriceListsTab() {
         </div>
         <div className="act">
           <Can perm="sales.pricelist">
-            <button type="button" className="btn" onClick={() => setPicking(true)}>
+            <button type="button" className="btn" onClick={() => setOfferId(null)}>
               {t('warehouse.products.prices.newOffer')}
             </button>
             <button type="button" className="btn flow" onClick={() => setOpened(null)}>
@@ -156,19 +77,7 @@ export function PriceListsTab() {
         </div>
       </div>
 
-      <Panel flush icon={<IconTag />} title={t('warehouse.products.prices.offers')} badge={offers.data?.length}>
-        {offers.isLoading ? (
-          <Spinner block />
-        ) : (offers.data ?? []).length === 0 ? (
-          <EmptyState title={t('warehouse.products.prices.noOffers')} body={t('warehouse.products.prices.noOffersBody')} />
-        ) : (
-          <div className="pl-offers">
-            {(offers.data ?? []).map((o) => (
-              <OfferCard key={o.productPublicId} offer={o} onEdit={() => setOfferId(o.productPublicId)} />
-            ))}
-          </div>
-        )}
-      </Panel>
+      <OffersPanel includeInactive={includeInactive} onOpen={setOfferId} />
 
       <div style={{ height: 14 }} />
       <Filters
@@ -217,16 +126,7 @@ export function PriceListsTab() {
       </Panel>
 
       {opened !== undefined && <PriceListEditorModal key={opened ?? 'new'} publicId={opened} onClose={() => setOpened(undefined)} />}
-      {picking && (
-        <OfferPickerModal
-          onClose={() => setPicking(false)}
-          onPicked={(id) => {
-            setPicking(false)
-            setOfferId(id)
-          }}
-        />
-      )}
-      {offerId && <KitEditorByIdModal key={`${offerId}-${editorKey}`} publicId={offerId} onClose={() => setOfferId(null)} onSaved={() => setEditorKey((k) => k + 1)} />}
+      {offerId !== undefined && <OfferEditorModal key={offerId ?? 'new'} publicId={offerId} onClose={() => setOfferId(undefined)} />}
     </>
   )
 }

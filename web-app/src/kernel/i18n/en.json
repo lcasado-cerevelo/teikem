@@ -3044,6 +3044,10 @@
     "modal": {
       "close": "Close"
     },
+    "helpTip": {
+      "label": "Help",
+      "about": "Help: {label}"
+    },
     "confirm": {
       "ok": "Confirm"
     },
@@ -5119,29 +5123,130 @@
       "title": "Products & inventory",
       "subtitle": "List with available, reserved stock, and lot/serial tracking",
       "tabProducts": "Products",
+        "photo": {
+          "title": "Photo",
+          "saveFirst": "Save the product to add a photo.",
+          "none": "No photo",
+          "alt": "Photo of {sku}",
+          "preview": "Photo preview",
+          "fromPiece": "No photo of its own: the photo of the kit's first piece that has one is shown.",
+          "help": "JPG, PNG or WEBP; reduced to 1200 px. It is the photo shown in orders, price lists and offers.",
+          "file": "Product photo file",
+          "add": "Add photo",
+          "change": "Change photo",
+          "remove": "Remove photo",
+          "saved": "Photo saved.",
+          "removed": "Photo removed.",
+          "badType": "The photo must be a JPG, PNG or WEBP image."
+        },
         "prices": {
           "newOffer": "New offer",
-          "offerPickTitle": "New offer",
-          "offerPickHelp": "Pick the own product that will be the offer. If it is not a kit yet, define its components and, after saving, you can set the photo, the validity and mark it «Is promotion».",
-          "offerPickLabel": "Product",
-          "offerPickContinue": "Continue",
-          "offerPickNone": "Pick a product.",
+          "offer": {
+            "newTitle": "New offer",
+            "openOffer": "Open offer",
+            "viewOffer": "View offer",
+            "openEnded": "No end date: valid until you deactivate it",
+            "openEndedEditor": "«Until» is blank: the offer has no end date and is valid until you deactivate it.",
+            "validity": "From {from} to {to}",
+            "validityOpen": "From {from}",
+            "state": {
+              "DRAFT": "Draft",
+              "SCHEDULED": "Published (not started yet)",
+              "ACTIVE": "In effect",
+              "EXPIRED": "Expired"
+            },
+            "inEffect": "Applies today",
+            "inactive": "Deactivated",
+            "itemsCount": "{count} line(s)",
+            "name": "Offer name",
+            "notes": "Notes",
+            "from": "Valid from",
+            "to": "Until (blank = no end date)",
+            "appliesAllToggle": "Applies to all clients",
+            "create": "Create offer",
+            "created": "Offer created: add its photo and lines.",
+            "saveData": "Save details",
+            "saved": "Offer saved.",
+            "photo": "Offer photo",
+            "photoAlt": "Photo of the offer {name}",
+            "photoFile": "Offer photo file",
+            "clients": "Offer clients",
+            "allClientsNote": "The offer applies to all clients. Uncheck «Applies to all clients» to choose some.",
+            "items": "Lines (product or kit and offer price)",
+            "waysHelp": "Two ways to add: pick an existing product or kit and set its offer price, or create a kit just for this offer.",
+            "addExisting": "Pick a product or kit",
+            "createKit": "Create a kit for this offer",
+            "offerPrice": "Offer price",
+            "priceOf": "Offer price of {sku}",
+            "generalPrice": "General list",
+            "itemAdded": "Line added.",
+            "noItems": "The offer has no lines",
+            "offerKitChip": "Offer kit",
+            "editKit": "Change kit",
+            "editKitOf": "Change kit {sku}",
+            "otherPhoto": "Use another photo",
+            "backToProductPhoto": "Back to the product photo",
+            "warningsTitle": "Warnings (they do not block saving or publishing)",
+            "published": "Offer published.",
+            "unpublished": "The offer went back to draft.",
+            "deactivated": "Offer deactivated.",
+            "reactivated": "Offer reactivated.",
+            "deactivateTitle": "Deactivate «{name}»",
+            "deactivateBody": "The offer stops applying to new orders and its offer kits stop being sold. Orders already placed do not change and it can be reactivated.",
+            "err": {
+              "nameRequired": "Enter the offer name.",
+              "nameLong": "The offer name cannot be longer than 120 characters.",
+              "fromRequired": "Enter the date the offer is valid from.",
+              "range": "The offer «until» date cannot be before the «from» date.",
+              "notesLong": "Notes cannot be longer than 500 characters.",
+              "noItems": "Add at least one line before publishing the offer.",
+              "noClients": "Choose at least one client or check that the offer applies to all clients.",
+              "itemProduct": "Choose the product or kit of each line.",
+              "itemPrice": "Enter the offer price of each line."
+            },
+            "kit": {
+              "title": "Create a kit for the offer «{name}»",
+              "editTitle": "Offer kit {sku}",
+              "help": "The kit is tied to this offer: it is only sold while the offer is in effect and it starts as not adjustable. When ordering, any piece can be swapped for another of the same category and price, except those marked «Not substitutable».",
+              "sku": "Kit SKU",
+              "name": "Kit name",
+              "price": "Kit offer price",
+              "priceNote": "The kit offer price is changed on its line.",
+              "pieces": "Kit pieces",
+              "piece": "Piece {n}",
+              "quantity": "Quantity",
+              "notSubstitutable": "Not substitutable",
+              "notSubstitutableOf": "Piece {n}: not substitutable",
+              "removePiece": "Remove piece {n}",
+              "addPiece": "Add piece",
+              "normalSum": "Pieces at their sale price: {amount}",
+              "saving": "Client saves: {amount}",
+              "loss": "Careful: the offer costs {amount} more than the loose pieces.",
+              "sumUnknown": "The sum of the pieces at the regular price is calculated when you pick each piece in the search box.",
+              "create": "Create kit",
+              "save": "Save kit",
+              "created": "Kit {sku} created and added to the offer.",
+              "saved": "Kit saved.",
+              "err": {
+                "skuRequired": "Enter the kit SKU.",
+                "nameRequired": "Enter the kit name.",
+                "priceRequired": "Enter the kit offer price.",
+                "noPieces": "A kit needs at least one component.",
+                "pieceProduct": "Choose the product of each piece.",
+                "pieceQuantity": "The quantity of each piece must be a number greater than zero.",
+                "pieceRepeated": "A piece is repeated: put the quantity on a single line."
+              }
+            }
+          },
           "title": "Prices and offers",
-          "subtitle": "Price lists by client and offers (kits on promotion) with photo and validity.",
+          "subtitle": "Offers with photo and validity, separate from the price lists by client.",
           "new": "New price list",
           "newTitle": "New price list",
           "offers": "Offers",
           "lists": "Price lists",
           "noOffers": "There are no offers yet",
-          "noOffersBody": "Open a kit and check «Is a promotion» to show it here.",
+          "noOffersBody": "Create one with «New offer»: name, photo, validity and its products or kits with an offer price.",
           "noPhoto": "No photo",
-          "noDates": "No dates",
-          "editOffer": "Edit offer",
-          "offerStatus": {
-            "active": "In effect",
-            "scheduled": "Scheduled",
-            "expired": "Expired"
-          },
           "search": "Search",
           "stateCol": "Status",
           "allStates": "All statuses",
@@ -5193,6 +5298,7 @@
           "changePhoto": "Change photo",
           "removePhoto": "Remove photo",
           "photoSaved": "Photo saved.",
+          "photoFromProduct": "Product photo",
           "publish": "Publish",
           "published": "List published.",
           "unpublish": "Back to draft",
@@ -5256,27 +5362,6 @@
       },
       "tabCategories": "Categories",
       "kit": {
-          "promo": {
-            "title": "Offer (promotion)",
-            "help": "Mark the kit as an offer to show it in «Prices and offers» with its photo and validity.",
-            "isPromotion": "Is a promotion",
-            "from": "Offer from",
-            "to": "Offer until",
-            "noPhoto": "No photo",
-            "photoAlt": "Offer photo",
-            "photoFile": "Offer photo file",
-            "photoNeedsSave": "Save the «Is a promotion» mark first.",
-            "addPhoto": "Add photo",
-            "changePhoto": "Change photo",
-            "removePhoto": "Remove photo",
-            "photoSaved": "Photo saved.",
-            "photoRemoved": "Photo removed.",
-            "save": "Save offer",
-            "saved": "Offer saved.",
-            "err": {
-              "range": "The offer «until» date cannot be before the «from» date."
-            }
-          },
         "tab": "Kit",
         "chip": "Kit",
         "adjustableChip": "Adjustable when ordering",
@@ -5303,6 +5388,9 @@
         "addComponent": "Add component",
         "removeComponent": "Remove component {n}",
         "adjustable": "Adjustable when ordering (an order can change its pieces without touching the catalog)",
+        "notSubstitutable": "Not substitutable",
+        "notSubstitutableOf": "Not substitutable: component {n}",
+        "substituteHelp": "When ordering, a piece can be swapped for another of the same category and the same price. Check «Not substitutable» on those that cannot.",
         "save": "Save kit",
         "cancel": "Cancel",
         "err": {
@@ -5386,7 +5474,35 @@
         "rotationCompany": "Same as the company",
         "rotationFefo": "FEFO — first expired",
         "rotationFifo": "FIFO — first in",
-        "rotationPosition": "By position — zone and code"
+        "rotationPosition": "By position — zone and code",
+        "blocks": {
+          "identification": "Identification",
+          "inventory": "Inventory",
+          "prices": "Prices",
+          "measures": "Dimensions and weight",
+          "custom": "Custom fields"
+        }
+      },
+      "measures": {
+        "help": "Dimensions of the base unit (what is sold), not of the box or the pallet. With length, width and height the volume is calculated; if one is missing, type it in.",
+        "dimensionUnit": "Dimension unit",
+        "length": "Length",
+        "width": "Width",
+        "height": "Height",
+        "volume": "Volume ({unit})",
+        "volumeCalculated": "Calculated from the three dimensions (saved as {m3} m³).",
+        "volumeStoredAs": "Saved as {m3} m³.",
+        "volumeManual": "Without the three dimensions, type it in.",
+        "weight": "Weight",
+        "weightUnit": "Weight unit",
+        "units": {
+          "IN": "Inches (in)",
+          "CM": "Centimeters (cm)",
+          "FT": "Feet (ft)",
+          "M": "Meters (m)",
+          "LB": "Pounds (lb)",
+          "KG": "Kilograms (kg)"
+        }
       },
       "fields": {
         "sku": "SKU",
@@ -5527,7 +5643,16 @@
         "packUnitWithoutQty": "Enter how many units the pack holds.",
         "packQtyWithoutUnit": "Enter the pack unit (box, barrel, bundle…).",
         "packQtyInvalid": "Units per pack must be a number greater than 0 (up to 3 decimals).",
-        "packSameAsBase": "The pack unit cannot be the same as the base unit."
+        "packSameAsBase": "The pack unit cannot be the same as the base unit.",
+        "lengthNegative": "Length cannot be negative.",
+        "widthNegative": "Width cannot be negative.",
+        "heightNegative": "Height cannot be negative.",
+        "lengthInvalid": "Length must be a number with up to 4 decimals.",
+        "widthInvalid": "Width must be a number with up to 4 decimals.",
+        "heightInvalid": "Height must be a number with up to 4 decimals.",
+        "weightNegative": "Weight cannot be negative.",
+        "weightTooLarge": "Weight is too large.",
+        "volumeTooLarge": "The volume calculated from length, width and height is too large."
       }
     },
     "categories": {
@@ -10352,7 +10477,15 @@
       "adjust": "Adjust pieces",
       "adjustHelp": "This kit can be adjusted when ordering: change the pieces for this order only.",
       "reset": "Back to the catalog ones",
-      "sectionTitle": "Kit components"
+      "sectionTitle": "Kit components",
+      "change": "Change",
+      "changeOf": "Change {sku}",
+      "insteadOf": "instead of {sku}",
+      "undo": "Undo",
+      "undoOf": "Undo the change of {sku}",
+      "substitutesOf": "Products that can replace {sku}",
+      "substituteHint": "Same category and same price: the kit price does not change.",
+      "chooseSubstitute": "Use {sku} instead of {original}"
     },
     "lines": "Products",
     "line": {
@@ -10591,6 +10724,12 @@
       "search": "Search by SKU or name",
       "noMatch": "No product of this brand matches the search.",
       "noPrice": "No price",
+      "validUntil": "Valid until {date}",
+      "noEndDate": "No end date",
+      "offerPriceChip": "Offer",
+      "priceFromOffer": "Price from the offer «{name}»",
+      "negotiatedWins": "Offer: {offer}. The client's negotiated price is charged because it is lower.",
+      "notices": "Price warnings for {sku}",
       "empty": "There are no active products to sell."
     },
     "cart": {
@@ -10600,7 +10739,8 @@
       "hide": "Tap to hide the lines",
       "empty": "The cart is empty: type a quantity on a product.",
       "remove": "Remove",
-      "removeOf": "Remove {sku} from the cart"
+      "removeOf": "Remove {sku} from the cart",
+      "offerOf": "Offer «{name}»"
     },
     "delivery": {
       "title": "Delivery",
@@ -10627,7 +10767,9 @@
       "noShipping": "No charge",
       "why": "Why: {reason}",
       "total": "Total",
-      "help": "Shipping and sales tax are calculated by the system with the company and client rules."
+      "help": "Shipping and sales tax are calculated by the system with the company and client rules.",
+      "priceNotices": "Price warnings",
+      "priceNoticesHelp": "The lowest price is always charged; these warnings are for your information and do not block sending the order."
     },
     "auth": {
       "title": "Authorization and sending",

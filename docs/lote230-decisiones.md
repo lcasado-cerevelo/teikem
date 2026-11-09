@@ -76,3 +76,28 @@ Siguen leyendo `Product.WeightKg` (kg) y `Product.VolumeM3` (m³), que no cambia
 - `db-init` desde cero en una base aparte (`Teikem_L230`) y la sección del lote corrida dos veces más con `sqlcmd -b` (sin errores; columnas y CHECK presentes); `db-update` después: «base de datos al día».
 - Contrato: `web-app/openapi.json` solo con lo nuevo (2 rutas, 5 esquemas y las propiedades nuevas de 6 esquemas), tomado del swagger del API levantado en Development **sin llave de Brevo** sobre la base aparte; `schema.d.ts` regenerado en web-app y copiado igual a app-cliente y app-almacen (solo adiciones); `tsc -b` de web-app sin errores.
 - Suite completa contra SQL Server real (`TEIKEM_TEST_SQLSERVER`): **5807 pasaron, 0 fallaron, 0 omitidas**.
+
+## Frontend (web-app, 2026-11-09)
+| Pieza | Qué es |
+|---|---|
+| Editor de producto | `ProductEditorModal`: ventana `xl` con bloques con título (Identificación, Inventario, Precios, Medidas y peso; campos personalizados al final) en una rejilla `.pe-grid` de 4 columnas (3 bajo 1100 px, 2 bajo 720 px, 1 bajo 480 px; sin scroll horizontal a 360 px). Desaparece «Más datos del producto»: código de barras y mínimo/máximo de picking pasan a Inventario; peso y volumen a Medidas y peso. Categoría como ruta «Guantes → Nitrilo». Ningún campo ni validación se perdió. Hueco natural para el bloque «Foto» (lote 229) junto a Identificación. |
+| Ayuda plegada | Nuevo en el kit: `HelpTip` («?» con recuadro, Escape no cierra el modal) y `Field tip`. La ayuda larga de Rotación y de Unidades por empaque va ahí; el aviso de «ya tiene movimientos» queda como una línea corta arriba de Inventario. |
+| Medidas y peso | Unidad de las medidas obligatoria (IN/CM/FT/M; la del producto o la de `GET /products/units-suggestion`; si no llega, IN/LB), largo, ancho, alto; volumen calculado y no editable con las tres (in³/cm³/ft³/m³ con su equivalente en m³), manual sin ellas; peso + unidad (LB/KG). Reglas puras en `features/warehouse/productMeasures.ts` con los vectores de `ProductDimensionRulesTests`. |
+| Kit | `KitEditorModal`: casilla «No sustituible» por pieza (desmarcada por omisión) con su ayuda; chip en la tabla del kit. «Ajustable al pedir» igual. |
+| Sustitución | `KitLineBlock` (borrador de la orden y carrito del pedido guiado): «Cambiar» → solo los sustitutos válidos (SKU · nombre · marca) → «en lugar de {SKU}» + «Deshacer»; la línea manda todas las piezas con `substitutesProductPublicId`. `KitComponentsSection` (orden guardada/solicitada) muestra la pieza real «en lugar de …». Reglas puras en `features/sales/kitSubstitution.ts`; hook `useKitSubstitutes`. |
+| Manual y FAQ | `docs/manual/06` §2.4 y §8b.3b, `docs/manual/18` §17.1, `faq.md` (sección «Lote 230») e índice. Falta la traducción en `docs/manual/en` y las capturas. |
+
+### Decisiones del frontend (a revisar con Luis)
+1. **Volumen manual en la unidad cúbica de las medidas** (in³, cm³, ft³, m³), no en m³, para que se vea igual que el calculado; viaja convertido a m³ con 4 decimales y debajo del campo se dice «Se guarda como … m³». Para algo muy chico en pulgadas el m³ redondea (decisión 4 del backend): conviene escribir las tres medidas.
+2. **Lo que se ve es lo que se guarda**: cambiar la unidad de las medidas o del peso no convierte los números escritos (como el servidor con las medidas). Por eso, al cambiar solo la unidad del peso, la pantalla manda el peso Y la unidad (el servidor, con solo la unidad, habría convertido el número).
+3. **PATCH solo con lo tocado** de medidas y peso (null = sin cambio); una medida vaciada va 0 (= quitarla); un peso vaciado va 0; `weightKg` ya no se manda desde el editor. El volumen manual solo viaja si se tocó (o cambió su unidad) y nunca con las tres medidas.
+4. **Unidad de las medidas siempre visible y obligatoria** (con la sugerida puesta): «la pantalla pregunta la unidad» sin una pregunta aparte; solo viaja si hay alguna medida o volumen (o si se cambió).
+5. **Piezas del kit desde el endpoint de sustitutos** cuando el usuario tiene `sales.create`: así un vendedor sin `inventory.view` también ve las piezas (antes no las veía). Sin `sales.create` se usa el kit del almacén como antes.
+6. **La lista de «Cambiar» excluye** el producto que ya está puesto y los que ya son otra pieza de la línea (dos piezas no quedan con el mismo producto).
+7. En el modo «Ver datos del producto» (sin `inventory.manage`) el formulario está deshabilitado, y con él los «?» de ayuda (quedan en el `fieldset` deshabilitado).
+8. El bloque «Campos personalizados» se oculta por CSS (`:has`) si la compañía no tiene campos para productos.
+
+### Pruebas del frontend
+- `productMeasures.test.ts` (vectores del servidor: volumen por unidad, peso lb/kg y su vuelta, redondeo; valores iniciales; cuerpo del alta y del PATCH; topes).
+- `ProductEditorModal.test.tsx` (bloques y orden de campos, ventana `xl`, ayuda plegada, categoría como ruta, unidad sugerida y la del producto, volumen calculado ↔ manual, POST/PATCH con las medidas, mensaje exacto de medida negativa) más las existentes.
+- `HelpTip.test.tsx`, `kitRules.test.ts` y `KitTab.test.tsx` («No sustituible»), `kitSubstitution.test.ts`, `KitLineBlock.test.tsx` (Cambiar/Deshacer, borrador guardado, «en lugar de» en la orden) y `ProductsStep.test.tsx` (sustitución en el carrito del pedido guiado y el cuerpo de la línea).

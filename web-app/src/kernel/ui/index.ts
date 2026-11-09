@@ -78,6 +78,8 @@ export {
 } from './filterRegistry'
 export type { AppliedFilter, FilterRegistry, FilterSnapshot } from './filterRegistry'
 export type { DateRangeFilterProps, FilterOption, FiltersProps, SelectFilterProps } from './Filters'
+export { HelpTip } from './HelpTip'
+export type { HelpTipProps } from './HelpTip'
 export { DateInput, DateTimeInput, Field, Form, NumberInput, Select, TextArea, TextInput, Toggle } from './Form'
 export { DateField } from './DateField'
 export type { DateFieldProps } from './DateField'

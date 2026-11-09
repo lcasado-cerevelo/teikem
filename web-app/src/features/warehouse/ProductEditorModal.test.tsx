@@ -2,6 +2,8 @@
 // desplegables con buscador, alta sin bloque de ajuste, edición con SKU bloqueado, interruptor "Producto activo" bloqueado
 // con saldo, bloque de ajuste oculto tras "Añadir ajuste" (nota obligatoria, se oculta y refresca el Total al aplicar, el
 // 409 del servidor queda dentro del bloque) y acceso a Lotes/Series. Sobre un fetch simulado.
+// Lote 230: ventana ancha con bloques (Identificación, Inventario, Precios, Medidas y peso), ayuda plegada en «?», unidad de medidas y de peso
+// pedidas y sugeridas (units-suggestion), volumen calculado (no editable) con las tres medidas o manual sin ellas, y lo que viaja al guardar.
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -18,7 +20,14 @@ interface Call {
   url: URL
   body: unknown
 }
-const mock = vi.hoisted(() => ({ calls: [] as Call[], onHand: 12, adjustFails: false, balances: false, defaultCategory: false }))
+const mock = vi.hoisted(() => ({
+  calls: [] as Call[],
+  onHand: 12,
+  adjustFails: false,
+  balances: false,
+  defaultCategory: false,
+  suggestion: { regionCode: 'PR', system: 'IMPERIAL', dimensionUnit: 'IN', largeDimensionUnit: 'FT', weightUnit: 'LB', dimensionUnits: ['IN', 'CM', 'FT', 'M'], weightUnits: ['LB', 'KG'] } as Record<string, unknown>,
+}))
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
   const fetch = async (req: Request) => {
@@ -61,6 +70,7 @@ function route(method: string, url: URL): unknown {
     return [
       { id: 3, name: 'Médico', path: 'Médico', isActive: true, productCount: 1, isDefault: false },
       { id: 7, name: 'AxisCare', path: 'AxisCare', isActive: true, productCount: 20, isDefault: mock.defaultCategory },
+      { id: 9, name: 'Nitrilo', path: 'Guantes / Nitrilo', parentId: 8, isActive: true, productCount: 2, isDefault: false },
     ]
   }
   if (p === '/api/v1/warehouses') return [{ id: 1, publicId: WH, code: 'ALM-01', name: 'Almacén principal', isActive: true }]
@@ -80,6 +90,7 @@ function route(method: string, url: URL): unknown {
       ],
     }
   if (p === '/api/v1/products/brands') return ['Abbott', 'Roche']
+  if (p === '/api/v1/products/units-suggestion') return mock.suggestion
   if (p === `/api/v1/products/${PID}` && method === 'GET') return { ...detail({ trackingTypeCode: 'NONE' }), product: { ...detail().product, trackingTypeCode: 'NONE', qtyOnHand: mock.onHand } }
   if (p === '/api/v1/products' && method === 'POST') return { product: { id: 99, publicId: PID } }
   if (p === '/api/v1/inventory/adjustments' && method === 'POST') {
@@ -132,10 +143,10 @@ function wrap(ui: ReactNode, permissions: string[]) {
   )
 }
 
-/** Etiquetas de los campos del formulario principal, en orden de aparición (sin "Más datos"). */
+/** Etiquetas de los campos de los bloques del formulario principal, en orden de aparición (sin los campos personalizados). */
 function mainLabels(dialog: HTMLElement): string[] {
   const fieldset = dialog.querySelector('fieldset.pe-fields')!
-  return Array.from(fieldset.querySelectorAll(':scope > .r2 > .f > label, :scope > .f > label')).map((l) =>
+  return Array.from(fieldset.querySelectorAll('.pe-block:not(.pe-custom) .pe-grid > .f > label, .pe-block:not(.pe-custom) .pe-grid > .f > .f-head > label')).map((l) =>
     (l.textContent ?? '').replace('*', '').trim(),
   )
 }
@@ -156,6 +167,7 @@ beforeEach(() => {
   mock.adjustFails = false
   mock.balances = false
   mock.defaultCategory = false
+  mock.suggestion = { regionCode: 'PR', system: 'IMPERIAL', dimensionUnit: 'IN', largeDimensionUnit: 'FT', weightUnit: 'LB', dimensionUnits: ['IN', 'CM', 'FT', 'M'], weightUnits: ['LB', 'KG'] }
 })
 
 /** Abre el bloque de ajuste, elige "Bajar" (Lote 14, D11) y llena Cantidad (positiva) y Motivo (Daño, con el buscador). */
@@ -168,29 +180,61 @@ async function fillAdjust(user: ReturnType<typeof userEvent.setup>, dialog: HTML
 }
 
 describe('ProductEditorModal', () => {
-  it('alta: campos en el orden de la maqueta, Rastreo "Ninguno" y Unidad por defecto, sin interruptor ni ajuste', async () => {
+  it('alta (Lote 230): ventana ancha con los bloques y sus campos en orden, Rastreo "Ninguno" y Unidad por defecto, sin interruptor ni ajuste', async () => {
     wrap(<ProductEditorModal open product={null} onClose={() => {}} />, ['inventory.view', 'inventory.manage', 'inventory.adjust'])
     const dialog = await findDialog('Nuevo producto')
     await within(dialog).findByLabelText(/^SKU/)
+    expect(dialog).toHaveClass('xl')
+    // (el bloque de campos personalizados se oculta por CSS cuando la compañía no tiene ninguno)
+    // Lote 229: el bloque «Foto» va primero (con un producto nuevo solo avisa que la foto se pone después de guardar)
+    expect(within(dialog).getAllByRole('heading', { level: 3 }).map((h) => h.textContent).slice(0, 5)).toEqual([
+      'Foto',
+      'Identificación',
+      'Inventario',
+      'Precios',
+      'Medidas y peso',
+    ])
     expect(mainLabels(dialog)).toEqual([
+      // Identificación
       'SKU',
-      'Unidad',
       'Nombre',
+      'Unidad',
       'Categoría',
-      'Rastreo',
-      'Dueño del inventario',
-      'Empaque (opcional)',
-      'Unidades por empaque',
       'Marca',
       'Modelo',
+      // Inventario
+      'Rastreo',
+      'Dueño del inventario',
       'Rotación',
-      'Costo de compra',
-      'Precio de venta',
+      'Empaque (opcional)',
+      'Unidades por empaque',
+      'Código de barras',
+      'Punto de reorden',
       'Almacén por defecto',
       'Posición por defecto',
+      'Mínimo de picking',
+      'Máximo de picking',
       'Total (se ajusta al editar)',
-      'Punto de reorden',
+      // Precios
+      'Costo de compra',
+      'Precio de venta',
+      // Medidas y peso
+      'Unidad de las medidas',
+      'Largo',
+      'Ancho',
+      'Alto',
+      'Volumen (in³)',
+      'Peso',
+      'Unidad del peso',
     ])
+    // la ayuda larga queda plegada en el «?» de la etiqueta
+    expect(within(dialog).queryByText(/De qué saldo de este producto sale primero/)).toBeNull()
+    await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Ayuda: Rotación' }))
+    expect(within(dialog).getByRole('note')).toHaveTextContent(/De qué saldo de este producto sale primero/)
+    expect(within(dialog).getByRole('button', { name: 'Ayuda: Unidades por empaque' })).toBeInTheDocument()
+    // la categoría se ve como ruta «Categoría → Subcategoría»
+    await userEvent.setup().click(within(dialog).getByRole('combobox', { name: 'Categoría' }))
+    expect(await within(dialog).findByRole('option', { name: 'Guantes → Nitrilo' })).toBeInTheDocument()
     // desplegables con buscador: muestran la etiqueta del catálogo
     expect(within(dialog).getByRole('combobox', { name: 'Rastreo' })).toHaveValue('Ninguno')
     expect(within(dialog).getByRole('combobox', { name: 'Unidad' })).toHaveValue('Unidad')
@@ -475,5 +519,95 @@ describe('ProductEditorModal', () => {
     expect(within(dialog).queryByRole('button', { name: 'Guardar' })).toBeNull()
     // la ✕ de la cabecera y el botón de texto del pie
     expect(within(dialog).getAllByRole('button', { name: 'Cerrar' })).toHaveLength(2)
+  })
+
+  it('Lote 230: unidad de medidas y de peso sugeridas por la región en un producto nuevo; con unidad propia, esa', async () => {
+    mock.suggestion = { ...mock.suggestion, regionCode: 'MX', system: 'METRIC', dimensionUnit: 'CM', largeDimensionUnit: 'M', weightUnit: 'KG' }
+    const { unmount } = wrap(<ProductEditorModal open product={null} onClose={() => {}} />, ['inventory.view', 'inventory.manage'])
+    let dialog = await findDialog('Nuevo producto')
+    expect(within(dialog).getByLabelText(/^Unidad de las medidas/)).toHaveValue('CM')
+    expect(within(dialog).getByLabelText(/^Unidad del peso/)).toHaveValue('KG')
+    expect(within(dialog).getByLabelText('Volumen (cm³)')).toBeInTheDocument()
+    expect(within(dialog).getByText(/Medidas de la unidad base \(lo que se vende\)/)).toBeInTheDocument()
+    unmount()
+
+    const own = {
+      ...detail({ trackingTypeCode: 'NONE' }),
+      volumeM3: 0.6796,
+      weightKg: 1.134,
+      measures: { length: 2, width: 3, height: 4, dimensionUnit: 'FT', volume: 24, volumeUnit: 'FT3', volumeCalculated: true, weight: 2.5, weightUnit: 'LB' },
+    }
+    wrap(<ProductEditorModal open product={own} onClose={() => {}} />, ['inventory.view', 'inventory.manage'])
+    dialog = await findDialog('Editar producto')
+    expect(within(dialog).getByLabelText(/^Unidad de las medidas/)).toHaveValue('FT')
+    expect(within(dialog).getByLabelText(/^Unidad del peso/)).toHaveValue('LB')
+    expect(within(dialog).getByLabelText('Peso')).toHaveValue(2.5)
+    // con las tres medidas: calculado y no editable
+    const vol = within(dialog).getByLabelText('Volumen (ft³)')
+    expect(vol).toHaveValue('24')
+    expect(vol).toBeDisabled()
+  })
+
+  it('Lote 230: medidas y volumen sincronizados — con las tres se calcula (no editable), sin una se escribe a mano; el alta manda medidas, unidad y peso', async () => {
+    const user = userEvent.setup()
+    wrap(<ProductEditorModal open product={null} onClose={() => {}} />, ['inventory.view', 'inventory.manage'])
+    const dialog = await findDialog('Nuevo producto')
+    await user.type(within(dialog).getByLabelText(/^SKU/), 'CAJA-1')
+    await user.type(within(dialog).getByLabelText(/^Nombre/), 'Cajita')
+    // sin medidas: volumen manual
+    const manual = within(dialog).getByLabelText('Volumen (in³)')
+    expect(manual).toBeEnabled()
+    expect(within(dialog).getByText('Sin las tres medidas, escríbalo a mano.')).toBeInTheDocument()
+    await user.type(manual, '50')
+    expect(within(dialog).getByText('Se guarda como 0.0008 m³.')).toBeInTheDocument()
+    await user.type(within(dialog).getByLabelText('Largo'), '10')
+    await user.type(within(dialog).getByLabelText('Ancho'), '10')
+    await user.type(within(dialog).getByLabelText('Alto'), '10')
+    // con las tres: calculado en in³ (10 × 10 × 10) y no editable, con su equivalente en m³
+    const calc = within(dialog).getByLabelText('Volumen (in³)')
+    expect(calc).toHaveValue('1,000')
+    expect(calc).toBeDisabled()
+    expect(within(dialog).getByText('Calculado con las tres medidas (se guarda como 0.0164 m³).')).toBeInTheDocument()
+    // al quitar una vuelve el manual con lo que se había escrito
+    await user.clear(within(dialog).getByLabelText('Alto'))
+    expect(within(dialog).getByLabelText('Volumen (in³)')).toHaveValue(50)
+    await user.type(within(dialog).getByLabelText('Alto'), '10')
+    await user.type(within(dialog).getByLabelText('Peso'), '2.5')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'POST')).toBe(true))
+    const body = mock.calls.find((c) => c.method === 'POST')!.body as Record<string, unknown>
+    expect(body).toMatchObject({ sku: 'CAJA-1', length: 10, width: 10, height: 10, dimensionUnit: 'IN', volumeM3: null, weight: 2.5, weightUnit: 'LB' })
+    expect(body).not.toHaveProperty('weightKg')
+  })
+
+  it('Lote 230: edición — sin tocar medidas no viajan; volumen manual tocado viaja en m³; medida negativa con el mensaje del servidor', async () => {
+    const user = userEvent.setup()
+    const manualOnly = { ...detail({ trackingTypeCode: 'NONE' }), volumeM3: 0.3, measures: { volume: 0.3, volumeUnit: 'M3', volumeCalculated: false } }
+    mock.suggestion = { ...mock.suggestion, dimensionUnit: 'CM', weightUnit: 'KG' }
+    const { unmount } = wrap(<ProductEditorModal open product={manualOnly} onClose={() => {}} />, ['inventory.view', 'inventory.manage'])
+    let dialog = await findDialog('Editar producto')
+    // el volumen guardado en m³ se ve en la unidad sugerida (0.3 m³ = 300,000 cm³)
+    expect(within(dialog).getByLabelText('Volumen (cm³)')).toHaveValue(300000)
+    await user.type(within(dialog).getByLabelText('Modelo'), 'M-1')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'PATCH')).toBe(true))
+    expect(mock.calls.find((c) => c.method === 'PATCH')!.body).toMatchObject({ length: null, width: null, height: null, dimensionUnit: null, volumeM3: null, weight: null, weightUnit: null })
+    unmount()
+
+    mock.calls = []
+    wrap(<ProductEditorModal open product={manualOnly} onClose={() => {}} />, ['inventory.view', 'inventory.manage'])
+    dialog = await findDialog('Editar producto')
+    await user.selectOptions(within(dialog).getByLabelText(/^Unidad de las medidas/), 'M')
+    const vol = within(dialog).getByLabelText('Volumen (m³)')
+    await user.clear(vol)
+    await user.type(vol, '0.5')
+    await user.type(within(dialog).getByLabelText('Largo'), '-1')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    expect(await within(dialog).findByText('El largo no puede ser negativo.')).toBeInTheDocument()
+    expect(mock.calls.some((c) => c.method === 'PATCH')).toBe(false)
+    await user.clear(within(dialog).getByLabelText('Largo'))
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'PATCH')).toBe(true))
+    expect(mock.calls.find((c) => c.method === 'PATCH')!.body).toMatchObject({ dimensionUnit: 'M', volumeM3: 0.5 })
   })
 })

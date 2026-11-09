@@ -1,5 +1,5 @@
-// Lote 221 (P1) — pestaña «Precios y ofertas» sobre un fetch simulado: listas con su estado calculado, ofertas como tarjetas, permisos (sales.view ve, sales.pricelist edita),
-// validación antes de enviar, el cuerpo de crear y el mensaje del servidor tal cual al publicar.
+// Lote 221 (P1) — pestaña «Precios y ofertas» sobre un fetch simulado: listas con su estado calculado, permisos (sales.view ve, sales.pricelist edita),
+// validación antes de enviar, el cuerpo de crear y el mensaje del servidor tal cual al publicar. Las ofertas (lote 229) se prueban en OffersScreen.test.tsx.
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -34,14 +34,12 @@ const LIST = (publicId: string, name: string, state: string, extra: object = {})
 })
 const DETAIL = (publicId: string, name: string, state: string) => ({
   publicId, name, validFrom: '2026-11-01', validTo: null, isPublished: state !== 'DRAFT', state, appliesToAll: true, notes: null, isActive: true, clients: [], createdAtUtc: '2026-11-01T00:00:00',
-  items: [{ id: 7, productPublicId: 'p1', sku: 'KIT-1', productName: 'Kit uno', isKit: true, isPromotion: true, price: 9.5, productSalePrice: 12, productIsActive: true }],
+  items: [{ id: 7, productPublicId: 'p1', sku: 'KIT-1', productName: 'Kit uno', isKit: true, isPromotion: false, price: 9.5, effectiveImagePublicId: null, productSalePrice: 12, productIsActive: true }],
 })
-const OFFER = { productPublicId: 'p1', sku: 'KIT-1', name: 'Kit uno', brand: 'Acme', isKit: true, isActive: true, isPromotion: true, promoFrom: '2026-11-01', promoTo: '2026-11-30', inEffect: true, salePrice: 12 }
 
 function route({ method, url }: Call): unknown {
   const p = url.pathname
   if (method === 'GET' && p === '/api/v1/price-lists') return [LIST(L1, 'Base 2026', 'ACTIVE'), LIST(L2, 'Navidad', 'DRAFT')]
-  if (method === 'GET' && p === '/api/v1/price-lists/offers') return [OFFER]
   if (method === 'GET' && p === `/api/v1/price-lists/${L2}`) return DETAIL(L2, 'Navidad', 'DRAFT')
   if (method === 'POST' && p === '/api/v1/price-lists') return DETAIL(L2, 'Navidad', 'DRAFT')
   if (method === 'POST' && p === `/api/v1/price-lists/${L2}/publish`) return mock.publish ? mock.publish() : DETAIL(L2, 'Navidad', 'ACTIVE')
@@ -71,15 +69,13 @@ beforeEach(() => {
 })
 
 describe('Precios y ofertas', () => {
-  it('muestra las listas con su estado y las ofertas como tarjetas', async () => {
+  it('muestra las listas con su estado', async () => {
     wrap(['sales.view'])
     const table = await screen.findByRole('table', { name: 'Listas de precios' })
     expect(await within(table).findByText('Base 2026')).toBeInTheDocument()
     expect(within(table).getByText('Vigente')).toBeInTheDocument()
     expect(within(table).getByText('Borrador')).toBeInTheDocument()
-    const card = await screen.findByRole('article', { name: /KIT-1/ })
-    expect(within(card).getByText('Kit uno')).toBeInTheDocument()
-    expect(within(card).getByText('En vigor')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Ofertas' })).toBeInTheDocument()
   })
 
   it('sin sales.pricelist no hay acciones de edición', async () => {
@@ -87,16 +83,6 @@ describe('Precios y ofertas', () => {
     await screen.findByText('Base 2026')
     expect(screen.queryByRole('button', { name: 'Nueva lista de precios' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Nueva oferta' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Editar oferta' })).toBeNull()
-  })
-
-  it('Nueva oferta: exige escoger un producto antes de continuar', async () => {
-    const user = userEvent.setup()
-    wrap(['sales.view', 'sales.pricelist'])
-    await screen.findByText('Base 2026')
-    await user.click(screen.getByRole('button', { name: 'Nueva oferta' }))
-    await user.click(await screen.findByRole('button', { name: 'Continuar' }))
-    expect(await screen.findByText('Escoge un producto.')).toBeInTheDocument()
   })
 
   it('con sales.pricelist: valida el nombre y manda el cuerpo de crear', async () => {

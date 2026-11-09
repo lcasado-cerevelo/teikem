@@ -234,9 +234,12 @@ function PhotoCell({ item, listId, editable, onRun }: { item: PriceListItemDto; 
   const t = useT()
   const actions = usePriceListActions()
   const ref = useRef<HTMLInputElement>(null)
+  // Lote 229: sin foto propia del renglón se ve la del producto (o la de la primera pieza con foto si es un kit): `effectiveImagePublicId`
+  const shown = item.effectiveImagePublicId ?? item.imagePublicId
   return (
     <span className="pl-bar" style={{ margin: 0 }}>
-      <StoredImage publicId={item.imagePublicId} alt={t('warehouse.products.prices.photoOf', { sku: item.sku ?? '' })} className="pl-thumb" />
+      <StoredImage publicId={shown} alt={t('warehouse.products.prices.photoOf', { sku: item.sku ?? '' })} className="pl-thumb" />
+      {!item.imagePublicId && shown && <span className="help">{t('warehouse.products.prices.photoFromProduct')}</span>}
       {editable && (
         <>
           <input
@@ -280,7 +283,7 @@ function ItemsSection({ listId, items, editable, onRun, onFail }: { listId: stri
         header: t('warehouse.products.prices.product'),
         cell: (i) => (
           <>
-            {i.productName} {i.isKit && <Chip tone="neutral">{t('warehouse.products.kit.chip')}</Chip>} {i.isPromotion && <Chip tone="warn">{t('warehouse.products.prices.offerChip')}</Chip>}{' '}
+            {i.productName} {i.isKit && <Chip tone="neutral">{t('warehouse.products.kit.chip')}</Chip>}{' '}
             {!i.productIsActive && <Chip tone="fail">{t('warehouse.products.inactive')}</Chip>}
           </>
         ),

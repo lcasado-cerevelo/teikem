@@ -17,6 +17,13 @@
 //   Al aplicar, el Total se refresca y el bloque se vuelve a ocultar limpio; si el API lo rechaza (409 insufficient_stock:
 //   dejaría el inventario negativo) el mensaje del servidor queda dentro del bloque, que sigue abierto.
 // - "Ver lotes" / "Ver series" llevan a la vista de solo lectura de la ficha (`/warehouse/products/{id}?tab=lots|serials`).
+// - Lote 230: ventana ancha (`xl`) con los campos en bloques con título —Identificación, Inventario, Precios, Medidas y peso— en una
+//   rejilla de 4 columnas en escritorio (3, 2 y UNA a 360 px; `.pe-grid`); "Más datos del producto" desapareció (código de barras y
+//   mínimos de picking van en Inventario; peso y volumen en Medidas y peso; los campos personalizados al final). La ayuda larga
+//   (empaque, rotación) va plegada en el «?» de la etiqueta (`Field tip`). La categoría se ve como ruta «Categoría → Subcategoría».
+//   Medidas y peso: largo, ancho, alto y su unidad (IN, CM, FT, M; la del producto o la sugerida por la región con
+//   GET /products/units-suggestion); con las tres el volumen se calcula y no se edita, si falta alguna se escribe a mano (en la
+//   unidad cúbica, viaja en m³); peso con su unidad (LB/KG). Reglas puras en `productMeasures.ts`.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useContext, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
@@ -25,8 +32,9 @@ import { z } from 'zod'
 import { useCan } from '../../kernel/access'
 import { useLookups } from '../../kernel/catalogs'
 import { CustomFieldsForm, useSaveCustomFields } from '../../kernel/custom-fields'
+import { useFormat } from '../../kernel/format'
 import { useLang, useT } from '../../kernel/i18n'
-import { ClientPickerInput, ComboSelectInput, Field, Form, Modal, NumberInput, Select, Spinner, TextInput, toast } from '../../kernel/ui'
+import { ClientPickerInput, ComboSelectInput, Field, Form, Modal, NumberInput, Select, Spinner, TextInput, toast, type SelectOption } from '../../kernel/ui'
 import { IconCheck } from '../../kernel/ui/icons'
 import { IconLayers } from '../../kernel/ui/screenIcons'
 import { SessionContext } from '../../app/session'
@@ -37,6 +45,7 @@ import {
   useProductCategories,
   useSetProductActive,
   useInventoryBalances,
+  useUnitsSuggestion,
   useUpdateProduct,
   useWarehouseBins,
   type ProductDetailDto,
@@ -46,14 +55,21 @@ import { useAdjustmentForm, useSubmitAdjustment } from './adjustmentForm'
 import { AdjustmentFields } from './InventoryAdjustModal'
 import { formatNumber } from './lineRules'
 import { BinPickerInput, WarehousePickerInput } from './pickers'
+import { ProductPhotoBlock } from './ProductPhotoBlock'
+import { BRAND_MAX, MODEL_MAX, brandModelSchema, moneySchema } from './productRules'
 import {
-  BRAND_MAX,
-  MODEL_MAX,
-  brandModelSchema,
-  moneySchema,
-  volumeM3Schema,
-  weightKgSchema,
-} from './productRules'
+  DIMENSION_UNITS,
+  WEIGHT_UNITS,
+  dimensionSchema,
+  manualVolumeSchema,
+  measuresCreateBody,
+  measuresDefaults,
+  measuresIssues,
+  measuresPatchBody,
+  volumeView,
+  weightSchema,
+  type UnitsSuggestionLike,
+} from './productMeasures'
 import './warehouse.css'
 
 const PICKING_ZONE = 'PICKING'
@@ -61,8 +77,10 @@ const DEFAULT_UOM = 'UN'
 const DEFAULT_TRACKING = 'NONE'
 // eslint-disable-next-line no-control-regex -- intencional: el SKU no admite caracteres de control (manual §2).
 const CONTROL_CHARS_OR_SPACES = /[\s\x00-\x1F\x7F]/
-/** Campos de "Más datos del producto": si alguno trae error, el bloque se abre solo. */
-const MORE_FIELDS = ['barcode', 'weightKg', 'volumeM3', 'minPickQty', 'maxPickQty', 'customFields'] as const
+/** Unidad cúbica (IN3…) como se escribe en pantalla. */
+const CUBIC_LABEL: Record<string, string> = { IN3: 'in³', CM3: 'cm³', FT3: 'ft³', M3: 'm³' }
+/** Ruta de la categoría «Raíz / Hija» del API como «Raíz → Hija». */
+const categoryPathLabel = (path: string) => path.split(' / ').join(' → ')
 
 export interface ProductEditorModalProps {
   open: boolean
@@ -87,7 +105,7 @@ export function ProductEditorByIdModal({ publicId, onClose }: { publicId: string
   if (!publicId) return null
   if (data?.product) return <ProductEditorModal open product={data} onClose={onClose} />
   return (
-    <Modal open title={<ModalTitle text={t('warehouse.products.editor.editTitle')} />} size="sm" onClose={onClose}>
+    <Modal open title={<ModalTitle text={t('warehouse.products.editor.editTitle')} />} size="xl" onClose={onClose}>
       {isLoading || !error ? (
         <Spinner block />
       ) : (
@@ -116,14 +134,16 @@ function ProductEditorDialog({ product: detail, onClose, onCreated }: ProductEdi
   const trackingTypes = useLookups('TrackingType')
   const uoms = useLookups('UnitOfMeasure')
   const categories = useProductCategories()
+  // Lote 230: la unidad sugerida de medidas y peso (región de la compañía); si no llega, las de Puerto Rico
+  const suggestion = useUnitsSuggestion()
   const [busy, setBusy] = useState(false)
   const titleKey = !isEdit ? 'newTitle' : canManage ? 'editTitle' : 'viewData'
   const title = <ModalTitle text={t(`warehouse.products.editor.${titleKey}`)} />
 
   // las listas se esperan antes de montar el formulario: un <select> sin sus opciones no muestra el valor inicial
-  if (trackingTypes.isLoading || uoms.isLoading || categories.isLoading) {
+  if (trackingTypes.isLoading || uoms.isLoading || categories.isLoading || suggestion.isLoading) {
     return (
-      <Modal open title={title} size="sm" onClose={onClose}>
+      <Modal open title={title} size="xl" onClose={onClose}>
         <Spinner block />
       </Modal>
     )
@@ -140,9 +160,10 @@ function ProductEditorDialog({ product: detail, onClose, onCreated }: ProductEdi
       // la ruta completa ("Raíz / Hija") como etiqueta: se busca por cualquier nivel y no hay dos iguales
       categoryOptions={(categories.data ?? [])
         .filter((c) => c.isActive || c.id === detail?.product?.categoryId)
-        .map((c) => ({ value: String(c.id), label: c.path || c.name || '' }))}
+        .map((c) => ({ value: String(c.id), label: categoryPathLabel(c.path || c.name || '') }))}
       // 2026-10-11: un producto NUEVO llega con la categoría por defecto de la compañía (Ajustes → Operación); al editar no se toca
       defaultCategoryId={isEdit ? undefined : (categories.data ?? []).find((c) => c.isDefault && c.isActive)?.id}
+      suggestion={suggestion.data}
       busy={busy}
       setBusy={setBusy}
       onClose={onClose}
@@ -166,6 +187,8 @@ interface ProductEditorFormProps {
   categoryOptions: Option[]
   /** Categoría con la que arranca un producto nuevo (la de los ajustes de la compañía, si está activa). */
   defaultCategoryId?: number
+  /** Lote 230: unidades sugeridas por la región (GET /products/units-suggestion). */
+  suggestion?: UnitsSuggestionLike
   busy: boolean
   setBusy: (v: boolean) => void
   onClose: () => void
@@ -181,6 +204,7 @@ function ProductEditorForm({
   uomCodes,
   categoryOptions,
   defaultCategoryId,
+  suggestion,
   busy,
   setBusy,
   onClose,
@@ -188,6 +212,7 @@ function ProductEditorForm({
 }: ProductEditorFormProps) {
   const t = useT()
   const lang = useLang()
+  const f = useFormat()
   const formId = useId()
   const totalId = useId()
   const isEdit = detail !== null
@@ -197,7 +222,6 @@ function ProductEditorForm({
   const update = useUpdateProduct()
   const setActive = useSetProductActive()
   const { save: saveCustomFields } = useSaveCustomFields('PRODUCT')
-  const [moreOpen, setMoreOpen] = useState(false)
   const [pickedBin, setPickedBin] = useState<WarehouseBinDto | null>(null)
   // la ficha en caché (misma clave que ProductEditorByIdModal): tras un ajuste se invalida y el Total se refresca solo
   const live = useProduct(isEdit ? publicId : null, { handleAccessDenied: false })
@@ -243,8 +267,14 @@ function ProductEditorForm({
           minQty: z.number(t('warehouse.products.errors.numberInvalid')).min(0, t('warehouse.products.errors.minNegative')).nullable(),
           isActive: z.boolean(),
           barcode: z.string().trim().max(60, t('warehouse.products.errors.barcodeMax')),
-          weightKg: weightKgSchema(t),
-          volumeM3: volumeM3Schema(t),
+          // Lote 230: medidas y peso con su unidad (productMeasures.ts)
+          length: dimensionSchema(t, 'length'),
+          width: dimensionSchema(t, 'width'),
+          height: dimensionSchema(t, 'height'),
+          dimensionUnit: z.string(),
+          volume: manualVolumeSchema(t),
+          weight: weightSchema(t),
+          weightUnit: z.string(),
           minPickQty: z.number(t('warehouse.products.errors.numberInvalid')).min(0, t('warehouse.products.errors.minNegative')).nullable(),
           maxPickQty: z.number(t('warehouse.products.errors.numberInvalid')).min(0, t('warehouse.products.errors.minNegative')).nullable(),
         })
@@ -254,6 +284,8 @@ function ProductEditorForm({
           if (!v.packUom && v.packQty != null) ctx.addIssue({ code: 'custom', path: ['packUom'], message: t('warehouse.products.errors.packQtyWithoutUnit') })
           if (v.packQty != null && !(v.packQty > 0)) ctx.addIssue({ code: 'custom', path: ['packQty'], message: t('warehouse.products.errors.packQtyInvalid') })
           if (v.packUom && v.packUom === v.baseUom) ctx.addIssue({ code: 'custom', path: ['packUom'], message: t('warehouse.products.errors.packSameAsBase') })
+          // el volumen (calculado o manual, en m³) y el peso (en kg) deben caber, según la unidad
+          for (const issue of measuresIssues(v, t)) ctx.addIssue({ code: 'custom', path: [issue.path], message: issue.message })
         })
         .refine((v) => v.maxPickQty == null || v.minPickQty == null || v.maxPickQty >= v.minPickQty, {
           path: ['maxPickQty'],
@@ -283,8 +315,7 @@ function ProductEditorForm({
       minQty: product?.minQty ?? null,
       isActive: product?.isActive ?? true,
       barcode: product?.barcode ?? '',
-      weightKg: detail?.weightKg ?? null,
-      volumeM3: detail?.volumeM3 ?? null,
+      ...measuresDefaults(detail, suggestion),
       minPickQty: detail?.minPickQty ?? null,
       maxPickQty: detail?.maxPickQty ?? null,
     },
@@ -325,8 +356,6 @@ function ProductEditorForm({
     { enabled: hasPreferredBin, handleAccessDenied: false },
   )
   const bins = preferredBinPage?.items ?? []
-  const errors = form.formState.errors
-  const moreHasError = MORE_FIELDS.some((k) => k in errors)
   const submitting = form.formState.isSubmitting || busy
 
   // un solo aviso (bajo Dueño) para los tres campos que el API bloquea con movimientos: la maqueta no lo tiene y así no crece el modal
@@ -359,8 +388,7 @@ function ProductEditorForm({
         preferredBinId: v.preferredWarehousePublicId && v.preferredBinId ? Number(v.preferredBinId) : null,
         minQty: v.minQty,
         barcode: v.barcode || null,
-        weightKg: v.weightKg,
-        volumeM3: v.volumeM3,
+        ...measuresCreateBody(v),
         minPickQty: v.minPickQty,
         maxPickQty: v.maxPickQty,
         brand: v.brand || null,
@@ -402,8 +430,8 @@ function ProductEditorForm({
           clearOwner: hasMovements || v.ownerClientPublicId ? null : true,
           purchaseCost: v.purchaseCost,
           salePrice: v.salePrice,
-          weightKg: v.weightKg,
-          volumeM3: v.volumeM3,
+          // Lote 230: solo lo que se tocó de medidas y peso (weight + weightUnit; weightKg ya no se manda)
+          ...measuresPatchBody(v, dirty),
           minQty: v.minQty,
           minPickQty: v.minPickQty,
           maxPickQty: v.maxPickQty,
@@ -443,6 +471,15 @@ function ProductEditorForm({
     onClose()
   }
 
+  // Lote 230: medidas al día para el volumen calculado (o el manual) y las opciones de unidad
+  const [length, width, height, dimensionUnit, manualVolume] = useWatch({ control: form.control, name: ['length', 'width', 'height', 'dimensionUnit', 'volume'] })
+  const baseUomChosen = useWatch({ control: form.control, name: 'baseUom' })
+  const measures = { length: length ?? null, width: width ?? null, height: height ?? null, dimensionUnit: dimensionUnit ?? '', volume: manualVolume ?? null }
+  const volume = volumeView(measures)
+  const volumeLabel = t('warehouse.products.measures.volume', { unit: CUBIC_LABEL[volume.unit] ?? volume.unit })
+  const dimensionUnitOptions: SelectOption[] = DIMENSION_UNITS.map((u) => ({ value: u, label: t(`warehouse.products.measures.units.${u}`) }))
+  const weightUnitOptions: SelectOption[] = WEIGHT_UNITS.map((u) => ({ value: u, label: t(`warehouse.products.measures.units.${u}`) }))
+
   const footer = editable ? (
     <>
       <button type="button" className="btn" onClick={onClose} disabled={submitting}>
@@ -460,10 +497,12 @@ function ProductEditorForm({
   )
 
   return (
-    <Modal open title={title} size="sm" onClose={onClose} dismissible={!submitting} footer={footer}>
+    <Modal open title={title} size="xl" onClose={onClose} dismissible={!submitting} footer={footer}>
       <Form id={formId} form={form} onSubmit={submit}>
         <fieldset className="pe-fields" disabled={!editable}>
-          <div className="r2">
+          {/* Lote 229: bloque «Foto» del producto (autocontenido; un producto nuevo solo avisa que la foto va después de guardar) */}
+          <ProductPhotoBlock publicId={product?.publicId ?? null} titleId={`${formId}-photo`} />
+          <EditorBlock id={`${formId}-ident`} title={t('warehouse.products.editor.blocks.identification')}>
             {isEdit ? (
               <div className="f">
                 <label htmlFor={`${formId}-sku`}>{t('warehouse.products.editor.sku')}</label>
@@ -474,67 +513,65 @@ function ProductEditorForm({
                 <TextInput className="mono" maxLength={60} placeholder="SKU-000" autoComplete="off" />
               </Field>
             )}
+            <Field name="name" label={t('warehouse.products.editor.name')} required className="span2">
+              <TextInput maxLength={200} />
+            </Field>
             <Field name="baseUom" label={t('warehouse.products.editor.uom')}>
               <ComboSelectInput options={uomCodes} placeholder={nonePlaceholder} disabled={isEdit && hasMovements} />
             </Field>
-          </div>
-          <Field name="name" label={t('warehouse.products.editor.name')} required>
-            <TextInput maxLength={200} />
-          </Field>
-          <div className="r2">
-            <Field name="categoryId" label={t('warehouse.products.editor.category')}>
+            <Field name="categoryId" label={t('warehouse.products.editor.category')} className="span2">
               <ComboSelectInput options={categoryOptions} placeholder={nonePlaceholder} />
             </Field>
-            <Field name="trackingType" label={t('warehouse.products.editor.tracking')}>
-              <ComboSelectInput options={trackingCodes} placeholder={nonePlaceholder} disabled={isEdit && hasMovements} />
-            </Field>
-          </div>
-          <Field name="ownerClientPublicId" label={t('warehouse.products.editor.owner')} help={lockHelp}>
-            <ClientPickerInput placeholder={ownLabel} disabled={isEdit && hasMovements} />
-          </Field>
-          <div className="r2">
-            <Field name="packUom" label={t('warehouse.products.editor.packUom')}>
-              <ComboSelectInput options={uomCodes.filter((o) => o.value !== form.watch('baseUom'))} placeholder={nonePlaceholder} />
-            </Field>
-            <Field name="packQty" label={t('warehouse.products.editor.packQty')}>
-              <NumberInput className="mono" min={0} />
-            </Field>
-          </div>
-          <p className="help">{t('warehouse.products.editor.packHelp')}</p>
-          <div className="r2">
             <Field name="brand" label={t('warehouse.products.editor.brand')}>
               <TextInput maxLength={BRAND_MAX} list={brandListId} autoComplete="off" placeholder={t('warehouse.products.editor.brandPlaceholder')} />
             </Field>
             <Field name="model" label={t('warehouse.products.editor.model')}>
               <TextInput maxLength={MODEL_MAX} autoComplete="off" />
             </Field>
-          </div>
-          {/* sugerencias de las marcas ya usadas en la compañía; se puede escribir una nueva */}
-          <datalist id={brandListId}>
-            {brands.map((b) => (
-              <option key={b} value={b} />
-            ))}
-          </datalist>
-          <Field name="rotationMethod" label={t('warehouse.products.editor.rotation')} help={t('warehouse.products.editor.rotationHelp')}>
-            <Select options={rotationOptions} />
-          </Field>
-          <div className="r2">
-            <Field name="purchaseCost" label={t('warehouse.products.editor.purchaseCost')}>
+            {/* sugerencias de las marcas ya usadas en la compañía; se puede escribir una nueva */}
+            <datalist id={brandListId}>
+              {brands.map((b) => (
+                <option key={b} value={b} />
+              ))}
+            </datalist>
+          </EditorBlock>
+
+          <EditorBlock id={`${formId}-inv`} title={t('warehouse.products.editor.blocks.inventory')}>
+            {/* un solo aviso para los tres campos que el API bloquea con movimientos (unidad, rastreo y dueño) */}
+            {lockHelp && <p className="help pe-span-all">{lockHelp}</p>}
+            <Field name="trackingType" label={t('warehouse.products.editor.tracking')}>
+              <ComboSelectInput options={trackingCodes} placeholder={nonePlaceholder} disabled={isEdit && hasMovements} />
+            </Field>
+            <Field name="ownerClientPublicId" label={t('warehouse.products.editor.owner')} className="span2">
+              <ClientPickerInput placeholder={ownLabel} disabled={isEdit && hasMovements} />
+            </Field>
+            <Field name="rotationMethod" label={t('warehouse.products.editor.rotation')} tip={t('warehouse.products.editor.rotationHelp')}>
+              <Select options={rotationOptions} />
+            </Field>
+            <Field name="packUom" label={t('warehouse.products.editor.packUom')}>
+              <ComboSelectInput options={uomCodes.filter((o) => o.value !== baseUomChosen)} placeholder={nonePlaceholder} />
+            </Field>
+            <Field name="packQty" label={t('warehouse.products.editor.packQty')} tip={t('warehouse.products.editor.packHelp')}>
               <NumberInput className="mono" min={0} />
             </Field>
-            <Field name="salePrice" label={t('warehouse.products.editor.salePrice')}>
+            <Field name="barcode" label={t('warehouse.products.fields.barcode')}>
+              <TextInput maxLength={60} />
+            </Field>
+            <Field name="minQty" label={t('warehouse.products.editor.reorder')}>
               <NumberInput className="mono" min={0} />
             </Field>
-          </div>
-          <div className="r2">
             <Field name="preferredWarehousePublicId" label={t('warehouse.products.editor.preferredWarehouse')}>
               <WarehousePickerInput placeholder={t('warehouse.products.fields.none')} />
             </Field>
             <Field name="preferredBinId" label={t('warehouse.products.editor.preferredBin')}>
               <BinPickerInput warehousePublicId={preferredWarehousePublicId} placeholder={t('warehouse.products.fields.none')} onPicked={setPickedBin} />
             </Field>
-          </div>
-          <div className="r2">
+            <Field name="minPickQty" label={t('warehouse.products.fields.minPickQty')}>
+              <NumberInput min={0} />
+            </Field>
+            <Field name="maxPickQty" label={t('warehouse.products.fields.maxPickQty')}>
+              <NumberInput min={0} />
+            </Field>
             <div className="f">
               <label htmlFor={totalId}>
                 {t('warehouse.products.editor.total')}{' '}
@@ -544,46 +581,77 @@ function ProductEditorForm({
               </label>
               <input id={totalId} className="mono" value={formatNumber(onHand, lang)} disabled readOnly />
             </div>
-            <Field name="minQty" label={t('warehouse.products.editor.reorder')}>
+            {isEdit && (
+              <div className="pe-active span3">
+                <label className="sw">
+                  <input type="checkbox" role="switch" disabled={activeLocked} {...form.register('isActive')} />
+                  <span className="tk" aria-hidden="true" />
+                  <span>{t('warehouse.products.editor.activeLabel')}</span>
+                </label>
+                {activeLocked && <div className="note">{t('warehouse.products.editor.hasStockNote')}</div>}
+              </div>
+            )}
+          </EditorBlock>
+
+          <EditorBlock id={`${formId}-price`} title={t('warehouse.products.editor.blocks.prices')}>
+            <Field name="purchaseCost" label={t('warehouse.products.editor.purchaseCost')}>
               <NumberInput className="mono" min={0} />
             </Field>
-          </div>
-          {isEdit && (
-            <div className="pe-active">
-              <label className="sw">
-                <input type="checkbox" role="switch" disabled={activeLocked} {...form.register('isActive')} />
-                <span className="tk" aria-hidden="true" />
-                <span>{t('warehouse.products.editor.activeLabel')}</span>
-              </label>
-              {activeLocked && <div className="note">{t('warehouse.products.editor.hasStockNote')}</div>}
-            </div>
-          )}
-          <details className="pe-more" open={moreOpen || moreHasError} onToggle={(e) => setMoreOpen(e.currentTarget.open)}>
-            <summary>{t('warehouse.products.editor.more')}</summary>
-            <div className="r2">
-              <Field name="barcode" label={t('warehouse.products.fields.barcode')}>
-                <TextInput maxLength={60} />
+            <Field name="salePrice" label={t('warehouse.products.editor.salePrice')}>
+              <NumberInput className="mono" min={0} />
+            </Field>
+          </EditorBlock>
+
+          <EditorBlock id={`${formId}-meas`} title={t('warehouse.products.editor.blocks.measures')}>
+            <p className="help pe-span-all">{t('warehouse.products.measures.help')}</p>
+            <Field name="dimensionUnit" label={t('warehouse.products.measures.dimensionUnit')} required>
+              <Select options={dimensionUnitOptions} />
+            </Field>
+            <Field name="length" label={t('warehouse.products.measures.length')}>
+              <NumberInput className="mono" min={0} />
+            </Field>
+            <Field name="width" label={t('warehouse.products.measures.width')}>
+              <NumberInput className="mono" min={0} />
+            </Field>
+            <Field name="height" label={t('warehouse.products.measures.height')}>
+              <NumberInput className="mono" min={0} />
+            </Field>
+            {volume.calculated ? (
+              <div className="f">
+                <label htmlFor={`${formId}-vol`}>{volumeLabel}</label>
+                <input id={`${formId}-vol`} className="mono" value={volume.volume != null ? f.number(volume.volume, { maximumFractionDigits: 4 }) : ''} disabled readOnly aria-describedby={`${formId}-vol-help`} />
+                <p id={`${formId}-vol-help`} className="help">
+                  {t('warehouse.products.measures.volumeCalculated', { m3: f.number(volume.m3 ?? 0, { maximumFractionDigits: 4 }) })}
+                </p>
+              </div>
+            ) : (
+              <Field
+                name="volume"
+                label={volumeLabel}
+                help={
+                  volume.m3 != null && measures.dimensionUnit !== 'M'
+                    ? t('warehouse.products.measures.volumeStoredAs', { m3: f.number(volume.m3, { maximumFractionDigits: 4 }) })
+                    : t('warehouse.products.measures.volumeManual')
+                }
+              >
+                <NumberInput className="mono" min={0} />
               </Field>
-              <div aria-hidden="true" />
-            </div>
-            <div className="r2">
-              <Field name="weightKg" label={t('warehouse.products.fields.weightKg')}>
-                <NumberInput min={0} />
-              </Field>
-              <Field name="volumeM3" label={t('warehouse.products.fields.volumeM3')}>
-                <NumberInput min={0} />
-              </Field>
-            </div>
-            <div className="r2">
-              <Field name="minPickQty" label={t('warehouse.products.fields.minPickQty')}>
-                <NumberInput min={0} />
-              </Field>
-              <Field name="maxPickQty" label={t('warehouse.products.fields.maxPickQty')}>
-                <NumberInput min={0} />
-              </Field>
-            </div>
+            )}
+            <Field name="weight" label={t('warehouse.products.measures.weight')}>
+              <NumberInput className="mono" min={0} />
+            </Field>
+            <Field name="weightUnit" label={t('warehouse.products.measures.weightUnit')} required>
+              <Select options={weightUnitOptions} />
+            </Field>
+          </EditorBlock>
+
+          {/* campos personalizados del producto (si la compañía tiene): el bloque se oculta solo si no hay ninguno */}
+          <section className="pe-block pe-custom" aria-labelledby={`${formId}-custom`}>
+            <h3 id={`${formId}-custom`} className="pe-block-title">
+              {t('warehouse.products.editor.blocks.custom')}
+            </h3>
             <CustomFieldsForm entityType="PRODUCT" entityId={isEdit ? product?.id : undefined} form={form} disabled={!editable} />
-          </details>
+          </section>
         </fieldset>
       </Form>
 
@@ -605,6 +673,18 @@ function ProductEditorForm({
         </div>
       )}
     </Modal>
+  )
+}
+
+/** Bloque con título del editor (Lote 230): `section` con su `h3` y la rejilla `.pe-grid` (4 columnas en escritorio, 1 a 360 px). */
+function EditorBlock({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+  return (
+    <section className="pe-block" aria-labelledby={id}>
+      <h3 id={id} className="pe-block-title">
+        {title}
+      </h3>
+      <div className="pe-grid">{children}</div>
+    </section>
   )
 }
 

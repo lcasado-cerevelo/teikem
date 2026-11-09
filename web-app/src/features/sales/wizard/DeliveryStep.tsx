@@ -8,6 +8,7 @@ import { DateField, Spinner } from '../../../kernel/ui'
 import type { components } from '../../../kernel/api/schema'
 import { ConsigneePicker } from '../../consignees/ConsigneePicker'
 import type { SalesOrderDto } from '../salesApi'
+import { DeliveryPriceNotices } from './PriceNotices'
 import { addressLine, orderSummary, type DeliveryChoice, type WizardState } from './wizardRules'
 
 type ClientDetailDto = components['schemas']['ClientDetailDto']
@@ -108,6 +109,8 @@ export function DeliveryStep({ state, onChange, onRecalc, client, saved, recalcu
         </dl>
         <p className="help">{t('salesWizard.summary.help')}</p>
       </section>
+      {/* Lote 229: avisos de precio (dos ofertas a la vez, oferta más cara que la lista general) de lo guardado (`linePrices`) y del catálogo */}
+      <DeliveryPriceNotices cart={state.cart} clientPublicId={state.clientPublicId} saved={saved} />
     </section>
   )
 }

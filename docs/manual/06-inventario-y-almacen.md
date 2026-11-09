@@ -693,6 +693,46 @@ Cómo se ve:
 | *Obligar* y la línea pide una posición o lote que la rotación no asigna | `La rotación es obligatoria: {SKU} debe salir de {posiciones}. No escoja posición ni lote; el sistema los asigna.` | 409 |
 | Cambiarlo sin `admin.tenant` | respuesta estándar de permiso denegado | 403 |
 
+### 2.4 Medidas y peso con su unidad, y el editor ancho (Lote 230, 2026-11-09)
+
+**Qué hace.** El producto guarda **largo, ancho y alto** con la **unidad** en que se escribieron (pulgadas `IN`, centímetros `CM`, pies `FT` o
+metros `M`) y el **peso** con la suya (libras `LB` o kilos `KG`). El volumen sigue guardándose en m³ y el peso en kg, así que posiciones, cupo y
+reportes no cambian.
+
+**Quién puede.** Ver: `inventory.view`. Cambiar: `inventory.manage`. Módulo **WMS_LOTSERIAL**.
+
+**Cómo se usa (pantalla).** Almacén → Productos e inventario → «Nuevo producto» o clic en un producto. La ventana es **ancha en escritorio** y
+agrupa los campos en bloques con título: **Identificación** (SKU, nombre, unidad, categoría —se ve como ruta «Guantes → Nitrilo»—, marca, modelo),
+**Inventario** (rastreo, dueño, rotación, empaque y unidades por empaque, código de barras, punto de reorden, almacén y posición por defecto,
+mínimo y máximo de picking, total y «Producto activo»), **Precios** (costo y precio de venta) y **Medidas y peso**; los campos personalizados, al
+final. En el celular queda una sola columna. La ayuda larga de **Rotación** y de **Unidades por empaque** está en el botón **«?»** junto a la etiqueta.
+
+En **Medidas y peso**:
+- **Unidad de las medidas** (obligatoria): la pantalla **sugiere** la del producto o, si no tiene, la de la región de la compañía (Puerto Rico y
+  Estados Unidos: pulgadas y libras; otras regiones: centímetros y kilos). Se puede cambiar por producto (lo grande, en pies o metros).
+- **Largo, ancho y alto** son de la **unidad base** (lo que se vende), no de la caja ni de la paleta.
+- **Volumen:** con las **tres** medidas se **calcula** solo y no se puede editar (se ve en in³, cm³, ft³ o m³, con su equivalente en m³). Si falta
+  cualquiera, se escribe a mano en esa unidad cúbica (debajo dice cómo se guarda en m³). Un volumen escrito antes no se pierde por poner o quitar una
+  medida suelta: solo se reemplaza cuando están las tres.
+- **Peso** con su **unidad** (sugerida igual). Cambiar solo la unidad no convierte el número escrito: dice en qué unidad está.
+- Vaciar una medida la quita.
+
+**API.** `POST/PATCH /api/v1/products` con `length`, `width`, `height`, `dimensionUnit`, `weight`, `weightUnit` (y `volumeM3` si falta alguna
+medida); el detalle trae `measures` (medidas, unidad, volumen en su unidad cúbica, si es calculado, peso en su unidad) y `categoryPath`.
+`GET /api/v1/products/units-suggestion` (`inventory.view`) devuelve las unidades sugeridas. Reglas completas en
+[docs/lote230-decisiones.md](../lote230-decisiones.md).
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| Medida negativa | `El largo no puede ser negativo.` (igual con «ancho» y «alto») | 400 |
+| Medida con más de 4 decimales o demasiado grande | `El largo debe ser un número de hasta 4 decimales.` | 400 |
+| Unidad de medidas inválida | `La unidad de las medidas debe ser IN (pulgadas), CM (centímetros), FT (pies) o M (metros).` | 400 |
+| Unidad de peso inválida | `La unidad del peso debe ser LB (libras) o KG (kilos).` | 400 |
+| Peso negativo / enorme | `El peso no puede ser negativo.` · `El peso es demasiado grande.` | 400 |
+| Volumen calculado enorme | `El volumen calculado con el largo, el ancho y el alto es demasiado grande.` | 400 |
+
+La pantalla avisa lo mismo antes de guardar (mismo texto, debajo del campo).
+
 ## 2b. Importar productos con una plantilla (2026-10-21)
 
 Primera entidad del motor genérico de plantillas (dictado de Luis, 2026-10-19). **Quién puede:** `inventory.manage` (módulo Inventario con lotes y series); ver las plantillas, `inventory.view`.
@@ -2456,6 +2496,14 @@ propios**: todo pasa en sus componentes. Este lote deja listo el catálogo; su u
 | Recibir, ajustar o mover existencia del kit | `{SKU} es un kit: no tiene existencia propia. Los movimientos se hacen sobre sus componentes.` | 400 |
 
 Además: un kit nunca aparece en los conteos (no tiene saldos) y no puede tener existencia; sus componentes son productos normales y activos **del mismo dueño** de inventario.
+
+### 8b.3b «No sustituible» (Lote 230, 2026-11-09)
+
+En el editor del kit (pestaña **Kit** de la ficha → «Editar componentes»; también al editar el kit desde Precios y ofertas) cada pieza lleva la
+casilla **«No sustituible»**. Por omisión está **desmarcada**: al pedir, el vendedor puede cambiar esa pieza por otro producto de la **misma
+categoría exacta** y el **mismo precio de venta** (ver [18 §17.1](18-ordenes-de-venta.md#171-cambiar-una-pieza-del-kit-al-pedir-lote-230)). Marque las
+piezas que no se pueden cambiar; la tabla del kit les pone el distintivo «No sustituible». «Ajustable al pedir» no cambia. API: `PUT
+/api/v1/products/{publicId}/kit` con `components[].notSubstitutable` (`null` = conserva la marca; pieza nueva = sustituible).
 
 ### 8b.4 Para soporte
 
