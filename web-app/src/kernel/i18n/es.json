@@ -10574,6 +10574,7 @@
       "termNone": "Escoja el término"
     },
     "products": {
+      "photoOf": "Ver la foto de {name}",
       "priceOf": "Precio de {sku}",
       "pricePlaceholder": "Precio",
       "title": "Productos",

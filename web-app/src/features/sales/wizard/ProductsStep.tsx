@@ -2,12 +2,13 @@
 // arriba de cada marca sus ofertas vigentes como tarjetas con foto, precio y + / −; debajo la lista completa de la marca (SKU, nombre, precio de la lista del
 // cliente o la general) con su casilla de cantidad: teclear una cantidad agrega la línea. El carrito (`CartBar`) va fijo abajo; tocarlo muestra las líneas para
 // corregir o quitar, y un kit muestra sus piezas (`KitLineBlock`). El vendedor no teclea precios.
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useCan } from '../../../kernel/access'
 import { applyProblemDetails } from '../../../kernel/api/problem'
 import { useFormat } from '../../../kernel/format'
 import { useT } from '../../../kernel/i18n'
 import { Chip, EmptyState, matchesQ, QBox, Spinner, Tabs } from '../../../kernel/ui'
+import { useStoredFileUrl } from '../../orders/api'
 import { StoredImage } from '../../warehouse/StoredImage'
 import { KitLineBlock } from '../KitLineBlock'
 import type { SalesOrderDto } from '../salesApi'
@@ -38,6 +39,40 @@ function PriceText({ item }: { item: SalesCatalogItemDto }) {
   const f = useFormat()
   if (item.price == null) return <span className="wz-noprice">{t('salesWizard.products.noPrice')}</span>
   return <span className="mono">{f.money(item.price)}</span>
+}
+
+/** Cuadrito con la foto del producto (la de su oferta o la del renglón de la lista, si la hay); al pasar el mouse, al enfocar o al tocarlo se ve grande. */
+function ProductThumb({ item }: { item: SalesCatalogItemDto }) {
+  const t = useT()
+  const url = useStoredFileUrl(item.imagePublicId).data
+  const ref = useRef<HTMLButtonElement>(null)
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
+  if (!item.imagePublicId || !url) return <span className="wz-thumb empty" aria-hidden="true" />
+  const name = item.name ?? item.sku ?? ''
+  const show = () => {
+    const r = ref.current?.getBoundingClientRect()
+    if (!r) return
+    const size = 280
+    setPos({ x: Math.max(8, Math.min(r.right + 8, window.innerWidth - size - 8)), y: Math.max(8, Math.min(r.top, window.innerHeight - size - 8)) })
+  }
+  return (
+    <>
+      <button
+        type="button"
+        ref={ref}
+        className="wz-thumb"
+        aria-label={t('salesWizard.products.photoOf', { name })}
+        onMouseEnter={show}
+        onMouseLeave={() => setPos(null)}
+        onFocus={show}
+        onBlur={() => setPos(null)}
+        onClick={() => (pos ? setPos(null) : show())}
+      >
+        <img src={url} alt="" />
+      </button>
+      {pos && <img className="wz-thumb-big" src={url} alt={name} style={{ left: pos.x, top: pos.y }} />}
+    </>
+  )
 }
 
 function OfferCard({ item, quantity, onStep, onSet }: { item: SalesCatalogItemDto; quantity: string; onStep: (delta: number) => void; onSet: (text: string) => void }) {
@@ -113,6 +148,7 @@ export function ProductsStep({ state, onChange }: ProductsStepProps) {
                 const qty = cartQuantity(state.cart, p.productPublicId)
                 return (
                   <li key={p.productPublicId} className={`wz-prod${qty ? ' on' : ''}`}>
+                    <ProductThumb item={p} />
                     <div className="wz-prod-main">
                       <b className="mono">{p.sku}</b>
                       <span>{p.name}</span>

@@ -67,6 +67,18 @@ describe('ProductsStep — paso 2 del pedido guiado', () => {
     expect(within(list).getByText('Sin precio')).toBeInTheDocument()
   })
 
+  it('cada renglón de la lista lleva su cuadrito de foto; sin foto queda vacío y sin botón de ampliar', async () => {
+    render(<WizardProviders><Step /></WizardProviders>)
+    const list = await screen.findByRole('list', { name: 'Productos de Ammex' })
+    const rows = within(list).getAllByRole('listitem')
+    expect(rows).toHaveLength(2)
+    for (const row of rows) {
+      expect(row.querySelector('.wz-thumb')).not.toBeNull()
+      expect(within(row).queryByRole('button', { name: /Ver la foto de/ })).toBeNull()
+    }
+    expect(document.querySelector('.wz-thumb-big')).toBeNull()
+  })
+
   it('teclear una cantidad agrega la línea y el carrito muestra el conteo y el subtotal', async () => {
     const user = userEvent.setup()
     let last: WizardState | null = null
