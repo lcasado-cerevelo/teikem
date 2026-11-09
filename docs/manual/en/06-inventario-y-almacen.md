@@ -693,6 +693,97 @@ How it looks:
 | *Enforce* and the line asks for a bin or lot the rotation does not assign | `Rotation is mandatory: {SKU} must come from {bins}. Do not choose a bin or lot; the system assigns them.` | 409 |
 | Changing it without `admin.tenant` | standard permission-denied response | 403 |
 
+### 2.4 Dimensions and weight with their unit, and the wide editor (Batch 230, 2026-11-09)
+
+> The server only answers in Spanish, so the message tables of this section and the next keep the **exact Spanish text**, followed by its English meaning.
+
+**What it does.** The product stores **length, width and height** with the **unit** they were written in (inches `IN`, centimeters `CM`, feet `FT` or
+meters `M`) and the **weight** with its own (pounds `LB` or kilograms `KG`). Volume is still stored in m³ and weight in kg, so bins, capacity and reports do
+not change: `Product.WeightKg` and `Product.VolumeM3` keep their meaning (they are read by the bin-capacity putaway suggestion and the product record;
+rates, trips, fleet and transport orders have their own weights and volumes).
+
+**Who can.** View: `inventory.view`. Change: `inventory.manage`. Module **WMS_LOTSERIAL**.
+
+**How to use it (screen).** Warehouse → Products & inventory → “New product” or click a product. The window is **wide on desktop** (less scrolling) and
+groups the fields in titled blocks, in this order:
+
+1. **Photo** (Batch 229, see [§2.5](#25-product-photo-and-category-with-subcategory-batch-229-2026-11-09)).
+2. **Identification**: SKU, name, unit, **category** (shown as a path “Gloves → Nitrile”; see §2.5), brand and model.
+3. **Inventory**: tracking, owner, rotation, packaging and units per package, barcode, reorder point, default warehouse and bin, picking minimum and maximum,
+   total and “Active product”.
+4. **Prices**: purchase cost and **sale price** (the sale price is the one compared when a kit piece is swapped when ordering: it must be exactly equal;
+   [18 §17.1](18-ordenes-de-venta.md#171-swapping-a-kit-piece-when-ordering-batch-230)).
+5. **Dimensions and weight**.
+6. **Custom fields**, at the end (the block is hidden if the company has no fields for products).
+
+“More product data” no longer exists: the barcode and the picking minimums moved to Inventory, and weight and volume to Dimensions and weight. On a phone it is
+a single column. The long help for **Rotation** and **Units per package** is in the **“?”** button next to the label. With a product that already has movements,
+Unit, Tracking and Owner stay locked; without `inventory.manage` the window opens as “View product data” (read-only).
+
+In **Dimensions and weight**:
+- **Dimension unit** (required): the screen **suggests** the product's own or, if it has none, the one for the company's region (Puerto Rico and the
+  United States use the imperial system: inches and pounds; other regions, metric: centimeters and kilograms). It can be changed **per product**: small
+  things in inches or centimeters; big things in feet or meters.
+- **Length, width and height** are of the **base unit** (what is sold), not of the box or the pallet; the screen says so.
+- **Volume:** with the **three** dimensions it is **calculated** and cannot be edited (shown in in³, cm³, ft³ or m³, with “Saved as … m³”). If any is missing,
+  it is typed in that cubic unit. A volume typed earlier is not lost by adding or removing a single dimension: it is only replaced when all three are present.
+  For something very small in inches the saved m³ rounds (the column has 4 decimals): type the three dimensions, and the exact volume shows in the cubic unit.
+- **Weight** with its **unit** (suggested the same way). Changing only the unit **does not convert** the number typed: it says which unit it is in.
+- Emptying a dimension (or the weight) removes it.
+
+**API.** `POST/PATCH /api/v1/products` with `length`, `width`, `height`, `dimensionUnit`, `weight`, `weightUnit` (and `volumeM3` if one dimension is
+missing; with all three it is ignored and the calculation wins); the detail returns `measures` (dimensions, unit, volume in its cubic unit, whether it is
+calculated, weight in its unit), `categoryPath` (“Gloves / Nitrile”), `categoryParentId` and `categoryParentName`. In the PATCH, `null` = no change and `0` in
+a dimension = remove it. `GET /api/v1/products/units-suggestion` (`inventory.view`) returns the suggested units. **Product import** and product output accept
+the columns `length`, `width`, `height`, `dimensionUnit`, `weight` and `weightUnit` with the same rule (empty cell = no change). Full rules in
+[docs/lote230-decisiones.md](../lote230-decisiones.md).
+
+| Case | Exact message (Spanish, as sent) | Meaning | HTTP |
+|---|---|---|---|
+| Negative dimension | `El largo no puede ser negativo.` (the same with «ancho» and «alto») | The length cannot be negative. (width / height) | 400 |
+| Dimension with more than 4 decimals or too large | `El largo debe ser un número de hasta 4 decimales.` | The length must be a number with up to 4 decimals. | 400 |
+| Invalid dimension unit | `La unidad de las medidas debe ser IN (pulgadas), CM (centímetros), FT (pies) o M (metros).` | The dimension unit must be IN (inches), CM (centimeters), FT (feet) or M (meters). | 400 |
+| Invalid weight unit | `La unidad del peso debe ser LB (libras) o KG (kilos).` | The weight unit must be LB (pounds) or KG (kilograms). | 400 |
+| Negative / huge weight | `El peso no puede ser negativo.` · `El peso es demasiado grande.` | The weight cannot be negative. · The weight is too large. | 400 |
+| Huge calculated volume | `El volumen calculado con el largo, el ancho y el alto es demasiado grande.` | The volume calculated from length, width and height is too large. | 400 |
+
+The screen warns of the same before saving (same text, under the field).
+
+> **Screenshots pending (Batches 229 and 230).** The product-editor screenshots in [F6](frontend/f6-almacen-e-inventario.md) predate this block-based editor
+> (wide, with “Photo” and “Dimensions and weight”); they must be retaken with the Playwright walkthrough.
+
+### 2.5 Product photo and category with subcategory (Batch 229, 2026-11-09)
+
+**Product photo (Batch 229).** The product stores its own photo (also kits and offer kits). It is the photo shown in the guided order, in price lists and in
+offers ([47 §5](47-precios-y-ofertas.md#5-photos-of-the-product-of-the-line-and-of-the-kit)).
+
+- **Where:** the first block of the product editor, **Photo**. A new product only says “Save the product to add a photo.”: it is added after creating it.
+- **Who:** seeing the photo, `inventory.view` or `sales.view` (the salesperson sees it even without `inventory.view`); **adding, changing or removing**, `inventory.manage`.
+- **How:** **Add photo** / **Change photo** / **Remove photo**. It accepts **JPG, PNG or WEBP**; if the longer side is over 1200 px it is reduced to 1200 px
+  (the screen says so: “JPG, PNG or WEBP; reduced to 1200 px. It is the photo shown in orders, price lists and offers.”). While uploading a preview shows; when
+  done, “Photo saved.” or “Photo removed.”. Removing it only unlinks it: the file is not deleted.
+- **Kit without its own photo:** the photo of the **first piece (by order) that has one** is shown and the screen says so (“No photo of its own: the photo of the
+  kit's first piece that has one is shown.”). If no piece has a photo, the box says “No photo”.
+- **Which one is shown** where there are several (list or offer line → product → first kit piece): [47 §5](47-precios-y-ofertas.md#5-photos-of-the-product-of-the-line-and-of-the-kit).
+- **API:** `GET /api/v1/products/{publicId}/image` (`inventory.view` or `sales.view`) → `imagePublicId` (its own) and `effectiveImagePublicId` (the one shown);
+  `POST` (multipart `file`) and `DELETE` (`inventory.manage`). The content is downloaded with `GET /files/{imagePublicId}`.
+
+| Case | Exact message (Spanish, as sent) | Meaning | HTTP |
+|---|---|---|---|
+| No file | `Adjunte la foto.` | Attach the photo. | 400 (`file`) |
+| Not JPG, PNG or WEBP (the content is checked, not the extension) | `La foto debe ser una imagen JPG, PNG o WEBP.` | The photo must be a JPG, PNG or WEBP image. | 400 (`file`) |
+| Larger than the file store limit (10 MB by default) | `El archivo no puede pasar de {n} MB.` | The file cannot exceed {n} MB. | 400 |
+| File store not configured | `El almacén de archivos no está configurado (Files:MasterKey); avise a soporte.` | The file store is not configured (Files:MasterKey); tell support. | 422 |
+| Product does not exist | `Producto no encontrado.` | Product not found. | 404 |
+
+Before uploading, the screen checks the type and warns with “The photo must be a JPG, PNG or WEBP image.”. Product import has no photo column.
+
+**Category → subcategory.** A product category can have a **parent category** (up to 5 levels; Warehouse → Products & inventory → **Categories** tab,
+“Parent category” field). For kits one more level is used: *category → subcategory* (e.g. Gloves → Nitrile). The category says **what** the product is; the
+**brand** goes in Brand and the **model** in Model. In the editor, the category is chosen from a list that shows the full path (“Gloves → Nitrile”) and can be
+searched by any level. It matters because **a kit piece is only swapped for a product of the exact same category** (the subcategory, if it has one): if brands
+are currently set as categories, the products must be re-categorized (it can be done through the import). Category messages: “Validations” table of §2.
+
 ## 2b. Import products with a template (2026-10-21)
 
 First entity of the generic template engine (dictated by Luis, 2026-10-19). **Who can:** `inventory.manage` (Inventory with lots and serials module); to see the templates, `inventory.view`.
@@ -2432,6 +2523,8 @@ of its own**: everything happens in its components. This batch leaves the catalo
 3. **Save kit.** The tab shows the components and, per warehouse, **“N can be assembled”**: the smallest quotient between what is *available to sell* of each component and its quantity
    per kit, rounded down. “Available to sell” is the same count as in sales orders (without quarantine, cross-dock or rental).
 4. **Edit components** replaces the list; **Back to a normal product** removes the components.
+5. **Kit photo**: the **Photo** block of the product editor ([§2.5](#25-product-photo-and-category-with-subcategory-batch-229-2026-11-09)). A kit without its own photo shows that of its first piece that has one.
+6. **“Not substitutable”** on the pieces the salesperson cannot swap when ordering (§8b.3b). A kit for an offer is not created here but in the offer: [47 §4.4](47-precios-y-ofertas.md#44-an-offers-kits).
 
 ### 8b.3 Rules and messages
 
@@ -2455,11 +2548,38 @@ of its own**: everything happens in its components. This batch leaves the catalo
 
 Also: a kit never appears in counts (it has no balances) and cannot have stock; its components are normal, active products **of the same** inventory owner.
 
+### 8b.3b “Not substitutable” (Batch 230, 2026-11-09)
+
+**What it does.** By rule, **every piece of a kit is substitutable**: when ordering, the salesperson can swap it for another product of the **exact same
+category** (the subcategory, if it has one), with **exactly the same sale price** and in the **same quantity**; the kit price does not change. What is marked is
+**what cannot** be substituted: the piece's **“Not substitutable”** checkbox. Detail of the use when ordering: [18 §17.1](18-ordenes-de-venta.md#171-swapping-a-kit-piece-when-ordering-batch-230).
+
+**Who and where.** `inventory.manage`, in the two places where a kit is worked:
+- **Products & inventory → the kit → Kit tab → “Edit components”**: each piece has the **“Not substitutable”** checkbox, unchecked by default (“When ordering,
+  a piece can be swapped for another of the same category and the same price. Check «Not substitutable» on those that cannot.”). The kit table puts the
+  **“Not substitutable”** badge on the marked pieces.
+- **Accounting → Prices and offers → the offer**, when creating or changing an offer's kit ([47 §4.4](47-precios-y-ofertas.md#44-an-offers-kits); `sales.pricelist` is
+  needed there). It is the same mark on the piece.
+
+**Rules.**
+- A piece **without category** or **without sale price** has no substitutes (even if not marked): give the product its category and sale price
+  ([§2.4](#24-dimensions-and-weight-with-their-unit-and-the-wide-editor-batch-230-2026-11-09) and [§2.5](#25-product-photo-and-category-with-subcategory-batch-229-2026-11-09)).
+- The mark is stored **per piece and per kit**: the same product can be substitutable in one kit and not in another. When the kit is saved again without
+  sending the mark (`null`), the one it had is kept; a new piece is born substitutable.
+- “**Adjustable when ordering**” **does not change**: it still allows changing the quantities of the pieces in the order without touching the price. It is
+  independent of substitution (both can be used).
+- There is no separate permission to substitute: this kit definition decides, and `sales.create` is enough on the order.
+
+**API.** `PUT /api/v1/products/{publicId}/kit` with `components[].notSubstitutable` (`true` = not substitutable; `null` = keeps the mark). Reading the kit
+(`GET …/kit`) returns `components[].notSubstitutable`.
+
 ### 8b.4 For support
 
 - Table `ProductKitComponent` (kit → component → quantity, unique per pair) and columns `Product.ProductTypeLookupId` (catalog `ProductType`: STANDARD / KIT; NULL = normal) and
   `Product.KitAdjustable`, section **2026-10-16 (p)** of `Diseño/logistica-db-update.sql`.
 - The change of product type is recorded in the product's log; component changes too (with the product's entity type).
+- Batch 230: column `ProductKitComponent.NotSubstitutable` (BIT, 0 = substitutable) and `SalesOrderLineComponent.SubstitutedProductId` (the original piece when the salesperson swapped it; `ComponentProductId` keeps the real piece); section «2026-11-09 — Lote 230» of `Diseño/logistica-db-update.sql`.
+- Batch 229: `Product.OfferId` marks the kit created for an offer ([47 §4.4](47-precios-y-ofertas.md#44-an-offers-kits)).
 
 ### 8b.5 Picking a kit (Batch 70)
 

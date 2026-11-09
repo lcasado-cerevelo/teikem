@@ -405,6 +405,8 @@ Series sigue en `/warehouse/products/:publicId` (se llega desde el modal con «V
 
 ![Editar producto: campos y desplegable de Unidad con buscador](img/f6-producto-ficha.png)
 
+> **Capturas pendientes (Lotes 229 y 230).** Las dos capturas del editor de producto de arriba son anteriores al editor ancho por bloques (Foto, Identificación, Inventario, Precios, Medidas y peso) y la descripción de «Más datos del producto» de abajo ya no aplica: el código de barras, los mínimos de picking, el peso y el volumen pasaron a sus bloques. El orden actual de los campos está en el [capítulo 06 §2.4 y §2.5](../06-inventario-y-almacen.md#24-medidas-y-peso-con-su-unidad-y-el-editor-ancho-lote-230-2026-11-09); hay que volver a tomar las capturas.
+
 > **Captura pendiente:** el bloque «Añadir ajuste» abierto dentro del modal de producto.
 
 **Los indicadores (KPIs) son botones.** Arriba hay cinco tarjetas: **SKUs activos**, **Unidades totales**, **Bajo mínimo**, **No disponibles** (desde 2026-10-05) y

@@ -282,6 +282,69 @@ Internally, everything moves in its **components**.
 For support: table `SalesOrderLineComponent` (the snapshot, deleted with the line) and columns `SalesOrderReservation.ProductId`, `PickBatchLine.KitProductId` and `KitQuantity`
 (section **2026-10-16 (q)** of `Diseño/logistica-db-update.sql`).
 
+### 17.1 Swapping a kit piece when ordering (Batch 230)
+
+> The server only answers in Spanish, so the message table keeps the **exact Spanish text**, followed by its English meaning.
+
+**What it does.** In an order, a kit piece can be **swapped** for another product (e.g. gloves of another size) if it meets **all** of this:
+
+| Condition | Detail |
+|---|---|
+| **Exact same category** | The same `ProductCategoryId`: the subcategory, if it has one (Gloves → Nitrile is not swapped for Gloves → Latex). A piece **without a category** is not substituted. |
+| **Sale price exactly equal** | The **product's sale price** (`Product.SalePrice`) is compared, not a list's; not a cent of difference. A piece **without a sale price** is not substituted. |
+| **Same quantity** | The substitute goes in the piece's quantity (in a kit that is «Adjustable when ordering» the quantity is still free). |
+| **Substitutable piece** | The piece is not marked «Not substitutable» ([06 §8b.3b](06-inventario-y-almacen.md#8b3b-not-substitutable-batch-230-2026-11-09)). By default every piece is substitutable. |
+| **Valid substitute** | Active product, not a kit, of the same inventory owner as the kit and not already another piece of the same kit. |
+
+The **kit price does not change**. It applies to fixed and adjustable kits, regular and offer kits. **«Adjustable when ordering» stays as it was** (changing the
+quantities of the pieces without touching the price): substitution is separate and both can be used.
+
+**Who can.** The salesperson, with `sales.create` — **there is no separate permission**: the kit's definition decides. Module **SALES_ORDERS**.
+
+**How to use it.** In the **guided order** (cart open) and in the order window **as a draft**, each piece with valid substitutes has a **«Change»** button: the
+list (titled «Products that can replace {SKU}») shows only the allowed products (SKU, name and brand), with the hint «Same category and same price: the kit
+price does not change.». Picking one makes the piece show the new product and «instead of {original SKU}», with **«Undo»**. The list does not offer the product
+that is already set nor those that are already another piece of the line. «Not substitutable» pieces or those without substitutes have no button. In the saved
+or requested order the real piece shows with «instead of …»; the **reservation, dispatch, cost, invoice and the device** use the **real piece**, and the order
+and the invoice show the real piece.
+
+**Who sees the pieces.** A salesperson with `sales.create` sees the kit's pieces in the draft and in the cart **even without `inventory.view`** (before, they did
+not): the screen reads them from the sales service. Without `sales.create` (read-only) the warehouse kit is used, which does require `inventory.view`.
+
+**API.** `GET /api/v1/sales-orders/kits/{kitPublicId}/substitutes` (`sales.create`, module `SALES_ORDERS`) returns each kit piece with its category, price,
+whether it is «not substitutable» and its valid substitutes; it works before saving the line. In `POST/PATCH /sales-orders` the line sends **all** its pieces in
+`components` and the one that changes carries `substitutesProductPublicId` = the original piece. Saving the draft again without pieces keeps the substitution. It
+is validated against the kit's **current** catalog: if the catalog changed after the draft was saved, remove the line and add it again to take the new one.
+
+| Case | Exact message (Spanish, as sent) | Meaning | HTTP |
+|---|---|---|---|
+| Piece marked not substitutable | `La pieza GM del kit no es sustituible.` | Piece GM of the kit is not substitutable. | 400 |
+| The «original» is not a piece of the kit | `GV no es una pieza del kit KIT-1: solo se sustituyen sus piezas.` | GV is not a piece of kit KIT-1: only its pieces are substituted. | 400 |
+| Piece without category | `La pieza CAJA no tiene categoría: solo se sustituye por un producto de la misma categoría.` | Piece CAJA has no category: it is only replaced by a product of the same category. | 400 |
+| Another category | `GV no es de la misma categoría que GM: solo se sustituye por un producto de la misma categoría.` | GV is not of the same category as GM: … | 400 |
+| Piece without sale price | `La pieza GM no tiene precio de venta: solo se sustituye por un producto del mismo precio.` | Piece GM has no sale price: it is only replaced by a product of the same price. | 400 |
+| Another price | `GXL no tiene el mismo precio de venta que GM: solo se sustituye por un producto del mismo precio.` | GXL does not have the same sale price as GM: … | 400 |
+| Another quantity (fixed kit) | `El sustituto de GM va en la misma cantidad que la pieza: 2.` | The substitute of GM goes in the same quantity as the piece: 2. | 400 |
+| Substitute that is already another piece | `CAJA ya es otra pieza del kit: no puede sustituir una pieza.` | CAJA is already another piece of the kit: it cannot replace a piece. | 400 |
+| The same piece twice | `La pieza GM se sustituyó más de una vez.` | Piece GM was substituted more than once. | 400 |
+| Substitute inactive / a kit / of another owner | `El componente GS está inactivo.` · `K2 es un kit: un kit no puede llevar otro kit como componente.` · `El componente GS es de otro dueño de inventario que el kit.` | Component GS is inactive. · K2 is a kit: a kit cannot carry another kit as a component. · Component GS belongs to a different inventory owner than the kit. | 400 |
+| Fixed kit with another change besides the substitution | `El kit KIT-1 no se puede ajustar al pedir.` | Kit KIT-1 cannot be adjusted when ordering. | 400 |
+| Substitutes of something that is not a kit | `El producto GM no es un kit.` | Product GM is not a kit. | 422 |
+| Kit or original piece that does not exist | `Producto no encontrado.` · `Componente no encontrado.` | Product not found. · Component not found. | 404 |
+
+The screen only offers valid substitutes, so these messages appear mostly if the catalog changed while the order was being built: the notice appears at the top
+of the window (or as a step notice) and «Undo» or picking another is enough.
+
+### 17.2 Line price, offers and warnings (Batch 229)
+
+The line price comes from the offer, the client's list, the general list or the product, and **the lowest wins** between the client's negotiated price and the
+offer in effect ([47 §2](47-precios-y-ofertas.md#2-where-the-price-of-a-line-comes-from)). In the order:
+
+- The line of a **product or kit in an offer** keeps the offer price (`priceSource` `OFFER`); if the client's negotiated price is lower, the negotiated one stays (`CLIENT_LIST`).
+- A **kit created for an offer** can only be ordered while its offer is published, active and in effect; otherwise, `El kit {SKU} es de la oferta «{nombre}», que {motivo}: no se puede vender.` (Kit {SKU} belongs to the offer «{name}», which {reason}: it cannot be sold.) (422; the reasons are in [47 §7](47-precios-y-ofertas.md#7-validations-and-messages)). Orders already placed do not change; **modifying** an already requested line or changing a draft's client does **not** re-check the kit's validity.
+- **Price warnings** (they are not errors): when creating or editing the draft with lines, the response carries `linePrices[]` with, per product, where the price came from (offer or list) and the `TWO_OFFERS` and `OFFER_ABOVE_GENERAL` warnings. They are not stored: when the draft is reopened only the catalog's are seen. In the guided order they show next to the product, on the cart line and in «Price warnings» of the delivery step ([48 §2](48-pedido-guiado.md)). The lowest price is always charged.
+- A price different from the resolved one requires `sales.price` (unchanged).
+
 ## Seeing the dispatch from the sale and the sale from the dispatch (2026-10-21)
 
 - In the sales order record, the **Order dispatches** table shows the dispatch number (pick & pack) **as a link**: it opens the dispatch record (needs `pickbatches.view`; without it the number is shown without a link). The shipment created when packing is still shown in its column.

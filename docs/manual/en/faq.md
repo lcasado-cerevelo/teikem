@@ -11005,23 +11005,13 @@ Someone else saved the same list at the same time (409). Reload and repeat the c
 (Attach the photo / the photo must be an image.)
 No file was sent, or its content is not a supported image (400). Upload JPG, PNG, WEBP or GIF (the content is checked, not the extension). If it says "El archivo no puede pasar de {n} MB." (the file cannot exceed {n} MB), reduce the photo.
 
-### Offers (kits on promotion)
+### Offers
 
-**What does "Solo un kit puede ser oferta (promoción)." mean?**
-(Only a kit can be an offer.)
-«Is a promotion» was checked on a product that is not a kit (422). Turn the product into a kit (Products → type Kit) or use a price list to give it a special price.
+Since Batch 229 offers are a separate thing from price lists and kits (there is no longer a «promotion» mark on the kit). The offer questions are in the section [Batch 229 — Offers as a separate entity](#batch-229--offers-as-a-separate-entity-offer-kits-and-the-product-photo).
 
 **What does "La fecha «hasta» de la oferta no puede ser anterior a la fecha «desde»." mean?**
 (The offer's «until» date cannot be earlier than its «from» date.)
-The offer's validity is the wrong way round (400). Fix «Offer from» / «Offer until».
-
-**What does "Marque el kit como oferta antes de ponerle la foto." mean?**
-(Mark the kit as an offer before adding the photo.)
-The photo was uploaded before saving the mark (422). Save «Is a promotion» first, then add the photo.
-
-**What does "La oferta {SKU} no está vigente hoy (vale del … al …): no se puede vender." mean?**
-(Offer {SKU} is not in effect today (valid from … to …): it cannot be sold.)
-The offer is scheduled or expired (422): it cannot be put on a new line or on a draft that is saved again. Change its validity on the kit, or remove the line from the order. Orders already placed do not change.
+The offer's validity is the wrong way round (400). Fix «Valid from» / «Until» in the offer window; «Until» may stay blank (the offer does not expire).
 
 ### Price of a line
 
@@ -11190,7 +11180,7 @@ Expected: when rejecting, open orders (draft or requested) are cancelled and wha
 Chapter: [48 — Guided order](48-pedido-guiado.md).
 
 **Why can't I order a product that says «No price»?**
-Because neither the client's list, nor the general one, nor the product has a price, and the salesperson does not type prices. Whoever has `sales.price` (the company Admin) sees a **Price** box (with `$`) on that row, to the right of the quantity, enabled once a quantity is typed. The lasting fix is to give the product a sale price or to create a list in Accounting → Prices and offers.
+Because neither the client's list, nor the general one, nor an offer, nor the product has a price, and the salesperson does not type prices. Whoever has `sales.price` (the company Admin) sees a **Price** box (with `$`) on that row, to the right of the quantity, enabled once a quantity is typed. The lasting fix is to give the product a sale price or to create a list in Accounting → Prices and offers.
 
 **How do I look for an offer or a product of another brand in the order?**
 Type in the Products step search box (it takes the focus on entry): with text it searches all brands, products and offers, by SKU or name. Without text it goes back to the chosen brand.
@@ -11199,7 +11189,7 @@ Type in the Products step search box (it takes the focus on entry): with text it
 If the company has just one active client, the order brings it chosen by default. «Change» lets you pick another.
 
 **What is the little square next to each product?**
-Its photo (from its offer or from its line in a price list). Hovering, focusing or tapping it shows it large. With no photo, it stays empty.
+Its photo, in this order: that of the offer or list line, the product's or, if it is a kit without a photo, that of its first piece with a photo. Hovering, focusing or tapping it shows it large. If there is none, it stays empty; the product photo is set in the product editor (Photo block).
 
 **What does "El paso del pedido debe ser CLIENT, PRODUCTS, DELIVERY o AUTHORIZATION." mean?**
 (The order step must be CLIENT, PRODUCTS, DELIVERY or AUTHORIZATION.) A step that does not exist was sent (400). It is an integration error: the web and the app send the four correct steps.
@@ -11538,3 +11528,280 @@ Searching clients needs the `clients.read` permission. Without it you can type t
 
 **I chose two clients and a product: do I get the orders of any of them?**
 Within one filter, yes: any of the chosen clients. Across filters, no: the order must belong to one of those clients **and** have a line of that product (and match the status and date if set).
+
+## Batch 229 — Offers as a separate entity, offer kits and the product photo
+<!-- kemi:staff -->
+
+> The server answers these messages in Spanish; each question quotes the exact Spanish text, followed by its English meaning.
+
+Chapters: [47 — Price lists and offers](47-precios-y-ofertas.md) (offers §4, photos §5, warnings §2), [06 §2.5](06-inventario-y-almacen.md#25-product-photo-and-category-with-subcategory-batch-229-2026-11-09) (product photo) and [48](48-pedido-guiado.md) (the order). Since this batch an **offer** is a separate thing (name, photo, validity and lines with an offer price), no longer a kit marked as a promotion.
+
+### Common cases
+
+**Where do I create an offer?**
+In Accounting → Prices and offers, **Offers** section, **New offer** button (`sales.pricelist` is needed). The offer is born as a **draft**: add its photo, lines (and clients, if it is not for all) and press **Publish**. It gives no prices until it is published.
+
+**A kit used to be marked as a promotion. How do I make a kit an offer now?**
+The kit is no longer marked: you create an offer and put the kit in it as a **line** with its offer price («Pick a product or kit»), or you create a kit just for the offer with **Create a kit for this offer**. Promotions that existed were kept as data, but they no longer give a price or block sales.
+
+**I left «Until» blank. What happens?**
+The offer **does not expire**: it is valid until it is deactivated or sent back to draft. The screen warns about it («No end date: valid until you deactivate it»). If it is seasonal, set a date.
+
+**Which price is charged if the product is in an offer and also in the client's list?**
+The **lowest** of the two; if they tie, the client's list one. Without a negotiated price, the lowest between the offer and the general list. If there is none, the product's sale price. A product that is nowhere and has no sale price shows «No price».
+
+**A product is in two offers at once. Which one wins?**
+The **cheapest** (if they are the same price, the one that started later) and the system warns. The warning blocks nothing.
+
+**What happens to an offer's kit when the offer ends?**
+It becomes **inactive for sale**: it does not show in the order and ordering it gives an error. It is not deleted or deactivated, and the orders and invoices that used it still see it. If the end date is extended (or removed), or the offer is reactivated, the kit **comes back** by itself.
+
+**The offer's kit does not show in the order.**
+Check that the offer is **published**, **active**, in effect today and applies to the client (all clients, or him among the chosen ones). An offer kit is only offered as an offer card, never in the brand's normal list.
+
+**Which photo shows in the order, in lists and in offers?**
+In this order: the **line's** photo (if one was set) → the **product's** → if it is a kit without a photo, that of its **first piece that has a photo** → empty. Removing a line's photo (**Back to the product photo**) makes the product's show.
+
+**Where do I put a product's photo?**
+In the product editor (Warehouse → Products & inventory), **Photo** block, with `inventory.manage`. A new product is saved first and the photo is added afterwards. It applies the same to kits and offer kits.
+
+**The salesperson does not see the product photos.**
+With `sales.view` they should see them even without `inventory.view`. If they do not show, the product has no photo (nor the line, nor its pieces if it is a kit): upload the photo in the product editor. Photos of offers and their lines are uploaded with `sales.pricelist`.
+
+**Which photos are accepted and how large?**
+JPG, PNG or WEBP, up to the file store limit (10 MB by default). If the longer side is over 1200 px, the system reduces it to 1200 px. (Price list lines also accept GIF.)
+
+**Can I edit or deactivate an offer that was already used in orders?**
+Yes. Orders already placed do not change (the line keeps its price). Deactivating it takes it out of new orders and takes its kits off sale.
+
+### Price warnings (they are not errors)
+
+**What does "El producto {SKU} está en dos ofertas a la vez: «A» a $x y «B» a $y. Se aplica la más barata («A»)." mean?**
+(Product {SKU} is in two offers at once: «A» at $x and «B» at $y. The cheapest applies («A»).)
+It is a warning (not an error): the product is in two offers in effect for the same client. The lowest price is charged and the order goes on. If that is not what you wanted, change the dates or clients of one of the two, or remove the product from one.
+
+**What does "La oferta «A» pone {SKU} a $x, más caro que la lista general ($y): se aplica el precio más bajo." mean?**
+(Offer «A» puts {SKU} at $x, more than the general list ($y): the lowest price applies.)
+Warning in the order: the offer is more expensive than the general list. The list price (the lowest) is charged. Fix the offer price if it was a mistake.
+
+**What does "El producto {SKU} sale en esta oferta a $x, más caro que en la lista general ($y): se aplicará el precio más bajo." mean?**
+(Product {SKU} is in this offer at $x, more than in the general list ($y): the lowest price will apply.)
+Warning when building the offer: the line is more expensive than the general list in effect. It can be saved and published; the lowest will be charged. Check the line's price.
+
+**What does "El producto {SKU} también está en la oferta «B» (…) a $y, igual o más barata que aquí ($x): mientras las dos estén vigentes se aplica el precio más bajo." mean?**
+(Product {SKU} is also in offer «B» (…) at $y, equal or cheaper than here ($x): while both are in effect the lowest price applies.)
+Warning when building the offer: another published offer, with overlapping dates and clients, carries the same product at the same price or cheaper. It does not block saving or publishing. If you do not want the clash, change the dates or clients, or remove the product from one.
+
+### Offer messages
+
+**What does "Indique el nombre de la oferta." or "El nombre de la oferta no puede pasar de 120 caracteres." mean?**
+(Give the offer a name. / The offer name cannot exceed 120 characters.)
+An offer was created or renamed without a name, or with more than 120 characters (400). Type a shorter name.
+
+**What does "Indique desde qué fecha vale la oferta." mean?**
+(Say from which date the offer is valid.)
+«Valid from» is missing (400). It is required; «Until» is optional (empty = does not expire).
+
+**What does "La fecha «hasta» de la oferta no puede ser anterior a la fecha «desde»." mean?**
+(The offer's «until» date cannot be earlier than its «from» date.)
+The offer's dates are the wrong way round (400). Fix the validity; both ends count as in effect.
+
+**What does "Oferta no encontrada." or "Renglón de la oferta no encontrado." or "Cliente de la oferta no encontrado." or "Kit de la oferta no encontrado." mean?**
+(Offer / offer line / offer client / offer kit not found.)
+The identifier does not exist or belongs to another company (404). Reload the screen: someone may have removed the line or the client.
+
+**What does "La oferta está desactivada: reactívela para cambiarla." mean?**
+(The offer is deactivated: reactivate it to change it.)
+A deactivated offer cannot be edited (details, lines, clients, photos, kits) (422). Press **Reactivate** and make the change.
+
+**What does "La oferta ya está desactivada." or "La oferta ya está activa." mean?**
+(The offer is already deactivated / active.)
+Deactivating or reactivating was requested on something already in that state (422). Reload and check the status.
+
+**What does "La oferta ya está publicada." or "La oferta ya está en borrador." mean?**
+(The offer is already published / already a draft.)
+Publishing or going back to draft was requested on something already in that state (422). Reload the offer.
+
+**What does "Indique los productos y sus precios de oferta." / "Escoja el producto o kit de cada renglón." / "Indique el precio de oferta de cada renglón." mean?**
+(Give the products and their offer prices. / Choose the product or kit of each line. / Give the offer price of each line.)
+When adding lines, the product or the price is missing (400). Each line needs a product (or kit) and an offer price from 0 up.
+
+**What does "Una oferta admite como máximo 500 renglones." or "Una oferta admite como máximo 2000 clientes." mean?**
+(An offer admits at most 500 lines / 2000 clients.)
+The limit was exceeded (400). Split the products or clients into another offer.
+
+**What does "Solo se ponen en una oferta productos propios de la compañía." mean?**
+(Only the company's own products go in an offer.)
+The product belongs to a pass-through client (422). Offers only carry own products and kits.
+
+**What does "El producto {SKU} está inactivo: no se puede poner en la oferta." mean?**
+(Product {SKU} is inactive: it cannot go in the offer.)
+The product has been deactivated (422). Reactivate it in Products or choose another.
+
+**What does "El kit {SKU} es de la oferta «{nombre}»: no se puede poner en otra." mean?**
+(Kit {SKU} belongs to the offer «{name}»: it cannot go in another.)
+That kit was created for another offer and stays tied to it (422). Use a regular kit, or create another kit for this offer.
+
+**What does "El kit {SKU} es de la oferta «{nombre}»: su precio va en la oferta, no en una lista de precios." mean?**
+(Kit {SKU} belongs to the offer «{name}»: its price goes in the offer, not in a price list.)
+An attempt was made to put a kit created for an offer in a price list (422). Its price is changed on its offer's line.
+
+**What does "Escoja los clientes de la oferta." mean?**
+(Choose the clients of the offer.)
+Adding clients was attempted without choosing any (400). Choose at least one.
+
+**What does "La oferta aplica a todos los clientes: no lleva clientes escogidos. Desmarque «aplica a todos» para escogerlos." mean?**
+(The offer applies to all clients: it carries no chosen clients. Uncheck «applies to all» to choose them.)
+Clients were added to an all-clients offer (422). Uncheck «Applies to all clients» first.
+
+**What does "La oferta tiene clientes escogidos: quítelos antes de hacerla general (aplica a todos)." mean?**
+(The offer has chosen clients: remove them before making it general.)
+«Applies to all» was checked on an offer that already has clients (422). Remove the clients or create another general offer.
+
+**What does "Agregue al menos un renglón antes de publicar la oferta." mean?**
+(Add at least one line before publishing the offer.)
+Publishing an empty offer was attempted (422). Add lines and publish.
+
+**What does "Escoja al menos un cliente o marque que la oferta aplica a todos los clientes." mean?**
+(Choose at least one client or mark that the offer applies to all clients.)
+Publishing a chosen-clients offer without clients, removing the last client of a published offer, or unchecking «Applies to all» on an already published offer was attempted (422). Add clients, or move the offer to draft first.
+
+**What does "La oferta cambió al mismo tiempo. Recárguela e intente de nuevo." mean?**
+(The offer changed at the same time. Reload it and try again.)
+Someone else saved the same offer at once (409). Reload and repeat the change.
+
+**What does "Indique el precio de oferta del kit." mean?**
+(Give the kit's offer price.)
+When creating a kit for the offer its offer price is missing (400). Type it in «Kit offer price».
+
+**What does "Un kit necesita al menos un componente." mean?**
+(A kit needs at least one component.)
+The kit being created (or changed) has no pieces (400). Add at least one piece with its quantity.
+
+**What does "Ya existe un producto con ese SKU para ese dueño." mean?**
+(A product with that SKU already exists for that owner.)
+When creating the offer's kit, the SKU is already used by another product (409). Choose another SKU.
+
+**What does "Ese kit no es de esta oferta: cámbielo desde su propia oferta o desde Productos." mean?**
+(That kit is not from this offer: change it from its own offer or from Products.)
+Changing the name or pieces of a kit from an offer that is not its own was attempted (422). Open it in its own offer, or in Products & inventory → the kit.
+
+**What does "El kit {SKU} es de la oferta «{nombre}», que {motivo}: no se puede vender." mean?**
+(Kit {SKU} belongs to the offer «{name}», which {reason}: it cannot be sold.)
+An offer kit was ordered outside its validity (422). The reason says which one: **está desactivada** (is deactivated), **está en borrador** (is a draft), **todavía no empieza (vale del … al …)** (has not started yet) or **ya terminó (valía del … al …)** (has already ended). Publish or reactivate the offer, extend its date, or remove the kit from the order. Orders already placed do not change.
+
+**What does "Adjunte la foto." or "La foto debe ser una imagen JPG, PNG o WEBP." mean?**
+(Attach the photo. / The photo must be a JPG, PNG or WEBP image.)
+No file was sent, or its content is not JPG, PNG or WEBP (400). The content is checked, not the extension. If it says "El archivo no puede pasar de {n} MB." (The file cannot exceed {n} MB.), reduce the photo.
+
+**What does "El almacén de archivos no está configurado (Files:MasterKey); avise a soporte." mean?**
+(The file store is not configured (Files:MasterKey); tell support.)
+The photo cannot be saved because the server has no file-store key configured (422). Tell support.
+
+## Batch 230 — Product dimensions and weight, «Not substitutable» and swapping kit pieces
+<!-- kemi:staff -->
+
+> The server answers these messages in Spanish; each question quotes the exact Spanish text, followed by its English meaning.
+
+Chapters: [06 §2.4](06-inventario-y-almacen.md#24-dimensions-and-weight-with-their-unit-and-the-wide-editor-batch-230-2026-11-09) (dimensions and weight), [06 §8b.3b](06-inventario-y-almacen.md#8b3b-not-substitutable-batch-230-2026-11-09) (the «Not substitutable» mark) and [18 §17.1](18-ordenes-de-venta.md#171-swapping-a-kit-piece-when-ordering-batch-230) (swapping a piece when ordering).
+
+### Dimensions and weight
+
+**Why does the volume not let me type?**
+Because the product has length, width and height: with the three dimensions the volume is calculated by itself. Remove a dimension if you really want to type it by hand.
+
+**In which unit do I type the dimensions?**
+In the one shown in «Dimension unit» (the screen suggests the product's own or the company region's: inches and pounds in Puerto Rico and the United States; centimeters and kilograms in other regions). It can be changed per product (big things in feet or meters). They are the dimensions of **one base unit** (what is sold), not of the box or the pallet. Changing the unit does not convert the numbers typed.
+
+**I typed a volume and it disappeared.**
+When length, width and height are typed, the volume is replaced by the calculated one. If any of the three is missing, the volume you typed earlier is kept.
+
+**The volume of something very small shows 0.**
+The saved m³ has 4 decimals and for something very small in inches it rounds. Type the three dimensions: the exact volume shows in cubic inches (or another cubic unit).
+
+**What does "El largo no puede ser negativo." mean? (the same with «ancho» and «alto»)**
+(The length cannot be negative.)
+The dimension is negative (400). Type 0 or leave the field empty to remove the dimension.
+
+**What does "El largo debe ser un número de hasta 4 decimales." mean? (the same with «ancho» and «alto»)**
+(The length must be a number with up to 4 decimals.)
+The dimension has more than 4 decimals or is too large (400). Round to 4 decimals or use a bigger unit (feet or meters).
+
+**What does "La unidad de las medidas debe ser IN (pulgadas), CM (centímetros), FT (pies) o M (metros)." mean?**
+(The dimension unit must be IN (inches), CM (centimeters), FT (feet) or M (meters).)
+It comes from an import or the API with another unit (400). Use one of the four codes.
+
+**What does "La unidad del peso debe ser LB (libras) o KG (kilos)." mean?**
+(The weight unit must be LB (pounds) or KG (kilograms).)
+The same, with LB or KG (400).
+
+**What does "El peso no puede ser negativo." or "El peso es demasiado grande." mean?**
+(The weight cannot be negative. / The weight is too large.)
+Check the weight number and unit (400).
+
+**What does "El volumen calculado con el largo, el ancho y el alto es demasiado grande." mean?**
+(The volume calculated from length, width and height is too large.)
+Most likely the unit is wrong (e.g. meters instead of centimeters) (400). Fix the unit or the dimensions.
+
+### Category, «Not substitutable» and swapping pieces
+
+**What is category → subcategory?**
+A category can have a parent category (e.g. Gloves → Nitrile; Warehouse → Products & inventory → Categories tab). The category says **what** the product is; the brand goes in Brand and the model in Model. To swap a kit piece, the exact category is compared (the subcategory, if it has one).
+
+**What is «Not substitutable» in the kit editor?**
+By default, when ordering, a piece can be swapped for another of the exact same category and the same sale price. Check «Not substitutable» on the pieces that cannot be swapped. The mark can be set in the kit editor (Products) or in the offer window, when creating or changing an offer's kit.
+
+**Does «Adjustable when ordering» still exist?**
+Yes, as before: it lets you change the **quantities** of the pieces in the order without changing the kit price. Substitution is separate (it changes **which product** the piece is) and both can be used.
+
+**Who can swap a piece when ordering? Is a separate permission needed?**
+The salesperson with `sales.create`; there is no separate permission. The kit's definition decides.
+
+**«Change» does not show on a kit piece.**
+The piece is marked «Not substitutable», has no category or sale price, or there is no other active product of the exact same category and the **same sale price** (or it is already another piece of the kit). Check the products' category and sale price.
+
+**Does the kit price change if I swap a piece?**
+No: the kit is worth the same. The order, reservation, dispatch, cost and invoice use the piece that remained.
+
+**The salesperson does not see the kit pieces in the order.**
+With `sales.create` they see them even without `inventory.view`. If they do not, check that the kit has components and that the person has `sales.create` (without it the warehouse kit is used, which requires `inventory.view`).
+
+**What does "La pieza GM del kit no es sustituible." mean?**
+(Piece GM of the kit is not substitutable.)
+The piece was marked «Not substitutable» after the order was built (400): use «Undo».
+
+**What does "GV no es una pieza del kit KIT-1: solo se sustituyen sus piezas." mean?**
+(GV is not a piece of kit KIT-1: only its pieces are substituted.)
+The kit's catalog changed while the order was being built (400): remove the line and add it again.
+
+**What does "La pieza CAJA no tiene categoría: solo se sustituye por un producto de la misma categoría." or "La pieza GM no tiene precio de venta: solo se sustituye por un producto del mismo precio." mean?**
+(Piece CAJA has no category: it is only replaced by a product of the same category. / Piece GM has no sale price: it is only replaced by a product of the same price.)
+That piece cannot be substituted until the product has a category and a sale price (400). It is fixed in the product editor.
+
+**What does "GV no es de la misma categoría que GM…" or "GXL no tiene el mismo precio de venta que GM…" mean?**
+(GV is not of the same category as GM… / GXL does not have the same sale price as GM…)
+The product or the piece changed category or price while the order was being built (400): use «Undo» or pick another from the list.
+
+**What does "El sustituto de GM va en la misma cantidad que la pieza: 2." mean?**
+(The substitute of GM goes in the same quantity as the piece: 2.)
+In a fixed kit the substitute goes in the same quantity as the piece (400): pick it again.
+
+**What does "CAJA ya es otra pieza del kit: no puede sustituir una pieza." or "La pieza GM se sustituyó más de una vez." mean?**
+(CAJA is already another piece of the kit: it cannot replace a piece. / Piece GM was substituted more than once.)
+A product was repeated inside the kit, or the same piece was substituted twice (400). Use «Undo» on the piece and pick another substitute.
+
+**What does "El componente GS está inactivo." or "K2 es un kit: un kit no puede llevar otro kit como componente." or "El componente GS es de otro dueño de inventario que el kit." mean?**
+(Component GS is inactive. / K2 is a kit: a kit cannot carry another kit as a component. / Component GS belongs to a different inventory owner than the kit.)
+The chosen substitute is deactivated, is a kit, or belongs to another inventory owner (400). The screen does not offer it; it shows if the product changed while the order was being built. Pick another.
+
+**What does "El kit KIT-1 no se puede ajustar al pedir." mean?**
+(Kit KIT-1 cannot be adjusted when ordering.)
+In a fixed kit only the piece is swapped, not the quantities (400): use «Undo» and pick again.
+
+**What does "El producto GM no es un kit." mean?**
+(Product GM is not a kit.)
+Substitutes were requested for a product that is not a kit (422; a direct API call).
+
+**What does "Producto no encontrado." or "Componente no encontrado." mean when swapping a piece?**
+(Product not found. / Component not found.)
+The kit or the original piece no longer exists, or belongs to another company (404). Reload the order.

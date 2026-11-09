@@ -284,21 +284,35 @@ Para soporte: tabla `SalesOrderLineComponent` (la foto, se borra con la línea) 
 
 ### 17.1 Cambiar una pieza del kit al pedir (Lote 230)
 
-**Qué hace.** En un pedido, una pieza de un kit se puede **cambiar** por otro producto de la **misma categoría exacta** y **exactamente el mismo
-precio de venta**, en la misma cantidad (p. ej. guantes de otra talla). El **precio del kit no cambia**. Vale para kits fijos y ajustables, regulares
-y de oferta.
+**Qué hace.** En un pedido, una pieza de un kit se puede **cambiar** por otro producto (p. ej. guantes de otra talla) si cumple **todo** esto:
 
-**Quién puede.** El vendedor, con `sales.create` (no hay permiso aparte). Módulo **SALES_ORDERS**. Lo decide la definición del kit: una pieza marcada
-«No sustituible» ([06 §8b.3b](06-inventario-y-almacen.md#8b3b-no-sustituible-lote-230-2026-11-09)) no se cambia.
+| Condición | Detalle |
+|---|---|
+| **Misma categoría exacta** | El mismo `ProductCategoryId`: la subcategoría, si la tiene (Guantes → Nitrilo no se cambia por Guantes → Látex). Una pieza **sin categoría** no se sustituye. |
+| **Precio de venta exactamente igual** | Se compara el **precio de venta del producto** (`Product.SalePrice`), no el de una lista; ni un centavo de diferencia. Una pieza **sin precio de venta** no se sustituye. |
+| **Misma cantidad** | El sustituto va en la cantidad de la pieza (en un kit «Ajustable al pedir» la cantidad sigue siendo libre). |
+| **Pieza sustituible** | La pieza no está marcada «No sustituible» ([06 §8b.3b](06-inventario-y-almacen.md#8b3b-no-sustituible-lote-230-2026-11-09)). Por omisión toda pieza es sustituible. |
+| **Sustituto válido** | Producto activo, que no sea kit, del mismo dueño de inventario que el kit y que no sea ya otra pieza del mismo kit. |
+
+El **precio del kit no cambia**. Vale para kits fijos y ajustables, regulares y de oferta. **«Ajustable al pedir» sigue igual** (cambiar cantidades de las
+piezas sin tocar el precio): la sustitución es aparte y se pueden usar las dos.
+
+**Quién puede.** El vendedor, con `sales.create` — **no hay permiso aparte**: lo decide la definición del kit. Módulo **SALES_ORDERS**.
 
 **Cómo se usa.** En el **pedido guiado** (carrito abierto) y en la ventana de la orden **en borrador**, cada pieza con sustitutos válidos lleva
-**«Cambiar»**: la lista muestra solo los productos permitidos (SKU, nombre y marca). Al escoger uno, la pieza muestra el producto nuevo y «en lugar de
-{SKU original}», con **«Deshacer»**. Las piezas «no sustituibles» o sin sustitutos no llevan el botón. En la orden guardada o solicitada se ve la pieza
-real con «en lugar de …»; la reserva, el despacho, la factura y el aparato usan la pieza real.
+**«Cambiar»**: la lista (titulada «Productos que pueden sustituir a {SKU}») muestra solo los productos permitidos (SKU, nombre y marca), con la pista «Misma
+categoría y mismo precio: el precio del kit no cambia.». Al escoger uno, la pieza muestra el producto nuevo y «en lugar de {SKU original}», con
+**«Deshacer»**. La lista no ofrece el producto que ya está puesto ni los que ya son otra pieza de la línea. Las piezas «No sustituibles» o sin sustitutos no
+llevan el botón. En la orden guardada o solicitada se ve la pieza real con «en lugar de …»; la **reserva, el despacho, el costo, la factura y el aparato**
+usan la **pieza real**, y la orden y la factura muestran la pieza real.
 
-**API.** `GET /api/v1/sales-orders/kits/{kitPublicId}/substitutes` (cada pieza del kit con sus sustitutos). En `POST/PATCH /sales-orders` la línea
-manda **todas** sus piezas en `components` y la que cambia lleva `substitutesProductPublicId` = la pieza original. Volver a guardar el borrador sin
-piezas conserva la sustitución.
+**Quién ve las piezas.** El vendedor con `sales.create` ve las piezas del kit en el borrador y en el carrito **aunque no tenga `inventory.view`** (antes no
+las veía): la pantalla las lee del servicio de ventas. Sin `sales.create` (solo lectura) se usa el kit del almacén, que sí exige `inventory.view`.
+
+**API.** `GET /api/v1/sales-orders/kits/{kitPublicId}/substitutes` (`sales.create`, módulo `SALES_ORDERS`) devuelve cada pieza del kit con su categoría, su
+precio, si es «no sustituible» y sus sustitutos válidos; sirve antes de guardar la línea. En `POST/PATCH /sales-orders` la línea manda **todas** sus piezas
+en `components` y la que cambia lleva `substitutesProductPublicId` = la pieza original. Volver a guardar el borrador sin piezas conserva la sustitución. Se
+valida contra el catálogo **actual** del kit: si el catálogo cambió después de guardar el borrador, quite la línea y agréguela otra vez para tomar el nuevo.
 
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|
@@ -311,11 +325,23 @@ piezas conserva la sustitución.
 | Otra cantidad (kit fijo) | `El sustituto de GM va en la misma cantidad que la pieza: 2.` | 400 |
 | Sustituto que ya es otra pieza | `CAJA ya es otra pieza del kit: no puede sustituir una pieza.` | 400 |
 | La misma pieza dos veces | `La pieza GM se sustituyó más de una vez.` | 400 |
+| Sustituto inactivo / que es un kit / de otro dueño | `El componente GS está inactivo.` · `K2 es un kit: un kit no puede llevar otro kit como componente.` · `El componente GS es de otro dueño de inventario que el kit.` | 400 |
 | Kit fijo con otro cambio además de la sustitución | `El kit KIT-1 no se puede ajustar al pedir.` | 400 |
 | Sustitutos de algo que no es kit | `El producto GM no es un kit.` | 422 |
+| Kit o pieza original que no existe | `Producto no encontrado.` · `Componente no encontrado.` | 404 |
 
 La pantalla solo ofrece sustitutos válidos, así que estos mensajes salen sobre todo si el catálogo cambió mientras se armaba el pedido: el aviso
 aparece arriba de la ventana (o como aviso del paso) y basta con «Deshacer» o escoger otro.
+
+### 17.2 Precio de la línea, ofertas y avisos (Lote 229)
+
+El precio de la línea sale de la oferta, de la lista del cliente, de la lista general o del producto, y **gana el más bajo** entre el negociado del cliente y la
+oferta vigente ([47 §2](47-precios-y-ofertas.md#2-de-dónde-sale-el-precio-de-una-línea)). En la orden:
+
+- La línea de un **producto o kit en oferta** queda con el precio de la oferta (`priceSource` `OFFER`); si el negociado del cliente es más bajo, queda el negociado (`CLIENT_LIST`).
+- Un **kit creado para una oferta** solo se puede pedir mientras su oferta esté publicada, activa y vigente; si no, `El kit {SKU} es de la oferta «{nombre}», que {motivo}: no se puede vender.` (422; los motivos están en [47 §7](47-precios-y-ofertas.md#7-validaciones-y-mensajes)). Las órdenes ya hechas no cambian; **modificar** una línea ya solicitada o cambiar el cliente de un borrador **no** vuelve a revisar la vigencia del kit.
+- **Avisos de precio** (no son errores): al crear o editar el borrador con líneas, la respuesta trae `linePrices[]` con, por producto, de dónde salió el precio (oferta o lista) y los avisos `TWO_OFFERS` y `OFFER_ABOVE_GENERAL`. No se guardan: al volver a abrir el borrador solo se ven los del catálogo. En el pedido guiado se muestran junto al producto, en la línea del carrito y en «Avisos de precio» del paso de entrega ([48 §2](48-pedido-guiado.md)). Se cobra siempre el precio más bajo.
+- Un precio distinto del resuelto exige `sales.price` (sin cambio).
 
 ## Ver el despacho desde la venta y la venta desde el despacho (2026-10-21)
 

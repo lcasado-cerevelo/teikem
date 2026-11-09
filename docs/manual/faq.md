@@ -11023,19 +11023,12 @@ Otra persona guardó la misma lista a la vez (409). Recargue y repita el cambio.
 **¿Qué significa "Adjunte la foto." o "La foto debe ser una imagen (JPG, PNG, WEBP o GIF)."?**
 No se mandó archivo, o su contenido no es una imagen admitida (400). Suba JPG, PNG, WEBP o GIF (se comprueba el contenido, no la extensión). Si dice "El archivo no puede pasar de {n} MB.", reduzca la foto.
 
-### Ofertas (kits en promoción)
+### Ofertas
 
-**¿Qué significa "Solo un kit puede ser oferta (promoción)."?**
-Se marcó «Es promoción» en un producto que no es kit (422). Convierta el producto en kit (Productos → tipo Kit) o use una lista de precios para darle precio especial.
+Desde el Lote 229 las ofertas son una cosa aparte de las listas de precios y de los kits (ya no existe la marca «promoción» en el kit). Las preguntas de las ofertas están en la sección [Lote 229 — Ofertas como entidad aparte](#lote-229--ofertas-como-entidad-aparte-kits-de-oferta-y-foto-del-producto).
 
 **¿Qué significa "La fecha «hasta» de la oferta no puede ser anterior a la fecha «desde»."?**
-La vigencia de la oferta está al revés (400). Corrija «Oferta desde» / «Oferta hasta».
-
-**¿Qué significa "Marque el kit como oferta antes de ponerle la foto."?**
-Se subió la foto antes de guardar la marca (422). Guarde primero «Es promoción» y luego ponga la foto.
-
-**¿Qué significa "La oferta {SKU} no está vigente hoy (vale del … al …): no se puede vender."?**
-La oferta está programada o vencida (422): no se puede poner en una línea nueva ni en un borrador que se vuelve a guardar. Cambie su vigencia en el kit, o quite la línea del pedido. Las órdenes ya hechas no cambian.
+La vigencia de la oferta está al revés (400). Corrija «Vale desde» / «Hasta» en la ventana de la oferta; «Hasta» puede quedar en blanco (la oferta no vence).
 
 ### Precio de una línea
 
@@ -11184,7 +11177,7 @@ Es lo esperado: al rechazar, las órdenes abiertas (borrador o solicitadas) se c
 Capítulo: [48 — Pedido guiado](48-pedido-guiado.md).
 
 **¿Por qué no puedo pedir un producto que dice «Sin precio»?**
-Porque ni la lista del cliente, ni la general, ni el producto tienen precio, y el vendedor no teclea precios. Quien tiene `sales.price` (el Admin de compañía) ve en ese renglón la casilla **Precio** (con `$`) a la derecha de la cantidad, que se habilita al poner la cantidad. Lo definitivo es ponerle precio de venta al producto o crear una lista en Contabilidad → Precios y ofertas.
+Porque ni la lista del cliente, ni la general, ni una oferta, ni el producto tienen precio, y el vendedor no teclea precios. Quien tiene `sales.price` (el Admin de compañía) ve en ese renglón la casilla **Precio** (con `$`) a la derecha de la cantidad, que se habilita al poner la cantidad. Lo definitivo es ponerle precio de venta al producto o crear una lista en Contabilidad → Precios y ofertas.
 
 **¿Cómo busco una oferta o un producto de otra marca en el pedido?**
 Escriba en el buscador del paso Productos (toma el foco al entrar): con texto busca en todas las marcas, productos y ofertas, por SKU o nombre. Sin texto vuelve a la marca escogida.
@@ -11193,7 +11186,7 @@ Escriba en el buscador del paso Productos (toma el foco al entrar): con texto bu
 Si la compañía tiene un solo cliente activo, el pedido lo trae escogido por omisión. Con «Cambiar» se puede escoger otro.
 
 **¿Qué es el cuadrito de al lado de cada producto?**
-Su foto (la de su oferta o la de su renglón en una lista de precios). Al pasar el mouse, enfocarlo o tocarlo se ve grande. Si no tiene foto, queda vacío.
+Su foto, en este orden: la del renglón de la oferta o de la lista, la del producto o, si es un kit sin foto, la de su primera pieza con foto. Al pasar el mouse, enfocarlo o tocarlo se ve grande. Si no hay ninguna, queda vacío; la foto del producto se pone en el editor del producto (bloque Foto).
 
 **¿Qué significa "El paso del pedido debe ser CLIENT, PRODUCTS, DELIVERY o AUTHORIZATION."?**
 Se mandó un paso que no existe (400). Es un error de la integración: la web y la app mandan los cuatro pasos correctos.
@@ -11527,52 +11520,229 @@ Para buscar clientes hace falta el permiso `clients.read`. Sin él puede filtrar
 **Elegí dos clientes y un producto: ¿salen las de cualquiera?**
 Dentro de un filtro, sí: cualquiera de los clientes elegidos. Entre filtros, no: la orden tiene que ser de uno de esos clientes **y** tener una línea del producto (y cumplir el estatus y la fecha si los puso).
 
+## Lote 229 — Ofertas como entidad aparte, kits de oferta y foto del producto
+<!-- kemi:staff -->
+
+Capítulos: [47 — Listas de precios y ofertas](47-precios-y-ofertas.md) (ofertas §4, fotos §5, avisos §2), [06 §2.5](06-inventario-y-almacen.md#25-foto-del-producto-y-categoría-con-subcategoría-lote-229-2026-11-09) (foto del producto) y [48](48-pedido-guiado.md) (el pedido). Desde este lote una **oferta** es una cosa aparte (nombre, foto, vigencia y renglones con precio de oferta), ya no un kit marcado como promoción.
+
+### Casos frecuentes
+
+**¿Dónde creo una oferta?**
+En Contabilidad → Precios y ofertas, sección **Ofertas**, botón **Nueva oferta** (hace falta `sales.pricelist`). La oferta nace en **borrador**: póngale foto, renglones (y clientes, si no es para todos) y pulse **Publicar**. Hasta publicarla no da precios.
+
+**Antes un kit se marcaba como promoción. ¿Cómo hago ahora que un kit sea oferta?**
+Ya no se marca el kit: se crea una oferta y se pone el kit como **renglón** con su precio de oferta («Escoger un producto o kit»), o se crea un kit solo para la oferta con **Crear kit para esta oferta**. Las promociones que existían se conservaron como datos, pero ya no dan precio ni bloquean ventas.
+
+**Dejé «Hasta» en blanco. ¿Qué pasa?**
+La oferta **no vence**: vale hasta que se desactive o se vuelva a borrador. La pantalla lo avisa («Sin fecha de fin: vale hasta que la desactive»). Si es de temporada, póngale fecha.
+
+**¿Qué precio se cobra si el producto está en una oferta y también en la lista del cliente?**
+El **más bajo** de los dos; si empatan, el de la lista del cliente. Sin precio negociado, el más bajo entre la oferta y la lista general. Si no hay ninguno, el precio de venta del producto. Un producto que no está en ninguna parte y no tiene precio de venta sale «Sin precio».
+
+**Un producto está en dos ofertas a la vez. ¿Cuál gana?**
+La **más barata** (si valen lo mismo, la que empezó más tarde) y el sistema avisa. El aviso no impide nada.
+
+**¿Qué pasa con el kit de una oferta cuando la oferta termina?**
+Queda **inactivo para la venta**: no sale en el pedido y pedirlo da error. No se borra ni se da de baja, y las órdenes y facturas que lo usaron lo siguen viendo. Si se extiende la fecha de fin (o se quita), o se reactiva la oferta, el kit **vuelve** solo.
+
+**El kit de la oferta no sale en el pedido.**
+Revise que la oferta esté **publicada**, **activa**, vigente hoy y que aplique al cliente (para todos, o él entre los escogidos). Un kit de oferta solo se ofrece como tarjeta de oferta, nunca en la lista normal de la marca.
+
+**¿Qué foto sale en el pedido, en las listas y en las ofertas?**
+En este orden: la foto del **renglón** (si se le puso una) → la del **producto** → si es un kit sin foto, la de su **primera pieza que tenga foto** → vacío. Quitar la foto del renglón (**Volver a la del producto**) hace que salga la del producto.
+
+**¿Dónde pongo la foto de un producto?**
+En el editor del producto (Almacén → Productos e inventario), bloque **Foto**, con `inventory.manage`. Un producto nuevo se guarda primero y después se le pone la foto. Vale igual para kits y kits de oferta.
+
+**El vendedor no ve las fotos de los productos.**
+Con `sales.view` debería verlas aunque no tenga `inventory.view`. Si no salen, el producto no tiene foto (ni el renglón, ni sus piezas si es un kit): suba la foto en el editor del producto. Las fotos de las ofertas y de sus renglones se suben con `sales.pricelist`.
+
+**¿Qué fotos admite y de qué tamaño?**
+JPG, PNG o WEBP, hasta el tope del almacén de archivos (10 MB por omisión). Si el lado mayor pasa de 1200 px, el sistema la reduce a 1200 px. (Los renglones de las listas de precios aceptan también GIF.)
+
+**¿Puedo editar o desactivar una oferta que ya se usó en pedidos?**
+Sí. Los pedidos ya hechos no cambian (la línea guarda su precio). Desactivarla la saca de los pedidos nuevos y saca de la venta sus kits.
+
+### Avisos de precio (no son errores)
+
+**¿Qué significa "El producto {SKU} está en dos ofertas a la vez: «A» a $x y «B» a $y. Se aplica la más barata («A»)."?**
+Es un aviso (no un error): el producto está en dos ofertas vigentes para el mismo cliente. Se cobra el precio más bajo y el pedido sigue. Si no es lo que quería, cambie las fechas o los clientes de una de las dos, o quite el producto de una.
+
+**¿Qué significa "La oferta «A» pone {SKU} a $x, más caro que la lista general ($y): se aplica el precio más bajo."?**
+Aviso en el pedido: la oferta sale más cara que la lista general. Se cobra el precio de la lista (el más bajo). Corrija el precio de la oferta si fue un error.
+
+**¿Qué significa "El producto {SKU} sale en esta oferta a $x, más caro que en la lista general ($y): se aplicará el precio más bajo."?**
+Aviso al armar la oferta: el renglón es más caro que la lista general vigente. Se puede guardar y publicar; se cobrará el más bajo. Revise el precio del renglón.
+
+**¿Qué significa "El producto {SKU} también está en la oferta «B» (…) a $y, igual o más barata que aquí ($x): mientras las dos estén vigentes se aplica el precio más bajo."?**
+Aviso al armar la oferta: otra oferta publicada, en fechas y clientes que se cruzan, trae el mismo producto igual o más barato. No impide guardar ni publicar. Si no quiere el choque, cambie las fechas o los clientes, o quite el producto de una.
+
+### Mensajes de la oferta
+
+**¿Qué significa "Indique el nombre de la oferta." o "El nombre de la oferta no puede pasar de 120 caracteres."?**
+Se intentó crear o renombrar una oferta sin nombre, o con más de 120 caracteres (400). Escriba un nombre más corto.
+
+**¿Qué significa "Indique desde qué fecha vale la oferta."?**
+Falta «Vale desde» (400). Es obligatorio; «Hasta» es opcional (vacío = no vence).
+
+**¿Qué significa "La fecha «hasta» de la oferta no puede ser anterior a la fecha «desde»."?**
+Las fechas de la oferta están al revés (400). Corrija la vigencia; los dos extremos cuentan como vigentes.
+
+**¿Qué significa "Oferta no encontrada." o "Renglón de la oferta no encontrado." o "Cliente de la oferta no encontrado." o "Kit de la oferta no encontrado."?**
+El identificador no existe o es de otra compañía (404). Recargue la pantalla: alguien pudo quitar el renglón o el cliente.
+
+**¿Qué significa "La oferta está desactivada: reactívela para cambiarla."?**
+Una oferta desactivada no se edita (datos, renglones, clientes, fotos, kits) (422). Pulse **Reactivar** y haga el cambio.
+
+**¿Qué significa "La oferta ya está desactivada." o "La oferta ya está activa."?**
+Se pidió desactivar o reactivar algo que ya estaba así (422). Recargue y revise el estado.
+
+**¿Qué significa "La oferta ya está publicada." o "La oferta ya está en borrador."?**
+Se pidió publicar o volver a borrador algo que ya estaba así (422). Recargue la oferta.
+
+**¿Qué significa "Indique los productos y sus precios de oferta." / "Escoja el producto o kit de cada renglón." / "Indique el precio de oferta de cada renglón."?**
+Al agregar renglones falta el producto o el precio (400). Cada renglón necesita un producto (o kit) y un precio de oferta de 0 en adelante.
+
+**¿Qué significa "Una oferta admite como máximo 500 renglones." o "Una oferta admite como máximo 2000 clientes."?**
+Se pasó del tope (400). Divida los productos o los clientes en otra oferta.
+
+**¿Qué significa "Solo se ponen en una oferta productos propios de la compañía."?**
+El producto es de un cliente de paso (422). Las ofertas solo llevan productos y kits propios.
+
+**¿Qué significa "El producto {SKU} está inactivo: no se puede poner en la oferta."?**
+El producto está dado de baja (422). Reactívelo en Productos o escoja otro.
+
+**¿Qué significa "El kit {SKU} es de la oferta «{nombre}»: no se puede poner en otra."?**
+Ese kit se creó para otra oferta y queda atado a ella (422). Use un kit normal, o cree otro kit para esta oferta.
+
+**¿Qué significa "El kit {SKU} es de la oferta «{nombre}»: su precio va en la oferta, no en una lista de precios."?**
+Se intentó poner en una lista de precios un kit creado para una oferta (422). Su precio se cambia en el renglón de su oferta.
+
+**¿Qué significa "Escoja los clientes de la oferta."?**
+Se intentó agregar clientes sin escoger ninguno (400). Escoja al menos uno.
+
+**¿Qué significa "La oferta aplica a todos los clientes: no lleva clientes escogidos. Desmarque «aplica a todos» para escogerlos."?**
+Se quiso agregar clientes a una oferta para todos (422). Desmarque «Aplica a todos los clientes» primero.
+
+**¿Qué significa "La oferta tiene clientes escogidos: quítelos antes de hacerla general (aplica a todos)."?**
+Se marcó «Aplica a todos» en una oferta que ya tiene clientes (422). Quite los clientes o cree otra oferta general.
+
+**¿Qué significa "Agregue al menos un renglón antes de publicar la oferta."?**
+Se intentó publicar una oferta vacía (422). Agregue renglones y publique.
+
+**¿Qué significa "Escoja al menos un cliente o marque que la oferta aplica a todos los clientes."?**
+Se intentó publicar una oferta de clientes escogidos sin clientes, o quitar el último cliente de una oferta publicada, o desmarcar «Aplica a todos» en una oferta ya publicada (422). Agregue clientes, o pase la oferta a borrador primero.
+
+**¿Qué significa "La oferta cambió al mismo tiempo. Recárguela e intente de nuevo."?**
+Otra persona guardó la misma oferta a la vez (409). Recargue y repita el cambio.
+
+**¿Qué significa "Indique el precio de oferta del kit."?**
+Al crear un kit para la oferta falta su precio de oferta (400). Escríbalo en «Precio de oferta del kit».
+
+**¿Qué significa "Un kit necesita al menos un componente."?**
+El kit que se está creando (o cambiando) no tiene piezas (400). Agregue al menos una pieza con su cantidad.
+
+**¿Qué significa "Ya existe un producto con ese SKU para ese dueño."?**
+Al crear el kit de la oferta, el SKU ya lo usa otro producto (409). Escoja otro SKU.
+
+**¿Qué significa "Ese kit no es de esta oferta: cámbielo desde su propia oferta o desde Productos."?**
+Se intentó cambiar el nombre o las piezas de un kit desde una oferta que no es la suya (422). Ábralo en su oferta, o en Productos e inventario → el kit.
+
+**¿Qué significa "El kit {SKU} es de la oferta «{nombre}», que {motivo}: no se puede vender."?**
+Se pidió un kit de oferta fuera de su vigencia (422). El motivo dice cuál es: **está desactivada**, **está en borrador**, **todavía no empieza (vale del … al …)** o **ya terminó (valía del … al …)**. Publique o reactive la oferta, extienda su fecha, o quite el kit del pedido. Las órdenes ya hechas no cambian.
+
+**¿Qué significa "Adjunte la foto." o "La foto debe ser una imagen JPG, PNG o WEBP."?**
+No se mandó archivo, o su contenido no es JPG, PNG o WEBP (400). Se comprueba el contenido, no la extensión. Si dice "El archivo no puede pasar de {n} MB.", reduzca la foto.
+
+**¿Qué significa "El almacén de archivos no está configurado (Files:MasterKey); avise a soporte."?**
+No se puede guardar la foto porque el servidor no tiene configurada la llave del almacén de archivos (422). Avise a soporte.
+
 ## Lote 230 — Medidas y peso del producto; «No sustituible» y cambiar piezas de un kit
+<!-- kemi:staff -->
 
-**¿Por qué el volumen no me deja escribir?** Porque el producto tiene largo, ancho y alto: con las tres medidas el volumen se calcula solo. Quite
-una medida si de verdad quiere escribirlo a mano ([06 §2.4](06-inventario-y-almacen.md#24-medidas-y-peso-con-su-unidad-y-el-editor-ancho-lote-230-2026-11-09)).
+Capítulos: [06 §2.4](06-inventario-y-almacen.md#24-medidas-y-peso-con-su-unidad-y-el-editor-ancho-lote-230-2026-11-09) (medidas y peso), [06 §8b.3b](06-inventario-y-almacen.md#8b3b-no-sustituible-lote-230-2026-11-09) (la marca «No sustituible») y [18 §17.1](18-ordenes-de-venta.md#171-cambiar-una-pieza-del-kit-al-pedir-lote-230) (cambiar una pieza al pedir).
 
-**¿En qué unidad escribo las medidas?** En la que diga «Unidad de las medidas» (la pantalla sugiere la del producto o la de la región: pulgadas en
-Puerto Rico). Son las medidas de **una unidad base** (lo que se vende), no de la caja ni de la paleta. Cambiar la unidad no convierte los números.
+### Medidas y peso
 
-**«El largo no puede ser negativo.» (400)** — Escriba 0 o deje el campo vacío para quitar la medida (igual con «ancho» y «alto»).
+**¿Por qué el volumen no me deja escribir?**
+Porque el producto tiene largo, ancho y alto: con las tres medidas el volumen se calcula solo. Quite una medida si de verdad quiere escribirlo a mano.
 
-**«El largo debe ser un número de hasta 4 decimales.» (400)** — Redondee a 4 decimales o use una unidad más grande (pies o metros).
+**¿En qué unidad escribo las medidas?**
+En la que diga «Unidad de las medidas» (la pantalla sugiere la del producto o la de la región de la compañía: pulgadas y libras en Puerto Rico y Estados Unidos; centímetros y kilos en otras regiones). Se puede cambiar por producto (lo grande, en pies o metros). Son las medidas de **una unidad base** (lo que se vende), no de la caja ni de la paleta. Cambiar la unidad no convierte los números escritos.
 
-**«La unidad de las medidas debe ser IN (pulgadas), CM (centímetros), FT (pies) o M (metros).» (400)** — Viene de una importación o del API con
-otra unidad: use uno de los cuatro códigos.
+**Puse un volumen y desapareció.**
+Al escribir largo, ancho y alto, el volumen se reemplaza por el calculado. Si falta cualquiera de las tres, el volumen que escribió antes se conserva.
 
-**«La unidad del peso debe ser LB (libras) o KG (kilos).» (400)** — Igual, con LB o KG.
+**El volumen de algo muy chico sale 0.**
+El m³ guardado lleva 4 decimales y para algo muy chico en pulgadas redondea. Escriba las tres medidas: el volumen exacto se ve en pulgadas cúbicas (u otra unidad cúbica).
 
-**«El peso no puede ser negativo.» / «El peso es demasiado grande.» (400)** — Revise el número y la unidad del peso.
+**¿Qué significa "El largo no puede ser negativo."? (igual con «ancho» y «alto»)**
+La medida es negativa (400). Escriba 0 o deje el campo vacío para quitar la medida.
 
-**«El volumen calculado con el largo, el ancho y el alto es demasiado grande.» (400)** — Seguramente la unidad no es la correcta (p. ej. metros en vez
-de centímetros): corrija la unidad o las medidas.
+**¿Qué significa "El largo debe ser un número de hasta 4 decimales."? (igual con «ancho» y «alto»)**
+La medida trae más de 4 decimales o es demasiado grande (400). Redondee a 4 decimales o use una unidad más grande (pies o metros).
 
-**¿Qué es «No sustituible» en el editor del kit?** Por omisión, al pedir se puede cambiar una pieza por otra de la misma categoría y el mismo precio.
-Marque «No sustituible» en las piezas que no se pueden cambiar.
+**¿Qué significa "La unidad de las medidas debe ser IN (pulgadas), CM (centímetros), FT (pies) o M (metros)."?**
+Viene de una importación o del API con otra unidad (400). Use uno de los cuatro códigos.
 
-**No me sale «Cambiar» en una pieza del kit.** La pieza está marcada «No sustituible», no tiene categoría o precio de venta, o no hay otro producto
-activo de la misma categoría exacta y el mismo precio (ni que sea ya otra pieza del kit). Revise la categoría y el precio de los productos.
+**¿Qué significa "La unidad del peso debe ser LB (libras) o KG (kilos)."?**
+Igual, con LB o KG (400).
 
-**¿Cambia el precio del kit si cambio una pieza?** No: el kit vale lo mismo. La orden, la reserva, el despacho y la factura usan la pieza que quedó.
+**¿Qué significa "El peso no puede ser negativo." o "El peso es demasiado grande."?**
+Revise el número y la unidad del peso (400).
 
-**«La pieza GM del kit no es sustituible.» (400)** — La pieza se marcó «No sustituible» después de armar el pedido: use «Deshacer».
+**¿Qué significa "El volumen calculado con el largo, el ancho y el alto es demasiado grande."?**
+Seguramente la unidad no es la correcta (p. ej. metros en vez de centímetros) (400). Corrija la unidad o las medidas.
 
-**«GV no es una pieza del kit KIT-1: solo se sustituyen sus piezas.» (400)** — El catálogo del kit cambió: quite la línea y vuelva a agregarla.
+### Categoría, «No sustituible» y cambiar piezas
 
-**«La pieza CAJA no tiene categoría…» / «La pieza GM no tiene precio de venta…» (400)** — Esa pieza no se puede sustituir hasta que tenga categoría y
-precio de venta.
+**¿Qué es la categoría → subcategoría?**
+Una categoría puede tener una categoría superior (p. ej. Guantes → Nitrilo; Almacén → Productos e inventario → pestaña Categorías). La categoría dice **qué es** el producto; la marca va en Marca y el modelo en Modelo. Para cambiar una pieza de un kit se compara la categoría exacta (la subcategoría, si la tiene).
 
-**«GV no es de la misma categoría que GM…» / «GXL no tiene el mismo precio de venta que GM…» (400)** — El producto o la pieza cambió de categoría o de
-precio mientras se armaba el pedido: use «Deshacer» o escoja otro de la lista.
+**¿Qué es «No sustituible» en el editor del kit?**
+Por omisión, al pedir se puede cambiar una pieza por otra de la misma categoría exacta y el mismo precio de venta. Marque «No sustituible» en las piezas que no se pueden cambiar. La marca se puede poner en el editor del kit (Productos) o en la ventana de la oferta, al crear o cambiar un kit de la oferta.
 
-**«El sustituto de GM va en la misma cantidad que la pieza: 2.» (400)** — En un kit fijo el sustituto va en la misma cantidad; vuelva a escogerlo.
+**¿«Ajustable al pedir» sigue existiendo?**
+Sí, igual que antes: permite cambiar las **cantidades** de las piezas en la orden sin cambiar el precio del kit. La sustitución es aparte (cambia **qué producto** es la pieza) y se pueden usar las dos.
 
-**«CAJA ya es otra pieza del kit: no puede sustituir una pieza.» / «La pieza GM se sustituyó más de una vez.» (400)** — Use «Deshacer» en la pieza y
-escoja otro sustituto.
+**¿Quién puede cambiar una pieza al pedir? ¿Hace falta un permiso aparte?**
+El vendedor con `sales.create`; no hay permiso aparte. Lo decide la definición del kit.
 
-**«El kit KIT-1 no se puede ajustar al pedir.» (400)** — En un kit fijo solo se cambia la pieza, no las cantidades: use «Deshacer» y vuelva a escoger.
+**No me sale «Cambiar» en una pieza del kit.**
+La pieza está marcada «No sustituible», no tiene categoría o precio de venta, o no hay otro producto activo de la misma categoría exacta y el **mismo precio de venta** (ni que sea ya otra pieza del kit). Revise la categoría y el precio de venta de los productos.
 
-**«El producto GM no es un kit.» (422)** — Se pidieron sustitutos de un producto que no es kit (llamada directa al API).
+**¿Cambia el precio del kit si cambio una pieza?**
+No: el kit vale lo mismo. La orden, la reserva, el despacho, el costo y la factura usan la pieza que quedó.
 
+**El vendedor no ve las piezas del kit en el pedido.**
+Con `sales.create` las ve aunque no tenga `inventory.view`. Si no las ve, revise que el kit tenga componentes y que la persona tenga `sales.create` (sin él se usa el kit del almacén, que exige `inventory.view`).
+
+**¿Qué significa "La pieza GM del kit no es sustituible."?**
+La pieza se marcó «No sustituible» después de armar el pedido (400): use «Deshacer».
+
+**¿Qué significa "GV no es una pieza del kit KIT-1: solo se sustituyen sus piezas."?**
+El catálogo del kit cambió mientras se armaba el pedido (400): quite la línea y vuelva a agregarla.
+
+**¿Qué significa "La pieza CAJA no tiene categoría: solo se sustituye por un producto de la misma categoría." o "La pieza GM no tiene precio de venta: solo se sustituye por un producto del mismo precio."?**
+Esa pieza no se puede sustituir hasta que el producto tenga categoría y precio de venta (400). Se corrige en el editor del producto.
+
+**¿Qué significa "GV no es de la misma categoría que GM…" o "GXL no tiene el mismo precio de venta que GM…"?**
+El producto o la pieza cambió de categoría o de precio mientras se armaba el pedido (400): use «Deshacer» o escoja otro de la lista.
+
+**¿Qué significa "El sustituto de GM va en la misma cantidad que la pieza: 2."?**
+En un kit fijo el sustituto va en la misma cantidad que la pieza (400): vuelva a escogerlo.
+
+**¿Qué significa "CAJA ya es otra pieza del kit: no puede sustituir una pieza." o "La pieza GM se sustituyó más de una vez."?**
+Se intentó repetir un producto dentro del kit, o sustituir dos veces la misma pieza (400). Use «Deshacer» en la pieza y escoja otro sustituto.
+
+**¿Qué significa "El componente GS está inactivo." o "K2 es un kit: un kit no puede llevar otro kit como componente." o "El componente GS es de otro dueño de inventario que el kit."?**
+El sustituto escogido está dado de baja, es un kit, o es de otro dueño de inventario (400). La pantalla no lo ofrece; sale si el producto cambió mientras se armaba el pedido. Escoja otro.
+
+**¿Qué significa "El kit KIT-1 no se puede ajustar al pedir."?**
+En un kit fijo solo se cambia la pieza, no las cantidades (400): use «Deshacer» y vuelva a escoger.
+
+**¿Qué significa "El producto GM no es un kit."?**
+Se pidieron sustitutos de un producto que no es kit (422; llamada directa al API).
+
+**¿Qué significa "Producto no encontrado." o "Componente no encontrado." al cambiar una pieza?**
+El kit o la pieza original ya no existe, o es de otra compañía (404). Recargue el pedido.

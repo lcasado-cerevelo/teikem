@@ -697,30 +697,46 @@ Cómo se ve:
 
 **Qué hace.** El producto guarda **largo, ancho y alto** con la **unidad** en que se escribieron (pulgadas `IN`, centímetros `CM`, pies `FT` o
 metros `M`) y el **peso** con la suya (libras `LB` o kilos `KG`). El volumen sigue guardándose en m³ y el peso en kg, así que posiciones, cupo y
-reportes no cambian.
+reportes no cambian: `Product.WeightKg` y `Product.VolumeM3` conservan su significado (los lee el acomodo sugerido por capacidad de peso de la posición y la
+ficha; tarifas, viajes, flotilla y órdenes de transporte tienen sus propios pesos y volúmenes).
 
 **Quién puede.** Ver: `inventory.view`. Cambiar: `inventory.manage`. Módulo **WMS_LOTSERIAL**.
 
-**Cómo se usa (pantalla).** Almacén → Productos e inventario → «Nuevo producto» o clic en un producto. La ventana es **ancha en escritorio** y
-agrupa los campos en bloques con título: **Identificación** (SKU, nombre, unidad, categoría —se ve como ruta «Guantes → Nitrilo»—, marca, modelo),
-**Inventario** (rastreo, dueño, rotación, empaque y unidades por empaque, código de barras, punto de reorden, almacén y posición por defecto,
-mínimo y máximo de picking, total y «Producto activo»), **Precios** (costo y precio de venta) y **Medidas y peso**; los campos personalizados, al
-final. En el celular queda una sola columna. La ayuda larga de **Rotación** y de **Unidades por empaque** está en el botón **«?»** junto a la etiqueta.
+**Cómo se usa (pantalla).** Almacén → Productos e inventario → «Nuevo producto» o clic en un producto. La ventana es **ancha en escritorio** (menos
+scroll) y agrupa los campos en bloques con título, en este orden:
+
+1. **Foto** (Lote 229, ver [§2.5](#25-foto-del-producto-y-categoría-con-subcategoría-lote-229-2026-11-09)).
+2. **Identificación**: SKU, nombre, unidad, **categoría** (se ve como ruta «Guantes → Nitrilo»; ver §2.5), marca y modelo.
+3. **Inventario**: rastreo, dueño, rotación, empaque y unidades por empaque, código de barras, punto de reorden, almacén y posición por defecto,
+   mínimo y máximo de picking, total y «Producto activo».
+4. **Precios**: costo de compra y **precio de venta** (el precio de venta es el que se compara cuando se cambia una pieza de un kit al pedir: debe ser
+   exactamente igual; [18 §17.1](18-ordenes-de-venta.md#171-cambiar-una-pieza-del-kit-al-pedir-lote-230)).
+5. **Medidas y peso**.
+6. **Campos personalizados**, al final (el bloque se oculta si la compañía no tiene campos para productos).
+
+«Más datos del producto» ya no existe: el código de barras y los mínimos de picking pasaron a Inventario, y el peso y el volumen a Medidas y peso. En el
+celular queda una sola columna. La ayuda larga de **Rotación** y de **Unidades por empaque** está en el botón **«?»** junto a la etiqueta. Con un
+producto que ya tiene movimientos, Unidad, Rastreo y Dueño siguen bloqueados; sin `inventory.manage` la ventana se abre como «Ver datos del producto»
+(solo lectura).
 
 En **Medidas y peso**:
 - **Unidad de las medidas** (obligatoria): la pantalla **sugiere** la del producto o, si no tiene, la de la región de la compañía (Puerto Rico y
-  Estados Unidos: pulgadas y libras; otras regiones: centímetros y kilos). Se puede cambiar por producto (lo grande, en pies o metros).
-- **Largo, ancho y alto** son de la **unidad base** (lo que se vende), no de la caja ni de la paleta.
-- **Volumen:** con las **tres** medidas se **calcula** solo y no se puede editar (se ve en in³, cm³, ft³ o m³, con su equivalente en m³). Si falta
-  cualquiera, se escribe a mano en esa unidad cúbica (debajo dice cómo se guarda en m³). Un volumen escrito antes no se pierde por poner o quitar una
-  medida suelta: solo se reemplaza cuando están las tres.
-- **Peso** con su **unidad** (sugerida igual). Cambiar solo la unidad no convierte el número escrito: dice en qué unidad está.
-- Vaciar una medida la quita.
+  Estados Unidos usan el sistema inglés: pulgadas y libras; otras regiones, el métrico: centímetros y kilos). Se puede cambiar **por producto**: lo
+  chico, en pulgadas o centímetros; lo grande, en pies o metros.
+- **Largo, ancho y alto** son de la **unidad base** (lo que se vende), no de la caja ni de la paleta; la pantalla lo dice.
+- **Volumen:** con las **tres** medidas se **calcula** solo y no se puede editar (se ve en in³, cm³, ft³ o m³, con «Se guarda como … m³»). Si falta
+  cualquiera, se escribe a mano en esa unidad cúbica. Un volumen escrito antes no se pierde por poner o quitar una medida suelta: solo se reemplaza
+  cuando están las tres. Para algo muy chico en pulgadas el m³ guardado redondea (la columna lleva 4 decimales): conviene escribir las tres medidas, y el
+  volumen exacto se ve en la unidad cúbica.
+- **Peso** con su **unidad** (sugerida igual). Cambiar solo la unidad **no convierte** el número escrito: dice en qué unidad está.
+- Vaciar una medida (o el peso) la quita.
 
 **API.** `POST/PATCH /api/v1/products` con `length`, `width`, `height`, `dimensionUnit`, `weight`, `weightUnit` (y `volumeM3` si falta alguna
-medida); el detalle trae `measures` (medidas, unidad, volumen en su unidad cúbica, si es calculado, peso en su unidad) y `categoryPath`.
-`GET /api/v1/products/units-suggestion` (`inventory.view`) devuelve las unidades sugeridas. Reglas completas en
-[docs/lote230-decisiones.md](../lote230-decisiones.md).
+medida; con las tres se ignora y gana el cálculo); el detalle trae `measures` (medidas, unidad, volumen en su unidad cúbica, si es calculado, peso en su
+unidad), `categoryPath` («Guantes / Nitrilo»), `categoryParentId` y `categoryParentName`. En el PATCH, `null` = sin cambio y `0` en una medida = quitarla.
+`GET /api/v1/products/units-suggestion` (`inventory.view`) devuelve las unidades sugeridas. La **importación de productos** y la salida de productos
+aceptan las columnas `length`, `width`, `height`, `dimensionUnit`, `weight` y `weightUnit` con la misma regla (celda vacía = sin cambio). Reglas completas
+en [docs/lote230-decisiones.md](../lote230-decisiones.md).
 
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|
@@ -732,6 +748,42 @@ medida); el detalle trae `measures` (medidas, unidad, volumen en su unidad cúbi
 | Volumen calculado enorme | `El volumen calculado con el largo, el ancho y el alto es demasiado grande.` | 400 |
 
 La pantalla avisa lo mismo antes de guardar (mismo texto, debajo del campo).
+
+> **Capturas pendientes (Lotes 229 y 230).** Las capturas del editor de producto de [F6](frontend/f6-almacen-e-inventario.md) son anteriores a este
+> editor por bloques (ancho, con «Foto» y «Medidas y peso»); hay que volver a tomarlas con el recorrido de Playwright.
+
+### 2.5 Foto del producto y categoría con subcategoría (Lote 229, 2026-11-09)
+
+**Foto del producto (Lote 229).** El producto guarda su propia foto (también los kits y los kits de una oferta). Es la foto que sale en el pedido
+guiado, en las listas de precios y en las ofertas ([47 §5](47-precios-y-ofertas.md#5-fotos-del-producto-del-renglón-y-del-kit)).
+
+- **Dónde:** el primer bloque del editor de producto, **Foto**. Un producto nuevo solo dice «Guarde el producto para ponerle foto.»: se pone después de crearlo.
+- **Quién:** ver la foto, `inventory.view` o `sales.view` (el vendedor la ve aunque no tenga `inventory.view`); **poner, cambiar o quitar**, `inventory.manage`.
+- **Cómo:** **Poner foto** / **Cambiar foto** / **Quitar foto**. Acepta **JPG, PNG o WEBP**; si el lado mayor pasa de 1200 px se reduce a 1200 px
+  (la pantalla lo dice: «JPG, PNG o WEBP; se reduce a 1200 px. Es la foto que sale en el pedido, en las listas de precios y en las ofertas.»). Mientras
+  sube se ve una vista previa; al terminar, «Foto guardada.» o «Foto quitada.». Quitarla solo la desliga: el archivo no se borra.
+- **Kit sin foto propia:** se muestra la de la **primera pieza (por orden) que tenga foto** y la pantalla lo dice («Sin foto propia: se muestra la de
+  la primera pieza del kit que tiene foto.»). Si ninguna pieza tiene foto, el cuadro dice «Sin foto».
+- **Cuál se muestra** donde haya varias (renglón de lista u oferta → producto → primera pieza del kit): [47 §5](47-precios-y-ofertas.md#5-fotos-del-producto-del-renglón-y-del-kit).
+- **API:** `GET /api/v1/products/{publicId}/image` (`inventory.view` o `sales.view`) → `imagePublicId` (la propia) y `effectiveImagePublicId` (la que se
+  muestra); `POST` (multipart `file`) y `DELETE` (`inventory.manage`). El contenido se baja con `GET /files/{imagePublicId}`.
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| Sin archivo | `Adjunte la foto.` | 400 (`file`) |
+| No es JPG, PNG o WEBP (se mira el contenido, no la extensión) | `La foto debe ser una imagen JPG, PNG o WEBP.` | 400 (`file`) |
+| Más grande que el tope del almacén de archivos (10 MB por omisión) | `El archivo no puede pasar de {n} MB.` | 400 |
+| Almacén de archivos sin configurar | `El almacén de archivos no está configurado (Files:MasterKey); avise a soporte.` | 422 |
+| Producto que no existe | `Producto no encontrado.` | 404 |
+
+Antes de subir, la pantalla revisa el tipo y avisa con «La foto debe ser una imagen JPG, PNG o WEBP.». La importación de productos no tiene columna de foto.
+
+**Categoría → subcategoría.** La categoría de un producto puede tener una **categoría superior** (hasta 5 niveles; Almacén → Productos e inventario →
+pestaña **Categorías**, campo «Categoría superior»). Para los kits se usa **un nivel más**: *categoría → subcategoría* (p. ej. Guantes → Nitrilo). La
+categoría dice **qué es** el producto; la **marca** va en Marca y el **modelo** en Modelo. En el editor, la categoría se escoge de una lista que
+muestra la ruta completa («Guantes → Nitrilo») y se puede buscar por cualquier nivel. Importa porque **una pieza de un kit solo se sustituye por un
+producto de la misma categoría exacta** (la subcategoría, si la tiene): si hoy hay marcas puestas como categoría, hay que recategorizar los
+productos (se puede por la importación). Mensajes de las categorías: tabla de «Validaciones» de §2.
 
 ## 2b. Importar productos con una plantilla (2026-10-21)
 
@@ -2474,6 +2526,8 @@ propios**: todo pasa en sus componentes. Este lote deja listo el catálogo; su u
 3. **Guardar kit.** La pestaña muestra los componentes y, por almacén, **«se pueden armar N»**: el menor cociente entre lo *disponible para vender* de cada componente y su cantidad
    por kit, hacia abajo. «Disponible para vender» es la misma cuenta de las órdenes de venta (sin cuarentena, cruce de plataforma ni renta).
 4. **Editar componentes** reemplaza la lista; **Volver a producto normal** quita los componentes.
+5. **Foto del kit**: el bloque **Foto** del editor del producto ([§2.5](#25-foto-del-producto-y-categoría-con-subcategoría-lote-229-2026-11-09)). Un kit sin foto propia muestra la de su primera pieza que tenga foto.
+6. **«No sustituible»** en las piezas que el vendedor no puede cambiar al pedir (§8b.3b). Un kit para una oferta no se crea aquí sino en la oferta: [47 §4.4](47-precios-y-ofertas.md#44-kits-de-una-oferta).
 
 ### 8b.3 Reglas y mensajes
 
@@ -2499,17 +2553,36 @@ Además: un kit nunca aparece en los conteos (no tiene saldos) y no puede tener 
 
 ### 8b.3b «No sustituible» (Lote 230, 2026-11-09)
 
-En el editor del kit (pestaña **Kit** de la ficha → «Editar componentes»; también al editar el kit desde Precios y ofertas) cada pieza lleva la
-casilla **«No sustituible»**. Por omisión está **desmarcada**: al pedir, el vendedor puede cambiar esa pieza por otro producto de la **misma
-categoría exacta** y el **mismo precio de venta** (ver [18 §17.1](18-ordenes-de-venta.md#171-cambiar-una-pieza-del-kit-al-pedir-lote-230)). Marque las
-piezas que no se pueden cambiar; la tabla del kit les pone el distintivo «No sustituible». «Ajustable al pedir» no cambia. API: `PUT
-/api/v1/products/{publicId}/kit` con `components[].notSubstitutable` (`null` = conserva la marca; pieza nueva = sustituible).
+**Qué hace.** Por regla, **toda pieza de un kit es sustituible**: al pedir, el vendedor puede cambiarla por otro producto de la **misma categoría exacta**
+(la subcategoría, si la tiene), con **exactamente el mismo precio de venta** y en la **misma cantidad**; el precio del kit no cambia. Lo que se marca es **lo
+que no** se puede sustituir: la casilla **«No sustituible»** de la pieza. Detalle del uso al pedir: [18 §17.1](18-ordenes-de-venta.md#171-cambiar-una-pieza-del-kit-al-pedir-lote-230).
+
+**Quién y dónde.** `inventory.manage`, en los dos lugares donde se trabaja un kit:
+- **Productos e inventario → el kit → pestaña Kit → «Editar componentes»**: cada pieza lleva la casilla **«No sustituible»**, desmarcada por omisión
+  («Al pedir, una pieza se puede cambiar por otra de la misma categoría y el mismo precio. Marque «No sustituible» en las que no.»). La tabla del kit
+  pone el distintivo **«No sustituible»** a las piezas marcadas.
+- **Contabilidad → Precios y ofertas → la oferta**, al crear o cambiar un kit de la oferta ([47 §4.4](47-precios-y-ofertas.md#44-kits-de-una-oferta); ahí se
+  necesita `sales.pricelist`). Es la misma marca de la pieza.
+
+**Reglas.**
+- Una pieza **sin categoría** o **sin precio de venta** no tiene sustitutos (aunque no esté marcada): asigne la categoría y el precio de venta al
+  producto ([§2.4](#24-medidas-y-peso-con-su-unidad-y-el-editor-ancho-lote-230-2026-11-09) y [§2.5](#25-foto-del-producto-y-categoría-con-subcategoría-lote-229-2026-11-09)).
+- La marca se guarda **por pieza y por kit**: el mismo producto puede ser sustituible en un kit y no sustituible en otro. Al volver a guardar el kit sin
+  mandar la marca (`null`), se conserva la que tenía; una pieza nueva nace sustituible.
+- «**Ajustable al pedir**» **no cambia**: sigue permitiendo cambiar cantidades de las piezas en la orden sin tocar el precio. Es independiente de la
+  sustitución (se pueden usar las dos).
+- No hay permiso aparte para sustituir: lo decide esta definición del kit y basta `sales.create` en el pedido.
+
+**API.** `PUT /api/v1/products/{publicId}/kit` con `components[].notSubstitutable` (`true` = no sustituible; `null` = conserva la marca). La lectura del
+kit (`GET …/kit`) trae `components[].notSubstitutable`.
 
 ### 8b.4 Para soporte
 
 - Tabla `ProductKitComponent` (kit → componente → cantidad, único por par) y columnas `Product.ProductTypeLookupId` (catálogo `ProductType`: STANDARD / KIT; NULL = normal) y
   `Product.KitAdjustable`, sección **2026-10-16 (p)** de `Diseño/logistica-db-update.sql`.
 - El cambio de tipo del producto queda en la bitácora del producto; los cambios de componentes también (con el tipo de entidad del producto).
+- Lote 230: columna `ProductKitComponent.NotSubstitutable` (BIT, 0 = sustituible) y `SalesOrderLineComponent.SubstitutedProductId` (la pieza original cuando el vendedor la cambió; `ComponentProductId` guarda la pieza real); sección «2026-11-09 — Lote 230» de `Diseño/logistica-db-update.sql`.
+- Lote 229: `Product.OfferId` marca el kit creado para una oferta ([47 §4.4](47-precios-y-ofertas.md#44-kits-de-una-oferta)).
 
 ### 8b.5 Recolectar un kit (Lote 70)
 

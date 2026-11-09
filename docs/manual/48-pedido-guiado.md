@@ -2,8 +2,10 @@
 
 <!-- kemi:staff -->
 
-Lotes 223 y 226 (2026-11-07) — pedido de vendedores, partes P3 (web) y P4 (app móvil). El **pedido guiado** es otra puerta a la **misma orden de venta** del [capítulo 18](18-ordenes-de-venta.md): el vendedor arma el pedido en **cuatro pasos** (cliente, productos, entrega, autorización), se guarda como **borrador** en cada paso y al final lo **envía** confirmando quién es. La ventana «Nueva orden» sigue como siempre, para la oficina. Los precios salen de las listas ([47](47-precios-y-ofertas.md)); el cliente nuevo nace como prospecto ([02 §1.8](02-clientes-y-contratos.md#18-cliente-prospecto-alta-mínima-y-aprobación-lote-222)).
+Lotes 223 y 226 (2026-11-07) — pedido de vendedores, partes P3 (web) y P4 (app móvil). El **pedido guiado** es otra puerta a la **misma orden de venta** del [capítulo 18](18-ordenes-de-venta.md): el vendedor arma el pedido en **cuatro pasos** (cliente, productos, entrega, autorización), se guarda como **borrador** en cada paso y al final lo **envía** confirmando quién es. La ventana «Nueva orden» sigue como siempre, para la oficina. Los precios salen de las listas y de las ofertas ([47](47-precios-y-ofertas.md)); el cliente nuevo nace como prospecto ([02 §1.8](02-clientes-y-contratos.md#18-cliente-prospecto-alta-mínima-y-aprobación-lote-222)).
 
+> **Capturas pendientes (Lotes 229 y 230).** El paso 2 cambió: tarjetas de oferta con el nombre de la oferta y su vigencia, cuadrito de foto en todo producto con foto, avisos de precio y «Cambiar» en las piezas de un kit del carrito. Las capturas del paso 2, del carrito y del paso 3 de abajo son de antes (lote 228) y no muestran eso; hay que volver a tomarlas con el recorrido de Playwright.
+>
 > Capturas del recorrido del lote 228 (2026-11-07, datos de demostración): web en escritorio (claro y oscuro) y a 360 px. Siguen pendientes las de la **app móvil** (Pedidos → Mis pedidos, los pasos y la huella; el recorrido de Playwright no corre la app) y la del **diálogo de faltante** (es el mismo de [18 §6](18-ordenes-de-venta.md#6-solicitar-la-orden-validar-y-reservar-lote-58)).
 
 ## 1. Quién puede y dónde
@@ -32,11 +34,15 @@ Barra de progreso arriba («Paso 2 de 4: Productos»). **Siguiente** guarda el b
 
 ### Paso 2 — Productos
 - Pestañas por **marca**; marcas sin producto activo no salen; los sin marca van al final («Sin marca»).
-- Arriba de cada marca, sus **ofertas vigentes** como tarjetas con foto y precio, con **+** y **−**. Debajo, la **lista completa** de la marca: un **cuadrito con la foto** del producto (44 px, del alto del renglón; al pasar el mouse, enfocarlo o tocarlo se ve grande; solo hay foto si el producto la trae de su oferta o del renglón de una lista de precios, si no queda vacío), SKU, nombre, casilla de **cantidad** (solo números enteros; teclearla agrega la línea) y el **precio** (de la lista vigente del cliente o general).
+- Arriba de cada marca, sus **ofertas vigentes** como **tarjetas con foto**, con **+** y **−**. Cada tarjeta lleva el **nombre de la oferta**, hasta cuándo vale («Válida hasta el {fecha}») o, si la oferta no tiene fecha de fin, **«Sin fecha de fin»**, y el precio con el chip **Oferta** (al pasar el mouse dice «Precio de la oferta «{nombre}»»). Solo salen las ofertas **publicadas**, activas, vigentes hoy y que aplican a ese cliente ([47 §4](47-precios-y-ofertas.md#4-ofertas)). Un **kit creado para una oferta** sale **solo como tarjeta** (no en la lista de la marca) y solo mientras su oferta valga.
+- Si el precio que se cobrará es el **negociado del cliente** porque es más bajo que el de la oferta, la tarjeta lo dice: «Oferta: $9.00. Se cobra su precio negociado, que es más bajo.» (con el precio de la oferta). Entre el negociado y la oferta siempre gana el más bajo ([47 §2](47-precios-y-ofertas.md#2-de-dónde-sale-el-precio-de-una-línea)).
+- Debajo, la **lista completa** de la marca: un **cuadrito con la foto** del producto (44 px, del alto del renglón; al pasar el mouse, enfocarlo o tocarlo se ve grande), SKU, nombre, casilla de **cantidad** (solo números enteros; teclearla agrega la línea) y el **precio**. **El cuadrito sale para todo producto con foto**, no solo para las ofertas: la que se muestra es la del renglón de la oferta o de la lista, si la tiene; si no, la del producto; si es un kit sin foto, la de su primera pieza con foto; si no hay ninguna, queda vacío ([47 §5](47-precios-y-ofertas.md#5-fotos-del-producto-del-renglón-y-del-kit)). El vendedor con `sales.view` ve las fotos aunque no tenga `inventory.view`. Un **producto normal que está en una oferta** sale además en la lista de su marca, con el precio de la oferta y el chip **Oferta**.
+- **Avisos de precio** (texto pequeño junto al producto, en la línea del carrito con «Oferta «{nombre}»» y en el recuadro «Avisos de precio» del paso 3): «El producto … está en dos ofertas a la vez…» y «La oferta … pone … más caro que la lista general…». Solo informan: **se cobra el precio más bajo** y no impiden seguir ni enviar el pedido. Los textos exactos están en [47 §2](47-precios-y-ofertas.md#2-de-dónde-sale-el-precio-de-una-línea).
 - El **buscador** por SKU o nombre toma el foco al entrar al paso. Con texto, busca en **todas las marcas** (productos y ofertas); sin texto, muestra la marca escogida.
 - **Carrito** fijo abajo con el conteo y el subtotal; tocarlo muestra las líneas para corregir o quitar.
 - El vendedor **no teclea precios**: las líneas viajan sin precio y el servidor pone el resuelto (capítulo [47](47-precios-y-ofertas.md)). Un producto «Sin precio» no se puede pedir, **salvo para quien tiene `sales.price`** (el Admin de compañía): en ese renglón aparece la casilla **Precio** (con el signo `$`, decimales hasta 4), a la derecha de la cantidad, que se habilita al poner la cantidad. Ese precio viaja como excepción en cada guardado de la orden (pasos 2, 3 y 4) y no se guarda en el producto ni en ninguna lista. Sin `sales.price`: `El producto {SKU} no tiene precio de venta: escriba el precio.` (400).
-- Un kit se pide en piezas enteras. En la web, un kit ajustable permite cambiar las piezas de esta orden; en la app todavía no (se piden con las del catálogo).
+- Un kit se pide en piezas enteras. En la web, un kit **«Ajustable al pedir»** permite cambiar las **cantidades** de las piezas de esta orden (sigue igual: el precio del kit no cambia); en la app todavía no (se piden con las del catálogo).
+- **Cambiar una pieza del kit (Lote 230).** En el carrito, un kit muestra sus piezas (las ve cualquier vendedor con `sales.create`, aunque no tenga `inventory.view`); cada pieza con sustitutos válidos lleva **«Cambiar»**: la lista ofrece solo productos de la **misma categoría exacta** y el **mismo precio de venta**, en la misma cantidad. Al escoger uno, la pieza dice «en lugar de {SKU}» y se puede **«Deshacer»**. El precio del kit no cambia, no hay permiso aparte y las piezas «No sustituibles» no llevan el botón. Reglas y mensajes en [18 §17.1](18-ordenes-de-venta.md#171-cambiar-una-pieza-del-kit-al-pedir-lote-230).
 - «Siguiente» guarda con `step = PRODUCTS`: desde aquí la orden necesita al menos un producto.
 
 ![Paso 2: pestañas por marca, la oferta con foto y la lista de la marca con el precio de la lista](frontend/img/l228-paso2-productos.png)
@@ -48,6 +54,7 @@ Barra de progreso arriba («Paso 2 de 4: Productos»). **Siguiente** guarda el b
 - **Entrega** (se lleva al cliente) o **Recogido** (lo recoge: no lleva cargo de envío). Con «Entrega», el destino por omisión es la **dirección física del cliente**; se puede escoger otra dirección (consignatario) del cliente o crear una (en la web).
 - **En consignación**: solo si la forma de pago es Consignación.
 - **Fecha requerida** (opcional). En la app se escribe `AAAA-MM-DD`.
+- **Avisos de precio**: si algún producto del carrito tiene un aviso (dos ofertas a la vez, o una oferta más cara que la lista general), el paso muestra el recuadro «Avisos de precio» con el SKU y el texto, y la nota «Se cobra siempre el precio más bajo; estos avisos son para que lo sepa, no impiden enviar el pedido.». Los de la orden guardada solo están en la respuesta de guardar el borrador; al volver a abrirlo quedan los del catálogo.
 - **Resumen**: subtotal, IVU, **cargo de envío** (con su «Por qué») y **total**. Lo calcula el servidor con la regla de la compañía y del cliente ([18 §20](18-ordenes-de-venta.md#20-cargo-de-envío-lote-222)); cambiar entrega/recogido o el destino guarda el borrador al momento para recalcular.
 
 ![Paso 3: entrega a la dirección física y el resumen con el cargo de envío de $12 y su porqué](frontend/img/l228-paso3-entrega.png)
@@ -133,10 +140,12 @@ Barra de progreso arriba («Paso 2 de 4: Productos»). **Siguiente** guarda el b
 | Enviar una orden que no es borrador | — | `Solo se puede solicitar una orden en borrador.` | 422 |
 | Falta inventario | Ver [18 §8](18-ordenes-de-venta.md#8-mensajes-nuevos-lote-58) | `No alcanza el inventario de {SKU}: pedido {n}, disponible {n}, faltante {n}.` | 409 |
 | Crédito excedido | Ver [18 §8](18-ordenes-de-venta.md#8-mensajes-nuevos-lote-58) | `El cliente excede su límite de crédito: límite {n}, en curso {n}, esta orden {n}.` | 422 |
+| Kit de una oferta que ya no vale | Solo se vende con su oferta publicada y vigente | `El kit {SKU} es de la oferta «{nombre}», que {motivo}: no se puede vender.` (motivos en [47 §7](47-precios-y-ofertas.md#7-validaciones-y-mensajes)) | 422 |
+| Cambiar una pieza de un kit | Misma categoría, mismo precio, misma cantidad, pieza sustituible | Ver [18 §17.1](18-ordenes-de-venta.md#171-cambiar-una-pieza-del-kit-al-pedir-lote-230) (p. ej. `GXL no tiene el mismo precio de venta que GM: solo se sustituye por un producto del mismo precio.`) | 400 |
 | Orden inexistente | — | `Orden de venta no encontrada.` | 404 |
 | Sin el permiso | — | `Falta el permiso 'sales.create'.` | 403 |
 
-Mensajes del alta de un cliente nuevo: [02 §1.8](02-clientes-y-contratos.md#18-cliente-prospecto-alta-mínima-y-aprobación-lote-222). Mensajes de precio y oferta: [47 §6](47-precios-y-ofertas.md#6-validaciones-y-mensajes). En la pantalla, los avisos que aparecen junto al campo repiten estos mismos textos.
+Mensajes del alta de un cliente nuevo: [02 §1.8](02-clientes-y-contratos.md#18-cliente-prospecto-alta-mínima-y-aprobación-lote-222). Mensajes de precio y oferta: [47 §7](47-precios-y-ofertas.md#7-validaciones-y-mensajes). Mensajes de la sustitución de piezas: [18 §17.1](18-ordenes-de-venta.md#171-cambiar-una-pieza-del-kit-al-pedir-lote-230). En la pantalla, los avisos que aparecen junto al campo repiten estos mismos textos.
 
 ## 6. En la app móvil
 
@@ -145,6 +154,7 @@ Mensajes del alta de un cliente nuevo: [02 §1.8](02-clientes-y-contratos.md#18-
 - **Nuevo pedido**: los cuatro pasos de la sección 2, con la firma hecha con el dedo en el recuadro («Firmar de nuevo» si ya hay una guardada) y fotos con cámara o galería en el alta de cliente nuevo (si una foto falla, el cliente queda creado: «El cliente quedó creado, pero alguna foto no se pudo subir. Súbela después desde la ficha del cliente en la web.»).
 - **Enviar pedido**: huella o rostro («Confirma el envío del pedido»); se pide la contraseña si el teléfono no tiene huella («Este teléfono no tiene huella ni rostro registrados: escribe tu contraseña para enviar el pedido.»), si no se confirmó («No se confirmó la huella o el rostro: escribe tu contraseña para enviar el pedido.») o si la verificación de la sesión venció («Por seguridad hace falta tu contraseña (la verificación de la sesión venció).»).
 - **Sin señal**: no hay modo sin señal. Sin conexión no se avanza («No se pudo consultar. Se necesita señal.»); lo ya guardado queda como borrador en el servidor.
+- **Lotes 229 y 230 en la app.** La app móvil no se cambió en esos lotes: sigue leyendo las ofertas por marca y el precio que resuelve el servidor (lo que se cobra es lo correcto), pero **no muestra** el nombre de la oferta, «Sin fecha de fin», los avisos de precio ni «Cambiar» en las piezas de un kit; eso es solo de la web. No se probó en un teléfono cómo se ven las tarjetas de oferta con los datos nuevos.
 - **Lo que la app todavía no hace** (se hace en la web): ajustar las piezas de un kit ajustable, crear una dirección de entrega nueva, escoger el pueblo de una lista (se escribe) y modificar una orden ya solicitada.
 - El texto de la app va en «tú»; los mensajes que repiten al servidor van en «usted», tal cual los de la sección 5.
 
@@ -166,9 +176,13 @@ El pedido guiado usa los estatus de la orden de venta (`SalesOrderStatuses`) con
 - **«Enviar pedido» me pide la contraseña de nuevo.** Es a propósito: es la firma del vendedor. Con la huella (app) solo la pide si la verificación de la sesión venció.
 - **Me equivoqué de contraseña varias veces.** Cuenta para el bloqueo de la cuenta, como al iniciar sesión.
 - **El cliente es nuevo y el pedido «espera aprobación».** Está reservado, no despachado. Quien tenga `sales.approve_client` lo aprueba en la ficha del cliente.
+- **No me sale «Cambiar» en una pieza del kit.** La pieza está marcada «No sustituible», no tiene categoría o precio de venta, o no hay otro producto activo de la misma categoría exacta y el mismo precio de venta (ni que ya sea otra pieza del kit). Lo arregla quien administra los productos (categoría y precio) o el kit (la marca).
+- **La tarjeta de la oferta dice que se cobra el precio negociado.** El cliente tiene un precio de lista más bajo que el de la oferta: entre los dos gana el más bajo.
+- **Salió un aviso de precio en el carrito.** Dos ofertas a la vez, o una oferta más cara que la lista general. Es informativo: se cobra el precio más bajo y se puede enviar el pedido.
+- **El kit de la oferta ya no aparece.** Su oferta terminó, se desactivó o volvió a borrador ([47 §4.4](47-precios-y-ofertas.md#44-kits-de-una-oferta)); si se extiende, vuelve. Pedirlo fuera de vigencia da el error 422 de [47 §7](47-precios-y-ofertas.md#7-validaciones-y-mensajes).
 - **Quedó un borrador sin terminar.** Está en Órdenes de venta (o «Mis pedidos»); ábralo para seguirlo o cancélelo.
 
-Los mensajes están en la [FAQ](faq.md#lotes-223-y-226--pedido-guiado-web-y-app-móvil).
+Los mensajes están en la [FAQ](faq.md#lotes-223-y-226--pedido-guiado-web-y-app-móvil), en [Lote 229](faq.md#lote-229--ofertas-como-entidad-aparte-kits-de-oferta-y-foto-del-producto) y en [Lote 230](faq.md#lote-230--medidas-y-peso-del-producto-no-sustituible-y-cambiar-piezas-de-un-kit).
 
 ## 9. Para soporte
 

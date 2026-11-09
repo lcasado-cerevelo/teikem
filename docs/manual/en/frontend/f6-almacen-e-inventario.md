@@ -405,6 +405,8 @@ Serials tabs is still at `/warehouse/products/:publicId` (reached from the modal
 
 ![Edit product: fields and Unit dropdown with a search box](img/f6-producto-ficha.png)
 
+> **Screenshots pending (Batches 229 and 230).** The two product-editor screenshots above predate the wide block-based editor (Photo, Identification, Inventory, Prices, Dimensions and weight) and the description of “More product data” below no longer applies: the barcode, picking minimums, weight and volume moved to their blocks. The current field order is in [chapter 06 §2.4 and §2.5](../06-inventario-y-almacen.md#24-dimensions-and-weight-with-their-unit-and-the-wide-editor-batch-230-2026-11-09); the screenshots must be retaken.
+
 > **Screenshot pending:** the “Add adjustment” block open inside the product modal.
 
 **The indicators (KPIs) are buttons.** At the top there are five cards: **Active SKUs**, **Total units**, **Below minimum**, **Unavailable** (since 2026-10-05) and
