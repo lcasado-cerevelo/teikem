@@ -31,27 +31,54 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
 
     // ---------------------------------------------------------------- consulta
 
+    /// <summary>Campo de fecha que filtran from/to: la fecha de solicitud (por omisión) o la requerida.</summary>
+    public const string DateFieldRequested = "REQUESTED";
+    public const string DateFieldRequired = "REQUIRED";
+
+    /// <summary>
+    /// Lista paginada. 2026-11-09 (filtros de la pantalla Órdenes de venta): además del estatus y el cliente únicos de siempre, admite VARIOS estatus
+    /// (<paramref name="statuses"/>), clientes (<paramref name="clientPublicIds"/>) y productos (<paramref name="productPublicIds"/>: órdenes con alguna
+    /// línea de esos productos); dentro de cada filtro es «o», entre filtros es «y». <paramref name="dateField"/> dice qué fecha filtran from/to:
+    /// REQUESTED (solicitada, por omisión) o REQUIRED (requerida; una orden sin fecha requerida no entra si hay rango).
+    /// </summary>
     public async Task<PagedResult<SalesOrderListItemDto>> ListAsync(string? status, Guid? clientPublicId, string? q, bool backorderOnly, DateOnly? from, DateOnly? to,
-        int skip, int take, CancellationToken ct, bool assignedToMe = false, int? assignedUserId = null, bool urgentOnly = false)
+        int skip, int take, CancellationToken ct, bool assignedToMe = false, int? assignedUserId = null, bool urgentOnly = false,
+        IReadOnlyCollection<string>? statuses = null, IReadOnlyCollection<Guid>? clientPublicIds = null, IReadOnlyCollection<Guid>? productPublicIds = null,
+        string? dateField = null)
     {
         skip = Math.Max(0, skip);
         take = Math.Clamp(take <= 0 ? 50 : take, 1, MaxPageSize);
+        var byRequired = ParseDateField(dateField);
         var map = await StatusMapAsync(ct);
         var query = db.Set<SalesOrder>().AsQueryable();
-        if (!string.IsNullOrWhiteSpace(status))
+        var codes = (statuses ?? Array.Empty<string>()).Select(c => (string?)c).Append(status)
+            .Where(c => !string.IsNullOrWhiteSpace(c)).Select(c => c!.Trim().ToUpperInvariant()).Distinct().ToList();
+        if (codes.Count > 0)
         {
-            var code = status.Trim().ToUpperInvariant();
-            var ids = map.Where(kv => kv.Value.Code == code).Select(kv => kv.Key).ToList();
+            var ids = map.Where(kv => codes.Contains(kv.Value.Code)).Select(kv => kv.Key).ToList();
             query = query.Where(o => ids.Contains(o.StatusCodeId));
         }
-        if (clientPublicId is Guid cp)
-            query = query.Where(o => db.Set<Client>().Any(c => c.ClientId == o.ClientId && c.PublicId == cp));
+        var clients = (clientPublicIds ?? Array.Empty<Guid>()).Concat(clientPublicId is Guid one ? new[] { one } : Array.Empty<Guid>()).Distinct().ToList();
+        if (clients.Count > 0)
+            query = query.Where(o => db.Set<Client>().Any(c => c.ClientId == o.ClientId && clients.Contains(c.PublicId)));
+        var products = (productPublicIds ?? Array.Empty<Guid>()).Distinct().ToList();
+        if (products.Count > 0)
+            query = query.Where(o => db.Set<SalesOrderLine>().Any(l => l.SalesOrderId == o.SalesOrderId
+                && db.Set<Product>().Any(p => p.ProductId == l.ProductId && products.Contains(p.PublicId))));
         // Lote 195: solo las asignadas a mí (o a una persona dada)
         if (assignedToMe && tenant.UserId is int me) query = query.Where(o => o.AssignedToUserId == me);
         else if (assignedUserId is int assignedUser) query = query.Where(o => o.AssignedToUserId == assignedUser);
         if (urgentOnly) query = query.Where(o => o.IsUrgent);   // Lote 222
-        if (from is DateOnly f) query = query.Where(o => o.RequestedDate >= f);
-        if (to is DateOnly t2) query = query.Where(o => o.RequestedDate <= t2);
+        if (byRequired)
+        {
+            if (from is DateOnly f) query = query.Where(o => o.RequiredDate != null && o.RequiredDate >= f);
+            if (to is DateOnly t2) query = query.Where(o => o.RequiredDate != null && o.RequiredDate <= t2);
+        }
+        else
+        {
+            if (from is DateOnly f) query = query.Where(o => o.RequestedDate >= f);
+            if (to is DateOnly t2) query = query.Where(o => o.RequestedDate <= t2);
+        }
         if (backorderOnly) query = query.Where(o => db.Set<SalesOrderLine>().Any(l => l.SalesOrderId == o.SalesOrderId && l.QtyBackordered > 0 && !l.IsClosed));
         if (!string.IsNullOrWhiteSpace(q))
         {
@@ -64,6 +91,16 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         var orders = await query.OrderByDescending(o => o.SalesOrderId).Skip(skip).Take(take).ToListAsync(ct);
         var items = await ToListItemsAsync(orders, map, ct);
         return new PagedResult<SalesOrderListItemDto>(items, total, skip, take);
+    }
+
+    /// <summary>true = filtrar por la fecha requerida; vacío o REQUESTED = la de solicitud; otro valor = 400.</summary>
+    public static bool ParseDateField(string? dateField)
+    {
+        if (string.IsNullOrWhiteSpace(dateField)) return false;
+        var v = dateField.Trim().ToUpperInvariant();
+        if (v == DateFieldRequested) return false;
+        if (v == DateFieldRequired) return true;
+        throw new ValidationException("dateField", "La fecha a filtrar debe ser REQUESTED (solicitada) o REQUIRED (requerida).");
     }
 
     public async Task<SalesOrderDto> GetAsync(Guid publicId, CancellationToken ct)

@@ -268,7 +268,7 @@ test('Precios y ofertas: la oferta como tarjeta con foto, la lista de precios y 
   await manualApiEnglish(page)
   await page.setViewportSize({ width: 1280, height: 900 })
   await loginAs(page, ADMIN)
-  await page.goto('/warehouse/products?tab=prices')
+  await page.goto('/money/prices')
   const card = page.locator('article.pl-offer', { hasText: S.kit.sku })
   await expect(card).toBeVisible({ timeout: 30_000 })
   await expect(card).toContainText('PRODIGY')

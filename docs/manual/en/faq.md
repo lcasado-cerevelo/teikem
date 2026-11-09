@@ -11509,3 +11509,20 @@ The notices (`INTEGRATION_LINK_*`) need a notification rule that the administrat
 
 **I do not see the «Linked companies» tab.**
 `intercompany.view` and the Linked companies module on in your company are needed.
+
+## 2026-11-09 — Sales order list filters
+<!-- kemi:staff -->
+
+Chapter: [18 §25](18-ordenes-de-venta.md#25-order-list-filters-2026-11-09).
+
+**What does "La fecha a filtrar debe ser REQUESTED (solicitada) o REQUIRED (requerida)." mean?**
+A call to `GET /api/v1/sales-orders` sent `dateField` with another value (400). Send `REQUESTED` (requested date, the default), `REQUIRED` (required date) or leave it out. It does not happen on the screen: the "Date" selector only offers Requested and Required.
+
+**I filtered by "Required" date and an order I know exists does not show up.**
+With "Required" and a range, orders **without a required date** are left out. Switch "Date" to "Requested" or remove the range.
+
+**The "Client" filter shows no clients.**
+Searching clients needs the `clients.read` permission. Without it you can type the client's name or code in the free search.
+
+**I chose two clients and a product: do I get the orders of any of them?**
+Within one filter, yes: any of the chosen clients. Across filters, no: the order must belong to one of those clients **and** have a line of that product (and match the status and date if set).

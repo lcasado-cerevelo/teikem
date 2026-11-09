@@ -120,7 +120,7 @@ export function KitTab({ publicId, product, canManage }: { publicId: string; pro
   )
 }
 
-export function KitEditorModal({ publicId, product, kit, onClose }: { publicId: string; product: ProductListItemDto; kit: KitDto | undefined; onClose: () => void }) {
+export function KitEditorModal({ publicId, product, kit, onClose, onSaved }: { publicId: string; product: ProductListItemDto; kit: KitDto | undefined; onClose: () => void; onSaved?: () => void }) {
   const t = useT()
   const uid = useId()
   const setKit = useSetKit()
@@ -144,7 +144,8 @@ export function KitEditorModal({ publicId, product, kit, onClose }: { publicId: 
     try {
       await setKit.mutateAsync({ publicId, body: toKitRequest(rows, adjustable) })
       toast.success(t('warehouse.products.kit.saved', { sku: product.sku ?? '' }))
-      onClose()
+      if (onSaved) onSaved()
+      else onClose()
     } catch (e) {
       setError(applyProblemDetails(e).title)
     } finally {
@@ -215,9 +216,9 @@ export function KitEditorModal({ publicId, product, kit, onClose }: { publicId: 
 }
 
 /** Lote 221 (P1): el editor del kit abierto desde «Precios y ofertas» a partir del publicId (pide la ficha y el kit). */
-export function KitEditorByIdModal({ publicId, onClose }: { publicId: string; onClose: () => void }) {
+export function KitEditorByIdModal({ publicId, onClose, onSaved }: { publicId: string; onClose: () => void; onSaved?: () => void }) {
   const { data: detail } = useProduct(publicId, { handleAccessDenied: false })
   const { data: kit, isLoading } = useKit(publicId)
   if (!detail?.product || isLoading) return null
-  return <KitEditorModal publicId={publicId} product={detail.product} kit={kit} onClose={onClose} />
+  return <KitEditorModal publicId={publicId} product={detail.product} kit={kit} onClose={onClose} onSaved={onSaved} />
 }

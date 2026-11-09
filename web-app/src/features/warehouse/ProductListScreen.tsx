@@ -17,7 +17,7 @@
 // Lectura: inventory.view + WMS_LOTSERIAL (aplicado por la ruta).
 import { packLabel, splitByPack } from './quantityCalc'
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Navigate, useSearchParams } from 'react-router-dom'
 import { Can, useCan } from '../../kernel/access'
 import { useLookups } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
@@ -43,7 +43,6 @@ import { formatNumber } from './lineRules'
 import { BinSearchSelect, OwnerFilter, ProductSearchSelect, type ProductFilterItem } from './pickers'
 import type { BinFilterItem } from './kardexView'
 import { DamagePanel } from './DamageListScreen'
-import { PriceListsTab } from './PriceListsTab'
 import { ProductCategoriesPanel } from './ProductCategoriesPanel'
 import { ProductEditorByIdModal, ProductEditorModal } from './ProductEditorModal'
 import { EntityImportModal } from '../imports/EntityImportModal'
@@ -52,7 +51,7 @@ import { parseKpiParam, productListQuery, toggleKpi, type ProductFilterState, ty
 import '../analytics/pulse.css'
 import './warehouse.css'
 
-type ListTab = 'products' | 'categories' | 'damage' | 'valuation' | 'prices'
+type ListTab = 'products' | 'categories' | 'damage' | 'valuation'
 
 const PAGE_SIZE = 25
 const NO_ROWS: ProductListItemDto[] = []
@@ -423,10 +422,10 @@ export default function ProductListScreen() {
   const canDamage = useCan('warehouse.damage')
   // «Valor del inventario» (Lote 148) solo con inventory.value; sin él ?tab=valuation cae en Productos.
   const canValue = useCan('inventory.value')
-  // «Precios y ofertas» (Lote 221) solo con sales.view; sin él ?tab=prices cae en Productos.
-  const canPrices = useCan('sales.view')
   const raw = params.get('tab')
-  const tab: ListTab = raw === 'categories' ? 'categories' : raw === 'prices' && canPrices ? 'prices' : raw === 'damage' && canDamage ? 'damage' : raw === 'valuation' && canValue ? 'valuation' : 'products'
+  // Los enlaces viejos ?tab=prices van a la pantalla nueva (Contabilidad → Precios y ofertas).
+  if (raw === 'prices') return <Navigate to="/money/prices" replace />
+  const tab: ListTab = raw === 'categories' ? 'categories' : raw === 'damage' && canDamage ? 'damage' : raw === 'valuation' && canValue ? 'valuation' : 'products'
   const setTab = (key: ListTab) => setParams(key === 'products' ? {} : { tab: key }, { replace: true })
 
   return (
@@ -439,13 +438,12 @@ export default function ProductListScreen() {
           tabs={[
             { key: 'products', label: t('warehouse.products.tabProducts') },
             { key: 'categories', label: t('warehouse.products.tabCategories') },
-            ...(canPrices ? [{ key: 'prices' as const, label: t('warehouse.products.tabPrices') }] : []),
             ...(canDamage ? [{ key: 'damage' as const, label: t('warehouse.damage.tab') }] : []),
             ...(canValue ? [{ key: 'valuation' as const, label: t('warehouse.valuation.tab') }] : []),
           ]}
         />
       </div>
-      {tab === 'products' ? <ProductsTab /> : tab === 'prices' ? <PriceListsTab /> : tab === 'categories' ? <ProductCategoriesPanel /> : tab === 'valuation' ? <ValuationPanel /> : <DamagePanel />}
+      {tab === 'products' ? <ProductsTab /> : tab === 'categories' ? <ProductCategoriesPanel /> : tab === 'valuation' ? <ValuationPanel /> : <DamagePanel />}
     </div>
   )
 }

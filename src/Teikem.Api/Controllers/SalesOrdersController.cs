@@ -20,12 +20,18 @@ public sealed record SalesOrderCancelRequest(string? Comment = null);
 [RequireModule(ModuleKeys.SalesOrders)]
 public sealed class SalesOrdersController(SalesOrderService sales) : ControllerBase
 {
-    /// <summary>Lista paginada (más reciente primero). Filtros: status (DRAFT, REQUESTED, PARTIAL, SHIPPED, CANCELLED), cliente, buscador q (número, cliente, producto), solo con backorder y fechas de solicitud.</summary>
+    /// <summary>
+    /// Lista paginada (más reciente primero). Filtros: status (DRAFT, REQUESTED, PARTIAL, SHIPPED, CANCELLED), cliente, buscador q (número, cliente, producto),
+    /// solo con backorder y fechas. 2026-11-09: status, clientPublicId y productPublicId se pueden REPETIR (varios valores = cualquiera de ellos; un solo valor
+    /// funciona como antes) y dateField dice qué fecha filtran from/to: REQUESTED (solicitada, por omisión) o REQUIRED (requerida).
+    /// </summary>
     [HttpGet, RequirePermission(PermissionCatalog.SalesView)]
-    public Task<PagedResult<SalesOrderListItemDto>> List([FromQuery] string? status, [FromQuery] Guid? clientPublicId, [FromQuery] string? q, [FromQuery] bool backorderOnly,
+    public Task<PagedResult<SalesOrderListItemDto>> List([FromQuery] string[]? status, [FromQuery] Guid[]? clientPublicId, [FromQuery] string? q, [FromQuery] bool backorderOnly,
         [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] int skip, [FromQuery] int take, CancellationToken ct,
-        [FromQuery] bool assignedToMe = false, [FromQuery] int? assignedUserId = null, [FromQuery] bool urgent = false)
-        => sales.ListAsync(status, clientPublicId, q, backorderOnly, from, to, skip, take, ct, assignedToMe, assignedUserId, urgent);   // Lote 222: urgent = solo urgentes
+        [FromQuery] bool assignedToMe = false, [FromQuery] int? assignedUserId = null, [FromQuery] bool urgent = false,
+        [FromQuery] Guid[]? productPublicId = null, [FromQuery] string? dateField = null)
+        => sales.ListAsync(null, null, q, backorderOnly, from, to, skip, take, ct, assignedToMe, assignedUserId, urgent,   // Lote 222: urgent = solo urgentes
+            statuses: status, clientPublicIds: clientPublicId, productPublicIds: productPublicId, dateField: dateField);
 
     /// <summary>Lote 195: asigna (o desasigna con userId null) una orden de venta solicitada o despachada en parte a quien la va a despachar. Supervisión.</summary>
     [HttpPost("{publicId:guid}/assign"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehouseAppReassign)]

@@ -485,7 +485,7 @@ export function ReturnEditor({ orderPublicId, onClose, onSaved }: { orderPublicI
   const [orderId, setOrderId] = useState<string | null>(orderPublicId ?? null)
   const [search, setSearch] = useState('')
   const q = useDebounced(search.trim())
-  const found = useSalesOrders('', q, 0, 15)
+  const found = useSalesOrders({ q }, 0, 15)
   const returnable = useReturnable(orderId)
   const [reason, setReason] = useState('')
   const [note, setNote] = useState('')

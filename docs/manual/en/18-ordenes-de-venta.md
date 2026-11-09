@@ -29,7 +29,7 @@ The full design is in `Diseño/logistica-funcionalidades-maestro.md`, section 13
 
 | Action | How | Permission |
 |---|---|---|
-| View the list (most recent first; filters: status, client, search box by number / client / product, only with backorder, dates) | `GET /api/v1/sales-orders` | `sales.view` |
+| View the list (most recent first; filters: status, client and product —each with one or several values—, search box by number / client / product, only with backorder, requested or required dates; see section 25) | `GET /api/v1/sales-orders` | `sales.view` |
 | View an order | `GET /api/v1/sales-orders/{publicId}` | `sales.view` |
 | Create the draft | `POST /api/v1/sales-orders` | `sales.create` (+ `sales.price` if a price changes) |
 | Edit the draft (what is not sent does not change; the **lines, if sent, replace** the current ones; `clearConsignee` / `clearRequiredDate` remove those values) | `PATCH /api/v1/sales-orders/{publicId}` | `sales.create` |
@@ -460,3 +460,32 @@ If the company has an **active link** with another that provides the transport (
 - **Billing «on delivery»** ([19](19-facturacion.md)): the dispatch counts as delivered when the delivery over there is **Delivered** or has a proof. Before that it is not invoiced.
 - **Undoing the dispatch** (section 11): it can no longer be done from here; the delivery belongs to the other company and is cancelled over there. The server answers 422 with the message of packed pick batches whose shipment already advanced (from reading the code; not tested).
 - The messages in this section are in chapter [50, section 5](50-companias-enlazadas.md#5-validations-and-messages) and in the [FAQ](faq.md#batch-227--linked-companies).
+
+## 25. Order list filters (2026-11-09)
+
+<!-- kemi:staff -->
+
+Requested by Luis: the **Orders** tab of Operation → Sales orders filters by more things and by several values. **Who:** whoever sees the list (`sales.view`, module `SALES_ORDERS`). The filters come in this order:
+
+1. **Free search** (as before): order number, client code or name, product SKU or name.
+2. **Dates**: the **Date** selector says which one is filtered —**Requested** (default: the day the order was created) or **Required** (the one the client asked for)— and next to it the range with **suggestions** (Today, Yesterday, Last 7 days, This week, This month…; with "Required" also Tomorrow, Next 7 days, Next week) or **Custom** (**From** and **To** appear). With "Required" and a range, an order **without a required date does not show up**.
+3. **Client**: one or several, with search (searched on the server by code or name; inactive clients are included, because their orders are still there). Listing clients needs `clients.read`; without it the drop-down is empty.
+4. **Product**: one or several, with search by SKU or name (orders that have **any line** of those products).
+5. **Status**: one or several (Draft, Requested, Partially dispatched, Dispatched, Cancelled), with search.
+6. **Only the ones assigned to me** (as before).
+
+Within one filter **any** of the chosen values is enough; across different filters **all** are required (e.g. clients A or B **and** product X **and** status Requested). **Clear** removes every filter. Changing a filter goes back to page 1; the filters are kept when you switch to Backorders and back (not when you leave the screen). **Export** and **sorting by a column** use **all** the orders that match the filters, not only the page on screen; the "Filters: …" line of the PDF and Excel states what was chosen.
+
+**In the API** (`GET /api/v1/sales-orders`, backward compatible: a single value works as before):
+
+| Parameter | What it does |
+|---|---|
+| `status` (repeatable) | `status=REQUESTED&status=PARTIAL`: any of those statuses. |
+| `clientPublicId` (repeatable) | orders of any of those clients. |
+| `productPublicId` (repeatable, new) | orders with a line of any of those products. |
+| `from` / `to` | date range (both inclusive). |
+| `dateField` (new) | `REQUESTED` (default) or `REQUIRED`: which date `from`/`to` filter. |
+
+| Situation | Exact message (in Spanish) | HTTP |
+|---|---|---|
+| `dateField` with another value | `La fecha a filtrar debe ser REQUESTED (solicitada) o REQUIRED (requerida).` | 400 (`dateField`) |

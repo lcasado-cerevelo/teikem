@@ -360,6 +360,10 @@
       "title": "Trabajos programados",
       "subtitle": "tareas automáticas de la compañía"
     },
+    "priceLists": {
+      "title": "Precios y ofertas",
+      "subtitle": "listas de precios por cliente y ofertas"
+    },
     "salesOrders": {
       "title": "Ventas",
       "subtitle": "pedidos a almacén, reservas y backorders"
@@ -5115,8 +5119,13 @@
       "title": "Productos e inventario",
       "subtitle": "Lista con existencias disponibles, reservadas y rastreo por lote/serie",
       "tabProducts": "Productos",
-        "tabPrices": "Precios y ofertas",
         "prices": {
+          "newOffer": "Nueva oferta",
+          "offerPickTitle": "Nueva oferta",
+          "offerPickHelp": "Escoge el producto propio que será la oferta. Si todavía no es un kit, define sus componentes y, al guardar, podrás poner la foto, la vigencia y marcarlo «Es promoción».",
+          "offerPickLabel": "Producto",
+          "offerPickContinue": "Continuar",
+          "offerPickNone": "Escoge un producto.",
           "title": "Precios y ofertas",
           "subtitle": "Listas de precios por cliente y ofertas (kits en promoción) con foto y vigencia.",
           "new": "Nueva lista de precios",
@@ -10290,7 +10299,17 @@
       "search": "Buscar por número, cliente o producto",
       "filterStatus": "Filtrar por estatus",
       "allStatuses": "Todos los estatus",
-      "empty": "Todavía no hay órdenes de venta. Cree la primera con «Nueva orden»."
+      "empty": "Todavía no hay órdenes de venta. Cree la primera con «Nueva orden».",
+      "emptyFiltered": "No hay órdenes de venta con esos filtros.",
+      "filters": {
+        "label": "Filtros de las órdenes de venta",
+        "dateField": "Fecha",
+        "requested": "Solicitada",
+        "required": "Requerida",
+        "client": "Cliente",
+        "product": "Producto",
+        "status": "Estatus"
+      }
     },
     "col": {
       "number": "Número",

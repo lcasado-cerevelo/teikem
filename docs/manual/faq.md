@@ -11497,3 +11497,20 @@ Los avisos (`INTEGRATION_LINK_*`) necesitan una regla de aviso que arme el admin
 
 **No veo la pestaña «Compañías enlazadas».**
 Hace falta `intercompany.view` y el módulo Compañías enlazadas encendido en su compañía.
+
+## 2026-11-09 — Filtros de la lista de órdenes de venta
+<!-- kemi:staff -->
+
+Capítulo: [18 §25](18-ordenes-de-venta.md#25-filtros-de-la-lista-de-órdenes-2026-11-09).
+
+**¿Qué significa "La fecha a filtrar debe ser REQUESTED (solicitada) o REQUIRED (requerida)."?**
+Una llamada a `GET /api/v1/sales-orders` mandó `dateField` con otro valor (400). Mande `REQUESTED` (fecha de solicitud, la de omisión), `REQUIRED` (fecha requerida) o no lo mande. En la pantalla no pasa: el selector «Fecha» solo ofrece Solicitada y Requerida.
+
+**Filtré por fecha «Requerida» y no sale una orden que sé que existe.**
+Con «Requerida» y un rango, las órdenes **sin fecha requerida** no entran. Cambie «Fecha» a «Solicitada» o quite el rango.
+
+**El filtro «Cliente» no muestra ningún cliente.**
+Para buscar clientes hace falta el permiso `clients.read`. Sin él puede filtrar escribiendo el nombre o el código del cliente en el buscador libre.
+
+**Elegí dos clientes y un producto: ¿salen las de cualquiera?**
+Dentro de un filtro, sí: cualquiera de los clientes elegidos. Entre filtros, no: la orden tiene que ser de uno de esos clientes **y** tener una línea del producto (y cumplir el estatus y la fecha si los puso).

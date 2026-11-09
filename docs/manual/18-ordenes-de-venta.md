@@ -29,7 +29,7 @@ El diseño completo está en `Diseño/logistica-funcionalidades-maestro.md`, sec
 
 | Acción | Cómo | Permiso |
 |---|---|---|
-| Ver la lista (más reciente primero; filtros: estatus, cliente, buscador por número / cliente / producto, solo con backorder, fechas) | `GET /api/v1/sales-orders` | `sales.view` |
+| Ver la lista (más reciente primero; filtros: estatus, cliente y producto —cada uno con uno o varios valores—, buscador por número / cliente / producto, solo con backorder, fechas de solicitud o requerida; ver sección 25) | `GET /api/v1/sales-orders` | `sales.view` |
 | Ver una orden | `GET /api/v1/sales-orders/{publicId}` | `sales.view` |
 | Crear el borrador | `POST /api/v1/sales-orders` | `sales.create` (+ `sales.price` si cambia un precio) |
 | Editar el borrador (lo que no se manda no cambia; las **líneas, si se mandan, reemplazan** a las actuales; `clearConsignee` / `clearRequiredDate` quitan esos datos) | `PATCH /api/v1/sales-orders/{publicId}` | `sales.create` |
@@ -460,3 +460,32 @@ Si la compañía tiene un **enlace activo** con otra que da el transporte ([50](
 - **Facturación «al entregar»** ([19](19-facturacion.md)): el despacho cuenta como entregado cuando la entrega de allá está **Entregada** o trae comprobante. Antes de eso no se factura.
 - **Deshacer el despacho** (sección 11): ya no se puede desde aquí; la entrega es de la otra compañía y se cancela allá. El servidor responde 422 con el mensaje de las recolecciones empacadas cuyo envío ya avanzó (por lectura del código; no se probó).
 - Los mensajes de esta sección están en el capítulo [50, sección 5](50-companias-enlazadas.md#5-validaciones-y-mensajes) y en la [FAQ](faq.md#lote-227--compañías-enlazadas).
+
+## 25. Filtros de la lista de órdenes (2026-11-09)
+
+<!-- kemi:staff -->
+
+Pedido de Luis: la pestaña **Órdenes** de Operación → Órdenes de venta filtra por más cosas y de a varios valores. **Quién:** quien ve la lista (`sales.view`, módulo `SALES_ORDERS`). Los filtros van, en este orden:
+
+1. **Buscador libre** (como antes): número de la orden, código o nombre del cliente, SKU o nombre de un producto.
+2. **Fechas**: el selector **Fecha** dice cuál se filtra —**Solicitada** (por omisión: el día en que se armó la orden) o **Requerida** (la que pidió el cliente)— y al lado el rango con **sugerencias** (Hoy, Ayer, Últimos 7 días, Esta semana, Este mes…; con «Requerida» también Mañana, Próximos 7 días, Próxima semana) o **Personalizado** (salen **Desde** y **Hasta**). Con «Requerida» y un rango, una orden **sin fecha requerida no aparece**.
+3. **Cliente**: uno o varios, con buscador (busca en el servidor por código o nombre; entran también los clientes dados de baja, porque sus órdenes siguen ahí). Para ver la lista de clientes hace falta `clients.read`; sin él el desplegable sale vacío.
+4. **Producto**: uno o varios, con buscador por SKU o nombre (las órdenes que tienen **alguna línea** de esos productos).
+5. **Estatus**: uno o varios (Borrador, Solicitada, Despachada parcial, Despachada, Cancelada), con buscador.
+6. **Solo los asignados a mí** (como antes).
+
+Dentro de un mismo filtro basta con **cualquiera** de los valores elegidos; entre filtros distintos se exigen **todos** (p. ej. clientes A o B **y** producto X **y** estatus Solicitada). **Limpiar** quita todos los filtros. Cambiar un filtro vuelve a la página 1; los filtros se conservan al pasar a Backorders y volver (no al salir de la pantalla). **Exportar** y **ordenar por una columna** usan **todas** las órdenes que cumplen los filtros, no solo la página en pantalla; la línea «Filtros: …» del PDF y del Excel dice lo elegido (p. ej. `Requerida del 01/11/2026 al 30/11/2026 · Cliente FARM (Farmacia Central) · Estatus Solicitada`).
+
+**En el API** (`GET /api/v1/sales-orders`, retrocompatible: un solo valor funciona como antes):
+
+| Parámetro | Qué hace |
+|---|---|
+| `status` (repetible) | `status=REQUESTED&status=PARTIAL`: cualquiera de esos estatus. |
+| `clientPublicId` (repetible) | órdenes de cualquiera de esos clientes. |
+| `productPublicId` (repetible, nuevo) | órdenes con alguna línea de cualquiera de esos productos. |
+| `from` / `to` | rango de fechas (ambos inclusive). |
+| `dateField` (nuevo) | `REQUESTED` (por omisión) o `REQUIRED`: qué fecha filtran `from`/`to`. |
+
+| Situación | Mensaje exacto | HTTP |
+|---|---|---|
+| `dateField` con otro valor | `La fecha a filtrar debe ser REQUESTED (solicitada) o REQUIRED (requerida).` | 400 (`dateField`) |

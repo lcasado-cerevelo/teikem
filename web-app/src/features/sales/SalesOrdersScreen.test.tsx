@@ -1,4 +1,4 @@
-// Pruebas de «Órdenes de venta» (Lote 60) sobre un fetch simulado: la lista con su filtro, armar un borrador y solicitarlo (diálogo de faltante con
+// Pruebas de «Órdenes de venta» (Lote 60) sobre un fetch simulado: la lista con sus filtros (2026-11-09: fechas, cliente, producto y estatus de varios valores), armar un borrador y solicitarlo (diálogo de faltante con
 // «reservar lo disponible»), la orden solicitada (cambiar cantidad, cancelar) y los backorders (surtir todo).
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
@@ -94,6 +94,10 @@ function wrap(initial = '/') {
 }
 
 const sent = (method: string, path: string) => mock.requests.filter((r) => r.method === method && r.path === path)
+const listGets = () => sent('GET', '/api/v1/sales-orders').map((r) => new URLSearchParams(r.search))
+const lastList = () => listGets().at(-1)!
+/** El buscador del desplegable abierto (el de la barra es otro «searchbox»). */
+const msearch = () => screen.getByRole('searchbox', { name: 'Buscar…' })
 
 describe('SalesOrdersScreen', () => {
   beforeAll(() => setLang('es'))
@@ -102,15 +106,82 @@ describe('SalesOrdersScreen', () => {
     mock.availability = { lines: [{ lineNo: 1, productPublicId: PROD, sku: 'MED', productName: 'Medidor', ordered: 4, available: 6, shortage: 0 }], hasShortage: false, credit: { limit: null, exposure: 0, newAmount: 55.75, available: null, exceeded: false, message: null } }
   })
 
-  it('lista las órdenes con su estatus y la marca de backorder, y filtra por estatus en el servidor', async () => {
+  it('lista las órdenes con su estatus y la marca de backorder, y filtra por VARIOS estatus en el servidor (desplegable con búsqueda)', async () => {
     const user = userEvent.setup()
     wrap()
     expect(await screen.findByRole('heading', { level: 1, name: 'Órdenes de venta' })).toBeInTheDocument()
     expect(await screen.findByText('OV-00001')).toBeInTheDocument()
     expect(screen.getByText('OV-00002')).toBeInTheDocument()
     expect(screen.getByText('Con backorder')).toBeInTheDocument()
-    await user.selectOptions(screen.getByLabelText('Filtrar por estatus'), 'REQUESTED')
-    await waitFor(() => expect(mock.requests.some((r) => r.path === '/api/v1/sales-orders' && r.search.includes('status=REQUESTED'))).toBe(true))
+    await user.click(screen.getByLabelText('Estatus'))
+    await user.type(msearch(), 'despa')
+    const options = screen.getByRole('listbox')
+    expect(within(options).queryByLabelText('Borrador')).not.toBeInTheDocument()   // el buscador acota las opciones
+    await user.click(within(options).getByLabelText('Despachada parcial'))
+    await user.clear(msearch())
+    await user.click(within(screen.getByRole('listbox')).getByLabelText('Solicitada'))
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(lastList().getAll('status')).toEqual(['PARTIAL', 'REQUESTED']))
+    expect(lastList().get('skip')).toBe('0')
+  })
+
+  it('2026-11-09: el orden de los filtros es buscador, fechas, cliente, producto, estatus y «asignados a mí», con Limpiar', async () => {
+    wrap()
+    await screen.findByText('OV-00001')
+    const bar = screen.getByRole('group', { name: 'Filtros de las órdenes de venta' })
+    const order = [
+      within(bar).getByRole('searchbox', { name: 'Buscar por número, cliente o producto' }),
+      within(bar).getByRole('combobox', { name: 'Fecha' }),
+      within(bar).getByRole('combobox', { name: 'Solicitada' }),
+      within(bar).getByLabelText('Cliente'),
+      within(bar).getByLabelText('Producto'),
+      within(bar).getByLabelText('Estatus'),
+      within(bar).getByRole('switch', { name: 'Solo los asignados a mí' }),
+      within(bar).getByRole('button', { name: 'Limpiar' }),
+    ]
+    for (let i = 1; i < order.length; i++) expect(order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('Cliente y Producto buscan en el servidor y viajan repetidos (clientPublicId, productPublicId); Limpiar los quita', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await screen.findByText('OV-00001')
+    await user.click(screen.getByLabelText('Cliente'))
+    await user.type(msearch(), 'farm')
+    await waitFor(() => expect(mock.requests.some((r) => r.path === '/api/v1/clients' && new URLSearchParams(r.search).get('search') === 'farm')).toBe(true))
+    await user.click(await screen.findByLabelText('FARM · Farmacia Central'))
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(lastList().getAll('clientPublicId')).toEqual([CLIENT]))
+    await user.click(screen.getByLabelText('Producto'))
+    await user.type(msearch(), 'med')
+    await waitFor(() => expect(mock.requests.some((r) => r.path === '/api/v1/products' && new URLSearchParams(r.search).get('search') === 'med')).toBe(true))
+    await user.click(await screen.findByLabelText('MED · Medidor'))
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(lastList().getAll('productPublicId')).toEqual([PROD]))
+    expect(lastList().getAll('clientPublicId')).toEqual([CLIENT])
+    await user.click(screen.getByRole('button', { name: 'Limpiar' }))
+    await waitFor(() => expect(lastList().has('clientPublicId') || lastList().has('productPublicId')).toBe(false))
+  })
+
+  it('Fechas: rango con sugerencias sobre la fecha solicitada; «Requerida» manda dateField=REQUIRED y ordenar una columna lee TODO lo filtrado', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await screen.findByText('OV-00001')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Solicitada' }), 'last7')
+    await waitFor(() => expect(lastList().get('from')).toMatch(/^\d{4}-\d{2}-\d{2}$/))
+    expect(lastList().get('to')).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(lastList().has('dateField')).toBe(false)   // la solicitada es la de omisión
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Fecha' }), 'REQUIRED')
+    await waitFor(() => expect(lastList().get('dateField')).toBe('REQUIRED'))
+    // la requerida puede ser futura: sus sugerencias incluyen «Próximos 7 días»
+    expect(within(screen.getByRole('combobox', { name: 'Requerida' })).getByRole('option', { name: 'Próximos 7 días' })).toBeInTheDocument()
+    // ordenar por una columna lee la consulta completa (de a 200) con los mismos filtros
+    await user.click(within(screen.getByRole('columnheader', { name: 'Total' })).getByRole('button'))
+    await waitFor(() => expect(listGets().some((q) => q.get('take') === '200' && q.get('dateField') === 'REQUIRED' && q.has('from'))).toBe(true))
+    // «Personalizado» abre Desde y Hasta
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Requerida' }), 'custom')
+    expect(screen.getByLabelText('Desde')).toBeInTheDocument()
+    expect(screen.getByLabelText('Hasta')).toBeInTheDocument()
   })
 
   it('Lote 195: las acciones de asignar están en la tabla como iconos (solo en la orden solicitada) y el interruptor filtra «asignadas a mí»', async () => {

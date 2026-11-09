@@ -337,4 +337,54 @@ public sealed class SalesOrderServiceTests
         await f.AddWarehouseAsync("W2");
         Assert.Equal(SalesRules.WarehouseRequired, await MsgOf(() => svc.CreateAsync(new SalesOrderRequest(null, c.PublicId, Lines: new[] { L(p, 1m) }), default)));
     }
+    // 2026-11-09 — filtros de la pantalla Órdenes de venta: varios clientes, productos y estatus, y el rango por fecha solicitada o requerida.
+    [Fact]
+    public async Task List_filters_by_several_clients_products_and_statuses_and_by_requested_or_required_date()
+    {
+        await using var f = await CreateAsync();
+        f.SetModules(ModuleKeys.SalesOrders);
+        var w = await f.AddWarehouseAsync("W1");
+        var c1 = await f.AddClientAsync("C1");
+        var c2 = await f.AddClientAsync("C2");
+        var c3 = await f.AddClientAsync("C3");
+        var pa = await SellableAsync(f, "PA", 10m);
+        var pb = await SellableAsync(f, "PB", 10m);
+        var pc = await SellableAsync(f, "PC", 10m);
+        var svc = f.Get<SalesOrderService>();
+        var o1 = await svc.CreateAsync(new SalesOrderRequest(w.PublicId, c1.PublicId, RequiredDate: new DateOnly(2026, 11, 20), Lines: new[] { L(pa, 1m) }), default);
+        var o2 = await svc.CreateAsync(new SalesOrderRequest(w.PublicId, c2.PublicId, Lines: new[] { L(pb, 1m), L(pc, 1m) }), default);
+        var o3 = await svc.CreateAsync(new SalesOrderRequest(w.PublicId, c3.PublicId, RequiredDate: new DateOnly(2026, 12, 5), Lines: new[] { L(pc, 1m) }), default);
+        await svc.CancelAsync(o3.PublicId, null, default);
+        // fechas de solicitud fijas (el alta pone «hoy»)
+        foreach (var (pid, day) in new[] { (o1.PublicId, 1), (o2.PublicId, 10), (o3.PublicId, 15) })
+        {
+            var row = await f.Db.Set<SalesOrder>().AsTracking().SingleAsync(x => x.PublicId == pid);
+            row.RequestedDate = new DateOnly(2026, 11, day);
+        }
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+
+        async Task<string[]> Numbers(string[]? statuses = null, Guid[]? clients = null, Guid[]? products = null, DateOnly? from = null, DateOnly? to = null,
+            string? dateField = null, string? status = null, Guid? client = null)
+            => (await svc.ListAsync(status, client, null, false, from, to, 0, 50, default, statuses: statuses, clientPublicIds: clients, productPublicIds: products, dateField: dateField))
+                .Items.Select(i => i.Number).OrderBy(n => n).ToArray();
+
+        Assert.Equal(new[] { o1.Number, o2.Number }, await Numbers(clients: new[] { c1.PublicId, c2.PublicId }));
+        Assert.Equal(new[] { o2.Number, o3.Number }, await Numbers(products: new[] { pc.PublicId }));
+        Assert.Equal(new[] { o1.Number, o2.Number }, await Numbers(products: new[] { pa.PublicId, pb.PublicId }));
+        Assert.Equal(new[] { o1.Number, o2.Number, o3.Number }, await Numbers(statuses: new[] { "DRAFT", "cancelled" }));
+        Assert.Equal(new[] { o3.Number }, await Numbers(statuses: new[] { "CANCELLED" }));
+        // entre filtros es «y»
+        Assert.Equal(new[] { o2.Number }, await Numbers(clients: new[] { c2.PublicId, c3.PublicId }, products: new[] { pc.PublicId }, statuses: new[] { "DRAFT" }));
+        // los parámetros únicos de siempre siguen funcionando (y se suman a los repetidos)
+        Assert.Equal(new[] { o3.Number }, await Numbers(status: "CANCELLED"));
+        Assert.Equal(new[] { o1.Number }, await Numbers(client: c1.PublicId));
+        Assert.Equal(new[] { o1.Number, o3.Number }, await Numbers(client: c1.PublicId, clients: new[] { c3.PublicId }));
+        // fecha solicitada (por omisión) y requerida (sin fecha requerida no entra si hay rango)
+        Assert.Equal(new[] { o2.Number, o3.Number }, await Numbers(from: new DateOnly(2026, 11, 5), to: new DateOnly(2026, 11, 30)));
+        Assert.Equal(new[] { o2.Number }, await Numbers(from: new DateOnly(2026, 11, 5), to: new DateOnly(2026, 11, 12), dateField: "REQUESTED"));
+        Assert.Equal(new[] { o1.Number }, await Numbers(from: new DateOnly(2026, 11, 15), to: new DateOnly(2026, 11, 30), dateField: "required"));
+        Assert.Equal(new[] { o3.Number }, await Numbers(from: new DateOnly(2026, 12, 1), dateField: "REQUIRED"));
+        Assert.Equal("La fecha a filtrar debe ser REQUESTED (solicitada) o REQUIRED (requerida).", await MsgOf(() => Numbers(dateField: "SHIPPED")));
+    }
 }

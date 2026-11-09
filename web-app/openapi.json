@@ -41135,15 +41135,21 @@
             "name": "status",
             "in": "query",
             "schema": {
-              "type": "string"
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           {
             "name": "clientPublicId",
             "in": "query",
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
             }
           },
           {
@@ -41214,6 +41220,24 @@
             "schema": {
               "type": "boolean",
               "default": false
+            }
+          },
+          {
+            "name": "productPublicId",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "dateField",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           }
         ],

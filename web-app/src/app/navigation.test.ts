@@ -35,12 +35,12 @@ describe('NAV_GROUPS', () => {
 })
 
 describe('menú completo (routes.tsx)', () => {
-  it('con todos los permisos y módulos se ven los 6 grupos y los 43 ítems, en el orden de la maqueta', () => {
+  it('con todos los permisos y módulos se ven los 6 grupos y los 44 ítems, en el orden de la maqueta', () => {
     const groups = visibleNav(appRoutes, ALL_PERMS, ALL_MODULES)
     expect(groups.map((g) => [g.key, g.items.length])).toEqual([
       ['ops', 5],
       ['warehouse', 12],
-      ['money', 8],
+      ['money', 9],
       ['catalog', 4],
       ['analytics', 4],
       ['system', 10],
@@ -65,6 +65,7 @@ describe('menú completo (routes.tsx)', () => {
       'Kárdex de movimientos',
       'Compras',
       'Contabilización de compras',
+      'Precios y ofertas',
       'Ventas',
       'Contabilización de despachos',
       'Facturación',
@@ -93,7 +94,7 @@ describe('menú completo (routes.tsx)', () => {
   })
 
   it('cada ítem tiene título y subtítulo en español e inglés, y `order` = posición × 10', () => {
-    expect(navRoutes).toHaveLength(44)
+    expect(navRoutes).toHaveLength(45)
     for (const r of navRoutes) {
       for (const lang of ['es', 'en'] as const) {
         expect(translate(lang, navTitleKey(r.nav!.key)), `${lang} ${r.path}`).not.toBe(navTitleKey(r.nav!.key))
@@ -125,7 +126,7 @@ describe('menú completo (routes.tsx)', () => {
     expect(byPath('/money/purchases').pending).toBeUndefined() // Lote 181
     expect(byPath('/money/purchases')).toMatchObject({ perm: 'purchaseaccounting.view', module: 'PURCHASING', nav: { group: 'money', key: 'purchaseAccounting', order: 20 } })
     expect(byPath('/money/dispatch').pending).toBeUndefined() // Lote 181
-    expect(byPath('/money/dispatch')).toMatchObject({ perm: 'dispatchaccounting.view', module: 'WMS_LOTSERIAL', nav: { group: 'money', key: 'dispatchAccounting', order: 40 } })
+    expect(byPath('/money/dispatch')).toMatchObject({ perm: 'dispatchaccounting.view', module: 'WMS_LOTSERIAL', nav: { group: 'money', key: 'dispatchAccounting', order: 50 } })
     // 2026-10-20: el portal del cliente tiene su propia aplicación; el menú del personal ya no lo trae (la bandeja de mensajes sigue en su dirección, sin ítem)
     expect(byPath('/portal/messages').nav).toBeUndefined()
     expect(appRoutes.some((r) => r.path.startsWith('/portal/') && r.path !== '/portal/messages')).toBe(false)

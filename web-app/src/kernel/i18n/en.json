@@ -360,6 +360,10 @@
       "title": "Scheduled jobs",
       "subtitle": "the company's automatic tasks"
     },
+    "priceLists": {
+      "title": "Prices and offers",
+      "subtitle": "price lists by client and offers"
+    },
     "salesOrders": {
       "title": "Sales",
       "subtitle": "warehouse requests, reservations and backorders"
@@ -5115,8 +5119,13 @@
       "title": "Products & inventory",
       "subtitle": "List with available, reserved stock, and lot/serial tracking",
       "tabProducts": "Products",
-        "tabPrices": "Prices and offers",
         "prices": {
+          "newOffer": "New offer",
+          "offerPickTitle": "New offer",
+          "offerPickHelp": "Pick the own product that will be the offer. If it is not a kit yet, define its components and, after saving, you can set the photo, the validity and mark it «Is promotion».",
+          "offerPickLabel": "Product",
+          "offerPickContinue": "Continue",
+          "offerPickNone": "Pick a product.",
           "title": "Prices and offers",
           "subtitle": "Price lists by client and offers (kits on promotion) with photo and validity.",
           "new": "New price list",
@@ -10287,7 +10296,17 @@
       "search": "Search by number, client or product",
       "filterStatus": "Filter by status",
       "allStatuses": "All statuses",
-      "empty": "There are no sales orders yet. Create the first one with “New order”."
+      "empty": "There are no sales orders yet. Create the first one with “New order”.",
+      "emptyFiltered": "No sales orders match those filters.",
+      "filters": {
+        "label": "Sales order filters",
+        "dateField": "Date",
+        "requested": "Requested",
+        "required": "Required",
+        "client": "Client",
+        "product": "Product",
+        "status": "Status"
+      }
     },
     "col": {
       "number": "Number",

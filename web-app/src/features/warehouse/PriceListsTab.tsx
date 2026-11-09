@@ -1,4 +1,4 @@
-// Lote 221 (P1) — pestaña «Precios y ofertas» de Productos e inventario (`?tab=prices`, sales.view; editar = sales.pricelist). Dos bloques:
+// Lote 221 (P1) — pantalla «Precios y ofertas» (Contabilidad, `/money/prices`, sales.pricelist; antes pestaña de Productos). Dos bloques:
 // - Ofertas: tarjetas con foto de los kits marcados «Es promoción» (vigencia y precio de venta); «Editar oferta» abre el editor del kit (foto, vigencia y marca).
 // - Listas de precios: nombre, vigencia, estado calculado (borrador / programada / vigente / vencida), a quién aplica y cuántos renglones; la fila abre su editor.
 // La lista no es paginada por el servidor (viene completa): no lleva `exportRows`.
@@ -6,12 +6,13 @@ import { useMemo, useState } from 'react'
 import { Can } from '../../kernel/access'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { Chip, DataTable, EmptyState, Filters, IconTag, Panel, Spinner, type DataColumn } from '../../kernel/ui'
+import { Chip, DataTable, EmptyState, Filters, IconTag, Modal, Panel, Spinner, type DataColumn } from '../../kernel/ui'
 import { ToggleFilter } from './filterControls'
 import { KitEditorByIdModal } from './KitTab'
 import { PriceListEditorModal } from './PriceListEditorModal'
 import { useOffers, usePriceLists, type PriceListListItemDto, type ProductPromoDto } from './priceListApi'
 import { promoStatus, stateKey, stateTone } from './priceListRules'
+import { ProductPicker } from './pickers'
 import { StoredImage } from './StoredImage'
 
 const STATES = ['DRAFT', 'SCHEDULED', 'ACTIVE', 'EXPIRED'] as const
@@ -47,6 +48,52 @@ function OfferCard({ offer, onEdit }: { offer: ProductPromoDto; onEdit: () => vo
   )
 }
 
+/** «Nueva oferta»: escoge el producto propio que será el kit en promoción; luego abre el editor del kit (componentes y sección «Oferta»). */
+function OfferPickerModal({ onPicked, onClose }: { onPicked: (publicId: string) => void; onClose: () => void }) {
+  const t = useT()
+  const [value, setValue] = useState<string | null>(null)
+  const [error, setError] = useState(false)
+  return (
+    <Modal
+      open
+      title={t('warehouse.products.prices.offerPickTitle')}
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose}>
+            {t('common.cancel')}
+          </button>
+          <button type="button" className="btn flow" onClick={() => (value ? onPicked(value) : setError(true))}>
+            {t('warehouse.products.prices.offerPickContinue')}
+          </button>
+        </>
+      }
+    >
+      <div className="pb">
+        <p>{t('warehouse.products.prices.offerPickHelp')}</p>
+        <div className="f">
+          <label htmlFor="offer-pick">{t('warehouse.products.prices.offerPickLabel')}</label>
+          <ProductPicker
+            id="offer-pick"
+            ownOnly
+            value={value}
+            onChange={(id) => {
+              setValue(id)
+              setError(false)
+            }}
+            invalid={error}
+          />
+        </div>
+        {error && (
+          <p role="alert" className="err">
+            {t('warehouse.products.prices.offerPickNone')}
+          </p>
+        )}
+      </div>
+    </Modal>
+  )
+}
+
 export function PriceListsTab() {
   const t = useT()
   const f = useFormat()
@@ -55,6 +102,8 @@ export function PriceListsTab() {
   const [includeInactive, setIncludeInactive] = useState(false)
   const [opened, setOpened] = useState<string | null | undefined>(undefined) // undefined = cerrado, null = nueva
   const [offerId, setOfferId] = useState<string | null>(null)
+  const [picking, setPicking] = useState(false)
+  const [editorKey, setEditorKey] = useState(0) // reabre el editor al guardar un kit nuevo para que aparezca la sección «Oferta»
   const lists = usePriceLists({ q: q.trim() || undefined, state: state || undefined, includeInactive })
   const offers = useOffers(includeInactive)
 
@@ -97,6 +146,9 @@ export function PriceListsTab() {
         </div>
         <div className="act">
           <Can perm="sales.pricelist">
+            <button type="button" className="btn" onClick={() => setPicking(true)}>
+              {t('warehouse.products.prices.newOffer')}
+            </button>
             <button type="button" className="btn flow" onClick={() => setOpened(null)}>
               {t('warehouse.products.prices.new')}
             </button>
@@ -165,7 +217,16 @@ export function PriceListsTab() {
       </Panel>
 
       {opened !== undefined && <PriceListEditorModal key={opened ?? 'new'} publicId={opened} onClose={() => setOpened(undefined)} />}
-      {offerId && <KitEditorByIdModal publicId={offerId} onClose={() => setOfferId(null)} />}
+      {picking && (
+        <OfferPickerModal
+          onClose={() => setPicking(false)}
+          onPicked={(id) => {
+            setPicking(false)
+            setOfferId(id)
+          }}
+        />
+      )}
+      {offerId && <KitEditorByIdModal key={`${offerId}-${editorKey}`} publicId={offerId} onClose={() => setOfferId(null)} onSaved={() => setEditorKey((k) => k + 1)} />}
     </>
   )
 }

@@ -31456,8 +31456,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    status?: string;
-                    clientPublicId?: string;
+                    status?: string[];
+                    clientPublicId?: string[];
                     q?: string;
                     backorderOnly?: boolean;
                     from?: string;
@@ -31467,6 +31467,8 @@ export interface paths {
                     assignedToMe?: boolean;
                     assignedUserId?: number;
                     urgent?: boolean;
+                    productPublicId?: string[];
+                    dateField?: string;
                 };
                 header?: never;
                 path?: never;

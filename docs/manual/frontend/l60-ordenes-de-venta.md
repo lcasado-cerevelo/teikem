@@ -10,7 +10,7 @@ La pantalla tiene dos pestañas: **Órdenes** y **Backorders**.
 
 ## 1. Órdenes
 
-Lista paginada (la más reciente primero) con **número**, **cliente**, **estatus** (Borrador, Solicitada, Despachada parcial, Despachada, Cancelada, con la marca **Con backorder** si alguna línea tiene pendiente), fecha de solicitud, fecha requerida, líneas, **total** y quién la pidió. Buscador por **número, cliente o producto**, filtro de **estatus** y **Exportar** (todas las filas del filtro). Un clic en la fila abre la orden.
+Lista paginada (la más reciente primero) con **número**, **cliente**, **estatus** (Borrador, Solicitada, Despachada parcial, Despachada, Cancelada, con la marca **Con backorder** si alguna línea tiene pendiente), fecha de solicitud, fecha requerida, líneas, **total** y quién la pidió. Filtros (2026-11-09), en este orden: buscador por **número, cliente o producto**; **fechas** (Solicitada o Requerida, con rangos sugeridos o Personalizado); **Cliente**, **Producto** y **Estatus**, cada uno de varios valores con buscador; **Solo los asignados a mí**; y **Limpiar** (detalle en [18, sección 25](../18-ordenes-de-venta.md#25-filtros-de-la-lista-de-órdenes-2026-11-09)). **Exportar** y ordenar por columna usan todas las filas del filtro. Un clic en la fila abre la orden.
 
 ## 2. Nueva orden y borrador
 

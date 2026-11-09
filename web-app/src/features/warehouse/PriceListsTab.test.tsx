@@ -86,7 +86,17 @@ describe('Precios y ofertas', () => {
     wrap(['sales.view'])
     await screen.findByText('Base 2026')
     expect(screen.queryByRole('button', { name: 'Nueva lista de precios' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Nueva oferta' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Editar oferta' })).toBeNull()
+  })
+
+  it('Nueva oferta: exige escoger un producto antes de continuar', async () => {
+    const user = userEvent.setup()
+    wrap(['sales.view', 'sales.pricelist'])
+    await screen.findByText('Base 2026')
+    await user.click(screen.getByRole('button', { name: 'Nueva oferta' }))
+    await user.click(await screen.findByRole('button', { name: 'Continuar' }))
+    expect(await screen.findByText('Escoge un producto.')).toBeInTheDocument()
   })
 
   it('con sales.pricelist: valida el nombre y manda el cuerpo de crear', async () => {

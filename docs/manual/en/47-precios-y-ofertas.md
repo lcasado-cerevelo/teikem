@@ -6,18 +6,18 @@
 
 Batch 221 (2026-11-07) — salespeople's order, part P1. The **price of what is sold** is no longer typed: it comes from a **price list** set up by the sales supervisor, and **offers** are kits on promotion with a photo and validity dates. This chapter is for the sales supervisor, the office and support. The order that uses these prices is described in [48 — Guided order](48-pedido-guiado.md) and the order itself in [18 — Sales orders](18-ordenes-de-venta.md).
 
-The screen is in **Warehouse → Products and inventory → «Prices and offers» tab** (`/warehouse/products?tab=prices`). The tab only shows with `sales.view`.
+The screen is in **Accounting → Prices and offers** (`/money/prices`), right before «Sales». The menu item only shows with `sales.pricelist` (Company admin and Sales supervisor; a salesperson with only `sales.view` no longer sees it). It used to be a tab of Products and inventory: the old link `/warehouse/products?tab=prices` redirects to the new screen. At the top there are two buttons: **New price list** and **New offer** (pick an own product and the kit editor opens; if it is not a kit yet, define its components and after saving the «Offer (promotion)» section appears with photo, validity and «Is a promotion»).
 
 > Screenshots from the batch 228 walkthrough (2026-11-07, demo data).
 
-![«Prices and offers» tab: the offer as a card with its photo and the list of lists](frontend/img/l228-precios-ofertas.png)
-![The same tab in the dark theme](frontend/img/l228-precios-ofertas-oscuro.png)
+![«Prices and offers» screen: the offer as a card with its photo and the list of lists](frontend/img/l228-precios-ofertas.png)
+![The same screen in the dark theme](frontend/img/l228-precios-ofertas-oscuro.png)
 
 ## 1. Who can and where
 
 - Module **Sales orders (`SALES_ORDERS`)**. With the module off, the whole API answers 403.
 - Permissions:
-  - **`sales.view`** — view lists, offers and the order catalog.
+  - **`sales.view`** — view the guided-order catalog (the «Prices and offers» screen itself requires `sales.pricelist`).
   - **`sales.pricelist`** — create, publish, change and deactivate lists; add or remove the photo; mark a kit as an offer and set its validity. Implies `sales.view`. Held by the **Sales supervisor** role (`SalesSupervisor`) and the **Company admin**.
   - **`sales.price`** — remains the exception: writing on an order line a price different from the one that came from the list. Only the Company admin, or whoever they designate.
 - Seeing the photo of an offer or a line requires being able to see products (`inventory.view`, which the Sales role has); uploading it requires `sales.pricelist`.
@@ -45,7 +45,7 @@ Rules worth knowing:
 
 **Who can.** View: `sales.view`. Everything else: `sales.pricelist`. Module `SALES_ORDERS`.
 
-**How to use it (screen).** **Prices and offers** tab → **Price lists** block.
+**How to use it (screen).** **Accounting → Prices and offers** → **Price lists** block.
 1. **New price list**: name, «Valid from», «Until (optional)», notes and the «Applies to all clients» checkbox. **Create list** leaves it as a **draft**.
 2. In the list window: **Save details**; **Lines** (choose product or kit, type the price, **Add**; each line can have its price changed, be removed or get a photo); **Clients of the list** (**Add client**; only if it is not general).
 3. **Publish**: from then on the list gives prices within its dates. **Back to draft** takes it out of use. **Deactivate** / **Reactivate** withdraw or return it (it is never deleted).
@@ -84,7 +84,7 @@ Rules worth knowing:
 
 ## 4. Offers (kits on promotion)
 
-**What it does.** An **offer** is a **kit** (chapter [06 §8b](06-inventario-y-almacen.md#8b-kits-batch-68-2026-10-16)) marked «Is a promotion», with an optional **photo** and **validity**. On the tab they show as cards with their photo (what the salesperson will see in the guided order, above their brand). Outside its validity it **cannot be sold**: it cannot be put on a new line or on a draft that is saved again. Orders already placed do not change (the line keeps its price and the copy of its components).
+**What it does.** An **offer** is a **kit** (chapter [06 §8b](06-inventario-y-almacen.md#8b-kits-batch-68-2026-10-16)) marked «Is a promotion», with an optional **photo** and **validity**. On the screen they show as cards with their photo (what the salesperson will see in the guided order, above their brand). Outside its validity it **cannot be sold**: it cannot be put on a new line or on a draft that is saved again. Orders already placed do not change (the line keeps its price and the copy of its components).
 
 **Who can.** View: `sales.view` or `inventory.view`. Mark, set dates and add the photo: `sales.pricelist`.
 

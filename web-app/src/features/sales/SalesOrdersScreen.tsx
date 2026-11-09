@@ -1,6 +1,10 @@
 // Operación → Órdenes de venta (Lote 60, módulo SALES_ORDERS, permiso sales.view): el documento que viaja de Ventas a Almacén. Dos pestañas: las ÓRDENES
-// (lista con filtro de estatus y buscador; «Nueva orden» con sales.create) y los BACKORDERS (lo pendiente, el más antiguo primero; surtir una línea, surtir todo
+// (lista con filtros y buscador; «Nueva orden» con sales.create) y los BACKORDERS (lo pendiente, el más antiguo primero; surtir una línea, surtir todo
 // o cerrar con faltante con sales.backorder). Una orden se abre en su ventana (borrador editable, o solicitada con lo reservado y lo pendiente).
+// 2026-11-09 (pedido de Luis): filtros de la pestaña Órdenes, en este orden: buscador libre, fechas (Solicitada o Requerida + rango con sugerencias y
+// personalizado, `DateRangeFilter`), Cliente (`ClientSearchSelect`), Producto (`ProductSearchSelect`) y Estatus (`SearchSelect`), todos de varias opciones
+// con búsqueda, y «Solo los asignados a mí»; botón Limpiar. Todo va al servidor (también el Exportar y el orden, que leen TODO lo filtrado con `exportRows`).
+// Los filtros viven en la pantalla (no en la pestaña): se conservan al ir a Backorders y volver.
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Can, permAllowed, useAccess } from '../../kernel/access'
@@ -8,16 +12,43 @@ import { applyProblemDetails } from '../../kernel/api/problem'
 import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { Chip, DataTable, IconUserPlus, IconUsers, Panel, QBox, Spinner, Tabs, toast, type DataColumn, type RowAction } from '../../kernel/ui'
+import {
+  Chip,
+  ClientSearchSelect,
+  DataTable,
+  DateRangeFilter,
+  Filters,
+  FilterScope,
+  IconUserPlus,
+  IconUsers,
+  Panel,
+  QBox,
+  SearchSelect,
+  SelectFilter,
+  Spinner,
+  Tabs,
+  toast,
+  type DataColumn,
+  type RowAction,
+} from '../../kernel/ui'
 import { AssignDocumentModal } from '../warehouse/AssignDocumentModal'
 import { ToggleFilter } from '../warehouse/filterControls'
+import { ProductSearchSelect } from '../warehouse/pickers'
+import { EMPTY_ORDERS_FILTERS, hasOrdersFilters, ordersApiFilters, type OrdersFilterState } from './ordersFilters'
 import { IconCart } from '../../kernel/ui/screenIcons'
 import { OrderBadges } from './OrderBadges'
 import { OrderModal } from './OrderModal'
 import { QuickBooksTab } from './QuickBooksTab'
 import { ReturnEditor, ReturnModal, ReturnsTab } from './ReturnsParts'
 import { ORDER_STATUSES } from './salesRules'
-import { salesOrderPageReader, useBackorders, useSalesMutations, useSalesOrders, type SalesBackorderLineDto, type SalesOrderListItemDto } from './salesApi'
+import {
+  salesOrderPageReader,
+  useBackorders,
+  useSalesMutations,
+  useSalesOrders,
+  type SalesBackorderLineDto,
+  type SalesOrderListItemDto,
+} from './salesApi'
 import '../tax/tax.css'
 import './sales.css'
 
@@ -35,18 +66,23 @@ function useDebounced(value: string, ms = 300) {
   return v
 }
 
-function OrdersTab({ onOpen }: { onOpen: (id: string) => void }) {
+function OrdersTab({ onOpen, filters, onFilters }: { onOpen: (id: string) => void; filters: OrdersFilterState; onFilters: (next: OrdersFilterState) => void }) {
   const t = useT()
   const f = useFormat()
-  const [status, setStatus] = useState('')
-  const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
-  const search = useDebounced(q.trim())
-  const [mineOnly, setMineOnly] = useState(false)   // Lote 195: solo las asignadas a mí
+  const search = useDebounced(filters.q.trim())
   const [toAssign, setToAssign] = useState<SalesOrderListItemDto | null>(null)
   const { assign, take } = useSalesMutations()
-  const list = useSalesOrders(status, search, (page - 1) * pageSize, pageSize, mineOnly)
+  const apiFilters = useMemo(() => ordersApiFilters(filters, search), [filters, search])
+  const list = useSalesOrders(apiFilters, (page - 1) * pageSize, pageSize)
+  // cambiar un filtro vuelve a la página 1
+  const set = <K extends keyof OrdersFilterState>(key: K) => (v: OrdersFilterState[K]) => {
+    setPage(1)
+    onFilters({ ...filters, [key]: v })
+  }
+  const statusOptions = useMemo(() => ORDER_STATUSES.map((s) => ({ value: s, label: t(`sales.statuses.${s}`) })), [t])
+  const requiredDate = filters.dateField === 'REQUIRED'
 
   const columns = useMemo<DataColumn<SalesOrderListItemDto>[]>(
     () => [
@@ -99,16 +135,36 @@ function OrdersTab({ onOpen }: { onOpen: (id: string) => void }) {
   return (
     <Panel flush icon={<IconCart />} title={t('sales.orders.panel')} badge={list.isPending ? undefined : list.data?.total}>
       <div className="pb">
-        <div className="qrow tax-filters">
-          <QBox value={q} onChange={(v) => (setQ(v), setPage(1))} placeholder={t('sales.orders.search')} />
-          <select aria-label={t('sales.orders.filterStatus')} value={status} onChange={(e) => (setStatus(e.target.value), setPage(1))}>
-            <option value="">{t('sales.orders.allStatuses')}</option>
-            {ORDER_STATUSES.map((s) => (
-              <option key={s} value={s}>{t(`sales.statuses.${s}`)}</option>
-            ))}
-          </select>
-          <ToggleFilter label={t('warehouse.assign.mineOnly')} checked={mineOnly} onChange={(v) => (setMineOnly(v), setPage(1))} />
-        </div>
+        <Filters
+          label={t('sales.orders.filters.label')}
+          onClear={() => {
+            setPage(1)
+            onFilters(EMPTY_ORDERS_FILTERS)
+          }}
+        >
+          <QBox value={filters.q} onChange={set('q')} placeholder={t('sales.orders.search')} />
+          {/* fechas: cuál (Solicitada por omisión, o Requerida) y el rango con sugerencias y «Personalizado»; la requerida puede ser futura. El
+              selector no se anota en la línea de filtros de las exportaciones: ya lo dice la etiqueta del rango («Requerida del … al …») */}
+          <FilterScope off>
+            <SelectFilter
+              label={t('sales.orders.filters.dateField')}
+              value={requiredDate ? 'REQUIRED' : ''}
+              onChange={(v) => set('dateField')(v === 'REQUIRED' ? 'REQUIRED' : 'REQUESTED')}
+              allLabel={t('sales.orders.filters.requested')}
+              options={[{ value: 'REQUIRED', label: t('sales.orders.filters.required') }]}
+            />
+          </FilterScope>
+          <DateRangeFilter
+            label={requiredDate ? t('sales.orders.filters.required') : t('sales.orders.filters.requested')}
+            value={filters.range}
+            onChange={set('range')}
+            mode={requiredDate ? 'both' : 'past'}
+          />
+          <ClientSearchSelect label={t('sales.orders.filters.client')} value={filters.clients} onChange={set('clients')} includeInactive />
+          <ProductSearchSelect label={t('sales.orders.filters.product')} value={filters.products} onChange={set('products')} includeInactive />
+          <SearchSelect label={t('sales.orders.filters.status')} options={statusOptions} value={filters.statuses} onChange={set('statuses')} />
+          <ToggleFilter label={t('warehouse.assign.mineOnly')} checked={filters.mine} onChange={set('mine')} />
+        </Filters>
         {list.isError ? (
           <p className="ferr" role="alert">{applyProblemDetails(list.error).title}</p>
         ) : list.isPending ? (
@@ -126,8 +182,8 @@ function OrdersTab({ onOpen }: { onOpen: (id: string) => void }) {
             onPage={setPage}
             onPageSize={(s) => (setPageSize(s), setPage(1))}
             onRowClick={(o) => onOpen(o.publicId!)}
-            empty={t('sales.orders.empty')}
-            exportRows={() => fetchAllPages<SalesOrderListItemDto>(salesOrderPageReader(status, search, mineOnly))}
+            empty={hasOrdersFilters(filters) ? t('sales.orders.emptyFiltered') : t('sales.orders.empty')}
+            exportRows={() => fetchAllPages<SalesOrderListItemDto>(salesOrderPageReader(apiFilters))}
           />
         )}
       </div>
@@ -267,6 +323,8 @@ export default function SalesOrdersScreen() {
   // Lote 82: devoluciones (la ficha por su id y el editor, opcionalmente sobre una orden)
   const [returnId, setReturnId] = useState<string | null>(null)
   const [newReturn, setNewReturn] = useState<{ orderId: string | null } | null>(null)
+  // 2026-11-09: los filtros de la pestaña Órdenes viven aquí para que sobrevivan al cambio de pestaña
+  const [orderFilters, setOrderFilters] = useState<OrdersFilterState>(EMPTY_ORDERS_FILTERS)
   return (
     <div className="sales-screen">
       <div className="head">
@@ -294,7 +352,7 @@ export default function SalesOrdersScreen() {
         ]}
       />
       {tab === 'orders' ? (
-        <OrdersTab onOpen={setOpenId} />
+        <OrdersTab onOpen={setOpenId} filters={orderFilters} onFilters={setOrderFilters} />
       ) : tab === 'backorders' ? (
         <BackordersTab onOpen={setOpenId} />
       ) : tab === 'quickbooks' ? (

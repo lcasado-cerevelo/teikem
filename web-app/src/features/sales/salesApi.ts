@@ -2,7 +2,7 @@
 // línea, cancelar y los backorders (ver, surtir, cerrar con faltante).
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../../kernel/api/client'
-import type { components } from '../../kernel/api/schema'
+import type { components, paths } from '../../kernel/api/schema'
 
 type Schemas = components['schemas']
 export type SalesOrderDto = Schemas['SalesOrderDto']
@@ -17,24 +17,65 @@ export type SalesDispatchInfoDto = Schemas['SalesDispatchInfoDto']
 export type SalesDispatchRequest = Schemas['SalesDispatchRequest']
 export type SalesDispatchResultDto = Schemas['SalesDispatchResultDto']
 
+/** Consulta de GET /api/v1/sales-orders (sin skip/take). */
+export type SalesOrderListQuery = Omit<NonNullable<paths['/api/v1/sales-orders']['get']['parameters']['query']>, 'skip' | 'take'>
+
+/** Qué fecha filtra el rango: la de solicitud (por omisión) o la requerida. */
+export type SalesDateField = 'REQUESTED' | 'REQUIRED'
+
+/**
+ * Filtros de la lista de órdenes de venta (2026-11-09): buscador libre, rango de fechas (solicitada o requerida), varios clientes, productos y estatus,
+ * y «solo los asignados a mí». Vacío = sin ese filtro.
+ */
+export interface SalesOrderFilters {
+  q?: string
+  dateField?: SalesDateField
+  from?: string
+  to?: string
+  clientPublicIds?: readonly string[]
+  productPublicIds?: readonly string[]
+  statuses?: readonly string[]
+  mine?: boolean
+}
+
+const many = (v: readonly string[] | undefined) => (v && v.length > 0 ? [...v] : undefined)
+
+/** Arma la consulta del API: los filtros repetibles van como `status=…&status=…`, `clientPublicId=…`, `productPublicId=…`. */
+export function salesOrderListQuery(f: SalesOrderFilters): SalesOrderListQuery {
+  const hasRange = Boolean(f.from || f.to)
+  return {
+    q: f.q || undefined,
+    status: many(f.statuses),
+    clientPublicId: many(f.clientPublicIds),
+    productPublicId: many(f.productPublicIds),
+    from: f.from || undefined,
+    to: f.to || undefined,
+    // la fecha requerida solo viaja si hay rango (sin rango no filtra nada)
+    dateField: hasRange && f.dateField === 'REQUIRED' ? 'REQUIRED' : undefined,
+    assignedToMe: f.mine || undefined,
+  }
+}
+
 export const salesKeys = {
   all: ['sales'] as const,
-  list: (status: string, q: string, skip: number, take: number, mine = false) => ['sales', '/api/v1/sales-orders', status, q, skip, take, mine] as const,
+  list: (query: SalesOrderListQuery, skip: number, take: number) => ['sales', '/api/v1/sales-orders', query, skip, take] as const,
   one: (id: string) => ['sales', 'one', id] as const,
   backorders: (q: string) => ['sales', '/api/v1/sales-orders/backorders', q] as const,
 }
 
-export function useSalesOrders(status: string, q: string, skip: number, take: number, mine = false) {
+export function useSalesOrders(filters: SalesOrderFilters, skip: number, take: number) {
+  const query = salesOrderListQuery(filters)
   return useQuery({
-    queryKey: salesKeys.list(status, q, skip, take, mine),
-    queryFn: () => unwrap(api.GET('/api/v1/sales-orders', { params: { query: { status: status || undefined, q: q || undefined, skip, take, assignedToMe: mine || undefined } } })),
+    queryKey: salesKeys.list(query, skip, take),
+    queryFn: () => unwrap(api.GET('/api/v1/sales-orders', { params: { query: { ...query, skip, take } } })),
     placeholderData: keepPreviousData,
   })
 }
 
-/** Todas las páginas del filtro actual (la exportación de la tabla). */
-export function salesOrderPageReader(status: string, q: string, mine = false) {
-  return (skip: number, take: number) => unwrap(api.GET('/api/v1/sales-orders', { params: { query: { status: status || undefined, q: q || undefined, skip, take, assignedToMe: mine || undefined } } }))
+/** Todas las páginas del filtro actual (la exportación de la tabla y el orden de TODO lo filtrado). */
+export function salesOrderPageReader(filters: SalesOrderFilters) {
+  const query = salesOrderListQuery(filters)
+  return (skip: number, take: number) => unwrap(api.GET('/api/v1/sales-orders', { params: { query: { ...query, skip, take } } }))
 }
 
 export function useSalesOrder(publicId: string | null) {

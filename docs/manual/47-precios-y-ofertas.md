@@ -4,18 +4,18 @@
 
 Lote 221 (2026-11-07) — pedido de vendedores, parte P1. El **precio de lo que se vende** deja de teclearse: sale de una **lista de precios** que arma el supervisor de ventas, y las **ofertas** son kits en promoción con foto y vigencia. Este capítulo es para el supervisor de ventas, la oficina y soporte. El pedido que usa estos precios se describe en [48 — Pedido guiado](48-pedido-guiado.md) y la orden en [18 — Órdenes de venta](18-ordenes-de-venta.md).
 
-La pantalla está en **Almacén → Productos e inventario → pestaña «Precios y ofertas»** (`/warehouse/products?tab=prices`). La pestaña solo se ve con `sales.view`.
+La pantalla está en **Contabilidad → Precios y ofertas** (`/money/prices`), justo antes de «Ventas». El ítem solo se ve con `sales.pricelist` (Admin de compañía y Supervisor de ventas; el vendedor con solo `sales.view` ya no la ve). Antes era una pestaña de Productos e inventario: el enlace viejo `/warehouse/products?tab=prices` lleva a la pantalla nueva. Arriba hay dos botones: **Nueva lista de precios** y **Nueva oferta** (escoge un producto propio y abre el editor del kit; si todavía no es kit, defina sus componentes y al guardar aparece la sección «Oferta (promoción)» con foto, vigencia y «Es promoción»).
 
 > Capturas del recorrido del lote 228 (2026-11-07, datos de demostración).
 
-![Pestaña «Precios y ofertas»: la oferta como tarjeta con su foto y la lista de listas](frontend/img/l228-precios-ofertas.png)
-![La misma pestaña en el tema oscuro](frontend/img/l228-precios-ofertas-oscuro.png)
+![Pantalla «Precios y ofertas»: la oferta como tarjeta con su foto y la lista de listas](frontend/img/l228-precios-ofertas.png)
+![La misma pantalla en el tema oscuro](frontend/img/l228-precios-ofertas-oscuro.png)
 
 ## 1. Quién puede y dónde
 
 - Módulo **Órdenes de venta (`SALES_ORDERS`)**. Con el módulo apagado todo el API responde 403.
 - Permisos:
-  - **`sales.view`** — ver las listas, las ofertas y el catálogo del pedido.
+  - **`sales.view`** — ver el catálogo del pedido guiado (la pantalla «Precios y ofertas» en sí exige `sales.pricelist`).
   - **`sales.pricelist`** — crear, publicar, cambiar y desactivar listas; poner o quitar la foto; marcar un kit como oferta y fijar su vigencia. Implica `sales.view`. Lo trae el rol **Supervisor de ventas** (`SalesSupervisor`) y el **Admin de compañía**.
   - **`sales.price`** — sigue siendo la excepción: escribir en una línea de la orden un precio distinto del que salió de la lista. Solo el Admin de compañía, o quien él designe.
 - Ver la foto de una oferta o de un renglón exige poder ver productos (`inventory.view`, que el rol Ventas trae); subirla exige `sales.pricelist`.
@@ -82,7 +82,7 @@ Reglas que conviene saber:
 
 ## 4. Ofertas (kits en promoción)
 
-**Qué hace.** Una **oferta** es un **kit** (capítulo [06 §8b](06-inventario-y-almacen.md#8b-kits-lote-68-2026-10-16)) marcado «Es promoción», con **foto** y **vigencia** opcionales. En la pestaña se ven como tarjetas con su foto (lo que verá el vendedor en el pedido guiado, arriba de su marca). Fuera de su vigencia **no se vende**: no se puede poner en una línea nueva ni en un borrador que se vuelve a guardar. Las órdenes ya hechas no cambian (la línea guarda su precio y la copia de sus componentes).
+**Qué hace.** Una **oferta** es un **kit** (capítulo [06 §8b](06-inventario-y-almacen.md#8b-kits-lote-68-2026-10-16)) marcado «Es promoción», con **foto** y **vigencia** opcionales. En la pantalla se ven como tarjetas con su foto (lo que verá el vendedor en el pedido guiado, arriba de su marca). Fuera de su vigencia **no se vende**: no se puede poner en una línea nueva ni en un borrador que se vuelve a guardar. Las órdenes ya hechas no cambian (la línea guarda su precio y la copia de sus componentes).
 
 **Quién puede.** Ver: `sales.view` o `inventory.view`. Marcar, fijar fechas y poner la foto: `sales.pricelist`.
 

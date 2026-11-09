@@ -390,13 +390,14 @@ export const appRoutes: readonly AppRoute[] = [
 
   // ===== Contabilidad (7C) =====
   { path: '/money/purchases', element: lazy(() => import('../features/accounting/PurchaseAccountingScreen')), perm: 'purchaseaccounting.view', module: ModuleKeys.Purchasing, nav: { group: 'money', key: 'purchaseAccounting', order: 20 } },   // Lote 181
-  { path: '/sales-orders', element: lazy(() => import('../features/sales/SalesOrdersScreen')), perm: 'sales.view', module: ModuleKeys.SalesOrders, nav: { group: 'money', key: 'salesOrders', order: 30 } },
+  { path: '/money/prices', element: lazy(() => import('../features/warehouse/PriceListsScreen')), perm: 'sales.pricelist', module: ModuleKeys.SalesOrders, nav: { group: 'money', key: 'priceLists', order: 30 } },   // Lote 221 (P1): antes pestaña de Productos
+  { path: '/sales-orders', element: lazy(() => import('../features/sales/SalesOrdersScreen')), perm: 'sales.view', module: ModuleKeys.SalesOrders, nav: { group: 'money', key: 'salesOrders', order: 40 } },
   { path: '/sales-orders/new-order', element: lazy(() => import('../features/sales/wizard/NewOrderScreen')), perm: 'sales.create', module: ModuleKeys.SalesOrders },   // Lote 223 (P3): pedido guiado; sin ítem de menú (botón «Nuevo pedido» de Órdenes de venta)
-  { path: '/money/dispatch', element: lazy(() => import('../features/accounting/DispatchAccountingScreen')), perm: 'dispatchaccounting.view', module: ModuleKeys.WmsLotSerial, nav: { group: 'money', key: 'dispatchAccounting', order: 40 } },   // Lote 181 (el costo de lo que sale del almacén: módulo de almacén)
-  { path: '/money/billing', element: lazy(() => import('../features/billing/BillingScreen')), perm: 'billing.view|billing.consignment.pay', module: ModuleKeys.Billing, nav: { group: 'money', key: 'billing', order: 50 } },   // Lote 73
-  { path: '/money/cod', element: lazy(() => import('../features/cod/CodScreen')), perm: 'cod.view', module: ModuleKeys.Cod, nav: { group: 'money', key: 'cod', order: 60 } },   // Lote 85
-  { path: '/money/driver-pay', element: lazy(() => import('../features/driverpay/DriverPayScreen')), perm: 'driverpay.view', module: ModuleKeys.LtlGround, nav: { group: 'money', key: 'driverPay', order: 70 } },   // Lote 96
-  { path: '/money/tax', element: lazy(() => import('../features/tax/TaxScreen')), perm: 'tax.view', module: ModuleKeys.Tax, nav: { group: 'money', key: 'tax', order: 80 } },   // Lote 56
+  { path: '/money/dispatch', element: lazy(() => import('../features/accounting/DispatchAccountingScreen')), perm: 'dispatchaccounting.view', module: ModuleKeys.WmsLotSerial, nav: { group: 'money', key: 'dispatchAccounting', order: 50 } },   // Lote 181 (el costo de lo que sale del almacén: módulo de almacén)
+  { path: '/money/billing', element: lazy(() => import('../features/billing/BillingScreen')), perm: 'billing.view|billing.consignment.pay', module: ModuleKeys.Billing, nav: { group: 'money', key: 'billing', order: 60 } },   // Lote 73
+  { path: '/money/cod', element: lazy(() => import('../features/cod/CodScreen')), perm: 'cod.view', module: ModuleKeys.Cod, nav: { group: 'money', key: 'cod', order: 70 } },   // Lote 85
+  { path: '/money/driver-pay', element: lazy(() => import('../features/driverpay/DriverPayScreen')), perm: 'driverpay.view', module: ModuleKeys.LtlGround, nav: { group: 'money', key: 'driverPay', order: 80 } },   // Lote 96
+  { path: '/money/tax', element: lazy(() => import('../features/tax/TaxScreen')), perm: 'tax.view', module: ModuleKeys.Tax, nav: { group: 'money', key: 'tax', order: 90 } },   // Lote 56
 
   // ===== Catálogo (F2, F4) =====
   { path: '/catalog/clients', element: lazy(() => import('../features/clients/ClientListScreen')), perm: 'clients.read', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'clients', order: 10 } },
