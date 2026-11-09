@@ -10555,6 +10555,8 @@
       "termNone": "Escoja el término"
     },
     "products": {
+      "priceOf": "Precio de {sku}",
+      "pricePlaceholder": "Precio",
       "title": "Productos",
       "brands": "Marcas",
       "noBrand": "Sin marca",

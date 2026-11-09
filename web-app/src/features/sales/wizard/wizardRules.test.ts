@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   addressLine,
+  cartLineAmount,
   cartQuantity,
   cartSummary,
   cartToLines,
@@ -15,6 +16,7 @@ import {
   removeFromCart,
   resumeStep,
   setCartPieces,
+  setCartPrice,
   setCartQuantity,
   stateFromDraft,
   stepCartQuantity,
@@ -84,6 +86,16 @@ describe('carrito', () => {
     expect(lines[0]).toEqual({ productPublicId: 'p-1', quantity: 3, components: undefined })
     expect(lines[1]).toEqual({ productPublicId: 'k-1', quantity: 1, components: [{ productPublicId: 'p-1', quantity: 6 }] })
     expect(lines.every((l) => !('unitPrice' in l))).toBe(true)
+  })
+
+  it('un producto sin precio lleva el que escribió quien tiene sales.price, y sin él no pasa el paso', () => {
+    const noPrice = { ...GLOVES, productPublicId: 'p-9', price: null, priceSource: 'NONE' }
+    let cart = setCartQuantity([], noPrice, '2')
+    expect(stepError('PRODUCTS', { ...emptyWizard(), cart })).toBe('noPrice')
+    cart = setCartPrice(cart, 'p-9', '4.5')
+    expect(cartToLines(cart)[0]).toMatchObject({ productPublicId: 'p-9', quantity: 2, unitPrice: 4.5 })
+    expect(cartLineAmount(cart[0])).toBe(9)
+    expect(stepError('PRODUCTS', { ...emptyWizard(), cart })).toBeNull()
   })
 
   it('tras guardar, el precio de cada línea es el del servidor', () => {

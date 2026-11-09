@@ -54,7 +54,7 @@
 .wz-qty:disabled { opacity: .6; }
 .wz-stepper .wz-qty { flex: 1 1 auto; width: auto; min-width: 0; }
 .wz-noprice { color: var(--warn); font-size: 13px; }
-.wz-prods { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line-2); border-radius: var(--radius-sm); max-height: 60vh; overflow-y: auto; }
+.wz-prods { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line-2); border-radius: var(--radius-sm); max-height: 50vh; overflow-y: auto; }
 .wz-prod { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--line-2); }
 .wz-prod:last-child { border-bottom: none; }
 .wz-prod.on { background: var(--flow-bg); }
@@ -62,7 +62,7 @@
 .wz-prod-main span { overflow-wrap: anywhere; }
 
 /* carrito fijo abajo y botones del paso */
-.wz-foot { position: sticky; bottom: 0; z-index: 5; display: flex; flex-direction: column; gap: 8px; padding: 10px 0 4px; background: var(--bg); border-top: 1px solid var(--line); }
+.wz-foot { position: static; z-index: 5; display: flex; flex-direction: column; gap: 8px; padding: 10px 0 4px; background: var(--bg); border-top: 1px solid var(--line); }
 .wz-foot .ferr { margin: 0; }
 .wz-nav { display: flex; justify-content: space-between; gap: 8px; }
 .wz-nav .btn { flex: 1 1 0; justify-content: center; max-width: 260px; }
@@ -114,3 +114,9 @@
   .wz-cart-line { grid-template-columns: minmax(0, 1fr) auto; }
   .wz-nav .btn { max-width: none; }
 }
+
+/* En pantallas angostas el carrito y los botones quedan fijos abajo; en escritorio van debajo del listado, sin taparlo. */
+@media (max-width: 720px) {
+  .wz-foot { position: sticky; bottom: 0; }
+}
+.wz-price { width: 96px; text-align: right; }

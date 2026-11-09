@@ -31,6 +31,8 @@ export interface CartLine {
   name: string
   /** Precio resuelto por el servidor para el cliente (null = sin precio: no se puede pedir). */
   price: number | null
+  /** Precio escrito a mano en un producto sin precio (solo con `sales.price`); viaja como unitPrice. */
+  typedPrice?: string
   priceSource: string
   isKit: boolean
   kitAdjustable: boolean
@@ -163,7 +165,20 @@ export function setCartPieces(cart: readonly CartLine[], productPublicId: string
 /** Importe de una línea (cantidad × precio, a 4 decimales como el servidor); sin precio o sin cantidad válida = 0. */
 export function cartLineAmount(l: CartLine): number {
   const q = parseNumber(l.quantity)
-  return q === null || l.price === null ? 0 : Math.round(q * l.price * 10_000) / 10_000
+  const price = effectivePrice(l)
+  return q === null || price === null ? 0 : Math.round(q * price * 10_000) / 10_000
+}
+
+/** El precio de la línea: el del servidor o, si el producto no tiene, el que escribió quien tiene `sales.price`. */
+export function effectivePrice(l: CartLine): number | null {
+  if (l.price !== null) return l.price
+  const typed = parseNumber(l.typedPrice ?? '')
+  return typed !== null && typed >= 0 ? typed : null
+}
+
+/** Escribe (o borra) el precio de un producto sin precio en el carrito. */
+export function setCartPrice(cart: readonly CartLine[], productPublicId: string, text: string): CartLine[] {
+  return cart.map((l) => (l.productPublicId === productPublicId ? { ...l, typedPrice: text } : l))
 }
 
 /** Lo que dice la barra del carrito: líneas, unidades y subtotal (sin IVU ni envío: esos los calcula el servidor). */
@@ -175,11 +190,16 @@ export function cartSummary(cart: readonly CartLine[]): { lines: number; units: 
 
 /** Las líneas para el servidor: producto, cantidad y (solo kits ajustados) sus piezas. El precio NO viaja: lo resuelve el servidor (el vendedor no teclea precios). */
 export function cartToLines(cart: readonly CartLine[]) {
-  return cart.map((l) => ({
-    productPublicId: l.productPublicId,
-    quantity: parseNumber(l.quantity) ?? undefined,
-    components: l.isKit && l.components ? l.components.map((c) => ({ productPublicId: c.productPublicId, quantity: parseNumber(c.quantity) ?? 0 })) : undefined,
-  }))
+  return cart.map((l) => {
+    // unitPrice solo si el producto no tiene precio y alguien con sales.price lo escribió; si no, el servidor resuelve el precio
+    const typed = l.price === null ? effectivePrice(l) : null
+    return {
+      productPublicId: l.productPublicId,
+      quantity: parseNumber(l.quantity) ?? undefined,
+      ...(typed !== null ? { unitPrice: typed } : {}),
+      components: l.isKit && l.components ? l.components.map((c) => ({ productPublicId: c.productPublicId, quantity: parseNumber(c.quantity) ?? 0 })) : undefined,
+    }
+  })
 }
 
 /** Tras guardar, el precio de cada línea es el que dejó el servidor (lista del cliente, general o producto). */
@@ -234,7 +254,7 @@ export function stepError(step: WizardStep, s: WizardState, ctx: StepContext = {
         if (decimalsOf(q) > 3) return 'quantityDecimals'
         if (l.isKit && !Number.isInteger(q)) return 'kitWhole'
         if (l.isKit && l.components?.some((c) => { const n = parseNumber(c.quantity); return n === null || n <= 0 })) return 'kitPiece'
-        if (l.price === null) return 'noPrice'
+        if (effectivePrice(l) === null) return 'noPrice'
       }
       return null
     case 'DELIVERY':

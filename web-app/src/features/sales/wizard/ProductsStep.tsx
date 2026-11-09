@@ -3,6 +3,7 @@
 // cliente o la general) con su casilla de cantidad: teclear una cantidad agrega la línea. El carrito (`CartBar`) va fijo abajo; tocarlo muestra las líneas para
 // corregir o quitar, y un kit muestra sus piezas (`KitLineBlock`). El vendedor no teclea precios.
 import { useMemo, useState } from 'react'
+import { useCan } from '../../../kernel/access'
 import { applyProblemDetails } from '../../../kernel/api/problem'
 import { useFormat } from '../../../kernel/format'
 import { useT } from '../../../kernel/i18n'
@@ -17,6 +18,7 @@ import {
   cartSummary,
   removeFromCart,
   setCartPieces,
+  setCartPrice,
   setCartQuantity,
   stepCartQuantity,
   type CartLine,
@@ -63,6 +65,7 @@ function OfferCard({ item, quantity, onStep, onSet }: { item: SalesCatalogItemDt
 export function ProductsStep({ state, onChange }: ProductsStepProps) {
   const t = useT()
   const catalog = useSalesCatalog(state.clientPublicId)
+  const canPrice = useCan('sales.price')
   const brands = useMemo(() => (catalog.data?.brands ?? []).filter((b) => (b.offers ?? []).length + (b.products ?? []).length > 0), [catalog.data])
   const [tab, setTab] = useState<string>('')
   const [q, setQ] = useState('')
@@ -115,14 +118,26 @@ export function ProductsStep({ state, onChange }: ProductsStepProps) {
                       <span>{p.name}</span>
                       {p.isKit && <Chip tone="neutral">{t('sales.kit.badge')}</Chip>}
                     </div>
-                    <PriceText item={p} />
+                    {p.price == null && canPrice ? (
+                      <input
+                        aria-label={t('salesWizard.products.priceOf', { sku: p.sku ?? '' })}
+                        inputMode="decimal"
+                        className="wz-qty wz-price"
+                        placeholder={t('salesWizard.products.pricePlaceholder')}
+                        value={state.cart.find((l) => l.productPublicId === p.productPublicId)?.typedPrice ?? ''}
+                        disabled={!qty}
+                        onChange={(e) => onChange((s) => ({ ...s, cart: setCartPrice(s.cart, p.productPublicId ?? '', e.target.value) }))}
+                      />
+                    ) : (
+                      <PriceText item={p} />
+                    )}
                     <input
                       aria-label={t('salesWizard.products.qtyOf', { sku: p.sku ?? '' })}
                       inputMode="decimal"
                       className="wz-qty"
                       placeholder="0"
                       value={qty}
-                      disabled={p.price == null}
+                      disabled={p.price == null && !canPrice}
                       onChange={(e) => set(p, e.target.value)}
                     />
                   </li>
