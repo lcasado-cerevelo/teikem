@@ -84,3 +84,16 @@ Hoy el producto solo guarda peso (kg) y volumen (m³); casi nadie piensa en metr
 - Botón «Nueva oferta» actual (escoge un producto y lo convierte en kit): se reemplaza por la pantalla de oferta.
 - Resolución de precios y catálogo del pedido; el error 409 por cruce de listas se revisa.
 - Manual y FAQ (capítulos 47 y 48, y lo que cite «Es promoción»); scripts de Solutions (OFERTA1 pasa a ser una oferta).
+
+## 8. Respuestas de Luis (2026-11-09, tercera ronda)
+- **Sustitución — precio:** se compara el **precio de venta** del producto y debe ser **exactamente igual**.
+- **Sustitución — quién:** el vendedor, en la pantalla del pedido. **Sin permiso aparte**: lo decide la definición del kit.
+- **Sustitución — qué piezas:** por regla **todo es sustituible**; se marca **lo no sustituible** (no al revés). Luis dijo que la marca
+  se pone «cuando se crea la lista de precios». *Por confirmar dónde va exactamente la marca: en el renglón de la lista de precios, en la
+  pieza del kit, o en el producto.*
+- **Ofertas que chocan:** sigue ganando el precio más bajo, pero **con aviso**: en el pedido, si un producto está en dos ofertas a la vez
+  o la oferta sale más cara que la lista general; y **al crear la oferta**, se revisa que no choque con otra oferta parecida más barata.
+- **Peso:** igual que las dimensiones: la unidad se escoge al escribirlo y se sugiere por la **región** de la compañía (la región define
+  métrico o inglés; Puerto Rico es de habla hispana y usa el sistema inglés).
+- **«Ajustable al pedir»:** no se sabe si se usa hoy; Luis: «vamos a permitir lo que se use así». *Por confirmar: lo entiendo como que
+  NO se quita (cambia lo anotado en §5); lo nuevo es la sustitución.*
