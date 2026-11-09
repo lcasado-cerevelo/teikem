@@ -288,7 +288,7 @@ describe('NewOrderScreen — 360 px', () => {
     const narrow = css.slice(css.indexOf('@media (max-width: 480px)'))
     expect(narrow).toMatch(/\.wz-lab\s*\{\s*display:\s*none/)
     expect(narrow).toMatch(/\.wz-progress \.on \.wz-lab\s*\{\s*display:\s*inline/)
-    expect(narrow).toMatch(/\.wz-prod\s*\{\s*grid-template-columns:\s*minmax\(0, 1fr\) auto/)
+    expect(narrow).toMatch(/\.wz-prod\s*\{\s*grid-template-columns:\s*44px minmax\(0, 1fr\)/)
     expect(narrow).toMatch(/\.wz-cart-line\s*\{\s*grid-template-columns:\s*minmax\(0, 1fr\) auto/)
   })
 

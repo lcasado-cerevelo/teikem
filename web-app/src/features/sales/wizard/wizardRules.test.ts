@@ -34,7 +34,7 @@ import {
 
 const GLOVES: CatalogItem = { productPublicId: 'p-1', sku: '52800', name: 'Guantes', price: 6.25, priceSource: 'CLIENT_LIST' }
 const BOX: CatalogItem = { productPublicId: 'p-2', sku: '070120', name: 'Caja', price: 3.5, priceSource: 'GENERAL_LIST' }
-const KIT: CatalogItem = { productPublicId: 'k-1', sku: 'OFERTA1', name: 'Oferta 1', price: 41.94, isKit: true, kitAdjustable: true, isPromotion: true }
+const KIT: CatalogItem = { productPublicId: 'k-1', sku: 'OFERTA1', name: 'Oferta 1', price: 41.94, priceSource: 'GENERAL_LIST', isKit: true, kitAdjustable: true, isPromotion: true }
 const NOPRICE: CatalogItem = { productPublicId: 'p-3', sku: 'X', name: 'Sin precio', price: null }
 
 const NO_SIG = { requiresSignature: false, hasSignature: false }
@@ -95,6 +95,10 @@ describe('carrito', () => {
     cart = setCartPrice(cart, 'p-9', '4.5')
     expect(cartToLines(cart)[0]).toMatchObject({ productPublicId: 'p-9', quantity: 2, unitPrice: 4.5 })
     expect(cartLineAmount(cart[0])).toBe(9)
+    // tras guardar el borrador el precio queda en la línea (lo trae el servidor) y sigue viajando en los guardados siguientes (pasos 3 y 4)
+    const saved = withServerPrices(cart, [{ productPublicId: 'p-9', unitPrice: 4.5 }])
+    expect(saved[0].price).toBe(4.5)
+    expect(cartToLines(saved)[0]).toMatchObject({ productPublicId: 'p-9', unitPrice: 4.5 })
     expect(stepError('PRODUCTS', { ...emptyWizard(), cart })).toBeNull()
   })
 

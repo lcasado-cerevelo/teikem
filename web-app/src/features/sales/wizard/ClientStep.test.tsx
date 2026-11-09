@@ -75,7 +75,7 @@ describe('ClientStep — paso 1 del pedido guiado', () => {
     expect(within(list).getByRole('button', { name: /Farmacia Nueva/ })).toHaveTextContent('Prospecto: espera aprobación')
     await user.click(within(list).getByRole('button', { name: /Farmacia Central/ }))
     expect(onPick).toHaveBeenCalledWith('c-1', 'C0001 · Farmacia Central')
-    expect(mock.requests.find((r) => r.path === '/api/v1/clients')?.url.searchParams.get('search')).toBe('farm')
+    await waitFor(() => expect(mock.requests.filter((r) => r.path === '/api/v1/clients').map((r) => r.url.searchParams.get('search'))).toContain('farm'))
   })
 
   it('sin coincidencias lo dice; sin clients.create_basic no ofrece «Cliente nuevo»', async () => {

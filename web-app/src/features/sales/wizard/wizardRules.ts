@@ -191,8 +191,9 @@ export function cartSummary(cart: readonly CartLine[]): { lines: number; units: 
 /** Las líneas para el servidor: producto, cantidad y (solo kits ajustados) sus piezas. El precio NO viaja: lo resuelve el servidor (el vendedor no teclea precios). */
 export function cartToLines(cart: readonly CartLine[]) {
   return cart.map((l) => {
-    // unitPrice solo si el producto no tiene precio y alguien con sales.price lo escribió; si no, el servidor resuelve el precio
-    const typed = l.price === null ? effectivePrice(l) : null
+    // unitPrice solo si el precio NO sale de una lista: producto sin precio (escrito por quien tiene sales.price) o línea ya guardada en la orden
+    // (tras guardar, el precio queda en la línea y hay que seguir mandándolo, si no el servidor lo vuelve a resolver y no lo encuentra); si no, el servidor lo resuelve
+    const typed = l.priceSource === 'NONE' || l.priceSource === 'ORDER' ? effectivePrice(l) : null
     return {
       productPublicId: l.productPublicId,
       quantity: parseNumber(l.quantity) ?? undefined,

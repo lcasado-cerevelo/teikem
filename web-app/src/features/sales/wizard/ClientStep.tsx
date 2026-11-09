@@ -1,6 +1,6 @@
 // Lote 223 (P3) — paso 1 del pedido guiado: el CLIENTE (buscador por número o nombre, o «Cliente nuevo» con el alta mínima), la casilla Urgente con su nota y la
 // forma de pago del pedido, prellenada con la del cliente y editable (si cambia, queda la marca «cambió»). El almacén solo se pide si la compañía tiene más de uno.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Can } from '../../../kernel/access'
 import { applyProblemDetails } from '../../../kernel/api/problem'
 import { useLookups } from '../../../kernel/catalogs'
@@ -42,7 +42,13 @@ export function ClientStep({ state, onChange, onPickClient, client, clientLoadin
   const [q, setQ] = useState('')
   const [creating, setCreating] = useState(false)
   const search = useDebounced(q.trim())
-  const results = useClientSearch(search)
+  // la lista de clientes se despliega al tomar el foco el buscador (aunque no se escriba nada) y se cierra al perderlo
+  const [open, setOpen] = useState(false)
+  const results = useClientSearch(search, open)
+  const searchRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (!state.clientPublicId) searchRef.current?.focus()
+  }, [state.clientPublicId])
   const { data: methods = [] } = useLookups('SalesPaymentMethod')
   const { data: termOptions = [] } = useLookups('PaymentTerm', { includeDisabled: true })
   const isProspect = (client?.status ?? '').toUpperCase() === 'PROSPECT'
@@ -67,14 +73,14 @@ export function ClientStep({ state, onChange, onPickClient, client, clientLoadin
         <div className="wz-search">
           <div className="f">
             <label htmlFor="wz-client-q">{t('salesWizard.client.search')}</label>
-            <input id="wz-client-q" type="search" value={q} autoComplete="off" placeholder={t('salesWizard.client.searchPlaceholder')} onChange={(e) => setQ(e.target.value)} />
+            <input id="wz-client-q" ref={searchRef} type="search" value={q} autoComplete="off" placeholder={t('salesWizard.client.searchPlaceholder')} onChange={(e) => setQ(e.target.value)} onFocus={() => setOpen(true)} onBlur={() => setOpen(false)} />
             <p className="help">{t('salesWizard.client.searchHelp')}</p>
           </div>
           {results.isError && <p className="ferr" role="alert">{applyProblemDetails(results.error).title}</p>}
           {search !== '' && results.isPending && <Spinner block />}
           {search !== '' && results.data && rows.length === 0 && <p className="help" role="status">{t('salesWizard.client.none')}</p>}
-          {rows.length > 0 && (
-            <ul className="wz-results" aria-label={t('salesWizard.client.results')}>
+          {open && rows.length > 0 && (
+            <ul className="wz-results" aria-label={t('salesWizard.client.results')} onMouseDown={(e) => e.preventDefault()}>
               {rows.map((c) => (
                 <li key={c.publicId}>
                   <button type="button" className="unrow" onClick={() => onPickClient(c.publicId ?? null, `${c.code} · ${c.name}`)}>

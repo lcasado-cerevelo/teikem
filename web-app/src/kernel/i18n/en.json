@@ -10571,6 +10571,8 @@
       "termNone": "Choose the term"
     },
     "products": {
+      "qtyPlaceholder": "Quantity",
+      "allBrands": "All brands",
       "photoOf": "View the photo of {name}",
       "priceOf": "Price of {sku}",
       "pricePlaceholder": "Price",
