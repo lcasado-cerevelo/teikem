@@ -128,8 +128,11 @@ public class SalesOrderLineComponent : ITenantScoped
     public int SalesOrderLineComponentId { get; set; }
     public int TenantId { get; set; }
     public int SalesOrderLineId { get; set; }
+    /// <summary>La pieza REAL que lleva la línea (la que se reserva, se despacha, se costea y se factura). Si se sustituyó, es el sustituto.</summary>
     public int ComponentProductId { get; set; }
     public decimal Quantity { get; set; }
+    /// <summary>Lote 230: la pieza original del kit que esta sustituye (misma categoría exacta, mismo precio de venta, misma cantidad). NULL = no es sustitución.</summary>
+    public int? SubstitutedProductId { get; set; }
 }
 
 /// <summary>Qué saldo (almacén, posición, lote) reservó una línea y cuánto: se libera EXACTAMENTE esto al cancelar, modificar o despachar.</summary>

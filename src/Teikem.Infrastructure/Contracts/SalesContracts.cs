@@ -6,6 +6,10 @@ namespace Teikem.Infrastructure.Contracts;
 
 /// <summary>Una línea a vender. Con UnitPrice vacío se usa el precio de venta del producto; escribir otro exige sales.price.</summary>
 /// <summary>Lote 69: Components solo para un kit «ajustable al pedir»: las piezas de ESTA línea (si no vienen, las del catálogo).</summary>
+/// <remarks>
+/// Lote 230: también en un kit fijo, para SUSTITUIR piezas: se mandan todas las piezas del kit y la que cambia lleva substitutesProductPublicId = la pieza original
+/// (misma categoría exacta, mismo precio de venta, misma cantidad; la pieza no debe estar marcada «no sustituible»). El precio de la línea no cambia.
+/// </remarks>
 public sealed record SalesOrderLineRequest(Guid? ProductPublicId = null, decimal? Quantity = null, decimal? UnitPrice = null, int? LotId = null,
     IReadOnlyList<KitComponentRequest>? Components = null);
 
@@ -29,7 +33,9 @@ public sealed record SalesOrderLineDto(int Id, int LineNo, Guid ProductPublicId,
     bool IsKit = false, IReadOnlyList<SalesOrderLineComponentDto>? Components = null);
 
 /// <summary>Lote 69: un componente de la línea de un kit. Las cantidades son de piezas del componente (cantidad por kit × kits): pedido, reservado, en backorder y despachado.</summary>
-public sealed record SalesOrderLineComponentDto(Guid ProductPublicId, string Sku, string Name, decimal QtyPerKit, decimal Needed, decimal Reserved, decimal Backordered, decimal Shipped);
+/// <remarks>Lote 230: el producto es la pieza REAL; si sustituye a una pieza del kit, SubstitutesProductPublicId / SubstitutesSku / SubstitutesName dicen cuál (para mostrar «en lugar de»).</remarks>
+public sealed record SalesOrderLineComponentDto(Guid ProductPublicId, string Sku, string Name, decimal QtyPerKit, decimal Needed, decimal Reserved, decimal Backordered, decimal Shipped,
+    Guid? SubstitutesProductPublicId = null, string? SubstitutesSku = null, string? SubstitutesName = null);
 
 public sealed record SalesOrderListItemDto(Guid PublicId, string Number, string Status, string StatusLabel, string StatusColor, Guid ClientPublicId, string ClientName,
     Guid WarehousePublicId, string WarehouseName, DateOnly RequestedDate, DateOnly? RequiredDate, decimal Subtotal, decimal TaxAmount, decimal Total,
@@ -41,7 +47,7 @@ public sealed record SalesOrderDto(Guid PublicId, string Number, string Status, 
     Guid? ConsigneePublicId, string? ConsigneeName, Guid WarehousePublicId, string WarehouseName, DateOnly RequestedDate, DateOnly? RequiredDate, string? Notes,
     decimal Subtotal, decimal TaxAmount, decimal Total, bool HasBackorder, string? RequestedByName, DateTime? RequestedAtUtc, DateTime CreatedAtUtc,
     IReadOnlyList<SalesOrderLineDto> Lines, IReadOnlyList<SalesDispatchInfoDto>? Dispatches = null, int? AssignedToUserId = null, string? AssignedToName = null,
-    SalesOrderTermsDto? Terms = null);
+    SalesOrderTermsDto? Terms = null, IReadOnlyList<SalesLinePriceDto>? LinePrices = null);
 
 /// <summary>
 /// Lote 222 — los datos nuevos de la orden (pedido de vendedores). DeliveryMode = la entrega efectiva (DELIVERY | PICKUP) y DeliveryModeSet = si la orden la dice (o se dedujo

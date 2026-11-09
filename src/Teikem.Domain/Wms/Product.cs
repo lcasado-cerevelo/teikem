@@ -41,6 +41,16 @@ public class Product : ITenantScoped, ISoftDeletable
     public int TrackingTypeLookupId { get; set; }
     public decimal? WeightKg { get; set; }
     public decimal? VolumeM3 { get; set; }
+    /// <summary>
+    /// Lote 230: largo, ancho y alto de la unidad base, tal como se escribieron en <see cref="DimensionUnit"/> (IN, CM, FT, M). Con las tres, VolumeM3 se calcula de
+    /// ellas (ProductDimensionRules). WeightKg y VolumeM3 siguen siendo la verdad interna en kg y m³.
+    /// </summary>
+    public decimal? Length { get; set; }
+    public decimal? Width { get; set; }
+    public decimal? Height { get; set; }
+    public string? DimensionUnit { get; set; }
+    /// <summary>Lote 230: unidad en que se escribió el peso (LB o KG) para mostrarlo igual; el peso se guarda en kg (WeightKg).</summary>
+    public string? WeightUnit { get; set; }
     public string? Barcode { get; set; }
     public decimal? PurchaseCost { get; set; }
     public decimal? SalePrice { get; set; }
@@ -70,6 +80,10 @@ public class Product : ITenantScoped, ISoftDeletable
     public DateOnly? PromoTo { get; set; }
     /// <summary>Lote 221: la foto de la oferta (StoredFile del producto, una imagen).</summary>
     public int? PromoImageFileId { get; set; }
+    /// <summary>Lote 229: la foto del producto (StoredFile del producto, JPG/PNG/WEBP). Las ofertas y listas la usan por omisión (ProductImageRules.Resolve).</summary>
+    public int? ImageFileId { get; set; }
+    /// <summary>Lote 229: el kit fue creado para esta oferta (Offer): solo se vende mientras ella esté publicada y vigente (OfferRules.KitSellable). NULL = producto normal.</summary>
+    public int? OfferId { get; set; }
     /// <summary>Lote 225: cuándo (UTC) quedó el producto como ya mandado a QuickBooks (al marcar o confirmar la primera factura que lo lleva). NULL = nuevo para QuickBooks. Un kit no se manda: van sus componentes.</summary>
     public DateTime? QuickBooksSentAt { get; set; }
     public bool IsActive { get; set; } = true;

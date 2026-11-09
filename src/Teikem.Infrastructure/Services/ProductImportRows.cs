@@ -115,6 +115,18 @@ public sealed class ProductImportRows(TeikemDbContext db, ProductService product
         var minPick = Num(ProductImportFields.MinPickQty);
         var maxPick = Num(ProductImportFields.MaxPickQty);
         var packQty = Num(ProductImportFields.PackQty);
+        // Lote 230: dimensiones y peso con su unidad (la misma regla del alta y la edición: con las tres medidas el volumen se calcula)
+        var length = Num(ProductImportFields.Length);
+        var width = Num(ProductImportFields.Width);
+        var height = Num(ProductImportFields.Height);
+        var weightInUnit = Num(ProductImportFields.Weight);
+        foreach (var (field, message) in ProductDimensionRules.ValidateDimensions(length, width, height)) errors[field] = message;
+        var (dimensionUnit, dimensionUnitError) = ProductDimensionRules.NormalizeDimensionUnit(Get(ProductImportFields.DimensionUnit));
+        if (dimensionUnitError is not null) errors[ProductImportFields.DimensionUnit] = dimensionUnitError;
+        var (weightUnit, weightUnitError) = ProductDimensionRules.NormalizeWeightUnit(Get(ProductImportFields.WeightUnit));
+        if (weightUnitError is not null) errors[ProductImportFields.WeightUnit] = weightUnitError;
+        else if (!errors.ContainsKey(ProductImportFields.Weight) && ProductDimensionRules.ValidateWeight(weightInUnit, weightUnit ?? WeightUnits.Kilogram) is string weightError)
+            errors[ProductImportFields.Weight] = weightError;
         if (!errors.ContainsKey(ProductImportFields.PurchaseCost) && ProductRules.Money(cost, "costo") is string costError) errors[ProductImportFields.PurchaseCost] = costError;
         if (!errors.ContainsKey(ProductImportFields.SalePrice) && ProductRules.Money(price, "precio") is string priceError) errors[ProductImportFields.SalePrice] = priceError;
         if (!errors.ContainsKey(ProductImportFields.WeightKg) && !errors.ContainsKey(ProductImportFields.VolumeM3))
@@ -151,12 +163,14 @@ public sealed class ProductImportRows(TeikemDbContext db, ProductService product
         {
             var patch = new ProductPatchRequest(Name: name, BaseUom: uom.Length > 0 ? uom : null, TrackingType: tracking.Length > 0 ? tracking : null, WeightKg: weight, VolumeM3: volume,
                 Barcode: barcode, PurchaseCost: cost, SalePrice: price, MinQty: minQty, MinPickQty: minPick, MaxPickQty: maxPick, Brand: brand, Model: model,
-                PackUom: packUom.Length > 0 ? packUom : null, PackQty: packQty, RotationMethod: rotation, CategoryId: categoryId);
+                PackUom: packUom.Length > 0 ? packUom : null, PackQty: packQty, RotationMethod: rotation, CategoryId: categoryId,
+                Length: length, Width: width, Height: height, DimensionUnit: dimensionUnit, Weight: weightInUnit, WeightUnit: weightUnit);
             return new ImportRowCheck(errors, key, name ?? Get(ProductImportFields.Name), new UpdatePayload(productId, patch), IsUpdate: true);
         }
 
         var request = new ProductCreateRequest(sku, name, ownerPublicId, categoryId, uom.Length > 0 ? uom : null, tracking.Length > 0 ? tracking : null, weight, volume, barcode, cost, price,
-            null, null, minQty, minPick, maxPick, brand, model, packUom.Length > 0 ? packUom : null, packQty, rotation);
+            null, null, minQty, minPick, maxPick, brand, model, packUom.Length > 0 ? packUom : null, packQty, rotation,
+            length, width, height, dimensionUnit, weightInUnit, weightUnit);
         return new ImportRowCheck(errors, key, name ?? Get(ProductImportFields.Name), request);
     }
 

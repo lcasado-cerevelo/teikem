@@ -536,6 +536,9 @@ public static class DependencyInjection
         services.AddScoped<KitService>();   // Lote 68
         services.AddScoped<PriceListService>();   // Lote 221: listas de precios
         services.AddScoped<SalesCatalogService>();   // Lote 221: ofertas y catálogo del pedido
+        services.AddScoped<OfferService>();   // Lote 229: ofertas (entidad aparte) y kits de oferta
+        services.AddScoped<ProductImageService>();   // Lote 229: foto del producto
+        services.AddScoped<IOwnedEntityResolver, OfferOwnedEntityResolver>();   // Lote 229: la oferta como dueña de sus fotos
         services.AddScoped<SalesDraftService>();   // Lote 223: firma de quien autoriza y «Enviar pedido» con reautenticación
         services.AddScoped<IOwnedEntityResolver, SalesOrderOwnedEntityResolver>();   // Lote 223: la orden de venta como dueña de la firma
         services.AddScoped<BillingService>();   // Lote 72 (P5)

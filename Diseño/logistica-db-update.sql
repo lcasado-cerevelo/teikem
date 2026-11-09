@@ -7481,3 +7481,130 @@ BEGIN
     INSERT INTO dbo.AppliedMigration (Code) VALUES ('L227_INTERCOMPANY');
 END
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-11-09 — Lote 230: dimensiones y peso del producto con su unidad, y sustitución de piezas de un kit (docs/ofertas-kits-fotos-diseno.md §6, §6b, §8, §9).
+   - dbo.Product: Length, Width, Height (DECIMAL(12,4), >= 0, NULL) de la unidad base, tal como se escribieron, en DimensionUnit ('IN','CM','FT','M');
+     WeightUnit ('LB','KG') = la unidad en que se escribió el peso. WeightKg y VolumeM3 NO cambian: siguen siendo la verdad interna en kg y m³ (con las tres
+     medidas el servicio calcula VolumeM3).
+   - dbo.ProductKitComponent.NotSubstitutable (BIT, 0 = sustituible): la pieza no se puede cambiar en una orden de venta.
+   - dbo.SalesOrderLineComponent.SubstitutedProductId (NULL): la pieza original del kit que sustituye la pieza real (ComponentProductId) de la línea.
+   Solo agrega columnas y restricciones; no toca datos.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Product', 'Length') IS NULL ALTER TABLE dbo.Product ADD Length DECIMAL(12,4) NULL;
+GO
+IF COL_LENGTH('dbo.Product', 'Width') IS NULL ALTER TABLE dbo.Product ADD Width DECIMAL(12,4) NULL;
+GO
+IF COL_LENGTH('dbo.Product', 'Height') IS NULL ALTER TABLE dbo.Product ADD Height DECIMAL(12,4) NULL;
+GO
+IF COL_LENGTH('dbo.Product', 'DimensionUnit') IS NULL ALTER TABLE dbo.Product ADD DimensionUnit VARCHAR(2) NULL;
+GO
+IF COL_LENGTH('dbo.Product', 'WeightUnit') IS NULL ALTER TABLE dbo.Product ADD WeightUnit VARCHAR(2) NULL;
+GO
+IF OBJECT_ID('dbo.CK_Product_Dimensions', 'C') IS NULL
+    ALTER TABLE dbo.Product ADD CONSTRAINT CK_Product_Dimensions CHECK ((Length IS NULL OR Length >= 0) AND (Width IS NULL OR Width >= 0) AND (Height IS NULL OR Height >= 0));
+GO
+IF OBJECT_ID('dbo.CK_Product_DimensionUnit', 'C') IS NULL
+    ALTER TABLE dbo.Product ADD CONSTRAINT CK_Product_DimensionUnit CHECK (DimensionUnit IS NULL OR DimensionUnit IN ('IN', 'CM', 'FT', 'M'));
+GO
+IF OBJECT_ID('dbo.CK_Product_WeightUnit', 'C') IS NULL
+    ALTER TABLE dbo.Product ADD CONSTRAINT CK_Product_WeightUnit CHECK (WeightUnit IS NULL OR WeightUnit IN ('LB', 'KG'));
+GO
+IF COL_LENGTH('dbo.ProductKitComponent', 'NotSubstitutable') IS NULL
+    ALTER TABLE dbo.ProductKitComponent ADD NotSubstitutable BIT NOT NULL CONSTRAINT DF_ProductKitComponent_NotSubstitutable DEFAULT 0;
+GO
+IF COL_LENGTH('dbo.SalesOrderLineComponent', 'SubstitutedProductId') IS NULL
+    ALTER TABLE dbo.SalesOrderLineComponent ADD SubstitutedProductId INT NULL CONSTRAINT FK_SalesOrderLineComponent_Substituted REFERENCES dbo.Product(ProductId);
+GO
+
+/* ----------------------------------------------------------------------------
+   2026-11-09 — Lote 229: ofertas como entidad aparte, kits de oferta y foto del producto (docs/ofertas-kits-fotos-diseno.md §1–§4, §7, §8).
+   - dbo.Offer (nueva): oferta (nombre, foto ImageFileId, vigencia desde/hasta —hasta NULL = no vence—, publicada o borrador, aplica a todos o a clientes escogidos,
+     notas). Nunca se borra: IsActive = 0.
+   - dbo.OfferItem (nueva): renglón (producto o kit → precio de oferta, foto opcional). Quitar = IsActive = 0 (único por oferta y producto entre los activos).
+   - dbo.OfferClient (nueva): clientes de una oferta que no es para todos. Quitar = IsActive = 0.
+   - dbo.Product: ImageFileId (la foto del producto, StoredFile) y OfferId (el kit fue creado para esa oferta: solo se vende mientras ella esté publicada y vigente).
+   - Datos: la foto de promoción del lote 221 (PromoImageFileId) se copia a la foto del producto donde ésta falte. Las columnas IsPromotion/PromoFrom/PromoTo/
+     PromoImageFileId se quedan (ya no se leen en ventas).
+   - EntityType OFFER (bitácora y dueño de las fotos de la oferta). Sin permisos nuevos: ver = sales.view, cambiar = sales.pricelist. Solo AGREGA.
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID(N'dbo.Offer', N'U') IS NULL CREATE TABLE dbo.Offer (
+    OfferId       INT IDENTITY(1,1) CONSTRAINT PK_Offer PRIMARY KEY,
+    PublicId      UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_Offer_PublicId DEFAULT NEWID(),
+    TenantId      INT NOT NULL CONSTRAINT FK_Offer_Tenant REFERENCES dbo.Tenant(TenantId),
+    Name          NVARCHAR(120) NOT NULL,
+    ValidFrom     DATE NOT NULL,
+    ValidTo       DATE NULL,
+    IsPublished   BIT NOT NULL CONSTRAINT DF_Offer_IsPublished DEFAULT 0,
+    AppliesToAll  BIT NOT NULL CONSTRAINT DF_Offer_AppliesToAll DEFAULT 1,
+    ImageFileId   INT NULL CONSTRAINT FK_Offer_Image REFERENCES dbo.StoredFile(StoredFileId),
+    Notes         NVARCHAR(500) NULL,
+    IsActive      BIT NOT NULL CONSTRAINT DF_Offer_IsActive DEFAULT 1,
+    CreatedAtUtc  DATETIME2 NOT NULL CONSTRAINT DF_Offer_Created DEFAULT SYSUTCDATETIME(),
+    CreatedBy     INT NULL,
+    UpdatedAtUtc  DATETIME2 NULL,
+    UpdatedBy     INT NULL,
+    RowVersion    ROWVERSION,
+    CONSTRAINT CK_Offer_Dates CHECK (ValidTo IS NULL OR ValidTo >= ValidFrom)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_Offer_PublicId' AND object_id = OBJECT_ID('dbo.Offer'))
+    CREATE UNIQUE INDEX UQ_Offer_PublicId ON dbo.Offer(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Offer_Tenant' AND object_id = OBJECT_ID('dbo.Offer'))
+    CREATE INDEX IX_Offer_Tenant ON dbo.Offer(TenantId, IsActive, IsPublished);
+GO
+IF OBJECT_ID(N'dbo.OfferItem', N'U') IS NULL CREATE TABLE dbo.OfferItem (
+    OfferItemId   INT IDENTITY(1,1) CONSTRAINT PK_OfferItem PRIMARY KEY,
+    TenantId      INT NOT NULL CONSTRAINT FK_OfferItem_Tenant REFERENCES dbo.Tenant(TenantId),
+    OfferId       INT NOT NULL CONSTRAINT FK_OfferItem_Offer REFERENCES dbo.Offer(OfferId),
+    ProductId     INT NOT NULL CONSTRAINT FK_OfferItem_Product REFERENCES dbo.Product(ProductId),
+    Price         DECIMAL(18,4) NOT NULL,
+    ImageFileId   INT NULL CONSTRAINT FK_OfferItem_Image REFERENCES dbo.StoredFile(StoredFileId),
+    IsActive      BIT NOT NULL CONSTRAINT DF_OfferItem_IsActive DEFAULT 1,
+    CreatedAtUtc  DATETIME2 NOT NULL CONSTRAINT DF_OfferItem_Created DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT CK_OfferItem_Price CHECK (Price >= 0)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_OfferItem_Product' AND object_id = OBJECT_ID('dbo.OfferItem'))
+    CREATE UNIQUE INDEX UX_OfferItem_Product ON dbo.OfferItem(OfferId, ProductId) WHERE IsActive = 1;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_OfferItem_Product' AND object_id = OBJECT_ID('dbo.OfferItem'))
+    CREATE INDEX IX_OfferItem_Product ON dbo.OfferItem(TenantId, ProductId);
+GO
+IF OBJECT_ID(N'dbo.OfferClient', N'U') IS NULL CREATE TABLE dbo.OfferClient (
+    OfferClientId INT IDENTITY(1,1) CONSTRAINT PK_OfferClient PRIMARY KEY,
+    TenantId      INT NOT NULL CONSTRAINT FK_OfferClient_Tenant REFERENCES dbo.Tenant(TenantId),
+    OfferId       INT NOT NULL CONSTRAINT FK_OfferClient_Offer REFERENCES dbo.Offer(OfferId),
+    ClientId      INT NOT NULL CONSTRAINT FK_OfferClient_Client REFERENCES dbo.Client(ClientId),
+    IsActive      BIT NOT NULL CONSTRAINT DF_OfferClient_IsActive DEFAULT 1,
+    CreatedAtUtc  DATETIME2 NOT NULL CONSTRAINT DF_OfferClient_Created DEFAULT SYSUTCDATETIME()
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_OfferClient_Client' AND object_id = OBJECT_ID('dbo.OfferClient'))
+    CREATE UNIQUE INDEX UX_OfferClient_Client ON dbo.OfferClient(OfferId, ClientId) WHERE IsActive = 1;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_OfferClient_Client' AND object_id = OBJECT_ID('dbo.OfferClient'))
+    CREATE INDEX IX_OfferClient_Client ON dbo.OfferClient(TenantId, ClientId);
+GO
+IF COL_LENGTH(N'dbo.Product', N'ImageFileId') IS NULL
+    ALTER TABLE dbo.Product ADD ImageFileId INT NULL CONSTRAINT FK_Product_Image REFERENCES dbo.StoredFile(StoredFileId);
+GO
+IF COL_LENGTH(N'dbo.Product', N'OfferId') IS NULL
+    ALTER TABLE dbo.Product ADD OfferId INT NULL CONSTRAINT FK_Product_Offer REFERENCES dbo.Offer(OfferId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Product_Offer' AND object_id = OBJECT_ID('dbo.Product'))
+    CREATE INDEX IX_Product_Offer ON dbo.Product(OfferId) WHERE OfferId IS NOT NULL;
+GO
+-- la foto de promoción (lote 221) pasa a ser la foto del producto donde éste no tenga una (idempotente: solo llena las vacías)
+UPDATE dbo.Product SET ImageFileId = PromoImageFileId WHERE ImageFileId IS NULL AND PromoImageFileId IS NOT NULL;
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'OFFER', N'{"es":"Oferta","en":"Offer"}', 188)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO

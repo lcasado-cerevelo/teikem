@@ -67,6 +67,7 @@ public sealed class ProductExportRows(TeikemDbContext db) : IExportEntityRows
                           {
                               p.Sku, p.Name, OwnerCode = owner != null ? owner.Code : null, BaseUom = u.InternalCode, Tracking = t.InternalCode, p.WeightKg, p.VolumeM3, p.Barcode, p.PurchaseCost, p.SalePrice,
                               p.MinQty, p.MinPickQty, p.MaxPickQty, p.Brand, p.Model, PackUom = pack != null ? pack.InternalCode : null, p.PackQty, p.RotationMethod, p.ProductCategoryId,
+                              p.Length, p.Width, p.Height, p.DimensionUnit, p.WeightUnit,   // Lote 230
                           }).ToListAsync(ct);
         var cats = await db.Set<ProductCategory>().AsNoTracking().Select(c => new { c.ProductCategoryId, c.ParentId, c.Name }).ToListAsync(ct);
         var parents = cats.ToDictionary(c => c.ProductCategoryId, c => c.ParentId);
@@ -79,6 +80,10 @@ public sealed class ProductExportRows(TeikemDbContext db) : IExportEntityRows
             [ProductImportFields.PurchaseCost] = r.PurchaseCost, [ProductImportFields.SalePrice] = r.SalePrice, [ProductImportFields.MinQty] = r.MinQty, [ProductImportFields.MinPickQty] = r.MinPickQty,
             [ProductImportFields.MaxPickQty] = r.MaxPickQty, [ProductImportFields.Brand] = r.Brand, [ProductImportFields.Model] = r.Model, [ProductImportFields.PackUom] = r.PackUom,
             [ProductImportFields.PackQty] = r.PackQty, [ProductImportFields.RotationMethod] = r.RotationMethod,
+            // Lote 230: dimensiones con su unidad y el peso en la unidad en que se escribió
+            [ProductImportFields.Length] = r.Length, [ProductImportFields.Width] = r.Width, [ProductImportFields.Height] = r.Height,
+            [ProductImportFields.DimensionUnit] = r.DimensionUnit, [ProductImportFields.WeightUnit] = r.WeightUnit,
+            [ProductImportFields.Weight] = r.WeightKg is decimal kg ? ProductDimensionRules.FromKg(kg, r.WeightUnit ?? WeightUnits.Kilogram) : null,
         }).ToList();
     }
 }

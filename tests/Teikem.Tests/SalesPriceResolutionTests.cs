@@ -25,9 +25,13 @@ internal sealed class PriceWorld : IAsyncDisposable
     public PriceListService Lists => F.Get<PriceListService>();
     public SalesCatalogService Catalog => F.Get<SalesCatalogService>();
     public KitService Kits => F.Get<KitService>();
+    public OfferService Offers => F.Get<OfferService>();   // Lote 229
+    public ProductImageService Images => F.Get<ProductImageService>();   // Lote 229
+    public StoredFileService Files => F.Get<StoredFileService>();
     public DateOnly Today => TenantClock.Default.Today;
 
-    public static async Task<PriceWorld> CreateAsync()
+    /// <summary>fileRoot (Lote 229): con una carpeta, el almacén de archivos queda configurado (cifrado en disco) para probar las fotos; sin ella, sin configurar.</summary>
+    public static async Task<PriceWorld> CreateAsync(string? fileRoot = null)
     {
         var f = await WmsFixture.CreateAsync(s =>
         {
@@ -37,12 +41,31 @@ internal sealed class PriceWorld : IAsyncDisposable
             s.AddSingleton<Teikem.Infrastructure.Orders.IClientBalanceProvider>(sp => sp.GetRequiredService<FakeBalance>());
             s.AddSingleton<SalesOrderService>();
             s.AddSingleton<KitService>();
-            // las fotos no se prueban aquí: el almacén de archivos queda sin configurar
-            s.AddSingleton(sp => new StoredFileService(sp.GetRequiredService<Teikem.Infrastructure.Persistence.TeikemDbContext>(), sp.GetRequiredService<ITenantContext>(),
-                sp.GetRequiredService<ILookupCache>(), null!, Options.Create(new Teikem.Infrastructure.Files.FileStoreOptions()), sp.GetRequiredService<PermissionService>(),
-                Array.Empty<IOwnedEntityResolver>()));
+            if (fileRoot is null)
+            {
+                // las fotos no se prueban aquí: el almacén de archivos queda sin configurar
+                s.AddSingleton(sp => new StoredFileService(sp.GetRequiredService<Teikem.Infrastructure.Persistence.TeikemDbContext>(), sp.GetRequiredService<ITenantContext>(),
+                    sp.GetRequiredService<ILookupCache>(), null!, Options.Create(new Teikem.Infrastructure.Files.FileStoreOptions()), sp.GetRequiredService<PermissionService>(),
+                    Array.Empty<IOwnedEntityResolver>()));
+            }
+            else
+            {
+                // Lote 229: almacén cifrado en una carpeta temporal, con el producto como dueño de archivos
+                var opts = Options.Create(new Teikem.Infrastructure.Files.FileStoreOptions
+                {
+                    Root = fileRoot, MasterKey = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("llave-de-prueba-de-32-bytes-0229")), MaxMegabytes = 10,
+                });
+                s.AddSingleton(opts);
+                s.AddSingleton<Teikem.Infrastructure.Files.IFileStore>(new Teikem.Infrastructure.Files.EncryptedDiskFileStore(opts));
+                s.AddSingleton<IOwnedEntityResolver, ProductOwnedEntityResolver>();
+                s.AddSingleton<IOwnedEntityResolver, OfferOwnedEntityResolver>();
+                s.AddSingleton<StoredFileService>();
+            }
             s.AddSingleton<PriceListService>();
             s.AddSingleton<SalesCatalogService>();
+            s.AddSingleton<ProductService>();   // Lote 229: el kit de una oferta nace como producto
+            s.AddSingleton<ProductImageService>();
+            s.AddSingleton<OfferService>();
         });
         f.SetModules(ModuleKeys.SalesOrders);
         var w = await f.AddWarehouseAsync("W1");

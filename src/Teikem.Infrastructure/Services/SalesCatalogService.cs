@@ -13,7 +13,8 @@ using Teikem.Infrastructure.Wms;
 namespace Teikem.Infrastructure.Services;
 
 /// <summary>
-/// Lote 221 (P1 del pedido de vendedores) — las ofertas (kits en promoción con foto y vigencia) y el catálogo del pedido por marca.
+/// Lote 221 (P1 del pedido de vendedores) — las ofertas (kits en promoción con foto y vigencia) y el catálogo del pedido por marca. Lote 229: el catálogo lee las
+/// ofertas nuevas (entidad Offer, ver OfferService); los métodos de «promo» de abajo son OBSOLETOS (siguen funcionando para el frontend viejo, ya no afectan ventas).
 /// - Oferta = un kit marcado «es promoción», con vigencia opcional (desde / hasta) y foto. Solo un kit puede serlo. Fuera de vigencia no se vende; las órdenes ya
 ///   hechas no cambian.
 /// - Catálogo: los productos propios, activos y vendibles (sin serie) agrupados por Product.Brand (los sin marca al final), con sus ofertas vigentes arriba y la
@@ -94,9 +95,15 @@ public sealed class SalesCatalogService(TeikemDbContext db, ITenantClock clock, 
     // ---------------------------------------------------------------- catálogo del pedido
 
     /// <summary>
-    /// El catálogo del pedido a la fecha de hoy: por marca (orden alfabético, sin distinguir mayúsculas; los productos sin marca al final), las ofertas vigentes de la
-    /// marca y la lista completa de sus productos y kits que no son oferta, por SKU. Precio resuelto para el cliente; sin cliente, el de la lista general. Las ofertas
-    /// fuera de vigencia no salen. Un producto sin precio sale con PriceSource NONE.
+    /// El catálogo del pedido a la fecha de hoy, por marca (orden alfabético, sin distinguir mayúsculas; los productos sin marca al final). Lote 229:
+    /// - Offers de cada marca = los renglones de las ofertas PUBLICADAS y vigentes que aplican al cliente (uno por producto: el de la oferta más barata), kits de
+    ///   oferta incluidos, con el precio resuelto (puede ganar el negociado si es más bajo), las fechas de la oferta y sus avisos.
+    /// - Products = la lista completa de la marca (un producto normal en oferta sale también aquí con el precio resuelto); los kits de oferta solo salen arriba, y solo
+    ///   mientras su oferta esté publicada y vigente (si no, se tratan como inactivos para la venta).
+    /// - Precio (OfferRules.Resolve): entre el negociado y la oferta gana el más bajo; si no, la general (o la oferta si es más baja); si no, el precio de venta; si no,
+    ///   PriceSource NONE. Sin cliente: lista general y ofertas para todos.
+    /// - Foto ya resuelta: la del renglón (oferta o lista) → la del producto → la de la primera pieza con foto si es kit → null.
+    /// Ya no se leen IsPromotion/PromoFrom/PromoTo/PromoImageFileId (Lote 221, obsoletos).
     /// </summary>
     public async Task<SalesCatalogDto> CatalogAsync(Guid? clientPublicId, CancellationToken ct)
     {
@@ -112,29 +119,47 @@ public sealed class SalesCatalogService(TeikemDbContext db, ITenantClock clock, 
         var serialId = await lookups.GetIdAsync(LookupDomains.TrackingType, TrackingTypes.Serial, ct);
         var kitTypeId = await lookups.TryGetIdAsync(KitCodes.ProductTypeDomain, ProductTypes.Kit, ct);
         var products = await db.Set<Product>().AsNoTracking().Where(p => p.IsActive && p.ClientId == null && p.TrackingTypeLookupId != serialId).ToListAsync(ct);
-        products = products.Where(p => KitPromoRules.IsSellable(p.IsPromotion, p.PromoFrom, p.PromoTo, today)).ToList();
+
+        // los kits de oferta solo se venden mientras su oferta esté publicada y vigente
+        var owners = await PriceListQueries.OwnerOffersAsync(db, products.Where(p => p.OfferId is not null).Select(p => p.OfferId!.Value), ct);
+        products = products.Where(p => p.OfferId is not int oid || OfferRules.KitSellable(owners.GetValueOrDefault(oid), today)).ToList();
 
         var lists = await PriceListQueries.InEffectAsync(db, clientId, today, null, ct);
+        var offers = await PriceListQueries.OffersInEffectAsync(db, clientId, today, null, ct);
         var listIds = lists.Select(x => x.PriceListId).ToList();
         var listInfo = listIds.Count == 0 ? new Dictionary<int, (Guid PublicId, string Name)>()
             : (await db.Set<PriceList>().AsNoTracking().Where(l => listIds.Contains(l.PriceListId)).Select(l => new { l.PriceListId, l.PublicId, l.Name }).ToListAsync(ct))
                 .ToDictionary(l => l.PriceListId, l => (l.PublicId, l.Name));
-        var resolved = products.ToDictionary(p => p.ProductId, p => PriceListRules.Resolve(p.ProductId, clientId, today, lists, p.SalePrice));
-        var fileIds = products.Where(p => p.PromoImageFileId is not null).Select(p => p.PromoImageFileId!.Value)
-            .Concat(resolved.Values.Where(r => r.ImageFileId is not null).Select(r => r.ImageFileId!.Value));
-        var images = await FilePublicIdsAsync(fileIds, ct);
+        var offerIds = offers.Select(o => o.OfferId).ToList();
+        var offerPublic = offerIds.Count == 0 ? new Dictionary<int, Guid>()
+            : await db.Set<Offer>().AsNoTracking().Where(o => offerIds.Contains(o.OfferId)).ToDictionaryAsync(o => o.OfferId, o => o.PublicId, ct);
+        var offerById = offers.ToDictionary(o => o.OfferId);
+        var resolved = products.ToDictionary(p => p.ProductId, p => OfferRules.Resolve(p.ProductId, clientId, today, lists, offers, p.SalePrice));
+        // la oferta que «presenta» al producto (la más barata que lo trae), aunque gane el negociado
+        var offerOf = new Dictionary<int, (OfferView Offer, OfferItemView Item)>();
+        foreach (var o in offers)
+            foreach (var i in o.Items)
+                if (!offerOf.TryGetValue(i.ProductId, out var cur) || i.Price < cur.Item.Price
+                    || (i.Price == cur.Item.Price && (o.ValidFrom > cur.Offer.ValidFrom || (o.ValidFrom == cur.Offer.ValidFrom && o.OfferId > cur.Offer.OfferId))))
+                    offerOf[i.ProductId] = (o, i);
 
-        SalesCatalogItemDto Item(Product p)
+        var productImages = await PriceListQueries.ProductImagesAsync(db, products, kitTypeId, ct);
+        var images = await PriceListQueries.FilePublicIdsAsync(db, productImages.Values.Concat(resolved.Values.Select(r => r.ImageFileId)).Concat(offerOf.Values.Select(x => x.Item.ImageFileId)), ct);
+
+        SalesCatalogItemDto Item(Product p, bool asOffer)
         {
             var r = resolved[p.ProductId];
             var isKit = kitTypeId is not null && p.ProductTypeLookupId == kitTypeId;
-            var isOffer = isKit && p.IsPromotion;
-            // la foto: la de la oferta y, si no tiene, la del renglón de la lista que dio el precio
-            Guid? image = isOffer && p.PromoImageFileId is int pf && images.TryGetValue(pf, out var pg) ? pg
-                : r.ImageFileId is int rf && images.TryGetValue(rf, out var rg) ? rg : null;
+            (OfferView Offer, OfferItemView Item)? shown = offerOf.TryGetValue(p.ProductId, out var oo) ? oo : null;
+            // la foto: la del renglón (de la oferta en la tarjeta; de la lista u oferta que dio el precio en la lista de la marca) → la del producto → la de sus piezas
+            var rowImage = asOffer ? shown?.Item.ImageFileId ?? r.ImageFileId : r.ImageFileId;
+            var fileId = ProductImageRules.Resolve(rowImage, productImages.GetValueOrDefault(p.ProductId), false, null);
             var info = r.PriceListId is int lid && listInfo.TryGetValue(lid, out var li) ? li : ((Guid PublicId, string Name)?)null;
-            return new SalesCatalogItemDto(p.PublicId, p.Sku, p.Name, p.Brand, isKit, isKit && p.KitAdjustable, isOffer, isOffer ? p.PromoFrom : null, isOffer ? p.PromoTo : null,
-                r.Price, r.Source, info?.PublicId, info?.Name, p.SalePrice, image);
+            var notices = r.Notices?.Select(n => Notice(p, n, offerPublic)).ToList();
+            return new SalesCatalogItemDto(p.PublicId, p.Sku, p.Name, p.Brand, isKit, isKit && p.KitAdjustable, shown is not null, shown?.Offer.ValidFrom, shown?.Offer.ValidTo,
+                r.Price, r.Source, info?.PublicId, info?.Name, p.SalePrice, fileId is int f && images.TryGetValue(f, out var g) ? g : null,
+                shown is { } s1 && offerPublic.TryGetValue(s1.Offer.OfferId, out var op) ? op : null, shown?.Offer.Name, shown?.Offer.ValidFrom, shown?.Offer.ValidTo,
+                shown?.Item.Price, p.OfferId is not null, notices is { Count: > 0 } ? notices : null);
         }
 
         var brands = products
@@ -144,12 +169,19 @@ public sealed class SalesCatalogService(TeikemDbContext db, ITenantClock clock, 
             {
                 var label = g.Key is null ? null : g.Select(p => p.Brand!.Trim()).GroupBy(b => b).OrderByDescending(b => b.Count()).ThenBy(b => b.Key, StringComparer.Ordinal).First().Key;
                 var all = g.OrderBy(p => p.Sku, StringComparer.OrdinalIgnoreCase).ToList();
-                var offers = all.Where(p => p.IsPromotion && kitTypeId is not null && p.ProductTypeLookupId == kitTypeId).Select(Item).ToList();
-                var rest = all.Where(p => !(p.IsPromotion && kitTypeId is not null && p.ProductTypeLookupId == kitTypeId)).Select(Item).ToList();
-                return new SalesCatalogBrandDto(label, offers, rest);
-            }).ToList();
+                var inOffer = all.Where(p => offerOf.ContainsKey(p.ProductId)).Select(p => Item(p, true)).ToList();
+                var rest = all.Where(p => p.OfferId is null).Select(p => Item(p, false)).ToList();
+                return new SalesCatalogBrandDto(label, inOffer, rest);
+            })
+            .Where(b => b.Offers.Count > 0 || b.Products.Count > 0)
+            .ToList();
         return new SalesCatalogDto(clientPublicId, today, brands);
     }
+
+    /// <summary>Un aviso de precio con su texto, la oferta que ganó y la otra (si hay).</summary>
+    internal static SalesPriceNoticeDto Notice(Product p, PriceNotice n, IReadOnlyDictionary<int, Guid> offerPublic)
+        => new(n.Code, OfferRules.NoticeMessage(p.Sku, n), p.PublicId, p.Sku, offerPublic.TryGetValue(n.OfferId, out var a) ? a : null, n.OfferName,
+            n.OtherOfferId is int o && offerPublic.TryGetValue(o, out var b) ? b : null, n.OtherOfferName);
 
     // ---------------------------------------------------------------- piezas
 

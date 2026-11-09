@@ -28,10 +28,19 @@ public static class ProductImportFields
     public const string RotationMethod = "rotationMethod";
     /// <summary>Categoría ya creada: su nombre o su ruta «Raíz / Hija». No crea categorías nuevas.</summary>
     public const string Category = "category";
+    /// <summary>Lote 230: largo, ancho y alto (en dimensionUnit: IN, CM, FT, M; sin ella la que ya tenía el producto o la sugerida por la región). Con las tres el volumen se calcula.</summary>
+    public const string Length = "length";
+    public const string Width = "width";
+    public const string Height = "height";
+    public const string DimensionUnit = "dimensionUnit";
+    /// <summary>Lote 230: peso en weightUnit (LB, KG); manda sobre weightKg.</summary>
+    public const string Weight = "weight";
+    public const string WeightUnit = "weightUnit";
 
     public static readonly IReadOnlyList<string> All = new[]
     {
         Sku, Name, OwnerClientCode, BaseUom, TrackingType, WeightKg, VolumeM3, Barcode, PurchaseCost, SalePrice, MinQty, MinPickQty, MaxPickQty, Brand, Model, PackUom, PackQty, RotationMethod, Category,
+        Length, Width, Height, DimensionUnit, Weight, WeightUnit,   // Lote 230
     };
 
     /// <summary>Campos que no admiten valor por defecto (cada producto trae el suyo).</summary>

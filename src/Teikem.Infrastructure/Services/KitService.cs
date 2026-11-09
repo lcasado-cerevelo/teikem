@@ -33,8 +33,8 @@ public sealed class KitService(TeikemDbContext db, ITenantContext tenant, ILooku
                           join p in db.Set<Product>().AsNoTracking() on c.ComponentProductId equals p.ProductId
                           where c.KitProductId == product.ProductId
                           orderby c.SortOrder, c.ProductKitComponentId
-                          select new { c.ComponentProductId, p.PublicId, p.Sku, p.Name, c.Quantity, c.SortOrder, p.IsActive }).ToListAsync(ct);
-        var components = rows.Select(r => new KitComponentDto(r.PublicId, r.Sku, r.Name, r.Quantity, r.SortOrder, r.IsActive)).ToList();
+                          select new { c.ComponentProductId, p.PublicId, p.Sku, p.Name, c.Quantity, c.SortOrder, p.IsActive, c.NotSubstitutable }).ToListAsync(ct);
+        var components = rows.Select(r => new KitComponentDto(r.PublicId, r.Sku, r.Name, r.Quantity, r.SortOrder, r.IsActive, r.NotSubstitutable)).ToList();
 
         var availability = new List<KitAvailabilityDto>();
         if (rows.Count > 0)
@@ -94,8 +94,9 @@ public sealed class KitService(TeikemDbContext db, ITenantContext tenant, ILooku
             foreach (var w in wanted)
             {
                 order++;
-                if (byProduct.TryGetValue(w.ProductId, out var row)) (row.Quantity, row.SortOrder) = (w.Quantity, order);
-                else db.Set<ProductKitComponent>().Add(new ProductKitComponent { TenantId = product.TenantId, KitProductId = product.ProductId, ComponentProductId = w.ProductId, Quantity = w.Quantity, SortOrder = order });
+                // Lote 230: «no sustituible» (null = la marca que ya tenía; una pieza nueva nace sustituible)
+                if (byProduct.TryGetValue(w.ProductId, out var row)) (row.Quantity, row.SortOrder, row.NotSubstitutable) = (w.Quantity, order, w.NotSubstitutable ?? row.NotSubstitutable);
+                else db.Set<ProductKitComponent>().Add(new ProductKitComponent { TenantId = product.TenantId, KitProductId = product.ProductId, ComponentProductId = w.ProductId, Quantity = w.Quantity, SortOrder = order, NotSubstitutable = w.NotSubstitutable ?? false });
             }
             product.ProductTypeLookupId = kitId;
             if (req.Adjustable is bool adj) product.KitAdjustable = adj;
@@ -108,7 +109,7 @@ public sealed class KitService(TeikemDbContext db, ITenantContext tenant, ILooku
     private static ValidationException Fail(Dictionary<string, string[]> errors)
         => errors.Count == 1 ? new ValidationException(errors.Keys.First(), errors.Values.First()[0]) : new ValidationException(errors);
 
-    private sealed record WantedComponent(int ProductId, decimal Quantity);
+    private sealed record WantedComponent(int ProductId, decimal Quantity, bool? NotSubstitutable = null);
 
     private async Task<List<WantedComponent>> ValidateComponentsAsync(Product kit, IReadOnlyList<KitComponentRequest>? components, int kitTypeId, CancellationToken ct)
     {
@@ -135,7 +136,7 @@ public sealed class KitService(TeikemDbContext db, ITenantContext tenant, ILooku
             else if (p.ProductTypeLookupId == kitTypeId) errors[$"components[{i}]"] = new[] { KitRules.ComponentIsKit(p.Sku) };
             else if (!p.IsActive) errors[$"components[{i}]"] = new[] { KitRules.ComponentInactive(p.Sku) };
             else if (p.ClientId != kit.ClientId) errors[$"components[{i}]"] = new[] { KitRules.ComponentOtherOwner(p.Sku) };
-            else result.Add(new WantedComponent(p.ProductId, components[i].Quantity!.Value));
+            else result.Add(new WantedComponent(p.ProductId, components[i].Quantity!.Value, components[i].NotSubstitutable));
         }
         if (errors.Count > 0) throw Fail(errors);
         return result;

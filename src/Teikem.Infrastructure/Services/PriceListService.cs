@@ -176,6 +176,9 @@ public sealed class PriceListService(TeikemDbContext db, ITenantContext tenant, 
             if (!seen.Add(pid)) throw new ValidationException($"items[{i}].productPublicId", PriceListRules.ItemRepeated(p.Sku));
             if (p.ClientId is not null) throw new StatusRuleException(PriceListRules.ItemProductNotOwn);
             if (!p.IsActive) throw new StatusRuleException(PriceListRules.ItemProductInactive(p.Sku));
+            if (p.OfferId is int offerId)   // Lote 229: el kit de una oferta lleva su precio en la oferta
+                throw new StatusRuleException(OfferRules.OfferKitNotInLists(p.Sku,
+                    await db.Set<Offer>().AsNoTracking().Where(o => o.OfferId == offerId).Select(o => o.Name).FirstOrDefaultAsync(ct) ?? "?"));
         }
         return await MutateAsync(publicId, (list, _) =>
         {
@@ -341,10 +344,11 @@ public sealed class PriceListService(TeikemDbContext db, ITenantContext tenant, 
         var items = list.Items.Where(i => i.IsActive).ToList();
         var productIds = items.Select(i => i.ProductId).Distinct().ToList();
         var products = await db.Set<Product>().AsNoTracking().Where(p => productIds.Contains(p.ProductId)).ToDictionaryAsync(p => p.ProductId, ct);
-        var fileIds = items.Where(i => i.ImageFileId is not null).Select(i => i.ImageFileId!.Value).Distinct().ToList();
-        var filePublic = fileIds.Count == 0 ? new Dictionary<int, Guid>()
-            : await db.Set<StoredFile>().AsNoTracking().Where(f => fileIds.Contains(f.StoredFileId) && f.IsActive).ToDictionaryAsync(f => f.StoredFileId, f => f.PublicId, ct);
         var kitTypeId = await lookups.TryGetIdAsync(KitCodes.ProductTypeDomain, ProductTypes.Kit, ct);
+        // Lote 229: la foto que se muestra = la del renglón → la del producto → la de la primera pieza con foto si es kit
+        var productImages = await PriceListQueries.ProductImagesAsync(db, products.Values, kitTypeId, ct);
+        var effective = items.ToDictionary(i => i.PriceListItemId, i => ProductImageRules.Resolve(i.ImageFileId, productImages.GetValueOrDefault(i.ProductId), false, null));
+        var filePublic = await PriceListQueries.FilePublicIdsAsync(db, items.Select(i => i.ImageFileId).Concat(effective.Values), ct);
         var clientIds = list.Clients.Where(c => c.IsActive).Select(c => c.ClientId).Distinct().ToList();
         var clients = await db.Set<Client>().AsNoTracking().Where(c => clientIds.Contains(c.ClientId)).Select(c => new { c.ClientId, c.PublicId, c.Code, c.Name }).ToListAsync(ct);
         var userIds = new[] { list.CreatedBy, list.UpdatedBy }.Where(u => u is not null).Select(u => u!.Value).Distinct().ToList();
@@ -354,8 +358,9 @@ public sealed class PriceListService(TeikemDbContext db, ITenantContext tenant, 
         var itemDtos = items.Where(i => products.ContainsKey(i.ProductId)).Select(i =>
         {
             var p = products[i.ProductId];
-            return new PriceListItemDto(i.PriceListItemId, p.PublicId, p.Sku, p.Name, p.Brand, kitTypeId is not null && p.ProductTypeLookupId == kitTypeId, p.IsPromotion, i.Price,
-                p.SalePrice, i.ImageFileId is int fid && filePublic.TryGetValue(fid, out var g) ? g : null, p.IsActive);
+            return new PriceListItemDto(i.PriceListItemId, p.PublicId, p.Sku, p.Name, p.Brand, kitTypeId is not null && p.ProductTypeLookupId == kitTypeId, false, i.Price,
+                p.SalePrice, i.ImageFileId is int fid && filePublic.TryGetValue(fid, out var g) ? g : null, p.IsActive,
+                effective[i.PriceListItemId] is int eid && filePublic.TryGetValue(eid, out var ge) ? ge : null);
         }).OrderBy(i => i.Brand ?? "￿", StringComparer.OrdinalIgnoreCase).ThenBy(i => i.Sku, StringComparer.OrdinalIgnoreCase).ToList();
         var clientDtos = clients.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase).Select(c => new PriceListClientDto(c.PublicId, c.Code, c.Name)).ToList();
         return new PriceListDto(list.PublicId, list.Name, list.ValidFrom, list.ValidTo, list.IsPublished, PriceListRules.StateOf(list.IsPublished, list.ValidFrom, list.ValidTo, clock.Today),

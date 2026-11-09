@@ -25,9 +25,12 @@ public sealed record PriceListClientsRequest(IReadOnlyList<Guid>? ClientPublicId
 public sealed record PriceListListItemDto(Guid PublicId, string Name, DateOnly ValidFrom, DateOnly? ValidTo, bool IsPublished, string State, bool AppliesToAll,
     int ItemCount, int ClientCount, bool IsActive, DateTime CreatedAtUtc, DateTime? UpdatedAtUtc);
 
-/// <summary>Renglón: el producto o kit, su precio de lista (el de venta del producto, para comparar) y la foto opcional.</summary>
+/// <summary>
+/// Renglón: el producto o kit, su precio de lista (el de venta del producto, para comparar) y la foto opcional. Lote 229: IsPromotion ya no se usa (siempre false: las
+/// ofertas son /offers); EffectiveImagePublicId = la foto que se muestra (renglón → producto → primera pieza con foto si es kit).
+/// </summary>
 public sealed record PriceListItemDto(int Id, Guid ProductPublicId, string Sku, string ProductName, string? Brand, bool IsKit, bool IsPromotion, decimal Price,
-    decimal? ProductSalePrice, Guid? ImagePublicId, bool ProductIsActive);
+    decimal? ProductSalePrice, Guid? ImagePublicId, bool ProductIsActive, Guid? EffectiveImagePublicId = null);
 
 public sealed record PriceListClientDto(Guid ClientPublicId, string Code, string Name);
 
@@ -46,13 +49,22 @@ public sealed record ProductPromoDto(Guid ProductPublicId, string Sku, string Na
     DateOnly? PromoTo, bool InEffect, Guid? ImagePublicId, decimal? SalePrice);
 
 /// <summary>
-/// Un producto o kit del catálogo del pedido con su precio ya resuelto para el cliente: PriceSource = CLIENT_LIST (lista del cliente), GENERAL_LIST (lista general),
-/// PRODUCT (precio de venta del producto) o NONE (no tiene precio: no se puede pedir sin sales.price). ImagePublicId = la foto de la oferta o la del renglón de la lista.
+/// Un producto o kit del catálogo del pedido con su precio ya resuelto para el cliente: PriceSource = OFFER (oferta vigente, Lote 229), CLIENT_LIST (lista del cliente),
+/// GENERAL_LIST (lista general), PRODUCT (precio de venta del producto) o NONE (no tiene precio: no se puede pedir sin sales.price).
+/// Lote 229: ImagePublicId = la foto ya resuelta (renglón de la oferta o de la lista → producto → primera pieza con foto si es kit). IsPromotion = el producto está en
+/// una oferta vigente que aplica al cliente (Offer* = esa oferta, la más barata; PromoFrom/PromoTo = sus fechas, por compatibilidad); OfferPrice = el precio de la
+/// oferta (Price puede ser menor si el negociado gana); IsOfferKit = kit creado para la oferta; Notices = avisos de precio (dos ofertas, oferta más cara que la general).
 /// </summary>
 public sealed record SalesCatalogItemDto(Guid ProductPublicId, string Sku, string Name, string? Brand, bool IsKit, bool KitAdjustable, bool IsPromotion,
-    DateOnly? PromoFrom, DateOnly? PromoTo, decimal? Price, string PriceSource, Guid? PriceListPublicId, string? PriceListName, decimal? SalePrice, Guid? ImagePublicId);
+    DateOnly? PromoFrom, DateOnly? PromoTo, decimal? Price, string PriceSource, Guid? PriceListPublicId, string? PriceListName, decimal? SalePrice, Guid? ImagePublicId,
+    Guid? OfferPublicId = null, string? OfferName = null, DateOnly? OfferValidFrom = null, DateOnly? OfferValidTo = null, decimal? OfferPrice = null,
+    bool IsOfferKit = false, IReadOnlyList<SalesPriceNoticeDto>? Notices = null);
 
-/// <summary>Una marca del catálogo (Brand null = productos sin marca, al final): sus ofertas vigentes arriba y la lista completa de la marca debajo.</summary>
+/// <summary>
+/// Una marca del catálogo (Brand null = productos sin marca, al final): sus ofertas vigentes arriba (Lote 229: los renglones de las ofertas publicadas y vigentes que
+/// aplican al cliente, kits de oferta incluidos; uno por producto) y la lista completa de la marca debajo (un producto normal en oferta sale también aquí, con el precio
+/// resuelto; los kits de oferta solo arriba).
+/// </summary>
 public sealed record SalesCatalogBrandDto(string? Brand, IReadOnlyList<SalesCatalogItemDto> Offers, IReadOnlyList<SalesCatalogItemDto> Products);
 
 /// <summary>El catálogo del pedido: por marca, a la fecha de hoy y con los precios del cliente (sin cliente: los de la lista general).</summary>

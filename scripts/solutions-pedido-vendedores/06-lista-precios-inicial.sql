@@ -1,20 +1,23 @@
 /* ============================================================================================================================
-   06-lista-precios-inicial.sql — Pedido de vendedores (lote 228, P8): la lista de precios GENERAL de Advance Solutions con los precios
-   del formulario de Formsite (leídos el 2026-11-06) y la oferta OFERTA1.
+   06-lista-precios-inicial.sql — Pedido de vendedores (lote 228, P8; ajustado en el lote 229): la lista de precios GENERAL de Advance
+   Solutions con los precios del formulario de Formsite (leídos el 2026-11-06). La oferta OFERTA1 NO va aquí: desde el lote 229 las ofertas
+   son aparte (02-kit-oferta1.sql) y un kit de oferta lleva su precio en su oferta, no en una lista.
    ----------------------------------------------------------------------------------------------------------------------------
    Para qué: al pedir, el precio sale de la lista vigente del cliente; si no tiene, de la lista vigente GENERAL; si no, del precio de
-   venta del producto. El vendedor no teclea precios. Esta es la lista general («aplica a todos los clientes»).
+   venta del producto (y si hay una oferta vigente más barata, gana la oferta). El vendedor no teclea precios. Esta es la lista general
+   («aplica a todos los clientes»).
    Qué hace:
      - Crea (si no existe una lista activa con el nombre @Nombre) la lista general, vigente desde @Desde (hoy, hora de Puerto Rico) y sin
        fecha final, y le pone un renglón por cada producto del formulario que exista en Teikem (SKU sin espacios ni guiones), con el
-       precio del formulario. Los GUANTES (NECH 1001–1004) no van: en el formulario solo se venden a precio negociado (ver 07).
+       precio del formulario. Los GUANTES (NECH 1001–1004) no van: en el formulario solo se venden a precio negociado (ver 07). Un kit
+       de oferta (Product.OfferId) nunca entra: se informa y se salta.
      - Si la lista ya existe: agrega los renglones que falten. NO cambia el precio de un renglón que ya está (lo pudo cambiar el
        supervisor) salvo que ponga @ActualizarPrecios = 1.
      - La publica (@Publicar = 1) si no se cruza con otra lista general publicada en las mismas fechas y productos; si se cruza, ABORTA
        y dice con cuál (dos listas generales no pueden dar dos precios al mismo producto).
      - Informa: SKU del formulario que no existen (p. ej. las cajas), y los precios del formulario que difieren del precio de venta
        del producto (informativo; la lista manda).
-   Requiere 02-kit-oferta1.sql (para el renglón de OFERTA1; si no existe, se informa y sigue). Idempotente: la segunda corrida cambia 0 filas.
+   No depende de 02-kit-oferta1.sql. Idempotente: la segunda corrida cambia 0 filas.
    Después, en pantalla: Almacén → Productos e inventario → «Precios y ofertas» → la lista: revisar, poner fotos a los renglones si se quiere.
    Cómo correrlo: SSMS → base de Teikem → F5. Por omisión SIMULA (@Aplicar = 0); revise y ponga @Aplicar = 1.
      sqlcmd: sqlcmd -S <servidor> -d <base> -E -I -b -i 06-lista-precios-inicial.sql
@@ -34,7 +37,6 @@ DECLARE @Precios TABLE (FormSku NVARCHAR(60) NOT NULL, Candidato NVARCHAR(60) NO
     Clave AS UPPER(REPLACE(REPLACE(REPLACE(Candidato, N' ', N''), N'-', N''), N'.', N'')));
 INSERT @Precios (FormSku, Candidato, Precio) VALUES
     (N'070120', N'070120', 7.99), (N'52800', N'52800', 6.99), (N'24081028', N'24081028', 1.25), (N'24083225', N'24083225', 2.50),
-    (N'OFERTA1', N'OFERTA1', 41.94),
     (N'PD-23-36-45gms15/10', N'PD-23-36-45gms15/10', 28.99), (N'PD-23-36-45gms15/10', N'PD-23-36/15/10', 28.99),
     (N'PD-23-36-45gms3/50',  N'PD-23-36-45gms3/50',  28.99), (N'PD-23-36-45gms3/50',  N'PD-23-36/3/50',  28.99),
     (N'979', N'979', 0.95), (N'101010', N'101010', 1.05), (N'121212', N'121212', 1.46),
@@ -63,6 +65,9 @@ FROM @Precios f JOIN dbo.Product p ON p.TenantId = @TenantId AND p.ClientId IS N
 SELECT f.FormSku AS [SKU del formulario que NO existe en Teikem (activo): no va en la lista] FROM (SELECT DISTINCT FormSku FROM @Precios) f
 WHERE NOT EXISTS (SELECT 1 FROM @Match m WHERE m.FormSku = f.FormSku) ORDER BY f.FormSku;
 SELECT m.FormSku AS [SKU AMBIGUO (más de un producto): no va en la lista], STRING_AGG(m.Sku, N', ') AS [Productos] FROM @Match m GROUP BY m.FormSku HAVING COUNT(*) > 1;
+-- Lote 229: un kit de oferta lleva su precio en su oferta (Precios y ofertas → «Ofertas»), nunca en una lista
+SELECT m.Sku AS [Kit de una OFERTA: no va en la lista (su precio está en la oferta)] FROM @Match m JOIN dbo.Product p ON p.ProductId = m.ProductId WHERE p.OfferId IS NOT NULL;
+DELETE m FROM @Match m WHERE EXISTS (SELECT 1 FROM dbo.Product p WHERE p.ProductId = m.ProductId AND p.OfferId IS NOT NULL);
 DELETE m FROM @Match m WHERE m.FormSku IN (SELECT FormSku FROM @Match GROUP BY FormSku HAVING COUNT(*) > 1);
 SELECT Sku, Precio AS [Precio del formulario], SalePrice AS [Precio de venta del producto (informativo)] FROM @Match
 WHERE SalePrice IS NULL OR SalePrice <> Precio ORDER BY Sku;

@@ -25,7 +25,10 @@ public sealed class PriceListsController(PriceListService lists, SalesCatalogSer
     public Task<IReadOnlyList<PriceListListItemDto>> List([FromQuery] string? q, [FromQuery] string? state, [FromQuery] bool includeInactive, CancellationToken ct)
         => lists.ListAsync(q, state, includeInactive, ct);
 
-    /// <summary>Las ofertas: kits marcados como promoción, con su vigencia, su foto y si se venden hoy (inEffect). Para la pestaña Precios y ofertas.</summary>
+    /// <summary>
+    /// OBSOLETO (Lote 229: las ofertas son /api/v1/offers). Los kits marcados como promoción del Lote 221, con su vigencia y su foto; ya no afectan el catálogo ni las
+    /// ventas. Se quita cuando el frontend deje de llamarlo.
+    /// </summary>
     [HttpGet("offers"), RequirePermission(PermissionCatalog.SalesView)]
     public Task<IReadOnlyList<ProductPromoDto>> Offers([FromQuery] bool includeInactive, CancellationToken ct) => catalog.ListOffersAsync(includeInactive, ct);
 
@@ -97,6 +100,8 @@ public sealed class PriceListsController(PriceListService lists, SalesCatalogSer
 }
 
 /// <summary>
+/// OBSOLETO desde el Lote 229 (las ofertas son /api/v1/offers y la foto del producto /api/v1/products/{id}/image): la marca «es promoción», su vigencia y su foto ya no
+/// afectan el catálogo ni las ventas. Siguen funcionando hasta que el frontend deje de llamarlos.
 /// Lote 221 — la oferta de un kit (módulo SALES_ORDERS): marcarlo como promoción, su vigencia y su foto. Ver con sales.view o inventory.view; cambiar con
 /// sales.pricelist. Solo un kit puede ser oferta (422); fuera de vigencia no se vende, pero las órdenes ya hechas no cambian.
 /// </summary>
@@ -128,7 +133,8 @@ public sealed class ProductPromoController(SalesCatalogService catalog, StoredFi
 
 /// <summary>
 /// Lote 221 — el catálogo del pedido guiado (módulo SALES_ORDERS, sales.view): las marcas (Product.Brand) con productos activos, sus ofertas vigentes con foto y
-/// precio, y la lista completa de cada marca con el precio ya resuelto para el cliente.
+/// precio, y la lista completa de cada marca con el precio ya resuelto para el cliente. Lote 229: las ofertas salen de /offers (publicadas, vigentes y que aplican al
+/// cliente), gana el precio más bajo entre negociado y oferta, cada ítem trae la foto ya resuelta y los avisos de precio.
 /// </summary>
 [ApiController]
 [Route("api/v1/sales-orders/catalog")]

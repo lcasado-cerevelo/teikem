@@ -66,6 +66,7 @@ public sealed class SalesOrderLineComponentConfiguration : IEntityTypeConfigurat
         b.Property(c => c.Quantity).HasColumnType("decimal(16,3)");
         b.HasIndex(c => new { c.SalesOrderLineId, c.ComponentProductId }).IsUnique().HasDatabaseName("UQ_SalesOrderLineComponent");
         b.HasOne<Teikem.Domain.Wms.Product>().WithMany().HasForeignKey(c => c.ComponentProductId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<Teikem.Domain.Wms.Product>().WithMany().HasForeignKey(c => c.SubstitutedProductId).OnDelete(DeleteBehavior.NoAction);   // Lote 230
     }
 }
 

@@ -32,6 +32,11 @@ public class ProductKitComponent : ITenantScoped
     public int ComponentProductId { get; set; }
     public decimal Quantity { get; set; }
     public int SortOrder { get; set; }
+    /// <summary>
+    /// Lote 230: la pieza NO se puede sustituir en una orden de venta. Por omisión (false) toda pieza es sustituible por otro producto de la misma categoría exacta y el
+    /// mismo precio de venta, en la misma cantidad (KitSubstitutionRules).
+    /// </summary>
+    public bool NotSubstitutable { get; set; }
 }
 
 /// <summary>Lote 68 — reglas puras de los kits: mensajes y disponibilidad («se pueden armar N»). Sin BD.</summary>

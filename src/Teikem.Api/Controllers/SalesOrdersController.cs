@@ -56,6 +56,14 @@ public sealed class SalesOrdersController(SalesOrderService sales) : ControllerB
     [HttpPatch("{publicId:guid}"), RequirePermission(PermissionCatalog.SalesCreate)]
     public Task<SalesOrderDto> Update(Guid publicId, [FromBody] SalesOrderRequest req, CancellationToken ct) => sales.UpdateAsync(publicId, req, ct);
 
+    /// <summary>
+    /// Lote 230 — las piezas de un kit (de su catálogo) y con qué productos se puede SUSTITUIR cada una en una orden de venta: misma categoría exacta, mismo precio de
+    /// venta, propios, activos y que no sean kits ni otra pieza del kit; una pieza marcada «no sustituible» no trae sustitutos. Sirve antes de guardar la línea.
+    /// 404 si el producto no existe; 422 si no es un kit.
+    /// </summary>
+    [HttpGet("kits/{kitPublicId:guid}/substitutes"), RequirePermission(PermissionCatalog.SalesCreate)]
+    public Task<KitSubstitutesDto> KitSubstitutes(Guid kitPublicId, CancellationToken ct) => sales.SubstitutesAsync(kitPublicId, ct);
+
     /// <summary>Qué pasaría si se solicitara hoy: pedido / disponible / faltante por línea y el crédito del cliente. No guarda nada.</summary>
     [HttpGet("{publicId:guid}/availability"), RequirePermission(PermissionCatalog.SalesCreate)]
     public Task<SalesAvailabilityDto> Availability(Guid publicId, CancellationToken ct) => sales.CheckAsync(publicId, ct);

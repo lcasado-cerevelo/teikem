@@ -33,6 +33,8 @@ public sealed class StoredFileService(TeikemDbContext db, ITenantContext tenant,
         [DeliveryProofCodes.EntityType] = (PermissionCatalog.OrdersView, PermissionCatalog.OrdersDeliver),
         // Lote 223: la firma de quien autoriza el pedido (StoredFile SIGNATURE de la orden de venta) se ve con sales.view y se sube con sales.create
         [Teikem.Domain.Sales.SalesCodes.EntityType] = (PermissionCatalog.SalesView, PermissionCatalog.SalesCreate),
+        // Lote 229: la foto de la oferta y las de sus renglones (StoredFile con dueño OFFER) se ven con sales.view y se suben con sales.pricelist
+        [Teikem.Domain.Sales.OfferCodes.EntityType] = (PermissionCatalog.SalesView, PermissionCatalog.SalesPricelist),
     };
 
     public int MaxBytes => Math.Max(1, options.Value.MaxMegabytes) * 1024 * 1024;
@@ -81,7 +83,7 @@ public sealed class StoredFileService(TeikemDbContext db, ITenantContext tenant,
     public async Task<StoredFileContent> GetContentAsync(Guid publicId, CancellationToken ct)
     {
         var row = await db.Set<StoredFile>().AsNoTracking().Include(f => f.OwnerEntity).FirstOrDefaultAsync(f => f.PublicId == publicId && f.IsActive, ct) ?? throw new NotFoundException("Archivo", publicId);
-        await EnsureOwnerAsync(row.OwnerEntity!.InternalCode, write: false, ct);
+        await EnsureReadAsync(row, ct);
         var bytes = await store.ReadAsync(row.TenantId, row.StorageKey, ct);
         return new StoredFileContent(row.FileName, row.ContentType, bytes);
     }
@@ -96,6 +98,27 @@ public sealed class StoredFileService(TeikemDbContext db, ITenantContext tenant,
     }
 
     private TenantContext T => (TenantContext)tenant;
+
+    /// <summary>
+    /// Permiso para leer un archivo: el de lectura de su dueño. Lote 229: la FOTO de un producto (Product.ImageFileId, la vieja de promoción, o la de un renglón de lista
+    /// de precios u oferta, que son archivos del producto) también se ve con sales.view, aunque no se tenga inventory.view: el vendedor ve las fotos del catálogo.
+    /// </summary>
+    internal async Task EnsureReadAsync(StoredFile row, CancellationToken ct)
+    {
+        var owner = row.OwnerEntity!.InternalCode;
+        if (string.Equals(owner, EntityTypes.Product, StringComparison.OrdinalIgnoreCase)
+            && !await permissions.HasPermissionAsync(PermissionCatalog.InventoryView, ct)
+            && await permissions.HasPermissionAsync(PermissionCatalog.SalesView, ct)
+            && await IsSalesPhotoAsync(row.StoredFileId, ct))
+            return;
+        await EnsureOwnerAsync(owner, write: false, ct);
+    }
+
+    /// <summary>¿El archivo es la foto de un producto o de un renglón de lista u oferta? (lo que el catálogo del pedido muestra).</summary>
+    private async Task<bool> IsSalesPhotoAsync(int fileId, CancellationToken ct)
+        => await db.Set<Teikem.Domain.Wms.Product>().AsNoTracking().AnyAsync(p => p.ImageFileId == fileId || p.PromoImageFileId == fileId, ct)
+           || await db.Set<Teikem.Domain.Sales.PriceListItem>().AsNoTracking().AnyAsync(i => i.ImageFileId == fileId && i.IsActive, ct)
+           || await db.Set<Teikem.Domain.Sales.OfferItem>().AsNoTracking().AnyAsync(i => i.ImageFileId == fileId && i.IsActive, ct);
 
     private async Task EnsureOwnerAsync(string ownerEntity, bool write, CancellationToken ct)
     {

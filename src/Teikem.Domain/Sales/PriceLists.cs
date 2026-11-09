@@ -26,10 +26,12 @@ public static class PriceListStates
     public const string Expired = "EXPIRED";
 }
 
-/// <summary>De dónde salió el precio de una línea: lista del cliente, lista general, precio de venta del producto, o ninguno (no tiene precio).</summary>
+/// <summary>De dónde salió el precio de una línea: lista del cliente, lista general, oferta (Lote 229), precio de venta del producto, o ninguno (no tiene precio).</summary>
 public static class PriceSources
 {
     public const string ClientList = "CLIENT_LIST";
+    /// <summary>Lote 229: una oferta vigente que aplica al cliente (ganó por ser el precio más bajo).</summary>
+    public const string Offer = "OFFER";
     public const string GeneralList = "GENERAL_LIST";
     public const string Product = "PRODUCT";
     public const string None = "NONE";
@@ -95,8 +97,11 @@ public sealed record PriceListItemView(int ProductId, decimal Price, int? ImageF
 public sealed record PriceListView(int PriceListId, string Name, bool IsPublished, bool AppliesToAll, DateOnly ValidFrom, DateOnly? ValidTo,
     IReadOnlyCollection<int> ClientIds, IReadOnlyList<PriceListItemView> Items);
 
-/// <summary>Precio resuelto: el precio (null = no hay), de dónde salió, la lista (si salió de una) y la foto del renglón de esa lista.</summary>
-public sealed record ResolvedPrice(decimal? Price, string Source, int? PriceListId = null, int? ImageFileId = null);
+/// <summary>
+/// Precio resuelto: el precio (null = no hay), de dónde salió, la lista (si salió de una) y la foto del renglón de esa lista (o de la oferta). Lote 229: la oferta
+/// (si salió de una) y los avisos de precio (null = ninguno; ver <see cref="OfferRules.Resolve"/>).
+/// </summary>
+public sealed record ResolvedPrice(decimal? Price, string Source, int? PriceListId = null, int? ImageFileId = null, int? OfferId = null, IReadOnlyList<PriceNotice>? Notices = null);
 
 /// <summary>Un cruce de dos listas publicadas: la otra lista y los productos que tendrían dos precios a la vez.</summary>
 public sealed record PriceListConflict(int OtherPriceListId, string OtherName, IReadOnlyList<int> ProductIds);
@@ -254,6 +259,8 @@ public static class PriceListRules
 }
 
 /// <summary>
+/// OBSOLETO desde el Lote 229 (la oferta es ahora una entidad aparte, <see cref="OfferRules"/>): el catálogo y las ventas ya no leen IsPromotion/PromoFrom/PromoTo.
+/// Solo lo usan los endpoints viejos /products/{id}/promo, que siguen funcionando hasta que el frontend deje de llamarlos.
 /// Lote 221 — reglas puras de las ofertas (kits en promoción): solo un kit puede ser oferta; fuera de su vigencia no se vende (no se puede poner en una línea
 /// nueva ni en un borrador que se vuelve a guardar), pero las órdenes ya hechas no cambian.
 /// </summary>

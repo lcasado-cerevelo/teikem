@@ -21746,6 +21746,729 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/offers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                    state?: string;
+                    includeInactive?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferListItemDto"][];
+                        "application/json": components["schemas"]["OfferListItemDto"][];
+                        "text/json": components["schemas"]["OfferListItemDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["OfferRequest"];
+                    "text/json": components["schemas"]["OfferRequest"];
+                    "application/*+json": components["schemas"]["OfferRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferDto"];
+                        "application/json": components["schemas"]["OfferDto"];
+                        "text/json": components["schemas"]["OfferDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/offers/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferDto"];
+                        "application/json": components["schemas"]["OfferDto"];
+                        "text/json": components["schemas"]["OfferDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["OfferRequest"];
+                    "text/json": components["schemas"]["OfferRequest"];
+                    "application/*+json": components["schemas"]["OfferRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferDto"];
+                        "application/json": components["schemas"]["OfferDto"];
+                        "text/json": components["schemas"]["OfferDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/offers/{publicId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferDto"];
+                        "application/json": components["schemas"]["OfferDto"];
+                        "text/json": components["schemas"]["OfferDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/offers/{publicId}/unpublish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferDto"];
+                        "application/json": components["schemas"]["OfferDto"];
+                        "text/json": components["schemas"]["OfferDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/offers/{publicId}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferDto"];
+                        "application/json": components["schemas"]["OfferDto"];
+                        "text/json": components["schemas"]["OfferDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/offers/{publicId}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferDto"];
+                        "application/json": components["schemas"]["OfferDto"];
+                        "text/json": components["schemas"]["OfferDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/offers/{publicId}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferDto"];
+                        "application/json": components["schemas"]["OfferDto"];
+                        "text/json": components["schemas"]["OfferDto"];
+                    };
+                };
+            };
+        };
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferDto"];
+                        "application/json": components["schemas"]["OfferDto"];
+                        "text/json": components["schemas"]["OfferDto"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/offers/{publicId}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["OfferItemsRequest"];
+                    "text/json": components["schemas"]["OfferItemsRequest"];
+                    "application/*+json": components["schemas"]["OfferItemsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferDto"];
+                        "application/json": components["schemas"]["OfferDto"];
+                        "text/json": components["schemas"]["OfferDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/offers/{publicId}/items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    itemId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferDto"];
+                        "application/json": components["schemas"]["OfferDto"];
+                        "text/json": components["schemas"]["OfferDto"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    itemId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["OfferItemPriceRequest"];
+                    "text/json": components["schemas"]["OfferItemPriceRequest"];
+                    "application/*+json": components["schemas"]["OfferItemPriceRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferDto"];
+                        "application/json": components["schemas"]["OfferDto"];
+                        "text/json": components["schemas"]["OfferDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/offers/{publicId}/items/{itemId}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    itemId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferDto"];
+                        "application/json": components["schemas"]["OfferDto"];
+                        "text/json": components["schemas"]["OfferDto"];
+                    };
+                };
+            };
+        };
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    itemId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferDto"];
+                        "application/json": components["schemas"]["OfferDto"];
+                        "text/json": components["schemas"]["OfferDto"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/offers/{publicId}/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["OfferClientsRequest"];
+                    "text/json": components["schemas"]["OfferClientsRequest"];
+                    "application/*+json": components["schemas"]["OfferClientsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferDto"];
+                        "application/json": components["schemas"]["OfferDto"];
+                        "text/json": components["schemas"]["OfferDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/offers/{publicId}/clients/{clientPublicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    clientPublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferDto"];
+                        "application/json": components["schemas"]["OfferDto"];
+                        "text/json": components["schemas"]["OfferDto"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/offers/{publicId}/kits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["OfferKitRequest"];
+                    "text/json": components["schemas"]["OfferKitRequest"];
+                    "application/*+json": components["schemas"]["OfferKitRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferKitCreatedDto"];
+                        "application/json": components["schemas"]["OfferKitCreatedDto"];
+                        "text/json": components["schemas"]["OfferKitCreatedDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/offers/{publicId}/kits/{productPublicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    productPublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["OfferKitUpdateRequest"];
+                    "text/json": components["schemas"]["OfferKitUpdateRequest"];
+                    "application/*+json": components["schemas"]["OfferKitUpdateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferDto"];
+                        "application/json": components["schemas"]["OfferDto"];
+                        "text/json": components["schemas"]["OfferDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orders/{publicId}/delivery/files": {
         parameters: {
             query?: never;
@@ -27246,6 +27969,98 @@ export interface paths {
             };
         };
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/products/{publicId}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductImageDto"];
+                        "application/json": components["schemas"]["ProductImageDto"];
+                        "text/json": components["schemas"]["ProductImageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductImageDto"];
+                        "application/json": components["schemas"]["ProductImageDto"];
+                        "text/json": components["schemas"]["ProductImageDto"];
+                    };
+                };
+            };
+        };
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductImageDto"];
+                        "application/json": components["schemas"]["ProductImageDto"];
+                        "text/json": components["schemas"]["ProductImageDto"];
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -40261,6 +41076,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/products/units-suggestion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductUnitsSuggestionDto"];
+                        "application/json": components["schemas"]["ProductUnitsSuggestionDto"];
+                        "text/json": components["schemas"]["ProductUnitsSuggestionDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/kits/{kitPublicId}/substitutes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    kitPublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["KitSubstitutesDto"];
+                        "application/json": components["schemas"]["KitSubstitutesDto"];
+                        "text/json": components["schemas"]["KitSubstitutesDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -45460,12 +46351,16 @@ export interface components {
             /** Format: int32 */
             sortOrder?: number;
             isActive?: boolean;
+            notSubstitutable?: boolean;
         };
         KitComponentRequest: {
             /** Format: uuid */
             productPublicId?: string | null;
             /** Format: double */
             quantity?: number | null;
+            notSubstitutable?: boolean | null;
+            /** Format: uuid */
+            substitutesProductPublicId?: string | null;
         };
         KitDto: {
             /** Format: uuid */
@@ -46452,6 +47347,150 @@ export interface components {
             /** Format: int64 */
             seq?: number;
             value?: string | null;
+        };
+        OfferClientDto: {
+            /** Format: uuid */
+            clientPublicId?: string;
+            code?: string | null;
+            name?: string | null;
+        };
+        OfferClientsRequest: {
+            clientPublicIds?: string[] | null;
+        };
+        OfferDto: {
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+            /** Format: date */
+            validFrom?: string;
+            /** Format: date */
+            validTo?: string | null;
+            hasEndDate?: boolean;
+            validityText?: string | null;
+            isPublished?: boolean;
+            state?: string | null;
+            inEffect?: boolean;
+            appliesToAll?: boolean;
+            notes?: string | null;
+            /** Format: uuid */
+            imagePublicId?: string | null;
+            isActive?: boolean;
+            items?: components["schemas"]["OfferItemDto"][] | null;
+            clients?: components["schemas"]["OfferClientDto"][] | null;
+            warnings?: components["schemas"]["OfferWarningDto"][] | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            createdByName?: string | null;
+            /** Format: date-time */
+            updatedAtUtc?: string | null;
+            updatedByName?: string | null;
+        };
+        OfferItemDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            brand?: string | null;
+            isKit?: boolean;
+            isOfferKit?: boolean;
+            kitAdjustable?: boolean;
+            /** Format: double */
+            price?: number;
+            /** Format: double */
+            productSalePrice?: number | null;
+            /** Format: double */
+            generalListPrice?: number | null;
+            /** Format: uuid */
+            imagePublicId?: string | null;
+            /** Format: uuid */
+            effectiveImagePublicId?: string | null;
+            productIsActive?: boolean;
+            kit?: components["schemas"]["KitDto"];
+        };
+        OfferItemPriceRequest: {
+            /** Format: double */
+            price?: number | null;
+        };
+        OfferItemRequest: {
+            /** Format: uuid */
+            productPublicId?: string | null;
+            /** Format: double */
+            price?: number | null;
+        };
+        OfferItemsRequest: {
+            items?: components["schemas"]["OfferItemRequest"][] | null;
+        };
+        OfferKitCreatedDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            offer?: components["schemas"]["OfferDto"];
+        };
+        OfferKitRequest: {
+            sku?: string | null;
+            name?: string | null;
+            /** Format: double */
+            price?: number | null;
+            components?: components["schemas"]["KitComponentRequest"][] | null;
+            brand?: string | null;
+            /** Format: int32 */
+            categoryId?: number | null;
+            /** Format: double */
+            salePrice?: number | null;
+        };
+        OfferKitUpdateRequest: {
+            name?: string | null;
+            components?: components["schemas"]["KitComponentRequest"][] | null;
+        };
+        OfferListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+            /** Format: date */
+            validFrom?: string;
+            /** Format: date */
+            validTo?: string | null;
+            hasEndDate?: boolean;
+            validityText?: string | null;
+            isPublished?: boolean;
+            state?: string | null;
+            inEffect?: boolean;
+            appliesToAll?: boolean;
+            /** Format: int32 */
+            itemCount?: number;
+            /** Format: int32 */
+            clientCount?: number;
+            /** Format: uuid */
+            imagePublicId?: string | null;
+            isActive?: boolean;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: date-time */
+            updatedAtUtc?: string | null;
+        };
+        OfferRequest: {
+            name?: string | null;
+            /** Format: date */
+            validFrom?: string | null;
+            /** Format: date */
+            validTo?: string | null;
+            clearValidTo?: boolean | null;
+            appliesToAll?: boolean | null;
+            notes?: string | null;
+        };
+        OfferWarningDto: {
+            code?: string | null;
+            message?: string | null;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            /** Format: uuid */
+            otherOfferPublicId?: string | null;
+            otherOfferName?: string | null;
+            /** Format: double */
+            otherPrice?: number | null;
         };
         OnboardingCodeRequest: {
             code?: string | null;
@@ -48073,6 +49112,8 @@ export interface components {
             /** Format: uuid */
             imagePublicId?: string | null;
             productIsActive?: boolean;
+            /** Format: uuid */
+            effectiveImagePublicId?: string | null;
         };
         PriceListItemPriceRequest: {
             /** Format: double */
@@ -48227,6 +49268,16 @@ export interface components {
             /** Format: double */
             packQty?: number | null;
             rotationMethod?: string | null;
+            /** Format: double */
+            length?: number | null;
+            /** Format: double */
+            width?: number | null;
+            /** Format: double */
+            height?: number | null;
+            dimensionUnit?: string | null;
+            /** Format: double */
+            weight?: number | null;
+            weightUnit?: string | null;
         };
         ProductDetailDto: {
             product?: components["schemas"]["ProductListItemDto"];
@@ -48247,6 +49298,21 @@ export interface components {
             hasMovements?: boolean;
             rowVersion?: string | null;
             rotationMethod?: string | null;
+            measures?: components["schemas"]["ProductMeasuresDto"];
+            categoryPath?: string | null;
+            /** Format: int32 */
+            categoryParentId?: number | null;
+            categoryParentName?: string | null;
+        };
+        ProductImageDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            isKit?: boolean;
+            /** Format: uuid */
+            imagePublicId?: string | null;
+            /** Format: uuid */
+            effectiveImagePublicId?: string | null;
         };
         ProductListItemDto: {
             /** Format: int32 */
@@ -48335,6 +49401,16 @@ export interface components {
             packQty?: number | null;
             clearPack?: boolean | null;
             rotationMethod?: string | null;
+            /** Format: double */
+            length?: number | null;
+            /** Format: double */
+            width?: number | null;
+            /** Format: double */
+            height?: number | null;
+            dimensionUnit?: string | null;
+            /** Format: double */
+            weight?: number | null;
+            weightUnit?: string | null;
         } & {
             [key: string]: unknown;
         };
@@ -50214,6 +51290,17 @@ export interface components {
             salePrice?: number | null;
             /** Format: uuid */
             imagePublicId?: string | null;
+            /** Format: uuid */
+            offerPublicId?: string | null;
+            offerName?: string | null;
+            /** Format: date */
+            offerValidFrom?: string | null;
+            /** Format: date */
+            offerValidTo?: string | null;
+            /** Format: double */
+            offerPrice?: number | null;
+            isOfferKit?: boolean;
+            notices?: components["schemas"]["SalesPriceNoticeDto"][] | null;
         };
         SalesCreditDto: {
             /** Format: double */
@@ -50286,6 +51373,21 @@ export interface components {
             /** Format: int32 */
             linesCompleted?: number;
         };
+        SalesLinePriceDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            /** Format: double */
+            resolvedPrice?: number | null;
+            priceSource?: string | null;
+            /** Format: uuid */
+            offerPublicId?: string | null;
+            offerName?: string | null;
+            /** Format: uuid */
+            priceListPublicId?: string | null;
+            priceListName?: string | null;
+            notices?: components["schemas"]["SalesPriceNoticeDto"][] | null;
+        };
         SalesOrderCancelRequest: {
             comment?: string | null;
         };
@@ -50328,6 +51430,7 @@ export interface components {
             assignedToUserId?: number | null;
             assignedToName?: string | null;
             terms?: components["schemas"]["SalesOrderTermsDto"];
+            linePrices?: components["schemas"]["SalesLinePriceDto"][] | null;
         };
         SalesOrderLineComponentDto: {
             /** Format: uuid */
@@ -50344,6 +51447,10 @@ export interface components {
             backordered?: number;
             /** Format: double */
             shipped?: number;
+            /** Format: uuid */
+            substitutesProductPublicId?: string | null;
+            substitutesSku?: string | null;
+            substitutesName?: string | null;
         };
         SalesOrderLineDto: {
             /** Format: int32 */
@@ -50501,6 +51608,19 @@ export interface components {
             awaitingClientApproval?: boolean;
             clientIsProspect?: boolean;
             clientRequiresSignature?: boolean;
+        };
+        SalesPriceNoticeDto: {
+            code?: string | null;
+            message?: string | null;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            /** Format: uuid */
+            offerPublicId?: string | null;
+            offerName?: string | null;
+            /** Format: uuid */
+            otherOfferPublicId?: string | null;
+            otherOfferName?: string | null;
         };
         SalesReturnAuthorizeRequest: {
             note?: string | null;
@@ -53578,6 +54698,64 @@ export interface components {
         };
         TenantLinkReasonRequest: {
             reason?: string | null;
+        };
+        KitComponentSubstitutesDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            /** Format: double */
+            quantity?: number;
+            notSubstitutable?: boolean;
+            /** Format: int32 */
+            categoryId?: number | null;
+            categoryPath?: string | null;
+            /** Format: double */
+            salePrice?: number | null;
+            substitutes?: components["schemas"]["KitSubstituteDto"][] | null;
+        };
+        KitSubstituteDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            brand?: string | null;
+            model?: string | null;
+            /** Format: double */
+            salePrice?: number | null;
+        };
+        KitSubstitutesDto: {
+            /** Format: uuid */
+            kitPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            adjustable?: boolean;
+            components?: components["schemas"]["KitComponentSubstitutesDto"][] | null;
+        };
+        ProductMeasuresDto: {
+            /** Format: double */
+            length?: number | null;
+            /** Format: double */
+            width?: number | null;
+            /** Format: double */
+            height?: number | null;
+            dimensionUnit?: string | null;
+            /** Format: double */
+            volume?: number | null;
+            volumeUnit?: string | null;
+            volumeCalculated?: boolean;
+            /** Format: double */
+            weight?: number | null;
+            weightUnit?: string | null;
+        };
+        ProductUnitsSuggestionDto: {
+            regionCode?: string | null;
+            system?: string | null;
+            dimensionUnit?: string | null;
+            largeDimensionUnit?: string | null;
+            weightUnit?: string | null;
+            dimensionUnits?: string[] | null;
+            weightUnits?: string[] | null;
         };
     };
     responses: never;

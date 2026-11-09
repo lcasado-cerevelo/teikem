@@ -13,10 +13,12 @@ public sealed record ProductCreateRequest(string? Sku, string? Name, Guid? Owner
     string? BaseUom = null, string? TrackingType = null, decimal? WeightKg = null, decimal? VolumeM3 = null, string? Barcode = null,
     decimal? PurchaseCost = null, decimal? SalePrice = null, Guid? PreferredWarehousePublicId = null, int? PreferredBinId = null,
     decimal? MinQty = null, decimal? MinPickQty = null, decimal? MaxPickQty = null, string? Brand = null, string? Model = null,
-    string? PackUom = null, decimal? PackQty = null, string? RotationMethod = null);
+    string? PackUom = null, decimal? PackQty = null, string? RotationMethod = null,
+    decimal? Length = null, decimal? Width = null, decimal? Height = null, string? DimensionUnit = null, decimal? Weight = null, string? WeightUnit = null);
 
 /// <summary>
-/// PATCH del producto: el SKU es inmutable ('sku' en Extra → 400). Lote 12: Brand/Model null = sin cambio; "" (o solo
+/// PATCH del producto: el SKU es inmutable ('sku' en Extra → 400). Lote 230: Length / Width / Height (null = sin cambio, 0 = quitar), DimensionUnit (IN, CM, FT, M),
+/// Weight en WeightUnit (LB, KG; manda sobre WeightKg); con las tres medidas el volumen se calcula y un volumeM3 mandado se ignora. Lote 12: Brand/Model null = sin cambio; "" (o solo
 /// espacios) = quitarlos. Lote 34: RotationMethod = excepción de rotación del producto ('FEFO' | 'FIFO'); null = sin cambio; "" = quitarla
 /// (vuelve al método de la compañía).
 /// </summary>
@@ -25,7 +27,8 @@ public sealed record ProductPatchRequest(string? Name = null, Guid? OwnerClientP
     string? Barcode = null, bool? ClearBarcode = null, decimal? PurchaseCost = null, decimal? SalePrice = null,
     Guid? PreferredWarehousePublicId = null, int? PreferredBinId = null, bool? ClearPreferred = null, decimal? MinQty = null,
     decimal? MinPickQty = null, decimal? MaxPickQty = null, string? RowVersion = null, string? Brand = null, string? Model = null,
-    string? PackUom = null, decimal? PackQty = null, bool? ClearPack = null, string? RotationMethod = null)
+    string? PackUom = null, decimal? PackQty = null, bool? ClearPack = null, string? RotationMethod = null,
+    decimal? Length = null, decimal? Width = null, decimal? Height = null, string? DimensionUnit = null, decimal? Weight = null, string? WeightUnit = null)
 {
     [JsonExtensionData]
     public IDictionary<string, JsonElement>? Extra { get; set; }
@@ -66,9 +69,29 @@ public sealed record ProductListItemDto(int Id, Guid PublicId, string Sku, strin
 
 public sealed record ProductPageDto(int Total, int Skip, int Take, IReadOnlyList<ProductListItemDto> Items);
 
+/// <remarks>
+/// Lote 230: Measures = largo, ancho y alto con su unidad, el volumen para mostrar (en la unidad cúbica de las medidas; calculado si están las tres) y el peso en la
+/// unidad en que se escribió (WeightKg y VolumeM3 siguen siendo la verdad interna en kg y m³). CategoryPath = la ruta de la categoría («Guantes / Nitrilo») y
+/// CategoryParentId / CategoryParentName = su categoría padre (null si es de primer nivel o no tiene categoría).
+/// </remarks>
 public sealed record ProductDetailDto(ProductListItemDto Product, decimal? WeightKg, decimal? VolumeM3, Guid? PreferredWarehousePublicId,
     string? PreferredWarehouseCode, int? PreferredBinId, string? PreferredBinCode, decimal? MinPickQty, decimal? MaxPickQty,
-    bool HasMovements, string RowVersion, string? RotationMethod = null);
+    bool HasMovements, string RowVersion, string? RotationMethod = null,
+    ProductMeasuresDto? Measures = null, string? CategoryPath = null, int? CategoryParentId = null, string? CategoryParentName = null);
+
+/// <summary>
+/// Lote 230 — las medidas del producto como se escribieron: Length / Width / Height en DimensionUnit (IN, CM, FT, M); Volume en VolumeUnit (IN3, CM3, FT3, M3;
+/// M3 si no hay unidad de medidas), VolumeCalculated = salió de las tres medidas (no se edita a mano); Weight en WeightUnit (LB con 2 decimales, KG con 3).
+/// </summary>
+public sealed record ProductMeasuresDto(decimal? Length, decimal? Width, decimal? Height, string? DimensionUnit, decimal? Volume, string VolumeUnit, bool VolumeCalculated,
+    decimal? Weight, string? WeightUnit);
+
+/// <summary>
+/// Lote 230 — GET /products/units-suggestion: las unidades que se sugieren por la región de la compañía (PR y US = sistema inglés: IN / FT / LB; el resto métrico:
+/// CM / M / KG). DimensionUnit para lo chico, LargeDimensionUnit para lo grande; DimensionUnits y WeightUnits = todas las que se aceptan.
+/// </summary>
+public sealed record ProductUnitsSuggestionDto(string RegionCode, string System, string DimensionUnit, string LargeDimensionUnit, string WeightUnit,
+    IReadOnlyList<string> DimensionUnits, IReadOnlyList<string> WeightUnits);
 
 public sealed record ProductCategoryRequest(string? Name, int? ParentId = null);
 

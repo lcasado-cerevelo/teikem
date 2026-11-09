@@ -122,6 +122,11 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         b.Property(p => p.Name).HasMaxLength(200).IsRequired();
         b.Property(p => p.WeightKg).HasColumnType("decimal(12,3)");
         b.Property(p => p.VolumeM3).HasColumnType("decimal(12,4)");
+        b.Property(p => p.Length).HasColumnType("decimal(12,4)");   // Lote 230: dimensiones con su unidad y unidad del peso
+        b.Property(p => p.Width).HasColumnType("decimal(12,4)");
+        b.Property(p => p.Height).HasColumnType("decimal(12,4)");
+        b.Property(p => p.DimensionUnit).HasColumnType("varchar(2)");
+        b.Property(p => p.WeightUnit).HasColumnType("varchar(2)");
         b.Property(p => p.Barcode).HasMaxLength(60);
         b.Property(p => p.PurchaseCost).HasColumnType("decimal(18,4)");
         b.Property(p => p.SalePrice).HasColumnType("decimal(18,4)");
@@ -135,6 +140,8 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         b.Property(p => p.PromoFrom).HasColumnType("date");   // Lote 221: oferta (kit en promoción)
         b.Property(p => p.PromoTo).HasColumnType("date");
         b.HasOne<Teikem.Domain.Files.StoredFile>().WithMany().HasForeignKey(p => p.PromoImageFileId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<Teikem.Domain.Files.StoredFile>().WithMany().HasForeignKey(p => p.ImageFileId).OnDelete(DeleteBehavior.NoAction);   // Lote 229: foto del producto
+        b.HasOne<Teikem.Domain.Sales.Offer>().WithMany().HasForeignKey(p => p.OfferId).OnDelete(DeleteBehavior.NoAction);   // Lote 229: kit de una oferta
         b.Property(p => p.RowVersion).IsRowVersion();
 
         // SKU único por dueño (ClientId NULL = propio): sin el filtro 'IS NOT NULL' que EF agregaría.

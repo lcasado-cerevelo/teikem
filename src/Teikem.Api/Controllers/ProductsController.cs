@@ -57,6 +57,13 @@ public sealed class ProductsController(ProductService products, ProductSerialCon
     public Task<IReadOnlyList<string>> Brands([FromQuery] string? search, CancellationToken ct)
         => products.ListBrandsAsync(search, InventoryScope.Any, ct);
 
+    /// <summary>
+    /// Lote 230 — las unidades de medida que se sugieren por la región de la compañía para las dimensiones y el peso del producto: Puerto Rico y Estados Unidos =
+    /// sistema inglés (IN pulgadas para lo chico, FT pies para lo grande, LB libras); cualquier otra región, métrico (CM, M, KG). Trae también todas las aceptadas.
+    /// </summary>
+    [HttpGet("units-suggestion"), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<ProductUnitsSuggestionDto> UnitsSuggestion(CancellationToken ct) => products.UnitsSuggestionAsync(ct);
+
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.InventoryView)]
     public Task<ProductDetailDto> Get(Guid publicId, CancellationToken ct) => products.GetAsync(publicId, InventoryScope.Any, ct);
 

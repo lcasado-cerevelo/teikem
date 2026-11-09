@@ -401,6 +401,7 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
         if (ProductRules.Money(req.PurchaseCost, "costo") is string costError) errors["purchaseCost"] = new[] { costError };
         if (ProductRules.Money(req.SalePrice, "precio") is string priceError) errors["salePrice"] = new[] { priceError };
         foreach (var (field, message) in ProductRules.ValidateMeasures(req.WeightKg, req.VolumeM3)) errors[field] = new[] { message };
+        var (dimensionUnit, weightUnit) = ValidateDimensions(errors, req.Length, req.Width, req.Height, req.DimensionUnit, req.Weight, req.WeightUnit);   // Lote 230
 
         var uomCode = string.IsNullOrWhiteSpace(req.BaseUom) ? DefaultBaseUom : req.BaseUom.Trim().ToUpperInvariant();
         var uomId = await lookups.TryGetIdAsync(LookupDomains.UnitOfMeasure, uomCode, ct);
@@ -472,6 +473,7 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             Model = model,
             IsActive = true,
         };
+        await ApplyDimensionsAsync(product, req.Length, req.Width, req.Height, dimensionUnit, req.VolumeM3, req.Weight, weightUnit, req.WeightKg, ct);   // Lote 230
         db.Set<Product>().Add(product);
         await SaveProductAsync(ct);
         await RecordOutputAsync(product.PublicId, ct);
@@ -528,6 +530,7 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
         if (ProductRules.Money(req.PurchaseCost, "costo") is string costError) errors["purchaseCost"] = new[] { costError };
         if (ProductRules.Money(req.SalePrice, "precio") is string priceError) errors["salePrice"] = new[] { priceError };
         foreach (var (field, message) in ProductRules.ValidateMeasures(req.WeightKg, req.VolumeM3)) errors[field] = new[] { message };
+        var (dimensionUnit, weightUnit) = ValidateDimensions(errors, req.Length, req.Width, req.Height, req.DimensionUnit, req.Weight, req.WeightUnit);   // Lote 230
 
         int? uomId = null;
         if (!string.IsNullOrWhiteSpace(req.BaseUom))
@@ -647,8 +650,8 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             product.ClientId = ownerTarget;
             if (req.ClearCategory == true) product.ProductCategoryId = null;
             else if (newCategoryId is int nc) product.ProductCategoryId = nc;
-            if (req.WeightKg.HasValue) product.WeightKg = req.WeightKg;
-            if (req.VolumeM3.HasValue) product.VolumeM3 = req.VolumeM3;
+            // Lote 230: peso (en kg, con la unidad en que se escribió) y dimensiones; con las tres medidas el volumen se calcula
+            await ApplyDimensionsAsync(product, req.Length, req.Width, req.Height, dimensionUnit, req.VolumeM3, req.Weight, weightUnit, req.WeightKg, ct2);
             product.Barcode = barcodeTarget;
             if (req.PurchaseCost.HasValue) product.PurchaseCost = req.PurchaseCost;
             if (req.SalePrice.HasValue) product.SalePrice = req.SalePrice;
@@ -738,8 +741,77 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
         if (p.PreferredBinId is int binId) binCode = (await BinCodesAsync(new[] { binId }, ct)).GetValueOrDefault(binId);
 
         var hasMovements = await HasMovementsAsync(p.ProductId, ct);
+        // Lote 230: medidas como se escribieron y la ruta de la categoría (con su padre)
+        string? categoryPath = null;
+        int? parentId = null;
+        string? parentName = null;
+        if (p.ProductCategoryId is int categoryId)
+        {
+            var cats = await db.Set<ProductCategory>().AsNoTracking().Select(c => new { c.ProductCategoryId, c.ParentId, c.Name }).ToListAsync(ct);
+            var parents = cats.ToDictionary(c => c.ProductCategoryId, c => c.ParentId);
+            var names = cats.ToDictionary(c => c.ProductCategoryId, c => c.Name);
+            categoryPath = ProductRules.CategoryPath(categoryId, parents, names);
+            parentId = parents.GetValueOrDefault(categoryId);
+            parentName = parentId is int pid ? names.GetValueOrDefault(pid) : null;
+        }
         return new ProductDetailDto(item, p.WeightKg, p.VolumeM3, whPublicId, whCode, p.PreferredBinId, binCode,
-            p.MinPickQty, p.MaxPickQty, hasMovements, Convert.ToBase64String(p.RowVersion ?? Array.Empty<byte>()), p.RotationMethod);
+            p.MinPickQty, p.MaxPickQty, hasMovements, Convert.ToBase64String(p.RowVersion ?? Array.Empty<byte>()), p.RotationMethod,
+            MeasuresOf(p), categoryPath, parentId, parentName);
+    }
+
+    // ================================================================ Lote 230: dimensiones y peso con unidad
+
+    /// <summary>Las unidades que se sugieren por la región de la compañía (PR y US: IN / FT / LB; el resto: CM / M / KG).</summary>
+    public async Task<ProductUnitsSuggestionDto> UnitsSuggestionAsync(CancellationToken ct)
+    {
+        var s = await UnitsSuggestionOfTenantAsync(ct);
+        return new ProductUnitsSuggestionDto(s.RegionCode, s.System, s.DimensionUnit, s.LargeDimensionUnit, s.WeightUnit, DimensionUnits.All, WeightUnits.All);
+    }
+
+    private async Task<UnitsSuggestion> UnitsSuggestionOfTenantAsync(CancellationToken ct)
+    {
+        var tenantId = tenant.TenantId;
+        var region = await db.Set<Teikem.Domain.Tenancy.Tenant>().AsNoTracking().Where(x => x.TenantId == tenantId).Select(x => x.RegionCode).FirstOrDefaultAsync(ct);
+        return ProductDimensionRules.Suggest(region);
+    }
+
+    /// <summary>Valida las medidas y las unidades pedidas (400 por campo) y devuelve las unidades normalizadas (null = no vinieron).</summary>
+    private static (string? DimensionUnit, string? WeightUnit) ValidateDimensions(Dictionary<string, string[]> errors, decimal? length, decimal? width, decimal? height,
+        string? dimensionUnit, decimal? weight, string? weightUnit)
+    {
+        foreach (var (field, message) in ProductDimensionRules.ValidateDimensions(length, width, height)) errors[field] = new[] { message };
+        var (dim, dimError) = ProductDimensionRules.NormalizeDimensionUnit(dimensionUnit);
+        if (dimError is not null) errors["dimensionUnit"] = new[] { dimError };
+        var (wu, wuError) = ProductDimensionRules.NormalizeWeightUnit(weightUnit);
+        if (wuError is not null) errors["weightUnit"] = new[] { wuError };
+        else if (ProductDimensionRules.ValidateWeight(weight, wu ?? WeightUnits.Kilogram) is string weightError) errors["weight"] = new[] { weightError };
+        return (dim, wu);
+    }
+
+    /// <summary>
+    /// Aplica peso y dimensiones sobre el producto (ProductDimensionRules.Apply / ApplyWeight). La unidad que falte se toma de la que ya tenía el producto o, si no,
+    /// de la sugerida por la región (solo se consulta si hace falta).
+    /// </summary>
+    private async Task ApplyDimensionsAsync(Product product, decimal? length, decimal? width, decimal? height, string? dimensionUnit, decimal? volumeM3,
+        decimal? weight, string? weightUnit, decimal? weightKg, CancellationToken ct)
+    {
+        var needsDimensionDefault = dimensionUnit is null && product.DimensionUnit is null && (length is > 0m || width is > 0m || height is > 0m);
+        var needsWeightDefault = weight is not null && weightUnit is null && product.WeightUnit is null;
+        var suggestion = needsDimensionDefault || needsWeightDefault ? await UnitsSuggestionOfTenantAsync(ct) : null;
+        var (state, error) = ProductDimensionRules.Apply(new DimensionState(product.Length, product.Width, product.Height, product.DimensionUnit, product.VolumeM3),
+            length, width, height, dimensionUnit, volumeM3, suggestion?.DimensionUnit ?? DimensionUnits.Centimeter);
+        if (error is not null) throw new ValidationException("volumeM3", error);
+        (product.Length, product.Width, product.Height, product.DimensionUnit, product.VolumeM3) = (state.Length, state.Width, state.Height, state.DimensionUnit, state.VolumeM3);
+        var w = ProductDimensionRules.ApplyWeight(new WeightState(product.WeightKg, product.WeightUnit), weight, weightUnit, weightKg, suggestion?.WeightUnit ?? WeightUnits.Kilogram);
+        (product.WeightKg, product.WeightUnit) = (w.WeightKg, w.WeightUnit);
+    }
+
+    /// <summary>Las medidas del producto como se escribieron (para el detalle).</summary>
+    private static ProductMeasuresDto MeasuresOf(Product p)
+    {
+        var volume = ProductDimensionRules.DisplayVolume(new DimensionState(p.Length, p.Width, p.Height, p.DimensionUnit, p.VolumeM3));
+        return new ProductMeasuresDto(p.Length, p.Width, p.Height, p.DimensionUnit, volume.Volume, volume.VolumeUnit, volume.Calculated,
+            p.WeightKg is decimal kg ? ProductDimensionRules.FromKg(kg, p.WeightUnit ?? WeightUnits.Kilogram) : null, p.WeightUnit);
     }
 
     /// <summary>Posiciones que cumplen el filtro Posición (texto contenido en el código y/o ids elegidos); null = sin filtro de posición.</summary>

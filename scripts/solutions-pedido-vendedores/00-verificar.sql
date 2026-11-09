@@ -3,7 +3,7 @@
    ----------------------------------------------------------------------------------------------------------------------------
    Qué hace: SOLO LEE. No cambia nada. Dice si la base ya tiene lo que necesitan los scripts 01 a 10:
      - la compañía (por nombre, @Compania) y su id;
-     - las tablas y columnas de los lotes 221 a 225 (si falta alguna: primero el instalador / db-update de esta versión);
+     - las tablas y columnas de los lotes 221 a 225 y 229 (ofertas) (si falta alguna: primero el instalador / db-update de esta versión);
      - los permisos nuevos (sales.pricelist, sales.approve_client, clients.create_basic, pulse.sales, sales.quickbooks.*, billing.consignment.pay);
      - las plantillas de rol «Supervisor de ventas» (SalesSupervisor) y «Oficina de ventas» (SalesOffice) (las crea el API al arrancar);
      - los módulos de la compañía (Órdenes de venta, Impuestos, Facturación);
@@ -29,7 +29,7 @@ BEGIN
 END
 PRINT CONCAT(N'Compañía «', @Compania, N'»: TenantId = ', @TenantId);
 
--- 1) Estructura de los lotes 221–225 (la pone el instalador con db-update). Sin esto los scripts 01–10 ni compilan.
+-- 1) Estructura de los lotes 221–225 y 229 (la pone el instalador con db-update). Sin esto los scripts 01–10 ni compilan.
 DECLARE @Faltan TABLE (Que NVARCHAR(120));
 INSERT @Faltan SELECT x.Que FROM (VALUES
     (N'tabla dbo.PriceList (lote 221)',            CASE WHEN OBJECT_ID(N'dbo.PriceList', N'U') IS NULL THEN 1 ELSE 0 END),
@@ -38,6 +38,8 @@ INSERT @Faltan SELECT x.Que FROM (VALUES
     (N'tabla dbo.ProductKitComponent (lote 68)',   CASE WHEN OBJECT_ID(N'dbo.ProductKitComponent', N'U') IS NULL THEN 1 ELSE 0 END),
     (N'tabla dbo.NotificationRule (lote 51)',      CASE WHEN OBJECT_ID(N'dbo.NotificationRule', N'U') IS NULL THEN 1 ELSE 0 END),
     (N'Product.IsPromotion (lote 221)',            CASE WHEN COL_LENGTH(N'dbo.Product', N'IsPromotion') IS NULL THEN 1 ELSE 0 END),
+    (N'tabla dbo.Offer (lote 229)',                CASE WHEN OBJECT_ID(N'dbo.Offer', N'U') IS NULL THEN 1 ELSE 0 END),
+    (N'Product.OfferId (lote 229)',                CASE WHEN COL_LENGTH(N'dbo.Product', N'OfferId') IS NULL THEN 1 ELSE 0 END),
     (N'Product.ProductTypeLookupId (lote 68)',     CASE WHEN COL_LENGTH(N'dbo.Product', N'ProductTypeLookupId') IS NULL THEN 1 ELSE 0 END),
     (N'Product.QuickBooksSentAt (lote 225)',       CASE WHEN COL_LENGTH(N'dbo.Product', N'QuickBooksSentAt') IS NULL THEN 1 ELSE 0 END),
     (N'Client.QuickBooksSentAt (lote 225)',        CASE WHEN COL_LENGTH(N'dbo.Client', N'QuickBooksSentAt') IS NULL THEN 1 ELSE 0 END),
@@ -54,7 +56,7 @@ BEGIN
     SELECT Que AS [Falta en la base] FROM @Faltan;
     PRINT N'ALTO: falta estructura o permisos del pedido de vendedores. Instale primero esta versión (el instalador corre db-update) y vuelva a correr este script.';
 END
-ELSE PRINT N'OK: la estructura y los permisos de los lotes 221–225 están en la base.';
+ELSE PRINT N'OK: la estructura y los permisos de los lotes 221–225 y 229 están en la base.';
 
 -- 2) Plantillas de rol (las crea el API al arrancar: PermissionSeeder). El script 03 funciona igual sin ellas, pero conviene que existan.
 SELECT n.Name AS [Plantilla], CASE WHEN r.RoleId IS NULL THEN N'NO EXISTE (arranque el API una vez)' ELSE N'existe' END AS [Estado]
