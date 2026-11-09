@@ -32,11 +32,12 @@ export function useSalesCatalog(clientPublicId: string | null) {
 }
 
 /** Buscador de clientes del paso 1 (número o nombre; sin texto no consulta). */
-export function useClientSearch(q: string, open = false) {
+export function useClientSearch(q: string) {
   return useQuery({
     queryKey: wizardKeys.clients(q),
     queryFn: () => unwrap(api.GET('/api/v1/clients', { params: { query: { search: q, includeInactive: false } } })),
-    enabled: open || q.trim().length > 0,
+    // se consulta siempre (también sin texto): la lista se despliega al enfocar el buscador y, con un solo cliente, se escoge solo
+    enabled: true,
     placeholderData: keepPreviousData,
     meta: { handleAccessDenied: false },
   })

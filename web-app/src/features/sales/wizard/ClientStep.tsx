@@ -44,8 +44,18 @@ export function ClientStep({ state, onChange, onPickClient, client, clientLoadin
   const search = useDebounced(q.trim())
   // la lista de clientes se despliega al tomar el foco el buscador (aunque no se escriba nada) y se cierra al perderlo
   const [open, setOpen] = useState(false)
-  const results = useClientSearch(search, open)
+  const results = useClientSearch(search)
   const searchRef = useRef<HTMLInputElement>(null)
+  // si la compañía tiene un solo cliente, queda escogido por omisión (una vez; si luego lo cambian, no se vuelve a escoger solo)
+  const autoPicked = useRef(false)
+  useEffect(() => {
+    if (autoPicked.current || state.clientPublicId || search !== '') return
+    const only = results.data?.length === 1 ? results.data[0] : null
+    if (only?.publicId) {
+      autoPicked.current = true
+      onPickClient(only.publicId, `${only.code} · ${only.name}`)
+    }
+  }, [results.data, search, state.clientPublicId, onPickClient])
   useEffect(() => {
     if (!state.clientPublicId) searchRef.current?.focus()
   }, [state.clientPublicId])

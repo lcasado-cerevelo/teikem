@@ -63,7 +63,7 @@ function applyBody(body: Record<string, unknown>) {
 
 function route(r: FakeRequest): Response | unknown | undefined {
   const { method: m, path: p } = r
-  if (m === 'GET' && p === '/api/v1/clients') return [CLIENT]
+  if (m === 'GET' && p === '/api/v1/clients') return [CLIENT, { ...CLIENT, publicId: 'c-2', code: 'C0002', name: 'Otra farmacia' }]
   if (m === 'GET' && p === '/api/v1/clients/c-1') return server.client ?? CLIENT
   if (m === 'GET' && p === '/api/v1/sales-orders/catalog') return CATALOG
   if (m === 'POST' && p === '/api/v1/sales-orders') return applyBody(r.body as Record<string, unknown>)

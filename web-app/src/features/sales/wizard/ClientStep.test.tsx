@@ -78,6 +78,22 @@ describe('ClientStep — paso 1 del pedido guiado', () => {
     await waitFor(() => expect(mock.requests.filter((r) => r.path === '/api/v1/clients').map((r) => r.url.searchParams.get('search'))).toContain('farm'))
   })
 
+  it('con un solo cliente en la compañía, queda escogido por omisión (y con varios no se escoge solo)', async () => {
+    const onPick = vi.fn()
+    const base = mock.route
+    mock.route = (r) => (r.method === 'GET' && r.path === '/api/v1/clients' ? [CLIENTS[0]] : base?.(r))
+    const { unmount } = render(<WizardProviders><Step onPick={onPick} /></WizardProviders>)
+    await waitFor(() => expect(onPick).toHaveBeenCalledWith('c-1', 'C0001 · Farmacia Central'))
+    expect(onPick).toHaveBeenCalledTimes(1)
+    unmount()
+    onPick.mockClear()
+    mock.route = base
+    render(<WizardProviders><Step onPick={onPick} /></WizardProviders>)
+    await screen.findByRole('searchbox', { name: 'Buscar cliente' })
+    await waitFor(() => expect(mock.requests.some((r) => r.path === '/api/v1/clients')).toBe(true))
+    expect(onPick).not.toHaveBeenCalled()
+  })
+
   it('sin coincidencias lo dice; sin clients.create_basic no ofrece «Cliente nuevo»', async () => {
     const user = userEvent.setup()
     render(<WizardProviders permissions={['sales.view', 'sales.create', 'clients.read']}><Step /></WizardProviders>)
