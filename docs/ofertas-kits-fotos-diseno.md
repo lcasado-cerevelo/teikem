@@ -1,7 +1,7 @@
 # Ofertas, kits y fotos: lo acordado con Luis (2026-11-09)
 
 Estado: **acordado, sin construir**. Cambia el diseño del lote 221 (donde una oferta era un kit con la marca «Es promoción»).
-Queda abierto el tema de la **sustitución de piezas** (§6): se sigue conversando antes de construir.
+La **sustitución de piezas** (§6) y las **dimensiones** (§6b) tienen la regla acordada y detalles por confirmar.
 
 ## 1. Los tres conceptos, separados
 - **Producto.** Incluye los kits. Un **kit es un producto más**, formado por otros productos, con su precio normal. Se vende también suelto.
@@ -51,8 +51,32 @@ Queda abierto el tema de la **sustitución de piezas** (§6): se sigue conversan
 - Se quita la casilla del editor y el servidor deja de aceptar piezas cambiadas; los kits ya marcados pasan a fijos; las órdenes viejas
   con piezas ajustadas se quedan como están. Por confirmar si alguien lo usa hoy en Depot o Solutions.
 
-## 6. Abierto: sustitución de piezas
-Luis: es muy probable que pase (p. ej. otra talla, o falta una pieza y se cambia por otra equivalente). Reglas por definir.
+## 6. Sustitución de piezas de un kit (acordada la regla; detalles por confirmar)
+Luis: es muy probable que pase (p. ej. guantes del mismo precio en otra talla). Vale para el kit regular y para el de oferta.
+- **Regla:** en una orden, una pieza de un kit se puede cambiar por otro producto de la **misma categoría exacta** (la subcategoría, si
+  la tiene) y el **mismo precio**, en la **misma cantidad**. El kit vale lo mismo y su precio no se toca.
+- **Categorías:** se usa un nivel más, **categoría → subcategoría** (p. ej. Guantes → Nitrilo). La estructura ya lo permite (una
+  categoría puede tener padre). La categoría dice **qué es** el producto; la **marca** va en Marca y el **modelo** en Modelo (ya existen).
+  Si hoy hay marcas puestas como categoría, hay que recategorizar los productos (se puede por la importación).
+- En el pedido, las piezas con sustitutos válidos llevan «Cambiar» con la lista de productos permitidos; el inventario se reserva y sale
+  por la pieza que quedó; la orden y la factura muestran la pieza real.
+- Por confirmar: qué precio se compara (propuesta: el precio de venta del producto); si la diferencia de costo entre tallas es aceptable;
+  si sustituye solo el vendedor al pedir o también el almacén al despachar cuando falta una pieza; precio exactamente igual o con
+  tolerancia; si toda pieza es sustituible o el kit decide cuáles.
+
+## 6b. Dimensiones del producto: largo × ancho × alto y volumen (acordado)
+Hoy el producto solo guarda peso (kg) y volumen (m³); casi nadie piensa en metros cúbicos para una cajita.
+- El producto gana **largo, ancho y alto**, sin quitar el volumen. Los dos sincronizados:
+  - con las **tres medidas puestas**, el volumen **se calcula** de ahí y no se puede editar;
+  - si **falta cualquiera** de las tres, el volumen se puede escribir a mano;
+  - un volumen escrito antes no se pierde por poner una medida suelta: solo se reemplaza cuando están las tres.
+- **Unidad:** al poner las dimensiones la pantalla **pregunta en qué unidad** se están escribiendo y **sugiere una** según la región de
+  la compañía (pulgadas o centímetros; pies o metros). El usuario la puede cambiar por producto: lo de Solutions es chico (pulgadas /
+  centímetros), lo de Depot es grande (pies / metros, y volumen en pies o metros cúbicos).
+- Las medidas son de la **unidad base** del producto (lo que se vende), no de la paleta: la pantalla lo dice.
+- Propuestas mías, por confirmar: por dentro el volumen se sigue guardando en m³ y se guarda la unidad escogida para mostrarlo igual;
+  la importación de productos acepta las columnas nuevas con la misma regla; el peso, ¿kg o también libras?
+- Antes de construir hay que revisar quién usa hoy el volumen del producto (posiciones, tarifas, reportes) para no descuadrarlo.
 
 ## 7. Lo que hay que cambiar de lo ya construido
 - Campos de promoción del producto (`IsPromotion`, `PromoFrom`, `PromoTo`, `PromoImageFileId`) y la sección «Oferta (promoción)» del
