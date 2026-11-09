@@ -11189,6 +11189,18 @@ Expected: when rejecting, open orders (draft or requested) are cancelled and wha
 
 Chapter: [48 — Guided order](48-pedido-guiado.md).
 
+**Why can't I order a product that says «No price»?**
+Because neither the client's list, nor the general one, nor the product has a price, and the salesperson does not type prices. Whoever has `sales.price` (the company Admin) sees a **Price** box (with `$`) on that row, to the right of the quantity, enabled once a quantity is typed. The lasting fix is to give the product a sale price or to create a list in Accounting → Prices and offers.
+
+**How do I look for an offer or a product of another brand in the order?**
+Type in the Products step search box (it takes the focus on entry): with text it searches all brands, products and offers, by SKU or name. Without text it goes back to the chosen brand.
+
+**Why does the order already come with the client chosen?**
+If the company has just one active client, the order brings it chosen by default. «Change» lets you pick another.
+
+**What is the little square next to each product?**
+Its photo (from its offer or from its line in a price list). Hovering, focusing or tapping it shows it large. With no photo, it stays empty.
+
 **What does "El paso del pedido debe ser CLIENT, PRODUCTS, DELIVERY o AUTHORIZATION." mean?**
 (The order step must be CLIENT, PRODUCTS, DELIVERY or AUTHORIZATION.) A step that does not exist was sent (400). It is an integration error: the web and the app send the four correct steps.
 

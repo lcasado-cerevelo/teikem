@@ -18,7 +18,8 @@ Lotes 223 y 226 (2026-11-07) — pedido de vendedores, partes P3 (web) y P4 (app
 Barra de progreso arriba («Paso 2 de 4: Productos»). **Siguiente** guarda el borrador del paso que se deja; **Atrás** no guarda y la barra solo deja volver a pasos anteriores. Lo que se cambia al volver se guarda con el siguiente «Siguiente».
 
 ### Paso 1 — Cliente
-- **Buscar cliente** por número, nombre o teléfono; la lista muestra nombre, pueblo y número. Un cliente prospecto sale marcado «Prospecto: espera aprobación».
+- **Buscar cliente** por número, nombre o teléfono; la lista muestra nombre, pueblo y número. Un cliente prospecto sale marcado «Prospecto: espera aprobación». El buscador toma el foco al entrar y la lista de clientes se despliega al enfocarlo (aunque no se escriba nada); se cierra al salir del campo.
+- **Un solo cliente:** si la compañía tiene un solo cliente activo, el pedido lo trae escogido por omisión (una sola vez; si se toca «Cambiar», no se vuelve a escoger solo).
 - **Cliente nuevo** abre el alta mínima (negocio, DBA, contacto, teléfono de 10 dígitos y extensión, teléfono 2, correo, SURI, dirección física, dirección postal opcional, forma de pago del cliente y fotos del registro de comerciante y del certificado de revendedor, con cámara o archivo). El cliente **nace prospecto**: el pedido se envía igual, pero no se despacha hasta que lo aprueben. Reglas y mensajes en [02 §1.8](02-clientes-y-contratos.md#18-cliente-prospecto-alta-mínima-y-aprobación-lote-222).
 - **Almacén**: se pide solo si la compañía tiene más de uno activo.
 - **Datos del pedido**: **Pedido urgente** y **Nota del pedido** (hasta 500 caracteres); **Forma de pago** prellenada con la del cliente y editable (si cambia queda la marca «Cambió la forma de pago»); **Término del crédito** si la forma es Crédito. Detalle de las formas de pago en [18 §19](18-ordenes-de-venta.md#19-forma-de-pago-y-consignación-lote-222).
@@ -31,9 +32,10 @@ Barra de progreso arriba («Paso 2 de 4: Productos»). **Siguiente** guarda el b
 
 ### Paso 2 — Productos
 - Pestañas por **marca**; marcas sin producto activo no salen; los sin marca van al final («Sin marca»).
-- Arriba de cada marca, sus **ofertas vigentes** como tarjetas con foto y precio, con **+** y **−**. Debajo, la **lista completa** de la marca: SKU, nombre, precio (de la lista vigente del cliente o general) y casilla de cantidad; teclear una cantidad agrega la línea. Un buscador por SKU o nombre filtra la marca.
+- Arriba de cada marca, sus **ofertas vigentes** como tarjetas con foto y precio, con **+** y **−**. Debajo, la **lista completa** de la marca: un **cuadrito con la foto** del producto (44 px, del alto del renglón; al pasar el mouse, enfocarlo o tocarlo se ve grande; solo hay foto si el producto la trae de su oferta o del renglón de una lista de precios, si no queda vacío), SKU, nombre, casilla de **cantidad** (solo números enteros; teclearla agrega la línea) y el **precio** (de la lista vigente del cliente o general).
+- El **buscador** por SKU o nombre toma el foco al entrar al paso. Con texto, busca en **todas las marcas** (productos y ofertas); sin texto, muestra la marca escogida.
 - **Carrito** fijo abajo con el conteo y el subtotal; tocarlo muestra las líneas para corregir o quitar.
-- El vendedor **no teclea precios**: las líneas viajan sin precio y el servidor pone el resuelto (capítulo [47](47-precios-y-ofertas.md)). Un producto «Sin precio» no se puede pedir.
+- El vendedor **no teclea precios**: las líneas viajan sin precio y el servidor pone el resuelto (capítulo [47](47-precios-y-ofertas.md)). Un producto «Sin precio» no se puede pedir, **salvo para quien tiene `sales.price`** (el Admin de compañía): en ese renglón aparece la casilla **Precio** (con el signo `$`, decimales hasta 4), a la derecha de la cantidad, que se habilita al poner la cantidad. Ese precio viaja como excepción en cada guardado de la orden (pasos 2, 3 y 4) y no se guarda en el producto ni en ninguna lista. Sin `sales.price`: `El producto {SKU} no tiene precio de venta: escriba el precio.` (400).
 - Un kit se pide en piezas enteras. En la web, un kit ajustable permite cambiar las piezas de esta orden; en la app todavía no (se piden con las del catálogo).
 - «Siguiente» guarda con `step = PRODUCTS`: desde aquí la orden necesita al menos un producto.
 

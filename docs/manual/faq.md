@@ -11183,6 +11183,18 @@ Es lo esperado: al rechazar, las órdenes abiertas (borrador o solicitadas) se c
 
 Capítulo: [48 — Pedido guiado](48-pedido-guiado.md).
 
+**¿Por qué no puedo pedir un producto que dice «Sin precio»?**
+Porque ni la lista del cliente, ni la general, ni el producto tienen precio, y el vendedor no teclea precios. Quien tiene `sales.price` (el Admin de compañía) ve en ese renglón la casilla **Precio** (con `$`) a la derecha de la cantidad, que se habilita al poner la cantidad. Lo definitivo es ponerle precio de venta al producto o crear una lista en Contabilidad → Precios y ofertas.
+
+**¿Cómo busco una oferta o un producto de otra marca en el pedido?**
+Escriba en el buscador del paso Productos (toma el foco al entrar): con texto busca en todas las marcas, productos y ofertas, por SKU o nombre. Sin texto vuelve a la marca escogida.
+
+**¿Por qué el cliente ya viene escogido en el pedido?**
+Si la compañía tiene un solo cliente activo, el pedido lo trae escogido por omisión. Con «Cambiar» se puede escoger otro.
+
+**¿Qué es el cuadrito de al lado de cada producto?**
+Su foto (la de su oferta o la de su renglón en una lista de precios). Al pasar el mouse, enfocarlo o tocarlo se ve grande. Si no tiene foto, queda vacío.
+
 **¿Qué significa "El paso del pedido debe ser CLIENT, PRODUCTS, DELIVERY o AUTHORIZATION."?**
 Se mandó un paso que no existe (400). Es un error de la integración: la web y la app mandan los cuatro pasos correctos.
 

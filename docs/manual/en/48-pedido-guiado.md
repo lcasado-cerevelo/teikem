@@ -20,7 +20,8 @@ Batches 223 and 226 (2026-11-07) — salespeople's order, parts P3 (web) and P4 
 Progress bar on top («Step 2 of 4: Products»). **Next** saves the draft of the step being left; **Back** does not save, and the bar only lets you go back to earlier steps. What is changed when going back is saved with the next «Next».
 
 ### Step 1 — Client
-- **Search client** by number, name or phone; the list shows name, town and number. A prospect client shows marked «Prospect: awaiting approval».
+- **Search client** by number, name or phone; the list shows name, town and number. A prospect client shows marked «Prospect: awaiting approval». The search box takes the focus on entry and the client list opens when it is focused (even with nothing typed); it closes when leaving the field.
+- **A single client:** if the company has just one active client, the order brings it chosen by default (only once; if «Change» is tapped it is not chosen again by itself).
 - **New client** opens the minimal sign-up (business, DBA, contact, 10-digit phone and extension, phone 2, email, SURI, physical address, optional mailing address, the client's payment method and photos of the merchant registration and the reseller certificate, with camera or file). The client **is born as a prospect**: the order is sent anyway, but it is not dispatched until they approve it. Rules and messages in [02 §1.8](02-clientes-y-contratos.md#18-prospect-client-minimal-sign-up-and-approval-batch-222).
 - **Warehouse**: asked only if the company has more than one active.
 - **Order data**: **Urgent order** and **Order note** (up to 500 characters); **Payment method** prefilled with the client's and editable (if it changes, the «Payment method changed» mark remains); **Credit term** if the method is Credit. Payment methods in detail in [18 §19](18-ordenes-de-venta.md#19-payment-method-and-consignment-batch-222).
@@ -33,9 +34,10 @@ Progress bar on top («Step 2 of 4: Products»). **Next** saves the draft of the
 
 ### Step 2 — Products
 - Tabs by **brand**; brands without an active product do not show; those without a brand go last («No brand»).
-- Above each brand, its **offers in effect** as cards with photo and price, with **+** and **−**. Below, the brand's **full list**: SKU, name, price (from the client's in-effect list or the general one) and a quantity box; typing a quantity adds the line. A search box by SKU or name filters the brand.
+- Above each brand, its **offers in effect** as cards with photo and price, with **+** and **−**. Below, the brand's **full list**: a **photo square** of the product (44 px, the height of the row; hovering, focusing or tapping it shows it large; there is a photo only if the product has one from its offer or from a price-list line, otherwise it stays empty), SKU, name, a **quantity** box (whole numbers only; typing it adds the line) and the **price** (from the client's in-effect list or the general one).
+- The **search box** by SKU or name takes the focus when the step opens. With text it searches **all brands** (products and offers); without text it shows the chosen brand.
 - **Cart** fixed at the bottom with the count and the subtotal; tapping it shows the lines to fix or remove.
-- The salesperson **does not type prices**: lines travel without a price and the server puts the resolved one (chapter [47](47-precios-y-ofertas.md)). A product shown «No price» cannot be ordered.
+- The salesperson **does not type prices**: lines travel without a price and the server puts the resolved one (chapter [47](47-precios-y-ofertas.md)). A product shown «No price» cannot be ordered, **except by whoever has `sales.price`** (the company Admin): that row shows a **Price** box (with the `$` sign, up to 4 decimals), to the right of the quantity, enabled once a quantity is typed. That price travels as an exception in every save of the order (steps 2, 3 and 4) and is not stored on the product or in any list. Without `sales.price`: `El producto {SKU} no tiene precio de venta: escriba el precio.` (400).
 - A kit is ordered in whole pieces. On the web, an adjustable kit lets you change the pieces of this order; in the app not yet (they are ordered with the catalog's pieces).
 - «Next» saves with `step = PRODUCTS`: from here the order needs at least one product.
 
