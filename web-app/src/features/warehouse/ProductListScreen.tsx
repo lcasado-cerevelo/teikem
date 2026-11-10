@@ -255,6 +255,8 @@ function ProductsTab() {
           <>
             <span className="ref">{p.sku}</span>
             {p.isKit && <> <Chip tone="neutral">{t('warehouse.products.kit.chip')}</Chip></>}
+            {/* Lote 232: kit armado (producto con inventario propio; su existencia se ve como la de cualquier producto) */}
+            {p.isAssembledKit && <> <Chip tone="neutral">{t('warehouse.products.assembled.chip')}</Chip></>}
           </>
         ),
         sortValue: (p) => p.sku,

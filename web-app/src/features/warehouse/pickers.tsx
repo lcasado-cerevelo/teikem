@@ -664,6 +664,8 @@ export interface ProductPickerProps {
   showAvailable?: boolean
   /** Incluye productos dados de baja (marcados "Inactivo"), p. ej. para filtrar el historial del Kárdex. */
   includeInactive?: boolean
+  /** Lote 231: incluye los kits de oferta (el servidor los deja fuera por omisión); solo la orden de venta clásica los pide. */
+  includeOfferKits?: boolean
   id?: string
   placeholder?: string
   disabled?: boolean
@@ -684,6 +686,7 @@ export function ProductPicker({
   onlyOnHand,
   showAvailable,
   includeInactive,
+  includeOfferKits,
   id,
   placeholder,
   disabled,
@@ -720,6 +723,7 @@ export function ProductPicker({
     warehousePublicId: warehousePublicId || undefined,
     onlyAvailable: onlyAvailable || undefined,
     onlyOnHand: onlyOnHand || undefined,
+    includeOfferKits: includeOfferKits || undefined,
     take: MAX_SHOWN,
   }
   const list = useQuery({

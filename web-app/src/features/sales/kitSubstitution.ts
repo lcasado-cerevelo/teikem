@@ -26,9 +26,11 @@ export function catalogPieceOf(subs: KitSubstitutesDto | undefined, p: KitPiece)
 
 /**
  * Los productos que se pueden escoger para una pieza: los sustitutos válidos de su pieza original, sin el que ya tiene puesto y sin los que ya son otra
- * pieza de la línea (dos piezas no pueden quedar con el mismo producto). Una pieza «no sustituible» no tiene ninguno.
+ * pieza de la línea (dos piezas no pueden quedar con el mismo producto). Una pieza «no sustituible» no tiene ninguno, ni un kit que no es de oferta.
  */
 export function substituteOptions(subs: KitSubstitutesDto | undefined, pieces: readonly KitPiece[], p: KitPiece): KitSubstituteDto[] {
+  // Lote 231: solo un kit de oferta cambia piezas al pedir (el servidor ya manda la lista vacía para los demás; aquí no se confía en eso)
+  if (subs?.isOfferKit === false) return []
   const c = catalogPieceOf(subs, p)
   if (!c || c.notSubstitutable) return []
   const used = new Set(pieces.filter((x) => originalOf(x) !== originalOf(p)).map((x) => x.productPublicId))

@@ -1,8 +1,10 @@
-// Lote 229 — reglas puras de las OFERTAS: borrador de la oferta (nombre, vigencia, a quién aplica), cuerpo que se envía, qué impide publicar, el kit creado
-// para una oferta (piezas con cantidad y «No sustituible») y la suma de sus piezas a precio normal. Espejo de `OfferRules` del servidor (que repite todo):
+// Lote 229 — reglas puras de las OFERTAS: borrador de la oferta (nombre, vigencia, a quién aplica), cuerpo que se envía, qué impide publicar, el kit de
+// oferta (piezas con cantidad y «No sustituible») y la suma de sus piezas a precio normal. Lote 231: el kit de oferta vive en una biblioteca (se reusa en
+// otras ofertas con otro precio; su composición no cambia una vez usado). Espejo de `OfferRules` del servidor (que repite todo):
 // aquí solo para avisar antes de enviar. Los textos de los problemas están en `warehouse.products.prices.offer.err.*`.
 import type { ChipTone } from '../../kernel/ui'
-import type { OfferKitRequest, OfferRequest } from './offerApi'
+import { KIT_PIECES_PROBLEMS, kitPiecesError, newKitPiece, pieceQuantity, piecesFromComponents, piecesToComponents, type KitPiece, type KitPiecesProblem } from './kitPieces'
+import type { OfferKitRequest, OfferKitUpdateRequest, OfferRequest } from './offerApi'
 import { parsePrice } from './priceListRules'
 
 export const OFFER_NAME_MAX = 120
@@ -74,62 +76,46 @@ export function offerIsOpenEnded(o: { hasEndDate?: boolean | null; validTo?: str
   return o.hasEndDate == null ? !o.validTo : !o.hasEndDate
 }
 
-// ---- Kit creado para una oferta ----
-export interface OfferKitPiece {
-  key: string
-  productPublicId: string | null
-  sku: string
-  name: string
-  /** Texto de la cantidad, tal cual se escribió. */
-  quantity: string
-  notSubstitutable: boolean
-  /** Precio de venta de la pieza si se conoce (al escogerla en el buscador); null = no se sabe. */
-  salePrice: number | null
-}
+// ---- Kit de oferta (biblioteca, lote 231) ----
+// Las piezas son las comunes de `kitPieces.ts` (también las usará el kit armado); aquí quedan los nombres de siempre como alias.
+export type OfferKitPiece = KitPiece
+export const newOfferKitPiece = newKitPiece
+export const piecesFromKit = piecesFromComponents
+export { pieceQuantity }
 
 export interface OfferKitDraft {
   sku: string
   name: string
   price: string
   pieces: OfferKitPiece[]
+  /** «Ajustable al pedir» (por omisión no: el kit de oferta nace no ajustable). */
+  adjustable?: boolean
 }
 
-export const newOfferKitPiece = (key: string): OfferKitPiece => ({ key, productPublicId: null, sku: '', name: '', quantity: '1', notSubstitutable: false, salePrice: null })
+export type OfferKitProblem = 'skuRequired' | 'nameRequired' | 'priceRequired' | KitPiecesProblem
 
-export type OfferKitProblem = 'skuRequired' | 'nameRequired' | 'priceRequired' | 'noPieces' | 'pieceProduct' | 'pieceQuantity' | 'pieceRepeated'
+/** ¿El problema es de las piezas? (su texto está en `warehouse.products.kit.err.*`; los demás en `…prices.offer.kit.err.*`). */
+export const isPiecesProblem = (p: OfferKitProblem): p is KitPiecesProblem => (KIT_PIECES_PROBLEMS as readonly string[]).includes(p)
 
-/** Cantidad de una pieza: número > 0 con hasta 4 decimales; si no, null. */
-export function pieceQuantity(text: string): number | null {
-  const n = parsePrice(text)
-  return n != null && n > 0 ? n : null
-}
-
-/** `editing` = cambiar un kit ya creado (no se cambian SKU ni precio desde aquí: el precio es el del renglón). */
-export function offerKitDraftError(d: OfferKitDraft, editing = false): OfferKitProblem | null {
+/**
+ * `editing` = cambiar un kit de la biblioteca (no se cambian SKU ni precio desde aquí: el precio es el del renglón). `locked` = su composición ya no se
+ * puede cambiar (ya se usó): solo se revisa el nombre.
+ */
+export function offerKitDraftError(d: OfferKitDraft, editing = false, locked = false): OfferKitProblem | null {
   if (!editing && !d.sku.trim()) return 'skuRequired'
   if (!d.name.trim()) return 'nameRequired'
   if (!editing && parsePrice(d.price) == null) return 'priceRequired'
-  const pieces = d.pieces.filter((p) => p.productPublicId || p.quantity.trim() !== '1')
-  if (pieces.length === 0) return 'noPieces'
-  if (pieces.some((p) => !p.productPublicId)) return 'pieceProduct'
-  if (pieces.some((p) => pieceQuantity(p.quantity) == null)) return 'pieceQuantity'
-  const ids = pieces.map((p) => p.productPublicId)
-  if (new Set(ids).size !== ids.length) return 'pieceRepeated'
-  return null
+  return locked ? null : kitPiecesError(d.pieces)
 }
 
-function components(d: OfferKitDraft) {
-  return d.pieces
-    .filter((p) => p.productPublicId)
-    .map((p) => ({ productPublicId: p.productPublicId, quantity: pieceQuantity(p.quantity) ?? 0, notSubstitutable: p.notSubstitutable }))
-}
-
+/** «Crear un kit nuevo» desde la oferta (`POST /offers/{id}/kits`): queda en la biblioteca y con su renglón en esta oferta. */
 export function toOfferKitRequest(d: OfferKitDraft): OfferKitRequest {
-  return { sku: d.sku.trim(), name: d.name.trim(), price: parsePrice(d.price), components: components(d) }
+  return { sku: d.sku.trim(), name: d.name.trim(), price: parsePrice(d.price), components: piecesToComponents(d.pieces), adjustable: d.adjustable === true }
 }
 
-export function toOfferKitUpdate(d: OfferKitDraft) {
-  return { name: d.name.trim(), components: components(d) }
+/** Cambio de un kit de la biblioteca (`PATCH /offers/kits/{id}`): con la composición bloqueada solo viaja el nombre. */
+export function toOfferKitUpdate(d: OfferKitDraft, locked = false): OfferKitUpdateRequest {
+  return locked ? { name: d.name.trim() } : { name: d.name.trim(), components: piecesToComponents(d.pieces), adjustable: d.adjustable === true }
 }
 
 /**
@@ -144,22 +130,18 @@ export function offerKitSavings(d: OfferKitDraft): { normal: number; offer: numb
   return { normal, offer, saving: offer == null ? null : Math.round((normal - offer) * 100) / 100 }
 }
 
-/** Piezas del editor a partir del kit que manda el servidor (al cambiar un kit de oferta ya creado). */
-export function piecesFromKit(
-  components: { productPublicId?: string; sku?: string | null; name?: string | null; quantity?: number; notSubstitutable?: boolean }[] | null | undefined,
-  key: (i: number) => string,
-): OfferKitPiece[] {
-  const rows = (components ?? []).map((c, i) => ({
-    key: key(i),
-    productPublicId: c.productPublicId ?? null,
-    sku: c.sku ?? '',
-    name: c.name ?? '',
-    quantity: String(c.quantity ?? 1),
-    notSubstitutable: c.notSubstitutable === true,
-    salePrice: null,
-  }))
-  return rows.length ? rows : [newOfferKitPiece(key(0))]
+/** Precio que se sugiere al «Usar un kit anterior»: el último con que se puso en una oferta (`lastPrice`); sin él, en blanco. */
+export const suggestedKitPrice = (kit: { lastPrice?: number | null }): string => (kit.lastPrice == null ? '' : String(kit.lastPrice))
+
+/** Renglón de «Usar un kit anterior»: el precio escrito (editable) es obligatorio y válido; null = problema `priceRequired`. */
+export function libraryKitItem(kit: { productPublicId?: string }, priceText: string): { productPublicId: string; price: number } | null {
+  const price = parsePrice(priceText)
+  return price == null || !kit.productPublicId ? null : { productPublicId: kit.productPublicId, price }
 }
+
+/** ¿El kit ya es un renglón activo de esta oferta? (no se agrega dos veces). */
+export const kitInOffer = (items: readonly { productPublicId?: string }[] | null | undefined, kitId: string | null | undefined): boolean =>
+  Boolean(kitId) && (items ?? []).some((i) => i.productPublicId === kitId)
 
 // ---- Foto del producto ----
 /** Tipos de foto que acepta el servidor (`ProductImageRules`). */

@@ -32,6 +32,11 @@ describe('sustitución de piezas', () => {
     expect(substituteOptions(undefined, PIECES, PIECES[0])).toEqual([])
   })
 
+  it('lote 231: un kit que no es de oferta no cambia piezas aunque llegaran sustitutos; el de oferta sí', () => {
+    expect(substituteOptions({ ...SUBS, isOfferKit: false }, PIECES, PIECES[0])).toEqual([])
+    expect(substituteOptions({ ...SUBS, isOfferKit: true }, PIECES, PIECES[0]).map((s) => s.sku)).toEqual(['GS', 'GL'])
+  })
+
   it('cambiar: la pieza nueva en la misma cantidad, con la original para decir «en lugar de»; deshacer vuelve la original', () => {
     const changed = substitutePiece(PIECES, 'gm', SUBS.components![0].substitutes![1])
     expect(changed[0]).toEqual({ productPublicId: 'gl', sku: 'GL', name: 'Guante L', quantity: '2', substitutesProductPublicId: 'gm', substitutesSku: 'GM', substitutesName: 'Guante M' })

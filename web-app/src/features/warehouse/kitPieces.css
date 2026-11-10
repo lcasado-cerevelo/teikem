@@ -1,0 +1,11 @@
+/* Lote 231 — editor de piezas de un kit (KitPiecesEditor). Solo colores del tema (claro y oscuro). Una pieza por renglón (producto, cantidad,
+   «No sustituible», quitar); bajo 720 px el producto ocupa todo el renglón y lo demás baja; nunca desborda el ancho del modal. */
+.kp-row{display:grid;grid-template-columns:minmax(0,1fr) 110px auto auto;gap:8px;align-items:end;margin-bottom:8px;min-width:0}
+.kp-row .f{margin:0;min-width:0}
+.kp-row .kp-ns{display:flex;gap:6px;align-items:center;white-space:nowrap;padding-bottom:9px}
+@media (max-width:720px){.kp-row{grid-template-columns:minmax(0,1fr) auto auto}.kp-row>.f:first-child{grid-column:1/-1}.kp-row .kp-ns{padding-bottom:9px}}
+.kp-ro{margin:10px 0;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2);min-width:0}
+.kp-ro .kp-title{display:block;font-size:13px;margin-bottom:6px}
+.kp-ro ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.kp-ro li{font-size:13px;overflow-wrap:anywhere;color:var(--text)}
+.kp-ro .kp-name{color:var(--text)}

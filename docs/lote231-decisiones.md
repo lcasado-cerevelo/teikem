@@ -133,3 +133,52 @@ precios.». El manual (capítulos 47/48 y la FAQ del 229) debe cambiarlos.
   cliente: no se puede vender.»; sustitutos de OFERTA1 `isOfferKit` true; kit de oferta en una lista de precios 422.
 - `web-app/openapi.json`: solo lo del 231 (rutas `/api/v1/offers*`, `includeOfferKits` de `/products`, esquemas `Offer*`, `OfferKitLibrary*`, `KitDto`,
   `KitSubstitutesDto`) del swagger de una instantánea HEAD + lote 231 (sin el 232); `schema.d.ts` regenerado y copiado igual a app-cliente y app-almacen.
+
+## Frontend (web-app, 2026-11-10)
+**Qué se construyó**
+- **Editor de la oferta** (`OfferEditorModal`): bajo «Renglones» siguen «Escoger un producto» + precio (el buscador ya no trae kits de oferta: no manda
+  `includeOfferKits`) y dos botones para el kit de oferta, **«Usar un kit anterior»** y **«Crear un kit nuevo»**, que abren `OfferKitModal` en ese camino
+  (con pestañas para pasar de uno a otro). El distintivo del renglón dice «Kit de oferta» (ya no «de la oferta»).
+- **«Usar un kit anterior»**: buscador de la biblioteca (`GET /offers/kits?q=`, 250 ms entre teclas, conserva los resultados mientras busca); cada kit
+  muestra foto, SKU, nombre, piezas («MON-1 × 1 · TIR-1 × 2»), «Última oferta: «…» a $…» o «Todavía no se ha usado…». Al escogerlo: piezas en solo
+  lectura con «No sustituible», la nota «La composición de un kit anterior no se cambia; para otra composición, cree un kit nuevo.», «Ajustable al pedir»
+  como distintivo, y el **precio editable prellenado con `lastPrice`** («Último precio: $41.94 (oferta «Enero»). Puede poner otro.»). «Agregar a la
+  oferta» = `POST /offers/{id}/items` con el precio escrito. «Crear un kit nuevo con estas piezas» pasa a la otra pestaña con las mismas piezas, nombre,
+  «ajustable» y precio (SKU en blanco).
+- **«Crear un kit nuevo»**: SKU, nombre, precio, piezas (`KitPiecesEditor`) y la casilla «Ajustable al pedir» (nace desmarcada); `POST /offers/{id}/kits`
+  (queda en la biblioteca y con su renglón). La suma a precio normal y el ahorro siguen.
+- **«Cambiar kit»** del renglón: lee el kit de la biblioteca (`GET /offers/kits/{id}`) y guarda con el **PATCH** de la biblioteca (ya no el `PUT
+  /offers/{id}/kits/{kit}`); con `compositionLocked` solo se cambia el nombre (piezas en solo lectura con la nota) y solo viaja `{ name }`.
+- **Productos**: sin pestaña «Kit» ni «Convertir en kit» (`ProductDetailScreen`; `?tab=kit` de un enlace viejo abre Lotes). Se borraron `KitTab.tsx`,
+  `KitTab.test.tsx`, `kitRules.ts`, `kitRules.test.ts`, `useSetKit` (api.ts) y las claves `warehouse.products.kit.*` que solo usaba la pestaña. El distintivo
+  «Kit» de la lista y de la ficha se queda (un kit viejo tipo `KIT` lo sigue mostrando).
+- **Orden de venta clásica**: el `ProductPicker` de las líneas de `OrderModal` manda `includeOfferKits=true` (prop nueva `includeOfferKits`) para poder
+  seguir pidiendo kits de oferta como dice el contrato. El pedido guiado no cambia (usa el catálogo).
+- **Sustitución**: `substituteOptions` devuelve vacío si `isOfferKit === false` (además de lo que ya hace el servidor), así «Cambiar» nunca sale en un kit
+  que no es de oferta.
+
+**Reutilizable para el kit armado (lote 232)**: `KitPiecesEditor` (piezas con buscador, cantidad, «No sustituible», quitar/agregar; modo solo lectura) y
+`kitPieces.ts` (`KitPiece`, `newKitPiece`, `pieceQuantity`, `kitPiecesError`, `piecesToComponents`, `piecesFromComponents`), con sus textos neutros en
+`warehouse.products.kit.*` (`pieces`, `piece`, `quantity`, `notSubstitutable`, `notSubstitutableOf`, `removePiece`, `addPiece`, `substituteHelp`,
+`adjustable`, `adjustableChip`, `chip`, `err.*`). Documentados en `web-app/KIT.md` («Lote 231»). El frontend del 232 ya le agregó la prop `substitutable`.
+
+**Decisiones (revisar con Luis)**
+1. Los dos caminos van como dos botones en el editor y como pestañas dentro de la ventana del kit (se puede cambiar de camino sin cerrar).
+2. Al «Usar un kit anterior» el precio es **obligatorio en pantalla** aunque el servidor acepte vacío (= último precio): va prellenado con el último, así
+   que solo se pide si el usuario lo borra o el kit nunca se usó. Mensaje: «Indique el precio de oferta del kit.».
+3. Un kit que ya es renglón de esta oferta sale en la biblioteca con «Ya está en esta oferta» y su botón deshabilitado.
+4. «Crear un kit nuevo con estas piezas» (copiar la composición de un kit anterior) se agregó para el caso «el de noviembre pero con otra pieza»; no lo pidió
+   Luis expresamente.
+5. No se hizo una pantalla aparte de la biblioteca en Precios y ofertas (no se pidió para este lote); la biblioteca se ve desde el editor de la oferta.
+6. Las piezas del kit de oferta solo buscan productos propios (`ownOnly`), como antes.
+
+**Cómo se probó** (`npm run check` en web-app): tipos generados sin cambios (openapi.json y schema.d.ts con el mismo md5 antes y después), tsc y oxlint
+sin errores en lo del 231; vitest «Test Files 2 failed | 348 passed (350) · Tests 2 failed | 3789 passed (3791)»: los dos rojos son
+`DispatchMap.test.tsx` «plano de la ruta activa» (ya falla en master por entorno) y `NewOrderScreen.test.tsx` (falla bajo carga; sola: «Tests 7 passed (7)»
+dos veces). Pruebas nuevas o cambiadas: `OffersScreen.test.tsx` (usar un kit anterior: biblioteca, búsqueda en el servidor, último precio sugerido y
+editable, composición en solo lectura con la nota, kit ya en la oferta deshabilitado, cuerpo del renglón; crear un kit nuevo con «Ajustable al pedir»;
+copiar piezas con el 409 del servidor tal cual; cambiar el kit de un renglón por PATCH con solo el nombre), `offerRules.test.ts`, `kitPieces.test.ts`
+(nuevo), `ProductDetailScreen.test.tsx` (nuevo: sin pestaña Kit; `?tab=kit` abre Lotes sin pedir `/kit`), `kitSubstitution.test.ts` (kit que no es de
+oferta sin sustitutos) y `ProductsStep.offers.test.tsx` (el mismo kit de oferta en dos ofertas: una tarjeta, la más barata y el aviso). `npm run build`
+quedó rojo **por el lote 232 a medias** (`AssembledKitEditor.tsx(20,3): error TS6133: 'assembledPiecesProblem' is declared but its value is never read.`),
+no por el 231. Falta el capítulo del manual de pantallas y las capturas (no se pidió en esta parte).

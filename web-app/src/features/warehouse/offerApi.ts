@@ -1,7 +1,10 @@
 // Lote 229 — hooks de las OFERTAS (`/api/v1/offers`, aparte de las listas de precios) y de la foto del producto (`/api/v1/products/{id}/image`).
 // Ofertas: lectura sales.view, escritura sales.pricelist (módulo SALES_ORDERS). Foto del producto: lectura inventory.view o sales.view, escritura inventory.manage.
 // Toda respuesta de cambio de una oferta trae la oferta completa (con sus `warnings`): se deja en la caché del detalle y se vuelve a pedir la lista.
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+// Lote 231 — biblioteca de kits de oferta (`/api/v1/offers/kits`, lectura sales.view, escritura sales.pricelist): buscar, leer y cambiar un kit (el nombre
+// siempre; piezas y «ajustable» solo si nunca se usó: `compositionLocked`). Todo cambio de una oferta o de un kit vuelve a pedir la biblioteca (último precio,
+// en cuántas ofertas está).
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../../kernel/api/client'
 import type { components } from '../../kernel/api/schema'
 
@@ -14,10 +17,33 @@ export type OfferRequest = S['OfferRequest']
 export type OfferKitRequest = S['OfferKitRequest']
 export type OfferKitUpdateRequest = S['OfferKitUpdateRequest']
 export type ProductImageDto = S['ProductImageDto']
+export type OfferKitLibraryItemDto = S['OfferKitLibraryItemDto']
 
 export const offerKeys = {
   list: ['/api/v1/offers'] as const,
   detail: (publicId: string | null | undefined) => ['/api/v1/offers', 'detail', publicId ?? ''] as const,
+  library: ['/api/v1/offers/kits'] as const,
+}
+
+/** Biblioteca de kits de oferta por SKU o nombre (`q`: el SKU o el nombre contiene; hasta 500). `enabled` = pedirla solo con la pantalla abierta. */
+export function useOfferKitLibrary(query: { q?: string; includeInactive?: boolean }, enabled = true) {
+  return useQuery({
+    queryKey: [...offerKeys.library, 'list', query],
+    queryFn: () => unwrap(api.GET('/api/v1/offers/kits', { params: { query } })),
+    enabled,
+    placeholderData: keepPreviousData, // mientras llega la nueva búsqueda se ven los resultados anteriores
+    meta: { handleAccessDenied: false },
+  })
+}
+
+/** Un kit de la biblioteca (piezas, último precio y oferta, `compositionLocked`); 404 «Kit de oferta no encontrado.» si no es kit de oferta. */
+export function useOfferKitLibraryItem(productPublicId: string | null | undefined) {
+  return useQuery({
+    queryKey: [...offerKeys.library, 'detail', productPublicId ?? ''],
+    queryFn: () => unwrap(api.GET('/api/v1/offers/kits/{productPublicId}', { params: { path: { productPublicId: productPublicId ?? '' } } })),
+    enabled: Boolean(productPublicId),
+    meta: { handleAccessDenied: false },
+  })
 }
 
 export function useOfferList(query: { q?: string; state?: string; includeInactive?: boolean }) {
@@ -49,6 +75,7 @@ export function useOfferActions() {
   const after = (dto: OfferDto | undefined) => {
     if (dto?.publicId) qc.setQueryData(offerKeys.detail(dto.publicId), dto)
     void qc.invalidateQueries({ queryKey: [...offerKeys.list, 'list'] })
+    void qc.invalidateQueries({ queryKey: offerKeys.library })
   }
   const opts = { onSuccess: after }
   const path = (publicId: string) => ({ params: { path: { publicId } } })
@@ -69,6 +96,7 @@ export function useOfferActions() {
     }),
     removeImage: useMutation({ mutationFn: (publicId: string) => unwrap(api.DELETE('/api/v1/offers/{publicId}/image', path(publicId))), ...opts }),
     addItems: useMutation({
+      // «Usar un kit anterior» = un renglón con el kit de la biblioteca y su precio
       mutationFn: ({ publicId, items }: { publicId: string; items: { productPublicId: string; price: number }[] }) =>
         unwrap(api.POST('/api/v1/offers/{publicId}/items', { ...path(publicId), body: { items } })),
       ...opts,
@@ -101,15 +129,20 @@ export function useOfferActions() {
         unwrap(api.DELETE('/api/v1/offers/{publicId}/clients/{clientPublicId}', { params: { path: { publicId, clientPublicId } } })),
       ...opts,
     }),
-    /** Kit creado para la oferta (nace con su renglón y su precio); responde el kit y la oferta. */
+    /** «Crear un kit nuevo»: queda en la biblioteca y nace con su renglón y su precio en esta oferta; responde el kit y la oferta. */
     createKit: useMutation({
       mutationFn: ({ publicId, body }: { publicId: string; body: OfferKitRequest }) => unwrap(api.POST('/api/v1/offers/{publicId}/kits', { ...path(publicId), body })),
       onSuccess: (dto) => after(dto.offer),
     }),
+    /** Cambiar un kit de la biblioteca (`PATCH /offers/kits/{id}`): el nombre siempre; piezas y «ajustable» solo si nunca se usó (si no, 422 del servidor). */
     updateKit: useMutation({
-      mutationFn: ({ publicId, productPublicId, body }: { publicId: string; productPublicId: string; body: OfferKitUpdateRequest }) =>
-        unwrap(api.PUT('/api/v1/offers/{publicId}/kits/{productPublicId}', { params: { path: { publicId, productPublicId } }, body })),
-      ...opts,
+      mutationFn: ({ productPublicId, body }: { productPublicId: string; body: OfferKitUpdateRequest }) =>
+        unwrap(api.PATCH('/api/v1/offers/kits/{productPublicId}', { params: { path: { productPublicId } }, body })),
+      onSuccess: () => {
+        // el nombre del kit sale en los renglones de las ofertas: se vuelven a pedir (lista y detalles) junto con la biblioteca
+        void qc.invalidateQueries({ queryKey: offerKeys.list })
+        void qc.invalidateQueries({ queryKey: offerKeys.library })
+      },
     }),
   }
 }

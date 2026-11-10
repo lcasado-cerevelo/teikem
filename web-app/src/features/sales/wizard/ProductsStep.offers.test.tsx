@@ -134,6 +134,20 @@ describe('ProductsStep — ofertas nuevas y avisos de precio (lote 229)', () => 
     expect(items[1]).toHaveTextContent(`070120 ${ABOVE}`)
   })
 
+  it('lote 231: el mismo kit de oferta en dos ofertas sale una vez, con la más barata y el aviso', async () => {
+    const twoKit = 'El producto KIT-NAV está en dos ofertas a la vez: «Navidad» a $41.94 y «Enero» a $44.00. Se aplica la más barata («Navidad»).'
+    const kit = { ...OFFER_KIT, notices: [{ code: 'TWO_OFFERS', message: twoKit, productPublicId: 'k-1', sku: 'KIT-NAV' }] }
+    mock.route = (r) =>
+      r.method === 'GET' && r.path === '/api/v1/sales-orders/catalog' ? { ...CATALOG, brands: [{ brand: 'Ammex', offers: [kit], products: [kit] }] } : undefined
+    render(<WizardProviders><Step /></WizardProviders>)
+    const offers = await screen.findByRole('list', { name: 'Ofertas de Ammex' })
+    const [card] = within(offers).getAllByRole('listitem')
+    expect(within(offers).getAllByText('Kit Navidad')).toHaveLength(1)
+    expect(within(card).getByText('Navidad')).toBeInTheDocument()
+    expect(within(card).getByText('$41.94')).toBeInTheDocument()
+    expect(within(card).getByRole('list', { name: 'Avisos de precio de KIT-NAV' })).toHaveTextContent(twoKit)
+  })
+
   it('priceSourceOf / cartPriceNotices: lo guardado manda sobre el catálogo', () => {
     const saved = { linePrices: [{ productPublicId: 'p-2', priceSource: 'OFFER', offerName: 'Verano', notices: [] }] } as unknown as SalesOrderDto
     expect(priceSourceOf('p-2', CATALOG, saved)).toEqual({ fromOffer: true, offerName: 'Verano', notices: [] })

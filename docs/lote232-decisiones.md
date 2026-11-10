@@ -109,3 +109,40 @@ En el Kárdex los movimientos llevan motivo `KIT_ASSEMBLY` / `KIT_DISASSEMBLY`, 
 - El costo de un armado con piezas parcialmente sin costo suma solo las que tienen (las unidades sin costo no suman); si ninguna tiene costo queda `null`.
 - Si la compañía cambia de método de valuación después de armar, los costos guardados de armados y desarmados no se recalculan (igual que los recibos).
 - La exportación de productos y el reporte de valuación muestran el kit armado como un producto más (sin columna «kit armado»).
+
+## Frontend (web-app, 2026-11-10)
+**Qué se construyó.** «Nuevo producto» pregunta arriba «¿Lo que va a crear es un kit?» (No por omisión); con «Sí» aparecen ahí mismo la composición (el
+editor de piezas del lote 231, `KitPiecesEditor`, sin «No sustituible») y «¿Cuántos kits arma ahora?» (cantidad, almacén y posición, con «se pueden armar N»);
+el rastreo y el costo de compra pasan a campos informativos («Lo deciden las piezas» / «Sale de las piezas al armar»). En edición, un kit armado muestra su
+composición (editable mientras el servidor no la bloquee; si no, «La composición ya no se cambia: cree un kit nuevo»), la existencia, «se pueden armar» por
+almacén y «Armar y desarmar». La ficha del producto gana el distintivo «Kit armado» y la pestaña **Armados** (`?tab=assemblies`): explicación, «Armar kits»,
+historial ARM-##### paginado por el servidor (con `exportRows`) y «Desarmar» por armado. La lista de productos lleva el distintivo «Kit armado».
+Archivos: `assembledKitRules.ts` (+ prueba con los vectores de `AssembledKitTests`), `assembledKitApi.ts`, `assembledKitHooks.ts`, `AssembledKitEditor.tsx`,
+`AssembleKitModal.tsx`, `DisassembleKitModal.tsx`, `KitAssembliesPanel.tsx`, `assembledKit.css`; ediciones puntuales en `ProductEditorModal.tsx`,
+`ProductDetailScreen.tsx`, `ProductListScreen.tsx`, `KitPiecesEditor.tsx` (prop `substitutable`), `es.json`/`en.json` (`warehouse.products.assembled.*`) y `KIT.md`.
+
+**Cómo se probó.** `assembledKitRules.test.ts` (11), `AssembledKitEditor.test.tsx` (6: «No» por omisión sin nada de kit y lo que viaja; «Sí» con composición,
+«cuántos armar», «se pueden armar 2», rastreo/costo informativos y el cuerpo exacto; pieza que es kit; sin `inventory.adjust`; edición bloqueada; composición
+libre con PUT), `KitAssemblies.test.tsx` (7: pestaña e historial; armar con pieza escogida, resumen y cuerpo; 409 tal cual; sin cantidad; desarmar parcial
+desde el historial y más de lo que queda; sin permiso; producto normal sin pestaña). El pedido guiado se comprobó con una prueba pura (`isKit=false` → sin
+piezas en la línea ni en lo que viaja): el catálogo del servidor marca `isKit` solo para el tipo KIT, así que el kit armado sale como producto normal.
+
+**Decisiones a revisar.**
+1. **Dónde se arma.** Armar y desarmar viven en la pestaña «Armados» de la ficha (no en el editor, que ya es un modal): el editor solo enlaza («Armar y
+   desarmar»), como «Ver lotes». Así no se abren modales encima de modales y el historial tiene su tabla completa a 360 px.
+2. **«Sugerido por el servidor».** No hay vista previa del armado en el API; la sugerencia por pieza es la opción de rank 1 de `GET /inventory/exit-options`
+   (la misma regla de rotación que usa el servidor al armar sin `pieces`). Si el usuario no escoge, no viaja nada en `pieces` (el servidor decide).
+3. **Costo en el resumen.** No se estima antes de armar (el costo sale del método de valuación de la compañía al momento): el resumen lo explica y el aviso de
+   éxito muestra el costo real del armado (si el usuario tiene `inventory.value`).
+4. **«Se pueden armar N» en el alta** se calcula en la pantalla con lo disponible de las piezas en el almacén escogido (`exit-options`) y las mismas reglas
+   puras del servidor (`canAssembleInOne`/`canAssembleTotal`); es orientativo: el servidor revalida. En edición y en la ficha se usa `availability` del API.
+5. **Revisión de piezas antes de enviar** (kit como pieza, serie, inactiva, otro dueño, más de 50) con las fichas de las piezas (`GET /products/{id}`, misma
+   caché); una pieza cuya ficha no llegó la revisa el servidor. Los mensajes son los del servidor. El buscador de piezas se limita al dueño del kit
+   (`ownOnly` o `ownerClientPublicId`).
+6. **Armar al crear sin `inventory.adjust`**: el bloque «¿Cuántos kits arma ahora?» no se pinta (con su explicación) y el kit se crea sin existencia.
+7. **Almacén al armar al crear**: se pide siempre (con un solo almacén activo queda escogido solo), porque la posición depende de él.
+8. **Filtro «Kit armado» en la lista**: no se agregó; el servidor no lo ofrece (`GET /products` no tiene parámetro). Solo el distintivo.
+9. **`KitPiecesEditor` (archivo del lote 231)**: se le agregó la prop `substitutable` (por omisión true, sin cambio para la oferta).
+
+**Pendiente.** El capítulo del manual y la FAQ del kit armado (con los mensajes de la tabla de arriba) no se escribieron en esta pieza; tampoco el recorrido
+Playwright ni las capturas.

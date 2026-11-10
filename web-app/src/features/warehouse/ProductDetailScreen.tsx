@@ -5,6 +5,9 @@
 // modal) abre esa pestaña sin el modal. Aquí la pestaña siempre va en la URL: sin parámetro significa "abrir el modal".
 // Lote F17 (Rentas F-R1): botón "Convertir a serie" (ConvertToSerialModal) para un producto sin seguimiento con existencia,
 // solo con inventory.manage + inventory.adjust y WMS_LOTSERIAL.
+// Lote 231: sin pestaña «Kit» ni «Convertir en kit» (un kit que se arma al pedir es un kit de oferta y se crea en Contabilidad → Precios y ofertas);
+// `?tab=kit` de un enlace viejo abre Lotes.
+// Lote 232: un kit ARMADO lleva el distintivo «Kit armado» y la pestaña «Armados» (`?tab=assemblies`: armar, historial y desarmar; KitAssembliesPanel).
 import { useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ModuleKeys, useCan, useModule } from '../../kernel/access'
@@ -14,12 +17,12 @@ import { useT } from '../../kernel/i18n'
 import { Chip, DataTable, EmptyState, Filters, Panel, QBox, SelectFilter, Spinner, Tabs, matchesQ, type DataColumn } from '../../kernel/ui'
 import { useProduct, useProductLots, useProductSerials, type LotDto, type SerialDto } from './api'
 import { ConvertToSerialModal } from './ConvertToSerialModal'
-import { KitTab } from './KitTab'
 import { ProductEditorModal } from './ProductEditorModal'
+import { KitAssembliesPanel } from './KitAssembliesPanel'
 import { canConvertToSerial } from './serialConversion'
 import { IconLayers } from '../../kernel/ui/screenIcons'
 
-type TabKey = 'lots' | 'serials' | 'kit'
+type TabKey = 'lots' | 'serials' | 'assemblies'
 
 // ---- Pestaña Lotes ----
 function LotsTab({ publicId }: { publicId: string }) {
@@ -112,7 +115,8 @@ export default function ProductDetailScreen() {
   const canConvert = canConvertPerm && wmsOn
   const [converting, setConverting] = useState(false)
   const { data: detail, isLoading, error } = useProduct(publicId)
-  const tab: TabKey = searchParams.get('tab') === 'serials' ? 'serials' : searchParams.get('tab') === 'kit' ? 'kit' : 'lots'
+  const tabParam = searchParams.get('tab')
+  const tab: TabKey = tabParam === 'serials' ? 'serials' : tabParam === 'assemblies' && detail?.product?.isAssembledKit ? 'assemblies' : 'lots'
   // sin `?tab=` al entrar, el producto se muestra en su modal (la maqueta no tiene ficha aparte)
   const [editing, setEditing] = useState(() => !searchParams.has('tab'))
 
@@ -142,6 +146,7 @@ export default function ProductDetailScreen() {
           <p>
             {!product.isActive && <Chip tone="fail">{t('warehouse.products.inactive')}</Chip>}
             {product.isKit && <Chip tone="neutral">{t('warehouse.products.kit.chip')}</Chip>}
+            {product.isAssembledKit && <Chip tone="neutral">{t('warehouse.products.assembled.chip')}</Chip>}
           </p>
         </div>
         <div className="act">
@@ -167,7 +172,7 @@ export default function ProductDetailScreen() {
           tabs={[
             { key: 'lots', label: t('warehouse.products.tabLots') },
             { key: 'serials', label: t('warehouse.products.tabSerials') },
-            { key: 'kit', label: t('warehouse.products.kit.tab') },
+            ...(product.isAssembledKit ? [{ key: 'assemblies' as const, label: t('warehouse.products.assembled.tab') }] : []),
           ]}
         />
       </div>
@@ -177,15 +182,17 @@ export default function ProductDetailScreen() {
           <LotsTab publicId={publicId} />
         </Panel>
       )}
+      {tab === 'assemblies' && (
+        <KitAssembliesPanel
+          publicId={publicId}
+          sku={product.sku ?? ''}
+          defaultWarehousePublicId={detail.preferredWarehousePublicId}
+          defaultBinId={detail.preferredBinId}
+        />
+      )}
       {tab === 'serials' && (
         <Panel flush icon={<IconLayers />} title={t('warehouse.products.tabSerials')}>
           <SerialsTab publicId={publicId} />
-        </Panel>
-      )}
-
-      {tab === 'kit' && (
-        <Panel flush icon={<IconLayers />} title={t('warehouse.products.kit.tab')}>
-          <KitTab publicId={publicId} product={product} canManage={canManage} />
         </Panel>
       )}
 

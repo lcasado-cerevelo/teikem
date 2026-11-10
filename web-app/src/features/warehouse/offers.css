@@ -21,11 +21,16 @@
 .of-ways{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
 .of-item-photo{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-width:0}
 .of-from-product{font-size:11.5px;color:var(--muted)}
-/* kit de oferta: una pieza por renglón (producto, cantidad, «No sustituible», quitar); a 360 px se apila */
-.of-piece{display:grid;grid-template-columns:minmax(0,1fr) 110px auto auto;gap:8px;align-items:end;margin-bottom:8px;min-width:0}
-.of-piece .f{margin:0;min-width:0}
-.of-piece .of-ns{display:flex;gap:6px;align-items:center;white-space:nowrap;padding-bottom:9px}
-@media (max-width:720px){.of-piece{grid-template-columns:minmax(0,1fr) 90px}.of-piece .of-ns{padding-bottom:0}}
+/* kit de oferta (lote 231): las piezas van en KitPiecesEditor (kitPieces.css). Biblioteca: un kit por renglón (foto, datos, «Usar este kit»); a 360 px
+   el botón baja debajo de los datos. Nota de composición bloqueada con borde de aviso. */
+.of-lib{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:8px;max-height:min(52vh,460px);overflow-y:auto;min-width:0}
+.of-lib-item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:9px;min-width:0}
+.of-lib-body{display:flex;flex-direction:column;gap:3px;min-width:0;overflow-wrap:anywhere}
+.of-lib-body .chip{align-self:flex-start}
+@media (max-width:520px){.of-lib-item{grid-template-columns:auto minmax(0,1fr)}.of-lib-item>.btn{grid-column:1/-1;justify-self:start}}
+.of-lib-head{display:flex;gap:10px;align-items:center;min-width:0;overflow-wrap:anywhere}
+.of-lock{font-size:12.5px;color:var(--text);background:var(--panel-2);border:1px solid var(--warn);border-radius:8px;padding:6px 9px;overflow-wrap:anywhere}
+.of-check{display:flex;gap:8px;align-items:center;margin-top:8px}
 .of-sum{margin:10px 0;display:flex;flex-direction:column;gap:4px;font-size:13px}
 .of-sum .of-save{color:var(--ok);font-weight:600}
 .of-sum .of-loss{color:var(--warn);font-weight:600}

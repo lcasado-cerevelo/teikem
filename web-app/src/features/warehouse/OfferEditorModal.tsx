@@ -1,6 +1,7 @@
 // Lote 229 — editor de una OFERTA (`/api/v1/offers/{id}`): datos (nombre, desde/hasta —«hasta» en blanco = sin fecha de fin, con aviso claro—, a quién aplica,
-// notas), foto de la oferta, clientes escogidos y renglones con dos maneras de agregar: (a) escoger un producto o kit que ya existe + precio de oferta, o
-// (b) «Crear kit para esta oferta» (`OfferKitModal`). Cada renglón con su foto (por omisión la del producto; se puede cambiar o quitar para volver a la del
+// notas), foto de la oferta, clientes escogidos y renglones: (a) escoger un producto que ya existe + precio de oferta (el buscador de productos ya no trae
+// kits de oferta: lote 231), o un kit de oferta (`OfferKitModal`) por uno de sus dos caminos: (b) «Usar un kit anterior» de la biblioteca (composición fija,
+// precio editable con el último sugerido) o (c) «Crear un kit nuevo» (queda en la biblioteca). Cada renglón con su foto (por omisión la del producto; se puede cambiar o quitar para volver a la del
 // producto). Publicar / volver a borrador / desactivar / reactivar. Los `warnings` del servidor (otra oferta más barata, oferta más cara que la lista general)
 // se muestran como avisos, no como errores. Editar exige sales.pricelist; con solo sales.view todo queda de lectura.
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -9,7 +10,7 @@ import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
 import { Chip, ClientPicker, ConfirmDialog, DataTable, DateField, EmptyState, Modal, Spinner, toast, type DataColumn } from '../../kernel/ui'
-import { OfferKitModal } from './OfferKitModal'
+import { OfferKitModal, type OfferKitMode } from './OfferKitModal'
 import { useOffer, useOfferActions, type OfferDto, type OfferItemDto, type OfferWarningDto } from './offerApi'
 import { EMPTY_OFFER_DRAFT, offerDraftError, offerPublishBlocker, offerStateKey, offerStateTone, OFFER_NAME_MAX, OFFER_NOTES_MAX, toOfferRequest, type OfferDraft } from './offerRules'
 import { parsePrice } from './priceListRules'
@@ -362,7 +363,7 @@ function ItemsSection({ offer, editable, onRun, onFail }: { offer: OfferDto; edi
   const [product, setProduct] = useState<string | null>(null)
   const [price, setPrice] = useState('')
   const [pickerKey, setPickerKey] = useState(0)
-  const [kit, setKit] = useState<OfferItemDto | null | undefined>(undefined) // undefined = cerrado, null = kit nuevo
+  const [kit, setKit] = useState<{ mode: OfferKitMode; item?: OfferItemDto } | null>(null) // null = cerrado
 
   const columns = useMemo<DataColumn<OfferItemDto>[]>(
     () => [
@@ -391,7 +392,7 @@ function ItemsSection({ offer, editable, onRun, onFail }: { offer: OfferDto; edi
               cell: (i: OfferItemDto) => (
                 <span className="pl-bar" style={{ margin: 0 }}>
                   {i.isOfferKit && (
-                    <button type="button" className="btn sm" aria-label={t(`${O}.editKitOf`, { sku: i.sku ?? '' })} onClick={() => setKit(i)}>
+                    <button type="button" className="btn sm" aria-label={t(`${O}.editKitOf`, { sku: i.sku ?? '' })} onClick={() => setKit({ mode: 'edit', item: i })}>
                       {t(`${O}.editKit`)}
                     </button>
                   )}
@@ -439,8 +440,11 @@ function ItemsSection({ offer, editable, onRun, onFail }: { offer: OfferDto; edi
               {t(`${P}.addItem`)}
             </button>
           </div>
-          <div className="of-ways">
-            <button type="button" className="btn" onClick={() => setKit(null)}>
+          <div className="of-ways" role="group" aria-label={t(`${O}.kitWays`)}>
+            <button type="button" className="btn" onClick={() => setKit({ mode: 'pick' })}>
+              {t(`${O}.usePreviousKit`)}
+            </button>
+            <button type="button" className="btn" onClick={() => setKit({ mode: 'new' })}>
               {t(`${O}.createKit`)}
             </button>
           </div>
@@ -456,7 +460,7 @@ function ItemsSection({ offer, editable, onRun, onFail }: { offer: OfferDto; edi
         rowClassName={(i) => (i.productIsActive === false ? 'dim' : undefined)}
         empty={<EmptyState title={t(`${O}.noItems`)} />}
       />
-      {kit !== undefined && <OfferKitModal offerId={offerId} offerName={offer.name ?? ''} item={kit} onClose={() => setKit(undefined)} />}
+      {kit && <OfferKitModal offerId={offerId} offerName={offer.name ?? ''} mode={kit.mode} item={kit.item} offerItems={items} onClose={() => setKit(null)} />}
     </section>
   )
 }

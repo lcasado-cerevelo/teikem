@@ -1466,7 +1466,7 @@ Sistema → Impresoras y labels (`/system/printers`, `printers.manage`, SYSTEM).
 
 ## Lote 221 (P1) — Precios y ofertas (`features/warehouse`)
 - Pantalla `/money/prices` (Contabilidad → Precios y ofertas, `sales.pricelist`; `PriceListsScreen` envuelve `PriceListsTab`; `?tab=prices` redirige; botón «Nueva oferta» = selector de producto propio → editor del kit): ofertas como tarjetas con foto y listas de precios (`PriceListEditorModal`: datos, clientes escogidos, renglones producto/kit → precio con foto, publicar / borrador / desactivar). Hooks en `priceListApi.ts`; reglas puras (estado, validación, cuerpo, precio) en `priceListRules.ts`.
-- ~~Editor del kit: `KitPromoSection` («Es promoción»)~~: **quitado en el lote 229** (las ofertas son aparte, ver abajo). `KitEditorModal` sigue exportado; `KitEditorByIdModal` queda sin uso en Precios y ofertas. `StoredImage` pinta una foto del almacén con la sesión (`useStoredFileUrl`). La lista de precios viene completa del servidor (sin paginar): no lleva `exportRows`.
+- ~~Editor del kit: `KitPromoSection` («Es promoción»)~~: **quitado en el lote 229** (las ofertas son aparte, ver abajo). ~~`KitEditorModal`/`KitEditorByIdModal`~~: **borrados en el lote 231** (con `KitTab` y `kitRules.ts`; el editor de piezas reutilizable es `KitPiecesEditor`, ver «Lote 231»). `StoredImage` pinta una foto del almacén con la sesión (`useStoredFileUrl`). La lista de precios viene completa del servidor (sin paginar): no lleva `exportRows`.
 
 ## Lote 229 — Ofertas aparte, kit de oferta y foto del producto (`features/warehouse`, `features/sales/wizard`)
 - **Precios y ofertas** (`PriceListsTab`): dos secciones, **Ofertas** (`OffersPanel`, `GET /api/v1/offers`) y **Listas de precios**. «Nueva oferta» y cada tarjeta abren `OfferEditorModal`; el flujo viejo (kit con «Es promoción», `/price-lists/offers`, `/products/{id}/promo`) ya no se llama desde la web.
@@ -1478,7 +1478,7 @@ Sistema → Impresoras y labels (`/system/printers`, `printers.manage`, SYSTEM).
 | `OfferValidity` | `offer` (`validFrom`, `validTo`, `hasEndDate`) | «Del … al …» o «Desde el …» + el aviso de sin fecha de fin. `<OfferValidity offer={o} />` |
 | `OfferEditorModal` | `publicId` (null = nueva), `onClose` | editor completo (datos, foto, clientes, renglones con las dos maneras de agregar, foto por renglón, publicar/borrador/desactivar/reactivar, `warnings` como avisos). Lectura con `sales.view`, edición con `sales.pricelist`. `{id !== undefined && <OfferEditorModal key={id ?? 'new'} publicId={id} onClose={() => setId(undefined)} />}` |
 | `OfferWarnings` | `warnings` (`OfferWarningDto[]`) | recuadro `role="status"` con los avisos del servidor (no es error). `<OfferWarnings warnings={offer.warnings} />` |
-| `OfferKitModal` | `offerId`, `offerName`, `item` (null = kit nuevo; renglón `isOfferKit` = cambiarlo), `onClose` | «Crear kit para esta oferta»: SKU, nombre, precio, piezas con cantidad y «No sustituible», suma a precio normal y ahorro. `<OfferKitModal offerId={id} offerName={name} item={null} onClose={close} />` |
+| `OfferKitModal` | (cambiado en el lote 231: ver «Lote 231») | |
 | `ProductPhotoBlock` | `publicId` (null = producto nuevo: solo avisa), `titleId?` | bloque «Foto» (`section.pe-block`) del editor de producto: vista previa, subir/cambiar/quitar con `inventory.manage` (JPG/PNG/WEBP; mensajes del servidor tal cual); sin foto propia muestra la efectiva (primera pieza del kit). Botones `type="button"`: va dentro del `<Form>` del editor sin enviarlo. `<ProductPhotoBlock publicId={product?.publicId ?? null} />` |
 
 - **Pedido guiado**: `wizard/priceSource.ts` (puras: `catalogItemOf`, `itemNotices`, `priceSourceOf(productId, catálogo, guardado)` → `{ fromOffer, offerName, notices }` con `linePrices` mandando sobre el catálogo, `cartPriceNotices`) y `wizard/PriceNotices.tsx`: `PriceNoticeList({ notices, label })` (avisos discretos junto al precio), `CartLinePriceInfo({ productPublicId, sku, clientPublicId, saved })` (chip «Oferta «nombre»» + avisos en la línea del carrito), `DeliveryPriceNotices({ cart, clientPublicId, saved })` (recuadro en el paso de entrega). Las tarjetas de oferta muestran `offerName` y «Válida hasta …» / «Sin fecha de fin»; un precio `priceSource = OFFER` lleva el chip «Oferta»; un `isOfferKit` solo sale como tarjeta.
@@ -1513,8 +1513,8 @@ Sistema → Impresoras y labels (`/system/printers`, `printers.manage`, SYSTEM).
   `const v = volumeView({ length: 10, width: 10, height: 10, dimensionUnit: 'IN', volume: null })   // { calculated: true, volume: 1000, unit: 'IN3', m3: 0.0164 }`
 - `useUnitsSuggestion(options?)` (`features/warehouse/api.ts`): `GET /products/units-suggestion` (`inventory.view`), caché 10 min, sin redirigir en 403;
   sin respuesta valen las de Puerto Rico (`FALLBACK_SUGGESTION` = IN / LB).
-- Editor del kit (`KitEditorModal`): por pieza la casilla «No sustituible» (`KitRow.notSubstitutable`, desmarcada = sustituible; viaja en
-  `components[].notSubstitutable`) con la ayuda corta arriba; la tabla del kit lleva el chip «No sustituible». «Ajustable al pedir» no cambia.
+- ~~Editor del kit (`KitEditorModal`)~~ (borrado en el lote 231): la casilla «No sustituible» por pieza vive ahora en `KitPiecesEditor`
+  (`KitPiece.notSubstitutable`, desmarcada = sustituible; viaja en `components[].notSubstitutable`).
 - Sustitución al pedir: `useKitSubstitutes(kitPublicId, enabled)` (`features/sales/salesApi.ts`, `GET /sales-orders/kits/{id}/substitutes`, `sales.create`)
   y las reglas puras de `kitSubstitution.ts`: `substituteOptions(subs, piezas, pieza)` (los válidos, sin el puesto ni los que ya son otra pieza),
   `substitutePiece(piezas, original, sustituto)`, `undoSubstitution(piezas, original)`, `piecesToRequest(piezas)` (todas; la sustituta con
@@ -1525,3 +1525,53 @@ Sistema → Impresoras y labels (`/system/printers`, `printers.manage`, SYSTEM).
   válidos; escoger deja «en lugar de {SKU}» y «Deshacer». El precio de la línea no cambia. `KitComponentsSection` (orden guardada) muestra la pieza real
   con «en lugar de …».
   `<KitLineBlock line={l} saved={savedLine} onPieces={(components) => setLine(l.key, { components })} />`
+
+## Lote 231 — Kit de oferta con biblioteca (`features/warehouse`, `features/sales`)
+- El kit de oferta vive en la **biblioteca de kits de oferta** (`/api/v1/offers/kits`) y una oferta lo usa con un renglón y su precio; su composición no
+  cambia una vez usado (`compositionLocked`). En Productos ya no hay pestaña «Kit» ni «Convertir en kit» (`ProductDetailScreen` solo Lotes y Series;
+  `?tab=kit` abre Lotes); `KitTab`, `KitEditorModal`, `kitRules.ts` y `useSetKit` se borraron. La lista de productos ya no trae kits de oferta (servidor).
+- Hooks nuevos en `offerApi.ts`: `useOfferKitLibrary({ q?, includeInactive? }, enabled?)` (`OfferKitLibraryItemDto[]`, conserva lo anterior mientras
+  busca), `useOfferKitLibraryItem(productPublicId)`; `useOfferActions().updateKit` ahora es `PATCH /offers/kits/{id}` con `{ productPublicId, body }`.
+  Todo cambio de una oferta o de un kit vuelve a pedir la biblioteca (`offerKeys.library`).
+- Puras: `kitPieces.ts` (comunes a todo editor de piezas) `KitPiece`, `newKitPiece`, `pieceQuantity`, `kitPiecesError` → `noPieces` \| `pieceProduct` \|
+  `pieceQuantity` \| `pieceRepeated` (textos en `warehouse.products.kit.err.*`), `piecesToComponents`, `piecesFromComponents`; `offerRules.ts` suma
+  `offerKitDraftError(d, editing?, locked?)`, `toOfferKitUpdate(d, locked?)` (bloqueado = solo `name`), `isPiecesProblem`, `suggestedKitPrice(kit)`
+  (último precio como texto), `libraryKitItem(kit, precio)` (renglón o null si falta el precio), `kitInOffer(items, kitId)`; `OfferKitDraft.adjustable?`.
+- `ProductPicker` gana `includeOfferKits?` (solo lo manda la línea de `OrderModal`, la orden de venta clásica). `substituteOptions` devuelve `[]` si
+  `subs.isOfferKit === false` (solo el kit de oferta cambia piezas).
+
+| Componente | Props | Uso |
+|---|---|---|
+| `KitPiecesEditor` (`features/warehouse/KitPiecesEditor.tsx`) | `pieces: KitPiece[]`, `onChange?` (sin él = solo lectura), `readOnly?`, `idPrefix`, `ownOnly?`, `ownerClientPublicId?`, `legend?` («Piezas del kit»), `showHelp?` (ayuda de «No sustituible», por omisión sí) | piezas de un kit: por renglón buscador de producto («Pieza N»), «Cantidad», casilla «No sustituible» («Pieza N: no sustituible») y quitar; «Agregar pieza». En solo lectura, lista `region` «Piezas del kit» con SKU, nombre, × cantidad y chip «No sustituible». A 360 px el producto ocupa el renglón y lo demás baja (`kitPieces.css`). `const [pieces, setPieces] = useState([newKitPiece('p0')])` → `<KitPiecesEditor pieces={pieces} onChange={setPieces} idPrefix="kit" ownOnly />` → `piecesToComponents(pieces)` |
+| `OfferKitModal` | `offerId`, `offerName`, `mode: 'pick' \| 'new' \| 'edit'`, `item?` (renglón a cambiar en `edit`), `offerItems?` (para no repetir un kit), `onClose` | `pick`/`new` con pestañas «Usar un kit anterior» (buscador de la biblioteca por SKU o nombre; cada kit con piezas, última oferta y último precio; al escoger: composición en solo lectura con la nota «La composición de un kit anterior no se cambia…», precio editable prellenado con el último, «Agregar a la oferta» = `POST /offers/{id}/items`, «Crear un kit nuevo con estas piezas») y «Crear un kit nuevo» (SKU, nombre, precio, `KitPiecesEditor`, «Ajustable al pedir», suma y ahorro; `POST /offers/{id}/kits`). `edit`: nombre siempre, piezas solo si `compositionLocked` es false (`PATCH /offers/kits/{id}`). Mensajes del servidor tal cual. `<OfferKitModal offerId={id} offerName={name} mode="pick" offerItems={offer.items} onClose={close} />` |
+
+## Lote 232 — Kit ARMADO: producto con inventario; armar y desarmar (`features/warehouse`)
+- **Alta** (`ProductEditorModal`): arriba la pregunta «¿Lo que va a crear es un kit?» (campo `kitChoice` 'no' | 'yes', «No» por omisión). Con «Sí» aparecen ahí mismo
+  la composición y «¿Cuántos kits arma ahora?» (solo con `inventory.adjust`: `assembleQuantity`, `assembleWarehousePublicId`, `assembleToBinId`), el rastreo y el costo
+  de compra pasan a informativos (los deciden las piezas) y viajan `isAssembledKit: true`, `kitPieces`, `trackingType: null`, `purchaseCost: null` y lo de armar
+  (`assembledKitCreateFields`). Un producto normal no manda nada de esto. **Edición** de un kit armado (`product.isAssembledKit`): composición editable mientras
+  `compositionLocked` sea falso (al guardar va un `PUT …/assembled-kit` antes del PATCH; si no, solo lectura con «La composición ya no se cambia: cree un kit
+  nuevo»), rastreo y dueño fijos, existencia de kits, «se pueden armar» por almacén y el enlace «Armar y desarmar» (`?tab=assemblies` de la ficha).
+- **Ficha** (`ProductDetailScreen`): distintivo «Kit armado» y pestaña «Armados» (`KitAssembliesPanel`). **Lista**: distintivo «Kit armado» en la fila (el servidor
+  no ofrece filtro). En el pedido guiado y la orden el kit armado llega con `isKit=false`: se vende como un producto normal (sin piezas ni «Cambiar»).
+- Hooks en `assembledKitApi.ts`: `useAssembledKit(publicId)`, `useKitAssemblies(publicId, { skip, take })` + `kitAssembliesPage(publicId)` (para `exportRows`),
+  `useSetKitComposition()`, `useAssembleKit()`, `useDisassembleKit()` (armar/desarmar invalidan el kit, su historial y toda la existencia con
+  `invalidateAssembledKit`), `usePiecesExitOptions(warehouse, ids)` (opciones de salida de varias piezas, rank 1 = la sugerida por la rotación).
+- Puras en `assembledKitRules.ts` (espejo de `AssembledKitRules`; vectores de `AssembledKitTests` en `assembledKitRules.test.ts`): `kitsCoveredBy`,
+  `canAssembleInOne` / `canAssembleTotal` (un lote por pieza / juntando lotes), `decideTracking`, `kitExpiry`, `kitQuantityProblem` (entera, 1 a 100,000),
+  `splitReturn`, `assembledPiecesProblem(piezas, fichas, dueño)` (sin kits como pieza, sin serie, activas, mismo dueño, máx. 50), `assembledPiecesInput`,
+  `piecesSignature`, `piecesFromAssembled`, `pieceStocksFromExitOptions`, `assembleRequest`, `assembleSummary`, `disassembleReturns`, `disassembleRequest`,
+  `problemMessages`, `choiceKey`/`parseChoiceKey`, `KIT_EXCLUDED_ZONE_TYPES` (cuarentena, cross-dock, renta).
+- `KitPiecesEditor` gana `substitutable?: boolean` (false = sin «No sustituible» ni su ayuda; lo usa el kit armado).
+
+| Componente | Props | Uso |
+|---|---|---|
+| `KitQuestion` (`AssembledKitEditor.tsx`) | `idPrefix` | radios «No» / «Sí, es un kit» sobre el campo `kitChoice` del `Form` que lo contiene. `{!isEdit && <KitQuestion idPrefix={formId} />}` |
+| `NewKitBlock` | `idPrefix`, `pieces`, `setPieces`, `infos` (de `usePieceInfos`), `problem`, `canAdjust` | composición del alta + «¿Cuántos kits arma ahora?» con «se pueden armar N» (lo disponible de las piezas en el almacén). `<NewKitBlock idPrefix={id} pieces={p} setPieces={setP} infos={infos} problem={msg} canAdjust />` |
+| `EditKitBlock` + `useEditKitComposition(publicId, esKit)` | `idPrefix`, `publicId`, `editable`, `composition`, `problem`, `onNavigate` | composición en edición (bloqueada = solo lectura), existencia y acceso a armar. `const c = useEditKitComposition(id, true)` → `<EditKitBlock … composition={c} />`; al guardar `if (c.changed && !c.locked) PUT` |
+| `KitInfoField` | `id`, `label`, `value`, `className?` | campo informativo de solo lectura. `<KitInfoField id={x} label={t('…trackingInfo')} value={t('…trackingLot')} />` |
+| `usePieceInfos(pieces)` / `usePiecesProblemText()` / `trackingOfPieces(pieces, infos)` | | fichas de las piezas escogidas (rastreo, kit, dueño, activa); texto del problema; rastreo que resulta (null = aún no se sabe) |
+| `AssembleKitModal` | `open`, `publicId`, `sku`, `defaultWarehousePublicId?`, `defaultBinId?`, `onClose` | «Armar kits»: cantidad, almacén, posición destino, de dónde sale cada pieza (sugerida o escogida), notas → «Revisar» → resumen (piezas que salen, kits que entran, nota del costo) → «Armar N kit(s)». Errores del servidor tal cual arriba. `<AssembleKitModal open={o} publicId={id} sku={sku} onClose={close} />` |
+| `DisassembleKitModal` | `publicId`, `assembly` (`KitAssemblyDto` \| null = cerrado), `onClose` | «Desarmar» un armado: cantidad (por omisión lo que queda; parcial), almacén de los kits, posición de regreso (vacía = de donde salió), resumen de lo que vuelve a cada lote. `<DisassembleKitModal publicId={id} assembly={a} onClose={() => setA(null)} />` |
+| `KitAssembliesPanel` | `publicId`, `sku`, `defaultWarehousePublicId?`, `defaultBinId?` | pestaña «Armados»: explicación, existencia, «se pueden armar», «Armar kits» (`inventory.adjust`) e historial paginado por el servidor (con `exportRows`) con «Desarmar» por fila. `<KitAssembliesPanel publicId={id} sku={p.sku} />` |
+- Estilos en `features/warehouse/assembledKit.css` (`.ak-*`), solo variables del tema; a 360 px las rejillas pasan a una columna y las tablas de resumen parten el texto.

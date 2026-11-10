@@ -478,16 +478,6 @@ export function useKit(publicId: string | null | undefined, options?: WarehouseQ
   })
 }
 
-/** Lote 68 — `PUT /api/v1/products/{publicId}/kit` (`inventory.manage`): convierte en kit / vuelve producto normal; deja la lista de productos al día. */
-export function useSetKit() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ publicId, body }: { publicId: string; body: Schemas['KitSetRequest'] }) =>
-      unwrap(api.PUT('/api/v1/products/{publicId}/kit', { params: { path: { publicId } }, body })),
-    onSuccess: () => invalidate(qc, 'products', 'product', 'productKit'),
-  })
-}
-
 /** `GET /api/v1/products/{publicId}` (ficha: `ProductDetailDto`, datos de lista en `product`). */
 export function useProduct(publicId: string | null | undefined, options?: WarehouseQueryOptions) {
   return useQuery({

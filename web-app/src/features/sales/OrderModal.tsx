@@ -352,6 +352,7 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
                 <ProductPicker
                   id={`so-p-${l.key}`}
                   ownOnly
+                  includeOfferKits
                   value={l.productPublicId}
                   onChange={(id, p) => setLine(l.key, { productPublicId: id, sku: p?.sku ?? '', name: p?.name ?? '', listPrice: p?.salePrice ?? null, price: '', isKit: p?.isKit === true, components: null })}
                 />

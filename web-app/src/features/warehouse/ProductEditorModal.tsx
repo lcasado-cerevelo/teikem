@@ -24,7 +24,13 @@
 //   Medidas y peso: largo, ancho, alto y su unidad (IN, CM, FT, M; la del producto o la sugerida por la región con
 //   GET /products/units-suggestion); con las tres el volumen se calcula y no se edita, si falta alguna se escribe a mano (en la
 //   unidad cúbica, viaja en m³); peso con su unidad (LB/KG). Reglas puras en `productMeasures.ts`.
+// - Lote 232 (kit ARMADO): el alta pregunta arriba «¿Lo que va a crear es un kit?» (No por omisión, campo `kitChoice`); con «Sí» aparecen ahí mismo
+//   la composición y «¿Cuántos kits arma ahora?» (con `inventory.adjust`: cantidad, almacén y posición; «se pueden armar N»), el rastreo y el costo de
+//   compra pasan a informativos (los deciden las piezas) y viajan `isAssembledKit`, `kitPieces` y `assemble*` (AssembledKitEditor.tsx). En edición de
+//   un kit armado: la composición (editable mientras el servidor no la bloquee; se guarda con PUT …/assembled-kit), rastreo y dueño fijos, y el acceso
+//   a «Armar y desarmar». Un producto normal no ve nada de esto.
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQueryClient } from '@tanstack/react-query'
 import { useContext, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { Link } from 'react-router-dom'
@@ -39,6 +45,7 @@ import { IconCheck } from '../../kernel/ui/icons'
 import { IconLayers } from '../../kernel/ui/screenIcons'
 import { SessionContext } from '../../app/session'
 import {
+  invalidateStock,
   useCreateProduct,
   useProduct,
   useProductBrands,
@@ -53,6 +60,11 @@ import {
 } from './api'
 import { useAdjustmentForm, useSubmitAdjustment } from './adjustmentForm'
 import { AdjustmentFields } from './InventoryAdjustModal'
+import { EditKitBlock, KitInfoField, KitQuestion, NewKitBlock } from './AssembledKitEditor'
+import { trackingOfPieces, useEditKitComposition, usePieceInfos, usePiecesProblemText } from './assembledKitHooks'
+import { useSetKitComposition } from './assembledKitApi'
+import { assembledKitCreateFields, assembledPiecesInput, assembledPiecesProblem, kitQuantityProblem } from './assembledKitRules'
+import { newKitPiece, type KitPiece } from './kitPieces'
 import { formatNumber } from './lineRules'
 import { BinPickerInput, WarehousePickerInput } from './pickers'
 import { ProductPhotoBlock } from './ProductPhotoBlock'
@@ -73,10 +85,13 @@ import {
 import './warehouse.css'
 
 const PICKING_ZONE = 'PICKING'
+const AK = 'warehouse.products.assembled'
 const DEFAULT_UOM = 'UN'
 const DEFAULT_TRACKING = 'NONE'
 // eslint-disable-next-line no-control-regex -- intencional: el SKU no admite caracteres de control (manual §2).
 const CONTROL_CHARS_OR_SPACES = /[\s\x00-\x1F\x7F]/
+/** Sin piezas (producto normal): referencia estable para los hooks. */
+const NO_PIECES: KitPiece[] = []
 /** Unidad cúbica (IN3…) como se escribe en pantalla. */
 const CUBIC_LABEL: Record<string, string> = { IN3: 'in³', CM3: 'cm³', FT3: 'ft³', M3: 'm³' }
 /** Ruta de la categoría «Raíz / Hija» del API como «Raíz → Hija». */
@@ -277,8 +292,20 @@ function ProductEditorForm({
           weightUnit: z.string(),
           minPickQty: z.number(t('warehouse.products.errors.numberInvalid')).min(0, t('warehouse.products.errors.minNegative')).nullable(),
           maxPickQty: z.number(t('warehouse.products.errors.numberInvalid')).min(0, t('warehouse.products.errors.minNegative')).nullable(),
+          // Lote 232: ¿es un kit armado? (solo en el alta) y cuántos armar al crearlo
+          kitChoice: z.enum(['no', 'yes']),
+          assembleQuantity: z.number(t(`${AK}.err.kitQtyInvalid`)).nullable(),
+          assembleWarehousePublicId: z.string().nullable(),
+          assembleToBinId: z.string(),
         })
         .superRefine((v, ctx) => {
+          // Lote 232: armar al crear = cantidad entera (1 a 100,000), almacén y posición destino
+          if (v.kitChoice === 'yes' && v.assembleQuantity != null) {
+            const qp = kitQuantityProblem(v.assembleQuantity)
+            if (qp) ctx.addIssue({ code: 'custom', path: ['assembleQuantity'], message: t(`${AK}.err.${qp}`) })
+            if (!v.assembleWarehousePublicId) ctx.addIssue({ code: 'custom', path: ['assembleWarehousePublicId'], message: t(`${AK}.err.warehouseRequired`) })
+            if (!v.assembleToBinId) ctx.addIssue({ code: 'custom', path: ['assembleToBinId'], message: t(`${AK}.err.createBinRequired`) })
+          }
           // empaque: unidad y cantidad van juntas, la cantidad es mayor que 0 y la unidad no es la base
           if (v.packUom && v.packQty == null) ctx.addIssue({ code: 'custom', path: ['packQty'], message: t('warehouse.products.errors.packUnitWithoutQty') })
           if (!v.packUom && v.packQty != null) ctx.addIssue({ code: 'custom', path: ['packUom'], message: t('warehouse.products.errors.packQtyWithoutUnit') })
@@ -318,12 +345,33 @@ function ProductEditorForm({
       ...measuresDefaults(detail, suggestion),
       minPickQty: detail?.minPickQty ?? null,
       maxPickQty: detail?.maxPickQty ?? null,
+      kitChoice: 'no' as const,
+      assembleQuantity: null,
+      assembleWarehousePublicId: null,
+      assembleToBinId: '',
     },
   })
 
+  // Lote 232: kit armado — en el alta, si se contestó «Sí»; en edición, si el producto lo es
+  const qc = useQueryClient()
+  const canAdjustInventory = useCan('inventory.adjust')
+  const kitChoice = useWatch({ control: form.control, name: 'kitChoice' })
+  const isKitNew = !isEdit && kitChoice === 'yes'
+  const isKitEdit = isEdit && product?.isAssembledKit === true
+  const isKit = isKitNew || isKitEdit
+  const [newPieces, setNewPieces] = useState<KitPiece[]>(() => [newKitPiece('kp-new-0')])
+  const composition = useEditKitComposition(isEdit ? publicId : null, isKitEdit)
+  const setComposition = useSetKitComposition()
+  const kitPieces = isKitNew ? newPieces : isKitEdit ? composition.pieces : NO_PIECES
+  const { infos: pieceInfos } = usePieceInfos(kitPieces)
+  const [piecesProblem, setPiecesProblem] = useState<string | null>(null)
+  const problemText = usePiecesProblemText()
+  const kitTracking = isKitNew ? trackingOfPieces(newPieces, pieceInfos) : isKitEdit ? (product?.trackingTypeCode === 'LOT' ? 'LOT' : 'NONE') : null
+
   // 2026-10-20: la excepción de rotación depende del tipo: con lote FEFO o FIFO; sin lote ni series FIFO o por posición
   const trackingChosen = useWatch({ control: form.control, name: 'trackingType' })
-  const lotTracked = trackingChosen === 'LOT'
+  // Lote 232: en un kit armado el rastreo lo deciden las piezas
+  const lotTracked = isKit ? kitTracking === 'LOT' : trackingChosen === 'LOT'
   const rotationOptions = useMemo(
     () => [
       { value: '', label: t('warehouse.products.editor.rotationCompany') },
@@ -375,6 +423,15 @@ function ProductEditorForm({
       return
     }
     if (!isEdit) {
+      // Lote 232: la composición se revisa antes de enviar (el servidor repite todo)
+      if (isKitNew) {
+        const problem = problemText(assembledPiecesProblem(newPieces, pieceInfos, v.ownerClientPublicId))
+        setPiecesProblem(problem)
+        if (problem) return
+      }
+      const kitFields = isKitNew
+        ? assembledKitCreateFields({ pieces: newPieces, assembleQuantity: v.assembleQuantity, assembleWarehousePublicId: v.assembleWarehousePublicId, assembleToBinId: v.assembleToBinId })
+        : null
       const created = await create.mutateAsync({
         sku: v.sku,
         name: v.name,
@@ -396,17 +453,37 @@ function ProductEditorForm({
         rotationMethod: v.rotationMethod || null,   // vacío = la de la compañía
         packUom: v.packUom || null,
         packQty: v.packUom ? v.packQty : null,
+        // kit armado: rastreo y costo los deciden las piezas (van null), composición y armar al crear
+        ...(kitFields ?? {}),
       })
+      // armar al crear movió inventario (salieron las piezas, entraron los kits)
+      if (kitFields?.assembleQuantity != null) await invalidateStock(qc)
       const id = created.product?.id
       if (typeof id === 'number' && id > 0) {
         const problem = await saveCustomFields(id, form)
         if (problem) toast.error(problem.title)
       }
-      toast.success(t('warehouse.products.created'))
+      toast.success(
+        kitFields
+          ? kitFields.assembleQuantity != null
+            ? t(`${AK}.createdAssembled`, { n: kitFields.assembleQuantity })
+            : t(`${AK}.created`)
+          : t('warehouse.products.created'),
+      )
       onClose()
       const newId = created.product?.publicId
       if (newId) onCreated?.(newId)
       return
+    }
+
+    // Lote 232: la composición de un kit armado (si cambió y el servidor la deja cambiar) va primero, con su propio PUT
+    let compositionSaved = false
+    if (isKitEdit && composition.changed && !composition.locked) {
+      const problem = problemText(assembledPiecesProblem(composition.pieces, pieceInfos, product?.ownerClientPublicId ?? null))
+      setPiecesProblem(problem)
+      if (problem) return
+      await setComposition.mutateAsync({ publicId, body: { pieces: assembledPiecesInput(composition.pieces) } })
+      compositionSaved = true
     }
 
     // copia: el reset de más abajo reemplaza dirtyFields
@@ -424,10 +501,11 @@ function ProductEditorForm({
           clearBarcode: v.barcode.trim() === '' ? true : null,
           categoryId: v.categoryId ? Number(v.categoryId) : null,
           clearCategory: v.categoryId ? null : true,
-          trackingType: hasMovements ? null : v.trackingType || null,
+          // kit armado (Lote 232): rastreo y dueño fijos (los deciden las piezas)
+          trackingType: hasMovements || isKitEdit ? null : v.trackingType || null,
           baseUom: hasMovements ? null : v.baseUom || null,
-          ownerClientPublicId: hasMovements ? null : v.ownerClientPublicId,
-          clearOwner: hasMovements || v.ownerClientPublicId ? null : true,
+          ownerClientPublicId: hasMovements || isKitEdit ? null : v.ownerClientPublicId,
+          clearOwner: hasMovements || isKitEdit || v.ownerClientPublicId ? null : true,
           purchaseCost: v.purchaseCost,
           salePrice: v.salePrice,
           // Lote 230: solo lo que se tocó de medidas y peso (weight + weightUnit; weightKg ya no se manda)
@@ -461,7 +539,7 @@ function ProductEditorForm({
       }
     }
     if (activeChanged && !v.isActive) await setActive.mutateAsync({ publicId, active: false })
-    if (dataDirty || activeChanged || dirty.customFields) {
+    if (dataDirty || activeChanged || dirty.customFields || compositionSaved) {
       toast.success(
         activeChanged && !dataDirty
           ? t(v.isActive ? 'warehouse.products.reactivated' : 'warehouse.products.deactivated')
@@ -500,6 +578,12 @@ function ProductEditorForm({
     <Modal open title={title} size="xl" onClose={onClose} dismissible={!submitting} footer={footer}>
       <Form id={formId} form={form} onSubmit={submit}>
         <fieldset className="pe-fields" disabled={!editable}>
+          {/* Lote 232: ¿es un kit armado? (solo en el alta; No por omisión) y, si lo es, su composición ahí mismo */}
+          {!isEdit && <KitQuestion idPrefix={formId} />}
+          {isKitNew && (
+            <NewKitBlock idPrefix={formId} pieces={newPieces} setPieces={setNewPieces} infos={pieceInfos} problem={piecesProblem} canAdjust={canAdjustInventory} />
+          )}
+          {isKitEdit && <EditKitBlock idPrefix={formId} publicId={publicId} editable={editable} composition={composition} problem={piecesProblem} onNavigate={onClose} />}
           {/* Lote 229: bloque «Foto» del producto (autocontenido; un producto nuevo solo avisa que la foto va después de guardar) */}
           <ProductPhotoBlock publicId={product?.publicId ?? null} titleId={`${formId}-photo`} />
           <EditorBlock id={`${formId}-ident`} title={t('warehouse.products.editor.blocks.identification')}>
@@ -539,11 +623,21 @@ function ProductEditorForm({
           <EditorBlock id={`${formId}-inv`} title={t('warehouse.products.editor.blocks.inventory')}>
             {/* un solo aviso para los tres campos que el API bloquea con movimientos (unidad, rastreo y dueño) */}
             {lockHelp && <p className="help pe-span-all">{lockHelp}</p>}
-            <Field name="trackingType" label={t('warehouse.products.editor.tracking')}>
-              <ComboSelectInput options={trackingCodes} placeholder={nonePlaceholder} disabled={isEdit && hasMovements} />
-            </Field>
+            {/* Lote 232: en un kit armado el rastreo y el costo los deciden las piezas (informativos) */}
+            {isKit && <p className="help pe-span-all">{t(`${AK}.notApplyNote`)}</p>}
+            {isKit ? (
+              <KitInfoField
+                id={`${formId}-kit-tracking`}
+                label={t(`${AK}.trackingInfo`)}
+                value={t(kitTracking === 'LOT' ? `${AK}.trackingLot` : kitTracking === 'NONE' ? `${AK}.trackingNone` : `${AK}.trackingPending`)}
+              />
+            ) : (
+              <Field name="trackingType" label={t('warehouse.products.editor.tracking')}>
+                <ComboSelectInput options={trackingCodes} placeholder={nonePlaceholder} disabled={isEdit && hasMovements} />
+              </Field>
+            )}
             <Field name="ownerClientPublicId" label={t('warehouse.products.editor.owner')} className="span2">
-              <ClientPickerInput placeholder={ownLabel} disabled={isEdit && hasMovements} />
+              <ClientPickerInput placeholder={ownLabel} disabled={(isEdit && hasMovements) || isKitEdit} />
             </Field>
             <Field name="rotationMethod" label={t('warehouse.products.editor.rotation')} tip={t('warehouse.products.editor.rotationHelp')}>
               <Select options={rotationOptions} />
@@ -594,9 +688,13 @@ function ProductEditorForm({
           </EditorBlock>
 
           <EditorBlock id={`${formId}-price`} title={t('warehouse.products.editor.blocks.prices')}>
-            <Field name="purchaseCost" label={t('warehouse.products.editor.purchaseCost')}>
-              <NumberInput className="mono" min={0} />
-            </Field>
+            {isKit ? (
+              <KitInfoField id={`${formId}-kit-cost`} label={t(`${AK}.costInfo`)} value={t(`${AK}.costDecided`)} />
+            ) : (
+              <Field name="purchaseCost" label={t('warehouse.products.editor.purchaseCost')}>
+                <NumberInput className="mono" min={0} />
+              </Field>
+            )}
             <Field name="salePrice" label={t('warehouse.products.editor.salePrice')}>
               <NumberInput className="mono" min={0} />
             </Field>
