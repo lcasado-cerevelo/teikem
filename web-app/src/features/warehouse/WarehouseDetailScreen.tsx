@@ -931,6 +931,21 @@ export default function WarehouseDetailScreen() {
             {w.isMain && <Chip tone="deliv" title={t('warehouse.detail.mainHelp')}>{t('warehouse.detail.main')}</Chip>} {w.city}
           </p>
         </div>
+      </div>
+
+      {/* «Hacer principal» va en la misma línea que el botón de avanzar el estatus (alineado abajo), no junto al título */}
+      <div style={{ marginBottom: 14, display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 10 }}>
+        <StatusPipeline
+          domain={WAREHOUSE_STATUS_DOMAIN}
+          entityType={WAREHOUSE_ENTITY_TYPE}
+          entityId={w.id}
+          currentCode={w.statusCode}
+          disabled={!canManage || !w.isActive}
+          onTransition={(toCode, comment) => {
+            if (toCode !== 'INACTIVE') return Promise.resolve()
+            return deactivateWarehouse.mutateAsync({ publicId, body: { comment: comment ?? null, rowVersion: w.rowVersion ?? null } })
+          }}
+        />
         {w.isActive && !w.isMain && (
           <Can perm="warehouse.manage">
             <button
@@ -949,20 +964,6 @@ export default function WarehouseDetailScreen() {
             </button>
           </Can>
         )}
-      </div>
-
-      <div style={{ marginBottom: 14 }}>
-        <StatusPipeline
-          domain={WAREHOUSE_STATUS_DOMAIN}
-          entityType={WAREHOUSE_ENTITY_TYPE}
-          entityId={w.id}
-          currentCode={w.statusCode}
-          disabled={!canManage || !w.isActive}
-          onTransition={(toCode, comment) => {
-            if (toCode !== 'INACTIVE') return Promise.resolve()
-            return deactivateWarehouse.mutateAsync({ publicId, body: { comment: comment ?? null, rowVersion: w.rowVersion ?? null } })
-          }}
-        />
       </div>
 
       <div style={{ marginBottom: 14 }}>
