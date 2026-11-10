@@ -4,7 +4,7 @@
 import { useCan } from '../../kernel/access'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { Chip, EmptyState, IconTag, Panel, Spinner } from '../../kernel/ui'
+import { Chip, EmptyState, IconPercent, Panel, Spinner } from '../../kernel/ui'
 import { useOfferList, type OfferListItemDto } from './offerApi'
 import { offerIsOpenEnded, offerStateKey, offerStateTone } from './offerRules'
 import { StoredImage } from './StoredImage'
@@ -58,7 +58,7 @@ export function OffersPanel({ includeInactive, onOpen }: { includeInactive: bool
   const offers = useOfferList({ includeInactive })
   const rows = offers.data ?? []
   return (
-    <Panel flush icon={<IconTag />} title={t('warehouse.products.prices.offers')} badge={offers.data?.length}>
+    <Panel flush icon={<IconPercent />} title={t('warehouse.products.prices.offers')} badge={offers.data?.length}>
       {offers.isLoading ? (
         <Spinner block />
       ) : offers.error ? (

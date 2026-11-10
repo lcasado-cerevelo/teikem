@@ -166,6 +166,17 @@ export function IconDoc() {
 }
 
 /** Etiqueta ('tag'): KPI "Con número de serie" de Productos e inventario. */
+/** Oferta / promoción: el signo de por ciento (distinto de la etiqueta de precio `IconTag`). */
+export function IconPercent() {
+  return (
+    <Svg>
+      <path d="M19 5 5 19" />
+      <circle cx="6.5" cy="6.5" r="2.5" />
+      <circle cx="17.5" cy="17.5" r="2.5" />
+    </Svg>
+  )
+}
+
 export function IconTag() {
   return (
     <Svg>

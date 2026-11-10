@@ -128,6 +128,7 @@ export {
   IconRoute,
   IconScan,
   IconSwap,
+  IconPercent,
   IconTag,
   IconTruck,
   IconUsers,

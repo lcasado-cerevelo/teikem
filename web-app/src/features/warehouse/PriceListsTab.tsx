@@ -67,19 +67,16 @@ export function PriceListsTab() {
         </div>
         <div className="act">
           <Can perm="sales.pricelist">
-            <button type="button" className="btn" onClick={() => setOfferId(null)}>
-              {t('warehouse.products.prices.newOffer')}
-            </button>
             <button type="button" className="btn flow" onClick={() => setOpened(null)}>
               {t('warehouse.products.prices.new')}
+            </button>
+            <button type="button" className="btn" onClick={() => setOfferId(null)}>
+              {t('warehouse.products.prices.newOffer')}
             </button>
           </Can>
         </div>
       </div>
 
-      <OffersPanel includeInactive={includeInactive} onOpen={setOfferId} />
-
-      <div style={{ height: 14 }} />
       <Filters
         onClear={() => {
           setQ('')
@@ -124,6 +121,10 @@ export function PriceListsTab() {
           />
         )}
       </Panel>
+
+      {/* las listas de precios van primero, como dice el título «Precios y ofertas»; las ofertas, después */}
+      <div style={{ height: 14 }} />
+      <OffersPanel includeInactive={includeInactive} onOpen={setOfferId} />
 
       {opened !== undefined && <PriceListEditorModal key={opened ?? 'new'} publicId={opened} onClose={() => setOpened(undefined)} />}
       {offerId !== undefined && <OfferEditorModal key={offerId ?? 'new'} publicId={offerId} onClose={() => setOfferId(undefined)} />}
