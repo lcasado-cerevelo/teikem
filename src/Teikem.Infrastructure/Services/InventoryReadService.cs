@@ -586,6 +586,27 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
                 var wh = (await WarehouseInfoAsync(new[] { m.WarehouseId }, ct)).GetValueOrDefault(m.WarehouseId)?.Code;
                 return new KardexDocumentDto(entity, label, id, m.PublicId, m.Number, null, null, m.CreatedAtUtc, null, wh);
             }
+            case AssembledKitCodes.AssemblyEntityType:
+            {
+                // Lote 232: armado de kits (sin estatus); la referencia es el almacén y el SKU del kit
+                var a = await (from x in db.Set<KitAssembly>().AsNoTracking()
+                               join p in db.Set<Product>().AsNoTracking() on x.KitProductId equals p.ProductId
+                               where x.KitAssemblyId == id
+                               select new { x.PublicId, x.Number, x.CreatedAtUtc, x.WarehouseId, p.Sku }).FirstOrDefaultAsync(ct);
+                if (a is null) return Missing();
+                var wh = (await WarehouseInfoAsync(new[] { a.WarehouseId }, ct)).GetValueOrDefault(a.WarehouseId)?.Code;
+                return new KardexDocumentDto(entity, label, id, a.PublicId, a.Number, null, null, a.CreatedAtUtc, null, $"{a.Sku} · {wh}");
+            }
+            case AssembledKitCodes.DisassemblyEntityType:
+            {
+                var d = await (from x in db.Set<KitDisassembly>().AsNoTracking()
+                               join p in db.Set<Product>().AsNoTracking() on x.KitProductId equals p.ProductId
+                               where x.KitDisassemblyId == id
+                               select new { x.PublicId, x.Number, x.CreatedAtUtc, x.WarehouseId, p.Sku }).FirstOrDefaultAsync(ct);
+                if (d is null) return Missing();
+                var wh = (await WarehouseInfoAsync(new[] { d.WarehouseId }, ct)).GetValueOrDefault(d.WarehouseId)?.Code;
+                return new KardexDocumentDto(entity, label, id, d.PublicId, d.Number, null, null, d.CreatedAtUtc, null, $"{d.Sku} · {wh}");
+            }
             case EntityTypes.PurchaseOrder:
             {
                 var po = await (from x in db.Set<PurchaseOrder>().AsNoTracking()
@@ -873,6 +894,11 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
                 // 2026-10-12: ajuste múltiple por su número AJM-######.
                 EntityTypes.MultiAdjustment => await db.Set<MultiAdjustment>().AsNoTracking().Where(x => ids.Contains(x.MultiAdjustmentId))
                     .ToDictionaryAsync(x => x.MultiAdjustmentId, x => x.Number, ct),
+                // Lote 232: armado ARM-##### y desarmado DES-##### de un kit armado.
+                AssembledKitCodes.AssemblyEntityType => await db.Set<KitAssembly>().AsNoTracking().Where(x => ids.Contains(x.KitAssemblyId))
+                    .ToDictionaryAsync(x => x.KitAssemblyId, x => x.Number, ct),
+                AssembledKitCodes.DisassemblyEntityType => await db.Set<KitDisassembly>().AsNoTracking().Where(x => ids.Contains(x.KitDisassemblyId))
+                    .ToDictionaryAsync(x => x.KitDisassemblyId, x => x.Number, ct),
                 _ => null,
             };
             if (map is not null) result[group.Key] = map;

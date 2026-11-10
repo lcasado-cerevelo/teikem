@@ -164,6 +164,24 @@ public sealed class ProductImportTests
     }
 
     [Fact]
+    public async Task An_offer_kit_is_not_changed_by_the_product_import()   // Lote 231: los kits de oferta no viven en Productos e inventario
+    {
+        await using var f = await CreateAsync();
+        var tpl = await TemplateAsync(f);
+        var imports = f.Get<EntityImportService>();
+        await imports.ImportAsync(ImportKinds.Product, tpl.PublicId, Csv("sku,name,price,barcode", "OFERTA1,Kit,41.94,"), "p.csv", commit: true, default);
+        var kit = f.Db.Set<Product>().Single(p => p.Sku == "OFERTA1");
+        kit.IsOfferKit = true;
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+
+        var r = await imports.ImportAsync(ImportKinds.Product, tpl.PublicId, Csv("sku,name,price,barcode", "OFERTA1,Otro nombre,1,"), "p.csv", commit: true, default);
+        Assert.Equal("ERROR", r.Rows[0].Status);
+        Assert.Equal(ProductImportRows.OfferKitMessage, r.Rows[0].Errors["sku"]);
+        Assert.Equal(("Kit", 41.94m), (f.Db.Set<Product>().Single(p => p.Sku == "OFERTA1").Name, f.Db.Set<Product>().Single(p => p.Sku == "OFERTA1").SalePrice));
+    }
+
+    [Fact]
     public async Task Defaults_fill_empty_cells_and_unknown_unit_or_tracking_are_reported_per_row()
     {
         await using var f = await CreateAsync();

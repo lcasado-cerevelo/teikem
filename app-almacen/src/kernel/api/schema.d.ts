@@ -1668,6 +1668,191 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/products/{publicId}/assembled-kit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AssembledKitDto"];
+                        "application/json": components["schemas"]["AssembledKitDto"];
+                        "text/json": components["schemas"]["AssembledKitDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["AssembledKitSetRequest"];
+                    "text/json": components["schemas"]["AssembledKitSetRequest"];
+                    "application/*+json": components["schemas"]["AssembledKitSetRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AssembledKitDto"];
+                        "application/json": components["schemas"]["AssembledKitDto"];
+                        "text/json": components["schemas"]["AssembledKitDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/products/{publicId}/assembled-kit/assemblies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["KitAssemblyPageDto"];
+                        "application/json": components["schemas"]["KitAssemblyPageDto"];
+                        "text/json": components["schemas"]["KitAssemblyPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["KitAssembleRequest"];
+                    "text/json": components["schemas"]["KitAssembleRequest"];
+                    "application/*+json": components["schemas"]["KitAssembleRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["KitAssemblyResultDto"];
+                        "application/json": components["schemas"]["KitAssemblyResultDto"];
+                        "text/json": components["schemas"]["KitAssemblyResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/products/{publicId}/assembled-kit/assemblies/{assemblyPublicId}/disassemble": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    assemblyPublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["KitDisassembleRequest"];
+                    "text/json": components["schemas"]["KitDisassembleRequest"];
+                    "application/*+json": components["schemas"]["KitDisassembleRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["KitDisassemblyResultDto"];
+                        "application/json": components["schemas"]["KitDisassemblyResultDto"];
+                        "text/json": components["schemas"]["KitDisassemblyResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analytics/attention": {
         parameters: {
             query?: never;
@@ -21882,6 +22067,141 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/v1/offers/kits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                    includeInactive?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferKitLibraryItemDto"][];
+                        "application/json": components["schemas"]["OfferKitLibraryItemDto"][];
+                        "text/json": components["schemas"]["OfferKitLibraryItemDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["OfferKitLibraryRequest"];
+                    "text/json": components["schemas"]["OfferKitLibraryRequest"];
+                    "application/*+json": components["schemas"]["OfferKitLibraryRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferKitLibraryItemDto"];
+                        "application/json": components["schemas"]["OfferKitLibraryItemDto"];
+                        "text/json": components["schemas"]["OfferKitLibraryItemDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/offers/kits/{productPublicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    productPublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferKitLibraryItemDto"];
+                        "application/json": components["schemas"]["OfferKitLibraryItemDto"];
+                        "text/json": components["schemas"]["OfferKitLibraryItemDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    productPublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["OfferKitUpdateRequest"];
+                    "text/json": components["schemas"]["OfferKitUpdateRequest"];
+                    "application/*+json": components["schemas"]["OfferKitUpdateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OfferKitLibraryItemDto"];
+                        "application/json": components["schemas"]["OfferKitLibraryItemDto"];
+                        "text/json": components["schemas"]["OfferKitLibraryItemDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/v1/offers/{publicId}/publish": {
         parameters: {
             query?: never;
@@ -28533,6 +28853,7 @@ export interface paths {
                     ownerClientPublicIds?: string[];
                     includeOwn?: boolean;
                     binIds?: number[];
+                    includeOfferKits?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -41576,6 +41897,59 @@ export interface components {
             expectedDate?: string | null;
             lines?: components["schemas"]["AsnLineRequest"][] | null;
         };
+        AssembledKitAvailabilityDto: {
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseCode?: string | null;
+            /** Format: int32 */
+            canAssemble?: number;
+            /** Format: int32 */
+            canAssembleTotal?: number;
+        };
+        AssembledKitDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            isAssembledKit?: boolean;
+            trackingTypeCode?: string | null;
+            compositionLocked?: boolean;
+            pieces?: components["schemas"]["AssembledKitPieceDto"][] | null;
+            availability?: components["schemas"]["AssembledKitAvailabilityDto"][] | null;
+            /** Format: double */
+            qtyOnHand?: number;
+            /** Format: double */
+            qtyAvailable?: number;
+        };
+        AssembledKitPieceDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            /** Format: double */
+            quantity?: number;
+            /** Format: int32 */
+            sortOrder?: number;
+            isActive?: boolean;
+            trackingTypeCode?: string | null;
+        };
+        AssembledKitPieceInput: {
+            /** Format: uuid */
+            productPublicId?: string | null;
+            /** Format: double */
+            quantity?: number | null;
+        };
+        AssembledKitSetRequest: {
+            pieces?: components["schemas"]["AssembledKitPieceInput"][] | null;
+        };
+        AssemblyPieceChoice: {
+            /** Format: uuid */
+            productPublicId?: string | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            /** Format: int32 */
+            binId?: number | null;
+        };
         AssignOrderZonesResultDto: {
             /** Format: int32 */
             examined?: number;
@@ -46334,6 +46708,88 @@ export interface components {
             isActive?: boolean;
             isSystem?: boolean;
         };
+        KitAssembleRequest: {
+            /** Format: double */
+            quantity?: number | null;
+            /** Format: int32 */
+            toBinId?: number | null;
+            /** Format: uuid */
+            warehousePublicId?: string | null;
+            notes?: string | null;
+            pieces?: components["schemas"]["AssemblyPieceChoice"][] | null;
+        };
+        KitAssemblyDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            /** Format: uuid */
+            kitPublicId?: string;
+            kitSku?: string | null;
+            /** Format: double */
+            quantity?: number;
+            /** Format: double */
+            disassembledQty?: number;
+            /** Format: double */
+            remaining?: number;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseCode?: string | null;
+            /** Format: int32 */
+            toBinId?: number;
+            toBinCode?: string | null;
+            /** Format: int32 */
+            kitLotId?: number | null;
+            kitLotNumber?: string | null;
+            /** Format: date */
+            kitLotExpiry?: string | null;
+            /** Format: double */
+            unitCost?: number | null;
+            /** Format: double */
+            totalCost?: number | null;
+            notes?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: int32 */
+            createdBy?: number | null;
+            createdByName?: string | null;
+            lines?: components["schemas"]["KitAssemblyLineDto"][] | null;
+            disassemblies?: components["schemas"]["KitDisassemblyDto"][] | null;
+        };
+        KitAssemblyLineDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            lotNumber?: string | null;
+            /** Format: date */
+            expiryDate?: string | null;
+            /** Format: int32 */
+            fromBinId?: number;
+            fromBinCode?: string | null;
+            /** Format: double */
+            qtyPerKit?: number;
+            /** Format: double */
+            quantity?: number;
+            /** Format: double */
+            returnedQty?: number;
+            /** Format: double */
+            unitCost?: number | null;
+        };
+        KitAssemblyPageDto: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+            items?: components["schemas"]["KitAssemblyDto"][] | null;
+        };
+        KitAssemblyResultDto: {
+            assembly?: components["schemas"]["KitAssemblyDto"];
+            movements?: components["schemas"]["MovementResultDto"];
+        };
         KitAvailabilityDto: {
             /** Format: uuid */
             warehousePublicId?: string;
@@ -46371,6 +46827,7 @@ export interface components {
             adjustable?: boolean;
             components?: components["schemas"]["KitComponentDto"][] | null;
             availability?: components["schemas"]["KitAvailabilityDto"][] | null;
+            isOfferKit?: boolean;
         };
         KitSetRequest: {
             isKit?: boolean | null;
@@ -47428,6 +47885,41 @@ export interface components {
             sku?: string | null;
             offer?: components["schemas"]["OfferDto"];
         };
+        OfferKitLibraryItemDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            brand?: string | null;
+            /** Format: int32 */
+            categoryId?: number | null;
+            adjustable?: boolean;
+            isActive?: boolean;
+            /** Format: double */
+            salePrice?: number | null;
+            /** Format: uuid */
+            effectiveImagePublicId?: string | null;
+            components?: components["schemas"]["KitComponentDto"][] | null;
+            /** Format: double */
+            lastPrice?: number | null;
+            /** Format: uuid */
+            lastOfferPublicId?: string | null;
+            lastOfferName?: string | null;
+            /** Format: int32 */
+            offerCount?: number;
+            compositionLocked?: boolean;
+        };
+        OfferKitLibraryRequest: {
+            sku?: string | null;
+            name?: string | null;
+            components?: components["schemas"]["KitComponentRequest"][] | null;
+            adjustable?: boolean | null;
+            brand?: string | null;
+            /** Format: int32 */
+            categoryId?: number | null;
+            /** Format: double */
+            salePrice?: number | null;
+        };
         OfferKitRequest: {
             sku?: string | null;
             name?: string | null;
@@ -47439,10 +47931,12 @@ export interface components {
             categoryId?: number | null;
             /** Format: double */
             salePrice?: number | null;
+            adjustable?: boolean | null;
         };
         OfferKitUpdateRequest: {
             name?: string | null;
             components?: components["schemas"]["KitComponentRequest"][] | null;
+            adjustable?: boolean | null;
         };
         OfferListItemDto: {
             /** Format: uuid */
@@ -49278,6 +49772,14 @@ export interface components {
             /** Format: double */
             weight?: number | null;
             weightUnit?: string | null;
+            isAssembledKit?: boolean | null;
+            kitPieces?: components["schemas"]["AssembledKitPieceInput"][] | null;
+            /** Format: double */
+            assembleQuantity?: number | null;
+            /** Format: uuid */
+            assembleWarehousePublicId?: string | null;
+            /** Format: int32 */
+            assembleToBinId?: number | null;
         };
         ProductDetailDto: {
             product?: components["schemas"]["ProductListItemDto"];
@@ -49303,6 +49805,7 @@ export interface components {
             /** Format: int32 */
             categoryParentId?: number | null;
             categoryParentName?: string | null;
+            kitPieces?: components["schemas"]["AssembledKitPieceDto"][] | null;
         };
         ProductImageDto: {
             /** Format: uuid */
@@ -49352,6 +49855,7 @@ export interface components {
             /** Format: double */
             packQty?: number | null;
             isKit?: boolean;
+            isAssembledKit?: boolean;
         };
         ProductPageDto: {
             /** Format: int32 */
@@ -54714,6 +55218,55 @@ export interface components {
             salePrice?: number | null;
             substitutes?: components["schemas"]["KitSubstituteDto"][] | null;
         };
+        KitDisassembleRequest: {
+            /** Format: double */
+            quantity?: number | null;
+            /** Format: uuid */
+            warehousePublicId?: string | null;
+            /** Format: int32 */
+            fromBinId?: number | null;
+            /** Format: int32 */
+            toBinId?: number | null;
+            notes?: string | null;
+        };
+        KitDisassemblyDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            /** Format: double */
+            quantity?: number;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseCode?: string | null;
+            notes?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: int32 */
+            createdBy?: number | null;
+            createdByName?: string | null;
+            lines?: components["schemas"]["KitDisassemblyLineDto"][] | null;
+        };
+        KitDisassemblyLineDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            lotNumber?: string | null;
+            /** Format: int32 */
+            toBinId?: number;
+            toBinCode?: string | null;
+            /** Format: double */
+            quantity?: number;
+            /** Format: double */
+            unitCost?: number | null;
+        };
+        KitDisassemblyResultDto: {
+            assembly?: components["schemas"]["KitAssemblyDto"];
+            disassembly?: components["schemas"]["KitDisassemblyDto"];
+            movements?: components["schemas"]["MovementResultDto"];
+        };
         KitSubstituteDto: {
             /** Format: uuid */
             productPublicId?: string;
@@ -54731,6 +55284,7 @@ export interface components {
             name?: string | null;
             adjustable?: boolean;
             components?: components["schemas"]["KitComponentSubstitutesDto"][] | null;
+            isOfferKit?: boolean;
         };
         ProductMeasuresDto: {
             /** Format: double */

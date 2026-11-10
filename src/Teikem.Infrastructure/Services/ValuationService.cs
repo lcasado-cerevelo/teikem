@@ -19,16 +19,53 @@ public sealed class ValuationService(TeikemDbContext db)
     public async Task<string> MethodAsync(CancellationToken ct)
         => ValuationRules.Parse(await db.Tenants.AsNoTracking().Where(t => t.TenantId == db.CurrentTenantId).Select(t => t.ValuationMethod).FirstOrDefaultAsync(ct)) ?? ValuationMethods.Average;
 
-    /// <summary>Capas de cada producto, de la más vieja a la más nueva: líneas de recibos confirmados y activos con algo recibido.</summary>
+    /// <summary>
+    /// Capas de cada producto, de la más vieja a la más nueva: líneas de recibos confirmados y activos con algo recibido. Lote 232: también los ARMADOS de un kit armado
+    /// (los kits que siguen armados, al costo sumado de sus piezas) y los DESARMADOS de sus piezas (lo que volvió, al costo con que salió), por su fecha.
+    /// </summary>
     private async Task<Dictionary<int, List<CostLayer>>> LayersAsync(IReadOnlyCollection<int> productIds, CancellationToken ct)
     {
         if (productIds.Count == 0) return new Dictionary<int, List<CostLayer>>();
-        var rows = await (from l in db.Set<ReceiptLine>().AsNoTracking()
-                          join h in db.Set<ReceiptHeader>().AsNoTracking() on l.ReceiptHeaderId equals h.ReceiptHeaderId
-                          where productIds.Contains(l.ProductId) && h.IsActive && h.ReceivedAtUtc != null && l.ReceivedQty > 0m
-                          orderby h.ReceivedAtUtc, l.ReceiptLineId
-                          select new { l.ProductId, l.ReceivedQty, l.UnitCost }).ToListAsync(ct);
-        return rows.GroupBy(r => r.ProductId).ToDictionary(g => g.Key, g => g.Select(r => new CostLayer(r.ReceivedQty, r.UnitCost)).ToList());
+        var rows = (await (from l in db.Set<ReceiptLine>().AsNoTracking()
+                           join h in db.Set<ReceiptHeader>().AsNoTracking() on l.ReceiptHeaderId equals h.ReceiptHeaderId
+                           where productIds.Contains(l.ProductId) && h.IsActive && h.ReceivedAtUtc != null && l.ReceivedQty > 0m
+                           select new { l.ProductId, Qty = l.ReceivedQty, l.UnitCost, At = h.ReceivedAtUtc!.Value, Source = 0, Seq = l.ReceiptLineId }).ToListAsync(ct)).ToList();
+        // Lote 232: armados del kit (lo que sigue armado) y piezas devueltas por desarmados
+        rows.AddRange(await db.Set<KitAssembly>().AsNoTracking()
+            .Where(a => productIds.Contains(a.KitProductId) && a.Quantity > a.DisassembledQty)
+            .Select(a => new { ProductId = a.KitProductId, Qty = a.Quantity - a.DisassembledQty, a.UnitCost, At = a.CreatedAtUtc, Source = 1, Seq = a.KitAssemblyId }).ToListAsync(ct));
+        rows.AddRange(await (from l in db.Set<KitDisassemblyLine>().AsNoTracking()
+                             join d in db.Set<KitDisassembly>().AsNoTracking() on l.KitDisassemblyId equals d.KitDisassemblyId
+                             where productIds.Contains(l.ComponentProductId) && l.Quantity > 0m
+                             select new { ProductId = l.ComponentProductId, Qty = l.Quantity, l.UnitCost, At = d.CreatedAtUtc, Source = 2, Seq = l.KitDisassemblyLineId }).ToListAsync(ct));
+        return rows.OrderBy(r => r.At).ThenBy(r => r.Source).ThenBy(r => r.Seq)
+            .GroupBy(r => r.ProductId).ToDictionary(g => g.Key, g => g.Select(r => new CostLayer(r.Qty, r.UnitCost)).ToList());
+    }
+
+    /// <summary>
+    /// Lote 232 — VALOR de lo que acaba de salir de cada producto (armado de kits): se llama con el inventario ya asentado; lo que había antes es lo que hay ahora más lo
+    /// que salió. Valor = valor antes − valor después según el método de la compañía (así el valor total del inventario no cambia cuando ese valor entra como capa del kit).
+    /// UnvaluedQty = unidades que salieron sin costo en ningún lado (ni capa ni costo del producto).
+    /// </summary>
+    public async Task<IReadOnlyDictionary<int, (decimal Value, decimal UnvaluedQty)>> ConsumedValueAsync(IReadOnlyDictionary<int, decimal> issuedByProduct, CancellationToken ct)
+    {
+        var result = new Dictionary<int, (decimal, decimal)>();
+        if (issuedByProduct.Count == 0) return result;
+        var method = await MethodAsync(ct);
+        var ids = issuedByProduct.Keys.ToList();
+        var costs = await db.Set<Product>().AsNoTracking().Where(p => ids.Contains(p.ProductId)).ToDictionaryAsync(p => p.ProductId, p => p.PurchaseCost, ct);
+        var layers = await LayersAsync(ids, ct);
+        var onHandNow = (await db.Set<StockBalance>().AsNoTracking().Where(b => ids.Contains(b.ProductId)).Select(b => new { b.ProductId, b.QtyOnHand }).ToListAsync(ct))
+            .GroupBy(b => b.ProductId).ToDictionary(g => g.Key, g => g.Sum(b => b.QtyOnHand));
+        foreach (var (productId, issued) in issuedByProduct)
+        {
+            var now = onHandNow.GetValueOrDefault(productId);
+            var productLayers = layers.GetValueOrDefault(productId) ?? new List<CostLayer>();
+            var before = ValuationRules.Value(method, now + issued, productLayers, costs.GetValueOrDefault(productId));
+            var after = ValuationRules.Value(method, now, productLayers, costs.GetValueOrDefault(productId));
+            result[productId] = (before.Value - after.Value, before.UnvaluedQty - after.UnvaluedQty);
+        }
+        return result;
     }
 
     /// <summary>

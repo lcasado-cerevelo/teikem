@@ -120,12 +120,10 @@ public sealed class SalesCatalogService(TeikemDbContext db, ITenantClock clock, 
         var kitTypeId = await lookups.TryGetIdAsync(KitCodes.ProductTypeDomain, ProductTypes.Kit, ct);
         var products = await db.Set<Product>().AsNoTracking().Where(p => p.IsActive && p.ClientId == null && p.TrackingTypeLookupId != serialId).ToListAsync(ct);
 
-        // los kits de oferta solo se venden mientras su oferta esté publicada y vigente
-        var owners = await PriceListQueries.OwnerOffersAsync(db, products.Where(p => p.OfferId is not null).Select(p => p.OfferId!.Value), ct);
-        products = products.Where(p => p.OfferId is not int oid || OfferRules.KitSellable(owners.GetValueOrDefault(oid), today)).ToList();
-
         var lists = await PriceListQueries.InEffectAsync(db, clientId, today, null, ct);
         var offers = await PriceListQueries.OffersInEffectAsync(db, clientId, today, null, ct);
+        // Lote 231: un kit de oferta solo se vende mientras esté en alguna oferta publicada y vigente que aplique al cliente
+        products = products.Where(p => !p.IsOfferKit || OfferKitRules.IsOnSale(p.ProductId, clientId, today, offers)).ToList();
         var listIds = lists.Select(x => x.PriceListId).ToList();
         var listInfo = listIds.Count == 0 ? new Dictionary<int, (Guid PublicId, string Name)>()
             : (await db.Set<PriceList>().AsNoTracking().Where(l => listIds.Contains(l.PriceListId)).Select(l => new { l.PriceListId, l.PublicId, l.Name }).ToListAsync(ct))
@@ -156,10 +154,10 @@ public sealed class SalesCatalogService(TeikemDbContext db, ITenantClock clock, 
             var fileId = ProductImageRules.Resolve(rowImage, productImages.GetValueOrDefault(p.ProductId), false, null);
             var info = r.PriceListId is int lid && listInfo.TryGetValue(lid, out var li) ? li : ((Guid PublicId, string Name)?)null;
             var notices = r.Notices?.Select(n => Notice(p, n, offerPublic)).ToList();
-            return new SalesCatalogItemDto(p.PublicId, p.Sku, p.Name, p.Brand, isKit, isKit && p.KitAdjustable, shown is not null, shown?.Offer.ValidFrom, shown?.Offer.ValidTo,
+            return new SalesCatalogItemDto(p.PublicId, p.Sku, p.Name, p.Brand, isKit, isKit && p.IsOfferKit && p.KitAdjustable, shown is not null, shown?.Offer.ValidFrom, shown?.Offer.ValidTo,
                 r.Price, r.Source, info?.PublicId, info?.Name, p.SalePrice, fileId is int f && images.TryGetValue(f, out var g) ? g : null,
                 shown is { } s1 && offerPublic.TryGetValue(s1.Offer.OfferId, out var op) ? op : null, shown?.Offer.Name, shown?.Offer.ValidFrom, shown?.Offer.ValidTo,
-                shown?.Item.Price, p.OfferId is not null, notices is { Count: > 0 } ? notices : null);
+                shown?.Item.Price, p.IsOfferKit, notices is { Count: > 0 } ? notices : null);
         }
 
         var brands = products
@@ -170,7 +168,7 @@ public sealed class SalesCatalogService(TeikemDbContext db, ITenantClock clock, 
                 var label = g.Key is null ? null : g.Select(p => p.Brand!.Trim()).GroupBy(b => b).OrderByDescending(b => b.Count()).ThenBy(b => b.Key, StringComparer.Ordinal).First().Key;
                 var all = g.OrderBy(p => p.Sku, StringComparer.OrdinalIgnoreCase).ToList();
                 var inOffer = all.Where(p => offerOf.ContainsKey(p.ProductId)).Select(p => Item(p, true)).ToList();
-                var rest = all.Where(p => p.OfferId is null).Select(p => Item(p, false)).ToList();
+                var rest = all.Where(p => !p.IsOfferKit).Select(p => Item(p, false)).ToList();
                 return new SalesCatalogBrandDto(label, inOffer, rest);
             })
             .Where(b => b.Offers.Count > 0 || b.Products.Count > 0)

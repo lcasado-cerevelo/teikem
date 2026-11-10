@@ -10,7 +10,7 @@
      - Crea (si no existe una lista activa con el nombre @Nombre) la lista general, vigente desde @Desde (hoy, hora de Puerto Rico) y sin
        fecha final, y le pone un renglón por cada producto del formulario que exista en Teikem (SKU sin espacios ni guiones), con el
        precio del formulario. Los GUANTES (NECH 1001–1004) no van: en el formulario solo se venden a precio negociado (ver 07). Un kit
-       de oferta (Product.OfferId) nunca entra: se informa y se salta.
+       de oferta (Product.IsOfferKit, lote 231) nunca entra: se informa y se salta.
      - Si la lista ya existe: agrega los renglones que falten. NO cambia el precio de un renglón que ya está (lo pudo cambiar el
        supervisor) salvo que ponga @ActualizarPrecios = 1.
      - La publica (@Publicar = 1) si no se cruza con otra lista general publicada en las mismas fechas y productos; si se cruza, ABORTA
@@ -66,8 +66,8 @@ SELECT f.FormSku AS [SKU del formulario que NO existe en Teikem (activo): no va 
 WHERE NOT EXISTS (SELECT 1 FROM @Match m WHERE m.FormSku = f.FormSku) ORDER BY f.FormSku;
 SELECT m.FormSku AS [SKU AMBIGUO (más de un producto): no va en la lista], STRING_AGG(m.Sku, N', ') AS [Productos] FROM @Match m GROUP BY m.FormSku HAVING COUNT(*) > 1;
 -- Lote 229: un kit de oferta lleva su precio en su oferta (Precios y ofertas → «Ofertas»), nunca en una lista
-SELECT m.Sku AS [Kit de una OFERTA: no va en la lista (su precio está en la oferta)] FROM @Match m JOIN dbo.Product p ON p.ProductId = m.ProductId WHERE p.OfferId IS NOT NULL;
-DELETE m FROM @Match m WHERE EXISTS (SELECT 1 FROM dbo.Product p WHERE p.ProductId = m.ProductId AND p.OfferId IS NOT NULL);
+SELECT m.Sku AS [Kit de una OFERTA: no va en la lista (su precio está en la oferta)] FROM @Match m JOIN dbo.Product p ON p.ProductId = m.ProductId WHERE p.IsOfferKit = 1 OR p.OfferId IS NOT NULL;
+DELETE m FROM @Match m WHERE EXISTS (SELECT 1 FROM dbo.Product p WHERE p.ProductId = m.ProductId AND (p.IsOfferKit = 1 OR p.OfferId IS NOT NULL));
 DELETE m FROM @Match m WHERE m.FormSku IN (SELECT FormSku FROM @Match GROUP BY FormSku HAVING COUNT(*) > 1);
 SELECT Sku, Precio AS [Precio del formulario], SalePrice AS [Precio de venta del producto (informativo)] FROM @Match
 WHERE SalePrice IS NULL OR SalePrice <> Precio ORDER BY Sku;

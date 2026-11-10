@@ -68,6 +68,7 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
         var take = q.Take <= 0 ? 100 : Math.Min(q.Take, ProductRules.MaxPageSize);
 
         var query = Scoped(scope).AsNoTracking();
+        if (!q.IncludeOfferKits) query = query.Where(p => !p.IsOfferKit);   // Lote 231: los kits de oferta no aparecen en Productos e inventario
         if (q.ActiveOnly) query = query.Where(p => p.IsActive);
         if (q.OwnOnly == true) query = query.Where(p => p.ClientId == null);
         if (q.OwnerClientPublicId is Guid ownerPublicId)
@@ -252,7 +253,7 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
     /// </summary>
     public async Task<IReadOnlyList<string>> ListBrandsAsync(string? search, InventoryScope scope, CancellationToken ct)
     {
-        var query = Scoped(scope ?? InventoryScope.Any).AsNoTracking().Where(p => p.Brand != null && p.Brand != "");
+        var query = Scoped(scope ?? InventoryScope.Any).AsNoTracking().Where(p => p.Brand != null && p.Brand != "" && !p.IsOfferKit);   // Lote 231: sin kits de oferta
         if (!string.IsNullOrWhiteSpace(search))
         {
             var s = search.Trim().ToLowerInvariant();
@@ -381,6 +382,12 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
     }
 
     // ================================================================ alta
+
+    /// <summary>
+    /// Lote 232: el rastreo de un kit armado lo deciden sus piezas; al cambiar su composición (sin movimientos ni existencia) AssembledKitService lo fija aquí, para que la
+    /// escritura del seguimiento siga viviendo solo en ProductService (y la conversión a serie).
+    /// </summary>
+    internal static void ApplyAssembledKitTracking(Product product, int trackingId) => product.TrackingTypeLookupId = trackingId;
 
     public async Task<ProductDetailDto> CreateAsync(ProductCreateRequest req, CancellationToken ct)
     {
@@ -575,6 +582,10 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             var trackingChanges = trackingId is int t && t != product.TrackingTypeLookupId;
             var uomChanges = uomId is int u && u != product.BaseUomLookupId;
             var ownerChanges = ownerTarget != product.ClientId;
+            // Lote 232: el rastreo y el dueño de un kit armado los fijan sus piezas (se cambian con la composición, o creando un kit nuevo)
+            if ((trackingChanges || ownerChanges) && product.ProductTypeLookupId is int typeId
+                && typeId == await lookups.TryGetIdAsync(KitCodes.ProductTypeDomain, ProductTypes.AssembledKit, ct2))
+                throw new StatusRuleException(trackingChanges ? AssembledKitRules.TrackingFixed : AssembledKitRules.OwnerFixed);
             if (trackingChanges || uomChanges || ownerChanges)
             {
                 await LockProductBalancesAsync(product.ProductId, ct2);
@@ -756,7 +767,8 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
         }
         return new ProductDetailDto(item, p.WeightKg, p.VolumeM3, whPublicId, whCode, p.PreferredBinId, binCode,
             p.MinPickQty, p.MaxPickQty, hasMovements, Convert.ToBase64String(p.RowVersion ?? Array.Empty<byte>()), p.RotationMethod,
-            MeasuresOf(p), categoryPath, parentId, parentName);
+            MeasuresOf(p), categoryPath, parentId, parentName,
+            KitPieces: item.IsAssembledKit ? await AssembledKitService.PiecesForDetailAsync(db, lookups, p.ProductId, ct) : null);
     }
 
     // ================================================================ Lote 230: dimensiones y peso con unidad
@@ -860,6 +872,7 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
                 .ToDictionaryAsync(c => c.ProductCategoryId, c => c.Name, ct);
 
         var kitTypeId = products.Any(x => x.ProductTypeLookupId != null) ? await lookups.TryGetIdAsync(KitCodes.ProductTypeDomain, ProductTypes.Kit, ct) : null;   // Lote 68
+        var assembledTypeId = products.Any(x => x.ProductTypeLookupId != null) ? await lookups.TryGetIdAsync(KitCodes.ProductTypeDomain, ProductTypes.AssembledKit, ct) : null;   // Lote 232
         var items = new List<ProductListItemDto>(products.Count);
         foreach (var p in products)
         {
@@ -873,7 +886,8 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
                 p.Barcode, p.PurchaseCost, p.SalePrice,
                 t.OnHand, t.Reserved, available, p.MinQty, ProductRules.IsBelowMin(p.MinQty, available, p.IsActive), p.IsActive,
                 p.Brand, p.Model, p.PackUomLookupId is int pu ? await CodeAsync(pu, ct) : null, p.PackUomLookupId is int pn ? await LabelAsync(pn, ct) : null, p.PackQty,
-                kitTypeId is not null && p.ProductTypeLookupId == kitTypeId));
+                kitTypeId is not null && p.ProductTypeLookupId == kitTypeId,
+                IsAssembledKit: assembledTypeId is not null && p.ProductTypeLookupId == assembledTypeId));
         }
         return items;
     }

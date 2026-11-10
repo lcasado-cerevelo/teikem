@@ -4,7 +4,8 @@ using Xunit;
 namespace Teikem.Tests;
 
 // Lote 229: reglas puras de las ofertas — vigencia (también sin fecha de fin), gana el precio más bajo entre negociado y oferta, dos ofertas (la más barata + aviso),
-// oferta más cara que la general (aviso), clientes escogidos y los choques al armar la oferta.
+// oferta más cara que la general (aviso), clientes escogidos y los choques al armar la oferta. Lote 231: el kit de oferta (biblioteca) se vende si está en alguna
+// oferta vigente; su último uso y la comparación de su composición.
 public sealed class OfferRulesTests
 {
     private static readonly DateOnly D1 = new(2026, 11, 9);
@@ -105,20 +106,43 @@ public sealed class OfferRulesTests
     }
 
     [Fact]
-    public void A_kit_of_an_offer_sells_only_while_its_offer_is_in_effect_and_the_message_says_why()
+    public void An_offer_kit_sells_only_while_it_is_in_some_published_offer_in_effect_for_the_client()   // Lote 231 (antes: atado a UNA oferta)
     {
         var o = O(1, D1, D1.AddDays(10), new[] { (10, 41.94m) }, name: "OFERTA1");
-        Assert.True(OfferRules.KitSellable(o, D1));
-        Assert.False(OfferRules.KitSellable(o, D1.AddDays(11)));
-        Assert.False(OfferRules.KitSellable(null, D1));
-        Assert.Equal("El kit OFERTA1 es de la oferta «OFERTA1», que ya terminó (valía del 09/11/2026 al 19/11/2026): no se puede vender.",
-            OfferRules.KitNotSellable("OFERTA1", o, D1.AddDays(11)));
-        Assert.Equal("El kit OFERTA1 es de la oferta «OFERTA1», que todavía no empieza (vale del 09/11/2026 al 19/11/2026): no se puede vender.",
-            OfferRules.KitNotSellable("OFERTA1", o, D1.AddDays(-1)));
-        Assert.Equal("El kit OFERTA1 es de la oferta «OFERTA1», que está en borrador: no se puede vender.",
-            OfferRules.KitNotSellable("OFERTA1", o with { IsPublished = false }, D1));
-        Assert.Equal("El kit OFERTA1 es de la oferta «OFERTA1», que está desactivada: no se puede vender.",
-            OfferRules.KitNotSellable("OFERTA1", o with { IsActive = false }, D1));
+        Assert.True(OfferKitRules.IsOnSale(10, null, D1, new[] { o }));
+        Assert.False(OfferKitRules.IsOnSale(10, null, D1.AddDays(11), new[] { o }));   // ya terminó
+        Assert.False(OfferKitRules.IsOnSale(10, null, D1, new[] { o with { IsPublished = false } }));
+        Assert.False(OfferKitRules.IsOnSale(10, null, D1, new[] { o with { IsActive = false } }));
+        Assert.False(OfferKitRules.IsOnSale(11, null, D1, new[] { o }));   // no está en la oferta
+        Assert.False(OfferKitRules.IsOnSale(10, null, D1, Array.Empty<OfferView>()));
+        // en otra oferta que sigue vigente: se vende
+        Assert.True(OfferKitRules.IsOnSale(10, null, D1.AddDays(11), new[] { o, O(2, D1.AddDays(11), null, new[] { (10, 39m) }) }));
+        // oferta de clientes escogidos: solo para ellos
+        var mine = O(3, D1, null, new[] { (10, 40m) }, new[] { 100 });
+        Assert.True(OfferKitRules.IsOnSale(10, 100, D1, new[] { mine }));
+        Assert.False(OfferKitRules.IsOnSale(10, 200, D1, new[] { mine }));
+        Assert.False(OfferKitRules.IsOnSale(10, null, D1, new[] { mine }));
+        Assert.Equal("El kit de oferta OFERTA1 no está en ninguna oferta publicada y vigente para este cliente: no se puede vender.", OfferKitRules.NotOnSale("OFERTA1"));
+    }
+
+    [Fact]
+    public void The_last_use_of_an_offer_kit_is_the_newest_row_still_in_an_active_offer_and_its_composition_compares_pieces_quantities_and_marks()   // Lote 231
+    {
+        Assert.Null(OfferKitRules.LastUse(Array.Empty<OfferKitUse>()));
+        var nov = new OfferKitUse(5, 1, "Noviembre", 41.94m, true, true);
+        var jan = new OfferKitUse(9, 2, "Enero", 39.99m, true, true);
+        Assert.Equal(jan, OfferKitRules.LastUse(new[] { nov, jan }));
+        Assert.Equal(nov, OfferKitRules.LastUse(new[] { nov, jan with { ItemActive = false } }));   // el renglón quitado no manda si hay otro puesto
+        Assert.Equal(nov, OfferKitRules.LastUse(new[] { nov, jan with { OfferActive = false } }));
+        Assert.Equal(jan with { ItemActive = false }, OfferKitRules.LastUse(new[] { nov with { ItemActive = false }, jan with { ItemActive = false } }));   // todos quitados: el más nuevo
+
+        var a = new[] { new OfferKitPiece(1, 6m, false), new OfferKitPiece(2, 1m, true) };
+        Assert.False(OfferKitRules.CompositionChanges(a, false, new[] { new OfferKitPiece(1, 6.000m, false), new OfferKitPiece(2, 1m, true) }, false));
+        Assert.True(OfferKitRules.CompositionChanges(a, false, new[] { new OfferKitPiece(1, 5m, false), new OfferKitPiece(2, 1m, true) }, false));   // cantidad
+        Assert.True(OfferKitRules.CompositionChanges(a, false, new[] { new OfferKitPiece(1, 6m, false), new OfferKitPiece(2, 1m, false) }, false));   // «no sustituible»
+        Assert.False(OfferKitRules.CompositionChanges(a, false, new[] { new OfferKitPiece(2, 1m, true), new OfferKitPiece(1, 6m, false) }, false));   // solo el orden: no cambia
+        Assert.True(OfferKitRules.CompositionChanges(a, false, new[] { new OfferKitPiece(1, 6m, false) }, false));   // una pieza menos
+        Assert.True(OfferKitRules.CompositionChanges(a, false, a, true));   // «ajustable al pedir»
     }
 
     [Fact]

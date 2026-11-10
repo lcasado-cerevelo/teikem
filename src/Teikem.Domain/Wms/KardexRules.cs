@@ -124,6 +124,8 @@ public static class KardexRules
             EntityTypes.Rental => "Rental",
             EntityTypes.RentalReturn => "Rental return",
             EntityTypes.MultiAdjustment => "Multi-adjustment",
+            AssembledKitCodes.AssemblyEntityType => "Kit assembly",   // Lote 232
+            AssembledKitCodes.DisassemblyEntityType => "Kit disassembly",
             _ => null,
         }
         : refEntityCode.ToUpperInvariant() switch
@@ -138,6 +140,8 @@ public static class KardexRules
             EntityTypes.Rental => "Renta",
             EntityTypes.RentalReturn => "Devolución de renta",
             EntityTypes.MultiAdjustment => "Ajuste múltiple",
+            AssembledKitCodes.AssemblyEntityType => "Armado de kit",   // Lote 232
+            AssembledKitCodes.DisassemblyEntityType => "Desarmado de kit",
             _ => null,
         };
 

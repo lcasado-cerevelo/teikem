@@ -64,6 +64,7 @@ public static class AdjustmentRules
         AdjustmentReasons.OpeningBalance,   // Lote 10: solo el importador de datos heredados
         AdjustmentReasons.TrackingConversion,   // Lote 26: solo la conversión de un producto a serie
         AdjustmentReasons.PhysicalCount,   // 2026-10-12: solo el ajuste múltiple («Inventario físico»)
+        AdjustmentReasons.KitAssembly, AdjustmentReasons.KitDisassembly,   // Lote 232: solo el armado y el desarmado de kits
     };
 
     public static string SystemReason(string code) => $"El motivo {code} lo asigna el sistema.";

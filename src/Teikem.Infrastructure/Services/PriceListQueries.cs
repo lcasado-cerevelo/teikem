@@ -80,18 +80,6 @@ internal static class PriceListQueries
             items.GetValueOrDefault(o.OfferId) ?? Array.Empty<OfferItemView>())).ToList();
     }
 
-    /// <summary>Lote 229 — las ofertas dueñas de esos kits de oferta (por OfferId), sin importar su estado (para decidir si el kit se vende hoy y decir por qué no).</summary>
-    public static async Task<Dictionary<int, OfferView>> OwnerOffersAsync(TeikemDbContext db, IEnumerable<int> offerIds, CancellationToken ct)
-    {
-        var ids = offerIds.Distinct().ToList();
-        if (ids.Count == 0) return new Dictionary<int, OfferView>();
-        // la compañía la pone el filtro global: solo se leen las ofertas de esta compañía
-        var rows = await db.Set<Offer>().AsNoTracking().Where(o => ids.Contains(o.OfferId))
-            .Select(o => new { o.OfferId, o.Name, o.IsPublished, o.IsActive, o.AppliesToAll, o.ValidFrom, o.ValidTo }).ToListAsync(ct);
-        return rows.ToDictionary(o => o.OfferId, o => new OfferView(o.OfferId, o.Name, o.IsPublished, o.IsActive, o.AppliesToAll, o.ValidFrom, o.ValidTo,
-            Array.Empty<int>(), Array.Empty<OfferItemView>()));
-    }
-
     /// <summary>
     /// Lote 229 — la foto «del producto» de cada uno, según la regla: la suya y, si es un kit sin foto, la de la primera de sus piezas (por orden) que tenga foto.
     /// (La del renglón, si la hay, la antepone quien llama: <see cref="ProductImageRules.Resolve"/>.)

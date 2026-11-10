@@ -534,6 +534,7 @@ public static class DependencyInjection
         services.AddScoped<IDataSource, RentalDataSource>();
         services.AddScoped<IDataSource, RentalReturnDataSource>();
         services.AddScoped<KitService>();   // Lote 68
+        services.AddScoped<AssembledKitService>();   // Lote 232: kit armado (con existencia propia): armar y desarmar
         services.AddScoped<PriceListService>();   // Lote 221: listas de precios
         services.AddScoped<SalesCatalogService>();   // Lote 221: ofertas y catálogo del pedido
         services.AddScoped<OfferService>();   // Lote 229: ofertas (entidad aparte) y kits de oferta

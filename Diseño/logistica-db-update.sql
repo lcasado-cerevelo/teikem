@@ -7608,3 +7608,161 @@ WHEN NOT MATCHED THEN
     INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
     VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-11-10 — Lote 231: kit de oferta con biblioteca (docs/ofertas-kits-fotos-diseno.md §10–§12).
+   - dbo.Product.IsOfferKit (BIT, 0 por omisión): el producto es un kit de OFERTA de la biblioteca de kits de oferta (tipo KIT sin existencia que se arma al pedir).
+     No aparece en Productos e inventario; una oferta lo usa con un renglón (OfferItem) y solo se vende mientras esté en alguna oferta publicada y vigente.
+   - dbo.Product.OfferId (lote 229) deja de usarse: la columna se queda. Datos: un kit que tenía OfferId pasa a ser kit de oferta (solo marca los que faltan).
+   - Índice filtrado para leer la biblioteca. Sin permisos nuevos (ver = sales.view, cambiar = sales.pricelist). Solo AGREGA.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH(N'dbo.Product', N'IsOfferKit') IS NULL
+    ALTER TABLE dbo.Product ADD IsOfferKit BIT NOT NULL CONSTRAINT DF_Product_IsOfferKit DEFAULT 0;
+GO
+UPDATE dbo.Product SET IsOfferKit = 1 WHERE OfferId IS NOT NULL AND IsOfferKit = 0;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Product_OfferKit' AND object_id = OBJECT_ID('dbo.Product'))
+    CREATE INDEX IX_Product_OfferKit ON dbo.Product(TenantId, Sku) WHERE IsOfferKit = 1;
+GO
+
+/* ----------------------------------------------------------------------------
+   2026-11-10 — Lote 232: KIT ARMADO, producto con inventario propio; armar y desarmar (docs/ofertas-kits-fotos-diseno.md §10–§12; docs/lote232-decisiones.md).
+   - Catálogo ProductType: ASSEMBLED_KIT («Kit armado»). Su composición vive en dbo.ProductKitComponent (la misma tabla del kit de oferta).
+   - Motivos de ajuste de SISTEMA: KIT_ASSEMBLY («Armado de kit») y KIT_DISASSEMBLY («Desarmado de kit»): un armado es movimiento real (salen las piezas, entran
+     los kits), sin tipo de movimiento nuevo (Ajuste) ni nada «reservado».
+   - EntityType KIT_ASSEMBLY y KIT_DISASSEMBLY (auditoría y origen de los movimientos).
+   - Contadores por compañía KITASSEMBLY (ARM-#####, también el número del lote del kit) y KITDISASSEMBLY (DES-#####): se amplía CK_NumberSequence_Kind.
+   - dbo.KitAssembly (+ dbo.KitAssemblyLine: de qué posición y lote salió cuánto de cada pieza, a qué costo y lo que ya volvió) y dbo.KitDisassembly
+     (+ dbo.KitDisassemblyLine: lo que volvió de cada pieza, a qué lote, posición y costo).
+   - Sin permisos nuevos: armar y desarmar piden inventory.adjust; la composición, inventory.manage. Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+MERGE dbo.LookupCode AS t
+USING (VALUES (N'ASSEMBLED_KIT', N'{"es":"Kit armado","en":"Assembled kit"}', 3)) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'ProductType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'ProductType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'KIT_ASSEMBLY',    N'{"es":"Armado de kit","en":"Kit assembly"}',       13),
+    (N'KIT_DISASSEMBLY', N'{"es":"Desarmado de kit","en":"Kit disassembly"}', 14)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'AdjustmentReason' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'AdjustmentReason', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'KIT_ASSEMBLY',    N'{"es":"Armado de kit","en":"Kit assembly"}',       189),
+    (N'KIT_DISASSEMBLY', N'{"es":"Desarmado de kit","en":"Kit disassembly"}', 190)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NumberSequence_Kind' AND parent_object_id = OBJECT_ID('dbo.NumberSequence')
+           AND definition NOT LIKE '%''KITDISASSEMBLY''%')
+BEGIN
+    ALTER TABLE dbo.NumberSequence DROP CONSTRAINT CK_NumberSequence_Kind;
+    ALTER TABLE dbo.NumberSequence ADD CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP','RECEIPT','CYCLECOUNT','CROSSDOCK','PURCHASE','RENTAL','RENTALRETURN','MANUALISSUE','MULTIADJUST','SALESORDER','BILLINVOICE','CREDITNOTE','SALESRETURN','CODREMIT','DRIVERSETTLE','WAYBILL','EXITNOTICE','ASN','ACCTPURCH','ACCTDISP','RECEIPTGROUP','KITASSEMBLY','KITDISASSEMBLY'));
+END
+GO
+IF OBJECT_ID(N'dbo.KitAssembly', N'U') IS NULL CREATE TABLE dbo.KitAssembly (
+    KitAssemblyId   INT IDENTITY(1,1) CONSTRAINT PK_KitAssembly PRIMARY KEY,
+    PublicId        UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_KitAssembly_PublicId DEFAULT NEWID(),
+    TenantId        INT NOT NULL CONSTRAINT FK_KitAssembly_Tenant REFERENCES dbo.Tenant(TenantId),
+    Number          NVARCHAR(40) NOT NULL,
+    KitProductId    INT NOT NULL CONSTRAINT FK_KitAssembly_Kit REFERENCES dbo.Product(ProductId),
+    WarehouseId     INT NOT NULL CONSTRAINT FK_KitAssembly_Warehouse REFERENCES dbo.Warehouse(WarehouseId),
+    ToBinId         INT NOT NULL CONSTRAINT FK_KitAssembly_Bin REFERENCES dbo.WarehouseBin(WarehouseBinId),
+    KitLotId        INT NULL CONSTRAINT FK_KitAssembly_Lot REFERENCES dbo.InventoryLot(LotId),
+    Quantity        DECIMAL(16,3) NOT NULL,
+    DisassembledQty DECIMAL(16,3) NOT NULL CONSTRAINT DF_KitAssembly_Disassembled DEFAULT 0,
+    UnitCost        DECIMAL(18,4) NULL,
+    TotalCost       DECIMAL(18,4) NULL,
+    Notes           NVARCHAR(300) NULL,
+    CreatedAtUtc    DATETIME2 NOT NULL CONSTRAINT DF_KitAssembly_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    CreatedBy       INT NULL,
+    CONSTRAINT CK_KitAssembly_Qty CHECK (Quantity > 0),
+    CONSTRAINT CK_KitAssembly_Disassembled CHECK (DisassembledQty >= 0 AND DisassembledQty <= Quantity)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_KitAssembly_PublicId' AND object_id = OBJECT_ID('dbo.KitAssembly'))
+    CREATE UNIQUE INDEX UX_KitAssembly_PublicId ON dbo.KitAssembly(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_KitAssembly_Number' AND object_id = OBJECT_ID('dbo.KitAssembly'))
+    CREATE UNIQUE INDEX UQ_KitAssembly_Number ON dbo.KitAssembly(TenantId, Number);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_KitAssembly_Kit' AND object_id = OBJECT_ID('dbo.KitAssembly'))
+    CREATE INDEX IX_KitAssembly_Kit ON dbo.KitAssembly(TenantId, KitProductId, CreatedAtUtc);
+GO
+IF OBJECT_ID(N'dbo.KitAssemblyLine', N'U') IS NULL CREATE TABLE dbo.KitAssemblyLine (
+    KitAssemblyLineId      INT IDENTITY(1,1) CONSTRAINT PK_KitAssemblyLine PRIMARY KEY,
+    TenantId               INT NOT NULL CONSTRAINT FK_KitAssemblyLine_Tenant REFERENCES dbo.Tenant(TenantId),
+    KitAssemblyId          INT NOT NULL CONSTRAINT FK_KitAssemblyLine_Doc REFERENCES dbo.KitAssembly(KitAssemblyId),
+    ComponentProductId     INT NOT NULL CONSTRAINT FK_KitAssemblyLine_Product REFERENCES dbo.Product(ProductId),
+    LotId                  INT NULL CONSTRAINT FK_KitAssemblyLine_Lot REFERENCES dbo.InventoryLot(LotId),
+    FromBinId              INT NOT NULL CONSTRAINT FK_KitAssemblyLine_Bin REFERENCES dbo.WarehouseBin(WarehouseBinId),
+    QtyPerKit              DECIMAL(16,3) NOT NULL,
+    Quantity               DECIMAL(16,3) NOT NULL,
+    ReturnedQty            DECIMAL(16,3) NOT NULL CONSTRAINT DF_KitAssemblyLine_Returned DEFAULT 0,
+    UnitCost               DECIMAL(18,4) NULL,
+    InventoryTransactionId BIGINT NULL,
+    CONSTRAINT CK_KitAssemblyLine_Qty CHECK (Quantity > 0 AND QtyPerKit > 0),
+    CONSTRAINT CK_KitAssemblyLine_Returned CHECK (ReturnedQty >= 0 AND ReturnedQty <= Quantity)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_KitAssemblyLine_Doc' AND object_id = OBJECT_ID('dbo.KitAssemblyLine'))
+    CREATE INDEX IX_KitAssemblyLine_Doc ON dbo.KitAssemblyLine(KitAssemblyId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_KitAssemblyLine_Component' AND object_id = OBJECT_ID('dbo.KitAssemblyLine'))
+    CREATE INDEX IX_KitAssemblyLine_Component ON dbo.KitAssemblyLine(TenantId, ComponentProductId);
+GO
+IF OBJECT_ID(N'dbo.KitDisassembly', N'U') IS NULL CREATE TABLE dbo.KitDisassembly (
+    KitDisassemblyId INT IDENTITY(1,1) CONSTRAINT PK_KitDisassembly PRIMARY KEY,
+    PublicId         UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_KitDisassembly_PublicId DEFAULT NEWID(),
+    TenantId         INT NOT NULL CONSTRAINT FK_KitDisassembly_Tenant REFERENCES dbo.Tenant(TenantId),
+    Number           NVARCHAR(40) NOT NULL,
+    KitAssemblyId    INT NOT NULL CONSTRAINT FK_KitDisassembly_Assembly REFERENCES dbo.KitAssembly(KitAssemblyId),
+    KitProductId     INT NOT NULL CONSTRAINT FK_KitDisassembly_Kit REFERENCES dbo.Product(ProductId),
+    WarehouseId      INT NOT NULL CONSTRAINT FK_KitDisassembly_Warehouse REFERENCES dbo.Warehouse(WarehouseId),
+    KitLotId         INT NULL CONSTRAINT FK_KitDisassembly_Lot REFERENCES dbo.InventoryLot(LotId),
+    Quantity         DECIMAL(16,3) NOT NULL,
+    Notes            NVARCHAR(300) NULL,
+    CreatedAtUtc     DATETIME2 NOT NULL CONSTRAINT DF_KitDisassembly_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    CreatedBy        INT NULL,
+    CONSTRAINT CK_KitDisassembly_Qty CHECK (Quantity > 0)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_KitDisassembly_PublicId' AND object_id = OBJECT_ID('dbo.KitDisassembly'))
+    CREATE UNIQUE INDEX UX_KitDisassembly_PublicId ON dbo.KitDisassembly(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_KitDisassembly_Number' AND object_id = OBJECT_ID('dbo.KitDisassembly'))
+    CREATE UNIQUE INDEX UQ_KitDisassembly_Number ON dbo.KitDisassembly(TenantId, Number);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_KitDisassembly_Assembly' AND object_id = OBJECT_ID('dbo.KitDisassembly'))
+    CREATE INDEX IX_KitDisassembly_Assembly ON dbo.KitDisassembly(KitAssemblyId);
+GO
+IF OBJECT_ID(N'dbo.KitDisassemblyLine', N'U') IS NULL CREATE TABLE dbo.KitDisassemblyLine (
+    KitDisassemblyLineId   INT IDENTITY(1,1) CONSTRAINT PK_KitDisassemblyLine PRIMARY KEY,
+    TenantId               INT NOT NULL CONSTRAINT FK_KitDisassemblyLine_Tenant REFERENCES dbo.Tenant(TenantId),
+    KitDisassemblyId       INT NOT NULL CONSTRAINT FK_KitDisassemblyLine_Doc REFERENCES dbo.KitDisassembly(KitDisassemblyId),
+    KitAssemblyLineId      INT NOT NULL CONSTRAINT FK_KitDisassemblyLine_AssemblyLine REFERENCES dbo.KitAssemblyLine(KitAssemblyLineId),
+    ComponentProductId     INT NOT NULL CONSTRAINT FK_KitDisassemblyLine_Product REFERENCES dbo.Product(ProductId),
+    LotId                  INT NULL CONSTRAINT FK_KitDisassemblyLine_Lot REFERENCES dbo.InventoryLot(LotId),
+    ToBinId                INT NOT NULL CONSTRAINT FK_KitDisassemblyLine_Bin REFERENCES dbo.WarehouseBin(WarehouseBinId),
+    Quantity               DECIMAL(16,3) NOT NULL,
+    UnitCost               DECIMAL(18,4) NULL,
+    InventoryTransactionId BIGINT NULL,
+    CONSTRAINT CK_KitDisassemblyLine_Qty CHECK (Quantity > 0)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_KitDisassemblyLine_Doc' AND object_id = OBJECT_ID('dbo.KitDisassemblyLine'))
+    CREATE INDEX IX_KitDisassemblyLine_Doc ON dbo.KitDisassemblyLine(KitDisassemblyId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_KitDisassemblyLine_Component' AND object_id = OBJECT_ID('dbo.KitDisassemblyLine'))
+    CREATE INDEX IX_KitDisassemblyLine_Component ON dbo.KitDisassemblyLine(TenantId, ComponentProductId);
+GO

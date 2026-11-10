@@ -15,7 +15,9 @@ public static class ProductTypes
 {
     public const string Standard = "STANDARD";
     public const string Kit = "KIT";
-    public static readonly string[] All = { Standard, Kit };
+    /// <summary>Lote 232: kit ARMADO — producto con existencia propia (se arma antes, por el inventario) y su composición en ProductKitComponent. Se vende como cualquier producto.</summary>
+    public const string AssembledKit = "ASSEMBLED_KIT";
+    public static readonly string[] All = { Standard, Kit, AssembledKit };
 }
 
 /// <summary>

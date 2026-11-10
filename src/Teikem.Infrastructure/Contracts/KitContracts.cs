@@ -8,8 +8,9 @@ public sealed record KitComponentDto(Guid ProductPublicId, string Sku, string Na
 public sealed record KitAvailabilityDto(Guid WarehousePublicId, string WarehouseCode, int CanBuild);
 
 /// <summary>El kit: si el producto es kit, si se puede ajustar al pedir, sus componentes y cuántos se pueden armar por almacén.</summary>
+/// <remarks>Lote 231: IsOfferKit = es un kit de oferta (de la biblioteca de Ofertas): se cambia allá, no en Productos.</remarks>
 public sealed record KitDto(Guid ProductPublicId, string Sku, string Name, bool IsKit, bool Adjustable, IReadOnlyList<KitComponentDto> Components,
-    IReadOnlyList<KitAvailabilityDto> Availability);
+    IReadOnlyList<KitAvailabilityDto> Availability, bool IsOfferKit = false);
 
 /// <summary>
 /// Una pieza del kit (editor del kit, kit de una oferta) o de la línea de un kit en una orden de venta.
@@ -38,4 +39,7 @@ public sealed record KitComponentSubstitutesDto(Guid ProductPublicId, string Sku
     decimal? SalePrice, IReadOnlyList<KitSubstituteDto> Substitutes);
 
 /// <summary>GET /sales-orders/kits/{kitPublicId}/substitutes: las piezas del kit (del catálogo) y con qué se puede cambiar cada una en una orden de venta.</summary>
-public sealed record KitSubstitutesDto(Guid KitPublicId, string Sku, string Name, bool Adjustable, IReadOnlyList<KitComponentSubstitutesDto> Components);
+/// <remarks>
+/// Lote 231: IsOfferKit = es un kit de oferta. Solo un kit de oferta admite sustituir o ajustar piezas: en cualquier otro kit Adjustable sale false y Substitutes vacío.
+/// </remarks>
+public sealed record KitSubstitutesDto(Guid KitPublicId, string Sku, string Name, bool Adjustable, IReadOnlyList<KitComponentSubstitutesDto> Components, bool IsOfferKit = false);

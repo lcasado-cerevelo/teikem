@@ -17,8 +17,10 @@ namespace Teikem.Infrastructure.Services;
 /// Lote 229 — ofertas (cosa aparte de las listas de precios, como la circular de una tienda). Las arma el supervisor de ventas (sales.pricelist); verlas usa sales.view.
 /// - Nombre, foto, vigencia (desde obligatorio; sin «hasta» la oferta no vence y la respuesta lo dice: HasEndDate = false), publicada o borrador (en borrador no se
 ///   aplica), aplica a todos los clientes o a los escogidos.
-/// - Renglones: producto o kit → precio de oferta, con foto opcional; o un kit creado PARA la oferta (Product.OfferId, nace no ajustable) que solo se vende mientras
-///   la oferta esté publicada y vigente.
+/// - Renglones: producto o kit → precio de oferta, con foto opcional. Lote 231: los kits que se arman al pedir son kits de OFERTA de la biblioteca (Product.IsOfferKit;
+///   se crean aquí, sueltos o ya puestos en una oferta, y nacen no ajustables salvo que se pida); una oferta los usa con un renglón normal, varias ofertas pueden usar
+///   el mismo kit (cada una con su precio; se sugiere el último) y solo se venden mientras estén en alguna oferta publicada y vigente para el cliente. Su composición no
+///   cambia una vez usado (cambiarla = crear un kit nuevo); el nombre sí.
 /// - Al pedir gana el precio más bajo entre el negociado y la oferta (OfferRules.Resolve). Choques con otras ofertas o con la lista general no son errores: la
 ///   respuesta los trae en Warnings.
 /// - Las órdenes ya hechas no cambian (la línea guarda la copia del precio). Nunca DELETE: la oferta se desactiva y renglones y clientes se quitan en lógico.
@@ -157,7 +159,10 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
 
     // ---------------------------------------------------------------- renglones
 
-    /// <summary>Agrega renglones o cambia el precio de los que ya están (por producto). Solo productos propios y activos; un kit de otra oferta no (422).</summary>
+    /// <summary>
+    /// Agrega renglones o cambia el precio de los que ya están (por producto). Solo productos propios y activos. Lote 231: un kit de oferta de la biblioteca se puede
+    /// poner en cualquier oferta (también en varias a la vez); sin precio se le pone el último con que se usó (si nunca se usó, el precio es obligatorio).
+    /// </summary>
     public async Task<OfferDto> UpsertItemsAsync(Guid publicId, OfferItemsRequest? req, CancellationToken ct)
     {
         var items = req?.Items;
@@ -166,16 +171,13 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
         for (var i = 0; i < items.Count; i++)
         {
             if (items[i].ProductPublicId is null) throw new ValidationException($"items[{i}].productPublicId", OfferRules.ItemProductRequired);
-            if (items[i].Price is null) throw new ValidationException($"items[{i}].price", OfferRules.ItemPriceRequired);
+            if (items[i].Price is null) continue;   // Lote 231: un kit de oferta ya usado toma su último precio (se revisa abajo)
             var pe = SalesRules.PriceError(items[i].Price);
             if (pe is not null) throw new ValidationException($"items[{i}].price", pe);
         }
         var ids = items.Select(i => i.ProductPublicId!.Value).Distinct().ToList();
         var found = await db.Set<Product>().AsNoTracking().Where(p => ids.Contains(p.PublicId)).ToDictionaryAsync(p => p.PublicId, ct);
-        var offerId = await db.Set<Offer>().AsNoTracking().Where(o => o.PublicId == publicId).Select(o => (int?)o.OfferId).FirstOrDefaultAsync(ct) ?? throw NotFound();
-        var otherOfferIds = found.Values.Where(p => p.OfferId is not null && p.OfferId != offerId).Select(p => p.OfferId!.Value).Distinct().ToList();
-        var otherNames = otherOfferIds.Count == 0 ? new Dictionary<int, string>()
-            : await db.Set<Offer>().AsNoTracking().Where(o => otherOfferIds.Contains(o.OfferId)).ToDictionaryAsync(o => o.OfferId, o => o.Name, ct);
+        if (!await db.Set<Offer>().AsNoTracking().AnyAsync(o => o.PublicId == publicId, ct)) throw NotFound();
         var seen = new HashSet<Guid>();
         for (var i = 0; i < items.Count; i++)
         {
@@ -184,18 +186,27 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
             if (!seen.Add(pid)) throw new ValidationException($"items[{i}].productPublicId", OfferRules.ItemRepeated(p.Sku));
             if (p.ClientId is not null) throw new StatusRuleException(OfferRules.ItemProductNotOwn);
             if (!p.IsActive) throw new StatusRuleException(OfferRules.ItemProductInactive(p.Sku));
-            if (p.OfferId is int other && other != offerId) throw new StatusRuleException(OfferRules.ItemKitOfOtherOffer(p.Sku, otherNames.GetValueOrDefault(other) ?? "?"));
+        }
+        var withoutPrice = items.Where(i => i.Price is null).Select(i => found[i.ProductPublicId!.Value]).Where(p => p.IsOfferKit).Select(p => p.ProductId).Distinct().ToList();
+        var usage = withoutPrice.Count == 0 ? new Dictionary<int, KitUsage>() : await UsageAsync(withoutPrice, ct);
+        var prices = new decimal[items.Count];
+        for (var i = 0; i < items.Count; i++)
+        {
+            var p = found[items[i].ProductPublicId!.Value];
+            prices[i] = items[i].Price
+                        ?? (p.IsOfferKit && usage.TryGetValue(p.ProductId, out var u) && u.Last is not null ? u.Last.Price
+                            : throw new ValidationException($"items[{i}].price", OfferRules.ItemPriceRequired));
         }
         return await MutateAsync(publicId, offer =>
         {
             var active = offer.Items.Where(x => x.IsActive).ToDictionary(x => x.ProductId);
-            foreach (var r in items)
+            for (var i = 0; i < items.Count; i++)
             {
-                var product = found[r.ProductPublicId!.Value];
-                if (active.TryGetValue(product.ProductId, out var existing)) existing.Price = r.Price!.Value;
+                var product = found[items[i].ProductPublicId!.Value];
+                if (active.TryGetValue(product.ProductId, out var existing)) existing.Price = prices[i];
                 else
                 {
-                    var row = new OfferItem { TenantId = offer.TenantId, ProductId = product.ProductId, Price = r.Price!.Value, IsActive = true, CreatedAtUtc = DateTime.UtcNow };
+                    var row = new OfferItem { TenantId = offer.TenantId, ProductId = product.ProductId, Price = prices[i], IsActive = true, CreatedAtUtc = DateTime.UtcNow };
                     offer.Items.Add(row);
                     active[product.ProductId] = row;
                 }
@@ -212,7 +223,7 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
         return MutateAsync(publicId, offer => RequireItem(offer, itemId).Price = req.Price.Value, ct);
     }
 
-    /// <summary>Quita el renglón (en lógico). Si era un kit de la oferta, el kit sigue atado a ella (y sin precio de oferta se vende a su precio de venta mientras la oferta valga).</summary>
+    /// <summary>Quita el renglón (en lógico). Lote 231: si era un kit de oferta, sigue en la biblioteca; sin otra oferta vigente que lo traiga, deja de venderse.</summary>
     public Task<OfferDto> RemoveItemAsync(Guid publicId, int itemId, CancellationToken ct)
         => MutateAsync(publicId, offer => RequireItem(offer, itemId).IsActive = false, ct);
 
@@ -280,12 +291,66 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
         }, ct);
     }
 
-    // ---------------------------------------------------------------- kits de la oferta
+    // ---------------------------------------------------------------- biblioteca de kits de oferta (Lote 231)
+
+    /// <summary>Tope de kits que devuelve la biblioteca en una consulta (use el buscador para acotar).</summary>
+    public const int MaxLibraryRows = 500;
 
     /// <summary>
-    /// Crea un kit PARA la oferta: el producto nuevo (SKU, nombre, marca, categoría —por omisión la de la primera pieza— y la categoría de impuesto de la primera
-    /// pieza), sus piezas con cantidades (y la marca «no sustituible» si viene) por KitService, NO ajustable, atado a la oferta (Product.OfferId) y su renglón con el
-    /// precio de oferta. Todo o nada. 400/404/409 con los mensajes del producto y del kit; 422 si la oferta está desactivada.
+    /// La biblioteca de kits de oferta, por SKU: q = el SKU o el nombre contiene; includeInactive = también los dados de baja. Cada kit con sus piezas, si es ajustable,
+    /// la última oferta en que se usó y su precio (el que se sugiere), en cuántas ofertas está y si su composición ya no se puede cambiar.
+    /// </summary>
+    public async Task<IReadOnlyList<OfferKitLibraryItemDto>> ListKitsAsync(string? q, bool includeInactive, CancellationToken ct)
+    {
+        var query = db.Set<Product>().AsNoTracking().Where(p => p.IsOfferKit);
+        if (!includeInactive) query = query.Where(p => p.IsActive);
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var s = q.Trim();
+            query = query.Where(p => p.Sku.Contains(s) || p.Name.Contains(s));
+        }
+        var rows = await query.OrderBy(p => p.Sku).ThenBy(p => p.ProductId).Take(MaxLibraryRows).ToListAsync(ct);
+        return await ToLibraryDtosAsync(rows, ct);
+    }
+
+    /// <summary>Un kit de la biblioteca. 404 «Kit de oferta no encontrado.» si no existe o no es kit de oferta.</summary>
+    public async Task<OfferKitLibraryItemDto> GetKitAsync(Guid productPublicId, CancellationToken ct)
+    {
+        var p = await db.Set<Product>().AsNoTracking().FirstOrDefaultAsync(x => x.PublicId == productPublicId && x.IsOfferKit, ct) ?? throw new NotFoundException(OfferKitRules.NotFound);
+        return (await ToLibraryDtosAsync(new[] { p }, ct))[0];
+    }
+
+    /// <summary>
+    /// Crea un kit de la biblioteca (sin ponerlo en ninguna oferta): producto de tipo KIT sin existencia, marcado kit de oferta, con sus piezas (cantidad y «no
+    /// sustituible»), ajustable si se pide (por omisión no), categoría (por omisión la de la primera pieza) y categoría de impuesto de la primera pieza. Todo o nada.
+    /// 400/404/409 con los mensajes del producto y del kit (SKU repetido = 409).
+    /// </summary>
+    public async Task<OfferKitLibraryItemDto> CreateLibraryKitAsync(OfferKitLibraryRequest? req, CancellationToken ct)
+    {
+        if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
+        if (req.Components is null || req.Components.Count == 0) throw new ValidationException("components", KitRules.NeedComponents);
+        var (productPublicId, _) = await CreateKitCoreAsync(req.Sku, req.Name, req.Components, req.Adjustable, req.Brand, req.CategoryId, req.SalePrice, null, ct);
+        return await GetKitAsync(productPublicId, ct);
+    }
+
+    /// <summary>
+    /// Cambia un kit de la biblioteca: el nombre siempre; las piezas y «ajustable al pedir» solo si el kit nunca se usó en una oferta ni en un pedido (si no, 422
+    /// «…cree un kit nuevo…»). Mandar la misma composición no es un cambio.
+    /// </summary>
+    public async Task<OfferKitLibraryItemDto> UpdateLibraryKitAsync(Guid productPublicId, OfferKitUpdateRequest? req, CancellationToken ct)
+    {
+        if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
+        if (!await db.Set<Product>().AsNoTracking().AnyAsync(p => p.PublicId == productPublicId && p.IsOfferKit, ct)) throw new NotFoundException(OfferKitRules.NotFound);
+        await UpdateKitCoreAsync(productPublicId, req, ct);
+        return await GetKitAsync(productPublicId, ct);
+    }
+
+    // ---------------------------------------------------------------- kits de la oferta (Lote 229, compatibles)
+
+    /// <summary>
+    /// Crea un kit de oferta NUEVO y lo pone en esta oferta con su precio (Lote 231: el kit queda en la biblioteca y otras ofertas lo pueden usar). SKU, nombre, marca,
+    /// categoría (por omisión la de la primera pieza), categoría de impuesto de la primera pieza, piezas con cantidades y «no sustituible», ajustable si se pide (por
+    /// omisión no). Todo o nada. 400/404/409 con los mensajes del producto y del kit; 422 si la oferta está desactivada.
     /// </summary>
     public async Task<OfferKitCreatedDto> CreateKitAsync(Guid publicId, OfferKitRequest? req, CancellationToken ct)
     {
@@ -296,30 +361,55 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
         if (req.Components is null || req.Components.Count == 0) throw new ValidationException("components", KitRules.NeedComponents);
         var offer = await db.Set<Offer>().AsNoTracking().Where(o => o.PublicId == publicId).Select(o => new { o.OfferId, o.IsActive, o.TenantId }).FirstOrDefaultAsync(ct) ?? throw NotFound();
         if (!offer.IsActive) throw new StatusRuleException(OfferRules.Inactive);
-        var firstPiece = req.Components[0].ProductPublicId is Guid fp
+        var (productPublicId, sku) = await CreateKitCoreAsync(req.Sku, req.Name, req.Components, req.Adjustable, req.Brand, req.CategoryId, req.SalePrice ?? req.Price,
+            (offer.OfferId, offer.TenantId, req.Price.Value), ct);
+        return new OfferKitCreatedDto(productPublicId, sku, await GetAsync(publicId, ct));
+    }
+
+    /// <summary>
+    /// Cambia un kit de oferta que está en esta oferta (compatible con el lote 229; lo mismo que PATCH /offers/kits/{kit}): nombre siempre; piezas y ajustable solo si
+    /// nunca se usó (422 si no). 422 si el kit no está en esta oferta o la oferta está desactivada.
+    /// </summary>
+    public async Task<OfferDto> UpdateKitAsync(Guid publicId, Guid productPublicId, OfferKitUpdateRequest? req, CancellationToken ct)
+    {
+        if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
+        var offer = await db.Set<Offer>().AsNoTracking().Where(o => o.PublicId == publicId).Select(o => new { o.OfferId, o.IsActive }).FirstOrDefaultAsync(ct) ?? throw NotFound();
+        if (!offer.IsActive) throw new StatusRuleException(OfferRules.Inactive);
+        var product = await db.Set<Product>().AsNoTracking().Where(p => p.PublicId == productPublicId).Select(p => new { p.ProductId, p.IsOfferKit }).FirstOrDefaultAsync(ct)
+                      ?? throw new NotFoundException(OfferRules.KitNotFound);
+        if (!product.IsOfferKit || !await db.Set<OfferItem>().AsNoTracking().AnyAsync(i => i.OfferId == offer.OfferId && i.ProductId == product.ProductId && i.IsActive, ct))
+            throw new StatusRuleException(OfferKitRules.NotInThisOffer);
+        await UpdateKitCoreAsync(productPublicId, req, ct);
+        return await GetAsync(publicId, ct);
+    }
+
+    /// <summary>
+    /// Crea el producto del kit de oferta (y, si se indica, su renglón en una oferta) en una sola transacción: producto nuevo, sus piezas por KitService, marca de kit
+    /// de oferta, ajustable, categoría por omisión y categoría de impuesto de la primera pieza.
+    /// </summary>
+    private async Task<(Guid PublicId, string Sku)> CreateKitCoreAsync(string? sku, string? name, IReadOnlyList<KitComponentRequest> components, bool? adjustable,
+        string? brand, int? categoryId, decimal? salePrice, (int OfferId, int TenantId, decimal Price)? inOffer, CancellationToken ct)
+    {
+        var firstPiece = components[0].ProductPublicId is Guid fp
             ? await db.Set<Product>().AsNoTracking().Where(p => p.PublicId == fp).Select(p => new { p.ProductCategoryId, p.TaxCategoryLookupId }).FirstOrDefaultAsync(ct)
             : null;
-
         Guid productPublicId = Guid.Empty;
-        string sku = string.Empty;
+        string createdSku = string.Empty;
         try
         {
             await db.RunInTransactionAsync(async ct2 =>
             {
-                var created = await products.CreateAsync(new ProductCreateRequest(req.Sku, req.Name, CategoryId: req.CategoryId, SalePrice: req.SalePrice ?? req.Price,
-                    Brand: req.Brand), ct2);
+                var created = await products.CreateAsync(new ProductCreateRequest(sku, name, CategoryId: categoryId, SalePrice: salePrice, Brand: brand), ct2);
                 productPublicId = created.Product.PublicId;
-                sku = created.Product.Sku;
-                await kits.SetAsync(productPublicId, new KitSetRequest(true, false, req.Components), ct2);
+                createdSku = created.Product.Sku;
+                await kits.SetAsync(productPublicId, new KitSetRequest(true, adjustable ?? false, components), ct2);
                 var product = await db.Set<Product>().AsTracking().FirstAsync(p => p.PublicId == productPublicId, ct2);
-                product.OfferId = offer.OfferId;
-                product.KitAdjustable = false;   // el kit de una oferta nace no ajustable
-                if (req.CategoryId is null && product.ProductCategoryId is null) product.ProductCategoryId = firstPiece?.ProductCategoryId;
+                product.IsOfferKit = true;   // Lote 231: kit de la biblioteca de kits de oferta
+                product.KitAdjustable = adjustable ?? false;   // nace no ajustable salvo que se pida
+                if (categoryId is null && product.ProductCategoryId is null) product.ProductCategoryId = firstPiece?.ProductCategoryId;
                 product.TaxCategoryLookupId ??= firstPiece?.TaxCategoryLookupId;
-                db.Set<OfferItem>().Add(new OfferItem
-                {
-                    TenantId = offer.TenantId, OfferId = offer.OfferId, ProductId = product.ProductId, Price = req.Price.Value, IsActive = true, CreatedAtUtc = DateTime.UtcNow,
-                });
+                if (inOffer is { } o)
+                    db.Set<OfferItem>().Add(new OfferItem { TenantId = o.TenantId, OfferId = o.OfferId, ProductId = product.ProductId, Price = o.Price, IsActive = true, CreatedAtUtc = DateTime.UtcNow });
                 await db.SaveGuardedAsync(OfferRules.Concurrency, ct2);
             }, ct);
         }
@@ -328,24 +418,23 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
             db.ChangeTracker.Clear();   // lo rechazado no se queda pendiente para el próximo guardado del mismo contexto
             throw;
         }
-        return new OfferKitCreatedDto(productPublicId, sku, await GetAsync(publicId, ct));
+        return (productPublicId, createdSku);
     }
 
-    /// <summary>Cambia un kit de la oferta: nombre y/o piezas (las piezas reemplazan a las anteriores; «ajustable» no cambia). 422 si el kit no es de esta oferta.</summary>
-    public async Task<OfferDto> UpdateKitAsync(Guid publicId, Guid productPublicId, OfferKitUpdateRequest? req, CancellationToken ct)
+    /// <summary>Cambia el nombre y, si vienen, las piezas y/o «ajustable» (KitService rechaza con 422 cambiar la composición de un kit de oferta ya usado).</summary>
+    private async Task UpdateKitCoreAsync(Guid productPublicId, OfferKitUpdateRequest req, CancellationToken ct)
     {
-        if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
-        var offer = await db.Set<Offer>().AsNoTracking().Where(o => o.PublicId == publicId).Select(o => new { o.OfferId, o.IsActive }).FirstOrDefaultAsync(ct) ?? throw NotFound();
-        if (!offer.IsActive) throw new StatusRuleException(OfferRules.Inactive);
-        var product = await db.Set<Product>().AsNoTracking().Where(p => p.PublicId == productPublicId).Select(p => new { p.OfferId }).FirstOrDefaultAsync(ct)
-                      ?? throw new NotFoundException(OfferRules.KitNotFound);
-        if (product.OfferId != offer.OfferId) throw new StatusRuleException(OfferRules.KitOfAnotherOffer);
         try
         {
             await db.RunInTransactionAsync(async ct2 =>
             {
                 if (req.Name is not null) await products.UpdateAsync(productPublicId, new ProductPatchRequest(Name: req.Name), ct2);
-                if (req.Components is not null) await kits.SetAsync(productPublicId, new KitSetRequest(true, null, req.Components), ct2);
+                if (req.Components is not null || req.Adjustable is not null)
+                {
+                    var components = req.Components ?? (await kits.GetAsync(productPublicId, ct2)).Components
+                        .Select(c => new KitComponentRequest(c.ProductPublicId, c.Quantity, c.NotSubstitutable)).ToList();
+                    await kits.SetAsync(productPublicId, new KitSetRequest(true, req.Adjustable, components), ct2);
+                }
             }, ct);
         }
         catch
@@ -353,7 +442,50 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
             db.ChangeTracker.Clear();
             throw;
         }
-        return await GetAsync(publicId, ct);
+    }
+
+    /// <summary>Lote 231: el uso de cada kit de oferta en las ofertas: el último uso (y su oferta), en cuántas ofertas activas está hoy y si alguna vez se usó.</summary>
+    private sealed record KitUsage(OfferKitUse? Last, Guid? LastOfferPublicId, int OfferCount, bool EverUsed);
+
+    private async Task<Dictionary<int, KitUsage>> UsageAsync(IReadOnlyCollection<int> productIds, CancellationToken ct)
+    {
+        var ids = productIds.Distinct().ToList();
+        var rows = await (from i in db.Set<OfferItem>().AsNoTracking()
+                          join o in db.Set<Offer>().AsNoTracking() on i.OfferId equals o.OfferId
+                          where ids.Contains(i.ProductId)
+                          select new { i.ProductId, i.OfferItemId, i.OfferId, o.Name, o.PublicId, i.Price, ItemActive = i.IsActive, OfferActive = o.IsActive }).ToListAsync(ct);
+        var publicIds = rows.GroupBy(r => r.OfferId).ToDictionary(g => g.Key, g => g.First().PublicId);
+        return rows.GroupBy(r => r.ProductId).ToDictionary(g => g.Key, g =>
+        {
+            var last = OfferKitRules.LastUse(g.Select(r => new OfferKitUse(r.OfferItemId, r.OfferId, r.Name, r.Price, r.ItemActive, r.OfferActive)));
+            return new KitUsage(last, last is null ? null : publicIds[last.OfferId], g.Where(r => r.ItemActive && r.OfferActive).Select(r => r.OfferId).Distinct().Count(), true);
+        });
+    }
+
+    private async Task<IReadOnlyList<OfferKitLibraryItemDto>> ToLibraryDtosAsync(IReadOnlyList<Product> rows, CancellationToken ct)
+    {
+        if (rows.Count == 0) return Array.Empty<OfferKitLibraryItemDto>();
+        var ids = rows.Select(p => p.ProductId).ToList();
+        var pieces = (await (from c in db.Set<ProductKitComponent>().AsNoTracking()
+                             join p in db.Set<Product>().AsNoTracking() on c.ComponentProductId equals p.ProductId
+                             where ids.Contains(c.KitProductId)
+                             select new { c.KitProductId, c.ProductKitComponentId, p.PublicId, p.Sku, p.Name, c.Quantity, c.SortOrder, p.IsActive, c.NotSubstitutable }).ToListAsync(ct))
+            .GroupBy(r => r.KitProductId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<KitComponentDto>)g.OrderBy(r => r.SortOrder).ThenBy(r => r.ProductKitComponentId)
+                .Select(r => new KitComponentDto(r.PublicId, r.Sku, r.Name, r.Quantity, r.SortOrder, r.IsActive, r.NotSubstitutable)).ToList());
+        var usage = await UsageAsync(ids, ct);
+        var inOrders = (await db.Set<SalesOrderLine>().AsNoTracking().Where(l => ids.Contains(l.ProductId)).Select(l => l.ProductId).Distinct().ToListAsync(ct)).ToHashSet();
+        var kitTypeId = await lookups.TryGetIdAsync(KitCodes.ProductTypeDomain, ProductTypes.Kit, ct);
+        var images = await PriceListQueries.ProductImagesAsync(db, rows, kitTypeId, ct);
+        var filePublic = await PriceListQueries.FilePublicIdsAsync(db, images.Values, ct);
+        return rows.Select(p =>
+        {
+            var u = usage.GetValueOrDefault(p.ProductId);
+            return new OfferKitLibraryItemDto(p.PublicId, p.Sku, p.Name, p.Brand, p.ProductCategoryId, p.KitAdjustable, p.IsActive, p.SalePrice,
+                images.GetValueOrDefault(p.ProductId) is int f && filePublic.TryGetValue(f, out var g) ? g : null,
+                pieces.GetValueOrDefault(p.ProductId) ?? Array.Empty<KitComponentDto>(), u?.Last?.Price, u?.LastOfferPublicId, u?.Last?.OfferName, u?.OfferCount ?? 0,
+                (u?.EverUsed ?? false) || inOrders.Contains(p.ProductId));
+        }).ToList();
     }
 
     // ---------------------------------------------------------------- piezas
@@ -416,14 +548,14 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
         var general = productIds.ToDictionary(id => id, id => PriceListRules.Resolve(id, null, refDate, generalLists, null) is { Source: PriceSources.GeneralList } r ? r.Price : null);
 
         var kitDtos = new Dictionary<int, KitDto>();
-        foreach (var p in prods.Values.Where(p => p.OfferId == offer.OfferId))
+        foreach (var p in prods.Values.Where(p => p.IsOfferKit))   // Lote 231: kits de oferta (de la biblioteca)
             kitDtos[p.ProductId] = await kits.GetAsync(p.PublicId, ct);
 
         var itemDtos = items.Where(i => prods.ContainsKey(i.ProductId)).Select(i =>
         {
             var p = prods[i.ProductId];
             var isKit = kitTypeId is not null && p.ProductTypeLookupId == kitTypeId;
-            return new OfferItemDto(i.OfferItemId, p.PublicId, p.Sku, p.Name, p.Brand, isKit, p.OfferId == offer.OfferId, isKit && p.KitAdjustable, i.Price, p.SalePrice,
+            return new OfferItemDto(i.OfferItemId, p.PublicId, p.Sku, p.Name, p.Brand, isKit, p.IsOfferKit, isKit && p.KitAdjustable, i.Price, p.SalePrice,
                 general.GetValueOrDefault(i.ProductId), i.ImageFileId is int fid && filePublic.TryGetValue(fid, out var g) ? g : null,
                 effective[i.OfferItemId] is int eid && filePublic.TryGetValue(eid, out var ge) ? ge : null, p.IsActive, kitDtos.GetValueOrDefault(p.ProductId));
         }).OrderBy(i => i.IsOfferKit ? 0 : 1).ThenBy(i => i.Brand ?? "￿", StringComparer.OrdinalIgnoreCase).ThenBy(i => i.Sku, StringComparer.OrdinalIgnoreCase).ToList();

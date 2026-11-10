@@ -253,7 +253,7 @@ public class TenantIsolationModelTests
         var withTenant = wms.Where(e => e.FindProperty("TenantId") is not null).Select(e => e.ClrType.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray();
         Assert.Equal(new[]
         {
-            "Asn", "CrossDockPlan", "CycleCount", "DamageReport", "DockAppointment", "InventoryDiscrepancy", "InventoryTransaction", "MultiAdjustment", "PickBatch", "PickGroup", "Product", "ProductCategory", "ProductKitComponent", "PurchaseOrder",
+            "Asn", "CrossDockPlan", "CycleCount", "DamageReport", "DockAppointment", "InventoryDiscrepancy", "InventoryTransaction", "KitAssembly", "KitAssemblyLine", "KitDisassembly", "KitDisassemblyLine", "MultiAdjustment", "PickBatch", "PickGroup", "Product", "ProductCategory", "ProductKitComponent", "PurchaseOrder",
             "PurchaseOrderShortageResolution", "ReceiptGroup", "ReceiptHeader", "Rental", "RentalProcess", "RentalReturn", "StockBalance", "Supplier", "Warehouse", "WarehouseTask",   // Lote 27: Rental, RentalReturn, RentalProcess
         }, withTenant);
         Assert.All(wms.Where(e => e.FindProperty("TenantId") is not null), e => Assert.NotNull(e.GetQueryFilter()));
@@ -315,6 +315,8 @@ public class TenantIsolationModelTests
     [InlineData(typeof(CrossDockPlan), "UQ_CrossDockPlan_Number", new[] { "TenantId", "Number" }, null)]
     [InlineData(typeof(InventoryDiscrepancy), "UQ_InvDiscrepancy_PublicId", new[] { "PublicId" }, null)]
     [InlineData(typeof(InventoryDiscrepancy), "UX_InvDiscrepancy_OpenKey", new[] { "TenantId", "KindLookupId", "ProductId", "WarehouseId", "WarehouseBinId", "LotId" }, "[ClosedAtUtc] IS NULL")]
+    [InlineData(typeof(KitAssembly), "UQ_KitAssembly_Number", new[] { "TenantId", "Number" }, null)]   // Lote 232
+    [InlineData(typeof(KitDisassembly), "UQ_KitDisassembly_Number", new[] { "TenantId", "Number" }, null)]
     public void Wms_unique_indexes_mirror_the_sql(Type clr, string name, string[] columns, string? filter)
         => Unique_indexes_mirror_the_sql_names_columns_and_filters(clr, name, columns, filter);
 
@@ -324,7 +326,7 @@ public class TenantIsolationModelTests
         using var db = CreateSqlServerModelContext();
         foreach (var e in DomainEntities(db).Where(e => e.ClrType.Namespace == "Teikem.Domain.Wms"))
             Assert.Equal(e.ClrType == typeof(ReceiptHeader) ? "ReceiptHeader" : e.ClrType.Name, e.GetTableName());
-        Assert.Equal(41, DomainEntities(db).Count(e => e.ClrType.Namespace == "Teikem.Domain.Wms"));   // Lote 176: + PickGroup y otras dos de recibo maestro; Lote 14: + InventoryDiscrepancy; Lote 27: + 7 de rentas; Lote 68: + ProductKitComponent
+        Assert.Equal(45, DomainEntities(db).Count(e => e.ClrType.Namespace == "Teikem.Domain.Wms"));   // Lote 176: + PickGroup y otras dos de recibo maestro; Lote 14: + InventoryDiscrepancy; Lote 27: + 7 de rentas; Lote 68: + ProductKitComponent; Lote 232: + KitAssembly(+Line) y KitDisassembly(+Line)
 
         string Type<T>(string prop) => db.Model.FindEntityType(typeof(T))!.FindProperty(prop)!.GetColumnType();
         foreach (var (qty, type) in new[]

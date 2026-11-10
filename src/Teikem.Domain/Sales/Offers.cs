@@ -28,7 +28,8 @@ public static class PriceNoticeCodes
 /// <summary>
 /// Lote 229 — oferta: cosa aparte de las listas de precios, como la circular de una tienda («válido del … al …»): nombre, foto, vigencia (desde obligatorio, hasta
 /// opcional: sin «hasta» la oferta no vence), se publica (en borrador no se aplica) y aplica a todos los clientes o a los escogidos. Sus renglones son productos o
-/// kits con su precio de oferta; un kit se puede crear para la oferta (Product.OfferId) y solo se vende mientras ella esté publicada y vigente. Nunca DELETE.
+/// kits con su precio de oferta. Lote 231: un kit de oferta es de la biblioteca (Product.IsOfferKit, ver OfferKitRules), lo usan varias ofertas con su renglón y solo
+/// se vende mientras esté en alguna publicada y vigente que aplique al cliente. Nunca DELETE.
 /// </summary>
 [AuditEntity(OfferCodes.EntityType)]
 public class Offer : ITenantScoped, ISoftDeletable, IAuditStamped
@@ -54,7 +55,7 @@ public class Offer : ITenantScoped, ISoftDeletable, IAuditStamped
     public List<OfferClient> Clients { get; set; } = new();
 }
 
-/// <summary>Renglón de la oferta: un producto o kit (también uno creado para la oferta) a su precio de oferta, con foto opcional (StoredFile con dueño OFFER). Quitar = IsActive 0.</summary>
+/// <summary>Renglón de la oferta: un producto o kit (también un kit de oferta de la biblioteca) a su precio de oferta, con foto opcional (StoredFile con dueño OFFER). Quitar = IsActive 0.</summary>
 [AuditEntity(OfferCodes.EntityType)]
 public class OfferItem : ITenantScoped, ISoftDeletable
 {
@@ -118,7 +119,6 @@ public static class OfferRules
     public const string ItemProductNotOwn = "Solo se ponen en una oferta productos propios de la compañía.";
     public static string ItemProductInactive(string sku) => $"El producto {sku} está inactivo: no se puede poner en la oferta.";
     public static string ItemRepeated(string sku) => $"El producto {sku} viene repetido.";
-    public static string ItemKitOfOtherOffer(string sku, string otherName) => $"El kit {sku} es de la oferta «{otherName}»: no se puede poner en otra.";
     public const string ClientsRequired = "Escoja los clientes de la oferta.";
     public static readonly string TooManyClients = $"Una oferta admite como máximo {OfferCodes.MaxClients} clientes.";
     public const string ClientsOnGeneral = "La oferta aplica a todos los clientes: no lleva clientes escogidos. Desmarque «aplica a todos» para escogerlos.";
@@ -132,10 +132,6 @@ public static class OfferRules
     public const string AlreadyActive = "La oferta ya está activa.";
     public const string Concurrency = "La oferta cambió al mismo tiempo. Recárguela e intente de nuevo.";
     public const string KitPriceRequired = "Indique el precio de oferta del kit.";
-    public const string KitOfAnotherOffer = "Ese kit no es de esta oferta: cámbielo desde su propia oferta o desde Productos.";
-
-    /// <summary>Un kit de oferta no se pone en una lista de precios: su precio va en su oferta.</summary>
-    public static string OfferKitNotInLists(string sku, string offerName) => $"El kit {sku} es de la oferta «{offerName}»: su precio va en la oferta, no en una lista de precios.";
 
     /// <summary>Recorta el nombre; vacío = error.</summary>
     public static (string? Value, string? Error) NormalizeName(string? name)
@@ -165,23 +161,6 @@ public static class OfferRules
 
     /// <summary>¿Dos ofertas alcanzan a algún cliente en común? Una para todos se cruza con cualquiera; dos de clientes escogidos, si comparten alguno.</summary>
     public static bool AudiencesOverlap(OfferView a, OfferView b) => a.AppliesToAll || b.AppliesToAll || a.ClientIds.Any(b.ClientIds.Contains);
-
-    /// <summary>
-    /// Kit creado para una oferta: solo se vende mientras su oferta esté publicada, activa y vigente. Fuera de eso se trata como inactivo para la venta (no sale en el
-    /// catálogo ni se puede pedir); no se borra: las órdenes y facturas viejas lo siguen viendo. Si la oferta se extiende, vuelve.
-    /// </summary>
-    public static bool KitSellable(OfferView? offer, DateOnly date) => offer is not null && InEffect(offer, date);
-
-    /// <summary>Mensaje (422) del kit de oferta que hoy no se vende, con el motivo y las fechas.</summary>
-    public static string KitNotSellable(string sku, OfferView? offer, DateOnly date)
-    {
-        if (offer is null) return $"El kit {sku} es de una oferta que ya no existe: no se puede vender.";
-        var why = !offer.IsActive ? "está desactivada"
-            : !offer.IsPublished ? "está en borrador"
-            : date < offer.ValidFrom ? $"todavía no empieza (vale {RangeText(offer.ValidFrom, offer.ValidTo)})"
-            : $"ya terminó (valía {RangeText(offer.ValidFrom, offer.ValidTo)})";
-        return $"El kit {sku} es de la oferta «{offer.Name}», que {why}: no se puede vender.";
-    }
 
     /// <summary>La vigencia en palabras: «del 01/11/2026 al 30/11/2026» o «desde el 01/11/2026, sin fecha de fin».</summary>
     public static string RangeText(DateOnly from, DateOnly? to)

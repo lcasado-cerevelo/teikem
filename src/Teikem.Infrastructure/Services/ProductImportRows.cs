@@ -21,6 +21,8 @@ public sealed class ProductImportRows(TeikemDbContext db, ProductService product
     public const string UnknownCategoryMessage = "No existe una categoría activa con ese nombre o ruta.";
     public const string AmbiguousCategoryMessage = "Hay varias categorías con ese nombre: use la ruta completa (Raíz / Hija).";
     public const string RepeatedInFileMessage = "El SKU está repetido en el archivo.";
+    /// <summary>Lote 231: un kit de oferta no se cambia por la importación de productos (no aparece en Productos e inventario).</summary>
+    public const string OfferKitMessage = "Ese SKU es un kit de oferta: no se cambia por la importación de productos, sino en Contabilidad → Precios y ofertas.";
 
     public string Kind => ImportKinds.Product;
 
@@ -39,13 +41,15 @@ public sealed class ProductImportRows(TeikemDbContext db, ProductService product
         /// <summary>Categorías activas por ruta y por nombre en mayúsculas; null = el nombre lo comparten varias (ambiguo).</summary>
         public Dictionary<string, int?> CategoryByKey { get; init; } = new(StringComparer.Ordinal);
         public HashSet<(int?, string)> SeenSku { get; } = new();
+        /// <summary>Lote 231: los kits de oferta (PublicId): su SKU no se actualiza por la importación.</summary>
+        public HashSet<Guid> OfferKits { get; init; } = new();
         public HashSet<string> SeenBarcode { get; } = new(StringComparer.Ordinal);
     }
 
     public async Task<object> LoadContextAsync(CancellationToken ct)
     {
         var owners = await db.Clients.AsNoTracking().Where(c => c.IsActive).Select(c => new Owner(c.Code, c.PublicId, c.ClientId)).ToListAsync(ct);
-        var existing = await db.Set<Product>().AsNoTracking().Select(p => new { p.PublicId, p.ClientId, p.Sku, p.Barcode, p.IsActive }).ToListAsync(ct);
+        var existing = await db.Set<Product>().AsNoTracking().Select(p => new { p.PublicId, p.ClientId, p.Sku, p.Barcode, p.IsActive, p.IsOfferKit }).ToListAsync(ct);
         var cats = await db.Set<ProductCategory>().AsNoTracking().Where(c => c.IsActive).Select(c => new { c.ProductCategoryId, c.ParentId, c.Name }).ToListAsync(ct);
         var parents = cats.ToDictionary(c => c.ProductCategoryId, c => c.ParentId);
         var names = cats.ToDictionary(c => c.ProductCategoryId, c => c.Name);
@@ -57,6 +61,7 @@ public sealed class ProductImportRows(TeikemDbContext db, ProductService product
             CategoryByKey = byKey,
             OwnerByCode = owners.ToDictionary(o => o.Code.Trim().ToUpperInvariant(), o => o, StringComparer.Ordinal),
             SkuTaken = existing.ToDictionary(p => (p.ClientId, p.Sku.ToUpperInvariant()), p => p.PublicId),
+            OfferKits = existing.Where(p => p.IsOfferKit).Select(p => p.PublicId).ToHashSet(),
             BarcodeOwner = existing.Where(p => p.IsActive && p.Barcode != null).GroupBy(p => p.Barcode!, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First().PublicId, StringComparer.Ordinal),
         };
     }
@@ -83,6 +88,7 @@ public sealed class ProductImportRows(TeikemDbContext db, ProductService product
         Guid? existingId = null;
         if (sku is not null && !errors.ContainsKey(ProductImportFields.OwnerClientCode) && ctx.SkuTaken.TryGetValue((ownerId, sku.ToUpperInvariant()), out var found)) existingId = found;
         var isUpdate = existingId is not null;
+        if (existingId is Guid kitId && ctx.OfferKits.Contains(kitId)) errors[ProductImportFields.Sku] = OfferKitMessage;   // Lote 231
 
         // Lo existente solo recibe lo que trae el archivo (celda vacía = sin cambio); lo nuevo, también los valores por defecto de la plantilla.
         var source = isUpdate ? fileValues : values;

@@ -17,7 +17,7 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/products")]
 [Authorize]
 [RequireModule(ModuleKeys.WmsLotSerial)]
-public sealed class ProductsController(ProductService products, ProductSerialConversionService conversions, KitService kits) : ControllerBase
+public sealed class ProductsController(ProductService products, ProductSerialConversionService conversions, KitService kits, AssembledKitService assembledKits) : ControllerBase
 {
     /// <summary>
     /// Lista paginada (take ≤ 200) con buscador (SKU, nombre, código de barras, dueño) y filtros: categoryIds (con
@@ -33,7 +33,8 @@ public sealed class ProductsController(ProductService products, ProductSerialCon
     /// KPI 'Unidades totales') = solo productos con existencia en mano &gt; 0 en todas sus posiciones (o en los almacenes
     /// indicados); se combina con activeOnly para 'activos con existencia'. unavailable (2026-10-05, tableta 'No disponibles') =
     /// activos con disponible = 0 (sin existencia o con todo reservado; se lee con take=1 y total). ownerClientPublicIds + includeOwn
-    /// (2026-10-11, filtro «Dueño», varios) = productos de esos clientes y, con includeOwn, los propios; sin ellos, todos.
+    /// (2026-10-11, filtro «Dueño», varios) = productos de esos clientes y, con includeOwn, los propios; sin ellos, todos. includeOfferKits (Lote 231) = incluir los
+    /// kits de oferta, que por omisión NO salen (se manejan en Ofertas); el selector de producto de una orden de venta lo usa.
     /// </summary>
     [HttpGet, RequirePermission(PermissionCatalog.InventoryView)]
     public Task<ProductPageDto> List([FromQuery] string? search, [FromQuery] int[]? categoryIds, [FromQuery] Guid? ownerClientPublicId,
@@ -43,11 +44,11 @@ public sealed class ProductsController(ProductService products, ProductSerialCon
         [FromQuery] bool serialOnly = false, [FromQuery] bool serialMissing = false, [FromQuery] bool onlyOnHand = false,
         [FromQuery] bool unavailable = false, [FromQuery] bool hasAvailable = false, [FromQuery] string? binSearch = null,
         [FromQuery] Guid[]? ownerClientPublicIds = null, [FromQuery] bool includeOwn = false, [FromQuery] int[]? binIds = null,
-        CancellationToken ct = default)
+        [FromQuery] bool includeOfferKits = false, CancellationToken ct = default)
         => products.ListAsync(new ProductListQuery(search, NullIfEmpty(categoryIds), ownerClientPublicId, ownOnly,
             activeOnly, warehousePublicId, onlyAvailable, skip, take, selectorOrder, belowMin, NullIfEmpty(warehousePublicIds),
             NullIfEmpty(productPublicIds), name, NullIfEmpty(brands), serialOnly, serialMissing, onlyOnHand, unavailable, hasAvailable, binSearch,
-            NullIfEmpty(ownerClientPublicIds), includeOwn, NullIfEmpty(binIds)), InventoryScope.Any, ct);
+            NullIfEmpty(ownerClientPublicIds), includeOwn, NullIfEmpty(binIds), includeOfferKits), InventoryScope.Any, ct);
 
     /// <summary>
     /// Lote 12 — marcas distintas de los productos del tenant (para el filtro Marca), ordenadas y sin repetir sin distinguir
@@ -83,9 +84,14 @@ public sealed class ProductsController(ProductService products, ProductSerialCon
     public Task<IReadOnlyList<SerialDto>> Serials(Guid publicId, [FromQuery] string? status, [FromQuery] string? search, CancellationToken ct)
         => products.ListSerialsAsync(publicId, status, search, InventoryScope.Any, ct);
 
-    /// <summary>Alta: SKU único por dueño e inmutable; unidad base (default UN) y seguimiento (default NONE) por catálogo.</summary>
+    /// <summary>
+    /// Alta: SKU único por dueño e inmutable; unidad base (default UN) y seguimiento (default NONE) por catálogo. Lote 232: con isAssembledKit=true es un KIT ARMADO
+    /// (existencia propia) con su composición kitPieces (el rastreo lo deciden las piezas) y, opcional, assembleQuantity kits armados al crear en assembleToBinId
+    /// (armar pide además inventory.adjust; si el armado falla no se crea nada).
+    /// </summary>
     [HttpPost, RequirePermission(PermissionCatalog.InventoryManage)]
-    public Task<ProductDetailDto> Create([FromBody] ProductCreateRequest req, CancellationToken ct) => products.CreateAsync(req, ct);
+    public Task<ProductDetailDto> Create([FromBody] ProductCreateRequest req, CancellationToken ct)
+        => req?.IsAssembledKit == true ? assembledKits.CreateAsync(req, ct) : products.CreateAsync(req!, ct);
 
     /// <summary>Edición en línea: null = sin cambio; sku no se edita; seguimiento, unidad y dueño se fijan con el primer movimiento.</summary>
     [HttpPatch("{publicId:guid}"), RequirePermission(PermissionCatalog.InventoryManage)]
@@ -103,9 +109,11 @@ public sealed class ProductsController(ProductService products, ProductSerialCon
     /// Lote 68 — convierte el producto en kit (isKit=true con sus componentes, y si es ajustable al pedir) o lo vuelve un producto normal (isKit=false). Los componentes
     /// reemplazan a los anteriores. 400: sin componentes, cantidad no positiva, repetido, él mismo, otro kit, inactivo, otro dueño, rastreo por lote o serie. 409: tiene existencia
     /// o es componente de otro kit; o (al volverlo normal) ya se usó en órdenes de venta.
+    /// Lote 231: 422 si se pide convertir en kit un producto que no lo es (los kits que se arman al pedir se crean como kit de oferta en /offers/kits) o si el producto
+    /// es un kit de oferta (se cambia en /offers/kits/{id}).
     /// </summary>
     [HttpPut("{publicId:guid}/kit"), RequirePermission(PermissionCatalog.InventoryManage)]
-    public Task<KitDto> SetKit(Guid publicId, [FromBody] KitSetRequest req, CancellationToken ct) => kits.SetAsync(publicId, req, ct);
+    public Task<KitDto> SetKit(Guid publicId, [FromBody] KitSetRequest req, CancellationToken ct) => kits.SetFromProductsAsync(publicId, req, ct);
 
     /// <summary>Baja lógica: 409 con inventario en mano, recibos abiertos, tareas pendientes, recolecciones eliminables o conteos abiertos.</summary>
     [HttpPost("{publicId:guid}/deactivate"), RequirePermission(PermissionCatalog.InventoryManage)]

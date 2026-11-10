@@ -14,7 +14,11 @@ public sealed record ProductCreateRequest(string? Sku, string? Name, Guid? Owner
     decimal? PurchaseCost = null, decimal? SalePrice = null, Guid? PreferredWarehousePublicId = null, int? PreferredBinId = null,
     decimal? MinQty = null, decimal? MinPickQty = null, decimal? MaxPickQty = null, string? Brand = null, string? Model = null,
     string? PackUom = null, decimal? PackQty = null, string? RotationMethod = null,
-    decimal? Length = null, decimal? Width = null, decimal? Height = null, string? DimensionUnit = null, decimal? Weight = null, string? WeightUnit = null);
+    decimal? Length = null, decimal? Width = null, decimal? Height = null, string? DimensionUnit = null, decimal? Weight = null, string? WeightUnit = null,
+    bool? IsAssembledKit = null, IReadOnlyList<AssembledKitPieceInput>? KitPieces = null, decimal? AssembleQuantity = null, Guid? AssembleWarehousePublicId = null,
+    int? AssembleToBinId = null);
+// Lote 232 (al final del alta): IsAssembledKit = «¿Es un kit?» (kit ARMADO, con existencia propia); KitPieces = su composición (piezas y cantidad por kit); AssembleQuantity
+// (opcional) = cuántos kits armar al crearlo, en AssembleWarehousePublicId (o el único almacén activo) y la posición AssembleToBinId (armar pide además inventory.adjust).
 
 /// <summary>
 /// PATCH del producto: el SKU es inmutable ('sku' en Extra → 400). Lote 230: Length / Width / Height (null = sin cambio, 0 = quitar), DimensionUnit (IN, CM, FT, M),
@@ -54,18 +58,20 @@ public sealed record ProductPatchRequest(string? Name = null, Guid? OwnerClientP
 /// OwnerClientPublicIds + IncludeOwn (2026-10-11, filtro «Dueño» de Productos e inventario, varios a la vez) = productos de esos clientes dueños
 /// y, con IncludeOwn, también los propios (sin cliente); sin ninguno de los dos no se filtra por dueño (todos). Se combinan con OwnOnly y
 /// OwnerClientPublicId (que siguen para los selectores) como una condición más.
+/// IncludeOfferKits (Lote 231): los kits de oferta NO salen en la lista (Productos e inventario, filtros, exportaciones, indicadores); con true también salen (p. ej. el
+/// selector de producto de una orden de venta). La ficha por id (GET /products/{id}) los sigue devolviendo.
 /// </summary>
 public sealed record ProductListQuery(string? Search = null, int[]? CategoryIds = null, Guid? OwnerClientPublicId = null, bool? OwnOnly = null,
     bool ActiveOnly = false, Guid? WarehousePublicId = null, bool OnlyAvailable = false, int Skip = 0, int Take = 100, bool SelectorOrder = false,
     bool BelowMin = false, Guid[]? WarehousePublicIds = null, Guid[]? ProductPublicIds = null, string? Name = null, string[]? Brands = null,
     bool SerialOnly = false, bool SerialMissing = false, bool OnlyOnHand = false, bool Unavailable = false,
     bool HasAvailable = false, string? BinSearch = null, Guid[]? OwnerClientPublicIds = null, bool IncludeOwn = false,
-    int[]? BinIds = null);
+    int[]? BinIds = null, bool IncludeOfferKits = false);
 
 public sealed record ProductListItemDto(int Id, Guid PublicId, string Sku, string Name, int? CategoryId, string? CategoryName,
     Guid? OwnerClientPublicId, string? OwnerName, bool IsOwn, string BaseUomCode, string TrackingTypeCode, string? Barcode,
     decimal? PurchaseCost, decimal? SalePrice, decimal QtyOnHand, decimal QtyReserved, decimal QtyAvailable, decimal? MinQty,
-    bool IsBelowMin, bool IsActive, string? Brand, string? Model, string? PackUomCode = null, string? PackUomName = null, decimal? PackQty = null, bool IsKit = false);
+    bool IsBelowMin, bool IsActive, string? Brand, string? Model, string? PackUomCode = null, string? PackUomName = null, decimal? PackQty = null, bool IsKit = false, bool IsAssembledKit = false);
 
 public sealed record ProductPageDto(int Total, int Skip, int Take, IReadOnlyList<ProductListItemDto> Items);
 
@@ -77,7 +83,7 @@ public sealed record ProductPageDto(int Total, int Skip, int Take, IReadOnlyList
 public sealed record ProductDetailDto(ProductListItemDto Product, decimal? WeightKg, decimal? VolumeM3, Guid? PreferredWarehousePublicId,
     string? PreferredWarehouseCode, int? PreferredBinId, string? PreferredBinCode, decimal? MinPickQty, decimal? MaxPickQty,
     bool HasMovements, string RowVersion, string? RotationMethod = null,
-    ProductMeasuresDto? Measures = null, string? CategoryPath = null, int? CategoryParentId = null, string? CategoryParentName = null);
+    ProductMeasuresDto? Measures = null, string? CategoryPath = null, int? CategoryParentId = null, string? CategoryParentName = null, IReadOnlyList<AssembledKitPieceDto>? KitPieces = null);
 
 /// <summary>
 /// Lote 230 — las medidas del producto como se escribieron: Length / Width / Height en DimensionUnit (IN, CM, FT, M); Volume en VolumeUnit (IN3, CM3, FT3, M3;

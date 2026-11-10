@@ -72,6 +72,7 @@ public sealed class ProductDataSource(TeikemDbContext db, ILookupCache lookups) 
             var ids = q.Ids.ToList();
             query = query.Where(p => ids.Contains(p.ProductId));
         }
+        else query = query.Where(p => !p.IsOfferKit);   // Lote 231: los kits de oferta no cuentan como productos (por id sí responden: los nombra una venta)
         var products = await query.OrderBy(p => p.Sku).ThenBy(p => p.ProductId).Take(ClientDataSourceHelpers.MaxRows).ToListAsync(ct);
         if (products.Count == 0) return new List<DataRow>();
 

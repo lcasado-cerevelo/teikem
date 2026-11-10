@@ -22,7 +22,10 @@ namespace Teikem.Infrastructure.Services;
 /// </summary>
 public sealed partial class SalesOrderService
 {
-    /// <summary>Las piezas del kit (del catálogo) y los productos válidos para sustituir cada una. Sirve antes de guardar la línea. 422 si el producto no es un kit.</summary>
+    /// <summary>
+    /// Las piezas del kit (del catálogo) y los productos válidos para sustituir cada una. Sirve antes de guardar la línea. 422 si el producto no es un kit.
+    /// Lote 231: solo un kit de oferta tiene sustitutos (y puede ser ajustable); otro kit devuelve sus piezas con Substitutes vacío y Adjustable = false.
+    /// </summary>
     public async Task<KitSubstitutesDto> SubstitutesAsync(Guid kitPublicId, CancellationToken ct)
     {
         var kit = await db.Set<Product>().AsNoTracking().FirstOrDefaultAsync(p => p.PublicId == kitPublicId, ct) ?? throw WmsResolve.ProductNotFound();
@@ -35,7 +38,9 @@ public sealed partial class SalesOrderService
                             orderby c.SortOrder, c.ProductKitComponentId
                             select new { Product = p, c.Quantity, c.NotSubstitutable }).ToListAsync(ct);
         var pieceIds = pieces.Select(x => x.Product.ProductId).ToList();
-        var categoryIds = pieces.Where(x => !x.NotSubstitutable && x.Product.ProductCategoryId != null).Select(x => x.Product.ProductCategoryId!.Value).Distinct().ToList();
+        // Lote 231: solo un kit de oferta admite sustitución; los demás kits devuelven sus piezas sin sustitutos
+        var categoryIds = !kit.IsOfferKit ? new List<int>()
+            : pieces.Where(x => !x.NotSubstitutable && x.Product.ProductCategoryId != null).Select(x => x.Product.ProductCategoryId!.Value).Distinct().ToList();
         var ownerId = kit.ClientId;
         var candidates = categoryIds.Count == 0 ? new List<Product>()
             : await db.Set<Product>().AsNoTracking()
@@ -54,7 +59,7 @@ public sealed partial class SalesOrderService
             return new KitComponentSubstitutesDto(x.Product.PublicId, x.Product.Sku, x.Product.Name, x.Quantity, x.NotSubstitutable, x.Product.ProductCategoryId,
                 x.Product.ProductCategoryId is int cid ? ProductRules.CategoryPath(cid, parents, names) : null, x.Product.SalePrice, subs);
         }).ToList();
-        return new KitSubstitutesDto(kit.PublicId, kit.Sku, kit.Name, kit.KitAdjustable, components);
+        return new KitSubstitutesDto(kit.PublicId, kit.Sku, kit.Name, kit.IsOfferKit && kit.KitAdjustable, components, kit.IsOfferKit);
     }
 
     private static SubstitutionProduct ToSubstitution(Product p, int? kitTypeId)

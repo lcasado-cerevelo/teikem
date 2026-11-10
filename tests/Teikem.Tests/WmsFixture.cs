@@ -241,6 +241,12 @@ internal sealed class WmsFixture : IAsyncDisposable
         L(LookupDomains.EntityType, Teikem.Domain.Accounting.AccountingCodes.EntityType);   // Lote 181
         L(LookupDomains.LocationType, LocationTypes.Company);   // 2026-10-26: las dos direcciones de la compañía
         L(LookupDomains.LocationType, LocationTypes.CompanyPostal);
+        // Lote 232 (kit armado): tipo de producto, motivos de sistema y entidades de origen (al final: ids previos intactos).
+        L(Teikem.Domain.Wms.KitCodes.ProductTypeDomain, Teikem.Domain.Wms.ProductTypes.AssembledKit);
+        L(LookupDomains.AdjustmentReason, AdjustmentReasons.KitAssembly);
+        L(LookupDomains.AdjustmentReason, AdjustmentReasons.KitDisassembly);
+        L(LookupDomains.EntityType, Teikem.Domain.Wms.AssembledKitCodes.AssemblyEntityType);
+        L(LookupDomains.EntityType, Teikem.Domain.Wms.AssembledKitCodes.DisassemblyEntityType);
         Db.LookupCodes.AddRange(all);
         Lookups.Load(all);
 

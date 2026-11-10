@@ -8,7 +8,8 @@ public sealed record SubstitutionProduct(int ProductId, string Sku, int? Categor
 /// Una pieza se puede cambiar por otro producto si: la pieza no está marcada «no sustituible» en el kit; el sustituto es activo, no es kit y es del mismo dueño de
 /// inventario que el kit; es de la MISMA categoría exacta (mismo ProductCategoryId; si la pieza no tiene categoría no se sustituye); tiene EXACTAMENTE el mismo precio
 /// de venta (Product.SalePrice; si la pieza no tiene precio no se sustituye); y va en la MISMA cantidad. El precio de la línea no cambia; la reserva, el despacho, el
-/// costo y la factura usan la pieza real. Sin permiso aparte (basta sales.create). Vale para cualquier kit (ajustable o no; de oferta o regular).
+/// costo y la factura usan la pieza real. Sin permiso aparte (basta sales.create). Vale para kits ajustables o no. Lote 231: solo en el kit de OFERTA
+/// (Product.IsOfferKit); el servicio no ofrece sustitutos ni acepta piezas cambiadas en otro kit (p. ej. el kit armado del lote 232).
 /// Mensajes públicos (400): los usan el servicio, las pruebas y el manual.
 /// </summary>
 public static class KitSubstitutionRules

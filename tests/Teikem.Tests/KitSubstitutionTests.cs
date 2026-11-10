@@ -15,6 +15,7 @@ namespace Teikem.Tests;
 /// <summary>
 /// Lote 230 — sustitución de piezas de un kit en una orden de venta: misma categoría exacta y mismo precio de venta, misma cantidad, la marca «no sustituible» del
 /// kit, pieza sin categoría, kit fijo y ajustable, kit de una oferta, la reserva y el despacho con la pieza real y el precio de la línea sin cambio.
+/// Lote 231: solo el kit de OFERTA sustituye (KIT-1 es un kit de oferta puesto a la venta en una oferta publicada); un kit que no lo es va con sus piezas.
 /// </summary>
 public sealed class KitSubstitutionTests
 {
@@ -36,7 +37,7 @@ public sealed class KitSubstitutionTests
     /// KIT-1 (precio 50) = 2 × GM (guante M, Nitrilo, 10) + 1 × CAJA (sin categoría, 5). Candidatos: GL (Nitrilo, 10) válido; GXL (Nitrilo, 11) otro precio;
     /// GV (Vinilo, 10) otra categoría; GS (Nitrilo, 10) inactivo; CAJA2 (sin categoría, 5). Existencia de GM, GL y CAJA.
     /// </summary>
-    private static async Task<World> NewWorldAsync()
+    private static async Task<World> NewWorldAsync(bool onSale = true)
     {
         var f = await WmsFixture.CreateAsync(s =>
         {
@@ -76,6 +77,7 @@ public sealed class KitSubstitutionTests
         f.Db.ChangeTracker.Clear();
         var kits = f.Get<KitService>();
         await kits.SetAsync(products["KIT-1"].PublicId, new KitSetRequest(true, null, new[] { new KitComponentRequest(products["GM"].PublicId, 2m), new KitComponentRequest(products["CAJA"].PublicId, 1m) }), default);
+        await OfferKitTestData.MakeOfferKitAsync(f, products["KIT-1"].ProductId, onSale ? 50m : null);   // Lote 231: kit de oferta (y a la venta)
         return new World(f, w, c, f.Get<SalesOrderService>(), kits, bin, products);
     }
 
@@ -100,7 +102,7 @@ public sealed class KitSubstitutionTests
     [Fact]
     public async Task The_substitutes_of_a_piece_are_the_products_of_the_same_category_and_price()
     {
-        var x = await NewWorldAsync();
+        var x = await NewWorldAsync(onSale: false);   // sin usar todavía: su composición se puede cambiar
         await using var _ = x.F;
         var subs = await x.Svc.SubstitutesAsync(x["KIT-1"].PublicId, default);
         Assert.Equal(new[] { "GM", "CAJA" }, subs.Components.Select(c => c.Sku).ToArray());
@@ -181,7 +183,7 @@ public sealed class KitSubstitutionTests
         Assert.Equal((400, SalesRules.KitNotAdjustable("KIT-1")), await ErrorOf(() => DraftAsync(x, 1m, Piece(x, "GL", 2m, "GM"), Piece(x, "CAJA", 2m))));
         Assert.Equal((400, SalesRules.KitNotAdjustable("KIT-1")), await ErrorOf(() => DraftAsync(x, 1m, Piece(x, "GL", 2m, "GM"))));
 
-        await x.Kits.SetAsync(x["KIT-1"].PublicId, new KitSetRequest(true, null, new[] { new KitComponentRequest(x["GM"].PublicId, 2m, NotSubstitutable: true), new KitComponentRequest(x["CAJA"].PublicId, 1m) }), default);
+        await OfferKitTestData.SetPieceNotSubstitutableAsync(x.F, x["KIT-1"].ProductId, x["GM"].ProductId, true);   // ya está en una oferta: se prepara en los datos
         Assert.Equal((400, KitSubstitutionRules.NotSubstitutable("GM")), await ErrorOf(() => DraftAsync(x, 1m, Piece(x, "GL", 2m, "GM"), Piece(x, "CAJA", 1m))));
         Assert.Empty(await x.F.Db.Set<SalesOrder>().AsNoTracking().ToListAsync());   // nada se guardó
     }
@@ -203,7 +205,7 @@ public sealed class KitSubstitutionTests
     {
         var x = await NewWorldAsync();
         await using var _ = x.F;
-        await x.Kits.SetAsync(x["KIT-1"].PublicId, new KitSetRequest(true, true, new[] { new KitComponentRequest(x["GM"].PublicId, 2m), new KitComponentRequest(x["CAJA"].PublicId, 1m) }), default);
+        await OfferKitTestData.MakeOfferKitAsync(x.F, x["KIT-1"].ProductId, null, adjustable: true);
         var d = await DraftAsync(x, 1m, Piece(x, "GL", 3m, "GM"), Piece(x, "CAJA", 2m));   // ajustable: la cantidad es la que pone el vendedor
         Assert.Equal(new[] { ("GL", 3m, "GM"), ("CAJA", 2m, (string?)null) }, d.Lines[0].Components!.Select(c => (c.Sku, c.QtyPerKit, c.SubstitutesSku)).ToArray());
         Assert.Equal(50m, d.Lines[0].LineSubtotal);
@@ -215,24 +217,22 @@ public sealed class KitSubstitutionTests
     }
 
     [Fact]
-    public async Task A_kit_of_an_offer_substitutes_its_pieces_too()
+    public async Task A_kit_that_is_not_an_offer_kit_does_not_substitute_nor_adjust_its_pieces()   // Lote 231 (p. ej. un kit armado o un kit viejo)
     {
         var x = await NewWorldAsync();
         await using var _ = x.F;
-        var offer = new Offer { OfferId = 9001, PublicId = Guid.NewGuid(), TenantId = WmsFixture.TenantId, Name = "Circular", ValidFrom = new DateOnly(2020, 1, 1), IsPublished = true, AppliesToAll = true };
-        x.F.Db.Set<Offer>().Add(offer);
-        var kitRow = await x.F.Db.Set<Product>().AsTracking().SingleAsync(p => p.ProductId == x["KIT-1"].ProductId);
-        kitRow.OfferId = offer.OfferId;
+        var row = await x.F.Db.Set<Product>().AsTracking().SingleAsync(p => p.ProductId == x["KIT-1"].ProductId);
+        (row.IsOfferKit, row.KitAdjustable) = (false, true);
         await x.F.Db.SaveChangesAsync();
         x.F.Db.ChangeTracker.Clear();
 
         var subs = await x.Svc.SubstitutesAsync(x["KIT-1"].PublicId, default);
-        Assert.Equal(new[] { "GL" }, subs.Components[0].Substitutes.Select(s => s.Sku).ToArray());
-        var d = await DraftAsync(x, 2m, Piece(x, "GL", 2m, "GM"), Piece(x, "CAJA", 1m));
-        Assert.Equal(("GL", "GM"), (d.Lines[0].Components![0].Sku, d.Lines[0].Components![0].SubstitutesSku));
-        var o = await x.Svc.RequestAsync(d.PublicId, null, default);
-        Assert.Equal((10m, 4m), await BalanceAsync(x, "GL"));
-        Assert.Equal(2m, o.Lines[0].QtyReserved);
+        Assert.Equal((false, false), (subs.IsOfferKit, subs.Adjustable));
+        Assert.Equal(new[] { "GM", "CAJA" }, subs.Components.Select(c => c.Sku).ToArray());
+        Assert.All(subs.Components, c => Assert.Empty(c.Substitutes));
+        Assert.Equal((400, OfferKitRules.PiecesFixed("KIT-1")), await ErrorOf(() => DraftAsync(x, 1m, Piece(x, "GL", 2m, "GM"), Piece(x, "CAJA", 1m))));
+        Assert.Equal((400, OfferKitRules.PiecesFixed("KIT-1")), await ErrorOf(() => DraftAsync(x, 1m, Piece(x, "GM", 1m), Piece(x, "CAJA", 4m))));
+        Assert.Equal(50m, (await DraftAsync(x, 1m)).Lines[0].UnitPrice);   // con sus piezas, sí
     }
 
     [Fact]

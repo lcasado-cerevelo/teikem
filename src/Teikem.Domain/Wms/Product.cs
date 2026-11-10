@@ -82,8 +82,17 @@ public class Product : ITenantScoped, ISoftDeletable
     public int? PromoImageFileId { get; set; }
     /// <summary>Lote 229: la foto del producto (StoredFile del producto, JPG/PNG/WEBP). Las ofertas y listas la usan por omisión (ProductImageRules.Resolve).</summary>
     public int? ImageFileId { get; set; }
-    /// <summary>Lote 229: el kit fue creado para esta oferta (Offer): solo se vende mientras ella esté publicada y vigente (OfferRules.KitSellable). NULL = producto normal.</summary>
+    /// <summary>
+    /// Lote 229: el kit fue creado para esta oferta (Offer). Lote 231: YA NO SE USA (la columna se queda): el kit de oferta es de la biblioteca (<see cref="IsOfferKit"/>)
+    /// y una oferta lo usa con un renglón (OfferItem). Nada lo lee ni lo escribe.
+    /// </summary>
     public int? OfferId { get; set; }
+    /// <summary>
+    /// Lote 231: kit de OFERTA (de la biblioteca de kits de oferta): tipo KIT sin existencia que se arma al pedir. No aparece en Productos e inventario ni se crea ahí;
+    /// se vende solo mientras esté en alguna oferta publicada y vigente que aplique al cliente (su precio = el del renglón). Solo él admite sustitución de piezas y
+    /// «ajustable al pedir». Su composición no cambia una vez usado (OfferKitRules).
+    /// </summary>
+    public bool IsOfferKit { get; set; }
     /// <summary>Lote 225: cuándo (UTC) quedó el producto como ya mandado a QuickBooks (al marcar o confirmar la primera factura que lo lleva). NULL = nuevo para QuickBooks. Un kit no se manda: van sus componentes.</summary>
     public DateTime? QuickBooksSentAt { get; set; }
     public bool IsActive { get; set; } = true;

@@ -230,9 +230,12 @@ public sealed class SalesKitTests
         var x = await NewWorldAsync();
         await using var _ = x.F;
         var custom = new[] { new KitComponentRequest(x.A.PublicId, 1m), new KitComponentRequest(x.B.PublicId, 2m) };
+        // Lote 231: un kit que no es de oferta no cambia piezas; un kit de oferta fijo tampoco; uno ajustable sí
+        Assert.Equal(OfferKitRules.PiecesFixed("KIT-1"), await MsgOf(() => DraftAsync(x, 1m, custom)));
+        await OfferKitTestData.MakeOfferKitAsync(x.F, x.Kit.ProductId, 50m);
         Assert.Equal(SalesRules.KitNotAdjustable("KIT-1"), await MsgOf(() => DraftAsync(x, 1m, custom)));
 
-        await x.Kits.SetAsync(x.Kit.PublicId, new KitSetRequest(true, true, new[] { new KitComponentRequest(x.A.PublicId, 2m), new KitComponentRequest(x.B.PublicId, 1m) }), default);
+        await OfferKitTestData.MakeOfferKitAsync(x.F, x.Kit.ProductId, null, adjustable: true);
         var d = await DraftAsync(x, 2m, custom);
         Assert.Equal(new[] { ("A", 1m, 2m), ("B", 2m, 4m) }, d.Lines[0].Components!.Select(c => (c.Sku, c.QtyPerKit, c.Needed)).ToArray());
         var o = await x.Svc.RequestAsync(d.PublicId, null, default);
@@ -247,13 +250,13 @@ public sealed class SalesKitTests
     }
 
     [Fact]
-    public async Task Saving_the_draft_again_keeps_the_snapshot_of_the_pieces_even_if_the_catalog_changed()
+    public async Task Saving_the_draft_again_keeps_the_snapshot_of_the_adjusted_pieces()
     {
         var x = await NewWorldAsync();
         await using var _ = x.F;
-        await x.Kits.SetAsync(x.Kit.PublicId, new KitSetRequest(true, true, new[] { new KitComponentRequest(x.A.PublicId, 2m), new KitComponentRequest(x.B.PublicId, 1m) }), default);
+        await OfferKitTestData.MakeOfferKitAsync(x.F, x.Kit.ProductId, 50m, adjustable: true);   // Lote 231: solo el kit de oferta se ajusta
         var d = await DraftAsync(x, 2m, new[] { new KitComponentRequest(x.A.PublicId, 1m), new KitComponentRequest(x.B.PublicId, 3m) });   // piezas ajustadas
-        await x.Kits.SetAsync(x.Kit.PublicId, new KitSetRequest(true, null, new[] { new KitComponentRequest(x.A.PublicId, 9m) }), default);
+        // (Lote 231: la composición de un kit de oferta ya usado no cambia; el cambio de catálogo con la foto guardada lo prueba la primera prueba con un kit normal)
 
         var saved = await x.Svc.UpdateAsync(d.PublicId, new SalesOrderRequest(Lines: new[] { new SalesOrderLineRequest(x.Kit.PublicId, 4m) }), default);
         Assert.Equal(4m, saved.Lines[0].QtyOrdered);

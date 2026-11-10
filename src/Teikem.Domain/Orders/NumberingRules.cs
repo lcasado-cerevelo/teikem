@@ -211,7 +211,9 @@ public static class NumberingRules
         // Lote 94: liquidación a choferes LIQ-##### (por tenant, ClientId NULL)
         or Teikem.Domain.Fleet.SettlementCodes.NumberKind
         // Lote 97: número de conduce CND-####### (por tenant, ClientId NULL)
-        or WaybillCodes.NumberKind;
+        or WaybillCodes.NumberKind
+        // Lote 232: armado ARM-##### y desarmado DES-##### de kits armados (por tenant, ClientId NULL)
+        or Teikem.Domain.Wms.AssembledKitCodes.AssemblyNumberKind or Teikem.Domain.Wms.AssembledKitCodes.DisassemblyNumberKind;
 
     private static string Coalesce(string? pattern, string fallback) => string.IsNullOrWhiteSpace(pattern) ? fallback : pattern.Trim();
 

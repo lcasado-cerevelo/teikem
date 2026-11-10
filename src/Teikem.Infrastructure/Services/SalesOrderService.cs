@@ -306,7 +306,8 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         var serialId = await lookups.GetIdAsync(LookupDomains.TrackingType, TrackingTypes.Serial, ct);
         var kitTypeId = await lookups.TryGetIdAsync(KitCodes.ProductTypeDomain, ProductTypes.Kit, ct);   // Lote 69
         var resolved = await PriceListQueries.ResolveAsync(db, products.Values, clientId, date, ct);   // Lote 221 (y 229: ofertas)
-        var offerKitOwners = await PriceListQueries.OwnerOffersAsync(db, products.Values.Where(x => x.OfferId is not null).Select(x => x.OfferId!.Value), ct);   // Lote 229
+        var offerKits = products.Values.Where(x => x.IsOfferKit).Select(x => x.ProductId).ToList();   // Lote 231: kits de oferta (de la biblioteca)
+        var offersForKits = offerKits.Count == 0 ? Array.Empty<OfferView>() : await PriceListQueries.OffersInEffectAsync(db, clientId, date, offerKits, ct);
         var seen = new HashSet<int>();
         var result = new List<PlannedLine>();
         var canPrice = false;
@@ -320,8 +321,8 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
             if (product.ClientId is not null) throw new StatusRuleException(SalesRules.ProductNotOwn);
             if (product.TrackingTypeLookupId == serialId) throw new StatusRuleException(SalesRules.SerialNotSupported);
             if (!seen.Add(product.ProductId)) throw new ValidationException($"lines[{i}].productPublicId", SalesRules.ProductRepeated);
-            if (product.OfferId is int offerId && !OfferRules.KitSellable(offerKitOwners.GetValueOrDefault(offerId), date))   // Lote 229: kit de una oferta fuera de vigencia
-                throw new StatusRuleException(OfferRules.KitNotSellable(product.Sku, offerKitOwners.GetValueOrDefault(offerId), date));
+            if (product.IsOfferKit && !OfferKitRules.IsOnSale(product.ProductId, clientId, date, offersForKits))   // Lote 231: solo en una oferta publicada y vigente para el cliente
+                throw new StatusRuleException(OfferKitRules.NotOnSale(product.Sku));
             var qtyError = SalesRules.QuantityError(l.Quantity);
             if (qtyError is not null) throw new ValidationException($"lines[{i}].quantity", qtyError);
             var priceError = SalesRules.PriceError(l.UnitPrice);
@@ -362,12 +363,14 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
     /// propios, sin repetir). Un kit sin componentes no se vende.
     /// Lote 230: las piezas que mandan pueden traer sustituciones (substitutesProductPublicId), también en un kit fijo (ValidateSubstitutionsAsync); devuelve además
     /// pieza real → pieza original.
+    /// Lote 231: sustituir o ajustar piezas solo en un kit de OFERTA (Product.IsOfferKit); cualquier otro kit (el kit armado, un kit viejo) va con sus piezas (400).
     /// </summary>
     private async Task<(IReadOnlyList<(int ProductId, decimal Quantity)> Components, IReadOnlyDictionary<int, int>? Substituted)> KitSnapshotAsync(Product kit,
         IReadOnlyList<KitComponentRequest>? custom, int lineIndex, CancellationToken ct)
     {
         if (custom is { Count: > 0 })
         {
+            if (!kit.IsOfferKit) throw new ValidationException($"lines[{lineIndex}].components", OfferKitRules.PiecesFixed(kit.Sku));   // Lote 231: solo el kit de oferta cambia piezas
             if (!kit.KitAdjustable && !HasSubstitutions(custom)) throw new ValidationException($"lines[{lineIndex}].components", SalesRules.KitNotAdjustable(kit.Sku));
             if (custom.Count > KitCodes.MaxComponents) throw new ValidationException($"lines[{lineIndex}].components", KitRules.TooManyComponents());
             var ids = custom.Where(c => c.ProductPublicId is not null).Select(c => c.ProductPublicId!.Value).ToList();

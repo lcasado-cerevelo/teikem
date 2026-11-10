@@ -1217,9 +1217,13 @@ public static class AdjustmentReasons
     public const string TrackingConversion = "TRACKING_CONVERSION";
     /// <summary>2026-10-12: «Inventario físico»: lo asigna el sistema a los movimientos de un ajuste múltiple (docs/ajuste-multiple-diseno.md); el ajuste normal no puede usarlo.</summary>
     public const string PhysicalCount = "PHYSICAL_COUNT";
+    /// <summary>Lote 232: «Armado de kit»: salida de las piezas y entrada de los kits armados (lo asigna el sistema).</summary>
+    public const string KitAssembly = "KIT_ASSEMBLY";
+    /// <summary>Lote 232: «Desarmado de kit»: salida de los kits y regreso de sus piezas (lo asigna el sistema).</summary>
+    public const string KitDisassembly = "KIT_DISASSEMBLY";
 
     /// <summary>Motivos que solo asigna el sistema (un ajuste manual no puede usarlos).</summary>
-    public static readonly IReadOnlyList<string> SystemAssigned = new[] { ReceiptVariance, CountVariance, PickBatchReversal, OpeningBalance, TrackingConversion, PhysicalCount };
+    public static readonly IReadOnlyList<string> SystemAssigned = new[] { ReceiptVariance, CountVariance, PickBatchReversal, OpeningBalance, TrackingConversion, PhysicalCount, KitAssembly, KitDisassembly };
 }
 
 /// <summary>LookupDomains.ShortageAction (D8).</summary>

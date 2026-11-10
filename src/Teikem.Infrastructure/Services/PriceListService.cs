@@ -176,9 +176,7 @@ public sealed class PriceListService(TeikemDbContext db, ITenantContext tenant, 
             if (!seen.Add(pid)) throw new ValidationException($"items[{i}].productPublicId", PriceListRules.ItemRepeated(p.Sku));
             if (p.ClientId is not null) throw new StatusRuleException(PriceListRules.ItemProductNotOwn);
             if (!p.IsActive) throw new StatusRuleException(PriceListRules.ItemProductInactive(p.Sku));
-            if (p.OfferId is int offerId)   // Lote 229: el kit de una oferta lleva su precio en la oferta
-                throw new StatusRuleException(OfferRules.OfferKitNotInLists(p.Sku,
-                    await db.Set<Offer>().AsNoTracking().Where(o => o.OfferId == offerId).Select(o => o.Name).FirstOrDefaultAsync(ct) ?? "?"));
+            if (p.IsOfferKit) throw new StatusRuleException(OfferKitRules.NotInPriceLists(p.Sku));   // Lote 229/231: el kit de oferta lleva su precio en una oferta
         }
         return await MutateAsync(publicId, (list, _) =>
         {

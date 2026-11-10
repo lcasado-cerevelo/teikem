@@ -3,7 +3,7 @@
 Scripts SQL para dejar a **Advance Solutions** lista para que los vendedores pidan en Teikem y se apague el formulario de Formsite.
 Los corre **Luis** (o quien él diga) en el servidor; ninguna sesión de Claude los corre en TEST ni en producción.
 
-- Son **datos**, no estructura: la estructura de las tablas ya la pone el instalador (`db-update`) con la versión de los lotes 221–226 y 229 (ofertas).
+- Son **datos**, no estructura: la estructura de las tablas ya la pone el instalador (`db-update`) con la versión de los lotes 221–226, 229 (ofertas) y 231 (biblioteca de kits de oferta).
   No van en `Diseño/logistica-db-update.sql` porque son de UNA compañía.
 - Cada script busca la compañía por su nombre (`@Compania = N'Advance Solutions'`, arriba de cada archivo) y **aborta** con un mensaje
   claro si no existe. Si en Teikem se llama distinto, cambie ese valor en todos.
@@ -29,7 +29,7 @@ Los corre **Luis** (o quien él diga) en el servidor; ninguna sesión de Claude 
 |---|---|---|---|
 | 00 | `00-verificar.sql` | Solo lee: compañía, estructura y permisos de los lotes 221–225, plantillas de rol, roles, **módulos**, conteos. | Que diga `OK: la estructura y los permisos…`. Módulos **SALES_ORDERS**, **TAX** y **BILLING** encendidos (si no: Sistema → Ajustes → Módulos). |
 | 01 | `01-marcas.sql` | Marca de cada producto del formulario (pestañas del pedido: PRODIGY, PADIMONT, CARTONES, GLOBAL, AMERICAN RED CROSS, MEDPRIDE) y uniforma la escritura. Yardley y A. Belle → GLOBAL (así los vendía el formulario). | La tabla «SKU del formulario que NO existe»: las cajas `979`, `101010`, `121212` no están en Solutions (la migración las dejó en Depot); el underpad `PD-23-36-45gms3/50` hay que confirmar su SKU en Teikem y agregarlo como `Candidato`. «Pestaña del pedido» = cómo lo verá el vendedor. |
-| 02 | `02-kit-oferta1.sql` | Crea la **oferta «OFERTA1»** (desde hoy, **sin fecha de fin**, para todos los clientes, publicada) con su **kit OFERTA1** creado para ella (6 × `52800` + 1 × `070120`, $41.94, marca PRODIGY, no ajustable). El kit solo se vende mientras la oferta esté publicada y vigente. | Que muestre las dos piezas y la oferta «sin fecha de fin». **Paso manual después:** la **foto** — Contabilidad → Precios y ofertas → «Ofertas» → OFERTA1 → «Poner foto». Si la oferta debe terminar, ponerle la fecha «hasta» ahí mismo. |
+| 02 | `02-kit-oferta1.sql` | Crea el **kit OFERTA1** en la **biblioteca de kits de oferta** (lote 231: 6 × `52800` + 1 × `070120`, marca PRODIGY, no ajustable; no aparece en Productos e inventario) y la **oferta «OFERTA1»** (desde hoy, **sin fecha de fin**, para todos los clientes, publicada) que lo usa a **$41.94**. El kit solo se vende mientras esté en alguna oferta publicada y vigente; otra oferta (p. ej. la de enero) lo puede volver a usar con otro precio. Si el kit ya se usó y tiene otras piezas, aborta (su composición no se cambia: kit nuevo con otro SKU). | Que muestre las dos piezas y la oferta «sin fecha de fin». **Paso manual después:** la **foto** — Contabilidad → Precios y ofertas → «Ofertas» → OFERTA1 → «Poner foto». Si la oferta debe terminar, ponerle la fecha «hasta» ahí mismo. |
 | 03 | `03-roles.sql` | Crea en Solutions **Supervisor de ventas** y **Oficina de ventas** (los de fábrica), asegura los permisos nuevos a **Ventas** y al **Admin**. | Si avisa de un rol «Oficina de ventas»/«Supervisor de ventas» hecho a mano: pase sus usuarios al nuevo y desactive el viejo (Sistema → Roles y usuarios). |
 | — | **Pantalla** | Crear las cuentas (ver «Usuarios» abajo). | — |
 | 04 | `04-usuarios-vendedores.sql` | A cada vendedor con cuenta le asegura el rol **Ventas**; a la oficina **Oficina de ventas**; al supervisor **Supervisor de ventas**. Informa quién falta. | **Llenar los correos** en `@Personas` (el análisis no los trae; solo `almacen@advancesolutionspr.com` de la oficina) y el **nombre y correo del supervisor de ventas**. |
@@ -82,7 +82,7 @@ bien, «Sí, ya están». Con eso confirmado, las siguientes ya pueden llevar lo
 ## Si algo sale mal
 - Cualquier script: si da error, la transacción se deshace sola (no queda a medias). Si aplicó y no era lo que se quería:
   - Marcas, término de pago, ajustes de envío y QuickBooks: corregir en la pantalla (ficha del producto / del cliente, Ajustes).
-  - OFERTA1: Contabilidad → Precios y ofertas → «Ofertas» → OFERTA1 → «Volver a borrador» o «Desactivar» (el kit deja de venderse; las órdenes ya hechas no cambian).
+  - OFERTA1: Contabilidad → Precios y ofertas → «Ofertas» → OFERTA1 → «Volver a borrador» o «Desactivar» (el kit deja de venderse si no está en otra oferta vigente; queda en la biblioteca de kits y las órdenes ya hechas no cambian).
   - Listas de precios: «Precios y ofertas» → la lista → «Volver a borrador» o «Desactivar».
   - Roles: Sistema → Roles y usuarios (quitar permisos o desactivar el rol).
   - Reglas de aviso: Sistema → Reglas de aviso → desactivar.

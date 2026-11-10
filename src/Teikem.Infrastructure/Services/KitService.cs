@@ -15,6 +15,8 @@ namespace Teikem.Infrastructure.Services;
 /// Aquí viven la definición (convertir un producto en kit y sus componentes) y su disponibilidad («se pueden armar N» por almacén). La explosión del kit en las
 /// órdenes de venta y en la recolección es de los lotes siguientes. Reglas: seguimiento NONE; sin existencia ni reservas para convertirlo; los componentes son
 /// productos activos, no kits, del mismo dueño de inventario; sin kits dentro de kits; volver a producto normal solo si ningún pedido lo usó.
+/// Lote 231: el kit que se arma al pedir es el kit de OFERTA (Product.IsOfferKit, lo crea OfferService); desde Productos ya no se convierte un producto en kit
+/// (SetFromProductsAsync) y la composición de un kit de oferta ya usado no cambia.
 /// </summary>
 public sealed class KitService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, SalesOrderService sales)
 {
@@ -27,7 +29,7 @@ public sealed class KitService(TeikemDbContext db, ITenantContext tenant, ILooku
         var product = await db.Set<Product>().AsNoTracking().FirstOrDefaultAsync(p => p.PublicId == publicId, ct) ?? throw WmsResolve.ProductNotFound();
         var kitId = await KitTypeIdAsync(ct);
         var isKit = kitId is not null && product.ProductTypeLookupId == kitId;
-        if (!isKit) return new KitDto(product.PublicId, product.Sku, product.Name, false, false, Array.Empty<KitComponentDto>(), Array.Empty<KitAvailabilityDto>());
+        if (!isKit) return new KitDto(product.PublicId, product.Sku, product.Name, false, false, Array.Empty<KitComponentDto>(), Array.Empty<KitAvailabilityDto>(), product.IsOfferKit);
 
         var rows = await (from c in db.Set<ProductKitComponent>().AsNoTracking()
                           join p in db.Set<Product>().AsNoTracking() on c.ComponentProductId equals p.ProductId
@@ -47,7 +49,23 @@ public sealed class KitService(TeikemDbContext db, ITenantContext tenant, ILooku
                 availability.Add(new KitAvailabilityDto(w.PublicId, w.Code, KitRules.CanBuild(rows.Select(r => (sellable.GetValueOrDefault(r.ComponentProductId), r.Quantity)))));
             }
         }
-        return new KitDto(product.PublicId, product.Sku, product.Name, true, product.KitAdjustable, components, availability);
+        return new KitDto(product.PublicId, product.Sku, product.Name, true, product.KitAdjustable, components, availability, product.IsOfferKit);
+    }
+
+    /// <summary>
+    /// Lote 231 — PUT /products/{id}/kit (la ruta de Productos). Desde Productos ya NO se convierte un producto normal en kit (422: los kits que se arman al pedir se
+    /// crean como kit de oferta en Ofertas) ni se cambia un kit de oferta (422: se cambia en Ofertas). Un kit viejo (lote 68, no de oferta) se sigue pudiendo editar o
+    /// volver a producto normal como antes.
+    /// </summary>
+    public async Task<KitDto> SetFromProductsAsync(Guid publicId, KitSetRequest? req, CancellationToken ct)
+    {
+        if (req is null || req.IsKit is null) throw new ValidationException("isKit", "Indique si el producto es un kit.");
+        var kitId = await KitTypeIdAsync(ct);
+        var product = await db.Set<Product>().AsNoTracking().Where(p => p.PublicId == publicId).Select(p => new { p.Sku, p.ProductTypeLookupId, p.IsOfferKit }).FirstOrDefaultAsync(ct)
+                      ?? throw WmsResolve.ProductNotFound();
+        if (product.IsOfferKit) throw new StatusRuleException(OfferKitRules.ManagedInOffers(product.Sku));
+        if (req.IsKit == true && (kitId is null || product.ProductTypeLookupId != kitId)) throw new StatusRuleException(OfferKitRules.NoConvertFromProducts);
+        return await SetAsync(publicId, req, ct);
     }
 
     /// <summary>Convierte el producto en kit (con sus componentes) o lo vuelve un producto normal. Los componentes reemplazan a los anteriores.</summary>
@@ -65,6 +83,7 @@ public sealed class KitService(TeikemDbContext db, ITenantContext tenant, ILooku
 
             if (!wantKit)
             {
+                if (product.IsOfferKit) throw new StatusRuleException(OfferKitRules.ManagedInOffers(product.Sku));   // Lote 231: un kit de oferta no vuelve a ser producto normal
                 if (!wasKit) throw new ConflictException(KitRules.NotAKit(product.Sku));
                 if (await db.Set<SalesOrderLine>().AsNoTracking().AnyAsync(l => l.ProductId == product.ProductId, ct2)) throw new ConflictException(KitRules.UsedInSales(product.Sku));
                 db.Set<ProductKitComponent>().RemoveRange(existing);
@@ -89,6 +108,14 @@ public sealed class KitService(TeikemDbContext db, ITenantContext tenant, ILooku
 
             var wanted = await ValidateComponentsAsync(product, req.Components, kitId, ct2);
             var byProduct = existing.ToDictionary(c => c.ComponentProductId);
+            if (product.IsOfferKit && wasKit)
+            {
+                // Lote 231: la composición de un kit de oferta ya usado (en una oferta o en un pedido) no cambia: cambiarla es crear un kit nuevo
+                var current = existing.OrderBy(c => c.SortOrder).ThenBy(c => c.ProductKitComponentId).Select(c => new OfferKitPiece(c.ComponentProductId, c.Quantity, c.NotSubstitutable)).ToList();
+                var next = wanted.Select(w => new OfferKitPiece(w.ProductId, w.Quantity, w.NotSubstitutable ?? (byProduct.TryGetValue(w.ProductId, out var had) && had.NotSubstitutable))).ToList();
+                if (OfferKitRules.CompositionChanges(current, product.KitAdjustable, next, req.Adjustable ?? product.KitAdjustable) && await IsUsedAsync(product.ProductId, ct2))
+                    throw new StatusRuleException(OfferKitRules.CompositionLocked(product.Sku));
+            }
             foreach (var gone in existing.Where(c => wanted.All(w => w.ProductId != c.ComponentProductId))) db.Set<ProductKitComponent>().Remove(gone);
             var order = 0;
             foreach (var w in wanted)
@@ -104,6 +131,11 @@ public sealed class KitService(TeikemDbContext db, ITenantContext tenant, ILooku
         }, ct);
         return await GetAsync(publicId, ct);
     }
+
+    /// <summary>Lote 231: ¿el kit ya se usó? En alguna oferta (un renglón, aunque se haya quitado) o en alguna orden de venta.</summary>
+    internal async Task<bool> IsUsedAsync(int productId, CancellationToken ct)
+        => await db.Set<OfferItem>().AsNoTracking().AnyAsync(i => i.ProductId == productId, ct)
+           || await db.Set<SalesOrderLine>().AsNoTracking().AnyAsync(l => l.ProductId == productId, ct);
 
     /// <summary>Un solo error se contesta con su mensaje exacto; varios, como lista por campo.</summary>
     private static ValidationException Fail(Dictionary<string, string[]> errors)

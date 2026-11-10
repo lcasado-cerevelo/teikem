@@ -141,7 +141,7 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         b.Property(p => p.PromoTo).HasColumnType("date");
         b.HasOne<Teikem.Domain.Files.StoredFile>().WithMany().HasForeignKey(p => p.PromoImageFileId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<Teikem.Domain.Files.StoredFile>().WithMany().HasForeignKey(p => p.ImageFileId).OnDelete(DeleteBehavior.NoAction);   // Lote 229: foto del producto
-        b.HasOne<Teikem.Domain.Sales.Offer>().WithMany().HasForeignKey(p => p.OfferId).OnDelete(DeleteBehavior.NoAction);   // Lote 229: kit de una oferta
+        b.HasOne<Teikem.Domain.Sales.Offer>().WithMany().HasForeignKey(p => p.OfferId).OnDelete(DeleteBehavior.NoAction);   // Lote 229: kit de una oferta (Lote 231: ya no se usa; IsOfferKit va por convención)
         b.Property(p => p.RowVersion).IsRowVersion();
 
         // SKU único por dueño (ClientId NULL = propio): sin el filtro 'IS NOT NULL' que EF agregaría.

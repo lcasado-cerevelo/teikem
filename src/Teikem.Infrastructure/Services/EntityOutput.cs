@@ -50,12 +50,12 @@ public sealed class ProductExportRows(TeikemDbContext db) : IExportEntityRows
     public string Kind => ImportKinds.Product;
 
     public async Task<IReadOnlyList<int>> AllIdsAsync(CancellationToken ct)
-        => await db.Set<Product>().AsNoTracking().OrderBy(p => p.ProductId).Select(p => p.ProductId).ToListAsync(ct);
+        => await db.Set<Product>().AsNoTracking().Where(p => !p.IsOfferKit).OrderBy(p => p.ProductId).Select(p => p.ProductId).ToListAsync(ct);   // Lote 231: sin kits de oferta
 
     public async Task<List<IReadOnlyDictionary<string, object?>>> BuildAsync(IReadOnlyCollection<int> ids, CancellationToken ct)
     {
         var rows = await (from p in db.Set<Product>().AsNoTracking()
-                          where ids.Contains(p.ProductId)
+                          where ids.Contains(p.ProductId) && !p.IsOfferKit   // Lote 231: los kits de oferta no salen con los productos
                           join c in db.Clients.AsNoTracking() on p.ClientId equals c.ClientId into owners
                           from owner in owners.DefaultIfEmpty()
                           join u in db.LookupCodes.AsNoTracking() on p.BaseUomLookupId equals u.LookupCodeId
