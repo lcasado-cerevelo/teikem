@@ -130,3 +130,17 @@ Cambia lo construido en los lotes 68–70 y 229: hoy todo kit se arma al despach
 - **No quiere que las piezas de un kit armado queden como «reservadas»** (no es verdad: forman parte de otra cosa), ni que el
   inventario se descuadre.
 - Luis duda si construir ya el kit armado (no hay cliente que lo necesite) o dejarlo listo ahora que no hay datos: pendiente de decidir.
+
+## 12. Se construyen las dos cosas (Luis, 2026-11-10) — modelo para los lotes 231 y 232
+- **Lote 231 — kit de oferta con biblioteca.** El kit de oferta sigue siendo, por dentro, un producto de tipo KIT sin existencia (se arma
+  al pedir), pero marcado como **kit de oferta**: no aparece en Productos e inventario ni se crea ahí. Deja de estar atado a UNA oferta:
+  queda en la **biblioteca de kits de oferta** y una oferta lo usa con un renglón (su precio). Al agregar un renglón a una oferta:
+  «Usar un kit anterior» (la composición **no se puede cambiar**: cambiarla es crear un kit nuevo; el **precio sí**, y se sugiere el
+  último) o «Crear un kit nuevo». Se vende solo mientras esté en alguna oferta publicada y vigente. Sustitución de piezas y «Ajustable al
+  pedir»: solo aquí. Un kit de venta permanente = oferta sin fecha de fin. En Productos se quitan la pestaña «Kit» y «Convertir en kit».
+- **Lote 232 — kit armado (producto con inventario).** Tipo de producto nuevo (kit armado). «Nuevo producto» pregunta «¿Es un kit?»
+  (por omisión no); si sí, tabla de composición ahí mismo y cuántos kits armar. **Armar** = movimiento real: salen las piezas («Armado de
+  kit …») y entran los kits al costo sumado de las piezas; nada queda «reservado». **Desarmar** = lo contrario, solo kits disponibles.
+  Lotes: cada armado crea un lote del kit que recuerda el lote y la cantidad de cada pieza; vence con la pieza que vence primero; al
+  desarmar cada pieza vuelve a su lote; un lote por pieza en cada armado. Se vende como cualquier producto (sin existencia → backorder);
+  sin sustitución. Solo web; permiso de ajustar inventario.
