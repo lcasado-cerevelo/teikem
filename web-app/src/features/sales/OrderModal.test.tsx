@@ -255,7 +255,8 @@ describe('OrderModal — Lote 222', () => {
     await waitFor(() => expect(sent('GET', '/api/v1/sales-orders/catalog')).toHaveLength(1))
     expect(sent('GET', '/api/v1/sales-orders/catalog')[0].search?.get('clientPublicId')).toBe(CLIENT)
     await user.click(within(dialog).getByRole('combobox', { name: 'Producto de la línea 1' }))
-    const options = await within(dialog).findAllByRole('option')
+    // solo las opciones del buscador de productos («SKU · nombre»); la ventana tiene otros desplegables con sus opciones
+    const options = (await within(dialog).findAllByRole('option')).filter((o) => (o.textContent ?? '').includes(' · '))
     expect(options.map((o) => o.textContent)).toEqual(['OFERTA1 · Oferta 1', 'MED · Medidor'])
     await user.click(options[0])
     // el precio que se propone es el de la oferta

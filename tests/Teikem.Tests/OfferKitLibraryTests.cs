@@ -130,7 +130,8 @@ public sealed class OfferKitLibraryTests
         await x.Offers.UpsertItemsAsync(offer.PublicId, new OfferItemsRequest(new[] { new OfferItemRequest(kit, 41.94m) }), default);
         await x.Offers.AddClientsAsync(offer.PublicId, new OfferClientsRequest(new[] { x.C1.PublicId }), default);
 
-        // en borrador: no
+        // Lote 234: la oferta nace publicada; devuelta a borrador (compatibilidad) no se vende
+        await x.Offers.UnpublishAsync(offer.PublicId, default);
         await Assert.ThrowsAsync<StatusRuleException>(() => x.DraftAsync(x.C1, new SalesOrderLineRequest(kit, 1m)));
         Assert.DoesNotContain((await x.Catalog.CatalogAsync(x.C1.PublicId, default)).Brands.SelectMany(b => b.Offers.Concat(b.Products)), p => p.Sku == "OFERTA1");
 

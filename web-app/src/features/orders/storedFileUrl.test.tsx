@@ -12,7 +12,7 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
   const fetch = async () => {
     mock.gets++
-    return new Response(new Blob(['png'], { type: 'image/png' }), { status: 200, headers: { 'Content-Type': 'image/png' } })
+    return new Response('png', { status: 200, headers: { 'Content-Type': 'image/png' } })
   }
   return { ...actual, api: actual.createApiClient({ baseUrl: 'http://api.test', fetch }) }
 })

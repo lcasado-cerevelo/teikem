@@ -43,7 +43,8 @@ public sealed class OfferKitTests
         Assert.Null(kit.OfferId);   // ya no se usa
         Assert.False(kit.KitAdjustable);
 
-        // en borrador: no se vende (422 con el motivo) ni sale en el catálogo
+        // Lote 234: la oferta nace publicada; una que quedó en borrador (de antes) no se vende (422 con el motivo) ni sale en el catálogo
+        await x.Offers.UnpublishAsync(offer.PublicId, default);
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => x.DraftAsync(x.C1, new SalesOrderLineRequest(created.ProductPublicId, 1m)));
         Assert.Equal("El kit de oferta OFERTA1 no está en ninguna oferta publicada y vigente para este cliente: no se puede vender.", ex.Message);
         Assert.DoesNotContain((await x.Catalog.CatalogAsync(x.C1.PublicId, default)).Brands.SelectMany(b => b.Offers.Concat(b.Products)), p => p.Sku == "OFERTA1");
