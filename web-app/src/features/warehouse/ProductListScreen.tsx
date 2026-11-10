@@ -244,7 +244,10 @@ function ProductsTab() {
   const query = useMemo(() => ({ ...baseQuery, skip: (page - 1) * pageSize, take: pageSize }), [baseQuery, page, pageSize])
   const { data, isLoading, error } = useProducts(query)
 
+  // la categoría se muestra con su ruta completa, la superior primero («GLOVES / NITRIL»), también al ordenar y al exportar
+  const categoryPaths = useMemo(() => new Map(categories.map((c) => [c.id, c.path || c.name || ''])), [categories])
   const columns = useMemo<DataColumn<ProductListItemDto>[]>(() => {
+    const categoryOf = (p: ProductListItemDto) => (p.categoryId != null ? categoryPaths.get(p.categoryId) : undefined) ?? p.categoryName ?? ''
     const num = (n: number | null | undefined) => <span className="mono">{formatNumber(n ?? 0, lang)}</span>
     return [
       // Orden en el cliente: la lista es paginada por el servidor (sin parámetro de orden), así que solo reacomoda la página visible.
@@ -258,7 +261,7 @@ function ProductsTab() {
         card: 'title',
       },
       { id: 'name', header: t('warehouse.products.columns.product'), cell: (p) => p.name, sortValue: (p) => p.name },
-      { id: 'category', header: t('warehouse.products.columns.category'), cell: (p) => p.categoryName ?? '', sortValue: (p) => p.categoryName },
+      { id: 'category', header: t('warehouse.products.columns.category'), cell: categoryOf, sortValue: categoryOf },
       {
         id: 'pack',
         header: t('warehouse.products.columns.pack'),
@@ -320,7 +323,7 @@ function ProductsTab() {
         sortValue: (p) => t(`warehouse.products.states.${productState(p)}`),
       },
     ]
-  }, [t, lang, trackingLabel])
+  }, [t, lang, trackingLabel, categoryPaths])
 
   // orden que el usuario elige en la tabla (clic en un encabezado): el informe de códigos de barras sale en ese mismo orden
   const [tableSort, setTableSort] = useState<SortState | null>(null)
