@@ -119,3 +119,14 @@ Cambia lo construido en los lotes 68–70 y 229: hoy todo kit se arma al despach
     pantalla **sugiere «usar un kit anterior» o «crear un kit nuevo»** (p. ej. el de noviembre se repite en enero sin teclearlo otra vez).
 - Por confirmar: ver la conversación (kit de venta permanente que no se arma antes, qué pasa al vender un kit armado sin existencia,
   dónde aplican la sustitución y «Ajustable al pedir», lotes dentro del kit armado, costo del kit armado, app del almacén).
+
+## 11. Respuestas de Luis sobre las dos clases de kit (2026-11-10)
+- Un kit que se vende siempre y no se arma antes = **una oferta permanente** (sin fecha de fin).
+- Vender un **kit armado sin existencia**: falta inventario y va a **backorder**, como cualquier producto.
+- **Sustitución de piezas: solo en el kit de oferta** (el armado ya tiene sus piezas dentro).
+- **Costo del kit armado:** la suma del costo de sus piezas al armar.
+- **Lotes y vencimientos:** deben funcionar; es lo que más le preocupa a Luis («diseñarla bien»).
+- **Armar/desarmar:** solo en la web, con el permiso de ajustar inventario.
+- **No quiere que las piezas de un kit armado queden como «reservadas»** (no es verdad: forman parte de otra cosa), ni que el
+  inventario se descuadre.
+- Luis duda si construir ya el kit armado (no hay cliente que lo necesite) o dejarlo listo ahora que no hay datos: pendiente de decidir.
