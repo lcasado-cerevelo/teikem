@@ -12,7 +12,6 @@ import { useFormat } from '../../../kernel/format'
 import { useT } from '../../../kernel/i18n'
 import { hasInk, signatureToPng, Spinner, type SignatureStroke } from '../../../kernel/ui'
 import { useClient } from '../../clients/api'
-import { useWarehouses } from '../../warehouse/api'
 import { AvailabilityDialog } from '../OrderModal'
 import { useSalesOrder, type SalesAvailabilityDto, type SalesOrderDto, type SalesOrderRequest } from '../salesApi'
 import { AuthorizationStep, SubmitPasswordModal } from './AuthorizationStep'
@@ -75,8 +74,8 @@ export default function NewOrderScreen() {
 
   const { create, update, signature, removeSignature, availability, submit } = useWizardMutations()
   const client = useClient(state.clientPublicId, true)
-  const warehouses = useWarehouses({ includeInactive: false }, { handleAccessDenied: false })
-  const needsWarehouse = (warehouses.data?.length ?? 0) > 1
+  // 2026-11-10 (Luis): el pedido no pide almacén; si la compañía tiene varios, el servidor toma el primero activo y el almacén lo decide al despachar
+  const needsWarehouse = false
   const requiresSignature = client.data?.requireOrderSignature ?? saved?.terms?.clientRequiresSignature ?? false
   const hasSavedSignature = !!saved?.terms?.signatureFilePublicId && !sigDirty
   const ctx: StepContext = { requiresSignature, hasSignature: hasInk(strokes) || hasSavedSignature, needsWarehouse }
@@ -326,7 +325,7 @@ export default function NewOrderScreen() {
         <ol className="wz-progress">
           {WIZARD_STEPS.map((s, i) => (
             <li key={s} className={i === idx ? 'on' : i < idx ? 'past' : undefined}>
-              <button type="button" disabled={i >= idx || busy} aria-current={i === idx ? 'step' : undefined} onClick={() => goTo(s)}>
+              <button type="button" disabled={i === idx || i > idx + 1 || busy} aria-current={i === idx ? 'step' : undefined} onClick={() => (i === idx + 1 ? void goNext() : goTo(s))}>
                 <span className="wz-num" aria-hidden="true">{i + 1}</span>
                 <span className="wz-lab">{t(`salesWizard.steps.${s}`)}</span>
               </button>

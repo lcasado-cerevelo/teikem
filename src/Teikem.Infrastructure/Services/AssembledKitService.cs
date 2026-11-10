@@ -85,6 +85,9 @@ public sealed class AssembledKitService(TeikemDbContext db, ITenantContext tenan
     public async Task<ProductDetailDto> CreateAsync(ProductCreateRequest req, CancellationToken ct)
     {
         if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
+        // Lote 233: solo el ALTA depende del ajuste de la compañía; los kits armados que ya existen siguen armándose, desarmándose y vendiéndose aunque se apague.
+        if (!await db.Tenants.AsNoTracking().Where(t => t.TenantId == tenant.TenantId).Select(t => t.UsesAssembledKits).FirstOrDefaultAsync(ct))
+            throw new StatusRuleException(AssembledKitRules.CompanyDoesNotUseAssembledKits);
         var assembling = req.AssembleQuantity is not null;
         if (assembling)
         {

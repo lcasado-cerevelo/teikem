@@ -138,6 +138,10 @@ repite sola. Al terminar, el menú y el buscador muestran u ocultan las pantalla
   permite la acción (sin regla, se permite). Cada casilla se guarda al hacer clic (`PUT …/capabilities/TRANSPORT_ORDER?statusDomain=OrderStatus`;
   "Acción del estatus guardada") y exige el permiso **`admin.statusconfig`** (sin él, de solo lectura). El servidor aplica la
   matriz en cada operación de la orden.
+- **Kits** (módulo WMS, Lote 233, 2026-11-10). Interruptor **«La compañía trabaja con kits armados»**, **apagado por omisión**. Debajo explica que un kit armado es un producto con inventario
+  propio que se arma con otras piezas, y que los kits de oferta no dependen de este ajuste. Encendido, «Nuevo producto» pregunta «¿Lo que va a crear es un kit?»; apagado, no lo pregunta y el servidor
+  rechaza el alta de un kit armado con *La compañía no trabaja con kits armados: actívelo en Ajustes → Operación.* (422). Apagarlo no cambia los kits armados que ya existen. Se guarda al tocarlo (`PUT /tenant/settings` con `usesAssembledKits`;
+  «Ajustes guardados») y exige `admin.tenant` (sin él, de solo lectura). Detalle en el capítulo [06 §8b.1a](../06-inventario-y-almacen.md). Captura pendiente.
 - **Productos nuevos: categoría por defecto** (módulo WMS, 2026-10-11). Un selector con las categorías **activas** (ruta «Raíz / Hija») y
   «Sin categoría por defecto». Al crear un producto en Productos e inventario llega con esa categoría elegida (se puede cambiar o quitar ahí);
   no afecta a productos que ya existen. Guardar manda `defaultProductCategoryId` (id; `0` = quitar) y exige `admin.tenant` (sin él, de solo lectura).

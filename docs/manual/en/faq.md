@@ -12084,3 +12084,39 @@ Disassembling is done in a warehouse other than the one where it was assembled a
 **What does "Falta el permiso 'inventory.adjust'." mean when assembling or disassembling?**
 (Missing permission 'inventory.adjust'.)
 Your user does not have the adjust inventory permission (403). Ask an administrator of your company to assign it if it matches your role.
+
+## Batch 233 — The setting “The company works with assembled kits”
+<!-- kemi:staff -->
+
+> The server answers these messages in Spanish; each question quotes the exact Spanish text, followed by its English meaning.
+
+Chapter: [06 §8b.1a](06-inventario-y-almacen.md) (the setting) and [06 §8b.2](06-inventario-y-almacen.md) (how an assembled kit is created). The setting is in System → Settings → Operations → **Kits** and comes **off**.
+
+### Common cases
+
+**Why don't I get the question asking whether it is a kit?**
+Because your company does not have “The company works with assembled kits” turned on. It is off by default. An administrator (`admin.tenant`) turns it on in System → Settings → Operations → **Kits**. Then reload the page and open “New product” again: “Is what you are creating a kit?” appears at the top.
+
+**Where do I turn on assembled kits?**
+In System → Settings → Operations tab → **Kits** panel → switch “The company works with assembled kits”. It is saved when you flip it. It needs `admin.tenant` and the Inventory with lots and serials module.
+
+**It was turned on and I still do not get the question. What do I do?**
+Reload the page. Company settings are kept in memory for up to 10 minutes; whoever changed it sees it at once, everyone else after reloading.
+
+**If I turn the setting off, what happens to the assembled kits I already have?**
+Nothing. They are still shown, edited, assembled, disassembled, sold and counted. Only creating new assembled kits stops.
+
+**Does this setting affect offer kits?**
+No. Offer kits (Accounting → Prices and offers) are assembled when ordered and do not depend on this setting.
+
+**I see the switch but cannot change it. Why?**
+Your user does not have `admin.tenant`. Ask an administrator of your company to change it.
+
+**I do not see the “Kits” panel in Settings → Operations. Why?**
+The panel only shows if the company has the Inventory with lots and serials module (`WMS_LOTSERIAL`) turned on.
+
+### Error messages
+
+**What does "La compañía no trabaja con kits armados: actívelo en Ajustes → Operación." mean?**
+(The company does not work with assembled kits: turn it on in Settings → Operations.)
+Someone tried to create an assembled kit and the company has “The company works with assembled kits” turned off (422). Nothing was created. An administrator turns it on in System → Settings → Operations → Kits; then create the kit again. On screen this message almost never appears (the question is hidden with the setting off): it comes through the API, or if the setting was turned off while you had “New product” open.

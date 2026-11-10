@@ -2,8 +2,7 @@
 // `orders.create` (Lote 106: al crear ya se cotiza y se mide el crédito; `overrideCredit` exige
 // `orders.credit_override`), eliminación `orders.cancel` (baja lógica solo en el estatus inicial). `quotedAmount` solo llega con
 // `orders.view_price`; sin él viene null. Lecturas con `useQuery` (clave `[ruta, params]`); escrituras con `useMutation`.
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../../kernel/api/client'
 import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import { catalogKeys } from '../../kernel/catalogs'
@@ -283,24 +282,42 @@ export function useRemoveStoredFile() {
   })
 }
 
-/** Lote 127: el contenido de un archivo del almacén como URL de objeto (se pide con la sesión; nunca hay un enlace directo al disco). Se libera al desmontar. */
+// Las URL de objeto de los archivos viven lo que viva su entrada en la caché de consultas, NO lo que viva un componente: varias pantallas (o la misma fila de una
+// tabla que se vuelve a montar) comparten la misma URL en caché, y si un componente la liberaba al desmontarse los demás se quedaban con la imagen rota.
+const fileUrls = new Map<string, string>()
+const watchedClients = new WeakSet<QueryClient>()
+function watchFileUrls(qc: QueryClient) {
+  if (watchedClients.has(qc)) return
+  watchedClients.add(qc)
+  qc.getQueryCache().subscribe((event) => {
+    if (event.type !== 'removed') return
+    const key = event.query.queryKey
+    if (key[0] !== 'files' || key[1] !== 'blob' || typeof key[2] !== 'string') return
+    const url = fileUrls.get(key[2])
+    if (url) URL.revokeObjectURL(url)
+    fileUrls.delete(key[2])
+  })
+}
+
+/** Lote 127: el contenido de un archivo del almacén como URL de objeto (se pide con la sesión; nunca hay un enlace directo al disco). Se libera cuando la consulta sale de la caché. */
 export function useStoredFileUrl(publicId: string | null | undefined) {
-  const q = useQuery({
+  const qc = useQueryClient()
+  watchFileUrls(qc)
+  return useQuery({
     queryKey: ['files', 'blob', publicId],
     queryFn: async () => {
-      const res = await api.GET('/api/v1/files/{publicId}', { params: { path: { publicId: publicId ?? '' } }, parseAs: 'blob' })
+      const id = publicId ?? ''
+      const res = await api.GET('/api/v1/files/{publicId}', { params: { path: { publicId: id } }, parseAs: 'blob' })
       if (res.error || !res.data) throw res.error ?? new Error('file')
-      return URL.createObjectURL(res.data as Blob)
+      const url = URL.createObjectURL(res.data as Blob)
+      // si se volvió a pedir el mismo archivo, la URL anterior se libera cuando las imágenes ya cambiaron a la nueva
+      const previous = fileUrls.get(id)
+      if (previous) setTimeout(() => URL.revokeObjectURL(previous), 30_000)
+      fileUrls.set(id, url)
+      return url
     },
     enabled: !!publicId,
     staleTime: 5 * 60_000,
     gcTime: 60_000,
   })
-  useEffect(() => {
-    const url = q.data
-    return () => {
-      if (url) URL.revokeObjectURL(url)
-    }
-  }, [q.data])
-  return q
 }

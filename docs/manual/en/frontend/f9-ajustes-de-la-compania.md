@@ -138,6 +138,11 @@ repeats by itself. When done, the menu and the search show or hide the module's 
   allows the action (with no rule, it is allowed). Each box is saved on click (`PUT …/capabilities/TRANSPORT_ORDER?statusDomain=OrderStatus`;
   "Status action saved") and requires the **`admin.statusconfig`** permission (without it, read-only). The server applies the
   matrix in every operation on the order.
+- **Kits** (WMS module, Batch 233, 2026-11-10). Switch **“The company works with assembled kits”**, **off by default**. Below it explains that an assembled kit is a product with its own
+  inventory that is built from other parts, and that offer kits do not depend on this setting. When on, “New product” asks “Is what you are creating a kit?”; when off, it does not ask and the server
+  rejects creating an assembled kit with *La compañía no trabaja con kits armados: actívelo en Ajustes → Operación.* (The company does not work with assembled kits: turn it on in Settings → Operations.) (422). Turning it off does not change the assembled
+  kits that already exist. It is saved when flipped (`PUT /tenant/settings` with `usesAssembledKits`; “Settings saved”) and requires `admin.tenant` (read-only without it). Detail in chapter
+  [06 §8b.1a](../06-inventario-y-almacen.md). Capture pending.
 - **New products: default category** (WMS module, 2026-10-11). A selector with the **active** categories (path “Root / Child”) and
   “No default category”. When a product is created in Products & inventory it arrives with that category chosen (it can be changed or cleared there);
   it does not affect products that already exist. Save sends `defaultProductCategoryId` (id; `0` = clear) and requires `admin.tenant` (without it, read-only).

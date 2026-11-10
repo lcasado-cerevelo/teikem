@@ -21,14 +21,15 @@ interface Call {
   url: URL
   body: unknown
 }
-const mock = vi.hoisted(() => ({ calls: [] as Call[], locked: true }))
+// usesKits: el ajuste de la compañía «trabaja con kits armados» (Lote 233; null = el ajuste todavía no contesta)
+const mock = vi.hoisted(() => ({ calls: [] as Call[], locked: true, usesKits: true as boolean | null }))
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
   const fetch = async (req: Request) => {
     const url = new URL(req.url)
     const text = req.method === 'GET' ? '' : await req.text()
     mock.calls.push({ method: req.method, url, body: text ? JSON.parse(text) : null })
-    const body = route(req.method, url)
+    const body = await route(req.method, url)
     return body instanceof Response ? body : new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } })
   }
   return { ...actual, api: actual.createApiClient({ baseUrl: 'http://api.test', fetch }) }
@@ -58,6 +59,7 @@ const PRODUCTS = [
 function route(method: string, url: URL): unknown {
   const p = url.pathname
   if (p.startsWith('/api/v1/catalogs/')) return LOOKUPS[p.slice('/api/v1/catalogs/'.length)] ?? []
+  if (p === '/api/v1/tenant/settings') return mock.usesKits === null ? new Promise<Response>(() => {}) : { id: 1, name: 'Advance', usesAssembledKits: mock.usesKits }
   if (p === '/api/v1/product-categories') return []
   if (p === '/api/v1/products/brands') return []
   if (p === '/api/v1/products/units-suggestion') return { regionCode: 'PR', dimensionUnit: 'IN', weightUnit: 'LB', dimensionUnits: ['IN', 'CM', 'FT', 'M'], weightUnits: ['LB', 'KG'] }
@@ -139,6 +141,7 @@ beforeAll(() => setLang('es'))
 beforeEach(() => {
   mock.calls = []
   mock.locked = true
+  mock.usesKits = true
 })
 
 describe('Nuevo producto: ¿es un kit? (lote 232)', () => {
@@ -146,7 +149,7 @@ describe('Nuevo producto: ¿es un kit? (lote 232)', () => {
     const user = userEvent.setup()
     wrap(<ProductEditorModal open product={null} onClose={() => {}} />)
     const dialog = await findDialog('Nuevo producto')
-    const question = within(dialog).getByRole('group', { name: '¿Lo que va a crear es un kit?' })
+    const question = await within(dialog).findByRole('group', { name: '¿Lo que va a crear es un kit?' })
     expect(within(question).getByRole('radio', { name: 'No' })).toBeChecked()
     expect(within(question).getByRole('radio', { name: 'Sí, es un kit' })).not.toBeChecked()
     expect(within(dialog).queryByRole('heading', { name: 'Composición del kit' })).toBeNull()
@@ -167,7 +170,7 @@ describe('Nuevo producto: ¿es un kit? (lote 232)', () => {
     const user = userEvent.setup()
     wrap(<ProductEditorModal open product={null} onClose={() => {}} />)
     const dialog = await findDialog('Nuevo producto')
-    await user.click(within(dialog).getByRole('radio', { name: 'Sí, es un kit' }))
+    await user.click(await within(dialog).findByRole('radio', { name: 'Sí, es un kit' }))
     expect(await within(dialog).findByRole('heading', { name: 'Composición del kit' })).toBeInTheDocument()
     expect(within(dialog).getByText('¿Cuántos kits arma ahora?')).toBeInTheDocument()
     // sin «No sustituible» (el kit armado no tiene sustitución); rastreo y costo no se escriben
@@ -220,7 +223,7 @@ describe('Nuevo producto: ¿es un kit? (lote 232)', () => {
     const user = userEvent.setup()
     wrap(<ProductEditorModal open product={null} onClose={() => {}} />)
     const dialog = await findDialog('Nuevo producto')
-    await user.click(within(dialog).getByRole('radio', { name: 'Sí, es un kit' }))
+    await user.click(await within(dialog).findByRole('radio', { name: 'Sí, es un kit' }))
     await user.type(within(dialog).getByLabelText(/^SKU/), 'KIT-2')
     await user.type(within(dialog).getByLabelText(/^Nombre/), 'Kit doble')
     await pickPiece(user, dialog, 1, /KIT-X/)
@@ -233,7 +236,7 @@ describe('Nuevo producto: ¿es un kit? (lote 232)', () => {
     const user = userEvent.setup()
     wrap(<ProductEditorModal open product={null} onClose={() => {}} />, ['inventory.view', 'inventory.manage'])
     const dialog = await findDialog('Nuevo producto')
-    await user.click(within(dialog).getByRole('radio', { name: 'Sí, es un kit' }))
+    await user.click(await within(dialog).findByRole('radio', { name: 'Sí, es un kit' }))
     expect(await within(dialog).findByText(/Armar kits pide el permiso de ajustar inventario/)).toBeInTheDocument()
     expect(within(dialog).queryByLabelText(/^Kits a armar ahora/)).toBeNull()
     await user.type(within(dialog).getByLabelText(/^SKU/), 'KIT-3')
@@ -242,6 +245,47 @@ describe('Nuevo producto: ¿es un kit? (lote 232)', () => {
     await user.click(within(dialog).getByRole('button', { name: /Guardar/ }))
     await waitFor(() => expect(posted()).toBeDefined())
     expect(posted()).toMatchObject({ isAssembledKit: true, kitPieces: [{ productPublicId: B, quantity: 1 }], assembleQuantity: null, assembleToBinId: null })
+  })
+})
+
+describe('Ajuste de la compañía «trabaja con kits armados» (lote 233)', () => {
+  it('apagado: «Nuevo producto» no pregunta si es un kit y se guarda un producto normal sin nada de kit', async () => {
+    mock.usesKits = false
+    const user = userEvent.setup()
+    wrap(<ProductEditorModal open product={null} onClose={() => {}} />)
+    const dialog = await findDialog('Nuevo producto')
+    await waitFor(() => expect(mock.calls.some((c) => c.url.pathname === '/api/v1/tenant/settings')).toBe(true))
+    await user.type(within(dialog).getByLabelText(/^SKU/), 'TOR-1')
+    await user.type(within(dialog).getByLabelText(/^Nombre/), 'Tornillo')
+    expect(within(dialog).queryByRole('group', { name: '¿Lo que va a crear es un kit?' })).toBeNull()
+    expect(within(dialog).queryByRole('heading', { name: 'Composición del kit' })).toBeNull()
+    expect(within(dialog).getByRole('combobox', { name: /^Rastreo/ })).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: /Guardar/ }))
+    await waitFor(() => expect(posted()).toBeDefined())
+    for (const k of ['isAssembledKit', 'kitPieces', 'assembleQuantity', 'assembleToBinId', 'assembleWarehousePublicId']) expect(posted()!).not.toHaveProperty(k)
+  })
+
+  it('mientras el ajuste carga no se pinta la pregunta', async () => {
+    mock.usesKits = null
+    wrap(<ProductEditorModal open product={null} onClose={() => {}} />)
+    const dialog = await findDialog('Nuevo producto')
+    await waitFor(() => expect(mock.calls.some((c) => c.url.pathname === '/api/v1/tenant/settings')).toBe(true))
+    expect(within(dialog).queryByRole('group', { name: '¿Lo que va a crear es un kit?' })).toBeNull()
+  })
+
+  it('encendido: la pregunta aparece', async () => {
+    wrap(<ProductEditorModal open product={null} onClose={() => {}} />)
+    const dialog = await findDialog('Nuevo producto')
+    expect(await within(dialog).findByRole('group', { name: '¿Lo que va a crear es un kit?' })).toBeInTheDocument()
+  })
+
+  it('apagado: editar un kit armado que ya existe sigue mostrando su composición y el acceso a Armar y desarmar', async () => {
+    mock.usesKits = false
+    wrap(<ProductEditorModal open product={kitDetail()} onClose={() => {}} />)
+    const dialog = await findDialog('Editar producto')
+    expect(await within(dialog).findByText('La composición ya no se cambia: cree un kit nuevo.')).toBeInTheDocument()
+    expect(within(dialog).getByText('GUA-1')).toBeInTheDocument()
+    expect(within(dialog).getByRole('link', { name: 'Armar y desarmar' })).toBeInTheDocument()
   })
 })
 

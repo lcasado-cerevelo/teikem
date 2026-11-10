@@ -118,6 +118,9 @@ public class Tenant : ISoftDeletable
     public decimal? SalesShippingCharge { get; set; }
     public decimal? SalesShippingFreeFrom { get; set; }
     public bool SalesShippingTaxable { get; set; }
+    /// <summary>Lote 233 (Ajustes → Operación → Kits): «La compañía trabaja con kits armados». Apagado por omisión: «Nuevo producto» no pregunta «¿Es un kit?» y el alta de un
+    /// kit armado se rechaza (422). Los kits armados que ya existan siguen funcionando (armar, desarmar, vender) aunque se apague. No toca los kits de oferta.</summary>
+    public bool UsesAssembledKits { get; set; }
     /// <summary>
     /// Lote 225 (Ajustes → Operación → QuickBooks): las cuentas e ítems con que sale el archivo IIF de QuickBooks Desktop (NULL = el valor por omisión de QuickBooksRules)
     /// y el mapa término de pago de Teikem → nombre del término en QuickBooks (JSON {"NET30":"Net 30"}; NULL = sin mapa: la factura sale sin término).

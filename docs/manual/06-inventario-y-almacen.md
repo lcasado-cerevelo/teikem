@@ -415,7 +415,7 @@ Cómo se usa:
 - `GET/POST /api/v1/product-categories`, `PATCH /api/v1/product-categories/{id}` (mover/renombrar), `POST .../{id}/
   deactivate|reactivate`.
 
-**Nuevo producto y kits (Lote 232).** El formulario de «Nuevo producto» empieza con la pregunta **«¿Lo que va a crear es un kit?»** (No por omisión). Un producto normal no ve nada de kits; con «Sí, es un kit» aparecen la composición y cuántos kits armar ahora (§8b). Los kits que se arman al pedir (de oferta) **no** se crean ni se ven aquí: viven en Contabilidad → Precios y ofertas (§8b.1).
+**Nuevo producto y kits (Lotes 232 y 233).** Si la compañía **trabaja con kits armados** (Sistema → Ajustes → Operación → **Kits**; apagado por omisión, §8b.1a), el formulario de «Nuevo producto» empieza con la pregunta **«¿Lo que va a crear es un kit?»** (No por omisión). Con el ajuste apagado la pregunta **no aparece** y todo producto nuevo es normal. Un producto normal no ve nada de kits; con «Sí, es un kit» aparecen la composición y cuántos kits armar ahora (§8b). Los kits que se arman al pedir (de oferta) **no** se crean ni se ven aquí: viven en Contabilidad → Precios y ofertas (§8b.1).
 
 ### Empaque del producto (2026-10-09)
 
@@ -2535,10 +2535,24 @@ Un **kit** es un producto formado por otros productos (por ejemplo, «Kit de lim
 - **Solo en la web.** La app del almacén no arma ni desarma kits.
 - API del kit armado: `POST /api/v1/products` con `isAssembledKit: true`; `GET` y `PUT /api/v1/products/{publicId}/assembled-kit`; `GET` y `POST …/assembled-kit/assemblies`; `POST …/assembled-kit/assemblies/{assemblyPublicId}/disassemble`. API del kit de oferta: [47 §4.5](47-precios-y-ofertas.md#45-cómo-se-usa-api).
 
+### 8b.1a El ajuste «La compañía trabaja con kits armados» (Lote 233, 2026-11-10)
+
+Qué hace: cada compañía decide si **trabaja con kits armados**. **Por omisión: NO.** Mientras esté en NO, «Nuevo producto» **no muestra** el recuadro «¿Lo que va a crear es un kit?» y no se pueden crear kits armados. Con SÍ, el recuadro aparece y todo lo de §8b.2 funciona.
+
+- **Dónde:** Sistema → **Ajustes** → pestaña **Operación** → panel **Kits** → interruptor **«La compañía trabaja con kits armados»**. Se guarda al tocarlo («Ajustes guardados»); no hay botón de guardar. El panel sale solo con el módulo Inventario con lotes y series (`WMS_LOTSERIAL`).
+- **Quién puede:** cambiarlo, `admin.tenant` (sin él, el interruptor se ve pero no se cambia). Leerlo, cualquier usuario con sesión: por eso quien crea productos (`inventory.manage`) ve o no la pregunta sin necesitar otro permiso.
+- **Apagarlo no rompe nada:** los kits armados que **ya existen** siguen igual: se ven, se editan, se **arman**, se **desarman**, se venden y se cuentan. Solo deja de poderse **crear** kits armados nuevos.
+- **No toca los kits de oferta** (Contabilidad → Precios y ofertas): esos no dependen de este ajuste.
+- **Cuánto tarda en verse:** quien cambia el ajuste lo ve al instante. Otra persona que ya tenía la pantalla abierta lo ve al recargar la página (los ajustes de la compañía se guardan en memoria hasta 10 minutos).
+- **API:** `GET /api/v1/tenant/settings` devuelve `usesAssembledKits` (`true`/`false`); `PUT /api/v1/tenant/settings` con `{ "usesAssembledKits": true }` lo cambia (sin el campo, o `null`, no cambia). El cambio queda en la bitácora de auditoría de la compañía (campo `UsesAssembledKits`).
+- **Regla del servidor:** con el ajuste apagado, `POST /api/v1/products` con `isAssembledKit: true` responde **422** con «La compañía no trabaja con kits armados: actívelo en Ajustes → Operación.» y no crea nada. Armar, desarmar y cambiar la composición de un kit que ya existe **no** dependen del ajuste.
+- **Compañías que ya tenían kits armados** cuando se instaló el ajuste quedaron en SÍ (para no quitarles lo que ya usaban); todas las demás, en NO.
+
 ### 8b.2 Kit armado: cómo se usa (Lote 232)
 
 #### Crear un kit armado
 
+0. **Antes:** la compañía debe tener encendido **«La compañía trabaja con kits armados»** (§8b.1a). Si no, la pregunta del paso 1 no aparece.
 1. **Almacén → Productos e inventario → Nuevo producto.** Arriba del formulario, la pregunta **«¿Lo que va a crear es un kit?»** con **No** (por omisión) y **«Sí, es un kit»**. Con «No» el producto es normal y no se ve nada de kits.
 2. Con **«Sí»** aparecen ahí mismo: **Composición del kit** (**Piezas del kit**: producto y **cantidad por kit**, **Agregar pieza**) y **«¿Cuántos kits arma ahora?»**. El rastreo y el costo de compra dejan de ser campos que se escriben: salen como «Lo deciden las piezas» y «Sale de las piezas al armar».
 3. Las piezas son productos **del mismo dueño de inventario que el kit**, **activos**, **sin serie** y que **no sean kits** (ni de oferta ni armados). De 1 a 50 piezas, sin repetir; la cantidad es mayor que cero y admite hasta 3 decimales. El buscador de piezas solo ofrece productos del dueño del kit.
@@ -2605,6 +2619,7 @@ Un kit armado **se vende como cualquier producto**: aparece en el pedido guiado 
 
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|
+| Alta de un kit armado con el ajuste de la compañía apagado (Lote 233, §8b.1a) | `La compañía no trabaja con kits armados: actívelo en Ajustes → Operación.` | 422 |
 | Sin piezas | `Un kit necesita al menos un componente.` | 400 |
 | Más de 50 piezas | `Un kit lleva como máximo 50 componentes.` | 400 |
 | Pieza sin producto | `Indique el producto del componente.` | 400 |
@@ -2725,6 +2740,7 @@ Un kit armado **sí** tiene existencia: esos movimientos son válidos en él.
 
 ### 8b.4 Para soporte
 
+- **Ajuste «trabaja con kits armados» (Lote 233):** columna `Tenant.UsesAssembledKits` (BIT, 0 por omisión), sección «2026-11-10 — Lote 233» de `Diseño/logistica-db-update.sql` (idempotente; al crear la columna deja en 1 a las compañías que ya tenían algún producto `ASSEMBLED_KIT`). Si un usuario dice «no me sale la pregunta del kit», revise primero este ajuste. Solo lo consulta el alta (`AssembledKitService.CreateAsync`).
 - **Kit armado (Lote 232):** el producto es de tipo `ASSEMBLED_KIT` (catálogo `ProductType`); su composición está en `ProductKitComponent`. Tablas `KitAssembly` y `KitAssemblyLine` (armados y lo que salió de cada pieza: lote, posición, cantidad por kit, cantidad, devuelta y costo) y `KitDisassembly` y `KitDisassemblyLine` (desarmados). Contadores por compañía `KITASSEMBLY` (ARM-#####) y `KITDISASSEMBLY` (DES-#####). Motivos de ajuste de sistema `KIT_ASSEMBLY` y `KIT_DISASSEMBLY`; EntityType `KIT_ASSEMBLY` y `KIT_DISASSEMBLY`. Sección «2026-11-10 — Lote 232» de `Diseño/logistica-db-update.sql` (idempotente, solo agrega).
 - Armar y desarmar pasan por el libro de inventario (`InventoryLedger`) como movimientos de **ajuste** con esos motivos; el documento ARM/DES es el origen que ve el Kárdex. El bloqueo del encabezado del kit pone en fila dos armados del mismo kit.
 - Cuántos kits se pueden armar: `canAssemble` (en un armado, un lote por pieza) y `canAssembleTotal` (juntando lotes) por almacén; se calculan leyendo saldos sin bloquear, así que son orientativos.

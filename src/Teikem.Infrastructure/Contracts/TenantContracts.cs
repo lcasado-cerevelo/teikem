@@ -24,7 +24,12 @@ public sealed record TenantSettingsDto(
     int InventoryExpiryWarnDays = 30, int InventoryNoMovementDays = 90, string RotationMethodNoLot = "FIFO",
     string DispatchRequirement = "FREE", string ValuationMethod = "AVERAGE", string ReceiptRequirement = "FREE",
     int FleetDocWarnDays = 30, int? DriverSessionMinutes = null,
-    string? PhoneNumber = null, TenantAddressDto? Address = null, TenantAddressDto? PostalAddress = null, string? CustomDomain = null, string? Subdomain = null);
+    string? PhoneNumber = null, TenantAddressDto? Address = null, TenantAddressDto? PostalAddress = null, string? CustomDomain = null, string? Subdomain = null)
+{
+    /// <summary>Lote 233 (Ajustes → Operación → Kits): la compañía trabaja con kits armados (false por omisión). Con false, «Nuevo producto» no pregunta «¿Es un kit?» y
+    /// POST /products con isAssembledKit=true contesta 422. Va como propiedad (no en el constructor) para no mover el orden de los campos de antes.</summary>
+    public bool UsesAssembledKits { get; init; }
+}
 
 /// <summary>2026-10-26: una dirección de la compañía (domicilio o postal); Country es el código ISO de 2 letras y CountryLabel su nombre en el idioma de la persona.</summary>
 public sealed record TenantAddressDto(string Line1, string? Line2, string City, string? State, string? PostalCode, string Country, string? CountryLabel);
@@ -58,7 +63,11 @@ public sealed record TenantSettingsUpdateRequest(
     int? InventoryExpiryWarnDays = null, int? InventoryNoMovementDays = null, string? RotationMethodNoLot = null,
     string? DispatchRequirement = null, string? ValuationMethod = null, string? ReceiptRequirement = null,
     int? FleetDocWarnDays = null, int? DriverSessionMinutes = null,
-    string? PhoneNumber = null, TenantAddressInput? Address = null, TenantAddressInput? PostalAddress = null, bool? PostalSameAsAddress = null);
+    string? PhoneNumber = null, TenantAddressInput? Address = null, TenantAddressInput? PostalAddress = null, bool? PostalSameAsAddress = null)
+{
+    /// <summary>Lote 233: «La compañía trabaja con kits armados»; null = sin cambio. Apagarlo no toca los kits armados que ya existen.</summary>
+    public bool? UsesAssembledKits { get; init; }
+}
 
 /// <summary>Juego de valores de región y formatos (los de una región en <see cref="TenantFormatOptionsDto"/>).</summary>
 public sealed record TenantFormatDto(

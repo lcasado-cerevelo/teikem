@@ -126,7 +126,7 @@ describe('ProductsStep — paso 2 del pedido guiado', () => {
     expect(within(list).getAllByRole('listitem')).toHaveLength(1)
     await user.clear(screen.getByRole('searchbox', { name: /Buscar por SKU o nombre/ }))
     await user.type(screen.getByRole('searchbox', { name: /Buscar por SKU o nombre/ }), 'zzz')
-    expect(screen.getByText('Ningún producto de esta marca coincide con la búsqueda.')).toBeInTheDocument()
+    expect(screen.getByText('Ningún producto ni oferta coincide con la búsqueda.')).toBeInTheDocument()
   })
 
   it('Lote 230: en el carrito, una pieza del kit con sustitutos lleva «Cambiar»; escoger deja «en lugar de» y la línea manda todas las piezas', async () => {

@@ -125,6 +125,8 @@ public sealed record KitPieceTake(int BinId, int? LotId, decimal Quantity);
 /// <summary>Lote 232 — reglas puras del kit armado: mensajes exactos, rastreo, vencimiento del lote del kit y cuántos kits alcanzan. Sin BD.</summary>
 public static class AssembledKitRules
 {
+    /// <summary>Lote 233: alta de un kit armado con el ajuste de la compañía «trabaja con kits armados» apagado (422).</summary>
+    public const string CompanyDoesNotUseAssembledKits = "La compañía no trabaja con kits armados: actívelo en Ajustes → Operación.";
     public static string NotAssembledKit(string sku) => $"El producto {sku} no es un kit armado.";
     public static string PieceIsSerial(string sku) => $"La pieza {sku} se rastrea por serie: un kit armado no lleva piezas con serie en esta versión.";
     public static string PieceIsKit(string sku) => $"{sku} es un kit: un kit armado no lleva otro kit como pieza.";

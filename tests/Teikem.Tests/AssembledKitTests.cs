@@ -33,7 +33,7 @@ public sealed class AssembledKitTests
     /// A (lote, costo 3): A1 vence 2027-03-01 con 10 en P-01 y A2 vence 2027-01-15 con 4 en P-02. B (sin lote, costo 4): 10 en P-03 y 5 en cuarentena (Q-01).
     /// C (lote, costo 1): C1 vence 2026-12-31 con 10 en P-01. K-01 recibe los kits.
     /// </summary>
-    private static async Task<World> SeedAsync(Action<IServiceCollection>? extra = null)
+    private static async Task<World> SeedAsync(Action<IServiceCollection>? extra = null, bool usesAssembledKits = true)
     {
         var f = await WmsFixture.CreateAsync(s =>
         {
@@ -44,6 +44,13 @@ public sealed class AssembledKitTests
             s.AddSingleton<AssembledKitService>();
             extra?.Invoke(s);
         });
+        // Lote 233: el alta de un kit armado pide el ajuste de la compañía «trabaja con kits armados» (apagado por omisión); estas pruebas lo encienden.
+        if (usesAssembledKits)
+        {
+            (await f.Db.Tenants.SingleAsync(t => t.TenantId == WmsFixture.TenantId)).UsesAssembledKits = true;
+            await f.Db.SaveChangesAsync();
+            f.Db.ChangeTracker.Clear();
+        }
         var w = await f.AddWarehouseAsync("W1");
         var pck = await f.AddZoneAsync(w, "PCK", ZoneTypes.Picking);
         var p1 = await f.AddBinAsync(pck, "P-01");
@@ -375,6 +382,69 @@ public sealed class AssembledKitTests
             await MsgOf(() => Run(w, () => w.Kits.SetCompositionAsync(kit.Product.PublicId, new AssembledKitSetRequest(new[] { Piece(w.B, 3m) }), default))));
         Assert.Equal(AssembledKitRules.NotAssembledKit("A"),
             await MsgOf(() => Run(w, () => w.Kits.SetCompositionAsync(w.A.PublicId, new AssembledKitSetRequest(new[] { Piece(w.B, 3m) }), default))));
+    }
+
+    // ================================================================ Lote 233: el parámetro de la compañía «trabaja con kits armados»
+
+    private static TenantSettingsUpdateRequest UsesKits(bool? value)
+        => new(null, null, null, null, null, null, null, null, null, null, null) { UsesAssembledKits = value };
+
+    [Fact]
+    public async Task The_company_setting_is_off_by_default_and_creating_an_assembled_kit_is_rejected_until_it_is_turned_on()
+    {
+        var w = await SeedAsync(s => s.AddSingleton<TenantService>(), usesAssembledKits: false);
+        await using var _ = w.F;
+        var settings = w.F.Get<TenantService>();
+        Assert.False(new Teikem.Domain.Tenancy.Tenant().UsesAssembledKits);                       // por omisión: NO
+        Assert.False((await Run(w, () => settings.GetSettingsAsync(default))).UsesAssembledKits);
+
+        var ex = await Assert.ThrowsAsync<StatusRuleException>(() => CreateKitAsync(w));           // 422
+        Assert.Equal("La compañía no trabaja con kits armados: actívelo en Ajustes → Operación.", ex.Message);
+        Assert.Equal(AssembledKitRules.CompanyDoesNotUseAssembledKits, ex.Message);
+        Assert.Empty(await w.F.Db.Set<Product>().AsNoTracking().Where(p => p.Sku == "KIT-1").ToListAsync());   // no quedó nada
+
+        // un cambio parcial que no lo trae no lo toca; encenderlo permite el alta
+        Assert.False((await Run(w, () => settings.UpdateSettingsAsync(UsesKits(null), default))).UsesAssembledKits);
+        Assert.True((await Run(w, () => settings.UpdateSettingsAsync(UsesKits(true), default))).UsesAssembledKits);
+        Assert.True((await Run(w, () => settings.GetSettingsAsync(default))).UsesAssembledKits);
+        var kit = await CreateKitAsync(w);
+        Assert.True(kit.Product.IsAssembledKit);
+    }
+
+    [Fact]
+    public async Task Turning_the_setting_off_keeps_existing_assembled_kits_working_but_stops_new_ones()
+    {
+        var w = await SeedAsync(s => s.AddSingleton<TenantService>());
+        await using var _ = w.F;
+        var kit = await CreateKitAsync(w);
+        var first = (await AssembleAsync(w, kit.Product.PublicId, 1m)).Assembly;
+        Assert.False((await Run(w, () => w.F.Get<TenantService>().UpdateSettingsAsync(UsesKits(false), default))).UsesAssembledKits);
+
+        // los que ya existen: se leen, se arman y se desarman igual
+        Assert.True((await Run(w, () => w.Kits.GetAsync(kit.Product.PublicId, default))).IsAssembledKit);
+        var second = (await AssembleAsync(w, kit.Product.PublicId, 1m)).Assembly;
+        Assert.Equal(1m, second.Quantity);
+        var back = await Run(w, () => w.Kits.DisassembleAsync(kit.Product.PublicId, first.PublicId, new KitDisassembleRequest(1m), default));
+        Assert.Equal(0m, back.Assembly.Remaining);
+        // pero no se crean kits nuevos
+        var ex = await Assert.ThrowsAsync<StatusRuleException>(() => CreateKitAsync(w, "KIT-2"));
+        Assert.Equal(AssembledKitRules.CompanyDoesNotUseAssembledKits, ex.Message);
+        // y un producto normal se crea como siempre
+        var plain = await Run(w, () => w.F.Get<ProductService>().CreateAsync(new ProductCreateRequest("NORMAL-1", "Producto normal"), default));
+        Assert.False(plain.Product.IsAssembledKit);
+    }
+
+    [Fact]
+    public void Update_sql_adds_the_setting_off_by_default_in_an_idempotent_section_at_the_end()
+    {
+        var sql = File.ReadAllText(Path.Combine(Teikem.Infrastructure.Persistence.Scripts.DatabaseInitializer.ResolveRepoRoot(null), "Diseño", "logistica-db-update.sql")).Replace("\r\n", "\n");
+        var start = sql.IndexOf("2026-11-10 — Lote 233: parámetro de la compañía «La compañía trabaja con kits armados»", StringComparison.Ordinal);
+        Assert.True(start > sql.IndexOf("2026-11-10 — Lote 232: KIT ARMADO", StringComparison.Ordinal));
+        var section = UpdateSqlSection.From(sql, start);
+        Assert.Contains("IF COL_LENGTH(N'dbo.Tenant', N'UsesAssembledKits') IS NULL", section);
+        Assert.Contains("ALTER TABLE dbo.Tenant ADD UsesAssembledKits BIT NOT NULL CONSTRAINT DF_Tenant_UsesAssembledKits DEFAULT 0;", section);
+        Assert.DoesNotContain("DELETE", section, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("DROP", section, StringComparison.OrdinalIgnoreCase);
     }
 
     // ================================================================ aislamiento

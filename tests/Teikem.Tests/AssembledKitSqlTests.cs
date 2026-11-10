@@ -106,11 +106,9 @@ public sealed class AssembledKitSqlTests(NotificationSqlFixture fx) : IClassFixt
         var lookups = new SqlLookups(fx);
         await using (var db = fx.NewDb(tenantId))
         {
-            if (valuationMethod is not null)
-            {
-                var t = await db.Tenants.SingleAsync(x => x.TenantId == tenantId);
-                t.ValuationMethod = valuationMethod;
-            }
+            var t = await db.Tenants.SingleAsync(x => x.TenantId == tenantId);
+            t.UsesAssembledKits = true;   // Lote 233: el alta de un kit armado pide el ajuste de la compañía (apagado por omisión)
+            if (valuationMethod is not null) t.ValuationMethod = valuationMethod;
             var w = new Warehouse { PublicId = Guid.NewGuid(), TenantId = tenantId, Code = "W1", Name = "Almacén", CountryLookupId = 1, StatusCodeId = 1, IsActive = true };
             db.Warehouses.Add(w);
             await db.SaveChangesAsync();

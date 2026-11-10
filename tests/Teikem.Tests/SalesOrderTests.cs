@@ -334,8 +334,12 @@ public sealed class SalesOrderServiceTests
         var svc = f.Get<SalesOrderService>();
         var one = await svc.CreateAsync(new SalesOrderRequest(null, c.PublicId, Lines: new[] { L(p, 1m) }), default);
         Assert.Equal(w1.PublicId, one.WarehousePublicId);
-        await f.AddWarehouseAsync("W2");
-        Assert.Equal(SalesRules.WarehouseRequired, await MsgOf(() => svc.CreateAsync(new SalesOrderRequest(null, c.PublicId, Lines: new[] { L(p, 1m) }), default)));
+        // 2026-11-10: con varios almacenes la venta ya no exige indicarlo: toma el primero activo; quien quiera otro lo manda
+        var w2 = await f.AddWarehouseAsync("W2");
+        var auto = await svc.CreateAsync(new SalesOrderRequest(null, c.PublicId, Lines: new[] { L(p, 1m) }), default);
+        Assert.Equal(w1.PublicId, auto.WarehousePublicId);
+        var chosen = await svc.CreateAsync(new SalesOrderRequest(w2.PublicId, c.PublicId, Lines: new[] { L(p, 1m) }), default);
+        Assert.Equal(w2.PublicId, chosen.WarehousePublicId);
     }
     // 2026-11-09 — filtros de la pantalla Órdenes de venta: varios clientes, productos y estatus, y el rango por fecha solicitada o requerida.
     [Fact]

@@ -8509,6 +8509,10 @@
       },
       "ops": {
         "defaultsTitle": "Defaults",
+        "kitsTitle": "Kits",
+        "kitsToggle": "The company works with assembled kits",
+        "kitsHelp": "An assembled kit is a product with its own inventory that is built from other parts: assembling it takes the parts out of inventory and puts the kits in. When on, “New product” asks “Is what you are creating a kit?”; when off, it does not ask.",
+        "kitsNote": "Turning it off does not change the assembled kits that already exist: they can still be assembled, disassembled and sold. Offer kits do not depend on this setting.",
         "clientLabelsDefault": "Print labels automatically for new clients",
         "clientLabelsDefaultHelp": "It is the value each new client starts with; afterwards it is switched on or off in the client record (Profile → “Print labels automatically”). It does not change existing clients.",
         "svcDefaultLabel": "Default service type",
@@ -10812,6 +10816,8 @@
       "termNone": "Choose the term"
     },
     "products": {
+      "noMatchAll": "No product or offer matches the search.",
+      "noProductsInBrand": "This brand has no products.",
       "qtyPlaceholder": "Quantity",
       "allBrands": "All brands",
       "photoOf": "View the photo of {name}",

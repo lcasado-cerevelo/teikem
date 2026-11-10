@@ -36,7 +36,7 @@ import { useForm, useWatch } from 'react-hook-form'
 import { Link } from 'react-router-dom'
 import { z } from 'zod'
 import { useCan } from '../../kernel/access'
-import { useLookups } from '../../kernel/catalogs'
+import { useLookups, useTenantSettings } from '../../kernel/catalogs'
 import { CustomFieldsForm, useSaveCustomFields } from '../../kernel/custom-fields'
 import { useFormat } from '../../kernel/format'
 import { useLang, useT } from '../../kernel/i18n'
@@ -356,7 +356,10 @@ function ProductEditorForm({
   const qc = useQueryClient()
   const canAdjustInventory = useCan('inventory.adjust')
   const kitChoice = useWatch({ control: form.control, name: 'kitChoice' })
-  const isKitNew = !isEdit && kitChoice === 'yes'
+  // Lote 233: la pregunta solo sale si la compañía trabaja con kits armados (Ajustes → Operación → Kits; apagado por omisión). Mientras el ajuste carga, no se pinta.
+  // Editar un kit armado que ya existe no depende del ajuste.
+  const usesAssembledKits = useTenantSettings(!isEdit).data?.usesAssembledKits === true
+  const isKitNew = !isEdit && usesAssembledKits && kitChoice === 'yes'
   const isKitEdit = isEdit && product?.isAssembledKit === true
   const isKit = isKitNew || isKitEdit
   const [newPieces, setNewPieces] = useState<KitPiece[]>(() => [newKitPiece('kp-new-0')])
@@ -578,8 +581,8 @@ function ProductEditorForm({
     <Modal open title={title} size="xl" onClose={onClose} dismissible={!submitting} footer={footer}>
       <Form id={formId} form={form} onSubmit={submit}>
         <fieldset className="pe-fields" disabled={!editable}>
-          {/* Lote 232: ¿es un kit armado? (solo en el alta; No por omisión) y, si lo es, su composición ahí mismo */}
-          {!isEdit && <KitQuestion idPrefix={formId} />}
+          {/* Lote 232: ¿es un kit armado? (solo en el alta y si la compañía trabaja con kits armados, Lote 233; No por omisión) y, si lo es, su composición ahí mismo */}
+          {!isEdit && usesAssembledKits && <KitQuestion idPrefix={formId} />}
           {isKitNew && (
             <NewKitBlock idPrefix={formId} pieces={newPieces} setPieces={setNewPieces} infos={pieceInfos} problem={piecesProblem} canAdjust={canAdjustInventory} />
           )}

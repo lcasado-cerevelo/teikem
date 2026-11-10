@@ -4,6 +4,7 @@
 //   con sesión y se cambia con `admin.statusconfig` (una celda por clic). Solo con el módulo de órdenes (LTL_GROUND).
 // - Productos nuevos (módulo WMS_LOTSERIAL, 2026-10-11 c): categoría por defecto que la pantalla de Productos preselecciona al crear.
 // - Despacho manual (módulo WMS_LOTSERIAL, 2026-10-11 b): motivo por default (preseleccionado al despachar; sigue obligatorio).
+// - Kits (módulo WMS_LOTSERIAL, Lote 233): «La compañía trabaja con kits armados» (apagado por omisión): con él, «Nuevo producto» pregunta «¿Es un kit?».
 // - Conteo cíclico (módulo WMS_LOTSERIAL, tarea 25): quién ve lo esperado al contar, margen de reconteo y si se muestra el número.
 // - Recepción por almacén (solo lectura, módulo WMS_LOTSERIAL): modo, posición de recepción, recibos abiertos y acomodos
 //   pendientes, aviso rojo si es con acomodo y no tiene posición de recepción, y "Abrir almacén" (ficha del almacén).
@@ -21,6 +22,7 @@ import {
   Form,
   IconCheckin,
   IconGear,
+  IconLayers,
   IconRoute,
   IconWarehouse,
   NumberInput,
@@ -169,6 +171,45 @@ function ClientLabelsDefault({ canEdit }: { canEdit: boolean }) {
       </label>
       <p className="set-d">{t('system.settings.ops.clientLabelsDefaultHelp')}</p>
     </div>
+  )
+}
+
+// ------------------------------------------------------------------ kits armados (Lote 233)
+
+/**
+ * «La compañía trabaja con kits armados» (`usesAssembledKits`, admin.tenant; apagado por omisión). Encendido, «Nuevo producto» pregunta «¿Lo que va a crear es un kit?»; apagado,
+ * no lo pregunta y el servidor rechaza el alta de un kit armado (422). Los kits armados que ya existen siguen funcionando; los kits de oferta no dependen de esto.
+ * Se guarda al instante (PUT /tenant/settings deja el DTO devuelto en la caché de ajustes: el editor de producto lo ve sin recargar).
+ */
+export function KitsPanel({ settings, canEdit }: { settings: TenantSettingsDto; canEdit: boolean }) {
+  const t = useT()
+  const save = useSaveTenantSettings()
+  return (
+    <Panel className="set-gap" icon={<IconLayers />} title={t('system.settings.ops.kitsTitle')}>
+      <label className="sw">
+        <input
+          type="checkbox"
+          role="switch"
+          checked={settings.usesAssembledKits === true}
+          disabled={!canEdit || save.isPending}
+          aria-describedby="set-kits-help"
+          onChange={async (e) => {
+            try {
+              await save.mutateAsync({ usesAssembledKits: e.target.checked })
+              toast.success(t('system.settings.saved'))
+            } catch (err) {
+              toast.error(problemText(err))
+            }
+          }}
+        />
+        <span className="tk" aria-hidden="true" />
+        <span>{t('system.settings.ops.kitsToggle')}</span>
+      </label>
+      <p id="set-kits-help" className="set-d">
+        {t('system.settings.ops.kitsHelp')}
+      </p>
+      <p className="set-d">{t('system.settings.ops.kitsNote')}</p>
+    </Panel>
   )
 }
 
@@ -696,6 +737,7 @@ export function OperationsTab({ settings, canEdit }: { settings: TenantSettingsD
         <DefaultsPanel settings={settings} canEdit={canEdit} wms={wms} />
         {orders && <PipelinePanel />}
       </div>
+      {wms && <KitsPanel settings={settings} canEdit={canEdit} />}
       {wms && <RotationPanel settings={settings} canEdit={canEdit} />}
       {wms && <InventoryAlertsPanel settings={settings} canEdit={canEdit} />}
       <FleetAlertsPanel settings={settings} canEdit={canEdit} />

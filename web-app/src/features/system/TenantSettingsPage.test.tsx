@@ -780,6 +780,32 @@ describe('Ajustes de la compañía', () => {
     expect(put()[0].body).toEqual({ rotationMethod: 'FEFO', rotationMethodNoLot: 'POSITION', rotationEnforcement: 'SUGGEST', dispatchRequirement: 'FREE', valuationMethod: 'AVERAGE', receiptRequirement: 'FREE' })
   })
 
+  it('Operación → Kits (Lote 233): apagado por omisión; el interruptor guarda usesAssembledKits al instante y explica qué es un kit armado', async () => {
+    const user = userEvent.setup()
+    wrap('/system/settings?tab=ops')
+    const panel = (await screen.findByRole('heading', { name: 'Kits' })).closest('.panel') as HTMLElement
+    const toggle = within(panel).getByRole('switch', { name: 'La compañía trabaja con kits armados' })
+    expect(toggle).not.toBeChecked()
+    expect(within(panel).getByText(/Un kit armado es un producto con inventario propio que se arma con otras piezas/)).toBeInTheDocument()
+    expect(within(panel).getByText(/Los kits de oferta no dependen de este ajuste\./)).toBeInTheDocument()
+
+    await user.click(toggle)
+    await waitFor(() => expect(put()).toHaveLength(1))
+    expect(put()[0].body).toEqual({ usesAssembledKits: true })
+    await waitFor(() => expect(within(panel).getByRole('switch', { name: 'La compañía trabaja con kits armados' })).toBeChecked())
+
+    await user.click(within(panel).getByRole('switch', { name: 'La compañía trabaja con kits armados' }))
+    await waitFor(() => expect(put()).toHaveLength(2))
+    expect(put()[1].body).toEqual({ usesAssembledKits: false })
+    await waitFor(() => expect(within(panel).getByRole('switch', { name: 'La compañía trabaja con kits armados' })).not.toBeChecked())
+  })
+
+  it('Operación → Kits: sin admin.tenant el interruptor es de solo lectura', async () => {
+    wrap('/system/settings?tab=ops', ['inventory.view'])
+    const panel = (await screen.findByRole('heading', { name: 'Kits' })).closest('.panel') as HTMLElement
+    expect(within(panel).getByRole('switch', { name: 'La compañía trabaja con kits armados' })).toBeDisabled()
+  })
+
   it('Operación → rotación: sin admin.tenant el selector es de solo lectura', async () => {
     wrap('/system/settings?tab=ops', ['inventory.view'])
     const panel = (await screen.findByRole('heading', { name: 'Rotación del inventario' })).closest('.panel') as HTMLElement

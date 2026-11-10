@@ -8509,6 +8509,10 @@
       },
       "ops": {
         "defaultsTitle": "Valores por defecto",
+        "kitsTitle": "Kits",
+        "kitsToggle": "La compañía trabaja con kits armados",
+        "kitsHelp": "Un kit armado es un producto con inventario propio que se arma con otras piezas: al armarlo salen las piezas del inventario y entran los kits. Encendido, «Nuevo producto» pregunta «¿Lo que va a crear es un kit?»; apagado, no lo pregunta.",
+        "kitsNote": "Apagarlo no cambia los kits armados que ya existen: se siguen armando, desarmando y vendiendo. Los kits de oferta no dependen de este ajuste.",
         "clientLabelsDefault": "Imprimir los labels automáticamente en los clientes nuevos",
         "clientLabelsDefaultHelp": "Es el valor con que nace cada cliente nuevo; después se enciende o se apaga en la ficha del cliente (Perfil → «Imprimir los labels automáticamente»). No cambia a los clientes que ya existen.",
         "svcDefaultLabel": "Tipo de servicio por defecto",
@@ -10815,6 +10819,8 @@
       "termNone": "Escoja el término"
     },
     "products": {
+      "noMatchAll": "Ningún producto ni oferta coincide con la búsqueda.",
+      "noProductsInBrand": "Esta marca no tiene productos.",
       "qtyPlaceholder": "Cantidad",
       "allBrands": "Todas las marcas",
       "photoOf": "Ver la foto de {name}",

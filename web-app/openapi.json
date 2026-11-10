@@ -92215,6 +92215,9 @@
           "subdomain": {
             "type": "string",
             "nullable": true
+          },
+          "usesAssembledKits": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -92419,6 +92422,10 @@
             "$ref": "#/components/schemas/TenantAddressInput"
           },
           "postalSameAsAddress": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "usesAssembledKits": {
             "type": "boolean",
             "nullable": true
           }

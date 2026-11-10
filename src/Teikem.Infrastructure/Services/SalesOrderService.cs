@@ -281,10 +281,10 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
             if (!w.IsActive) throw new StatusRuleException(SalesRules.WarehouseInactive);
             return w;
         }
-        var active = await db.Set<Warehouse>().AsNoTracking().Where(w => w.IsActive).OrderBy(w => w.WarehouseId).Take(2).ToListAsync(ct);
-        if (active.Count == 0) throw new StatusRuleException(SalesRules.NoActiveWarehouse);
-        if (active.Count > 1) throw new ValidationException("warehousePublicId", SalesRules.WarehouseRequired);
-        return active[0];
+        // 2026-11-10 (Luis): la venta no pregunta el almacén. Sin almacén indicado se toma el primer almacén activo (el más antiguo), aunque haya varios;
+        // quien necesite otro lo manda en warehousePublicId (la ventana «Nueva orden» de la oficina lo sigue ofreciendo).
+        var first = await db.Set<Warehouse>().AsNoTracking().Where(w => w.IsActive).OrderBy(w => w.WarehouseId).FirstOrDefaultAsync(ct);
+        return first ?? throw new StatusRuleException(SalesRules.NoActiveWarehouse);
     }
 
     /// <summary>

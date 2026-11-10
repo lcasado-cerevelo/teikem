@@ -188,7 +188,7 @@ export function ProductsStep({ state, onChange }: ProductsStepProps) {
             <QBox value={q} onChange={setQ} placeholder={t('salesWizard.products.search')} />
           </div>
           {products.length === 0 ? (
-            <p className="help" role="status">{t('salesWizard.products.noMatch')}</p>
+            offers.length > 0 ? null : <p className="help" role="status">{t(searching ? 'salesWizard.products.noMatchAll' : 'salesWizard.products.noProductsInBrand')}</p>
           ) : (
             <ul className="wz-prods" aria-label={t('salesWizard.products.listOf', { brand: searching ? t('salesWizard.products.allBrands') : current?.brand ?? t('salesWizard.products.noBrand') })}>
               {products.map((p) => {

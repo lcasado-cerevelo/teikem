@@ -53816,6 +53816,7 @@ export interface components {
             postalAddress?: components["schemas"]["TenantAddressDto"];
             customDomain?: string | null;
             subdomain?: string | null;
+            usesAssembledKits?: boolean;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -53879,6 +53880,7 @@ export interface components {
             address?: components["schemas"]["TenantAddressInput"];
             postalAddress?: components["schemas"]["TenantAddressInput"];
             postalSameAsAddress?: boolean | null;
+            usesAssembledKits?: boolean | null;
         };
         TenantSummaryDto: {
             /** Format: int32 */

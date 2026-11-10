@@ -415,7 +415,7 @@ How it is used:
 - `GET/POST /api/v1/product-categories`, `PATCH /api/v1/product-categories/{id}` (move/rename), `POST .../{id}/
   deactivate|reactivate`.
 
-**New product and kits (Batch 232).** The “New product” form starts with the question **“Is what you are creating a kit?”** (No by default). A normal product shows nothing about kits; with “Yes, it is a kit” the composition and how many kits to assemble now appear (§8b). Kits that are assembled when ordered (offer kits) are **not** created or shown here: they live in Accounting → Prices and offers (§8b.1).
+**New product and kits (Batches 232 and 233).** If the company **works with assembled kits** (System → Settings → Operations → **Kits**; off by default, §8b.1a), the “New product” form starts with the question **“Is what you are creating a kit?”** (No by default). With the setting off the question **does not appear** and every new product is a normal one. A normal product shows nothing about kits; with “Yes, it is a kit” the composition and how many kits to assemble now appear (§8b). Kits that are assembled when ordered (offer kits) are **not** created or shown here: they live in Accounting → Prices and offers (§8b.1).
 
 ### Product packaging (2026-10-09)
 
@@ -2534,10 +2534,24 @@ A **kit** is a product made of other products (for example, “Cleaning kit” =
 - **Web only.** The warehouse app does not assemble or disassemble kits.
 - Assembled kit API: `POST /api/v1/products` with `isAssembledKit: true`; `GET` and `PUT /api/v1/products/{publicId}/assembled-kit`; `GET` and `POST …/assembled-kit/assemblies`; `POST …/assembled-kit/assemblies/{assemblyPublicId}/disassemble`. Offer kit API: [47 §4.5](47-precios-y-ofertas.md#45-how-to-use-it-api).
 
+### 8b.1a The setting “The company works with assembled kits” (Batch 233, 2026-11-10)
+
+What it does: each company decides whether it **works with assembled kits**. **Default: NO.** While it is NO, “New product” **does not show** the box “Is what you are creating a kit?” and assembled kits cannot be created. With YES, the box appears and everything in §8b.2 works.
+
+- **Where:** System → **Settings** → **Operations** tab → **Kits** panel → switch **“The company works with assembled kits”**. It is saved when you flip it (“Settings saved”); there is no save button. The panel only shows with the Inventory with lots and serials module (`WMS_LOTSERIAL`).
+- **Who can:** change it, `admin.tenant` (without it, the switch is shown but cannot be changed). Read it, any signed-in user: that is why whoever creates products (`inventory.manage`) sees the question or not without needing another permission.
+- **Turning it off breaks nothing:** the assembled kits that **already exist** stay the same: they are shown, edited, **assembled**, **disassembled**, sold and counted. Only **creating** new assembled kits stops.
+- **It does not affect offer kits** (Accounting → Prices and offers): those do not depend on this setting.
+- **How long until it shows:** whoever changes the setting sees it at once. Someone else who already had the screen open sees it after reloading the page (company settings are kept in memory for up to 10 minutes).
+- **API:** `GET /api/v1/tenant/settings` returns `usesAssembledKits` (`true`/`false`); `PUT /api/v1/tenant/settings` with `{ "usesAssembledKits": true }` changes it (without the field, or `null`, no change). The change is recorded in the company audit log (field `UsesAssembledKits`).
+- **Server rule:** with the setting off, `POST /api/v1/products` with `isAssembledKit: true` answers **422** with “La compañía no trabaja con kits armados: actívelo en Ajustes → Operación.” (The company does not work with assembled kits: turn it on in Settings → Operations.) and creates nothing. Assembling, disassembling and changing the composition of a kit that already exists do **not** depend on the setting.
+- **Companies that already had assembled kits** when the setting was installed were left on YES (so as not to take away what they already used); all the others, on NO.
+
 ### 8b.2 Assembled kit: how it is used (Batch 232)
 
 #### Creating an assembled kit
 
+0. **First:** the company must have **“The company works with assembled kits”** turned on (§8b.1a). Otherwise the question in step 1 does not appear.
 1. **Warehouse → Products & inventory → New product.** At the top of the form, the question **“Is what you are creating a kit?”** with **No** (default) and **“Yes, it is a kit”**. With “No” the product is normal and nothing about kits is shown.
 2. With **“Yes”** these appear right there: **Kit composition** (**Kit pieces**: product and **quantity per kit**, **Add piece**) and **“How many kits do you assemble now?”**. Tracking and purchase cost stop being typed fields: they read “Decided by the pieces” and “Comes from the pieces when assembling”.
 3. Pieces are products **of the same inventory owner as the kit**, **active**, **without serials** and **not kits** (neither offer nor assembled). From 1 to 50 pieces, no repeats; the quantity is greater than zero with up to 3 decimals. The piece search only offers products of the kit's owner.
@@ -2604,6 +2618,7 @@ An assembled kit **is sold like any product**: it appears in the guided order an
 
 | Case | Exact message (as the API returns it) | English | HTTP |
 |---|---|---|---|
+| Creating an assembled kit with the company setting off (Batch 233, §8b.1a) | `La compañía no trabaja con kits armados: actívelo en Ajustes → Operación.` | The company does not work with assembled kits: turn it on in Settings → Operations. | 422 |
 | No pieces | `Un kit necesita al menos un componente.` | A kit needs at least one component. | 400 |
 | More than 50 pieces | `Un kit lleva como máximo 50 componentes.` | A kit has at most 50 components. | 400 |
 | Piece without a product | `Indique el producto del componente.` | Enter the component's product. | 400 |
@@ -2724,6 +2739,7 @@ An assembled kit **does** have stock: those movements are valid on it.
 
 ### 8b.4 For support
 
+- **Setting “works with assembled kits” (Batch 233):** column `Tenant.UsesAssembledKits` (BIT, 0 by default), section “2026-11-10 — Lote 233” of `Diseño/logistica-db-update.sql` (idempotent; when it creates the column it sets to 1 the companies that already had some `ASSEMBLED_KIT` product). If a user says “I do not get the kit question”, check this setting first. Only creation reads it (`AssembledKitService.CreateAsync`).
 - **Assembled kit (Batch 232):** the product is of type `ASSEMBLED_KIT` (catalog `ProductType`); its composition is in `ProductKitComponent`. Tables `KitAssembly` and `KitAssemblyLine` (assemblies and what left of each piece: lot, bin, quantity per kit, quantity, returned and cost) and `KitDisassembly` and `KitDisassemblyLine` (disassemblies). Per-company counters `KITASSEMBLY` (ARM-#####) and `KITDISASSEMBLY` (DES-#####). System adjustment reasons `KIT_ASSEMBLY` and `KIT_DISASSEMBLY`; EntityTypes `KIT_ASSEMBLY` and `KIT_DISASSEMBLY`. Section “2026-11-10 — Lote 232” of `Diseño/logistica-db-update.sql` (idempotent, only adds).
 - Assembling and disassembling go through the inventory ledger (`InventoryLedger`) as **adjustment** movements with those reasons; the ARM/DES document is the origin the movement ledger shows. Locking the kit header queues two assemblies of the same kit.
 - How many kits can be assembled: `canAssemble` (in one assembly, one lot per piece) and `canAssembleTotal` (combining lots) per warehouse; they are computed reading balances without locking, so they are an estimate.

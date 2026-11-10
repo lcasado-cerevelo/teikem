@@ -11980,3 +11980,36 @@ Se desarma en un almacén distinto del que se armó y falta la posición donde v
 
 **¿Qué significa "Falta el permiso 'inventory.adjust'." al armar o desarmar?**
 Su usuario no tiene el permiso de ajustar inventario (403). Pídale a un administrador de su compañía que se lo asigne si corresponde a su función.
+
+## Lote 233 — El ajuste «La compañía trabaja con kits armados»
+<!-- kemi:staff -->
+
+Capítulo: [06 §8b.1a](06-inventario-y-almacen.md) (el ajuste) y [06 §8b.2](06-inventario-y-almacen.md) (cómo se crea un kit armado). El ajuste está en Sistema → Ajustes → Operación → **Kits** y viene **apagado**.
+
+### Casos frecuentes
+
+**¿Por qué no me sale la pregunta de si es un kit?**
+Porque su compañía no tiene encendido «La compañía trabaja con kits armados». Viene apagado por omisión. Un administrador (`admin.tenant`) lo enciende en Sistema → Ajustes → Operación → **Kits**. Después, recargue la página y abra «Nuevo producto» otra vez: arriba aparece «¿Lo que va a crear es un kit?».
+
+**¿Dónde enciendo los kits armados?**
+En Sistema → Ajustes → pestaña Operación → panel **Kits** → interruptor «La compañía trabaja con kits armados». Se guarda al tocarlo. Hace falta `admin.tenant` y el módulo Inventario con lotes y series.
+
+**Ya lo encendieron y a mí todavía no me sale la pregunta. ¿Qué hago?**
+Recargue la página. Los ajustes de la compañía se guardan en memoria hasta 10 minutos; quien lo cambió lo ve al instante, los demás al recargar.
+
+**Si apago el ajuste, ¿qué pasa con los kits armados que ya tengo?**
+Nada. Se siguen viendo, editando, armando, desarmando, vendiendo y contando. Solo deja de poderse crear kits armados nuevos.
+
+**¿Este ajuste afecta a los kits de oferta?**
+No. Los kits de oferta (Contabilidad → Precios y ofertas) se arman al pedir y no dependen de este ajuste.
+
+**Veo el interruptor pero no lo puedo cambiar. ¿Por qué?**
+Su usuario no tiene `admin.tenant`. Pídale a un administrador de su compañía que lo cambie.
+
+**No veo el panel «Kits» en Ajustes → Operación. ¿Por qué?**
+El panel sale solo si la compañía tiene encendido el módulo Inventario con lotes y series (`WMS_LOTSERIAL`).
+
+### Mensajes de error
+
+**¿Qué significa "La compañía no trabaja con kits armados: actívelo en Ajustes → Operación."?**
+Se intentó crear un kit armado y la compañía tiene apagado «La compañía trabaja con kits armados» (422). No se creó nada. Un administrador lo enciende en Sistema → Ajustes → Operación → Kits; después vuelva a crear el kit. Por la pantalla este mensaje casi nunca sale (la pregunta no aparece con el ajuste apagado): sale por el API, o si apagaron el ajuste mientras usted tenía abierto «Nuevo producto».

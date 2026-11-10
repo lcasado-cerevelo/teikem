@@ -7766,3 +7766,22 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_KitDisassemblyLine_Component' AND object_id = OBJECT_ID('dbo.KitDisassemblyLine'))
     CREATE INDEX IX_KitDisassemblyLine_Component ON dbo.KitDisassemblyLine(TenantId, ComponentProductId);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-11-10 — Lote 233: parámetro de la compañía «La compañía trabaja con kits armados» (docs/lote233-decisiones.md).
+   - dbo.Tenant.UsesAssembledKits (BIT, 0 por omisión): con 0, «Nuevo producto» no pregunta «¿Lo que va a crear es un kit?» y el alta de un kit armado se rechaza (422).
+     Se cambia en Sistema → Ajustes → Operación → Kits (admin.tenant). Los kits armados que ya existan siguen funcionando; no toca los kits de oferta.
+   - Las compañías que YA tienen algún kit armado (producto de tipo ASSEMBLED_KIT) quedan en 1 al crear la columna, para no quitarles lo que ya usan
+     (solo en la corrida que crea la columna: después manda lo que la compañía ponga en Ajustes).
+   - Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH(N'dbo.Tenant', N'UsesAssembledKits') IS NULL
+BEGIN
+    ALTER TABLE dbo.Tenant ADD UsesAssembledKits BIT NOT NULL CONSTRAINT DF_Tenant_UsesAssembledKits DEFAULT 0;
+    EXEC(N'UPDATE t SET t.UsesAssembledKits = 1
+           FROM dbo.Tenant t
+           WHERE EXISTS (SELECT 1 FROM dbo.Product p
+                         JOIN dbo.LookupCode lc ON lc.LookupCodeId = p.ProductTypeLookupId
+                         WHERE p.TenantId = t.TenantId AND lc.Entity = N''ProductType'' AND lc.InternalCode = N''ASSEMBLED_KIT'');');
+END
+GO
