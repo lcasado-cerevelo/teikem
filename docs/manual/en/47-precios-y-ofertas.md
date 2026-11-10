@@ -4,7 +4,7 @@
 
 > **English edition.** Translation of the Spanish chapter `docs/manual/47-precios-y-ofertas.md`. The server only answers in Spanish, so every "Exact message" column keeps the **exact Spanish text** the screen shows, followed by its English meaning.
 
-Batch 221 (2026-11-07) — salespeople's order, part P1; **redone in Batch 229 (2026-11-09)**. The **price of what is sold** is no longer typed: it comes from a **price list** set up by the sales supervisor or from an **offer** in effect. Since Batch 229 the **offer is a separate thing** from price lists and kits, like a store's weekly flyer («valid from … to …»): it has a name, a photo, validity dates and its own list of products or kits with an offer price. It is **no longer** a kit marked as a promotion. This chapter is for the sales supervisor, the office and support. The order that uses these prices is described in [48 — Guided order](48-pedido-guiado.md) and the order itself in [18 — Sales orders](18-ordenes-de-venta.md).
+Batch 221 (2026-11-07) — salespeople's order, part P1; **redone in Batch 229 (2026-11-09)**. The **price of what is sold** is no longer typed: it comes from a **price list** set up by the sales supervisor or from an **offer** in effect. Since Batch 229 the **offer is a separate thing** from price lists and kits, like a store's weekly flyer («valid from … to …»): it has a name, a photo, validity dates and its own list of products or kits with an offer price. It is **no longer** a kit marked as a promotion. Since **Batch 231 (2026-11-10)** the kits that are assembled when ordered live in an **offer kit library**: they are created once and **reused** from one offer to another («Use a previous kit»). This chapter is for the sales supervisor, the office and support. The order that uses these prices is described in [48 — Guided order](48-pedido-guiado.md) and the order itself in [18 — Sales orders](18-ordenes-de-venta.md).
 
 The three concepts, kept apart:
 
@@ -16,7 +16,7 @@ The three concepts, kept apart:
 
 The screen is in **Accounting → Prices and offers** (`/money/prices`), right before «Sales». The menu item only shows with `sales.pricelist` (Company admin and Sales supervisor; a salesperson with only `sales.view` does not see it). It has **two sections**: **Offers** (on top, with the **New offer** button) and **Price lists** (with the **New price list** button). The old link `/warehouse/products?tab=prices` redirects to this screen.
 
-> **Screenshots pending (Batch 229).** The screenshots below are from the batch 228 walkthrough (2026-11-07, demo data), when the offer was a kit marked as a promotion. The screen now has the two sections, and the offer window (details, photo, clients, lines, «Create a kit for this offer» and warnings) has no screenshot yet. They will be retaken with the Playwright walkthrough; the screenshot `l228-kit-promocion.png` (the old kit editor with the promotion mark) no longer corresponds to anything and is no longer cited.
+> **Screenshots pending (Batch 229).** The screenshots below are from the batch 228 walkthrough (2026-11-07, demo data), when the offer was a kit marked as a promotion. The screen now has the two sections, and the offer window (details, photo, clients, lines, «Create a kit for this offer» and warnings) has no screenshot yet. They will be retaken with the Playwright walkthrough; the screenshot `l228-kit-promocion.png` (the old kit editor with the promotion mark) no longer corresponds to anything and is no longer cited. **Batch 231:** the offer kit window («Use a previous kit» with the library and «Create a new kit») has no screenshot yet either.
 
 ![«Prices and offers» screen (screenshot from before Batch 229): the offer as a card with its photo and the list of lists](frontend/img/l228-precios-ofertas.png)
 ![The same screen in the dark theme (screenshot from before Batch 229)](frontend/img/l228-precios-ofertas-oscuro.png)
@@ -26,10 +26,10 @@ The screen is in **Accounting → Prices and offers** (`/money/prices`), right b
 - Module **Sales orders (`SALES_ORDERS`)**. With the module off, the whole lists-and-offers API answers 403. The product photo follows the inventory module (`WMS_LOTSERIAL`).
 - Permissions:
   - **`sales.view`** — view offers, lists, the guided-order catalog and **product photos** (even without `inventory.view`). The «Prices and offers» screen itself requires `sales.pricelist`.
-  - **`sales.pricelist`** — create, publish, change and deactivate lists **and offers**; add or remove the photo of the offer and of its lines; choose the clients; create or change the offer's kits. Implies `sales.view`. Held by the **Sales supervisor** role (`SalesSupervisor`) and the **Company admin**.
+  - **`sales.pricelist`** — create, publish, change and deactivate lists **and offers**; add or remove the photo of the offer and of its lines; choose the clients; create, reuse or change offer kits (the library). Implies `sales.view`. Held by the **Sales supervisor** role (`SalesSupervisor`) and the **Company admin**.
   - **`inventory.manage`** — upload, change or remove the **product photo** (in the product editor; see [06 §2.5](06-inventario-y-almacen.md#25-product-photo-and-category-with-subcategory-batch-229-2026-11-09)).
   - **`sales.price`** — remains the exception: writing on an order line a price different from the one that came from the list or the offer. Only the Company admin, or whoever they designate.
-- Batch 229 **added no new permissions**: offers use `sales.view` and `sales.pricelist`.
+- Batches 229 and 231 **added no new permissions**: offers and the offer kit library use `sales.view` and `sales.pricelist`.
 - Permission `sales.pricelist` in companies that already existed: it was added to the already-cloned Company admin roles; the «Sales supervisor» role is created by the administrator in System → Roles if the company does not have it.
 
 ## 2. Where the price of a line comes from
@@ -101,7 +101,7 @@ Notes on warnings:
 | Until | Optional; cannot be earlier than «from». Both ends count as in effect. |
 | Notes | Up to 500 characters. |
 | Applies to all clients | A general list carries no chosen clients; a client list needs at least one to be published. |
-| Lines | Up to 2000; only the company's **own** active products or kits; no repeats; price from 0 up with up to 4 decimals. **A kit created for an offer cannot go** in a list (its price goes in the offer). |
+| Lines | Up to 2000; only the company's **own** active products or kits; no repeats; price from 0 up with up to 4 decimals. **An offer kit cannot go** in a list (its price goes in an offer). |
 | Clients | Up to 2000; must be active clients. |
 | Line photo | JPG, PNG, WEBP or GIF (checked by content), up to the file store limit. By default the line shows the product photo; if another is set, that one wins. Removing it only unlinks it: the file is not deleted. |
 
@@ -113,13 +113,13 @@ Notes on warnings:
 
 ### 4.1 What an offer is
 
-An **offer** is a separate entity with: **name** (up to 120 characters), **photo**, **validity** («Valid from» required, «Until» optional), **notes** (up to 500), whom it **applies to** (all clients or chosen clients) and its **lines** (up to 500). Each line is an **existing product or kit** with its offer price, or a **kit created for that offer** (4.4). It is born as a **draft** and only gives prices once **published** and in effect.
+An **offer** is a separate entity with: **name** (up to 120 characters), **photo**, **validity** («Valid from» required, «Until» optional), **notes** (up to 500), whom it **applies to** (all clients or chosen clients) and its **lines** (up to 500). Each line is an **existing product or kit** with its offer price, a **previous offer kit** from the library («Use a previous kit») or a **new offer kit** («Create a new kit») (4.4). It is born as a **draft** and only gives prices once **published** and in effect.
 
 **No end date.** If «Until» is left blank, **the offer does not expire**: it is valid until someone deactivates it or sends it back to draft. The screen says so in two places: on the card («No end date: valid until you deactivate it») and in the window, under the field («“Until” is blank: the offer has no end date and is valid until you deactivate it.»). Check this before publishing a seasonal offer.
 
 ### 4.2 Who can
 
-View offers: `sales.view`. Create, change, publish, deactivate, add photos, choose clients and create the offer's kits: `sales.pricelist`. Module `SALES_ORDERS`. Batch 229 added no permissions.
+View offers: `sales.view`. Create, change, publish, deactivate, add photos, choose clients and create, reuse or change offer kits: `sales.pricelist`. Module `SALES_ORDERS`. Batches 229 and 231 added no permissions.
 
 ### 4.3 How to use it (screen)
 
@@ -128,27 +128,33 @@ View offers: `sales.view`. Create, change, publish, deactivate, add photos, choo
 1. **New offer** → window with **Offer name**, **Notes**, **Valid from**, **Until (blank = no end date)** and the **Applies to all clients** checkbox. **Create offer** saves it as a **draft** («Offer created: add its photo and lines.»).
 2. **Offer photo**: upload, change or remove (section 5).
 3. **Offer clients**: only if «Applies to all clients» was unchecked (**Add client**; the offer needs at least one to be published).
-4. **Lines** (two ways, and the screen explains it: «Two ways to add: pick an existing product or kit and set its offer price, or create a kit just for this offer.»):
-   - **Pick a product or kit**: search by SKU or name and type the **offer price**; the line shows the general list price next to it for comparison. The price is changed in its cell (when leaving the field) and the line is removed with its button.
-   - **Create a kit for this offer**: opens a window with **Kit SKU**, **Kit name**, **Kit offer price** and **Kit pieces** (product and quantity; **Add piece**); each piece has the **Not substitutable** checkbox. The window shows «Pieces at their sale price», «Client saves» (or «Careful: the offer costs … more than the loose pieces.»). **Create kit** creates the product, its pieces and the line in a single step.
-   - Example: the normal kit is monitor + needles; the offer's kit is monitor + needles + test strips, «at the price of the two» (or the strips at half price).
+4. **Lines** (three ways, and the screen explains it: «Add an existing product with its offer price, or an offer kit: use a previous one from the library (at the price you want) or create a new one.»):
+   - **Pick a product**: search by SKU or name and type the **offer price**; the line shows the general list price next to it for comparison. The price is changed in its cell (when leaving the field) and the line is removed with its button. This search **no longer offers offer kits**: those are added with the next two buttons.
+   - **Use a previous kit**: opens the **offer kit library** (4.4). Search by SKU or name; each kit shows its photo, SKU, name, its pieces and «Last offer: «…» at $…» (or «Not used in any offer yet»). When you pick one, **the pieces appear read-only** («The composition of a previous kit does not change; for a different composition, create a new kit.») and the **offer price comes pre-filled with the last one** («Last price: $41.94 (offer «January»). You can set another.»): **the price can be changed**. **Add to the offer** puts the line. If the kit is already a line of this offer, it shows «Already in this offer» and cannot be picked again.
+   - **Create a new kit**: window with **Kit SKU**, **Kit name**, **Kit offer price**, **Kit pieces** (product and quantity; **Add piece**; each piece has the **Not substitutable** checkbox) and the **Adjustable when ordering** checkbox (born unchecked). The window shows «Pieces at their sale price», «Client saves» (or «Careful: the offer costs … more than the loose pieces.»). **Create kit** creates the product, its pieces and the line in a single step, and the kit **stays saved in the library**: «Kit … created, saved in the library and added to the offer.». From «Use a previous kit», **«Create a new kit with these pieces»** goes to this tab with the pieces, name and price already filled in (SKU blank), for the case «November's, but with another piece».
+   - The two ways of adding a kit are tabs of the same window («How to add the kit»): you can switch from one to the other without closing it.
+   - Example: the normal kit is monitor + needles; the offer's kit is monitor + needles + test strips, «at the price of the two» (or the strips at half price). To repeat November's offer in January: create the January offer and use **Use a previous kit**; the pieces are not typed again.
 5. **Photo per line**: by default the line shows the product photo; **Use another photo** changes it and **Back to the product photo** removes it.
-6. **Publish** (the offer starts giving prices within its dates), **Back to draft**, **Deactivate** (asks for confirmation: «The offer stops applying to new orders and its offer kits stop being sold. Orders already placed do not change and it can be reactivated.») and **Reactivate**.
+6. **Publish** (the offer starts giving prices within its dates), **Back to draft**, **Deactivate** (asks for confirmation: «The offer stops applying to new orders; an offer kit is only still sold if it is in another offer in effect. Orders already placed do not change and it can be reactivated.») and **Reactivate**.
 7. **Warnings** (section 2) appear in the «Warnings (they do not block saving or publishing)» box. They are not errors.
 
 The status shows on the card: **Draft**, **Published (not started yet)**, **In effect**, **Expired** or **Deactivated**, and, separately, the **Applies today** chip when the offer is giving prices.
 
-### 4.4 An offer's kits
+### 4.4 Offer kits and the library (Batch 231)
 
-A **kit created for an offer** is a real product (with SKU, pieces and quantities, visible in Products & inventory), but it **stays tied to its offer**:
+An **offer kit** is a kit that is **assembled when ordered**: it has no stock of its own; when a client orders it, the system reserves and ships **its pieces**. Inside, it is a product, but marked as an offer kit: it **is not shown in Warehouse → Products & inventory** and **is not created there** (for a kit with stock, an **assembled kit**, see [06 §8b](06-inventario-y-almacen.md#8b-kits-assembled-and-offer-batches-68-231-and-232-2026-11-10)).
 
-- **It is only sold while its offer is published, active and in effect.** Outside that it does not show in the order catalog and ordering it gives the 422 error of section 7.
-- When the offer **ends**, the kit **becomes inactive for sale**: it is not deleted or deactivated, and the orders and invoices that used it still see it. If the offer is **extended** (its end date is changed or removed) or reactivated, the kit **becomes available again**. The same happens if the offer goes back to draft or is deactivated: the kit leaves the sale in the meantime.
-- It is born **not adjustable** («Adjustable when ordering» unchecked). Its pieces can be **substituted** when ordering, except those marked «Not substitutable» (see [18 §17.1](18-ordenes-de-venta.md#171-swapping-a-kit-piece-when-ordering-batch-230)). The mark can be set from the offer window (when creating or changing the kit) and from the kit editor in Products ([06 §8b.3b](06-inventario-y-almacen.md#8b3b-not-substitutable-batch-230-2026-11-09)).
-- It **does not go in a price list or in another offer**: its price goes in its offer.
-- **«Change kit»** (on the line) changes the **name** and the **pieces**; the SKU does not change and the price is changed on the line. It is only changed from **its** offer (or from Products), not from another.
-- If its line is removed, the kit stays tied to the offer; while the offer is valid it would be sold at its sale price (which, unless another was given, is the offer price it was created with).
-- The kit's category and tax category come from the first piece (the category only if none is given).
+**The offer kit library.** Every offer kit that is created is **saved** in the library (the composition; the price is not, although the last one is remembered). **It is no longer tied to a single offer**: an offer uses it with a normal line (its price), and the same kit can be in several offers at once. There is no separate library screen: it is seen from the offer window, in **Use a previous kit**. The kits that Batch 229 had tied to an offer moved to the library.
+
+- **Use a previous kit.** The **composition does not change** (pieces, quantities, «Not substitutable» and «Adjustable when ordering»): if you want another, **create a new kit** (there is a shortcut that copies the pieces). The **price can** be changed in each offer, and the screen suggests the **last** one: that of the most recent line still placed in an active offer; if none is left, the most recent of all. A kit that was never used has no previous price: it has to be typed.
+- **Create a new kit.** SKU, name, price, pieces and «Adjustable when ordering». The SKU is not repeated for the same owner. The category and tax category come from the first piece (the category only if none is given); the kit's sale price is the one given (otherwise, the offer price it was created with).
+- **It is sold only while it is in some published offer in effect** for the client: an offer that is **published, active and in effect today** (both ends count; without «until» it does not expire) that applies to the client (to all, or to him among the chosen ones) with an active line of that kit. Outside that it does not show in the order catalog and ordering it gives the 422 error of section 7. If the kit is in two offers in effect, the cheapest is charged and the `TWO_OFFERS` warning appears.
+- **A kit sold permanently is an offer with no end date**: put the kit in an offer with «Until» blank.
+- **The kit is not deleted or deactivated.** When no offer holds it, it is simply not sold; the orders and invoices that used it still see it (the line keeps its copy). If an offer is **extended** (its end date is changed or removed), reactivated or published again, the kit **becomes available again** by itself. When an offer is deactivated or sent back to draft, its kits leave the sale unless they are in another offer in effect.
+- **The composition is fixed once used.** The kit counts as **used** from the moment it has a line in any offer (even if removed or the offer is a draft) or a line in any sales order. From the screen, a kit is born with its line: that is why **«Change kit»** (on the line) changes **the name** and leaves the pieces read-only with the note «The composition of a previous kit does not change…». The SKU does not change and the price is changed on the line. Only through the API can a kit be created in the library without putting it in an offer and its pieces corrected while it has never been used. Sending the same composition (even in another order) does not count as a change.
+- **Piece substitution and «Adjustable when ordering»: only here.** The pieces of an offer kit can be **substituted** when ordering, except those marked «Not substitutable» (see [18 §17.1](18-ordenes-de-venta.md#171-swapping-a-kit-piece-when-ordering-batch-230)); the mark is set when creating the kit in the offer window. «Adjustable when ordering» is born unchecked. Neither exists on an assembled kit or a normal product.
+- **It does not go in a price list.** Its price goes in an offer (422).
+- **It does not show in Products & inventory** (nor in its counts, filters or export, nor in the import, nor in what is sent to integrations). Its record by identifier still answers and orders and invoices name it.
 
 ### 4.5 How to use it (API)
 
@@ -162,14 +168,18 @@ A **kit created for an offer** is a real product (with SKU, pieces and quantitie
 | Publish / back to draft | `POST …/publish` · `POST …/unpublish` | `sales.pricelist` |
 | Deactivate / reactivate | `POST …/deactivate` · `POST …/reactivate` | `sales.pricelist` |
 | Offer photo (JPG, PNG or WEBP) | `POST …/image` (multipart `file`) · `DELETE …/image` | `sales.pricelist` |
-| Add or change lines | `POST …/items` `{ "items": [ { "productPublicId": "…", "price": 9.5 } ] }` | `sales.pricelist` |
+| Add or change lines («Use a previous kit» = a line with the kit's `productPublicId`; with an offer kit already used the `price` may be left empty and the last one is used) | `POST …/items` `{ "items": [ { "productPublicId": "…", "price": 9.5 } ] }` | `sales.pricelist` |
 | Change a price / remove a line | `PATCH …/items/{itemId}` `{ "price": 9 }` · `DELETE …/items/{itemId}` | `sales.pricelist` |
 | Line photo | `POST …/items/{itemId}/image` (multipart) · `DELETE …/items/{itemId}/image` | `sales.pricelist` |
 | Add / remove clients | `POST …/clients` `{ "clientPublicIds": ["…"] }` · `DELETE …/clients/{clientPublicId}` | `sales.pricelist` |
-| Create a kit for the offer | `POST …/kits` `{ "sku": "OFERTA1", "name": "Monitor + needles + strips", "price": 41.94, "components": [ { "productPublicId": "…", "quantity": 1, "notSubstitutable": false } ] }` → `{ productPublicId, sku, offer }` | `sales.pricelist` |
-| Change an offer's kit (name and/or pieces) | `PUT …/kits/{productPublicId}` `{ "name": "…", "components": [ … ] }` | `sales.pricelist` |
+| «Create a new kit» and put it in this offer right away (it stays in the library) | `POST …/kits` `{ "sku": "OFERTA1", "name": "Monitor + needles + strips", "price": 41.94, "adjustable": false, "components": [ { "productPublicId": "…", "quantity": 1, "notSubstitutable": false } ] }` → `{ productPublicId, sku, offer }` | `sales.pricelist` |
+| View the offer kit library (`q` = the SKU or name contains; `includeInactive`; up to 500) | `GET /offers/kits?q=` → per kit: pieces, `lastPrice`, `lastOfferName`, `offerCount` (in how many active offers it is today), `compositionLocked`, `effectiveImagePublicId` | `sales.view` |
+| View a library kit | `GET /offers/kits/{productPublicId}` (404 if it is not an offer kit) | `sales.view` |
+| Create a kit in the library without putting it in an offer | `POST /offers/kits` `{ "sku": "…", "name": "…", "components": [ … ], "adjustable": false, "salePrice": 41.94 }` | `sales.pricelist` |
+| Change a library kit (the name always; pieces and «adjustable» only if never used) | `PATCH /offers/kits/{productPublicId}` `{ "name": "…" }` | `sales.pricelist` |
+| Change a kit from an offer (compatibility; prefer the library `PATCH`) | `PUT …/kits/{productPublicId}` `{ "name": "…", "components": [ … ] }` (the kit must be in that offer) | `sales.pricelist` |
 
-Keys of an offer's response: `hasEndDate` (false = no end date) and `validityText` («desde el 09/11/2026, sin fecha de fin» or «del … al …»); `state` (`DRAFT`, `SCHEDULED`, `ACTIVE`, `EXPIRED`); `inEffect` (applies today); `warnings[]` (the warnings); and, per line, `isOfferKit`, `generalListPrice`, `imagePublicId` (the line's own photo) and `effectiveImagePublicId` (the one shown).
+Keys of an offer's response: `hasEndDate` (false = no end date) and `validityText` («desde el 09/11/2026, sin fecha de fin» or «del … al …»); `state` (`DRAFT`, `SCHEDULED`, `ACTIVE`, `EXPIRED`); `inEffect` (applies today); `warnings[]` (the warnings); and, per line, `isOfferKit` (the line is an offer kit; the same kit can be in several offers), `generalListPrice`, `imagePublicId` (the line's own photo) and `effectiveImagePublicId` (the one shown).
 
 ### 4.6 Offer fields and rules
 
@@ -180,7 +190,7 @@ Keys of an offer's response: `hasEndDate` (false = no end date) and `validityTex
 | Until | Optional; blank = does not expire. Cannot be earlier than «from». Both ends count as in effect. |
 | Notes | Up to 500 characters. |
 | Applies to all clients | An all-clients offer carries no chosen clients; a chosen-clients offer needs at least one to be published and to stay published. |
-| Lines | Up to 500; the company's **own** active products or kits; no repeats; price from 0 up with up to 4 decimals. If the product is already in the offer, its price is changed. A kit of **another** offer cannot go in. |
+| Lines | Up to 500; the company's **own** active products or kits; no repeats; price from 0 up with up to 4 decimals. If the product is already in the offer, its price is changed. An offer kit from the library can go in any offer (also in several at once); without a price, it takes the last one it was used with. |
 | Clients | Up to 2000; must be active clients. |
 | Photo | JPG, PNG or WEBP (section 5). |
 
@@ -212,7 +222,7 @@ The photo content is downloaded with `GET /files/{imagePublicId}`. `GET /api/v1/
 
 - Only own, active products **without a serial number**.
 - Brands are grouped ignoring case; products without a brand go last (`brand = null`).
-- **Offers of a brand** = the lines of published offers in effect that apply to the client, **one per product** (the one from the cheapest offer). An **offer kit only shows as a card**, and only while its offer is valid. A **regular product in an offer** shows as a card **and also** in its brand's list, with the resolved price.
+- **Offers of a brand** = the lines of published offers in effect that apply to the client, **one per product** (the one from the cheapest offer). An **offer kit only shows as a card**, and only while it is in some published offer in effect for the client. A **regular product in an offer** shows as a card **and also** in its brand's list, with the resolved price.
 - `isPromotion` = the product is in an offer in effect for the client; `price` and `priceSource` = what will be charged (`OFFER`, or `CLIENT_LIST` if the negotiated price is lower); `offerPrice` = the offer's price; `offerName`, `offerValidFrom`, `offerValidTo` = which offer and until when; `imagePublicId` = the photo already resolved (section 5); `notices[]` = the warnings (section 2) with their text ready.
 - `priceSource` `NONE` = **no price**: it cannot be ordered without `sales.price`.
 - Client does not exist: 404 `Cliente no encontrado.` (Client not found.); inactive client: 422 `El cliente está inactivo; no se le puede vender.` (The client is inactive; nothing can be sold to it.)
@@ -241,7 +251,7 @@ The photo content is downloaded with `GET /files/{imagePublicId}`. `GET /api/v1/
 | Repeated product | — | `El producto {SKU} viene repetido.` | Product {SKU} comes repeated. | 400 |
 | Pass-through client's product | Own products only | `Solo se ponen en una lista productos propios de la compañía.` | Only the company's own products go in a list. | 422 |
 | Inactive product | — | `El producto {SKU} está inactivo: no se puede poner en la lista.` | Product {SKU} is inactive: it cannot go in the list. | 422 |
-| Offer kit | Its price goes in the offer | `El kit {SKU} es de la oferta «{nombre}»: su precio va en la oferta, no en una lista de precios.` | Kit {SKU} belongs to the offer «{name}»: its price goes in the offer, not in a price list. | 422 |
+| Offer kit | Its price goes in an offer | `El kit {SKU} es un kit de oferta: su precio va en una oferta, no en una lista de precios.` | The kit {SKU} is an offer kit: its price goes in an offer, not in a price list. | 422 |
 | Product does not exist | — | `Producto no encontrado.` | Product not found. | 404 |
 | Clients | At least one when adding | `Escoja los clientes de la lista.` | Choose the clients of the list. | 400 (`clientPublicIds`) |
 | Clients | Up to 2000 | `Una lista admite como máximo 2000 clientes.` | A list admits at most 2000 clients. | 400 |
@@ -274,17 +284,17 @@ The photo content is downloaded with `GET /files/{imagePublicId}`. `GET /api/v1/
 | Offer does not exist | — | `Oferta no encontrada.` | Offer not found. | 404 |
 | Line does not exist | — | `Renglón de la oferta no encontrado.` | Offer line not found. | 404 |
 | Client not in the offer | — | `Cliente de la oferta no encontrado.` | Offer client not found. | 404 |
-| Kit does not exist (when changing it) | — | `Kit de la oferta no encontrado.` | Offer kit not found. | 404 |
+| Kit does not exist (when changing it from an offer) | — | `Kit de la oferta no encontrado.` | Offer kit not found. | 404 |
+| Library kit does not exist, or is not an offer kit | — | `Kit de oferta no encontrado.` | Offer kit not found. | 404 |
 | Deactivated offer | Cannot be changed | `La oferta está desactivada: reactívela para cambiarla.` | The offer is deactivated: reactivate it to change it. | 422 |
 | Lines | At least one | `Indique los productos y sus precios de oferta.` | Give the products and their offer prices. | 400 (`items`) |
 | Lines | Up to 500 | `Una oferta admite como máximo 500 renglones.` | An offer admits at most 500 lines. | 400 (`items`) |
 | Line without product | — | `Escoja el producto o kit de cada renglón.` | Choose the product or kit of each line. | 400 |
-| Line without price | — | `Indique el precio de oferta de cada renglón.` | Give the offer price of each line. | 400 |
+| Line without price | Required; only an offer kit that was already used may go without a price (it takes the last one) | `Indique el precio de oferta de cada renglón.` | Give the offer price of each line. | 400 |
 | Price | 0 or more; up to 4 decimals | `El precio no es válido.` / `El precio admite como máximo 4 decimales.` | The price is not valid. / The price admits at most 4 decimals. | 400 (`price`) |
 | Repeated product | — | `El producto {SKU} viene repetido.` | Product {SKU} comes repeated. | 400 |
 | Pass-through client's product | Own products only | `Solo se ponen en una oferta productos propios de la compañía.` | Only the company's own products go in an offer. | 422 |
 | Inactive product | — | `El producto {SKU} está inactivo: no se puede poner en la oferta.` | Product {SKU} is inactive: it cannot go in the offer. | 422 |
-| Kit of another offer | — | `El kit {SKU} es de la oferta «{nombre}»: no se puede poner en otra.` | Kit {SKU} belongs to the offer «{name}»: it cannot go in another. | 422 |
 | Product does not exist | — | `Producto no encontrado.` | Product not found. | 404 |
 | Clients | At least one when adding | `Escoja los clientes de la oferta.` | Choose the clients of the offer. | 400 (`clientPublicIds`) |
 | Clients | Up to 2000 | `Una oferta admite como máximo 2000 clientes.` | An offer admits at most 2000 clients. | 400 |
@@ -302,7 +312,9 @@ The photo content is downloaded with `GET /files/{imagePublicId}`. `GET /api/v1/
 | Offer kit without pieces | — | `Un kit necesita al menos un componente.` | A kit needs at least one component. | 400 (`components`) |
 | Offer kit with a repeated SKU | — | `Ya existe un producto con ese SKU para ese dueño.` | A product with that SKU already exists for that owner. | 409 |
 | Invalid kit pieces | The usual kit ones | See [06 §8b.3](06-inventario-y-almacen.md#8b3-rules-and-messages) | | 400 |
-| Changing a kit from another offer | — | `Ese kit no es de esta oferta: cámbielo desde su propia oferta o desde Productos.` | That kit is not from this offer: change it from its own offer or from Products. | 422 |
+| Changing the pieces, quantities, «Not substitutable» or «Adjustable when ordering» of a kit already used in an offer (even if removed) or in an order | The composition does not change; the name does | `La composición del kit {SKU} ya no se puede cambiar porque ya se usó en una oferta o en un pedido: cree un kit nuevo con las piezas que quiera.` | The composition of kit {SKU} can no longer be changed because it was already used in an offer or an order: create a new kit with the pieces you want. | 422 |
+| Changing with `PUT /offers/{id}/kits/{kit}` a kit that is not in that offer | — | `Ese kit no está en esta oferta: cámbielo desde la biblioteca de kits de oferta.` | That kit is not in this offer: change it from the offer kit library. | 422 |
+| Importing products with the SKU of an offer kit | The kit is changed in the offer | `Ese SKU es un kit de oferta: no se cambia por la importación de productos, sino en Contabilidad → Precios y ofertas.` | That SKU is an offer kit: it is not changed by the product import but in Accounting → Prices and offers. | row with error (`sku`) |
 | Offer or line photo without file | — | `Adjunte la foto.` | Attach the photo. | 400 (`file`) |
 | Photo that is not JPG, PNG or WEBP | — | `La foto debe ser una imagen JPG, PNG o WEBP.` | The photo must be a JPG, PNG or WEBP image. | 400 (`file`) |
 | Photo too large | — | `El archivo no puede pasar de {n} MB.` | The file cannot exceed {n} MB. | 400 |
@@ -312,7 +324,8 @@ The photo content is downloaded with `GET /files/{imagePublicId}`. `GET /api/v1/
 
 | Field / situation | Rule | Exact message (Spanish, as sent) | Meaning | HTTP |
 |---|---|---|---|---|
-| Ordering an offer kit outside its validity | Only sold with the offer published and in effect | `El kit {SKU} es de la oferta «{nombre}», que {motivo}: no se puede vender.` with reason = `está desactivada` · `está en borrador` · `todavía no empieza (vale del dd/MM/yyyy al dd/MM/yyyy)` · `ya terminó (valía del dd/MM/yyyy al dd/MM/yyyy)`. Without an end: `desde el dd/MM/yyyy, sin fecha de fin`. | Kit {SKU} belongs to the offer «{name}», which {is deactivated · is a draft · has not started yet (valid from … to …) · has already ended (it was valid from … to …)}: it cannot be sold. | 422 |
+| Ordering an offer kit that is in no published offer in effect for the client | Only sold while it is in some published, active offer in effect that applies to the client | `El kit de oferta {SKU} no está en ninguna oferta publicada y vigente para este cliente: no se puede vender.` | The offer kit {SKU} is in no published offer in effect for this client: it cannot be sold. | 422 |
+| Changing or adjusting the pieces of a kit that is not an offer kit | Substitution and «Adjustable when ordering» only apply to an offer kit | `El kit {SKU} no admite cambiar ni ajustar sus piezas al pedir: eso solo se puede en un kit de oferta.` | The kit {SKU} does not allow changing or adjusting its pieces when ordering: that is only possible on an offer kit. | 400 |
 | Product with no price at all | — | `El producto {SKU} no tiene precio de venta: escriba el precio.` | Product {SKU} has no sale price: type the price. | 400 |
 | Price different from the resolved one without `sales.price` | — | `Cambiar el precio exige el permiso de precios (sales.price).` | Changing the price requires the price permission (sales.price). | 403 |
 | Without the permission | — | `Falta el permiso 'sales.pricelist'.` | Permission 'sales.pricelist' is missing. | 403 |
@@ -336,12 +349,12 @@ Transitions of the **list** and the **offer** (the same, with the messages of se
 
 | From → to | Who | What it validates | Effect |
 |---|---|---|---|
-| Draft → Published | `sales.pricelist` | At least one line; chosen clients if not for all. On the list, also no overlaps with other published ones | Starts giving prices within its validity. On the offer, its offer kits can be sold |
-| Published → Draft | `sales.pricelist` | That it is published | Stops giving prices to new orders; orders already placed do not change. The offer's kits leave the sale |
+| Draft → Published | `sales.pricelist` | At least one line; chosen clients if not for all. On the list, also no overlaps with other published ones | Starts giving prices within its validity. On the offer, its offer kits can be sold (if the client receives it) |
+| Published → Draft | `sales.pricelist` | That it is published | Stops giving prices to new orders; orders already placed do not change. Its offer kits leave the sale, except those that are in another offer in effect |
 | Any → Deactivated | `sales.pricelist` | That it is active | Same as draft, and it cannot be edited |
 | Deactivated → Active | `sales.pricelist` | That it is deactivated; on the list, if it was published, that it does not overlap with another | Returns to its previous state |
 
-What each state blocks: a **deactivated** list or offer cannot be edited (lines, clients, photos, kits) until reactivated; a **published** one can be edited (on the list, every change re-checks overlaps; on the offer, clashes only warn); draft, scheduled and expired ones do not affect prices. An **offer kit** is only sold with its offer published, active and in effect.
+What each state blocks: a **deactivated** list or offer cannot be edited (lines, clients, photos, kits) until reactivated; a **published** one can be edited (on the list, every change re-checks overlaps; on the offer, clashes only warn); draft, scheduled and expired ones do not affect prices. An **offer kit** is only sold if it is in **some** published, active offer in effect that applies to the client.
 
 ## 9. Frequently asked questions of the module
 
@@ -352,17 +365,23 @@ What each state blocks: a **deactivated** list or offer cannot be edited (lines,
 - **I left «Until» blank.** The offer does not expire. Deactivate it or set a date when the promotion ends.
 - **A yellow warning appeared on the offer.** It is a price warning, not an error: another offer at the same price or cheaper overlaps, or the price is higher than the general list. The lowest is charged; check it is what you wanted.
 - **Removing a client from a published list or offer fails.** It is the last one and it is not general / for all: add another or move it to draft first.
-- **I cannot find the offer's kit in the order.** Check that the offer is published and in effect (the kit stays active in Products, but it is not sold outside the validity).
+- **I cannot find the offer's kit in the order.** Check that the kit is in a published, active offer in effect that applies to the client (an offer kit is not sold outside the validity, and it does not show in Products & inventory either).
+- **Where do I create a kit?** If it is assembled when ordered, in an offer: **Create a new kit**. If it must have stock in the warehouse, in Products & inventory → **New product** → «Is what you are creating a kit?» → Yes ([06 §8b](06-inventario-y-almacen.md#8b-kits-assembled-and-offer-batches-68-231-and-232-2026-11-10)).
+- **How do I repeat November's offer in January?** Create the January offer and, in **Lines**, use **Use a previous kit**: pick the kit and confirm the price (the last one is suggested). The pieces are not typed again.
+- **Can I change the pieces of a previous kit?** No: the composition of a kit already used does not change (what past offers and orders saw would be lost). Use **Create a new kit with these pieces** and change what you need. The price can be changed in each offer.
+- **I want to sell a kit all the time.** Put it in an offer with «Until» blank (no end date).
+- **The kit does not show in Products & inventory.** That is normal: an offer kit lives in the offer kit library, not in inventory. A kit with stock is an assembled kit.
 
-All the messages above are in the [Batch 221 FAQ](faq.md#batch-221--price-lists-and-offers) (lists) and in the [Batch 229 FAQ](faq.md#batch-229--offers-as-a-separate-entity-offer-kits-and-the-product-photo) (offers, warnings and photos).
+All the messages above are in the [Batch 221 FAQ](faq.md#batch-221--price-lists-and-offers) (lists) , in the [Batch 229 FAQ](faq.md#batch-229--offers-as-a-separate-entity-offer-kits-and-the-product-photo) (offers, warnings and photos) and in the [Batch 231 FAQ](faq.md#batch-231--offer-kit-with-library) (offer kits and their library).
 
 ## 10. For support
 
 - Lists: tables `PriceList`, `PriceListItem` and `PriceListClient`; EntityType `PRICE_LIST` and the permission `sales.pricelist` (section «2026-11-07 — Lote 221» of `Diseño/logistica-db-update.sql`; propagation to cloned roles with the mark `L221_SALES_PRICELIST`).
-- Offers (Batch 229): tables `Offer`, `OfferItem` and `OfferClient`; EntityType `OFFER`; columns `Product.ImageFileId` (product photo) and `Product.OfferId` (kit created for an offer, with a filtered index); section «2026-11-09 — Lote 229» of the same file (idempotent). No new permissions.
+- Offers (Batch 229): tables `Offer`, `OfferItem` and `OfferClient`; EntityType `OFFER`; columns `Product.ImageFileId` (product photo) and `Product.OfferId` (kit created for an offer, with a filtered index; no longer used since Batch 231); section «2026-11-09 — Lote 229» of the same file (idempotent). No new permissions.
+- Offer kits (Batch 231): column `Product.IsOfferKit` (BIT, 0 by default) and filtered index `IX_Product_OfferKit`; the section «2026-11-10 — Lote 231» of `Diseño/logistica-db-update.sql` (idempotent, no new permissions) marked the kits that had `OfferId`. `Product.OfferId` is **no longer read or written** (the column stays). The kit is still stored as a product of type `KIT`; its validity is **calculated** (see below).
 - The columns `Product.IsPromotion`, `PromoFrom`, `PromoTo` and `PromoImageFileId` are **no longer read**: they stay in the database unused (the promotion photo was copied to `ImageFileId` where it was missing). An expired «promotion» no longer blocks sales.
 - Lists and offers are exposed by `PublicId` and are never deleted. Changes go to the audit log (entities `PRICE_LIST` and `OFFER`).
 - Photos are files (class DOCUMENT) encrypted in the file store; they are seen with `GET /files/{publicId}`. The product photo is a file of the product; the offer's and its lines' photos are owned by the offer (`OFFER`).
 - The reduction to 1200 px uses SkiaSharp; on a Linux server without its native library the photo is saved as is (not reduced).
-- An "inactive" offer kit is **calculated** (the product keeps `IsActive = 1`): it comes back by itself when the offer is extended.
-- Solutions scripts: `02-kit-oferta1.sql` creates the offer «OFERTA1» (published, for all clients, from today in Puerto Rico time and with no end date) with its kit; `06-lista-precios-inicial.sql` no longer puts OFERTA1 in the general list. Detail in `docs/lote229-decisiones.md`.
+- An offer kit "out of sale" is **calculated** (the product keeps `IsActive = 1`): it is sold while it is in some published, active offer in effect for the client, and it comes back by itself when the offer is extended or reactivated. The library (`GET /offers/kits`) lists the kits by SKU; `offerCount` says in how many active offers it is today.
+- Solutions scripts: `02-kit-oferta1.sql` creates the library kit «OFERTA1» and the offer «OFERTA1» (published, for all clients, from today in Puerto Rico time, with no end date, at $41.94); `06-lista-precios-inicial.sql` no longer puts OFERTA1 in the general list. Detail in `docs/lote229-decisiones.md`.

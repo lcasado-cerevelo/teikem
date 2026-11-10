@@ -8459,28 +8459,30 @@ Se muestra solo con `sales.backorder` y el módulo Órdenes de venta; y solo si 
 
 ## Lote 68 — Kits
 
+> **Cambió en los Lotes 231 y 232 (2026-11-10).** Ya **no existen** la pestaña «Kit» de la ficha del producto ni «Convertir en kit». Ahora hay dos clases de kit: el **kit armado** (un producto con inventario, se crea en «Nuevo producto») y el **kit de oferta** (se arma al pedir, vive en las ofertas). Las preguntas de esta sección que hablan de «convertir» o de la pestaña «Kit» valen solo para el API y para los kits viejos; vea [Lote 231](#lote-231--kit-de-oferta-con-biblioteca) y [Lote 232](#lote-232--kit-armado-con-inventario-armar-y-desarmar).
+
 **No me deja convertir un producto en kit: «tiene existencia».**
-Un kit no tiene existencia propia. Saque la existencia del producto (ajuste o transferencia a otro producto) hasta que quede en cero y sin reservas, o cree un producto nuevo para el kit.
+Un producto ya no se convierte en kit desde Productos (Lote 231): la pantalla no lo ofrece y el API responde "Un producto ya no se convierte en kit desde Productos: un kit que se arma al pedir se crea como kit de oferta en Contabilidad → Precios y ofertas." (422). Si necesita un kit con existencia, cree un **kit armado**: Productos e inventario → **Nuevo producto** → «¿Lo que va a crear es un kit?» → Sí. Si lo que necesita es un kit que se arme al pedir, cree el kit en una oferta (**Crear un kit nuevo**). El mensaje "{SKU} tiene existencia: no se puede convertir en kit…" (409) solo sale por el API en un kit viejo.
 
 **No me deja agregar un producto como componente.**
-Debe ser un producto normal, activo, del mismo dueño de inventario que el kit y no puede ser otro kit ni el mismo kit. Lea el mensaje: dice cuál SKU y por qué.
+Debe ser un producto normal, activo, del mismo dueño de inventario que el kit y no puede ser otro kit ni el mismo kit (en un kit armado, tampoco una pieza con serie). Lea el mensaje: dice cuál SKU y por qué.
 
 **«Se pueden armar 0» pero hay existencia de todos los componentes.**
 La cuenta usa lo *disponible para vender*: se descuenta lo reservado y no cuenta lo que está en cuarentena, cruce de plataforma o renta; y se limita por el componente que menos alcanza (disponible ÷ cantidad por kit, hacia abajo).
 
 **No puedo volver el kit a producto normal.**
-Si alguna orden de venta ya lo usó, no se puede (el historial de esas órdenes depende de que siga siendo kit). Déjelo como kit o desactívelo si ya no se vende.
+Ya no hay botón «Volver a producto normal» (Lote 231). Un kit de oferta no vuelve a ser producto normal ("El kit {SKU} es un kit de oferta: se cambia en Contabilidad → Precios y ofertas, no en Productos.", 422). Un kit viejo (por el API) no se puede volver normal si alguna orden de venta ya lo usó (409): déjelo o desactívelo si ya no se vende.
 
 **Quise recibir el kit en un recibo y falló.**
-Un kit no se recibe: se reciben sus componentes. El mensaje dice `… es un kit: no tiene existencia propia. Los movimientos se hacen sobre sus componentes.`
+Un kit **de oferta** no se recibe: no tiene existencia, se reciben sus componentes. El mensaje dice `… es un kit: no tiene existencia propia. Los movimientos se hacen sobre sus componentes.` Un **kit armado** sí tiene existencia: se arma desde su ficha (pestaña «Armados»), y un ajuste o una transferencia del kit se hacen como los de cualquier producto.
 
 ## Lote 69 — Kits en las órdenes de venta
 
 **Vendí un kit y el sistema reservó piezas sueltas.**
-Es lo normal: la línea es del kit, pero lo reservado son las piezas de sus componentes (por kit entero). En la orden, la tabla «Componentes de los kits» muestra cuánto está reservado de cada uno.
+Es lo normal en un **kit de oferta**: la línea es del kit, pero lo reservado son las piezas de sus componentes (por kit entero). Un **kit armado** no funciona así: se reserva el kit mismo, como cualquier producto. En la orden, la tabla «Componentes de los kits» muestra cuánto está reservado de cada uno.
 
 **Cambié los componentes del kit en el catálogo y mi orden sigue con los anteriores.**
-La orden guarda una foto de los componentes al guardar el borrador; no cambia sola. Quite la línea del borrador y agréguela otra vez para tomar el catálogo nuevo.
+La orden guarda una foto de los componentes al guardar el borrador; no cambia sola. Quite la línea del borrador y agréguela otra vez para tomar el catálogo nuevo. (Desde el Lote 231 la composición de un kit de oferta ya usado no se cambia; esto aplica a un kit viejo.)
 
 **Pedí 5 kits y dice «disponible 3».**
 Se cuentan kits completos: el componente que menos alcanza limita (disponible para vender ÷ cantidad por kit, hacia abajo). Con «Dejar el resto en backorder» se reservan 3 kits y quedan 2 esperando.
@@ -8497,7 +8499,7 @@ Los componentes vuelven a su posición, los kits despachados bajan y quedan rese
 ## Lote 70 — Recolectar kits
 
 **Recolecté un kit y en el Kárdex veo las piezas sueltas.**
-Es lo normal: el kit no tiene existencia, así que sale cada componente (con la nota «KIT-1 × 2 · EMP-…»). Eliminar la recolección las devuelve todas.
+Es lo normal en un kit de oferta: el kit no tiene existencia, así que sale cada componente (con la nota «KIT-1 × 2 · EMP-…»). Un kit armado se recolecta como un producto normal. Eliminar la recolección las devuelve todas.
 
 **No puedo escoger la posición al recolectar un kit.**
 Un kit sale de sus componentes por la rotación (FEFO/FIFO) de cada uno; no admite posición, lote ni series. Para sacar de una posición concreta, recolecte los componentes como productos sueltos.
@@ -11523,6 +11525,8 @@ Dentro de un filtro, sí: cualquiera de los clientes elegidos. Entre filtros, no
 ## Lote 229 — Ofertas como entidad aparte, kits de oferta y foto del producto
 <!-- kemi:staff -->
 
+> **Cambió en el Lote 231 (2026-11-10).** Los kits ya no quedan atados a una oferta: viven en una **biblioteca de kits de oferta** y se reutilizan. Los mensajes «es de la oferta … no se puede poner en otra», «Ese kit no es de esta oferta…», «… es de la oferta …, que {motivo}…» y «… su precio va en la oferta…» **ya no existen**; los reemplazan los de la sección [Lote 231](#lote-231--kit-de-oferta-con-biblioteca). Los botones «Escoger un producto o kit» y «Crear kit para esta oferta» son ahora «Escoger un producto», «Usar un kit anterior» y «Crear un kit nuevo».
+
 Capítulos: [47 — Listas de precios y ofertas](47-precios-y-ofertas.md) (ofertas §4, fotos §5, avisos §2), [06 §2.5](06-inventario-y-almacen.md#25-foto-del-producto-y-categoría-con-subcategoría-lote-229-2026-11-09) (foto del producto) y [48](48-pedido-guiado.md) (el pedido). Desde este lote una **oferta** es una cosa aparte (nombre, foto, vigencia y renglones con precio de oferta), ya no un kit marcado como promoción.
 
 ### Casos frecuentes
@@ -11531,7 +11535,7 @@ Capítulos: [47 — Listas de precios y ofertas](47-precios-y-ofertas.md) (ofert
 En Contabilidad → Precios y ofertas, sección **Ofertas**, botón **Nueva oferta** (hace falta `sales.pricelist`). La oferta nace en **borrador**: póngale foto, renglones (y clientes, si no es para todos) y pulse **Publicar**. Hasta publicarla no da precios.
 
 **Antes un kit se marcaba como promoción. ¿Cómo hago ahora que un kit sea oferta?**
-Ya no se marca el kit: se crea una oferta y se pone el kit como **renglón** con su precio de oferta («Escoger un producto o kit»), o se crea un kit solo para la oferta con **Crear kit para esta oferta**. Las promociones que existían se conservaron como datos, pero ya no dan precio ni bloquean ventas.
+Ya no se marca el kit: se crea una oferta y se pone el kit como **renglón** con su precio de oferta: **Usar un kit anterior** (de la biblioteca de kits de oferta) o **Crear un kit nuevo**. Las promociones que existían se conservaron como datos, pero ya no dan precio ni bloquean ventas.
 
 **Dejé «Hasta» en blanco. ¿Qué pasa?**
 La oferta **no vence**: vale hasta que se desactive o se vuelva a borrador. La pantalla lo avisa («Sin fecha de fin: vale hasta que la desactive»). Si es de temporada, póngale fecha.
@@ -11543,10 +11547,10 @@ El **más bajo** de los dos; si empatan, el de la lista del cliente. Sin precio 
 La **más barata** (si valen lo mismo, la que empezó más tarde) y el sistema avisa. El aviso no impide nada.
 
 **¿Qué pasa con el kit de una oferta cuando la oferta termina?**
-Queda **inactivo para la venta**: no sale en el pedido y pedirlo da error. No se borra ni se da de baja, y las órdenes y facturas que lo usaron lo siguen viendo. Si se extiende la fecha de fin (o se quita), o se reactiva la oferta, el kit **vuelve** solo.
+Desde el Lote 231, si el kit no está en otra oferta vigente, **sale de la venta**: no sale en el pedido y pedirlo da error. No se borra ni se da de baja: queda en la biblioteca, y las órdenes y facturas que lo usaron lo siguen viendo. Si se extiende la fecha de fin (o se quita), o se reactiva la oferta, el kit **vuelve** solo.
 
 **El kit de la oferta no sale en el pedido.**
-Revise que la oferta esté **publicada**, **activa**, vigente hoy y que aplique al cliente (para todos, o él entre los escogidos). Un kit de oferta solo se ofrece como tarjeta de oferta, nunca en la lista normal de la marca.
+Revise que el kit esté en una oferta **publicada**, **activa**, vigente hoy y que aplique al cliente (para todos, o él entre los escogidos). Un kit de oferta solo se ofrece como tarjeta de oferta, nunca en la lista normal de la marca.
 
 **¿Qué foto sale en el pedido, en las listas y en las ofertas?**
 En este orden: la foto del **renglón** (si se le puso una) → la del **producto** → si es un kit sin foto, la de su **primera pieza que tenga foto** → vacío. Quitar la foto del renglón (**Volver a la del producto**) hace que salga la del producto.
@@ -11561,7 +11565,7 @@ Con `sales.view` debería verlas aunque no tenga `inventory.view`. Si no salen, 
 JPG, PNG o WEBP, hasta el tope del almacén de archivos (10 MB por omisión). Si el lado mayor pasa de 1200 px, el sistema la reduce a 1200 px. (Los renglones de las listas de precios aceptan también GIF.)
 
 **¿Puedo editar o desactivar una oferta que ya se usó en pedidos?**
-Sí. Los pedidos ya hechos no cambian (la línea guarda su precio). Desactivarla la saca de los pedidos nuevos y saca de la venta sus kits.
+Sí. Los pedidos ya hechos no cambian (la línea guarda su precio). Desactivarla la saca de los pedidos nuevos y saca de la venta sus kits, salvo los que estén en otra oferta vigente.
 
 ### Avisos de precio (no son errores)
 
@@ -11613,10 +11617,10 @@ El producto es de un cliente de paso (422). Las ofertas solo llevan productos y 
 El producto está dado de baja (422). Reactívelo en Productos o escoja otro.
 
 **¿Qué significa "El kit {SKU} es de la oferta «{nombre}»: no se puede poner en otra."?**
-Ese kit se creó para otra oferta y queda atado a ella (422). Use un kit normal, o cree otro kit para esta oferta.
+Este mensaje **ya no existe** (Lote 231): un kit de oferta puede estar en varias ofertas a la vez. Use **Usar un kit anterior**.
 
 **¿Qué significa "El kit {SKU} es de la oferta «{nombre}»: su precio va en la oferta, no en una lista de precios."?**
-Se intentó poner en una lista de precios un kit creado para una oferta (422). Su precio se cambia en el renglón de su oferta.
+Este mensaje **ya no existe**; lo reemplaza "El kit {SKU} es un kit de oferta: su precio va en una oferta, no en una lista de precios." (422), explicado en el [Lote 231](#lote-231--kit-de-oferta-con-biblioteca).
 
 **¿Qué significa "Escoja los clientes de la oferta."?**
 Se intentó agregar clientes sin escoger ninguno (400). Escoja al menos uno.
@@ -11646,10 +11650,10 @@ El kit que se está creando (o cambiando) no tiene piezas (400). Agregue al meno
 Al crear el kit de la oferta, el SKU ya lo usa otro producto (409). Escoja otro SKU.
 
 **¿Qué significa "Ese kit no es de esta oferta: cámbielo desde su propia oferta o desde Productos."?**
-Se intentó cambiar el nombre o las piezas de un kit desde una oferta que no es la suya (422). Ábralo en su oferta, o en Productos e inventario → el kit.
+Este mensaje **ya no existe** (Lote 231). Lo reemplaza "Ese kit no está en esta oferta: cámbielo desde la biblioteca de kits de oferta." (422), explicado en el [Lote 231](#lote-231--kit-de-oferta-con-biblioteca).
 
 **¿Qué significa "El kit {SKU} es de la oferta «{nombre}», que {motivo}: no se puede vender."?**
-Se pidió un kit de oferta fuera de su vigencia (422). El motivo dice cuál es: **está desactivada**, **está en borrador**, **todavía no empieza (vale del … al …)** o **ya terminó (valía del … al …)**. Publique o reactive la oferta, extienda su fecha, o quite el kit del pedido. Las órdenes ya hechas no cambian.
+Este mensaje **ya no existe** (Lote 231). Lo reemplaza "El kit de oferta {SKU} no está en ninguna oferta publicada y vigente para este cliente: no se puede vender." (422), explicado en el [Lote 231](#lote-231--kit-de-oferta-con-biblioteca).
 
 **¿Qué significa "Adjunte la foto." o "La foto debe ser una imagen JPG, PNG o WEBP."?**
 No se mandó archivo, o su contenido no es JPG, PNG o WEBP (400). Se comprueba el contenido, no la extensión. Si dice "El archivo no puede pasar de {n} MB.", reduzca la foto.
@@ -11699,11 +11703,11 @@ Seguramente la unidad no es la correcta (p. ej. metros en vez de centímetros) (
 **¿Qué es la categoría → subcategoría?**
 Una categoría puede tener una categoría superior (p. ej. Guantes → Nitrilo; Almacén → Productos e inventario → pestaña Categorías). La categoría dice **qué es** el producto; la marca va en Marca y el modelo en Modelo. Para cambiar una pieza de un kit se compara la categoría exacta (la subcategoría, si la tiene).
 
-**¿Qué es «No sustituible» en el editor del kit?**
-Por omisión, al pedir se puede cambiar una pieza por otra de la misma categoría exacta y el mismo precio de venta. Marque «No sustituible» en las piezas que no se pueden cambiar. La marca se puede poner en el editor del kit (Productos) o en la ventana de la oferta, al crear o cambiar un kit de la oferta.
+**¿Qué es «No sustituible» en el kit?**
+Por omisión, al pedir se puede cambiar una pieza de un **kit de oferta** por otra de la misma categoría exacta y el mismo precio de venta. Marque «No sustituible» en las piezas que no se pueden cambiar. Desde el Lote 231 la marca se pone solo en la ventana de la oferta, al **crear un kit nuevo** (ya no hay pestaña «Kit» en Productos), y no se cambia una vez usado el kit. Un kit armado no tiene sustitución.
 
 **¿«Ajustable al pedir» sigue existiendo?**
-Sí, igual que antes: permite cambiar las **cantidades** de las piezas en la orden sin cambiar el precio del kit. La sustitución es aparte (cambia **qué producto** es la pieza) y se pueden usar las dos.
+Sí, pero desde el Lote 231 **solo en los kits de oferta** (se marca al crear el kit en la oferta): permite cambiar las **cantidades** de las piezas en la orden sin cambiar el precio del kit. La sustitución es aparte (cambia **qué producto** es la pieza) y se pueden usar las dos.
 
 **¿Quién puede cambiar una pieza al pedir? ¿Hace falta un permiso aparte?**
 El vendedor con `sales.create`; no hay permiso aparte. Lo decide la definición del kit.
@@ -11746,3 +11750,233 @@ Se pidieron sustitutos de un producto que no es kit (422; llamada directa al API
 
 **¿Qué significa "Producto no encontrado." o "Componente no encontrado." al cambiar una pieza?**
 El kit o la pieza original ya no existe, o es de otra compañía (404). Recargue el pedido.
+
+## Lote 231 — Kit de oferta con biblioteca
+<!-- kemi:staff -->
+
+Capítulos: [47 §4.4](47-precios-y-ofertas.md#44-kits-de-oferta-y-la-biblioteca-lote-231) (kits de oferta y la biblioteca), [06 §8b](06-inventario-y-almacen.md#8b-kits-armado-y-de-oferta-lotes-68-231-y-232-2026-11-10) (las dos clases de kit) y [18 §17](18-ordenes-de-venta.md#17-kits-en-las-órdenes-de-venta-lote-69-rehecho-en-los-lotes-231-y-232) (el kit en la orden). Desde el 2026-11-10 hay **dos clases de kit**: el **kit de oferta** (se arma al pedir; vive en las ofertas) y el **kit armado** (un producto con inventario; vea el [Lote 232](#lote-232--kit-armado-con-inventario-armar-y-desarmar)).
+
+### Casos frecuentes
+
+**¿Dónde creo un kit?**
+Depende de la clase. Si el kit se junta **cuando el cliente lo pide** (una promoción), en Contabilidad → Precios y ofertas → la oferta → **Crear un kit nuevo** (hace falta `sales.pricelist`). Si el kit se arma **de antemano** y debe tener existencia en el almacén, en Almacén → Productos e inventario → **Nuevo producto** → «¿Lo que va a crear es un kit?» → «Sí, es un kit» (hace falta `inventory.manage`).
+
+**¿Por qué ya no veo «Convertir en kit» ni la pestaña «Kit» en el producto?**
+Se quitaron en el Lote 231: un producto normal ya no se convierte en kit. Para un kit con existencia cree un **kit armado** desde «Nuevo producto»; para un kit que se arma al pedir, cree un **kit de oferta** en una oferta. Si el API recibe la orden de convertir, responde "Un producto ya no se convierte en kit desde Productos: un kit que se arma al pedir se crea como kit de oferta en Contabilidad → Precios y ofertas." (422).
+
+**¿Por qué el kit no aparece en Productos e inventario?**
+Porque es un **kit de oferta**: se arma al pedir, no tiene existencia y vive en la **biblioteca de kits de oferta**, no en el inventario (tampoco entra en sus conteos, filtros, exportación ni importación). Se ve desde la oferta, en **Usar un kit anterior**. Un kit que sí debe aparecer en Productos e inventario es un **kit armado**.
+
+**¿Qué es la biblioteca de kits de oferta?**
+La lista de todos los kits de oferta que se han creado. No es una pantalla aparte: se abre desde la ventana de una oferta, en **Usar un kit anterior**, con buscador por SKU o nombre. Cada kit muestra sus piezas, la última oferta donde se usó y el último precio.
+
+**¿Cómo repito en enero la oferta de noviembre?**
+Cree la oferta de enero y, en **Renglones**, pulse **Usar un kit anterior**: busque el kit de noviembre, confirme el precio (la pantalla sugiere el último, pero puede poner otro) y pulse **Agregar a la oferta**. No hay que teclear las piezas otra vez.
+
+**¿Puedo cambiar las piezas de un kit anterior?**
+No. La composición (piezas, cantidades, «No sustituible» y «Ajustable al pedir») de un kit que ya se usó en una oferta o en un pedido no cambia. Si quiere otras piezas, pulse **Crear un kit nuevo con estas piezas**, ajuste lo que necesite y póngale otro SKU. El nombre sí se puede cambiar («Cambiar kit»).
+
+**¿Puedo cambiar el precio de un kit anterior?**
+Sí. El precio es de cada oferta: al usar el kit se sugiere el último, pero puede escribir otro; después se cambia en el renglón como el de cualquier producto.
+
+**¿Cómo hago un kit que se venda siempre?**
+Póngalo en una oferta sin fecha de fin: deje «Hasta» en blanco. El kit se vende mientras esté en una oferta publicada y vigente para el cliente, así que una oferta permanente da un kit de venta permanente. Si el kit debe estar armado de antemano, use un kit armado.
+
+**¿Cuándo se puede vender un kit de oferta?**
+Solo mientras esté en **alguna** oferta publicada, activa y vigente hoy que aplique al cliente (a todos, o a él entre los escogidos). Fuera de eso no sale en el pedido y pedirlo da el error de abajo. No se borra: si la oferta se extiende, se reactiva o se publica otra vez, el kit vuelve solo.
+
+**¿Un mismo kit puede estar en dos ofertas a la vez?**
+Sí. Si las dos están vigentes para el mismo cliente, se cobra la más barata y sale el aviso de «dos ofertas a la vez» (no es un error).
+
+**¿Dónde marco «No sustituible» y «Ajustable al pedir»?**
+Solo al **crear un kit nuevo** en la ventana de la oferta. Una vez usado el kit no se cambian. La sustitución de piezas y «Ajustable al pedir» existen **solo en los kits de oferta**, no en un kit armado ni en un producto normal.
+
+**¿Qué pasó con los kits que había atado a una oferta en el Lote 229?**
+Pasaron a la biblioteca de kits de oferta y ya se pueden usar en otras ofertas. Se venden con las mismas reglas nuevas (en alguna oferta vigente).
+
+### Mensajes
+
+**¿Qué significa "Kit de oferta no encontrado."?**
+El kit que se pidió no existe, no es un kit de oferta o es de otra compañía (404). Recargue la ventana de la oferta: alguien pudo cambiar la biblioteca.
+
+**¿Qué significa "La composición del kit {SKU} ya no se puede cambiar porque ya se usó en una oferta o en un pedido: cree un kit nuevo con las piezas que quiera."?**
+Se intentó cambiar las piezas, las cantidades, «No sustituible» o «Ajustable al pedir» de un kit que ya tiene un renglón en alguna oferta (aunque se haya quitado) o una línea en alguna orden (422). Cree un kit nuevo (hay un atajo, **Crear un kit nuevo con estas piezas**). El nombre sí se puede cambiar.
+
+**¿Qué significa "El kit de oferta {SKU} no está en ninguna oferta publicada y vigente para este cliente: no se puede vender."?**
+Se pidió un kit de oferta que hoy no está en ninguna oferta publicada, activa y vigente que aplique a ese cliente (422). Publique o reactive una oferta que lo tenga, extienda su fecha de fin, agregue al cliente a la oferta si es de clientes escogidos, o quite el kit del pedido. Las órdenes ya hechas no cambian.
+
+**¿Qué significa "El kit {SKU} es un kit de oferta: su precio va en una oferta, no en una lista de precios."?**
+Se intentó poner un kit de oferta en una lista de precios (422). Su precio va en el renglón de una oferta.
+
+**¿Qué significa "El kit {SKU} es un kit de oferta: se cambia en Contabilidad → Precios y ofertas, no en Productos."?**
+Se intentó cambiar (o volver normal) un kit de oferta desde Productos, por el API (422). Se cambia desde la oferta: **Cambiar kit** en su renglón.
+
+**¿Qué significa "Un producto ya no se convierte en kit desde Productos: un kit que se arma al pedir se crea como kit de oferta en Contabilidad → Precios y ofertas."?**
+Se intentó convertir un producto normal en kit por el API (422). Cree un kit de oferta en una oferta, o un kit armado en «Nuevo producto».
+
+**¿Qué significa "El kit {SKU} no admite cambiar ni ajustar sus piezas al pedir: eso solo se puede en un kit de oferta."?**
+Un pedido mandó piezas cambiadas o ajustadas de un kit que no es de oferta (400): un kit armado o un kit viejo. La pantalla no lo ofrece. Quite la línea y agréguela otra vez sin tocar las piezas.
+
+**¿Qué significa "Ese kit no está en esta oferta: cámbielo desde la biblioteca de kits de oferta."?**
+Se llamó al cambio de un kit desde una oferta que no lo tiene como renglón (422, solo por el API). Cámbielo desde la biblioteca (**Cambiar kit** en un renglón de la oferta que sí lo tiene).
+
+**¿Qué significa "Indique el precio de oferta de cada renglón." al usar un kit anterior?**
+El kit nunca se había usado y no hay precio anterior que sugerir, o se borró el precio (400). Escriba el precio de oferta. En la pantalla, si falta el precio dice "Indique el precio de oferta del kit.".
+
+**¿Qué significa "Indique el SKU del kit." o "Indique el nombre del kit."?**
+Mensajes de la pantalla al crear un kit nuevo: falta el SKU o el nombre. El SKU no se repite para el mismo dueño ("Ya existe un producto con ese SKU para ese dueño.", 409).
+
+**¿Qué significa "Ese SKU es un kit de oferta: no se cambia por la importación de productos, sino en Contabilidad → Precios y ofertas."?**
+Una fila de la importación de productos trae el SKU de un kit de oferta (error en esa fila). Quite la fila: el kit se cambia en la oferta.
+
+## Lote 232 — Kit armado con inventario: armar y desarmar
+<!-- kemi:staff -->
+
+Capítulos: [06 §8b](06-inventario-y-almacen.md#8b-kits-armado-y-de-oferta-lotes-68-231-y-232-2026-11-10) (las dos clases de kit; kit armado en §8b.2 y mensajes en §8b.3) y [18 §17](18-ordenes-de-venta.md#17-kits-en-las-órdenes-de-venta-lote-69-rehecho-en-los-lotes-231-y-232) (el kit armado en la orden). Un **kit armado** es un **producto con inventario**: se arma con sus piezas y los kits quedan en existencia.
+
+### Casos frecuentes
+
+**¿Cómo creo un kit con existencia?**
+Almacén → Productos e inventario → **Nuevo producto**. Arriba, en «¿Lo que va a crear es un kit?», escoja «Sí, es un kit»: aparece la composición (piezas y cantidad por kit) y «¿Cuántos kits arma ahora?». Hace falta `inventory.manage`; para armar al crear, también `inventory.adjust`.
+
+**¿Qué pasa con las piezas al armar?**
+Salen del inventario (de lo disponible, por la rotación de siempre o por el lote y la posición que escoja) y entran los kits a la posición que indique. Todo en una sola operación: si algo falla, no se arma nada.
+
+**¿Las piezas quedan «reservadas» cuando armo un kit?**
+No. Las piezas pasan a formar parte del kit: dejan de estar en el inventario como piezas y los kits aparecen como existencia. Nada queda «reservado» y el inventario no se descuadra.
+
+**¿Cuánto cuesta un kit armado? ¿Cambia el valor del inventario?**
+El costo del kit es la suma de lo que costaban las piezas que salieron (según el método de valuación de la compañía). El **valor total del inventario no cambia** al armar ni al desarmar. El costo solo se ve con `inventory.value`.
+
+**¿Qué lote tiene el kit armado y cuándo vence?**
+Si alguna pieza va por lote, el kit va por lote: cada armado crea un lote con el número del armado (ARM-00001) que **vence con la pieza que vence primero**. Si ninguna pieza va por lote, el kit no lleva lote.
+
+**¿Por qué cada armado usa un solo lote por pieza?**
+Para poder rastrear y desarmar bien: cada pieza regresa a su mismo lote. Si el lote no alcanza para todos los kits, el mensaje dice para cuántos sí; arme esos y haga otro armado con otro lote. «Se pueden armar» muestra las dos cuentas: en un armado y juntando lotes.
+
+**¿Puedo armar una parte ahora y el resto después?**
+Sí. Cada armado es un documento (ARM-#####); puede hacer los que necesite. En «¿Cuántos kits arma ahora?» puede dejar la cantidad vacía y armar después desde la pestaña «Armados».
+
+**¿Cómo desarmo un kit? ¿Puedo desarmar solo una parte?**
+Ficha del kit → pestaña **Armados** → en la fila del armado, **Desarmar**. Escriba cuántos kits (hasta los que quedan de ese armado). Cada pieza vuelve a su mismo lote, a la posición de donde salió (o a la que escoja) y al costo con que salió.
+
+**¿Por qué no puedo desarmar kits que ya vendí o reservé?**
+Solo se desarman kits **disponibles** del armado: los reservados por una orden o ya despachados no se desarman. Libere la reserva (cancele o modifique la orden) o desarme otros kits.
+
+**¿Por qué no puedo cambiar las piezas de mi kit armado?**
+Porque el kit ya tiene armados, movimientos o existencia. La composición solo se cambia mientras el kit esté «limpio»; después hay que crear un kit nuevo con las piezas que quiera. El rastreo y el dueño del kit tampoco se cambian a mano: los deciden las piezas.
+
+**¿Por qué no veo «Armar kits» ni «Desarmar»?**
+Armar y desarmar piden el permiso `inventory.adjust` (el mismo del ajuste de inventario de la web). Sin él, la pestaña «Armados» muestra el historial pero no los botones. Solo se hace en la web; la app del almacén no arma ni desarma.
+
+**¿Dónde veo qué se armó y qué se desarmó?**
+En la ficha del kit, pestaña **Armados**: cada armado con su fecha, quién, cuántos kits, cuántos quedan por desarmar, el lote del kit, las piezas con su lote y los desarmados (DES-#####). En el Kárdex, los movimientos llevan el motivo «Armado de kit» o «Desarmado de kit».
+
+**¿Qué pasa si vendo un kit armado y no hay existencia?**
+Lo mismo que con cualquier producto: no alcanza el inventario y el pedido queda con el faltante en **backorder**. Arme más kits desde la pestaña «Armados» y surta el backorder.
+
+**¿Puedo cambiar una pieza de un kit armado al pedir?**
+No. El kit armado ya tiene sus piezas dentro; se vende como un producto normal. El cambio de piezas y «Ajustable al pedir» existen solo en los kits de oferta.
+
+**¿En qué se diferencia un kit armado de un kit de oferta?**
+El kit armado es un producto con existencia que se arma antes y se ve en Productos e inventario; el kit de oferta se arma al pedir, no tiene existencia y vive en las ofertas. Tabla comparativa en [06 §8b.1](06-inventario-y-almacen.md#8b1-dos-clases-de-kit-quién-puede-y-dónde).
+
+**«Se pueden armar 0» pero hay existencia de las piezas.**
+La cuenta usa lo **disponible** (en mano menos reservado) en posiciones activas del almacén, sin cuarentena, renta ni cross-dock, y con **un solo lote por pieza** por armado. Mire también «juntando lotes»: si ahí alcanza, haga varios armados con lotes distintos.
+
+**¿Por qué el rastreo y el costo del kit no se pueden escribir?**
+Porque los deciden las piezas: el rastreo es por lote si alguna pieza va por lote (si no, ninguno) y el costo sale de las piezas al armar.
+
+### Mensajes de la composición
+
+**¿Qué significa "Un kit necesita al menos un componente." o "Un kit lleva como máximo 50 componentes."?**
+El kit no tiene piezas, o tiene más de 50 (400). Agregue al menos una pieza; no pase de 50. La pantalla dice "Un kit necesita al menos una pieza.".
+
+**¿Qué significa "Indique el producto del componente." o "La cantidad de cada componente debe ser mayor que cero."?**
+Una pieza no tiene producto, o su cantidad está vacía o en cero (400). Escoja el producto y una cantidad mayor que cero (hasta 3 decimales: "La cantidad admite como máximo 3 decimales.").
+
+**¿Qué significa "El componente {SKU} está repetido."?**
+El mismo producto está dos veces en la composición (400). Ponga la cantidad en un solo renglón.
+
+**¿Qué significa "El kit {SKU} no puede ser componente de sí mismo."?**
+Se escogió el propio kit como pieza al cambiar la composición (400).
+
+**¿Qué significa "{SKU} es un kit: un kit armado no lleva otro kit como pieza."?**
+La pieza escogida es un kit, de oferta o armado (400). Una pieza tiene que ser un producto normal.
+
+**¿Qué significa "El componente {SKU} está inactivo." o "El componente {SKU} es de otro dueño de inventario que el kit."?**
+La pieza está dada de baja, o es de otro dueño de inventario que el kit (400). Todas las piezas deben ser activas y del mismo dueño del kit (la propia compañía o el mismo cliente).
+
+**¿Qué significa "La pieza {SKU} se rastrea por serie: un kit armado no lleva piezas con serie en esta versión."?**
+Una pieza va por número de serie (400 al crear o cambiar la composición; 422 si ya está en el kit y se intenta armar). En esta versión un kit armado no lleva piezas con serie.
+
+**¿Qué significa "Componente no encontrado."?**
+Una pieza no existe o es de otra compañía (404). Recargue la pantalla y vuelva a escogerla.
+
+**¿Qué significa "El rastreo de un kit armado lo deciden sus piezas: debe ser LOT (o NONE)…" o "…no se cambia aquí…"?**
+Se mandó un rastreo distinto del que deciden las piezas al crear (400), o se intentó cambiar el rastreo al editar el producto (422). No se escribe: sale de las piezas. Para otro rastreo, cambie la composición mientras el kit no tenga armados, o cree un kit nuevo.
+
+**¿Qué significa "El dueño de un kit armado es el de sus piezas: no se cambia (cree un kit nuevo con las piezas del otro dueño)."?**
+Se intentó cambiar el dueño del kit al editarlo (422). Cree un kit nuevo con las piezas del otro dueño.
+
+**¿Qué significa "El kit {SKU} ya tiene armados, movimientos o existencia: su composición no se puede cambiar. Cree un kit nuevo."?**
+Se intentó cambiar las piezas de un kit que ya se armó, tiene movimientos o tiene existencia o reserva (409). Cree un kit nuevo.
+
+**¿Qué significa "El producto {SKU} no es un kit armado."?**
+Se intentó armar, desarmar o cambiar la composición de un producto que no es un kit armado (422), por ejemplo un producto normal o un kit de oferta.
+
+### Mensajes de armar y desarmar
+
+**¿Qué significa "El kit {SKU} no tiene piezas: agregue su composición antes de armar."?**
+Se intentó armar un kit sin composición (422). Agregue las piezas (mientras el kit no tenga historia) y vuelva a intentar.
+
+**¿Qué significa "El producto {SKU} está inactivo; no admite entradas de inventario."?**
+El kit está desactivado (422). Reactívelo para armarlo.
+
+**¿Qué significa "Indique cuántos kits." o "La cantidad de kits debe ser un número entero mayor que cero." o "Se arman o desarman como máximo 100,000 kits a la vez."?**
+La cantidad falta, no es entera o es menor o igual a cero, o pasa de 100,000 (400). Escriba un número entero de 1 a 100,000.
+
+**¿Qué significa "Indique la posición donde quedan los kits." o "Para armar kits al crear el producto indique la posición donde quedan."?**
+Falta la posición de destino de los kits al armar, o al armar mientras se crea el producto (400). Escoja la posición (y el almacén, si la compañía tiene más de uno).
+
+**¿Qué significa "La posición {Q-01} es de cuarentena, en renta o de cross-dock: no se usa para armar ni desarmar kits."?**
+La posición escogida no admite kits (422). Escoja una posición de almacenamiento normal.
+
+**¿Qué significa "La posición {K-01} está inactiva; no admite movimientos de inventario."?**
+La posición está dada de baja (422). Escoja otra o reactívela.
+
+**¿Qué significa "Indique el almacén: la compañía tiene más de uno."?**
+La compañía tiene varios almacenes y no se indicó cuál (400). Escoja el almacén.
+
+**¿Qué significa "Posición no encontrada." / "Lote no encontrado." / "Producto no encontrado." / "Armado no encontrado."?**
+Lo que se escogió no existe o es de otra compañía o de otro almacén (404). Recargue la pantalla y vuelva a escoger.
+
+**¿Qué significa "El producto indicado no es pieza de este kit." o "La pieza {SKU} está repetida en la selección." o "La pieza {SKU} no se rastrea por lote: no indique lote."?**
+En «De dónde sale cada pieza» se escogió un producto que no es pieza del kit, la misma pieza dos veces, o un lote para una pieza que no va por lote (400). La pantalla no lo ofrece; sale si el kit cambió mientras se armaba. Vuelva a abrir «Armar kits».
+
+**¿Qué significa "El lote {A2} de {SKU} solo alcanza para 2 kit(s): hay 4 disponible y cada kit lleva 2. Arme 2 con ese lote y el resto en otro armado con otro lote."?**
+El lote que va a usar una pieza no alcanza para todos los kits pedidos (409). Arme la cantidad que dice con ese lote y haga otro armado con otro lote. Si dice "El lote {A1} de {SKU} no alcanza para ningún kit: hay 0 disponible…", escoja otro lote.
+
+**¿Qué significa "No hay suficiente {SKU} disponible en {W1} para 3 kit(s): hay 10 y se necesitan 12; alcanza para 2."?**
+La pieza (sin lote) no alcanza en ese almacén para los kits pedidos (409). Arme los que alcanzan, reponga la pieza o transfiérala de otro almacén. Lo reservado por órdenes no cuenta como disponible.
+
+**¿Qué significa "Inventario insuficiente de {SKU} en {bin}: disponible {x}, solicitado {y}." al armar?**
+Dos armados que usan la misma pieza se hicieron a la vez y el segundo se quedó sin existencia (409). Vuelva a intentarlo: «Se pueden armar» ya refleja lo que quedó.
+
+**¿Qué significa "Las notas admiten como máximo 300 caracteres."?**
+La nota del armado o del desarmado pasa de 300 caracteres (400). Acórtela.
+
+**¿Qué significa "El motivo KIT_ASSEMBLY lo asigna el sistema." (o KIT_DISASSEMBLY)?**
+Se intentó un ajuste manual con el motivo «Armado de kit» o «Desarmado de kit» (400). Esos motivos solo los pone el sistema al armar o desarmar; para un ajuste, use otro motivo.
+
+**¿Qué significa "Del armado ARM-00001 quedan 1 kit(s) por desarmar; pidió 2."?**
+Se pidió desarmar más kits de los que quedan de ese armado (409). Escriba hasta lo que dice «Quedan por desarmar».
+
+**¿Qué significa "Solo hay 0 kit(s) disponible(s) del armado ARM-00001 en W1 y pidió desarmar 1. Los kits reservados por una orden o ya despachados no se desarman."?**
+Los kits de ese armado están reservados por una orden o ya salieron (409). Solo se desarman kits disponibles: libere la reserva o desarme otros.
+
+**¿Qué significa "Indique la posición donde vuelven las piezas: los kits están en otro almacén que el del armado."?**
+Se desarma en un almacén distinto del que se armó y falta la posición donde vuelven las piezas (400). Escoja la posición.
+
+**¿Qué significa "Falta el permiso 'inventory.adjust'." al armar o desarmar?**
+Su usuario no tiene el permiso de ajustar inventario (403). Pídale a un administrador de su compañía que se lo asigne si corresponde a su función.

@@ -247,14 +247,27 @@ pestaña Backorders: lo que avisa es lo que **Surtir** va a reservar.
 
 Base de datos: sección **2026-10-16 (o)** de `Diseño/logistica-db-update.sql` (EntityType `SALES_ORDER_LINE`); lo demás lo siembra el código.
 
-## 17. Kits en las órdenes de venta (Lote 69)
+## 17. Kits en las órdenes de venta (Lote 69; rehecho en los Lotes 231 y 232)
 
-Un **kit** ([06 §8b](06-inventario-y-almacen.md#8b-kits-lote-68-2026-10-16)) se vende como una línea más de la orden: la cantidad son **kits enteros** y el precio es el del kit.
+Hay **dos clases de kit** ([06 §8b](06-inventario-y-almacen.md#8b-kits-armado-y-de-oferta-lotes-68-231-y-232-2026-11-10)) y en la orden se portan distinto:
+
+| | **Kit de oferta** (Lote 231) | **Kit armado** (Lote 232) |
+|---|---|---|
+| Cómo se ve en la orden | Una línea con el distintivo «Kit» y **sus piezas debajo** | Una línea **normal**, sin piezas debajo (es un producto con inventario) |
+| Qué se reserva y se despacha | **Las piezas** de cada kit completo (por FEFO/FIFO de cada pieza) | **El kit mismo**, de su existencia y su lote, como cualquier producto |
+| Si no alcanza | Falta una pieza: el faltante se cuenta en kits | Falta el kit: **backorder**, como cualquier producto |
+| «Cambiar» una pieza (17.1) y «Ajustable al pedir» | **Sí**, solo aquí | **No**: mandar piezas da `El producto {SKU} no es un kit.` (400) |
+| Cuándo se puede pedir | Solo si está en una oferta **publicada y vigente** para el cliente | Siempre que esté activo y tenga precio |
+| Dónde se crea | En una oferta ([47 §4.4](47-precios-y-ofertas.md#44-kits-de-oferta-y-la-biblioteca-lote-231)) | En Productos e inventario ([06 §8b.2](06-inventario-y-almacen.md#8b2-kit-armado-cómo-se-usa-lote-232)) |
+
+Lo que sigue de esta sección (componentes de la línea, disponible y faltante, reservar, despachar y deshacer) describe el **kit de oferta**. Un **kit armado** no tiene nada especial en la orden: se vende, se reserva, se recolecta y se despacha **como un producto normal** (con su posición y su lote), y su existencia sale del armado ([06 §8b.2](06-inventario-y-almacen.md#8b2-kit-armado-cómo-se-usa-lote-232)).
+
+Un **kit de oferta** se vende como una línea más de la orden: la cantidad son **kits enteros** y el precio es el del kit.
 Por dentro, todo se mueve en sus **componentes**.
 
 - **Componentes de la línea.** Al guardar el borrador se toma una **foto** de los componentes del kit (cantidad por kit). Un cambio posterior del catálogo **no** altera la orden; si
   usted vuelve a guardar el borrador, la foto se conserva (incluidas las piezas ajustadas). Para tomar el catálogo nuevo, quite la línea y agréguela otra vez.
-- **Kit ajustable al pedir.** Si el kit se marcó «Ajustable al pedir», en el borrador se pueden cambiar las **cantidades por kit solo para esta orden** (el cuerpo lleva `components` en la línea).
+- **Kit ajustable al pedir** (solo un kit de oferta). Si el kit se marcó «Ajustable al pedir», en el borrador se pueden cambiar las **cantidades por kit solo para esta orden** (el cuerpo lleva `components` en la línea).
   En un kit fijo, mandar `components` da `El kit {SKU} no se puede ajustar al pedir.` (400).
 - **Disponible y faltante en kits.** Se pueden armar tantos kits como alcance el componente que menos da (disponible para vender ÷ cantidad por kit, hacia abajo). El diálogo de
   faltante, la orden y el backorder cuentan **kits**: pedido 5, disponible 3, faltante 2.
@@ -272,7 +285,10 @@ Por dentro, todo se mueve en sus **componentes**.
 |---|---|---|
 | Cantidad de kit con decimales | `El kit {SKU} se pide en piezas enteras.` | 400 |
 | Piezas ajustadas en un kit fijo | `El kit {SKU} no se puede ajustar al pedir.` | 400 |
-| Piezas en una línea que no es kit | `El producto {SKU} no es un kit.` | 400 |
+| Piezas en una línea que no es kit (un producto normal o un kit armado) | `El producto {SKU} no es un kit.` | 400 |
+| Cambiar o ajustar las piezas de un kit que no es de oferta (un kit viejo, tipo KIT sin la marca de oferta) | `El kit {SKU} no admite cambiar ni ajustar sus piezas al pedir: eso solo se puede en un kit de oferta.` | 400 |
+| Pedir un kit de oferta que no está en ninguna oferta publicada y vigente para el cliente | `El kit de oferta {SKU} no está en ninguna oferta publicada y vigente para este cliente: no se puede vender.` | 422 |
+| Pedir un kit armado sin existencia suficiente | `No alcanza el inventario de {SKU}: pedido {n}, disponible {n}, faltante {n}.` (el de cualquier producto, [§8](#8-mensajes-nuevos-lote-58)) | 409 |
 | Piezas ajustadas inválidas | los mismos de [06 §8b.3](06-inventario-y-almacen.md#8b3-reglas-y-mensajes) (cantidad, repetido, kit dentro de kit, inactivo, otro dueño) | 400 |
 | Kit sin componentes | `El kit {SKU} no tiene componentes: defínalos antes de venderlo.` | 400 |
 | Despachar un kit escogiendo posición o lote | `Un kit se despacha de lo reservado de sus componentes: no se escoge posición ni lote.` | 400 |
@@ -284,7 +300,7 @@ Para soporte: tabla `SalesOrderLineComponent` (la foto, se borra con la línea) 
 
 ### 17.1 Cambiar una pieza del kit al pedir (Lote 230)
 
-**Qué hace.** En un pedido, una pieza de un kit se puede **cambiar** por otro producto (p. ej. guantes de otra talla) si cumple **todo** esto:
+**Qué hace.** En un pedido, una pieza de un **kit de oferta** se puede **cambiar** por otro producto (p. ej. guantes de otra talla) si cumple **todo** esto:
 
 | Condición | Detalle |
 |---|---|
@@ -294,7 +310,7 @@ Para soporte: tabla `SalesOrderLineComponent` (la foto, se borra con la línea) 
 | **Pieza sustituible** | La pieza no está marcada «No sustituible» ([06 §8b.3b](06-inventario-y-almacen.md#8b3b-no-sustituible-lote-230-2026-11-09)). Por omisión toda pieza es sustituible. |
 | **Sustituto válido** | Producto activo, que no sea kit, del mismo dueño de inventario que el kit y que no sea ya otra pieza del mismo kit. |
 
-El **precio del kit no cambia**. Vale para kits fijos y ajustables, regulares y de oferta. **«Ajustable al pedir» sigue igual** (cambiar cantidades de las
+El **precio del kit no cambia**. Desde el Lote 231 vale **solo para el kit de oferta** (fijo o ajustable); un kit armado no tiene sustitución. **«Ajustable al pedir» sigue igual** (cambiar cantidades de las
 piezas sin tocar el precio): la sustitución es aparte y se pueden usar las dos.
 
 **Quién puede.** El vendedor, con `sales.create` — **no hay permiso aparte**: lo decide la definición del kit. Módulo **SALES_ORDERS**.
@@ -316,6 +332,7 @@ valida contra el catálogo **actual** del kit: si el catálogo cambió después 
 
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|
+| Sustituir o ajustar piezas en un kit que no es de oferta (un kit armado o un kit viejo) | `El kit KIT-1 no admite cambiar ni ajustar sus piezas al pedir: eso solo se puede en un kit de oferta.` | 400 |
 | Pieza marcada no sustituible | `La pieza GM del kit no es sustituible.` | 400 |
 | La «original» no es pieza del kit | `GV no es una pieza del kit KIT-1: solo se sustituyen sus piezas.` | 400 |
 | Pieza sin categoría | `La pieza CAJA no tiene categoría: solo se sustituye por un producto de la misma categoría.` | 400 |
@@ -339,7 +356,7 @@ El precio de la línea sale de la oferta, de la lista del cliente, de la lista g
 oferta vigente ([47 §2](47-precios-y-ofertas.md#2-de-dónde-sale-el-precio-de-una-línea)). En la orden:
 
 - La línea de un **producto o kit en oferta** queda con el precio de la oferta (`priceSource` `OFFER`); si el negociado del cliente es más bajo, queda el negociado (`CLIENT_LIST`).
-- Un **kit creado para una oferta** solo se puede pedir mientras su oferta esté publicada, activa y vigente; si no, `El kit {SKU} es de la oferta «{nombre}», que {motivo}: no se puede vender.` (422; los motivos están en [47 §7](47-precios-y-ofertas.md#7-validaciones-y-mensajes)). Las órdenes ya hechas no cambian; **modificar** una línea ya solicitada o cambiar el cliente de un borrador **no** vuelve a revisar la vigencia del kit.
+- Un **kit de oferta** solo se puede pedir mientras esté en alguna oferta publicada, activa y vigente para el cliente; si no, `El kit de oferta {SKU} no está en ninguna oferta publicada y vigente para este cliente: no se puede vender.` (422; [47 §4.4](47-precios-y-ofertas.md#44-kits-de-oferta-y-la-biblioteca-lote-231)). Su precio sale del renglón de la oferta; si está en dos ofertas vigentes, se cobra la más barata y sale el aviso `TWO_OFFERS`. Las órdenes ya hechas no cambian (la línea guarda su copia); **modificar** una línea ya solicitada o cambiar el cliente de un borrador **no** vuelve a revisar la vigencia del kit (sí se revisa al crear o editar las líneas del borrador).
 - **Avisos de precio** (no son errores): al crear o editar el borrador con líneas, la respuesta trae `linePrices[]` con, por producto, de dónde salió el precio (oferta o lista) y los avisos `TWO_OFFERS` y `OFFER_ABOVE_GENERAL`. No se guardan: al volver a abrir el borrador solo se ven los del catálogo. En el pedido guiado se muestran junto al producto, en la línea del carrito y en «Avisos de precio» del paso de entrega ([48 §2](48-pedido-guiado.md)). Se cobra siempre el precio más bajo.
 - Un precio distinto del resuelto exige `sales.price` (sin cambio).
 

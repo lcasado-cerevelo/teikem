@@ -247,14 +247,27 @@ Backorders tab: what it reports is what **Fill** is going to reserve.
 
 Database: section **2026-10-16 (o)** of `Diseño/logistica-db-update.sql` (EntityType `SALES_ORDER_LINE`); the rest is seeded by the code.
 
-## 17. Kits in sales orders (Batch 69)
+## 17. Kits in sales orders (Batch 69; redone in Batches 231 and 232)
 
-A **kit** ([06 §8b](06-inventario-y-almacen.md#8b-kits-batch-68-2026-10-16)) is sold as one more line of the order: the quantity is in **whole kits** and the price is the kit's.
+There are **two kinds of kit** ([06 §8b](06-inventario-y-almacen.md#8b-kits-assembled-and-offer-batches-68-231-and-232-2026-11-10)) and they behave differently in the order:
+
+| | **Offer kit** (Batch 231) | **Assembled kit** (Batch 232) |
+|---|---|---|
+| How it looks in the order | A line with the “Kit” badge and **its pieces underneath** | A **normal** line, no pieces underneath (it is a product with inventory) |
+| What is reserved and dispatched | **The pieces** of each complete kit (by FEFO/FIFO of each piece) | **The kit itself**, from its stock and lot, like any product |
+| If it is not enough | A piece is short: the shortage is counted in kits | The kit is short: **backorder**, like any product |
+| “Change” a piece (17.1) and “Adjustable when ordering” | **Yes**, only here | **No**: sending pieces gives `El producto {SKU} no es un kit.` (400) |
+| When it can be ordered | Only if it is in a **published, in-effect** offer for the client | Whenever it is active and has a price |
+| Where it is created | In an offer ([47 §4.4](47-precios-y-ofertas.md#44-offer-kits-and-the-library-batch-231)) | In Products & inventory ([06 §8b.2](06-inventario-y-almacen.md#8b2-assembled-kit-how-it-is-used-batch-232)) |
+
+The rest of this section (line components, available and short, reserve, dispatch and undo) describes the **offer kit**. An **assembled kit** has nothing special in the order: it is sold, reserved, picked and dispatched **like a normal product** (with its bin and lot), and its stock comes from the assembly ([06 §8b.2](06-inventario-y-almacen.md#8b2-assembled-kit-how-it-is-used-batch-232)).
+
+An **offer kit** is sold as one more line of the order: the quantity is in **whole kits** and the price is the kit's.
 Internally, everything moves in its **components**.
 
 - **Line components.** When saving the draft, a **snapshot** of the kit's components (quantity per kit) is taken. A later change of the catalog does **not** alter the order; if
   you save the draft again, the snapshot is kept (including the adjusted pieces). To take the new catalog, remove the line and add it again.
-- **Kit adjustable when ordering.** If the kit was marked “Adjustable when ordering”, the **quantities per kit can be changed for this order only** in the draft (the body carries `components` in the line).
+- **Kit adjustable when ordering** (an offer kit only). If the kit was marked “Adjustable when ordering”, the **quantities per kit can be changed for this order only** in the draft (the body carries `components` in the line).
   In a fixed kit, sending `components` gives `Kit {SKU} cannot be adjusted when ordering.` (400).
 - **Available and short in kits.** As many kits can be assembled as the component that yields the least allows (available to sell ÷ quantity per kit, rounded down). The shortage
   dialog, the order and the backorder count **kits**: ordered 5, available 3, short 2.
@@ -272,7 +285,10 @@ Internally, everything moves in its **components**.
 |---|---|---|
 | Kit quantity with decimals | `Kit {SKU} is ordered in whole pieces.` | 400 |
 | Adjusted pieces in a fixed kit | `Kit {SKU} cannot be adjusted when ordering.` | 400 |
-| Pieces in a line that is not a kit | `Product {SKU} is not a kit.` | 400 |
+| Pieces in a line that is not a kit (a normal product or an assembled kit) | `Product {SKU} is not a kit.` | 400 |
+| Changing or adjusting the pieces of a kit that is not an offer kit (an old KIT-type kit without the offer mark) | `El kit {SKU} no admite cambiar ni ajustar sus piezas al pedir: eso solo se puede en un kit de oferta.` (The kit {SKU} does not allow changing or adjusting its pieces when ordering: that is only possible on an offer kit.) | 400 |
+| Ordering an offer kit that is in no published offer in effect for the client | `El kit de oferta {SKU} no está en ninguna oferta publicada y vigente para este cliente: no se puede vender.` (The offer kit {SKU} is in no published offer in effect for this client: it cannot be sold.) | 422 |
+| Ordering an assembled kit with not enough stock | The one of any product: `Not enough inventory of {SKU}: ordered {n}, available {n}, short {n}.` ([§8](#8-new-messages-batch-58)) | 409 |
 | Invalid adjusted pieces | the same as in [06 §8b.3](06-inventario-y-almacen.md#8b3-rules-and-messages) (quantity, repeated, kit inside a kit, inactive, another owner) | 400 |
 | Kit without components | `Kit {SKU} has no components: define them before selling it.` | 400 |
 | Dispatching a kit choosing a bin or lot | `A kit is dispatched from what is reserved of its components: no bin or lot is chosen.` | 400 |
@@ -286,7 +302,7 @@ For support: table `SalesOrderLineComponent` (the snapshot, deleted with the lin
 
 > The server only answers in Spanish, so the message table keeps the **exact Spanish text**, followed by its English meaning.
 
-**What it does.** In an order, a kit piece can be **swapped** for another product (e.g. gloves of another size) if it meets **all** of this:
+**What it does.** In an order, a piece of an **offer kit** can be **swapped** for another product (e.g. gloves of another size) if it meets **all** of this:
 
 | Condition | Detail |
 |---|---|
@@ -296,7 +312,7 @@ For support: table `SalesOrderLineComponent` (the snapshot, deleted with the lin
 | **Substitutable piece** | The piece is not marked «Not substitutable» ([06 §8b.3b](06-inventario-y-almacen.md#8b3b-not-substitutable-batch-230-2026-11-09)). By default every piece is substitutable. |
 | **Valid substitute** | Active product, not a kit, of the same inventory owner as the kit and not already another piece of the same kit. |
 
-The **kit price does not change**. It applies to fixed and adjustable kits, regular and offer kits. **«Adjustable when ordering» stays as it was** (changing the
+The **kit price does not change**. Since Batch 231 it applies **only to the offer kit** (fixed or adjustable); an assembled kit has no substitution. **«Adjustable when ordering» stays as it was** (changing the
 quantities of the pieces without touching the price): substitution is separate and both can be used.
 
 **Who can.** The salesperson, with `sales.create` — **there is no separate permission**: the kit's definition decides. Module **SALES_ORDERS**.
@@ -318,6 +334,7 @@ is validated against the kit's **current** catalog: if the catalog changed after
 
 | Case | Exact message (Spanish, as sent) | Meaning | HTTP |
 |---|---|---|---|
+| Substituting or adjusting pieces on a kit that is not an offer kit (an assembled kit or an old kit) | `El kit KIT-1 no admite cambiar ni ajustar sus piezas al pedir: eso solo se puede en un kit de oferta.` | The kit KIT-1 does not allow changing or adjusting its pieces when ordering: that is only possible on an offer kit. | 400 |
 | Piece marked not substitutable | `La pieza GM del kit no es sustituible.` | Piece GM of the kit is not substitutable. | 400 |
 | The «original» is not a piece of the kit | `GV no es una pieza del kit KIT-1: solo se sustituyen sus piezas.` | GV is not a piece of kit KIT-1: only its pieces are substituted. | 400 |
 | Piece without category | `La pieza CAJA no tiene categoría: solo se sustituye por un producto de la misma categoría.` | Piece CAJA has no category: it is only replaced by a product of the same category. | 400 |
@@ -341,7 +358,7 @@ The line price comes from the offer, the client's list, the general list or the 
 offer in effect ([47 §2](47-precios-y-ofertas.md#2-where-the-price-of-a-line-comes-from)). In the order:
 
 - The line of a **product or kit in an offer** keeps the offer price (`priceSource` `OFFER`); if the client's negotiated price is lower, the negotiated one stays (`CLIENT_LIST`).
-- A **kit created for an offer** can only be ordered while its offer is published, active and in effect; otherwise, `El kit {SKU} es de la oferta «{nombre}», que {motivo}: no se puede vender.` (Kit {SKU} belongs to the offer «{name}», which {reason}: it cannot be sold.) (422; the reasons are in [47 §7](47-precios-y-ofertas.md#7-validations-and-messages)). Orders already placed do not change; **modifying** an already requested line or changing a draft's client does **not** re-check the kit's validity.
+- An **offer kit** can only be ordered while it is in some published, active offer in effect for the client; otherwise, `El kit de oferta {SKU} no está en ninguna oferta publicada y vigente para este cliente: no se puede vender.` (The offer kit {SKU} is in no published offer in effect for this client: it cannot be sold.) (422; [47 §4.4](47-precios-y-ofertas.md#44-offer-kits-and-the-library-batch-231)). Its price comes from the offer line; if it is in two offers in effect, the cheapest is charged and the `TWO_OFFERS` warning appears. Orders already placed do not change (the line keeps its copy); **modifying** an already requested line or changing a draft's client does **not** re-check the kit's validity (it is checked when creating or editing the draft's lines).
 - **Price warnings** (they are not errors): when creating or editing the draft with lines, the response carries `linePrices[]` with, per product, where the price came from (offer or list) and the `TWO_OFFERS` and `OFFER_ABOVE_GENERAL` warnings. They are not stored: when the draft is reopened only the catalog's are seen. In the guided order they show next to the product, on the cart line and in «Price warnings» of the delivery step ([48 §2](48-pedido-guiado.md)). The lowest price is always charged.
 - A price different from the resolved one requires `sales.price` (unchanged).
 

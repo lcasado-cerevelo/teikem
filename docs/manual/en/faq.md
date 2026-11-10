@@ -8460,28 +8460,30 @@ It is shown only with `sales.backorder` and the Sales orders module; and only if
 
 ## Batch 68 — Kits
 
+> **Changed in Batches 231 and 232 (2026-11-10).** The “Kit” tab of the product record and “Make it a kit” **no longer exist**. There are now two kinds of kit: the **assembled kit** (a product with inventory, created in “New product”) and the **offer kit** (assembled when ordered, lives in offers). The questions in this section that talk about “converting” or the “Kit” tab only apply to the API and to old kits; see [Batch 231](#batch-231--offer-kit-with-library) and [Batch 232](#batch-232--assembled-kit-with-inventory-assemble-and-disassemble).
+
 **It does not let me convert a product into a kit: “has stock”.**
-A kit has no stock of its own. Take the stock out of the product (adjustment or transfer to another product) until it is at zero and without reservations, or create a new product for the kit.
+A product is no longer converted into a kit from Products (Batch 231): the screen does not offer it and the API answers “Un producto ya no se convierte en kit desde Productos: un kit que se arma al pedir se crea como kit de oferta en Contabilidad → Precios y ofertas.” (422). If you need a kit with stock, create an **assembled kit**: Products & inventory → **New product** → “Is what you are creating a kit?” → Yes. If you need a kit assembled when ordered, create the kit in an offer (**Create a new kit**). The message “{SKU} tiene existencia: no se puede convertir en kit…” (409) only appears through the API on an old kit.
 
 **It does not let me add a product as a component.**
-It must be a normal, active product, of the same inventory owner as the kit, and it cannot be another kit nor the kit itself. Read the message: it says which SKU and why.
+It must be a normal, active product, of the same inventory owner as the kit, and it cannot be another kit nor the kit itself (in an assembled kit, nor a serial-tracked piece either). Read the message: it says which SKU and why.
 
 **“0 can be assembled” but there is stock of all the components.**
 The count uses what is *available to sell*: what is reserved is deducted and what is in quarantine, cross-dock or rental does not count; and it is limited by the component that falls shortest (available ÷ quantity per kit, rounded down).
 
 **I cannot turn the kit back into a normal product.**
-If any sales order already used it, it cannot be done (the history of those orders depends on it remaining a kit). Leave it as a kit or deactivate it if it is no longer sold.
+There is no “Back to a normal product” button any more (Batch 231). An offer kit does not go back to a normal product (“El kit {SKU} es un kit de oferta: se cambia en Contabilidad → Precios y ofertas, no en Productos.”, 422). An old kit (through the API) cannot be turned back to normal if any sales order already used it (409): leave it or deactivate it if it is no longer sold.
 
 **I tried to receive the kit in a receipt and it failed.**
-A kit is not received: its components are received. The message says `… es un kit: no tiene existencia propia. Los movimientos se hacen sobre sus componentes.`
+An **offer** kit is not received: it has no stock, its components are received. The message says `… es un kit: no tiene existencia propia. Los movimientos se hacen sobre sus componentes.` An **assembled kit** does have stock: it is assembled from its record (“Assemblies” tab), and an adjustment or transfer of the kit is done like for any product.
 
 ## Batch 69 — Kits in sales orders
 
 **I sold a kit and the system reserved loose pieces.**
-That is normal: the line is for the kit, but what is reserved are the pieces of its components (per whole kit). In the order, the “Kit components” table shows how much of each is reserved.
+That is normal for an **offer kit**: the line is for the kit, but what is reserved are the pieces of its components (per whole kit). An **assembled kit** does not work that way: the kit itself is reserved, like any product. In the order, the “Kit components” table shows how much of each is reserved.
 
 **I changed the kit components in the catalog and my order still has the previous ones.**
-The order keeps a snapshot of the components when the draft is saved; it does not change on its own. Remove the line from the draft and add it again to take the new catalog.
+The order keeps a snapshot of the components when the draft is saved; it does not change on its own. Remove the line from the draft and add it again to take the new catalog. (Since Batch 231 the composition of an offer kit that was already used does not change; this applies to an old kit.)
 
 **I ordered 5 kits and it says “available 3”.**
 Complete kits are counted: the component that falls shortest limits it (available to sell ÷ quantity per kit, rounded down). With “Leave the rest on backorder” 3 kits are reserved and 2 are left waiting.
@@ -8498,7 +8500,7 @@ The components return to their bin, the dispatched kits go down and become reser
 ## Batch 70 — Picking kits
 
 **I picked a kit and in the movement ledger I see the loose pieces.**
-That is normal: the kit has no stock, so each component goes out (with the note “KIT-1 × 2 · EMP-…”). Deleting the pick batch returns them all.
+That is normal for an offer kit: the kit has no stock, so each component goes out (with the note “KIT-1 × 2 · EMP-…”). An assembled kit is picked like a normal product. Deleting the pick batch returns them all.
 
 **I cannot choose the bin when picking a kit.**
 A kit goes out of its components by the rotation (FEFO/FIFO) of each one; it does not accept a bin, lot or serials. To take from a specific bin, pick the components as loose products.
@@ -11534,6 +11536,8 @@ Within one filter, yes: any of the chosen clients. Across filters, no: the order
 
 > The server answers these messages in Spanish; each question quotes the exact Spanish text, followed by its English meaning.
 
+> **Changed in Batch 231 (2026-11-10).** Kits are no longer tied to an offer: they live in an **offer kit library** and are reused. The messages “es de la oferta … no se puede poner en otra”, “Ese kit no es de esta oferta…”, “… es de la oferta …, que {motivo}…” and “… su precio va en la oferta…” **no longer exist**; they are replaced by those of the [Batch 231](#batch-231--offer-kit-with-library) section. The buttons “Pick a product or kit” and “Create a kit for this offer” are now “Pick a product”, “Use a previous kit” and “Create a new kit”.
+
 Chapters: [47 — Price lists and offers](47-precios-y-ofertas.md) (offers §4, photos §5, warnings §2), [06 §2.5](06-inventario-y-almacen.md#25-product-photo-and-category-with-subcategory-batch-229-2026-11-09) (product photo) and [48](48-pedido-guiado.md) (the order). Since this batch an **offer** is a separate thing (name, photo, validity and lines with an offer price), no longer a kit marked as a promotion.
 
 ### Common cases
@@ -11542,7 +11546,7 @@ Chapters: [47 — Price lists and offers](47-precios-y-ofertas.md) (offers §4, 
 In Accounting → Prices and offers, **Offers** section, **New offer** button (`sales.pricelist` is needed). The offer is born as a **draft**: add its photo, lines (and clients, if it is not for all) and press **Publish**. It gives no prices until it is published.
 
 **A kit used to be marked as a promotion. How do I make a kit an offer now?**
-The kit is no longer marked: you create an offer and put the kit in it as a **line** with its offer price («Pick a product or kit»), or you create a kit just for the offer with **Create a kit for this offer**. Promotions that existed were kept as data, but they no longer give a price or block sales.
+The kit is no longer marked: you create an offer and put the kit in it as a **line** with its offer price: **Use a previous kit** (from the offer kit library) or **Create a new kit**. Promotions that existed were kept as data, but they no longer give a price or block sales.
 
 **I left «Until» blank. What happens?**
 The offer **does not expire**: it is valid until it is deactivated or sent back to draft. The screen warns about it («No end date: valid until you deactivate it»). If it is seasonal, set a date.
@@ -11554,10 +11558,10 @@ The **lowest** of the two; if they tie, the client's list one. Without a negotia
 The **cheapest** (if they are the same price, the one that started later) and the system warns. The warning blocks nothing.
 
 **What happens to an offer's kit when the offer ends?**
-It becomes **inactive for sale**: it does not show in the order and ordering it gives an error. It is not deleted or deactivated, and the orders and invoices that used it still see it. If the end date is extended (or removed), or the offer is reactivated, the kit **comes back** by itself.
+Since Batch 231, if the kit is not in another offer in effect, it **leaves the sale**: it does not show in the order and ordering it gives an error. It is not deleted or deactivated: it stays in the library, and the orders and invoices that used it still see it. If the end date is extended (or removed), or the offer is reactivated, the kit **comes back** by itself.
 
 **The offer's kit does not show in the order.**
-Check that the offer is **published**, **active**, in effect today and applies to the client (all clients, or him among the chosen ones). An offer kit is only offered as an offer card, never in the brand's normal list.
+Check that the kit is in an offer that is **published**, **active**, in effect today and applies to the client (all clients, or him among the chosen ones). An offer kit is only offered as an offer card, never in the brand's normal list.
 
 **Which photo shows in the order, in lists and in offers?**
 In this order: the **line's** photo (if one was set) → the **product's** → if it is a kit without a photo, that of its **first piece that has a photo** → empty. Removing a line's photo (**Back to the product photo**) makes the product's show.
@@ -11572,7 +11576,7 @@ With `sales.view` they should see them even without `inventory.view`. If they do
 JPG, PNG or WEBP, up to the file store limit (10 MB by default). If the longer side is over 1200 px, the system reduces it to 1200 px. (Price list lines also accept GIF.)
 
 **Can I edit or deactivate an offer that was already used in orders?**
-Yes. Orders already placed do not change (the line keeps its price). Deactivating it takes it out of new orders and takes its kits off sale.
+Yes. Orders already placed do not change (the line keeps its price). Deactivating it takes it out of new orders and takes its kits off sale, except those in another offer in effect.
 
 ### Price warnings (they are not errors)
 
@@ -11640,11 +11644,11 @@ The product has been deactivated (422). Reactivate it in Products or choose anot
 
 **What does "El kit {SKU} es de la oferta «{nombre}»: no se puede poner en otra." mean?**
 (Kit {SKU} belongs to the offer «{name}»: it cannot go in another.)
-That kit was created for another offer and stays tied to it (422). Use a regular kit, or create another kit for this offer.
+This message **no longer exists** (Batch 231): an offer kit can be in several offers at once. Use **Use a previous kit**.
 
 **What does "El kit {SKU} es de la oferta «{nombre}»: su precio va en la oferta, no en una lista de precios." mean?**
 (Kit {SKU} belongs to the offer «{name}»: its price goes in the offer, not in a price list.)
-An attempt was made to put a kit created for an offer in a price list (422). Its price is changed on its offer's line.
+This message **no longer exists**; it is replaced by “El kit {SKU} es un kit de oferta: su precio va en una oferta, no en una lista de precios.” (422), explained in [Batch 231](#batch-231--offer-kit-with-library).
 
 **What does "Escoja los clientes de la oferta." mean?**
 (Choose the clients of the offer.)
@@ -11684,11 +11688,11 @@ When creating the offer's kit, the SKU is already used by another product (409).
 
 **What does "Ese kit no es de esta oferta: cámbielo desde su propia oferta o desde Productos." mean?**
 (That kit is not from this offer: change it from its own offer or from Products.)
-Changing the name or pieces of a kit from an offer that is not its own was attempted (422). Open it in its own offer, or in Products & inventory → the kit.
+This message **no longer exists** (Batch 231). It is replaced by “Ese kit no está en esta oferta: cámbielo desde la biblioteca de kits de oferta.” (422), explained in [Batch 231](#batch-231--offer-kit-with-library).
 
 **What does "El kit {SKU} es de la oferta «{nombre}», que {motivo}: no se puede vender." mean?**
 (Kit {SKU} belongs to the offer «{name}», which {reason}: it cannot be sold.)
-An offer kit was ordered outside its validity (422). The reason says which one: **está desactivada** (is deactivated), **está en borrador** (is a draft), **todavía no empieza (vale del … al …)** (has not started yet) or **ya terminó (valía del … al …)** (has already ended). Publish or reactivate the offer, extend its date, or remove the kit from the order. Orders already placed do not change.
+This message **no longer exists** (Batch 231). It is replaced by “El kit de oferta {SKU} no está en ninguna oferta publicada y vigente para este cliente: no se puede vender.” (422), explained in [Batch 231](#batch-231--offer-kit-with-library).
 
 **What does "Adjunte la foto." or "La foto debe ser una imagen JPG, PNG o WEBP." mean?**
 (Attach the photo. / The photo must be a JPG, PNG or WEBP image.)
@@ -11748,11 +11752,11 @@ Most likely the unit is wrong (e.g. meters instead of centimeters) (400). Fix th
 **What is category → subcategory?**
 A category can have a parent category (e.g. Gloves → Nitrile; Warehouse → Products & inventory → Categories tab). The category says **what** the product is; the brand goes in Brand and the model in Model. To swap a kit piece, the exact category is compared (the subcategory, if it has one).
 
-**What is «Not substitutable» in the kit editor?**
-By default, when ordering, a piece can be swapped for another of the exact same category and the same sale price. Check «Not substitutable» on the pieces that cannot be swapped. The mark can be set in the kit editor (Products) or in the offer window, when creating or changing an offer's kit.
+**What is «Not substitutable» in the kit?**
+By default, when ordering, a piece of an **offer kit** can be swapped for another of the exact same category and the same sale price. Check «Not substitutable» on the pieces that cannot be swapped. Since Batch 231 the mark is set only in the offer window, when you **create a new kit** (there is no “Kit” tab in Products any more), and it does not change once the kit has been used. An assembled kit has no substitution.
 
 **Does «Adjustable when ordering» still exist?**
-Yes, as before: it lets you change the **quantities** of the pieces in the order without changing the kit price. Substitution is separate (it changes **which product** the piece is) and both can be used.
+Yes, but since Batch 231 **only on offer kits** (it is checked when creating the kit in the offer): it lets you change the **quantities** of the pieces in the order without changing the kit price. Substitution is separate (it changes **which product** the piece is) and both can be used.
 
 **Who can swap a piece when ordering? Is a separate permission needed?**
 The salesperson with `sales.create`; there is no separate permission. The kit's definition decides.
@@ -11805,3 +11809,278 @@ Substitutes were requested for a product that is not a kit (422; a direct API ca
 **What does "Producto no encontrado." or "Componente no encontrado." mean when swapping a piece?**
 (Product not found. / Component not found.)
 The kit or the original piece no longer exists, or belongs to another company (404). Reload the order.
+
+## Batch 231 — Offer kit with library
+<!-- kemi:staff -->
+
+> The server answers these messages in Spanish; each question quotes the exact Spanish text, followed by its English meaning.
+
+Chapters: [47 §4.4](47-precios-y-ofertas.md#44-offer-kits-and-the-library-batch-231) (offer kits and the library), [06 §8b](06-inventario-y-almacen.md#8b-kits-assembled-and-offer-batches-68-231-and-232-2026-11-10) (the two kinds of kit) and [18 §17](18-ordenes-de-venta.md#17-kits-in-sales-orders-batch-69-redone-in-batches-231-and-232) (the kit in the order). Since 2026-11-10 there are **two kinds of kit**: the **offer kit** (assembled when ordered; lives in offers) and the **assembled kit** (a product with inventory; see [Batch 232](#batch-232--assembled-kit-with-inventory-assemble-and-disassemble)).
+
+### Common cases
+
+**Where do I create a kit?**
+It depends on the kind. If the kit is put together **when the client orders it** (a promotion), in Accounting → Prices and offers → the offer → **Create a new kit** (`sales.pricelist` is needed). If the kit is assembled **beforehand** and must have stock in the warehouse, in Warehouse → Products & inventory → **New product** → “Is what you are creating a kit?” → “Yes, it is a kit” (`inventory.manage` is needed).
+
+**Why do I no longer see “Make it a kit” or the “Kit” tab on the product?**
+They were removed in Batch 231: a normal product is no longer turned into a kit. For a kit with stock create an **assembled kit** from “New product”; for a kit assembled when ordered, create an **offer kit** in an offer. If the API receives the convert order, it answers “Un producto ya no se convierte en kit desde Productos: un kit que se arma al pedir se crea como kit de oferta en Contabilidad → Precios y ofertas.” (422).
+
+**Why does the kit not show in Products & inventory?**
+Because it is an **offer kit**: it is assembled when ordered, has no stock and lives in the **offer kit library**, not in inventory (nor does it enter its counts, filters, export or import). It is seen from the offer, in **Use a previous kit**. A kit that should show in Products & inventory is an **assembled kit**.
+
+**What is the offer kit library?**
+The list of all the offer kits that have been created. It is not a separate screen: it is opened from an offer's window, in **Use a previous kit**, with a search by SKU or name. Each kit shows its pieces, the last offer where it was used and the last price.
+
+**How do I repeat November's offer in January?**
+Create the January offer and, in **Lines**, press **Use a previous kit**: search for November's kit, confirm the price (the screen suggests the last one, but you can set another) and press **Add to the offer**. The pieces are not typed again.
+
+**Can I change the pieces of a previous kit?**
+No. The composition (pieces, quantities, “Not substitutable” and “Adjustable when ordering”) of a kit already used in an offer or in an order does not change. If you want other pieces, press **Create a new kit with these pieces**, adjust what you need and give it another SKU. The name can be changed (“Change kit”).
+
+**Can I change the price of a previous kit?**
+Yes. The price belongs to each offer: when using the kit the last one is suggested, but you can type another; afterwards it is changed on the line like any product's.
+
+**How do I make a kit that is sold all the time?**
+Put it in an offer with no end date: leave “Until” blank. The kit is sold while it is in a published offer in effect for the client, so a permanent offer gives a permanently sold kit. If the kit must be assembled beforehand, use an assembled kit.
+
+**When can an offer kit be sold?**
+Only while it is in **some** published, active offer in effect today that applies to the client (all, or him among the chosen ones). Outside that it does not show in the order and ordering it gives the error below. It is not deleted: if the offer is extended, reactivated or published again, the kit comes back by itself.
+
+**Can the same kit be in two offers at once?**
+Yes. If both are in effect for the same client, the cheapest is charged and the “two offers at once” warning appears (it is not an error).
+
+**Where do I mark “Not substitutable” and “Adjustable when ordering”?**
+Only when you **create a new kit** in the offer window. Once the kit is used they cannot be changed. Piece substitution and “Adjustable when ordering” exist **only on offer kits**, not on an assembled kit or a normal product.
+
+**What happened to the kits that were tied to an offer in Batch 229?**
+They moved to the offer kit library and can now be used in other offers. They are sold under the same new rules (in some offer in effect).
+
+### Messages
+
+**What does "Kit de oferta no encontrado." mean?**
+(Offer kit not found.)
+The requested kit does not exist, is not an offer kit or belongs to another company (404). Reload the offer window: someone may have changed the library.
+
+**What does "La composición del kit {SKU} ya no se puede cambiar porque ya se usó en una oferta o en un pedido: cree un kit nuevo con las piezas que quiera." mean?**
+(The composition of kit {SKU} can no longer be changed because it was already used in an offer or an order: create a new kit with the pieces you want.)
+An attempt was made to change the pieces, quantities, “Not substitutable” or “Adjustable when ordering” of a kit that already has a line in some offer (even if removed) or in some order (422). Create a new kit (there is a shortcut, **Create a new kit with these pieces**). The name can be changed.
+
+**What does "El kit de oferta {SKU} no está en ninguna oferta publicada y vigente para este cliente: no se puede vender." mean?**
+(The offer kit {SKU} is in no published offer in effect for this client: it cannot be sold.)
+An offer kit was ordered that today is in no published, active offer in effect that applies to that client (422). Publish or reactivate an offer that has it, extend its end date, add the client to the offer if it is for chosen clients, or remove the kit from the order. Orders already placed do not change.
+
+**What does "El kit {SKU} es un kit de oferta: su precio va en una oferta, no en una lista de precios." mean?**
+(The kit {SKU} is an offer kit: its price goes in an offer, not in a price list.)
+An attempt was made to put an offer kit in a price list (422). Its price goes on an offer line.
+
+**What does "El kit {SKU} es un kit de oferta: se cambia en Contabilidad → Precios y ofertas, no en Productos." mean?**
+(The kit {SKU} is an offer kit: it is changed in Accounting → Prices and offers, not in Products.)
+An attempt was made, through the API, to change (or turn back to normal) an offer kit from Products (422). It is changed from the offer: **Change kit** on its line.
+
+**What does "Un producto ya no se convierte en kit desde Productos: un kit que se arma al pedir se crea como kit de oferta en Contabilidad → Precios y ofertas." mean?**
+(A product is no longer turned into a kit from Products: a kit assembled when ordered is created as an offer kit in Accounting → Prices and offers.)
+An attempt was made to turn a normal product into a kit through the API (422). Create an offer kit in an offer, or an assembled kit in “New product”.
+
+**What does "El kit {SKU} no admite cambiar ni ajustar sus piezas al pedir: eso solo se puede en un kit de oferta." mean?**
+(The kit {SKU} does not allow changing or adjusting its pieces when ordering: that is only possible on an offer kit.)
+An order sent changed or adjusted pieces of a kit that is not an offer kit (400): an assembled kit or an old kit. The screen does not offer it. Remove the line and add it again without touching the pieces.
+
+**What does "Ese kit no está en esta oferta: cámbielo desde la biblioteca de kits de oferta." mean?**
+(That kit is not in this offer: change it from the offer kit library.)
+A kit change was called from an offer that does not have it as a line (422, API only). Change it from the library (**Change kit** on a line of the offer that does have it).
+
+**What does "Indique el precio de oferta de cada renglón." mean when using a previous kit?**
+(Give the offer price of each line.)
+The kit had never been used and there is no previous price to suggest, or the price was erased (400). Type the offer price. On the screen, a missing price reads “Indique el precio de oferta del kit.” (Enter the kit offer price.).
+
+**What does "Indique el SKU del kit." or "Indique el nombre del kit." mean?**
+(Enter the kit SKU. / Enter the kit name.)
+Screen messages when creating a new kit: the SKU or the name is missing. The SKU is not repeated for the same owner (“Ya existe un producto con ese SKU para ese dueño.”, 409).
+
+**What does "Ese SKU es un kit de oferta: no se cambia por la importación de productos, sino en Contabilidad → Precios y ofertas." mean?**
+(That SKU is an offer kit: it is not changed by the product import but in Accounting → Prices and offers.)
+A row of the product import carries the SKU of an offer kit (error on that row). Remove the row: the kit is changed in the offer.
+
+## Batch 232 — Assembled kit with inventory: assemble and disassemble
+<!-- kemi:staff -->
+
+> The server answers these messages in Spanish; each question quotes the exact Spanish text, followed by its English meaning.
+
+Chapters: [06 §8b](06-inventario-y-almacen.md#8b-kits-assembled-and-offer-batches-68-231-and-232-2026-11-10) (the two kinds of kit; assembled kit in §8b.2 and messages in §8b.3) and [18 §17](18-ordenes-de-venta.md#17-kits-in-sales-orders-batch-69-redone-in-batches-231-and-232) (the assembled kit in the order). An **assembled kit** is a **product with inventory**: it is assembled from its pieces and the kits sit in stock.
+
+### Common cases
+
+**How do I create a kit with stock?**
+Warehouse → Products & inventory → **New product**. At the top, in “Is what you are creating a kit?”, choose “Yes, it is a kit”: the composition (pieces and quantity per kit) and “How many kits do you assemble now?” appear. `inventory.manage` is needed; to assemble on creation, `inventory.adjust` too.
+
+**What happens to the pieces when assembling?**
+They leave inventory (from what is available, by the usual rotation or by the lot and bin you choose) and the kits enter the bin you give. All in a single operation: if anything fails, nothing is assembled.
+
+**Are the pieces “reserved” when I assemble a kit?**
+No. The pieces become part of the kit: they stop being in inventory as pieces and the kits appear as stock. Nothing stays “reserved” and inventory does not go out of balance.
+
+**How much does an assembled kit cost? Does the inventory value change?**
+The kit cost is the sum of what the pieces that left cost (by the company's valuation method). The **total inventory value does not change** when assembling or disassembling. The cost is only seen with `inventory.value`.
+
+**Which lot does the assembled kit have and when does it expire?**
+If any piece is lot-tracked, the kit is lot-tracked: each assembly creates a lot with the assembly's number (ARM-00001) that **expires with the piece that expires first**. If no piece is lot-tracked, the kit has no lot.
+
+**Why does each assembly use a single lot per piece?**
+To be able to trace and disassemble properly: each piece returns to its same lot. If the lot is not enough for all the kits, the message says for how many it is; assemble those and make another assembly with another lot. “Can be assembled” shows both counts: in one assembly and combining lots.
+
+**Can I assemble part now and the rest later?**
+Yes. Each assembly is a document (ARM-#####); you can make as many as you need. In “How many kits do you assemble now?” you can leave the quantity empty and assemble later from the “Assemblies” tab.
+
+**How do I disassemble a kit? Can I disassemble just a part?**
+Kit record → **Assemblies** tab → on the assembly row, **Disassemble**. Type how many kits (up to those left of that assembly). Each piece returns to its same lot, to the bin it came from (or the one you choose) and at the cost it left with.
+
+**Why can I not disassemble kits I already sold or reserved?**
+Only **available** kits of the assembly are disassembled: those reserved by an order or already shipped are not. Release the reservation (cancel or modify the order) or disassemble other kits.
+
+**Why can I not change the pieces of my assembled kit?**
+Because the kit already has assemblies, movements or stock. The composition can only change while the kit is “clean”; afterwards you have to create a new kit with the pieces you want. The kit's tracking and owner are not changed by hand either: the pieces decide them.
+
+**Why do I not see “Assemble kits” or “Disassemble”?**
+Assembling and disassembling need the `inventory.adjust` permission (the same as the web inventory adjustment). Without it, the “Assemblies” tab shows the history but not the buttons. It is only done on the web; the warehouse app does not assemble or disassemble.
+
+**Where do I see what was assembled and disassembled?**
+In the kit record, **Assemblies** tab: each assembly with its date, who, how many kits, how many are left to disassemble, the kit lot, the pieces with their lot and the disassemblies (DES-#####). In the movement ledger, the movements carry the reason “Kit assembly” or “Kit disassembly”.
+
+**What happens if I sell an assembled kit and there is no stock?**
+The same as with any product: the inventory is not enough and the order is left with the shortage on **backorder**. Assemble more kits from the “Assemblies” tab and fill the backorder.
+
+**Can I swap a piece of an assembled kit when ordering?**
+No. The assembled kit already has its pieces inside; it is sold like a normal product. Swapping pieces and “Adjustable when ordering” exist only on offer kits.
+
+**What is the difference between an assembled kit and an offer kit?**
+The assembled kit is a product with stock that is assembled beforehand and shows in Products & inventory; the offer kit is assembled when ordered, has no stock and lives in offers. Comparison table in [06 §8b.1](06-inventario-y-almacen.md#8b1-two-kinds-of-kit-who-can-and-where).
+
+**“0 can be assembled” but there is stock of the pieces.**
+The count uses what is **available** (on hand minus reserved) in active bins of the warehouse, without quarantine, rental or cross-dock, and with **a single lot per piece** per assembly. Also look at “combining lots”: if it is enough there, make several assemblies with different lots.
+
+**Why can I not type the kit's tracking and cost?**
+Because the pieces decide them: tracking is by lot if any piece is lot-tracked (otherwise none) and the cost comes from the pieces when assembling.
+
+### Composition messages
+
+**What does "Un kit necesita al menos un componente." or "Un kit lleva como máximo 50 componentes." mean?**
+(A kit needs at least one component. / A kit has at most 50 components.)
+The kit has no pieces, or more than 50 (400). Add at least one piece; do not go over 50. The screen says “A kit needs at least one piece.”.
+
+**What does "Indique el producto del componente." or "La cantidad de cada componente debe ser mayor que cero." mean?**
+(Enter the component's product. / Each component quantity must be greater than zero.)
+A piece has no product, or its quantity is empty or zero (400). Choose the product and a quantity greater than zero (up to 3 decimals: “La cantidad admite como máximo 3 decimales.”, the quantity allows at most 3 decimals).
+
+**What does "El componente {SKU} está repetido." mean?**
+(The component {SKU} is repeated.)
+The same product is twice in the composition (400). Put the quantity on a single line.
+
+**What does "El kit {SKU} no puede ser componente de sí mismo." mean?**
+(The kit {SKU} cannot be a component of itself.)
+The kit itself was chosen as a piece when changing the composition (400).
+
+**What does "{SKU} es un kit: un kit armado no lleva otro kit como pieza." mean?**
+({SKU} is a kit: an assembled kit does not take another kit as a piece.)
+The chosen piece is a kit, offer or assembled (400). A piece has to be a normal product.
+
+**What does "El componente {SKU} está inactivo." or "El componente {SKU} es de otro dueño de inventario que el kit." mean?**
+(The component {SKU} is inactive. / The component {SKU} belongs to a different inventory owner than the kit.)
+The piece has been deactivated, or belongs to another inventory owner than the kit (400). All pieces must be active and of the same owner as the kit (the company itself or the same client).
+
+**What does "La pieza {SKU} se rastrea por serie: un kit armado no lleva piezas con serie en esta versión." mean?**
+(Piece {SKU} is serial-tracked: an assembled kit does not take serial pieces in this version.)
+A piece goes by serial number (400 when creating or changing the composition; 422 if it is already in the kit and assembling is attempted). In this version an assembled kit does not take serial pieces.
+
+**What does "Componente no encontrado." mean?**
+(Component not found.)
+A piece does not exist or belongs to another company (404). Reload the screen and choose it again.
+
+**What does "El rastreo de un kit armado lo deciden sus piezas: debe ser LOT (o NONE)…" or "…no se cambia aquí…" mean?**
+(An assembled kit's tracking is decided by its pieces: it must be LOT (or NONE)… / …not changed here…)
+A tracking different from what the pieces decide was sent when creating (400), or an attempt was made to change the tracking when editing the product (422). It is not typed: it comes from the pieces. For another tracking, change the composition while the kit has no assemblies, or create a new kit.
+
+**What does "El dueño de un kit armado es el de sus piezas: no se cambia (cree un kit nuevo con las piezas del otro dueño)." mean?**
+(The owner of an assembled kit is its pieces' owner: not changed (create a new kit with the other owner's pieces).)
+An attempt was made to change the kit's owner when editing it (422). Create a new kit with the other owner's pieces.
+
+**What does "El kit {SKU} ya tiene armados, movimientos o existencia: su composición no se puede cambiar. Cree un kit nuevo." mean?**
+(The kit {SKU} already has assemblies, movements or stock: its composition cannot be changed. Create a new kit.)
+An attempt was made to change the pieces of a kit that was already assembled, has movements or has stock or reservations (409). Create a new kit.
+
+**What does "El producto {SKU} no es un kit armado." mean?**
+(The product {SKU} is not an assembled kit.)
+An attempt was made to assemble, disassemble or change the composition of a product that is not an assembled kit (422), for example a normal product or an offer kit.
+
+### Assemble and disassemble messages
+
+**What does "El kit {SKU} no tiene piezas: agregue su composición antes de armar." mean?**
+(The kit {SKU} has no pieces: add its composition before assembling.)
+An attempt was made to assemble a kit without a composition (422). Add the pieces (while the kit has no history) and try again.
+
+**What does "El producto {SKU} está inactivo; no admite entradas de inventario." mean?**
+(The product {SKU} is inactive; it does not admit inventory entries.)
+The kit is deactivated (422). Reactivate it to assemble it.
+
+**What does "Indique cuántos kits." or "La cantidad de kits debe ser un número entero mayor que cero." or "Se arman o desarman como máximo 100,000 kits a la vez." mean?**
+(Enter how many kits. / The number of kits must be a whole number greater than zero. / At most 100,000 kits are assembled or disassembled at a time.)
+The quantity is missing, is not whole or is zero or less, or is over 100,000 (400). Type a whole number from 1 to 100,000.
+
+**What does "Indique la posición donde quedan los kits." or "Para armar kits al crear el producto indique la posición donde quedan." mean?**
+(Enter the bin where the kits go. / To assemble kits when creating the product, enter the bin where they go.)
+The destination bin of the kits is missing when assembling, or when assembling while creating the product (400). Choose the bin (and the warehouse, if the company has more than one).
+
+**What does "La posición {Q-01} es de cuarentena, en renta o de cross-dock: no se usa para armar ni desarmar kits." mean?**
+(The bin {Q-01} is quarantine, rental or cross-dock: it is not used to assemble or disassemble kits.)
+The chosen bin does not admit kits (422). Choose a normal storage bin.
+
+**What does "La posición {K-01} está inactiva; no admite movimientos de inventario." mean?**
+(The bin {K-01} is inactive; it does not admit inventory movements.)
+The bin has been deactivated (422). Choose another or reactivate it.
+
+**What does "Indique el almacén: la compañía tiene más de uno." mean?**
+(Enter the warehouse: the company has more than one.)
+The company has several warehouses and none was given (400). Choose the warehouse.
+
+**What does "Posición no encontrada." / "Lote no encontrado." / "Producto no encontrado." / "Armado no encontrado." mean?**
+(Bin / Lot / Product / Assembly not found.)
+What was chosen does not exist or belongs to another company or warehouse (404). Reload the screen and choose again.
+
+**What does "El producto indicado no es pieza de este kit." or "La pieza {SKU} está repetida en la selección." or "La pieza {SKU} no se rastrea por lote: no indique lote." mean?**
+(The product given is not a piece of this kit. / The piece {SKU} is repeated in the selection. / The piece {SKU} is not lot-tracked: do not give a lot.)
+In “Where each piece comes from” a product that is not a piece of the kit was chosen, the same piece twice, or a lot for a piece that is not lot-tracked (400). The screen does not offer it; it appears if the kit changed while assembling. Open “Assemble kits” again.
+
+**What does "El lote {A2} de {SKU} solo alcanza para 2 kit(s): hay 4 disponible y cada kit lleva 2. Arme 2 con ese lote y el resto en otro armado con otro lote." mean?**
+(Lot {A2} of {SKU} only covers 2 kit(s): 4 available and each kit takes 2. Assemble 2 with that lot and the rest in another assembly with another lot.)
+The lot a piece will use is not enough for all the requested kits (409). Assemble the quantity it says with that lot and make another assembly with another lot. If it says “El lote {A1} de {SKU} no alcanza para ningún kit: hay 0 disponible…”, choose another lot.
+
+**What does "No hay suficiente {SKU} disponible en {W1} para 3 kit(s): hay 10 y se necesitan 12; alcanza para 2." mean?**
+(There is not enough {SKU} available in {W1} for 3 kit(s): 10 and 12 are needed; it covers 2.)
+The piece (without lot) is not enough in that warehouse for the requested kits (409). Assemble the ones it covers, restock the piece or transfer it from another warehouse. What orders reserve does not count as available.
+
+**What does "Inventario insuficiente de {SKU} en {bin}: disponible {x}, solicitado {y}." mean when assembling?**
+(Insufficient inventory of {SKU} in {bin}: available {x}, requested {y}.)
+Two assemblies that use the same piece were made at the same time and the second one ran out of stock (409). Try again: “Can be assembled” already reflects what is left.
+
+**What does "Las notas admiten como máximo 300 caracteres." mean?**
+(Notes allow at most 300 characters.)
+The note of the assembly or disassembly is over 300 characters (400). Shorten it.
+
+**What does "El motivo KIT_ASSEMBLY lo asigna el sistema." (or KIT_DISASSEMBLY) mean?**
+(The reason KIT_ASSEMBLY is assigned by the system.)
+A manual adjustment with the reason “Kit assembly” or “Kit disassembly” was attempted (400). Those reasons are only set by the system when assembling or disassembling; for an adjustment, use another reason.
+
+**What does "Del armado ARM-00001 quedan 1 kit(s) por desarmar; pidió 2." mean?**
+(Of assembly ARM-00001, 1 kit(s) are left to disassemble; you asked for 2.)
+More kits were requested to disassemble than are left of that assembly (409). Type up to what “Left to disassemble” says.
+
+**What does "Solo hay 0 kit(s) disponible(s) del armado ARM-00001 en W1 y pidió desarmar 1. Los kits reservados por una orden o ya despachados no se desarman." mean?**
+(Only 0 kit(s) of assembly ARM-00001 are available in W1 and you asked to disassemble 1. Kits reserved by an order or already shipped are not disassembled.)
+The kits of that assembly are reserved by an order or have already left (409). Only available kits are disassembled: release the reservation or disassemble others.
+
+**What does "Indique la posición donde vuelven las piezas: los kits están en otro almacén que el del armado." mean?**
+(Enter the bin where the pieces return: the kits are in a different warehouse than the assembly's.)
+Disassembling is done in a warehouse other than the one where it was assembled and the bin where the pieces return is missing (400). Choose the bin.
+
+**What does "Falta el permiso 'inventory.adjust'." mean when assembling or disassembling?**
+(Missing permission 'inventory.adjust'.)
+Your user does not have the adjust inventory permission (403). Ask an administrator of your company to assign it if it matches your role.

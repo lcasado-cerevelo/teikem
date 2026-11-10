@@ -1,4 +1,4 @@
-# Chapter 06 — Inventory and warehouse (Batch 6; Warehouses and locations extended in Batch 11; Products and Purchases extended in Batch 12; Receiving, Tasks and Picking & packing extended in Batch 13; Inventory and Cycle count extended in Batch 14; Warehouses, Receiving and Tasks extended in Batch 16: receipt direct to bin; Cycle count extended in Batch 21: count by product, correction, preview, bulk close and provisional bins; Warehouses and locations extended in Batch 23: bin sheets; Products extended in Batch 26: convert to serial)
+# Chapter 06 — Inventory and warehouse (Batch 6; Warehouses and locations extended in Batch 11; Products and Purchases extended in Batch 12; Receiving, Tasks and Picking & packing extended in Batch 13; Inventory and Cycle count extended in Batch 14; Warehouses, Receiving and Tasks extended in Batch 16: receipt direct to bin; Cycle count extended in Batch 21: count by product, correction, preview, bulk close and provisional bins; Warehouses and locations extended in Batch 23: bin sheets; Products extended in Batch 26: convert to serial; Kits redone in Batches 231 (offer kit) and 232 (assembled kit))
 
 This chapter describes Warehouses and locations, Products and categories, Inventory (balances, movement ledger with summary and detail, adjustments,
 transfers, automatic reconciliation with discrepancies, genealogy and serial trail), Receiving (arrival notices and receipts, including
@@ -415,6 +415,8 @@ How it is used:
 - `GET/POST /api/v1/product-categories`, `PATCH /api/v1/product-categories/{id}` (move/rename), `POST .../{id}/
   deactivate|reactivate`.
 
+**New product and kits (Batch 232).** The “New product” form starts with the question **“Is what you are creating a kit?”** (No by default). A normal product shows nothing about kits; with “Yes, it is a kit” the composition and how many kits to assemble now appear (§8b). Kits that are assembled when ordered (offer kits) are **not** created or shown here: they live in Accounting → Prices and offers (§8b.1).
+
 ### Product packaging (2026-10-09)
 
 **What it is.** Each product can have **one** pack: a packaging unit (Box, Barrel, Package, Bundle, Drum, Roll… from the editable
@@ -808,6 +810,7 @@ First entity of the generic template engine (dictated by Luis, 2026-10-19). **Wh
 | “A product with that SKU already exists for that owner.” | row | The SKU already exists (compared case-insensitively); it is not updated. |
 | “The SKU is repeated in the file.” | row | The same SKU and owner twice in the file. |
 | “An active product with that barcode already exists.” | row | Repeated barcode (in the system or in the file). |
+| “Ese SKU es un kit de oferta: no se cambia por la importación de productos, sino en Contabilidad → Precios y ofertas.” (That SKU is an offer kit: it is not changed by the product import but in Accounting → Prices and offers.) | row, `sku` | The SKU belongs to an offer kit (Batch 231): it is changed in the offer, not by the import. |
 | “Must be a number.” | row | Cost, price, weight, volume, minimums or pack quantity not numeric. |
 | “Owner client not found by that code.” | row | `ownerClientCode` is not the code of an active client. |
 | “Unknown unit of measure: 'X'.” · “Unknown tracking type: 'X'.” · “Unknown pack unit: 'X'.” | row | Use a catalog code. |
@@ -924,7 +927,7 @@ Increase or Decrease** (required) and a **positive quantity**, and sets the sign
 | Found (`FOUND`) | Yes | No |
 | Damage (`DAMAGE`), Loss (`LOSS`), Expired (`EXPIRED`) | No | Yes |
 | The other list reasons that are not system ones (for example `PO_SHORTAGE`, `OTHER`) | Yes | Yes |
-| `RECEIPT_VARIANCE`, `COUNT_VARIANCE`, `PICK_BATCH_REVERSAL`, `OPENING_BALANCE`, `TRACKING_CONVERSION` (Batch 26) | Never (assigned by the system) | Never |
+| `RECEIPT_VARIANCE`, `COUNT_VARIANCE`, `PICK_BATCH_REVERSAL`, `OPENING_BALANCE`, `TRACKING_CONVERSION` (Batch 26), `KIT_ASSEMBLY` and `KIT_DISASSEMBLY` (Batch 232: “Kit assembly” and “Kit disassembly”, §8b) | Never (assigned by the system) | Never |
 
 When the direction changes, a reason that is no longer valid is removed. The reason is chosen with a search box. The screen shows **"Available in the
 bin: N"** and, on decrease, **does not allow decreasing more than what is available**. A **lot-tracked** product asks for the lot number on increase and picks a
@@ -2505,28 +2508,202 @@ receivings remains protected (it cannot be removed, cannot go below what was rec
 
 ---
 
-## 8b. Kits (Batch 68, 2026-10-16)
+## 8b. Kits: assembled and offer (Batches 68, 231 and 232, 2026-11-10)
 
-A **kit** is a product that is assembled when ordered from other products (for example, “Cleaning kit” = 2 disinfectants + 1 mop). **It has no stock or movements
-of its own**: everything happens in its components. This batch leaves the catalog ready; its use in sales orders is in [18 §17](18-ordenes-de-venta.md#17-kits-in-sales-orders-batch-69) and in picking, in the next batch.
+A **kit** is a product made of other products (for example, “Cleaning kit” = 2 disinfectants + 1 mop). Since **2026-11-10** there are **two kinds of kit**, with different owners and screens. The **“Kit” tab** of the product record and the **“Make it a kit”** button **no longer exist** (Batch 231): a normal product is no longer turned into a kit.
 
-### 8b.1 Who and where
+> **Captures pending (Batches 231 and 232).** The product record and editor captures in [F6](frontend/f6-almacen-e-inventario.md) predate these batches: they do not show the question “Is what you are creating a kit?”, the kit composition, the “Assemblies” tab or its “Assemble kits” and “Disassemble” windows. They have to be retaken with the Playwright walkthrough. There is no capture of “Use a previous kit” either ([47 §4.4](47-precios-y-ofertas.md#44-offer-kits-and-the-library-batch-231)).
 
-- See a product's kit: `inventory.view`. Make it a kit, change components or go back to a normal product: `inventory.manage`. Inventory module (`WMS_LOTSERIAL`).
-- Screen: **Products & inventory → the product → “Kit” tab**. The product list marks kits with a “Kit” badge.
-- API: `GET /api/v1/products/{publicId}/kit` and `PUT /api/v1/products/{publicId}/kit`.
+> **About the messages.** The API returns its messages in Spanish. The tables below give the exact Spanish text (what you will see or find in a log) and its English meaning.
 
-### 8b.2 How it is used
+### 8b.1 Two kinds of kit, who can and where
 
-1. Open the product → **Kit** tab → **Make it a kit**.
-2. Choose the components (product and **quantity per kit**; decimals allowed) and, if you want, check **Adjustable when ordering** (in an order its pieces can be changed without touching the catalog).
-3. **Save kit.** The tab shows the components and, per warehouse, **“N can be assembled”**: the smallest quotient between what is *available to sell* of each component and its quantity
-   per kit, rounded down. “Available to sell” is the same count as in sales orders (without quarantine, cross-dock or rental).
-4. **Edit components** replaces the list; **Back to a normal product** removes the components.
-5. **Kit photo**: the **Photo** block of the product editor ([§2.5](#25-product-photo-and-category-with-subcategory-batch-229-2026-11-09)). A kit without its own photo shows that of its first piece that has one.
-6. **“Not substitutable”** on the pieces the salesperson cannot swap when ordering (§8b.3b). A kit for an offer is not created here but in the offer: [47 §4.4](47-precios-y-ofertas.md#44-an-offers-kits).
+| | **Assembled kit** (Batch 232) | **Offer kit** (Batch 231) |
+|---|---|---|
+| What it is | A **product with its own inventory**: it is assembled beforehand from its pieces and sits in stock | A kit that is **assembled when ordered**: it has no stock; when ordered, its pieces are reserved and leave |
+| Where it is created | Warehouse → **Products & inventory** → **New product** → “Is what you are creating a kit?” → “Yes, it is a kit” | Accounting → **Prices and offers** → an offer → “Use a previous kit” or “Create a new kit” ([47 §4.4](47-precios-y-ofertas.md#44-offer-kits-and-the-library-batch-231)) |
+| Shown in Products & inventory? | **Yes** (“Assembled kit” badge, “Assemblies” tab) | **No**: it lives in the offer kit library |
+| Stock | Yes: **Assemble** takes the pieces out of inventory and puts the kits in; **Disassemble** does the opposite | None |
+| When it is sold | Like any product; with no stock it goes to **backorder** | **Only** while it is in a published offer in effect for the client |
+| Swapping a piece when ordering (“Change”) and “Adjustable when ordering” | **No** | **Yes**, only here |
+| Who can | See: `inventory.view`. Create and compose: `inventory.manage`. Assemble and disassemble: `inventory.adjust` | See: `sales.view`. Create, use and change: `sales.pricelist` |
+| Module | Inventory with lots and serials (`WMS_LOTSERIAL`) | Sales orders (`SALES_ORDERS`) |
+
+- **Which one do I use?** If the pieces are put together **beforehand** and the kit is counted in the warehouse (stock, lots, expiry dates, backorder), use an **assembled kit**. If the kit is a promotion put together **when the client orders it**, use an **offer kit**. A kit sold all the time that is not assembled beforehand is an **offer kit in an offer with no end date**.
+- **No permission was added** in Batches 231 and 232. Whoever has `inventory.adjust` can already assemble and disassemble (it is the web inventory adjustment permission).
+- **Web only.** The warehouse app does not assemble or disassemble kits.
+- Assembled kit API: `POST /api/v1/products` with `isAssembledKit: true`; `GET` and `PUT /api/v1/products/{publicId}/assembled-kit`; `GET` and `POST …/assembled-kit/assemblies`; `POST …/assembled-kit/assemblies/{assemblyPublicId}/disassemble`. Offer kit API: [47 §4.5](47-precios-y-ofertas.md#45-how-to-use-it-api).
+
+### 8b.2 Assembled kit: how it is used (Batch 232)
+
+#### Creating an assembled kit
+
+1. **Warehouse → Products & inventory → New product.** At the top of the form, the question **“Is what you are creating a kit?”** with **No** (default) and **“Yes, it is a kit”**. With “No” the product is normal and nothing about kits is shown.
+2. With **“Yes”** these appear right there: **Kit composition** (**Kit pieces**: product and **quantity per kit**, **Add piece**) and **“How many kits do you assemble now?”**. Tracking and purchase cost stop being typed fields: they read “Decided by the pieces” and “Comes from the pieces when assembling”.
+3. Pieces are products **of the same inventory owner as the kit**, **active**, **without serials** and **not kits** (neither offer nor assembled). From 1 to 50 pieces, no repeats; the quantity is greater than zero with up to 3 decimals. The piece search only offers products of the kit's owner.
+4. **“How many kits do you assemble now?”** is optional (needs `inventory.adjust`): **Kits to assemble now**, **Warehouse where they are assembled** (with a single active warehouse it is already chosen) and **Bin where the kits go**. The screen says “With what is available in this warehouse you can assemble N (in a single assembly)” and, when there are more lots, “Combining lots, in several assemblies, there is enough for N”. This is an estimate: the server checks again when saving. If you leave it empty, the kit is created **without stock** and assembled later from its record.
+5. Without `inventory.adjust` the assemble block is not shown (“Assembling kits requires the adjust inventory permission: you can create the kit and have someone with that permission assemble it.”): the kit is created without stock.
+6. **Save.** It is all or nothing: if assembling was requested and the assembly fails, **the product is not created**. Notices: “Assembled kit created.” or “Assembled kit created and N kit(s) assembled.”.
+
+**The pieces decide the tracking:** if **any** piece is lot-tracked, the kit is tracked **by lot** (`LOT`); if none, **no lot** (`NONE`). It is not typed or changed separately. **The owner** of the kit is the pieces' owner.
+
+Before sending, the screen checks what it can (a piece that is a kit, serial-tracked, inactive, of another owner, more than 50) and shows the server message; the server checks the rest. Screen-only messages for the pieces table: “A kit needs at least one piece.”, “Choose the product of each piece.”, “The quantity of each piece must be a number greater than zero.” and “A piece is repeated: put the quantity on a single line.”.
+
+#### Seeing an assembled kit
+
+The product record carries the **“Assembled kit”** badge (the product list too) and the **“Assemblies”** tab. In the editor, the **Kit composition** block shows the pieces, “Kits on hand: N · available: N”, **“Can be assembled”** per warehouse (“A: N in one assembly · M combining lots”) and the **“Assemble and disassemble”** link. The kit's stock shows in Inventory, the movement ledger and counts like any product's.
+
+#### Assembling
+
+1. Kit record → **Assemblies** tab → **Assemble kits** (`inventory.adjust`).
+2. Step 1: **Number of kits** (integer from 1 to 100,000), **Warehouse**, **Bin where the kits go** (it cannot be a quarantine, rental or cross-dock bin) and **Notes** (up to 300 characters). For each piece, **“Where each piece comes from”**: by default the one suggested by the usual rotation (FEFO/FIFO of the piece or of the company); another bin or lot can be chosen. **Each assembly uses a single lot per piece** (it may come from several bins of the same lot).
+3. Step 2: **Summary before confirming**: pieces leaving inventory, kits coming in and the cost note. **Assemble N kit(s)** confirms.
+4. Notice: “Assembly ARM-00001: N kit(s) at A-01.” (with `inventory.value` it adds the cost).
+
+**What happens:** in **a single transaction** the pieces of N kits leave inventory (“Kit assembly”, one issue per pick) and N kits enter the destination bin. **Nothing stays “reserved”**: the pieces become part of the kit and stop being available as pieces. The pieces come from what is **available** (on hand minus reserved), in active bins of the chosen warehouse. Two assemblies of the same kit are queued; two assemblies that share a piece never leave negative stock (the second gets “Inventario insuficiente…” 409).
+
+#### Disassembling
+
+1. Kit record → **Assemblies** → on the assembly row, **Disassemble** (only if it has kits left to disassemble; `inventory.adjust`).
+2. **Quantity** (integer, up to what is **left** of that assembly; **part** of it can be disassembled), **Warehouse where the kits are** (by default the assembly's), **Bin where the pieces return** (empty = each piece returns to the bin it came from; **required** if the kits are in another warehouse) and **Notes**. Summary: kits leaving and pieces returning.
+3. Notice: “Disassembly DES-00001: N kit(s); the pieces went back to their lot.”.
+
+**What happens:** N kits leave and **each piece goes back to its same lot** (the assembly's), to the chosen bin or the original one, **at the cost it left with**. **Only available kits of that assembly are disassembled**: kits reserved by an order or already shipped are not. Kits of different assemblies are not mixed (with lot tracking); without lot, kits are interchangeable and are taken from the chosen assembly.
+
+#### Lots and expiry dates
+
+- If the kit is lot-tracked, **each assembly creates a kit lot** with the **same number as the assembly** (`ARM-00001`) that **expires with the piece that expires first**: the nearest of the expiry dates of the lots of the pieces that left (no expiry if none expires).
+- The assembly lines **remember the lot, bin, quantity and cost of each piece**; that is why, when disassembling, each piece returns to its lot.
+- **One lot per piece in each assembly.** If the lot is not enough for all the kits, the message says how many it does cover: assemble those with that lot and the rest in another assembly with another lot (“Can be assembled” shows both counts: in one assembly and combining lots).
+- When the kit (with lot) is sold, it is reserved and shipped by the usual rotation, like any lot-tracked product.
+
+#### Cost and inventory value
+
+- **Kit cost = the sum of the cost of the pieces that left**, by the company's valuation method (average or layers); the cost per kit is that total divided by the kits. If no piece had a cost, the assembly cost stays empty.
+- The **total inventory value does not change** when assembling or disassembling: what left from the pieces is what the kits are worth, and when disassembling the pieces return at the cost they left with.
+- The cost is only seen with `inventory.value` (without it the column is empty).
+- If the company changes valuation method after assembling, the stored costs are not recalculated.
+- A kit that enters through a **manual adjustment or a count** (without an assembly) is valued like any product without a layer (its purchase cost, or no cost) and does not touch the pieces.
+
+#### History: “Assemblies” tab and movement ledger
+
+- **“Assemblies”** tab (only on an assembled kit): explanation, stock, “Can be assembled”, the **Assemble kits** button and the **Assembly history**: **Assembly** (ARM-#####), **Date**, **By**, **Kits**, **Left to disassemble**, **Warehouse · bin**, **Kit lot** (with its expiry), **Pieces (lot)**, **Cost** and **Disassemblies** (DES-##### and how many). The table can be sorted and exported in full (not just the visible page).
+- **Movement ledger:** each assembly and disassembly leaves movements with the reason **“Kit assembly”** or **“Kit disassembly”** (system-assigned reasons: a manual adjustment cannot use them), the ARM-##### / DES-##### document as origin and the note “Armado de kit {SKU} · ARM-00001” or “Desarmado de kit {SKU} · DES-00001 · ARM-00001” (plus your note, if you wrote one). The note text is stored in Spanish.
+
+#### The composition no longer changes
+
+While the kit has no assemblies, movements or stock, the composition can be corrected in the product editor (`inventory.manage`). **As soon as it has any assembly, movement or stock/reservation** (also stock that came from an adjustment), the composition is fixed: for other pieces, **create a new kit**. The kit's **tracking** and **owner** are not changed by hand either (the pieces decide them). The screen says so: “The composition can no longer change: create a new kit.” / “The kit already has assemblies, movements or stock.”.
+
+#### Selling an assembled kit
+
+An assembled kit **is sold like any product**: it appears in the guided order and the sales order as a normal line (no pieces underneath, no “Change” and no “Adjustable when ordering”), **the kit itself** is reserved and shipped (not its pieces) and it can go in price lists and offers like any product. **Without stock** the inventory is not enough and the order goes to **backorder**, like any product ([18 §6](18-ordenes-de-venta.md#6-requesting-the-order-validate-and-reserve-batch-58)). **There is no piece substitution**: the assembled kit already has them inside. Sending pieces on its line gives `El producto {SKU} no es un kit.` (The product {SKU} is not a kit; 400).
 
 ### 8b.3 Rules and messages
+
+**Assembled kit: composition (creation and `PUT …/assembled-kit`).**
+
+| Case | Exact message (as the API returns it) | English | HTTP |
+|---|---|---|---|
+| No pieces | `Un kit necesita al menos un componente.` | A kit needs at least one component. | 400 |
+| More than 50 pieces | `Un kit lleva como máximo 50 componentes.` | A kit has at most 50 components. | 400 |
+| Piece without a product | `Indique el producto del componente.` | Enter the component's product. | 400 |
+| Piece quantity empty or 0 | `La cantidad de cada componente debe ser mayor que cero.` | Each component quantity must be greater than zero. | 400 |
+| Quantity with more than 3 decimals | `La cantidad admite como máximo 3 decimales.` | The quantity allows at most 3 decimals. | 400 |
+| Repeated product | `El componente {SKU} está repetido.` | The component {SKU} is repeated. | 400 |
+| The kit itself as a piece (when changing the composition) | `El kit {SKU} no puede ser componente de sí mismo.` | The kit {SKU} cannot be a component of itself. | 400 |
+| A piece that is a kit (offer or assembled) | `{SKU} es un kit: un kit armado no lleva otro kit como pieza.` | {SKU} is a kit: an assembled kit does not take another kit as a piece. | 400 |
+| Inactive piece | `El componente {SKU} está inactivo.` | The component {SKU} is inactive. | 400 |
+| Piece of another inventory owner | `El componente {SKU} es de otro dueño de inventario que el kit.` | The component {SKU} belongs to a different inventory owner than the kit. | 400 |
+| Serial-tracked piece | `La pieza {SKU} se rastrea por serie: un kit armado no lleva piezas con serie en esta versión.` | Piece {SKU} is serial-tracked: an assembled kit does not take serial pieces in this version. | 400 (creation and composition) · 422 (when assembling) |
+| Piece that does not exist | `Componente no encontrado.` | Component not found. | 404 |
+| `trackingType` different from what the pieces decide (creation through the API) | `El rastreo de un kit armado lo deciden sus piezas: debe ser {LOT o NONE} (LOT si alguna pieza se rastrea por lote; NONE si ninguna).` | An assembled kit's tracking is decided by its pieces: it must be {LOT or NONE} (LOT if any piece is lot-tracked; NONE if none). | 400 |
+| Changing the kit's tracking when editing the product | `El rastreo de un kit armado lo deciden sus piezas: no se cambia aquí (cambie la composición mientras el kit no tenga armados, o cree un kit nuevo).` | Tracking is decided by the pieces: not changed here (change the composition while the kit has no assemblies, or create a new kit). | 422 |
+| Changing the kit's owner when editing the product | `El dueño de un kit armado es el de sus piezas: no se cambia (cree un kit nuevo con las piezas del otro dueño).` | The owner of an assembled kit is its pieces' owner: not changed (create a new kit with the other owner's pieces). | 422 |
+| Changing the composition of a kit with assemblies, movements or stock | `El kit {SKU} ya tiene armados, movimientos o existencia: su composición no se puede cambiar. Cree un kit nuevo.` | The kit {SKU} already has assemblies, movements or stock: its composition cannot be changed. Create a new kit. | 409 |
+| Assembling, disassembling or changing the composition of a product that is not an assembled kit | `El producto {SKU} no es un kit armado.` | The product {SKU} is not an assembled kit. | 422 |
+
+**Assembling.**
+
+| Case | Exact message (as the API returns it) | English | HTTP |
+|---|---|---|---|
+| Kit without pieces | `El kit {SKU} no tiene piezas: agregue su composición antes de armar.` | The kit {SKU} has no pieces: add its composition before assembling. | 422 |
+| Inactive kit | `El producto {SKU} está inactivo; no admite entradas de inventario.` | The product {SKU} is inactive; it does not admit inventory entries. | 422 |
+| No quantity | `Indique cuántos kits.` | Enter how many kits. | 400 |
+| Quantity not whole or less than or equal to 0 | `La cantidad de kits debe ser un número entero mayor que cero.` | The number of kits must be a whole number greater than zero. | 400 |
+| More than 100,000 kits | `Se arman o desarman como máximo 100,000 kits a la vez.` | At most 100,000 kits are assembled or disassembled at a time. | 400 |
+| No destination bin | `Indique la posición donde quedan los kits.` | Enter the bin where the kits go. | 400 |
+| Assembling when creating the product, without a bin | `Para armar kits al crear el producto indique la posición donde quedan.` | To assemble kits when creating the product, enter the bin where they go. | 400 |
+| Quarantine, rental or cross-dock bin | `La posición {Q-01} es de cuarentena, en renta o de cross-dock: no se usa para armar ni desarmar kits.` | The bin {Q-01} is quarantine, rental or cross-dock: it is not used to assemble or disassemble kits. | 422 |
+| Inactive bin | `La posición {K-01} está inactiva; no admite movimientos de inventario.` | The bin {K-01} is inactive; it does not admit inventory movements. | 422 |
+| Several warehouses and none given | `Indique el almacén: la compañía tiene más de uno.` | Enter the warehouse: the company has more than one. | 400 |
+| Bin, lot, product or assembly that does not exist | `Posición no encontrada.` · `Lote no encontrado.` · `Producto no encontrado.` · `Armado no encontrado.` | Bin / Lot / Product / Assembly not found. | 404 |
+| Choosing a product that is not a piece | `El producto indicado no es pieza de este kit.` | The product given is not a piece of this kit. | 400 |
+| The same piece twice in the selection | `La pieza {SKU} está repetida en la selección.` | The piece {SKU} is repeated in the selection. | 400 |
+| Lot on a piece that is not lot-tracked | `La pieza {SKU} no se rastrea por lote: no indique lote.` | The piece {SKU} is not lot-tracked: do not give a lot. | 400 |
+| The chosen (or suggested) lot is not enough | `El lote {A2} de {SKU} solo alcanza para 2 kit(s): hay 4 disponible y cada kit lleva 2. Arme 2 con ese lote y el resto en otro armado con otro lote.` · `El lote {A1} de {SKU} no alcanza para ningún kit: hay 0 disponible y cada kit lleva 2.` | Lot {A2} of {SKU} only covers 2 kit(s): 4 available and each kit takes 2. Assemble 2 with that lot and the rest in another assembly with another lot. · Lot {A1} of {SKU} does not cover any kit… | 409 (`insufficient_stock`) |
+| Piece without lot that is not enough | `No hay suficiente {SKU} disponible en {W1} para 3 kit(s): hay 10 y se necesitan 12; alcanza para 2.` | There is not enough {SKU} available in {W1} for 3 kit(s): 10 and 12 are needed; it covers 2. | 409 (`insufficient_stock`) |
+| Two assemblies at once on the same piece (the second one) | `Inventario insuficiente de {SKU} en {bin}: disponible {x}, solicitado {y}.` | Insufficient inventory of {SKU} in {bin}: available {x}, requested {y}. | 409 (`insufficient_stock`) |
+| Notes over 300 characters | `Las notas admiten como máximo 300 caracteres.` | Notes allow at most 300 characters. | 400 |
+| Manual adjustment with the reason “Kit assembly” or “Kit disassembly” | `El motivo KIT_ASSEMBLY lo asigna el sistema.` (or `KIT_DISASSEMBLY`) | The reason KIT_ASSEMBLY is assigned by the system. | 400 |
+| Without `inventory.adjust` (assemble, disassemble or assemble when creating) | `Falta el permiso 'inventory.adjust'.` | Missing permission 'inventory.adjust'. | 403 |
+
+**Disassembling.**
+
+| Case | Exact message (as the API returns it) | English | HTTP |
+|---|---|---|---|
+| More than what is left of the assembly | `Del armado ARM-00001 quedan 1 kit(s) por desarmar; pidió 2.` | Of assembly ARM-00001, 1 kit(s) are left to disassemble; you asked for 2. | 409 |
+| Reserved or already shipped kits (not available) | `Solo hay 0 kit(s) disponible(s) del armado ARM-00001 en W1 y pidió desarmar 1. Los kits reservados por una orden o ya despachados no se desarman.` | Only 0 kit(s) of assembly ARM-00001 are available in W1 and you asked to disassemble 1. Kits reserved by an order or already shipped are not disassembled. | 409 (`insufficient_stock`) |
+| The kits are in another warehouse and no bin was given | `Indique la posición donde vuelven las piezas: los kits están en otro almacén que el del armado.` | Enter the bin where the pieces return: the kits are in a different warehouse than the assembly's. | 400 |
+| Quantity, bin, notes, warehouse, permission | the same as “Assembling” | | — |
+
+### 8b.3a What can be done with an assembled kit, according to its situation
+
+Assembling and disassembling are **single-pass documents** (ARM-##### and DES-#####): they have no status and do not go through the status engine. What changes is the situation of the kit and of the assembly.
+
+| Assembled kit situation | Change the composition | Assemble | Disassemble | Sell |
+|---|---|---|---|---|
+| Just created, with no assemblies, movements or stock | Yes (`inventory.manage`) | Yes | Nothing to disassemble | Yes, but with no stock it goes to backorder |
+| With kits in stock (from an assembly) | **No** (409, create a new kit) | Yes | Yes: the **available** kits of each assembly, part or all | Yes |
+| With kits reserved by an order | No | Yes | Only the kits that are not reserved | Yes, up to what is available; the rest goes to backorder |
+| Kits already shipped or sold | No | Yes | Those kits are no longer disassembled | According to its stock |
+| Inactive kit | — | **No** (422) | Not checked | — |
+
+| Assembly (ARM-#####) situation | Can it be disassembled? |
+|---|---|
+| It has kits left to disassemble (`Left to disassemble` greater than 0) | Yes, up to what is left and only with available kits of that assembly |
+| Already fully disassembled | No: `Del armado {number} quedan 0 kit(s) por desarmar; pidió N.` (409); the screen does not offer “Disassemble” on that row |
+
+### 8b.3b “Not substitutable” (Batch 230, 2026-11-09)
+
+**What it does.** Since Batch 231 this applies **only to the offer kit**. By rule, **every piece of an offer kit is substitutable**: when ordering, the salesperson can swap it for another product of the **exact same
+category** (the subcategory, if it has one), with **exactly the same sale price** and in the **same quantity**; the kit price does not change. What is marked is
+**what cannot** be substituted: the piece's **“Not substitutable”** checkbox. Detail of the use when ordering: [18 §17.1](18-ordenes-de-venta.md#171-swapping-a-kit-piece-when-ordering-batch-230).
+**An assembled kit has no such checkbox** (there is no substitution: its pieces are already inside).
+
+**Who and where.** `sales.pricelist`, in the offer kit window: **Accounting → Prices and offers → the offer → “Create a new kit”** (or “Change kit” while the kit has not been used): each piece has the **“Not substitutable”** checkbox, unchecked by default (“When ordering, a piece can be swapped for another of the same category and the same price. Check «Not substitutable» on those that cannot.”). Since Batch 231 **it is no longer set in Products**: the “Kit” tab of the product editor does not exist. Detail: [47 §4.4](47-precios-y-ofertas.md#44-offer-kits-and-the-library-batch-231).
+
+**Rules.**
+- A piece **without a category** or **without a sale price** has no substitutes (even if not marked): give the product a category and a sale price
+  ([§2.4](#24-dimensions-and-weight-with-their-unit-and-the-wide-editor-batch-230-2026-11-09) and [§2.5](#25-product-photo-and-category-with-subcategory-batch-229-2026-11-09)).
+- The mark is stored **per piece and per kit**: the same product can be substitutable in one kit and not in another. The mark counts as part of the **composition**: once the kit has been used, it does not change.
+- “**Adjustable when ordering**” **does not change**: it still allows changing piece quantities in the order without touching the price, **only in an offer kit**. It is independent of
+  substitution (both can be used).
+- There is no separate permission to substitute: this kit definition decides, and `sales.create` is enough on the order.
+
+**API.** `components[].notSubstitutable` (`true` = not substitutable) in `POST /api/v1/offers/kits`, `POST /api/v1/offers/{publicId}/kits` and `PATCH /api/v1/offers/kits/{productPublicId}`.
+
+### 8b.3c Offer kit and old kits (Batch 231)
+
+- **Offer kit.** It is a KIT-type product **without stock** marked as an offer kit. It is created, reused and changed **only from offers** ([47 §4.4](47-precios-y-ofertas.md#44-offer-kits-and-the-library-batch-231)). **It is not shown in Products & inventory**: not in the list, its counts and tiles, the brand filter, the table export, the import (it is not updated there), what is sent to integrations, or the product views and indicators. It does not enter the inventory value, cycle counts or the movement ledger either (it has no balances). Its **record by identifier** and the orders and invoices that used it still name it.
+- **Kits from Batches 68 to 70 (without the offer mark).** None is known in any database; if one existed: it is still sold as before (at its price, with its pieces, without changing pieces or adjusting when ordering) and it is edited only through the API (`PUT /api/v1/products/{publicId}/kit`), because the “Kit” tab no longer exists.
+- **`PUT /api/v1/products/{publicId}/kit` since Batch 231:**
+
+| Case | Exact message (as the API returns it) | English | HTTP |
+|---|---|---|---|
+| Turning a normal product into a kit | `Un producto ya no se convierte en kit desde Productos: un kit que se arma al pedir se crea como kit de oferta en Contabilidad → Precios y ofertas.` | A product is no longer turned into a kit from Products: a kit assembled when ordered is created as an offer kit in Accounting → Prices and offers. | 422 |
+| Changing or turning back to normal an offer kit | `El kit {SKU} es un kit de oferta: se cambia en Contabilidad → Precios y ofertas, no en Productos.` | The kit {SKU} is an offer kit: it is changed in Accounting → Prices and offers, not in Products. | 422 |
+
+- **Rules for the pieces of an offer kit** (and of an old kit):
 
 | Situation | Message | HTTP |
 |---|---|---|
@@ -2538,53 +2715,29 @@ of its own**: everything happens in its components. This batch leaves the catalo
 | A component that is already a kit | `{SKU} is a kit: a kit cannot have another kit as a component.` | 400 |
 | Inactive component | `The component {SKU} is inactive.` | 400 |
 | Component of another inventory owner | `The component {SKU} belongs to a different inventory owner than the kit.` | 400 |
-| Lot- or serial-tracked product | `A kit is not tracked by lot or serial.` | 400 |
 | Component that does not exist | `Component not found.` | 404 |
-| Converting a product with stock or reservations | `{SKU} has stock: it cannot be made a kit while it has stock or reservations.` | 409 |
-| Converting a product that is a component of another kit | `{SKU} is a component of another kit: it cannot be a kit.` | 409 |
-| Turning a product that is not a kit back to normal | `The product {SKU} is not a kit.` | 409 |
-| Turning back to normal a kit already used in sales orders | `The kit {SKU} was already used in sales orders: it cannot go back to a normal product.` | 409 |
-| Receiving, adjusting or moving stock of the kit | `{SKU} is a kit: it has no stock of its own. Movements are made on its components.` | 400 |
+| Old kit: turning it back to normal when an order already used it | `The kit {SKU} was already used in sales orders: it cannot go back to a normal product.` | 409 |
+| Old kit: converting (API only) a product that has stock | `{SKU} has stock: it cannot be made a kit while it has stock or reservations.` | 409 |
+| Receiving, adjusting or moving stock of a kit (offer or old) | `{SKU} is a kit: it has no stock of its own. Movements are made on its components.` | 400 |
 
-Also: a kit never appears in counts (it has no balances) and cannot have stock; its components are normal, active products **of the same** inventory owner.
-
-### 8b.3b “Not substitutable” (Batch 230, 2026-11-09)
-
-**What it does.** By rule, **every piece of a kit is substitutable**: when ordering, the salesperson can swap it for another product of the **exact same
-category** (the subcategory, if it has one), with **exactly the same sale price** and in the **same quantity**; the kit price does not change. What is marked is
-**what cannot** be substituted: the piece's **“Not substitutable”** checkbox. Detail of the use when ordering: [18 §17.1](18-ordenes-de-venta.md#171-swapping-a-kit-piece-when-ordering-batch-230).
-
-**Who and where.** `inventory.manage`, in the two places where a kit is worked:
-- **Products & inventory → the kit → Kit tab → “Edit components”**: each piece has the **“Not substitutable”** checkbox, unchecked by default (“When ordering,
-  a piece can be swapped for another of the same category and the same price. Check «Not substitutable» on those that cannot.”). The kit table puts the
-  **“Not substitutable”** badge on the marked pieces.
-- **Accounting → Prices and offers → the offer**, when creating or changing an offer's kit ([47 §4.4](47-precios-y-ofertas.md#44-an-offers-kits); `sales.pricelist` is
-  needed there). It is the same mark on the piece.
-
-**Rules.**
-- A piece **without category** or **without sale price** has no substitutes (even if not marked): give the product its category and sale price
-  ([§2.4](#24-dimensions-and-weight-with-their-unit-and-the-wide-editor-batch-230-2026-11-09) and [§2.5](#25-product-photo-and-category-with-subcategory-batch-229-2026-11-09)).
-- The mark is stored **per piece and per kit**: the same product can be substitutable in one kit and not in another. When the kit is saved again without
-  sending the mark (`null`), the one it had is kept; a new piece is born substitutable.
-- “**Adjustable when ordering**” **does not change**: it still allows changing the quantities of the pieces in the order without touching the price. It is
-  independent of substitution (both can be used).
-- There is no separate permission to substitute: this kit definition decides, and `sales.create` is enough on the order.
-
-**API.** `PUT /api/v1/products/{publicId}/kit` with `components[].notSubstitutable` (`true` = not substitutable; `null` = keeps the mark). Reading the kit
-(`GET …/kit`) returns `components[].notSubstitutable`.
+An assembled kit **does** have stock: those movements are valid on it.
 
 ### 8b.4 For support
 
-- Table `ProductKitComponent` (kit → component → quantity, unique per pair) and columns `Product.ProductTypeLookupId` (catalog `ProductType`: STANDARD / KIT; NULL = normal) and
-  `Product.KitAdjustable`, section **2026-10-16 (p)** of `Diseño/logistica-db-update.sql`.
-- The change of product type is recorded in the product's log; component changes too (with the product's entity type).
-- Batch 230: column `ProductKitComponent.NotSubstitutable` (BIT, 0 = substitutable) and `SalesOrderLineComponent.SubstitutedProductId` (the original piece when the salesperson swapped it; `ComponentProductId` keeps the real piece); section «2026-11-09 — Lote 230» of `Diseño/logistica-db-update.sql`.
-- Batch 229: `Product.OfferId` marks the kit created for an offer ([47 §4.4](47-precios-y-ofertas.md#44-an-offers-kits)).
+- **Assembled kit (Batch 232):** the product is of type `ASSEMBLED_KIT` (catalog `ProductType`); its composition is in `ProductKitComponent`. Tables `KitAssembly` and `KitAssemblyLine` (assemblies and what left of each piece: lot, bin, quantity per kit, quantity, returned and cost) and `KitDisassembly` and `KitDisassemblyLine` (disassemblies). Per-company counters `KITASSEMBLY` (ARM-#####) and `KITDISASSEMBLY` (DES-#####). System adjustment reasons `KIT_ASSEMBLY` and `KIT_DISASSEMBLY`; EntityTypes `KIT_ASSEMBLY` and `KIT_DISASSEMBLY`. Section “2026-11-10 — Lote 232” of `Diseño/logistica-db-update.sql` (idempotent, only adds).
+- Assembling and disassembling go through the inventory ledger (`InventoryLedger`) as **adjustment** movements with those reasons; the ARM/DES document is the origin the movement ledger shows. Locking the kit header queues two assemblies of the same kit.
+- How many kits can be assembled: `canAssemble` (in one assembly, one lot per piece) and `canAssembleTotal` (combining lots) per warehouse; they are computed reading balances without locking, so they are an estimate.
+- **Offer kit (Batch 231):** column `Product.IsOfferKit` (BIT) and filtered index `IX_Product_OfferKit`; the section “2026-11-10 — Lote 231” of `Diseño/logistica-db-update.sql` marked the kits that Batch 229 had tied to an offer. `Product.OfferId` is **no longer read or written** (the column stays). See [47 §10](47-precios-y-ofertas.md#10-for-support).
+- Batch 230: column `ProductKitComponent.NotSubstitutable` (BIT, 0 = substitutable) and `SalesOrderLineComponent.SubstitutedProductId` (the original piece when the salesperson swapped it; `ComponentProductId` stores the real piece); section “2026-11-09 — Lote 230” of `Diseño/logistica-db-update.sql`.
+- Batches 68 to 70: table `ProductKitComponent` (kit → component → quantity, unique per pair) and columns `Product.ProductTypeLookupId` (catalog `ProductType`: STANDARD / KIT / ASSEMBLED_KIT; NULL = normal) and `Product.KitAdjustable`, section **2026-10-16 (p)**.
+- An assembled kit can be a piece of an offer kit: today the system only rejects the KIT type as a piece, so it is neither blocked nor tested.
+- The warehouse app (device) does not assemble or disassemble; an assembled kit is treated as a lot-tracked product. It was not tested with the device.
+- Product type and composition changes are recorded in the product's log; assemblies and disassemblies, in the log with entity type `KIT_ASSEMBLY` / `KIT_DISASSEMBLY`.
 
 ### 8b.5 Picking a kit (Batch 70)
 
-`POST /api/v1/pick-batches` (and `collect-and-pack`, and the manual issue) accept a line with a **kit**: it is **exploded** into one line per component (quantity per kit × kits),
-each with its bin by FEFO/FIFO like any product; all in the same pick batch and the same transaction.
+`POST /api/v1/pick-batches` (and `collect-and-pack`, and the manual issue) accept a line with an **offer kit** (or an old KIT-type kit): it is **exploded** into one line per component (quantity per kit × kits),
+each with its bin by FEFO/FIFO like any product; all in the same pick batch and the same transaction. **An assembled kit is not exploded**: **the kit itself** is picked, packed and shipped, like any product, with its bin and lot (Batch 232).
 
 - In the movement ledger, each exit carries the note `{KIT} × n · EMP-#####` (or `DMA-…` in a manual issue).
 - The pick batch lines note the kit (`KitProductId`) and how many kits it represents (`KitQuantity`, only once per kit).
@@ -2692,8 +2845,8 @@ inventory) or **CANCELLED** (terminal, releases the reservation; if it already h
 | Permission | Category | What it enables |
 |---|---|---|
 | `inventory.view` | WAREHOUSE | See warehouses, products, inventory, receipts, tasks, counts, pick batches, cross-dock appointments and plans |
-| `inventory.manage` | WAREHOUSE | Manage products and categories |
-| `inventory.adjust` | WAREHOUSE | Adjust/transfer inventory, reconcile ("Run reconciliation", state of the automatic review), resolve discrepancies, resolve purchase shortages |
+| `inventory.manage` | WAREHOUSE | Manage products and categories (and the composition of an assembled kit, Batch 232) |
+| `inventory.adjust` | WAREHOUSE | Adjust/transfer inventory, assemble and disassemble kits (Batch 232), reconcile ("Run reconciliation", state of the automatic review), resolve discrepancies, resolve purchase shortages |
 | `warehouse.manage` | WAREHOUSE | Manage warehouses, zones, bins, docks; assign/cancel tasks |
 | `warehouse.receive` | WAREHOUSE | Receive goods (ASN and receipts); complete `PUTAWAY` tasks |
 | `warehouse.pick` | WAREHOUSE | Pick and pack; complete `REPLENISH` tasks; run replenishment |

@@ -1,4 +1,4 @@
-# Capítulo 06 — Inventario y almacén (Lote 6; Almacenes y ubicaciones ampliado en el Lote 11; Productos y Compras ampliados en el Lote 12; Recibo, Tareas y Recolección y empaque ampliados en el Lote 13; Inventario y Conteo cíclico ampliados en el Lote 14; Almacenes, Recibo y Tareas ampliados en el Lote 16: recibo directo a posición; Conteo cíclico ampliado en el Lote 21: conteo por producto, corrección, vista previa, cierre en bloque y posiciones provisionales; Almacenes y ubicaciones ampliado en el Lote 23: hojas de posición; Productos ampliado en el Lote 26: convertir a serie)
+# Capítulo 06 — Inventario y almacén (Lote 6; Almacenes y ubicaciones ampliado en el Lote 11; Productos y Compras ampliados en el Lote 12; Recibo, Tareas y Recolección y empaque ampliados en el Lote 13; Inventario y Conteo cíclico ampliados en el Lote 14; Almacenes, Recibo y Tareas ampliados en el Lote 16: recibo directo a posición; Conteo cíclico ampliado en el Lote 21: conteo por producto, corrección, vista previa, cierre en bloque y posiciones provisionales; Almacenes y ubicaciones ampliado en el Lote 23: hojas de posición; Productos ampliado en el Lote 26: convertir a serie; Kits rehechos en los Lotes 231 (kit de oferta) y 232 (kit armado))
 
 Este capítulo describe Almacenes y ubicaciones, Productos y categorías, Inventario (saldos, Kárdex con resumen y detalle, ajustes,
 transferencias, conciliación automática con descuadres, genealogía y rastro de serie), Recepción (avisos de llegada y recibos, incluida la
@@ -415,6 +415,8 @@ Cómo se usa:
 - `GET/POST /api/v1/product-categories`, `PATCH /api/v1/product-categories/{id}` (mover/renombrar), `POST .../{id}/
   deactivate|reactivate`.
 
+**Nuevo producto y kits (Lote 232).** El formulario de «Nuevo producto» empieza con la pregunta **«¿Lo que va a crear es un kit?»** (No por omisión). Un producto normal no ve nada de kits; con «Sí, es un kit» aparecen la composición y cuántos kits armar ahora (§8b). Los kits que se arman al pedir (de oferta) **no** se crean ni se ven aquí: viven en Contabilidad → Precios y ofertas (§8b.1).
+
 ### Empaque del producto (2026-10-09)
 
 **Qué es.** Cada producto puede tener **un** empaque: una unidad de empaque (Caja, Barril, Paquete, Bulto, Tambor, Rollo… de la lista editable
@@ -811,6 +813,7 @@ Primera entidad del motor genérico de plantillas (dictado de Luis, 2026-10-19).
 | «Ya existe un producto activo con ese código de barras.» | fila | Código de barras de OTRO producto activo, o repetido en el archivo. |
 | «No existe una categoría activa con ese nombre o ruta.» | fila, `category` | Escriba el nombre o la ruta «Raíz / Hija» de una categoría que exista y esté activa. |
 | «Hay varias categorías con ese nombre: use la ruta completa (Raíz / Hija).» | fila, `category` | El nombre lo comparten varias categorías. |
+| «Ese SKU es un kit de oferta: no se cambia por la importación de productos, sino en Contabilidad → Precios y ofertas.» | fila, `sku` | El SKU es de un kit de oferta (Lote 231): se cambia en la oferta, no por la importación. |
 | «Debe ser un número.» | fila | Costo, precio, peso, volumen, mínimos o cantidad por empaque no numéricos. |
 | «Cliente dueño no encontrado por ese código.» | fila | `ownerClientCode` no es el código de un cliente activo. |
 | «Unidad de medida desconocida: 'X'.» · «Tipo de seguimiento desconocido: 'X'.» · «Unidad de empaque desconocida: 'X'.» | fila | Use un código del catálogo. |
@@ -927,7 +930,7 @@ pantalla**; el API acepta cualquier motivo que no sea de sistema con cualquiera 
 | Encontrado (`FOUND`) | Sí | No |
 | Daño (`DAMAGE`), Pérdida (`LOSS`), Vencido (`EXPIRED`) | No | Sí |
 | Los demás motivos de lista que no son de sistema (por ejemplo `PO_SHORTAGE`, `OTHER`) | Sí | Sí |
-| `RECEIPT_VARIANCE`, `COUNT_VARIANCE`, `PICK_BATCH_REVERSAL`, `OPENING_BALANCE`, `TRACKING_CONVERSION` (Lote 26) | Nunca (los asigna el sistema) | Nunca |
+| `RECEIPT_VARIANCE`, `COUNT_VARIANCE`, `PICK_BATCH_REVERSAL`, `OPENING_BALANCE`, `TRACKING_CONVERSION` (Lote 26), `KIT_ASSEMBLY` y `KIT_DISASSEMBLY` (Lote 232: «Armado de kit» y «Desarmado de kit», §8b) | Nunca (los asigna el sistema) | Nunca |
 
 Al cambiar de dirección, un motivo que ya no vale se quita. El motivo se elige con un buscador. La pantalla muestra **"Disponible en la
 posición: N"** y, al bajar, **no deja bajar más de lo disponible**. Un producto **por lote** pide el número de lote al subir y elige un
@@ -2508,28 +2511,200 @@ recepciones sigue protegida (no se elimina, no baja de lo recibido, no cambia de
 
 ---
 
-## 8b. Kits (Lote 68, 2026-10-16)
+## 8b. Kits: armado y de oferta (Lotes 68, 231 y 232, 2026-11-10)
 
-Un **kit** es un producto que se arma al pedir con otros productos (por ejemplo, «Kit de limpieza» = 2 desinfectantes + 1 trapeador). **No tiene existencia ni movimientos
-propios**: todo pasa en sus componentes. Este lote deja listo el catálogo; su uso en las órdenes de venta está en [18 §17](18-ordenes-de-venta.md#17-kits-en-las-órdenes-de-venta-lote-69) y en la recolección, en el lote siguiente.
+Un **kit** es un producto formado por otros productos (por ejemplo, «Kit de limpieza» = 2 desinfectantes + 1 trapeador). Desde el **2026-11-10** hay **dos clases de kit**, con dueños y pantallas distintas. **Ya no existen** la pestaña **«Kit»** de la ficha del producto ni el botón **«Convertir en kit»** (Lote 231): un producto normal ya no se convierte en kit.
 
-### 8b.1 Quién y dónde
+> **Capturas pendientes (Lotes 231 y 232).** Las capturas de la ficha y del editor de producto de [F6](frontend/f6-almacen-e-inventario.md) son anteriores a estos lotes: no muestran la pregunta «¿Lo que va a crear es un kit?», la composición del kit, la pestaña «Armados» ni sus ventanas «Armar kits» y «Desarmar». Hay que volver a tomarlas con el recorrido de Playwright. Tampoco hay captura de «Usar un kit anterior» ([47 §4.4](47-precios-y-ofertas.md#44-kits-de-oferta-y-la-biblioteca-lote-231)).
 
-- Ver el kit de un producto: `inventory.view`. Convertir en kit, cambiar componentes o volver a producto normal: `inventory.manage`. Módulo de inventario (`WMS_LOTSERIAL`).
-- Pantalla: **Productos e inventario → el producto → pestaña «Kit»**. La lista de productos marca los kits con un distintivo «Kit».
-- API: `GET /api/v1/products/{publicId}/kit` y `PUT /api/v1/products/{publicId}/kit`.
+### 8b.1 Dos clases de kit, quién puede y dónde
 
-### 8b.2 Cómo se usa
+| | **Kit armado** (Lote 232) | **Kit de oferta** (Lote 231) |
+|---|---|---|
+| Qué es | Un **producto con inventario propio**: se arma de antemano con sus piezas y queda en existencia | Un kit que **se arma al pedir**: no tiene existencia; al pedirlo se reservan y salen sus piezas |
+| Dónde se crea | Almacén → **Productos e inventario** → **Nuevo producto** → «¿Lo que va a crear es un kit?» → «Sí, es un kit» | Contabilidad → **Precios y ofertas** → una oferta → «Usar un kit anterior» o «Crear un kit nuevo» ([47 §4.4](47-precios-y-ofertas.md#44-kits-de-oferta-y-la-biblioteca-lote-231)) |
+| ¿Sale en Productos e inventario? | **Sí** (distintivo «Kit armado», pestaña «Armados») | **No**: vive en la biblioteca de kits de oferta |
+| Existencia | Sí: **Armar** saca las piezas del inventario y mete los kits; **Desarmar** hace lo contrario | No tiene |
+| Cuándo se vende | Como cualquier producto; sin existencia queda en **backorder** | **Solo** mientras esté en una oferta publicada y vigente para el cliente |
+| Cambiar una pieza al pedir («Cambiar») y «Ajustable al pedir» | **No** | **Sí**, solo aquí |
+| Quién puede | Ver: `inventory.view`. Crear y componer: `inventory.manage`. Armar y desarmar: `inventory.adjust` | Ver: `sales.view`. Crear, usar y cambiar: `sales.pricelist` |
+| Módulo | Inventario con lotes y series (`WMS_LOTSERIAL`) | Órdenes de venta (`SALES_ORDERS`) |
 
-1. Abra el producto → pestaña **Kit** → **Convertir en kit**.
-2. Escoja los componentes (producto y **cantidad por kit**; admite decimales) y, si quiere, marque **Ajustable al pedir** (en una orden se podrán cambiar sus piezas sin tocar el catálogo).
-3. **Guardar kit.** La pestaña muestra los componentes y, por almacén, **«se pueden armar N»**: el menor cociente entre lo *disponible para vender* de cada componente y su cantidad
-   por kit, hacia abajo. «Disponible para vender» es la misma cuenta de las órdenes de venta (sin cuarentena, cruce de plataforma ni renta).
-4. **Editar componentes** reemplaza la lista; **Volver a producto normal** quita los componentes.
-5. **Foto del kit**: el bloque **Foto** del editor del producto ([§2.5](#25-foto-del-producto-y-categoría-con-subcategoría-lote-229-2026-11-09)). Un kit sin foto propia muestra la de su primera pieza que tenga foto.
-6. **«No sustituible»** en las piezas que el vendedor no puede cambiar al pedir (§8b.3b). Un kit para una oferta no se crea aquí sino en la oferta: [47 §4.4](47-precios-y-ofertas.md#44-kits-de-una-oferta).
+- **¿Cuál uso?** Si las piezas se juntan **de antemano** y el kit se cuenta en el almacén (existencia, lotes, vencimientos, backorder), use un **kit armado**. Si el kit es una promoción que se junta **cuando el cliente lo pide**, use un **kit de oferta**. Un kit de venta permanente que no se arma antes es un **kit de oferta en una oferta sin fecha de fin**.
+- Los permisos de la lista son los mismos del resto del inventario: **no se agregó ningún permiso** en los Lotes 231 y 232. Quien tiene `inventory.adjust` ya puede armar y desarmar (es el permiso del ajuste de inventario de la web).
+- **Solo en la web.** La app del almacén no arma ni desarma kits.
+- API del kit armado: `POST /api/v1/products` con `isAssembledKit: true`; `GET` y `PUT /api/v1/products/{publicId}/assembled-kit`; `GET` y `POST …/assembled-kit/assemblies`; `POST …/assembled-kit/assemblies/{assemblyPublicId}/disassemble`. API del kit de oferta: [47 §4.5](47-precios-y-ofertas.md#45-cómo-se-usa-api).
+
+### 8b.2 Kit armado: cómo se usa (Lote 232)
+
+#### Crear un kit armado
+
+1. **Almacén → Productos e inventario → Nuevo producto.** Arriba del formulario, la pregunta **«¿Lo que va a crear es un kit?»** con **No** (por omisión) y **«Sí, es un kit»**. Con «No» el producto es normal y no se ve nada de kits.
+2. Con **«Sí»** aparecen ahí mismo: **Composición del kit** (**Piezas del kit**: producto y **cantidad por kit**, **Agregar pieza**) y **«¿Cuántos kits arma ahora?»**. El rastreo y el costo de compra dejan de ser campos que se escriben: salen como «Lo deciden las piezas» y «Sale de las piezas al armar».
+3. Las piezas son productos **del mismo dueño de inventario que el kit**, **activos**, **sin serie** y que **no sean kits** (ni de oferta ni armados). De 1 a 50 piezas, sin repetir; la cantidad es mayor que cero y admite hasta 3 decimales. El buscador de piezas solo ofrece productos del dueño del kit.
+4. **«¿Cuántos kits arma ahora?»** es opcional (con `inventory.adjust`): **Kits a armar ahora**, **Almacén donde se arman** (con un solo almacén activo queda escogido) y **Posición donde quedan los kits**. La pantalla dice «Con lo disponible en este almacén se pueden armar N (en un solo armado)» y, si hay más lotes, «Juntando lotes, en varios armados, alcanzan N». Es una cuenta orientativa: el servidor revisa de nuevo al guardar. Si lo deja vacío, el kit se crea **sin existencia** y se arma después desde su ficha.
+5. Sin `inventory.adjust` el bloque de armar no se muestra («Armar kits pide el permiso de ajustar inventario: puede crear el kit y que alguien con ese permiso lo arme.»): el kit se crea sin existencia.
+6. **Guardar.** Es todo o nada: si se pidió armar y el armado falla, **no se crea el producto**. Avisos: «Kit armado creado.» o «Kit armado creado y N kit(s) armados.».
+
+**El rastreo lo deciden las piezas:** si **alguna** pieza se rastrea por lote, el kit se rastrea **por lote** (`LOT`); si ninguna, **sin lote** (`NONE`). No se escribe ni se cambia aparte. **El dueño** del kit es el de sus piezas.
+
+Antes de enviar, la pantalla revisa lo que puede (pieza que es kit, con serie, inactiva, de otro dueño, más de 50) y muestra el mensaje del servidor; lo demás lo revisa el servidor. Mensajes propios de la pantalla para la tabla de piezas: «Un kit necesita al menos una pieza.», «Escoja el producto de cada pieza.», «La cantidad de cada pieza debe ser un número mayor que cero.» y «Una pieza viene repetida: ponga la cantidad en un solo renglón.».
+
+#### Ver un kit armado
+
+La ficha del producto lleva el distintivo **«Kit armado»** (la lista de productos también) y la pestaña **«Armados»**. En el editor, el bloque **Composición del kit** muestra las piezas, «Kits en existencia: N · disponibles: N», **«Se pueden armar»** por almacén («A: N en un armado · M juntando lotes») y el enlace **«Armar y desarmar»**. La existencia del kit aparece en Inventario, en el Kárdex y en los conteos como la de cualquier producto.
+
+#### Armar
+
+1. Ficha del kit → pestaña **Armados** → **Armar kits** (`inventory.adjust`).
+2. Paso 1: **Cantidad de kits** (entero de 1 a 100,000), **Almacén**, **Posición donde quedan los kits** (no puede ser de cuarentena, renta ni cross-dock) y **Notas** (hasta 300 caracteres). Por cada pieza, **«De dónde sale»**: por omisión la sugerida por la rotación de siempre (FEFO/FIFO de la pieza o de la compañía); se puede escoger otra posición o lote. **Cada armado usa un solo lote por pieza** (puede salir de varias posiciones del mismo lote).
+3. Paso 2: **Resumen antes de confirmar**: piezas que salen del inventario, kits que entran y la nota del costo. **Armar N kit(s)** confirma.
+4. Aviso: «Armado ARM-00001: N kit(s) en A-01.» (con `inventory.value` agrega el costo).
+
+**Qué pasa:** en **una sola transacción** salen las piezas de N kits del inventario («Armado de kit», una salida por cada toma) y entran N kits a la posición destino. **Nada queda «reservado»**: las piezas forman parte del kit y dejan de estar disponibles como piezas. Las piezas salen de lo **disponible** (en mano menos reservado), en posiciones activas del almacén escogido. Dos armados del mismo kit se hacen en fila; dos armados que comparten una pieza nunca dejan existencia negativa (el segundo recibe «Inventario insuficiente…» 409).
+
+#### Desarmar
+
+1. Ficha del kit → **Armados** → en la fila del armado, **Desarmar** (solo si le quedan kits por desarmar; `inventory.adjust`).
+2. **Cantidad** (entero, hasta lo que **queda** de ese armado; se puede desarmar **una parte**), **Almacén donde están los kits** (por omisión el del armado), **Posición donde vuelven las piezas** (vacía = cada pieza vuelve a la posición de donde salió; **obligatoria** si los kits están en otro almacén) y **Notas**. Resumen: kits que salen y piezas que vuelven.
+3. Aviso: «Desarmado DES-00001: N kit(s); las piezas volvieron a su lote.».
+
+**Qué pasa:** salen N kits y **cada pieza vuelve a su mismo lote** (el del armado), a la posición escogida o a la original, **al costo con que salió**. **Solo se desarman kits disponibles de ese armado**: los reservados por una orden o ya despachados no se desarman. Los kits de armados distintos no se mezclan (con rastreo por lote); sin lote, los kits son intercambiables y se descuentan del armado escogido.
+
+#### Lotes y vencimientos
+
+- Si el kit va por lote, **cada armado crea un lote del kit** con el **mismo número del armado** (`ARM-00001`) y **vence con la pieza que vence primero**: el más cercano de los vencimientos de los lotes de las piezas que salieron (sin vencimiento si ninguna vence).
+- Las líneas del armado **recuerdan el lote, la posición, la cantidad y el costo de cada pieza**; por eso al desarmar cada pieza regresa a su lote.
+- **Un lote por pieza en cada armado.** Si el lote no alcanza para todos los kits, el mensaje dice para cuántos sí alcanza: arme esos con ese lote y el resto en otro armado con otro lote («Se pueden armar» muestra las dos cuentas: en un armado y juntando lotes).
+- Al vender el kit (con lote) se reserva y despacha por la rotación de siempre, como cualquier producto con lote.
+
+#### Costo y valor del inventario
+
+- **Costo del kit = la suma del costo de las piezas que salieron**, según el método de valuación de la compañía (promedio o capas); el costo por kit es ese total entre los kits. Si ninguna pieza tenía costo, el costo del armado queda vacío.
+- El **valor total del inventario no cambia** al armar ni al desarmar: lo que salió de las piezas es lo que valen los kits, y al desarmar las piezas vuelven al costo con que salieron.
+- El costo solo se ve con `inventory.value` (sin él, la columna sale vacía).
+- Si la compañía cambia de método de valuación después de armar, los costos guardados no se recalculan.
+- Un kit que entra por un **ajuste manual o un conteo** (sin armado) se valúa como cualquier producto sin capa (su costo de compra, o sin costo) y no toca las piezas.
+
+#### Historial: pestaña «Armados» y Kárdex
+
+- Pestaña **«Armados»** (solo en un kit armado): explicación, existencia, «Se pueden armar», el botón **Armar kits** y el **Historial de armados**: **Armado** (ARM-#####), **Fecha**, **Quién**, **Kits**, **Quedan por desarmar**, **Almacén · posición**, **Lote del kit** (con su vencimiento), **Piezas (lote)**, **Costo** y **Desarmados** (DES-##### y cuántos). La tabla se ordena y se exporta completa (no solo la página que se ve).
+- **Kárdex:** cada armado y desarmado deja movimientos con el motivo **«Armado de kit»** o **«Desarmado de kit»** (motivos que asigna el sistema: un ajuste manual no puede usarlos), el documento ARM-##### / DES-##### como origen y la nota «Armado de kit {SKU} · ARM-00001» o «Desarmado de kit {SKU} · DES-00001 · ARM-00001» (más su nota, si la escribió).
+
+#### La composición ya no se cambia
+
+Mientras el kit no tenga armados, movimientos ni existencia, la composición se puede corregir en el editor del producto (`inventory.manage`). **En cuanto tiene algún armado, algún movimiento o existencia/reserva** (también una existencia que vino de un ajuste), la composición queda fija: para otras piezas, **cree un kit nuevo**. El **rastreo** y el **dueño** del kit tampoco se cambian a mano (los deciden las piezas). La pantalla lo dice: «La composición ya no se cambia: cree un kit nuevo.» / «El kit ya tiene armados, movimientos o existencia.».
+
+#### Vender un kit armado
+
+Un kit armado **se vende como cualquier producto**: aparece en el pedido guiado y en la orden de venta como una línea normal (sin piezas debajo, sin «Cambiar» y sin «Ajustable al pedir»), se reserva y se despacha **el kit mismo** (no sus piezas) y se puede poner en listas de precios y en ofertas como cualquier producto. **Sin existencia** no alcanza el inventario y el pedido queda en **backorder**, igual que cualquier producto ([18 §6](18-ordenes-de-venta.md#6-solicitar-la-orden-validar-y-reservar-lote-58)). **No hay sustitución de piezas**: el kit armado ya las tiene dentro. Mandar piezas en su línea da `El producto {SKU} no es un kit.` (400).
 
 ### 8b.3 Reglas y mensajes
+
+**Kit armado: composición (alta y `PUT …/assembled-kit`).**
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| Sin piezas | `Un kit necesita al menos un componente.` | 400 |
+| Más de 50 piezas | `Un kit lleva como máximo 50 componentes.` | 400 |
+| Pieza sin producto | `Indique el producto del componente.` | 400 |
+| Cantidad de una pieza vacía o 0 | `La cantidad de cada componente debe ser mayor que cero.` | 400 |
+| Cantidad con más de 3 decimales | `La cantidad admite como máximo 3 decimales.` | 400 |
+| Producto repetido | `El componente {SKU} está repetido.` | 400 |
+| El propio kit como pieza (al cambiar la composición) | `El kit {SKU} no puede ser componente de sí mismo.` | 400 |
+| Una pieza que es un kit (de oferta o armado) | `{SKU} es un kit: un kit armado no lleva otro kit como pieza.` | 400 |
+| Pieza inactiva | `El componente {SKU} está inactivo.` | 400 |
+| Pieza de otro dueño de inventario | `El componente {SKU} es de otro dueño de inventario que el kit.` | 400 |
+| Pieza que se rastrea por serie | `La pieza {SKU} se rastrea por serie: un kit armado no lleva piezas con serie en esta versión.` | 400 (alta y composición) · 422 (al armar) |
+| Pieza que no existe | `Componente no encontrado.` | 404 |
+| `trackingType` distinto del que deciden las piezas (alta por el API) | `El rastreo de un kit armado lo deciden sus piezas: debe ser {LOT o NONE} (LOT si alguna pieza se rastrea por lote; NONE si ninguna).` | 400 |
+| Cambiar el rastreo del kit al editar el producto | `El rastreo de un kit armado lo deciden sus piezas: no se cambia aquí (cambie la composición mientras el kit no tenga armados, o cree un kit nuevo).` | 422 |
+| Cambiar el dueño del kit al editar el producto | `El dueño de un kit armado es el de sus piezas: no se cambia (cree un kit nuevo con las piezas del otro dueño).` | 422 |
+| Cambiar la composición de un kit con armados, movimientos o existencia | `El kit {SKU} ya tiene armados, movimientos o existencia: su composición no se puede cambiar. Cree un kit nuevo.` | 409 |
+| Armar, desarmar o cambiar la composición de un producto que no es kit armado | `El producto {SKU} no es un kit armado.` | 422 |
+
+**Armar.**
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| Kit sin piezas | `El kit {SKU} no tiene piezas: agregue su composición antes de armar.` | 422 |
+| Kit inactivo | `El producto {SKU} está inactivo; no admite entradas de inventario.` | 422 |
+| Sin cantidad | `Indique cuántos kits.` | 400 |
+| Cantidad no entera o menor o igual a 0 | `La cantidad de kits debe ser un número entero mayor que cero.` | 400 |
+| Más de 100,000 kits | `Se arman o desarman como máximo 100,000 kits a la vez.` | 400 |
+| Sin posición destino | `Indique la posición donde quedan los kits.` | 400 |
+| Armar al crear el producto, sin posición | `Para armar kits al crear el producto indique la posición donde quedan.` | 400 |
+| Posición de cuarentena, renta o cross-dock | `La posición {Q-01} es de cuarentena, en renta o de cross-dock: no se usa para armar ni desarmar kits.` | 422 |
+| Posición inactiva | `La posición {K-01} está inactiva; no admite movimientos de inventario.` | 422 |
+| Varios almacenes y no se indicó | `Indique el almacén: la compañía tiene más de uno.` | 400 |
+| Posición, lote, producto o armado que no existe | `Posición no encontrada.` · `Lote no encontrado.` · `Producto no encontrado.` · `Armado no encontrado.` | 404 |
+| Escoger un producto que no es pieza | `El producto indicado no es pieza de este kit.` | 400 |
+| La misma pieza dos veces en la selección | `La pieza {SKU} está repetida en la selección.` | 400 |
+| Lote en una pieza que no se rastrea por lote | `La pieza {SKU} no se rastrea por lote: no indique lote.` | 400 |
+| El lote escogido (o sugerido) no alcanza | `El lote {A2} de {SKU} solo alcanza para 2 kit(s): hay 4 disponible y cada kit lleva 2. Arme 2 con ese lote y el resto en otro armado con otro lote.` · `El lote {A1} de {SKU} no alcanza para ningún kit: hay 0 disponible y cada kit lleva 2.` | 409 (`insufficient_stock`) |
+| Pieza sin lote que no alcanza | `No hay suficiente {SKU} disponible en {W1} para 3 kit(s): hay 10 y se necesitan 12; alcanza para 2.` | 409 (`insufficient_stock`) |
+| Dos armados a la vez sobre la misma pieza (el segundo) | `Inventario insuficiente de {SKU} en {bin}: disponible {x}, solicitado {y}.` | 409 (`insufficient_stock`) |
+| Notas de más de 300 caracteres | `Las notas admiten como máximo 300 caracteres.` | 400 |
+| Ajuste manual con el motivo «Armado de kit» o «Desarmado de kit» | `El motivo KIT_ASSEMBLY lo asigna el sistema.` (o `KIT_DISASSEMBLY`) | 400 |
+| Sin `inventory.adjust` (armar, desarmar o armar al crear) | `Falta el permiso 'inventory.adjust'.` | 403 |
+
+**Desarmar.**
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| Más de lo que queda del armado | `Del armado ARM-00001 quedan 1 kit(s) por desarmar; pidió 2.` | 409 |
+| Kits reservados o ya despachados (no disponibles) | `Solo hay 0 kit(s) disponible(s) del armado ARM-00001 en W1 y pidió desarmar 1. Los kits reservados por una orden o ya despachados no se desarman.` | 409 (`insufficient_stock`) |
+| Los kits están en otro almacén y no se indicó la posición | `Indique la posición donde vuelven las piezas: los kits están en otro almacén que el del armado.` | 400 |
+| Cantidad, posición, notas, almacén, permiso | los mismos de «Armar» | — |
+
+### 8b.3a Qué se puede hacer con un kit armado, según su situación
+
+El armado y el desarmado son **documentos de una sola pasada** (ARM-##### y DES-#####): no tienen estatus ni pasan por el motor de estatus. Lo que cambia es la situación del kit y la del armado.
+
+| Situación del kit armado | Cambiar la composición | Armar | Desarmar | Vender |
+|---|---|---|---|---|
+| Recién creado, sin armados, movimientos ni existencia | Sí (`inventory.manage`) | Sí | No hay nada que desarmar | Sí, pero sin existencia queda en backorder |
+| Con kits en existencia (por armado) | **No** (409, cree un kit nuevo) | Sí | Sí: los kits **disponibles** de cada armado, en parte o todos | Sí |
+| Con kits reservados por una orden | No | Sí | Solo los kits no reservados | Sí, hasta lo disponible; el resto queda en backorder |
+| Kits ya despachados o vendidos | No | Sí | Esos kits ya no se desarman | Según su existencia |
+| Kit inactivo | — | **No** (422) | No se revisa | — |
+
+| Situación de un armado (ARM-#####) | ¿Se puede desarmar? |
+|---|---|
+| Le quedan kits por desarmar (`Quedan por desarmar` mayor que 0) | Sí, hasta lo que queda y solo con kits disponibles de ese armado |
+| Ya se desarmó por completo | No: `Del armado {número} quedan 0 kit(s) por desarmar; pidió N.` (409); la pantalla no ofrece «Desarmar» en esa fila |
+
+### 8b.3b «No sustituible» (Lote 230, 2026-11-09)
+
+**Qué hace.** Desde el Lote 231 esto vale **solo en el kit de oferta**. Por regla, **toda pieza de un kit de oferta es sustituible**: al pedir, el vendedor puede cambiarla por otro producto de la **misma categoría exacta**
+(la subcategoría, si la tiene), con **exactamente el mismo precio de venta** y en la **misma cantidad**; el precio del kit no cambia. Lo que se marca es **lo
+que no** se puede sustituir: la casilla **«No sustituible»** de la pieza. Detalle del uso al pedir: [18 §17.1](18-ordenes-de-venta.md#171-cambiar-una-pieza-del-kit-al-pedir-lote-230).
+**Un kit armado no tiene esta casilla** (no hay sustitución: sus piezas ya están dentro).
+
+**Quién y dónde.** `sales.pricelist`, en la ventana del kit de una oferta: **Contabilidad → Precios y ofertas → la oferta → «Crear un kit nuevo»** (o «Cambiar kit» mientras el kit no se haya usado): cada pieza lleva la casilla **«No sustituible»**, desmarcada por omisión («Al pedir, una pieza se puede cambiar por otra de la misma categoría y el mismo precio. Marque «No sustituible» en las que no.»). Desde el Lote 231 **ya no se pone en Productos**: la pestaña «Kit» del editor del producto no existe. Detalle: [47 §4.4](47-precios-y-ofertas.md#44-kits-de-oferta-y-la-biblioteca-lote-231).
+
+**Reglas.**
+- Una pieza **sin categoría** o **sin precio de venta** no tiene sustitutos (aunque no esté marcada): asigne la categoría y el precio de venta al
+  producto ([§2.4](#24-medidas-y-peso-con-su-unidad-y-el-editor-ancho-lote-230-2026-11-09) y [§2.5](#25-foto-del-producto-y-categoría-con-subcategoría-lote-229-2026-11-09)).
+- La marca se guarda **por pieza y por kit**: el mismo producto puede ser sustituible en un kit y no sustituible en otro. La marca cuenta como parte de la **composición**: una vez usado el kit, no se cambia.
+- «**Ajustable al pedir**» **no cambia**: sigue permitiendo cambiar cantidades de las piezas en la orden sin tocar el precio, **solo en un kit de oferta**. Es independiente de la
+  sustitución (se pueden usar las dos).
+- No hay permiso aparte para sustituir: lo decide esta definición del kit y basta `sales.create` en el pedido.
+
+**API.** `components[].notSubstitutable` (`true` = no sustituible) en `POST /api/v1/offers/kits`, `POST /api/v1/offers/{publicId}/kits` y `PATCH /api/v1/offers/kits/{productPublicId}`.
+
+### 8b.3c Kit de oferta y kits viejos (Lote 231)
+
+- **Kit de oferta.** Es un producto de tipo KIT **sin existencia** marcado como kit de oferta. Se crea, se reutiliza y se cambia **solo desde las ofertas** ([47 §4.4](47-precios-y-ofertas.md#44-kits-de-oferta-y-la-biblioteca-lote-231)). **No sale en Productos e inventario**: ni en la lista, ni en sus conteos y tabletas, ni en el filtro de marcas, ni en la exportación de la tabla, ni en la importación (no se actualiza por ahí), ni en lo que se manda a integraciones, ni en las vistas e indicadores de productos. Tampoco entra en el valor del inventario, los conteos cíclicos ni el Kárdex (no tiene saldos). Su **ficha por identificador** y las órdenes y facturas que lo usaron lo siguen nombrando.
+- **Kits de los lotes 68 a 70 (sin marca de oferta).** No se conoce ninguno en las bases de datos; si existiera uno: se sigue vendiendo como antes (a su precio, con sus piezas, sin cambiar piezas ni ajustar al pedir) y solo se edita por el API (`PUT /api/v1/products/{publicId}/kit`), porque la pestaña «Kit» ya no existe.
+- **`PUT /api/v1/products/{publicId}/kit` desde el Lote 231:**
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| Convertir un producto normal en kit | `Un producto ya no se convierte en kit desde Productos: un kit que se arma al pedir se crea como kit de oferta en Contabilidad → Precios y ofertas.` | 422 |
+| Cambiar o volver normal un kit de oferta | `El kit {SKU} es un kit de oferta: se cambia en Contabilidad → Precios y ofertas, no en Productos.` | 422 |
+
+- **Reglas de las piezas de un kit de oferta** (y de un kit viejo):
 
 | Situación | Mensaje | HTTP |
 |---|---|---|
@@ -2541,53 +2716,29 @@ propios**: todo pasa en sus componentes. Este lote deja listo el catálogo; su u
 | Un componente que ya es kit | `{SKU} es un kit: un kit no puede llevar otro kit como componente.` | 400 |
 | Componente inactivo | `El componente {SKU} está inactivo.` | 400 |
 | Componente de otro dueño de inventario | `El componente {SKU} es de otro dueño de inventario que el kit.` | 400 |
-| Producto con rastreo por lote o serie | `Un kit no se rastrea por lote ni serie.` | 400 |
 | Componente que no existe | `Componente no encontrado.` | 404 |
-| Convertir un producto con existencia o reservas | `{SKU} tiene existencia: no se puede convertir en kit mientras tenga existencia o reservas.` | 409 |
-| Convertir un producto que es componente de otro kit | `{SKU} es componente de otro kit: no puede ser un kit.` | 409 |
-| Volver normal un producto que no es kit | `El producto {SKU} no es un kit.` | 409 |
-| Volver normal un kit que ya se usó en órdenes de venta | `El kit {SKU} ya se usó en órdenes de venta: no se puede volver un producto normal.` | 409 |
-| Recibir, ajustar o mover existencia del kit | `{SKU} es un kit: no tiene existencia propia. Los movimientos se hacen sobre sus componentes.` | 400 |
+| Kit viejo: volverlo normal cuando una orden ya lo usó | `El kit {SKU} ya se usó en órdenes de venta: no se puede volver un producto normal.` | 409 |
+| Kit viejo: convertir (solo por el API) un producto que tiene existencia | `{SKU} tiene existencia: no se puede convertir en kit mientras tenga existencia o reservas.` | 409 |
+| Recibir, ajustar o mover existencia de un kit (de oferta o viejo) | `{SKU} es un kit: no tiene existencia propia. Los movimientos se hacen sobre sus componentes.` | 400 |
 
-Además: un kit nunca aparece en los conteos (no tiene saldos) y no puede tener existencia; sus componentes son productos normales y activos **del mismo dueño** de inventario.
-
-### 8b.3b «No sustituible» (Lote 230, 2026-11-09)
-
-**Qué hace.** Por regla, **toda pieza de un kit es sustituible**: al pedir, el vendedor puede cambiarla por otro producto de la **misma categoría exacta**
-(la subcategoría, si la tiene), con **exactamente el mismo precio de venta** y en la **misma cantidad**; el precio del kit no cambia. Lo que se marca es **lo
-que no** se puede sustituir: la casilla **«No sustituible»** de la pieza. Detalle del uso al pedir: [18 §17.1](18-ordenes-de-venta.md#171-cambiar-una-pieza-del-kit-al-pedir-lote-230).
-
-**Quién y dónde.** `inventory.manage`, en los dos lugares donde se trabaja un kit:
-- **Productos e inventario → el kit → pestaña Kit → «Editar componentes»**: cada pieza lleva la casilla **«No sustituible»**, desmarcada por omisión
-  («Al pedir, una pieza se puede cambiar por otra de la misma categoría y el mismo precio. Marque «No sustituible» en las que no.»). La tabla del kit
-  pone el distintivo **«No sustituible»** a las piezas marcadas.
-- **Contabilidad → Precios y ofertas → la oferta**, al crear o cambiar un kit de la oferta ([47 §4.4](47-precios-y-ofertas.md#44-kits-de-una-oferta); ahí se
-  necesita `sales.pricelist`). Es la misma marca de la pieza.
-
-**Reglas.**
-- Una pieza **sin categoría** o **sin precio de venta** no tiene sustitutos (aunque no esté marcada): asigne la categoría y el precio de venta al
-  producto ([§2.4](#24-medidas-y-peso-con-su-unidad-y-el-editor-ancho-lote-230-2026-11-09) y [§2.5](#25-foto-del-producto-y-categoría-con-subcategoría-lote-229-2026-11-09)).
-- La marca se guarda **por pieza y por kit**: el mismo producto puede ser sustituible en un kit y no sustituible en otro. Al volver a guardar el kit sin
-  mandar la marca (`null`), se conserva la que tenía; una pieza nueva nace sustituible.
-- «**Ajustable al pedir**» **no cambia**: sigue permitiendo cambiar cantidades de las piezas en la orden sin tocar el precio. Es independiente de la
-  sustitución (se pueden usar las dos).
-- No hay permiso aparte para sustituir: lo decide esta definición del kit y basta `sales.create` en el pedido.
-
-**API.** `PUT /api/v1/products/{publicId}/kit` con `components[].notSubstitutable` (`true` = no sustituible; `null` = conserva la marca). La lectura del
-kit (`GET …/kit`) trae `components[].notSubstitutable`.
+Un kit armado **sí** tiene existencia: esos movimientos son válidos en él.
 
 ### 8b.4 Para soporte
 
-- Tabla `ProductKitComponent` (kit → componente → cantidad, único por par) y columnas `Product.ProductTypeLookupId` (catálogo `ProductType`: STANDARD / KIT; NULL = normal) y
-  `Product.KitAdjustable`, sección **2026-10-16 (p)** de `Diseño/logistica-db-update.sql`.
-- El cambio de tipo del producto queda en la bitácora del producto; los cambios de componentes también (con el tipo de entidad del producto).
+- **Kit armado (Lote 232):** el producto es de tipo `ASSEMBLED_KIT` (catálogo `ProductType`); su composición está en `ProductKitComponent`. Tablas `KitAssembly` y `KitAssemblyLine` (armados y lo que salió de cada pieza: lote, posición, cantidad por kit, cantidad, devuelta y costo) y `KitDisassembly` y `KitDisassemblyLine` (desarmados). Contadores por compañía `KITASSEMBLY` (ARM-#####) y `KITDISASSEMBLY` (DES-#####). Motivos de ajuste de sistema `KIT_ASSEMBLY` y `KIT_DISASSEMBLY`; EntityType `KIT_ASSEMBLY` y `KIT_DISASSEMBLY`. Sección «2026-11-10 — Lote 232» de `Diseño/logistica-db-update.sql` (idempotente, solo agrega).
+- Armar y desarmar pasan por el libro de inventario (`InventoryLedger`) como movimientos de **ajuste** con esos motivos; el documento ARM/DES es el origen que ve el Kárdex. El bloqueo del encabezado del kit pone en fila dos armados del mismo kit.
+- Cuántos kits se pueden armar: `canAssemble` (en un armado, un lote por pieza) y `canAssembleTotal` (juntando lotes) por almacén; se calculan leyendo saldos sin bloquear, así que son orientativos.
+- **Kit de oferta (Lote 231):** columna `Product.IsOfferKit` (BIT) e índice filtrado `IX_Product_OfferKit`; la sección «2026-11-10 — Lote 231» de `Diseño/logistica-db-update.sql` marcó los kits que el Lote 229 había atado a una oferta. `Product.OfferId` **ya no se lee ni se escribe** (la columna se queda). Ver [47 §10](47-precios-y-ofertas.md#10-para-soporte).
 - Lote 230: columna `ProductKitComponent.NotSubstitutable` (BIT, 0 = sustituible) y `SalesOrderLineComponent.SubstitutedProductId` (la pieza original cuando el vendedor la cambió; `ComponentProductId` guarda la pieza real); sección «2026-11-09 — Lote 230» de `Diseño/logistica-db-update.sql`.
-- Lote 229: `Product.OfferId` marca el kit creado para una oferta ([47 §4.4](47-precios-y-ofertas.md#44-kits-de-una-oferta)).
+- Lotes 68 a 70: tabla `ProductKitComponent` (kit → componente → cantidad, único por par) y columnas `Product.ProductTypeLookupId` (catálogo `ProductType`: STANDARD / KIT / ASSEMBLED_KIT; NULL = normal) y `Product.KitAdjustable`, sección **2026-10-16 (p)**.
+- Un kit armado puede ser pieza de un kit de oferta: hoy el sistema solo rechaza como pieza el tipo KIT, así que no está bloqueado ni se probó.
+- La app del almacén (aparato) no arma ni desarma; un kit armado se trata como un producto con lote. No se probó con el aparato.
+- Cambios de tipo y de composición del producto quedan en la bitácora del producto; los armados y desarmados, en la bitácora con el tipo de entidad `KIT_ASSEMBLY` / `KIT_DISASSEMBLY`.
 
 ### 8b.5 Recolectar un kit (Lote 70)
 
-`POST /api/v1/pick-batches` (y `collect-and-pack`, y el despacho manual) aceptan una línea con un **kit**: se **explota** en una línea por componente (cantidad por kit × kits),
-cada una con su posición por FEFO/FIFO como cualquier producto; todo en la misma recolección y la misma transacción.
+`POST /api/v1/pick-batches` (y `collect-and-pack`, y el despacho manual) aceptan una línea con un **kit de oferta** (o un kit viejo, tipo KIT): se **explota** en una línea por componente (cantidad por kit × kits),
+cada una con su posición por FEFO/FIFO como cualquier producto; todo en la misma recolección y la misma transacción. **Un kit armado no se explota**: se recolecta, se empaca y se despacha **el kit mismo**, como cualquier producto con su posición y su lote (Lote 232).
 
 - En el Kárdex, cada salida lleva la nota `{KIT} × n · EMP-#####` (o `DMA-…` en un despacho manual).
 - Las líneas de la recolección anotan el kit (`KitProductId`) y cuántos kits representa (`KitQuantity`, una sola vez por kit).
@@ -2695,8 +2846,8 @@ inventario) o **CANCELLED** (terminal, libera la reserva; si ya tenía algo conf
 | Permiso | Categoría | Qué habilita |
 |---|---|---|
 | `inventory.view` | WAREHOUSE | Ver almacenes, productos, inventario, recibos, tareas, conteos, recolecciones, citas y planes de cruce de plataforma |
-| `inventory.manage` | WAREHOUSE | Gestionar productos y categorías |
-| `inventory.adjust` | WAREHOUSE | Ajustar/transferir inventario, conciliar ("Ejecutar conciliación", estado de la revisión automática), resolver descuadres, resolver faltantes de compra |
+| `inventory.manage` | WAREHOUSE | Gestionar productos y categorías (y la composición de un kit armado, Lote 232) |
+| `inventory.adjust` | WAREHOUSE | Ajustar/transferir inventario, armar y desarmar kits (Lote 232), conciliar ("Ejecutar conciliación", estado de la revisión automática), resolver descuadres, resolver faltantes de compra |
 | `warehouse.manage` | WAREHOUSE | Gestionar almacenes, zonas, posiciones, plataformas; asignar/cancelar tareas |
 | `warehouse.receive` | WAREHOUSE | Recibir mercancía (ASN y recibos); completar tareas `PUTAWAY` |
 | `warehouse.pick` | WAREHOUSE | Recolectar y empacar; completar tareas `REPLENISH`; correr el reabasto |
