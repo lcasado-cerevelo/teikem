@@ -106,7 +106,8 @@ h1,h2,h3{letter-spacing:-.01em}
 .theme-seg{flex:none;overflow:visible}
 .theme-seg button{padding:5px 7px}
 .theme-seg svg{width:14px;height:14px}
-.stage{flex:1;overflow-y:auto;overflow-x:hidden;padding:18px 20px 90px;min-width:0}
+/* Lote 236: el relleno lateral e inferior del contenido como variables, para que un bloque fijo abajo (el carrito del pedido guiado) pueda cubrirlos */
+.stage{--stage-px:20px;--stage-pb:90px;flex:1;overflow-y:auto;overflow-x:hidden;padding:18px var(--stage-px) var(--stage-pb);min-width:0}
 .wrap{width:100%;max-width:1760px;margin:0}
 .drawer-scrim{display:none}
 
@@ -371,7 +372,7 @@ button.unrow:focus-visible{outline:2px solid var(--action);outline-offset:-2px}
   .rfoot{display:none}
   .bar{padding:0 10px;gap:8px}
   .bar .burger{display:inline-flex}
-  .stage{padding:14px 12px 80px}
+  .stage{--stage-px:12px;--stage-pb:80px;padding:14px var(--stage-px) var(--stage-pb)}
 }
 @media(max-width:720px){
   /* la barra "Buscar o ejecutar…" pasa a lupa y la paleta ocupa toda la pantalla */

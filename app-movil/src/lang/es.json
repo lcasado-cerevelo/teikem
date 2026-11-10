@@ -685,6 +685,12 @@
       "NEXT": "Siguiente",
       "STOCK": {
         "AVAILABLE": "Disponible: {{n}}",
+        "KIT_AVAILABLE": "Se pueden armar: {{n}}",
+        "PIECE_AVAILABLE": "{{n}} disp.",
+        "KIT_LIMIT": "limita",
+        "KIT_SHOW": "Ver piezas ({{n}})",
+        "KIT_HIDE": "Ocultar piezas ({{n}})",
+        "KIT_LIMITED_BY": "limita {{sku}}",
         "BACKORDER_CHIP": "Backorder: {{n}}",
         "shortMany": "Solo hay {{available}} disponibles en {{warehouse}}",
         "shortOne": "Solo hay 1 disponible en {{warehouse}}",

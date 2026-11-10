@@ -115,9 +115,20 @@
   .wz-nav .btn { max-width: none; }
 }
 
-/* En pantallas angostas el carrito y los botones quedan fijos abajo; en escritorio van debajo del listado, sin taparlo. */
+/* En pantallas angostas el carrito y los botones quedan fijos abajo; en escritorio van debajo del listado, sin taparlo.
+   Lote 236: el área de contenido (`.stage`) tiene relleno a los lados y abajo (--stage-px / --stage-pb), y un `sticky` con `bottom: 0` se pega al borde del
+   CONTENIDO, no al de lo visible: quedaba una franja de --stage-pb por debajo del bloque (y los márgenes de los lados) por donde se veía pasar la lista. El bloque
+   ahora se pega al borde inferior de lo visible (`bottom` negativo) y se estira sobre los márgenes laterales y el relleno inferior (márgenes negativos), con el
+   fondo opaco del tema de borde a borde. Al final del scroll queda en su sitio, después del último renglón (no lo tapa). La mascota Kemi y la cinta de ambiente
+   de pruebas flotan POR ENCIMA del bloque (decisión de Luis: la cinta de TEST se ve siempre); no se les reserva espacio. */
 @media (max-width: 720px) {
-  .wz-foot { position: sticky; bottom: 0; }
+  .wz-foot {
+    position: sticky;
+    bottom: calc(-1 * var(--stage-pb, 80px));
+    margin: 0 calc(-1 * var(--stage-px, 12px)) calc(-1 * var(--stage-pb, 80px));
+    padding: 10px var(--stage-px, 12px) calc(8px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -6px 14px -10px rgba(0, 0, 0, .45);
+  }
 }
 .wz-price { width: 96px; text-align: right; }
 

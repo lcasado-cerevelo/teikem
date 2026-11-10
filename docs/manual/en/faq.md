@@ -12202,3 +12202,29 @@ It is not an error: it is the notice (in red, with the “Backorder: N” badge)
 
 **What does "No alcanza el inventario de {SKU}: pedido {n}, disponible {n}, faltante {n}." mean? (409)**
 (Not enough stock.) It appears when requesting or sending without accepting the backorder. What to do: in the dialog, choose to reserve what is available and leave the rest on backorder, or fix the quantity.
+
+## Batch 236 — Kit availability broken down by piece, and the guided order's fixed cart
+<!-- kemi:staff -->
+
+Chapters: [48 — Guided order](48-pedido-guiado.md) (step 2) and [18 §26](18-ordenes-de-venta.md#26-the-orders-warehouse-and-what-is-available-when-picking-products-batch-235).
+
+**What does “Can build: N” mean on an offer kit?**
+How many whole kits can be made with what is available of its pieces in the order's warehouse. Below, every piece shows how many each kit takes (“× 6”) and how much there is (“14,022 avail.”).
+
+**What is the piece marked “Limiting”?**
+The one that allows the fewest kits: restock it to sell more kits. If two pieces yield the same, both are marked.
+
+**The kit has many pieces and I can't see the list.**
+With more than 3 pieces the list is folded: tap “Show pieces (N) · limited by {SKU}” to open it.
+
+**I substituted a kit piece on the order and the number changed.**
+That is correct: the breakdown and “Can build” are counted with the order's actual piece (the substitute), not the catalog one.
+
+**Why does a kit say “Available: N” and show no pieces?**
+It is an **assembled** kit: it has its own stock (already assembled in the warehouse) and is shown like any product.
+
+**I order more kits than can be built. Is it blocked?**
+No. As with any product: “Backorder: N” and “Only X available in {warehouse}; N go on backorder.” appear, and you can save and send.
+
+**On a phone the product list showed under the guided order's cart.**
+Fixed (Batch 236): the bottom block (cart, Back / Next) sticks to the bottom edge with an opaque background. Kemi and the red ribbon of a test environment still sit on top of the block; Kemi can be dragged to another corner.

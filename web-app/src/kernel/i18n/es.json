@@ -10582,6 +10582,12 @@
     "warehouseHelp": "El almacén del que sale la orden. Viene escogido el almacén principal; puede cambiarlo.",
     "stock": {
       "available": "Disponible: {n}",
+      "kitAvailable": "Se pueden armar: {n}",
+      "kitPieces": "Piezas del kit y su disponible",
+      "pieceAvailable": "{n} disp.",
+      "kitLimit": "Limita",
+      "kitShow": "Ver piezas ({n})",
+      "kitLimitedBy": "limita {sku}",
       "backorderChip": "Backorder: {n}",
       "shortMany": "Solo hay {available} disponibles en {warehouse}",
       "shortOne": "Solo hay 1 disponible en {warehouse}",

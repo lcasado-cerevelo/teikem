@@ -7,6 +7,7 @@
 // sale como tarjeta.
 // Lote 235: cada renglón (lista, tarjeta de oferta y carrito) dice «Disponible: N» en el almacén de la orden, marca en rojo lo que quedaría en backorder si se
 // pide de más (no bloquea) y, si otro almacén tiene, la nota «Hay disponible en …» (`StockInfo`).
+// Lote 236: el kit de oferta (tarjeta y carrito) dice «Se pueden armar: N» con su desglose por pieza; si en el carrito se cambió una pieza, el desglose usa la real.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useCan } from '../../../kernel/access'
 import { applyProblemDetails } from '../../../kernel/api/problem'
@@ -18,7 +19,7 @@ import { StoredImage } from '../../warehouse/StoredImage'
 import { KitLineBlock } from '../KitLineBlock'
 import type { SalesOrderDto } from '../salesApi'
 import { StockInfo } from '../StockInfo'
-import type { StockInput } from '../stockRules'
+import { orderKitPieces, type KitPieceInput, type StockInput } from '../stockRules'
 import { CartLinePriceInfo, PriceNoticeList } from './PriceNotices'
 import { itemNotices } from './priceSource'
 import { useSalesCatalog, type SalesCatalogBrandDto, type SalesCatalogItemDto } from './wizardApi'
@@ -97,7 +98,7 @@ function decimalText(text: string): string {
   return rest.length === 0 ? int : `${int}.${rest.join('').slice(0, 4)}`
 }
 
-function OfferCard({ item, quantity, onStep, onSet, stock, warehouseId }: { item: SalesCatalogItemDto; quantity: string; onStep: (delta: number) => void; onSet: (text: string) => void; stock?: StockInput | null; warehouseId?: string | null }) {
+function OfferCard({ item, quantity, onStep, onSet, stock, warehouseId, pieces }: { item: SalesCatalogItemDto; quantity: string; onStep: (delta: number) => void; onSet: (text: string) => void; stock?: StockInput | null; warehouseId?: string | null; pieces?: readonly KitPieceInput[] | null }) {
   const t = useT()
   const f = useFormat()
   const name = item.name ?? item.sku ?? ''
@@ -123,7 +124,7 @@ function OfferCard({ item, quantity, onStep, onSet, stock, warehouseId }: { item
           )}
           <PriceNoticeList notices={itemNotices(item)} label={t('salesWizard.products.notices', { sku: item.sku ?? '' })} />
         </span>
-        <StockInfo stock={stock} warehousePublicId={warehouseId} productPublicId={item.productPublicId} quantity={quantity} />
+        <StockInfo stock={stock} warehousePublicId={warehouseId} productPublicId={item.productPublicId} quantity={quantity} pieces={pieces} />
       </div>
       <div className="wz-stepper">
         <button type="button" className="btn sm" aria-label={t('salesWizard.products.less', { name })} disabled={!canSell || !quantity} onClick={() => onStep(-1)}>−</button>
@@ -186,7 +187,7 @@ export function ProductsStep({ state, onChange, stock, warehouseId }: ProductsSt
               <h3 className="wz-sub">{t('salesWizard.products.offers')}</h3>
               <ul className="wz-offers" aria-label={t('salesWizard.products.offersOf', { brand: searching ? t('salesWizard.products.allBrands') : current?.brand ?? t('salesWizard.products.noBrand') })}>
                 {offers.map((o) => (
-                  <OfferCard key={o.productPublicId} item={o} quantity={cartQuantity(state.cart, o.productPublicId)} onStep={(d) => step(o, d)} onSet={(text) => set(o, text)} stock={stock} warehouseId={warehouseId} />
+                  <OfferCard key={o.productPublicId} item={o} quantity={cartQuantity(state.cart, o.productPublicId)} onStep={(d) => step(o, d)} onSet={(text) => set(o, text)} stock={stock} warehouseId={warehouseId} pieces={state.cart.find((l) => l.productPublicId === o.productPublicId)?.components} />
                 ))}
               </ul>
             </>
@@ -287,7 +288,7 @@ export function CartBar({ state, onChange, saved, stock, warehouseId }: { state:
                   <button type="button" className="btn sm" onClick={() => onChange((s) => ({ ...s, cart: removeFromCart(s.cart, l.productPublicId) }))} aria-label={t('salesWizard.cart.removeOf', { sku: l.sku })}>
                     {t('salesWizard.cart.remove')}
                   </button>
-                  <StockInfo stock={stock} warehousePublicId={warehouseId} productPublicId={l.productPublicId} quantity={l.quantity} />
+                  <StockInfo stock={stock} warehousePublicId={warehouseId} productPublicId={l.productPublicId} quantity={l.quantity} pieces={orderKitPieces(l.components, saved?.lines?.find((x) => x.productPublicId === l.productPublicId))} />
                   <CartLinePriceInfo productPublicId={l.productPublicId} sku={l.sku} clientPublicId={state.clientPublicId} saved={saved} />
                   {l.isKit && (
                     <KitLineBlock

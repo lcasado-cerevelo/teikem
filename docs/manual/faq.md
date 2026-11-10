@@ -12092,3 +12092,29 @@ Ya no sale en las órdenes de venta desde el Lote 235: sin almacén indicado se 
 
 **¿Qué significa "No alcanza el inventario de {SKU}: pedido {n}, disponible {n}, faltante {n}."? (409)**
 Sale al solicitar o enviar sin aceptar el backorder. Qué hacer: en el diálogo, escoja reservar lo disponible y dejar el resto en backorder, o corrija la cantidad.
+
+## Lote 236 — Disponible del kit desglosado por pieza y carrito fijo del pedido guiado
+<!-- kemi:staff -->
+
+Capítulos: [48 — Pedido guiado](48-pedido-guiado.md) (paso 2) y [18 §26](18-ordenes-de-venta.md#26-almacén-de-la-orden-y-disponible-al-escoger-productos-lote-235).
+
+**¿Qué significa «Se pueden armar: N» en un kit de oferta?**
+Cuántos kits completos salen con lo disponible de sus piezas en el almacén de la orden. Debajo sale cada pieza: cuántas lleva cada kit («× 6») y cuánto hay («14,022 disp.»).
+
+**¿Qué es la pieza que dice «Limita»?**
+La que menos kits deja armar: es la que hay que reponer para poder vender más kits. Si dos piezas dan lo mismo, las dos salen marcadas.
+
+**El kit tiene muchas piezas y no veo la lista.**
+Con más de 3 piezas la lista va plegada: toque «Ver piezas (N) · limita {SKU}» para abrirla.
+
+**Cambié una pieza del kit en la orden y el número cambió.**
+Es correcto: el desglose y «Se pueden armar» se cuentan con la pieza real de la orden (la sustituta), no con la del catálogo.
+
+**¿Por qué un kit dice «Disponible: N» y no muestra piezas?**
+Es un kit **armado**: tiene inventario propio (ya está armado en el almacén) y se muestra como cualquier producto.
+
+**Pido más kits de los que se pueden armar. ¿Se bloquea?**
+No. Igual que con cualquier producto: sale «Backorder: N» y «Solo hay X disponibles en {almacén}; N quedan en backorder.» y se puede guardar y enviar.
+
+**En el teléfono se veía la lista de productos por debajo del carrito del pedido guiado.**
+Corregido (Lote 236): el bloque de abajo (carrito, Atrás / Siguiente) queda pegado al borde inferior con fondo opaco. Kemi y la cinta roja de un ambiente de pruebas siguen quedando por encima del bloque; Kemi se puede arrastrar a otra esquina.

@@ -22,7 +22,7 @@ import { KitLineBlock, KitComponentsSection } from './KitLineBlock'
 import { useSalesMutations, useSalesOrder, useSalesStock, type SalesAvailabilityDto, type SalesDispatchInfoDto, type SalesDispatchResultDto, type SalesOrderDto, type SalesOrderLineDto } from './salesApi'
 import { LinkedDeliveryInfo } from '../integrations/LinkedDeliveryInfo'
 import { StockInfo } from './StockInfo'
-import { orderWarehouseId, showWarehouseField, stockWarehouses } from './stockRules'
+import { orderKitPieces, orderWarehouseId, showWarehouseField, stockWarehouses } from './stockRules'
 
 let nextKey = 1
 
@@ -405,7 +405,7 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
                 <span>{effectivePrice(l) === null || parseNumber(l.quantity) === null ? '—' : f.money(lineAmount(l))}</span>
               </div>
               <button type="button" className="btn ghost" aria-label={t('sales.line.remove', { n: i + 1 })} onClick={() => set({ lines: draft.lines.filter((x) => x.key !== l.key) })}>✕</button>
-              <StockInfo stock={stock.data} warehousePublicId={warehouseId} productPublicId={l.productPublicId} quantity={l.quantity} />
+              <StockInfo stock={stock.data} warehousePublicId={warehouseId} productPublicId={l.productPublicId} quantity={l.quantity} pieces={orderKitPieces(l.components, current?.lines?.find((x) => x.productPublicId === l.productPublicId))} />
               {l.isKit && <KitLineBlock line={l} saved={current?.lines?.find((x) => x.productPublicId === l.productPublicId)} onPieces={(components) => setLine(l.key, { components })} />}
             </div>
           ))}

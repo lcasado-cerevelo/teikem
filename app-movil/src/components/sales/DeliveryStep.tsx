@@ -5,7 +5,7 @@ import { useStyles, useTheme } from '@hooks/ThemeContext';
 import type { Colors } from '@constants/theme';
 import { fetchClientConsignees, type ClientForOrder, type SalesOrder } from '@services/salesApi';
 import { addressLine, money, orderSummary, requiredDateValid, type DeliveryChoice, type WizardState } from '@utils/salesOrderRules';
-import { availableIn, backorderQty, type StockInput } from '@utils/salesStockRules';
+import { lineStock, type StockInput } from '@utils/salesStockRules';
 import { Text } from '@components/Text';
 import StockInfo from './StockInfo';
 import { Choice, Field, Help, SectionTitle, SumRow, SwitchRow } from './ui';
@@ -42,7 +42,7 @@ export default function DeliveryStep({ tenantId, state, onChange, onRecalc, clie
   const otherList = (others.data ?? []).filter((c) => c.publicId !== physical?.publicId);
   const dateBad = !requiredDateValid(state.requiredDate);
 
-  const short = stock && warehouseId ? state.cart.filter((l) => backorderQty(l.quantity, availableIn(stock, l.productPublicId, warehouseId)) > 0) : [];
+  const short = stock && warehouseId ? state.cart.filter((l) => (lineStock(stock, l.productPublicId, warehouseId, l.quantity, l.components)?.backorder ?? 0) > 0) : [];
 
   return (
     <View style={styles.step}>
@@ -101,7 +101,7 @@ export default function DeliveryStep({ tenantId, state, onChange, onRecalc, clie
         {short.map((l) => (
           <View key={l.productPublicId} style={styles.shortLine}>
             <Text style={styles.shortName}>{`${l.sku} · ${l.name}`}</Text>
-            <StockInfo stock={stock} warehouseId={warehouseId} productPublicId={l.productPublicId} quantity={l.quantity} onlyBackorder />
+            <StockInfo stock={stock} warehouseId={warehouseId} productPublicId={l.productPublicId} quantity={l.quantity} pieces={l.components} onlyBackorder />
           </View>
         ))}
         {short.length > 0 ? <Help>{t('SALES_ORDER.STOCK.BACKORDER_HELP')}</Help> : null}

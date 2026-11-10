@@ -685,6 +685,12 @@
       "NEXT": "Next",
       "STOCK": {
         "AVAILABLE": "Available: {{n}}",
+        "KIT_AVAILABLE": "Can build: {{n}}",
+        "PIECE_AVAILABLE": "{{n}} avail.",
+        "KIT_LIMIT": "limiting",
+        "KIT_SHOW": "Show pieces ({{n}})",
+        "KIT_HIDE": "Hide pieces ({{n}})",
+        "KIT_LIMITED_BY": "limited by {{sku}}",
         "BACKORDER_CHIP": "Backorder: {{n}}",
         "shortMany": "Only {{available}} available in {{warehouse}}",
         "shortOne": "Only 1 available in {{warehouse}}",

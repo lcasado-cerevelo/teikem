@@ -21,7 +21,7 @@ public sealed class SalesStockService(TeikemDbContext db, ILookupCache lookups)
     {
         var warehouses = await db.Warehouses.AsNoTracking().Where(w => w.IsActive).OrderBy(w => w.Code)
             .Select(w => new { w.WarehouseId, w.PublicId, w.Code, w.Name, w.IsMain }).ToListAsync(ct);
-        if (warehouses.Count == 0) return new SalesStockDto(Array.Empty<SalesStockWarehouseDto>(), Array.Empty<SalesStockProductDto>());
+        if (warehouses.Count == 0) return new SalesStockDto(Array.Empty<SalesStockWarehouseDto>(), Array.Empty<SalesStockProductDto>(), Array.Empty<SalesStockKitDto>());
         var mainId = WarehouseRules.MainWarehouseId(warehouses.Select(w => (w.WarehouseId, w.IsMain, true)));
         var warehouseDtos = warehouses.Select(w => new SalesStockWarehouseDto(w.PublicId, w.Code, w.Name, w.WarehouseId == mainId)).ToList();
         var warehouseIds = warehouses.Select(w => w.WarehouseId).ToList();
@@ -50,6 +50,7 @@ public sealed class SalesStockService(TeikemDbContext db, ILookupCache lookups)
         var kitSet = kitIds.ToHashSet();
         var components = kitIds.Count == 0 ? new Dictionary<int, List<(int ComponentProductId, decimal QtyPerKit)>>()
             : (await db.Set<ProductKitComponent>().AsNoTracking().Where(c => kitIds.Contains(c.KitProductId))
+                .OrderBy(c => c.SortOrder).ThenBy(c => c.ProductKitComponentId)
                 .Select(c => new { c.KitProductId, c.ComponentProductId, c.Quantity }).ToListAsync(ct))
                 .GroupBy(c => c.KitProductId).ToDictionary(g => g.Key, g => g.Select(c => (c.ComponentProductId, c.Quantity)).ToList());
 
@@ -69,14 +70,19 @@ public sealed class SalesStockService(TeikemDbContext db, ILookupCache lookups)
             foreach (var (kitId, comps) in components)
                 Add(kitId, w.WarehouseId, SalesStockRules.KitsAvailable(comps, here));
         }
-        if (byProduct.Count == 0) return new SalesStockDto(warehouseDtos, Array.Empty<SalesStockProductDto>());
-
-        var productIds = byProduct.Keys.ToList();
-        var publicIds = await db.Products.AsNoTracking().Where(p => productIds.Contains(p.ProductId)).Select(p => new { p.ProductId, p.PublicId, p.Sku }).ToListAsync(ct);
+        // Lote 236: los kits con sus piezas viajan siempre (aunque no haya existencia), para desglosar el disponible del kit por pieza
+        var productIds = byProduct.Keys.Concat(components.Keys).Concat(components.Values.SelectMany(c => c.Select(x => x.ComponentProductId))).Distinct().ToList();
+        if (productIds.Count == 0) return new SalesStockDto(warehouseDtos, Array.Empty<SalesStockProductDto>(), Array.Empty<SalesStockKitDto>());
+        var publicIds = await db.Products.AsNoTracking().Where(p => productIds.Contains(p.ProductId)).Select(p => new { p.ProductId, p.PublicId, p.Sku, p.Name }).ToListAsync(ct);
+        var byId = publicIds.ToDictionary(p => p.ProductId);
         var warehousePublic = warehouses.ToDictionary(w => w.WarehouseId, w => w.PublicId);
-        var products = publicIds.OrderBy(p => p.Sku, StringComparer.OrdinalIgnoreCase)
+        var products = publicIds.Where(p => byProduct.ContainsKey(p.ProductId)).OrderBy(p => p.Sku, StringComparer.OrdinalIgnoreCase)
             .Select(p => new SalesStockProductDto(p.PublicId, byProduct[p.ProductId].Select(x => new SalesStockQtyDto(warehousePublic[x.WarehouseId], x.Qty)).ToList()))
             .ToList();
-        return new SalesStockDto(warehouseDtos, products);
+        var kits = components.Where(k => byId.ContainsKey(k.Key)).OrderBy(k => byId[k.Key].Sku, StringComparer.OrdinalIgnoreCase)
+            .Select(k => new SalesStockKitDto(byId[k.Key].PublicId, k.Value.Where(c => byId.ContainsKey(c.ComponentProductId))
+                .Select(c => new SalesStockKitComponentDto(byId[c.ComponentProductId].PublicId, byId[c.ComponentProductId].Sku, byId[c.ComponentProductId].Name, c.Item2)).ToList()))
+            .ToList();
+        return new SalesStockDto(warehouseDtos, products, kits);
     }
 }

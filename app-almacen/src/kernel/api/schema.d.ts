@@ -52327,6 +52327,20 @@ export interface components {
         SalesStockDto: {
             warehouses?: components["schemas"]["SalesStockWarehouseDto"][] | null;
             products?: components["schemas"]["SalesStockProductDto"][] | null;
+            kits?: components["schemas"]["SalesStockKitDto"][] | null;
+        };
+        SalesStockKitComponentDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            /** Format: double */
+            qtyPerKit?: number;
+        };
+        SalesStockKitDto: {
+            /** Format: uuid */
+            kitPublicId?: string;
+            components?: components["schemas"]["SalesStockKitComponentDto"][] | null;
         };
         SalesStockProductDto: {
             /** Format: uuid */

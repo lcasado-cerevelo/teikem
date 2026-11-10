@@ -14,7 +14,7 @@ import { hasInk, signatureToPng, Spinner, type SignatureStroke } from '../../../
 import { useClient } from '../../clients/api'
 import { AvailabilityDialog } from '../OrderModal'
 import { useSalesOrder, useSalesStock, type SalesAvailabilityDto, type SalesOrderDto, type SalesOrderRequest } from '../salesApi'
-import { anyBackorder, orderWarehouseId, showWarehouseField, stockWarehouses } from '../stockRules'
+import { anyBackorder, orderKitPieces, orderWarehouseId, showWarehouseField, stockWarehouses } from '../stockRules'
 import { AuthorizationStep, SubmitPasswordModal } from './AuthorizationStep'
 import { ClientStep } from './ClientStep'
 import { DeliveryStep } from './DeliveryStep'
@@ -241,7 +241,7 @@ export default function NewOrderScreen() {
     setSubmitErr(null)
     try {
       // Lote 235: si alguna línea pasa de lo disponible, el vendedor ya vio el distintivo «Backorder: N» al capturar: se envía con backorder sin volver a preguntar
-      await send(anyBackorder(stock.data, warehouseId, state.cart), false)
+      await send(anyBackorder(stock.data, warehouseId, state.cart.map((l) => ({ ...l, components: orderKitPieces(l.components, saved?.lines?.find((x) => x.productPublicId === l.productPublicId)) }))), false)
       setPasswordOpen(false)
     } catch (e) {
       const err = toApiError(e)

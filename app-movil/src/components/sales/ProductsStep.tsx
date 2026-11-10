@@ -11,7 +11,7 @@ import { fetchCatalog, fileSource, type SalesCatalogBrand, type SalesCatalogItem
 import {
   cartLineAmount, cartQuantity, cartSummary, money, removeFromCart, setCartQuantity, stepCartQuantity, type WizardState,
 } from '@utils/salesOrderRules';
-import type { StockInput } from '@utils/salesStockRules';
+import type { KitPieceInput, StockInput } from '@utils/salesStockRules';
 import StockInfo from './StockInfo';
 import { Badge, Button, Help, SectionTitle } from './ui';
 
@@ -19,7 +19,7 @@ import { Badge, Button, Help, SectionTitle } from './ui';
 // sus ofertas vigentes como tarjetas con foto, precio y + / −; debajo la lista completa de la marca (SKU, nombre, precio de la lista del cliente o la general) con
 // su casilla de cantidad: teclear una cantidad agrega la línea. El carrito (`CartBar`) va fijo abajo; tocarlo muestra las líneas para corregir o quitar.
 // Lote 235: cada renglón (lista, oferta y carrito) dice «Disponible: N» en el almacén de la orden, marca el backorder si se pide de más (no bloquea) y la nota de
-// otros almacenes (`StockInfo`).
+// otros almacenes (`StockInfo`). Lote 236: el kit de oferta dice «Se pueden armar: N» con su desglose por pieza.
 // El vendedor no teclea precios. Los kits ajustables se piden con las piezas del catálogo (ajustarlas se hace en la web).
 
 const NO_BRAND = '__none__';
@@ -77,7 +77,7 @@ export default function ProductsStep({ tenantId, state, onChange, stock, warehou
         <View style={styles.block}>
           <Text style={styles.sub}>{t('SALES_ORDER.PRODUCTS.OFFERS')}</Text>
           {current!.offers.map((o) => (
-            <OfferCard key={o.productPublicId} tenantId={tenantId} item={o} quantity={cartQuantity(state.cart, o.productPublicId)} onStep={(d) => step(o, d)} onSet={(text) => set(o, text)} stock={stock} warehouseId={warehouseId} />
+            <OfferCard key={o.productPublicId} tenantId={tenantId} item={o} quantity={cartQuantity(state.cart, o.productPublicId)} onStep={(d) => step(o, d)} onSet={(text) => set(o, text)} stock={stock} warehouseId={warehouseId} pieces={state.cart.find((l) => l.productPublicId === o.productPublicId)?.components} />
           ))}
         </View>
       ) : null}
@@ -117,7 +117,7 @@ export default function ProductsStep({ tenantId, state, onChange, stock, warehou
   );
 }
 
-function OfferCard({ tenantId, item, quantity, onStep, onSet, stock, warehouseId }: { tenantId: number; item: SalesCatalogItem; quantity: string; onStep: (d: number) => void; onSet: (text: string) => void; stock?: StockInput | null; warehouseId?: string | null }) {
+function OfferCard({ tenantId, item, quantity, onStep, onSet, stock, warehouseId, pieces }: { tenantId: number; item: SalesCatalogItem; quantity: string; onStep: (d: number) => void; onSet: (text: string) => void; stock?: StockInput | null; warehouseId?: string | null; pieces?: readonly KitPieceInput[] | null }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useStyles(createStyles);
@@ -136,7 +136,7 @@ function OfferCard({ tenantId, item, quantity, onStep, onSet, stock, warehouseId
         <Text style={styles.name}>{name}</Text>
         <Text style={styles.muted}>{item.sku}</Text>
         <Text style={canSell ? styles.price : styles.noPrice}>{canSell ? money(item.price) : t('SALES_ORDER.PRODUCTS.NO_PRICE')}</Text>
-        <StockInfo stock={stock} warehouseId={warehouseId} productPublicId={item.productPublicId} quantity={quantity} />
+        <StockInfo stock={stock} warehouseId={warehouseId} productPublicId={item.productPublicId} quantity={quantity} pieces={pieces} />
         <View style={styles.stepper}>
           <Pressable style={[styles.stepBtn, (!canSell || !quantity) && styles.disabled]} disabled={!canSell || !quantity} onPress={() => onStep(-1)} accessibilityRole="button" accessibilityLabel={t('SALES_ORDER.PRODUCTS.LESS', { name })}>
             <Text style={styles.stepText}>−</Text>
@@ -176,7 +176,7 @@ export function CartBar({ state, onChange, stock, warehouseId }: { state: Wizard
                   <Text style={styles.sku}>{l.sku}</Text>
                   <Text style={styles.name}>{l.name}</Text>
                   <Text style={styles.price}>{l.price == null ? '—' : money(cartLineAmount(l))}</Text>
-                  <StockInfo stock={stock} warehouseId={warehouseId} productPublicId={l.productPublicId} quantity={l.quantity} />
+                  <StockInfo stock={stock} warehouseId={warehouseId} productPublicId={l.productPublicId} quantity={l.quantity} pieces={l.components} />
                 </View>
                 <View style={styles.cartActions}>
                   <TextInput style={styles.qty} value={l.quantity} onChangeText={(text) => setQty(l.productPublicId, text)} keyboardType="decimal-pad" accessibilityLabel={t('SALES_ORDER.PRODUCTS.QTY_OF', { sku: l.sku })} />

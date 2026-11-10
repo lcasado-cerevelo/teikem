@@ -330,4 +330,48 @@ const like = (actual, expected, msg) => { for (const [k, v] of Object.entries(ex
   }
 }
 
+// ---------------- Lote 236: el disponible de un kit que se arma al pedir, desglosado por pieza (copia de web-app/.../stockRules.test.ts)
+{
+  const { anyBackorder, isBuiltOnOrderKit, kitStock, lineStock, orderKitPieces, KIT_PIECES_UNFOLDED } = await import('../src/utils/salesStockRules.ts');
+  const KITS = {
+    warehouses: [{ publicId: 'w-1', code: 'ALM-01', name: 'Bayamón', isMain: true }, { publicId: 'w-2', code: 'ALM-02', name: 'Ponce', isMain: false }],
+    products: [
+      { productPublicId: 'strips', stock: [{ warehousePublicId: 'w-1', available: 14022 }, { warehousePublicId: 'w-2', available: 13 }] },
+      { productPublicId: 'monitor', stock: [{ warehousePublicId: 'w-1', available: 5000 }, { warehousePublicId: 'w-2', available: 1 }] },
+      { productPublicId: 'other', stock: [{ warehousePublicId: 'w-1', available: 40 }] },
+      { productPublicId: 'kit', stock: [{ warehousePublicId: 'w-1', available: 2337 }, { warehousePublicId: 'w-2', available: 1 }] },
+      { productPublicId: 'assembled', stock: [{ warehousePublicId: 'w-1', available: 7 }] },
+    ],
+    kits: [{ kitPublicId: 'kit', components: [{ productPublicId: 'strips', sku: '52800', name: 'Tirillas', qtyPerKit: 6 }, { productPublicId: 'monitor', sku: '070120', name: 'Monitor', qtyPerKit: 1 }] }],
+  };
+  assert.deepEqual(kitStock(KITS, 'kit', 'w-1'), {
+    available: 2337,
+    pieces: [
+      { productPublicId: 'strips', sku: '52800', name: 'Tirillas', qtyPerKit: 6, available: 14022, kits: 2337, limiting: true },
+      { productPublicId: 'monitor', sku: '070120', name: 'Monitor', qtyPerKit: 1, available: 5000, kits: 5000, limiting: false },
+    ],
+  });
+  assert.deepEqual(kitStock(KITS, 'kit', 'w-2').pieces.map((p) => p.limiting), [false, true]);
+  // un kit armado no se desglosa: su existencia
+  assert.equal(kitStock(KITS, 'assembled', 'w-1'), null);
+  assert.equal(isBuiltOnOrderKit(KITS, 'assembled'), false);
+  assert.deepEqual(lineStock(KITS, 'assembled', 'w-1', '9'), { available: 7, backorder: 2, elsewhere: [] });
+  // el renglón del kit: backorder y otros almacenes con las piezas
+  const line = lineStock(KITS, 'kit', 'w-1', '2400');
+  assert.equal(line.available, 2337);
+  assert.equal(line.backorder, 63);
+  assert.deepEqual(line.elsewhere, [{ warehousePublicId: 'w-2', name: 'Ponce', available: 1 }]);
+  // con piezas cambiadas en la orden, la pieza real
+  const pieces = [{ productPublicId: 'other', sku: '52900', name: 'Tirillas alternas', quantity: '6' }, { productPublicId: 'monitor', sku: '070120', name: 'Monitor', quantity: '1' }];
+  assert.equal(kitStock(KITS, 'kit', 'w-1', pieces).available, 6);
+  assert.equal(anyBackorder(KITS, 'w-1', [{ productPublicId: 'kit', quantity: '10', components: pieces }]), true);
+  assert.equal(anyBackorder(KITS, 'w-1', [{ productPublicId: 'kit', quantity: '10' }]), false);
+  assert.equal(orderKitPieces(null, undefined), null);
+  assert.equal(KIT_PIECES_UNFOLDED, 3);
+  for (const lang of ['es', 'en']) {
+    const tr = JSON.parse(readFileSync(new URL(`../src/lang/${lang}.json`, import.meta.url), 'utf8')).translation.SALES_ORDER.STOCK;
+    for (const k of ['KIT_AVAILABLE', 'PIECE_AVAILABLE', 'KIT_LIMIT', 'KIT_SHOW', 'KIT_HIDE', 'KIT_LIMITED_BY']) assert.ok(tr[k], `${lang}: STOCK.${k}`);
+  }
+}
+
 console.log('test-sales-order: ok');

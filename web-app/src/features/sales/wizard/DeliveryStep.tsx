@@ -9,7 +9,7 @@ import type { components } from '../../../kernel/api/schema'
 import { ConsigneePicker } from '../../consignees/ConsigneePicker'
 import type { SalesOrderDto } from '../salesApi'
 import { StockInfo } from '../StockInfo'
-import { backorderQty, availableIn, type StockInput } from '../stockRules'
+import { lineStock, orderKitPieces, type StockInput } from '../stockRules'
 import { DeliveryPriceNotices } from './PriceNotices'
 import { addressLine, orderSummary, type DeliveryChoice, type WizardState } from './wizardRules'
 
@@ -35,7 +35,9 @@ export function DeliveryStep({ state, onChange, onRecalc, client, saved, recalcu
   const physical = client?.physicalAddress?.isActive === false ? null : client?.physicalAddress ?? null
   const usingPhysical = !!physical?.publicId && state.consigneePublicId === physical.publicId
   const summary = orderSummary(saved)
-  const short = stock && warehouseId ? state.cart.filter((l) => backorderQty(l.quantity, availableIn(stock, l.productPublicId, warehouseId)) > 0) : []
+  // Lote 236: un kit de oferta se cuenta con sus piezas reales (las de la orden si se cambiaron)
+  const piecesOf = (l: (typeof state.cart)[number]) => orderKitPieces(l.components, saved?.lines?.find((x) => x.productPublicId === l.productPublicId))
+  const short = stock && warehouseId ? state.cart.filter((l) => (lineStock(stock, l.productPublicId, warehouseId, l.quantity, piecesOf(l))?.backorder ?? 0) > 0) : []
   const mode = (m: DeliveryChoice) => onRecalc({ deliveryMode: m, consigneePublicId: m === 'DELIVERY' ? state.consigneePublicId ?? physical?.publicId ?? null : state.consigneePublicId })
 
   return (
@@ -121,7 +123,7 @@ export function DeliveryStep({ state, onChange, onRecalc, client, saved, recalcu
               {short.map((l) => (
                 <li key={l.productPublicId}>
                   <b><span className="mono">{l.sku}</span> · {l.name}</b>
-                  <StockInfo stock={stock} warehousePublicId={warehouseId} productPublicId={l.productPublicId} quantity={l.quantity} onlyBackorder />
+                  <StockInfo stock={stock} warehousePublicId={warehouseId} productPublicId={l.productPublicId} quantity={l.quantity} pieces={piecesOf(l)} onlyBackorder />
                 </li>
               ))}
             </ul>

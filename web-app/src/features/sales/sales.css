@@ -68,6 +68,17 @@
 .sales-stock-short { color: var(--danger); font-weight: 600; }
 .sales-stock-else { font-style: italic; }
 .sales-line > .sales-stock { grid-column: 1 / -1; }
+/* Lote 236: el desglose del disponible de un kit por pieza. Lista corta, sin viñetas; la pieza que limita en el color del texto y con su distintivo. Cabe en
+   la tarjeta de oferta a 360 px (el nombre parte; la cantidad no). Con muchas piezas va en un <details> («Ver piezas (N)»). */
+.sales-kitstock { list-style: none; margin: 2px 0 0; padding: 0 0 0 8px; border-left: 2px solid var(--line); display: flex; flex-direction: column; gap: 3px; min-width: 0; max-width: 100%; align-self: stretch; }
+.sales-kitstock li { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 8px; min-width: 0; }
+.sales-kitstock li.limit { color: var(--text); font-weight: 600; }
+.sales-kitstock-what { min-width: 0; overflow-wrap: anywhere; }
+.sales-kitstock-n { white-space: nowrap; font-variant-numeric: tabular-nums; margin-left: auto; }
+.sales-kitstock-n .chip { font-size: 10.5px; padding: 0 6px; }
+.sales-kitstock-more { align-self: stretch; min-width: 0; }
+.sales-kitstock-more > summary { cursor: pointer; color: var(--text); padding: 3px 0; overflow-wrap: anywhere; }
+.sales-kitstock-more > summary:focus-visible { outline: 2px solid var(--flow); outline-offset: 2px; border-radius: 4px; }
 .sales-backorders { list-style: none; margin: 8px 0 0; padding: 8px 10px; border: 1px solid var(--danger); border-radius: 8px; background: var(--dangerbg); display: flex; flex-direction: column; gap: 6px; }
 .sales-backorders li { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .sales-backorders b { overflow-wrap: anywhere; }

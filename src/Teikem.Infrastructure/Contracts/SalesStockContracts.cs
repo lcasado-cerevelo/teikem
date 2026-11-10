@@ -11,7 +11,14 @@ public sealed record SalesStockQtyDto(Guid WarehousePublicId, decimal Available)
 /// <summary>Un producto con disponible en algún almacén activo. Para un kit que se arma al pedir, Available = kits completos que se pueden armar ahí.</summary>
 public sealed record SalesStockProductDto(Guid ProductPublicId, IReadOnlyList<SalesStockQtyDto> Stock);
 
+/// <summary>Lote 236: una pieza de un kit que se arma al pedir (lo que lleva cada kit). Su disponible por almacén viaja en Products, como cualquier producto.</summary>
+public sealed record SalesStockKitComponentDto(Guid ProductPublicId, string Sku, string Name, decimal QtyPerKit);
+
+/// <summary>Lote 236: un kit que se arma al pedir (tipo KIT: el kit de oferta) con sus piezas, para desglosar su disponible. Un kit ARMADO no viaja aquí: tiene su propia existencia.</summary>
+public sealed record SalesStockKitDto(Guid KitPublicId, IReadOnlyList<SalesStockKitComponentDto> Components);
+
 /// <summary>
 /// Los almacenes activos (por código) y lo disponible para vender por producto y almacén. Un producto que no aparece no tiene disponible en ningún almacén (0).
+/// Lote 236: Kits = los kits que se arman al pedir con sus piezas (aunque no haya existencia), para que la pantalla desglose el disponible del kit por pieza.
 /// </summary>
-public sealed record SalesStockDto(IReadOnlyList<SalesStockWarehouseDto> Warehouses, IReadOnlyList<SalesStockProductDto> Products);
+public sealed record SalesStockDto(IReadOnlyList<SalesStockWarehouseDto> Warehouses, IReadOnlyList<SalesStockProductDto> Products, IReadOnlyList<SalesStockKitDto> Kits);

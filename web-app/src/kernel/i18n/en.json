@@ -10579,6 +10579,12 @@
     "warehouseHelp": "The warehouse the order ships from. The main warehouse comes selected; you can change it.",
     "stock": {
       "available": "Available: {n}",
+      "kitAvailable": "Can build: {n}",
+      "kitPieces": "Kit pieces and their availability",
+      "pieceAvailable": "{n} avail.",
+      "kitLimit": "Limiting",
+      "kitShow": "Show pieces ({n})",
+      "kitLimitedBy": "limited by {sku}",
       "backorderChip": "Backorder: {n}",
       "shortMany": "Only {available} available in {warehouse}",
       "shortOne": "Only 1 available in {warehouse}",
