@@ -43,7 +43,8 @@ La **categoría de impuesto** de cada producto: **Gravable** (lo normal), **Exen
 
 Los certificados de exención de los clientes: **cliente**, **tipo** (p. ej. «Sin fines de lucro»), **número de certificado**, **vale desde / hasta** (vacío = sin fecha final) y notas. Estado: **Vigente**, **Programada**, **Vencida** o **De baja**.
 
-- Con una exención **vigente** nada se le cobra de impuesto a ese cliente y la línea queda marcada como exenta con el **certificado anotado**.
+- **Aplica a** (Lote 237): **Todo el impuesto** (por omisión) o **Solo estos componentes**, con una casilla por cada componente de la tasa por omisión vigente (p. ej. «Estatal (10.5 %)», «Municipal (1 %)»). Con «Solo estos componentes» hay que marcar al menos una («Marque al menos un componente del impuesto que la exención cubre.»). La lista tiene la columna **Aplica a** («Todo el impuesto» o «Solo: Municipal»). Ejemplo y reglas en [17 §5.1](../17-impuestos.md#51-a-qué-aplica-la-exención-lote-237).
+- Con una exención **vigente** de todo el impuesto nada se le cobra de impuesto a ese cliente y la línea queda marcada como exenta con el **certificado anotado**; con una de solo algunos componentes se le cobra el resto de la tasa (el simulador lo muestra como «Cliente exento en parte», «Se cobró el 10.5 %» y «Municipal: exento (certificado …)»).
 - Con la exención **vencida** se cobra el impuesto y el cálculo **avisa** qué certificado venció.
 - Nunca se borran: **Dar de baja** y **Reactivar** (ícono de la fila); **Editar** cambia el tipo, el certificado, las fechas y las notas (el cliente no se cambia).
 

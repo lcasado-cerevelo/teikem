@@ -12228,3 +12228,59 @@ No. As with any product: “Backorder: N” and “Only X available in {warehous
 
 **On a phone the product list showed under the guided order's cart.**
 Fixed (Batch 236): the bottom block (cart, Back / Next) sticks to the bottom edge with an opaque background. Kemi and the red ribbon of a test environment still sit on top of the block; Kemi can be dragged to another corner.
+
+## Batch 237 — Client exemption by components and the “Tax” field in the product editor
+<!-- kemi:staff -->
+
+Chapters: [17 — Taxes §5.1](17-impuestos.md#51-what-the-exemption-applies-to-batch-237) and [06 — Inventory and warehouse](06-inventario-y-almacen.md) (product editor, Prices block).
+
+**My client has a municipal exemption: how do I charge only the state IVU?**
+In Accounting → Taxes → Exemptions create (or edit) the client's exemption and under **Applies to** choose **Only these components**; check **Municipal** and enter the certificate dates. From that day their sales pay the rate without the municipal part (with IVU 10.5% + 1% they pay 10.5%) and the certificate is recorded.
+
+**What happens with the exemptions I already had?**
+Nothing: they were left as **The whole tax**, which is how they worked.
+
+**The municipal exemption expired. What does the system charge?**
+The full tax (11.5% in the example) and it warns: “The client has an expired exemption (certificate {number}, expired on {date}): the tax was charged.”. When the client brings the new certificate, create another exemption with the new dates (or change the dates of the expired one).
+
+**The client has two exemptions at once. Which one counts?**
+They are combined. If one is for **the whole tax** and is valid, it wins: they pay nothing. If they are partial, their components add up (municipal + state = they pay nothing).
+
+**“Check at least one tax component the exemption covers.” (400)**
+You chose “Only these components” and checked none. Check at least one or switch to “The whole tax”.
+
+**“The exemption scope must be ALL (the whole tax) or COMPONENTS (only some components).” (400)**
+It only appears through the API: the `scope` field has another value. Send `ALL` or `COMPONENTS`.
+
+**“No rate of the company has the component “{code}”.” (400)**
+The code you sent is not a component of any rate of your company. Check the components in Taxes → Rates (on screen they are chosen with checkboxes, so there is no way to get it wrong).
+
+**“A component code is not valid (letters, numbers, hyphen and underscore; up to 30 characters).” / “An exemption can name up to 10 components.” (400)**
+They only appear through the API: fix the codes in `componentCodes` (the same codes as the rate's components) or send fewer.
+
+**I get no component checkboxes: it says “There is no current rate with components…”.**
+Create the rate in Taxes → Rates and choose it as the **default rate** in Taxes → Rules. The checkboxes are that rate's components.
+
+**Warning “The client's exemption (certificate {number}) names the component {code}, which the rate in effect does not have: the tax did not change.”**
+The exemption was made with an earlier rate and today's rate no longer has that component (or it has another name). The tax is charged in full. Edit the exemption and check the component of the rate in effect.
+
+**On the order, the line of the client with a municipal exemption does not say “Exempt”. Is that wrong?**
+No. “Exempt” is for a line that pays nothing. With a partial exemption the line **does pay** tax (the state part): that is why it shows the amount.
+
+**Does the partial exemption also apply to the shipping charge, the invoice and QuickBooks?**
+Yes. The IVU of the shipping charge, the invoice's taxable charges and credit notes come out with the percentage actually charged, and the IVU line of the QuickBooks file carries that tax.
+
+**I made an order and registered the exemption afterwards. Does it fix itself?**
+No: each line keeps the copy of the tax it was calculated with. On a draft, save the lines again (or change the client and change it back) so it is recalculated.
+
+**Where do I tell a product it is exempt or zero rate?**
+In two places, it is the same value: Accounting → Taxes → Products, or in Warehouse when editing the product, **Prices** block, **Tax** field (Taxable / Exempt / Zero rate).
+
+**I do not see the “Tax” field in the product editor.**
+It only appears if your company has the **Taxes** module on.
+
+**I see the “Tax” field but cannot change it.**
+You need the **Manage taxes** permission (`tax.manage`). Without it the field is read-only with the note “Only whoever manages taxes can change it.”.
+
+**“The product was saved, but the tax was not: {reason}”**
+The product was created or saved, but the tax category could not be changed (usually: the permission is missing or the module was turned off). Open the product again and change the Tax field, or do it in Taxes → Products.

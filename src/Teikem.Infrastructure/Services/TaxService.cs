@@ -190,8 +190,10 @@ public sealed class TaxService(TeikemDbContext db, ITenantContext tenant, ITenan
         var (type, cert, notes) = NormalizeExemption(req.ExemptionType, req.CertificateNumber, req.Notes);
         if (req.ValidFrom is not DateOnly from) throw new ValidationException("validFrom", "Escriba desde qué fecha vale la exención.");
         if (req.ValidTo is DateOnly to && to < from) throw new ValidationException("validTo", TaxRules.DatesOrder);
+        var (scope, codes) = await NormalizeScopeAsync(req.Scope, req.ComponentCodes, ct);
 
-        var e = new ClientTaxExemption { TenantId = tenantId, ClientId = clientId, ExemptionType = type, CertificateNumber = cert, ValidFrom = from, ValidTo = req.ValidTo, Notes = notes, IsActive = true };
+        var e = new ClientTaxExemption { TenantId = tenantId, ClientId = clientId, ExemptionType = type, CertificateNumber = cert, ValidFrom = from, ValidTo = req.ValidTo, Notes = notes, IsActive = true,
+            Scope = scope, ComponentCodes = codes };
         db.Set<ClientTaxExemption>().Add(e);
         await db.SaveGuardedAsync("La exención cambió al mismo tiempo. Vuelva a intentarlo.", ct);
         return ToDto(e, (await ClientNamesAsync(new[] { clientId }, ct)).GetValueOrDefault(clientId, string.Empty));
@@ -206,6 +208,9 @@ public sealed class TaxService(TeikemDbContext db, ITenantContext tenant, ITenan
         var from = req.ValidFrom ?? e.ValidFrom;
         var to = req.ClearValidTo == true ? null : req.ValidTo ?? e.ValidTo;
         if (to is DateOnly t && t < from) throw new ValidationException("validTo", TaxRules.DatesOrder);
+        // Lote 237: el alcance solo se revisa si viene algo de él (lo que no viene no cambia)
+        if (req.Scope is not null || req.ComponentCodes is not null)
+            (e.Scope, e.ComponentCodes) = await NormalizeScopeAsync(req.Scope ?? e.Scope, req.ComponentCodes ?? TaxRules.SplitComponentCodes(e.ComponentCodes), ct);
         (e.ExemptionType, e.CertificateNumber, e.Notes, e.ValidFrom, e.ValidTo) = (type, cert, notes, from, to);
         await db.SaveGuardedAsync("La exención cambió al mismo tiempo. Vuelva a intentarlo.", ct);
         return ToDto(e, (await ClientNamesAsync(new[] { e.ClientId }, ct)).GetValueOrDefault(e.ClientId, string.Empty));
@@ -235,13 +240,29 @@ public sealed class TaxService(TeikemDbContext db, ITenantContext tenant, ITenan
         return (t, c, n);
     }
 
+    /// <summary>
+    /// Lote 237 — alcance de la exención ya validado: (ALL, null) o (COMPONENTS, «CITY,STATE»). Cada código debe ser un componente de alguna tasa de la
+    /// compañía (de cualquier vigencia): así un error de dedo no deja una exención que nunca aplica.
+    /// </summary>
+    private async Task<(string Scope, string? Codes)> NormalizeScopeAsync(string? scope, IReadOnlyList<string>? componentCodes, CancellationToken ct)
+    {
+        var error = TaxRules.ValidateExemptionScope(scope, componentCodes, out var normalized, out var codes);
+        if (error is not null) throw new ValidationException(error == TaxRules.ExemptionScopeInvalid ? "scope" : "componentCodes", error);
+        if (normalized == TaxExemptionScopes.All) return (normalized, null);
+        var known = await db.Set<TaxRateComponent>().Where(c => codes.Contains(c.Code)).Select(c => c.Code).Distinct().ToListAsync(ct);
+        var unknown = codes.FirstOrDefault(c => !known.Contains(c, StringComparer.OrdinalIgnoreCase));
+        if (unknown is not null) throw new ValidationException("componentCodes", string.Format(TaxRules.ExemptionComponentUnknownFormat, unknown));
+        return (normalized, string.Join(',', codes));
+    }
+
     private async Task<Dictionary<int, string>> ClientNamesAsync(IReadOnlyCollection<int> ids, CancellationToken ct)
         => await db.Set<Client>().Where(c => ids.Contains(c.ClientId)).ToDictionaryAsync(c => c.ClientId, c => c.Name, ct);
 
     private TaxExemptionDto ToDto(ClientTaxExemption e, string clientName)
     {
         var status = !e.IsActive ? "INACTIVE" : e.ValidFrom > Today ? "SCHEDULED" : TaxRules.InEffect(e.ValidFrom, e.ValidTo, Today) ? "VALID" : "EXPIRED";
-        return new TaxExemptionDto(e.ClientTaxExemptionId, e.PublicId, e.ClientId, clientName, e.ExemptionType, e.CertificateNumber, e.ValidFrom, e.ValidTo, e.Notes, e.IsActive, status);
+        return new TaxExemptionDto(e.ClientTaxExemptionId, e.PublicId, e.ClientId, clientName, e.ExemptionType, e.CertificateNumber, e.ValidFrom, e.ValidTo, e.Notes, e.IsActive, status,
+            e.Scope, TaxRules.SplitComponentCodes(e.ComponentCodes));
     }
 
     // ---------------------------------------------------------------- categoría del producto
@@ -310,16 +331,18 @@ public sealed class TaxService(TeikemDbContext db, ITenantContext tenant, ITenan
         var setting = await GetOrCreateSettingAsync(ct);
         var warnings = new List<string>();
 
-        // exención del cliente
-        ClientTaxExemption? valid = null;
+        // exención del cliente (Lote 237: de todo el impuesto, o solo de algunos componentes; las vigentes se combinan y una total gana)
+        var exemptions = new TaxExemptionOutcome(null, new Dictionary<string, string>(), null);
         if (req.ClientId is int clientId)
         {
             if (!await db.Set<Client>().AnyAsync(c => c.ClientId == clientId, ct)) throw new NotFoundException("Cliente");
             var ex = await db.Set<ClientTaxExemption>().Where(e => e.ClientId == clientId && e.IsActive).OrderByDescending(e => e.ValidFrom).ToListAsync(ct);
-            valid = ex.FirstOrDefault(e => TaxRules.InEffect(e.ValidFrom, e.ValidTo, date));
-            if (valid is null && ex.FirstOrDefault(e => e.ValidTo is DateOnly vt && vt < date) is { } expired)
+            exemptions = TaxRules.ResolveExemptions(
+                ex.Select(e => new TaxExemptionInfo(e.Scope, TaxRules.SplitComponentCodes(e.ComponentCodes), e.CertificateNumber, e.ValidFrom, e.ValidTo)), date);
+            if (exemptions.Expired is { } expired)
                 warnings.Add($"El cliente tiene una exención vencida (certificado {expired.CertificateNumber}, venció el {expired.ValidTo:dd/MM/yyyy}): se cobró el impuesto.");
         }
+        var valid = exemptions.Full;
 
         // productos y reglas de cargo
         var productIds = lines.Where(l => l.ProductId is not null).Select(l => l.ProductId!.Value).Distinct().ToList();
@@ -367,12 +390,28 @@ public sealed class TaxService(TeikemDbContext db, ITenantContext tenant, ITenan
             rate = new TaxRateInfo(r.TaxRateId, r.Code, r.Name, r.Percent, r.Components.OrderBy(c => c.SortOrder).Select(c => new TaxComponentInfo(c.Code, c.Name, c.Percent)).ToList());
         }
 
-        var result = TaxRules.Calculate(inputs, rate, setting.PricesIncludeTax, setting.RoundingMode);
+        // Lote 237: exención parcial — un componente que la tasa vigente no tiene no cambia nada, y se avisa
+        var partial = exemptions.ComponentCertificates;
+        if (rate is not null)
+            foreach (var code in TaxRules.UnknownComponents(rate, partial.Keys).OrderBy(c => c, StringComparer.Ordinal))
+                warnings.Add(string.Format(TaxRules.ExemptionComponentNotInRateFormat, partial[code], code));
+        var applied = TaxRules.ExemptCodesOf(rate, partial.Keys.ToList());
+        // el certificado (o certificados) de los componentes que de verdad se dejaron de cobrar
+        var partialCertificates = rate is null || applied.Count == 0 ? null
+            : string.Join(", ", rate.Components.Where(c => applied.Contains(c.Code) && c.Percent > 0).Select(c => partial[c.Code]).Distinct());
+        if (string.IsNullOrEmpty(partialCertificates)) partialCertificates = null;
+
+        var result = TaxRules.Calculate(inputs, rate, setting.PricesIncludeTax, setting.RoundingMode, applied.ToList());
+        TaxCalcComponentDto Component(TaxComponentAmount c) => c.IsExempt
+            ? new TaxCalcComponentDto(c.Code, c.Name, c.Percent, c.Amount, TaxReasons.ExemptClientPartial, partial.GetValueOrDefault(c.Code))
+            : new TaxCalcComponentDto(c.Code, c.Name, c.Percent, c.Amount);
         return new TaxCalcDto(date, rate?.Code, rate?.Percent ?? 0m, setting.PricesIncludeTax, setting.RoundingMode,
             result.Lines.Select(l => new TaxCalcLineDto(l.Key, l.Amount, l.Net, l.TaxAmount, l.Total, l.Reason, l.IsTaxExempt, l.TaxRateId, l.TaxRatePct,
-                l.Reason == TaxReasons.ExemptClient ? valid?.CertificateNumber : null,
-                l.Components.Select(c => new TaxCalcComponentDto(c.Code, c.Name, c.Percent, c.Amount)).ToList())).ToList(),
+                // exento por una exención total → su certificado; exención parcial (o parciales que suman toda la tasa) → los certificados que aplicaron
+                l.Reason == TaxReasons.ExemptClient ? valid?.CertificateNumber ?? partialCertificates
+                    : l.Reason == TaxReasons.ExemptClientPartial ? partialCertificates : null,
+                l.Components.Select(Component).ToList())).ToList(),
             result.Subtotal, result.TaxAmount, result.Total,
-            result.Components.Select(c => new TaxCalcComponentDto(c.Code, c.Name, c.Percent, c.Amount)).ToList(), warnings);
+            result.Components.Select(Component).ToList(), warnings);
     }
 }

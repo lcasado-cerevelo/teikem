@@ -5540,6 +5540,10 @@
         "owner": "Inventory owner",
         "purchaseCost": "Purchase cost",
         "salePrice": "Sale price",
+        "taxCategory": "Tax",
+        "taxCategoryHelp": "Taxable: pays the company's tax. Exempt: pays none. Zero rate: taxable at 0%.",
+        "taxCategoryReadOnly": "Only whoever manages taxes can change it.",
+        "taxCategoryNotSaved": "The product was saved, but the tax was not: {error}",
         "preferredWarehouse": "Default warehouse",
         "preferredBin": "Default slot",
         "total": "Total",
@@ -11007,6 +11011,7 @@
       "ZERO_RATE": "Zero rate",
       "EXEMPT_PRODUCT": "Exempt product",
       "EXEMPT_CLIENT": "Exempt client",
+      "EXEMPT_CLIENT_PARTIAL": "Partially exempt client",
       "NOT_TAXABLE_CHARGE": "Non-taxable charge"
     },
     "rates": {
@@ -11098,6 +11103,18 @@
       "from": "Valid from",
       "to": "Valid until",
       "toHelp": "Leave empty if it has no end date.",
+      "scope": "Applies to",
+      "scopes": {
+        "ALL": "The whole tax",
+        "COMPONENTS": "Only these components"
+      },
+      "scopeOnly": "Only: {names}",
+      "components": "Exempt components",
+      "componentOption": "{name} ({pct}%)",
+      "componentNotInRate": "{name} (not in the current rate)",
+      "noComponents": "There is no current rate with components. Create it in Taxes → Rates and choose it as the default rate in Rules.",
+      "scopeHelpAll": "The client is charged no tax at all while the exemption is valid.",
+      "scopeHelpComponents": "The client stops being charged only what is checked; the rest of the rate is charged. Example: with the municipal IVU exemption (State 10.5% + Municipal 1%) the client pays 10.5%.",
       "notes": "Notes",
       "status": "Status",
       "statuses": {
@@ -11119,7 +11136,8 @@
         "type": "Enter the exemption type.",
         "certificate": "Enter the certificate number.",
         "from": "Enter the date the exemption takes effect.",
-        "dates": "The end date cannot be before the start date."
+        "dates": "The end date cannot be before the start date.",
+        "components": "Check at least one tax component the exemption covers."
       }
     },
     "sim": {
@@ -11143,6 +11161,8 @@
       "included": "prices include tax",
       "notIncluded": "prices exclude tax",
       "certificate": "Certificate {n}",
+      "partialPct": "{pct}% was charged",
+      "componentExempt": "{name}: exempt (certificate {n})",
       "totals": "Totals",
       "colLine": "Line",
       "colReason": "Reason",

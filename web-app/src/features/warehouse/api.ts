@@ -545,6 +545,19 @@ export function useUpdateProduct() {
 }
 
 /**
+ * Lote 237 — campo «Impuesto» del editor de producto: `PUT /api/v1/tax/products/{productId}/category` (`tax.manage`, módulo TAX; el mismo
+ * endpoint de Contabilidad → Impuestos → Productos). Refresca la ficha del producto y lo de Impuestos.
+ */
+export function useSetProductTaxCategory() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ productId, category }: { productId: number; category: string }) =>
+      unwrap(api.PUT('/api/v1/tax/products/{productId}/category', { params: { path: { productId } }, body: { category } })),
+    onSuccess: () => Promise.all([invalidate(qc, 'product'), qc.invalidateQueries({ queryKey: ['tax'] })]),
+  })
+}
+
+/**
  * Lote F17 — `POST /api/v1/products/{publicId}/convert-to-serial` ("Convertir a serie", Lote 26: `inventory.manage` +
  * `inventory.adjust`, WMS_LOTSERIAL). Neto cero en el Kárdex (ajustes con el motivo TRACKING_CONVERSION) y el producto pasa a
  * SERIAL: deja en caché la ficha devuelta e invalida productos, series, saldos y Kárdex.

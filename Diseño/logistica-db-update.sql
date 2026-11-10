@@ -7813,3 +7813,24 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_Warehouse_Main' AND object_id = OBJECT_ID('dbo.Warehouse'))
     EXEC(N'CREATE UNIQUE INDEX UX_Warehouse_Main ON dbo.Warehouse(TenantId) WHERE IsMain = 1;');
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-11-10 — Lote 237: exención del cliente POR COMPONENTES (docs/lote237-decisiones.md).
+   - dbo.ClientTaxExemption.Scope (NVARCHAR(20), 'ALL' por omisión): 'ALL' = la exención quita TODO el impuesto (como siempre; así quedan las que ya existen);
+     'COMPONENTS' = quita solo los componentes de la tasa que nombra ComponentCodes (p. ej. el municipal del IVU) y el resto se cobra.
+   - dbo.ClientTaxExemption.ComponentCodes (NVARCHAR(310), NULL): códigos de componente (TaxRateComponent.Code) en mayúsculas, ordenados y separados por coma
+     («CITY» o «CITY,STATE»; hasta 10). NULL cuando Scope = 'ALL'. Lo normaliza el API.
+   - CK_ClientTaxExemption_Scope: el alcance es uno de los dos y los componentes van solo con 'COMPONENTS'.
+   - Solo AGREGA. Idempotente. No toca permisos (sigue siendo tax.manage) ni datos existentes.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH(N'dbo.ClientTaxExemption', N'Scope') IS NULL
+    ALTER TABLE dbo.ClientTaxExemption ADD Scope NVARCHAR(20) NOT NULL CONSTRAINT DF_ClientTaxExemption_Scope DEFAULT N'ALL';
+GO
+IF COL_LENGTH(N'dbo.ClientTaxExemption', N'ComponentCodes') IS NULL
+    ALTER TABLE dbo.ClientTaxExemption ADD ComponentCodes NVARCHAR(310) NULL;
+GO
+IF OBJECT_ID(N'dbo.CK_ClientTaxExemption_Scope', N'C') IS NULL
+    EXEC(N'ALTER TABLE dbo.ClientTaxExemption ADD CONSTRAINT CK_ClientTaxExemption_Scope CHECK (
+               (Scope = N''ALL'' AND ComponentCodes IS NULL)
+            OR (Scope = N''COMPONENTS'' AND ComponentCodes IS NOT NULL AND LEN(ComponentCodes) > 0));');
+GO

@@ -1,22 +1,36 @@
 // Impuestos → Exenciones (Lote 56): certificados de exención de clientes. Con una exención vigente nada se le cobra de impuesto y la línea
 // queda con el certificado anotado; con la exención vencida se cobra y se avisa. Nunca se borran: se dan de baja y se pueden reactivar.
-import { useMemo, useState } from 'react'
+// Lote 237: «Aplica a» — todo el impuesto (como siempre) o solo algunos componentes de la tasa (p. ej. la exención municipal del IVU: se deja de
+// cobrar el municipal y el estatal se cobra). Las casillas son los componentes de la tasa por omisión vigente.
+import { useId, useMemo, useState } from 'react'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
 import { Chip, type ChipTone, ClientPicker, type DataColumn, DataTable, DateField, Modal, Panel, Spinner, toast } from '../../kernel/ui'
 import { IconCheckCircle, IconEdit, IconPower } from '../../kernel/ui/actionIcons'
 import { IconDoc } from '../../kernel/ui/screenIcons'
-import { exemptionError, type ExemptionDraft } from './taxRules'
-import { useTaxExemptions, useTaxMutations, type TaxExemptionDto } from './taxApi'
+import { componentNames, componentOptions, exemptionError, scopeBody, scopeOf, type ComponentOption, type ExemptionDraft, type ExemptionScope } from './taxRules'
+import { useTaxExemptions, useTaxMutations, useTaxRates, useTaxSettings, type TaxExemptionDto } from './taxApi'
 
 const STATUS_TONE: Record<string, ChipTone> = { VALID: 'deliv', SCHEDULED: 'warn', EXPIRED: 'fail', INACTIVE: 'neutral' }
 const NO_ROWS: TaxExemptionDto[] = []
+const NO_CODES: string[] = []
+const SCOPES: ExemptionScope[] = ['ALL', 'COMPONENTS']
+
+/** Los componentes de la tasa por omisión vigente (las casillas del formulario y los nombres de la lista). */
+function useComponentOptions(selected: readonly string[] = NO_CODES): ComponentOption[] {
+  const rates = useTaxRates()
+  const settings = useTaxSettings()
+  return useMemo(() => componentOptions(rates.data, settings.data?.defaultRateCode, selected), [rates.data, settings.data?.defaultRateCode, selected])
+}
 
 function ExemptionModal({ exemption, onClose }: { exemption: TaxExemptionDto | null; onClose: () => void }) {
   const t = useT()
+  const f = useFormat()
+  const scopeName = useId()
   const { createExemption, updateExemption } = useTaxMutations()
   const editing = exemption !== null
+  const options = useComponentOptions(exemption?.componentCodes ?? NO_CODES)
   const [clientPublicId, setClientPublicId] = useState<string | null>(null)
   const [draft, setDraft] = useState<ExemptionDraft>({
     clientId: exemption?.clientId ?? null,
@@ -25,7 +39,10 @@ function ExemptionModal({ exemption, onClose }: { exemption: TaxExemptionDto | n
     from: exemption?.validFrom ?? '',
     to: exemption?.validTo ?? '',
     notes: exemption?.notes ?? '',
+    scope: scopeOf(exemption?.scope),
+    components: [...(exemption?.componentCodes ?? [])],
   })
+  const toggleComponent = (code: string, on: boolean) => setDraft((d) => ({ ...d, components: on ? [...d.components.filter((c) => c !== code), code] : d.components.filter((c) => c !== code) }))
   const [error, setError] = useState<string | null>(null)
   const set = (patch: Partial<ExemptionDraft>) => setDraft((d) => ({ ...d, ...patch }))
   const busy = createExemption.isPending || updateExemption.isPending
@@ -38,10 +55,10 @@ function ExemptionModal({ exemption, onClose }: { exemption: TaxExemptionDto | n
       if (editing) {
         await updateExemption.mutateAsync({
           id: exemption.id!,
-          body: { exemptionType: draft.type, certificateNumber: draft.certificate, validFrom: draft.from, validTo: draft.to || undefined, clearValidTo: draft.to ? undefined : true, notes: draft.notes },
+          body: { exemptionType: draft.type, certificateNumber: draft.certificate, validFrom: draft.from, validTo: draft.to || undefined, clearValidTo: draft.to ? undefined : true, notes: draft.notes, ...scopeBody(draft) },
         })
       } else {
-        await createExemption.mutateAsync({ clientId: draft.clientId, exemptionType: draft.type, certificateNumber: draft.certificate, validFrom: draft.from, validTo: draft.to || undefined, notes: draft.notes || undefined })
+        await createExemption.mutateAsync({ clientId: draft.clientId, exemptionType: draft.type, certificateNumber: draft.certificate, validFrom: draft.from, validTo: draft.to || undefined, notes: draft.notes || undefined, ...scopeBody(draft) })
       }
       toast.success(t(editing ? 'tax.exemptions.updated' : 'tax.exemptions.created'))
       onClose()
@@ -94,6 +111,32 @@ function ExemptionModal({ exemption, onClose }: { exemption: TaxExemptionDto | n
             <p className="help">{t('tax.exemptions.toHelp')}</p>
           </div>
         </div>
+        <fieldset className="tax-comps tax-scope">
+          <legend>{t('tax.exemptions.scope')}</legend>
+          <div className="tax-scope-options" role="radiogroup" aria-label={t('tax.exemptions.scope')}>
+            {SCOPES.map((s) => (
+              <label key={s} className="tax-check">
+                <input type="radio" name={scopeName} value={s} checked={draft.scope === s} onChange={() => set({ scope: s })} />
+                <span>{t(`tax.exemptions.scopes.${s}`)}</span>
+              </label>
+            ))}
+          </div>
+          {draft.scope === 'COMPONENTS' ? (
+            options.length === 0 ? (
+              <p className="help" role="status">{t('tax.exemptions.noComponents')}</p>
+            ) : (
+              <div className="tax-scope-options" role="group" aria-label={t('tax.exemptions.components')}>
+                {options.map((o) => (
+                  <label key={o.code} className="tax-check">
+                    <input type="checkbox" checked={draft.components.includes(o.code)} onChange={(e) => toggleComponent(o.code, e.target.checked)} />
+                    <span>{o.percent === null ? t('tax.exemptions.componentNotInRate', { name: o.name }) : t('tax.exemptions.componentOption', { name: o.name, pct: f.number(o.percent, { maximumFractionDigits: 4 }) })}</span>
+                  </label>
+                ))}
+              </div>
+            )
+          ) : null}
+          <p className="help">{t(draft.scope === 'COMPONENTS' ? 'tax.exemptions.scopeHelpComponents' : 'tax.exemptions.scopeHelpAll')}</p>
+        </fieldset>
         <div className="f">
           <label htmlFor="tx-notes">{t('tax.exemptions.notes')}</label>
           <textarea id="tx-notes" rows={3} maxLength={300} value={draft.notes} onChange={(e) => set({ notes: e.target.value })} />
@@ -110,6 +153,9 @@ export function ExemptionsTab() {
   const list = useTaxExemptions()
   const { setExemptionActive } = useTaxMutations()
   const [modal, setModal] = useState<TaxExemptionDto | 'new' | null>(null)
+  const options = useComponentOptions()
+  const scopeText = (e: TaxExemptionDto) =>
+    scopeOf(e.scope) === 'COMPONENTS' ? t('tax.exemptions.scopeOnly', { names: componentNames(e.componentCodes, options) }) : t('tax.exemptions.scopes.ALL')
 
   const toggle = async (e: TaxExemptionDto) => {
     try {
@@ -125,11 +171,13 @@ export function ExemptionsTab() {
       { id: 'client', header: t('tax.exemptions.client'), cell: (e) => <b>{e.clientName}</b>, exportValue: (e) => e.clientName ?? '', sortValue: (e) => e.clientName ?? '', card: 'title' },
       { id: 'type', header: t('tax.exemptions.type'), cell: (e) => e.exemptionType, sortValue: (e) => e.exemptionType ?? '' },
       { id: 'cert', header: t('tax.exemptions.certificate'), cell: (e) => e.certificateNumber, sortValue: (e) => e.certificateNumber ?? '' },
+      { id: 'scope', header: t('tax.exemptions.scope'), cell: scopeText, exportValue: scopeText, sortValue: scopeText },
       { id: 'from', header: t('tax.exemptions.from'), cell: (e) => f.date(e.validFrom), exportValue: (e) => e.validFrom ?? '', sortValue: (e) => e.validFrom ?? '' },
       { id: 'to', header: t('tax.exemptions.to'), cell: (e) => (e.validTo ? f.date(e.validTo) : t('tax.rates.open')), exportValue: (e) => e.validTo ?? '', sortValue: (e) => e.validTo ?? '9999-12-31' },
       { id: 'status', header: t('tax.exemptions.status'), cell: (e) => <Chip tone={STATUS_TONE[e.status ?? 'INACTIVE']}>{t(`tax.exemptions.statuses.${e.status}`)}</Chip>, exportValue: (e) => t(`tax.exemptions.statuses.${e.status}`), sortValue: (e) => e.status ?? '' },
     ],
-    [t, f],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t, f, options],
   )
 
   return (

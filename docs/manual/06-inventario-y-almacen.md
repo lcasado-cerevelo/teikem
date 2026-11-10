@@ -726,7 +726,11 @@ scroll) y agrupa los campos en bloques con título, en este orden:
 3. **Inventario**: rastreo, dueño, rotación, empaque y unidades por empaque, código de barras, punto de reorden, almacén y posición por defecto,
    mínimo y máximo de picking, total y «Producto activo».
 4. **Precios**: costo de compra y **precio de venta** (el precio de venta es el que se compara cuando se cambia una pieza de un kit al pedir: debe ser
-   exactamente igual; [18 §17.1](18-ordenes-de-venta.md#171-cambiar-una-pieza-del-kit-al-pedir-lote-230)).
+   exactamente igual; [18 §17.1](18-ordenes-de-venta.md#171-cambiar-una-pieza-del-kit-al-pedir-lote-230)). **Impuesto** (Lote 237): **Gravable** (por omisión),
+   **Exento** o **Tasa cero**; es la misma categoría de Contabilidad → Impuestos → Productos ([17 §4](17-impuestos.md#4-qué-paga-impuesto)). El campo solo sale
+   si la compañía tiene el módulo **Impuestos**; lo cambia quien tiene **Administrar impuestos** (`tax.manage`) y los demás lo ven en solo lectura con la
+   nota «Solo lo cambia quien administra los impuestos.». En un producto nuevo se guarda justo después de crearlo; si ese paso falla, el producto queda
+   creado (como Gravable) y sale «El producto se guardó, pero el impuesto no: {motivo}».
 5. **Medidas y peso**.
 6. **Campos personalizados**, al final (el bloque se oculta si la compañía no tiene campos para productos).
 

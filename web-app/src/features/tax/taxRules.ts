@@ -44,6 +44,9 @@ export function rateError(d: RateDraft): RateErrorKey | null {
   return null
 }
 
+/** Lote 237 — alcance de la exención: todo el impuesto, o solo algunos componentes de la tasa (p. ej. el municipal). */
+export type ExemptionScope = 'ALL' | 'COMPONENTS'
+
 export interface ExemptionDraft {
   clientId: number | null
   type: string
@@ -51,9 +54,12 @@ export interface ExemptionDraft {
   from: string
   to: string
   notes: string
+  scope: ExemptionScope
+  /** Códigos de componente exentos (solo cuentan con scope = COMPONENTS). */
+  components: string[]
 }
 
-export type ExemptionErrorKey = 'client' | 'type' | 'certificate' | 'from' | 'dates'
+export type ExemptionErrorKey = 'client' | 'type' | 'certificate' | 'from' | 'dates' | 'components'
 
 export function exemptionError(d: ExemptionDraft): ExemptionErrorKey | null {
   if (d.clientId === null) return 'client'
@@ -61,7 +67,52 @@ export function exemptionError(d: ExemptionDraft): ExemptionErrorKey | null {
   if (!d.certificate.trim()) return 'certificate'
   if (!d.from) return 'from'
   if (d.to && d.to < d.from) return 'dates'
+  if (d.scope === 'COMPONENTS' && d.components.length === 0) return 'components'
   return null
+}
+
+export function scopeOf(value: string | null | undefined): ExemptionScope {
+  return value === 'COMPONENTS' ? 'COMPONENTS' : 'ALL'
+}
+
+/** Lo que se manda al API: con «todo el impuesto» no van componentes. */
+export function scopeBody(d: Pick<ExemptionDraft, 'scope' | 'components'>): { scope: ExemptionScope; componentCodes: string[] } {
+  return { scope: d.scope, componentCodes: d.scope === 'COMPONENTS' ? [...d.components].sort() : [] }
+}
+
+export interface ComponentOption {
+  code: string
+  name: string
+  /** null = el componente no está en la tasa por omisión vigente (viene de la exención guardada). */
+  percent: number | null
+}
+
+interface RateLike {
+  code?: string | null
+  status?: string | null
+  components?: readonly { code?: string | null; name?: string | null; percent?: number }[] | null
+}
+
+/**
+ * Las casillas del formulario de exención: los componentes de la tasa por omisión VIGENTE (si la compañía no ha escogido tasa por omisión, los de
+ * todas las tasas vigentes). Los códigos que la exención ya tenía y no están ahí se agregan al final (para no perderlos al editar).
+ */
+export function componentOptions(rates: readonly RateLike[] | null | undefined, defaultRateCode: string | null | undefined, selected: readonly string[] = []): ComponentOption[] {
+  const active = (rates ?? []).filter((r) => r.status === 'ACTIVE')
+  const source = defaultRateCode ? active.filter((r) => r.code === defaultRateCode) : active
+  const options: ComponentOption[] = []
+  for (const r of source)
+    for (const c of r.components ?? []) {
+      const code = c.code ?? ''
+      if (code && !options.some((o) => o.code === code)) options.push({ code, name: c.name ?? code, percent: c.percent ?? 0 })
+    }
+  for (const code of selected) if (!options.some((o) => o.code === code)) options.push({ code, name: code, percent: null })
+  return options
+}
+
+/** Nombres de los componentes exentos de una exención parcial («Municipal, Estatal»); el código si la tasa vigente no lo tiene. */
+export function componentNames(codes: readonly string[] | null | undefined, options: readonly ComponentOption[]): string {
+  return (codes ?? []).map((code) => options.find((o) => o.code === code)?.name ?? code).join(', ')
 }
 
 /** «Estatal 10.5 % + Municipal 1 %» para la tabla. */

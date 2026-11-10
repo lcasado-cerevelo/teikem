@@ -35,7 +35,8 @@ import { useContext, useEffect, useId, useMemo, useState, type ReactNode } from 
 import { useForm, useWatch } from 'react-hook-form'
 import { Link } from 'react-router-dom'
 import { z } from 'zod'
-import { useCan } from '../../kernel/access'
+import { useCan, useModule } from '../../kernel/access'
+import { applyProblemDetails } from '../../kernel/api/problem'
 import { useLookups, useTenantSettings } from '../../kernel/catalogs'
 import { CustomFieldsForm, useSaveCustomFields } from '../../kernel/custom-fields'
 import { useFormat } from '../../kernel/format'
@@ -51,6 +52,7 @@ import {
   useProductBrands,
   useProductCategories,
   useSetProductActive,
+  useSetProductTaxCategory,
   useInventoryBalances,
   useUnitsSuggestion,
   useUpdateProduct,
@@ -87,6 +89,8 @@ import './warehouse.css'
 const PICKING_ZONE = 'PICKING'
 const AK = 'warehouse.products.assembled'
 const DEFAULT_UOM = 'UN'
+/** Lote 237: categoría de impuesto del producto (las mismas de Contabilidad → Impuestos → Productos). */
+const TAX_CATEGORIES = ['TAXABLE', 'EXEMPT', 'ZERO_RATE'] as const
 const DEFAULT_TRACKING = 'NONE'
 // eslint-disable-next-line no-control-regex -- intencional: el SKU no admite caracteres de control (manual §2).
 const CONTROL_CHARS_OR_SPACES = /[\s\x00-\x1F\x7F]/
@@ -236,6 +240,12 @@ function ProductEditorForm({
   const create = useCreateProduct()
   const update = useUpdateProduct()
   const setActive = useSetProductActive()
+  // Lote 237: campo «Impuesto» (bloque Precios) — solo con el módulo de Impuestos; lo cambia quien tiene tax.manage (los demás lo ven en solo lectura)
+  const setTaxCategory = useSetProductTaxCategory()
+  const taxModule = useModule('TAX')
+  const canManageTax = useCan('tax.manage')
+  const taxEditable = editable && taxModule && canManageTax
+  const taxCategoryOptions = useMemo<SelectOption[]>(() => TAX_CATEGORIES.map((c) => ({ value: c, label: t(`tax.categories.${c}`) })), [t])
   const { save: saveCustomFields } = useSaveCustomFields('PRODUCT')
   const [pickedBin, setPickedBin] = useState<WarehouseBinDto | null>(null)
   // la ficha en caché (misma clave que ProductEditorByIdModal): tras un ajuste se invalida y el Total se refresca solo
@@ -277,6 +287,7 @@ function ProductEditorForm({
           ownerClientPublicId: z.string().nullable(),
           purchaseCost: moneySchema(t, 'cost'),
           salePrice: moneySchema(t, 'price'),
+          taxCategory: z.string(),
           preferredWarehousePublicId: z.string().nullable(),
           preferredBinId: z.string(),
           minQty: z.number(t('warehouse.products.errors.numberInvalid')).min(0, t('warehouse.products.errors.minNegative')).nullable(),
@@ -337,6 +348,7 @@ function ProductEditorForm({
       ownerClientPublicId: product?.ownerClientPublicId ?? null,
       purchaseCost: product?.purchaseCost ?? null,
       salePrice: product?.salePrice ?? null,
+      taxCategory: detail?.taxCategory ?? 'TAXABLE',
       preferredWarehousePublicId: detail?.preferredWarehousePublicId ?? null,
       preferredBinId: detail?.preferredBinId != null ? String(detail.preferredBinId) : '',
       minQty: product?.minQty ?? null,
@@ -465,6 +477,14 @@ function ProductEditorForm({
       if (typeof id === 'number' && id > 0) {
         const problem = await saveCustomFields(id, form)
         if (problem) toast.error(problem.title)
+        // Lote 237: el impuesto se guarda después de crear (gravable es lo que el producto ya trae); si falla, el producto queda creado y se avisa
+        if (taxEditable && v.taxCategory !== 'TAXABLE') {
+          try {
+            await setTaxCategory.mutateAsync({ productId: id, category: v.taxCategory })
+          } catch (e) {
+            toast.error(t('warehouse.products.editor.taxCategoryNotSaved', { error: applyProblemDetails(e).title }))
+          }
+        }
       }
       toast.success(
         kitFields
@@ -491,7 +511,9 @@ function ProductEditorForm({
 
     // copia: el reset de más abajo reemplaza dirtyFields
     const dirty: Partial<Record<string, unknown>> = { ...form.formState.dirtyFields }
-    const dataDirty = Object.keys(dirty).some((k) => k !== 'isActive' && k !== 'customFields')
+    const dataDirty = Object.keys(dirty).some((k) => k !== 'isActive' && k !== 'customFields' && k !== 'taxCategory')
+    // Lote 237: el impuesto va por su propio endpoint (PUT /tax/products/{id}/category), no en el PATCH del producto
+    const taxDirty = taxEditable && Boolean(dirty.taxCategory) && typeof product?.id === 'number' && product.id > 0
     const activeChanged = product !== null && v.isActive !== (product.isActive ?? true)
     // reactivar va primero (luego se guardan los datos); dar de baja va al final, tras guardar los datos
     if (activeChanged && v.isActive) await setActive.mutateAsync({ publicId, active: true })
@@ -541,8 +563,16 @@ function ProductEditorForm({
         return
       }
     }
+    if (taxDirty) {
+      try {
+        await setTaxCategory.mutateAsync({ productId: product!.id!, category: v.taxCategory })
+      } catch (e) {
+        toast.error(t('warehouse.products.editor.taxCategoryNotSaved', { error: applyProblemDetails(e).title }))
+        return
+      }
+    }
     if (activeChanged && !v.isActive) await setActive.mutateAsync({ publicId, active: false })
-    if (dataDirty || activeChanged || dirty.customFields || compositionSaved) {
+    if (dataDirty || activeChanged || dirty.customFields || compositionSaved || taxDirty) {
       toast.success(
         activeChanged && !dataDirty
           ? t(v.isActive ? 'warehouse.products.reactivated' : 'warehouse.products.deactivated')
@@ -701,6 +731,15 @@ function ProductEditorForm({
             <Field name="salePrice" label={t('warehouse.products.editor.salePrice')}>
               <NumberInput className="mono" min={0} />
             </Field>
+            {taxModule && (
+              <Field
+                name="taxCategory"
+                label={t('warehouse.products.editor.taxCategory')}
+                help={t(taxEditable ? 'warehouse.products.editor.taxCategoryHelp' : 'warehouse.products.editor.taxCategoryReadOnly')}
+              >
+                <Select options={taxCategoryOptions} disabled={!taxEditable} />
+              </Field>
+            )}
           </EditorBlock>
 
           <EditorBlock id={`${formId}-meas`} title={t('warehouse.products.editor.blocks.measures')}>

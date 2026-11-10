@@ -121,7 +121,8 @@ export function SimulatorTab() {
                   <tr key={l.key}>
                     <td>{i + 1}</td>
                     <td>
-                      <Chip tone={l.reason === 'TAXABLE' ? 'deliv' : l.reason === 'EXEMPT_CLIENT' || l.reason === 'EXEMPT_PRODUCT' ? 'warn' : 'neutral'}>{t(`tax.reasons.${l.reason}`)}</Chip>
+                      <Chip tone={l.reason === 'TAXABLE' ? 'deliv' : l.reason === 'EXEMPT_CLIENT' || l.reason === 'EXEMPT_CLIENT_PARTIAL' || l.reason === 'EXEMPT_PRODUCT' ? 'warn' : 'neutral'}>{t(`tax.reasons.${l.reason}`)}</Chip>
+                      {l.reason === 'EXEMPT_CLIENT_PARTIAL' && <div className="help">{t('tax.sim.partialPct', { pct: l.taxRatePct ?? 0 })}</div>}
                       {l.exemptionCertificate && <div className="help">{t('tax.sim.certificate', { n: l.exemptionCertificate })}</div>}
                     </td>
                     <td className="num">{f.money(l.net ?? 0)}</td>
@@ -141,7 +142,9 @@ export function SimulatorTab() {
             </table>
             {(result.components ?? []).length > 0 && (
               <p className="help">
-                {(result.components ?? []).map((c) => `${c.name}: ${f.money(c.amount ?? 0)}`).join(' · ')}
+                {(result.components ?? [])
+                  .map((c) => (c.exemptReason ? t('tax.sim.componentExempt', { name: c.name ?? '', n: c.exemptionCertificate ?? '' }) : `${c.name}: ${f.money(c.amount ?? 0)}`))
+                  .join(' · ')}
               </p>
             )}
           </div>

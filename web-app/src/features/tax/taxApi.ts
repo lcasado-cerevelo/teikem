@@ -69,7 +69,8 @@ export function useTaxMutations() {
     }),
     setProductCategory: useMutation({
       mutationFn: (v: { productId: number; category: string }) => unwrap(api.PUT('/api/v1/tax/products/{productId}/category', { params: { path: { productId: v.productId } }, body: { category: v.category } })),
-      onSettled: refresh,
+      // Lote 237: la ficha del producto (editor de Almacén) también muestra la categoría
+      onSettled: () => Promise.all([refresh(), qc.invalidateQueries({ queryKey: ['/api/v1/products/{publicId}'] })]),
     }),
     calculate: useMutation({ mutationFn: (body: TaxCalcRequest) => unwrap(api.POST('/api/v1/tax/calculate', { body })) }),
   }

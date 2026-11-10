@@ -79,11 +79,13 @@ public sealed record ProductPageDto(int Total, int Skip, int Take, IReadOnlyList
 /// Lote 230: Measures = largo, ancho y alto con su unidad, el volumen para mostrar (en la unidad cúbica de las medidas; calculado si están las tres) y el peso en la
 /// unidad en que se escribió (WeightKg y VolumeM3 siguen siendo la verdad interna en kg y m³). CategoryPath = la ruta de la categoría («Guantes / Nitrilo») y
 /// CategoryParentId / CategoryParentName = su categoría padre (null si es de primer nivel o no tiene categoría).
+/// Lote 237: TaxCategory = la categoría de impuesto del producto (TAXABLE, EXEMPT o ZERO_RATE; solo lectura aquí: se cambia con PUT /tax/products/{id}/category).
 /// </remarks>
 public sealed record ProductDetailDto(ProductListItemDto Product, decimal? WeightKg, decimal? VolumeM3, Guid? PreferredWarehousePublicId,
     string? PreferredWarehouseCode, int? PreferredBinId, string? PreferredBinCode, decimal? MinPickQty, decimal? MaxPickQty,
     bool HasMovements, string RowVersion, string? RotationMethod = null,
-    ProductMeasuresDto? Measures = null, string? CategoryPath = null, int? CategoryParentId = null, string? CategoryParentName = null, IReadOnlyList<AssembledKitPieceDto>? KitPieces = null);
+    ProductMeasuresDto? Measures = null, string? CategoryPath = null, int? CategoryParentId = null, string? CategoryParentName = null, IReadOnlyList<AssembledKitPieceDto>? KitPieces = null,
+    string TaxCategory = "TAXABLE");
 
 /// <summary>
 /// Lote 230 — las medidas del producto como se escribieron: Length / Width / Height en DimensionUnit (IN, CM, FT, M); Volume en VolumeUnit (IN3, CM3, FT3, M3;

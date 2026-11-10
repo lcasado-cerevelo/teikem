@@ -12118,3 +12118,59 @@ No. Igual que con cualquier producto: sale «Backorder: N» y «Solo hay X dispo
 
 **En el teléfono se veía la lista de productos por debajo del carrito del pedido guiado.**
 Corregido (Lote 236): el bloque de abajo (carrito, Atrás / Siguiente) queda pegado al borde inferior con fondo opaco. Kemi y la cinta roja de un ambiente de pruebas siguen quedando por encima del bloque; Kemi se puede arrastrar a otra esquina.
+
+## Lote 237 — Exención del cliente por componentes y campo «Impuesto» en el editor de producto
+<!-- kemi:staff -->
+
+Capítulos: [17 — Impuestos §5.1](17-impuestos.md#51-a-qué-aplica-la-exención-lote-237) y [06 — Inventario y almacén](06-inventario-y-almacen.md) (editor de producto, bloque Precios).
+
+**Mi cliente tiene exención municipal: ¿cómo hago que solo se le cobre el IVU estatal?**
+En Contabilidad → Impuestos → Exenciones cree (o edite) la exención del cliente y en **Aplica a** escoja **Solo estos componentes**; marque **Municipal** y ponga las fechas del certificado. Desde ese día sus ventas pagan la tasa sin el municipal (con IVU 10.5 % + 1 % paga 10.5 %) y el certificado queda anotado.
+
+**¿Qué pasa con las exenciones que ya tenía?**
+Nada: quedaron como **Todo el impuesto**, que es como funcionaban.
+
+**La exención municipal venció. ¿Qué cobra el sistema?**
+El impuesto completo (11.5 % en el ejemplo) y avisa: «El cliente tiene una exención vencida (certificado {número}, venció el {fecha}): se cobró el impuesto.». Cuando el cliente traiga el certificado nuevo, cree otra exención con las fechas nuevas (o cambie las fechas de la que venció).
+
+**El cliente tiene dos exenciones a la vez. ¿Cuál vale?**
+Se combinan. Si una es de **todo el impuesto** y está vigente, gana: no paga nada. Si son parciales, se suman sus componentes (municipal + estatal = no paga nada).
+
+**«Marque al menos un componente del impuesto que la exención cubre.» (400)**
+Escogió «Solo estos componentes» y no marcó ninguno. Marque al menos uno o cambie a «Todo el impuesto».
+
+**«El alcance de la exención debe ser ALL (todo el impuesto) o COMPONENTS (solo algunos componentes).» (400)**
+Solo sale por API: el campo `scope` trae otro valor. Mande `ALL` o `COMPONENTS`.
+
+**«Ninguna tasa de la compañía tiene el componente «{código}».» (400)**
+El código que mandó no es un componente de ninguna tasa de su compañía. Revise los componentes en Impuestos → Tasas (en pantalla se escogen con casillas y no hay cómo equivocarse).
+
+**«El código de un componente no es válido (letras, números, guion y guion bajo; hasta 30 caracteres).» / «Una exención puede nombrar hasta 10 componentes.» (400)**
+Solo salen por API: corrija los códigos de `componentCodes` (los mismos códigos de los componentes de la tasa) o mande menos.
+
+**No me salen casillas de componentes: dice «No hay una tasa vigente con componentes…».**
+Cree la tasa en Impuestos → Tasas y escójala como **tasa por omisión** en Impuestos → Reglas. Las casillas son los componentes de esa tasa.
+
+**Aviso «La exención del cliente (certificado {número}) nombra el componente {código}, que la tasa vigente no tiene: no cambió el impuesto.»**
+La exención se hizo con una tasa anterior y la tasa de hoy ya no tiene ese componente (o se llama distinto). El impuesto se cobra completo. Edite la exención y marque el componente de la tasa vigente.
+
+**En la orden la línea del cliente con exención municipal no dice «Exento». ¿Está mal?**
+No. «Exento» es para la línea que no paga nada. Con una exención parcial la línea **sí paga** impuesto (el estatal): por eso muestra el monto.
+
+**¿La exención parcial también vale para el cargo de envío, la factura y QuickBooks?**
+Sí. El IVU del cargo de envío, los cargos gravables de la factura y las notas de crédito salen con el porcentaje realmente cobrado, y la línea de IVU del archivo de QuickBooks lleva ese impuesto.
+
+**Ya hice una orden y después registré la exención. ¿Se corrige sola?**
+No: cada línea guarda la copia del impuesto con que se calculó. En un borrador, vuelva a guardar las líneas (o cambie el cliente y regréselo) para que se recalcule.
+
+**¿Dónde le digo a un producto que es exento o de tasa cero?**
+En dos sitios, es el mismo dato: Contabilidad → Impuestos → Productos, o en Almacén al editar el producto, bloque **Precios**, campo **Impuesto** (Gravable / Exento / Tasa cero).
+
+**No veo el campo «Impuesto» en el editor de producto.**
+Sale solo si su compañía tiene encendido el módulo **Impuestos**.
+
+**Veo el campo «Impuesto» pero no me deja cambiarlo.**
+Hace falta el permiso **Administrar impuestos** (`tax.manage`). Sin él se ve en solo lectura con la nota «Solo lo cambia quien administra los impuestos.».
+
+**«El producto se guardó, pero el impuesto no: {motivo}»**
+El producto quedó creado o guardado, pero la categoría de impuesto no se pudo cambiar (lo normal: falta el permiso o el módulo se apagó). Vuelva a abrir el producto y cambie el campo Impuesto, o hágalo en Impuestos → Productos.

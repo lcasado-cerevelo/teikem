@@ -72,6 +72,8 @@ public sealed class ClientTaxExemptionConfiguration : IEntityTypeConfiguration<C
         b.Property(e => e.ValidFrom).HasColumnType("date");
         b.Property(e => e.ValidTo).HasColumnType("date");
         b.Property(e => e.Notes).HasMaxLength(300);
+        b.Property(e => e.Scope).HasMaxLength(20).IsRequired();          // Lote 237
+        b.Property(e => e.ComponentCodes).HasMaxLength(310);
         b.HasIndex(e => e.PublicId).IsUnique().HasDatabaseName("UQ_ClientTaxExemption_PublicId");
         b.HasIndex(e => new { e.TenantId, e.ClientId, e.ValidFrom }).HasDatabaseName("IX_ClientTaxExemption_Client");
     }

@@ -35,18 +35,44 @@ A single row per company; it is created by itself with default values (prices wi
 | **Zero rate** product | Taxable at 0 % (`ZERO_RATE`) |
 | **Exempt** product | No tax (`EXEMPT_PRODUCT`, marked as exempt) |
 | Charge (freight, handling…) | According to the charge rule: taxable (`TAXABLE`) or `NOT_TAXABLE_CHARGE` |
-| Client with a **current exemption** | Nothing pays tax (`EXEMPT_CLIENT`), with the **certificate recorded** |
-| Client with an **expired** exemption | The tax is charged and the calculation brings a **warning** with the certificate that expired |
+| Client with a **current exemption from the whole tax** | Nothing pays tax (`EXEMPT_CLIENT`), with the **certificate recorded** |
+| Client with a **current exemption from some components** (e.g. the municipal one; Batch 237) | What is taxable pays the rate **without the exempt components** (`EXEMPT_CLIENT_PARTIAL`): with IVU State 10.5 % + Municipal 1 % it pays **10.5 %**. The exempt component comes out as 0 with the **certificate recorded**. What already paid nothing (exempt product, zero rate, non-taxable charge) stays the same |
+| Client with several current exemptions | They are **combined**: one for the whole tax wins; if they are partial their components add up (if together they cover the whole rate, nothing pays: `EXEMPT_CLIENT`) |
+| Client with an **expired** exemption | The tax is charged (the expired exemption does not apply) and the calculation brings a **warning** with the certificate that expired |
+| Partial exemption naming a component the rate in effect **does not have** | The tax does not change; the calculation brings a **warning** |
 
-A product's tax category is `TAXABLE`, `EXEMPT` or `ZERO_RATE` (it is stored empty when taxable).
+A product's tax category is `TAXABLE`, `EXEMPT` or `ZERO_RATE` (it is stored empty when taxable). It is changed in Accounting → Taxes → Products and, since Batch 237, also in the Warehouse **product editor** (**Tax** field of the Prices block; [06](06-inventario-y-almacen.md)).
 
 ## 5. Client exemptions
 
-A client has one or more exemptions: **type**, **certificate number**, **valid from / to** (no end date = open) and notes. Status: **Valid**, **Scheduled**, **Expired** or **Deactivated**. They are never deleted: they are deactivated and can be reactivated.
+A client has one or more exemptions: **type**, **certificate number**, **valid from / to** (no end date = open), **what it applies to** and notes. Status: **Valid**, **Scheduled**, **Expired** or **Deactivated**. They are never deleted: they are deactivated and can be reactivated.
+
+### 5.1 What the exemption applies to (Batch 237)
+<!-- kemi:staff -->
+
+Each exemption has a **scope** (“Applies to”):
+
+- **The whole tax** (`ALL`): the client is charged no tax at all while the exemption is valid. This is how it always worked and how **every exemption that already existed** was left.
+- **Only these components** (`COMPONENTS`): the client stops being charged **only** the rate components that are checked; the rest is charged. At least one must be checked. On screen the checkboxes are the components of the **default rate in effect** (Taxes → Rules).
+
+**Example — municipal exemption (Puerto Rico).** The `IVU` rate has two components: State 10.5 % and Municipal 1 % (11.5 %). The client brings a **municipal** exemption certificate valid from January 1 to December 31. The exemption is created with “Only these components” and the **Municipal** box checked. On a $100.00 sale of a taxable product:
+
+| | State 10.5 % | Municipal 1 % | Tax | Total |
+|---|---|---|---|---|
+| No exemption | 10.50 | 1.00 | 11.50 | 111.50 |
+| With the municipal exemption valid | 10.50 | 0.00 (exempt, certificate recorded) | **10.50** | **110.50** |
+| With the municipal exemption expired | 10.50 | 1.00 | 11.50 (with a warning) | 111.50 |
+
+- The **copy** each line keeps (sales order, invoice, credit note) carries the percentage **actually charged** (10.5, not 11.5). The line is **not** marked as exempt: it pays tax.
+- The same applies to everything that uses the calculation: the sales order, the **shipping charge with IVU**, the invoice's taxable charges (freight, handling…), credit notes and the IVU line of the **QuickBooks** file (it carries the tax actually charged).
+- The date that counts is the **document's**: an order made on the last valid day still carries the exemption; the next day it does not.
+- **Renewal**: when the certificate expires, create another exemption with the new dates (or change the dates of the existing one). If the expired one is already covered by another valid one with the same components, there is no warning.
+- With **prices with tax included**, only the charged part is extracted from the price (the price does not change).
+- Rounding (per line or per document) works the same, with the charged percentage.
 
 ## 6. Calculation (what sales orders and the invoice will use)
 
-`POST /api/v1/tax/calculate` receives client (optional), date (optional, today by default) and the lines (product **or** charge type, and amount). It returns, per line: net, tax, total, reason, whether it was exempt, **the rate and percentage used** (the “copy” each line will store) and the breakdown per component; and for the whole document: subtotal, tax, total, tax per component and warnings. **It saves nothing.** It also works as a **simulator** to check the rules with the accountant.
+`POST /api/v1/tax/calculate` receives client (optional), date (optional, today by default) and the lines (product **or** charge type, and amount). It returns, per line: net, tax, total, reason, whether it was exempt, **the rate and percentage used** (with a partial exemption, the percentage actually charged; an exempt component comes as 0 with `exemptReason = EXEMPT_CLIENT_PARTIAL` and `exemptionCertificate`) (the “copy” each line will store) and the breakdown per component; and for the whole document: subtotal, tax, total, tax per component and warnings. **It saves nothing.** It also works as a **simulator** to check the rules with the accountant.
 
 ## 7. API (everything with `tax.manage`, module TAX)
 
@@ -88,9 +114,22 @@ A client has one or more exemptions: **type**, **certificate number**, **valid f
 | Line without a product or charge type | `Each line needs a product or a charge type.` | 400 |
 | There are taxable lines and no default rate was chosen | `Choose the default rate in Taxes → Rules.` | 400 |
 | No rate in effect on the date | `There is no tax rate in effect on that date. Set one up in Taxes → Rates.` | 400 |
+| Scope other than ALL / COMPONENTS | `The exemption scope must be ALL (the whole tax) or COMPONENTS (only some components).` | 400 (`scope`) |
+| “Only these components” with no component | `Check at least one tax component the exemption covers.` | 400 (`componentCodes`) |
+| Badly written component code | `A component code is not valid (letters, numbers, hyphen and underscore; up to 30 characters).` | 400 (`componentCodes`) |
+| More than 10 components | `An exemption can name up to 10 components.` | 400 (`componentCodes`) |
+| Component that no rate of the company has | `No rate of the company has the component “{code}”.` | 400 (`componentCodes`) |
 | Without the permission or with the module off | “No permission” | 403 |
+
+**Calculation warnings** (not errors: the calculation responds 200 and brings them in `warnings`):
+
+| Situation | Exact warning |
+|---|---|
+| The client has an expired exemption that no longer covers them | `The client has an expired exemption (certificate {number}, expired on {dd/mm/yyyy}): the tax was charged.` |
+| A valid partial exemption names a component the rate in effect does not have | `The client's exemption (certificate {number}) names the component {code}, which the rate in effect does not have: the tax did not change.` |
 
 ## 9. For support
 
 - Tables `TaxRate`, `TaxRateComponent`, `TenantTaxSetting`, `TaxChargeRule`, `ClientTaxExemption`, column `Product.TaxCategoryLookupId` and the columns `TaxRateId`, `TaxRatePct`, `TaxAmount`, `IsTaxExempt` of `InvoiceLine` (section **2026-10-15 (j)** of `Diseño/logistica-db-update.sql`). The log records `TAX_RATE`, `TAX_EXEMPTION` and `TAX_SETTING`.
 - The **tax report by period** and the copy of the tax on each sales order and invoice line are connected when those documents exist (P4 and billing): today there are no invoices to report on.
+- **Batch 237** (section “2026-11-10 — Lote 237” of `Diseño/logistica-db-update.sql`): columns `ClientTaxExemption.Scope` (`ALL` by default / `COMPONENTS`) and `ClientTaxExemption.ComponentCodes` (codes in upper case, sorted, comma-separated; `NULL` with `ALL`) and the constraint `CK_ClientTaxExemption_Scope`. The product record (`GET /products/{id}`) brings `taxCategory` (read-only; it is changed with `PUT /tax/products/{id}/category`). `POST|PATCH /tax/exemptions` carry `scope` and `componentCodes`.

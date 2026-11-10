@@ -37,7 +37,19 @@ public static class TaxReasons
     public const string ZeroRate = "ZERO_RATE";
     public const string ExemptProduct = "EXEMPT_PRODUCT";
     public const string ExemptClient = "EXEMPT_CLIENT";
+    /// <summary>Lote 237 — el cliente tiene exenta solo una parte de la tasa (p. ej. el componente municipal): la línea paga el resto.</summary>
+    public const string ExemptClientPartial = "EXEMPT_CLIENT_PARTIAL";
     public const string NotTaxableCharge = "NOT_TAXABLE_CHARGE";
+}
+
+/// <summary>Lote 237 — alcance de la exención de un cliente: todo el impuesto o solo algunos componentes de la tasa (p. ej. el municipal).</summary>
+public static class TaxExemptionScopes
+{
+    public const string All = "ALL";
+    public const string Components = "COMPONENTS";
+    public static readonly string[] Values = { All, Components };
+    /// <summary>Tope de componentes que una exención puede nombrar (cabe en la columna ComponentCodes).</summary>
+    public const int MaxComponents = 10;
 }
 
 /// <summary>
@@ -105,6 +117,8 @@ public class TaxChargeRule : ITenantScoped
 /// <summary>
 /// Lote 55 — exención de impuesto de un cliente (certificado). Una venta a un cliente con exención VIGENTE sale sin impuesto, con el certificado
 /// anotado; con la exención vencida se avisa y se cobra el impuesto. Nunca DELETE: se da de baja (IsActive = 0).
+/// Lote 237 — Scope: ALL = exime todo el impuesto (como siempre); COMPONENTS = exime solo los componentes de ComponentCodes (códigos de componente de la
+/// tasa, en mayúsculas, ordenados y separados por coma: «CITY» o «CITY,STATE»); el resto de la tasa se cobra.
 /// </summary>
 [AuditEntity(TaxCodes.ExemptionEntityType)]
 public class ClientTaxExemption : ITenantScoped, IAuditStamped
@@ -119,6 +133,8 @@ public class ClientTaxExemption : ITenantScoped, IAuditStamped
     public DateOnly? ValidTo { get; set; }
     public string? Notes { get; set; }
     public bool IsActive { get; set; } = true;
+    public string Scope { get; set; } = TaxExemptionScopes.All;
+    public string? ComponentCodes { get; set; }
     [NotAudited] public DateTime CreatedAtUtc { get; set; }
     public int? CreatedBy { get; set; }
     [NotAudited] public DateTime? UpdatedAtUtc { get; set; }

@@ -768,7 +768,9 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
         return new ProductDetailDto(item, p.WeightKg, p.VolumeM3, whPublicId, whCode, p.PreferredBinId, binCode,
             p.MinPickQty, p.MaxPickQty, hasMovements, Convert.ToBase64String(p.RowVersion ?? Array.Empty<byte>()), p.RotationMethod,
             MeasuresOf(p), categoryPath, parentId, parentName,
-            KitPieces: item.IsAssembledKit ? await AssembledKitService.PiecesForDetailAsync(db, lookups, p.ProductId, ct) : null);
+            KitPieces: item.IsAssembledKit ? await AssembledKitService.PiecesForDetailAsync(db, lookups, p.ProductId, ct) : null,
+            // Lote 237: la categoría de impuesto, para el campo «Impuesto» del editor (sin categoría = gravable)
+            TaxCategory: p.TaxCategoryLookupId is int taxCat ? (await lookups.GetAsync(taxCat, ct))?.InternalCode ?? Teikem.Domain.Tax.TaxCategories.Taxable : Teikem.Domain.Tax.TaxCategories.Taxable);
     }
 
     // ================================================================ Lote 230: dimensiones y peso con unidad

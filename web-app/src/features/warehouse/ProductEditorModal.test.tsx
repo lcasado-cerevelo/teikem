@@ -93,6 +93,8 @@ function route(method: string, url: URL): unknown {
   if (p === '/api/v1/products/units-suggestion') return mock.suggestion
   if (p === `/api/v1/products/${PID}` && method === 'GET') return { ...detail({ trackingTypeCode: 'NONE' }), product: { ...detail().product, trackingTypeCode: 'NONE', qtyOnHand: mock.onHand } }
   if (p === '/api/v1/products' && method === 'POST') return { product: { id: 99, publicId: PID } }
+  // Lote 237: el campo «Impuesto» guarda por el endpoint de Impuestos
+  if (p.startsWith('/api/v1/tax/products/') && p.endsWith('/category') && method === 'PUT') return { productId: 7, sku: 'GLU-100', name: 'Medidor de glucosa', category: 'EXEMPT' }
   if (p === '/api/v1/inventory/adjustments' && method === 'POST') {
     if (mock.adjustFails)
       return new Response(
@@ -130,12 +132,15 @@ function detail(over: Partial<NonNullable<ProductDetailDto['product']>> = {}): P
   }
 }
 
-function wrap(ui: ReactNode, permissions: string[]) {
+/** Lote 237: el PUT de la categoría de impuesto del producto. */
+const isTaxPut = (c: Call) => c.method === 'PUT' && c.url.pathname.startsWith('/api/v1/tax/products/')
+
+function wrap(ui: ReactNode, permissions: string[], modules: string[] = ['WMS_LOTSERIAL']) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <MemoryRouter>
       <QueryClientProvider client={client}>
-        <AccessProvider permissions={permissions} modules={['WMS_LOTSERIAL']}>
+        <AccessProvider permissions={permissions} modules={modules}>
           {ui}
         </AccessProvider>
       </QueryClientProvider>
@@ -510,6 +515,76 @@ describe('ProductEditorModal', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     expect(await within(dialog).findByText('El mínimo de picking requiere una posición preferida en una zona PICKING.')).toBeInTheDocument()
     expect(mock.calls.some((c) => c.method === 'PATCH')).toBe(false)
+  })
+
+  it('Lote 237 — «Impuesto»: sin el módulo de Impuestos no sale; con él va en el bloque Precios con las tres opciones y la categoría del producto', async () => {
+    const { unmount } = wrap(<ProductEditorModal open product={{ ...detail(), taxCategory: 'EXEMPT' }} onClose={() => {}} />, ['inventory.view', 'inventory.manage', 'tax.manage'])
+    let dialog = await findDialog('Editar producto')
+    expect(within(dialog).queryByLabelText('Impuesto')).toBeNull()
+    unmount()
+
+    wrap(<ProductEditorModal open product={{ ...detail(), taxCategory: 'EXEMPT' }} onClose={() => {}} />, ['inventory.view', 'inventory.manage', 'tax.manage'], ['WMS_LOTSERIAL', 'TAX'])
+    dialog = await findDialog('Editar producto')
+    const select = await within(dialog).findByLabelText('Impuesto')
+    expect(select).toHaveValue('EXEMPT')
+    expect(select).toBeEnabled()
+    expect(within(select as HTMLElement).getAllByRole('option').map((o) => o.textContent)).toEqual(['Gravable', 'Exento', 'Tasa cero'])
+    expect(select.closest('.pe-block')).toHaveTextContent('Precios')
+    expect(within(dialog).getByText(/Gravable: paga el impuesto de la compañía/)).toBeInTheDocument()
+  })
+
+  it('Lote 237 — «Impuesto» en edición: cambiarlo manda solo el PUT de la categoría (sin PATCH del producto); sin tocarlo no manda nada', async () => {
+    const user = userEvent.setup()
+    wrap(<ProductEditorModal open product={detail()} onClose={() => {}} />, ['inventory.view', 'inventory.manage', 'tax.manage'], ['WMS_LOTSERIAL', 'TAX'])
+    const dialog = await findDialog('Editar producto')
+    const select = await within(dialog).findByLabelText('Impuesto')
+    expect(select).toHaveValue('TAXABLE')   // sin categoría = gravable
+    await user.selectOptions(select, 'ZERO_RATE')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'PUT' && c.url.pathname === '/api/v1/tax/products/7/category')).toBe(true))
+    expect(mock.calls.find(isTaxPut)!.body).toEqual({ category: 'ZERO_RATE' })
+    expect(mock.calls.some((c) => c.method === 'PATCH')).toBe(false)
+  })
+
+  it('Lote 237 — «Impuesto» sin tax.manage: se ve en solo lectura con su nota y guardar otro campo no toca la categoría', async () => {
+    const user = userEvent.setup()
+    wrap(<ProductEditorModal open product={{ ...detail(), taxCategory: 'ZERO_RATE' }} onClose={() => {}} />, ['inventory.view', 'inventory.manage'], ['WMS_LOTSERIAL', 'TAX'])
+    const dialog = await findDialog('Editar producto')
+    const select = await within(dialog).findByLabelText('Impuesto')
+    expect(select).toHaveValue('ZERO_RATE')
+    expect(select).toBeDisabled()
+    expect(within(dialog).getByText('Solo lo cambia quien administra los impuestos.')).toBeInTheDocument()
+    await user.type(within(dialog).getByLabelText('Modelo'), 'X-1')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'PATCH')).toBe(true))
+    expect(mock.calls.some(isTaxPut)).toBe(false)
+  })
+
+  it('Lote 237 — «Impuesto» en el alta: Exento se guarda después de crear (PUT con el id nuevo); Gravable no manda nada', async () => {
+    const user = userEvent.setup()
+    const { unmount } = wrap(<ProductEditorModal open product={null} onClose={() => {}} />, ['inventory.view', 'inventory.manage', 'tax.manage'], ['WMS_LOTSERIAL', 'TAX'])
+    let dialog = await findDialog('Nuevo producto')
+    await user.type(await within(dialog).findByLabelText(/^SKU/), 'NEW-1')
+    await user.type(within(dialog).getByLabelText(/^Nombre/), 'Producto nuevo')
+    expect(within(dialog).getByLabelText('Impuesto')).toHaveValue('TAXABLE')
+    await user.selectOptions(within(dialog).getByLabelText('Impuesto'), 'EXEMPT')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'PUT' && c.url.pathname === '/api/v1/tax/products/99/category')).toBe(true))
+    expect(mock.calls.find(isTaxPut)!.body).toEqual({ category: 'EXEMPT' })
+    // el alta va primero y no lleva la categoría (se guarda por el endpoint de Impuestos)
+    const order = mock.calls.filter((c) => c.method === 'POST' || c.method === 'PUT').map((c) => `${c.method} ${c.url.pathname}`)
+    expect(order.indexOf('POST /api/v1/products')).toBeLessThan(order.indexOf('PUT /api/v1/tax/products/99/category'))
+    expect(mock.calls.find((c) => c.method === 'POST' && c.url.pathname === '/api/v1/products')!.body).not.toHaveProperty('taxCategory')
+    unmount()
+
+    mock.calls = []
+    wrap(<ProductEditorModal open product={null} onClose={() => {}} />, ['inventory.view', 'inventory.manage', 'tax.manage'], ['WMS_LOTSERIAL', 'TAX'])
+    dialog = await findDialog('Nuevo producto')
+    await user.type(await within(dialog).findByLabelText(/^SKU/), 'NEW-2')
+    await user.type(within(dialog).getByLabelText(/^Nombre/), 'Otro producto')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'POST' && c.url.pathname === '/api/v1/products')).toBe(true))
+    expect(mock.calls.some(isTaxPut)).toBe(false)
   })
 
   it('sin inventory.manage: solo lectura con "Cerrar"', async () => {

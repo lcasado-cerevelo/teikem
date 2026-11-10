@@ -43,7 +43,8 @@ The **tax category** of each product: **Taxable** (the usual), **Exempt** (does 
 
 The clients' exemption certificates: **client**, **type** (e.g. “Non-profit”), **certificate number**, **valid from / until** (empty = no end date) and notes. State: **In effect**, **Scheduled**, **Expired** or **Deactivated**.
 
-- With an exemption **in effect** no tax is charged to that client and the line is marked as exempt with the **certificate noted**.
+- **Applies to** (Batch 237): **The whole tax** (default) or **Only these components**, with a checkbox for each component of the default rate in effect (e.g. “State (10.5%)”, “Municipal (1%)”). With “Only these components” at least one must be checked (“Check at least one tax component the exemption covers.”). The list has the **Applies to** column (“The whole tax” or “Only: Municipal”). Example and rules in [17 §5.1](../17-impuestos.md#51-what-the-exemption-applies-to-batch-237).
+- With an exemption **in effect** from the whole tax no tax is charged to that client and the line is marked as exempt with the **certificate noted**; with one from only some components the rest of the rate is charged (the simulator shows it as “Partially exempt client”, “10.5% was charged” and “Municipal: exempt (certificate …)”).
 - With the exemption **expired** the tax is charged and the calculation **warns** which certificate expired.
 - They are never deleted: **Deactivate** and **Reactivate** (row icon); **Edit** changes the type, the certificate, the dates and the notes (the client cannot be changed).
 

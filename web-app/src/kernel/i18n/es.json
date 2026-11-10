@@ -5540,6 +5540,10 @@
         "owner": "Dueño del inventario",
         "purchaseCost": "Costo de compra",
         "salePrice": "Precio de venta",
+        "taxCategory": "Impuesto",
+        "taxCategoryHelp": "Gravable: paga el impuesto de la compañía. Exento: no paga. Tasa cero: gravable al 0 %.",
+        "taxCategoryReadOnly": "Solo lo cambia quien administra los impuestos.",
+        "taxCategoryNotSaved": "El producto se guardó, pero el impuesto no: {error}",
         "preferredWarehouse": "Almacén por defecto",
         "preferredBin": "Posición por defecto",
         "total": "Total",
@@ -11010,6 +11014,7 @@
       "ZERO_RATE": "Tasa cero",
       "EXEMPT_PRODUCT": "Producto exento",
       "EXEMPT_CLIENT": "Cliente exento",
+      "EXEMPT_CLIENT_PARTIAL": "Cliente exento en parte",
       "NOT_TAXABLE_CHARGE": "Cargo no gravable"
     },
     "rates": {
@@ -11101,6 +11106,18 @@
       "from": "Vale desde",
       "to": "Vale hasta",
       "toHelp": "Déjelo vacío si no tiene fecha final.",
+      "scope": "Aplica a",
+      "scopes": {
+        "ALL": "Todo el impuesto",
+        "COMPONENTS": "Solo estos componentes"
+      },
+      "scopeOnly": "Solo: {names}",
+      "components": "Componentes exentos",
+      "componentOption": "{name} ({pct} %)",
+      "componentNotInRate": "{name} (no está en la tasa vigente)",
+      "noComponents": "No hay una tasa vigente con componentes. Créela en Impuestos → Tasas y escójala como tasa por omisión en Reglas.",
+      "scopeHelpAll": "Al cliente no se le cobra nada de impuesto mientras la exención esté vigente.",
+      "scopeHelpComponents": "Al cliente se le deja de cobrar solo lo marcado; el resto de la tasa se cobra. Ejemplo: con la exención municipal del IVU (Estatal 10.5 % + Municipal 1 %) paga 10.5 %.",
       "notes": "Notas",
       "status": "Estado",
       "statuses": {
@@ -11122,7 +11139,8 @@
         "type": "Escriba el tipo de exención.",
         "certificate": "Escriba el número del certificado.",
         "from": "Escriba desde qué fecha vale la exención.",
-        "dates": "La fecha final no puede ser anterior a la inicial."
+        "dates": "La fecha final no puede ser anterior a la inicial.",
+        "components": "Marque al menos un componente del impuesto que la exención cubre."
       }
     },
     "sim": {
@@ -11146,6 +11164,8 @@
       "included": "precios con impuesto incluido",
       "notIncluded": "precios sin impuesto",
       "certificate": "Certificado {n}",
+      "partialPct": "Se cobró el {pct} %",
+      "componentExempt": "{name}: exento (certificado {n})",
       "totals": "Totales",
       "colLine": "Línea",
       "colReason": "Motivo",

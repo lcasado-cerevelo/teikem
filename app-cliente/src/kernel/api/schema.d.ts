@@ -49843,6 +49843,7 @@ export interface components {
             categoryParentId?: number | null;
             categoryParentName?: string | null;
             kitPieces?: components["schemas"]["AssembledKitPieceDto"][] | null;
+            taxCategory?: string | null;
         };
         ProductImageDto: {
             /** Format: uuid */
@@ -53539,6 +53540,8 @@ export interface components {
             percent?: number;
             /** Format: double */
             amount?: number;
+            exemptReason?: string | null;
+            exemptionCertificate?: string | null;
         };
         TaxCalcDto: {
             /** Format: date */
@@ -53624,6 +53627,8 @@ export interface components {
             notes?: string | null;
             isActive?: boolean;
             status?: string | null;
+            scope?: string | null;
+            componentCodes?: string[] | null;
         };
         TaxExemptionPatchRequest: {
             exemptionType?: string | null;
@@ -53634,6 +53639,8 @@ export interface components {
             validTo?: string | null;
             clearValidTo?: boolean | null;
             notes?: string | null;
+            scope?: string | null;
+            componentCodes?: string[] | null;
         };
         TaxExemptionRequest: {
             /** Format: int32 */
@@ -53645,6 +53652,8 @@ export interface components {
             /** Format: date */
             validTo?: string | null;
             notes?: string | null;
+            scope?: string | null;
+            componentCodes?: string[] | null;
         };
         TaxRateCloseRequest: {
             /** Format: date */

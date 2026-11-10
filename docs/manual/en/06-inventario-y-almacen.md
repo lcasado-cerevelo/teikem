@@ -728,7 +728,11 @@ groups the fields in titled blocks, in this order:
 3. **Inventory**: tracking, owner, rotation, packaging and units per package, barcode, reorder point, default warehouse and bin, picking minimum and maximum,
    total and “Active product”.
 4. **Prices**: purchase cost and **sale price** (the sale price is the one compared when a kit piece is swapped when ordering: it must be exactly equal;
-   [18 §17.1](18-ordenes-de-venta.md#171-swapping-a-kit-piece-when-ordering-batch-230)).
+   [18 §17.1](18-ordenes-de-venta.md#171-swapping-a-kit-piece-when-ordering-batch-230)). **Tax** (Batch 237): **Taxable** (default), **Exempt** or
+   **Zero rate**; it is the same category as Accounting → Taxes → Products ([17 §4](17-impuestos.md#4-what-pays-tax)). The field only appears if the
+   company has the **Taxes** module; whoever has **Manage taxes** (`tax.manage`) can change it and everyone else sees it read-only with the note
+   “Only whoever manages taxes can change it.”. On a new product it is saved right after creating it; if that step fails, the product stays created
+   (as Taxable) and “The product was saved, but the tax was not: {reason}” appears.
 5. **Dimensions and weight**.
 6. **Custom fields**, at the end (the block is hidden if the company has no fields for products).
 

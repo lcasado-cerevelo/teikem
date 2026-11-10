@@ -13,6 +13,7 @@ import { typeDate } from '../../kernel/ui/typeDate'
 const mock = vi.hoisted(() => ({
   requests: [] as { method: string; path: string; search: string; body: unknown }[],
   failPost: false,
+  partial: false,
 }))
 
 vi.mock('../../kernel/api/client', async (importOriginal) => {
@@ -34,7 +35,8 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
     if (req.method === 'PATCH' && p === '/api/v1/tax/settings') return json(SETTINGS)
     if (req.method === 'GET' && p === '/api/v1/tax/products') return json({ items: PRODUCTS, total: PRODUCTS.length, skip: 0, take: 500 })
     if (req.method === 'PUT' && p === '/api/v1/tax/products/5/category') return json({ ...PRODUCTS[0], category: body.category })
-    if (req.method === 'GET' && p === '/api/v1/tax/exemptions') return json(EXEMPTIONS)
+    if (req.method === 'GET' && p === '/api/v1/tax/exemptions') return json(mock.partial ? [{ ...EXEMPTIONS[0], scope: 'COMPONENTS', componentCodes: ['CITY'] }] : EXEMPTIONS)
+    if (req.method === 'PATCH' && p === '/api/v1/tax/exemptions/3') return json({ ...EXEMPTIONS[0], scope: body.scope, componentCodes: body.componentCodes })
     if (req.method === 'POST' && p === '/api/v1/tax/exemptions/3/deactivate') return json({ ...EXEMPTIONS[0], isActive: false, status: 'INACTIVE' })
     if (req.method === 'POST' && p === '/api/v1/tax/calculate') {
       return json({
@@ -99,6 +101,7 @@ describe('TaxScreen', () => {
   beforeEach(() => {
     mock.requests.length = 0
     mock.failPost = false
+    mock.partial = false
   })
 
   it('lista las tasas con su porcentaje, componentes y estado; una tasa abierta se puede cerrar y una cerrada sirve de base de la nueva', async () => {
@@ -186,6 +189,47 @@ describe('TaxScreen', () => {
     expect(screen.getByText('Vigente')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Dar de baja' }))
     await waitFor(() => expect(sent('POST', '/api/v1/tax/exemptions/3/deactivate')).toHaveLength(1))
+  })
+
+  it('Lote 237 — exenciones: «Aplica a» con las casillas de la tasa por omisión vigente; parcial sin componentes no se manda; la lista muestra el alcance', async () => {
+    const user = userEvent.setup()
+    const { unmount } = wrap()
+    await user.click(await screen.findByRole('tab', { name: 'Exenciones' }))
+    expect(await screen.findByText('CERT-1')).toBeInTheDocument()
+    expect(screen.getByText('Todo el impuesto')).toBeInTheDocument()   // las que ya existían: todo el impuesto
+    await user.click(screen.getByRole('button', { name: 'Editar exención' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Editar exención' })
+    expect(within(dialog).getByRole('radio', { name: 'Todo el impuesto' })).toBeChecked()
+    expect(within(dialog).queryByRole('checkbox')).toBeNull()          // las casillas solo salen con «Solo estos componentes»
+    await user.click(within(dialog).getByRole('radio', { name: 'Solo estos componentes' }))
+    // los componentes de la tasa vigente (no el de la tasa cerrada)
+    const boxes = await within(dialog).findAllByRole('checkbox')
+    expect(boxes).toHaveLength(2)
+    expect(within(dialog).getByRole('checkbox', { name: /Estatal/ })).not.toBeChecked()
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar exención' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Marque al menos un componente del impuesto que la exención cubre.')
+    expect(sent('PATCH', '/api/v1/tax/exemptions/3')).toHaveLength(0)
+    await user.click(within(dialog).getByRole('checkbox', { name: /Municipal/ }))
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar exención' }))
+    await waitFor(() => expect(sent('PATCH', '/api/v1/tax/exemptions/3')).toHaveLength(1))
+    expect(sent('PATCH', '/api/v1/tax/exemptions/3')[0].body).toMatchObject({ certificateNumber: 'CERT-1', scope: 'COMPONENTS', componentCodes: ['CITY'] })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    unmount()
+
+    // una exención parcial ya guardada: la lista dice qué cubre y el formulario abre con su casilla marcada; volver a «todo» no manda componentes
+    mock.partial = true
+    mock.requests.length = 0
+    wrap()
+    await user.click(await screen.findByRole('tab', { name: 'Exenciones' }))
+    expect(await screen.findByText('Solo: Municipal')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Editar exención' }))
+    const again = await screen.findByRole('dialog', { name: 'Editar exención' })
+    expect(within(again).getByRole('radio', { name: 'Solo estos componentes' })).toBeChecked()
+    expect(await within(again).findByRole('checkbox', { name: /Municipal/ })).toBeChecked()
+    await user.click(within(again).getByRole('radio', { name: 'Todo el impuesto' }))
+    await user.click(within(again).getByRole('button', { name: 'Guardar exención' }))
+    await waitFor(() => expect(sent('PATCH', '/api/v1/tax/exemptions/3')).toHaveLength(1))
+    expect(sent('PATCH', '/api/v1/tax/exemptions/3')[0].body).toMatchObject({ scope: 'ALL', componentCodes: [] })
   })
 
   it('simulador: calcula, muestra el motivo por línea, los totales y los avisos del servidor', async () => {
