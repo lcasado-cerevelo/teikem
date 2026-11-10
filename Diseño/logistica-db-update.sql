@@ -7785,3 +7785,31 @@ BEGIN
                          WHERE p.TenantId = t.TenantId AND lc.Entity = N''ProductType'' AND lc.InternalCode = N''ASSEMBLED_KIT'');');
 END
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-11-10 — Lote 234: las ofertas ya no tienen «borrador» (docs/lote234-decisiones.md).
+   - Una oferta nueva nace publicada (lo hace el API). Aquí se publican, UNA sola vez (marca L234_OFFER_NO_DRAFT), las ofertas ACTIVAS que estaban en borrador:
+     desde ahora valen según sus fechas (las desactivadas no se tocan). Las listas de precios no cambian (siguen con borrador y publicar).
+   - Solo cambia datos (dbo.Offer.IsPublished). Idempotente.
+   ---------------------------------------------------------------------------- */
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L234_OFFER_NO_DRAFT')
+BEGIN
+    UPDATE dbo.Offer SET IsPublished = 1, UpdatedAtUtc = SYSUTCDATETIME() WHERE IsActive = 1 AND IsPublished = 0;
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L234_OFFER_NO_DRAFT');
+END
+GO
+
+/* ----------------------------------------------------------------------------
+   2026-11-10 — Lote 235: «Almacén principal» (docs/lote235-decisiones.md).
+   - dbo.Warehouse.IsMain (BIT, 0 por omisión): el almacén que la venta escoge por omisión cuando la compañía tiene varios (pedido guiado, «Nueva orden», app de
+     vendedores y el API cuando no se manda almacén). Se marca en Almacén → Almacenes («Hacer principal»): marcar uno desmarca el otro.
+   - Uno solo por compañía (índice único filtrado UX_Warehouse_Main). Si ninguno está marcado, el principal es el almacén activo más antiguo (lo decide el API);
+     por eso aquí NO se marca ninguno: lo que hoy pasa (se toma el más antiguo) sigue igual hasta que la compañía escoja otro.
+   - Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH(N'dbo.Warehouse', N'IsMain') IS NULL
+    ALTER TABLE dbo.Warehouse ADD IsMain BIT NOT NULL CONSTRAINT DF_Warehouse_IsMain DEFAULT 0;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_Warehouse_Main' AND object_id = OBJECT_ID('dbo.Warehouse'))
+    EXEC(N'CREATE UNIQUE INDEX UX_Warehouse_Main ON dbo.Warehouse(TenantId) WHERE IsMain = 1;');
+GO

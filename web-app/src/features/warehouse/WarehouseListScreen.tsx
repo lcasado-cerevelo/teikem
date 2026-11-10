@@ -324,7 +324,18 @@ export default function WarehouseListScreen() {
   const columns = useMemo<DataColumn<WarehouseDto>[]>(
     () => [
       { id: 'code', header: t('warehouse.list.code'), cell: (w) => <span className="ref">{w.code}</span>, sortValue: (w) => w.code, card: 'title' },
-      { id: 'name', header: t('warehouse.list.name'), cell: (w) => w.name, sortValue: (w) => w.name },
+      {
+        id: 'name',
+        header: t('warehouse.list.name'),
+        // Lote 235: el almacén principal lleva su distintivo
+        cell: (w) => (
+          <>
+            {w.name} {w.isMain && <Chip tone="deliv" title={t('warehouse.detail.mainHelp')}>{t('warehouse.detail.main')}</Chip>}
+          </>
+        ),
+        sortValue: (w) => w.name,
+        exportValue: (w) => (w.isMain ? `${w.name ?? ''} (${t('warehouse.detail.main')})` : w.name ?? ''),
+      },
       {
         id: 'address',
         header: t('warehouse.list.address'),

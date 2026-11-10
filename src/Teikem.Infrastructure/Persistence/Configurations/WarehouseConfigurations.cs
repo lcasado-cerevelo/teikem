@@ -32,6 +32,8 @@ public sealed class WarehouseConfiguration : IEntityTypeConfiguration<Warehouse>
         // relación: una relación Warehouse → WarehouseBin cerraría un ciclo con WarehouseBin → Warehouse al insertar ambos.
         b.Property(w => w.ReceivingModeLookupId);
         b.Property(w => w.DefaultReceivingBinId);
+        // Lote 235: almacén principal (uno por compañía: UX_Warehouse_Main, índice único filtrado que vive en SQL)
+        b.Property(w => w.IsMain);
 
         b.HasOne(w => w.Status).WithMany().HasForeignKey(w => w.StatusCodeId).OnDelete(DeleteBehavior.NoAction);
         b.HasMany(w => w.Zones).WithOne(z => z.Warehouse).HasForeignKey(z => z.WarehouseId).OnDelete(DeleteBehavior.NoAction);

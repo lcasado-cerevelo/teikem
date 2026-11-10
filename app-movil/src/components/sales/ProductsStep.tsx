@@ -11,11 +11,15 @@ import { fetchCatalog, fileSource, type SalesCatalogBrand, type SalesCatalogItem
 import {
   cartLineAmount, cartQuantity, cartSummary, money, removeFromCart, setCartQuantity, stepCartQuantity, type WizardState,
 } from '@utils/salesOrderRules';
+import type { StockInput } from '@utils/salesStockRules';
+import StockInfo from './StockInfo';
 import { Badge, Button, Help, SectionTitle } from './ui';
 
 // Lote 226 — paso 2 del pedido en el teléfono: los PRODUCTOS. Pestañas por marca (solo marcas con productos activos; los sin marca al final); arriba de cada marca
 // sus ofertas vigentes como tarjetas con foto, precio y + / −; debajo la lista completa de la marca (SKU, nombre, precio de la lista del cliente o la general) con
 // su casilla de cantidad: teclear una cantidad agrega la línea. El carrito (`CartBar`) va fijo abajo; tocarlo muestra las líneas para corregir o quitar.
+// Lote 235: cada renglón (lista, oferta y carrito) dice «Disponible: N» en el almacén de la orden, marca el backorder si se pide de más (no bloquea) y la nota de
+// otros almacenes (`StockInfo`).
 // El vendedor no teclea precios. Los kits ajustables se piden con las piezas del catálogo (ajustarlas se hace en la web).
 
 const NO_BRAND = '__none__';
@@ -25,7 +29,7 @@ const matches = (q: string, ...texts: (string | null | undefined)[]) => {
   return n === '' || texts.some((x) => (x ?? '').toLocaleLowerCase().includes(n));
 };
 
-export default function ProductsStep({ tenantId, state, onChange }: { tenantId: number; state: WizardState; onChange: (next: (s: WizardState) => WizardState) => void }) {
+export default function ProductsStep({ tenantId, state, onChange, stock, warehouseId }: { tenantId: number; state: WizardState; onChange: (next: (s: WizardState) => WizardState) => void; stock?: StockInput | null; warehouseId?: string | null }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useStyles(createStyles);
@@ -73,7 +77,7 @@ export default function ProductsStep({ tenantId, state, onChange }: { tenantId: 
         <View style={styles.block}>
           <Text style={styles.sub}>{t('SALES_ORDER.PRODUCTS.OFFERS')}</Text>
           {current!.offers.map((o) => (
-            <OfferCard key={o.productPublicId} tenantId={tenantId} item={o} quantity={cartQuantity(state.cart, o.productPublicId)} onStep={(d) => step(o, d)} onSet={(text) => set(o, text)} />
+            <OfferCard key={o.productPublicId} tenantId={tenantId} item={o} quantity={cartQuantity(state.cart, o.productPublicId)} onStep={(d) => step(o, d)} onSet={(text) => set(o, text)} stock={stock} warehouseId={warehouseId} />
           ))}
         </View>
       ) : null}
@@ -94,6 +98,7 @@ export default function ProductsStep({ tenantId, state, onChange }: { tenantId: 
                   <Text style={canSell ? styles.price : styles.noPrice}>{canSell ? money(p.price) : t('SALES_ORDER.PRODUCTS.NO_PRICE')}</Text>
                   {p.isKit ? <Badge label={t('SALES_ORDER.PRODUCTS.KIT')} /> : null}
                 </View>
+                <StockInfo stock={stock} warehouseId={warehouseId} productPublicId={p.productPublicId} quantity={qty} />
               </View>
               <TextInput
                 style={[styles.qty, !canSell && styles.disabled]}
@@ -112,7 +117,7 @@ export default function ProductsStep({ tenantId, state, onChange }: { tenantId: 
   );
 }
 
-function OfferCard({ tenantId, item, quantity, onStep, onSet }: { tenantId: number; item: SalesCatalogItem; quantity: string; onStep: (d: number) => void; onSet: (text: string) => void }) {
+function OfferCard({ tenantId, item, quantity, onStep, onSet, stock, warehouseId }: { tenantId: number; item: SalesCatalogItem; quantity: string; onStep: (d: number) => void; onSet: (text: string) => void; stock?: StockInput | null; warehouseId?: string | null }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useStyles(createStyles);
@@ -131,6 +136,7 @@ function OfferCard({ tenantId, item, quantity, onStep, onSet }: { tenantId: numb
         <Text style={styles.name}>{name}</Text>
         <Text style={styles.muted}>{item.sku}</Text>
         <Text style={canSell ? styles.price : styles.noPrice}>{canSell ? money(item.price) : t('SALES_ORDER.PRODUCTS.NO_PRICE')}</Text>
+        <StockInfo stock={stock} warehouseId={warehouseId} productPublicId={item.productPublicId} quantity={quantity} />
         <View style={styles.stepper}>
           <Pressable style={[styles.stepBtn, (!canSell || !quantity) && styles.disabled]} disabled={!canSell || !quantity} onPress={() => onStep(-1)} accessibilityRole="button" accessibilityLabel={t('SALES_ORDER.PRODUCTS.LESS', { name })}>
             <Text style={styles.stepText}>−</Text>
@@ -146,7 +152,7 @@ function OfferCard({ tenantId, item, quantity, onStep, onSet }: { tenantId: numb
 }
 
 /** El carrito fijo abajo: conteo y subtotal; abierto, las líneas para corregir la cantidad o quitar. */
-export function CartBar({ state, onChange }: { state: WizardState; onChange: (next: (s: WizardState) => WizardState) => void }) {
+export function CartBar({ state, onChange, stock, warehouseId }: { state: WizardState; onChange: (next: (s: WizardState) => WizardState) => void; stock?: StockInput | null; warehouseId?: string | null }) {
   const { t } = useTranslation();
   const styles = useStyles(createStyles);
   const [open, setOpen] = useState(false);
@@ -170,6 +176,7 @@ export function CartBar({ state, onChange }: { state: WizardState; onChange: (ne
                   <Text style={styles.sku}>{l.sku}</Text>
                   <Text style={styles.name}>{l.name}</Text>
                   <Text style={styles.price}>{l.price == null ? '—' : money(cartLineAmount(l))}</Text>
+                  <StockInfo stock={stock} warehouseId={warehouseId} productPublicId={l.productPublicId} quantity={l.quantity} />
                 </View>
                 <View style={styles.cartActions}>
                   <TextInput style={styles.qty} value={l.quantity} onChangeText={(text) => setQty(l.productPublicId, text)} keyboardType="decimal-pad" accessibilityLabel={t('SALES_ORDER.PRODUCTS.QTY_OF', { sku: l.sku })} />

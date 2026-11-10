@@ -30,7 +30,8 @@ public sealed class OfferKitTests
         var offer = await x.Offers.CreateAsync(new OfferRequest("OFERTA1", x.Today), default);
         Assert.False(offer.HasEndDate);
         Assert.Equal(OfferRules.RangeText(x.Today, null), offer.ValidityText);   // «desde el …, sin fecha de fin»
-        Assert.Equal(PriceListStates.Draft, offer.State);
+        Assert.True(offer.IsPublished && offer.InEffect);   // Lote 234: sin borrador, nace publicada y vale desde hoy
+        Assert.Equal(PriceListStates.Active, offer.State);
 
         var created = await x.Offers.CreateKitAsync(offer.PublicId, new OfferKitRequest("OFERTA1", "Oferta 1", 41.94m, Pieces(strips, monitor), Brand: "PRODIGY"), default);
         var item = Assert.Single(created.Offer.Items);
@@ -155,21 +156,32 @@ public sealed class OfferKitTests
     }
 
     [Fact]
-    public async Task An_offer_for_chosen_clients_only_prices_for_them_and_publishing_needs_items_and_clients()
+    public async Task An_offer_for_chosen_clients_only_prices_for_them_and_is_published_from_the_start()
     {
         var (x, strips, _) = await WorldAsync();
         await using var __ = x;
+        // Lote 234: la oferta nace publicada; sin clientes escogidos todavía no aplica a nadie
         var offer = await x.Offers.CreateAsync(new OfferRequest("Solo C1", x.Today, null, AppliesToAll: false), default);
-        Assert.Equal(OfferRules.PublishNeedsItems, (await Assert.ThrowsAsync<StatusRuleException>(() => x.Offers.PublishAsync(offer.PublicId, default))).Message);
+        Assert.True(offer.IsPublished);
         await x.Offers.UpsertItemsAsync(offer.PublicId, new OfferItemsRequest(new[] { new OfferItemRequest(strips.PublicId, 3m) }), default);
-        Assert.Equal(OfferRules.PublishNeedsClients, (await Assert.ThrowsAsync<StatusRuleException>(() => x.Offers.PublishAsync(offer.PublicId, default))).Message);
+        Assert.Equal(6.99m, (await x.DraftAsync(x.C1, new SalesOrderLineRequest(strips.PublicId, 1m))).Lines[0].UnitPrice);
         await x.Offers.AddClientsAsync(offer.PublicId, new OfferClientsRequest(new[] { x.C1.PublicId }), default);
-        var pub = await x.Offers.PublishAsync(offer.PublicId, default);
+        var pub = await x.Offers.PublishAsync(offer.PublicId, default);   // publicar otra vez no es un error (compatibilidad)
         Assert.True(pub.InEffect);
         Assert.Equal(PriceListStates.Active, pub.State);
         Assert.Equal(3m, (await x.DraftAsync(x.C1, new SalesOrderLineRequest(strips.PublicId, 1m))).Lines[0].UnitPrice);
         Assert.Equal(6.99m, (await x.DraftAsync(x.C2, new SalesOrderLineRequest(strips.PublicId, 1m))).Lines[0].UnitPrice);
-        Assert.Equal(OfferRules.PublishNeedsClients, (await Assert.ThrowsAsync<StatusRuleException>(() => x.Offers.RemoveClientAsync(offer.PublicId, x.C1.PublicId, default))).Message);
+        // una oferta que quedó en borrador (de antes del lote 234) sigue exigiendo renglones y clientes para publicarse
+        var old = await x.Offers.CreateAsync(new OfferRequest("Vieja", x.Today, null, AppliesToAll: false), default);
+        await x.Offers.UnpublishAsync(old.PublicId, default);
+        Assert.Equal(OfferRules.PublishNeedsItems, (await Assert.ThrowsAsync<StatusRuleException>(() => x.Offers.PublishAsync(old.PublicId, default))).Message);
+        await x.Offers.UpsertItemsAsync(old.PublicId, new OfferItemsRequest(new[] { new OfferItemRequest(strips.PublicId, 9m) }), default);
+        Assert.Equal(OfferRules.PublishNeedsClients, (await Assert.ThrowsAsync<StatusRuleException>(() => x.Offers.PublishAsync(old.PublicId, default))).Message);
+        await x.Offers.DeactivateAsync(old.PublicId, default);
+        // sin borrador, quitar el último cliente no se rechaza: la oferta deja de aplicar hasta que se escoja otro
+        var none = await x.Offers.RemoveClientAsync(offer.PublicId, x.C1.PublicId, default);
+        Assert.Empty(none.Clients);
+        Assert.Equal(6.99m, (await x.DraftAsync(x.C1, new SalesOrderLineRequest(strips.PublicId, 1m))).Lines[0].UnitPrice);
         Assert.Equal(OfferRules.ClientsOnGeneral, (await Assert.ThrowsAsync<StatusRuleException>(async () =>
         {
             var general = await x.Offers.CreateAsync(new OfferRequest("Todos", x.Today), default);

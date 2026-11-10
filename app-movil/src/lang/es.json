@@ -683,6 +683,18 @@
       "RESUME_NOT_DRAFT": "El pedido {{number}} ya no es un borrador: no se puede cambiar aquí.",
       "BACK": "Atrás",
       "NEXT": "Siguiente",
+      "STOCK": {
+        "AVAILABLE": "Disponible: {{n}}",
+        "BACKORDER_CHIP": "Backorder: {{n}}",
+        "shortMany": "Solo hay {{available}} disponibles en {{warehouse}}",
+        "shortOne": "Solo hay 1 disponible en {{warehouse}}",
+        "shortNone": "No hay disponible en {{warehouse}}",
+        "backMany": "{{n}} quedan en backorder.",
+        "backOne": "1 queda en backorder.",
+        "ELSEWHERE_ONE": "Hay disponible en {{warehouse}}: {{n}}",
+        "ELSEWHERE_MANY": "Hay disponible en: {{list}}",
+        "BACKORDER_HELP": "Puedes enviar el pedido así: se reserva lo disponible y lo demás queda en backorder hasta que llegue inventario."
+      },
       "CLIENT": {
         "TITLE": "¿Para qué cliente?",
         "SEARCH": "Buscar cliente",
@@ -694,7 +706,8 @@
         "CHANGE": "Cambiar",
         "NEW": "Cliente nuevo",
         "WAREHOUSE": "¿De qué almacén sale?",
-        "WAREHOUSE_HELP": "La compañía tiene más de un almacén: escoge de cuál sale el pedido.",
+        "WAREHOUSE_HELP": "Viene marcado el almacén principal; puedes cambiarlo.",
+        "WAREHOUSE_MAIN": "principal",
         "ORDER_DATA": "Datos del pedido",
         "URGENT": "Urgente",
         "URGENT_HELP": "El almacén lo ve primero y la entrega sale con prioridad alta.",

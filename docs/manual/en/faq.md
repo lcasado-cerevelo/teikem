@@ -11543,13 +11543,13 @@ Chapters: [47 — Price lists and offers](47-precios-y-ofertas.md) (offers §4, 
 ### Common cases
 
 **Where do I create an offer?**
-In Accounting → Prices and offers, **Offers** section, **New offer** button (`sales.pricelist` is needed). The offer is born as a **draft**: add its photo, lines (and clients, if it is not for all) and press **Publish**. It gives no prices until it is published.
+In Accounting → Prices and offers, **Offers** section, **New offer** button (`sales.pricelist` is needed). The offer is born **published** (since Batch 234 offers have no draft): add its photo, lines (and clients, if it is not for all). It gives prices according to its dates as soon as it has lines.
 
 **A kit used to be marked as a promotion. How do I make a kit an offer now?**
 The kit is no longer marked: you create an offer and put the kit in it as a **line** with its offer price: **Use a previous kit** (from the offer kit library) or **Create a new kit**. Promotions that existed were kept as data, but they no longer give a price or block sales.
 
 **I left «Until» blank. What happens?**
-The offer **does not expire**: it is valid until it is deactivated or sent back to draft. The screen warns about it («No end date: valid until you deactivate it»). If it is seasonal, set a date.
+The offer **does not expire**: it is valid until it is deactivated. The screen warns about it («No end date: valid until you deactivate it»). If it is seasonal, set a date.
 
 **Which price is charged if the product is in an offer and also in the client's list?**
 The **lowest** of the two; if they tie, the client's list one. Without a negotiated price, the lowest between the offer and the general list. If there is none, the product's sale price. A product that is nowhere and has no sale price shows «No price».
@@ -12120,3 +12120,85 @@ The panel only shows if the company has the Inventory with lots and serials modu
 **What does "La compañía no trabaja con kits armados: actívelo en Ajustes → Operación." mean?**
 (The company does not work with assembled kits: turn it on in Settings → Operations.)
 Someone tried to create an assembled kit and the company has “The company works with assembled kits” turned off (422). Nothing was created. An administrator turns it on in System → Settings → Operations → Kits; then create the kit again. On screen this message almost never appears (the question is hidden with the setting off): it comes through the API, or if the setting was turned off while you had “New product” open.
+
+## Batch 234 — Offers without a draft, the photos that did not load and the offer kit in “New order”
+<!-- kemi:staff -->
+
+Chapter: [47 — Price lists and offers](47-precios-y-ofertas.md) (§4 offers, §5 order catalog, §8 statuses).
+
+### Frequent cases
+
+**I created an offer and I do not see the “Publish” button. How do I publish it?**
+You do not need to: since Batch 234 **offers have no draft**. An offer is published when it is created and applies according to its dates (“Valid from” / “Until”). If it should not apply yet, give it a future “Valid from” (it shows as “Scheduled (not started yet)”). **Price lists** still have a draft and “Publish”.
+
+**How do I take an offer out of use, now that there is no “Back to draft”?**
+With **Deactivate** (you can **Reactivate** it later). It stops applying to new orders; orders already placed do not change.
+
+**I have an old offer that says “Draft”.**
+It is from before Batch 234. The update script published, once, the active offers that were drafts; if one remains (for example, one that was deactivated and was reactivated), open it and press **Publish**: it is the only button that takes it out of there.
+
+**The offer is for chosen clients and I have not chosen any yet. Does it apply?**
+It applies to no one until you choose at least one client; the window says so (“This offer does not apply to anyone yet: choose at least one client.”). Removing the last client or unchecking “Applies to all clients” is no longer rejected.
+
+**The offer or product photos showed as broken (the little box with the text) “sometimes yes, sometimes no”.**
+There were two faults, fixed in Batch 234: (1) the screen released the photo it held in memory when a window showing it was closed, even though another part of the screen (the card, the line, the order) was still using it; on reopening it showed as broken until the page was reloaded. (2) A photo uploaded with a file name with **accents or ñ** (“Diseño sin título.png”, “Promoción.jpg”) never loaded: the server failed when answering it. You do not need to rename the files or upload them again: the photos already saved show again.
+
+**In “New order” an offer kit that used to show no longer shows.**
+Since Batch 234 “New order” offers **the same offer kits as “New guided order”**: only those of offers in effect today that apply to the chosen client (choose the client first). Before, it listed any offer kit and on saving you got `El kit de oferta … no está en ninguna oferta publicada y vigente…`. Check that the offer is active, within its dates and applies to that client.
+
+**I put a kit in an offer and it does not show in the order.**
+It shows right away in “New guided order” and in “New order” if the offer is active, in effect today and applies to the client. If the order window was already open, choose the client again or reload the page.
+
+### Error messages
+
+**What does "La oferta ya está publicada." mean?**
+(The offer is already published.)
+It no longer appears: since Batch 234 publishing an already published offer is not an error (the server answers the offer as it is). "La oferta ya está en borrador." (The offer is already a draft.) (422) can only be seen by someone calling `POST /offers/{id}/unpublish` through the API on a draft offer; the screen no longer offers it.
+
+**What does "Agregue al menos un renglón antes de publicar la oferta." or "Escoja al menos un cliente o marque que la oferta aplica a todos los clientes." mean?**
+(Add at least one line before publishing the offer. / Choose at least one client or mark that the offer applies to all clients.)
+They only appear (422) when pressing **Publish** on an offer left as a draft before Batch 234: add a line, or choose a client or check “Applies to all clients”, and publish again.
+
+## Batch 235 — The order's warehouse, the main warehouse and what is available when picking products
+<!-- kemi:staff -->
+
+Chapters: [18 §26](18-ordenes-de-venta.md#26-the-orders-warehouse-and-what-is-available-when-picking-products-batch-235), [48 — Guided order](48-pedido-guiado.md) (steps 1 to 3) and [06 §1.7](06-inventario-y-almacen.md#17-main-warehouse-batch-235).
+
+**Which warehouse does the order ship from if I pick none?**
+From the company's **main warehouse**. With a single active warehouse nothing is asked (that one is used). With several, the Warehouse field comes already selected with the main one and can be changed. The order ships from one warehouse: there is no warehouse per line.
+
+**How do I change the main warehouse?**
+In Warehouse → Warehouses, open the warehouse and press **“Make main”** (permission `warehouse.manage`). The previous one stops being main: there is only one. In the list, the main one carries the “Main” badge.
+
+**I never marked a main warehouse. Which one is it?**
+The oldest active warehouse. That is what already happened; it changes when you mark another.
+
+**What is “Available: N” next to the product?**
+What can be sold in the order's warehouse: on hand minus reserved, not counting quarantine, cross-dock or rented equipment. For an offer kit it is how many complete kits can be built with its pieces in that warehouse; for an assembled kit, its own stock. It can differ from the “Available” of the inventory table, which does add quarantine.
+
+**The row turned red and says “Backorder: 3”. Can I go on?**
+Yes. Ordering more than what is available **is allowed** (for example, if a purchase is on its way). The notice only says how much will stay pending; the order is saved and sent anyway: what is available gets reserved and the rest stays on backorder.
+
+**What do I do with “Available in {warehouse}: N”?**
+It is informative: another active warehouse has that product. The order still ships from its warehouse; to sell from the other one, change the order's warehouse (step 1 of the guided order or the Warehouse field of “New order”) or ask the warehouse for a transfer.
+
+**I see no “Available” on any product.**
+You need the `sales.view` permission and the Sales orders module. If you have them, reload: the data is requested when the screen opens and refreshed every 30 seconds.
+
+**In the guided order the shortage dialog no longer showed when sending.**
+If a line was marked “Backorder: N” while capturing, the order is sent accepting the backorder without asking again. The dialog only shows if stock changed between capture and sending. In “New order” the dialog always shows when requesting, as before.
+
+### Error messages
+
+**What does “Only X available in {warehouse}; N go on backorder.” / “Only 1 available in {warehouse}; …” / “None available in {warehouse}; N go on backorder.” mean?**
+(In Spanish: «Solo hay X disponibles en {almacén}; N quedan en backorder.» / «Solo hay 1 disponible en {almacén}; …» / «No hay disponible en {almacén}; N quedan en backorder.»)
+It is not an error: it is the notice (in red, with the “Backorder: N” badge) that the quantity exceeds what is available in the order's warehouse. It does not block. What to do: leave it if stock is expected, lower the quantity, or change the order's warehouse if another one has stock (“Available in …”).
+
+**What does "Para cambiar el almacén principal, marque otro almacén como principal." mean? (400)**
+(To change the main warehouse, mark another warehouse as main.) `isMain: false` was sent to the API. The main warehouse is not “removed”: mark as main the warehouse that should be.
+
+**What does "Indique el almacén: la compañía tiene más de uno." mean on a sales order?**
+(Specify the warehouse: the company has more than one.) It no longer appears on sales orders since Batch 235: with no warehouse given the main one is taken. (On other documents —purchase orders, counts, notices— the rule remains.)
+
+**What does "No alcanza el inventario de {SKU}: pedido {n}, disponible {n}, faltante {n}." mean? (409)**
+(Not enough stock.) It appears when requesting or sending without accepting the backorder. What to do: in the dialog, choose to reserve what is available and leave the rest on backorder, or fix the quantity.

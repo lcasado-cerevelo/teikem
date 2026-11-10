@@ -13,7 +13,7 @@ import { Badge, Button, Choice, Field, Help, SectionTitle, SwitchRow } from './u
 
 // Lote 226 — paso 1 del pedido en el teléfono: el CLIENTE (buscador por número, nombre o teléfono; «Cliente nuevo» con el alta mínima), Urgente con su nota y la
 // forma de pago del pedido, prellenada con la del cliente y editable (si cambia, queda la marca). El almacén solo se pide si la compañía tiene más de uno.
-export default function ClientStep({ tenantId, state, onChange, onPickClient, client, clientLoading, paymentChanged, warehouses, canCreateClient, methods, terms, onClientCreated }: {
+export default function ClientStep({ tenantId, state, onChange, onPickClient, client, clientLoading, paymentChanged, warehouses, warehouseId, canCreateClient, methods, terms, onClientCreated }: {
   tenantId: number;
   state: WizardState;
   onChange: (next: (s: WizardState) => WizardState) => void;
@@ -23,6 +23,8 @@ export default function ClientStep({ tenantId, state, onChange, onPickClient, cl
   paymentChanged: boolean;
   /** Almacenes activos: solo se muestran si hay más de uno. */
   warehouses: LookupOption[];
+  /** Lote 235: el almacén de la orden (el escogido o, por omisión, el principal): con varios almacenes ya viene marcado. */
+  warehouseId?: string | null;
   canCreateClient: boolean;
   methods: LookupOption[];
   terms: LookupOption[];
@@ -79,7 +81,7 @@ export default function ClientStep({ tenantId, state, onChange, onPickClient, cl
         <View style={styles.block}>
           <SectionTitle>{t('SALES_ORDER.CLIENT.WAREHOUSE')}</SectionTitle>
           {warehouses.map((w) => (
-            <Choice key={w.code} label={w.label} selected={state.warehousePublicId === w.code} onPress={() => onChange((s) => ({ ...s, warehousePublicId: w.code }))} />
+            <Choice key={w.code} label={w.label} selected={(warehouseId ?? state.warehousePublicId) === w.code} onPress={() => onChange((s) => ({ ...s, warehousePublicId: w.code }))} />
           ))}
           <Help>{t('SALES_ORDER.CLIENT.WAREHOUSE_HELP')}</Help>
         </View>

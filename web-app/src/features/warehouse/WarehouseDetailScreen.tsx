@@ -22,7 +22,7 @@ import { useForm } from 'react-hook-form'
 import { Link, useParams } from 'react-router-dom'
 import { z } from 'zod'
 import { Can, useCan } from '../../kernel/access'
-import { ApiError } from '../../kernel/api/problem'
+import { ApiError, applyProblemDetails } from '../../kernel/api/problem'
 import { StatusChip, StatusPipeline, useLookups } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
 import { formatQuantity } from '../../kernel/i18n/numberFormat'
@@ -898,6 +898,7 @@ export default function WarehouseDetailScreen() {
   const { data, isLoading, error } = useWarehouse(publicId)
   const canManage = useCan('warehouse.manage')
   const deactivateWarehouse = useDeactivateWarehouse()
+  const updateWarehouse = useUpdateWarehouse()   // Lote 235: «Hacer principal»
   const [tab, setTab] = useState<TabKey>('profile')
 
   if (isLoading) return <Spinner block />
@@ -925,9 +926,29 @@ export default function WarehouseDetailScreen() {
             <span className="ref">{w.code}</span> · {w.name}
           </h1>
           <p>
-            {!w.isActive && <Chip tone="fail">{t('warehouse.detail.inactive')}</Chip>} {w.city}
+            {!w.isActive && <Chip tone="fail">{t('warehouse.detail.inactive')}</Chip>}{' '}
+            {/* Lote 235: el almacén principal (el que la venta escoge por omisión cuando hay varios) */}
+            {w.isMain && <Chip tone="deliv" title={t('warehouse.detail.mainHelp')}>{t('warehouse.detail.main')}</Chip>} {w.city}
           </p>
         </div>
+        {w.isActive && !w.isMain && (
+          <Can perm="warehouse.manage">
+            <button
+              type="button"
+              className="btn"
+              title={t('warehouse.detail.mainHelp')}
+              disabled={updateWarehouse.isPending}
+              onClick={() => {
+                updateWarehouse.mutate(
+                  { publicId, body: { isMain: true } },
+                  { onSuccess: () => toast.success(t('warehouse.detail.madeMain', { code: w.code ?? '' })), onError: (e) => toast.error(applyProblemDetails(e).title) },
+                )
+              }}
+            >
+              {t('warehouse.detail.makeMain')}
+            </button>
+          </Can>
+        )}
       </div>
 
       <div style={{ marginBottom: 14 }}>

@@ -304,6 +304,20 @@ Screen: Warehouse → **Bins** — **Products by bin** button, checkboxes and **
 zero, of active products. `warehousePublicId` is mandatory (400 `Choose the warehouse.`; 404 `Warehouse not found.` if it does not exist or belongs to another company); `productPublicIds` empty = all; page `{ total, skip, take, serverTimeUtc, items }`,
 `take` ≤ 500 (500 by default). **It is the only implementation of that rule**: the warehouse app downloads it to the device and queries it online; no screen sorts again.
 
+### 1.7 Main warehouse (Batch 235)
+
+The **main warehouse** is the one sales pick by default when the company has several active warehouses (guided order, “New order”, sellers' app and the API when no warehouse is sent; [18 §26](18-ordenes-de-venta.md#26-the-orders-warehouse-and-what-is-available-when-picking-products-batch-235)).
+
+- **Only one per company.** Marking a warehouse as main **unmarks the previous one**. If none is marked, the main one is the **oldest active warehouse** (it already worked that way: nothing changes until another is chosen).
+- **Where**: Warehouse → **Warehouses**. In the list, the main one carries the **“Main”** badge next to its name. On the page of a warehouse that is not, the **“Make main”** button (permission `warehouse.manage`); it then says “{code} is now the main warehouse.”.
+- **API**: `PATCH /api/v1/warehouses/{publicId}` with `{ "isMain": true }` (`warehouse.manage`). The warehouse travels with `isMain` (true on the main one, also when it is main for being the oldest).
+- **Deactivating the main one** removes the mark: the oldest active one becomes main until another is marked.
+
+| Case | Exact message (in Spanish) | HTTP |
+|---|---|---|
+| `isMain: false` (removing the mark without setting another) | `Para cambiar el almacén principal, marque otro almacén como principal.` | 400 (`isMain`) |
+| Marking a deactivated warehouse | `El almacén está dado de baja; solo se consulta.` | 422 |
+
 ### Validations
 
 | Field / case | Exact message | HTTP |

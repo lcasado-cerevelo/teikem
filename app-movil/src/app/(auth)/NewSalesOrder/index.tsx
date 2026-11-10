@@ -8,6 +8,7 @@ import { Text } from '@components/Text';
 import ScreenHeader from '@components/ScreenHeader';
 import CompanyChips from '@components/CompanyChips';
 import ClientStep from '@components/sales/ClientStep';
+import { anyBackorder, orderWarehouseId, showWarehouseField, stockWarehouses } from '@utils/salesStockRules';
 import ProductsStep, { CartBar } from '@components/sales/ProductsStep';
 import DeliveryStep from '@components/sales/DeliveryStep';
 import { AuthorizationStep, SignatureBlock } from '@components/sales/AuthorizationStep';
@@ -18,7 +19,7 @@ import { useStyles, useTheme } from '@hooks/ThemeContext';
 import type { Colors } from '@constants/theme';
 import { authenticate, isBiometricAvailable } from '@services/auth/biometricAuth';
 import {
-  checkAvailability, createDraft, fetchClientForOrder, fetchLookups, fetchMfaEnabled, fetchSalesOrder, fetchWarehouses, removeSignature, submitOrder,
+  checkAvailability, createDraft, fetchClientForOrder, fetchLookups, fetchMfaEnabled, fetchSalesOrder, fetchSalesStock, removeSignature, submitOrder,
   updateDraft, uploadSignature, type ClientForOrder, type SalesAvailability, type SalesOrder,
 } from '@services/salesApi';
 import {
@@ -78,14 +79,18 @@ export default function NewSalesOrder() {
   });
   const methods = useQuery({ queryKey: ['sales-lookups', tenantId, 'SalesPaymentMethod'], queryFn: () => fetchLookups(tenantId, 'SalesPaymentMethod'), enabled: !!tenantId, staleTime: 600_000 });
   const terms = useQuery({ queryKey: ['sales-lookups', tenantId, 'PaymentTerm'], queryFn: () => fetchLookups(tenantId, 'PaymentTerm'), enabled: !!tenantId, staleTime: 600_000 });
-  const warehouses = useQuery({ queryKey: ['sales-warehouses', tenantId], queryFn: () => fetchWarehouses(tenantId), enabled: !!tenantId, staleTime: 600_000 });
+  // Lote 235: los almacenes activos (con el principal) y lo disponible por producto y almacén, en una sola consulta
+  const stock = useQuery({ queryKey: ['sales-stock', tenantId], queryFn: () => fetchSalesStock(tenantId), enabled: !!tenantId, staleTime: 30_000 });
   const mfa = useQuery({ queryKey: ['sales-mfa', tenantId], queryFn: () => fetchMfaEnabled(tenantId), enabled: !!tenantId, staleTime: 600_000 });
 
-  const needsWarehouse = (warehouses.data?.length ?? 0) > 1;
+  // con un solo almacén no se pregunta; con varios, el campo sale ya escogido con el PRINCIPAL (se puede cambiar)
+  const needsWarehouse = showWarehouseField(stock.data);
+  const warehouseId = orderWarehouseId(stock.data, state.warehousePublicId);
+  const warehouseOptions = stockWarehouses(stock.data).map((w) => ({ code: w.publicId ?? '', label: `${w.code ?? ''} · ${w.name ?? ''}${w.isMain ? ` (${t('SALES_ORDER.CLIENT.WAREHOUSE_MAIN')})` : ''}` }));
   const requiresSignature = client.data?.requireOrderSignature ?? saved?.terms?.clientRequiresSignature ?? false;
   const savedSignature = saved?.terms?.signatureFilePublicId ?? null;
   const hasSignature = signatureBase64(drawn) !== '' || (!!savedSignature && !sigDirty);
-  const ctx: StepContext = { requiresSignature, hasSignature, needsWarehouse };
+  const ctx: StepContext = { requiresSignature, hasSignature };
   const physicalId = client.data?.physicalAddress?.isActive === false ? null : client.data?.physicalAddress?.publicId ?? null;
   const idx = stepIndex(step);
 
@@ -133,7 +138,8 @@ export default function NewSalesOrder() {
 
   /** Guarda el borrador con lo que exige `which` y deja los precios y el número que devolvió el servidor. */
   const save = async (which: WizardStep, s: WizardState): Promise<SalesOrder> => {
-    const body = stepRequest(which, s);
+    // con varios almacenes viaja el que se ve escogido (el principal por omisión)
+    const body = stepRequest(which, needsWarehouse && !s.warehousePublicId ? { ...s, warehousePublicId: warehouseId } : s);
     const dto = s.orderPublicId ? await updateDraft(tenantId, s.orderPublicId, body) : await createDraft(tenantId, body);
     setSaved(dto);
     setState((cur) => ({ ...cur, orderPublicId: dto.publicId ?? cur.orderPublicId, number: dto.number ?? cur.number, cart: withServerPrices(cur.cart, dto.lines) }));
@@ -277,13 +283,13 @@ export default function NewSalesOrder() {
     const ok = await authenticate(t('SALES_ORDER.SEND.BIOMETRIC_PROMPT'), t('LOCK.CANCEL'));
     if (afterBiometric(ok) === 'password') return setPassword({ reason: 'BIOMETRIC_FAILED', error: null, field: null });
     auth.current = { method: 'BIOMETRIC' };
-    await trySend();
+    await trySend(anyBackorder(stock.data, warehouseId, state.cart));   // Lote 235: el vendedor ya vio el distintivo de backorder
   };
 
   const confirmPassword = async (pw: string, code: string) => {
     auth.current = { method: 'PASSWORD', password: pw, mfaCode: code };
     setPassword((p) => (p ? { ...p, error: null, field: null } : p));
-    await trySend();
+    await trySend(anyBackorder(stock.data, warehouseId, state.cart));   // Lote 235: el vendedor ya vio el distintivo de backorder
   };
 
   const startOver = () => {
@@ -364,7 +370,8 @@ export default function NewSalesOrder() {
               client={client.data}
               clientLoading={client.isFetching}
               paymentChanged={!!state.clientPublicId && !!client.data && isPaymentChanged(state, client.data.paymentTerm)}
-              warehouses={warehouses.data ?? []}
+              warehouses={warehouseOptions}
+              warehouseId={warehouseId}
               canCreateClient={access.can('clients.create_basic') || access.can('clients.create')}
               methods={methods.data ?? []}
               terms={terms.data ?? []}
@@ -375,15 +382,15 @@ export default function NewSalesOrder() {
               }}
             />
           ) : null}
-          {step === 'PRODUCTS' ? <ProductsStep tenantId={tenantId} state={state} onChange={change} /> : null}
+          {step === 'PRODUCTS' ? <ProductsStep tenantId={tenantId} state={state} onChange={change} stock={stock.data} warehouseId={warehouseId} /> : null}
           {step === 'DELIVERY' ? (
-            <DeliveryStep tenantId={tenantId} state={state} onChange={change} onRecalc={(p) => void recalc(p)} client={client.data} saved={saved} recalculating={recalculating} canPickOther={access.can('locations.read')} />
+            <DeliveryStep tenantId={tenantId} state={state} onChange={change} onRecalc={(p) => void recalc(p)} client={client.data} saved={saved} recalculating={recalculating} canPickOther={access.can('locations.read')} stock={stock.data} warehouseId={warehouseId} />
           ) : null}
           {step === 'AUTHORIZATION' ? <AuthorizationStep state={state} onChange={change} requiresSignature={requiresSignature} saved={saved} /> : null}
         </ScrollView>
 
         <View style={[styles.foot, { paddingBottom: 10 + insets.bottom }]}>
-          {step === 'PRODUCTS' ? <CartBar state={state} onChange={change} /> : null}
+          {step === 'PRODUCTS' ? <CartBar state={state} onChange={change} stock={stock.data} warehouseId={warehouseId} /> : null}
           {step === 'AUTHORIZATION' ? (
             <SignatureBlock
               tenantId={tenantId}

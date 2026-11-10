@@ -56,11 +56,11 @@ Cuando dos precios chocan, **se cobra siempre el más bajo** y el sistema avisa.
 |---|---|---|---|
 | Dos ofertas a la vez (`TWO_OFFERS`) | Un producto está en dos ofertas vigentes para el mismo cliente | Pedido guiado y orden (junto al producto, en la línea del carrito y en el recuadro «Avisos de precio» del paso de entrega) | `El producto GM está en dos ofertas a la vez: «A» a $9.00 y «B» a $11.00. Se aplica la más barata («A»).` Gana la más barata; a igual precio, la que empezó más tarde. |
 | Oferta más cara que la lista general (`OFFER_ABOVE_GENERAL`, en el pedido) | El precio de oferta es mayor que el de la lista general vigente | Igual que el anterior | `La oferta «A» pone GM a $12.00, más caro que la lista general ($10.00): se aplica el precio más bajo.` |
-| Oferta más cara que la lista general (`OFFER_ABOVE_GENERAL`, al armar la oferta) | Al crear, cambiar o publicar la oferta, un renglón sale más caro que la lista general (vigente cuando la oferta empieza, u hoy si ya empezó) | En la ventana de la oferta, recuadro «Avisos (no impiden guardar ni publicar)» | `El producto GM sale en esta oferta a $12.00, más caro que en la lista general ($10.00): se aplicará el precio más bajo.` |
+| Oferta más cara que la lista general (`OFFER_ABOVE_GENERAL`, al armar la oferta) | Al crear, cambiar o publicar la oferta, un renglón sale más caro que la lista general (vigente cuando la oferta empieza, u hoy si ya empezó) | En la ventana de la oferta, recuadro «Avisos (no impiden guardar)» | `El producto GM sale en esta oferta a $12.00, más caro que en la lista general ($10.00): se aplicará el precio más bajo.` |
 | Choque con otra oferta más barata (`CHEAPER_OFFER`, al armar la oferta) | Otra oferta **publicada** y activa, en fechas y clientes que se cruzan (una «para todos» se cruza con cualquiera), trae el mismo producto **igual o más barato** | En la ventana de la oferta, en el mismo recuadro | `El producto GM también está en la oferta «B» (del 01/11/2026 al 30/11/2026) a $9.00, igual o más barata que aquí ($10.00): mientras las dos estén vigentes se aplica el precio más bajo.` |
 
 Notas sobre los avisos:
-- Los de la oferta (`CHEAPER_OFFER`, `OFFER_ABOVE_GENERAL`) se calculan **al leer** la oferta, en toda respuesta (crear, cambiar, publicar, agregar renglón, abrirla). Una oferta en **borrador** no genera avisos en otras.
+- Los de la oferta (`CHEAPER_OFFER`, `OFFER_ABOVE_GENERAL`) se calculan **al leer** la oferta, en toda respuesta (crear, cambiar, publicar, agregar renglón, abrirla). Una oferta **desactivada** no genera avisos en otras.
 - Los del pedido salen en el catálogo (al escoger el producto) y al guardar el borrador. Al volver a abrir un borrador solo quedan los del catálogo, porque los de la orden no se guardan.
 - Si lo que cobra el pedido es el precio **negociado** del cliente (más bajo que la oferta), la tarjeta de la oferta lo dice: «Oferta: $9.00. Se cobra su precio negociado, que es más bajo.» (con el precio de la oferta).
 
@@ -111,9 +111,9 @@ Notas sobre los avisos:
 
 ### 4.1 Qué es una oferta
 
-Una **oferta** es una entidad aparte con: **nombre** (hasta 120 caracteres), **foto**, **vigencia** («Vale desde» obligatorio, «Hasta» opcional), **notas** (hasta 500), a quién **aplica** (todos los clientes o clientes escogidos) y sus **renglones** (hasta 500). Cada renglón es un **producto o kit que ya existe** con su precio de oferta, un **kit de oferta anterior** de la biblioteca («Usar un kit anterior») o un **kit de oferta nuevo** («Crear un kit nuevo») (4.4). Nace en **borrador** y solo da precios cuando se **publica** y está vigente.
+Una **oferta** es una entidad aparte con: **nombre** (hasta 120 caracteres), **foto**, **vigencia** («Vale desde» obligatorio, «Hasta» opcional), **notas** (hasta 500), a quién **aplica** (todos los clientes o clientes escogidos) y sus **renglones** (hasta 500). Cada renglón es un **producto o kit que ya existe** con su precio de oferta, un **kit de oferta anterior** de la biblioteca («Usar un kit anterior») o un **kit de oferta nuevo** («Crear un kit nuevo») (4.4). **Nace publicada** (Lote 234: las ofertas no tienen borrador) y da precios mientras esté activa y vigente.
 
-**Sin fecha de fin.** Si «Hasta» queda en blanco, **la oferta no vence**: vale hasta que alguien la desactive o la regrese a borrador. La pantalla lo avisa en dos lugares: en la tarjeta («Sin fecha de fin: vale hasta que la desactive») y en la ventana, debajo del campo («“Hasta” está en blanco: la oferta no tiene fecha de fin y vale hasta que la desactive.»). Revise esto antes de publicar una oferta de temporada.
+**Sin fecha de fin.** Si «Hasta» queda en blanco, **la oferta no vence**: vale hasta que alguien la desactive. La pantalla lo avisa en dos lugares: en la tarjeta («Sin fecha de fin: vale hasta que la desactive») y en la ventana, debajo del campo («“Hasta” está en blanco: la oferta no tiene fecha de fin y vale hasta que la desactive.»). Revise esto al crear una oferta de temporada.
 
 ### 4.2 Quién puede
 
@@ -123,9 +123,9 @@ Ver las ofertas: `sales.view`. Crear, cambiar, publicar, desactivar, poner fotos
 
 **Contabilidad → Precios y ofertas → Ofertas.** Cada oferta es una tarjeta con su foto, nombre, estado, vigencia, a quién aplica y número de renglones. Se abre con un clic.
 
-1. **Nueva oferta** → ventana con **Nombre de la oferta**, **Notas**, **Vale desde**, **Hasta (en blanco = sin fecha de fin)** y la casilla **Aplica a todos los clientes**. **Crear oferta** la guarda en **borrador** («Oferta creada: agregue su foto y sus renglones.»).
+1. **Nueva oferta** → ventana con **Nombre de la oferta**, **Notas**, **Vale desde**, **Hasta (en blanco = sin fecha de fin)** y la casilla **Aplica a todos los clientes**. **Crear oferta** la deja **publicada desde ese momento** (Lote 234: **las ofertas no tienen borrador**): vale según sus fechas en cuanto tiene renglones («Oferta creada: ya vale según sus fechas. Agregue su foto y sus renglones.»). Si todavía no debe valer, póngale un «Vale desde» futuro.
 2. **Foto de la oferta**: subir, cambiar o quitar (sección 5).
-3. **Clientes de la oferta**: solo si se desmarcó «Aplica a todos los clientes» (**Agregar cliente**; la oferta necesita al menos uno para publicarse).
+3. **Clientes de la oferta**: solo si se desmarcó «Aplica a todos los clientes» (**Agregar cliente**). Mientras no tenga ninguno, la oferta **no aplica a nadie** y la ventana lo avisa: «Esta oferta todavía no aplica a nadie: escoja al menos un cliente.»
 4. **Renglones** (hay tres maneras, y la pantalla lo explica: «Agregue un producto que ya existe con su precio de oferta, o un kit de oferta: use uno anterior de la biblioteca (con el precio que quiera) o cree uno nuevo.»):
    - **Escoger un producto**: se busca por SKU o nombre y se escribe el **precio de oferta**; el renglón muestra al lado el precio de la lista general para comparar. El precio se cambia en su celda (al salir del campo) y el renglón se quita con su botón. Este buscador **ya no ofrece kits de oferta**: esos se agregan con los dos botones siguientes.
    - **Usar un kit anterior**: abre la **biblioteca de kits de oferta** (4.4). Se busca por SKU o nombre; cada kit muestra su foto, SKU, nombre, sus piezas y «Última oferta: «…» a $…» (o «Todavía no se ha usado en ninguna oferta»). Al escogerlo, **las piezas salen en solo lectura** («La composición de un kit anterior no se cambia; para otra composición, cree un kit nuevo.») y el **precio de oferta sale prellenado con el último** («Último precio: $41.94 (oferta «Enero»). Puede poner otro.»): **el precio sí se cambia**. **Agregar a la oferta** pone el renglón. Si el kit ya es renglón de esta oferta, sale «Ya está en esta oferta» y no se puede escoger otra vez.
@@ -133,10 +133,10 @@ Ver las ofertas: `sales.view`. Crear, cambiar, publicar, desactivar, poner fotos
    - Las dos maneras de agregar un kit son pestañas de la misma ventana («Cómo agregar el kit»): se puede pasar de una a otra sin cerrarla.
    - Ejemplo: el kit normal es monitor + agujas; el kit de la oferta es monitor + agujas + tirillas, «al precio de las dos» (o las tirillas a mitad de precio). Para repetir la oferta de noviembre en enero: cree la oferta de enero y use **Usar un kit anterior**; no hay que teclear las piezas otra vez.
 5. **Foto por renglón**: por omisión el renglón muestra la foto del producto; **Poner otra foto** la cambia y **Volver a la del producto** la quita.
-6. **Publicar** (la oferta empieza a dar precios en sus fechas), **Volver a borrador**, **Desactivar** (pide confirmar: «La oferta deja de aplicarse en los pedidos nuevos; un kit de oferta solo se sigue vendiendo si está en otra oferta vigente. Los pedidos ya hechos no cambian y se puede reactivar.») y **Reactivar**.
-7. Los **avisos** (sección 2) salen en el recuadro «Avisos (no impiden guardar ni publicar)». No son errores.
+6. **Desactivar** (pide confirmar: «La oferta deja de aplicarse en los pedidos nuevos; un kit de oferta solo se sigue vendiendo si está en otra oferta vigente. Los pedidos ya hechos no cambian y se puede reactivar.») y **Reactivar**. No hay «Publicar» ni «Volver a borrador» (Lote 234): para sacar una oferta de uso se **desactiva**. Solo una oferta que hubiera quedado en borrador antes del Lote 234 muestra un único botón **Publicar** para sacarla de ahí (el script de cambios ya publicó las que estaban activas).
+7. Los **avisos** (sección 2) salen en el recuadro «Avisos (no impiden guardar)». No son errores.
 
-El estado se ve en la tarjeta: **Borrador**, **Publicada (todavía no empieza)**, **Vigente**, **Vencida** o **Desactivada**, y, aparte, el chip **Se aplica hoy** cuando la oferta está dando precios.
+El estado se ve en la tarjeta: **Programada (todavía no empieza)**, **Vigente**, **Vencida** o **Desactivada**, y, aparte, el chip **Se aplica hoy** cuando la oferta está dando precios.
 
 ### 4.4 Kits de oferta y la biblioteca (Lote 231)
 
@@ -149,7 +149,7 @@ Un **kit de oferta** es un kit que **se arma al pedir**: no tiene existencia pro
 - **Se vende solo mientras esté en alguna oferta publicada y vigente** para el cliente: una oferta **publicada, activa y vigente hoy** (los dos extremos cuentan; sin «hasta» no vence) que aplique al cliente (a todos, o a él entre los escogidos) con un renglón activo de ese kit. Fuera de eso no sale en el catálogo del pedido y pedirlo da el error 422 de la sección 7. Si el kit está en dos ofertas vigentes, se cobra la más barata y sale el aviso `TWO_OFFERS`.
 - **Un kit de venta permanente es una oferta sin fecha de fin**: ponga el kit en una oferta con «Hasta» en blanco.
 - **El kit no se borra ni se da de baja.** Cuando ninguna oferta lo sostiene, simplemente no se vende; las órdenes y facturas que lo usaron lo siguen viendo (la línea guarda su copia). Si una oferta se **extiende** (se cambia o se quita su fecha de fin), se reactiva o se publica otra vez, el kit **vuelve a estar disponible** solo. Al desactivar o volver a borrador una oferta, sus kits salen de la venta salvo que estén en otra oferta vigente.
-- **La composición queda fija una vez usado.** El kit cuenta como **usado** desde que tiene un renglón en cualquier oferta (aunque se haya quitado o la oferta esté en borrador) o una línea en cualquier orden de venta. Desde la pantalla, un kit nace con su renglón: por eso **«Cambiar kit»** (en el renglón) cambia **el nombre** y deja las piezas en solo lectura con la nota «La composición de un kit anterior no se cambia…». El SKU no cambia y el precio se cambia en el renglón. Solo por el API se puede crear un kit en la biblioteca sin ponerlo en una oferta y corregir sus piezas mientras nunca se use. Mandar la misma composición (aunque en otro orden) no cuenta como cambio.
+- **La composición queda fija una vez usado.** El kit cuenta como **usado** desde que tiene un renglón en cualquier oferta (aunque se haya quitado o la oferta esté desactivada) o una línea en cualquier orden de venta. Desde la pantalla, un kit nace con su renglón: por eso **«Cambiar kit»** (en el renglón) cambia **el nombre** y deja las piezas en solo lectura con la nota «La composición de un kit anterior no se cambia…». El SKU no cambia y el precio se cambia en el renglón. Solo por el API se puede crear un kit en la biblioteca sin ponerlo en una oferta y corregir sus piezas mientras nunca se use. Mandar la misma composición (aunque en otro orden) no cuenta como cambio.
 - **Sustitución de piezas y «Ajustable al pedir»: solo aquí.** Las piezas de un kit de oferta se pueden **sustituir** al pedir, salvo las marcadas «No sustituible» (ver [18 §17.1](18-ordenes-de-venta.md#171-cambiar-una-pieza-del-kit-al-pedir-lote-230)); la marca se pone al crear el kit en la ventana de la oferta. «Ajustable al pedir» nace desmarcado. Ninguna de las dos cosas existe en un kit armado ni en un producto normal.
 - **No se pone en una lista de precios.** Su precio va en una oferta (422).
 - **No aparece en Productos e inventario** (ni en sus conteos, filtros o exportación, ni en la importación, ni en lo que se manda a integraciones). Su ficha por identificador sigue respondiendo y las órdenes y facturas lo nombran.
@@ -161,9 +161,9 @@ Un **kit de oferta** es un kit que **se arma al pedir**: no tiene existencia pro
 | Acción | Llamada | Permiso |
 |---|---|---|
 | Ver ofertas (`q`, `state`, `includeInactive`) / una oferta | `GET /offers` · `GET /offers/{publicId}` | `sales.view` |
-| Crear (nace en borrador) | `POST /offers` `{ "name": "Circular de noviembre", "validFrom": "2026-11-10", "validTo": null, "appliesToAll": true, "notes": "…" }` | `sales.pricelist` |
+| Crear (nace **publicada**, Lote 234) | `POST /offers` `{ "name": "Circular de noviembre", "validFrom": "2026-11-10", "validTo": null, "appliesToAll": true, "notes": "…" }` | `sales.pricelist` |
 | Editar (lo que no viene no cambia; `clearValidTo: true` quita la fecha final) | `PATCH /offers/{publicId}` | `sales.pricelist` |
-| Publicar / volver a borrador | `POST …/publish` · `POST …/unpublish` | `sales.pricelist` |
+| Publicar una oferta que quedó en borrador (de antes del Lote 234) · volver a borrador (solo por compatibilidad; la pantalla no lo ofrece) | `POST …/publish` · `POST …/unpublish` | `sales.pricelist` |
 | Desactivar / reactivar | `POST …/deactivate` · `POST …/reactivate` | `sales.pricelist` |
 | Foto de la oferta (JPG, PNG o WEBP) | `POST …/image` (multipart `file`) · `DELETE …/image` | `sales.pricelist` |
 | Agregar o cambiar renglones («Usar un kit anterior» = un renglón con el `productPublicId` del kit; con un kit de oferta ya usado el `price` puede ir vacío y se pone el último) | `POST …/items` `{ "items": [ { "productPublicId": "…", "price": 9.5 } ] }` | `sales.pricelist` |
@@ -187,7 +187,7 @@ Claves de la respuesta de una oferta: `hasEndDate` (false = sin fecha de fin) y 
 | Vale desde | Obligatorio. |
 | Hasta | Opcional; en blanco = no vence. No puede ser anterior al «desde». Los dos extremos cuentan como vigentes. |
 | Notas | Hasta 500 caracteres. |
-| Aplica a todos los clientes | Una oferta para todos no lleva clientes escogidos; una de clientes escogidos necesita al menos uno para publicarse y para seguir publicada. |
+| Aplica a todos los clientes | Una oferta para todos no lleva clientes escogidos; una de clientes escogidos no aplica a nadie mientras no tenga al menos uno. |
 | Renglones | Hasta 500; productos o kits **propios** de la compañía y activos; sin repetir; precio de 0 en adelante con hasta 4 decimales. Si el producto ya está en la oferta, se le cambia el precio. Un kit de oferta de la biblioteca entra en cualquier oferta (también en varias a la vez); sin precio, toma el último con que se usó. |
 | Clientes | Hasta 2000; deben ser clientes activos. |
 | Foto | JPG, PNG o WEBP (sección 5). |
@@ -223,6 +223,7 @@ El contenido de la foto se baja con `GET /files/{imagePublicId}`. `GET /api/v1/p
 - **Ofertas de una marca** = los renglones de ofertas publicadas y vigentes que aplican al cliente, **uno por producto** (el de la oferta más barata). Un **kit de oferta solo sale como tarjeta**, y solo mientras esté en alguna oferta publicada y vigente para el cliente. Un **producto normal en oferta** sale como tarjeta **y además** en la lista de su marca, con el precio resuelto.
 - `isPromotion` = el producto está en una oferta vigente para el cliente; `price` y `priceSource` = lo que se cobrará (`OFFER`, o `CLIENT_LIST` si el negociado es más bajo); `offerPrice` = el precio de la oferta; `offerName`, `offerValidFrom`, `offerValidTo` = de qué oferta y hasta cuándo; `imagePublicId` = la foto ya resuelta (sección 5); `notices[]` = los avisos (sección 2) con su texto listo.
 - `priceSource` `NONE` = **sin precio**: no se puede pedir sin `sales.price`.
+- **«Nueva orden» ofrece los mismos kits de oferta que el pedido guiado** (Lote 234): en la ventana clásica de la orden, el selector de producto de cada línea trae, además de los productos, los kits de oferta de **este catálogo** para el cliente escogido (los de ofertas vigentes que le aplican hoy), con el precio de la oferta. Sin cliente escogido no ofrece ningún kit de oferta. Antes listaba cualquier kit de oferta y el servidor rechazaba al guardar los que no estaban en venta. Como una oferta nace publicada, un kit recién puesto en una oferta vigente sale en los dos sitios de inmediato.
 - Cliente inexistente: 404 «Cliente no encontrado.»; cliente inactivo: 422 «El cliente está inactivo; no se le puede vender.»
 - En la orden, la respuesta de crear o editar el borrador con líneas trae `linePrices[]` (de dónde salió cada precio y sus avisos); no se guarda en la base.
 
@@ -300,10 +301,10 @@ El contenido de la foto se baja con `GET /files/{imagePublicId}`. `GET /api/v1/p
 | Cliente inactivo | — | `El cliente está inactivo; no se le puede vender.` | 422 |
 | Clientes en una oferta para todos | — | `La oferta aplica a todos los clientes: no lleva clientes escogidos. Desmarque «aplica a todos» para escogerlos.` | 422 |
 | Hacer «para todos» una oferta con clientes | — | `La oferta tiene clientes escogidos: quítelos antes de hacerla general (aplica a todos).` | 422 |
-| Publicar sin renglones | — | `Agregue al menos un renglón antes de publicar la oferta.` | 422 |
-| Publicar sin clientes (y no es para todos) / quitar el último cliente de una publicada / desmarcar «aplica a todos» en una oferta ya publicada (todavía no tiene clientes) | — | `Escoja al menos un cliente o marque que la oferta aplica a todos los clientes.` | 422 |
-| Publicar una publicada | — | `La oferta ya está publicada.` | 422 |
-| Volver a borrador un borrador | — | `La oferta ya está en borrador.` | 422 |
+| Publicar sin renglones (solo una oferta que quedó en borrador de antes del Lote 234, `POST …/publish`) | — | `Agregue al menos un renglón antes de publicar la oferta.` | 422 |
+| Publicar sin clientes y sin ser para todos (solo una oferta que quedó en borrador de antes del Lote 234). Desde el Lote 234 **ya no** se rechaza quitar el último cliente ni desmarcar «aplica a todos»: la oferta queda sin aplicar a nadie hasta que se escoja un cliente | — | `Escoja al menos un cliente o marque que la oferta aplica a todos los clientes.` | 422 |
+| Publicar una publicada | — | No es un error (Lote 234): `POST …/publish` responde la oferta tal cual | 200 |
+| Volver a borrador un borrador (`POST …/unpublish`, solo por compatibilidad: la pantalla no lo ofrece) | — | `La oferta ya está en borrador.` | 422 |
 | Desactivar / reactivar lo que ya está así | — | `La oferta ya está desactivada.` / `La oferta ya está activa.` | 422 |
 | Dos personas guardan a la vez | — | `La oferta cambió al mismo tiempo. Recárguela e intente de nuevo.` | 409 |
 | Kit de oferta sin precio | — | `Indique el precio de oferta del kit.` | 400 (`price`) |
@@ -333,12 +334,14 @@ Los mensajes de la foto del producto (`Adjunte la foto.`, `La foto debe ser una 
 
 ## 8. Estatus y transiciones
 
+**Lote 234 — las ofertas no tienen borrador.** Una oferta nace publicada y vale según sus fechas; se saca de uso con **Desactivar**. El estado «Borrador» y las transiciones Borrador ↔ Publicada de las tablas de abajo valen para las **listas de precios**; en una oferta solo queda «Borrador» si venía de antes del lote (se publica con su botón **Publicar**).
+
 Ni la lista ni la oferta **usan el motor de estatus**: su estado sale de «publicada» y de las fechas, y solo se auditan publicar, volver a borrador y desactivar (bitácora `PRICE_LIST` y `OFFER`).
 
 | Estado que se ve | Cuándo | ¿Da precios en pedidos nuevos? |
 |---|---|---|
 | **Borrador** | No está publicada | No |
-| **Programada** (en la oferta: «Publicada (todavía no empieza)») | Publicada, «desde» es futuro | No (todavía) |
+| **Programada** (en la oferta: «Programada (todavía no empieza)») | Publicada, «desde» es futuro | No (todavía) |
 | **Vigente** | Publicada y hoy cae entre «desde» y «hasta» (sin «hasta»: desde «desde» en adelante) | Sí |
 | **Vencida** | Publicada y «hasta» ya pasó (una oferta sin «hasta» nunca vence) | No |
 | **Desactivada** | `IsActive = 0` (cualquiera de las anteriores) | No; no se puede cambiar |
@@ -362,7 +365,7 @@ Qué bloquea cada estado: una lista u oferta **desactivada** no se edita (ni ren
 - **La oferta no aparece en el pedido.** Debe estar **publicada**, **activa**, vigente hoy y aplicar al cliente (para todos, o él entre los escogidos). Un kit de la oferta solo sale mientras la oferta valga.
 - **Dejé «Hasta» en blanco.** La oferta no vence. Desactívela o póngale fecha cuando termine la promoción.
 - **Salió un aviso amarillo en la oferta.** Es un aviso de precio, no un error: otra oferta igual o más barata coincide, o el precio sale más caro que la lista general. Se cobra el más bajo; revise si es lo que quería.
-- **Quitar un cliente de una lista u oferta publicada falla.** Es el último y no es general / para todos: agregue otro o pásela a borrador primero.
+- **Quitar un cliente de una lista publicada falla.** Es el último y la lista no es general: agregue otro o pásela a borrador primero. En una **oferta** sí se puede (Lote 234): queda sin aplicar a nadie hasta que escoja otro.
 - **No encuentro el kit de la oferta en el pedido.** Revise que el kit esté en una oferta publicada, activa y vigente que aplique al cliente (un kit de oferta no se vende fuera de la vigencia, y tampoco aparece en Productos e inventario).
 - **¿Dónde creo un kit?** Si se arma al pedir, en una oferta: **Crear un kit nuevo**. Si debe tener existencia en el almacén, en Productos e inventario → **Nuevo producto** → «¿Lo que va a crear es un kit?» → Sí ([06 §8b](06-inventario-y-almacen.md#8b-kits-armado-y-de-oferta-lotes-68-231-y-232-2026-11-10)).
 - **¿Cómo repito en enero la oferta de noviembre?** Cree la oferta de enero y, en **Renglones**, use **Usar un kit anterior**: escoja el kit y confirme el precio (se sugiere el último). Las piezas no se teclean otra vez.

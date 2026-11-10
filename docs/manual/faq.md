@@ -11532,13 +11532,13 @@ Capítulos: [47 — Listas de precios y ofertas](47-precios-y-ofertas.md) (ofert
 ### Casos frecuentes
 
 **¿Dónde creo una oferta?**
-En Contabilidad → Precios y ofertas, sección **Ofertas**, botón **Nueva oferta** (hace falta `sales.pricelist`). La oferta nace en **borrador**: póngale foto, renglones (y clientes, si no es para todos) y pulse **Publicar**. Hasta publicarla no da precios.
+En Contabilidad → Precios y ofertas, sección **Ofertas**, botón **Nueva oferta** (hace falta `sales.pricelist`). La oferta nace **publicada** (desde el Lote 234 las ofertas no tienen borrador): póngale foto, renglones (y clientes, si no es para todos). Da precios según sus fechas en cuanto tiene renglones.
 
 **Antes un kit se marcaba como promoción. ¿Cómo hago ahora que un kit sea oferta?**
 Ya no se marca el kit: se crea una oferta y se pone el kit como **renglón** con su precio de oferta: **Usar un kit anterior** (de la biblioteca de kits de oferta) o **Crear un kit nuevo**. Las promociones que existían se conservaron como datos, pero ya no dan precio ni bloquean ventas.
 
 **Dejé «Hasta» en blanco. ¿Qué pasa?**
-La oferta **no vence**: vale hasta que se desactive o se vuelva a borrador. La pantalla lo avisa («Sin fecha de fin: vale hasta que la desactive»). Si es de temporada, póngale fecha.
+La oferta **no vence**: vale hasta que se desactive. La pantalla lo avisa («Sin fecha de fin: vale hasta que la desactive»). Si es de temporada, póngale fecha.
 
 **¿Qué precio se cobra si el producto está en una oferta y también en la lista del cliente?**
 El **más bajo** de los dos; si empatan, el de la lista del cliente. Sin precio negociado, el más bajo entre la oferta y la lista general. Si no hay ninguno, el precio de venta del producto. Un producto que no está en ninguna parte y no tiene precio de venta sale «Sin precio».
@@ -12013,3 +12013,82 @@ El panel sale solo si la compañía tiene encendido el módulo Inventario con lo
 
 **¿Qué significa "La compañía no trabaja con kits armados: actívelo en Ajustes → Operación."?**
 Se intentó crear un kit armado y la compañía tiene apagado «La compañía trabaja con kits armados» (422). No se creó nada. Un administrador lo enciende en Sistema → Ajustes → Operación → Kits; después vuelva a crear el kit. Por la pantalla este mensaje casi nunca sale (la pregunta no aparece con el ajuste apagado): sale por el API, o si apagaron el ajuste mientras usted tenía abierto «Nuevo producto».
+
+## Lote 234 — Ofertas sin borrador, las fotos que no cargaban y el kit de oferta en «Nueva orden»
+<!-- kemi:staff -->
+
+Capítulo: [47 — Listas de precios y ofertas](47-precios-y-ofertas.md) (§4 ofertas, §5 catálogo del pedido, §8 estados).
+
+### Casos frecuentes
+
+**Creé una oferta y no veo el botón «Publicar». ¿Cómo la publico?**
+No hace falta: desde el Lote 234 **las ofertas no tienen borrador**. Una oferta queda publicada al crearla y vale según sus fechas («Vale desde» / «Hasta»). Si todavía no debe valer, póngale un «Vale desde» futuro (sale como «Programada (todavía no empieza)»). Las **listas de precios** sí siguen con borrador y «Publicar».
+
+**¿Cómo saco de uso una oferta, si ya no hay «Volver a borrador»?**
+Con **Desactivar** (se puede **Reactivar** después). Deja de aplicarse a los pedidos nuevos; los ya hechos no cambian.
+
+**Tengo una oferta vieja que dice «Borrador».**
+Era de antes del Lote 234. El script de cambios publicó una sola vez las ofertas activas que estaban en borrador; si queda alguna (por ejemplo, una que estaba desactivada y se reactivó), ábrala y pulse **Publicar**: es el único botón que la saca de ahí.
+
+**La oferta es para clientes escogidos y todavía no escogí ninguno. ¿Aplica?**
+No aplica a nadie hasta que escoja al menos un cliente; la ventana lo avisa («Esta oferta todavía no aplica a nadie: escoja al menos un cliente.»). Ya no se rechaza quitar el último cliente ni desmarcar «Aplica a todos los clientes».
+
+**Las fotos de la oferta o del producto salían rotas (el cuadrito con el texto) «a veces sí y a veces no».**
+Eran dos fallas, corregidas en el Lote 234: (1) la pantalla soltaba la foto que tenía en memoria cuando se cerraba una ventana que la mostraba, aunque otra parte de la pantalla (la tarjeta, el renglón, el pedido) la siguiera usando; al reabrir salía rota hasta recargar la página. (2) Una foto subida con un nombre de archivo con **acentos o eñe** («Diseño sin título.png», «Promoción.jpg») nunca cargaba: el servidor fallaba al contestarla. Ya no hace falta renombrar los archivos ni volver a subirlos: las fotos que ya estaban guardadas vuelven a verse.
+
+**En «Nueva orden» ya no me sale un kit de oferta que antes salía.**
+Desde el Lote 234 «Nueva orden» ofrece **los mismos kits de oferta que «Nuevo pedido»**: solo los de ofertas vigentes hoy que aplican al cliente escogido (escoja primero el cliente). Antes listaba cualquier kit de oferta y al guardar salía «El kit de oferta … no está en ninguna oferta publicada y vigente…». Revise que la oferta esté activa, en fechas y que aplique a ese cliente.
+
+**Puse un kit en una oferta y no sale en el pedido.**
+Sale de inmediato en «Nuevo pedido» y en «Nueva orden» si la oferta está activa, vigente hoy y aplica al cliente. Si la ventana del pedido ya estaba abierta, vuelva a escoger el cliente o recargue la página.
+
+### Mensajes de error
+
+**¿Qué significa "La oferta ya está publicada."?**
+Ya no sale: desde el Lote 234 publicar una oferta que ya está publicada no es un error (el servidor responde la oferta tal cual). "La oferta ya está en borrador." (422) solo puede salir a quien llame por API a `POST /offers/{id}/unpublish` sobre una oferta en borrador; la pantalla ya no lo ofrece.
+
+**¿Qué significa "Agregue al menos un renglón antes de publicar la oferta." o "Escoja al menos un cliente o marque que la oferta aplica a todos los clientes."?**
+Solo salen (422) al pulsar **Publicar** en una oferta que quedó en borrador de antes del Lote 234: agréguele un renglón, o escoja un cliente o marque «Aplica a todos los clientes», y publique otra vez.
+
+## Lote 235 — Almacén de la orden, almacén principal y disponible al escoger productos
+<!-- kemi:staff -->
+
+Capítulos: [18 §26](18-ordenes-de-venta.md#26-almacén-de-la-orden-y-disponible-al-escoger-productos-lote-235), [48 — Pedido guiado](48-pedido-guiado.md) (pasos 1 a 3) y [06 §1.7](06-inventario-y-almacen.md#17-almacén-principal-lote-235).
+
+**¿De qué almacén sale la orden si no escojo ninguno?**
+Del **almacén principal** de la compañía. Con un solo almacén activo no se pregunta (se usa ese). Con varios, el campo Almacén sale ya escogido con el principal y se puede cambiar. La orden sale de un solo almacén: no hay almacén por línea.
+
+**¿Cómo cambio el almacén principal?**
+En Almacén → Almacenes, abra el almacén y pulse **«Hacer principal»** (permiso `warehouse.manage`). El anterior deja de serlo: solo hay uno. En la lista, el principal lleva el distintivo «Principal».
+
+**Nunca marqué un almacén principal. ¿Cuál es?**
+El almacén activo más antiguo. Es lo que ya pasaba antes; cambia cuando marque otro.
+
+**¿Qué es «Disponible: N» junto al producto?**
+Lo disponible para vender en el almacén de la orden: lo que hay en mano menos lo reservado, sin contar cuarentena, cruce de muelle ni equipos en renta. En un kit de oferta es cuántos kits completos se pueden armar con sus piezas en ese almacén; en un kit armado, su existencia. Puede diferir del «Disponible» de la tabla de inventario, que sí suma la cuarentena.
+
+**El renglón se puso rojo y dice «Backorder: 3». ¿Puedo seguir?**
+Sí. Pedir más de lo disponible **se permite** (por ejemplo, si viene una compra de camino). El aviso solo dice cuánto quedará pendiente; el pedido se guarda y se envía igual: se reserva lo disponible y lo demás queda en backorder.
+
+**¿Qué hago con «Hay disponible en {almacén}: N»?**
+Es informativo: otro almacén activo tiene ese producto. La orden sigue saliendo de su almacén; si quiere venderlo del otro, cambie el almacén de la orden (paso 1 del pedido o el campo Almacén de «Nueva orden») o pida una transferencia al almacén.
+
+**No me sale «Disponible» en ningún producto.**
+Hace falta el permiso `sales.view` y el módulo Órdenes de venta. Si los tiene, recargue: el dato se pide al abrir la pantalla y se refresca cada 30 segundos.
+
+**En el pedido guiado ya no me salió el diálogo de faltante al enviar.**
+Si alguna línea estaba marcada «Backorder: N» al capturar, el pedido se envía aceptando el backorder sin volver a preguntar. El diálogo solo sale si el inventario cambió entre la captura y el envío. En «Nueva orden» el diálogo sale siempre al solicitar, como antes.
+
+### Mensajes de error
+
+**¿Qué significa «Solo hay X disponibles en {almacén}; N quedan en backorder.» / «Solo hay 1 disponible en {almacén}; …» / «No hay disponible en {almacén}; N quedan en backorder.»?**
+No es un error: es el aviso (en rojo, con el distintivo «Backorder: N») de que la cantidad pasa de lo disponible en el almacén de la orden. No bloquea. Qué hacer: dejarlo así si se espera inventario, bajar la cantidad, o cambiar el almacén de la orden si otro tiene («Hay disponible en …»).
+
+**¿Qué significa "Para cambiar el almacén principal, marque otro almacén como principal."? (400)**
+Se mandó `isMain: false` al API. El principal no se «quita»: marque como principal el almacén que debe serlo.
+
+**¿Qué significa "Indique el almacén: la compañía tiene más de uno." en una orden de venta?**
+Ya no sale en las órdenes de venta desde el Lote 235: sin almacén indicado se toma el principal. (En otros documentos —orden de compra, conteos, avisos— la regla sigue.)
+
+**¿Qué significa "No alcanza el inventario de {SKU}: pedido {n}, disponible {n}, faltante {n}."? (409)**
+Sale al solicitar o enviar sin aceptar el backorder. Qué hacer: en el diálogo, escoja reservar lo disponible y dejar el resto en backorder, o corrija la cantidad.

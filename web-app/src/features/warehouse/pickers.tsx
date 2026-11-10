@@ -666,6 +666,11 @@ export interface ProductPickerProps {
   includeInactive?: boolean
   /** Lote 231: incluye los kits de oferta (el servidor los deja fuera por omisión); solo la orden de venta clásica los pide. */
   includeOfferKits?: boolean
+  /**
+   * Lote 234: opciones que no salen de la lista de productos y van primero (filtradas por lo que se escribe: SKU o nombre). La orden de venta pasa aquí los kits
+   * de oferta que el cliente escogido puede comprar HOY (los de `GET /sales-orders/catalog`), con el precio de la oferta en `salePrice`.
+   */
+  extraOptions?: ProductListItemDto[]
   id?: string
   placeholder?: string
   disabled?: boolean
@@ -687,6 +692,7 @@ export function ProductPicker({
   showAvailable,
   includeInactive,
   includeOfferKits,
+  extraOptions,
   id,
   placeholder,
   disabled,
@@ -744,7 +750,10 @@ export function ProductPicker({
   })
   const selectedLabel = known ? productLabel(known) : value ? productLabel(detail.data?.product) : ''
 
-  const options = (list.data?.items ?? []).slice(0, MAX_SHOWN)
+  const needle = text.trim().toLowerCase()
+  const extras = (extraOptions ?? []).filter((p) => !needle || `${p.sku ?? ''} ${p.name ?? ''}`.toLowerCase().includes(needle))
+  const extraIds = new Set(extras.map((p) => p.publicId))
+  const options = [...extras, ...(list.data?.items ?? []).filter((p) => !extraIds.has(p.publicId))].slice(0, MAX_SHOWN)
 
   const choose = (p: ProductListItemDto) => {
     setPicked(p)
@@ -779,6 +788,7 @@ export function ProductPicker({
 
   let status: string | null = null
   if (list.isLoading) status = t('common.loading')
+  else if (extras.length > 0) status = null // hay opciones propias que mostrar aunque la lista de productos falle
   else if (isAccessDenied(list.error)) status = t('ui.productPicker.noAccess')
   else if (list.error) status = t('errors.generic')
   else if (options.length === 0) status = t('ui.productPicker.none')

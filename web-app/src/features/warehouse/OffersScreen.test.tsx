@@ -40,6 +40,7 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
 const O1 = 'dddddddd-0000-0000-0000-000000000001'
 const O2 = 'dddddddd-0000-0000-0000-000000000002'
 const NEW = 'dddddddd-0000-0000-0000-000000000003'
+const OLD = 'dddddddd-0000-0000-0000-000000000004'
 const GUA = 'eeeeeeee-0000-0000-0000-000000000001'
 const MON = 'eeeeeeee-0000-0000-0000-000000000002'
 const TIR = 'eeeeeeee-0000-0000-0000-000000000003'
@@ -91,10 +92,12 @@ function route({ method, url }: Call): unknown {
   if (method === 'PATCH' && p === `/api/v1/offers/kits/${KIT}`) return LIB_OF
   if (method === 'GET' && p === '/api/v1/price-lists') return []
   if (method === 'GET' && p === '/api/v1/offers')
-    return [LIST_ITEM(O1, 'Navidad', 'ACTIVE'), LIST_ITEM(O2, 'Verano', 'SCHEDULED', { validTo: '2026-12-31', hasEndDate: true, validityText: 'del 01/11/2026 al 31/12/2026', itemCount: 1 })]
+    return [LIST_ITEM(O1, 'Navidad', 'ACTIVE'), LIST_ITEM(O2, 'Verano', 'SCHEDULED', { validTo: '2026-12-31', hasEndDate: true, validityText: 'del 01/11/2026 al 31/12/2026', itemCount: 1 }), LIST_ITEM(OLD, 'Vieja', 'DRAFT', { itemCount: 1 })]
+  if (method === 'GET' && p === `/api/v1/offers/${OLD}`) return DETAIL(OLD, 'Vieja', 'DRAFT', { items: ITEMS })
+  if (method === 'POST' && p === `/api/v1/offers/${OLD}/publish`) return DETAIL(OLD, 'Vieja', 'ACTIVE', { items: ITEMS })
   if (method === 'GET' && p === `/api/v1/offers/${O1}`) return DETAIL(O1, 'Navidad', 'ACTIVE', { items: ITEMS, warnings: [{ code: 'CHEAPER_OFFER', message: WARNING, productPublicId: GUA, sku: 'GUA-1', otherOfferName: 'Verano', otherPrice: 8 }] })
-  if (method === 'POST' && p === '/api/v1/offers') return DETAIL(NEW, 'Black Friday', 'DRAFT')
-  if (method === 'GET' && p === `/api/v1/offers/${NEW}`) return DETAIL(NEW, 'Black Friday', 'DRAFT')
+  if (method === 'POST' && p === '/api/v1/offers') return DETAIL(NEW, 'Black Friday', 'ACTIVE')
+  if (method === 'GET' && p === `/api/v1/offers/${NEW}`) return DETAIL(NEW, 'Black Friday', 'ACTIVE')
   if (method === 'POST' && p === `/api/v1/offers/${O1}/items`) return DETAIL(O1, 'Navidad', 'ACTIVE', { items: ITEMS })
   if (method === 'POST' && p === `/api/v1/offers/${O1}/kits` && mock.kitCreate) return mock.kitCreate()
   if (method === 'POST' && p === `/api/v1/offers/${O1}/kits`) return { productPublicId: KIT, sku: 'KIT-NEW', offer: DETAIL(O1, 'Navidad', 'ACTIVE', { items: ITEMS }) }
@@ -149,7 +152,7 @@ describe('Precios y ofertas — Ofertas (lote 229)', () => {
     expect(within(navidad).getByText('Sin fecha de fin: vale hasta que la desactive')).toHaveClass('of-open')
     expect(within(navidad).getByText(/Todos los clientes · 2 renglón\(es\)/)).toBeInTheDocument()
     const verano = screen.getByRole('article', { name: 'Verano' })
-    expect(within(verano).getByText('Publicada (todavía no empieza)')).toBeInTheDocument()
+    expect(within(verano).getByText('Programada (todavía no empieza)')).toBeInTheDocument()
     expect(within(verano).getByText('Del 11/01/2026 al 12/31/2026')).toBeInTheDocument()
     expect(within(verano).queryByText(/Sin fecha de fin/)).toBeNull()
     // solo sales.view: se ve, no se edita
@@ -179,7 +182,26 @@ describe('Precios y ofertas — Ofertas (lote 229)', () => {
     expect(await within(created).findByRole('combobox', { name: 'Escoger un producto' })).toBeInTheDocument()
     expect(within(created).getByRole('button', { name: 'Usar un kit anterior' })).toBeInTheDocument()
     expect(within(created).getByRole('button', { name: 'Crear un kit nuevo' })).toBeInTheDocument()
-    expect(within(created).getByText('Borrador')).toBeInTheDocument()
+    // Lote 234: la oferta nace publicada: sin «Borrador», sin «Publicar» y sin «Volver a borrador»
+    expect(within(created).getByText('Vigente')).toBeInTheDocument()
+    expect(within(created).queryByText('Borrador')).toBeNull()
+    expect(within(created).queryByRole('button', { name: 'Publicar' })).toBeNull()
+    expect(within(created).queryByRole('button', { name: 'Volver a borrador' })).toBeNull()
+    expect(within(created).getByRole('button', { name: 'Desactivar' })).toBeInTheDocument()
+  })
+
+  it('lote 234: una oferta vigente no ofrece «Volver a borrador»; una que quedó en borrador de antes solo ofrece «Publicar»', async () => {
+    const user = userEvent.setup()
+    wrap(EDIT)
+    const dialog = await openOffer(user, 'Navidad')
+    expect(await within(dialog).findByRole('button', { name: 'Desactivar' })).toBeInTheDocument()
+    expect(within(dialog).queryByRole('button', { name: 'Volver a borrador' })).toBeNull()
+    expect(within(dialog).queryByRole('button', { name: 'Publicar' })).toBeNull()
+    await user.click(within(dialog).getAllByRole('button', { name: 'Cerrar' })[0])
+    const old = await openOffer(user, 'Vieja')
+    await user.click(await within(old).findByRole('button', { name: 'Publicar' }))
+    await waitFor(() => expect(posts(`/api/v1/offers/${OLD}/publish`)).toHaveLength(1))
+    expect(within(old).queryByRole('button', { name: 'Volver a borrador' })).toBeNull()
   })
 
   it('renglón con un producto existente y su precio de oferta', async () => {
@@ -335,7 +357,7 @@ describe('Precios y ofertas — Ofertas (lote 229)', () => {
     const user = userEvent.setup()
     wrap(EDIT)
     const dialog = await openOffer(user, 'Navidad')
-    const warns = await within(dialog).findByRole('status', { name: 'Avisos (no impiden guardar ni publicar)' })
+    const warns = await within(dialog).findByRole('status', { name: 'Avisos (no impiden guardar)' })
     expect(warns).toHaveTextContent(WARNING)
     expect(within(dialog).queryByRole('alert')).toBeNull()
     // sin «hasta»: el aviso también en el editor de una oferta ya creada

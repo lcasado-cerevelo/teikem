@@ -31,6 +31,11 @@ public class Warehouse : ITenantScoped, ISoftDeletable, IHasStatus
     /// compuesta FK_Warehouse_DefaultReceivingBin). NULL = la primera STAGING por código de zona y de posición.
     /// </summary>
     public int? DefaultReceivingBinId { get; set; }
+    /// <summary>
+    /// Lote 235: «almacén principal» de la compañía — el que la venta escoge por omisión cuando hay varios. Uno solo por compañía (UX_Warehouse_Main); si ninguno
+    /// está marcado, el principal es el activo más antiguo (WarehouseRules.MainWarehouseId).
+    /// </summary>
+    public bool IsMain { get; set; }
 
     public StatusCode? Status { get; set; }
     public ICollection<WarehouseZone> Zones { get; set; } = new List<WarehouseZone>();

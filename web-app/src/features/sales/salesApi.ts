@@ -61,6 +61,23 @@ export const salesKeys = {
   list: (query: SalesOrderListQuery, skip: number, take: number) => ['sales', '/api/v1/sales-orders', query, skip, take] as const,
   one: (id: string) => ['sales', 'one', id] as const,
   backorders: (q: string) => ['sales', '/api/v1/sales-orders/backorders', q] as const,
+  /** Bajo 'sales': guardar, solicitar o despachar una orden lo vuelve a pedir (cambia lo reservado). */
+  stock: ['sales', '/api/v1/sales-orders/stock'] as const,
+}
+
+/**
+ * Lote 235 — lo disponible al escoger productos: los almacenes activos (con el principal marcado) y lo disponible para vender por producto y almacén. Una sola
+ * consulta para todo el catálogo (`stockRules.ts` saca de ahí «Disponible: N», el backorder y la nota de otros almacenes). Se refresca a los 30 s.
+ */
+export function useSalesStock(enabled = true) {
+  return useQuery({
+    queryKey: salesKeys.stock,
+    queryFn: () => unwrap(api.GET('/api/v1/sales-orders/stock')),
+    enabled,
+    staleTime: 30_000,
+    retry: false,
+    meta: { handleAccessDenied: false },
+  })
 }
 
 export function useSalesOrders(filters: SalesOrderFilters, skip: number, take: number) {

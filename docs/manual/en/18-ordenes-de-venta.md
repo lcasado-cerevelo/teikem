@@ -18,7 +18,7 @@ The full design is in `Diseño/logistica-funcionalidades-maestro.md`, section 13
 ## 2. The order
 
 - **Number** `OV-#####`, unique per company, consecutive and without gaps (a failed attempt does not use up a number).
-- **Client** (required): the buyer. **Consignee** (optional): only if there will be a delivery. **Warehouse**: the one that serves it; if the company has a single active warehouse it is used on its own, if it has several it must be specified.
+- **Client** (required): the buyer. **Consignee** (optional): only if there will be a delivery. **Warehouse**: the one that serves it, **one per order** (dispatch is per warehouse; there is no warehouse per line). With a single active warehouse that one is used; with several, if none is given the **main warehouse** is taken ([§26](#26-the-orders-warehouse-and-what-is-available-when-picking-products-batch-235)).
 - **Request date** (today, in the company's time zone), **required date** (optional), **notes** (up to 500 characters) and **who requested it**.
 - **Lines**: product, quantity and price. Only **the company's own products** are sold (not those of a pass-through client), active, **without repeating** in the same order. Up to 200 lines.
 - **Price**: if none is written, the **product's sale price** is taken. Writing a different price requires `sales.price` (if it equals the list price it is not needed). A product **without a sale price** forces you to write the price.
@@ -52,7 +52,7 @@ Orders are **never deleted**: they are cancelled. They stay in the log (creation
 | Client does not exist (or belongs to another company) | `Client not found.` | 404 |
 | Inactive client | `The client is inactive; nothing can be sold to it.` | 422 |
 | Consignee does not exist | `Consignee not found.` | 404 |
-| Several warehouses and none specified | `Specify the warehouse: the company has more than one.` | 400 (`warehousePublicId`) |
+| Several warehouses and none specified | No longer an error (Batch 235): the company's **main warehouse** is taken. | — |
 | Warehouse does not exist / inactive / the company has none | `Warehouse not found.` / `The warehouse is inactive.` / `The company has no active warehouses.` | 404 / 422 / 422 |
 | No lines | `Add at least one product to the order.` | 400 (`lines`) |
 | More than 200 lines | `The order allows at most 200 lines.` | 400 |
@@ -569,3 +569,22 @@ Within one filter **any** of the chosen values is enough; across different filte
 | Situation | Exact message (in Spanish) | HTTP |
 |---|---|---|
 | `dateField` with another value | `La fecha a filtrar debe ser REQUESTED (solicitada) o REQUIRED (requerida).` | 400 (`dateField`) |
+
+## 26. The order's warehouse and what is available when picking products (Batch 235)
+<!-- kemi:staff -->
+
+Luis's decision (2026-11-10). It applies to the **New order** window, the **guided order** ([48](48-pedido-guiado.md)) and the sellers' app.
+
+- **The order keeps its warehouse**: one per order. There is no warehouse per line.
+- **Default warehouse = the main one.** With **a single active warehouse** the field is not shown (that one is used). With **more than one**, the **Warehouse** field comes **already selected with the main warehouse** (the one marked in Warehouse → Warehouses; if none is marked, the oldest active one: [06 §1.7](06-inventario-y-almacen.md#17-main-warehouse-batch-235)) and can be changed. Whoever calls the API without `warehousePublicId` also gets the main one.
+- **“Available: N”** on every line of “New order” (under the product) and every row of the guided order: what **can be sold in the order's warehouse** ([§6](#6-requesting-the-order-validate-and-reserve-batch-58): on hand − reserved, active bins, without quarantine, cross-dock or rental). **Offer kit** = complete kits that can be built with its pieces in that warehouse (with the catalog pieces; if pieces are swapped in the order, Request makes the final count). **Assembled kit** = its own stock. Changing the order's warehouse changes what is available.
+- **Ordering more than what is available is allowed.** The line is **marked in red**: **“Backorder: N”** badge and “Only X available in {warehouse}; N go on backorder.” (with 1: “Only 1 available in {warehouse}; 1 goes on backorder.”; with none: “None available in {warehouse}; N go on backorder.”). **It does not block**: the order is saved with that quantity. **Requesting** works as always ([§6](#6-requesting-the-order-validate-and-reserve-batch-58)): the shortage dialog with “reserve what is available and leave the rest on backorder”. The guided order, if the line was already marked, sends `allowBackorder` directly and does not ask again.
+- **Other warehouses note**: “Available in {warehouse}: N” or “Available in: {warehouse A} N · {warehouse B} M”, only if another active warehouse has stock. It is not editable: to sell from there, change the order's warehouse.
+
+**API** — `GET /api/v1/sales-orders/stock` (module `SALES_ORDERS`, permission `sales.view`). A single query for the whole catalog: `warehouses[]` (active warehouses by code: `publicId`, `code`, `name`, `isMain`) and `products[]` (`productPublicId`, `stock[]` with `warehousePublicId` and `available`). Only the company's own active products with more than zero available in some active warehouse travel: **what is missing is 0**. It is a snapshot without locks (the screen refreshes it every 30 seconds and when an order is saved); Request has the final word.
+
+| Situation | What you see | HTTP |
+|---|---|---|
+| Quantity above what is available in the order's warehouse | On-screen notice, not an error: “Only X available in {warehouse}; N go on backorder.” | — |
+| Requesting without accepting the backorder | `No alcanza el inventario de {SKU}: pedido {n}, disponible {n}, faltante {n}.` | 409 |
+| Without `sales.view` or without the module | What is available is not shown and the Warehouse field is the usual one | 403 |

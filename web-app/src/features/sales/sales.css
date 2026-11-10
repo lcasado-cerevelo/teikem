@@ -62,3 +62,12 @@
 .sales-ship .help { display: block; font-weight: 400; }
 /* Lote 228: sin pasar del ancho de su celda (se salía de la ventana de la orden) */
 .sales-sign img { max-width: min(240px, 100%); max-height: 100px; box-sizing: border-box; background: #fff; border: 1px solid var(--line, #8884); border-radius: 6px; }
+/* Lote 235: lo disponible al escoger productos. «Disponible: N» y la nota de otros almacenes en gris; el backorder en el tono de falla del tema (claro y oscuro). */
+.sales-stock { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.sales-stock-avail { font-variant-numeric: tabular-nums; }
+.sales-stock-short { color: var(--danger); font-weight: 600; }
+.sales-stock-else { font-style: italic; }
+.sales-line > .sales-stock { grid-column: 1 / -1; }
+.sales-backorders { list-style: none; margin: 8px 0 0; padding: 8px 10px; border: 1px solid var(--danger); border-radius: 8px; background: var(--dangerbg); display: flex; flex-direction: column; gap: 6px; }
+.sales-backorders li { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sales-backorders b { overflow-wrap: anywhere; }

@@ -2,7 +2,7 @@
 // notas), foto de la oferta, clientes escogidos y renglones: (a) escoger un producto que ya existe + precio de oferta (el buscador de productos ya no trae
 // kits de oferta: lote 231), o un kit de oferta (`OfferKitModal`) por uno de sus dos caminos: (b) «Usar un kit anterior» de la biblioteca (composición fija,
 // precio editable con el último sugerido) o (c) «Crear un kit nuevo» (queda en la biblioteca). Cada renglón con su foto (por omisión la del producto; se puede cambiar o quitar para volver a la del
-// producto). Publicar / volver a borrador / desactivar / reactivar. Los `warnings` del servidor (otra oferta más barata, oferta más cara que la lista general)
+// producto). Lote 234: la oferta nace publicada (sin borrador): solo desactivar / reactivar («Publicar» únicamente si quedó en borrador de antes). Los `warnings` del servidor (otra oferta más barata, oferta más cara que la lista general)
 // se muestran como avisos, no como errores. Editar exige sales.pricelist; con solo sales.view todo queda de lectura.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useCan } from '../../kernel/access'
@@ -22,7 +22,7 @@ type Run = (fn: () => Promise<unknown>, okKey?: string, params?: Record<string, 
 const P = 'warehouse.products.prices'
 const O = 'warehouse.products.prices.offer'
 
-/** Avisos del servidor sobre la oferta (no impiden guardar ni publicar). */
+/** Avisos del servidor sobre la oferta (no impiden guardar). */
 export function OfferWarnings({ warnings }: { warnings: OfferWarningDto[] | null | undefined }) {
   const t = useT()
   if (!warnings?.length) return null
@@ -151,6 +151,7 @@ export function OfferEditorModal({ publicId: initialId, onClose }: { publicId: s
                 <ItemsSection offer={offer} editable={editable} onRun={run} onFail={setError} />
                 {canEdit && (
                   <div className="pl-bar">
+                    {/* Lote 234: las ofertas no tienen borrador (nacen publicadas). Solo una oferta que quedó en borrador de antes muestra «Publicar» para salir de ahí. */}
                     {offer.isActive !== false && !offer.isPublished && (
                       <button
                         type="button"
@@ -163,11 +164,6 @@ export function OfferEditorModal({ publicId: initialId, onClose }: { publicId: s
                         }}
                       >
                         {t(`${P}.publish`)}
-                      </button>
-                    )}
-                    {offer.isActive !== false && offer.isPublished && (
-                      <button type="button" className="btn" disabled={busy} onClick={() => void run(() => actions.unpublish.mutateAsync(publicId), `${O}.unpublished`)}>
-                        {t(`${P}.unpublish`)}
                       </button>
                     )}
                     {offer.isActive !== false ? (
@@ -285,6 +281,12 @@ function ClientsSection({ offer, editable, onRun }: { offer: OfferDto; editable:
             ),
         )}
       </div>
+      {/* Lote 234: sin borrador, una oferta «para algunos clientes» sin clientes ya está publicada pero no aplica a nadie: se dice */}
+      {clients.length === 0 && offer.isActive !== false && (
+        <p className="of-open" role="note">
+          {t(`${O}.noClientsYet`)}
+        </p>
+      )}
       {editable && (
         <div className="f" style={{ maxWidth: 420 }}>
           <label htmlFor="of-client">{t(`${P}.addClient`)}</label>

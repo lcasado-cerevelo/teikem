@@ -304,6 +304,20 @@ Pantalla: Almacén → **Posiciones** — botón **Productos por posición**, ca
 cero, de productos activos. `warehousePublicId` es obligatorio (400 `Indique el almacén.`; 404 `Almacén no encontrado.` si no existe o es de otra compañía); `productPublicIds` vacío = todos; página `{ total, skip, take, serverTimeUtc, items }`,
 `take` ≤ 500 (por defecto 500). **Es la única implementación de esa regla**: la app de almacén la baja al aparato y la consulta en línea; ninguna pantalla vuelve a ordenar.
 
+### 1.7 Almacén principal (Lote 235)
+
+El **almacén principal** es el que la venta escoge por omisión cuando la compañía tiene varios almacenes activos (pedido guiado, «Nueva orden», app de vendedores y el API cuando no se manda almacén; [18 §26](18-ordenes-de-venta.md#26-almacén-de-la-orden-y-disponible-al-escoger-productos-lote-235)).
+
+- **Uno solo por compañía.** Marcar un almacén como principal **desmarca el anterior**. Si ninguno está marcado, el principal es el **almacén activo más antiguo** (así ya funcionaba: nada cambia hasta que se escoja otro).
+- **Dónde**: Almacén → **Almacenes**. En la lista, el principal lleva el distintivo **«Principal»** junto al nombre. En la ficha de un almacén que no lo es, el botón **«Hacer principal»** (permiso `warehouse.manage`); al hacerlo sale «{código} es ahora el almacén principal.».
+- **API**: `PATCH /api/v1/warehouses/{publicId}` con `{ "isMain": true }` (`warehouse.manage`). El almacén viaja con `isMain` (verdadero en el principal, también cuando lo es por ser el más antiguo).
+- **Dar de baja el principal** le quita la marca: pasa a serlo el activo más antiguo hasta que se marque otro.
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| `isMain: false` (quitar la marca sin poner otra) | `Para cambiar el almacén principal, marque otro almacén como principal.` | 400 (`isMain`) |
+| Marcar un almacén dado de baja | `El almacén está dado de baja; solo se consulta.` | 422 |
+
 ### Validaciones
 
 | Campo / caso | Mensaje exacto | HTTP |

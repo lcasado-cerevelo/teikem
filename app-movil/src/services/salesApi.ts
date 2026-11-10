@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { api } from '@config/axios';
+import type { StockInput } from '@utils/salesStockRules';
 
 // Lote 226 (P4) — el PEDIDO desde el teléfono del vendedor: los mismos endpoints del pedido guiado de la web (Lotes 221-223). Cada llamada lleva la compañía
 // (`tenantId`: decide con qué token se firma) y `silentForbidden`: un 403 lo muestra la pantalla (sin el aviso general que corta el trabajo).
@@ -193,6 +194,20 @@ export async function fetchWarehouses(tenantId: number): Promise<LookupOption[]>
     return (data ?? []).map((w) => ({ code: w.publicId, label: `${w.code} · ${w.name}` }));
   } catch {
     return [];
+  }
+}
+
+/**
+ * Lote 235 — lo disponible al escoger productos: los almacenes activos (con el principal marcado) y lo disponible para vender por producto y almacén, en una sola
+ * consulta (`salesStockRules.ts` saca de ahí el almacén por omisión, «Disponible: N», el backorder y la nota de otros almacenes). Si falla responde null: el pedido
+ * sigue sin esos datos (el servidor pone el almacén principal y valida al enviar).
+ */
+export async function fetchSalesStock(tenantId: number): Promise<StockInput | null> {
+  try {
+    const { data } = await api.get<StockInput>('sales-orders/stock', opts(tenantId));
+    return data ?? null;
+  } catch {
+    return null;
   }
 }
 

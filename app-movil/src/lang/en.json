@@ -683,6 +683,18 @@
       "RESUME_NOT_DRAFT": "Order {{number}} is no longer a draft: it cannot be changed here.",
       "BACK": "Back",
       "NEXT": "Next",
+      "STOCK": {
+        "AVAILABLE": "Available: {{n}}",
+        "BACKORDER_CHIP": "Backorder: {{n}}",
+        "shortMany": "Only {{available}} available in {{warehouse}}",
+        "shortOne": "Only 1 available in {{warehouse}}",
+        "shortNone": "None available in {{warehouse}}",
+        "backMany": "{{n}} go on backorder.",
+        "backOne": "1 goes on backorder.",
+        "ELSEWHERE_ONE": "Available in {{warehouse}}: {{n}}",
+        "ELSEWHERE_MANY": "Available in: {{list}}",
+        "BACKORDER_HELP": "You can send the order as is: what is available gets reserved and the rest stays on backorder until stock arrives."
+      },
       "CLIENT": {
         "TITLE": "Which client?",
         "SEARCH": "Search client",
@@ -694,7 +706,8 @@
         "CHANGE": "Change",
         "NEW": "New client",
         "WAREHOUSE": "Ship from which warehouse?",
-        "WAREHOUSE_HELP": "The company has more than one warehouse: choose where the order ships from.",
+        "WAREHOUSE_HELP": "The main warehouse comes selected; you can change it.",
+        "WAREHOUSE_MAIN": "main",
         "ORDER_DATA": "Order details",
         "URGENT": "Urgent",
         "URGENT_HELP": "The warehouse sees it first and the delivery goes out with high priority.",

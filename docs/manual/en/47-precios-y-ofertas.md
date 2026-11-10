@@ -58,11 +58,11 @@ When two prices clash, **the lowest is always charged** and the system warns. Wa
 |---|---|---|---|
 | Two offers at once (`TWO_OFFERS`) | A product is in two offers in effect for the same client | Guided order and order (next to the product, on the cart line and in the «Price warnings» box of the delivery step) | `El producto GM está en dos ofertas a la vez: «A» a $9.00 y «B» a $11.00. Se aplica la más barata («A»).` (Product GM is in two offers at once: «A» at $9.00 and «B» at $11.00. The cheapest applies («A»).) The cheapest wins; at equal price, the one that started later. |
 | Offer more expensive than the general list (`OFFER_ABOVE_GENERAL`, in the order) | The offer price is higher than the general list in effect | Same as above | `La oferta «A» pone GM a $12.00, más caro que la lista general ($10.00): se aplica el precio más bajo.` (Offer «A» puts GM at $12.00, more than the general list ($10.00): the lowest price applies.) |
-| Offer more expensive than the general list (`OFFER_ABOVE_GENERAL`, when building the offer) | When creating, changing or publishing the offer, a line is more expensive than the general list (in effect when the offer starts, or today if it already started) | In the offer window, box «Warnings (they do not block saving or publishing)» | `El producto GM sale en esta oferta a $12.00, más caro que en la lista general ($10.00): se aplicará el precio más bajo.` (Product GM is in this offer at $12.00, more than in the general list ($10.00): the lowest price will apply.) |
+| Offer more expensive than the general list (`OFFER_ABOVE_GENERAL`, when building the offer) | When creating, changing or publishing the offer, a line is more expensive than the general list (in effect when the offer starts, or today if it already started) | In the offer window, box «Warnings (they do not block saving)» | `El producto GM sale en esta oferta a $12.00, más caro que en la lista general ($10.00): se aplicará el precio más bajo.` (Product GM is in this offer at $12.00, more than in the general list ($10.00): the lowest price will apply.) |
 | Clash with a cheaper offer (`CHEAPER_OFFER`, when building the offer) | Another **published**, active offer, with overlapping dates and clients (an «all clients» offer overlaps with any), carries the same product **at the same price or cheaper** | In the offer window, same box | `El producto GM también está en la oferta «B» (del 01/11/2026 al 30/11/2026) a $9.00, igual o más barata que aquí ($10.00): mientras las dos estén vigentes se aplica el precio más bajo.` (Product GM is also in offer «B» (from … to …) at $9.00, equal or cheaper than here ($10.00): while both are in effect the lowest price applies.) |
 
 Notes on warnings:
-- The offer's own (`CHEAPER_OFFER`, `OFFER_ABOVE_GENERAL`) are calculated **when the offer is read**, in every response (create, change, publish, add a line, open it). A **draft** offer generates no warnings in others.
+- The offer's own (`CHEAPER_OFFER`, `OFFER_ABOVE_GENERAL`) are calculated **when the offer is read**, in every response (create, change, publish, add a line, open it). A **deactivated** offer generates no warnings in others.
 - The order's show in the catalog (when picking the product) and when the draft is saved. When a draft is reopened only the catalog's remain, because the order's are not stored.
 - If what the order charges is the client's **negotiated** price (lower than the offer), the offer card says so: «Offer: $9.00. The client's negotiated price is charged because it is lower.» (with the offer's price).
 
@@ -113,9 +113,9 @@ Notes on warnings:
 
 ### 4.1 What an offer is
 
-An **offer** is a separate entity with: **name** (up to 120 characters), **photo**, **validity** («Valid from» required, «Until» optional), **notes** (up to 500), whom it **applies to** (all clients or chosen clients) and its **lines** (up to 500). Each line is an **existing product or kit** with its offer price, a **previous offer kit** from the library («Use a previous kit») or a **new offer kit** («Create a new kit») (4.4). It is born as a **draft** and only gives prices once **published** and in effect.
+An **offer** is a separate entity with: **name** (up to 120 characters), **photo**, **validity** («Valid from» required, «Until» optional), **notes** (up to 500), whom it **applies to** (all clients or chosen clients) and its **lines** (up to 500). Each line is an **existing product or kit** with its offer price, a **previous offer kit** from the library («Use a previous kit») or a **new offer kit** («Create a new kit») (4.4). It is **born published** (Lote 234: offers have no draft) and gives prices while it is active and in effect.
 
-**No end date.** If «Until» is left blank, **the offer does not expire**: it is valid until someone deactivates it or sends it back to draft. The screen says so in two places: on the card («No end date: valid until you deactivate it») and in the window, under the field («“Until” is blank: the offer has no end date and is valid until you deactivate it.»). Check this before publishing a seasonal offer.
+**No end date.** If «Until» is left blank, **the offer does not expire**: it is valid until someone deactivates it. The screen says so in two places: on the card («No end date: valid until you deactivate it») and in the window, under the field («“Until” is blank: the offer has no end date and is valid until you deactivate it.»). Check this when creating a seasonal offer.
 
 ### 4.2 Who can
 
@@ -125,9 +125,9 @@ View offers: `sales.view`. Create, change, publish, deactivate, add photos, choo
 
 **Accounting → Prices and offers → Offers.** Each offer is a card with its photo, name, status, validity, whom it applies to and number of lines. It opens with a click.
 
-1. **New offer** → window with **Offer name**, **Notes**, **Valid from**, **Until (blank = no end date)** and the **Applies to all clients** checkbox. **Create offer** saves it as a **draft** («Offer created: add its photo and lines.»).
+1. **New offer** → window with **Offer name**, **Notes**, **Valid from**, **Until (blank = no end date)** and the **Applies to all clients** checkbox. **Create offer** leaves it **published from that moment** (Lote 234: **offers have no draft**): it applies according to its dates as soon as it has lines («Offer created: it already applies according to its dates. Add its photo and lines.»). If it should not apply yet, give it a future «Valid from».
 2. **Offer photo**: upload, change or remove (section 5).
-3. **Offer clients**: only if «Applies to all clients» was unchecked (**Add client**; the offer needs at least one to be published).
+3. **Offer clients**: only if «Applies to all clients» was unchecked (**Add client**). While it has none, the offer **applies to no one** and the window says so: «This offer does not apply to anyone yet: choose at least one client.»
 4. **Lines** (three ways, and the screen explains it: «Add an existing product with its offer price, or an offer kit: use a previous one from the library (at the price you want) or create a new one.»):
    - **Pick a product**: search by SKU or name and type the **offer price**; the line shows the general list price next to it for comparison. The price is changed in its cell (when leaving the field) and the line is removed with its button. This search **no longer offers offer kits**: those are added with the next two buttons.
    - **Use a previous kit**: opens the **offer kit library** (4.4). Search by SKU or name; each kit shows its photo, SKU, name, its pieces and «Last offer: «…» at $…» (or «Not used in any offer yet»). When you pick one, **the pieces appear read-only** («The composition of a previous kit does not change; for a different composition, create a new kit.») and the **offer price comes pre-filled with the last one** («Last price: $41.94 (offer «January»). You can set another.»): **the price can be changed**. **Add to the offer** puts the line. If the kit is already a line of this offer, it shows «Already in this offer» and cannot be picked again.
@@ -135,10 +135,10 @@ View offers: `sales.view`. Create, change, publish, deactivate, add photos, choo
    - The two ways of adding a kit are tabs of the same window («How to add the kit»): you can switch from one to the other without closing it.
    - Example: the normal kit is monitor + needles; the offer's kit is monitor + needles + test strips, «at the price of the two» (or the strips at half price). To repeat November's offer in January: create the January offer and use **Use a previous kit**; the pieces are not typed again.
 5. **Photo per line**: by default the line shows the product photo; **Use another photo** changes it and **Back to the product photo** removes it.
-6. **Publish** (the offer starts giving prices within its dates), **Back to draft**, **Deactivate** (asks for confirmation: «The offer stops applying to new orders; an offer kit is only still sold if it is in another offer in effect. Orders already placed do not change and it can be reactivated.») and **Reactivate**.
-7. **Warnings** (section 2) appear in the «Warnings (they do not block saving or publishing)» box. They are not errors.
+6. **Deactivate** (asks for confirmation: «The offer stops applying to new orders; an offer kit is only still sold if it is in another offer in effect. Orders already placed do not change and it can be reactivated.») and **Reactivate**. There is no «Publish» or «Back to draft» (Lote 234): to take an offer out of use, **deactivate** it. Only an offer that was left as a draft before Lote 234 shows a single **Publish** button to take it out of there (the update script already published the active ones).
+7. **Warnings** (section 2) appear in the «Warnings (they do not block saving)» box. They are not errors.
 
-The status shows on the card: **Draft**, **Published (not started yet)**, **In effect**, **Expired** or **Deactivated**, and, separately, the **Applies today** chip when the offer is giving prices.
+The status shows on the card: **Scheduled (not started yet)**, **In effect**, **Expired** or **Deactivated**, and, separately, the **Applies today** chip when the offer is giving prices.
 
 ### 4.4 Offer kits and the library (Batch 231)
 
@@ -151,7 +151,7 @@ An **offer kit** is a kit that is **assembled when ordered**: it has no stock of
 - **It is sold only while it is in some published offer in effect** for the client: an offer that is **published, active and in effect today** (both ends count; without «until» it does not expire) that applies to the client (to all, or to him among the chosen ones) with an active line of that kit. Outside that it does not show in the order catalog and ordering it gives the 422 error of section 7. If the kit is in two offers in effect, the cheapest is charged and the `TWO_OFFERS` warning appears.
 - **A kit sold permanently is an offer with no end date**: put the kit in an offer with «Until» blank.
 - **The kit is not deleted or deactivated.** When no offer holds it, it is simply not sold; the orders and invoices that used it still see it (the line keeps its copy). If an offer is **extended** (its end date is changed or removed), reactivated or published again, the kit **becomes available again** by itself. When an offer is deactivated or sent back to draft, its kits leave the sale unless they are in another offer in effect.
-- **The composition is fixed once used.** The kit counts as **used** from the moment it has a line in any offer (even if removed or the offer is a draft) or a line in any sales order. From the screen, a kit is born with its line: that is why **«Change kit»** (on the line) changes **the name** and leaves the pieces read-only with the note «The composition of a previous kit does not change…». The SKU does not change and the price is changed on the line. Only through the API can a kit be created in the library without putting it in an offer and its pieces corrected while it has never been used. Sending the same composition (even in another order) does not count as a change.
+- **The composition is fixed once used.** The kit counts as **used** from the moment it has a line in any offer (even if removed or the offer is deactivated) or a line in any sales order. From the screen, a kit is born with its line: that is why **«Change kit»** (on the line) changes **the name** and leaves the pieces read-only with the note «The composition of a previous kit does not change…». The SKU does not change and the price is changed on the line. Only through the API can a kit be created in the library without putting it in an offer and its pieces corrected while it has never been used. Sending the same composition (even in another order) does not count as a change.
 - **Piece substitution and «Adjustable when ordering»: only here.** The pieces of an offer kit can be **substituted** when ordering, except those marked «Not substitutable» (see [18 §17.1](18-ordenes-de-venta.md#171-swapping-a-kit-piece-when-ordering-batch-230)); the mark is set when creating the kit in the offer window. «Adjustable when ordering» is born unchecked. Neither exists on an assembled kit or a normal product.
 - **It does not go in a price list.** Its price goes in an offer (422).
 - **It does not show in Products & inventory** (nor in its counts, filters or export, nor in the import, nor in what is sent to integrations). Its record by identifier still answers and orders and invoices name it.
@@ -163,9 +163,9 @@ An **offer kit** is a kit that is **assembled when ordered**: it has no stock of
 | Action | Call | Permission |
 |---|---|---|
 | View offers (`q`, `state`, `includeInactive`) / one offer | `GET /offers` · `GET /offers/{publicId}` | `sales.view` |
-| Create (born as a draft) | `POST /offers` `{ "name": "November flyer", "validFrom": "2026-11-10", "validTo": null, "appliesToAll": true, "notes": "…" }` | `sales.pricelist` |
+| Create (born **published**, Lote 234) | `POST /offers` `{ "name": "November flyer", "validFrom": "2026-11-10", "validTo": null, "appliesToAll": true, "notes": "…" }` | `sales.pricelist` |
 | Edit (what is not sent does not change; `clearValidTo: true` removes the end date) | `PATCH /offers/{publicId}` | `sales.pricelist` |
-| Publish / back to draft | `POST …/publish` · `POST …/unpublish` | `sales.pricelist` |
+| Publish an offer left as a draft (from before Lote 234) · back to draft (compatibility only; the screen does not offer it) | `POST …/publish` · `POST …/unpublish` | `sales.pricelist` |
 | Deactivate / reactivate | `POST …/deactivate` · `POST …/reactivate` | `sales.pricelist` |
 | Offer photo (JPG, PNG or WEBP) | `POST …/image` (multipart `file`) · `DELETE …/image` | `sales.pricelist` |
 | Add or change lines («Use a previous kit» = a line with the kit's `productPublicId`; with an offer kit already used the `price` may be left empty and the last one is used) | `POST …/items` `{ "items": [ { "productPublicId": "…", "price": 9.5 } ] }` | `sales.pricelist` |
@@ -189,7 +189,7 @@ Keys of an offer's response: `hasEndDate` (false = no end date) and `validityTex
 | Valid from | Required. |
 | Until | Optional; blank = does not expire. Cannot be earlier than «from». Both ends count as in effect. |
 | Notes | Up to 500 characters. |
-| Applies to all clients | An all-clients offer carries no chosen clients; a chosen-clients offer needs at least one to be published and to stay published. |
+| Applies to all clients | An all-clients offer carries no chosen clients; a chosen-clients offer applies to no one while it has none. |
 | Lines | Up to 500; the company's **own** active products or kits; no repeats; price from 0 up with up to 4 decimals. If the product is already in the offer, its price is changed. An offer kit from the library can go in any offer (also in several at once); without a price, it takes the last one it was used with. |
 | Clients | Up to 2000; must be active clients. |
 | Photo | JPG, PNG or WEBP (section 5). |
@@ -225,6 +225,7 @@ The photo content is downloaded with `GET /files/{imagePublicId}`. `GET /api/v1/
 - **Offers of a brand** = the lines of published offers in effect that apply to the client, **one per product** (the one from the cheapest offer). An **offer kit only shows as a card**, and only while it is in some published offer in effect for the client. A **regular product in an offer** shows as a card **and also** in its brand's list, with the resolved price.
 - `isPromotion` = the product is in an offer in effect for the client; `price` and `priceSource` = what will be charged (`OFFER`, or `CLIENT_LIST` if the negotiated price is lower); `offerPrice` = the offer's price; `offerName`, `offerValidFrom`, `offerValidTo` = which offer and until when; `imagePublicId` = the photo already resolved (section 5); `notices[]` = the warnings (section 2) with their text ready.
 - `priceSource` `NONE` = **no price**: it cannot be ordered without `sales.price`.
+- **«New order» offers the same offer kits as the guided order** (Lote 234): in the classic order window, the product picker of each line brings, besides the products, the offer kits of **this catalog** for the chosen client (those of offers in effect that apply to them today), at the offer price. With no client chosen it offers no offer kit. Before, it listed any offer kit and the server rejected on save those that were not on sale. Since an offer is born published, a kit just put in an offer in effect shows in both places right away.
 - Client does not exist: 404 `Cliente no encontrado.` (Client not found.); inactive client: 422 `El cliente está inactivo; no se le puede vender.` (The client is inactive; nothing can be sold to it.)
 - On the order, the response of creating or editing the draft with lines carries `linePrices[]` (where each price came from and its warnings); it is not stored in the database.
 
@@ -302,10 +303,10 @@ The photo content is downloaded with `GET /files/{imagePublicId}`. `GET /api/v1/
 | Inactive client | — | `El cliente está inactivo; no se le puede vender.` | The client is inactive; nothing can be sold to it. | 422 |
 | Clients on an all-clients offer | — | `La oferta aplica a todos los clientes: no lleva clientes escogidos. Desmarque «aplica a todos» para escogerlos.` | The offer applies to all clients: it carries no chosen clients. Uncheck «applies to all» to choose them. | 422 |
 | Making an offer with clients «for all» | — | `La oferta tiene clientes escogidos: quítelos antes de hacerla general (aplica a todos).` | The offer has chosen clients: remove them before making it general. | 422 |
-| Publish without lines | — | `Agregue al menos un renglón antes de publicar la oferta.` | Add at least one line before publishing the offer. | 422 |
-| Publish without clients (not for all) / remove the last client of a published offer / uncheck «applies to all» on an already published offer (it has no clients yet) | — | `Escoja al menos un cliente o marque que la oferta aplica a todos los clientes.` | Choose at least one client or mark that the offer applies to all clients. | 422 |
-| Publish a published offer | — | `La oferta ya está publicada.` | The offer is already published. | 422 |
-| Back to draft a draft | — | `La oferta ya está en borrador.` | The offer is already a draft. | 422 |
+| Publish without lines (only an offer left as a draft before Lote 234, `POST …/publish`) | — | `Agregue al menos un renglón antes de publicar la oferta.` | Add at least one line before publishing the offer. | 422 |
+| Publish without clients and not for all (only an offer left as a draft before Lote 234). Since Lote 234 removing the last client or unchecking «applies to all» is **no longer** rejected: the offer applies to no one until a client is chosen | — | `Escoja al menos un cliente o marque que la oferta aplica a todos los clientes.` | Choose at least one client or mark that the offer applies to all clients. | 422 |
+| Publish a published offer | — | Not an error (Lote 234): `POST …/publish` answers the offer as it is | — | 200 |
+| Back to draft a draft (`POST …/unpublish`, kept only for compatibility: the screen does not offer it) | — | `La oferta ya está en borrador.` | The offer is already a draft. | 422 |
 | Deactivate / reactivate what is already so | — | `La oferta ya está desactivada.` / `La oferta ya está activa.` | The offer is already deactivated / active. | 422 |
 | Two people save at once | — | `La oferta cambió al mismo tiempo. Recárguela e intente de nuevo.` | The offer changed at the same time. Reload it and try again. | 409 |
 | Offer kit without price | — | `Indique el precio de oferta del kit.` | Give the kit's offer price. | 400 (`price`) |
@@ -335,12 +336,14 @@ The product-photo messages (`Adjunte la foto.`, `La foto debe ser una imagen JPG
 
 ## 8. Statuses and transitions
 
+**Lote 234 — offers have no draft.** An offer is born published and applies according to its dates; it is taken out of use with **Deactivate**. The «Draft» state and the Draft ↔ Published transitions in the tables below are for **price lists**; an offer is only a «Draft» if it came from before the lote (it is published with its **Publish** button).
+
 Neither the list nor the offer **uses the status engine**: their state comes from «published» and the dates, and only publish, back to draft and deactivate are audited (logs `PRICE_LIST` and `OFFER`).
 
 | State shown | When | Gives prices on new orders? |
 |---|---|---|
 | **Draft** | Not published | No |
-| **Scheduled** (on the offer: «Published (not started yet)») | Published, «from» is in the future | No (not yet) |
+| **Scheduled** (on the offer: «Scheduled (not started yet)») | Published, «from» is in the future | No (not yet) |
 | **In effect** | Published and today falls between «from» and «until» (without «until»: from «from» onward) | Yes |
 | **Expired** | Published and «until» has passed (an offer without «until» never expires) | No |
 | **Deactivated** | `IsActive = 0` (any of the above) | No; cannot be changed |
@@ -364,7 +367,7 @@ What each state blocks: a **deactivated** list or offer cannot be edited (lines,
 - **The offer does not show in the order.** It must be **published**, **active**, in effect today and apply to the client (all clients, or him among the chosen ones). An offer's kit only shows while the offer is valid.
 - **I left «Until» blank.** The offer does not expire. Deactivate it or set a date when the promotion ends.
 - **A yellow warning appeared on the offer.** It is a price warning, not an error: another offer at the same price or cheaper overlaps, or the price is higher than the general list. The lowest is charged; check it is what you wanted.
-- **Removing a client from a published list or offer fails.** It is the last one and it is not general / for all: add another or move it to draft first.
+- **Removing a client from a published list fails.** It is the last one and the list is not general: add another or move it to draft first. On an **offer** it is allowed (Lote 234): it applies to no one until you choose another.
 - **I cannot find the offer's kit in the order.** Check that the kit is in a published, active offer in effect that applies to the client (an offer kit is not sold outside the validity, and it does not show in Products & inventory either).
 - **Where do I create a kit?** If it is assembled when ordered, in an offer: **Create a new kit**. If it must have stock in the warehouse, in Products & inventory → **New product** → «Is what you are creating a kit?» → Yes ([06 §8b](06-inventario-y-almacen.md#8b-kits-assembled-and-offer-batches-68-231-and-232-2026-11-10)).
 - **How do I repeat November's offer in January?** Create the January offer and, in **Lines**, use **Use a previous kit**: pick the kit and confirm the price (the last one is suggested). The pieces are not typed again.

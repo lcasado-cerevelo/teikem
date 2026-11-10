@@ -43,7 +43,8 @@ public sealed class WarehouseService(TeikemDbContext db, ITenantContext tenant, 
         var counts = await CountsAsync(ids, ct);
         var statusMap = await StatusMapAsync(StatusDomains.WarehouseStatus, ct);
         var list = new List<WarehouseDto>(rows.Count);
-        foreach (var w in rows) list.Add(await ToDtoAsync(w, counts, statusMap, ct));
+        var mainId = await MainWarehouseIdAsync(ct);
+        foreach (var w in rows) list.Add(await ToDtoAsync(w, counts, statusMap, ct) with { IsMain = w.WarehouseId == mainId });
         return list;
     }
 
@@ -53,7 +54,7 @@ public sealed class WarehouseService(TeikemDbContext db, ITenantContext tenant, 
     {
         var w = await ResolveWarehouseAsync(publicId, track: false, ct);
         var counts = await CountsAsync(new List<int> { w.WarehouseId }, ct);
-        var dto = await ToDtoAsync(w, counts, await StatusMapAsync(StatusDomains.WarehouseStatus, ct), ct);
+        var dto = await ToDtoAsync(w, counts, await StatusMapAsync(StatusDomains.WarehouseStatus, ct), ct) with { IsMain = w.WarehouseId == await MainWarehouseIdAsync(ct) };
 
         // Hijas SIEMPRE a través del almacén ya resuelto bajo el filtro de tenant (zona y muelle no llevan TenantId).
         var zones = await db.WarehouseZones.AsNoTracking().Where(z => z.WarehouseId == w.WarehouseId)
@@ -183,8 +184,56 @@ public sealed class WarehouseService(TeikemDbContext db, ITenantContext tenant, 
         // Lote 16: modo de recepción (null = sin cambio; desconocido → 400). No toca los recibos abiertos (D2).
         var (mode, modeError) = ReceivingModeRules.ParseMode(req.ReceivingMode);
         if (modeError is not null) errors["receivingMode"] = new[] { modeError };
+        // Lote 235: el principal no se «quita»: se cambia marcando otro
+        if (req.IsMain == false) errors["isMain"] = new[] { WarehouseRules.MainCannotBeUnset };
         if (errors.Count > 0) throw new ValidationException(errors);
 
+        if (req.IsMain == true) return await UpdateWithMainAsync(publicId, req, ct);
+        return await UpdateCoreAsync(publicId, req, name, line1, city, state, postal, countryId, mode, ct);
+    }
+
+    /// <summary>
+    /// Lote 235 — marcar el almacén como principal: en UNA transacción se desmarca el anterior (primero, por el índice único UX_Warehouse_Main) y se marca este,
+    /// junto con los demás cambios del PATCH. Un almacén dado de baja → 422.
+    /// </summary>
+    private async Task<WarehouseDetailDto> UpdateWithMainAsync(Guid publicId, WarehousePatchRequest req, CancellationToken ct)
+    {
+        await db.RunInTransactionAsync(async ct2 =>
+        {
+            var target = await ResolveWarehouseAsync(publicId, track: false, ct2);
+            if (!target.IsActive) throw new StatusRuleException(WarehouseRules.WarehouseInactiveMessage);
+            var others = await db.Warehouses.AsTracking().Where(x => x.IsMain && x.WarehouseId != target.WarehouseId).ToListAsync(ct2);
+            if (others.Count > 0)
+            {
+                foreach (var o in others) o.IsMain = false;
+                await db.SaveGuardedAsync(WarehouseRules.DuplicateWarehouseMessage, ct2);
+            }
+            var w = await ResolveWarehouseAsync(publicId, track: true, ct2);
+            db.ApplyRowVersion(w, req.RowVersion);
+            w.IsMain = true;
+            await db.SaveGuardedAsync(WarehouseRules.DuplicateWarehouseMessage, ct2);
+        }, ct);
+        // los demás campos del mismo PATCH (si vinieron) se aplican como siempre, ya sin la versión de fila (acaba de cambiar)
+        var rest = req with { IsMain = null, RowVersion = null };
+        var hasMore = rest.Name is not null || rest.Line1 is not null || rest.City is not null || rest.State is not null || rest.PostalCode is not null
+                      || !string.IsNullOrWhiteSpace(rest.Country) || rest.ReceivingMode is not null || rest.DefaultReceivingBinId is not null || rest.ClearDefaultReceivingBin == true;
+        return hasMore ? await UpdateAsync(publicId, rest, ct) : await GetAsync(publicId, ct);
+    }
+
+    /// <summary>El almacén principal de la compañía (el marcado o, si ninguno activo lo está, el activo más antiguo); null si no hay almacenes activos.</summary>
+    public async Task<int?> MainWarehouseIdAsync(CancellationToken ct)
+        => await MainWarehouseIdAsync(db, ct);
+
+    /// <summary>Lo comparten Almacenes y la venta (SalesOrderService, SalesCatalogService): una sola regla (WarehouseRules.MainWarehouseId).</summary>
+    public static async Task<int?> MainWarehouseIdAsync(TeikemDbContext db, CancellationToken ct)
+    {
+        var rows = await db.Warehouses.AsNoTracking().Where(w => w.IsActive).Select(w => new { w.WarehouseId, w.IsMain }).ToListAsync(ct);
+        return WarehouseRules.MainWarehouseId(rows.Select(r => (r.WarehouseId, r.IsMain, true)));
+    }
+
+    private async Task<WarehouseDetailDto> UpdateCoreAsync(Guid publicId, WarehousePatchRequest req, string? name, string? line1, string? city, string? state, string? postal,
+        int? countryId, string? mode, CancellationToken ct)
+    {
         var w = await ResolveWarehouseAsync(publicId, track: true, ct);
         if (!w.IsActive) throw new StatusRuleException(WarehouseRules.WarehouseInactiveMessage);
         db.ApplyRowVersion(w, req.RowVersion);
@@ -248,6 +297,7 @@ public sealed class WarehouseService(TeikemDbContext db, ITenantContext tenant, 
                 WarehouseStatuses.Inactive, comment, ct2);
             w.StatusCodeId = to.StatusCodeId;
             w.IsActive = false;
+            w.IsMain = false;   // Lote 235: un almacén dado de baja deja de ser el principal (pasa a serlo el activo más antiguo, hasta que se marque otro)
             await db.SaveGuardedAsync(WarehouseRules.DuplicateWarehouseMessage, ct2);
         }, ct);
 

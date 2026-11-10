@@ -13,7 +13,8 @@ import { useT } from '../../../kernel/i18n'
 import { hasInk, signatureToPng, Spinner, type SignatureStroke } from '../../../kernel/ui'
 import { useClient } from '../../clients/api'
 import { AvailabilityDialog } from '../OrderModal'
-import { useSalesOrder, type SalesAvailabilityDto, type SalesOrderDto, type SalesOrderRequest } from '../salesApi'
+import { useSalesOrder, useSalesStock, type SalesAvailabilityDto, type SalesOrderDto, type SalesOrderRequest } from '../salesApi'
+import { anyBackorder, orderWarehouseId, showWarehouseField, stockWarehouses } from '../stockRules'
 import { AuthorizationStep, SubmitPasswordModal } from './AuthorizationStep'
 import { ClientStep } from './ClientStep'
 import { DeliveryStep } from './DeliveryStep'
@@ -74,11 +75,14 @@ export default function NewOrderScreen() {
 
   const { create, update, signature, removeSignature, availability, submit } = useWizardMutations()
   const client = useClient(state.clientPublicId, true)
-  // 2026-11-10 (Luis): el pedido no pide almacén; si la compañía tiene varios, el servidor toma el primero activo y el almacén lo decide al despachar
-  const needsWarehouse = false
+  // Lote 235 (Luis): la orden conserva su almacén (uno por orden). Con un solo almacén activo no se pregunta; con varios, el campo sale en el paso Cliente ya
+  // escogido con el PRINCIPAL (se puede cambiar). De ese almacén sale el «Disponible: N» de cada producto, el distintivo de backorder y la nota de otros almacenes.
+  const stock = useSalesStock()
+  const needsWarehouse = showWarehouseField(stock.data)
+  const warehouseId = orderWarehouseId(stock.data, state.warehousePublicId)
   const requiresSignature = client.data?.requireOrderSignature ?? saved?.terms?.clientRequiresSignature ?? false
   const hasSavedSignature = !!saved?.terms?.signatureFilePublicId && !sigDirty
-  const ctx: StepContext = { requiresSignature, hasSignature: hasInk(strokes) || hasSavedSignature, needsWarehouse }
+  const ctx: StepContext = { requiresSignature, hasSignature: hasInk(strokes) || hasSavedSignature }
   const physicalId = client.data?.physicalAddress?.isActive === false ? null : client.data?.physicalAddress?.publicId ?? null
   const idx = stepIndex(step)
   const busy = create.isPending || update.isPending || signature.isPending || removeSignature.isPending || preparing
@@ -125,7 +129,8 @@ export default function NewOrderScreen() {
 
   /** Guarda el borrador con lo que exige `which` y deja los precios y el número que devolvió el servidor. */
   const save = async (which: WizardStep, s: WizardState): Promise<SalesOrderDto> => {
-    const body = stepRequest(which, s) as SalesOrderRequest
+    // con varios almacenes viaja el que se ve escogido (el principal por omisión); con uno solo el servidor lo pone
+    const body = stepRequest(which, needsWarehouse && !s.warehousePublicId ? { ...s, warehousePublicId: warehouseId } : s) as SalesOrderRequest
     const dto = s.orderPublicId ? await update.mutateAsync({ id: s.orderPublicId, body }) : await create.mutateAsync(body)
     setSaved(dto)
     setState((cur) => ({ ...cur, orderPublicId: dto.publicId ?? cur.orderPublicId, number: dto.number ?? cur.number, cart: withServerPrices(cur.cart, dto.lines) }))
@@ -235,7 +240,8 @@ export default function NewOrderScreen() {
     credentials.current = { password, mfaCode }
     setSubmitErr(null)
     try {
-      await send(false, false)
+      // Lote 235: si alguna línea pasa de lo disponible, el vendedor ya vio el distintivo «Backorder: N» al capturar: se envía con backorder sin volver a preguntar
+      await send(anyBackorder(stock.data, warehouseId, state.cart), false)
       setPasswordOpen(false)
     } catch (e) {
       const err = toApiError(e)
@@ -344,14 +350,16 @@ export default function NewOrderScreen() {
             clientLoading={client.isFetching}
             paymentChanged={!!state.clientPublicId && !!client.data && isPaymentChanged(state, client.data.paymentTerm)}
             needsWarehouse={needsWarehouse}
+            warehouses={stockWarehouses(stock.data)}
+            warehouseId={warehouseId}
             onClientCreated={(c) => {
               setStepErr(null)
               setState((s) => withClientPayment(withClient(s, c.publicId ?? null, `${c.code ?? ''} · ${c.name ?? ''}`), c.paymentTerm))
             }}
           />
         )}
-        {step === 'PRODUCTS' && <ProductsStep state={state} onChange={change} />}
-        {step === 'DELIVERY' && <DeliveryStep state={state} onChange={change} onRecalc={(p) => void recalc(p)} client={client.data} saved={saved} recalculating={recalculating} />}
+        {step === 'PRODUCTS' && <ProductsStep state={state} onChange={change} stock={stock.data} warehouseId={warehouseId} />}
+        {step === 'DELIVERY' && <DeliveryStep state={state} onChange={change} onRecalc={(p) => void recalc(p)} client={client.data} saved={saved} recalculating={recalculating} stock={stock.data} warehouseId={warehouseId} />}
         {step === 'AUTHORIZATION' && (
           <AuthorizationStep
             state={state}
@@ -370,7 +378,7 @@ export default function NewOrderScreen() {
       </div>
 
       <div className="wz-foot">
-        {step === 'PRODUCTS' && <CartBar state={state} onChange={change} saved={saved} />}
+        {step === 'PRODUCTS' && <CartBar state={state} onChange={change} saved={saved} stock={stock.data} warehouseId={warehouseId} />}
         {stepErr && <p className="ferr" role="alert">{t(`salesWizard.errors.${stepErr}`)}</p>}
         {serverErr && <p className="ferr" role="alert">{serverErr}</p>}
         <div className="wz-nav">

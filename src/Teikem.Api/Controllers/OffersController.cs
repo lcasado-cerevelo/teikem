@@ -58,7 +58,7 @@ public sealed class OffersController(OfferService offers, StoredFileService file
     public Task<OfferKitLibraryItemDto> UpdateLibraryKit(Guid productPublicId, [FromBody] OfferKitUpdateRequest req, CancellationToken ct)
         => offers.UpdateLibraryKitAsync(productPublicId, req, ct);
 
-    /// <summary>Crea la oferta en borrador. 400: sin nombre, sin «desde», «hasta» antes de «desde». validTo vacío = sin fecha de fin.</summary>
+    /// <summary>Crea la oferta, ya publicada (lote 234: las ofertas no tienen borrador). 400: sin nombre, sin «desde», «hasta» antes de «desde». validTo vacío = sin fecha de fin.</summary>
     [HttpPost, RequirePermission(PermissionCatalog.SalesPricelist)]
     public Task<OfferDto> Create([FromBody] OfferRequest req, CancellationToken ct) => offers.CreateAsync(req, ct);
 
@@ -66,11 +66,11 @@ public sealed class OffersController(OfferService offers, StoredFileService file
     [HttpPatch("{publicId:guid}"), RequirePermission(PermissionCatalog.SalesPricelist)]
     public Task<OfferDto> Update(Guid publicId, [FromBody] OfferRequest req, CancellationToken ct) => offers.UpdateAsync(publicId, req, ct);
 
-    /// <summary>Publica la oferta: se aplica en su vigencia. 422 sin renglones o sin clientes (si no es para todos).</summary>
+    /// <summary>Publica una oferta que quedó en borrador (las de antes del lote 234). 422 sin renglones o sin clientes (si no es para todos).</summary>
     [HttpPost("{publicId:guid}/publish"), RequirePermission(PermissionCatalog.SalesPricelist)]
     public Task<OfferDto> Publish(Guid publicId, CancellationToken ct) => offers.PublishAsync(publicId, ct);
 
-    /// <summary>La devuelve a borrador: deja de aplicarse y sus kits dejan de venderse.</summary>
+    /// <summary>Compatibilidad (la web ya no lo ofrece): la devuelve a borrador; deja de aplicarse y sus kits dejan de venderse.</summary>
     [HttpPost("{publicId:guid}/unpublish"), RequirePermission(PermissionCatalog.SalesPricelist)]
     public Task<OfferDto> Unpublish(Guid publicId, CancellationToken ct) => offers.UnpublishAsync(publicId, ct);
 
@@ -123,7 +123,7 @@ public sealed class OffersController(OfferService offers, StoredFileService file
     [HttpPost("{publicId:guid}/clients"), RequirePermission(PermissionCatalog.SalesPricelist)]
     public Task<OfferDto> AddClients(Guid publicId, [FromBody] OfferClientsRequest req, CancellationToken ct) => offers.AddClientsAsync(publicId, req, ct);
 
-    /// <summary>Quita un cliente de la oferta (en lógico). 422 si es el último de una oferta publicada.</summary>
+    /// <summary>Quita un cliente de la oferta (en lógico). Sin clientes, la oferta no aplica a nadie hasta que se escoja otro.</summary>
     [HttpDelete("{publicId:guid}/clients/{clientPublicId:guid}"), RequirePermission(PermissionCatalog.SalesPricelist)]
     public Task<OfferDto> RemoveClient(Guid publicId, Guid clientPublicId, CancellationToken ct) => offers.RemoveClientAsync(publicId, clientPublicId, ct);
 

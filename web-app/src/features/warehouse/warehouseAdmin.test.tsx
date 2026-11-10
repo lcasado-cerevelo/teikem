@@ -376,3 +376,38 @@ describe('Ficha del almacén', () => {
     expect(screen.queryByRole('textbox', { name: 'Código postal' })).toBeNull()
   })
 })
+
+// Lote 235 — almacén principal: distintivo «Principal» en la lista y en la ficha; «Hacer principal» manda PATCH { isMain: true } (marcar uno desmarca el otro en el servidor).
+describe('Lote 235: almacén principal', () => {
+  const withMain = (call: Call): unknown => {
+    const p = call.url.pathname
+    if (call.method === 'GET' && p === '/api/v1/warehouses') return [{ ...WAREHOUSES[0], isMain: false }, { ...WAREHOUSES[1], isMain: true }]
+    if (call.method === 'GET' && p === `/api/v1/warehouses/${WH1}`) return { warehouse: { ...WAREHOUSES[0], isMain: false }, zones: ZONES, docks: [] }
+    if (call.method === 'PATCH' && p === `/api/v1/warehouses/${WH1}`) return { warehouse: { ...WAREHOUSES[0], isMain: true }, zones: ZONES, docks: [] }
+    return route(call)
+  }
+
+  it('la lista marca con «Principal» solo el almacén principal', async () => {
+    mock.handler = withMain
+    wrap(<WarehouseListScreen />, MANAGE, '/warehouse/warehouses', '/warehouse/warehouses')
+    const table = await screen.findByRole('table', { name: 'Almacenes' })
+    expect(within(table).getAllByText('Principal')).toHaveLength(1)
+    expect(within(within(table).getByText('Principal').closest('tr') as HTMLElement).getByText('ALM-2')).toBeInTheDocument()
+  })
+
+  it('la ficha de un almacén que no es el principal ofrece «Hacer principal» y manda isMain: true', async () => {
+    mock.handler = withMain
+    const user = userEvent.setup()
+    wrap(<WarehouseDetailScreen />, MANAGE, `/warehouse/warehouses/${WH1}`, '/warehouse/warehouses/:publicId')
+    await user.click(await screen.findByRole('button', { name: 'Hacer principal' }))
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'PATCH' && c.url.pathname === `/api/v1/warehouses/${WH1}`)).toBe(true))
+    expect(mock.calls.find((c) => c.method === 'PATCH')?.body).toEqual({ isMain: true })
+  })
+
+  it('el almacén principal muestra su distintivo y no el botón «Hacer principal»', async () => {
+    mock.handler = (call) => (call.method === 'GET' && call.url.pathname === `/api/v1/warehouses/${WH1}` ? { warehouse: { ...WAREHOUSES[0], isMain: true }, zones: ZONES, docks: [] } : route(call))
+    wrap(<WarehouseDetailScreen />, MANAGE, `/warehouse/warehouses/${WH1}`, '/warehouse/warehouses/:publicId')
+    expect(await screen.findByText('Principal')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Hacer principal' })).toBeNull()
+  })
+})

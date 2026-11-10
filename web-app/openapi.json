@@ -44493,6 +44493,35 @@
         }
       }
     },
+    "/api/v1/sales-orders/stock": {
+      "get": {
+        "tags": [
+          "SalesStock"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesStockDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesStockDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesStockDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/scan/options": {
       "get": {
         "tags": [
@@ -87476,6 +87505,78 @@
         },
         "additionalProperties": false
       },
+      "SalesStockDto": {
+        "type": "object",
+        "properties": {
+          "warehouses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesStockWarehouseDto"
+            },
+            "nullable": true
+          },
+          "products": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesStockProductDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesStockProductDto": {
+        "type": "object",
+        "properties": {
+          "productPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stock": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesStockQtyDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesStockQtyDto": {
+        "type": "object",
+        "properties": {
+          "warehousePublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "available": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesStockWarehouseDto": {
+        "type": "object",
+        "properties": {
+          "publicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "isMain": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "SampleReadDto": {
         "type": "object",
         "properties": {
@@ -94994,6 +95095,9 @@
           "defaultReceivingBinCode": {
             "type": "string",
             "nullable": true
+          },
+          "isMain": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -95039,6 +95143,10 @@
             "nullable": true
           },
           "clearDefaultReceivingBin": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "isMain": {
             "type": "boolean",
             "nullable": true
           }

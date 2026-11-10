@@ -92,5 +92,17 @@ public static class StoredFileRules
         return cleaned + ext;
     }
 
+    /// <summary>
+    /// Lote 234 — el encabezado Content-Disposition para servir el archivo en línea. Un encabezado HTTP solo admite ASCII: con un nombre como «Diseño sin título.png»
+    /// el servidor fallaba (500) al poner el encabezado y la foto no cargaba nunca. El nombre va en ASCII (lo demás como «_») y, si tenía otros caracteres, también
+    /// completo en filename* (RFC 5987).
+    /// </summary>
+    public static string InlineDisposition(string? fileName)
+    {
+        var name = string.IsNullOrWhiteSpace(fileName) ? "archivo" : fileName.Trim();
+        var ascii = new string(name.Select(c => c is >= ' ' and <= '~' and not '"' and not '\\' ? c : '_').ToArray());
+        return ascii == name ? $"inline; filename=\"{ascii}\"" : $"inline; filename=\"{ascii}\"; filename*=UTF-8''{Uri.EscapeDataString(name)}";
+    }
+
     public static string Sha256Hex(ReadOnlySpan<byte> bytes) => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)).ToLowerInvariant();
 }

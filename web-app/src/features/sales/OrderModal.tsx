@@ -15,10 +15,14 @@ import { useStoredFileUrl } from '../orders/api'
 import { PackModal } from '../warehouse/PackModal'
 import { ProductPicker, WarehousePicker } from '../warehouse/pickers'
 import { OrderBadges } from './OrderBadges'
+import { offerKitOptions } from './offerKitOptions'
+import { useSalesCatalog } from './wizard/wizardApi'
 import { AUTHORIZED_BY_MAX, authorizerMissing, DELIVERY_MODES, draftError, draftSubtotal, effectivePrice, EXTRA_DEFAULTS, isCreditTerm, lineAmount, parseNumber, paymentChanged, prefillPayment, toRequest, withMethod, type DeliveryMode, type LineDraft, type OrderDraft } from './salesRules'
 import { KitLineBlock, KitComponentsSection } from './KitLineBlock'
-import { useSalesMutations, useSalesOrder, type SalesAvailabilityDto, type SalesDispatchInfoDto, type SalesDispatchResultDto, type SalesOrderDto, type SalesOrderLineDto } from './salesApi'
+import { useSalesMutations, useSalesOrder, useSalesStock, type SalesAvailabilityDto, type SalesDispatchInfoDto, type SalesDispatchResultDto, type SalesOrderDto, type SalesOrderLineDto } from './salesApi'
 import { LinkedDeliveryInfo } from '../integrations/LinkedDeliveryInfo'
+import { StockInfo } from './StockInfo'
+import { orderWarehouseId, showWarehouseField, stockWarehouses } from './stockRules'
 
 let nextKey = 1
 
@@ -195,6 +199,14 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
   const set = (patch: Partial<OrderDraft>) => setDraft((d) => ({ ...d, ...patch }))
   const setLine = (key: number, patch: Partial<LineDraft>) => set({ lines: draft.lines.map((l) => (l.key === key ? { ...l, ...patch } : l)) })
   const current = saved ?? order
+  // Lote 235: la orden conserva su almacén. Con un solo almacén activo no se pregunta; con varios, el campo viene ya escogido con el PRINCIPAL. De ese almacén sale
+  // «Disponible: N» de cada línea, el distintivo de backorder (no bloquea) y la nota de otros almacenes. Sin acceso a esos datos, el campo de siempre.
+  const stock = useSalesStock()
+  const warehouseId = orderWarehouseId(stock.data, draft.warehousePublicId)
+  // Lote 234: los kits de oferta que se ofrecen son los MISMOS del pedido guiado: los del catálogo del cliente escogido (ofertas vigentes que le aplican hoy), al
+  // precio de la oferta. El buscador de productos ya no trae «cualquier» kit de oferta.
+  const catalog = useSalesCatalog(draft.clientPublicId)
+  const offerKits = useMemo(() => offerKitOptions(draft.clientPublicId && !catalog.isPlaceholderData ? catalog.data : undefined), [catalog.data, catalog.isPlaceholderData, draft.clientPublicId])
   // Lote 222: la forma de pago se prellena con la del cliente (una vez por cliente escogido; una orden ya guardada conserva la suya)
   const client = useClient(draft.clientPublicId, true)
   const { data: methodOptions = [] } = useLookups('SalesPaymentMethod')
@@ -219,7 +231,8 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
       return null
     }
     try {
-      const body = toRequest(draft)
+      // con varios almacenes viaja el que se ve escogido (el principal por omisión)
+      const body = toRequest(showWarehouseField(stock.data) && !draft.warehousePublicId ? { ...draft, warehousePublicId: warehouseId } : draft)
       const dto = current ? await update.mutateAsync({ id: current.publicId!, body }) : await create.mutateAsync(body)
       setSaved(dto)
       return dto
@@ -273,11 +286,28 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
             <label htmlFor="so-client">{t('sales.client')}</label>
             <ClientPicker id="so-client" value={draft.clientPublicId} onChange={(id) => set({ clientPublicId: id })} />
           </div>
-          <div className="f">
-            <label htmlFor="so-wh">{t('sales.warehouse')}</label>
-            <WarehousePicker id="so-wh" value={draft.warehousePublicId} onChange={(id) => set({ warehousePublicId: id })} />
-            <p className="help">{t('sales.warehouseHelp')}</p>
-          </div>
+          {stock.isPending ? null : stock.data ? (
+            showWarehouseField(stock.data) && (
+              <div className="f">
+                <label htmlFor="so-wh">{t('sales.warehouse')}</label>
+                <select id="so-wh" value={warehouseId ?? ''} onChange={(e) => set({ warehousePublicId: e.target.value || null })}>
+                  {warehouseId && !stockWarehouses(stock.data).some((w) => w.publicId === warehouseId) && <option value={warehouseId}>{current?.warehouseName ?? ''}</option>}
+                  {stockWarehouses(stock.data).map((w) => (
+                    <option key={w.publicId} value={w.publicId}>
+                      {w.code} · {w.name}{w.isMain ? ` (${t('salesWizard.client.warehouseMain')})` : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="help">{t('sales.warehouseHelp')}</p>
+              </div>
+            )
+          ) : (
+            <div className="f">
+              <label htmlFor="so-wh">{t('sales.warehouse')}</label>
+              <WarehousePicker id="so-wh" value={draft.warehousePublicId} onChange={(id) => set({ warehousePublicId: id })} />
+              <p className="help">{t('sales.warehouseHelp')}</p>
+            </div>
+          )}
         </div>
         <div className="r2">
           <div className="f">
@@ -352,7 +382,7 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
                 <ProductPicker
                   id={`so-p-${l.key}`}
                   ownOnly
-                  includeOfferKits
+                  extraOptions={offerKits}
                   value={l.productPublicId}
                   onChange={(id, p) => setLine(l.key, { productPublicId: id, sku: p?.sku ?? '', name: p?.name ?? '', listPrice: p?.salePrice ?? null, price: '', isKit: p?.isKit === true, components: null })}
                 />
@@ -375,6 +405,7 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
                 <span>{effectivePrice(l) === null || parseNumber(l.quantity) === null ? '—' : f.money(lineAmount(l))}</span>
               </div>
               <button type="button" className="btn ghost" aria-label={t('sales.line.remove', { n: i + 1 })} onClick={() => set({ lines: draft.lines.filter((x) => x.key !== l.key) })}>✕</button>
+              <StockInfo stock={stock.data} warehousePublicId={warehouseId} productPublicId={l.productPublicId} quantity={l.quantity} />
               {l.isKit && <KitLineBlock line={l} saved={current?.lines?.find((x) => x.productPublicId === l.productPublicId)} onPieces={(components) => setLine(l.key, { components })} />}
             </div>
           ))}

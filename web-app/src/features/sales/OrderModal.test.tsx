@@ -11,8 +11,9 @@ import { setLang } from '../../kernel/i18n/i18n'
 import { OrderModal } from './OrderModal'
 
 const mock = vi.hoisted(() => ({
-  requests: [] as { method: string; path: string; body: unknown }[],
+  requests: [] as { method: string; path: string; body: unknown; search?: URLSearchParams }[],
   client: null as unknown,
+  catalog: null as unknown,
 }))
 
 vi.mock('../../kernel/api/client', async (importOriginal) => {
@@ -21,7 +22,7 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
     const url = new URL(req.url)
     const text = await req.clone().text()
     const body = text ? JSON.parse(text) : undefined
-    mock.requests.push({ method: req.method, path: url.pathname, body })
+    mock.requests.push({ method: req.method, path: url.pathname, body, search: url.searchParams })
     const p = url.pathname
     const m = req.method
     if (m === 'GET' && p === `/api/v1/sales-orders/${DRAFT}`) return json(DRAFT_ORDER)
@@ -31,6 +32,7 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
     if (m === 'GET' && p === `/api/v1/clients/${CLIENT}`) return mock.client ? json(mock.client) : new Response('{}', { status: 404 })
     if (m === 'GET' && p === '/api/v1/clients') return json([{ id: 1, publicId: CLIENT, code: 'FARM', name: 'Farmacia Central', isActive: true }])
     if (m === 'GET' && p === '/api/v1/products') return json({ items: [{ id: 1, publicId: PROD, sku: 'MED', name: 'Medidor', isActive: true, isOwn: true, salePrice: 12.5 }], total: 1, skip: 0, take: 50 })
+    if (m === 'GET' && p === '/api/v1/sales-orders/catalog') return json(mock.catalog ?? { brands: [] })
     if (m === 'GET' && p === '/api/v1/warehouses') return json([{ id: 1, publicId: WH, code: 'ALM-01', name: 'Principal', isActive: true }])
     if (p === '/api/v1/catalogs/SalesPaymentMethod') {
       return json(
@@ -110,6 +112,7 @@ describe('OrderModal — Lote 222', () => {
   beforeEach(() => {
     mock.requests.length = 0
     mock.client = null
+    mock.catalog = null
     DRAFT_ORDER = BASE
     REQUESTED_ORDER = BASE
   })
@@ -220,5 +223,44 @@ describe('OrderModal — Lote 222', () => {
     await waitFor(() => expect(within(dialog).getByLabelText('Forma de pago')).toHaveValue('CREDIT'))
     await waitFor(() => expect(within(dialog).getByLabelText('Término del crédito')).toHaveValue('NET15'))
     expect(within(dialog).queryByText('Cambió la forma de pago')).not.toBeInTheDocument()
+  })
+
+  it('lote 234: «Nueva orden» ofrece los kits de oferta del catálogo del cliente (los mismos del pedido guiado), al precio de la oferta, y no pide «cualquier» kit de oferta', async () => {
+    mock.client = { id: 1, publicId: CLIENT, name: 'Farmacia Central', paymentTerm: 'NET15', requireOrderSignature: false }
+    const KIT = '66666666-0000-0000-0000-000000000006'
+    mock.catalog = {
+      brands: [
+        {
+          brand: 'PRODIGY',
+          offers: [
+            { productPublicId: KIT, sku: 'OFERTA1', name: 'Oferta 1', brand: 'PRODIGY', isKit: true, isOfferKit: true, isPromotion: true, price: 41.94, offerPrice: 41.94, priceSource: 'OFFER' },
+            // un producto normal en oferta no se duplica: ya sale en la lista de productos
+            { productPublicId: PROD, sku: 'MED', name: 'Medidor', isKit: false, isOfferKit: false, isPromotion: true, price: 9, priceSource: 'OFFER' },
+          ],
+          products: [],
+        },
+      ],
+    }
+    const user = userEvent.setup()
+    wrap(null)
+    const dialog = await screen.findByRole('dialog', { name: 'Nueva orden' })
+    // sin cliente no se ofrece ningún kit de oferta (no se sabe cuáles le aplican)
+    await user.click(within(dialog).getByRole('combobox', { name: 'Producto de la línea 1' }))
+    expect(await within(dialog).findByRole('option', { name: /MED/ })).toBeInTheDocument()
+    expect(within(dialog).queryByRole('option', { name: /OFERTA1/ })).toBeNull()
+    expect(sent('GET', '/api/v1/sales-orders/catalog')).toHaveLength(0)
+
+    await user.click(within(dialog).getByLabelText('Cliente que compra'))
+    await user.click(await screen.findByText(/Farmacia Central/))
+    await waitFor(() => expect(sent('GET', '/api/v1/sales-orders/catalog')).toHaveLength(1))
+    expect(sent('GET', '/api/v1/sales-orders/catalog')[0].search?.get('clientPublicId')).toBe(CLIENT)
+    await user.click(within(dialog).getByRole('combobox', { name: 'Producto de la línea 1' }))
+    const options = await within(dialog).findAllByRole('option')
+    expect(options.map((o) => o.textContent)).toEqual(['OFERTA1 · Oferta 1', 'MED · Medidor'])
+    await user.click(options[0])
+    // el precio que se propone es el de la oferta
+    expect(within(dialog).getByLabelText('Precio de la línea 1')).toHaveAttribute('placeholder', expect.stringContaining('41.94'))
+    // el buscador de productos ya no pide los kits de oferta al servidor
+    expect(sent('GET', '/api/v1/products').every((r) => !r.search?.has('includeOfferKits'))).toBe(true)
   })
 })

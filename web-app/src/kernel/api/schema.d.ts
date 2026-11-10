@@ -33909,6 +33909,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sales-orders/stock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesStockDto"];
+                        "application/json": components["schemas"]["SalesStockDto"];
+                        "text/json": components["schemas"]["SalesStockDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/scan/options": {
         parameters: {
             query?: never;
@@ -52287,6 +52324,28 @@ export interface components {
             freeFrom?: number | null;
             taxable?: boolean | null;
         };
+        SalesStockDto: {
+            warehouses?: components["schemas"]["SalesStockWarehouseDto"][] | null;
+            products?: components["schemas"]["SalesStockProductDto"][] | null;
+        };
+        SalesStockProductDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            stock?: components["schemas"]["SalesStockQtyDto"][] | null;
+        };
+        SalesStockQtyDto: {
+            /** Format: uuid */
+            warehousePublicId?: string;
+            /** Format: double */
+            available?: number;
+        };
+        SalesStockWarehouseDto: {
+            /** Format: uuid */
+            publicId?: string;
+            code?: string | null;
+            name?: string | null;
+            isMain?: boolean;
+        };
         SampleReadDto: {
             text?: string | null;
             /** Format: int32 */
@@ -54710,6 +54769,7 @@ export interface components {
             /** Format: int32 */
             defaultReceivingBinId?: number | null;
             defaultReceivingBinCode?: string | null;
+            isMain?: boolean;
         };
         WarehousePatchRequest: {
             name?: string | null;
@@ -54723,6 +54783,7 @@ export interface components {
             /** Format: int32 */
             defaultReceivingBinId?: number | null;
             clearDefaultReceivingBin?: boolean | null;
+            isMain?: boolean | null;
         } & {
             [key: string]: unknown;
         };

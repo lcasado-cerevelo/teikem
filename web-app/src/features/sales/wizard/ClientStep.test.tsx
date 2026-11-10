@@ -125,7 +125,7 @@ describe('ClientStep — paso 1 del pedido guiado', () => {
     expect(screen.queryByText('Almacén')).not.toBeInTheDocument()
     unmount()
     render(<WizardProviders><Step initial={{ clientPublicId: 'c-2' }} needsWarehouse /></WizardProviders>)
-    expect(screen.getByText('De qué almacén sale el pedido.')).toBeInTheDocument()
+    expect(screen.getByText('De qué almacén sale el pedido. Viene escogido el almacén principal; puede cambiarlo.')).toBeInTheDocument()
   })
 
   it('«Cliente nuevo»: valida el alta mínima y la crea con los teléfonos en dígitos y las fotos después', async () => {

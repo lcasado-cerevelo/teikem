@@ -1,5 +1,6 @@
 // Lote 223 (P3) — paso 1 del pedido guiado: el CLIENTE (buscador por número o nombre, o «Cliente nuevo» con el alta mínima), la casilla Urgente con su nota y la
-// forma de pago del pedido, prellenada con la del cliente y editable (si cambia, queda la marca «cambió»). El almacén solo se pide si la compañía tiene más de uno.
+// forma de pago del pedido, prellenada con la del cliente y editable (si cambia, queda la marca «cambió»). Lote 235: el almacén solo se muestra si la compañía tiene
+// más de uno activo, y viene YA escogido con el almacén principal (se puede cambiar; no es un campo vacío).
 import { useEffect, useRef, useState } from 'react'
 import { Can } from '../../../kernel/access'
 import { applyProblemDetails } from '../../../kernel/api/problem'
@@ -7,8 +8,8 @@ import { useLookups } from '../../../kernel/catalogs'
 import { useT } from '../../../kernel/i18n'
 import { Chip, Spinner } from '../../../kernel/ui'
 import type { components } from '../../../kernel/api/schema'
-import { WarehousePicker } from '../../warehouse/pickers'
 import { isCreditTerm } from '../salesRules'
+import type { StockWarehouse } from '../stockRules'
 import { NewClientModal } from './NewClientModal'
 import { useClientSearch, type ClientListItemDto } from './wizardApi'
 import { NOTES_MAX, withPaymentMethod, type WizardState } from './wizardRules'
@@ -32,12 +33,16 @@ export interface ClientStepProps {
   client: ClientDetailDto | undefined
   clientLoading: boolean
   paymentChanged: boolean
+  /** La compañía tiene más de un almacén activo: se muestra el campo Almacén. */
   needsWarehouse: boolean
+  /** Lote 235: los almacenes activos (de GET /sales-orders/stock) y el de la orden (el escogido o, por omisión, el principal). */
+  warehouses?: readonly StockWarehouse[]
+  warehouseId?: string | null
   /** Alta mínima hecha: el cliente queda escogido. */
   onClientCreated: (client: ClientDetailDto) => void
 }
 
-export function ClientStep({ state, onChange, onPickClient, client, clientLoading, paymentChanged, needsWarehouse, onClientCreated }: ClientStepProps) {
+export function ClientStep({ state, onChange, onPickClient, client, clientLoading, paymentChanged, needsWarehouse, warehouses = [], warehouseId = null, onClientCreated }: ClientStepProps) {
   const t = useT()
   const [q, setQ] = useState('')
   const [creating, setCreating] = useState(false)
@@ -113,7 +118,15 @@ export function ClientStep({ state, onChange, onPickClient, client, clientLoadin
       {needsWarehouse && (
         <div className="f">
           <label htmlFor="wz-wh">{t('salesWizard.client.warehouse')}</label>
-          <WarehousePicker id="wz-wh" value={state.warehousePublicId} onChange={(id) => onChange((s) => ({ ...s, warehousePublicId: id }))} />
+          <select id="wz-wh" value={warehouseId ?? ''} onChange={(e) => onChange((s) => ({ ...s, warehousePublicId: e.target.value || null }))}>
+            {/* un borrador puede traer un almacén que ya no está activo: se sigue viendo */}
+            {warehouseId && !warehouses.some((w) => w.publicId === warehouseId) && <option value={warehouseId}>{t('salesWizard.client.warehouseOther')}</option>}
+            {warehouses.map((w) => (
+              <option key={w.publicId} value={w.publicId}>
+                {w.code} · {w.name}{w.isMain ? ` (${t('salesWizard.client.warehouseMain')})` : ''}
+              </option>
+            ))}
+          </select>
           <p className="help">{t('salesWizard.client.warehouseHelp')}</p>
         </div>
       )}

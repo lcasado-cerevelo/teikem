@@ -274,4 +274,60 @@ const like = (actual, expected, msg) => { for (const [k, v] of Object.entries(ex
   assert.equal(es.SEND.PASSWORD_MISSING, 'Escriba su contraseña para enviar el pedido.');
 }
 
+// ---------------- Lote 235: almacén de la orden, disponible, backorder marcado (no bloquea) y nota de otros almacenes (copia de web-app/.../stockRules.test.ts)
+{
+  const {
+    anyBackorder, availableElsewhere, availableIn, backorderQty, lineStock, mainWarehouseId, orderWarehouseId, shortHeadKey, showWarehouseField, warehouseLabel,
+  } = await import('../src/utils/salesStockRules.ts');
+  const ONE = { warehouses: [{ publicId: 'w-1', code: 'ALM-01', name: 'Bayamón', isMain: true }], products: [{ productPublicId: 'p-1', stock: [{ warehousePublicId: 'w-1', available: 5 }] }] };
+  const THREE = {
+    warehouses: [
+      { publicId: 'w-1', code: 'ALM-01', name: 'Bayamón', isMain: false },
+      { publicId: 'w-2', code: 'ALM-02', name: 'Ponce', isMain: true },
+      { publicId: 'w-3', code: 'ALM-03', name: 'Mayagüez', isMain: false },
+    ],
+    products: [
+      { productPublicId: 'p-1', stock: [{ warehousePublicId: 'w-1', available: 12 }, { warehousePublicId: 'w-2', available: 5 }, { warehousePublicId: 'w-3', available: 3 }] },
+      { productPublicId: 'p-2', stock: [{ warehousePublicId: 'w-3', available: 8 }] },
+    ],
+  };
+  // con un solo almacén no se pregunta; con varios, el principal por omisión
+  assert.equal(showWarehouseField(ONE), false);
+  assert.equal(orderWarehouseId(ONE, null), 'w-1');
+  assert.equal(showWarehouseField(THREE), true);
+  assert.equal(mainWarehouseId(THREE), 'w-2');
+  assert.equal(orderWarehouseId(THREE, null), 'w-2');
+  assert.equal(orderWarehouseId(THREE, 'w-3'), 'w-3');
+  assert.equal(warehouseLabel(THREE, 'w-2'), 'Ponce');
+  assert.equal(showWarehouseField(null), false);
+  assert.equal(orderWarehouseId(undefined, null), null);
+  // disponible
+  assert.equal(availableIn(THREE, 'p-1', 'w-2'), 5);
+  assert.equal(availableIn(THREE, 'p-2', 'w-2'), 0);
+  // pedir de más NO se bloquea: se cuenta el backorder
+  assert.equal(backorderQty('5', 5), 0);
+  assert.equal(backorderQty('8', 5), 3);
+  assert.equal(backorderQty('4', 0), 4);
+  assert.equal(backorderQty('', 5), 0);
+  assert.equal(shortHeadKey(0), 'shortNone');
+  assert.equal(shortHeadKey(1), 'shortOne');
+  assert.equal(shortHeadKey(5), 'shortMany');
+  assert.deepEqual(lineStock(THREE, 'p-1', 'w-2', '8'), {
+    available: 5, backorder: 3, elsewhere: [{ warehousePublicId: 'w-1', name: 'Bayamón', available: 12 }, { warehousePublicId: 'w-3', name: 'Mayagüez', available: 3 }],
+  });
+  assert.equal(lineStock(null, 'p-1', 'w-2', '8'), null);
+  // la nota de otros almacenes
+  assert.deepEqual(availableElsewhere(ONE, 'p-1', 'w-1'), []);
+  assert.deepEqual(availableElsewhere(THREE, 'p-1', 'w-1').map((e) => e.name), ['Ponce', 'Mayagüez']);
+  assert.equal(anyBackorder(THREE, 'w-2', [{ productPublicId: 'p-1', quantity: '5' }]), false);
+  assert.equal(anyBackorder(THREE, 'w-2', [{ productPublicId: 'p-2', quantity: '1' }]), true);
+  // el paso Productos ya no se frena por la cantidad disponible (solo por las reglas de siempre)
+  assert.equal(stepError('PRODUCTS', { ...ready(), cart: setCartQuantity([], GLOVES, '999') }, NO_SIG), null);
+  // los textos del aviso
+  for (const lang of ['es', 'en']) {
+    const tr = JSON.parse(readFileSync(new URL(`../src/lang/${lang}.json`, import.meta.url), 'utf8')).translation.SALES_ORDER.STOCK;
+    for (const k of ['AVAILABLE', 'BACKORDER_CHIP', 'shortMany', 'shortOne', 'shortNone', 'backMany', 'backOne', 'ELSEWHERE_ONE', 'ELSEWHERE_MANY', 'BACKORDER_HELP']) assert.ok(tr[k], `${lang}: STOCK.${k}`);
+  }
+}
+
 console.log('test-sales-order: ok');

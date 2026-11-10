@@ -74,7 +74,10 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
 
     // ---------------------------------------------------------------- alta y edición
 
-    /// <summary>Crea la oferta en borrador. 400: sin nombre, sin «desde», «hasta» antes de «desde».</summary>
+    /// <summary>
+    /// Crea la oferta. Lote 234: nace PUBLICADA (las ofertas ya no tienen borrador: vale según sus fechas desde que se crea; se apaga con «Desactivar»).
+    /// 400: sin nombre, sin «desde», «hasta» antes de «desde».
+    /// </summary>
     public async Task<OfferDto> CreateAsync(OfferRequest? req, CancellationToken ct)
     {
         if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
@@ -90,7 +93,7 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
         var offer = new Offer
         {
             PublicId = Guid.NewGuid(), TenantId = T.RequireTenantId(), Name = name!, ValidFrom = from, ValidTo = to, AppliesToAll = req.AppliesToAll ?? true,
-            Notes = notes, IsPublished = false, IsActive = true, CreatedAtUtc = DateTime.UtcNow, CreatedBy = tenant.UserId,
+            Notes = notes, IsPublished = true, IsActive = true, CreatedAtUtc = DateTime.UtcNow, CreatedBy = tenant.UserId,
         };
         db.Set<Offer>().Add(offer);
         await db.SaveGuardedAsync(OfferRules.Concurrency, ct);
@@ -122,22 +125,26 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
             if (req.AppliesToAll is bool all && all != offer.AppliesToAll)
             {
                 if (all && offer.Clients.Any(c => c.IsActive)) throw new StatusRuleException(OfferRules.GeneralWithClients);
-                if (!all && offer.IsPublished) throw new StatusRuleException(OfferRules.PublishNeedsClients);   // publicada sin clientes no aplicaría a nadie
+                // Lote 234: sin borrador, una oferta «solo para algunos clientes» puede quedarse un rato sin clientes (no aplica a nadie hasta que se escojan)
                 offer.AppliesToAll = all;
             }
         }, ct);
     }
 
-    /// <summary>Publica la oferta (borrador → se aplica en su vigencia). Exige renglones y clientes si no es para todos. Los choques salen en Warnings.</summary>
+    /// <summary>
+    /// Publica una oferta que quedó en borrador (las de antes del lote 234; ya no se crean borradores). Exige renglones y clientes si no es para todos; si ya
+    /// está publicada no hace nada.
+    /// Los choques salen en Warnings.
+    /// </summary>
     public Task<OfferDto> PublishAsync(Guid publicId, CancellationToken ct) => MutateAsync(publicId, offer =>
     {
-        if (offer.IsPublished) throw new StatusRuleException(OfferRules.AlreadyPublished);
+        if (offer.IsPublished) return;   // Lote 234: una oferta nace publicada; publicar otra vez no es un error (quien todavía lo llama después de crear sigue funcionando)
         if (!offer.Items.Any(i => i.IsActive)) throw new StatusRuleException(OfferRules.PublishNeedsItems);
         if (!offer.AppliesToAll && !offer.Clients.Any(c => c.IsActive)) throw new StatusRuleException(OfferRules.PublishNeedsClients);
         offer.IsPublished = true;
     }, ct);
 
-    /// <summary>La devuelve a borrador: deja de aplicarse a los pedidos nuevos y sus kits dejan de venderse (los pedidos ya hechos no cambian).</summary>
+    /// <summary>Compatibilidad (la web ya no lo ofrece desde el lote 234). La devuelve a borrador: deja de aplicarse a los pedidos nuevos y sus kits dejan de venderse (los pedidos ya hechos no cambian).</summary>
     public Task<OfferDto> UnpublishAsync(Guid publicId, CancellationToken ct) => MutateAsync(publicId, offer =>
     {
         if (!offer.IsPublished) throw new StatusRuleException(OfferRules.NotPublished);
@@ -278,7 +285,7 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
         }, ct);
     }
 
-    /// <summary>Quita un cliente de la oferta (en lógico). Una oferta publicada no se queda sin clientes: se devuelve a borrador antes.</summary>
+    /// <summary>Quita un cliente de la oferta (en lógico). Lote 234: puede quedarse sin clientes (entonces no aplica a nadie hasta que se escoja otro).</summary>
     public async Task<OfferDto> RemoveClientAsync(Guid publicId, Guid clientPublicId, CancellationToken ct)
     {
         var clientId = await db.Set<Client>().AsNoTracking().Where(c => c.PublicId == clientPublicId).Select(c => (int?)c.ClientId).FirstOrDefaultAsync(ct)
@@ -287,7 +294,6 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
         {
             var row = offer.Clients.FirstOrDefault(c => c.IsActive && c.ClientId == clientId) ?? throw new NotFoundException(OfferRules.ClientNotInOffer);
             row.IsActive = false;
-            if (offer.IsPublished && !offer.Clients.Any(c => c.IsActive)) throw new StatusRuleException(OfferRules.PublishNeedsClients);
         }, ct);
     }
 

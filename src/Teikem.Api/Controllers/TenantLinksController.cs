@@ -78,7 +78,7 @@ public sealed class TenantLinksController(TenantLinkService links, TenantLinkBri
     {
         var f = await bridge.ProofFileAsync(publicId, filePublicId, ct);
         Response.Headers.CacheControl = "private, max-age=300";
-        Response.Headers.ContentDisposition = $"inline; filename=\"{f.FileName}\"";
+        Response.Headers.ContentDisposition = Teikem.Domain.Files.StoredFileRules.InlineDisposition(f.FileName);
         return File(f.Bytes, f.ContentType);
     }
 }

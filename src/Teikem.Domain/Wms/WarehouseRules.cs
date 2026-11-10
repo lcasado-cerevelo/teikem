@@ -78,6 +78,22 @@ public static class WarehouseRules
     public const string DockInactiveMessage = "La plataforma está inactiva; reactívela primero.";
     public const string BinHasOpenTasks = "La posición tiene tareas de almacén abiertas; complételas o cancélelas antes de desactivarla.";
 
+    // ---- Lote 235: almacén principal (el que la venta escoge por omisión cuando la compañía tiene varios)
+    /// <summary>400: el principal no se «quita»; se cambia marcando otro.</summary>
+    public const string MainCannotBeUnset = "Para cambiar el almacén principal, marque otro almacén como principal.";
+
+    /// <summary>
+    /// El almacén principal entre los ACTIVOS: el marcado (IsMain) o, si ninguno activo lo está, el más antiguo (menor id). Sin almacenes activos = null.
+    /// </summary>
+    public static int? MainWarehouseId(IEnumerable<(int WarehouseId, bool IsMain, bool IsActive)> warehouses)
+    {
+        var active = warehouses.Where(w => w.IsActive).OrderBy(w => w.WarehouseId).ToList();
+        if (active.Count == 0) return null;
+        foreach (var w in active)
+            if (w.IsMain) return w.WarehouseId;
+        return active[0].WarehouseId;
+    }
+
     /// <summary>409 'El almacén {code} tiene inventario o documentos abiertos; no se puede dar de baja.' (Errors por tipo).</summary>
     public static string WarehouseNotEmpty(string code) => $"El almacén {code} tiene inventario o documentos abiertos; no se puede dar de baja.";
 

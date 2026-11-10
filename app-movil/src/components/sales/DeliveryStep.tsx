@@ -5,12 +5,18 @@ import { useStyles, useTheme } from '@hooks/ThemeContext';
 import type { Colors } from '@constants/theme';
 import { fetchClientConsignees, type ClientForOrder, type SalesOrder } from '@services/salesApi';
 import { addressLine, money, orderSummary, requiredDateValid, type DeliveryChoice, type WizardState } from '@utils/salesOrderRules';
+import { availableIn, backorderQty, type StockInput } from '@utils/salesStockRules';
+import { Text } from '@components/Text';
+import StockInfo from './StockInfo';
 import { Choice, Field, Help, SectionTitle, SumRow, SwitchRow } from './ui';
 
 // Lote 226 — paso 3 del pedido en el teléfono: ENTREGA o RECOGIDO. Con entrega, a dónde (por omisión la dirección física del cliente; con locations.read se puede
 // escoger otro consignatario del cliente). Resumen calculado por el servidor al guardar el borrador: subtotal, IVU, cargo de envío con su porqué y total.
 // «En consignación» solo con esa forma de pago. Fecha requerida opcional (AAAA-MM-DD).
-export default function DeliveryStep({ tenantId, state, onChange, onRecalc, client, saved, recalculating, canPickOther }: {
+export default function DeliveryStep({ tenantId, state, onChange, onRecalc, client, saved, recalculating, canPickOther, stock, warehouseId }: {
+  /** Lote 235: lo disponible y el almacén de la orden, para avisar en el resumen qué líneas quedan en backorder. */
+  stock?: StockInput | null;
+  warehouseId?: string | null;
   tenantId: number;
   state: WizardState;
   onChange: (next: (s: WizardState) => WizardState) => void;
@@ -35,6 +41,8 @@ export default function DeliveryStep({ tenantId, state, onChange, onRecalc, clie
   const mode = (m: DeliveryChoice) => onRecalc({ deliveryMode: m, consigneePublicId: m === 'DELIVERY' ? state.consigneePublicId ?? physical?.publicId ?? null : state.consigneePublicId });
   const otherList = (others.data ?? []).filter((c) => c.publicId !== physical?.publicId);
   const dateBad = !requiredDateValid(state.requiredDate);
+
+  const short = stock && warehouseId ? state.cart.filter((l) => backorderQty(l.quantity, availableIn(stock, l.productPublicId, warehouseId)) > 0) : [];
 
   return (
     <View style={styles.step}>
@@ -89,6 +97,14 @@ export default function DeliveryStep({ tenantId, state, onChange, onRecalc, clie
         />
         <SumRow label={t('SALES_ORDER.SUMMARY.TOTAL')} value={money(summary.total)} strong />
         <Help>{t('SALES_ORDER.SUMMARY.HELP')}</Help>
+        {/* Lote 235: lo que pasa de lo disponible queda marcado (no bloquea): se puede enviar y eso queda en backorder */}
+        {short.map((l) => (
+          <View key={l.productPublicId} style={styles.shortLine}>
+            <Text style={styles.shortName}>{`${l.sku} · ${l.name}`}</Text>
+            <StockInfo stock={stock} warehouseId={warehouseId} productPublicId={l.productPublicId} quantity={l.quantity} onlyBackorder />
+          </View>
+        ))}
+        {short.length > 0 ? <Help>{t('SALES_ORDER.STOCK.BACKORDER_HELP')}</Help> : null}
       </View>
     </View>
   );
@@ -98,5 +114,7 @@ const createStyles = (colors: Colors) => StyleSheet.create({
   step: { gap: 14 },
   block: { gap: 8 },
   inline: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  shortLine: { marginTop: 6, borderWidth: 1, borderColor: colors.danger, borderRadius: 10, padding: 8, gap: 2 },
+  shortName: { fontSize: 13, fontWeight: '700', color: colors.text },
   summary: { gap: 2, borderWidth: 1, borderColor: colors.gray, borderRadius: 12, padding: 12, backgroundColor: colors.backgroundSecondary },
 });

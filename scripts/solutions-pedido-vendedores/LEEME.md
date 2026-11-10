@@ -82,7 +82,7 @@ bien, «Sí, ya están». Con eso confirmado, las siguientes ya pueden llevar lo
 ## Si algo sale mal
 - Cualquier script: si da error, la transacción se deshace sola (no queda a medias). Si aplicó y no era lo que se quería:
   - Marcas, término de pago, ajustes de envío y QuickBooks: corregir en la pantalla (ficha del producto / del cliente, Ajustes).
-  - OFERTA1: Contabilidad → Precios y ofertas → «Ofertas» → OFERTA1 → «Volver a borrador» o «Desactivar» (el kit deja de venderse si no está en otra oferta vigente; queda en la biblioteca de kits y las órdenes ya hechas no cambian).
+  - OFERTA1: Contabilidad → Precios y ofertas → «Ofertas» → OFERTA1 → «Desactivar» (las ofertas no tienen borrador desde el lote 234; el kit deja de venderse si no está en otra oferta vigente; queda en la biblioteca de kits y las órdenes ya hechas no cambian).
   - Listas de precios: «Precios y ofertas» → la lista → «Volver a borrador» o «Desactivar».
   - Roles: Sistema → Roles y usuarios (quitar permisos o desactivar el rol).
   - Reglas de aviso: Sistema → Reglas de aviso → desactivar.

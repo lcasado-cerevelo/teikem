@@ -18,7 +18,7 @@ El diseño completo está en `Diseño/logistica-funcionalidades-maestro.md`, sec
 ## 2. La orden
 
 - **Número** `OV-#####`, único por compañía, consecutivo y sin saltos (un intento que falla no gasta número).
-- **Cliente** (obligatorio): el comprador. **Consignatario** (opcional): solo si habrá entrega. **Almacén**: el que la atiende; si la compañía tiene un solo almacén activo se usa solo, si tiene varios hay que indicarlo.
+- **Cliente** (obligatorio): el comprador. **Consignatario** (opcional): solo si habrá entrega. **Almacén**: el que la atiende, **uno por orden** (el despacho es por almacén; no hay almacén por línea). Con un solo almacén activo se usa ese; con varios, si no se indica se toma el **almacén principal** ([§26](#26-almacén-de-la-orden-y-disponible-al-escoger-productos-lote-235)).
 - **Fecha de solicitud** (hoy, en la zona de la compañía), **fecha requerida** (opcional), **notas** (hasta 500 caracteres) y **quién la pidió**.
 - **Líneas**: producto, cantidad y precio. Solo se venden **productos propios de la compañía** (no los de un cliente de paso), activos, **sin repetir** en la misma orden. Hasta 200 líneas.
 - **Precio**: si no se escribe, se toma el **precio de venta del producto**. Escribir otro precio exige `sales.price` (si es igual al de lista no hace falta). Un producto **sin precio de venta** obliga a escribir el precio.
@@ -52,7 +52,7 @@ Las órdenes **nunca se borran**: se cancelan. Quedan en la bitácora (altas, ca
 | Cliente inexistente (o de otra compañía) | `Cliente no encontrado.` | 404 |
 | Cliente inactivo | `El cliente está inactivo; no se le puede vender.` | 422 |
 | Consignatario inexistente | `Consignatario no encontrado.` | 404 |
-| Varios almacenes y no se indicó | `Indique el almacén: la compañía tiene más de uno.` | 400 (`warehousePublicId`) |
+| Varios almacenes y no se indicó | Ya no es un error (Lote 235): se toma el **almacén principal** de la compañía. | — |
 | Almacén inexistente / inactivo / la compañía no tiene ninguno | `Almacén no encontrado.` / `El almacén está inactivo.` / `La compañía no tiene almacenes activos.` | 404 / 422 / 422 |
 | Sin líneas | `Agregue al menos un producto a la orden.` | 400 (`lines`) |
 | Más de 200 líneas | `La orden admite como máximo 200 líneas.` | 400 |
@@ -567,3 +567,22 @@ Dentro de un mismo filtro basta con **cualquiera** de los valores elegidos; entr
 | Situación | Mensaje exacto | HTTP |
 |---|---|---|
 | `dateField` con otro valor | `La fecha a filtrar debe ser REQUESTED (solicitada) o REQUIRED (requerida).` | 400 (`dateField`) |
+
+## 26. Almacén de la orden y disponible al escoger productos (Lote 235)
+<!-- kemi:staff -->
+
+Decisión de Luis (2026-11-10). Aplica a la ventana **Nueva orden**, al **pedido guiado** ([48](48-pedido-guiado.md)) y a la app de vendedores.
+
+- **La orden conserva su almacén**: uno por orden. No hay almacén por línea.
+- **Almacén por omisión = el principal.** Con **un solo almacén activo** el campo no se muestra (se usa ese). Con **más de uno**, el campo **Almacén** viene **ya escogido con el almacén principal** (el marcado en Almacén → Almacenes; si ninguno está marcado, el activo más antiguo: [06 §1.7](06-inventario-y-almacen.md#17-almacén-principal-lote-235)) y se puede cambiar. Quien llama al API sin `warehousePublicId` obtiene también el principal.
+- **«Disponible: N»** en cada línea de «Nueva orden» (debajo del producto) y en cada renglón del pedido guiado: lo **disponible para vender en el almacén de la orden** ([§6](#6-solicitar-la-orden-validar-y-reservar-lote-58): en mano − reservado, posiciones activas, sin cuarentena, cruce de muelle ni renta). **Kit de oferta** = kits completos que se arman con sus piezas en ese almacén (con las piezas del catálogo; si en la orden se cambian piezas, la cuenta final la hace Solicitar). **Kit armado** = su existencia. Al cambiar el almacén de la orden cambia el disponible.
+- **Pedir más de lo disponible se permite.** La línea queda **marcada en rojo**: distintivo **«Backorder: N»** y «Solo hay X disponibles en {almacén}; N quedan en backorder.» (con 1: «Solo hay 1 disponible en {almacén}; 1 queda en backorder.»; sin nada: «No hay disponible en {almacén}; N quedan en backorder.»). **No bloquea**: la orden se guarda con esa cantidad. Al **solicitar** sigue lo de siempre ([§6](#6-solicitar-la-orden-validar-y-reservar-lote-58)): el diálogo de faltante con «reservar lo disponible y dejar el resto en backorder». El pedido guiado, si la línea ya estaba marcada, manda `allowBackorder` directamente y no vuelve a preguntar.
+- **Nota de otros almacenes**: «Hay disponible en {almacén}: N» o «Hay disponible en: {almacén A} N · {almacén B} M», solo si otro almacén activo tiene. No se edita: para vender de ahí se cambia el almacén de la orden.
+
+**API** — `GET /api/v1/sales-orders/stock` (módulo `SALES_ORDERS`, permiso `sales.view`). Una sola consulta para todo el catálogo: `warehouses[]` (almacenes activos por código: `publicId`, `code`, `name`, `isMain`) y `products[]` (`productPublicId`, `stock[]` con `warehousePublicId` y `available`). Solo viajan los productos propios y activos con disponible mayor que cero en algún almacén activo: **lo que no viene es 0**. Es una foto sin bloqueo (la pantalla la refresca cada 30 segundos y al guardar una orden); la verdad la dice Solicitar.
+
+| Situación | Qué se ve | HTTP |
+|---|---|---|
+| Cantidad mayor que lo disponible en el almacén de la orden | Aviso en pantalla, no error: «Solo hay X disponibles en {almacén}; N quedan en backorder.» | — |
+| Solicitar sin aceptar el backorder | `No alcanza el inventario de {SKU}: pedido {n}, disponible {n}, faltante {n}.` | 409 |
+| Sin `sales.view` o sin el módulo | El disponible no se muestra y el campo Almacén es el de siempre | 403 |

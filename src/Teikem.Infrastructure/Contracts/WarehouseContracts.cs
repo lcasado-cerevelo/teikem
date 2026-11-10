@@ -16,10 +16,11 @@ public sealed record WarehouseCreateRequest(string? Code, string? Name, string? 
 /// DIRECT; desconocido → 400; no toca los recibos abiertos, D2) y posición de recepción por defecto (D12):
 /// DefaultReceivingBinId (del almacén → si no 404; zona STAGING o CROSSDOCK → si no 400; activa → si no 422) o
 /// ClearDefaultReceivingBin = true para quitarla.
+/// Lote 235: IsMain = true lo hace el ALMACÉN PRINCIPAL de la compañía (desmarca el anterior); false → 400 (el principal se cambia marcando otro).
 /// </summary>
 public sealed record WarehousePatchRequest(string? Name = null, string? Line1 = null, string? City = null, string? State = null,
     string? PostalCode = null, string? Country = null, string? RowVersion = null, string? ReceivingMode = null, int? DefaultReceivingBinId = null,
-    bool? ClearDefaultReceivingBin = null)
+    bool? ClearDefaultReceivingBin = null, bool? IsMain = null)
 {
     /// <summary>Llaves del JSON que no corresponden a ninguna propiedad (el servicio rechaza las prohibidas con 400).</summary>
     [JsonExtensionData]
@@ -33,11 +34,12 @@ public sealed record WarehouseDeactivateRequest(string? Comment = null, string? 
 /// el filtro "Tipo" de la lista (zonas sin tipo no aportan código).
 /// Lote 16: ReceivingModeCode (PUTAWAY | DIRECT) con su etiqueta, y la posición de recepción por defecto (D12; null = la
 /// primera STAGING del almacén).
+/// Lote 235: IsMain = es el almacén principal de la compañía (el marcado o, si ninguno activo lo está, el activo más antiguo): el que la venta escoge por omisión.
 /// </summary>
 public sealed record WarehouseDto(int Id, Guid PublicId, string Code, string Name, string? Line1, string? City, string? State,
     string? PostalCode, string CountryCode, string StatusCode, string Status, bool IsActive, int ZoneCount, int BinCount, int DockCount,
     decimal QtyOnHand, string RowVersion, IReadOnlyList<string> ZoneTypeCodes, string ReceivingModeCode = "PUTAWAY", string? ReceivingMode = null,
-    int? DefaultReceivingBinId = null, string? DefaultReceivingBinCode = null);
+    int? DefaultReceivingBinId = null, string? DefaultReceivingBinCode = null, bool IsMain = false);
 
 public sealed record WarehouseZoneRequest(string? Code, string? Name, string? ZoneType = null);
 

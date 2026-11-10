@@ -54,7 +54,7 @@ export interface WizardState {
   clientPublicId: string | null
   /** «Código · Nombre» del cliente escogido (para mostrarlo sin esperar la ficha). */
   clientLabel: string
-  /** Almacén: solo si la compañía tiene más de uno (el servidor lo pide con 400 en `warehousePublicId`). */
+  /** Almacén escogido a mano (Lote 235): null = el principal de la compañía (la pantalla lo muestra ya escogido cuando hay varios; el servidor también lo toma). */
   warehousePublicId: string | null
   isUrgent: boolean
   notes: string

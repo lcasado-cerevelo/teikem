@@ -537,6 +537,7 @@ public static class DependencyInjection
         services.AddScoped<AssembledKitService>();   // Lote 232: kit armado (con existencia propia): armar y desarmar
         services.AddScoped<PriceListService>();   // Lote 221: listas de precios
         services.AddScoped<SalesCatalogService>();   // Lote 221: ofertas y catálogo del pedido
+        services.AddScoped<SalesStockService>();   // Lote 235: lo disponible al escoger productos en una venta
         services.AddScoped<OfferService>();   // Lote 229: ofertas (entidad aparte) y kits de oferta
         services.AddScoped<ProductImageService>();   // Lote 229: foto del producto
         services.AddScoped<IOwnedEntityResolver, OfferOwnedEntityResolver>();   // Lote 229: la oferta como dueña de sus fotos

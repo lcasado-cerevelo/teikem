@@ -45,9 +45,9 @@ public class WmsContractsTests
     public static readonly TheoryData<Type, string> Signatures = new()
     {
         { typeof(WarehouseCreateRequest), "string? Code, string? Name, string? Line1, string? City, string? State, string? PostalCode, string? Country, string? ReceivingMode" },   // Lote 16
-        { typeof(WarehousePatchRequest), "string? Name, string? Line1, string? City, string? State, string? PostalCode, string? Country, string? RowVersion, string? ReceivingMode, int? DefaultReceivingBinId, bool? ClearDefaultReceivingBin" },   // Lote 16
+        { typeof(WarehousePatchRequest), "string? Name, string? Line1, string? City, string? State, string? PostalCode, string? Country, string? RowVersion, string? ReceivingMode, int? DefaultReceivingBinId, bool? ClearDefaultReceivingBin, bool? IsMain" },   // Lote 16; Lote 235: + IsMain
         { typeof(WarehouseDeactivateRequest), "string? Comment, string? RowVersion" },
-        { typeof(WarehouseDto), "int Id, Guid PublicId, string Code, string Name, string? Line1, string? City, string? State, string? PostalCode, string CountryCode, string StatusCode, string Status, bool IsActive, int ZoneCount, int BinCount, int DockCount, decimal QtyOnHand, string RowVersion, IReadOnlyList<string> ZoneTypeCodes, string ReceivingModeCode, string? ReceivingMode, int? DefaultReceivingBinId, string? DefaultReceivingBinCode" },   // Lote 16
+        { typeof(WarehouseDto), "int Id, Guid PublicId, string Code, string Name, string? Line1, string? City, string? State, string? PostalCode, string CountryCode, string StatusCode, string Status, bool IsActive, int ZoneCount, int BinCount, int DockCount, decimal QtyOnHand, string RowVersion, IReadOnlyList<string> ZoneTypeCodes, string ReceivingModeCode, string? ReceivingMode, int? DefaultReceivingBinId, string? DefaultReceivingBinCode, bool IsMain" },   // Lote 16; Lote 235: + IsMain
         { typeof(WarehouseZoneRequest), "string? Code, string? Name, string? ZoneType" },
         { typeof(WarehouseZonePatchRequest), "string? Name, string? ZoneType, string? Code" },
         { typeof(WarehouseZoneDto), "int Id, string Code, string Name, string? ZoneTypeCode, string? ZoneType, bool IsActive, int BinCount, int OccupiedBinCount, long CapacityQty, decimal QtyOnHandInCapacityBins, decimal QtyOnHand, int BinsWithoutCapacity" },

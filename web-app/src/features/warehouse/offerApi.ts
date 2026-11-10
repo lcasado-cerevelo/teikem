@@ -87,7 +87,7 @@ export function useOfferActions() {
       ...opts,
     }),
     publish: useMutation({ mutationFn: (publicId: string) => unwrap(api.POST('/api/v1/offers/{publicId}/publish', path(publicId))), ...opts }),
-    unpublish: useMutation({ mutationFn: (publicId: string) => unwrap(api.POST('/api/v1/offers/{publicId}/unpublish', path(publicId))), ...opts }),
+    // Lote 234: la web ya no ofrece «Volver a borrador» (POST …/unpublish sigue en el API por compatibilidad)
     deactivate: useMutation({ mutationFn: (publicId: string) => unwrap(api.POST('/api/v1/offers/{publicId}/deactivate', path(publicId))), ...opts }),
     reactivate: useMutation({ mutationFn: (publicId: string) => unwrap(api.POST('/api/v1/offers/{publicId}/reactivate', path(publicId))), ...opts }),
     uploadImage: useMutation({

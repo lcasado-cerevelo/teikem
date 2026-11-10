@@ -8,6 +8,8 @@ import { DateField, Spinner } from '../../../kernel/ui'
 import type { components } from '../../../kernel/api/schema'
 import { ConsigneePicker } from '../../consignees/ConsigneePicker'
 import type { SalesOrderDto } from '../salesApi'
+import { StockInfo } from '../StockInfo'
+import { backorderQty, availableIn, type StockInput } from '../stockRules'
 import { DeliveryPriceNotices } from './PriceNotices'
 import { addressLine, orderSummary, type DeliveryChoice, type WizardState } from './wizardRules'
 
@@ -21,15 +23,19 @@ export interface DeliveryStepProps {
   client: ClientDetailDto | undefined
   saved: SalesOrderDto | null
   recalculating: boolean
+  /** Lote 235: lo disponible y el almacén de la orden, para avisar en el resumen qué líneas quedan en backorder. */
+  stock?: StockInput | null
+  warehouseId?: string | null
 }
 
-export function DeliveryStep({ state, onChange, onRecalc, client, saved, recalculating }: DeliveryStepProps) {
+export function DeliveryStep({ state, onChange, onRecalc, client, saved, recalculating, stock, warehouseId }: DeliveryStepProps) {
   const t = useT()
   const f = useFormat()
   const canPickOther = useCan('locations.read')
   const physical = client?.physicalAddress?.isActive === false ? null : client?.physicalAddress ?? null
   const usingPhysical = !!physical?.publicId && state.consigneePublicId === physical.publicId
   const summary = orderSummary(saved)
+  const short = stock && warehouseId ? state.cart.filter((l) => backorderQty(l.quantity, availableIn(stock, l.productPublicId, warehouseId)) > 0) : []
   const mode = (m: DeliveryChoice) => onRecalc({ deliveryMode: m, consigneePublicId: m === 'DELIVERY' ? state.consigneePublicId ?? physical?.publicId ?? null : state.consigneePublicId })
 
   return (
@@ -108,6 +114,20 @@ export function DeliveryStep({ state, onChange, onRecalc, client, saved, recalcu
           <div className="wz-total"><dt>{t('salesWizard.summary.total')}</dt><dd className="mono">{f.money(summary.total)}</dd></div>
         </dl>
         <p className="help">{t('salesWizard.summary.help')}</p>
+        {/* Lote 235: lo que pasa de lo disponible queda marcado (no bloquea): el pedido se puede enviar y eso queda en backorder */}
+        {short.length > 0 && (
+          <>
+            <ul className="sales-backorders" aria-label={t('sales.stock.backorderTitle')}>
+              {short.map((l) => (
+                <li key={l.productPublicId}>
+                  <b><span className="mono">{l.sku}</span> · {l.name}</b>
+                  <StockInfo stock={stock} warehousePublicId={warehouseId} productPublicId={l.productPublicId} quantity={l.quantity} onlyBackorder />
+                </li>
+              ))}
+            </ul>
+            <p className="help">{t('sales.stock.backorderHelp')}</p>
+          </>
+        )}
       </section>
       {/* Lote 229: avisos de precio (dos ofertas a la vez, oferta más cara que la lista general) de lo guardado (`linePrices`) y del catálogo */}
       <DeliveryPriceNotices cart={state.cart} clientPublicId={state.clientPublicId} saved={saved} />
