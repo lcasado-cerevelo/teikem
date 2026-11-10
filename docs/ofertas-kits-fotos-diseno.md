@@ -105,3 +105,17 @@ Hoy el producto solo guarda peso (kg) y volumen (m³); casi nadie piensa en metr
   lugares donde se trabaja un kit**: el editor del kit (producto) y la pantalla de la oferta cuando se crea o edita un kit ahí.
 - **Editor de producto en escritorio:** Luis lo ve muy angosto y con demasiado scroll; se quiere más ancho en pantalla grande (ver la
   conversación; pendiente de su visto bueno).
+
+## 10. Dos clases de kit (Luis, 2026-11-10; acordado en lo general, sin construir)
+Cambia lo construido en los lotes 68–70 y 229: hoy todo kit se arma al despachar y no tiene existencia.
+- **Kit armado = producto con inventario.** Se crea y se ve en Almacén → Productos e inventario.
+  - «Nuevo producto» **pregunta si lo que se crea es un kit** (por omisión, no). Si es kit, ahí mismo sale la tabla para componerlo
+    (piezas y cantidades) y **cuántos kits se arman**. Un producto normal no ve nada de esto.
+  - **Armar N kits** saca del inventario las piezas de N kits y deja N kits en existencia. **Desarmar** devuelve las piezas.
+  - La pantalla de inventario muestra los kits armados disponibles y las piezas ya restadas.
+- **Kit de oferta = se arma al pedir** (como se hace en Solutions: las piezas están ahí y se juntan cuando se pide). Solo vive en las
+  ofertas; no tiene existencia propia y no aparece como producto en inventario.
+  - Los kits creados en ofertas **se guardan** (la composición; el precio no, aunque se recuerda el último) y al crear otra oferta la
+    pantalla **sugiere «usar un kit anterior» o «crear un kit nuevo»** (p. ej. el de noviembre se repite en enero sin teclearlo otra vez).
+- Por confirmar: ver la conversación (kit de venta permanente que no se arma antes, qué pasa al vender un kit armado sin existencia,
+  dónde aplican la sustitución y «Ajustable al pedir», lotes dentro del kit armado, costo del kit armado, app del almacén).
