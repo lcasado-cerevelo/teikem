@@ -4,6 +4,8 @@
 
 Lotes 223 y 226 (2026-11-07) — pedido de vendedores, partes P3 (web) y P4 (app móvil). El **pedido guiado** es otra puerta a la **misma orden de venta** del [capítulo 18](18-ordenes-de-venta.md): el vendedor arma el pedido en **cuatro pasos** (cliente, productos, entrega, autorización), se guarda como **borrador** en cada paso y al final lo **envía** confirmando quién es. La ventana «Nueva orden» sigue como siempre, para la oficina. Los precios salen de las listas y de las ofertas ([47](47-precios-y-ofertas.md)); el cliente nuevo nace como prospecto ([02 §1.8](02-clientes-y-contratos.md#18-cliente-prospecto-alta-mínima-y-aprobación-lote-222)).
 
+> **Lote 238 (2026-11-11) — una sola forma de crear la orden, con dos modos.** El asistente de este capítulo y la ventana «Nueva orden» son **dos modos de la misma captura**: **Asistente** (por pasos, pantalla completa, pensado para tableta y celular) y **Formulario** (la ventana de siempre, todo a la vista, para escritorio). Hay **un solo botón «Nueva orden»**: abre el **último modo que usó esa persona** (por persona y compañía, guardado en el servidor: lo mismo desde cualquier aparato); si nunca ha escogido, el asistente en pantallas angostas (hasta 900 px) y el formulario en escritorio. Detalle en [18 §27](18-ordenes-de-venta.md#27-modo-de-captura-asistente-o-formulario-lote-238).
+
 > **Capturas pendientes (Lotes 229, 230, 231 y 232).** El paso 2 cambió: tarjetas de oferta con el nombre de la oferta y su vigencia, cuadrito de foto en todo producto con foto, avisos de precio y «Cambiar» en las piezas de un kit de oferta del carrito (Lotes 231 y 232: el kit de oferta sale solo como tarjeta y solo si está en una oferta vigente; el kit armado sale como un producto más). Las capturas del paso 2, del carrito y del paso 3 de abajo son de antes (lote 228) y no muestran eso; hay que volver a tomarlas con el recorrido de Playwright.
 >
 > Capturas del recorrido del lote 228 (2026-11-07, datos de demostración): web en escritorio (claro y oscuro) y a 360 px. Siguen pendientes las de la **app móvil** (Pedidos → Mis pedidos, los pasos y la huella; el recorrido de Playwright no corre la app) y la del **diálogo de faltante** (es el mismo de [18 §6](18-ordenes-de-venta.md#6-solicitar-la-orden-validar-y-reservar-lote-58)).
@@ -12,7 +14,7 @@ Lotes 223 y 226 (2026-11-07) — pedido de vendedores, partes P3 (web) y P4 (app
 
 - Módulo **Órdenes de venta (`SALES_ORDERS`)**.
 - Permisos: **`sales.create`** arma, guarda y envía el pedido (rol **Ventas**, **Oficina de ventas** y Admin de compañía). Ver el catálogo y la lista usa `sales.view`. Dar de alta un cliente nuevo desde el paso 1 usa **`clients.create_basic`** (rol Ventas) o `clients.create`. Escoger otra dirección de entrega del cliente en la app usa `locations.read`.
-- **Web**: Contabilidad → **Órdenes de venta** → botón **Nuevo pedido** (junto a «Nueva orden»), ruta `/sales-orders/new-order`. Sin ítem de menú propio.
+- **Web**: Contabilidad → **Órdenes de venta** → botón **Nueva orden** (abre el asistente si es el modo de la persona) o el botón pequeño **Con asistente** (cambia de modo y abre el asistente), ruta `/sales-orders/new-order`. Sin ítem de menú propio.
 - **App móvil**: **Inicio → Pedidos** (visible con `sales.create`; una persona «solo chofer» no lo ve). Dentro: **Mis pedidos** y **Nuevo pedido**. Detalles de la app en la [sección 6](#6-en-la-app-móvil).
 
 ## 2. Los cuatro pasos (web y app: la misma secuencia)
@@ -102,6 +104,8 @@ Barra de progreso arriba («Paso 2 de 4: Productos»). **Siguiente** guarda el b
 - **Web**: tras el primer guardado la dirección queda `?order=<publicId>`; abrirla retoma el borrador en el primer paso pendiente. Una orden que ya no es borrador no se edita ahí: «La orden {número} ya no es un borrador: ábrala en Órdenes de venta.»
 - **App**: un borrador de «Mis pedidos» se abre en el pedido donde se quedó; lo demás se ve en una hoja de solo lectura.
 - El paso **no se guarda** en la base: solo dice qué validar al guardar.
+- **Lote 238 — seguir en el otro modo.** Mientras la orden sea borrador: en el asistente, el botón **Cambiar al formulario completo** (arriba a la derecha) abre **ese mismo borrador** en la ventana (si aún no se guardó nada, abre una ventana nueva); en la ventana, **Cambiar al asistente** (arriba a la derecha) guarda lo escrito **si está completo** y retoma el borrador en el asistente; si está a medias (p. ej. falta el producto) **no se bloquea**: el asistente retoma lo último guardado y ahí se termina paso a paso. Cambiar de modo **deja ese modo como el de la persona**.
+- **Lote 238 — abrir un borrador de la lista.** En Órdenes de venta, tocar una fila en **borrador** abre el **asistente** (en el paso donde iba) si ese es el modo de la persona, y la ventana si es el formulario. Una orden que ya no es borrador se abre siempre en la ventana de detalle.
 
 ## 4. Cómo se usa (API)
 
@@ -194,8 +198,10 @@ El pedido guiado usa los estatus de la orden de venta (`SalesOrderStatuses`) con
 - **Pedí un kit armado y dice que no alcanza.** No hay kits armados suficientes (existencia menos reservado). Quien tenga `inventory.adjust` puede armar más desde la ficha del kit (pestaña «Armados»); si no, el faltante se deja en backorder hasta que haya kits.
 - **El kit armado no me deja cambiar piezas.** Es lo normal: un kit armado ya tiene sus piezas dentro. Cambiar piezas solo existe en los kits de oferta.
 - **Quedó un borrador sin terminar.** Está en Órdenes de venta (o «Mis pedidos»); ábralo para seguirlo o cancélelo.
+- **Empecé en el asistente y al abrir el borrador salió la ventana (o al revés).** Se abre en el **último modo** de la persona, no en el que se usó al empezar (la orden no guarda el modo). Use **Cambiar al asistente** / **Cambiar al formulario completo** o el botón pequeño **Con asistente** / **Con formulario** de la lista.
+- **«Cambiar al asistente» no hacía nada.** Antes del 2026-11-11 exigía la orden completa (producto en cada línea); ahora cambia siempre. Si lo sigue viendo, falta actualizar la versión.
 
-Los mensajes están en la [FAQ](faq.md#lotes-223-y-226--pedido-guiado-web-y-app-móvil), en [Lote 229](faq.md#lote-229--ofertas-como-entidad-aparte-kits-de-oferta-y-foto-del-producto), en [Lote 230](faq.md#lote-230--medidas-y-peso-del-producto-no-sustituible-y-cambiar-piezas-de-un-kit), en [Lote 231](faq.md#lote-231--kit-de-oferta-con-biblioteca) y en [Lote 232](faq.md#lote-232--kit-armado-con-inventario-armar-y-desarmar).
+Los mensajes están en la [FAQ](faq.md#lotes-223-y-226--pedido-guiado-web-y-app-móvil), en [Lote 238](faq.md#lote-238--modo-de-captura-por-persona-última-compañía-y-lo-que-hay-que-recolectar), en [Lote 229](faq.md#lote-229--ofertas-como-entidad-aparte-kits-de-oferta-y-foto-del-producto), en [Lote 230](faq.md#lote-230--medidas-y-peso-del-producto-no-sustituible-y-cambiar-piezas-de-un-kit), en [Lote 231](faq.md#lote-231--kit-de-oferta-con-biblioteca) y en [Lote 232](faq.md#lote-232--kit-armado-con-inventario-armar-y-desarmar).
 
 ## 9. Para soporte
 

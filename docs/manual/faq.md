@@ -12174,3 +12174,65 @@ Hace falta el permiso **Administrar impuestos** (`tax.manage`). Sin él se ve en
 
 **«El producto se guardó, pero el impuesto no: {motivo}»**
 El producto quedó creado o guardado, pero la categoría de impuesto no se pudo cambiar (lo normal: falta el permiso o el módulo se apagó). Vuelva a abrir el producto y cambie el campo Impuesto, o hágalo en Impuestos → Productos.
+
+## Lote 238 — Modo de captura por persona, última compañía y lo que hay que recolectar
+<!-- kemi:staff -->
+
+Capítulos: [18 §27](18-ordenes-de-venta.md#27-modo-de-captura-asistente-o-formulario-lote-238), [48 — Pedido guiado](48-pedido-guiado.md), [06 §7a — Recolección y empaque por documento](06-inventario-y-almacen.md), [01 — Plataforma](01-plataforma-y-seguridad.md) y [09 — App de almacén](09-app-almacen.md).
+
+**¿Por qué ya no hay dos botones («Nuevo pedido» y «Nueva orden»)?**
+Eran dos formas de crear lo mismo. Ahora hay **un botón «Nueva orden»** que abre el último modo de la persona (**Asistente** por pasos o **Formulario** completo) y un botón pequeño con el otro modo («Con asistente» / «Con formulario»).
+
+**¿Con qué modo abre si nunca escogí?**
+Con el asistente en pantallas de hasta 900 px (celular y tableta vertical) y con el formulario en escritorio.
+
+**¿El modo se queda si cambio de computadora o de tableta?**
+Sí: se guarda en el servidor, por persona y compañía. La primera vez en un aparato puede mostrar un instante el modo por omisión mientras llega la respuesta.
+
+**Empecé una orden en el asistente y al abrir el borrador salió la ventana (o al revés).**
+Un borrador se abre en el **último modo** de la persona; la orden no guarda con cuál se empezó. Cambie con **Cambiar al asistente** / **Cambiar al formulario completo** (arriba) o con el botón pequeño de la lista.
+
+**El botón «Cambiar al asistente» no hacía nada.**
+Pasaba cuando faltaba un dato (p. ej. el producto de una línea): antes exigía la orden completa. Desde 2026-11-11 cambia siempre: guarda lo escrito si está completo y, si no, retoma lo último guardado.
+
+**Al cambiar al asistente perdí lo que había escrito a medias.**
+Solo se guarda lo completo. Lo que estaba a medias en la ventana no pasa al asistente; termine el paso a paso ahí. Para no perder nada, guarde el borrador antes de cambiar.
+
+**«El valor de la preferencia no es válido.» (400)**
+Solo sale por API: `sales.entryMode` acepta `wizard` o `full`, y `warehouse.last` el publicId de un almacén. **404:** la clave no existe (solo hay esas dos).
+
+**Cambié de compañía y al volver a entrar abre otra.**
+Debe abrir **la última en la que trabajó** (cada cambio con el selector de la cabecera la guarda). Si abre otra, la persona ya no es miembro de la guardada (entonces va a la marcada como predeterminada, o a la primera por nombre) o la sesión anterior se cerró sin cambiar de compañía. Ya no hay forma de fijar una compañía predeterminada a mano: la última usada manda.
+
+**En la app de almacén, ¿se acuerda del último almacén?**
+Sí, por persona: al abrir **Inicio** vuelve al último que esa persona escogió, aunque otra persona haya dejado el aparato en otro. Si el almacén se dio de baja, queda el del aparato. Sin señal no se guarda ni se restaura.
+
+**¿Y en la web?**
+La web no tiene «almacén activo»: cada pantalla pide su almacén. Lo que sí se recuerda ahí es la **compañía** (arriba a la derecha) y el modo de captura de ventas.
+
+**En Recolección y empaque, al abrir un documento solo veo totales y no sé qué recolectar.**
+Desde 2026-11-11 la ficha de un aviso de salida o de una orden de venta trae **«Lo que hay que recolectar»**: producto, Pedido, Sacado, Por sacar y **Sacar de** (posición, lote y cantidad ya reservados). Si no lo ve, falta actualizar el servidor.
+
+**¿Qué hace el botón «Recolectar» de la ficha?**
+Llena el formulario de la izquierda con el almacén de la reserva y una línea por cada posición y lote reservado. **No recolecta nada:** revise y toque «Recolectar (bajar de inventario)». Sale el aviso «{número}: renglones cargados en el formulario. Revíselos y recolecte.».
+
+**No me sale el botón «Recolectar».**
+Hace falta el permiso `warehouse.pick`, que el documento sea un aviso de salida o una orden de venta y que tenga algo **reservado por sacar** (si todo está sacado o está en backorder sin reservar, no hay nada que cargar).
+
+**La ficha dice «Este documento no tiene renglones.»**
+Un envío ya empacado (tipo Envío) no trae renglones: ya se recolectó. En un aviso o una orden, es que no tiene líneas.
+
+**En un producto con series, ¿viene con las series?**
+No. Las series se escanean en el formulario después de cargarlo.
+
+**Cargué el formulario y la posición no es la que quiero.**
+Cada línea se puede cambiar como siempre: el selector de **Posición** de la línea (con su disponible). Lo cargado es solo la reserva.
+
+**¿Qué pasa con las piezas de un kit?**
+La ficha las muestra una por una con la etiqueta «Kit {SKU}» y se cargan como líneas del formulario: lo que sale del almacén son las piezas, no el kit.
+
+**Corrí el script de la lista de precios de QuickBooks (`12-lista-precios-quickbooks.sql`) y no salió la lista.**
+Se corrió en **simulación** (`@Aplicar = 0`, el valor del archivo): muestra lo que haría y deshace al final. Ponga `@Aplicar = 1` y vuelva a correrlo; el mensaje final debe decir «APLICADO», no «SIMULACIÓN». Crea una lista general publicada con los precios del campo Price de QuickBooks (los productos con precio mayor que 0) y no cambia el precio de venta de los productos. Si `06-lista-precios-inicial.sql` ya creó otra lista general publicada, aborta por cruce de fechas: termine la vigencia de la otra o use `@Publicar = 0`.
+
+**No encuentro productos exentos de IVU.**
+Hasta correr `11-impuesto-productos.sql` con `@Aplicar = 1`, todos los productos de Advance Solutions están **sin categoría de impuesto**, que Teikem trata como gravable. El script pone **Exento** a los once «Non» de QuickBooks; después el campo **Impuesto** del editor de producto (Almacén → Productos e inventario, bloque Precios) los muestra como Exento. Ver el [Lote 237](#lote-237--exención-del-cliente-por-componentes-y-campo-impuesto-en-el-editor-de-producto).

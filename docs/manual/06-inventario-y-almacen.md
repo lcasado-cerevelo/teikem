@@ -2248,11 +2248,15 @@ La lista de la derecha de **Recolección y empaque** se ve de dos maneras (selec
 
 **Abrir un documento** muestra el avance y sus **recolecciones como movimientos** (la más reciente primero: número y estatus, fecha, quién y cantidad); tocar una abre la ficha de esa recolección con sus acciones (Empacar, Eliminar).
 
+**Lo que hay que recolectar (2026-11-11).** La ficha de un **aviso de salida** o de una **orden de venta** trae la sección **«Lo que hay que recolectar»**: una fila por renglón con el producto (SKU y nombre), **Pedido**, **Sacado**, **Por sacar** y **Sacar de** (la **posición**, el **lote** si lo tiene y la cantidad que el documento **ya reservó** ahí). La sugerencia es esa reserva, no un cálculo aparte. En una línea de **kit** salen sus **piezas** (lo que de verdad se saca) con la etiqueta «Kit {SKU}». Un **envío** ya empacado no la lleva (ya se recolectó).
+
+**Botón «Recolectar»** (abajo en la ficha; permiso `warehouse.pick`; solo si hay algo reservado por sacar). Cierra la ficha y **llena el formulario «Recolección» de la izquierda**: el almacén de la reserva y **una línea por cada posición (y lote) reservada**, con su cantidad, más una línea vacía al final; sale el aviso «{número}: renglones cargados en el formulario. Revíselos y recolecte.» y **no se recolecta nada** hasta que la persona toque «Recolectar (bajar de inventario)». Si estaba activo el **Despacho manual**, se apaga. Un producto con **series** viene sin ellas (se escanean). Si una reserva no trae posición (dato viejo), va una sola línea con lo reservado y el servidor elige por FEFO.
+
 **Qué documentos salen:** los abiertos con algo reservado por sacar (aunque todavía no tengan recolecciones) y los que ya tienen alguna recolección; uno cancelado sin recolecciones no. Cada recolección cuenta para **un** documento, con esta prioridad: aviso de salida, luego orden de venta, luego envío. Las recolecciones **eliminadas** (revertidas) no cuentan. Un **despacho manual** no tiene documento: se ve en «Por movimiento».
 
 | Método y ruta | Permiso | Qué hace |
 |---|---|---|
-| `GET /api/v1/pick-batches/documents?kind=&status=&search=&pendingOnly=&skip=&take=` | `inventory.view` | Documentos con su avance y sus recolecciones. `kind`: `EXIT_NOTICE`, `SALES_ORDER` u `ORDER`. `take` hasta 200. 400 `Tipo de documento desconocido: «X». Use EXIT_NOTICE, SALES_ORDER u ORDER.` |
+| `GET /api/v1/pick-batches/documents?kind=&status=&search=&pendingOnly=&skip=&take=` | `inventory.view` | Documentos con su avance y sus recolecciones. `kind`: `EXIT_NOTICE`, `SALES_ORDER` u `ORDER`. `take` hasta 200. 400 `Tipo de documento desconocido: «X». Use EXIT_NOTICE, SALES_ORDER u ORDER.` Desde 2026-11-11 cada documento trae `warehousePublicId` (el almacén de la reserva) y `lines` (renglones con `ordered`, `reserved`, `shipped`, `kitSku`, `trackingTypeCode`, `ownerClientPublicId` y `locations` con `binId`, `binCode`, `lotId`, `lotNumber`, `expiryDate`, `quantity`; solo avisos de salida y órdenes de venta). |
 
 La lista de **recibos** por aviso llega con el recibo de varias tandas (C2): hoy cada aviso tiene un solo recibo, así que agruparla no cambiaría nada.
 

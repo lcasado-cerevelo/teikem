@@ -37,7 +37,7 @@ Cómo se usa: `POST /api/v1/auth/login`
 Respuesta con `status`: `ok` (incluye `tokens`), `mfa_required` (incluye `mfaChallengeToken` como Bearer para
 el paso 2). Si el usuario pertenece a varias compañías y no manda `tenantId`, **no se le pregunta** (desde 2026-09-30): entra
 a su compañía predeterminada; si ya no es miembro de ella, a la membresía marcada como predeterminada; si no, a la primera por
-nombre. Luego cambia de compañía con `POST /api/v1/auth/switch-tenant` (el selector de la cabecera). El valor
+nombre. **Desde 2026-11-11 la compañía predeterminada es la última en la que la persona trabajó:** cada `switch-tenant` la guarda (`DefaultTenantId`), así que al volver a entrar se abre esa compañía. Luego cambia de compañía con `POST /api/v1/auth/switch-tenant` (el selector de la cabecera). El valor
 `tenant_selection` ya no se emite.
 
 **Primer ingreso obligatorio (2026-09-30).** Si al usuario le falta el primer ingreso (columna `AspNetUsers.OnboardingRequired`
@@ -118,6 +118,7 @@ Validaciones: código vacío o incorrecto → `Código MFA inválido.` (401).
   `401 Refresh token inválido.`: se cierra únicamente esa sesión y las demás sesiones de la persona siguen vivas.
 - Cambiar de compañía activa sin volver a poner contraseña: `POST /api/v1/auth/switch-tenant`
   `{ "refreshToken": "...", "tenantId": 2 }`. Recarga menú, permisos y datos con el nuevo tenant.
+- Preferencias propias (2026-11-11): `GET` y `PUT /api/v1/me/preferences/{key}` (sesión; por persona y compañía). Claves: `sales.entryMode` (`wizard` | `full`, modo de captura de órdenes de venta, [18 §27](18-ordenes-de-venta.md#27-modo-de-captura-asistente-o-formulario-lote-238)) y `warehouse.last` (publicId del último almacén que usó la persona en la app de almacén, [09](09-app-almacen.md)). 404 si la clave no existe; 400 «El valor de la preferencia no es válido.». Tabla `dbo.UserPreference`.
 - Cerrar esta sesión: `POST /api/v1/auth/logout` `{ "refreshToken": "..." }` (204, no requiere estar
   autenticado porque el propio refresh token identifica la sesión a cerrar).
 - Cerrar todas las sesiones propias: `POST /api/v1/auth/logout-all` (autenticado). Invalida también los

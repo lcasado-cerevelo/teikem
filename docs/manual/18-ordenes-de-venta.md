@@ -587,3 +587,22 @@ Decisión de Luis (2026-11-10). Aplica a la ventana **Nueva orden**, al **pedido
 | Cantidad mayor que lo disponible en el almacén de la orden | Aviso en pantalla, no error: «Solo hay X disponibles en {almacén}; N quedan en backorder.» | — |
 | Solicitar sin aceptar el backorder | `No alcanza el inventario de {SKU}: pedido {n}, disponible {n}, faltante {n}.` | 409 |
 | Sin `sales.view` o sin el módulo | El disponible no se muestra y el campo Almacén es el de siempre | 403 |
+
+## 27. Modo de captura: asistente o formulario (Lote 238)
+
+<!-- kemi:staff -->
+
+**Qué es.** Crear una orden de venta tiene **dos modos** de una misma captura: **Asistente** ([capítulo 48](48-pedido-guiado.md): cuatro pasos, pantalla completa, para tableta y celular) y **Formulario** (la ventana «Nueva orden» de este capítulo, para escritorio). Antes eran dos botones («Nuevo pedido» y «Nueva orden») que hacían lo mismo.
+
+**Dónde.** Contabilidad → **Órdenes de venta**, arriba a la derecha: **«Nueva orden»** (abre el último modo de la persona) y un botón pequeño con el **otro modo** («Con asistente» / «Con formulario»), que cambia de modo y abre la captura. Permiso: **`sales.create`**.
+
+**Cómo se recuerda.** El modo es **por persona y compañía** y se guarda **en el servidor** (`GET/PUT /api/v1/me/preferences/sales.entryMode`, valores `wizard` o `full`): lo mismo en la oficina que en la tableta. Mientras llega la respuesta se usa la copia de ese navegador y, si no hay ninguna, el modo por omisión: **asistente** en pantallas de hasta 900 px, **formulario** en escritorio.
+
+**Borrador.** Una orden en borrador se retoma en el modo de la persona: tocar su fila abre el asistente (en el paso donde iba) o la ventana. Mientras sea borrador se puede **cambiar de modo** desde dentro: **«Cambiar al asistente»** (arriba, en la ventana) y **«Cambiar al formulario completo»** (arriba, en el asistente). Cambiar **guarda antes** lo escrito si está completo; si está a medias, cambia igual y se retoma lo último guardado. Después de solicitada, la orden solo se ve en la ventana de detalle.
+
+**No cambia** ningún dato de la orden: el modo es solo una preferencia de pantalla. La orden no guarda con qué modo se empezó.
+
+| Método y ruta | Permiso | Qué hace |
+|---|---|---|
+| `GET /api/v1/me/preferences/{key}` | sesión | Preferencia propia de la persona en la compañía activa: `{ "key", "value" }` (`value` es null si nunca la guardó). `key`: `sales.entryMode` o `warehouse.last`. 404 si la clave no existe. |
+| `PUT /api/v1/me/preferences/{key}` | sesión | Guarda `{ "value" }`. 400 «El valor de la preferencia no es válido.» (`sales.entryMode`: `wizard` o `full`; `warehouse.last`: el publicId de un almacén). |

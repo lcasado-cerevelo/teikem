@@ -220,6 +220,7 @@ lo deja activo y la app avisa «Ahora trabajas en <nombre>.» y sincroniza al mo
 - **Con un recibo, despacho o conteo en curso no se puede cambiar:** «Termina o cancela el documento en curso antes de cambiar de almacén.»
   (aviso de la app, sin llamada al servidor).
 - **Sin señal:** la lista de almacenes queda guardada en el aparato (se renueva cada vez que se abre Inicio con señal), así que se puede cambiar sin red.
+- **El último almacén de cada persona (2026-11-11).** Al elegir un almacén, la app lo guarda **en el servidor como el último de esa persona** (`warehouse.last`, por persona y compañía; sin señal no se guarda y no estorba). Al abrir **Inicio**, una vez por persona mientras la app esté abierta, **vuelve a ese almacén** si sigue activo en la compañía, aunque otra persona haya dejado el aparato en otro. Cambiar de almacén con un documento en curso sigue sin permitirse. En la web no hay «almacén activo»: cada pantalla pide el suyo.
 - **La elección es de ese aparato y esa compañía** (cada compañía registrada en el teléfono recuerda la suya). Se descarta sola cuando
   (a) desde la web se cambia el almacén por defecto del aparato, o (b) el almacén elegido se da de baja: entonces el aparato vuelve al por defecto.
 - **Servidor:** no cambió nada. Las llamadas ya llevaban el almacén en la petición; el aparato no está limitado a su almacén por defecto.
