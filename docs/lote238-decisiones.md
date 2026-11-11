@@ -29,4 +29,4 @@ Pedidos de Luis en la sesión del 2026-11-11. Web, API, app de almacén, manual 
 7. En un envío empacado (`ORDER`) la ficha no trae renglones.
 
 ## Qué quedó fuera
-Las capturas en inglés (las de `l238-*` están con la interfaz en español; anotado en `docs/manual/en/captures-pending.md`); aplicar los scripts 11 y 12 en TEST o producción (los corre Luis).
+Aplicar los scripts 11 y 12 en TEST o producción (los corre Luis).

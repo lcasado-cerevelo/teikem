@@ -12321,12 +12321,12 @@ Yes, per person: when opening **Home** it returns to the last one that person ch
 The web has no «active warehouse»: each screen asks for its own warehouse. What is remembered there is the **company** (top right) and the sales entry mode.
 
 **In Picking and packing, when I open a document I only see totals and do not know what to pick.**
-Since 2026-11-11 the record of an exit notice or sales order has **«What to pick»**: product, Ordered, Shipped, To pick and **Pick from** (bin, lot and quantity already reserved). If you do not see it, the server needs updating.
+Since 2026-11-11 the record of an exit notice or sales order has **«What to collect»**: product, Ordered, Picked, To collect and **Collect from** (bin, lot and quantity already reserved). If you do not see it, the server needs updating.
 
-**What does the «Pick» button in the record do?**
-It fills the form on the left with the reservation's warehouse and one line per reserved bin and lot. **It picks nothing:** review and tap «Pick (take from inventory)». The notice «{number}: lines loaded into the form. Review them and pick.» appears.
+**What does the «Collect» button in the record do?**
+It fills the form on the left with the reservation's warehouse and one line per reserved bin and lot. **It picks nothing:** review and tap «Pick (take out of inventory)». The notice «{number}: lines loaded into the form. Review them and collect.» appears.
 
-**The «Pick» button does not show.**
+**The «Collect» button does not show.**
 You need the `warehouse.pick` permission, the document must be an exit notice or a sales order and it must have something **reserved to pick** (if everything is shipped or in backorder without reservation, there is nothing to load).
 
 **The record says «This document has no lines.»**
