@@ -118,6 +118,7 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<ChartDefinition> ChartDefinitions => Set<ChartDefinition>();
     public DbSet<ChartShare> ChartShares => Set<ChartShare>();
     public DbSet<UserAnalyticsPreference> UserAnalyticsPreferences => Set<UserAnalyticsPreference>();
+    public DbSet<UserPreference> UserPreferences => Set<UserPreference>();
     // Lote 2 — Clientes y contratos
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<ClientContact> ClientContacts => Set<ClientContact>();

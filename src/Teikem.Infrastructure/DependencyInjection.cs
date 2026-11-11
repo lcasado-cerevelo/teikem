@@ -430,6 +430,7 @@ public static class DependencyInjection
         // sincronización por diferencia. La idempotencia (Idempotency-Key) es un middleware del API sin servicio propio.
         services.AddScoped<DeviceService>();
         services.AddScoped<PinService>();
+        services.AddScoped<UserPreferenceService>();
         services.AddScoped<SyncService>();
 
         // Registro de fuentes de datos (cada lote agrega las suyas) y resolvers de pertenencia

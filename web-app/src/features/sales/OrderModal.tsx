@@ -3,7 +3,8 @@
 // faltante) con las salidas que da el servidor (reservar lo disponible y dejar el resto en backorder, o volver a editar). Una orden SOLICITADA se ve con
 // lo reservado y lo pendiente y permite cambiar la cantidad de una línea, surtir o cerrar con faltante y cancelar.
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useEntryMode, wizardPath } from './entryMode'
 import { Can, useCan } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
@@ -190,6 +191,8 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
   const t = useT()
   const f = useFormat()
   const { create, update, check, cancel } = useSalesMutations()
+  const navigate = useNavigate()
+  const [, setEntryMode] = useEntryMode()
   const [draft, setDraft] = useState<OrderDraft>(() => draftOf(order))
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState<SalesOrderDto | null>(null)
@@ -249,6 +252,20 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
     onClose()
   }
 
+  // 2026-11-11: mientras sea borrador se puede seguir en el asistente por pasos; se guarda primero y se retoma ese mismo borrador
+  // Si lo escrito está completo se guarda primero; si está a medias (p. ej. falta el producto) NO se bloquea el cambio: el asistente retoma lo último guardado
+  // (o abre uno nuevo) y ahí se termina paso a paso.
+  const switchToWizard = async () => {
+    let publicId = current?.publicId ?? null
+    if (!draftError(draft)) {
+      const dto = await save()
+      if (!dto) return
+      publicId = dto.publicId ?? publicId
+    }
+    setEntryMode('wizard')
+    navigate(wizardPath(publicId))
+  }
+
   const saveAndRequest = async () => {
     const dto = await save()
     if (!dto) return
@@ -281,6 +298,10 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
       }
     >
       <div className="pb sales-form">
+        {/* arriba, como en el asistente: seguir esta misma orden en el modo por pasos */}
+        <div className="act" style={{ justifyContent: 'flex-end', marginBottom: 8 }}>
+          <button type="button" className="btn" onClick={() => void switchToWizard()} disabled={busy}>{t('sales.switchToWizard')}</button>
+        </div>
         <div className="r2">
           <div className="f">
             <label htmlFor="so-client">{t('sales.client')}</label>

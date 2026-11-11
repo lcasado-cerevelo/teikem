@@ -53,3 +53,8 @@ public sealed record CompanySessionDto(long Id, int UserId, string? UserName, st
 
 /// <summary>Lote F10 — resultado de "Cerrar las demás sesiones": cuántas sesiones de la compañía se revocaron.</summary>
 public sealed record RevokeSessionsResultDto(int Revoked);
+
+/// <summary>Preferencia propia de la persona (null = nunca la ha guardado).</summary>
+public sealed record UserPreferenceDto(string Key, string? Value);
+/// <summary>Cuerpo de PUT /me/preferences/{key}.</summary>
+public sealed record UserPreferenceSetRequest(string? Value);

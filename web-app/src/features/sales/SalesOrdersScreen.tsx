@@ -6,8 +6,9 @@
 // con búsqueda, y «Solo los asignados a mí»; botón Limpiar. Todo va al servidor (también el Exportar y el orden, que leen TODO lo filtrado con `exportRows`).
 // Los filtros viven en la pantalla (no en la pestaña): se conservan al ir a Backorders y volver.
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { Can, permAllowed, useAccess } from '../../kernel/access'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useEntryMode, wizardPath } from './entryMode'
+import { Can, permAllowed, useAccess, useCan } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import { useFormat } from '../../kernel/format'
@@ -66,7 +67,7 @@ function useDebounced(value: string, ms = 300) {
   return v
 }
 
-function OrdersTab({ onOpen, filters, onFilters }: { onOpen: (id: string) => void; filters: OrdersFilterState; onFilters: (next: OrdersFilterState) => void }) {
+function OrdersTab({ onOpen, filters, onFilters }: { onOpen: (id: string, status?: string | null) => void; filters: OrdersFilterState; onFilters: (next: OrdersFilterState) => void }) {
   const t = useT()
   const f = useFormat()
   const [page, setPage] = useState(1)
@@ -181,7 +182,7 @@ function OrdersTab({ onOpen, filters, onFilters }: { onOpen: (id: string) => voi
             total={list.data?.total ?? 0}
             onPage={setPage}
             onPageSize={(s) => (setPageSize(s), setPage(1))}
-            onRowClick={(o) => onOpen(o.publicId!)}
+            onRowClick={(o) => onOpen(o.publicId!, o.status)}
             empty={hasOrdersFilters(filters) ? t('sales.orders.emptyFiltered') : t('sales.orders.empty')}
             exportRows={() => fetchAllPages<SalesOrderListItemDto>(salesOrderPageReader(apiFilters))}
           />
@@ -319,7 +320,12 @@ export default function SalesOrdersScreen() {
       { replace: true },
     )
   // Lote 67: el aviso del Pulso «Necesita tu atención» abre la orden directo (?order=<publicId>)
-  const [openId, setOpenId] = useState<string | null | 'new'>(() => params.get('order'))
+  const [openId, setOpenId] = useState<string | null | 'new'>(() => params.get('order') ?? (params.get('new') ? 'new' : null))
+  const navigate = useNavigate()
+  const [entryMode, setEntryMode] = useEntryMode()
+  const canCreate = useCan('sales.create')
+  // un borrador se retoma en el modo de esta persona: con el asistente, en el paso donde iba; si no, en la ventana
+  const openOrder = (id: string, status?: string | null) => (status === 'DRAFT' && canCreate && entryMode === 'wizard' ? navigate(wizardPath(id)) : setOpenId(id))
   // Lote 82: devoluciones (la ficha por su id y el editor, opcionalmente sobre una orden)
   const [returnId, setReturnId] = useState<string | null>(null)
   const [newReturn, setNewReturn] = useState<{ orderId: string | null } | null>(null)
@@ -334,9 +340,12 @@ export default function SalesOrdersScreen() {
         </div>
         <Can perm="sales.create">
           <div className="act">
-            {/* Lote 223: el pedido guiado (pantalla completa por pasos) junto a la ventana de siempre */}
-            <Link className="btn flow" to="/sales-orders/new-order">{t('sales.newGuided')}</Link>
-            <button type="button" className="btn" onClick={() => setOpenId('new')}>{t('sales.new')}</button>
+            {/* 2026-11-11: UNA sola forma de crear la orden con dos modos (asistente por pasos o formulario completo); se abre el último modo de esta persona
+                y dentro del borrador se puede cambiar al otro */}
+            <button type="button" className="btn flow" onClick={() => (entryMode === 'wizard' ? navigate(wizardPath()) : setOpenId('new'))}>{t('sales.new')}</button>
+            <button type="button" className="btn" onClick={() => { const m = entryMode === 'wizard' ? 'full' : 'wizard'; setEntryMode(m); if (m === 'wizard') navigate(wizardPath()); else setOpenId('new') }}>
+              {t(entryMode === 'wizard' ? 'sales.modeFull' : 'sales.modeWizard')}
+            </button>
           </div>
         </Can>
       </div>
@@ -352,7 +361,7 @@ export default function SalesOrdersScreen() {
         ]}
       />
       {tab === 'orders' ? (
-        <OrdersTab onOpen={setOpenId} filters={orderFilters} onFilters={setOrderFilters} />
+        <OrdersTab onOpen={openOrder} filters={orderFilters} onFilters={setOrderFilters} />
       ) : tab === 'backorders' ? (
         <BackordersTab onOpen={setOpenId} />
       ) : tab === 'quickbooks' ? (

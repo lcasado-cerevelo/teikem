@@ -16,7 +16,7 @@ const NO_ROWS: never[] = []
 /** Bajo este ancho del panel la tabla pasa a tarjetas. */
 const CARDS_BELOW_PX = 640
 
-export function PickDocumentsPanel({ highlight }: { highlight?: string | null }) {
+export function PickDocumentsPanel({ highlight, onCollect }: { highlight?: string | null; onCollect?: (d: PickDocumentDto) => void }) {
   const t = useT()
   const lang = useLang()
   const boxRef = useRef<HTMLDivElement>(null)
@@ -136,7 +136,7 @@ export function PickDocumentsPanel({ highlight }: { highlight?: string | null })
           />
         )}
       </Panel>
-      {open && <PickDocumentModal document={open} onClose={() => setOpen(null)} />}
+      {open && <PickDocumentModal document={open} onClose={() => setOpen(null)} onCollect={onCollect ? (d) => { setOpen(null); onCollect(d) } : undefined} />}
     </div>
   )
 }

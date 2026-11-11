@@ -14,6 +14,17 @@ public sealed record PickBatchSummaryDto(Guid PublicId, string Number, string St
 /// BatchCount y LastCollectedAtUtc cuentan las recolecciones activas (no eliminadas); Batches las trae (la más reciente primero).
 /// </summary>
 public sealed record PickDocumentDto(string Kind, Guid PublicId, string Number, string? ClientName, string StatusCode, string Status, decimal? Ordered, decimal? Reserved, decimal Shipped,
-    int BatchCount, DateTime? LastCollectedAtUtc, IReadOnlyList<PickBatchSummaryDto> Batches);
+    int BatchCount, DateTime? LastCollectedAtUtc, IReadOnlyList<PickBatchSummaryDto> Batches,
+    Guid? WarehousePublicId = null, IReadOnlyList<PickDocumentLineDto>? Lines = null);
+
+/// <summary>2026-11-11: de dónde sale lo reservado para un renglón: la posición (y el lote, si lo tiene) con su cantidad. Es lo que el documento YA reservó, o sea lo que se debe recolectar.</summary>
+public sealed record PickDocumentLocationDto(int BinId, string BinCode, int? LotId, string? LotNumber, DateOnly? ExpiryDate, decimal Quantity);
+
+/// <summary>
+/// 2026-11-11: un renglón de lo que hay que recolectar de un documento (aviso de salida u orden de venta). Ordered = pedido (null en la pieza de un kit), Reserved = reservado por sacar, Shipped = sacado;
+/// KitSku = el kit al que pertenece la pieza (null si no es de un kit). Locations = dónde está lo reservado.
+/// </summary>
+public sealed record PickDocumentLineDto(Guid ProductPublicId, string Sku, string ProductName, decimal? Ordered, decimal Reserved, decimal Shipped, string? KitSku, IReadOnlyList<PickDocumentLocationDto> Locations,
+    string? TrackingTypeCode = null, Guid? OwnerClientPublicId = null);
 
 public sealed record PickDocumentPageDto(int Total, int Skip, int Take, IReadOnlyList<PickDocumentDto> Items);

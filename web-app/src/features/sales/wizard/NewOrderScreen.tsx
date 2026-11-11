@@ -6,6 +6,7 @@
 // envío con la misma contraseña. Al final, la pantalla con el número OV-#####, el total y «Nuevo pedido».
 import { useContext, useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { useEntryMode } from '../entryMode'
 import { SessionContext } from '../../../app/session'
 import { applyProblemDetails, toApiError } from '../../../kernel/api/problem'
 import { useFormat } from '../../../kernel/format'
@@ -54,6 +55,8 @@ export default function NewOrderScreen() {
   const resumed = useSalesOrder(resumeId)
   const [resumeDone, setResumeDone] = useState(resumeId === null)
   const mfa = useContext(SessionContext)?.me?.mfaEnabled ?? false
+  const [, setEntryMode] = useEntryMode()   // abrir el formulario completo lo deja como el modo de esta persona
+  useEffect(() => { setEntryMode('wizard') }, [setEntryMode])   // y entrar al asistente lo deja como el suyo
 
   const [state, setState] = useState<WizardState>(emptyWizard)
   const [step, setStep] = useState<WizardStep>('CLIENT')
@@ -281,7 +284,11 @@ export default function NewOrderScreen() {
         <h1>{t('salesWizard.title')}</h1>
         <p>{state.number ? t('salesWizard.draftNumber', { number: state.number }) : t('salesWizard.subtitle')}</p>
       </div>
-      <Link className="btn" to="/sales-orders">{t('salesWizard.exit')}</Link>
+      <div className="act">
+        {/* mientras sea borrador se puede seguir en el formulario completo: el borrador ya está guardado en el servidor (cada paso lo guarda) */}
+        <Link className="btn" to={saved?.publicId ? `/sales-orders?order=${encodeURIComponent(saved.publicId)}` : '/sales-orders?new=1'} onClick={() => setEntryMode('full')}>{t('salesWizard.switchToFull')}</Link>
+        <Link className="btn" to="/sales-orders">{t('salesWizard.exit')}</Link>
+      </div>
     </div>
   )
 

@@ -1,0 +1,35 @@
+{
+  // Clientes de Advance Solutions desde un Customers.CSV nuevo de QuickBooks (2026-11-10, pedido de Luis).
+  // Compañía y productos YA existen ("Ya existían", no se tocan); los clientes que ya están tampoco se tocan (sin --update): solo se CREAN los nuevos.
+  // Con --update se actualizan los datos de los que ya existen (ver el reporte de la simulación antes).
+  // Uso en el servidor (desde C:\inetpub\teikem, con $env:ASPNETCORE_ENVIRONMENT='Production'):
+  //   dotnet .\Teikem.Api.dll import-legacy C:\tools\import.solutions-clientes.json --dry-run
+  "company": {
+    "name": "Advance Solutions",
+    "lang": "es"
+  },
+  "sources": {
+    // El comando exige un archivo de ítems, pero aquí NO se importan productos: es un CSV con solo el encabezado (Items-vacio.csv).
+    "products": "C:/tools/Items-vacio.csv",
+    "customers": "C:/tools/Customers.CSV"
+  },
+  "products": {
+    "types": ["Inventory Part"],
+    "categoryFromManufacturer": false,
+    "defaultCategory": "PERSONAL CARE",
+    "excludeSkus": [],
+    "baseUom": "UN",
+    "trackingType": "NONE",
+    "nameFallbackToSku": true,
+    "createUnknownWmsSkusWithStock": false
+  },
+  "clients": {
+    "excludeNames": ["1", "Alec"],
+    "defaultCurrency": "USD",
+    "repCustomField": true,
+    "qbCodeCustomField": true
+  },
+  "report": {
+    "prefix": "reporte-clientes-solutions"
+  }
+}

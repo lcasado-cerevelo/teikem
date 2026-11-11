@@ -26305,6 +26305,101 @@
         }
       }
     },
+    "/api/v1/me/preferences/{key}": {
+      "get": {
+        "tags": [
+          "Me"
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferenceDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferenceDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferenceDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Me"
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserPreferenceSetRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserPreferenceSetRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserPreferenceSetRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferenceDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferenceDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferenceDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/messages/attachments/{publicId}": {
       "get": {
         "tags": [
@@ -37870,6 +37965,35 @@
         }
       }
     },
+    "/api/v1/products/units-suggestion": {
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductUnitsSuggestionDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductUnitsSuggestionDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductUnitsSuggestionDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/products/{publicId}": {
       "get": {
         "tags": [
@@ -43134,6 +43258,46 @@
         }
       }
     },
+    "/api/v1/sales-orders/kits/{kitPublicId}/substitutes": {
+      "get": {
+        "tags": [
+          "SalesOrders"
+        ],
+        "parameters": [
+          {
+            "name": "kitPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/KitSubstitutesDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KitSubstitutesDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KitSubstitutesDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/sales-orders/{publicId}/availability": {
       "get": {
         "tags": [
@@ -47960,6 +48124,591 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/tenant-links/options": {
+      "get": {
+        "tags": [
+          "TenantLinks"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkOptionsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkOptionsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkOptionsDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/tenant-links": {
+      "get": {
+        "tags": [
+          "TenantLinks"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TenantLinkDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TenantLinkDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TenantLinkDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "TenantLinks"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantLinkProposeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantLinkProposeRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantLinkProposeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/tenant-links/{publicId}": {
+      "get": {
+        "tags": [
+          "TenantLinks"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/tenant-links/{publicId}/accept": {
+      "post": {
+        "tags": [
+          "TenantLinks"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantLinkAcceptRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantLinkAcceptRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantLinkAcceptRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/tenant-links/{publicId}/reject": {
+      "post": {
+        "tags": [
+          "TenantLinks"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantLinkReasonRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantLinkReasonRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantLinkReasonRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/tenant-links/{publicId}/end": {
+      "post": {
+        "tags": [
+          "TenantLinks"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantLinkReasonRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantLinkReasonRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantLinkReasonRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/tenant-links/deliveries": {
+      "get": {
+        "tags": [
+          "TenantLinks"
+        ],
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDeliveryPageDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDeliveryPageDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDeliveryPageDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/tenant-links/deliveries/{publicId}": {
+      "get": {
+        "tags": [
+          "TenantLinks"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDeliveryDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDeliveryDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDeliveryDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/tenant-links/deliveries/{publicId}/retry": {
+      "post": {
+        "tags": [
+          "TenantLinks"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDeliveryDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDeliveryDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDeliveryDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/tenant-links/deliveries/{publicId}/sync": {
+      "post": {
+        "tags": [
+          "TenantLinks"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDeliveryDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDeliveryDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantLinkDeliveryDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/tenant-links/deliveries/{publicId}/proof": {
+      "get": {
+        "tags": [
+          "TenantLinks"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliveryProofDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliveryProofDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliveryProofDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/tenant-links/deliveries/{publicId}/proof/files/{filePublicId}": {
+      "get": {
+        "tags": [
+          "TenantLinks"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "filePublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -54006,660 +54755,6 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ZoneGroupDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/integrations/tenant-links/options": {
-      "get": {
-        "tags": [
-          "TenantLinks"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkOptionsDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkOptionsDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkOptionsDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/integrations/tenant-links": {
-      "get": {
-        "tags": [
-          "TenantLinks"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TenantLinkDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TenantLinkDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TenantLinkDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "TenantLinks"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TenantLinkProposeRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TenantLinkProposeRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/TenantLinkProposeRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/integrations/tenant-links/{publicId}": {
-      "get": {
-        "tags": [
-          "TenantLinks"
-        ],
-        "parameters": [
-          {
-            "name": "publicId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/integrations/tenant-links/{publicId}/accept": {
-      "post": {
-        "tags": [
-          "TenantLinks"
-        ],
-        "parameters": [
-          {
-            "name": "publicId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TenantLinkAcceptRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TenantLinkAcceptRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/TenantLinkAcceptRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/integrations/tenant-links/{publicId}/reject": {
-      "post": {
-        "tags": [
-          "TenantLinks"
-        ],
-        "parameters": [
-          {
-            "name": "publicId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TenantLinkReasonRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TenantLinkReasonRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/TenantLinkReasonRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/integrations/tenant-links/{publicId}/end": {
-      "post": {
-        "tags": [
-          "TenantLinks"
-        ],
-        "parameters": [
-          {
-            "name": "publicId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TenantLinkReasonRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TenantLinkReasonRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/TenantLinkReasonRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/integrations/tenant-links/deliveries": {
-      "get": {
-        "tags": [
-          "TenantLinks"
-        ],
-        "parameters": [
-          {
-            "name": "state",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "q",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "skip",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 0
-            }
-          },
-          {
-            "name": "take",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 50
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDeliveryPageDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDeliveryPageDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDeliveryPageDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/integrations/tenant-links/deliveries/{publicId}": {
-      "get": {
-        "tags": [
-          "TenantLinks"
-        ],
-        "parameters": [
-          {
-            "name": "publicId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDeliveryDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDeliveryDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDeliveryDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/integrations/tenant-links/deliveries/{publicId}/retry": {
-      "post": {
-        "tags": [
-          "TenantLinks"
-        ],
-        "parameters": [
-          {
-            "name": "publicId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDeliveryDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDeliveryDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDeliveryDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/integrations/tenant-links/deliveries/{publicId}/sync": {
-      "post": {
-        "tags": [
-          "TenantLinks"
-        ],
-        "parameters": [
-          {
-            "name": "publicId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDeliveryDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDeliveryDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantLinkDeliveryDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/integrations/tenant-links/deliveries/{publicId}/proof": {
-      "get": {
-        "tags": [
-          "TenantLinks"
-        ],
-        "parameters": [
-          {
-            "name": "publicId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeliveryProofDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeliveryProofDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeliveryProofDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/integrations/tenant-links/deliveries/{publicId}/proof/files/{filePublicId}": {
-      "get": {
-        "tags": [
-          "TenantLinks"
-        ],
-        "parameters": [
-          {
-            "name": "publicId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "filePublicId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/v1/products/units-suggestion": {
-      "get": {
-        "tags": [
-          "Products"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProductUnitsSuggestionDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProductUnitsSuggestionDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProductUnitsSuggestionDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/sales-orders/kits/{kitPublicId}/substitutes": {
-      "get": {
-        "tags": [
-          "SalesOrders"
-        ],
-        "parameters": [
-          {
-            "name": "kitPublicId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/KitSubstitutesDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KitSubstitutesDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KitSubstitutesDto"
                 }
               }
             }
@@ -70830,6 +70925,191 @@
         },
         "additionalProperties": false
       },
+      "KitComponentSubstitutesDto": {
+        "type": "object",
+        "properties": {
+          "productPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "notSubstitutable": {
+            "type": "boolean"
+          },
+          "categoryId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "categoryPath": {
+            "type": "string",
+            "nullable": true
+          },
+          "salePrice": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "substitutes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KitSubstituteDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "KitDisassembleRequest": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "warehousePublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "fromBinId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "toBinId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "KitDisassemblyDto": {
+        "type": "object",
+        "properties": {
+          "publicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "warehousePublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouseCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "createdByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KitDisassemblyLineDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "KitDisassemblyLineDto": {
+        "type": "object",
+        "properties": {
+          "productPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "lotId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "lotNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "toBinId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "toBinCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "unitCost": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "KitDisassemblyResultDto": {
+        "type": "object",
+        "properties": {
+          "assembly": {
+            "$ref": "#/components/schemas/KitAssemblyDto"
+          },
+          "disassembly": {
+            "$ref": "#/components/schemas/KitDisassemblyDto"
+          },
+          "movements": {
+            "$ref": "#/components/schemas/MovementResultDto"
+          }
+        },
+        "additionalProperties": false
+      },
       "KitDto": {
         "type": "object",
         "properties": {
@@ -70888,6 +71168,68 @@
               "$ref": "#/components/schemas/KitComponentRequest"
             },
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "KitSubstituteDto": {
+        "type": "object",
+        "properties": {
+          "productPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "brand": {
+            "type": "string",
+            "nullable": true
+          },
+          "model": {
+            "type": "string",
+            "nullable": true
+          },
+          "salePrice": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "KitSubstitutesDto": {
+        "type": "object",
+        "properties": {
+          "kitPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "adjustable": {
+            "type": "boolean"
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KitComponentSubstitutesDto"
+            },
+            "nullable": true
+          },
+          "isOfferKit": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -76522,6 +76864,101 @@
               "$ref": "#/components/schemas/PickBatchSummaryDto"
             },
             "nullable": true
+          },
+          "warehousePublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PickDocumentLineDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PickDocumentLineDto": {
+        "type": "object",
+        "properties": {
+          "productPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "productName": {
+            "type": "string",
+            "nullable": true
+          },
+          "ordered": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "reserved": {
+            "type": "number",
+            "format": "double"
+          },
+          "shipped": {
+            "type": "number",
+            "format": "double"
+          },
+          "kitSku": {
+            "type": "string",
+            "nullable": true
+          },
+          "locations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PickDocumentLocationDto"
+            },
+            "nullable": true
+          },
+          "trackingTypeCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "ownerClientPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PickDocumentLocationDto": {
+        "type": "object",
+        "properties": {
+          "binId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "binCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "lotId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "lotNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiryDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
           }
         },
         "additionalProperties": false
@@ -80224,6 +80661,52 @@
         },
         "additionalProperties": false
       },
+      "ProductMeasuresDto": {
+        "type": "object",
+        "properties": {
+          "length": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "width": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "height": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "dimensionUnit": {
+            "type": "string",
+            "nullable": true
+          },
+          "volume": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "volumeUnit": {
+            "type": "string",
+            "nullable": true
+          },
+          "volumeCalculated": {
+            "type": "boolean"
+          },
+          "weight": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "weightUnit": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ProductPageDto": {
         "type": "object",
         "properties": {
@@ -80562,6 +81045,46 @@
         "properties": {
           "category": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProductUnitsSuggestionDto": {
+        "type": "object",
+        "properties": {
+          "regionCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "system": {
+            "type": "string",
+            "nullable": true
+          },
+          "dimensionUnit": {
+            "type": "string",
+            "nullable": true
+          },
+          "largeDimensionUnit": {
+            "type": "string",
+            "nullable": true
+          },
+          "weightUnit": {
+            "type": "string",
+            "nullable": true
+          },
+          "dimensionUnits": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "weightUnits": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
             "nullable": true
           }
         },
@@ -92036,6 +92559,273 @@
         },
         "additionalProperties": false
       },
+      "TenantLinkAcceptRequest": {
+        "type": "object",
+        "properties": {
+          "clientPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TenantLinkCompanyDto": {
+        "type": "object",
+        "properties": {
+          "publicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasModule": {
+            "type": "boolean"
+          },
+          "hasTransport": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TenantLinkDeliveryDto": {
+        "type": "object",
+        "properties": {
+          "publicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "providerCompanyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "providerOrderPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "providerOrderNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "providerStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "providerStatusLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "isFinal": {
+            "type": "boolean"
+          },
+          "deliveredAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "deliveredTo": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastSyncedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "salesOrderPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "salesOrderNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "pickBatchPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pickBatchNumber": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TenantLinkDeliveryPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantLinkDeliveryDto"
+            },
+            "nullable": true
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TenantLinkDto": {
+        "type": "object",
+        "properties": {
+          "publicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role": {
+            "type": "string",
+            "nullable": true
+          },
+          "otherCompanyPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "otherCompanyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "proposedByUs": {
+            "type": "boolean"
+          },
+          "proposedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "proposedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "respondedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "respondedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "responseNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "endedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "endReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "endedByUs": {
+            "type": "boolean"
+          },
+          "providerClientPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "providerClientName": {
+            "type": "string",
+            "nullable": true
+          },
+          "canRespond": {
+            "type": "boolean"
+          },
+          "canEnd": {
+            "type": "boolean"
+          },
+          "deliveryCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TenantLinkOptionsDto": {
+        "type": "object",
+        "properties": {
+          "companies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantLinkCompanyDto"
+            },
+            "nullable": true
+          },
+          "weHaveTransport": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TenantLinkProposeRequest": {
+        "type": "object",
+        "properties": {
+          "companyPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "role": {
+            "type": "string",
+            "nullable": true
+          },
+          "clientPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TenantLinkReasonRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "TenantModuleRequest": {
         "type": "object",
         "properties": {
@@ -93957,6 +94747,30 @@
           "take": {
             "type": "integer",
             "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UserPreferenceDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UserPreferenceSetRequest": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -96351,606 +97165,6 @@
             "type": "boolean"
           },
           "candidates": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "TenantLinkAcceptRequest": {
-        "type": "object",
-        "properties": {
-          "clientPublicId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          },
-          "note": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "TenantLinkCompanyDto": {
-        "type": "object",
-        "properties": {
-          "publicId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string",
-            "nullable": true
-          },
-          "hasModule": {
-            "type": "boolean"
-          },
-          "hasTransport": {
-            "type": "boolean"
-          }
-        },
-        "additionalProperties": false
-      },
-      "TenantLinkDeliveryDto": {
-        "type": "object",
-        "properties": {
-          "publicId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "state": {
-            "type": "string",
-            "nullable": true
-          },
-          "error": {
-            "type": "string",
-            "nullable": true
-          },
-          "attempts": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "providerCompanyName": {
-            "type": "string",
-            "nullable": true
-          },
-          "providerOrderPublicId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          },
-          "providerOrderNumber": {
-            "type": "string",
-            "nullable": true
-          },
-          "providerStatus": {
-            "type": "string",
-            "nullable": true
-          },
-          "providerStatusLabel": {
-            "type": "string",
-            "nullable": true
-          },
-          "isFinal": {
-            "type": "boolean"
-          },
-          "deliveredAtUtc": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "deliveredTo": {
-            "type": "string",
-            "nullable": true
-          },
-          "lastSyncedAtUtc": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "createdAtUtc": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "salesOrderPublicId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "salesOrderNumber": {
-            "type": "string",
-            "nullable": true
-          },
-          "pickBatchPublicId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "pickBatchNumber": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "TenantLinkDeliveryPageDto": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TenantLinkDeliveryDto"
-            },
-            "nullable": true
-          },
-          "total": {
-            "type": "integer",
-            "format": "int32"
-          }
-        },
-        "additionalProperties": false
-      },
-      "TenantLinkDto": {
-        "type": "object",
-        "properties": {
-          "publicId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "role": {
-            "type": "string",
-            "nullable": true
-          },
-          "otherCompanyPublicId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "otherCompanyName": {
-            "type": "string",
-            "nullable": true
-          },
-          "status": {
-            "type": "string",
-            "nullable": true
-          },
-          "proposedByUs": {
-            "type": "boolean"
-          },
-          "proposedByName": {
-            "type": "string",
-            "nullable": true
-          },
-          "proposedAtUtc": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "note": {
-            "type": "string",
-            "nullable": true
-          },
-          "respondedByName": {
-            "type": "string",
-            "nullable": true
-          },
-          "respondedAtUtc": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "responseNote": {
-            "type": "string",
-            "nullable": true
-          },
-          "endedAtUtc": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "endReason": {
-            "type": "string",
-            "nullable": true
-          },
-          "endedByUs": {
-            "type": "boolean"
-          },
-          "providerClientPublicId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          },
-          "providerClientName": {
-            "type": "string",
-            "nullable": true
-          },
-          "canRespond": {
-            "type": "boolean"
-          },
-          "canEnd": {
-            "type": "boolean"
-          },
-          "deliveryCount": {
-            "type": "integer",
-            "format": "int32"
-          }
-        },
-        "additionalProperties": false
-      },
-      "TenantLinkOptionsDto": {
-        "type": "object",
-        "properties": {
-          "companies": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TenantLinkCompanyDto"
-            },
-            "nullable": true
-          },
-          "weHaveTransport": {
-            "type": "boolean"
-          }
-        },
-        "additionalProperties": false
-      },
-      "TenantLinkProposeRequest": {
-        "type": "object",
-        "properties": {
-          "companyPublicId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          },
-          "role": {
-            "type": "string",
-            "nullable": true
-          },
-          "clientPublicId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          },
-          "note": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "TenantLinkReasonRequest": {
-        "type": "object",
-        "properties": {
-          "reason": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "KitComponentSubstitutesDto": {
-        "type": "object",
-        "properties": {
-          "productPublicId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "sku": {
-            "type": "string",
-            "nullable": true
-          },
-          "name": {
-            "type": "string",
-            "nullable": true
-          },
-          "quantity": {
-            "type": "number",
-            "format": "double"
-          },
-          "notSubstitutable": {
-            "type": "boolean"
-          },
-          "categoryId": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "categoryPath": {
-            "type": "string",
-            "nullable": true
-          },
-          "salePrice": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "substitutes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/KitSubstituteDto"
-            },
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "KitDisassembleRequest": {
-        "type": "object",
-        "properties": {
-          "quantity": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "warehousePublicId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          },
-          "fromBinId": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "toBinId": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "notes": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "KitDisassemblyDto": {
-        "type": "object",
-        "properties": {
-          "publicId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "number": {
-            "type": "string",
-            "nullable": true
-          },
-          "quantity": {
-            "type": "number",
-            "format": "double"
-          },
-          "warehousePublicId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "warehouseCode": {
-            "type": "string",
-            "nullable": true
-          },
-          "notes": {
-            "type": "string",
-            "nullable": true
-          },
-          "createdAtUtc": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "createdBy": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "createdByName": {
-            "type": "string",
-            "nullable": true
-          },
-          "lines": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/KitDisassemblyLineDto"
-            },
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "KitDisassemblyLineDto": {
-        "type": "object",
-        "properties": {
-          "productPublicId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "sku": {
-            "type": "string",
-            "nullable": true
-          },
-          "name": {
-            "type": "string",
-            "nullable": true
-          },
-          "lotId": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "lotNumber": {
-            "type": "string",
-            "nullable": true
-          },
-          "toBinId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "toBinCode": {
-            "type": "string",
-            "nullable": true
-          },
-          "quantity": {
-            "type": "number",
-            "format": "double"
-          },
-          "unitCost": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "KitDisassemblyResultDto": {
-        "type": "object",
-        "properties": {
-          "assembly": {
-            "$ref": "#/components/schemas/KitAssemblyDto"
-          },
-          "disassembly": {
-            "$ref": "#/components/schemas/KitDisassemblyDto"
-          },
-          "movements": {
-            "$ref": "#/components/schemas/MovementResultDto"
-          }
-        },
-        "additionalProperties": false
-      },
-      "KitSubstituteDto": {
-        "type": "object",
-        "properties": {
-          "productPublicId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "sku": {
-            "type": "string",
-            "nullable": true
-          },
-          "name": {
-            "type": "string",
-            "nullable": true
-          },
-          "brand": {
-            "type": "string",
-            "nullable": true
-          },
-          "model": {
-            "type": "string",
-            "nullable": true
-          },
-          "salePrice": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "KitSubstitutesDto": {
-        "type": "object",
-        "properties": {
-          "kitPublicId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "sku": {
-            "type": "string",
-            "nullable": true
-          },
-          "name": {
-            "type": "string",
-            "nullable": true
-          },
-          "adjustable": {
-            "type": "boolean"
-          },
-          "components": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/KitComponentSubstitutesDto"
-            },
-            "nullable": true
-          },
-          "isOfferKit": {
-            "type": "boolean"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ProductMeasuresDto": {
-        "type": "object",
-        "properties": {
-          "length": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "width": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "height": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "dimensionUnit": {
-            "type": "string",
-            "nullable": true
-          },
-          "volume": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "volumeUnit": {
-            "type": "string",
-            "nullable": true
-          },
-          "volumeCalculated": {
-            "type": "boolean"
-          },
-          "weight": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "weightUnit": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ProductUnitsSuggestionDto": {
-        "type": "object",
-        "properties": {
-          "regionCode": {
-            "type": "string",
-            "nullable": true
-          },
-          "system": {
-            "type": "string",
-            "nullable": true
-          },
-          "dimensionUnit": {
-            "type": "string",
-            "nullable": true
-          },
-          "largeDimensionUnit": {
-            "type": "string",
-            "nullable": true
-          },
-          "weightUnit": {
-            "type": "string",
-            "nullable": true
-          },
-          "dimensionUnits": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "nullable": true
-          },
-          "weightUnits": {
             "type": "array",
             "items": {
               "type": "string"

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Teikem.Domain.Analytics;
+using Teikem.Domain.Security;
 using Teikem.Domain.Contacts;
 using Teikem.Domain.CustomFields;
 
@@ -172,5 +173,18 @@ public sealed class PulsePanelSettingConfiguration : IEntityTypeConfiguration<Pu
         b.Property(s => s.PanelKey).HasMaxLength(40).IsRequired();
         b.HasIndex(s => new { s.TenantId, s.PanelKey }).IsUnique().HasDatabaseName("UQ_PulsePanelSetting_Company").HasFilter("[UserId] IS NULL");
         b.HasIndex(s => new { s.TenantId, s.UserId, s.PanelKey }).IsUnique().HasDatabaseName("UQ_PulsePanelSetting_User").HasFilter("[UserId] IS NOT NULL");
+    }
+}
+
+/// <summary>2026-11-11: preferencias propias de cada persona (modo de captura de ventas, último almacén). Índice espejo del SQL.</summary>
+public sealed class UserPreferenceConfiguration : IEntityTypeConfiguration<UserPreference>
+{
+    public void Configure(EntityTypeBuilder<UserPreference> b)
+    {
+        b.ToTable("UserPreference");
+        b.HasKey(p => p.UserPreferenceId);
+        b.Property(p => p.PrefKey).HasMaxLength(60).IsRequired();
+        b.Property(p => p.PrefValue).HasMaxLength(200).IsRequired();
+        b.HasIndex(p => new { p.TenantId, p.UserId, p.PrefKey }).IsUnique().HasDatabaseName("UQ_UserPreference");
     }
 }

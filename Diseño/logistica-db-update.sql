@@ -7834,3 +7834,22 @@ IF OBJECT_ID(N'dbo.CK_ClientTaxExemption_Scope', N'C') IS NULL
                (Scope = N''ALL'' AND ComponentCodes IS NULL)
             OR (Scope = N''COMPONENTS'' AND ComponentCodes IS NOT NULL AND LEN(ComponentCodes) > 0));');
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-11-11 — Preferencias propias de cada persona (dbo.UserPreference): el modo de captura de órdenes de venta («sales.entryMode»: wizard | full) y el
+   último almacén que usó («warehouse.last»: PublicId del almacén). Una fila por (compañía, usuario, clave). Las claves permitidas las valida el API
+   (UserPreferenceKeys). Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID(N'dbo.UserPreference', N'U') IS NULL
+    CREATE TABLE dbo.UserPreference (
+        UserPreferenceId INT IDENTITY(1,1) PRIMARY KEY,
+        TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+        UserId       INT NOT NULL REFERENCES dbo.AspNetUsers(Id),
+        PrefKey      NVARCHAR(60)  NOT NULL,
+        PrefValue    NVARCHAR(200) NOT NULL,
+        UpdatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_UserPreference_UpdatedAtUtc DEFAULT SYSUTCDATETIME()
+    );
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_UserPreference' AND object_id = OBJECT_ID('dbo.UserPreference'))
+    EXEC(N'CREATE UNIQUE INDEX UQ_UserPreference ON dbo.UserPreference(TenantId, UserId, PrefKey);');
+GO

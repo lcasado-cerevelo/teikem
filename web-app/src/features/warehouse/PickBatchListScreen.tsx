@@ -18,6 +18,7 @@ import { PickBatchesPanel } from './PickBatchesPanel'
 import { PickGroupCollectModal } from './PickGroupCollectModal'
 import { PickGroupsPanel } from './PickGroupsPanel'
 import { PickDocumentsPanel } from './PickDocumentsPanel'
+import { preloadFromDocument, type CollectPreload } from './pickDocumentView'
 import { ReplenishButton, TaskQueue } from './taskQueue'
 import './warehouse.css'
 
@@ -37,6 +38,9 @@ function BatchesTab() {
   const t = useT()
   // el panel Recolección sirve a quien recolecta (warehouse.pick) y a quien solo hace despachos manuales (warehouse.issue)
   const canCollect = useCan('warehouse.pick|warehouse.issue')
+  const canPick = useCan('warehouse.pick')
+  // 2026-11-11: «Recolectar» en la ficha de un documento llena el formulario de la izquierda con lo reservado (posición y lote) para revisarlo
+  const [preload, setPreload] = useState<CollectPreload | null>(null)
   const [highlight, setHighlight] = useState<string | null>(null)
   const [params, setParams] = useSearchParams()
   const raw = params.get('view')
@@ -76,7 +80,7 @@ function BatchesTab() {
               </button>
             </div>
           </Can>
-          <PickDocumentsPanel highlight={highlight} />
+          <PickDocumentsPanel highlight={highlight} onCollect={canPick ? (d) => { const p = preloadFromDocument(d, Date.now()); if (p) setPreload(p) } : undefined} />
         </>
       )}
       {view === 'groups' && <PickGroupsPanel openId={groupToOpen} onOpened={() => setGroupToOpen(null)} />}
@@ -95,7 +99,7 @@ function BatchesTab() {
   if (!canCollect) return list
   return (
     <SplitPane storageKey="pick-batches" label={t('warehouse.pickBatches.splitLabel')} className="collect-split">
-      <CollectPanel onCollected={(b) => setHighlight(b.publicId ?? null)} />
+      <CollectPanel preload={preload} onCollected={(b) => setHighlight(b.publicId ?? null)} />
       {list}
     </SplitPane>
   )

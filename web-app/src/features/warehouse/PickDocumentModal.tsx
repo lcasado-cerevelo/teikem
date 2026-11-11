@@ -7,15 +7,17 @@ import { useFormat } from '../../kernel/format'
 import type { PickBatchSummaryDto, PickDocumentDto } from './api'
 import { formatDateTime } from './lineRules'
 import { PickBatchDetailModal } from './PickBatchDetailModal'
-import { documentProgress } from './pickDocumentView'
+import { documentProgress, preloadFromDocument } from './pickDocumentView'
 
-export function PickDocumentModal({ document: d, onClose }: { document: PickDocumentDto; onClose: () => void }) {
+export function PickDocumentModal({ document: d, onClose, onCollect }: { document: PickDocumentDto; onClose: () => void; onCollect?: (d: PickDocumentDto) => void }) {
   const t = useT()
   const lang = useLang()
   const f = useFormat()
   const [batch, setBatch] = useState<string | null>(null)
   const p = documentProgress(d)
   const moves = d.batches ?? []
+  const lines = d.lines ?? []
+  const canCollect = Boolean(onCollect) && preloadFromDocument(d, 0) !== null
 
   return (
     <>
@@ -30,9 +32,16 @@ export function PickDocumentModal({ document: d, onClose }: { document: PickDocu
         onClose={onClose}
         dismissible={batch === null}
         footer={
-          <button type="button" className="btn" onClick={onClose}>
-            {t('warehouse.pickBatches.detail.close')}
-          </button>
+          <>
+            <button type="button" className="btn" onClick={onClose}>
+              {t('warehouse.pickBatches.detail.close')}
+            </button>
+            {canCollect && (
+              <button type="button" className="btn flow" onClick={() => onCollect?.(d)}>
+                {t('warehouse.pickBatches.docs.collectThis')}
+              </button>
+            )}
+          </>
         }
       >
         <dl className="rcp-meta">
@@ -64,6 +73,48 @@ export function PickDocumentModal({ document: d, onClose }: { document: PickDocu
           )}
         </dl>
         {p.percent != null && <progress className="pdoc-bar" max={100} value={p.percent} aria-label={t('warehouse.pickBatches.docs.percent', { n: p.percent })} />}
+
+        {d.kind !== 'ORDER' && (
+          <>
+            <h3 className="pdoc-h">{t('warehouse.pickBatches.docs.linesTitle')}</h3>
+            {lines.length === 0 ? (
+              <p className="help">{t('warehouse.pickBatches.docs.noLines')}</p>
+            ) : (
+              <table className="lst">
+                <thead>
+                  <tr>
+                    <th>{t('warehouse.pickBatches.docs.colProduct')}</th>
+                    <th className="r">{t('warehouse.pickBatches.docs.ordered')}</th>
+                    <th className="r">{t('warehouse.pickBatches.docs.shipped')}</th>
+                    <th className="r">{t('warehouse.pickBatches.docs.colToCollect')}</th>
+                    <th>{t('warehouse.pickBatches.docs.colFrom')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lines.map((l, i) => (
+                    <tr key={`${l.productPublicId}-${i}`}>
+                      <td>
+                        <span className="ref">{l.sku}</span> {l.productName}
+                        {l.kitSku && <> <Chip tone="cap">{t('warehouse.pickBatches.docs.kitOf', { sku: l.kitSku })}</Chip></>}
+                      </td>
+                      <td className="r">{l.ordered != null ? f.number(l.ordered) : '—'}</td>
+                      <td className="r">{f.number(l.shipped ?? 0)}</td>
+                      <td className="r">{f.number(l.reserved ?? 0)}</td>
+                      <td>
+                        {(l.locations ?? []).length === 0 ? '—' : (l.locations ?? []).map((x) => (
+                          <div key={`${x.binId}-${x.lotId ?? 0}`}>
+                            <span className="ref">{x.binCode}</span>
+                            {x.lotNumber ? ` · ${t('warehouse.pickBatches.docs.lot', { lot: x.lotNumber })}` : ''} · {f.number(x.quantity ?? 0)}
+                          </div>
+                        ))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </>
+        )}
 
         <h3 className="pdoc-h">{t('warehouse.pickBatches.docs.movesTitle', { count: moves.length })}</h3>
         {moves.length === 0 ? (

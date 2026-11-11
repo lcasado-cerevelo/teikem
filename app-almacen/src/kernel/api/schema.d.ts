@@ -20032,6 +20032,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/preferences/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    key: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["UserPreferenceDto"];
+                        "application/json": components["schemas"]["UserPreferenceDto"];
+                        "text/json": components["schemas"]["UserPreferenceDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    key: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["UserPreferenceSetRequest"];
+                    "text/json": components["schemas"]["UserPreferenceSetRequest"];
+                    "application/*+json": components["schemas"]["UserPreferenceSetRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["UserPreferenceDto"];
+                        "application/json": components["schemas"]["UserPreferenceDto"];
+                        "text/json": components["schemas"]["UserPreferenceDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/messages/attachments/{publicId}": {
         parameters: {
             query?: never;
@@ -28948,6 +29016,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/products/units-suggestion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductUnitsSuggestionDto"];
+                        "application/json": components["schemas"]["ProductUnitsSuggestionDto"];
+                        "text/json": components["schemas"]["ProductUnitsSuggestionDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/products/{publicId}": {
         parameters: {
             query?: never;
@@ -32818,6 +32923,45 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/v1/sales-orders/kits/{kitPublicId}/substitutes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    kitPublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["KitSubstitutesDto"];
+                        "application/json": components["schemas"]["KitSubstitutesDto"];
+                        "text/json": components["schemas"]["KitSubstitutesDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sales-orders/{publicId}/availability": {
         parameters: {
             query?: never;
@@ -36587,6 +36731,515 @@ export interface paths {
                         "application/json": string[];
                         "text/json": string[];
                     };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantLinkOptionsDto"];
+                        "application/json": components["schemas"]["TenantLinkOptionsDto"];
+                        "text/json": components["schemas"]["TenantLinkOptionsDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantLinkDto"][];
+                        "application/json": components["schemas"]["TenantLinkDto"][];
+                        "text/json": components["schemas"]["TenantLinkDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TenantLinkProposeRequest"];
+                    "text/json": components["schemas"]["TenantLinkProposeRequest"];
+                    "application/*+json": components["schemas"]["TenantLinkProposeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantLinkDto"];
+                        "application/json": components["schemas"]["TenantLinkDto"];
+                        "text/json": components["schemas"]["TenantLinkDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantLinkDto"];
+                        "application/json": components["schemas"]["TenantLinkDto"];
+                        "text/json": components["schemas"]["TenantLinkDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links/{publicId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TenantLinkAcceptRequest"];
+                    "text/json": components["schemas"]["TenantLinkAcceptRequest"];
+                    "application/*+json": components["schemas"]["TenantLinkAcceptRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantLinkDto"];
+                        "application/json": components["schemas"]["TenantLinkDto"];
+                        "text/json": components["schemas"]["TenantLinkDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links/{publicId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TenantLinkReasonRequest"];
+                    "text/json": components["schemas"]["TenantLinkReasonRequest"];
+                    "application/*+json": components["schemas"]["TenantLinkReasonRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantLinkDto"];
+                        "application/json": components["schemas"]["TenantLinkDto"];
+                        "text/json": components["schemas"]["TenantLinkDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links/{publicId}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TenantLinkReasonRequest"];
+                    "text/json": components["schemas"]["TenantLinkReasonRequest"];
+                    "application/*+json": components["schemas"]["TenantLinkReasonRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantLinkDto"];
+                        "application/json": components["schemas"]["TenantLinkDto"];
+                        "text/json": components["schemas"]["TenantLinkDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    state?: string;
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantLinkDeliveryPageDto"];
+                        "application/json": components["schemas"]["TenantLinkDeliveryPageDto"];
+                        "text/json": components["schemas"]["TenantLinkDeliveryPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links/deliveries/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantLinkDeliveryDto"];
+                        "application/json": components["schemas"]["TenantLinkDeliveryDto"];
+                        "text/json": components["schemas"]["TenantLinkDeliveryDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links/deliveries/{publicId}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantLinkDeliveryDto"];
+                        "application/json": components["schemas"]["TenantLinkDeliveryDto"];
+                        "text/json": components["schemas"]["TenantLinkDeliveryDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links/deliveries/{publicId}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantLinkDeliveryDto"];
+                        "application/json": components["schemas"]["TenantLinkDeliveryDto"];
+                        "text/json": components["schemas"]["TenantLinkDeliveryDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links/deliveries/{publicId}/proof": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DeliveryProofDto"];
+                        "application/json": components["schemas"]["DeliveryProofDto"];
+                        "text/json": components["schemas"]["DeliveryProofDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links/deliveries/{publicId}/proof/files/{filePublicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    filePublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
             };
         };
@@ -40919,591 +41572,6 @@ export interface paths {
                 };
             };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/tenant-links/options": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TenantLinkOptionsDto"];
-                        "application/json": components["schemas"]["TenantLinkOptionsDto"];
-                        "text/json": components["schemas"]["TenantLinkOptionsDto"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/tenant-links": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TenantLinkDto"][];
-                        "application/json": components["schemas"]["TenantLinkDto"][];
-                        "text/json": components["schemas"]["TenantLinkDto"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["TenantLinkProposeRequest"];
-                    "text/json": components["schemas"]["TenantLinkProposeRequest"];
-                    "application/*+json": components["schemas"]["TenantLinkProposeRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TenantLinkDto"];
-                        "application/json": components["schemas"]["TenantLinkDto"];
-                        "text/json": components["schemas"]["TenantLinkDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/tenant-links/{publicId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    publicId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TenantLinkDto"];
-                        "application/json": components["schemas"]["TenantLinkDto"];
-                        "text/json": components["schemas"]["TenantLinkDto"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/tenant-links/{publicId}/accept": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    publicId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["TenantLinkAcceptRequest"];
-                    "text/json": components["schemas"]["TenantLinkAcceptRequest"];
-                    "application/*+json": components["schemas"]["TenantLinkAcceptRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TenantLinkDto"];
-                        "application/json": components["schemas"]["TenantLinkDto"];
-                        "text/json": components["schemas"]["TenantLinkDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/tenant-links/{publicId}/reject": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    publicId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["TenantLinkReasonRequest"];
-                    "text/json": components["schemas"]["TenantLinkReasonRequest"];
-                    "application/*+json": components["schemas"]["TenantLinkReasonRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TenantLinkDto"];
-                        "application/json": components["schemas"]["TenantLinkDto"];
-                        "text/json": components["schemas"]["TenantLinkDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/tenant-links/{publicId}/end": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    publicId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["TenantLinkReasonRequest"];
-                    "text/json": components["schemas"]["TenantLinkReasonRequest"];
-                    "application/*+json": components["schemas"]["TenantLinkReasonRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TenantLinkDto"];
-                        "application/json": components["schemas"]["TenantLinkDto"];
-                        "text/json": components["schemas"]["TenantLinkDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/tenant-links/deliveries": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: {
-                    state?: string;
-                    q?: string;
-                    skip?: number;
-                    take?: number;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TenantLinkDeliveryPageDto"];
-                        "application/json": components["schemas"]["TenantLinkDeliveryPageDto"];
-                        "text/json": components["schemas"]["TenantLinkDeliveryPageDto"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/tenant-links/deliveries/{publicId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    publicId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TenantLinkDeliveryDto"];
-                        "application/json": components["schemas"]["TenantLinkDeliveryDto"];
-                        "text/json": components["schemas"]["TenantLinkDeliveryDto"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/tenant-links/deliveries/{publicId}/retry": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    publicId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TenantLinkDeliveryDto"];
-                        "application/json": components["schemas"]["TenantLinkDeliveryDto"];
-                        "text/json": components["schemas"]["TenantLinkDeliveryDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/tenant-links/deliveries/{publicId}/sync": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    publicId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TenantLinkDeliveryDto"];
-                        "application/json": components["schemas"]["TenantLinkDeliveryDto"];
-                        "text/json": components["schemas"]["TenantLinkDeliveryDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/tenant-links/deliveries/{publicId}/proof": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    publicId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["DeliveryProofDto"];
-                        "application/json": components["schemas"]["DeliveryProofDto"];
-                        "text/json": components["schemas"]["DeliveryProofDto"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/tenant-links/deliveries/{publicId}/proof/files/{filePublicId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    publicId: string;
-                    filePublicId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/products/units-suggestion": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["ProductUnitsSuggestionDto"];
-                        "application/json": components["schemas"]["ProductUnitsSuggestionDto"];
-                        "text/json": components["schemas"]["ProductUnitsSuggestionDto"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-orders/kits/{kitPublicId}/substitutes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    kitPublicId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["KitSubstitutesDto"];
-                        "application/json": components["schemas"]["KitSubstitutesDto"];
-                        "text/json": components["schemas"]["KitSubstitutesDto"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -46855,6 +46923,70 @@ export interface components {
             /** Format: uuid */
             substitutesProductPublicId?: string | null;
         };
+        KitComponentSubstitutesDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            /** Format: double */
+            quantity?: number;
+            notSubstitutable?: boolean;
+            /** Format: int32 */
+            categoryId?: number | null;
+            categoryPath?: string | null;
+            /** Format: double */
+            salePrice?: number | null;
+            substitutes?: components["schemas"]["KitSubstituteDto"][] | null;
+        };
+        KitDisassembleRequest: {
+            /** Format: double */
+            quantity?: number | null;
+            /** Format: uuid */
+            warehousePublicId?: string | null;
+            /** Format: int32 */
+            fromBinId?: number | null;
+            /** Format: int32 */
+            toBinId?: number | null;
+            notes?: string | null;
+        };
+        KitDisassemblyDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            /** Format: double */
+            quantity?: number;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseCode?: string | null;
+            notes?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: int32 */
+            createdBy?: number | null;
+            createdByName?: string | null;
+            lines?: components["schemas"]["KitDisassemblyLineDto"][] | null;
+        };
+        KitDisassemblyLineDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            lotNumber?: string | null;
+            /** Format: int32 */
+            toBinId?: number;
+            toBinCode?: string | null;
+            /** Format: double */
+            quantity?: number;
+            /** Format: double */
+            unitCost?: number | null;
+        };
+        KitDisassemblyResultDto: {
+            assembly?: components["schemas"]["KitAssemblyDto"];
+            disassembly?: components["schemas"]["KitDisassemblyDto"];
+            movements?: components["schemas"]["MovementResultDto"];
+        };
         KitDto: {
             /** Format: uuid */
             productPublicId?: string;
@@ -46870,6 +47002,25 @@ export interface components {
             isKit?: boolean | null;
             adjustable?: boolean | null;
             components?: components["schemas"]["KitComponentRequest"][] | null;
+        };
+        KitSubstituteDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            brand?: string | null;
+            model?: string | null;
+            /** Format: double */
+            salePrice?: number | null;
+        };
+        KitSubstitutesDto: {
+            /** Format: uuid */
+            kitPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            adjustable?: boolean;
+            components?: components["schemas"]["KitComponentSubstitutesDto"][] | null;
+            isOfferKit?: boolean;
         };
         LabelElementDto: {
             on?: boolean;
@@ -48681,6 +48832,38 @@ export interface components {
             /** Format: date-time */
             lastCollectedAtUtc?: string | null;
             batches?: components["schemas"]["PickBatchSummaryDto"][] | null;
+            /** Format: uuid */
+            warehousePublicId?: string | null;
+            lines?: components["schemas"]["PickDocumentLineDto"][] | null;
+        };
+        PickDocumentLineDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: double */
+            ordered?: number | null;
+            /** Format: double */
+            reserved?: number;
+            /** Format: double */
+            shipped?: number;
+            kitSku?: string | null;
+            locations?: components["schemas"]["PickDocumentLocationDto"][] | null;
+            trackingTypeCode?: string | null;
+            /** Format: uuid */
+            ownerClientPublicId?: string | null;
+        };
+        PickDocumentLocationDto: {
+            /** Format: int32 */
+            binId?: number;
+            binCode?: string | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            lotNumber?: string | null;
+            /** Format: date */
+            expiryDate?: string | null;
+            /** Format: double */
+            quantity?: number;
         };
         PickDocumentPageDto: {
             /** Format: int32 */
@@ -49895,6 +50078,22 @@ export interface components {
             isKit?: boolean;
             isAssembledKit?: boolean;
         };
+        ProductMeasuresDto: {
+            /** Format: double */
+            length?: number | null;
+            /** Format: double */
+            width?: number | null;
+            /** Format: double */
+            height?: number | null;
+            dimensionUnit?: string | null;
+            /** Format: double */
+            volume?: number | null;
+            volumeUnit?: string | null;
+            volumeCalculated?: boolean;
+            /** Format: double */
+            weight?: number | null;
+            weightUnit?: string | null;
+        };
         ProductPageDto: {
             /** Format: int32 */
             total?: number;
@@ -50011,6 +50210,15 @@ export interface components {
         };
         ProductTaxCategoryRequest: {
             category?: string | null;
+        };
+        ProductUnitsSuggestionDto: {
+            regionCode?: string | null;
+            system?: string | null;
+            dimensionUnit?: string | null;
+            largeDimensionUnit?: string | null;
+            weightUnit?: string | null;
+            dimensionUnits?: string[] | null;
+            weightUnits?: string[] | null;
         };
         ProposalDecisionRequest: {
             note?: string | null;
@@ -53781,6 +53989,95 @@ export interface components {
             name?: string | null;
             isRecurring?: boolean;
         };
+        TenantLinkAcceptRequest: {
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            note?: string | null;
+        };
+        TenantLinkCompanyDto: {
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+            hasModule?: boolean;
+            hasTransport?: boolean;
+        };
+        TenantLinkDeliveryDto: {
+            /** Format: uuid */
+            publicId?: string;
+            state?: string | null;
+            error?: string | null;
+            /** Format: int32 */
+            attempts?: number;
+            providerCompanyName?: string | null;
+            /** Format: uuid */
+            providerOrderPublicId?: string | null;
+            providerOrderNumber?: string | null;
+            providerStatus?: string | null;
+            providerStatusLabel?: string | null;
+            isFinal?: boolean;
+            /** Format: date-time */
+            deliveredAtUtc?: string | null;
+            deliveredTo?: string | null;
+            /** Format: date-time */
+            lastSyncedAtUtc?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: uuid */
+            salesOrderPublicId?: string;
+            salesOrderNumber?: string | null;
+            /** Format: uuid */
+            pickBatchPublicId?: string;
+            pickBatchNumber?: string | null;
+        };
+        TenantLinkDeliveryPageDto: {
+            items?: components["schemas"]["TenantLinkDeliveryDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+        };
+        TenantLinkDto: {
+            /** Format: uuid */
+            publicId?: string;
+            role?: string | null;
+            /** Format: uuid */
+            otherCompanyPublicId?: string;
+            otherCompanyName?: string | null;
+            status?: string | null;
+            proposedByUs?: boolean;
+            proposedByName?: string | null;
+            /** Format: date-time */
+            proposedAtUtc?: string;
+            note?: string | null;
+            respondedByName?: string | null;
+            /** Format: date-time */
+            respondedAtUtc?: string | null;
+            responseNote?: string | null;
+            /** Format: date-time */
+            endedAtUtc?: string | null;
+            endReason?: string | null;
+            endedByUs?: boolean;
+            /** Format: uuid */
+            providerClientPublicId?: string | null;
+            providerClientName?: string | null;
+            canRespond?: boolean;
+            canEnd?: boolean;
+            /** Format: int32 */
+            deliveryCount?: number;
+        };
+        TenantLinkOptionsDto: {
+            companies?: components["schemas"]["TenantLinkCompanyDto"][] | null;
+            weHaveTransport?: boolean;
+        };
+        TenantLinkProposeRequest: {
+            /** Format: uuid */
+            companyPublicId?: string | null;
+            role?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            note?: string | null;
+        };
+        TenantLinkReasonRequest: {
+            reason?: string | null;
+        };
         TenantModuleRequest: {
             isEnabled?: boolean;
         };
@@ -54404,6 +54701,13 @@ export interface components {
             skip?: number;
             /** Format: int32 */
             take?: number;
+        };
+        UserPreferenceDto: {
+            key?: string | null;
+            value?: string | null;
+        };
+        UserPreferenceSetRequest: {
+            value?: string | null;
         };
         UserRolesRequest: {
             roles?: string[] | null;
@@ -55199,203 +55503,6 @@ export interface components {
             matchedBy?: string | null;
             ambiguous?: boolean;
             candidates?: string[] | null;
-        };
-        TenantLinkAcceptRequest: {
-            /** Format: uuid */
-            clientPublicId?: string | null;
-            note?: string | null;
-        };
-        TenantLinkCompanyDto: {
-            /** Format: uuid */
-            publicId?: string;
-            name?: string | null;
-            hasModule?: boolean;
-            hasTransport?: boolean;
-        };
-        TenantLinkDeliveryDto: {
-            /** Format: uuid */
-            publicId?: string;
-            state?: string | null;
-            error?: string | null;
-            /** Format: int32 */
-            attempts?: number;
-            providerCompanyName?: string | null;
-            /** Format: uuid */
-            providerOrderPublicId?: string | null;
-            providerOrderNumber?: string | null;
-            providerStatus?: string | null;
-            providerStatusLabel?: string | null;
-            isFinal?: boolean;
-            /** Format: date-time */
-            deliveredAtUtc?: string | null;
-            deliveredTo?: string | null;
-            /** Format: date-time */
-            lastSyncedAtUtc?: string | null;
-            /** Format: date-time */
-            createdAtUtc?: string;
-            /** Format: uuid */
-            salesOrderPublicId?: string;
-            salesOrderNumber?: string | null;
-            /** Format: uuid */
-            pickBatchPublicId?: string;
-            pickBatchNumber?: string | null;
-        };
-        TenantLinkDeliveryPageDto: {
-            items?: components["schemas"]["TenantLinkDeliveryDto"][] | null;
-            /** Format: int32 */
-            total?: number;
-        };
-        TenantLinkDto: {
-            /** Format: uuid */
-            publicId?: string;
-            role?: string | null;
-            /** Format: uuid */
-            otherCompanyPublicId?: string;
-            otherCompanyName?: string | null;
-            status?: string | null;
-            proposedByUs?: boolean;
-            proposedByName?: string | null;
-            /** Format: date-time */
-            proposedAtUtc?: string;
-            note?: string | null;
-            respondedByName?: string | null;
-            /** Format: date-time */
-            respondedAtUtc?: string | null;
-            responseNote?: string | null;
-            /** Format: date-time */
-            endedAtUtc?: string | null;
-            endReason?: string | null;
-            endedByUs?: boolean;
-            /** Format: uuid */
-            providerClientPublicId?: string | null;
-            providerClientName?: string | null;
-            canRespond?: boolean;
-            canEnd?: boolean;
-            /** Format: int32 */
-            deliveryCount?: number;
-        };
-        TenantLinkOptionsDto: {
-            companies?: components["schemas"]["TenantLinkCompanyDto"][] | null;
-            weHaveTransport?: boolean;
-        };
-        TenantLinkProposeRequest: {
-            /** Format: uuid */
-            companyPublicId?: string | null;
-            role?: string | null;
-            /** Format: uuid */
-            clientPublicId?: string | null;
-            note?: string | null;
-        };
-        TenantLinkReasonRequest: {
-            reason?: string | null;
-        };
-        KitComponentSubstitutesDto: {
-            /** Format: uuid */
-            productPublicId?: string;
-            sku?: string | null;
-            name?: string | null;
-            /** Format: double */
-            quantity?: number;
-            notSubstitutable?: boolean;
-            /** Format: int32 */
-            categoryId?: number | null;
-            categoryPath?: string | null;
-            /** Format: double */
-            salePrice?: number | null;
-            substitutes?: components["schemas"]["KitSubstituteDto"][] | null;
-        };
-        KitDisassembleRequest: {
-            /** Format: double */
-            quantity?: number | null;
-            /** Format: uuid */
-            warehousePublicId?: string | null;
-            /** Format: int32 */
-            fromBinId?: number | null;
-            /** Format: int32 */
-            toBinId?: number | null;
-            notes?: string | null;
-        };
-        KitDisassemblyDto: {
-            /** Format: uuid */
-            publicId?: string;
-            number?: string | null;
-            /** Format: double */
-            quantity?: number;
-            /** Format: uuid */
-            warehousePublicId?: string;
-            warehouseCode?: string | null;
-            notes?: string | null;
-            /** Format: date-time */
-            createdAtUtc?: string;
-            /** Format: int32 */
-            createdBy?: number | null;
-            createdByName?: string | null;
-            lines?: components["schemas"]["KitDisassemblyLineDto"][] | null;
-        };
-        KitDisassemblyLineDto: {
-            /** Format: uuid */
-            productPublicId?: string;
-            sku?: string | null;
-            name?: string | null;
-            /** Format: int32 */
-            lotId?: number | null;
-            lotNumber?: string | null;
-            /** Format: int32 */
-            toBinId?: number;
-            toBinCode?: string | null;
-            /** Format: double */
-            quantity?: number;
-            /** Format: double */
-            unitCost?: number | null;
-        };
-        KitDisassemblyResultDto: {
-            assembly?: components["schemas"]["KitAssemblyDto"];
-            disassembly?: components["schemas"]["KitDisassemblyDto"];
-            movements?: components["schemas"]["MovementResultDto"];
-        };
-        KitSubstituteDto: {
-            /** Format: uuid */
-            productPublicId?: string;
-            sku?: string | null;
-            name?: string | null;
-            brand?: string | null;
-            model?: string | null;
-            /** Format: double */
-            salePrice?: number | null;
-        };
-        KitSubstitutesDto: {
-            /** Format: uuid */
-            kitPublicId?: string;
-            sku?: string | null;
-            name?: string | null;
-            adjustable?: boolean;
-            components?: components["schemas"]["KitComponentSubstitutesDto"][] | null;
-            isOfferKit?: boolean;
-        };
-        ProductMeasuresDto: {
-            /** Format: double */
-            length?: number | null;
-            /** Format: double */
-            width?: number | null;
-            /** Format: double */
-            height?: number | null;
-            dimensionUnit?: string | null;
-            /** Format: double */
-            volume?: number | null;
-            volumeUnit?: string | null;
-            volumeCalculated?: boolean;
-            /** Format: double */
-            weight?: number | null;
-            weightUnit?: string | null;
-        };
-        ProductUnitsSuggestionDto: {
-            regionCode?: string | null;
-            system?: string | null;
-            dimensionUnit?: string | null;
-            largeDimensionUnit?: string | null;
-            weightUnit?: string | null;
-            dimensionUnits?: string[] | null;
-            weightUnits?: string[] | null;
         };
     };
     responses: never;

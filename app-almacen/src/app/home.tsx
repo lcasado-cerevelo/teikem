@@ -19,6 +19,7 @@ import { useT } from '../kernel/i18n/useT'
 import {
   getCachedWarehouseOptions,
   refreshWarehouseOptions,
+  restoreLastWarehouse,
   selectActiveWarehouse,
   useActiveWarehouse,
   type WarehouseOption,

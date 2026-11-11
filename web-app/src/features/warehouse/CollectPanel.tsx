@@ -75,6 +75,7 @@ import {
 import { formatNumber, parseSerials, type LineIssue } from './lineRules'
 import { SessionContext } from '../../app/session'
 import { buildManualIssueBody, initialReasonCode, lastReasonStorageKey, nextIdempotencyKey, readLastReason, writeLastReason } from './manualIssueView'
+import type { CollectPreload } from './pickDocumentView'
 import { BinPickerInput, ProductPickerInput, WarehousePickerInput, type BinPickerOption } from './pickers'
 import './warehouse.css'
 
@@ -307,11 +308,13 @@ function SerialsCell({ index }: { index: number }) {
 // Panel
 // =====================================================================================================================
 export interface CollectPanelProps {
+  /** 2026-11-11: lo reservado por un documento, para cargarlo en el formulario (cada cambio de `token` vuelve a cargar). */
+  preload?: CollectPreload | null
   /** Recolección recién creada (la lista la resalta). */
   onCollected?: (batch: PickBatchDto) => void
 }
 
-export function CollectPanel({ onCollected }: CollectPanelProps) {
+export function CollectPanel({ onCollected, preload }: CollectPanelProps) {
   const t = useT()
   const lang = useLang()
   // Modo «Despacho manual (sin entrega)» (2026-10-11): con warehouse.issue; agrega motivo (obligatorio) y nota y graba en
@@ -348,7 +351,17 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
   // Rotación obligatoria (2026-10-20): GET /tenant/settings solo exige sesión; sin respuesta se trata como «sugerir» y el servidor decide igual
   const tenantSettings = useTenantSettings()
   const enforced = tenantSettings.data?.rotationEnforcement === 'ENFORCE'
-  const { fields, append, remove, insert } = useFieldArray({ control: form.control, name: 'lines' })
+  const { fields, append, remove, insert, replace } = useFieldArray({ control: form.control, name: 'lines' })
+  // Documento → formulario: se sale del despacho manual, se pone el almacén de la reserva y una línea por posición/lote reservado (más una vacía al final)
+  const preloadToken = preload?.token
+  useEffect(() => {
+    if (!preload) return
+    setManualOn(false)
+    form.setValue('warehousePublicId', preload.warehousePublicId)
+    replace([...preload.lines, { ...EMPTY_COLLECT_LINE }])
+    toast.success(t('warehouse.pickBatches.docs.preloaded', { number: preload.documentNumber }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preloadToken])
   const warehousePublicId = useWatch({ control: form.control, name: 'warehousePublicId' })
   const lines = useWatch({ control: form.control, name: 'lines' })
 

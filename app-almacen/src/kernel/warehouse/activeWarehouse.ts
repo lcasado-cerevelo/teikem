@@ -88,3 +88,30 @@ export async function selectActiveWarehouse(option: WarehouseOption): Promise<vo
   if (option.publicId === device.defaultWarehousePublicId) await updateDeviceIdentity({ selectedWarehouse: null })
   else await updateDeviceIdentity({ selectedWarehouse: { publicId: option.publicId, name: option.name, receivingMode: option.receivingMode } })
 }
+
+/**
+ * 2026-11-11 (pedido de Luis): el último almacén que usó CADA PERSONA se recuerda en el servidor (`warehouse.last`, por persona y compañía) y al entrar se
+ * vuelve a ese almacén, aunque otra persona haya dejado el aparato en otro. Sin señal no se guarda ni se restaura (no estorba el trabajo).
+ */
+export async function rememberLastWarehouse(publicId: string): Promise<void> {
+  try {
+    await unwrap(api.PUT('/api/v1/me/preferences/{key}', { params: { path: { key: 'warehouse.last' } }, body: { value: publicId } }))
+  } catch {
+    /* sin red: se guardará la próxima vez que elija */
+  }
+}
+
+let restoredFor: number | null = null
+
+/** Una vez por persona y arranque de sesión: si su último almacén sigue activo en la compañía y no es el actual, lo escoge. */
+export async function restoreLastWarehouse(userId: number | null | undefined, options: WarehouseOption[]): Promise<void> {
+  if (userId == null || restoredFor === userId || options.length === 0) return
+  try {
+    const pref = await unwrap(api.GET('/api/v1/me/preferences/{key}', { params: { path: { key: 'warehouse.last' } } }))
+    restoredFor = userId
+    const last = options.find((o) => o.publicId === pref.value)
+    if (last && last.publicId !== resolveActiveWarehouse(getSessionState().device, options).publicId) await selectActiveWarehouse(last)
+  } catch {
+    /* sin red: queda el almacén que tenga el aparato */
+  }
+}

@@ -15,7 +15,7 @@ namespace Teikem.Api.Controllers;
 [SkipIdempotency("PIN, códigos de recuperación y datos de la sesión")]
 [Route("api/v1/me")]
 [Authorize]
-public sealed class MeController(UserAdminService users, PinService pins) : ControllerBase
+public sealed class MeController(UserAdminService users, PinService pins, UserPreferenceService preferences) : ControllerBase
 {
     /// <summary>Sesión actual: tenant activo, membresías (selector de compañía solo si hay más de una), permisos efectivos y módulos encendidos (menú).</summary>
     [HttpGet]
@@ -37,4 +37,12 @@ public sealed class MeController(UserAdminService users, PinService pins) : Cont
     /// <summary>Quita el PIN propio y cierra las sesiones del usuario en los aparatos de la compañía.</summary>
     [HttpDelete("pin"), RequireModule(ModuleKeys.WmsLotSerial)]
     public async Task<IActionResult> RemovePin(CancellationToken ct) { await pins.RemoveMineAsync(ct); return NoContent(); }
+
+    /// <summary>Una preferencia propia (modo de captura de ventas «sales.entryMode», último almacén «warehouse.last»). Value null = sin guardar. 404 si la clave no existe.</summary>
+    [HttpGet("preferences/{key}")]
+    public Task<UserPreferenceDto> GetPreference(string key, CancellationToken ct) => preferences.GetAsync(key, ct);
+
+    /// <summary>Guarda una preferencia propia. 400 "El valor de la preferencia no es válido." si el valor no corresponde a la clave.</summary>
+    [HttpPut("preferences/{key}")]
+    public Task<UserPreferenceDto> SetPreference(string key, [FromBody] UserPreferenceSetRequest req, CancellationToken ct) => preferences.SetAsync(key, req.Value, ct);
 }

@@ -520,6 +520,14 @@ public sealed partial class AuthService(
         await RevokeAsync(rt, null, ct);
         var kind = user.UserKindLookupId is null ? UserKinds.Internal : (await lookups.GetAsync(user.UserKindLookupId.Value, ct))?.InternalCode;
         var pair = await IssueAsync(user, req.TenantId, kind, rt.DeviceInfo, rt.Aal2VerifiedAtUtc, ct);
+        // 2026-11-11 (pedido de Luis): la última compañía en la que trabajó es la que se abre al volver a entrar (LoginTenantRules.Pick usa DefaultTenantId).
+        // UPDATE dirigido, sin pasar por el ConcurrencyStamp de Identity (igual que LastLoginUtc).
+        if (user.DefaultTenantId != req.TenantId)
+        {
+            var userId = user.Id;
+            await db.Users.Where(u => u.Id == userId).ExecuteUpdateAsync(x => x.SetProperty(u => u.DefaultTenantId, req.TenantId), ct);
+            user.DefaultTenantId = req.TenantId;
+        }
         // El token viejo queda reemplazado por el nuevo: su reuso sí es señal de robo (igual que una rotación).
         rt.ReplacedByTokenHash = JwtTokenService.HashToken(pair.RefreshToken);
         db.SuppressAudit = true; await db.SaveChangesAsync(ct); db.SuppressAudit = false;
