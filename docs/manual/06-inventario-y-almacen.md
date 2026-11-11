@@ -2250,7 +2250,11 @@ La lista de la derecha de **Recolección y empaque** se ve de dos maneras (selec
 
 **Lo que hay que recolectar (2026-11-11).** La ficha de un **aviso de salida** o de una **orden de venta** trae la sección **«Lo que hay que recolectar»**: una fila por renglón con el producto (SKU y nombre), **Pedido**, **Sacado**, **Por sacar** y **Sacar de** (la **posición**, el **lote** si lo tiene y la cantidad que el documento **ya reservó** ahí). La sugerencia es esa reserva, no un cálculo aparte. En una línea de **kit** salen sus **piezas** (lo que de verdad se saca) con la etiqueta «Kit {SKU}». Un **envío** ya empacado no la lleva (ya se recolectó).
 
+![Ficha de una orden de venta: «Lo que hay que recolectar» con la posición reservada y el botón Recolectar](frontend/img/l238-ficha-que-recolectar.png)
+
 **Botón «Recolectar»** (abajo en la ficha; permiso `warehouse.pick`; solo si hay algo reservado por sacar). Cierra la ficha y **llena el formulario «Recolección» de la izquierda**: el almacén de la reserva y **una línea por cada posición (y lote) reservada**, con su cantidad, más una línea vacía al final; sale el aviso «{número}: renglones cargados en el formulario. Revíselos y recolecte.» y **no se recolecta nada** hasta que la persona toque «Recolectar (bajar de inventario)». Si estaba activo el **Despacho manual**, se apaga. Un producto con **series** viene sin ellas (se escanean). Si una reserva no trae posición (dato viejo), va una sola línea con lo reservado y el servidor elige por FEFO.
+
+![El formulario «Recolección» ya cargado con el producto, la cantidad y la posición reservadas, listo para revisar](frontend/img/l238-formulario-precargado.png)
 
 **Qué documentos salen:** los abiertos con algo reservado por sacar (aunque todavía no tengan recolecciones) y los que ya tienen alguna recolección; uno cancelado sin recolecciones no. Cada recolección cuenta para **un** documento, con esta prioridad: aviso de salida, luego orden de venta, luego envío. Las recolecciones **eliminadas** (revertidas) no cuentan. Un **despacho manual** no tiene documento: se ve en «Por movimiento».
 

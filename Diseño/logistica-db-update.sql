@@ -7840,8 +7840,7 @@ GO
    último almacén que usó («warehouse.last»: PublicId del almacén). Una fila por (compañía, usuario, clave). Las claves permitidas las valida el API
    (UserPreferenceKeys). Solo AGREGA. Idempotente.
    ---------------------------------------------------------------------------- */
-IF OBJECT_ID(N'dbo.UserPreference', N'U') IS NULL
-    CREATE TABLE dbo.UserPreference (
+IF OBJECT_ID(N'dbo.UserPreference', N'U') IS NULL CREATE TABLE dbo.UserPreference (
         UserPreferenceId INT IDENTITY(1,1) PRIMARY KEY,
         TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
         UserId       INT NOT NULL REFERENCES dbo.AspNetUsers(Id),

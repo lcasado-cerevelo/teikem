@@ -589,3 +589,26 @@ Luis's decision (2026-11-10). It applies to the **New order** window, the **guid
 | Quantity above what is available in the order's warehouse | On-screen notice, not an error: “Only X available in {warehouse}; N go on backorder.” | — |
 | Requesting without accepting the backorder | `No alcanza el inventario de {SKU}: pedido {n}, disponible {n}, faltante {n}.` | 409 |
 | Without `sales.view` or without the module | What is available is not shown and the Warehouse field is the usual one | 403 |
+
+## 27. Entry mode: wizard or form (Batch 238)
+
+<!-- kemi:staff -->
+
+**What it is.** Creating a sales order has **two modes** of one single entry: **Wizard** ([chapter 48](48-pedido-guiado.md): four steps, full screen, for tablet and phone) and **Form** (the «New order» window of this chapter, for desktop). Before there were two buttons («Guided order» and «New order») doing the same thing.
+
+**Where.** Accounting → **Sales orders**, top right: **«New order»** (opens the person's last mode) and a small button with the **other mode** («With wizard» / «With form»), which switches mode and opens the entry. Permission: **`sales.create`**.
+
+![Sales orders: the «New order» button and the button of the other mode](frontend/img/l238-ordenes-botones.png)
+
+![The «New order» window with «Switch to wizard» at the top](frontend/img/l238-formulario-cambiar.png)
+
+**How it is remembered.** The mode is **per person and company** and is stored **on the server** (`GET/PUT /api/v1/me/preferences/sales.entryMode`, values `wizard` or `full`): the same in the office as on the tablet. While the answer arrives, the copy kept in that browser is used and, if there is none, the default mode: **wizard** on screens up to 900 px, **form** on desktop.
+
+**Draft.** A draft order resumes in the person's mode: tapping its row opens the wizard (at the step where it was) or the window. While it is a draft you can **switch mode** from inside: **«Switch to wizard»** (at the top, in the window) and **«Switch to full form»** (at the top, in the wizard). Switching **saves first** what was typed if it is complete; if it is incomplete, it switches anyway and the last saved state is resumed. After the order is requested, it is only seen in the detail window.
+
+**It does not change** any data of the order: the mode is just a screen preference. The order does not store which mode it was started with.
+
+| Method and route | Permission | What it does |
+|---|---|---|
+| `GET /api/v1/me/preferences/{key}` | session | Own preference of the person in the active company: `{ "key", "value" }` (`value` is null if never saved). `key`: `sales.entryMode` or `warehouse.last`. 404 if the key does not exist. |
+| `PUT /api/v1/me/preferences/{key}` | session | Saves `{ "value" }`. 400 «El valor de la preferencia no es válido.» (`sales.entryMode`: `wizard` or `full`; `warehouse.last`: the publicId of a warehouse). |

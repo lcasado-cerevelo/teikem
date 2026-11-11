@@ -19,3 +19,4 @@ be changed from the walkthroughs and need a software change (an English message 
 - Trusted-computer names such as "Chrome en Windows" (l100-lista, changed to "on" in the test database only), legal-text placeholders "[RAZÓN SOCIAL DEL OPERADOR]" (l102-legal, translated in the response during the capture only), "Invalid code." / PIN and process errors from the server (f1-mi-cuenta-mfa-activar, f8a-pin-trivial-rechazado, f18-proceso-avanzar-error).
 - The label key `warehouse.inventory.filters.zone` appears raw in the movement ledger filters (f6-inventario-saldos, f19-d-kardex, f7a-inventario-*): the key is missing in the app dictionaries.
 - Kemi's answers are in Spanish because the help index is built from the Spanish manual (l218-*).
+- Batch 238 captures (l238-*): taken with the interface in Spanish (the walkthrough was not run with MANUAL_LANG=en); the Spanish copies are linked from the English chapters 18 §27 and 06 §7a until they are retaken.

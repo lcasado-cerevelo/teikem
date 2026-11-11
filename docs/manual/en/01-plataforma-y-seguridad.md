@@ -37,7 +37,7 @@ How it is used: `POST /api/v1/auth/login`
 Response with `status`: `ok` (includes `tokens`), `mfa_required` (includes `mfaChallengeToken` as Bearer for
 step 2). If the user belongs to several companies and does not send `tenantId`, **they are not asked** (since 2026-09-30): they enter
 their default company; if they are no longer a member of it, the membership marked as default; otherwise, the first one by
-name. They then switch company with `POST /api/v1/auth/switch-tenant` (the selector in the header). The value
+name. **Since 2026-11-11 the default company is the last one the person worked in:** each `switch-tenant` saves it (`DefaultTenantId`), so when they come back in that company opens. They then switch company with `POST /api/v1/auth/switch-tenant` (the selector in the header). The value
 `tenant_selection` is no longer issued.
 
 **Mandatory first sign-in (2026-09-30).** If the user is missing the first sign-in (column `AspNetUsers.OnboardingRequired`
@@ -118,6 +118,7 @@ Validations: empty or wrong code → `Invalid MFA code.` (401).
   `401 Invalid refresh token.`: only that session is closed and the person's other sessions stay alive.
 - Switch the active company without entering the password again: `POST /api/v1/auth/switch-tenant`
   `{ "refreshToken": "...", "tenantId": 2 }`. Reloads menu, permissions and data with the new tenant.
+- Own preferences (2026-11-11): `GET` and `PUT /api/v1/me/preferences/{key}` (session; per person and company). Keys: `sales.entryMode` (`wizard` | `full`, sales order entry mode, [18 §27](18-ordenes-de-venta.md#27-entry-mode-wizard-or-form-batch-238)) and `warehouse.last` (publicId of the last warehouse the person used in the warehouse app, [09](09-app-almacen.md)). 404 if the key does not exist; 400 «El valor de la preferencia no es válido.». Table `dbo.UserPreference`.
 - Close this session: `POST /api/v1/auth/logout` `{ "refreshToken": "..." }` (204, does not require being
   authenticated because the refresh token itself identifies the session to close).
 - Close all of your own sessions: `POST /api/v1/auth/logout-all` (authenticated). It also invalidates the

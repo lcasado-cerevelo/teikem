@@ -220,6 +220,7 @@ makes it active and the app says “You are now working in <name>.” and syncs 
 - **With a receipt, dispatch or count in progress you cannot change:** “Finish or cancel the document in progress before changing warehouse.”
   (app notice, no server call).
 - **Without signal:** the warehouse list is saved on the device (it is refreshed every time Home opens with signal), so you can change without network.
+- **The last warehouse of each person (2026-11-11).** When a warehouse is chosen, the app saves it **on the server as that person's last one** (`warehouse.last`, per person and company; without signal it is not saved and does not get in the way). When opening **Home**, once per person while the app stays open, it **returns to that warehouse** if it is still active in the company, even if another person left the device on a different one. Changing warehouse with a document in progress is still not allowed. The web has no «active warehouse»: each screen asks for its own.
 - **The choice belongs to that device and that company** (each company enrolled on the phone remembers its own). It is discarded automatically when
   (a) the device's default warehouse is changed from the web, or (b) the chosen warehouse is deactivated: then the device goes back to the default.
 - **Server:** nothing changed. The calls already carried the warehouse in the request; the device is not limited to its default warehouse.

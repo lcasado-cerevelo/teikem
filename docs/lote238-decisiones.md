@@ -14,9 +14,10 @@ Pedidos de Luis en la sesión del 2026-11-11. Web, API, app de almacén, manual 
 | Contrato | `web-app/openapi.json` (+1 ruta, +2 esquemas, `PickDocumentDto` ampliado) y los tipos de web y app regenerados. |
 
 ## Cómo se probó
-- `tsc` limpio en web y app; Vitest de ventas (168 + 4 de `entryMode`) y de almacén (791 de 797; el resto sin correr por un cierre inesperado de un worker de Vitest en Windows, no por una prueba); Jest de la app de almacén 825/825; prueba nueva de preload (`pickDocumentPreload.test.ts`).
-- Servidor: compila en Release; `UserPreferenceKeysTests` escrita y **sin correr** (Visual Studio tenía bloqueados los binarios de Debug).
-- Sin recorrido en pantalla ni capturas de este lote.
+- `tsc` y `oxlint` limpios en web y app; Vitest de almacén y ventas 969/969 (107 archivos, con `--maxWorkers=2`; incluye `entryMode.test.ts` y `pickDocumentPreload.test.ts`); Jest de la app de almacén 825/825.
+- Servidor (Release): `UserPreferenceKeysTests`, `FrozenSqlTests`, contratos y OpenAPI 394/394. `FrozenSqlTests` encontró que el `CREATE TABLE dbo.UserPreference` debía ir en la misma línea del `IF OBJECT_ID(...) IS NULL`: corregido en `logistica-db-update.sql` (db-update vuelve a pasar en la base local).
+- Recorrido de Playwright `web-app/e2e/lote238-modo-captura-y-recoleccion.spec.ts` contra un API **sin correo** (Brevo vacío) y la base `Teikem_e2e`: 3/3. Cubre un solo botón «Nueva orden» y el modo guardado en el servidor, el cambio asistente ⇄ formulario (también con la orden vacía), la ficha «Lo que hay que recolectar» con la posición reservada y «Recolectar» llenando el formulario sin recolectar, y la última compañía al volver a entrar. Capturas `l238-*` en `docs/manual/frontend/img/`.
+- **Error encontrado por el recorrido y corregido:** al pulsar «Cambiar al formulario completo» el asistente volvía a poner su modo como «asistente» (el efecto de entrada dependía de `setEntryMode`); ahora solo corre al montar.
 
 ## Decisiones a revisar
 1. **El modo no se guarda en la orden.** Un borrador se abre en el último modo de la persona, no en el que se usó al empezar. Guardarlo en la orden exige una columna nueva.
@@ -28,4 +29,4 @@ Pedidos de Luis en la sesión del 2026-11-11. Web, API, app de almacén, manual 
 7. En un envío empacado (`ORDER`) la ficha no trae renglones.
 
 ## Qué quedó fuera
-Capturas del recorrido de Playwright; manual en inglés (`docs/manual/en`, aún no conectado); aplicar los scripts 11 y 12 en TEST o producción (los corre Luis).
+Las capturas en inglés (las de `l238-*` están con la interfaz en español; anotado en `docs/manual/en/captures-pending.md`); aplicar los scripts 11 y 12 en TEST o producción (los corre Luis).

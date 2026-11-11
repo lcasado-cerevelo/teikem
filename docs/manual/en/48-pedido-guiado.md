@@ -6,6 +6,8 @@
 
 Batches 223 and 226 (2026-11-07) — salespeople's order, parts P3 (web) and P4 (mobile app). The **guided order** is another door to the **same sales order** of [chapter 18](18-ordenes-de-venta.md): the salesperson builds the order in **four steps** (client, products, delivery, authorization), it is saved as a **draft** at every step and at the end they **send** it confirming who they are. The «New order» window stays as it always was, for the office. Prices come from the lists and the offers ([47](47-precios-y-ofertas.md)); the new client is born as a prospect ([02 §1.8](02-clientes-y-contratos.md#18-prospect-client-minimal-sign-up-and-approval-batch-222)).
 
+> **Batch 238 (2026-11-11) — one way to create the order, with two modes.** The wizard in this chapter and the «New order» window are **two modes of the same entry**: **Wizard** (step by step, full screen, meant for tablet and phone) and **Form** (the usual window, everything in view, for desktop). There is **a single «New order» button**: it opens the **last mode that person used** (per person and company, stored on the server: the same from any device); if they never chose, the wizard on narrow screens (up to 900 px) and the form on desktop. Details in [18 §27](18-ordenes-de-venta.md#27-entry-mode-wizard-or-form-batch-238).
+
 > **Screenshots pending (Batches 229, 230, 231 and 232).** Step 2 changed: offer cards with the offer's name and validity, a photo square on every product that has a photo, price warnings and «Change» on the pieces of an offer kit in the cart (Batches 231 and 232: the offer kit shows only as a card and only if it is in an offer in effect; the assembled kit shows as one more product). The step 2, cart and step 3 screenshots below are older (batch 228) and do not show that; they must be retaken with the Playwright walkthrough.
 >
 > Screenshots from the batch 228 walkthrough (2026-11-07, demo data): web on desktop (light and dark) and at 360 px. Still pending: the **mobile app** ones (Orders → My orders, the steps and the fingerprint; the Playwright walkthrough does not run the app) and the **shortage dialog** (it is the same as in [18 §6](18-ordenes-de-venta.md)).
@@ -14,7 +16,7 @@ Batches 223 and 226 (2026-11-07) — salespeople's order, parts P3 (web) and P4 
 
 - Module **Sales orders (`SALES_ORDERS`)**.
 - Permissions: **`sales.create`** builds, saves and sends the order (**Sales** role, **Sales office** and Company admin). Seeing the catalog and the list uses `sales.view`. Creating a new client from step 1 uses **`clients.create_basic`** (Sales role) or `clients.create`. Choosing another delivery address of the client in the app uses `locations.read`.
-- **Web**: Accounting → **Sales orders** → **Guided order** button (next to «New order»), route `/sales-orders/new-order`. No menu item of its own.
+- **Web**: Accounting → **Sales orders** → **New order** button (opens the wizard if that is the person's mode) or the small **With wizard** button (switches mode and opens the wizard), route `/sales-orders/new-order`. No menu item of its own.
 - **Mobile app**: **Home → Orders** (Spanish «Pedidos»; shown with `sales.create`; a «driver only» person does not see it). Inside: **My orders** and **New order**. App details in [section 6](#6-in-the-mobile-app).
 
 ## 2. The four steps (web and app: the same sequence)
@@ -104,6 +106,8 @@ Progress bar on top («Step 2 of 4: Products»). **Next** saves the draft of the
 - **Web**: after the first save the address becomes `?order=<publicId>`; opening it resumes the draft at the first pending step. An order that is no longer a draft is not edited there: «Order {number} is no longer a draft: open it in Sales orders.»
 - **App**: a draft in «My orders» opens in the order where it was left; anything else shows in a read-only sheet.
 - The step is **not stored** in the database: it only says what to validate when saving.
+- **Batch 238 — continue in the other mode.** While the order is a draft: in the wizard, the **Switch to full form** button (top right) opens **that same draft** in the window (if nothing was saved yet, it opens a new window); in the window, **Switch to wizard** (top right) saves what was typed **if it is complete** and resumes the draft in the wizard; if it is incomplete (e.g. a product is missing) it **does not block**: the wizard resumes the last saved state and you finish step by step there. Switching mode **leaves that mode as the person's mode**.
+- **Batch 238 — opening a draft from the list.** In Sales orders, tapping a row in **draft** opens the **wizard** (at the step where it was) if that is the person's mode, and the window if it is the form. An order that is no longer a draft always opens in the detail window.
 
 ## 4. How to use it (API)
 
@@ -196,8 +200,10 @@ The guided order uses the sales order statuses (`SalesOrderStatuses`) with the s
 - **I ordered an assembled kit and it says there is not enough.** There are not enough assembled kits (stock minus reserved). Whoever has `inventory.adjust` can assemble more from the kit record (“Assemblies” tab); otherwise the shortage is left in backorder until there are kits.
 - **The assembled kit does not let me change pieces.** That is normal: an assembled kit already has its pieces inside. Changing pieces only exists on offer kits.
 - **A draft was left unfinished.** It is in Sales orders (or «My orders»); open it to continue or cancel it.
+- **I started in the wizard and the window opened when I opened the draft (or the other way round).** It opens in the person's **last mode**, not the one used when starting (the order does not store the mode). Use **Switch to wizard** / **Switch to full form** or the small **With wizard** / **With form** button in the list.
+- **«Switch to wizard» did nothing.** Before 2026-11-11 it required the order to be complete (a product on every line); now it always switches. If you still see it, the version needs updating.
 
-The messages are in the [FAQ](faq.md#batches-223-and-226--guided-order-web-and-mobile-app), in [Batch 229](faq.md#batch-229--offers-as-a-separate-entity-offer-kits-and-the-product-photo), in [Batch 230](faq.md#batch-230--product-dimensions-and-weight-not-substitutable-and-swapping-kit-pieces), in [Batch 231](faq.md#batch-231--offer-kit-with-library) and in [Batch 232](faq.md#batch-232--assembled-kit-with-inventory-assemble-and-disassemble).
+The messages are in the [FAQ](faq.md#batches-223-and-226--guided-order-web-and-mobile-app), in [Batch 238](faq.md#batch-238--entry-mode-per-person-last-company-and-what-to-pick), in [Batch 229](faq.md#batch-229--offers-as-a-separate-entity-offer-kits-and-the-product-photo), in [Batch 230](faq.md#batch-230--product-dimensions-and-weight-not-substitutable-and-swapping-kit-pieces), in [Batch 231](faq.md#batch-231--offer-kit-with-library) and in [Batch 232](faq.md#batch-232--assembled-kit-with-inventory-assemble-and-disassemble).
 
 ## 9. For support
 

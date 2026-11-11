@@ -12284,3 +12284,65 @@ You need the **Manage taxes** permission (`tax.manage`). Without it the field is
 
 **“The product was saved, but the tax was not: {reason}”**
 The product was created or saved, but the tax category could not be changed (usually: the permission is missing or the module was turned off). Open the product again and change the Tax field, or do it in Taxes → Products.
+
+## Batch 238 — Entry mode per person, last company and what to pick
+<!-- kemi:staff -->
+
+Chapters: [18 §27](18-ordenes-de-venta.md#27-entry-mode-wizard-or-form-batch-238), [48 — Guided order](48-pedido-guiado.md), [06 §7a — Picking and packing by document](06-inventario-y-almacen.md), [01 — Platform](01-plataforma-y-seguridad.md) and [09 — Warehouse app](09-app-almacen.md).
+
+**Why are there no longer two buttons («Guided order» and «New order»)?**
+They were two ways of creating the same thing. Now there is **one «New order» button** that opens the person's last mode (step-by-step **Wizard** or full **Form**) and a small button with the other mode («With wizard» / «With form»).
+
+**Which mode does it open with if I never chose?**
+The wizard on screens up to 900 px (phone and vertical tablet) and the form on desktop.
+
+**Does the mode stay if I change computer or tablet?**
+Yes: it is stored on the server, per person and company. The first time on a device it may briefly show the default mode while the answer arrives.
+
+**I started an order in the wizard and when I opened the draft the window came up (or the other way round).**
+A draft opens in the person's **last mode**; the order does not store which one it was started with. Switch with **Switch to wizard** / **Switch to full form** (at the top) or with the small button in the list.
+
+**The «Switch to wizard» button did nothing.**
+It happened when a datum was missing (e.g. the product of a line): it used to require a complete order. Since 2026-11-11 it always switches: it saves what was typed if it is complete and, if not, resumes the last saved state.
+
+**When switching to the wizard I lost what I had half typed.**
+Only what is complete is saved. What was half typed in the window does not pass to the wizard; finish step by step there. To lose nothing, save the draft before switching.
+
+**«El valor de la preferencia no es válido.» (400)**
+Only through the API: `sales.entryMode` accepts `wizard` or `full`, and `warehouse.last` the publicId of a warehouse. **404:** the key does not exist (there are only those two).
+
+**I switched company and when I come back in a different one opens.**
+It should open **the last one you worked in** (each change with the header selector saves it). If another opens, the person is no longer a member of the saved one (then it goes to the one marked as default, or the first by name) or the previous session was closed without switching company. There is no way to set a default company by hand any more: the last used one rules.
+
+**In the warehouse app, does it remember the last warehouse?**
+Yes, per person: when opening **Home** it returns to the last one that person chose, even if another person left the device on a different one. If the warehouse was deactivated, the device's own stays. Without signal it is neither saved nor restored.
+
+**And on the web?**
+The web has no «active warehouse»: each screen asks for its own warehouse. What is remembered there is the **company** (top right) and the sales entry mode.
+
+**In Picking and packing, when I open a document I only see totals and do not know what to pick.**
+Since 2026-11-11 the record of an exit notice or sales order has **«What to pick»**: product, Ordered, Shipped, To pick and **Pick from** (bin, lot and quantity already reserved). If you do not see it, the server needs updating.
+
+**What does the «Pick» button in the record do?**
+It fills the form on the left with the reservation's warehouse and one line per reserved bin and lot. **It picks nothing:** review and tap «Pick (take from inventory)». The notice «{number}: lines loaded into the form. Review them and pick.» appears.
+
+**The «Pick» button does not show.**
+You need the `warehouse.pick` permission, the document must be an exit notice or a sales order and it must have something **reserved to pick** (if everything is shipped or in backorder without reservation, there is nothing to load).
+
+**The record says «This document has no lines.»**
+A shipment already packed (type Shipment) has no lines: it was already picked. In a notice or an order, it means it has no lines.
+
+**With a serial-tracked product, does it come with the serials?**
+No. Serials are scanned in the form after loading it.
+
+**I loaded the form and the bin is not the one I want.**
+Each line can be changed as always: the line's **Bin** selector (with its availability). What is loaded is just the reservation.
+
+**What happens with the pieces of a kit?**
+The record shows them one by one with the label «Kit {SKU}» and they load as form lines: what leaves the warehouse are the pieces, not the kit.
+
+**I ran the QuickBooks price list script (`12-lista-precios-quickbooks.sql`) and the list did not appear.**
+It ran in **simulation** (`@Aplicar = 0`, the file's value): it shows what it would do and rolls back at the end. Set `@Aplicar = 1` and run it again; the final message must say «APLICADO», not «SIMULACIÓN». It creates a published general list with the QuickBooks Price field values (products with a price above 0) and does not change the products' sale price. If `06-lista-precios-inicial.sql` already created another published general list, it aborts because of overlapping dates: end the other list's validity or use `@Publicar = 0`.
+
+**I cannot find products exempt from IVU.**
+Until `11-impuesto-productos.sql` is run with `@Aplicar = 1`, all Advance Solutions products have **no tax category**, which Teikem treats as taxable. The script sets **Exempt** on the eleven QuickBooks «Non» products; afterwards the **Tax** field of the product editor (Warehouse → Products and inventory, Prices block) shows them as Exempt. See [Batch 237](#batch-237--client-exemption-by-components-and-the-tax-field-in-the-product-editor).

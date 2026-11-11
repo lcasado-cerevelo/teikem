@@ -2245,11 +2245,19 @@ The right-hand list of **Picking & packing** is seen in two ways (selector above
 
 **Opening a document** shows the progress and its **pick batches as movements** (most recent first: number and status, date, who and quantity); tapping one opens the record of that pick batch with its actions (Pack, Delete).
 
+**What to pick (2026-11-11).** The record of an **exit notice** or a **sales order** has the section **«What to pick»**: one row per line with the product (SKU and name), **Ordered**, **Shipped**, **To pick** and **Pick from** (the **bin**, the **lot** if it has one, and the quantity the document **already reserved** there). The suggestion is that reservation, not a separate calculation. On a **kit** line its **pieces** are shown (what really leaves) with the label «Kit {SKU}». A shipment already packed does not have it (it was already picked).
+
+![Sales order record: «What to pick» with the reserved bin and the Pick button](frontend/img/l238-ficha-que-recolectar.png)
+
+**«Pick» button** (at the bottom of the record; permission `warehouse.pick`; only if something is reserved to pick). It closes the record and **fills the «Picking» form on the left**: the reservation's warehouse and **one line per reserved bin (and lot)**, with its quantity, plus an empty line at the end; the notice «{number}: lines loaded into the form. Review them and pick.» appears and **nothing is picked** until the person taps «Pick (take from inventory)». If **Manual issue** was on, it is switched off. A product with **serials** comes without them (they are scanned). If a reservation has no bin (old data), a single line with what is reserved is added and the server chooses by FEFO.
+
+![The «Picking» form already loaded with the reserved product, quantity and bin, ready to review](frontend/img/l238-formulario-precargado.png)
+
 **Which documents appear:** the open ones with something reserved to pick (even if they have no pick batches yet) and those that already have some pick batch; a cancelled one without pick batches does not. Each pick batch counts for **one** document, with this priority: exit notice, then sales order, then shipment. **Deleted** (reverted) pick batches do not count. A **manual issue** has no document: it is seen in “By movement”.
 
 | Method and route | Permission | What it does |
 |---|---|---|
-| `GET /api/v1/pick-batches/documents?kind=&status=&search=&pendingOnly=&skip=&take=` | `inventory.view` | Documents with their progress and their pick batches. `kind`: `EXIT_NOTICE`, `SALES_ORDER` or `ORDER`. `take` up to 200. 400 `Unknown document type: “X”. Use EXIT_NOTICE, SALES_ORDER or ORDER.` |
+| `GET /api/v1/pick-batches/documents?kind=&status=&search=&pendingOnly=&skip=&take=` | `inventory.view` | Documents with their progress and their pick batches. `kind`: `EXIT_NOTICE`, `SALES_ORDER` or `ORDER`. `take` up to 200. 400 `Unknown document type: “X”. Use EXIT_NOTICE, SALES_ORDER or ORDER.` Since 2026-11-11 each document carries `warehousePublicId` (the reservation's warehouse) and `lines` (lines with `ordered`, `reserved`, `shipped`, `kitSku`, `trackingTypeCode`, `ownerClientPublicId` and `locations` with `binId`, `binCode`, `lotId`, `lotNumber`, `expiryDate`, `quantity`; only exit notices and sales orders). |
 
 The list of **receipts** by notice comes with the multi-batch receipt (C2): today each notice has a single receipt, so grouping it would change nothing.
 

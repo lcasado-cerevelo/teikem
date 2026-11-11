@@ -56,7 +56,9 @@ export default function NewOrderScreen() {
   const [resumeDone, setResumeDone] = useState(resumeId === null)
   const mfa = useContext(SessionContext)?.me?.mfaEnabled ?? false
   const [, setEntryMode] = useEntryMode()   // abrir el formulario completo lo deja como el modo de esta persona
-  useEffect(() => { setEntryMode('wizard') }, [setEntryMode])   // y entrar al asistente lo deja como el suyo
+  // y ENTRAR al asistente lo deja como el suyo: solo al montar (si dependiera de setEntryMode, al pulsar «Cambiar al formulario» el efecto lo volvería a poner en «asistente»)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setEntryMode('wizard') }, [])
 
   const [state, setState] = useState<WizardState>(emptyWizard)
   const [step, setStep] = useState<WizardStep>('CLIENT')
