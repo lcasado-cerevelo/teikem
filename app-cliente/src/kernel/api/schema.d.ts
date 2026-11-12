@@ -20032,6 +20032,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/preferences/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    key: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["UserPreferenceDto"];
+                        "application/json": components["schemas"]["UserPreferenceDto"];
+                        "text/json": components["schemas"]["UserPreferenceDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    key: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["UserPreferenceSetRequest"];
+                    "text/json": components["schemas"]["UserPreferenceSetRequest"];
+                    "application/*+json": components["schemas"]["UserPreferenceSetRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["UserPreferenceDto"];
+                        "application/json": components["schemas"]["UserPreferenceDto"];
+                        "text/json": components["schemas"]["UserPreferenceDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/messages/attachments/{publicId}": {
         parameters: {
             query?: never;
@@ -28948,6 +29016,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/products/units-suggestion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductUnitsSuggestionDto"];
+                        "application/json": components["schemas"]["ProductUnitsSuggestionDto"];
+                        "text/json": components["schemas"]["ProductUnitsSuggestionDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/products/{publicId}": {
         parameters: {
             query?: never;
@@ -30025,6 +30130,55 @@ export interface paths {
                         "text/plain": components["schemas"]["ExportFileDto"];
                         "application/json": components["schemas"]["ExportFileDto"];
                         "text/json": components["schemas"]["ExportFileDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-orders/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        source?: string;
+                        status?: string;
+                        /** Format: uuid */
+                        warehousePublicId?: string;
+                        commit?: boolean;
+                        /** Format: binary */
+                        file?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PurchaseOrderImportResultDto"];
+                        "application/json": components["schemas"]["PurchaseOrderImportResultDto"];
+                        "text/json": components["schemas"]["PurchaseOrderImportResultDto"];
                     };
                 };
             };
@@ -32783,7 +32937,26 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        delete?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch: {
@@ -32816,6 +32989,45 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/api/v1/sales-orders/kits/{kitPublicId}/substitutes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    kitPublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["KitSubstitutesDto"];
+                        "application/json": components["schemas"]["KitSubstitutesDto"];
+                        "text/json": components["schemas"]["KitSubstitutesDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/sales-orders/{publicId}/availability": {
@@ -36587,6 +36799,515 @@ export interface paths {
                         "application/json": string[];
                         "text/json": string[];
                     };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantLinkOptionsDto"];
+                        "application/json": components["schemas"]["TenantLinkOptionsDto"];
+                        "text/json": components["schemas"]["TenantLinkOptionsDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantLinkDto"][];
+                        "application/json": components["schemas"]["TenantLinkDto"][];
+                        "text/json": components["schemas"]["TenantLinkDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TenantLinkProposeRequest"];
+                    "text/json": components["schemas"]["TenantLinkProposeRequest"];
+                    "application/*+json": components["schemas"]["TenantLinkProposeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantLinkDto"];
+                        "application/json": components["schemas"]["TenantLinkDto"];
+                        "text/json": components["schemas"]["TenantLinkDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantLinkDto"];
+                        "application/json": components["schemas"]["TenantLinkDto"];
+                        "text/json": components["schemas"]["TenantLinkDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links/{publicId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TenantLinkAcceptRequest"];
+                    "text/json": components["schemas"]["TenantLinkAcceptRequest"];
+                    "application/*+json": components["schemas"]["TenantLinkAcceptRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantLinkDto"];
+                        "application/json": components["schemas"]["TenantLinkDto"];
+                        "text/json": components["schemas"]["TenantLinkDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links/{publicId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TenantLinkReasonRequest"];
+                    "text/json": components["schemas"]["TenantLinkReasonRequest"];
+                    "application/*+json": components["schemas"]["TenantLinkReasonRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantLinkDto"];
+                        "application/json": components["schemas"]["TenantLinkDto"];
+                        "text/json": components["schemas"]["TenantLinkDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links/{publicId}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TenantLinkReasonRequest"];
+                    "text/json": components["schemas"]["TenantLinkReasonRequest"];
+                    "application/*+json": components["schemas"]["TenantLinkReasonRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantLinkDto"];
+                        "application/json": components["schemas"]["TenantLinkDto"];
+                        "text/json": components["schemas"]["TenantLinkDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    state?: string;
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantLinkDeliveryPageDto"];
+                        "application/json": components["schemas"]["TenantLinkDeliveryPageDto"];
+                        "text/json": components["schemas"]["TenantLinkDeliveryPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links/deliveries/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantLinkDeliveryDto"];
+                        "application/json": components["schemas"]["TenantLinkDeliveryDto"];
+                        "text/json": components["schemas"]["TenantLinkDeliveryDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links/deliveries/{publicId}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantLinkDeliveryDto"];
+                        "application/json": components["schemas"]["TenantLinkDeliveryDto"];
+                        "text/json": components["schemas"]["TenantLinkDeliveryDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links/deliveries/{publicId}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantLinkDeliveryDto"];
+                        "application/json": components["schemas"]["TenantLinkDeliveryDto"];
+                        "text/json": components["schemas"]["TenantLinkDeliveryDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links/deliveries/{publicId}/proof": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DeliveryProofDto"];
+                        "application/json": components["schemas"]["DeliveryProofDto"];
+                        "text/json": components["schemas"]["DeliveryProofDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/tenant-links/deliveries/{publicId}/proof/files/{filePublicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    filePublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
             };
         };
@@ -40925,282 +41646,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/integrations/tenant-links/options": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TenantLinkOptionsDto"];
-                        "application/json": components["schemas"]["TenantLinkOptionsDto"];
-                        "text/json": components["schemas"]["TenantLinkOptionsDto"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/tenant-links": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TenantLinkDto"][];
-                        "application/json": components["schemas"]["TenantLinkDto"][];
-                        "text/json": components["schemas"]["TenantLinkDto"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["TenantLinkProposeRequest"];
-                    "text/json": components["schemas"]["TenantLinkProposeRequest"];
-                    "application/*+json": components["schemas"]["TenantLinkProposeRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TenantLinkDto"];
-                        "application/json": components["schemas"]["TenantLinkDto"];
-                        "text/json": components["schemas"]["TenantLinkDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/tenant-links/{publicId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    publicId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TenantLinkDto"];
-                        "application/json": components["schemas"]["TenantLinkDto"];
-                        "text/json": components["schemas"]["TenantLinkDto"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/tenant-links/{publicId}/accept": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    publicId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["TenantLinkAcceptRequest"];
-                    "text/json": components["schemas"]["TenantLinkAcceptRequest"];
-                    "application/*+json": components["schemas"]["TenantLinkAcceptRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TenantLinkDto"];
-                        "application/json": components["schemas"]["TenantLinkDto"];
-                        "text/json": components["schemas"]["TenantLinkDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/tenant-links/{publicId}/reject": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    publicId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["TenantLinkReasonRequest"];
-                    "text/json": components["schemas"]["TenantLinkReasonRequest"];
-                    "application/*+json": components["schemas"]["TenantLinkReasonRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TenantLinkDto"];
-                        "application/json": components["schemas"]["TenantLinkDto"];
-                        "text/json": components["schemas"]["TenantLinkDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/tenant-links/{publicId}/end": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    publicId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["TenantLinkReasonRequest"];
-                    "text/json": components["schemas"]["TenantLinkReasonRequest"];
-                    "application/*+json": components["schemas"]["TenantLinkReasonRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TenantLinkDto"];
-                        "application/json": components["schemas"]["TenantLinkDto"];
-                        "text/json": components["schemas"]["TenantLinkDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/tenant-links/deliveries": {
+    "/api/v1/sales-analysis/by-rep": {
         parameters: {
             query?: never;
             header?: never;
@@ -41210,7 +41656,1088 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    state?: string;
+                    month?: string;
+                    compareMonth?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesByRepDto"];
+                        "application/json": components["schemas"]["SalesByRepDto"];
+                        "text/json": components["schemas"]["SalesByRepDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    month?: string;
+                    repId?: number;
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                    all?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesTransactionDtoPagedResult"];
+                        "application/json": components["schemas"]["SalesTransactionDtoPagedResult"];
+                        "text/json": components["schemas"]["SalesTransactionDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/product-movement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    fromMonth?: string;
+                    toMonth?: string;
+                    asOf?: string;
+                    leadTimeDays?: number;
+                    serviceLevelZ?: number;
+                    topClients?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductMovementDto"];
+                        "application/json": components["schemas"]["ProductMovementDto"];
+                        "text/json": components["schemas"]["ProductMovementDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/charts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    fromMonth?: string;
+                    toMonth?: string;
+                    month?: string;
+                    topProducts?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesChartsDto"];
+                        "application/json": components["schemas"]["SalesChartsDto"];
+                        "text/json": components["schemas"]["SalesChartsDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesAnalysisStatusDto"];
+                        "application/json": components["schemas"]["SalesAnalysisStatusDto"];
+                        "text/json": components["schemas"]["SalesAnalysisStatusDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesAnalysisSettingsDto"];
+                        "application/json": components["schemas"]["SalesAnalysisSettingsDto"];
+                        "text/json": components["schemas"]["SalesAnalysisSettingsDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesAnalysisSettingsRequest"];
+                    "text/json": components["schemas"]["SalesAnalysisSettingsRequest"];
+                    "application/*+json": components["schemas"]["SalesAnalysisSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesAnalysisSettingsDto"];
+                        "application/json": components["schemas"]["SalesAnalysisSettingsDto"];
+                        "text/json": components["schemas"]["SalesAnalysisSettingsDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/routes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRouteDto"][];
+                        "application/json": components["schemas"]["SalesRouteDto"][];
+                        "text/json": components["schemas"]["SalesRouteDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesRouteRequest"];
+                    "text/json": components["schemas"]["SalesRouteRequest"];
+                    "application/*+json": components["schemas"]["SalesRouteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRouteDto"];
+                        "application/json": components["schemas"]["SalesRouteDto"];
+                        "text/json": components["schemas"]["SalesRouteDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/routes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesRouteRequest"];
+                    "text/json": components["schemas"]["SalesRouteRequest"];
+                    "application/*+json": components["schemas"]["SalesRouteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRouteDto"];
+                        "application/json": components["schemas"]["SalesRouteDto"];
+                        "text/json": components["schemas"]["SalesRouteDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/routes/{id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRouteDto"];
+                        "application/json": components["schemas"]["SalesRouteDto"];
+                        "text/json": components["schemas"]["SalesRouteDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/routes/{id}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRouteDto"];
+                        "application/json": components["schemas"]["SalesRouteDto"];
+                        "text/json": components["schemas"]["SalesRouteDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/reps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRepDto"][];
+                        "application/json": components["schemas"]["SalesRepDto"][];
+                        "text/json": components["schemas"]["SalesRepDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesRepRequest"];
+                    "text/json": components["schemas"]["SalesRepRequest"];
+                    "application/*+json": components["schemas"]["SalesRepRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRepDto"];
+                        "application/json": components["schemas"]["SalesRepDto"];
+                        "text/json": components["schemas"]["SalesRepDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/reps/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesRepRequest"];
+                    "text/json": components["schemas"]["SalesRepRequest"];
+                    "application/*+json": components["schemas"]["SalesRepRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRepDto"];
+                        "application/json": components["schemas"]["SalesRepDto"];
+                        "text/json": components["schemas"]["SalesRepDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/reps/{id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRepDto"];
+                        "application/json": components["schemas"]["SalesRepDto"];
+                        "text/json": components["schemas"]["SalesRepDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/reps/{id}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRepDto"];
+                        "application/json": components["schemas"]["SalesRepDto"];
+                        "text/json": components["schemas"]["SalesRepDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/reps/from-custom-field": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRepMigrationDto"];
+                        "application/json": components["schemas"]["SalesRepMigrationDto"];
+                        "text/json": components["schemas"]["SalesRepMigrationDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/reps/{id}/quotas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesQuotaHistoryDto"];
+                        "application/json": components["schemas"]["SalesQuotaHistoryDto"];
+                        "text/json": components["schemas"]["SalesQuotaHistoryDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/quotas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    month?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesQuotaMonthDto"];
+                        "application/json": components["schemas"]["SalesQuotaMonthDto"];
+                        "text/json": components["schemas"]["SalesQuotaMonthDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/quotas/{month}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    month: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesQuotaBulkRequest"];
+                    "text/json": components["schemas"]["SalesQuotaBulkRequest"];
+                    "application/*+json": components["schemas"]["SalesQuotaBulkRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesQuotaMonthDto"];
+                        "application/json": components["schemas"]["SalesQuotaMonthDto"];
+                        "text/json": components["schemas"]["SalesQuotaMonthDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductLineDto"][];
+                        "application/json": components["schemas"]["ProductLineDto"][];
+                        "text/json": components["schemas"]["ProductLineDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ProductLineRequest"];
+                    "text/json": components["schemas"]["ProductLineRequest"];
+                    "application/*+json": components["schemas"]["ProductLineRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductLineDto"];
+                        "application/json": components["schemas"]["ProductLineDto"];
+                        "text/json": components["schemas"]["ProductLineDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/lines/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ProductLineRequest"];
+                    "text/json": components["schemas"]["ProductLineRequest"];
+                    "application/*+json": components["schemas"]["ProductLineRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductLineDto"];
+                        "application/json": components["schemas"]["ProductLineDto"];
+                        "text/json": components["schemas"]["ProductLineDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/lines/{id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductLineDto"];
+                        "application/json": components["schemas"]["ProductLineDto"];
+                        "text/json": components["schemas"]["ProductLineDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/lines/{id}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductLineDto"];
+                        "application/json": components["schemas"]["ProductLineDto"];
+                        "text/json": components["schemas"]["ProductLineDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/lines/{id}/brands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ProductLineBrandsRequest"];
+                    "text/json": components["schemas"]["ProductLineBrandsRequest"];
+                    "application/*+json": components["schemas"]["ProductLineBrandsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductLineDto"];
+                        "application/json": components["schemas"]["ProductLineDto"];
+                        "text/json": components["schemas"]["ProductLineDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/brands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesBrandDto"][];
+                        "application/json": components["schemas"]["SalesBrandDto"][];
+                        "text/json": components["schemas"]["SalesBrandDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    repId?: number;
+                    unassigned?: boolean;
                     q?: string;
                     skip?: number;
                     take?: number;
@@ -41227,9 +42754,9 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "text/plain": components["schemas"]["TenantLinkDeliveryPageDto"];
-                        "application/json": components["schemas"]["TenantLinkDeliveryPageDto"];
-                        "text/json": components["schemas"]["TenantLinkDeliveryPageDto"];
+                        "text/plain": components["schemas"]["SalesClientRepDtoPagedResult"];
+                        "application/json": components["schemas"]["SalesClientRepDtoPagedResult"];
+                        "text/json": components["schemas"]["SalesClientRepDtoPagedResult"];
                     };
                 };
             };
@@ -41242,23 +42769,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/integrations/tenant-links/deliveries/{publicId}": {
+    "/api/v1/sales-analysis/clients/{clientId}/rep": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: {
+        get?: never;
+        put: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    publicId: string;
+                    clientId: number;
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesClientRepRequest"];
+                    "text/json": components["schemas"]["SalesClientRepRequest"];
+                    "application/*+json": components["schemas"]["SalesClientRepRequest"];
+                };
+            };
             responses: {
                 /** @description OK */
                 200: {
@@ -41266,14 +42800,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "text/plain": components["schemas"]["TenantLinkDeliveryDto"];
-                        "application/json": components["schemas"]["TenantLinkDeliveryDto"];
-                        "text/json": components["schemas"]["TenantLinkDeliveryDto"];
+                        "text/plain": components["schemas"]["SalesClientRepBulkResultDto"];
+                        "application/json": components["schemas"]["SalesClientRepBulkResultDto"];
+                        "text/json": components["schemas"]["SalesClientRepBulkResultDto"];
                     };
                 };
             };
         };
-        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -41281,7 +42814,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/integrations/tenant-links/deliveries/{publicId}/retry": {
+    "/api/v1/sales-analysis/clients/assign-rep": {
         parameters: {
             query?: never;
             header?: never;
@@ -41291,164 +42824,19 @@ export interface paths {
         get?: never;
         put?: never;
         post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    publicId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TenantLinkDeliveryDto"];
-                        "application/json": components["schemas"]["TenantLinkDeliveryDto"];
-                        "text/json": components["schemas"]["TenantLinkDeliveryDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/tenant-links/deliveries/{publicId}/sync": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    publicId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TenantLinkDeliveryDto"];
-                        "application/json": components["schemas"]["TenantLinkDeliveryDto"];
-                        "text/json": components["schemas"]["TenantLinkDeliveryDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/tenant-links/deliveries/{publicId}/proof": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    publicId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["DeliveryProofDto"];
-                        "application/json": components["schemas"]["DeliveryProofDto"];
-                        "text/json": components["schemas"]["DeliveryProofDto"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/tenant-links/deliveries/{publicId}/proof/files/{filePublicId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    publicId: string;
-                    filePublicId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/products/units-suggestion": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
             parameters: {
                 query?: never;
                 header?: never;
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesClientRepBulkRequest"];
+                    "text/json": components["schemas"]["SalesClientRepBulkRequest"];
+                    "application/*+json": components["schemas"]["SalesClientRepBulkRequest"];
+                };
+            };
             responses: {
                 /** @description OK */
                 200: {
@@ -41456,38 +42844,42 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "text/plain": components["schemas"]["ProductUnitsSuggestionDto"];
-                        "application/json": components["schemas"]["ProductUnitsSuggestionDto"];
-                        "text/json": components["schemas"]["ProductUnitsSuggestionDto"];
+                        "text/plain": components["schemas"]["SalesClientRepBulkResultDto"];
+                        "application/json": components["schemas"]["SalesClientRepBulkResultDto"];
+                        "text/json": components["schemas"]["SalesClientRepBulkResultDto"];
                     };
                 };
             };
         };
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/sales-orders/kits/{kitPublicId}/substitutes": {
+    "/api/v1/sales-analysis/unmatched/link": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: {
+        get?: never;
+        put?: never;
+        post: {
             parameters: {
                 query?: never;
                 header?: never;
-                path: {
-                    kitPublicId: string;
-                };
+                path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesAliasRequest"];
+                    "text/json": components["schemas"]["SalesAliasRequest"];
+                    "application/*+json": components["schemas"]["SalesAliasRequest"];
+                };
+            };
             responses: {
                 /** @description OK */
                 200: {
@@ -41495,15 +42887,63 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "text/plain": components["schemas"]["KitSubstitutesDto"];
-                        "application/json": components["schemas"]["KitSubstitutesDto"];
-                        "text/json": components["schemas"]["KitSubstitutesDto"];
+                        "text/plain": components["schemas"]["SalesAliasResultDto"];
+                        "application/json": components["schemas"]["SalesAliasResultDto"];
+                        "text/json": components["schemas"]["SalesAliasResultDto"];
                     };
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
         put?: never;
-        post?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        salesFile?: string;
+                        /** Format: binary */
+                        purchasesFile?: string;
+                        dryRun?: boolean;
+                        /** Format: date */
+                        cutoffDate?: string;
+                        repsFromCustomField?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesHistoryImportReportDto"];
+                        "application/json": components["schemas"]["SalesHistoryImportReportDto"];
+                        "text/json": components["schemas"]["SalesHistoryImportReportDto"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -42617,6 +44057,10 @@ export interface components {
             /** Format: double */
             shippingFreeFrom?: number | null;
             requireOrderSignature?: boolean;
+            /** Format: int32 */
+            salesRepId?: number | null;
+            salesRepName?: string | null;
+            salesRouteName?: string | null;
         };
         ClientDocumentDto: {
             /** Format: uuid */
@@ -46855,6 +48299,70 @@ export interface components {
             /** Format: uuid */
             substitutesProductPublicId?: string | null;
         };
+        KitComponentSubstitutesDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            /** Format: double */
+            quantity?: number;
+            notSubstitutable?: boolean;
+            /** Format: int32 */
+            categoryId?: number | null;
+            categoryPath?: string | null;
+            /** Format: double */
+            salePrice?: number | null;
+            substitutes?: components["schemas"]["KitSubstituteDto"][] | null;
+        };
+        KitDisassembleRequest: {
+            /** Format: double */
+            quantity?: number | null;
+            /** Format: uuid */
+            warehousePublicId?: string | null;
+            /** Format: int32 */
+            fromBinId?: number | null;
+            /** Format: int32 */
+            toBinId?: number | null;
+            notes?: string | null;
+        };
+        KitDisassemblyDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            /** Format: double */
+            quantity?: number;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseCode?: string | null;
+            notes?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: int32 */
+            createdBy?: number | null;
+            createdByName?: string | null;
+            lines?: components["schemas"]["KitDisassemblyLineDto"][] | null;
+        };
+        KitDisassemblyLineDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            lotNumber?: string | null;
+            /** Format: int32 */
+            toBinId?: number;
+            toBinCode?: string | null;
+            /** Format: double */
+            quantity?: number;
+            /** Format: double */
+            unitCost?: number | null;
+        };
+        KitDisassemblyResultDto: {
+            assembly?: components["schemas"]["KitAssemblyDto"];
+            disassembly?: components["schemas"]["KitDisassemblyDto"];
+            movements?: components["schemas"]["MovementResultDto"];
+        };
         KitDto: {
             /** Format: uuid */
             productPublicId?: string;
@@ -46870,6 +48378,25 @@ export interface components {
             isKit?: boolean | null;
             adjustable?: boolean | null;
             components?: components["schemas"]["KitComponentRequest"][] | null;
+        };
+        KitSubstituteDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            brand?: string | null;
+            model?: string | null;
+            /** Format: double */
+            salePrice?: number | null;
+        };
+        KitSubstitutesDto: {
+            /** Format: uuid */
+            kitPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            adjustable?: boolean;
+            components?: components["schemas"]["KitComponentSubstitutesDto"][] | null;
+            isOfferKit?: boolean;
         };
         LabelElementDto: {
             on?: boolean;
@@ -48681,6 +50208,38 @@ export interface components {
             /** Format: date-time */
             lastCollectedAtUtc?: string | null;
             batches?: components["schemas"]["PickBatchSummaryDto"][] | null;
+            /** Format: uuid */
+            warehousePublicId?: string | null;
+            lines?: components["schemas"]["PickDocumentLineDto"][] | null;
+        };
+        PickDocumentLineDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: double */
+            ordered?: number | null;
+            /** Format: double */
+            reserved?: number;
+            /** Format: double */
+            shipped?: number;
+            kitSku?: string | null;
+            locations?: components["schemas"]["PickDocumentLocationDto"][] | null;
+            trackingTypeCode?: string | null;
+            /** Format: uuid */
+            ownerClientPublicId?: string | null;
+        };
+        PickDocumentLocationDto: {
+            /** Format: int32 */
+            binId?: number;
+            binCode?: string | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            lotNumber?: string | null;
+            /** Format: date */
+            expiryDate?: string | null;
+            /** Format: double */
+            quantity?: number;
         };
         PickDocumentPageDto: {
             /** Format: int32 */
@@ -49894,6 +51453,24 @@ export interface components {
             packQty?: number | null;
             isKit?: boolean;
             isAssembledKit?: boolean;
+            /** Format: uuid */
+            imagePublicId?: string | null;
+        };
+        ProductMeasuresDto: {
+            /** Format: double */
+            length?: number | null;
+            /** Format: double */
+            width?: number | null;
+            /** Format: double */
+            height?: number | null;
+            dimensionUnit?: string | null;
+            /** Format: double */
+            volume?: number | null;
+            volumeUnit?: string | null;
+            volumeCalculated?: boolean;
+            /** Format: double */
+            weight?: number | null;
+            weightUnit?: string | null;
         };
         ProductPageDto: {
             /** Format: int32 */
@@ -50011,6 +51588,15 @@ export interface components {
         };
         ProductTaxCategoryRequest: {
             category?: string | null;
+        };
+        ProductUnitsSuggestionDto: {
+            regionCode?: string | null;
+            system?: string | null;
+            dimensionUnit?: string | null;
+            largeDimensionUnit?: string | null;
+            weightUnit?: string | null;
+            dimensionUnits?: string[] | null;
+            weightUnits?: string[] | null;
         };
         ProposalDecisionRequest: {
             note?: string | null;
@@ -50164,6 +51750,10 @@ export interface components {
             routes?: {
                 [key: string]: string;
             } | null;
+            /** Format: double */
+            monthSales?: number | null;
+            /** Format: double */
+            monthQuota?: number | null;
         };
         PurchaseOrderCreateRequest: {
             /** Format: int32 */
@@ -50210,6 +51800,62 @@ export interface components {
             /** Format: int32 */
             assignedToUserId?: number | null;
             assignedToName?: string | null;
+        };
+        PurchaseOrderImportDocDto: {
+            key?: string | null;
+            vendor?: string | null;
+            number?: string | null;
+            /** Format: date */
+            date?: string | null;
+            status?: string | null;
+            /** Format: int32 */
+            lines?: number;
+            /** Format: double */
+            total?: number;
+            purchaseOrderNumber?: string | null;
+            /** Format: uuid */
+            purchaseOrderPublicId?: string | null;
+            issues?: components["schemas"]["PurchaseOrderImportIssueDto"][] | null;
+        };
+        PurchaseOrderImportIssueDto: {
+            /** Format: int32 */
+            line?: number;
+            sku?: string | null;
+            code?: string | null;
+            message?: string | null;
+            blocking?: boolean;
+        };
+        PurchaseOrderImportMissingProductDto: {
+            sku?: string | null;
+            description?: string | null;
+            /** Format: double */
+            qty?: number;
+            /** Format: double */
+            cost?: number | null;
+            /** Format: int32 */
+            orders?: number;
+        };
+        PurchaseOrderImportResultDto: {
+            committed?: boolean;
+            source?: string | null;
+            targetStatus?: string | null;
+            /** Format: int32 */
+            totalDocuments?: number;
+            /** Format: int32 */
+            ready?: number;
+            /** Format: int32 */
+            blocked?: number;
+            /** Format: int32 */
+            duplicates?: number;
+            /** Format: int32 */
+            skipped?: number;
+            /** Format: int32 */
+            created?: number;
+            /** Format: int32 */
+            failed?: number;
+            documents?: components["schemas"]["PurchaseOrderImportDocDto"][] | null;
+            missingProducts?: components["schemas"]["PurchaseOrderImportMissingProductDto"][] | null;
+            missingSuppliers?: string[] | null;
         };
         PurchaseOrderLineDto: {
             /** Format: int32 */
@@ -51808,6 +53454,7 @@ export interface components {
             /** Format: date */
             date?: string;
             brands?: components["schemas"]["SalesCatalogBrandDto"][] | null;
+            photosEnabled?: boolean;
         };
         SalesCatalogItemDto: {
             /** Format: uuid */
@@ -53781,6 +55428,95 @@ export interface components {
             name?: string | null;
             isRecurring?: boolean;
         };
+        TenantLinkAcceptRequest: {
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            note?: string | null;
+        };
+        TenantLinkCompanyDto: {
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+            hasModule?: boolean;
+            hasTransport?: boolean;
+        };
+        TenantLinkDeliveryDto: {
+            /** Format: uuid */
+            publicId?: string;
+            state?: string | null;
+            error?: string | null;
+            /** Format: int32 */
+            attempts?: number;
+            providerCompanyName?: string | null;
+            /** Format: uuid */
+            providerOrderPublicId?: string | null;
+            providerOrderNumber?: string | null;
+            providerStatus?: string | null;
+            providerStatusLabel?: string | null;
+            isFinal?: boolean;
+            /** Format: date-time */
+            deliveredAtUtc?: string | null;
+            deliveredTo?: string | null;
+            /** Format: date-time */
+            lastSyncedAtUtc?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: uuid */
+            salesOrderPublicId?: string;
+            salesOrderNumber?: string | null;
+            /** Format: uuid */
+            pickBatchPublicId?: string;
+            pickBatchNumber?: string | null;
+        };
+        TenantLinkDeliveryPageDto: {
+            items?: components["schemas"]["TenantLinkDeliveryDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+        };
+        TenantLinkDto: {
+            /** Format: uuid */
+            publicId?: string;
+            role?: string | null;
+            /** Format: uuid */
+            otherCompanyPublicId?: string;
+            otherCompanyName?: string | null;
+            status?: string | null;
+            proposedByUs?: boolean;
+            proposedByName?: string | null;
+            /** Format: date-time */
+            proposedAtUtc?: string;
+            note?: string | null;
+            respondedByName?: string | null;
+            /** Format: date-time */
+            respondedAtUtc?: string | null;
+            responseNote?: string | null;
+            /** Format: date-time */
+            endedAtUtc?: string | null;
+            endReason?: string | null;
+            endedByUs?: boolean;
+            /** Format: uuid */
+            providerClientPublicId?: string | null;
+            providerClientName?: string | null;
+            canRespond?: boolean;
+            canEnd?: boolean;
+            /** Format: int32 */
+            deliveryCount?: number;
+        };
+        TenantLinkOptionsDto: {
+            companies?: components["schemas"]["TenantLinkCompanyDto"][] | null;
+            weHaveTransport?: boolean;
+        };
+        TenantLinkProposeRequest: {
+            /** Format: uuid */
+            companyPublicId?: string | null;
+            role?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            note?: string | null;
+        };
+        TenantLinkReasonRequest: {
+            reason?: string | null;
+        };
         TenantModuleRequest: {
             isEnabled?: boolean;
         };
@@ -53899,6 +55635,7 @@ export interface components {
             customDomain?: string | null;
             subdomain?: string | null;
             usesAssembledKits?: boolean;
+            productPhotosEnabled?: boolean;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -53963,6 +55700,7 @@ export interface components {
             postalAddress?: components["schemas"]["TenantAddressInput"];
             postalSameAsAddress?: boolean | null;
             usesAssembledKits?: boolean | null;
+            productPhotosEnabled?: boolean | null;
         };
         TenantSummaryDto: {
             /** Format: int32 */
@@ -54404,6 +56142,13 @@ export interface components {
             skip?: number;
             /** Format: int32 */
             take?: number;
+        };
+        UserPreferenceDto: {
+            key?: string | null;
+            value?: string | null;
+        };
+        UserPreferenceSetRequest: {
+            value?: string | null;
         };
         UserRolesRequest: {
             roles?: string[] | null;
@@ -55200,202 +56945,651 @@ export interface components {
             ambiguous?: boolean;
             candidates?: string[] | null;
         };
-        TenantLinkAcceptRequest: {
-            /** Format: uuid */
-            clientPublicId?: string | null;
-            note?: string | null;
-        };
-        TenantLinkCompanyDto: {
-            /** Format: uuid */
-            publicId?: string;
-            name?: string | null;
-            hasModule?: boolean;
-            hasTransport?: boolean;
-        };
-        TenantLinkDeliveryDto: {
-            /** Format: uuid */
-            publicId?: string;
-            state?: string | null;
-            error?: string | null;
+        ProductClientDto: {
             /** Format: int32 */
-            attempts?: number;
-            providerCompanyName?: string | null;
-            /** Format: uuid */
-            providerOrderPublicId?: string | null;
-            providerOrderNumber?: string | null;
-            providerStatus?: string | null;
-            providerStatusLabel?: string | null;
-            isFinal?: boolean;
-            /** Format: date-time */
-            deliveredAtUtc?: string | null;
-            deliveredTo?: string | null;
-            /** Format: date-time */
-            lastSyncedAtUtc?: string | null;
-            /** Format: date-time */
-            createdAtUtc?: string;
-            /** Format: uuid */
-            salesOrderPublicId?: string;
-            salesOrderNumber?: string | null;
-            /** Format: uuid */
-            pickBatchPublicId?: string;
-            pickBatchNumber?: string | null;
+            productId?: number | null;
+            sku?: string | null;
+            name?: string | null;
+            /** Format: int32 */
+            rank?: number;
+            /** Format: int32 */
+            clientId?: number | null;
+            client?: string | null;
+            /** Format: double */
+            units?: number;
+            /** Format: double */
+            shareOfProduct?: number | null;
         };
-        TenantLinkDeliveryPageDto: {
-            items?: components["schemas"]["TenantLinkDeliveryDto"][] | null;
+        ProductLineBrandsRequest: {
+            brands?: string[] | null;
+        };
+        ProductLineDto: {
+            /** Format: int32 */
+            id?: number;
+            name?: string | null;
+            /** Format: int32 */
+            sortOrder?: number;
+            isActive?: boolean;
+            brands?: string[] | null;
+        };
+        ProductLineRequest: {
+            name?: string | null;
+            /** Format: int32 */
+            sortOrder?: number | null;
+        };
+        SalesAliasRequest: {
+            kind?: string | null;
+            raw?: string | null;
+            /** Format: int32 */
+            clientId?: number | null;
+            /** Format: int32 */
+            productId?: number | null;
+        };
+        SalesAliasResultDto: {
+            kind?: string | null;
+            raw?: string | null;
+            /** Format: int32 */
+            relinked?: number;
+            /** Format: int32 */
+            clientId?: number | null;
+            /** Format: int32 */
+            productId?: number | null;
+        };
+        SalesAnalysisSettingsDto: {
+            /** Format: date */
+            cutoffDate?: string | null;
+            /** Format: int32 */
+            leadTimeDays?: number;
+            /** Format: double */
+            serviceLevelZ?: number;
+        };
+        SalesAnalysisSettingsRequest: {
+            /** Format: date */
+            cutoffDate?: string | null;
+            clearCutoff?: boolean;
+            /** Format: int32 */
+            leadTimeDays?: number | null;
+            /** Format: double */
+            serviceLevelZ?: number | null;
+        };
+        SalesAnalysisStatusDto: {
+            /** Format: date */
+            cutoffDate?: string | null;
+            /** Format: int32 */
+            leadTimeDays?: number;
+            /** Format: double */
+            serviceLevelZ?: number;
+            batches?: components["schemas"]["SalesHistoryBatchDto"][] | null;
+            /** Format: int32 */
+            activeClients?: number;
+            /** Format: int32 */
+            clientsWithoutRep?: number;
+            brandsWithoutLine?: string[] | null;
+            unmatchedClients?: components["schemas"]["SalesUnmatchedDto"][] | null;
+            unmatchedItems?: components["schemas"]["SalesUnmatchedDto"][] | null;
+            unmatchedPurchaseItems?: components["schemas"]["SalesUnmatchedDto"][] | null;
+            /** Format: date */
+            historyFrom?: string | null;
+            /** Format: date */
+            historyTo?: string | null;
+            /** Format: date */
+            invoicesFrom?: string | null;
+            /** Format: date */
+            invoicesTo?: string | null;
+            overlap?: boolean;
+            warnings?: string[] | null;
+        };
+        SalesBrandDto: {
+            brand?: string | null;
+            /** Format: int32 */
+            productCount?: number;
+            /** Format: int32 */
+            lineId?: number | null;
+            line?: string | null;
+            hasLine?: boolean;
+        };
+        SalesByRepDto: {
+            month?: string | null;
+            compareMonth?: string | null;
+            /** Format: date */
+            cutoffDate?: string | null;
+            warnings?: string[] | null;
+            reps?: components["schemas"]["SalesRepRowDto"][] | null;
+            totals?: components["schemas"]["SalesRepTotalsDto"];
+            reconciliation?: components["schemas"]["SalesReconciliationDto"];
+            lines?: components["schemas"]["SalesLineShareDto"][] | null;
+            repLines?: components["schemas"]["SalesRepLineDto"][] | null;
+            repProducts?: components["schemas"]["SalesRepProductDto"][] | null;
+            routeProducts?: components["schemas"]["SalesRouteProductDto"][] | null;
+        };
+        SalesChartSeriesDto: {
+            key?: string | null;
+            label?: string | null;
+            values?: number[] | null;
+        };
+        SalesChartsDto: {
+            months?: string[] | null;
+            totalByMonth?: components["schemas"]["SalesChartSeriesDto"];
+            byLineByMonth?: components["schemas"]["SalesChartSeriesDto"][] | null;
+            month?: string | null;
+            repVsQuota?: components["schemas"]["SalesRepQuotaPointDto"][] | null;
+            lineShare?: components["schemas"]["SalesLineSharePointDto"][] | null;
+            topProductUnits?: components["schemas"]["SalesChartSeriesDto"][] | null;
+            coverage?: components["schemas"]["SalesCoveragePointDto"][] | null;
+        };
+        SalesClientRepBulkRequest: {
+            clientIds?: number[] | null;
+            /** Format: int32 */
+            repId?: number | null;
+        };
+        SalesClientRepBulkResultDto: {
+            /** Format: int32 */
+            updated?: number;
+            /** Format: int32 */
+            repId?: number | null;
+            repName?: string | null;
+        };
+        SalesClientRepDto: {
+            /** Format: int32 */
+            clientId?: number;
+            /** Format: uuid */
+            publicId?: string;
+            code?: string | null;
+            name?: string | null;
+            isActive?: boolean;
+            /** Format: int32 */
+            repId?: number | null;
+            repName?: string | null;
+            routeName?: string | null;
+        };
+        SalesClientRepDtoPagedResult: {
+            items?: components["schemas"]["SalesClientRepDto"][] | null;
             /** Format: int32 */
             total?: number;
-        };
-        TenantLinkDto: {
-            /** Format: uuid */
-            publicId?: string;
-            role?: string | null;
-            /** Format: uuid */
-            otherCompanyPublicId?: string;
-            otherCompanyName?: string | null;
-            status?: string | null;
-            proposedByUs?: boolean;
-            proposedByName?: string | null;
-            /** Format: date-time */
-            proposedAtUtc?: string;
-            note?: string | null;
-            respondedByName?: string | null;
-            /** Format: date-time */
-            respondedAtUtc?: string | null;
-            responseNote?: string | null;
-            /** Format: date-time */
-            endedAtUtc?: string | null;
-            endReason?: string | null;
-            endedByUs?: boolean;
-            /** Format: uuid */
-            providerClientPublicId?: string | null;
-            providerClientName?: string | null;
-            canRespond?: boolean;
-            canEnd?: boolean;
             /** Format: int32 */
-            deliveryCount?: number;
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
         };
-        TenantLinkOptionsDto: {
-            companies?: components["schemas"]["TenantLinkCompanyDto"][] | null;
-            weHaveTransport?: boolean;
+        SalesClientRepRequest: {
+            /** Format: int32 */
+            repId?: number | null;
         };
-        TenantLinkProposeRequest: {
-            /** Format: uuid */
-            companyPublicId?: string | null;
-            role?: string | null;
-            /** Format: uuid */
-            clientPublicId?: string | null;
-            note?: string | null;
-        };
-        TenantLinkReasonRequest: {
-            reason?: string | null;
-        };
-        KitComponentSubstitutesDto: {
-            /** Format: uuid */
-            productPublicId?: string;
+        SalesCoveragePointDto: {
+            /** Format: int32 */
+            productId?: number | null;
             sku?: string | null;
             name?: string | null;
+            abc?: string | null;
             /** Format: double */
-            quantity?: number;
-            notSubstitutable?: boolean;
-            /** Format: int32 */
-            categoryId?: number | null;
-            categoryPath?: string | null;
+            available?: number;
             /** Format: double */
-            salePrice?: number | null;
-            substitutes?: components["schemas"]["KitSubstituteDto"][] | null;
+            weeklyAverage?: number | null;
+            /** Format: double */
+            coverageWeeks?: number | null;
         };
-        KitDisassembleRequest: {
-            /** Format: double */
-            quantity?: number | null;
-            /** Format: uuid */
-            warehousePublicId?: string | null;
-            /** Format: int32 */
-            fromBinId?: number | null;
-            /** Format: int32 */
-            toBinId?: number | null;
-            notes?: string | null;
-        };
-        KitDisassemblyDto: {
+        SalesHistoryBatchDto: {
             /** Format: uuid */
             publicId?: string;
+            kind?: string | null;
+            fileName?: string | null;
+            /** Format: date */
+            dateFrom?: string | null;
+            /** Format: date */
+            dateTo?: string | null;
+            /** Format: int32 */
+            lineCount?: number;
+            /** Format: double */
+            totalAmount?: number;
+            source?: string | null;
+            /** Format: date-time */
+            importedAtUtc?: string;
+            importedBy?: string | null;
+            isActive?: boolean;
+            /** Format: date-time */
+            replacedAtUtc?: string | null;
+        };
+        SalesHistoryFileReportDto: {
+            kind?: string | null;
+            fileName?: string | null;
+            /** Format: int32 */
+            linesRead?: number;
+            /** Format: int32 */
+            linesSaved?: number;
+            /** Format: int32 */
+            zeroQtySkipped?: number;
+            /** Format: int32 */
+            duplicatesSkipped?: number;
+            linesByClass?: {
+                [key: string]: number;
+            } | null;
+            amountByClass?: {
+                [key: string]: number;
+            } | null;
+            /** Format: date */
+            dateFrom?: string | null;
+            /** Format: date */
+            dateTo?: string | null;
+            /** Format: double */
+            totalAmount?: number;
+            /** Format: double */
+            reportTotal?: number;
+            /** Format: int32 */
+            matchedClients?: number;
+            /** Format: int32 */
+            matchedItems?: number;
+            unmatchedClients?: components["schemas"]["SalesUnmatchedDto"][] | null;
+            unmatchedItems?: components["schemas"]["SalesUnmatchedDto"][] | null;
+            byMonth?: components["schemas"]["SalesMonthTotalDto"][] | null;
+            action?: string | null;
+            /** Format: int32 */
+            replacedLines?: number;
+            warnings?: string[] | null;
+        };
+        SalesHistoryImportReportDto: {
+            dryRun?: boolean;
+            company?: string | null;
+            /** Format: date */
+            cutoffDate?: string | null;
+            files?: components["schemas"]["SalesHistoryFileReportDto"][] | null;
+            warnings?: string[] | null;
+        };
+        SalesLineShareDto: {
+            line?: string | null;
+            isDiscounts?: boolean;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            shareOfNet?: number | null;
+            /** Format: double */
+            shareOfGross?: number | null;
+            /** Format: int32 */
+            leaderRepId?: number | null;
+            leaderName?: string | null;
+            leaderRoute?: string | null;
+            /** Format: double */
+            leaderSales?: number | null;
+        };
+        SalesLineSharePointDto: {
+            line?: string | null;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            share?: number | null;
+        };
+        SalesMonthTotalDto: {
+            month?: string | null;
+            /** Format: int32 */
+            lines?: number;
+            /** Format: double */
+            quantity?: number;
+            /** Format: double */
+            amount?: number;
+            /** Format: double */
+            productAmount?: number;
+        };
+        SalesQuotaBulkRequest: {
+            items?: components["schemas"]["SalesQuotaItemRequest"][] | null;
+        };
+        SalesQuotaHistoryDto: {
+            /** Format: int32 */
+            repId?: number;
+            repName?: string | null;
+            quotas?: components["schemas"]["SalesQuotaPointDto"][] | null;
+        };
+        SalesQuotaItemRequest: {
+            /** Format: int32 */
+            repId?: number;
+            /** Format: double */
+            amount?: number | null;
+        };
+        SalesQuotaMonthDto: {
+            month?: string | null;
+            rows?: components["schemas"]["SalesQuotaRowDto"][] | null;
+            /** Format: double */
+            totalEffective?: number;
+        };
+        SalesQuotaPointDto: {
+            month?: string | null;
+            /** Format: double */
+            amount?: number;
+        };
+        SalesQuotaRowDto: {
+            /** Format: int32 */
+            repId?: number;
+            repName?: string | null;
+            routeName?: string | null;
+            repActive?: boolean;
+            /** Format: double */
+            amount?: number | null;
+            /** Format: double */
+            effective?: number | null;
+            effectiveFrom?: string | null;
+        };
+        SalesReconciliationDto: {
+            /** Format: double */
+            routesTotal?: number;
+            /** Format: double */
+            unassigned?: number;
+            /** Format: double */
+            shippingAndOther?: number;
+            /** Format: double */
+            monthTotal?: number;
+            /** Format: double */
+            difference?: number;
+            /** Format: double */
+            productSales?: number;
+            /** Format: double */
+            discounts?: number;
+            /** Format: double */
+            shipping?: number;
+            /** Format: double */
+            other?: number;
+            /** Format: int32 */
+            unassignedClients?: number;
+            /** Format: double */
+            unassignedCompare?: number;
+        };
+        SalesRepDto: {
+            /** Format: int32 */
+            id?: number;
+            name?: string | null;
+            /** Format: int32 */
+            routeId?: number | null;
+            routeName?: string | null;
+            /** Format: int32 */
+            userId?: number | null;
+            userName?: string | null;
+            isActive?: boolean;
+            /** Format: int32 */
+            clientCount?: number;
+            /** Format: double */
+            currentQuota?: number | null;
+        };
+        SalesRepLineDto: {
+            routeName?: string | null;
+            /** Format: int32 */
+            repId?: number | null;
+            repName?: string | null;
+            line?: string | null;
+            isDiscounts?: boolean;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            shareOfRep?: number | null;
+        };
+        SalesRepMigrationDto: {
+            /** Format: int32 */
+            repsCreated?: number;
+            /** Format: int32 */
+            clientsLinked?: number;
+            /** Format: int32 */
+            clientsAlreadyLinked?: number;
+        };
+        SalesRepProductDto: {
+            routeName?: string | null;
+            /** Format: int32 */
+            repId?: number | null;
+            repName?: string | null;
+            line?: string | null;
+            /** Format: int32 */
+            productId?: number | null;
+            sku?: string | null;
+            product?: string | null;
+            lineClass?: string | null;
+            /** Format: double */
+            units?: number;
+            /** Format: double */
+            sales?: number;
+        };
+        SalesRepQuotaPointDto: {
+            /** Format: int32 */
+            repId?: number | null;
+            rep?: string | null;
+            route?: string | null;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            quota?: number | null;
+            /** Format: double */
+            compliance?: number | null;
+        };
+        SalesRepRequest: {
+            name?: string | null;
+            /** Format: int32 */
+            routeId?: number | null;
+            clearRoute?: boolean;
+            /** Format: int32 */
+            userId?: number | null;
+            clearUser?: boolean;
+        };
+        SalesRepRowDto: {
+            /** Format: int32 */
+            routeId?: number | null;
+            routeName?: string | null;
+            /** Format: int32 */
+            repId?: number | null;
+            repName?: string | null;
+            /** Format: double */
+            compareSales?: number;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            change?: number;
+            /** Format: double */
+            changePct?: number | null;
+            /** Format: double */
+            quota?: number | null;
+            /** Format: double */
+            compliance?: number | null;
+        };
+        SalesRepTotalsDto: {
+            /** Format: double */
+            compareSales?: number;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            change?: number;
+            /** Format: double */
+            changePct?: number | null;
+            /** Format: double */
+            quota?: number;
+            /** Format: double */
+            compliance?: number | null;
+        };
+        SalesRouteDto: {
+            /** Format: int32 */
+            id?: number;
+            name?: string | null;
+            /** Format: int32 */
+            sortOrder?: number;
+            isActive?: boolean;
+            /** Format: int32 */
+            repCount?: number;
+        };
+        SalesRouteProductDto: {
+            /** Format: int32 */
+            routeId?: number | null;
+            routeName?: string | null;
+            repNames?: string | null;
+            line?: string | null;
+            /** Format: int32 */
+            productId?: number | null;
+            sku?: string | null;
+            product?: string | null;
+            /** Format: double */
+            units?: number;
+            /** Format: double */
+            sales?: number;
+        };
+        SalesRouteRequest: {
+            name?: string | null;
+            /** Format: int32 */
+            sortOrder?: number | null;
+        };
+        SalesTransactionDto: {
+            /** Format: date */
+            date?: string;
+            source?: string | null;
+            type?: string | null;
             number?: string | null;
-            /** Format: double */
-            quantity?: number;
-            /** Format: uuid */
-            warehousePublicId?: string;
-            warehouseCode?: string | null;
-            notes?: string | null;
-            /** Format: date-time */
-            createdAtUtc?: string;
             /** Format: int32 */
-            createdBy?: number | null;
-            createdByName?: string | null;
-            lines?: components["schemas"]["KitDisassemblyLineDto"][] | null;
-        };
-        KitDisassemblyLineDto: {
-            /** Format: uuid */
-            productPublicId?: string;
+            clientId?: number | null;
+            clientName?: string | null;
+            /** Format: int32 */
+            repId?: number | null;
+            repName?: string | null;
+            routeName?: string | null;
+            /** Format: int32 */
+            productId?: number | null;
             sku?: string | null;
-            name?: string | null;
-            /** Format: int32 */
-            lotId?: number | null;
-            lotNumber?: string | null;
-            /** Format: int32 */
-            toBinId?: number;
-            toBinCode?: string | null;
+            product?: string | null;
+            line?: string | null;
+            lineClass?: string | null;
             /** Format: double */
             quantity?: number;
             /** Format: double */
-            unitCost?: number | null;
+            unitPrice?: number | null;
+            /** Format: double */
+            amount?: number;
         };
-        KitDisassemblyResultDto: {
-            assembly?: components["schemas"]["KitAssemblyDto"];
-            disassembly?: components["schemas"]["KitDisassemblyDto"];
-            movements?: components["schemas"]["MovementResultDto"];
+        SalesTransactionDtoPagedResult: {
+            items?: components["schemas"]["SalesTransactionDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
         };
-        KitSubstituteDto: {
-            /** Format: uuid */
-            productPublicId?: string;
+        SalesUnmatchedDto: {
+            raw?: string | null;
+            /** Format: int32 */
+            lines?: number;
+            /** Format: double */
+            amount?: number;
+            /** Format: date */
+            firstDate?: string;
+            /** Format: date */
+            lastDate?: string;
+        };
+        ProductMonthSeriesDto: {
+            /** Format: int32 */
+            productId?: number | null;
             sku?: string | null;
             name?: string | null;
+            values?: number[] | null;
+            /** Format: double */
+            total?: number;
+            /** Format: double */
+            min?: number | null;
+            /** Format: double */
+            max?: number | null;
+            /** Format: double */
+            average?: number | null;
+        };
+        ProductMovementDto: {
+            fromMonth?: string | null;
+            toMonth?: string | null;
+            /** Format: date */
+            asOf?: string;
+            lastCompleteMonth?: string | null;
+            /** Format: date */
+            weeksFrom?: string;
+            /** Format: date */
+            weeksTo?: string;
+            /** Format: int32 */
+            leadTimeDays?: number;
+            /** Format: double */
+            serviceLevelZ?: number;
+            /** Format: date */
+            cutoffDate?: string | null;
+            months?: string[] | null;
+            warnings?: string[] | null;
+            /** Format: double */
+            totalUnits?: number;
+            /** Format: double */
+            totalSales?: number;
+            products?: components["schemas"]["ProductMovementRowDto"][] | null;
+            unitsByMonth?: components["schemas"]["ProductMonthSeriesDto"][] | null;
+            salesByMonth?: components["schemas"]["ProductMonthSeriesDto"][] | null;
+            purchasesByMonth?: components["schemas"]["ProductMonthSeriesDto"][] | null;
+            topClients?: components["schemas"]["ProductClientDto"][] | null;
+        };
+        ProductMovementRowDto: {
+            /** Format: int32 */
+            productId?: number | null;
+            sku?: string | null;
+            name?: string | null;
+            category?: string | null;
             brand?: string | null;
-            model?: string | null;
+            line?: string | null;
+            matched?: boolean;
+            abc?: string | null;
+            status?: string | null;
             /** Format: double */
-            salePrice?: number | null;
-        };
-        KitSubstitutesDto: {
-            /** Format: uuid */
-            kitPublicId?: string;
-            sku?: string | null;
-            name?: string | null;
-            adjustable?: boolean;
-            components?: components["schemas"]["KitComponentSubstitutesDto"][] | null;
-            isOfferKit?: boolean;
-        };
-        ProductMeasuresDto: {
+            price?: number | null;
             /** Format: double */
-            length?: number | null;
+            cost?: number | null;
             /** Format: double */
-            width?: number | null;
+            marginPct?: number | null;
             /** Format: double */
-            height?: number | null;
-            dimensionUnit?: string | null;
+            onHand?: number;
             /** Format: double */
-            volume?: number | null;
-            volumeUnit?: string | null;
-            volumeCalculated?: boolean;
+            reserved?: number;
             /** Format: double */
-            weight?: number | null;
-            weightUnit?: string | null;
-        };
-        ProductUnitsSuggestionDto: {
-            regionCode?: string | null;
-            system?: string | null;
-            dimensionUnit?: string | null;
-            largeDimensionUnit?: string | null;
-            weightUnit?: string | null;
-            dimensionUnits?: string[] | null;
-            weightUnits?: string[] | null;
+            available?: number;
+            /** Format: double */
+            units?: number;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            shareOfSales?: number | null;
+            /** Format: double */
+            monthlyAverage?: number | null;
+            /** Format: double */
+            monthlyMin?: number | null;
+            /** Format: double */
+            monthlyMax?: number | null;
+            bestMonth?: string | null;
+            /** Format: int32 */
+            monthsUsed?: number;
+            /** Format: double */
+            weeklyAverage?: number | null;
+            /** Format: double */
+            weeklyStdDev?: number | null;
+            /** Format: int32 */
+            weeksUsed?: number;
+            weeklyConfidence?: string | null;
+            /** Format: double */
+            coverageWeeks?: number | null;
+            /** Format: double */
+            coverageMonths?: number | null;
+            /** Format: double */
+            projected1?: number;
+            /** Format: double */
+            projected2?: number;
+            /** Format: double */
+            projected3?: number;
+            /** Format: double */
+            reorderPoint?: number | null;
+            /** Format: int32 */
+            suggestedReorderPoint?: number | null;
+            /** Format: double */
+            trend?: number | null;
+            /** Format: int32 */
+            clients?: number;
+            /** Format: int32 */
+            invoices?: number;
+            topClient?: string | null;
+            /** Format: double */
+            topClientUnits?: number | null;
+            /** Format: date */
+            lastSale?: string | null;
+            /** Format: double */
+            pendingPurchase?: number;
+            /** Format: double */
+            lastMonthUnits?: number;
         };
     };
     responses: never;

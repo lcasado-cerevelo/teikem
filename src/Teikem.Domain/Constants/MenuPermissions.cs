@@ -101,6 +101,8 @@ public static class MenuPermissions
         [PermissionCatalog.SalesQuickBooksMark] = new[] { PermissionCatalog.SalesView },     // Lote 225: la pestaña QuickBooks vive en Órdenes de venta (la lista la ven view, mark y export)
         [PermissionCatalog.SalesQuickBooksExport] = new[] { PermissionCatalog.SalesView },   // Lote 225
         [PermissionCatalog.SalesQuickBooksView] = new[] { PermissionCatalog.SalesView },     // Lote 225
+        [PermissionCatalog.SalesAnalysisView] = new[] { PermissionCatalog.SalesView },       // Lote 238: el análisis de ventas vive en Órdenes de venta
+        [PermissionCatalog.SalesAnalysisManage] = new[] { PermissionCatalog.SalesView },     // Lote 238
         [PermissionCatalog.BillingGenerate] = new[] { PermissionCatalog.BillingView, "dispatchaccounting.view" },   // Lote 181: quien genera corridas de despachos entra a su pantalla
         [PermissionCatalog.BillingApprove] = new[] { PermissionCatalog.BillingView },
         [PermissionCatalog.BillingExport] = new[] { PermissionCatalog.BillingView, "dispatchaccounting.view" },

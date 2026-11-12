@@ -603,6 +603,12 @@ public static class DependencyInjection
         services.AddScoped<IAttentionItemProvider, SalesUrgentAttentionProvider>();   // Lote 222: pedido urgente (warehouse.pick)
         services.AddScoped<SalesPulseService>();   // Lote 222: panel Ventas del Pulso
         services.AddScoped<QuickBooksService>();   // Lote 225: QuickBooks (facturas por pasar, archivo IIF, marca, ajustes)
+        // Lote 238: análisis de ventas (rutas, representantes, cuotas, líneas, historial de QuickBooks) y su fuente de datos
+        services.AddScoped<SalesAnalysisLineReader>();
+        services.AddScoped<SalesAnalysisService>();
+        services.AddScoped<SalesAnalysisSetupService>();
+        services.AddScoped<SalesHistoryImportService>();
+        services.AddScoped<IDataSource, SalesAnalysisLineDataSource>();
         services.AddScoped<IAttentionItemProvider, SalesQuickBooksAttentionProvider>();   // Lote 225: facturas por pasar a QuickBooks (sales.quickbooks.view)
         services.AddScoped<IAttentionItemProvider, ExitNoticeBackorderAttentionProvider>();   // Lote 194: avisos de salida con pendiente
 
@@ -617,6 +623,7 @@ public static class DependencyInjection
         services.AddScoped<Migration.Colavora.ColavoraImportService>();
         services.AddSingleton<Migration.Colavora.ColavoraImportRunner>();
         services.AddSingleton<LegacyImportRunner>();
+        services.AddSingleton<SalesHistoryImportRunner>();   // Lote 238: import-sales-history
         return services;
     }
 }

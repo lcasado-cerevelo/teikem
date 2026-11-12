@@ -88,6 +88,10 @@ public class Client : ITenantScoped, ISoftDeletable, IHasStatus, IAuditStamped
     /// <summary>Cuándo (UTC) quedó el cliente como ya mandado a QuickBooks (al marcar o confirmar su primera factura). NULL = nuevo para QuickBooks (salvo que traiga el campo «Código QuickBooks» de la migración).</summary>
     public DateTime? QuickBooksSentAt { get; set; }
 
+    // --- Lote 238 (análisis de ventas) ---
+    /// <summary>Representante de ventas asignado (SalesRep). La venta del cliente (sus facturas y su historial importado) es de este representante. NULL = sin representante.</summary>
+    public int? SalesRepId { get; set; }
+
     public StatusCode? Status { get; set; }
     public LookupCode? PaymentTerm { get; set; }
     public LookupCode? Currency { get; set; }

@@ -216,6 +216,13 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
         var pickupLocations = new List<ClientAddressDto>(warehouses.Count);
         foreach (var w in warehouses) pickupLocations.Add(await ToAddressAsync(w, ct));
 
+        // Lote 238: el representante de ventas y su ruta
+        var rep = client.SalesRepId is int repId
+            ? await (from r in db.Set<Teikem.Domain.Sales.SalesRep>().AsNoTracking()
+                     where r.SalesRepId == repId
+                     select new { r.Name, RouteName = db.Set<Teikem.Domain.Sales.SalesRoute>().Where(x => x.SalesRouteId == r.SalesRouteId).Select(x => x.Name).FirstOrDefault() })
+                .FirstOrDefaultAsync(ct)
+            : null;
         return new ClientDetailDto(
             client.ClientId, client.PublicId, client.Code, client.Name, client.LegalName, client.TaxId, client.CreditLimit,
             paymentTerm?.InternalCode, Label(paymentTerm), currency?.InternalCode, Label(currency),
@@ -231,7 +238,8 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
             client.DefaultServiceTypeLookupId is int dsId ? (await lookups.GetAsync(dsId, ct))?.InternalCode : null,
             client.DefaultPackageTypeLookupId is int dpId ? (await lookups.GetAsync(dpId, ct))?.InternalCode : null,
             client.RequireDeliverySignature, client.RequireDeliveryPhoto,
-            client.MerchantRegistration, client.ShippingMode, client.ShippingCharge, client.ShippingFreeFrom, client.RequireOrderSignature);   // Lote 222
+            client.MerchantRegistration, client.ShippingMode, client.ShippingCharge, client.ShippingFreeFrom, client.RequireOrderSignature,   // Lote 222
+            client.SalesRepId, rep?.Name, rep?.RouteName);   // Lote 238
     }
 
     // ---------------- Perfil ----------------

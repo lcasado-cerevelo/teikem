@@ -471,6 +471,12 @@ public static class PermissionCatalog
     /// <summary>Lote 225: exportar el archivo IIF de QuickBooks Desktop (facturas y, si se pide, clientes y productos nuevos) y confirmar las que ya se importaron.</summary>
     public const string SalesQuickBooksExport = "sales.quickbooks.export";
 
+    /// <summary>Lote 238: ver el «Análisis de ventas» (por representante, movimiento de productos, gráficos, estado del historial importado).</summary>
+    public const string SalesAnalysisView = "sales.analysis.view";
+
+    /// <summary>Lote 238: administrar el análisis de ventas: rutas, representantes, cuotas, líneas y marcas, representante de los clientes, fecha de corte, importar el historial de QuickBooks y enlazar nombres sin emparejar.</summary>
+    public const string SalesAnalysisManage = "sales.analysis.manage";
+
     /// <summary>Lote 143 (2026-10-20): crear, modificar y cancelar avisos de salida y atender su pendiente (ver usa inventory.view y despachar warehouse.pick).</summary>
 
     public const string ExitNoticeCreate = "exitnotice.create";
@@ -765,6 +771,11 @@ public static class PermissionCatalog
 
         new(SalesQuickBooksExport, "BILLING", "QuickBooks: exportar el archivo y confirmar lo importado", "QuickBooks: export the file and confirm what was imported"),
 
+        // Lote 238 — análisis de ventas
+        new(SalesAnalysisView, "BILLING", "Análisis de ventas: ver", "Sales analysis: view"),
+
+        new(SalesAnalysisManage, "BILLING", "Análisis de ventas: rutas, representantes, cuotas, líneas e importar el historial", "Sales analysis: routes, reps, quotas, lines and history import"),
+
         new(ExitNoticeCreate, "WAREHOUSE", "Crear, modificar y cancelar avisos de salida y atender su pendiente", "Create, edit and cancel exit notices and handle their backorder"),
 
     };
@@ -1015,6 +1026,10 @@ public static class PermissionCatalog
 
         [Analytics.FinanceAnalyticsRules.SalesRevenueSource] = SalesView,
 
+        // Lote 238: líneas de venta para análisis (historial importado + facturas) con sales.analysis.view
+
+        [Sales.SalesAnalysisCodes.DataSourceKey] = SalesAnalysisView,
+
     };
 
 
@@ -1222,11 +1237,13 @@ public static class PermissionCatalog
 
         // Lote 222 (pedido de vendedores): el supervisor de ventas fija las listas de precios y aprueba o rechaza los clientes nuevos;
         // la oficina de ventas captura pedidos (los permisos de QuickBooks y de consignación los suma su propio lote).
-        ["SalesSupervisor"] = new[] { SalesPricelist, SalesApproveClient, SalesView, ClientsRead, ClientsUpdate, PulseSales },
+        ["SalesSupervisor"] = new[] { SalesPricelist, SalesApproveClient, SalesView, ClientsRead, ClientsUpdate, PulseSales,
+            SalesAnalysisView, SalesAnalysisManage },   // Lote 238: ve y administra el análisis de ventas (rutas, representantes, cuotas)
 
         ["SalesOffice"] = new[] { SalesView, SalesCreate, PulseSales,
             SalesQuickBooksView, SalesQuickBooksMark, SalesQuickBooksExport,   // Lote 225: la oficina pasa las facturas a QuickBooks
-            BillingConsignmentPay },   // Lote 224: y registra los pagos de consignación
+            BillingConsignmentPay,   // Lote 224: y registra los pagos de consignación
+            SalesAnalysisView },   // Lote 238: ve el análisis de ventas
 
         // Lote 104: el rol «Servicio al cliente» atiende los mensajes de los clientes (si un cliente no tiene equipo designado, lo atiende quien tenga ClientMessagesReply)
 

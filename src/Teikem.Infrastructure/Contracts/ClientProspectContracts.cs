@@ -41,4 +41,6 @@ public sealed record SalesShippingSettingsRequest(decimal? Charge = null, decima
 /// InvoicesToQuickBooks y ConsignmentUnpaid quedan en null hasta que sus partes (QuickBooks, consignación) los llenen. Cada cifra lleva la ruta de su lista.
 /// </summary>
 public sealed record PulseSalesPanelDto(int OrdersToday, decimal OrdersTodayAmount, int UrgentOpen, int ClientsToApprove, int AwaitingApproval,
-    int? InvoicesToQuickBooks, int? ConsignmentUnpaid, IReadOnlyDictionary<string, string> Routes);
+    int? InvoicesToQuickBooks, int? ConsignmentUnpaid, IReadOnlyDictionary<string, string> Routes,
+    // Lote 238: venta neta del mes en curso (análisis de ventas) y la suma de las cuotas vigentes; null sin sales.analysis.view (MonthQuota null también si no hay cuotas)
+    decimal? MonthSales = null, decimal? MonthQuota = null);

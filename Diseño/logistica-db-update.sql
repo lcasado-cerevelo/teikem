@@ -7859,4 +7859,260 @@ GO
    ---------------------------------------------------------------------------- */
 IF COL_LENGTH(N'dbo.Tenant', N'ProductPhotosEnabled') IS NULL
     ALTER TABLE dbo.Tenant ADD ProductPhotosEnabled BIT NOT NULL CONSTRAINT DF_Tenant_ProductPhotosEnabled DEFAULT 1;
+   2026-11-12 — Lote 241: «Análisis de ventas» (docs/lote241-decisiones.md).
+   - Tablas nuevas: dbo.SalesRoute (rutas: Cadenas, Norte, Metro…), dbo.SalesRep (representantes: nombre, ruta, usuario opcional), dbo.SalesQuota (cuota de un
+     representante por mes en dólares; un mes sin cuota vale la del anterior más reciente), dbo.ProductLine y dbo.ProductLineBrand («distribuidor o línea» y sus marcas;
+     una marca en UNA línea), dbo.SalesAnalysisSetting (fecha de corte, días de entrega y nivel de servicio por compañía), dbo.SalesHistoryBatch, dbo.SalesHistoryLine y
+     dbo.PurchaseHistoryLine (historial de QuickBooks importado tal cual, por lote) y dbo.SalesHistoryAlias (enlaces a mano de nombres sin emparejar).
+   - dbo.Client.SalesRepId: el representante del cliente (la venta del cliente es de él).
+   - Índice dbo.Invoice(TenantId, IssueDate) para leer las facturas por fecha.
+   - EntityType SALES_ROUTE, SALES_REP, SALES_QUOTA, PRODUCT_LINE y SALES_ANALYSIS (bitácora) y SALES_ANALYSIS_LINE (la fuente de datos «Líneas de venta para
+     análisis»: sin él no se pueden crear Vistas sobre ella).
+   - Permisos sales.analysis.view y sales.analysis.manage (BILLING) a los roles YA clonados: TenantAdmin y SalesSupervisor los dos; SalesOffice ver (marca
+     L241_SALES_ANALYSIS_PERMS). Las plantillas las pone el sembrador de permisos (PermissionCatalog). Solo AGREGA.
+   - Migración de datos, UNA sola vez (marca L241_SALES_REP_FROM_FIELD): los valores del campo personalizado «Representante» (sales_rep) de los clientes que dejó la
+     importación de QuickBooks pasan a dbo.SalesRep y enlazan Client.SalesRepId (solo clientes sin representante). El campo personalizado se deja.
+   - Idempotente.
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID(N'dbo.SalesRoute', N'U') IS NULL CREATE TABLE dbo.SalesRoute (
+    SalesRouteId INT IDENTITY(1,1) CONSTRAINT PK_SalesRoute PRIMARY KEY,
+    TenantId     INT NOT NULL CONSTRAINT FK_SalesRoute_Tenant REFERENCES dbo.Tenant(TenantId),
+    Name         NVARCHAR(100) NOT NULL,
+    SortOrder    INT NOT NULL CONSTRAINT DF_SalesRoute_SortOrder DEFAULT 100,
+    IsActive     BIT NOT NULL CONSTRAINT DF_SalesRoute_IsActive DEFAULT 1
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_SalesRoute_Name' AND object_id = OBJECT_ID('dbo.SalesRoute'))
+    EXEC(N'CREATE UNIQUE INDEX UX_SalesRoute_Name ON dbo.SalesRoute(TenantId, Name) WHERE IsActive = 1;');
+GO
+IF OBJECT_ID(N'dbo.SalesRep', N'U') IS NULL CREATE TABLE dbo.SalesRep (
+    SalesRepId   INT IDENTITY(1,1) CONSTRAINT PK_SalesRep PRIMARY KEY,
+    TenantId     INT NOT NULL CONSTRAINT FK_SalesRep_Tenant REFERENCES dbo.Tenant(TenantId),
+    Name         NVARCHAR(100) NOT NULL,
+    SalesRouteId INT NULL CONSTRAINT FK_SalesRep_Route REFERENCES dbo.SalesRoute(SalesRouteId),
+    UserId       INT NULL CONSTRAINT FK_SalesRep_User REFERENCES dbo.AspNetUsers(Id),
+    IsActive     BIT NOT NULL CONSTRAINT DF_SalesRep_IsActive DEFAULT 1
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_SalesRep_Name' AND object_id = OBJECT_ID('dbo.SalesRep'))
+    EXEC(N'CREATE UNIQUE INDEX UX_SalesRep_Name ON dbo.SalesRep(TenantId, Name) WHERE IsActive = 1;');
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesRep_Route' AND object_id = OBJECT_ID('dbo.SalesRep'))
+    CREATE INDEX IX_SalesRep_Route ON dbo.SalesRep(SalesRouteId) WHERE SalesRouteId IS NOT NULL;
+GO
+IF OBJECT_ID(N'dbo.SalesQuota', N'U') IS NULL CREATE TABLE dbo.SalesQuota (
+    SalesQuotaId INT IDENTITY(1,1) CONSTRAINT PK_SalesQuota PRIMARY KEY,
+    TenantId     INT NOT NULL CONSTRAINT FK_SalesQuota_Tenant REFERENCES dbo.Tenant(TenantId),
+    SalesRepId   INT NOT NULL CONSTRAINT FK_SalesQuota_Rep REFERENCES dbo.SalesRep(SalesRepId),
+    [Month]      DATE NOT NULL,
+    Amount       DECIMAL(18,2) NOT NULL,
+    IsActive     BIT NOT NULL CONSTRAINT DF_SalesQuota_IsActive DEFAULT 1,
+    CONSTRAINT CK_SalesQuota_Amount CHECK (Amount >= 0),
+    CONSTRAINT CK_SalesQuota_Month CHECK (DAY([Month]) = 1)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_SalesQuota_RepMonth' AND object_id = OBJECT_ID('dbo.SalesQuota'))
+    CREATE UNIQUE INDEX UX_SalesQuota_RepMonth ON dbo.SalesQuota(TenantId, SalesRepId, [Month]);
+GO
+IF OBJECT_ID(N'dbo.ProductLine', N'U') IS NULL CREATE TABLE dbo.ProductLine (
+    ProductLineId INT IDENTITY(1,1) CONSTRAINT PK_ProductLine PRIMARY KEY,
+    TenantId      INT NOT NULL CONSTRAINT FK_ProductLine_Tenant REFERENCES dbo.Tenant(TenantId),
+    Name          NVARCHAR(100) NOT NULL,
+    SortOrder     INT NOT NULL CONSTRAINT DF_ProductLine_SortOrder DEFAULT 100,
+    IsActive      BIT NOT NULL CONSTRAINT DF_ProductLine_IsActive DEFAULT 1
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ProductLine_Name' AND object_id = OBJECT_ID('dbo.ProductLine'))
+    EXEC(N'CREATE UNIQUE INDEX UX_ProductLine_Name ON dbo.ProductLine(TenantId, Name) WHERE IsActive = 1;');
+GO
+IF OBJECT_ID(N'dbo.ProductLineBrand', N'U') IS NULL CREATE TABLE dbo.ProductLineBrand (
+    ProductLineBrandId INT IDENTITY(1,1) CONSTRAINT PK_ProductLineBrand PRIMARY KEY,
+    TenantId           INT NOT NULL CONSTRAINT FK_ProductLineBrand_Tenant REFERENCES dbo.Tenant(TenantId),
+    ProductLineId      INT NOT NULL CONSTRAINT FK_ProductLineBrand_Line REFERENCES dbo.ProductLine(ProductLineId),
+    Brand              NVARCHAR(100) NOT NULL
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ProductLineBrand_Brand' AND object_id = OBJECT_ID('dbo.ProductLineBrand'))
+    CREATE UNIQUE INDEX UX_ProductLineBrand_Brand ON dbo.ProductLineBrand(TenantId, Brand);
+GO
+IF OBJECT_ID(N'dbo.SalesAnalysisSetting', N'U') IS NULL CREATE TABLE dbo.SalesAnalysisSetting (
+    TenantId      INT NOT NULL CONSTRAINT PK_SalesAnalysisSetting PRIMARY KEY CONSTRAINT FK_SalesAnalysisSetting_Tenant REFERENCES dbo.Tenant(TenantId),
+    CutoffDate    DATE NULL,
+    LeadTimeDays  INT NOT NULL CONSTRAINT DF_SalesAnalysisSetting_Lead DEFAULT 5,
+    ServiceLevelZ DECIMAL(6,3) NOT NULL CONSTRAINT DF_SalesAnalysisSetting_Z DEFAULT 1.645,
+    UpdatedAtUtc  DATETIME2 NOT NULL CONSTRAINT DF_SalesAnalysisSetting_At DEFAULT SYSUTCDATETIME(),
+    UpdatedBy     INT NULL,
+    CONSTRAINT CK_SalesAnalysisSetting_Lead CHECK (LeadTimeDays BETWEEN 1 AND 365),
+    CONSTRAINT CK_SalesAnalysisSetting_Z CHECK (ServiceLevelZ > 0 AND ServiceLevelZ <= 4)
+);
+GO
+IF OBJECT_ID(N'dbo.SalesHistoryBatch', N'U') IS NULL CREATE TABLE dbo.SalesHistoryBatch (
+    SalesHistoryBatchId INT IDENTITY(1,1) CONSTRAINT PK_SalesHistoryBatch PRIMARY KEY,
+    PublicId            UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_SalesHistoryBatch_PublicId DEFAULT NEWID(),
+    TenantId            INT NOT NULL CONSTRAINT FK_SalesHistoryBatch_Tenant REFERENCES dbo.Tenant(TenantId),
+    Kind                VARCHAR(10) NOT NULL,
+    FileName            NVARCHAR(260) NOT NULL,
+    FileHash            CHAR(64) NOT NULL,
+    DateFrom            DATE NULL,
+    DateTo              DATE NULL,
+    LineCount           INT NOT NULL CONSTRAINT DF_SalesHistoryBatch_Lines DEFAULT 0,
+    TotalAmount         DECIMAL(18,2) NOT NULL CONSTRAINT DF_SalesHistoryBatch_Total DEFAULT 0,
+    Source              VARCHAR(10) NOT NULL CONSTRAINT DF_SalesHistoryBatch_Source DEFAULT 'CLI',
+    ImportedAtUtc       DATETIME2 NOT NULL CONSTRAINT DF_SalesHistoryBatch_At DEFAULT SYSUTCDATETIME(),
+    ImportedBy          INT NULL,
+    IsActive            BIT NOT NULL CONSTRAINT DF_SalesHistoryBatch_IsActive DEFAULT 1,
+    ReplacedAtUtc       DATETIME2 NULL,
+    CONSTRAINT CK_SalesHistoryBatch_Kind CHECK (Kind IN ('SALES', 'PURCHASES'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesHistoryBatch_Hash' AND object_id = OBJECT_ID('dbo.SalesHistoryBatch'))
+    CREATE INDEX IX_SalesHistoryBatch_Hash ON dbo.SalesHistoryBatch(TenantId, Kind, FileHash);
+GO
+IF OBJECT_ID(N'dbo.SalesHistoryLine', N'U') IS NULL CREATE TABLE dbo.SalesHistoryLine (
+    SalesHistoryLineId  BIGINT IDENTITY(1,1) CONSTRAINT PK_SalesHistoryLine PRIMARY KEY,
+    TenantId            INT NOT NULL CONSTRAINT FK_SalesHistoryLine_Tenant REFERENCES dbo.Tenant(TenantId),
+    SalesHistoryBatchId INT NOT NULL CONSTRAINT FK_SalesHistoryLine_Batch REFERENCES dbo.SalesHistoryBatch(SalesHistoryBatchId),
+    SourceLine          INT NOT NULL,
+    TxnDate             DATE NOT NULL,
+    TxnType             NVARCHAR(30) NOT NULL,
+    DocNumber           NVARCHAR(40) NULL,
+    Memo                NVARCHAR(250) NULL,
+    ClientNameRaw       NVARCHAR(200) NOT NULL,
+    ClientId            INT NULL CONSTRAINT FK_SalesHistoryLine_Client REFERENCES dbo.Client(ClientId),
+    Section             NVARCHAR(60) NULL,
+    ItemRaw             NVARCHAR(300) NOT NULL,
+    ItemSku             NVARCHAR(100) NOT NULL,
+    ProductId           INT NULL CONSTRAINT FK_SalesHistoryLine_Product REFERENCES dbo.Product(ProductId),
+    Quantity            DECIMAL(18,4) NOT NULL,
+    UnitPrice           DECIMAL(18,5) NULL,
+    Amount              DECIMAL(18,2) NOT NULL,
+    LineClass           VARCHAR(10) NOT NULL,
+    CONSTRAINT CK_SalesHistoryLine_Class CHECK (LineClass IN ('PRODUCT', 'DISCOUNT', 'SHIPPING', 'OTHER'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesHistoryLine_Date' AND object_id = OBJECT_ID('dbo.SalesHistoryLine'))
+    CREATE INDEX IX_SalesHistoryLine_Date ON dbo.SalesHistoryLine(TenantId, TxnDate) INCLUDE (ClientId, ProductId, LineClass, Quantity, Amount);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesHistoryLine_Product' AND object_id = OBJECT_ID('dbo.SalesHistoryLine'))
+    CREATE INDEX IX_SalesHistoryLine_Product ON dbo.SalesHistoryLine(TenantId, ProductId, TxnDate);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesHistoryLine_Client' AND object_id = OBJECT_ID('dbo.SalesHistoryLine'))
+    CREATE INDEX IX_SalesHistoryLine_Client ON dbo.SalesHistoryLine(TenantId, ClientId, TxnDate);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesHistoryLine_Batch' AND object_id = OBJECT_ID('dbo.SalesHistoryLine'))
+    CREATE INDEX IX_SalesHistoryLine_Batch ON dbo.SalesHistoryLine(SalesHistoryBatchId);
+GO
+IF OBJECT_ID(N'dbo.PurchaseHistoryLine', N'U') IS NULL CREATE TABLE dbo.PurchaseHistoryLine (
+    PurchaseHistoryLineId BIGINT IDENTITY(1,1) CONSTRAINT PK_PurchaseHistoryLine PRIMARY KEY,
+    TenantId              INT NOT NULL CONSTRAINT FK_PurchaseHistoryLine_Tenant REFERENCES dbo.Tenant(TenantId),
+    SalesHistoryBatchId   INT NOT NULL CONSTRAINT FK_PurchaseHistoryLine_Batch REFERENCES dbo.SalesHistoryBatch(SalesHistoryBatchId),
+    SourceLine            INT NOT NULL,
+    TxnDate               DATE NOT NULL,
+    TxnType               NVARCHAR(30) NOT NULL,
+    DocNumber             NVARCHAR(40) NULL,
+    SupplierNameRaw       NVARCHAR(200) NOT NULL,
+    ItemRaw               NVARCHAR(300) NOT NULL,
+    ItemSku               NVARCHAR(100) NOT NULL,
+    ProductId             INT NULL CONSTRAINT FK_PurchaseHistoryLine_Product REFERENCES dbo.Product(ProductId),
+    Quantity              DECIMAL(18,4) NOT NULL,
+    UnitCost              DECIMAL(18,5) NULL,
+    Amount                DECIMAL(18,2) NOT NULL
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PurchaseHistoryLine_Date' AND object_id = OBJECT_ID('dbo.PurchaseHistoryLine'))
+    CREATE INDEX IX_PurchaseHistoryLine_Date ON dbo.PurchaseHistoryLine(TenantId, TxnDate) INCLUDE (ProductId, Quantity, Amount);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PurchaseHistoryLine_Product' AND object_id = OBJECT_ID('dbo.PurchaseHistoryLine'))
+    CREATE INDEX IX_PurchaseHistoryLine_Product ON dbo.PurchaseHistoryLine(TenantId, ProductId, TxnDate);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PurchaseHistoryLine_Batch' AND object_id = OBJECT_ID('dbo.PurchaseHistoryLine'))
+    CREATE INDEX IX_PurchaseHistoryLine_Batch ON dbo.PurchaseHistoryLine(SalesHistoryBatchId);
+GO
+IF OBJECT_ID(N'dbo.SalesHistoryAlias', N'U') IS NULL CREATE TABLE dbo.SalesHistoryAlias (
+    SalesHistoryAliasId INT IDENTITY(1,1) CONSTRAINT PK_SalesHistoryAlias PRIMARY KEY,
+    TenantId            INT NOT NULL CONSTRAINT FK_SalesHistoryAlias_Tenant REFERENCES dbo.Tenant(TenantId),
+    Kind                VARCHAR(10) NOT NULL,
+    RawKey              NVARCHAR(300) NOT NULL,
+    ClientId            INT NULL CONSTRAINT FK_SalesHistoryAlias_Client REFERENCES dbo.Client(ClientId),
+    ProductId           INT NULL CONSTRAINT FK_SalesHistoryAlias_Product REFERENCES dbo.Product(ProductId),
+    CreatedAtUtc        DATETIME2 NOT NULL CONSTRAINT DF_SalesHistoryAlias_At DEFAULT SYSUTCDATETIME(),
+    CreatedBy           INT NULL,
+    CONSTRAINT CK_SalesHistoryAlias_Kind CHECK ((Kind = 'CLIENT' AND ClientId IS NOT NULL) OR (Kind = 'PRODUCT' AND ProductId IS NOT NULL))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_SalesHistoryAlias_Key' AND object_id = OBJECT_ID('dbo.SalesHistoryAlias'))
+    CREATE UNIQUE INDEX UX_SalesHistoryAlias_Key ON dbo.SalesHistoryAlias(TenantId, Kind, RawKey);
+GO
+IF COL_LENGTH(N'dbo.Client', N'SalesRepId') IS NULL
+    ALTER TABLE dbo.Client ADD SalesRepId INT NULL CONSTRAINT FK_Client_SalesRep REFERENCES dbo.SalesRep(SalesRepId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Client_SalesRep' AND object_id = OBJECT_ID('dbo.Client'))
+    CREATE INDEX IX_Client_SalesRep ON dbo.Client(TenantId, SalesRepId) WHERE SalesRepId IS NOT NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Invoice_IssueDate' AND object_id = OBJECT_ID('dbo.Invoice'))
+    CREATE INDEX IX_Invoice_IssueDate ON dbo.Invoice(TenantId, IssueDate) INCLUDE (StatusCodeId, ClientId, IsActive, InvoiceNumber);
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'SALES_ROUTE',    N'{"es":"Ruta de venta","en":"Sales route"}',               191),
+    (N'SALES_REP',      N'{"es":"Representante de ventas","en":"Sales rep"}',       192),
+    (N'SALES_QUOTA',    N'{"es":"Cuota de ventas","en":"Sales quota"}',             193),
+    (N'PRODUCT_LINE',   N'{"es":"Línea de productos","en":"Product line"}',         194),
+    (N'SALES_ANALYSIS', N'{"es":"Análisis de ventas","en":"Sales analysis"}',       195),
+    (N'SALES_ANALYSIS_LINE', N'{"es":"Líneas de venta para análisis","en":"Sales lines for analysis"}', 196)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'sales.analysis.view')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('sales.analysis.view', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'BILLING'),
+            N'{"es":"Análisis de ventas: ver","en":"Sales analysis: view"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'sales.analysis.manage')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('sales.analysis.manage', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'BILLING'),
+            N'{"es":"Análisis de ventas: rutas, representantes, cuotas, líneas e importar el historial","en":"Sales analysis: routes, reps, quotas, lines and history import"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L241_SALES_ANALYSIS_PERMS')
+BEGIN
+    -- el administrador de la compañía y el supervisor de ventas: ver y administrar
+    INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+    SELECT DISTINCT r.RoleId, pm.PermissionId
+    FROM dbo.Role r
+    JOIN dbo.Permission pm ON pm.Code IN ('sales.analysis.view', 'sales.analysis.manage')
+    WHERE r.IsActive = 1 AND r.TenantId IS NOT NULL AND r.Name IN ('TenantAdmin', 'SalesSupervisor')
+      AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = pm.PermissionId);
+    -- la oficina de ventas: ver
+    INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+    SELECT DISTINCT r.RoleId, pm.PermissionId
+    FROM dbo.Role r
+    JOIN dbo.Permission pm ON pm.Code = 'sales.analysis.view'
+    WHERE r.IsActive = 1 AND r.TenantId IS NOT NULL AND r.Name = 'SalesOffice'
+      AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = pm.PermissionId);
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L241_SALES_ANALYSIS_PERMS');
+END
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L241_SALES_REP_FROM_FIELD')
+BEGIN
+    -- 1) un representante por cada valor distinto del campo «Representante» (sales_rep) de los clientes, por compañía
+    INSERT INTO dbo.SalesRep (TenantId, Name, IsActive)
+    SELECT DISTINCT v.TenantId, LEFT(LTRIM(RTRIM(v.ValueText)), 100), 1
+    FROM dbo.CustomFieldValue v
+    JOIN dbo.CustomFieldDefinition d ON d.CustomFieldDefinitionId = v.CustomFieldDefinitionId
+    JOIN dbo.LookupCode et ON et.LookupCodeId = d.EntityTypeLookupId AND et.Entity = N'EntityType' AND et.InternalCode = N'CLIENT'
+    WHERE d.FieldKey = N'sales_rep' AND v.ValueText IS NOT NULL AND LTRIM(RTRIM(v.ValueText)) <> N''
+      AND NOT EXISTS (SELECT 1 FROM dbo.SalesRep r WHERE r.TenantId = v.TenantId AND r.IsActive = 1 AND r.Name = LEFT(LTRIM(RTRIM(v.ValueText)), 100));
+    -- 2) cada cliente sin representante queda con el de su campo
+    UPDATE c SET c.SalesRepId = r.SalesRepId
+    FROM dbo.Client c
+    JOIN dbo.CustomFieldValue v ON v.EntityId = c.ClientId AND v.TenantId = c.TenantId
+    JOIN dbo.CustomFieldDefinition d ON d.CustomFieldDefinitionId = v.CustomFieldDefinitionId AND d.FieldKey = N'sales_rep'
+    JOIN dbo.LookupCode et ON et.LookupCodeId = d.EntityTypeLookupId AND et.Entity = N'EntityType' AND et.InternalCode = N'CLIENT'
+    JOIN dbo.SalesRep r ON r.TenantId = c.TenantId AND r.IsActive = 1 AND r.Name = LEFT(LTRIM(RTRIM(v.ValueText)), 100)
+    WHERE c.SalesRepId IS NULL AND v.ValueText IS NOT NULL AND LTRIM(RTRIM(v.ValueText)) <> N'';
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L241_SALES_REP_FROM_FIELD');
+END
 GO

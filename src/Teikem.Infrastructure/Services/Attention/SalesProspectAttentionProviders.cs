@@ -105,7 +105,7 @@ public sealed class SalesUrgentAttentionProvider(TeikemDbContext db) : IAttentio
 /// consignación quedan en null hasta que sus partes las sumen.
 /// </summary>
 public sealed class SalesPulseService(TeikemDbContext db, ITenantClock clock, PermissionService permissions, QuickBooksService? quickBooks = null,
-    ConsignmentService? consignment = null, ModuleService? modules = null)
+    ConsignmentService? consignment = null, ModuleService? modules = null, SalesAnalysisService? analysis = null)
 {
     public async Task<PulseSalesPanelDto> GetAsync(CancellationToken ct)
     {
@@ -141,6 +141,14 @@ public sealed class SalesPulseService(TeikemDbContext db, ITenantClock clock, Pe
             consignmentUnpaid = await consignment.CountUnpaidAsync(ct);
             routes["consignmentUnpaid"] = "/money/billing?tab=consignment";
         }
-        return new PulseSalesPanelDto(ordersToday, amountToday, urgent, toApprove, awaiting, toQuickBooks, consignmentUnpaid, routes);
+        // Lote 238: venta del mes vs. cuota, para quien ve el análisis de ventas (sales.analysis.view o manage); si no, null
+        decimal? monthSales = null, monthQuota = null;
+        if (analysis is not null && (await permissions.HasPermissionAsync(PermissionCatalog.SalesAnalysisView, ct)
+                                     || await permissions.HasPermissionAsync(PermissionCatalog.SalesAnalysisManage, ct)))
+        {
+            (monthSales, monthQuota) = await analysis.MonthSalesVsQuotaAsync(ct);
+            routes["monthSales"] = "/sales-orders?tab=analysis";
+        }
+        return new PulseSalesPanelDto(ordersToday, amountToday, urgent, toApprove, awaiting, toQuickBooks, consignmentUnpaid, routes, monthSales, monthQuota);
     }
 }

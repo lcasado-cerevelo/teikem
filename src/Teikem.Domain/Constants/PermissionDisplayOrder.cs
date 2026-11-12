@@ -39,7 +39,7 @@ public static class PermissionDisplayOrder
         "suppliers.view", "suppliers.manage",
         "purchasing.view", "purchasing.manage", "purchasing.receive",
         "purchaseaccounting.view", "purchaseaccounting.manage",
-        "sales.view", "sales.create", "sales.price", "sales.cancel", "sales.backorder", "sales.return", "sales.return.authorize", "sales.pricelist", "sales.approve_client", "sales.quickbooks.view", "sales.quickbooks.mark", "sales.quickbooks.export",
+        "sales.view", "sales.create", "sales.price", "sales.cancel", "sales.backorder", "sales.return", "sales.return.authorize", "sales.pricelist", "sales.approve_client", "sales.quickbooks.view", "sales.quickbooks.mark", "sales.quickbooks.export", "sales.analysis.view", "sales.analysis.manage",
         "dispatchaccounting.view", "dispatchaccounting.manage",
         "billing.view", "billing.generate", "billing.approve", "billing.credit", "billing.export", "billing.consignment.pay",
         "cod.view", "cod.collect", "cod.reconcile", "cod.remit",

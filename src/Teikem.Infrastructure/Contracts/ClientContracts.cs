@@ -66,7 +66,9 @@ public sealed record ClientDetailDto(
     bool RequireDeliverySignature = false, bool RequireDeliveryPhoto = false,
     // Lote 222: SURI, regla de envío (ShippingMode null = la de la compañía | FREE | OWN) y «Exige la firma de quien autoriza el pedido»
     string? MerchantRegistration = null, string? ShippingMode = null, decimal? ShippingCharge = null, decimal? ShippingFreeFrom = null,
-    bool RequireOrderSignature = false);
+    bool RequireOrderSignature = false,
+    // Lote 238: representante de ventas asignado (null = sin representante) y su ruta; se cambia en /sales-analysis/clients/{id}/rep
+    int? SalesRepId = null, string? SalesRepName = null, string? SalesRouteName = null);
 
 // ---------------- Edición ----------------
 

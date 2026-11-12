@@ -195,6 +195,12 @@ if (args.Contains(Teikem.Infrastructure.Migration.Colavora.ColavoraImportRunner.
     Environment.ExitCode = await app.Services.GetRequiredService<Teikem.Infrastructure.Migration.Colavora.ColavoraImportRunner>().RunAsync(args);
     return;
 }
+// --- Modo CLI (Lote 238): `dotnet run -- import-sales-history <config.json> [--dry-run]` importa el historial de ventas y compras de QuickBooks a una compañía ---
+if (args.Contains(SalesHistoryImportRunner.Verb, StringComparer.OrdinalIgnoreCase))
+{
+    Environment.ExitCode = await app.Services.GetRequiredService<SalesHistoryImportRunner>().RunAsync(args);
+    return;
+}
 if (app.Configuration.GetValue<bool>("Database:InitOnStartup"))
     await app.Services.GetRequiredService<DatabaseInitializer>().RunAsync();
 
