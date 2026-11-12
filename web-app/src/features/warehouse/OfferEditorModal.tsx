@@ -15,7 +15,7 @@ import { useOffer, useOfferActions, type OfferDto, type OfferItemDto, type Offer
 import { EMPTY_OFFER_DRAFT, offerDraftError, offerPublishBlocker, offerStateKey, offerStateTone, OFFER_NAME_MAX, OFFER_NOTES_MAX, toOfferRequest, type OfferDraft } from './offerRules'
 import { parsePrice } from './priceListRules'
 import { ProductPicker } from './pickers'
-import { StoredImage } from './StoredImage'
+import { StoredImage, useProductPhotosEnabled } from './StoredImage'
 import './offers.css'
 
 type Run = (fn: () => Promise<unknown>, okKey?: string, params?: Record<string, string>) => Promise<boolean>
@@ -227,6 +227,7 @@ function OfferPhotoSection({ offer, editable, onRun }: { offer: OfferDto; editab
   const t = useT()
   const actions = useOfferActions()
   const id = offer.publicId ?? ''
+  if (!useProductPhotosEnabled()) return null // Lote 240: la compañía no maneja fotos
   return (
     <section className="of-section" aria-labelledby="of-photo-title">
       <h3 id="of-photo-title">{t(`${O}.photo`)}</h3>
@@ -366,6 +367,7 @@ function ItemsSection({ offer, editable, onRun, onFail }: { offer: OfferDto; edi
   const [price, setPrice] = useState('')
   const [pickerKey, setPickerKey] = useState(0)
   const [kit, setKit] = useState<{ mode: OfferKitMode; item?: OfferItemDto } | null>(null) // null = cerrado
+  const photos = useProductPhotosEnabled() // Lote 240: sin fotos no hay columna de foto
 
   const columns = useMemo<DataColumn<OfferItemDto>[]>(
     () => [
@@ -454,7 +456,7 @@ function ItemsSection({ offer, editable, onRun, onFail }: { offer: OfferDto; edi
       )}
       <DataTable
         label={t(`${O}.items`)}
-        columns={columns}
+        columns={photos ? columns : columns.filter((c) => c.id !== 'photo')}
         rows={items}
         rowKey={(i) => String(i.id)}
         pageSize={25}

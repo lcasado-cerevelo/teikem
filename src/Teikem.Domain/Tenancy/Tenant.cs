@@ -121,6 +121,9 @@ public class Tenant : ISoftDeletable
     /// <summary>Lote 233 (Ajustes → Operación → Kits): «La compañía trabaja con kits armados». Apagado por omisión: «Nuevo producto» no pregunta «¿Es un kit?» y el alta de un
     /// kit armado se rechaza (422). Los kits armados que ya existan siguen funcionando (armar, desarmar, vender) aunque se apague. No toca los kits de oferta.</summary>
     public bool UsesAssembledKits { get; set; }
+    /// <summary>Lote 240 (Ajustes → Operación → Fotos): «La compañía maneja fotos de productos». Encendido por omisión (como era). Apagado: no se pueden subir fotos de productos,
+    /// ofertas ni listas de precios (422) y NINGUNA pantalla ni app las muestra (el API deja de devolver sus identificadores). Las fotos ya subidas se conservan y reaparecen al volver a encender.</summary>
+    public bool ProductPhotosEnabled { get; set; } = true;
     /// <summary>
     /// Lote 225 (Ajustes → Operación → QuickBooks): las cuentas e ítems con que sale el archivo IIF de QuickBooks Desktop (NULL = el valor por omisión de QuickBooksRules)
     /// y el mapa término de pago de Teikem → nombre del término en QuickBooks (JSON {"NET30":"Net 30"}; NULL = sin mapa: la factura sale sin término).

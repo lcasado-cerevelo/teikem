@@ -19,7 +19,7 @@ import {
   type PriceListDraft,
 } from './priceListRules'
 import { ProductPicker } from './pickers'
-import { StoredImage } from './StoredImage'
+import { StoredImage, useProductPhotosEnabled } from './StoredImage'
 
 /** Lista de precios abierta: `publicId` null = nueva (al guardar pasa a la lista creada para agregar renglones). */
 export function PriceListEditorModal({ publicId: initialId, onClose }: { publicId: string | null; onClose: () => void }) {
@@ -274,6 +274,7 @@ function ItemsSection({ listId, items, editable, onRun, onFail }: { listId: stri
   const actions = usePriceListActions()
   const [product, setProduct] = useState<string | null>(null)
   const [price, setPrice] = useState('')
+  const photos = useProductPhotosEnabled() // Lote 240: sin fotos no hay columna de foto
 
   const columns = useMemo<DataColumn<PriceListItemDto>[]>(
     () => [
@@ -339,7 +340,7 @@ function ItemsSection({ listId, items, editable, onRun, onFail }: { listId: stri
           </button>
         </div>
       )}
-      <DataTable label={t('warehouse.products.prices.items')} columns={columns} rows={items} rowKey={(i) => String(i.id)} pageSize={25} empty={<EmptyState title={t('warehouse.products.prices.noItems')} />} />
+      <DataTable label={t('warehouse.products.prices.items')} columns={photos ? columns : columns.filter((c) => c.id !== 'photo')} rows={items} rowKey={(i) => String(i.id)} pageSize={25} empty={<EmptyState title={t('warehouse.products.prices.noItems')} />} />
     </div>
   )
 }

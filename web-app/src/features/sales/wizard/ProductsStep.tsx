@@ -13,9 +13,9 @@ import { useCan } from '../../../kernel/access'
 import { applyProblemDetails } from '../../../kernel/api/problem'
 import { useFormat } from '../../../kernel/format'
 import { useT } from '../../../kernel/i18n'
-import { Chip, EmptyState, matchesQ, QBox, Spinner, Tabs } from '../../../kernel/ui'
+import { Chip, EmptyState, matchesQ, QBox, Spinner, Tabs, ZoomPhoto } from '../../../kernel/ui'
 import { useStoredFileUrl } from '../../orders/api'
-import { StoredImage } from '../../warehouse/StoredImage'
+import { StoredImage, useProductPhotosEnabled } from '../../warehouse/StoredImage'
 import { KitLineBlock } from '../KitLineBlock'
 import type { SalesOrderDto } from '../salesApi'
 import { StockInfo } from '../StockInfo'
@@ -56,38 +56,17 @@ function PriceText({ item }: { item: SalesCatalogItemDto }) {
 
 /**
  * Cuadrito con la foto del producto, ya resuelta por el catálogo (Lote 229: la del renglón de la oferta o la lista → la del producto → la de la primera pieza
- * con foto si es un kit); al pasar el mouse, al enfocar o al tocarlo se ve grande.
+ * con foto si es un kit). Lote 240: se amplía con un CLIC (no al pasar el mouse); si la compañía no maneja fotos no se pinta nada, ni el recuadro vacío.
  */
 function ProductThumb({ item }: { item: SalesCatalogItemDto }) {
-  const t = useT()
-  const url = useStoredFileUrl(item.imagePublicId).data
-  const ref = useRef<HTMLButtonElement>(null)
-  const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
+  const enabled = useProductPhotosEnabled()
+  const url = useStoredFileUrl(enabled ? item.imagePublicId : null).data
+  if (!enabled) return null
   if (!item.imagePublicId || !url) return <span className="wz-thumb blank" aria-hidden="true" />
-  const name = item.name ?? item.sku ?? ''
-  const show = () => {
-    const r = ref.current?.getBoundingClientRect()
-    if (!r) return
-    const size = 280
-    setPos({ x: Math.max(8, Math.min(r.right + 8, window.innerWidth - size - 8)), y: Math.max(8, Math.min(r.top, window.innerHeight - size - 8)) })
-  }
   return (
-    <>
-      <button
-        type="button"
-        ref={ref}
-        className="wz-thumb"
-        aria-label={t('salesWizard.products.photoOf', { name })}
-        onMouseEnter={show}
-        onMouseLeave={() => setPos(null)}
-        onFocus={show}
-        onBlur={() => setPos(null)}
-        onClick={() => (pos ? setPos(null) : show())}
-      >
-        <img src={url} alt="" />
-      </button>
-      {pos && <img className="wz-thumb-big" src={url} alt={name} style={{ left: pos.x, top: pos.y }} />}
-    </>
+    <span className="wz-thumb">
+      <ZoomPhoto src={url} alt={item.name ?? item.sku ?? ''} />
+    </span>
   )
 }
 

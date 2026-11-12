@@ -33,6 +33,7 @@ public sealed class ProductImageService(TeikemDbContext db, ILookupCache lookups
     /// <summary>Pone (o cambia) la foto del producto. 400 si no es JPG/PNG/WEBP o pasa del tope; 404 producto.</summary>
     public async Task<ProductImageDto> SetAsync(Guid productPublicId, string? fileName, ReadOnlyMemory<byte> content, CancellationToken ct)
     {
+        await PriceListQueries.EnsurePhotosEnabledAsync(db, ct);   // Lote 240
         var bytes = PreparePhoto(content);
         var productId = await db.Set<Product>().AsNoTracking().Where(x => x.PublicId == productPublicId).Select(x => (int?)x.ProductId).FirstOrDefaultAsync(ct)
                         ?? throw WmsResolve.ProductNotFound();

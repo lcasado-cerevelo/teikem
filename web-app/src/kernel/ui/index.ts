@@ -105,6 +105,8 @@ export { formatPhone, formatPhoneInput, isValidPhone, normalizePhone, normalizeS
 export { Panel } from './Panel'
 export type { PanelProps } from './Panel'
 export { QBox } from './QBox'
+export { ZoomPhoto } from './ZoomPhoto'
+export type { ZoomPhotoProps } from './ZoomPhoto'
 // 'check' de la maqueta (el mismo del aviso de éxito): estados vacíos "todo resuelto".
 export { IconCheck, IconEye, IconEyeOff, IconPlus, IconUpload } from './icons'
 export {

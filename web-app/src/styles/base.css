@@ -407,3 +407,10 @@ button.unrow:focus-visible{outline:2px solid var(--action);outline-offset:-2px}
 /* nombre de la base a la que está conectado el sitio */
 .env-ribbon .env-db{font-family:ui-monospace,Consolas,monospace;font-weight:700}
 @media print{.env-strip,.env-ribbon{display:none}}
+
+/* Lote 240 — foto ampliable con un clic (ZoomPhoto) */
+.zoomphoto { padding: 0; margin: 0; border: 0; background: none; display: inline-block; max-width: 100%; line-height: 0; cursor: zoom-in; }
+.zoomphoto img { display: block; max-width: 100%; }
+.zoomphoto-ov { position: fixed; inset: 0; z-index: 400; background: rgba(0, 0, 0, .72); display: flex; align-items: center; justify-content: center; padding: 16px; cursor: zoom-out; }
+.zoomphoto-ov img { width: min(92vw, 720px); height: min(84vh, 720px); object-fit: contain; border-radius: var(--radius-sm); box-shadow: 0 16px 48px rgba(0, 0, 0, .5); }
+.zoomphoto-x { position: absolute; top: 12px; right: 16px; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--text); font-size: 24px; line-height: 1; cursor: pointer; }

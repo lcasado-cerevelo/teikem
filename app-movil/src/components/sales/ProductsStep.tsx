@@ -77,7 +77,7 @@ export default function ProductsStep({ tenantId, state, onChange, stock, warehou
         <View style={styles.block}>
           <Text style={styles.sub}>{t('SALES_ORDER.PRODUCTS.OFFERS')}</Text>
           {current!.offers.map((o) => (
-            <OfferCard key={o.productPublicId} tenantId={tenantId} item={o} quantity={cartQuantity(state.cart, o.productPublicId)} onStep={(d) => step(o, d)} onSet={(text) => set(o, text)} stock={stock} warehouseId={warehouseId} pieces={state.cart.find((l) => l.productPublicId === o.productPublicId)?.components} />
+            <OfferCard key={o.productPublicId} tenantId={tenantId} photos={catalog.data?.photosEnabled !== false} item={o} quantity={cartQuantity(state.cart, o.productPublicId)} onStep={(d) => step(o, d)} onSet={(text) => set(o, text)} stock={stock} warehouseId={warehouseId} pieces={state.cart.find((l) => l.productPublicId === o.productPublicId)?.components} />
           ))}
         </View>
       ) : null}
@@ -117,20 +117,31 @@ export default function ProductsStep({ tenantId, state, onChange, stock, warehou
   );
 }
 
-function OfferCard({ tenantId, item, quantity, onStep, onSet, stock, warehouseId, pieces }: { tenantId: number; item: SalesCatalogItem; quantity: string; onStep: (d: number) => void; onSet: (text: string) => void; stock?: StockInput | null; warehouseId?: string | null; pieces?: readonly KitPieceInput[] | null }) {
+function OfferCard({ tenantId, photos, item, quantity, onStep, onSet, stock, warehouseId, pieces }: { tenantId: number; photos: boolean; item: SalesCatalogItem; quantity: string; onStep: (d: number) => void; onSet: (text: string) => void; stock?: StockInput | null; warehouseId?: string | null; pieces?: readonly KitPieceInput[] | null }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useStyles(createStyles);
   const [failed, setFailed] = useState(false);
+  const [zoom, setZoom] = useState(false);
   const name = item.name || item.sku;
   const canSell = item.price != null;
   return (
     <View style={[styles.offer, quantity ? { borderColor: colors.primary, borderWidth: 2 } : null]}>
-      {item.imagePublicId && !failed ? (
-        <Image source={fileSource(tenantId, item.imagePublicId, getAccessToken(tenantId))} style={styles.offerImg} resizeMode="cover" onError={() => setFailed(true)} accessibilityLabel={t('SALES_ORDER.PRODUCTS.OFFER_PHOTO', { name })} />
+      {/* Lote 240: sin fotos en la compañía no hay recuadro; con foto, un toque la amplía */}
+      {!photos ? null : item.imagePublicId && !failed ? (
+        <Pressable onPress={() => setZoom(true)} accessibilityRole="imagebutton" accessibilityLabel={t('SALES_ORDER.PRODUCTS.ZOOM_PHOTO', { name })}>
+          <Image source={fileSource(tenantId, item.imagePublicId, getAccessToken(tenantId))} style={styles.offerImg} resizeMode="cover" onError={() => setFailed(true)} accessibilityLabel={t('SALES_ORDER.PRODUCTS.OFFER_PHOTO', { name })} />
+        </Pressable>
       ) : (
         <View style={[styles.offerImg, styles.offerEmpty]}><Text style={styles.muted}>{t('SALES_ORDER.PRODUCTS.NO_PHOTO')}</Text></View>
       )}
+      {zoom && item.imagePublicId ? (
+        <Modal visible transparent animationType="fade" onRequestClose={() => setZoom(false)}>
+          <Pressable style={styles.zoomBackdrop} onPress={() => setZoom(false)} accessibilityRole="button" accessibilityLabel={t('SALES_ORDER.PRODUCTS.CLOSE_PHOTO')}>
+            <Image source={fileSource(tenantId, item.imagePublicId, getAccessToken(tenantId))} style={styles.zoomImg} resizeMode="contain" accessibilityLabel={name} />
+          </Pressable>
+        </Modal>
+      ) : null}
       <View style={styles.offerBody}>
         <Badge label={t('SALES_ORDER.PRODUCTS.OFFER')} />
         <Text style={styles.name}>{name}</Text>
@@ -216,6 +227,8 @@ const createStyles = (colors: Colors) => StyleSheet.create({
   disabled: { opacity: 0.45 },
   offer: { flexDirection: 'row', gap: 10, borderWidth: 1, borderColor: colors.gray, borderRadius: 12, padding: 10, flexWrap: 'wrap' },
   offerImg: { width: 96, height: 96, borderRadius: 10 },
+  zoomBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', alignItems: 'center', justifyContent: 'center', padding: 16 },
+  zoomImg: { width: '100%', height: '80%' },
   offerEmpty: { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.backgroundSecondary, borderWidth: 1, borderColor: colors.gray },
   offerBody: { flex: 1, minWidth: 150, gap: 3 },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },

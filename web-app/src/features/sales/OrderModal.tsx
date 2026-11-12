@@ -190,9 +190,10 @@ function SignatureView({ filePublicId }: { filePublicId: string }) {
 function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose: () => void }) {
   const t = useT()
   const f = useFormat()
-  const { create, update, check, cancel } = useSalesMutations()
+  const { create, update, check, cancel, remove } = useSalesMutations()
   const navigate = useNavigate()
   const [, setEntryMode] = useEntryMode()
+  const [deleting, setDeleting] = useState(false)
   const [draft, setDraft] = useState<OrderDraft>(() => draftOf(order))
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState<SalesOrderDto | null>(null)
@@ -286,7 +287,13 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
       dismissible={!busy}
       footer={
         <>
-          {current && (
+          {/* Lote 239: un borrador sin productos fue un error: se BORRA (no se cancela). Con productos se cancela como siempre. */}
+          {current && (current.lines?.length ?? 0) === 0 && (
+            <Can perm="sales.create">
+              <button type="button" className="btn danger" onClick={() => setDeleting(true)} disabled={busy}>{t('sales.deleteDraft')}</button>
+            </Can>
+          )}
+          {current && (current.lines?.length ?? 0) > 0 && (
             <Can perm="sales.cancel">
               <button type="button" className="btn danger" onClick={() => setCancelling(true)} disabled={busy}>{t('sales.cancelOrder')}</button>
             </Can>
@@ -463,6 +470,20 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
           onClose()
         }}
         onClose={() => setCancelling(false)}
+      />
+      <ConfirmDialog
+        open={deleting}
+        title={t('sales.deleteDraftTitle', { number: current?.number ?? '' })}
+        message={t('sales.deleteDraftBody')}
+        confirmLabel={t('sales.deleteDraft')}
+        tone="danger"
+        onConfirm={async () => {
+          await remove.mutateAsync({ id: current!.publicId! })
+          toast.success(t('sales.deleted', { number: current?.number ?? '' }))
+          setDeleting(false)
+          onClose()
+        }}
+        onClose={() => setDeleting(false)}
       />
     </Modal>
   )

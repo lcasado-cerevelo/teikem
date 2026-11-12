@@ -7852,3 +7852,11 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_UserPreference' AND object_id = OBJECT_ID('dbo.UserPreference'))
     EXEC(N'CREATE UNIQUE INDEX UQ_UserPreference ON dbo.UserPreference(TenantId, UserId, PrefKey);');
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-11-12 (Lote 240) — «La compañía maneja fotos de productos» (Ajustes → Operación → Fotos): dbo.Tenant.ProductPhotosEnabled (BIT, 1 por omisión = como era).
+   Con 0 no se suben fotos de productos, ofertas ni listas de precios y ninguna pantalla ni app las muestra; las fotos ya subidas se conservan. Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH(N'dbo.Tenant', N'ProductPhotosEnabled') IS NULL
+    ALTER TABLE dbo.Tenant ADD ProductPhotosEnabled BIT NOT NULL CONSTRAINT DF_Tenant_ProductPhotosEnabled DEFAULT 1;
+GO

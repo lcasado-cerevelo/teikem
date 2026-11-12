@@ -90,11 +90,13 @@ public class SalesRulesTests
     }
 
     [Fact]
-    public void Api_has_no_delete_and_no_put_orders_are_cancelled_not_deleted()
+    public void Api_has_no_put_and_only_the_empty_draft_can_be_deleted_orders_are_otherwise_cancelled()
     {
         var methods = typeof(SalesOrdersController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
         var http = methods.SelectMany(m => m.GetCustomAttributes<HttpMethodAttribute>()).SelectMany(a => a.HttpMethods).ToList();
-        Assert.DoesNotContain("DELETE", http);
+        // Lote 239 (2026-11-12): una orden se cancela, salvo un borrador SIN productos (fue un error): ese se borra. Es el único DELETE.
+        Assert.Single(http, h => h == "DELETE");
+        Assert.Contains(methods, m => m.Name == "DeleteDraft" && m.GetCustomAttributes<HttpMethodAttribute>().Any(a => a.HttpMethods.Contains("DELETE")));
         Assert.DoesNotContain("PUT", http);
         Assert.Contains("PATCH", http);
     }
@@ -134,6 +136,31 @@ public sealed class SalesOrderServiceTests
     private static SalesOrderRequest Order(Client c, Warehouse w, params SalesOrderLineRequest[] lines) => new(w.PublicId, c.PublicId, Lines: lines);
 
     private static async Task<string> MsgOf(Func<Task> act) => (await Assert.ThrowsAnyAsync<TeikemException>(act)).Message;
+
+    // Lote 239 (2026-11-12): un borrador SIN productos fue un error: se BORRA (con su historial), no queda «cancelado». Con productos, o ya cancelado, no se borra.
+    [Fact]
+    public async Task An_empty_draft_is_deleted_not_cancelled_and_one_with_products_is_not()
+    {
+        await using var f = await CreateAsync();
+        f.SetModules(ModuleKeys.SalesOrders);
+        var w = await f.AddWarehouseAsync("W1");
+        var c = await f.AddClientAsync("C1");
+        var p = await SellableAsync(f, "P1", 10m);
+        var svc = f.Get<SalesOrderService>();
+        var empty = await svc.CreateAsync(new SalesOrderRequest(w.PublicId, c.PublicId, Step: SalesDraftSteps.Client), default);   // así nace en el asistente: el paso del cliente guarda sin productos
+        var full = await svc.CreateAsync(Order(c, w, L(p, 1m)), default);
+        var emptyId = (await f.Db.Set<SalesOrder>().SingleAsync(x => x.PublicId == empty.PublicId)).SalesOrderId;
+
+        await svc.DeleteDraftAsync(empty.PublicId, default);
+
+        f.Db.ChangeTracker.Clear();
+        Assert.False(await f.Db.Set<SalesOrder>().AnyAsync(x => x.PublicId == empty.PublicId));
+        Assert.False(await f.Db.Set<EntityStatusHistory>().AnyAsync(h => h.EntityId == emptyId && h.EntityType!.InternalCode == SalesCodes.EntityType));
+        Assert.Equal("Orden de venta no encontrada.", await MsgOf(() => svc.DeleteDraftAsync(empty.PublicId, default)));
+        Assert.Equal(SalesRules.OnlyEmptyDraftDeletable, await MsgOf(() => svc.DeleteDraftAsync(full.PublicId, default)));   // con productos se cancela
+        await svc.CancelAsync(full.PublicId, null, default);
+        Assert.Equal(SalesRules.OnlyEmptyDraftDeletable, await MsgOf(() => svc.DeleteDraftAsync(full.PublicId, default)));   // una cancelada se conserva
+    }
 
     [Fact]
     public async Task Creates_a_draft_with_number_list_price_and_totals()

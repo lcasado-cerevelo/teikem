@@ -610,3 +610,17 @@ Decisión de Luis (2026-11-10). Aplica a la ventana **Nueva orden**, al **pedido
 |---|---|---|
 | `GET /api/v1/me/preferences/{key}` | sesión | Preferencia propia de la persona en la compañía activa: `{ "key", "value" }` (`value` es null si nunca la guardó). `key`: `sales.entryMode` o `warehouse.last`. 404 si la clave no existe. |
 | `PUT /api/v1/me/preferences/{key}` | sesión | Guarda `{ "value" }`. 400 «El valor de la preferencia no es válido.» (`sales.entryMode`: `wizard` o `full`; `warehouse.last`: el publicId de un almacén). |
+
+## 28. Borrar un borrador sin productos (Lote 239)
+
+<!-- kemi:staff -->
+
+**Qué es.** Una orden en **borrador** que **no tiene ningún producto** fue un error (una orden que se empezó y no se terminó), no una venta que se canceló. Por eso **se borra**: desaparece, con su historial de estatus, y no queda en la lista como «Cancelada». Una orden con productos, o ya solicitada, **no se borra: se cancela** como siempre.
+
+**Dónde.** En la ventana de la orden (formulario) y en el pedido guiado (asistente), el botón rojo **«Borrar orden»** aparece solo si el borrador está guardado y no tiene productos. Si ya tiene productos, en su lugar aparece **«Cancelar orden»**. Pide confirmación («No se puede deshacer»).
+
+**Quién.** Quien puede crear órdenes (**`sales.create`**), con el módulo **SALES_ORDERS**. Endpoint: **`DELETE /api/v1/sales-orders/{publicId}`** (204 al borrar).
+
+**Qué bloquea.** Si la orden tiene productos o ya no está en borrador, el API responde **409** con el mensaje exacto: «Solo se puede borrar una orden en borrador que todavía no tiene productos; si ya tiene productos o ya fue solicitada, cancélela.» Una orden que no existe responde 404 «Orden de venta no encontrada.».
+
+**Para soporte.** El borrado es definitivo; el número OV-##### que tenía no se reutiliza. La bitácora de auditoría conserva quién la borró.

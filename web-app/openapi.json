@@ -39264,6 +39264,80 @@
         }
       }
     },
+    "/api/v1/purchase-orders/import": {
+      "post": {
+        "tags": [
+          "PurchaseOrderImport"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "warehousePublicId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "commit": {
+                    "type": "boolean"
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              },
+              "encoding": {
+                "source": {
+                  "style": "form"
+                },
+                "status": {
+                  "style": "form"
+                },
+                "warehousePublicId": {
+                  "style": "form"
+                },
+                "commit": {
+                  "style": "form"
+                },
+                "file": {
+                  "style": "form"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseOrderImportResultDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseOrderImportResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseOrderImportResultDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/purchase-orders": {
       "get": {
         "tags": [
@@ -43254,6 +43328,27 @@
                 }
               }
             }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "SalesOrders"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -80657,6 +80752,11 @@
           },
           "isAssembledKit": {
             "type": "boolean"
+          },
+          "imagePublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -81714,6 +81814,175 @@
           },
           "assignedToName": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PurchaseOrderImportDocDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "vendor": {
+            "type": "string",
+            "nullable": true
+          },
+          "number": {
+            "type": "string",
+            "nullable": true
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "lines": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total": {
+            "type": "number",
+            "format": "double"
+          },
+          "purchaseOrderNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "purchaseOrderPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PurchaseOrderImportIssueDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PurchaseOrderImportIssueDto": {
+        "type": "object",
+        "properties": {
+          "line": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "blocking": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PurchaseOrderImportMissingProductDto": {
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "qty": {
+            "type": "number",
+            "format": "double"
+          },
+          "cost": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "orders": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PurchaseOrderImportResultDto": {
+        "type": "object",
+        "properties": {
+          "committed": {
+            "type": "boolean"
+          },
+          "source": {
+            "type": "string",
+            "nullable": true
+          },
+          "targetStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "totalDocuments": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ready": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "blocked": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "duplicates": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skipped": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "created": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PurchaseOrderImportDocDto"
+            },
+            "nullable": true
+          },
+          "missingProducts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PurchaseOrderImportMissingProductDto"
+            },
+            "nullable": true
+          },
+          "missingSuppliers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
             "nullable": true
           }
         },
@@ -86520,6 +86789,9 @@
               "$ref": "#/components/schemas/SalesCatalogBrandDto"
             },
             "nullable": true
+          },
+          "photosEnabled": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -93200,6 +93472,9 @@
           },
           "usesAssembledKits": {
             "type": "boolean"
+          },
+          "productPhotosEnabled": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -93408,6 +93683,10 @@
             "nullable": true
           },
           "usesAssembledKits": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "productPhotosEnabled": {
             "type": "boolean",
             "nullable": true
           }

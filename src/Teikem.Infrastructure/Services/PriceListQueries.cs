@@ -102,11 +102,23 @@ internal static class PriceListQueries
             kitTypeId is not null && p.ProductTypeLookupId == kitTypeId, fromPieces.TryGetValue(p.ProductId, out var f) ? f : null));
     }
 
+    /// <summary>Lote 240: ¿la compañía maneja fotos de productos? (Tenant.ProductPhotosEnabled; sin fila de compañía = sí, como era).</summary>
+    public static async Task<bool> PhotosEnabledAsync(TeikemDbContext db, CancellationToken ct)
+        => await db.Tenants.AsNoTracking().Where(t => t.TenantId == db.CurrentTenantId).Select(t => (bool?)t.ProductPhotosEnabled).FirstOrDefaultAsync(ct) ?? true;
+
+    /// <summary>Lote 240: antes de subir o cambiar una foto (producto, oferta o renglón de lista): con las fotos apagadas es 422.</summary>
+    public static async Task EnsurePhotosEnabledAsync(TeikemDbContext db, CancellationToken ct)
+    {
+        if (!await PhotosEnabledAsync(db, ct)) throw new Teikem.Infrastructure.Exceptions.StatusRuleException(Teikem.Domain.Wms.ProductImageRules.PhotosDisabled);
+    }
+
     /// <summary>El PublicId de los archivos vigentes (fotos) por su id.</summary>
     public static async Task<Dictionary<int, Guid>> FilePublicIdsAsync(TeikemDbContext db, IEnumerable<int?> ids, CancellationToken ct)
     {
         var list = ids.Where(i => i is not null).Select(i => i!.Value).Distinct().ToList();
         if (list.Count == 0) return new Dictionary<int, Guid>();
+        // Lote 240: con las fotos apagadas en la compañía NINGUNA foto sale del API (este es el único punto por donde pasan los identificadores de foto de productos, ofertas y listas)
+        if (!await PhotosEnabledAsync(db, ct)) return new Dictionary<int, Guid>();
         return await db.Set<Teikem.Domain.Files.StoredFile>().AsNoTracking().Where(f => list.Contains(f.StoredFileId) && f.IsActive).ToDictionaryAsync(f => f.StoredFileId, f => f.PublicId, ct);
     }
 }

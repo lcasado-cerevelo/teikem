@@ -70,6 +70,7 @@ import { newKitPiece, type KitPiece } from './kitPieces'
 import { formatNumber } from './lineRules'
 import { BinPickerInput, WarehousePickerInput } from './pickers'
 import { ProductPhotoBlock } from './ProductPhotoBlock'
+import { useProductPhotosEnabled } from './StoredImage'
 import { BRAND_MAX, MODEL_MAX, brandModelSchema, moneySchema } from './productRules'
 import {
   DIMENSION_UNITS,
@@ -371,6 +372,7 @@ function ProductEditorForm({
   // Lote 233: la pregunta solo sale si la compañía trabaja con kits armados (Ajustes → Operación → Kits; apagado por omisión). Mientras el ajuste carga, no se pinta.
   // Editar un kit armado que ya existe no depende del ajuste.
   const usesAssembledKits = useTenantSettings(!isEdit).data?.usesAssembledKits === true
+  const photosEnabled = useProductPhotosEnabled() // Lote 240: la compañía puede no manejar fotos de productos
   const isKitNew = !isEdit && usesAssembledKits && kitChoice === 'yes'
   const isKitEdit = isEdit && product?.isAssembledKit === true
   const isKit = isKitNew || isKitEdit
@@ -618,7 +620,7 @@ function ProductEditorForm({
           )}
           {isKitEdit && <EditKitBlock idPrefix={formId} publicId={publicId} editable={editable} composition={composition} problem={piecesProblem} onNavigate={onClose} />}
           {/* Lote 229: bloque «Foto» del producto (autocontenido; un producto nuevo solo avisa que la foto va después de guardar) */}
-          <ProductPhotoBlock publicId={product?.publicId ?? null} titleId={`${formId}-photo`} />
+          {photosEnabled && <ProductPhotoBlock publicId={product?.publicId ?? null} titleId={`${formId}-photo`} />}
           <EditorBlock id={`${formId}-ident`} title={t('warehouse.products.editor.blocks.identification')}>
             {isEdit ? (
               <div className="f">

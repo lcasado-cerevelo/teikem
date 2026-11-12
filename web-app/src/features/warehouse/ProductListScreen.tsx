@@ -46,6 +46,8 @@ import { DamagePanel } from './DamageListScreen'
 import { ProductCategoriesPanel } from './ProductCategoriesPanel'
 import { ProductEditorByIdModal, ProductEditorModal } from './ProductEditorModal'
 import { EntityImportModal } from '../imports/EntityImportModal'
+import { ProductRowPhoto } from './ProductRowPhoto'
+import { useProductPhotosEnabled } from './StoredImage'
 import { ProductLabelsButton } from './ProductLabelsPanel'
 import { parseKpiParam, productListQuery, toggleKpi, type ProductFilterState, type ProductKpi } from './productFilters'
 import '../analytics/pulse.css'
@@ -246,10 +248,13 @@ function ProductsTab() {
 
   // la categoría se muestra con su ruta completa, la superior primero («GLOVES / NITRIL»), también al ordenar y al exportar
   const categoryPaths = useMemo(() => new Map(categories.map((c) => [c.id, c.path || c.name || ''])), [categories])
+  const photosEnabled = useProductPhotosEnabled()
   const columns = useMemo<DataColumn<ProductListItemDto>[]>(() => {
     const categoryOf = (p: ProductListItemDto) => (p.categoryId != null ? categoryPaths.get(p.categoryId) : undefined) ?? p.categoryName ?? ''
     const num = (n: number | null | undefined) => <span className="mono">{formatNumber(n ?? 0, lang)}</span>
     return [
+      // Lote 240: la miniatura (del alto de la fila; un clic la amplía). Sin fotos en la compañía no hay columna.
+      ...(photosEnabled ? [{ id: 'photo', header: '', cell: (p: ProductListItemDto) => <ProductRowPhoto publicId={p.imagePublicId} name={p.name} />, exportable: false }] : []),
       // Orden en el cliente: la lista es paginada por el servidor (sin parámetro de orden), así que solo reacomoda la página visible.
       { id: 'sku', header: t('warehouse.products.columns.sku'), cell: (p) => (
           <>
@@ -325,7 +330,7 @@ function ProductsTab() {
         sortValue: (p) => t(`warehouse.products.states.${productState(p)}`),
       },
     ]
-  }, [t, lang, trackingLabel, categoryPaths])
+  }, [t, lang, trackingLabel, categoryPaths, photosEnabled])
 
   // orden que el usuario elige en la tabla (clic en un encabezado): el informe de códigos de barras sale en ese mismo orden
   const [tableSort, setTableSort] = useState<SortState | null>(null)

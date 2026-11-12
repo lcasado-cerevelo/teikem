@@ -558,3 +558,5 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 .kit-nosub{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text);white-space:nowrap;padding-bottom:10px;cursor:pointer}
 .kit-nosub input{width:16px;height:16px;margin:0;accent-color:var(--flow)}
 .kit-nosub input:focus-visible{outline:2px solid var(--flow);outline-offset:2px}
+.pl-rowphoto{width:24px;height:24px;object-fit:cover;border-radius:3px;border:1px solid var(--line);display:block;background:var(--raise)}
+.pl-rowphoto.pl-rowphoto-none{border-style:dashed;background:transparent}

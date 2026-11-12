@@ -875,6 +875,9 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
 
         var kitTypeId = products.Any(x => x.ProductTypeLookupId != null) ? await lookups.TryGetIdAsync(KitCodes.ProductTypeDomain, ProductTypes.Kit, ct) : null;   // Lote 68
         var assembledTypeId = products.Any(x => x.ProductTypeLookupId != null) ? await lookups.TryGetIdAsync(KitCodes.ProductTypeDomain, ProductTypes.AssembledKit, ct) : null;   // Lote 232
+        // Lote 240: la miniatura de la lista (con las fotos apagadas FilePublicIdsAsync no devuelve ninguna)
+        var effectiveImages = await PriceListQueries.ProductImagesAsync(db, products, kitTypeId, ct);
+        var imagePublic = await PriceListQueries.FilePublicIdsAsync(db, effectiveImages.Values, ct);
         var items = new List<ProductListItemDto>(products.Count);
         foreach (var p in products)
         {
@@ -889,7 +892,8 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
                 t.OnHand, t.Reserved, available, p.MinQty, ProductRules.IsBelowMin(p.MinQty, available, p.IsActive), p.IsActive,
                 p.Brand, p.Model, p.PackUomLookupId is int pu ? await CodeAsync(pu, ct) : null, p.PackUomLookupId is int pn ? await LabelAsync(pn, ct) : null, p.PackQty,
                 kitTypeId is not null && p.ProductTypeLookupId == kitTypeId,
-                IsAssembledKit: assembledTypeId is not null && p.ProductTypeLookupId == assembledTypeId));
+                IsAssembledKit: assembledTypeId is not null && p.ProductTypeLookupId == assembledTypeId,
+                ImagePublicId: effectiveImages.GetValueOrDefault(p.ProductId) is int imgId && imagePublic.TryGetValue(imgId, out var imgGuid) ? imgGuid : null));
         }
         return items;
     }

@@ -133,7 +133,7 @@
 .wz-price { width: 96px; text-align: right; }
 
 /* Foto del producto en el listado: cuadrito del alto del renglón y, al pasar el mouse, la foto grande (fija en pantalla para que el scroll del listado no la corte) */
-.wz-thumb { width: 44px; height: 44px; padding: 0; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--raise); overflow: hidden; display: block; cursor: zoom-in; }
+.wz-thumb { width: 44px; height: 44px; padding: 0; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--raise); overflow: hidden; display: block; }
 .wz-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .wz-thumb.blank { cursor: default; }
 .wz-thumb-big { position: fixed; z-index: 60; width: 280px; height: 280px; object-fit: contain; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-sm); box-shadow: 0 10px 30px rgba(0, 0, 0, .35); pointer-events: none; }
@@ -141,3 +141,4 @@
 /* precio con el signo de dólar a la izquierda */
 .wz-money { display: inline-flex; align-items: center; gap: 4px; }
 .wz-money > span { color: var(--muted); }
+.wz-thumb .zoomphoto { width: 100%; height: 100%; }

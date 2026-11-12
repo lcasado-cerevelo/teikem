@@ -12236,3 +12236,37 @@ Se corrió en **simulación** (`@Aplicar = 0`, el valor del archivo): muestra lo
 
 **No encuentro productos exentos de IVU.**
 Hasta correr `11-impuesto-productos.sql` con `@Aplicar = 1`, todos los productos de Advance Solutions están **sin categoría de impuesto**, que Teikem trata como gravable. El script pone **Exento** a los once «Non» de QuickBooks; después el campo **Impuesto** del editor de producto (Almacén → Productos e inventario, bloque Precios) los muestra como Exento. Ver el [Lote 237](#lote-237--exención-del-cliente-por-componentes-y-campo-impuesto-en-el-editor-de-producto).
+
+## Lote 239 — Importar órdenes de compra y borrar borradores vacíos
+
+**¿Importar órdenes de compra sube el inventario?**
+No. Una orden de compra solo dice que se compró; el inventario sube con el recibo. «Completada» en el importador significa **enviada**, lista para recibir contra ella.
+
+**Una orden salió «Bloqueada: Falta el producto X».**
+El SKU del archivo no existe en Teikem (ni con la comparación sin guiones ni espacios). Dé de alta el producto con ese SKU y vuelva a importar el mismo archivo; lo ya importado no se duplica. «Descargar lo que falta» baja la lista.
+
+**Salió «Falta el proveedor …».**
+Dé de alta el proveedor con ese nombre (Almacén → Proveedores) y vuelva a importar.
+
+**«Ya se importó antes (orden de compra PO-…)».**
+La orden con ese proveedor y número ya existe; no se repite. Si se borró, el mismo archivo la vuelve a crear.
+
+**Aparecen órdenes «Omitidas».**
+En QuickBooks, los recibos de mercancía (*Item Receipt*) y los créditos no son órdenes de compra y no se importan.
+
+**Una orden de venta en borrador vacía aparecía como «Cancelada».**
+Ahora un borrador **sin productos** se **borra** («Borrar orden»); solo se cancela una orden que ya tiene productos o fue solicitada. Si intenta borrar una que ya tiene productos: «Solo se puede borrar una orden en borrador que todavía no tiene productos; si ya tiene productos o ya fue solicitada, cancélela.» (409).
+
+## Lote 240 — Fotos de productos: ajuste de la compañía, miniatura y ampliar con un clic
+
+**No me salen las fotos de los productos / no puedo subir una foto.**
+Revise Ajustes → Operación → **Fotos** → «La compañía maneja fotos de productos». Apagado, no se pueden subir fotos (422: «La compañía no maneja fotos de productos; actívelo en Ajustes → Operación para subirlas.») y ninguna pantalla ni app las muestra. Las fotos ya subidas no se pierden: reaparecen al volver a encenderlo.
+
+**Mi almacén no maneja fotos, ¿cómo las quito?**
+Apague ese ajuste. Desaparecen la columna de foto de la lista de productos, el bloque «Foto» del producto, los recuadros del pedido y de las ofertas.
+
+**¿Cómo veo la foto más grande?**
+Un **clic** (o un toque en el celular) sobre la foto la abre grande ahí mismo, en la lista, la ficha, las ofertas y el pedido. Se cierra con la X, con un clic fuera o con Esc. No se amplía con el mouse encima.
+
+**La foto de la lista es pequeña.**
+Es a propósito: la miniatura tiene el alto de la fila. Haga clic para verla grande.

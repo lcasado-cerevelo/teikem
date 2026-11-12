@@ -33,6 +33,7 @@ import {
 } from '../../kernel/ui'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { AssignDocumentModal } from './AssignDocumentModal'
+import { PurchaseOrderImportModal } from './PurchaseOrderImportModal'
 import { ToggleFilter } from './filterControls'
 import { exportPurchaseOrders, useAssignPurchaseOrder, useCreatePurchaseOrder, usePurchaseOrders, useSuppliers, useWarehouses, warehouseLabel, type PurchaseOrderDto } from './api'
 import { preloadCost, priceDiffers, ProductPriceNote } from './ProductPriceNote'
@@ -250,6 +251,7 @@ export default function PurchaseOrderListScreen() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [creating, setCreating] = useState(false)
+  const [importing, setImporting] = useState(false)
   const [mineOnly, setMineOnly] = useState(false)   // Lote 195: solo las asignadas a mí
   const [toAssign, setToAssign] = useState<PurchaseOrderDto | null>(null)
   const assignPo = useAssignPurchaseOrder()
@@ -350,6 +352,11 @@ export default function PurchaseOrderListScreen() {
         </div>
         <div className="act">
           <Can perm="purchasing.manage">
+            <button type="button" className="btn" onClick={() => setImporting(true)}>
+              {t('poImport.button')}
+            </button>
+          </Can>
+          <Can perm="purchasing.manage">
             <button type="button" className="btn flow" onClick={() => setCreating(true)}>
               {t('warehouse.purchaseOrders.new')}
             </button>
@@ -404,6 +411,7 @@ export default function PurchaseOrderListScreen() {
       </Panel>
 
       <CreatePurchaseOrderModal open={creating} onClose={() => setCreating(false)} />
+      {importing && <PurchaseOrderImportModal onClose={() => setImporting(false)} />}
       {toAssign && (
         <AssignDocumentModal
           title={t('warehouse.assign.title', { number: toAssign.number ?? '' })}

@@ -167,6 +167,27 @@ public sealed partial class SalesOrderService
         return await GetAsync(publicId, ct);
     }
 
+    // ---------------------------------------------------------------- borrar (borrador sin productos)
+
+    /// <summary>
+    /// Lote 239 (pedido de Luis, 2026-11-12): una orden en borrador SIN productos fue un error, no una venta que se canceló: se BORRA (con su historial de
+    /// estatus), no queda como «cancelada». Con productos, o ya solicitada, no se borra (se cancela). El borrador no tiene reservas, recolecciones, entregas
+    /// ni facturas, así que no hay nada más que limpiar; la bitácora de auditoría conserva quién la borró.
+    /// </summary>
+    public async Task DeleteDraftAsync(Guid publicId, CancellationToken ct)
+    {
+        await db.RunInTransactionAsync(async ct2 =>
+        {
+            var order = await db.Set<SalesOrder>().AsTracking().Include(o => o.Lines).FirstOrDefaultAsync(o => o.PublicId == publicId, ct2) ?? throw NotFound();
+            var code = (await StatusMapAsync(ct2))[order.StatusCodeId].Code;
+            if (code != SalesOrderStatuses.Draft || order.Lines.Count > 0) throw new ConflictException(SalesRules.OnlyEmptyDraftDeletable);
+            var history = await db.EntityStatusHistories.Where(h => h.EntityId == order.SalesOrderId && h.EntityType!.InternalCode == SalesCodes.EntityType).ToListAsync(ct2);
+            db.EntityStatusHistories.RemoveRange(history);
+            db.Set<SalesOrder>().Remove(order);
+            await db.SaveGuardedAsync(SalesRules.Concurrency, ct2);
+        }, ct);
+    }
+
     /// <summary>Libera en el ledger lo reservado por cada línea (según SalesOrderReservation), borra esas filas y deja las líneas sin reserva ni backorder.</summary>
     private async Task ReleaseAllAsync(SalesOrder order, CancellationToken ct)
     {

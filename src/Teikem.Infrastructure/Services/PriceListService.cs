@@ -219,6 +219,7 @@ public sealed class PriceListService(TeikemDbContext db, ITenantContext tenant, 
     /// <summary>Pone (o cambia) la foto del renglón: una imagen, guardada como archivo del producto del renglón (se ve con permiso de ver productos).</summary>
     public async Task<PriceListDto> SetItemImageAsync(Guid publicId, int itemId, string? fileName, string? contentType, ReadOnlyMemory<byte> content, CancellationToken ct)
     {
+        await PriceListQueries.EnsurePhotosEnabledAsync(db, ct);   // Lote 240
         EnsureImage(content);
         var row = await db.Set<PriceList>().AsNoTracking().Where(l => l.PublicId == publicId)
             .Select(l => new { l.IsActive, Item = db.Set<PriceListItem>().Where(i => i.PriceListId == l.PriceListId && i.PriceListItemId == itemId && i.IsActive).Select(i => (int?)i.ProductId).FirstOrDefault() })

@@ -5,7 +5,8 @@
     "retry": "Retry",
     "copy": "Copy",
     "close": "Close",
-    "done": "Done"
+    "done": "Done",
+    "zoomPhoto": "Enlarge the photo of {name}"
   },
   "environment": {
     "notProduction": "Test environment: not production"
@@ -8530,6 +8531,10 @@
         "kitsToggle": "The company works with assembled kits",
         "kitsHelp": "An assembled kit is a product with its own inventory that is built from other parts: assembling it takes the parts out of inventory and puts the kits in. When on, “New product” asks “Is what you are creating a kit?”; when off, it does not ask.",
         "kitsNote": "Turning it off does not change the assembled kits that already exist: they can still be assembled, disassembled and sold. Offer kits do not depend on this setting.",
+        "photosTitle": "Photos",
+        "photosToggle": "The company handles product photos",
+        "photosHelp": "When on, each product, offer and price list can have its photo: it is uploaded in the product sheet, shown as a thumbnail in the product list and enlarged with a click wherever it appears. When off, photos cannot be uploaded and no screen or app shows them.",
+        "photosNote": "Turning it off does not delete photos already uploaded: they are hidden and come back when it is turned on again.",
         "clientLabelsDefault": "Print labels automatically for new clients",
         "clientLabelsDefaultHelp": "It is the value each new client starts with; afterwards it is switched on or off in the client record (Profile → “Print labels automatically”). It does not change existing clients.",
         "svcDefaultLabel": "Default service type",
@@ -10432,6 +10437,10 @@
     "modeWizard": "With wizard",
     "modeFull": "With form",
     "switchToWizard": "Switch to wizard",
+    "deleteDraft": "Delete order",
+    "deleteDraftTitle": "Delete order {number}",
+    "deleteDraftBody": "The order has no products: it is deleted completely, not left as cancelled. This cannot be undone.",
+    "deleted": "Order {number} deleted.",
     "withBackorder": "With backorder",
     "tabs": {
       "label": "Sales sections",
@@ -12590,6 +12599,35 @@
         "DISCARDED": "Discarded"
       }
     }
+  },
+  "poImport": {
+    "button": "Import",
+    "title": "Import purchase orders",
+    "help": "A purchase order says something was bought; it does not move inventory (the receipt does). “Review” saves nothing. An order with a product or supplier that does not exist is not imported: it is blocked and the reason is shown.",
+    "source": "File source",
+    "sourceQuickBooks": "QuickBooks",
+    "sourceGeneric": "Generic file (CSV or Excel)",
+    "helpQuickBooks": "A QuickBooks Desktop purchases export (for example “Transaction Detail” with the columns Type, Date, Num, Name, Item, Qty and Cost Price). Purchase orders and bills are imported; item receipts and credits are skipped.",
+    "helpGeneric": "One row per line, with the columns Supplier, Number, Date, SKU, Qty and Cost (optional: Expected Date and Description). Lines with the same supplier and number make one order.",
+    "status": "Status of the imported orders",
+    "statusDraft": "Draft",
+    "statusSent": "Completed (sent, ready to receive)",
+    "statusHelp": "Completed receives nothing: it only marks the order as sent so it can be received against later.",
+    "warehouse": "Warehouse",
+    "file": "File",
+    "choose": "Choose file",
+    "changeFile": "Change file",
+    "review": "Review",
+    "confirm": "Import {n}",
+    "close": "Close",
+    "doneToast": "{n} purchase orders imported.",
+    "reviewSummary": "{total} orders in the file: {ready} ready, {blocked} blocked, {duplicates} already imported, {skipped} skipped.",
+    "doneSummary": "{created} orders created. Blocked: {blocked}. Already imported: {duplicates}. Skipped: {skipped}.",
+    "blockedNote": "{n} orders are NOT imported because a product or supplier is missing. Create what is missing and import the same file again: what was already imported is not repeated.",
+    "downloadMissing": "Download what is missing",
+    "firstRows": "Showing the first {n} orders.",
+    "col": { "vendor": "Supplier", "number": "Number", "date": "Date", "lines": "Lines", "status": "Status", "detail": "Detail" },
+    "docStatus": { "READY": "Ready", "CREATED": "Created", "BLOCKED": "Blocked", "ERROR": "Error", "DUPLICATE": "Already imported", "SKIPPED": "Skipped" }
   },
   "entityImport": {
     "open": "Import",

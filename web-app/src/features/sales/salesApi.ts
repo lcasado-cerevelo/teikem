@@ -140,6 +140,11 @@ export function useSalesMutations() {
       mutationFn: (v: { id: string; comment?: string }) => unwrap(api.POST('/api/v1/sales-orders/{publicId}/cancel', { params: { path: { publicId: v.id } }, body: { comment: v.comment } })),
       onSettled: refresh,
     }),
+    // Lote 239: borrar un borrador SIN productos (fue un error; no queda como «cancelada»). 409 si ya tiene productos o fue solicitada.
+    remove: useMutation({
+      mutationFn: (v: { id: string }) => unwrap(api.DELETE('/api/v1/sales-orders/{publicId}', { params: { path: { publicId: v.id } } })),
+      onSettled: refresh,
+    }),
     modifyLine: useMutation({
       mutationFn: (v: { id: string; lineId: number; quantity?: number; unitPrice?: number; allowBackorder?: boolean }) =>
         unwrap(

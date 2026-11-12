@@ -173,7 +173,7 @@ public sealed class SalesCatalogService(TeikemDbContext db, ITenantClock clock, 
             })
             .Where(b => b.Offers.Count > 0 || b.Products.Count > 0)
             .ToList();
-        return new SalesCatalogDto(clientPublicId, today, brands);
+        return new SalesCatalogDto(clientPublicId, today, brands, await PriceListQueries.PhotosEnabledAsync(db, ct));
     }
 
     /// <summary>Un aviso de precio con su texto, la oferta que ganó y la otra (si hay).</summary>
@@ -197,7 +197,7 @@ public sealed class SalesCatalogService(TeikemDbContext db, ITenantClock clock, 
     private async Task<Dictionary<int, Guid>> FilePublicIdsAsync(IEnumerable<int> ids, CancellationToken ct)
     {
         var list = ids.Distinct().ToList();
-        if (list.Count == 0) return new Dictionary<int, Guid>();
+        if (list.Count == 0 || !await PriceListQueries.PhotosEnabledAsync(db, ct)) return new Dictionary<int, Guid>();   // Lote 240: fotos apagadas = ninguna foto
         return await db.Set<StoredFile>().AsNoTracking().Where(f => list.Contains(f.StoredFileId) && f.IsActive).ToDictionaryAsync(f => f.StoredFileId, f => f.PublicId, ct);
     }
 }

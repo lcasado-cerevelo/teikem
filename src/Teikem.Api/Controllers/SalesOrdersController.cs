@@ -101,6 +101,17 @@ public sealed class SalesOrdersController(SalesOrderService sales) : ControllerB
     [HttpPost("{publicId:guid}/delivery"), RequirePermission(PermissionCatalog.WarehousePick)]
     public Task<SalesOrderDto> Delivery(Guid publicId, [FromBody] SalesDeliveryRequest? req, [FromServices] SalesDeliveryService delivery, CancellationToken ct) => delivery.CreateAsync(publicId, req, ct);
 
+    /// <summary>
+    /// Borra (204) una orden en borrador SIN productos: fue un error, no una venta cancelada. Con productos o ya solicitada → 409 (se cancela). Quien puede crear órdenes
+    /// puede borrar sus borradores vacíos.
+    /// </summary>
+    [HttpDelete("{publicId:guid}"), RequirePermission(PermissionCatalog.SalesCreate)]
+    public async Task<IActionResult> DeleteDraft(Guid publicId, CancellationToken ct)
+    {
+        await sales.DeleteDraftAsync(publicId, ct);
+        return NoContent();
+    }
+
     [HttpPost("{publicId:guid}/cancel"), RequirePermission(PermissionCatalog.SalesCancel)]
     public Task<SalesOrderDto> Cancel(Guid publicId, [FromBody] SalesOrderCancelRequest? req, CancellationToken ct) => sales.CancelAsync(publicId, req?.Comment, ct);
 

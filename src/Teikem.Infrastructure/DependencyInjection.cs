@@ -167,6 +167,7 @@ public static class DependencyInjection
         // Lote 38 (F-B): importación CSV de consignatarios (mismas plantillas y lotes, Kind CONSIGNEE)
         services.AddScoped<ConsigneeImportService>();
         services.AddScoped<EntityImportService>();   // 2026-10-21: motor genérico de importación por plantilla
+        services.AddScoped<PurchaseOrderImportService>();   // Lote 239: importar órdenes de compra (genérico y QuickBooks)
         services.AddScoped<IImportEntityRows, ProductImportRows>();
         services.AddScoped<IImportEntityRows, SupplierImportRows>();
         services.AddScoped<IImportEntityRows, WarehouseImportRows>();

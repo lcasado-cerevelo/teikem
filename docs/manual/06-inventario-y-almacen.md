@@ -3052,3 +3052,63 @@ El Kárdex tiene un filtro **Zona** (entre Almacén y Posición; selección múl
 ### Avisos de salida en Vistas, indicadores y gráficos (2026-10-21)
 
 Los avisos de salida son ahora una **fuente de datos** más (`EXIT_NOTICE`, «Avisos de salida») para armar vistas, indicadores y gráficos (Análisis). Una fila por aviso con: número, cliente, almacén, referencia, destino, estatus, **Abierto** (solicitado o parcial), **Con pendiente** (alguna línea espera inventario), **Atrasado** (abierto y con fecha requerida anterior a hoy), **Asignado**, fechas, líneas, unidades pedidas / reservadas / despachadas / pendientes y **Cumplimiento (%)** (solo en avisos despachados por completo). Se lee con `inventory.view` y requiere el módulo de almacén con lotes/series. No viene ninguna vista de sistema armada: cada compañía crea las suyas (por ejemplo, «Avisos atrasados» = Abierto y Atrasado).
+
+## 8a. Importar órdenes de compra (Lote 239)
+
+<!-- kemi:staff -->
+
+**Qué es.** Almacén → **Órdenes de compra** → botón **«Importar»** (arriba, junto a «Nueva orden de compra»). Un **solo importador** con un **origen**: **Archivo genérico (CSV o Excel)** o **QuickBooks**. Nuevos orígenes se agregarán a la misma pantalla.
+
+**Idea de fondo.** Una orden de compra dice que **se compró**; **no mueve el inventario** (el inventario sube con el **recibo**, [capítulo 44](44-recepcion-maestra.md)). Por eso importar órdenes nunca toca el inventario.
+
+**Quién.** **`purchasing.manage`**, módulo **PURCHASING**. Endpoint: **`POST /api/v1/purchase-orders/import`** (multipart: `file`, `source` = `GENERIC` o `QUICKBOOKS`, `status` = `DRAFT` o `SENT`, `warehousePublicId` si la compañía tiene más de un almacén, `commit`). Archivo: CSV o .xlsx de hasta 2 MB; máximo 2000 órdenes.
+
+**Cómo se usa.**
+1. Elija el **origen** y el **estatus** de las órdenes importadas: **Borrador**, o **Completada** (= **enviada**, lista para recibir contra ella; **no recibe nada**). Con varios almacenes, elija el almacén.
+2. Elija el archivo y pulse **«Revisar»**: no guarda nada. Muestra cada orden con su estado y el motivo.
+3. Pulse **«Importar N»** para crear las órdenes **Listas**.
+
+**Estados de cada orden en el resultado.**
+
+| Estado | Significa |
+|---|---|
+| Lista / Creada | Todos sus productos y su proveedor existen; se crea (o ya se creó) con número PO-##### |
+| **Bloqueada** | Falta un producto o el proveedor (o una línea no pasa las reglas del alta): **no se crea** y el motivo sale en la fila |
+| Ya importada | Una orden con el mismo proveedor y número ya se importó antes; no se duplica |
+| Omitida | En QuickBooks, un tipo que no es orden ni factura de compra (recibo de mercancía, crédito) |
+
+**Reglas de productos y proveedores.**
+- El producto se busca por **SKU** ignorando mayúsculas, espacios, guiones y signos: «NECH 1001» de QuickBooks es el «NECH-1001» de Teikem; «PD-23*36/15/10» es «PD-23-36/15/10». Se avisa en la fila («El SKU … del archivo se tomó como … de Teikem»).
+- **Producto que no existe → la orden se bloquea.** Nunca se da de alta un producto a medias (el archivo no trae unidad de medida, seguimiento, impuesto ni códigos de barras). Dé de alta el producto con ese SKU (Productos e inventario, o su importación) y **vuelva a importar el mismo archivo**: lo ya importado no se repite.
+- **Proveedor que no existe → la orden se bloquea** con el mismo criterio (el nombre se compara sin distinguir mayúsculas ni signos).
+- SKU parecidos se sugieren en el mensaje («SKU parecidos en Teikem: 53310, 53350»). Un SKU combinado de QuickBooks como `53310/53350` hay que separarlo.
+- Una línea con **cantidad 0** se omite (aviso); un producto que viene en varias líneas de la misma orden se **suma** en una (aviso); un costo vacío toma el costo de compra del producto.
+- Solo productos propios y activos, cantidad entera con serie, costo con máximo 4 decimales: los mensajes son los del alta manual de la orden de compra.
+- **«Descargar lo que falta»** baja un CSV con los SKU faltantes (descripción, cantidad total, último costo) y los proveedores que faltan, listo para darlos de alta.
+
+**Archivo de QuickBooks.** Exportación de compras de QuickBooks Desktop con las columnas **Type, Date, Num, Name (o Source Name), Item, Qty y Cost Price** (la primera columna vacía y las filas de proveedor y «Total …» se ignoran). La celda **Item** trae «SKU (Descripción)». Se importan los tipos **Purchase Order** y **Bill**; **Item Receipt** y **Credit** se omiten. La fecha es la de la orden; **Deliv Date** pasa a fecha esperada (si es anterior a la de la orden se ignora con aviso).
+
+**Archivo genérico.** Una fila por línea con las columnas **Supplier, Number, Date, SKU, Qty, Cost** (opcionales: **Expected Date**, **Description**; también se reconocen sus nombres en español). Las filas con el mismo proveedor y número forman una orden.
+
+**Errores del importador (mensaje exacto).** 400 «El origen de la importación no es válido: use GENERIC o QUICKBOOKS.» · 400 «El estatus de las órdenes importadas debe ser DRAFT (borrador) o SENT (enviada).» · 400 «Elija el archivo a importar.» · 400 «El archivo no tiene la columna 'X'.» · 400 «La orden no trae ninguna línea con cantidad mayor que cero.» (por orden) · 400 «El archivo trae más de 2000 órdenes; divídalo e impórtelo por partes.» · 400 «Indique el almacén: la compañía tiene más de uno.»
+
+**Identidad para no duplicar.** La orden creada guarda en sus **notas** la marca `[QB:proveedor|número]` (o `[IMP:…]` en el genérico). Si se borra la orden importada, el mismo archivo la vuelve a crear.
+
+### 2.6 «La compañía maneja fotos de productos», miniatura en la lista y foto ampliable (Lote 240, 2026-11-12)
+
+<!-- kemi:staff -->
+
+**Ajuste de la compañía.** Ajustes → Operación → **Fotos** → **«La compañía maneja fotos de productos»** (permiso **`admin.tenant`**, módulo del almacén; **encendido por omisión**, como era). Se guarda al instante. Es por compañía: no todos los almacenes quieren manejar fotos.
+
+| Con el ajuste **encendido** | Con el ajuste **apagado** |
+|---|---|
+| Se puede subir la foto en la ficha del producto, en las ofertas y en las listas de precios | **No se puede subir** (422: «La compañía no maneja fotos de productos; actívelo en Ajustes → Operación para subirlas.») |
+| La foto sale en la lista de productos, la ficha, el pedido guiado (web y celular) y las ofertas | **Ninguna pantalla ni app las muestra**: desaparecen la columna de foto, el bloque «Foto» del producto, los recuadros de foto del pedido y de las ofertas |
+
+Apagarlo **no borra** las fotos ya subidas: se ocultan y **reaparecen al volver a encenderlo**. El API deja de devolver los identificadores de foto (`imagePublicId` y sus equivalentes), así que ninguna app nueva ni vieja las muestra; `GET /api/v1/tenant/settings` trae `productPhotosEnabled` y el catálogo de venta trae `photosEnabled`.
+
+**Miniatura en «Productos e inventario».** Con las fotos encendidas, la lista tiene una **primera columna** con la miniatura del producto, **del alto de la fila** (no una foto grande). Un producto sin foto muestra un recuadro vacío del mismo tamaño (las filas no cambian de alto). Un kit sin foto muestra la de su primera pieza con foto.
+
+**Ampliar con un clic.** En **todo lugar donde se muestra una foto de producto** (la lista, la ficha del producto, las ofertas y las listas de precios, el pedido guiado y la orden) **un clic en la foto la abre grande ahí mismo**, sobre la pantalla; se cierra con la **X**, con un clic fuera o con **Esc**. Es un **clic**, no el mouse encima (el «hover» estorba al recorrer una lista). En el celular, un toque en la foto de la oferta la amplía.
+
+**Para soporte.** Si un usuario dice «no me salen las fotos» o «no puedo subir la foto», revise primero este ajuste. El ajuste vive en `Tenant.ProductPhotosEnabled` (BIT, 1 por omisión; sección «2026-11-12 — Lote 240» de `Diseño/logistica-db-update.sql`). El corte está en un solo punto del servidor (`PriceListQueries.FilePublicIdsAsync`) y en los tres lugares que suben fotos (producto, oferta y renglón de lista).

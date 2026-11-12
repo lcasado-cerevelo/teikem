@@ -5,7 +5,8 @@
     "retry": "Reintentar",
     "copy": "Copiar",
     "close": "Cerrar",
-    "done": "Listo"
+    "done": "Listo",
+    "zoomPhoto": "Ampliar la foto de {name}"
   },
   "environment": {
     "notProduction": "Ambiente de pruebas: no es producción"
@@ -8530,6 +8531,10 @@
         "kitsToggle": "La compañía trabaja con kits armados",
         "kitsHelp": "Un kit armado es un producto con inventario propio que se arma con otras piezas: al armarlo salen las piezas del inventario y entran los kits. Encendido, «Nuevo producto» pregunta «¿Lo que va a crear es un kit?»; apagado, no lo pregunta.",
         "kitsNote": "Apagarlo no cambia los kits armados que ya existen: se siguen armando, desarmando y vendiendo. Los kits de oferta no dependen de este ajuste.",
+        "photosTitle": "Fotos",
+        "photosToggle": "La compañía maneja fotos de productos",
+        "photosHelp": "Encendido, cada producto, oferta y lista de precios puede tener su foto: se sube en la ficha del producto, se ve como miniatura en la lista de productos y se amplía con un clic donde aparezca. Apagado, no se pueden subir fotos y ninguna pantalla ni app las muestra.",
+        "photosNote": "Apagarlo no borra las fotos que ya se subieron: se ocultan y reaparecen al volver a encenderlo.",
         "clientLabelsDefault": "Imprimir los labels automáticamente en los clientes nuevos",
         "clientLabelsDefaultHelp": "Es el valor con que nace cada cliente nuevo; después se enciende o se apaga en la ficha del cliente (Perfil → «Imprimir los labels automáticamente»). No cambia a los clientes que ya existen.",
         "svcDefaultLabel": "Tipo de servicio por defecto",
@@ -10435,6 +10440,10 @@
     "modeWizard": "Con asistente",
     "modeFull": "Con formulario",
     "switchToWizard": "Cambiar al asistente",
+    "deleteDraft": "Borrar orden",
+    "deleteDraftTitle": "Borrar la orden {number}",
+    "deleteDraftBody": "La orden no tiene productos: se borra por completo, no queda como cancelada. No se puede deshacer.",
+    "deleted": "Orden {number} borrada.",
     "withBackorder": "Con backorder",
     "tabs": {
       "label": "Secciones de ventas",
@@ -12593,6 +12602,35 @@
         "DISCARDED": "Descartado"
       }
     }
+  },
+  "poImport": {
+    "button": "Importar",
+    "title": "Importar órdenes de compra",
+    "help": "Una orden de compra dice que se compró; no mueve el inventario (eso lo hace el recibo). «Revisar» no guarda nada. Una orden con un producto o proveedor que no existe no se importa: se bloquea y se dice por qué.",
+    "source": "Origen del archivo",
+    "sourceQuickBooks": "QuickBooks",
+    "sourceGeneric": "Archivo genérico (CSV o Excel)",
+    "helpQuickBooks": "Exportación de compras de QuickBooks Desktop (por ejemplo «Transaction Detail» con las columnas Type, Date, Num, Name, Item, Qty y Cost Price). Se importan las órdenes de compra y las facturas de compra; los recibos y créditos se omiten.",
+    "helpGeneric": "Una fila por línea, con las columnas Supplier, Number, Date, SKU, Qty y Cost (opcionales: Expected Date y Description). Las líneas con el mismo proveedor y número forman una orden.",
+    "status": "Estatus de las órdenes importadas",
+    "statusDraft": "Borrador",
+    "statusSent": "Completada (enviada, lista para recibir)",
+    "statusHelp": "Completada no recibe nada: solo marca la orden como enviada para que después se reciba contra ella.",
+    "warehouse": "Almacén",
+    "file": "Archivo",
+    "choose": "Elegir archivo",
+    "changeFile": "Cambiar archivo",
+    "review": "Revisar",
+    "confirm": "Importar {n}",
+    "close": "Cerrar",
+    "doneToast": "{n} órdenes de compra importadas.",
+    "reviewSummary": "{total} órdenes en el archivo: {ready} listas, {blocked} bloqueadas, {duplicates} ya importadas, {skipped} omitidas.",
+    "doneSummary": "Se crearon {created} órdenes. Bloqueadas: {blocked}. Ya importadas: {duplicates}. Omitidas: {skipped}.",
+    "blockedNote": "{n} órdenes NO se importan porque les falta un producto o un proveedor. Dé de alta lo que falta y vuelva a importar el mismo archivo: lo ya importado no se repite.",
+    "downloadMissing": "Descargar lo que falta",
+    "firstRows": "Se muestran las primeras {n} órdenes.",
+    "col": { "vendor": "Proveedor", "number": "Número", "date": "Fecha", "lines": "Líneas", "status": "Estado", "detail": "Detalle" },
+    "docStatus": { "READY": "Lista", "CREATED": "Creada", "BLOCKED": "Bloqueada", "ERROR": "Error", "DUPLICATE": "Ya importada", "SKIPPED": "Omitida" }
   },
   "entityImport": {
     "open": "Importar",

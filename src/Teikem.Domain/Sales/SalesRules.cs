@@ -42,6 +42,8 @@ public static class SalesRules
     public const string OnlyDraftEditable = "Solo se puede editar una orden en borrador.";
     public const string OnlyDraftOrRequestedCancellable = "Solo se puede cancelar una orden en borrador o solicitada que no se haya despachado.";
     public const string AlreadyCancelled = "La orden ya está cancelada.";
+    /// <summary>Lote 239: una orden en borrador SIN productos fue un error y se borra (no se cancela). Con productos o fuera de borrador no se borra.</summary>
+    public const string OnlyEmptyDraftDeletable = "Solo se puede borrar una orden en borrador que todavía no tiene productos; si ya tiene productos o ya fue solicitada, cancélela.";
     public const string PriceNeedsPermission = "Cambiar el precio exige el permiso de precios (sales.price).";
     public const string NumberTaken = "Ya existe una orden de venta con ese número; intente de nuevo.";
     public const string Concurrency = "La orden cambió al mismo tiempo. Recárguela e intente de nuevo.";

@@ -29,6 +29,9 @@ public sealed record TenantSettingsDto(
     /// <summary>Lote 233 (Ajustes → Operación → Kits): la compañía trabaja con kits armados (false por omisión). Con false, «Nuevo producto» no pregunta «¿Es un kit?» y
     /// POST /products con isAssembledKit=true contesta 422. Va como propiedad (no en el constructor) para no mover el orden de los campos de antes.</summary>
     public bool UsesAssembledKits { get; init; }
+
+    /// <summary>Lote 240 (Ajustes → Operación → Fotos): la compañía maneja fotos de productos (true por omisión). Con false no se suben fotos y ninguna pantalla las muestra.</summary>
+    public bool ProductPhotosEnabled { get; init; } = true;
 }
 
 /// <summary>2026-10-26: una dirección de la compañía (domicilio o postal); Country es el código ISO de 2 letras y CountryLabel su nombre en el idioma de la persona.</summary>
@@ -67,6 +70,9 @@ public sealed record TenantSettingsUpdateRequest(
 {
     /// <summary>Lote 233: «La compañía trabaja con kits armados»; null = sin cambio. Apagarlo no toca los kits armados que ya existen.</summary>
     public bool? UsesAssembledKits { get; init; }
+
+    /// <summary>Lote 240: «La compañía maneja fotos de productos»; null = sin cambio. Apagarlo no borra las fotos ya subidas: se ocultan y reaparecen al encenderlo.</summary>
+    public bool? ProductPhotosEnabled { get; init; }
 }
 
 /// <summary>Juego de valores de región y formatos (los de una región en <see cref="TenantFormatOptionsDto"/>).</summary>

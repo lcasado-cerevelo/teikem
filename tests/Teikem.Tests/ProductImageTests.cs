@@ -25,6 +25,30 @@ public sealed class ProductImageTests : IDisposable
         try { if (Directory.Exists(_root)) Directory.Delete(_root, true); } catch { /* temporal */ }
     }
 
+    // Lote 240: la compañía puede NO manejar fotos de productos. Apagado: subir es 422 y el API no devuelve ninguna foto (ni en la ficha ni en la lista); las ya subidas se conservan y
+    // reaparecen al volver a encender.
+    [Fact]
+    public async Task A_company_without_photos_cannot_upload_and_the_api_returns_none_but_keeps_them()
+    {
+        await using var x = await PriceWorld.CreateAsync(_root);
+        var strips = await x.ProductAsync("52800", 6.99m, "PRODIGY");
+        var uploaded = await x.Images.SetAsync(strips.PublicId, "tirillas.jpg", Jpeg, default);
+        Assert.NotNull(uploaded.ImagePublicId);
+
+        var tenant = await x.F.Db.Tenants.AsTracking().SingleAsync(t => t.TenantId == WmsFixture.TenantId);
+        tenant.ProductPhotosEnabled = false;
+        await x.F.Db.SaveChangesAsync();
+
+        var off = await x.Images.GetAsync(strips.PublicId, default);
+        Assert.Null(off.ImagePublicId);
+        Assert.Null(off.EffectiveImagePublicId);
+        Assert.Equal(ProductImageRules.PhotosDisabled, (await Assert.ThrowsAsync<StatusRuleException>(() => x.Images.SetAsync(strips.PublicId, "otra.jpg", Jpeg, default))).Message);
+
+        tenant.ProductPhotosEnabled = true;
+        await x.F.Db.SaveChangesAsync();
+        Assert.Equal(uploaded.ImagePublicId, (await x.Images.GetAsync(strips.PublicId, default)).ImagePublicId);
+    }
+
     [Fact]
     public void The_photo_shown_is_the_row_then_the_product_then_the_first_piece_for_a_kit()
     {

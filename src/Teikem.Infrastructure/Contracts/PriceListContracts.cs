@@ -68,4 +68,4 @@ public sealed record SalesCatalogItemDto(Guid ProductPublicId, string Sku, strin
 public sealed record SalesCatalogBrandDto(string? Brand, IReadOnlyList<SalesCatalogItemDto> Offers, IReadOnlyList<SalesCatalogItemDto> Products);
 
 /// <summary>El catálogo del pedido: por marca, a la fecha de hoy y con los precios del cliente (sin cliente: los de la lista general).</summary>
-public sealed record SalesCatalogDto(Guid? ClientPublicId, DateOnly Date, IReadOnlyList<SalesCatalogBrandDto> Brands);
+public sealed record SalesCatalogDto(Guid? ClientPublicId, DateOnly Date, IReadOnlyList<SalesCatalogBrandDto> Brands, bool PhotosEnabled = true);   // Lote 240: PhotosEnabled = la compañía maneja fotos (las apps no pintan recuadros de foto si es false)

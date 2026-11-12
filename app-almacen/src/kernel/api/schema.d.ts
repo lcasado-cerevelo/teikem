@@ -30140,6 +30140,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/purchase-orders/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        source?: string;
+                        status?: string;
+                        /** Format: uuid */
+                        warehousePublicId?: string;
+                        commit?: boolean;
+                        /** Format: binary */
+                        file?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PurchaseOrderImportResultDto"];
+                        "application/json": components["schemas"]["PurchaseOrderImportResultDto"];
+                        "text/json": components["schemas"]["PurchaseOrderImportResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/purchase-orders": {
         parameters: {
             query?: never;
@@ -32888,7 +32937,26 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        delete?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch: {
@@ -50077,6 +50145,8 @@ export interface components {
             packQty?: number | null;
             isKit?: boolean;
             isAssembledKit?: boolean;
+            /** Format: uuid */
+            imagePublicId?: string | null;
         };
         ProductMeasuresDto: {
             /** Format: double */
@@ -50418,6 +50488,62 @@ export interface components {
             /** Format: int32 */
             assignedToUserId?: number | null;
             assignedToName?: string | null;
+        };
+        PurchaseOrderImportDocDto: {
+            key?: string | null;
+            vendor?: string | null;
+            number?: string | null;
+            /** Format: date */
+            date?: string | null;
+            status?: string | null;
+            /** Format: int32 */
+            lines?: number;
+            /** Format: double */
+            total?: number;
+            purchaseOrderNumber?: string | null;
+            /** Format: uuid */
+            purchaseOrderPublicId?: string | null;
+            issues?: components["schemas"]["PurchaseOrderImportIssueDto"][] | null;
+        };
+        PurchaseOrderImportIssueDto: {
+            /** Format: int32 */
+            line?: number;
+            sku?: string | null;
+            code?: string | null;
+            message?: string | null;
+            blocking?: boolean;
+        };
+        PurchaseOrderImportMissingProductDto: {
+            sku?: string | null;
+            description?: string | null;
+            /** Format: double */
+            qty?: number;
+            /** Format: double */
+            cost?: number | null;
+            /** Format: int32 */
+            orders?: number;
+        };
+        PurchaseOrderImportResultDto: {
+            committed?: boolean;
+            source?: string | null;
+            targetStatus?: string | null;
+            /** Format: int32 */
+            totalDocuments?: number;
+            /** Format: int32 */
+            ready?: number;
+            /** Format: int32 */
+            blocked?: number;
+            /** Format: int32 */
+            duplicates?: number;
+            /** Format: int32 */
+            skipped?: number;
+            /** Format: int32 */
+            created?: number;
+            /** Format: int32 */
+            failed?: number;
+            documents?: components["schemas"]["PurchaseOrderImportDocDto"][] | null;
+            missingProducts?: components["schemas"]["PurchaseOrderImportMissingProductDto"][] | null;
+            missingSuppliers?: string[] | null;
         };
         PurchaseOrderLineDto: {
             /** Format: int32 */
@@ -52016,6 +52142,7 @@ export interface components {
             /** Format: date */
             date?: string;
             brands?: components["schemas"]["SalesCatalogBrandDto"][] | null;
+            photosEnabled?: boolean;
         };
         SalesCatalogItemDto: {
             /** Format: uuid */
@@ -54196,6 +54323,7 @@ export interface components {
             customDomain?: string | null;
             subdomain?: string | null;
             usesAssembledKits?: boolean;
+            productPhotosEnabled?: boolean;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -54260,6 +54388,7 @@ export interface components {
             postalAddress?: components["schemas"]["TenantAddressInput"];
             postalSameAsAddress?: boolean | null;
             usesAssembledKits?: boolean | null;
+            productPhotosEnabled?: boolean | null;
         };
         TenantSummaryDto: {
             /** Format: int32 */

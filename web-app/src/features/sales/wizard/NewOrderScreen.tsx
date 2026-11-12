@@ -5,16 +5,17 @@
 // cuenta lo tiene) y solicita con POST /submit; si falta inventario (409) o se pasa del crédito (422) abre el diálogo de faltante de siempre, que repite el
 // envío con la misma contraseña. Al final, la pantalla con el número OV-#####, el total y «Nuevo pedido».
 import { useContext, useEffect, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Can } from '../../../kernel/access'
 import { useEntryMode } from '../entryMode'
 import { SessionContext } from '../../../app/session'
 import { applyProblemDetails, toApiError } from '../../../kernel/api/problem'
 import { useFormat } from '../../../kernel/format'
 import { useT } from '../../../kernel/i18n'
-import { hasInk, signatureToPng, Spinner, type SignatureStroke } from '../../../kernel/ui'
+import { ConfirmDialog, hasInk, signatureToPng, Spinner, toast, type SignatureStroke } from '../../../kernel/ui'
 import { useClient } from '../../clients/api'
 import { AvailabilityDialog } from '../OrderModal'
-import { useSalesOrder, useSalesStock, type SalesAvailabilityDto, type SalesOrderDto, type SalesOrderRequest } from '../salesApi'
+import { useSalesMutations, useSalesOrder, useSalesStock, type SalesAvailabilityDto, type SalesOrderDto, type SalesOrderRequest } from '../salesApi'
 import { anyBackorder, orderKitPieces, orderWarehouseId, showWarehouseField, stockWarehouses } from '../stockRules'
 import { AuthorizationStep, SubmitPasswordModal } from './AuthorizationStep'
 import { ClientStep } from './ClientStep'
@@ -55,6 +56,9 @@ export default function NewOrderScreen() {
   const resumed = useSalesOrder(resumeId)
   const [resumeDone, setResumeDone] = useState(resumeId === null)
   const mfa = useContext(SessionContext)?.me?.mfaEnabled ?? false
+  const navigate = useNavigate()
+  const { remove } = useSalesMutations()
+  const [deleting, setDeleting] = useState(false)
   const [, setEntryMode] = useEntryMode()   // abrir el formulario completo lo deja como el modo de esta persona
   // y ENTRAR al asistente lo deja como el suyo: solo al montar (si dependiera de setEntryMode, al pulsar «Cambiar al formulario» el efecto lo volvería a poner en «asistente»)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -289,8 +293,28 @@ export default function NewOrderScreen() {
       <div className="act">
         {/* mientras sea borrador se puede seguir en el formulario completo: el borrador ya está guardado en el servidor (cada paso lo guarda) */}
         <Link className="btn" to={saved?.publicId ? `/sales-orders?order=${encodeURIComponent(saved.publicId)}` : '/sales-orders?new=1'} onClick={() => setEntryMode('full')}>{t('salesWizard.switchToFull')}</Link>
+        {/* Lote 239: un borrador guardado SIN productos fue un error: se borra (no se cancela) */}
+        {saved?.publicId && (saved.lines?.length ?? 0) === 0 && (
+          <Can perm="sales.create">
+            <button type="button" className="btn danger" onClick={() => setDeleting(true)}>{t('sales.deleteDraft')}</button>
+          </Can>
+        )}
         <Link className="btn" to="/sales-orders">{t('salesWizard.exit')}</Link>
       </div>
+      <ConfirmDialog
+        open={deleting}
+        title={t('sales.deleteDraftTitle', { number: saved?.number ?? '' })}
+        message={t('sales.deleteDraftBody')}
+        confirmLabel={t('sales.deleteDraft')}
+        tone="danger"
+        onConfirm={async () => {
+          await remove.mutateAsync({ id: saved!.publicId! })
+          toast.success(t('sales.deleted', { number: saved?.number ?? '' }))
+          setDeleting(false)
+          navigate('/sales-orders')
+        }}
+        onClose={() => setDeleting(false)}
+      />
     </div>
   )
 

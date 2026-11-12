@@ -237,6 +237,7 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
     /// <summary>Pone (o cambia) la foto del renglón: JPG, PNG o WEBP, guardada como archivo de la oferta (se ve con sales.view). Sin foto propia se muestra la del producto.</summary>
     public async Task<OfferDto> SetItemImageAsync(Guid publicId, int itemId, string? fileName, ReadOnlyMemory<byte> content, CancellationToken ct)
     {
+        await PriceListQueries.EnsurePhotosEnabledAsync(db, ct);   // Lote 240
         var bytes = ProductImageService.PreparePhoto(content);
         var row = await db.Set<Offer>().AsNoTracking().Where(o => o.PublicId == publicId)
             .Select(o => new { o.OfferId, o.IsActive, Item = db.Set<OfferItem>().Any(i => i.OfferId == o.OfferId && i.OfferItemId == itemId && i.IsActive) })
@@ -254,6 +255,7 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
     /// <summary>Pone (o cambia) la foto de la oferta: JPG, PNG o WEBP (se ve con sales.view).</summary>
     public async Task<OfferDto> SetImageAsync(Guid publicId, string? fileName, ReadOnlyMemory<byte> content, CancellationToken ct)
     {
+        await PriceListQueries.EnsurePhotosEnabledAsync(db, ct);   // Lote 240
         var bytes = ProductImageService.PreparePhoto(content);
         var row = await db.Set<Offer>().AsNoTracking().Where(o => o.PublicId == publicId).Select(o => new { o.OfferId, o.IsActive }).FirstOrDefaultAsync(ct) ?? throw NotFound();
         if (!row.IsActive) throw new StatusRuleException(OfferRules.Inactive);

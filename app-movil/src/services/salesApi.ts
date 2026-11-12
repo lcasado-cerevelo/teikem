@@ -36,6 +36,8 @@ export interface SalesCatalog {
   clientPublicId?: string | null;
   date?: string;
   brands: SalesCatalogBrand[];
+  /** Lote 240: la compañía maneja fotos de productos (false = no se pinta ningún recuadro de foto). */
+  photosEnabled?: boolean;
 }
 
 export interface SalesOrderTerms {

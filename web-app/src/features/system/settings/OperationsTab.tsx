@@ -213,6 +213,45 @@ export function KitsPanel({ settings, canEdit }: { settings: TenantSettingsDto; 
   )
 }
 
+// ------------------------------------------------------------------ fotos de productos (Lote 240)
+
+/**
+ * «La compañía maneja fotos de productos» (`productPhotosEnabled`, admin.tenant; encendido por omisión). Apagado: no se pueden subir fotos de productos, ofertas ni listas de precios
+ * (422) y NINGUNA pantalla ni app las muestra (el API deja de devolver sus identificadores y la web quita las columnas y los bloques de foto). Las fotos ya subidas se conservan
+ * y reaparecen al volver a encender. Se guarda al instante, como los kits.
+ */
+export function PhotosPanel({ settings, canEdit }: { settings: TenantSettingsDto; canEdit: boolean }) {
+  const t = useT()
+  const save = useSaveTenantSettings()
+  return (
+    <Panel className="set-gap" icon={<IconLayers />} title={t('system.settings.ops.photosTitle')}>
+      <label className="sw">
+        <input
+          type="checkbox"
+          role="switch"
+          checked={settings.productPhotosEnabled !== false}
+          disabled={!canEdit || save.isPending}
+          aria-describedby="set-photos-help"
+          onChange={async (e) => {
+            try {
+              await save.mutateAsync({ productPhotosEnabled: e.target.checked })
+              toast.success(t('system.settings.saved'))
+            } catch (err) {
+              toast.error(problemText(err))
+            }
+          }}
+        />
+        <span className="tk" aria-hidden="true" />
+        <span>{t('system.settings.ops.photosToggle')}</span>
+      </label>
+      <p id="set-photos-help" className="set-d">
+        {t('system.settings.ops.photosHelp')}
+      </p>
+      <p className="set-d">{t('system.settings.ops.photosNote')}</p>
+    </Panel>
+  )
+}
+
 // ------------------------------------------------------------------ rotación del inventario: FEFO / FIFO (2026-10-11, Lote 34)
 
 /**
@@ -738,6 +777,7 @@ export function OperationsTab({ settings, canEdit }: { settings: TenantSettingsD
         {orders && <PipelinePanel />}
       </div>
       {wms && <KitsPanel settings={settings} canEdit={canEdit} />}
+      {wms && <PhotosPanel settings={settings} canEdit={canEdit} />}
       {wms && <RotationPanel settings={settings} canEdit={canEdit} />}
       {wms && <InventoryAlertsPanel settings={settings} canEdit={canEdit} />}
       <FleetAlertsPanel settings={settings} canEdit={canEdit} />

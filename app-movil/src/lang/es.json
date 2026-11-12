@@ -782,6 +782,8 @@
         "KIT": "Kit",
         "NO_PHOTO": "Sin foto",
         "OFFER_PHOTO": "Foto de la oferta {{name}}",
+        "ZOOM_PHOTO": "Ampliar la foto de {{name}}",
+        "CLOSE_PHOTO": "Cerrar la foto",
         "QTY_OF": "Cantidad de {{sku}}",
         "LESS": "Uno menos de {{name}}",
         "MORE": "Uno más de {{name}}"

@@ -782,6 +782,8 @@
         "KIT": "Kit",
         "NO_PHOTO": "No photo",
         "OFFER_PHOTO": "Photo of the {{name}} offer",
+        "ZOOM_PHOTO": "Enlarge the photo of {{name}}",
+        "CLOSE_PHOTO": "Close the photo",
         "QTY_OF": "Quantity of {{sku}}",
         "LESS": "One less {{name}}",
         "MORE": "One more {{name}}"

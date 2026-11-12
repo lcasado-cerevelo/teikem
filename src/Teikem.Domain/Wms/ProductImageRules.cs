@@ -7,6 +7,8 @@ namespace Teikem.Domain.Wms;
 public static class ProductImageRules
 {
     public const string ImageRequired = "Adjunte la foto.";
+    /// <summary>Lote 240: la compañía apagó «Fotos de productos» (Ajustes → Operación): no se suben fotos.</summary>
+    public const string PhotosDisabled = "La compañía no maneja fotos de productos; actívelo en Ajustes → Operación para subirlas.";
     public const string NotAPhoto = "La foto debe ser una imagen JPG, PNG o WEBP.";
     /// <summary>Lado mayor (px) al que se reduce una foto más grande al subirla (si no se puede leer, se guarda tal cual).</summary>
     public const int MaxSidePx = 1200;
