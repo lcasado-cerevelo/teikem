@@ -1,11 +1,15 @@
 // Lote 173 (C1) — ficha de un documento de «Recolección y empaque»: su avance arriba y sus recolecciones como movimientos (la más reciente primero); tocar una abre la ficha de la recolección
 // (`PickBatchDetailModal`, con sus acciones Empacar y Eliminar).
 import { useState } from 'react'
+import { Can } from '../../kernel/access'
 import { useLang, useT } from '../../kernel/i18n'
 import { Chip, Modal } from '../../kernel/ui'
 import { useFormat } from '../../kernel/format'
 import type { PickBatchSummaryDto, PickDocumentDto } from './api'
 import { formatDateTime } from './lineRules'
+import { SalesDispatchFlow } from '../sales/SalesDispatchFlow'
+import { useExitNotice } from './exitNoticeApi'
+import { ExitNoticeDispatchModal } from './ExitNoticeDispatchModal'
 import { PickBatchDetailModal } from './PickBatchDetailModal'
 import { documentProgress, preloadFromDocument } from './pickDocumentView'
 
@@ -14,10 +18,13 @@ export function PickDocumentModal({ document: d, onClose, onCollect }: { documen
   const lang = useLang()
   const f = useFormat()
   const [batch, setBatch] = useState<string | null>(null)
+  const [dispatching, setDispatching] = useState(false)
   const p = documentProgress(d)
   const moves = d.batches ?? []
   const lines = d.lines ?? []
   const canCollect = Boolean(onCollect) && preloadFromDocument(d, 0) !== null
+  // Lote 242: despachar (sacar contra el documento) desde aquí; solo órdenes de venta y avisos de salida con algo reservado por sacar
+  const canDispatch = (d.kind === 'SALES_ORDER' || d.kind === 'EXIT_NOTICE') && p.toCollect > 0
 
   return (
     <>
@@ -30,16 +37,23 @@ export function PickDocumentModal({ document: d, onClose, onCollect }: { documen
           </span>
         }
         onClose={onClose}
-        dismissible={batch === null}
+        dismissible={batch === null && !dispatching}
         footer={
           <>
             <button type="button" className="btn" onClick={onClose}>
               {t('warehouse.pickBatches.detail.close')}
             </button>
             {canCollect && (
-              <button type="button" className="btn flow" onClick={() => onCollect?.(d)}>
+              <button type="button" className="btn" onClick={() => onCollect?.(d)}>
                 {t('warehouse.pickBatches.docs.collectThis')}
               </button>
+            )}
+            {canDispatch && (
+              <Can perm="warehouse.pick">
+                <button type="button" className="btn flow" onClick={() => setDispatching(true)}>
+                  {t('warehouse.pickBatches.docs.dispatch')}
+                </button>
+              </Can>
             )}
           </>
         }
@@ -116,6 +130,7 @@ export function PickDocumentModal({ document: d, onClose, onCollect }: { documen
           </>
         )}
 
+        {canDispatch && lines.length > 0 && <p className="help">{t('warehouse.pickBatches.docs.dispatchHelp')}</p>}
         <h3 className="pdoc-h">{t('warehouse.pickBatches.docs.movesTitle', { count: moves.length })}</h3>
         {moves.length === 0 ? (
           <p className="help">{t('warehouse.pickBatches.docs.noMoves')}</p>
@@ -146,6 +161,15 @@ export function PickDocumentModal({ document: d, onClose, onCollect }: { documen
         )}
       </Modal>
       <PickBatchDetailModal publicId={batch} onClose={() => setBatch(null)} />
+      {dispatching && d.kind === 'SALES_ORDER' && <SalesDispatchFlow orderPublicId={d.publicId} onClose={() => setDispatching(false)} onDone={() => { setDispatching(false); onClose() }} />}
+      {dispatching && d.kind === 'EXIT_NOTICE' && <ExitNoticeDispatchFromDocument publicId={d.publicId} onClose={() => setDispatching(false)} onDone={() => { setDispatching(false); onClose() }} />}
     </>
   )
+}
+
+/** Lote 242: el aviso de salida del documento, ya cargado, en su ventana de despacho de siempre (Llegadas y salidas → Salidas → Despachar). */
+function ExitNoticeDispatchFromDocument({ publicId, onClose, onDone }: { publicId: string; onClose: () => void; onDone: () => void }) {
+  const notice = useExitNotice(publicId)
+  if (!notice.data) return null
+  return <ExitNoticeDispatchModal notice={notice.data} onClose={onClose} onDone={onDone} />
 }

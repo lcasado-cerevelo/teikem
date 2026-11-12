@@ -543,7 +543,7 @@ function QuantityModal({ order, line, onClose }: { order: SalesOrderDto; line: S
 // ---------------------------------------------------------------- despachar (Lote 63)
 
 /** Despacha contra la orden: por línea, cuánto sale (por omisión todo lo reservado). El sistema usa las posiciones y lotes que reservó; el aparato permite tomar de otra posición. */
-function DispatchModal({ order, onClose, onDone }: { order: SalesOrderDto; onClose: () => void; onDone: (r: SalesDispatchResultDto) => void }) {
+export function DispatchModal({ order, onClose, onDone }: { order: SalesOrderDto; onClose: () => void; onDone: (r: SalesDispatchResultDto) => void }) {
   const t = useT()
   const f = useFormat()
   const { dispatch } = useSalesMutations()
@@ -614,7 +614,7 @@ function DispatchModal({ order, onClose, onDone }: { order: SalesOrderDto; onClo
 }
 
 /** ¿Qué sigue con lo despachado? Retiro (ahí termina), entrega (orden de transporte) o decidirlo después. */
-function NextDialog({ result, onPickup, onDelivery, onLater }: { result: SalesDispatchResultDto; onPickup: () => void; onDelivery: () => void; onLater: () => void }) {
+export function NextDialog({ result, onPickup, onDelivery, onLater }: { result: SalesDispatchResultDto; onPickup: () => void; onDelivery: () => void; onLater: () => void }) {
   const t = useT()
   return (
     <Modal

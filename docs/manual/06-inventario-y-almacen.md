@@ -3112,3 +3112,29 @@ Apagarlo **no borra** las fotos ya subidas: se ocultan y **reaparecen al volver 
 **Ampliar con un clic.** En **todo lugar donde se muestra una foto de producto** (la lista, la ficha del producto, las ofertas y las listas de precios, el pedido guiado y la orden) **un clic en la foto la abre grande ahí mismo**, sobre la pantalla; se cierra con la **X**, con un clic fuera o con **Esc**. Es un **clic**, no el mouse encima (el «hover» estorba al recorrer una lista). En el celular, un toque en la foto de la oferta la amplía.
 
 **Para soporte.** Si un usuario dice «no me salen las fotos» o «no puedo subir la foto», revise primero este ajuste. El ajuste vive en `Tenant.ProductPhotosEnabled` (BIT, 1 por omisión; sección «2026-11-12 — Lote 240» de `Diseño/logistica-db-update.sql`). El corte está en un solo punto del servidor (`PriceListQueries.FilePublicIdsAsync`) y en los tres lugares que suben fotos (producto, oferta y renglón de lista).
+
+### 7a. Despachar una orden de venta o un aviso de salida desde «Recolección y empaque» (Lote 242, 2026-11-12)
+
+<!-- kemi:staff -->
+
+**Qué es.** En **Almacén → Recolección y empaque**, panel **Por documento**, la ficha de una **orden de venta** o de un **aviso de salida** con algo **reservado por sacar** tiene el botón **«Despachar»** (naranja, abajo a la derecha). Es el **mismo despacho** de Ventas → la orden → «Despachar» ([capítulo 18 §10](18-ordenes-de-venta.md)) y de Llegadas y salidas → Salidas → «Despachar» (aviso): **consume la reserva, baja el inventario de las posiciones reservadas y crea la recolección `EMP-#####` enlazada al documento**. El almacén ya no tiene que salir de esta pantalla para sacar la mercancía.
+
+**Quién.** **`warehouse.pick`**, módulo **WMS_LOTSERIAL** (y SALES_ORDERS para órdenes de venta). Sin ese permiso el botón no sale.
+
+**Cómo se usa (orden de venta).**
+1. Abra el documento (clic en su número): la ficha dice **«Lo que hay que recolectar»** (producto, pedido, sacado, por sacar y la posición y lote reservados; un kit sale por sus piezas).
+2. Pulse **«Despachar»**: se abre **«Despachar la orden OV-#####»**, con lo reservado por línea (se puede **despachar por partes**: deje en cada línea la cantidad que sale ahora; opcionalmente una nota) → **«Despachar»**.
+3. Sale el inventario y aparece **«¿Qué sigue con lo despachado?»**: **«Retiro: el cliente lo recoge (listo)»** (ahí termina), **«Entrega: crear la orden de transporte…»** (abre el **Empacar** con los datos de la orden) o **«Decidirlo después»** (la entrega también se puede crear después, desde la lista de despachos de la orden).
+4. Al terminar la ficha se cierra y la lista se actualiza sola: la orden pasa a **Despachada** («Sacado 5 de 5») y la ficha muestra su recolección.
+
+**Aviso de salida.** Igual: **«Despachar»** abre **«Despachar contra SAL-#####»** (todo lo reservado con un clic, o **«Ajustar cantidades»**).
+
+**«Despachar» frente a «Recolectar» (importante).** Son cosas distintas y la ficha lo dice debajo de la tabla:
+- **«Despachar»** saca la mercancía **contra la orden** y la deja despachada (usa la reserva).
+- **«Recolectar»** (Lote 238) solo **llena el formulario «Recolección» de la izquierda** con lo reservado para que lo revise; ese formulario crea una **recolección manual**, que **no usa la reserva** de la orden ni cambia su estatus. Úselo para recolecciones manuales, no para sacar una orden.
+
+**Y «Empacar».** Empacar (acción de cada recolección) **crea la orden de transporte (el envío)** a partir de lo recolectado; solo hace falta cuando la orden va a **entrega**. Con **retiro** no se empaca.
+
+**Qué no ofrece «Despachar».** Un envío ya empacado (tipo «Envío»), un documento sin nada reservado por sacar, o quien no tiene `warehouse.pick`. Los errores son los del despacho de siempre (por ejemplo «No se puede despachar más de lo reservado: {SKU} tiene {n} reservadas.», 409).
+
+**Para soporte.** No hay endpoint nuevo: la ficha usa `POST /api/v1/sales-orders/{publicId}/dispatch` y `POST /api/v1/exit-notices/{publicId}/dispatch`. El **despacho manual sin documento** (interruptor «Despacho manual (sin entrega)» del panel «Recolección», con motivo y documento DMA) sigue siendo el de la izquierda; el aparato tiene las tres pantallas equivalentes (despacho manual, órdenes de venta y avisos de salida).

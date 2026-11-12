@@ -8,7 +8,7 @@ import { Modal, toast } from '../../kernel/ui'
 import { useExitNoticeMutations, type ExitNoticeDto } from './exitNoticeApi'
 import { dispatchLines, dispatchQuantityIssue } from './exitNoticeRules'
 
-export function ExitNoticeDispatchModal({ notice, onClose }: { notice: ExitNoticeDto; onClose: () => void }) {
+export function ExitNoticeDispatchModal({ notice, onClose, onDone }: { notice: ExitNoticeDto; onClose: () => void; onDone?: () => void }) {
   const t = useT()
   const f = useFormat()
   const { dispatch } = useExitNoticeMutations()
@@ -26,7 +26,7 @@ export function ExitNoticeDispatchModal({ notice, onClose }: { notice: ExitNotic
     try {
       const r = await dispatch.mutateAsync({ id: notice.publicId!, body: { lines: body, note: note.trim() || null } })
       toast.success(t('warehouse.exitNotices.dispatched', { number: r.pickBatchNumber ?? '' }))
-      onClose()
+      ;(onDone ?? onClose)()
     } catch (e) {
       toast.error(applyProblemDetails(e).title)
     }

@@ -7038,6 +7038,8 @@
         "lot": "Lote {lot}",
         "kitOf": "Kit {sku}",
         "collectThis": "Recolectar",
+        "dispatch": "Despachar",
+        "dispatchHelp": "«Despachar» saca esto contra la orden: baja el inventario de las posiciones reservadas y deja la orden despachada. «Recolectar» solo llena el formulario de recolección manual de la izquierda (no usa la reserva de la orden).",
         "preloaded": "{number}: renglones cargados en el formulario. Revíselos y recolecte.",
         "by": "Por",
         "qty": "Cantidad"

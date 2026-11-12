@@ -12270,3 +12270,20 @@ Un **clic** (o un toque en el celular) sobre la foto la abre grande ahí mismo, 
 
 **La foto de la lista es pequeña.**
 Es a propósito: la miniatura tiene el alto de la fila. Haga clic para verla grande.
+
+## Lote 242 — Despachar desde Recolección y empaque
+
+**¿Dónde despacho una orden de venta desde el almacén?**
+En Almacén → Recolección y empaque, panel «Por documento»: abra la orden (clic en su número) y pulse **«Despachar»**. Es el mismo despacho de Ventas → la orden → «Despachar»: saca el inventario de las posiciones reservadas y crea la recolección EMP-#####.
+
+**¿Cuál es la diferencia entre «Despachar» y «Recolectar» en la ficha?**
+«Despachar» saca la mercancía contra la orden (usa la reserva y deja la orden despachada). «Recolectar» solo llena el formulario de recolección manual de la izquierda; esa recolección es manual: no usa la reserva ni cambia el estatus de la orden.
+
+**No me sale el botón «Despachar».**
+Solo sale en órdenes de venta y avisos de salida que tengan algo reservado por sacar, y a quien tiene el permiso de recolectar (warehouse.pick). Un envío ya empacado o una orden sin nada reservado (por ejemplo, con backorder) no lo muestran.
+
+**¿Para qué sirve «Empacar»?**
+Para crear la orden de transporte (el envío) de lo recolectado cuando la orden va a entrega. Si el cliente la recoge («Retiro»), no se empaca: al despachar se elige «Retiro» y listo.
+
+**Despaché y no sé si salió el inventario.**
+La orden pasa a «Despachada» (o «Despachada en parte» si dejó cantidades sin sacar), la lista dice «Sacado N de M» y la ficha muestra la recolección EMP-#####; el inventario baja en Productos e inventario y en el Kárdex.

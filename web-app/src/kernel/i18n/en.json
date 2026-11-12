@@ -7038,6 +7038,8 @@
         "lot": "Lot {lot}",
         "kitOf": "Kit {sku}",
         "collectThis": "Collect",
+        "dispatch": "Dispatch",
+        "dispatchHelp": "“Dispatch” takes this out against the order: it lowers inventory from the reserved positions and leaves the order dispatched. “Collect” only fills the manual collection form on the left (it does not use the order reservation).",
         "preloaded": "{number}: lines loaded into the form. Review them and collect.",
         "by": "By",
         "qty": "Quantity"
