@@ -1,0 +1,154 @@
+/* Lote 241 — Análisis de ventas. Colores SOLO del tema (claro/oscuro); nada provoca scroll horizontal de página: las matrices y
+   tablas anchas se desplazan dentro de su contenedor (.sa-scroll) y a 360 px todo va en una columna. */
+.sa-screen{display:flex;flex-direction:column;gap:14px;min-width:0}
+.sa-screen .head{margin-bottom:0}
+.sa-tab{display:flex;flex-direction:column;gap:14px;min-width:0}
+.sa-muted{color:var(--muted)}
+.sa-inline{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.sa-actions-row{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.sa-actions-row > p{margin:0;flex:1 1 220px}
+.sa-help{margin:4px 0 0;font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.sa-help.warn{color:var(--warn)}
+.sa-sub-label{margin-top:8px}
+.sa-check label,label.sa-check{display:inline-flex;flex-direction:row;align-items:center;gap:8px;font-size:13px;cursor:pointer;text-transform:none;letter-spacing:0;color:var(--text)}
+.sa-check input[type=checkbox]{width:auto;height:auto;flex:0 0 auto;margin:0}
+.f.sa-check{justify-content:flex-end}
+
+/* barra de filtros + acción (exportar / imprimir) */
+.sa-toolbar{display:flex;align-items:flex-end;gap:10px 14px;flex-wrap:wrap;min-width:0}
+.sa-toolbar > .filters{flex:1 1 320px;min-width:0}
+.sa-toolbar-act{display:flex;gap:8px;flex-wrap:wrap}
+
+/* aviso de estado */
+.sa-status{border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);background:var(--warnbg);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;color:var(--text)}
+.sa-status ul{margin:6px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.sa-status a{color:var(--action-2);font-weight:600}
+.sa-warnings{border-style:solid;border-color:color-mix(in srgb,var(--warn) 45%,transparent);background:var(--warnbg);color:var(--text)}
+.sa-warnings ul{margin:0;padding-left:18px}
+
+/* tarjetas de cifras */
+.sa-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px}
+.sa-kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;min-width:0;display:flex;flex-direction:column;gap:4px}
+.sa-kpi-label{font-size:12.5px;color:var(--muted)}
+.sa-kpi-value{font-size:26px;font-weight:800;line-height:1.2;font-family:var(--mono);overflow-wrap:anywhere}
+.sa-kpi-sub{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.sa-kpi.t-up .sa-kpi-value,.sa-kpi.t-met .sa-kpi-value{color:var(--ok)}
+.sa-kpi.t-down .sa-kpi-value,.sa-kpi.t-below .sa-kpi-value{color:var(--danger)}
+.sa-kpi.t-near .sa-kpi-value{color:var(--warn)}
+
+/* dos columnas (tabla + gráfico) desde 1100 px */
+.sa-split{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;min-width:0}
+@media (min-width:1100px){.sa-split{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}}
+
+/* cambio y cumplimiento */
+.sa-delta.d-up{color:var(--ok)}
+.sa-delta.d-down{color:var(--danger)}
+.sa-delta.d-flat{color:var(--muted)}
+.sa-comp{display:inline-flex;align-items:center;gap:8px;min-width:0}
+.sa-comp-track{display:inline-block;width:44px;height:8px;border-radius:5px;background:var(--neutral-bg);overflow:hidden;flex:0 0 auto}
+.sa-comp-fill{display:block;height:100%;border-radius:5px;background:var(--neutral-fg)}
+.sa-comp.c-met .sa-comp-fill{background:var(--ok)}
+.sa-comp.c-near .sa-comp-fill{background:var(--warn)}
+.sa-comp.c-below .sa-comp-fill{background:var(--danger)}
+.sa-kpi .sa-comp-track{width:100%;max-width:220px}
+.sa-conf{color:var(--muted);font-size:11px}
+.sa-chips{display:inline-flex;gap:4px;flex-wrap:wrap}
+
+/* contenedor con desplazamiento propio */
+.sa-scroll{position:relative;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.sa-scroll:focus-visible{outline:2px solid var(--action);outline-offset:2px}
+
+/* tabla pequeña (conciliación, datos de gráficos, reportes de importación) */
+.sa-mini{border-collapse:collapse;font-size:12.5px;min-width:100%}
+.sa-mini caption{text-align:left;font-weight:600;padding:10px 0 6px;color:var(--text)}
+.sa-mini th,.sa-mini td{padding:6px 10px;border-bottom:1px solid var(--line-2);text-align:right;white-space:nowrap}
+.sa-mini th:first-child,.sa-mini td:first-child{text-align:left;white-space:normal}
+.sa-mini thead th{color:var(--muted);font-weight:600;font-size:11.5px}
+.sa-mini tbody th{font-weight:500}
+.sa-mini td{font-family:var(--mono)}
+.sa-mini tr.tot th,.sa-mini tr.tot td{font-weight:700}
+.sa-rec th[scope=row]{min-width:180px}
+.sa-rec td.detail{font-family:var(--ui);white-space:normal;text-align:left;font-size:12px}
+
+/* matrices (por mes) y rejilla de cuotas: columna fija a la izquierda */
+.sa-matrix-wrap{border-top:1px solid var(--line-2)}
+.sa-matrix{border-collapse:separate;border-spacing:0;font-size:12px;min-width:100%}
+.sa-matrix th,.sa-matrix td{padding:6px 9px;border-bottom:1px solid var(--line-2);white-space:nowrap;text-align:right}
+.sa-matrix td{font-family:var(--mono);color:var(--text)}
+.sa-matrix thead th{color:var(--muted);font-weight:600;font-size:11.5px;vertical-align:bottom;background:var(--panel)}
+.sa-matrix .stick{position:sticky;left:0;z-index:1;background:var(--panel);text-align:left;white-space:normal;min-width:150px;max-width:220px;border-right:1px solid var(--line-2)}
+.sa-matrix tbody th.stick{font-weight:500;display:table-cell}
+.sa-matrix-name{display:block;font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.sa-matrix td.tot,.sa-matrix tfoot td,.sa-matrix tfoot th{font-weight:700}
+.sa-quota thead th span{display:block}
+.sa-copy{margin-top:4px;font-size:10.5px;padding:2px 6px;font-weight:600}
+.sa-qin{width:92px;text-align:right;font-family:var(--mono);padding:5px 7px}
+.sa-qin.bad{border-color:var(--danger)}
+.sa-quota tr.dim{opacity:.55}
+
+/* columnas del Resumen */
+.sa-colgroups{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;min-width:0}
+.sa-colgroups-label{font-size:12px;color:var(--muted)}
+
+/* gráficos */
+.sa-chart{margin:0;display:flex;flex-direction:column;gap:8px;min-width:0}
+.sa-chart-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px 12px;flex-wrap:wrap}
+.sa-chart-title{min-width:0}
+.sa-chart-title h3{margin:0;font-size:14px;font-weight:700;color:var(--text)}
+.sa-chart-title p{margin:2px 0 0;font-size:12px;color:var(--muted)}
+.sa-chartbox{width:100%;min-width:0}
+.seg.sm button{padding:4px 8px;font-size:11.5px}
+.sa-legend{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--text)}
+.sa-legend li{display:inline-flex;align-items:center;gap:6px;min-width:0;overflow-wrap:anywhere}
+.sa-legend .sa-sw{display:inline-block;width:12px;height:12px;border-radius:3px;flex:0 0 auto;border:1px solid transparent}
+.sa-legend .sa-sw.line{height:3px;border-radius:2px}
+.sa-legend .sa-sw.mark{width:3px;height:14px;background:var(--text)}
+.sa-chart-data summary{cursor:pointer;font-size:12px;color:var(--action-2);font-weight:600}
+.sa-chart-data[open] summary{margin-bottom:6px}
+.sa-chart-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+@media (min-width:1100px){.sa-chart-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.sa-block.wide{grid-column:1 / -1}}
+.sa-block{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;min-width:0}
+.sa-present{display:flex;flex-direction:column;gap:14px}
+.sa-present-head{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.sa-present-head h2{margin:2px 0;font-size:20px;color:var(--title)}
+.sa-present-head p{margin:0}
+.sa-present-company{font-weight:700;color:var(--text)}
+.sa-present-logo{max-height:56px;max-width:220px;object-fit:contain}
+
+/* configuración */
+.sa-hl td,.sa-hl th{background:var(--warnbg)}
+.sa-bulk{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;margin-top:10px;padding:8px 10px;border:1px dashed var(--line);border-radius:var(--radius-sm)}
+.sa-bulk select{min-width:0;max-width:100%}
+.sa-settings fieldset{border:0;padding:0;margin:0;min-width:0}
+.sa-picklist{display:flex;flex-direction:column;max-height:300px;overflow-y:auto;border:1px solid var(--line);border-radius:var(--radius-sm)}
+.sa-picklist .unrow{text-align:left;padding:8px 10px}
+.sa-picklist .unrow:focus-visible{outline:2px solid var(--action);outline-offset:-2px}
+.sa-steps{margin:0 0 12px;padding-left:20px;font-size:13px;display:flex;flex-direction:column;gap:4px}
+.sa-import-form{margin:12px 0}
+.sa-import-form input[type=file]{max-width:100%}
+.sa-report{margin-top:14px;display:flex;flex-direction:column;gap:12px}
+.sa-report h3{margin:0;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sa-file{border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.sa-file h4{margin:0;font-size:13.5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;overflow-wrap:anywhere}
+.sa-facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,180px),1fr));gap:8px 14px;margin:0}
+.sa-facts div{min-width:0}
+.sa-facts dt{font-size:11.5px;color:var(--muted)}
+.sa-facts dd{margin:0;font-family:var(--mono);font-size:13px;overflow-wrap:anywhere}
+.sa-notes{margin:0;display:flex;flex-direction:column;gap:10px}
+.sa-notes dt{font-weight:700;font-size:13px}
+.sa-notes dd{margin:2px 0 0;font-size:13px;color:var(--text);overflow-wrap:anywhere}
+
+/* impresión de la presentación (pestaña Gráficos): solo el bloque .sa-present, siempre en tema claro, un gráfico por bloque */
+@media print{
+  body:has(.sa-present) .rail,body:has(.sa-present) .bar,body:has(.sa-present) .kemi,body:has(.sa-present) .toast,body:has(.sa-present) .drawer-scrim,body:has(.sa-present) .sa-noprint,body:has(.sa-present) .sa-chart-data,body:has(.sa-present) .sa-chart-actions{display:none!important}
+  body:has(.sa-present) .app{display:block;height:auto;overflow:visible}
+  body:has(.sa-present) .main,body:has(.sa-present) .stage{overflow:visible;height:auto;padding:0}
+  body:has(.sa-present){
+    --bg:#FFFFFF; --panel:#FFFFFF; --panel-2:#F2F5FA; --line:#DCE4F1; --line-2:#E8EEF6; --text:#172437; --muted:#596982; --title:#031F49;
+    --ok:#1E9457; --warn:#B5811F; --danger:#CC4B41; --info:#3C6BE0; --violet:#6D5FE0; --neutral-fg:#5D6A7E; --money-2:#3C4751;
+    background:#fff!important;color:#172437
+  }
+  body:has(.sa-present) .sa-chart-grid{display:block}
+  body:has(.sa-present) .sa-block{break-inside:avoid;page-break-inside:avoid;margin:0 0 12px;border-color:#DCE4F1}
+  body:has(.sa-present) .sa-present-head{break-after:avoid}
+}

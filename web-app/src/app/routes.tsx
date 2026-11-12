@@ -410,6 +410,7 @@ export const appRoutes: readonly AppRoute[] = [
   { path: '/analytics/custom-fields', element: lazy(() => import('../features/customfields/CustomFieldsAdminScreen')), perm: 'customfields.view', module: ModuleKeys.CustomFields, nav: { group: 'analytics', key: 'customFields', order: 20 } },
   { path: '/analytics/indicators', element: lazy(() => import('../features/analytics/IndicatorsPage')), perm: 'indicators.view', module: ModuleKeys.Analytics, nav: { group: 'analytics', key: 'indicators', order: 30 } },
   { path: '/analytics/charts', element: lazy(() => import('../features/analytics/ChartsPage')), perm: 'charts.view', module: ModuleKeys.Analytics, nav: { group: 'analytics', key: 'charts', order: 40 } },
+  { path: '/analytics/sales', element: lazy(() => import('../features/salesAnalysis/SalesAnalysisScreen')), perm: 'sales.analysis.view|sales.analysis.manage', module: ModuleKeys.SalesOrders, nav: { group: 'analytics', key: 'salesAnalysis', order: 50 } },   // Lote 241: Análisis de ventas
 
   // ===== Sistema (Impresoras y labels: F-G1; Roles y usuarios: F8a P4; Aparatos móviles: P5; Catálogos de valores: P6; Seguridad y auditoría: F10; el resto F8b o sin backend) =====
   { path: '/system/printers', element: lazy(() => import('../features/system/PrintersScreen')), perm: 'printers.view', module: ModuleKeys.System, nav: { group: 'system', key: 'printers', order: 10 } },   // Lote F-G1

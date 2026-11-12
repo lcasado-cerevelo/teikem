@@ -7859,6 +7859,9 @@ GO
    ---------------------------------------------------------------------------- */
 IF COL_LENGTH(N'dbo.Tenant', N'ProductPhotosEnabled') IS NULL
     ALTER TABLE dbo.Tenant ADD ProductPhotosEnabled BIT NOT NULL CONSTRAINT DF_Tenant_ProductPhotosEnabled DEFAULT 1;
+GO
+
+/* ----------------------------------------------------------------------------
    2026-11-12 — Lote 241: «Análisis de ventas» (docs/lote241-decisiones.md).
    - Tablas nuevas: dbo.SalesRoute (rutas: Cadenas, Norte, Metro…), dbo.SalesRep (representantes: nombre, ruta, usuario opcional), dbo.SalesQuota (cuota de un
      representante por mes en dólares; un mes sin cuota vale la del anterior más reciente), dbo.ProductLine y dbo.ProductLineBrand («distribuidor o línea» y sus marcas;

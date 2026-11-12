@@ -147,7 +147,7 @@ public sealed class SalesPulseService(TeikemDbContext db, ITenantClock clock, Pe
                                      || await permissions.HasPermissionAsync(PermissionCatalog.SalesAnalysisManage, ct)))
         {
             (monthSales, monthQuota) = await analysis.MonthSalesVsQuotaAsync(ct);
-            routes["monthSales"] = "/sales-orders?tab=analysis";
+            routes["monthSales"] = "/analytics/sales";
         }
         return new PulseSalesPanelDto(ordersToday, amountToday, urgent, toApprove, awaiting, toQuickBooks, consignmentUnpaid, routes, monthSales, monthQuota);
     }
