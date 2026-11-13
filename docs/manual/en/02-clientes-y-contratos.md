@@ -263,6 +263,16 @@ A **Suspended** client cannot request sales orders (it could before). From Suspe
 | Profile: minimum | Zero or more, up to 2 decimals | `El mínimo para envío gratis debe ser un monto de cero o más con hasta 2 decimales.` | The minimum for free shipping must be an amount of zero or more with up to 2 decimals. | 400 |
 | Without the permission | — | `Falta el permiso 'sales.approve_client'.` (or the one that applies) | Permission is missing. | 403 |
 
+### 1.9 Sales rep on the client record (Batch 241)
+
+What it does: the client record has a collapsible **«Sales rep»** panel with the client's **sales rep** and **route** (if there is none, «No sales rep»). It is the rep who gets credit for the client's sales in the [Sales analysis](51-analisis-de-ventas.md#34-whose-sale-it-is) (the **current** one counts, also for past months).
+
+Who can: see it, `sales.analysis.view` (or `.manage`) with the **Sales orders** module on; otherwise the panel does not appear. Change it, `sales.analysis.manage`.
+
+How it is used: open the panel, pick another rep in **Change the sales rep** and save («Client sales rep: X.»). Only active reps are offered. To assign many clients at once, use Analysis → Sales analysis → Setup → **Clients without a rep** ([51 §2.3](51-analisis-de-ventas.md#23-assigning-a-sales-rep-to-the-clients)). API: the client detail (`GET /api/v1/clients/{publicId}`) carries `salesRepId`, `salesRepName` and `salesRouteName`; it is changed with `PUT /api/v1/sales-analysis/clients/{clientId}/rep` (`{ "repId": 3 }`, `null` removes it).
+
+Validations: `Representante no encontrado.` (Sales rep not found; 404), `El representante está desactivado: actívelo o escoja otro.` (The sales rep is deactivated: reactivate it or pick another; 400), `Cliente no encontrado.` (Client not found; 404). The rest is in chapter 51.
+
 ---
 
 ## 2. Consignees and locations

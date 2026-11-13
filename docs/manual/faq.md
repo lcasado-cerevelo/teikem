@@ -12271,6 +12271,223 @@ Un **clic** (o un toque en el celular) sobre la foto la abre grande ahí mismo, 
 **La foto de la lista es pequeña.**
 Es a propósito: la miniatura tiene el alto de la fila. Haga clic para verla grande.
 
+## Lote 241 — Análisis de ventas
+<!-- kemi:staff -->
+
+Capítulo: [51 — Análisis de ventas](51-analisis-de-ventas.md). Ficha del cliente: [02 §1.9](02-clientes-y-contratos.md#19-representante-de-ventas-en-la-ficha-lote-241).
+
+### Meses, páginas y cuerpo
+
+**¿Qué significa "El mes debe tener la forma AAAA-MM (por ejemplo 2026-10)."?**
+Un mes (`month`, `compareMonth`, `fromMonth`, `toMonth` o el mes de la cuota) se escribió de otra forma (400). Use año, guion y mes de dos dígitos: `2026-10`. Desde la pantalla no pasa: se escoge de una lista.
+
+**¿Qué significa "El mes final no puede ser anterior al inicial."?**
+En «Movimiento de productos» o en «Gráficos», el mes «Hasta» es anterior al «Desde» (400). Corrija el rango.
+
+**¿Qué significa "El rango no puede pasar de 36 meses."?**
+El rango de meses de «Movimiento de productos» o de «Gráficos» tiene más de 36 meses (400). Acórtelo.
+
+**¿Qué significa "La página debe ser 1 o mayor."?**
+En las transacciones del mes (`skip`) se mandó un número negativo (400). Solo sale al llamar al API a mano.
+
+**¿Qué significa "El tamaño de página debe estar entre 1 y 500."?**
+`take` está fuera de 1 a 500 en las transacciones del mes o en la lista de clientes (400). Para traer todo el mes se usa `all=true`.
+
+**¿Qué significa "El cuerpo de la solicitud es obligatorio."?**
+Una llamada de crear o cambiar (ruta, representante, línea, ajustes, cuotas, asignación, enlace) llegó sin cuerpo (400). Solo ocurre al llamar al API a mano.
+
+### Rutas, representantes y líneas
+
+**¿Qué significa "Escriba el nombre de la ruta."?**
+El nombre de la ruta está vacío (400). Escríbalo (hasta 100 caracteres).
+
+**¿Qué significa "Escriba el nombre del representante."?**
+El nombre del representante está vacío (400).
+
+**¿Qué significa "Escriba el nombre de la línea."?**
+El nombre de la línea está vacío (400).
+
+**¿Qué significa "El nombre no puede pasar de 100 caracteres."?**
+El nombre de la ruta, del representante o de la línea tiene más de 100 caracteres (400). Acórtelo.
+
+**¿Qué significa "Ya hay una ruta activa con ese nombre."?**
+Ya existe una ruta activa con ese nombre (409). También sale al **reactivar** una ruta cuyo nombre ya usa otra activa. Use otro nombre o reactive/edite la que ya existe.
+
+**¿Qué significa "Ya hay un representante activo con ese nombre."?**
+Ya hay un representante activo con ese nombre (409), también al reactivar uno. Si es la misma persona, use el que ya existe.
+
+**¿Qué significa "Ya hay una línea activa con ese nombre."?**
+Ya hay una línea activa con ese nombre (409), también al reactivar una.
+
+**¿Qué significa "La ruta está desactivada: actívela o escoja otra."?**
+Está asignando a un representante una ruta desactivada (400). Reactive la ruta (Configuración → Rutas) o escoja otra.
+
+**¿Qué significa "El representante está desactivado: actívelo o escoja otro."?**
+Está asignando clientes a un representante desactivado (400). Reactívelo (Configuración → Representantes) o escoja otro.
+
+**¿Qué significa "La línea está desactivada: actívela antes de cambiar sus marcas."?**
+Quiere cambiar las marcas de una línea que está desactivada (400). Reactive la línea primero.
+
+**¿Qué significa "El usuario no pertenece a esta compañía."?**
+El usuario que puso al representante no es usuario de esta compañía (400). Escoja uno de la lista o déjelo en blanco: el usuario es opcional.
+
+**¿Qué significa "La ruta tiene representantes activos: páselos a otra ruta antes de desactivarla."?**
+No se puede desactivar una ruta que aún tiene representantes activos (409). Cambie la ruta de cada uno (Configuración → Representantes) y vuelva a intentar.
+
+**¿Qué significa "El representante tiene clientes asignados: páselos a otro representante antes de desactivarlo."?**
+No se puede desactivar un representante con clientes activos asignados (409). Pase sus clientes a otro con «Asignación en bloque» (Configuración → Clientes sin representante, filtro «De {representante}») y vuelva a intentar.
+
+**¿Qué significa "La marca «X» ya está en la línea «Y»: quítela de ahí primero."?**
+Una marca solo puede estar en **una** línea (409). Abra la línea «Y», quite la marca «X» y agréguela a la línea que quiere. Se compara sin distinguir mayúsculas ni acentos.
+
+**¿Qué significa "Escriba la marca."?**
+Mandó una marca vacía al cambiar las marcas de una línea (400). Quite las vacías.
+
+**¿Qué significa "La marca no puede pasar de 100 caracteres."?**
+Una marca tiene más de 100 caracteres (400).
+
+**¿Qué significa "Ruta no encontrada.", "Representante no encontrado.", "Línea no encontrada.", "Cliente no encontrado." o "Producto no encontrado."?**
+El registro no existe o es de otra compañía (404). Recargue la pantalla: quizá otra persona lo cambió. En las cuotas en bloque, basta con que **un** representante de la lista no exista para que se rechace todo. «Producto no encontrado.» solo sale al enlazar un ítem a un producto que no es propio de la compañía.
+
+### Cuotas, ajustes y clientes
+
+**¿Qué significa "La cuota debe ser cero o mayor, con hasta 2 decimales."?**
+Una cuota es negativa o tiene más de 2 decimales (400). En la rejilla de Cuotas, el botón «Guardar» no guarda mientras haya montos inválidos. Escriba el monto sin `$` ni letras, por ejemplo `16500.50`.
+
+**¿Qué significa "No se pueden mandar más de 2000 renglones en una sola llamada."?**
+Se mandaron más de 2,000 cuotas, marcas o clientes de una vez (400). Divida la asignación en bloques de 2,000 o menos.
+
+**¿Qué significa "Indique los clientes (clientIds)."?**
+Se asignó representante «en bloque» sin escoger clientes (400). Marque al menos un cliente.
+
+**¿Qué significa "Los días de entrega deben estar entre 1 y 365."?**
+Los días de entrega de Ajustes están fuera de 1 a 365 (400).
+
+**¿Qué significa "El nivel de servicio (z) debe ser mayor que 0 y hasta 4."?**
+El valor z de Ajustes es 0, negativo o mayor que 4 (400). Los usuales: 90 % (1.282), 95 % (1.645), 97.5 % (1.96), 99 % (2.326).
+
+**¿Qué significa "El registro fue modificado por otro usuario; recargue e intente de nuevo."?**
+Otra persona cambió lo mismo al mismo tiempo (409). Recargue y repita su cambio.
+
+### Importar el historial y emparejar
+
+**¿Qué significa "Suba al menos uno de los dos archivos (ventas o compras)."?**
+Se pulsó Simular o Importar sin ningún archivo (400). Suba el reporte de ventas, el de compras o los dos.
+
+**¿Qué significa "El archivo no puede pasar de 20 MB."?**
+El CSV pesa más de 20 MB (400). Exporte el reporte en partes **con rangos de fechas que no se crucen** (por ejemplo, un año cada una) y suba una por vez: un archivo nuevo reemplaza lo ya importado de **su** rango, no de los demás.
+
+**¿Qué significa "El archivo X no parece un reporte «Sales by Item Detail» o «Purchases by Item Detail» de QuickBooks (faltan las columnas Type, Date, Qty y Amount)."?**
+El archivo (X es su nombre) no es el reporte correcto o no se exportó como CSV (400). Debe ser **Sales by Item Detail** o **Purchases by Item Detail**, exportado con «Create a comma separated values (.csv) file» y con todas las columnas por omisión. Un reporte «Summary», uno por cliente u otro formato no sirve.
+
+**¿Qué significa "El archivo X es un reporte de compras pero se indicó como de ventas."?**
+Subió el reporte de compras en el recuadro de ventas (400). Cámbielo de recuadro. Lo mismo, al revés, dice «…es un reporte de ventas pero se indicó como de compras.»
+
+**¿Qué significa "El tipo debe ser CLIENT o PRODUCT."?**
+Al emparejar a mano se mandó otro tipo (400). Solo ocurre al llamar al API a mano.
+
+**¿Qué significa "Indique el nombre tal como viene en el historial (raw)."?**
+Falta el nombre de QuickBooks que se quiere enlazar (400).
+
+**¿Qué significa "Indique el cliente o el producto de Teikem al que se enlaza."?**
+Se quiso enlazar sin escoger el cliente o producto de Teikem (400). Escójalo en el buscador.
+
+**¿Qué significa "Simule primero con estos mismos archivos."?**
+«Importar de verdad» solo se habilita después de simular **los mismos archivos**. Si cambió un archivo, la fecha de corte o la casilla, simule de nuevo.
+
+**¿Qué significa «Línea N: el total de «X» dice A y la suma de sus renglones da B.»?**
+Aviso del archivo: en QuickBooks el total de un ítem no coincide con la suma de sus renglones, normalmente porque el archivo se editó o se cortó. Si el «TOTAL del reporte» dice «cuadra» no hay problema; si dice «no cuadra», vuelva a exportar el reporte completo.
+
+**¿Qué significan «Línea N: fecha «X» no válida; se omite.» y «Línea N: transacción fuera de un ítem; se omite.»?**
+Una fila del CSV no tenía fecha legible (QuickBooks usa MM/DD/AAAA) o no estaba dentro de un ítem. Esa fila no se importa; el total «no cuadrará» con el del reporte. Vuelva a exportar sin editar el archivo en Excel.
+
+**¿Qué significa «Línea N: «Total X» no cierra ningún encabezado abierto.»?**
+El CSV tiene un renglón de total sin su encabezado (archivo recortado o editado). Se ignora; revise que el «Total» del archivo cuadre.
+
+### Mensajes del comando `import-sales-history`
+
+**¿Qué significa "Uso: dotnet run --project src/Teikem.Api -- import-sales-history <config.json> [--dry-run]"?**
+El comando está mal escrito (salida 2): falta la ruta del `config.json`, sobra una ruta o hay una opción desconocida. La única opción es `--dry-run` (simular).
+
+**¿Qué significa "Error de configuración: El archivo no existe: {ruta}."?**
+No está el `config.json` o uno de los CSV (salida 1). Las rutas son absolutas o relativas a la carpeta del `config.json`; revise mayúsculas y la unidad.
+
+**¿Qué significa "Error de configuración: El archivo de configuración no es un JSON válido: …"?**
+El `config.json` tiene un error de sintaxis (falta una coma, una llave o una comilla). Se aceptan comentarios y comas finales, pero no comillas simples. En Windows, escriba las rutas con `\\` o con `/`.
+
+**¿Qué significa "Error de configuración: El archivo de configuración está vacío."?**
+El `config.json` no tiene contenido.
+
+**¿Qué significa "Error de configuración: company es obligatorio."?**
+Falta `company` en el `config.json`: el nombre exacto de la compañía en Teikem.
+
+**¿Qué significa "Error de configuración: Indique al menos uno de los dos archivos: sales o purchases."?**
+El `config.json` no trae `sales` ni `purchases`.
+
+**¿Qué significa "No existe la compañía «X» (se busca por nombre exacto)."?**
+El nombre de `company` no es igual (letra por letra) al de una compañía de Teikem. Cópielo tal como aparece en la lista de compañías. El comando no crea compañías.
+
+**¿Qué significa "La importación se detuvo: …"?**
+Falló la importación y el texto después de los dos puntos dice por qué (por ejemplo, que un archivo no es el reporte). Cada archivo va en una sola transacción: lo que falló no dejó nada a medias. Corrija y repita; el mismo archivo no duplica.
+
+### Permisos y módulo
+
+**¿Por qué no veo «Análisis de ventas» en el menú Análisis, o me sale 403?**
+Hace falta `sales.analysis.view` (o `.manage`) y el módulo **Órdenes de venta** encendido. En compañías que ya existían, solo el Admin de compañía, el Supervisor de ventas y la Oficina de ventas traen el permiso; a otro rol lo asigna el administrador en Sistema → Roles. Con el módulo apagado el API responde «El módulo 'SALES_ORDERS' no está habilitado para esta compañía.» (403).
+
+**Puedo ver Configuración pero no cambiar nada, y no veo «Importar historial» ni «Emparejar a mano».**
+Tiene `sales.analysis.view` pero no `sales.analysis.manage`: la configuración es de solo lectura.
+
+### Casos frecuentes
+
+**El aviso «Para que el análisis cuadre falta:» no se quita.**
+Cada renglón tiene su enlace: clientes sin representante (Asignar representantes), marcas sin línea (Asignar líneas), nombres sin emparejar (Emparejar a mano), sin historial (Importar el historial), traslape o sin fecha de corte (Poner la fecha de corte). Se quita solo cuando ya no hay nada pendiente.
+
+**No me cuadra con QuickBooks.**
+Compare el **Total del mes** de «Totales y conciliación» (incluye envío y otros cargos), no la suma de los representantes; revise que «Diferencia por revisar» sea 0.00, los totales por mes de la última importación, y la fecha de corte (el historial cuenta antes de ella; Teikem desde ella). En «Movimiento de productos» la venta es solo de producto, sin descuentos: no es el total de QuickBooks.
+
+**Un cliente sale sin representante.**
+Asígnelo en Configuración → Clientes sin representante o en la ficha del cliente. Si es un cliente del historial que nunca emparejó, enlácelo en «Emparejar a mano». Mientras tanto su venta sale en «Sin representante».
+
+**Cambié a un cliente de representante y los meses pasados también cambiaron.**
+Es así por diseño: la venta es del representante que el cliente tiene **hoy**, también la de meses pasados (QuickBooks no trae representante en este reporte). No hay foto histórica.
+
+**Los underpads no cuentan en Padimont.**
+Los underpads (`PD-…`) no traen marca de QuickBooks, así que caen en la línea «Sin marca». Póngales una marca en Productos e inventario y agréguela a la línea Padimont en Configuración → Líneas y marcas.
+
+**Septiembre no coincide con mi Excel.**
+Septiembre es el mes de comparación y aquí se calcula con las mismas reglas que el mes principal y con el representante asignado hoy. El Excel de octubre lo tomó de otro reporte («referencia por rutas misma fecha»). Revise que todos los clientes tengan representante, que el historial de septiembre esté completo y la fecha de corte.
+
+**Reimporté y cambió un mes.**
+Un archivo nuevo reemplaza todas las líneas ya importadas entre su primera y su última fecha. Si trae distinto contenido (correcciones en QuickBooks, otro rango, un reporte parcial) el mes cambia. En la simulación mire «Reemplaza su rango de fechas (N líneas)» y los totales por mes. Exporte siempre el reporte completo.
+
+**¿Reimportar el mismo archivo duplica?**
+No: el mismo archivo (misma huella) reemplaza su propio lote («Reemplaza el mismo archivo»).
+
+**Sale el aviso «No hay fecha de corte y el historial importado … se traslapa con las facturas de Teikem …».**
+QuickBooks y Teikem tienen ventas de los mismos días y se están sumando dos veces. Ponga la fecha de corte (Configuración → Ajustes): el primer día cuyas facturas se emiten en Teikem. El historial cuenta antes de ese día y Teikem desde él.
+
+**Sale «N línea(s) del historial importado son del … o después: no cuentan …».**
+Exportó el reporte de QuickBooks más allá de la fecha de corte. Es normal: esas líneas no cuentan porque desde la fecha de corte cuentan las facturas de Teikem.
+
+**Los productos salen todos «Nuevo».**
+El rango de meses es muy corto. «Nuevo» se mide con el primer mes con venta dentro del rango. Amplíe el rango en «Movimiento de productos».
+
+**La tendencia o el promedio semanal salen vacíos.**
+La tendencia solo se calcula si el producto vendió en los tres últimos meses completos. El promedio semanal sale «sin base» si no vendió en las últimas 8 semanas completas; «pocas semanas» si tiene menos de 3 semanas de historia; «esporádico» si vendió la mitad de las semanas o menos.
+
+**La cobertura del Excel no es la de la pantalla.**
+La hoja «Inventario» del Excel por representante calcula la cobertura con las unidades del **mes** escogido, como el Excel de antes; «Movimiento de productos» usa el promedio semanal de las últimas 8 semanas. Son dos cálculos distintos.
+
+**El Excel no trae los gráficos.**
+Correcto: el Excel lleva los **datos** (hoja «Gráfico»), no el dibujo. Para el dibujo use Análisis de ventas → Gráficos → «Imprimir presentación o guardar PDF».
+
+**¿Cómo guardo los gráficos como PDF?**
+En «Gráficos» pulse «Imprimir presentación o guardar PDF» y en el diálogo del navegador escoja «Guardar como PDF».
+
+**La cifra «Venta del mes vs cuota» del Pulso no coincide con la suma de los representantes.**
+La venta del Pulso incluye también a los clientes sin representante, y la cuota es la suma de los representantes activos. Asigne representantes a todos los clientes.
+
 ## Lote 242 — Despachar desde Recolección y empaque
 
 **¿Dónde despacho una orden de venta desde el almacén?**

@@ -261,6 +261,16 @@ Un cliente **Suspendido** no puede solicitar órdenes de venta (antes sí podía
 | Perfil: mínimo | Cero o más, hasta 2 decimales | `El mínimo para envío gratis debe ser un monto de cero o más con hasta 2 decimales.` | 400 |
 | Sin el permiso | — | `Falta el permiso 'sales.approve_client'.` (o el que corresponda) | 403 |
 
+### 1.9 Representante de ventas en la ficha (Lote 241)
+
+Qué hace: la ficha trae un panel plegable **«Representante de ventas»** con el **representante** del cliente y su **ruta** (si no tiene, «Sin representante»). Es el representante a quien se le cuenta la venta del cliente en el [Análisis de ventas](51-analisis-de-ventas.md#34-de-quién-es-la-venta) (cuenta el de **hoy**, también para los meses pasados).
+
+Quién puede: verlo, `sales.analysis.view` (o `.manage`) con el módulo **Órdenes de venta** encendido; si no, el panel no aparece. Cambiarlo, `sales.analysis.manage`.
+
+Cómo se usa: abra el panel, escoja otro representante en **Cambiar el representante** y guarde («Representante del cliente: X.»). Solo salen los representantes activos. Para asignar a muchos clientes de una vez, use Análisis → Análisis de ventas → Configuración → **Clientes sin representante** ([51 §2.3](51-analisis-de-ventas.md#23-asignar-representante-a-los-clientes)). API: el detalle del cliente (`GET /api/v1/clients/{publicId}`) trae `salesRepId`, `salesRepName` y `salesRouteName`; se cambia con `PUT /api/v1/sales-analysis/clients/{clientId}/rep` (`{ "repId": 3 }`, `null` lo quita).
+
+Validaciones: `Representante no encontrado.` (404), `El representante está desactivado: actívelo o escoja otro.` (400), `Cliente no encontrado.` (404). El resto está en el capítulo 51.
+
 ---
 
 ## 2. Consignatarios y localizaciones

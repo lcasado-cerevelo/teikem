@@ -12346,3 +12346,222 @@ It ran in **simulation** (`@Aplicar = 0`, the file's value): it shows what it wo
 
 **I cannot find products exempt from IVU.**
 Until `11-impuesto-productos.sql` is run with `@Aplicar = 1`, all Advance Solutions products have **no tax category**, which Teikem treats as taxable. The script sets **Exempt** on the eleven QuickBooks «Non» products; afterwards the **Tax** field of the product editor (Warehouse → Products and inventory, Prices block) shows them as Exempt. See [Batch 237](#batch-237--client-exemption-by-components-and-the-tax-field-in-the-product-editor).
+
+## Batch 241 — Sales analysis
+<!-- kemi:staff -->
+
+> The server answers these messages in Spanish; each question quotes the exact Spanish text, followed by its English meaning.
+
+Chapter: [51 — Sales analysis](51-analisis-de-ventas.md). Client record: [02 §1.9](02-clientes-y-contratos.md#19-sales-rep-on-the-client-record-batch-241).
+
+### Months, pages and body
+
+**What does "El mes debe tener la forma AAAA-MM (por ejemplo 2026-10)." mean?**
+(The month must have the form YYYY-MM, for example 2026-10.) A month (`month`, `compareMonth`, `fromMonth`, `toMonth` or the quota month) was written another way (400). Use year, hyphen and a two-digit month: `2026-10`. It does not happen on screen: the month is picked from a list.
+
+**What does "El mes final no puede ser anterior al inicial." mean?**
+(The end month cannot be before the start.) In «Product movement» or «Charts», the «To» month is before «From» (400). Fix the range.
+
+**What does "El rango no puede pasar de 36 meses." mean?**
+(The range cannot exceed 36 months.) The month range of «Product movement» or «Charts» is longer than 36 months (400). Shorten it.
+
+**What does "La página debe ser 1 o mayor." mean?**
+(The page must be 1 or greater.) A negative `skip` was sent to the month's transactions (400). It only appears when calling the API by hand.
+
+**What does "El tamaño de página debe estar entre 1 y 500." mean?**
+(The page size must be between 1 and 500.) `take` is outside 1 to 500 in the month's transactions or in the client list (400). To bring the whole month use `all=true`.
+
+**What does "El cuerpo de la solicitud es obligatorio." mean?**
+(The request body is required.) A create or change call (route, sales rep, line, settings, quotas, assignment, link) arrived without a body (400). It only happens when calling the API by hand.
+
+### Routes, sales reps and lines
+
+**What does "Escriba el nombre de la ruta." mean?**
+(Type the route name.) The route name is empty (400). Type it (up to 100 characters).
+
+**What does "Escriba el nombre del representante." mean?**
+(Type the sales rep's name.) The sales rep's name is empty (400).
+
+**What does "Escriba el nombre de la línea." mean?**
+(Type the line name.) The line name is empty (400).
+
+**What does "El nombre no puede pasar de 100 caracteres." mean?**
+(The name cannot exceed 100 characters.) The name of the route, sales rep or line is longer than 100 characters (400). Shorten it.
+
+**What does "Ya hay una ruta activa con ese nombre." mean?**
+(There is already an active route with that name.) A route with that name already exists and is active (409). It also appears when **reactivating** a route whose name another active one uses. Use another name or reactivate/edit the existing one.
+
+**What does "Ya hay un representante activo con ese nombre." mean?**
+(There is already an active sales rep with that name.) 409, also when reactivating one. If it is the same person, use the existing one.
+
+**What does "Ya hay una línea activa con ese nombre." mean?**
+(There is already an active line with that name.) 409, also when reactivating one.
+
+**What does "La ruta está desactivada: actívela o escoja otra." mean?**
+(The route is deactivated: reactivate it or pick another.) You are assigning a deactivated route to a sales rep (400). Reactivate the route (Setup → Routes) or pick another.
+
+**What does "El representante está desactivado: actívelo o escoja otro." mean?**
+(The sales rep is deactivated: reactivate them or pick another.) You are assigning clients to a deactivated sales rep (400). Reactivate them (Setup → Sales reps) or pick another.
+
+**What does "La línea está desactivada: actívela antes de cambiar sus marcas." mean?**
+(The line is deactivated: reactivate it before changing its brands.) You want to change the brands of a deactivated line (400). Reactivate the line first.
+
+**What does "El usuario no pertenece a esta compañía." mean?**
+(The user does not belong to this company.) The user set on the sales rep is not a user of this company (400). Pick one from the list or leave it blank: the user is optional.
+
+**What does "La ruta tiene representantes activos: páselos a otra ruta antes de desactivarla." mean?**
+(The route has active sales reps: move them to another route before deactivating it.) A route that still has active sales reps cannot be deactivated (409). Change each one's route (Setup → Sales reps) and try again.
+
+**What does "El representante tiene clientes asignados: páselos a otro representante antes de desactivarlo." mean?**
+(The sales rep has assigned clients: move them to another sales rep before deactivating.) A sales rep with active assigned clients cannot be deactivated (409). Move their clients to another one with «Bulk assignment» (Setup → Clients without a rep, filter «Of {sales rep}») and try again.
+
+**What does "La marca «X» ya está en la línea «Y»: quítela de ahí primero." mean?**
+(Brand «X» is already in line «Y»: remove it from there first.) A brand can be in only **one** line (409). Open line «Y», remove brand «X» and add it to the line you want. It is compared without distinguishing upper/lower case or accents.
+
+**What does "Escriba la marca." mean?**
+(Type the brand.) An empty brand was sent when changing a line's brands (400). Remove the empty ones.
+
+**What does "La marca no puede pasar de 100 caracteres." mean?**
+(The brand cannot exceed 100 characters.) A brand is longer than 100 characters (400).
+
+**What does "Ruta no encontrada.", "Representante no encontrado.", "Línea no encontrada.", "Cliente no encontrado." or "Producto no encontrado." mean?**
+(Route / Sales rep / Line / Client / Product not found.) The record does not exist or belongs to another company (404). Reload the screen: someone else may have changed it. In bulk quotas, **one** nonexistent sales rep in the list is enough to reject everything. «Producto no encontrado.» only appears when linking an item to a product that is not one of the company's own.
+
+### Quotas, settings and clients
+
+**What does "La cuota debe ser cero o mayor, con hasta 2 decimales." mean?**
+(The quota must be zero or greater, with up to 2 decimals.) A quota is negative or has more than 2 decimals (400). In the Quotas grid, «Save» does not save while there are invalid amounts. Type the amount without `$` or letters, for example `16500.50`.
+
+**What does "No se pueden mandar más de 2000 renglones en una sola llamada." mean?**
+(No more than 2000 rows can be sent in a single call.) More than 2,000 quotas, brands or clients were sent at once (400). Split the assignment into blocks of 2,000 or fewer.
+
+**What does "Indique los clientes (clientIds)." mean?**
+(Give the clients (clientIds).) A bulk sales-rep assignment was made without choosing clients (400). Tick at least one client.
+
+**What does "Los días de entrega deben estar entre 1 y 365." mean?**
+(Lead days must be between 1 and 365.) The lead days in Settings are outside 1 to 365 (400).
+
+**What does "El nivel de servicio (z) debe ser mayor que 0 y hasta 4." mean?**
+(The service level (z) must be greater than 0 and up to 4.) The z value in Settings is 0, negative or greater than 4 (400). The usual ones: 90 % (1.282), 95 % (1.645), 97.5 % (1.96), 99 % (2.326).
+
+**What does "El registro fue modificado por otro usuario; recargue e intente de nuevo." mean?**
+(The record was modified by another user; reload and try again.) Someone else changed the same thing at the same time (409). Reload and repeat your change.
+
+### Importing the history and matching
+
+**What does "Suba al menos uno de los dos archivos (ventas o compras)." mean?**
+(Upload at least one of the two files (sales or purchases).) Simulate or Import was pressed with no file (400). Upload the sales report, the purchases report or both.
+
+**What does "El archivo no puede pasar de 20 MB." mean?**
+(The file cannot exceed 20 MB.) The CSV is larger than 20 MB (400). Export the report in parts **with date ranges that do not cross** (for example, one year each) and upload one at a time: a new file replaces what was already imported for **its** range, not for the others.
+
+**What does "El archivo X no parece un reporte «Sales by Item Detail» o «Purchases by Item Detail» de QuickBooks (faltan las columnas Type, Date, Qty y Amount)." mean?**
+(File X does not look like a QuickBooks «Sales by Item Detail» or «Purchases by Item Detail» report (columns Type, Date, Qty and Amount are missing).) The file (X is its name) is not the right report or was not exported as CSV (400). It must be **Sales by Item Detail** or **Purchases by Item Detail**, exported with «Create a comma separated values (.csv) file» and with all the default columns. A «Summary» report, one by client or another format does not work.
+
+**What does "El archivo X es un reporte de compras pero se indicó como de ventas." mean?**
+(File X is a purchases report but was given as sales.) You uploaded the purchases report in the sales box (400). Move it to the other box. The reverse says «…es un reporte de ventas pero se indicó como de compras.»
+
+**What does "El tipo debe ser CLIENT o PRODUCT." mean?**
+(The kind must be CLIENT or PRODUCT.) Another kind was sent when matching by hand (400). It only happens when calling the API by hand.
+
+**What does "Indique el nombre tal como viene en el historial (raw)." mean?**
+(Give the name as it comes in the history (raw).) The QuickBooks name to link is missing (400).
+
+**What does "Indique el cliente o el producto de Teikem al que se enlaza." mean?**
+(Give the Teikem client or product it is linked to.) A link was attempted without choosing the Teikem client or product (400). Choose it in the search box.
+
+**What does "Simule primero con estos mismos archivos." mean?**
+(Simulate first with these same files.) «Import for real» is only enabled after simulating **the same files**. If you changed a file, the cutoff date or the checkbox, simulate again.
+
+**What does «Línea N: el total de «X» dice A y la suma de sus renglones da B.» mean?**
+(Line N: the total of «X» says A and the sum of its rows is B.) File warning: in QuickBooks an item's total does not match the sum of its rows, usually because the file was edited or cut. If the «Report TOTAL» says «matches» there is no problem; if it says «does not match», export the complete report again.
+
+**What do «Línea N: fecha «X» no válida; se omite.» and «Línea N: transacción fuera de un ítem; se omite.» mean?**
+(Line N: date «X» is not valid; skipped. / Line N: transaction outside an item; skipped.) A row of the CSV had no readable date (QuickBooks uses MM/DD/YYYY) or was not inside an item. That row is not imported; the total will «not match» the report's. Export again without editing the file in Excel.
+
+**What does «Línea N: «Total X» no cierra ningún encabezado abierto.» mean?**
+(Line N: «Total X» closes no open heading.) The CSV has a total row without its heading (cut or edited file). It is ignored; check that the file's «Total» matches.
+
+### `import-sales-history` command messages
+
+**What does "Uso: dotnet run --project src/Teikem.Api -- import-sales-history <config.json> [--dry-run]" mean?**
+(Usage: …) The command is badly written (exit 2): the `config.json` path is missing, there is an extra path or an unknown option. The only option is `--dry-run` (simulate).
+
+**What does "Error de configuración: El archivo no existe: {ruta}." mean?**
+(Configuration error: the file does not exist: {path}.) The `config.json` or one of the CSV files is not there (exit 1). Paths are absolute or relative to the `config.json` folder; check upper/lower case and the drive.
+
+**What does "Error de configuración: El archivo de configuración no es un JSON válido: …" mean?**
+(Configuration error: the configuration file is not valid JSON: …) The `config.json` has a syntax error (a missing comma, brace or quote). Comments and trailing commas are accepted, but not single quotes. On Windows, write paths with `\\` or `/`.
+
+**What does "Error de configuración: El archivo de configuración está vacío." mean?**
+(Configuration error: the configuration file is empty.) The `config.json` has no content.
+
+**What does "Error de configuración: company es obligatorio." mean?**
+(Configuration error: company is required.) `company` is missing in the `config.json`: the company's exact name in Teikem.
+
+**What does "Error de configuración: Indique al menos uno de los dos archivos: sales o purchases." mean?**
+(Configuration error: give at least one of the two files: sales or purchases.) The `config.json` carries neither `sales` nor `purchases`.
+
+**What does "No existe la compañía «X» (se busca por nombre exacto)." mean?**
+(The company «X» does not exist (searched by exact name).) The `company` name is not identical (letter by letter) to a Teikem company. Copy it as it appears in the company list. The command does not create companies.
+
+**What does "La importación se detuvo: …" mean?**
+(The import stopped: …) The import failed and the text after the colon says why (for example, that a file is not the report). Each file goes in a single transaction: what failed left nothing half done. Fix it and repeat; the same file does not duplicate.
+
+### Permissions and module
+
+**Why don't I see «Sales analysis» in the Analysis menu, or I get 403?**
+You need `sales.analysis.view` (or `.manage`) and the **Sales orders** module on. In companies that already existed, only the Company admin, the Sales supervisor and the Sales office carry the permission; any other role is assigned by the administrator in System → Roles. With the module off the API answers «El módulo 'SALES_ORDERS' no está habilitado para esta compañía.» (The module 'SALES_ORDERS' is not enabled for this company; 403).
+
+**I can see Setup but change nothing, and I don't see «Import history» or «Match by hand».**
+You have `sales.analysis.view` but not `sales.analysis.manage`: the setup is read only.
+
+### Frequent cases
+
+**The «For the analysis to add up:» notice does not go away.**
+Each line has its link: clients without a sales rep (Assign sales reps), brands without a line (Assign lines), unmatched names (Match by hand), no history (Import the history), overlap or no cutoff date (Set the cutoff date). It disappears on its own when nothing is pending.
+
+**It doesn't match QuickBooks.**
+Compare the **Month total** in «Totals and reconciliation» (it includes shipping and other charges), not the sum of the sales reps; check that «Difference to review» is 0.00, the totals by month of the last import, and the cutoff date (the history counts before it; Teikem from it). In «Product movement» sales are product only, without discounts: it is not the QuickBooks total.
+
+**A client shows without a sales rep.**
+Assign it in Setup → Clients without a rep or on the client record. If it is a history client that never matched, link it in «Match by hand». Meanwhile its sales show under «No sales rep».
+
+**I changed a client's sales rep and the past months changed too.**
+That is by design: the sale belongs to the sales rep the client has **today**, also for past months (QuickBooks does not carry a sales rep in this report). There is no historical snapshot.
+
+**The underpads don't count in Padimont.**
+Underpads (`PD-…`) come with no QuickBooks brand, so they fall in the «Without a brand» line. Give them a brand in Products & inventory and add it to the Padimont line in Setup → Lines and brands.
+
+**September doesn't match my Excel.**
+September is the comparison month and here it is computed with the same rules as the main month and with today's assigned sales rep. The October Excel took it from another report («reference by routes same date»). Check that all clients have a sales rep, that the September history is complete and the cutoff date.
+
+**I re-imported and a month changed.**
+A new file replaces all the already imported lines between its first and its last date. If it brings different content (corrections in QuickBooks, another range, a partial report) the month changes. In the simulation look at «Replaces its date range (N lines)» and the totals by month. Always export the complete report.
+
+**Does re-importing the same file duplicate?**
+No: the same file (same fingerprint) replaces its own batch («Replaces the same file»).
+
+**The notice «No hay fecha de corte y el historial importado … se traslapa con las facturas de Teikem …» appears.**
+(There is no cutoff date and the imported history … overlaps the Teikem invoices …) QuickBooks and Teikem have sales of the same days and they are being added twice. Set the cutoff date (Setup → Settings): the first day whose invoices are issued in Teikem. The history counts before that day and Teikem from it.
+
+**The notice «N línea(s) del historial importado son del … o después: no cuentan …» appears.**
+(N imported history line(s) are from … or later: they do not count …) You exported the QuickBooks report beyond the cutoff date. It is normal: those lines do not count because from the cutoff date on the Teikem invoices count.
+
+**All the products show «New».**
+The month range is too short. «New» is measured by the first month with sales inside the range. Widen the range in «Product movement».
+
+**The trend or the weekly average is empty.**
+The trend is only calculated if the product sold in the last three full months. The weekly average shows «no basis» if it did not sell in the last 8 full weeks; «few weeks» if it has less than 3 weeks of history; «sporadic» if it sold half of the weeks or fewer.
+
+**The Excel coverage is not the screen's.**
+The «Inventory» sheet of the by-sales-rep Excel calculates coverage with the units of the chosen **month**, like the old Excel; «Product movement» uses the weekly average of the last 8 weeks. They are two different calculations.
+
+**The Excel has no charts.**
+Correct: the Excel carries the **data** («Chart» sheet), not the drawing. For the drawing use Sales analysis → Charts → «Print presentation or save PDF».
+
+**How do I save the charts as PDF?**
+In «Charts» press «Print presentation or save PDF» and in the browser's dialog choose «Save as PDF».
+
+**The Pulse «Month sales vs quota» figure does not match the sum of the sales reps.**
+The Pulse sales also include clients without a sales rep, and the quota is the sum of the active sales reps. Assign sales reps to all clients.
