@@ -78,4 +78,5 @@ Un archivo por escena (WAV o MP3), sin música, ~0.3 s de silencio a cada lado, 
 
 ## 9. Notas de cuota y de seguridad
 - Los mapas ya están hechos (9 informes); lo que falta consume menos: Sonnet medio para casi todo, Opus solo en guion y revisión final, **una escena a la vez**.
+- **Guardia de recursos (2026-11-12):** Luis sigue trabajando en la misma máquina (64 GB, 32 hilos) y ya se cayó una vez. Todo lo pesado pasa por `scripts/demo/video-solutions-proceso/guardia-recursos.ps1`: espera holgura (RAM libre ≥ 16 GB, procesador ≤ 60 %), corre con prioridad baja y 8 hilos, y mata solo su comando si la RAM libre baja de 8 GB, el procesador pasa de 92 % por 15 s o el comando pasa de 8 GB. Ver R8 en `docs/video/REGLAS.md`.
 - Nada de esto usa Brevo ni toca TEST, producción ni tu base `Teikem`; si algo falla en la grabación, se restaura la instantánea.

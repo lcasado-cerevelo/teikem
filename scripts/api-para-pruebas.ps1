@@ -7,7 +7,8 @@
 #   Luego: cd web-app; npx playwright test        (Ctrl+C aquí apaga el API)
 param(
     [string]$Base = 'Teikem_e2e',
-    [int]$Puerto = 5000
+    [int]$Puerto = 5000,
+    [string]$FilesRoot = ''      # carpeta de archivos (fotos, firmas) distinta de la de desarrollo; p. ej. la copia de archivos del video (ver docs/video/REGLAS.md, R2)
 )
 $ErrorActionPreference = 'Stop'
 $raiz = Split-Path -Parent $PSScriptRoot
@@ -28,6 +29,7 @@ $env:Brevo__ApiKey = ''                                  # sin correo real: lo i
 $env:Auth__Onboarding__Enabled = 'false'
 $env:Portal__ReturnInviteTokenInResponse = 'true'
 $env:Auth__TrustedBrowsers__ReturnLinkInResponse = 'true'
+if ($FilesRoot) { $env:Files__Root = $FilesRoot }
 
 Write-Host "API de pruebas SIN correo real: base $Base, http://localhost:$Puerto (Ctrl+C para apagarlo)."
 Write-Host "Si la base no existe o está vieja:  dotnet run --project src\Teikem.Api -- db-init   (con ConnectionStrings__Teikem apuntando a $Base)"
