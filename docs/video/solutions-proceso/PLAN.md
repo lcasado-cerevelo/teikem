@@ -8,7 +8,7 @@ Detalle de cada escena: `mapa/01` a `mapa/06` (pantalla por pantalla, con etique
 - **Guion maestro con marcas** (qué se ve, qué se resalta, cuándo hay pausa) y, por escena, un **texto limpio** para pegar en tu text-to-speech. Tú me devuelves **un audio por escena**; **el audio manda**: la toma se ajusta a la voz, nunca al revés.
 - Todo lo pesado (audios, tomas, cuadros, montaje, MP4) vive **fuera de git**, en `F:/Download/TeikemVideo/solutions-proceso/`.
 
-## 2. Las seis escenas (en el orden que dictaste)
+## 2. Las siete escenas (las seis que dictaste y la 7, agregada después)
 
 | # | Bloque | Qué se ve | Seg. |
 |---|---|---|---|
@@ -18,6 +18,7 @@ Detalle de cada escena: `mapa/01` a `mapa/06` (pantalla por pantalla, con etique
 | E4 | Venta con el **asistente** | Cliente, productos (**kit OFERTA1** + un producto suelto), entrega/retiro, **firma** y contraseña, pedido enviado | 115 |
 | E5 | Almacén | Recolección y empaque: lo que hay que recolectar (el kit por piezas), recolectar, despachar la salida; Kárdex y balance | 85 |
 | E6 | QuickBooks en ventas | De la orden despachada a la **factura**, pestaña QuickBooks, **«Exportar a QuickBooks»**, el archivo `.iif` descargado y cómo lo usa la oficina; lámina con los pasos dentro de QuickBooks y el contraste con hoy (Leandra teclea desde un correo) | 85 |
+| E7 | **Análisis de ventas** (módulo nuevo, Lote 241) | Análisis → Análisis de ventas: **Por representante** (tarjetas, comparativo contra cuotas y conciliación), **Movimiento de productos** (unidades por mes, cobertura, reorden), **Gráficos**, y la **importación del historial de QuickBooks** con «Simular»; cierre: lo que se vende hoy en Teikem ya cuenta en el análisis | 100–160 |
 
 ## 3. Lo que ya está preparado (hecho hoy, solo en una **copia**; tu base `Teikem` no se tocó)
 - **ffmpeg 9.0.2 completo** instalado (H.264, AAC, subtítulos, rótulos, detección de silencios). Ruta: `C:\Users\Luis\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0.2-full_build\bin`.
@@ -27,10 +28,11 @@ Detalle de cada escena: `mapa/01` a `mapa/06` (pantalla por pantalla, con etique
   - los scripts de `scripts/solutions-pedido-vendedores/`: **01** (marcas: pestañas del pedido), **02** (kit **OFERTA1** = 6 × 52800 + 1 × 070120 a $41.94 y su oferta), **03** (roles Ventas, Oficina de ventas y Supervisor de ventas), **08** (envío $12, gratis desde $120; nombres de términos de QuickBooks) y **10** (productos y clientes ya en QuickBooks, para que el archivo lleve solo la factura nueva). El **09** no se corrió (crea reglas con correo);
   - la oferta de prueba «OFERTA DEL DIA» (kit «kIT DE mONITOR gRATIS») **desactivada**;
   - el almacén de Solutions en **recibo directo a posición** y con su nombre corregido («Almacén Solutions»).
+- **Análisis de ventas (agregado 2026-11-12)**: se aplicó a la copia el `db-update` del Lote 241 (10 tablas nuevas, `Client.SalesRepId`, permisos `sales.analysis.*` para TenantAdmin, SalesSupervisor y SalesOffice). La propia migración del lote dejó **7 representantes** (con el código del campo «Representante» como nombre) y **695 clientes enlazados**; **no hay** rutas, cuotas ni historial importado todavía.
 - **Fotos**: el almacén de archivos (7,209 archivos, 221 MB) copiado a `F:/Download/TeikemVideo/base/files` para que el API de grabación las sirva sin tocar el de tu desarrollo.
 - Los scripts temporales de esta preparación están en la carpeta de trabajo de la sesión; falta dejarlos como `scripts/demo/video-solutions-proceso/` (idempotentes, con guarda que aborta si la base no es `Teikem_video*`).
 
-**Falta preparar** (se hace con el API de grabación levantado, sin correo): usuarios de demostración sin MFA (administrador, ventas, almacén, oficina), uno o dos clientes de demostración, cancelar la orden vieja OV-00002 (libera 35 unidades reservadas), el CSV de QuickBooks recortado a las dos compras, la foto de OFERTA1, y una **instantánea de la base** (SQL Server 2022 Developer la soporta) para volver al punto de partida en menos de 30 s entre tomas.
+**Falta preparar** (se hace con el API de grabación levantado, sin correo; para E7: rutas, nombres de los representantes, cuotas, fecha de corte y el historial importado de `SalesByItemDetail.CSV`, con los guantes NECH enlazados fuera de cámara): usuarios de demostración sin MFA (administrador, ventas, almacén, oficina), uno o dos clientes de demostración, cancelar la orden vieja OV-00002 (libera 35 unidades reservadas), el CSV de QuickBooks recortado a las dos compras, la foto de OFERTA1, y una **instantánea de la base** (SQL Server 2022 Developer la soporta) para volver al punto de partida en menos de 30 s entre tomas.
 
 ## 4. Hallazgos que cambian el plan (para que no haya sorpresas)
 1. **Salida desde Recolección y empaque (tu escena 5).** Sí había despacho en la web, pero repartido: Ventas → la orden → «Despachar», Llegadas y salidas → Salidas → «Despachar» y el despacho manual del panel «Recolección». La ficha de Recolección y empaque solo tenía «Recolectar», que llena el formulario **manual** (no usa la reserva de la orden). **Ya está resuelto (Lote 242, hecho hoy):** la ficha de la orden tiene **«Despachar»** (retiro o entrega), verificado con Playwright. «Empacar» crea la orden de transporte y solo hace falta si la orden va a entrega.
@@ -38,7 +40,8 @@ Detalle de cada escena: `mapa/01` a `mapa/06` (pantalla por pantalla, con etique
 3. **El archivo de compras de QuickBooks trae facturas de compra (Bill), no órdenes de compra.** En la narración se dice «las compras de QuickBooks». Si más adelante tienes un reporte de órdenes de compra de verdad, se ajusta.
 4. **La entrega no está configurada en Solutions** (sin contratos ni tarifas, Envíos apagado): el video usa **«Recogido» / «Retiro»**.
 5. **Dos detalles de pantalla que se ven mal** (no se arreglan para el video; se anotan): el aviso de que el SKU se igualó no sale en las órdenes «Listas», y la ficha de una orden «Enviada» ofrece un botón azul «Avanzar a Cancelada». Además, un kit creado desde la pantalla queda sin marca (por eso se usa el script 02) y la ayuda del buscador de clientes promete búsqueda por teléfono que no existe.
-6. **Orden entre escenas:** E1 antes que E2 (si no, la importación se bloquea por la caja 101010), y E3 antes que E4 (hay que tener lo que se vende).
+6. **Análisis de ventas (E7), mapa `mapa/10`.** Pantalla Análisis → Análisis de ventas (`/analytics/sales`, módulo SALES_ORDERS, permiso `sales.analysis.view`/`.manage`) con 4 pestañas (Por representante, Movimiento de productos, Gráficos, Configuración). Dura ~158 s completa o ~100–110 s recortada: con ella el video pasa de 10 a ~11 minutos. El único archivo que sirve para importar es `SalesByItemDetail.CSV` (13 mil líneas, del 19-dic-2025 al 5-nov-2026; el Excel y el PDF de octubre son referencia). Trae **clientes y montos reales**, y los guantes NECH 1001–1004 y los underpads **no emparejan** por el guion del SKU (13 ítems sin emparejar). La fecha de corte debe estar puesta o sale un aviso naranja.
+7. **Orden entre escenas:** E1 antes que E2 (si no, la importación se bloquea por la caja 101010), y E3 antes que E4 (hay que tener lo que se vende).
 7. **QuickBooks Desktop no se puede grabar**: la escena usa lámina con los pasos, o una grabación corta tuya.
 
 ## 5. Cómo se trabaja (equipo, skills, flujo, reglas)
@@ -63,7 +66,8 @@ Un archivo por escena (WAV o MP3), sin música, ~0.3 s de silencio a cada lado, 
 8. **Estilo**: tema claro, 1920×1080, español, sin música, rótulo de bloque de 2 s, subtítulos quemados y `.srt` aparte, corte seco o fundido de 0.3 s. Recomiendo **esos valores**.
 9. **Dónde vive lo pesado**: `F:/Download/TeikemVideo/solutions-proceso/` (nada binario en git). Recomiendo **sí**.
 10. **Pausas**: guion+audios, tomas (opcional) y MP4 final. Recomiendo **sí**.
-11. **Crear ahora** los 6 agentes, 5 skills, 3 flujos y `docs/video/REGLAS.md` (más la línea en `CLAUDE.md`) y **dejar los scripts de preparación en `scripts/demo/video-solutions-proceso/`**. Los agentes y skills nuevos solo se cargan al iniciar una sesión: la primera vez paso las reglas en el prompt. Recomiendo **sí**.
+11. **Análisis de ventas (E7)**: ¿**datos de demostración** (clientes y montos cambiados) o reales con los paneles de clientes tapados? ¿Los **6 representantes y rutas** con nombres ficticios? ¿Los NECH se **enlazan fuera de cámara**? ¿En cámara solo **«Simular»** y la importación real se hace antes? ¿**Fecha de corte 2026-11-06**? ¿Duración ~110 s? Recomiendo: demostración, ficticios, fuera de cámara, solo Simular, 2026-11-06 y ~110 s.
+12. **Crear ahora** los 6 agentes, 5 skills, 3 flujos y `docs/video/REGLAS.md` (más la línea en `CLAUDE.md`) y **dejar los scripts de preparación en `scripts/demo/video-solutions-proceso/`**. Los agentes y skills nuevos solo se cargan al iniciar una sesión: la primera vez paso las reglas en el prompt. Recomiendo **sí**.
 
 ## 8. Siguientes pasos al aprobar
 1. Crear las piezas de la decisión 11 y dejar los scripts de preparación en el repositorio.
