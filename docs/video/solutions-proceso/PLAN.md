@@ -80,3 +80,25 @@ Un archivo por escena (WAV o MP3), sin música, ~0.3 s de silencio a cada lado, 
 - Los mapas ya están hechos (9 informes); lo que falta consume menos: Sonnet medio para casi todo, Opus solo en guion y revisión final, **una escena a la vez**.
 - **Guardia de recursos (2026-11-12):** Luis sigue trabajando en la misma máquina (64 GB, 32 hilos) y ya se cayó una vez. Todo lo pesado pasa por `scripts/demo/video-solutions-proceso/guardia-recursos.ps1`: espera holgura (RAM libre ≥ 16 GB, procesador ≤ 60 %), corre con prioridad baja y 8 hilos, y mata solo su comando si la RAM libre baja de 8 GB, el procesador pasa de 92 % por 15 s o el comando pasa de 8 GB. Ver R8 en `docs/video/REGLAS.md`.
 - Nada de esto usa Brevo ni toca TEST, producción ni tu base `Teikem`; si algo falla en la grabación, se restaura la instantánea.
+
+## Ensayo de la escena 1 (2026-11-12)
+- Toma de ~82 s corrida de punta a punta (spec `web-app/e2e/video/escenas/E01-productos.spec.ts`, ayudas en `web-app/e2e/video/ayudas.ts`, config `web-app/e2e/video.config.ts`; los specs viven en `web-app/e2e/video/escenas/` porque fuera de `web-app` no resuelven `@playwright/test`).
+- **Zoom 1.25 de verdad** con `--force-device-scale-factor=1.25` (viewport 1536×864, video 1920×1080 a 25 fps): el texto se lee bien. El zoom por CSS (`html{zoom}`) rompe los modales (`vh`).
+- Sesión fuera de cámara: tokens por API puestos en `sessionStorage['teikem.auth']` (el `storageState` de Playwright no guarda `sessionStorage`).
+- La base de video no tenía acceso del administrador a Solutions: `92-usuario-grabacion.sql` (hash copiado de `Teikem_e2e`, membresía TenantAdmin en Solutions). La instantánea `Teikem_video_inicio` ya lo incluye.
+- **`101010` ya existe** en Teikem y en la copia (ahora se llama «CORRUGADOS 10X10X10»): el producto nuevo de la escena 1 es **151515 · CAJA CORRUGADA 15 X 15 X 15**. Para E2, la importación ya no se bloquea por esa caja.
+- Los modales largos (editor de producto) se salen de la pantalla: la toma desplaza con el ratón; el guion debe dejar tiempo para ello.
+- Repetir una toma: `scratchpad`/script que apaga el API, `instantanea-base-video.ps1 -Volver`, levanta el API (`-Archivo run-api-video.ps1` bajo la guardia).
+
+## Ensayos de las escenas 2 a 7 (2026-11-12/13): todas corren de punta a punta
+Specs en `web-app/e2e/video/escenas/` (`E01`…`E07`, más `P07-prep` que prepara el análisis por API fuera de cámara). Estados nombrados de la base con `scripts/demo/video-solutions-proceso/estado-base-video.ps1 -Guardar/-Cargar <E00…E06p>` (cada escena parte del estado en que dejó la anterior; E00 = inicio, E06p = tras facturar y cargar el análisis).
+Duración de las tomas (pasos con tiempos provisionales): E1 82 s · E2 57 s · E3 82 s · E4 95 s · E5 65 s · E6 74 s · E7 116 s.
+- **Clientes ficticios:** `93-clientes-demo.sql` renombra los 700 clientes de la copia («FARMACIA <pueblo> <n>»), borra contactos/direcciones de personas y el código de QuickBooks real; el cliente del video es **FARMACIA LA ESPERANZA**. `92-usuario-grabacion.sql` también le quita el MFA al administrador (la confirmación de identidad no pide código). Ambos se vuelven a aplicar al cargar cada estado.
+- **E2:** CSV recortado `datos/compras-quickbooks-video.csv` (PDC-04292026 y PDC-05282026); los costos se difuminan en la ficha (`taparColumna`/blur). Las dos órdenes quedan «Enviada».
+- **E3:** dos recibos contra las órdenes (almacén «Directo a posición», posiciones sugeridas), costos difuminados; existencia 69,900 → 84,900.
+- **E4:** asistente con el kit OFERTA1 + 10 NECH-1002, «Recogido», firma dibujada, contraseña (se ven solo puntos). OV-00005 en el ensayo (los números de orden se gastan en cada corrida).
+- **E5:** ficha de «Recolección y empaque» → **«Despachar»** (Lote 242) → retiro → Kárdex con los tres «Despacho».
+- **E6:** corrida de facturación (FAC-00001, $91.94) aprobada con contraseña → Ventas › QuickBooks → exportar `.iif` (copia en `datos/export-quickbooks.iif`) → «Sí, ya están».
+- **E7:** `datos/ventas-demo.csv` (historial real con clientes ficticios y montos ×0.8, TOTAL recalculado: «cuadra»); 6 rutas, 7 representantes ficticios, cuotas de agosto a noviembre, líneas y marcas, NECH y underpads enlazados, fecha de corte 2026-11-06, sin avisos. En cámara solo «Simular».
+- **Hallazgo del producto (R10) arreglado de paso:** en el filtro del Kárdex se veía la clave `warehouse.inventory.filters.zone` sin traducir; se agregó «Zona»/«Zone» en `es.json` y `en.json`.
+- Pendiente para la toma final: la repetición completa encadenada (E00→E01→…→E07) con el audio de cada escena, rótulos de bloque, láminas (QuickBooks Desktop, archivo `.iif`) y subtítulos.

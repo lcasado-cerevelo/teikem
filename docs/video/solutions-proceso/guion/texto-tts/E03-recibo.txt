@@ -1,0 +1,14 @@
+La mercancía llegó. Vamos a Almacén, Recibo.
+Aquí no hay recibos todavía. Pulsamos Nuevo recibo.
+En origen escogemos Contra orden de compra. Así el recibo nace de la compra y nadie vuelve a teclear nada.
+Elegimos el almacén, y luego la orden de Advance Logistics.
+Pulsamos Crear recibo.
+El recibo trae las líneas de la orden. Esperado y recibido son iguales, porque llegó completo.
+Si hubiera llegado menos, aquí se corrige la cantidad recibida.
+Falta decir dónde se guarda. Con Usar posiciones sugeridas, el sistema propone la posición donde ya está ese producto.
+Confirmamos el recibo.
+El recibo queda acomodado, y el inventario ya sube.
+Hacemos lo mismo con la orden de Padimont. Un recibo, las cuatro líneas, posiciones sugeridas y confirmar.
+Vamos a Compras. Las dos órdenes pasaron a Recibida, sin que nadie les cambiara el estatus.
+Y en Productos e inventario, las unidades totales subieron de sesenta y nueve mil novecientas a ochenta y cuatro mil novecientas.
+Así lo que se compró y lo que llegó quedan unidos, y se ve la diferencia si algo falta.

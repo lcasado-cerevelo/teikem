@@ -1,0 +1,18 @@
+Por último, el análisis de ventas. Está en el grupo Análisis.
+Aquí la venta de cada representante se compara contra su cuota.
+Octubre de dos mil veintiséis, contra septiembre.
+Tres cifras arriba. La venta del mes, el cambio contra el mes anterior, y el cumplimiento de la cuota total.
+Abajo, el comparativo por ruta y representante. Cuánto vendió cada uno, cuánto cambió, y qué tanto de su cuota cumplió.
+Los colores avisan. Verde cumplió, ámbar va cerca, y rojo quedó por debajo.
+Más abajo, la conciliación. La diferencia por revisar debe dar cero.
+Pasamos a Movimiento de productos.
+Aquí se ve cuánto se vendió de cada producto, en todo el período.
+Con Inventario y cobertura vemos cuántas semanas de venta cubre lo que hay en el almacén.
+Y con Reorden, el sistema sugiere cuánto pedir, para no quedarse sin producto.
+En Gráficos están los dibujos listos para presentar. La venta por mes.
+La venta contra la cuota de cada representante.
+Y la participación de cada línea de producto.
+En Configuración se ajustan las cuotas de cada representante, mes por mes.
+Y en Importar historial se carga el reporte de QuickBooks.
+Pulsamos Simular, que no guarda nada, y revisamos que el total cuadre con el del reporte.
+Cuadra. Así el dueño ve en una pantalla lo que antes armaba en un Excel.

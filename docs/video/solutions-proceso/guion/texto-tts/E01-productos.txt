@@ -1,0 +1,18 @@
+Vamos a recorrer cómo trabaja Advance Solutions en Teikem, desde que un producto existe hasta que se factura.
+Empezamos en Almacén, en Productos e inventario.
+Aquí está todo el catálogo con sus existencias, en una sola pantalla.
+Arriba, los indicadores. Cuarenta y un productos activos, casi setenta mil unidades, y tres que están por debajo del mínimo.
+En la tabla, cada producto tiene tres cifras. Disponible, reservado y total.
+Fíjese en el monitor Prodigy. Tiene cinco unidades reservadas para una orden, y esas ya no se pueden ofrecer a otro cliente.
+Para encontrar un producto, abra el filtro de SKU o nombre y escriba lo que recuerde.
+Escribimos Prodigy, marcamos el monitor, y la lista queda con una sola fila.
+Con Limpiar volvemos a ver todos.
+Un clic sobre el producto abre su ficha.
+Arriba, la foto. Luego su identificación, el inventario y los precios.
+Más abajo, Dónde está. Ahí vemos en qué posición del almacén está cada unidad.
+Cambiar un dato es simple. Subimos el punto de reorden a novecientas unidades y guardamos.
+El sistema avisa que el producto fue actualizado.
+Ahora, un producto nuevo. Pulsamos Nuevo producto.
+Escribimos el SKU, el nombre, la categoría, el costo y el precio de venta.
+Guardamos, y el producto ya existe y se puede comprar, recibir y vender.
+Así el catálogo y el inventario viven juntos, y nadie tiene que cuadrar una hoja aparte.

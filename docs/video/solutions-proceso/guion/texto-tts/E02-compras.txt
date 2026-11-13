@@ -1,0 +1,17 @@
+Ahora, las compras. Hoy las compras se capturan en QuickBooks, y aquí no hay que teclearlas de nuevo.
+Vamos a Contabilidad, Compras.
+Esta es la lista de órdenes de compra. Todavía está vacía.
+Pulsamos Importar.
+El origen del archivo ya viene en QuickBooks, que es lo que necesitamos.
+En estatus escogemos Completada. Eso solo marca la orden como enviada, lista para recibir.
+La orden de compra dice que se compró. No mueve el inventario. Eso lo hace el recibo.
+Elegimos el archivo que sale de QuickBooks, y pulsamos Revisar.
+Revisar no guarda nada. Solo muestra qué va a pasar.
+Dos órdenes en el archivo, y las dos listas. Una de Advance Logistics, con dos líneas, y otra de Padimont, con cuatro.
+Si faltara un producto o un proveedor, la orden se bloquea y el sistema dice cuál falta.
+Todo está en orden. Importamos las dos.
+Se crearon las dos órdenes, cada una con su número.
+Cerramos, y aquí están en la lista, en estatus Enviada.
+Abrimos la de Padimont. Trae su proveedor, el almacén y las cuatro líneas con sus cantidades.
+La nota guarda de qué compra de QuickBooks vino. Si importa el mismo archivo otra vez, no se duplica.
+Así las compras ya no se teclean desde un correo.

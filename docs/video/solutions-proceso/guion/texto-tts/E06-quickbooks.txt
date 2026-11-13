@@ -1,0 +1,15 @@
+Ya despachamos. Falta facturar y pasar la factura a QuickBooks.
+Vamos a Facturación y pulsamos Nueva corrida.
+Escogemos el cliente y pulsamos Generar.
+La corrida trae la factura en borrador, con su total.
+La marcamos como revisada, y luego Aprobar y emitir.
+Como es una acción delicada, el sistema pide la contraseña otra vez.
+La factura queda emitida.
+Ahora vamos a Ventas, a la pestaña QuickBooks.
+Aquí está la factura por pasar, con su cliente y su total.
+Pulsamos Exportar a QuickBooks y bajamos el archivo.
+Es un archivo que QuickBooks sabe leer. Lleva la factura con cada producto y su cantidad.
+En QuickBooks se importa desde el menú Archivo, Utilidades, Importar, Archivos IIF.
+Cuando ya está importado, regresamos y confirmamos con Sí, ya están.
+La factura sale de la lista, y no se pasa dos veces.
+Así las facturas ya no se teclean desde un correo.

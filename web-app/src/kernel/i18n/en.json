@@ -6015,6 +6015,7 @@
         "range": "Date",
         "type": "Type",
         "warehouse": "Warehouse",
+        "zone": "Zone",
         "bin": "Bin",
         "product": "Product",
         "category": "Category",

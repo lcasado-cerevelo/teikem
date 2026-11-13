@@ -6015,6 +6015,7 @@
         "range": "Fecha",
         "type": "Tipo",
         "warehouse": "Almacén",
+        "zone": "Zona",
         "bin": "Posición",
         "product": "Producto",
         "category": "Categoría",

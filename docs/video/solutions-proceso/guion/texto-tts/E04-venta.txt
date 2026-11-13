@@ -1,0 +1,18 @@
+Ahora, una venta. Vamos a Contabilidad, Ventas.
+Pulsamos Nueva orden. Se abre el asistente, que guía el pedido en cuatro pasos.
+Primero, el cliente. Escribimos parte del nombre y lo escogemos de la lista.
+El sistema trae la forma de pago del cliente. Aquí no hay que tocar nada.
+Siguiente. Ahora los productos, separados por marca.
+En Prodigy está la oferta. Seis cajas de tirillas y un monitor, por cuarenta y un dólares con noventa y cuatro centavos.
+Fíjese que dice cuántas ofertas se pueden armar. El sistema calcula con lo que hay en existencia.
+Agregamos una oferta.
+Ahora, los guantes. En Padimont escribimos diez unidades.
+Con el carrito podemos revisar y corregir las líneas. La oferta aparece con sus piezas.
+Siguiente. Aquí se decide cómo recibe el cliente el pedido. Este lo recoge.
+El resumen muestra el total, que el sistema calcula con las reglas de la compañía y del cliente.
+Último paso. Quién autoriza el pedido, y su firma.
+Escribimos el nombre y firmamos con el ratón o con el dedo.
+Pulsamos Enviar pedido, y el sistema pide la contraseña para confirmar.
+El pedido queda enviado, con su número.
+Al abrir la orden vemos el estatus Solicitada, la firma, y lo reservado de cada pieza de la oferta.
+La mercancía ya está apartada para este cliente, y nadie más puede venderla.

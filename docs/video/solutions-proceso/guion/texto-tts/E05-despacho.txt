@@ -1,0 +1,13 @@
+La orden ya está en el almacén. Vamos a Almacén, Recolección y empaque.
+Aquí aparecen los documentos que el almacén debe atender. Esta es la orden que acabamos de vender.
+Dice Solicitada, y por sacar once unidades.
+Al abrirla vemos qué hay que recolectar y de dónde. La posición y la cantidad vienen de la reserva.
+La oferta se ve por sus piezas. Las tirillas, el monitor, y los guantes.
+Cuando el pedido está listo, pulsamos Despachar.
+El sistema pregunta cuánto sale de cada producto. Ya trae lo reservado.
+Confirmamos.
+Y ahora, qué sigue con lo despachado. Como este cliente lo recoge, escogemos Retiro.
+Volvemos al documento. Ahora dice Despachada, y todo salió.
+Para ver la salida en el inventario, vamos al Kárdex de movimientos.
+Arriba están los tres movimientos de despacho, con la cantidad en negativo y la recolección de donde salieron.
+Así cada unidad que sale queda registrada, con quién la sacó y cuándo.
