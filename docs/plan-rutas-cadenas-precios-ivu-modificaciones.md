@@ -138,6 +138,15 @@ Siempre: aviso al almacén y al vendedor cuando cambia una orden que está en re
 - **[DECIDIDO]** La orden de compra puede nacer en **Teikem, en el Excel o en QuickBooks**: se conservan las tres entradas (crear a mano, plantilla del usuario, importar de QuickBooks). Para que no se dupliquen al ir y venir, cada orden guarda su **origen**: las que vinieron de QuickBooks no se ofrecen para exportar; las que nacieron en Teikem o del Excel, sí.
 - Riesgo a probar: la importación por IIF de órdenes de compra en QuickBooks Desktop es más delicada que la de facturas (es una transacción que no asienta). Probar el archivo en una copia de la compañía de QuickBooks de Solutions antes de darlo por bueno.
 
+### 3.7 Correo con la orden de venta al crearla, como el de Formsite (Lote G)
+
+- **[DECIDIDO, 2026-11-24]** Para el arranque de Solutions: al **crear (solicitar) una orden de venta**, el sistema envía **automáticamente un correo con la orden completa**, parecido al que hoy manda Formsite, para que el personal siga trabajando como está acostumbrado mientras se implanta el resto. Es una **opción de configuración** (se enciende y se apaga por compañía), no una pantalla nueva.
+- Es posible y encaja con lo que hay: ya existe el aviso `OrderRequested` (`SalesOrderService.Notifications.cs`, `NotifyRequestedAsync`), que hoy solo lleva número, cliente, almacén y cantidad de líneas. Se trabaja como un **aviso más del motor**, con una plantilla de correo de contenido completo.
+- **Contenido del correo** (tomar de referencia el correo de Formsite analizado en `docs/pedido-vendedores-formsite-analisis-2026-11-06.md` y `docs/plan-de-desarrollo-pendiente.md`, bloque «Order Summary»): número y fecha de la orden; vendedor; cliente con dirección, teléfono y registro de comerciante; entrega o recogido; forma de pago; notas; **tabla de líneas** (SKU, descripción, cantidad, precio, importe; los kits con sus componentes); subtotal, IVU estatal y municipal por separado, y total; quién autorizó y la firma; enlace a la orden en Teikem. **[PROPUESTA]** adjuntar además la orden en PDF.
+- **Destinatarios**: los que se configuren en la regla del aviso (usuarios, roles y **correos escritos a mano**, porque hoy llega a buzones como el de almacén), más el vendedor de la orden. Opción aparte para mandarle copia al cliente (correo principal y contactos marcados, §3.4), apagada por omisión.
+- Verificar al diseñar: si la regla de aviso ya admite correos externos escritos a mano y adjuntos; si no, añadirlo.
+- Pruebas sin correo real (regla de Brevo): buzón local; en TEST se desvía a `teikem@cerevelo.com`.
+
 ---
 
 ## 4. Lotes propuestos
@@ -153,7 +162,9 @@ Cada lote termina con: SQL en una sección nueva de `logistica-db-update.sql`, p
 | E | **Edición de la orden con autorización** | Precio editable al crear; `SalesOrderChange`; agregar y quitar líneas; `sales.tax` con `MANUAL_OVERRIDE`; segunda aprobación y adjunto configurables por compañía y cliente; reglas por etapa; reabrir empaque; orden interna de adición vinculada; avisos | D, Lote 242 |
 | F | **Compras: plantilla del usuario y exportación a QuickBooks** | `ImportTemplate` tipo `PURCHASE_ORDER`; origen «plantilla» en Importar; exportación de órdenes de compra a QuickBooks | Lote 239. **Independiente**: puede ir en cualquier momento |
 
-Orden recomendado: **A → B → C → D → E**, con **F** en paralelo o primero si Solutions lo necesita ya (es el más chico y no depende de nada).
+| G | **Correo con la orden de venta al crearla** | Opción por compañía; plantilla de correo con la orden completa (como Formsite), PDF adjunto opcional; destinatarios configurables (usuarios, roles, correos a mano, vendedor, copia al cliente) | Lote 66 (avisos de ventas). **Independiente** |
+
+Orden recomendado: **G primero** (es chico y es lo que Solutions necesita para arrancar), luego **A → B → C → D → E**, con **F** en paralelo o cuando Solutions lo necesite (tampoco depende de nada).
 
 ---
 
