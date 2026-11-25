@@ -16,13 +16,15 @@ export interface OrdersFilterState {
   /** Lote 244: ruta de venta guardada en la orden ('' = todas, '0' = sin ruta) y vendedor ('' = todos). */
   route: string
   seller: string
+  /** Lote 245: cadenas (publicId) de los clientes; vacío = todas. */
+  chains: string[]
 }
 
-export const EMPTY_ORDERS_FILTERS: OrdersFilterState = { q: '', dateField: 'REQUESTED', range: EMPTY_RANGE, clients: [], products: [], statuses: [], mine: false, route: '', seller: '' }
+export const EMPTY_ORDERS_FILTERS: OrdersFilterState = { q: '', dateField: 'REQUESTED', range: EMPTY_RANGE, clients: [], products: [], statuses: [], mine: false, route: '', seller: '', chains: [] }
 
 /** ¿Hay algún filtro puesto? (para el texto de «sin resultados»). */
 export function hasOrdersFilters(f: OrdersFilterState): boolean {
-  return Boolean(f.q.trim() || f.range.from || f.range.to || f.clients.length || f.products.length || f.statuses.length || f.mine || f.route || f.seller)
+  return Boolean(f.q.trim() || f.range.from || f.range.to || f.clients.length || f.products.length || f.statuses.length || f.mine || f.route || f.seller || f.chains.length)
 }
 
 /** Lo que va al API (el texto libre ya con su pausa entre teclas). */
@@ -38,5 +40,6 @@ export function ordersApiFilters(f: OrdersFilterState, search: string): SalesOrd
     mine: f.mine,
     routeId: f.route === '' ? undefined : Number(f.route),
     sellerUserId: f.seller === '' ? undefined : Number(f.seller),
+    chainPublicIds: f.chains,
   }
 }

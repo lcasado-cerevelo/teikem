@@ -39,6 +39,8 @@ export interface SalesOrderFilters {
   /** Lote 244: ruta de venta (0 = sin ruta) y vendedor guardados en la orden. */
   routeId?: number
   sellerUserId?: number
+  /** Lote 245: cadena ACTUAL del cliente (repetible: cualquiera de ellas). */
+  chainPublicIds?: readonly string[]
 }
 
 const many = (v: readonly string[] | undefined) => (v && v.length > 0 ? [...v] : undefined)
@@ -58,6 +60,7 @@ export function salesOrderListQuery(f: SalesOrderFilters): SalesOrderListQuery {
     assignedToMe: f.mine || undefined,
     routeId: f.routeId,
     sellerUserId: f.sellerUserId,
+    chainPublicId: many(f.chainPublicIds),
   }
 }
 

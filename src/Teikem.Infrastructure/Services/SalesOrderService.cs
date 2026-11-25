@@ -45,7 +45,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
     public async Task<PagedResult<SalesOrderListItemDto>> ListAsync(string? status, Guid? clientPublicId, string? q, bool backorderOnly, DateOnly? from, DateOnly? to,
         int skip, int take, CancellationToken ct, bool assignedToMe = false, int? assignedUserId = null, bool urgentOnly = false,
         IReadOnlyCollection<string>? statuses = null, IReadOnlyCollection<Guid>? clientPublicIds = null, IReadOnlyCollection<Guid>? productPublicIds = null,
-        string? dateField = null, int? routeId = null, int? sellerUserId = null)
+        string? dateField = null, int? routeId = null, int? sellerUserId = null, IReadOnlyCollection<Guid>? chainPublicIds = null)
     {
         skip = Math.Max(0, skip);
         take = Math.Clamp(take <= 0 ? 50 : take, 1, MaxPageSize);
@@ -73,6 +73,13 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         // Lote 244: por la ruta de venta y el vendedor GUARDADOS en la orden (la copia de las solicitadas; en un borrador, la elección explícita del vendedor)
         if (routeId is int rid) query = query.Where(o => o.SalesRouteId == rid);
         if (sellerUserId is int sid) query = query.Where(o => o.SellerUserId == sid);
+        // Lote 245: por la cadena ACTUAL del cliente (en vivo, la orden no guarda copia); varias = cualquiera. Si ninguna es de la compañía, resultado vacío
+        if (chainPublicIds is { Count: > 0 })
+        {
+            var chainIds = await Teikem.Infrastructure.Clients.ClientChainQueries.ChainIdsByPublicIdsAsync(db, chainPublicIds, ct);
+            if (chainIds.Count == 0) return new PagedResult<SalesOrderListItemDto>(Array.Empty<SalesOrderListItemDto>(), 0, skip, take);
+            query = query.Where(o => db.Set<Client>().Any(c => c.ClientId == o.ClientId && c.ChainId != null && chainIds.Contains(c.ChainId.Value)));
+        }
         if (byRequired)
         {
             if (from is DateOnly f) query = query.Where(o => o.RequiredDate != null && o.RequiredDate >= f);
@@ -482,17 +489,21 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         var assignees = await UserNamesAsync(orders.Where(o => o.AssignedToUserId is not null).Select(o => o.AssignedToUserId!.Value), ct);
         var sellers = await UserNamesAsync(orders.Where(o => o.SellerUserId is not null).Select(o => o.SellerUserId!.Value), ct);   // Lote 244: solo de las columnas
         var routes = await RouteNamesAsync(orders.Where(o => o.SalesRouteId is not null).Select(o => o.SalesRouteId!.Value), ct);
+        // Lote 245: la cadena ACTUAL de cada cliente (en vivo), con los nombres en una consulta
+        var chains = await Teikem.Infrastructure.Clients.ClientChainQueries.ChainsByIdAsync(db, clients.Values.Where(c => c.ChainId != null).Select(c => c.ChainId!.Value), ct);
         return orders.Select(o =>
         {
             var s = map[o.StatusCodeId];
             var c = clients[o.ClientId];
             var w = warehouses[o.WarehouseId];
             var st = lineStats.GetValueOrDefault(o.SalesOrderId);
+            var chain = c.ChainId is int chId ? chains.GetValueOrDefault(chId) : null;
             return new SalesOrderListItemDto(o.PublicId, o.Number, s.Code, s.Label, s.Color, c.PublicId, c.Name, w.PublicId, w.Name, o.RequestedDate, o.RequiredDate,
                 o.Subtotal, o.TaxAmount, TotalOf(o), st?.Count ?? 0, st?.Back ?? false, o.RequestedBy is int u ? users.GetValueOrDefault(u) : null, o.CreatedAtUtc,
                 o.AssignedToUserId, o.AssignedToUserId is int au ? assignees.GetValueOrDefault(au) : null,
                 o.IsUrgent, o.AwaitingClientApproval, o.IsConsignment, o.PaymentChanged, ShippingRules.EffectiveMode(o.DeliveryMode, o.ConsigneeId is not null), o.ShippingCharge,   // Lote 222
-                o.SalesRouteId is int sr ? routes.GetValueOrDefault(sr) : null, o.SellerUserId is int su ? sellers.GetValueOrDefault(su) : null);   // Lote 244
+                o.SalesRouteId is int sr ? routes.GetValueOrDefault(sr) : null, o.SellerUserId is int su ? sellers.GetValueOrDefault(su) : null,   // Lote 244
+                chain?.Name, chain?.PublicId);   // Lote 245
         }).ToList();
     }
 

@@ -4,6 +4,7 @@ using Teikem.Domain.Constants;
 using Teikem.Domain.Sales;
 using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
+using Teikem.Infrastructure.Clients;
 using Teikem.Infrastructure.Persistence;
 
 namespace Teikem.Infrastructure.Analytics;
@@ -37,6 +38,7 @@ internal static class SalesDataSourceHelpers
 /// último cambio a Despachada en el historial de estatus).
 /// Lote 244: SalesRouteId/SalesRouteName y SellerUserId/SellerName salen de la COPIA congelada al solicitar la orden (SalesCopyAtUtc); vacíos en los borradores (la
 /// elección del borrador no es la copia) y en las órdenes solicitadas antes del lote.
+/// Lote 245: ChainId/ChainName = la cadena ACTUAL del cliente, EN VIVO (sin copia en la orden), para Gráficos e Indicadores de órdenes.
 /// </summary>
 public sealed class SalesOrderDataSource(TeikemDbContext db, ILookupCache lookups, ITenantContext tenant, ITenantClock? clock = null) : IDataSource
 {
@@ -83,6 +85,8 @@ public sealed class SalesOrderDataSource(TeikemDbContext db, ILookupCache lookup
         new DataField("SalesRouteName", "Ruta de venta", "Sales route", DataFieldType.Text),
         new DataField("SellerUserId", "Id del vendedor", "Seller id", DataFieldType.Number),
         new DataField("SellerName", "Vendedor", "Seller", DataFieldType.Text),
+        new DataField("ChainId", "Id de la cadena", "Chain id", DataFieldType.Number),   // Lote 245: EN VIVO, la cadena actual del cliente
+        new DataField("ChainName", "Cadena", "Chain", DataFieldType.Text),
     };
 
     public IReadOnlyList<DataRelation> Relations { get; } = new[]
@@ -135,6 +139,9 @@ public sealed class SalesOrderDataSource(TeikemDbContext db, ILookupCache lookup
         var routeNames = copyRouteIds.Count == 0 ? new Dictionary<int, string>()
             : await db.Set<SalesRoute>().AsNoTracking().Where(r => copyRouteIds.Contains(r.SalesRouteId)).ToDictionaryAsync(r => r.SalesRouteId, r => r.Name, ct);
         var sellerNames = await Services.AssigneeCheck.NamesAsync(db, copied.Where(o => o.SellerUserId != null).Select(o => o.SellerUserId!.Value), ct);
+        // Lote 245: la cadena ACTUAL del cliente de cada orden (sin copia en la orden: si el cliente cambia de cadena, sus órdenes viejas salen con la nueva)
+        var clientChain = await ClientChainQueries.ClientChainMapAsync(db, orders.Select(o => o.ClientId).Distinct().ToList(), ct);
+        var chains = await ClientChainQueries.ChainsByIdAsync(db, clientChain.Values, ct);
 
         var rows = new List<DataRow>(orders.Count);
         foreach (var o in orders)
@@ -178,6 +185,8 @@ public sealed class SalesOrderDataSource(TeikemDbContext db, ILookupCache lookup
                 ["SalesRouteName"] = copy && o.SalesRouteId is int rid ? routeNames.GetValueOrDefault(rid) : null,
                 ["SellerUserId"] = copy ? o.SellerUserId : null,
                 ["SellerName"] = copy && o.SellerUserId is int su ? sellerNames.GetValueOrDefault(su) : null,
+                ["ChainId"] = clientChain.TryGetValue(o.ClientId, out var chainId) && chains.ContainsKey(chainId) ? (int?)chainId : null,
+                ["ChainName"] = clientChain.TryGetValue(o.ClientId, out var chainId2) && chains.TryGetValue(chainId2, out var chain) ? chain.Name : null,
             });
         }
         return rows;

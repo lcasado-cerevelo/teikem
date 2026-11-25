@@ -4,7 +4,9 @@
 // La lista del API no pagina (devuelve todos, ordenados por nombre), por eso es una lista de filas y no un DataTable.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Can } from '../../kernel/access'
+import { Can, useModule } from '../../kernel/access'
+import { ModuleKeys } from '../../kernel/access/modules'
+import { useChains } from '../chains/chainsApi'
 import { StatusChip } from '../../kernel/catalogs'
 import { CustomFieldFilterBar, customFieldQuery, EMPTY_CUSTOM_FIELD_FILTERS, type CustomFieldFilterValues } from '../../kernel/custom-fields'
 import { useT } from '../../kernel/i18n'
@@ -37,7 +39,12 @@ export default function ClientListScreen() {
     return () => clearTimeout(id)
   }, [q])
 
-  const list = useClients(debounced, includeInactive, customFieldQuery(custom))
+  // Lote 245: filtro «Cadena» (Todas / Sin cadena / cada cadena), solo con el módulo Órdenes de venta
+  const salesModule = useModule(ModuleKeys.SalesOrders)
+  const [chain, setChain] = useState('')
+  const chains = useChains(false, '', salesModule)
+  const chainQuery = chain === 'NONE' ? { noChain: true } : chain ? { chainPublicId: chain } : {}
+  const list = useClients(debounced, includeInactive, { ...customFieldQuery(custom), ...chainQuery })
   const rows = list.data ?? NO_CLIENTS
 
   const selectedId = params.get('client')
@@ -81,6 +88,20 @@ export default function ClientListScreen() {
                 <span>{t('clients.showInactive')}</span>
               </label>
             </div>
+            {salesModule && (
+              <div className="f cl-chain-filter">
+                <label htmlFor="cl-chain-filter">{t('clients.chain.filter')}</label>
+                <select id="cl-chain-filter" value={chain} onChange={(e) => setChain(e.target.value)}>
+                  <option value="">{t('clients.chain.all')}</option>
+                  <option value="NONE">{t('chains.noChain')}</option>
+                  {(chains.data ?? []).map((c) => (
+                    <option key={c.publicId} value={c.publicId}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <CustomFieldFilterBar entityType={CLIENT_ENTITY_TYPE} value={custom} onChange={setCustom} />
           </FilterScope>
           {list.isError ? (
@@ -110,6 +131,7 @@ export default function ClientListScreen() {
                         <StatusChip domain={CLIENT_STATUS_DOMAIN} code={c.status} label={c.statusLabel} />
                         {isProspect(c) && <Chip tone="warn">{t('clients.approval.newClient')}</Chip>}
                         {!c.isActive && <Chip tone="cap">{t('clients.inactive')}</Chip>}
+                        {salesModule && c.chainName && <Chip tone="route" title={t('clients.chain.title')}>{c.chainName}</Chip>}
                       </span>
                       {c.billingSummary && <span className="meta">{c.billingSummary}</span>}
                     </span>

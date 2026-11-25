@@ -452,6 +452,10 @@
     "claims": {
       "title": "Reclamaciones",
       "subtitle": "piezas faltantes y reclamaciones"
+    },
+    "chains": {
+      "title": "Cadenas",
+      "subtitle": "grupos de clientes como Walgreens o CVS"
     }
   },
   "clients": {
@@ -1154,6 +1158,16 @@
         "codMin": "El monto COD no puede ser negativo.",
         "repeated": "El par servicio/tipo de paquete está repetido; envíe una sola línea por (servicio, tipo de paquete) con el total de piezas."
       }
+    },
+    "chain": {
+      "title": "Cadena",
+      "current": "Cadena del cliente",
+      "pick": "Cadena",
+      "help": "Un cliente pertenece a una sola cadena. Cambiarla no cambia su ruta de venta.",
+      "saved": "Cadena del cliente guardada.",
+      "removed": "El cliente quedó sin cadena.",
+      "filter": "Cadena",
+      "all": "Todas las cadenas"
     }
   },
   "consignees": {
@@ -10652,7 +10666,8 @@
         "required": "Requerida",
         "client": "Cliente",
         "product": "Producto",
-        "status": "Estatus"
+        "status": "Estatus",
+        "chain": "Cadena"
       }
     },
     "col": {
@@ -10679,7 +10694,8 @@
       "closed": "Cerrada",
       "exempt": "Exento",
       "route": "Ruta de venta",
-      "seller": "Vendedor"
+      "seller": "Vendedor",
+      "chain": "Cadena"
     },
     "days": "{n} d",
     "client": "Cliente que compra",
@@ -13320,7 +13336,8 @@
       "rep": "Por representante",
       "movement": "Movimiento de productos",
       "charts": "Gráficos",
-      "setup": "Configuración"
+      "setup": "Configuración",
+      "chain": "Por cadena"
     },
     "statusBanner": {
       "title": "Para que el análisis cuadre falta:",
@@ -14088,6 +14105,141 @@
       "trend": "el último mes completo contra el promedio de los dos anteriores; solo se calcula si el producto vendió en los tres meses.",
       "topClient": "el cliente al que más unidades facturadas se le vendieron en el rango (sin restar notas de crédito).",
       "pending": "lo pedido y todavía no recibido de las órdenes de compra Enviadas o Recibidas en parte."
+    }
+  },
+  "chains": {
+    "title": "Cadenas",
+    "subtitle": "Grupos de clientes (Walgreens, CVS…). Un cliente pertenece a una sola cadena; una cadena no es una ruta y no cambia la ruta del cliente.",
+    "new": "+ Nueva cadena",
+    "created": "Cadena creada.",
+    "saved": "Cadena guardada.",
+    "deactivated": "Cadena desactivada.",
+    "reactivated": "Cadena reactivada.",
+    "list": "Cadenas",
+    "splitLabel": "Cambiar el ancho de la lista y la ficha",
+    "searchPlaceholder": "Buscar cadena…",
+    "showInactive": "Ver inactivas",
+    "noResults": "Ninguna cadena coincide con la búsqueda.",
+    "empty": "Todavía no hay cadenas.",
+    "selectChain": "Elija una cadena.",
+    "noChain": "Sin cadena",
+    "active": "Activa",
+    "inactive": "Inactiva",
+    "col": {
+      "name": "Nombre",
+      "clients": "Clientes",
+      "notes": "Notas",
+      "active": "Activa"
+    },
+    "fields": {
+      "name": "Nombre",
+      "nameHelp": "Único entre las cadenas activas (no distingue mayúsculas, acentos, puntos ni comas).",
+      "notes": "Notas"
+    },
+    "errors": {
+      "nameRequired": "El nombre de la cadena es obligatorio.",
+      "nameMax": "El nombre admite hasta 100 caracteres.",
+      "notesMax": "Las notas admiten hasta 500 caracteres."
+    },
+    "summary": "{active} clientes activos · {inactive} inactivos · {total} en total",
+    "deactivate": "Desactivar",
+    "reactivate": "Reactivar",
+    "deactivateTitle": "Desactivar la cadena",
+    "deactivateMessage": "«{name}» dejará de aparecer para elegirla en los clientes. Solo se puede desactivar si no tiene clientes activos.",
+    "clients": {
+      "title": "Clientes de la cadena",
+      "subtitle": "Clientes que pertenecen a esta cadena.",
+      "code": "Código",
+      "name": "Cliente",
+      "status": "Estatus",
+      "rep": "Representante",
+      "search": "Buscar cliente de la cadena…",
+      "showInactive": "Ver inactivos",
+      "empty": "La cadena no tiene clientes.",
+      "pick": "Elegir a {name}",
+      "addLabel": "Agregar clientes",
+      "addPlaceholder": "Elegir clientes…",
+      "addN": "Agregar {n}",
+      "added": "{n} clientes agregados ({already} ya estaban).",
+      "removeN": "Quitar {n}",
+      "removeTitle": "Quitar clientes de la cadena",
+      "removeMessage": "Se quitarán {n} clientes de «{name}». Los clientes quedan sin cadena.",
+      "remove": "Quitar",
+      "removed": "{n} clientes quitados.",
+      "moveTitle": "Clientes en otra cadena",
+      "moveMessage": "{n} clientes ya están en otra cadena: ¿moverlos a esta?",
+      "move": "Moverlos",
+      "moved": "{n} clientes movidos.",
+      "andMore": "y {n} más…"
+    },
+    "bulk": {
+      "title": "Agregar por nombre",
+      "subtitle": "Agrega de una vez los clientes cuyo nombre empieza con un texto. Primero se simula: nada se escribe hasta aplicar.",
+      "prefix": "El nombre empieza con",
+      "prefixPlaceholder": "Walgreens",
+      "prefixHelp": "Mínimo 3 letras; no distingue mayúsculas, acentos, puntos ni comas.",
+      "wholeWord": "Palabra completa",
+      "moveOther": "Mover también los que están en otra cadena",
+      "simulate": "Simular",
+      "counts": "{matched} coincidencias · {assign} por asignar · {move} por mover · {already} ya están · {skipped} en otra cadena (se saltan) · {excluded} excluidos",
+      "tooMany": "Hay {n} coincidencias y el máximo es {max}: use un texto más específico.",
+      "stale": "Cambió el texto o un interruptor: vuelva a simular para poder aplicar.",
+      "noMatches": "Ningún cliente empieza con ese texto.",
+      "apply": "Aplicar a {n} clientes",
+      "applied": "{n} clientes agregados a la cadena.",
+      "resimulated": "Se simuló de nuevo con los clientes de ahora; revise y aplique otra vez.",
+      "confirmTitle": "Aplicar el alta por nombre",
+      "confirmMessage": "Se agregarán {n} clientes a «{name}» ({move} de ellos se mueven desde otra cadena).",
+      "includeRow": "Incluir a {name}",
+      "col": {
+        "include": "Incluir",
+        "current": "Cadena actual",
+        "action": "Acción"
+      },
+      "action": {
+        "ASSIGN": "Asignar",
+        "MOVE": "Mover",
+        "ALREADY": "Ya está",
+        "SKIP_OTHER_CHAIN": "Se salta (otra cadena)",
+        "EXCLUDED": "Excluido"
+      }
+    },
+    "sales": {
+      "title": "Venta",
+      "subtitle": "Venta neta de los clientes de la cadena (cadena actual de cada cliente).",
+      "byMonth": "Venta neta por mes",
+      "month": "Mes",
+      "vs": "contra {month}",
+      "clientsInMonth": "Clientes de la cadena en el mes",
+      "client": "Cliente",
+      "compare": "Mes anterior",
+      "sales": "Venta",
+      "change": "Cambio",
+      "share": "Participación",
+      "empty": "Sin venta en el mes."
+    },
+    "tab": {
+      "filters": "Mes del análisis por cadena",
+      "kpis": "Resumen por cadena",
+      "kpiChains": "Cadenas",
+      "kpiNoChain": "Sin cadena: {amount}",
+      "basis": "La venta se atribuye a la cadena ACTUAL del cliente. Una cadena no es una ruta.",
+      "comparative": "Comparativo por cadena",
+      "comparativeSub": "cadena → clientes (use la flecha para ver los clientes)",
+      "chain": "Cadena",
+      "share": "Participación",
+      "expand": "Ver los clientes de {chain}",
+      "collapse": "Ocultar los clientes de {chain}",
+      "expandAll": "Desplegar todas",
+      "collapseAll": "Plegar todas",
+      "empty": "No hay venta en el mes.",
+      "clientsWithSales": "{n} de {total} clientes con venta",
+      "unmatched": "Sin emparejar",
+      "reconciliation": "Conciliación",
+      "recChains": "Suma de las cadenas",
+      "recMonth": "Venta neta de {month}",
+      "recDifference": "Diferencia",
+      "chart": "Venta por cadena"
     }
   }
 }

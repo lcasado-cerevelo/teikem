@@ -27,9 +27,21 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
 
     // ---------------- Lista ----------------
 
-    public async Task<IReadOnlyList<ClientListItemDto>> GetListAsync(string? search, bool includeInactive, CancellationToken ct, IReadOnlyList<CustomFieldFilter>? customFields = null)
+    /// <param name="chainPublicId">Lote 245: solo los clientes de esa cadena; si no existe o es de otra compañía, lista vacía (sin 404, sin revelar nada).</param>
+    /// <param name="noChain">Lote 245: solo los clientes «Sin cadena». Con <paramref name="chainPublicId"/> a la vez → 400.</param>
+    public async Task<IReadOnlyList<ClientListItemDto>> GetListAsync(string? search, bool includeInactive, CancellationToken ct, IReadOnlyList<CustomFieldFilter>? customFields = null,
+        Guid? chainPublicId = null, bool noChain = false)
     {
+        if (chainPublicId is not null && noChain) throw new ValidationException("chainPublicId", ClientChainRules.ChainOrNoChain);
         var q = db.Clients.AsNoTracking();
+        if (chainPublicId is Guid chainPid)
+        {
+            var chainId = await ClientChainQueries.ChainIdByPublicIdAsync(db, chainPid, ct);
+            if (chainId is null) return Array.Empty<ClientListItemDto>();
+            var cid = chainId.Value;
+            q = q.Where(c => c.ChainId == cid);
+        }
+        else if (noChain) q = q.Where(c => c.ChainId == null);
         if (!includeInactive) q = q.Where(c => c.IsActive);
         q = await q.ApplyCustomFieldsAsync(db, EntityTypes.Client, customFields, c => c.ClientId, ct);   // Lote 130
         if (!string.IsNullOrWhiteSpace(search))
@@ -46,14 +58,17 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
         var contractStatus = await StatusMapAsync(StatusDomains.ContractStatus, ct);
         var byClient = contracts.GroupBy(c => c.ClientId).ToDictionary(g => g.Key, g => g.ToList());
         var today = Today();
+        // Lote 245: los nombres de las cadenas en UNA consulta
+        var chains = await ClientChainQueries.ChainsByIdAsync(db, list.Where(c => c.ChainId != null).Select(c => c.ChainId!.Value), ct);
 
         return list.Select(c =>
         {
             var own = byClient.GetValueOrDefault(c.ClientId) ?? new List<Contract>();
             var current = PickCurrent(own, contractStatus, today);
             var status = clientStatus.GetValueOrDefault(c.StatusCodeId);
+            var chain = c.ChainId is int chId ? chains.GetValueOrDefault(chId) : null;
             return new ClientListItemDto(c.ClientId, c.PublicId, c.Code, c.Name, status?.InternalCode ?? "", Label(status),
-                c.IsActive, current is null ? "" : Summary(current), own.Count);
+                c.IsActive, current is null ? "" : Summary(current), own.Count, chain?.PublicId, chain?.Name);
         }).ToList();
     }
 
@@ -228,6 +243,10 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
         var preferredName = client.PreferredSalesUserId is int prefId
             ? await db.Users.AsNoTracking().Where(u => u.Id == prefId).Select(u => u.FullName ?? u.Email).FirstOrDefaultAsync(ct)
             : null;
+        // Lote 245: la cadena del cliente (activa o no; la ficha dice si está desactivada)
+        var chain = client.ChainId is int chainId
+            ? (await ClientChainQueries.ChainsByIdAsync(db, new[] { chainId }, ct)).GetValueOrDefault(chainId)
+            : null;
         return new ClientDetailDto(
             client.ClientId, client.PublicId, client.Code, client.Name, client.LegalName, client.TaxId, client.CreditLimit,
             paymentTerm?.InternalCode, Label(paymentTerm), currency?.InternalCode, Label(currency),
@@ -245,7 +264,8 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
             client.RequireDeliverySignature, client.RequireDeliveryPhoto,
             client.MerchantRegistration, client.ShippingMode, client.ShippingCharge, client.ShippingFreeFrom, client.RequireOrderSignature,   // Lote 222
             client.SalesRepId, rep?.Name, salesRouteName,   // Lote 238
-            client.SalesRouteId, salesRouteFromRep, client.PreferredSalesUserId, preferredName);   // Lote 244
+            client.SalesRouteId, salesRouteFromRep, client.PreferredSalesUserId, preferredName,   // Lote 244
+            chain?.PublicId, chain?.Name, chain?.IsActive ?? false);   // Lote 245
     }
 
     // ---------------- Perfil ----------------

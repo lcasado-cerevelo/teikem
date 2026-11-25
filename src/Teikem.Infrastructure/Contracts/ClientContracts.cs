@@ -4,7 +4,9 @@ namespace Teikem.Infrastructure.Contracts;
 
 public sealed record ClientListItemDto(
     int Id, Guid PublicId, string Code, string Name, string Status, string StatusLabel, bool IsActive,
-    string BillingSummary, int ContractsCount);
+    string BillingSummary, int ContractsCount,
+    // Lote 245: cadena actual del cliente (null = «Sin cadena»); se filtra con GET /clients?chainPublicId= o ?noChain=true
+    Guid? ChainPublicId = null, string? ChainName = null);
 
 /// <summary>Alta compuesta del modal '+ Nuevo cliente': el cliente y, opcionalmente, su contrato inicial (DRAFT, por servicio).</summary>
 public sealed record ClientCreateRequest(
@@ -73,7 +75,9 @@ public sealed record ClientDetailDto(
     // Lote 244: SalesRouteName = la ruta EFECTIVA (la directa o, si no tiene, la del representante con SalesRouteFromRep = true; null = «Sin ruta»)
     int? SalesRepId = null, string? SalesRepName = null, string? SalesRouteName = null,
     // Lote 244: ruta directa (null = hereda la del representante) y vendedor preferido; se cambian en /sales-analysis/clients/{id}/sales
-    int? DirectSalesRouteId = null, bool SalesRouteFromRep = false, int? PreferredSalesUserId = null, string? PreferredSalesUserName = null);
+    int? DirectSalesRouteId = null, bool SalesRouteFromRep = false, int? PreferredSalesUserId = null, string? PreferredSalesUserName = null,
+    // Lote 245: cadena del cliente (null = «Sin cadena»; no es una ruta). Se cambia en PUT /client-chains/by-client/{id} (sales.chain), no en el perfil
+    Guid? ChainPublicId = null, string? ChainName = null, bool ChainIsActive = false);
 
 // ---------------- Edición ----------------
 

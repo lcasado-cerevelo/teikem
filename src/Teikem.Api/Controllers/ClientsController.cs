@@ -19,9 +19,14 @@ namespace Teikem.Api.Controllers;
 [RequireModule(ModuleKeys.Catalog)]
 public sealed class ClientsController(ClientService clients) : ControllerBase
 {
+    /// <summary>
+    /// Lista de clientes. Lote 245: chainPublicId = solo los de esa cadena (una cadena que no existe o es de otra compañía da la lista vacía);
+    /// noChain = solo los «Sin cadena»; los dos a la vez → 400.
+    /// </summary>
     [HttpGet, RequirePermission(PermissionCatalog.ClientsRead)]
-    public Task<IReadOnlyList<ClientListItemDto>> List([FromQuery] string? search, [FromQuery] bool includeInactive, CancellationToken ct)
-        => clients.GetListAsync(search, includeInactive, ct, CustomFieldFilters.FromQuery(Request.Query));   // Lote 130: cf.clave
+    public Task<IReadOnlyList<ClientListItemDto>> List([FromQuery] string? search, [FromQuery] bool includeInactive, CancellationToken ct,
+        [FromQuery] Guid? chainPublicId = null, [FromQuery] bool noChain = false)
+        => clients.GetListAsync(search, includeInactive, ct, CustomFieldFilters.FromQuery(Request.Query), chainPublicId, noChain);   // Lote 130: cf.clave
 
     /// <summary>Alta compuesta del modal '+ Nuevo cliente'. Devuelve la ficha completa (con currentContract si se creó contrato).</summary>
     [HttpPost, RequirePermission(PermissionCatalog.ClientsCreate)]

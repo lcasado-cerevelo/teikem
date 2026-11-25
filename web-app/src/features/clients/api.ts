@@ -22,7 +22,7 @@ export const clientKeys = {
 export function useClients(search: string, includeInactive: boolean, custom: object = {}) {
   return useQuery({
     queryKey: clientKeys.listOf(search, includeInactive, custom),
-    queryFn: () => unwrap(api.GET('/api/v1/clients', { params: { query: { search: search || undefined, includeInactive, ...custom } as { search?: string; includeInactive?: boolean } } })),
+    queryFn: () => unwrap(api.GET('/api/v1/clients', { params: { query: { search: search || undefined, includeInactive, ...custom } as { search?: string; includeInactive?: boolean; chainPublicId?: string; noChain?: boolean } } })),
     placeholderData: keepPreviousData,
   })
 }

@@ -5495,6 +5495,8 @@ export interface paths {
                 query?: {
                     search?: string;
                     includeInactive?: boolean;
+                    chainPublicId?: string;
+                    noChain?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -21911,6 +21913,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notifications/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["NotificationPreviewRequest"];
+                    "text/json": components["schemas"]["NotificationPreviewRequest"];
+                    "application/*+json": components["schemas"]["NotificationPreviewRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationPreviewDto"];
+                        "application/json": components["schemas"]["NotificationPreviewDto"];
+                        "text/json": components["schemas"]["NotificationPreviewDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/notifications/test-event": {
         parameters: {
             query?: never;
@@ -32697,6 +32742,1537 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sales-analysis/by-rep": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    month?: string;
+                    compareMonth?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesByRepDto"];
+                        "application/json": components["schemas"]["SalesByRepDto"];
+                        "text/json": components["schemas"]["SalesByRepDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/by-route": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    month?: string;
+                    compareMonth?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesByRouteDto"];
+                        "application/json": components["schemas"]["SalesByRouteDto"];
+                        "text/json": components["schemas"]["SalesByRouteDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    month?: string;
+                    repId?: number;
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                    all?: boolean;
+                    routeId?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesTransactionDtoPagedResult"];
+                        "application/json": components["schemas"]["SalesTransactionDtoPagedResult"];
+                        "text/json": components["schemas"]["SalesTransactionDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/product-movement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    fromMonth?: string;
+                    toMonth?: string;
+                    asOf?: string;
+                    leadTimeDays?: number;
+                    serviceLevelZ?: number;
+                    topClients?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductMovementDto"];
+                        "application/json": components["schemas"]["ProductMovementDto"];
+                        "text/json": components["schemas"]["ProductMovementDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/charts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    fromMonth?: string;
+                    toMonth?: string;
+                    month?: string;
+                    topProducts?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesChartsDto"];
+                        "application/json": components["schemas"]["SalesChartsDto"];
+                        "text/json": components["schemas"]["SalesChartsDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesAnalysisStatusDto"];
+                        "application/json": components["schemas"]["SalesAnalysisStatusDto"];
+                        "text/json": components["schemas"]["SalesAnalysisStatusDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesAnalysisSettingsDto"];
+                        "application/json": components["schemas"]["SalesAnalysisSettingsDto"];
+                        "text/json": components["schemas"]["SalesAnalysisSettingsDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesAnalysisSettingsRequest"];
+                    "text/json": components["schemas"]["SalesAnalysisSettingsRequest"];
+                    "application/*+json": components["schemas"]["SalesAnalysisSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/routes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRouteDto"][];
+                        "application/json": components["schemas"]["SalesRouteDto"][];
+                        "text/json": components["schemas"]["SalesRouteDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesRouteRequest"];
+                    "text/json": components["schemas"]["SalesRouteRequest"];
+                    "application/*+json": components["schemas"]["SalesRouteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRouteDto"];
+                        "application/json": components["schemas"]["SalesRouteDto"];
+                        "text/json": components["schemas"]["SalesRouteDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/routes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesRouteRequest"];
+                    "text/json": components["schemas"]["SalesRouteRequest"];
+                    "application/*+json": components["schemas"]["SalesRouteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRouteDto"];
+                        "application/json": components["schemas"]["SalesRouteDto"];
+                        "text/json": components["schemas"]["SalesRouteDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/routes/{id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRouteDto"];
+                        "application/json": components["schemas"]["SalesRouteDto"];
+                        "text/json": components["schemas"]["SalesRouteDto"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/routes/{id}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRouteDto"];
+                        "application/json": components["schemas"]["SalesRouteDto"];
+                        "text/json": components["schemas"]["SalesRouteDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/routes/{id}/quotas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRouteQuotaHistoryDto"];
+                        "application/json": components["schemas"]["SalesRouteQuotaHistoryDto"];
+                        "text/json": components["schemas"]["SalesRouteQuotaHistoryDto"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/reps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: boolean;
+                    withoutUser?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRepDto"][];
+                        "application/json": components["schemas"]["SalesRepDto"][];
+                        "text/json": components["schemas"]["SalesRepDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesRepRequest"];
+                    "text/json": components["schemas"]["SalesRepRequest"];
+                    "application/*+json": components["schemas"]["SalesRepRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRepDto"];
+                        "application/json": components["schemas"]["SalesRepDto"];
+                        "text/json": components["schemas"]["SalesRepDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/reps/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesRepRequest"];
+                    "text/json": components["schemas"]["SalesRepRequest"];
+                    "application/*+json": components["schemas"]["SalesRepRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRepDto"];
+                        "application/json": components["schemas"]["SalesRepDto"];
+                        "text/json": components["schemas"]["SalesRepDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/reps/{id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRepDto"];
+                        "application/json": components["schemas"]["SalesRepDto"];
+                        "text/json": components["schemas"]["SalesRepDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/reps/{id}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/reps/from-custom-field": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRepMigrationDto"];
+                        "application/json": components["schemas"]["SalesRepMigrationDto"];
+                        "text/json": components["schemas"]["SalesRepMigrationDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/reps/{id}/quotas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesQuotaHistoryDto"];
+                        "application/json": components["schemas"]["SalesQuotaHistoryDto"];
+                        "text/json": components["schemas"]["SalesQuotaHistoryDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/quotas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    month?: string;
+                    by?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesQuotaMonthDto"];
+                        "application/json": components["schemas"]["SalesQuotaMonthDto"];
+                        "text/json": components["schemas"]["SalesQuotaMonthDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/quotas/{month}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    month: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesQuotaBulkRequest"];
+                    "text/json": components["schemas"]["SalesQuotaBulkRequest"];
+                    "application/*+json": components["schemas"]["SalesQuotaBulkRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesQuotaMonthDto"];
+                        "application/json": components["schemas"]["SalesQuotaMonthDto"];
+                        "text/json": components["schemas"]["SalesQuotaMonthDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductLineDto"][];
+                        "application/json": components["schemas"]["ProductLineDto"][];
+                        "text/json": components["schemas"]["ProductLineDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ProductLineRequest"];
+                    "text/json": components["schemas"]["ProductLineRequest"];
+                    "application/*+json": components["schemas"]["ProductLineRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductLineDto"];
+                        "application/json": components["schemas"]["ProductLineDto"];
+                        "text/json": components["schemas"]["ProductLineDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/lines/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ProductLineRequest"];
+                    "text/json": components["schemas"]["ProductLineRequest"];
+                    "application/*+json": components["schemas"]["ProductLineRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductLineDto"];
+                        "application/json": components["schemas"]["ProductLineDto"];
+                        "text/json": components["schemas"]["ProductLineDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/lines/{id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductLineDto"];
+                        "application/json": components["schemas"]["ProductLineDto"];
+                        "text/json": components["schemas"]["ProductLineDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/lines/{id}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductLineDto"];
+                        "application/json": components["schemas"]["ProductLineDto"];
+                        "text/json": components["schemas"]["ProductLineDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/lines/{id}/brands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ProductLineBrandsRequest"];
+                    "text/json": components["schemas"]["ProductLineBrandsRequest"];
+                    "application/*+json": components["schemas"]["ProductLineBrandsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductLineDto"];
+                        "application/json": components["schemas"]["ProductLineDto"];
+                        "text/json": components["schemas"]["ProductLineDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/brands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesBrandDto"][];
+                        "application/json": components["schemas"]["SalesBrandDto"][];
+                        "text/json": components["schemas"]["SalesBrandDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    repId?: number;
+                    unassigned?: boolean;
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                    routeId?: number;
+                    noRoute?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesClientRepDtoPagedResult"];
+                        "application/json": components["schemas"]["SalesClientRepDtoPagedResult"];
+                        "text/json": components["schemas"]["SalesClientRepDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/clients/{clientId}/rep": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    clientId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesClientRepRequest"];
+                    "text/json": components["schemas"]["SalesClientRepRequest"];
+                    "application/*+json": components["schemas"]["SalesClientRepRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesClientRepBulkResultDto"];
+                        "application/json": components["schemas"]["SalesClientRepBulkResultDto"];
+                        "text/json": components["schemas"]["SalesClientRepBulkResultDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/clients/assign-rep": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesClientRepBulkRequest"];
+                    "text/json": components["schemas"]["SalesClientRepBulkRequest"];
+                    "application/*+json": components["schemas"]["SalesClientRepBulkRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesClientRepBulkResultDto"];
+                        "application/json": components["schemas"]["SalesClientRepBulkResultDto"];
+                        "text/json": components["schemas"]["SalesClientRepBulkResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/unmatched/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesAliasRequest"];
+                    "text/json": components["schemas"]["SalesAliasRequest"];
+                    "application/*+json": components["schemas"]["SalesAliasRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesAliasResultDto"];
+                        "application/json": components["schemas"]["SalesAliasResultDto"];
+                        "text/json": components["schemas"]["SalesAliasResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        salesFile?: string;
+                        /** Format: binary */
+                        purchasesFile?: string;
+                        dryRun?: boolean;
+                        /** Format: date */
+                        cutoffDate?: string;
+                        repsFromCustomField?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesHistoryImportReportDto"];
+                        "application/json": components["schemas"]["SalesHistoryImportReportDto"];
+                        "text/json": components["schemas"]["SalesHistoryImportReportDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sales-orders/catalog": {
         parameters: {
             query?: never;
@@ -32759,6 +34335,9 @@ export interface paths {
                     urgent?: boolean;
                     productPublicId?: string[];
                     dateField?: string;
+                    routeId?: number;
+                    sellerUserId?: number;
+                    chainPublicId?: string[];
                 };
                 header?: never;
                 path?: never;
@@ -32808,6 +34387,67 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/seller-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    client?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesSellerOptionsDto"];
+                        "application/json": components["schemas"]["SalesSellerOptionsDto"];
+                        "text/json": components["schemas"]["SalesSellerOptionsDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -33018,6 +34658,48 @@ export interface paths {
                         "text/plain": components["schemas"]["KitSubstitutesDto"];
                         "application/json": components["schemas"]["KitSubstitutesDto"];
                         "text/json": components["schemas"]["KitSubstitutesDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/email-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    audience?: string;
+                    lang?: string;
+                };
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationPreviewDto"];
+                        "application/json": components["schemas"]["NotificationPreviewDto"];
+                        "text/json": components["schemas"]["NotificationPreviewDto"];
                     };
                 };
             };
@@ -34111,6 +35793,650 @@ export interface paths {
                         "text/plain": components["schemas"]["SalesReturnDto"];
                         "application/json": components["schemas"]["SalesReturnDto"];
                         "text/json": components["schemas"]["SalesReturnDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/routes/{id}/people": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    history?: boolean;
+                    includeVoided?: boolean;
+                };
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRoutePeopleDto"];
+                        "application/json": components["schemas"]["SalesRoutePeopleDto"];
+                        "text/json": components["schemas"]["SalesRoutePeopleDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesRouteAssignRequest"];
+                    "text/json": components["schemas"]["SalesRouteAssignRequest"];
+                    "application/*+json": components["schemas"]["SalesRouteAssignRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRoutePeopleDto"];
+                        "application/json": components["schemas"]["SalesRoutePeopleDto"];
+                        "text/json": components["schemas"]["SalesRoutePeopleDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/routes/{id}/people/{assignmentId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                    assignmentId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesRouteCloseRequest"];
+                    "text/json": components["schemas"]["SalesRouteCloseRequest"];
+                    "application/*+json": components["schemas"]["SalesRouteCloseRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRoutePeopleDto"];
+                        "application/json": components["schemas"]["SalesRoutePeopleDto"];
+                        "text/json": components["schemas"]["SalesRoutePeopleDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/routes/{id}/people/{assignmentId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                    assignmentId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRoutePeopleDto"];
+                        "application/json": components["schemas"]["SalesRoutePeopleDto"];
+                        "text/json": components["schemas"]["SalesRoutePeopleDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/sellers/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesSellerCandidateDto"][];
+                        "application/json": components["schemas"]["SalesSellerCandidateDto"][];
+                        "text/json": components["schemas"]["SalesSellerCandidateDto"][];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/clients/{clientId}/sales": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    clientId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesClientSalesDto"];
+                        "application/json": components["schemas"]["SalesClientSalesDto"];
+                        "text/json": components["schemas"]["SalesClientSalesDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    clientId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesClientSalesRequest"];
+                    "text/json": components["schemas"]["SalesClientSalesRequest"];
+                    "application/*+json": components["schemas"]["SalesClientSalesRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesClientSalesDto"];
+                        "application/json": components["schemas"]["SalesClientSalesDto"];
+                        "text/json": components["schemas"]["SalesClientSalesDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/clients/assign-route": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesClientRouteBulkRequest"];
+                    "text/json": components["schemas"]["SalesClientRouteBulkRequest"];
+                    "application/*+json": components["schemas"]["SalesClientRouteBulkRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesClientRouteBulkResultDto"];
+                        "application/json": components["schemas"]["SalesClientRouteBulkResultDto"];
+                        "text/json": components["schemas"]["SalesClientRouteBulkResultDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/routes/from-reps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: {
+                    dryRun?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesRoutesFromRepsDto"];
+                        "application/json": components["schemas"]["SalesRoutesFromRepsDto"];
+                        "text/json": components["schemas"]["SalesRoutesFromRepsDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
             };
@@ -41646,7 +43972,870 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/sales-analysis/by-rep": {
+    "/api/v1/client-chains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: boolean;
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainListItemDto"][];
+                        "application/json": components["schemas"]["ClientChainListItemDto"][];
+                        "text/json": components["schemas"]["ClientChainListItemDto"][];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientChainRequest"];
+                    "text/json": components["schemas"]["ClientChainRequest"];
+                    "application/*+json": components["schemas"]["ClientChainRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainDetailDto"];
+                        "application/json": components["schemas"]["ClientChainDetailDto"];
+                        "text/json": components["schemas"]["ClientChainDetailDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-chains/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainDetailDto"];
+                        "application/json": components["schemas"]["ClientChainDetailDto"];
+                        "text/json": components["schemas"]["ClientChainDetailDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientChainRequest"];
+                    "text/json": components["schemas"]["ClientChainRequest"];
+                    "application/*+json": components["schemas"]["ClientChainRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainDetailDto"];
+                        "application/json": components["schemas"]["ClientChainDetailDto"];
+                        "text/json": components["schemas"]["ClientChainDetailDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/client-chains/{publicId}/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                    includeInactive?: boolean;
+                    skip?: number;
+                    take?: number;
+                    all?: boolean;
+                };
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainClientDtoPagedResult"];
+                        "application/json": components["schemas"]["ClientChainClientDtoPagedResult"];
+                        "text/json": components["schemas"]["ClientChainClientDtoPagedResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientChainAssignRequest"];
+                    "text/json": components["schemas"]["ClientChainAssignRequest"];
+                    "application/*+json": components["schemas"]["ClientChainAssignRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainAssignResultDto"];
+                        "application/json": components["schemas"]["ClientChainAssignResultDto"];
+                        "text/json": components["schemas"]["ClientChainAssignResultDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-chains/{publicId}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainDetailDto"];
+                        "application/json": components["schemas"]["ClientChainDetailDto"];
+                        "text/json": components["schemas"]["ClientChainDetailDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-chains/{publicId}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainDetailDto"];
+                        "application/json": components["schemas"]["ClientChainDetailDto"];
+                        "text/json": components["schemas"]["ClientChainDetailDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-chains/{publicId}/clients/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientChainRemoveRequest"];
+                    "text/json": components["schemas"]["ClientChainRemoveRequest"];
+                    "application/*+json": components["schemas"]["ClientChainRemoveRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainAssignResultDto"];
+                        "application/json": components["schemas"]["ClientChainAssignResultDto"];
+                        "text/json": components["schemas"]["ClientChainAssignResultDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-chains/by-client/{clientPublicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    clientPublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientChainSetRequest"];
+                    "text/json": components["schemas"]["ClientChainSetRequest"];
+                    "application/*+json": components["schemas"]["ClientChainSetRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainMembershipDto"];
+                        "application/json": components["schemas"]["ClientChainMembershipDto"];
+                        "text/json": components["schemas"]["ClientChainMembershipDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-chains/{publicId}/bulk-assign/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientChainBulkRequest"];
+                    "text/json": components["schemas"]["ClientChainBulkRequest"];
+                    "application/*+json": components["schemas"]["ClientChainBulkRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainBulkPreviewDto"];
+                        "application/json": components["schemas"]["ClientChainBulkPreviewDto"];
+                        "text/json": components["schemas"]["ClientChainBulkPreviewDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-chains/{publicId}/bulk-assign/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientChainBulkRequest"];
+                    "text/json": components["schemas"]["ClientChainBulkRequest"];
+                    "application/*+json": components["schemas"]["ClientChainBulkRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainBulkResultDto"];
+                        "application/json": components["schemas"]["ClientChainBulkResultDto"];
+                        "text/json": components["schemas"]["ClientChainBulkResultDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/by-chain": {
         parameters: {
             query?: never;
             header?: never;
@@ -41658,6 +44847,7 @@ export interface paths {
                 query?: {
                     month?: string;
                     compareMonth?: string;
+                    chainPublicId?: string;
                 };
                 header?: never;
                 path?: never;
@@ -41671,53 +44861,31 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "text/plain": components["schemas"]["SalesByRepDto"];
-                        "application/json": components["schemas"]["SalesByRepDto"];
-                        "text/json": components["schemas"]["SalesByRepDto"];
+                        "text/plain": components["schemas"]["ClientChainSalesDto"];
+                        "application/json": components["schemas"]["ClientChainSalesDto"];
+                        "text/json": components["schemas"]["ClientChainSalesDto"];
                     };
                 };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/transactions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: {
-                    month?: string;
-                    repId?: number;
-                    q?: string;
-                    skip?: number;
-                    take?: number;
-                    all?: boolean;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
+                /** @description Bad Request */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "text/plain": components["schemas"]["SalesTransactionDtoPagedResult"];
-                        "application/json": components["schemas"]["SalesTransactionDtoPagedResult"];
-                        "text/json": components["schemas"]["SalesTransactionDtoPagedResult"];
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
             };
@@ -41730,7 +44898,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/sales-analysis/product-movement": {
+    "/api/v1/sales-analysis/by-chain/series": {
         parameters: {
             query?: never;
             header?: never;
@@ -41740,12 +44908,9 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    chainPublicId?: string;
                     fromMonth?: string;
                     toMonth?: string;
-                    asOf?: string;
-                    leadTimeDays?: number;
-                    serviceLevelZ?: number;
-                    topClients?: number;
                 };
                 header?: never;
                 path?: never;
@@ -41759,1191 +44924,37 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "text/plain": components["schemas"]["ProductMovementDto"];
-                        "application/json": components["schemas"]["ProductMovementDto"];
-                        "text/json": components["schemas"]["ProductMovementDto"];
+                        "text/plain": components["schemas"]["ClientChainSeriesDto"];
+                        "application/json": components["schemas"]["ClientChainSeriesDto"];
+                        "text/json": components["schemas"]["ClientChainSeriesDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
             };
         };
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/charts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: {
-                    fromMonth?: string;
-                    toMonth?: string;
-                    month?: string;
-                    topProducts?: number;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesChartsDto"];
-                        "application/json": components["schemas"]["SalesChartsDto"];
-                        "text/json": components["schemas"]["SalesChartsDto"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesAnalysisStatusDto"];
-                        "application/json": components["schemas"]["SalesAnalysisStatusDto"];
-                        "text/json": components["schemas"]["SalesAnalysisStatusDto"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesAnalysisSettingsDto"];
-                        "application/json": components["schemas"]["SalesAnalysisSettingsDto"];
-                        "text/json": components["schemas"]["SalesAnalysisSettingsDto"];
-                    };
-                };
-            };
-        };
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["SalesAnalysisSettingsRequest"];
-                    "text/json": components["schemas"]["SalesAnalysisSettingsRequest"];
-                    "application/*+json": components["schemas"]["SalesAnalysisSettingsRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesAnalysisSettingsDto"];
-                        "application/json": components["schemas"]["SalesAnalysisSettingsDto"];
-                        "text/json": components["schemas"]["SalesAnalysisSettingsDto"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/routes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: {
-                    includeInactive?: boolean;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesRouteDto"][];
-                        "application/json": components["schemas"]["SalesRouteDto"][];
-                        "text/json": components["schemas"]["SalesRouteDto"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["SalesRouteRequest"];
-                    "text/json": components["schemas"]["SalesRouteRequest"];
-                    "application/*+json": components["schemas"]["SalesRouteRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesRouteDto"];
-                        "application/json": components["schemas"]["SalesRouteDto"];
-                        "text/json": components["schemas"]["SalesRouteDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/routes/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["SalesRouteRequest"];
-                    "text/json": components["schemas"]["SalesRouteRequest"];
-                    "application/*+json": components["schemas"]["SalesRouteRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesRouteDto"];
-                        "application/json": components["schemas"]["SalesRouteDto"];
-                        "text/json": components["schemas"]["SalesRouteDto"];
-                    };
-                };
-            };
-        };
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/routes/{id}/deactivate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesRouteDto"];
-                        "application/json": components["schemas"]["SalesRouteDto"];
-                        "text/json": components["schemas"]["SalesRouteDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/routes/{id}/reactivate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesRouteDto"];
-                        "application/json": components["schemas"]["SalesRouteDto"];
-                        "text/json": components["schemas"]["SalesRouteDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/reps": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: {
-                    includeInactive?: boolean;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesRepDto"][];
-                        "application/json": components["schemas"]["SalesRepDto"][];
-                        "text/json": components["schemas"]["SalesRepDto"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["SalesRepRequest"];
-                    "text/json": components["schemas"]["SalesRepRequest"];
-                    "application/*+json": components["schemas"]["SalesRepRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesRepDto"];
-                        "application/json": components["schemas"]["SalesRepDto"];
-                        "text/json": components["schemas"]["SalesRepDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/reps/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["SalesRepRequest"];
-                    "text/json": components["schemas"]["SalesRepRequest"];
-                    "application/*+json": components["schemas"]["SalesRepRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesRepDto"];
-                        "application/json": components["schemas"]["SalesRepDto"];
-                        "text/json": components["schemas"]["SalesRepDto"];
-                    };
-                };
-            };
-        };
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/reps/{id}/deactivate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesRepDto"];
-                        "application/json": components["schemas"]["SalesRepDto"];
-                        "text/json": components["schemas"]["SalesRepDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/reps/{id}/reactivate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesRepDto"];
-                        "application/json": components["schemas"]["SalesRepDto"];
-                        "text/json": components["schemas"]["SalesRepDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/reps/from-custom-field": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesRepMigrationDto"];
-                        "application/json": components["schemas"]["SalesRepMigrationDto"];
-                        "text/json": components["schemas"]["SalesRepMigrationDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/reps/{id}/quotas": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesQuotaHistoryDto"];
-                        "application/json": components["schemas"]["SalesQuotaHistoryDto"];
-                        "text/json": components["schemas"]["SalesQuotaHistoryDto"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/quotas": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: {
-                    month?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesQuotaMonthDto"];
-                        "application/json": components["schemas"]["SalesQuotaMonthDto"];
-                        "text/json": components["schemas"]["SalesQuotaMonthDto"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/quotas/{month}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    month: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["SalesQuotaBulkRequest"];
-                    "text/json": components["schemas"]["SalesQuotaBulkRequest"];
-                    "application/*+json": components["schemas"]["SalesQuotaBulkRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesQuotaMonthDto"];
-                        "application/json": components["schemas"]["SalesQuotaMonthDto"];
-                        "text/json": components["schemas"]["SalesQuotaMonthDto"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/lines": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: {
-                    includeInactive?: boolean;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["ProductLineDto"][];
-                        "application/json": components["schemas"]["ProductLineDto"][];
-                        "text/json": components["schemas"]["ProductLineDto"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["ProductLineRequest"];
-                    "text/json": components["schemas"]["ProductLineRequest"];
-                    "application/*+json": components["schemas"]["ProductLineRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["ProductLineDto"];
-                        "application/json": components["schemas"]["ProductLineDto"];
-                        "text/json": components["schemas"]["ProductLineDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/lines/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["ProductLineRequest"];
-                    "text/json": components["schemas"]["ProductLineRequest"];
-                    "application/*+json": components["schemas"]["ProductLineRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["ProductLineDto"];
-                        "application/json": components["schemas"]["ProductLineDto"];
-                        "text/json": components["schemas"]["ProductLineDto"];
-                    };
-                };
-            };
-        };
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/lines/{id}/deactivate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["ProductLineDto"];
-                        "application/json": components["schemas"]["ProductLineDto"];
-                        "text/json": components["schemas"]["ProductLineDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/lines/{id}/reactivate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["ProductLineDto"];
-                        "application/json": components["schemas"]["ProductLineDto"];
-                        "text/json": components["schemas"]["ProductLineDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/lines/{id}/brands": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["ProductLineBrandsRequest"];
-                    "text/json": components["schemas"]["ProductLineBrandsRequest"];
-                    "application/*+json": components["schemas"]["ProductLineBrandsRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["ProductLineDto"];
-                        "application/json": components["schemas"]["ProductLineDto"];
-                        "text/json": components["schemas"]["ProductLineDto"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/brands": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesBrandDto"][];
-                        "application/json": components["schemas"]["SalesBrandDto"][];
-                        "text/json": components["schemas"]["SalesBrandDto"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/clients": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: {
-                    repId?: number;
-                    unassigned?: boolean;
-                    q?: string;
-                    skip?: number;
-                    take?: number;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesClientRepDtoPagedResult"];
-                        "application/json": components["schemas"]["SalesClientRepDtoPagedResult"];
-                        "text/json": components["schemas"]["SalesClientRepDtoPagedResult"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/clients/{clientId}/rep": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    clientId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["SalesClientRepRequest"];
-                    "text/json": components["schemas"]["SalesClientRepRequest"];
-                    "application/*+json": components["schemas"]["SalesClientRepRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesClientRepBulkResultDto"];
-                        "application/json": components["schemas"]["SalesClientRepBulkResultDto"];
-                        "text/json": components["schemas"]["SalesClientRepBulkResultDto"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/clients/assign-rep": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["SalesClientRepBulkRequest"];
-                    "text/json": components["schemas"]["SalesClientRepBulkRequest"];
-                    "application/*+json": components["schemas"]["SalesClientRepBulkRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesClientRepBulkResultDto"];
-                        "application/json": components["schemas"]["SalesClientRepBulkResultDto"];
-                        "text/json": components["schemas"]["SalesClientRepBulkResultDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/unmatched/link": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["SalesAliasRequest"];
-                    "text/json": components["schemas"]["SalesAliasRequest"];
-                    "application/*+json": components["schemas"]["SalesAliasRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesAliasResultDto"];
-                        "application/json": components["schemas"]["SalesAliasResultDto"];
-                        "text/json": components["schemas"]["SalesAliasResultDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sales-analysis/import": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "multipart/form-data": {
-                        /** Format: binary */
-                        salesFile?: string;
-                        /** Format: binary */
-                        purchasesFile?: string;
-                        dryRun?: boolean;
-                        /** Format: date */
-                        cutoffDate?: string;
-                        repsFromCustomField?: boolean;
-                    };
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["SalesHistoryImportReportDto"];
-                        "application/json": components["schemas"]["SalesHistoryImportReportDto"];
-                        "text/json": components["schemas"]["SalesHistoryImportReportDto"];
-                    };
-                };
-            };
-        };
         delete?: never;
         options?: never;
         head?: never;
@@ -43908,6 +45919,7 @@ export interface components {
             role?: string | null;
             isPrimary?: boolean;
             contactPoints?: components["schemas"]["ContactPointUpsertRequest"][] | null;
+            receivesEmailNotifications?: boolean | null;
         };
         ClientContactDto: {
             /** Format: int32 */
@@ -43917,12 +45929,15 @@ export interface components {
             isPrimary?: boolean;
             isActive?: boolean;
             contactPoints?: components["schemas"]["ContactPointDto"][] | null;
+            receivesEmailNotifications?: boolean;
+            hasEmail?: boolean;
         };
         ClientContactUpdateRequest: {
             fullName?: string | null;
             role?: string | null;
             isPrimary?: boolean | null;
             isActive?: boolean | null;
+            receivesEmailNotifications?: boolean | null;
         };
         ClientContractBillingDto: {
             billPerService?: boolean;
@@ -44061,6 +46076,16 @@ export interface components {
             salesRepId?: number | null;
             salesRepName?: string | null;
             salesRouteName?: string | null;
+            /** Format: int32 */
+            directSalesRouteId?: number | null;
+            salesRouteFromRep?: boolean;
+            /** Format: int32 */
+            preferredSalesUserId?: number | null;
+            preferredSalesUserName?: string | null;
+            /** Format: uuid */
+            chainPublicId?: string | null;
+            chainName?: string | null;
+            chainIsActive?: boolean;
         };
         ClientDocumentDto: {
             /** Format: uuid */
@@ -44100,6 +46125,9 @@ export interface components {
             billingSummary?: string | null;
             /** Format: int32 */
             contractsCount?: number;
+            /** Format: uuid */
+            chainPublicId?: string | null;
+            chainName?: string | null;
         };
         ClientMessageDto: {
             /** Format: int64 */
@@ -49236,6 +51264,13 @@ export interface components {
             notes?: string | null;
             lines?: components["schemas"]["MultiAdjustmentLineInput"][] | null;
         };
+        NotificationChannelDefaultDto: {
+            channel?: string | null;
+            subject?: string | null;
+            subjectEn?: string | null;
+            body?: string | null;
+            bodyEn?: string | null;
+        };
         NotificationChannelRequest: {
             channel?: string | null;
             isEnabled?: boolean | null;
@@ -49247,6 +51282,14 @@ export interface components {
         NotificationChannelStatusDto: {
             channel?: string | null;
             isConfigured?: boolean;
+            isLocal?: boolean;
+        };
+        NotificationContextRecipientDto: {
+            key?: string | null;
+            label?: string | null;
+            labelEn?: string | null;
+            isDefault?: boolean;
+            audience?: string | null;
         };
         NotificationEventDto: {
             code?: string | null;
@@ -49260,6 +51303,8 @@ export interface components {
             defaultBody?: string | null;
             defaultBodyEn?: string | null;
             category?: string | null;
+            contextRecipients?: components["schemas"]["NotificationContextRecipientDto"][] | null;
+            channelDefaults?: components["schemas"]["NotificationChannelDefaultDto"][] | null;
         };
         NotificationLogDto: {
             /** Format: int64 */
@@ -49298,6 +51343,30 @@ export interface components {
         };
         NotificationPrefRequest: {
             muted?: boolean | null;
+        };
+        NotificationPreviewAttachmentDto: {
+            fileName?: string | null;
+            contentType?: string | null;
+            /** Format: int64 */
+            sizeBytes?: number;
+        };
+        NotificationPreviewDto: {
+            channel?: string | null;
+            subject?: string | null;
+            bodyText?: string | null;
+            bodyHtml?: string | null;
+            attachments?: components["schemas"]["NotificationPreviewAttachmentDto"][] | null;
+            usedSample?: boolean;
+            templateSource?: string | null;
+        };
+        NotificationPreviewRequest: {
+            eventCode?: string | null;
+            channel?: string | null;
+            subject?: string | null;
+            body?: string | null;
+            lang?: string | null;
+            reference?: string | null;
+            audience?: string | null;
         };
         NotificationQueuedDto: {
             queued?: boolean;
@@ -49351,6 +51420,7 @@ export interface components {
         };
         NotificationTestRequest: {
             channel?: string | null;
+            reference?: string | null;
         };
         NotificationTestResultDto: {
             channel?: string | null;
@@ -49362,6 +51432,7 @@ export interface components {
             label?: string | null;
             labelEn?: string | null;
             sample?: string | null;
+            isBlock?: boolean;
         };
         NumberPreviewDto: {
             pattern?: string | null;
@@ -51301,6 +53372,16 @@ export interface components {
         PrintingSettingsRequest: {
             printLabelsDirect?: boolean | null;
         };
+        ProblemDetails: {
+            type?: string | null;
+            title?: string | null;
+            /** Format: int32 */
+            status?: number | null;
+            detail?: string | null;
+            instance?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
         ProductCategoryDto: {
             /** Format: int32 */
             id?: number;
@@ -51323,6 +53404,21 @@ export interface components {
             name?: string | null;
             /** Format: int32 */
             parentId?: number | null;
+        };
+        ProductClientDto: {
+            /** Format: int32 */
+            productId?: number | null;
+            sku?: string | null;
+            name?: string | null;
+            /** Format: int32 */
+            rank?: number;
+            /** Format: int32 */
+            clientId?: number | null;
+            client?: string | null;
+            /** Format: double */
+            units?: number;
+            /** Format: double */
+            shareOfProduct?: number | null;
         };
         ProductCreateRequest: {
             sku?: string | null;
@@ -51414,6 +53510,23 @@ export interface components {
             /** Format: uuid */
             effectiveImagePublicId?: string | null;
         };
+        ProductLineBrandsRequest: {
+            brands?: string[] | null;
+        };
+        ProductLineDto: {
+            /** Format: int32 */
+            id?: number;
+            name?: string | null;
+            /** Format: int32 */
+            sortOrder?: number;
+            isActive?: boolean;
+            brands?: string[] | null;
+        };
+        ProductLineRequest: {
+            name?: string | null;
+            /** Format: int32 */
+            sortOrder?: number | null;
+        };
         ProductListItemDto: {
             /** Format: int32 */
             id?: number;
@@ -51471,6 +53584,124 @@ export interface components {
             /** Format: double */
             weight?: number | null;
             weightUnit?: string | null;
+        };
+        ProductMonthSeriesDto: {
+            /** Format: int32 */
+            productId?: number | null;
+            sku?: string | null;
+            name?: string | null;
+            values?: number[] | null;
+            /** Format: double */
+            total?: number;
+            /** Format: double */
+            min?: number | null;
+            /** Format: double */
+            max?: number | null;
+            /** Format: double */
+            average?: number | null;
+        };
+        ProductMovementDto: {
+            fromMonth?: string | null;
+            toMonth?: string | null;
+            /** Format: date */
+            asOf?: string;
+            lastCompleteMonth?: string | null;
+            /** Format: date */
+            weeksFrom?: string;
+            /** Format: date */
+            weeksTo?: string;
+            /** Format: int32 */
+            leadTimeDays?: number;
+            /** Format: double */
+            serviceLevelZ?: number;
+            /** Format: date */
+            cutoffDate?: string | null;
+            months?: string[] | null;
+            warnings?: string[] | null;
+            /** Format: double */
+            totalUnits?: number;
+            /** Format: double */
+            totalSales?: number;
+            products?: components["schemas"]["ProductMovementRowDto"][] | null;
+            unitsByMonth?: components["schemas"]["ProductMonthSeriesDto"][] | null;
+            salesByMonth?: components["schemas"]["ProductMonthSeriesDto"][] | null;
+            purchasesByMonth?: components["schemas"]["ProductMonthSeriesDto"][] | null;
+            topClients?: components["schemas"]["ProductClientDto"][] | null;
+        };
+        ProductMovementRowDto: {
+            /** Format: int32 */
+            productId?: number | null;
+            sku?: string | null;
+            name?: string | null;
+            category?: string | null;
+            brand?: string | null;
+            line?: string | null;
+            matched?: boolean;
+            abc?: string | null;
+            status?: string | null;
+            /** Format: double */
+            price?: number | null;
+            /** Format: double */
+            cost?: number | null;
+            /** Format: double */
+            marginPct?: number | null;
+            /** Format: double */
+            onHand?: number;
+            /** Format: double */
+            reserved?: number;
+            /** Format: double */
+            available?: number;
+            /** Format: double */
+            units?: number;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            shareOfSales?: number | null;
+            /** Format: double */
+            monthlyAverage?: number | null;
+            /** Format: double */
+            monthlyMin?: number | null;
+            /** Format: double */
+            monthlyMax?: number | null;
+            bestMonth?: string | null;
+            /** Format: int32 */
+            monthsUsed?: number;
+            /** Format: double */
+            weeklyAverage?: number | null;
+            /** Format: double */
+            weeklyStdDev?: number | null;
+            /** Format: int32 */
+            weeksUsed?: number;
+            weeklyConfidence?: string | null;
+            /** Format: double */
+            coverageWeeks?: number | null;
+            /** Format: double */
+            coverageMonths?: number | null;
+            /** Format: double */
+            projected1?: number;
+            /** Format: double */
+            projected2?: number;
+            /** Format: double */
+            projected3?: number;
+            /** Format: double */
+            reorderPoint?: number | null;
+            /** Format: int32 */
+            suggestedReorderPoint?: number | null;
+            /** Format: double */
+            trend?: number | null;
+            /** Format: int32 */
+            clients?: number;
+            /** Format: int32 */
+            invoices?: number;
+            topClient?: string | null;
+            /** Format: double */
+            topClientUnits?: number | null;
+            /** Format: date */
+            lastSale?: string | null;
+            /** Format: double */
+            pendingPurchase?: number;
+            /** Format: double */
+            lastMonthUnits?: number;
         };
         ProductPageDto: {
             /** Format: int32 */
@@ -53394,6 +55625,79 @@ export interface components {
             serviceType?: string | null;
             isRoundTrip?: boolean;
         };
+        SalesAliasRequest: {
+            kind?: string | null;
+            raw?: string | null;
+            /** Format: int32 */
+            clientId?: number | null;
+            /** Format: int32 */
+            productId?: number | null;
+        };
+        SalesAliasResultDto: {
+            kind?: string | null;
+            raw?: string | null;
+            /** Format: int32 */
+            relinked?: number;
+            /** Format: int32 */
+            clientId?: number | null;
+            /** Format: int32 */
+            productId?: number | null;
+        };
+        SalesAnalysisSettingsDto: {
+            /** Format: date */
+            cutoffDate?: string | null;
+            /** Format: int32 */
+            leadTimeDays?: number;
+            /** Format: double */
+            serviceLevelZ?: number;
+            quotaBy?: string | null;
+        };
+        SalesAnalysisSettingsRequest: {
+            /** Format: date */
+            cutoffDate?: string | null;
+            clearCutoff?: boolean;
+            /** Format: int32 */
+            leadTimeDays?: number | null;
+            /** Format: double */
+            serviceLevelZ?: number | null;
+            quotaBy?: string | null;
+        };
+        SalesAnalysisStatusDto: {
+            /** Format: date */
+            cutoffDate?: string | null;
+            /** Format: int32 */
+            leadTimeDays?: number;
+            /** Format: double */
+            serviceLevelZ?: number;
+            batches?: components["schemas"]["SalesHistoryBatchDto"][] | null;
+            /** Format: int32 */
+            activeClients?: number;
+            /** Format: int32 */
+            clientsWithoutRep?: number;
+            brandsWithoutLine?: string[] | null;
+            unmatchedClients?: components["schemas"]["SalesUnmatchedDto"][] | null;
+            unmatchedItems?: components["schemas"]["SalesUnmatchedDto"][] | null;
+            unmatchedPurchaseItems?: components["schemas"]["SalesUnmatchedDto"][] | null;
+            /** Format: date */
+            historyFrom?: string | null;
+            /** Format: date */
+            historyTo?: string | null;
+            /** Format: date */
+            invoicesFrom?: string | null;
+            /** Format: date */
+            invoicesTo?: string | null;
+            overlap?: boolean;
+            warnings?: string[] | null;
+            /** Format: int32 */
+            clientsWithoutRoute?: number;
+            /** Format: int32 */
+            routesWithoutPrimary?: number;
+            /** Format: int32 */
+            routesWithInactivePrimary?: number;
+            /** Format: int32 */
+            repsWithoutUser?: number;
+            quotaBy?: string | null;
+        };
         SalesAvailabilityDto: {
             lines?: components["schemas"]["SalesAvailabilityLineDto"][] | null;
             hasShortage?: boolean;
@@ -53443,6 +55747,43 @@ export interface components {
             /** Format: int32 */
             daysWaiting?: number;
         };
+        SalesBrandDto: {
+            brand?: string | null;
+            /** Format: int32 */
+            productCount?: number;
+            /** Format: int32 */
+            lineId?: number | null;
+            line?: string | null;
+            hasLine?: boolean;
+        };
+        SalesByRepDto: {
+            month?: string | null;
+            compareMonth?: string | null;
+            /** Format: date */
+            cutoffDate?: string | null;
+            warnings?: string[] | null;
+            reps?: components["schemas"]["SalesRepRowDto"][] | null;
+            totals?: components["schemas"]["SalesRepTotalsDto"];
+            reconciliation?: components["schemas"]["SalesReconciliationDto"];
+            lines?: components["schemas"]["SalesLineShareDto"][] | null;
+            repLines?: components["schemas"]["SalesRepLineDto"][] | null;
+            repProducts?: components["schemas"]["SalesRepProductDto"][] | null;
+            routeProducts?: components["schemas"]["SalesRouteProductDto"][] | null;
+        };
+        SalesByRouteDto: {
+            month?: string | null;
+            compareMonth?: string | null;
+            /** Format: date */
+            cutoffDate?: string | null;
+            quotaBy?: string | null;
+            warnings?: string[] | null;
+            routes?: components["schemas"]["SalesRouteRowDto"][] | null;
+            totals?: components["schemas"]["SalesRepTotalsDto"];
+            reconciliation?: components["schemas"]["SalesReconciliationDto"];
+            people?: components["schemas"]["SalesPersonTotalDto"][] | null;
+            lines?: components["schemas"]["SalesLineShareDto"][] | null;
+            routeProducts?: components["schemas"]["SalesRouteProductDto"][] | null;
+        };
         SalesCatalogBrandDto: {
             brand?: string | null;
             offers?: components["schemas"]["SalesCatalogItemDto"][] | null;
@@ -53490,6 +55831,135 @@ export interface components {
             offerPrice?: number | null;
             isOfferKit?: boolean;
             notices?: components["schemas"]["SalesPriceNoticeDto"][] | null;
+        };
+        SalesChartSeriesDto: {
+            key?: string | null;
+            label?: string | null;
+            values?: number[] | null;
+        };
+        SalesChartsDto: {
+            months?: string[] | null;
+            totalByMonth?: components["schemas"]["SalesChartSeriesDto"];
+            byLineByMonth?: components["schemas"]["SalesChartSeriesDto"][] | null;
+            month?: string | null;
+            repVsQuota?: components["schemas"]["SalesRepQuotaPointDto"][] | null;
+            lineShare?: components["schemas"]["SalesLineSharePointDto"][] | null;
+            topProductUnits?: components["schemas"]["SalesChartSeriesDto"][] | null;
+            coverage?: components["schemas"]["SalesCoveragePointDto"][] | null;
+            quotaBy?: string | null;
+            routeVsQuota?: components["schemas"]["SalesRouteQuotaPointDto"][] | null;
+        };
+        SalesClientRepBulkRequest: {
+            clientIds?: number[] | null;
+            /** Format: int32 */
+            repId?: number | null;
+        };
+        SalesClientRepBulkResultDto: {
+            /** Format: int32 */
+            updated?: number;
+            /** Format: int32 */
+            repId?: number | null;
+            repName?: string | null;
+        };
+        SalesClientRepDto: {
+            /** Format: int32 */
+            clientId?: number;
+            /** Format: uuid */
+            publicId?: string;
+            code?: string | null;
+            name?: string | null;
+            isActive?: boolean;
+            /** Format: int32 */
+            repId?: number | null;
+            repName?: string | null;
+            routeName?: string | null;
+            /** Format: int32 */
+            directRouteId?: number | null;
+            directRouteName?: string | null;
+            /** Format: int32 */
+            effectiveRouteId?: number | null;
+            effectiveRouteName?: string | null;
+            routeFromRep?: boolean;
+            /** Format: int32 */
+            preferredUserId?: number | null;
+            preferredName?: string | null;
+        };
+        SalesClientRepDtoPagedResult: {
+            items?: components["schemas"]["SalesClientRepDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        SalesClientRepRequest: {
+            /** Format: int32 */
+            repId?: number | null;
+        };
+        SalesClientRouteBulkRequest: {
+            clientIds?: number[] | null;
+            /** Format: int32 */
+            routeId?: number | null;
+        };
+        SalesClientRouteBulkResultDto: {
+            /** Format: int32 */
+            updated?: number;
+            /** Format: int32 */
+            routeId?: number | null;
+            routeName?: string | null;
+        };
+        SalesClientSalesDto: {
+            /** Format: int32 */
+            clientId?: number;
+            /** Format: uuid */
+            publicId?: string;
+            code?: string | null;
+            name?: string | null;
+            /** Format: int32 */
+            routeId?: number | null;
+            routeName?: string | null;
+            routeFromRep?: boolean;
+            /** Format: int32 */
+            directRouteId?: number | null;
+            primary?: components["schemas"]["SalesTeamPersonDto"];
+            supports?: components["schemas"]["SalesTeamPersonDto"][] | null;
+            preferred?: components["schemas"]["SalesTeamPersonDto"];
+            preferredOutOfRoute?: boolean;
+            /** Format: int32 */
+            proposedUserId?: number | null;
+            proposedName?: string | null;
+            proposedKind?: string | null;
+            /** Format: int32 */
+            repId?: number | null;
+            repName?: string | null;
+            /** Format: int32 */
+            repRouteId?: number | null;
+            repRouteName?: string | null;
+            repIsActive?: boolean;
+            rowVersion?: string | null;
+        };
+        SalesClientSalesRequest: {
+            /** Format: int32 */
+            routeId?: number | null;
+            clearRoute?: boolean;
+            /** Format: int32 */
+            preferredUserId?: number | null;
+            clearPreferred?: boolean;
+            rowVersion?: string | null;
+        };
+        SalesCoveragePointDto: {
+            /** Format: int32 */
+            productId?: number | null;
+            sku?: string | null;
+            name?: string | null;
+            abc?: string | null;
+            /** Format: double */
+            available?: number;
+            /** Format: double */
+            weeklyAverage?: number | null;
+            /** Format: double */
+            coverageWeeks?: number | null;
         };
         SalesCreditDto: {
             /** Format: double */
@@ -53562,6 +56032,72 @@ export interface components {
             /** Format: int32 */
             linesCompleted?: number;
         };
+        SalesHistoryBatchDto: {
+            /** Format: uuid */
+            publicId?: string;
+            kind?: string | null;
+            fileName?: string | null;
+            /** Format: date */
+            dateFrom?: string | null;
+            /** Format: date */
+            dateTo?: string | null;
+            /** Format: int32 */
+            lineCount?: number;
+            /** Format: double */
+            totalAmount?: number;
+            source?: string | null;
+            /** Format: date-time */
+            importedAtUtc?: string;
+            importedBy?: string | null;
+            isActive?: boolean;
+            /** Format: date-time */
+            replacedAtUtc?: string | null;
+        };
+        SalesHistoryFileReportDto: {
+            kind?: string | null;
+            fileName?: string | null;
+            /** Format: int32 */
+            linesRead?: number;
+            /** Format: int32 */
+            linesSaved?: number;
+            /** Format: int32 */
+            zeroQtySkipped?: number;
+            /** Format: int32 */
+            duplicatesSkipped?: number;
+            linesByClass?: {
+                [key: string]: number;
+            } | null;
+            amountByClass?: {
+                [key: string]: number;
+            } | null;
+            /** Format: date */
+            dateFrom?: string | null;
+            /** Format: date */
+            dateTo?: string | null;
+            /** Format: double */
+            totalAmount?: number;
+            /** Format: double */
+            reportTotal?: number;
+            /** Format: int32 */
+            matchedClients?: number;
+            /** Format: int32 */
+            matchedItems?: number;
+            unmatchedClients?: components["schemas"]["SalesUnmatchedDto"][] | null;
+            unmatchedItems?: components["schemas"]["SalesUnmatchedDto"][] | null;
+            byMonth?: components["schemas"]["SalesMonthTotalDto"][] | null;
+            action?: string | null;
+            /** Format: int32 */
+            replacedLines?: number;
+            warnings?: string[] | null;
+        };
+        SalesHistoryImportReportDto: {
+            dryRun?: boolean;
+            company?: string | null;
+            /** Format: date */
+            cutoffDate?: string | null;
+            files?: components["schemas"]["SalesHistoryFileReportDto"][] | null;
+            warnings?: string[] | null;
+        };
         SalesLinePriceDto: {
             /** Format: uuid */
             productPublicId?: string;
@@ -53576,6 +56112,40 @@ export interface components {
             priceListPublicId?: string | null;
             priceListName?: string | null;
             notices?: components["schemas"]["SalesPriceNoticeDto"][] | null;
+        };
+        SalesLineShareDto: {
+            line?: string | null;
+            isDiscounts?: boolean;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            shareOfNet?: number | null;
+            /** Format: double */
+            shareOfGross?: number | null;
+            /** Format: int32 */
+            leaderRepId?: number | null;
+            leaderName?: string | null;
+            leaderRoute?: string | null;
+            /** Format: double */
+            leaderSales?: number | null;
+        };
+        SalesLineSharePointDto: {
+            line?: string | null;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            share?: number | null;
+        };
+        SalesMonthTotalDto: {
+            month?: string | null;
+            /** Format: int32 */
+            lines?: number;
+            /** Format: double */
+            quantity?: number;
+            /** Format: double */
+            amount?: number;
+            /** Format: double */
+            productAmount?: number;
         };
         SalesOrderCancelRequest: {
             comment?: string | null;
@@ -53620,6 +56190,15 @@ export interface components {
             assignedToName?: string | null;
             terms?: components["schemas"]["SalesOrderTermsDto"];
             linePrices?: components["schemas"]["SalesLinePriceDto"][] | null;
+            /** Format: int32 */
+            salesRouteId?: number | null;
+            salesRouteName?: string | null;
+            /** Format: int32 */
+            sellerUserId?: number | null;
+            sellerName?: string | null;
+            sellerProposed?: boolean;
+            /** Format: date-time */
+            salesCopyAtUtc?: string | null;
         };
         SalesOrderLineComponentDto: {
             /** Format: uuid */
@@ -53730,6 +56309,11 @@ export interface components {
             deliveryMode?: string | null;
             /** Format: double */
             shippingCharge?: number;
+            salesRouteName?: string | null;
+            sellerName?: string | null;
+            chainName?: string | null;
+            /** Format: uuid */
+            chainPublicId?: string | null;
         };
         SalesOrderListItemDtoPagedResult: {
             items?: components["schemas"]["SalesOrderListItemDto"][] | null;
@@ -53760,6 +56344,9 @@ export interface components {
             isConsignment?: boolean | null;
             authorizedByName?: string | null;
             step?: string | null;
+            /** Format: int32 */
+            sellerUserId?: number | null;
+            clearSeller?: boolean | null;
         };
         SalesOrderRequestRequest: {
             allowBackorder?: boolean | null;
@@ -53798,6 +56385,48 @@ export interface components {
             clientIsProspect?: boolean;
             clientRequiresSignature?: boolean;
         };
+        SalesPersonRowDto: {
+            personKey?: string | null;
+            /** Format: int32 */
+            repId?: number | null;
+            /** Format: int32 */
+            userId?: number | null;
+            name?: string | null;
+            isPrimary?: boolean;
+            /** Format: double */
+            compareSales?: number;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            change?: number;
+            /** Format: double */
+            changePct?: number | null;
+            /** Format: double */
+            quota?: number | null;
+            /** Format: double */
+            compliance?: number | null;
+        };
+        SalesPersonTotalDto: {
+            personKey?: string | null;
+            /** Format: int32 */
+            repId?: number | null;
+            /** Format: int32 */
+            userId?: number | null;
+            name?: string | null;
+            routes?: string | null;
+            /** Format: double */
+            compareSales?: number;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            change?: number;
+            /** Format: double */
+            changePct?: number | null;
+            /** Format: double */
+            quota?: number | null;
+            /** Format: double */
+            compliance?: number | null;
+        };
         SalesPriceNoticeDto: {
             code?: string | null;
             message?: string | null;
@@ -53810,6 +56439,195 @@ export interface components {
             /** Format: uuid */
             otherOfferPublicId?: string | null;
             otherOfferName?: string | null;
+        };
+        SalesQuotaBulkRequest: {
+            items?: components["schemas"]["SalesQuotaItemRequest"][] | null;
+        };
+        SalesQuotaHistoryDto: {
+            /** Format: int32 */
+            repId?: number;
+            repName?: string | null;
+            quotas?: components["schemas"]["SalesQuotaPointDto"][] | null;
+        };
+        SalesQuotaItemRequest: {
+            /** Format: int32 */
+            repId?: number | null;
+            /** Format: double */
+            amount?: number | null;
+            /** Format: int32 */
+            routeId?: number | null;
+        };
+        SalesQuotaMonthDto: {
+            month?: string | null;
+            rows?: components["schemas"]["SalesQuotaRowDto"][] | null;
+            /** Format: double */
+            totalEffective?: number;
+            routeRows?: components["schemas"]["SalesRouteQuotaRowDto"][] | null;
+            quotaBy?: string | null;
+            /** Format: double */
+            repTotalEffective?: number;
+            /** Format: double */
+            routeTotalEffective?: number;
+        };
+        SalesQuotaPointDto: {
+            month?: string | null;
+            /** Format: double */
+            amount?: number;
+        };
+        SalesQuotaRowDto: {
+            /** Format: int32 */
+            repId?: number;
+            repName?: string | null;
+            routeName?: string | null;
+            repActive?: boolean;
+            /** Format: double */
+            amount?: number | null;
+            /** Format: double */
+            effective?: number | null;
+            effectiveFrom?: string | null;
+        };
+        SalesReconciliationDto: {
+            /** Format: double */
+            routesTotal?: number;
+            /** Format: double */
+            unassigned?: number;
+            /** Format: double */
+            shippingAndOther?: number;
+            /** Format: double */
+            monthTotal?: number;
+            /** Format: double */
+            difference?: number;
+            /** Format: double */
+            productSales?: number;
+            /** Format: double */
+            discounts?: number;
+            /** Format: double */
+            shipping?: number;
+            /** Format: double */
+            other?: number;
+            /** Format: int32 */
+            unassignedClients?: number;
+            /** Format: double */
+            unassignedCompare?: number;
+        };
+        SalesRepAlertDto: {
+            /** Format: int32 */
+            repId?: number;
+            repName?: string | null;
+            /** Format: int32 */
+            routeId?: number | null;
+            routeName?: string | null;
+        };
+        SalesRepDto: {
+            /** Format: int32 */
+            id?: number;
+            name?: string | null;
+            /** Format: int32 */
+            routeId?: number | null;
+            routeName?: string | null;
+            /** Format: int32 */
+            userId?: number | null;
+            userName?: string | null;
+            isActive?: boolean;
+            /** Format: int32 */
+            clientCount?: number;
+            /** Format: double */
+            currentQuota?: number | null;
+            hasUser?: boolean;
+            userIsActiveMember?: boolean;
+            isPrimaryOfRoute?: boolean;
+            becamePrimary?: boolean;
+        };
+        SalesRepLineDto: {
+            routeName?: string | null;
+            /** Format: int32 */
+            repId?: number | null;
+            repName?: string | null;
+            line?: string | null;
+            isDiscounts?: boolean;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            shareOfRep?: number | null;
+        };
+        SalesRepMigrationDto: {
+            /** Format: int32 */
+            repsCreated?: number;
+            /** Format: int32 */
+            clientsLinked?: number;
+            /** Format: int32 */
+            clientsAlreadyLinked?: number;
+        };
+        SalesRepProductDto: {
+            routeName?: string | null;
+            /** Format: int32 */
+            repId?: number | null;
+            repName?: string | null;
+            line?: string | null;
+            /** Format: int32 */
+            productId?: number | null;
+            sku?: string | null;
+            product?: string | null;
+            lineClass?: string | null;
+            /** Format: double */
+            units?: number;
+            /** Format: double */
+            sales?: number;
+        };
+        SalesRepQuotaPointDto: {
+            /** Format: int32 */
+            repId?: number | null;
+            rep?: string | null;
+            route?: string | null;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            quota?: number | null;
+            /** Format: double */
+            compliance?: number | null;
+        };
+        SalesRepRequest: {
+            name?: string | null;
+            /** Format: int32 */
+            routeId?: number | null;
+            clearRoute?: boolean;
+            /** Format: int32 */
+            userId?: number | null;
+            clearUser?: boolean;
+        };
+        SalesRepRowDto: {
+            /** Format: int32 */
+            routeId?: number | null;
+            routeName?: string | null;
+            /** Format: int32 */
+            repId?: number | null;
+            repName?: string | null;
+            /** Format: double */
+            compareSales?: number;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            change?: number;
+            /** Format: double */
+            changePct?: number | null;
+            /** Format: double */
+            quota?: number | null;
+            /** Format: double */
+            compliance?: number | null;
+        };
+        SalesRepTotalsDto: {
+            /** Format: double */
+            compareSales?: number;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            change?: number;
+            /** Format: double */
+            changePct?: number | null;
+            /** Format: double */
+            quota?: number;
+            /** Format: double */
+            compliance?: number | null;
         };
         SalesReturnAuthorizeRequest: {
             note?: string | null;
@@ -53957,6 +56775,170 @@ export interface components {
             /** Format: int32 */
             windowDays?: number | null;
         };
+        SalesRouteAssignRequest: {
+            /** Format: int32 */
+            userId?: number | null;
+            role?: string | null;
+            /** Format: date */
+            validFrom?: string | null;
+        };
+        SalesRouteAssignmentDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: int32 */
+            userId?: number;
+            userName?: string | null;
+            role?: string | null;
+            /** Format: date */
+            validFrom?: string;
+            /** Format: date */
+            validTo?: string | null;
+            isCurrent?: boolean;
+            isVoided?: boolean;
+            userIsActiveMember?: boolean;
+        };
+        SalesRouteCloseRequest: {
+            /** Format: date */
+            validTo?: string | null;
+            rowVersion?: string | null;
+        };
+        SalesRouteDto: {
+            /** Format: int32 */
+            id?: number;
+            name?: string | null;
+            /** Format: int32 */
+            sortOrder?: number;
+            isActive?: boolean;
+            /** Format: int32 */
+            repCount?: number;
+            /** Format: int32 */
+            primaryUserId?: number | null;
+            primaryName?: string | null;
+            primaryIsActiveMember?: boolean;
+            hasPrimary?: boolean;
+            /** Format: int32 */
+            supportCount?: number;
+            /** Format: int32 */
+            clientCount?: number;
+            /** Format: double */
+            currentQuota?: number | null;
+        };
+        SalesRoutePeopleDto: {
+            /** Format: int32 */
+            routeId?: number;
+            routeName?: string | null;
+            routeIsActive?: boolean;
+            primary?: components["schemas"]["SalesRouteAssignmentDto"];
+            supports?: components["schemas"]["SalesRouteAssignmentDto"][] | null;
+            history?: components["schemas"]["SalesRouteAssignmentDto"][] | null;
+        };
+        SalesRouteProductDto: {
+            /** Format: int32 */
+            routeId?: number | null;
+            routeName?: string | null;
+            repNames?: string | null;
+            line?: string | null;
+            /** Format: int32 */
+            productId?: number | null;
+            sku?: string | null;
+            product?: string | null;
+            /** Format: double */
+            units?: number;
+            /** Format: double */
+            sales?: number;
+        };
+        SalesRouteQuotaHistoryDto: {
+            /** Format: int32 */
+            routeId?: number;
+            routeName?: string | null;
+            quotas?: components["schemas"]["SalesQuotaPointDto"][] | null;
+        };
+        SalesRouteQuotaPointDto: {
+            /** Format: int32 */
+            routeId?: number | null;
+            route?: string | null;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            quota?: number | null;
+            /** Format: double */
+            compliance?: number | null;
+        };
+        SalesRouteQuotaRowDto: {
+            /** Format: int32 */
+            routeId?: number;
+            routeName?: string | null;
+            routeActive?: boolean;
+            /** Format: double */
+            amount?: number | null;
+            /** Format: double */
+            effective?: number | null;
+            effectiveFrom?: string | null;
+        };
+        SalesRouteRequest: {
+            name?: string | null;
+            /** Format: int32 */
+            sortOrder?: number | null;
+        };
+        SalesRouteRowDto: {
+            /** Format: int32 */
+            routeId?: number | null;
+            routeName?: string | null;
+            /** Format: double */
+            compareSales?: number;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            change?: number;
+            /** Format: double */
+            changePct?: number | null;
+            /** Format: double */
+            quota?: number | null;
+            /** Format: double */
+            compliance?: number | null;
+            /** Format: int32 */
+            primaryUserId?: number | null;
+            primaryName?: string | null;
+            people?: components["schemas"]["SalesPersonRowDto"][] | null;
+        };
+        SalesRoutesFromRepsDto: {
+            dryRun?: boolean;
+            /** Format: int32 */
+            clientsRouted?: number;
+            /** Format: int32 */
+            primariesSet?: number;
+            /** Format: int32 */
+            supportsSet?: number;
+            /** Format: date */
+            validFrom?: string;
+            repsWithoutUser?: components["schemas"]["SalesRepAlertDto"][] | null;
+            routesWithSeveralReps?: components["schemas"]["SalesRepAlertDto"][] | null;
+        };
+        SalesSellerCandidateDto: {
+            /** Format: int32 */
+            userId?: number;
+            name?: string | null;
+            email?: string | null;
+        };
+        SalesSellerOptionDto: {
+            /** Format: int32 */
+            userId?: number;
+            name?: string | null;
+            kind?: string | null;
+            isPreferred?: boolean;
+            isProposed?: boolean;
+        };
+        SalesSellerOptionsDto: {
+            /** Format: int32 */
+            routeId?: number | null;
+            routeName?: string | null;
+            routeFromRep?: boolean;
+            /** Format: int32 */
+            proposedUserId?: number | null;
+            proposedName?: string | null;
+            proposedKind?: string | null;
+            options?: components["schemas"]["SalesSellerOptionDto"][] | null;
+        };
         SalesShippingSettingsDto: {
             /** Format: double */
             charge?: number | null;
@@ -54007,6 +56989,67 @@ export interface components {
             code?: string | null;
             name?: string | null;
             isMain?: boolean;
+        };
+        SalesTeamPersonDto: {
+            /** Format: int32 */
+            userId?: number;
+            name?: string | null;
+            isActive?: boolean;
+            /** Format: date */
+            validFrom?: string | null;
+        };
+        SalesTransactionDto: {
+            /** Format: date */
+            date?: string;
+            source?: string | null;
+            type?: string | null;
+            number?: string | null;
+            /** Format: int32 */
+            clientId?: number | null;
+            clientName?: string | null;
+            /** Format: int32 */
+            repId?: number | null;
+            repName?: string | null;
+            routeName?: string | null;
+            /** Format: int32 */
+            productId?: number | null;
+            sku?: string | null;
+            product?: string | null;
+            line?: string | null;
+            lineClass?: string | null;
+            /** Format: double */
+            quantity?: number;
+            /** Format: double */
+            unitPrice?: number | null;
+            /** Format: double */
+            amount?: number;
+            /** Format: int32 */
+            routeId?: number | null;
+            /** Format: int32 */
+            sellerUserId?: number | null;
+            personKey?: string | null;
+            /** Format: int32 */
+            salesOrderId?: number | null;
+        };
+        SalesTransactionDtoPagedResult: {
+            items?: components["schemas"]["SalesTransactionDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        SalesUnmatchedDto: {
+            raw?: string | null;
+            /** Format: int32 */
+            lines?: number;
+            /** Format: double */
+            amount?: number;
+            /** Format: date */
+            firstDate?: string;
+            /** Format: date */
+            lastDate?: string;
         };
         SampleReadDto: {
             text?: string | null;
@@ -56945,651 +59988,237 @@ export interface components {
             ambiguous?: boolean;
             candidates?: string[] | null;
         };
-        ProductClientDto: {
-            /** Format: int32 */
-            productId?: number | null;
-            sku?: string | null;
-            name?: string | null;
-            /** Format: int32 */
-            rank?: number;
-            /** Format: int32 */
-            clientId?: number | null;
-            client?: string | null;
-            /** Format: double */
-            units?: number;
-            /** Format: double */
-            shareOfProduct?: number | null;
+        ClientChainAssignRequest: {
+            clientPublicIds?: string[] | null;
+            moveFromOtherChains?: boolean;
         };
-        ProductLineBrandsRequest: {
-            brands?: string[] | null;
+        ClientChainAssignResultDto: {
+            /** Format: int32 */
+            assigned?: number;
+            /** Format: int32 */
+            moved?: number;
+            /** Format: int32 */
+            alreadyInChain?: number;
+            /** Format: int32 */
+            removed?: number;
+            /** Format: int32 */
+            notInChain?: number;
+            skippedOtherChain?: components["schemas"]["ClientChainSkippedDto"][] | null;
         };
-        ProductLineDto: {
+        ClientChainBulkPreviewDto: {
+            prefix?: string | null;
+            wholeWord?: boolean;
+            moveFromOtherChains?: boolean;
             /** Format: int32 */
-            id?: number;
+            matched?: number;
+            /** Format: int32 */
+            toAssign?: number;
+            /** Format: int32 */
+            toMove?: number;
+            /** Format: int32 */
+            alreadyInChain?: number;
+            /** Format: int32 */
+            skippedOtherChain?: number;
+            /** Format: int32 */
+            excluded?: number;
+            tooMany?: boolean;
+            /** Format: int32 */
+            maxBulk?: number;
+            fingerprint?: string | null;
+            rows?: components["schemas"]["ClientChainBulkRowDto"][] | null;
+        };
+        ClientChainBulkRequest: {
+            prefix?: string | null;
+            wholeWord?: boolean;
+            moveFromOtherChains?: boolean;
+            excludeClientPublicIds?: string[] | null;
+            fingerprint?: string | null;
+        };
+        ClientChainBulkResultDto: {
+            /** Format: int32 */
+            assigned?: number;
+            /** Format: int32 */
+            moved?: number;
+            /** Format: int32 */
+            alreadyInChain?: number;
+            /** Format: int32 */
+            skippedOtherChain?: number;
+            /** Format: int32 */
+            excluded?: number;
+        };
+        ClientChainBulkRowDto: {
+            /** Format: uuid */
+            clientPublicId?: string;
+            code?: string | null;
             name?: string | null;
-            /** Format: int32 */
-            sortOrder?: number;
+            action?: string | null;
+            /** Format: uuid */
+            currentChainPublicId?: string | null;
+            currentChainName?: string | null;
+        };
+        ClientChainClientDto: {
+            /** Format: uuid */
+            clientPublicId?: string;
+            code?: string | null;
+            name?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
             isActive?: boolean;
-            brands?: string[] | null;
+            salesRepName?: string | null;
         };
-        ProductLineRequest: {
+        ClientChainClientDtoPagedResult: {
+            items?: components["schemas"]["ClientChainClientDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        ClientChainDetailDto: {
+            /** Format: uuid */
+            publicId?: string;
             name?: string | null;
+            notes?: string | null;
+            isActive?: boolean;
             /** Format: int32 */
-            sortOrder?: number | null;
+            clientCount?: number;
+            /** Format: int32 */
+            inactiveClientCount?: number;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: date-time */
+            updatedAtUtc?: string | null;
+            rowVersion?: string | null;
         };
-        SalesAliasRequest: {
-            kind?: string | null;
-            raw?: string | null;
+        ClientChainListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+            notes?: string | null;
+            isActive?: boolean;
             /** Format: int32 */
-            clientId?: number | null;
-            /** Format: int32 */
-            productId?: number | null;
+            clientCount?: number;
         };
-        SalesAliasResultDto: {
-            kind?: string | null;
-            raw?: string | null;
-            /** Format: int32 */
-            relinked?: number;
-            /** Format: int32 */
-            clientId?: number | null;
-            /** Format: int32 */
-            productId?: number | null;
+        ClientChainMembershipDto: {
+            /** Format: uuid */
+            clientPublicId?: string;
+            /** Format: uuid */
+            chainPublicId?: string | null;
+            chainName?: string | null;
+            chainIsActive?: boolean;
         };
-        SalesAnalysisSettingsDto: {
-            /** Format: date */
-            cutoffDate?: string | null;
-            /** Format: int32 */
-            leadTimeDays?: number;
+        ClientChainMonthDto: {
+            month?: string | null;
             /** Format: double */
-            serviceLevelZ?: number;
+            sales?: number;
         };
-        SalesAnalysisSettingsRequest: {
-            /** Format: date */
-            cutoffDate?: string | null;
-            clearCutoff?: boolean;
-            /** Format: int32 */
-            leadTimeDays?: number | null;
+        ClientChainReconciliationDto: {
             /** Format: double */
-            serviceLevelZ?: number | null;
-        };
-        SalesAnalysisStatusDto: {
-            /** Format: date */
-            cutoffDate?: string | null;
-            /** Format: int32 */
-            leadTimeDays?: number;
+            chainsTotal?: number;
             /** Format: double */
-            serviceLevelZ?: number;
-            batches?: components["schemas"]["SalesHistoryBatchDto"][] | null;
-            /** Format: int32 */
-            activeClients?: number;
-            /** Format: int32 */
-            clientsWithoutRep?: number;
-            brandsWithoutLine?: string[] | null;
-            unmatchedClients?: components["schemas"]["SalesUnmatchedDto"][] | null;
-            unmatchedItems?: components["schemas"]["SalesUnmatchedDto"][] | null;
-            unmatchedPurchaseItems?: components["schemas"]["SalesUnmatchedDto"][] | null;
-            /** Format: date */
-            historyFrom?: string | null;
-            /** Format: date */
-            historyTo?: string | null;
-            /** Format: date */
-            invoicesFrom?: string | null;
-            /** Format: date */
-            invoicesTo?: string | null;
-            overlap?: boolean;
-            warnings?: string[] | null;
+            noChain?: number;
+            /** Format: double */
+            monthNet?: number;
+            /** Format: double */
+            difference?: number;
         };
-        SalesBrandDto: {
-            brand?: string | null;
-            /** Format: int32 */
-            productCount?: number;
-            /** Format: int32 */
-            lineId?: number | null;
-            line?: string | null;
-            hasLine?: boolean;
+        ClientChainRemoveRequest: {
+            clientPublicIds?: string[] | null;
         };
-        SalesByRepDto: {
+        ClientChainRequest: {
+            name?: string | null;
+            notes?: string | null;
+            clearNotes?: boolean;
+            rowVersion?: string | null;
+        };
+        ClientChainSalesClientDto: {
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            clientName?: string | null;
+            /** Format: double */
+            compareSales?: number;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            change?: number;
+            /** Format: double */
+            changePct?: number | null;
+            /** Format: double */
+            shareOfChain?: number | null;
+        };
+        ClientChainSalesDto: {
             month?: string | null;
             compareMonth?: string | null;
             /** Format: date */
             cutoffDate?: string | null;
-            warnings?: string[] | null;
-            reps?: components["schemas"]["SalesRepRowDto"][] | null;
-            totals?: components["schemas"]["SalesRepTotalsDto"];
-            reconciliation?: components["schemas"]["SalesReconciliationDto"];
-            lines?: components["schemas"]["SalesLineShareDto"][] | null;
-            repLines?: components["schemas"]["SalesRepLineDto"][] | null;
-            repProducts?: components["schemas"]["SalesRepProductDto"][] | null;
-            routeProducts?: components["schemas"]["SalesRouteProductDto"][] | null;
+            rows?: components["schemas"]["ClientChainSalesRowDto"][] | null;
+            noChain?: components["schemas"]["ClientChainSalesRowDto"];
+            totals?: components["schemas"]["ClientChainSalesTotalsDto"];
+            reconciliation?: components["schemas"]["ClientChainReconciliationDto"];
         };
-        SalesChartSeriesDto: {
-            key?: string | null;
-            label?: string | null;
-            values?: number[] | null;
-        };
-        SalesChartsDto: {
-            months?: string[] | null;
-            totalByMonth?: components["schemas"]["SalesChartSeriesDto"];
-            byLineByMonth?: components["schemas"]["SalesChartSeriesDto"][] | null;
-            month?: string | null;
-            repVsQuota?: components["schemas"]["SalesRepQuotaPointDto"][] | null;
-            lineShare?: components["schemas"]["SalesLineSharePointDto"][] | null;
-            topProductUnits?: components["schemas"]["SalesChartSeriesDto"][] | null;
-            coverage?: components["schemas"]["SalesCoveragePointDto"][] | null;
-        };
-        SalesClientRepBulkRequest: {
-            clientIds?: number[] | null;
-            /** Format: int32 */
-            repId?: number | null;
-        };
-        SalesClientRepBulkResultDto: {
-            /** Format: int32 */
-            updated?: number;
-            /** Format: int32 */
-            repId?: number | null;
-            repName?: string | null;
-        };
-        SalesClientRepDto: {
-            /** Format: int32 */
-            clientId?: number;
+        ClientChainSalesRowDto: {
             /** Format: uuid */
-            publicId?: string;
-            code?: string | null;
-            name?: string | null;
+            chainPublicId?: string | null;
+            chainName?: string | null;
             isActive?: boolean;
             /** Format: int32 */
-            repId?: number | null;
-            repName?: string | null;
-            routeName?: string | null;
-        };
-        SalesClientRepDtoPagedResult: {
-            items?: components["schemas"]["SalesClientRepDto"][] | null;
+            clientCount?: number;
             /** Format: int32 */
-            total?: number;
-            /** Format: int32 */
-            skip?: number;
-            /** Format: int32 */
-            take?: number;
-        };
-        SalesClientRepRequest: {
-            /** Format: int32 */
-            repId?: number | null;
-        };
-        SalesCoveragePointDto: {
-            /** Format: int32 */
-            productId?: number | null;
-            sku?: string | null;
-            name?: string | null;
-            abc?: string | null;
+            clientsWithSales?: number;
             /** Format: double */
-            available?: number;
-            /** Format: double */
-            weeklyAverage?: number | null;
-            /** Format: double */
-            coverageWeeks?: number | null;
-        };
-        SalesHistoryBatchDto: {
-            /** Format: uuid */
-            publicId?: string;
-            kind?: string | null;
-            fileName?: string | null;
-            /** Format: date */
-            dateFrom?: string | null;
-            /** Format: date */
-            dateTo?: string | null;
-            /** Format: int32 */
-            lineCount?: number;
-            /** Format: double */
-            totalAmount?: number;
-            source?: string | null;
-            /** Format: date-time */
-            importedAtUtc?: string;
-            importedBy?: string | null;
-            isActive?: boolean;
-            /** Format: date-time */
-            replacedAtUtc?: string | null;
-        };
-        SalesHistoryFileReportDto: {
-            kind?: string | null;
-            fileName?: string | null;
-            /** Format: int32 */
-            linesRead?: number;
-            /** Format: int32 */
-            linesSaved?: number;
-            /** Format: int32 */
-            zeroQtySkipped?: number;
-            /** Format: int32 */
-            duplicatesSkipped?: number;
-            linesByClass?: {
-                [key: string]: number;
-            } | null;
-            amountByClass?: {
-                [key: string]: number;
-            } | null;
-            /** Format: date */
-            dateFrom?: string | null;
-            /** Format: date */
-            dateTo?: string | null;
-            /** Format: double */
-            totalAmount?: number;
-            /** Format: double */
-            reportTotal?: number;
-            /** Format: int32 */
-            matchedClients?: number;
-            /** Format: int32 */
-            matchedItems?: number;
-            unmatchedClients?: components["schemas"]["SalesUnmatchedDto"][] | null;
-            unmatchedItems?: components["schemas"]["SalesUnmatchedDto"][] | null;
-            byMonth?: components["schemas"]["SalesMonthTotalDto"][] | null;
-            action?: string | null;
-            /** Format: int32 */
-            replacedLines?: number;
-            warnings?: string[] | null;
-        };
-        SalesHistoryImportReportDto: {
-            dryRun?: boolean;
-            company?: string | null;
-            /** Format: date */
-            cutoffDate?: string | null;
-            files?: components["schemas"]["SalesHistoryFileReportDto"][] | null;
-            warnings?: string[] | null;
-        };
-        SalesLineShareDto: {
-            line?: string | null;
-            isDiscounts?: boolean;
+            compareSales?: number;
             /** Format: double */
             sales?: number;
             /** Format: double */
+            change?: number;
+            /** Format: double */
+            changePct?: number | null;
+            /** Format: double */
             shareOfNet?: number | null;
-            /** Format: double */
-            shareOfGross?: number | null;
-            /** Format: int32 */
-            leaderRepId?: number | null;
-            leaderName?: string | null;
-            leaderRoute?: string | null;
-            /** Format: double */
-            leaderSales?: number | null;
+            clients?: components["schemas"]["ClientChainSalesClientDto"][] | null;
         };
-        SalesLineSharePointDto: {
-            line?: string | null;
+        ClientChainSalesTotalsDto: {
+            /** Format: double */
+            compareSales?: number;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            change?: number;
+            /** Format: double */
+            changePct?: number | null;
+        };
+        ClientChainSeriesDto: {
+            /** Format: uuid */
+            chainPublicId?: string;
+            chainName?: string | null;
+            fromMonth?: string | null;
+            toMonth?: string | null;
+            months?: components["schemas"]["ClientChainMonthDto"][] | null;
+            topClients?: components["schemas"]["ClientChainTopClientDto"][] | null;
+        };
+        ClientChainSetRequest: {
+            /** Format: uuid */
+            chainPublicId?: string | null;
+        };
+        ClientChainSkippedDto: {
+            /** Format: uuid */
+            clientPublicId?: string;
+            code?: string | null;
+            name?: string | null;
+            /** Format: uuid */
+            chainPublicId?: string;
+            chainName?: string | null;
+        };
+        ClientChainTopClientDto: {
+            /** Format: uuid */
+            clientPublicId?: string;
+            code?: string | null;
+            name?: string | null;
             /** Format: double */
             sales?: number;
             /** Format: double */
             share?: number | null;
-        };
-        SalesMonthTotalDto: {
-            month?: string | null;
-            /** Format: int32 */
-            lines?: number;
-            /** Format: double */
-            quantity?: number;
-            /** Format: double */
-            amount?: number;
-            /** Format: double */
-            productAmount?: number;
-        };
-        SalesQuotaBulkRequest: {
-            items?: components["schemas"]["SalesQuotaItemRequest"][] | null;
-        };
-        SalesQuotaHistoryDto: {
-            /** Format: int32 */
-            repId?: number;
-            repName?: string | null;
-            quotas?: components["schemas"]["SalesQuotaPointDto"][] | null;
-        };
-        SalesQuotaItemRequest: {
-            /** Format: int32 */
-            repId?: number;
-            /** Format: double */
-            amount?: number | null;
-        };
-        SalesQuotaMonthDto: {
-            month?: string | null;
-            rows?: components["schemas"]["SalesQuotaRowDto"][] | null;
-            /** Format: double */
-            totalEffective?: number;
-        };
-        SalesQuotaPointDto: {
-            month?: string | null;
-            /** Format: double */
-            amount?: number;
-        };
-        SalesQuotaRowDto: {
-            /** Format: int32 */
-            repId?: number;
-            repName?: string | null;
-            routeName?: string | null;
-            repActive?: boolean;
-            /** Format: double */
-            amount?: number | null;
-            /** Format: double */
-            effective?: number | null;
-            effectiveFrom?: string | null;
-        };
-        SalesReconciliationDto: {
-            /** Format: double */
-            routesTotal?: number;
-            /** Format: double */
-            unassigned?: number;
-            /** Format: double */
-            shippingAndOther?: number;
-            /** Format: double */
-            monthTotal?: number;
-            /** Format: double */
-            difference?: number;
-            /** Format: double */
-            productSales?: number;
-            /** Format: double */
-            discounts?: number;
-            /** Format: double */
-            shipping?: number;
-            /** Format: double */
-            other?: number;
-            /** Format: int32 */
-            unassignedClients?: number;
-            /** Format: double */
-            unassignedCompare?: number;
-        };
-        SalesRepDto: {
-            /** Format: int32 */
-            id?: number;
-            name?: string | null;
-            /** Format: int32 */
-            routeId?: number | null;
-            routeName?: string | null;
-            /** Format: int32 */
-            userId?: number | null;
-            userName?: string | null;
-            isActive?: boolean;
-            /** Format: int32 */
-            clientCount?: number;
-            /** Format: double */
-            currentQuota?: number | null;
-        };
-        SalesRepLineDto: {
-            routeName?: string | null;
-            /** Format: int32 */
-            repId?: number | null;
-            repName?: string | null;
-            line?: string | null;
-            isDiscounts?: boolean;
-            /** Format: double */
-            sales?: number;
-            /** Format: double */
-            shareOfRep?: number | null;
-        };
-        SalesRepMigrationDto: {
-            /** Format: int32 */
-            repsCreated?: number;
-            /** Format: int32 */
-            clientsLinked?: number;
-            /** Format: int32 */
-            clientsAlreadyLinked?: number;
-        };
-        SalesRepProductDto: {
-            routeName?: string | null;
-            /** Format: int32 */
-            repId?: number | null;
-            repName?: string | null;
-            line?: string | null;
-            /** Format: int32 */
-            productId?: number | null;
-            sku?: string | null;
-            product?: string | null;
-            lineClass?: string | null;
-            /** Format: double */
-            units?: number;
-            /** Format: double */
-            sales?: number;
-        };
-        SalesRepQuotaPointDto: {
-            /** Format: int32 */
-            repId?: number | null;
-            rep?: string | null;
-            route?: string | null;
-            /** Format: double */
-            sales?: number;
-            /** Format: double */
-            quota?: number | null;
-            /** Format: double */
-            compliance?: number | null;
-        };
-        SalesRepRequest: {
-            name?: string | null;
-            /** Format: int32 */
-            routeId?: number | null;
-            clearRoute?: boolean;
-            /** Format: int32 */
-            userId?: number | null;
-            clearUser?: boolean;
-        };
-        SalesRepRowDto: {
-            /** Format: int32 */
-            routeId?: number | null;
-            routeName?: string | null;
-            /** Format: int32 */
-            repId?: number | null;
-            repName?: string | null;
-            /** Format: double */
-            compareSales?: number;
-            /** Format: double */
-            sales?: number;
-            /** Format: double */
-            change?: number;
-            /** Format: double */
-            changePct?: number | null;
-            /** Format: double */
-            quota?: number | null;
-            /** Format: double */
-            compliance?: number | null;
-        };
-        SalesRepTotalsDto: {
-            /** Format: double */
-            compareSales?: number;
-            /** Format: double */
-            sales?: number;
-            /** Format: double */
-            change?: number;
-            /** Format: double */
-            changePct?: number | null;
-            /** Format: double */
-            quota?: number;
-            /** Format: double */
-            compliance?: number | null;
-        };
-        SalesRouteDto: {
-            /** Format: int32 */
-            id?: number;
-            name?: string | null;
-            /** Format: int32 */
-            sortOrder?: number;
-            isActive?: boolean;
-            /** Format: int32 */
-            repCount?: number;
-        };
-        SalesRouteProductDto: {
-            /** Format: int32 */
-            routeId?: number | null;
-            routeName?: string | null;
-            repNames?: string | null;
-            line?: string | null;
-            /** Format: int32 */
-            productId?: number | null;
-            sku?: string | null;
-            product?: string | null;
-            /** Format: double */
-            units?: number;
-            /** Format: double */
-            sales?: number;
-        };
-        SalesRouteRequest: {
-            name?: string | null;
-            /** Format: int32 */
-            sortOrder?: number | null;
-        };
-        SalesTransactionDto: {
-            /** Format: date */
-            date?: string;
-            source?: string | null;
-            type?: string | null;
-            number?: string | null;
-            /** Format: int32 */
-            clientId?: number | null;
-            clientName?: string | null;
-            /** Format: int32 */
-            repId?: number | null;
-            repName?: string | null;
-            routeName?: string | null;
-            /** Format: int32 */
-            productId?: number | null;
-            sku?: string | null;
-            product?: string | null;
-            line?: string | null;
-            lineClass?: string | null;
-            /** Format: double */
-            quantity?: number;
-            /** Format: double */
-            unitPrice?: number | null;
-            /** Format: double */
-            amount?: number;
-        };
-        SalesTransactionDtoPagedResult: {
-            items?: components["schemas"]["SalesTransactionDto"][] | null;
-            /** Format: int32 */
-            total?: number;
-            /** Format: int32 */
-            skip?: number;
-            /** Format: int32 */
-            take?: number;
-        };
-        SalesUnmatchedDto: {
-            raw?: string | null;
-            /** Format: int32 */
-            lines?: number;
-            /** Format: double */
-            amount?: number;
-            /** Format: date */
-            firstDate?: string;
-            /** Format: date */
-            lastDate?: string;
-        };
-        ProductMonthSeriesDto: {
-            /** Format: int32 */
-            productId?: number | null;
-            sku?: string | null;
-            name?: string | null;
-            values?: number[] | null;
-            /** Format: double */
-            total?: number;
-            /** Format: double */
-            min?: number | null;
-            /** Format: double */
-            max?: number | null;
-            /** Format: double */
-            average?: number | null;
-        };
-        ProductMovementDto: {
-            fromMonth?: string | null;
-            toMonth?: string | null;
-            /** Format: date */
-            asOf?: string;
-            lastCompleteMonth?: string | null;
-            /** Format: date */
-            weeksFrom?: string;
-            /** Format: date */
-            weeksTo?: string;
-            /** Format: int32 */
-            leadTimeDays?: number;
-            /** Format: double */
-            serviceLevelZ?: number;
-            /** Format: date */
-            cutoffDate?: string | null;
-            months?: string[] | null;
-            warnings?: string[] | null;
-            /** Format: double */
-            totalUnits?: number;
-            /** Format: double */
-            totalSales?: number;
-            products?: components["schemas"]["ProductMovementRowDto"][] | null;
-            unitsByMonth?: components["schemas"]["ProductMonthSeriesDto"][] | null;
-            salesByMonth?: components["schemas"]["ProductMonthSeriesDto"][] | null;
-            purchasesByMonth?: components["schemas"]["ProductMonthSeriesDto"][] | null;
-            topClients?: components["schemas"]["ProductClientDto"][] | null;
-        };
-        ProductMovementRowDto: {
-            /** Format: int32 */
-            productId?: number | null;
-            sku?: string | null;
-            name?: string | null;
-            category?: string | null;
-            brand?: string | null;
-            line?: string | null;
-            matched?: boolean;
-            abc?: string | null;
-            status?: string | null;
-            /** Format: double */
-            price?: number | null;
-            /** Format: double */
-            cost?: number | null;
-            /** Format: double */
-            marginPct?: number | null;
-            /** Format: double */
-            onHand?: number;
-            /** Format: double */
-            reserved?: number;
-            /** Format: double */
-            available?: number;
-            /** Format: double */
-            units?: number;
-            /** Format: double */
-            sales?: number;
-            /** Format: double */
-            shareOfSales?: number | null;
-            /** Format: double */
-            monthlyAverage?: number | null;
-            /** Format: double */
-            monthlyMin?: number | null;
-            /** Format: double */
-            monthlyMax?: number | null;
-            bestMonth?: string | null;
-            /** Format: int32 */
-            monthsUsed?: number;
-            /** Format: double */
-            weeklyAverage?: number | null;
-            /** Format: double */
-            weeklyStdDev?: number | null;
-            /** Format: int32 */
-            weeksUsed?: number;
-            weeklyConfidence?: string | null;
-            /** Format: double */
-            coverageWeeks?: number | null;
-            /** Format: double */
-            coverageMonths?: number | null;
-            /** Format: double */
-            projected1?: number;
-            /** Format: double */
-            projected2?: number;
-            /** Format: double */
-            projected3?: number;
-            /** Format: double */
-            reorderPoint?: number | null;
-            /** Format: int32 */
-            suggestedReorderPoint?: number | null;
-            /** Format: double */
-            trend?: number | null;
-            /** Format: int32 */
-            clients?: number;
-            /** Format: int32 */
-            invoices?: number;
-            topClient?: string | null;
-            /** Format: double */
-            topClientUnits?: number | null;
-            /** Format: date */
-            lastSale?: string | null;
-            /** Format: double */
-            pendingPurchase?: number;
-            /** Format: double */
-            lastMonthUnits?: number;
         };
     };
     responses: never;

@@ -45,7 +45,9 @@ public sealed record SalesOrderListItemDto(Guid PublicId, string Number, string 
     // Lote 222: distintivos de la lista (urgente, cliente nuevo por aprobar, consignación, forma de pago cambiada), entrega efectiva y cargo de envío
     bool IsUrgent = false, bool AwaitingClientApproval = false, bool IsConsignment = false, bool PaymentChanged = false, string? DeliveryMode = null, decimal ShippingCharge = 0m,
     // Lote 244: ruta de venta y vendedor guardados en la orden (la copia congelada al solicitar; en borrador, la elección explícita y sin ruta)
-    string? SalesRouteName = null, string? SellerName = null);
+    string? SalesRouteName = null, string? SellerName = null,
+    // Lote 245: cadena ACTUAL del cliente (en vivo, sin copia en la orden; null = «Sin cadena»)
+    string? ChainName = null, Guid? ChainPublicId = null);
 
 public sealed record SalesOrderDto(Guid PublicId, string Number, string Status, string StatusLabel, string StatusColor, Guid ClientPublicId, string ClientName,
     Guid? ConsigneePublicId, string? ConsigneeName, Guid WarehousePublicId, string WarehouseName, DateOnly RequestedDate, DateOnly? RequiredDate, string? Notes,

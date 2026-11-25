@@ -101,6 +101,13 @@ public class Client : ITenantScoped, ISoftDeletable, IHasStatus, IAuditStamped
     /// </summary>
     public int? PreferredSalesUserId { get; set; }
 
+    // --- Lote 245 (Lote B del plan: cadenas de clientes) ---
+    /// <summary>
+    /// Cadena del cliente (ClientChain): una sola; NULL = sin cadena. Se cambia solo por PUT /api/v1/client-chains/by-client/{id} o desde la ficha de la cadena
+    /// (sales.chain), nunca en el perfil. No tiene que ver con la ruta (SalesRouteId). En la base la FK es compuesta (ChainId, TenantId).
+    /// </summary>
+    public int? ChainId { get; set; }
+
     public StatusCode? Status { get; set; }
     public LookupCode? PaymentTerm { get; set; }
     public LookupCode? Currency { get; set; }

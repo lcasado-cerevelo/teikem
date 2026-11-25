@@ -5495,6 +5495,8 @@ export interface paths {
                 query?: {
                     search?: string;
                     includeInactive?: boolean;
+                    chainPublicId?: string;
+                    noChain?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -34335,6 +34337,7 @@ export interface paths {
                     dateField?: string;
                     routeId?: number;
                     sellerUserId?: number;
+                    chainPublicId?: string[];
                 };
                 header?: never;
                 path?: never;
@@ -43969,6 +43972,995 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/client-chains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: boolean;
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainListItemDto"][];
+                        "application/json": components["schemas"]["ClientChainListItemDto"][];
+                        "text/json": components["schemas"]["ClientChainListItemDto"][];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientChainRequest"];
+                    "text/json": components["schemas"]["ClientChainRequest"];
+                    "application/*+json": components["schemas"]["ClientChainRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainDetailDto"];
+                        "application/json": components["schemas"]["ClientChainDetailDto"];
+                        "text/json": components["schemas"]["ClientChainDetailDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-chains/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainDetailDto"];
+                        "application/json": components["schemas"]["ClientChainDetailDto"];
+                        "text/json": components["schemas"]["ClientChainDetailDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientChainRequest"];
+                    "text/json": components["schemas"]["ClientChainRequest"];
+                    "application/*+json": components["schemas"]["ClientChainRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainDetailDto"];
+                        "application/json": components["schemas"]["ClientChainDetailDto"];
+                        "text/json": components["schemas"]["ClientChainDetailDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/client-chains/{publicId}/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                    includeInactive?: boolean;
+                    skip?: number;
+                    take?: number;
+                    all?: boolean;
+                };
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainClientDtoPagedResult"];
+                        "application/json": components["schemas"]["ClientChainClientDtoPagedResult"];
+                        "text/json": components["schemas"]["ClientChainClientDtoPagedResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientChainAssignRequest"];
+                    "text/json": components["schemas"]["ClientChainAssignRequest"];
+                    "application/*+json": components["schemas"]["ClientChainAssignRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainAssignResultDto"];
+                        "application/json": components["schemas"]["ClientChainAssignResultDto"];
+                        "text/json": components["schemas"]["ClientChainAssignResultDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-chains/{publicId}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainDetailDto"];
+                        "application/json": components["schemas"]["ClientChainDetailDto"];
+                        "text/json": components["schemas"]["ClientChainDetailDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-chains/{publicId}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainDetailDto"];
+                        "application/json": components["schemas"]["ClientChainDetailDto"];
+                        "text/json": components["schemas"]["ClientChainDetailDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-chains/{publicId}/clients/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientChainRemoveRequest"];
+                    "text/json": components["schemas"]["ClientChainRemoveRequest"];
+                    "application/*+json": components["schemas"]["ClientChainRemoveRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainAssignResultDto"];
+                        "application/json": components["schemas"]["ClientChainAssignResultDto"];
+                        "text/json": components["schemas"]["ClientChainAssignResultDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-chains/by-client/{clientPublicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    clientPublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientChainSetRequest"];
+                    "text/json": components["schemas"]["ClientChainSetRequest"];
+                    "application/*+json": components["schemas"]["ClientChainSetRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainMembershipDto"];
+                        "application/json": components["schemas"]["ClientChainMembershipDto"];
+                        "text/json": components["schemas"]["ClientChainMembershipDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-chains/{publicId}/bulk-assign/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientChainBulkRequest"];
+                    "text/json": components["schemas"]["ClientChainBulkRequest"];
+                    "application/*+json": components["schemas"]["ClientChainBulkRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainBulkPreviewDto"];
+                        "application/json": components["schemas"]["ClientChainBulkPreviewDto"];
+                        "text/json": components["schemas"]["ClientChainBulkPreviewDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-chains/{publicId}/bulk-assign/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientChainBulkRequest"];
+                    "text/json": components["schemas"]["ClientChainBulkRequest"];
+                    "application/*+json": components["schemas"]["ClientChainBulkRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainBulkResultDto"];
+                        "application/json": components["schemas"]["ClientChainBulkResultDto"];
+                        "text/json": components["schemas"]["ClientChainBulkResultDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/by-chain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    month?: string;
+                    compareMonth?: string;
+                    chainPublicId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainSalesDto"];
+                        "application/json": components["schemas"]["ClientChainSalesDto"];
+                        "text/json": components["schemas"]["ClientChainSalesDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-analysis/by-chain/series": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    chainPublicId?: string;
+                    fromMonth?: string;
+                    toMonth?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientChainSeriesDto"];
+                        "application/json": components["schemas"]["ClientChainSeriesDto"];
+                        "text/json": components["schemas"]["ClientChainSeriesDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -45090,6 +46082,10 @@ export interface components {
             /** Format: int32 */
             preferredSalesUserId?: number | null;
             preferredSalesUserName?: string | null;
+            /** Format: uuid */
+            chainPublicId?: string | null;
+            chainName?: string | null;
+            chainIsActive?: boolean;
         };
         ClientDocumentDto: {
             /** Format: uuid */
@@ -45129,6 +46125,9 @@ export interface components {
             billingSummary?: string | null;
             /** Format: int32 */
             contractsCount?: number;
+            /** Format: uuid */
+            chainPublicId?: string | null;
+            chainName?: string | null;
         };
         ClientMessageDto: {
             /** Format: int64 */
@@ -55312,6 +56311,9 @@ export interface components {
             shippingCharge?: number;
             salesRouteName?: string | null;
             sellerName?: string | null;
+            chainName?: string | null;
+            /** Format: uuid */
+            chainPublicId?: string | null;
         };
         SalesOrderListItemDtoPagedResult: {
             items?: components["schemas"]["SalesOrderListItemDto"][] | null;
@@ -58985,6 +59987,238 @@ export interface components {
             matchedBy?: string | null;
             ambiguous?: boolean;
             candidates?: string[] | null;
+        };
+        ClientChainAssignRequest: {
+            clientPublicIds?: string[] | null;
+            moveFromOtherChains?: boolean;
+        };
+        ClientChainAssignResultDto: {
+            /** Format: int32 */
+            assigned?: number;
+            /** Format: int32 */
+            moved?: number;
+            /** Format: int32 */
+            alreadyInChain?: number;
+            /** Format: int32 */
+            removed?: number;
+            /** Format: int32 */
+            notInChain?: number;
+            skippedOtherChain?: components["schemas"]["ClientChainSkippedDto"][] | null;
+        };
+        ClientChainBulkPreviewDto: {
+            prefix?: string | null;
+            wholeWord?: boolean;
+            moveFromOtherChains?: boolean;
+            /** Format: int32 */
+            matched?: number;
+            /** Format: int32 */
+            toAssign?: number;
+            /** Format: int32 */
+            toMove?: number;
+            /** Format: int32 */
+            alreadyInChain?: number;
+            /** Format: int32 */
+            skippedOtherChain?: number;
+            /** Format: int32 */
+            excluded?: number;
+            tooMany?: boolean;
+            /** Format: int32 */
+            maxBulk?: number;
+            fingerprint?: string | null;
+            rows?: components["schemas"]["ClientChainBulkRowDto"][] | null;
+        };
+        ClientChainBulkRequest: {
+            prefix?: string | null;
+            wholeWord?: boolean;
+            moveFromOtherChains?: boolean;
+            excludeClientPublicIds?: string[] | null;
+            fingerprint?: string | null;
+        };
+        ClientChainBulkResultDto: {
+            /** Format: int32 */
+            assigned?: number;
+            /** Format: int32 */
+            moved?: number;
+            /** Format: int32 */
+            alreadyInChain?: number;
+            /** Format: int32 */
+            skippedOtherChain?: number;
+            /** Format: int32 */
+            excluded?: number;
+        };
+        ClientChainBulkRowDto: {
+            /** Format: uuid */
+            clientPublicId?: string;
+            code?: string | null;
+            name?: string | null;
+            action?: string | null;
+            /** Format: uuid */
+            currentChainPublicId?: string | null;
+            currentChainName?: string | null;
+        };
+        ClientChainClientDto: {
+            /** Format: uuid */
+            clientPublicId?: string;
+            code?: string | null;
+            name?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            isActive?: boolean;
+            salesRepName?: string | null;
+        };
+        ClientChainClientDtoPagedResult: {
+            items?: components["schemas"]["ClientChainClientDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        ClientChainDetailDto: {
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+            notes?: string | null;
+            isActive?: boolean;
+            /** Format: int32 */
+            clientCount?: number;
+            /** Format: int32 */
+            inactiveClientCount?: number;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: date-time */
+            updatedAtUtc?: string | null;
+            rowVersion?: string | null;
+        };
+        ClientChainListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+            notes?: string | null;
+            isActive?: boolean;
+            /** Format: int32 */
+            clientCount?: number;
+        };
+        ClientChainMembershipDto: {
+            /** Format: uuid */
+            clientPublicId?: string;
+            /** Format: uuid */
+            chainPublicId?: string | null;
+            chainName?: string | null;
+            chainIsActive?: boolean;
+        };
+        ClientChainMonthDto: {
+            month?: string | null;
+            /** Format: double */
+            sales?: number;
+        };
+        ClientChainReconciliationDto: {
+            /** Format: double */
+            chainsTotal?: number;
+            /** Format: double */
+            noChain?: number;
+            /** Format: double */
+            monthNet?: number;
+            /** Format: double */
+            difference?: number;
+        };
+        ClientChainRemoveRequest: {
+            clientPublicIds?: string[] | null;
+        };
+        ClientChainRequest: {
+            name?: string | null;
+            notes?: string | null;
+            clearNotes?: boolean;
+            rowVersion?: string | null;
+        };
+        ClientChainSalesClientDto: {
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            clientName?: string | null;
+            /** Format: double */
+            compareSales?: number;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            change?: number;
+            /** Format: double */
+            changePct?: number | null;
+            /** Format: double */
+            shareOfChain?: number | null;
+        };
+        ClientChainSalesDto: {
+            month?: string | null;
+            compareMonth?: string | null;
+            /** Format: date */
+            cutoffDate?: string | null;
+            rows?: components["schemas"]["ClientChainSalesRowDto"][] | null;
+            noChain?: components["schemas"]["ClientChainSalesRowDto"];
+            totals?: components["schemas"]["ClientChainSalesTotalsDto"];
+            reconciliation?: components["schemas"]["ClientChainReconciliationDto"];
+        };
+        ClientChainSalesRowDto: {
+            /** Format: uuid */
+            chainPublicId?: string | null;
+            chainName?: string | null;
+            isActive?: boolean;
+            /** Format: int32 */
+            clientCount?: number;
+            /** Format: int32 */
+            clientsWithSales?: number;
+            /** Format: double */
+            compareSales?: number;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            change?: number;
+            /** Format: double */
+            changePct?: number | null;
+            /** Format: double */
+            shareOfNet?: number | null;
+            clients?: components["schemas"]["ClientChainSalesClientDto"][] | null;
+        };
+        ClientChainSalesTotalsDto: {
+            /** Format: double */
+            compareSales?: number;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            change?: number;
+            /** Format: double */
+            changePct?: number | null;
+        };
+        ClientChainSeriesDto: {
+            /** Format: uuid */
+            chainPublicId?: string;
+            chainName?: string | null;
+            fromMonth?: string | null;
+            toMonth?: string | null;
+            months?: components["schemas"]["ClientChainMonthDto"][] | null;
+            topClients?: components["schemas"]["ClientChainTopClientDto"][] | null;
+        };
+        ClientChainSetRequest: {
+            /** Format: uuid */
+            chainPublicId?: string | null;
+        };
+        ClientChainSkippedDto: {
+            /** Format: uuid */
+            clientPublicId?: string;
+            code?: string | null;
+            name?: string | null;
+            /** Format: uuid */
+            chainPublicId?: string;
+            chainName?: string | null;
+        };
+        ClientChainTopClientDto: {
+            /** Format: uuid */
+            clientPublicId?: string;
+            code?: string | null;
+            name?: string | null;
+            /** Format: double */
+            sales?: number;
+            /** Format: double */
+            share?: number | null;
         };
     };
     responses: never;

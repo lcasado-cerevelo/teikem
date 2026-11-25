@@ -477,6 +477,9 @@ public static class PermissionCatalog
     /// <summary>Lote 238: administrar el análisis de ventas: rutas, representantes, cuotas, líneas y marcas, representante de los clientes, fecha de corte, importar el historial de QuickBooks y enlazar nombres sin emparejar.</summary>
     public const string SalesAnalysisManage = "sales.analysis.manage";
 
+    /// <summary>Lote 245 (Lote B del plan): administrar las cadenas de clientes: crear, editar, activar y desactivar, asignar y quitar clientes, cambiar la cadena desde la ficha del cliente y el alta masiva por nombre. Verlas usa sales.chain|clients.read|sales.view.</summary>
+    public const string SalesChain = "sales.chain";
+
     /// <summary>Lote 143 (2026-10-20): crear, modificar y cancelar avisos de salida y atender su pendiente (ver usa inventory.view y despachar warehouse.pick).</summary>
 
     public const string ExitNoticeCreate = "exitnotice.create";
@@ -776,6 +779,9 @@ public static class PermissionCatalog
 
         new(SalesAnalysisManage, "BILLING", "Análisis de ventas: rutas, representantes, cuotas, líneas e importar el historial", "Sales analysis: routes, reps, quotas, lines and history import"),
 
+        // Lote 245 — cadenas de clientes
+        new(SalesChain, "BILLING", "Cadenas de clientes: crear, editar, asignar clientes y alta masiva", "Client chains: create, edit, assign clients and bulk assign"),
+
         new(ExitNoticeCreate, "WAREHOUSE", "Crear, modificar y cancelar avisos de salida y atender su pendiente", "Create, edit and cancel exit notices and handle their backorder"),
 
     };
@@ -1036,6 +1042,10 @@ public static class PermissionCatalog
 
         [Sales.SalesRouteCodes.AssignmentDataSourceKey] = SalesAnalysisView,
 
+        // Lote 245: cadenas de clientes con clients.read (como sus clientes)
+
+        [Clients.ClientChainCodes.DataSourceKey] = ClientsRead,
+
     };
 
 
@@ -1244,7 +1254,8 @@ public static class PermissionCatalog
         // Lote 222 (pedido de vendedores): el supervisor de ventas fija las listas de precios y aprueba o rechaza los clientes nuevos;
         // la oficina de ventas captura pedidos (los permisos de QuickBooks y de consignación los suma su propio lote).
         ["SalesSupervisor"] = new[] { SalesPricelist, SalesApproveClient, SalesView, ClientsRead, ClientsUpdate, PulseSales,
-            SalesAnalysisView, SalesAnalysisManage },   // Lote 238: ve y administra el análisis de ventas (rutas, representantes, cuotas)
+            SalesAnalysisView, SalesAnalysisManage,   // Lote 238: ve y administra el análisis de ventas (rutas, representantes, cuotas)
+            SalesChain },   // Lote 245: administra las cadenas de clientes
 
         ["SalesOffice"] = new[] { SalesView, SalesCreate, PulseSales,
             SalesQuickBooksView, SalesQuickBooksMark, SalesQuickBooksExport,   // Lote 225: la oficina pasa las facturas a QuickBooks

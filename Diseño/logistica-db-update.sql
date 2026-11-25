@@ -8363,3 +8363,73 @@ BEGIN
     IF @xactAbortWasOn = 0 SET XACT_ABORT OFF;
 END
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-11-25 — Lote 245: Cadenas de clientes (Lote B del plan docs/plan-rutas-cadenas-precios-ivu-modificaciones.md, §3.2) (docs/lote245-decisiones.md).
+   - Tabla nueva dbo.ClientChain (Walgreens, CVS…): nombre único entre las ACTIVAS de la compañía (UX_ClientChain_Name filtrado; el servicio además compara sin
+     mayúsculas, acentos, puntos ni comas), notas, activa (IsActive; sin estatus) y RowVersion. Sin código. UQ_ClientChain_IdTenant (ClientChainId, TenantId) es el
+     destino de la FK compuesta, como UQ_Client_IdTenant.
+   - dbo.Client.ChainId: la cadena del cliente (una sola; NULL = sin cadena) con FK_Client_Chain COMPUESTA (ChainId, TenantId): un cliente no puede apuntar a la
+     cadena de otra compañía. Todos los clientes de hoy quedan sin cadena; no se crea ninguna cadena sola. Una cadena NO es una ruta ni cambia la ruta del cliente.
+   - EntityType CLIENT_CHAIN (bitácora y fuente de datos «Cadenas de clientes»).
+   - Permiso sales.chain (BILLING) a los roles YA clonados TenantAdmin y SalesSupervisor (marca LB_CLIENT_CHAIN_PERMS); las plantillas las pone el sembrador
+     de permisos (PermissionCatalog).
+   Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID(N'dbo.ClientChain', N'U') IS NULL CREATE TABLE dbo.ClientChain (
+    ClientChainId INT IDENTITY(1,1) CONSTRAINT PK_ClientChain PRIMARY KEY,
+    PublicId      UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_ClientChain_PublicId DEFAULT NEWID(),
+    TenantId      INT NOT NULL CONSTRAINT FK_ClientChain_Tenant REFERENCES dbo.Tenant(TenantId),
+    Name          NVARCHAR(100) NOT NULL,
+    Notes         NVARCHAR(500) NULL,
+    IsActive      BIT NOT NULL CONSTRAINT DF_ClientChain_IsActive DEFAULT 1,
+    CreatedAtUtc  DATETIME2 NOT NULL CONSTRAINT DF_ClientChain_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    CreatedBy     INT NULL,
+    UpdatedAtUtc  DATETIME2 NULL,
+    UpdatedBy     INT NULL,
+    RowVersion    ROWVERSION NOT NULL,
+    CONSTRAINT UQ_ClientChain_IdTenant UNIQUE (ClientChainId, TenantId),
+    CONSTRAINT CK_ClientChain_Name CHECK (LEN(LTRIM(RTRIM(Name))) > 0)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ClientChain_Name' AND object_id = OBJECT_ID('dbo.ClientChain'))
+    CREATE UNIQUE INDEX UX_ClientChain_Name ON dbo.ClientChain(TenantId, Name) WHERE IsActive = 1;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ClientChain_PublicId' AND object_id = OBJECT_ID('dbo.ClientChain'))
+    CREATE UNIQUE INDEX UX_ClientChain_PublicId ON dbo.ClientChain(PublicId);
+GO
+IF COL_LENGTH(N'dbo.Client', N'ChainId') IS NULL
+    ALTER TABLE dbo.Client ADD ChainId INT NULL;
+GO
+IF OBJECT_ID(N'dbo.FK_Client_Chain', N'F') IS NULL
+    ALTER TABLE dbo.Client ADD CONSTRAINT FK_Client_Chain FOREIGN KEY (ChainId, TenantId) REFERENCES dbo.ClientChain(ClientChainId, TenantId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Client_Chain' AND object_id = OBJECT_ID('dbo.Client'))
+    CREATE INDEX IX_Client_Chain ON dbo.Client(TenantId, ChainId) WHERE ChainId IS NOT NULL;
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'CLIENT_CHAIN', N'{"es":"Cadena de clientes","en":"Client chain"}', 198)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'sales.chain')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('sales.chain', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'BILLING'),
+            N'{"es":"Cadenas de clientes: crear, editar, asignar clientes y alta masiva","en":"Client chains: create, edit, assign clients and bulk assign"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'LB_CLIENT_CHAIN_PERMS')
+BEGIN
+    -- el administrador de la compañía y el supervisor de ventas (solo agrega, nunca quita)
+    INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+    SELECT DISTINCT r.RoleId, pm.PermissionId
+    FROM dbo.Role r
+    JOIN dbo.Permission pm ON pm.Code = 'sales.chain'
+    WHERE r.IsActive = 1 AND r.TenantId IS NOT NULL AND r.Name IN ('TenantAdmin', 'SalesSupervisor')
+      AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = pm.PermissionId);
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('LB_CLIENT_CHAIN_PERMS');
+END
+GO

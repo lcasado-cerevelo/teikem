@@ -25,6 +25,7 @@ import { ClientPeoplePanel } from './ClientPeoplePanel'
 import { ClientPrintingPanel } from './ClientPrintingPanel'
 import { ClientProfilePanel } from './ClientProfilePanel'
 import { ClientSalesPanel } from '../salesAnalysis/ClientSalesPanel'
+import { ClientChainPanel } from '../chains/ClientChainPanel'
 import { CLIENT_ENTITY_TYPE, CLIENT_STATUS_DOMAIN, isProspect, type ClientDetail } from './clientRules'
 import { useState } from 'react'
 
@@ -129,6 +130,7 @@ export function ClientDetailPanel({ publicId }: { publicId: string }) {
       <ClientAddressesPanel client={client} />
       <ClientProfilePanel client={client} />
       <ClientSalesPanel key={`sales-${client.publicId}`} client={client} />
+      <ClientChainPanel key={`chain-${client.publicId}`} client={client} />
       <Can perm="clients.read">
         <ClientDocumentsPanel key={`docs-${client.publicId}`} client={client} />
       </Can>

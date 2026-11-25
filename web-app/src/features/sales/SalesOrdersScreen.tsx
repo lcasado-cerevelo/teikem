@@ -8,7 +8,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useEntryMode, wizardPath } from './entryMode'
-import { Can, permAllowed, useAccess, useCan } from '../../kernel/access'
+import { Can, permAllowed, useAccess, useCan, useModule } from '../../kernel/access'
+import { ModuleKeys } from '../../kernel/access/modules'
+import { useChains } from '../chains/chainsApi'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import { useFormat } from '../../kernel/format'
@@ -93,6 +95,10 @@ function OrdersTab({ onOpen, filters, onFilters }: { onOpen: (id: string, status
     () => [{ value: '0', label: t('clients.sales.noRoute') }, ...(routes.data ?? []).map((r) => ({ value: String(r.id), label: r.name ?? '' }))],
     [routes.data, t],
   )
+  // Lote 245: filtro y columna «Cadena» (las cadenas son del módulo Órdenes de venta)
+  const salesModule = useModule(ModuleKeys.SalesOrders)
+  const chains = useChains(true, '', salesModule)
+  const chainOptions = useMemo(() => (chains.data ?? []).map((c) => ({ value: c.publicId ?? '', label: c.isActive ? (c.name ?? '') : `${c.name} (${t('chains.inactive')})` })), [chains.data, t])
   const sellerOptions = useMemo(() => (sellers.data ?? []).map((u) => ({ value: String(u.userId), label: u.name ?? '' })), [sellers.data])
 
   const columns = useMemo<DataColumn<SalesOrderListItemDto>[]>(
@@ -116,11 +122,12 @@ function OrdersTab({ onOpen, filters, onFilters }: { onOpen: (id: string, status
       { id: 'lines', header: t('sales.col.lines'), cell: (o) => o.lineCount, sortValue: (o) => o.lineCount ?? 0, align: 'end' },
       { id: 'total', header: t('sales.col.total'), cell: (o) => f.money(o.total ?? 0), exportValue: (o) => o.total ?? 0, sortValue: (o) => o.total ?? 0, align: 'end' },
       { id: 'route', header: t('sales.col.route'), cell: (o) => o.salesRouteName ?? '—', exportValue: (o) => o.salesRouteName ?? '', sortValue: (o) => o.salesRouteName ?? '' },
+      ...(salesModule ? [{ id: 'chain', header: t('sales.col.chain'), cell: (o: SalesOrderListItemDto) => o.chainName ?? '—', exportValue: (o: SalesOrderListItemDto) => o.chainName ?? '', sortValue: (o: SalesOrderListItemDto) => o.chainName ?? '' }] : []),
       { id: 'seller', header: t('sales.col.seller'), cell: (o) => o.sellerName ?? '—', exportValue: (o) => o.sellerName ?? '', sortValue: (o) => o.sellerName ?? '' },
       { id: 'assignee', header: t('warehouse.assign.column'), cell: (o) => o.assignedToName ?? '—', exportValue: (o) => o.assignedToName ?? '', sortValue: (o) => o.assignedToName ?? '' },
       { id: 'by', header: t('sales.col.by'), cell: (o) => o.requestedByName ?? '—', sortValue: (o) => o.requestedByName ?? '' },
     ],
-    [t, f],
+    [t, f, salesModule],
   )
 
   // Lote 195: iconos con su ayuda en la tabla (solo en una orden solicitada o despachada en parte)
@@ -182,6 +189,7 @@ function OrdersTab({ onOpen, filters, onFilters }: { onOpen: (id: string, status
           {canAnalysis && (
             <SelectFilter label={t('sales.seller.filterSeller')} value={filters.seller} onChange={set('seller')} allLabel={t('sales.seller.anySeller')} options={sellerOptions} />
           )}
+          {salesModule && <SearchSelect label={t('sales.orders.filters.chain')} options={chainOptions} value={filters.chains} onChange={set('chains')} />}
           <ToggleFilter label={t('warehouse.assign.mineOnly')} checked={filters.mine} onChange={set('mine')} />
         </Filters>
         {list.isError ? (

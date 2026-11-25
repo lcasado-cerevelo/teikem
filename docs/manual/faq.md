@@ -12747,3 +12747,118 @@ El mes de «Por ruta», de sus transacciones o de las cuotas no tiene la forma a
 ### Compartidos con el Lote 241 que también pueden salir aquí
 
 Estos mensajes son los mismos del Lote 241 ([sección «Lote 241»](#lote-241--análisis-de-ventas)): «El cuerpo de la solicitud es obligatorio.» (400), «Ya hay un representante activo con ese nombre.» (409) y «El representante tiene clientes asignados: páselos a otro representante antes de desactivarlo.» (409). Y el del módulo apagado: «El módulo 'SALES_ORDERS' no está habilitado para esta compañía.» (403). Sin permiso, el API responde 403 sin mensaje propio y queda un evento `PERMISSION_DENIED`.
+
+## Lote 245 — Cadenas de clientes
+<!-- kemi:staff -->
+
+Capítulo: [53 — Cadenas de clientes](53-cadenas.md). Pantallas: [L245](frontend/l245-cadenas.md). Una cadena agrupa clientes (Walgreens, CVS…); no es una ruta de venta y no cambia la ruta del cliente.
+
+### Crear y editar una cadena
+
+**¿Qué significa «Escriba el nombre de la cadena.»? (HTTP 400)**
+Quiso crear o renombrar una cadena sin nombre (o solo con espacios). Escriba un nombre.
+
+**¿Qué significa «El nombre no puede pasar de 100 caracteres.»? (HTTP 400)**
+El nombre de la cadena es más largo que 100 caracteres. Acórtelo. En pantalla el mismo límite avisa «El nombre admite hasta 100 caracteres.» antes de guardar.
+
+**¿Qué significa «Las notas no pueden pasar de 500 caracteres.»? (HTTP 400)**
+Las notas de la cadena pasan de 500 caracteres. Acórtelas. En pantalla: «Las notas admiten hasta 500 caracteres.».
+
+**¿Qué significa «Ya hay una cadena activa con ese nombre.»? (HTTP 409)**
+Otra cadena **activa** de su compañía ya se llama así. La comparación no distingue mayúsculas, acentos, puntos ni comas: «Walgreens.» y «WALGREENS» son el mismo nombre. Use otro nombre, o busque la cadena que ya existe (puede estar entre las activas con otra escritura). También sale al **reactivar** una cadena inactiva cuyo nombre ya tomó otra activa: renombre una de las dos.
+
+**¿Qué significa «El cuerpo de la solicitud es obligatorio.»? (HTTP 400)**
+El API recibió la llamada sin cuerpo. Solo sale al llamar al API a mano; en la pantalla no pasa.
+
+**¿Qué significa «Cadena no encontrada.»? (HTTP 404)**
+La cadena no existe o es de otra compañía (no se dice cuál de las dos). Recargue la lista; si la dirección tenía `?id=` de otra sesión o de otra compañía, escoja la cadena de la lista.
+
+**¿Qué significa «El registro fue modificado por otro usuario; recargue e intente de nuevo.»? (HTTP 409)**
+Otra persona cambió la cadena (o le asignó clientes) mientras usted la editaba, la desactivaba o la llenaba. No se guardó nada de lo suyo. Recargue y repita. Pasa sobre todo al desactivar una cadena a la vez que alguien le agrega un cliente.
+
+### Desactivar y reactivar
+
+**¿Qué significa «La cadena tiene 1 cliente activo: quítelo de la cadena antes de desactivarla.»? (HTTP 409)**
+No se puede desactivar una cadena con clientes **activos**. Entre a la ficha de la cadena, quite al cliente (o muévalo a otra cadena desde su ficha) y vuelva a desactivar.
+
+**¿Qué significa «La cadena tiene N clientes activos: quítelos de la cadena antes de desactivarla.»? (HTTP 409)**
+Es el mismo caso con varios clientes (N es el número). Marque los clientes en «Clientes de la cadena» y pulse «Quitar», o use «Quitar» desde el API. Los clientes **inactivos** no cuentan y conservan su cadena.
+
+**¿Qué significa «La cadena está desactivada: actívela o escoja otra.»? (HTTP 400)**
+Quiso agregar clientes, cambiar la cadena de un cliente o hacer un alta masiva hacia una cadena **inactiva**. Reactívela (ficha de la cadena → «Reactivar») o escoja otra.
+
+### Asignar y quitar clientes
+
+**¿Qué significa «Indique los clientes (clientPublicIds).»? (HTTP 400)**
+Se mandó la lista de clientes vacía o sin ella. En pantalla, escoja al menos un cliente. Al llamar al API, mande `clientPublicIds`.
+
+**¿Qué significa «No se pueden mandar más de 2000 clientes en una sola llamada.»? (HTTP 400)**
+Una llamada de agregar o quitar clientes lleva más de 2000. Pártala en varias, o use «Agregar por nombre».
+
+**¿Qué significa «Cliente no encontrado.»? (HTTP 404)**
+Alguno de los clientes no existe o es de otra compañía. No se cambió ninguno: la llamada completa se rechaza. Quite el cliente que sobra y repita.
+
+**¿Por qué un cliente no entró a la cadena y no hubo error?**
+Ya estaba en **otra** cadena: se salta y se informa (en pantalla, «N clientes ya están en otra cadena: ¿moverlos a esta?»). Pulse «Moverlos» si quiere cambiarlos. Un cliente que ya estaba en esta cadena cuenta en «ya están» y no pasa nada.
+
+### Alta masiva por nombre
+
+**¿Qué significa «Escriba al menos 3 letras del inicio del nombre.»? (HTTP 400)**
+El texto de «El nombre empieza con» tiene menos de 3 letras o dígitos (los puntos, comas y espacios no cuentan). Escriba más del inicio del nombre.
+
+**¿Qué significa «El prefijo no puede pasar de 100 caracteres.»? (HTTP 400)**
+El texto del alta masiva pasa de 100 caracteres. Acórtelo.
+
+**¿Qué significa «Un cliente excluido no está entre los que encontró la simulación.»? (HTTP 400)**
+Se excluyó a un cliente que la simulación no encontró (por ejemplo, porque cambió el texto o un interruptor después de simular, o es de otra compañía). Vuelva a simular y excluya de la tabla nueva.
+
+**¿Qué significa «Falta la huella de la simulación (fingerprint): simule antes de aplicar.»? (HTTP 400)**
+Se intentó aplicar sin haber simulado. En pantalla pulse «Simular» primero (el botón «Aplicar» está apagado sin una simulación vigente). Al llamar al API, mande la `fingerprint` que devolvió la simulación.
+
+**¿Qué significa «Los clientes que coinciden cambiaron desde la simulación: vuelva a simular antes de aplicar.»? (HTTP 409)**
+Entre «Simular» y «Aplicar» cambió algo que afecta al resultado: alguien renombró, dio de baja o creó un cliente que coincide, o lo pasó a otra cadena. Tampoco vale una simulación vieja si ya aplicó (la segunda vez da 0 asignados). **No se escribió nada.** Pulse «Simular», revise y aplique de nuevo; la pantalla ya vuelve a simular sola y conserva las exclusiones.
+
+**¿Qué significa «La simulación encontró N clientes y el máximo por aplicación es 2000: use un prefijo más largo.»? (HTTP 400)**
+El texto coincide con más de 2000 clientes (N es el número) y no se aplica de golpe. Escriba más del nombre para acotar. En pantalla la simulación dice «Hay N coincidencias y el máximo es 2000: use un texto más específico.».
+
+**¿Por qué «Walgreensboro» no entró con «Walgreens»?**
+Porque «Palabra completa» está encendida: lo que sigue al texto no puede ser una letra ni un dígito. Si sí lo quería, apague «Palabra completa» y simule otra vez.
+
+**¿Por qué sale «Ningún cliente empieza con ese texto.»?**
+Es un aviso de la pantalla, no un error: la simulación no encontró clientes **activos** cuyo nombre empiece así (sin distinguir mayúsculas, acentos, puntos ni comas). Revise el texto; los clientes inactivos no entran.
+
+**¿Cómo excluyo a un cliente de la simulación?**
+Desmarque su casilla en la tabla: la fila pasa a «Excluido» y no se toca al aplicar. No hace falta simular de nuevo.
+
+### Filtros y análisis por cadena
+
+**¿Qué significa «Escoja una cadena o «Sin cadena», no las dos.»? (HTTP 400)**
+La lista de clientes recibió `chainPublicId` y `noChain=true` a la vez. En pantalla el select «Cadena» solo deja una opción; solo sale al llamar al API a mano.
+
+**¿Por qué el filtro de cadena de Clientes sale vacío?**
+La cadena no existe o es de otra compañía (no hay 404 ni se dice cuál), o no tiene clientes **activos** (por omisión la lista no muestra a los inactivos: encienda «Mostrar inactivos»).
+
+**¿Qué significa «El mes debe tener la forma AAAA-MM (por ejemplo 2026-10).»? (HTTP 400)**
+El mes de «Por cadena» (o su comparación) no tiene el formato AAAA-MM. En pantalla se escoge de una lista; solo sale al llamar al API con un valor como `2026-13`.
+
+**¿Qué significa «Indique la cadena (chainPublicId).»? (HTTP 400)**
+La serie de ventas de una cadena (`/sales-analysis/by-chain/series`) se pidió sin `chainPublicId`. Escoja la cadena.
+
+**¿Qué significa «El mes final no puede ser anterior al inicial.»? (HTTP 400)**
+En la serie de una cadena, `toMonth` es anterior a `fromMonth`. Invierta los meses.
+
+**¿Qué significa «El rango no puede pasar de 36 meses.»? (HTTP 400)**
+La serie de una cadena pide más de 36 meses. Acorte el rango (por omisión son 12).
+
+**¿Por qué «Por cadena» no cuadra o me dice «Sin cadena» con mucha venta?**
+Mire la **Diferencia** de la conciliación: debe ser $0.00. La fila «Sin cadena» junta a los clientes sin cadena y las ventas del historial que no se emparejaron con ningún cliente. Asigne cadenas a esos clientes o empareje los nombres en Análisis de ventas → Configuración.
+
+**Moví un cliente de cadena y su venta de antes también cambió. ¿Es un error?**
+No. La venta (también la importada de QuickBooks) se cuenta en la cadena **actual** del cliente, y la columna «Cadena» de las órdenes de venta también muestra la actual: las órdenes viejas no guardan copia.
+
+**¿La ruta «Cadenas» de Solutions es una cadena?**
+No. Es una ruta de venta (capítulo 52) y este lote no la toca. Las cadenas se crean en Listas → Cadenas.
+
+### Compartidos con otros lotes que también pueden salir aquí
+
+«El módulo 'SALES_ORDERS' no está habilitado para esta compañía.» (403): las cadenas y «Por cadena» son del módulo Órdenes de venta; pida que lo enciendan. Sin permiso (`sales.chain` para administrar; `sales.chain`, `clients.read` o `sales.view` para ver; `sales.analysis.view` para «Por cadena») el API responde 403 sin mensaje propio y queda un evento `PERMISSION_DENIED`.

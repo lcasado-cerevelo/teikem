@@ -31,10 +31,12 @@ public sealed class SalesOrdersController(SalesOrderService sales) : ControllerB
     public Task<PagedResult<SalesOrderListItemDto>> List([FromQuery] string[]? status, [FromQuery] Guid[]? clientPublicId, [FromQuery] string? q, [FromQuery] bool backorderOnly,
         [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] int skip, [FromQuery] int take, CancellationToken ct,
         [FromQuery] bool assignedToMe = false, [FromQuery] int? assignedUserId = null, [FromQuery] bool urgent = false,
-        [FromQuery] Guid[]? productPublicId = null, [FromQuery] string? dateField = null, [FromQuery] int? routeId = null, [FromQuery] int? sellerUserId = null)
+        [FromQuery] Guid[]? productPublicId = null, [FromQuery] string? dateField = null, [FromQuery] int? routeId = null, [FromQuery] int? sellerUserId = null,
+        [FromQuery] Guid[]? chainPublicId = null)
         => sales.ListAsync(null, null, q, backorderOnly, from, to, skip, take, ct, assignedToMe, assignedUserId, urgent,   // Lote 222: urgent = solo urgentes
             statuses: status, clientPublicIds: clientPublicId, productPublicIds: productPublicId, dateField: dateField,
-            routeId: routeId, sellerUserId: sellerUserId);   // Lote 244: por la ruta de venta y el vendedor guardados en la orden
+            routeId: routeId, sellerUserId: sellerUserId,   // Lote 244: por la ruta de venta y el vendedor guardados en la orden
+            chainPublicIds: chainPublicId);   // Lote 245: por la cadena ACTUAL del cliente (repetible: cualquiera de ellas)
 
     /// <summary>
     /// Lote 244 — para el campo «Vendedor» del borrador: la ruta de venta efectiva del cliente, el vendedor propuesto y las opciones que se pueden escoger

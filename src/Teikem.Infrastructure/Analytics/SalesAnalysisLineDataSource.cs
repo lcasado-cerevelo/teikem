@@ -1,6 +1,9 @@
+using Teikem.Domain.Clients;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Sales;
 using Teikem.Infrastructure.Abstractions;
+using Teikem.Infrastructure.Clients;
+using Teikem.Infrastructure.Persistence;
 using Teikem.Infrastructure.Services;
 
 namespace Teikem.Infrastructure.Analytics;
@@ -14,8 +17,12 @@ namespace Teikem.Infrastructure.Analytics;
 /// Lote 244: la persona y la ruta son las ATRIBUIDAS (la copia de la orden; si no, la ruta del cliente y su representante o el titular de la ruta el día de la línea).
 /// SellerName = la persona («Sin vendedor» si no hay); RepName = el representante si la persona lo es («Sin representante» si no); RouteName = la ruta atribuida.
 /// </para>
+/// <para>
+/// Lote 245 (Lote B del plan): ChainName = la cadena ACTUAL del cliente de la línea («Sin cadena» si no tiene o la línea no se emparejó), para que los Gráficos (que no
+/// usan relaciones) agrupen por cadena; misma atribución que la vista «Por cadena».
+/// </para>
 /// </summary>
-public sealed class SalesAnalysisLineDataSource(SalesAnalysisService analysis, ITenantClock? clock = null) : IDataSource
+public sealed class SalesAnalysisLineDataSource(SalesAnalysisService analysis, TeikemDbContext db, ITenantClock? clock = null) : IDataSource
 {
     public string Key => SalesAnalysisCodes.DataSourceKey;
     public string LabelEs => "Líneas de venta para análisis";
@@ -47,6 +54,7 @@ public sealed class SalesAnalysisLineDataSource(SalesAnalysisService analysis, I
         new DataField("Quantity", "Unidades", "Units", DataFieldType.Number),
         new DataField("UnitPrice", "Precio", "Price", DataFieldType.Number, IsMoney: true),
         new DataField("Amount", "Venta", "Sales", DataFieldType.Number, IsMoney: true),
+        new DataField("ChainName", "Cadena", "Chain", DataFieldType.Text),   // Lote 245
     };
 
     public IReadOnlyList<DataRelation> Relations { get; } = new[]
@@ -61,6 +69,9 @@ public sealed class SalesAnalysisLineDataSource(SalesAnalysisService analysis, I
         var to = q.ToDayExclusive ?? (q.ToUtc is DateTime tu ? c.DayOf(tu) : c.Today.AddDays(1));
         if (to <= from) return new List<DataRow>();
         var lines = await analysis.LinesForRangeAsync(from, to, ct);
+        // Lote 245: cliente → cadena actual y los nombres de las cadenas (dos consultas para todas las líneas)
+        var clientChain = await ClientChainQueries.ClientChainMapAsync(db, null, ct);
+        var chainNames = await ClientChainQueries.ChainsByIdAsync(db, clientChain.Values, ct);
         var rows = new List<DataRow>(Math.Min(lines.Count, ClientDataSourceHelpers.MaxRows));
         var i = 0;
         foreach (var (l, brand) in lines.Take(ClientDataSourceHelpers.MaxRows))
@@ -87,6 +98,8 @@ public sealed class SalesAnalysisLineDataSource(SalesAnalysisService analysis, I
                 ["Quantity"] = l.Quantity,
                 ["UnitPrice"] = l.UnitPrice,
                 ["Amount"] = l.Amount,
+                ["ChainName"] = l.ClientId is int cid && clientChain.TryGetValue(cid, out var chainId) && chainNames.TryGetValue(chainId, out var chain)
+                    ? chain.Name : ClientChainCodes.NoChainName,
             });
         }
         return rows;

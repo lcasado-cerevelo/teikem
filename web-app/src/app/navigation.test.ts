@@ -35,13 +35,13 @@ describe('NAV_GROUPS', () => {
 })
 
 describe('menú completo (routes.tsx)', () => {
-  it('con todos los permisos y módulos se ven los 6 grupos y los 45 ítems, en el orden de la maqueta', () => {
+  it('con todos los permisos y módulos se ven los 6 grupos y los 46 ítems, en el orden de la maqueta', () => {
     const groups = visibleNav(appRoutes, ALL_PERMS, ALL_MODULES)
     expect(groups.map((g) => [g.key, g.items.length])).toEqual([
       ['ops', 5],
       ['warehouse', 12],
       ['money', 9],
-      ['catalog', 4],
+      ['catalog', 5],
       ['analytics', 5],
       ['system', 10],
     ])
@@ -73,6 +73,7 @@ describe('menú completo (routes.tsx)', () => {
       'Liquidación a choferes',
       'Impuestos',
       'Clientes y contratos',
+      'Cadenas',
       'Consignatarios',
       'Choferes y tarifas',
       'Flota y mantenimiento',
@@ -95,7 +96,7 @@ describe('menú completo (routes.tsx)', () => {
   })
 
   it('cada ítem tiene título y subtítulo en español e inglés, y `order` = posición × 10', () => {
-    expect(navRoutes).toHaveLength(46)
+    expect(navRoutes).toHaveLength(47)
     for (const r of navRoutes) {
       for (const lang of ['es', 'en'] as const) {
         expect(translate(lang, navTitleKey(r.nav!.key)), `${lang} ${r.path}`).not.toBe(navTitleKey(r.nav!.key))

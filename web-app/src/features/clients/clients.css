@@ -134,3 +134,6 @@
 
 /* Lote 243: aviso de una persona marcada para avisos por correo pero sin correo (texto normal sobre fondo de advertencia: contraste de la paleta) */
 .cp-notice-warn{border-left:3px solid var(--warn);background:var(--warnbg);color:var(--text);font-weight:600;padding:6px 10px;border-radius:6px;margin:8px 0 0}
+/* Lote 245: filtro «Cadena» de la lista */
+.cl-chain-filter{padding:10px 12px;margin:0}
+.cl-chain-filter select{width:100%}

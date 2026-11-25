@@ -4,6 +4,7 @@ using Teikem.Domain.Clients;
 using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
 using Teikem.Infrastructure.Abstractions;
+using Teikem.Infrastructure.Clients;
 using Teikem.Infrastructure.Persistence;
 
 namespace Teikem.Infrastructure.Analytics;
@@ -92,8 +93,15 @@ public sealed class ClientDataSource(TeikemDbContext db, ILookupCache lookups, I
         new DataField("ContractsCount", "Contratos", "Contracts", DataFieldType.Number),
         new DataField("PickupLocationName", "Punto de recogido", "Pickup location", DataFieldType.Text),
         new DataField("CreatedAtUtc", "Creado", "Created", DataFieldType.Date),
+        // Lote 245: la cadena ACTUAL del cliente (al final para no mover los campos que usa SystemAnalyticsSeeder)
+        new DataField("ChainId", "Id de la cadena", "Chain id", DataFieldType.Number),
+        new DataField("ChainName", "Cadena", "Chain", DataFieldType.Text),
     };
-    public IReadOnlyList<DataRelation> Relations { get; } = Array.Empty<DataRelation>();
+    /// <summary>Lote 245: «Chain» → CLIENT_CHAIN, para agrupar en Vistas por Client.ChainName desde cualquier fuente con la relación Client.</summary>
+    public IReadOnlyList<DataRelation> Relations { get; } = new[]
+    {
+        new DataRelation("Chain", ClientChainCodes.DataSourceKey, "ChainId", "Cadena", "Chain"),
+    };
 
     public async Task<List<DataRow>> LoadAsync(DataQuery q, CancellationToken ct)
     {
@@ -130,6 +138,9 @@ public sealed class ClientDataSource(TeikemDbContext db, ILookupCache lookups, I
                 .OrderBy(l => l.LocationId).Select(l => new { ClientId = l.ClientId!.Value, l.Name }).ToListAsync(ct))
                 .GroupBy(l => l.ClientId).ToDictionary(g => g.Key, g => g.First().Name);
 
+        // Lote 245: nombres de las cadenas de los clientes cargados (una consulta)
+        var chains = await ClientChainQueries.ChainsByIdAsync(db, clients.Where(c => c.ChainId != null).Select(c => c.ChainId!.Value), ct);
+
         var rows = new List<DataRow>(clients.Count);
         foreach (var c in clients)
         {
@@ -159,6 +170,8 @@ public sealed class ClientDataSource(TeikemDbContext db, ILookupCache lookups, I
                 ["ContractsCount"] = own.Count,
                 ["PickupLocationName"] = pickupName,
                 ["CreatedAtUtc"] = c.CreatedAtUtc,
+                ["ChainId"] = c.ChainId,
+                ["ChainName"] = c.ChainId is int chainId ? chains.GetValueOrDefault(chainId)?.Name : null,
             });
         }
         return rows;

@@ -98,6 +98,7 @@ public static class MenuPermissions
         [PermissionCatalog.RentalManage] = new[] { PermissionCatalog.RentalView },
         [PermissionCatalog.SalesCreate] = new[] { PermissionCatalog.SalesView },
         [PermissionCatalog.SalesPricelist] = new[] { PermissionCatalog.SalesView },   // Lote 221
+        [PermissionCatalog.SalesChain] = new[] { PermissionCatalog.ClientsRead },   // Lote 245: quien administra las cadenas ve los clientes
         [PermissionCatalog.SalesQuickBooksMark] = new[] { PermissionCatalog.SalesView },     // Lote 225: la pestaña QuickBooks vive en Órdenes de venta (la lista la ven view, mark y export)
         [PermissionCatalog.SalesQuickBooksExport] = new[] { PermissionCatalog.SalesView },   // Lote 225
         [PermissionCatalog.SalesQuickBooksView] = new[] { PermissionCatalog.SalesView },     // Lote 225

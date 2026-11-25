@@ -452,6 +452,10 @@
     "claims": {
       "title": "Claims",
       "subtitle": "missing pieces and claims"
+    },
+    "chains": {
+      "title": "Chains",
+      "subtitle": "client groups such as Walgreens or CVS"
     }
   },
   "clients": {
@@ -1154,6 +1158,16 @@
         "codMin": "The COD amount cannot be negative.",
         "repeated": "The service/package type pair is repeated; send a single line per (service, package type) with the total pieces."
       }
+    },
+    "chain": {
+      "title": "Chain",
+      "current": "Client's chain",
+      "pick": "Chain",
+      "help": "A client belongs to one chain only. Changing it does not change its sales route.",
+      "saved": "Client chain saved.",
+      "removed": "The client now has no chain.",
+      "filter": "Chain",
+      "all": "All chains"
     }
   },
   "consignees": {
@@ -10649,7 +10663,8 @@
         "required": "Required",
         "client": "Client",
         "product": "Product",
-        "status": "Status"
+        "status": "Status",
+        "chain": "Chain"
       }
     },
     "col": {
@@ -10676,7 +10691,8 @@
       "closed": "Closed",
       "exempt": "Exempt",
       "route": "Sales route",
-      "seller": "Seller"
+      "seller": "Seller",
+      "chain": "Chain"
     },
     "days": "{n} d",
     "client": "Buying client",
@@ -13317,7 +13333,8 @@
       "rep": "By sales rep",
       "movement": "Product movement",
       "charts": "Charts",
-      "setup": "Setup"
+      "setup": "Setup",
+      "chain": "By chain"
     },
     "statusBanner": {
       "title": "For the analysis to add up:",
@@ -14085,6 +14102,141 @@
       "trend": "last full month vs the average of the two before; only calculated if the product sold in all three months.",
       "topClient": "the client who was invoiced the most units in the range (credit memos not subtracted).",
       "pending": "ordered and not yet received on purchase orders that are Sent or Partially received."
+    }
+  },
+  "chains": {
+    "title": "Chains",
+    "subtitle": "Client groups (Walgreens, CVS…). A client belongs to one chain only; a chain is not a route and does not change the client's route.",
+    "new": "+ New chain",
+    "created": "Chain created.",
+    "saved": "Chain saved.",
+    "deactivated": "Chain deactivated.",
+    "reactivated": "Chain reactivated.",
+    "list": "Chains",
+    "splitLabel": "Resize the list and the record",
+    "searchPlaceholder": "Search chain…",
+    "showInactive": "Show inactive",
+    "noResults": "No chain matches the search.",
+    "empty": "There are no chains yet.",
+    "selectChain": "Pick a chain.",
+    "noChain": "No chain",
+    "active": "Active",
+    "inactive": "Inactive",
+    "col": {
+      "name": "Name",
+      "clients": "Clients",
+      "notes": "Notes",
+      "active": "Active"
+    },
+    "fields": {
+      "name": "Name",
+      "nameHelp": "Unique among active chains (ignores case, accents, periods and commas).",
+      "notes": "Notes"
+    },
+    "errors": {
+      "nameRequired": "The chain name is required.",
+      "nameMax": "The name allows up to 100 characters.",
+      "notesMax": "The notes allow up to 500 characters."
+    },
+    "summary": "{active} active clients · {inactive} inactive · {total} in total",
+    "deactivate": "Deactivate",
+    "reactivate": "Reactivate",
+    "deactivateTitle": "Deactivate the chain",
+    "deactivateMessage": "\"{name}\" will no longer be offered when choosing a client's chain. It can only be deactivated if it has no active clients.",
+    "clients": {
+      "title": "Chain clients",
+      "subtitle": "Clients that belong to this chain.",
+      "code": "Code",
+      "name": "Client",
+      "status": "Status",
+      "rep": "Representative",
+      "search": "Search chain clients…",
+      "showInactive": "Show inactive",
+      "empty": "The chain has no clients.",
+      "pick": "Pick {name}",
+      "addLabel": "Add clients",
+      "addPlaceholder": "Pick clients…",
+      "addN": "Add {n}",
+      "added": "{n} clients added ({already} were already in).",
+      "removeN": "Remove {n}",
+      "removeTitle": "Remove clients from the chain",
+      "removeMessage": "{n} clients will be removed from \"{name}\". They will have no chain.",
+      "remove": "Remove",
+      "removed": "{n} clients removed.",
+      "moveTitle": "Clients in another chain",
+      "moveMessage": "{n} clients are already in another chain: move them to this one?",
+      "move": "Move them",
+      "moved": "{n} clients moved.",
+      "andMore": "and {n} more…"
+    },
+    "bulk": {
+      "title": "Add by name",
+      "subtitle": "Adds at once the clients whose name starts with some text. It is simulated first: nothing is written until you apply.",
+      "prefix": "Name starts with",
+      "prefixPlaceholder": "Walgreens",
+      "prefixHelp": "At least 3 letters; ignores case, accents, periods and commas.",
+      "wholeWord": "Whole word",
+      "moveOther": "Also move those in another chain",
+      "simulate": "Simulate",
+      "counts": "{matched} matches · {assign} to assign · {move} to move · {already} already in · {skipped} in another chain (skipped) · {excluded} excluded",
+      "tooMany": "There are {n} matches and the maximum is {max}: use a more specific text.",
+      "stale": "The text or a switch changed: simulate again to be able to apply.",
+      "noMatches": "No client starts with that text.",
+      "apply": "Apply to {n} clients",
+      "applied": "{n} clients added to the chain.",
+      "resimulated": "It was simulated again with the current clients; review and apply again.",
+      "confirmTitle": "Apply the add by name",
+      "confirmMessage": "{n} clients will be added to \"{name}\" ({move} of them move from another chain).",
+      "includeRow": "Include {name}",
+      "col": {
+        "include": "Include",
+        "current": "Current chain",
+        "action": "Action"
+      },
+      "action": {
+        "ASSIGN": "Assign",
+        "MOVE": "Move",
+        "ALREADY": "Already in",
+        "SKIP_OTHER_CHAIN": "Skipped (other chain)",
+        "EXCLUDED": "Excluded"
+      }
+    },
+    "sales": {
+      "title": "Sales",
+      "subtitle": "Net sales of the chain's clients (each client's current chain).",
+      "byMonth": "Net sales by month",
+      "month": "Month",
+      "vs": "against {month}",
+      "clientsInMonth": "Chain clients in the month",
+      "client": "Client",
+      "compare": "Previous month",
+      "sales": "Sales",
+      "change": "Change",
+      "share": "Share",
+      "empty": "No sales in the month."
+    },
+    "tab": {
+      "filters": "Month of the by-chain analysis",
+      "kpis": "Summary by chain",
+      "kpiChains": "Chains",
+      "kpiNoChain": "No chain: {amount}",
+      "basis": "Sales are attributed to the client's CURRENT chain. A chain is not a route.",
+      "comparative": "Comparison by chain",
+      "comparativeSub": "chain → clients (use the arrow to see the clients)",
+      "chain": "Chain",
+      "share": "Share",
+      "expand": "Show the clients of {chain}",
+      "collapse": "Hide the clients of {chain}",
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all",
+      "empty": "There are no sales in the month.",
+      "clientsWithSales": "{n} of {total} clients with sales",
+      "unmatched": "Unmatched",
+      "reconciliation": "Reconciliation",
+      "recChains": "Sum of the chains",
+      "recMonth": "Net sales of {month}",
+      "recDifference": "Difference",
+      "chart": "Sales by chain"
     }
   }
 }

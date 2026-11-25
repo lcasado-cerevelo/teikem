@@ -1,0 +1,39 @@
+/* Lote 245 — Cadenas de clientes. Prefijo propio `chn-`; colores solo de la paleta del tema. */
+.chn-detail{min-width:0}
+.chn-stack{display:flex;flex-direction:column;gap:14px;min-width:0}
+.chn-stack>.panel{margin-bottom:0}
+.chn-q{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line-2)}
+.chn-q .qbox{flex:1 1 180px;min-width:0;max-width:none}
+.chn-inactive{font-weight:500;font-size:12.5px;white-space:normal}
+.chn-name{overflow-wrap:anywhere}
+.chn-notes{display:block;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+.chn-dim{opacity:.7}
+.chn-on{background:var(--flow-bg)}
+.chn-row{cursor:pointer}
+.chn-split:not(.stacked)>.split-pane:last-child{min-height:420px}
+.chn-check{width:16px;height:16px;margin:0}
+.chn-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.chn-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px 16px;margin:0 0 10px}
+.chn-facts>div{min-width:0}
+.chn-facts dt{font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.chn-facts dd{margin:2px 0 0;display:flex;gap:6px;flex-wrap:wrap;align-items:center;overflow-wrap:anywhere}
+.chn-add{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--line-2)}
+.chn-add .f{flex:1 1 220px;min-width:0;margin:0}
+.chn-skipped{margin:6px 0 0;padding-left:18px;font-size:13px}
+.chn-bulk{display:flex;flex-direction:column;gap:12px;min-width:0}
+.chn-bulk-form{display:flex;gap:10px 16px;flex-wrap:wrap;align-items:flex-end}
+.chn-bulk-prefix{flex:1 1 220px;min-width:0;margin:0}
+.chn-bulk-result{display:flex;flex-direction:column;gap:10px;min-width:0}
+.chn-bulk-counts{margin:0;font-size:13px;color:var(--muted)}
+.chn-client-edit{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.chn-client-edit .f{flex:1 1 220px;min-width:0;margin:0}
+.chn-chart{margin:0 0 12px}
+.chn-chart figcaption{font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.chn-chartbox{height:200px;min-width:0}
+.chn-month{display:flex;gap:10px 16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px}
+.chn-month .f{margin:0}
+.chn-month p{margin:0}
+.chn-sales-table th[scope=row]{min-width:0}
+@media (max-width:720px){
+  .chn-notes{max-width:none;white-space:normal}
+}

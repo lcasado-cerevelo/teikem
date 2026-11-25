@@ -135,6 +135,8 @@ public static class DependencyInjection
 
         // Lote 2 — Clientes y contratos
         services.AddScoped<ClientService>();
+        services.AddScoped<ClientChainService>();   // Lote 245: cadenas de clientes
+        services.AddScoped<ClientChainAnalysisService>();   // Lote 245: análisis de ventas por cadena
         services.AddScoped<ClientProspectService>();   // Lote 222: alta mínima, aprobar y rechazar el cliente prospecto
         services.AddScoped<ClientDocumentService>();   // Lote 222: documentos del cliente
         services.AddScoped<LocationService>();
@@ -451,6 +453,7 @@ public static class DependencyInjection
         services.AddScoped<IOwnedEntityResolver, DeliveryProofOwnedEntityResolver>();   // Lote 127
         // Lote 2
         services.AddScoped<IDataSource, ClientDataSource>();
+        services.AddScoped<IDataSource, ClientChainDataSource>();   // Lote 245
         services.AddScoped<IDataSource, ContractDataSource>();
         services.AddScoped<IDataSource, LocationDataSource>();
         services.AddScoped<IOwnedEntityResolver, ClientOwnedEntityResolver>();
