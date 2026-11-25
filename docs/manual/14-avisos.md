@@ -142,7 +142,7 @@ Estatus del aviso: el correo sale **una sola vez por orden** (clave `REQ-{guid}`
 | El cliente no tiene correo | `(Cliente de la orden)` | `El cliente no tiene correo principal ni contactos marcados con correo.` |
 | Destinatario del evento sin correo / sin teléfono / sin usuario | `(Vendedor de la orden)` o `(Cliente de la orden)` | `«Vendedor de la orden» no tiene correo.` / `… no tiene teléfono.` / `… no tiene usuario en Teikem.` |
 
-**Qué queda bloqueado o limitado.** Nada se bloquea en la orden: un aviso nunca deshace ni detiene la operación. Límites: la tabla muestra hasta 200 filas (cuenta las piezas de los kits) y después dice «… y N líneas más.»; los adjuntos suman como máximo 5 MB (la firma que no cabe o no se puede leer no se adjunta y el correo sale igual); el adjunto solo va si el texto usa `{orderDetail}`.
+**Qué queda bloqueado o limitado.** Nada se bloquea en la orden: un aviso nunca deshace ni detiene la operación. Límites: la tabla muestra todas las líneas, sin tope (Gmail puede recortar por su cuenta un correo de más de unos 102 KB y ofrece «Ver mensaje completo»); los adjuntos suman como máximo 5 MB (la firma que no cabe o no se puede leer no se adjunta y el correo sale igual); el adjunto solo va si el texto usa `{orderDetail}`.
 
 **Preguntas frecuentes del correo de la orden**
 

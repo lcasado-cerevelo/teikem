@@ -85,12 +85,6 @@ public sealed record SalesOrderEmailModel
 /// <summary>Reglas puras del correo de la orden: la huella y el tope de filas.</summary>
 public static class SalesOrderEmailRules
 {
-    /// <summary>Tope de filas de la tabla (contando las subfilas de los kits); a partir de ahí, «… y N líneas más.».</summary>
-    public const int MaxRows = 200;
-
-    /// <summary>Tope de peso del HTML del correo (Gmail recorta a partir de 102 KB).</summary>
-    public const int MaxHtmlBytes = 100 * 1024;
-
     public const string ChangedNoticeEs = "Esta orden cambió después de solicitarse; el correo muestra los datos vigentes.";
     public const string ChangedNoticeEn = "This order changed after it was requested; the email shows the current data.";
 
@@ -115,8 +109,8 @@ public static class SalesOrderEmailRules
     public static bool Changed(string? published, string current)
         => !string.IsNullOrWhiteSpace(published) && !string.Equals(published.Trim(), current, StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Las filas de la tabla (cada línea y, debajo, los componentes de su kit), cortadas en <paramref name="max"/>; Omitted = las que no caben.</summary>
-    public static (IReadOnlyList<SalesOrderEmailRow> Rows, int Omitted) Rows(IReadOnlyList<SalesOrderEmailLine> lines, int max = MaxRows)
+    /// <summary>Las filas de la tabla (cada línea y, debajo, los componentes de su kit). Siempre TODAS: el correo nunca va a medias.</summary>
+    public static IReadOnlyList<SalesOrderEmailRow> Rows(IReadOnlyList<SalesOrderEmailLine> lines)
     {
         var all = new List<SalesOrderEmailRow>();
         foreach (var l in lines.OrderBy(l => l.LineNo))
@@ -124,7 +118,7 @@ public static class SalesOrderEmailRules
             all.Add(new SalesOrderEmailRow(l, null));
             foreach (var c in l.Components ?? Array.Empty<SalesOrderEmailComponent>()) all.Add(new SalesOrderEmailRow(l, c));
         }
-        return all.Count <= max ? (all, 0) : (all.Take(max).ToList(), all.Count - max);
+        return all;
     }
 }
 
@@ -165,7 +159,7 @@ public static class SalesOrderEmailHtml
         ["payment"] = "Forma de pago", ["paymentChanged"] = "forma de pago cambiada", ["consignment"] = "Consignación", ["required"] = "Fecha requerida",
         ["notes"] = "Notas", ["auth"] = "Reautenticación", ["authBiometric"] = "Enviada con huella o rostro", ["authPassword"] = "Enviada con contraseña",
         ["colSku"] = "SKU", ["colDesc"] = "Descripción", ["colQty"] = "Cantidad", ["colPrice"] = "Precio", ["colAmount"] = "Importe",
-        ["perKit"] = "por kit", ["insteadOf"] = "en lugar de", ["exempt"] = "exento", ["backorder"] = "faltante", ["more"] = "… y {0} líneas más.",
+        ["perKit"] = "por kit", ["insteadOf"] = "en lugar de", ["exempt"] = "exento", ["backorder"] = "faltante",
         ["subtotal"] = "Subtotal", ["shipping"] = "Envío", ["total"] = "Total", ["authorized"] = "Autorizó", ["sigAttached"] = "firma adjunta",
         ["sigNone"] = "sin firma", ["open"] = "Abrir la orden en Teikem", ["lines1"] = "línea", ["linesN"] = "líneas", ["pickup"] = "Recogido",
     };
@@ -178,7 +172,7 @@ public static class SalesOrderEmailHtml
         ["payment"] = "Payment", ["paymentChanged"] = "payment method changed", ["consignment"] = "Consignment", ["required"] = "Required date",
         ["notes"] = "Notes", ["auth"] = "Re-authentication", ["authBiometric"] = "Sent with fingerprint or face", ["authPassword"] = "Sent with password",
         ["colSku"] = "SKU", ["colDesc"] = "Description", ["colQty"] = "Qty", ["colPrice"] = "Price", ["colAmount"] = "Amount",
-        ["perKit"] = "per kit", ["insteadOf"] = "instead of", ["exempt"] = "exempt", ["backorder"] = "backorder", ["more"] = "… and {0} more lines.",
+        ["perKit"] = "per kit", ["insteadOf"] = "instead of", ["exempt"] = "exempt", ["backorder"] = "backorder",
         ["subtotal"] = "Subtotal", ["shipping"] = "Shipping", ["total"] = "Total", ["authorized"] = "Authorized by", ["sigAttached"] = "signature attached",
         ["sigNone"] = "no signature", ["open"] = "Open the order in Teikem", ["lines1"] = "line", ["linesN"] = "lines", ["pickup"] = "Pickup",
     };
@@ -283,12 +277,12 @@ public static class SalesOrderEmailHtml
             Row(L(m, "auth"), Encode(L(m, m.SubmittedWithAuth == SalesSubmitAuth.Biometric ? "authBiometric" : "authPassword")));
         sb.Append("</table>");
 
-        // líneas (con las subfilas de los kits), cortadas en el tope
+        // todas las líneas (con las subfilas de los kits)
         sb.Append("<table width=\"100%\" cellpadding=\"5\" cellspacing=\"0\" style=\"border-collapse:collapse;margin-top:16px;font-size:13px\">");
         sb.Append("<tr bgcolor=\"#e5e7eb\"><th align=\"left\">#</th><th align=\"left\">").Append(Encode(L(m, "colSku"))).Append("</th><th align=\"left\">")
           .Append(Encode(L(m, "colDesc"))).Append("</th><th align=\"right\">").Append(Encode(L(m, "colQty"))).Append("</th><th align=\"right\">")
           .Append(Encode(L(m, "colPrice"))).Append("</th><th align=\"right\">").Append(Encode(L(m, "colAmount"))).Append("</th></tr>");
-        var (rows, omitted) = SalesOrderEmailRules.Rows(m.Lines);
+        var rows = SalesOrderEmailRules.Rows(m.Lines);
         var stripe = false;
         foreach (var r in rows)
         {
@@ -312,9 +306,6 @@ public static class SalesOrderEmailHtml
                   .Append(Encode(text)).Append("</td></tr>");
             }
         }
-        if (omitted > 0)
-            sb.Append("<tr><td colspan=\"6\" style=\"").Append(Muted).Append("\">")
-              .Append(Encode(string.Format(CultureInfo.InvariantCulture, L(m, "more"), omitted))).Append("</td></tr>");
         sb.Append("</table>");
 
         // totales: subtotal, envío, un renglón por componente del IVU y total

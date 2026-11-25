@@ -23,21 +23,18 @@ Qué lleva el correo de la orden:
 - **Cliente**: sin nada de lo interno de la lista anterior. `{detail}` sale vacío.
 - Idioma: el de la compañía; la copia al cliente usa el idioma de aviso del cliente (`NoticeLang`) y, si no tiene, el de la compañía. Español e inglés.
 - Todo valor va codificado para HTML (en la captura, la nota `<b>prueba</b>` sale como texto).
-- Tabla con tope de 200 filas (cuenta las piezas de los kits); lo que sobra sale como «… y N líneas más.».
+- La tabla trae TODAS las líneas (y las piezas de los kits): el correo nunca va a medias, sin tope de filas (decisión de Luis, 2026-11-25).
 
 ## Cómo se prueba
 
-Resultados que me pasaron (no los volví a correr; esta documentación no corrió build ni pruebas):
+Resultados (corridos el 2026-11-25, con un SQL Server 2022 local, el API de pruebas SIN llave de Brevo y Mailpit como buzón):
 
-1. `dotnet`: **235 pruebas del lote pasan y 38 se omiten** porque requieren SQL Server. Build sin warnings.
+1. `dotnet test Teikem.sln` con `TEIKEM_TEST_SQLSERVER`: **6131 pruebas pasan, 0 fallan, 0 omitidas** (incluye las que antes se omitían: `Lote243SqlTests`, `SalesOrderEmailSqlTests`, `NotificationContentSqlTests`, `NotificationsSqlTests`). Build sin errores.
 2. Web, `npm run check`: **3945 de 3946 pasan**. La única falla es `DispatchMap.test.tsx` «Plano esquemático»; ya fallaba antes del lote y no es de él.
-3. Playwright con el API de pruebas sin correo (la captura del Registro muestra el canal «Campanita»): capturas en `docs/manual/frontend/img/l243-*.png`. Las miré y están en el capítulo [L243](manual/frontend/l243-correo-orden-venta.md).
+3. Playwright `lote243-correo-orden-venta.spec.ts` (6 pruebas) contra el API de pruebas con correo al buzón local: **6 pasan**. Capturas en `docs/manual/frontend/img/l243-*.png`, miradas una por una, incluida `l243-correo-recibido.png` (el correo recibido en Mailpit).
+4. `scripts/smoke-correo-orden-venta.sh` contra el mismo API y Mailpit: **OK**.
 
-**Pendiente de verificar con SQL Server / CI (no se probó):**
-- Las 38 pruebas omitidas (entre ellas `Lote243SqlTests`, `SalesOrderEmailSqlTests`, `NotificationContentSqlTests`, `NotificationsSqlTests`).
-- `scripts/smoke-correo-orden-venta.sh` contra un API levantado.
-- El recorrido `web-app/e2e/lote243-correo-orden-venta.spec.ts` con Mailpit (`MAILPIT_URL`): es la única prueba que ve llegar el correo de verdad, con HTML y firma adjunta. Sin Mailpit el recorrido solo cubre la vista previa y el canal APP.
-- El CI de GitHub con el servicio `mailpit` nuevo en `ci.yml`.
+**Pendiente:** el CI de GitHub con el servicio `mailpit` nuevo en `ci.yml`.
 
 Pasos reproducibles (API de pruebas **sin Brevo**; nunca contra TEST ni producción):
 1. `docker compose up -d sqlserver` (o `scripts/dev-sqlserver.sh`) y `dotnet run --project src/Teikem.Api -- db-init`.
@@ -63,8 +60,8 @@ Pasos reproducibles (API de pruebas **sin Brevo**; nunca contra TEST ni producci
 11. **Buzón local (Mailpit) solo en Development.** `EmailSenderSelection` lo elige antes que Brevo aunque haya llave, así que un API de desarrollo con buzón local nunca manda correo real. `SmtpEmailSender` no aplica el desvío de TEST (`Email:RedirectTo`): el buzón ya atrapa todo y las pruebas necesitan ver al destinatario real. Fuera de Development el `Email:Smtp:Host` se ignora.
 12. **IVU por componente** (estatal, municipal) a partir del impuesto ya guardado en las líneas, con residuo mayor a nivel de orden: lo que se muestra suma exactamente el impuesto guardado. Un caso ambiguo sale como «IVU (sin desglose)».
 13. **Formato de la compañía** (`TenantFormatText`): fecha, hora, dinero, cantidades y teléfono salen con el formato de la compañía.
-14. **`SalesOrderEmailRules.MaxHtmlBytes` (100 KB) está declarado pero no se usa:** hoy solo hay tope de 200 filas. Gmail recorta a partir de 102 KB. Falta decidir si se aplica.
-15. **Tipografía del texto de arriba:** en las capturas, el párrafo «Se solicitó la orden…» (fuera del bloque) sale con la letra por omisión del visor (serif) y el bloque con Arial. Es el texto de la plantilla, sin estilo. Falta decidir si se le pone la misma tipografía.
+14. **Sin límites en el correo (Luis, 2026-11-25):** se quitaron el tope de 200 filas y el de 100 KB. Aviso honesto: Gmail, no Teikem, recorta por su cuenta los correos de más de unos 102 KB (con el enlace «Ver mensaje completo»); eso pasaría con órdenes de unas 300 líneas o más. El botón «Abrir la orden en Teikem» y el detalle completo siempre están en la orden.
+15. **Tipografía del texto de arriba (resuelto 2026-11-25):** el párrafo de la plantilla junto al bloque ahora lleva la misma letra (Arial 14 px) que la tabla; antes salía en serif.
 16. **En la vista previa**, las etiquetas del correo cambian de idioma pero los datos no (en la captura en inglés, el almacén sigue como «Almacén principal»).
 
 ## Lo que queda fuera de este lote (a propósito)

@@ -36,7 +36,7 @@ public class NotificationContentTests
     public void Compose_inserts_the_block_html_and_encodes_the_text_around_it()
     {
         var html = NotificationHtml.Compose("Orden {orderNumber} de {client}.\n\n{orderDetail}\n\nGracias", Values, Blocks);
-        Assert.Equal("<p>Orden OV-00012 de Acme &lt;SA&gt;.</p><table><tr><td>SKU-1</td></tr></table><p>Gracias</p>", html);
+        Assert.Equal("<p style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111827\">Orden OV-00012 de Acme &lt;SA&gt;.</p><table><tr><td>SKU-1</td></tr></table><p style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111827\">Gracias</p>", html);
     }
 
     [Fact]

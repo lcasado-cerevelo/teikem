@@ -129,7 +129,10 @@ if [[ "$MODE" == "app" ]]; then
   IN=$(expect 200 "$(req GET "/api/v1/inbox?take=50")")
   echo "$IN" | jq -e '[.items[] | select(.eventCode=="SALES_ORDER_REQUESTED" and (.linkUrl | startswith("/sales-orders?order=")))] | length>=1' >/dev/null || fail "campanita sin el aviso con enlace a la orden: $IN"; ok "APP enviado y en la campanita con enlace"
 else
-  ROWS=$(waitlog '([.[] | select(.channel=="EMAIL" and .status=="SENT") | .recipient] | length) >= 3')
+  # Las reglas se evalúan al enviar: si el aviso de la orden anterior aún estaba en la cola cuando se creó la regla, también la cumple.
+  # Por eso se mira solo el aviso (outboxId) más reciente, el de esta orden.
+  ROWS=$(waitlog '(max_by(.outboxId).outboxId) as $m | ([.[] | select(.outboxId==$m and .channel=="EMAIL" and .status=="SENT")] | length) >= 3')
+  ROWS=$(echo "$ROWS" | jq -c '(max_by(.outboxId).outboxId) as $m | [.[] | select(.outboxId==$m)]')
   for e in "$MAIL_ALMACEN" "$MAIL_PRINCIPAL" "$MAIL_MARCADO"; do
     echo "$ROWS" | jq -e --arg e "$e" '[.[] | select(.channel=="EMAIL" and .status=="SENT" and (.recipient | ascii_downcase)==$e)] | length==1' >/dev/null || fail "falta el correo SENT a $e: $ROWS"; done
   echo "$ROWS" | jq -e --arg e "$MAIL_NOMARCADO" '[.[] | select(.recipient==$e)] | length==0' >/dev/null || fail "el contacto sin marcar no debe recibir: $ROWS"; ok "EMAIL SENT a almacén, principal y marcado; ninguno al sin marcar"

@@ -12567,8 +12567,8 @@ Es por diseño: el botón y las notas internas solo van en la versión del perso
 **El correo no trae la firma.**
 La firma va adjunta solo si la orden la tiene, se puede leer del almacén de archivos y los adjuntos no pasan de 5 MB. Si no se puede, el correo sale igual, sin adjunto.
 
-**La tabla termina en «… y N líneas más.»**
-El correo muestra como máximo 200 filas (cuenta las piezas de los kits). La orden completa está en Teikem.
+**El correo de una orden muy grande aparece cortado en Gmail («Mensaje recortado»).**
+Teikem manda siempre todas las líneas. Gmail recorta por su cuenta los correos de más de unos 102 KB (órdenes de unas 300 líneas o más): pulse «Ver mensaje completo». La orden completa también está en Teikem.
 
 **Solicité la orden otra vez y no llegó otro correo.**
 Es correcto: el correo de una orden sale una sola vez.

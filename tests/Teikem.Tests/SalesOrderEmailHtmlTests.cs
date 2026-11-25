@@ -135,30 +135,18 @@ public sealed class SalesOrderEmailHtmlTests
         => Enumerable.Range(1, count).Select(i => new SalesOrderEmailLine(i, $"SKU-{i:00000}-{new string('X', 20)}", new string('N', nameLength) + $" {i}", 12m, 1234.56m, 14814.72m)).ToArray();
 
     [Fact]
-    public void A_partir_de_200_filas_se_corta_y_dice_cuantas_faltan()
+    public void El_correo_nunca_se_corta_trae_todas_las_filas()
     {
-        var (rows, omitted) = SalesOrderEmailRules.Rows(ManyLines(250));
-        Assert.Equal((200, 50), (rows.Count, omitted));
-        var html = SalesOrderEmailHtml.Render(Model(m => m with { Lines = ManyLines(250) }));
-        Assert.Contains("… y 50 líneas más.", html);
-        Assert.Contains("SKU-00200-", html);
-        Assert.DoesNotContain("SKU-00201-", html);
-        Assert.Contains("… and 50 more lines.", SalesOrderEmailHtml.Render(Model(m => m with { Lines = ManyLines(250), Lang = "en" })));
+        var rows = SalesOrderEmailRules.Rows(ManyLines(450));
+        Assert.Equal(450, rows.Count);
+        var html = SalesOrderEmailHtml.Render(Model(m => m with { Lines = ManyLines(450) }));
+        Assert.Contains("SKU-00450-", html);
+        Assert.DoesNotContain("líneas más", html);
+        Assert.DoesNotContain("more lines", SalesOrderEmailHtml.Render(Model(m => m with { Lines = ManyLines(450), Lang = "en" })));
 
-        // exactamente 200 no se corta; las subfilas de los kits cuentan
-        Assert.Equal(0, SalesOrderEmailRules.Rows(ManyLines(200)).Omitted);
+        // las subfilas de los kits también salen completas
         var kit = new SalesOrderEmailLine(1, "KIT", "Kit", 1m, 1m, 1m, Components: Enumerable.Range(1, 205).Select(i => new SalesOrderEmailComponent($"C{i}", "Pieza", 1m, 1m)).ToArray());
-        var cut = SalesOrderEmailRules.Rows(new[] { kit });
-        Assert.Equal((200, 6), (cut.Rows.Count, cut.Omitted));
-    }
-
-    [Fact]
-    public void El_peor_caso_pesa_menos_de_100_KB()
-    {
-        // 200 filas (y más) con nombres largos, dentro del texto del correo y con todos los datos
-        var model = Model(m => m with { Lines = ManyLines(260, nameLength: 150), Notes = new string('n', 1000) });
-        var html = "<p>Se solicitó la orden OV-00012 de Farmacia Central para Almacén principal.</p>" + SalesOrderEmailHtml.Render(model);
-        Assert.True(Encoding.UTF8.GetByteCount(html) < SalesOrderEmailRules.MaxHtmlBytes, $"El correo pesa {Encoding.UTF8.GetByteCount(html)} bytes.");
+        Assert.Equal(206, SalesOrderEmailRules.Rows(new[] { kit }).Count);
     }
 
     [Fact]

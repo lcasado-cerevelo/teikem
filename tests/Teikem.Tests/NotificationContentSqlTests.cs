@@ -233,7 +233,7 @@ public sealed class NotificationContentSqlTests(NotificationSqlFixture fx) : ICl
         Assert.Single(email.Sent, d => string.Equals(d.Email, email1, StringComparison.OrdinalIgnoreCase));
         var d = email.Sent.Single(x => x.Email == "almacen@x.com");
         Assert.Equal("Orden N-1", d.Subject);
-        Assert.Equal("<p>Se solicit&#243; N-1.</p><table>Staff-es</table>", d.BodyHtml);
+        Assert.Equal("<p style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111827\">Se solicit&#243; N-1.</p><table>Staff-es</table>", d.BodyHtml);
         Assert.Equal("Se solicitó N-1.\n\nresumen Staff es", d.BodyText);
         Assert.Equal("/x?n=N-1", d.LinkUrl);
         var att = Assert.Single(d.Attachments!);
@@ -267,7 +267,7 @@ public sealed class NotificationContentSqlTests(NotificationSqlFixture fx) : ICl
 
         var d = Assert.Single(email.Sent);
         Assert.Equal(("cliente@x.com", "Order N-1"), (d.Email, d.Subject));
-        Assert.Equal("<p>Requested N-1.</p><table>Customer-en</table>", d.BodyHtml);
+        Assert.Equal("<p style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111827\">Requested N-1.</p><table>Customer-en</table>", d.BodyHtml);
         Assert.Equal(new[] { (NotificationAudience.Customer, "en") }, provider.Builds);
         var log = await LogAsync(outbox);
         Assert.Equal(3, log.Count);
@@ -528,13 +528,13 @@ public sealed class NotificationContentSqlTests(NotificationSqlFixture fx) : ICl
         // sin regla activa: la plantilla por omisión del canal, con el ejemplo del proveedor
         var p = await svc.PreviewAsync(new NotificationPreviewRequest(CtxEventProvider.Code, "email"), default);
         Assert.Equal(("EMAIL", "Orden N-1", "DEFAULT", true), (p.Channel, p.Subject, p.TemplateSource, p.UsedSample));
-        Assert.Equal("<p>Se solicit&#243; N-1.</p><table>ejemplo-Staff</table>", p.BodyHtml);
+        Assert.Equal("<p style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111827\">Se solicit&#243; N-1.</p><table>ejemplo-Staff</table>", p.BodyHtml);
         Assert.Equal("Se solicitó N-1.\n\nejemplo Staff", p.BodyText);
         var att = Assert.Single(p.Attachments);
         Assert.Equal(("firma.png", "image/png", 4L), (att.FileName, att.ContentType, att.SizeBytes));
         // en inglés y para el cliente
         var en = await svc.PreviewAsync(new NotificationPreviewRequest(CtxEventProvider.Code, "EMAIL", Lang: "EN", Audience: "customer"), default);
-        Assert.Equal(("Order N-1", "<p>Requested N-1.</p><table>ejemplo-Customer</table>"), (en.Subject, en.BodyHtml));
+        Assert.Equal(("Order N-1", "<p style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111827\">Requested N-1.</p><table>ejemplo-Customer</table>"), (en.Subject, en.BodyHtml));
         // la campanita: sin HTML y el bloque como su línea; un canal sin bloque en el texto no lleva adjuntos
         var app = await svc.PreviewAsync(new NotificationPreviewRequest(CtxEventProvider.Code, "APP", "Aviso {number}", "Texto {detail}"), default);
         Assert.Equal(("Aviso N-1", "Texto ejemplo Staff", (string?)null, "REQUEST"), (app.Subject, app.BodyText, app.BodyHtml, app.TemplateSource));
@@ -601,9 +601,9 @@ public sealed class NotificationContentSqlTests(NotificationSqlFixture fx) : ICl
         Assert.Equal("Orden de venta 'OV-99999' no encontrada.", nf.Message);
 
         var real = await svc.PreviewAsync(withRef, default);
-        Assert.Equal(("Orden N-REAL", "<p>Se solicit&#243; N-REAL.</p><table>Staff-es</table>", false), (real.Subject, real.BodyHtml, real.UsedSample));
+        Assert.Equal(("Orden N-REAL", "<p style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111827\">Se solicit&#243; N-REAL.</p><table>Staff-es</table>", false), (real.Subject, real.BodyHtml, real.UsedSample));
         var customer = await svc.PreviewAsync(withRef with { Audience = "CUSTOMER", Lang = "en" }, default);
-        Assert.Equal("<p>Requested N-REAL.</p><table>Customer-en</table>", customer.BodyHtml);
+        Assert.Equal("<p style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111827\">Requested N-REAL.</p><table>Customer-en</table>", customer.BodyHtml);
 
         // un documento que ya no se debe avisar (p. ej. cancelado): 400 con el motivo del proveedor
         provider.SkipReason = Cancelled;
@@ -625,12 +625,12 @@ public sealed class NotificationContentSqlTests(NotificationSqlFixture fx) : ICl
 
         Assert.Equal("SENT", (await svc.TestAsync(rule.PublicId, new NotificationTestRequest("EMAIL"), default)).Status);
         var sample = email.Sent.Last();
-        Assert.Equal(("Orden N-1", "<p>Se solicit&#243; N-1.</p><table>ejemplo-Staff</table>"), (sample.Subject, sample.BodyHtml));
+        Assert.Equal(("Orden N-1", "<p style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111827\">Se solicit&#243; N-1.</p><table>ejemplo-Staff</table>"), (sample.Subject, sample.BodyHtml));
         Assert.Single(sample.Attachments!);
 
         Assert.Equal("SENT", (await svc.TestAsync(rule.PublicId, new NotificationTestRequest("EMAIL", "N-REAL"), default)).Status);
         var real = email.Sent.Last();
-        Assert.Equal(("Orden N-REAL", "<p>Se solicit&#243; N-REAL.</p><table>Staff-es</table>"), (real.Subject, real.BodyHtml));
+        Assert.Equal(("Orden N-REAL", "<p style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111827\">Se solicit&#243; N-REAL.</p><table>Staff-es</table>"), (real.Subject, real.BodyHtml));
         Assert.Single(real.Attachments!);
         await Assert.ThrowsAsync<NotFoundException>(() => svc.TestAsync(rule.PublicId, new NotificationTestRequest("EMAIL", "OV-99999"), default));
 

@@ -381,7 +381,7 @@ public sealed class SalesOrderEmailSqlTests(NotificationSqlFixture fx) : IClassF
             var d = Assert.Single(email.Sent, x => x.Email == to);
             Assert.Equal($"Orden de venta {order.Number} — Farmacia <Central>", d.Subject);
             Assert.Equal("Solutions L243 A", d.CompanyName);
-            Assert.StartsWith(NotificationHtml.Paragraphs($"Se solicitó la orden {order.Number} de Farmacia <Central> para Almacén Ponce."), d.BodyHtml);   // el tramo de texto, codificado como siempre
+            Assert.StartsWith(NotificationHtml.Paragraphs($"Se solicitó la orden {order.Number} de Farmacia <Central> para Almacén Ponce.").Replace("<p>", "<p style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111827\">"), d.BodyHtml);   // el tramo de texto, codificado como siempre
             Assert.Contains("<table", d.BodyHtml);
             foreach (var sku in new[] { w.Normal.Sku, w.Kit.Sku, w.CompA.Sku, w.CompB.Sku, w.CompOrig.Sku }) Assert.Contains(sku, d.BodyHtml);
             Assert.Contains("en lugar de", d.BodyHtml);

@@ -148,7 +148,8 @@ public static class NotificationHtml
             if (block is not null) { sb.Append(blocks![block].Html); continue; }
             var t = text!.Replace("\r\n", "\n").Trim('\n');
             if (string.IsNullOrWhiteSpace(t)) continue;
-            sb.Append(Paragraphs(NotificationRules.Render(t, values)));
+            // junto a un bloque el texto lleva la misma letra que el bloque (si no, el correo lo muestra en serif)
+            sb.Append(Paragraphs(NotificationRules.Render(t, values)).Replace("<p>", "<p style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111827\">"));
         }
         return sb.ToString();
     }
