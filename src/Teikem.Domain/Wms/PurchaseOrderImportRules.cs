@@ -3,9 +3,13 @@ using System.Text;
 
 namespace Teikem.Domain.Wms;
 
-/// <summary>Una línea del archivo de importación ya leída (de QuickBooks o del formato genérico), sin resolver contra la base.</summary>
+/// <summary>
+/// Una línea del archivo de importación ya leída (de QuickBooks, del formato genérico o de una plantilla del usuario), sin resolver contra la base.
+/// Lote 246: <paramref name="PoRef"/> = columna «P. O. #» de QuickBooks (para reconocer lo que salió de Teikem y vuelve); <paramref name="Problems"/> = valores
+/// ilegibles de la fila (solo origen plantilla; bloquean la orden con BAD_VALUE).
+/// </summary>
 public sealed record PoImportLine(int Line, string? Type, string? Vendor, string? DocNumber, DateOnly? Date, DateOnly? ExpectedDate,
-    string? Sku, string? Description, decimal? Qty, decimal? Cost);
+    string? Sku, string? Description, decimal? Qty, decimal? Cost, string? PoRef = null, IReadOnlyList<string>? Problems = null);
 
 /// <summary>
 /// Lote 239 — reglas puras de la importación de órdenes de compra (origen genérico CSV/Excel o QuickBooks Desktop).
@@ -13,11 +17,16 @@ public sealed record PoImportLine(int Line, string? Type, string? Vendor, string
 /// los SKU de QuickBooks y los de Teikem deben ser los mismos; una orden con un producto o proveedor que no existe NO se importa
 /// (se bloquea y se avisa por qué), nunca se da de alta un producto a medias; importar dos veces el mismo archivo no duplica.
 /// Los mensajes son constantes o métodos estáticos porque el manual y la FAQ los citan.
+/// Lote 246 (Lote F): tercer origen TEMPLATE (plantilla de importación del usuario, Kind PURCHASE_ORDER); identidad de importación en columna (ImportKey, la marca
+/// sin corchetes); origen de la orden (GENERIC y TEMPLATE → EXCEL, QUICKBOOKS → QUICKBOOKS); BAD_VALUE (solo plantilla) y COST_CONFLICT (todos los orígenes)
+/// bloquean; lo que nació en Teikem, se pasó a QuickBooks y vuelve en un archivo de QuickBooks no se duplica.
 /// </summary>
 public static class PurchaseOrderImportRules
 {
     public const string SourceGeneric = "GENERIC";
     public const string SourceQuickBooks = "QUICKBOOKS";
+    /// <summary>Lote 246: plantilla de importación definida por el usuario (ImportTemplate Kind PURCHASE_ORDER).</summary>
+    public const string SourceTemplate = "TEMPLATE";
     public const string StatusDraft = "DRAFT";
     public const string StatusSent = "SENT";
 
@@ -41,11 +50,19 @@ public static class PurchaseOrderImportRules
     public const string IssueMergedLines = "MERGED_LINES";
     public const string IssueExpectedIgnored = "EXPECTED_IGNORED";
     public const string IssueCostRounded = "COST_ROUNDED";
+    /// <summary>Lote 246 — bloqueante, solo origen plantilla: fecha o número ilegible, o fila sin número de documento.</summary>
+    public const string IssueBadValue = "BAD_VALUE";
+    /// <summary>Lote 246 — bloqueante, todos los orígenes: el mismo producto en varias líneas de la orden con costos distintos.</summary>
+    public const string IssueCostConflict = "COST_CONFLICT";
 
     public const int MaxDocuments = 2000;
 
     // ---------------------------------------------------------------- mensajes
-    public const string SourceUnknown = "El origen de la importación no es válido: use GENERIC o QUICKBOOKS.";
+    public const string SourceUnknown = "El origen de la importación no es válido: use GENERIC, QUICKBOOKS o TEMPLATE.";
+    /// <summary>Lote 246 — 400 (templatePublicId): origen TEMPLATE sin plantilla.</summary>
+    public const string TemplateRequired = "Elija la plantilla de importación.";
+    /// <summary>Lote 246 — 400 (templatePublicId): plantilla con el origen GENERIC o QUICKBOOKS.</summary>
+    public const string TemplateOnlyForTemplate = "La plantilla solo se usa con el origen TEMPLATE.";
     public const string StatusUnknown = "El estatus de las órdenes importadas debe ser DRAFT (borrador) o SENT (enviada).";
     public const string NoFile = "Elija el archivo a importar.";
     public const string NoDocuments = "El archivo no trae órdenes de compra.";
@@ -70,6 +87,12 @@ public static class PurchaseOrderImportRules
     public static string CostRounded(string sku, decimal raw, decimal rounded)
         => $"El costo de {sku} ({raw.ToString("0.########", CultureInfo.InvariantCulture)}) tiene más de 4 decimales; se redondeó a {rounded.ToString("0.####", CultureInfo.InvariantCulture)}.";
     public static string Duplicate(string number) => $"Ya se importó antes (orden de compra {number}); no se vuelve a crear.";
+    public static string BadDate(string field, string text) => $"La fecha «{text}» ({field}) no es válida: use AAAA-MM-DD o MM/DD/AAAA.";
+    public static string BadNumber(string field, string text) => $"«{text}» ({field}) no es un número: use punto decimal, sin letras.";
+    public static string MissingDocumentNumber(int line) => $"La fila {line} no trae número de documento (documentNumber); sin él no se sabe a qué orden va.";
+    public static string CostConflict(string sku, IEnumerable<decimal> costs)
+        => $"El producto {sku} viene en varias líneas de la orden con costos distintos ({string.Join(", ", costs.Select(c => c.ToString("0.####", CultureInfo.InvariantCulture)))}); corrija el archivo para que todas lleven el mismo costo.";
+    public static string CameFromTeikem(string number) => $"La orden {number} nació en Teikem y ya se pasó a QuickBooks; no se vuelve a importar.";
 
     // ---------------------------------------------------------------- SKU
 
@@ -143,14 +166,34 @@ public static class PurchaseOrderImportRules
     /// («[QB:proveedor|número]»): la identidad de un documento importado es proveedor + número.
     /// </summary>
     public static string Marker(string source, string? vendor, string? number, DateOnly? date)
-        => $"[{(source == SourceQuickBooks ? "QB" : "IMP")}:{DocKey(vendor, number, date)}]";
+        => $"[{ImportKey(source, vendor, number, date)}]";
 
-    /// <summary>Notas de la orden creada: de dónde viene y la marca de importación (máximo 2000 caracteres).</summary>
-    public static string BuildNotes(string source, string? vendor, string? number, DateOnly? date)
+    /// <summary>Lote 246 — largo máximo de PurchaseOrder.ImportKey (NVARCHAR(250), como LEFT(…, 250) de la carga del SQL).</summary>
+    public const int ImportKeyMaxLength = 250;
+
+    /// <summary>
+    /// Lote 246 — identidad de importación que se guarda en PurchaseOrder.ImportKey: la marca sin corchetes («QB:PROVEEDOR|NÚMERO» o «IMP:…»). GENERIC y TEMPLATE
+    /// comparten el prefijo IMP: el mismo documento no entra dos veces aunque se cambie de formato.
+    /// </summary>
+    public static string ImportKey(string source, string? vendor, string? number, DateOnly? date)
     {
-        var origin = source == SourceQuickBooks ? "QuickBooks" : "archivo";
+        var key = $"{(source == SourceQuickBooks ? "QB" : "IMP")}:{DocKey(vendor, number, date)}";
+        return key.Length <= ImportKeyMaxLength ? key : key[..ImportKeyMaxLength];
+    }
+
+    /// <summary>Lote 246 — origen de la orden creada (LookupCode PurchaseOrderOrigin): QUICKBOOKS → QUICKBOOKS; GENERIC y TEMPLATE → EXCEL.</summary>
+    public static string OriginOf(string source) => source == SourceQuickBooks ? PurchaseOrderOrigins.QuickBooks : PurchaseOrderOrigins.Excel;
+
+    /// <summary>
+    /// Notas de la orden creada: de dónde viene y la marca de importación (máximo 2000 caracteres). Lote 246: con plantilla, «Importada con la plantilla «X» 1045.».
+    /// </summary>
+    public static string BuildNotes(string source, string? vendor, string? number, DateOnly? date, string? templateName = null)
+    {
+        var origin = source == SourceQuickBooks ? "de QuickBooks"
+            : source == SourceTemplate && !string.IsNullOrWhiteSpace(templateName) ? $"con la plantilla «{templateName.Trim()}»"
+            : "de archivo";
         var doc = string.IsNullOrWhiteSpace(number) ? string.Empty : $" {number.Trim()}";
-        var notes = $"Importada de {origin}{doc}. {Marker(source, vendor, number, date)}";
+        var notes = $"Importada {origin}{doc}. {Marker(source, vendor, number, date)}";
         return notes.Length <= PurchaseOrderRules.MaxNotesLength ? notes : notes[..PurchaseOrderRules.MaxNotesLength];
     }
 
@@ -167,6 +210,6 @@ public static class PurchaseOrderImportRules
     public static string NormalizeSource(string? source)
     {
         var s = (source ?? SourceGeneric).Trim().ToUpperInvariant();
-        return s is SourceGeneric or SourceQuickBooks ? s : string.Empty;
+        return s is SourceGeneric or SourceQuickBooks or SourceTemplate ? s : string.Empty;
     }
 }

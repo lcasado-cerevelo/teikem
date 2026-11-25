@@ -26,6 +26,8 @@ namespace Teikem.Infrastructure.Services;
 /// y la plantilla guarda un cliente por defecto (DefaultClientId: activo y, si la plantilla es de un cliente, ese mismo).
 /// Lote 46 (F-B3): una plantilla CONSIGNEE puede tener VARIANTES de mapeo (VariantsJson) con condición por fila; ColumnsJson queda
 /// con las columnas de la primera. Sin variantes (NULL) todo sigue igual. Los defaults son comunes a todas las variantes.
+/// Lote 246 (Lote F): un tipo del motor genérico sin cliente (ImportEntityMeta.AllowsClient = false, p. ej. PURCHASE_ORDER) rechaza cliente y cliente por
+/// defecto al crear y al editar (400 ImportEntityMeta.NoClientMessage), antes de buscar el cliente.
 /// </summary>
 public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext tenant)
 {
@@ -93,6 +95,7 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
         var tenantId = ((TenantContext)tenant).RequireTenantId();
         var name = RequireName(req.Name);
         var kind = NormalizeKind(req.Kind, expectedKind);
+        EnsureClientAllowed(kind, req.ClientPublicId, req.DefaultClientPublicId);
         var delimiter = NormalizeDelimiter(req.Delimiter);
         var defaults = ToDefaults(req.Defaults);
         var variants = ToVariants(req.Variants);
@@ -133,6 +136,7 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
     public async Task<ImportTemplateDto> UpdateAsync(Guid publicId, ImportTemplatePatchRequest req, string expectedKind, CancellationToken ct)
     {
         var kind = NormalizeKind(expectedKind, expectedKind);
+        EnsureClientAllowed(kind, req.ClientPublicId, req.DefaultClientPublicId);
         if (req.MakeGeneral == true && req.ClientPublicId.HasValue)
             throw new ValidationException("clientPublicId", "Indique un cliente o marque la plantilla como general, no ambos.");
         if (req.ClearDefaults == true && req.Defaults is { Count: > 0 })
@@ -340,6 +344,14 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
         var k = kind.Trim().ToUpperInvariant();
         if (k != expected) throw new ValidationException("kind", UnknownKindMessage(k));
         return k;
+    }
+
+    /// <summary>Lote 246: un tipo sin cliente (AllowsClient = false) no admite cliente ni cliente por defecto (un cliente por defecto Guid vacío = no viene, como en ResolveDefaultClientAsync) → 400 NoClientMessage.</summary>
+    private static void EnsureClientAllowed(string kind, Guid? clientPublicId, Guid? defaultClientPublicId)
+    {
+        if (ImportEntities.TryGet(kind) is not { AllowsClient: false }) return;
+        if (clientPublicId is not null) throw new ValidationException("clientPublicId", ImportEntityMeta.NoClientMessage);
+        if (defaultClientPublicId is Guid d && d != Guid.Empty) throw new ValidationException("defaultClientPublicId", ImportEntityMeta.NoClientMessage);
     }
 
     private static bool IsConsignee(string? kind) => string.Equals(kind?.Trim(), ImportKinds.Consignee, StringComparison.OrdinalIgnoreCase);

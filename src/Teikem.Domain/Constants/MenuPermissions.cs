@@ -84,6 +84,7 @@ public static class MenuPermissions
         [PermissionCatalog.BinsManage] = new[] { "bins.view" },
         [PermissionCatalog.DispatchAccountingManage] = new[] { "dispatchaccounting.view" },
         [PermissionCatalog.PurchasingReceive] = new[] { PermissionCatalog.PurchasingView },
+        [PermissionCatalog.PurchasingQuickBooks] = new[] { PermissionCatalog.PurchasingView },   // Lote 246: la exportación vive en Órdenes de compra
         [PermissionCatalog.ExitNoticeCreate] = new[] { "notices.view" },
         [PermissionCatalog.WarehouseReceive] = new[] { "receipts.view", "notices.view" },
         [PermissionCatalog.WarehousePick] = new[] { "pickbatches.view" },

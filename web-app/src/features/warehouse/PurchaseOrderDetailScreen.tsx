@@ -47,6 +47,7 @@ import { decimalsOf } from './lineRules'
 import { ProductPickerInput, WarehousePickerInput } from './pickers'
 import { preloadCost, priceDiffers, ProductPriceNote } from './ProductPriceNote'
 import { isDraftPurchaseOrder, partyErrorField, purchaseOrderPartyChanges, supplierOptionsWithCurrent } from './purchaseOrderEdit'
+import { PurchaseOrderQuickBooksBar } from './PurchaseOrderQuickBooksBar'
 import { ResolveShortageModal } from './ResolveShortageModal'
 import { IconCart } from '../../kernel/ui/screenIcons'
 import { formatDate as formatCompanyDate } from '../../kernel/format'
@@ -420,6 +421,8 @@ export default function PurchaseOrderDetailScreen() {
           </Can>
         </div>
       </div>
+
+      <PurchaseOrderQuickBooksBar po={po} />
 
       <div style={{ marginBottom: 14 }}>
         <StatusPipeline

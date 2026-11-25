@@ -20,6 +20,8 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
     if (req.method === 'GET' && p === '/api/v1/import-templates') return json(ORDER_TEMPLATES)
     if (req.method === 'GET' && p === '/api/v1/locations/import-templates') return json(CONSIGNEE_TEMPLATES)
     if (req.method === 'GET' && (p === '/api/v1/import-templates/fields' || p === '/api/v1/locations/import/fields')) return json([])
+    if (req.method === 'GET' && p === '/api/v1/purchase-orders/import-templates') return json(PO_TEMPLATES)
+    if (req.method === 'GET' && p === '/api/v1/purchase-orders/import-templates/fields') return json([])
     if (req.method === 'GET' && p.startsWith('/api/v1/clients')) return json([])
     if (req.method === 'POST') return json({})
     return new Response(JSON.stringify({ title: 'no encontrado' }), { status: 404 })
@@ -35,6 +37,7 @@ const ORDER_TEMPLATES = [
   { publicId: 'o-1', name: 'Estándar de envíos', kind: 'ORDER', clientName: null, columns: [{ position: 1, field: 'consigneeName' }], isActive: true },
   { publicId: 'o-2', name: 'Vieja de Acme', kind: 'ORDER', clientName: 'Acme', columns: [], isActive: false },
 ]
+const PO_TEMPLATES = [{ publicId: 'po-1', name: 'Compras de Acme Medical', clientName: null, columns: [{ position: 1, field: 'supplier' }, { position: 2, field: 'documentNumber' }], isActive: true }]
 const CONSIGNEE_TEMPLATES = [{ publicId: 'c-1', name: 'Consignatarios Acme', clientName: 'Acme', columns: [{ position: 1, field: 'name' }], isActive: true }]
 
 function session(perms: string[]) {
@@ -106,5 +109,16 @@ describe('TemplatesScreen', () => {
     expect(await screen.findByText(/necesitas el permiso orders\.edit/)).toBeInTheDocument()
     expect(mock.requests.some((r) => r.path === '/api/v1/import-templates')).toBe(false)
     expect(screen.queryByRole('button', { name: /Nueva plantilla/ })).toBeNull()
+  })
+
+  it('órdenes de compra (Lote 246): pestaña propia con permiso purchasing.manage, sin columna de cliente, y desactivar usa su ruta', async () => {
+    const user = userEvent.setup()
+    wrap(['orders.edit', 'purchasing.manage'])
+    await user.click(await screen.findByRole('tab', { name: 'Órdenes de compra' }))
+    const row = await rowOf('Compras de Acme Medical')
+    expect(screen.queryByRole('columnheader', { name: 'Cliente' })).toBeNull()
+    expect(mock.requests.find((r) => r.path === '/api/v1/purchase-orders/import-templates')?.search).toContain('includeInactive=true')
+    await user.click(within(row).getByRole('button', { name: 'Desactivar' }))
+    await waitFor(() => expect(mock.requests.some((r) => r.method === 'POST' && r.path === '/api/v1/purchase-orders/import-templates/po-1/deactivate')).toBe(true))
   })
 })

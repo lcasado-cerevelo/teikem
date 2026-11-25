@@ -12862,3 +12862,147 @@ No. Es una ruta de venta (capítulo 52) y este lote no la toca. Las cadenas se c
 ### Compartidos con otros lotes que también pueden salir aquí
 
 «El módulo 'SALES_ORDERS' no está habilitado para esta compañía.» (403): las cadenas y «Por cadena» son del módulo Órdenes de venta; pida que lo enciendan. Sin permiso (`sales.chain` para administrar; `sales.chain`, `clients.read` o `sales.view` para ver; `sales.analysis.view` para «Por cadena») el API responde 403 sin mensaje propio y queda un evento `PERMISSION_DENIED`.
+
+## Lote 246 — Compras: plantilla de importación e IIF a QuickBooks
+<!-- kemi:staff -->
+
+Capítulo: [54 — Compras: importar con la plantilla del usuario y pasar las órdenes de compra a QuickBooks](54-compras-plantilla-quickbooks.md). Pantallas: [L246](frontend/l246-compras.md). **Aviso:** el archivo IIF de órdenes de compra todavía no se ha probado contra un QuickBooks Desktop real.
+
+### Plantilla de importación de órdenes de compra
+
+**¿Qué significa «La plantilla debe incluir la columna documentNumber.»? (HTTP 400)**
+La plantilla no tiene ninguna columna asignada al **Número de documento**. Es obligatorio y debe ir en una columna (no admite valor fijo): con él se sabe qué filas forman una misma orden. Asigne la columna y guarde.
+
+**¿Qué significa «La plantilla debe incluir la columna sku.»? (HTTP 400)**
+Falta la columna del **SKU**. Asígnela; no admite valor fijo.
+
+**¿Qué significa «La plantilla debe incluir la columna quantity.»? (HTTP 400)**
+Falta la columna de la **Cantidad**. Asígnela; no admite valor fijo.
+
+**¿Qué significa «La plantilla debe indicar el proveedor: en la columna supplier o como valor fijo.»? (HTTP 400)**
+La plantilla no dice quién es el proveedor. Asigne la columna **Proveedor** o, si todo el archivo es de un solo proveedor, agregue el valor por defecto «supplier» con su nombre tal como está en Teikem. Si faltan varias cosas, el mensaje muestra una a la vez (primero número de documento, luego SKU, cantidad y proveedor): corrija y guarde otra vez.
+
+**¿Qué significa «Este tipo de plantilla no lleva cliente.»? (HTTP 400)**
+Se mandó `clientPublicId` o `defaultClientPublicId` al crear o editar una plantilla de órdenes de compra. Las compras son de la compañía y no llevan cliente. Quite el cliente. En pantalla no sale el campo; solo pasa al llamar al API a mano.
+
+**¿Qué significa «Plantilla de importación no encontrado.»? (HTTP 404)**
+La plantilla no existe, es de otra compañía o es de otro tipo (por ejemplo, una de envíos o de productos). No se dice cuál de las tres cosas pasó. Recargue la lista y escoja una plantilla de **Órdenes de compra**.
+
+**¿Qué significa «Tipo de plantilla desconocido: PURCHASE_ORDER.»? (HTTP 400)**
+Se pidió una plantilla de compras por la ruta de las plantillas de envíos (`/api/v1/import-templates`). Las de compras se administran en `/api/v1/purchase-orders/import-templates` (o en Compras → Importar y Sistema → Plantillas).
+
+**¿Qué significa «Ya existe una plantilla de importación con ese nombre.»? (HTTP 409)**
+Otra plantilla **del mismo tipo** ya se llama así. Cámbiele el nombre. Una plantilla de envíos con el mismo nombre no estorba.
+
+**¿Qué significa «La plantilla ya está inactiva.» o «La plantilla ya está activa.»? (HTTP 409)**
+Se pidió desactivar una plantilla que ya estaba inactiva, o reactivar una que ya estaba activa. Recargue la lista: alguien ya lo hizo.
+
+**¿Qué significa «Campo desconocido: X.», «El campo X está repetido.», «La posición N está repetida.» o «El campo X no admite valor por defecto.»? (HTTP 400)**
+Son errores de la definición de columnas. Los campos válidos son proveedor, número de documento, fecha de la orden, fecha esperada, SKU, descripción, cantidad y costo unitario; cada campo y cada posición van una sola vez, y **solo el proveedor** admite valor fijo.
+
+### Importar con plantilla
+
+**¿Qué significa «Elija la plantilla de importación.»? (HTTP 400)**
+Escogió el origen «Plantilla (la del usuario)» sin elegir plantilla (o el API recibió `source=TEMPLATE` sin `templatePublicId`). Elija una o cree una con «Nueva plantilla».
+
+**¿Qué significa «La plantilla solo se usa con el origen TEMPLATE.»? (HTTP 400)**
+Se mandó `templatePublicId` con el origen `GENERIC` o `QUICKBOOKS`. Use el origen «Plantilla» o quite la plantilla.
+
+**¿Qué significa «El origen de la importación no es válido: use GENERIC, QUICKBOOKS o TEMPLATE.»? (HTTP 400)**
+El `source` del API no es ninguno de los tres. En pantalla el origen se escoge de una lista.
+
+**¿Qué significa «La plantilla está inactiva; reactívela o elija otra.»? (HTTP 400)**
+La plantilla elegida está desactivada. Reactívela en Sistema → Plantillas o elija otra.
+
+**Una orden salió «Bloqueada» con «La fecha «…» (orderDate) no es válida: use AAAA-MM-DD o MM/DD/AAAA.» (BAD_VALUE)**
+La celda de fecha de esa orden no se pudo leer. Escríbala como `2026-11-25` o `11/25/2026` y vuelva a importar el mismo archivo. (Con el origen plantilla una fecha ilegible bloquea; con QuickBooks y el formato genérico se sigue tomando hoy.)
+
+**Una orden salió «Bloqueada» con ««…» (quantity) no es un número: use punto decimal, sin letras.» (BAD_VALUE)**
+La cantidad o el costo trae letras u otro texto. Use punto decimal («12.50»); la coma se toma como separador de miles («1,250.50»). El mensaje dice entre paréntesis qué campo es (`quantity` o `unitCost`).
+
+**Una orden salió «Bloqueada» con «La fila N no trae número de documento (documentNumber); sin él no se sabe a qué orden va.» (BAD_VALUE)**
+La fila N del archivo tiene vacía la celda del número de documento. Llénela (las filas con el mismo número forman una orden) y vuelva a importar. Una fila sin número no se junta con las demás.
+
+**Una orden salió «Bloqueada» con «El producto X viene en varias líneas de la orden con costos distintos (…); corrija el archivo para que todas lleven el mismo costo.» (COST_CONFLICT)**
+El mismo SKU aparece en varias líneas de **una misma orden** con costos diferentes. Antes se sumaban y se tomaba el primer costo sin avisar; ahora se bloquea (con cualquier origen) porque ese costo viaja a QuickBooks. Deje el mismo costo en todas las líneas de ese producto, o junte las líneas, y vuelva a importar. Si el mismo SKU repite con el **mismo** costo, solo se suman y se avisa.
+
+**Una orden salió «Ya importada» con «Ya se importó antes (orden de compra PO-…); no se vuelve a crear.»**
+Esa combinación de proveedor y número de documento ya existe entre las órdenes activas, aunque entrara antes por otro formato (genérico o plantilla) y aunque alguien borrara la marca de sus notas. No se repite. Si la orden se dio de baja, el mismo archivo la vuelve a crear.
+
+**¿Qué significa «Esa orden ya se importó (otra importación la creó al mismo tiempo).»? (aparece como «Ya importada»)**
+Dos personas importaron el mismo archivo nuevo a la vez. Una creó la orden y a la otra se le informa que ya existe. No hay que hacer nada: la orden está creada una sola vez.
+
+**¿Qué significa «La orden X nació en Teikem y ya se pasó a QuickBooks; no se vuelve a importar.»? (aparece como «Ya importada»)**
+El archivo de QuickBooks trae una orden que usted había mandado desde Teikem (su `Num` o «P. O. #» es el número de esa orden, del mismo proveedor, ya exportada o marcada). No se crea otra. Es lo esperado.
+
+**¿Qué significa «El archivo no trae órdenes de compra.», «Elija el archivo a importar.» o «El archivo supera el límite de 5.000 filas o 2 MB.»? (HTTP 400)**
+El archivo está vacío o no tiene filas de datos; no se eligió archivo; o es demasiado grande. Divida el archivo en partes. Con «El archivo trae más de 2000 órdenes; divídalo e impórtelo por partes.» pasa lo mismo: son demasiadas órdenes en un archivo.
+
+**«Falta el producto X…» o «Falta el proveedor «X»…» en una orden bloqueada.**
+Es del Lote 239: el SKU o el proveedor del archivo no existe en Teikem. Dé de alta el producto o el proveedor (la lista sale con «Descargar lo que falta») y vuelva a importar el mismo archivo.
+
+### Origen y estado de QuickBooks (lista de Compras)
+
+**¿Qué significa «El origen «X» no es válido: use TEIKEM, EXCEL o QUICKBOOKS.»? (HTTP 400)**
+El filtro `origin` de la lista de Compras trae otro valor. En pantalla el filtro «Origen» es una lista. Use `TEIKEM`, `EXCEL` o `QUICKBOOKS`.
+
+**¿Qué significa «El estado de QuickBooks «X» no es válido: use PENDING, EXPORTED, IN_QUICKBOOKS, FROM_QUICKBOOKS o NOT_EXPORTABLE.»? (HTTP 400)**
+El filtro `quickBooks` de la lista de Compras trae otro valor. En pantalla el filtro «QuickBooks» es una lista.
+
+**¿Por qué una orden vieja dice «Por pasar» si ya está en QuickBooks?**
+Las órdenes que ya existían al instalar el lote se clasificaron por origen, pero no se marcaron. Márquelas con «Marcar todas» (o escogiéndolas y «Marcar N como en QuickBooks»); no saca archivo.
+
+**¿Por qué una orden cancelada sigue «Exportada, por confirmar»?**
+Porque salió en un archivo y nadie ha dicho si QuickBooks la recibió. Confírmela («Sí, ya están») o mándela a «No pasó»; no se puede exportar de nuevo.
+
+### Pasar a QuickBooks
+
+**¿Qué significa «No hay órdenes de compra por pasar a QuickBooks.»? (HTTP 422)**
+Pidió exportar «todas» (o marcar «todas») y no hay ninguna por pasar: las enviadas, recibidas en parte y recibidas ya están marcadas o vinieron de QuickBooks. No hay nada que hacer.
+
+**¿Qué significa «Indique las órdenes de compra (purchaseOrderIds) o pida todas (all = true).»? (HTTP 400)**
+La llamada no trae ninguna orden. En pantalla elija al menos una; en el API mande `purchaseOrderIds` o `all: true` (este último solo para exportar y marcar).
+
+**¿Qué significa «No se pueden marcar más de 1000 órdenes de compra en una sola llamada; use «todas».»? (HTTP 400)**
+Mandó más de 1000 órdenes en `purchaseOrderIds`. Use «todas» (`all: true`) o divida la llamada.
+
+**¿Qué significa «Alguna de las órdenes de compra indicadas no existe.»? (HTTP 400)**
+Alguna orden de la lista no existe, está dada de baja o es de otra compañía (no se dice cuál). Recargue la lista y vuelva a escoger.
+
+**¿Qué significa «La orden de compra X vino de QuickBooks: no se exporta ni se marca.»? (HTTP 422)**
+Esa orden se importó de QuickBooks, así que ya está allá. Quítela de la selección. Vale para exportar, confirmar, «No pasó», marcar y quitar la marca.
+
+**¿Qué significa «La orden de compra X está en {estatus}: solo se pasan a QuickBooks las enviadas, recibidas en parte o recibidas.»? (HTTP 422)**
+La orden está en Borrador o Cancelada. Envíela primero (Borrador) o, si se canceló, no se pasa. Una orden cancelada que ya había salido en un archivo no se exporta de nuevo: confírmela o mándela a «No pasó».
+
+**¿Qué significa «La orden de compra X ya está en QuickBooks; para volver a exportarla, quítele la marca.»? (HTTP 409)**
+La orden ya está marcada como en QuickBooks. Si de verdad hay que mandarla otra vez, abra su ficha, «Quitar la marca» y exporte; tenga en cuenta que en QuickBooks quedaría una orden más.
+
+**¿Qué significa «La orden de compra X no ha salido en ningún archivo de QuickBooks; para marcarla a mano use «Marcar como en QuickBooks».»? (HTTP 422)**
+Pulsó «Sí, ya están» para una orden que nunca se exportó (por ejemplo, otra persona ya contestó «No pasó»). Si la orden ya está en QuickBooks porque se capturó a mano, use «Marcar como en QuickBooks».
+
+**¿Qué significa «La orden de compra X ya está marcada como en QuickBooks: quítele la marca en vez de usar «No pasó».»? (HTTP 409)**
+«No pasó» es para lo que se exportó y QuickBooks no recibió. Una orden ya marcada se corrige con «Quitar la marca».
+
+**¿Qué significa «Falta el permiso 'purchasing.quickbooks'.»? (HTTP 403)**
+Su rol no puede pasar órdenes de compra a QuickBooks. Pídale al administrador el permiso `purchasing.quickbooks` en Roles (lo traen el administrador de la compañía y Facturación). Ver el estado en la lista solo pide `purchasing.view`.
+
+**«El módulo 'PURCHASING' no está habilitado para esta compañía.» (HTTP 403)**
+Compras está apagado para la compañía. Pida que enciendan el módulo.
+
+**¿Qué significa «El nombre de una cuenta de QuickBooks no puede pasar de 159 caracteres.»? (HTTP 400)**
+La «Cuenta de órdenes de compra» (Ajustes → Operación → QuickBooks) es demasiado larga. Déjela en 159 caracteres o menos, o vacía para volver a «Purchase Orders». Pide `admin.tenant` y el módulo Órdenes de venta.
+
+**Avisos de la exportación (no impiden exportar).**
+- **«El nombre del proveedor «X» pasa de 41 caracteres: QuickBooks no lo acepta como nombre de proveedor.»** Acorte el nombre del proveedor en Teikem o dé de alta el proveedor a mano en QuickBooks con un nombre corto.
+- **«El SKU «X» pasa de 31 caracteres: QuickBooks no lo acepta como nombre de ítem.»** Acorte el SKU o dé de alta el ítem a mano en QuickBooks.
+- **«El término «X» no tiene nombre en QuickBooks (Ajustes → Operación → QuickBooks): el proveedor nuevo sale sin término.»** Dé nombre en QuickBooks a ese término de pago (Ajustes → Operación → QuickBooks); si no, el proveedor nuevo entra sin término.
+- **«La orden de compra X suma … en Teikem y … en el archivo: QuickBooks redondea cada línea a centavos.»** Diferencia de centavos por el redondeo; QuickBooks queda con el total del archivo. Revise si es aceptable.
+- **«La orden de compra X está en {moneda} y la compañía en {moneda}: el archivo no lleva moneda y QuickBooks la toma en la de la compañía.»** El monto se importa tal cual, sin conversión. Corrija el monto allá si hace falta.
+- **«{Dónde} tiene caracteres que QuickBooks no admite (…); en el archivo salen como «?».»** El texto (memo, proveedor, SKU o descripción) lleva símbolos que Windows-1252 no tiene (por ejemplo, un emoji o «€»). Sustitúyalos en Teikem antes de exportar.
+
+**«Exporté y me salió «N de estas ya salieron en un archivo (la última vez el …)».»**
+Alguna de las órdenes ya se había exportado y no se confirmó ni se mandó a «No pasó». Si ya las importó, confírmelas o márquelas; si no, exportarlas otra vez las repite en QuickBooks. Importe solo uno de los archivos.
+
+**¿Por qué el botón «QuickBooks» o Sistema → Plantillas no aparecen?**
+Falta el permiso (`purchasing.quickbooks` para el botón; `integrations.view` para Plantillas) o el módulo (Compras para el botón; Integraciones para Plantillas, que en una base nueva solo enciende el administrador de la plataforma). Para la plantilla, use Compras → Importar → «Nueva plantilla».

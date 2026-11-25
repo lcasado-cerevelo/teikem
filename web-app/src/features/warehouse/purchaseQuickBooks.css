@@ -1,0 +1,36 @@
+/* Lote 246 (Lote F): QuickBooks de Órdenes de compra. Prefijo pqb- (nunca clases genéricas). Colores de la paleta del tema (claro y oscuro); sin scroll horizontal de página desde 360 px. */
+.pqb-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px; }
+.pqb-tools .qbox { flex: 1 1 220px; min-width: 0; }
+.pqb-all, .pqb-include { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; min-width: 0; }
+.pqb-note { margin: 0 0 10px; color: var(--text); }
+.pqb-warn { border-color: var(--warn); }
+.pqb-warn ul { margin: 6px 0 0; padding-left: 18px; }
+.pqb-news { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.pqb-scroll { max-height: 40vh; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius-sm, 9px); }
+.pqb-check { width: 18px; height: 18px; }
+.pqb-summary { margin: 0 0 8px; overflow-wrap: anywhere; }
+.pqb-list { list-style: none; margin: 8px 0; padding: 0; max-height: 280px; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--radius-sm, 9px); }
+.pqb-list li + li { border-top: 1px solid var(--line); }
+.pqb-list label { display: grid; grid-template-columns: auto minmax(0, 8rem) minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 10px; cursor: pointer; }
+.pqb-num { font-weight: 700; overflow-wrap: anywhere; }
+.pqb-sup { overflow-wrap: anywhere; color: var(--muted); }
+.pqb-total { text-align: right; white-space: nowrap; }
+.pqb-who { display: block; font-size: 12px; color: var(--muted); }
+.pqb-data + .pqb-data { margin-top: 16px; }
+.pqb-data h3 { margin: 0 0 8px; font-size: 14px; }
+.pqb-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px 16px; margin: 0; }
+.pqb-facts dt { font-size: .8rem; color: var(--muted); }
+.pqb-facts dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.pqb-products { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.pqb-products > li { border: 1px solid var(--line); border-radius: var(--radius-sm, 9px); padding: 10px; }
+.pqb-detail { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; min-width: 0; }
+.pqb-detail .pqb-line { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.pqb-chips { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 6px; }
+.pqb-chips .chip { white-space: nowrap; }
+.pqb-edit-warn { margin: 0 0 12px; }
+.pqb-tmpl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pqb-tmpl select { flex: 1 1 200px; min-width: 0; }
+@media (max-width: 480px) {
+  .pqb-list label { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .pqb-sup { grid-column: 2 / -1; }
+}

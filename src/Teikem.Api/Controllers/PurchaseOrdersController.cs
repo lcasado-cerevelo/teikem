@@ -28,16 +28,19 @@ public sealed class PurchaseOrdersController(PurchaseOrderService purchaseOrders
     /// Lista paginada (take ≤ 200), más recientes primero. Filtros: status (DRAFT, SENT, PARTIAL, RECEIVED, CANCELLED),
     /// supplierId, warehousePublicId, from/to (fecha de la orden) y search (número, proveedor, notas, SKU o producto).
     /// Lote 12: supplierIds y warehousePublicIds (varios), combinados con los singulares.
+    /// Lote 246 (Lote F): origin (TEIKEM, EXCEL, QUICKBOOKS; repetible) y quickBooks (PENDING, EXPORTED, IN_QUICKBOOKS, FROM_QUICKBOOKS, NOT_EXPORTABLE;
+    /// repetible): un valor desconocido → 400 con el mensaje exacto.
     /// </summary>
     [HttpGet, RequirePermission(PermissionCatalog.PurchasingView)]
     public Task<PurchaseOrderPageDto> List([FromQuery] string[]? status, [FromQuery] int? supplierId, [FromQuery] Guid? warehousePublicId,
         [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] string? search, [FromQuery] int[]? supplierIds,
         [FromQuery] Guid[]? warehousePublicIds, [FromQuery] Guid[]? productPublicIds, [FromQuery] int skip = 0, [FromQuery] int take = 100,
-        CancellationToken ct = default, [FromQuery] bool assignedToMe = false, [FromQuery] int? assignedUserId = null)
+        CancellationToken ct = default, [FromQuery] bool assignedToMe = false, [FromQuery] int? assignedUserId = null,
+        [FromQuery] string[]? origin = null, [FromQuery] string[]? quickBooks = null)
         => purchaseOrders.ListAsync(new PurchaseOrderQuery(status is { Length: > 0 } ? status : null, supplierId, warehousePublicId, from, to,
             search, skip, take, supplierIds is { Length: > 0 } ? supplierIds : null,
             warehousePublicIds is { Length: > 0 } ? warehousePublicIds : null, productPublicIds is { Length: > 0 } ? productPublicIds : null,
-            assignedToMe, assignedUserId), ct);
+            assignedToMe, assignedUserId, origin is { Length: > 0 } ? origin : null, quickBooks is { Length: > 0 } ? quickBooks : null), ct);
 
     /// <summary>
     /// Órdenes activas no canceladas con recibo confirmado y cantidades pendientes (faltante y su costo) y el almacén de la

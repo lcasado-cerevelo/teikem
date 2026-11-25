@@ -68,6 +68,8 @@ jobs:
           scripts/smoke-rutas.sh http://localhost:5000
           # Lote 245: cadenas de clientes (asignar, alta masiva con simulación y huella, filtros Cadena, análisis Por cadena, permisos, aislamiento). Sin correo: nunca Brevo.
           scripts/smoke-cadenas.sh http://localhost:5000
+          # Lote 246: compras con plantilla y QuickBooks (plantilla PURCHASE_ORDER, importar, IIF PURCHORD, confirmar / No pasó, ir y venir, concurrencia, permisos, aislamiento). Sin correo: nunca Brevo.
+          scripts/smoke-compras-quickbooks.sh http://localhost:5000
           # scripts/smoke.sh retirado del CI (decidido por Luis, 2026-10-21): sigue el modelo viejo de estatus de órdenes (DRIVER → INBOUND, etc.); los humos de arriba cubren lo reciente.
       # Recorrido Playwright del frontend (Lote F1) contra el mismo API, que sigue arriba desde el paso anterior
       # (los procesos en segundo plano viven hasta el fin del job). Vite sirve la app en :5173 (CORS permitido en appsettings).

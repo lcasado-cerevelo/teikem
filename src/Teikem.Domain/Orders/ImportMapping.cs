@@ -16,6 +16,8 @@ public static class ImportKinds
     public const string Warehouse = "WAREHOUSE";
     /// <summary>2026-10-21: importación de posiciones de un almacén (4.ª entidad del motor genérico).</summary>
     public const string Bin = "BIN";
+    /// <summary>Lote 246 (Lote F del plan de Solutions): plantilla de importación de órdenes de compra (Compras → Importar con el origen TEMPLATE).</summary>
+    public const string PurchaseOrder = "PURCHASE_ORDER";
 }
 
 /// <summary>Dominio de estatus ImportBatchStatus: VALIDATED (inicial, pipeline) → CONFIRMED (pipeline); DISCARDED terminal.</summary>

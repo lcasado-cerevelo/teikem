@@ -15,6 +15,7 @@ export const STANDARD_COLUMNS: Record<ImportEntity, readonly string[]> = {
   SUPPLIER: ['name', 'contactName', 'phone', 'email', 'paymentTerm', 'notes'],
   WAREHOUSE: ['code', 'name', 'line1', 'city', 'state', 'postalCode'],
   BIN: ['warehouseCode', 'zoneCode', 'code', 'maxCapacityQty'],
+  PURCHASE_ORDER: ['supplier', 'documentNumber', 'orderDate', 'sku', 'quantity', 'unitCost'],
 }
 
 export function EntityImportModal({ entity, onClose }: { entity: ImportEntity; onClose: () => void }) {

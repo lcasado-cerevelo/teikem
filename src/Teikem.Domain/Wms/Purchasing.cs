@@ -20,6 +20,9 @@ public class Supplier : ITenantScoped, ISoftDeletable
     public string? Notes { get; set; }
     public bool IsActive { get; set; } = true;
     [NotAudited] public byte[]? RowVersion { get; set; }
+    /// <summary>Lote 246 (Lote F): cuándo (UTC) quedó el proveedor como ya mandado a QuickBooks (al confirmar o marcar una orden suya, o al importar de QuickBooks con el nombre
+    /// exacto). NULL = nuevo para QuickBooks: sale en el bloque !VEND del archivo si se piden los nuevos.</summary>
+    public DateTime? QuickBooksSentAt { get; set; }
 }
 
 /// <summary>
@@ -46,6 +49,19 @@ public class PurchaseOrder : ITenantScoped, ISoftDeletable, IHasStatus
     [NotAudited] public byte[]? RowVersion { get; set; }
     /// <summary>Lote 195: a quién se le asignó recibirla (NULL = sin asignar; lo puede tomar cualquiera con permiso de recibir).</summary>
     public int? AssignedToUserId { get; set; }
+
+    // --- Lote 246 (Lote F del plan de Solutions): origen, identidad de importación y QuickBooks ---
+    /// <summary>De dónde nació la orden (LookupCode PurchaseOrderOrigin: TEIKEM, EXCEL o QUICKBOOKS). NULL se lee como TEIKEM (órdenes de otros caminos o de pruebas).</summary>
+    public int? OriginLookupId { get; set; }
+    /// <summary>Identidad de la importación («QB:PROVEEDOR|NÚMERO» / «IMP:…», la marca de las notas sin corchetes). Única entre las órdenes ACTIVAS de la compañía
+    /// (UX_PurchaseOrder_ImportKey): importar dos veces el mismo documento no la duplica aunque se borre la marca de las notas. NULL = no importada.</summary>
+    public string? ImportKey { get; set; }
+    /// <summary>La marca «en QuickBooks»: cuándo (UTC) y quién la puso (a mano o al confirmar un archivo, con purchasing.quickbooks). NULL = no está marcada.</summary>
+    public DateTime? QuickBooksAt { get; set; }
+    public int? QuickBooksBy { get; set; }
+    /// <summary>La última vez (UTC) que la orden salió en un archivo IIF y quién lo sacó. No la marca: queda «exportada, por confirmar» hasta «Sí, ya están» o «No pasó».</summary>
+    public DateTime? QuickBooksExportedAt { get; set; }
+    public int? QuickBooksExportedBy { get; set; }
 
     public StatusCode? Status { get; set; }
     public ICollection<PurchaseOrderLine> Lines { get; set; } = new List<PurchaseOrderLine>();

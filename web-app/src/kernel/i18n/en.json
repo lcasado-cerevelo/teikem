@@ -8836,7 +8836,8 @@
           "inventoryAccount": "Inventory account",
           "taxAccount": "IVU payable account",
           "taxItem": "IVU item",
-          "shippingItem": "Shipping item"
+          "shippingItem": "Shipping item",
+          "purchaseOrderAccount": "Purchase orders account"
         },
         "saved": "QuickBooks settings saved.",
         "errors": {
@@ -12762,7 +12763,7 @@
     "doneToast": "{n} purchase orders imported.",
     "reviewSummary": "{total} orders in the file: {ready} ready, {blocked} blocked, {duplicates} already imported, {skipped} skipped.",
     "doneSummary": "{created} orders created. Blocked: {blocked}. Already imported: {duplicates}. Skipped: {skipped}.",
-    "blockedNote": "{n} orders are NOT imported because a product or supplier is missing. Create what is missing and import the same file again: what was already imported is not repeated.",
+    "blockedNote": "{n} orders are NOT imported: a product or supplier is missing, or the file has an unreadable value or different costs for the same product. The detail says why. Fix it and import the same file again: what was already imported is not repeated.",
     "downloadMissing": "Download what is missing",
     "firstRows": "Showing the first {n} orders.",
     "col": {
@@ -12780,7 +12781,14 @@
       "ERROR": "Error",
       "DUPLICATE": "Already imported",
       "SKIPPED": "Skipped"
-    }
+    },
+    "sourceTemplate": "Template (user-defined)",
+    "helpTemplate": "The file is read with a template you define (System → Templates → Purchase orders): which column is the supplier, the document number, the SKU, the quantity and the cost. Lines with the same document number form one order.",
+    "template": "Template",
+    "noTemplates": "There are no purchase order templates yet.",
+    "newTemplate": "New template",
+    "editTemplate": "Edit",
+    "usedTemplate": "Template: {name}"
   },
   "entityImport": {
     "open": "Import",
@@ -12821,7 +12829,8 @@
       "PRODUCT": "products",
       "SUPPLIER": "suppliers",
       "WAREHOUSE": "warehouses",
-      "BIN": "bins"
+      "BIN": "bins",
+      "PURCHASE_ORDER": "purchase orders"
     },
     "status": {
       "OK": "Ready",
@@ -12846,6 +12855,12 @@
         "warehouse": "The template must include the warehouseCode column or a default value for warehouseCode.",
         "zone": "The template must include the zoneCode column or a default value for zoneCode.",
         "code": "The template must include the code column or the bin part columns (aisle, rack, level, position)."
+      },
+      "PURCHASE_ORDER": {
+        "documentNumber": "The template must include the documentNumber column.",
+        "sku": "The template must include the sku column.",
+        "quantity": "The template must include the quantity column.",
+        "supplier": "The template must give the supplier: in the supplier column or as a fixed value."
       }
     },
     "fields": {
@@ -12899,6 +12914,16 @@
         "position": "Position",
         "maxWeightKg": "Max weight (kg)",
         "maxCapacityQty": "Max capacity"
+      },
+      "PURCHASE_ORDER": {
+        "supplier": "Supplier",
+        "documentNumber": "Document number",
+        "orderDate": "Order date",
+        "expectedDate": "Expected date",
+        "sku": "SKU",
+        "description": "Description",
+        "quantity": "Quantity",
+        "unitCost": "Unit cost"
       }
     }
   },
@@ -12913,7 +12938,8 @@
       "PRODUCT": "Products",
       "SUPPLIER": "Suppliers",
       "WAREHOUSE": "Warehouses",
-      "BIN": "Bins"
+      "BIN": "Bins",
+      "PURCHASE_ORDER": "Purchase orders"
     },
     "col": {
       "name": "Name",
@@ -14237,6 +14263,113 @@
       "recMonth": "Net sales of {month}",
       "recDifference": "Difference",
       "chart": "Sales by chain"
+    }
+  },
+  "purchaseQb": {
+    "button": "QuickBooks",
+    "title": "Pass purchase orders to QuickBooks",
+    "close": "Close",
+    "help": "Sent, partly received or received purchase orders still to be passed to QuickBooks Desktop. «Export» downloads an .iif file (purchase orders) and marks nothing: you are then asked whether it was imported. Orders that came from QuickBooks are not listed.",
+    "col": {
+      "select": "Select",
+      "date": "Date",
+      "number": "Number",
+      "supplier": "Supplier",
+      "total": "Total",
+      "news": "New in QuickBooks",
+      "exported": "File",
+      "origin": "Origin",
+      "quickbooks": "QuickBooks"
+    },
+    "selectRow": "Select order {number}",
+    "inQuickBooksAs": "In QuickBooks as {name}",
+    "newSupplier": "New supplier",
+    "newProduct": "New product",
+    "newProducts": "{n} new products",
+    "seeData": "see data",
+    "seeDataOf": "See the new data of order {number}",
+    "exportedOn": "File of {date}",
+    "by": "by {name}",
+    "markSelected": "Mark {n} as in QuickBooks",
+    "export": "Export {n}",
+    "exporting": "Exporting…",
+    "downloaded": "File {file} downloaded.",
+    "marked": "{n} orders marked as in QuickBooks.",
+    "notPassedDone": "{n} orders go back to «to pass».",
+    "alreadyExportedOne": "1 of these already went out in a file on {date}. If you already imported it, confirm or mark it; if not, exporting it again repeats it in QuickBooks.",
+    "alreadyExported": "{n} of these already went out in a file (last time on {date}). If you already imported them, confirm or mark them; if not, exporting them again repeats them in QuickBooks.",
+    "warningsTitle": "Warnings (they do not stop the export)",
+    "search": "Search by number or supplier",
+    "selectAll": "All in view ({n})",
+    "markAll": "Mark all",
+    "markAllTitle": "Mark all as in QuickBooks",
+    "markAllBody": "{n} orders will be marked as already passed to QuickBooks, without producing a file. Use it for historical orders that are already there. Continue?",
+    "includeNew": "Include new suppliers and products",
+    "includeNewHelp": "{suppliers} suppliers and {products} products have not been sent to QuickBooks yet. Without this option the file only has the orders, and QuickBooks rejects them if the supplier or product does not exist there.",
+    "noMatch": "No order matches the search.",
+    "empty": "There are no purchase orders to pass to QuickBooks.",
+    "ask": {
+      "title": "Did you import them in QuickBooks? ({n})",
+      "summary": "{n} orders for {total}",
+      "includedNew": "with {suppliers} new suppliers and {products} new products",
+      "withoutNew": "without new suppliers or products",
+      "alreadyBefore": "{n} of these had already gone out before (last time on {date}).",
+      "help": "Import the file in QuickBooks (File → Utilities → Import → IIF Files) and answer. Only checked orders count; unchecked ones do not change.",
+      "checkAll": "All ({n})",
+      "listLabel": "Orders in the file",
+      "again": "Download again",
+      "later": "Not yet",
+      "notPassed": "It did not go through ({n})",
+      "confirm": "Yes, they are in ({n})"
+    },
+    "newData": {
+      "title": "New data of order {number}",
+      "qbName": "Name in QuickBooks",
+      "name": "Name",
+      "contact": "Contact",
+      "phone": "Phone",
+      "email": "Email",
+      "terms": "Payment terms",
+      "termsMissing": "«{code}» (no name in QuickBooks)",
+      "products": "New products",
+      "qbItem": "Item in QuickBooks",
+      "productName": "Description",
+      "cost": "Cost",
+      "none": "This order brings nothing new."
+    },
+    "origin": {
+      "TEIKEM": "Teikem",
+      "EXCEL": "Excel / file",
+      "QUICKBOOKS": "QuickBooks"
+    },
+    "state": {
+      "PENDING": "To pass",
+      "EXPORTED": "Exported, to confirm",
+      "IN_QUICKBOOKS": "In QuickBooks",
+      "FROM_QUICKBOOKS": "Came from QuickBooks",
+      "NOT_EXPORTABLE": "Not passed"
+    },
+    "filters": {
+      "origin": "Origin",
+      "quickbooks": "QuickBooks"
+    },
+    "detail": {
+      "markedBy": "Marked on {date} by {name}",
+      "exportedBy": "Exported on {date} by {name}; still to confirm it was imported",
+      "pass": "Pass to QuickBooks…",
+      "confirm": "Yes, it is in",
+      "confirmed": "Order {number} is now in QuickBooks.",
+      "notPassed": "It did not go through",
+      "notPassedDone": "Order {number} goes back to «to pass».",
+      "mark": "Mark as in QuickBooks",
+      "markTitle": "Mark order {number}",
+      "markBody": "It will be marked as already passed to QuickBooks, without producing a file.",
+      "markedOne": "Order {number} is marked.",
+      "unmark": "Remove the mark",
+      "unmarkTitle": "Remove the mark from order {number}",
+      "unmarkBody": "The order goes back to «to pass» (or «exported» if it went out in a file). Nothing is deleted in QuickBooks.",
+      "unmarked": "The mark was removed from order {number}.",
+      "editWarning": "This order already went to QuickBooks: editing or cancelling it here changes nothing there. Close or correct it in QuickBooks."
     }
   }
 }

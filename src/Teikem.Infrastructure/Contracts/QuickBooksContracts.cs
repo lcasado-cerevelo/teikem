@@ -51,10 +51,13 @@ public sealed record QuickBooksHistoryItemDto(Guid PublicId, string Number, Date
 /// <summary>Un término de pago de Teikem y su nombre en QuickBooks (NULL = sin nombre: la factura sale sin término).</summary>
 public sealed record QuickBooksTermMapDto(string Code, string Label, string? QuickBooksName);
 
-/// <summary>Ajustes → Operación → QuickBooks, con los valores por omisión ya aplicados.</summary>
+/// <summary>
+/// Ajustes → Operación → QuickBooks, con los valores por omisión ya aplicados. Lote 246: PurchaseOrderAccount = la cuenta (no contable) de las órdenes de compra en el
+/// archivo de compras (TRNS PURCHORD); por omisión «Purchase Orders».
+/// </summary>
 public sealed record QuickBooksSettingsDto(string ReceivableAccount, string SalesAccount, string CostAccount, string InventoryAccount, string TaxAccount, string TaxItem,
-    string ShippingItem, IReadOnlyList<QuickBooksTermMapDto> Terms);
+    string ShippingItem, IReadOnlyList<QuickBooksTermMapDto> Terms, string PurchaseOrderAccount);
 
 /// <summary>Cambiar los ajustes: null = sin cambio; "" = volver al valor por omisión. Terms: código → nombre en QuickBooks ("" o null quita ese término del mapa); los que no vienen no cambian.</summary>
 public sealed record QuickBooksSettingsRequest(string? ReceivableAccount = null, string? SalesAccount = null, string? CostAccount = null, string? InventoryAccount = null,
-    string? TaxAccount = null, string? TaxItem = null, string? ShippingItem = null, IReadOnlyDictionary<string, string?>? Terms = null);
+    string? TaxAccount = null, string? TaxItem = null, string? ShippingItem = null, IReadOnlyDictionary<string, string?>? Terms = null, string? PurchaseOrderAccount = null);

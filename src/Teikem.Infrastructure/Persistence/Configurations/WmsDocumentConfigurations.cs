@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Teikem.Domain.Catalogs;
 using Teikem.Domain.Wms;
 
 namespace Teikem.Infrastructure.Persistence.Configurations;
@@ -40,8 +41,14 @@ public sealed class PurchaseOrderConfiguration : IEntityTypeConfiguration<Purcha
 
         b.HasIndex(p => new { p.TenantId, p.Number }).IsUnique().HasDatabaseName("UQ_PurchaseOrder_Number");
         b.HasIndex(p => new { p.TenantId, p.StatusCodeId }).HasDatabaseName("IX_PurchaseOrder_Status");
+        // Lote 246 (Lote F): identidad de importación única entre las ACTIVAS y las pendientes de QuickBooks (sin marca)
+        b.Property(p => p.ImportKey).HasMaxLength(250);
+        b.HasIndex(p => new { p.TenantId, p.ImportKey }).IsUnique().HasFilter("[ImportKey] IS NOT NULL AND [IsActive] = 1").HasDatabaseName("UX_PurchaseOrder_ImportKey");
+        b.HasIndex(p => new { p.TenantId, p.StatusCodeId }).IncludeProperties(p => new { p.OriginLookupId, p.QuickBooksExportedAt })
+            .HasFilter("[QuickBooksAt] IS NULL AND [IsActive] = 1").HasDatabaseName("IX_PurchaseOrder_QuickBooksPending");
 
         b.HasOne(p => p.Status).WithMany().HasForeignKey(p => p.StatusCodeId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<LookupCode>().WithMany().HasForeignKey(p => p.OriginLookupId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<Supplier>().WithMany().HasForeignKey(p => p.SupplierId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<Warehouse>().WithMany().HasForeignKey(p => p.WarehouseId).OnDelete(DeleteBehavior.NoAction);
         b.HasMany(p => p.Lines).WithOne().HasForeignKey(l => l.PurchaseOrderId).OnDelete(DeleteBehavior.NoAction);

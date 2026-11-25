@@ -23,9 +23,12 @@ import {
   NumberInput,
   Panel,
   SearchSelect,
+  SelectFilter,
+  Chip,
   TextArea,
   IconUsers,
   IconUserPlus,
+  IconRotateCcw,
   toast,
   type DataColumn,
   type DateRange,
@@ -34,6 +37,9 @@ import {
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { AssignDocumentModal } from './AssignDocumentModal'
 import { PurchaseOrderImportModal } from './PurchaseOrderImportModal'
+import { PurchaseOrderQuickBooksModal } from './PurchaseOrderQuickBooksModal'
+import { usePurchaseQbMutations } from './purchaseQuickBooksApi'
+import { ORIGINS, ORIGIN_TONE, originOf, QB_STATES, QB_STATE_TONE, qbStateOf } from './purchaseQuickBooksRules'
 import { ToggleFilter } from './filterControls'
 import { exportPurchaseOrders, useAssignPurchaseOrder, useCreatePurchaseOrder, usePurchaseOrders, useSuppliers, useWarehouses, warehouseLabel, type PurchaseOrderDto } from './api'
 import { preloadCost, priceDiffers, ProductPriceNote } from './ProductPriceNote'
@@ -252,6 +258,10 @@ export default function PurchaseOrderListScreen() {
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [creating, setCreating] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [passing, setPassing] = useState(false)   // Lote 246: el diálogo «QuickBooks»
+  const [originFilter, setOriginFilter] = useState('')
+  const [qbFilter, setQbFilter] = useState('')
+  const { unmark } = usePurchaseQbMutations()
   const [mineOnly, setMineOnly] = useState(false)   // Lote 195: solo las asignadas a mí
   const [toAssign, setToAssign] = useState<PurchaseOrderDto | null>(null)
   const assignPo = useAssignPurchaseOrder()
@@ -274,6 +284,8 @@ export default function PurchaseOrderListScreen() {
   const changeWarehouse = withPageReset(setWarehouseIds)
   const changeProducts = withPageReset(setProducts)
   const changeRange = withPageReset(setRange)
+  const changeOrigin = withPageReset(setOriginFilter)
+  const changeQb = withPageReset(setQbFilter)
 
   const query = useMemo(
     () => ({
@@ -284,10 +296,12 @@ export default function PurchaseOrderListScreen() {
       from: range.from || undefined,
       to: range.to || undefined,
       assignedToMe: mineOnly || undefined,
+      origin: originFilter ? [originFilter] : undefined,
+      quickBooks: qbFilter ? [qbFilter] : undefined,
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
-    [statusFilter, supplierIds, warehouseIds, products, range, mineOnly, page, pageSize],
+    [statusFilter, supplierIds, warehouseIds, products, range, mineOnly, originFilter, qbFilter, page, pageSize],
   )
   const { data, isLoading, error } = usePurchaseOrders(query)
 
@@ -308,6 +322,20 @@ export default function PurchaseOrderListScreen() {
         header: t('warehouse.purchaseOrders.columns.expectedDate'),
         cell: (p) => formatDate(p.expectedDate, lang),
         sortValue: (p) => p.expectedDate,
+      },
+      {
+        id: 'origin',
+        header: t('purchaseQb.col.origin'),
+        cell: (p) => <Chip tone={ORIGIN_TONE[originOf(p.originCode)]}>{p.origin || t(`purchaseQb.origin.${originOf(p.originCode)}`)}</Chip>,
+        sortValue: (p) => p.origin ?? p.originCode ?? '',
+        exportValue: (p) => p.origin ?? p.originCode ?? '',
+      },
+      {
+        id: 'quickbooks',
+        header: t('purchaseQb.col.quickbooks'),
+        cell: (p) => <Chip tone={QB_STATE_TONE[qbStateOf(p.quickBooksState)]}>{t(`purchaseQb.state.${qbStateOf(p.quickBooksState)}`)}</Chip>,
+        sortValue: (p) => qbStateOf(p.quickBooksState),
+        exportValue: (p) => t(`purchaseQb.state.${qbStateOf(p.quickBooksState)}`),
       },
       { id: 'assignee', header: t('warehouse.assign.column'), cell: (p) => p.assignedToName ?? '—', sortValue: (p) => p.assignedToName ?? '', exportValue: (p) => p.assignedToName ?? '' },
       {
@@ -339,8 +367,21 @@ export default function PurchaseOrderListScreen() {
         icon: <IconUserPlus />,
       },
       { key: 'assign', label: t('warehouse.assign.action'), perm: 'warehouse.manage', visible: open, onClick: (p) => setToAssign(p), icon: <IconUsers /> },
+      {
+        key: 'unmark',
+        label: t('purchaseQb.detail.unmark'),
+        perm: 'purchasing.quickbooks',
+        visible: (p) => qbStateOf(p.quickBooksState) === 'IN_QUICKBOOKS',
+        onClick: (p) => {
+          unmark.mutateAsync([p.publicId ?? '']).then(
+            () => toast.success(t('purchaseQb.detail.unmarked', { number: p.number ?? '' })),
+            (e) => toast.error(applyProblemDetails(e).title),
+          )
+        },
+        icon: <IconRotateCcw />,
+      },
     ],
-    [t, assignPo],
+    [t, assignPo, unmark],
   )
 
   return (
@@ -351,6 +392,11 @@ export default function PurchaseOrderListScreen() {
           <p>{t('warehouse.purchaseOrders.subtitle')}</p>
         </div>
         <div className="act">
+          <Can perm="purchasing.quickbooks">
+            <button type="button" className="btn" onClick={() => setPassing(true)}>
+              {t('purchaseQb.button')}
+            </button>
+          </Can>
           <Can perm="purchasing.manage">
             <button type="button" className="btn" onClick={() => setImporting(true)}>
               {t('poImport.button')}
@@ -372,6 +418,8 @@ export default function PurchaseOrderListScreen() {
           setProducts([])
           setRange(EMPTY_RANGE)
           setMineOnly(false)
+          setOriginFilter('')
+          setQbFilter('')
         }}
       >
         <SearchSelect label={t('warehouse.purchaseOrders.filters.status')} options={statusOptions} value={statusFilter} onChange={changeStatus} />
@@ -380,6 +428,8 @@ export default function PurchaseOrderListScreen() {
         {/* 2026-10-12: Producto (varios): órdenes con alguna línea de esos productos; mismo desplegable con búsqueda que en Productos y Kárdex */}
         <ProductSearchSelect label={t('warehouse.purchaseOrders.filters.product')} value={products} onChange={changeProducts} includeInactive />
         <DateRangeFilter label={t('warehouse.purchaseOrders.filters.range')} value={range} onChange={changeRange} />
+        <SelectFilter label={t('purchaseQb.filters.origin')} value={originFilter} onChange={changeOrigin} options={ORIGINS.map((o) => ({ value: o, label: t(`purchaseQb.origin.${o}`) }))} />
+        <SelectFilter label={t('purchaseQb.filters.quickbooks')} value={qbFilter} onChange={changeQb} options={QB_STATES.map((x) => ({ value: x, label: t(`purchaseQb.state.${x}`) }))} />
         <ToggleFilter label={t('warehouse.assign.mineOnly')} checked={mineOnly} onChange={withPageReset(setMineOnly)} />
       </Filters>
 
@@ -412,6 +462,7 @@ export default function PurchaseOrderListScreen() {
 
       <CreatePurchaseOrderModal open={creating} onClose={() => setCreating(false)} />
       {importing && <PurchaseOrderImportModal onClose={() => setImporting(false)} />}
+      {passing && <PurchaseOrderQuickBooksModal onClose={() => setPassing(false)} />}
       {toAssign && (
         <AssignDocumentModal
           title={t('warehouse.assign.title', { number: toAssign.number ?? '' })}

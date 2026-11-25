@@ -2,19 +2,25 @@
 // Una orden de compra dice «se compró» y NO mueve inventario (eso lo hace el recibo). «Revisar» no guarda nada: dice por orden si está lista, bloqueada (falta un producto o un proveedor,
 // con el motivo), repetida (ya se importó) u omitida; «Importar» crea las listas, en borrador o ya enviadas. Lo que falta se puede bajar como lista para darlo de alta.
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { api, unwrap } from '../../kernel/api/client'
 import type { components } from '../../kernel/api/schema'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useT } from '../../kernel/i18n'
 import { Chip, IconUpload, Modal, Spinner, toast } from '../../kernel/ui'
 import { useWarehouses, warehouseLabel } from './api'
+import { ImportTemplateEditorModal } from '../consignees/ImportTemplateEditorModal'
+import type { ImportTemplate } from '../consignees/consigneeRules'
+import { useEntityImportFields, useEntityImportTemplates } from '../imports/entityImportApi'
+import { Can } from '../../kernel/access'
+import './purchaseQuickBooks.css'
 import '../consignees/consignees.css'
 
 type ImportResult = components['schemas']['PurchaseOrderImportResultDto']
 type ImportDoc = components['schemas']['PurchaseOrderImportDocDto']
 
-type ImportRequest = { file: File; source: 'GENERIC' | 'QUICKBOOKS'; status: 'DRAFT' | 'SENT'; warehousePublicId: string; commit: boolean }
+type Source = 'GENERIC' | 'QUICKBOOKS' | 'TEMPLATE'
+type ImportRequest = { file: File; source: Source; templatePublicId?: string; status: 'DRAFT' | 'SENT'; warehousePublicId: string; commit: boolean }
 
 /** `POST /api/v1/purchase-orders/import` (multipart): vista previa (`commit` false) o creación (true). */
 function useImportPurchaseOrders() {
@@ -23,6 +29,7 @@ function useImportPurchaseOrders() {
     mutationFn: (v: ImportRequest) => {
       const form = new FormData()
       form.append('source', v.source)
+      if (v.source === 'TEMPLATE' && v.templatePublicId) form.append('templatePublicId', v.templatePublicId)
       form.append('status', v.status)
       if (v.warehousePublicId) form.append('warehousePublicId', v.warehousePublicId)
       form.append('commit', v.commit ? 'true' : 'false')
@@ -54,6 +61,7 @@ function download(name: string, text: string) {
   URL.revokeObjectURL(url)
 }
 
+// Lote 246: el origen «Plantilla» (TEMPLATE) lee el archivo con una plantilla del usuario (Sistema → Plantillas, pestaña Órdenes de compra): una por proveedor o formato.
 const TONE: Record<string, 'deliv' | 'fail' | 'neutral' | 'warn'> = { READY: 'deliv', CREATED: 'deliv', BLOCKED: 'fail', ERROR: 'fail', DUPLICATE: 'warn', SKIPPED: 'neutral' }
 
 export function PurchaseOrderImportModal({ onClose }: { onClose: () => void }) {
@@ -61,7 +69,23 @@ export function PurchaseOrderImportModal({ onClose }: { onClose: () => void }) {
   const run = useImportPurchaseOrders()
   const fileRef = useRef<HTMLInputElement>(null)
   const { data: warehouses = [] } = useWarehouses({ includeInactive: false }, { handleAccessDenied: false })
-  const [source, setSource] = useState<'GENERIC' | 'QUICKBOOKS'>('QUICKBOOKS')
+  const [source, setSource] = useState<Source>('QUICKBOOKS')
+  const [templateId, setTemplateId] = useState('')
+  const [editor, setEditor] = useState<{ template: ImportTemplate | null } | null>(null)
+  const isTemplate = source === 'TEMPLATE'
+  const templates = useEntityImportTemplates('PURCHASE_ORDER', false, isTemplate)
+  const fields = useEntityImportFields('PURCHASE_ORDER', isTemplate)
+  const fieldLabel = useCallback(
+    (field: string) => {
+      const key = `entityImport.fields.PURCHASE_ORDER.${field}`
+      const text = t(key)
+      return text === key ? field : text
+    },
+    [t],
+  )
+  const templateList = useMemo(() => templates.data ?? [], [templates.data])
+  const chosenTemplate = templateList.find((x) => x.publicId === templateId) ?? templateList[0]
+  const chosenId = isTemplate ? (chosenTemplate?.publicId ?? '') : ''
   const [status, setStatus] = useState<'DRAFT' | 'SENT'>('DRAFT')
   const [warehouse, setWarehouse] = useState('')
   const [file, setFile] = useState<File | null>(null)
@@ -70,12 +94,12 @@ export function PurchaseOrderImportModal({ onClose }: { onClose: () => void }) {
   const busy = run.isPending
   const needsWarehouse = warehouses.length > 1
   const warehouseId = needsWarehouse ? warehouse || warehouses[0]?.publicId || '' : ''
-  const canRun = !!file && !busy
+  const canRun = !!file && !busy && (!isTemplate || !!chosenId)
 
   const review = async (commit: boolean) => {
     if (!file) return
     try {
-      const r = await run.mutateAsync({ file, source, status, warehousePublicId: warehouseId, commit })
+      const r = await run.mutateAsync({ file, source, templatePublicId: chosenId, status, warehousePublicId: warehouseId, commit })
       setResult(r)
       if (commit) toast.success(t('poImport.doneToast', { n: r.created ?? 0 }))
     } catch (e) {
@@ -110,12 +134,28 @@ export function PurchaseOrderImportModal({ onClose }: { onClose: () => void }) {
       <p className="help">{t('poImport.help')}</p>
       <div className="f">
         <label htmlFor="poi-source">{t('poImport.source')}</label>
-        <select id="poi-source" value={source} disabled={busy} onChange={(e) => { setSource(e.target.value as 'GENERIC' | 'QUICKBOOKS'); setResult(null) }}>
+        <select id="poi-source" value={source} disabled={busy} onChange={(e) => { setSource(e.target.value as Source); setResult(null) }}>
           <option value="QUICKBOOKS">{t('poImport.sourceQuickBooks')}</option>
           <option value="GENERIC">{t('poImport.sourceGeneric')}</option>
+          <option value="TEMPLATE">{t('poImport.sourceTemplate')}</option>
         </select>
-        <p className="help">{source === 'QUICKBOOKS' ? t('poImport.helpQuickBooks') : t('poImport.helpGeneric')}</p>
+        <p className="help">{source === 'QUICKBOOKS' ? t('poImport.helpQuickBooks') : source === 'TEMPLATE' ? t('poImport.helpTemplate') : t('poImport.helpGeneric')}</p>
       </div>
+      {isTemplate && (
+        <div className="f">
+          <label htmlFor="poi-template">{t('poImport.template')}</label>
+          <div className="pqb-tmpl">
+            <select id="poi-template" value={chosenId} disabled={busy || templateList.length === 0} onChange={(e) => { setTemplateId(e.target.value); setResult(null) }}>
+              {templateList.length === 0 && <option value="">{t('poImport.noTemplates')}</option>}
+              {templateList.map((x) => <option key={x.publicId} value={x.publicId ?? ''}>{x.name}</option>)}
+            </select>
+            <Can perm="purchasing.manage">
+              <button type="button" className="btn sm" disabled={busy || fields.isPending} onClick={() => setEditor({ template: null })}>{t('poImport.newTemplate')}</button>
+              <button type="button" className="btn sm" disabled={busy || !chosenTemplate} onClick={() => setEditor({ template: chosenTemplate ?? null })}>{t('poImport.editTemplate')}</button>
+            </Can>
+          </div>
+        </div>
+      )}
       <div className="f">
         <label htmlFor="poi-status">{t('poImport.status')}</label>
         <select id="poi-status" value={status} disabled={busy} onChange={(e) => { setStatus(e.target.value as 'DRAFT' | 'SENT'); setResult(null) }}>
@@ -162,6 +202,7 @@ export function PurchaseOrderImportModal({ onClose }: { onClose: () => void }) {
               ? t('poImport.doneSummary', { created: result.created ?? 0, blocked: result.blocked ?? 0, duplicates: result.duplicates ?? 0, skipped: result.skipped ?? 0 })
               : t('poImport.reviewSummary', { total: result.totalDocuments ?? 0, ready: result.ready ?? 0, blocked: result.blocked ?? 0, duplicates: result.duplicates ?? 0, skipped: result.skipped ?? 0 })}
           </p>
+          {result.templateName && <p className="help">{t('poImport.usedTemplate', { name: result.templateName })}</p>}
           {(result.blocked ?? 0) > 0 && <p className="ferr" role="alert">{t('poImport.blockedNote', { n: result.blocked ?? 0 })}</p>}
           {hasMissing && (
             <div className="act" style={{ justifyContent: 'flex-start', marginBottom: 8 }}>
@@ -198,6 +239,19 @@ export function PurchaseOrderImportModal({ onClose }: { onClose: () => void }) {
           </div>
           {docs.length > 300 && <p className="help">{t('poImport.firstRows', { n: 300 })}</p>}
         </>
+      )}
+      {editor && (
+        <ImportTemplateEditorModal
+          kind="PURCHASE_ORDER"
+          template={editor.template}
+          fields={fields.data ?? []}
+          fieldLabel={fieldLabel}
+          onClose={() => setEditor(null)}
+          onSaved={(saved) => {
+            setEditor(null)
+            if (saved.publicId) { setTemplateId(saved.publicId); setResult(null) }
+          }}
+        />
       )}
     </Modal>
   )

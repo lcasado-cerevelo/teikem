@@ -14,6 +14,7 @@ const DEFAULTS = {
   costAccount: 'Cost of Goods Sold',
   inventoryAccount: 'Inventory Asset',
   taxAccount: 'Sales Tax Payable',
+  purchaseOrderAccount: 'Purchase Orders',
   taxItem: 'IVU',
   shippingItem: 'Shipping',
   terms: [
@@ -64,6 +65,7 @@ describe('Ajustes → Operación → QuickBooks', () => {
     const sales = await screen.findByLabelText('Cuenta de ventas')
     expect(sales).toHaveValue('Sales')
     expect(screen.getByLabelText('Cuenta por cobrar')).toHaveValue('Accounts Receivable')
+    expect(screen.getByLabelText('Cuenta de órdenes de compra')).toHaveValue('Purchase Orders')   // Lote 246
     expect(screen.getByLabelText('Ítem del IVU')).toHaveValue('IVU')
     expect(screen.getByLabelText('Ítem del envío')).toHaveValue('Shipping')
     expect(screen.getByLabelText('Nombre en QuickBooks de Neto 30')).toHaveValue('Net 30')

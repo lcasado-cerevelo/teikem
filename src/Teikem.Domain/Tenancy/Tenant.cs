@@ -136,6 +136,8 @@ public class Tenant : ISoftDeletable
     public string? QuickBooksTaxItem { get; set; }
     public string? QuickBooksShippingItem { get; set; }
     public string? QuickBooksTermsJson { get; set; }
+    /// <summary>Lote 246 (Lote F): la cuenta (no contable) de las órdenes de compra en el archivo IIF (TRNS PURCHORD). NULL = «Purchase Orders».</summary>
+    public string? QuickBooksPurchaseOrderAccount { get; set; }
     /// <summary>Lote 81: días después del último despacho en que se acepta pedir una devolución de venta (0 = sin ventana).</summary>
     public int SalesReturnWindowDays { get; set; } = 30;
     /// <summary>Lote 86 (P8): comisión por omisión de la remesa COD (% de lo cobrado) cuando el contrato del cliente no trae la suya.</summary>

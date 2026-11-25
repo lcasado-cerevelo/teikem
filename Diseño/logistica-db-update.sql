@@ -8433,3 +8433,132 @@ BEGIN
     INSERT INTO dbo.AppliedMigration (Code) VALUES ('LB_CLIENT_CHAIN_PERMS');
 END
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-11-25 — Lote 246 (Lote F del plan de Solutions): Compras — plantilla de importación del usuario (ImportTemplate Kind PURCHASE_ORDER) y exportación IIF
+   (PURCHORD) de órdenes de compra a QuickBooks Desktop (docs/lote246-decisiones.md).
+   - dbo.ImportTemplate: SIN cambio de estructura (Kind NVARCHAR(20) sin CHECK admite 'PURCHASE_ORDER'; ClientId/DefaultClientId/MultiLine no aplican).
+   - LookupCode PurchaseOrderOrigin: TEIKEM, EXCEL, QUICKBOOKS (de dónde nació la orden; NULL se lee como TEIKEM).
+   - dbo.PurchaseOrder: OriginLookupId; ImportKey (identidad de importación; antes solo la marca de Notes); QuickBooksAt/QuickBooksBy (marca «en QuickBooks»);
+     QuickBooksExportedAt/QuickBooksExportedBy (último archivo y quién lo sacó; no marca). CHECK CK_PurchaseOrder_QbBy y CK_PurchaseOrder_QbExportedBy.
+     Índices IX_PurchaseOrder_QuickBooksPending y UX_PurchaseOrder_ImportKey (este, DESPUÉS de cargar las claves).
+   - dbo.Supplier.QuickBooksSentAt (proveedor ya mandado); dbo.Tenant.QuickBooksPurchaseOrderAccount (NULL = 'Purchase Orders').
+   - Datos, una sola vez: origen e ImportKey de las órdenes existentes por la marca de sus notas (L246_PO_ORIGIN); proveedores que ya existen en QuickBooks
+     (con órdenes de origen QUICKBOOKS o en el historial de compras de QuickBooks, dbo.PurchaseHistoryLine) quedan como ya mandados (L246_SUPPLIER_QB_SENT).
+   - Permiso purchasing.quickbooks (BILLING) a los roles YA clonados TenantAdmin y Billing, una sola vez (L246_PURCHASING_QUICKBOOKS); las plantillas las pone el
+     sembrador de permisos (PermissionCatalog).
+   Solo AGREGA (sin borrar registros ni quitar objetos). Idempotente.
+   ---------------------------------------------------------------------------- */
+MERGE dbo.CatalogDomain AS t
+USING (VALUES
+    (N'PurchaseOrderOrigin', N'{"es":"Origen de la orden de compra","en":"Purchase order origin"}')
+) AS s (DomainKey, LabelJson) ON t.DomainKey = s.DomainKey
+WHEN NOT MATCHED THEN
+    INSERT (DomainKey, Scope, LabelJson, IsSystem, IsActive)
+    VALUES (s.DomainKey, 1, s.LabelJson, 1, 1);
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'TEIKEM',     N'{"es":"Teikem","en":"Teikem"}',                   10),
+    (N'EXCEL',      N'{"es":"Excel / archivo","en":"Excel / file"}',    20),
+    (N'QUICKBOOKS', N'{"es":"QuickBooks","en":"QuickBooks"}',           30)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'PurchaseOrderOrigin' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'PurchaseOrderOrigin', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+IF COL_LENGTH(N'dbo.PurchaseOrder', N'OriginLookupId') IS NULL
+    ALTER TABLE dbo.PurchaseOrder ADD OriginLookupId INT NULL CONSTRAINT FK_PurchaseOrder_Origin REFERENCES dbo.LookupCode(LookupCodeId);
+GO
+IF COL_LENGTH(N'dbo.PurchaseOrder', N'ImportKey') IS NULL
+    ALTER TABLE dbo.PurchaseOrder ADD ImportKey NVARCHAR(250) NULL;
+GO
+IF COL_LENGTH(N'dbo.PurchaseOrder', N'QuickBooksAt') IS NULL
+    ALTER TABLE dbo.PurchaseOrder ADD QuickBooksAt DATETIME2 NULL;
+GO
+IF COL_LENGTH(N'dbo.PurchaseOrder', N'QuickBooksBy') IS NULL
+    ALTER TABLE dbo.PurchaseOrder ADD QuickBooksBy INT NULL;
+GO
+IF COL_LENGTH(N'dbo.PurchaseOrder', N'QuickBooksExportedAt') IS NULL
+    ALTER TABLE dbo.PurchaseOrder ADD QuickBooksExportedAt DATETIME2 NULL;
+GO
+IF COL_LENGTH(N'dbo.PurchaseOrder', N'QuickBooksExportedBy') IS NULL
+    ALTER TABLE dbo.PurchaseOrder ADD QuickBooksExportedBy INT NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_PurchaseOrder_QbBy' AND parent_object_id = OBJECT_ID('dbo.PurchaseOrder'))
+    ALTER TABLE dbo.PurchaseOrder ADD CONSTRAINT CK_PurchaseOrder_QbBy CHECK (QuickBooksBy IS NULL OR QuickBooksAt IS NOT NULL);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_PurchaseOrder_QbExportedBy' AND parent_object_id = OBJECT_ID('dbo.PurchaseOrder'))
+    ALTER TABLE dbo.PurchaseOrder ADD CONSTRAINT CK_PurchaseOrder_QbExportedBy CHECK (QuickBooksExportedBy IS NULL OR QuickBooksExportedAt IS NOT NULL);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PurchaseOrder_QuickBooksPending' AND object_id = OBJECT_ID('dbo.PurchaseOrder'))
+    CREATE INDEX IX_PurchaseOrder_QuickBooksPending ON dbo.PurchaseOrder(TenantId, StatusCodeId) INCLUDE (OriginLookupId, QuickBooksExportedAt)
+    WHERE QuickBooksAt IS NULL AND IsActive = 1;
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L246_PO_ORIGIN')
+BEGIN
+    DECLARE @qb INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = N'PurchaseOrderOrigin' AND InternalCode = N'QUICKBOOKS');
+    DECLARE @xl INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = N'PurchaseOrderOrigin' AND InternalCode = N'EXCEL');
+    DECLARE @tk INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = N'PurchaseOrderOrigin' AND InternalCode = N'TEIKEM');
+    -- origen por la marca que el Lote 239 dejó en las notas ([QB:…] = de QuickBooks; [IMP:…] = de un archivo); el resto nació en Teikem
+    UPDATE dbo.PurchaseOrder SET OriginLookupId = @qb WHERE OriginLookupId IS NULL AND Notes LIKE N'%\[QB:%' ESCAPE N'\';
+    UPDATE dbo.PurchaseOrder SET OriginLookupId = @xl WHERE OriginLookupId IS NULL AND Notes LIKE N'%\[IMP:%' ESCAPE N'\';
+    UPDATE dbo.PurchaseOrder SET OriginLookupId = @tk WHERE OriginLookupId IS NULL;
+    -- ImportKey = la marca sin corchetes («QB:PROVEEDOR|NÚMERO» / «IMP:…»), solo la primera orden ACTIVA de cada marca (no choca con el índice único)
+    WITH m AS (
+        SELECT p.PurchaseOrderId, p.TenantId,
+               SUBSTRING(p.Notes, s.Pos + 1, CASE WHEN e.Pos > s.Pos + 1 THEN e.Pos - s.Pos - 1 ELSE 0 END) AS K
+        FROM dbo.PurchaseOrder p
+        CROSS APPLY (SELECT COALESCE(NULLIF(CHARINDEX(N'[QB:', p.Notes), 0), NULLIF(CHARINDEX(N'[IMP:', p.Notes), 0)) AS Pos) s
+        CROSS APPLY (SELECT CASE WHEN s.Pos IS NULL THEN 0 ELSE CHARINDEX(N']', p.Notes, s.Pos) END AS Pos) e
+        WHERE p.IsActive = 1 AND p.ImportKey IS NULL AND s.Pos IS NOT NULL AND e.Pos > s.Pos + 1
+    ), r AS (
+        SELECT PurchaseOrderId, K, ROW_NUMBER() OVER (PARTITION BY TenantId, LEFT(K, 250) ORDER BY PurchaseOrderId) AS Rn FROM m
+    )
+    UPDATE p SET ImportKey = LEFT(r.K, 250)
+    FROM dbo.PurchaseOrder p JOIN r ON r.PurchaseOrderId = p.PurchaseOrderId
+    WHERE r.Rn = 1
+      AND NOT EXISTS (SELECT 1 FROM dbo.PurchaseOrder x WHERE x.TenantId = p.TenantId AND x.IsActive = 1 AND x.ImportKey = LEFT(r.K, 250));
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L246_PO_ORIGIN');
+END
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_PurchaseOrder_ImportKey' AND object_id = OBJECT_ID('dbo.PurchaseOrder'))
+    CREATE UNIQUE INDEX UX_PurchaseOrder_ImportKey ON dbo.PurchaseOrder(TenantId, ImportKey) WHERE ImportKey IS NOT NULL AND IsActive = 1;
+GO
+IF COL_LENGTH(N'dbo.Supplier', N'QuickBooksSentAt') IS NULL
+    ALTER TABLE dbo.Supplier ADD QuickBooksSentAt DATETIME2 NULL;
+GO
+IF COL_LENGTH(N'dbo.Tenant', N'QuickBooksPurchaseOrderAccount') IS NULL
+    ALTER TABLE dbo.Tenant ADD QuickBooksPurchaseOrderAccount NVARCHAR(159) NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L246_SUPPLIER_QB_SENT')
+BEGIN
+    -- proveedores que ya existen en QuickBooks: tienen órdenes importadas de QuickBooks o salen (mismo nombre, recortado y sin distinguir mayúsculas) en el
+    -- historial de compras de QuickBooks de SU compañía (Lote 241). Así el primer archivo no los manda como nuevos.
+    DECLARE @qbo INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = N'PurchaseOrderOrigin' AND InternalCode = N'QUICKBOOKS');
+    UPDATE s SET QuickBooksSentAt = SYSUTCDATETIME()
+    FROM dbo.Supplier s
+    WHERE s.QuickBooksSentAt IS NULL
+      AND (EXISTS (SELECT 1 FROM dbo.PurchaseOrder p WHERE p.TenantId = s.TenantId AND p.SupplierId = s.SupplierId AND p.OriginLookupId = @qbo)
+        OR EXISTS (SELECT 1 FROM dbo.PurchaseHistoryLine h WHERE h.TenantId = s.TenantId AND UPPER(LTRIM(RTRIM(h.SupplierNameRaw))) = UPPER(LTRIM(RTRIM(s.Name)))));
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L246_SUPPLIER_QB_SENT');
+END
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'purchasing.quickbooks')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('purchasing.quickbooks', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'BILLING'),
+            N'{"es":"Compras: pasar órdenes de compra a QuickBooks","en":"Purchases: pass purchase orders to QuickBooks"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L246_PURCHASING_QUICKBOOKS')
+BEGIN
+    -- el administrador de la compañía y Facturación (que ya administra compras); solo agrega, nunca quita
+    INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+    SELECT DISTINCT r.RoleId, pm.PermissionId
+    FROM dbo.Role r
+    JOIN dbo.Permission pm ON pm.Code = 'purchasing.quickbooks'
+    WHERE r.IsActive = 1 AND r.TenantId IS NOT NULL AND r.Name IN ('TenantAdmin', 'Billing')
+      AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = pm.PermissionId);
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L246_PURCHASING_QUICKBOOKS');
+END
+GO

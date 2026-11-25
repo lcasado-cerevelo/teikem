@@ -1,7 +1,10 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
+using Teikem.Domain.Catalogs;
 using Teikem.Domain.Clients;
 using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
+using Teikem.Domain.Sales;
 using Teikem.Domain.Security;
 using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
@@ -28,6 +31,10 @@ namespace Teikem.Infrastructure.Services;
 ///   existente bloquea su encabezado y re-verifica el estatus dentro de la transacción.
 /// El TenantId sale del principal; la orden se expone por PublicId y sus líneas (sin TenantId) por id entero SIEMPRE bajo
 /// su orden filtrada.
+/// Lote 246 (Lote F): toda orden nace con su origen (LookupCode PurchaseOrderOrigin; a mano y Reordenar = TEIKEM, el contrato público no lo deja
+/// elegir) y, si es importada, con su identidad (ImportKey, única entre las activas). La ficha y la lista exponen el origen y el estado frente a
+/// QuickBooks (PurchaseOrderQuickBooksRules.State). Editar, enviar, cancelar o eliminar NO tocan las marcas de QuickBooks (ni la desmarcan ni la
+/// vuelven a pendiente).
 /// </summary>
 public sealed class PurchaseOrderService(
     TeikemDbContext db,
@@ -42,6 +49,11 @@ public sealed class PurchaseOrderService(
 
     public const string ConcurrencyMessage = "La orden de compra fue modificada por otro usuario; recargue e intente de nuevo.";
     public const string NumberTakenMessage = "Ya existe una orden de compra con ese número; intente de nuevo.";
+    /// <summary>Lote 246 — 409: otra importación creó la misma orden (misma ImportKey) al mismo tiempo (UX_PurchaseOrder_ImportKey).</summary>
+    public const string AlreadyImportedMessage = "Esa orden ya se importó (otra importación la creó al mismo tiempo).";
+    /// <summary>Lote 246 — largo máximo de PurchaseOrder.ImportKey (NVARCHAR(250)).</summary>
+    public const int ImportKeyMaxLength = 250;
+    public const string ImportKeyTooLongMessage = "La identidad de la importación no puede pasar de 250 caracteres.";
 
     /// <summary>
     /// Campos que el PATCH rechaza aunque lleguen en el cuerpo (van a Extra por no estar en el contrato). Proveedor y almacén
@@ -96,6 +108,9 @@ public sealed class PurchaseOrderService(
                     where l.PurchaseOrderId == p.PurchaseOrderId && (pr.Sku.Contains(s) || pr.Name.Contains(s))
                     select l.PurchaseOrderLineId).Any());
         }
+        // Lote 246 (Lote F): origen y estado frente a QuickBooks.
+        query = await FilterByOriginAsync(query, q.Origins, ct);
+        query = await FilterByQuickBooksStateAsync(query, q.QuickBooksStates, ct);
 
         var total = await query.CountAsync(ct);
         var page = await query.OrderByDescending(p => p.OrderDate).ThenByDescending(p => p.PurchaseOrderId)
@@ -127,6 +142,56 @@ public sealed class PurchaseOrderService(
     /// </summary>
     public async Task<PurchaseOrderDto> CreateAsync(PurchaseOrderCreateRequest req, CancellationToken ct)
     {
+        var p = await PrepareCreateAsync(req, ct);
+        await EnsureNumberingAsync(ct);
+        var poId = await db.RunInTransactionAsync(async ct2 =>
+        {
+            var po = await CreateDraftAsync(p.SupplierId, p.WarehouseId, p.OrderDate, req.ExpectedDate, p.CurrencyId, p.Notes, p.Lines, ct2,
+                PurchaseOrderOrigins.Teikem);
+            await ApplyProductPricesAsync(req.Lines, ct2);
+            return po.PurchaseOrderId;
+        }, ct);
+        return await GetByIdAsync(poId, ct);
+    }
+
+    /// <summary>
+    /// Lote 246 (Lote F) — alta de una orden IMPORTADA (solo para servicios: la importación de archivos; no tiene ruta). Mismas validaciones que el alta
+    /// (líneas, «actualizar el precio» y contador fuera de la transacción) y, en UNA transacción: el borrador con su origen e ImportKey (historial
+    /// null → DRAFT), el precio de los productos y, con <paramref name="send"/>, DRAFT → SENT con <paramref name="sendComment"/>. Si la transición falla
+    /// se revierte todo: no queda un borrador huérfano que la siguiente importación tomaría como DUPLICATE. La misma ImportKey ya activa → 409
+    /// <see cref="AlreadyImportedMessage"/>.
+    /// </summary>
+    public async Task<PurchaseOrderDto> CreateImportedAsync(PurchaseOrderCreateRequest req, string originCode, string importKey, bool send, string? sendComment,
+        CancellationToken ct)
+    {
+        var origin = PurchaseOrderOrigins.Normalize(originCode);
+        if (origin.Length == 0) throw new ValidationException("origin", PurchaseOrderOrigins.UnknownOrigin(originCode));
+        var key = NormalizeImportKey(importKey);
+        var comment = PurchasingSupport.Comment(sendComment);
+        var p = await PrepareCreateAsync(req, ct);
+        await EnsureNumberingAsync(ct);
+        var poId = await db.RunInTransactionAsync(async ct2 =>
+        {
+            var po = await CreateDraftAsync(p.SupplierId, p.WarehouseId, p.OrderDate, req.ExpectedDate, p.CurrencyId, p.Notes, p.Lines, ct2, origin, key);
+            await ApplyProductPricesAsync(req.Lines, ct2);
+            if (send)
+            {
+                var to = await statuses.TransitionAsync(StatusDomains.PurchaseOrderStatus, EntityTypes.PurchaseOrder, po.PurchaseOrderId,
+                    po.StatusCodeId, PurchaseOrderStatuses.Sent, comment, ct2);
+                po.StatusCodeId = to.StatusCodeId;
+                await db.SaveGuardedAsync(ConcurrencyMessage, ct2);
+            }
+            return po.PurchaseOrderId;
+        }, ct);
+        return await GetByIdAsync(poId, ct);
+    }
+
+    /// <summary>Lo ya validado de un alta: proveedor, almacén, fecha, moneda, notas y líneas.</summary>
+    private sealed record CreatePlan(int SupplierId, int WarehouseId, DateOnly OrderDate, int? CurrencyId, string? Notes, IReadOnlyList<PurchaseOrderLinePlan> Lines);
+
+    /// <summary>Validaciones del alta (las mismas para la orden a mano y la importada), fuera de la transacción.</summary>
+    private async Task<CreatePlan> PrepareCreateAsync(PurchaseOrderCreateRequest req, CancellationToken ct)
+    {
         if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
         var errors = new Dictionary<string, string[]>();
         if (req.SupplierId is null) errors["supplierId"] = new[] { PurchaseOrderRules.SupplierRequired };
@@ -149,15 +214,7 @@ public sealed class PurchaseOrderService(
         if (!warehouse.IsActive) throw new StatusRuleException(PurchaseOrderRules.WarehouseInactive);
         var lines = await ValidateLinesAsync(req.Lines, ct);
         await EnsureProductPriceUpdateAllowedAsync(req.Lines, ct);
-
-        await EnsureNumberingAsync(ct);
-        var poId = await db.RunInTransactionAsync(async ct2 =>
-        {
-            var po = await CreateDraftAsync(supplier.SupplierId, warehouse.WarehouseId, orderDate, req.ExpectedDate, currencyId, notes, lines, ct2);
-            await ApplyProductPricesAsync(req.Lines, ct2);
-            return po.PurchaseOrderId;
-        }, ct);
-        return await GetByIdAsync(poId, ct);
+        return new CreatePlan(supplier.SupplierId, warehouse.WarehouseId, orderDate, currencyId, notes, lines);
     }
 
     /// <summary>Asegura el contador PURCHASE (autocommit, ANTES de abrir la transacción que llamará a CreateDraftAsync).</summary>
@@ -167,12 +224,20 @@ public sealed class PurchaseOrderService(
     /// Uso interno (alta y Reordenar): crea la orden en DRAFT dentro de la transacción ambiente, con historial null → DRAFT.
     /// El número PO-##### se toma al final (NumberSequence es el último bloqueo del orden del lote). El llamador validó
     /// proveedor, almacén y líneas, y llamó antes a EnsureNumberingAsync.
+    /// Lote 246 (Lote F): <paramref name="originCode"/> (omitido = TEIKEM; si el catálogo PurchaseOrderOrigin no existe queda NULL, que se lee como
+    /// TEIKEM) e <paramref name="importKey"/> (identidad de la importación). Con importKey, un choque con UX_PurchaseOrder_ImportKey → 409
+    /// <see cref="AlreadyImportedMessage"/>.
     /// </summary>
     public async Task<PurchaseOrder> CreateDraftAsync(int supplierId, int warehouseId, DateOnly orderDate, DateOnly? expectedDate,
-        int? currencyLookupId, string? notes, IReadOnlyList<PurchaseOrderLinePlan> lines, CancellationToken ct)
+        int? currencyLookupId, string? notes, IReadOnlyList<PurchaseOrderLinePlan> lines, CancellationToken ct,
+        string? originCode = null, string? importKey = null)
     {
         var tenantId = ((TenantContext)tenant).RequireTenantId();
         if (lines.Count == 0) throw new ValidationException("lines", PurchaseOrderRules.LinesRequired);
+        var origin = PurchaseOrderOrigins.Normalize(originCode ?? PurchaseOrderOrigins.Teikem);
+        if (origin.Length == 0) throw new ValidationException("origin", PurchaseOrderOrigins.UnknownOrigin(originCode));
+        var key = importKey is null ? null : NormalizeImportKey(importKey);
+        var originLookupId = await lookups.TryGetIdAsync(PurchaseOrderOrigins.Domain, origin, ct);
         var initial = await statuses.GetInitialAsync(StatusDomains.PurchaseOrderStatus, ct);
 
         var seq = await numbers.NextAsync(NumberKinds.Purchase, null, ct);
@@ -181,10 +246,10 @@ public sealed class PurchaseOrderService(
             PublicId = Guid.NewGuid(), TenantId = tenantId, SupplierId = supplierId, WarehouseId = warehouseId,
             Number = NumberFormat.Resolve(PurchaseOrderRules.NumberPattern, seq), OrderDate = orderDate, ExpectedDate = expectedDate,
             StatusCodeId = initial.StatusCodeId, CurrencyLookupId = currencyLookupId, Notes = notes, IsActive = true,
-            CreatedAtUtc = DateTime.UtcNow, CreatedBy = tenant.UserId,
+            CreatedAtUtc = DateTime.UtcNow, CreatedBy = tenant.UserId, OriginLookupId = originLookupId, ImportKey = key,
         };
         db.Set<PurchaseOrder>().Add(po);
-        await db.SaveGuardedAsync(NumberTakenMessage, ct);
+        await db.SaveGuardedAsync(key is null ? NumberTakenMessage : AlreadyImportedMessage, ct);
 
         foreach (var l in lines)
             db.Set<PurchaseOrderLine>().Add(new PurchaseOrderLine
@@ -401,7 +466,10 @@ public sealed class PurchaseOrderService(
         var resolved = await PurchasingSupport.ResolvedByLineAsync(db, poIds, ct);
         var flags = await PurchasingSupport.ReceiptFlagsAsync(db, poIds, ct);
         var statusMap = await PurchasingSupport.StatusMapAsync(db, tenant, StatusDomains.PurchaseOrderStatus, ct);
-        var assignees = await AssigneeCheck.NamesAsync(db, rows.Where(p => p.AssignedToUserId != null).Select(p => p.AssignedToUserId!.Value), ct);
+        // Personas (asignada, quién exportó y quién marcó en QuickBooks): una sola consulta a Users.
+        var userNames = await AssigneeCheck.NamesAsync(db, rows.SelectMany(p => new[] { p.AssignedToUserId, p.QuickBooksExportedBy, p.QuickBooksBy })
+            .Where(id => id != null).Select(id => id!.Value), ct);
+        var origins = await OriginLookupsAsync(rows, ct);
 
         var currencyIds = rows.Where(p => p.CurrencyLookupId != null).Select(p => p.CurrencyLookupId!.Value).Distinct().ToList();
         var currencies = new Dictionary<int, string>();
@@ -428,6 +496,10 @@ public sealed class PurchaseOrderService(
             var isCancelled = code == PurchaseOrderStatuses.Cancelled;
             var hasShortage = po.IsActive && !isCancelled && f.HasConfirmed && lineDtos.Any(l => l.QtyPending > 0m);
             var total = PurchaseOrderRules.Total(lineDtos.Select(l => (l.QtyOrdered, l.UnitCost)));
+            // Origen: el del catálogo; NULL (o un id que ya no está en el catálogo) se lee como TEIKEM.
+            var origin = po.OriginLookupId is int oid ? origins.ById.GetValueOrDefault(oid) : null;
+            var originCode = PurchaseOrderOrigins.OrDefault(origin?.InternalCode);
+            origin ??= originCode == PurchaseOrderOrigins.Teikem ? origins.Teikem : null;
             return new PurchaseOrderDto(po.PurchaseOrderId, po.PublicId, po.Number, po.SupplierId, suppliers.GetValueOrDefault(po.SupplierId, ""),
                 w?.PublicId ?? Guid.Empty, w?.Code ?? "", po.OrderDate, po.ExpectedDate, code, s?.Label ?? code,
                 po.CurrencyLookupId is int cid ? currencies.GetValueOrDefault(cid) : null, po.Notes, total, hasShortage,
@@ -435,7 +507,16 @@ public sealed class PurchaseOrderService(
                 po.IsActive && PurchaseOrderRules.CanCancel(code) && !f.HasOpen,
                 po.IsActive && PurchaseOrderRules.IsDeletable(code, f.HasConfirmed || lineDtos.Any(l => l.QtyReceived > 0m), f.HasOpen),
                 po.IsActive, lineDtos, Convert.ToBase64String(po.RowVersion ?? Array.Empty<byte>()),
-                po.AssignedToUserId, po.AssignedToUserId is int au ? assignees.GetValueOrDefault(au) : null);
+                po.AssignedToUserId, po.AssignedToUserId is int au ? userNames.GetValueOrDefault(au) : null)
+            {
+                OriginCode = originCode,
+                Origin = origin is null ? null : MultilingualText.Resolve(origin.LabelJson, tenant.Lang),
+                QuickBooksState = PurchaseOrderQuickBooksRules.State(originCode, code, po.QuickBooksExportedAt, po.QuickBooksAt),
+                QuickBooksExportedAtUtc = po.QuickBooksExportedAt,
+                QuickBooksExportedByName = po.QuickBooksExportedBy is int eb ? userNames.GetValueOrDefault(eb) : null,
+                QuickBooksAtUtc = po.QuickBooksAt,
+                QuickBooksByName = po.QuickBooksBy is int qb ? userNames.GetValueOrDefault(qb) : null,
+            };
         }).ToList();
     }
 
@@ -472,6 +553,98 @@ public sealed class PurchaseOrderService(
             if (takeOnly) db.AuditNote = DocumentAssignmentRules.TakeNote(origin);
             await db.SaveGuardedAsync(ConcurrencyMessage, ct2);
         }, ct);
+    }
+
+    // ================================================================ Lote 246: origen y estado QuickBooks
+
+    /// <summary>Los LookupCode de origen de las órdenes (por id) y el de TEIKEM (para las de origen NULL), vía ILookupCache (sin N+1).</summary>
+    private async Task<(Dictionary<int, LookupCode> ById, LookupCode? Teikem)> OriginLookupsAsync(List<PurchaseOrder> rows, CancellationToken ct)
+    {
+        var byId = new Dictionary<int, LookupCode>();
+        foreach (var id in rows.Where(p => p.OriginLookupId != null).Select(p => p.OriginLookupId!.Value).Distinct())
+            if (await lookups.GetAsync(id, ct) is { } lc) byId[id] = lc;
+        LookupCode? teikem = null;
+        if (await lookups.TryGetIdAsync(PurchaseOrderOrigins.Domain, PurchaseOrderOrigins.Teikem, ct) is int teikemId)
+            teikem = byId.GetValueOrDefault(teikemId) ?? await lookups.GetAsync(teikemId, ct);
+        return (byId, teikem);
+    }
+
+    /// <summary>Filtro por origen (códigos repetibles o separados por comas): TEIKEM incluye las de origen NULL. Uno desconocido → 400 en 'origin'.</summary>
+    private async Task<IQueryable<PurchaseOrder>> FilterByOriginAsync(IQueryable<PurchaseOrder> query, string[]? values, CancellationToken ct)
+    {
+        var codes = new List<string>();
+        foreach (var raw in values ?? Array.Empty<string>())
+        {
+            if (string.IsNullOrWhiteSpace(raw)) continue;
+            foreach (var part in raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                var code = PurchaseOrderOrigins.Normalize(part);
+                if (code.Length == 0) throw new ValidationException("origin", PurchaseOrderOrigins.UnknownOrigin(part));
+                if (!codes.Contains(code)) codes.Add(code);
+            }
+        }
+        if (codes.Count == 0) return query;
+        var ids = new List<int>();
+        foreach (var code in codes)
+            if (await lookups.TryGetIdAsync(PurchaseOrderOrigins.Domain, code, ct) is int id) ids.Add(id);
+        return codes.Contains(PurchaseOrderOrigins.Teikem)
+            ? query.Where(p => p.OriginLookupId == null || ids.Contains(p.OriginLookupId.Value))
+            : query.Where(p => p.OriginLookupId != null && ids.Contains(p.OriginLookupId.Value));
+    }
+
+    /// <summary>
+    /// Filtro por estado frente a QuickBooks. Los predicados imitan la prioridad de <see cref="QuickBooksSync.State"/> (la lista devuelve exactamente las órdenes
+    /// cuyo DTO dice ese estado): FROM_QUICKBOOKS = origen QUICKBOOKS; IN_QUICKBOOKS = otro origen y marcada; EXPORTED = otro origen, sin marca y exportada
+    /// (cualquier estatus); PENDING = otro origen, sin marca, nunca exportada y estatus exportable; NOT_EXPORTABLE = lo mismo con estatus no exportable.
+    /// Uno desconocido → 400 en 'quickBooks'.
+    /// </summary>
+    private async Task<IQueryable<PurchaseOrder>> FilterByQuickBooksStateAsync(IQueryable<PurchaseOrder> query, string[]? values, CancellationToken ct)
+    {
+        var (states, error) = PurchaseOrderQuickBooksRules.ParseStates(values);
+        if (error is not null) throw new ValidationException("quickBooks", error);
+        if (states.Count == 0) return query;
+
+        // Sin el catálogo de origen ninguna orden vino de QuickBooks: -1 no es ningún id.
+        var qb = await lookups.TryGetIdAsync(PurchaseOrderOrigins.Domain, PurchaseOrderOrigins.QuickBooks, ct) ?? -1;
+        var exportableCodes = PurchaseOrderQuickBooksRules.ExportableStatuses.ToList();
+        var exportable = await db.StatusCodes.AsNoTracking()
+            .Where(s => s.Entity == StatusDomains.PurchaseOrderStatus && exportableCodes.Contains(s.InternalCode))
+            .Select(s => s.StatusCodeId).ToListAsync(ct);
+
+        Expression<Func<PurchaseOrder, bool>>? predicate = null;
+        foreach (var state in states)
+        {
+            Expression<Func<PurchaseOrder, bool>> part = state switch
+            {
+                QuickBooksSyncStates.FromQuickBooks => p => p.OriginLookupId == qb,
+                QuickBooksSyncStates.InQuickBooks => p => p.OriginLookupId != qb && p.QuickBooksAt != null,
+                QuickBooksSyncStates.Exported => p => p.OriginLookupId != qb && p.QuickBooksAt == null && p.QuickBooksExportedAt != null,
+                QuickBooksSyncStates.Pending => p => p.OriginLookupId != qb && p.QuickBooksAt == null && p.QuickBooksExportedAt == null
+                                                     && exportable.Contains(p.StatusCodeId),
+                _ => p => p.OriginLookupId != qb && p.QuickBooksAt == null && p.QuickBooksExportedAt == null
+                          && !exportable.Contains(p.StatusCodeId),
+            };
+            predicate = predicate is null ? part : OrElse(predicate, part);
+        }
+        return query.Where(predicate!);
+    }
+
+    /// <summary>a || b sobre el mismo parámetro (traducible por EF: sin Invoke).</summary>
+    private static Expression<Func<T, bool>> OrElse<T>(Expression<Func<T, bool>> a, Expression<Func<T, bool>> b)
+        => Expression.Lambda<Func<T, bool>>(Expression.OrElse(a.Body, new ParameterSwap(b.Parameters[0], a.Parameters[0]).Visit(b.Body)!), a.Parameters);
+
+    private sealed class ParameterSwap(ParameterExpression from, ParameterExpression to) : ExpressionVisitor
+    {
+        protected override Expression VisitParameter(ParameterExpression node) => node == from ? to : base.VisitParameter(node);
+    }
+
+    /// <summary>La identidad de la importación recortada; vacía → 400; más de 250 caracteres → 400.</summary>
+    private static string NormalizeImportKey(string? importKey)
+    {
+        var key = importKey?.Trim() ?? string.Empty;
+        if (key.Length == 0) throw new ValidationException("importKey", "Falta la identidad de la importación.");
+        if (key.Length > ImportKeyMaxLength) throw new ValidationException("importKey", ImportKeyTooLongMessage);
+        return key;
     }
 
     // ================================================================ helpers

@@ -16,7 +16,7 @@ import { useEntityImportFields, useSetEntityTemplateActive } from '../imports/en
 import type { ImportEntity } from '../imports/entityImportRules'
 import { sortTemplates, TEMPLATE_PERMISSION, useAllTemplates, type TemplateEntity } from './templatesApi'
 
-const ENTITIES = ['ORDER', 'CONSIGNEE', 'PRODUCT', 'SUPPLIER', 'WAREHOUSE', 'BIN'] as const
+const ENTITIES = ['ORDER', 'CONSIGNEE', 'PRODUCT', 'SUPPLIER', 'WAREHOUSE', 'BIN', 'PURCHASE_ORDER'] as const
 
 export default function TemplatesScreen() {
   const t = useT()
@@ -57,7 +57,8 @@ export default function TemplatesScreen() {
   const columns = useMemo<DataColumn<ImportTemplate>[]>(
     () => [
       { id: 'name', header: t('templates.col.name'), cell: (x) => <b>{x.name}</b>, sortValue: (x) => x.name ?? '', card: 'title' },
-      { id: 'client', header: t('templates.col.client'), cell: (x) => x.clientName || t('templates.allClients'), sortValue: (x) => x.clientName ?? '' },
+      // Lote 246: la plantilla de órdenes de compra no lleva cliente (las compras son de la compañía)
+      ...(entity === 'PURCHASE_ORDER' ? [] : [{ id: 'client', header: t('templates.col.client'), cell: (x: ImportTemplate) => x.clientName || t('templates.allClients'), sortValue: (x: ImportTemplate) => x.clientName ?? '' }]),
       { id: 'mapping', header: t('templates.col.mapping'), cell: (x) => <span className="help">{templateSummary(x, fieldLabel) || '—'}</span>, sortValue: (x) => (x.columns ?? []).length },
       { id: 'columns', header: t('templates.col.columns'), cell: (x) => (x.columns ?? []).length, sortValue: (x) => (x.columns ?? []).length, align: 'end' },
       {
@@ -67,7 +68,7 @@ export default function TemplatesScreen() {
         sortValue: (x) => (x.isActive === false ? 0 : 1),
       },
     ],
-    [t, fieldLabel],
+    [t, fieldLabel, entity],
   )
 
   const fields = entity === 'ORDER' ? (orderFields.data ?? []) : generic ? (genericFields.data ?? []) : (consigneeFields.data ?? [])

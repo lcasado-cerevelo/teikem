@@ -8836,7 +8836,8 @@
           "inventoryAccount": "Cuenta de inventario",
           "taxAccount": "Cuenta del IVU por pagar",
           "taxItem": "Ítem del IVU",
-          "shippingItem": "Ítem del envío"
+          "shippingItem": "Ítem del envío",
+          "purchaseOrderAccount": "Cuenta de órdenes de compra"
         },
         "saved": "Ajustes de QuickBooks guardados.",
         "errors": {
@@ -12765,7 +12766,7 @@
     "doneToast": "{n} órdenes de compra importadas.",
     "reviewSummary": "{total} órdenes en el archivo: {ready} listas, {blocked} bloqueadas, {duplicates} ya importadas, {skipped} omitidas.",
     "doneSummary": "Se crearon {created} órdenes. Bloqueadas: {blocked}. Ya importadas: {duplicates}. Omitidas: {skipped}.",
-    "blockedNote": "{n} órdenes NO se importan porque les falta un producto o un proveedor. Dé de alta lo que falta y vuelva a importar el mismo archivo: lo ya importado no se repite.",
+    "blockedNote": "{n} órdenes NO se importan: les falta un producto o un proveedor, o el archivo trae un dato ilegible o costos distintos para el mismo producto. El detalle dice por qué. Corrija y vuelva a importar el mismo archivo: lo ya importado no se repite.",
     "downloadMissing": "Descargar lo que falta",
     "firstRows": "Se muestran las primeras {n} órdenes.",
     "col": {
@@ -12783,7 +12784,14 @@
       "ERROR": "Error",
       "DUPLICATE": "Ya importada",
       "SKIPPED": "Omitida"
-    }
+    },
+    "sourceTemplate": "Plantilla (la del usuario)",
+    "helpTemplate": "El archivo se lee con una plantilla que usted define (Sistema → Plantillas → Órdenes de compra): qué columna es el proveedor, el número de documento, el SKU, la cantidad y el costo. Las líneas con el mismo número de documento forman una orden.",
+    "template": "Plantilla",
+    "noTemplates": "Todavía no hay plantillas de órdenes de compra.",
+    "newTemplate": "Nueva plantilla",
+    "editTemplate": "Editar",
+    "usedTemplate": "Plantilla: {name}"
   },
   "entityImport": {
     "open": "Importar",
@@ -12824,7 +12832,8 @@
       "PRODUCT": "productos",
       "SUPPLIER": "proveedores",
       "WAREHOUSE": "almacenes",
-      "BIN": "posiciones"
+      "BIN": "posiciones",
+      "PURCHASE_ORDER": "órdenes de compra"
     },
     "status": {
       "OK": "Lista",
@@ -12849,6 +12858,12 @@
         "warehouse": "La plantilla debe incluir la columna warehouseCode o un valor por defecto para warehouseCode.",
         "zone": "La plantilla debe incluir la columna zoneCode o un valor por defecto para zoneCode.",
         "code": "La plantilla debe incluir la columna code o las columnas de la posición (aisle, rack, level, position)."
+      },
+      "PURCHASE_ORDER": {
+        "documentNumber": "La plantilla debe incluir la columna documentNumber.",
+        "sku": "La plantilla debe incluir la columna sku.",
+        "quantity": "La plantilla debe incluir la columna quantity.",
+        "supplier": "La plantilla debe indicar el proveedor: en la columna supplier o como valor fijo."
       }
     },
     "fields": {
@@ -12902,6 +12917,16 @@
         "position": "Posición",
         "maxWeightKg": "Peso máximo (kg)",
         "maxCapacityQty": "Cupo máximo"
+      },
+      "PURCHASE_ORDER": {
+        "supplier": "Proveedor",
+        "documentNumber": "Número de documento",
+        "orderDate": "Fecha de la orden",
+        "expectedDate": "Fecha esperada",
+        "sku": "SKU",
+        "description": "Descripción",
+        "quantity": "Cantidad",
+        "unitCost": "Costo unitario"
       }
     }
   },
@@ -12916,7 +12941,8 @@
       "PRODUCT": "Productos",
       "SUPPLIER": "Proveedores",
       "WAREHOUSE": "Almacenes",
-      "BIN": "Posiciones"
+      "BIN": "Posiciones",
+      "PURCHASE_ORDER": "Órdenes de compra"
     },
     "col": {
       "name": "Nombre",
@@ -14240,6 +14266,113 @@
       "recMonth": "Venta neta de {month}",
       "recDifference": "Diferencia",
       "chart": "Venta por cadena"
+    }
+  },
+  "purchaseQb": {
+    "button": "QuickBooks",
+    "title": "Pasar órdenes de compra a QuickBooks",
+    "close": "Cerrar",
+    "help": "Las órdenes enviadas, recibidas en parte o recibidas que faltan por pasar a QuickBooks Desktop. «Exportar» baja un archivo .iif (órdenes de compra) y no marca nada: después se pregunta si ya se importó. Las que vinieron de QuickBooks no salen aquí.",
+    "col": {
+      "select": "Elegir",
+      "date": "Fecha",
+      "number": "Número",
+      "supplier": "Proveedor",
+      "total": "Total",
+      "news": "Nuevo en QuickBooks",
+      "exported": "Archivo",
+      "origin": "Origen",
+      "quickbooks": "QuickBooks"
+    },
+    "selectRow": "Elegir la orden {number}",
+    "inQuickBooksAs": "En QuickBooks como {name}",
+    "newSupplier": "Proveedor nuevo",
+    "newProduct": "Producto nuevo",
+    "newProducts": "{n} productos nuevos",
+    "seeData": "ver datos",
+    "seeDataOf": "Ver los datos nuevos de la orden {number}",
+    "exportedOn": "Archivo del {date}",
+    "by": "por {name}",
+    "markSelected": "Marcar {n} como en QuickBooks",
+    "export": "Exportar {n}",
+    "exporting": "Exportando…",
+    "downloaded": "Archivo {file} descargado.",
+    "marked": "{n} órdenes marcadas como en QuickBooks.",
+    "notPassedDone": "{n} órdenes vuelven a «por pasar».",
+    "alreadyExportedOne": "1 de estas ya salió en un archivo el {date}. Si ya la importó, confírmela o márquela; si no, exportarla otra vez la repite en QuickBooks.",
+    "alreadyExported": "{n} de estas ya salieron en un archivo (la última vez el {date}). Si ya las importó, confírmelas o márquelas; si no, exportarlas otra vez las repite en QuickBooks.",
+    "warningsTitle": "Avisos (no impiden exportar)",
+    "search": "Buscar por número o proveedor",
+    "selectAll": "Todas las de la vista ({n})",
+    "markAll": "Marcar todas",
+    "markAllTitle": "Marcar todas como en QuickBooks",
+    "markAllBody": "Se marcarán {n} órdenes como ya pasadas a QuickBooks, sin sacar archivo. Úselo para las órdenes históricas que ya están allá. ¿Continuar?",
+    "includeNew": "Incluir proveedores y productos nuevos",
+    "includeNewHelp": "{suppliers} proveedores y {products} productos todavía no se han mandado a QuickBooks. Sin esta opción el archivo solo trae las órdenes y QuickBooks las rechaza si el proveedor o el producto no existe allá.",
+    "noMatch": "Ninguna orden coincide con la búsqueda.",
+    "empty": "No hay órdenes de compra por pasar a QuickBooks.",
+    "ask": {
+      "title": "¿Ya las importaste en QuickBooks? ({n})",
+      "summary": "{n} órdenes por {total}",
+      "includedNew": "con {suppliers} proveedores y {products} productos nuevos",
+      "withoutNew": "sin proveedores ni productos nuevos",
+      "alreadyBefore": "{n} de estas ya habían salido antes (la última vez el {date}).",
+      "help": "Importe el archivo en QuickBooks (Archivo → Utilidades → Importar → Archivos IIF) y conteste. Solo las marcadas cuentan; las desmarcadas no cambian.",
+      "checkAll": "Todas ({n})",
+      "listLabel": "Órdenes del archivo",
+      "again": "Bajar otra vez",
+      "later": "Todavía no",
+      "notPassed": "No pasó ({n})",
+      "confirm": "Sí, ya están ({n})"
+    },
+    "newData": {
+      "title": "Datos nuevos de la orden {number}",
+      "qbName": "Nombre en QuickBooks",
+      "name": "Nombre",
+      "contact": "Contacto",
+      "phone": "Teléfono",
+      "email": "Correo",
+      "terms": "Término de pago",
+      "termsMissing": "«{code}» (sin nombre en QuickBooks)",
+      "products": "Productos nuevos",
+      "qbItem": "Ítem en QuickBooks",
+      "productName": "Descripción",
+      "cost": "Costo",
+      "none": "Esta orden no trae nada nuevo."
+    },
+    "origin": {
+      "TEIKEM": "Teikem",
+      "EXCEL": "Excel / archivo",
+      "QUICKBOOKS": "QuickBooks"
+    },
+    "state": {
+      "PENDING": "Por pasar",
+      "EXPORTED": "Exportada, por confirmar",
+      "IN_QUICKBOOKS": "En QuickBooks",
+      "FROM_QUICKBOOKS": "Vino de QuickBooks",
+      "NOT_EXPORTABLE": "No se pasa"
+    },
+    "filters": {
+      "origin": "Origen",
+      "quickbooks": "QuickBooks"
+    },
+    "detail": {
+      "markedBy": "Marcada el {date} por {name}",
+      "exportedBy": "Exportada el {date} por {name}; falta confirmar que se importó",
+      "pass": "Pasar a QuickBooks…",
+      "confirm": "Sí, ya está",
+      "confirmed": "La orden {number} quedó en QuickBooks.",
+      "notPassed": "No pasó",
+      "notPassedDone": "La orden {number} vuelve a «por pasar».",
+      "mark": "Marcar como en QuickBooks",
+      "markTitle": "Marcar la orden {number}",
+      "markBody": "Se marcará como ya pasada a QuickBooks, sin sacar archivo.",
+      "markedOne": "La orden {number} quedó marcada.",
+      "unmark": "Quitar la marca",
+      "unmarkTitle": "Quitar la marca de la orden {number}",
+      "unmarkBody": "La orden vuelve a «por pasar» (o a «exportada» si salió en un archivo). No se borra nada en QuickBooks.",
+      "unmarked": "Se quitó la marca de la orden {number}.",
+      "editWarning": "Esta orden ya salió hacia QuickBooks: editarla o cancelarla aquí no cambia nada allá. Ciérrela o corríjala en QuickBooks."
     }
   }
 }

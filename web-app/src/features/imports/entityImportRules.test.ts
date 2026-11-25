@@ -70,4 +70,17 @@ describe('entityTemplateIssues — almacenes y posiciones', () => {
     expect(entityTemplateIssues('BIN', { columns: cols('code'), defaults: [{ field: 'warehouseCode', value: 'ALM' }, { field: 'zoneCode', value: 'PCK' }] }, f, M)).toEqual([])
     expect(entityTemplateIssues('BIN', { columns: cols('warehouseCode', 'zoneCode', 'aisle'), defaults: [] }, f, M)).toEqual([])
   })
+
+  it('órdenes de compra (Lote 246): documentNumber, sku y quantity en columna; el proveedor en columna o como valor fijo', () => {
+    const f = [{ field: 'supplier', defaultAllowed: true }, { field: 'documentNumber' }, { field: 'sku' }, { field: 'quantity' }]
+    const all = ['supplier', 'documentNumber', 'sku', 'quantity']
+    expect(entityTemplateIssues('PURCHASE_ORDER', { columns: cols('supplier', 'sku', 'quantity'), defaults: [] }, f, M)).toEqual([{ path: 'columns', message: 'falta entityImport.errors.PURCHASE_ORDER.documentNumber' }])
+    expect(entityTemplateIssues('PURCHASE_ORDER', { columns: cols('supplier', 'documentNumber', 'quantity'), defaults: [] }, f, M)).toEqual([{ path: 'columns', message: 'falta entityImport.errors.PURCHASE_ORDER.sku' }])
+    expect(entityTemplateIssues('PURCHASE_ORDER', { columns: cols('supplier', 'documentNumber', 'sku'), defaults: [] }, f, M)).toEqual([{ path: 'columns', message: 'falta entityImport.errors.PURCHASE_ORDER.quantity' }])
+    expect(entityTemplateIssues('PURCHASE_ORDER', { columns: cols('documentNumber', 'sku', 'quantity'), defaults: [] }, f, M)).toEqual([{ path: 'columns', message: 'falta entityImport.errors.PURCHASE_ORDER.supplier' }])
+    expect(entityTemplateIssues('PURCHASE_ORDER', { columns: cols('documentNumber', 'sku', 'quantity'), defaults: [{ field: 'supplier', value: 'Acme' }] }, f, M)).toEqual([])
+    expect(entityTemplateIssues('PURCHASE_ORDER', { columns: cols(...all), defaults: [] }, f, M)).toEqual([])
+    // el número de documento y el SKU no admiten valor fijo
+    expect(entityTemplateIssues('PURCHASE_ORDER', { columns: cols('supplier', 'sku', 'quantity'), defaults: [{ field: 'documentNumber', value: 'X' }] }, f, M).map((x) => x.path)).toContain('defaults.0.field')
+  })
 })

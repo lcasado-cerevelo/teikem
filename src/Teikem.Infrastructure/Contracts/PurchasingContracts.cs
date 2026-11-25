@@ -37,18 +37,27 @@ public sealed record PurchaseOrderStatusRequest(string? Comment = null, string? 
 /// <summary>
 /// Filtros de la lista de órdenes de compra. Lote 12: SupplierIds y WarehousePublicIds (varios) se combinan con los
 /// singulares (compatibilidad): la orden aparece si su proveedor / almacén es cualquiera de los indicados.
+/// Lote 246 (Lote F): Origins (TEIKEM / EXCEL / QUICKBOOKS; TEIKEM incluye las de origen NULL) y QuickBooksStates (PENDING, EXPORTED, IN_QUICKBOOKS,
+/// FROM_QUICKBOOKS, NOT_EXPORTABLE: el mismo estado que trae el DTO). Varios valores = cualquiera de ellos; uno desconocido → 400.
 /// </summary>
 public sealed record PurchaseOrderQuery(string[]? Status = null, int? SupplierId = null, Guid? WarehousePublicId = null, DateOnly? From = null,
     DateOnly? To = null, string? Search = null, int Skip = 0, int Take = 100, int[]? SupplierIds = null, Guid[]? WarehousePublicIds = null,
-    Guid[]? ProductPublicIds = null, bool AssignedToMe = false, int? AssignedUserId = null);
+    Guid[]? ProductPublicIds = null, bool AssignedToMe = false, int? AssignedUserId = null, string[]? Origins = null, string[]? QuickBooksStates = null);
 
 public sealed record PurchaseOrderLineDto(int Id, Guid ProductPublicId, string Sku, string ProductName, decimal QtyOrdered, decimal QtyReceived,
     decimal QtyResolved, decimal QtyPending, decimal UnitCost, decimal LineTotal);
 
+/// <summary>
+/// Ficha de la orden de compra. Lote 246 (Lote F, al final y con valor por omisión): OriginCode (TEIKEM / EXCEL / QUICKBOOKS; NULL en la base = TEIKEM) y Origin
+/// (su etiqueta en el idioma del usuario); QuickBooksState (PurchaseOrderQuickBooksRules.State, la misma función que la exportación y la fuente de datos); cuándo y
+/// quién la sacó en un archivo de QuickBooks y cuándo y quién la marcó «en QuickBooks».
+/// </summary>
 public sealed record PurchaseOrderDto(int Id, Guid PublicId, string Number, int SupplierId, string SupplierName, Guid WarehousePublicId,
     string WarehouseCode, DateOnly OrderDate, DateOnly? ExpectedDate, string StatusCode, string Status, string? CurrencyCode, string? Notes,
     decimal Total, bool HasShortage, bool CanEdit, bool CanCancel, bool CanDelete, bool IsActive, IReadOnlyList<PurchaseOrderLineDto> Lines,
-    string RowVersion, int? AssignedToUserId = null, string? AssignedToName = null);
+    string RowVersion, int? AssignedToUserId = null, string? AssignedToName = null,
+    string OriginCode = "TEIKEM", string? Origin = null, string QuickBooksState = "NOT_EXPORTABLE", DateTime? QuickBooksExportedAtUtc = null,
+    string? QuickBooksExportedByName = null, DateTime? QuickBooksAtUtc = null, string? QuickBooksByName = null);
 
 public sealed record PurchaseOrderPageDto(int Total, int Skip, int Take, IReadOnlyList<PurchaseOrderDto> Items);
 

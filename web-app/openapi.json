@@ -39355,6 +39355,10 @@
                   "file": {
                     "type": "string",
                     "format": "binary"
+                  },
+                  "templatePublicId": {
+                    "type": "string",
+                    "format": "uuid"
                   }
                 }
               },
@@ -39372,6 +39376,9 @@
                   "style": "form"
                 },
                 "file": {
+                  "style": "form"
+                },
+                "templatePublicId": {
                   "style": "form"
                 }
               }
@@ -39395,6 +39402,583 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PurchaseOrderImportResultDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/purchase-orders/import-templates/fields": {
+      "get": {
+        "tags": [
+          "PurchaseOrderImportTemplates"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImportFieldDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImportFieldDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImportFieldDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/purchase-orders/import-templates": {
+      "get": {
+        "tags": [
+          "PurchaseOrderImportTemplates"
+        ],
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImportTemplateDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImportTemplateDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImportTemplateDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "PurchaseOrderImportTemplates"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportTemplateCreateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportTemplateCreateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportTemplateCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportTemplateDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportTemplateDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportTemplateDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/purchase-orders/import-templates/{publicId}": {
+      "get": {
+        "tags": [
+          "PurchaseOrderImportTemplates"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportTemplateDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportTemplateDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportTemplateDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "PurchaseOrderImportTemplates"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportTemplatePatchRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportTemplatePatchRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportTemplatePatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportTemplateDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportTemplateDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportTemplateDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/purchase-orders/import-templates/{publicId}/deactivate": {
+      "post": {
+        "tags": [
+          "PurchaseOrderImportTemplates"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportTemplateDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportTemplateDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportTemplateDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/purchase-orders/import-templates/{publicId}/reactivate": {
+      "post": {
+        "tags": [
+          "PurchaseOrderImportTemplates"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportTemplateDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportTemplateDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportTemplateDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/purchase-orders/quickbooks": {
+      "get": {
+        "tags": [
+          "PurchaseOrderQuickBooks"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseQuickBooksPendingDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseQuickBooksPendingDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseQuickBooksPendingDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/purchase-orders/quickbooks/export": {
+      "post": {
+        "tags": [
+          "PurchaseOrderQuickBooks"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseQuickBooksExportRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseQuickBooksExportRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseQuickBooksExportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseQuickBooksExportDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseQuickBooksExportDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseQuickBooksExportDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/purchase-orders/quickbooks/confirm": {
+      "post": {
+        "tags": [
+          "PurchaseOrderQuickBooks"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseQuickBooksSelectionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseQuickBooksSelectionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseQuickBooksSelectionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseQuickBooksMarkResultDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseQuickBooksMarkResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseQuickBooksMarkResultDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/purchase-orders/quickbooks/not-passed": {
+      "post": {
+        "tags": [
+          "PurchaseOrderQuickBooks"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseQuickBooksSelectionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseQuickBooksSelectionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseQuickBooksSelectionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseQuickBooksNotPassedResultDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseQuickBooksNotPassedResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseQuickBooksNotPassedResultDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/purchase-orders/quickbooks/mark": {
+      "post": {
+        "tags": [
+          "PurchaseOrderQuickBooks"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseQuickBooksSelectionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseQuickBooksSelectionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseQuickBooksSelectionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseQuickBooksMarkResultDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseQuickBooksMarkResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseQuickBooksMarkResultDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/purchase-orders/quickbooks/unmark": {
+      "post": {
+        "tags": [
+          "PurchaseOrderQuickBooks"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseQuickBooksSelectionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseQuickBooksSelectionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseQuickBooksSelectionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseQuickBooksMarkResultDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseQuickBooksMarkResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseQuickBooksMarkResultDto"
                 }
               }
             }
@@ -39522,6 +40106,26 @@
             "schema": {
               "type": "integer",
               "format": "int32"
+            }
+          },
+          {
+            "name": "origin",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "quickBooks",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           }
         ],
@@ -87312,6 +87916,36 @@
           "assignedToName": {
             "type": "string",
             "nullable": true
+          },
+          "originCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "origin": {
+            "type": "string",
+            "nullable": true
+          },
+          "quickBooksState": {
+            "type": "string",
+            "nullable": true
+          },
+          "quickBooksExportedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "quickBooksExportedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "quickBooksAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "quickBooksByName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -87481,6 +88115,15 @@
               "type": "string"
             },
             "nullable": true
+          },
+          "templatePublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "templateName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -87627,6 +88270,322 @@
           "rowVersion": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PurchaseQuickBooksExportDto": {
+        "type": "object",
+        "properties": {
+          "fileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "contentType": {
+            "type": "string",
+            "nullable": true
+          },
+          "contentBase64": {
+            "type": "string",
+            "nullable": true
+          },
+          "exportedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "orderCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total": {
+            "type": "number",
+            "format": "double"
+          },
+          "alreadyExportedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastExportedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "includedNew": {
+            "type": "boolean"
+          },
+          "newSupplierCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "newProductCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "orders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PurchaseQuickBooksOrderDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PurchaseQuickBooksExportRequest": {
+        "type": "object",
+        "properties": {
+          "purchaseOrderIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "nullable": true
+          },
+          "all": {
+            "type": "boolean"
+          },
+          "includeNew": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PurchaseQuickBooksMarkResultDto": {
+        "type": "object",
+        "properties": {
+          "marked": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "alreadyMarked": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "suppliersSent": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "productsSent": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "atUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PurchaseQuickBooksNewSupplierDto": {
+        "type": "object",
+        "properties": {
+          "supplierId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "quickBooksName": {
+            "type": "string",
+            "nullable": true
+          },
+          "contactName": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "paymentTerm": {
+            "type": "string",
+            "nullable": true
+          },
+          "quickBooksTerms": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PurchaseQuickBooksNotPassedResultDto": {
+        "type": "object",
+        "properties": {
+          "reset": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unchanged": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "atUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PurchaseQuickBooksOrderDto": {
+        "type": "object",
+        "properties": {
+          "publicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string",
+            "nullable": true
+          },
+          "orderDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "expectedDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "statusCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "supplierId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "supplierName": {
+            "type": "string",
+            "nullable": true
+          },
+          "quickBooksVendor": {
+            "type": "string",
+            "nullable": true
+          },
+          "originCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "total": {
+            "type": "number",
+            "format": "double"
+          },
+          "fileTotal": {
+            "type": "number",
+            "format": "double"
+          },
+          "lines": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "exportedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "exportedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "newSupplier": {
+            "type": "boolean"
+          },
+          "newProductSkus": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PurchaseQuickBooksPendingDto": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total": {
+            "type": "number",
+            "format": "double"
+          },
+          "alreadyExportedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastExportedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "orders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PurchaseQuickBooksOrderDto"
+            },
+            "nullable": true
+          },
+          "newSuppliers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PurchaseQuickBooksNewSupplierDto"
+            },
+            "nullable": true
+          },
+          "newProducts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuickBooksNewProductDto"
+            },
+            "nullable": true
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "purchaseOrderAccount": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PurchaseQuickBooksSelectionRequest": {
+        "type": "object",
+        "properties": {
+          "purchaseOrderIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "nullable": true
+          },
+          "all": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -88142,6 +89101,10 @@
               "$ref": "#/components/schemas/QuickBooksTermMapDto"
             },
             "nullable": true
+          },
+          "purchaseOrderAccount": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -88183,6 +89146,10 @@
               "type": "string",
               "nullable": true
             },
+            "nullable": true
+          },
+          "purchaseOrderAccount": {
+            "type": "string",
             "nullable": true
           }
         },

@@ -30211,6 +30211,8 @@ export interface paths {
                         commit?: boolean;
                         /** Format: binary */
                         file?: string;
+                        /** Format: uuid */
+                        templatePublicId?: string;
                     };
                 };
             };
@@ -30224,6 +30226,507 @@ export interface paths {
                         "text/plain": components["schemas"]["PurchaseOrderImportResultDto"];
                         "application/json": components["schemas"]["PurchaseOrderImportResultDto"];
                         "text/json": components["schemas"]["PurchaseOrderImportResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-orders/import-templates/fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportFieldDto"][];
+                        "application/json": components["schemas"]["ImportFieldDto"][];
+                        "text/json": components["schemas"]["ImportFieldDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-orders/import-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportTemplateDto"][];
+                        "application/json": components["schemas"]["ImportTemplateDto"][];
+                        "text/json": components["schemas"]["ImportTemplateDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ImportTemplateCreateRequest"];
+                    "text/json": components["schemas"]["ImportTemplateCreateRequest"];
+                    "application/*+json": components["schemas"]["ImportTemplateCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportTemplateDto"];
+                        "application/json": components["schemas"]["ImportTemplateDto"];
+                        "text/json": components["schemas"]["ImportTemplateDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-orders/import-templates/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportTemplateDto"];
+                        "application/json": components["schemas"]["ImportTemplateDto"];
+                        "text/json": components["schemas"]["ImportTemplateDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ImportTemplatePatchRequest"];
+                    "text/json": components["schemas"]["ImportTemplatePatchRequest"];
+                    "application/*+json": components["schemas"]["ImportTemplatePatchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportTemplateDto"];
+                        "application/json": components["schemas"]["ImportTemplateDto"];
+                        "text/json": components["schemas"]["ImportTemplateDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/purchase-orders/import-templates/{publicId}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportTemplateDto"];
+                        "application/json": components["schemas"]["ImportTemplateDto"];
+                        "text/json": components["schemas"]["ImportTemplateDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-orders/import-templates/{publicId}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportTemplateDto"];
+                        "application/json": components["schemas"]["ImportTemplateDto"];
+                        "text/json": components["schemas"]["ImportTemplateDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-orders/quickbooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PurchaseQuickBooksPendingDto"];
+                        "application/json": components["schemas"]["PurchaseQuickBooksPendingDto"];
+                        "text/json": components["schemas"]["PurchaseQuickBooksPendingDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-orders/quickbooks/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PurchaseQuickBooksExportRequest"];
+                    "text/json": components["schemas"]["PurchaseQuickBooksExportRequest"];
+                    "application/*+json": components["schemas"]["PurchaseQuickBooksExportRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PurchaseQuickBooksExportDto"];
+                        "application/json": components["schemas"]["PurchaseQuickBooksExportDto"];
+                        "text/json": components["schemas"]["PurchaseQuickBooksExportDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-orders/quickbooks/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PurchaseQuickBooksSelectionRequest"];
+                    "text/json": components["schemas"]["PurchaseQuickBooksSelectionRequest"];
+                    "application/*+json": components["schemas"]["PurchaseQuickBooksSelectionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PurchaseQuickBooksMarkResultDto"];
+                        "application/json": components["schemas"]["PurchaseQuickBooksMarkResultDto"];
+                        "text/json": components["schemas"]["PurchaseQuickBooksMarkResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-orders/quickbooks/not-passed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PurchaseQuickBooksSelectionRequest"];
+                    "text/json": components["schemas"]["PurchaseQuickBooksSelectionRequest"];
+                    "application/*+json": components["schemas"]["PurchaseQuickBooksSelectionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PurchaseQuickBooksNotPassedResultDto"];
+                        "application/json": components["schemas"]["PurchaseQuickBooksNotPassedResultDto"];
+                        "text/json": components["schemas"]["PurchaseQuickBooksNotPassedResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-orders/quickbooks/mark": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PurchaseQuickBooksSelectionRequest"];
+                    "text/json": components["schemas"]["PurchaseQuickBooksSelectionRequest"];
+                    "application/*+json": components["schemas"]["PurchaseQuickBooksSelectionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PurchaseQuickBooksMarkResultDto"];
+                        "application/json": components["schemas"]["PurchaseQuickBooksMarkResultDto"];
+                        "text/json": components["schemas"]["PurchaseQuickBooksMarkResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchase-orders/quickbooks/unmark": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PurchaseQuickBooksSelectionRequest"];
+                    "text/json": components["schemas"]["PurchaseQuickBooksSelectionRequest"];
+                    "application/*+json": components["schemas"]["PurchaseQuickBooksSelectionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PurchaseQuickBooksMarkResultDto"];
+                        "application/json": components["schemas"]["PurchaseQuickBooksMarkResultDto"];
+                        "text/json": components["schemas"]["PurchaseQuickBooksMarkResultDto"];
                     };
                 };
             };
@@ -30257,6 +30760,8 @@ export interface paths {
                     take?: number;
                     assignedToMe?: boolean;
                     assignedUserId?: number;
+                    origin?: string[];
+                    quickBooks?: string[];
                 };
                 header?: never;
                 path?: never;
@@ -54031,6 +54536,15 @@ export interface components {
             /** Format: int32 */
             assignedToUserId?: number | null;
             assignedToName?: string | null;
+            originCode?: string | null;
+            origin?: string | null;
+            quickBooksState?: string | null;
+            /** Format: date-time */
+            quickBooksExportedAtUtc?: string | null;
+            quickBooksExportedByName?: string | null;
+            /** Format: date-time */
+            quickBooksAtUtc?: string | null;
+            quickBooksByName?: string | null;
         };
         PurchaseOrderImportDocDto: {
             key?: string | null;
@@ -54087,6 +54601,9 @@ export interface components {
             documents?: components["schemas"]["PurchaseOrderImportDocDto"][] | null;
             missingProducts?: components["schemas"]["PurchaseOrderImportMissingProductDto"][] | null;
             missingSuppliers?: string[] | null;
+            /** Format: uuid */
+            templatePublicId?: string | null;
+            templateName?: string | null;
         };
         PurchaseOrderLineDto: {
             /** Format: int32 */
@@ -54142,6 +54659,110 @@ export interface components {
         PurchaseOrderStatusRequest: {
             comment?: string | null;
             rowVersion?: string | null;
+        };
+        PurchaseQuickBooksExportDto: {
+            fileName?: string | null;
+            contentType?: string | null;
+            contentBase64?: string | null;
+            /** Format: date-time */
+            exportedAtUtc?: string;
+            /** Format: int32 */
+            orderCount?: number;
+            /** Format: double */
+            total?: number;
+            /** Format: int32 */
+            alreadyExportedCount?: number;
+            /** Format: date-time */
+            lastExportedAtUtc?: string | null;
+            includedNew?: boolean;
+            /** Format: int32 */
+            newSupplierCount?: number;
+            /** Format: int32 */
+            newProductCount?: number;
+            warnings?: string[] | null;
+            orders?: components["schemas"]["PurchaseQuickBooksOrderDto"][] | null;
+        };
+        PurchaseQuickBooksExportRequest: {
+            purchaseOrderIds?: string[] | null;
+            all?: boolean;
+            includeNew?: boolean;
+        };
+        PurchaseQuickBooksMarkResultDto: {
+            /** Format: int32 */
+            marked?: number;
+            /** Format: int32 */
+            alreadyMarked?: number;
+            /** Format: int32 */
+            suppliersSent?: number;
+            /** Format: int32 */
+            productsSent?: number;
+            /** Format: date-time */
+            atUtc?: string;
+        };
+        PurchaseQuickBooksNewSupplierDto: {
+            /** Format: int32 */
+            supplierId?: number;
+            name?: string | null;
+            quickBooksName?: string | null;
+            contactName?: string | null;
+            phone?: string | null;
+            email?: string | null;
+            paymentTerm?: string | null;
+            quickBooksTerms?: string | null;
+        };
+        PurchaseQuickBooksNotPassedResultDto: {
+            /** Format: int32 */
+            reset?: number;
+            /** Format: int32 */
+            unchanged?: number;
+            /** Format: date-time */
+            atUtc?: string;
+        };
+        PurchaseQuickBooksOrderDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            /** Format: date */
+            orderDate?: string;
+            /** Format: date */
+            expectedDate?: string | null;
+            statusCode?: string | null;
+            status?: string | null;
+            /** Format: int32 */
+            supplierId?: number;
+            supplierName?: string | null;
+            quickBooksVendor?: string | null;
+            originCode?: string | null;
+            /** Format: double */
+            total?: number;
+            /** Format: double */
+            fileTotal?: number;
+            /** Format: int32 */
+            lines?: number;
+            /** Format: date-time */
+            exportedAtUtc?: string | null;
+            exportedByName?: string | null;
+            newSupplier?: boolean;
+            newProductSkus?: string[] | null;
+        };
+        PurchaseQuickBooksPendingDto: {
+            /** Format: int32 */
+            count?: number;
+            /** Format: double */
+            total?: number;
+            /** Format: int32 */
+            alreadyExportedCount?: number;
+            /** Format: date-time */
+            lastExportedAtUtc?: string | null;
+            orders?: components["schemas"]["PurchaseQuickBooksOrderDto"][] | null;
+            newSuppliers?: components["schemas"]["PurchaseQuickBooksNewSupplierDto"][] | null;
+            newProducts?: components["schemas"]["QuickBooksNewProductDto"][] | null;
+            warnings?: string[] | null;
+            purchaseOrderAccount?: string | null;
+        };
+        PurchaseQuickBooksSelectionRequest: {
+            purchaseOrderIds?: string[] | null;
+            all?: boolean;
         };
         PutawaySuggestionDto: {
             /** Format: int32 */
@@ -54306,6 +54927,7 @@ export interface components {
             taxItem?: string | null;
             shippingItem?: string | null;
             terms?: components["schemas"]["QuickBooksTermMapDto"][] | null;
+            purchaseOrderAccount?: string | null;
         };
         QuickBooksSettingsRequest: {
             receivableAccount?: string | null;
@@ -54318,6 +54940,7 @@ export interface components {
             terms?: {
                 [key: string]: string | null;
             } | null;
+            purchaseOrderAccount?: string | null;
         };
         QuickBooksTermMapDto: {
             code?: string | null;

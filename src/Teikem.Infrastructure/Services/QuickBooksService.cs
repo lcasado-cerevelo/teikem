@@ -21,8 +21,9 @@ namespace Teikem.Infrastructure.Services;
 /// (ISSUED, OVERDUE o PAID; ni borrador ni anulada) sin la marca «en QuickBooks». Exportar saca SIEMPRE todas las por pasar (hayan salido antes o no) y no las marca;
 /// las marca quien confirma «sí, ya están» (sales.quickbooks.export) o quien las marca a mano (sales.quickbooks.mark). Un cliente o producto es «nuevo» hasta que se marca
 /// o confirma su primera factura (QuickBooksSentAt); el cliente migrado de QuickBooks (campo «Código QuickBooks») nunca es nuevo y sale con ese nombre.
+/// <para>Lote 246 (Lote F) — las órdenes de compra (archivo PURCHORD, permiso purchasing.quickbooks) viven en el archivo parcial QuickBooksService.PurchaseOrders.cs.</para>
 /// </summary>
-public sealed class QuickBooksService(TeikemDbContext db, ITenantContext tenant, PermissionService permissions, ILookupCache lookups, ITenantClock clock,
+public sealed partial class QuickBooksService(TeikemDbContext db, ITenantContext tenant, PermissionService permissions, ILookupCache lookups, ITenantClock clock,
     INotificationPublisher? notifications = null)
 {
     public const int MaxPageSize = 200;
@@ -226,7 +227,7 @@ public sealed class QuickBooksService(TeikemDbContext db, ITenantContext tenant,
         if (req is null) throw new ValidationException("body", QuickBooksRules.BodyRequired);
         static string? Clean(string? v) => v is null ? null : QuickBooksIifWriter.Text(v);
         foreach (var (field, value) in new[] { ("receivableAccount", req.ReceivableAccount), ("salesAccount", req.SalesAccount), ("costAccount", req.CostAccount),
-                     ("inventoryAccount", req.InventoryAccount), ("taxAccount", req.TaxAccount) })
+                     ("inventoryAccount", req.InventoryAccount), ("taxAccount", req.TaxAccount), ("purchaseOrderAccount", req.PurchaseOrderAccount) })
             if (Clean(value) is { Length: > QuickBooksRules.MaxAccountLength }) throw new ValidationException(field, QuickBooksRules.AccountTooLong);
         foreach (var (field, value) in new[] { ("taxItem", req.TaxItem), ("shippingItem", req.ShippingItem) })
             if (Clean(value) is { Length: > QuickBooksRules.MaxItemLength }) throw new ValidationException(field, QuickBooksRules.ItemTooLong);
@@ -255,6 +256,7 @@ public sealed class QuickBooksService(TeikemDbContext db, ITenantContext tenant,
         if (req.TaxAccount is not null) t.QuickBooksTaxAccount = Store(Clean(req.TaxAccount));
         if (req.TaxItem is not null) t.QuickBooksTaxItem = Store(Clean(req.TaxItem));
         if (req.ShippingItem is not null) t.QuickBooksShippingItem = Store(Clean(req.ShippingItem));
+        if (req.PurchaseOrderAccount is not null) t.QuickBooksPurchaseOrderAccount = Store(Clean(req.PurchaseOrderAccount));   // Lote 246
         await db.SaveChangesAsync(ct);
         return await SettingsDtoAsync(t, ct);
     }
@@ -265,7 +267,7 @@ public sealed class QuickBooksService(TeikemDbContext db, ITenantContext tenant,
         var map = QuickBooksRules.ParseTerms(t.QuickBooksTermsJson);
         var terms = (await lookups.GetDomainAsync(LookupDomains.PaymentTerm, ct)).Where(l => l.IsActive).OrderBy(l => l.SortOrder).ThenBy(l => l.InternalCode, StringComparer.Ordinal)
             .Select(l => new QuickBooksTermMapDto(l.InternalCode, MultilingualText.Resolve(l.LabelJson, T.Lang), map.GetValueOrDefault(l.InternalCode))).ToList();
-        return new QuickBooksSettingsDto(a.Receivable, a.Sales, a.Cost, a.Inventory, a.TaxAccount, a.TaxItem, a.ShippingItem, terms);
+        return new QuickBooksSettingsDto(a.Receivable, a.Sales, a.Cost, a.Inventory, a.TaxAccount, a.TaxItem, a.ShippingItem, terms, a.PurchaseOrders);
     }
 
     private static QuickBooksAccounts AccountsOf(Teikem.Domain.Tenancy.Tenant t) => new(
@@ -275,7 +277,8 @@ public sealed class QuickBooksService(TeikemDbContext db, ITenantContext tenant,
         QuickBooksRules.Effective(t.QuickBooksInventoryAccount, QuickBooksRules.DefaultInventoryAccount),
         QuickBooksRules.Effective(t.QuickBooksTaxAccount, QuickBooksRules.DefaultTaxAccount),
         QuickBooksRules.Effective(t.QuickBooksTaxItem, QuickBooksRules.DefaultTaxItem),
-        QuickBooksRules.Effective(t.QuickBooksShippingItem, QuickBooksRules.DefaultShippingItem));
+        QuickBooksRules.Effective(t.QuickBooksShippingItem, QuickBooksRules.DefaultShippingItem),
+        QuickBooksRules.Effective(t.QuickBooksPurchaseOrderAccount, QuickBooksRules.DefaultPurchaseOrderAccount));   // Lote 246: cuenta de las órdenes de compra
 
     // ================================================================ lectura del paquete
 

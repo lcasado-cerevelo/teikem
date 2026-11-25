@@ -16,13 +16,17 @@ public sealed record ImportRequirement(IReadOnlyList<string> Fields, bool AllowD
 /// mapeo de una fila (celda no vacía → valor; vacía → valor por defecto si hay). Cada entidad nueva (productos, proveedores…) declara su meta en <see cref="ImportEntities"/>; el servicio de
 /// plantillas (validar y guardar la definición) y el importador genérico leen de aquí. La parte que toca la base de datos (revisar y crear filas) vive en Infrastructure.
 /// </summary>
-public sealed class ImportEntityMeta(string kind, IReadOnlyList<ImportFieldSpec> fields, IReadOnlyList<ImportRequirement> requirements)
+public sealed class ImportEntityMeta(string kind, IReadOnlyList<ImportFieldSpec> fields, IReadOnlyList<ImportRequirement> requirements, bool allowsClient = true)
 {
     public string Kind { get; } = kind;
     public IReadOnlyList<ImportFieldSpec> Fields { get; } = fields;
     public IReadOnlyList<ImportRequirement> Requirements { get; } = requirements;
+    /// <summary>Lote 246: si la plantilla admite cliente (ClientId / DefaultClientId). Las órdenes de compra no lo llevan (el almacén se elige al importar).</summary>
+    public bool AllowsClient { get; } = allowsClient;
 
     public const string ColumnsRequiredMessage = "Indique al menos una columna.";
+    /// <summary>Lote 246: una plantilla de un tipo sin cliente (<see cref="AllowsClient"/> = false) que trae cliente o cliente por defecto.</summary>
+    public const string NoClientMessage = "Este tipo de plantilla no lleva cliente.";
     public static string UnknownFieldMessage(string field) => $"Campo desconocido: {field}.";
     public static string DuplicatePositionMessage(int position) => $"La posición {position} está repetida.";
     public static string DuplicateFieldMessage(string field) => $"El campo {field} está repetido.";
@@ -122,6 +126,7 @@ public static class ImportEntities
         Add(Wms.SupplierImportFields.Meta);
         Add(Wms.WarehouseImportFields.Meta);
         Add(Wms.BinImportFields.Meta);
+        Add(Wms.PurchaseOrderImportFields.Meta);   // Lote 246 (Lote F)
     }
 
     private static void Add(ImportEntityMeta meta) => All[meta.Kind] = meta;

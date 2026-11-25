@@ -280,6 +280,8 @@ public static class PermissionCatalog
     public const string DispatchAccountingManage = "dispatchaccounting.manage";
 
     public const string PurchasingReceive = "purchasing.receive";
+    /// <summary>Lote 246 (Lote F del plan de Solutions): pasar órdenes de compra a QuickBooks Desktop: exportar el archivo IIF (PURCHORD), confirmar lo importado, «No pasó», marcar y quitar la marca. Ver el estado en la lista y la ficha basta con purchasing.view.</summary>
+    public const string PurchasingQuickBooks = "purchasing.quickbooks";
 
     // Análisis (módulos G, H, I)
 
@@ -578,6 +580,8 @@ public static class PermissionCatalog
         new(PurchaseAccountingManage, "BILLING", "Contabilización de compras: generar, aceptar, cancelar y exportar", "Purchase accounting: generate, accept, cancel and export"),
 
         new(PurchasingReceive, "BILLING", "Recibir contra orden de compra", "Receive against purchase order"),
+
+        new(PurchasingQuickBooks, "BILLING", "Compras: pasar órdenes de compra a QuickBooks", "Purchases: pass purchase orders to QuickBooks"),
 
         new(AnalyticsView, "ANALYTICS", "Ver vistas, indicadores y gráficos", "View reports, indicators & charts"),
 
@@ -1212,7 +1216,9 @@ public static class PermissionCatalog
 
             PulseOrders },   // Lote 88: el río Paquetes en la calle
 
-        ["Billing"] = new[] { OrdersView, BillingView, BillingCredit, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, SuppliersManage, PurchaseAccountingManage, DispatchAccountingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride, DriverPayView, InventoryView, InventoryValue,
+        ["Billing"] = new[] { OrdersView, BillingView, BillingCredit, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, SuppliersManage, PurchaseAccountingManage, DispatchAccountingManage,
+            PurchasingQuickBooks,   // Lote 246: Facturación pasa las órdenes de compra a QuickBooks
+            AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride, DriverPayView, InventoryView, InventoryValue,
 
             PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a
 

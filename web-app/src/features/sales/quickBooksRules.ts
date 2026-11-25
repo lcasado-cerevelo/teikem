@@ -68,7 +68,8 @@ export function hasNewData(invoice: PendingInvoice): boolean {
 
 // ---------- Ajustes → Operación → QuickBooks ----------
 
-export const QB_ACCOUNT_FIELDS = ['receivableAccount', 'salesAccount', 'costAccount', 'inventoryAccount', 'taxAccount'] as const
+// Lote 246: purchaseOrderAccount = la cuenta no contable «Purchase Orders» del archivo de órdenes de compra
+export const QB_ACCOUNT_FIELDS = ['receivableAccount', 'salesAccount', 'costAccount', 'inventoryAccount', 'taxAccount', 'purchaseOrderAccount'] as const
 export const QB_ITEM_FIELDS = ['taxItem', 'shippingItem'] as const
 export type QbTextField = (typeof QB_ACCOUNT_FIELDS)[number] | (typeof QB_ITEM_FIELDS)[number]
 

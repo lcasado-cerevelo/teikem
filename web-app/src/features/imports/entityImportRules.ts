@@ -3,8 +3,8 @@
 // entidad (productos: sku en columna y nombre en columna o por defecto; proveedores: nombre en columna).
 import type { ImportField, TemplateIssue, TemplateValues } from '../consignees/consigneeRules'
 
-export type ImportEntity = 'PRODUCT' | 'SUPPLIER' | 'WAREHOUSE' | 'BIN'
-export const IMPORT_ENTITIES: readonly ImportEntity[] = ['PRODUCT', 'SUPPLIER', 'WAREHOUSE', 'BIN']
+export type ImportEntity = 'PRODUCT' | 'SUPPLIER' | 'WAREHOUSE' | 'BIN' | 'PURCHASE_ORDER'
+export const IMPORT_ENTITIES: readonly ImportEntity[] = ['PRODUCT', 'SUPPLIER', 'WAREHOUSE', 'BIN', 'PURCHASE_ORDER']
 
 /** Dónde vive cada entidad en el API (rutas de plantillas e importación), el permiso para cambiarlas y el que las ve. */
 export const ENTITY_CONFIG: Record<ImportEntity, { base: string; manage: string; view: string; module: string }> = {
@@ -12,6 +12,8 @@ export const ENTITY_CONFIG: Record<ImportEntity, { base: string; manage: string;
   SUPPLIER: { base: '/api/v1/suppliers', manage: 'purchasing.manage', view: 'purchasing.view', module: 'PURCHASING' },
   WAREHOUSE: { base: '/api/v1/warehouses', manage: 'warehouse.manage', view: 'inventory.view', module: 'WMS_LOT_SERIAL' },
   BIN: { base: '/api/v1/bins', manage: 'warehouse.manage', view: 'inventory.view', module: 'WMS_LOT_SERIAL' },
+  // Lote 246: órdenes de compra (plantilla en /api/v1/purchase-orders/import-templates; la importación es la del modal de Órdenes de compra)
+  PURCHASE_ORDER: { base: '/api/v1/purchase-orders', manage: 'purchasing.manage', view: 'purchasing.view', module: 'PURCHASING' },
 }
 
 /** Reglas de grupo de cada entidad: al menos uno de `fields` en una columna (o, con `allowDefault`, en los valores por defecto); si no, el error `messageKey`. */
@@ -29,6 +31,13 @@ export const ENTITY_REQUIREMENTS: Record<ImportEntity, readonly { fields: readon
     { fields: ['warehouseCode'], allowDefault: true, messageKey: 'entityImport.errors.BIN.warehouse' },
     { fields: ['zoneCode'], allowDefault: true, messageKey: 'entityImport.errors.BIN.zone' },
     { fields: ['code', 'aisle', 'rack', 'level', 'position'], allowDefault: false, messageKey: 'entityImport.errors.BIN.code' },
+  ],
+  // Lote 246: documentNumber, sku y quantity en columna; el proveedor en columna o como valor fijo
+  PURCHASE_ORDER: [
+    { fields: ['documentNumber'], allowDefault: false, messageKey: 'entityImport.errors.PURCHASE_ORDER.documentNumber' },
+    { fields: ['sku'], allowDefault: false, messageKey: 'entityImport.errors.PURCHASE_ORDER.sku' },
+    { fields: ['quantity'], allowDefault: false, messageKey: 'entityImport.errors.PURCHASE_ORDER.quantity' },
+    { fields: ['supplier'], allowDefault: true, messageKey: 'entityImport.errors.PURCHASE_ORDER.supplier' },
   ],
 }
 

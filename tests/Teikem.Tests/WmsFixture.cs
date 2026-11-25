@@ -247,6 +247,8 @@ internal sealed class WmsFixture : IAsyncDisposable
         L(LookupDomains.AdjustmentReason, AdjustmentReasons.KitDisassembly);
         L(LookupDomains.EntityType, Teikem.Domain.Wms.AssembledKitCodes.AssemblyEntityType);
         L(LookupDomains.EntityType, Teikem.Domain.Wms.AssembledKitCodes.DisassemblyEntityType);
+        // Lote 246 (Lote F): origen de la orden de compra (al final: ids previos intactos).
+        foreach (var c in PurchaseOrderOrigins.All) L(PurchaseOrderOrigins.Domain, c);
         Db.LookupCodes.AddRange(all);
         Lookups.Load(all);
 

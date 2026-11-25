@@ -35,6 +35,7 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         b.Property(t => t.QuickBooksTaxItem).HasMaxLength(31);
         b.Property(t => t.QuickBooksShippingItem).HasMaxLength(31);
         b.Property(t => t.QuickBooksTermsJson).HasMaxLength(2000);
+        b.Property(t => t.QuickBooksPurchaseOrderAccount).HasMaxLength(159);   // Lote 246
         b.HasKey(t => t.TenantId);
         b.Property(t => t.PublicId).HasDefaultValueSql("NEWID()");
         b.Property(t => t.Name).HasMaxLength(200).IsRequired();
